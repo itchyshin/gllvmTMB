@@ -1,4 +1,8 @@
 url: https://itchyshin.github.io/gllvmTMB/
+# Build pkgdown site to a separate directory so `docs/` can host the
+# project's design notes and dev-log (drmTMB-style scaffolding).
+# Matches drmTMB's _pkgdown.yml convention.
+destination: pkgdown-site
 template:
   bootstrap: 5
 

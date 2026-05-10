@@ -1,0 +1,290 @@
+---
+title: "Get started with gllvmTMB"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Get started with gllvmTMB}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.path = "",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  message = FALSE, warning = FALSE
+)
+```
+
+`gllvmTMB` fits **generalised linear latent variable models (GLLVMs)**
+for unit × trait data — site × species, individual × trait, species
+× trait, paper × item, or any other Unit × Trait formulation. The
+package is a TMB engine that supports `glmmTMB` / `brms`-style
+covariance dispatch via **three covstruct modes** expressed with four
+formula keywords:
+
+* **Paired decomposition** — `latent + unique` together gives
+  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathbf S$
+  (shared low-rank plus per-trait unique).
+* **Marginal only** — `indep` alone gives $\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)$
+  (per-trait variance, no cross-trait shared structure).
+* **Full unstructured** — `dep` alone gives $\boldsymbol\Sigma$ free,
+  parameterised via Cholesky.
+
+Built on top: response distributions for binary / count / continuous
+/ ordinal / hurdle data, sparse SPDE spatial random fields,
+phylogenetic random effects (sparse-$A^{-1}$ representation for big
+trees), and multi-tier hierarchies — all turned on **only when the
+biological question requires them**. Each topical article in the
+side-bar walks through one such extension on a runnable example.
+
+## What a GLLVM estimates
+
+A GLLVM models multivariate data: a matrix of responses
+$\mathbf Y = (y_{it})$ with rows $i = 1, \ldots, n$ (units — sites,
+individuals, species, …) and columns $t = 1, \ldots, T$ (responses —
+species, traits, behaviours, items, …). It combines two familiar
+ideas:
+
+* Like a **generalised linear mixed model**, each response gets its
+  own distribution and link function $g_t$ so binary, count, and
+  continuous responses are all on the same footing.
+* Like **factor analysis**, the covariance among the $T$ responses
+  is summarised by a small number $d \ll T$ of latent dimensions.
+
+The expected value $\mu_{it} = E(y_{it})$ is linked to a linear
+predictor through $g_t(\mu_{it}) = \eta_{it}$, where
+
+\[
+\eta_{it} = \mathbf x_i^\top \boldsymbol\beta_t
+          + \mathbf z_i^\top \boldsymbol\lambda_t .
+\]
+
+* $\mathbf x_i$ are measured predictors with response-specific
+  coefficients $\boldsymbol\beta_t$ — the regression part of the
+  model.
+* $\mathbf z_i$ is a length-$d$ vector of latent scores for unit $i$,
+  and $\boldsymbol\lambda_t$ is a length-$d$ loading vector for
+  response $t$. Stacking the loadings across responses gives a
+  $T \times d$ matrix $\boldsymbol\Lambda$ whose $t$-th row is
+  $\boldsymbol\lambda_t$.
+
+In the Gaussian case ($g_t = \mathrm{identity}$), the model can be
+written equivalently as
+
+\[
+y_{it} \;=\; \eta_{it} + \varepsilon_{it},
+\qquad
+\varepsilon_{it} \sim \mathcal N(0,\, S_{tt}),
+\]
+
+so the leftover $y_{it} - \eta_{it} = \varepsilon_{it}$ — what's
+not explained by the regression part and the shared latent dimensions
+— has variance $S_{tt}$ specific to response $t$. This is the
+**response-specific unique variance** (also called the "specific"
+variance in factor analysis). Stacking the $T$ such variances on the
+diagonal gives the $T \times T$ **diagonal matrix**
+
+\[
+\mathbf S \;=\; \mathrm{diag}(S_{11}, S_{22}, \ldots, S_{TT}) .
+\]
+
+The marginal covariance among responses (after measured predictors)
+then decomposes as
+
+\[
+\boldsymbol\Sigma
+\;=\;
+\underbrace{\boldsymbol\Lambda\,\boldsymbol\Lambda^\top}_{\text{shared}}
+\;+\;
+\underbrace{\mathbf S}_{\text{unique}} .
+\]
+
+The two pieces are complementary:
+
+* $\boldsymbol\Lambda \boldsymbol\Lambda^\top$ is the $T \times T$
+  **shared** covariance among responses, induced through the $d$
+  latent dimensions. Because $d \ll T$, the shared component has
+  reduced rank — covariance among many responses is captured by a
+  few latent dimensions instead of $T(T-1)/2$ free pairwise entries.
+  In `gllvmTMB`, $\boldsymbol\Lambda$ is parameterised by the
+  formula keyword `latent(0 + trait | unit, d = K)`.
+* $\mathbf S$ is the $T \times T$ **diagonal** of response-specific
+  unique variances $\mathrm{Var}(\varepsilon_{it}) = S_{tt}$ (one
+  entry per response, off-diagonal entries are zero by construction).
+  In `gllvmTMB`, $\mathbf S$ is parameterised by
+  `unique(0 + trait | unit)`.
+
+A useful per-response summary is **communality**:
+
+\[
+c_t^2 \;=\;
+\frac{(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt}}
+     {(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt} + S_{tt}} .
+\]
+
+The numerator is the variance of response $t$ explained by the shared
+latent structure; the denominator is the total model-implied residual
+variance of response $t$. So $c_t^2$ is the proportion of response
+$t$'s variance shared with the others. High $c_t^2$ means response
+$t$ is strongly integrated; low $c_t^2$ means response-specific
+variation dominates.
+
+A fitted GLLVM therefore returns:
+
+* **Regression coefficients** $\boldsymbol\beta_t$ for measured
+  predictors.
+* **Latent scores** $\mathbf Z$ placing units in $d$-dimensional
+  latent space (model-based ordination).
+* **Loadings** $\boldsymbol\Lambda$ describing how strongly each
+  response is associated with each latent dimension (biplot arrows).
+* **Residual covariance / correlation**
+  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathbf S$
+  among responses.
+* **Communality** $c_t^2$ per response.
+
+## Example: Individual × Trait morphology
+
+We have `n` individuals, each measured on `T` morphological traits
+across a few sessions. The biological question: do the traits covary
+on a small number of latent axes (e.g. a body-size axis, a shape
+axis)? With one observational level and modest repetition, both the
+shared (`latent()`) and unique (`unique()`) covariance components are
+identifiable. No spatial or phylogenetic structure here.
+
+```{r setup}
+library(gllvmTMB)
+```
+
+Simulate `n = 60` individuals × `T = 5` traits × 3 sessions with two
+true latent axes plus trait-specific unique variance:
+
+```{r sim}
+set.seed(1)
+n_indiv   <- 60
+n_session <- 3
+n_traits  <- 5
+trait_names <- paste0("trait_", seq_len(n_traits))
+
+Lambda_true <- matrix(c( 1.0,  0.6, -0.4,  0.2,  0.5,
+                         0.0,  0.8,  0.5, -0.3,  0.2),
+                      nrow = n_traits, ncol = 2)
+S_B_true     <- c(0.20, 0.15, 0.30, 0.20, 0.25)
+sigma_eps    <- 0.20
+alpha        <- c(0, 0.5, -0.3, 0.2, 0.1)
+
+# Stable per-individual trait values (between-individual rr + unique)
+u <- matrix(rnorm(n_indiv * 2), n_indiv, 2)
+between_ind <- matrix(alpha, n_indiv, n_traits, byrow = TRUE) +
+               u %*% t(Lambda_true) +
+               matrix(rnorm(n_indiv * n_traits,
+                            sd = sqrt(S_B_true[col(matrix(0, n_indiv, n_traits))])),
+                      n_indiv, n_traits)
+
+# Three sessions per individual, each with measurement noise
+df <- expand.grid(individual_id = seq_len(n_indiv),
+                  session_id    = seq_len(n_session),
+                  trait_idx     = seq_len(n_traits))
+df$value <- between_ind[cbind(df$individual_id, df$trait_idx)] +
+            rnorm(nrow(df), sd = sigma_eps)
+df$individual <- factor(df$individual_id)
+df$trait      <- factor(trait_names[df$trait_idx], levels = trait_names)
+df$session    <- factor(paste(df$individual_id, df$session_id, sep = "_"))
+df <- df[, c("individual", "session", "trait", "value")]
+head(df, 6)
+```
+
+The DGP has three variance sources: shared low-rank
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top$, per-trait
+between-individual unique $\mathbf S_B$, and per-session noise
+$\sigma^2_\varepsilon$. The fit below recovers the first two via
+`latent()` and `unique()`; the per-session noise is absorbed into the
+Gaussian residual variance $\sigma^2_d$ (one parameter per trait).
+
+Fit a `d = 2` reduced-rank GLLVM with **`latent() + unique()`** at the
+individual level — the shared low-rank structure plus trait-specific
+unique variance:
+
+```{r fit-call}
+fit <- gllvmTMB(
+  value ~ 0 + trait +
+          latent(0 + trait | individual, d = 2) +
+          unique(0 + trait | individual),
+  data = df,
+  unit = "individual"
+)
+fit
+```
+
+The recovered loadings (up to column rotation / sign — only
+$\boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top$ is identifiable from
+the data):
+
+```{r loadings}
+Lambda_hat <- fit$report$Lambda_B
+rownames(Lambda_hat) <- paste0("trait_", seq_len(n_traits))
+colnames(Lambda_hat) <- paste0("LV", seq_len(2))
+round(Lambda_hat, 3)
+```
+
+The implied trait covariance vs the truth (off-diagonal pattern is
+what should agree — diagonals include unique variance):
+
+```{r cov}
+list(true_LL  = round(Lambda_true %*% t(Lambda_true), 2),
+     fitted_LL = round(Lambda_hat  %*% t(Lambda_hat),  2))
+```
+
+Ordination of individuals on the two latent axes:
+
+```{r ord, fig.cap = "Individual scores on the two latent trait axes."}
+ord <- extract_ordination(fit, level = "unit")
+plot(ord$scores[, 1], ord$scores[, 2], pch = 19, col = "steelblue",
+     xlab = "LV 1", ylab = "LV 2",
+     main = "Individuals on latent trait axes")
+abline(h = 0, v = 0, lty = 2, col = "grey70")
+```
+
+That's the whole model — `latent()` for shared trait covariance,
+`unique()` for trait-specific residual variance, plus trait-specific
+intercepts.
+
+Per-trait communality $c_t^2$ — the proportion of each trait's
+variance shared with the others:
+
+```{r communality}
+extract_communality(fit, "unit")
+```
+
+Pairwise trait correlations with 95% profile-likelihood confidence
+intervals (`method = "wald"` and `method = "bootstrap"` are also
+available):
+
+```{r cor}
+extract_correlations(fit, tier = "unit")
+```
+
+The matrix form, if you want to look at the correlation structure as
+a whole rather than per pair:
+
+```{r cor-matrix}
+round(cov2cor(extract_Sigma(fit, level = "unit")$Sigma), 2)
+```
+
+## Acknowledgements
+
+`gllvmTMB` is a standalone TMB-based package. Its design borrows ideas
+from several earlier projects, whose corresponding GPL-3 code is
+incorporated and whose authors are credited in `DESCRIPTION` (as
+copyright holders) and listed in `inst/COPYRIGHTS`:
+
+* [**sdmTMB**](https://pbs-assess.github.io/sdmTMB/) (Anderson, Ward, English, Barnett, Thorson, et al.): sparse SPDE / GMRF spatial machinery.
+* [**glmmTMB**](https://glmmtmb.github.io/glmmTMB/) (Brooks, Bolker, Kristensen, Magnusson, Skaug, Nielsen, Berg, van Bentham, et al.): `rr` / `propto` / `equalto` / `diag` covariance dispatch. The reduced-rank `rr()` machinery in particular is the contribution of [**McGillycuddy, Popovic, Bolker & Warton (2025)**](https://doi.org/10.18637/jss.v112.i01) *J. Stat. Softw.* 112(1).
+* [**GALAMM**](https://lcbc-uio.github.io/galamm/) (Sørensen): mixed-response (`gfam`) and confirmatory fixed-loading (`lambda_constraint`) patterns.
+* [**MCMCglmm**](https://cran.r-project.org/package=MCMCglmm) (Hadfield): sparse $A^{-1}$ phylogeny representation used by `phylo_latent()`.
+* [**TMB**](https://github.com/kaskr/adcomp) (Kristensen et al.) and [**fmesher**](https://inlabru-org.github.io/fmesher/) (Lindgren): autodiff and finite-element mesh.

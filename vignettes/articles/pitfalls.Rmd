@@ -1,0 +1,246 @@
+---
+title: "Common pitfalls and how to avoid them"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Common pitfalls and how to avoid them}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache    = FALSE,
+  eval     = TRUE,
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+Six recurring mistakes that look like bugs but aren't, plus the
+one-line fix for each. Each pitfall starts with the symptom, then the
+diagnosis, a short reproducible chunk, and a rule of thumb.
+
+```{r setup}
+library(gllvmTMB)
+```
+
+## 1. Factor level order on `trait`
+
+**Symptom.** Fitted $\hat{\boldsymbol\Sigma}_{\text{unit}}$ rows don't line up
+with the rows of your true `Lambda`.
+
+**Diagnosis.** `factor(rep(traits, n))` defaults to sorting levels
+alphabetically. If your `traits` vector is `c("length", "mass", "wing")`,
+the model sees levels `c("length", "mass", "wing")`; if it is
+`c("wing", "mass", "length")`, the model still sees alphabetical
+order. The model is correct; the row labels are out of sync with
+your truth matrix.
+
+```{r pitfall-1}
+traits <- c("length", "mass", "wing", "tarsus", "bill")
+
+# WRONG: alphabetical levels (bill, length, mass, tarsus, wing)
+levels(factor(rep(traits, 3)))
+
+# RIGHT: pin levels to your declared order
+levels(factor(rep(traits, 3), levels = traits))
+```
+
+**Rule of thumb.** *If you defined a true `Lambda` with named rows,
+always pass `levels = <your trait vector>` when building the long-format
+factor. Otherwise the recovery comparison is meaningless even when
+the fit is right.*
+
+## 2. What `extract_Sigma(level = "unit")` actually returns
+
+**Symptom.** Diagonals of `extract_Sigma(fit, level = "unit")$Sigma`
+look "underestimated" by exactly $\sigma^2_\varepsilon$.
+
+**Diagnosis.** `extract_Sigma(level = "unit")` returns the
+`latent()`-implied between-unit covariance
+$\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$ (plus the optional
+`unique(0 + trait | site)` variance), **not** the marginal observational
+variance $\mathrm{Var}(y_{it}) = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \sigma^2_\varepsilon$.
+The "missing" amount is real residual noise, not bias.
+
+```{r pitfall-2}
+set.seed(1)
+sim <- simulate_site_trait(
+  n_sites = 60, n_species = 1, n_traits = 3,
+  mean_species_per_site = 1,
+  Lambda_B = matrix(c(1.0, 0.4, -0.3,
+                      0.0, 0.8,  0.5), 3, 2),
+  S_B  = rep(0, 3), beta = matrix(0, 3, 2), seed = 1
+)
+fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
+                data = sim$data)
+
+S_hat    <- extract_Sigma(fit, level = "unit")$Sigma
+LLt_true <- tcrossprod(sim$truth$Lambda_B)
+# Compare to LL^T (the right target) - not to LL^T + sigma^2 I
+round(rbind(diag_LLt_true  = diag(LLt_true),
+            diag_Sigma_hat = diag(S_hat)), 2)
+```
+
+**Rule of thumb.** *Compare `extract_Sigma(level = "unit")` to
+$\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$. If you want the
+marginal Var(y) including residual noise, add
+`+ unique(0 + trait | site)` to the formula and inspect
+`extract_Sigma(level = "unit", part = "total")$Sigma` — the residual
+`sigma_eps` is reported separately in `fit$report$sigma_eps`.*
+
+## 3. The DGP must match the fitted model
+
+**Symptom.** Simulation recovery shows large positive bias on
+$\hat{\boldsymbol\Sigma}_{\text{unit}}$ diagonals, even with hundreds of sites.
+
+**Diagnosis.** `simulate_site_trait()` ships with sensible defaults
+that include random environmental fixed effects
+($\beta_{tk} \sim \mathcal{N}(0, 0.5^2)$) and a per-trait diagonal
+$S_B$. If your fitted model has no environmental term and no
+`unique(0 + trait | site)`, that variance has nowhere to go and gets
+absorbed into $\hat{\boldsymbol\Lambda}_B$. This was a real harness
+bug caught during simulation work — see the
+[simulation-recovery article](simulation-recovery.html).
+
+```{r pitfall-3}
+# CLEAN latent()-only DGP: explicitly switch off beta and S_B
+sim_clean <- simulate_site_trait(
+  n_sites = 50, n_species = 1, n_traits = 3,
+  mean_species_per_site = 1,
+  Lambda_B = matrix(c(1.0, 0.4, -0.3,
+                      0.0, 0.8,  0.5), 3, 2),
+  beta = matrix(0, 3, 2),   # <-- no env effects
+  S_B  = rep(0, 3),         # <-- no diagonal trait variance
+  seed = 1
+)
+```
+
+**Rule of thumb.** *When simulating to test recovery of a latent()-only
+fit, set `beta = matrix(0, n_traits, n_predictors)` and
+`S_B = rep(0, n_traits)`. If you want those components in the DGP,
+include them in the formula too: `+ (0 + trait):env_1` and/or
+`+ unique(0 + trait | site)`.*
+
+## 4. Lambda is not unique; Sigma is
+
+**Symptom.** Two `gllvmTMB` fits on identical data return different
+$\hat{\boldsymbol\Lambda}$ matrices.
+
+**Diagnosis.** Reduced-rank factor models have a rotational
+ambiguity: $\boldsymbol\Lambda$ and $\boldsymbol\Lambda \mathbf{Q}$
+yield the same $\boldsymbol\Sigma_{\text{unit}}$ for any orthogonal $\mathbf{Q}$.
+The implied covariance is identifiable; the loadings alone are not.
+`getLoadings()` will surface a one-shot hint when you access raw
+$\boldsymbol\Lambda$ on an unconstrained rank-$>1$ fit.
+
+```{r pitfall-4}
+# Sigma_unit is rotation-invariant
+S_hat <- extract_Sigma(fit, level = "unit")$Sigma
+round(S_hat, 2)
+
+# Varimax gives a unique post-hoc rotation for interpretation
+rot <- rotate_loadings(fit, level = "unit", method = "varimax")
+round(rot$Lambda, 2)
+
+# Or ask the package to suggest a constraint matrix to refit with
+sug <- suggest_lambda_constraint(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  data = sim$data, convention = "lower_triangular"
+)
+sug$constraint
+```
+
+**Rule of thumb.** *Use `extract_Sigma(level = "unit")`
+(rotation-invariant) for covariances and correlations. Use
+`rotate_loadings(fit, method = "varimax")` for a unique post-hoc
+rotation. Use `suggest_lambda_constraint()` plus a refit only if you
+need a specific identifiable $\boldsymbol\Lambda$ for confirmatory
+testing — see the [lambda-constraint article](lambda-constraint.html)
+for the full decision tree.*
+
+## 5. `phylo_scalar()` vs `phylo_latent()`
+
+**Symptom.** `phylo_scalar()` recovery returns a `lam_phy` that looks
+several times smaller than the true per-trait phylogenetic variance
+you simulated.
+
+**Diagnosis.** `phylo_scalar()` (the propto-style term) fits a **single
+shared scalar** $\lambda$ multiplying a free trait correlation
+matrix. Only the product $\lambda \cdot \rho_{tt'}$ is identifiable
+— if your data have trait-specific phylogenetic variances, the
+fitted scalar can absorb part of that into the correlation matrix
+and look small on its own. `phylo_latent(species, d = K)` instead
+estimates a $T \times K$ phylogenetic loading matrix, giving
+per-trait phylogenetic effects.
+
+```{r pitfall-5, eval = requireNamespace("ape", quietly = TRUE)}
+# Tiny tree-based example (only the formulae matter here)
+set.seed(1)
+tree <- ape::rcoal(15)
+tree$tip.label <- paste0("sp", seq_len(15))
+
+# Use phylo_latent (recommended) when traits have their own phylo signal:
+#   value ~ 0 + trait + phylo_latent(species, d = 2)
+# Use phylo_scalar() (single-scalar) only when one shared phylo factor is
+# enough and trait correlations are the inferential target:
+#   value ~ 0 + trait + phylo_scalar(species)
+```
+
+**Rule of thumb.** *Use `phylo_latent(species, d = K)` (with $K$ up to
+`n_traits`) whenever you expect trait-specific phylogenetic effects.
+Reserve `phylo_scalar()` for the one-scalar case where the trait
+correlation matrix is the target. See
+[phylogenetic-gllvm.html](phylogenetic-gllvm.html) for full examples.*
+
+## 6. The `unit = "..."` argument
+
+**Symptom.** Error: `Column site not found in data`.
+
+**Diagnosis.** `gllvmTMB()` defaults to `unit = "site"`, but in
+morphometric studies the grouping is often `individual`; in
+meta-analyses it might be `study_id`. The engine errors when the
+literal column `site` is not present.
+
+```{r pitfall-6}
+# Rename to mimic a morphometric dataset
+df <- sim$data
+df$individual <- df$site
+df$site <- NULL
+
+# WRONG (uncomment to see the error):
+# gllvmTMB(value ~ 0 + trait + latent(0 + trait | individual, d = 2), data = df)
+# #> Error: Column site not found in data
+
+# RIGHT: tell the engine which column groups observations
+fit_ind <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+  data = df, unit = "individual"
+)
+fit_ind$unit_col
+```
+
+**Rule of thumb.** *If your grouping column is not literally named
+`site`, pass `unit = "<your_column>"` to `gllvmTMB()`. The
+[morphometrics article](morphometrics.html) shows this in the
+canonical individual × trait setup.*
+
+## See also
+
+* [morphometrics.html](morphometrics.html) — single-level GLLVM with
+  `unit = "individual"`.
+* [simulation-recovery.html](simulation-recovery.html) — the harness
+  bug behind pitfall 3, plus the broader recovery study.
+* [lambda-constraint.html](lambda-constraint.html) — the full
+  decision tree for whether you actually need a constraint.
+* [phylogenetic-gllvm.html](phylogenetic-gllvm.html) — `phylo_latent()`
+  vs `phylo_scalar()` head-to-head.
+* `?suggest_lambda_constraint`, `?extract_Sigma`,
+  `?simulate_site_trait` — the function-level help pages.

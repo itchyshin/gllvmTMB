@@ -1,0 +1,43 @@
+## gllvmTMB licensing
+##
+## gllvmTMB is a standalone Template Model Builder (TMB) package for
+## stacked-trait, long-format multivariate generalised linear latent
+## variable models (GLLVMs). The gllvmTMB-specific code -- the
+## multi-trait engine in inst/tmb/gllvmTMB_multi.cpp, the formula
+## parser, the 3 x 5 covariance keyword grid, the per-trait response
+## families (including ordinal_probit), the diagnostic and extractor
+## machinery -- is licensed GPL-3 by Shinichi Nakagawa.
+##
+## The GPL-3 components listed below were inherited from sdmTMB
+## (Anderson et al. 2025) and through sdmTMB from the upstream code
+## base of TMB (Kristensen et al. 2016). The body that follows
+## describes the upstream provenance of the inherited code, not
+## gllvmTMB's own attribution scope.
+##
+## ----------------------------------------------------------------
+##
+## Spatial mesh and SPDE machinery (R/mesh.R, R/crs.R, R/plot.R)
+##
+## The R-side spatial helpers in R/mesh.R (`make_mesh()`,
+## `plot.sdmTMBmesh`, the SPDE-matrix construction calling
+## fmesher::fm_fem(), and the anisotropy mesh utilities), R/crs.R
+## (`add_utm_columns()`), and R/plot.R (`plot_anisotropy()` /
+## `plot_anisotropy2()`) are inherited from sdmTMB
+## (https://github.com/pbs-assess/sdmTMB), with minimal API and
+## naming changes. sdmTMB is GPL-3 licensed; the upstream copyright
+## holders are credited under DESCRIPTION 'Authors@R'.
+##
+## TMB engine (inst/tmb/gllvmTMB_multi.cpp)
+##
+## The C++ template under inst/tmb/gllvmTMB_multi.cpp is original
+## gllvmTMB-native code by Shinichi Nakagawa, written against the TMB
+## API (Kristensen et al. 2016, https://github.com/kaskr/adcomp).
+## TMB itself is GPL-2/GPL-3 licensed; Kasper Kristensen is credited
+## as a copyright holder.
+##
+## Anisotropy plotting (R/plot.R)
+##
+## The `plot_anisotropy()` / `plot_anisotropy2()` R routines were
+## adapted via sdmTMB from VAST (James Thorson) and the TMB
+## anisotropy R example (Kasper Kristensen). Both upstream paths are
+## GPL-3.

@@ -1,0 +1,436 @@
+---
+title: "Individual morphometrics: the simplest GLLVM"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Individual morphometrics: the simplest GLLVM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache    = FALSE,
+  eval     = TRUE,
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+This is the simplest case the package handles, and it is the
+foundation for everything else on the
+[complexity ladder](../index.html#models-by-complexity). One
+observational level (individuals), several continuous traits per
+individual, and shared low-rank covariance between traits. No
+phylogeny, no spatial structure, no nesting. This article walks
+through that model end-to-end.
+
+## The model
+
+For each individual $i = 1, \dots, n$ we observe a vector of trait
+measurements $\mathbf{y}_i = (y_{i1}, \dots, y_{iT})^\top$ — for
+example, body length, mass, wing chord, tarsus, bill depth in a
+sparrow study; tail length, fin span, gill area in a fish study; or
+six items on a psychometric scale in a behavioural study. The
+reduced-rank GLLVM is
+
+$$
+y_{it} \;=\; \mu_t \;+\; \boldsymbol{\lambda}_t^{\!\top} \mathbf{u}_i \;+\;
+\varepsilon_{it},
+\qquad
+\mathbf{u}_i \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_d), \quad
+\varepsilon_{it} \sim \mathcal{N}(0, S_{tt}),
+$$
+
+where $\boldsymbol{\lambda}_t \in \mathbb{R}^d$ is the loading vector
+for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
+individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
+with variance $S_{tt}$ (the *unique* variance of trait $t$, collected
+on the diagonal of $\mathbf S$). The implied between-individual trait
+covariance is
+
+$$
+\boldsymbol{\Sigma}_B
+\;=\;
+\underbrace{\boldsymbol{\Lambda} \boldsymbol{\Lambda}^{\!\top}}_{\text{shared}}
+\;+\;
+\underbrace{\mathbf S}_{\text{unique}},
+\qquad \boldsymbol{\Lambda} \in \mathbb{R}^{T \times d}.
+$$
+
+For $T = 5$ traits and $d = 2$ factors this represents the trait
+covariance with $T \cdot d = 10$ parameters instead of the
+unstructured $T(T+1)/2 = 15$. The savings get larger as $T$ grows
+relative to $d$ — that is the *point* of GLLVMs.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+library(dplyr)
+```
+
+## Simulate
+
+We pretend to measure $n = 150$ sparrows on five body traits. The
+true loading matrix has a *size* axis (factor 1, all positive: bigger
+birds tend to be bigger on every measurement) and a *shape* axis
+(factor 2, mixed signs: long-and-skinny vs. short-and-stocky). Each
+trait also has a small trait-specific unique variance $s_t^2$:
+
+```{r sim}
+set.seed(2025)
+n_ind <- 150
+trait_names <- c("length", "mass", "wing", "tarsus", "bill")
+T <- length(trait_names)
+
+# True loadings: factor 1 = "size", factor 2 = "shape"
+Lambda_true <- matrix(c(
+  0.9,  0.1,
+  1.0,  0.2,
+  0.8, -0.4,
+  0.7, -0.5,
+  0.6,  0.6
+), nrow = T, ncol = 2, byrow = TRUE,
+   dimnames = list(trait_names, c("size", "shape")))
+
+# True trait-specific unique (residual) variances
+s2_true <- c(length = 0.15, mass = 0.10, wing = 0.20, tarsus = 0.12, bill = 0.18)
+
+# Latent factors + trait-specific residuals (no global sigma_eps in truth)
+u <- matrix(rnorm(n_ind * 2), n_ind, 2)
+eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(s2_true[t])))
+Y <- u %*% t(Lambda_true) + eps
+
+# Long-format data: one row per (individual, trait)
+df <- data.frame(
+  individual = factor(rep(seq_len(n_ind), each = T)),
+  trait      = factor(rep(trait_names, n_ind), levels = trait_names),
+  value      = as.vector(t(Y))
+)
+head(df, 8)
+```
+
+```{r sim-truth}
+Sigma_true <- Lambda_true %*% t(Lambda_true) + diag(s2_true)  # full between-individual covariance
+round(Sigma_true, 2)
+```
+
+> **Pitfall: factor level order.** The line
+> `factor(rep(trait_names, n_ind), levels = trait_names)` is critical.
+> Without the explicit `levels = trait_names`, R sorts levels
+> alphabetically (`bill, length, mass, tarsus, wing`), and the rows
+> of fitted $\hat{\boldsymbol\Sigma}_B$ will not match the rows of
+> your `Lambda_true`. The model is correct; the comparison is not.
+> This is a subtle data-prep gotcha worth flagging because it makes
+> "recovery" look broken when only the row labels are misaligned.
+
+## Fit
+
+The formula includes both a reduced-rank factor term (`latent()`) for
+the shared covariance and a trait-specific unique variance term
+(`unique()`):
+
+```{r fit}
+fit <- gllvmTMB(
+  value ~ 0 + trait +
+          latent(0 + trait | individual, d = 2) +
+          unique(0 + trait | individual),
+  data = df,
+  unit = "individual"      # tell the engine which column groups observations
+)
+fit
+```
+
+gllvmTMB defaults to `unit = "site"`, meaning it looks for a column
+literally named `site` in the data. This morphometric data set has no
+`site` column — the grouping factor is `individual`. Passing
+`unit = "individual"` redirects the engine to the correct column;
+everything else is standard GLLVM machinery.
+
+> **`+ unique(0 + trait | individual)` with cross-sectional data.**
+> With cross-sectional data (one observation per individual per
+> trait), the `(trait, individual)` pair uniquely identifies every
+> row. gllvmTMB detects this automatically: it fixes
+> $\sigma_\varepsilon$ to a negligibly small constant (and prints an
+> `i Auto-suppressing sigma_eps: ...` message), so the `unique()` term
+> absorbs the full observation-level residual and becomes the
+> trait-specific residual variance $s_t^2$. The confounding that would
+> arise if both $\sigma_\varepsilon$ and $s_t^2$ were estimated freely
+> is therefore resolved by construction — you do not need to choose
+> between them. With *longitudinal* data (multiple sessions per
+> individual), both terms are separately identified and can be
+> estimated without any auto-suppression; the `unique()` term then
+> captures genuine between-individual trait-specific variance on top of
+> the latent structure. See the
+> [Covariance & correlation article](covariance-correlation.html)
+> for the side-by-side comparison.
+
+```{r fit-unique-s}
+# Trait-specific unique standard deviations (s_t)
+s_hat <- extract_Sigma(fit, level = "unit", part = "unique")$s
+cat("Estimated s_t:", round(s_hat, 3), "\n")
+cat("True      s_t:", round(sqrt(s2_true), 3), "\n")
+```
+
+## Recovered $\hat{\boldsymbol\Sigma}_B$ vs truth
+
+```{r recover-once}
+Sigma_hat <- extract_Sigma(fit, level = "unit")$Sigma
+round(Sigma_hat, 2)
+
+cat("Frobenius |Sigma_hat - Sigma_true| / |Sigma_true| =",
+    round(norm(Sigma_hat - Sigma_true, "F") / norm(Sigma_true, "F"), 3), "\n")
+```
+
+A side-by-side correlation heatmap shows whether the recovered
+trait correlations agree with truth at the entry level:
+
+```{r corr-heatmap, fig.width = 7.5, fig.height = 3.5, fig.cap = "True (left) vs fitted (right) trait-pair correlations from Sigma_B = Lambda Lambda^T. The 1:1 agreement of the colours and labels is the visual signature of clean recovery."}
+suppressPackageStartupMessages(library(ggplot2))
+make_corr_long <- function(M, label) {
+  R <- cov2cor(M)
+  data.frame(
+    trait_i = factor(rep(rownames(R), ncol(R)), levels = rownames(R)),
+    trait_j = factor(rep(colnames(R), each = nrow(R)), levels = colnames(R)),
+    rho     = as.vector(R),
+    panel   = label
+  )
+}
+rownames(Sigma_true) <- colnames(Sigma_true) <- trait_names
+rownames(Sigma_hat)  <- colnames(Sigma_hat)  <- trait_names
+df_corr <- rbind(make_corr_long(Sigma_true, "True"),
+                 make_corr_long(Sigma_hat,  "Fitted"))
+df_corr$panel <- factor(df_corr$panel, levels = c("True", "Fitted"))
+
+ggplot(df_corr, aes(trait_j, trait_i, fill = rho)) +
+  geom_tile(colour = "white") +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 3.2) +
+  scale_fill_gradient2(low = "#3b82c6", mid = "white", high = "#d33",
+                       midpoint = 0, limits = c(-1, 1)) +
+  facet_wrap(~ panel) +
+  scale_y_discrete(limits = rev) +
+  labs(x = NULL, y = NULL, fill = expression(rho)) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid = element_blank(),
+        strip.text = element_text(face = "bold"))
+```
+
+> **What `extract_Sigma(level = "unit")$Sigma` returns.** The *total*
+> between-unit covariance
+> $\boldsymbol\Sigma_B = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathbf S$
+> — the sum of the reduced-rank shared component and the diagonal
+> unique component. If you fit without `+ unique()`, $\mathbf S = 0$
+> and you get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$,
+> which understates the diagonal. Adding `+ unique()` (as in the fit
+> above) fills in the diagonal correctly. Use `part = "shared"` /
+> `part = "unique"` to pull just one component.
+
+## Pairwise correlations and communality, with 95% CIs
+
+For inference on individual cross-trait correlations or per-trait
+communality, the canonical extractors return tidy data frames.
+`extract_correlations()` defaults to `method = "fisher-z"` (fast
+Fisher-transform Wald CI; bounds guaranteed in $[-1, 1]$).
+`extract_communality()` still defaults to `method = "profile"`; we
+override to `"wald"` in this rendered article for fast turnaround.
+`method = "bootstrap"` is available in either extractor for full
+sampling-distribution CIs.
+
+```{r ci-correlations}
+extract_correlations(fit, tier = "unit")
+```
+
+```{r ci-communality}
+extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
+```
+
+Communality $c_t^2 = (\boldsymbol\Lambda\boldsymbol\Lambda^{\!\top})_{tt} / \boldsymbol\Sigma_{B,tt}$
+is the fraction of trait $t$'s variance shared with the others via
+the latent factors; high $c_t^2$ means strongly integrated, low
+$c_t^2$ means trait-specific variation dominates.
+
+## Recovery across replicates
+
+A single fit cannot tell you whether the model is recovering truth
+or just one lucky draw. Repeat over `R = 20` independently simulated
+datasets and look at the distribution of the bias:
+
+```{r recover-replicates, fig.height = 4}
+run_one <- function(seed) {
+  set.seed(seed)
+  u   <- matrix(rnorm(n_ind * 2), n_ind, 2)
+  eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(s2_true[t])))
+  Y   <- u %*% t(Lambda_true) + eps
+  df_rep <- data.frame(
+    individual = factor(rep(seq_len(n_ind), each = T)),
+    trait      = factor(rep(trait_names, n_ind), levels = trait_names),
+    value      = as.vector(t(Y))
+  )
+  fit_rep <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait +
+            latent(0 + trait | individual, d = 2) +
+            unique(0 + trait | individual),
+    data = df_rep, unit = "individual"
+  )))
+  Sigma_hat_rep <- extract_Sigma(fit_rep, level = "unit")$Sigma
+  data.frame(
+    seed = seed,
+    entry = paste0("[", rep(1:T, each = T), ",", rep(1:T, T), "]"),
+    true = as.vector(Sigma_true),
+    fitted = as.vector(Sigma_hat_rep)
+  )
+}
+rep_df <- do.call(rbind, lapply(1:20, run_one))
+
+ggplot(rep_df, aes(true, fitted)) +
+  geom_abline(slope = 1, intercept = 0, colour = "grey40", linetype = 2) +
+  geom_point(alpha = 0.4, colour = "#1f78b4", size = 1.6) +
+  labs(x = expression("True"~Sigma[B]~"entry"),
+       y = expression("Fitted"~hat(Sigma)[B]~"entry"),
+       title = "Recovery on 20 replicate datasets, n = 150 individuals") +
+  theme_minimal(base_size = 11)
+```
+
+```{r recover-summary}
+rep_df |>
+  mutate(off_diag = sub("\\[(.),(.)\\]", "\\1\\2", entry),
+         off_diag = substr(off_diag, 1, 1) != substr(off_diag, 2, 2)) |>
+  group_by(off_diag) |>
+  summarise(
+    bias = mean(fitted - true),
+    rmse = sqrt(mean((fitted - true)^2)),
+    .groups = "drop"
+  )
+```
+
+The off-diagonal entries (the cross-trait covariances — the *biology*)
+are recovered with bias close to zero. Diagonal entries are slightly
+under at $n = 150$, which is the expected $O(n^{-1/2})$ finite-sample
+behaviour and shrinks as $n$ grows.
+
+## Why `latent + unique`? `dep` and `indep` on the same data
+
+The morphometric workflow pairs `latent(d = K)` with `unique()` to
+estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathbf{S}$.
+Two alternative covstruct modes — `dep` (full unstructured $\boldsymbol\Sigma_B$
+with $T(T+1)/2$ free entries) and `indep` (diagonal-only
+$\boldsymbol\Sigma_B = \mathrm{diag}(\sigma^2_1, \dots, \sigma^2_T)$, no
+cross-trait modelling) — are also valid keywords. Refit the same data
+under each to see what the user actually loses or gains.
+
+```{r dep-indep-compare, message = FALSE, warning = FALSE}
+fit_full  <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | individual, d = T),
+                      data = df, unit = "individual")
+fit_dep   <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | individual),
+                      data = df, unit = "individual")
+fit_indep <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | individual),
+                      data = df, unit = "individual")
+
+S1 <- extract_Sigma(fit,       level = "unit")$Sigma
+S2 <- extract_Sigma(fit_full,  level = "unit")$Sigma
+S3 <- extract_Sigma(fit_dep,   level = "unit")$Sigma
+S4 <- extract_Sigma(fit_indep, level = "unit")$Sigma
+
+off       <- function(M) M[upper.tri(M)]
+truth_off <- off(Sigma_true)
+ll        <- function(f) round(as.numeric(logLik(f)), 2)
+
+data.frame(
+  mode               = c("latent(d=2) + unique", "latent(d=T) only",
+                         "dep", "indep"),
+  logL               = c(ll(fit), ll(fit_full), ll(fit_dep), ll(fit_indep)),
+  off_diag_corr_truth = c(round(cor(off(S1), truth_off), 3),
+                          round(cor(off(S2), truth_off), 3),
+                          round(cor(off(S3), truth_off), 3),
+                          NA),
+  diag_min_max        = c(sprintf("%.2f - %.2f", min(diag(S1)), max(diag(S1))),
+                          sprintf("%.2f - %.2f", min(diag(S2)), max(diag(S2))),
+                          sprintf("%.2f - %.2f", min(diag(S3)), max(diag(S3))),
+                          sprintf("%.2f - %.2f", min(diag(S4)), max(diag(S4))))
+)
+```
+
+What this shows:
+
+- **`dep` is mathematically identical to `latent(d = T)` standalone** —
+  same logL, same $\boldsymbol\Sigma_B$ to numerical precision. The two
+  keywords are aliases of the saturated unstructured fit.
+- **Reduced-rank `latent(d = 2) + unique` matches the saturated fit
+  within 0.1 nats of logL.** With $T = 5$ traits and a
+  rank-2 truth, the rank constraint loses essentially no information
+  and gives the same off-diagonal correlation pattern as the saturated
+  fit ($r$ vs truth ≈ 0.95 for both).
+- **`indep` recovers the diagonals fine** — Gaussian gives per-trait
+  identifiability for the marginal variance even with no cross-trait
+  modelling — but **loses every off-diagonal**. The off-diagonal
+  correlation with truth is `NA` because the fitted off-diagonals are
+  exactly zero by construction. logL is materially worse.
+
+This is the **Gaussian counterpart** to the binary comparison in
+[Joint species distribution](joint-sdm.html). The qualitative ordering
+is the same — `latent + unique` ≥ `dep` ≫ `indep` in modelling
+flexibility — but the quantitative gap between `indep` and the others
+is much smaller for Gaussian (a few hundred nats here, vs `indep` being
+*pinned at zero diagonals* for binary 1-obs-per-cell). Pick `latent + unique`
+when you have a strong rank-$K$ hypothesis (size + shape, here);
+fall back to `dep` if you suspect $K \approx T$ and want the saturated
+fit; reach for `indep` only when you genuinely believe traits are
+mutually independent — a rare default for ecological / morphological
+data.
+
+## What the latent factors mean
+
+Every factor model has a rotational ambiguity: $\boldsymbol\Lambda$ and
+$\boldsymbol\Lambda \mathbf{Q}$ produce the same $\boldsymbol\Sigma_B$
+for any orthogonal $\mathbf{Q}$. To compare loadings between fits or
+between packages, rotate to a standard convention (varimax for
+interpretability, or lower-triangular for a unique fit):
+
+```{r rotate}
+L_hat <- getLoadings(fit, level = "unit")
+rot   <- rotate_loadings(fit, level = "unit", method = "varimax")
+round(rot$Lambda, 2)
+```
+
+```{r ordi, fig.height = 5}
+ordiplot(fit, level = "unit", biplot = TRUE)
+```
+
+The biplot shows the trait loadings on the two latent axes. In a
+real morphometric study, the first axis usually picks up *overall
+size*, with all traits loading positively — the famous "general
+factor" of body size. The second axis picks up shape contrasts.
+
+## What this article does *not* cover
+
+This is the bottom rung of the ladder. The next rungs add structure:
+
+| Rung | New piece | Article |
+|---|---|---|
+| 1 | Discrete (binary) responses, individuals as sites | [Joint species distribution](joint-sdm.html) |
+| 2 | Phylogenetic dependence between rows | [Phylogenetic GLLVM](phylogenetic-gllvm.html) |
+| 3 | Spatial dependence between rows | [SPDE benchmark](spde-vs-glmmTMB.html) |
+| 4 | Two observational levels (between- and within-unit) | [Two-stage workflow](corvidae-two-stage.html) |
+| 5 | All of the above at once | [Functional biogeography](functional-biogeography.html) |
+
+Read the rungs in order if you are new to GLLVMs. Jump straight to
+the rung that matches your data if you are not.
+
+## See also
+
+* [Simulation-based recovery study](simulation-recovery.html) — the
+  same experiment as the "Recovery across replicates" section above,
+  but extended to every level on the ladder.
+* [Cross-package validation](cross-package-validation.html) —
+  log-likelihood agreement against `glmmTMB::rr()` on identical data.
+* [Lambda constraints](lambda-constraint.html) — pin specific entries
+  of $\boldsymbol\Lambda$ when you have prior knowledge of the
+  factor structure (for example, a confirmatory factor analysis).

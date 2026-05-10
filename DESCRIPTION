@@ -1,0 +1,93 @@
+Type: Package
+Package: gllvmTMB
+Title: Stacked-Trait GLLVMs with TMB
+Version: 0.2.0
+Authors@R: c(
+    person("Shinichi", "Nakagawa", , "itchyshin@gmail.com",
+           role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0002-7765-5182",
+                       "Sole developer of the gllvmTMB extension")),
+    person(c("Sean", "C."), "Anderson", role = "cph",
+           comment = c(ORCID = "0000-0001-9563-1937",
+                       "Copyright holder, inherited 'sdmTMB' SPDE / mesh code (GPL-3)")),
+    person(c("Eric", "J."), "Ward", role = "cph",
+           comment = c(ORCID = "0000-0002-4359-0296",
+                       "Copyright holder, inherited 'sdmTMB' SPDE / mesh code (GPL-3)")),
+    person(c("Philina", "A."), "English", role = "cph",
+           comment = c(ORCID = "0000-0003-2992-6782",
+                       "Copyright holder, inherited 'sdmTMB' SPDE / mesh code (GPL-3)")),
+    person(c("Lewis", "A.", "K."), "Barnett", role = "cph",
+           comment = c(ORCID = "0000-0002-9381-8375",
+                       "Copyright holder, inherited 'sdmTMB' SPDE / mesh code (GPL-3)")),
+    person("Kasper", "Kristensen", role = "cph",
+           comment = "Copyright holder, 'TMB' code (GPL-2)")
+  )
+Description: A standalone Template Model Builder (TMB) package for
+    stacked-trait, long-format multivariate generalised linear latent
+    variable models (GLLVMs). The 3 x 5 covariance keyword grid pairs
+    correlation structure (none / phylogenetic / spatial) with covariance
+    mode (scalar / unique / indep / dep / latent). A reduced-rank latent
+    decomposition (Lambda Lambda^T + diag(s)) is the canonical
+    multivariate option; full unstructured and marginal modes are also
+    supported. Phylogenetic models use a sparse A^-1 representation
+    (Hadfield & Nakagawa 2010) and spatial models use the SPDE/GMRF
+    approximation inherited from 'sdmTMB' (Anderson et al. 2025). See
+    Anderson et al. (2025) <doi:10.18637/jss.v115.i02> and Hadfield &
+    Nakagawa (2010) <doi:10.1111/j.1420-9101.2009.01915.x>.
+License: GPL-3
+Copyright: inst/COPYRIGHTS
+URL: https://itchyshin.github.io/gllvmTMB, https://github.com/itchyshin/gllvmTMB
+BugReports: https://github.com/itchyshin/gllvmTMB/issues
+Depends:
+    R (>= 4.1.0)
+Imports:
+    assertthat,
+    cli,
+    fmesher,
+    generics,
+    graphics,
+    lifecycle,
+    Matrix,
+    methods,
+    nlme,
+    reformulas,
+    rlang,
+    stats,
+    tidyselect,
+    TMB (>= 1.8.0),
+    utils
+LinkingTo:
+    RcppEigen,
+    TMB
+Suggests:
+    ape,
+    DHARMa,
+    dplyr,
+    future,
+    future.apply,
+    ggforce,
+    ggplot2,
+    glmmTMB,
+    gllvm,
+    knitr,
+    lme4,
+    MASS,
+    MCMCglmm,
+    rmarkdown,
+    sf,
+    testthat (>= 3.0.0),
+    tibble,
+    tidyr,
+    vegan,
+    withr
+VignetteBuilder:
+    knitr
+ByteCompile: true
+Config/testthat/edition: 3
+Config/testthat/parallel: false
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+SystemRequirements: GNU make, C++17
+Config/roxygen2/version: 8.0.0
+RoxygenNote: 7.3.2

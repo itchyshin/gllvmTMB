@@ -1,0 +1,361 @@
+---
+title: "Covariance and correlation: when you need `unique()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Covariance and correlation: when you need `unique()`}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache    = FALSE,
+  eval     = TRUE,
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+A subtle but important correctness issue. If you fit
+`value ~ 0 + trait + latent(0 + trait | site, d = K)` and report the
+between-trait correlation matrix, the correlations will come out
+**too large**. This article explains why, and how `unique(0 + trait | site)`
+fixes it.
+
+## The decomposition
+
+Every published GLLVM treatment writes the implied trait covariance as
+
+$$
+\boldsymbol\Sigma_\text{level} \;=\; \underbrace{\boldsymbol\Lambda_\text{level} \boldsymbol\Lambda_\text{level}^{\!\top}}_{\text{shared (latent)}} \;+\; \underbrace{\mathbf S_\text{level}}_{\text{unique (unique)}},
+$$
+
+where $\boldsymbol\Lambda$ is the $T \times K$ loading matrix (from the
+`latent()` term) and $\mathbf S$ is a $T \times T$ diagonal matrix of
+trait-specific unique variances (from the `unique()` term). The
+correlation matrix is then
+
+$$
+\mathbf R \;=\; \mathbf D^{-1/2}\,\boldsymbol\Sigma\,\mathbf D^{-1/2},
+\qquad \mathbf D \;=\; \mathrm{diag}(\boldsymbol\Sigma).
+$$
+
+Both pieces matter: the diagonal of $\boldsymbol\Sigma$ is
+$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + S_{tt}$ — the
+sum of squared loadings *plus* the trait-specific unique variance.
+Drop $\mathbf S$ and the diagonal shrinks; the off-diagonals stay the
+same; $\mathbf R$ swells.
+
+## A side-by-side demonstration
+
+Simulate one Gaussian dataset where the true between-individual
+covariance has both a shared (latent) and a unique (unique) component, then
+fit it two ways:
+
+* `Model A`: `latent(0 + trait | individual, d = 2)` only
+* `Model B`: `latent(0 + trait | individual, d = 2) + unique(0 + trait | individual)`
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+```
+
+```{r sim}
+set.seed(2026)
+n_ind <- 200
+trait_names <- c("boldness", "exploration", "activity",
+                 "aggression", "sociability")
+T <- length(trait_names)
+
+## True between-individual covariance Sigma_B = Lambda Lambda^T + S
+Lambda_true <- matrix(c(
+  0.9,  0.1,
+  1.0,  0.2,
+  0.8, -0.4,
+  0.7, -0.5,
+  0.6,  0.6
+), nrow = T, ncol = 2, byrow = TRUE,
+   dimnames = list(trait_names, c("syndrome_1", "syndrome_2")))
+S_true     <- c(0.30, 0.20, 0.40, 0.25, 0.35)
+Sigma_true <- Lambda_true %*% t(Lambda_true) + diag(S_true)
+sigma2_eps_true <- 0.05  # tiny observation-level noise
+
+u <- matrix(rnorm(n_ind * 2), n_ind, 2)
+e <- matrix(rnorm(n_ind * T, sd = sqrt(S_true[col(matrix(0, n_ind, T))])),
+            n_ind, T)
+y <- u %*% t(Lambda_true) + e +
+     matrix(rnorm(n_ind * T, sd = sqrt(sigma2_eps_true)), n_ind, T)
+
+df <- data.frame(
+  individual = factor(rep(seq_len(n_ind), each = T)),
+  trait      = factor(rep(trait_names, n_ind), levels = trait_names),
+  value      = as.vector(t(y))
+)
+```
+
+```{r fit}
+fit_A <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+  data = df, unit = "individual"
+)
+
+fit_B <- gllvmTMB(
+  value ~ 0 + trait +
+          latent(0 + trait | individual, d = 2) +
+          unique(0 + trait | individual),
+  data = df, unit = "individual"
+)
+```
+
+Now extract the implied $\hat{\boldsymbol\Sigma}_{\text{unit}}$ and
+$\hat{\mathbf R}_B$ from each fit:
+
+```{r extract}
+ext_A <- suppressMessages(
+  extract_Sigma(fit_A, level = "unit", part = "total")
+)
+ext_B <- extract_Sigma(fit_B, level = "unit", part = "total")
+```
+
+Notice that the call on `fit_A` emits a one-shot **advisory**
+explaining that without `unique()` the returned $\hat{\boldsymbol\Sigma}$
+is latent-only (we suppressed the message above for clean output but the
+message is also stored in `ext_A$note`).
+
+```{r show-note}
+ext_A$note  # advisory: diag missing
+```
+
+## The correlations side by side
+
+```{r corr-comparison, fig.width = 8.5, fig.height = 4.5, fig.cap = "True (left) vs. recovered correlations from Model A (latent only) and Model B (latent + unique). Model A's off-diagonals are all systematically larger than truth — that's the inflation unique() prevents."}
+make_long <- function(R, label) {
+  data.frame(
+    trait_i = factor(rep(rownames(R), ncol(R)), levels = rownames(R)),
+    trait_j = factor(rep(colnames(R), each = nrow(R)), levels = colnames(R)),
+    rho     = as.vector(R),
+    panel   = label
+  )
+}
+R_true_named <- cov2cor(Sigma_true)
+rownames(R_true_named) <- colnames(R_true_named) <- trait_names
+df_corr <- rbind(
+  make_long(R_true_named,   "1. Truth"),
+  make_long(ext_A$R,        "2. Model A (latent only)"),
+  make_long(ext_B$R,        "3. Model B (latent + unique)")
+)
+df_corr$panel <- factor(df_corr$panel, levels = c(
+  "1. Truth", "2. Model A (latent only)", "3. Model B (latent + unique)"))
+
+ggplot(df_corr, aes(trait_j, trait_i, fill = rho)) +
+  geom_tile(colour = "white") +
+  geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
+  scale_fill_gradient2(low = "#3b82c6", mid = "white", high = "#d33",
+                       midpoint = 0, limits = c(-1, 1)) +
+  scale_y_discrete(limits = rev) +
+  facet_wrap(~ panel) +
+  labs(x = NULL, y = NULL, fill = expression(rho)) +
+  theme_minimal(base_size = 10) +
+  theme(panel.grid = element_blank(),
+        strip.text = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 35, hjust = 1))
+```
+
+The middle panel (`Model A`) shows correlations that are
+**uniformly larger** than truth (left panel). The right panel
+(`Model B`) recovers the true correlations to within sampling noise.
+The mechanism: Model A's $\hat{\boldsymbol\Sigma}$ has small diagonals
+(only $\Lambda \Lambda^{\!\top}$), so when we divide by $\sqrt{D}$ the
+off-diagonals get inflated. Model B's $\hat{\boldsymbol\Sigma}$ has
+the full $\Lambda \Lambda^{\!\top} + S$ — diagonals at the right scale
+and correlations at the right magnitude.
+
+## What `extract_Sigma()` gives you
+
+The unified extractor exposes the three parts of the decomposition
+explicitly:
+
+```{r parts}
+# Lambda Lambda^T alone (the "shared" component)
+extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
+
+# diag(S_B) — trait-specific unique variances (the "unique" component)
+extract_Sigma(fit_B, level = "unit", part = "unique")$s    |> round(2)
+
+# Sigma_B = Lambda Lambda^T + diag(S_B)  (the "total" — what you usually want)
+extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
+```
+
+`part = "total"` is the default and is what you almost always want for
+reporting. `"shared"` is useful if you specifically want the latent-implied
+component (e.g. for ordination interpretation or communality). `"unique"`
+gives the diagonal of $\mathbf S$ as a named numeric vector.
+
+## Communality and ICC need the full $\Sigma$ too
+
+Two trait-level summaries that come up everywhere in the
+behavioural-syndromes / phenotypic-integration literature both depend
+on the *full* $\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathbf S$
+decomposition. If you compute them from a latent-only fit you get the
+wrong answer.
+
+### Communality
+
+$$
+c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{\boldsymbol\Sigma_{tt}} \;=\; \frac{\sum_{\ell=1}^d \Lambda_{t\ell}^2}{\sum_{\ell=1}^d \Lambda_{t\ell}^2 + S_{tt}}.
+$$
+
+This is the proportion of trait $t$'s variance that is *shared* with
+the other traits via the latent factors. It is bounded between 0 and 1
+and behaves like a multivariate generalisation of $h^2$ (heritability)
+or $R^2$.
+
+**The catch**: with latent-only fits, $S_{tt} = 0$ for every trait by
+construction, so $c_t^2 = 1$ for every trait — the communality is
+identically 1 and tells you nothing. Adding `unique()` gives the
+denominator a per-trait $S_{tt}$ slot, and communality becomes
+informative.
+
+```{r communality}
+extract_communality(fit_A, "B")  # latent-only fit: all = 1, useless
+extract_communality(fit_B, "B")  # latent + unique: meaningful
+```
+
+### Site-level / individual-level ICC
+
+For two-level fits the site-level (individual-level) ICC is
+
+$$
+R_t \;=\; \frac{(\boldsymbol\Sigma_{\text{unit}})_{tt}}{(\boldsymbol\Sigma_{\text{unit}})_{tt} + (\boldsymbol\Sigma_{\text{unit\_obs}})_{tt}},
+$$
+
+i.e. the proportion of total trait variance attributable to between-
+unit differences. Each piece needs the full decomposition for its
+level — $\Sigma_{\text{unit}} = \Lambda_{\text{unit}} \Lambda_{\text{unit}}^{\!\top} + S_{\text{unit}}$ and
+$\Sigma_{\text{unit\_obs}} = \Lambda_{\text{unit\_obs}} \Lambda_{\text{unit\_obs}}^{\!\top} + S_{\text{unit\_obs}}$. Both `unique()` terms
+are required (one per level) for $R_t$ to be honest.
+
+In gllvmTMB this is
+
+```r
+extract_ICC_site(fit)
+```
+
+— see the recommended **two-`unique()`** pattern earlier in the article.
+
+## When you do *not* need `unique()`
+
+Three situations:
+
+### 1. Binary responses (binomial family)
+
+For binary outcomes the latent-scale residual is fixed by the link
+function:
+
+| Link | Implicit residual variance |
+|---|---|
+| `logit` | $\pi^2/3 \approx 3.290$ |
+| `probit` | $1$ |
+| `cloglog` | $\pi^2/6 \approx 1.645$ |
+
+This implicit residual plays the role of $\mathbf S$ on the latent
+scale. Adding an explicit `unique()` term on top of binary data is
+typically not identified — the engine cannot distinguish between
+`unique()` variance and the link's implicit residual.
+
+`extract_Sigma()` has a `link_residual = "auto"` option that adds the
+link-specific implicit residual to $\mathrm{diag}(\boldsymbol\Sigma)$
+for the marginal latent-scale interpretation:
+
+```{r binomial-demo, eval = FALSE}
+# (illustrative — not run; needs a binary fit)
+extract_Sigma(fit_binary, level = "unit", part = "total",
+              link_residual = "auto")
+```
+
+### 2. Phylogenetic shared term
+
+`phylo_latent(species, d = K)` gives a phylogenetic latent component
+$\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top}$
+that has no associated `unique()` — the phylogenetic prior is structured
+on the tree, and trait-specific *unique* variance lives separately at
+the non-phylogenetic species tier (Nakagawa et al. *in prep*, Eq. 19):
+
+$$
+\boldsymbol\Omega = \boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{non,shared} + \mathbf U.
+$$
+
+`extract_Sigma(fit, level = "phy")` returns $\boldsymbol\Sigma_\text{phy}$;
+`extract_Sigma(fit, level = "unit")` (when `unit = "species"`) returns
+$\boldsymbol\Sigma_\text{non,shared} + \mathbf U$. Their sum is
+$\boldsymbol\Omega$.
+
+### 3. Confirmatory factor models
+
+If domain knowledge (or a likelihood-ratio test against the latent+unique
+model) tells you $\mathbf S = \mathbf 0$, then latent-only is the correct
+specification. This is rare in practice — most behavioural / morphometric
+data have at least some trait-specific noise — but it does happen.
+
+## Two-level (between + within) models: two `unique()` terms
+
+For repeated-measures data the recommended pattern is two `latent() + unique()`
+pairs (Nakagawa et al. *in prep*):
+
+```r
+value ~ 0 + trait +
+        latent(0 + trait | individual, d = d_B) + unique(0 + trait | individual) +
+        latent(0 + trait | obs_id,    d = d_W) + unique(0 + trait | obs_id)
+```
+
+giving
+$\boldsymbol\Sigma_{\text{unit}} = \boldsymbol\Lambda_{\text{unit}} \boldsymbol\Lambda_{\text{unit}}^{\!\top} + \mathbf S_{\text{unit}}$
+(behavioural syndromes — between-individual covariance) and
+$\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \boldsymbol\Lambda_{\text{unit\_obs}}^{\!\top} + \mathbf S_{\text{unit\_obs}}$
+(integrated plasticity — within-individual covariance).
+**Each level has its own `unique()`**.
+
+## Future work: observation-level random effects for non-Gaussian
+
+For overdispersed Poisson and similar count families, the latent-scale
+"unique component" is recovered by adding an observation-level random
+effect (OLRE; Nakagawa & Schielzeth 2010):
+
+$$
+\ln \lambda_{ij} = \eta_{ij} + e_{ij}, \qquad e_{ij} \sim \mathcal N(0, \sigma_e^2).
+$$
+
+The $\sigma_e^2$ on the latent log scale plays the role of $\mathbf S$.
+Native OLRE support is available: add an `obs_id` column (one level per
+row), include `unique(0 + trait | obs_id)` in the formula, and use
+`extract_residual_split(fit)` to separate $\sigma^2_e$ (the estimated
+OLRE variance) from $\sigma^2_d$ (the distribution-specific latent
+residual; Nakagawa & Schielzeth 2010; Nakagawa, Johnson & Schielzeth 2017).
+
+## Summary
+
+| You want… | You need | Notes |
+|---|---|---|
+| Cross-trait correlations on a Gaussian / lognormal / Gamma fit | `latent() + unique()` at every level | Otherwise correlations are inflated. |
+| Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
+| Phylogenetic decomposition | `phylo_latent() + latent() + unique()` (3-piece) | Σ_phy + Σ_non,shared + U. |
+| Communality | `extract_communality(fit)` + the right latent/unique pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
+| `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |
+| `S` only | `extract_Sigma(fit, part = "unique")` | Trait-specific unique variances as a vector. |
+
+## See also
+
+* [Pitfalls](pitfalls.html) — common mistakes including correlation inflation
+* [`?diag_re`](../reference/diag_re.html) — the formula keyword
+* [`?extract_Sigma`](../reference/extract_Sigma.html) — the unified extractor
+* [Lambda constraints](lambda-constraint.html) — confirmatory models
+* [Choose your model](choose-your-model.html) — decision tree
+* **Nakagawa & Schielzeth (2010)** Repeatability for Gaussian and non-Gaussian data: a practical guide for biologists. *Biological Reviews* 85(4):935–956. <https://doi.org/10.1111/j.1469-185X.2010.00141.x>
+* **Nakagawa et al.** (*in prep*) Quantifying between- and within-individual correlations and the degree of trait integration.

@@ -1,0 +1,390 @@
+---
+title: "Joint species distribution model (binary GLLVM)"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Joint species distribution model (binary GLLVM)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache    = FALSE,
+  eval     = TRUE,
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+A reduced-rank binary GLLVM compresses a many-column 0/1 occurrence
+matrix into a few latent factors. The classic ecology version is a
+**joint species distribution model**: rows are sites, columns are
+species, the entries are presence / absence, and the latent factors
+capture residual co-occurrence beyond what's explained by
+environmental predictors. The same `gllvmTMB(family = binomial())`
+call also fits any binary `unit × trait` data — IRT-style item
+responses, presence/absence of attributes, etc.
+
+## The model
+
+For binary $y_{it} \in \{0, 1\}$ with logit link,
+
+$$
+\mathrm{logit}\bigl(P(y_{it} = 1)\bigr) \;=\; \mathbf x_i^\top
+\boldsymbol\beta_t \;+\; \boldsymbol\lambda_t^{\!\top} \mathbf u_i,
+\qquad \mathbf u_i \sim \mathcal N(\mathbf 0, \mathbf I_d).
+$$
+
+Two distinct covariance objects matter here, and **conflating them is
+the most common notation trap in JSDM writing**.
+
+### 1. Between-unit shared covariance (estimated by the GLLVM)
+
+The covariance among traits / species induced by the latent factors
+$\mathbf u_i$ is
+
+$$
+\boldsymbol\Sigma_B \;=\; \boldsymbol\Lambda \boldsymbol\Lambda^\top.
+$$
+
+That's the part the GLLVM **estimates** from cross-trait
+co-occurrence on the latent scale. With reduced rank $d \ll T$ it is
+identified by the off-diagonal (cross-trait) co-occurrence pattern;
+the diagonal is then constrained by the rank.
+
+### 2. Total latent-liability covariance (used for correlations / ICC)
+
+To convert $\boldsymbol\Sigma_B$ into something on a unified
+**latent-liability** scale (so we can compute latent-scale
+correlations, ICC, communality, $R^2$, …), we use the threshold
+representation:
+
+$$
+y^*_{it} \;=\; \eta_{it} + \varepsilon_{it},
+\qquad \varepsilon_{it} \sim \text{Logistic}(0, 1),
+\qquad \mathrm{Var}(\varepsilon) = \pi^2/3.
+$$
+
+with $y_{it} = \mathbf 1\{y^*_{it} > 0\}$. The total latent-liability
+covariance is then
+
+$$
+\boldsymbol\Sigma_{\text{latent}}
+\;=\;
+\underbrace{\boldsymbol\Sigma_B}_{\text{estimated}}
+\;+\;
+\underbrace{(\pi^2 / 3)\, \mathbf I}_{\text{fixed by link}}.
+$$
+
+The $(\pi^2/3) \mathbf I$ term is **not estimated** — it is the
+distribution-specific variance of the standard logistic
+($\pi^2/3 \approx 3.29$). For probit it's $1$; for cloglog it's
+$\pi^2/6$. It enters whenever you want to put $\boldsymbol\Sigma_B$
+on the conventional latent-liability scale (Niku et al. 2017;
+Nakagawa & Schielzeth 2010).
+
+In `gllvmTMB`:
+
+* `extract_Sigma(fit, level = "unit", part = "shared")` returns
+  $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$.
+* `extract_Sigma(fit, level = "unit", part = "total")` returns
+  $\boldsymbol\Sigma_{\text{latent}} = \boldsymbol\Sigma_B + (\pi^2/3) \mathbf I$.
+
+`extract_correlations()` uses `part = "total"` by default, so the
+correlations come out on the latent-liability scale.
+
+### Why we drop `unique()` for pure binary
+
+For Gaussian fits, the canonical decomposition pairs
+`latent + unique`:
+
+$$\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathbf S$$
+
+where $\mathbf S = \mathrm{diag}(S_{tt})$ is the per-trait unique
+variance — *estimated* from per-row residual variability. For
+**pure binary 1-obs-per-cell** fits, $S_{tt}$ carries no information:
+binary data do not constrain observation-level variability beyond
+the link residual. Some Bayesian implementations (e.g. Hadfield's
+MCMCglmm) add a small `σ²_units` term for MCMC mixing reasons, but
+it isn't estimated from data; `gllvmTMB` is frequentist and simply
+omits it.
+
+What happens if you add `unique()` anyway? It runs, but is mostly
+wasted effort:
+
+| Question | Answer |
+|---|---|
+| Engine accepts `unique()` in a pure binary fit? | ✅ Yes — runs without error |
+| Estimates per-trait `sd_B[t]`? | ✅ Yes — but hits the boundary at ~ 0 (unidentifiable from binary 1-obs-per-cell) |
+| Issues a warning? | ❌ Not yet — Phase D follow-up will add a one-shot info message and `map`-suppress those parameters |
+| Affects $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$? | ❌ No — $\boldsymbol\Lambda$ is unchanged |
+| Affects $\boldsymbol\Sigma_{\text{latent}}$? | Marginal — diagonal becomes $\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\hat{sd}_B^2) + (\pi^2/3) \mathbf I$, but $\hat{sd}_B^2 \approx 0$ at the boundary so it's essentially the same as without `unique()` |
+| Affects fit time / Hessian | Slightly: extra $T$ parameters pinned at the boundary, Hessian can be ill-conditioned. `sanity_multi(fit)` may flag it |
+
+Bottom line: drop `unique()` for **pure** binary fits. Keep it for
+**mixed-family** fits where it's freely estimated for the non-binary
+traits.
+
+### What about `dep` and `indep` for binary?
+
+The other two covstruct modes — `dep` (full unstructured Σ) and
+`indep` (diagonal-only Σ) — also have identifiability issues with
+binary 1-obs-per-cell. Empirical comparison on simulated data
+(`T = 6` species, `n = 150` sites, rank-2 truth):
+
+| Mode | logL | Σ_B diag (estimated) | Off-diag agreement vs truth |
+|---|---|---|---|
+| **`latent(d = 2)`** (recommended) | **−593.65** | 1.07–3.31 | $r = 0.80$ ✓ |
+| `latent(d = T)` (= `dep`) | −593.45 | 1.11–3.41 | $r = 0.79$ ✓ |
+| `dep` (full unstructured) | −593.45 | 1.11–3.41 | $r = 0.79$ ✓ |
+| **`indep`** (diagonal-only) | **−616.85** 🔴 | **0, 0, 0, 0, 0, 0** 🔴 | NA (no off-diagonals) |
+
+(True diagonal: 1.49–1.85; true off-diagonal range: [−1.77, +1.66].)
+
+What this confirms:
+
+- **`dep` is mathematically equivalent to `latent(d = T)`** — identical
+  logL, identical Σ.
+- **Reduced-rank `latent(d < T)` matches the saturated logL within
+  0.2 nats** — the *off-diagonals* (the identifiable part) are
+  captured equally well by `latent(d = 2)` as by `dep`. The rank
+  constraint additionally regularises the *diagonals*, which would
+  otherwise be unidentifiable individually for binary, giving
+  estimates ~10–20% closer to truth.
+- **`indep` is catastrophic for binary**: logL is ~23 nats worse,
+  every per-trait variance pinned at exactly zero, no off-diagonals
+  modelled. Avoid `indep` for any binary fit where cross-species
+  / cross-trait correlations matter — which is essentially every
+  realistic JSDM.
+
+Recommended for binary: **`latent(d = K)` with `K < T`**. Skip `dep`
+(no advantage), skip `indep` (broken).
+
+### Mixed-family fits
+
+When the response includes a *mix* of families (some traits binary,
+some Gaussian, some Poisson, …), the picture changes:
+
+- For **non-binary traits**, the unique component $S_{tt}$ IS
+  identifiable. Including `unique(0 + trait | unit)` adds a
+  per-trait random intercept that's freely estimated.
+- For **binary traits in a mixed fit**, $S_{tt}$ is still
+  unidentifiable; the optimiser pins it near zero (boundary).
+
+So `unique()` is fine in mixed-family fits — you just need to know
+the per-trait `sd_B` will report effectively-zero values for binary
+rows. The Phase D follow-up will add per-family-aware
+`map`-suppression so the optimiser doesn't waste iterations on
+those boundary parameters; current behaviour is correct, just
+slightly inefficient. The `extract_Sigma()` machinery handles each
+trait's link residual separately by family — table below.
+
+### How `extract_Sigma()` handles non-Gaussian and mixed-family fits
+
+`extract_Sigma(fit, part = "total")` looks up each trait's family /
+link, and adds the **per-trait latent-scale residual** $\sigma^2_d$ to
+the diagonal of $\boldsymbol\Sigma$. The internal helper is
+`gllvmTMB:::link_residual_per_trait(fit)`, which uses these formulas
+from Nakagawa & Schielzeth (2010) + Nakagawa, Johnson & Schielzeth
+(2017):
+
+| Family / link | $\sigma^2_d$ added per trait |
+|---|---|
+| `gaussian` (identity) | $0$ |
+| `binomial(logit)` | $\pi^2/3 \approx 3.290$ |
+| `binomial(probit)` | $1$ |
+| `binomial(cloglog)` | $\pi^2/6 \approx 1.645$ |
+| `poisson(log)` | $\log(1 + 1/\hat\mu_t)$  (lognormal-Poisson) |
+| `nbinom2(log)` | $\psi'(\hat\phi_t)$ (trigamma; Stoklosa et al. 2022) |
+| `tweedie(log)` | $\log(1 + \hat\phi_t \hat\mu_t^{p-2})$ (Tweedie 1984) |
+| `Beta(logit)` | $\psi'(\mu\phi) + \psi'((1-\mu)\phi)$ (Smithson & Verkuilen 2006) |
+| `betabinomial(logit)` | $\psi'(\mu\phi) + \psi'((1-\mu)\phi) + \pi^2/3$ |
+| `delta_lognormal` | $\hat\sigma^2_{\text{logn}} + \pi^2/3$ |
+
+For mixed-family fits, each trait gets the residual implied by **its
+own** family; the diagonal of $\boldsymbol\Sigma$ is therefore on a
+unified latent scale. Pass `link_residual = "none"` to suppress this
+addition and recover the bare $\boldsymbol\Lambda\boldsymbol\Lambda^\top
++ \mathbf S$ form.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+```
+
+## Simulate and fit
+
+A simulated `Site × Species` occurrence dataset — 100 sites, 8
+species, 2 underlying latent factors, plus an environmental
+covariate `env_1` with species-specific responses. The true loadings
+are designed so each species falls into one of **four niche
+quadrants** of the latent space (e.g. dry-low, dry-high, wet-low,
+wet-high), with two species per quadrant. The biplot below should
+recover those four clusters.
+
+```{r jsdm-sim}
+set.seed(2025)
+T       <- 8           # 8 species
+n_sites <- 100         # 100 sites
+
+## Designed loadings: 8 species in 4 niche quadrants
+##   sp1, sp2  : (- F1, - F2)  — e.g. "dry, lowland"
+##   sp3, sp4  : (- F1, + F2)  — e.g. "dry, highland"
+##   sp5, sp6  : (+ F1, - F2)  — e.g. "wet, lowland"
+##   sp7, sp8  : (+ F1, + F2)  — e.g. "wet, highland"
+Lam_true <- matrix(c(
+  ## Column 1: F1 (e.g. moisture; positive = wet)
+  -1.2, -1.0, -1.1, -0.9,  +1.0, +1.2, +1.1, +0.9,
+  ## Column 2: F2 (e.g. elevation; positive = highland)
+  -1.0, -1.2, +1.1, +0.9,  -1.0, -1.1, +1.0, +1.2
+), nrow = T, ncol = 2)
+
+sim <- simulate_site_trait(
+  n_sites = n_sites, n_species = 6, n_traits = T,
+  mean_species_per_site = 5,
+  Lambda_B = Lam_true, S_B = rep(0.4, T),
+  sigma2_eps = 0.01, seed = 2025
+)
+df <- sim$data
+df$value <- as.integer(df$value > 0)   # binarise
+```
+
+```{r jsdm-fit}
+fit_jsdm <- gllvmTMB(
+  value ~ 0 + trait + (0 + trait):env_1 +
+          latent(0 + trait | site, d = 2),
+  data   = df,
+  family = binomial()
+)
+fit_jsdm
+```
+
+## Latent-scale residual species correlations (with 95% CIs)
+
+Pairwise species correlations on the latent-liability scale. The
+default `method = "fisher-z"` gives Fisher-transform Wald CIs that
+are fast (seconds) and bounded inside $[-1, 1]$ by construction.
+Profile-likelihood (`method = "profile"`) is more accurate for
+skewed sampling distributions but scales as $O(T(T-1)/2)$
+constrained refits — use it for final, publication-grade CIs once
+Phase K's warm-started `TMB::tmbprofile()` accelerates the path.
+`method = "bootstrap"` is also available for full sampling-
+distribution CIs.
+
+```{r jsdm-cor}
+extract_correlations(fit_jsdm, tier = "unit")
+```
+
+The two $\boldsymbol\Sigma$ matrices side-by-side: the **shared**
+component $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$
+that the GLLVM estimates, and the **total latent-liability**
+covariance $\boldsymbol\Sigma_{\text{latent}} = \boldsymbol\Sigma_B + (\pi^2/3) \mathbf I$
+that adds the fixed link residual on the diagonal:
+
+```{r jsdm-sigma}
+Sigma_shared <- extract_Sigma(fit_jsdm, level = "unit", part = "shared")$Sigma
+Sigma_total  <- extract_Sigma(fit_jsdm, level = "unit", part = "total")$Sigma
+list(Sigma_shared = round(Sigma_shared, 2),
+     Sigma_total  = round(Sigma_total,  2))
+```
+
+Notice the off-diagonals are identical (the link residual is
+diagonal) and the total has $+ \pi^2/3 \approx 3.29$ added to each
+diagonal entry.
+
+## Ordination biplot
+
+Site scores on the two latent axes, with species loadings shown as
+arrows. Axes are residual co-occurrence after `env_1` has been
+accounted for; species loading in the same direction tend to
+co-occur (after accounting for the environment).
+
+```{r jsdm-biplot, fig.width = 6.5, fig.height = 5}
+## Site scores
+ord <- extract_ordination(fit_jsdm, level = "unit")
+scores <- data.frame(
+  LV1 = ord$scores[, 1],
+  LV2 = ord$scores[, 2]
+)
+
+## Species loadings (Lambda_B)
+Lambda_hat <- fit_jsdm$report$Lambda_B
+loadings <- data.frame(
+  trait = paste0("sp", seq_len(nrow(Lambda_hat))),
+  LV1   = Lambda_hat[, 1],
+  LV2   = Lambda_hat[, 2]
+)
+
+## Scale arrows so they're comparable to score cloud
+sc <- 0.7 * max(abs(scores)) / max(abs(loadings[, c("LV1", "LV2")]))
+loadings$LV1 <- loadings$LV1 * sc
+loadings$LV2 <- loadings$LV2 * sc
+
+ggplot() +
+  geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.4) +
+  geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.4) +
+  geom_point(data = scores, aes(LV1, LV2),
+             colour = "steelblue", alpha = 0.45, size = 1.8) +
+  geom_segment(data = loadings,
+               aes(x = 0, y = 0, xend = LV1, yend = LV2),
+               arrow = arrow(length = unit(0.22, "cm")),
+               colour = "tomato", linewidth = 0.5) +
+  geom_text(data = loadings,
+            aes(LV1, LV2, label = trait),
+            colour = "tomato", size = 3.6,
+            nudge_x = 0.15, nudge_y = 0.05) +
+  coord_equal() +
+  labs(x = "Latent variable 1", y = "Latent variable 2") +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.minor = element_blank())
+```
+
+The species arrows recover the **four design quadrants**: `sp1, sp2`
+in the lower-left, `sp3, sp4` upper-left, `sp5, sp6` lower-right,
+`sp7, sp8` upper-right (up to a sign flip / rotation of the latent
+axes — only $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ is
+identifiable). Species arrows pointing in the same direction
+co-occur after `env_1` is accounted for; arrows pointing in opposite
+directions tend to mutually exclude.
+
+## See also
+
+* [`vignette("functional-biogeography")`](functional-biogeography.html) — Gaussian stacked-trait analogue.
+* [`vignette("cross-package-validation")`](cross-package-validation.html) — `gllvm` log-likelihood comparison on a binary fit.
+* [`vignette("response-families")`](response-families.html) — full table of supported families and the per-family $\sigma^2_d$.
+
+## References
+
+* Niku, J., Warton, D.I., Hui, F.K.C., & Taskinen, S. (2017).
+  Generalized linear latent variable models for multivariate count
+  and biomass data in ecology. *Journal of Agricultural, Biological,
+  and Environmental Statistics* **22**, 498–522.
+  <https://link.springer.com/article/10.1007/s13253-017-0304-7>
+* Niku, J., Hui, F.K.C., Taskinen, S., & Warton, D.I. (2019).
+  gllvm: Fast analysis of multivariate abundance data with
+  generalized linear latent variable models in r. *Methods in
+  Ecology and Evolution* **10**, 2173–2182.
+  <https://doi.org/10.1111/2041-210X.13303>
+* Nakagawa, S., & Schielzeth, H. (2010). Repeatability for Gaussian
+  and non-Gaussian data: a practical guide for biologists.
+  *Biological Reviews* **85**, 935–956.
+  <https://doi.org/10.1111/j.1469-185X.2010.00141.x>
+* Nakagawa, S., Johnson, P.C.D., & Schielzeth, H. (2017). The
+  coefficient of determination R² and intra-class correlation
+  coefficient from generalized linear mixed-effects models revisited
+  and expanded. *Journal of the Royal Society Interface* **14**,
+  20170213. <https://doi.org/10.1098/rsif.2017.0213>
+* Warton, D.I., Blanchet, F.G., O'Hara, R.B., Ovaskainen, O.,
+  Taskinen, S., Walker, S.C., & Hui, F.K.C. (2015). So many
+  variables: joint modeling in community ecology. *Trends in
+  Ecology & Evolution* **30**, 766–779.
+  <https://doi.org/10.1016/j.tree.2015.09.007>

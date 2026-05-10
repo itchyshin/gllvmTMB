@@ -1,0 +1,115 @@
+url: https://itchyshin.github.io/gllvmTMB/
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left:  [intro, articles, reference, news]
+    right: [search, github]
+
+articles:
+  - title: Worked examples (Tier 1)
+    navbar: ~
+    contents:
+    - articles/morphometrics
+    - articles/joint-sdm
+    - articles/behavioural-syndromes
+    - articles/choose-your-model
+    - articles/covariance-correlation
+    - articles/functional-biogeography
+    - articles/pitfalls
+
+reference:
+  - title: Top-level entry points
+    desc: Fit a stacked-trait GLLVM
+    contents:
+    - gllvmTMB
+    - gllvmTMB_wide
+    - gllvmTMBcontrol
+    - simulate_site_trait
+
+  - title: Covariance keywords
+    desc: The 3 x 5 keyword grid (correlation x mode)
+    contents:
+    - latent
+    - unique
+    - indep
+    - dep
+    - phylo_scalar
+    - phylo_unique
+    - phylo_indep
+    - phylo_dep
+    - phylo_latent
+    - phylo_slope
+    - spatial_scalar
+    - spatial_unique
+    - spatial_indep
+    - spatial_dep
+    - spatial_latent
+    - spde
+    - spatial
+    - meta_known_V
+    - traits
+
+  - title: Deprecated keyword aliases
+    desc: Older keyword names kept for backward compatibility
+    contents:
+    - phylo
+    - phylo_rr
+    - gr
+    - meta
+    - block_V
+
+  - title: Response families
+    contents:
+    - has_keyword("families")
+    - ordinal_probit
+
+  - title: Extractors
+    desc: Recover Sigma, Lambda, repeatability, communality, phylogenetic signal
+    contents:
+    - extract_Sigma
+    - extract_Omega
+    - extract_communality
+    - extract_correlations
+    - extract_repeatability
+    - extract_phylo_signal
+    - extract_proportions
+    - extract_residual_split
+    - extract_ordination
+    - extract_ICC_site
+    - extract_cutpoints
+
+  - title: S3 methods on `gllvmTMB_multi` fits
+    contents:
+    - print.gllvmTMB_multi
+    - summary.gllvmTMB_multi
+    - logLik.gllvmTMB_multi
+    - confint.gllvmTMB_multi
+    - tidy.gllvmTMB_multi
+    - simulate.gllvmTMB_multi
+    - predict.gllvmTMB_multi
+    - plot.gllvmTMB_multi
+    - sanity_multi
+
+  - title: Diagnostics and loading-tools
+    contents:
+    - gllvmTMB_diagnose
+    - rotate_loadings
+    - compare_loadings
+    - suggest_lambda_constraint
+    - compare_dep_vs_two_U
+    - compare_indep_vs_two_U
+    - bootstrap_Sigma
+    - tmbprofile_wrapper
+
+  - title: Spatial mesh helpers
+    contents:
+    - make_mesh
+    - add_utm_columns
+    - plot_anisotropy
+
+news:
+  releases:
+  - text: "Version 0.2.0"
+    href: https://github.com/itchyshin/gllvmTMB/releases/tag/v0.2.0

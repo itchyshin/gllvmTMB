@@ -39,11 +39,39 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
-docs/
+# pkgdown site (built output goes under docs/, but we keep
+# docs/design/ and docs/dev-log/ tracked as project memory).
+docs/*
+!docs/design/
+!docs/design/**
+!docs/dev-log/
+!docs/dev-log/**
 
 # translation temp files
 po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Compiled C++ artefacts under src/
+src/*.o
+src/*.so
+src/*.dll
+src/*.dylib
+
+# Compiled TMB templates cached under inst/tmb/
+inst/tmb/*.o
+inst/tmb/*.so
+inst/tmb/*.dll
+inst/tmb/*.dylib
+
+# .DS_Store on macOS
+.DS_Store
+
+# Rplots.pdf left behind by R example/test runs
+tests/testthat/Rplots.pdf
+Rplots.pdf
+
+# Workshop drawer: preserved work from the legacy repo + global skills.
+# Gitignored: never commits to the fresh repo. See _workshop/README.md.
+_workshop/

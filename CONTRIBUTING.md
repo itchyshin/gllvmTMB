@@ -71,6 +71,15 @@ method lists, default-value claims, exported function names, the
 3 x 5 keyword grid, argument names, family lists, and stale
 terminology. It is a consistency gate, not a general rewrite pass.
 
+## Cross-Team Coordination Audit
+
+Use the Shannon coordination audit before a working-tree switch, a
+merge-order decision, a multi-PR fan-out, or an end-of-session
+handoff. Shannon is read-only. It checks branch state, dirty files,
+open PRs, file overlap, CI state, dev-log handoffs, and after-task
+report coverage, then reports pass, warn, or fail with the smallest
+recommended next action.
+
 ## Articles
 
 Every public article is **Tier 1** by default. Tier 2 / Tier 3

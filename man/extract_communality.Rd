@@ -67,6 +67,24 @@ for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
 denominator by default; pass \code{link_residual = "none"} to suppress.
 }
 }
+\examples{
+\dontrun{
+  sim <- simulate_site_trait(
+    n_sites = 20, n_species = 6, n_traits = 4,
+    mean_species_per_site = 4, seed = 1
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait +
+            latent(0 + trait | site, d = 2) +
+            unique(0 + trait | site),
+    data = sim$data
+  )
+  ## Per-trait between-unit communality.
+  extract_communality(fit, level = "unit")
+  ## With profile-likelihood CIs.
+  extract_communality(fit, level = "unit", ci = TRUE)
+}
+}
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}}; \code{\link[=extract_ICC_site]{extract_ICC_site()}};
 \code{\link[=extract_correlations]{extract_correlations()}}; \code{\link[=extract_repeatability]{extract_repeatability()}};

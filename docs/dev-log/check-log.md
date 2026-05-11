@@ -179,3 +179,82 @@ Decision: treat "merge #11/#12 and confirm Actions" as its own
 completed task. Per maintainer instruction, stop after this report and
 do not begin `morphometrics.Rmd` until the maintainer has reviewed the
 task closure.
+
+## 2026-05-11 -- Shannon coordination audit role
+
+Scope:
+
+- added `.agents/skills/shannon-coordination-audit/SKILL.md`;
+- documented Shannon in `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`,
+  `ROADMAP.md`, and `docs/dev-log/decisions.md`;
+- created an after-task report for the Shannon role addition.
+
+Checks:
+
+- documentation-only change; no R code, likelihood, formula grammar,
+  NAMESPACE, generated Rd, pkgdown navigation, or article source
+  changed;
+- Shannon is scoped as read-only and checkpoint-invoked, not as a
+  continuous overseer.
+
+## 2026-05-11 -- post-PR-#8-merge pkgdown workflow_run verification
+
+Scope:
+
+- after PR #8 merged to `main` at commit `ae771f8` on 2026-05-11
+  14:25 UTC, watched the post-merge CI sequence to confirm the new
+  `.github/workflows/pkgdown.yaml` `workflow_run` trigger fires
+  pkgdown only after R-CMD-check completes successfully, and
+  *not* in parallel with the push event.
+
+Evidence (from `gh run list / view`):
+
+- `R-CMD-check` (run id 25676207810, event `push`, branch `main`):
+  - started: 2026-05-11T14:25:33Z
+  - completed: 2026-05-11T15:00:00Z
+  - wall: 34 min 27 s
+  - per-OS: macOS 27:06 (14:25:36 -> 14:52:42), Ubuntu 29:24
+    (14:25:36 -> 14:55:00), Windows 34:22 (14:25:37 -> 14:59:59);
+- `pkgdown` (run id 25678157733, event **`workflow_run`**, branch
+  `main`, displayTitle "pkgdown"):
+  - started: 2026-05-11T15:00:07Z (7 s after R-CMD-check
+    completed -- auto-fired via `workflow_run`);
+  - completed: 2026-05-11T15:10:41Z;
+  - wall: 10 min 34 s;
+  - conclusion: success.
+- `gh run list --workflow pkgdown --branch main` confirms **no
+  parallel pkgdown run** was triggered by the PR #8 push event;
+  the only post-merge pkgdown run was the workflow_run-triggered
+  one above.
+
+Decision: the workflow_run sequencing transplanted from drmTMB is
+working in this repo as designed. No further adjustment to
+`.github/workflows/pkgdown.yaml` is needed in this phase. The
+deployed pkgdown site (https://itchyshin.github.io/gllvmTMB/) now
+serves the post-PR-#8 README + Fisher-z fix; the logo and
+favicons remain pending PR #9 merge.
+
+Reference: PR #8 after-task report at
+`docs/dev-log/after-task/2026-05-11-ci-site-team-repair.md`,
+"Next Actions" section.
+
+## 2026-05-11 -- WIP=1 suspension during the doc-PR sprint
+
+Scope:
+
+- on 2026-05-11 the project ran a 9-open-PR sprint of
+  documentation, audit, and process-rule changes (PRs #7, #9-#16);
+- `AGENTS.md` Design Rule 6 ("Keep pull requests small and focused.
+  Work-in-progress > 1 produces cancel-cascades on CI") is
+  functionally suspended for the duration of this sprint;
+- the suspension is acceptable because every PR in the sprint is
+  documentation-only or audit-only -- no R code, NAMESPACE,
+  generated Rd, vignette source, or pkgdown navigation change in
+  any of them, and the CI cost is small per PR;
+- Shannon's first audit (`docs/dev-log/shannon-audits/2026-05-11-first-audit.md`)
+  flagged the WIP gap and recommended this entry.
+
+Decision: keep WIP=1 as the long-term default; allow the sprint to
+clear at its own pace, then restore WIP=1 discipline before any
+substantive implementation work (Phase 1a article rewrites,
+Priority 2 surface cleanup, Priority 3 weights unification).

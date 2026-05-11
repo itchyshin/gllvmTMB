@@ -72,6 +72,12 @@ that changes project state should leave
 outcome, checks, and follow-up. This mirrors the `drmTMB` team habit
 and is how the shared team learns without re-reading the whole diff.
 
+Use Shannon before handoffs with branch switches, merge-order
+questions, or more than one open coordination PR. Shannon is a
+read-only cross-team audit: it checks working-tree hygiene, open PRs,
+file overlap, CI state, message-bus coverage, and after-task report
+coverage. Shannon reports; it does not edit or merge.
+
 ## Reusing sdmTMB / drmTMB Code
 
 The R-side spatial helpers (`R/mesh.R`, `R/crs.R`, `R/plot.R`'s

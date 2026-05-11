@@ -114,6 +114,17 @@ Decision: this repair deliberately does not reduce R-CMD-check runtime
 or add `RUN_SLOW_TESTS` gating. The immediate fix is cleaner feedback
 sequencing and clearer public/project instructions.
 
+## 2026-05-11 (Claude) Add long + wide example pairing convention
+
+Added a writing-style rule to `AGENTS.md`: user-facing prose (README,
+vignettes, Tier-1 articles) must show both the long-format and the
+wide-format `gllvmTMB` call side by side. Rationale captured in
+`docs/dev-log/decisions.md` under "User-facing examples pair long +
+wide". Applies from 2026-05-11 onwards; the Priority 2 article-rewrite
+PR will be the first application.
+
+No package code or NAMESPACE changes. Documentation rule only.
+
 ## 2026-05-11 -- Roadmap and Claude/Codex collaboration rules
 
 Scope:

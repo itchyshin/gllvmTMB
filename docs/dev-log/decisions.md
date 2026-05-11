@@ -83,3 +83,20 @@ navigation, not a larger static role system. The gate checks method
 lists, defaults, exported function names, the 3 x 5 keyword grid,
 argument names, family lists, and stale terminology for README,
 vignettes, pkgdown, NEWS, exported roxygen, and generated Rd changes.
+
+## 2026-05-11  Use discussion checkpoints for multi-agent work
+
+Decision: Codex and Claude Code may work in parallel for bounded
+read-only audits, reviews, and non-overlapping implementation tasks,
+but the maintainer discussion checkpoint is the default before
+deletions, API changes, formula-grammar changes, likelihood changes,
+new families, or broad article rewrites. Rationale: the project gets
+better evidence from parallel agents, but the roadmap should not drift
+through autonomous multi-file work. Claude Code is best used for
+audits, prose diagnostics, and decision drafts; Codex is best used for
+bounded implementation, CI/pkgdown plumbing, local validation, and PR
+integration. The shared message bus remains `docs/dev-log/check-log.md`,
+`docs/dev-log/decisions.md`, after-task reports, and PR comments.
+Completed tasks and phases should end with an after-task report under
+`docs/dev-log/after-task/`, matching the `drmTMB` habit that has
+made that team easier to resume and audit.

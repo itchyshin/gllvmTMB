@@ -113,3 +113,28 @@ Checks:
 Decision: this repair deliberately does not reduce R-CMD-check runtime
 or add `RUN_SLOW_TESTS` gating. The immediate fix is cleaner feedback
 sequencing and clearer public/project instructions.
+
+## 2026-05-11 -- Roadmap and Claude/Codex collaboration rules
+
+Scope:
+
+- rewrote `ROADMAP.md` from a legacy phase list into a current shared
+  map: reader path, public surface, long/wide data-shape contract,
+  feedback time, CRAN readiness, methods paper, and extensions;
+- added explicit collaboration stops to `ROADMAP.md` and
+  `docs/dev-log/claude-group-handoff-2026-05-11.md`;
+- updated `CLAUDE.md` so Claude Code uses the propose / discuss /
+  implement rhythm rather than running broad implementation work
+  without a maintainer checkpoint;
+- preserved the user-facing long-format plus wide-format example rule
+  in `AGENTS.md`.
+
+Checks:
+
+- documentation-only change; no R code, likelihood, formula grammar,
+  NAMESPACE, generated Rd, or pkgdown navigation changed;
+- reviewed the open GitHub PRs before editing: Priority 2 audit
+  (`agent/priority-2-audit`), logo/favicons
+  (`agent/logo-favicon`), and extractor examples
+  (`agent/extractor-examples`) have non-overlapping file scopes with
+  this roadmap update.

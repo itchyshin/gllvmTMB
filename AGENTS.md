@@ -114,6 +114,18 @@ package contributors.
   assumption.
 - For tutorials and error-message docs, tell the reader what to try
   next when a model or syntax is unsupported.
+- When demonstrating how to fit a `gllvmTMB` model in user-facing
+  prose -- README, vignettes, and Tier-1 articles -- show **both**
+  long-format and wide-format calls side by side. The long form
+  (`gllvmTMB(value ~ ..., data = df_long)`) is canonical; the wide
+  form (`gllvmTMB_wide(Y, ...)` or `gllvmTMB(traits(...) ~ ...,
+  data = df_wide)`) is the convenience equivalent. Readers vary in
+  mental model -- some think in matrices, some in long tibbles --
+  and a single example that shows both reaches both reader types
+  without forcing a translation step. Roxygen `@examples` blocks
+  for individual keyword or extractor functions may stay single-form
+  when the keyword is intrinsically one shape (for instance,
+  `traits()` is wide-only by construction).
 
 Use the project-local `prose-style-review` skill for substantial
 README, vignette, pkgdown, after-task, release, or paper-oriented

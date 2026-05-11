@@ -51,6 +51,19 @@ Combining \code{spatial_dep(0 + trait | coords)} with \code{spatial_latent} is
 }
 }
 
+\examples{
+\dontrun{
+  sim <- simulate_site_trait(
+    n_sites = 30, n_species = 6, mean_species_per_site = 5,
+    spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait +
+            spatial_dep(0 + trait | site, coords = c("lon", "lat")),
+    data = sim$data
+  )
+}
+}
 \seealso{
 \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spatial_unique]{spatial_unique()}}, \code{\link[=spatial_indep]{spatial_indep()}},
 \code{\link[=dep]{dep()}}, \code{\link[=phylo_dep]{phylo_dep()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}.

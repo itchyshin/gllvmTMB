@@ -48,6 +48,19 @@ alias: it emits a one-shot \code{lifecycle::deprecate_warn()} per session
 canonical orientation, so existing fits remain byte-identical.
 }
 
+\examples{
+\dontrun{
+  sim <- simulate_site_trait(
+    n_sites = 20, n_species = 4, mean_species_per_site = 4,
+    spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait +
+            spatial_unique(0 + trait | site, coords = c("lon", "lat")),
+    data = sim$data
+  )
+}
+}
 \seealso{
 \code{\link[=spatial_scalar]{spatial_scalar()}}, \code{\link[=spatial_latent]{spatial_latent()}}, \code{\link[=spde]{spde()}} (deprecated alias).
 }

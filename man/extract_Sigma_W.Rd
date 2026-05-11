@@ -15,10 +15,10 @@ A list with \code{Sigma_W} and \code{R_W}, or \code{NULL}.
 \description{
 Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + S_W} and the
 correlation. Thin wrapper around \code{\link[=extract_Sigma]{extract_Sigma()}} with
-\code{level = "W"}. Prefer the unified interface for new code.
+\code{level = "unit_obs"}. Prefer the unified interface for new code.
 }
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API; pass
-\code{level = "W"} for the same matrix.
+\code{level = "unit_obs"} for the same matrix.
 }
 \keyword{internal}

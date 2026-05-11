@@ -337,3 +337,66 @@ Decision: Phase 3 implementation approved by maintainer 2026-05-11
 fields, trait-order tie-break, NA semantics, helper signature,
 out-of-scope list); merged 22:22 (`b425462`). Implementation handoff
 to Codex posted as a comment on PR #23.
+
+## 2026-05-11 -- Morphometrics Tier-1 long/wide rewrite
+
+Scope:
+
+- Codex lane: rewrote `vignettes/articles/morphometrics.Rmd` as the
+  first Tier-1 worked-example implementation of the long-format plus
+  wide-format article convention;
+- paired every live model-fit context in the article with long and
+  wide formula calls: the main rank-2 `latent() + unique()` fit, the
+  first recovery-loop replicate, and the comparison fits for
+  `latent(d = T)`, `dep()`, and `indep()`;
+- replaced live legacy helper calls with `extract_ordination()`,
+  `rotate_loadings()`, and `plot(fit, type = "ordination",
+  level = "unit")`;
+- fixed public wrapper behaviour so canonical `level = "unit"` calls
+  no longer warn after wrapper-to-wrapper calls internally touch the
+  legacy `B` / `W` storage names;
+- updated generated Rd topics for the touched roxygen blocks and
+  recorded the after-task report at
+  `docs/dev-log/after-task/2026-05-11-morphometrics-tier1-rewrite.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`:
+  passed with 37 tests, 0 failures, 0 warnings;
+- focused long/wide smoke test: main rank-2, saturated
+  `latent(d = T)`, `dep()`, and `indep()` long/wide pairs all had
+  maximum log-likelihood difference 0;
+- `Rscript --vanilla -e 'devtools::test()'`: passed before the final
+  plot-subtitle / roxygen wording patch with 1263 passed, 0 failed,
+  6 warnings, 11 skipped, duration 1462.4 s;
+- after the final wording patch, the focused plot test passed again
+  with 37 tests, 0 failures, 0 warnings, duration 11.3 s;
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`:
+  completed and regenerated the touched Rd files;
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`: passed with
+  "No problems found";
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics")'`:
+  completed and wrote the morphometrics article; the only message was
+  the pre-existing `../logo.png` pkgdown warning;
+- `_R_CHECK_SYSTEM_CLOCK_=FALSE Rscript --vanilla -e 'devtools::check(document = FALSE, manual = FALSE, args = "--no-tests", quiet = FALSE, error_on = "never")'`:
+  completed with 0 errors, 1 warning, and 1 note. The warning was an
+  Apple clang / R header warning from `R_ext/Boolean.h`; the note was
+  the pre-existing duplicated `tidyselect` entry in `Imports` and
+  `Suggests`. Neither came from this branch.
+- `git diff --check`: passed.
+
+Consistency audit:
+
+- `rg -n "gllvmTMB\\(|gllvmTMB_wide\\(|traits\\(" vignettes/articles/morphometrics.Rmd`
+  shows each live fit context has a long and wide formula pair;
+- `rg -n "getLoadings\\(|ordiplot\\(|extract_ICC_site\\(|extract_residual_split\\(" vignettes/articles/morphometrics.Rmd`
+  returns no live legacy-helper hits;
+- stale public wording scan for primary `B` / `W` level names and
+  bootstrap-as-default wording found only intentional test references
+  and internal bootstrap result labels.
+
+Decision: morphometrics is ready to be the first Phase 1a Tier-1
+article PR once the branch is pushed. Authorship, citation, and
+provenance wording are deliberately held for the separate citation /
+metadata lane (PR #26 and follow-up), not mixed into this article
+rewrite.

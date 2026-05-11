@@ -86,3 +86,13 @@
   ## rejected it).
   level
 }
+
+.canonical_level_name <- function(level) {
+  if (!is.character(level) || length(level) != 1L) return(level)
+  internal_to_canonical <- c(B = "unit", W = "unit_obs",
+                             spde = "spatial", total = "Omega")
+  if (level %in% names(internal_to_canonical)) {
+    return(unname(internal_to_canonical[[level]]))
+  }
+  level
+}

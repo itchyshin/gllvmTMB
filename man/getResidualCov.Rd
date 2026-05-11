@@ -12,14 +12,15 @@ getResidualCor(fit, level = c("unit", "unit_obs", "B", "W"))
 \arguments{
 \item{fit}{A \code{gllvmTMB_multi} fit.}
 
-\item{level}{\code{"B"} (global / between-site) or \code{"W"} (local / within-site).}
+\item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
+Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
 }
 \value{
 An \verb{n_traits × n_traits} matrix.
 }
 \description{
 \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \mathrm{diag}(s_X^2)} for
-\code{level = "B"} or \code{"W"}. \code{getResidualCor} returns the corresponding
+\code{level = "unit"} or \code{"unit_obs"}. \code{getResidualCor} returns the corresponding
 correlation matrix. Useful diagnostic when comparing the global vs
 local trait covariance.
 }

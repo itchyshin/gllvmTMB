@@ -5,6 +5,8 @@
 \alias{gllvmTMB-package}
 \title{gllvmTMB: Stacked-Trait GLLVMs with TMB}
 \description{
+\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
+
 A standalone Template Model Builder (TMB) package for stacked-trait, long-format multivariate generalised linear latent variable models (GLLVMs). The 3 x 5 covariance keyword grid pairs correlation structure (none / phylogenetic / spatial) with covariance mode (scalar / unique / indep / dep / latent). A reduced-rank latent decomposition (Lambda Lambda^T + diag(s)) is the canonical multivariate option; full unstructured and marginal modes are also supported. Phylogenetic models use a sparse A^-1 representation (Hadfield & Nakagawa 2010) and spatial models use the SPDE/GMRF approximation inherited from 'sdmTMB' (Anderson et al. 2025). See Anderson et al. (2025) \doi{10.18637/jss.v115.i02} and Hadfield & Nakagawa (2010) \doi{10.1111/j.1420-9101.2009.01915.x}.
 }
 \seealso{

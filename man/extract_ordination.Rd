@@ -9,7 +9,8 @@ extract_ordination(fit, level = c("unit", "unit_obs", "B", "W"))
 \arguments{
 \item{fit}{A \code{gllvmTMB_multi} object.}
 
-\item{level}{\code{"B"} (global / between-unit) or \code{"W"} (local / within-unit).}
+\item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
+Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
 }
 \value{
 A list with \code{scores} (units or within-unit observations in rows,

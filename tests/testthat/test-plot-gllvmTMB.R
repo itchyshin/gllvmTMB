@@ -52,9 +52,21 @@ test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {
   expect_true(all(c("trait", "factor", "loading", "level", "pinned") %in%
                     names(p$data)))
   ## Single-level call works and shows just one level
-  p_B <- suppressMessages(plot(fit, type = "loadings", level = "B"))
+  withr::local_options(gllvmTMB.warned_level_B = NULL)
+  p_B <- NULL
+  expect_warning(
+    p_B <- suppressMessages(plot(fit, type = "loadings", level = "B")),
+    "deprecated"
+  )
   expect_s3_class(p_B, "ggplot")
   expect_equal(nrow(p_B$data), fit$n_traits * fit$d_B)
+
+  p_unit <- expect_warning(
+    suppressMessages(plot(fit, type = "loadings", level = "unit")),
+    NA
+  )
+  expect_s3_class(p_unit, "ggplot")
+  expect_equal(nrow(p_unit$data), fit$n_traits * fit$d_B)
 })
 
 test_that("plot(type = 'integration') returns a ggplot with three indices per trait", {
@@ -86,7 +98,10 @@ test_that("plot(type = 'variance') returns a stacked-bar ggplot summing to 1 per
 test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()
-  p <- suppressMessages(plot(fit, type = "ordination", level = "B"))
+  p <- expect_warning(
+    suppressMessages(plot(fit, type = "ordination", level = "unit")),
+    NA
+  )
   expect_s3_class(p, "ggplot")
   expect_silent(print(p))
   ## ggplot()-with-data-in-layers: top-level p$data is empty waiver().
@@ -98,12 +113,29 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   expect_true(any(!is.na(layer_data_n)))
 })
 
+test_that("canonical level names do not warn when wrappers call extractors", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+
+  expect_warning(suppressMessages(getLoadings(fit, level = "unit")), NA)
+  expect_warning(suppressMessages(getLV(fit, level = "unit")), NA)
+  expect_warning(
+    suppressMessages(rotate_loadings(fit, level = "unit", method = "varimax")),
+    NA
+  )
+})
+
 test_that("plot(type = 'ordination', level = 'W') gives 1D lollipop when d_W = 1", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()
   ## d_W = 1 in this fit
   expect_equal(fit$d_W, 1L)
-  p <- suppressMessages(plot(fit, type = "ordination", level = "W"))
+  withr::local_options(gllvmTMB.warned_level_W = NULL)
+  p <- NULL
+  expect_warning(
+    p <- suppressMessages(plot(fit, type = "ordination", level = "W")),
+    "deprecated"
+  )
   expect_s3_class(p, "ggplot")
   expect_silent(print(p))
 })
@@ -114,7 +146,7 @@ test_that("plot.gllvmTMB_multi errors on bad type and bad axes", {
   expect_error(plot(fit, type = "nonsense"), regexp = "should be one of")
   ## d_B = 2 here, ask for axis 5 -> error
   expect_error(
-    suppressMessages(plot(fit, type = "ordination", level = "B",
+    suppressMessages(plot(fit, type = "ordination", level = "unit",
                           axes = c(1, 5))),
     regexp = "exceed"
   )

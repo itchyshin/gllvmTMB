@@ -4,7 +4,7 @@
 
 #' Between-site covariance matrix Sigma_B (backward-compat wrapper)
 #'
-#' Returns the implied between-site trait covariance
+#' Returns the implied between-unit trait covariance
 #' \eqn{\Sigma_B = \Lambda_B \Lambda_B^\top + S_B} and its correlation
 #' matrix. This is a thin wrapper around the unified
 #' [extract_Sigma()] function: equivalent to
@@ -18,9 +18,9 @@
 #'
 #' @param fit A `gllvmTMB_multi` object.
 #' @return A list with `Sigma_B` (T x T covariance), `R_B` (correlation),
-#'   or `NULL` if no rr/diag term is present at the between-site tier.
+#'   or `NULL` if no rr/diag term is present at the between-unit tier.
 #' @seealso [extract_Sigma()] — the canonical unified API; pass
-#'   `level = "B"` for the same matrix.
+#'   `level = "unit"` for the same matrix.
 #' @keywords internal
 #' @export
 extract_Sigma_B <- function(fit) {
@@ -33,12 +33,12 @@ extract_Sigma_B <- function(fit) {
 #'
 #' Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + S_W} and the
 #' correlation. Thin wrapper around [extract_Sigma()] with
-#' `level = "W"`. Prefer the unified interface for new code.
+#' `level = "unit_obs"`. Prefer the unified interface for new code.
 #'
 #' @inheritParams extract_Sigma_B
 #' @return A list with `Sigma_W` and `R_W`, or `NULL`.
 #' @seealso [extract_Sigma()] — the canonical unified API; pass
-#'   `level = "W"` for the same matrix.
+#'   `level = "unit_obs"` for the same matrix.
 #' @keywords internal
 #' @export
 extract_Sigma_W <- function(fit) {
@@ -110,7 +110,8 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' denominator by default; pass `link_residual = "none"` to suppress.
 #'
 #' @param fit A `gllvmTMB_multi` object.
-#' @param level `"B"` (global / between-unit) or `"W"` (local / within-unit).
+#' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
+#'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
 #' @param link_residual For binomial fits: `"auto"` (default) adds the
 #'   link-specific implicit residual to the denominator; `"none"` returns
 #'   communalities on the latent+unique-implied scale only.
@@ -119,8 +120,8 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   plain named numeric vector for backward compatibility.
 #' @param conf_level Confidence level when `ci = TRUE`. Default 0.95.
 #' @param method One of `"profile"` (default), `"wald"`, `"bootstrap"`.
-#'   Only used when `ci = TRUE`. Profile uses Lagrange-style fix-and-refit;
-#'   bootstrap is the recommended fallback for unstable cases.
+#'   Only used when `ci = TRUE`. Prefer profile or Wald-style intervals where
+#'   available; bootstrap is a slower option for deliberate sampling checks.
 #' @param nsim Number of bootstrap replicates when `method = "bootstrap"`.
 #'   Default 500.
 #' @param seed Optional RNG seed for the bootstrap.

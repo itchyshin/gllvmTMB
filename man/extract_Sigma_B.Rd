@@ -11,10 +11,10 @@ extract_Sigma_B(fit)
 }
 \value{
 A list with \code{Sigma_B} (T x T covariance), \code{R_B} (correlation),
-or \code{NULL} if no rr/diag term is present at the between-site tier.
+or \code{NULL} if no rr/diag term is present at the between-unit tier.
 }
 \description{
-Returns the implied between-site trait covariance
+Returns the implied between-unit trait covariance
 \eqn{\Sigma_B = \Lambda_B \Lambda_B^\top + S_B} and its correlation
 matrix. This is a thin wrapper around the unified
 \code{\link[=extract_Sigma]{extract_Sigma()}} function: equivalent to
@@ -29,6 +29,6 @@ will be the entry point for 3+ rr tiers when the engine adds them.
 }
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API; pass
-\code{level = "B"} for the same matrix.
+\code{level = "unit"} for the same matrix.
 }
 \keyword{internal}

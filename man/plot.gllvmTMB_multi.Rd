@@ -19,12 +19,14 @@
 \item{type}{One of \code{"correlation"}, \code{"loadings"}, \code{"integration"},
 \code{"variance"}, \code{"ordination"}.}
 
-\item{level}{\code{"B"} (between-unit) or \code{"W"} (within-unit). Used by
-\code{"loadings"} (which level to plot; the default \code{c("B", "W")}
-means "both available levels, faceted side-by-side"; pass a
-length-1 string to plot one tier) and \code{"ordination"} (single level
-required, default \code{"B"}). Ignored for \code{"correlation"} (which always
-shows both if available), \code{"integration"}, and \code{"variance"}.
+\item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
+Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.
+Used by \code{"loadings"} (which level to plot; the default
+\code{c("unit", "unit_obs")} means "both available levels, faceted
+side-by-side"; pass a length-1 string to plot one tier) and
+\code{"ordination"} (single level required, default \code{"unit"}). Ignored for
+\code{"correlation"} (which always shows both if available), \code{"integration"},
+and \code{"variance"}.
 
 \emph{Note}: the default \code{level = c("unit", "unit_obs")} is intentionally a
 length-2 vector, not the usual \code{match.arg} shortcut. The dispatcher
@@ -54,8 +56,8 @@ multivariate GLLVM. Dispatches on \code{type} to one of five panels:
 \details{
 \describe{
 \item{\code{"correlation"}}{Combined heatmap of trait correlations.
-Upper triangle = between-unit correlations (\code{level = "B"}),
-lower triangle = within-unit correlations (\code{level = "W"}),
+Upper triangle = between-unit correlations (\code{level = "unit"}),
+lower triangle = within-unit correlations (\code{level = "unit_obs"}),
 diagonal = 1. Falls back to whichever level is present if the
 other tier is absent.}
 \item{\code{"loadings"}}{Tile heatmap of \code{Lambda_B} (and \code{Lambda_W} if

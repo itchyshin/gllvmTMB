@@ -43,3 +43,26 @@ Scope:
 
 Lesson encoded: a single warning of class X should trigger a sweep
 for the whole class, not a fix-then-wait-for-next-instance cycle.
+
+## 2026-05-10 -- Windows wall-time accommodation (45 min temporary)
+
+Scope:
+
+- PR #3 set `timeout-minutes: 30` to match drmTMB exactly;
+- Ubuntu (21-24m) and macOS (21m) finish well within the budget;
+- Windows-latest R CMD check ran 28m 40s before being cancelled by
+  the 30-min cap (run id 25640098258, then 25641006745, then
+  25642532495 -- all same Windows cap-hit);
+- root cause: Windows TMB compilation + 1250-test execution is
+  intrinsically slower than Linux/macOS for this package size.
+  drmTMB does 3-OS in 7 min total because their package has ~700
+  tests and ~30 exports vs our 1250 tests and ~60 exports;
+- bumped `timeout-minutes` 30 -> 45 as a documented temporary;
+  this still catches real regressions while letting Windows complete
+  its current workload.
+
+Decision: keep the 45-min budget through Phase 1 of ROADMAP. The
+Phase 1 task is to gate the slowest 20% of tests behind
+`Sys.getenv("RUN_SLOW_TESTS") != ""` so Windows fits in drmTMB's
+30-min budget. Once gated, lower `timeout-minutes` back to 30 to
+re-establish the strict discipline gate.

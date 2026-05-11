@@ -32,6 +32,22 @@ Hadfield & Nakagawa 2010) or \code{vcv = Cphy}
 (\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}, dense). See \code{\link[=phylo_latent]{phylo_latent()}}
 for the full discussion of the two paths.
 }
+\examples{
+\dontrun{
+  tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+  sim <- simulate_site_trait(
+    n_sites = 1, n_species = 8, n_traits = 3,
+    mean_species_per_site = 8,
+    Cphy = ape::vcv(tree, corr = TRUE),
+    sigma2_phy = rep(0.3, 3), seed = 1
+  )
+  sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+  fit <- gllvmTMB(
+    value ~ 0 + trait + phylo_scalar(species),
+    data = sim$data, phylo_tree = tree
+  )
+}
+}
 \seealso{
 \code{\link[=phylo_unique]{phylo_unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_indep]{phylo_indep()}},
 \code{\link[=phylo_dep]{phylo_dep()}}, \code{\link[=phylo]{phylo()}} (deprecated alias).

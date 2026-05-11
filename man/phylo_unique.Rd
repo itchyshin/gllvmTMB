@@ -67,6 +67,22 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
 \code{\link[=phylo_latent]{phylo_latent()}} for the full discussion of the two paths.
 }
 }
+\examples{
+\dontrun{
+  tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+  sim <- simulate_site_trait(
+    n_sites = 1, n_species = 8, n_traits = 3,
+    mean_species_per_site = 8,
+    Cphy = ape::vcv(tree, corr = TRUE),
+    sigma2_phy = rep(0.3, 3), seed = 1
+  )
+  sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+  fit <- gllvmTMB(
+    value ~ 0 + trait + phylo_unique(species),
+    data = sim$data, phylo_tree = tree
+  )
+}
+}
 \references{
 \itemize{
 \item \strong{Hadfield, J. D. & Nakagawa, S.} (2010) General quantitative

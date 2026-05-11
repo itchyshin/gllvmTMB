@@ -51,6 +51,22 @@ See \code{vignette("phylogenetic-gllvm")} for the benchmark and
 justification.
 }
 }
+\examples{
+\dontrun{
+  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+  sim <- simulate_site_trait(
+    n_sites = 1, n_species = 20, n_traits = 4,
+    mean_species_per_site = 20,
+    Cphy = ape::vcv(tree, corr = TRUE),
+    sigma2_phy = rep(0.3, 4), seed = 1
+  )
+  sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+  fit <- gllvmTMB(
+    value ~ 0 + trait + phylo_latent(species, d = 2),
+    data = sim$data, phylo_tree = tree
+  )
+}
+}
 \references{
 Hadfield JD, Nakagawa S (2010). General quantitative
 genetic methods for comparative biology: phylogenies, taxonomies

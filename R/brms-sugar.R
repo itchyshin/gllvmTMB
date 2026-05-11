@@ -623,6 +623,18 @@ phylo_unique <- function(species, tree = NULL, vcv = NULL) {
 #'   `NULL`, the engine constructs a default mesh from `coords`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_scalar()], [spatial_latent()], [spde()] (deprecated alias).
+#' @examples
+#' \dontrun{
+#'   sim <- simulate_site_trait(
+#'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
+#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
+#'   )
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait +
+#'             spatial_unique(0 + trait | site, coords = c("lon", "lat")),
+#'     data = sim$data
+#'   )
+#' }
 #' @export
 spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
   invisible(NULL)
@@ -661,6 +673,18 @@ spatial_unique <- function(formula, coords = NULL, mesh = NULL) {
 #'   `NULL`, the engine constructs a default mesh from `coords`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_unique()], [spatial_latent()], [spde()] (deprecated alias).
+#' @examples
+#' \dontrun{
+#'   sim <- simulate_site_trait(
+#'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
+#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
+#'   )
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait +
+#'             spatial_scalar(0 + trait | site, coords = c("lon", "lat")),
+#'     data = sim$data
+#'   )
+#' }
 #' @export
 spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
   invisible(NULL)
@@ -707,6 +731,19 @@ spatial_scalar <- function(formula, coords = NULL, mesh = NULL) {
 #'   `NULL`, the engine constructs a default mesh from `coords`.
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_unique()], [spatial_scalar()], [phylo_latent()].
+#' @examples
+#' \dontrun{
+#'   sim <- simulate_site_trait(
+#'     n_sites = 30, n_species = 6, mean_species_per_site = 5,
+#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
+#'   )
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait +
+#'             spatial_latent(0 + trait | site, d = 2,
+#'                            coords = c("lon", "lat")),
+#'     data = sim$data
+#'   )
+#' }
 #' @export
 spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
   invisible(NULL)
@@ -1001,6 +1038,18 @@ phylo_indep <- function(formula, tree = NULL, vcv = NULL) {
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_unique()], [spatial_latent()], [indep()],
 #'   [phylo_indep()], [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#'   sim <- simulate_site_trait(
+#'     n_sites = 20, n_species = 4, mean_species_per_site = 4,
+#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 4), seed = 1
+#'   )
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait +
+#'             spatial_indep(0 + trait | site, coords = c("lon", "lat")),
+#'     data = sim$data
+#'   )
+#' }
 #' @export
 spatial_indep <- function(formula, coords = NULL, mesh = NULL) {
   invisible(NULL)
@@ -1160,6 +1209,18 @@ phylo_dep <- function(formula, tree = NULL, vcv = NULL) {
 #' @return A formula marker; never evaluated.
 #' @seealso [spatial_latent()], [spatial_unique()], [spatial_indep()],
 #'   [dep()], [phylo_dep()], [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#'   sim <- simulate_site_trait(
+#'     n_sites = 30, n_species = 6, mean_species_per_site = 5,
+#'     spatial_range = 0.4, sigma2_spa = rep(0.3, 6), seed = 1
+#'   )
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait +
+#'             spatial_dep(0 + trait | site, coords = c("lon", "lat")),
+#'     data = sim$data
+#'   )
+#' }
 #' @export
 spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   invisible(NULL)

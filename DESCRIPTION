@@ -73,11 +73,13 @@ Suggests:
     lme4,
     MASS,
     MCMCglmm,
+    mgcv,
     rmarkdown,
     sf,
     testthat (>= 3.0.0),
     tibble,
     tidyr,
+    tidyselect,
     vegan,
     withr
 VignetteBuilder:

@@ -2,20 +2,8 @@ on:
   push:
     branches: [main, master]
     tags: ["v*"]
-    paths-ignore:
-      - '_workshop/**'
-      - 'docs/**'
-      - '**.md'
-      - '!README.md'
-      - '!NEWS.md'
   pull_request:
     branches: [main, master]
-    paths-ignore:
-      - '_workshop/**'
-      - 'docs/**'
-      - '**.md'
-      - '!README.md'
-      - '!NEWS.md'
   workflow_dispatch:
 
 name: R-CMD-check
@@ -25,12 +13,18 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
-    timeout-minutes: 60
+    # Temporary: 45 instead of drmTMB's 30. Windows-latest R CMD check
+    # takes ~30-35 min on this package's current 1250-test surface;
+    # ubuntu / macos finish in 21-24 min. The 45 still catches real
+    # regressions while letting Windows complete. Phase 1 ROADMAP item:
+    # gate the slowest tests behind `RUN_SLOW_TESTS=true` so Windows
+    # fits within drmTMB's 30-min budget.
+    timeout-minutes: 45
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 
@@ -64,5 +58,3 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
-          args: 'c("--no-manual", "--ignore-vignettes")'
-          build_args: 'c("--no-manual", "--no-build-vignettes", "--compact-vignettes=gs+qpdf")'

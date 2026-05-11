@@ -437,6 +437,21 @@ NULL
 #'   genetic methods for comparative biology: phylogenies, taxonomies
 #'   and multi-trait models for continuous and categorical characters.
 #'   *J. Evol. Biol.* 23: 494-508. \doi{10.1111/j.1420-9101.2009.01915.x}
+#' @examples
+#' \dontrun{
+#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 1, n_species = 20, n_traits = 4,
+#'     mean_species_per_site = 20,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(0.3, 4), seed = 1
+#'   )
+#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait + phylo_latent(species, d = 2),
+#'     data = sim$data, phylo_tree = tree
+#'   )
+#' }
 #' @export
 phylo_latent <- function(species, d = 1, tree = NULL, vcv = NULL) {
   invisible(NULL)
@@ -485,6 +500,22 @@ phylo_latent <- function(species, d = 1, tree = NULL, vcv = NULL) {
 #'   covariate column name; RHS must be the species factor).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_scalar()].
+#' @examples
+#' \dontrun{
+#'   tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 10, n_species = 20, n_traits = 3,
+#'     mean_species_per_site = 10,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'   )
+#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   sim$data$x <- rnorm(nrow(sim$data))
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait + (0 + trait):x + phylo_slope(x | species),
+#'     data = sim$data, phylo_tree = tree
+#'   )
+#' }
 #' @export
 phylo_slope <- function(formula) {
   invisible(NULL)
@@ -512,6 +543,21 @@ phylo_slope <- function(formula) {
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_unique()], [phylo_latent()], [phylo_indep()],
 #'   [phylo_dep()], [phylo()] (deprecated alias).
+#' @examples
+#' \dontrun{
+#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 1, n_species = 8, n_traits = 3,
+#'     mean_species_per_site = 8,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'   )
+#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait + phylo_scalar(species),
+#'     data = sim$data, phylo_tree = tree
+#'   )
+#' }
 #' @export
 phylo_scalar <- function(species, tree = NULL, vcv = NULL) {
   invisible(NULL)
@@ -583,6 +629,21 @@ phylo_scalar <- function(species, tree = NULL, vcv = NULL) {
 #' * **Meyer, K. & Kirkpatrick, M.** (2008) Perils of parsimony:
 #'   properties of reduced-rank estimates of genetic covariance matrices.
 #'   *Genetics* 178(4): 2223-2240.
+#' @examples
+#' \dontrun{
+#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 1, n_species = 8, n_traits = 3,
+#'     mean_species_per_site = 8,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'   )
+#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait + phylo_unique(species),
+#'     data = sim$data, phylo_tree = tree
+#'   )
+#' }
 #' @export
 phylo_unique <- function(species, tree = NULL, vcv = NULL) {
   invisible(NULL)
@@ -1165,6 +1226,21 @@ dep <- function(formula) {
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_unique()], [phylo_indep()],
 #'   [dep()], [spatial_dep()], [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#'   tree <- ape::rcoal(8); tree$tip.label <- paste0("sp", seq_len(8))
+#'   sim <- simulate_site_trait(
+#'     n_sites = 1, n_species = 8, n_traits = 3,
+#'     mean_species_per_site = 8,
+#'     Cphy = ape::vcv(tree, corr = TRUE),
+#'     sigma2_phy = rep(0.3, 3), seed = 1
+#'   )
+#'   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+#'   fit <- gllvmTMB(
+#'     value ~ 0 + trait + phylo_dep(0 + trait | species),
+#'     data = sim$data, phylo_tree = tree
+#'   )
+#' }
 #' @export
 phylo_dep <- function(formula, tree = NULL, vcv = NULL) {
   invisible(NULL)

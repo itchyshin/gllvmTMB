@@ -54,6 +54,23 @@ Multi-covariate / per-trait / reduced-rank phylogenetic random
 slopes are on the roadmap.
 }
 }
+\examples{
+\dontrun{
+  tree <- ape::rcoal(20); tree$tip.label <- paste0("sp", seq_len(20))
+  sim <- simulate_site_trait(
+    n_sites = 10, n_species = 20, n_traits = 3,
+    mean_species_per_site = 10,
+    Cphy = ape::vcv(tree, corr = TRUE),
+    sigma2_phy = rep(0.3, 3), seed = 1
+  )
+  sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
+  sim$data$x <- rnorm(nrow(sim$data))
+  fit <- gllvmTMB(
+    value ~ 0 + trait + (0 + trait):x + phylo_slope(x | species),
+    data = sim$data, phylo_tree = tree
+  )
+}
+}
 \seealso{
 \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=phylo_scalar]{phylo_scalar()}}.
 }

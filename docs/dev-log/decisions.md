@@ -186,6 +186,39 @@ Each rule lives in the most natural file:
 - After-task report at branch start (also added today as a discipline
   fix) --> `CONTRIBUTING.md` "Definition of Done".
 
+## 2026-05-11  Binomial trial-count API: docs-only path (Option C)
+
+Decision: when the binomial trial-count API is revisited (a Phase 3
+implementation question parked in PR #23's Out-Of-Scope list), the
+preferred path is **docs-only**:
+
+- the engine continues to accept both `cbind(success, failure)` on
+  the formula LHS AND the glmmTMB-style `weights = n_trials`
+  overload;
+- articles, vignettes, README, Get Started, and roxygen `@examples`
+  standardise on `cbind(succ, fail)` as the canonical form;
+- the `weights` argument retains its primary meaning (lme4 / glmmTMB
+  log-likelihood multiplier) in user-facing prose.
+
+Alternatives considered and not chosen:
+
+- (A) rename to `binom_weights` / `trials` -- adds a near-duplicate
+  argument and diverges from glmmTMB convention;
+- (B) drop the overload and require `cbind(succ, fail)` LHS on
+  binomial models -- cleanest but breaks glmmTMB-style code that
+  users copy-paste from existing literature.
+
+Rationale: the family-dependent meaning of `weights` is a real code
+smell, but the cost of a rename or a hard migration outweighs the
+ergonomic benefit when `cbind()` already provides the cleaner form.
+Documentation can carry the canonical form without forcing a code
+change.
+
+This decision is referenced from
+`docs/design/02-data-shape-and-weights.md` "Out Of Scope". Codex
+should not implement A or B in the Phase 3 implementation PR; only
+ensure new article examples and roxygen blocks prefer `cbind()`.
+
 ## 2026-05-11  Citation policy: Path A (Authors@R = gllvmTMB authors only)
 
 Decision: `DESCRIPTION` `Authors@R` lists only the actual author(s)

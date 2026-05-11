@@ -149,3 +149,33 @@ Checks:
   (`agent/logo-favicon`), and extractor examples
   (`agent/extractor-examples`) have non-overlapping file scopes with
   this roadmap update.
+
+## 2026-05-11 -- Merge gate for PR #11 and PR #12
+
+Scope:
+
+- merged PR #11, "Convention: pair long + wide examples in
+  user-facing prose", at `07a5b00`;
+- merged PR #12, "Roadmap rewrite + Claude/Codex collaboration
+  rules (Codex)", at `f5e5548`;
+- resolved the expected append-only log conflict between #11 and
+  #12 by keeping both entries in chronological order;
+- did not start the morphometrics article rewrite in the same task.
+
+Checks:
+
+- main `R-CMD-check` run 25684019531 passed on the #12 merge commit
+  `f5e5548`: Ubuntu success at 17:09:12Z, macOS success at
+  17:18:55Z, Windows success at 17:21:54Z;
+- pkgdown workflow_run 25685872579 passed on the same commit, starting
+  at 17:22:07Z and completing at 17:32:40Z;
+- the earlier #11 main `R-CMD-check` run 25683842459 was cancelled by
+  concurrency when #12 superseded it on `main`;
+- pkgdown workflow_run 25684045764 was skipped before R-CMD-check
+  completed; the successful pkgdown run above is the deployment
+  evidence for the merge-gate task.
+
+Decision: treat "merge #11/#12 and confirm Actions" as its own
+completed task. Per maintainer instruction, stop after this report and
+do not begin `morphometrics.Rmd` until the maintainer has reviewed the
+task closure.

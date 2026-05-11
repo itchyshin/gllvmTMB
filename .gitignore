@@ -75,3 +75,4 @@ Rplots.pdf
 # Workshop drawer: preserved work from the legacy repo + global skills.
 # Gitignored: never commits to the fresh repo. See _workshop/README.md.
 _workshop/
+pkgdown-site/

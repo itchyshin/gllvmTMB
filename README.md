@@ -178,10 +178,34 @@ latent, unique, phylogenetic, and spatial covariance terms.
 Zero-inflated count families, SPDE barrier meshes, and a first-class
 two-level phylogeny plus non-phylogeny API are planned work.
 
-## Citation
+## Citation and acknowledgements
 
-If you use gllvmTMB, please cite the package and its key upstream
-dependencies (TMB, sdmTMB, MCMCglmm). See `citation("gllvmTMB")`.
+If you use gllvmTMB, please cite the package and the engine /
+dependency papers it builds on. Run `citation("gllvmTMB")` for
+formatted entries; the curated list is:
+
+- **gllvmTMB**: Nakagawa S (in prep). *gllvmTMB: stacked-trait,
+  long-format multivariate generalised linear latent variable
+  models with TMB.* R package version 0.2.0.
+- **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
+  Bell BM (2016). *TMB: Automatic Differentiation and Laplace
+  Approximation.* Journal of Statistical Software, 70(5), 1-21.
+  <doi:10.18637/jss.v070.i05>
+- **sdmTMB (when using `spatial_*()` keywords)**: Anderson SC,
+  Ward EJ, English PA, Barnett LAK, Thorson JT (2025). *sdmTMB:
+  An R Package for Fast, Flexible, and User-Friendly Generalized
+  Linear Mixed Effects Models with Spatial and Spatiotemporal
+  Random Fields.* Journal of Statistical Software, 115(2), 1-36.
+  <doi:10.18637/jss.v115.i02>
+
+gllvmTMB inherits SPDE / mesh / anisotropy R helpers (`R/mesh.R`,
+`R/crs.R`, parts of `R/plot.R`) from `sdmTMB` (Sean C. Anderson,
+Eric J. Ward, Philina A. English, Lewis A. K. Barnett) under
+GPL-3. Provenance is recorded in `inst/COPYRIGHTS`, and the
+inherited R files carry file-top comments pointing at that file.
+TMB itself is a runtime dependency rather than included code; the
+gllvmTMB C++ engine in `src/gllvmTMB.cpp` is original work by the
+package author, written against the TMB API.
 
 ## Sister packages
 

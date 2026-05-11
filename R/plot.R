@@ -1,3 +1,9 @@
+## The `plot_anisotropy()` / `plot_anisotropy2()` routines below
+## are inherited via sdmTMB (https://github.com/pbs-assess/sdmTMB)
+## from VAST (James Thorson) and the TMB anisotropy R example
+## (Kasper Kristensen). All upstream paths are GPL-3. Provenance
+## is recorded in `inst/COPYRIGHTS`.
+
 #' Plot anisotropy from a gllvmTMB model
 #'
 #' Anisotropy is when spatial correlation is directionally dependent.

@@ -52,10 +52,20 @@ gone.
   covariance-correlation, functional-biogeography, pitfalls. The
   `article-tier-audit` skill encodes the triage.
 
-* Authors@R cph list trimmed from 21 entries to 5: Nakagawa
-  (gllvmTMB-native code), Anderson + Ward + English + Barnett
-  (inherited sdmTMB SPDE/mesh code in `R/mesh.R`, `R/crs.R`,
-  `R/plot.R`'s `plot_anisotropy*`), and Kristensen (TMB).
+* Authors@R lists only Shinichi Nakagawa (the sole author of
+  gllvmTMB). Upstream copyright holders for inherited code
+  (Anderson, Ward, English, Barnett for sdmTMB SPDE / mesh /
+  anisotropy R helpers; Kristensen for TMB; Thorson for VAST
+  transitively via sdmTMB) are acknowledged in `inst/COPYRIGHTS`,
+  `inst/CITATION`, README, and file-top comments of the inherited
+  R files. This matches the CRAN-recommended pattern in "Writing
+  R Extensions" §1.1.1 (use a `Copyright: inst/COPYRIGHTS` field
+  rather than `cph` entries in Authors@R for inherited-code
+  copyright holders) and the drmTMB author convention.
+* New `inst/CITATION` curates `citation("gllvmTMB")` -- primary
+  entry is the (in-prep) Nakagawa methods paper; companion
+  entries cite Kristensen et al. (2016) for TMB and Anderson
+  et al. (2025) for sdmTMB when the spatial path is used.
 
 ## Bug fixes
 

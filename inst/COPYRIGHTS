@@ -24,16 +24,34 @@
 ## (`add_utm_columns()`), and R/plot.R (`plot_anisotropy()` /
 ## `plot_anisotropy2()`) are inherited from sdmTMB
 ## (https://github.com/pbs-assess/sdmTMB), with minimal API and
-## naming changes. sdmTMB is GPL-3 licensed; the upstream copyright
-## holders are credited under DESCRIPTION 'Authors@R'.
+## naming changes. sdmTMB is GPL-3 licensed.
 ##
-## TMB engine (inst/tmb/gllvmTMB_multi.cpp)
+## Upstream copyright holders of the inherited sdmTMB code:
 ##
-## The C++ template under inst/tmb/gllvmTMB_multi.cpp is original
-## gllvmTMB-native code by Shinichi Nakagawa, written against the TMB
-## API (Kristensen et al. 2016, https://github.com/kaskr/adcomp).
-## TMB itself is GPL-2/GPL-3 licensed; Kasper Kristensen is credited
-## as a copyright holder.
+##   * Sean C. Anderson  (ORCID: 0000-0001-9563-1937)
+##   * Eric J. Ward      (ORCID: 0000-0002-4359-0296)
+##   * Philina A. English (ORCID: 0000-0003-2992-6782)
+##   * Lewis A. K. Barnett (ORCID: 0000-0002-9381-8375)
+##
+## See the upstream sdmTMB DESCRIPTION at
+## https://github.com/pbs-assess/sdmTMB for the full sdmTMB author
+## list.
+##
+## TMB engine (src/gllvmTMB.cpp)
+##
+## The C++ template under src/gllvmTMB.cpp is original gllvmTMB-
+## native code by Shinichi Nakagawa, written against the TMB API
+## (Kristensen et al. 2016, https://github.com/kaskr/adcomp). TMB is
+## a runtime dependency (Imports + LinkingTo in DESCRIPTION) rather
+## than included source.
+##
+## Upstream copyright holder of TMB:
+##
+##   * Kasper Kristensen (TMB author, https://github.com/kaskr/adcomp)
+##
+## TMB itself is GPL-2/GPL-3 licensed. See the upstream TMB
+## DESCRIPTION at https://github.com/kaskr/adcomp for the full TMB
+## author list.
 ##
 ## Anisotropy plotting (R/plot.R)
 ##
@@ -41,3 +59,12 @@
 ## adapted via sdmTMB from VAST (James Thorson) and the TMB
 ## anisotropy R example (Kasper Kristensen). Both upstream paths are
 ## GPL-3.
+##
+## Upstream copyright holders of the anisotropy-plot routines
+## (transitive, via sdmTMB):
+##
+##   * James T. Thorson (VAST author,
+##     https://github.com/James-Thorson-NOAA/VAST,
+##     ORCID: 0000-0001-7415-1010)
+##   * Kasper Kristensen (TMB anisotropy R example,
+##     https://github.com/kaskr/adcomp)

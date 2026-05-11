@@ -218,3 +218,69 @@ This decision is referenced from
 `docs/design/02-data-shape-and-weights.md` "Out Of Scope". Codex
 should not implement A or B in the Phase 3 implementation PR; only
 ensure new article examples and roxygen blocks prefer `cbind()`.
+
+## 2026-05-11  Citation policy: Path A (Authors@R = gllvmTMB authors only)
+
+Decision: `DESCRIPTION` `Authors@R` lists only the actual author(s)
+of `gllvmTMB`. Upstream copyright holders for inherited code
+(`R/mesh.R`, `R/crs.R`, `R/plot.R`'s `plot_anisotropy*`) are
+acknowledged in five other places, every one more visible than a
+buried `cph` block:
+
+- `inst/COPYRIGHTS` -- canonical license / provenance file, now
+  the single source of truth for inherited-code copyright; lists
+  Anderson + Ward + English + Barnett (sdmTMB) with ORCIDs and
+  Kristensen (TMB) plus Thorson (VAST, transitive) by name.
+- `inst/CITATION` (new) -- curates `citation("gllvmTMB")` with the
+  Nakagawa methods paper as primary and Kristensen et al. (2016)
+  + Anderson et al. (2025) as recommended companions.
+- `DESCRIPTION` Description text -- cites Kristensen et al.
+  (2016), Anderson et al. (2025), and Hadfield & Nakagawa (2010)
+  with DOIs.
+- `README.md` "Citation and acknowledgements" -- formatted entries
+  + a paragraph naming the four sdmTMB authors and the TMB
+  dependency.
+- File-top comments in `R/mesh.R`, `R/crs.R`, `R/plot.R` --
+  point at `inst/COPYRIGHTS` for provenance.
+
+Alternatives considered and not chosen:
+
+- **Path B (sdmTMB-style maximal cph)**: list Anderson + Ward +
+  English + Barnett + Kristensen as `cph` in Authors@R. This is
+  the current state and is also CRAN-compliant. Rejected because
+  the field name "Authors@R" reads as "authors", and these people
+  are upstream copyright holders, not authors of `gllvmTMB`.
+- **Path C (drmTMB-style minimal, no extra acknowledgment)**:
+  Authors@R = Nakagawa only, no other changes. Rejected because
+  gllvmTMB actually includes external code (unlike drmTMB), so
+  the acknowledgment scaffolding (`inst/COPYRIGHTS`, README,
+  inst/CITATION, file headers) is appropriate.
+- **Add James Thorson as `cph` in Authors@R**: rejected because
+  the VAST adaptation reached gllvmTMB transitively through
+  sdmTMB; sdmTMB itself credits Thorson for its direct VAST
+  inheritance. The `inst/COPYRIGHTS` mention is the right scope
+  for transitive provenance.
+
+Rationale: CRAN's "Writing R Extensions" §1.1.1 explicitly
+supports the Path A pattern: *"If anyone other than the author(s)
+has copyright in the package then this should be declared in the
+DESCRIPTION file, usually by including a 'Copyright' field which
+points to a file COPYRIGHTS in the inst directory."* The
+`Copyright: inst/COPYRIGHTS` line already exists in DESCRIPTION;
+Path A simply leans on it as the design intended, rather than
+duplicating the same info in Authors@R.
+
+Visibility audit:
+
+- README readers see acknowledgment in the new "Citation and
+  acknowledgements" section.
+- `citation("gllvmTMB")` users see all three curated entries.
+- `?make_mesh` / `?add_utm_columns` / `?plot_anisotropy` users
+  see file-top provenance comments above the roxygen.
+- Anyone reading DESCRIPTION sees four DOIs and a pointer to
+  `inst/COPYRIGHTS`.
+- Anyone reading `inst/COPYRIGHTS` sees ORCIDs and the upstream
+  repo URLs.
+
+Net effect: upstream acknowledgment is more visible after Path A
+than before, despite the Authors@R cleanup.

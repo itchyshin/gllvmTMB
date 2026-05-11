@@ -30,44 +30,10 @@ observational level (individuals), several continuous traits per
 individual, and shared low-rank covariance between traits. No
 phylogeny, no spatial structure, no nesting. This article walks
 through that model end-to-end.
-
-## The model
-
-For each individual $i = 1, \dots, n$ we observe a vector of trait
-measurements $\mathbf{y}_i = (y_{i1}, \dots, y_{iT})^\top$ — for
-example, body length, mass, wing chord, tarsus, bill depth in a
-sparrow study; tail length, fin span, gill area in a fish study; or
-six items on a psychometric scale in a behavioural study. The
-reduced-rank GLLVM is
-
-$$
-y_{it} \;=\; \mu_t \;+\; \boldsymbol{\lambda}_t^{\!\top} \mathbf{u}_i \;+\;
-\varepsilon_{it},
-\qquad
-\mathbf{u}_i \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_d), \quad
-\varepsilon_{it} \sim \mathcal{N}(0, S_{tt}),
-$$
-
-where $\boldsymbol{\lambda}_t \in \mathbb{R}^d$ is the loading vector
-for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
-individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
-with variance $S_{tt}$ (the *unique* variance of trait $t$, collected
-on the diagonal of $\mathbf S$). The implied between-individual trait
-covariance is
-
-$$
-\boldsymbol{\Sigma}_B
-\;=\;
-\underbrace{\boldsymbol{\Lambda} \boldsymbol{\Lambda}^{\!\top}}_{\text{shared}}
-\;+\;
-\underbrace{\mathbf S}_{\text{unique}},
-\qquad \boldsymbol{\Lambda} \in \mathbb{R}^{T \times d}.
-$$
-
-For $T = 5$ traits and $d = 2$ factors this represents the trait
-covariance with $T \cdot d = 10$ parameters instead of the
-unstructured $T(T+1)/2 = 15$. The savings get larger as $T$ grows
-relative to $d$ — that is the *point* of GLLVMs.
+The working question is simple: if five body measurements are all
+partly driven by size and shape, can a rank-2 GLLVM recover that
+shared structure and still leave trait-specific variation on the
+diagonal?
 
 ## Setup
 
@@ -108,6 +74,14 @@ s2_true <- c(length = 0.15, mass = 0.10, wing = 0.20, tarsus = 0.12, bill = 0.18
 u <- matrix(rnorm(n_ind * 2), n_ind, 2)
 eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(s2_true[t])))
 Y <- u %*% t(Lambda_true) + eps
+colnames(Y) <- trait_names
+
+# Wide-format data: one row per individual, one column per trait
+df_wide <- data.frame(
+  individual = factor(seq_len(n_ind)),
+  Y,
+  check.names = FALSE
+)
 
 # Long-format data: one row per (individual, trait)
 df <- data.frame(
@@ -134,19 +108,37 @@ round(Sigma_true, 2)
 
 ## Fit
 
-The formula includes both a reduced-rank factor term (`latent()`) for
-the shared covariance and a trait-specific unique variance term
-(`unique()`):
+The same model can be fitted from long or wide data. The long form is
+canonical because it makes the `(individual, trait)` rows explicit;
+the wide form is the convenience equivalent for readers who already
+have one row per individual and one column per trait.
 
 ```{r fit}
-fit <- gllvmTMB(
+# Long format (canonical)
+fit_long <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | individual, d = 2) +
           unique(0 + trait | individual),
   data = df,
   unit = "individual"      # tell the engine which column groups observations
 )
+
+# Wide format (convenience; same model)
+fit_wide <- gllvmTMB(
+  traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
+          latent(0 + trait | individual, d = 2) +
+          unique(0 + trait | individual),
+  data = df_wide,
+  unit = "individual"
+)
+
+# The rest of the article uses the canonical long-format fit.
+fit <- fit_long
 fit
+
+cat("Long/wide logLik difference:",
+    signif(abs(as.numeric(logLik(fit_long)) - as.numeric(logLik(fit_wide))), 3),
+    "\n")
 ```
 
 gllvmTMB defaults to `unit = "site"`, meaning it looks for a column
@@ -154,6 +146,52 @@ literally named `site` in the data. This morphometric data set has no
 `site` column — the grouping factor is `individual`. Passing
 `unit = "individual"` redirects the engine to the correct column;
 everything else is standard GLLVM machinery.
+
+`traits(length, mass, wing, tarsus, bill)` is the formula-level
+wide-data marker. It tells `gllvmTMB()` which columns are response
+traits; the right-hand side of the formula is unchanged. If you
+already have a numeric response matrix rather than a data frame,
+`gllvmTMB_wide(Y, ...)` is the matrix-in entry point.
+
+## What model did we fit?
+
+For each individual $i = 1, \dots, n$ we observe a vector of trait
+measurements $\mathbf{y}_i = (y_{i1}, \dots, y_{iT})^\top$ — for
+example, body length, mass, wing chord, tarsus, bill depth in a
+sparrow study; tail length, fin span, gill area in a fish study; or
+six items on a psychometric scale in a behavioural study. The
+reduced-rank GLLVM is
+
+$$
+y_{it} \;=\; \mu_t \;+\; \boldsymbol{\lambda}_t^{\!\top} \mathbf{u}_i \;+\;
+\varepsilon_{it},
+\qquad
+\mathbf{u}_i \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_d), \quad
+\varepsilon_{it} \sim \mathcal{N}(0, S_{tt}),
+$$
+
+where $\boldsymbol{\lambda}_t \in \mathbb{R}^d$ is the loading vector
+for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
+individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
+with variance $S_{tt}$. The `unique()` term collects those residual
+variances on the diagonal of $\mathbf S$. The implied
+between-individual trait covariance is
+
+$$
+\boldsymbol{\Sigma}_B
+\;=\;
+\underbrace{\boldsymbol{\Lambda} \boldsymbol{\Lambda}^{\!\top}}_{\text{shared}}
+\;+\;
+\underbrace{\mathbf S}_{\text{unique}},
+\qquad \boldsymbol{\Lambda} \in \mathbb{R}^{T \times d}.
+$$
+
+For $T = 5$ traits and $d = 2$ factors this is still a small example;
+the practical gain is interpretability, not a dramatic parameter
+saving. As $T$ grows, the low-rank part scales with $T \cdot d$
+loadings rather than the full $T(T + 1) / 2$ covariance surface. That
+low-rank structure is the point of GLLVMs: shared biological axes
+first, trait-specific variation second.
 
 > **`+ unique(0 + trait | individual)` with cross-sectional data.**
 > With cross-sectional data (one observation per individual per
@@ -233,23 +271,23 @@ ggplot(df_corr, aes(trait_j, trait_i, fill = rho)) +
 > above) fills in the diagonal correctly. Use `part = "shared"` /
 > `part = "unique"` to pull just one component.
 
-## Pairwise correlations and communality, with 95% CIs
+## Pairwise correlations and communality
 
 For inference on individual cross-trait correlations or per-trait
 communality, the canonical extractors return tidy data frames.
 `extract_correlations()` defaults to `method = "fisher-z"` (fast
 Fisher-transform Wald CI; bounds guaranteed in $[-1, 1]$).
-`extract_communality()` still defaults to `method = "profile"`; we
-override to `"wald"` in this rendered article for fast turnaround.
-`method = "bootstrap"` is available in either extractor for full
-sampling-distribution CIs.
+Communality point estimates are enough for this first worked example.
+When interval estimates matter, prefer profile or Wald-style intervals
+where the target supports them. Bootstrap is a slower, deliberate option
+for a separate cached check, not part of this rendered article.
 
 ```{r ci-correlations}
 extract_correlations(fit, tier = "unit")
 ```
 
 ```{r ci-communality}
-extract_communality(fit, level = "unit", ci = TRUE, method = "wald")
+extract_communality(fit, level = "unit")
 ```
 
 Communality $c_t^2 = (\boldsymbol\Lambda\boldsymbol\Lambda^{\!\top})_{tt} / \boldsymbol\Sigma_{B,tt}$
@@ -261,7 +299,10 @@ $c_t^2$ means trait-specific variation dominates.
 
 A single fit cannot tell you whether the model is recovering truth
 or just one lucky draw. Repeat over `R = 20` independently simulated
-datasets and look at the distribution of the bias:
+datasets and look at the distribution of the bias. The loop uses the
+same long/wide formula pair as above; it checks the wide equivalent on
+the first replicate only, so the article does not double the cost of
+every recovery fit.
 
 ```{r recover-replicates, fig.height = 4}
 run_one <- function(seed) {
@@ -269,18 +310,37 @@ run_one <- function(seed) {
   u   <- matrix(rnorm(n_ind * 2), n_ind, 2)
   eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(s2_true[t])))
   Y   <- u %*% t(Lambda_true) + eps
+  colnames(Y) <- trait_names
+  df_rep_wide <- data.frame(
+    individual = factor(seq_len(n_ind)),
+    Y,
+    check.names = FALSE
+  )
   df_rep <- data.frame(
     individual = factor(rep(seq_len(n_ind), each = T)),
     trait      = factor(rep(trait_names, n_ind), levels = trait_names),
     value      = as.vector(t(Y))
   )
-  fit_rep <- suppressMessages(suppressWarnings(gllvmTMB(
+
+  fit_rep_long <- suppressMessages(suppressWarnings(gllvmTMB(
     value ~ 0 + trait +
             latent(0 + trait | individual, d = 2) +
             unique(0 + trait | individual),
     data = df_rep, unit = "individual"
   )))
-  Sigma_hat_rep <- extract_Sigma(fit_rep, level = "unit")$Sigma
+  if (identical(seed, 1L)) {
+    fit_rep_wide <- suppressMessages(suppressWarnings(gllvmTMB(
+      traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
+              latent(0 + trait | individual, d = 2) +
+              unique(0 + trait | individual),
+      data = df_rep_wide, unit = "individual"
+    )))
+    stopifnot(
+      abs(as.numeric(logLik(fit_rep_long)) -
+            as.numeric(logLik(fit_rep_wide))) < 1e-6
+    )
+  }
+  Sigma_hat_rep <- extract_Sigma(fit_rep_long, level = "unit")$Sigma
   data.frame(
     seed = seed,
     entry = paste0("[", rep(1:T, each = T), ",", rep(1:T, T), "]"),
@@ -327,12 +387,50 @@ cross-trait modelling) — are also valid keywords. Refit the same data
 under each to see what the user actually loses or gains.
 
 ```{r dep-indep-compare, message = FALSE, warning = FALSE}
-fit_full  <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | individual, d = T),
-                      data = df, unit = "individual")
-fit_dep   <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | individual),
-                      data = df, unit = "individual")
-fit_indep <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | individual),
-                      data = df, unit = "individual")
+fit_full_long <- gllvmTMB(
+  value ~ 0 + trait +
+          latent(0 + trait | individual, d = T),
+  data = df, unit = "individual"
+)
+fit_full_wide <- gllvmTMB(
+  traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
+          latent(0 + trait | individual, d = T),
+  data = df_wide, unit = "individual"
+)
+
+fit_dep_long <- gllvmTMB(
+  value ~ 0 + trait +
+          dep(0 + trait | individual),
+  data = df, unit = "individual"
+)
+fit_dep_wide <- gllvmTMB(
+  traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
+          dep(0 + trait | individual),
+  data = df_wide, unit = "individual"
+)
+
+fit_indep_long <- gllvmTMB(
+  value ~ 0 + trait +
+          indep(0 + trait | individual),
+  data = df, unit = "individual"
+)
+fit_indep_wide <- gllvmTMB(
+  traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
+          indep(0 + trait | individual),
+  data = df_wide, unit = "individual"
+)
+
+fit_full  <- fit_full_long
+fit_dep   <- fit_dep_long
+fit_indep <- fit_indep_long
+
+cat("Max long/wide logLik difference across comparison fits:",
+    signif(max(abs(c(
+      as.numeric(logLik(fit_full_long)) - as.numeric(logLik(fit_full_wide)),
+      as.numeric(logLik(fit_dep_long)) - as.numeric(logLik(fit_dep_wide)),
+      as.numeric(logLik(fit_indep_long)) - as.numeric(logLik(fit_indep_wide))
+    ))), 3),
+    "\n")
 
 S1 <- extract_Sigma(fit,       level = "unit")$Sigma
 S2 <- extract_Sigma(fit_full,  level = "unit")$Sigma
@@ -395,13 +493,15 @@ between packages, rotate to a standard convention (varimax for
 interpretability, or lower-triangular for a unique fit):
 
 ```{r rotate}
-L_hat <- getLoadings(fit, level = "unit")
+L_hat <- extract_ordination(fit, level = "unit")$loadings
 rot   <- rotate_loadings(fit, level = "unit", method = "varimax")
 round(rot$Lambda, 2)
 ```
 
 ```{r ordi, fig.height = 5}
-ordiplot(fit, level = "unit", biplot = TRUE)
+ord <- extract_ordination(fit, level = "unit")
+head(ord$scores)
+plot(fit, type = "ordination", level = "unit")
 ```
 
 The biplot shows the trait loadings on the two latent axes. In a

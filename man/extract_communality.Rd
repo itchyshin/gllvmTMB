@@ -18,7 +18,8 @@ extract_communality(
 \arguments{
 \item{fit}{A \code{gllvmTMB_multi} object.}
 
-\item{level}{\code{"B"} (global / between-unit) or \code{"W"} (local / within-unit).}
+\item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
+Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
 
 \item{link_residual}{For binomial fits: \code{"auto"} (default) adds the
 link-specific implicit residual to the denominator; \code{"none"} returns
@@ -31,8 +32,8 @@ plain named numeric vector for backward compatibility.}
 \item{conf_level}{Confidence level when \code{ci = TRUE}. Default 0.95.}
 
 \item{method}{One of \code{"profile"} (default), \code{"wald"}, \code{"bootstrap"}.
-Only used when \code{ci = TRUE}. Profile uses Lagrange-style fix-and-refit;
-bootstrap is the recommended fallback for unstable cases.}
+Only used when \code{ci = TRUE}. Prefer profile or Wald-style intervals where
+available; bootstrap is a slower option for deliberate sampling checks.}
 
 \item{nsim}{Number of bootstrap replicates when \code{method = "bootstrap"}.
 Default 500.}

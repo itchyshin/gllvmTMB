@@ -14,8 +14,8 @@
 #' Rotate the loadings of a fitted `gllvmTMB_multi` model
 #'
 #' Applies a post-hoc rotation (e.g. varimax) to the loading matrix
-#' \eqn{\Lambda} of either the global (`level = "B"`) or local
-#' (`level = "W"`) reduced-rank component. The latent scores are
+#' \eqn{\Lambda} of either the between-unit (`level = "unit"`) or
+#' within-unit (`level = "unit_obs"`) reduced-rank component. The latent scores are
 #' rotated by the inverse transform so the linear predictor (and the
 #' fitted log-likelihood) is unchanged; only the *parameterisation*
 #' changes.
@@ -26,8 +26,8 @@
 #' patterns.
 #'
 #' @param fit A `gllvmTMB_multi` fit.
-#' @param level `"B"` (global / between-site) or `"W"` (local /
-#'   within-site).
+#' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
+#'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
 #' @param method One of `"varimax"`, `"promax"`, or `"none"`.
 #'
 #' @return A list with rotated `Lambda` (n_traits × d), rotated
@@ -60,8 +60,8 @@
 #'                         latent(0 + trait | site, d = 2) +
 #'                         unique(0 + trait | site),
 #'                 data = sim$data)
-#' raw <- extract_ordination(fit, "B")
-#' rot <- rotate_loadings(fit, level = "B", method = "varimax")
+#' raw <- extract_ordination(fit, "unit")
+#' rot <- rotate_loadings(fit, level = "unit", method = "varimax")
 #' # raw$loadings - lower-triangular (hard to read)
 #' # rot$Lambda  - varimax-rotated (typically simpler structure)
 #' }
@@ -74,7 +74,7 @@ rotate_loadings <- function(fit,
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("Pass a gllvmTMB_multi fit.")
 
-  ord <- extract_ordination(fit, level = level)
+  ord <- extract_ordination(fit, level = .canonical_level_name(level))
   if (is.null(ord))
     cli::cli_abort("latent() not active at level {.val {level}}; nothing to rotate.")
   Lambda <- ord$loadings

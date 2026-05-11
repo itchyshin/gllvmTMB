@@ -13,14 +13,16 @@ getLV(
 \arguments{
 \item{fit}{A \code{gllvmTMB_multi} fit.}
 
-\item{level}{\code{"B"} (global / between-site) or \code{"W"} (local / within-site).}
+\item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
+Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
 
 \item{rotate}{Optional \code{"varimax"} or \code{"promax"} post-hoc rotation.
 Default \code{"none"} returns the engine's native lower-triangular Λ.}
 }
 \value{
-A matrix with one row per unit (level "B") or one row per
-within-unit observation (level "W"), and one column per latent factor.
+A matrix with one row per unit (\code{level = "unit"}) or one row per
+within-unit observation (\code{level = "unit_obs"}), and one column per
+latent factor.
 }
 \description{
 Wraps \code{\link[=extract_ordination]{extract_ordination()}}'s \verb{$scores} for users coming from
@@ -28,7 +30,7 @@ Wraps \code{\link[=extract_ordination]{extract_ordination()}}'s \verb{$scores} f
 }
 \examples{
 \dontrun{
-getLV(fit, level = "B")
+getLV(fit, level = "unit")
 }
 }
 \seealso{

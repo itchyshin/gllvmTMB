@@ -13,7 +13,8 @@ getLoadings(
 \arguments{
 \item{fit}{A \code{gllvmTMB_multi} fit.}
 
-\item{level}{\code{"B"} (global / between-site) or \code{"W"} (local / within-site).}
+\item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
+Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
 
 \item{rotate}{Optional \code{"varimax"} or \code{"promax"} post-hoc rotation.
 Default \code{"none"} returns the engine's native lower-triangular Λ.}
@@ -26,7 +27,7 @@ Wraps \code{\link[=extract_ordination]{extract_ordination()}} for users coming f
 }
 \examples{
 \dontrun{
-getLoadings(fit, level = "B", rotate = "varimax")
+getLoadings(fit, level = "unit", rotate = "varimax")
 }
 }
 \seealso{

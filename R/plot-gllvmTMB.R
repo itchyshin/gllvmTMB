@@ -12,8 +12,8 @@
 #'
 #' \describe{
 #'   \item{`"correlation"`}{Combined heatmap of trait correlations.
-#'     Upper triangle = between-unit correlations (`level = "B"`),
-#'     lower triangle = within-unit correlations (`level = "W"`),
+#'     Upper triangle = between-unit correlations (`level = "unit"`),
+#'     lower triangle = within-unit correlations (`level = "unit_obs"`),
 #'     diagonal = 1. Falls back to whichever level is present if the
 #'     other tier is absent.}
 #'   \item{`"loadings"`}{Tile heatmap of `Lambda_B` (and `Lambda_W` if
@@ -35,12 +35,14 @@
 #' @param x A `gllvmTMB_multi` fit.
 #' @param type One of `"correlation"`, `"loadings"`, `"integration"`,
 #'   `"variance"`, `"ordination"`.
-#' @param level `"B"` (between-unit) or `"W"` (within-unit). Used by
-#'   `"loadings"` (which level to plot; the default `c("B", "W")`
-#'   means "both available levels, faceted side-by-side"; pass a
-#'   length-1 string to plot one tier) and `"ordination"` (single level
-#'   required, default `"B"`). Ignored for `"correlation"` (which always
-#'   shows both if available), `"integration"`, and `"variance"`.
+#' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
+#'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
+#'   Used by `"loadings"` (which level to plot; the default
+#'   `c("unit", "unit_obs")` means "both available levels, faceted
+#'   side-by-side"; pass a length-1 string to plot one tier) and
+#'   `"ordination"` (single level required, default `"unit"`). Ignored for
+#'   `"correlation"` (which always shows both if available), `"integration"`,
+#'   and `"variance"`.
 #'
 #'   *Note*: the default `level = c("unit", "unit_obs")` is intentionally a
 #'   length-2 vector, not the usual `match.arg` shortcut. The dispatcher
@@ -137,11 +139,11 @@ plot.gllvmTMB_multi <- function(x,
   )
 
   subtitle <- if (!is.null(R_B) && !is.null(R_W)) {
-    "Upper triangle: between (B)  |  Lower triangle: within (W)"
+    "Upper triangle: between-unit  |  Lower triangle: within-unit"
   } else if (!is.null(R_B)) {
-    "Between-unit (B) only"
+    "Between-unit only"
   } else {
-    "Within-unit (W) only"
+    "Within-unit only"
   }
 
   ggplot2::ggplot(dat,
@@ -182,7 +184,9 @@ plot.gllvmTMB_multi <- function(x,
   tn <- .gtmb_trait_names(fit)
   rows <- list()
   for (lv in levels_to_plot) {
-    L <- suppressMessages(getLoadings(fit, level = lv, rotate = "none"))
+    L <- suppressMessages(getLoadings(
+      fit, level = .canonical_level_name(lv), rotate = "none"
+    ))
     if (is.null(L)) next
     if (is.null(rownames(L))) rownames(L) <- tn
     constraint <- fit$lambda_constraint[[lv]]
@@ -195,7 +199,7 @@ plot.gllvmTMB_multi <- function(x,
         trait   = rownames(L),
         factor  = paste0("LV", j),
         loading = L[, j],
-        level   = paste0("Level ", lv),
+        level   = paste0("Level ", .canonical_level_name(lv)),
         pinned  = pinned,
         stringsAsFactors = FALSE
       )
@@ -369,16 +373,19 @@ plot.gllvmTMB_multi <- function(x,
 # ---- ordination biplot ----------------------------------------------------
 
 .plot_ordination_gtmb <- function(fit, level, axes = c(1L, 2L)) {
-  ## The dispatcher's default is the c("B","W") match.arg vector; for
+  ## The dispatcher's default is the c("B","W") internal vector; for
   ## ordination the user must pick one explicitly.
   if (missing(level) || is.null(level) || length(level) != 1L)
-    cli::cli_abort("Specify a single {.arg level} for ordination: {.val B} or {.val W}.")
+    cli::cli_abort("Specify a single {.arg level} for ordination: {.val unit} or {.val unit_obs}.")
   if (!level %in% c("B", "W"))
-    cli::cli_abort("{.arg level} must be {.val B} or {.val W}.")
+    cli::cli_abort("{.arg level} must be {.val unit} or {.val unit_obs}.")
+  level_label <- .canonical_level_name(level)
 
-  ord <- suppressMessages(extract_ordination(fit, level = level))
+  ord <- suppressMessages(extract_ordination(
+    fit, level = level_label
+  ))
   if (is.null(ord))
-    cli::cli_abort("No {.code latent()} term at level {.val {level}}; nothing to plot.")
+    cli::cli_abort("No {.code latent()} term at level {.val {level_label}}; nothing to plot.")
 
   L  <- ord$loadings
   Sc <- ord$scores
@@ -425,7 +432,7 @@ plot.gllvmTMB_multi <- function(x,
         vjust = -0.5, size = 3.5
       ) +
       ggplot2::labs(x = "LV1", y = NULL,
-                    title = paste0("Level ", level, ": 1D ordination")) +
+                    title = paste0("Level ", level_label, ": 1D ordination")) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
         axis.text.y  = ggplot2::element_blank(),
@@ -438,7 +445,7 @@ plot.gllvmTMB_multi <- function(x,
   if (length(axes) != 2L)
     cli::cli_abort("{.arg axes} must be length 2.")
   if (max(axes) > d)
-    cli::cli_abort("Requested {.arg axes = c({axes[1L]}, {axes[2L]})} exceed d_{level} = {d}.")
+    cli::cli_abort("Requested {.arg axes = c({axes[1L]}, {axes[2L]})} exceed d_{level_label} = {d}.")
   a1 <- axes[1L]; a2 <- axes[2L]
 
   dat_s <- data.frame(
@@ -480,7 +487,7 @@ plot.gllvmTMB_multi <- function(x,
     ggplot2::labs(
       x = paste0("LV", a1),
       y = paste0("LV", a2),
-      title = paste0("Level ", level, ": ordination biplot")
+      title = paste0("Level ", level_label, ": ordination biplot")
     ) +
     ggplot2::theme_minimal()
 }

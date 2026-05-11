@@ -11,7 +11,8 @@
 #' Wraps [extract_ordination()] for users coming from `gllvm::getLoadings()`.
 #'
 #' @param fit A `gllvmTMB_multi` fit.
-#' @param level `"B"` (global / between-site) or `"W"` (local / within-site).
+#' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
+#'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
 #' @param rotate Optional `"varimax"` or `"promax"` post-hoc rotation.
 #'   Default `"none"` returns the engine's native lower-triangular Λ.
 #' @return An `n_traits × d` numeric matrix.
@@ -21,7 +22,7 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' getLoadings(fit, level = "B", rotate = "varimax")
+#' getLoadings(fit, level = "unit", rotate = "varimax")
 #' }
 getLoadings <- function(fit,
                         level  = c("unit", "unit_obs", "B", "W"),
@@ -44,10 +45,10 @@ getLoadings <- function(fit,
       ))
     }
   }
-  ord <- extract_ordination(fit, level = level)
+  ord <- extract_ordination(fit, level = .canonical_level_name(level))
   if (is.null(ord)) return(NULL)
   if (rotate == "none") return(ord$loadings)
-  rotate_loadings(fit, level, rotate)$Lambda
+  rotate_loadings(fit, .canonical_level_name(level), rotate)$Lambda
 }
 
 #' Latent-variable scores from a `gllvmTMB_multi` fit
@@ -56,14 +57,15 @@ getLoadings <- function(fit,
 #' `gllvm::getLV()`.
 #'
 #' @inheritParams getLoadings
-#' @return A matrix with one row per unit (level "B") or one row per
-#'   within-unit observation (level "W"), and one column per latent factor.
+#' @return A matrix with one row per unit (`level = "unit"`) or one row per
+#'   within-unit observation (`level = "unit_obs"`), and one column per
+#'   latent factor.
 #' @seealso [extract_ordination()] for the canonical interface.
 #' @keywords internal
 #' @export
 #' @examples
 #' \dontrun{
-#' getLV(fit, level = "B")
+#' getLV(fit, level = "unit")
 #' }
 getLV <- function(fit,
                   level  = c("unit", "unit_obs", "B", "W"),
@@ -71,16 +73,16 @@ getLV <- function(fit,
   level  <- match.arg(level)
   level  <- .normalise_level(level, arg_name = "level")
   rotate <- match.arg(rotate)
-  ord <- extract_ordination(fit, level = level)
+  ord <- extract_ordination(fit, level = .canonical_level_name(level))
   if (is.null(ord)) return(NULL)
   if (rotate == "none") return(ord$scores)
-  rotate_loadings(fit, level, rotate)$scores
+  rotate_loadings(fit, .canonical_level_name(level), rotate)$scores
 }
 
 #' Implied residual covariance / correlation matrix
 #'
 #' \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \mathrm{diag}(s_X^2)} for
-#' `level = "B"` or `"W"`. `getResidualCor` returns the corresponding
+#' `level = "unit"` or `"unit_obs"`. `getResidualCor` returns the corresponding
 #' correlation matrix. Useful diagnostic when comparing the global vs
 #' local trait covariance.
 #'

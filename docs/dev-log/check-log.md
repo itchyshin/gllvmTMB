@@ -114,6 +114,100 @@ Decision: this repair deliberately does not reduce R-CMD-check runtime
 or add `RUN_SLOW_TESTS` gating. The immediate fix is cleaner feedback
 sequencing and clearer public/project instructions.
 
+## 2026-05-11 (Claude) Add long + wide example pairing convention
+
+Added a writing-style rule to `AGENTS.md`: user-facing prose (README,
+vignettes, Tier-1 articles) must show both the long-format and the
+wide-format `gllvmTMB` call side by side. Rationale captured in
+`docs/dev-log/decisions.md` under "User-facing examples pair long +
+wide". Applies from 2026-05-11 onwards; the Priority 2 article-rewrite
+PR will be the first application.
+
+No package code or NAMESPACE changes. Documentation rule only.
+
+## 2026-05-11 -- Roadmap and Claude/Codex collaboration rules
+
+Scope:
+
+- rewrote `ROADMAP.md` from a legacy phase list into a current shared
+  map: reader path, public surface, long/wide data-shape contract,
+  feedback time, CRAN readiness, methods paper, and extensions;
+- added explicit collaboration stops to `ROADMAP.md` and
+  `docs/dev-log/claude-group-handoff-2026-05-11.md`;
+- updated `CLAUDE.md` so Claude Code uses the propose / discuss /
+  implement rhythm rather than running broad implementation work
+  without a maintainer checkpoint;
+- preserved the user-facing long-format plus wide-format example rule
+  in `AGENTS.md`.
+
+Checks:
+
+- documentation-only change; no R code, likelihood, formula grammar,
+  NAMESPACE, generated Rd, or pkgdown navigation changed;
+- reviewed the open GitHub PRs before editing: Priority 2 audit
+  (`agent/priority-2-audit`), logo/favicons
+  (`agent/logo-favicon`), and extractor examples
+  (`agent/extractor-examples`) have non-overlapping file scopes with
+  this roadmap update.
+
+## 2026-05-11 -- Shannon coordination audit role
+
+Scope:
+
+- added `.agents/skills/shannon-coordination-audit/SKILL.md`;
+- documented Shannon in `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`,
+  `ROADMAP.md`, and `docs/dev-log/decisions.md`;
+- created an after-task report for the Shannon role addition.
+
+Checks:
+
+- documentation-only change; no R code, likelihood, formula grammar,
+  NAMESPACE, generated Rd, pkgdown navigation, or article source
+  changed;
+- Shannon is scoped as read-only and checkpoint-invoked, not as a
+  continuous overseer.
+
+## 2026-05-11 -- post-PR-#8-merge pkgdown workflow_run verification
+
+Scope:
+
+- after PR #8 merged to `main` at commit `ae771f8` on 2026-05-11
+  14:25 UTC, watched the post-merge CI sequence to confirm the new
+  `.github/workflows/pkgdown.yaml` `workflow_run` trigger fires
+  pkgdown only after R-CMD-check completes successfully, and
+  *not* in parallel with the push event.
+
+Evidence (from `gh run list / view`):
+
+- `R-CMD-check` (run id 25676207810, event `push`, branch `main`):
+  - started: 2026-05-11T14:25:33Z
+  - completed: 2026-05-11T15:00:00Z
+  - wall: 34 min 27 s
+  - per-OS: macOS 27:06 (14:25:36 -> 14:52:42), Ubuntu 29:24
+    (14:25:36 -> 14:55:00), Windows 34:22 (14:25:37 -> 14:59:59);
+- `pkgdown` (run id 25678157733, event **`workflow_run`**, branch
+  `main`, displayTitle "pkgdown"):
+  - started: 2026-05-11T15:00:07Z (7 s after R-CMD-check
+    completed -- auto-fired via `workflow_run`);
+  - completed: 2026-05-11T15:10:41Z;
+  - wall: 10 min 34 s;
+  - conclusion: success.
+- `gh run list --workflow pkgdown --branch main` confirms **no
+  parallel pkgdown run** was triggered by the PR #8 push event;
+  the only post-merge pkgdown run was the workflow_run-triggered
+  one above.
+
+Decision: the workflow_run sequencing transplanted from drmTMB is
+working in this repo as designed. No further adjustment to
+`.github/workflows/pkgdown.yaml` is needed in this phase. The
+deployed pkgdown site (https://itchyshin.github.io/gllvmTMB/) now
+serves the post-PR-#8 README + Fisher-z fix; the logo and
+favicons remain pending PR #9 merge.
+
+Reference: PR #8 after-task report at
+`docs/dev-log/after-task/2026-05-11-ci-site-team-repair.md`,
+"Next Actions" section.
+
 ## 2026-05-11 -- WIP=1 suspension during the doc-PR sprint
 
 Scope:

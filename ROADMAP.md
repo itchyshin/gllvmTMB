@@ -1,88 +1,185 @@
-# gllvmTMB roadmap
+# gllvmTMB Roadmap
 
-## Phase 0 — bootstrap (0.2.0)  Status: in flight
+This roadmap is the shared map for humans, Codex, and Claude Code. It
+keeps the next implementation work small enough to review while
+preserving the long-term package identity: stacked-trait multivariate
+GLLVMs in TMB, with long-format data as the canonical representation
+and wide-format entry points available for users who think in response
+matrices.
 
-The 2026-05-10 reset: started gllvmTMB from a clean repo, modelled on
-drmTMB's "regimented" team and tooling. Cherry-picked the
-gllvmTMB-native subset from the legacy repo; cut the 68 sdmTMB-
-inherited exports that were not engine-coupled.
+## Current Position
 
-- Package skeleton: DESCRIPTION, NAMESPACE (auto), .Rbuildignore,
-  inst/COPYRIGHTS, src/Makevars, src/gllvmTMB.cpp.
-- R/: gllvmTMB-native parser + extractors + methods (~30 files).
-- tests/testthat/: gllvmTMB-using tests only (~75 files); inherited
-  sdmTMB tests dropped.
-- vignettes/: Get Started + 7 Tier-1 worked-example articles.
-- Team: drmTMB-canonical roles in `.codex/agents/` (10 files) and
-  `.agents/skills/` (6 skills, including the new
-  `article-tier-audit` skill and the symbolic-math alignment
-  bake-in to `add-simulation-test`).
-- docs/: design + dev-log scaffolding modelled on drmTMB.
-- CI: 3-OS R-CMD-check + pkgdown workflows.
+The 2026-05-10 reset rebuilt `gllvmTMB` from a clean repository,
+modelled on `drmTMB`'s process discipline but not on `drmTMB`'s
+runtime profile. The package now has:
 
-## Phase 1 — finalise the cuts (0.2.1)  Status: planned
+- a clean R package skeleton with `src/gllvmTMB.cpp` compiled at
+  install time;
+- the gllvmTMB-native parser, extractors, methods, tests, and
+  worked-example articles;
+- 3-OS `R-CMD-check` on pull requests and `main`;
+- pkgdown sequencing after green `R-CMD-check` on `main`;
+- a reader-first homepage and Get Started article;
+- project-local skills for simulation tests, likelihood review,
+  article triage, prose review, and Rose pre-publish auditing.
 
-The 0.2.0 bootstrap left some "hide-internal" functions still
-@export'd because the existing test suite calls them by bare name.
-0.2.1 finishes the cuts:
+The package is not ready for new modelling ambitions until the public
+surface, data-shape contract, examples, and feedback loop are stable.
 
-- Hide `extract_Sigma_B`, `extract_Sigma_W`, `getLoadings`, `getLV`,
-  `getResidualCov`, `getResidualCor`, `VP`, `ordiplot`,
-  `extract_two_U_via_PIC`, `compare_PIC_vs_joint`, `gengamma`, the
-  `profile_ci_*` quartet, and `block_V` -- update tests to use
-  `gllvmTMB:::` prefix or migrate to canonical alternatives.
-- Drop the unused families (`gamma_mix`, `lognormal_mix`,
-  `nbinom2_mix`, `nbinom1`, `truncated_nbinom1`, `censored_poisson`,
-  `delta_beta`, `delta_gamma_mix`, `delta_gengamma`,
-  `delta_lognormal_mix`, `delta_truncated_nbinom1`,
-  `delta_truncated_nbinom2`, `delta_poisson_link_gamma`,
-  `delta_poisson_link_lognormal`) -- these have no engine slot in
-  `R/fit-multi.R`'s family map and would fail at fit time anyway.
+## Phase 1 -- Stabilise The Reader Path
 
-## Phase 2 — CRAN-readiness (0.2.x)  Status: planned
+Goal: a new applied ecology, evolution, or environmental-science user
+should be able to see the purpose, choose a data shape, fit a tiny
+model, and know which workflows are supported.
 
-The CRAN blockers identified in the 2026-05-10 audit:
+Work:
 
-- Title `<= 65` chars (already met: 30 chars).
-- DESCRIPTION cph trimmed to surviving upstream code (already
-  trimmed: 5 cph entries).
-- NEWS.md restructured to `# gllvmTMB 0.2.0` / `## Major changes`
-  format.
-- Vignette built by R CMD check fits a small fast model (or use
-  precomputed .rds and `--no-build-vignettes`-friendly fallbacks).
-- 3-OS CI green for >= 2 weeks.
-- DOIs in DESCRIPTION verified by `tools:::doi_db()` or curl.
-- `cran-comments.md` written.
+- Present every Tier-1 fit example with long-format and wide-format
+  calls side by side. The long form
+  `gllvmTMB(value ~ ..., data = df_long)` is canonical; the wide form
+  is the convenience equivalent through `gllvmTMB_wide()` or
+  `gllvmTMB(traits(...) ~ ..., data = df_wide)`.
+- Rewrite public articles that still teach through legacy helper
+  names (`getLoadings`, `ordiplot`, `extract_ICC_site`, or similar)
+  before those helpers are removed from the public surface.
+- Keep the 3 x 5 covariance keyword grid visible, but introduce it
+  after the user promise and the runnable example.
+- Run Rose before merging README, vignette, `_pkgdown.yml`, exported
+  roxygen, or Rd changes.
 
-## Phase 3 — methods paper (1.0.0)  Status: planned
+First PR shape:
 
-The Nakagawa et al. (in prep.) functional-biogeography manuscript
-serves as the package's methods paper. 1.0.0 ships when:
+- one article or homepage section at a time;
+- no likelihood, parser, or NAMESPACE changes;
+- `pkgdown::check_pkgdown()` plus the affected article render.
 
-- the manuscript is accepted;
-- a reproducibility-report article in `vignettes/articles/` mirrors
-  the manuscript's analysis;
-- the public API is frozen.
+## Phase 2 -- Finalise The Public Surface
 
-## Phase 4 — extensions (post-1.0)  Status: planned
+Goal: the exported API, pkgdown reference index, examples, and tests
+should describe the fresh package, not the legacy package.
 
-The legacy package's deferred design notes record candidates:
+Work:
 
+- Use the Priority 2 export audit as the review input.
+- Keep canonical user functions, internalise implementation helpers,
+  and delete legacy exports that no longer have a supported purpose.
+- Update tests to use public functions when testing user behaviour and
+  `gllvmTMB:::` only when testing intentional internals.
+- Add one `NEWS.md` entry for the surface cleanup.
+
+First PR shape:
+
+- rewrite article examples before deleting helpers they currently use;
+- then remove one coherent export bucket at a time;
+- run `devtools::document()`, `devtools::test()`, and
+  `pkgdown::check_pkgdown()`.
+
+## Phase 3 -- Unify Data Shapes And Weights
+
+Goal: long-format and wide-format entry points should feel like two
+views of one model, not two separate packages.
+
+Work:
+
+- Define the contract for `gllvmTMB()`, `gllvmTMB_wide()`, and
+  `traits(...)`: accepted shapes, required identifiers, reshaping
+  rules, trait ordering, and error messages.
+- Unify weights across long and wide inputs, including matrix-style
+  weights when the response is wide.
+- Add paired tests: one long call and one wide call should produce the
+  same model matrix, trait ordering, and fitted target for a tiny
+  example.
+- Add user-facing examples that show how to move between `df_long` and
+  `Y` / `df_wide`.
+
+This phase can touch parser-facing code, so Boole and Rose should
+review docs and syntax. Gauss or Noether are needed only if the
+likelihood or parameterisation changes.
+
+## Phase 4 -- Improve Feedback Time
+
+Goal: keep the 3-OS discipline while making the maintainer's feedback
+loop less punishing.
+
+Work:
+
+- Identify the slowest tests and decide which are true smoke tests,
+  which are simulation recovery tests, and which should run only under
+  an explicit slow-test flag.
+- Keep full 3-OS `R-CMD-check` for pull requests and `main`.
+- Defer fast-lane / slow-lane CI until the public surface and data
+  shape contract are stable.
+- Lower the temporary Windows timeout only after the gated suite
+  reliably fits inside the stricter budget.
+
+Grace owns this phase; Curie reviews test value before any simulation
+test is gated.
+
+## Phase 5 -- CRAN Readiness
+
+Goal: produce a package that can pass CRAN review without relying on
+private knowledge of the repo reset.
+
+Work:
+
+- Keep DESCRIPTION title, authorship, license, and DOI metadata clean.
+- Ensure vignettes build quickly or use acceptable precomputed
+  artefacts with clear fallbacks.
+- Keep 3-OS CI green for a sustained period.
+- Write `cran-comments.md`.
+- Run CRAN extra checks before submission.
+
+## Phase 6 -- Methods Paper And Extensions
+
+Goal: after the package surface is stable, add scientific depth
+without blurring the scope.
+
+Candidate extensions:
+
+- functional-biogeography reproducibility article linked to the
+  Nakagawa et al. methods paper;
 - `add_barrier_mesh()` SPDE barrier path for coastal data;
-- random-slope bar syntax `(1 + x | g)` (currently
-  intercept-only is supported);
-- ZINB / zero-inflated Poisson for sparse count traits;
-- two-level `phylo + cluster` cross-pollination (the audit's
-  "two-U" path -- currently exposed as `compare_dep_vs_two_U()`
-  and `compare_indep_vs_two_U()`).
+- random-slope bar syntax `(1 + x | g)` once the intercept-only path
+  is fully tested;
+- sparse-count families such as zero-inflated Poisson or ZINB;
+- two-level `phylo + cluster` cross-pollination if simulation
+  recovery and identifiability checks justify it.
 
-Each extension follows the `add-family` / `add-simulation-test`
-skills.
+Every extension follows the relevant design-doc, simulation-test,
+likelihood-review, documentation, and after-task-report rules.
 
-## Out of scope
+## Collaboration Stops
 
-- Single-response models (use `glmmTMB`).
-- Spatial-only single-response models (use `sdmTMB`).
-- Bayesian sampling (use `brms` or `MCMCglmm`).
-- Dimension-reduction-only (without a likelihood model -- use
-  `gllvm` for that flavour).
+Agents may gather evidence in parallel, but the project should stop
+for maintainer discussion at four points:
+
+1. after a read-only audit proposes deletions, API changes, or
+   grammar changes;
+2. before a PR touches NAMESPACE, formula parsing, likelihood code, or
+   family support;
+3. before merging when CI is still running on another related PR;
+4. after a phase completes, so the roadmap can be re-ranked before
+   the next PR starts.
+
+Claude Code is best used for read-only audits, prose diagnostics, and
+decision drafts. Codex is best used for implementation, CI/pkgdown
+plumbing, local validation, and PR integration. Either agent can
+review, but no agent should take a broad, multi-file implementation
+without a small write scope and a handoff note.
+
+After-task reports are required for completed tasks and phases. They
+are the durable handoff document for Ada, Boole, Gauss, Noether,
+Darwin, Fisher, Pat, Jason, Curie, Emmy, Grace, Rose, and Shannon to
+push back from the same evidence base rather than from stale memory.
+Use Shannon when the question is not the content of a PR but whether
+the two teams' branches, PRs, dev-log entries, and after-task reports
+still describe one coherent project state.
+
+## Out Of Scope
+
+- Single-response models: use `glmmTMB`.
+- Spatial-only single-response models: use `sdmTMB`.
+- One- or two-response distributional regression: use `drmTMB`.
+- Bayesian sampling: use `brms` or `MCMCglmm`.
+- Dimension reduction without a likelihood model: use `gllvm` for that
+  flavour.

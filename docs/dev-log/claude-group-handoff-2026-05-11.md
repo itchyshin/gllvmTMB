@@ -11,12 +11,16 @@ Read these files in order:
 
 1. `AGENTS.md`
 2. `CLAUDE.md`
-3. `.agents/skills/rose-pre-publish-audit/SKILL.md`
-4. `CONTRIBUTING.md`
-5. `docs/dev-log/after-task/2026-05-11-ci-site-team-repair.md`
-6. `docs/dev-log/check-log.md`
-7. `docs/dev-log/decisions.md`
-8. `ROADMAP.md`
+3. `ROADMAP.md`
+4. `docs/design/11-task-allocation.md` (lane discipline: who edits which files)
+5. `.agents/skills/rose-pre-publish-audit/SKILL.md`
+6. `.agents/skills/shannon-coordination-audit/SKILL.md` (cross-team coordination gate)
+7. `CONTRIBUTING.md`
+8. `docs/dev-log/after-task/2026-05-11-ci-site-team-repair.md`
+9. Most-recent Shannon audit at
+   `docs/dev-log/shannon-audits/` (skim the latest dated file)
+10. `docs/dev-log/check-log.md`
+11. `docs/dev-log/decisions.md`
 
 The short active plan is also in:
 

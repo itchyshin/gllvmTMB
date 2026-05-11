@@ -297,3 +297,43 @@ windows R-CMD-check completion and the pkgdown trigger is the
 expected behaviour of workflow_run; this entry records it
 explicitly so future readers do not mistake the earlier skipped
 run for a problem.
+
+## 2026-05-11 -- Phase 3 weights & data-shape contract (design doc)
+
+Scope:
+
+- Claude lane: design doc for `ROADMAP.md` Phase 3 -- "Unify Data
+  Shapes and Weights" -- added as
+  `docs/design/02-data-shape-and-weights.md`. Specifies the
+  contract for `gllvmTMB()`, `gllvmTMB_wide()`, and `traits(...)`:
+  accepted shapes, identifiers, trait ordering, reshaping rules,
+  weights handling (four shapes for the matrix-in API, vector-only
+  for long and `traits()`), error messages, and a byte-identical
+  paired-test contract.
+- No source / NAMESPACE / Rd / vignette / pkgdown change in this
+  PR. The doc is the design input for Codex's Phase 3
+  implementation PR.
+
+Implementation outline for Codex (recorded here as a directed
+handoff):
+
+- add `R/weights-shape.R` with `normalise_weights()`;
+- refactor `gllvmTMB()`, `gllvmTMB_wide()`, and `traits()` to call
+  the helper exactly once before dispatch to the engine;
+- add `tests/testthat/test-weights-unified.R` with the five
+  minimum paired cases (plain Gaussian no weights, row-broadcast,
+  per-cell, binomial `cbind(succ, fail)`, `traits()` round-trip);
+- update `man/*.Rd` to cross-reference the three entry points;
+- add a three-way fit example to the morphometrics article once
+  Codex's current Phase 1a rewrite lands.
+
+Verification: the design doc references the current source
+behaviour as observed in `origin/main` (`R/gllvmTMB.R`,
+`R/gllvmTMB-wide.R`, `R/traits-keyword.R`, `R/fit-multi.R`). No
+divergence between contract text and current implementation.
+
+Decision: Phase 3 implementation approved by maintainer 2026-05-11
+~22:20 UTC (all six contract items: weights shapes, byte-identical
+fields, trait-order tie-break, NA semantics, helper signature,
+out-of-scope list); merged 22:22 (`b425462`). Implementation handoff
+to Codex posted as a comment on PR #23.

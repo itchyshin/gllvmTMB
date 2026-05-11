@@ -18,3 +18,21 @@ latent axes in columns) and \code{loadings} (traits in rows, axes in columns).
 \description{
 Ordination scores and loadings at one level
 }
+\examples{
+\dontrun{
+  sim <- simulate_site_trait(
+    n_sites = 20, n_species = 6, n_traits = 4,
+    mean_species_per_site = 4, seed = 1
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait +
+            latent(0 + trait | site, d = 2) +
+            unique(0 + trait | site),
+    data = sim$data
+  )
+  ord <- extract_ordination(fit, level = "unit")
+  head(ord$scores)
+  ord$loadings
+}
+
+}

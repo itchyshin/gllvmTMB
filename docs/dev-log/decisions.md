@@ -135,3 +135,53 @@ message-bus coverage, and after-task report gaps. Shannon is invoked
 at checkpoints before handoffs, branch switches, merge sequencing, or
 end-of-session summaries. Shannon reports pass, warn, or fail with
 evidence and does not edit, merge, rerun CI, or replace the maintainer.
+
+## 2026-05-11  Agent-to-agent collaboration improvements
+
+Decision: codify five working-rule improvements that surfaced from
+the 2026-05-11 doc-PR sprint and end-of-day reflection:
+
+1. **Merge authority default**: Claude Code and Codex may self-merge
+   their own PRs when CI is green and the scope is low-risk
+   (documentation, dev-log, audits, after-task reports, design docs,
+   CI workflow tweaks, asset additions, individual article rewrites
+   against an approved snippet). For high-risk scope -- the
+   `ROADMAP.md` Discussion Checkpoints (deletions of public exports,
+   API changes, formula-grammar changes, likelihood / TMB / family
+   changes) plus broad article rewrites -- the agent must ask the
+   maintainer before merging. Rationale: today's 13-PR doc sprint
+   showed that maintainer-only-merges was the bottleneck when the
+   queue was docs-only and CI was uniformly green.
+2. **Integrate before adding**: when the maintainer's input could
+   fit an existing section in a doc or plan file, integrate inline.
+   Add a new section only for genuinely new concerns. Rationale:
+   today's earlier reactive-edit pattern accreted plan sections
+   without improving comprehension.
+3. **Agent-to-agent handoffs go in the repo**: PR comments addressed
+   to the other agent, or directed lines in `docs/dev-log/check-log.md`,
+   replace maintainer relay. Rationale: the maintainer should not be
+   the message bus for routine handoffs.
+4. **Surface review asks explicitly**: when opening a PR for
+   maintainer review, follow up in chat with a specific list of what
+   the maintainer needs to check or decide. Do not leave review items
+   for the maintainer to discover by browsing the PR. Rationale: today
+   the maintainer asked for this explicitly after several PRs landed
+   with no clear "what you need to do" prompt.
+5. **Pre-edit lane check on shared rule files**: before editing any
+   shared rule file (the documentation triangle of `AGENTS.md`,
+   `CLAUDE.md`, `ROADMAP.md`, `CONTRIBUTING.md`, plus
+   `docs/dev-log/decisions.md`, `docs/dev-log/check-log.md`,
+   `docs/design/`, `docs/dev-log/after-task/`, `inst/COPYRIGHTS`,
+   `DESCRIPTION`), run `gh pr list --state open` and
+   `git log --all --oneline --since="6 hours ago"`. Rationale: the
+   2026-05-11 Shannon double-ship (both agents writing the Shannon
+   role at the same time) was the canonical lane-collision failure;
+   a pre-edit check would have caught it.
+
+Each rule lives in the most natural file:
+
+- Merge authority, integrate-before-adding, agent-to-agent handoffs,
+  surface-review-asks --> `CLAUDE.md` "Collaboration Rhythm".
+- Pre-edit lane check --> `AGENTS.md` "Multi-Agent Collaboration".
+- After-task report at branch start (also added today as a discipline
+  fix) --> `CONTRIBUTING.md` "Definition of Done".

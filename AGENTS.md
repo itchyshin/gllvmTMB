@@ -151,6 +151,16 @@ agent work must follow the same project rules:
   explicitly asked;
 - prefer small, reviewable commits or pull requests.
 
+**Pre-edit lane check.** Before editing any shared rule file
+(`AGENTS.md`, `CLAUDE.md`, `ROADMAP.md`, `CONTRIBUTING.md`,
+`docs/dev-log/decisions.md`, `docs/dev-log/check-log.md`,
+`docs/design/`, `docs/dev-log/after-task/`, `inst/COPYRIGHTS`,
+`DESCRIPTION`), run `gh pr list --state open` and
+`git log --all --oneline --since="6 hours ago"` to confirm no other
+agent is editing the same file. If a collision is detected, post a
+coordination comment and wait. This prevents the parallel-edit
+pattern that produced the 2026-05-11 Shannon double-ship.
+
 When an agent hands work to another agent, leave enough context in
 `docs/dev-log/check-log.md` or the relevant issue/PR for the next
 agent to continue without rediscovering the whole problem.

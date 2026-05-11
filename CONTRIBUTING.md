@@ -18,6 +18,16 @@ A modelling feature is complete only when it includes:
 - review for likelihood, parameterisation, and scope (the `reviewer`
   Codex agent or the equivalent inline review hat).
 
+**Create the after-task report at branch start, not at PR close.**
+Right after `git switch -c agent/<topic>`, the first commit on the
+branch should add `docs/dev-log/after-task/YYYY-MM-DD-<topic>.md` with
+the template skeleton (Goal / Implemented / Mathematical Contract /
+Files Changed / Checks Run / Tests Of The Tests / Consistency Audit /
+What Did Not Go Smoothly / Team Learning / Known Limitations /
+Next Actions). Fill in as work progresses. The file's presence is the
+structural prevention of the "forgot to write an after-task" failure
+that produced PR #13 backfill on 2026-05-11.
+
 ## Scope
 
 The package is for stacked-trait, long-format multivariate GLLVMs.

@@ -258,3 +258,42 @@ Decision: keep WIP=1 as the long-term default; allow the sprint to
 clear at its own pace, then restore WIP=1 discipline before any
 substantive implementation work (Phase 1a article rewrites,
 Priority 2 surface cleanup, Priority 3 weights unification).
+
+## 2026-05-11 -- PR #22 post-merge CI evidence (main `440ff5f`)
+
+Scope:
+
+- PR #22 "Codify six agent-collaboration improvements" merged to
+  main at 2026-05-11T21:09:38Z, merge commit `440ff5f` (bumping
+  main from `bf6db4e` to `440ff5f`);
+- the merge triggered a fresh 3-OS `R-CMD-check` on `440ff5f` and,
+  on success, the `pkgdown` workflow_run that deploys the public
+  site.
+
+Verification:
+
+- `R-CMD-check` run 25697507205 on `440ff5f`:
+  - ubuntu-latest: success 2026-05-11T21:10:11Z to 2026-05-11T21:32:22Z (wall 22m 11s);
+  - macos-latest:  success 2026-05-11T21:10:12Z to 2026-05-11T21:34:46Z (wall 24m 34s);
+  - windows-latest: success 2026-05-11T21:10:11Z to 2026-05-11T21:43:31Z (wall 33m 20s).
+  Conclusion: success on all three OSes.
+- `pkgdown` runs on `440ff5f`:
+  - run 25697529058, push-triggered at 2026-05-11T21:10:12Z, **skipped**
+    because the corresponding `R-CMD-check` was still in progress
+    (workflow_run guard fired correctly);
+  - run 25699091801, workflow_run-triggered at 2026-05-11T21:43:33Z
+    (2 seconds after the windows R-CMD-check job completed at
+    21:43:31), pkgdown job started 21:43:43, completed
+    2026-05-11T21:54:33Z (wall 10m 50s); conclusion: success.
+- `git fetch origin main` after both runs confirmed main = `440ff5f`
+  and `agent/collaboration-rules-codification` branch was deleted by
+  the merge.
+
+Decision: the workflow_run sequencing copied from drmTMB (and
+reverified in PR #16) is holding in production. Two confirmations
+on the dev-log now: PR #8 and PR #22 both fired pkgdown only after
+their R-CMD-check completed green. The 2-second gap between the
+windows R-CMD-check completion and the pkgdown trigger is the
+expected behaviour of workflow_run; this entry records it
+explicitly so future readers do not mistake the earlier skipped
+run for a problem.

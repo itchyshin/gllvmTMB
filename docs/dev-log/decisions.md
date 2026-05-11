@@ -100,3 +100,14 @@ integration. The shared message bus remains `docs/dev-log/check-log.md`,
 Completed tasks and phases should end with an after-task report under
 `docs/dev-log/after-task/`, matching the `drmTMB` habit that has
 made that team easier to resume and audit.
+
+## 2026-05-11  Add Shannon as cross-team coordination auditor
+
+Decision: add Shannon as a standing read-only coordination role and
+project-local skill. Rationale: Rose catches public consistency
+within a PR, but the Codex / Claude workflow also needs a narrow check
+for branch state, open PR fan-out, merge order, file overlap,
+message-bus coverage, and after-task report gaps. Shannon is invoked
+at checkpoints before handoffs, branch switches, merge sequencing, or
+end-of-session summaries. Shannon reports pass, warn, or fail with
+evidence and does not edit, merge, rerun CI, or replace the maintainer.

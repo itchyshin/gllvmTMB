@@ -47,6 +47,31 @@ single-response models live in `sdmTMB`.
 - For substantial prose, apply the `prose-style-review` skill.
 - Do not revert Codex or human changes unless explicitly asked.
 
+## Collaboration Rhythm
+
+Claude Code and Codex can work in parallel only when the write scopes
+are separate and the handoff is explicit. The default pattern is:
+
+- Claude Code gathers evidence, writes read-only audits, drafts
+  decisions, and identifies the smallest safe PR shape.
+- The maintainer chooses the next task at a discussion checkpoint.
+- Codex implements bounded code, documentation, CI, pkgdown, or
+  NAMESPACE changes and records checks.
+- Claude Code or Codex can review the result, but the reviewer should
+  not silently expand the implementation scope.
+
+Stop for maintainer discussion before deletions, API changes, formula
+grammar changes, likelihood changes, new families, or broad article
+rewrites. For the current reader-path work, examples should present
+long-format and wide-format calls together unless the function is
+intrinsically one shape.
+
+After-task reports are the closure rule. Any completed task or phase
+that changes project state should leave
+`docs/dev-log/after-task/YYYY-MM-DD-short-topic.md` with scope,
+outcome, checks, and follow-up. This mirrors the `drmTMB` team habit
+and is how the shared team learns without re-reading the whole diff.
+
 ## Reusing sdmTMB / drmTMB Code
 
 The R-side spatial helpers (`R/mesh.R`, `R/crs.R`, `R/plot.R`'s

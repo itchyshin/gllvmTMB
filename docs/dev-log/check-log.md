@@ -113,3 +113,24 @@ Checks:
 Decision: this repair deliberately does not reduce R-CMD-check runtime
 or add `RUN_SLOW_TESTS` gating. The immediate fix is cleaner feedback
 sequencing and clearer public/project instructions.
+
+## 2026-05-11 -- WIP=1 suspension during the doc-PR sprint
+
+Scope:
+
+- on 2026-05-11 the project ran a 9-open-PR sprint of
+  documentation, audit, and process-rule changes (PRs #7, #9-#16);
+- `AGENTS.md` Design Rule 6 ("Keep pull requests small and focused.
+  Work-in-progress > 1 produces cancel-cascades on CI") is
+  functionally suspended for the duration of this sprint;
+- the suspension is acceptable because every PR in the sprint is
+  documentation-only or audit-only -- no R code, NAMESPACE,
+  generated Rd, vignette source, or pkgdown navigation change in
+  any of them, and the CI cost is small per PR;
+- Shannon's first audit (`docs/dev-log/shannon-audits/2026-05-11-first-audit.md`)
+  flagged the WIP gap and recommended this entry.
+
+Decision: keep WIP=1 as the long-term default; allow the sprint to
+clear at its own pace, then restore WIP=1 discipline before any
+substantive implementation work (Phase 1a article rewrites,
+Priority 2 surface cleanup, Priority 3 weights unification).

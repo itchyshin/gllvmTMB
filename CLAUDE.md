@@ -78,6 +78,38 @@ read-only cross-team audit: it checks working-tree hygiene, open PRs,
 file overlap, CI state, message-bus coverage, and after-task report
 coverage. Shannon reports; it does not edit or merge.
 
+### Merge authority
+
+Both Claude Code and Codex may merge their own PRs when CI is green
+and the PR is **low-risk**: documentation, dev-log entries, audits,
+after-task reports, design docs, CI workflow tweaks, asset additions,
+or individual article rewrites against an approved snippet. For
+**high-risk** changes -- deletions of public exports, API changes,
+formula-grammar changes, likelihood / TMB / family changes, broad
+article rewrites -- the agent must ask the maintainer before merging.
+The `ROADMAP.md` "Discussion Checkpoints" list is the authoritative
+high-risk set; the merge rule mirrors it.
+
+### Integrate before adding
+
+When the maintainer's input could fit an existing section in a doc or
+plan file, integrate inline. Add a new section only for genuinely new
+concerns. Reactive editing (every input becomes a new section) accretes
+documents without improving them.
+
+### Agent-to-agent handoffs go in the repo
+
+When handing off a substantive task to the other agent, post a comment
+addressed to them on the relevant PR, OR a directed line in
+`docs/dev-log/check-log.md`. The async message bus is the repo; the
+maintainer should not be the relay.
+
+### Surface review asks explicitly
+
+When opening a PR for maintainer review, follow up in chat with a
+specific list of what the maintainer needs to check or decide. Do not
+leave review items for the maintainer to discover by browsing the PR.
+
 ## Reusing sdmTMB / drmTMB Code
 
 The R-side spatial helpers (`R/mesh.R`, `R/crs.R`, `R/plot.R`'s

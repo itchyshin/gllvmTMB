@@ -1,6 +1,11 @@
-#' Construct an SPDE mesh for sdmTMB
+## Inherited from sdmTMB (https://github.com/pbs-assess/sdmTMB)
+## under GPL-3, with minimal API and naming changes. Upstream
+## copyright holders are listed in `inst/COPYRIGHTS`.
+
+#' Construct an SPDE mesh for gllvmTMB
 #'
-#' Construct an SPDE mesh for use with sdmTMB.
+#' Construct an SPDE mesh for use with the `gllvmTMB()`
+#' `spatial_*()` keywords.
 #'
 #' @param data A data frame.
 #' @param xy_cols A character vector of x and y column names contained in

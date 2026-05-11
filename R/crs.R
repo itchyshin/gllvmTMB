@@ -1,3 +1,7 @@
+## Inherited from sdmTMB (https://github.com/pbs-assess/sdmTMB)
+## under GPL-3, with minimal API and naming changes. Upstream
+## copyright holders are listed in `inst/COPYRIGHTS`.
+
 #' Add UTM coordinates to a data frame
 #'
 #' Add UTM (Universal Transverse Mercator) coordinates to a data frame. This is

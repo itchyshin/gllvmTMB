@@ -27,15 +27,49 @@ docs/dev-log/after-phase/
 Each report should include:
 
 - task goal;
-- files created or changed;
+- mathematical contract (see the dedicated section below): what
+  changed about the model, equations if parameterisation moved,
+  or a one-line "no public API / likelihood / grammar / family
+  change";
+- files created or changed -- list every file, including the
+  status-inventory cascade (`README.md`, `NEWS.md`, `ROADMAP.md`,
+  design docs, vignettes, generated `man/*.Rd`), not only the
+  implementation file;
 - checks run and exact outcomes;
 - consistency audit;
 - tests of the tests;
 - what did not go smoothly;
-- team learning and process improvements;
+- team learning and process improvements, named by the
+  `AGENTS.md` "Standing Review Roles" framework (Ada / Boole /
+  Gauss / Noether / Curie / Pat / Darwin / Rose / Grace / Emmy /
+  Fisher / Jason / Shannon) -- one line per role that engaged
+  describing what it did or would have caught;
 - design-doc updates;
 - pkgdown/documentation updates;
 - known limitations and next actions.
+
+## Mathematical Contract
+
+For any PR that touches parameterisation, likelihood, formula
+grammar, or family code, the Mathematical Contract section should
+write:
+
+- the model equations in either `\eqn{...}` LaTeX or plain
+  markdown, including parameter transforms
+  (for example `rho = 0.999999 * tanh(eta_cor)`);
+- an explicit statement of what the change is **not** -- residual
+  covariance vs random-effect covariance, phylogenetic vs spatial,
+  between-unit vs within-unit, etc.
+
+For doc-only, CI, audit, or process-only PRs the section can be a
+single line: "No public R API, likelihood, formula grammar,
+family, NAMESPACE, generated Rd, vignette, or pkgdown navigation
+change."
+
+Pattern adapted from drmTMB's
+`docs/dev-log/after-task/2026-05-11-mu-sigma-mean-scale-covariance.md`,
+where every new TMB parameter and its bounded transform appears in
+this section before any prose discussion of the implementation.
 
 ## Consistency Audit
 
@@ -51,6 +85,18 @@ rg "full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1" README.
 The goal is not only to make tests pass. It is to make sure code,
 docs, examples, design notes, and site navigation describe the same
 package.
+
+Each `rg` invocation should be paired with a one-line verdict (for
+example: "found only intentional boundaries for random slopes and
+richer labelled covariance blocks", or "confirmed the implemented
+target names and the residual-rho12 separation are visible in
+source, tests, docs, tutorials, and generated help"). A generic
+"ran the audit" line does not tell the next reader whether the
+audit found real drift or nothing -- the verdict is the signal.
+
+Pattern adapted from drmTMB's
+`2026-05-11-mu-sigma-mean-scale-covariance.md`, where each of three
+`rg` checks closes with an explicit classified verdict.
 
 ## Status Inventory
 
@@ -88,6 +134,21 @@ behaviour:
 - pair every guard's rejection-case test with the matching
   acceptance-case test (the 2026-05-10 lesson recorded in the
   `after-task-audit` skill).
+
+When a test was motivated by a specific past mistake or manual
+probe, name what the test would have caught. Worked example from
+drmTMB's `2026-05-11-mu-sigma-mean-scale-covariance.md`:
+
+> "The corpairs() test ... would have caught the manual probe
+> that briefly reported `to_response = 'z'` for the sigma endpoint
+> before `random_effect_response_name()` was fixed to use the
+> original response for univariate sigma."
+
+This sentence couples the new test to a specific bug it prevents.
+Generic coverage prose ("the test exercises X, Y, Z") does not
+give the reader the same signal. Where the test was prophylactic
+(no specific bug, just covering a contract), say that explicitly
+instead.
 
 ## Closing Rule
 

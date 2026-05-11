@@ -25,6 +25,10 @@ branch, alongside the design doc.
   implementation notes for Codex, and out-of-scope items.
 - `docs/dev-log/after-task/2026-05-11-phase3-weights-contract-design.md`
   (NEW, this file) -- after-task report at branch start.
+- `docs/dev-log/decisions.md` (M) -- appended the 2026-05-11
+  "Binomial trial-count API: docs-only path (Option C)" decision
+  the maintainer made during PR #23 review (added in the same
+  PR per integrate-before-adding).
 
 No source code changes. No likelihood, formula grammar, family, or
 NAMESPACE changes.

@@ -415,7 +415,13 @@ The follow-up PR should:
 - A new wide-format predictor API. `X` in `gllvmTMB_wide()` and
   RHS columns in `traits()` continue to work as today.
 - Changing the binomial `weights = n_trials` overload. That is a
-  glmmTMB convention preserved here.
+  glmmTMB convention preserved here. **Future direction** (decided
+  2026-05-11 by the maintainer, recorded in `decisions.md`): when
+  this is revisited, the preferred path is docs-only --
+  recommend `cbind(succ, fail)` as canonical in articles and
+  roxygen `@examples`, keep both APIs available. The overload
+  survives at the code level; tutorials standardise on `cbind()`
+  to avoid the family-dependent meaning of `weights`.
 - Lifting the `nrow(Y) == ncol(Y)` ambiguity rule. The current
   `length(dim(weights))` disambiguation is precise and
   documented; no change.

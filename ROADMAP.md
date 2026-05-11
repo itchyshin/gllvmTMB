@@ -169,8 +169,11 @@ without a small write scope and a handoff note.
 
 After-task reports are required for completed tasks and phases. They
 are the durable handoff document for Ada, Boole, Gauss, Noether,
-Darwin, Fisher, Pat, Jason, Curie, Emmy, Grace, and Rose to push back
-from the same evidence base rather than from stale memory.
+Darwin, Fisher, Pat, Jason, Curie, Emmy, Grace, Rose, and Shannon to
+push back from the same evidence base rather than from stale memory.
+Use Shannon when the question is not the content of a PR but whether
+the two teams' branches, PRs, dev-log entries, and after-task reports
+still describe one coherent project state.
 
 ## Out Of Scope
 

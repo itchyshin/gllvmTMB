@@ -149,3 +149,20 @@ Checks:
   (`agent/logo-favicon`), and extractor examples
   (`agent/extractor-examples`) have non-overlapping file scopes with
   this roadmap update.
+
+## 2026-05-11 -- Shannon coordination audit role
+
+Scope:
+
+- added `.agents/skills/shannon-coordination-audit/SKILL.md`;
+- documented Shannon in `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`,
+  `ROADMAP.md`, and `docs/dev-log/decisions.md`;
+- created an after-task report for the Shannon role addition.
+
+Checks:
+
+- documentation-only change; no R code, likelihood, formula grammar,
+  NAMESPACE, generated Rd, pkgdown navigation, or article source
+  changed;
+- Shannon is scoped as read-only and checkpoint-invoked, not as a
+  continuous overseer.

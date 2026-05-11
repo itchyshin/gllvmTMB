@@ -1,14 +1,14 @@
 ## Cross-trait correlations with confidence intervals.
 ## Phase K: extract_correlations() is a first-class user-facing extractor
 ## for the implied trait correlations at each tier (B / W / phy / spde),
-## with three methods for the CI: profile / Wald / bootstrap.
+## with four CI methods: fisher-z / profile / Wald alias / bootstrap.
 
 #' Cross-trait correlations with confidence intervals
 #'
 #' Returns the implied cross-trait correlations from a fitted
 #' gllvmTMB_multi model at one or more tiers (between-unit \code{B},
 #' within-unit \code{W}, phylogenetic \code{phy}, spatial \code{spde}),
-#' with 95% (or other-level) confidence intervals. Three methods are
+#' with 95% (or other-level) confidence intervals. Four method names are
 #' supported via the \code{method} argument:
 #'
 #' \itemize{

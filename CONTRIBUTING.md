@@ -46,7 +46,10 @@ devtools::check()
 pkgdown::check_pkgdown()
 ```
 
-For changes that touch user-formula parsing, also run:
+For changes that touch README, vignettes, reference navigation,
+exported functions, or generated Rd files, run `pkgdown::check_pkgdown()`
+before pushing. For changes that touch user-formula parsing, tutorial
+code, or article examples, also render the affected articles:
 
 ```r
 pkgdown::build_articles(lazy = FALSE)
@@ -54,6 +57,19 @@ pkgdown::build_articles(lazy = FALSE)
 
 Long simulation studies should live outside CRAN-time tests, gated
 by `Sys.getenv("RUN_SLOW_TESTS")` or moved to `data-raw/`.
+
+Keep work-in-progress to one open PR, and let GitHub Actions finish
+before pushing a follow-up commit. The pkgdown workflow is sequenced
+after a green `R-CMD-check` on `main`; do not use pkgdown as a
+parallel substitute for the full check.
+
+## Pre-Publish Audit
+
+Any PR touching public prose or reference navigation should run the
+Rose pre-publish audit before merge. The audit is deliberately narrow:
+method lists, default-value claims, exported function names, the
+3 x 5 keyword grid, argument names, family lists, and stale
+terminology. It is a consistency gate, not a general rewrite pass.
 
 ## Articles
 

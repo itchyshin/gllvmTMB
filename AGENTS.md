@@ -70,6 +70,24 @@ A feature is done only when implementation, simulation tests,
 documentation, examples, check logs, after-task notes, and a review
 pass are all present.
 
+## CI Pacing Discipline
+
+The default CI workflow (`.github/workflows/R-CMD-check.yaml`) runs
+on three OSes for pull requests and pushes to `main`. The pkgdown
+workflow runs only after a successful `R-CMD-check` on `main` /
+`master` or by manual dispatch. Do not add a fast lane or skip slow
+tests unless the maintainer asks for that separate change.
+
+Before any PR or main push that changes exported functions,
+reference topics, README, vignettes, or parser-facing examples:
+
+- run `pkgdown::check_pkgdown()` locally;
+- render affected articles with `pkgdown::build_articles(lazy = FALSE)`
+  when formula parsing, tutorial code, or article examples changed;
+- keep work-in-progress to one open PR;
+- wait for the active GitHub Actions run to finish before pushing
+  another fix-up commit.
+
 ## Writing Style
 
 For user-facing prose, developer notes, after-task reports, and
@@ -128,6 +146,29 @@ agent to continue without rediscovering the whole problem.
 Claude Code should read this file first. It should not introduce a
 parallel agent configuration system inside the package unless the
 project owner asks for one.
+
+## Pre-Publish Gate
+
+Use one narrow Rose pre-publish audit for any PR that touches
+README, vignettes, `_pkgdown.yml`, NEWS, roxygen for exported
+functions, or generated Rd files. The gate checks method lists,
+default-value claims, exported function names, the 3 x 5 keyword grid,
+argument names, family lists, and stale terminology. It does not
+replace Boole, Gauss, Noether, Grace, Pat, or Darwin; it only checks
+cross-file consistency before user-facing content is published.
+
+Keep role dispatch bounded:
+
+- Grace owns CI, pkgdown, CRAN, dependency, and platform concerns.
+- Rose owns cross-file consistency and repeated-process failures.
+- Pat and Darwin own the applied-user reading path and biological
+  interpretation.
+- Boole, Gauss, and Noether are invoked only when syntax, likelihood,
+  mathematical alignment, or TMB plumbing changes.
+
+Do not create per-role skill files for every reviewer unless the
+maintainer asks. More static context is not a substitute for narrower
+dispatch.
 
 ## Standing Review Roles
 

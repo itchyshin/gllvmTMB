@@ -67,7 +67,7 @@ or \code{"spde"}.}
 Returns the implied cross-trait correlations from a fitted
 gllvmTMB_multi model at one or more tiers (between-unit \code{B},
 within-unit \code{W}, phylogenetic \code{phy}, spatial \code{spde}),
-with 95\% (or other-level) confidence intervals. Three methods are
+with 95\% (or other-level) confidence intervals. Four method names are
 supported via the \code{method} argument:
 }
 \details{

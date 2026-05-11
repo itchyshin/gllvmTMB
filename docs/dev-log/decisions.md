@@ -63,3 +63,23 @@ The `TMB_LIB_INIT` token was renamed from `R_init_gllvmTMB_multi` to
 (the cache machinery) was removed; `useDynLib(gllvmTMB,
 .registration = TRUE)` is added via the package-level roxygen block
 in `R/zzz.R`.
+
+## 2026-05-11  Sequence pkgdown after green R-CMD-check
+
+Decision: change `.github/workflows/pkgdown.yaml` from an independent
+push workflow to a `workflow_run` workflow that starts only after a
+successful `R-CMD-check` on `main` / `master`, with manual dispatch
+retained. Rationale: match the drmTMB feedback discipline before
+optimising runtime. `gllvmTMB` still keeps the full 3-OS
+`R-CMD-check` on PRs and `main`; this decision does not add slow-test
+gating or a fast lane.
+
+## 2026-05-11  Use one narrow Rose pre-publish gate
+
+Decision: add a project-local `rose-pre-publish-audit` skill and
+document it in `AGENTS.md` and `CONTRIBUTING.md`. Rationale: the team
+needed a concrete consistency gate for public prose and reference
+navigation, not a larger static role system. The gate checks method
+lists, defaults, exported function names, the 3 x 5 keyword grid,
+argument names, family lists, and stale terminology for README,
+vignettes, pkgdown, NEWS, exported roxygen, and generated Rd changes.

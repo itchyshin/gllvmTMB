@@ -1,11 +1,8 @@
 on:
-  push:
+  workflow_run:
+    workflows: ["R-CMD-check"]
+    types: [completed]
     branches: [main, master]
-    paths-ignore:
-      - '_workshop/**'
-      - '**.md'
-      - '!README.md'
-      - '!NEWS.md'
   workflow_dispatch:
 
 name: pkgdown
@@ -19,11 +16,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pkgdown-${{ github.ref }}
+  group: pkgdown
   cancel-in-progress: true
 
 jobs:
   pkgdown:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -33,6 +31,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/configure-pages@v5
 

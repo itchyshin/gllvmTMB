@@ -66,3 +66,50 @@ Phase 1 task is to gate the slowest 20% of tests behind
 `Sys.getenv("RUN_SLOW_TESTS") != ""` so Windows fits in drmTMB's
 30-min budget. Once gated, lower `timeout-minutes` back to 30 to
 re-establish the strict discipline gate.
+
+## 2026-05-11 -- CI/site/team repair
+
+Scope:
+
+- changed `.github/workflows/pkgdown.yaml` so pkgdown runs after a
+  successful `R-CMD-check` on `main` / `master`, or by manual
+  dispatch;
+- rewrote `README.md` as the pkgdown homepage source: purpose, Start
+  here, preview status, install smoke test, tiny example, current
+  supported workflows, covariance keyword grid, boundaries, and
+  sister packages;
+- fixed stale Get Started wording for `extract_correlations()` so the
+  default is `method = "fisher-z"` rather than profile-likelihood;
+- updated `R/extract-correlations.R` roxygen wording from "three
+  methods" to the actual four method names and regenerated
+  `man/extract_correlations.Rd`;
+- added `.agents/skills/rose-pre-publish-audit/SKILL.md` and
+  documented the narrow Rose gate in `AGENTS.md` and
+  `CONTRIBUTING.md`;
+- replaced the long active Claude plan with a short current plan plus
+  backlog at `~/.claude/plans/please-have-a-robust-elephant.md`.
+
+Checks:
+
+- README smoke test:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); ...'`
+  fitted the tiny model with convergence 0, returned communality, and
+  returned `extract_correlations(..., tier = "unit")` with
+  `method = fisher-z`;
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed
+  and regenerated `man/extract_correlations.Rd`;
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` completed with
+  `No problems found`;
+- `Rscript --vanilla -e 'pkgdown::build_home(preview = FALSE);
+  pkgdown::build_article("gllvmTMB", quiet = TRUE)'` rendered
+  `pkgdown-site/index.html` and `pkgdown-site/articles/gllvmTMB.html`;
+- `gh workflow list --repo itchyshin/gllvmTMB` found the expected
+  active workflows: `R-CMD-check` and `pkgdown`;
+- Rose sweep:
+  `rg -n "three methods|profile-likelihood confidence|profile-likelihood default|method = \"wald\" and|trio" README.md vignettes R man AGENTS.md CONTRIBUTING.md .agents/skills/rose-pre-publish-audit/SKILL.md pkgdown-site/index.html pkgdown-site/articles/gllvmTMB.html`
+  found only the Rose audit examples and an unrelated internal
+  `extract-repeatability.R` comment.
+
+Decision: this repair deliberately does not reduce R-CMD-check runtime
+or add `RUN_SLOW_TESTS` gating. The immediate fix is cleaner feedback
+sequencing and clearer public/project instructions.

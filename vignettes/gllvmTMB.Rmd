@@ -261,9 +261,11 @@ variance shared with the others:
 extract_communality(fit, "unit")
 ```
 
-Pairwise trait correlations with 95% profile-likelihood confidence
-intervals (`method = "wald"` and `method = "bootstrap"` are also
-available):
+Pairwise trait correlations with 95% Fisher-z Wald confidence
+intervals. `method = "fisher-z"` is the default and keeps bounds in
+`[-1, 1]`; `method = "profile"` and `method = "bootstrap"` are slower
+alternatives, and `method = "wald"` is kept as an alias of
+`"fisher-z"`:
 
 ```{r cor}
 extract_correlations(fit, tier = "unit")

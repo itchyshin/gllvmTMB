@@ -1,0 +1,169 @@
+# Claude Group Handoff -- gllvmTMB
+
+Date: 2026-05-11
+
+This handoff is for Claude Code agents joining the current
+`gllvmTMB` work after the CI, site, and team repair.
+
+## Read First
+
+Read these files in order:
+
+1. `AGENTS.md`
+2. `CLAUDE.md`
+3. `.agents/skills/rose-pre-publish-audit/SKILL.md`
+4. `CONTRIBUTING.md`
+5. `docs/dev-log/after-task/2026-05-11-ci-site-team-repair.md`
+6. `docs/dev-log/check-log.md`
+7. `docs/dev-log/decisions.md`
+8. `ROADMAP.md`
+
+The short active plan is also in:
+
+```text
+~/.claude/plans/please-have-a-robust-elephant.md
+```
+
+## What Changed
+
+The project has just been reset around three practical rules:
+
+1. **CI discipline before CI speed.** `R-CMD-check` remains the full
+   3-OS gate for PRs and `main`. `pkgdown` now runs after a successful
+   `R-CMD-check` on `main` / `master`, not in parallel.
+2. **Reader-first public site.** `README.md` is the homepage source
+   and now starts with purpose, Start here, preview status, install,
+   a tiny smoke test, current supported workflows, boundaries, and
+   sister packages. The 3 x 5 keyword grid is still central, but no
+   longer the first thing a new user sees.
+3. **Rose is a narrow pre-publish gate.** Rose checks public
+   consistency for README, vignettes, `_pkgdown.yml`, NEWS, exported
+   roxygen, and generated Rd changes. Rose is not a broad rewrite
+   agent and not a replacement for syntax/math/TMB reviewers.
+
+## Current Priorities
+
+Do these next, in this order:
+
+1. **Finish and merge the CI/site/team repair PR.**
+   - Confirm `pkgdown::check_pkgdown()` is clean.
+   - Confirm the homepage and Get Started article render.
+   - After merge to `main`, confirm pkgdown starts only after green
+     `R-CMD-check`.
+
+2. **Stabilise the public surface.**
+   - Audit exports and pkgdown reference topics.
+   - Keep only functions that belong in the fresh package.
+   - Do not preserve legacy functions just because legacy tests call
+     them by bare name.
+
+3. **Unify the data-shape contract.**
+   - Make `gllvmTMB()`, `gllvmTMB_wide()`, and `traits(...)` agree
+     on weights and long/wide input semantics.
+   - Add tests that cover accepted shapes and rejected shapes.
+
+4. **Only then add new modelling features.**
+   - New families, grammar, likelihoods, tiers, or structured effects
+     require design-doc updates, simulation recovery, examples, and
+     the appropriate reviewer roles.
+
+## What Not To Do
+
+- Do not add fast-lane / slow-lane CI yet. That is backlog work.
+- Do not create per-role skill files for every reviewer. More static
+  context is not the fix.
+- Do not start new model features before the feedback loop, reference
+  index, and public surface are stable.
+- Do not treat pkgdown as a parallel substitute for R-CMD-check.
+- Do not broaden `gllvmTMB` into single-response modelling. Use
+  `glmmTMB` for single-response GLMMs, `sdmTMB` for spatial
+  single-response models, and `drmTMB` for one- or two-response
+  distributional regression.
+
+## Role Dispatch
+
+Keep dispatch narrow:
+
+- **Grace**: CI, pkgdown, CRAN, dependencies, platform risk.
+- **Rose**: cross-file consistency, stale claims, repeated process
+  failures, missing feedback loops.
+- **Pat / Darwin**: applied-user reading path, examples, biological
+  interpretation.
+- **Boole**: R API and formula grammar.
+- **Gauss**: TMB likelihoods, transforms, numerical stability.
+- **Noether**: symbolic equations, R syntax, and TMB implementation
+  alignment.
+- **Curie**: simulation recovery and test coverage.
+- **Emmy**: R package architecture and S3/API structure.
+
+If the task does not touch a role's domain, do not invoke that role.
+
+## Required Checks By Change Type
+
+For public prose or reference navigation:
+
+```r
+pkgdown::check_pkgdown()
+```
+
+For README, Get Started, or article changes:
+
+```r
+pkgdown::build_home(preview = FALSE)
+pkgdown::build_article("gllvmTMB", quiet = TRUE)
+```
+
+For parser-facing tutorial or article changes:
+
+```r
+pkgdown::build_articles(lazy = FALSE)
+```
+
+For roxygen changes:
+
+```r
+devtools::document(quiet = TRUE)
+pkgdown::check_pkgdown()
+```
+
+For R behavior changes:
+
+```r
+devtools::test()
+```
+
+For likelihood, formula-grammar, family, or structured-effect changes:
+
+```r
+devtools::test()
+devtools::check(args = "--no-manual", quiet = TRUE)
+```
+
+## Pre-Publish Rose Sweep
+
+Before merging any PR that touches README, vignettes, `_pkgdown.yml`,
+NEWS, exported roxygen, or generated Rd files, run the Rose
+pre-publish audit.
+
+Minimum grep set:
+
+```sh
+rg -n "method *=|default|fisher-z|profile|wald|bootstrap" R README.md vignettes man
+rg -n "latent|unique|indep|dep|phylo_|spatial_|meta_known_V|trio" README.md vignettes docs R man
+rg -n "unit_obs|unit =|trait =|cluster =|tier =|level =" README.md vignettes R man
+```
+
+The audit should return `PASS`, `WARN`, or `FAIL`. A fail blocks the
+merge until public prose, generated docs, pkgdown navigation, and
+source defaults agree.
+
+## Handoff Rule
+
+When passing work to the next agent, leave enough context in one of:
+
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/decisions.md`
+- `docs/dev-log/after-task/`
+- the relevant issue or PR
+
+Do not make the next Claude agent rediscover why a decision was made.

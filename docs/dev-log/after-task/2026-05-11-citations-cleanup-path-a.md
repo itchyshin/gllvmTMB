@@ -168,6 +168,24 @@ mislead a new gllvmTMB user.
   resolution applies. This is a worked example of why the
   append-only `decisions.md` convention is the right one for two
   agents to share -- the merge resolution is trivial.
+- First CI run (2026-05-11T22:30 to 22:51, run 25700874335)
+  surfaced a WARNING: `Invalid citation information in
+  'inst/CITATION': A bibentry of bibtype 'Article' has to specify
+  the field: journal`. The gllvmTMB entry was originally typed as
+  `bibtype = "Article"` (consistent with the TMB and sdmTMB
+  entries) but does not have a journal because the methods paper
+  is in preparation. Fix: change `bibtype = "Article"` to
+  `bibtype = "Manual"` (the conventional bibtype for software /
+  package citations) and set `year = "2026"` with the in-prep
+  note moved into the `note` field. R CMD check accepts the
+  Manual bibtype without a journal field. Second CI run after
+  the fix.
+- Pre-existing NOTE surfaced in the same run: "Package listed in
+  more than one of Depends, Imports, Suggests, Enhances:
+  'tidyselect'". This is NOT caused by this PR -- `tidyselect`
+  appears in both `Imports:` and `Suggests:` on main. The NOTE
+  was tolerated by prior CI runs. Recording it here for a
+  separate follow-up PR; out-of-scope for the citations cleanup.
 
 ## Team Learning
 

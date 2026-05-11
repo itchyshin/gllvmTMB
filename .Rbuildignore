@@ -16,6 +16,7 @@
 ^docs$
 ^pkgdown$
 ^data-raw$
+^dev$
 ^scratch$
 ^tests/testthat/Rplots\.pdf$
 ^.*\.Rproj$

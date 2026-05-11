@@ -114,6 +114,18 @@ package contributors.
   assumption.
 - For tutorials and error-message docs, tell the reader what to try
   next when a model or syntax is unsupported.
+- When demonstrating how to fit a `gllvmTMB` model in user-facing
+  prose -- README, vignettes, and Tier-1 articles -- show **both**
+  long-format and wide-format calls side by side. The long form
+  (`gllvmTMB(value ~ ..., data = df_long)`) is canonical; the wide
+  form (`gllvmTMB_wide(Y, ...)` or `gllvmTMB(traits(...) ~ ...,
+  data = df_wide)`) is the convenience equivalent. Readers vary in
+  mental model -- some think in matrices, some in long tibbles --
+  and a single example that shows both reaches both reader types
+  without forcing a translation step. Roxygen `@examples` blocks
+  for individual keyword or extractor functions may stay single-form
+  when the keyword is intrinsically one shape (for instance,
+  `traits()` is wide-only by construction).
 
 Use the project-local `prose-style-review` skill for substantial
 README, vignette, pkgdown, after-task, release, or paper-oriented
@@ -147,6 +159,19 @@ Claude Code should read this file first. It should not introduce a
 parallel agent configuration system inside the package unless the
 project owner asks for one.
 
+Use Shannon (`.agents/skills/shannon-coordination-audit/SKILL.md`)
+for periodic cross-team coordination audits between the Claude team
+and the Codex team. Shannon is a read-only checklist gate analogous
+to Rose, but checks process state -- branches, PRs, after-task
+pairing, dev-log consistency -- rather than document content.
+Invoke Shannon at maintainer-dispatch checkpoints: before handing
+off the next bounded task, before any branch switch with
+uncommitted work in the tree, when more than one PR is open across
+both teams, and at end-of-session before handing off to the next
+sitting. Shannon reports pass, warn, or fail with concrete evidence;
+it does not edit, merge, or replace Rose, Grace, Pat, or any
+implementation reviewer.
+
 ## Pre-Publish Gate
 
 Use one narrow Rose pre-publish audit for any PR that touches
@@ -168,7 +193,8 @@ Keep role dispatch bounded:
 
 Do not create per-role skill files for every reviewer unless the
 maintainer asks. More static context is not a substitute for narrower
-dispatch.
+dispatch. The project-local Rose and Shannon skills are intentional
+exceptions because they are narrow, checklist-driven gates.
 
 ## Standing Review Roles
 
@@ -191,6 +217,7 @@ perspectives; do not rename them in status updates or project notes.
 | Emmy | R package architecture reviewer | Are S3 methods, object structures, extractors, and internal APIs coherent? |
 | Grace | CI, pkgdown, CRAN, and reproducibility engineer | Will this pass on all platforms, deploy cleanly, and avoid compiled-code or dependency risk? |
 | Rose | Systems auditor | What discrepancies, repeated mistakes, stale wording, unsupported claims, and missing feedback loops are accumulating? |
+| Shannon | Cross-team coordination auditor | Are the two teams' working trees, branches, PRs, and dev-log entries consistent? Is every completed task closed by an after-task report? Are open PRs going to merge cleanly? |
 
 The Codex `.toml` agent files under `.codex/agents/` map (not 1:1) to
 these names; the `description` line of each `.toml` records the

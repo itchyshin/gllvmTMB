@@ -43,26 +43,32 @@ The project has just been reset around three practical rules:
 
 ## Current Priorities
 
-Do these next, in this order:
+Use `ROADMAP.md` as the shared map. The near-term order is:
 
-1. **Finish and merge the CI/site/team repair PR.**
-   - Confirm `pkgdown::check_pkgdown()` is clean.
-   - Confirm the homepage and Get Started article render.
-   - After merge to `main`, confirm pkgdown starts only after green
-     `R-CMD-check`.
+1. **Finish feedback verification.**
+   - Confirm the post-merge `main` `R-CMD-check` completes.
+   - Confirm pkgdown starts only after that green `R-CMD-check`, not
+     in parallel.
 
-2. **Stabilise the public surface.**
-   - Audit exports and pkgdown reference topics.
+2. **Stabilise the reader path.**
+   - Public examples should show long-format and wide-format calls
+     together: canonical long input plus the equivalent
+     `gllvmTMB_wide()` or `traits(...)` call.
+   - Rewrite articles that still depend on legacy helper names before
+     those helpers are removed.
+
+3. **Stabilise the public surface.**
+   - Use the Priority 2 export audit as input.
    - Keep only functions that belong in the fresh package.
    - Do not preserve legacy functions just because legacy tests call
      them by bare name.
 
-3. **Unify the data-shape contract.**
-   - Make `gllvmTMB()`, `gllvmTMB_wide()`, and `traits(...)` agree
-     on weights and long/wide input semantics.
-   - Add tests that cover accepted shapes and rejected shapes.
+4. **Unify the data-shape and weights contract.**
+   - Make `gllvmTMB()`, `gllvmTMB_wide()`, and `traits(...)` agree on
+     weights, trait ordering, reshaping, and error messages.
+   - Add paired long/wide tests for accepted and rejected shapes.
 
-4. **Only then add new modelling features.**
+5. **Only then add new modelling features.**
    - New families, grammar, likelihoods, tiers, or structured effects
      require design-doc updates, simulation recovery, examples, and
      the appropriate reviewer roles.
@@ -167,3 +173,23 @@ When passing work to the next agent, leave enough context in one of:
 - the relevant issue or PR
 
 Do not make the next Claude agent rediscover why a decision was made.
+For completed tasks or phases, prefer an after-task report under
+`docs/dev-log/after-task/` over a long chat summary. The report should
+state scope, outcome, checks, and follow-up.
+
+## Discussion Checkpoints
+
+Parallel work is useful for audits and reviews, but implementation
+should stop for maintainer discussion at these points:
+
+- after a read-only audit proposes deletions, API changes, or grammar
+  changes;
+- before a PR touches NAMESPACE, formula parsing, likelihood code, or
+  family support;
+- before merging while related CI is still running;
+- after a phase completes, so the maintainer can re-rank the next
+  roadmap item.
+
+For current work, Claude Code should propose and document narrow tasks
+from audits. Codex should implement bounded changes after the
+maintainer chooses the next PR shape.

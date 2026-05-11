@@ -114,6 +114,59 @@ Decision: this repair deliberately does not reduce R-CMD-check runtime
 or add `RUN_SLOW_TESTS` gating. The immediate fix is cleaner feedback
 sequencing and clearer public/project instructions.
 
+## 2026-05-11 (Claude) Add long + wide example pairing convention
+
+Added a writing-style rule to `AGENTS.md`: user-facing prose (README,
+vignettes, Tier-1 articles) must show both the long-format and the
+wide-format `gllvmTMB` call side by side. Rationale captured in
+`docs/dev-log/decisions.md` under "User-facing examples pair long +
+wide". Applies from 2026-05-11 onwards; the Priority 2 article-rewrite
+PR will be the first application.
+
+No package code or NAMESPACE changes. Documentation rule only.
+
+## 2026-05-11 -- Roadmap and Claude/Codex collaboration rules
+
+Scope:
+
+- rewrote `ROADMAP.md` from a legacy phase list into a current shared
+  map: reader path, public surface, long/wide data-shape contract,
+  feedback time, CRAN readiness, methods paper, and extensions;
+- added explicit collaboration stops to `ROADMAP.md` and
+  `docs/dev-log/claude-group-handoff-2026-05-11.md`;
+- updated `CLAUDE.md` so Claude Code uses the propose / discuss /
+  implement rhythm rather than running broad implementation work
+  without a maintainer checkpoint;
+- preserved the user-facing long-format plus wide-format example rule
+  in `AGENTS.md`.
+
+Checks:
+
+- documentation-only change; no R code, likelihood, formula grammar,
+  NAMESPACE, generated Rd, or pkgdown navigation changed;
+- reviewed the open GitHub PRs before editing: Priority 2 audit
+  (`agent/priority-2-audit`), logo/favicons
+  (`agent/logo-favicon`), and extractor examples
+  (`agent/extractor-examples`) have non-overlapping file scopes with
+  this roadmap update.
+
+## 2026-05-11 -- Shannon coordination audit role
+
+Scope:
+
+- added `.agents/skills/shannon-coordination-audit/SKILL.md`;
+- documented Shannon in `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`,
+  `ROADMAP.md`, and `docs/dev-log/decisions.md`;
+- created an after-task report for the Shannon role addition.
+
+Checks:
+
+- documentation-only change; no R code, likelihood, formula grammar,
+  NAMESPACE, generated Rd, pkgdown navigation, or article source
+  changed;
+- Shannon is scoped as read-only and checkpoint-invoked, not as a
+  continuous overseer.
+
 ## 2026-05-11 -- post-PR-#8-merge pkgdown workflow_run verification
 
 Scope:

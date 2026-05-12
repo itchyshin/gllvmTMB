@@ -34,8 +34,16 @@ file references.
 6. Family lists match exported response-family constructors.
 7. Stale terminology is absent from new or touched public prose:
    `trio`, obsolete keyword aliases presented as primary syntax,
-   `profile-likelihood default` for correlations, or unsupported
-   features described as implemented.
+   `profile-likelihood default` for correlations, unsupported
+   features described as implemented, `diag(U)` / `U_phy` /
+   `U_non` as math notation (per `decisions.md` 2026-05-12, the
+   math uses `S` / `s`; "two-U" is OK only as a task label or
+   function nickname, never as math notation), or "three entry
+   points" / "three shapes" framing (per Option B + sugar pivot
+   in PR #39, the user-facing description is *two* shapes: long
+   via `gllvmTMB()`, wide via `gllvmTMB_wide()`; the
+   `traits(...)` LHS marker is a documented parser path, not a
+   third recommended user-facing shape).
 
 ## Suggested Commands
 

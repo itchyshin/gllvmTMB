@@ -9,6 +9,17 @@ Use this skill before treating a meaningful `gllvmTMB` task or phase as
 complete. It is Rose's forest-and-trees checklist: make sure the
 repository tells one coherent story after code changes.
 
+## Canonical Reference
+
+The stable design note is `docs/design/10-after-task-protocol.md`.
+That doc owns the section list, the Mathematical Contract
+prescription, the Consistency Audit verdict-required-after-every-rg
+pattern (PR #24), the "Tests of the Tests" name-what-would-catch
+pattern (PR #24), the Team-Learning-by-AGENTS.md-Standing-Review-Roles
+pattern (PR #24), and the Rendered-Rd spot-check protocol (PR #36).
+This skill is the operational checklist; check the design doc when
+in doubt about section scope or required content.
+
 ## Required Audit
 
 1. State the implemented claim in one sentence.
@@ -22,7 +33,13 @@ repository tells one coherent story after code changes.
 6. Run targeted tests for touched behaviour.
 7. Run broader package checks when practical:
    - `devtools::test()`
-   - `devtools::document()` if roxygen changed
+   - `devtools::document()` if roxygen changed, **followed by**
+     `tail -5 man/<changed>.Rd` and `grep -c '^\\keyword'
+     man/<changed>.Rd` for any file where a tag was added after
+     a long description block (the PR #32 -> PR #33 lesson:
+     `@keywords internal` placed mid-prose produces dozens of
+     garbage `\keyword{}` entries; the spot-check catches it
+     before push)
    - `pkgdown::check_pkgdown()`
    - `pkgdown::build_articles(lazy = FALSE)` for any change that
      touches user-formula parsing (otherwise unit tests can pass while

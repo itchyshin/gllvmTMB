@@ -2,7 +2,7 @@
 % Please edit documentation in R/gllvmTMB-wide.R
 \name{gllvmTMB_wide}
 \alias{gllvmTMB_wide}
-\title{Fit a GLLVM from a wide site × species matrix}
+\title{Fit a GLLVM from a wide unit × trait matrix}
 \usage{
 gllvmTMB_wide(
   Y,
@@ -16,21 +16,24 @@ gllvmTMB_wide(
 )
 }
 \arguments{
-\item{Y}{A \verb{n_sites × n_species} numeric matrix of responses
-(presence / absence, abundance, traits, item scores). Rows must
-be unique sites; columns must be unique species.}
+\item{Y}{A \verb{n_units × n_traits} numeric matrix of responses
+(presence / absence, abundance, continuous measurements, item
+scores). Rows must be unique units; columns must be unique
+traits.}
 
-\item{X}{Optional \verb{n_sites × n_predictors} data frame of site-level
-predictors. Row order must match \code{Y}.}
+\item{X}{Optional \verb{n_units × n_predictors} data frame of
+unit-level predictors. Row order must match \code{Y}.}
 
 \item{d}{Integer; the number of latent factors. Default 2.}
 
 \item{family}{A \code{family} object (default \code{gaussian()}); for
 presence/absence matrices use \code{binomial()}.}
 
-\item{phylo_vcv}{Optional \verb{n_species x n_species} phylogenetic
+\item{phylo_vcv}{Optional \verb{n_traits x n_traits} phylogenetic
 correlation matrix (rownames must match colnames of \code{Y}). When
-supplied, a \code{phylo_latent()} term with \code{d} factors is added.}
+supplied, a \code{phylo_latent()} term with \code{d} factors is added.
+For the canonical site × species use case the "traits" are
+species, so this is the species-level phylogenetic correlation.}
 
 \item{formula_extra}{Optional formula RHS to splice into the fixed
 effects, e.g. \code{~ env_temp + env_precip}. Defaults to \code{~ 1}.}
@@ -58,15 +61,28 @@ API (\code{\link[=gllvmTMB]{gllvmTMB()}} with \code{weights = n_trials}) instead
 \item{...}{Passed to \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
-A \code{gllvmTMB_multi} fit. The species column is exposed as the
-"trait" axis of the engine (so \code{\link[=extract_ordination]{extract_ordination()}} returns the
-species loadings).
+A \code{gllvmTMB_multi} fit. The column dimension of \code{Y} is
+exposed as the "trait" axis of the engine (so
+\code{\link[=extract_ordination]{extract_ordination()}} returns the trait loadings). For the
+site × species special case the columns are species, and the
+loadings are species loadings; the same machinery returns
+trait loadings for individual × trait morphometrics, study
+loadings for paper × outcome meta-analysis, etc.
 }
 \description{
-Convenience wrapper that lets users supply a site-by-species matrix
-\code{Y} (the canonical input idiom of \code{\link[gllvm:gllvm]{gllvm::gllvm()}}) and an optional
-site-level predictor data frame \code{X}. Pivots to long format
-internally and dispatches to \code{\link[=gllvmTMB]{gllvmTMB()}}.
+Convenience wrapper that lets users supply a wide \verb{unit × trait}
+response matrix \code{Y} (rows = units, columns = traits) and an
+optional unit-level predictor data frame \code{X}. Pivots to long
+format internally and dispatches to \code{\link[=gllvmTMB]{gllvmTMB()}}.
+}
+\details{
+The "unit × trait" framing is generic: \verb{site × species} (joint
+species distribution modelling), \verb{individual × trait}
+(morphometrics / behavioural syndromes), \verb{species × trait}
+(phylogenetic comparative), \verb{paper × outcome} (meta-analysis),
+or any similar layout. The function does not assume the
+ecological special case; it is the unified matrix-in entry point
+for the stacked-trait GLLVM engine.
 }
 \examples{
 \dontrun{

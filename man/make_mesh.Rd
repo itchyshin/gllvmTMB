@@ -3,7 +3,7 @@
 \name{make_mesh}
 \alias{make_mesh}
 \alias{plot.sdmTMBmesh}
-\title{Construct an SPDE mesh for sdmTMB}
+\title{Construct an SPDE mesh for gllvmTMB}
 \usage{
 make_mesh(
   data,
@@ -65,7 +65,8 @@ from \code{fmesher_func} (default is \code{\link[fmesher:fm_mesh_2d]{fmesher::fm
 own \pkg{ggplot2} version, pass \code{your_mesh$mesh} to \code{inlabru::gg()}.
 }
 \description{
-Construct an SPDE mesh for use with sdmTMB.
+Construct an SPDE mesh for use with the \code{gllvmTMB()}
+\verb{spatial_*()} keywords.
 }
 \examples{
 set.seed(1)

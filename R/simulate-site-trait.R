@@ -1,8 +1,17 @@
-#' Simulate a stacked-trait, site-by-species GLLVM dataset
+#' Simulate a functional-biogeography GLLVM dataset (sites × species × traits)
 #'
-#' Simulates data from the Nakagawa et al. (in prep) functional-biogeography
-#' model:
+#' Simulates a three-dimensional dataset from the Nakagawa et al. (in
+#' prep) functional-biogeography model:
 #' \deqn{y_{sit} = \alpha_t + x_s'\beta_t + r_{st} + u_{st} + e_{sit} + p_{it} + q_{it}}
+#'
+#' This simulator is domain-specific: it produces a `(site, species,
+#' trait)` cube, which is the canonical functional-biogeography
+#' layout. The package as a whole works for any `(unit, trait)`
+#' stacked-trait GLLVM (`unit` may be site, individual, species,
+#' paper, ...); this particular simulator targets the site × species
+#' × trait special case used in the methods paper. For simpler
+#' simulations from a generic `(unit, trait)` design, build the data
+#' inline as in the morphometrics article.
 #'
 #' Each component can be turned on or off via the corresponding variance /
 #' loading argument. The default settings produce a fixed-effects-only dataset

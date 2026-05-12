@@ -1,28 +1,42 @@
 ## Wide-matrix entry point — the gllvm-style API.
 ##
-## Most ecology users coming from `gllvm` think of their data as a
-## site × species matrix Y (rows = sites, columns = species). The
-## gllvmTMB engine works in long format under the hood. This wrapper
-## pivots the wide form into long format and dispatches to gllvmTMB().
+## Most users (ecology, evolution, environmental science) think of
+## their data as a wide unit × trait matrix Y -- rows are the units
+## (sites, individuals, species, papers, ...) and columns are the
+## traits (species occurrences, body measurements, study outcomes,
+## ...). The gllvmTMB engine works in long format under the hood.
+## This wrapper pivots the wide form into long format and dispatches
+## to gllvmTMB().
 
-#' Fit a GLLVM from a wide site × species matrix
+#' Fit a GLLVM from a wide unit × trait matrix
 #'
-#' Convenience wrapper that lets users supply a site-by-species matrix
-#' `Y` (the canonical input idiom of [gllvm::gllvm()]) and an optional
-#' site-level predictor data frame `X`. Pivots to long format
-#' internally and dispatches to [gllvmTMB()].
+#' Convenience wrapper that lets users supply a wide `unit × trait`
+#' response matrix `Y` (rows = units, columns = traits) and an
+#' optional unit-level predictor data frame `X`. Pivots to long
+#' format internally and dispatches to [gllvmTMB()].
 #'
-#' @param Y A `n_sites × n_species` numeric matrix of responses
-#'   (presence / absence, abundance, traits, item scores). Rows must
-#'   be unique sites; columns must be unique species.
-#' @param X Optional `n_sites × n_predictors` data frame of site-level
-#'   predictors. Row order must match `Y`.
+#' The "unit × trait" framing is generic: `site × species` (joint
+#' species distribution modelling), `individual × trait`
+#' (morphometrics / behavioural syndromes), `species × trait`
+#' (phylogenetic comparative), `paper × outcome` (meta-analysis),
+#' or any similar layout. The function does not assume the
+#' ecological special case; it is the unified matrix-in entry point
+#' for the stacked-trait GLLVM engine.
+#'
+#' @param Y A `n_units × n_traits` numeric matrix of responses
+#'   (presence / absence, abundance, continuous measurements, item
+#'   scores). Rows must be unique units; columns must be unique
+#'   traits.
+#' @param X Optional `n_units × n_predictors` data frame of
+#'   unit-level predictors. Row order must match `Y`.
 #' @param d Integer; the number of latent factors. Default 2.
 #' @param family A `family` object (default `gaussian()`); for
 #'   presence/absence matrices use `binomial()`.
-#' @param phylo_vcv Optional `n_species x n_species` phylogenetic
+#' @param phylo_vcv Optional `n_traits x n_traits` phylogenetic
 #'   correlation matrix (rownames must match colnames of `Y`). When
 #'   supplied, a `phylo_latent()` term with `d` factors is added.
+#'   For the canonical site × species use case the "traits" are
+#'   species, so this is the species-level phylogenetic correlation.
 #' @param formula_extra Optional formula RHS to splice into the fixed
 #'   effects, e.g. `~ env_temp + env_precip`. Defaults to `~ 1`.
 #' @param weights Optional per-cell observation weights, parallel to `Y`.
@@ -44,9 +58,13 @@
 #'   API ([gllvmTMB()] with `weights = n_trials`) instead.
 #' @param ... Passed to [gllvmTMB()].
 #'
-#' @return A `gllvmTMB_multi` fit. The species column is exposed as the
-#'   "trait" axis of the engine (so [extract_ordination()] returns the
-#'   species loadings).
+#' @return A `gllvmTMB_multi` fit. The column dimension of `Y` is
+#'   exposed as the "trait" axis of the engine (so
+#'   [extract_ordination()] returns the trait loadings). For the
+#'   site × species special case the columns are species, and the
+#'   loadings are species loadings; the same machinery returns
+#'   trait loadings for individual × trait morphometrics, study
+#'   loadings for paper × outcome meta-analysis, etc.
 #'
 #' @seealso [gllvmTMB()] for the long-format engine; [extract_Sigma()]
 #'   for post-fit covariance summaries; [extract_ordination()] for

@@ -6,11 +6,25 @@ same units have several responses, traits, species, behaviours, or
 items, and the scientific question is about their shared covariance,
 ordination, communality, phylogenetic signal, or spatial structure.
 
-The package works with long-format data: one row per `(unit, trait)`
-observation. The first examples are motivated by ecology, evolution,
-and environmental science, but the data shape is general: site x
-species, individual x trait, species x trait, paper x outcome, or any
-similar unit x response layout.
+The package accepts data in either **long** or **wide** shape; the
+two paths reach the same engine, and you pick whichever shape
+matches your data on disk:
+
+- **Long** -- one row per `(unit, trait)` observation:
+  ```r
+  gllvmTMB(value ~ ..., data = df_long, unit = "...", ...)
+  ```
+- **Wide** -- one row per unit, one column per trait. `Y` is either
+  a numeric matrix or a wide data frame; `gllvmTMB_wide()` detects
+  the container and pivots internally:
+  ```r
+  gllvmTMB_wide(Y, ...)
+  ```
+
+The first examples are motivated by ecology, evolution, and
+environmental science, but the data shape is general: site x
+species, individual x trait, species x trait, paper x outcome, or
+any similar unit x response layout.
 
 ## Start here
 

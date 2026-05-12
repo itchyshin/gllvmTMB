@@ -30,7 +30,16 @@ that produced PR #13 backfill on 2026-05-11.
 
 ## Scope
 
-The package is for stacked-trait, long-format multivariate GLLVMs.
+The package is for stacked-trait multivariate GLLVMs. Two
+user-facing data shapes -- **long** (`gllvmTMB(value ~ ...,
+data = df_long, ...)`) and **wide** (`gllvmTMB_wide(Y, ...)` where
+`Y` is a numeric matrix or a wide data frame). Both reach the same
+engine. New examples, articles, and roxygen `@examples` blocks
+should use one of these two canonical shapes. The formula-LHS
+`traits(...)` marker stays exported for back-compatibility but is
+internal (`@keywords internal`); new user-facing prose should not
+recommend it.
+
 Single-response models belong in `glmmTMB`; spatial single-response
 models belong in `sdmTMB`.
 

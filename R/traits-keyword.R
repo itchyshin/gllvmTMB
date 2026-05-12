@@ -11,11 +11,28 @@
 ## formula-level alternative for users who prefer the brms / formula
 ## idiom over the gllvm matrix idiom.
 
-#' Wide-format trait marker for the `gllvmTMB()` formula LHS
+#' Wide-format trait marker for the `gllvmTMB()` formula LHS (internal)
 #'
 #' Formula-LHS marker that lets [gllvmTMB()] accept a wide data frame
 #' (one row per individual, one column per trait) instead of the
 #' canonical long-format `(unit, trait)` data.
+#'
+#' `traits()` is **internal** and kept for back-compatibility with
+#' code that uses the `gllvmTMB(traits(...) ~ ..., data = wide_df)`
+#' idiom. New user code should prefer one of the two canonical
+#' shapes -- the package thinks in **two ways**, long or wide:
+#'
+#' - **long**: `gllvmTMB(value ~ ..., data = df_long, ...)` -- one
+#'   row per `(unit, trait)` observation.
+#' - **wide**: `gllvmTMB_wide(Y, ...)` -- `Y` is a numeric matrix or
+#'   a wide data frame with one row per unit and one column per
+#'   trait. The function detects the container and pivots
+#'   internally.
+#'
+#' Both paths reach the same engine; the user picks whichever shape
+#' matches their data on disk.
+#'
+#' @keywords internal
 #'
 #' Used inside `gllvmTMB()` like other formula keywords (`latent()`,
 #' `unique()`, `phylo_*()`, `spatial_*()`):

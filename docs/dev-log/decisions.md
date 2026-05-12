@@ -349,3 +349,68 @@ revisit any specific archive entry, the rationale is "scope vs
 sdmTMB / glmmTMB / drmTMB sister-package separation" and the
 revisit needs an explicit maintainer decision recorded here as
 an amendment.
+
+## 2026-05-12  Naming convention: "two-U" is a task label; public math uses S / s
+
+Decision: across the package, **"two-U" is a legacy task /
+nickname label** for the four-component phylogenetic model
+(`phylo_latent + phylo_unique + latent + unique`). The actual
+mathematical notation in roxygen, vignettes, articles, and
+user-facing documentation must use `S` / `s` for the unique-
+variance diagonal, matching the engine algebra:
+
+```
+Sigma = Lambda Lambda^T + diag(s)
+```
+
+For each correlation tier the decomposition takes the same shape:
+
+```
+Sigma_phy = Lambda_phy Lambda_phy^T + diag(s_phy)
+Sigma_non = Lambda_non Lambda_non^T + diag(s_non)
+Omega     = Sigma_phy + Sigma_non
+```
+
+What stays "two-U":
+
+- **File names**: `R/extract-two-U-cross-check.R`,
+  `R/extract-two-U-via-PIC.R`,
+  `tests/testthat/test-phylo-two-U.R`,
+  `tests/testthat/test-two-U-cross-check.R`, etc.
+- **Function names**: `compare_dep_vs_two_U()`,
+  `compare_indep_vs_two_U()`, `extract_two_U_via_PIC()`,
+  `.is_two_U_fit()`.
+- **Task labels** in dev-log entries, PR titles, dispatch queues,
+  and informal references to "the four-component model" or "the
+  phylo/two-U lane".
+
+What uses `S` / `s`:
+
+- **Roxygen prose** for any extractor or function that describes
+  the unique-variance diagonal.
+- **Article body text** (`Sigma = Lambda Lambda^T + diag(s)`).
+- **Tier-1 / Tier-2 vignettes**.
+- **README**, **CONTRIBUTING**, and **`docs/design/*.md`** math.
+- **Equations** in `\eqn{...}` LaTeX blocks within roxygen.
+
+Rationale: the function and file names exist already; renaming
+them is a high-friction breaking API change (even pre-CRAN it
+would invalidate any downstream user / Codex / Claude code that
+imports those names). But the *mathematical notation* in public
+prose is freely editable, and the engine algebra in code already
+uses S/s. The distinction is: **function-name "U" = task-label
+nickname; math-notation "S/s" = canonical algebra**.
+
+Recording context: Codex flagged this 2026-05-12 in their
+pre-sweep check, after the maintainer named the convention in
+chat ("we need S rather than U"). Codex's sweep branch adds a
+check-log note that the next phylo/two-U lane must translate
+legacy `U` notation to current `S/s`. This `decisions.md` entry
+is the parallel Claude-side record so the convention survives
+beyond Codex's per-branch check-log notes and into the canonical
+scope log.
+
+When the phylo/two-U doc-validation branch (item #1 in the
+PR #37 dispatch queue) lands, the article body must use S/s in
+math, even though the article title and file paths can still
+reference "two-U" as the model nickname.

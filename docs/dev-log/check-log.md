@@ -502,3 +502,54 @@ the merged PR #29 / PR #30 work. Merge readiness now depends on the new
 Phase 3 pull request's GitHub Actions result. The Air-format workflow
 remains visible but advisory, and this branch does not absorb its
 repository-wide formatting sweep.
+
+## 2026-05-12 -- Origin branch hygiene: 22 merged branches deleted
+
+Scope: Shannon audit PR #35 flagged 22 merged-but-not-deleted
+branches accumulating on origin (the `gh pr merge --delete-branch`
+flag failed for branches that had active worktrees at merge time,
+so the local deletion succeeded but the remote ref was left
+behind for a subset). Maintainer authorised cleanup 2026-05-12
+~09:50 MT.
+
+Verification (one row per branch; each `gh pr list --state merged
+--head <branch>` returned exactly one merged PR number):
+
+- agent/after-task-protocol-enrich -> PR #24
+- agent/air-format-trial -> PR #29
+- agent/bootstrap -> PR #1
+- agent/bootstrap-after-task-report -> PR #4
+- agent/citations-cleanup-path-a -> PR #26
+- agent/extractor-examples -> PR #7
+- agent/first-shannon-audit -> PR #17
+- agent/handoff-readfirst-update -> PR #21
+- agent/logo-favicon -> PR #9
+- agent/long-wide-convention -> PR #11
+- agent/missing-after-tasks -> PR #13
+- agent/overnight-report-2026-05-11 -> PR #28
+- agent/phase3-weights-contract -> PR #23
+- agent/phylo-keyword-examples -> PR #6
+- agent/pkgdown-destination-fix -> PR #2
+- agent/pkgdown-workflow-run-verification -> PR #16
+- agent/pr22-check-log-evidence -> PR #25
+- agent/priority-1a-proposal -> PR #14
+- agent/priority-2-audit -> PR #10
+- agent/r-cmd-check-drmtmb-parity -> PR #3
+- codex/merge-gate-11-12-after-task -> PR #19
+- codex/morphometrics-tier1-rewrite -> PR #27
+
+Cleanup: `git push origin --delete <branch>` for each. All 22
+returned `- [deleted]`. Verified post-cleanup with
+`git ls-remote origin 'refs/heads/agent/*' 'refs/heads/codex/*'`
+which now shows only active branches.
+
+Retained: `agent/shannon-audit-2026-05-12` (PR #35 open),
+`agent/housekeeping-bundle` (PR #36 open),
+`codex/long-wide-example-sweep` (Codex's active sweep work,
+unpushed at audit time).
+
+Decision: future `gh pr merge --delete-branch` failures (when a
+worktree blocks the local delete) should be followed by an explicit
+`git push origin --delete <branch>` so the remote ref does not
+accumulate. The local branch can be deleted later once the
+worktree is removed; the remote ref does not need to wait.

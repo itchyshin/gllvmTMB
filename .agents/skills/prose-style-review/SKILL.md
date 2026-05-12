@@ -44,6 +44,21 @@ reader would otherwise have to infer it from context.
    paired (Sigma = Lambda Lambda^T + diag(s)); standalone `latent`
    is the no-residual subset and standalone `unique` is the
    marginal/independent mode -- describe these correctly.
+   **Notation convention** (per `decisions.md`, 2026-05-12):
+   the unique-variance diagonal in math is always `S` / `s`,
+   never `U`. The string "two-U" is OK as a task label / function
+   nickname (it matches existing function names and file paths),
+   but in user-facing math prose write `Sigma_phy = Lambda_phy
+   Lambda_phy^T + diag(s_phy)`, `Omega = Sigma_phy + Sigma_non`,
+   etc. A `diag(U)` in roxygen or article body is a drift to flag.
+8. **Two-shape data framing** (per `decisions.md`, Option B + sugar
+   pivot in PR #39): the package accepts data as either *long*
+   (`gllvmTMB(value ~ ..., data = df_long, ...)`) or *wide*
+   (`gllvmTMB_wide(Y, ...)` where `Y` is a numeric matrix or a
+   wide data frame). The `traits(...)` formula LHS marker is the
+   parser path that also accepts the sugar form
+   `traits(...) ~ 1 + latent(1 | unit, d = K)`. Tier-1 and
+   user-facing prose should describe two shapes, not three.
 8. Support factual, statistical, or literature claims with citations,
    local evidence, check outputs, or a clear "design assumption" label.
 9. For tutorials and error-message docs, tell the reader what to do

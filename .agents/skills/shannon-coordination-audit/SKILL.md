@@ -31,8 +31,35 @@ evidence and the smallest recommended next action.
    `docs/dev-log/check-log.md`, `docs/dev-log/decisions.md`, or an
    after-task report, not only in chat.
 6. **Rule drift**: current practice should be compared with stated
-   rules, especially WIP limits, CI pacing, after-task reports, and
-   maintainer checkpoints before deletions or API changes.
+   rules, especially:
+   - WIP limit (3 open PRs per Claude lane is the soft cap; under 3
+     is healthy)
+   - CI pacing (no rapid-fire pushes; wait for the active run to
+     complete before pushing a follow-up commit)
+   - **Pre-edit lane check** (per `AGENTS.md` "Multi-Agent
+     Collaboration", PR #22): `gh pr list --state open` +
+     `git log --all --oneline --since="6 hours ago"` before
+     editing any shared rule file (`AGENTS.md`, `CLAUDE.md`,
+     `ROADMAP.md`, `CONTRIBUTING.md`, `docs/dev-log/decisions.md`,
+     `docs/dev-log/check-log.md`, `docs/design/`,
+     `docs/dev-log/after-task/`, `inst/COPYRIGHTS`, `DESCRIPTION`)
+   - **After-task at branch start** (per `CONTRIBUTING.md`
+     "Definition of Done", PR #22): the skeleton report goes in
+     the FIRST commit on the branch, filled in as work proceeds
+   - **Merge authority** (per `CLAUDE.md` "Collaboration
+     Rhythm", PR #22): low-risk PRs self-merge (docs, dev-log,
+     audits, after-task, design docs, CI tweaks, asset
+     additions, single-article rewrites against an approved
+     snippet); high-risk PRs (deletions, API changes, formula
+     grammar, likelihood, TMB, family, broad article rewrites)
+     wait for maintainer
+   - **Surface review asks explicitly in chat** (per `CLAUDE.md`
+     "Collaboration Rhythm", PR #22): do not leave maintainer
+     review items only in PR descriptions
+   - **Agent-to-agent handoffs in the repo** (per `CLAUDE.md`
+     "Collaboration Rhythm", PR #22): use PR comments addressed
+     to the other agent OR directed lines in
+     `docs/dev-log/check-log.md`; not maintainer relay only
 
 ## Suggested Commands
 

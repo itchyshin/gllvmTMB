@@ -495,7 +495,7 @@ extract_Sigma <- function(fit,
     if (has_phy_rr) L <- fit$report$Lambda_phy
     ## Two-U PGLLVM: when phylo_diag is fit (phylo_unique co-fit with
     ## phylo_latent), pull the per-trait phylogenetic SDs from the report
-    ## and square them to get the diagonal U_phy variances. When the
+    ## and square them to get the diagonal s_phy variances. When the
     ## legacy phylo_unique-alone path is used (rank-T diagonal Lambda),
     ## the unique variances are already encoded in Lambda_phy, so we
     ## leave S = NULL and only emit the legacy advisory.

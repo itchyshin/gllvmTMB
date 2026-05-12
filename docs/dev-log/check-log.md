@@ -657,3 +657,40 @@ Checks:
 Known remaining validation gap: the full package test suite was
 attempted but interrupted before completion, and `devtools::check()`
 was not rerun in this narrow resume pass.
+
+## 2026-05-12 -- Phylogenetic / two-U doc-validation branch
+
+Branch: `codex/phylo-two-u-doc-validation`.
+
+Maintainer dispatch: proceed with Codex-owned work while main CI and
+pkgdown finish, but cap the branch at three user-visible items. Scope:
+
+1. add a public phylogenetic trait-covariance article using current
+   `S/s` notation and long + wide data-frame syntax;
+2. add a design note pinning the current phylogenetic GLLVM math and
+   syntax contract;
+3. add a focused current-code guard that compact wide `traits()`
+   phylogenetic syntax matches explicit long syntax.
+
+Pre-edit Shannon check: working tree clean on `main`, zero open PRs,
+recent history shows PR #39 merged, and no other branch currently owns
+the target article/design/test files. Post-merge main R-CMD-check is
+still running on GitHub, but the maintainer explicitly allowed starting
+the next branch without waiting for that integration run.
+
+Validation:
+
+- live pre-write probe fitted the intended long and wide data-frame
+  phylogenetic formulas, both converged with code `0`, and the
+  log-likelihood difference was `0`;
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed,
+  updating the generated Rd files for the S/s notation sweep;
+- `Rscript --vanilla -e 'devtools::test(filter = "traits-keyword|two-U-cross-check|extract-omega")'`
+  passed with `FAIL 0 | WARN 2 | SKIP 1 | PASS 82`; both warnings are
+  the existing `B`/`W` deprecation checks in `test-extract-omega.R`;
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/phylogenetic-gllvm", new_process = FALSE); pkgdown::build_article("articles/covariance-correlation", new_process = FALSE)'`
+  completed; both affected article renders emitted only the known
+  missing `../logo.png` pkgdown warning;
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  passed with "No problems found";
+- `git diff --check` passed.

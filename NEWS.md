@@ -58,11 +58,11 @@ gone.
 * `gllvmTMBcontrol()` no longer carries a `sdmTMBcontrol` slot.
   Extra `...` arguments to `gllvmTMBcontrol()` emit a warning.
 
-* Articles are tiered. The pkgdown navbar shows seven Tier-1
+* Articles are tiered. The pkgdown navbar shows eight Tier-1
   worked-example articles plus the Get Started vignette: morphometrics,
-  joint-sdm, behavioural-syndromes, choose-your-model,
-  covariance-correlation, functional-biogeography, pitfalls. The
-  `article-tier-audit` skill encodes the triage.
+  phylogenetic-gllvm, joint-sdm, behavioural-syndromes,
+  choose-your-model, covariance-correlation, functional-biogeography,
+  pitfalls. The `article-tier-audit` skill encodes the triage.
 
 * Authors@R lists only Shinichi Nakagawa (the sole author of
   gllvmTMB). Upstream copyright holders for inherited code

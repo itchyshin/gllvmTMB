@@ -44,8 +44,8 @@ columns are added: \code{H2_lower}, \code{H2_upper}, \code{H2_method}.
 For a phylogenetic species-level GLLVM, decomposes each trait's
 between-species latent variance into three additive components that
 sum to one:
-\deqn{H_t^2 \;=\; \frac{[\boldsymbol\Sigma_\text{phy}]_{tt}}{V_{\eta,t}}, \qquad C^2_{\text{non},t} \;=\; \frac{[\boldsymbol\Sigma_\text{non,shared}]_{tt}}{V_{\eta,t}}, \qquad \Psi_t \;=\; \frac{[\mathbf U]_{tt}}{V_{\eta,t}},}
-where \eqn{V_{\eta,t} = [\boldsymbol\Sigma_\text{phy}]_{tt} + [\boldsymbol\Sigma_\text{non,shared}]_{tt} + [\mathbf U]_{tt}}
+\deqn{H_t^2 \;=\; \frac{[\boldsymbol\Sigma_\text{phy}]_{tt}}{V_{\eta,t}}, \qquad C^2_{\text{non},t} \;=\; \frac{[\boldsymbol\Sigma_\text{non,shared}]_{tt}}{V_{\eta,t}}, \qquad \Psi_t \;=\; \frac{[\mathbf S_\text{non}]_{tt}}{V_{\eta,t}},}
+where \eqn{V_{\eta,t} = [\boldsymbol\Sigma_\text{phy}]_{tt} + [\boldsymbol\Sigma_\text{non,shared}]_{tt} + [\mathbf S_\text{non}]_{tt}}
 is the total between-species latent variance for trait \eqn{t}
 (Nakagawa et al. \emph{in prep}, PGLLVM paper Eq. 19, 22-25).
 }
@@ -56,7 +56,7 @@ Interpretation:
 species latent variance attributable to phylogenetically structured
 variation ("evolutionary conservatism"). When the model includes
 both \code{phylo_latent()} and \code{phylo_unique()}, \eqn{\boldsymbol\Sigma_\text{phy}}
-is the sum \eqn{\boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top} + \mathrm{diag}(\mathbf U_\text{phy})}
+is the sum \eqn{\boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top} + \mathbf S_\text{phy}}
 and \eqn{H_t^2} reflects the \emph{total} phylogenetic variance.}
 \item{\eqn{C^2_{\text{non},t}}}{non-phylogenetic communality —
 proportion of variance attributable to shared non-phylogenetic

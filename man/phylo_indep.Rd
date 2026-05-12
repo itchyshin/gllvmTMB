@@ -35,7 +35,7 @@ are otherwise independent.
 Use \code{phylo_indep()} for an explicit marginal-only phylogenetic fit
 (no cross-trait phylogenetic decomposition). Use \code{phylo_latent()}
 paired with \code{phylo_unique()} for the two-U decomposition
-\eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \mathrm{diag}(\mathbf U_{\text{phy}})}.
+\eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \mathbf S_{\text{phy}}}.
 \subsection{Mutual exclusion with \code{phylo_latent()}}{
 
 Combining \code{phylo_indep(0 + trait | species)} with

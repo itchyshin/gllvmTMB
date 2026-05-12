@@ -1,0 +1,250 @@
+---
+title: "Phylogenetic trait covariance"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Phylogenetic trait covariance}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache    = FALSE,
+  eval     = requireNamespace("ape", quietly = TRUE),
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+This article is for a comparative-methods reader with several traits
+measured once per species. The working question is: can we separate
+phylogenetically conserved trait covariance from non-phylogenetic
+species-level covariance, while still keeping trait-specific variation
+on the diagonal?
+
+The model has two species-level trait-covariance matrices. The
+phylogenetic component uses the tree correlation matrix `A`; the
+non-phylogenetic component uses independent species effects:
+
+$$
+g_{\mathrm{phy}} \sim
+\mathrm{MVN}(0, \Sigma_{\mathrm{phy}} \otimes A),
+\qquad
+g_{\mathrm{non}} \sim
+\mathrm{MVN}(0, \Sigma_{\mathrm{non}} \otimes I).
+$$
+
+Each covariance can use the same `latent() + unique()` decomposition:
+
+$$
+\Sigma_{\mathrm{phy}} =
+\Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^T + S_{\mathrm{phy}},
+\qquad
+\Sigma_{\mathrm{non}} =
+\Lambda_{\mathrm{non}}\Lambda_{\mathrm{non}}^T + S_{\mathrm{non}}.
+$$
+
+Here `Lambda` is the shared low-rank structure and `S` is the
+trait-specific diagonal variance. The old project nickname "two-U"
+means this paired phylogenetic and non-phylogenetic decomposition; the
+math in current gllvmTMB uses `S` / `s` for the unique diagonal.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ape)
+```
+
+## Simulate
+
+We simulate three traits on 30 species. The truth has one
+phylogenetic shared axis, a phylogenetic diagonal component, and a
+non-phylogenetic diagonal component. This small example is meant to
+show syntax and extraction, not to be a full simulation study.
+
+```{r sim}
+set.seed(13)
+n_sp <- 30
+n_traits <- 3
+trait_names <- paste0("trait_", seq_len(n_traits))
+
+tree <- ape::rcoal(n_sp)
+tree$tip.label <- paste0("sp", seq_len(n_sp))
+Cphy <- ape::vcv(tree, corr = TRUE)
+Lphy <- t(chol(Cphy + 1e-8 * diag(n_sp)))
+
+Lambda_phy_true <- matrix(c(0.70, 0.45, 0.25), n_traits, 1)
+s_phy_true <- c(0.20, 0.15, 0.12)
+s_non_true <- c(0.18, 0.20, 0.16)
+
+g_phy <- Lphy %*% rnorm(n_sp)
+e_phy <- Lphy %*% matrix(rnorm(n_sp * n_traits), n_sp, n_traits)
+e_non <- matrix(rnorm(n_sp * n_traits), n_sp, n_traits)
+
+Y <- g_phy %*% t(Lambda_phy_true) +
+  sweep(e_phy, 2, sqrt(s_phy_true), "*") +
+  sweep(e_non, 2, sqrt(s_non_true), "*")
+rownames(Y) <- tree$tip.label
+colnames(Y) <- trait_names
+
+df <- data.frame(
+  species = factor(rep(tree$tip.label, each = n_traits),
+                   levels = tree$tip.label),
+  trait = factor(rep(trait_names, times = n_sp),
+                 levels = trait_names),
+  value = as.numeric(t(Y))
+)
+
+df_wide <- data.frame(
+  species = factor(tree$tip.label, levels = tree$tip.label),
+  Y,
+  check.names = FALSE
+)
+head(df)
+```
+
+## Fit
+
+The long form is canonical: one row per `(species, trait)` observation.
+The wide data-frame form is the same model written from one row per
+species and one column per trait. Because `traits(...)` names the
+response traits on the left-hand side, the right-hand side can use the
+compact covariance syntax.
+
+```{r fit}
+# Long format (canonical)
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    phylo_latent(species, d = 1, tree = tree) +
+    phylo_unique(species, tree = tree) +
+    unique(0 + trait | species),
+  data = df,
+  unit = "species",
+  cluster = "species"
+)
+
+# Wide data-frame format (same model with compact formula syntax)
+fit_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~ 1 +
+    phylo_latent(species, d = 1, tree = tree) +
+    phylo_unique(species, tree = tree) +
+    unique(1 | species),
+  data = df_wide,
+  unit = "species",
+  cluster = "species"
+)
+
+fit <- fit_long
+fit$opt$convergence
+
+cat("Long/wide logLik difference:",
+    signif(abs(as.numeric(logLik(fit_long)) -
+               as.numeric(logLik(fit_wide))), 3), "\n")
+```
+
+The two forms dispatch to the same long-format engine. In this model,
+`phylo_latent(species, d = 1, tree = tree)` estimates the shared
+phylogenetic axis, `phylo_unique(species, tree = tree)` estimates the
+trait-specific phylogenetic diagonal, and `unique(1 | species)` in the
+wide formula expands to `unique(0 + trait | species)` for the
+non-phylogenetic species-level diagonal.
+
+`gllvmTMB_wide()` is not the right shortcut for this row-phylogeny
+example. That matrix entry point treats matrix columns as the trait
+axis and is most natural for site-by-species response matrices, where
+the phylogeny belongs to the response columns. Here the phylogeny
+belongs to the row unit `species`, so the formula-wide `traits(...)`
+path is the readable wide form.
+
+## Recover the phylogenetic covariance
+
+`extract_Sigma(level = "phy")` returns the phylogenetic trait
+covariance. The shared part is
+`Lambda_phy %*% t(Lambda_phy)`; the unique part is the diagonal
+`s_phy`; the total is their sum.
+
+```{r extract-phy}
+Sigma_phy_shared <- extract_Sigma(fit, level = "phy", part = "shared")$Sigma
+Sigma_phy_unique <- extract_Sigma(fit, level = "phy", part = "unique")$s
+Sigma_phy_total <- extract_Sigma(fit, level = "phy", part = "total")$Sigma
+
+round(Sigma_phy_shared, 2)
+round(Sigma_phy_unique, 2)
+round(Sigma_phy_total, 2)
+```
+
+The non-phylogenetic diagonal in this example lives at the species
+unit level:
+
+```{r extract-non}
+Sigma_non <- extract_Sigma(fit, level = "unit", part = "total")$Sigma
+round(Sigma_non, 2)
+```
+
+For a small tree, do not over-interpret the split between
+`Lambda_phy Lambda_phy^T` and `S_phy`. The more stable biological
+target is often the total `Sigma_phy`, especially when the tree is
+small or the rank is exploratory.
+
+## Check identifiability
+
+The diagnostic functions refit the same data under simpler or more
+flexible covariance intent and compare the implied total covariance
+matrices.
+
+```{r diagnostic, eval = FALSE}
+compare_dep_vs_two_U(fit)
+compare_indep_vs_two_U(fit)
+```
+
+Use `compare_dep_vs_two_U()` first when the number of traits is modest.
+It compares the fitted two-piece decomposition against a saturated
+`phylo_dep + dep` baseline. Use `compare_indep_vs_two_U()` when the
+saturated fit is too expensive; it checks only per-trait diagonal
+variances. A diagnostic flag is not a failed model. It tells you the
+data do not strongly support the chosen decomposition at the requested
+rank.
+
+## When to simplify
+
+The paired `phylo_latent() + phylo_unique()` model is useful when the
+question is about phylogenetically conserved trait syndromes. Simplify
+when the data do not identify that split:
+
+```{r fallback, eval = FALSE}
+fit_phylo_dep <- gllvmTMB(
+  value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
+  data = df,
+  unit = "species",
+  cluster = "species"
+)
+```
+
+`phylo_dep()` estimates a full unstructured phylogenetic trait
+covariance without asking the data to separate a low-rank shared axis
+from the diagonal. It is a useful fallback and a useful benchmark for
+the paired decomposition.
+
+## What to read next
+
+- [`compare_dep_vs_two_U()`](../reference/compare_dep_vs_two_U.html)
+  and [`compare_indep_vs_two_U()`](../reference/compare_indep_vs_two_U.html)
+  are the likelihood-based cross-checks for this model.
+- [`functional-biogeography`](functional-biogeography.html) shows how
+  phylogenetic terms behave as controls in a larger site--species--trait
+  model.
+- [`morphometrics`](morphometrics.html) is the simplest non-phylogenetic
+  `latent() + unique()` worked example.
+
+References: Hadfield and Nakagawa (2010) for the phylogenetic mixed
+model representation; Meyer and Kirkpatrick (2008) for reduced-rank
+covariance estimation; Williams et al. (2025) for fast phylogenetic
+GLMMs in the `glmmTMB` ecosystem.

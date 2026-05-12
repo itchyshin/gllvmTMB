@@ -27,7 +27,8 @@ A list with the following components:
 \item{\code{Sigma_non_total}}{T x T non-phylogenetic covariance estimate.}
 \item{\code{Lambda_phy}}{T x d_phy loading matrix.}
 \item{\code{U_phy}}{Length-T named vector of trait-specific phylogenetic
-unique variances (the diagonal of \eqn{\mathbf U_\text{phy}}).}
+unique variances (legacy component name for the diagonal of
+\eqn{\mathbf S_\text{phy}}).}
 \item{\code{Lambda_non}, \code{U_non}}{Analogous for the non-phylogenetic
 tier.}
 \item{\code{per_trait}}{Data frame with one row per trait, containing
@@ -44,8 +45,8 @@ only.} Uses phylogenetic independent contrasts (PIC; Felsenstein 1985)
 plus a per-trait Pagel's lambda mixed-model fit
 (\code{nlme::gls} + \code{ape::corPagel}) to identify the four components of
 the two-U decomposition:
-\deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \mathbf U_\text{phy}, \qquad
-\boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \mathbf U_\text{non}.}
+\deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \mathbf S_\text{phy}, \qquad
+\boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \mathbf S_\text{non}.}
 }
 \details{
 \subsection{Scope and limitations}{
@@ -97,7 +98,7 @@ cross-trait covariance. Combining these yields symmetric T x T
 \item \strong{Factor-analytic decomposition}: run
 \code{stats::factanal(covmat = Sigma, factors = d_phy, rotation = "none")}
 on each matrix to obtain
-\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathrm{diag}(\mathbf U)}
+\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
 for each tier.
 }
 }
@@ -126,8 +127,8 @@ ignores branch-length-weighting on the residual axis); the
 joint-REML fit is preferred when sample size allows.
 \item Factor-analytic decomposition shares the rotation
 indeterminacy of any factor model; the implied
-\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathrm{diag}(\mathbf U)}
-is well-identified; the split between Lambda and U is identified
+\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+is well-identified; the split between Lambda and S is identified
 up to rotation.
 }
 }

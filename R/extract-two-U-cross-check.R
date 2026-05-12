@@ -2,10 +2,10 @@
 ## decomposition. The two-U joint REML fit decomposes the
 ## phylogenetic and non-phylogenetic trait covariances as
 ##
-##   Sigma_phy = Lambda_phy Lambda_phy^T + diag(U_phy),
-##   Sigma_non = Lambda_non Lambda_non^T + diag(U_non).
+##   Sigma_phy = Lambda_phy Lambda_phy^T + S_phy,
+##   Sigma_non = Lambda_non Lambda_non^T + S_non.
 ##
-## The split into Lambda Lambda^T and diag(U) is only weakly identified
+## The split into Lambda Lambda^T and S is only weakly identified
 ## from a single fit -- different optimiser starts can rotate variance
 ## between the shared and unique parts at the same likelihood. The
 ## diagnostics in this file refit the same data, family, and grouping
@@ -134,10 +134,10 @@
   )
 }
 
-#' Extract joint two-U Sigma_phy and Sigma_non implied by Lambda Lambda^T + diag(U)
+#' Extract joint two-U Sigma_phy and Sigma_non implied by Lambda Lambda^T + S
 #'
 #' For Sigma_phy: this is the implied phylogenetic covariance from the
-#' joint fit, computed as `Lambda_phy %*% t(Lambda_phy) + diag(U_phy)`.
+#' joint fit, computed as `Lambda_phy %*% t(Lambda_phy) + S_phy`.
 #' Pulls from `extract_Sigma(fit, level = "phy", part = "total",
 #' link_residual = "none")` so the comparison is on the latent-scale
 #' covariance the engine actually fit (no link-residual correction
@@ -319,7 +319,7 @@
 #' non-phylogenetic trait covariances (`phylo_dep + dep`) using the same
 #' engine, family, link, and unit / cluster grouping as the supplied
 #' two-U fit. Compares the joint two-U fit's implied
-#' \eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \mathrm{diag}(\mathbf U_{\mathrm{phy}})}
+#' \eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \mathbf S_{\mathrm{phy}}}
 #' (and the analogous \eqn{\boldsymbol\Sigma_{\mathrm{non}}}) against
 #' the unstructured baseline. Per-component RMSE plus a `flag` field
 #' (`TRUE` when any component disagrees beyond `threshold`) identifies
@@ -342,7 +342,7 @@
 #'     answers Level 2 directly. The two estimators target the SAME
 #'     total covariance with different parameterisations, so agreement
 #'     is the identifiability check.}
-#'   \item{Level 3: split into Lambda Lambda^T + diag(U)?}{Diagnostic
+#'   \item{Level 3: split into Lambda Lambda^T + S?}{Diagnostic
 #'     does not test Level 3 directly; Level 2 agreement is the
 #'     pre-requisite for Level 3 to be meaningful.}
 #' }

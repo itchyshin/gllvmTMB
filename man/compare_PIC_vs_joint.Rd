@@ -30,8 +30,8 @@ threshold above which the \code{flag} is \code{TRUE}.}
 A list with components:
 \describe{
 \item{\code{joint}}{Joint-REML estimates: \code{Sigma_phy}, \code{U_phy},
-\code{Sigma_non}, \code{U_non} (the four-component decomposition extracted
-from the fit).}
+\code{Sigma_non}, \code{U_non} (legacy component names for the four-component
+decomposition extracted from the fit).}
 \item{\code{pic}}{Output of \code{\link[=extract_two_U_via_PIC]{extract_two_U_via_PIC()}}.}
 \item{\code{agreement}}{Data frame with one row per component,
 containing component name, RMSE, joint magnitude, and a
@@ -45,7 +45,7 @@ Compares the PIC-MOM estimates (from \code{\link[=extract_two_U_via_PIC]{extract
 the corresponding components extracted from a joint-REML two-U fit.
 Agreement = trustworthy joint estimate; disagreement = identifiability
 concern, and the user is invited to investigate which axes
-(Lambda_phy / U_phy / Lambda_non / U_non) disagree.
+(Lambda_phy / s_phy / Lambda_non / s_non) disagree.
 }
 \details{
 \strong{Scope.} This diagnostic inherits the Gaussian / Brownian-motion
@@ -56,7 +56,7 @@ family the engine supports.
 
 Returns per-component RMSE between PIC-MOM and joint estimates of
 \eqn{\boldsymbol\Sigma_\text{phy}}, \eqn{\boldsymbol\Sigma_\text{non}},
-\eqn{\mathbf U_\text{phy}}, and \eqn{\mathbf U_\text{non}}. The
+\eqn{\mathbf S_\text{phy}}, and \eqn{\mathbf S_\text{non}}. The
 component-wise RMSE is the Frobenius norm of (PIC - joint), divided
 by sqrt(T*T) for matrices and sqrt(T) for vectors. The \code{flag} is
 \code{TRUE} when any RMSE exceeds \code{threshold} times the magnitude of the

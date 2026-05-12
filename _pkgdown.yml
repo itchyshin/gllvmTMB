@@ -16,6 +16,7 @@ articles:
     navbar: ~
     contents:
     - articles/morphometrics
+    - articles/phylogenetic-gllvm
     - articles/joint-sdm
     - articles/behavioural-syndromes
     - articles/choose-your-model

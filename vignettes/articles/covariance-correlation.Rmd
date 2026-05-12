@@ -289,12 +289,12 @@ on the tree, and trait-specific *unique* variance lives separately at
 the non-phylogenetic species tier (Nakagawa et al. *in prep*, Eq. 19):
 
 $$
-\boldsymbol\Omega = \boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{non,shared} + \mathbf U.
+\boldsymbol\Omega = \boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{non,shared} + \mathbf S_\text{non}.
 $$
 
 `extract_Sigma(fit, level = "phy")` returns $\boldsymbol\Sigma_\text{phy}$;
 `extract_Sigma(fit, level = "unit")` (when `unit = "species"`) returns
-$\boldsymbol\Sigma_\text{non,shared} + \mathbf U$. Their sum is
+$\boldsymbol\Sigma_\text{non,shared} + \mathbf S_\text{non}$. Their sum is
 $\boldsymbol\Omega$.
 
 ### 3. Confirmatory factor models

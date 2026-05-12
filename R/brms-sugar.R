@@ -14,7 +14,7 @@
 ## The "clean quartet" for explicit covstruct intent:
 ##
 ##   * `latent(...)`        --- shared cross-trait covariance (Sigma_shared = Lambda Lambda^T)
-##   * `unique(...)`        --- trait-specific residual paired with `latent()` (Sigma_unique = diag(U))
+##   * `unique(...)`        --- trait-specific residual paired with `latent()` (Sigma_unique = S)
 ##   * `indep(...)`         --- per-trait marginal variance, no decomposition (Sigma = diag(sigma^2_t))
 ##   * `dep(...)`           --- full unstructured cross-trait covariance (Sigma free, PSD via Cholesky)
 ##
@@ -595,18 +595,18 @@ phylo_scalar <- function(species, tree = NULL, vcv = NULL) {
 #'   \item{**Paired with `phylo_latent()`** (two-U PGLLVM, recommended)}{
 #'     When written together with `phylo_latent(species, d = K)`, the
 #'     two terms co-fit as **separate covariance components**:
-#'     \deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\mathrm{diag}(\mathbf U_\text{phy})}_{\text{per-trait unique}}.}
+#'     \deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\mathbf S_\text{phy}}_{\text{per-trait unique}}.}
 #'     \eqn{\boldsymbol\Lambda_\text{phy}} is filled by the rank-K shared
-#'     latent factors; \eqn{\mathrm{diag}(\mathbf U_\text{phy})} carries
+#'     latent factors; \eqn{\mathbf S_\text{phy}} carries
 #'     the per-trait phylogenetic variances not absorbed by the K shared
 #'     axes. This is the manuscript-aligned PGLLVM decomposition
 #'     (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et
 #'     al. 2025). Replication (multiple sites per species) is required
-#'     to break the U_phy / U_non confound at the species level.}
+#'     to break the S_phy / S_non confound at the species level.}
 #' }
 #'
 #' Use [extract_Sigma()] with `level = "phy"` and `part = "shared"`,
-#' `"unique"`, or `"total"` to pull each component, the diagonal U_phy,
+#' `"unique"`, or `"total"` to pull each component, the diagonal s_phy,
 #' or their sum.
 #'
 #' Pass the phylogeny via `tree = phylo` (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
@@ -948,7 +948,7 @@ meta_known_V <- function(value, V) {
 #' \describe{
 #'   \item{**Decomposition** (`latent + unique`)}{Shared cross-trait
 #'     covariance plus trait-specific residual:
-#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathrm{diag}(\mathbf U)}.}
+#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}.}
 #'   \item{**Marginal** (`indep` standalone)}{Per-trait total variance
 #'     with no cross-trait decomposition: \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)}.}
 #' }
@@ -1010,7 +1010,7 @@ indep <- function(formula) {
 #' Use `phylo_indep()` for an explicit marginal-only phylogenetic fit
 #' (no cross-trait phylogenetic decomposition). Use `phylo_latent()`
 #' paired with `phylo_unique()` for the two-U decomposition
-#' \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \mathrm{diag}(\mathbf U_{\text{phy}})}.
+#' \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \mathbf S_{\text{phy}}}.
 #'
 #' ## Mutual exclusion with `phylo_latent()`
 #'
@@ -1139,7 +1139,7 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL) {
 #' \describe{
 #'   \item{**Decomposition** (`latent + unique`)}{Shared low-rank
 #'     loadings plus trait-specific residual:
-#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathrm{diag}(\mathbf U)}.
+#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}.
 #'     \eqn{TK + T} parameters (rotation-removed).}
 #'   \item{**Marginal** (`indep` standalone)}{Per-trait variance with
 #'     identity correlation: \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)}.

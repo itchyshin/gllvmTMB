@@ -28,6 +28,7 @@ articles:
     navbar: Technical reference
     contents:
     - articles/api-keyword-grid
+    - articles/response-families
 
 reference:
   - title: Top-level entry points

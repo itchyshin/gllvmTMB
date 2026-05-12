@@ -8,7 +8,7 @@ the larger response-family or mixed-response article queue.
 
 ## Scope
 
-This branch is one article:
+This task was one article:
 
 - `vignettes/articles/api-keyword-grid.Rmd`
 
@@ -82,6 +82,6 @@ and outside-grid helpers separate from the 3 x 5 table.
 
 ## Known Limitations And Next Actions
 
-The response-family, ordinal-probit, mixed-response, profile-CI, and
-lambda-constraint Tier-2 ports remain separate queue items. Do not fold
-them into this article.
+The ordinal-probit, mixed-response, profile-CI, and lambda-constraint
+Tier-2 ports remain separate queue items. Do not fold them into this
+article.

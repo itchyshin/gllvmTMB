@@ -7,7 +7,7 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-A standalone Template Model Builder (TMB) package for stacked-trait, long-format multivariate generalised linear latent variable models (GLLVMs). The 3 x 5 covariance keyword grid pairs correlation structure (none / phylogenetic / spatial) with covariance mode (scalar / unique / indep / dep / latent). A reduced-rank latent decomposition (Lambda Lambda^T + diag(s)) is the canonical multivariate option; full unstructured and marginal modes are also supported. Phylogenetic models use a sparse A^-1 representation (Hadfield & Nakagawa 2010) and spatial models use the SPDE/GMRF approximation inherited from 'sdmTMB' (Anderson et al. 2025). See Anderson et al. (2025) \doi{10.18637/jss.v115.i02} and Hadfield & Nakagawa (2010) \doi{10.1111/j.1420-9101.2009.01915.x}.
+A standalone Template Model Builder (TMB) package for stacked-trait, long-format multivariate generalised linear latent variable models (GLLVMs). The 3 x 5 covariance keyword grid pairs correlation structure (none / phylogenetic / spatial) with covariance mode (scalar / unique / indep / dep / latent). A reduced-rank latent decomposition (Lambda Lambda^T + diag(s)) is the canonical multivariate option; full unstructured and marginal modes are also supported. Phylogenetic models use a sparse A^-1 representation (Hadfield & Nakagawa 2010), the engine is built on Template Model Builder (Kristensen et al. 2016), and spatial models use the SPDE / GMRF approximation with R-side helpers inherited from 'sdmTMB' (Anderson et al. 2025). See Kristensen et al. (2016) \doi{10.18637/jss.v070.i05}, Anderson et al. (2025) \doi{10.18637/jss.v115.i02}, and Hadfield & Nakagawa (2010) \doi{10.1111/j.1420-9101.2009.01915.x}. Upstream copyright holders of inherited code are listed in 'inst/COPYRIGHTS'.
 }
 \seealso{
 Useful links:
@@ -19,16 +19,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Shinichi Nakagawa \email{itchyshin@gmail.com} (\href{https://orcid.org/0000-0002-7765-5182}{ORCID}) (Sole developer of the gllvmTMB extension) [copyright holder]
-
-Other contributors:
-\itemize{
-  \item Sean C. Anderson (\href{https://orcid.org/0000-0001-9563-1937}{ORCID}) (Copyright holder, inherited 'sdmTMB' SPDE / mesh code (GPL-3)) [copyright holder]
-  \item Eric J. Ward (\href{https://orcid.org/0000-0002-4359-0296}{ORCID}) (Copyright holder, inherited 'sdmTMB' SPDE / mesh code (GPL-3)) [copyright holder]
-  \item Philina A. English (\href{https://orcid.org/0000-0003-2992-6782}{ORCID}) (Copyright holder, inherited 'sdmTMB' SPDE / mesh code (GPL-3)) [copyright holder]
-  \item Lewis A. K. Barnett (\href{https://orcid.org/0000-0002-9381-8375}{ORCID}) (Copyright holder, inherited 'sdmTMB' SPDE / mesh code (GPL-3)) [copyright holder]
-  \item Kasper Kristensen (Copyright holder, 'TMB' code (GPL-2)) [copyright holder]
-}
+\strong{Maintainer}: Shinichi Nakagawa \email{itchyshin@gmail.com} (\href{https://orcid.org/0000-0002-7765-5182}{ORCID}) [copyright holder]
 
 }
 \keyword{internal}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/simulate-site-trait.R
 \name{simulate_site_trait}
 \alias{simulate_site_trait}
-\title{Simulate a stacked-trait, site-by-species GLLVM dataset}
+\title{Simulate a functional-biogeography GLLVM dataset (sites × species × traits)}
 \usage{
 simulate_site_trait(
   n_sites = 50,
@@ -85,11 +85,19 @@ spatial_range, sigma2_eps).}
 }
 }
 \description{
-Simulates data from the Nakagawa et al. (in prep) functional-biogeography
-model:
+Simulates a three-dimensional dataset from the Nakagawa et al. (in
+prep) functional-biogeography model:
 \deqn{y_{sit} = \alpha_t + x_s'\beta_t + r_{st} + u_{st} + e_{sit} + p_{it} + q_{it}}
 }
 \details{
+This simulator is domain-specific: it produces a \verb{(site, species, trait)} cube, which is the canonical functional-biogeography
+layout. The package as a whole works for any \verb{(unit, trait)}
+stacked-trait GLLVM (\code{unit} may be site, individual, species,
+paper, ...); this particular simulator targets the site × species
+× trait special case used in the methods paper. For simpler
+simulations from a generic \verb{(unit, trait)} design, build the data
+inline as in the morphometrics article.
+
 Each component can be turned on or off via the corresponding variance /
 loading argument. The default settings produce a fixed-effects-only dataset
 suitable for Stage-1 regression tests.

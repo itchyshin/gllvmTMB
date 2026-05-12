@@ -553,3 +553,107 @@ worktree blocks the local delete) should be followed by an explicit
 `git push origin --delete <branch>` so the remote ref does not
 accumulate. The local branch can be deleted later once the
 worktree is removed; the remote ref does not need to wait.
+
+## 2026-05-12 -- Long/wide reader-facing sweep: compact `traits()` RHS
+
+Scope: finish the post-PR #33 reader-path sweep for wide data-frame
+formula input. The `traits(...)` LHS path now expands compact wide RHS
+syntax before dispatching to the long engine: `1` becomes `0 + trait`,
+ordinary predictors become `(0 + trait):x`, and covariance keywords
+such as `latent(1 | unit)`, `unique(1 | unit)`, `indep(1 | unit)`,
+`dep(1 | unit)`, bar-style `phylo_indep(1 | species)` /
+`phylo_dep(1 | species)`, and `spatial_*()` become the matching
+trait-stacked long terms. Species-axis phylogenetic calls such as
+`phylo_latent(species, d = K)` and ordinary `(1 | group)` random
+intercepts pass through unchanged.
+
+Files synchronised:
+
+- `R/traits-keyword.R`, `R/gllvmTMB.R`, `R/gllvmTMB-wide.R`;
+- `tests/testthat/test-traits-keyword.R`,
+  `tests/testthat/test-weights-unified.R`;
+- `README.md`, `_pkgdown.yml`, `NEWS.md`, `AGENTS.md`, `CLAUDE.md`,
+  `docs/design/02-data-shape-and-weights.md`;
+- `vignettes/articles/morphometrics.Rmd`,
+  `vignettes/articles/behavioural-syndromes.Rmd`,
+  `vignettes/articles/functional-biogeography.Rmd`;
+- regenerated `man/gllvmTMB.Rd`, `man/gllvmTMB_wide.Rd`, and
+  `man/traits.Rd`;
+- after-task report:
+  `docs/dev-log/after-task/2026-05-12-long-wide-reader-sweep.md`.
+
+Checks:
+
+- pre-edit lane check found PR #35 open and PR #36 merged; PR #36's
+  check-log append was fast-forwarded into this branch before this
+  append;
+- `Rscript --vanilla -e 'devtools::test(filter = "traits-keyword|weights-unified")'`:
+  passed with `FAIL 0 | WARN 0 | SKIP 1 | PASS 65`; the skip is the
+  existing fixed-effect-only fallback skip;
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`:
+  completed and regenerated `man/traits.Rd` after the final
+  phylogenetic wording fix;
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", new_process = FALSE)'`:
+  completed; only the pre-existing `../logo.png` warning was reported;
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`:
+  passed with "No problems found";
+- Rose pre-publish targeted scans found no stale `traits()` status or
+  RHS-rewrite wording, and no remaining over-broad phylogenetic
+  pass-through wording;
+- `git diff --check`: passed.
+- recovery follow-up after Codex stream failure: parser review found
+  that subtractive formula controls such as `-1` could be expanded to
+  `-(0 + trait)`. The RHS expander now preserves subtractive `1`
+  literally while still expanding compact positive terms. Direct probes
+  returned `-1 + (0 + trait):env_temp` and
+  `0 + trait + (0 + trait):env_temp - 1`; `air format
+  R/traits-keyword.R tests/testthat/test-traits-keyword.R` completed;
+  `Rscript --vanilla -e 'devtools::test(filter = "traits-keyword|weights-unified")'`
+  passed with `FAIL 0 | WARN 0 | SKIP 1 | PASS 71`.
+- full-suite recovery attempt: `Rscript --vanilla -e
+  'devtools::test()'` was run without explicit multi-core settings and
+  interrupted after about 14 minutes while computing
+  `phylo-q-decomposition` (`sigma2_Q recovered within 50% relative
+  error`). Do not count this as a full-suite pass. Future bootstrap- or
+  recovery-heavy validation should use explicit multi-core settings
+  where supported.
+- bootstrap wording scan: touched public prose still points readers
+  toward Wald or profile intervals where appropriate;
+  bootstrap is described as a slower deliberate cached check, not the
+  default inferential recommendation.
+- Claude review follow-up for PR #39: reverted the scope-expansion
+  change that renamed the `extract_correlations()` default. Source,
+  focused tests, and generated Rd are back to
+  `method = c("fisher-z", "profile", "wald", "bootstrap")`; touched
+  vignettes and NEWS again describe `fisher-z` as the default and
+  `wald` as the alias. This keeps the compact `traits(...)` RHS pivot
+  separate from the extractor-default decision.
+- post-review validation after the default revert:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed;
+  a direct probe returned default `method` label `fisher-z`;
+  `Rscript --vanilla -e 'devtools::test(filter = "fisher-z-correlations|traits-keyword|weights-unified")'`
+  passed with `FAIL 0 | WARN 1 | SKIP 1 | PASS 87`; the one warning
+  is the restored legacy `tier = "B"` alias warning inside
+  `test-fisher-z-correlations.R`, not a default-method failure;
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  passed with "No problems found"; `git diff --check` passed.
+- Rose pre-publish terminology gate after the default revert: PASS.
+  Source formals, generated Rd, NEWS, and touched vignettes agree that
+  `extract_correlations()` defaults to `method = "fisher-z"`; `wald`
+  remains an alias or a separate extractor method where explicitly
+  requested.
+- next-lane notation guard: for the maintainer-dispatched item #1
+  lane ("phylogenetic / two-U doc-validation branch"), "two-U" is a
+  legacy task label only. Public math and user-facing prose should
+  translate the unique diagonal component to current `gllvmTMB`
+  notation: `S` / `s`, e.g. `Sigma = Lambda Lambda^T + S`, `S_phy`,
+  and `S_non`, not legacy `U`, `U_phy`, or `U_non`.
+- post-fast-forward validation after PR #37/#38 landed on `origin/main`:
+  `Rscript --vanilla -e 'devtools::test(filter = "fisher-z-correlations|traits-keyword|weights-unified")'`
+  passed with `FAIL 0 | WARN 0 | SKIP 1 | PASS 87`;
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  passed with "No problems found"; `git diff --check` passed.
+
+Known remaining validation gap: the full package test suite was
+attempted but interrupted before completion, and `devtools::check()`
+was not rerun in this narrow resume pass.

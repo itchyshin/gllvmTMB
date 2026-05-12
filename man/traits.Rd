@@ -2,7 +2,7 @@
 % Please edit documentation in R/traits-keyword.R
 \name{traits}
 \alias{traits}
-\title{Wide-format trait marker for the \code{gllvmTMB()} formula LHS (internal)}
+\title{Wide-format trait marker for the \code{gllvmTMB()} formula LHS}
 \usage{
 traits(...)
 }
@@ -22,29 +22,36 @@ Formula-LHS marker that lets \code{\link[=gllvmTMB]{gllvmTMB()}} accept a wide d
 canonical long-format \verb{(unit, trait)} data.
 }
 \details{
-\code{traits()} is \strong{internal} and kept for back-compatibility with
-code that uses the \code{gllvmTMB(traits(...) ~ ..., data = wide_df)}
-idiom. New user code should prefer one of the two canonical
-shapes -- the package thinks in \strong{two ways}, long or wide:
+The package thinks in \strong{two shapes}, long or wide:
 \itemize{
 \item \strong{long}: \code{gllvmTMB(value ~ ..., data = df_long, ...)} -- one
 row per \verb{(unit, trait)} observation.
-\item \strong{wide}: \code{gllvmTMB_wide(Y, ...)} -- \code{Y} is a numeric matrix or
-a wide data frame with one row per unit and one column per
-trait. The function detects the container and pivots
-internally.
+\item \strong{wide data frame}: \code{gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide, ...)} -- one row per unit, one column per trait,
+with compact formula syntax.
+\item \strong{wide matrix}: \code{gllvmTMB_wide(Y, ...)} -- a numeric matrix or
+data frame wrapper for matrix-first workflows.
 }
 
-Both paths reach the same engine; the user picks whichever shape
-matches their data on disk.
+All paths reach the same long-format engine; the user picks whichever
+shape matches their data on disk.
 
-Used inside \code{gllvmTMB()} like other formula keywords (\code{latent()},
-\code{unique()}, \verb{phylo_*()}, \verb{spatial_*()}):
+Because the LHS already names the response traits, the RHS can use a
+compact wide shorthand. \code{1} expands to the trait-specific intercepts
+\code{0 + trait}; ordinary predictors such as \code{env_temp} expand to
+\code{(0 + trait):env_temp}; and \code{latent(1 | individual)} /
+\code{unique(1 | individual)} expand to the long covariance syntax
+\code{latent(0 + trait | individual)} / \code{unique(0 + trait | individual)}.
+The same \code{1 | group} shorthand is recognised for \code{indep()},
+\code{dep()}, bar-style \code{phylo_indep()} / \code{phylo_dep()}, and the
+\verb{spatial_*()} keywords. Species-axis phylogenetic keywords such as
+\code{phylo_latent(species, d = K)} already name their phylogenetic axis
+and pass through unchanged. Ordinary random-intercept terms such as
+\code{(1 | batch)} also pass through unchanged.
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{gllvmTMB(
-  traits(sleep, mass, lifespan, brain) ~ 0 + trait + (0 + trait):env_temp +
-    latent(0 + trait | individual, d = 2) +
-    unique(0 + trait | individual),
+  traits(sleep, mass, lifespan, brain) ~ 1 + env_temp +
+    latent(1 | individual, d = 2) +
+    unique(1 | individual),
   data   = wide_df,
   unit   = "individual",
   family = gaussian()
@@ -55,10 +62,10 @@ Internally \code{traits()} is implemented as a \code{tidyr::pivot_longer()}
 pre-pass: the wide data is pivoted to long format with \code{trait} as a
 factor column (levels in the order the user supplied to \code{traits()})
 and \code{.y_wide_} as the response column; the LHS of the formula is
-rewritten from \code{traits(...)} to \code{.y_wide_}; and the rest of the call
-is dispatched unchanged to the long-format engine. The
-trait-stacked RHS (\code{0 + trait}, \code{(0 + trait):x}, etc.) is the user's
-responsibility — \code{traits()} does not rewrite the RHS.
+rewritten from \code{traits(...)} to \code{.y_wide_}; and the compact RHS is
+expanded to the trait-stacked long syntax before dispatch. The
+explicit long RHS remains accepted, so existing calls that already
+write \code{0 + trait} and \code{latent(0 + trait | group)} keep working.
 
 Tidyselect verbs are supported because \code{traits()} forwards its
 arguments to \code{tidyr::pivot_longer(cols = ...)}:
@@ -84,4 +91,3 @@ for the matrix-in API (use that when you have per-cell weight
 matrices or come from a \code{gllvm}-style workflow). The source-tree
 contract is \code{docs/design/02-data-shape-and-weights.md}.
 }
-\keyword{internal}

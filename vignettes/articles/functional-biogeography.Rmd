@@ -90,11 +90,12 @@ library(ggplot2)
 
 > **Wide-format input.** The data here are naturally long (one row per
 > `(site, species, trait)` cell), but field datasets sometimes arrive
-> wide (one row per `(site, species)`, one column per trait). `gllvmTMB()`
-> accepts that shape via the `traits()` LHS marker:
-> `gllvmTMB(traits(trait_1, ..., trait_T) ~ 0 + trait + ...)` pivots
-> internally with `values_drop_na = TRUE` so unbalanced site-by-species
-> tables are handled. See `?traits` and `?gllvmTMB_wide()`.
+> wide (one row per `(site, species)`, one column per trait). The
+> formula-wide path keeps that shape readable:
+> `traits(trait_1, ..., trait_T) ~ 1 + latent(1 | site_species, d = 2)
+> + unique(1 | site_species)`. The long form below stays canonical
+> because it keeps `site`, `species`, and `site_species` visible for the
+> crossed ecological interpretation.
 
 A 60-site, 30-species, 6-trait fixture with mean 5 species per site
 (`r as.character(round(60 * 5))` rows-ish) gives both M1 and M2 enough

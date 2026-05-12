@@ -2,45 +2,53 @@
 ## input. A thin `tidyr::pivot_longer()` shim: the user passes a wide
 ## data frame (one row per individual, one column per trait); traits()
 ## captures the column selection as an unevaluated expression, pivots
-## internally, rewrites the LHS to `.y_wide_`, and dispatches to the
-## long-format engine. The trait-stacked RHS (`0 + trait`,
-## `(0 + trait):x`, `latent(0 + trait | g)`) is supplied verbatim by
-## the user — there is no semantic rewriting on the RHS.
+## internally, rewrites the LHS to `.y_wide_`, expands the compact wide
+## RHS (`1`, `x`, `latent(1 | g)`) to the long trait-stacked grammar
+## (`0 + trait`, `(0 + trait):x`, `latent(0 + trait | g)`), and
+## dispatches to the long-format engine.
 ##
 ## Companion to `gllvmTMB_wide()` (the matrix-in API). traits() is the
-## formula-level alternative for users who prefer the brms / formula
-## idiom over the gllvm matrix idiom.
+## formula-level wide data-frame path for users who prefer formula syntax
+## over the gllvm-style matrix wrapper.
 
-#' Wide-format trait marker for the `gllvmTMB()` formula LHS (internal)
+#' Wide-format trait marker for the `gllvmTMB()` formula LHS
 #'
 #' Formula-LHS marker that lets [gllvmTMB()] accept a wide data frame
 #' (one row per individual, one column per trait) instead of the
 #' canonical long-format `(unit, trait)` data.
 #'
-#' `traits()` is **internal** and kept for back-compatibility with
-#' code that uses the `gllvmTMB(traits(...) ~ ..., data = wide_df)`
-#' idiom. New user code should prefer one of the two canonical
-#' shapes -- the package thinks in **two ways**, long or wide:
+#' The package thinks in **two shapes**, long or wide:
 #'
 #' - **long**: `gllvmTMB(value ~ ..., data = df_long, ...)` -- one
 #'   row per `(unit, trait)` observation.
-#' - **wide**: `gllvmTMB_wide(Y, ...)` -- `Y` is a numeric matrix or
-#'   a wide data frame with one row per unit and one column per
-#'   trait. The function detects the container and pivots
-#'   internally.
+#' - **wide data frame**: `gllvmTMB(traits(t1, t2, ...) ~ ...,
+#'   data = df_wide, ...)` -- one row per unit, one column per trait,
+#'   with compact formula syntax.
+#' - **wide matrix**: `gllvmTMB_wide(Y, ...)` -- a numeric matrix or
+#'   data frame wrapper for matrix-first workflows.
 #'
-#' Both paths reach the same engine; the user picks whichever shape
-#' matches their data on disk.
+#' All paths reach the same long-format engine; the user picks whichever
+#' shape matches their data on disk.
 #'
 #' @details
-#' Used inside `gllvmTMB()` like other formula keywords (`latent()`,
-#' `unique()`, `phylo_*()`, `spatial_*()`):
+#' Because the LHS already names the response traits, the RHS can use a
+#' compact wide shorthand. `1` expands to the trait-specific intercepts
+#' `0 + trait`; ordinary predictors such as `env_temp` expand to
+#' `(0 + trait):env_temp`; and `latent(1 | individual)` /
+#' `unique(1 | individual)` expand to the long covariance syntax
+#' `latent(0 + trait | individual)` / `unique(0 + trait | individual)`.
+#' The same `1 | group` shorthand is recognised for `indep()`,
+#' `dep()`, bar-style `phylo_indep()` / `phylo_dep()`, and the
+#' `spatial_*()` keywords. Species-axis phylogenetic keywords such as
+#' `phylo_latent(species, d = K)` already name their phylogenetic axis
+#' and pass through unchanged. Ordinary random-intercept terms such as
+#' `(1 | batch)` also pass through unchanged.
 #'
 #' ```r
 #' gllvmTMB(
-#'   traits(sleep, mass, lifespan, brain) ~ 0 + trait + (0 + trait):env_temp +
-#'     latent(0 + trait | individual, d = 2) +
-#'     unique(0 + trait | individual),
+#'   traits(sleep, mass, lifespan, brain) ~ 1 + env_temp +
+#'     latent(1 | individual, d = 2) +
+#'     unique(1 | individual),
 #'   data   = wide_df,
 #'   unit   = "individual",
 #'   family = gaussian()
@@ -51,10 +59,10 @@
 #' pre-pass: the wide data is pivoted to long format with `trait` as a
 #' factor column (levels in the order the user supplied to `traits()`)
 #' and `.y_wide_` as the response column; the LHS of the formula is
-#' rewritten from `traits(...)` to `.y_wide_`; and the rest of the call
-#' is dispatched unchanged to the long-format engine. The
-#' trait-stacked RHS (`0 + trait`, `(0 + trait):x`, etc.) is the user's
-#' responsibility — `traits()` does not rewrite the RHS.
+#' rewritten from `traits(...)` to `.y_wide_`; and the compact RHS is
+#' expanded to the trait-stacked long syntax before dispatch. The
+#' explicit long RHS remains accepted, so existing calls that already
+#' write `0 + trait` and `latent(0 + trait | group)` keep working.
 #'
 #' Tidyselect verbs are supported because `traits()` forwards its
 #' arguments to `tidyr::pivot_longer(cols = ...)`:
@@ -84,7 +92,6 @@
 #'   for the matrix-in API (use that when you have per-cell weight
 #'   matrices or come from a `gllvm`-style workflow). The source-tree
 #'   contract is `docs/design/02-data-shape-and-weights.md`.
-#' @keywords internal
 #' @export
 traits <- function(...) {
   invisible(NULL)
@@ -104,6 +111,159 @@ is_traits_lhs <- function(formula) {
     return(FALSE)
   }
   identical(lhs[[1L]], as.name("traits"))
+}
+
+## ---- Internal: expand compact traits(...) RHS to long syntax ------------
+
+.traits_trait_term <- function() {
+  call("+", 0, as.name("trait"))
+}
+
+.traits_is_one <- function(expr) {
+  (is.numeric(expr) && length(expr) == 1L && identical(as.numeric(expr), 1)) ||
+    (is.symbol(expr) && identical(as.character(expr), "1"))
+}
+
+.traits_is_zero <- function(expr) {
+  is.numeric(expr) && length(expr) == 1L && identical(as.numeric(expr), 0)
+}
+
+.traits_contains_symbol <- function(expr, symbol) {
+  if (is.symbol(expr)) {
+    return(identical(as.character(expr), symbol))
+  }
+  if (is.call(expr) || is.pairlist(expr) || is.expression(expr)) {
+    return(any(vapply(
+      as.list(expr),
+      .traits_contains_symbol,
+      logical(1L),
+      symbol
+    )))
+  }
+  FALSE
+}
+
+.traits_call_name <- function(expr) {
+  if (is.call(expr) && is.symbol(expr[[1L]])) {
+    return(as.character(expr[[1L]]))
+  }
+  NULL
+}
+
+.traits_expand_bar_lhs <- function(bar) {
+  if (
+    !(is.call(bar) && identical(bar[[1L]], as.name("|")) && length(bar) == 3L)
+  ) {
+    return(bar)
+  }
+  if (.traits_is_one(bar[[2L]])) {
+    bar[[2L]] <- .traits_trait_term()
+  }
+  bar
+}
+
+.traits_covstruct_bar_keywords <- c(
+  "latent",
+  "unique",
+  "indep",
+  "dep",
+  "rr",
+  "diag",
+  "phylo_indep",
+  "phylo_dep",
+  "spatial",
+  "spatial_unique",
+  "spatial_scalar",
+  "spatial_indep",
+  "spatial_latent",
+  "spatial_dep",
+  "spde"
+)
+
+.traits_covstruct_keywords <- c(
+  .traits_covstruct_bar_keywords,
+  "phylo",
+  "phylo_scalar",
+  "phylo_unique",
+  "phylo_latent",
+  "phylo_rr",
+  "phylo_slope",
+  "propto",
+  "equalto",
+  "meta_known_V",
+  "meta"
+)
+
+.traits_expand_covstruct_call <- function(expr) {
+  if (!is.call(expr) || length(expr) < 2L) {
+    return(expr)
+  }
+  fn <- .traits_call_name(expr)
+  if (is.null(fn) || !fn %in% .traits_covstruct_keywords) {
+    return(expr)
+  }
+  out <- expr
+  if (
+    fn %in% .traits_covstruct_bar_keywords && !(fn %in% c("phylo", "spatial"))
+  ) {
+    out[[2L]] <- .traits_expand_bar_lhs(out[[2L]])
+  }
+  out
+}
+
+.traits_is_re_int_term <- function(expr) {
+  is.call(expr) &&
+    identical(expr[[1L]], as.name("(")) &&
+    length(expr) == 2L &&
+    is.call(expr[[2L]]) &&
+    identical(expr[[2L]][[1L]], as.name("|")) &&
+    length(expr[[2L]]) == 3L
+}
+
+.traits_expand_rhs <- function(expr) {
+  if (.traits_is_zero(expr)) {
+    return(expr)
+  }
+  if (.traits_is_one(expr)) {
+    return(.traits_trait_term())
+  }
+  if (is.call(expr)) {
+    fn <- .traits_call_name(expr)
+    if (identical(fn, "+") && length(expr) == 3L) {
+      return(call(
+        "+",
+        .traits_expand_rhs(expr[[2L]]),
+        .traits_expand_rhs(expr[[3L]])
+      ))
+    }
+    if (identical(fn, "-") && length(expr) == 3L) {
+      return(call(
+        "-",
+        .traits_expand_rhs(expr[[2L]]),
+        .traits_expand_rhs_subtract(expr[[3L]])
+      ))
+    }
+    if (identical(fn, "-") && length(expr) == 2L) {
+      return(call("-", .traits_expand_rhs_subtract(expr[[2L]])))
+    }
+    if (!is.null(fn) && fn %in% .traits_covstruct_keywords) {
+      return(.traits_expand_covstruct_call(expr))
+    }
+    if (.traits_is_re_int_term(expr)) {
+      return(expr)
+    }
+  }
+  if (.traits_contains_symbol(expr, "trait")) {
+    return(expr)
+  }
+  call(":", .traits_trait_term(), expr)
+}
+
+.traits_expand_rhs_subtract <- function(expr) {
+  if (.traits_is_zero(expr) || .traits_is_one(expr)) {
+    return(expr)
+  }
+  .traits_expand_rhs(expr)
 }
 
 ## ---- Internal: rewrite a `traits(...)` LHS formula to long format -------
@@ -216,13 +376,14 @@ rewrite_traits_lhs <- function(
     ))
   }
 
-  ## ---- Rewrite the formula LHS: traits(...) -> .y_wide_ -------------
+  ## ---- Rewrite formula: traits(...) -> .y_wide_, compact RHS -> long ----
   ## Build a fresh formula whose LHS is the symbol `.y_wide_` and whose
-  ## RHS is the user's original RHS verbatim. `bquote` returns a `call`
-  ## object; we wrap it via stats::as.formula() to obtain a proper
-  ## "formula" class object (sdmTMB's downstream assertthat check
+  ## RHS is expanded from the wide-data-frame shorthand into the same
+  ## trait-stacked syntax the long engine already understands. `bquote`
+  ## returns a `call` object; we wrap it via stats::as.formula() to obtain
+  ## a proper "formula" class object (sdmTMB's downstream assertthat check
   ## requires class(formula) %in% c("formula", "list")).
-  rhs <- formula[[3L]]
+  rhs <- .traits_expand_rhs(formula[[3L]])
   formula_long <- stats::as.formula(
     bquote(.y_wide_ ~ .(rhs), splice = TRUE),
     env = eval_env

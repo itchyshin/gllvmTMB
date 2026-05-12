@@ -14,9 +14,15 @@ matches your data on disk:
   ```r
   gllvmTMB(value ~ ..., data = df_long, unit = "...", ...)
   ```
-- **Wide** -- one row per unit, one column per trait. `Y` is either
-  a numeric matrix or a wide data frame; `gllvmTMB_wide()` detects
-  the container and pivots internally:
+- **Wide data frame** -- one row per unit, one column per trait;
+  `traits(...)` names the response columns and the RHS can use the
+  compact wide shorthand:
+  ```r
+  gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
+           data = df_wide, unit = "unit")
+  ```
+- **Wide matrix** -- `Y` is a numeric matrix or matrix-like data
+  frame for matrix-first workflows:
   ```r
   gllvmTMB_wide(Y, ...)
   ```
@@ -183,8 +189,9 @@ models belong in `glmmTMB`; spatial single-response models belong in
 
 The package accepts data in either **long** or **wide** shape.
 `gllvmTMB(value ~ ..., data = df_long)` is the long-format path;
-`gllvmTMB_wide(Y, ...)` is the wide path (`Y` is a numeric matrix or
-a wide data frame). Both reach the same long-format engine.
+`gllvmTMB(traits(...) ~ ..., data = df_wide)` is the wide data-frame
+formula path; `gllvmTMB_wide(Y, ...)` is the wide matrix path. All
+reach the same long-format engine.
 
 Random slopes through `(1 + x | g)` syntax are not yet implemented.
 The current structured-effect paths are strongest for intercept-only

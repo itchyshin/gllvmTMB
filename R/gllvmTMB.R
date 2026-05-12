@@ -139,10 +139,10 @@
 #'     family fits, binomial rows use `weights[i]` as their trial count
 #'     and non-binomial rows use it as the likelihood multiplier.
 #'   Default `NULL` is equivalent to a length-`nrow(data)` vector of
-#'   ones (unweighted Bernoulli on binomial rows). Wide data-frame
-#'   calls through [traits()] and wide matrix calls through
-#'   [gllvmTMB_wide()] normalise their accepted weight shapes to this
-#'   same long-format vector before fitting.
+#'   ones (unweighted Bernoulli on binomial rows). Wide matrix calls
+#'   through [gllvmTMB_wide()] and wide data-frame calls through
+#'   [traits()] normalise their accepted weight shapes to this same
+#'   long-format vector before fitting.
 #' @param mesh Optional mesh object from `make_mesh()`. Required when the
 #'   formula includes a `spatial()` term; ignored otherwise.
 #' @param phylo_tree (legacy global) Optional `ape::phylo` tree. The
@@ -308,8 +308,9 @@
 #' Schielzeth (2010) \emph{Biol. Rev.} 85: 935-956; Nakagawa, Johnson &
 #' Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 #'
-#' @seealso [gllvmTMB_wide()] for matrix-wide input; [traits()] for
-#'   formula-LHS wide data-frame input; [simulate_site_trait()] for
+#' @seealso [traits()] for wide data-frame formula input;
+#'   [gllvmTMB_wide()] for wide matrix/data-frame input;
+#'   [simulate_site_trait()] for
 #'   generating recovery test data;
 #'   [extract_Sigma()] for the unified post-fit covariance API;
 #'   [gllvmTMB_diagnose()] for a one-stop convergence + identifiability
@@ -354,10 +355,10 @@ gllvmTMB <- function(
   ## When the formula LHS is a `traits(...)` call expression, the user is
   ## supplying wide-format data (one row per individual, one column per
   ## trait). Pivot to long format internally via tidyr::pivot_longer(),
-  ## rewrite the LHS to `.y_wide_`, and recurse into gllvmTMB() with the
-  ## long-format data + formula. The trait-stacked RHS (`0 + trait`,
-  ## `(0 + trait):x`, latent(0 + trait | g), …) is supplied verbatim by
-  ## the user — no semantic rewriting on the RHS side.
+  ## rewrite the LHS to `.y_wide_`, expand compact wide RHS syntax
+  ## (`1`, `x`, `latent(1 | g)`) into the long trait-stacked grammar
+  ## (`0 + trait`, `(0 + trait):x`, latent(0 + trait | g), ...), and
+  ## recurse into gllvmTMB() with the long-format data + formula.
   if (is_traits_lhs(formula)) {
     .call_wide <- match.call()
     rewrite <- rewrite_traits_lhs(

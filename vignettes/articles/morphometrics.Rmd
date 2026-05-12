@@ -111,7 +111,7 @@ round(Sigma_true, 2)
 
 The same model can be fitted from long or wide data. The long form is
 canonical because it makes the `(individual, trait)` rows explicit;
-the wide form is the convenience equivalent for readers who already
+the wide forms are the convenient equivalents for readers who already
 have one row per individual and one column per trait.
 
 ```{r fit}
@@ -124,11 +124,11 @@ fit_long <- gllvmTMB(
   unit = "individual"      # tell the engine which column groups observations
 )
 
-# Wide data-frame format (convenience; same model)
+# Wide data-frame format (same model with compact formula syntax)
 fit_wide_formula <- gllvmTMB(
-  traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
-          latent(0 + trait | individual, d = 2) +
-          unique(0 + trait | individual),
+  traits(length, mass, wing, tarsus, bill) ~ 1 +
+          latent(1 | individual, d = 2) +
+          unique(1 | individual),
   data = df_wide,
   unit = "individual"
 )
@@ -156,11 +156,13 @@ literally named `site` in the data. This morphometric data set has no
 `unit = "individual"` redirects the engine to the correct column;
 everything else is standard GLLVM machinery.
 
-`traits(length, mass, wing, tarsus, bill)` is the formula-level
-wide-data marker. It tells `gllvmTMB()` which columns are response
-traits; the right-hand side of the formula is unchanged.
-`gllvmTMB_wide(Y, ...)` is the matrix-in entry point for the same
-model when the response already lives in a numeric matrix.
+`traits(length, mass, wing, tarsus, bill)` is the formula-level wide
+data-frame marker. Because the response traits are named on the LHS,
+the RHS can use the compact shorthand: `1` becomes the trait-specific
+intercepts `0 + trait`, and `latent(1 | individual)` becomes
+`latent(0 + trait | individual)`. `gllvmTMB_wide(Y, ...)` is the
+matrix-in entry point for the same model when the response already
+lives in a numeric matrix.
 
 ## What model did we fit?
 
@@ -339,9 +341,9 @@ run_one <- function(seed) {
   )))
   if (identical(seed, 1L)) {
     fit_rep_wide <- suppressMessages(suppressWarnings(gllvmTMB(
-      traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
-              latent(0 + trait | individual, d = 2) +
-              unique(0 + trait | individual),
+      traits(length, mass, wing, tarsus, bill) ~ 1 +
+              latent(1 | individual, d = 2) +
+              unique(1 | individual),
       data = df_rep_wide, unit = "individual"
     )))
     stopifnot(
@@ -402,8 +404,8 @@ fit_full_long <- gllvmTMB(
   data = df, unit = "individual"
 )
 fit_full_wide <- gllvmTMB(
-  traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
-          latent(0 + trait | individual, d = T),
+  traits(length, mass, wing, tarsus, bill) ~ 1 +
+          latent(1 | individual, d = T),
   data = df_wide, unit = "individual"
 )
 
@@ -413,8 +415,8 @@ fit_dep_long <- gllvmTMB(
   data = df, unit = "individual"
 )
 fit_dep_wide <- gllvmTMB(
-  traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
-          dep(0 + trait | individual),
+  traits(length, mass, wing, tarsus, bill) ~ 1 +
+          dep(1 | individual),
   data = df_wide, unit = "individual"
 )
 
@@ -424,8 +426,8 @@ fit_indep_long <- gllvmTMB(
   data = df, unit = "individual"
 )
 fit_indep_wide <- gllvmTMB(
-  traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
-          indep(0 + trait | individual),
+  traits(length, mass, wing, tarsus, bill) ~ 1 +
+          indep(1 | individual),
   data = df_wide, unit = "individual"
 )
 

@@ -121,13 +121,17 @@ package contributors.
   prose -- README, vignettes, and Tier-1 articles -- show **both**
   long-format and wide-format calls side by side. The long form
   (`gllvmTMB(value ~ ..., data = df_long)`) is canonical; the wide
-  form (`gllvmTMB_wide(Y, ...)`, where `Y` is a numeric matrix or
-  a wide data frame) is the equivalent. Readers vary in mental
-  model -- some think in matrices, some in long tibbles -- and a
-  single example that shows both reaches both reader types without
-  forcing a translation step. Roxygen `@examples` blocks for
-  individual keyword or extractor functions may stay single-form
-  when the keyword is intrinsically one shape.
+  data-frame form uses the simplified `traits(...)` LHS grammar
+  (`traits(...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`) and
+  the wide matrix form uses `gllvmTMB_wide(Y, ...)`.
+  Readers vary in mental model -- some think in matrices, some in
+  long tibbles -- and examples should avoid making wide-data-frame
+  readers write `0 + trait` and `(0 + trait):x` by hand. The same
+  shorthand applies to `indep()`, `dep()`, and `spatial_*()` terms;
+  ordinary `(1 | group)` random intercepts pass through unchanged.
+  Roxygen `@examples` blocks for individual keyword or extractor
+  functions may stay single-form when the keyword is intrinsically
+  one shape.
 
 Use the project-local `prose-style-review` skill for substantial
 README, vignette, pkgdown, after-task, release, or paper-oriented

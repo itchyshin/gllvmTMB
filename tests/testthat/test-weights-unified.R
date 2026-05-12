@@ -214,11 +214,10 @@ test_that("traits() weights round-trip to an equivalent long-format fit", {
   w_row <- seq(0.7, 1.9, length.out = nrow(wide))
 
   fit_traits <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    traits(tidyselect::all_of(trait_cols)) ~ 0 +
-      trait +
-      (0 + trait):env_temp +
-      latent(0 + trait | individual, d = 1) +
-      unique(0 + trait | individual),
+    traits(tidyselect::all_of(trait_cols)) ~ 1 +
+      env_temp +
+      latent(1 | individual, d = 1) +
+      unique(1 | individual),
     data = wide,
     unit = "individual",
     weights = w_row,

@@ -10,10 +10,14 @@ Data Shapes and Weights" -- and is paired with
 
 ## Status
 
-Contract specification. Implementation will follow in a Codex PR
-that adds `R/weights-shape.R`, refactors the three entry points to
-call it, and adds `tests/testthat/test-weights-unified.R` with the
-paired-test contract specified below.
+Implemented in the Phase 3 Codex branch
+`codex/phase3-weights-unified`. The implementation adds
+`R/weights-shape.R`, refactors the three entry points to call the
+shared normalisation helper, and adds
+`tests/testthat/test-weights-unified.R` for the paired long/wide
+weight-shape contract. Existing long-engine tests continue to own the
+binomial `cbind(successes, failures)` versus `weights = n_trials`
+contract.
 
 ## Goal
 
@@ -59,16 +63,15 @@ For any model that can be expressed in both long and wide form, the
 following fields must match exactly between the long and wide
 calls:
 
-1. The model matrix `model.matrix(formula, data_long)` after the
-   normalisation helper runs.
+1. The engine fixed-effect matrix `X_fix` after reshaping and
+   weight normalisation.
 2. The trait factor: same levels, in the same order.
-3. The offset vector (zeros by default).
-4. The weights vector after normalisation -- same length, same
+3. The weights vector after normalisation -- same length, same
    values, same column-major alignment with the long-format
    response.
-5. The starting parameter vector handed to `TMB::MakeADFun`.
-6. The negative log-likelihood at any fixed parameter vector,
-   within `sqrt(.Machine$double.eps)`.
+4. The family-id vector handed to the engine.
+5. The negative log-likelihood evaluated at the engine initial
+   parameter vector, within `sqrt(.Machine$double.eps)`.
 
 What does NOT need to match:
 
@@ -132,10 +135,12 @@ downstream operation (model matrix columns, `Lambda` row order,
    order in `data[[trait]]`, the standard `as.factor()` behaviour
    under the C locale.
 
-Codex's `R/weights-shape.R` helper should also expose the
-canonical trait-level vector to the engine, so that all three
-entry points produce the same factor levels for identical input
-content (a paired-test invariant).
+The Phase 3 implementation keeps `R/weights-shape.R` focused on the
+weights vector. Trait-order preservation remains owned by the three
+entry-point reshaping paths: long-format factor levels are preserved,
+`gllvmTMB_wide()` uses `colnames(Y)`, and `traits()` uses the order
+supplied in the `traits(...)` call. The paired tests compare the
+resulting factor levels as an invariant.
 
 Ties are resolved deterministically (rule 1 wins over 2, etc.).
 When the user passes a factor whose levels disagree with their
@@ -233,11 +238,12 @@ Disambiguation:
   vector; matrices and scalars are rejected with a hint to use
   the wide entry point.
 
-Implementation note: the existing `gllvmTMB_wide()` shape handler
-(`R/gllvmTMB-wide.R:84-150`) already implements three of the four
-shapes (NULL / scalar / vector / matrix). The Codex follow-up PR
-extracts that logic into `R/weights-shape.R` and exposes it as
-`normalise_weights(weights, response_shape, n_obs)`.
+Implementation note: the Phase 3 branch extracted the former
+`gllvmTMB_wide()` shape handler into `R/weights-shape.R` as
+`normalise_weights(weights, response_shape, n_obs, n_units, n_traits,
+na_mask)`. The helper returns either `NULL` for unit weights or a
+length-`n_obs` numeric vector aligned with the long-format response
+that reaches the engine.
 
 ## Error Messages
 
@@ -272,8 +278,8 @@ should never have to guess which entry point accepts their data.
 
 ## Paired-Test Contract
 
-Codex's `tests/testthat/test-weights-unified.R` will hold the
-canonical paired tests. The minimum required cases:
+`tests/testthat/test-weights-unified.R` holds the canonical paired
+tests for the Phase 3 shape layer. The implemented cases are:
 
 1. **Plain Gaussian, no weights, no covariates** -- long call and
    wide call produce byte-identical engine inputs.
@@ -284,33 +290,38 @@ canonical paired tests. The minimum required cases:
    `weights = as.numeric(W)` matches wide `weights = W`
    (matrix), with `W` having the same column-major order as
    `as.numeric(Y)`.
-4. **Binomial, `cbind(succ, fail)`** -- long with `cbind` LHS
-   matches wide with two-layer array Y (each cell is a `c(succ,
-   fail)` pair, expressed in long form).
-5. **`traits()` round-trip** -- a wide tibble with explicit trait
+4. **Wide matrix with site-level predictors** -- long `X` broadcast
+   by unit matches `gllvmTMB_wide(Y, X = ..., weights = w)`, guarding
+   the row-order bug that originally motivated the refactor.
+5. **`traits()` round-trip** -- a wide data frame with explicit trait
    columns, `traits()` LHS, and a long-format equivalent produce
    byte-identical engine inputs.
 
-For each case, the test compares (using
+The binomial `cbind(successes, failures)` versus
+`weights = n_trials` contract is deliberately tested in the
+long-format engine tests (`test-lme4-style-weights.R` and
+`test-multi-trial-binomial.R`). `gllvmTMB_wide()` does not accept
+two-layer binomial response arrays in Phase 3; adding that would be a
+new wide-response API, not a weight-shape normalisation refactor.
+
+For each paired engine case, the test compares (using
 `testthat::expect_equal(..., tolerance = sqrt(.Machine$double.eps))`):
 
-- `model.matrix(formula, data)` rows and columns;
+- `tmb_data$X_fix` rows and columns;
 - `levels(data[[trait]])`;
-- `engine_input$weights_i` (the normalised per-row weights);
-- `engine_input$family_id_vec`;
-- the negative log-likelihood at a fixed parameter vector (one
-  call to `obj$fn(par_init)` with the same `par_init`).
+- `tmb_data$weights_i` (the normalised per-row weights);
+- `tmb_data$family_id_vec`;
+- the negative log-likelihood at the engine initial parameter
+  vector.
 
 Convergence is **not** part of the paired test. The contract is on
 the engine input, not on optimisation trajectories.
 
 ## User-Facing Examples
 
-The README and Tier-1 articles already pair long and wide
-examples (PR #11 convention). The Phase 3 implementation should
-add one explicit "bridge" example to the morphometrics article
-(Phase 1a, after Codex's current rewrite) showing the same fit
-two ways:
+The README and Tier-1 articles already pair long and wide examples
+(PR #11 convention). Phase 3 adds an explicit bridge example to the
+morphometrics article showing the same fit three ways:
 
 ```r
 # Long form (canonical)
@@ -366,9 +377,9 @@ fit_weighted <- gllvmTMB_wide(Y, X, weights = W, d = 2,
 
 ## Implementation Notes For Codex
 
-The follow-up PR should:
+The Phase 3 implementation:
 
-1. **Add `R/weights-shape.R`** with one exported-internal helper:
+1. **Adds `R/weights-shape.R`** with one exported-internal helper:
 
    ```r
    normalise_weights <- function(weights,
@@ -383,28 +394,26 @@ The follow-up PR should:
    }
    ```
 
-2. **Refactor the three entry points** to call
+2. **Refactors the three entry points** to call
    `normalise_weights()` exactly once, just before passing the
    long-format data to `R/fit-multi.R`. Keep the binomial
    `n_trials` overload in `R/fit-multi.R` -- that lives at the
    engine level, not at the shape level.
 
-3. **Add `tests/testthat/test-weights-unified.R`** with the five
-   minimum cases listed above. Each `test_that()` block invokes
-   the helper and the engine entry, compares the byte-identical
-   fields, and asserts the contract.
+3. **Adds `tests/testthat/test-weights-unified.R`** with the shape-layer
+   cases listed above. Each `test_that()` block invokes the helper or
+   paired engine entries, compares the byte-identical fields, and
+   asserts the contract.
 
-4. **Update `man/*.Rd`** for `gllvmTMB()`, `gllvmTMB_wide()`, and
+4. **Updates `man/*.Rd`** for `gllvmTMB()`, `gllvmTMB_wide()`, and
    `traits()` to point at this design doc and at each other. The
    user reading any one Rd should see the path to the other two.
 
-5. **Add one new article-level example** to the morphometrics
-   article (Phase 1a) once Codex's current rewrite lands. The
-   example is the three-way fit shown above.
+5. **Adds one article-level example** to the morphometrics article.
+   The example is the three-way fit shown above.
 
-6. **Do not introduce per-cell weights for `traits()`** in this
-   PR. Keep that out of scope so the helper's surface stays
-   small.
+6. **Does not introduce per-cell weights for `traits()`**. Keep that
+   out of scope so the helper's surface stays small.
 
 ## Out Of Scope
 

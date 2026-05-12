@@ -54,8 +54,9 @@
 #' Mixed-family fits (`family = list(...)` keyed by trait) flow through
 #' the long-format engine; `traits()` does not intercept the family
 #' argument. Per-row weight vectors of length `nrow(data)` are also
-#' replicated across traits automatically. For per-cell weight matrices
-#' use the matrix-in entry point [gllvmTMB_wide()].
+#' replicated across traits automatically, then passed to the same
+#' long-format weight path used by [gllvmTMB()]. For per-cell weight
+#' matrices use the matrix-in entry point [gllvmTMB_wide()].
 #'
 #' @param ... Column-selection expression(s) passed verbatim to
 #'   `tidyr::pivot_longer(cols = ...)`. Bare names or any tidyselect
@@ -65,7 +66,8 @@
 #'   formula and dispatches to the wide-format pivot pre-pass.
 #' @seealso [gllvmTMB()] for the long-format engine, [gllvmTMB_wide()]
 #'   for the matrix-in API (use that when you have per-cell weight
-#'   matrices or come from a `gllvm`-style workflow).
+#'   matrices or come from a `gllvm`-style workflow). The source-tree
+#'   contract is `docs/design/02-data-shape-and-weights.md`.
 #' @export
 traits <- function(...) {
   invisible(NULL)
@@ -74,10 +76,16 @@ traits <- function(...) {
 ## ---- Internal: detect traits(...) on the LHS of a formula ---------------
 
 is_traits_lhs <- function(formula) {
-  if (!inherits(formula, "formula")) return(FALSE)
-  if (length(formula) < 3L) return(FALSE)
+  if (!inherits(formula, "formula")) {
+    return(FALSE)
+  }
+  if (length(formula) < 3L) {
+    return(FALSE)
+  }
   lhs <- formula[[2L]]
-  if (!is.call(lhs)) return(FALSE)
+  if (!is.call(lhs)) {
+    return(FALSE)
+  }
   identical(lhs[[1L]], as.name("traits"))
 }
 
@@ -91,43 +99,51 @@ is_traits_lhs <- function(formula) {
 ## The `eval_env` argument is the formula's environment, used to resolve
 ## tidyselect verbs / bound symbols against the user's calling frame.
 
-rewrite_traits_lhs <- function(formula, data, weights = NULL,
-                               eval_env = environment(formula)) {
-  if (!requireNamespace("tidyr", quietly = TRUE))
+rewrite_traits_lhs <- function(
+  formula,
+  data,
+  weights = NULL,
+  eval_env = environment(formula)
+) {
+  if (!requireNamespace("tidyr", quietly = TRUE)) {
     cli::cli_abort(c(
       "{.fn traits} requires the {.pkg tidyr} package.",
       "i" = "Install with {.code install.packages(\"tidyr\")} or fall back to long-format input."
     ))
-  if (!requireNamespace("tidyselect", quietly = TRUE))
+  }
+  if (!requireNamespace("tidyselect", quietly = TRUE)) {
     cli::cli_abort(c(
       "{.fn traits} requires the {.pkg tidyselect} package.",
       "i" = "Install with {.code install.packages(\"tidyselect\")} (a {.pkg tidyr} dependency)."
     ))
+  }
 
   ## Pre-mortem 2: refuse if `.y_wide_` already exists in the data.
-  if (".y_wide_" %in% names(data))
+  if (".y_wide_" %in% names(data)) {
     cli::cli_abort(c(
       "{.fn traits} reserves the column name {.code .y_wide_} as the synthetic response.",
       "x" = "{.arg data} already has a column named {.code .y_wide_}.",
       "i" = "Rename that column before calling {.fn gllvmTMB} with a {.fn traits} LHS."
     ))
+  }
 
   ## ---- Capture the traits(...) call expression from the LHS ---------
   ## traits(<expr>, <expr>, ...) — pass the expression list verbatim to
   ## tidyselect::eval_select via a synthesised `c(...)` call.
   lhs <- formula[[2L]]
   args <- as.list(lhs)[-1L]
-  if (length(args) == 0L)
+  if (length(args) == 0L) {
     cli::cli_abort(c(
       "{.fn traits} requires at least one column expression.",
       "i" = "Example: {.code traits(sleep, mass, lifespan, brain)} or {.code traits(all_of(trait_cols))}."
     ))
+  }
   ## Build a `c(arg1, arg2, ...)` quosure for tidyselect::eval_select.
   ## Using as.call(c(quote(c), args)) keeps each arg as an unevaluated
   ## expression; rlang::new_quosure attaches the user's calling env so
   ## tidyselect verbs resolve correctly.
   cols_expr <- as.call(c(list(quote(c)), args))
-  cols_quo  <- rlang::new_quosure(cols_expr, env = eval_env)
+  cols_quo <- rlang::new_quosure(cols_expr, env = eval_env)
   resolved <- tryCatch(
     tidyselect::eval_select(cols_quo, data = data),
     error = function(e) {
@@ -139,51 +155,33 @@ rewrite_traits_lhs <- function(formula, data, weights = NULL,
     }
   )
   trait_cols <- names(resolved)
-  if (length(trait_cols) == 0L)
+  if (length(trait_cols) == 0L) {
     cli::cli_abort(c(
       "{.fn traits} resolved to zero columns.",
       "i" = "Check the tidyselect expression matches at least one column in {.arg data}."
     ))
-
-  ## ---- Validate weights argument shape ------------------------------
-  ## Vector: replicates across traits. Matrix: not supported here -
-  ## redirect to gllvmTMB_wide().
-  if (!is.null(weights)) {
-    if (is.matrix(weights) || (is.array(weights) && length(dim(weights)) > 1L))
-      cli::cli_abort(c(
-        "{.fn traits} does not accept a per-cell weight matrix at the formula level.",
-        "i" = "Use {.fn gllvmTMB_wide} (matrix-in entry point) with {.code weights = <matrix>} for per-cell weights."
-      ))
-    if (!is.numeric(weights) || length(weights) != nrow(data))
-      cli::cli_abort(c(
-        "{.arg weights} must be a numeric vector of length {.code nrow(data)} ({nrow(data)}).",
-        "x" = "Got length {length(weights)}."
-      ))
-  }
-
-  ## ---- Pivot wide -> long via tidyr::pivot_longer -------------------
-  ## Carry the weights vector along as a row-bound column so it survives
-  ## the pivot without manual reindexing.
-  data_aug <- data
-  has_weights <- !is.null(weights)
-  if (has_weights) {
-    if (".gllvmTMB_weights_" %in% names(data_aug))
-      cli::cli_abort(
-        "Internal column name {.code .gllvmTMB_weights_} collides with a user column."
-      )
-    data_aug[[".gllvmTMB_weights_"]] <- weights
   }
 
   ## Rows kept in pivot output: nrow(data) * length(trait_cols) − n_NA.
-  n_NA_in_traits <- sum(vapply(trait_cols,
-                               function(cn) sum(is.na(data_aug[[cn]])),
-                               integer(1L)))
+  n_NA_in_traits <- sum(vapply(
+    trait_cols,
+    function(cn) sum(is.na(data[[cn]])),
+    integer(1L)
+  ))
+  weights_long <- normalise_weights(
+    weights = weights,
+    response_shape = "wide_df",
+    n_obs = nrow(data) * length(trait_cols) - n_NA_in_traits,
+    n_units = nrow(data),
+    n_traits = length(trait_cols),
+    na_mask = is.na(as.matrix(data[trait_cols]))
+  )
 
   data_long <- tidyr::pivot_longer(
-    data_aug,
-    cols           = tidyselect::all_of(trait_cols),
-    names_to       = "trait",
-    values_to      = ".y_wide_",
+    data,
+    cols = tidyselect::all_of(trait_cols),
+    names_to = "trait",
+    values_to = ".y_wide_",
     values_drop_na = TRUE
   )
   ## Preserve the user-supplied trait column order as factor levels —
@@ -194,12 +192,6 @@ rewrite_traits_lhs <- function(formula, data, weights = NULL,
   ## (assertthat::assert_that(is.data.frame), [[<- assignments) are
   ## tibble-agnostic but plain df is the conservative default.
   data_long <- as.data.frame(data_long, stringsAsFactors = FALSE)
-
-  weights_long <- NULL
-  if (has_weights) {
-    weights_long <- data_long[[".gllvmTMB_weights_"]]
-    data_long[[".gllvmTMB_weights_"]] <- NULL
-  }
 
   if (n_NA_in_traits > 0L) {
     cli::cli_inform(c(
@@ -221,9 +213,9 @@ rewrite_traits_lhs <- function(formula, data, weights = NULL,
 
   list(
     formula_long = formula_long,
-    data_long    = data_long,
+    data_long = data_long,
     weights_long = weights_long,
-    trait_cols   = trait_cols,
-    n_dropped    = n_NA_in_traits
+    trait_cols = trait_cols,
+    n_dropped = n_NA_in_traits
   )
 }

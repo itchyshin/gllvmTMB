@@ -400,3 +400,105 @@ article PR once the branch is pushed. Authorship, citation, and
 provenance wording are deliberately held for the separate citation /
 metadata lane (PR #26 and follow-up), not mixed into this article
 rewrite.
+
+## 2026-05-12 -- Phase 3 unified data-shape and weights contract
+
+Scope:
+
+- Codex lane: implemented Phase 3 "Unify Data Shapes And Weights"
+  from `docs/design/02-data-shape-and-weights.md`;
+- added `R/weights-shape.R` with the shared internal
+  `normalise_weights()` helper for long, matrix-wide, and
+  `traits(...)` wide-data-frame entry points;
+- refactored `gllvmTMB()`, `gllvmTMB_wide()`, and `traits(...)` so
+  accepted user weight shapes are normalised before the engine sees a
+  long-format per-observation vector;
+- fixed `gllvmTMB_wide(Y, X = ..., weights = ...)` row alignment by
+  replacing the merge/order path with row matching against the
+  already-pivoted long data;
+- added `tests/testthat/test-weights-unified.R` for helper rejection
+  paths, long/matrix-wide equivalence with no weights,
+  row-broadcast weights, per-cell weights, matrix-wide `X`, and a
+  `traits(...)` round-trip;
+- updated `NEWS.md`, `docs/design/02-data-shape-and-weights.md`,
+  roxygen/Rd cross-links, and the morphometrics Tier-1 article so
+  readers see the long, formula-wide, and matrix-wide entry points
+  together.
+
+Coordination:
+
+- pre-edit shared-file check found one open PR, #29
+  `agent/air-format-trial`, touching `.github/workflows/air-format.yaml`,
+  `CONTRIBUTING.md`, `air.toml`, and
+  `docs/dev-log/after-task/2026-05-12-air-format-config.md`; no file
+  overlap with this Phase 3 implementation except the shared
+  after-task directory;
+- recent-log check found `f79567b` and `4ab907b`, both belonging to
+  the Air formatting lane.
+- end-of-session Shannon check found a second open PR, #30
+  `agent/site-species-to-unit-trait`, touching `R/gllvmTMB-wide.R`,
+  `man/gllvmTMB_wide.Rd`, `man/gllvmTMB-package.Rd`, and
+  `man/make_mesh.Rd`, which overlap this Phase 3 branch. A
+  coordination comment was posted on PR #30:
+  https://github.com/itchyshin/gllvmTMB/pull/30#issuecomment-4430062907.
+- resume/integration check after PR #29 and PR #30 merged: no open PRs
+  remained, and `git fetch origin && git rebase origin/main` replayed
+  the Phase 3 branch cleanly onto `45eae2e` with no conflicts.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "weights-unified")'`:
+  passed with 30 tests, 0 failures, 0 warnings, 0 skips, duration
+  2.4 s;
+- `Rscript --vanilla -e 'devtools::test()'`: passed with 1293 tests,
+  0 failures, 6 warnings, 11 skips, duration 1426.7 s. The warnings
+  were known legacy alias/deprecation warnings (`B` / `W`, `spde`,
+  deprecated keyword aliases), not Phase 3 failures;
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`:
+  completed and regenerated Rd files. This also brought the stale
+  generated `gllvmTMB-package.Rd` author/provenance text and
+  `make_mesh.Rd` title/description back in sync with existing source;
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`: passed with
+  "No problems found";
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics")'`:
+  completed; the only message was the pre-existing `../logo.png`
+  pkgdown warning;
+- `_R_CHECK_SYSTEM_CLOCK_=FALSE Rscript --vanilla -e 'devtools::check(document = FALSE, manual = FALSE, args = "--no-tests", quiet = FALSE, error_on = "never")'`:
+  completed with 0 errors, 1 warning, and 1 note. The warning was the
+  known Apple clang / R header warning from `R_ext/Boolean.h`; the
+  note was the pre-existing duplicated `tidyselect` entry in
+  `Imports` and `Suggests`;
+- `git diff --check`: passed.
+- post-rebase `git diff --check origin/main..HEAD`: passed;
+- post-rebase
+  `Rscript --vanilla -e 'devtools::test(filter = "weights-unified")'`:
+  passed with 30 tests, 0 failures, 0 warnings, 0 skips, duration
+  2.5 s;
+- post-rebase `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`:
+  completed with no additional file changes;
+- post-rebase `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`:
+  passed with "No problems found";
+- post-rebase `air format --check .`: reported broad pre-existing
+  formatting drift across many R and test files. The Air workflow added
+  by PR #29 is advisory during its trial period
+  (`continue-on-error: true`), so this Phase 3 branch did not absorb a
+  repository-wide formatting sweep.
+
+Consistency audit:
+
+- Rose pre-publish searches:
+  `rg -n "method *=|default|fisher-z|profile|wald|bootstrap" ...`,
+  `rg -n "latent|unique|indep|dep|phylo_|spatial_|meta_known_V|trio" ...`,
+  `rg -n "unit_obs|unit =|trait =|cluster =|tier =|level =|weights|normalise_weights|n_trials|cbind" ...`,
+  and `rg -n "implementation will follow|will hold|follow-up PR|Phase 3 implementation should|should add|Codex's current|two-layer array|will be" ...`;
+- no new public-surface contradiction was found in the touched Phase 3
+  prose. The design doc now explicitly records that binomial
+  `cbind(successes, failures)` versus `weights = n_trials` remains
+  owned by long-engine tests, and that `gllvmTMB_wide()` does not add
+  two-layer binomial response arrays in this lane.
+
+Decision: Phase 3 implementation is locally validated and rebased over
+the merged PR #29 / PR #30 work. Merge readiness now depends on the new
+Phase 3 pull request's GitHub Actions result. The Air-format workflow
+remains visible but advisory, and this branch does not absorb its
+repository-wide formatting sweep.

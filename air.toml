@@ -1,0 +1,11 @@
+# Air R formatter configuration.
+#
+# Air is Posit's Rust-based R formatter (https://posit-dev.github.io/air/).
+# Defaults are intentional; this file marks the repo as Air-managed so that
+# editor integrations (Positron, RStudio, VS Code) pick up consistent
+# formatting without per-developer settings.
+
+[format]
+line-width = 80
+indent-style = "space"
+indent-width = 2

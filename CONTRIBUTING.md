@@ -45,6 +45,29 @@ The covariance dispatch is the 3 x 5 keyword grid:
 The decomposition mode is `latent + unique` paired:
 Sigma = Lambda Lambda^T + diag(s).
 
+## Code Formatting
+
+Run [Air](https://posit-dev.github.io/air/) on R and Rmd source
+before pushing:
+
+```sh
+air format .
+```
+
+Air is a Rust-based R formatter from Posit; install via
+`curl -LsSf https://github.com/posit-dev/air/releases/latest/download/air-installer.sh | sh`
+on macOS / Linux, or follow the project's install page for Windows.
+Configuration lives in `air.toml` at the repository root (80-char
+line width, two-space indent). Editors with Air integration
+(Positron, RStudio, VS Code via the extension) format on save once
+the binary is on `PATH`.
+
+This is a local discipline matching the `drmTMB` sister package's
+habit, not a CI gate -- the repo has no `air format --check`
+workflow yet. If unformatted code starts landing through PRs, the
+maintainer will escalate to a CI check workflow; until then, run
+it locally as part of the pre-push pass.
+
 ## Development Checks
 
 Use these commands before review:

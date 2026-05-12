@@ -28,6 +28,7 @@ reference:
     desc: Fit a stacked-trait GLLVM
     contents:
     - gllvmTMB
+    - traits
     - gllvmTMB_wide
     - gllvmTMBcontrol
     - simulate_site_trait

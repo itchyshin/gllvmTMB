@@ -271,8 +271,9 @@ fit_jsdm
 ## Latent-scale residual species correlations (with 95% CIs)
 
 Pairwise species correlations on the latent-liability scale. The
-default `method = "fisher-z"` gives Fisher-transform Wald CIs that
-are fast (seconds) and bounded inside $[-1, 1]$ by construction.
+default `method = "wald"` gives approximate Wald CIs that use a
+Fisher transform internally, so they are fast (seconds) and bounded
+inside $[-1, 1]$ by construction.
 Profile-likelihood (`method = "profile"`) is more accurate for
 skewed sampling distributions but scales as $O(T(T-1)/2)$
 constrained refits — use it for final, publication-grade CIs once

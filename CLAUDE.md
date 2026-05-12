@@ -32,9 +32,13 @@ single-response models live in `sdmTMB`.
 - `meta_known_V(V = V)` is the meta-analytic known-sampling-covariance
   keyword. `block_V(study, sampling_var, rho_within)` is the helper
   that builds V.
-- The wide-format entry is `gllvmTMB_wide()` with `traits()` as the
-  LHS marker. Long-format is the canonical input; wide is
-  re-shaped under the hood.
+- Wide data-frame input uses the simplified `traits(...)` LHS grammar:
+  `traits(t1, t2, ...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`.
+  The same shorthand covers `indep()`, `dep()`, and `spatial_*()`;
+  ordinary `(1 | group)` random intercepts pass through unchanged.
+  Wide matrix input uses `gllvmTMB_wide(Y, ...)`. Long-format
+  `gllvmTMB()` remains canonical and uses the explicit
+  `0 + trait` / `(0 + trait):x` grammar.
 
 ## Before Finishing Work
 

@@ -132,10 +132,10 @@ pre-existing semantics is preserved on a per-row basis: in mixed-
 family fits, binomial rows use \code{weights[i]} as their trial count
 and non-binomial rows use it as the likelihood multiplier.
 Default \code{NULL} is equivalent to a length-\code{nrow(data)} vector of
-ones (unweighted Bernoulli on binomial rows). Wide data-frame
-calls through \code{\link[=traits]{traits()}} and wide matrix calls through
-\code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} normalise their accepted weight shapes to this
-same long-format vector before fitting.
+ones (unweighted Bernoulli on binomial rows). Wide matrix calls
+through \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} and wide data-frame calls through
+\code{\link[=traits]{traits()}} normalise their accepted weight shapes to this same
+long-format vector before fitting.
 }}
 
 \item{mesh}{Optional mesh object from \code{make_mesh()}. Required when the
@@ -365,8 +365,9 @@ summary(fit)
 }
 }
 \seealso{
-\code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} for matrix-wide input; \code{\link[=traits]{traits()}} for
-formula-LHS wide data-frame input; \code{\link[=simulate_site_trait]{simulate_site_trait()}} for
+\code{\link[=traits]{traits()}} for wide data-frame formula input;
+\code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} for wide matrix/data-frame input;
+\code{\link[=simulate_site_trait]{simulate_site_trait()}} for
 generating recovery test data;
 \code{\link[=extract_Sigma]{extract_Sigma()}} for the unified post-fit covariance API;
 \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}} for a one-stop convergence + identifiability

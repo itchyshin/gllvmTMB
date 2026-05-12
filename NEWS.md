@@ -11,14 +11,15 @@ gone.
 
 * The user-facing data shape is now **two ways**: long or wide.
   `gllvmTMB(value ~ ..., data = df_long, ...)` is the long-format
-  path; `gllvmTMB_wide(Y, ...)` is the wide path and accepts
-  either a numeric matrix or a wide data frame (auto-detects the
-  container). The formula-LHS `traits(...)` marker stays exported
-  for back-compatibility but is now `@keywords internal` -- it is
-  hidden from the pkgdown reference index and is no longer
-  recommended for new user code. Existing code that uses
-  `gllvmTMB(traits(...) ~ ..., data = wide_df, ...)` keeps working
-  without change.
+  path. Wide data frames use the formula-LHS `traits(...)` marker
+  with compact syntax such as
+  `traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2)`.
+  Fixed predictors, `latent()` / `unique()` / `indep()` / `dep()`,
+  bar-style `phylo_indep()` / `phylo_dep()`, and `spatial_*()` terms
+  expand to the long trait-stacked formula; species-axis
+  `phylo_scalar()` / `phylo_unique()` / `phylo_latent()` calls and
+  ordinary `(1 | group)` random intercepts keep their existing syntax.
+  Wide matrices use `gllvmTMB_wide(Y, ...)`.
 
 * The package is standalone in the literal sense: it no longer
   exports `sdmTMB()`, `sdmTMB_cv()`, `sdmTMB_simulate()`,
@@ -56,6 +57,8 @@ gone.
 
 * `gllvmTMBcontrol()` no longer carries a `sdmTMBcontrol` slot.
   Extra `...` arguments to `gllvmTMBcontrol()` emit a warning.
+
+* `extract_correlations()` now uses `method = "wald"` as the public default for fast bounded correlation confidence intervals. The old `method = "fisher-z"` spelling remains as a compatibility alias for the same calculation; Fisher's z transform is the internal scale used by the Wald interval, not the user-facing method name.
 
 * Articles are tiered. The pkgdown navbar shows seven Tier-1
   worked-example articles plus the Get Started vignette: morphometrics,

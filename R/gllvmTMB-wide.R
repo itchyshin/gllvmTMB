@@ -43,7 +43,7 @@
 #'   At wide level the semantic is always lme4 / glmmTMB-style: each
 #'   cell's log-likelihood contribution is multiplied by its weight.
 #'   Accepted shapes are normalised to the same long-format vector used
-#'   by [gllvmTMB()] and [traits()]:
+#'   by [gllvmTMB()] and the wide data-frame [traits()] path:
 #'   * `NULL` (default): unit weights; byte-identical to the no-weight fit.
 #'   * `numeric(nrow(Y))`: row vector. Each cell `(i, j)` inherits
 #'     `weights[i]` for every column `j`. The common case (per-row sample
@@ -69,8 +69,8 @@
 #'
 #' @seealso [gllvmTMB()] for the long-format engine; [extract_Sigma()]
 #'   for post-fit covariance summaries; [extract_ordination()] for
-#'   scores and loadings; [traits()] for the formula-LHS wide data-frame
-#'   entry point. The source-tree contract is
+#'   scores and loadings; [traits()] for formula-LHS wide data-frame
+#'   input. The source-tree contract is
 #'   `docs/design/02-data-shape-and-weights.md`.
 #' @export
 #' @examples

@@ -87,12 +87,13 @@ open-arena activity, restlessness). The long-format data have
 $80 \times 5 \times 8 = 3\,200$ rows.
 
 > **Wide-format input.** Personality data often arrive *wide* (one row
-> per `(individual, session)`, one column per trait). `gllvmTMB()`
-> accepts the wide shape directly via the `traits()` LHS marker:
-> `gllvmTMB(traits(boldness, exploration, ..., restlessness) ~ 0 + trait + ...)`
-> pivots internally and dispatches to the same engine. See `?traits`
-> for the formula-level entry, or `?gllvmTMB_wide()` for the
-> matrix-in companion (used when you have per-cell weight matrices).
+> per `(individual, session)`, one column per trait). The formula-wide
+> path names the response columns on the LHS and keeps the RHS compact:
+> `traits(boldness, exploration, ..., restlessness) ~ 1 +
+> latent(1 | individual, d = 2) + unique(1 | individual) +
+> latent(1 | session_id, d = 1) + unique(1 | session_id)`. The long
+> form below stays canonical because it makes the two grouping levels
+> visible row by row.
 
 ### True parameter structure
 

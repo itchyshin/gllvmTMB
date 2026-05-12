@@ -42,7 +42,7 @@ effects, e.g. \code{~ env_temp + env_precip}. Defaults to \code{~ 1}.}
 At wide level the semantic is always lme4 / glmmTMB-style: each
 cell's log-likelihood contribution is multiplied by its weight.
 Accepted shapes are normalised to the same long-format vector used
-by \code{\link[=gllvmTMB]{gllvmTMB()}} and \code{\link[=traits]{traits()}}:
+by \code{\link[=gllvmTMB]{gllvmTMB()}} and the wide data-frame \code{\link[=traits]{traits()}} path:
 \itemize{
 \item \code{NULL} (default): unit weights; byte-identical to the no-weight fit.
 \item \code{numeric(nrow(Y))}: row vector. Each cell \verb{(i, j)} inherits
@@ -99,7 +99,7 @@ summary(fit)
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}} for the long-format engine; \code{\link[=extract_Sigma]{extract_Sigma()}}
 for post-fit covariance summaries; \code{\link[=extract_ordination]{extract_ordination()}} for
-scores and loadings; \code{\link[=traits]{traits()}} for the formula-LHS wide data-frame
-entry point. The source-tree contract is
+scores and loadings; \code{\link[=traits]{traits()}} for formula-LHS wide data-frame
+input. The source-tree contract is
 \code{docs/design/02-data-shape-and-weights.md}.
 }

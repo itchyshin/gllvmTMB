@@ -1,11 +1,11 @@
 # Data Shape And Weights Contract
 
-This document specifies the contract for the three user-facing
-entry points into the `gllvmTMB` engine: `gllvmTMB()` (long-format,
-canonical), `gllvmTMB_wide()` (matrix-in convenience), and
-`traits(...)` (wide-data-frame convenience inside a `gllvmTMB()`
-call). It is the design input for `ROADMAP.md` Phase 3 -- "Unify
-Data Shapes and Weights" -- and is paired with
+This document specifies the contract for the two public data shapes
+and the three engine entry paths into `gllvmTMB`: `gllvmTMB()`
+(long-format, canonical), `traits(...)` (wide data-frame formula
+shorthand inside a `gllvmTMB()` call), and `gllvmTMB_wide()` (wide
+matrix/data-frame wrapper). It is the design input for `ROADMAP.md`
+Phase 3 -- "Unify Data Shapes and Weights" -- and is paired with
 `docs/design/11-task-allocation.md` Phase 3.
 
 ## Status
@@ -25,8 +25,14 @@ The long-format and wide-format entry points should feel like two
 views of one model. The user picks the shape that matches their
 mental model -- long tibble (`(unit, trait)` per row) or wide
 matrix / data frame (`row = unit`, `col = trait`) -- and gets the
-same fit. The wide entry points are convenience wrappers; the
-engine reasons in long format.
+same fit. The wide data-frame path is intentionally easier to write:
+because `traits(...)` names the response columns on the LHS, the RHS
+can use `1`, ordinary predictor names, `latent(1 | unit)`, and
+`spatial_unique(1 | coords)` instead of spelling out `0 + trait`,
+`(0 + trait):x`, `latent(0 + trait | unit)`, and
+`spatial_unique(0 + trait | coords)`. Ordinary random intercepts
+such as `(1 | batch)` stay ordinary random intercepts. The engine
+still reasons in long format.
 
 Concretely:
 
@@ -34,16 +40,17 @@ Concretely:
 - `gllvmTMB_wide(Y, X, ...)` pivots `Y` to long and dispatches to
   `gllvmTMB()`.
 - `gllvmTMB(traits(t1, t2, ...) ~ rhs, data = wide_df, ...)`
-  pivots `wide_df[, traits]` to long and dispatches to the
-  long-format path of `gllvmTMB()`.
+  pivots `wide_df[, traits]` to long, expands compact wide RHS syntax
+  to the long trait-stacked grammar, and dispatches to the long-format
+  path of `gllvmTMB()`.
 - The weights, identifier, trait-order, and reshaping rules are
   shared. A single helper (`R/weights-shape.R`) normalises every
   case to the long-format representation before the engine starts
   building the model matrix.
 
-## The Three Entry Points
+## The Three Engine Paths
 
-| Property | `gllvmTMB()` (long) | `gllvmTMB_wide()` (matrix-in) | `gllvmTMB(traits(...) ~ rhs, data = wide_df)` |
+| Property | `gllvmTMB()` (long) | `gllvmTMB_wide()` (wide matrix) | `gllvmTMB(traits(...) ~ rhs, data = wide_df)` (wide data frame) |
 |---|---|---|---|
 | Response shape | one column of `data`, length `n_obs` | matrix `Y` with `dim(Y) = c(n_units, n_traits)` | wide data frame with one column per trait |
 | Identifier columns | `unit`, `trait`, `unit_obs`, `cluster` named in `data` | `unit` = rownames(Y); `trait` = colnames(Y); `unit_obs`, `cluster` optional via `...` to `gllvmTMB()` | `unit` named explicitly; `trait` synthesised from `traits()` call; `unit_obs`, `cluster` named explicitly |
@@ -175,8 +182,29 @@ df_long <- tidyr::pivot_longer(
 )
 df_long$trait <- factor(df_long$trait, levels = <supplied order>)
 # weights of length nrow(wide_df) are replicated across traits
-gllvmTMB(.y_wide_ ~ rhs, data = df_long, ...)
+rhs_long <- expand_traits_rhs(rhs)
+gllvmTMB(.y_wide_ ~ rhs_long, data = df_long, ...)
 ```
+
+The RHS expansion is the user-facing reason for the data-frame wide
+path:
+
+| Wide RHS | Long RHS handed to the engine |
+|---|---|
+| `1` | `0 + trait` |
+| `x` | `(0 + trait):x` |
+| `latent(1 \| unit, d = K)` | `latent(0 + trait \| unit, d = K)` |
+| `unique(1 \| unit)` | `unique(0 + trait \| unit)` |
+| `indep(1 \| unit)` / `dep(1 \| unit)` | `indep(0 + trait \| unit)` / `dep(0 + trait \| unit)` |
+| `spatial_unique(1 \| coords)` | `spatial_unique(0 + trait \| coords)` |
+| `spatial_scalar(1 \| coords)` / `spatial_latent(1 \| coords, d = K)` / `spatial_dep(1 \| coords)` | corresponding `spatial_*(0 + trait \| coords, ...)` call |
+| `phylo_indep(1 \| species)` / `phylo_dep(1 \| species)` | `phylo_indep(0 + trait \| species)` / `phylo_dep(0 + trait \| species)` |
+| `phylo_latent(species, d = K)` / `phylo_unique(species)` | unchanged; these keywords already name their species axis |
+| `(1 \| batch)` | unchanged; the regular random-intercept parser handles it |
+
+Explicit long RHS syntax remains accepted. If a user writes
+`traits(t1, t2) ~ 0 + trait + latent(0 + trait | unit, d = K)`, the
+expander leaves those trait-stacked terms unchanged.
 
 NA handling:
 
@@ -319,51 +347,43 @@ the engine input, not on optimisation trajectories.
 
 ## User-Facing Examples
 
-The README and Tier-1 articles already pair long and wide examples
-(PR #11 convention). Phase 3 adds an explicit bridge example to the
-morphometrics article showing the same fit three ways:
+The README and Tier-1 articles use the two-shape framing: long
+`gllvmTMB()` beside wide data-frame `traits(...)` syntax, with
+`gllvmTMB_wide()` shown when the reader naturally has a response
+matrix.
 
 ```r
-# Long form (canonical)
 library(gllvmTMB)
 
-df_long <- pivot_long_morphometrics(birds)   # tibble: individual, trait, value
+# Long form (canonical): one row per (individual, trait)
 fit_long <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):env_temp +
+  value ~ 0 + trait +
     latent(0 + trait | individual, d = 2) +
     unique(0 + trait | individual),
-  data   = df_long,
-  unit   = "individual",
-  family = gaussian()
+  data = df_long,
+  unit = "individual"
 )
 
-# Wide form, matrix-in
-Y <- birds[, c("sleep", "mass", "lifespan", "brain")]
-X <- birds[, c("env_temp")]
-fit_wide_matrix <- gllvmTMB_wide(
-  Y, X, d = 2,
-  formula_extra = ~ env_temp,
-  family        = gaussian()
+# Wide data-frame form: one row per individual, one column per trait
+fit_wide <- gllvmTMB(
+  traits(length, mass, wing, tarsus, bill) ~ 1 +
+    latent(1 | individual, d = 2) +
+    unique(1 | individual),
+  data = df_wide,
+  unit = "individual"
 )
 
-# Wide form, formula-LHS marker
-fit_wide_formula <- gllvmTMB(
-  traits(sleep, mass, lifespan, brain) ~ 0 + trait + (0 + trait):env_temp +
-    latent(0 + trait | individual, d = 2) +
-    unique(0 + trait | individual),
-  data   = birds,
-  unit   = "individual",
-  family = gaussian()
-)
-
-# All three converge to the same fit (subject to optimiser tolerance).
-all.equal(coef(fit_long), coef(fit_wide_matrix))
-all.equal(coef(fit_long), coef(fit_wide_formula))
+abs(as.numeric(logLik(fit_long)) - as.numeric(logLik(fit_wide)))
 ```
 
-The example serves two readers: matrix-thinkers (rows × columns)
-and tibble-thinkers (long-format rows). It is the same model
-expressed three ways.
+The example serves two readers: matrix-thinkers (rows × columns) and
+tibble-thinkers (long-format rows). It is the same model expressed in
+the two public shapes. The matrix wrapper is the same wide shape for
+matrix-first workflows:
+
+```r
+fit_wide_matrix <- gllvmTMB_wide(Y, d = 2, family = gaussian())
+```
 
 Per-cell weights example (matrix only):
 
@@ -405,12 +425,12 @@ The Phase 3 implementation:
    paired engine entries, compares the byte-identical fields, and
    asserts the contract.
 
-4. **Updates `man/*.Rd`** for `gllvmTMB()`, `gllvmTMB_wide()`, and
-   `traits()` to point at this design doc and at each other. The
-   user reading any one Rd should see the path to the other two.
+4. **Updates `man/*.Rd`** for `gllvmTMB()`, `traits()`, and
+   `gllvmTMB_wide()` to point at this design doc and to the two public
+   shapes.
 
 5. **Adds one article-level example** to the morphometrics article.
-   The example is the three-way fit shown above.
+   The example is the two-shape fit shown above.
 
 6. **Does not introduce per-cell weights for `traits()`**. Keep that
    out of scope so the helper's surface stays small.

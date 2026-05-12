@@ -9,7 +9,7 @@ extract_correlations(
   tier = "all",
   pair = NULL,
   level = 0.95,
-  method = c("fisher-z", "profile", "wald", "bootstrap"),
+  method = c("wald", "profile", "fisher-z", "bootstrap"),
   n_eff = NULL,
   nsim = 500L,
   seed = NULL
@@ -29,15 +29,15 @@ Default \code{NULL} (all pairs).}
 
 \item{level}{Confidence level in (0, 1). Default 0.95.}
 
-\item{method}{One of \code{"fisher-z"} (default), \code{"profile"},
-\code{"wald"} (alias of \code{"fisher-z"}), or \code{"bootstrap"}.
+\item{method}{One of \code{"wald"} (default), \code{"profile"},
+\code{"fisher-z"} (alias of \code{"wald"}), or \code{"bootstrap"}.
 See Details.}
 
 \item{n_eff}{Optional positive integer (>= 4): override the
 effective sample size used in Fisher's
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
-formula. Only consulted for \code{method \%in\% c("fisher-z",
-  "wald")}. The default heuristic uses \code{fit$n_sites} for tier
+formula. Only consulted for \code{method \%in\% c("wald",
+  "fisher-z")}. The default heuristic uses \code{fit$n_sites} for tier
 \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
 \code{"phy"}, and \code{fit$n_sites} elsewhere — adequate for
@@ -72,8 +72,9 @@ supported via the \code{method} argument:
 }
 \details{
 \itemize{
-\item \code{"fisher-z"} (default): Fisher's z-transform Wald CI.
-Computes \eqn{\hat z = \mathrm{atanh}(\hat\rho)},
+\item \code{"wald"} (default): approximate Wald CI for correlations.
+Internally, this uses Fisher's z transform:
+\eqn{\hat z = \mathrm{atanh}(\hat\rho)},
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}},
 constructs the CI on z, then back-transforms via
 \eqn{\tanh(\cdot)} (so bounds are guaranteed inside \eqn{[-1, 1]}).
@@ -83,10 +84,9 @@ See \code{n_eff} for the effective-sample-size override.
 Most accurate for skewed sampling distributions, but slow
 (\eqn{O(T(T-1)/2)} constrained refits per call). Use for
 final, publication-grade CIs on small T.
-\item \code{"wald"}: backward-compat alias of \code{"fisher-z"}
-with the same numerics. Emits a one-shot inform pointing at
-the canonical name. Kept for scripts that filter on
-\code{method == "wald"}.
+\item \code{"fisher-z"}: backward-compat alias of \code{"wald"}
+with the same numerics. Kept for scripts that used the
+implementation-specific name.
 \item \code{"bootstrap"}: parametric bootstrap via
 \code{\link{bootstrap_Sigma}}. Slowest (full sampling
 distribution); use when you need full uncertainty propagation
@@ -128,7 +128,7 @@ fit <- gllvmTMB(
           unique(0 + trait | site),
   data = s$data
 )
-## Default Fisher-z Wald CIs (fast, bounded inside \eqn{[-1, 1]}).
+## Default Wald CIs for correlations (fast, bounded inside \eqn{[-1, 1]}).
 cors <- extract_correlations(fit, tier = "unit")
 ## With n_eff override (e.g. for binomial joint-SDM where species
 ## count is the relevant effective N).

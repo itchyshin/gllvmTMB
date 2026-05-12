@@ -21,18 +21,29 @@ contract.
 
 ## Goal
 
-The long-format and wide-format entry points should feel like two
-views of one model. The user picks the shape that matches their
-mental model -- long tibble (`(unit, trait)` per row) or wide
-matrix / data frame (`row = unit`, `col = trait`) -- and gets the
-same fit. The wide data-frame path is intentionally easier to write:
-because `traits(...)` names the response columns on the LHS, the RHS
-can use `1`, ordinary predictor names, `latent(1 | unit)`, and
-`spatial_unique(1 | coords)` instead of spelling out `0 + trait`,
-`(0 + trait):x`, `latent(0 + trait | unit)`, and
+Most ecological, evolutionary, behavioural, and morphometric
+datasets arrive in **wide format** -- one column per response
+trait. The user shouldn't have to long-pivot by hand and write
+`0 + trait + (0 + trait):x` boilerplate for every fixed effect
+before they can fit a multivariate GLLVM. (`brms` solves the
+analogous problem via `mvbind()`; `metafor` via
+`rma.mv(yi ~ ..., V = V)`; the `gllvm` package takes a
+wide-format matrix.) The two `gllvmTMB` entry points -- long
+format (`gllvmTMB(value ~ ..., data = df_long)`) and wide format
+(`gllvmTMB_wide(Y, ...)` accepting matrix or wide data frame) --
+should feel like two views of one model.
+
+The user picks the shape that matches their mental model -- long
+tibble (`(unit, trait)` per row) or wide matrix / data frame
+(`row = unit`, `col = trait`) -- and gets the same fit. The
+wide data-frame path is intentionally easier to write: because
+`traits(...)` names the response columns on the LHS, the RHS can
+use `1`, ordinary predictor names, `latent(1 | unit)`, and
+`spatial_unique(1 | coords)` instead of spelling out
+`0 + trait`, `(0 + trait):x`, `latent(0 + trait | unit)`, and
 `spatial_unique(0 + trait | coords)`. Ordinary random intercepts
-such as `(1 | batch)` stay ordinary random intercepts. The engine
-still reasons in long format.
+such as `(1 | batch)` stay ordinary random intercepts. The
+engine still reasons in long format.
 
 Concretely:
 

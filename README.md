@@ -236,3 +236,15 @@ package author, written against the TMB API.
 - `glmmTMB` fits single-response GLMMs.
 - `sdmTMB` fits spatial single-response models. `gllvmTMB` inherits
   sdmTMB's SPDE and mesh code for its `spatial_*()` keywords.
+- `gllvm` (Niku et al.) is the original multivariate GLLVM package
+  with a variational-approximation engine and a matrix-in API;
+  `gllvmTMB` is the TMB-Laplace alternative with formula grammar,
+  the 3 x 5 keyword grid, and integrated phylogenetic / spatial
+  paths in one engine.
+- `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
+  phylogenetic / multi-response models; `gllvmTMB` returns ML / REML
+  point estimates with profile / Wald / bootstrap CIs and runs in
+  seconds-to-minutes rather than minutes-to-hours.
+
+A full scope comparison and decision matrix lives in
+[`docs/design/04-sister-package-scope.md`](docs/design/04-sister-package-scope.md).

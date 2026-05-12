@@ -122,6 +122,35 @@ run a prose-style pass before closing using the project-local
 
 For very small prose-only tasks, keep the report compact.
 
+## Rendered-Rd Spot-Check
+
+When a task adds or rearranges a roxygen tag after a long
+description block -- especially `@keywords`, `@family`,
+`@concept`, or `@aliases` -- run `devtools::document()` and then
+spot-check the rendered `man/<file>.Rd`:
+
+```sh
+tail -5 man/<changed>.Rd
+grep -c '^\\keyword' man/<changed>.Rd
+```
+
+The tail should end with the expected single-line tag (for
+example `\keyword{internal}` for `@keywords internal`). The
+keyword count should be 1 (or whatever the source roxygen
+intended). A count of 30+ entries with words from the
+description (`\keyword{through}`, `\keyword{trait)}`,
+`\keyword{wide_df,}`, etc.) means a tag was placed mid-prose and
+roxygen tokenised the following words as keywords.
+
+Lesson recorded after PR #32 shipped a malformed `man/traits.Rd`
+to main: the `@keywords internal` tag was placed in the middle
+of the description, producing 30+ garbage `\keyword{}` entries
+in the rendered Rd. R CMD check accepted the malformed Rd
+silently; air-format did not catch it; only manual review by
+Codex caught it. PR #33 fixed both the roxygen layout and the
+rendered Rd; this section codifies the post-`document()`
+spot-check so the same defect cannot ship again.
+
 ## Tests of the Tests
 
 When adding tests, confirm that they actually exercise the intended

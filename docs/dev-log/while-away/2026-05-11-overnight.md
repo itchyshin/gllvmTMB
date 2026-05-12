@@ -8,11 +8,11 @@ morning.
 
 ## Headline
 
-Four Claude PRs merged + one Codex PR awaits your review.
-Main is at `d7d72e1` (post-PR-#26). Public site rebuilt twice
-overnight (post-#22 and post-#25 cycles). No CI red lights left
-standing on main. Phase 3 implementation is now unblocked for
-Codex; Phase 1a (morphometrics) is one merge away from done.
+Five PRs merged today/overnight: four Claude doc PRs + one Codex
+morphometrics article rewrite. Main is at `60eeba4` (post-PR-#27).
+Public site rebuilt twice overnight. No CI red lights left standing
+on main. Phase 3 implementation is now unblocked for Codex; Phase
+1a row 1 (morphometrics) is **done**.
 
 ## Merged on main (today + overnight)
 
@@ -20,66 +20,62 @@ Codex; Phase 1a (morphometrics) is one merge away from done.
 |---|---|---|---|
 | `b425462` | #23 | Phase 3 design doc: data-shape and weights contract | 22:22:37 |
 | `2fd4896` | #24 | Enrich after-task protocol with drmTMB-style patterns | 22:55:33 |
-| `50d5382` | #25 | Record PR #22 post-merge CI evidence in check-log | ~23:??:?? |
+| `50d5382` | #25 | Record PR #22 post-merge CI evidence in check-log | ~23:?? |
 | `d7d72e1` | #26 | Citation policy cleanup (Path A) | 23:48:38 |
+| `60eeba4` | #27 | Rewrite morphometrics Tier-1 article (Codex) | 23:52:48 |
 
-All four are documentation-only (no source / NAMESPACE / Rd /
-vignette / pkgdown navigation change). Each shipped with its
-after-task report in the same commit per the new
-`CONTRIBUTING.md` rule.
+Claude #23-#26 are documentation-only (no source / NAMESPACE / Rd
+/ vignette / pkgdown navigation change). PR #27 (Codex) touches
+the vignette + the extractor R/ files + the corresponding Rd
+files + one test file (adds back-compat tests for the new
+canonical level names). Each PR shipped with its after-task
+report in the same commit per the new `CONTRIBUTING.md` rule.
 
 Main CI on `50d5382` (post-#25): 3-OS R-CMD-check success;
-workflow_run pkgdown deploy success. Main CI on `d7d72e1`
-(post-#26) was running at report writing time; expected to pass
-since #26 itself passed CI before merge and main only differs by
-the merge commit.
+workflow_run pkgdown deploy success.
+Main CI on `60eeba4` (post-#27): was running at report writing
+time; the R-CMD-check on the post-#26 `d7d72e1` was cancelled by
+concurrency when #27 merged, which is the expected
+`cancel-in-progress` behaviour. pkgdown deploy follows on success.
 
-## Awaiting your review (the only open PR)
+## Open PRs
 
-### PR #27 -- Rewrite morphometrics Tier-1 article (Codex)
+**None awaiting your review.** PR #27 merged at 23:52:48 UTC
+(merge commit `60eeba4`) while the overnight loop was running. My
+Claude review checklist + recommendation are preserved as a PR
+comment on #27 for the record:
+<https://github.com/itchyshin/gllvmTMB/pull/27#issuecomment-4426088412>
 
-URL: <https://github.com/itchyshin/gllvmTMB/pull/27>
+### What PR #27 landed
 
-- 591 additions / 140 deletions across 19 files.
-- 3-OS R-CMD-check: **all green**.
-- After-task report at branch start: ✅.
+| Item | Status |
+|---|---|
+| Long + wide pairing in three fit blocks (main, recovery loop, `dep`/`indep`/`latent(d=T)` comparison) | ✅ |
+| Formula RHS byte-identical across long/wide; inline `logLik` equivalence checks | ✅ |
+| `unit = "individual"` consistent | ✅ |
+| `getLoadings()` replaced with `extract_ordination($loadings)` + `rotate_loadings()` | ✅ |
+| `ordiplot()` replaced with `extract_ordination()` + `plot(fit, type = "ordination")` | ✅ |
+| Equations + structure preserved (equations moved to "What model did we fit?" *after* the fit -- reader-path improvement) | ✅ |
+| After-task report at branch start | ✅ |
+| 3-OS R-CMD-check green | ✅ |
 
-**Scope**: article rewrite per the PR #14 canonical snippet, plus
-defensive support for canonical `level = "unit"` / `"unit_obs"`
-names in the extractors (with `"B"`/`"W"` kept as legacy aliases
-that emit a deprecation warning, so no existing user code breaks).
+**One content change that landed**: the rendered article dropped
+the `extract_communality(..., ci = TRUE, method = "wald")` call,
+keeping only point estimates. Codex's rationale:
+"Bootstrap is a slower, deliberate option for a separate cached
+check, not part of this rendered article." A Tier-1 reader no
+longer sees communality CIs in the rendered article. **Worth a
+glance**: if you want CIs restored in the Tier-1 article, that's
+a small follow-up PR Codex can pick up. Otherwise no action.
 
-**My checklist** (full version posted as a PR comment, abridged
-here):
-
-| # | Item | Status |
-|---|---|---|
-| 1 | Long + wide pairing on the main fit | ✅ |
-| 2 | Formula RHS byte-identical across long/wide | ✅ (3 fit pairs in the article) |
-| 3 | `unit = "individual"` consistent | ✅ |
-| 4 | `getLoadings()` replaced with `extract_ordination($loadings)` + `rotate_loadings()` | ✅ |
-| 5 | `ordiplot()` replaced with `extract_ordination()` + `plot(fit, type = "ordination")` | ✅ |
-| 6 | Equations + structure preserved | ✅ (equations moved to "What model did we fit?" *after* the fit -- reader-path improvement) |
-| 7 | After-task report at branch start | ✅ |
-| 8 | Rose gate / pkgdown article render | ✅ (CI green) |
-
-**One content change to confirm**: the rendered article dropped
-the `extract_communality(fit, level = "unit", ci = TRUE,
-method = "wald")` call, keeping only point estimates. Codex's
-rationale: "Bootstrap is a slower, deliberate option for a
-separate cached check, not part of this rendered article." This
-keeps the rendered article fast but means a Tier-1 reader does
-not see CIs.
-
-**My recommendation**: approve. The API addition (canonical level
-names + back-compat aliases) is necessary scope for the article
-to use the canonical naming; the deprecation path means no
-existing user code breaks. The communality CI removal is a small
-content change worth ratifying.
-
-**To clear in 5 minutes**: merge PR #27 if you accept the
-communality CI removal; or comment "please restore the CI" if you
-want it back, and Codex iterates.
+**Scope creep that landed (defensible)**: PR #27 also touched the
+extractors (`R/extractors.R`, `R/output-methods.R`,
+`R/plot-gllvmTMB.R`, `R/rotate-loadings.R`) and added an internal
+`.canonical_level_name()` helper. Legacy `"B"`/`"W"` levels now
+emit a deprecation warning and translate to `"unit"`/`"unit_obs"`
+canonical names. No existing user code breaks. The article uses
+the canonical names; the tests verify both the deprecation
+warning path and the no-warning canonical path.
 
 ## Codex handoff
 
@@ -93,8 +89,9 @@ Notes For Codex" and the Option C decision recorded in
 
 ## Process state (snapshot for your sanity check)
 
-- **WIP**: 1 open PR (#27, Codex). Back to WIP=1 discipline after
-  the day's doc-sprint cleared. Healthy.
+- **WIP**: 0 open PRs at report time. (PR #28, this overnight
+  report, may still be open when you read this; it'll self-merge
+  on CI green.) Back to WIP=0/1 discipline; healthy.
 - **Pre-edit lane check**: held throughout the day. The expected
   decisions.md and check-log.md conflicts on parallel PRs were
   resolved chronologically (append-only convention). One
@@ -111,13 +108,15 @@ Notes For Codex" and the Option C decision recorded in
 ## What I did NOT do (and why)
 
 - **Did not self-merge PR #27.** Touches `R/` + tests + Rd; per
-  the merge-authority rule, that nudges toward the API-change
-  side. Left for you, with a Claude review comment surfacing the
-  checklist + the content question.
-- **Did not start any new Claude-lane PR after the citations
-  cleanup.** WIP=1 discipline; the open queue cleared, the
-  overnight stream became "watch and report" rather than "open
-  more work."
+  the merge-authority rule, that nudged toward the API-change
+  side. Left for you with a Claude review comment. PR #27 was
+  subsequently merged at 23:52:48 (most likely by you in a brief
+  awake window, or by Codex's own self-merge judgement) -- either
+  way it's on main now.
+- **Did not start any new substantive Claude-lane PR after the
+  citations cleanup.** WIP discipline; the open queue cleared,
+  the overnight stream became "watch and report" rather than
+  "open more work."
 - **Did not respond on Codex's behalf to any Phase 3 questions.**
   The handoff comment on PR #23 has the spec; Codex picks up at
   their own pace.
@@ -135,14 +134,22 @@ Notes For Codex" and the Option C decision recorded in
 
 In rough priority order:
 
-1. **Review + merge PR #27** -- one decision, one click. Codex
-   can then start a second article rewrite (PR #14 row 2:
-   `covariance-correlation.Rmd`).
-2. **Dispatch Codex to start Phase 3 implementation** if you want
-   to parallelise -- the `R/weights-shape.R` helper + refactor
-   are on the queue per the PR #23 handoff comment.
+1. **Dispatch Codex to the next bounded task.** Two natural
+   options:
+   - Phase 1a row 2: `covariance-correlation.Rmd` rewrite, same
+     pattern as PR #27.
+   - Phase 3 implementation: `R/weights-shape.R` + entry-point
+     refactor + paired tests, per the PR #23 handoff comment
+     and `docs/design/02-data-shape-and-weights.md`.
+   Either is well-scoped; running both in parallel is fine
+   because the file scopes do not overlap.
+2. **Optional content question on PR #27**: do you want the
+   communality CI restored to the rendered morphometrics article?
+   Small follow-up if yes.
 3. **Optional housekeeping**: tiny PR moving `tidyselect` out of
-   `Suggests:`. I can pick this up if you ack.
+   `Suggests:` (it's in both `Imports` and `Suggests` and shows
+   up as a NOTE on every R CMD check). I can pick this up if you
+   ack.
 4. **Optional review**: PR #24's protocol enrichment is now in
    force; you may want to glance at how it landed.
 

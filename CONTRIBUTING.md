@@ -62,11 +62,14 @@ line width, two-space indent). Editors with Air integration
 (Positron, RStudio, VS Code via the extension) format on save once
 the binary is on `PATH`.
 
-This is a local discipline matching the `drmTMB` sister package's
-habit, not a CI gate -- the repo has no `air format --check`
-workflow yet. If unformatted code starts landing through PRs, the
-maintainer will escalate to a CI check workflow; until then, run
-it locally as part of the pre-push pass.
+CI also runs `air format --check .` on every PR via
+`.github/workflows/air-format.yaml`. During the trial period
+(2026-05-12 onward) the job is configured `continue-on-error:
+true` -- the check is visible in the PR Checks tab but does not
+block merges. Once the existing codebase has been reformatted in
+a dedicated `air format .` PR, the workflow flips to blocking.
+Until then, treat the local `air format .` discipline as the
+real gate.
 
 ## Development Checks
 

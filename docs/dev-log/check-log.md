@@ -750,5 +750,11 @@ Validation:
   `family_to_id()` are named as unsupported in multivariate
   `gllvmTMB()` fits rather than advertised as engine-supported; stale
   `mixed-response.html` links in `choose-your-model` now point to the
-  new response-family reference;
+  new response-family reference. A final source check against
+  `R/extract-correlations.R` and `R/extract-sigma.R` added an explicit
+  two-part-family caveat: `extract_correlations()` reports fitted
+  covariance-tier correlations, while `extract_Sigma(link_residual =
+  "auto")` uses approximate diagonal link-residual corrections for
+  `delta_lognormal()` / `delta_gamma()`, not a full observed-scale
+  two-part correlation estimand;
 - `git diff --check` passed.

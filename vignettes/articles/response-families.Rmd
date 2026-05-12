@@ -144,6 +144,26 @@ will not imply the same residual scale. Use `extract_Omega()` and
 `extract_Sigma()` after fitting, and read the extractor output on the
 scale implied by the family.
 
+Correlations need one extra sentence of caution. `extract_correlations()`
+reports correlations in the fitted covariance tier, not correlations
+of the raw observed responses. For single-link families this is usually
+the quantity readers want: a latent-liability or link-scale trait
+correlation. For two-part families such as `delta_lognormal()` and
+`delta_gamma()`, there are several possible scientific targets:
+presence/absence correlation, positive-response correlation, and total
+observed-response correlation. The current engine fits those families
+with one shared linear predictor, so the covariance tier is still
+well-defined, but the link-residual adjustment used by
+`extract_Sigma(link_residual = "auto")` is an approximate diagonal
+scale correction, not a full observed-scale two-part correlation
+calculus.
+
+The practical rule is to report two-part family correlations as
+latent/link-scale model correlations unless a future article or
+extractor explicitly defines a response-scale estimand. Do not describe
+them as raw biomass, abundance, or total-response correlations without
+that extra definition.
+
 ## Exported But Not Engine-Mapped
 
 `R/families.R` also contains exported constructor helpers that are not

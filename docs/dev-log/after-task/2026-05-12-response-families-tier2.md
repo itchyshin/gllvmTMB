@@ -58,7 +58,8 @@ Final validation:
   matches the 15 `family_to_id()` entries in `R/fit-multi.R`; exported
   but unmapped constructors are listed as unsupported in multivariate
   fits; the stale `mixed-response.html` links in `choose-your-model`
-  now point to `response-families.html`.
+  now point to `response-families.html`; and the two-part-family
+  caveat matches `R/extract-correlations.R` / `R/extract-sigma.R`.
 - `git diff --check`: passed.
 
 ## Consistency Audit
@@ -79,6 +80,12 @@ set named in `R/families.R`. A source cross-check showed a narrower
 truth: only the 15 `family_to_id()` entries are currently documented
 engine families. The article now names the other exported constructors
 as unsupported in multivariate fits rather than advertising them.
+
+The correlation wording also needed narrowing. `extract_correlations()`
+reports fitted covariance-tier correlations; two-part families can
+support those latent/link-scale correlations, but raw observed-response
+correlations need a separate estimand that the current article does not
+define.
 
 ## Team Learning
 

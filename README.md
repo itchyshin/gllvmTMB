@@ -181,9 +181,10 @@ models belong in `glmmTMB`; spatial single-response models belong in
 `sdmTMB`; one- or two-response distributional regression belongs in
 `drmTMB`.
 
-The long-format API is canonical. `gllvmTMB_wide()` and the
-`traits(...)` formula marker are convenience routes that reshape wide
-data into the same long-format engine.
+The package accepts data in either **long** or **wide** shape.
+`gllvmTMB(value ~ ..., data = df_long)` is the long-format path;
+`gllvmTMB_wide(Y, ...)` is the wide path (`Y` is a numeric matrix or
+a wide data frame). Both reach the same long-format engine.
 
 Random slopes through `(1 + x | g)` syntax are not yet implemented.
 The current structured-effect paths are strongest for intercept-only

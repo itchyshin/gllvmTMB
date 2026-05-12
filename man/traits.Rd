@@ -37,6 +37,46 @@ internally.
 
 Both paths reach the same engine; the user picks whichever shape
 matches their data on disk.
+
+Used inside \code{gllvmTMB()} like other formula keywords (\code{latent()},
+\code{unique()}, \verb{phylo_*()}, \verb{spatial_*()}):
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{gllvmTMB(
+  traits(sleep, mass, lifespan, brain) ~ 0 + trait + (0 + trait):env_temp +
+    latent(0 + trait | individual, d = 2) +
+    unique(0 + trait | individual),
+  data   = wide_df,
+  unit   = "individual",
+  family = gaussian()
+)
+}\if{html}{\out{</div>}}
+
+Internally \code{traits()} is implemented as a \code{tidyr::pivot_longer()}
+pre-pass: the wide data is pivoted to long format with \code{trait} as a
+factor column (levels in the order the user supplied to \code{traits()})
+and \code{.y_wide_} as the response column; the LHS of the formula is
+rewritten from \code{traits(...)} to \code{.y_wide_}; and the rest of the call
+is dispatched unchanged to the long-format engine. The
+trait-stacked RHS (\code{0 + trait}, \code{(0 + trait):x}, etc.) is the user's
+responsibility — \code{traits()} does not rewrite the RHS.
+
+Tidyselect verbs are supported because \code{traits()} forwards its
+arguments to \code{tidyr::pivot_longer(cols = ...)}:
+\code{traits(all_of(cols))}, \code{traits(starts_with("sp"))},
+\code{traits(matches("^y[0-9]+$"))}, \code{traits(any_of(c("a", "b")))}, and
+bare names all work.
+
+Cells with \code{NA} responses are dropped via
+\code{pivot_longer(values_drop_na = TRUE)} — the canonical default. Users
+who want strict listwise drop should pre-filter the wide data before
+calling.
+
+Mixed-family fits (\code{family = list(...)} keyed by trait) flow through
+the long-format engine; \code{traits()} does not intercept the family
+argument. Per-row weight vectors of length \code{nrow(data)} are also
+replicated across traits automatically, then passed to the same
+long-format weight path used by \code{\link[=gllvmTMB]{gllvmTMB()}}. For per-cell weight
+matrices use the matrix-in entry point \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}}.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}} for the long-format engine, \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}}
@@ -44,172 +84,4 @@ for the matrix-in API (use that when you have per-cell weight
 matrices or come from a \code{gllvm}-style workflow). The source-tree
 contract is \code{docs/design/02-data-shape-and-weights.md}.
 }
-\keyword{"b")))`,}
-\keyword{"individual",}
-\keyword{(0}
-\keyword{(`0}
-\keyword{(`family}
-\keyword{(`latent()`,}
-\keyword{(levels}
-\keyword{)}
-\keyword{+}
-\keyword{...)`:}
-\keyword{0}
-\keyword{2)}
-\keyword{=}
-\keyword{Cells}
-\keyword{For}
-\keyword{Internally}
-\keyword{LHS}
-\keyword{Mixed-family}
-\keyword{Per-row}
-\keyword{RHS}
-\keyword{RHS.}
-\keyword{TRUE)`}
-\keyword{The}
-\keyword{Tidyselect}
-\keyword{Used}
-\keyword{Users}
-\keyword{[gllvmTMB()].}
-\keyword{[gllvmTMB_wide()].}
-\keyword{`(0}
-\keyword{`.y_wide_`}
-\keyword{`.y_wide_`;}
-\keyword{`NA`}
-\keyword{```}
-\keyword{```r}
-\keyword{`gllvmTMB()`}
-\keyword{`nrow(data)`}
-\keyword{`phylo_*()`,}
-\keyword{`pivot_longer(values_drop_na}
-\keyword{`spatial_*()`):}
-\keyword{`tidyr::pivot_longer()`}
-\keyword{`tidyr::pivot_longer(cols}
-\keyword{`trait`}
-\keyword{`traits()`}
-\keyword{`traits()`)}
-\keyword{`traits(...)`}
-\keyword{`traits(all_of(cols))`,}
-\keyword{`traits(any_of(c("a",}
-\keyword{`traits(matches("^y[0-9]+$"))`,}
-\keyword{`traits(starts_with("sp"))`,}
-\keyword{`unique()`,}
-\keyword{a}
-\keyword{across}
-\keyword{all}
-\keyword{also}
-\keyword{and}
-\keyword{are}
-\keyword{argument.}
-\keyword{arguments}
-\keyword{as}
-\keyword{automatically,}
-\keyword{bare}
-\keyword{because}
-\keyword{before}
-\keyword{brain)}
-\keyword{by}
-\keyword{call}
-\keyword{calling.}
-\keyword{canonical}
-\keyword{column}
-\keyword{column;}
-\keyword{d}
-\keyword{data}
-\keyword{default.}
-\keyword{dispatched}
-\keyword{does}
-\keyword{drop}
-\keyword{dropped}
-\keyword{engine.}
-\keyword{engine;}
-\keyword{entry}
-\keyword{etc.)}
-\keyword{factor}
-\keyword{family}
-\keyword{fits}
-\keyword{flow}
-\keyword{format}
-\keyword{formula}
-\keyword{forwards}
-\keyword{from}
-\keyword{gaussian()}
-\keyword{gllvmTMB(}
-\keyword{implemented}
-\keyword{in}
-\keyword{individual),}
-\keyword{individual,}
-\keyword{inside}
-\keyword{intercept}
 \keyword{internal}
-\keyword{is}
-\keyword{its}
-\keyword{keyed}
-\keyword{keywords}
-\keyword{latent(0}
-\keyword{length}
-\keyword{lifespan,}
-\keyword{like}
-\keyword{list(...)`}
-\keyword{listwise}
-\keyword{long}
-\keyword{long-format}
-\keyword{mass,}
-\keyword{matrices}
-\keyword{matrix-in}
-\keyword{names}
-\keyword{not}
-\keyword{of}
-\keyword{order}
-\keyword{other}
-\keyword{passed}
-\keyword{path}
-\keyword{per-cell}
-\keyword{pivoted}
-\keyword{point}
-\keyword{pre-filter}
-\keyword{pre-pass:}
-\keyword{replicated}
-\keyword{response}
-\keyword{responses}
-\keyword{responsibility}
-\keyword{rest}
-\keyword{rewrite}
-\keyword{rewritten}
-\keyword{same}
-\keyword{should}
-\keyword{strict}
-\keyword{supplied}
-\keyword{supported}
-\keyword{the}
-\keyword{then}
-\keyword{through}
-\keyword{to}
-\keyword{trait}
-\keyword{trait)}
-\keyword{trait):env_temp}
-\keyword{trait):x`,}
-\keyword{trait-stacked}
-\keyword{trait`,}
-\keyword{traits}
-\keyword{traits(sleep,}
-\keyword{unchanged}
-\keyword{unique(0}
-\keyword{unit}
-\keyword{use}
-\keyword{used}
-\keyword{user}
-\keyword{user's}
-\keyword{vectors}
-\keyword{verbs}
-\keyword{via}
-\keyword{want}
-\keyword{weight}
-\keyword{who}
-\keyword{wide}
-\keyword{wide_df,}
-\keyword{with}
-\keyword{work.}
-\keyword{|}
-\keyword{~}
-\keyword{—}

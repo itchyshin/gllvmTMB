@@ -32,8 +32,7 @@
 #' Both paths reach the same engine; the user picks whichever shape
 #' matches their data on disk.
 #'
-#' @keywords internal
-#'
+#' @details
 #' Used inside `gllvmTMB()` like other formula keywords (`latent()`,
 #' `unique()`, `phylo_*()`, `spatial_*()`):
 #'
@@ -85,6 +84,7 @@
 #'   for the matrix-in API (use that when you have per-cell weight
 #'   matrices or come from a `gllvm`-style workflow). The source-tree
 #'   contract is `docs/design/02-data-shape-and-weights.md`.
+#' @keywords internal
 #' @export
 traits <- function(...) {
   invisible(NULL)

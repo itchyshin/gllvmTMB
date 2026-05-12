@@ -286,8 +286,8 @@ ggplot(df_corr, aes(trait_j, trait_i, fill = rho)) +
 
 For inference on individual cross-trait correlations or per-trait
 communality, the canonical extractors return tidy data frames.
-`extract_correlations()` defaults to `method = "wald"` (fast
-approximate Wald CI with Fisher-transform bounds in $[-1, 1]$).
+`extract_correlations()` defaults to `method = "fisher-z"` (fast
+Fisher-transform Wald CI; bounds guaranteed in $[-1, 1]$).
 Communality point estimates are enough for this first worked example.
 When interval estimates matter, prefer profile or Wald-style intervals
 where the target supports them. Bootstrap is a slower, deliberate option

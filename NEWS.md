@@ -58,8 +58,6 @@ gone.
 * `gllvmTMBcontrol()` no longer carries a `sdmTMBcontrol` slot.
   Extra `...` arguments to `gllvmTMBcontrol()` emit a warning.
 
-* `extract_correlations()` now uses `method = "wald"` as the public default for fast bounded correlation confidence intervals. The old `method = "fisher-z"` spelling remains as a compatibility alias for the same calculation; Fisher's z transform is the internal scale used by the Wald interval, not the user-facing method name.
-
 * Articles are tiered. The pkgdown navbar shows seven Tier-1
   worked-example articles plus the Get Started vignette: morphometrics,
   joint-sdm, behavioural-syndromes, choose-your-model,

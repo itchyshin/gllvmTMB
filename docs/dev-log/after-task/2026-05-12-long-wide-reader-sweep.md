@@ -126,25 +126,27 @@ accepted, so existing code that already wrote `0 + trait` stays valid.
   still points readers toward Wald or profile intervals where
   appropriate; bootstrap is described as a slower deliberate
   cached check, not the default inferential recommendation.
-- Terminology follow-up: `extract_correlations()` now uses
-  `method = "wald"` as the public/default name for the fast bounded
-  correlation CI. `method = "fisher-z"` remains as a compatibility
-  alias for the same calculation because Fisher's z is the internal
-  transform, not the method label. `devtools::document(quiet = TRUE)`
-  regenerated `man/extract_correlations.Rd`; a direct probe returned
-  default `method` label `wald`; `Rscript --vanilla -e
-  'devtools::test(filter = "fisher-z-correlations|traits-keyword|weights-unified")'`
-  passed with `FAIL 0 | WARN 0 | SKIP 1 | PASS 87`.
-- Targeted compatibility run: `Rscript --vanilla -e
-  'devtools::test(filter = "fisher-z-correlations|sigma-rename|profile-ci")'`
-  passed with `FAIL 0 | WARN 3 | SKIP 1 | PASS 66`. The warnings are
-  existing legacy `tier = "B"` / `level = "B"` / `level = "W"` aliases
-  in `test-profile-ci.R`, not new Wald-method failures.
-- Rose pre-publish terminology gate: PASS. Source formals,
-  generated Rd, NEWS, and touched vignettes agree that
-  `extract_correlations()` defaults to `method = "wald"`; remaining
-  `method = "fisher-z"` mentions are compatibility-alias or
-  implementation-transform references.
+- Claude review follow-up for PR #39: reverted the scope-expansion
+  change that renamed the `extract_correlations()` default. Source,
+  focused tests, and generated Rd are back to
+  `method = c("fisher-z", "profile", "wald", "bootstrap")`; touched
+  vignettes and NEWS again describe `fisher-z` as the default and
+  `wald` as the alias. This keeps the compact `traits(...)` RHS pivot
+  separate from the extractor-default decision.
+- Post-review validation after the default revert:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed;
+  a direct probe returned default `method` label `fisher-z`;
+  `Rscript --vanilla -e 'devtools::test(filter = "fisher-z-correlations|traits-keyword|weights-unified")'`
+  passed with `FAIL 0 | WARN 1 | SKIP 1 | PASS 87`; the one warning
+  is the restored legacy `tier = "B"` alias warning inside
+  `test-fisher-z-correlations.R`, not a default-method failure;
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  passed with "No problems found"; `git diff --check` passed.
+- Rose pre-publish terminology gate after the default revert: PASS.
+  Source formals, generated Rd, NEWS, and touched vignettes agree that
+  `extract_correlations()` defaults to `method = "fisher-z"`; `wald`
+  remains an alias or a separate extractor method where explicitly
+  requested.
 - Post-fast-forward validation after PR #37/#38 landed on `origin/main`:
   `Rscript --vanilla -e 'devtools::test(filter = "fisher-z-correlations|traits-keyword|weights-unified")'`
   passed with `FAIL 0 | WARN 0 | SKIP 1 | PASS 87`;

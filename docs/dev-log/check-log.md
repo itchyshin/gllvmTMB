@@ -694,3 +694,30 @@ Validation:
 - `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
   passed with "No problems found";
 - `git diff --check` passed.
+
+## 2026-05-12 -- API keyword grid Tier-2 reference
+
+Branch: `codex/api-keyword-grid-tier2`.
+
+Maintainer dispatch context: after PR #45 merged, continue with the
+next Codex-owned item from the Tier-2 article salvage queue. Scope is
+one article: port `api-keyword-grid.Rmd` as a Tier-2 technical
+reference, plus pkgdown/NEWS/dev-log hygiene.
+
+Pre-edit lane check: open PRs #43 and #44 are Claude audit PRs adding
+their own `docs/dev-log/after-task/` and
+`docs/dev-log/shannon-audits/` files only; no overlap with this
+branch's article, `_pkgdown.yml`, `NEWS.md`, or check-log entry.
+
+Validation:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/api-keyword-grid", new_process = FALSE)'`
+  completed; the render emitted only the known missing `../logo.png`
+  pkgdown warning;
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  passed with "No problems found";
+- Rose pre-publish gate: PASS. The grid in the article matches
+  `README.md`, `docs/design/00-vision.md`, and `R/gllvmTMB.R`; helper
+  terms `phylo_slope()` and `meta_known_V()` are named as outside the
+  grid; no method/default claims were introduced;
+- `git diff --check` passed.

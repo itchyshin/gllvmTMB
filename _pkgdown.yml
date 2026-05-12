@@ -24,6 +24,11 @@ articles:
     - articles/functional-biogeography
     - articles/pitfalls
 
+  - title: Technical reference (Tier 2)
+    navbar: Technical reference
+    contents:
+    - articles/api-keyword-grid
+
 reference:
   - title: Top-level entry points
     desc: Fit a stacked-trait GLLVM

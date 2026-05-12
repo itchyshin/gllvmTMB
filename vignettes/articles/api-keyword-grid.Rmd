@@ -1,0 +1,218 @@
+---
+title: "Formula keyword grid"
+tier: 2 # technical reference for the covariance keyword grammar
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Formula keyword grid}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE
+)
+```
+
+This reference is for readers who already know they need a
+stacked-trait model and want to choose the right covariance keyword.
+The keywords are organised as a 3 x 5 grid: the row names the
+correlation across units, and the column names the covariance mode
+across traits.
+
+| correlation \ mode | scalar | unique | indep | dep | latent |
+|---|---|---|---|---|---|
+| none | (omit) | `unique()` | `indep()` | `dep()` | `latent()` |
+| phylo | `phylo_scalar()` | `phylo_unique()` | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
+| spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+
+Use this page as a grammar lookup. For a worked example, start with
+[`morphometrics`](morphometrics.html) for non-phylogenetic
+`latent() + unique()` models or
+[`phylogenetic-gllvm`](phylogenetic-gllvm.html) for phylogenetic
+trait covariance.
+
+## The Five Modes
+
+The mode controls the trait covariance matrix `Sigma` at one model
+level.
+
+| mode | Meaning | Use when |
+|---|---|---|
+| scalar | one shared variance for all traits | every trait should have the same group-level scale |
+| unique | a diagonal matrix `S` of trait-specific variances | pairing with `latent()` or fitting independent trait variances |
+| indep | the same diagonal covariance as standalone `unique()` | you want to state marginal-only intent explicitly |
+| dep | a full unstructured positive-definite `Sigma` | the number of traits is small enough for a saturated covariance |
+| latent | low-rank shared covariance `Lambda Lambda^T` | a few latent axes should explain cross-trait association |
+
+The most common decomposed model pairs `latent()` and `unique()`:
+
+```text
+Sigma = Lambda Lambda^T + S
+```
+
+Standalone `latent()` fits the no-residual reduced-rank subset.
+Standalone `unique()` and `indep()` both fit independent per-trait
+variances, but `indep()` tells the next reader that the marginal-only
+interpretation is intentional. `dep()` is the full unstructured
+baseline and should not be combined with the matching `latent()`,
+`unique()`, or `indep()` term at the same level.
+
+## The Three Correlation Rows
+
+The row controls how the grouping units are correlated.
+
+| row | Unit correlation | Typical grouping |
+|---|---|---|
+| none | independent groups | sites, individuals, sessions |
+| phylo | a phylogenetic relationship matrix from `tree` or `vcv` | species or clades |
+| spatial | an SPDE/GMRF spatial precision matrix from `mesh` | sites with coordinates |
+
+No-prefix keywords such as `latent()`, `unique()`, `indep()`, and
+`dep()` use independent group effects. The phylogenetic row uses
+`phylo_*()` keywords and a tree or covariance matrix. The spatial row
+uses `spatial_*()` keywords and an SPDE mesh, often created with
+`make_mesh()`.
+
+## Long And Wide Syntax
+
+Long data are canonical: one row per `(unit, trait)` observation. Wide
+data frames use `traits(...)` on the formula left-hand side; that lets
+the right-hand side use compact syntax.
+
+```{r}
+# Long format
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | individual, d = 2) +
+    unique(0 + trait | individual),
+  data = df_long,
+  unit = "individual"
+)
+
+# Wide data-frame format
+fit_wide <- gllvmTMB(
+  traits(length, mass, wing, tarsus, bill) ~ 1 +
+    latent(1 | individual, d = 2) +
+    unique(1 | individual),
+  data = df_wide,
+  unit = "individual"
+)
+```
+
+In the wide form, `1` supplies the trait-specific intercepts and
+`latent(1 | individual)` expands to `latent(0 + trait | individual)`.
+The same shorthand applies to `unique()`, `indep()`, `dep()`,
+bar-style `phylo_indep()` / `phylo_dep()`, and `spatial_*()` terms.
+Species-axis phylogenetic calls such as
+`phylo_latent(species, d = K, tree = tree)` and
+`phylo_unique(species, tree = tree)` already name their phylogenetic
+axis, so they pass through unchanged.
+
+## Per-Cell Examples
+
+Use one cell from a row at a time unless you are fitting the
+`latent + unique` decomposition. The examples below show the long-form
+syntax; the wide-form equivalent replaces `0 + trait` with `1` inside
+bar-style terms.
+
+### No Correlation
+
+```{r}
+# Diagonal trait variances, often paired with latent()
+unique(0 + trait | unit)
+
+# Explicit marginal-only diagonal covariance
+indep(0 + trait | unit)
+
+# Full unstructured trait covariance
+dep(0 + trait | unit)
+
+# Reduced-rank shared trait covariance
+latent(0 + trait | unit, d = 2)
+```
+
+The scalar no-correlation cell is not a covariance keyword. Ordinary
+random intercepts such as `(1 | batch)` pass through as ordinary random
+intercepts rather than trait covariance terms.
+
+### Phylogenetic
+
+```{r}
+# One shared phylogenetic variance
+phylo_scalar(species, tree = tree)
+
+# Trait-specific phylogenetic diagonal
+phylo_unique(species, tree = tree)
+
+# Explicit marginal-only phylogenetic diagonal
+phylo_indep(0 + trait | species, tree = tree)
+
+# Full unstructured phylogenetic trait covariance
+phylo_dep(0 + trait | species, tree = tree)
+
+# Reduced-rank phylogenetic shared covariance
+phylo_latent(species, d = 2, tree = tree)
+```
+
+Use `phylo_latent() + phylo_unique()` when the scientific question is
+about shared phylogenetic trait axes plus trait-specific phylogenetic
+variance. Use `phylo_dep()` as a saturated comparator when the number
+of traits is small enough.
+
+### Spatial
+
+```{r}
+# One shared spatial variance
+spatial_scalar(0 + trait | site, mesh = mesh)
+
+# Trait-specific spatial fields
+spatial_unique(0 + trait | site, mesh = mesh)
+
+# Explicit marginal-only spatial fields
+spatial_indep(0 + trait | site, mesh = mesh)
+
+# Full unstructured spatial trait covariance
+spatial_dep(0 + trait | site, mesh = mesh)
+
+# Reduced-rank shared spatial fields
+spatial_latent(0 + trait | site, d = 2, mesh = mesh)
+```
+
+The spatial row uses the SPDE/GMRF approximation inherited from
+`sdmTMB`. `spatial_unique()` is the canonical replacement for the
+legacy `spatial()` alias.
+
+## Helpers Outside The Grid
+
+Two exported helpers are related to the grid but are not grid cells.
+
+`phylo_slope(x | species)` adds a phylogenetic random slope for a
+covariate `x`. It is an extension hook, not one of the five covariance
+modes.
+
+`meta_known_V(value, V = V)` adds known sampling covariance for
+meta-analytic workflows. It uses a user-supplied covariance matrix
+rather than one of the grid's estimated correlation rows.
+
+## What Not To Combine
+
+The parser rejects combinations that tell the same covariance story
+twice at the same level:
+
+- `dep()` with `latent()`, `unique()`, or `indep()` on the same group;
+- `indep()` with `latent()` or `unique()` on the same group;
+- `phylo_dep()` with `phylo_latent()`, `phylo_unique()`, or
+  `phylo_indep()` for the same phylogenetic tier;
+- `spatial_dep()` with `spatial_latent()`, `spatial_unique()`, or
+  `spatial_indep()` for the same spatial tier.
+
+When in doubt, start with `latent() + unique()` for a decomposed model,
+`indep()` for a diagonal baseline, and `dep()` for a saturated
+baseline. Then use the row prefix only when the grouping units are
+phylogenetically or spatially correlated.

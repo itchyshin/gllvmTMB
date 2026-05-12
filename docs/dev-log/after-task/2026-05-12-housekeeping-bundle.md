@@ -1,8 +1,8 @@
-# After-Task: Two small housekeeping items bundled
+# After-Task: Three small housekeeping items bundled
 
 ## Goal
 
-Two pre-existing housekeeping items that surfaced during today's
+Three pre-existing housekeeping items that surfaced during today's
 PR flurry, bundled into one small PR so each does not need its
 own CI cycle:
 
@@ -21,6 +21,13 @@ own CI cycle:
    `docs/design/10-after-task-protocol.md`. Codify the
    spot-check pattern so future PRs that add tags after long
    descriptions get caught earlier.
+3. **Origin branch hygiene** -- Shannon audit (PR #35) flagged
+   22 merged-but-not-deleted branches on origin (the
+   `--delete-branch` flag failed locally because worktrees held
+   local refs; the remote ref deletion was missed for a subset).
+   Maintainer authorised cleanup 2026-05-12 ~09:50 MT. All 22
+   verified merged via `gh pr list --state merged --head <branch>`
+   before `git push origin --delete`.
 
 After-task report added at branch start per `CONTRIBUTING.md`.
 
@@ -37,6 +44,18 @@ After-task report added at branch start per `CONTRIBUTING.md`.
   `devtools::document()` when a task adds tags after a long
   description block. References PR #32 + #33 as the worked
   example.
+- **22 merged origin branches deleted** via
+  `git push origin --delete <branch>` (one operation per branch;
+  all returned `- [deleted]`). Recorded in
+  `docs/dev-log/check-log.md` with the per-branch
+  branch -> merged PR mapping. Retained: only the three active
+  branches (`agent/shannon-audit-2026-05-12`,
+  `agent/housekeeping-bundle`, `codex/long-wide-example-sweep`).
+- **`docs/dev-log/check-log.md`** (M): appended the
+  "2026-05-12 -- Origin branch hygiene" entry recording the
+  cleanup with the per-branch verification mapping and the
+  process lesson (future `--delete-branch` failures should be
+  followed by an explicit `git push origin --delete`).
 - **`docs/dev-log/after-task/2026-05-12-housekeeping-bundle.md`**
   (NEW, this file).
 
@@ -50,8 +69,13 @@ DESCRIPTION metadata + protocol-doc prose only.
 
 - `DESCRIPTION`
 - `docs/design/10-after-task-protocol.md`
+- `docs/dev-log/check-log.md`
 - `docs/dev-log/after-task/2026-05-12-housekeeping-bundle.md`
   (new, this file)
+
+(The branch-cleanup actions are not "file changes" in git terms
+-- they delete remote refs, not files. Recorded in
+`check-log.md` instead.)
 
 ## Checks Run
 

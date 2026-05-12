@@ -695,6 +695,50 @@ Validation:
   passed with "No problems found";
 - `git diff --check` passed.
 
+## 2026-05-12 -- Ordinal-probit Tier-2 reference
+
+Branch: `codex/ordinal-probit-tier2`.
+
+Maintainer dispatch context: after PR #46 merged, proceed with the
+next Codex-owned Tier-2 article from the salvage queue. Scope is one
+article: add `ordinal-probit.Rmd` as a compact technical reference for
+`ordinal_probit()`, plus pkgdown/NEWS/dev-log hygiene.
+
+Pre-edit Shannon check: working tree clean on `main`; open PRs #47,
+#48, and #49 are agent PRs. They do not touch `_pkgdown.yml`,
+`NEWS.md`, or `vignettes/articles/ordinal-probit.Rmd`; PR #48 touches
+README/design prose and should merge separately. Post-merge main
+R-CMD-check for PR #46 is running, but this branch starts from the
+current merge commit and avoids implementation files.
+
+Final Shannon recheck: after fetching, `origin/main` had advanced to
+PR #47's merge commit. Open PRs #48 and #50 do not touch this branch's
+files; #48 changes README/design prose, and #50 changes
+`docs/dev-log/known-limitations.md` plus its own after-task note.
+
+Validation:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`:
+  completed and regenerated only `man/extract_cutpoints.Rd` after the
+  stale `extract_cutpoints()` example was aligned to canonical
+  `phylo_unique(species, tree = tree)` syntax;
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE);
+  pkgdown::build_article("articles/ordinal-probit", new_process =
+  FALSE); pkgdown::build_article("articles/response-families",
+  new_process = FALSE)'`: completed; only the pre-existing
+  `../logo.png` pkgdown warning was reported for both articles;
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`: passed with "No
+  problems found";
+- `Rscript --vanilla -e 'devtools::test(filter =
+  "ordinal-probit|traits-keyword")'`: passed with `FAIL 0 | WARN 0 |
+  SKIP 1 | PASS 74`; the skip is the existing fixed-effect-only
+  fallback skip in `test-traits-keyword.R`;
+- Rose pre-publish gate: article claims were checked against
+  `R/families.R`, `R/fit-multi.R`, `R/extract-cutpoints.R`,
+  `R/extract-sigma.R`, and `tests/testthat/test-ordinal-probit.R`.
+  No mismatch found for family names, `K = 2`, cutpoint convention,
+  `sigma_d^2 = 1`, OLRE mapping, or latent-scale correlation wording.
+
 ## 2026-05-12 -- API keyword grid Tier-2 reference
 
 Branch: `codex/api-keyword-grid-tier2`.

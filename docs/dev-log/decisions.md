@@ -284,3 +284,68 @@ Visibility audit:
 
 Net effect: upstream acknowledgment is more visible after Path A
 than before, despite the Authors@R cleanup.
+
+## 2026-05-12  Legacy `gllvmTMB-legacy` archive scope (ratified)
+
+Decision: the following items from `itchyshin/gllvmTMB-legacy`
+**stay archived** in the legacy repo and do **not** re-enter the
+current cleaned multivariate `gllvmTMB` repo. Source for this
+list: Codex's 2026-05-12 read-only legacy excavation (posted as
+a PR #35 comment) and Claude's PR #37 dispatch-queue audit; the
+maintainer ratified the queue + archive list 2026-05-12
+~11:30 MT.
+
+What stays archived:
+
+- **Single-response sdmTMB inheritance layer**: `R/fit.R`,
+  `R/predict.R`, `R/residuals.R`, `R/dharma.R`, `R/emmeans.R`,
+  `R/visreg.R`, `R/index.R`. These are not the multivariate
+  stacked-trait surface; users who need them install
+  `pbs-assess/sdmTMB` directly.
+- **Single-response tests**: legacy `test-1-*`, `test-2-*`,
+  DHARMa, emmeans, forecasting, projection, cross-validation
+  tests. The current package's test surface is the multivariate
+  one.
+- **PIC-MOM as a public extractor path**: kept internal /
+  hidden in the current repo. The canonical user-facing two-U
+  diagnostic API is `compare_dep_vs_two_U()` and
+  `compare_indep_vs_two_U()` (both already in current
+  `R/extract-two-U-cross-check.R`).
+- **Legacy Tier-3 essays**:
+  `vignettes/articles/cross-package-validation.Rmd`,
+  `simulation-recovery.Rmd`,
+  `stacked-trait-gllvm.Rmd`,
+  `morphometric-phylogeny.Rmd` (when distinct from
+  `morphometrics.Rmd`), and other long discursive essays. The
+  current pkgdown navbar is Tier-1 worked examples only; if a
+  Tier-1 article needs to point at a legacy essay, cross-link
+  rather than re-publish.
+
+What is NOT archived (separate dispatch queue per PR #37):
+
+- The phylogenetic / two-U doc-validation lane -- legacy article
+  ideas and design notes adapted to current vocabulary
+  (`vignettes/articles/phylogenetic-gllvm.Rmd`,
+  `two-U-phylogeny.Rmd`, `dev/design/03-phylogenetic-gllvm-rewrite.md`).
+- Selective Tier-2 reference article salvage (mixed-response,
+  response-families, ordinal-probit, profile-likelihood-ci,
+  lambda-constraint, api-keyword-grid).
+- Curie identifiability simulation scaffolding
+  (`dev/sim-two-U-identifiability.R`,
+  `dev/two-U-analysis.R`,
+  `dev/design/11-identifiability-regime-map.md`).
+- Low-cost wording mine from legacy Pat / Design 08 (already
+  superseded as a *spec*, but useful UX phrasing).
+
+These positive items are queued in
+`docs/dev-log/shannon-audits/2026-05-12-legacy-coopt-dispatch-queue.md`
+with role allocations and prerequisites.
+
+Rationale: drawing the archive line here keeps the public
+package focused on the multivariate stacked-trait surface and
+prevents the same scope-revisit conversation from happening at
+each future Codex / Claude dispatch. If a future task wants to
+revisit any specific archive entry, the rationale is "scope vs
+sdmTMB / glmmTMB / drmTMB sister-package separation" and the
+revisit needs an explicit maintainer decision recorded here as
+an amendment.

@@ -33,7 +33,7 @@ from \code{\link[=extract_residual_split]{extract_residual_split()}}.
 Sum of \eqn{\boldsymbol\Sigma_\text{tier}} matrices across the user-
 selected tiers. The canonical PGLLVM use case is the species-level
 three-piece decomposition (Nakagawa et al. \emph{in prep}, Eq. 19):
-\deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \mathbf U.}
+\deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \mathbf S_\text{non}.}
 Here \code{tiers = c("phy", "B")} returns
 \eqn{\boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{B}} where
 \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^{\!\top} + \mathbf S_B}

@@ -52,7 +52,7 @@ Refits the user's data with full unstructured T x T phylogenetic and
 non-phylogenetic trait covariances (\code{phylo_dep + dep}) using the same
 engine, family, link, and unit / cluster grouping as the supplied
 two-U fit. Compares the joint two-U fit's implied
-\eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \mathrm{diag}(\mathbf U_{\mathrm{phy}})}
+\eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \mathbf S_{\mathrm{phy}}}
 (and the analogous \eqn{\boldsymbol\Sigma_{\mathrm{non}}}) against
 the unstructured baseline. Per-component RMSE plus a \code{flag} field
 (\code{TRUE} when any component disagrees beyond \code{threshold}) identifies
@@ -76,7 +76,7 @@ success framing (\code{dev/two-U-rewrite-plan.md}):
 answers Level 2 directly. The two estimators target the SAME
 total covariance with different parameterisations, so agreement
 is the identifiability check.}
-\item{Level 3: split into Lambda Lambda^T + diag(U)?}{Diagnostic
+\item{Level 3: split into Lambda Lambda^T + S?}{Diagnostic
 does not test Level 3 directly; Level 2 agreement is the
 pre-requisite for Level 3 to be meaningful.}
 }

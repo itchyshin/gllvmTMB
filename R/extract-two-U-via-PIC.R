@@ -7,7 +7,7 @@
 ## `nlme::gls` + `corPagel`) to identify the trait-specific phylogenetic and
 ## non-phylogenetic variance components, then build T x T Sigma_phy and
 ## Sigma_non matrices and factor-analyse each one. The result is the
-## four-component decomposition Lambda_phy, U_phy, Lambda_non, U_non --
+## four-component decomposition Lambda_phy, s_phy, Lambda_non, s_non --
 ## the same target as the joint-REML two-U fit, but obtained without
 ## simultaneous likelihood maximisation.
 ##
@@ -236,7 +236,7 @@
   list(Sphy = Sphy, Snon = Snon)
 }
 
-#' Helper: factor-analyse a covariance matrix into Lambda * Lambda^T + diag(U)
+#' Helper: factor-analyse a covariance matrix into Lambda * Lambda^T + S
 #'
 #' Wraps `stats::factanal()` in a way that's robust to rank-deficient or
 #' near-singular Sigma. Returns Lambda (T x d) and U (length T). When
@@ -302,8 +302,8 @@
 #' plus a per-trait Pagel's lambda mixed-model fit
 #' (`nlme::gls` + `ape::corPagel`) to identify the four components of
 #' the two-U decomposition:
-#' \deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \mathbf U_\text{phy}, \qquad
-#' \boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \mathbf U_\text{non}.}
+#' \deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \mathbf S_\text{phy}, \qquad
+#' \boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \mathbf S_\text{non}.}
 #'
 #' @details
 #'
@@ -354,7 +354,7 @@
 #'   \item **Factor-analytic decomposition**: run
 #'     `stats::factanal(covmat = Sigma, factors = d_phy, rotation = "none")`
 #'     on each matrix to obtain
-#'     \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathrm{diag}(\mathbf U)}
+#'     \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
 #'     for each tier.
 #' }
 #'
@@ -382,8 +382,8 @@
 #'     joint-REML fit is preferred when sample size allows.
 #'   \item Factor-analytic decomposition shares the rotation
 #'     indeterminacy of any factor model; the implied
-#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathrm{diag}(\mathbf U)}
-#'     is well-identified; the split between Lambda and U is identified
+#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+#'     is well-identified; the split between Lambda and S is identified
 #'     up to rotation.
 #' }
 #'
@@ -403,7 +403,8 @@
 #'   \item{`Sigma_non_total`}{T x T non-phylogenetic covariance estimate.}
 #'   \item{`Lambda_phy`}{T x d_phy loading matrix.}
 #'   \item{`U_phy`}{Length-T named vector of trait-specific phylogenetic
-#'     unique variances (the diagonal of \eqn{\mathbf U_\text{phy}}).}
+#'     unique variances (legacy component name for the diagonal of
+#'     \eqn{\mathbf S_\text{phy}}).}
 #'   \item{`Lambda_non`, `U_non`}{Analogous for the non-phylogenetic
 #'     tier.}
 #'   \item{`per_trait`}{Data frame with one row per trait, containing
@@ -494,7 +495,7 @@ extract_two_U_via_PIC <- function(fit, tree, d_phy = 1L, d_non = 1L) {
 #' the corresponding components extracted from a joint-REML two-U fit.
 #' Agreement = trustworthy joint estimate; disagreement = identifiability
 #' concern, and the user is invited to investigate which axes
-#' (Lambda_phy / U_phy / Lambda_non / U_non) disagree.
+#' (Lambda_phy / s_phy / Lambda_non / s_non) disagree.
 #'
 #' **Scope.** This diagnostic inherits the Gaussian / Brownian-motion
 #' restriction of [extract_two_U_via_PIC()]. It is a fast complement to
@@ -505,7 +506,7 @@ extract_two_U_via_PIC <- function(fit, tree, d_phy = 1L, d_non = 1L) {
 #' @details
 #' Returns per-component RMSE between PIC-MOM and joint estimates of
 #' \eqn{\boldsymbol\Sigma_\text{phy}}, \eqn{\boldsymbol\Sigma_\text{non}},
-#' \eqn{\mathbf U_\text{phy}}, and \eqn{\mathbf U_\text{non}}. The
+#' \eqn{\mathbf S_\text{phy}}, and \eqn{\mathbf S_\text{non}}. The
 #' component-wise RMSE is the Frobenius norm of (PIC - joint), divided
 #' by sqrt(T*T) for matrices and sqrt(T) for vectors. The `flag` is
 #' `TRUE` when any RMSE exceeds `threshold` times the magnitude of the
@@ -531,8 +532,8 @@ extract_two_U_via_PIC <- function(fit, tree, d_phy = 1L, d_non = 1L) {
 #' @return A list with components:
 #' \describe{
 #'   \item{`joint`}{Joint-REML estimates: `Sigma_phy`, `U_phy`,
-#'     `Sigma_non`, `U_non` (the four-component decomposition extracted
-#'     from the fit).}
+#'     `Sigma_non`, `U_non` (legacy component names for the four-component
+#'     decomposition extracted from the fit).}
 #'   \item{`pic`}{Output of [extract_two_U_via_PIC()].}
 #'   \item{`agreement`}{Data frame with one row per component,
 #'     containing component name, RMSE, joint magnitude, and a

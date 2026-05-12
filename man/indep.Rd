@@ -27,7 +27,7 @@ modes, distinguished by convention:
 \describe{
 \item{\strong{Decomposition} (\code{latent + unique})}{Shared cross-trait
 covariance plus trait-specific residual:
-\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathrm{diag}(\mathbf U)}.}
+\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}.}
 \item{\strong{Marginal} (\code{indep} standalone)}{Per-trait total variance
 with no cross-trait decomposition: \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)}.}
 }

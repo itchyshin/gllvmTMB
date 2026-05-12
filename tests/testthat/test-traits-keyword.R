@@ -127,6 +127,68 @@ test_that("traits() compact RHS matches hand-rolled long-format pivot", {
   )
 })
 
+test_that("traits() compact phylo two-U syntax matches explicit long syntax", {
+  skip_on_cran()
+  skip_if_not_installed("ape")
+  skip_if_not_installed("tidyr")
+
+  set.seed(13)
+  n_sp <- 30
+  n_traits <- 3
+  trait_cols <- paste0("trait_", seq_len(n_traits))
+  tree <- ape::rcoal(n_sp)
+  tree$tip.label <- paste0("sp", seq_len(n_sp))
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  Lphy <- t(chol(Cphy + 1e-8 * diag(n_sp)))
+
+  Lambda_phy <- matrix(c(0.7, 0.45, 0.25), n_traits, 1)
+  s_phy <- c(0.20, 0.15, 0.12)
+  s_non <- c(0.18, 0.20, 0.16)
+
+  g_phy <- Lphy %*% stats::rnorm(n_sp)
+  e_phy <- Lphy %*% matrix(stats::rnorm(n_sp * n_traits), n_sp, n_traits)
+  e_non <- matrix(stats::rnorm(n_sp * n_traits), n_sp, n_traits)
+  Y <- g_phy %*% t(Lambda_phy) +
+    sweep(e_phy, 2, sqrt(s_phy), "*") +
+    sweep(e_non, 2, sqrt(s_non), "*")
+  rownames(Y) <- tree$tip.label
+  colnames(Y) <- trait_cols
+
+  wide <- data.frame(
+    species = factor(tree$tip.label, levels = tree$tip.label),
+    Y,
+    check.names = FALSE
+  )
+
+  fit_wide <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(tidyselect::all_of(trait_cols)) ~ 1 +
+      phylo_latent(species, d = 1, tree = tree) +
+      phylo_unique(species, tree = tree) +
+      unique(1 | species),
+    data = wide,
+    unit = "species",
+    cluster = "species",
+    family = gaussian()
+  )))
+
+  long <- make_long_df(wide, trait_cols)
+  fit_long <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    .y_wide_ ~ 0 + trait +
+      phylo_latent(species, d = 1, tree = tree) +
+      phylo_unique(species, tree = tree) +
+      unique(0 + trait | species),
+    data = long,
+    unit = "species",
+    cluster = "species",
+    family = gaussian()
+  )))
+
+  expect_equal(fit_wide$opt$convergence, 0L)
+  expect_equal(fit_long$opt$convergence, 0L)
+  expect_equal(fit_wide$opt$objective, fit_long$opt$objective,
+               tolerance = 1e-10)
+})
+
 test_that("traits() compact RHS preserves regular random intercepts", {
   skip_if_not_installed("tidyr")
   wide <- make_wide_df(seed = 43)

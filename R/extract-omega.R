@@ -139,7 +139,7 @@ extract_residual_split <- function(fit) {
 #' Sum of \eqn{\boldsymbol\Sigma_\text{tier}} matrices across the user-
 #' selected tiers. The canonical PGLLVM use case is the species-level
 #' three-piece decomposition (Nakagawa et al. *in prep*, Eq. 19):
-#' \deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \mathbf U.}
+#' \deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \mathbf S_\text{non}.}
 #' Here `tiers = c("phy", "B")` returns
 #' \eqn{\boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{B}} where
 #' \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^{\!\top} + \mathbf S_B}
@@ -250,8 +250,8 @@ extract_Omega <- function(fit,
 #' For a phylogenetic species-level GLLVM, decomposes each trait's
 #' between-species latent variance into three additive components that
 #' sum to one:
-#' \deqn{H_t^2 \;=\; \frac{[\boldsymbol\Sigma_\text{phy}]_{tt}}{V_{\eta,t}}, \qquad C^2_{\text{non},t} \;=\; \frac{[\boldsymbol\Sigma_\text{non,shared}]_{tt}}{V_{\eta,t}}, \qquad \Psi_t \;=\; \frac{[\mathbf U]_{tt}}{V_{\eta,t}},}
-#' where \eqn{V_{\eta,t} = [\boldsymbol\Sigma_\text{phy}]_{tt} + [\boldsymbol\Sigma_\text{non,shared}]_{tt} + [\mathbf U]_{tt}}
+#' \deqn{H_t^2 \;=\; \frac{[\boldsymbol\Sigma_\text{phy}]_{tt}}{V_{\eta,t}}, \qquad C^2_{\text{non},t} \;=\; \frac{[\boldsymbol\Sigma_\text{non,shared}]_{tt}}{V_{\eta,t}}, \qquad \Psi_t \;=\; \frac{[\mathbf S_\text{non}]_{tt}}{V_{\eta,t}},}
+#' where \eqn{V_{\eta,t} = [\boldsymbol\Sigma_\text{phy}]_{tt} + [\boldsymbol\Sigma_\text{non,shared}]_{tt} + [\mathbf S_\text{non}]_{tt}}
 #' is the total between-species latent variance for trait \eqn{t}
 #' (Nakagawa et al. *in prep*, PGLLVM paper Eq. 19, 22-25).
 #'
@@ -261,7 +261,7 @@ extract_Omega <- function(fit,
 #'     species latent variance attributable to phylogenetically structured
 #'     variation ("evolutionary conservatism"). When the model includes
 #'     both `phylo_latent()` and `phylo_unique()`, \eqn{\boldsymbol\Sigma_\text{phy}}
-#'     is the sum \eqn{\boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top} + \mathrm{diag}(\mathbf U_\text{phy})}
+#'     is the sum \eqn{\boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top} + \mathbf S_\text{phy}}
 #'     and \eqn{H_t^2} reflects the *total* phylogenetic variance.}
 #'   \item{\eqn{C^2_{\text{non},t}}}{non-phylogenetic communality —
 #'     proportion of variance attributable to shared non-phylogenetic
@@ -324,7 +324,7 @@ extract_phylo_signal <- function(fit,
     ))
   trait_names <- levels(fit$data[[fit$trait_col]])
 
-  ## Sigma_phy = Lambda_phy Lambda_phy^T + diag(U_phy) when phylo_diag is
+  ## Sigma_phy = Lambda_phy Lambda_phy^T + S_phy when phylo_diag is
   ## fit; just Lambda_phy Lambda_phy^T otherwise. Both contribute to the
   ## phylogenetic signal H2.
   out_phy   <- suppressMessages(extract_Sigma(fit, level = "phy", part = "total",
@@ -450,7 +450,7 @@ extract_proportions <- function(fit,
     out <- suppressMessages(extract_Sigma(fit, level = "phy", part = "shared"))
     if (!is.null(out)) add_comp("shared_phy", diag(out$Sigma))
   }
-  ## Phylogenetic unique (diag(U_phy)) — present only in two-U PGLLVM
+  ## Phylogenetic unique (S_phy) -- present only in two-U PGLLVM
   if (isTRUE(fit$use$phylo_diag)) {
     out <- suppressMessages(extract_Sigma(fit, level = "phy", part = "unique"))
     if (!is.null(out)) add_comp("unique_phy", out$s)

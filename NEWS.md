@@ -62,7 +62,11 @@ gone.
   worked-example articles plus the Get Started vignette: morphometrics,
   phylogenetic-gllvm, joint-sdm, behavioural-syndromes,
   choose-your-model, covariance-correlation, functional-biogeography,
-  pitfalls. The `article-tier-audit` skill encodes the triage.
+  pitfalls. The first Tier-2 technical reference articles are
+  api-keyword-grid, covering the 3 x 5 covariance keyword grammar,
+  and response-families, covering the multivariate engine family
+  surface.
+  The `article-tier-audit` skill encodes the triage.
 
 * Authors@R lists only Shinichi Nakagawa (the sole author of
   gllvmTMB). Upstream copyright holders for inherited code

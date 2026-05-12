@@ -126,7 +126,7 @@ matches your trait scale.
 | Continuous, real-valued (mass, length, log-abundance) | `family = gaussian()` | Identity link. Default. |
 | 0/1 presence-absence, yes-no, item-passed | `family = binomial()` | Logit link. Used for joint species distribution models and binary-item systematic mapping; see [Joint SDM](joint-sdm.html). |
 | Counts (offspring, observations) | `family = poisson()` | Log link. |
-| Different traits use different families | `family = list(gaussian(), binomial(), poisson())` plus a `family_var` column | One family per row. See [Mixed responses](mixed-response.html). |
+| Different traits use different families | `family = list(gaussian(), binomial(), poisson())` plus a `family_var` column | One family per row. See [Response families](response-families.html). |
 
 For the mixed-response case the `family` list and the `family_var`
 attribute look like this:
@@ -137,7 +137,7 @@ attr(fam, "family_var") <- "family"   # column on `data` selecting the row's fam
 ```
 
 If you are unsure, start with the family that matches your most
-abundant trait type and read the mixed-response article before
+abundant trait type and read the response-family reference before
 committing to a list.
 
 ## 3. Are rows phylogenetically related?
@@ -366,7 +366,7 @@ of the factor-level pitfall.
 * [SPDE benchmark](spde-vs-glmmTMB.html) — rung 3: spatial dependence.
 * [Corvidae two-stage](corvidae-two-stage.html) — rung 4: two observational levels.
 * [Functional biogeography](functional-biogeography.html) — rung 5: capstone.
-* [Mixed responses](mixed-response.html) — Gaussian + binomial + Poisson rows in one fit.
+* [Response families](response-families.html) — supported likelihoods and mixed-family dispatch.
 * [Lambda constraint](lambda-constraint.html) — confirmatory factor analysis with fixed loadings; see also `?suggest_lambda_constraint`.
 * [Pitfalls](pitfalls.html) — common gotchas in data prep, formula construction, and interpretation.
 * [Simulation-based recovery](simulation-recovery.html) — recovery study across the complexity ladder.

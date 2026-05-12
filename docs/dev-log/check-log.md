@@ -694,3 +694,67 @@ Validation:
 - `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
   passed with "No problems found";
 - `git diff --check` passed.
+
+## 2026-05-12 -- API keyword grid Tier-2 reference
+
+Branch: `codex/api-keyword-grid-tier2`.
+
+Maintainer dispatch context: after PR #45 merged, continue with the
+next Codex-owned item from the Tier-2 article salvage queue. Scope is
+one article: port `api-keyword-grid.Rmd` as a Tier-2 technical
+reference, plus pkgdown/NEWS/dev-log hygiene.
+
+Pre-edit lane check: open PRs #43 and #44 are Claude audit PRs adding
+their own `docs/dev-log/after-task/` and
+`docs/dev-log/shannon-audits/` files only; no overlap with this
+branch's article, `_pkgdown.yml`, `NEWS.md`, or check-log entry.
+
+Validation:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/api-keyword-grid", new_process = FALSE)'`
+  completed; the render emitted only the known missing `../logo.png`
+  pkgdown warning;
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  passed with "No problems found";
+- Rose pre-publish gate: PASS. The grid in the article matches
+  `README.md`, `docs/design/00-vision.md`, and `R/gllvmTMB.R`; helper
+  terms `phylo_slope()` and `meta_known_V()` are named as outside the
+  grid; no method/default claims were introduced;
+- `git diff --check` passed.
+
+## 2026-05-12 -- Response families Tier-2 reference
+
+Branch: `codex/api-keyword-grid-tier2`.
+
+Maintainer dispatch context: while PR #46 R-CMD-check and the latest
+main R-CMD-check were still running, continue under the maintainer's
+cap of at most three branch items. This is item 2 on the same branch:
+add `response-families.Rmd` as a Tier-2 technical reference and keep
+the change to docs/nav/news/check-log/after-task files.
+
+Pre-edit Shannon check: working tree clean; the only open PR is #46,
+the current branch; recent history shows the Claude audit PRs #43 and
+#44 already merged. No other open branch owns the response-family
+article.
+
+Validation:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/response-families", new_process = FALSE); pkgdown::build_article("articles/choose-your-model", new_process = FALSE)'`
+  completed; both renders emitted only the known missing `../logo.png`
+  pkgdown warning;
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  passed with "No problems found";
+- Rose pre-publish gate: PASS. The quick-lookup table matches the 15
+  `family_to_id()` entries in `R/fit-multi.R`; exported constructors
+  present in `R/families.R` / `NAMESPACE` but absent from
+  `family_to_id()` are named as unsupported in multivariate
+  `gllvmTMB()` fits rather than advertised as engine-supported; stale
+  `mixed-response.html` links in `choose-your-model` now point to the
+  new response-family reference. A final source check against
+  `R/extract-correlations.R` and `R/extract-sigma.R` added an explicit
+  two-part-family caveat: `extract_correlations()` reports fitted
+  covariance-tier correlations, while `extract_Sigma(link_residual =
+  "auto")` uses approximate diagonal link-residual corrections for
+  `delta_lognormal()` / `delta_gamma()`, not a full observed-scale
+  two-part correlation estimand;
+- `git diff --check` passed.

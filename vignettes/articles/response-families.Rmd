@@ -1,0 +1,196 @@
+---
+title: "Response families"
+tier: 2 # technical reference for the multivariate family surface
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Response families}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE
+)
+```
+
+This reference is for readers who already know the covariance
+structure they want and need to choose the response likelihood. The
+family controls the link function, the distributional variance, and
+the link-scale residual term that `extract_Sigma()` and
+`extract_Omega()` use when reporting non-Gaussian covariance.
+
+The current multivariate engine recognises 15 family entries. The
+source of truth is the `family_to_id()` mapping in `R/fit-multi.R`;
+families not mapped there should be treated as unsupported in
+`gllvmTMB()` multivariate fits until a later implementation and
+simulation check say otherwise.
+
+## Quick Lookup
+
+| Response looks like | Family | Link(s) currently accepted by the multivariate engine | Notes |
+|---|---|---|---|
+| continuous, unbounded | `gaussian()` | identity | Default family. |
+| binary or binomial trials | `binomial()` | logit, probit, cloglog | Use `cbind(success, failure)` or `weights` for multi-trial binomial data. |
+| counts | `poisson()` | log | No dispersion parameter; add an observation-level `unique()` term when that is identifiable. |
+| positive continuous, right-skewed | `lognormal()` | log | Use only when the response is strictly positive. |
+| positive continuous, constant CV | `Gamma(link = "log")` | log | Base R `Gamma()`, with log link in the engine. |
+| overdispersed counts | `nbinom2()` | log | NB2 variance grows quadratically with the mean. |
+| non-negative continuous with zeros | `tweedie()` | log | Compound Poisson-Gamma style mean-variance relationship. |
+| proportions in `(0, 1)` | `Beta()` | logit | Boundary 0 and 1 values need separate handling before fitting. |
+| overdispersed binomial trials | `betabinomial()` | logit | For k-of-n responses with extra-binomial variation. |
+| continuous with heavy tails | `student()` | identity | Degrees of freedom can be estimated or fixed. |
+| positive counts, no zeros | `truncated_poisson()` | log | Requires integer responses `y >= 1`. |
+| overdispersed positive counts, no zeros | `truncated_nbinom2()` | log | Requires integer responses `y >= 1`. |
+| non-negative continuous with exact zeros | `delta_lognormal()` | logit + log | Standard hurdle form only. |
+| non-negative continuous with exact zeros | `delta_gamma()` | logit + log | Standard hurdle form only. |
+| ordered categories with `K >= 3` | `ordinal_probit()` | probit | Threshold model with latent residual variance fixed at 1. |
+
+Use this table as a likelihood lookup. For covariance keywords, see
+[Formula keyword grid](api-keyword-grid.html). For binary species
+data and non-Gaussian covariance interpretation, see
+[`joint-sdm`](joint-sdm.html).
+
+## Single-Family Fits
+
+A single `family = ...` value applies the same response family to all
+rows. Long data remain the canonical form:
+
+```{r}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | individual, d = 2) +
+    unique(0 + trait | individual),
+  data = df_long,
+  unit = "individual",
+  family = gaussian()
+)
+```
+
+The wide data-frame path reaches the same engine through
+`traits(...)`. Use the compact wide syntax when your data already
+have one row per unit and one column per trait:
+
+```{r}
+fit_wide <- gllvmTMB(
+  traits(length, mass, wing, tarsus, bill) ~
+    1 +
+    latent(1 | individual, d = 2) +
+    unique(1 | individual),
+  data = df_wide,
+  unit = "individual",
+  family = gaussian()
+)
+```
+
+For matrix-first workflows, `gllvmTMB_wide()` is the shortest route:
+
+```{r}
+fit_matrix <- gllvmTMB_wide(Y, d = 2, family = gaussian())
+```
+
+Only the `family` argument changes when you move from Gaussian to
+another supported likelihood. The covariance keyword grammar stays
+the same.
+
+## Mixed-Family Fits
+
+Mixed-family fits use long data with one row per observation and a
+column that selects the family for that row. Pass a list of family
+objects and set `attr(fam, "family_var")` to the selector column.
+
+```{r}
+df_long$family <- factor(
+  df_long$family,
+  levels = c("continuous", "presence", "count")
+)
+
+fam <- list(gaussian(), binomial(), poisson())
+attr(fam, "family_var") <- "family"
+
+fit_mixed <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  data = df_long,
+  unit = "site",
+  family = fam
+)
+```
+
+The list order must match the factor levels in the selector column.
+If the selector is a character column, the engine sorts the unique
+values before matching them, so an explicit factor is safer.
+
+This page is a family lookup, not the mixed-response worked example.
+The separate mixed-response article can show a runnable Gaussian +
+binomial + Poisson analysis with simulated data and interpretation.
+
+## Scale And Extraction
+
+`extract_Sigma()` reports trait covariance on the latent or link
+scale. For Gaussian responses, there is no distribution-specific
+latent residual term beyond the modelled covariance. For binomial,
+Poisson, Tweedie, beta-binomial, delta, and ordinal responses, the
+family determines the residual term that makes the reported
+covariance interpretable on the link scale.
+
+That is why family choice is not cosmetic. A Poisson count model and
+a Gaussian model can share the same `latent() + unique()` formula but
+will not imply the same residual scale. Use `extract_Omega()` and
+`extract_Sigma()` after fitting, and read the extractor output on the
+scale implied by the family.
+
+Correlations need one extra sentence of caution. `extract_correlations()`
+reports correlations in the fitted covariance tier, not correlations
+of the raw observed responses. For single-link families this is usually
+the quantity readers want: a latent-liability or link-scale trait
+correlation. For two-part families such as `delta_lognormal()` and
+`delta_gamma()`, there are several possible scientific targets:
+presence/absence correlation, positive-response correlation, and total
+observed-response correlation. The current engine fits those families
+with one shared linear predictor, so the covariance tier is still
+well-defined, but the link-residual adjustment used by
+`extract_Sigma(link_residual = "auto")` is an approximate diagonal
+scale correction, not a full observed-scale two-part correlation
+calculus.
+
+The practical rule is to report two-part family correlations as
+latent/link-scale model correlations unless a future article or
+extractor explicitly defines a response-scale estimand. Do not describe
+them as raw biomass, abundance, or total-response correlations without
+that extra definition.
+
+## Exported But Not Engine-Mapped
+
+`R/families.R` also contains exported constructor helpers that are not
+currently mapped by `family_to_id()` for multivariate `gllvmTMB()`
+fits. Do not present these as supported response families in public
+examples until the engine, tests, and documentation are updated
+together.
+
+| Constructor | Current status in multivariate `gllvmTMB()` |
+|---|---|
+| `nbinom1()` | exported constructor, not mapped in `family_to_id()` |
+| `gengamma()` | exported constructor, not mapped in `family_to_id()` |
+| `gamma_mix()` | exported constructor, not mapped in `family_to_id()` |
+| `lognormal_mix()` | exported constructor, not mapped in `family_to_id()` |
+| `nbinom2_mix()` | exported constructor, not mapped in `family_to_id()` |
+| `truncated_nbinom1()` | exported constructor, not mapped in `family_to_id()` |
+| `censored_poisson()` | exported constructor, not mapped in `family_to_id()` |
+| `delta_beta()` | exported constructor, not mapped in `family_to_id()` |
+| `delta_gengamma()` | exported constructor, not mapped in `family_to_id()` |
+| `delta_gamma_mix()` | exported constructor, not mapped in `family_to_id()` |
+| `delta_lognormal_mix()` | exported constructor, not mapped in `family_to_id()` |
+| `delta_truncated_nbinom1()` | exported constructor, not mapped in `family_to_id()` |
+| `delta_truncated_nbinom2()` | exported constructor, not mapped in `family_to_id()` |
+| `delta_poisson_link_gamma()` | deprecated compatibility helper |
+| `delta_poisson_link_lognormal()` | deprecated compatibility helper |
+
+The practical rule is simple: if a family is in the quick-lookup table
+above, it is a documented multivariate engine family. If it appears
+only in this unsupported table, treat it as roadmap or compatibility
+surface for now.

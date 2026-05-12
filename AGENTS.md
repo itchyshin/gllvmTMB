@@ -38,7 +38,10 @@ Model Builder.
 2. Do not add user-facing functions without roxygen2 documentation
    and a runnable example.
 3. Do not change formula grammar (the 3 x 5 keyword grid) without
-   updating `docs/design/01-formula-grammar.md`.
+   updating the canonical grammar documentation (the 3 x 5 grid
+   table in this file and in `CLAUDE.md`; a dedicated
+   `docs/design/01-formula-grammar.md` was once planned but has
+   not yet been written).
 4. Do not change likelihood parameterisation in `src/gllvmTMB.cpp`
    without applying the `tmb-likelihood-review` skill.
 5. Do not add new tiers (B, W, phy, spatial, cluster) without

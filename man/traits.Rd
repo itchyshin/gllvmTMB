@@ -58,11 +58,13 @@ calling.
 Mixed-family fits (\code{family = list(...)} keyed by trait) flow through
 the long-format engine; \code{traits()} does not intercept the family
 argument. Per-row weight vectors of length \code{nrow(data)} are also
-replicated across traits automatically. For per-cell weight matrices
-use the matrix-in entry point \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}}.
+replicated across traits automatically, then passed to the same
+long-format weight path used by \code{\link[=gllvmTMB]{gllvmTMB()}}. For per-cell weight
+matrices use the matrix-in entry point \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}}.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}} for the long-format engine, \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}}
 for the matrix-in API (use that when you have per-cell weight
-matrices or come from a \code{gllvm}-style workflow).
+matrices or come from a \code{gllvm}-style workflow). The source-tree
+contract is \code{docs/design/02-data-shape-and-weights.md}.
 }

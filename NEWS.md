@@ -69,6 +69,7 @@ gone.
 
 ## Bug fixes
 
-This is a fresh-repo bootstrap; there are no carry-forward bug
-fixes. The legacy repo (`itchyshin/gllvmTMB-legacy`) preserves the
-0.1.x history.
+* `gllvmTMB_wide()` now keeps wide response cells, row-broadcast weights, and site-level predictors aligned when `X` is supplied; `gllvmTMB()`, `gllvmTMB_wide()`, and `traits()` also share one weight-shape validator.
+
+The legacy repo (`itchyshin/gllvmTMB-legacy`) preserves the 0.1.x
+history.

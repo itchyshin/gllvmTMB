@@ -139,7 +139,10 @@
 #'     family fits, binomial rows use `weights[i]` as their trial count
 #'     and non-binomial rows use it as the likelihood multiplier.
 #'   Default `NULL` is equivalent to a length-`nrow(data)` vector of
-#'   ones (unweighted Bernoulli on binomial rows).
+#'   ones (unweighted Bernoulli on binomial rows). Wide data-frame
+#'   calls through [traits()] and wide matrix calls through
+#'   [gllvmTMB_wide()] normalise their accepted weight shapes to this
+#'   same long-format vector before fitting.
 #' @param mesh Optional mesh object from `make_mesh()`. Required when the
 #'   formula includes a `spatial()` term; ignored otherwise.
 #' @param phylo_tree (legacy global) Optional `ape::phylo` tree. The
@@ -305,7 +308,9 @@
 #' Schielzeth (2010) \emph{Biol. Rev.} 85: 935-956; Nakagawa, Johnson &
 #' Schielzeth (2017) \emph{J. R. Soc. Interface} 14: 20170213.
 #'
-#' @seealso [simulate_site_trait()] for generating recovery test data;
+#' @seealso [gllvmTMB_wide()] for matrix-wide input; [traits()] for
+#'   formula-LHS wide data-frame input; [simulate_site_trait()] for
+#'   generating recovery test data;
 #'   [extract_Sigma()] for the unified post-fit covariance API;
 #'   [gllvmTMB_diagnose()] for a one-stop convergence + identifiability
 #'   health check; [ordinal_probit()] for the gllvmTMB-native ordinal
@@ -324,23 +329,26 @@
 #' )
 #' summary(fit)
 #' }
-gllvmTMB <- function(formula,
-                     data,
-                     trait    = "trait",
-                     unit     = "site",
-                     unit_obs = "site_species",
-                     cluster  = "species",
-                     family   = gaussian(),
-                     weights  = NULL,
-                     mesh     = NULL,
-                     phylo_vcv = NULL,
-                     phylo_tree = NULL,
-                     known_V  = NULL,
-                     lambda_constraint = NULL,
-                     control  = gllvmTMBcontrol(),
-                     silent   = TRUE,
-                     site     = NULL,    # deprecated alias for `unit`
-                     species  = NULL) {  # deprecated alias for `cluster`
+gllvmTMB <- function(
+  formula,
+  data,
+  trait = "trait",
+  unit = "site",
+  unit_obs = "site_species",
+  cluster = "species",
+  family = gaussian(),
+  weights = NULL,
+  mesh = NULL,
+  phylo_vcv = NULL,
+  phylo_tree = NULL,
+  known_V = NULL,
+  lambda_constraint = NULL,
+  control = gllvmTMBcontrol(),
+  silent = TRUE,
+  site = NULL, # deprecated alias for `unit`
+  species = NULL
+) {
+  # deprecated alias for `cluster`
 
   ## ---- Design 08 Stage 2: traits(...) wide-format pre-pass --------------
   ## When the formula LHS is a `traits(...)` call expression, the user is
@@ -353,38 +361,38 @@ gllvmTMB <- function(formula,
   if (is_traits_lhs(formula)) {
     .call_wide <- match.call()
     rewrite <- rewrite_traits_lhs(
-      formula  = formula,
-      data     = data,
-      weights  = weights,
+      formula = formula,
+      data = data,
+      weights = weights,
       eval_env = environment(formula)
     )
     fit <- gllvmTMB(
-      formula           = rewrite$formula_long,
-      data              = rewrite$data_long,
-      trait             = trait,
-      unit              = unit,
-      unit_obs          = unit_obs,
-      cluster           = cluster,
-      family            = family,
-      weights           = rewrite$weights_long,
-      mesh              = mesh,
-      phylo_vcv         = phylo_vcv,
-      phylo_tree        = phylo_tree,
-      known_V           = known_V,
+      formula = rewrite$formula_long,
+      data = rewrite$data_long,
+      trait = trait,
+      unit = unit,
+      unit_obs = unit_obs,
+      cluster = cluster,
+      family = family,
+      weights = rewrite$weights_long,
+      mesh = mesh,
+      phylo_vcv = phylo_vcv,
+      phylo_tree = phylo_tree,
+      known_V = known_V,
       lambda_constraint = lambda_constraint,
-      control           = control,
-      silent            = silent,
-      site              = site,
-      species           = species
+      control = control,
+      silent = silent,
+      site = site,
+      species = species
     )
     ## Round-trip metadata: print method shows the wide form by default
     ## for readability; users who want to see the engine-level long form
     ## inspect fit$call_long_format directly.
-    fit$call_wide        <- .call_wide
+    fit$call_wide <- .call_wide
     fit$call_long_format <- rewrite$formula_long
-    fit$traits_meta      <- list(
+    fit$traits_meta <- list(
       trait_cols = rewrite$trait_cols,
-      n_dropped  = rewrite$n_dropped
+      n_dropped = rewrite$n_dropped
     )
     return(fit)
   }
@@ -398,13 +406,18 @@ gllvmTMB <- function(formula,
   if (!is.null(site)) {
     if (!missing(unit) && !identical(unit, "site")) {
       cli::cli_abort(
-        "Pass either {.arg unit} or {.arg site}, not both. {.arg site} is the deprecated alias.")
+        "Pass either {.arg unit} or {.arg site}, not both. {.arg site} is the deprecated alias."
+      )
     }
-    cli::cli_inform(c(
-      "!" = "{.arg site = ...} is a deprecated alias; use {.arg unit = ...} instead.",
-      "i" = "{.code gllvmTMB(unit = {.val {site}}, ...)}",
-      ">" = "Internally, both names map to the same between-unit grouping factor."
-    ), .frequency = "once", .frequency_id = "gllvmTMB-site-deprecation")
+    cli::cli_inform(
+      c(
+        "!" = "{.arg site = ...} is a deprecated alias; use {.arg unit = ...} instead.",
+        "i" = "{.code gllvmTMB(unit = {.val {site}}, ...)}",
+        ">" = "Internally, both names map to the same between-unit grouping factor."
+      ),
+      .frequency = "once",
+      .frequency_id = "gllvmTMB-site-deprecation"
+    )
     unit <- site
   }
   ## Engine-internal name remains `site` to avoid touching every line in
@@ -423,13 +436,18 @@ gllvmTMB <- function(formula,
   if (!is.null(species)) {
     if (!missing(cluster) && !identical(cluster, "species")) {
       cli::cli_abort(
-        "Pass either {.arg cluster} or {.arg species}, not both. {.arg species} is the deprecated alias.")
+        "Pass either {.arg cluster} or {.arg species}, not both. {.arg species} is the deprecated alias."
+      )
     }
-    cli::cli_inform(c(
-      "!" = "{.arg species = ...} is a deprecated alias; use {.arg cluster = ...} instead.",
-      "i" = "{.code gllvmTMB(cluster = {.val {species}}, ...)}",
-      ">" = "Internally, both names map to the same third grouping factor (used for phylogenetic random effects when the column matches phylo_vcv rownames)."
-    ), .frequency = "once", .frequency_id = "gllvmTMB-species-deprecation")
+    cli::cli_inform(
+      c(
+        "!" = "{.arg species = ...} is a deprecated alias; use {.arg cluster = ...} instead.",
+        "i" = "{.code gllvmTMB(cluster = {.val {species}}, ...)}",
+        ">" = "Internally, both names map to the same third grouping factor (used for phylogenetic random effects when the column matches phylo_vcv rownames)."
+      ),
+      .frequency = "once",
+      .frequency_id = "gllvmTMB-species-deprecation"
+    )
     cluster <- species
   }
   ## Engine-internal name remains `species` to avoid touching every line
@@ -446,18 +464,26 @@ gllvmTMB <- function(formula,
   ## per session pointing at the in-keyword form. See
   ## dev/design/01-phylo-api-canonical-tree.md for the full migration.
   if (!is.null(phylo_tree)) {
-    cli::cli_inform(c(
-      "!" = "{.arg phylo_tree = ...} as a global argument to {.fun gllvmTMB} is deprecated.",
-      "i" = "Pass {.code tree = ...} inside the phylo_*() keyword instead, e.g. {.code phylo_latent(species, d = 2, tree = tree)}.",
-      ">" = "The legacy global path still works; the in-keyword syntax avoids silent index/order mismatch."
-    ), .frequency = "once", .frequency_id = "gllvmTMB-phylo_tree-global-deprecation")
+    cli::cli_inform(
+      c(
+        "!" = "{.arg phylo_tree = ...} as a global argument to {.fun gllvmTMB} is deprecated.",
+        "i" = "Pass {.code tree = ...} inside the phylo_*() keyword instead, e.g. {.code phylo_latent(species, d = 2, tree = tree)}.",
+        ">" = "The legacy global path still works; the in-keyword syntax avoids silent index/order mismatch."
+      ),
+      .frequency = "once",
+      .frequency_id = "gllvmTMB-phylo_tree-global-deprecation"
+    )
   }
   if (!is.null(phylo_vcv)) {
-    cli::cli_inform(c(
-      "!" = "{.arg phylo_vcv = ...} as a global argument to {.fun gllvmTMB} is deprecated.",
-      "i" = "Pass {.code vcv = ...} inside the phylo_*() keyword instead, e.g. {.code phylo_scalar(species, vcv = Cphy)}.",
-      ">" = "Prefer {.code tree = ...} where you have a phylo object: it triggers the sparse-A^{-1} path (~24x faster at n_species = 1000)."
-    ), .frequency = "once", .frequency_id = "gllvmTMB-phylo_vcv-global-deprecation")
+    cli::cli_inform(
+      c(
+        "!" = "{.arg phylo_vcv = ...} as a global argument to {.fun gllvmTMB} is deprecated.",
+        "i" = "Pass {.code vcv = ...} inside the phylo_*() keyword instead, e.g. {.code phylo_scalar(species, vcv = Cphy)}.",
+        ">" = "Prefer {.code tree = ...} where you have a phylo object: it triggers the sparse-A^{-1} path (~24x faster at n_species = 1000)."
+      ),
+      .frequency = "once",
+      .frequency_id = "gllvmTMB-phylo_vcv-global-deprecation"
+    )
   }
   ## `unit_obs` is the user's chosen within-unit (replicate) grouping
   ## column. The engine uses whatever name the user passed (default
@@ -474,11 +500,17 @@ gllvmTMB <- function(formula,
   ## ---- Validate input ----------------------------------------------------
   assertthat::assert_that(is.data.frame(data))
   for (col in c(trait, site)) {
-    assertthat::assert_that(col %in% names(data),
-                            msg = sprintf("Column %s not found in data", col))
+    assertthat::assert_that(
+      col %in% names(data),
+      msg = sprintf("Column %s not found in data", col)
+    )
   }
-  if (!is.factor(data[[trait]])) data[[trait]] <- factor(data[[trait]])
-  if (!is.factor(data[[site]]))  data[[site]]  <- factor(data[[site]])
+  if (!is.factor(data[[trait]])) {
+    data[[trait]] <- factor(data[[trait]])
+  }
+  if (!is.factor(data[[site]])) {
+    data[[site]] <- factor(data[[site]])
+  }
   if (species %in% names(data)) {
     if (!is.factor(data[[species]])) data[[species]] <- factor(data[[species]])
   } else {
@@ -494,19 +526,37 @@ gllvmTMB <- function(formula,
   ## isn't there, synthesise it from unit × species.
   if (!unit_obs %in% names(data)) {
     if (identical(unit_obs, "site_species")) {
-      data$site_species <- factor(paste(data[[site]], data[[species]], sep = "_"))
+      data$site_species <- factor(paste(
+        data[[site]],
+        data[[species]],
+        sep = "_"
+      ))
     }
     ## else: the user passed a custom name we already validated above,
     ## so this branch is unreachable for non-default `unit_obs`.
   }
-  if (!is.factor(data[[unit_obs]])) data[[unit_obs]] <- factor(data[[unit_obs]])
+  if (!is.factor(data[[unit_obs]])) {
+    data[[unit_obs]] <- factor(data[[unit_obs]])
+  }
 
   ## ---- Desugar brms-style sugar (phylo / gr / meta) ---------------------
   formula <- desugar_brms_sugar(formula, trait_col = trait)
 
   ## ---- Detect covariance-structure terms (Stages 2-4) --------------------
   has_covstruct <- detect_covstruct_terms(formula)
-  unsupported   <- setdiff(has_covstruct, c("rr", "diag", "propto", "equalto", "spde", "phylo_rr", "phylo_slope", "re_int"))
+  unsupported <- setdiff(
+    has_covstruct,
+    c(
+      "rr",
+      "diag",
+      "propto",
+      "equalto",
+      "spde",
+      "phylo_rr",
+      "phylo_slope",
+      "re_int"
+    )
+  )
   if (length(unsupported) > 0) {
     cli::cli_abort(c(
       "Covariance-structure terms not yet supported:",
@@ -520,16 +570,28 @@ gllvmTMB <- function(formula,
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
   parsed <- parse_multi_formula(formula)
-  gllvmTMB_multi_fit(parsed, data,
-                     trait = trait, site = site, species = species,
-                     family = family, weights = weights,
-                     phylo_vcv = phylo_vcv,
-                     phylo_tree = phylo_tree,
-                     known_V = known_V,
-                     mesh = mesh,
-                     lambda_constraint = lambda_constraint,
-                     control = control, silent = silent,
-                     unit_obs = unit_obs)
+  weights <- normalise_weights(
+    weights = weights,
+    response_shape = "long",
+    n_obs = nrow(data)
+  )
+  gllvmTMB_multi_fit(
+    parsed,
+    data,
+    trait = trait,
+    site = site,
+    species = species,
+    family = family,
+    weights = weights,
+    phylo_vcv = phylo_vcv,
+    phylo_tree = phylo_tree,
+    known_V = known_V,
+    mesh = mesh,
+    lambda_constraint = lambda_constraint,
+    control = control,
+    silent = silent,
+    unit_obs = unit_obs
+  )
 }
 
 
@@ -581,15 +643,17 @@ gllvmTMB <- function(formula,
 #' it is intended for non-Gaussian responses only.
 #'
 #' @export
-gllvmTMBcontrol <- function(d_B = NULL,
-                            d_W = NULL,
-                            spde_mode = c("per_trait", "shared"),
-                            n_init    = 1L,
-                            optimizer = c("nlminb", "optim"),
-                            optArgs   = list(),
-                            init_jitter = 0.3,
-                            verbose     = FALSE,
-                            ...) {
+gllvmTMBcontrol <- function(
+  d_B = NULL,
+  d_W = NULL,
+  spde_mode = c("per_trait", "shared"),
+  n_init = 1L,
+  optimizer = c("nlminb", "optim"),
+  optArgs = list(),
+  init_jitter = 0.3,
+  verbose = FALSE,
+  ...
+) {
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
   if (...length() > 0L) {
@@ -598,14 +662,14 @@ gllvmTMBcontrol <- function(d_B = NULL,
     )
   }
   list(
-    d_B            = d_B,
-    d_W            = d_W,
-    spde_mode      = spde_mode,
-    n_init         = as.integer(n_init),
-    optimizer      = optimizer,
-    optArgs        = optArgs,
-    init_jitter    = init_jitter,
-    verbose        = verbose
+    d_B = d_B,
+    d_W = d_W,
+    spde_mode = spde_mode,
+    n_init = as.integer(n_init),
+    optimizer = optimizer,
+    optArgs = optArgs,
+    init_jitter = init_jitter,
+    verbose = verbose
   )
 }
 
@@ -627,21 +691,43 @@ detect_covstruct_terms <- function(formula) {
   walk <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
-      if (fn %in% c("rr", "diag", "propto", "equalto", "spde", "phylo_rr",
-                    "phylo_slope",
-                    "exp", "gau", "ar1", "ou", "cs", "toep", "us"))
+      if (
+        fn %in%
+          c(
+            "rr",
+            "diag",
+            "propto",
+            "equalto",
+            "spde",
+            "phylo_rr",
+            "phylo_slope",
+            "exp",
+            "gau",
+            "ar1",
+            "ou",
+            "cs",
+            "toep",
+            "us"
+          )
+      ) {
         found <<- c(found, fn)
+      }
       ## Bar syntax `(... | g)`: detected as the parens wrapping a `|`
       ## call. We label it "re_int" regardless of LHS shape — the actual
       ## dispatch and validation happens in parse_re_int_call().
-      if (fn == "(" && length(e) == 2L && is.call(e[[2L]])
-          && identical(e[[2L]][[1L]], as.name("|")))
+      if (
+        fn == "(" &&
+          length(e) == 2L &&
+          is.call(e[[2L]]) &&
+          identical(e[[2L]][[1L]], as.name("|"))
+      ) {
         found <<- c(found, "re_int")
-      for (i in seq_along(e)[-1L]) walk(e[[i]])
+      }
+      for (i in seq_along(e)[-1L]) {
+        walk(e[[i]])
+      }
     }
   }
   walk(rhs)
   unique(found)
 }
-
-

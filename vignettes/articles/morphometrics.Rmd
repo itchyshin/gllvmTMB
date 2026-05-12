@@ -74,6 +74,7 @@ s2_true <- c(length = 0.15, mass = 0.10, wing = 0.20, tarsus = 0.12, bill = 0.18
 u <- matrix(rnorm(n_ind * 2), n_ind, 2)
 eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(s2_true[t])))
 Y <- u %*% t(Lambda_true) + eps
+rownames(Y) <- as.character(seq_len(n_ind))
 colnames(Y) <- trait_names
 
 # Wide-format data: one row per individual, one column per trait
@@ -123,8 +124,8 @@ fit_long <- gllvmTMB(
   unit = "individual"      # tell the engine which column groups observations
 )
 
-# Wide format (convenience; same model)
-fit_wide <- gllvmTMB(
+# Wide data-frame format (convenience; same model)
+fit_wide_formula <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 0 + trait +
           latent(0 + trait | individual, d = 2) +
           unique(0 + trait | individual),
@@ -132,12 +133,20 @@ fit_wide <- gllvmTMB(
   unit = "individual"
 )
 
+# Wide matrix format (same model for matrix-first workflows)
+fit_wide_matrix <- gllvmTMB_wide(Y, d = 2, family = gaussian())
+
 # The rest of the article uses the canonical long-format fit.
 fit <- fit_long
 fit
 
-cat("Long/wide logLik difference:",
-    signif(abs(as.numeric(logLik(fit_long)) - as.numeric(logLik(fit_wide))), 3),
+cat("Long/formula-wide logLik difference:",
+    signif(abs(as.numeric(logLik(fit_long)) -
+               as.numeric(logLik(fit_wide_formula))), 3),
+    "\n")
+cat("Long/matrix-wide logLik difference:",
+    signif(abs(as.numeric(logLik(fit_long)) -
+               as.numeric(logLik(fit_wide_matrix))), 3),
     "\n")
 ```
 
@@ -149,9 +158,9 @@ everything else is standard GLLVM machinery.
 
 `traits(length, mass, wing, tarsus, bill)` is the formula-level
 wide-data marker. It tells `gllvmTMB()` which columns are response
-traits; the right-hand side of the formula is unchanged. If you
-already have a numeric response matrix rather than a data frame,
-`gllvmTMB_wide(Y, ...)` is the matrix-in entry point.
+traits; the right-hand side of the formula is unchanged.
+`gllvmTMB_wide(Y, ...)` is the matrix-in entry point for the same
+model when the response already lives in a numeric matrix.
 
 ## What model did we fit?
 

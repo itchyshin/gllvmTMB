@@ -23,6 +23,7 @@ Description: A standalone Template Model Builder (TMB) package for
     <doi:10.1111/j.1420-9101.2009.01915.x>. Upstream copyright
     holders of inherited code are listed in 'inst/COPYRIGHTS'.
 License: GPL-3
+Language: en-GB
 Copyright: inst/COPYRIGHTS
 URL: https://itchyshin.github.io/gllvmTMB/, https://github.com/itchyshin/gllvmTMB
 BugReports: https://github.com/itchyshin/gllvmTMB/issues

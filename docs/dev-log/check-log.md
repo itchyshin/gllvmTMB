@@ -985,3 +985,153 @@ Not run:
 
 - Full `devtools::test()` and `devtools::check()` were not run; this
   lane changes one article and dev-log bookkeeping only.
+
+## 2026-05-13 -- Rebuild-canon drift: surface audit is not enough (Kaizen)
+
+Recurring pattern flagged. Audience: every future agent (Claude,
+Codex, or human) writing or auditing user-facing prose in this
+package.
+
+Pattern: the package was rebuilt from scratch in 2026-05; pre-rebuild
+prose, paper-internal labels, and in-prep equation references were
+inherited from legacy articles / drafts. Surface spot-checks
+(notation, legacy aliases, single-entry-point) catch the easy drift
+but miss FRAMING drift -- claims that contradict the rebuilt
+canonical model.
+
+Today's findings (2026-05-13 11:00 - 12:00 MT):
+
+- **53 R/ roxygen findings** (35 HIGH, 12 MEDIUM, 6 LOW). Three
+  hotspots:
+  - `R/unique-keyword.R:54-58` says `phylo_latent(species, d = K)`
+    has no associated `unique()` because the phylogenetic prior is
+    already structured. This **contradicts** the canonical paired
+    four-component model (PR #53). The user-facing keyword doc
+    actively misdirected readers away from `phylo_unique()`.
+  - `R/extract-omega.R` made `phylo_unique()` "optional" in
+    `extract_phylo_signal()` docs; called the three-component
+    decomposition "PGLLVM" (drops `phylo_unique`).
+  - Multiple in-prep equation citations
+    ("manuscript Eq. 13", "Eq. 14", "Eq. 15", "Eq. 19",
+    "Eq. 23-25", etc.) -- equation numbers from an unpublished
+    paper that can renumber before publication. These would
+    have shipped to CRAN with stale references.
+  - Runtime `cli_inform()` / `cat()` messages with M1/M2 jargon
+    and in-prep equation numbers (`R/fit-multi.R`, `R/diagnose.R`).
+- **83 vignette findings** (42 HIGH). Notable new ones beyond
+  the in-flight fixes (PRs #74-78):
+  - `choose-your-model.Rmd:195` recommends `unique()` for "full
+    unstructured covariance" -- **wrong**: `unique()` is the
+    diagonal `S`; full unstructured is `dep()`.
+  - `functional-biogeography.Rmd` uses `\Psi` notation instead of
+    canonical `\mathbf S` (6 hits).
+  - `joint-sdm.Rmd` has "Phase D follow-up", "Phase K's warm-
+    started" internal milestone labels in user-facing prose.
+  - Two divergent in-prep paper titles cited across articles:
+    "Functional biogeography using GLLVM" vs "Quantifying
+    between- and within-individual correlations and the degree of
+    trait integration".
+  - Extractor API has `tier=` and `level=` for analogous
+    parameters in sibling extractors -- reader-visible
+    inconsistency.
+
+The Rose audit (PR #62 / #64) caught about 6 of these. Two follow-up
+agents (general-purpose, deep-brief) caught the remaining ~130. The
+first Explore agent on the same data flagged "very minimal drift"
+because it scanned surface patterns -- exactly the failure mode the
+maintainer keeps calling out.
+
+**The lesson, recorded so future agents do not repeat it:**
+
+When auditing user-facing prose in a rebuilt-from-scratch package,
+surface spot-checks (notation, legacy aliases, single-entry-point)
+are necessary but NOT sufficient. Every **prescriptive claim** must
+be re-read against the current canonical model.
+
+Concrete audit checklist for prose and roxygen:
+
+1. **Every `##` / `###` section header**: does the title imply a
+   claim that contradicts the canon? Specifically watch for "When X
+   is not Y", "In special case Z", "If S = 0", "phylo_X vs phylo_Y"
+   -- framings that hide a recommendation against the canonical
+   pattern.
+2. **Every `@title` and `@description` in roxygen**: does the
+   first line of the function doc imply the same drift? Reference
+   index is what CRAN reviewers see first.
+3. **Every code chunk / `@examples` block**: do the calls match the
+   current canonical pattern (paired `latent + unique`,
+   `phylo_latent + phylo_unique`, `level = "unit"` not `"B"`)?
+4. **Every `cli::cli_*` / `cat()` runtime message**: does the
+   user-visible message use paper-internal labels (M1, M2),
+   in-prep equation numbers, or stale framings?
+5. **Every `(Eq. N)` / `(Eqs. N-M)` / "manuscript Eq."**: does the
+   citation point at an in-prep paper? Equation numbers from
+   unpublished work are unstable. Drop the specific number;
+   keep the author/year pointer.
+6. **Every reference to a sister-article**: does the link target
+   exist? If it points at `corvidae-two-stage.html`,
+   `simulation-recovery.html`, etc., verify the file is present
+   under `vignettes/articles/`.
+7. **Every "Phase D / Phase K / dev/design/..." mention**:
+   internal milestone labels do not belong in user-facing prose.
+8. **Every `phylo_*()` recommendation**: paired four-component
+   (`phylo_latent + phylo_unique + latent + unique`) is canonical
+   **when both $S$ diagonals are identifiable** -- typically a
+   crossed (site x species) design with `n_species` >= 100 and
+   strong phylogenetic signal. When the phylogenetic uniqueness
+   $S_{\text{phy}}$ is not separately identifiable from
+   $\Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top}$, the
+   canonical fallback is bare `phylo_latent + latent + unique`,
+   which fits the **three-piece form**
+
+   $$
+   \Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top} +
+   \Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S
+   $$
+
+   -- two $\Lambda \Lambda^{\!\top}$ pieces (phylo + non-phylo)
+   plus a single non-tier-specific diagonal $S$. $\Omega$ here
+   is just the **total trait covariance**, the sum of every
+   variance component in the fit; the same $\Omega$ name covers
+   the four-piece paired form, this three-piece fallback, a
+   `spatial_*` extension with more pieces, or a pure
+   non-phylo `latent + unique` with two pieces. **The number
+   of pieces follows from the keyword terms in the formula.**
+   **Do not roll the phylo piece up as $\Sigma_{\text{phy}}$**
+   in the three-piece form, since $\Sigma_{\text{phy}} = \Lambda
+   \Lambda^{\!\top} + S_{\text{phy}}$ already implies a
+   $S_{\text{phy}}$ that the fallback does not have. **Do not
+   over-prescribe the paired form**; check identifiability
+   against the data shape before flipping a bare-form
+   recommendation to paired-only. (Lesson from the 2026-05-13
+   maintainer corrections: *"for phylogeny there are cases we
+   cannot get 2 Ss like you know - omega is usual in such a
+   context"*, *"one S for phylo is when we cannot really get 4
+   parts OK (3 parts are fine in such a case)"*, and *"omega can
+   be used for any combinations of adding all variance
+   components"*.)
+9. **Every `\Psi`, `\Omega`, `U`, `U_phy`, `U_non`**: math
+   notation should use `\mathbf S`, `\mathbf S_\text{phy}`,
+   `\mathbf S_\text{non}` per PR #40 + PR #72 naming convention
+   -- *except* `\Psi_t` is the canonical symbol for
+   `extract_phylo_signal()` output $\Psi_t = 1 - H^2 -
+   C^2_{\text{non}}$ (the "uniqueness" of the
+   $H^2 + C^2_{\text{non}} + \Psi^2 = 1$ partition). Distinguish:
+   `\mathbf{S}` is a model-side covariance diagonal;
+   `\Psi_t` is a derived per-trait scalar in the
+   communality-decomposition output. Do not blanket-replace
+   `\Psi` with `S` -- verify per occurrence whether the symbol
+   is the model-side diagonal or the derived scalar.
+
+**Process recommendation**: when porting or auditing an article,
+spawn a deep agent with the canonical model in its briefing and ask
+it to flag prescriptive claims, not just surface patterns. The brief
+needs to enumerate the canon explicitly (single entry point,
+canonical paired decomposition, four-component phylo,
+S/s notation, etc.) so the agent can check claim-by-claim.
+
+This entry exists to prevent recurrence. PRs #76, #77, #78 fixed
+specific instances of this pattern across articles; the broader
+audit produced ~136 more findings split across roxygen and
+articles, in progress.
+

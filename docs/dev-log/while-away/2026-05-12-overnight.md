@@ -30,17 +30,17 @@ or rule-file changes.
 | #53 | phylogenetic-gllvm article: 4-component decomposition + communality + heritability + indep/dep comparison + check-log lesson | maintainer | 18:45 |
 | #54 | Fix stale engine path in inst/COPYRIGHTS (inst/tmb/ → src/) | Claude self-merge | 18:55 |
 | #56 | @examples audit refinement (Phase 5 prep) | Claude self-merge | 20:54 |
+| #57 | Fix urlchecker "Moved" warnings: trailing slash on pkgdown URL | Claude self-merge | 21:59 |
 
 Plus **closed without merging**: #49 (methods-paper outline draft)
 — too early for Phase 6 prep per your call.
 
-## Open PRs at report time
+## Open PRs at report time (21:59 MT)
 
 | # | Title | Status | Recommendation |
 |---|---|---|---|
 | #55 | Rose article-sweep: canonicalise legacy `"B"`/`"W"` aliases and `+ S` notation | CI green; 4-article sweep | **Your merge call.** Multi-article scope; outside my self-merge authority per overnight scope. |
-| #57 | Fix `urlchecker` "Moved" warnings: trailing slash on pkgdown URL | CI running (ubuntu+macos green) | Self-merge eligible (DESCRIPTION + inst/CITATION + autogen Rd). Will self-merge tonight if CI clears windows and you have not intervened. |
-| #58 | (this report) | — | Self-merge eligible (single dev-log file). |
+| #58 | (this report) | CI running | Self-merge eligible (single dev-log file); will self-merge after CI. |
 
 ## Phase 5 prep status
 
@@ -178,20 +178,18 @@ In rough priority order:
 1. **Decide on PR #55** (Rose article-sweep). Multi-article
    canonicalisation of legacy `"B"` / `"W"` aliases and `+ S`
    notation. CI green. Single approve-and-merge.
-2. **Decide on PR #57** (URL trailing-slash) if I have not
-   self-merged it by the time you read this.
-3. **Scope call on the legacy-repo 404** (README:58). Three
+2. **Scope call on the legacy-repo 404** (README:58). Three
    shapes possible; logged in PR #57's description and in this
    report. One-line README edit plus possible NEWS.md update.
-4. **Scope call on the spelling dictionary** (en-GB vs en-US)
+3. **Scope call on the spelling dictionary** (en-GB vs en-US)
    and WORDLIST strategy. Whichever you pick, the rest is
    mechanical -- I can open a small PR with
    `Language: en-GB` + an initial conservative WORDLIST once
    you choose.
-5. **Optional**: tell me to do the AGENTS.md / CLAUDE.md
+4. **Optional**: tell me to do the AGENTS.md / CLAUDE.md
    "see also design doc 04" pointer. Light-touch rule-file
    adjustment.
-6. **Optional**: dispatch Codex on the Phase 5 `@examples`
+5. **Optional**: dispatch Codex on the Phase 5 `@examples`
    implementation round per the punch list in
    `docs/dev-log/shannon-audits/2026-05-12-examples-audit-refinement.md`.
    ~1-2 hours of focused Codex work.

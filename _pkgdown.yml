@@ -12,21 +12,23 @@ navbar:
     right: [search, github]
 
 articles:
-  - title: Worked examples (Tier 1)
-    navbar: ~
+  - title: Model guides
+    navbar: Model guides
+    desc: Worked examples in complexity order
     contents:
     - articles/morphometrics
-    - articles/phylogenetic-gllvm
     - articles/joint-sdm
     - articles/behavioural-syndromes
+    - articles/phylogenetic-gllvm
+    - articles/functional-biogeography
+
+  - title: Concepts and reference
+    navbar: Concepts
+    desc: Decision tree, concept articles, and API lookup
+    contents:
     - articles/choose-your-model
     - articles/covariance-correlation
-    - articles/functional-biogeography
     - articles/pitfalls
-
-  - title: Technical reference (Tier 2)
-    navbar: Technical reference
-    contents:
     - articles/api-keyword-grid
     - articles/response-families
     - articles/ordinal-probit
@@ -37,7 +39,6 @@ reference:
     contents:
     - gllvmTMB
     - traits
-    - gllvmTMB_wide
     - gllvmTMBcontrol
     - simulate_site_trait
 
@@ -102,18 +103,23 @@ reference:
     - simulate.gllvmTMB_multi
     - predict.gllvmTMB_multi
     - plot.gllvmTMB_multi
-    - sanity_multi
 
-  - title: Diagnostics and loading-tools
+  - title: Diagnostics
+    desc: Evaluate a fitted gllvmTMB_multi model
     contents:
+    - sanity_multi
     - gllvmTMB_diagnose
-    - rotate_loadings
-    - compare_loadings
-    - suggest_lambda_constraint
     - compare_dep_vs_two_U
     - compare_indep_vs_two_U
     - bootstrap_Sigma
     - tmbprofile_wrapper
+
+  - title: Loadings (Lambda) and confirmatory factor analysis
+    desc: Extract, rotate, and constrain the loading matrix
+    contents:
+    - rotate_loadings
+    - compare_loadings
+    - suggest_lambda_constraint
 
   - title: Spatial mesh helpers
     contents:

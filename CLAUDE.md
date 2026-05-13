@@ -41,9 +41,10 @@ does NOT do" section), see
   `traits(t1, t2, ...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`.
   The same shorthand covers `indep()`, `dep()`, and `spatial_*()`;
   ordinary `(1 | group)` random intercepts pass through unchanged.
-  Wide matrix input uses `gllvmTMB_wide(Y, ...)`. Long-format
-  `gllvmTMB()` remains canonical and uses the explicit
-  `0 + trait` / `(0 + trait):x` grammar.
+  Long-format `gllvmTMB()` uses the explicit `0 + trait` /
+  `(0 + trait):x` grammar. Both shapes go through one entry point:
+  `gllvmTMB()`. The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` is
+  soft-deprecated as of 0.2.0 -- new code should use the formula API.
 
 ## Before Finishing Work
 

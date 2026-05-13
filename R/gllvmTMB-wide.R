@@ -67,22 +67,44 @@
 #'   trait loadings for individual × trait morphometrics, study
 #'   loadings for paper × outcome meta-analysis, etc.
 #'
-#' @seealso [gllvmTMB()] for the long-format engine; [extract_Sigma()]
-#'   for post-fit covariance summaries; [extract_ordination()] for
-#'   scores and loadings; [traits()] for formula-LHS wide data-frame
-#'   input. The source-tree contract is
-#'   `docs/design/02-data-shape-and-weights.md`.
-#' @export
-#' @examples
-#' \dontrun{
-#' set.seed(1)
-#' Y <- matrix(rnorm(50 * 8), 50, 8,
-#'             dimnames = list(NULL, paste0("sp", 1:8)))
-#' X <- data.frame(env_temp = rnorm(50), env_precip = rnorm(50))
-#' fit <- gllvmTMB_wide(Y, X, d = 2,
+#' @seealso [gllvmTMB()] for the recommended formula-API entry point
+#'   (long format or wide data frames via [traits()] LHS sugar);
+#'   [extract_Sigma()] for post-fit covariance summaries;
+#'   [extract_ordination()] for scores and loadings. The source-tree
+#'   contract is `docs/design/02-data-shape-and-weights.md`.
+#'
+#' @section Deprecation:
+#' `gllvmTMB_wide()` is **soft-deprecated** as of gllvmTMB 0.2.0. The
+#' recommended replacement is [gllvmTMB()] with the [traits()] LHS
+#' marker, which is more general (formula-native predictors, full
+#' covariance grammar, mixed-family fits) and matches the
+#' formula-first idiom used by `lme4`, `glmmTMB`, `brms`, `drmTMB`.
+#'
+#' Migration:
+#'
+#' ```r
+#' ## Old:
+#' fit <- gllvmTMB_wide(Y, X = X_df, d = 2,
 #'                      formula_extra = ~ env_temp + env_precip)
-#' summary(fit)
-#' }
+#'
+#' ## New:
+#' df_wide <- cbind(data.frame(unit = rownames(Y)),
+#'                  as.data.frame(Y), X_df)
+#' fit <- gllvmTMB(
+#'   traits(<colnames of Y>) ~ 1 + env_temp + env_precip +
+#'     latent(1 | unit, d = 2),
+#'   data = df_wide,
+#'   unit = "unit"
+#' )
+#' ```
+#'
+#' Per-cell weight matrices (the one path `gllvmTMB_wide()` uniquely
+#' supports) remain available via the long-format API by passing a
+#' long-format `weights` column aligned with `(unit, trait)` rows.
+#' See `docs/design/02-data-shape-and-weights.md`.
+#'
+#' @keywords internal
+#' @export
 gllvmTMB_wide <- function(
   Y,
   X = NULL,
@@ -93,6 +115,18 @@ gllvmTMB_wide <- function(
   weights = NULL,
   ...
 ) {
+  lifecycle::deprecate_soft(
+    "0.2.0",
+    "gllvmTMB_wide()",
+    "gllvmTMB()",
+    details = c(
+      "i" = paste0(
+        "Use `gllvmTMB(traits(<cols>) ~ 1 + <predictors> + ",
+        "latent(1 | unit, d = K), data = df_wide, unit = \"unit\")` ",
+        "for the recommended formula-API path."
+      )
+    )
+  )
   if (!is.matrix(Y) && !is.data.frame(Y)) {
     cli::cli_abort("Y must be a matrix or data frame.")
   }

@@ -19,6 +19,11 @@ Keep `gllvmTMB` focused on the stacked-trait, long-format multi-
 response model. Single-response models live in `glmmTMB`; spatial
 single-response models live in `sdmTMB`.
 
+For the full cross-package scope record (including `gllvm`,
+`MCMCglmm`, `brms`, the decision matrix, and the "what gllvmTMB
+does NOT do" section), see
+[`docs/design/04-sister-package-scope.md`](docs/design/04-sister-package-scope.md).
+
 ## Syntax Rules to Preserve
 
 - Use the canonical 3 x 5 keyword grid (correlation x mode):

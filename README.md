@@ -165,10 +165,28 @@ fit <- gllvmTMB(
   value ~ 0 + trait +
     latent(0 + trait | site, d = 1) +
     unique(0 + trait | site),
-  data = sim$data,
+  data = sim$data,    # long: one row per (site, trait)
   unit = "site"
 )
 ```
+
+The same model in wide form -- one row per site, columns `t1`,
+`t2`, `t3` for the three traits -- uses the `traits(...)` LHS
+marker:
+
+```r
+fit_wide <- gllvmTMB(
+  traits(t1, t2, t3) ~ 1 +
+    latent(1 | site, d = 1) +
+    unique(1 | site),
+  data = df_wide,     # wide: one row per site
+  unit = "site"
+)
+```
+
+Both calls reach the same long-format engine and produce
+byte-identical fits. See the Get Started vignette for the
+runnable long-to-wide pivot.
 
 Here `latent(0 + trait | site, d = 1)` estimates one shared latent
 axis across traits, and `unique(0 + trait | site)` estimates the
@@ -214,11 +232,6 @@ Sigma.
 models belong in `glmmTMB`; spatial single-response models belong
 in `sdmTMB`; one- or two-response distributional regression
 belongs in `drmTMB`.
-
-The legacy matrix-in wrapper `gllvmTMB_wide(Y, ...)` is
-soft-deprecated as of 0.2.0; new code should use the formula API
-in the **Data shapes** section above. Migration is one
-`as.data.frame()` call.
 
 Random slopes through `(1 + x | g)` syntax are not yet implemented.
 The current structured-effect paths are strongest for

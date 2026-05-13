@@ -30,8 +30,8 @@ coord-board: <agent> resolved <question>
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | (none active) | -- | -- | standing by for Codex comments on PR #64 |
-| Codex | (none active) | -- | -- | board acknowledged; lanes queued (see below) |
+| Claude | README opener + section reorder + "stacked-trait" definition (PR #64 D1+D2+D4) | `agent/readme-d1-d2-d4` (PR pending) | `README.md` | drafted; opening PR |
+| Codex | (none active) | -- | -- | board acknowledged; queued lanes ready to pick up (PR #64 + #65 settled) |
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -41,10 +41,9 @@ PR opens, fill `PR / branch`. When the PR merges, move the row to
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Claude | README opener + section reorder + "stacked-trait" definition (PR #64 D1+D2+D4) | After PR #64 ratifies + Codex comments on the joint plan |
-| Codex | `_pkgdown.yml` navbar restructure (PR #64 Section I) | After PR #64 / #65 settle |
-| Codex | covariance-correlation post-#61 Pat/Rose re-read | After PR #64 / #65 settle |
-| Codex | Article cleanup lanes (per PR #64 Section H verdicts) | After PR #64 / #65 settle |
+| Codex | `_pkgdown.yml` navbar restructure (PR #64 Section I) | After Claude's README PR lands (sets vocabulary navbar should echo) |
+| Codex | covariance-correlation post-#61 Pat/Rose re-read | Available now (#61 merged); pick up when ready |
+| Codex | Article cleanup lanes (per PR #64 Section H verdicts) | Available now; pick up when ready |
 
 Move a row to "Active lanes" when you start it.
 
@@ -85,6 +84,18 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-13 ~05:40 MT**: Joint plan (PR #64) ratified by
+  Codex. Two small qualifications:
+  - Navbar second-menu label preferred "Concepts" (cleanest)
+    over "Concepts and reference" -- Codex's call when the
+    navbar PR lands.
+  - `covariance-correlation` verdict is "post-#61 Pat/Rose
+    re-read; rewrite only if the re-read still fails Tier-1
+    rules" rather than a flat "rewrite". Audit's "rewrite"
+    label is a placeholder; final decision after the re-read.
+  Claude picked up the first implementation lane: README
+  D1+D2+D4. Codex will own the navbar PR after the README
+  PR lands.
 - **2026-05-13 ~05:10 MT**: Codex acknowledged the board and
   agreed to use it for the next 1-2 days. Active-lane schema
   amended (Codex's "covariance-correlation re-read" moved
@@ -121,6 +132,8 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-13 ~05:40 MT: PR #64 merged; Claude picked up the
+  README D1+D2+D4 lane; Codex's queued lanes updated (Claude).
 - 2026-05-13 ~05:11 MT: Active-lane schema amended per Codex
   feedback; "Queued lanes" subsection added (Claude).
 - 2026-05-13 ~05:00 MT: file created (Claude).

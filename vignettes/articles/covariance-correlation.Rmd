@@ -74,7 +74,7 @@ trait_names <- c("boldness", "exploration", "activity",
                  "aggression", "sociability")
 T <- length(trait_names)
 
-## True between-individual covariance Sigma_B = Lambda Lambda^T + S
+## True between-individual covariance Sigma_unit = Lambda Lambda^T + diag(s)
 Lambda_true <- matrix(c(
   0.9,  0.1,
   1.0,  0.2,
@@ -115,7 +115,7 @@ fit_B <- gllvmTMB(
 ```
 
 Now extract the implied $\hat{\boldsymbol\Sigma}_{\text{unit}}$ and
-$\hat{\mathbf R}_B$ from each fit:
+between-individual correlation matrix from each fit:
 
 ```{r extract}
 ext_A <- suppressMessages(
@@ -186,10 +186,10 @@ explicitly:
 # Lambda Lambda^T alone (the "shared" component)
 extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
 
-# diag(S_B) — trait-specific unique variances (the "unique" component)
+# diag(s_unit) — trait-specific unique variances (the "unique" component)
 extract_Sigma(fit_B, level = "unit", part = "unique")$s    |> round(2)
 
-# Sigma_B = Lambda Lambda^T + diag(S_B)  (the "total" — what you usually want)
+# Sigma_unit = Lambda Lambda^T + diag(s_unit)  (the "total" — what you usually want)
 extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
 ```
 
@@ -224,8 +224,8 @@ denominator a per-trait $S_{tt}$ slot, and communality becomes
 informative.
 
 ```{r communality}
-extract_communality(fit_A, "B")  # latent-only fit: all = 1, useless
-extract_communality(fit_B, "B")  # latent + unique: meaningful
+extract_communality(fit_A, level = "unit")  # latent-only fit: all = 1, useless
+extract_communality(fit_B, level = "unit")  # latent + unique: meaningful
 ```
 
 ### Site-level / individual-level ICC
@@ -250,9 +250,9 @@ extract_ICC_site(fit)
 
 — see the recommended **two-`unique()`** pattern earlier in the article.
 
-## When you do *not* need `unique()`
+## When `unique()` is not the right term
 
-Three situations:
+Three situations need care:
 
 ### 1. Binary responses (binomial family)
 
@@ -280,22 +280,37 @@ extract_Sigma(fit_binary, level = "unit", part = "total",
               link_residual = "auto")
 ```
 
-### 2. Phylogenetic shared term
+### 2. Phylogenetic tiers
 
-`phylo_latent(species, d = K)` gives a phylogenetic latent component
-$\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top}$
-that has no associated `unique()` — the phylogenetic prior is structured
-on the tree, and trait-specific *unique* variance lives separately at
-the non-phylogenetic species tier (Nakagawa et al. *in prep*, Eq. 19):
+`phylo_latent(species, d = K)` gives the shared phylogenetic component
+$\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}$.
+If you also need trait-specific phylogenetic variance, the companion is
+`phylo_unique(species)`, not the ordinary non-phylogenetic
+`unique(0 + trait | species)` term. The ordinary `unique()` term belongs
+to the non-phylogenetic species tier.
+
+With both phylogenetic and non-phylogenetic species components, the
+decomposition is
 
 $$
-\boldsymbol\Omega = \boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{non,shared} + \mathbf S_\text{non}.
+\boldsymbol\Sigma_\text{phy}
+  = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}
+    + \mathbf S_\text{phy},
+\qquad
+\boldsymbol\Sigma_\text{non}
+  = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^{\!\top}
+    + \mathbf S_\text{non},
+\qquad
+\boldsymbol\Omega = \boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{non}.
 $$
 
-`extract_Sigma(fit, level = "phy")` returns $\boldsymbol\Sigma_\text{phy}$;
-`extract_Sigma(fit, level = "unit")` (when `unit = "species"`) returns
-$\boldsymbol\Sigma_\text{non,shared} + \mathbf S_\text{non}$. Their sum is
-$\boldsymbol\Omega$.
+`extract_Sigma(fit, level = "phy", part = "shared")` returns the
+phylogenetic shared component; `part = "unique"` returns the
+$\mathbf S_\text{phy}$ diagonal when `phylo_unique()` is fitted; and
+`part = "total"` returns $\boldsymbol\Sigma_\text{phy}$. When
+`unit = "species"`, `extract_Sigma(fit, level = "unit")` returns
+$\boldsymbol\Sigma_\text{non}$. Their sum is $\boldsymbol\Omega$;
+`extract_Omega(fit)` is the convenience extractor for that total.
 
 ### 3. Confirmatory factor models
 
@@ -345,7 +360,7 @@ residual; Nakagawa & Schielzeth 2010; Nakagawa, Johnson & Schielzeth 2017).
 |---|---|---|
 | Cross-trait correlations on a Gaussian / lognormal / Gamma fit | `latent() + unique()` at every level | Otherwise correlations are inflated. |
 | Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
-| Phylogenetic decomposition | `phylo_latent() + latent() + unique()` (3-piece) | Σ_phy + Σ_non,shared + U. |
+| Phylogenetic decomposition | `phylo_latent() + phylo_unique()` for the phylogenetic tier; add `latent() + unique()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `diag(s)` pieces. |
 | Communality | `extract_communality(fit)` + the right latent/unique pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |
 | `S` only | `extract_Sigma(fit, part = "unique")` | Trait-specific unique variances as a vector. |

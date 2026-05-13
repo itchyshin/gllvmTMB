@@ -388,8 +388,9 @@ link_residual_per_trait <- function(fit) {
 #'
 #' ## Future: 3+ latent tiers
 #'
-#' The engine currently supports two `latent()` tiers (between-unit `"B"`
-#' and within-unit `"W"`); `level = "B"` and `"W"` are shortcuts for these.
+#' The engine currently supports two `latent()` tiers (`"unit"` and
+#' `"unit_obs"`); legacy `level = "B"` and `"W"` aliases are still accepted
+#' with a soft-deprecation message.
 #' `level = "phy"` extracts the phylogenetic implied
 #' \eqn{\boldsymbol\Sigma_\text{phy}} from `phylo_latent()`. If a future
 #' release adds 3+ latent tiers, `level = "<colname>"` will dispatch to the
@@ -397,9 +398,10 @@ link_residual_per_trait <- function(fit) {
 #' with a clear roadmap message.
 #'
 #' @param fit A `gllvmTMB_multi` fit.
-#' @param level One of `"B"` (between-unit), `"W"` (within-unit), `"phy"`
-#'   (phylogenetic), or -- once the engine supports it -- a custom
-#'   grouping-factor column name.
+#' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
+#'   `"phy"` (phylogenetic), `"spatial"`, or `"cluster"`. Legacy aliases
+#'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
+#'   message.
 #' @param part One of `"total"` (default), `"shared"`, `"unique"`.
 #' @param link_residual For non-Gaussian fits. `"auto"` (default) adds a
 #'   per-trait link-specific implicit residual variance to the diagonal of
@@ -446,9 +448,9 @@ link_residual_per_trait <- function(fit) {
 #'           latent(0 + trait | unit, d = 2) + unique(0 + trait | unit),
 #'   data = df
 #' )
-#' extract_Sigma(fit, level = "B", part = "total")$Sigma   # full T x T cov
-#' extract_Sigma(fit, level = "B", part = "shared")$Sigma  # rr-only
-#' extract_Sigma(fit, level = "B", part = "unique")$s      # diag(S_B)
+#' extract_Sigma(fit, level = "unit", part = "total")$Sigma   # full T x T cov
+#' extract_Sigma(fit, level = "unit", part = "shared")$Sigma  # rr-only
+#' extract_Sigma(fit, level = "unit", part = "unique")$s      # diag(s_unit)
 #' }
 extract_Sigma <- function(fit,
                           level = c("unit", "unit_obs", "phy", "spatial",
@@ -476,7 +478,7 @@ extract_Sigma <- function(fit,
   ## ---- Pull Lambda and S for the requested level -----------------------
   L <- NULL
   S <- NULL
-  level_label <- level
+  level_label <- .canonical_level_name(level)
   notes <- character(0)
 
   if (identical(level, "B")) {
@@ -550,7 +552,7 @@ extract_Sigma <- function(fit,
                            else if (!is.null(fit$unit_obs_col)) fit$unit_obs_col
                            else "site_species")
       notes <- c(notes, paste0(
-        "Sigma_", level,
+        "Sigma_", level_label,
         " is currently latent-only (Lambda Lambda^T) because no `",
         diag_call, "` term is in the formula. Trait-specific unique variance is not modelled, ",
         "so correlations from this matrix overstate cross-trait coupling. ",

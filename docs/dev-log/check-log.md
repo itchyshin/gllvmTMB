@@ -862,3 +862,79 @@ The previous instance was in a legacy article; the pattern is
 recurrent. Adding to the process discipline so we catch it on
 authoring, not after the live pkgdown site exposes it.
 
+## 2026-05-13 -- Covariance-correlation article substantive fix (Codex lane)
+
+Coordination:
+
+- Shannon-style lane check before editing found open Claude PRs #55,
+  #59, and #60. PR #55 had already dropped
+  `vignettes/articles/covariance-correlation.Rmd` and now touches only
+  `api-keyword-grid.Rmd`, `behavioural-syndromes.Rmd`,
+  `choose-your-model.Rmd`, and its after-task report. PR #59 touches
+  `AGENTS.md`, `CLAUDE.md`, and a distinct after-task report. PR #60
+  touches `README.md`, `NEWS.md`, and a distinct after-task report.
+  No open PR touched `R/extract-sigma.R`,
+  `tests/testthat/test-extract-sigma.R`,
+  `tests/testthat/test-extract-omega.R`, or
+  `vignettes/articles/covariance-correlation.Rmd`.
+- Posted a PR #55 coordination comment:
+  <https://github.com/itchyshin/gllvmTMB/pull/55#issuecomment-4439530651>.
+  Codex owns the covariance-correlation article lane and will avoid the
+  three article files still owned by PR #55.
+
+Implemented:
+
+- `vignettes/articles/covariance-correlation.Rmd` now separates the
+  ordinary non-phylogenetic `unique()` term from `phylo_unique()`. The
+  phylogenetic section now states
+  `Sigma_phy = Lambda_phy Lambda_phy^T + S_phy`,
+  `Sigma_non = Lambda_non Lambda_non^T + S_non`, and
+  `Omega = Sigma_phy + Sigma_non`, matching
+  `docs/design/03-phylogenetic-gllvm.md` and the 2026-05-12 S/s
+  notation decision.
+- The article no longer shows legacy `extract_communality(fit, "B")`
+  calls or `Sigma_B` / `S_B` comments in the demonstrated
+  `extract_Sigma()` workflow.
+- `extract_Sigma()` now reports the canonical level label in its
+  missing-`unique()` advisory, so rendered pages show `Sigma_unit`
+  rather than `Sigma_B` when the user called `level = "unit"`.
+- `R/extract-sigma.R` roxygen and `man/extract_Sigma.Rd` now present
+  `level = "unit"` / `"unit_obs"` as the primary interface while still
+  documenting `"B"` / `"W"` as legacy aliases.
+- Targeted tests now use canonical extractor levels where they are not
+  explicitly testing legacy alias behaviour, and the missing-`unique()`
+  advisory has a regression assertion for `Sigma_unit` and against
+  `Sigma_B`.
+
+Checks run:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed
+  and regenerated `man/extract_Sigma.Rd`.
+- `tail -12 man/extract_Sigma.Rd` ended in the expected `\seealso{...}`
+  block; `grep -c '^\\keyword' man/extract_Sigma.Rd` returned `0`
+  because this topic has no keyword tag.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma")'`
+  passed: `FAIL 0 | WARN 0 | SKIP 0 | PASS 31`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|sigma-rename|extract-omega|mixed-response-sigma")'`
+  passed: `FAIL 0 | WARN 0 | SKIP 1 | PASS 70`; the skip is the
+  pre-existing `.normalise_level()` migration skip in
+  `test-sigma-rename.R`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", new_process = FALSE)'`
+  rendered `articles/covariance-correlation.html`; only the known
+  `../logo.png` pkgdown image warning appeared.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  passed with "No problems found."
+- `rg -n 'Sigma_B|S_B|"B"|\\+ U|diag\\(U\\)|U_phy|U_non|no associated|three-piece|3-piece' vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html`
+  returned no hits after the final article render.
+- Focused Rose scan found only intentional legacy-alias documentation
+  in `R/extract-sigma.R` / `man/extract_Sigma.Rd` and the active
+  `phylo_latent()` / `phylo_unique()` wording in the touched article.
+- Export/source check confirmed `extract_Sigma`, `extract_Omega`,
+  `extract_communality`, `phylo_latent`, and `phylo_unique` are exported
+  and defined in the expected R files.
+
+Not run:
+
+- Full `devtools::test()` and `devtools::check()` were not run in this
+  lane; the change is scoped to one article, one extractor advisory,
+  roxygen text for that extractor, and targeted tests.

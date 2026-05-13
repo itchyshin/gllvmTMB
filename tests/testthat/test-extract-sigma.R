@@ -44,7 +44,7 @@ make_fit_B_rr_only <- function(seed = 2) {
 
 test_that("extract_Sigma with rr+diag returns Sigma = LL^T + S correctly", {
   fit <- make_fit_BW_diag()
-  out <- suppressMessages(extract_Sigma(fit, level = "B", part = "total"))
+  out <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
   expect_named(out, c("Sigma", "R", "level", "part", "note"))
   expect_equal(dim(out$Sigma), c(4, 4))
   expect_equal(dim(out$R),     c(4, 4))
@@ -58,9 +58,9 @@ test_that("extract_Sigma with rr+diag returns Sigma = LL^T + S correctly", {
 
 test_that("extract_Sigma part='shared' returns LL^T only", {
   fit <- make_fit_BW_diag()
-  shared <- suppressMessages(extract_Sigma(fit, level = "B", part = "shared"))
-  total  <- suppressMessages(extract_Sigma(fit, level = "B", part = "total"))
-  unique_part <- suppressMessages(extract_Sigma(fit, level = "B", part = "unique"))
+  shared <- suppressMessages(extract_Sigma(fit, level = "unit", part = "shared"))
+  total  <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
+  unique_part <- suppressMessages(extract_Sigma(fit, level = "unit", part = "unique"))
   ## total should equal shared + diag(unique)
   reconstructed <- shared$Sigma + diag(unique_part$s, nrow = 4)
   expect_equal(reconstructed, total$Sigma, tolerance = 1e-10)
@@ -68,7 +68,7 @@ test_that("extract_Sigma part='shared' returns LL^T only", {
 
 test_that("extract_Sigma part='unique' returns named numeric vector of length T", {
   fit <- make_fit_BW_diag()
-  out <- suppressMessages(extract_Sigma(fit, level = "B", part = "unique"))
+  out <- suppressMessages(extract_Sigma(fit, level = "unit", part = "unique"))
   expect_type(out$s, "double")
   expect_length(out$s, 4)
   expect_named(out$s)
@@ -78,14 +78,18 @@ test_that("extract_Sigma part='unique' returns named numeric vector of length T"
 test_that("extract_Sigma without unique emits the missing-unique advisory note", {
   fit <- make_fit_B_rr_only()
   expect_message(
-    extract_Sigma(fit, level = "B", part = "total"),
+    extract_Sigma(fit, level = "unit", part = "total"),
     regexp = "unique"
   )
   ## Capture the value separately (expect_message returns the captured
   ## message in some testthat versions, not the call's value)
-  out <- suppressMessages(extract_Sigma(fit, level = "B", part = "total"))
+  out <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
   expect_true(any(grepl("unique", out$note, ignore.case = TRUE)))
-  shared <- suppressMessages(extract_Sigma(fit, level = "B", part = "shared"))
+  out_unit <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
+  note_unit <- paste(out_unit$note, collapse = "\n")
+  expect_match(note_unit, "Sigma_unit", fixed = TRUE)
+  expect_false(grepl("Sigma_B", note_unit, fixed = TRUE))
+  shared <- suppressMessages(extract_Sigma(fit, level = "unit", part = "shared"))
   expect_equal(out$Sigma, shared$Sigma, tolerance = 1e-10)
 })
 
@@ -96,7 +100,7 @@ test_that("extract_Sigma_B / extract_Sigma_W backward-compat wrappers work", {
   expect_named(out_B, c("Sigma_B", "R_B"))
   expect_named(out_W, c("Sigma_W", "R_W"))
   ## Wrapper output must equal the unified extract_Sigma output
-  unified_B <- suppressMessages(extract_Sigma(fit, level = "B", part = "total"))
+  unified_B <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
   expect_equal(out_B$Sigma_B, unified_B$Sigma)
   expect_equal(out_B$R_B,     unified_B$R)
 })
@@ -137,7 +141,7 @@ test_that("binomial fits with all three links fit + extract_Sigma works", {
                  switch(link_name, logit = 0L, probit = 1L, cloglog = 2L))
     ## extract_Sigma should work without error (binomial has no diag-S
     ## to worry about; rr-only is the natural state on the latent scale)
-    out <- suppressMessages(extract_Sigma(fit, level = "B", part = "total"))
+    out <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
     expect_equal(dim(out$Sigma), c(3, 3))
   }
 })
@@ -160,9 +164,9 @@ test_that("link_residual = 'auto' adds the link-specific implicit residual to di
     value ~ 0 + trait + latent(0 + trait | individual, d = 2),
     data = df, site = "individual", family = binomial(link = "probit")
   )))
-  out_none <- suppressMessages(extract_Sigma(fit, level = "B", part = "total",
+  out_none <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
                                               link_residual = "none"))
-  out_auto <- suppressMessages(extract_Sigma(fit, level = "B", part = "total",
+  out_auto <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
                                               link_residual = "auto"))
   ## Probit's implicit residual is exactly 1 — diagonals should differ by 1
   expect_equal(unname(diag(out_auto$Sigma) - diag(out_none$Sigma)),

@@ -427,7 +427,7 @@ cat("\nMedian estimated repeatability:", round(median(rep_df$R), 3),
 ```{r inspect-comm-b}
 # Communality at B level: proportion of between-individual variance that is
 # shared across traits via the two personality axes
-comm_B <- extract_communality(fit, "B")
+comm_B <- extract_communality(fit, level = "unit")
 cat("Between-individual communalities (shared via personality axes):\n")
 round(comm_B, 3)
 ```
@@ -441,7 +441,7 @@ personality axes; the remaining 40% is trait-specific.
 ```{r inspect-comm-w}
 # Communality at W level: proportion of within-individual variance that is
 # shared across traits via the lability axis
-comm_W <- extract_communality(fit, "W")
+comm_W <- extract_communality(fit, level = "unit_obs")
 cat("Within-individual communalities (shared via lability axis):\n")
 round(comm_W, 3)
 ```
@@ -454,7 +454,7 @@ here indicate largely trait-specific plasticity.
 ## Ordination: individuals in personality space
 
 ```{r ord, fig.cap = "Individuals in personality space. Each point is one of the 80 great-tit individuals, plotted on the two between-individual latent axes (LV1 = proactive-reactive, LV2 = aggression-activity). Spread along each axis represents variation in that personality dimension across individuals."}
-ord_B <- extract_ordination(fit, "B")
+ord_B <- extract_ordination(fit, level = "unit")
 scores_df <- as.data.frame(ord_B$scores)
 scores_df$individual <- rownames(scores_df)
 

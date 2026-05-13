@@ -53,7 +53,7 @@ level.
 The most common decomposed model pairs `latent()` and `unique()`:
 
 ```text
-Sigma = Lambda Lambda^T + S
+Sigma = Lambda Lambda^T + diag(s)
 ```
 
 Standalone `latent()` fits the no-residual reduced-rank subset.

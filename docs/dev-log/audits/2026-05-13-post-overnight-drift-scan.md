@@ -237,3 +237,65 @@ and 10.
 - PR batches A-E queued; will open one at a time as WIP allows
   (currently 6 open Claude PRs above the soft cap of 3, so
   batched fixes wait until #74-#79 merge).
+
+---
+
+## Addendum: `@title` reference-index sweep (Explore agent, 2026-05-13 ~18:00 MT)
+
+Maintainer's follow-up: *"Should I also audit R/ roxygen `@title`
+lines for the same jargon / framing pattern? Reference index is
+what CRAN reviewers see."* Agent swept every `R/*.R` `@title`
+(or first roxygen prose line where no explicit `@title`) against
+the same canonical model as items 1-11 above.
+
+**Verdict: titles are mostly clean.** Out of 37 audited files:
+
+- **34 CLEAN** -- no jargon, no legacy notation, no soft-deprecated
+  API recommendation in the title itself.
+- **2 MINOR** -- `tier` wording where `level` is canonical
+  (impacts pkgdown reference-index visibility, not behaviour).
+- **1 MEDIUM** -- `extract_omega.R` title uses *"tiers"* and
+  `extract_phylo_signal()` cites in-prep `Eq. 23-25` with `\Psi_t`
+  legacy math.
+- **0 HIGH** -- no title cites M1/M2/M3/M4, no title recommends
+  `gllvmTMB_wide()`, no title misframes `phylo_latent()` as
+  standalone-canonical, no title uses `U_phy / U_non` in prose
+  context.
+
+**MINOR**
+
+- `R/extract-sigma.R` title: *"Extract the implied trait covariance
+  / correlation at one tier"* → rewrite "tier" → "level".
+- `R/extractors.R` `extract_communality()` `@return` (line 129)
+  declares a returned column named *"tier"* → should match the
+  canonical user-facing arg name once the maintainer settles
+  `tier` vs `level`.
+
+**MEDIUM**
+
+- `R/extract-omega.R` `extract_Omega()` title: *"Total trait
+  covariance Omega summed across requested tiers"* → drift on
+  both `tiers` (legacy) and on the `phylo_unique`-as-optional
+  framing (item 2 above).
+- `R/extract-omega.R` `extract_phylo_signal()` roxygen cites
+  in-prep equation numbers `Eq. 23-25` and uses `\Psi_t` for the
+  trait-specific uniqueness. Both should follow the canonical
+  conventions: drop the equation numbers and use `\mathbf{s}` /
+  `\mathbf{S}` for uniqueness, with prose pointing at the same
+  paired four-component decomposition.
+
+**What this confirms**
+
+The deeper-than-titles drift the maintainer was right to flag
+(items 1-8 of this audit, plus the 136-finding round-2 agent
+reports) is the larger surface; the titles themselves did *not*
+get away with M1/M2 / `gllvmTMB_wide`-recommending / phylo-bare
+errors. The pre-CRAN reference index will look clean once the
+two MINOR + one MEDIUM titles are swept, which Batch A already
+covers for `extract-omega.R` and Batch B (item #4 generalised)
+covers for the equation-number citations.
+
+**No new batch** -- the @title findings fold cleanly into the
+existing Batch A (paired-canon corrections in R/) + Batch B
+(drop in-prep equation citations) + the parked item #10
+(tier-vs-level resolution).

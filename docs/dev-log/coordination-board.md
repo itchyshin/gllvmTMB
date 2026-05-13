@@ -51,18 +51,13 @@ During the pause window:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | Article cleanup + long/wide sweep | #74 / `agent/article-cleanup-long-wide-sweep` | 5 articles + after-task | CI green; queued for merge |
-| Claude | `choose-your-model.Rmd` rewrite (F1+F2+F3) | #75 / `agent/choose-your-model-rewrite` | `choose-your-model.Rmd` + after-task | CI green; queued for merge |
-| Claude | Remove misleading `unique()` section | #76 / `agent/covariance-correlation-fix-unique-section` | `covariance-correlation.Rmd` + after-task | CI green; queued for merge |
-| Claude | Pitfalls section 5 rewrite (paired phylo) | #77 / `agent/pitfalls-phylo-paired-fix` | `pitfalls.Rmd` | CI green; queued for merge (touches same file as #74 -- merge #77 first) |
-| Claude | functional-biogeography: replace M1-M4 jargon | #78 / `agent/functional-biogeography-no-Mlabels` | `functional-biogeography.Rmd` | CI pending |
-| Claude | check-log Kaizen + post-overnight drift scan | #79 / `agent/checklog-rebuild-canon-lesson` | `check-log.md` + new `audits/2026-05-13-*.md` | CI pending |
+| Claude | (none active) | -- | -- | standing by; today's seven-PR sweep merged |
 | Codex | -- (paused ~May 13 -> ~May 17) | -- | -- | paused per maintainer handoff |
 
-**WIP**: 6 Claude PRs open (well past the soft cap of 3). The
-maintainer explicitly requested this thoroughness today
-("Kaizen!"); cap suspended for this in-flight batch. **No more
-new Claude PRs until #74-#79 merge and WIP drops.**
+**WIP**: 0 Claude PRs open. Today's seven-PR sweep (#74-#80,
+omitting #76 which landed mid-day) merged in the evening
+2026-05-13 ~20:30 MT via maintainer authorization. Back below
+the soft cap of 3.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -122,6 +117,25 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-13 ~20:30 MT**: Seven-PR evening sweep merged after
+  maintainer authorization. In chronological merge order on
+  main: #76 (cov-corr misleading-section removal, landed
+  mid-day), then #75 (choose-your-model rewrite), #78
+  (functional-biogeography no-M-labels), #79 (check-log Kaizen
+  + post-overnight drift-scan audit + coord-board sync), #80
+  (README Tiny example wide-form + drop `gllvmTMB_wide`
+  mention), #77 (pitfalls section 5 paired+three-piece phylo
+  with general-Omega note), #74 (article cleanup + long+wide
+  pair sweep). Three maintainer corrections were stacked into
+  PR #77 over the evening: identifiability nuance ("can't get
+  2 Ss → omega is usual"), three-piece naming ("4 parts
+  vs 3 parts"), and general-Omega framing ("omega can be used
+  for any combinations of adding all variance components").
+  All three are durably captured in the merged
+  `check-log.md` point 8 and the merged
+  `audits/2026-05-13-post-overnight-drift-scan.md`. WIP back
+  to 0. Batches A-E (R/ + a few articles) queued; Batches A
+  and B remain blocked by the Codex-pause R/ rule.
 - **2026-05-13 ~08:12 MT**: Codex's `covariance-correlation`
   post-#61 Pat/Rose re-read landed (PR #69 merged on Codex's
   behalf per their handoff). PR #69 reopens the article with the
@@ -191,6 +205,9 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-13 ~20:30 MT: Seven-PR evening sweep merged via
+  maintainer authorization; active-lane table reset to
+  "(none active)"; WIP back to 0 (Claude).
 - 2026-05-13 ~17:30 MT: Active-lane table populated with the six
   in-flight Claude PRs (#74-#79); Codex's three queued lanes
   marked done (navbar PR #73, article cleanup PR #74, choose-your-model

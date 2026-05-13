@@ -23,24 +23,53 @@ knitr::opts_chunk$set(
 )
 ```
 
-A subtle but important correctness issue. If you fit
-`value ~ 0 + trait + latent(0 + trait | site, d = K)` and report the
-between-trait correlation matrix, the correlations will come out
-**too large**. This article explains why, and how `unique(0 + trait | site)`
-fixes it.
+Suppose you want between-individual correlations among behaviours such as
+boldness, exploration, activity, aggression, and sociability. If you fit only
+`latent()`, the recovered correlations can be too large because the model has
+no trait-specific variance term. Pair `latent()` with `unique()` when
+trait-specific variance should stay in the denominator of the correlation
+matrix.
+
+```{r early-fit-pattern, eval = FALSE}
+fit_latent_only <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+  data = df, unit = "individual"
+)
+
+fit_latent_unique <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | individual, d = 2) +
+    unique(0 + trait | individual),
+  data = df, unit = "individual"
+)
+```
+
+If your data are wide, with one row per individual and one column per
+behaviour, use the same `gllvmTMB()` entry point with `traits(...)` on the
+left-hand side:
+
+```{r early-fit-pattern-wide, eval = FALSE}
+fit_latent_unique <- gllvmTMB(
+  traits(boldness, exploration, activity, aggression, sociability) ~
+    1 + latent(1 | individual, d = 2) + unique(1 | individual),
+  data = df_wide, unit = "individual"
+)
+```
 
 ## The decomposition
 
-Every published GLLVM treatment writes the implied trait covariance as
+For the `latent() + unique()` model, the implied trait covariance is
 
 $$
-\boldsymbol\Sigma_\text{level} \;=\; \underbrace{\boldsymbol\Lambda_\text{level} \boldsymbol\Lambda_\text{level}^{\!\top}}_{\text{shared (latent)}} \;+\; \underbrace{\mathbf S_\text{level}}_{\text{unique (unique)}},
+\boldsymbol\Sigma_\text{level} \;=\; \underbrace{\boldsymbol\Lambda_\text{level} \boldsymbol\Lambda_\text{level}^{\!\top}}_{\text{shared low-rank}} \;+\; \underbrace{\mathbf S_\text{level}}_{\text{trait-specific diagonal}},
 $$
 
-where $\boldsymbol\Lambda$ is the $T \times K$ loading matrix (from the
-`latent()` term) and $\mathbf S$ is a $T \times T$ diagonal matrix of
-trait-specific unique variances (from the `unique()` term). The
-correlation matrix is then
+where `level` names the covariance tier being extracted, such as `unit`
+for between-individual covariance or `unit_obs` for within-individual or
+observation-level covariance. $\boldsymbol\Lambda$ is the $T \times K$
+loading matrix (from the `latent()` term) and $\mathbf S$ is a
+$T \times T$ diagonal matrix of trait-specific unique variances (from the
+`unique()` term). The correlation matrix is then
 
 $$
 \mathbf R \;=\; \mathbf D^{-1/2}\,\boldsymbol\Sigma\,\mathbf D^{-1/2},
@@ -56,7 +85,8 @@ same; $\mathbf R$ swells.
 ## A side-by-side demonstration
 
 Simulate one Gaussian dataset where the true between-individual
-covariance has both a shared (latent) and a unique (unique) component, then
+covariance has both a shared low-rank component and a trait-specific
+unique diagonal, then
 fit it two ways:
 
 * `Model A`: `latent(0 + trait | individual, d = 2)` only
@@ -200,8 +230,8 @@ gives the diagonal of $\mathbf S$ as a named numeric vector.
 
 ## Communality and ICC need the full $\Sigma$ too
 
-Two trait-level summaries that come up everywhere in the
-behavioural-syndromes / phenotypic-integration literature both depend
+Two trait-level summaries used in behavioural-syndromes and
+phenotypic-integration workflows both depend
 on the *full* $\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathbf S$
 decomposition. If you compute them from a latent-only fit you get the
 wrong answer.
@@ -214,8 +244,8 @@ $$
 
 This is the proportion of trait $t$'s variance that is *shared* with
 the other traits via the latent factors. It is bounded between 0 and 1
-and behaves like a multivariate generalisation of $h^2$ (heritability)
-or $R^2$.
+and is a proportion-of-variance summary, analogous in scale to $h^2$
+(heritability) or $R^2$.
 
 **The catch**: with latent-only fits, $S_{tt} = 0$ for every trait by
 construction, so $c_t^2 = 1$ for every trait — the communality is
@@ -248,7 +278,7 @@ In gllvmTMB this is
 extract_ICC_site(fit)
 ```
 
-— see the recommended **two-`unique()`** pattern earlier in the article.
+— see the recommended **two-`unique()`** pattern below.
 
 ## When `unique()` is not the right term
 
@@ -325,9 +355,16 @@ For repeated-measures data the recommended pattern is two `latent() + unique()`
 pairs (Nakagawa et al. *in prep*):
 
 ```r
-value ~ 0 + trait +
-        latent(0 + trait | individual, d = d_B) + unique(0 + trait | individual) +
-        latent(0 + trait | obs_id,    d = d_W) + unique(0 + trait | obs_id)
+fit_two_level <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | individual, d = d_B) +
+    unique(0 + trait | individual) +
+    latent(0 + trait | obs_id, d = d_W) +
+    unique(0 + trait | obs_id),
+  data = df,
+  unit = "individual",
+  unit_obs = "obs_id"
+)
 ```
 
 giving
@@ -337,7 +374,7 @@ $\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \b
 (integrated plasticity — within-individual covariance).
 **Each level has its own `unique()`**.
 
-## Future work: observation-level random effects for non-Gaussian
+## Observation-level random effects for non-Gaussian fits
 
 For overdispersed Poisson and similar count families, the latent-scale
 "unique component" is recovered by adding an observation-level random
@@ -349,10 +386,11 @@ $$
 
 The $\sigma_e^2$ on the latent log scale plays the role of $\mathbf S$.
 Native OLRE support is available: add an `obs_id` column (one level per
-row), include `unique(0 + trait | obs_id)` in the formula, and use
-`extract_residual_split(fit)` to separate $\sigma^2_e$ (the estimated
-OLRE variance) from $\sigma^2_d$ (the distribution-specific latent
-residual; Nakagawa & Schielzeth 2010; Nakagawa, Johnson & Schielzeth 2017).
+row), include `unique(0 + trait | obs_id)` in the formula, pass
+`unit_obs = "obs_id"`, and use `extract_residual_split(fit)` to separate
+$\sigma^2_e$ (the estimated OLRE variance) from $\sigma^2_d$ (the
+distribution-specific latent residual; Nakagawa & Schielzeth 2010;
+Nakagawa, Johnson & Schielzeth 2017).
 
 ## Summary
 
@@ -368,9 +406,9 @@ residual; Nakagawa & Schielzeth 2010; Nakagawa, Johnson & Schielzeth 2017).
 ## See also
 
 * [Pitfalls](pitfalls.html) — common mistakes including correlation inflation
-* [`?diag_re`](../reference/diag_re.html) — the formula keyword
+* [`?unique`](../reference/unique.html) — the formula keyword for the unique diagonal
 * [`?extract_Sigma`](../reference/extract_Sigma.html) — the unified extractor
-* [Lambda constraints](lambda-constraint.html) — confirmatory models
+* [`?suggest_lambda_constraint`](../reference/suggest_lambda_constraint.html) — a helper for confirmatory loading structures
 * [Choose your model](choose-your-model.html) — decision tree
 * **Nakagawa & Schielzeth (2010)** Repeatability for Gaussian and non-Gaussian data: a practical guide for biologists. *Biological Reviews* 85(4):935–956. <https://doi.org/10.1111/j.1469-185X.2010.00141.x>
 * **Nakagawa et al.** (*in prep*) Quantifying between- and within-individual correlations and the degree of trait integration.

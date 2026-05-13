@@ -85,21 +85,42 @@ or any similar layout. The function does not assume the
 ecological special case; it is the unified matrix-in entry point
 for the stacked-trait GLLVM engine.
 }
-\examples{
-\dontrun{
-set.seed(1)
-Y <- matrix(rnorm(50 * 8), 50, 8,
-            dimnames = list(NULL, paste0("sp", 1:8)))
-X <- data.frame(env_temp = rnorm(50), env_precip = rnorm(50))
-fit <- gllvmTMB_wide(Y, X, d = 2,
+\section{Deprecation}{
+
+\code{gllvmTMB_wide()} is \strong{soft-deprecated} as of gllvmTMB 0.2.0. The
+recommended replacement is \code{\link[=gllvmTMB]{gllvmTMB()}} with the \code{\link[=traits]{traits()}} LHS
+marker, which is more general (formula-native predictors, full
+covariance grammar, mixed-family fits) and matches the
+formula-first idiom used by \code{lme4}, \code{glmmTMB}, \code{brms}, \code{drmTMB}.
+
+Migration:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{## Old:
+fit <- gllvmTMB_wide(Y, X = X_df, d = 2,
                      formula_extra = ~ env_temp + env_precip)
-summary(fit)
+
+## New:
+df_wide <- cbind(data.frame(unit = rownames(Y)),
+                 as.data.frame(Y), X_df)
+fit <- gllvmTMB(
+  traits(<colnames of Y>) ~ 1 + env_temp + env_precip +
+    latent(1 | unit, d = 2),
+  data = df_wide,
+  unit = "unit"
+)
+}\if{html}{\out{</div>}}
+
+Per-cell weight matrices (the one path \code{gllvmTMB_wide()} uniquely
+supports) remain available via the long-format API by passing a
+long-format \code{weights} column aligned with \verb{(unit, trait)} rows.
+See \code{docs/design/02-data-shape-and-weights.md}.
 }
-}
+
 \seealso{
-\code{\link[=gllvmTMB]{gllvmTMB()}} for the long-format engine; \code{\link[=extract_Sigma]{extract_Sigma()}}
-for post-fit covariance summaries; \code{\link[=extract_ordination]{extract_ordination()}} for
-scores and loadings; \code{\link[=traits]{traits()}} for formula-LHS wide data-frame
-input. The source-tree contract is
-\code{docs/design/02-data-shape-and-weights.md}.
+\code{\link[=gllvmTMB]{gllvmTMB()}} for the recommended formula-API entry point
+(long format or wide data frames via \code{\link[=traits]{traits()}} LHS sugar);
+\code{\link[=extract_Sigma]{extract_Sigma()}} for post-fit covariance summaries;
+\code{\link[=extract_ordination]{extract_ordination()}} for scores and loadings. The source-tree
+contract is \code{docs/design/02-data-shape-and-weights.md}.
 }
+\keyword{internal}

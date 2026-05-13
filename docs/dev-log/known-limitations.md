@@ -55,7 +55,7 @@ delta_gamma, ordinal_probit. Mixed-family fits are accepted via
 
 ### Data shapes
 
-Two user-facing entry points, both reach the same long-format engine:
+One user-facing entry point, two data shapes:
 
 - `gllvmTMB(value ~ ..., data = df_long, unit = "...")` -- the
   canonical long-format path.
@@ -63,8 +63,13 @@ Two user-facing entry points, both reach the same long-format engine:
   unit = "...")` -- the wide data-frame path. `traits()` captures a
   tidyselect-style column selection, pivots internally, and expands
   the compact RHS (per "Sugar parser" below).
-- `gllvmTMB_wide(Y, ...)` -- the wide matrix wrapper for matrix-first
-  workflows (and the only path that accepts per-cell weight matrices).
+
+Both shapes go through `gllvmTMB()`. The legacy
+`gllvmTMB_wide(Y, ...)` matrix wrapper is **soft-deprecated as of
+0.2.0**; new code should use the formula API above. Per-cell weight
+matrices (previously the unique selling point of `gllvmTMB_wide()`)
+are supported via the long-format API by passing a `weights` column
+aligned with `(unit, trait)` rows.
 
 ## Sugar parser (PR #39)
 
@@ -95,10 +100,13 @@ left-hand sides, so existing user code does not need to change.
 
 These are intentional design boundaries of the sugar layer, not bugs:
 
-- **Per-cell weight matrices** are not accepted on the formula-wide
-  path. Per-row weight vectors of length `nrow(data)` are replicated
-  across traits automatically. For per-cell weights, use the matrix
-  entry point `gllvmTMB_wide(Y, weights = W, ...)`.
+- **Per-cell weight matrices** are not accepted as a matrix on the
+  formula-wide path. Per-row weight vectors of length `nrow(data)`
+  are replicated across traits automatically. For per-cell weights,
+  pass a long-format `weight` column on a long-pivoted data frame
+  (`pivot_longer()` your wide weights to match the long fit). The
+  legacy `gllvmTMB_wide(Y, weights = W, ...)` matrix-of-weights
+  path still works but is soft-deprecated as of 0.2.0.
 - **Mixed-family fits** (`family = list(...)` keyed by trait) are
   not intercepted by `traits()`; the family list flows through to
   the long-format engine. The compact RHS still expands correctly.

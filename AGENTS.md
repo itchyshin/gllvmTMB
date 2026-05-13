@@ -122,16 +122,19 @@ package contributors.
   next when a model or syntax is unsupported.
 - When demonstrating how to fit a `gllvmTMB` model in user-facing
   prose -- README, vignettes, and Tier-1 articles -- show **both**
-  long-format and wide-format calls side by side. The long form
+  long-format and wide-format calls side by side, through the single
+  `gllvmTMB()` entry point. The long form
   (`gllvmTMB(value ~ ..., data = df_long)`) is canonical; the wide
   data-frame form uses the simplified `traits(...)` LHS grammar
-  (`traits(...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`) and
-  the wide matrix form uses `gllvmTMB_wide(Y, ...)`.
+  (`traits(...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`).
   Readers vary in mental model -- some think in matrices, some in
   long tibbles -- and examples should avoid making wide-data-frame
   readers write `0 + trait` and `(0 + trait):x` by hand. The same
   shorthand applies to `indep()`, `dep()`, and `spatial_*()` terms;
   ordinary `(1 | group)` random intercepts pass through unchanged.
+  The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` is
+  soft-deprecated as of 0.2.0; new examples should use the
+  formula API.
   Roxygen `@examples` blocks for individual keyword or extractor
   functions may stay single-form when the keyword is intrinsically
   one shape.

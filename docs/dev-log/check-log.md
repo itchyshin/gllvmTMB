@@ -1081,14 +1081,27 @@ Concrete audit checklist for prose and roxygen:
    strong phylogenetic signal. When the phylogenetic uniqueness
    $S_{\text{phy}}$ is not separately identifiable from
    $\Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top}$, the
-   canonical fallback is bare `phylo_latent + latent + unique`
-   with $\Omega = \Sigma_{\text{phy}} + \Sigma_{\text{non}}$ as
-   the reporting target. **Do not over-prescribe the paired
-   form**; check identifiability against the data shape before
-   flipping a bare-form recommendation to paired-only.
-   (Lesson from the 2026-05-13 maintainer correction:
-   *"for phylogeny there are cases we cannot get 2 Ss like you
-   know - omega is usual in such a context"*.)
+   canonical fallback is bare `phylo_latent + latent + unique`,
+   which fits the **three-piece form**
+
+   $$
+   \Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top} +
+   \Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S
+   $$
+
+   -- two $\Lambda \Lambda^{\!\top}$ pieces (phylo + non-phylo)
+   plus a single non-tier-specific diagonal $S$ -- with $\Omega$
+   as the reporting target. **Do not roll the phylo piece up as
+   $\Sigma_{\text{phy}}$** in the three-piece form, since
+   $\Sigma_{\text{phy}} = \Lambda \Lambda^{\!\top} + S_{\text{phy}}$
+   already implies a $S_{\text{phy}}$ that the fallback does not
+   have. **Do not over-prescribe the paired form**; check
+   identifiability against the data shape before flipping a
+   bare-form recommendation to paired-only. (Lesson from the
+   2026-05-13 maintainer correction: *"for phylogeny there are
+   cases we cannot get 2 Ss like you know - omega is usual in
+   such a context"* and *"one S for phylo is when we cannot
+   really get 4 parts OK (3 parts are fine in such a case)"*.)
 9. **Every `\Psi`, `\Omega`, `U`, `U_phy`, `U_non`**: math
    notation should use `\mathbf S`, `\mathbf S_\text{phy}`,
    `\mathbf S_\text{non}` per PR #40 + PR #72 naming convention

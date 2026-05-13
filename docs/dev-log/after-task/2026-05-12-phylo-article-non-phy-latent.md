@@ -59,6 +59,27 @@ After-task report at branch start per `CONTRIBUTING.md`.
     Lambda_phy^T` and `S_phy`, or between `Lambda_non
     Lambda_non^T` and `S_non`)" -- previously only mentioned
     the phylogenetic split.
+  - **New `## Communality (within each tier)` section**: shows
+    `extract_communality(fit, level = "unit")` for the
+    non-phylogenetic side and the manual `diag(Sigma_phy_shared)
+    / diag(Sigma_phy_total)` ratio for the phylogenetic side.
+    Communality is defined only when both `latent()` and
+    `unique()` are fit at a tier; this section is what makes
+    the four-component fix pedagogically useful, not just
+    cosmetic.
+  - **New `## Phylogenetic heritability` section**: shows
+    `extract_phylo_signal(fit)` returning the three-way
+    decomposition `H^2 + C^2_non + Psi = 1` per trait, with
+    prose explaining `H^2` (phylogenetic share, both phy
+    components), `C^2_non` (non-phy shared share, requires the
+    non-phy `latent()` term), and `Psi` (non-phy unique share).
+    Concludes: "`C^2_non` is structurally zero when the
+    formula omits the non-phylogenetic `latent()` term, so the
+    three-way split collapses to `H^2 + Psi`. Adding `latent(0
+    + trait | species, d = K)` (long) or `latent(1 | species,
+    d = K)` (wide), as this article does, is what makes
+    `C^2_non` a genuine non-phylogenetic shared-axis component
+    rather than a placeholder."
 - **`docs/dev-log/after-task/2026-05-12-phylo-article-non-phy-latent.md`**
   (NEW, this file).
 
@@ -134,6 +155,21 @@ This is a Tier-1 vignette article fix. The "tests" are:
    split") is exemplified by the actual fitted numbers on a
    30-species tree -- a reader looking at the rendered output
    sees the split is not always clean, which is the lesson.
+5. `extract_communality(fit, level = "unit")` returns a named
+   numeric vector with nonzero values (verified in the rendered
+   output: c2_non = 0.78, 0.77, 0.35). The phylogenetic-side
+   communality `diag(Sigma_phy_shared) / diag(Sigma_phy_total)`
+   also returns nonzero values (1.00, 0.64, 0.71). Both would
+   be structurally undefined if the non-phy `latent()` term
+   were absent (the original 3-component model).
+6. `extract_phylo_signal(fit)` returns a three-column
+   decomposition `H^2 + C^2_non + Psi = 1` with all three
+   columns nonzero (verified: trait_1 = 0.87 + 0.10 + 0.03,
+   trait_2 = 0.46 + 0.42 + 0.13, trait_3 = 0.36 + 0.22 + 0.41,
+   each row summing to 1.0). With the original 3-component
+   model, `C^2_non` would be structurally 0 and the table
+   would collapse to two columns -- which is the maintainer's
+   point that motivated this PR.
 
 If a future fit_long / fit_wide call introduces a long/wide
 mismatch (e.g., the wide-formula expander forgets to expand

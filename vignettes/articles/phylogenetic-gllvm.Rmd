@@ -210,6 +210,59 @@ For a small tree, do not over-interpret either split (between
 targets are often the totals `Sigma_phy` and `Sigma_non`, especially
 when the tree is small or the ranks are exploratory.
 
+## Communality (within each tier)
+
+Communality `c_t^2` is the fraction of a trait's within-tier variance
+explained by the shared latent axis. It is defined only when both a
+`latent()` and a `unique()` term are fit at that tier; that is what
+the four-component decomposition gives us on both the phylogenetic and
+non-phylogenetic sides.
+
+```{r communality}
+# Non-phylogenetic communality is one extractor call.
+c2_non <- extract_communality(fit, level = "unit")
+round(c2_non, 2)
+
+# Phylogenetic communality is the same ratio, computed from the
+# Sigma_phy decomposition above.
+c2_phy <- diag(Sigma_phy_shared) / diag(Sigma_phy_total)
+round(c2_phy, 2)
+```
+
+A value near 1 means the trait's within-tier variance is dominated by
+the shared axis (high "integration" with the other traits at that
+tier). A value near 0 means the trait is mostly idiosyncratic at that
+tier.
+
+## Phylogenetic heritability
+
+Phylogenetic heritability `H^2` is a between-tier ratio: the fraction
+of total trait variance attributable to the phylogenetic component
+(both shared and unique parts of `Sigma_phy`) versus the
+non-phylogenetic component (both shared and unique parts of
+`Sigma_non`). It is distinct from the within-tier communalities
+above.
+
+The convenience extractor returns the full three-way decomposition
+`H^2 + C^2_non + Psi = 1` per trait, where:
+
+- `H^2` = phylogenetic share = `diag(Sigma_phy_total) / V_eta`
+- `C^2_non` = non-phylogenetic *shared* share =
+  `diag(Lambda_non Lambda_non^T) / V_eta`
+- `Psi` = non-phylogenetic *unique* share = `s_non / V_eta`
+
+with `V_eta = diag(Sigma_phy_total) + diag(Lambda_non Lambda_non^T) + s_non`.
+
+```{r phylo-heritability}
+extract_phylo_signal(fit)
+```
+
+`C^2_non` is structurally zero when the formula omits the non-phylogenetic
+`latent()` term, so the three-way split collapses to `H^2 + Psi`. Adding
+`latent(0 + trait | species, d = K)` (long) or `latent(1 | species, d = K)`
+(wide), as this article does, is what makes `C^2_non` a genuine
+non-phylogenetic shared-axis component rather than a placeholder.
+
 ## Check identifiability
 
 The diagnostic functions refit the same data under simpler or more

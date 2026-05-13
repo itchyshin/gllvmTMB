@@ -17,8 +17,14 @@ of the scan.
 **Canonical model the scan checks against** (revised per
 maintainer correction below)
 
-The phylogenetic decomposition has two canonical forms depending
-on identifiability:
+$\Omega$ is the **total trait covariance**, the sum of every
+variance component in whichever model you fit. The number of
+pieces in $\Omega$ follows from the keyword terms in the
+formula -- four pieces for the paired phylo model below, three
+for the non-identifiable-$S_{\text{phy}}$ fallback, more if you
+add `spatial_*` or extra latent tiers. Two canonical
+phylogenetic forms below; both can be reported via $\Omega$ in
+the usual way.
 
 1. **Four-piece (paired) form**, when both $S$ diagonals are
    identifiable (typically crossed site x species with

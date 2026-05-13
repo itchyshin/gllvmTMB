@@ -938,3 +938,50 @@ Not run:
 - Full `devtools::test()` and `devtools::check()` were not run in this
   lane; the change is scoped to one article, one extractor advisory,
   roxygen text for that extractor, and targeted tests.
+
+## 2026-05-13 -- Covariance-correlation Pat/Rose reread (Codex lane)
+
+Coordination:
+
+- Continued on `codex/covariance-correlation-pat-rose-reread`.
+  Open PR census showed only PR #68 touching
+  `docs/dev-log/coordination-board.md`; the coordination board still
+  assigns `vignettes/articles/covariance-correlation.Rmd` to Codex.
+- Pat read the article as an applied-user Tier-1 page. Rose read it
+  as a pre-publish consistency gate. Their highest-impact findings
+  were folded into the article before validation.
+
+Implemented:
+
+- The article now opens with the behavioural-syndrome use case and
+  shows the latent-only failure model beside the `latent() + unique()`
+  fix before the decomposition.
+- The opening now includes the wide data-frame equivalent through
+  `gllvmTMB(traits(...) ~ ...)`, avoiding the soft-deprecated
+  `gllvmTMB_wide()` path.
+- The decomposition prose defines `level`, keeps `S` / `s` notation,
+  and removes overbroad wording such as "Every published GLLVM
+  treatment" and "come up everywhere".
+- Two-level and OLRE examples now show `unit_obs = "obs_id"` whenever
+  they use `obs_id` as the within-individual or observation-level tier.
+- The stale "Future work" OLRE heading is now current-support wording.
+  The See also block links to `?unique`, `?extract_Sigma`, and
+  `?suggest_lambda_constraint` instead of stale or missing targets.
+
+Checks run:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", new_process = FALSE)'`
+  rendered `articles/covariance-correlation.html`; only the known
+  `../logo.png` pkgdown image warning appeared.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` passed with
+  "No problems found."
+- `git diff --check` passed.
+- Targeted Rose scan over the article and rendered HTML found no
+  stale hits for `diag(U)`, `U_phy`, `U_non`, `gllvmTMB_wide`,
+  `unique (unique)`, `Future work`, `lambda-constraint.html`, or
+  `diag_re`.
+
+Not run:
+
+- Full `devtools::test()` and `devtools::check()` were not run; this
+  lane changes one article and dev-log bookkeeping only.

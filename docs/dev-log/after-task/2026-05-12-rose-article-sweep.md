@@ -34,17 +34,25 @@ Two cross-doc consistency findings, two surgical fixes each:
 ### Finding 1: `Sigma = Lambda Lambda^T + S` -> `+ diag(s)` (cosmetic)
 
 Both forms are valid under PR #40 (S = diag(s)). README and other
-docs use `+ diag(s)`. Two article instances switched:
+docs use `+ diag(s)`. One article instance switched:
 
 - **`vignettes/articles/api-keyword-grid.Rmd`** line 56 (in the
   "The Five Modes" section's decomposed-model block).
-- **`vignettes/articles/covariance-correlation.Rmd`** line 77 (in
-  a comment introducing the simulation truth).
+
+NOTE: `vignettes/articles/covariance-correlation.Rmd` line 77 has
+the same drift but is **NOT** touched in this PR. Codex is
+working on a substantive revision of that article (multiple
+mistakes reported by the maintainer 2026-05-13 03:30 MT). The
+canonical-form normalisation will land naturally with that
+revision; touching the line here would create a rebase conflict
+for Codex.
 
 ### Finding 2: legacy `"B"` / `"W"` aliases -> canonical `"unit"` / `"unit_obs"`
 
-Five positional-argument call sites canonicalised to the named
-`level = ...` form:
+Four positional-argument call sites canonicalised to the named
+`level = ...` form (a fifth and sixth in
+`covariance-correlation.Rmd` were dropped to avoid the Codex
+collision; see note above):
 
 - **`vignettes/articles/behavioural-syndromes.Rmd`**:
   - line 430: `extract_communality(fit, "B")` ->
@@ -53,11 +61,6 @@ Five positional-argument call sites canonicalised to the named
     `extract_communality(fit, level = "unit_obs")`.
   - line 457: `extract_ordination(fit, "B")` ->
     `extract_ordination(fit, level = "unit")`.
-- **`vignettes/articles/covariance-correlation.Rmd`**:
-  - line 227: `extract_communality(fit_A, "B")` ->
-    `extract_communality(fit_A, level = "unit")`.
-  - line 228: `extract_communality(fit_B, "B")` ->
-    `extract_communality(fit_B, level = "unit")`.
 - **`vignettes/articles/choose-your-model.Rmd`**:
   - line 352 (in a table cell): `extract_communality(fit, "B")`
     / `extract_communality(fit, "W")` ->

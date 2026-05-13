@@ -182,10 +182,10 @@ $$
 with
 
 * $\mathbf{u}_s \sim \mathcal{N}(\mathbf{0}, \boldsymbol{\Sigma}_B)$,
-  $\boldsymbol{\Sigma}_B = \boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^{\!\top} + \boldsymbol{\Psi}_B$
+  $\boldsymbol{\Sigma}_B = \boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^{\!\top} + \boldsymbol{S}_B$
   -- *global functional integration*, between-site trait covariance.
 * $\mathbf{e}_{si} \sim \mathcal{N}(\mathbf{0}, \boldsymbol{\Sigma}_W)$,
-  $\boldsymbol{\Sigma}_W = \boldsymbol{\Lambda}_W \boldsymbol{\Lambda}_W^{\!\top} + \boldsymbol{\Psi}_W$
+  $\boldsymbol{\Sigma}_W = \boldsymbol{\Lambda}_W \boldsymbol{\Lambda}_W^{\!\top} + \boldsymbol{S}_W$
   -- *local functional integration*, within-site species deviations.
 * $\delta_{sit} \sim \mathcal{N}(0, \sigma^2_\delta)$ -- residual.
 
@@ -479,7 +479,7 @@ and point at the dedicated articles for the worked fits.
 # §3 -- Spatial syndrome partitioning
 
 Add a `spatial_latent` term in addition to `spatial_unique` to
-estimate $\boldsymbol{\Sigma}_R = \boldsymbol{\Lambda}_R\boldsymbol{\Lambda}_R^{\!\top} + \boldsymbol{\Psi}_R$,
+estimate $\boldsymbol{\Sigma}_R = \boldsymbol{\Lambda}_R\boldsymbol{\Lambda}_R^{\!\top} + \boldsymbol{S}_R$,
 the spatial trait-covariance decomposition. Loadings on
 $\boldsymbol{\Lambda}_R$ tell you which traits hang together
 *spatially*.
@@ -503,7 +503,7 @@ two-piece decomposition documented in
 [`phylogenetic-gllvm`](phylogenetic-gllvm.html). The spatial-
 partition model needs more spatial signal than the adjustment
 model to identify both
-$\boldsymbol{\Lambda}_R$ and $\boldsymbol{\Psi}_R$ separately;
+$\boldsymbol{\Lambda}_R$ and $\boldsymbol{S}_R$ separately;
 treat its loadings as a sensitivity analysis to the adjusted model's per-trait
 spatial variances. A worked example will appear in the planned
 `spatial-trait-syndromes` article.
@@ -512,7 +512,7 @@ spatial variances. A worked example will appear in the planned
 
 Symmetric to the spatial-partition model, but on the phylogeny side: pair `phylo_latent`
 with `phylo_unique` to estimate
-$\boldsymbol{\Sigma}_P = \boldsymbol{\Lambda}_P\boldsymbol{\Lambda}_P^{\!\top} + \boldsymbol{\Psi}_P$,
+$\boldsymbol{\Sigma}_P = \boldsymbol{\Lambda}_P\boldsymbol{\Lambda}_P^{\!\top} + \boldsymbol{S}_P$,
 the phylogenetic two-piece decomposition. Loadings on
 $\boldsymbol{\Lambda}_P$ tell you which traits cluster together
 *along the tree*.
@@ -537,7 +537,7 @@ diagnostic counterpart [`two-U-phylogeny`](two-U-phylogeny.html).
 That article also covers the identifiability conditions: $K_P$
 ($d$ in `phylo_latent`) is identifiable up to rotation, and the
 two-piece split between $\boldsymbol{\Lambda}_P\boldsymbol{\Lambda}_P^{\!\top}$
-and $\boldsymbol{\Psi}_P$ requires either $K_P < T$ or a
+and $\boldsymbol{S}_P$ requires either $K_P < T$ or a
 constraint matrix.
 
 ## What we did *not* fit

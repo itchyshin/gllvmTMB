@@ -51,8 +51,18 @@ During the pause window:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | (none active) | -- | -- | standing by; about to pick up first Codex-handoff lane |
+| Claude | Article cleanup + long/wide sweep | #74 / `agent/article-cleanup-long-wide-sweep` | 5 articles + after-task | CI green; queued for merge |
+| Claude | `choose-your-model.Rmd` rewrite (F1+F2+F3) | #75 / `agent/choose-your-model-rewrite` | `choose-your-model.Rmd` + after-task | CI green; queued for merge |
+| Claude | Remove misleading `unique()` section | #76 / `agent/covariance-correlation-fix-unique-section` | `covariance-correlation.Rmd` + after-task | CI green; queued for merge |
+| Claude | Pitfalls section 5 rewrite (paired phylo) | #77 / `agent/pitfalls-phylo-paired-fix` | `pitfalls.Rmd` | CI green; queued for merge (touches same file as #74 -- merge #77 first) |
+| Claude | functional-biogeography: replace M1-M4 jargon | #78 / `agent/functional-biogeography-no-Mlabels` | `functional-biogeography.Rmd` | CI pending |
+| Claude | check-log Kaizen + post-overnight drift scan | #79 / `agent/checklog-rebuild-canon-lesson` | `check-log.md` + new `audits/2026-05-13-*.md` | CI pending |
 | Codex | -- (paused ~May 13 -> ~May 17) | -- | -- | paused per maintainer handoff |
+
+**WIP**: 6 Claude PRs open (well past the soft cap of 3). The
+maintainer explicitly requested this thoroughness today
+("Kaizen!"); cap suspended for this in-flight batch. **No more
+new Claude PRs until #74-#79 merge and WIP drops.**
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -60,11 +70,16 @@ PR opens, fill `PR / branch`. When the PR merges, move the row to
 
 ## Queued lanes (not yet picked up)
 
+Per `docs/dev-log/audits/2026-05-13-post-overnight-drift-scan.md`
+batching plan; opened only after the in-flight WIP drops.
+
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Claude (Codex pause) | `_pkgdown.yml` navbar restructure (PR #64 Section I) | Available now; reassigned from Codex during pause |
-| Claude (Codex pause) | Article cleanup: broken-link removals (PR #62 Pat audit + PR #64 Section H) | Available now; reassigned from Codex during pause |
-| Claude (Codex pause) | `choose-your-model.Rmd` rewrite (PR #62 F1+F2+F3) | Available now; reassigned from Codex during pause |
+| Claude (Codex pause) | Batch A: paired-canon corrections in `R/unique-keyword.R`, `R/extract-omega.R`, `R/fit-multi.R` (roxygen + cli_inform prose only) | #74-#79 merged |
+| Claude (Codex pause) | Batch B: drop in-prep `(Eq. 13/14/15)` citations in `R/diagnose.R` | #74-#79 merged |
+| Claude (Codex pause) | Batch C: replace `\Psi` notation + `Phase D / Phase K` jargon in `functional-biogeography.Rmd` + `joint-sdm.Rmd` | #74-#79 merged |
+| Claude (Codex pause) | Batch D: convert active `gllvmTMB_wide()` recommendations to `traits(...)` form in `morphometrics.Rmd` + `response-families.Rmd` | #74-#79 merged |
+| Claude (Codex pause) | Batch E: `\mathbf{U} -> \mathbf{S}` in `behavioural-syndromes.Rmd` math; roxygen-only sweep of `R/extract-two-U-via-PIC.R` (function name stays) | #74-#79 merged |
 
 Move a row to "Active lanes" when you start it.
 
@@ -176,6 +191,11 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-13 ~17:30 MT: Active-lane table populated with the six
+  in-flight Claude PRs (#74-#79); Codex's three queued lanes
+  marked done (navbar PR #73, article cleanup PR #74, choose-your-model
+  PR #75); Batch A-E queue inserted for the post-overnight drift
+  scan campaign; WIP-cap suspension acknowledged in-line (Claude).
 - 2026-05-13 ~08:15 MT: Codex paused after PR #69; queued lanes
   reassigned to Claude during pause window; file-ownership
   rows tagged `(Codex pause)` (Claude).
@@ -186,4 +206,3 @@ Resolved questions move to "Recently resolved" with the answer.
   README D1+D2+D4 lane; Codex's queued lanes updated (Claude).
 - 2026-05-13 ~05:11 MT: Active-lane schema amended per Codex
   feedback; "Queued lanes" subsection added (Claude).
-- 2026-05-13 ~05:00 MT: file created (Claude).

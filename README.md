@@ -54,11 +54,6 @@ pre-CRAN and intentionally bounded: use it for the implemented
 stacked-trait workflows listed below, and treat unsupported model
 classes as roadmap work rather than hidden features.
 
-The legacy repository at
-[`itchyshin/gllvmTMB-legacy`](https://github.com/itchyshin/gllvmTMB-legacy)
-preserves the 0.1.x history. The current package is a fresh,
-focused rebuild.
-
 ## Install
 
 `gllvmTMB` is not on CRAN yet. Install the development build from

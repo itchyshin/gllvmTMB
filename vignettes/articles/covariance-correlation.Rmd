@@ -280,29 +280,19 @@ extract_ICC_site(fit)
 
 — see the recommended **two-`unique()`** pattern below.
 
-## When `unique()` is not the right term
+## Binomial responses: the link's implicit residual
 
-Three situations need care:
+Binary outcomes (`family = binomial()`) are a special case. The
+link function fixes a latent-scale residual variance: $\pi^2/3$
+for `logit`, $1$ for `probit`, $\pi^2/6$ for `cloglog`. This
+implicit residual already plays the role of $\mathbf S$ on the
+latent scale, so an explicit `unique()` term on top of a binary
+fit is typically not identified.
 
-### 1. Binary responses (binomial family)
-
-For binary outcomes the latent-scale residual is fixed by the link
-function:
-
-| Link | Implicit residual variance |
-|---|---|
-| `logit` | $\pi^2/3 \approx 3.290$ |
-| `probit` | $1$ |
-| `cloglog` | $\pi^2/6 \approx 1.645$ |
-
-This implicit residual plays the role of $\mathbf S$ on the latent
-scale. Adding an explicit `unique()` term on top of binary data is
-typically not identified — the engine cannot distinguish between
-`unique()` variance and the link's implicit residual.
-
-`extract_Sigma()` has a `link_residual = "auto"` option that adds the
-link-specific implicit residual to $\mathrm{diag}(\boldsymbol\Sigma)$
-for the marginal latent-scale interpretation:
+`extract_Sigma()` has a `link_residual = "auto"` option that adds
+the link-specific implicit residual to
+$\mathrm{diag}(\boldsymbol\Sigma)$ for the marginal latent-scale
+interpretation:
 
 ```{r binomial-demo, eval = FALSE}
 # (illustrative — not run; needs a binary fit)
@@ -310,44 +300,13 @@ extract_Sigma(fit_binary, level = "unit", part = "total",
               link_residual = "auto")
 ```
 
-### 2. Phylogenetic tiers
-
-`phylo_latent(species, d = K)` gives the shared phylogenetic component
-$\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}$.
-If you also need trait-specific phylogenetic variance, the companion is
-`phylo_unique(species)`, not the ordinary non-phylogenetic
-`unique(0 + trait | species)` term. The ordinary `unique()` term belongs
-to the non-phylogenetic species tier.
-
-With both phylogenetic and non-phylogenetic species components, the
-decomposition is
-
-$$
-\boldsymbol\Sigma_\text{phy}
-  = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}
-    + \mathbf S_\text{phy},
-\qquad
-\boldsymbol\Sigma_\text{non}
-  = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^{\!\top}
-    + \mathbf S_\text{non},
-\qquad
-\boldsymbol\Omega = \boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{non}.
-$$
-
-`extract_Sigma(fit, level = "phy", part = "shared")` returns the
-phylogenetic shared component; `part = "unique"` returns the
-$\mathbf S_\text{phy}$ diagonal when `phylo_unique()` is fitted; and
-`part = "total"` returns $\boldsymbol\Sigma_\text{phy}$. When
-`unit = "species"`, `extract_Sigma(fit, level = "unit")` returns
-$\boldsymbol\Sigma_\text{non}$. Their sum is $\boldsymbol\Omega$;
-`extract_Omega(fit)` is the convenience extractor for that total.
-
-### 3. Confirmatory factor models
-
-If domain knowledge (or a likelihood-ratio test against the latent+unique
-model) tells you $\mathbf S = \mathbf 0$, then latent-only is the correct
-specification. This is rare in practice — most behavioural / morphometric
-data have at least some trait-specific noise — but it does happen.
+For everything else — continuous traits, count traits, mixed
+families — the recommended pattern is the paired `latent() +
+unique()` decomposition. The phylogenetic case extends this to a
+paired four-component decomposition (`phylo_latent +
+phylo_unique` on the phy side, `latent + unique` on the non-phy
+side); see the [Phylogenetic GLLVM article](phylogenetic-gllvm.html)
+for the worked example.
 
 ## Two-level (between + within) models: two `unique()` terms
 

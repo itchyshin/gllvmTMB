@@ -475,4 +475,265 @@ Did not cover:
    `vignettes/gllvmTMB.Rmd` with the same lens.
 
 Each recommendation can be one focused PR; no scope decision
-needed beyond D3 (pick a framing).
+needed beyond D3 (pick a framing). D3 was answered 2026-05-13
+~04:30 MT: **one entry point** (`gllvmTMB()`), two data shapes;
+`gllvmTMB_wide()` soft-deprecated in PR #65.
+
+## Section G: proposed reader path (added after Codex coordination)
+
+Codex relayed via maintainer 2026-05-13 ~04:45 MT that PR #61 is
+narrow correctness for `covariance-correlation.Rmd`, not the
+final documentation answer; the bigger ask is a Pat/Rose pkgdown
+coherence pass that gives users a fast reader path like
+drmTMB's. This Section G + H + I extends the audit with Codex's
+five-item request to make this doc the joint plan.
+
+### drmTMB's reader path (inspirational reference)
+
+The drmTMB README opens with one sentence ("`drmTMB` fits fast
+distributional regression models for one or two responses using
+TMB") and one concrete sentence about when to use it. Then a
+six-bullet "Start here" list with concrete user prompts ("New to
+the package? ... Not sure which response family fits your data?
+... Fitting a bivariate Gaussian model?"). drmTMB has 25 exports
+and zero matrix wrappers; its first article is `drmTMB.html`
+(Get Started), then specific-task guides, then a workflow guide,
+then references / boundaries.
+
+### Proposed `gllvmTMB` reader path
+
+```
+1. README index page (the pkgdown front page)
+   - One-paragraph opener defining "stacked-trait" by example
+     (per D1 / D4 -- already proposed)
+   - Three-bullet "What gllvmTMB distinguishes" (stacked-trait
+     long format; one formula grammar; TMB engine)
+   - One-screen "Start here" list with prompts (currently L35-48
+     of README; refine wording)
+   - One-screen "What can I model now?" (currently L128-155 of
+     README, but buried; move up per D2)
+   - "Install" + smoke test
+   - Boundaries
+
+2. First article: Get Started vignette (`vignettes/gllvmTMB.Rmd`)
+   - The one CRAN-built vignette; deliberately the shortest path
+     to a working fit.
+   - Audience: someone who just installed the package and wants
+     to fit ONE model.
+
+3. Tier-1 "model guide" articles (worked examples, in
+   complexity order):
+   - morphometrics (rung 0: one observational level, continuous)
+   - joint-sdm (rung 1: binary multivariate)
+   - behavioural-syndromes (rung 2: two observational levels)
+   - phylogenetic-gllvm (rung 3: phylogenetic dependence)
+   - functional-biogeography (rung 4: capstone, site x species
+     x trait with optional phylogeny and space)
+
+4. Tier-1 "concept" articles (read alongside the model guides):
+   - choose-your-model (decision tree; fixes from PR #62 F1-F3
+     before promoting)
+   - covariance-correlation (covered by Codex PR #61 substantive
+     fix; will need a Pat/Rose re-read after #61 lands)
+   - pitfalls (common gotchas)
+
+5. Tier-2 reference articles (lookup, not pedagogy):
+   - api-keyword-grid (3 x 5 covariance grid)
+   - response-families (the family map)
+   - ordinal-probit (the family with the most subtle semantics)
+   - (queued per PR #41) lambda-constraint, profile-likelihood-ci
+
+6. Developer / contributor notes (out of navbar; for the
+   contributor lane):
+   - `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`
+   - `docs/design/*` and `docs/dev-log/*`
+```
+
+Reading this top-to-bottom, Pat answers in order:
+"what does the package do?" (1)
+-> "can I get a fit running?" (2)
+-> "is my problem covered?" (3 + 4)
+-> "what should my formula look like?" (4 choose-your-model + 5 api-keyword-grid)
+-> "what could go wrong?" (4 pitfalls)
+-> "what's the technical detail?" (5 reference + 6 developer)
+
+## Section H: articles to keep / rewrite / demote
+
+Per-article verdict for the 11 articles on `origin/main`
+(post-PR #51 Codex ordinal-probit + post-PR #53 Claude
+phylogenetic-gllvm rewrite):
+
+| Article | Tier | Verdict | Reason |
+|---|---|---|---|
+| `morphometrics.Rmd` | 1 | **keep**; light fix | rung-0 worked example; only friction is 5 dead-link references (Pat audit). |
+| `joint-sdm.Rmd` | 1 | **keep**; light fix | rung-1 binary multivariate; uses canonical `level = "unit"`; only friction is 1 dead-link reference. |
+| `behavioural-syndromes.Rmd` | 1 | **keep**; PR #55 fixed legacy aliases | rung-2 two-level. |
+| `phylogenetic-gllvm.Rmd` | 1 | **keep**; PR #53 rewrote | rung-3 phylogenetic dependence; 4-component decomposition now canonical. |
+| `functional-biogeography.Rmd` | 1 | **keep**; light fix | capstone rung-4/5; 3 dead-link references. |
+| `choose-your-model.Rmd` | 1 | **rewrite** | Pat audit F1/F2/F3: wide-format framing missing; phylogeny advice undersells the 4-component decomposition; heuristic ladder figure cites nonexistent article. Highest-friction Tier-1 article. |
+| `covariance-correlation.Rmd` | 1 | **rewrite** | Codex PR #61 lands the narrow correctness fix; a Pat/Rose pre-publish re-read after #61 lands. |
+| `pitfalls.Rmd` | 1 | **keep**; light fix | only friction is 2 dead-link references. |
+| `api-keyword-grid.Rmd` | 2 | **keep**; PR #55 fixed `+ S` -> `+ diag(s)` | reference. |
+| `response-families.Rmd` | 2 | **keep** | reference; clean. |
+| `ordinal-probit.Rmd` | 2 | **keep** | Codex's recent port (PR #51); clean. |
+
+**Demote**: none. All 11 articles serve a distinct purpose and
+keep their Tier assignment.
+
+**Missing articles** (Pat audit broken-link findings) that need
+decisions:
+
+| Missing target | Recommended verdict |
+|---|---|
+| `corvidae-two-stage.html` | **demote to redirect**: `functional-biogeography.html` covers the two-stage workflow. Update articles referencing it. |
+| `cross-package-validation.html` | **write later** (Phase 5 cross-package validation deliverable; not user-facing pedagogy). Remove from article see-also lists. |
+| `lambda-constraint.html` | **write** (already on Codex Tier-2 queue per PR #41). |
+| `profile-likelihood-ci.html` | **write** (already on Codex Tier-2 queue per PR #41). |
+| `simulation-recovery.html` | **write later** (methods-paper-adjacent; defer to Phase 6). Remove from article see-also lists. |
+| `spde-vs-glmmTMB.html` | **write later** (benchmark; may belong in methods paper). Remove from article see-also lists. |
+
+## Section I: navbar / `_pkgdown.yml` structure
+
+Current `_pkgdown.yml` structure (from a quick read of the file):
+exists, defines reference index and articles index. Has not been
+audited in detail for navbar structure.
+
+**Proposed navbar structure** (mirroring drmTMB's clean pattern):
+
+```yaml
+navbar:
+  structure:
+    left:  [intro, models, articles, reference, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get started
+      href: articles/gllvmTMB.html
+    models:
+      text: Model guides
+      menu:
+      - text: Morphometrics (continuous traits)
+        href: articles/morphometrics.html
+      - text: Joint SDM (binary)
+        href: articles/joint-sdm.html
+      - text: Behavioural syndromes (two-level)
+        href: articles/behavioural-syndromes.html
+      - text: Phylogenetic GLLVM
+        href: articles/phylogenetic-gllvm.html
+      - text: Functional biogeography (capstone)
+        href: articles/functional-biogeography.html
+    articles:
+      text: Concepts and reference
+      menu:
+      - text: Choose your model
+        href: articles/choose-your-model.html
+      - text: Covariance and correlation
+        href: articles/covariance-correlation.html
+      - text: Common pitfalls
+        href: articles/pitfalls.html
+      - text: '---'
+      - text: 'API reference'
+      - text: API keyword grid
+        href: articles/api-keyword-grid.html
+      - text: Response families
+        href: articles/response-families.html
+      - text: Ordinal-probit
+        href: articles/ordinal-probit.html
+```
+
+This splits the current flat "Articles" navbar entry into
+**Model guides** (worked examples in complexity order) and
+**Concepts and reference** (decision-tree + concept articles +
+API reference). It separates "I want to fit X" from "I want to
+look up Y".
+
+**Not in this proposal**:
+
+- Reference index (function-by-function) stays as pkgdown's
+  default `articles/reference/`. No restructure.
+- News / changelog stays as default pkgdown `news/`.
+- Dev-log / design docs do NOT appear in the navbar
+  (intentional: contributor lane, not user lane).
+
+This navbar restructure is a `_pkgdown.yml` PR; coordination
+handoff to Codex per the maintainer's "coordinate before
+editing _pkgdown.yml" rule. Claude does not touch
+`_pkgdown.yml` in this PR.
+
+## Section J: first small PR to implement
+
+Codex's item 5: pick the smallest, highest-leverage PR to
+implement first.
+
+**Recommendation: README opener + section reordering** (D1 +
+D2 + D4 combined, one PR). Reasons:
+
+- Smallest diff: one file (`README.md`), three sub-changes.
+- Highest leverage: the README is the front-page Pat lands on
+  (the maintainer's original flag). Every other consistency
+  problem propagates from here.
+- Self-contained: does not block any in-flight work
+  (PR #61, #63, #64, #65 do not touch README structure
+  beyond the small data-shape edit in #65).
+- Mechanical: D1's opener wording is in this audit
+  (Section D1); D2's section reorder is in this audit
+  (Section D2); D4's "stacked-trait" definition is in
+  Section D4.
+
+**Out of scope for the first PR**:
+
+- Article rewrites (choose-your-model, covariance-correlation)
+  -- separate PRs after this one lands.
+- Navbar restructure (`_pkgdown.yml`) -- separate Codex PR.
+- Broken-link fixes -- mechanical follow-up PR after the
+  per-link WRITE/REMOVE/DEFER decisions (Section H, maintainer
+  rules).
+
+**Owner**: Claude can do the README PR (single file, prose;
+within Claude's lane). Coordination with Codex:
+
+- Codex's PR #61 covers `covariance-correlation.Rmd` and the
+  `extract_Sigma` advisory; does not touch README.
+- Codex's covariance-correlation re-read (post-#61) and the
+  navbar restructure are Codex's natural next bites.
+- The 6 missing-article decisions (Section H) are scope
+  decisions for the maintainer; mechanical follow-up either
+  way.
+
+## Section K: file-ownership coordination (Claude vs Codex)
+
+Per Codex's coordination request 2026-05-13 ~04:45 MT, the
+files that need explicit ownership before editing:
+
+| File | Owner (this docs/navigation pass) |
+|---|---|
+| `vignettes/articles/covariance-correlation.Rmd` | **Codex** (PR #61 + post-#61 re-read) |
+| `_pkgdown.yml` | **Codex** (navbar restructure) |
+| `vignettes/articles/choose-your-model.Rmd` | open; either agent. Claude has the audit context (PR #62 F1/F2/F3). |
+| Other Tier-1 article rewrites | open; one agent per article ideally |
+| `README.md` | **Claude** (PR #60 removed legacy-repo pointer; PR #65 dropped wide-matrix code block; the D1+D2+D4 opener rewrite is next) |
+| `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` | **Claude** (rule files; PR #59 added see-also doc 04; PR #65 added deprecation note) |
+| `docs/dev-log/*` | each agent writes their own `after-task/*.md` |
+| `docs/design/*` | open; coordinate per file |
+| `inst/CITATION`, `inst/COPYRIGHTS` | open; mechanical edits |
+| `R/*` | **Codex** by default; Claude only for rule-file-driven changes (e.g. PR #65 deprecation) |
+
+If either agent needs to edit a "Codex"-owned file, leave a
+coordination comment first. If either agent needs to edit a
+"Claude"-owned file, same.
+
+## Section L: cross-references
+
+- PR #62 (merged): Pat applied-user audit
+  (`docs/dev-log/shannon-audits/2026-05-13-pat-applied-user-audit.md`).
+- PR #63 (CI): `Language: en-GB` + curated `inst/WORDLIST`
+  (Phase 5 prep).
+- PR #64 (this audit, in CI): Rose README + pkgdown front-page
+  audit.
+- PR #65 (CI): `gllvmTMB_wide()` soft-deprecation, single-entry
+  cleanup.
+- PR #61 (CI, Codex): `covariance-correlation.Rmd` substantive
+  fix.
+
+After all 5 PRs land, the article surface, the README, and the
+single-entry-point story all converge.

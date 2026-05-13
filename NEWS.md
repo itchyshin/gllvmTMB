@@ -101,12 +101,10 @@ phylogenetic signal, or spatial structure.
   `sdmTMB::sdmTMBcontrol()`. Extra `...` arguments emit a
   warning.
 
-## Relationship to the legacy 0.1.x line
+## Relationship to a pre-0.2.0 development line
 
-This 0.2.0 release rebuilds `gllvmTMB` from a focused multivariate
-GLLVM core. The pre-0.2.0 legacy line preserved at
-`itchyshin/gllvmTMB-legacy` re-exported a large surface from
-`sdmTMB` and exposed single-response paths; the 0.2.0 release does
-neither. Users who want single-response models should install
-`sdmTMB` or `glmmTMB` directly, which install side-by-side with
-`gllvmTMB` without conflict.
+The pre-0.2.0 development line of `gllvmTMB` re-exported a large
+surface from `sdmTMB` and exposed single-response paths; the
+0.2.0 release does neither. Users who want single-response models
+should install `sdmTMB` or `glmmTMB` directly, which install
+side-by-side with `gllvmTMB` without conflict.

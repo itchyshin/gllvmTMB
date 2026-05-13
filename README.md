@@ -1,34 +1,43 @@
 # gllvmTMB
 
-`gllvmTMB` fits stacked-trait multivariate generalised linear latent
-variable models (GLLVMs) with Template Model Builder. Use it when the
-same units have several responses, traits, species, behaviours, or
-items, and the scientific question is about their shared covariance,
-ordination, communality, phylogenetic signal, or spatial structure.
+`gllvmTMB` fits **multivariate models** for data where the same
+rows carry several measurements at once -- five body traits per
+bird, twenty species occurrences per site, three behaviours per
+session, several outcomes per study. The scientific target is
+the **trait covariance**: which measurements co-vary, what drives
+that covariance (a shared latent axis? a phylogenetic signal? a
+spatial pattern?), and how much variance is trait-specific.
 
-One entry point handles both data shapes. Use whichever shape
-matches your data on disk; the engine pivots as needed.
+Three things distinguish `gllvmTMB`:
 
-- **Long data frame** -- one row per `(unit, trait)` observation,
-  one `value` column for the response:
-  ```r
-  gllvmTMB(value ~ ..., data = df_long, unit = "...")
-  ```
-- **Wide data frame** -- one row per unit, one column per trait;
-  the `traits(...)` LHS marker names the response columns and the
-  RHS can use the compact wide shorthand:
-  ```r
-  gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
-           data = df_wide, unit = "unit")
-  ```
+- **Stacked-trait long format.** Internally the engine works on
+  `(unit, trait)` observations stacked into a long data frame, so
+  one fit can handle several traits with different response
+  distributions, missing cells, and per-row predictors. Wide data
+  frames are accepted; the package pivots for you.
+- **One formula grammar** for trait covariance. `latent()` adds a
+  low-rank shared axis; `unique()` adds a trait-specific diagonal;
+  the phylogenetic and spatial variants (`phylo_latent`,
+  `spatial_unique`, etc.) extend the same grammar to species
+  relatedness and spatial fields.
+- **TMB engine, ML / REML estimates.** Fits take seconds to
+  minutes; profile-likelihood and bootstrap intervals are
+  first-class.
 
-Predictors go into the formula in either form. Both paths reach
-the same engine and produce byte-identical fits.
+## What "stacked-trait" means
 
-The first examples are motivated by ecology, evolution, and
-environmental science, but the data shape is general: site x
-species, individual x trait, species x trait, paper x outcome, or
-any similar unit x response layout.
+Internally, every fit sees one row per `(unit, trait)`
+observation. Five traits on 100 individuals become 500 rows, each
+with the trait identity in a `trait` column and the response in a
+`value` column. Different traits can use different response
+distributions; missing cells drop out automatically. You can hand
+the engine a long data frame directly, or a wide data frame via
+the `traits(...)` formula-LHS marker -- the package pivots wide
+to long for you.
+
+The data shape is general: site x species, individual x trait,
+species x trait, paper x outcome, or any similar `unit x response`
+layout.
 
 ## Start here
 
@@ -45,12 +54,40 @@ any similar unit x response layout.
 - Avoiding common syntax and identifiability traps? Read
   [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html).
 
-## Preview status
+## What can I model now?
 
-This site is built from preview version `0.2.0`. The package is
-pre-CRAN and intentionally bounded: use it for the implemented
-stacked-trait workflows listed below, and treat unsupported model
-classes as roadmap work rather than hidden features.
+- **Continuous stacked traits.** Use Gaussian GLLVMs with
+  `latent()`, `unique()`, `indep()`, or `dep()` for individual x
+  trait, site x trait, or species x trait data. Read
+  [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html).
+- **Binary or count multivariate responses.** Use binomial,
+  Poisson, negative-binomial, Tweedie, beta, beta-binomial,
+  Student-t, truncated, delta, or ordinal-probit families when
+  each trait has its own response distribution. Read
+  [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html)
+  and the
+  [reference index](https://itchyshin.github.io/gllvmTMB/reference/index.html).
+- **Reduced-rank ordination.** Use `latent(0 + trait | unit, d = K)`
+  when a few latent dimensions should explain many cross-trait
+  associations.
+- **Trait-specific residual variance.** Pair `latent()` with
+  `unique()` when you need
+  `Sigma = Lambda Lambda^T + diag(s)` rather than a latent-only
+  covariance.
+- **Phylogenetic trait covariance.** Use `phylo_latent()` and
+  `phylo_unique()` when species relatedness should contribute to
+  cross-trait covariance.
+- **Spatial multivariate structure.** Use `spatial_latent()` and
+  related `spatial_*()` keywords with meshes created by
+  `make_mesh()` when sites share spatially structured multivariate
+  residuals.
+- **Known sampling covariance.** Use `meta_known_V(V = V)` for
+  multivariate meta-analytic sampling covariance.
+
+This is preview version `0.2.0`. The package is pre-CRAN and
+intentionally bounded: use it for the implemented stacked-trait
+workflows above, and treat unsupported model classes as roadmap
+work rather than hidden features.
 
 ## Install
 
@@ -93,19 +130,35 @@ extract_correlations(fit, tier = "unit")
 You need R 4.1.0 or newer and a working compiler toolchain because
 TMB models are compiled during installation. If installation fails
 while compiling C++, install the usual R build tools for your
-platform: Rtools on Windows, Xcode Command Line Tools on macOS, or
-the R development toolchain on Linux.
+platform: Rtools on Windows, Xcode Command Line Tools on macOS,
+or the R development toolchain on Linux.
+
+## Data shapes: long or wide, one entry point
+
+One entry point handles both shapes. Use whichever matches your
+data on disk; the engine pivots as needed.
+
+- **Long data frame** -- one row per `(unit, trait)` observation,
+  one `value` column for the response:
+  ```r
+  gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+           data = df_long, unit = "...")
+  ```
+- **Wide data frame** -- one row per unit, one column per trait;
+  the `traits(...)` LHS marker names the response columns and the
+  RHS uses compact wide shorthand:
+  ```r
+  gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
+           data = df_wide, unit = "unit")
+  ```
+
+Predictors go into the formula in either form. Both paths reach
+the same long-format engine and produce byte-identical fits.
 
 ## Tiny example
 
-A one-level Gaussian GLLVM with shared and unique trait covariance is:
-
-```text
-y_it = alpha_t + z_i lambda_t + epsilon_it
-z_i ~ Normal(0, 1)
-epsilon_it ~ Normal(0, s_t)
-Sigma = Lambda Lambda^T + diag(s)
-```
+A one-level Gaussian GLLVM with shared and unique trait covariance
+is:
 
 ```r
 fit <- gllvmTMB(
@@ -120,42 +173,23 @@ fit <- gllvmTMB(
 Here `latent(0 + trait | site, d = 1)` estimates one shared latent
 axis across traits, and `unique(0 + trait | site)` estimates the
 trait-specific residual variance left over after that shared axis.
-The fitted object can then report ordination scores, loadings,
-Sigma, pairwise correlations, and per-trait communality.
+The fitted object reports ordination scores, loadings, Sigma,
+pairwise correlations, and per-trait communality.
 
-## What can I model now?
+In notation, the trait covariance the model fits is
 
-- **Continuous stacked traits.** Use Gaussian GLLVMs with `latent()`,
-  `unique()`, `indep()`, or `dep()` for individual x trait, site x
-  trait, or species x trait data. Read
-  [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html).
-- **Binary or count multivariate responses.** Use binomial, Poisson,
-  negative-binomial, Tweedie, beta, beta-binomial, Student-t,
-  truncated, delta, or ordinal-probit families when each trait has
-  its own response distribution. Read
-  [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html)
-  and the
-  [reference index](https://itchyshin.github.io/gllvmTMB/reference/index.html).
-- **Reduced-rank ordination.** Use `latent(0 + trait | unit, d = K)`
-  when a few latent dimensions should explain many cross-trait
-  associations.
-- **Trait-specific residual variance.** Pair `latent()` with
-  `unique()` when you need
-  `Sigma = Lambda Lambda^T + diag(s)` rather than a latent-only
-  covariance.
-- **Phylogenetic trait covariance.** Use `phylo_latent()` and
-  `phylo_unique()` when species relatedness should contribute to
-  cross-trait covariance.
-- **Spatial multivariate structure.** Use `spatial_latent()` and
-  related `spatial_*()` keywords with meshes created by `make_mesh()`
-  when sites share spatially structured multivariate residuals.
-- **Known sampling covariance.** Use `meta_known_V(V = V)` for
-  multivariate meta-analytic sampling covariance.
+```text
+Sigma = Lambda Lambda^T + diag(s)
+```
+
+where `Lambda` is the shared-axis loading matrix (set by
+`latent()`) and `s` is the trait-specific residual variance (set
+by `unique()`).
 
 ## Covariance keyword grid
 
-The formula grammar is a 3 x 5 grid: correlation source crossed with
-covariance mode.
+The formula grammar is a 3 x 5 grid: correlation source crossed
+with covariance mode.
 
 |                | scalar             | unique             | indep             | dep             | latent             |
 |---             |---                 |---                 |---                |---              |---                 |
@@ -171,30 +205,29 @@ Sigma = Lambda Lambda^T + diag(s)
 
 Standalone `latent()` is the no-residual reduced-rank subset.
 Standalone `unique()` is the marginal independent mode and is
-equivalent to `indep()`. `dep()` estimates a full unstructured Sigma.
+equivalent to `indep()`. `dep()` estimates a full unstructured
+Sigma.
 
 ## Current boundaries
 
 `gllvmTMB` is for stacked-trait multivariate models. Single-response
-models belong in `glmmTMB`; spatial single-response models belong in
-`sdmTMB`; one- or two-response distributional regression belongs in
-`drmTMB`.
+models belong in `glmmTMB`; spatial single-response models belong
+in `sdmTMB`; one- or two-response distributional regression
+belongs in `drmTMB`.
 
-The package accepts data in either **long** or **wide** shape
-through one entry point. `gllvmTMB(value ~ ..., data = df_long)`
-is the long-format path; `gllvmTMB(traits(...) ~ ..., data = df_wide)`
-is the wide data-frame path. Both reach the same engine.
-
-`gllvmTMB_wide(Y, ...)` (matrix-in wrapper) is soft-deprecated as
-of 0.2.0; new code should use the formula API above. Migration is
-one `as.data.frame()` call.
+The legacy matrix-in wrapper `gllvmTMB_wide(Y, ...)` is
+soft-deprecated as of 0.2.0; new code should use the formula API
+in the **Data shapes** section above. Migration is one
+`as.data.frame()` call.
 
 Random slopes through `(1 + x | g)` syntax are not yet implemented.
-The current structured-effect paths are strongest for intercept-only
-latent, unique, phylogenetic, and spatial covariance terms.
+The current structured-effect paths are strongest for
+intercept-only latent, unique, phylogenetic, and spatial
+covariance terms.
 
-Zero-inflated count families, SPDE barrier meshes, and a first-class
-two-level phylogeny plus non-phylogeny API are planned work.
+Zero-inflated count families, SPDE barrier meshes, and a
+first-class two-level phylogeny plus non-phylogeny API are planned
+work.
 
 ## Citation and acknowledgements
 
@@ -227,20 +260,22 @@ package author, written against the TMB API.
 
 ## Sister packages
 
-- `drmTMB` fits univariate and bivariate distributional regression,
-  including location-scale and bivariate residual-correlation models.
+- `drmTMB` fits univariate and bivariate distributional
+  regression, including location-scale and bivariate
+  residual-correlation models.
 - `glmmTMB` fits single-response GLMMs.
-- `sdmTMB` fits spatial single-response models. `gllvmTMB` inherits
-  sdmTMB's SPDE and mesh code for its `spatial_*()` keywords.
+- `sdmTMB` fits spatial single-response models. `gllvmTMB`
+  inherits sdmTMB's SPDE and mesh code for its `spatial_*()`
+  keywords.
 - `gllvm` (Niku et al.) is the original multivariate GLLVM package
   with a variational-approximation engine and a matrix-in API;
   `gllvmTMB` is the TMB-Laplace alternative with formula grammar,
   the 3 x 5 keyword grid, and integrated phylogenetic / spatial
   paths in one engine.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
-  phylogenetic / multi-response models; `gllvmTMB` returns ML / REML
-  point estimates with profile / Wald / bootstrap CIs and runs in
-  seconds-to-minutes rather than minutes-to-hours.
+  phylogenetic / multi-response models; `gllvmTMB` returns ML /
+  REML point estimates with profile / Wald / bootstrap CIs and
+  runs in seconds-to-minutes rather than minutes-to-hours.
 
 A full scope comparison and decision matrix lives in
 [`docs/design/04-sister-package-scope.md`](docs/design/04-sister-package-scope.md).

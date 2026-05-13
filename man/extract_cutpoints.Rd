@@ -39,9 +39,9 @@ reports K - 1 cutpoints as \verb{Intercept[1..K-1]}.
 \examples{
 \dontrun{
 fit <- gllvmTMB(
-  value ~ 0 + trait + phylo_unique(0 + trait | species),
+  value ~ 0 + trait + phylo_unique(species, tree = tree),
   data = ordinal_dat, unit = "individual", cluster = "species",
-  family = ordinal_probit(), phylo_tree = tree
+  family = ordinal_probit()
 )
 extract_cutpoints(fit)
 }

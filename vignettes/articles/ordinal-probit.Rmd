@@ -1,0 +1,179 @@
+---
+title: "Ordinal-probit threshold traits"
+tier: 2 # technical reference for the ordinal_probit() family
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Ordinal-probit threshold traits}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE
+)
+```
+
+Use `ordinal_probit()` when a trait is ordered categorical with at
+least three categories and the scientific target is a latent continuous
+scale: behavioural intensity scores, ordered parasite-load scores,
+ranked breeding states, or threshold traits in phylogenetic comparative
+analyses. Use `binomial(link = "probit")` instead when the response has
+only two categories.
+
+The reason to prefer the probit threshold model is scale. The latent
+variable is
+
+```text
+y* = eta + epsilon,    epsilon ~ Normal(0, 1)
+```
+
+and the observed category is determined by cutpoints:
+
+```text
+y = k when tau[k - 1] < y* <= tau[k]
+```
+
+Because `epsilon` has variance 1 by construction, the
+distribution-specific latent residual is exactly `sigma_d^2 = 1`.
+There is no trigamma or logistic `pi^2 / 3` approximation to add
+before comparing variance components to a continuous Gaussian trait.
+
+## Fit The Family
+
+Long data are canonical. The response should be integer-coded
+`1, ..., K` within each ordinal trait.
+
+```{r}
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    phylo_unique(species, tree = tree),
+  data = df_long,
+  unit = "individual",
+  cluster = "species",
+  family = ordinal_probit()
+)
+```
+
+The wide data-frame form uses `traits(...)` on the left-hand side.
+The compact wide syntax expands to the same stacked-trait formula
+before fitting.
+
+```{r}
+fit_wide <- gllvmTMB(
+  traits(display_score, parasite_score, rank_score) ~ 1 +
+    phylo_unique(species, tree = tree),
+  data = df_wide,
+  unit = "individual",
+  cluster = "species",
+  family = ordinal_probit()
+)
+```
+
+The species-axis phylogenetic keyword already names the grouping axis,
+so it is unchanged between long and wide forms. For non-phylogenetic
+ordinal traits, replace `phylo_unique()` with the ordinary covariance
+keyword you need, such as `latent()` or `unique()`. The family does
+not change the 3 x 5 covariance keyword grammar.
+
+## Cutpoints
+
+For a `K`-category trait, `gllvmTMB` follows Hadfield's threshold-trait
+convention: `tau_1 = 0` is fixed for identifiability, so the model
+estimates `K - 2` free cutpoints per ordinal trait:
+
+```text
+tau_2, ..., tau_{K - 1}
+```
+
+Recover them with `extract_cutpoints()`:
+
+```{r}
+cuts <- extract_cutpoints(fit_long)
+cuts
+```
+
+The returned rows are one row per `(trait, cutpoint)` pair. A
+four-category trait has two reported cutpoints, `cutpoint_2` and
+`cutpoint_3`; the first threshold `tau_1 = 0` is fixed and is not
+reported as an estimated parameter.
+
+This differs from `brms::cumulative()`, which reports `K - 1`
+cutpoints under a different location convention. The two conventions
+describe the same threshold model up to a shift absorbed by the linear
+predictor, but the reported cutpoint count is not the same.
+
+## Variance Components
+
+The main payoff is that ordinal variance components are already on the
+latent continuous scale. In a phylogenetic threshold-trait model,
+`extract_Sigma(fit, level = "phy")` returns the phylogenetic trait
+covariance, and `extract_Sigma(..., link_residual = "auto")` adds the
+exact ordinal residual `sigma_d^2 = 1` on the diagonal when needed.
+
+```{r}
+Sigma_phy <- extract_Sigma(fit_long, level = "phy")$Sigma
+cuts <- extract_cutpoints(fit_long)
+```
+
+For a one-trait threshold heritability calculation, the familiar
+Dempster-Lerner denominator is direct:
+
+```text
+H^2 = sigma_phy^2 / (sigma_phy^2 + 1)
+```
+
+The `+ 1` is the fixed latent residual variance. That is the practical
+advantage over logit-scale ordinal or binary models when the analysis
+needs variance components rather than only fixed-effect contrasts.
+
+## Guardrails
+
+Use `ordinal_probit()` for ordered categories with `K >= 3`. If a trait
+has only two categories, use `binomial(link = "probit")`; the `K = 2`
+threshold model reduces exactly to that binomial probit likelihood
+(Hadfield 2015, eqn 10).
+
+Do not mix `ordinal_probit()` with another family within the same
+trait. Cutpoints are trait-level parameters, so all rows for an
+ordinal trait must belong to the ordinal-probit family.
+
+Observation-level `unique()` residuals are structurally unidentifiable
+for ordinal-probit traits. The threshold model fixes the residual
+scale at 1, and an extra observation-level scale factor can be absorbed
+by the cutpoints. The engine maps that observation-level component off
+for ordinal-probit traits and reports an informational message.
+
+Correlations from `extract_correlations()` are fitted latent-scale
+trait correlations. They are not correlations of the raw integer
+category labels. That latent-scale interpretation is usually what you
+want for threshold-trait variance components, but it should be named
+explicitly in prose and figure captions.
+
+## References
+
+Dempster, E. R. and Lerner, I. M. (1950). Heritability of threshold
+characters. *Genetics* 35:212-236.
+
+Falconer, D. S. and Mackay, T. F. C. (1996). *Introduction to
+Quantitative Genetics*, 4th ed. Longman.
+
+Felsenstein, J. (2005). Using the quantitative genetic threshold model
+for inferences between and within species. *Phil. Trans. R. Soc. B*
+360:1427-1434.
+
+Felsenstein, J. (2012). A comparative method for both discrete and
+continuous characters using the threshold model. *Am. Nat.*
+179:145-156.
+
+Hadfield, J. D. (2015). Increasing the efficiency of MCMC for
+hierarchical phylogenetic models of categorical traits using reduced
+mixed models. *Methods Ecol. Evol.* 6:706-714.
+
+Mizuno, A. *et al.* (2025). Phylogenetic comparative methods for
+threshold traits. *J. Evol. Biol.* 38(12):1699-1712.

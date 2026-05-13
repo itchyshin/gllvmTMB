@@ -50,6 +50,10 @@ phylogenetic signal, or spatial structure.
   `phylo_*()` / `spatial_*()` term errors with a pointer to
   `glmmTMB::glmmTMB()` for single-response work.
 
+* New technical reference articles cover the covariance keyword grid,
+  the response-family surface, and the ordinal-probit threshold scale
+  and cutpoint convention.
+
 ## Inference
 
 * ML or REML point estimates via TMB's Laplace approximation.

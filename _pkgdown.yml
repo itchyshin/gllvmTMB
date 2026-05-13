@@ -29,6 +29,7 @@ articles:
     contents:
     - articles/api-keyword-grid
     - articles/response-families
+    - articles/ordinal-probit
 
 reference:
   - title: Top-level entry points

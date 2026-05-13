@@ -35,55 +35,95 @@ forms are wrong outside function-name task labels
 
 ---
 
+## Revision note (maintainer correction, ~18:15 MT)
+
+The first-pass framing below treated the **paired four-component
+phylogenetic decomposition as universally canonical**. That was
+too strong. Maintainer correction (verbatim):
+
+> *"for phylogeny there are cases we cannot get 2 Ss like you
+> know - omega is usual in such a context"*
+
+i.e. when the phylogenetic uniqueness $S_{\text{phy}}$ is not
+separately identifiable from $\Lambda_{\text{phy}}
+\Lambda_{\text{phy}}^{\!\top}$ (small `n_species`, weak phylo
+signal, single-replicate-per-tip), the canonical fallback is
+**bare `phylo_latent + latent + unique`** with $\Omega =
+\Sigma_{\text{phy}} + \Sigma_{\text{non}}$ as the reporting target
+-- not a "non-canonical drift" but a *legitimate, common* fit.
+
+Items 1, 2, and 3 below are revised against this nuance.
+Items 4-8 stand as written.
+
+PR #77 amended with a second "Rule of thumb" paragraph spelling
+out the non-identifiable-S fallback so the article side matches
+the in-code nuance.
+
 ## Confirmed drift (act on these)
 
-### 1. `R/unique-keyword.R:54-58` -- contradicts canonical paired form
+### 1. `R/unique-keyword.R:54-58` -- bare-phylo framing OK; paired-form mention missing
 
 > *"The `phylo_latent(species, d = K)` term has no associated
-> `unique()` because..."*
+> `unique()` because the phylogenetic prior is already structured
+> on tip x tip via the tree; trait-specific unique variance lives
+> separately at the non-phylogenetic species tier."*
 
-This text directly contradicts the paired form, where
-`phylo_latent()` **requires** the paired `phylo_unique()` to
-recover per-trait phylogenetic variances. The bare form is the
-no-residual reduced-rank subset (see pitfalls section 5 after
-PR #77 merges).
+**Revised verdict** (after maintainer correction): the *statement*
+is correct for the non-identifiable-$S_{\text{phy}}$ case, which
+is the historical baseline. What's *missing* is the
+identifiable-paired case where `phylo_unique(species)` IS added
+and the paired four-component decomposition is fit.
 
-**Fix**: rewrite the relevant `@details` paragraph to describe
-the paired form as canonical and bare-`phylo_latent` as the
-reduced-rank subset.
+**Fix (lighter)**: add one bullet "When the phylogenetic
+uniqueness $S_{\text{phy}}$ is separately identifiable (typically
+crossed site x species with `n_species` >= 100 and strong phylo
+signal), `phylo_latent()` pairs with `phylo_unique(species)`
+following the same `latent() + unique()` pattern used at the
+non-phylo tier" -- without striking the existing wording.
 
-### 2. `R/extract-omega.R:273` -- `phylo_unique()` framed as optional
+### 2. `R/extract-omega.R:273` -- "(and optionally `phylo_unique()`)" is correct as-written
 
 > *"Requires `phylo_latent()` (and optionally `phylo_unique()`)
-> plus..."*
+> plus species-level `latent()` AND `unique()` in the fit."*
 
-`phylo_unique()` is not optional in the canonical paired form
-that `extract_phylo_signal()` decomposes into `H^2 + C^2_non +
-\Psi^2 = 1`. The "optional" framing predates the rebuild.
+**Revised verdict**: **not drift.** The `(and optionally
+phylo_unique())` framing matches the maintainer's correction --
+`phylo_unique()` is the identifiable-only piece, the rest are
+required. Walking back the original flag.
 
-**Fix**: change `(and optionally `phylo_unique()`)` to require
-the paired form. Note any documented bare-phylo_latent fallback
-explicitly as a caveat, not as a co-equal mode.
+No fix needed. The `extract_phylo_signal()` function correctly
+handles the case where `phylo_unique` is absent (emits a
+`cli::cli_inform()` and reports `\Psi_t = 0` for all traits,
+per the same roxygen at line 274).
 
-### 3. `R/fit-multi.R:613, 619` -- runtime cli_inform with M1/M2 + three-piece
+### 3. `R/fit-multi.R:613, 619` -- three-piece framing is local-correct; M1/M2 labels still drift
 
 - Line 613: *"three-piece decomposition Omega = Sigma_phy +
   Sigma_non,shared + U"*
 - Line 619: *"Compare M1 (without the `unique({species})` term)
   to M2 (with it)"*
 
-Both are paper-internal language. The grid model is the
-four-component decomposition, not three pieces. `M1` / `M2`
-labels are paper-internal model names that mean nothing to users
-of the package.
+**Revised verdict (line 613)**: the "three-piece" framing is in
+a `cli_abort` for a specific configuration (`phylo_latent +
+latent(species, d = K)` with `unit != species`). In that branch,
+the *user has not added `phylo_unique()`*, so the three-piece
+decomposition $\Omega = \Sigma_{\text{phy}} +
+\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S_{\text{non}}$
+IS what the user's model fits. The cli message correctly names
+the user's model, not a flat package canon. **Not drift in
+that line.**
 
-**Fix**:
-- Rewrite the three-piece sentence as
-  `\Omega = \Sigma_{phy} + \Sigma_{non}` (two pieces, each with
-  its own loading-plus-diagonal split).
-- Replace `M1 / M2` with the descriptive function names: "the
-  unpaired form (only `phylo_latent()`)" vs "the paired form
-  (`phylo_latent()` + `phylo_unique()`)".
+**Confirmed drift (line 619)**: `M1` / `M2` labels are
+paper-internal jargon and should be replaced with descriptive
+text. The line tells the user "Compare M1 (without the
+`unique({species})` term) to M2 (with it)" -- the parenthetical
+already describes which model is which, so we can drop the
+labels entirely.
+
+**Fix (line 619 only)**: rewrite `"Compare M1 (without the
+{.code unique({species})} term) to M2 (with it) ..."` as
+`"Compare the fit without {.code unique({species})} to the
+fit with it ..."`. Drop `M1` / `M2`.
 
 ### 4. `R/diagnose.R:112, 116, 120` -- in-prep manuscript equation refs
 
@@ -183,14 +223,22 @@ word is "level" or "tier".
 
 ---
 
-## Recommended PR batching (post-merge of #74-#79)
+## Recommended PR batching (post-merge of #74-#80)
 
 Each batch is a coherent, reviewable unit. Names are tentative.
+**Re-scoped after the 18:15 MT maintainer correction.**
 
-**Batch A: R/ paired-canon corrections (HIGH)** -- items 1, 2, 3.
-Three files (`R/unique-keyword.R`, `R/extract-omega.R`,
-`R/fit-multi.R`) -- all are roxygen / cli_inform prose, no
-algorithmic change. Single PR, single after-task report.
+**Batch A: R/ paired-canon clarifications (MEDIUM)** -- items 1
+and 3-line-619 only. Item 2 walked back; item 3-line-613
+walked back (`fit-multi.R` already names the model the user
+fitted).
+
+- `R/unique-keyword.R:54-58` -- add one bullet about the
+  identifiable-paired case alongside the existing bare-form text.
+- `R/fit-multi.R:619` -- drop the `M1 / M2` labels (the
+  parenthetical describes both models).
+
+Single small PR, single after-task report.
 
 **Batch B: Drop in-prep equation citations (HIGH)** -- item 4.
 `R/diagnose.R` only (3 lines). Tiny PR. Pairs naturally with
@@ -200,6 +248,11 @@ batch A but kept separate so each batch's scope is obvious.
 `vignettes/articles/functional-biogeography.Rmd` (6 hits) +
 `vignettes/articles/joint-sdm.Rmd` (3 hits). Single PR; both
 are "replace paper-internal labels with descriptive content".
+Note: `\boldsymbol{\Psi}_X` may or may not be drift depending
+on whether the `\Psi` in those equations is the uniqueness
+diagonal or the `extract_phylo_signal()` "uniqueness" output
+$\Psi_t = 1 - H^2 - C^2_{\text{non}}$. Resolve per-line before
+flipping; **do not blanket-replace `\Psi` -> `S`.**
 
 **Batch D: gllvmTMB_wide() recommendation cleanup (MEDIUM)** --
 item 7. `morphometrics.Rmd` + `response-families.Rmd`. Single
@@ -208,7 +261,10 @@ PR #46; check the after-task for that PR before touching.
 
 **Batch E: U → S notation sweep (MEDIUM)** -- item 8.
 `behavioural-syndromes.Rmd` math + `R/extract-two-U-via-PIC.R`
-roxygen. The function name stays.
+roxygen. The function name stays. Same `\Psi` caveat applies
+here: confirm each math hit is the unique-variance diagonal,
+not the `extract_phylo_signal()` output, before changing
+notation.
 
 **Batches F+ (deferred until maintainer judgment)** -- items 9
 and 10.

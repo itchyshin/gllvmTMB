@@ -1074,13 +1074,33 @@ Concrete audit checklist for prose and roxygen:
    under `vignettes/articles/`.
 7. **Every "Phase D / Phase K / dev/design/..." mention**:
    internal milestone labels do not belong in user-facing prose.
-8. **Every `phylo_*()` recommendation**: does it pair with
-   `phylo_unique()` (per the canonical four-component
-   decomposition)? Bare `phylo_latent` is the no-residual subset;
-   bare `phylo_scalar` is single-scalar. Neither is the default.
-9. **Every `\Psi`, `\Omega`, `U`, `U_phy`, `U_non`**: math should
-   use `\mathbf S`, `\mathbf S_\text{phy}`, `\mathbf S_\text{non}`
-   per PR #40 + PR #72 naming convention.
+8. **Every `phylo_*()` recommendation**: paired four-component
+   (`phylo_latent + phylo_unique + latent + unique`) is canonical
+   **when both $S$ diagonals are identifiable** -- typically a
+   crossed (site x species) design with `n_species` >= 100 and
+   strong phylogenetic signal. When the phylogenetic uniqueness
+   $S_{\text{phy}}$ is not separately identifiable from
+   $\Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top}$, the
+   canonical fallback is bare `phylo_latent + latent + unique`
+   with $\Omega = \Sigma_{\text{phy}} + \Sigma_{\text{non}}$ as
+   the reporting target. **Do not over-prescribe the paired
+   form**; check identifiability against the data shape before
+   flipping a bare-form recommendation to paired-only.
+   (Lesson from the 2026-05-13 maintainer correction:
+   *"for phylogeny there are cases we cannot get 2 Ss like you
+   know - omega is usual in such a context"*.)
+9. **Every `\Psi`, `\Omega`, `U`, `U_phy`, `U_non`**: math
+   notation should use `\mathbf S`, `\mathbf S_\text{phy}`,
+   `\mathbf S_\text{non}` per PR #40 + PR #72 naming convention
+   -- *except* `\Psi_t` is the canonical symbol for
+   `extract_phylo_signal()` output $\Psi_t = 1 - H^2 -
+   C^2_{\text{non}}$ (the "uniqueness" of the
+   $H^2 + C^2_{\text{non}} + \Psi^2 = 1$ partition). Distinguish:
+   `\mathbf{S}` is a model-side covariance diagonal;
+   `\Psi_t` is a derived per-trait scalar in the
+   communality-decomposition output. Do not blanket-replace
+   `\Psi` with `S` -- verify per occurrence whether the symbol
+   is the model-side diagonal or the derived scalar.
 
 **Process recommendation**: when porting or auditing an article,
 spawn a deep agent with the canonical model in its briefing and ask

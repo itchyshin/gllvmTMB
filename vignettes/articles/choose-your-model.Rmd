@@ -349,7 +349,7 @@ After any fit, run through these in order:
 | Implied between-unit trait covariance. | `extract_Sigma(fit, level = "unit")` (and `extract_Sigma(fit, level = "unit_obs")` for two-level fits). |
 | Interpretable loadings. | `getLoadings(fit, level = "unit", rotate = "varimax")` |
 | Did you fit unconstrained `latent()` with `d > 1`? Loadings are not unique. | Use `rotate = "varimax"` for a quick post-hoc rotation, or call `suggest_lambda_constraint()` to propose a confirmatory `lambda_constraint` matrix and refit. |
-| Communalities / ICCs (manuscript Eqs. 13–15). | `extract_ICC_site(fit)`, `extract_communality(fit, "B")`, `extract_communality(fit, "W")` |
+| Communalities / ICCs (manuscript Eqs. 13–15). | `extract_ICC_site(fit)`, `extract_communality(fit, level = "unit")`, `extract_communality(fit, level = "unit_obs")` |
 
 If `sanity_multi()` flags a non-PD Hessian or a near-zero loading
 diagonal, the most common causes are an over-rich model

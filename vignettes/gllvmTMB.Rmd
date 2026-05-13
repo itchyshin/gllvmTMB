@@ -221,6 +221,37 @@ fit <- gllvmTMB(
 fit
 ```
 
+### Same model, wide data frame
+
+The same fit reads from a wide data frame (one row per
+observation, one column per trait) via the `traits(...)`
+formula-LHS marker. Internally the engine pivots to long
+format, so the fit is byte-identical:
+
+```{r fit-wide}
+# Pivot the long df to wide (one row per (individual, session),
+# one column per trait):
+df_wide <- reshape(
+  df,
+  idvar     = c("individual", "session"),
+  timevar   = "trait",
+  direction = "wide",
+  v.names   = "value"
+)
+names(df_wide) <- sub("^value\\.", "", names(df_wide))
+
+fit_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3, trait_4, trait_5) ~ 1 +
+    latent(1 | individual, d = 2) +
+    unique(1 | individual),
+  data = df_wide,
+  unit = "individual"
+)
+
+# Same fit:
+all.equal(as.numeric(logLik(fit)), as.numeric(logLik(fit_wide)))
+```
+
 The recovered loadings (up to column rotation / sign — only
 $\boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top$ is identifiable from
 the data):

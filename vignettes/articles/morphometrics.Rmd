@@ -528,8 +528,8 @@ This is the bottom rung of the ladder. The next rungs add structure:
 |---|---|---|
 | 1 | Discrete (binary) responses, individuals as sites | [Joint species distribution](joint-sdm.html) |
 | 2 | Phylogenetic dependence between rows | [Phylogenetic GLLVM](phylogenetic-gllvm.html) |
-| 3 | Spatial dependence between rows | [SPDE benchmark](spde-vs-glmmTMB.html) |
-| 4 | Two observational levels (between- and within-unit) | [Two-stage workflow](corvidae-two-stage.html) |
+| 3 | Spatial dependence between rows | `spatial_*()` keywords (see reference index); article in preparation |
+| 4 | Two observational levels (between- and within-unit) | [Behavioural syndromes](behavioural-syndromes.html) |
 | 5 | All of the above at once | [Functional biogeography](functional-biogeography.html) |
 
 Read the rungs in order if you are new to GLLVMs. Jump straight to
@@ -537,11 +537,6 @@ the rung that matches your data if you are not.
 
 ## See also
 
-* [Simulation-based recovery study](simulation-recovery.html) — the
-  same experiment as the "Recovery across replicates" section above,
-  but extended to every level on the ladder.
-* [Cross-package validation](cross-package-validation.html) —
-  log-likelihood agreement against `glmmTMB::rr()` on identical data.
 * [Lambda constraints](lambda-constraint.html) — pin specific entries
   of $\boldsymbol\Lambda$ when you have prior knowledge of the
   factor structure (for example, a confirmatory factor analysis).

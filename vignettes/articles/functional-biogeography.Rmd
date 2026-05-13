@@ -46,6 +46,15 @@ This article fits it as a **model ladder**:
   the syntax and point at companion articles; the full fits live
   there.
 
+All fits below use the long-format API
+(`gllvmTMB(value ~ ..., data = df_long)`). Each model has an
+equivalent wide-data-frame form via the `traits(...)` LHS marker
+(`gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | site, d = K) + ...,
+data = df_wide)`); see the Get Started vignette and
+[`morphometrics`](morphometrics.html) for the long/wide equivalence
+check. For ladder articles like this one, the long form keeps the
+five-component fits readable.
+
 ## A family of models
 
 Before §1, the conceptual scaffolding. The replicated
@@ -57,7 +66,7 @@ models. The right model depends on the response shape:
 | Species occurrences/abundances; traits explain species responses | Site $\times$ species JSDM / fourth-corner GLLVM ([`joint-sdm`](joint-sdm.html)) |
 | One CWM/functional summary per site and trait | Site-summary / CWM site $\times$ trait GLLVM |
 | **Species-in-site trait observations**, enough within-site richness | **Replicated site--species--trait GLLVM** (this article) |
-| Species have one trait value each (AVONET-style) | Two-stage site-summary model ([`corvidae-two-stage`](corvidae-two-stage.html)) |
+| Species have one trait value each (AVONET-style) | Two-stage site-summary model (M2 in this article) |
 | Trait-state counts or functional-gene frequencies | Trait-state abundance/count GLLVM |
 | Trait integration across species/evolution | Species $\times$ trait phylogenetic GLLVM ([`phylogenetic-gllvm`](phylogenetic-gllvm.html)) |
 
@@ -269,11 +278,9 @@ rbind(
 > article uses direct trait observations $y_{sit}$. For
 > occurrence/abundance data with traits as covariates, fit a JSDM /
 > fourth-corner GLLVM ([`joint-sdm`](joint-sdm.html)). For one
-> CWM-style summary per site, use the site-summary CWM model. For
-> AVONET-style data with one trait value per species, use the
-> [two-stage workflow](corvidae-two-stage.html). The replicated
-> site--species--trait model below is right for our DGP; do not
-> force it onto a different one.
+> CWM-style summary per site, use the site-summary CWM model. The
+> replicated site--species--trait model below is right for our DGP;
+> do not force it onto a different one.
 
 # §2 -- Adjustment with spatial and phylogenetic controls
 
@@ -568,12 +575,8 @@ four checks are the ones to act on.
   phylogenetic decomposition (§4 above) at species level.
 * [`joint-sdm`](joint-sdm.html) -- non-Gaussian JSDM /
   fourth-corner model: traits explain species responses to environment.
-* [`corvidae-two-stage`](corvidae-two-stage.html) -- AVONET-style
-  data where each species has one trait value.
 * [`pitfalls`](pitfalls.html) -- common gotchas: factor level order,
   $\boldsymbol{\Lambda}$ rotation, the DGP-must-match-the-fit rule.
 * [`profile-likelihood-ci`](profile-likelihood-ci.html) -- CIs on
   $\boldsymbol{\Sigma}_B$, $\boldsymbol{\Sigma}_W$ entries via
   profile likelihood, Wald, or parametric bootstrap.
-* [`simulation-recovery`](simulation-recovery.html) -- multi-replicate
-  recovery study for the full ladder.

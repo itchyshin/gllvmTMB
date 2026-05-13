@@ -27,6 +27,13 @@ Six recurring mistakes that look like bugs but aren't, plus the
 one-line fix for each. Each pitfall starts with the symptom, then the
 diagnosis, a short reproducible chunk, and a rule of thumb.
 
+The pitfalls below use the long-format API
+(`gllvmTMB(value ~ ..., data = df_long)`). Every pitfall has an
+equivalent wide-data-frame form via the `traits(...)` LHS marker
+(`gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = K),
+data = df_wide)`); the same gotcha and the same fix apply. See
+the Get Started vignette for the long/wide equivalence check.
+
 ```{r setup}
 library(gllvmTMB)
 ```
@@ -107,8 +114,7 @@ that include random environmental fixed effects
 $S_B$. If your fitted model has no environmental term and no
 `unique(0 + trait | site)`, that variance has nowhere to go and gets
 absorbed into $\hat{\boldsymbol\Lambda}_B$. This was a real harness
-bug caught during simulation work — see the
-[simulation-recovery article](simulation-recovery.html).
+bug caught during simulation work.
 
 ```{r pitfall-3}
 # CLEAN latent()-only DGP: explicitly switch off beta and S_B
@@ -282,8 +288,6 @@ canonical individual × trait setup.*
 
 * [morphometrics.html](morphometrics.html) — single-level GLLVM with
   `unit = "individual"`.
-* [simulation-recovery.html](simulation-recovery.html) — the harness
-  bug behind pitfall 3, plus the broader recovery study.
 * [lambda-constraint.html](lambda-constraint.html) — the full
   decision tree for whether you actually need a constraint.
 * [phylogenetic-gllvm.html](phylogenetic-gllvm.html) — canonical

@@ -203,17 +203,52 @@ labels entirely.
 `"Compare the fit without {.code unique({species})} to the
 fit with it ..."`. Drop `M1` / `M2`.
 
-### 4. `R/diagnose.R:112, 116, 120` -- in-prep manuscript equation refs
+### 4. In-prep manuscript equation citations -- expanded scope
 
-Lines 112, 116, 120: `(Eq. 13)`, `(Eq. 14)`, `(Eq. 15)`
+Initial verification flagged `R/diagnose.R:112, 116, 120` (Eq. 13,
+14, 15). A broader grep on 2026-05-13 ~18:50 MT shows the pattern
+is more pervasive than the first pass:
 
-Runtime output cites equation numbers from an unpublished
-in-prep manuscript. The numbers may change before submission and
-mean nothing to users without access to the manuscript draft.
+**R/ files (Codex pause -- defer)**:
+- `R/diagnose.R:111, 115, 119` -- `cat("... (Eq. 13)")` etc. in
+  runtime output.
+- `R/methods-gllvmTMB.R:213-214` -- *"per-trait ICCs (manuscript
+  Eq. 13), and global / local communalities (Eqs. 14-15)"* in
+  the `print()` method roxygen.
+- `R/extract-omega.R:141` -- *"three-piece decomposition
+  (Nakagawa et al. *in prep*, Eq. 19)"* in `extract_Omega()`
+  roxygen.
+- `R/extract-omega.R:151` -- *"Nakagawa et al. *in prep*, Eq. 28"*.
+- `R/extract-omega.R:248` -- *"PGLLVM Eq. 23-25"* in the
+  `extract_phylo_signal()` `@title` (reference-index visible!).
+- `R/extract-omega.R:256` -- *"Nakagawa et al. *in prep*, PGLLVM
+  paper Eq. 19, 22-25"*.
+- `R/unique-keyword.R:22` -- *"*in prep*, Eq. 30"*.
+- `R/unique-keyword.R:80` -- *"Eq. 19"*.
+- `R/extractors.R:50` -- *"manuscript Eq. 24"* in `@title`.
+- `R/extractors.R:89` -- *"manuscript Eq. 32"* in `@title`.
 
-**Fix**: drop the `(Eq. N)` suffix from each `cat()` /
-`cli_inform()` line. Describe the algebraic identity in plain
-language if context is needed.
+**Articles (some already in flight)**:
+- `vignettes/articles/choose-your-model.Rmd:352` -- *"manuscript
+  Eqs. 13-15"*. **Already fixed in PR #75** (the version on
+  `agent/choose-your-model-rewrite` removes this citation).
+
+**Published references (NOT drift -- keep)**:
+- `R/extract-two-U-cross-check.R:329, 490` cite *"Williams et al.
+  (2025) Eq. 3"* -- published.
+- `R/extract-sigma.R:189` cites *"Smithson & Verkuilen 2006
+  Eq. 9"* -- published.
+- `R/brms-sugar.R:1046` cites *"their PGLMM Eq. 3"* -- likely
+  the published Bürkner brms PGLMM paper; verify before
+  touching.
+- `R/extract-sigma.R:3` cites *"Behavioural Syndromes paper,
+  Eq. 30"* -- verify whether this is in-prep or published.
+
+**Fix pattern**: drop the `(Eq. N)` / `Eqs. N-M` suffix from
+each user-facing string; describe the algebraic identity in
+plain language if context is needed. The `@title` references
+(`R/extract-omega.R:248`, `R/extractors.R:50, 89`) deserve
+priority because they show up in the pkgdown reference index.
 
 ### 5. `vignettes/articles/functional-biogeography.Rmd` -- `\Psi` drift
 
@@ -322,9 +357,14 @@ Item 2 walked back.
 
 Single small PR, single after-task report.
 
-**Batch B: Drop in-prep equation citations (HIGH)** -- item 4.
-`R/diagnose.R` only (3 lines). Tiny PR. Pairs naturally with
-batch A but kept separate so each batch's scope is obvious.
+**Batch B: Drop in-prep equation citations (HIGH)** -- item 4
+(now expanded scope). ~12 lines across 5 R/ files: `R/diagnose.R`
+(3 lines), `R/methods-gllvmTMB.R` (2 lines), `R/extract-omega.R`
+(4 lines), `R/unique-keyword.R` (2 lines), `R/extractors.R`
+(2 lines including 2 reference-index-visible `@title` lines).
+Verify each "Behavioural Syndromes paper Eq. 30" / "PGLMM Eq. 3"
+citation is published before touching. Single PR; mechanical
+edit; prioritise the `@title` hits for CRAN-reviewer visibility.
 
 **Batch C: Article math/jargon fixes (MEDIUM)** -- items 5, 6.
 `vignettes/articles/functional-biogeography.Rmd` (6 hits) +

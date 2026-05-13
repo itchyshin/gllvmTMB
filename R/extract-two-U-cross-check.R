@@ -313,7 +313,7 @@
 
 ## ---- compare_dep_vs_two_U (canonical) -------------------------------
 
-#' Canonical likelihood-based cross-check for the two-U decomposition
+#' Canonical likelihood-based cross-check for the paired phylogenetic decomposition
 #'
 #' Refits the user's data with full unstructured T x T phylogenetic and
 #' non-phylogenetic trait covariances (`phylo_dep + dep`) using the same
@@ -483,7 +483,7 @@ compare_dep_vs_two_U <- function(fit_two_U, threshold = 0.10,
 
 ## ---- compare_indep_vs_two_U (cheap fallback) ------------------------
 
-#' Cheap diagonal cross-check for the two-U decomposition (large T)
+#' Cheap diagonal cross-check for the paired phylogenetic decomposition (large T)
 #'
 #' Refits the user's data with `phylo_indep + indep` -- a stacked
 #' multivariate generalisation of T univariate phylogenetic GLMMs in

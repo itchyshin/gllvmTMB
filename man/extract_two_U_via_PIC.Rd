@@ -44,7 +44,7 @@ REML two-U fit, \strong{for the Gaussian / Brownian-motion special case
 only.} Uses phylogenetic independent contrasts (PIC; Felsenstein 1985)
 plus a per-trait Pagel's lambda mixed-model fit
 (\code{nlme::gls} + \code{ape::corPagel}) to identify the four components of
-the two-U decomposition:
+the paired phylogenetic decomposition:
 \deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \mathbf S_\text{phy}, \qquad
 \boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \mathbf S_\text{non}.}
 }

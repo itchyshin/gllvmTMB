@@ -32,7 +32,7 @@ documentary.
 
 Use \code{phylo_dep()} when you want an explicit full-unstructured
 cross-trait phylogenetic covariance fit. Use \code{phylo_latent()} paired
-with \code{phylo_unique()} for the rank-reduced two-U decomposition. Use
+with \code{phylo_unique()} for the rank-reduced paired phylogenetic decomposition. Use
 \code{phylo_indep()} for the marginal-only per-trait variance fit.
 \subsection{Mutual exclusion with \code{phylo_latent()} / \code{phylo_unique()} / \code{phylo_indep()}}{
 

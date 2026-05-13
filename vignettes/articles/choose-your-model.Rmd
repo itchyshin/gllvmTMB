@@ -53,67 +53,51 @@ The five questions:
 
 ### The complexity ladder, at a glance
 
-Each rung adds one structural piece to the previous. Pick the highest
-rung you actually need — extra structure costs identifiability and
-fit time. The recovery study (`articles/simulation-recovery.html`)
-quantifies how cleanly each rung's parameters are recovered at modest n.
+Each rung adds one structural piece to the previous. Pick the
+highest rung you actually need — extra structure costs
+identifiability and fit time.
 
-```{r ladder-fig, echo = FALSE, fig.width = 7.6, fig.height = 4.2, fig.cap = "The complexity ladder: each rung adds one structural piece. Bar height = number of identifiable parameter classes recovered cleanly in the simulation-recovery study (Σ_B / Σ_W / sigma2_spa / range / lam_phy). Rungs are stacked left-to-right by complexity; pick the lowest rung that matches your data.", message = FALSE}
-suppressPackageStartupMessages({
-  library(ggplot2)
-})
-ladder <- data.frame(
-  rung   = 0:5,
-  name   = c("Individual\n× trait",
-             "Site × species\n(JSDM)",
-             "+ phylogeny",
-             "+ spatial",
-             "Two-level\n(between/within)",
-             "Capstone\n(all six pieces)"),
-  formula_short = c("latent(...|unit)",
-                    "+ family =\nbinomial",
-                    "+ phylo_scalar(species)",
-                    "+ spatial_unique(0+trait|coords)",
-                    "+ latent(...|unit_obs)",
-                    "all together"),
-  recovery_quality = c(0.98, 0.95, 0.85, 0.85, 0.92, 0.85)  # heuristic — bar height
-)
-ladder$name <- factor(ladder$name, levels = ladder$name)
-ggplot(ladder, aes(name, recovery_quality, fill = factor(rung))) +
-  geom_col(width = 0.78, colour = "grey20") +
-  geom_text(aes(label = formula_short),
-            vjust = -0.6, size = 3.2, family = "mono", lineheight = 0.85) +
-  scale_y_continuous(limits = c(0, 1.18), breaks = seq(0, 1, 0.25),
-                     labels = scales::percent_format(accuracy = 1)) +
-  scale_fill_brewer(palette = "Blues", direction = 1, guide = "none") +
-  labs(x = NULL,
-       y = "Recovery quality\n(simulation-based, R = 20)",
-       title = "Complexity ladder: pick the lowest rung that fits your data") +
-  theme_minimal(base_size = 11) +
-  theme(plot.title = element_text(face = "bold", size = 12),
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor   = element_blank(),
-        axis.text.x = element_text(face = "bold"))
-```
+| Rung | Pieces |
+|---|---|
+| 0 | Individual × trait — `latent(... \| unit)` |
+| 1 | Site × species (JSDM) — `+ family = binomial()` |
+| 2 | + phylogeny — `+ phylo_latent + phylo_unique` (paired with `latent + unique`) |
+| 3 | + spatial — `+ spatial_unique(0 + trait \| coords)` |
+| 4 | Two-level (between / within) — `+ latent(... \| unit_obs)` |
+| 5 | Capstone — all of the above |
+
+Below the table, sections 1–5 ask one question per rung and let
+you assemble the formula piece by piece. Section 6 shows the
+canonical assembled formulas for the most common combinations.
 
 ## 1. What does each row represent?
 
-`gllvmTMB` is long-format: every fit takes a data frame in which
-each row is one (unit, trait) observation, with a `value` column
-for the response and a `trait` column naming which trait it is.
-The first decision is whether your data have **one** observational
-level or **two**.
+`gllvmTMB` accepts data in two shapes through one entry point.
+Long-format data have one row per `(unit, trait)` observation
+(`gllvmTMB(value ~ ..., data = df_long, unit = "...")`); wide-
+format data have one row per unit and one column per trait,
+marked by `traits(...)` on the formula left-hand side
+(`gllvmTMB(traits(t1, t2, t3) ~ ..., data = df_wide,
+unit = "...")`). Internally the engine pivots to long; the two
+shapes produce byte-identical fits. The first decision is
+whether your data have **one** observational level or **two**.
 
 | Your data look like... | Observational levels | Random-effect grouping | Example article |
 |---|---|---|---|
-| One row per individual / site, with several traits as columns; you reshape to long format. | One: `unit` | <code>latent(0 + trait &#124; unit)</code> | [Morphometrics](morphometrics.html) (individuals × continuous traits) |
-| Sites that each contain multiple species, with traits measured for each (site, species) combination; or repeated measures per individual; or papers with multiple items each. | Two: `site` (between) and `site_species` (within) | <code>latent(0 + trait &#124; site)</code> *and* <code>latent(0 + trait &#124; site_species)</code> | [Corvidae two-stage](corvidae-two-stage.html) and [Functional biogeography](functional-biogeography.html) |
+| One row per individual / site, with several traits as columns. Use the wide path directly, or reshape to long. | One: `unit` | <code>latent(0 + trait &#124; unit)</code> (long) / <code>latent(1 &#124; unit, d = K)</code> (wide via `traits()`) | [Morphometrics](morphometrics.html) (individuals × continuous traits) |
+| Sites that each contain multiple species, with traits measured for each (site, species) combination; or repeated measures per individual; or papers with multiple items each. | Two: `site` (between) and `site_species` (within) | <code>latent(0 + trait &#124; site)</code> *and* <code>latent(0 + trait &#124; site_species)</code> | [Behavioural syndromes](behavioural-syndromes.html) and [Functional biogeography](functional-biogeography.html) |
 
 If you have a single observational level, the `unit` column can be
 called anything (`individual`, `site`, `study`, `paper`); pass its
 name to `gllvmTMB(..., unit = "your_column")`. The two-level case
 needs both `site` and `site_species` columns; the
 `simulate_site_trait()` helper shows the canonical layout.
+
+This article writes the examples in §6 in long format because the
+long form makes the multi-component formulas easier to read.
+Each example has an equivalent wide form via `traits(...)`; the
+[Get Started vignette](../gllvmTMB.html) shows the long/wide
+equivalence check (`all.equal(logLik(fit), logLik(fit_wide))`).
 
 ## 2. What is the response distribution?
 
@@ -145,23 +129,37 @@ committing to a list.
 A phylogenetic random effect is appropriate when species (or other
 taxa) appear repeatedly in your data and closely related taxa are
 likely to share trait values for evolutionary reasons. The
-appropriate term depends on the answer to two follow-up questions:
-do you want a single shared phylogenetic variance per trait, or
-trait-specific reduced-rank phylogenetic loadings? And how many
-species do you have?
+canonical phylogenetic decomposition pairs four components: a
+phylogenetic shared low-rank axis (`phylo_latent`), a
+phylogenetic trait-specific diagonal (`phylo_unique`), a
+non-phylogenetic shared axis (`latent`), and a non-phylogenetic
+trait-specific diagonal (`unique`). The full decomposition reads
+
+$$
+\Omega = (\Sigma_{\text{phy}} \otimes A) + (\Sigma_{\text{non}} \otimes I), \quad
+\Sigma_{\text{phy}} = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\top} + S_{\text{phy}}, \quad
+\Sigma_{\text{non}} = \Lambda_{\text{non}} \Lambda_{\text{non}}^{\top} + S_{\text{non}}.
+$$
+
+Without all four components the decomposition is degenerate:
+`extract_phylo_signal()` requires both `latent()` and `phylo_*()`
+to return a meaningful three-way split. See
+[Phylogenetic GLLVM](phylogenetic-gllvm.html) for the worked
+example.
 
 | Your situation | Add to formula (in-keyword `tree =` or `vcv =`) |
 |---|---|
 | Rows are not phylogenetically structured (e.g. individuals from one species, or sites without taxonomic identity). | Nothing. |
-| Phylogenetic structure with one shared phylogenetic variance per trait. | `+ phylo_scalar(species, vcv = Cphy)` |
-| Phylogenetic structure with reduced-rank trait-specific loadings (a phylogenetic version of `latent()`). | `+ phylo_latent(species, d = K, vcv = Cphy)` *or* `+ phylo_latent(species, d = K, tree = tree)` |
-| Many species (n > ~200) and you want speed. | (same `phylo_latent` term) with `tree = tree` (sparse $A^{-1}$ trick); much faster than `vcv = Cphy` at this scale. |
+| Phylogenetic structure with one shared phylogenetic variance per trait (simplest phylo model). | `+ phylo_scalar(species, vcv = Cphy)` |
+| **Canonical paired phylogenetic decomposition** (recommended when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree) + phylo_unique(species, tree = tree) + latent(0 + trait \| species, d = K_non) + unique(0 + trait \| species)` |
+| Many species (n > ~200) and you want speed. | (same paired form) with `tree = tree` (sparse $A^{-1}$ trick); much faster than `vcv = Cphy` at this scale. |
 
 The crossover where the sparse $A^{-1}$ path overtakes the dense
 path sits around `n_species ≈ 150-200`. Above that, the speedup is
-roughly an order of magnitude. See
-[Phylogenetic GLLVM](phylogenetic-gllvm.html) for the benchmark and
-the choice between `phylo_scalar()` and `phylo_latent()`.
+roughly an order of magnitude. The
+[Phylogenetic GLLVM article](phylogenetic-gllvm.html) shows the
+benchmark, the worked four-component recovery, and the
+`extract_communality()` / `extract_phylo_signal()` outputs.
 
 ## 4. Are rows spatially organised?
 
@@ -178,8 +176,7 @@ gets its own field by default.
 
 The SPDE engine wins on speed when the dataset has more than
 roughly 100 sites; below that, the dense `glmmTMB::exp()` covariance
-is competitive. See [SPDE benchmark](spde-vs-glmmTMB.html) for the
-crossover plot.
+is competitive.
 
 ## 5. Do you have a reduced-rank story for trait covariance?
 
@@ -264,23 +261,24 @@ fit_jsdm <- gllvmTMB(
 
 ### 6c. Add phylogeny
 
-Rung 2: keep your favourite formula and add `phylo_scalar()` (single
-shared phylo variance) or `phylo_latent()` (reduced-rank). With a tree
-in hand, prefer `tree = tree` (in-keyword) for the sparse $A^{-1}$
-path. See [Phylogenetic GLLVM](phylogenetic-gllvm.html).
+Rung 2: the canonical paired phylogenetic decomposition combines
+`phylo_latent + phylo_unique` (the phy side) with
+`latent + unique` (the non-phy side). With a tree in hand, prefer
+`tree = tree` (in-keyword) for the sparse $A^{-1}$ path. See
+[Phylogenetic GLLVM](phylogenetic-gllvm.html) for the worked
+example with simulation recovery and `extract_phylo_signal()`.
 
 ```{r ex-3, results = "hide"}
 set.seed(3)
 n_sp <- 8
 tree <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))
-Cphy <- ape::vcv(tree, corr = TRUE)
 
 sim_p <- simulate_site_trait(
   n_sites = 30, n_species = n_sp, n_traits = 4,
   mean_species_per_site = 5,
   Lambda_B = matrix(rnorm(8, sd = 0.5), 4, 2),
   S_B = rep(0.3, 4),
-  Cphy = Cphy, sigma2_phy = rep(0.4, 4),
+  Cphy = ape::vcv(tree, corr = TRUE), sigma2_phy = rep(0.4, 4),
   seed = 3
 )
 df_p <- sim_p$data
@@ -288,9 +286,12 @@ levels(df_p$species) <- tree$tip.label
 
 fit_phy <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 2) + unique(0 + trait | site) +
-          phylo_scalar(species, vcv = Cphy),
-  data = df_p
+          phylo_latent(species, d = 1, tree = tree) +
+          phylo_unique(species, tree = tree) +
+          latent(0 + trait | species, d = 1) +
+          unique(0 + trait | species),
+  data = df_p,
+  unit = "species"
 )
 ```
 
@@ -298,7 +299,9 @@ fit_phy <- gllvmTMB(
 
 Rung 3: append `spatial_unique(0 + trait | coords)` and pass a mesh. The
 simulator places sites in `[0,1]^2` automatically when
-`spatial_range` is supplied. See [SPDE benchmark](spde-vs-glmmTMB.html).
+`spatial_range` is supplied. The SPDE engine wins on speed when
+the dataset has more than roughly 100 sites; below that the dense
+`glmmTMB::exp()` covariance is competitive.
 
 ```{r ex-4, results = "hide"}
 set.seed(4)
@@ -334,7 +337,8 @@ fit_full <- gllvmTMB(
           unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
           unique(0 + trait | site_species) +
-          phylo_scalar(species, vcv = Cphy),
+          phylo_latent(species, d = 1, tree = tree) +
+          phylo_unique(species, tree = tree),
   data = df
 )
 ```
@@ -349,7 +353,7 @@ After any fit, run through these in order:
 | Implied between-unit trait covariance. | `extract_Sigma(fit, level = "unit")` (and `extract_Sigma(fit, level = "unit_obs")` for two-level fits). |
 | Interpretable loadings. | `getLoadings(fit, level = "unit", rotate = "varimax")` |
 | Did you fit unconstrained `latent()` with `d > 1`? Loadings are not unique. | Use `rotate = "varimax"` for a quick post-hoc rotation, or call `suggest_lambda_constraint()` to propose a confirmatory `lambda_constraint` matrix and refit. |
-| Communalities / ICCs (manuscript Eqs. 13–15). | `extract_ICC_site(fit)`, `extract_communality(fit, level = "unit")`, `extract_communality(fit, level = "unit_obs")` |
+| Communalities / ICCs. | `extract_ICC_site(fit)`, `extract_communality(fit, level = "unit")`, `extract_communality(fit, level = "unit_obs")` |
 
 If `sanity_multi()` flags a non-PD Hessian or a near-zero loading
 diagonal, the most common causes are an over-rich model
@@ -362,11 +366,9 @@ of the factor-level pitfall.
 
 * [Morphometrics](morphometrics.html) — rung 0: individuals × continuous traits.
 * [Joint SDM](joint-sdm.html) — rung 1: binary multivariate.
-* [Phylogenetic GLLVM](phylogenetic-gllvm.html) — rung 2: phylogenetic dependence.
-* [SPDE benchmark](spde-vs-glmmTMB.html) — rung 3: spatial dependence.
-* [Corvidae two-stage](corvidae-two-stage.html) — rung 4: two observational levels.
-* [Functional biogeography](functional-biogeography.html) — rung 5: capstone.
+* [Behavioural syndromes](behavioural-syndromes.html) — two observational levels.
+* [Phylogenetic GLLVM](phylogenetic-gllvm.html) — phylogenetic dependence (the canonical paired four-component decomposition).
+* [Functional biogeography](functional-biogeography.html) — capstone: two-level + space + phylogeny.
 * [Response families](response-families.html) — supported likelihoods and mixed-family dispatch.
 * [Lambda constraint](lambda-constraint.html) — confirmatory factor analysis with fixed loadings; see also `?suggest_lambda_constraint`.
 * [Pitfalls](pitfalls.html) — common gotchas in data prep, formula construction, and interpretation.
-* [Simulation-based recovery](simulation-recovery.html) — recovery study across the complexity ladder.

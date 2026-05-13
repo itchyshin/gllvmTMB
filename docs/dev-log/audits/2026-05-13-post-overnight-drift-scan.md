@@ -35,29 +35,49 @@ forms are wrong outside function-name task labels
 
 ---
 
-## Revision note (maintainer correction, ~18:15 MT)
+## Revision note (maintainer correction, ~18:15 + ~18:30 MT)
 
 The first-pass framing below treated the **paired four-component
 phylogenetic decomposition as universally canonical**. That was
-too strong. Maintainer correction (verbatim):
+too strong. Two maintainer messages walked it back:
 
 > *"for phylogeny there are cases we cannot get 2 Ss like you
 > know - omega is usual in such a context"*
+
+> *"one S for phylo is when we cannot really get 4 parts OK
+> (3 parts are fine in such a case - I think you had an article
+> on this before)"*
 
 i.e. when the phylogenetic uniqueness $S_{\text{phy}}$ is not
 separately identifiable from $\Lambda_{\text{phy}}
 \Lambda_{\text{phy}}^{\!\top}$ (small `n_species`, weak phylo
 signal, single-replicate-per-tip), the canonical fallback is
-**bare `phylo_latent + latent + unique`** with $\Omega =
-\Sigma_{\text{phy}} + \Sigma_{\text{non}}$ as the reporting target
--- not a "non-canonical drift" but a *legitimate, common* fit.
+the **three-piece form**
+$\Omega = \Sigma_{\text{phy}} +
+\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S_{\text{non}}$
+fit as `gllvmTMB(... + phylo_latent + latent + unique, ...)`
+-- not "non-canonical drift" but a *legitimate, common* fit.
+
+The article the maintainer was referring to is
+[`vignettes/articles/functional-biogeography.Rmd`](../../../vignettes/articles/functional-biogeography.Rmd),
+which already walks through the $p_{it} + q_{it}$ identifiability
+case at lines 327-335 (after PR #78 the M1/M2 labels are renamed
+but the substance is the same): $\sigma^2_Q$ recovers within
+$\sim$10% relative error and $\sigma^2_P$ within $\sim$50% at
+$n_{\text{species}} \geq 100$ with strong phylogenetic signal;
+at smaller $n$ or weaker signal the two pieces cannot be cleanly
+separated.
+
+`R/fit-multi.R:613` ("three-piece decomposition Omega = Sigma_phy
++ Sigma_non,shared + U") is correctly naming the three-piece
+fallback. **Not drift.**
 
 Items 1, 2, and 3 below are revised against this nuance.
 Items 4-8 stand as written.
 
 PR #77 amended with a second "Rule of thumb" paragraph spelling
-out the non-identifiable-S fallback so the article side matches
-the in-code nuance.
+out the three-piece fallback explicitly and cross-linking the
+functional-biogeography article.
 
 ## Confirmed drift (act on these)
 

@@ -31,11 +31,22 @@ coord-board: <agent> resolved <question>
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
 | Claude | (none active) | -- | -- | standing by for Codex comments on PR #64 |
-| Codex | covariance-correlation post-#61 Pat/Rose re-read | not yet opened | `vignettes/articles/covariance-correlation.Rmd` | dispatched per joint plan (PR #64 Section H) |
+| Codex | (none active) | -- | -- | board acknowledged; lanes queued (see below) |
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
 "Recently resolved" with the merge date.
+
+## Queued lanes (not yet picked up)
+
+| Agent | Lane | Wait condition |
+|---|---|---|
+| Claude | README opener + section reorder + "stacked-trait" definition (PR #64 D1+D2+D4) | After PR #64 ratifies + Codex comments on the joint plan |
+| Codex | `_pkgdown.yml` navbar restructure (PR #64 Section I) | After PR #64 / #65 settle |
+| Codex | covariance-correlation post-#61 Pat/Rose re-read | After PR #64 / #65 settle |
+| Codex | Article cleanup lanes (per PR #64 Section H verdicts) | After PR #64 / #65 settle |
+
+Move a row to "Active lanes" when you start it.
 
 ## File ownership for the current docs / navigation pass
 
@@ -74,6 +85,11 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-13 ~05:10 MT**: Codex acknowledged the board and
+  agreed to use it for the next 1-2 days. Active-lane schema
+  amended (Codex's "covariance-correlation re-read" moved
+  from `dispatched` to a Queued lanes subsection, since Codex
+  has not picked it up yet).
 - **2026-05-13 ~05:00 MT**: Maintainer asked whether to create a
   dedicated coordination channel beyond the existing Shannon
   audit + check-log channels. **Resolved**: yes, this file is
@@ -105,4 +121,6 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-13 ~05:11 MT: Active-lane schema amended per Codex
+  feedback; "Queued lanes" subsection added (Claude).
 - 2026-05-13 ~05:00 MT: file created (Claude).

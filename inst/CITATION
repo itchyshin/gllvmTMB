@@ -16,13 +16,13 @@ bibentry(
   ),
   year     = "2026",
   note     = "R package version 0.2.0; methods paper in preparation",
-  url      = "https://itchyshin.github.io/gllvmTMB",
+  url      = "https://itchyshin.github.io/gllvmTMB/",
   textVersion = paste(
     "Nakagawa S (2026).",
     "gllvmTMB: stacked-trait, long-format multivariate generalised",
     "linear latent variable models with TMB.",
     "R package version 0.2.0; methods paper in preparation.",
-    "https://itchyshin.github.io/gllvmTMB"
+    "https://itchyshin.github.io/gllvmTMB/"
   ),
   header   = paste(
     "To cite gllvmTMB itself:"

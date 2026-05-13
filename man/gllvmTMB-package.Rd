@@ -12,7 +12,7 @@ A standalone Template Model Builder (TMB) package for stacked-trait, long-format
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://itchyshin.github.io/gllvmTMB}
+  \item \url{https://itchyshin.github.io/gllvmTMB/}
   \item \url{https://github.com/itchyshin/gllvmTMB}
   \item Report bugs at \url{https://github.com/itchyshin/gllvmTMB/issues}
 }

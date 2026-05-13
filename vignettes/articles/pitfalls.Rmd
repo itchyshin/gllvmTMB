@@ -225,12 +225,16 @@ worked example.*
 not separately identifiable from $\Lambda_{\text{phy}}
 \Lambda_{\text{phy}}^{\!\top}$ -- common in small `n_species`,
 weak phylogenetic signal, or single-replicate-per-tip data --
-drop the `phylo_unique()` term and target the total
-$\Omega = \Sigma_{\text{phy}} + \Sigma_{\text{non}}$ instead of
-the per-tier $S$ decomposition. `gllvmTMB(... + phylo_latent +
-latent + unique, ...)` is the canonical fallback in that case;
-the species-level `unique()` carries the only $S$ in the fit
-and $\Omega$ is reported in the usual way.*
+the **three-piece fallback** $\Omega = \Sigma_{\text{phy}} +
+\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S_{\text{non}}$
+is fine: drop the `phylo_unique()` term and let the species-level
+`unique()` carry the only $S$ in the fit, with $\Omega$ reported
+as the usual total. `gllvmTMB(... + phylo_latent + latent +
+unique, ...)` is the canonical form in that case. The
+[functional-biogeography article](functional-biogeography.html)
+walks through this $p_{it} + q_{it}$ identifiability case in
+detail; in the same regime, $\sigma^2_Q$ recovers within
+$\sim$10% relative error while $\sigma^2_P$ can be noisier.*
 
 ## 6. The `unit = "..."` argument
 

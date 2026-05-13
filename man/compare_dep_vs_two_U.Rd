@@ -2,7 +2,7 @@
 % Please edit documentation in R/extract-two-U-cross-check.R
 \name{compare_dep_vs_two_U}
 \alias{compare_dep_vs_two_U}
-\title{Canonical likelihood-based cross-check for the two-U decomposition}
+\title{Canonical likelihood-based cross-check for the paired phylogenetic decomposition}
 \usage{
 compare_dep_vs_two_U(
   fit_two_U,

@@ -370,7 +370,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn phylo_dep} and {.fn phylo_latent} are over-parameterised together.",
         "i" = "Both {.code phylo_dep(0 + trait | species)} and {.code phylo_latent(species, d = K)} appear in the formula.",
-        ">" = "Use {.fn phylo_dep} alone for the full unstructured cross-trait phylogenetic fit, or use {.code phylo_latent + phylo_unique} (paired) for the two-U decomposition. They cannot coexist."
+        ">" = "Use {.fn phylo_dep} alone for the full unstructured cross-trait phylogenetic fit, or use {.code phylo_latent + phylo_unique} (paired) for the paired phylogenetic decomposition. They cannot coexist."
       ))
     }
     if (any(phy_is_unique & !phy_is_indep)) {
@@ -405,7 +405,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn phylo_indep} and {.fn phylo_latent} are over-parameterised together.",
         "i" = "Both {.code phylo_indep(0 + trait | species)} and {.code phylo_latent(species, d = K)} appear in the formula.",
-        ">" = "Use {.fn phylo_indep} alone for the marginal-only phylogenetic fit, or use {.code phylo_latent + phylo_unique} (paired) for the two-U decomposition. They cannot coexist."
+        ">" = "Use {.fn phylo_indep} alone for the marginal-only phylogenetic fit, or use {.code phylo_latent + phylo_unique} (paired) for the paired phylogenetic decomposition. They cannot coexist."
       ))
     }
     ## phylo_indep + phylo_unique: redundant (both produce diag(sigma^2_phy,t)).

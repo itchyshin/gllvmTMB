@@ -2,7 +2,7 @@
 % Please edit documentation in R/extract-two-U-cross-check.R
 \name{compare_indep_vs_two_U}
 \alias{compare_indep_vs_two_U}
-\title{Cheap diagonal cross-check for the two-U decomposition (large T)}
+\title{Cheap diagonal cross-check for the paired phylogenetic decomposition (large T)}
 \usage{
 compare_indep_vs_two_U(
   fit_two_U,

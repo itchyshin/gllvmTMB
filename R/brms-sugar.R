@@ -1009,7 +1009,7 @@ indep <- function(formula) {
 #'
 #' Use `phylo_indep()` for an explicit marginal-only phylogenetic fit
 #' (no cross-trait phylogenetic decomposition). Use `phylo_latent()`
-#' paired with `phylo_unique()` for the two-U decomposition
+#' paired with `phylo_unique()` for the paired phylogenetic decomposition
 #' \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \mathbf S_{\text{phy}}}.
 #'
 #' ## Mutual exclusion with `phylo_latent()`
@@ -1203,7 +1203,7 @@ dep <- function(formula) {
 #'
 #' Use `phylo_dep()` when you want an explicit full-unstructured
 #' cross-trait phylogenetic covariance fit. Use `phylo_latent()` paired
-#' with `phylo_unique()` for the rank-reduced two-U decomposition. Use
+#' with `phylo_unique()` for the rank-reduced paired phylogenetic decomposition. Use
 #' `phylo_indep()` for the marginal-only per-trait variance fit.
 #'
 #' ## Mutual exclusion with `phylo_latent()` / `phylo_unique()` / `phylo_indep()`

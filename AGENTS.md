@@ -25,6 +25,9 @@ Model Builder.
 - Single-response models (no covstruct keyword) belong in `glmmTMB`.
   Spatial-only single-response models belong in `sdmTMB`.
   Higher-dimensional latent-variable models are `gllvmTMB`'s job.
+  For the full cross-package scope record (including `gllvm`,
+  `MCMCglmm`, `brms`, the decision matrix, and the "what gllvmTMB
+  does NOT do" section), see `docs/design/04-sister-package-scope.md`.
 - The phylogenetic representation is a sparse A^-1 (Hadfield &
   Nakagawa 2010, re-implemented from the same algorithm in
   `src/gllvmTMB.cpp`). The spatial representation is the SPDE/GMRF

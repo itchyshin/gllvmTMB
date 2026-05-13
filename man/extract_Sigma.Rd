@@ -15,9 +15,10 @@ extract_Sigma(
 \arguments{
 \item{fit}{A \code{gllvmTMB_multi} fit.}
 
-\item{level}{One of \code{"B"} (between-unit), \code{"W"} (within-unit), \code{"phy"}
-(phylogenetic), or -- once the engine supports it -- a custom
-grouping-factor column name.}
+\item{level}{One of \code{"unit"} (between-unit), \code{"unit_obs"} (within-unit),
+\code{"phy"} (phylogenetic), \code{"spatial"}, or \code{"cluster"}. Legacy aliases
+\code{"B"}, \code{"W"}, and \code{"spde"} are accepted with a soft-deprecation
+message.}
 
 \item{part}{One of \code{"total"} (default), \code{"shared"}, \code{"unique"}.}
 
@@ -160,8 +161,9 @@ Citations: Nakagawa & Schielzeth (2010); Nakagawa, Johnson & Schielzeth
 
 \subsection{Future: 3+ latent tiers}{
 
-The engine currently supports two \code{latent()} tiers (between-unit \code{"B"}
-and within-unit \code{"W"}); \code{level = "B"} and \code{"W"} are shortcuts for these.
+The engine currently supports two \code{latent()} tiers (\code{"unit"} and
+\code{"unit_obs"}); legacy \code{level = "B"} and \code{"W"} aliases are still accepted
+with a soft-deprecation message.
 \code{level = "phy"} extracts the phylogenetic implied
 \eqn{\boldsymbol\Sigma_\text{phy}} from \code{phylo_latent()}. If a future
 release adds 3+ latent tiers, \code{level = "<colname>"} will dispatch to the
@@ -176,9 +178,9 @@ fit <- gllvmTMB(
           latent(0 + trait | unit, d = 2) + unique(0 + trait | unit),
   data = df
 )
-extract_Sigma(fit, level = "B", part = "total")$Sigma   # full T x T cov
-extract_Sigma(fit, level = "B", part = "shared")$Sigma  # rr-only
-extract_Sigma(fit, level = "B", part = "unique")$s      # diag(S_B)
+extract_Sigma(fit, level = "unit", part = "total")$Sigma   # full T x T cov
+extract_Sigma(fit, level = "unit", part = "shared")$Sigma  # rr-only
+extract_Sigma(fit, level = "unit", part = "unique")$s      # diag(s_unit)
 }
 }
 \references{

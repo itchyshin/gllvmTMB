@@ -22,9 +22,9 @@ make_BW_fit <- function(seed = 1) {
 
 test_that("extract_Omega(tiers = c('B','W')) sums B and W tiers", {
   fit <- make_BW_fit()
-  Sigma_B <- suppressMessages(extract_Sigma(fit, "B", "total"))$Sigma
-  Sigma_W <- suppressMessages(extract_Sigma(fit, "W", "total"))$Sigma
-  out <- suppressMessages(extract_Omega(fit, tiers = c("B", "W")))
+  Sigma_B <- suppressMessages(extract_Sigma(fit, "unit", "total"))$Sigma
+  Sigma_W <- suppressMessages(extract_Sigma(fit, "unit_obs", "total"))$Sigma
+  out <- suppressWarnings(suppressMessages(extract_Omega(fit, tiers = c("B", "W"))))
   expect_equal(out$Omega, Sigma_B + Sigma_W, tolerance = 1e-10)
   ## Diagonal of correlation matrix is 1
   expect_equal(unname(diag(out$R_Omega)), rep(1, fit$n_traits))

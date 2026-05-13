@@ -14,23 +14,54 @@ round-2). Each item below was grepped + read against the current
 canonical model. Lines/excerpts shown are from `main` at the time
 of the scan.
 
-**Canonical model the scan checks against**
+**Canonical model the scan checks against** (revised per
+maintainer correction below)
 
-The paired four-component phylogenetic decomposition is canonical:
+The phylogenetic decomposition has two canonical forms depending
+on identifiability:
 
-```r
-gllvmTMB(value ~ 0 + trait
-         + phylo_latent(species, d = K_phy)
-         + phylo_unique(species)
-         + latent(0 + trait | unit, d = K_non)
-         + unique(0 + trait | unit),
-         data = df_long)
-```
+1. **Four-piece (paired) form**, when both $S$ diagonals are
+   identifiable (typically crossed site x species with
+   `n_species >= 100` and strong phylo signal):
 
-with math `Σ_phy = Λ_phy Λ_phy^T + S_phy`, `Σ_non = Λ_non Λ_non^T +
-S_non`, `Ω = Σ_phy + Σ_non`. Math notation uses `\mathbf{S}` / `s`
-in user-facing prose; the legacy `U`, `U_phy`, `U_non`, `\Psi`
-forms are wrong outside function-name task labels
+   ```r
+   gllvmTMB(value ~ 0 + trait
+            + phylo_latent(species, d = K_phy)
+            + phylo_unique(species)
+            + latent(0 + trait | unit, d = K_non)
+            + unique(0 + trait | unit),
+            data = df_long)
+   ```
+
+   with $\Sigma_{\text{phy}} = \Lambda_{\text{phy}}
+   \Lambda_{\text{phy}}^{\!\top} + S_{\text{phy}}$,
+   $\Sigma_{\text{non}} = \Lambda_{\text{non}}
+   \Lambda_{\text{non}}^{\!\top} + S_{\text{non}}$,
+   $\Omega = \Sigma_{\text{phy}} + \Sigma_{\text{non}}$.
+
+2. **Three-piece (fallback) form**, when $S_{\text{phy}}$ is not
+   separately identifiable from $\Lambda_{\text{phy}}
+   \Lambda_{\text{phy}}^{\!\top}$ (small `n_species`, weak phylo
+   signal, single-replicate-per-tip):
+
+   ```r
+   gllvmTMB(value ~ 0 + trait
+            + phylo_latent(species, d = K_phy)
+            + latent(0 + trait | unit, d = K_non)
+            + unique(0 + trait | unit),
+            data = df_long)
+   ```
+
+   with $\Omega = \Sigma_{\text{phy}} + \Lambda_{\text{non}}
+   \Lambda_{\text{non}}^{\!\top} + S_{\text{non}}$. The
+   species-level `unique()` carries the only $S$ in the fit
+   and $\Omega$ is reported in the usual way.
+
+Math notation uses `\mathbf{S}` / `s` in user-facing prose for
+model-side diagonals; `\Psi_t` is the canonical symbol in the
+`extract_phylo_signal()` $H^2 + C^2_{\text{non}} + \Psi^2 = 1$
+partition. The legacy bare `U`, `U_phy`, `U_non` forms are
+wrong outside function-name task labels
 (`compare_dep_vs_two_U()` etc., kept per PR #40).
 
 ---

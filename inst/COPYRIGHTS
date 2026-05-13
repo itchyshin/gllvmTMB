@@ -3,7 +3,7 @@
 ## gllvmTMB is a standalone Template Model Builder (TMB) package for
 ## stacked-trait, long-format multivariate generalised linear latent
 ## variable models (GLLVMs). The gllvmTMB-specific code -- the
-## multi-trait engine in inst/tmb/gllvmTMB_multi.cpp, the formula
+## multi-trait engine in src/gllvmTMB.cpp, the formula
 ## parser, the 3 x 5 covariance keyword grid, the per-trait response
 ## families (including ordinal_probit), the diagnostic and extractor
 ## machinery -- is licensed GPL-3 by Shinichi Nakagawa.

@@ -1,11 +1,11 @@
 ---
-title: "Functional biogeography GLLVM: M1 to M2 to extensions"
+title: "Functional biogeography: trait syndromes with optional spatial and phylogenetic controls"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Functional biogeography GLLVM: M1 to M2 to extensions}
+  %\VignetteIndexEntry{Functional biogeography: trait syndromes with optional spatial and phylogenetic controls}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -24,23 +24,27 @@ knitr::opts_chunk$set(
 ```
 
 The replicated site--species--trait GLLVM is the canonical
-functional-biogeography model of Nakagawa et al. (in prep). This
-article fits it as a **two-step model ladder**:
+functional-biogeography model (Nakagawa et al., in preparation).
+This article fits it as a **model ladder**:
 
-* **§1 -- M1 (functional integration core).** Trait covariation
-  decomposed into a between-site component
+* **§1 -- Core syndrome model.** Trait covariation decomposed
+  into a between-site component
   $\boldsymbol{\Sigma}_B$ (global functional integration) and a
   within-site component $\boldsymbol{\Sigma}_W$ (local functional
   integration). No space, no phylogeny -- just the syndrome story.
-* **§2 -- M2 (controls for space and phylogeny).** Re-fit M1 with
-  spatial and phylogenetic adjustment terms. Compare M2's
-  $\boldsymbol{\Sigma}_B$ / $\boldsymbol{\Sigma}_W$ to M1's. If the
-  syndrome story holds, the controls have done their job.
-* **§3 -- Extensions.** Promote space or phylogeny to its own
-  covariance decomposition (M3, M4) when the inferential target is
-  *spatial* or *phylogenetically conserved* trait syndromes. We
-  preview the syntax and point at companion articles; the fits
-  themselves live elsewhere.
+* **§2 -- Adjustment with spatial and phylogenetic controls.**
+  Re-fit the core model with spatial and phylogenetic adjustment
+  terms. Compare the adjusted model's $\boldsymbol{\Sigma}_B$ /
+  $\boldsymbol{\Sigma}_W$ to the core model's. If the syndrome
+  story holds, the controls have done their job.
+* **§3 -- Spatial syndrome partitioning.** Promote space to its
+  own reduced-rank covariance decomposition when the inferential
+  target is *spatially structured* trait syndromes.
+* **§4 -- Phylogenetic syndrome partitioning.** Symmetric: promote
+  phylogeny to its own decomposition when the target is
+  *phylogenetically conserved* trait syndromes. §3 and §4 preview
+  the syntax and point at companion articles; the full fits live
+  there.
 
 ## A family of models
 
@@ -65,13 +69,13 @@ the wrong one.
 A second conceptual move runs through §1 and §2: the **adjustment vs
 partitioning** distinction for spatial and phylogenetic terms.
 
-* **Adjustment models** (M2, this article's main focus). Spatial
+* **Adjustment models** (this article's main focus, §2). Spatial
   and phylogenetic terms are *controls*, so the primary biological
   targets remain $\boldsymbol{\Sigma}_B$ and $\boldsymbol{\Sigma}_W$.
   Use `spatial_unique()` and `phylo_unique()` -- per-trait variances
   on a shared correlation structure ($\mathbf{K}_{\text{space}}$ and
   $\mathbf{C}_{\text{phy}}$).
-* **Partitioning models** (M3, M4 in §3). Spatial and phylogenetic
+* **Partitioning models** (§3 and §4). Spatial and phylogenetic
   signals get their own reduced-rank covariance decomposition
   ($\boldsymbol{\Sigma}_R$, $\boldsymbol{\Sigma}_P$) via
   `spatial_latent + spatial_unique` and
@@ -98,17 +102,18 @@ library(ggplot2)
 > crossed ecological interpretation.
 
 A 60-site, 30-species, 6-trait fixture with mean 5 species per site
-(`r as.character(round(60 * 5))` rows-ish) gives both M1 and M2 enough
-information to recover the simulation truth on the largest covariance
-entries. The DGP includes:
+(`r as.character(round(60 * 5))` rows-ish) gives both the core
+syndrome model and the adjusted model enough information to recover
+the simulation truth on the largest covariance entries. The DGP
+includes:
 
 * a rank-2 between-site truth ($d_B = 2$): two trait syndromes with
   opposite signs across the two trait blocks (1-3 vs 4-6);
 * a rank-1 within-site truth ($d_W = 1$): a single shared local axis;
-* small phylogenetic and spatial signals so M2 has something to
-  control for, but small enough that the M1-vs-M2 comparison is
-  honest -- the syndrome story should *not* be an artefact of
-  geography or shared ancestry.
+* small phylogenetic and spatial signals so the adjusted model has
+  something to control for, but small enough that the core-vs-adjusted
+  comparison is honest -- the syndrome story should *not* be an
+  artefact of geography or shared ancestry.
 
 ```{r sim}
 set.seed(42)
@@ -149,7 +154,7 @@ Sigma_B_true <- Lambda_B_true %*% t(Lambda_B_true) + diag(S_B_true)
 Sigma_W_true <- Lambda_W_true %*% t(Lambda_W_true) + diag(S_W_true)
 ```
 
-# §1 -- M1: functional integration core
+# §1 -- Core syndrome model
 
 The lead-in model. No space, no phylogeny. The mean structure is
 
@@ -179,7 +184,7 @@ with
 
 ```{r fit-m1}
 t0 <- Sys.time()
-fit_M1 <- gllvmTMB(
+fit_core <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
           latent(0 + trait | site, d = 2) +
@@ -190,15 +195,15 @@ fit_M1 <- gllvmTMB(
   cluster = "species"
 )
 t_M1 <- round(as.numeric(Sys.time() - t0, units = "secs"), 1)
-fit_M1$opt$convergence
+fit_core$opt$convergence
 ```
 
 Wall time: `r t_M1` s. Extract $\boldsymbol{\Sigma}_B$ and
 $\boldsymbol{\Sigma}_W$:
 
 ```{r m1-sigma}
-Sigma_B_M1 <- extract_Sigma(fit_M1, level = "unit",     part = "total")$Sigma
-Sigma_W_M1 <- extract_Sigma(fit_M1, level = "unit_obs", part = "total")$Sigma
+Sigma_B_M1 <- extract_Sigma(fit_core, level = "unit",     part = "total")$Sigma
+Sigma_W_M1 <- extract_Sigma(fit_core, level = "unit_obs", part = "total")$Sigma
 round(Sigma_B_M1, 2)
 round(Sigma_W_M1, 2)
 ```
@@ -211,11 +216,11 @@ and the site-level ICC
 $R^{(\text{site})}_t = (\boldsymbol{\Sigma}_B)_{tt} / [(\boldsymbol{\Sigma}_B)_{tt} + (\boldsymbol{\Sigma}_W)_{tt}]$:
 
 ```{r m1-comm-icc}
-round(extract_communality(fit_M1, level = "unit"), 3)
-round(extract_ICC_site(fit_M1), 3)
+round(extract_communality(fit_core, level = "unit"), 3)
+round(extract_ICC_site(fit_core), 3)
 ```
 
-Three things to watch for in any M1 fit, each a separate identifiability concern:
+Three things to watch for in any core-model fit, each a separate identifiability concern:
 
 > **Note (1) -- $\boldsymbol{\Sigma}_W$ vs $\sigma_\delta$
 > identifiability.** With no within-cell replication (one observation
@@ -223,17 +228,19 @@ Three things to watch for in any M1 fit, each a separate identifiability concern
 > $\boldsymbol{\Sigma}_W^{*} = \boldsymbol{\Sigma}_W + \mathrm{diag}(\sigma^2_\delta)$
 > is identified. The engine handles this by auto-suppressing
 > `sigma_eps` to a tiny floor whenever a per-row `unique()` is
-> present (you'll see a one-shot inform when M1 fits). Replication
-> within cell -- multiple individuals of the same species at the
-> same site, or repeated visits -- is the design move that splits
-> them. See [`pitfalls`](pitfalls.html) for a worked demonstration.
+> present (you'll see a one-shot inform when the core model fits).
+> Replication within cell -- multiple individuals of the same
+> species at the same site, or repeated visits -- is the design
+> move that splits them. See [`pitfalls`](pitfalls.html) for a
+> worked demonstration.
 
 > **Note (2) -- communality is rank-conditional.** $c^2_{B,t}$
-> depends on the choice of $d_B$. Refitting M1 at $d_B = 1$ on the
-> same data gives different communalities than at $d_B = 2$:
+> depends on the choice of $d_B$. Refitting the core model at
+> $d_B = 1$ on the same data gives different communalities than at
+> $d_B = 2$:
 
 ```{r m1-rank-conditional}
-fit_M1_d1 <- gllvmTMB(
+fit_core_d1 <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
           latent(0 + trait | site, d = 1) +
@@ -244,8 +251,8 @@ fit_M1_d1 <- gllvmTMB(
   cluster = "species"
 )
 rbind(
-  d_B_1 = round(extract_communality(fit_M1_d1, level = "unit"), 3),
-  d_B_2 = round(extract_communality(fit_M1,    level = "unit"), 3)
+  d_B_1 = round(extract_communality(fit_core_d1, level = "unit"), 3),
+  d_B_2 = round(extract_communality(fit_core,    level = "unit"), 3)
 )
 ```
 
@@ -268,7 +275,7 @@ rbind(
 > site--species--trait model below is right for our DGP; do not
 > force it onto a different one.
 
-# §2 -- M2: spatial and phylogenetic adjustment
+# §2 -- Adjustment with spatial and phylogenetic controls
 
 Same equation as §1 but with four extra random-effect terms:
 
@@ -307,7 +314,7 @@ identifiable -- see the note after the fit for the empirical regime.
 mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.1)
 
 t0 <- Sys.time()
-fit_M2 <- gllvmTMB(
+fit_adj <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
           spatial_unique(0 + trait | coords, mesh = mesh) +
@@ -321,7 +328,7 @@ fit_M2 <- gllvmTMB(
   cluster = "species"
 )
 t_M2 <- round(as.numeric(Sys.time() - t0, units = "secs"), 1)
-fit_M2$opt$convergence
+fit_adj$opt$convergence
 ```
 
 Wall time: `r t_M2` s.
@@ -333,7 +340,7 @@ within $\sim$10% relative error and $\sigma^2_{P,t}$ within $\sim$50%
 signal is weak; the trait-averaged $\bar{\sigma}^2_P$ is more
 stable). At small $n_{\text{species}}$ or weak phylogenetic signal,
 the $p_{it}$ and $q_{it}$ pieces cannot be cleanly separated and one
-should compare M1 (without `unique(0 + trait | species)`) to M2 (with
+should compare the core model (without `unique(0 + trait | species)`) to the adjusted model (with
 it) to confirm both terms contribute on the focal data. The engine
 prints a one-shot informational note pointing at this regime when it
 detects the pairing.
@@ -341,24 +348,24 @@ detects the pairing.
 ## The pedagogical moment: do the controls move the syndrome?
 
 Re-extract $\boldsymbol{\Sigma}_B$ and $\boldsymbol{\Sigma}_W$ from
-M2 and compare to M1's:
+the adjusted model and compare to the core model's:
 
 ```{r m2-sigma}
-Sigma_B_M2 <- extract_Sigma(fit_M2, level = "unit",     part = "total")$Sigma
-Sigma_W_M2 <- extract_Sigma(fit_M2, level = "unit_obs", part = "total")$Sigma
+Sigma_B_adj <- extract_Sigma(fit_adj, level = "unit",     part = "total")$Sigma
+Sigma_W_adj <- extract_Sigma(fit_adj, level = "unit_obs", part = "total")$Sigma
 
-R_B_M1 <- extract_Sigma(fit_M1, level = "unit")$R
-R_B_M2 <- extract_Sigma(fit_M2, level = "unit")$R
-R_W_M1 <- extract_Sigma(fit_M1, level = "unit_obs")$R
-R_W_M2 <- extract_Sigma(fit_M2, level = "unit_obs")$R
+R_B_core <- extract_Sigma(fit_core, level = "unit")$R
+R_B_adj <- extract_Sigma(fit_adj, level = "unit")$R
+R_W_core <- extract_Sigma(fit_core, level = "unit_obs")$R
+R_W_adj <- extract_Sigma(fit_adj, level = "unit_obs")$R
 
-c(max_abs_diff_R_B = round(max(abs(R_B_M2 - R_B_M1)), 3),
-  max_abs_diff_R_W = round(max(abs(R_W_M2 - R_W_M1)), 3))
+c(max_abs_diff_R_B = round(max(abs(R_B_adj - R_B_core)), 3),
+  max_abs_diff_R_W = round(max(abs(R_W_adj - R_W_core)), 3))
 ```
 
 Side-by-side correlation-matrix heatmaps:
 
-```{r heatmap-rb, fig.cap = "Cross-trait correlation matrix at the between-site (Sigma_B) tier under M1 (no controls) and M2 (spatial + phylogenetic adjustment). The block structure (traits 1-3 vs 4-6) is preserved across models.", fig.width = 8, fig.height = 4}
+```{r heatmap-rb, fig.cap = "Cross-trait correlation matrix at the between-site (Sigma_B) tier under the core model (no controls) and the adjusted model (with spatial + phylogenetic adjustment). The block structure (traits 1-3 vs 4-6) is preserved across models.", fig.width = 8, fig.height = 4}
 heatmap_df <- function(R, label) {
   rn <- rownames(R) %||% paste0("trait_", seq_len(nrow(R)))
   data.frame(
@@ -370,8 +377,8 @@ heatmap_df <- function(R, label) {
 }
 
 R_B_long <- rbind(
-  heatmap_df(R_B_M1, "M1 (no controls)"),
-  heatmap_df(R_B_M2, "M2 (+ space + phylo)")
+  heatmap_df(R_B_core, "Core (no controls)"),
+  heatmap_df(R_B_adj, "Adjusted (+ space + phylo)")
 )
 
 ggplot(R_B_long, aes(trait_i, trait_j, fill = rho)) +
@@ -389,10 +396,10 @@ ggplot(R_B_long, aes(trait_i, trait_j, fill = rho)) +
         axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-```{r heatmap-rw, fig.cap = "Cross-trait correlation matrix at the within-site (Sigma_W) tier under M1 and M2. The local-integration story is similarly stable to the addition of controls.", fig.width = 8, fig.height = 4}
+```{r heatmap-rw, fig.cap = "Cross-trait correlation matrix at the within-site (Sigma_W) tier under the core and adjusted models. The local-integration story is similarly stable to the addition of controls.", fig.width = 8, fig.height = 4}
 R_W_long <- rbind(
-  heatmap_df(R_W_M1, "M1 (no controls)"),
-  heatmap_df(R_W_M2, "M2 (+ space + phylo)")
+  heatmap_df(R_W_core, "Core (no controls)"),
+  heatmap_df(R_W_adj, "Adjusted (+ space + phylo)")
 )
 
 ggplot(R_W_long, aes(trait_i, trait_j, fill = rho)) +
@@ -412,21 +419,21 @@ ggplot(R_W_long, aes(trait_i, trait_j, fill = rho)) +
 
 The block structure of $\mathbf{R}_B$ -- traits 1-3 positively
 correlated, traits 4-6 positively correlated, the two blocks
-negatively correlated -- is *the same* under M1 and M2. That is the
+negatively correlated -- is *the same* under the core and adjusted models. That is the
 desired finding. It tells the reader the syndrome was **not** a
 geography or ancestry artefact: even after controlling for the
 spatial and phylogenetic structure that the data carry, the same two
 syndromes survive.
 
-If the comparison instead showed M2's $\mathbf{R}_B$ flattening
+If the comparison instead showed the adjusted model's $\mathbf{R}_B$ flattening
 (syndrome erased) or shifting sign (syndrome reversed), you would
 have a different and equally interesting story: the apparent global
 functional integration was largely a function of spatial covariation
 in the environmental drivers, or of shared ancestry. Either finding
-should be reported -- the M1 vs M2 comparison is *the* diagnostic
+should be reported -- the core-vs-adjusted comparison is *the* diagnostic
 for which.
 
-> **Sample size guidance**. M2 is a multi-tier model with five
+> **Sample size guidance**. The adjusted model is a multi-tier model with five
 > random-effect tiers and ~70 free parameters at $T = 6$.
 > Identifiability requires enough **groups** at each tier, not just
 > enough total observations:
@@ -444,12 +451,12 @@ for which.
 >   ($\lambda_{\text{Pagel}} \gtrsim 0.4$) for the phylogenetic
 >   decomposition to bite
 >
-> Below these thresholds, fall back to **M1** -- drop the controls,
+> Below these thresholds, fall back to **the core model** -- drop the controls,
 > report $\boldsymbol{\Sigma}_B$ and $\boldsymbol{\Sigma}_W$ as
 > *partial* (not "fully adjusted") global and local integration.
 > Don't add tiers your data can't support: gllvmTMB makes complex
 > models *expressible*, but **expressibility is not
-> identifiability**. A formal regime map across M1–M4 is in
+> identifiability**. A formal regime map across all four models in the ladder is in
 > preparation (`dev/design/11-identifiability-regime-map.md`); a
 > dedicated article will follow once the simulation grid completes.
 
@@ -462,7 +469,7 @@ from a per-trait control to a full reduced-rank covariance
 decomposition. We sketch the syntax for two extension models below
 and point at the dedicated articles for the worked fits.
 
-## M3 -- spatial trait syndromes
+# §3 -- Spatial syndrome partitioning
 
 Add a `spatial_latent` term in addition to `spatial_unique` to
 estimate $\boldsymbol{\Sigma}_R = \boldsymbol{\Lambda}_R\boldsymbol{\Lambda}_R^{\!\top} + \boldsymbol{\Psi}_R$,
@@ -486,16 +493,17 @@ fit_M3 <- gllvmTMB(
 
 The spatial term is the same engine as the phylogenetic
 two-piece decomposition documented in
-[`phylogenetic-gllvm`](phylogenetic-gllvm.html). M3 needs more
-spatial signal than M2 to identify both
+[`phylogenetic-gllvm`](phylogenetic-gllvm.html). The spatial-
+partition model needs more spatial signal than the adjustment
+model to identify both
 $\boldsymbol{\Lambda}_R$ and $\boldsymbol{\Psi}_R$ separately;
-treat its loadings as a sensitivity analysis to M2's per-trait
+treat its loadings as a sensitivity analysis to the adjusted model's per-trait
 spatial variances. A worked example will appear in the planned
 `spatial-trait-syndromes` article.
 
-## M4 -- phylogenetically conserved syndromes
+# §4 -- Phylogenetic syndrome partitioning
 
-Symmetric to M3, but on the phylogeny side: pair `phylo_latent`
+Symmetric to the spatial-partition model, but on the phylogeny side: pair `phylo_latent`
 with `phylo_unique` to estimate
 $\boldsymbol{\Sigma}_P = \boldsymbol{\Lambda}_P\boldsymbol{\Lambda}_P^{\!\top} + \boldsymbol{\Psi}_P$,
 the phylogenetic two-piece decomposition. Loadings on
@@ -527,21 +535,22 @@ constraint matrix.
 
 ## What we did *not* fit
 
-We deliberately do not promote the ladder beyond M4 in this
+We deliberately do not promote the ladder beyond the phylogenetic-partition model in this
 article. The "kitchen-sink" model that combines latent partitioning
 on every tier ($\boldsymbol{\Lambda}_B$, $\boldsymbol{\Lambda}_W$,
 $\boldsymbol{\Lambda}_R$, $\boldsymbol{\Lambda}_P$) is conceptually
 beautiful but statistically fragile -- the partitioning at one tier
 trades off against the others, and the loadings stop being separately
-identifiable without strong constraints. M2 is the sweet spot for
-publication-grade fits; M3 and M4 are sensitivity analyses;
+identifiable without strong constraints. The adjusted model is the
+sweet spot for publication-grade fits; the spatial- and
+phylogenetic-partition models are sensitivity analyses;
 beyond that, the data have to carry the burden of identifiability
 that the model can no longer.
 
 # Diagnostics
 
 ```{r diagnostics}
-sanity_multi(fit_M2)
+sanity_multi(fit_adj)
 ```
 
 Convergence, max gradient, Hessian PD-ness, fixed-effect SE, and
@@ -550,13 +559,13 @@ set higher than the data support. The fixed-effect SE check is the
 loosest filter: in fits with a phylogenetic random effect the SE
 column also picks up some derived sd-report quantities and can flag
 WARN even when the underlying fixed-effect estimates are well-
-behaved (compare to the `tidy(fit_M2, "fixed")` output). The other
+behaved (compare to the `tidy(fit_adj, "fixed")` output). The other
 four checks are the ones to act on.
 
 # See also
 
 * [`phylogenetic-gllvm`](phylogenetic-gllvm.html) -- the two-piece
-  phylogenetic decomposition (M4 above) at species level.
+  phylogenetic decomposition (§4 above) at species level.
 * [`joint-sdm`](joint-sdm.html) -- non-Gaussian JSDM /
   fourth-corner model: traits explain species responses to environment.
 * [`corvidae-two-stage`](corvidae-two-stage.html) -- AVONET-style

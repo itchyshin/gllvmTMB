@@ -225,20 +225,22 @@ worked example.*
 not separately identifiable from $\Lambda_{\text{phy}}
 \Lambda_{\text{phy}}^{\!\top}$ -- common in small `n_species`,
 weak phylogenetic signal, or single-replicate-per-tip data --
-the **three-piece fallback**
+drop the `phylo_unique()` term and let the species-level
+`unique()` carry the only $S$ in the fit. The model then has
+three pieces:*
 
 $$
 \Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top} +
 \Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S
 $$
 
-is fine: drop the `phylo_unique()` term and let the species-level
-`unique()` carry the only $S$ in the fit, with $\Omega$ reported
-as the usual total. (The three pieces are
-$\Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top}$,
-$\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top}$, and the
-non-tier-specific diagonal $S$.) `gllvmTMB(... + phylo_latent +
-latent + unique, ...)` is the canonical form in that case. The
+*-- $\Omega$ is simply the **total trait covariance**, the sum
+of every variance component in whichever model you fit (four
+pieces in the paired form above, three pieces here, more if you
+add `spatial_*` or extra latent tiers). The number of pieces
+follows from the keywords in the formula. `gllvmTMB(... +
+phylo_latent + latent + unique, ...)` is the canonical form for
+this three-piece case. The
 [functional-biogeography article](functional-biogeography.html)
 walks through this $p_{it} + q_{it}$ identifiability case in
 detail; in the same regime, $\sigma^2_Q$ recovers within

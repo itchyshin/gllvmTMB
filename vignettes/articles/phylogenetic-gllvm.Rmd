@@ -263,44 +263,70 @@ extract_phylo_signal(fit)
 (wide), as this article does, is what makes `C^2_non` a genuine
 non-phylogenetic shared-axis component rather than a placeholder.
 
-## Check identifiability
+## Compare against simpler and saturated baselines
 
-The diagnostic functions refit the same data under simpler or more
-flexible covariance intent and compare the implied total covariance
-matrices.
+Three nested covariance intents bracket the four-component model:
 
-```{r diagnostic, eval = FALSE}
-compare_dep_vs_two_U(fit)
-compare_indep_vs_two_U(fit)
+- **Independent** (`phylo_indep + indep`): per-trait diagonal only at
+  each tier. No shared axis, no cross-trait covariance. The simplest
+  model that respects the phylogenetic structure.
+- **Two-U** (`phylo_latent + phylo_unique + latent + unique`): the
+  four-component decomposition fit in this article. A shared
+  low-rank axis plus a trait-specific diagonal at each tier.
+- **Dependent** (`phylo_dep + dep`): a full unstructured covariance
+  at each tier. Saturated; no shared/unique split is enforced.
+
+The two-U decomposition sits between independent (too restrictive
+when traits are correlated) and dependent (too many parameters when
+the number of traits grows). The cross-check functions refit the
+data under the independent and dependent baselines and compare each
+component's implied total covariance against the two-U fit.
+
+```{r compare-indep}
+diag_indep <- compare_indep_vs_two_U(fit)
+diag_indep$agreement
+diag_indep$flag
 ```
 
-Use `compare_dep_vs_two_U()` first when the number of traits is modest.
-It compares the fitted two-piece decomposition against a saturated
-`phylo_dep + dep` baseline. Use `compare_indep_vs_two_U()` when the
-saturated fit is too expensive; it checks only per-trait diagonal
-variances. A diagnostic flag is not a failed model. It tells you the
-data do not strongly support the chosen decomposition at the requested
-rank.
+```{r compare-dep}
+diag_dep <- compare_dep_vs_two_U(fit)
+diag_dep$agreement
+diag_dep$flag
+```
+
+Each `$agreement` row shows the Frobenius relative disagreement
+between the two-U fit and the baseline (`rmse / baseline_mag`).
+`flag = TRUE` means relative disagreement exceeds `0.10`. A flag is
+not a failed model; it tells you the data do not strongly support
+the chosen decomposition at the requested rank.
+
+Use `compare_indep_vs_two_U()` first when the number of traits is
+large -- it only refits the diagonal and stays cheap. Use
+`compare_dep_vs_two_U()` when the number of traits is modest and the
+saturated refit is affordable -- it is the more informative
+benchmark for off-diagonal cross-trait structure.
 
 ## When to simplify
 
-The paired `phylo_latent() + phylo_unique()` model is useful when the
-question is about phylogenetically conserved trait syndromes. Simplify
-when the data do not identify that split:
+The paired `phylo_latent() + phylo_unique() + latent() + unique()`
+model is useful when the question is about phylogenetically conserved
+trait syndromes alongside non-phylogenetic shared-axis structure.
+Simplify when the data do not identify the splits the model asks for:
 
 ```{r fallback, eval = FALSE}
 fit_phylo_dep <- gllvmTMB(
-  value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
+  value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree) +
+                      dep(0 + trait | species),
   data = df,
   unit = "species",
   cluster = "species"
 )
 ```
 
-`phylo_dep()` estimates a full unstructured phylogenetic trait
-covariance without asking the data to separate a low-rank shared axis
-from the diagonal. It is a useful fallback and a useful benchmark for
-the paired decomposition.
+`phylo_dep() + dep()` estimates full unstructured trait covariances
+at each tier without asking the data to separate a low-rank shared
+axis from the diagonal. It is the natural fallback when the two-U
+diagnostics flag.
 
 ## What to read next
 

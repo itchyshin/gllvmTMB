@@ -80,6 +80,17 @@ After-task report at branch start per `CONTRIBUTING.md`.
     d = K)` (wide), as this article does, is what makes
     `C^2_non` a genuine non-phylogenetic shared-axis component
     rather than a placeholder."
+  - **Replaced `## Check identifiability` section with
+    `## Compare against simpler and saturated baselines`**:
+    sets up the three nested covariance intents
+    (independent / two-U / dependent) and runs both
+    `compare_indep_vs_two_U(fit)` and `compare_dep_vs_two_U(fit)`
+    with `eval = TRUE` (previously both were `eval = FALSE`,
+    so the rendered article never showed the diagnostic
+    output). Shows the `$agreement` data frame from each and
+    the `$flag` summary. The "When to simplify" section is
+    retained with an updated formula referencing the four-
+    component model.
 - **`docs/dev-log/after-task/2026-05-12-phylo-article-non-phy-latent.md`**
   (NEW, this file).
 

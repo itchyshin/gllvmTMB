@@ -52,10 +52,13 @@ on identifiability:
             data = df_long)
    ```
 
-   with $\Omega = \Sigma_{\text{phy}} + \Lambda_{\text{non}}
-   \Lambda_{\text{non}}^{\!\top} + S_{\text{non}}$. The
-   species-level `unique()` carries the only $S$ in the fit
-   and $\Omega$ is reported in the usual way.
+   with $\Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top}
+   + \Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S$.
+   The three pieces are $\Lambda_{\text{phy}}
+   \Lambda_{\text{phy}}^{\!\top}$, $\Lambda_{\text{non}}
+   \Lambda_{\text{non}}^{\!\top}$, and the non-tier-specific
+   diagonal $S$ (the species-level `unique()` carries the only
+   $S$ in the fit). $\Omega$ is reported in the usual way.
 
 Math notation uses `\mathbf{S}` / `s` in user-facing prose for
 model-side diagonals; `\Psi_t` is the canonical symbol in the
@@ -84,10 +87,16 @@ separately identifiable from $\Lambda_{\text{phy}}
 \Lambda_{\text{phy}}^{\!\top}$ (small `n_species`, weak phylo
 signal, single-replicate-per-tip), the canonical fallback is
 the **three-piece form**
-$\Omega = \Sigma_{\text{phy}} +
-\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S_{\text{non}}$
+$\Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top} +
+\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S$
 fit as `gllvmTMB(... + phylo_latent + latent + unique, ...)`
 -- not "non-canonical drift" but a *legitimate, common* fit.
+The three pieces are explicit (two $\Lambda \Lambda^{\!\top}$
+terms, one phylo and one non-phylo, plus a single
+non-tier-specific diagonal $S$); rolling them up as
+$\Sigma_{\text{phy}} + \Lambda \Lambda^{\!\top} + S$ would
+imply a four-piece structure inside $\Sigma_{\text{phy}}$, which
+is exactly what this fallback drops.
 
 The article the maintainer was referring to is
 [`vignettes/articles/functional-biogeography.Rmd`](../../../vignettes/articles/functional-biogeography.Rmd),
@@ -100,8 +109,17 @@ at smaller $n$ or weaker signal the two pieces cannot be cleanly
 separated.
 
 `R/fit-multi.R:613` ("three-piece decomposition Omega = Sigma_phy
-+ Sigma_non,shared + U") is correctly naming the three-piece
-fallback. **Not drift.**
++ Sigma_non,shared + U"): the *name* "three-piece" is correct,
+and the message is local-correct *iff* the reader takes
+`Sigma_phy` to mean the un-decomposed phylogenetic content
+(i.e. `Lambda_phy Lambda_phy^T` with no separate `S_phy`). To
+avoid the read where `Sigma_phy` implicitly bundles a diagonal,
+the cleaner string would be
+`Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + S`.
+**MINOR drift** -- the runtime cli message stays clear if we
+rewrite `Sigma_phy + Sigma_non,shared + U` →
+`Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + S`.
+Adds one extra mechanical edit to Batch A.
 
 Items 1, 2, and 3 below are revised against this nuance.
 Items 4-8 stand as written.
@@ -147,22 +165,25 @@ handles the case where `phylo_unique` is absent (emits a
 `cli::cli_inform()` and reports `\Psi_t = 0` for all traits,
 per the same roxygen at line 274).
 
-### 3. `R/fit-multi.R:613, 619` -- three-piece framing is local-correct; M1/M2 labels still drift
+### 3. `R/fit-multi.R:613, 619` -- three-piece formula needs rewriting; M1/M2 labels still drift
 
 - Line 613: *"three-piece decomposition Omega = Sigma_phy +
   Sigma_non,shared + U"*
 - Line 619: *"Compare M1 (without the `unique({species})` term)
   to M2 (with it)"*
 
-**Revised verdict (line 613)**: the "three-piece" framing is in
-a `cli_abort` for a specific configuration (`phylo_latent +
-latent(species, d = K)` with `unit != species`). In that branch,
-the *user has not added `phylo_unique()`*, so the three-piece
-decomposition $\Omega = \Sigma_{\text{phy}} +
-\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S_{\text{non}}$
-IS what the user's model fits. The cli message correctly names
-the user's model, not a flat package canon. **Not drift in
-that line.**
+**Revised verdict (line 613)**: the "three-piece" *name* is
+correct -- this `cli_abort` is for the no-`phylo_unique()`
+configuration where the user has fit the three-piece form. But
+the *formula* `Omega = Sigma_phy + Sigma_non,shared + U` is
+confusing: `Sigma_phy` already implies a `Lambda + diag` split,
+which is the four-piece form, not the three-piece. The cleaner
+runtime string is
+$\Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top} +
+\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S$,
+making each of the three pieces explicit. **MINOR drift in
+line 613** (rewrite the formula; keep the "three-piece" name
+and the surrounding cli structure).
 
 **Confirmed drift (line 619)**: `M1` / `M2` labels are
 paper-internal jargon and should be replaced with descriptive
@@ -279,13 +300,17 @@ word is "level" or "tier".
 Each batch is a coherent, reviewable unit. Names are tentative.
 **Re-scoped after the 18:15 MT maintainer correction.**
 
-**Batch A: R/ paired-canon clarifications (MEDIUM)** -- items 1
-and 3-line-619 only. Item 2 walked back; item 3-line-613
-walked back (`fit-multi.R` already names the model the user
-fitted).
+**Batch A: R/ paired-canon clarifications (MEDIUM)** -- items 1,
+3-line-613 (formula rewrite), and 3-line-619 (M1/M2 labels).
+Item 2 walked back.
 
 - `R/unique-keyword.R:54-58` -- add one bullet about the
   identifiable-paired case alongside the existing bare-form text.
+- `R/fit-multi.R:613` -- rewrite the formula from
+  `Omega = Sigma_phy + Sigma_non,shared + U` to
+  `Omega = Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + S`
+  so each of the three pieces is explicit. Keep the "three-piece"
+  name + surrounding cli structure.
 - `R/fit-multi.R:619` -- drop the `M1 / M2` labels (the
   parenthetical describes both models).
 

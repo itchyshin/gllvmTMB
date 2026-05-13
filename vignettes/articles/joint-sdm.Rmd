@@ -268,6 +268,19 @@ fit_jsdm <- gllvmTMB(
 fit_jsdm
 ```
 
+### Long or wide data shape
+
+The fit above is long-format
+(`gllvmTMB(value ~ ..., data = df_long)`). If your data are stored
+with one row per `(site, species)` and one column per trait, the
+same JSDM fits via the `traits(...)` LHS marker on a pivoted wide
+data frame; internally the engine pivots back to long. For the
+JSDM special case where the response factor `trait` indexes
+species (each row already carries the species identity), the long
+form is the natural shape and is shown here. See the Get Started
+vignette and [`morphometrics`](morphometrics.html) for the
+long/wide equivalence check on a simpler shape.
+
 ## Latent-scale residual species correlations (with 95% CIs)
 
 Pairwise species correlations on the latent-liability scale. The
@@ -359,7 +372,6 @@ directions tend to mutually exclude.
 ## See also
 
 * [`vignette("functional-biogeography")`](functional-biogeography.html) — Gaussian stacked-trait analogue.
-* [`vignette("cross-package-validation")`](cross-package-validation.html) — `gllvm` log-likelihood comparison on a binary fit.
 * [`vignette("response-families")`](response-families.html) — full table of supported families and the per-family $\sigma^2_d$.
 
 ## References

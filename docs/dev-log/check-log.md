@@ -758,3 +758,63 @@ Validation:
   `delta_lognormal()` / `delta_gamma()`, not a full observed-scale
   two-part correlation estimand;
 - `git diff --check` passed.
+
+## 2026-05-12 -- Theory/fit gap in Tier-1 article (PR #45 caught by maintainer; fixed in PR #53)
+
+Recurring pattern flagged. Audience: future Tier-1 article ports
+(Codex one-PR-per-article queue per PR #41) and Tier-1 article
+revisions.
+
+Pattern: when an article's **theory section** writes a paired
+decomposition in parallel notation (e.g. for `phylogenetic-gllvm.Rmd`
+the theory wrote `Sigma_phy = Lambda_phy Lambda_phy^T + S_phy` AND
+`Sigma_non = Lambda_non Lambda_non^T + S_non`), the **simulation**
+and the **fit** in the same article must include each component
+named in the theory. PR #45 wrote the paired theory but the
+simulation only generated `Lambda_phy + S_phy + S_non` (no
+`Lambda_non`) and the fit only had `phylo_latent + phylo_unique +
+unique` (no `latent()` for the non-phy side). The reader following
+theory side-by-side with syntax notices the missing `latent()` term
+and is rightly confused.
+
+What this breaks beyond cosmetics:
+
+- `extract_communality(fit, level = "unit")` requires both a
+  `latent()` and a `unique()` term at the tier to compute
+  `c_t^2 = diag(Lambda Lambda^T) / diag(Lambda Lambda^T + S)`.
+  Without the non-phy `latent()` term, the function is
+  structurally undefined on the non-phy side.
+- `extract_phylo_signal(fit)` returns a three-way decomposition
+  `H^2 + C^2_non + Psi = 1` per trait. Without the non-phy
+  `latent()` term, `C^2_non` is structurally 0 and the "three-way"
+  decomposition collapses to a two-way `H^2 + Psi` masquerading as
+  three-way -- which is the maintainer's specific phrasing:
+  "the decomposition of phylogenetic heritability does not really
+  make sense" when the formula is the 3-component model.
+
+Process check for future Tier-1 article ports / revisions:
+
+1. When the theory section writes a paired or n-fold decomposition,
+   audit each named component is in the simulation and in the fit.
+2. **Run the motivating extractor** for the decomposition (e.g.
+   `extract_communality`, `extract_phylo_signal`, `extract_ICC_site`,
+   `extract_proportions`) and include it in the article. The
+   extractor's output is the test that catches theory/fit drift --
+   structurally-zero columns and `NULL`-returning calls are the
+   smoking gun.
+3. Cross-check that the simulation truth values map one-to-one to
+   the fit's covariance keywords (e.g. `Lambda_phy_true` ->
+   `phylo_latent`; `s_phy_true` -> `phylo_unique`;
+   `Lambda_non_true` -> `latent(... | species)`; `s_non_true` ->
+   `unique(... | species)`).
+4. Set `eval = TRUE` on diagnostic chunks
+   (`compare_dep_vs_two_U`, `compare_indep_vs_two_U`) when the fit
+   is cheap enough -- a flagged `$agreement` row is more pedagogical
+   than a fenced code block the reader never sees executed.
+
+This is the *second* time a paired-decomposition article has had
+this gap (maintainer's "I think we already talked about this").
+The previous instance was in a legacy article; the pattern is
+recurrent. Adding to the process discipline so we catch it on
+authoring, not after the live pkgdown site exposes it.
+

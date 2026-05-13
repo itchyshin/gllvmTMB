@@ -26,12 +26,33 @@ coord-board: <agent> picked up <lane>
 coord-board: <agent> resolved <question>
 ```
 
+## Codex pause window (2026-05-13 -> ~2026-05-17)
+
+**Codex is paused.** Codex completed PR #69
+(`covariance-correlation` post-#61 Pat/Rose re-read; merged
+2026-05-13 ~08:12 MT) and handed off via maintainer 2026-05-13
+~07:00 MT. Codex is treated as away until maintainer
+re-dispatch, likely after 2026-05-17.
+
+During the pause window:
+
+- Codex's queued lanes (`_pkgdown.yml` navbar, article cleanup)
+  are temporarily reassigned to Claude.
+- Codex's file-ownership rows in the table below are temporarily
+  reassigned to Claude with a "(Codex pause)" tag.
+- Each lane Claude picks up during the pause window gets a
+  Recently resolved entry naming the temporary reassignment so
+  that when Codex returns, the audit trail is clear.
+- If maintainer dispatches Codex back early, restore the
+  original ownership rows and move any in-flight Claude lane
+  back to Queued (or finish it first if near-merge).
+
 ## Active lanes
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | (none active) | -- | -- | standing by; queued lanes idle until next dispatch |
-| Codex | (none active) | -- | -- | three queued lanes all available now (see below) |
+| Claude | (none active) | -- | -- | standing by; about to pick up first Codex-handoff lane |
+| Codex | -- (paused ~May 13 -> ~May 17) | -- | -- | paused per maintainer handoff |
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -41,9 +62,9 @@ PR opens, fill `PR / branch`. When the PR merges, move the row to
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Codex | `_pkgdown.yml` navbar restructure (PR #64 Section I) | **Available now** (PR #67 merged 06:30 MT; README vocabulary set) |
-| Codex | covariance-correlation post-#61 Pat/Rose re-read | Available now (#61 merged); pick up when ready |
-| Codex | Article cleanup lanes (per PR #64 Section H verdicts) | Available now; pick up when ready |
+| Claude (Codex pause) | `_pkgdown.yml` navbar restructure (PR #64 Section I) | Available now; reassigned from Codex during pause |
+| Claude (Codex pause) | Article cleanup: broken-link removals (PR #62 Pat audit + PR #64 Section H) | Available now; reassigned from Codex during pause |
+| Claude (Codex pause) | `choose-your-model.Rmd` rewrite (PR #62 F1+F2+F3) | Available now; reassigned from Codex during pause |
 
 Move a row to "Active lanes" when you start it.
 
@@ -51,18 +72,20 @@ Move a row to "Active lanes" when you start it.
 
 Per PR #64 Section K (the joint plan). Lock these files behind
 the named owner; if the other agent needs to touch them, leave a
-coordination comment first.
+coordination comment first. During the **Codex pause window**
+(2026-05-13 -> ~2026-05-17), rows tagged `(Codex pause)` are
+temporarily reassigned to Claude.
 
 | File | Owner (this pass) |
 |---|---|
-| `vignettes/articles/covariance-correlation.Rmd` | Codex (PR #61 + post-#61 re-read) |
-| `_pkgdown.yml` | Codex (navbar restructure per PR #64 Section I) |
-| `README.md` | Claude (PR #65 dropped wide-matrix block; D1+D2+D4 opener rewrite next) |
+| `vignettes/articles/covariance-correlation.Rmd` | Codex (PR #61 + #69 done; settled for now) |
+| `_pkgdown.yml` | Claude (Codex pause); restore to Codex when Codex returns |
+| `README.md` | Claude (PR #65 dropped wide-matrix block; PR #67 D1+D2+D4 landed) |
 | `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` | Claude (rule files) |
 | `docs/design/*` | open; coordinate per file |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
-| Other Tier-1 article rewrites (`choose-your-model`, etc.) | open; one agent per article ideally |
-| `R/*` | Codex by default; Claude only for rule-file-driven changes (e.g. PR #65 deprecation) |
+| Other Tier-1 article rewrites (`choose-your-model`, etc.) | Claude (Codex pause); coordinate when Codex returns |
+| `R/*` | Codex by default; Claude only for rule-file-driven changes (e.g. PR #65 deprecation) -- **untouched during pause** |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a
@@ -84,6 +107,18 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-13 ~08:12 MT**: Codex's `covariance-correlation`
+  post-#61 Pat/Rose re-read landed (PR #69 merged on Codex's
+  behalf per their handoff). PR #69 reopens the article with the
+  applied behavioural-syndrome framing, adds early long+wide
+  examples, uses the single-entry `gllvmTMB()` with `traits(...)`,
+  defines `level` before `Sigma_level`, drops the stale OLRE
+  "Future work" heading, replaces stale See-also links.
+- **2026-05-13 ~07:00 MT**: Codex pause handoff (maintainer
+  relay). Codex stops after PR #69; treated as paused until
+  re-dispatch ~2026-05-17. Codex's queued lanes
+  (`_pkgdown.yml` navbar, article cleanup, `choose-your-model`
+  rewrite) reassigned to Claude during the pause window.
 - **2026-05-13 ~06:30 MT**: Claude's README D1+D2+D4 lane
   landed (PR #67 merged). README opener rewrite + section
   reorder ("What can I model now?" up to position 4) +
@@ -141,6 +176,9 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-13 ~08:15 MT: Codex paused after PR #69; queued lanes
+  reassigned to Claude during pause window; file-ownership
+  rows tagged `(Codex pause)` (Claude).
 - 2026-05-13 ~06:30 MT: PR #67 merged (README D1+D2+D4);
   Claude's row moved to "(none active)"; Codex's
   `_pkgdown.yml` lane unblocked (Claude).

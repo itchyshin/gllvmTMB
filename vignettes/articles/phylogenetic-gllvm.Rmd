@@ -65,10 +65,13 @@ library(ape)
 
 ## Simulate
 
-We simulate three traits on 30 species. The truth has one
-phylogenetic shared axis, a phylogenetic diagonal component, and a
-non-phylogenetic diagonal component. This small example is meant to
-show syntax and extraction, not to be a full simulation study.
+We simulate three traits on 30 species. The truth has four
+components, matching the paired decomposition in the theory section:
+a phylogenetic shared axis (`Lambda_phy`), a phylogenetic diagonal
+component (`s_phy`), a non-phylogenetic shared axis (`Lambda_non`),
+and a non-phylogenetic diagonal component (`s_non`). This small
+example is meant to show syntax and extraction, not to be a full
+simulation study.
 
 ```{r sim}
 set.seed(13)
@@ -82,15 +85,18 @@ Cphy <- ape::vcv(tree, corr = TRUE)
 Lphy <- t(chol(Cphy + 1e-8 * diag(n_sp)))
 
 Lambda_phy_true <- matrix(c(0.70, 0.45, 0.25), n_traits, 1)
+Lambda_non_true <- matrix(c(0.50, 0.30, 0.20), n_traits, 1)
 s_phy_true <- c(0.20, 0.15, 0.12)
 s_non_true <- c(0.18, 0.20, 0.16)
 
 g_phy <- Lphy %*% rnorm(n_sp)
+g_non <- matrix(rnorm(n_sp), n_sp, 1)
 e_phy <- Lphy %*% matrix(rnorm(n_sp * n_traits), n_sp, n_traits)
 e_non <- matrix(rnorm(n_sp * n_traits), n_sp, n_traits)
 
 Y <- g_phy %*% t(Lambda_phy_true) +
   sweep(e_phy, 2, sqrt(s_phy_true), "*") +
+  g_non %*% t(Lambda_non_true) +
   sweep(e_non, 2, sqrt(s_non_true), "*")
 rownames(Y) <- tree$tip.label
 colnames(Y) <- trait_names
@@ -125,6 +131,7 @@ fit_long <- gllvmTMB(
   value ~ 0 + trait +
     phylo_latent(species, d = 1, tree = tree) +
     phylo_unique(species, tree = tree) +
+    latent(0 + trait | species, d = 1) +
     unique(0 + trait | species),
   data = df,
   unit = "species",
@@ -136,6 +143,7 @@ fit_wide <- gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1 +
     phylo_latent(species, d = 1, tree = tree) +
     phylo_unique(species, tree = tree) +
+    latent(1 | species, d = 1) +
     unique(1 | species),
   data = df_wide,
   unit = "species",
@@ -153,9 +161,11 @@ cat("Long/wide logLik difference:",
 The two forms dispatch to the same long-format engine. In this model,
 `phylo_latent(species, d = 1, tree = tree)` estimates the shared
 phylogenetic axis, `phylo_unique(species, tree = tree)` estimates the
-trait-specific phylogenetic diagonal, and `unique(1 | species)` in the
-wide formula expands to `unique(0 + trait | species)` for the
-non-phylogenetic species-level diagonal.
+trait-specific phylogenetic diagonal, `latent(1 | species, d = 1)` in
+the wide formula (expanding to `latent(0 + trait | species, d = 1)`
+in the long form) estimates the shared non-phylogenetic axis, and
+`unique(1 | species)` (expanding to `unique(0 + trait | species)`)
+estimates the trait-specific non-phylogenetic diagonal.
 
 `gllvmTMB_wide()` is not the right shortcut for this row-phylogeny
 example. That matrix entry point treats matrix columns as the trait
@@ -181,57 +191,142 @@ round(Sigma_phy_unique, 2)
 round(Sigma_phy_total, 2)
 ```
 
-The non-phylogenetic diagonal in this example lives at the species
-unit level:
+The non-phylogenetic species-level covariance has the same paired
+decomposition as the phylogenetic side:
 
 ```{r extract-non}
-Sigma_non <- extract_Sigma(fit, level = "unit", part = "total")$Sigma
-round(Sigma_non, 2)
+Sigma_non_shared <- extract_Sigma(fit, level = "unit", part = "shared")$Sigma
+Sigma_non_unique <- extract_Sigma(fit, level = "unit", part = "unique")$s
+Sigma_non_total  <- extract_Sigma(fit, level = "unit", part = "total")$Sigma
+
+round(Sigma_non_shared, 2)
+round(Sigma_non_unique, 2)
+round(Sigma_non_total, 2)
 ```
 
-For a small tree, do not over-interpret the split between
-`Lambda_phy Lambda_phy^T` and `S_phy`. The more stable biological
-target is often the total `Sigma_phy`, especially when the tree is
-small or the rank is exploratory.
+For a small tree, do not over-interpret either split (between
+`Lambda_phy Lambda_phy^T` and `S_phy`, or between
+`Lambda_non Lambda_non^T` and `S_non`). The more stable biological
+targets are often the totals `Sigma_phy` and `Sigma_non`, especially
+when the tree is small or the ranks are exploratory.
 
-## Check identifiability
+## Communality (within each tier)
 
-The diagnostic functions refit the same data under simpler or more
-flexible covariance intent and compare the implied total covariance
-matrices.
+Communality `c_t^2` is the fraction of a trait's within-tier variance
+explained by the shared latent axis. It is defined only when both a
+`latent()` and a `unique()` term are fit at that tier; that is what
+the four-component decomposition gives us on both the phylogenetic and
+non-phylogenetic sides.
 
-```{r diagnostic, eval = FALSE}
-compare_dep_vs_two_U(fit)
-compare_indep_vs_two_U(fit)
+```{r communality}
+# Non-phylogenetic communality is one extractor call.
+c2_non <- extract_communality(fit, level = "unit")
+round(c2_non, 2)
+
+# Phylogenetic communality is the same ratio, computed from the
+# Sigma_phy decomposition above.
+c2_phy <- diag(Sigma_phy_shared) / diag(Sigma_phy_total)
+round(c2_phy, 2)
 ```
 
-Use `compare_dep_vs_two_U()` first when the number of traits is modest.
-It compares the fitted two-piece decomposition against a saturated
-`phylo_dep + dep` baseline. Use `compare_indep_vs_two_U()` when the
-saturated fit is too expensive; it checks only per-trait diagonal
-variances. A diagnostic flag is not a failed model. It tells you the
-data do not strongly support the chosen decomposition at the requested
-rank.
+A value near 1 means the trait's within-tier variance is dominated by
+the shared axis (high "integration" with the other traits at that
+tier). A value near 0 means the trait is mostly idiosyncratic at that
+tier.
+
+## Phylogenetic heritability
+
+Phylogenetic heritability `H^2` is a between-tier ratio: the fraction
+of total trait variance attributable to the phylogenetic component
+(both shared and unique parts of `Sigma_phy`) versus the
+non-phylogenetic component (both shared and unique parts of
+`Sigma_non`). It is distinct from the within-tier communalities
+above.
+
+The convenience extractor returns the full three-way decomposition
+`H^2 + C^2_non + Psi = 1` per trait, where:
+
+- `H^2` = phylogenetic share = `diag(Sigma_phy_total) / V_eta`
+- `C^2_non` = non-phylogenetic *shared* share =
+  `diag(Lambda_non Lambda_non^T) / V_eta`
+- `Psi` = non-phylogenetic *unique* share = `s_non / V_eta`
+
+with `V_eta = diag(Sigma_phy_total) + diag(Lambda_non Lambda_non^T) + s_non`.
+
+```{r phylo-heritability}
+extract_phylo_signal(fit)
+```
+
+`C^2_non` is structurally zero when the formula omits the non-phylogenetic
+`latent()` term, so the three-way split collapses to `H^2 + Psi`. Adding
+`latent(0 + trait | species, d = K)` (long) or `latent(1 | species, d = K)`
+(wide), as this article does, is what makes `C^2_non` a genuine
+non-phylogenetic shared-axis component rather than a placeholder.
+
+## Compare against simpler and saturated baselines
+
+Three nested covariance intents bracket the four-component model:
+
+- **Independent** (`phylo_indep + indep`): per-trait diagonal only at
+  each tier. No shared axis, no cross-trait covariance. The simplest
+  model that respects the phylogenetic structure.
+- **Two-U** (`phylo_latent + phylo_unique + latent + unique`): the
+  four-component decomposition fit in this article. A shared
+  low-rank axis plus a trait-specific diagonal at each tier.
+- **Dependent** (`phylo_dep + dep`): a full unstructured covariance
+  at each tier. Saturated; no shared/unique split is enforced.
+
+The two-U decomposition sits between independent (too restrictive
+when traits are correlated) and dependent (too many parameters when
+the number of traits grows). The cross-check functions refit the
+data under the independent and dependent baselines and compare each
+component's implied total covariance against the two-U fit.
+
+```{r compare-indep}
+diag_indep <- compare_indep_vs_two_U(fit)
+diag_indep$agreement
+diag_indep$flag
+```
+
+```{r compare-dep}
+diag_dep <- compare_dep_vs_two_U(fit)
+diag_dep$agreement
+diag_dep$flag
+```
+
+Each `$agreement` row shows the Frobenius relative disagreement
+between the two-U fit and the baseline (`rmse / baseline_mag`).
+`flag = TRUE` means relative disagreement exceeds `0.10`. A flag is
+not a failed model; it tells you the data do not strongly support
+the chosen decomposition at the requested rank.
+
+Use `compare_indep_vs_two_U()` first when the number of traits is
+large -- it only refits the diagonal and stays cheap. Use
+`compare_dep_vs_two_U()` when the number of traits is modest and the
+saturated refit is affordable -- it is the more informative
+benchmark for off-diagonal cross-trait structure.
 
 ## When to simplify
 
-The paired `phylo_latent() + phylo_unique()` model is useful when the
-question is about phylogenetically conserved trait syndromes. Simplify
-when the data do not identify that split:
+The paired `phylo_latent() + phylo_unique() + latent() + unique()`
+model is useful when the question is about phylogenetically conserved
+trait syndromes alongside non-phylogenetic shared-axis structure.
+Simplify when the data do not identify the splits the model asks for:
 
 ```{r fallback, eval = FALSE}
 fit_phylo_dep <- gllvmTMB(
-  value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree),
+  value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree) +
+                      dep(0 + trait | species),
   data = df,
   unit = "species",
   cluster = "species"
 )
 ```
 
-`phylo_dep()` estimates a full unstructured phylogenetic trait
-covariance without asking the data to separate a low-rank shared axis
-from the diagonal. It is a useful fallback and a useful benchmark for
-the paired decomposition.
+`phylo_dep() + dep()` estimates full unstructured trait covariances
+at each tier without asking the data to separate a low-rank shared
+axis from the diagonal. It is the natural fallback when the two-U
+diagnostics flag.
 
 ## What to read next
 

@@ -166,20 +166,30 @@ need a specific identifiable $\boldsymbol\Lambda$ for confirmatory
 testing — see the [lambda-constraint article](lambda-constraint.html)
 for the full decision tree.*
 
-## 5. `phylo_scalar()` vs `phylo_latent()`
+## 5. Phylogenetic decomposition: paired or scalar?
 
-**Symptom.** `phylo_scalar()` recovery returns a `lam_phy` that looks
-several times smaller than the true per-trait phylogenetic variance
-you simulated.
+**Symptom.** Phylogenetic per-trait variances look several times
+smaller than the values you simulated, OR the phylogenetic shared
+axis absorbs trait-specific variance that should sit on the
+diagonal.
 
-**Diagnosis.** `phylo_scalar()` (the propto-style term) fits a **single
-shared scalar** $\lambda$ multiplying a free trait correlation
-matrix. Only the product $\lambda \cdot \rho_{tt'}$ is identifiable
-— if your data have trait-specific phylogenetic variances, the
-fitted scalar can absorb part of that into the correlation matrix
-and look small on its own. `phylo_latent(species, d = K)` instead
-estimates a $T \times K$ phylogenetic loading matrix, giving
-per-trait phylogenetic effects.
+**Diagnosis.** A bare `phylo_latent(species, d = K)` is the
+no-residual reduced-rank subset — it captures a shared phylogenetic
+axis but has no diagonal for trait-specific phylogenetic variance.
+A bare `phylo_scalar()` fits a single shared scalar $\lambda$
+multiplying a free trait correlation matrix, so only the product
+$\lambda \cdot \rho_{tt'}$ is identifiable. Neither bare form
+recovers per-trait phylogenetic variances reliably.
+
+The **canonical paired phylogenetic decomposition** (Nakagawa et
+al. *in prep*; see the
+[Phylogenetic GLLVM article](phylogenetic-gllvm.html)) pairs
+four components:
+
+$$
+\Sigma_{\text{phy}} = \Lambda_{\text{phy}}\Lambda_{\text{phy}}^{\!\top} + S_{\text{phy}}, \qquad
+\Sigma_{\text{non}} = \Lambda_{\text{non}}\Lambda_{\text{non}}^{\!\top} + S_{\text{non}}.
+$$
 
 ```{r pitfall-5, eval = requireNamespace("ape", quietly = TRUE)}
 # Tiny tree-based example (only the formulae matter here)
@@ -187,18 +197,54 @@ set.seed(1)
 tree <- ape::rcoal(15)
 tree$tip.label <- paste0("sp", seq_len(15))
 
-# Use phylo_latent (recommended) when traits have their own phylo signal:
-#   value ~ 0 + trait + phylo_latent(species, d = 2)
-# Use phylo_scalar() (single-scalar) only when one shared phylo factor is
-# enough and trait correlations are the inferential target:
-#   value ~ 0 + trait + phylo_scalar(species)
+# Canonical paired phylogenetic decomposition:
+#   value ~ 0 + trait +
+#     phylo_latent(species, d = K_phy, tree = tree) +
+#     phylo_unique(species, tree = tree) +
+#     latent(0 + trait | species, d = K_non) +
+#     unique(0 + trait | species)
+
+# Single-scalar simplification (only when trait correlations are
+# the inferential target and you do not need per-trait variances):
+#   value ~ 0 + trait + phylo_scalar(species, tree = tree)
 ```
 
-**Rule of thumb.** *Use `phylo_latent(species, d = K)` (with $K$ up to
-`n_traits`) whenever you expect trait-specific phylogenetic effects.
-Reserve `phylo_scalar()` for the one-scalar case where the trait
-correlation matrix is the target. See
-[phylogenetic-gllvm.html](phylogenetic-gllvm.html) for full examples.*
+**Rule of thumb.** *Use the paired four-component decomposition
+(`phylo_latent + phylo_unique + latent + unique`) whenever **both
+$S$ diagonals are identifiable** -- typically a crossed
+(site × species) design with `n_species` around 100 or more and
+strong phylogenetic signal. Reserve `phylo_scalar()` for the
+simpler case where a single shared phylogenetic variance per trait
+is enough and trait correlations are the inferential target. The
+four-component form is what `extract_phylo_signal()` decomposes
+into $H^2 + C^2_{\text{non}} + \Psi = 1$; see
+[phylogenetic-gllvm.html](phylogenetic-gllvm.html) for the
+worked example.*
+
+*When the phylogenetic uniqueness component $S_{\text{phy}}$ is
+not separately identifiable from $\Lambda_{\text{phy}}
+\Lambda_{\text{phy}}^{\!\top}$ -- common in small `n_species`,
+weak phylogenetic signal, or single-replicate-per-tip data --
+drop the `phylo_unique()` term and let the species-level
+`unique()` carry the only $S$ in the fit. The model then has
+three pieces:*
+
+$$
+\Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top} +
+\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S
+$$
+
+*-- $\Omega$ is simply the **total trait covariance**, the sum
+of every variance component in whichever model you fit (four
+pieces in the paired form above, three pieces here, more if you
+add `spatial_*` or extra latent tiers). The number of pieces
+follows from the keywords in the formula. `gllvmTMB(... +
+phylo_latent + latent + unique, ...)` is the canonical form for
+this three-piece case. The
+[functional-biogeography article](functional-biogeography.html)
+walks through this $p_{it} + q_{it}$ identifiability case in
+detail; in the same regime, $\sigma^2_Q$ recovers within
+$\sim$10% relative error while $\sigma^2_P$ can be noisier.*
 
 ## 6. The `unit = "..."` argument
 
@@ -240,7 +286,8 @@ canonical individual × trait setup.*
   bug behind pitfall 3, plus the broader recovery study.
 * [lambda-constraint.html](lambda-constraint.html) — the full
   decision tree for whether you actually need a constraint.
-* [phylogenetic-gllvm.html](phylogenetic-gllvm.html) — `phylo_latent()`
-  vs `phylo_scalar()` head-to-head.
+* [phylogenetic-gllvm.html](phylogenetic-gllvm.html) — canonical
+  paired four-component phylogenetic decomposition with worked
+  recovery + `extract_phylo_signal()`.
 * `?suggest_lambda_constraint`, `?extract_Sigma`,
   `?simulate_site_trait` — the function-level help pages.

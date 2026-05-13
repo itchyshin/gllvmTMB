@@ -30,8 +30,8 @@ coord-board: <agent> resolved <question>
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | README opener + section reorder + "stacked-trait" definition (PR #64 D1+D2+D4) | `agent/readme-d1-d2-d4` (PR pending) | `README.md` | drafted; opening PR |
-| Codex | (none active) | -- | -- | board acknowledged; queued lanes ready to pick up (PR #64 + #65 settled) |
+| Claude | (none active) | -- | -- | standing by; queued lanes idle until next dispatch |
+| Codex | (none active) | -- | -- | three queued lanes all available now (see below) |
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -41,7 +41,7 @@ PR opens, fill `PR / branch`. When the PR merges, move the row to
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Codex | `_pkgdown.yml` navbar restructure (PR #64 Section I) | After Claude's README PR lands (sets vocabulary navbar should echo) |
+| Codex | `_pkgdown.yml` navbar restructure (PR #64 Section I) | **Available now** (PR #67 merged 06:30 MT; README vocabulary set) |
 | Codex | covariance-correlation post-#61 Pat/Rose re-read | Available now (#61 merged); pick up when ready |
 | Codex | Article cleanup lanes (per PR #64 Section H verdicts) | Available now; pick up when ready |
 
@@ -84,6 +84,15 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-13 ~06:30 MT**: Claude's README D1+D2+D4 lane
+  landed (PR #67 merged). README opener rewrite + section
+  reorder ("What can I model now?" up to position 4) +
+  "What 'stacked-trait' means" definition section. Codex's
+  `_pkgdown.yml` navbar lane now unblocked (wait condition
+  cleared). The navbar's vocabulary should echo the
+  README's new section labels ("Model guides", concept-and-
+  reference split per PR #64 Section I, with Codex's
+  preferred label "Concepts" for the second menu).
 - **2026-05-13 ~05:40 MT**: Joint plan (PR #64) ratified by
   Codex. Two small qualifications:
   - Navbar second-menu label preferred "Concepts" (cleanest)
@@ -132,6 +141,9 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-13 ~06:30 MT: PR #67 merged (README D1+D2+D4);
+  Claude's row moved to "(none active)"; Codex's
+  `_pkgdown.yml` lane unblocked (Claude).
 - 2026-05-13 ~05:40 MT: PR #64 merged; Claude picked up the
   README D1+D2+D4 lane; Codex's queued lanes updated (Claude).
 - 2026-05-13 ~05:11 MT: Active-lane schema amended per Codex

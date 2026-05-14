@@ -88,12 +88,6 @@ fit_wide <- gllvmTMB(
 )
 ```
 
-For matrix-first workflows, `gllvmTMB_wide()` is the shortest route:
-
-```{r}
-fit_matrix <- gllvmTMB_wide(Y, d = 2, family = gaussian())
-```
-
 Only the `family` argument changes when you move from Gaussian to
 another supported likelihood. The covariance keyword grammar stays
 the same.

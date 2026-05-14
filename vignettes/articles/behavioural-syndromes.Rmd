@@ -102,17 +102,17 @@ The simulation has three layers:
 1. **Between-individual personality structure** — a $T \times K_B$
    loading matrix $\boldsymbol{\Lambda}_B$ ($T = 8$ traits,
    $K_B = 2$ personality axes) plus per-trait unique variances
-   $\mathbf{S}_B$ (diagonal).
+   $\boldsymbol{\Psi}_B$ (diagonal).
 
 2. **Within-individual lability axis** — a $T \times K_W$ loading
    matrix $\boldsymbol{\Lambda}_W$ ($K_W = 1$) capturing a shared
    motivational state that shifts all behaviours similarly on a given
    day, plus per-trait within-individual unique variances
-   $\mathbf{S}_W$.
+   $\boldsymbol{\Psi}_W$.
 
 3. **Observation noise** is assumed negligible (Bell et al. 2009);
    for Gaussian responses any residual measurement error is absorbed
-   into $\mathbf{S}_W$ and is not separately identifiable from
+   into $\boldsymbol{\Psi}_W$ and is not separately identifiable from
    $s^2_{Wt}$ at the row level.
 
 The implied per-trait repeatability is:
@@ -162,10 +162,10 @@ Lambda_B_true <- matrix(c(
 ), nrow = T, ncol = 2, byrow = TRUE,
    dimnames = list(trait_names, c("proactive_reactive", "aggression_activity")))
 
-# ---- Per-trait between-individual unique variances (S_B) -----------------
+# ---- Per-trait between-individual unique variances (psi_B) ---------------
 # Modest — about 0.06-0.07 on the latent scale. These represent stable
 # between-individual differences not captured by the two shared axes.
-S_B_true <- c(
+psi_B_true <- c(
   boldness         = 0.07,
   exploration      = 0.07,
   novel_object     = 0.07,
@@ -191,9 +191,9 @@ Lambda_W_true <- matrix(c(
 ), nrow = T, ncol = 1, byrow = TRUE,
    dimnames = list(trait_names, "lability"))
 
-# ---- Per-trait within-individual unique variances (S_W) ------------------
-# Smaller than S_B: within-individual fluctuations are more constrained
-S_W_true <- c(
+# ---- Per-trait within-individual unique variances (psi_W) ----------------
+# Smaller than psi_B: within-individual fluctuations are more constrained
+psi_W_true <- c(
   boldness         = 0.10,
   exploration      = 0.09,
   novel_object     = 0.11,
@@ -211,8 +211,8 @@ S_W_true <- c(
 sigma_eps_true <- 0.48
 
 # ---- Implied per-trait repeatabilities (target ~0.30-0.50) ---------------
-var_B <- diag(Lambda_B_true %*% t(Lambda_B_true)) + S_B_true                      # Sigma_B diagonals
-var_W <- diag(Lambda_W_true %*% t(Lambda_W_true)) + S_W_true + sigma_eps_true^2   # Sigma_W diagonals (sigma_eps absorbed)
+var_B <- diag(Lambda_B_true %*% t(Lambda_B_true)) + psi_B_true                      # Sigma_B diagonals
+var_W <- diag(Lambda_W_true %*% t(Lambda_W_true)) + psi_W_true + sigma_eps_true^2   # Sigma_W diagonals (sigma_eps absorbed)
 R_true <- var_B / (var_B + var_W)
 cat("True per-trait repeatabilities:\n")
 round(R_true, 3)
@@ -224,7 +224,7 @@ u_B <- matrix(rnorm(n_ind * 2), n_ind, 2)       # n_ind x K_B
 # Per-individual trait means = mu_t + Lambda_B u_i + eps_B_it
 mu_trait <- rep(0, T)  # global trait means (trait intercepts, set to 0 for clarity)
 eps_B <- matrix(
-  rnorm(n_ind * T, sd = sqrt(rep(S_B_true, each = n_ind))),
+  rnorm(n_ind * T, sd = sqrt(rep(psi_B_true, each = n_ind))),
   n_ind, T, byrow = FALSE
 )
 between_ind <- matrix(mu_trait, n_ind, T, byrow = TRUE) +
@@ -243,7 +243,7 @@ u_W <- matrix(rnorm(n_obs, 0, 1), n_obs, 1)     # n_obs x K_W
 
 # Per-session-within-individual deviation
 eps_W <- matrix(
-  rnorm(n_obs * T, sd = sqrt(rep(S_W_true, each = n_obs))),
+  rnorm(n_obs * T, sd = sqrt(rep(psi_W_true, each = n_obs))),
   n_obs, T, byrow = FALSE
 )
 within_obs <- u_W %*% t(Lambda_W_true) + eps_W   # n_obs x T
@@ -325,9 +325,9 @@ where:
 The implied between-individual and within-individual trait covariances are:
 
 $$
-\boldsymbol{\Sigma}_B = \boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^\top + \mathbf{S}_B,
+\boldsymbol{\Sigma}_B = \boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^\top + \boldsymbol{\Psi}_B,
 \qquad
-\boldsymbol{\Sigma}_W = \boldsymbol{\Lambda}_W \boldsymbol{\Lambda}_W^\top + \mathbf{S}_W.
+\boldsymbol{\Sigma}_W = \boldsymbol{\Lambda}_W \boldsymbol{\Lambda}_W^\top + \boldsymbol{\Psi}_W.
 $$
 
 The per-trait repeatability (ICC) is then:
@@ -340,10 +340,10 @@ In the `gllvmTMB` formula:
 
 - `latent(0 + trait | individual, d = 2)` fits $\boldsymbol{\Lambda}_B$
   and the individual scores $\mathbf{U}_B$.
-- `unique(0 + trait | individual)` fits the diagonal $\mathbf{S}_B$.
+- `unique(0 + trait | individual)` fits the diagonal $\boldsymbol{\Psi}_B$.
 - `latent(0 + trait | session_id, d = 1)` fits $\boldsymbol{\Lambda}_W$
   and the session scores $\mathbf{U}_W$.
-- `unique(0 + trait | session_id)` fits the diagonal $\mathbf{S}_W$.
+- `unique(0 + trait | session_id)` fits the diagonal $\boldsymbol{\Psi}_W$.
 
 The `unit = "individual"` argument tells the engine which column
 defines the between-individual grouping, and `unit_obs = "session_id"`
@@ -528,7 +528,7 @@ ggplot(df_recovery, aes(true, fitted, colour = factor, shape = factor)) +
 
 ```{r recovery-sigma, fig.cap = "Estimated vs true between-individual trait correlations (off-diagonal entries of Sigma_B). Perfect recovery would put all points on the 1:1 line."}
 # Optional: compare Sigma_B off-diagonal entries
-Sigma_B_true <- Lambda_B_true %*% t(Lambda_B_true) + diag(S_B_true)
+Sigma_B_true <- Lambda_B_true %*% t(Lambda_B_true) + diag(psi_B_true)
 Sigma_B_hat  <- extract_Sigma(fit, level = "unit")$Sigma
 
 # Off-diagonal indices

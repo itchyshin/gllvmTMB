@@ -36,7 +36,16 @@ phylogenetic signal, or spatial structure.
   | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
   The decomposition mode pairs `latent + unique`:
-  `Sigma = Lambda Lambda^T + diag(s)`.
+  `Sigma = Lambda Lambda^T + diag(psi)`. Math notation uses
+  the Greek letter `\boldsymbol{\Psi}` (bold capital) for the
+  unique-variance diagonal matrix and `\psi_t` (italic lowercase,
+  subscripted by trait) for the per-trait derived scalar, matching
+  the factor-analysis / SEM convention (Bollen 1989, Mulaik 2010,
+  lavaan). Function and file names that include the legacy "two_U"
+  label (`compare_dep_vs_two_U()`, `extract_two_U_via_PIC()`,
+  `R/extract-two-U-cross-check.R`, etc.) are preserved as task
+  labels; math notation in user-facing prose uses Psi/psi.
+  See `docs/dev-log/decisions.md` 2026-05-14 entry.
 
 * Per-trait response families: gaussian, binomial (with multi-trial
   via `cbind(succ, fail)` or weights), betabinomial, poisson,
@@ -56,7 +65,11 @@ phylogenetic signal, or spatial structure.
 
 ## Inference
 
-* ML or REML point estimates via TMB's Laplace approximation.
+* Maximum-likelihood point estimates via TMB's Laplace
+  approximation. REML is not yet implemented; planned for a
+  post-0.2.0 release as a Gaussian-only feature (matching the
+  `glmmTMB` / `lme4` convention). See
+  `docs/dev-log/decisions.md` 2026-05-14 REML scope note.
 * Profile-likelihood confidence intervals for derived quantities
   (repeatability, communality, phylogenetic signal, pairwise
   correlations) through the `profile_ci_*()` family.

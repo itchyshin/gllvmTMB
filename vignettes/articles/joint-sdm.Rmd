@@ -105,11 +105,11 @@ correlations come out on the latent-liability scale.
 For Gaussian fits, the canonical decomposition pairs
 `latent + unique`:
 
-$$\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathbf S$$
+$$\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$$
 
-where $\mathbf S = \mathrm{diag}(S_{tt})$ is the per-trait unique
+where $\boldsymbol\Psi = \mathrm{diag}(\psi_{tt})$ is the per-trait unique
 variance — *estimated* from per-row residual variability. For
-**pure binary 1-obs-per-cell** fits, $S_{tt}$ carries no information:
+**pure binary 1-obs-per-cell** fits, $\psi_{tt}$ carries no information:
 binary data do not constrain observation-level variability beyond
 the link residual. Some Bayesian implementations (e.g. Hadfield's
 MCMCglmm) add a small `σ²_units` term for MCMC mixing reasons, but
@@ -172,10 +172,10 @@ Recommended for binary: **`latent(d = K)` with `K < T`**. Skip `dep`
 When the response includes a *mix* of families (some traits binary,
 some Gaussian, some Poisson, …), the picture changes:
 
-- For **non-binary traits**, the unique component $S_{tt}$ IS
+- For **non-binary traits**, the unique component $\psi_{tt}$ IS
   identifiable. Including `unique(0 + trait | unit)` adds a
   per-trait random intercept that's freely estimated.
-- For **binary traits in a mixed fit**, $S_{tt}$ is still
+- For **binary traits in a mixed fit**, $\psi_{tt}$ is still
   unidentifiable; the optimiser pins it near zero (boundary).
 
 So `unique()` is fine in mixed-family fits — you just need to know
@@ -212,7 +212,7 @@ For mixed-family fits, each trait gets the residual implied by **its
 own** family; the diagonal of $\boldsymbol\Sigma$ is therefore on a
 unified latent scale. Pass `link_residual = "none"` to suppress this
 addition and recover the bare $\boldsymbol\Lambda\boldsymbol\Lambda^\top
-+ \mathbf S$ form.
++ \boldsymbol\Psi$ form.
 
 ## Setup
 

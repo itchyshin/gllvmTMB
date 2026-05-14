@@ -508,3 +508,85 @@ the literature - many small changes through the pkgdown
 pages and function documentations - how much work is this?"*.
 Reply: 4-5 PRs, ~1-2 days mostly mechanical. Maintainer
 reply: *"let's go Psi!"*.
+
+## 2026-05-14  Insert Phase 5.5 External Validation Sprint before CRAN submission
+
+Decision: insert a **new Phase 5.5 External Validation Sprint**
+between Phase 5 (CRAN mechanics) and the actual
+`devtools::submit_cran()` call. The sprint is a 6-12 week
+period of external scrutiny -- pilot users, methods reviewers,
+cross-package agreement, and a ~10-DGP simulation grid -- after
+the package state is mechanically CRAN-ready but before the
+submission event fires.
+
+Rationale: CRAN acceptance is a low bar (does not break R;
+passes 3-OS `R CMD check`). Scientific credibility is a higher
+bar. `src/gllvmTMB.cpp` has had one author (Codex). In-repo
+persona-style audits are no substitute for external scrutiny.
+Phase 5.5 ratifies that the package has passed external review
+before `submit_cran()` fires, so the "ready to submit" signal
+inside the repo aligns with "ready for scientific scrutiny"
+outside it.
+
+Scope (sequencing locked when Phase 5.5 dispatches; maintainer
+2026-05-14):
+
+- **External pilot users** (~3-5 from the Nakagawa lab network):
+  release-candidate build (v0.2.99 or similar). Each pilot is
+  asked for (a) one fit on their own data, (b) bug reports, (c)
+  "this confused me" notes on docs, (d) one publishable-quality
+  plot.
+- **Methods reviewers** (~1-2): read `src/gllvmTMB.cpp`, check
+  the TMB template + likelihood derivation against the
+  manuscript equations (Nakagawa et al. *in prep*), and run a
+  parameter-recovery study on a non-standard family. If Codex
+  returns by Phase 5.5, Codex is the natural reviewer for the
+  C++.
+- **Cross-package empirical agreement on a wider DGP grid**:
+  glmmTMB, gllvm, galamm, sdmTMB, MCMCglmm, Hmsc. Parameter
+  agreement within identifiability rotation; CI coverage
+  agreement; fit-time comparison. Builds on the Phase 1c
+  `cross-package-validation.Rmd` port with broader DGP coverage.
+- **~10-DGP simulation grid**: Gaussian / binomial / Poisson /
+  NB2 / ordinal × {single-level, two-level, phylo, spatial} ×
+  {n = 30, 100, 500}. Report bias, RMSE, and CI coverage in one
+  table. This is what `gllvm` and `galamm` have not done at
+  this scale; it is the gllvmTMB rigour-paper artefact.
+- **No-major-change settling period**: 2-4 weeks of "only bug
+  fixes, no API changes" with the merged state to surface
+  latent issues.
+
+Exit criterion: all external reviewers report no blocking
+issues; simulation grid shows nominal coverage and bias < 10%
+RMSE on identified parameters; cross-package parameter agreement
+is within identifiability tolerance; maintainer ratifies "ready
+for `submit_cran()`".
+
+Estimated duration: 6-12 weeks. Dominates the timeline between
+Phase 5 mechanics done and the actual submission event.
+Estimated PR count: ~3-8 PRs for the validation artefacts
+(sim-grid scripts, cross-package fixtures, release-candidate
+build, response-to-reviewers dev-log entries). Each pilot
+user's feedback may generate documentation PRs.
+
+Personas engaged: Fisher (lead -- coverage + bias study); Curie
+(sim-grid DGPs); Gauss (TMB-template review with external
+reviewer); Pat + Darwin (pilot-user feedback synthesis); Rose +
+Shannon (final pre-submission audit); Jason (any 11th-hour
+landscape scan).
+
+Recording context: maintainer message 2026-05-14 (paraphrased):
+*"I have no intention of putting this on CRAN till we do an
+amazing number of tests and checking and simulations, not just
+me and you, but I include several more people."* The maintainer
+also clarified the pilot-user identities and exact reviewer
+roster should be locked when Phase 5.5 actually dispatches
+(later phase), since the lab roster and reviewer availability
+depend on timing.
+
+Cross-reference: this entry is the canon for citing Phase 5.5
+from the refreshed `ROADMAP.md` (2026-05-14 roadmap refresh
+PR). Phase 5.5 is also covered in
+`docs/dev-log/after-task/2026-05-14-strategic-plan-revision.md`
+(plan-file lane, not canon) and the active plan at
+`~/.claude/plans/please-have-a-robust-elephant.md`.

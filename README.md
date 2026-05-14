@@ -293,3 +293,10 @@ package author, written against the TMB API.
 
 A full scope comparison and decision matrix lives in
 [`docs/design/04-sister-package-scope.md`](docs/design/04-sister-package-scope.md).
+
+## Roadmap
+
+The package is pre-CRAN; the
+[roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html)
+shows what is stable today, what is in flight, and what is
+planned next. It is refreshed as work progresses.

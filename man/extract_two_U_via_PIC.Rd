@@ -98,7 +98,7 @@ cross-trait covariance. Combining these yields symmetric T x T
 \item \strong{Factor-analytic decomposition}: run
 \code{stats::factanal(covmat = Sigma, factors = d_phy, rotation = "none")}
 on each matrix to obtain
-\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 for each tier.
 }
 }
@@ -127,7 +127,7 @@ ignores branch-length-weighting on the residual axis); the
 joint-REML fit is preferred when sample size allows.
 \item Factor-analytic decomposition shares the rotation
 indeterminacy of any factor model; the implied
-\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 is well-identified; the split between Lambda and S is identified
 up to rotation.
 }

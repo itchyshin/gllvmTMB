@@ -23,7 +23,7 @@ decomposition
 \deqn{\Sigma_g = \Lambda \Lambda^\top + S,}
 
 where \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} is the
-low-rank shared component (from \code{latent()}) and \eqn{\mathbf S} is a
+low-rank shared component (from \code{latent()}) and \eqn{\boldsymbol\Psi} is a
 diagonal matrix of trait-specific unique variances (from \code{unique()}).
 This is the decomposition every published GLLVM treatment uses
 (Bartholomew et al. 2011; McGillycuddy et al. 2025; Nakagawa et al.
@@ -41,10 +41,10 @@ between-site variance not captured by those factors. Two consequences:
 \eqn{R_B = D^{-1/2} \boldsymbol\Lambda \boldsymbol\Lambda^\top D^{-1/2}}
 uses too small a diagonal (it omits the unique component), so
 cross-trait correlations come out larger than the true
-\eqn{R_B = D^{-1/2}(\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S) D^{-1/2}}.
+\eqn{R_B = D^{-1/2}(\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi) D^{-1/2}}.
 \item \strong{Communality reaches 1 by construction.} Communality
 \eqn{c_t^2 = (\Lambda \Lambda^\top)_{tt} / \Sigma_{tt}}
-is identically 1 when \eqn{\mathbf S = \mathbf 0}; you cannot
+is identically 1 when \eqn{\boldsymbol\Psi = \mathbf 0}; you cannot
 quantify how much of trait \eqn{t}'s variance is shared with the
 others.
 }
@@ -81,8 +81,8 @@ pattern is \strong{two \code{latent() + unique()} pairs} (Nakagawa et al. \emph{
         latent(0 + trait | obs_id,     d = d_W) + unique(0 + trait | obs_id)
 }\if{html}{\out{</div>}}
 
-giving \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^\top + \mathbf S_B}
-and \eqn{\boldsymbol\Sigma_W = \boldsymbol\Lambda_W \boldsymbol\Lambda_W^\top + \mathbf S_W}.
+giving \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^\top + \boldsymbol\Psi_B}
+and \eqn{\boldsymbol\Sigma_W = \boldsymbol\Lambda_W \boldsymbol\Lambda_W^\top + \boldsymbol\Psi_W}.
 }
 
 \subsection{Phylogenetic + non-phylogenetic species-level models}{
@@ -171,7 +171,7 @@ fit <- gllvmTMB(
   data = df, unit = "individual"
 )
 extract_Sigma(fit, level = "B", part = "shared")$Sigma   # Lambda_B Lambda_B^T
-extract_Sigma(fit, level = "B", part = "unique")$s       # diag(S_B)
+extract_Sigma(fit, level = "B", part = "unique")$s       # diag(Psi_B)
 extract_Sigma(fit, level = "B", part = "total")$Sigma    # both, summed
 }
 }
@@ -193,7 +193,7 @@ behavioural syndromes and other phenotypic integration.
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — pull \eqn{\boldsymbol\Sigma},
 \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}, or
-\eqn{\mathbf S} from the fit; \code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=spatial_unique]{spatial_unique()}},
+\eqn{\boldsymbol\Psi} from the fit; \code{\link[=phylo_scalar]{phylo_scalar()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \code{\link[=spatial_unique]{spatial_unique()}},
 \code{\link[=re_int]{re_int()}}.
 }
 \keyword{internal}

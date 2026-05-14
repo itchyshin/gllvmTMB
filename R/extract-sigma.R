@@ -284,7 +284,7 @@ link_residual_per_trait <- function(fit) {
 #' Implements the decomposition
 #' \deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\mathbf S_\text{tier}}_{\text{unique (unique)}},}
 #' where \eqn{\boldsymbol\Lambda} comes from the `latent()` term at that tier
-#' and \eqn{\mathbf S} comes from the corresponding `unique()` term. This is the
+#' and \eqn{\boldsymbol\Psi} comes from the corresponding `unique()` term. This is the
 #' same decomposition the behavioural-syndromes / phenotypic-integration
 #' literature uses (Bartholomew et al. 2011; Nakagawa et al. *in prep*),
 #' equations 15, 22, and 30 of the methods paper.
@@ -294,7 +294,7 @@ link_residual_per_trait <- function(fit) {
 #' If the formula has only `latent(0 + trait | unit, d = K)` and **no**
 #' `unique(0 + trait | unit)`, the engine can only fit the
 #' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component -- there is no
-#' slot for trait-specific *unique* variance \eqn{\mathbf S}. Calling
+#' slot for trait-specific *unique* variance \eqn{\boldsymbol\Psi}. Calling
 #' `extract_Sigma(fit, level, part = "total")` then returns just
 #' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}, which **understates the
 #' diagonal** of the true covariance. Any correlations computed from this
@@ -315,7 +315,7 @@ link_residual_per_trait <- function(fit) {
 #'
 #' \describe{
 #'   \item{`"total"` (default)}{
-#'     \eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+#'     \eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 #'     -- the matrix users almost always want for reporting correlations.}
 #'   \item{`"shared"`}{
 #'     \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} only -- the
@@ -325,15 +325,15 @@ link_residual_per_trait <- function(fit) {
 #'   \item{`"unique"`}{
 #'     \eqn{\mathbf S_\text{tier}} only -- the trait-specific unique
 #'     variances, returned as a length-`T` named numeric vector (the
-#'     diagonal of \eqn{\mathbf S}).}
+#'     diagonal of \eqn{\boldsymbol\Psi}).}
 #' }
 #'
 #' ## Caveat: `"shared"` vs `"unique"` partition is only weakly identified
 #'
-#' The total \eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+#' The total \eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 #' is rotation-invariant and well-identified, so `part = "total"` is
 #' well-identified. But the *split* between \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}
-#' and \eqn{\mathbf S} is only weakly identified -- different optimiser
+#' and \eqn{\boldsymbol\Psi} is only weakly identified -- different optimiser
 #' starts can flow trait \eqn{t}'s variance more into the shared
 #' (`"shared"`) or unique (`"unique"`) component, with the same total
 #' likelihood. In a synthetic Poisson + OLRE recovery run with target
@@ -379,7 +379,7 @@ link_residual_per_trait <- function(fit) {
 #' family of the rows belonging to that trait, then added to the diagonal
 #' of \eqn{\boldsymbol\Sigma} entry-by-entry. The default
 #' `link_residual = "auto"` applies this; `"none"` returns the latent+unique-implied
-#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S} with no
+#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} with no
 #' implicit residual added. For continuous-only Gaussian or lognormal fits
 #' `"auto"` is a no-op (their per-trait \eqn{\sigma^2_d} is zero).
 #'
@@ -409,7 +409,7 @@ link_residual_per_trait <- function(fit) {
 #'   family fits each trait gets the residual implied by *its* family/link
 #'   (see "Family-aware link residuals" below for the full table).
 #'   `"none"` returns the latent+unique-implied
-#'   \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S} with no
+#'   \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} with no
 #'   implicit residual added. For Gaussian or lognormal-only fits this
 #'   argument is effectively a no-op (their implied \eqn{\sigma^2_d = 0}).
 #' @param .skip_warn Internal flag (default `FALSE`). When `TRUE`,
@@ -497,7 +497,7 @@ extract_Sigma <- function(fit,
     if (has_phy_rr) L <- fit$report$Lambda_phy
     ## Two-U PGLLVM: when phylo_diag is fit (phylo_unique co-fit with
     ## phylo_latent), pull the per-trait phylogenetic SDs from the report
-    ## and square them to get the diagonal s_phy variances. When the
+    ## and square them to get the diagonal psi_phy variances. When the
     ## legacy phylo_unique-alone path is used (rank-T diagonal Lambda),
     ## the unique variances are already encoded in Lambda_phy, so we
     ## leave S = NULL and only emit the legacy advisory.

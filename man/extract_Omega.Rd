@@ -36,7 +36,7 @@ three-piece decomposition (Nakagawa et al. \emph{in prep}, Eq. 19):
 \deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \mathbf S_\text{non}.}
 Here \code{tiers = c("phy", "B")} returns
 \eqn{\boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{B}} where
-\eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^{\!\top} + \mathbf S_B}
+\eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^{\!\top} + \boldsymbol\Psi_B}
 aggregates the non-phylogenetic shared and unique components.
 }
 \details{

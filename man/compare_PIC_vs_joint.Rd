@@ -45,7 +45,7 @@ Compares the PIC-MOM estimates (from \code{\link[=extract_two_U_via_PIC]{extract
 the corresponding components extracted from a joint-REML two-U fit.
 Agreement = trustworthy joint estimate; disagreement = identifiability
 concern, and the user is invited to investigate which axes
-(Lambda_phy / s_phy / Lambda_non / s_non) disagree.
+(Lambda_phy / psi_phy / Lambda_non / psi_non) disagree.
 }
 \details{
 \strong{Scope.} This diagnostic inherits the Gaussian / Brownian-motion

@@ -28,7 +28,7 @@ Used inside a \code{gllvmTMB()} formula:
 }\if{html}{\out{</div>}}
 
 For the canonical decomposition
-\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S},
+\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi},
 add an explicit \code{\link[=unique]{unique()}} term:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait + latent(0 + trait | unit, d = 2) +

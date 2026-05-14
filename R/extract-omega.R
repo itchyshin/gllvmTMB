@@ -16,7 +16,7 @@
 #' where \eqn{\sigma^2_d} is the **distribution-specific (theoretical)**
 #' component that depends only on the family/link, and \eqn{\sigma^2_e}
 #' is the **estimated OLRE variance** — the per-trait diagonal of the
-#' within-unit unique covariance \eqn{\mathbf{S}_W}.
+#' within-unit unique covariance \eqn{\boldsymbol{\Psi}_W}.
 #'
 #' The function detects whether the fit includes a genuine observation-level
 #' random effect: a `unique(0 + trait | <obs-level>)` term where every
@@ -59,7 +59,7 @@
 #'     helper; see the per-family table above; zero for `gaussian` and
 #'     `lognormal`).}
 #'   \item{`sigma2_e`}{Estimated OLRE variance per trait — the per-trait
-#'     diagonal of \eqn{\mathbf{S}_W} when the fit has a genuine
+#'     diagonal of \eqn{\boldsymbol{\Psi}_W} when the fit has a genuine
 #'     observation-level `unique()` term, else 0.}
 #'   \item{`sigma2_total`}{`sigma2_d + sigma2_e`.}
 #' }
@@ -142,7 +142,7 @@ extract_residual_split <- function(fit) {
 #' \deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \mathbf S_\text{non}.}
 #' Here `tiers = c("phy", "B")` returns
 #' \eqn{\boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{B}} where
-#' \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^{\!\top} + \mathbf S_B}
+#' \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^{\!\top} + \boldsymbol\Psi_B}
 #' aggregates the non-phylogenetic shared and unique components.
 #'
 #' For two-level behavioural-syndrome fits, `tiers = c("B", "W")`
@@ -324,14 +324,14 @@ extract_phylo_signal <- function(fit,
     ))
   trait_names <- levels(fit$data[[fit$trait_col]])
 
-  ## Sigma_phy = Lambda_phy Lambda_phy^T + S_phy when phylo_diag is
+  ## Sigma_phy = Lambda_phy Lambda_phy^T + Psi_phy when phylo_diag is
   ## fit; just Lambda_phy Lambda_phy^T otherwise. Both contribute to the
   ## phylogenetic signal H2.
   out_phy   <- suppressMessages(extract_Sigma(fit, level = "phy", part = "total",
                                               link_residual = "none"))
   ## Sigma_non,shared = Lambda_B Lambda_B^T (the species-level rr term)
   out_share <- suppressMessages(extract_Sigma(fit, level = "unit", part = "shared"))
-  ## U = S_B (the species-level diag term)
+  ## U = Psi_B (the species-level diag term)
   out_uniq  <- suppressMessages(extract_Sigma(fit, level = "unit", part = "unique"))
 
   Sigma_phy   <- if (!is.null(out_phy))   diag(out_phy$Sigma)   else rep(0, fit$n_traits)
@@ -450,7 +450,7 @@ extract_proportions <- function(fit,
     out <- suppressMessages(extract_Sigma(fit, level = "phy", part = "shared"))
     if (!is.null(out)) add_comp("shared_phy", diag(out$Sigma))
   }
-  ## Phylogenetic unique (S_phy) -- present only in two-U PGLLVM
+  ## Phylogenetic unique (Psi_phy) -- present only in two-U PGLLVM
   if (isTRUE(fit$use$phylo_diag)) {
     out <- suppressMessages(extract_Sigma(fit, level = "phy", part = "unique"))
     if (!is.null(out)) add_comp("unique_phy", out$s)

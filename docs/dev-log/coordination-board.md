@@ -26,38 +26,45 @@ coord-board: <agent> picked up <lane>
 coord-board: <agent> resolved <question>
 ```
 
-## Codex pause window (2026-05-13 -> ~2026-05-17)
+## Codex-absent assumption (effective 2026-05-14)
 
-**Codex is paused.** Codex completed PR #69
-(`covariance-correlation` post-#61 Pat/Rose re-read; merged
-2026-05-13 ~08:12 MT) and handed off via maintainer 2026-05-13
-~07:00 MT. Codex is treated as away until maintainer
-re-dispatch, likely after 2026-05-17.
+**Codex is assumed absent for the foreseeable future.**
+Maintainer guidance 2026-05-14: *"codex might not come back so
+you should plan to do it"*. Original pause was 2026-05-13 ->
+~2026-05-17 (Codex completed PR #69 and handed off via
+maintainer). With no confirmed return date, all lanes
+formerly reserved for Codex are reassigned to Claude on a
+working-assumption basis.
 
-During the pause window:
+Operational rules under the absent assumption:
 
-- Codex's queued lanes (`_pkgdown.yml` navbar, article cleanup)
-  are temporarily reassigned to Claude.
-- Codex's file-ownership rows in the table below are temporarily
-  reassigned to Claude with a "(Codex pause)" tag.
-- Each lane Claude picks up during the pause window gets a
-  Recently resolved entry naming the temporary reassignment so
-  that when Codex returns, the audit trail is clear.
-- If maintainer dispatches Codex back early, restore the
-  original ownership rows and move any in-flight Claude lane
-  back to Queued (or finish it first if near-merge).
+- All R/ implementation work is Claude's. Discipline gates
+  (Gauss + Noether + Fisher + Rose persona reviews per PR)
+  remain in force; reviews are persona-style read-only
+  Explore agents, not separate human agents.
+- All previously-queued Codex lanes (drift-scan Batches A +
+  B; further `_pkgdown.yml` work; cross-package validation
+  port) are reassigned to Claude.
+- The audit trail for each Claude-handled R/ PR records that
+  Codex was absent (no Codex review available) and lists the
+  persona-side reviews that substituted.
+- **If Codex returns**, restore the original file-ownership
+  rows below, hand back any in-flight R/ work that hasn't
+  reached CI green, and finish near-merge work before
+  rolling over.
 
 ## Active lanes
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | (none active) | -- | -- | standing by; today's seven-PR sweep merged |
-| Codex | -- (paused ~May 13 -> ~May 17) | -- | -- | paused per maintainer handoff |
+| Claude | 2026-05-13 evening-sweep retrospective | #83 / `agent/post-merge-retrospective-2026-05-13` | `docs/dev-log/check-log.md` | CI pending; self-merge eligible |
+| Claude | 2026-05-14 strategic-plan-revision after-task | #84 / `agent/after-task-strategic-plan-revision` | `docs/dev-log/after-task/...` | CI pending; self-merge eligible |
+| Claude | Coord-board: Codex-absent assumption | this PR / `agent/coord-board-codex-absent` | this file | CI pending; self-merge eligible |
+| Codex | -- (assumed absent for the foreseeable future) | -- | -- | maintainer 2026-05-14: "plan to do it" |
 
-**WIP**: 0 Claude PRs open. Today's seven-PR sweep (#74-#80,
-omitting #76 which landed mid-day) merged in the evening
-2026-05-13 ~20:30 MT via maintainer authorization. Back below
-the soft cap of 3.
+**WIP**: 3 Claude PRs open. At the soft cap of 3 -- the three
+PRs are all docs-only / dev-log and self-merge eligible; new
+lanes wait until they merge.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -66,36 +73,41 @@ PR opens, fill `PR / branch`. When the PR merges, move the row to
 ## Queued lanes (not yet picked up)
 
 Per `docs/dev-log/audits/2026-05-13-post-overnight-drift-scan.md`
-batching plan; opened only after the in-flight WIP drops.
+batching plan + the 2026-05-14 strategic plan revision. With
+Codex absent, Claude carries all of these:
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Claude (Codex pause) | Batch A: paired-canon corrections in `R/unique-keyword.R`, `R/extract-omega.R`, `R/fit-multi.R` (roxygen + cli_inform prose only) | #74-#79 merged |
-| Claude (Codex pause) | Batch B: drop in-prep `(Eq. 13/14/15)` citations in `R/diagnose.R` | #74-#79 merged |
-| Claude (Codex pause) | Batch C: replace `\Psi` notation + `Phase D / Phase K` jargon in `functional-biogeography.Rmd` + `joint-sdm.Rmd` | #74-#79 merged |
-| Claude (Codex pause) | Batch D: convert active `gllvmTMB_wide()` recommendations to `traits(...)` form in `morphometrics.Rmd` + `response-families.Rmd` | #74-#79 merged |
-| Claude (Codex pause) | Batch E: `\mathbf{U} -> \mathbf{S}` in `behavioural-syndromes.Rmd` math; roxygen-only sweep of `R/extract-two-U-via-PIC.R` (function name stays) | #74-#79 merged |
+| Claude | Phase 1a Batch A: paired-canon corrections in `R/unique-keyword.R`, `R/fit-multi.R` (roxygen + cli_inform prose; expanded scope per 2026-05-14 plan) | #83, #84, this PR merged |
+| Claude | Phase 1a Batch B: drop in-prep `Eq. N` citations across R/diagnose.R, R/methods-gllvmTMB.R, R/extract-omega.R (incl. an `@title`), R/unique-keyword.R, R/extractors.R (2 `@title` lines) | #83, #84, this PR merged |
+| Claude | Phase 1a Batch D: convert active `gllvmTMB_wide()` recommendations to `traits(...)` form in `morphometrics.Rmd` + `response-families.Rmd` | #83, #84, this PR merged |
+| Claude | Phase 1a Batch E: `\mathbf{U} -> \mathbf{S}` in `behavioural-syndromes.Rmd` math; roxygen-only sweep of `R/extract-two-U-via-PIC.R` (function name stays) | #83, #84, this PR merged |
+| Claude | Phase 1b: `extract_correlations()` `link_residual = "auto"` + `check_auto_residual()` + `check_identifiability()` + expanded profile-CI edge tests | After 1a |
+| Claude | Phase 1b': Profile-CI Validation milestone (Jason pre-scan + coverage study + `confint_inspect()` + `troubleshooting-profile.Rmd` Concepts article) | After 1b |
+| Claude | Phase 1c: 13-PR article-port programme (9 ports + 4 new pedagogy articles) | After 1b' |
 
 Move a row to "Active lanes" when you start it.
 
 ## File ownership for the current docs / navigation pass
 
-Per PR #64 Section K (the joint plan). Lock these files behind
-the named owner; if the other agent needs to touch them, leave a
-coordination comment first. During the **Codex pause window**
-(2026-05-13 -> ~2026-05-17), rows tagged `(Codex pause)` are
-temporarily reassigned to Claude.
+Per PR #64 Section K (the joint plan) + 2026-05-14 Codex-absent
+reassignment. Lock these files behind the named owner; if the
+other agent (Codex if/when they return) needs to touch them,
+they should leave a coordination comment first and wait for
+acknowledgement.
 
 | File | Owner (this pass) |
 |---|---|
-| `vignettes/articles/covariance-correlation.Rmd` | Codex (PR #61 + #69 done; settled for now) |
-| `_pkgdown.yml` | Claude (Codex pause); restore to Codex when Codex returns |
-| `README.md` | Claude (PR #65 dropped wide-matrix block; PR #67 D1+D2+D4 landed) |
+| `vignettes/articles/covariance-correlation.Rmd` | Claude (Codex absent; PR #61 + #69 done by Codex earlier; settled content-wise) |
+| `_pkgdown.yml` | Claude (Codex absent); restore to Codex if/when Codex returns |
+| `README.md` | Claude (PR #65 dropped wide-matrix block; PR #67 D1+D2+D4 landed; PR #80 added wide-form Tiny example) |
 | `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` | Claude (rule files) |
 | `docs/design/*` | open; coordinate per file |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
-| Other Tier-1 article rewrites (`choose-your-model`, etc.) | Claude (Codex pause); coordinate when Codex returns |
-| `R/*` | Codex by default; Claude only for rule-file-driven changes (e.g. PR #65 deprecation) -- **untouched during pause** |
+| Tier-1 article rewrites (`choose-your-model`, `phylogenetic-gllvm`, etc.) | Claude (Codex absent) |
+| `R/*` | **Claude (Codex absent assumption, effective 2026-05-14)**; restore to Codex if/when Codex returns. Claude PRs to R/ must carry Gauss + Noether + Fisher + Rose persona reviews. |
+| `tests/testthat/*` | Claude (Codex absent); persona reviews include Curie + Fisher for test design |
+| `src/gllvmTMB.cpp` | **Claude (Codex absent)** for any prose / comment / header changes; engine code is more fragile -- consult Gauss persona before any C++ edit; defer non-trivial C++ to Codex return |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a
@@ -205,6 +217,13 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-14 ~21:00 MT: Codex-absent assumption codified
+  (maintainer "codex might not come back so you should
+  plan to do it"). R/ + tests/testthat/ + src/ ownership
+  reassigned to Claude under heavy persona-review discipline.
+  Active lanes: 3 docs-only Claude PRs (#83, #84, this PR).
+  Queued lanes restructured around Phase 1a/1b/1b'/1c plan.
+  Restoration rule documented if Codex returns (Claude).
 - 2026-05-13 ~20:30 MT: Seven-PR evening sweep merged via
   maintainer authorization; active-lane table reset to
   "(none active)"; WIP back to 0 (Claude).

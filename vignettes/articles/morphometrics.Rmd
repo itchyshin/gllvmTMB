@@ -133,9 +133,6 @@ fit_wide_formula <- gllvmTMB(
   unit = "individual"
 )
 
-# Wide matrix format (same model for matrix-first workflows)
-fit_wide_matrix <- gllvmTMB_wide(Y, d = 2, family = gaussian())
-
 # The rest of the article uses the canonical long-format fit.
 fit <- fit_long
 fit
@@ -143,10 +140,6 @@ fit
 cat("Long/formula-wide logLik difference:",
     signif(abs(as.numeric(logLik(fit_long)) -
                as.numeric(logLik(fit_wide_formula))), 3),
-    "\n")
-cat("Long/matrix-wide logLik difference:",
-    signif(abs(as.numeric(logLik(fit_long)) -
-               as.numeric(logLik(fit_wide_matrix))), 3),
     "\n")
 ```
 
@@ -160,9 +153,7 @@ everything else is standard GLLVM machinery.
 data-frame marker. Because the response traits are named on the LHS,
 the RHS can use the compact shorthand: `1` becomes the trait-specific
 intercepts `0 + trait`, and `latent(1 | individual)` becomes
-`latent(0 + trait | individual)`. `gllvmTMB_wide(Y, ...)` is the
-matrix-in entry point for the same model when the response already
-lives in a numeric matrix.
+`latent(0 + trait | individual)`.
 
 ## What model did we fit?
 

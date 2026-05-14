@@ -55,11 +55,11 @@ the per-trait phylogenetic variances not absorbed by the K shared
 axes. This is the manuscript-aligned PGLLVM decomposition
 (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et
 al. 2025). Replication (multiple sites per species) is required
-to break the S_phy / S_non confound at the species level.}
+to break the Psi_phy / Psi_non confound at the species level.}
 }
 
 Use \code{\link[=extract_Sigma]{extract_Sigma()}} with \code{level = "phy"} and \code{part = "shared"},
-\code{"unique"}, or \code{"total"} to pull each component, the diagonal s_phy,
+\code{"unique"}, or \code{"total"} to pull each component, the diagonal psi_phy,
 or their sum.
 
 Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-1}}) or

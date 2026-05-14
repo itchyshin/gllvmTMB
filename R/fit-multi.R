@@ -336,12 +336,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## phylo_unique(species) appear in `parsed$covstructs` as kind="phylo_rr".
   ## We separate them by inspecting the .phylo_unique marker:
   ##   * phylo_latent (no marker)         -> populates phylo_rr (Lambda_phy)
-  ##   * phylo_unique (.phylo_unique=TRUE) -> populates phylo_diag (s_phy diag)
+  ##   * phylo_unique (.phylo_unique=TRUE) -> populates phylo_diag (psi_phy diag)
   ##                                          ALWAYS, never phylo_rr.
   ## When ONLY phylo_unique is present, the engine still works (use_phylo_rr
   ## is FALSE; only the diag block fires). When BOTH are present, they
   ## co-fit as separate components: Sigma_phy = Lambda_phy Lambda_phy^T +
-  ## S_phy. This is the manuscript-aligned two-U PGLLVM decomposition
+  ## Psi_phy. This is the manuscript-aligned two-U PGLLVM decomposition
   ## (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et al.
   ## 2025).
   phy_idx        <- which(kinds == "phylo_rr")
@@ -1165,7 +1165,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Ainv_phy_rr      = Ainv_phy_rr,
     log_det_A_phy_rr = log_det_A_phy_rr,
     species_aug_id   = as.integer(species_aug_id),
-    ## Two-U PGLLVM: per-trait phylogenetic random intercepts (s_phy diag)
+    ## Two-U PGLLVM: per-trait phylogenetic random intercepts (psi_phy diag)
     use_phylo_diag   = as.integer(use_phylo_diag),
     ## Q6: phylo_slope data
     use_phylo_slope  = as.integer(use_phylo_slope),
@@ -1226,7 +1226,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                      init_rr_theta_pkg(n_traits, d_phy)
                    } else 0.0,
     g_phy        = matrix(0, nrow = n_aug_phy, ncol = if (use_phylo_rr) d_phy else 1L),
-    ## Two-U PGLLVM: per-trait phylogenetic random intercept (s_phy diag).
+    ## Two-U PGLLVM: per-trait phylogenetic random intercept (psi_phy diag).
     ## When use_phylo_diag = 0 these are mapped off below.
     log_sd_phy_diag = if (use_phylo_diag) rep(0.0, n_traits) else 0.0,
     g_phy_diag      = matrix(0, nrow = n_aug_phy,
@@ -1752,7 +1752,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## engine slot for per-trait phylogenetic random
                           ## intercepts. Co-fits with phylo_rr to give the
                           ## decomposition Sigma_phy = Lambda_phy
-                          ## Lambda_phy^T + S_phy.
+                          ## Lambda_phy^T + Psi_phy.
                           phylo_diag = use_phylo_diag,
                           ## Sub-flags identifying the canonical-keyword
                           ## flavour: phylo_unique (when ALONE) reuses the

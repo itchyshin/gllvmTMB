@@ -5,7 +5,7 @@
 #' Between-site covariance matrix Sigma_B (backward-compat wrapper)
 #'
 #' Returns the implied between-unit trait covariance
-#' \eqn{\Sigma_B = \Lambda_B \Lambda_B^\top + S_B} and its correlation
+#' \eqn{\Sigma_B = \Lambda_B \Lambda_B^\top + \boldsymbol\Psi_B} and its correlation
 #' matrix. This is a thin wrapper around the unified
 #' [extract_Sigma()] function: equivalent to
 #' `extract_Sigma(fit, level = "unit", part = "total")` but with the
@@ -31,7 +31,7 @@ extract_Sigma_B <- function(fit) {
 
 #' Within-site covariance matrix Sigma_W (backward-compat wrapper)
 #'
-#' Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + S_W} and the
+#' Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + \boldsymbol\Psi_W} and the
 #' correlation. Thin wrapper around [extract_Sigma()] with
 #' `level = "unit_obs"`. Prefer the unified interface for new code.
 #'
@@ -53,7 +53,7 @@ extract_Sigma_W <- function(fit) {
 #'
 #' Calls [extract_Sigma()] internally for both levels with `part = "total"`,
 #' so the diagonal of each \eqn{\boldsymbol\Sigma} includes the unique
-#' component \eqn{\mathbf S} when `unique()` is in the formula. If either
+#' component \eqn{\boldsymbol\Psi} when `unique()` is in the formula. If either
 #' level has only `latent()` and no `unique()`, the corresponding advisory
 #' message fires and the ICC is computed against the latent-only diagonal.
 #'
@@ -93,13 +93,13 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' The proportion of trait \eqn{t}'s variance that is *shared* with the
 #' other traits via the latent factors. Bounded between 0 and 1. Calls
 #' [extract_Sigma()] internally for the chosen level, so the diagonal
-#' uses the full \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathbf S}
+#' uses the full \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi}
 #' decomposition when both `latent()` and `unique()` are in the formula.
 #'
 #' ## Caveat: communality with latent-only fits
 #'
 #' If the fit has `latent()` but **no** `unique()` at the requested level (for
-#' Gaussian / lognormal / Gamma responses), then \eqn{\mathbf S = \mathbf 0}
+#' Gaussian / lognormal / Gamma responses), then \eqn{\boldsymbol\Psi = \mathbf 0}
 #' and `c_t^2 = 1` for every trait — this is mathematically correct given
 #' the model spec but tells you nothing about trait integration. The
 #' [extract_Sigma()] advisory message will fire to flag this. To get

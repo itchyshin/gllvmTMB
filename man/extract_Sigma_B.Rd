@@ -15,7 +15,7 @@ or \code{NULL} if no rr/diag term is present at the between-unit tier.
 }
 \description{
 Returns the implied between-unit trait covariance
-\eqn{\Sigma_B = \Lambda_B \Lambda_B^\top + S_B} and its correlation
+\eqn{\Sigma_B = \Lambda_B \Lambda_B^\top + \boldsymbol\Psi_B} and its correlation
 matrix. This is a thin wrapper around the unified
 \code{\link[=extract_Sigma]{extract_Sigma()}} function: equivalent to
 \code{extract_Sigma(fit, level = "unit", part = "total")} but with the

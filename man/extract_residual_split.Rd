@@ -19,7 +19,7 @@ latent residual (computed by the internal \code{link_residual_per_trait()}
 helper; see the per-family table above; zero for \code{gaussian} and
 \code{lognormal}).}
 \item{\code{sigma2_e}}{Estimated OLRE variance per trait — the per-trait
-diagonal of \eqn{\mathbf{S}_W} when the fit has a genuine
+diagonal of \eqn{\boldsymbol{\Psi}_W} when the fit has a genuine
 observation-level \code{unique()} term, else 0.}
 \item{\code{sigma2_total}}{\code{sigma2_d + sigma2_e}.}
 }
@@ -33,7 +33,7 @@ the total latent-scale residual variance for trait \eqn{t} is
 where \eqn{\sigma^2_d} is the \strong{distribution-specific (theoretical)}
 component that depends only on the family/link, and \eqn{\sigma^2_e}
 is the \strong{estimated OLRE variance} — the per-trait diagonal of the
-within-unit unique covariance \eqn{\mathbf{S}_W}.
+within-unit unique covariance \eqn{\boldsymbol{\Psi}_W}.
 }
 \details{
 The function detects whether the fit includes a genuine observation-level

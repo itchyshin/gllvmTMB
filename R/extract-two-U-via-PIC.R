@@ -7,7 +7,7 @@
 ## `nlme::gls` + `corPagel`) to identify the trait-specific phylogenetic and
 ## non-phylogenetic variance components, then build T x T Sigma_phy and
 ## Sigma_non matrices and factor-analyse each one. The result is the
-## four-component decomposition Lambda_phy, s_phy, Lambda_non, s_non --
+## four-component decomposition Lambda_phy, psi_phy, Lambda_non, psi_non --
 ## the same target as the joint-REML two-U fit, but obtained without
 ## simultaneous likelihood maximisation.
 ##
@@ -354,7 +354,7 @@
 #'   \item **Factor-analytic decomposition**: run
 #'     `stats::factanal(covmat = Sigma, factors = d_phy, rotation = "none")`
 #'     on each matrix to obtain
-#'     \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+#'     \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 #'     for each tier.
 #' }
 #'
@@ -382,7 +382,7 @@
 #'     joint-REML fit is preferred when sample size allows.
 #'   \item Factor-analytic decomposition shares the rotation
 #'     indeterminacy of any factor model; the implied
-#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 #'     is well-identified; the split between Lambda and S is identified
 #'     up to rotation.
 #' }
@@ -495,7 +495,7 @@ extract_two_U_via_PIC <- function(fit, tree, d_phy = 1L, d_non = 1L) {
 #' the corresponding components extracted from a joint-REML two-U fit.
 #' Agreement = trustworthy joint estimate; disagreement = identifiability
 #' concern, and the user is invited to investigate which axes
-#' (Lambda_phy / s_phy / Lambda_non / s_non) disagree.
+#' (Lambda_phy / psi_phy / Lambda_non / psi_non) disagree.
 #'
 #' **Scope.** This diagnostic inherits the Gaussian / Brownian-motion
 #' restriction of [extract_two_U_via_PIC()]. It is a fast complement to

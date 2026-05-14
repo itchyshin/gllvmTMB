@@ -339,7 +339,7 @@ meta <- function(value, sampling_var) {
 #' ```
 #'
 #' For the canonical decomposition
-#' \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S},
+#' \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi},
 #' add an explicit [unique()] term:
 #' ```r
 #' value ~ 0 + trait + latent(0 + trait | unit, d = 2) +
@@ -602,11 +602,11 @@ phylo_scalar <- function(species, tree = NULL, vcv = NULL) {
 #'     axes. This is the manuscript-aligned PGLLVM decomposition
 #'     (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et
 #'     al. 2025). Replication (multiple sites per species) is required
-#'     to break the S_phy / S_non confound at the species level.}
+#'     to break the Psi_phy / Psi_non confound at the species level.}
 #' }
 #'
 #' Use [extract_Sigma()] with `level = "phy"` and `part = "shared"`,
-#' `"unique"`, or `"total"` to pull each component, the diagonal s_phy,
+#' `"unique"`, or `"total"` to pull each component, the diagonal psi_phy,
 #' or their sum.
 #'
 #' Pass the phylogeny via `tree = phylo` (canonical, sparse \eqn{\mathbf{A}^{-1}}) or
@@ -948,7 +948,7 @@ meta_known_V <- function(value, V) {
 #' \describe{
 #'   \item{**Decomposition** (`latent + unique`)}{Shared cross-trait
 #'     covariance plus trait-specific residual:
-#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}.}
+#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.}
 #'   \item{**Marginal** (`indep` standalone)}{Per-trait total variance
 #'     with no cross-trait decomposition: \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)}.}
 #' }
@@ -1139,7 +1139,7 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL) {
 #' \describe{
 #'   \item{**Decomposition** (`latent + unique`)}{Shared low-rank
 #'     loadings plus trait-specific residual:
-#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}.
+#'     \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.
 #'     \eqn{TK + T} parameters (rotation-removed).}
 #'   \item{**Marginal** (`indep` standalone)}{Per-trait variance with
 #'     identity correlation: \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)}.

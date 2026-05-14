@@ -28,7 +28,7 @@ per-trait link-specific implicit residual variance to the diagonal of
 family fits each trait gets the residual implied by \emph{its} family/link
 (see "Family-aware link residuals" below for the full table).
 \code{"none"} returns the latent+unique-implied
-\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S} with no
+\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} with no
 implicit residual added. For Gaussian or lognormal-only fits this
 argument is effectively a no-op (their implied \eqn{\sigma^2_d = 0}).}
 
@@ -52,7 +52,7 @@ vector of unique variances), \code{level}, \code{part}, \code{note}.
 Implements the decomposition
 \deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\mathbf S_\text{tier}}_{\text{unique (unique)}},}
 where \eqn{\boldsymbol\Lambda} comes from the \code{latent()} term at that tier
-and \eqn{\mathbf S} comes from the corresponding \code{unique()} term. This is the
+and \eqn{\boldsymbol\Psi} comes from the corresponding \code{unique()} term. This is the
 same decomposition the behavioural-syndromes / phenotypic-integration
 literature uses (Bartholomew et al. 2011; Nakagawa et al. \emph{in prep}),
 equations 15, 22, and 30 of the methods paper.
@@ -63,7 +63,7 @@ equations 15, 22, and 30 of the methods paper.
 If the formula has only \code{latent(0 + trait | unit, d = K)} and \strong{no}
 \code{unique(0 + trait | unit)}, the engine can only fit the
 \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component -- there is no
-slot for trait-specific \emph{unique} variance \eqn{\mathbf S}. Calling
+slot for trait-specific \emph{unique} variance \eqn{\boldsymbol\Psi}. Calling
 \code{extract_Sigma(fit, level, part = "total")} then returns just
 \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}, which \strong{understates the
 diagonal} of the true covariance. Any correlations computed from this
@@ -85,7 +85,7 @@ argument below.
 
 \describe{
 \item{\code{"total"} (default)}{
-\eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+\eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 -- the matrix users almost always want for reporting correlations.}
 \item{\code{"shared"}}{
 \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} only -- the
@@ -95,16 +95,16 @@ variances, they are the \emph{shared} part of the trait variances.}
 \item{\code{"unique"}}{
 \eqn{\mathbf S_\text{tier}} only -- the trait-specific unique
 variances, returned as a length-\code{T} named numeric vector (the
-diagonal of \eqn{\mathbf S}).}
+diagonal of \eqn{\boldsymbol\Psi}).}
 }
 }
 
 \subsection{Caveat: \code{"shared"} vs \code{"unique"} partition is only weakly identified}{
 
-The total \eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}
+The total \eqn{\boldsymbol\Sigma_\text{tier} = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 is rotation-invariant and well-identified, so \code{part = "total"} is
 well-identified. But the \emph{split} between \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}
-and \eqn{\mathbf S} is only weakly identified -- different optimiser
+and \eqn{\boldsymbol\Psi} is only weakly identified -- different optimiser
 starts can flow trait \eqn{t}'s variance more into the shared
 (\code{"shared"}) or unique (\code{"unique"}) component, with the same total
 likelihood. In a synthetic Poisson + OLRE recovery run with target
@@ -151,7 +151,7 @@ For mixed-family fits the residual is computed \emph{per trait} from the
 family of the rows belonging to that trait, then added to the diagonal
 of \eqn{\boldsymbol\Sigma} entry-by-entry. The default
 \code{link_residual = "auto"} applies this; \code{"none"} returns the latent+unique-implied
-\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S} with no
+\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi} with no
 implicit residual added. For continuous-only Gaussian or lognormal fits
 \code{"auto"} is a no-op (their per-trait \eqn{\sigma^2_d} is zero).
 

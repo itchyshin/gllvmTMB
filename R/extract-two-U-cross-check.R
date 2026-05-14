@@ -2,8 +2,8 @@
 ## decomposition. The two-U joint REML fit decomposes the
 ## phylogenetic and non-phylogenetic trait covariances as
 ##
-##   Sigma_phy = Lambda_phy Lambda_phy^T + S_phy,
-##   Sigma_non = Lambda_non Lambda_non^T + S_non.
+##   Sigma_phy = Lambda_phy Lambda_phy^T + Psi_phy,
+##   Sigma_non = Lambda_non Lambda_non^T + Psi_non.
 ##
 ## The split into Lambda Lambda^T and S is only weakly identified
 ## from a single fit -- different optimiser starts can rotate variance
@@ -137,7 +137,7 @@
 #' Extract joint two-U Sigma_phy and Sigma_non implied by Lambda Lambda^T + S
 #'
 #' For Sigma_phy: this is the implied phylogenetic covariance from the
-#' joint fit, computed as `Lambda_phy %*% t(Lambda_phy) + S_phy`.
+#' joint fit, computed as `Lambda_phy %*% t(Lambda_phy) + Psi_phy`.
 #' Pulls from `extract_Sigma(fit, level = "phy", part = "total",
 #' link_residual = "none")` so the comparison is on the latent-scale
 #' covariance the engine actually fit (no link-residual correction

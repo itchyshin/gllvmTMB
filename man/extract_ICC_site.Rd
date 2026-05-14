@@ -23,7 +23,7 @@ Sigma_W is unavailable.
 \details{
 Calls \code{\link[=extract_Sigma]{extract_Sigma()}} internally for both levels with \code{part = "total"},
 so the diagonal of each \eqn{\boldsymbol\Sigma} includes the unique
-component \eqn{\mathbf S} when \code{unique()} is in the formula. If either
+component \eqn{\boldsymbol\Psi} when \code{unique()} is in the formula. If either
 level has only \code{latent()} and no \code{unique()}, the corresponding advisory
 message fires and the ICC is computed against the latent-only diagonal.
 

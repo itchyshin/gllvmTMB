@@ -13,7 +13,7 @@ extract_Sigma_W(fit)
 A list with \code{Sigma_W} and \code{R_W}, or \code{NULL}.
 }
 \description{
-Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + S_W} and the
+Returns \eqn{\Sigma_W = \Lambda_W \Lambda_W^\top + \boldsymbol\Psi_W} and the
 correlation. Thin wrapper around \code{\link[=extract_Sigma]{extract_Sigma()}} with
 \code{level = "unit_obs"}. Prefer the unified interface for new code.
 }

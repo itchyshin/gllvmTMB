@@ -52,12 +52,12 @@ When \code{ci = TRUE}: a data frame with columns \code{trait}, \code{tier}, \cod
 The proportion of trait \eqn{t}'s variance that is \emph{shared} with the
 other traits via the latent factors. Bounded between 0 and 1. Calls
 \code{\link[=extract_Sigma]{extract_Sigma()}} internally for the chosen level, so the diagonal
-uses the full \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathbf S}
+uses the full \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi}
 decomposition when both \code{latent()} and \code{unique()} are in the formula.
 \subsection{Caveat: communality with latent-only fits}{
 
 If the fit has \code{latent()} but \strong{no} \code{unique()} at the requested level (for
-Gaussian / lognormal / Gamma responses), then \eqn{\mathbf S = \mathbf 0}
+Gaussian / lognormal / Gamma responses), then \eqn{\boldsymbol\Psi = \mathbf 0}
 and \code{c_t^2 = 1} for every trait — this is mathematically correct given
 the model spec but tells you nothing about trait integration. The
 \code{\link[=extract_Sigma]{extract_Sigma()}} advisory message will fire to flag this. To get

@@ -72,7 +72,7 @@ layout.
   associations.
 - **Trait-specific residual variance.** Pair `latent()` with
   `unique()` when you need
-  `Sigma = Lambda Lambda^T + diag(s)` rather than a latent-only
+  `Sigma = Lambda Lambda^T + diag(psi)` rather than a latent-only
   covariance.
 - **Phylogenetic trait covariance.** Use `phylo_latent()` and
   `phylo_unique()` when species relatedness should contribute to
@@ -197,12 +197,13 @@ pairwise correlations, and per-trait communality.
 In notation, the trait covariance the model fits is
 
 ```text
-Sigma = Lambda Lambda^T + diag(s)
+Sigma = Lambda Lambda^T + diag(psi)
 ```
 
 where `Lambda` is the shared-axis loading matrix (set by
-`latent()`) and `s` is the trait-specific residual variance (set
-by `unique()`).
+`latent()`) and `psi` (the Greek letter Psi, matching the
+factor-analysis / SEM convention) is the trait-specific
+residual variance (set by `unique()`).
 
 ## Covariance keyword grid
 
@@ -218,7 +219,7 @@ with covariance mode.
 The decomposition mode is `latent + unique` paired:
 
 ```text
-Sigma = Lambda Lambda^T + diag(s)
+Sigma = Lambda Lambda^T + diag(psi)
 ```
 
 Standalone `latent()` is the no-residual reduced-rank subset.

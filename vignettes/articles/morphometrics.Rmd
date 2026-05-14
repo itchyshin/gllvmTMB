@@ -49,7 +49,7 @@ We pretend to measure $n = 150$ sparrows on five body traits. The
 true loading matrix has a *size* axis (factor 1, all positive: bigger
 birds tend to be bigger on every measurement) and a *shape* axis
 (factor 2, mixed signs: long-and-skinny vs. short-and-stocky). Each
-trait also has a small trait-specific unique variance $s_t^2$:
+trait also has a small trait-specific unique variance $\psi_t^2$:
 
 ```{r sim}
 set.seed(2025)
@@ -68,11 +68,11 @@ Lambda_true <- matrix(c(
    dimnames = list(trait_names, c("size", "shape")))
 
 # True trait-specific unique (residual) variances
-s2_true <- c(length = 0.15, mass = 0.10, wing = 0.20, tarsus = 0.12, bill = 0.18)
+psi2_true <- c(length = 0.15, mass = 0.10, wing = 0.20, tarsus = 0.12, bill = 0.18)
 
 # Latent factors + trait-specific residuals (no global sigma_eps in truth)
 u <- matrix(rnorm(n_ind * 2), n_ind, 2)
-eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(s2_true[t])))
+eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(psi2_true[t])))
 Y <- u %*% t(Lambda_true) + eps
 rownames(Y) <- as.character(seq_len(n_ind))
 colnames(Y) <- trait_names
@@ -94,7 +94,7 @@ head(df, 8)
 ```
 
 ```{r sim-truth}
-Sigma_true <- Lambda_true %*% t(Lambda_true) + diag(s2_true)  # full between-individual covariance
+Sigma_true <- Lambda_true %*% t(Lambda_true) + diag(psi2_true)  # full between-individual covariance
 round(Sigma_true, 2)
 ```
 
@@ -178,14 +178,14 @@ y_{it} \;=\; \mu_t \;+\; \boldsymbol{\lambda}_t^{\!\top} \mathbf{u}_i \;+\;
 \varepsilon_{it},
 \qquad
 \mathbf{u}_i \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_d), \quad
-\varepsilon_{it} \sim \mathcal{N}(0, S_{tt}),
+\varepsilon_{it} \sim \mathcal{N}(0, \psi_{tt}),
 $$
 
 where $\boldsymbol{\lambda}_t \in \mathbb{R}^d$ is the loading vector
 for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
 individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
-with variance $S_{tt}$. The `unique()` term collects those residual
-variances on the diagonal of $\mathbf S$. The implied
+with variance $\psi_{tt}$. The `unique()` term collects those residual
+variances on the diagonal of $\boldsymbol\Psi$. The implied
 between-individual trait covariance is
 
 $$
@@ -193,7 +193,7 @@ $$
 \;=\;
 \underbrace{\boldsymbol{\Lambda} \boldsymbol{\Lambda}^{\!\top}}_{\text{shared}}
 \;+\;
-\underbrace{\mathbf S}_{\text{unique}},
+\underbrace{\boldsymbol\Psi}_{\text{unique}},
 \qquad \boldsymbol{\Lambda} \in \mathbb{R}^{T \times d}.
 $$
 
@@ -211,8 +211,8 @@ first, trait-specific variation second.
 > $\sigma_\varepsilon$ to a negligibly small constant (and prints an
 > `i Auto-suppressing sigma_eps: ...` message), so the `unique()` term
 > absorbs the full observation-level residual and becomes the
-> trait-specific residual variance $s_t^2$. The confounding that would
-> arise if both $\sigma_\varepsilon$ and $s_t^2$ were estimated freely
+> trait-specific residual variance $\psi_t^2$. The confounding that would
+> arise if both $\sigma_\varepsilon$ and $\psi_t^2$ were estimated freely
 > is therefore resolved by construction — you do not need to choose
 > between them. With *longitudinal* data (multiple sessions per
 > individual), both terms are separately identified and can be
@@ -223,10 +223,10 @@ first, trait-specific variation second.
 > for the side-by-side comparison.
 
 ```{r fit-unique-s}
-# Trait-specific unique standard deviations (s_t)
-s_hat <- extract_Sigma(fit, level = "unit", part = "unique")$s
-cat("Estimated s_t:", round(s_hat, 3), "\n")
-cat("True      s_t:", round(sqrt(s2_true), 3), "\n")
+# Trait-specific unique standard deviations (psi_t)
+psi_hat <- extract_Sigma(fit, level = "unit", part = "unique")$s
+cat("Estimated psi_t:", round(psi_hat, 3), "\n")
+cat("True      psi_t:", round(sqrt(psi2_true), 3), "\n")
 ```
 
 ## Recovered $\hat{\boldsymbol\Sigma}_B$ vs truth
@@ -274,9 +274,9 @@ ggplot(df_corr, aes(trait_j, trait_i, fill = rho)) +
 
 > **What `extract_Sigma(level = "unit")$Sigma` returns.** The *total*
 > between-unit covariance
-> $\boldsymbol\Sigma_B = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathbf S$
+> $\boldsymbol\Sigma_B = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
 > — the sum of the reduced-rank shared component and the diagonal
-> unique component. If you fit without `+ unique()`, $\mathbf S = 0$
+> unique component. If you fit without `+ unique()`, $\boldsymbol\Psi = 0$
 > and you get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$,
 > which understates the diagonal. Adding `+ unique()` (as in the fit
 > above) fills in the diagonal correctly. Use `part = "shared"` /
@@ -319,7 +319,7 @@ every recovery fit.
 run_one <- function(seed) {
   set.seed(seed)
   u   <- matrix(rnorm(n_ind * 2), n_ind, 2)
-  eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(s2_true[t])))
+  eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(psi2_true[t])))
   Y   <- u %*% t(Lambda_true) + eps
   colnames(Y) <- trait_names
   df_rep_wide <- data.frame(
@@ -390,7 +390,7 @@ behaviour and shrinks as $n$ grows.
 ## Why `latent + unique`? `dep` and `indep` on the same data
 
 The morphometric workflow pairs `latent(d = K)` with `unique()` to
-estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathbf{S}$.
+estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol{\Psi}$.
 Two alternative covstruct modes — `dep` (full unstructured $\boldsymbol\Sigma_B$
 with $T(T+1)/2$ free entries) and `indep` (diagonal-only
 $\boldsymbol\Sigma_B = \mathrm{diag}(\sigma^2_1, \dots, \sigma^2_T)$, no

@@ -217,7 +217,7 @@ tree$tip.label <- paste0("sp", seq_len(15))
 
 **Rule of thumb.** *Use the paired four-component decomposition
 (`phylo_latent + phylo_unique + latent + unique`) whenever **both
-$S$ diagonals are identifiable** -- typically a crossed
+$\boldsymbol{\Psi}$ diagonals are identifiable** -- typically a crossed
 (site × species) design with `n_species` around 100 or more and
 strong phylogenetic signal. Reserve `phylo_scalar()` for the
 simpler case where a single shared phylogenetic variance per trait
@@ -232,12 +232,12 @@ not separately identifiable from $\Lambda_{\text{phy}}
 \Lambda_{\text{phy}}^{\!\top}$ -- common in small `n_species`,
 weak phylogenetic signal, or single-replicate-per-tip data --
 drop the `phylo_unique()` term and let the species-level
-`unique()` carry the only $S$ in the fit. The model then has
+`unique()` carry the only $\boldsymbol{\Psi}$ in the fit. The model then has
 three pieces:*
 
 $$
 \Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top} +
-\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S
+\Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + \boldsymbol\Psi
 $$
 
 *-- $\Omega$ is simply the **total trait covariance**, the sum

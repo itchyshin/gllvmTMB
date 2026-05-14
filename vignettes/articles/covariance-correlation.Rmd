@@ -67,7 +67,7 @@ $$
 where `level` names the covariance tier being extracted, such as `unit`
 for between-individual covariance or `unit_obs` for within-individual or
 observation-level covariance. $\boldsymbol\Lambda$ is the $T \times K$
-loading matrix (from the `latent()` term) and $\mathbf S$ is a
+loading matrix (from the `latent()` term) and $\boldsymbol\Psi$ is a
 $T \times T$ diagonal matrix of trait-specific unique variances (from the
 `unique()` term). The correlation matrix is then
 
@@ -77,9 +77,9 @@ $$
 $$
 
 Both pieces matter: the diagonal of $\boldsymbol\Sigma$ is
-$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + S_{tt}$ — the
+$(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}$ — the
 sum of squared loadings *plus* the trait-specific unique variance.
-Drop $\mathbf S$ and the diagonal shrinks; the off-diagonals stay the
+Drop $\boldsymbol\Psi$ and the diagonal shrinks; the off-diagonals stay the
 same; $\mathbf R$ swells.
 
 ## A side-by-side demonstration
@@ -104,7 +104,7 @@ trait_names <- c("boldness", "exploration", "activity",
                  "aggression", "sociability")
 T <- length(trait_names)
 
-## True between-individual covariance Sigma_unit = Lambda Lambda^T + diag(s)
+## True between-individual covariance Sigma_unit = Lambda Lambda^T + diag(psi)
 Lambda_true <- matrix(c(
   0.9,  0.1,
   1.0,  0.2,
@@ -204,7 +204,7 @@ The middle panel (`Model A`) shows correlations that are
 The mechanism: Model A's $\hat{\boldsymbol\Sigma}$ has small diagonals
 (only $\Lambda \Lambda^{\!\top}$), so when we divide by $\sqrt{D}$ the
 off-diagonals get inflated. Model B's $\hat{\boldsymbol\Sigma}$ has
-the full $\Lambda \Lambda^{\!\top} + S$ — diagonals at the right scale
+the full $\Lambda \Lambda^{\!\top} + \boldsymbol\Psi$ — diagonals at the right scale
 and correlations at the right magnitude.
 
 ## What `extract_Sigma()` gives you
@@ -226,20 +226,20 @@ extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
 `part = "total"` is the default and is what you almost always want for
 reporting. `"shared"` is useful if you specifically want the latent-implied
 component (e.g. for ordination interpretation or communality). `"unique"`
-gives the diagonal of $\mathbf S$ as a named numeric vector.
+gives the diagonal of $\boldsymbol\Psi$ as a named numeric vector.
 
 ## Communality and ICC need the full $\Sigma$ too
 
 Two trait-level summaries used in behavioural-syndromes and
 phenotypic-integration workflows both depend
-on the *full* $\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathbf S$
+on the *full* $\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
 decomposition. If you compute them from a latent-only fit you get the
 wrong answer.
 
 ### Communality
 
 $$
-c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{\boldsymbol\Sigma_{tt}} \;=\; \frac{\sum_{\ell=1}^d \Lambda_{t\ell}^2}{\sum_{\ell=1}^d \Lambda_{t\ell}^2 + S_{tt}}.
+c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{\boldsymbol\Sigma_{tt}} \;=\; \frac{\sum_{\ell=1}^d \Lambda_{t\ell}^2}{\sum_{\ell=1}^d \Lambda_{t\ell}^2 + \psi_{tt}}.
 $$
 
 This is the proportion of trait $t$'s variance that is *shared* with
@@ -247,10 +247,10 @@ the other traits via the latent factors. It is bounded between 0 and 1
 and is a proportion-of-variance summary, analogous in scale to $h^2$
 (heritability) or $R^2$.
 
-**The catch**: with latent-only fits, $S_{tt} = 0$ for every trait by
+**The catch**: with latent-only fits, $\psi_{tt} = 0$ for every trait by
 construction, so $c_t^2 = 1$ for every trait — the communality is
 identically 1 and tells you nothing. Adding `unique()` gives the
-denominator a per-trait $S_{tt}$ slot, and communality becomes
+denominator a per-trait $\psi_{tt}$ slot, and communality becomes
 informative.
 
 ```{r communality}
@@ -285,7 +285,7 @@ extract_ICC_site(fit)
 Binary outcomes (`family = binomial()`) are a special case. The
 link function fixes a latent-scale residual variance: $\pi^2/3$
 for `logit`, $1$ for `probit`, $\pi^2/6$ for `cloglog`. This
-implicit residual already plays the role of $\mathbf S$ on the
+implicit residual already plays the role of $\boldsymbol\Psi$ on the
 latent scale, so an explicit `unique()` term on top of a binary
 fit is typically not identified.
 
@@ -343,7 +343,7 @@ $$
 \ln \lambda_{ij} = \eta_{ij} + e_{ij}, \qquad e_{ij} \sim \mathcal N(0, \sigma_e^2).
 $$
 
-The $\sigma_e^2$ on the latent log scale plays the role of $\mathbf S$.
+The $\sigma_e^2$ on the latent log scale plays the role of $\boldsymbol\Psi$.
 Native OLRE support is available: add an `obs_id` column (one level per
 row), include `unique(0 + trait | obs_id)` in the formula, pass
 `unit_obs = "obs_id"`, and use `extract_residual_split(fit)` to separate
@@ -357,7 +357,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 |---|---|---|
 | Cross-trait correlations on a Gaussian / lognormal / Gamma fit | `latent() + unique()` at every level | Otherwise correlations are inflated. |
 | Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
-| Phylogenetic decomposition | `phylo_latent() + phylo_unique()` for the phylogenetic tier; add `latent() + unique()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `diag(s)` pieces. |
+| Phylogenetic decomposition | `phylo_latent() + phylo_unique()` for the phylogenetic tier; add `latent() + unique()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `diag(psi)` pieces. |
 | Communality | `extract_communality(fit)` + the right latent/unique pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |
 | `S` only | `extract_Sigma(fit, part = "unique")` | Trait-specific unique variances as a vector. |

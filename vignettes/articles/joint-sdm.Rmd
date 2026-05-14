@@ -123,7 +123,7 @@ wasted effort:
 |---|---|
 | Engine accepts `unique()` in a pure binary fit? | ✅ Yes — runs without error |
 | Estimates per-trait `sd_B[t]`? | ✅ Yes — but hits the boundary at ~ 0 (unidentifiable from binary 1-obs-per-cell) |
-| Issues a warning? | ❌ Not yet — Phase D follow-up will add a one-shot info message and `map`-suppress those parameters |
+| Issues a warning? | ❌ Not yet — a planned follow-up will add a one-shot info message and `map`-suppress those parameters |
 | Affects $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$? | ❌ No — $\boldsymbol\Lambda$ is unchanged |
 | Affects $\boldsymbol\Sigma_{\text{latent}}$? | Marginal — diagonal becomes $\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\hat{sd}_B^2) + (\pi^2/3) \mathbf I$, but $\hat{sd}_B^2 \approx 0$ at the boundary so it's essentially the same as without `unique()` |
 | Affects fit time / Hessian | Slightly: extra $T$ parameters pinned at the boundary, Hessian can be ill-conditioned. `sanity_multi(fit)` may flag it |
@@ -180,7 +180,7 @@ some Gaussian, some Poisson, …), the picture changes:
 
 So `unique()` is fine in mixed-family fits — you just need to know
 the per-trait `sd_B` will report effectively-zero values for binary
-rows. The Phase D follow-up will add per-family-aware
+rows. A planned follow-up will add per-family-aware
 `map`-suppression so the optimiser doesn't waste iterations on
 those boundary parameters; current behaviour is correct, just
 slightly inefficient. The `extract_Sigma()` machinery handles each
@@ -289,7 +289,7 @@ are fast (seconds) and bounded inside $[-1, 1]$ by construction.
 Profile-likelihood (`method = "profile"`) is more accurate for
 skewed sampling distributions but scales as $O(T(T-1)/2)$
 constrained refits — use it for final, publication-grade CIs once
-Phase K's warm-started `TMB::tmbprofile()` accelerates the path.
+a warm-started `TMB::tmbprofile()` (planned) accelerates the path.
 `method = "bootstrap"` is also available for full sampling-
 distribution CIs.
 

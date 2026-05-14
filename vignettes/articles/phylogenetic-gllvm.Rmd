@@ -68,8 +68,8 @@ library(ape)
 We simulate three traits on 30 species. The truth has four
 components, matching the paired decomposition in the theory section:
 a phylogenetic shared axis (`Lambda_phy`), a phylogenetic diagonal
-component (`s_phy`), a non-phylogenetic shared axis (`Lambda_non`),
-and a non-phylogenetic diagonal component (`s_non`). This small
+component (`psi_phy`), a non-phylogenetic shared axis (`Lambda_non`),
+and a non-phylogenetic diagonal component (`psi_non`). This small
 example is meant to show syntax and extraction, not to be a full
 simulation study.
 
@@ -179,7 +179,7 @@ path is the readable wide form.
 `extract_Sigma(level = "phy")` returns the phylogenetic trait
 covariance. The shared part is
 `Lambda_phy %*% t(Lambda_phy)`; the unique part is the diagonal
-`s_phy`; the total is their sum.
+`psi_phy`; the total is their sum.
 
 ```{r extract-phy}
 Sigma_phy_shared <- extract_Sigma(fit, level = "phy", part = "shared")$Sigma
@@ -205,8 +205,8 @@ round(Sigma_non_total, 2)
 ```
 
 For a small tree, do not over-interpret either split (between
-`Lambda_phy Lambda_phy^T` and `S_phy`, or between
-`Lambda_non Lambda_non^T` and `S_non`). The more stable biological
+`Lambda_phy Lambda_phy^T` and `Psi_phy`, or between
+`Lambda_non Lambda_non^T` and `Psi_non`). The more stable biological
 targets are often the totals `Sigma_phy` and `Sigma_non`, especially
 when the tree is small or the ranks are exploratory.
 
@@ -249,9 +249,9 @@ The convenience extractor returns the full three-way decomposition
 - `H^2` = phylogenetic share = `diag(Sigma_phy_total) / V_eta`
 - `C^2_non` = non-phylogenetic *shared* share =
   `diag(Lambda_non Lambda_non^T) / V_eta`
-- `Psi` = non-phylogenetic *unique* share = `s_non / V_eta`
+- `Psi` = non-phylogenetic *unique* share = `psi_non / V_eta`
 
-with `V_eta = diag(Sigma_phy_total) + diag(Lambda_non Lambda_non^T) + s_non`.
+with `V_eta = diag(Sigma_phy_total) + diag(Lambda_non Lambda_non^T) + psi_non`.
 
 ```{r phylo-heritability}
 extract_phylo_signal(fit)

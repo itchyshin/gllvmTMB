@@ -46,6 +46,9 @@ Each report should include:
   describing what it did or would have caught;
 - design-doc updates;
 - pkgdown/documentation updates;
+- **Roadmap tick**: one-line statement of which `ROADMAP.md`
+  row's status chip or progress bar changed in this PR, or
+  `N/A` if no row changed. See the dedicated section below;
 - known limitations and next actions.
 
 ## Mathematical Contract
@@ -112,6 +115,32 @@ changes, explicitly check the status inventory before closing:
 
 Paste the exact `rg` patterns used into the check log or after-task
 report.
+
+## Roadmap Tick
+
+Every after-task report includes a one-line **Roadmap tick**
+stating which `ROADMAP.md` phase or sub-phase row had its status
+chip or progress bar change as a result of this PR, or `N/A`
+when no row changed. The form is:
+
+> **Roadmap tick**: Phase 1a → progress `███░░░░░` 3/5 (was 2/5);
+> status stays 🟢 In progress.
+
+This is the bridge from per-PR memory to the public roadmap.
+Without it, the rendered roadmap on pkgdown drifts from canon
+between manual refreshes -- as it did 2026-05-11 → 2026-05-14,
+when the published `ROADMAP.md` was three days stale on the
+pkgdown site despite multiple phase-changing PRs merging in
+between.
+
+When the tick changes a row, also update the source `ROADMAP.md`
+in the same PR (small edit to the row's chip and progress bar).
+The `pkgdown::build_articles()` workflow then re-renders the
+roadmap article on the next `main` push.
+
+Lesson recorded after the 2026-05-14 roadmap refresh, when Rose
+flagged the drift pattern during persona consults. See
+`docs/dev-log/after-task/2026-05-14-roadmap-refresh.md`.
 
 ## Prose Audit
 

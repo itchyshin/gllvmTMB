@@ -8,8 +8,12 @@ template:
 
 navbar:
   structure:
-    left:  [intro, articles, reference, news]
+    left:  [intro, articles, roadmap, reference, news]
     right: [search, github]
+  components:
+    roadmap:
+      text: Roadmap
+      href: articles/roadmap.html
 
 articles:
   - title: Model guides
@@ -32,6 +36,12 @@ articles:
     - articles/api-keyword-grid
     - articles/response-families
     - articles/ordinal-probit
+
+  - title: Project
+    navbar: ~
+    desc: Project meta (roadmap, etc.) -- not in the articles dropdown; surfaced via a dedicated navbar entry
+    contents:
+    - articles/roadmap
 
 reference:
   - title: Top-level entry points

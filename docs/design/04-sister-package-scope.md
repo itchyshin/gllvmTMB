@@ -10,7 +10,7 @@ reviewers: scope-creep proposals run into this document first.
 
 | Package | Scope | Engine |
 |---|---|---|
-| **`gllvmTMB`** | **Multivariate stacked-trait GLLVMs**: one row per `(unit, trait)` observation, optionally with phylogenetic and spatial correlation; `Sigma = Lambda Lambda^T + diag(s)` decomposition is canonical. | TMB + Laplace |
+| **`gllvmTMB`** | **Multivariate stacked-trait GLLVMs**: one row per `(unit, trait)` observation, optionally with phylogenetic and spatial correlation; `Sigma = Lambda Lambda^T + diag(psi)` decomposition is canonical (the Greek letter Psi). | TMB + Laplace |
 | `drmTMB` (sister) | Univariate and bivariate distributional regression: mean / scale / shape / nu components, location-scale models. One or two responses; no GLLVM layer. | TMB + Laplace |
 | `glmmTMB` | General single-response GLMMs: families, random effects, zero-inflation, dispersion. The reference TMB-based mixed-model package. | TMB + Laplace |
 | `sdmTMB` | Single-response spatial GLMMs with SPDE Gaussian random fields. Builds on `glmmTMB` for mixed-effects structure and `fmesher`/`INLA` for SPDE meshes. | TMB + Laplace + SPDE |

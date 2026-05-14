@@ -54,7 +54,8 @@ A model is defined by:
    meta-analysis.
 
 The decomposition mode is `latent + unique` paired:
-Sigma = Lambda Lambda^T + diag(s).
+Sigma = Lambda Lambda^T + diag(psi) (the Greek letter Psi;
+see `docs/dev-log/decisions.md` 2026-05-14 notation reversal).
 
 ## Signature Feature
 

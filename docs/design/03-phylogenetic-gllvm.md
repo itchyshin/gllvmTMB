@@ -41,13 +41,31 @@ g_non ~ MVN(0, Sigma_non x I)
 The paired decomposition is
 
 ```text
-Sigma_phy = Lambda_phy Lambda_phy^T + S_phy
-Sigma_non = Lambda_non Lambda_non^T + S_non
+Sigma_phy = Lambda_phy Lambda_phy^T + Psi_phy
+Sigma_non = Lambda_non Lambda_non^T + Psi_non
 ```
 
-`S_phy` and `S_non` are diagonal matrices of trait-specific unique
-variance. The legacy nickname "two-U" may remain in file names,
-function names, and task labels, but public math uses `S` / `s`.
+`Psi_phy` and `Psi_non` are diagonal matrices of trait-specific
+unique variance (the Greek letter Psi, matching the factor-
+analysis / SEM convention; see `docs/dev-log/decisions.md`
+2026-05-14 notation reversal). The legacy nickname "two-U" may
+remain in file names, function names, and task labels, but
+public math uses `\boldsymbol\Psi` / `\psi_t` -- bold capital
+Psi for matrices, italic lowercase psi (subscripted by trait)
+for the per-trait scalars from `extract_phylo_signal()`.
+
+When `Psi_phy` is not separately identifiable from
+`Lambda_phy Lambda_phy^T` (small `n_species`, weak phylogenetic
+signal, single-replicate-per-tip), the canonical fallback is the
+**three-piece form**:
+
+```text
+Omega = Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + Psi
+```
+
+with a single non-tier-specific diagonal `Psi` (the only
+unique-variance matrix in the fit; comes from the species-level
+`unique()` term).
 
 ## R Syntax Alignment
 

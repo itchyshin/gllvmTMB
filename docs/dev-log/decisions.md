@@ -590,3 +590,175 @@ PR). Phase 5.5 is also covered in
 `docs/dev-log/after-task/2026-05-14-strategic-plan-revision.md`
 (plan-file lane, not canon) and the active plan at
 `~/.claude/plans/please-have-a-robust-elephant.md`.
+
+## 2026-05-14  Retire the "two-U" task label and PIC cross-check entirely
+
+Decision: **retire the legacy "two-U" task label and the PIC
+(phylogenetic independent contrasts) cross-check diagnostics
+from the package surface.** This overrides the 2026-05-12
+naming-convention decision and the 2026-05-14 notation-reversal
+entry's "function- and file-name retention" clause. Going
+forward there is **only one canonical phylogenetic fit per
+parameterisation**; no parallel "joint vs unstructured" or
+"joint vs PIC-MOM" diagnostic exists in the public API.
+
+What is retired:
+
+- **R/ source files** deleted: `R/extract-two-U-via-PIC.R`,
+  `R/extract-two-U-cross-check.R`.
+- **Test files** deleted: `tests/testthat/test-phylo-two-U.R`,
+  `tests/testthat/test-pic-mom.R`,
+  `tests/testthat/test-two-U-cross-check.R`.
+- **Exported functions removed**: `compare_PIC_vs_joint()`,
+  `compare_dep_vs_two_U()`, `compare_indep_vs_two_U()`,
+  `extract_two_U_via_PIC()`. Internal helper `.is_two_U_fit()`
+  removed with `R/extract-two-U-cross-check.R`.
+- **`man/*.Rd`** removed (auto via `devtools::document()`):
+  the four `.Rd` files matching the exported names above.
+- **`_pkgdown.yml`** Diagnostics reference-index entries
+  removed (two lines).
+- **Prose scrub**: every "two-U" / "two U" / "two_U" wording
+  in R/ roxygen, code comments, design docs, README, NEWS,
+  and `ROADMAP.md` is rewritten to use "paired phylogenetic
+  decomposition" or removed entirely. Function-name "U"
+  retention is voided.
+
+What replaces them: the canonical identifiability diagnostic
+for paired phylogenetic fits is **`check_identifiability(fit,
+sim_reps = ...)`** (Phase 1b deliverable; Fisher-designed
+signature recorded in
+`docs/dev-log/after-task/2026-05-14-phase-1a-batch-d.md`).
+`check_identifiability()` returns a multi-component list
+(`$recovery / $loadings / $hessian / $flags`) that subsumes
+the rejected legacy cross-checks: Procrustes-aligned loading
+residuals, Hessian eigenvalue rank check, and recovery-rate
+table across `sim_reps` simulated refits. No PIC-MOM
+two-stage estimator is exposed.
+
+Rationale: the legacy "two-U" nickname predates the current
+package vocabulary by ~6 months and the PIC-MOM cross-check
+was scoped before profile-likelihood and bootstrap CIs landed
+on the canonical fit. Keeping function and file names on a
+retired task label costs every new reader an interpretive hop;
+PIC-MOM is a Gaussian-Brownian-motion-only diagnostic that
+the more general `check_identifiability()` covers without the
+restriction. The maintainer's 2026-05-14 framing: *"this must
+be only fit -- we do not use PIC and do not use U any
+longer."* Pre-CRAN; no downstream user code depends on these
+exports.
+
+Migration: this is a hard break. Pre-CRAN agents using
+`compare_dep_vs_two_U()` etc. will get an unexported-function
+error after this PR merges. No `lifecycle::deprecate_*()`
+window is offered (pre-CRAN). The migration target is
+`check_identifiability()` (when it ships in Phase 1b).
+
+Recording context: maintainer messages 2026-05-14 evening,
+paraphrased: *"this must be only fit - we do not use PIC and
+do not use U any longer"*, followed by *"3 confirm"* on the
+explicit ask whether to drop PIC + drop U from function/file
+names.
+
+## 2026-05-14  Elevate random slopes to pre-CRAN (Phase 1c-slope)
+
+Decision: **insert a new pre-CRAN phase "Phase 1c-slope"
+between Phase 1b validation and Phase 1c article ports** to
+implement random slopes (a.k.a. reaction-norm random effects;
+"plasticity" *sensu* O'Dea et al. 2022). This overrides the
+prior placement of random slopes as a Phase 6 (post-CRAN)
+deferred item.
+
+Why pre-CRAN: the package's canonical methods paper (Nakagawa
+et al. *in prep*) includes random slopes as Appendix B
+(Examples B.1 and B.2 plus the general formulation B.3).
+Shipping CRAN without the Appendix-B machinery would publish a
+package that does not cover the maintainer's own published
+worked examples. The legacy gllvmTMB-legacy package had a
+779-line article on this topic
+(`vignettes/articles/random-slopes-personality-plasticity.Rmd`,
+status note: engine-blocked on hardcoded `n_traits` sizing) but
+the engine work was deferred at the 2026-05-10 reset. This
+decision recovers it.
+
+Scope (six PRs, persona-consulted 2026-05-14 evening; Darwin /
+Fisher / Boole briefs recorded in the Phase 1a close after-task
+report at
+`docs/dev-log/after-task/2026-05-14-phase-1a-close.md`):
+
+1. **Engine generalisation** (Boole + Gauss): four `n_traits`
+   hardcoded sites in `R/fit-multi.R` (lines 901, 1196,
+   1198-1199 and W-block mirror at 1200-1203) generalise to
+   `n_lhs_cols = T * (1 + Q)` where `Q` = number of
+   random-slope covariates. C++ side: `src/gllvmTMB.cpp`
+   `Lambda_B` / `s_B` packing comments + new `Z_lhs`
+   `DATA_MATRIX` for linear-predictor assembly. Includes
+   Fisher's joint-block sign-pinning (combined intercept +
+   slope block, not block-by-block) and the slope-covariate
+   centering guard (`cli::cli_warn` if `|mean(x) / sd(x)| >
+   0.1`).
+2. **Extractor extensions**: `extract_Sigma()` with `block =
+   c("u", "b", "u,b", "aug")`; `extract_repeatability()` with
+   `temp = focal_value` and `marginalised = TRUE/FALSE`
+   (Eqs. 50 and 52); `extract_communality()` with `temp =
+   focal_value` (Eq. 56).
+3. **Recovery test** with Fisher's five DGPs (`tests/testthat/test-random-slope-recovery.R`):
+   RS-1 aligned $\Lambda_u = \Lambda_b$ (Eq. 41 running
+   example); RS-2 two-axis ($d_B = 2$); RS-3 boundary
+   ($\text{Cov}(u, b) = 0$); RS-4 degenerate
+   ($\text{Var}(b) = 0$); RS-5 mixed-attribute sex covariate
+   (Appendix B.2). `skip_on_cran()` and `skip_on_ci()` gated.
+4. **`check_identifiability()` augmentation**: three new flag
+   classes (`$flags$intercept_slope_decoupled`,
+   `$flags$slope_boundary`,
+   `$flags$temp_within_var_low`) per Fisher's brief.
+5. **Random-slope-tailored plot types in the dispatcher** (Darwin
+   priorities, per `R/plot-gllvmTMB.R`): add `type =
+   "reaction_norm"` (per-individual spaghetti, faceted by
+   trait), `type = "intercept_slope_ellipse"` (BLUP scatter
+   with 95 % bivariate ellipse, per trait), `type =
+   "repeatability_curve"` ($R_t(\text{temp})$ across the
+   covariate range, Eq. 50). Update existing `type =
+   "correlation"` to accept `block = c("u", "b")` for
+   personality-syndrome and plasticity-syndrome separately.
+6. **Article port + biological worked example**: port
+   `random-slopes-personality-plasticity.Rmd` from
+   gllvmTMB-legacy (779 lines) and update for current API and
+   Ψ / ψ notation. Add Darwin's missing-question worked
+   example: *"Does temperature variability erode the
+   boldness-activity syndrome?"* using Eq. 54's
+   $\boldsymbol\Sigma_B(x) = \boldsymbol\Sigma_B^{(u)} +
+   x\boldsymbol\Sigma_B^{(u,b)} + x\boldsymbol\Sigma_B^{(b,u)}
+   + x^2\boldsymbol\Sigma_B^{(b)}$.
+
+API decision (Boole-locked): **extend existing `latent()` /
+`unique()` keywords** to accept augmented LHS:
+`latent(0 + trait + (0 + trait):temp | ID, d = d_B) +
+unique(0 + trait + (0 + trait):temp | ID)`. Byte-for-byte the
+paper's Appendix B.1 syntax. No new keywords. 3 × 5 grid
+untouched. `phylo_latent` / `spatial_latent` augmented-LHS
+flagged as `lifecycle::experimental` post-CRAN.
+
+Sequencing: Phase 1c-slope runs **between Phase 1b validation
+and Phase 1c article ports**. Phase 1c-viz (visualization
+layer completion) absorbs the random-slope plot types as part
+of its dispatcher polish work and runs *after* Phase 1c-slope
+so the visualization is tailored to the augmented decomposition
+(maintainer 2026-05-14: *"we best do the random slope stuff
+before visualization because visualization tailored to this
+needs to be developed"*).
+
+Expected timeline: ~2 – 3 weeks. Phase 1 close timeline
+extends by that amount. CRAN target slips ~2 – 3 weeks.
+
+Recording context: maintainer messages 2026-05-14 evening
+asking about random slopes (referencing the methods-paper
+Appendix B and the legacy article), then *"3 yes this has to
+be pre-CRAN -- actually this is important one and we should
+put more ideas to it -- opinions on this random slopes
+because it's really interesting. You can get different
+correlations, all sorts of things. The visualization there is
+an important one as well. So we best do the random slope
+stuff before visualization because visualization tailored to
+this needs to be developed."* Approval of the six-PR scope
+above (Phase 1c-slope) is recorded in the *"1 yes 2 yes and
+3 confirm"* maintainer message 2026-05-14.

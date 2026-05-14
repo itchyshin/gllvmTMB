@@ -50,11 +50,12 @@ items completed within that phase.
 | Phase | Title | Status | Progress | Notes |
 |---|---|---|---|---|
 | Notation upgrade | Math notation S → Ψ | ✅ Done | `████████` 6/6 | PRs #86 – #91 |
-| Phase 1a | Drift cleanup | 🟢 In progress | `███░░░░░` 3/5 | Batches A ✅ · B 🟢 · C ✅ · D ⚪ · E ⚪ |
+| Phase 1a | Drift cleanup | ✅ Done | `████████` 5/5 | Batches A ✅ · B ✅ · C ✅ · D ✅ · E ✅ |
 | Phase 1b | Engine + extractor fixes | ⚪ Planned | `░░░░░░░░` 0/5 | Correlation fix + identifiability + tests |
 | Phase 1b validation | Profile-likelihood CI validation | ⚪ Planned | `░░░░░░░░` 0/1 | Coverage study; exit ≥ 94 % per family |
+| **Phase 1c-slope** | **Random slopes (NEW pre-CRAN)** | ⚪ Planned | `░░░░░░░░` 0/6 | Engine generalisation + extractors + recovery + plots + article |
 | Phase 1c | Article ports + new Concepts pedagogy | ⚪ Planned | `░░░░░░░░` 0/13 | 9 ports + 4 new pedagogy articles |
-| Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher |
+| Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher (incl. random-slope plots) |
 | Phase 1d | Navbar restructure | ⚪ Planned | `░░░░░░░░` 0/1 | `_pkgdown.yml` 3-tier taxonomy |
 | Phase 1e | Final reframe sweep | ⚪ Planned | `░░░░░░░░` 0/1 | Cross-article consistency + biology-first reframes |
 | Phase 1f | Choose-your-model rewrite (Phase 1 close) | ⚪ Planned | `░░░░░░░░` 0/1 | Phase 1 close gate |
@@ -74,9 +75,10 @@ user-facing math notation -- roxygen, vignettes, articles,
 README, NEWS, design docs -- now reads as the Greek letter
 **Ψ** (bold capital for the matrix, italic lowercase `ψ` for
 per-trait scalar entries). Engine algebra is unchanged
-(`Sigma = Lambda Lambda^T + diag(psi)` in code-style). Function
-and file names retain the legacy `two_U` task label per the
-2026-05-12 and 2026-05-14 naming decisions.
+(`Sigma = Lambda Lambda^T + diag(psi)` in code-style). The
+legacy "two-U" task label was further retired on 2026-05-14
+(see Phase 1a close); function and file names no longer use
+"U" or "PIC".
 
 This was the largest pre-CRAN documentation refactor. Across
 the entire R/ source tree, articles, design docs, tests, and
@@ -101,57 +103,64 @@ math notation was rewritten to the new Greek-letter convention.
 
 ---
 
-## 🟢 Phase 1a -- Drift cleanup -- `███░░░░░` 3/5 batches done
+## ✅ Phase 1a -- Drift cleanup -- `████████` 5/5 batches done
 
-**Goal**: close out the small text-and-roxygen drift items
-that accumulated between the 2026-05-10 reset and today --
-in-prep equation citations, stale paper-internal jargon
-("M1/M2"), and notation-switch stragglers that the initial
-verification regex silently failed to match.
+**Closed 2026-05-14.** Closed out the small text-and-roxygen
+drift items that accumulated between the 2026-05-10 reset and
+today -- in-prep equation citations, stale paper-internal
+jargon ("M1/M2"), notation-switch stragglers, and the legacy
+"two-U" / PIC task-label retention.
 
-Phase 1a is split into five PR batches. Batches A, B, D, and E
-are the four drift-cleanup batches identified in the
+Phase 1a was split into five PR batches. Batches A, B, D, and
+E were the four drift-cleanup batches identified in the
 [2026-05-13 post-overnight drift-scan audit](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-13-post-overnight-drift-scan.md);
-Batch C is the 2026-05-13 evening Ψ phase-fix sweep that
-preceded the notation reversal.
+Batch C was the 2026-05-13 evening Ψ phase-fix sweep that
+preceded the notation reversal. Batch E was repurposed to
+close out the 2026-05-14 PIC / "two-U" retirement decision.
 
 ### Sub-batches
 
 - ✅ **Batch A** -- audit-doc edits + first NS stragglers
   ([PR #92](https://github.com/itchyshin/gllvmTMB/pull/92),
-  merged 2026-05-14). `R/unique-keyword.R` paired-form bullet;
-  `R/fit-multi.R:613` Ω formula rewrite; `R/fit-multi.R:619`
-  M1 / M2 jargon drop; `DESCRIPTION` Description field;
-  `vignettes/gllvmTMB.Rmd` Get Started math prose. Triggered
-  a comprehensive S → Ψ re-scan that exposed Batch A's
-  verification regex bug (see Kaizen point 10).
-- 🟢 **Batch B** -- in flight. Drop 14 in-prep `Eq. N` citations
-  across 5 R/ files + close 24+ NS-3b/4/5 notation stragglers
-  (subscripted `\mathbf S` / ASCII `+ S` / `\Psi_t` capital)
-  that the original verification regex missed. 11 R/ files +
-  4 vignettes. See
-  [Batch B after-task](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/after-task/2026-05-14-phase-1a-batch-b.md)
-  (lands when Batch B merges) and the
-  [check-log Kaizen point 10](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/check-log.md)
-  regex anti-pattern lesson.
+  merged 2026-05-14). Triggered the comprehensive S → Ψ
+  re-scan that exposed Batch A's verification regex bug (see
+  Kaizen point 10).
+- ✅ **Batch B** -- 14 in-prep `Eq. N` citations dropped +
+  24+ NS-3b/4/5 notation stragglers swept across 11 R/ files
+  and 4 vignettes
+  ([PR #94](https://github.com/itchyshin/gllvmTMB/pull/94),
+  merged 2026-05-14).
 - ✅ **Batch C** -- Ψ phase-fix sweep + Phase D/K label drop
   ([PR #82](https://github.com/itchyshin/gllvmTMB/pull/82),
   merged 2026-05-13).
-- ⚪ **Batch D** -- `gllvmTMB_wide()` → `traits(...)` in
-  `morphometrics.Rmd` + `response-families.Rmd` code chunks.
-  About 6 lines across 2 vignettes; mechanical.
-- ⚪ **Batch E** -- `\mathbf{U}` → `\boldsymbol{\Psi}` in
-  `behavioural-syndromes.Rmd` math; roxygen-only sweep of
-  `R/extract-two-U-via-PIC.R` returned-list docs. Function
-  name stays per the PR #40 task-label retention rule.
+- ✅ **Batch D** -- `gllvmTMB_wide()` matrix-in demonstrations
+  dropped from `morphometrics.Rmd` + `response-families.Rmd`
+  in favour of the canonical `traits(...)` formula path
+  ([PR #95](https://github.com/itchyshin/gllvmTMB/pull/95),
+  merged 2026-05-14).
+- ✅ **Batch E** -- (revised scope) `\mathbf{U}` →
+  `\mathbf{Z}` in `behavioural-syndromes.Rmd` math (LHS score
+  matrix, NOT the unique-variance matrix Ψ that an earlier
+  audit-doc framing wrongly assumed); PLUS the
+  2026-05-14 PIC / "two-U" retirement: deletion of
+  `R/extract-two-U-via-PIC.R` and
+  `R/extract-two-U-cross-check.R`, their tests, the four
+  PIC/U exports (`compare_PIC_vs_joint`,
+  `compare_dep_vs_two_U`, `compare_indep_vs_two_U`,
+  `extract_two_U_via_PIC`), prose scrub across R/ + design
+  docs + NEWS, and README footer link fix. **This PR closes
+  Phase 1a.** See
+  [Phase 1a close after-task](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/after-task/2026-05-14-phase-1a-close.md).
 
 ### Phase 1a close gate
 
 | Gate | Status | Verified by |
 |---|---|---|
-| All 5 batches merged | 🟢 3 / 5 | A ✅, B 🟢, C ✅; D ⚪, E ⚪ |
-| `pkgdown::check_pkgdown()` clean after each batch | 🟢 last verified PR #92 | 2026-05-14 |
-| 3-OS R-CMD-check green on each batch | 🟢 last verified PR #92 | 2026-05-14 |
+| All 5 batches merged | ✅ 5 / 5 | A ✅, B ✅, C ✅, D ✅, E ✅ |
+| `pkgdown::check_pkgdown()` clean on Phase 1a close | ✅ | Phase 1a close PR (this) |
+| 3-OS R-CMD-check green on each batch | ✅ | last verified PR #95 (Batch D) |
+| PIC / "two-U" exports retired + 4 NAMESPACE entries removed | ✅ | Phase 1a close PR (this) |
+| README footer link to design doc fixed (broken → absolute URL) | ✅ | Phase 1a close PR (this) |
 
 ### Cross-refs
 
@@ -265,6 +274,131 @@ Phase 1c.
 
 - [`decisions.md` 2026-05-14 strategic-plan revision (Phase 1b validation milestone)](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/decisions.md)
 - [After-task: 2026-05-14 strategic plan revision](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/after-task/2026-05-14-strategic-plan-revision.md)
+
+---
+
+## ⚪ Phase 1c-slope -- Random slopes (NEW pre-CRAN) -- `░░░░░░░░` 0/6 PRs
+
+**Goal**: implement Appendix B of the methods paper (Nakagawa
+et al. *in prep*) -- random slopes for reaction-norm / plasticity
+modelling -- pre-CRAN. The legacy gllvmTMB package had this as a
+779-line article that was engine-blocked on hardcoded `n_traits`
+sizing in `R/fit-multi.R`; Phase 1c-slope unblocks it.
+
+Maintainer's framing 2026-05-14: *"this has to be pre-CRAN --
+actually this is important one and we should put more ideas to
+it -- opinions on this random slopes because it's really
+interesting. You can get different correlations, all sorts of
+things. The visualization there is an important one as well. So
+we best do the random slope stuff before visualization because
+visualization tailored to this needs to be developed."*
+
+### Three correlations, three biological questions (Darwin's framing)
+
+The augmented between-individual covariance partitions into
+three sub-matrices, each answering a distinct biological
+question:
+
+- $\boldsymbol\Sigma_B^{(u)}$ -- **personality syndrome**
+  (intercept-intercept correlations). "Do bold individuals also
+  tend to be exploratory?" Sih et al. (2004) workhorse.
+- $\boldsymbol\Sigma_B^{(b)}$ -- **plasticity syndrome**
+  (slope-slope correlations). "Do reaction norms coordinate?"
+  Dingemanse & Dochtermann (2013).
+- $\boldsymbol\Sigma_B^{(u,b)}$ -- **personality-plasticity
+  association** (intercept-slope correlations). The most
+  misread sub-matrix: collapsing a tilted 2D distribution to
+  a single number loses rank-reversal information.
+
+### Six PRs
+
+- ⚪ **Engine generalisation** (Boole + Gauss). Four `n_traits`
+  hardcoded sites in `R/fit-multi.R` (lines 901, 1196,
+  1198 – 1199 and W-block mirror at 1200 – 1203) generalise to
+  `n_lhs_cols = T * (1 + Q)` where Q = number of random-slope
+  covariates. C++ side: `src/gllvmTMB.cpp` `Lambda_B` / `s_B`
+  packing comments + new `Z_lhs` `DATA_MATRIX` for
+  linear-predictor assembly. Includes Fisher's joint-block
+  sign-pinning (combined intercept + slope block, not
+  block-by-block) and the slope-covariate centering guard
+  (`cli::cli_warn` if `|mean(x) / sd(x)| > 0.1`, referencing
+  Eq. 47).
+- ⚪ **Extractor extensions**. `extract_Sigma()` with `block =
+  c("u", "b", "u,b", "aug")` argument; `extract_repeatability()`
+  with `temp = focal_value` and `marginalised = TRUE/FALSE`
+  (Eqs. 50 and 52); `extract_communality()` with `temp =
+  focal_value` (Eq. 56).
+- ⚪ **Recovery test** with five DGPs in
+  `tests/testthat/test-random-slope-recovery.R`:
+    1. RS-1 aligned $\boldsymbol\Lambda_u = \boldsymbol\Lambda_b$
+       (Eq. 41 running example);
+    2. RS-2 two-axis ($d_B = 2$, $T = 5$);
+    3. RS-3 **boundary** $\text{Cov}(u, b) = 0$ (CI should
+       contain 0 in ≥ 92 % of reps);
+    4. RS-4 **degenerate** $\text{Var}(b) = 0$ (must NOT
+       silently collapse; require boundary-flag or
+       `pdHess = FALSE`);
+    5. RS-5 mixed-attribute sex covariate (Appendix B.2).
+    
+   `skip_on_cran()` + `skip_on_ci()` gated; cost ~5 – 15 min
+   serial on Tier-1 fixtures.
+- ⚪ **`check_identifiability()` augmentation**. Add three new
+  flag classes: `$flags$intercept_slope_decoupled` (spurious
+  personality-plasticity association detector),
+  `$flags$slope_boundary` (RS-4 detector),
+  `$flags$temp_within_var_low` (design-limited slope variance).
+- ⚪ **Random-slope-tailored plot types in the dispatcher**
+  (Darwin priorities): add `type = "reaction_norm"`
+  (per-individual spaghetti plot, faceted by trait), `type =
+  "intercept_slope_ellipse"` (BLUP scatter with 95 % bivariate
+  ellipse, per trait), `type = "repeatability_curve"`
+  ($R_t(\text{temp})$ across the covariate range, Eq. 50).
+  Update existing `type = "correlation"` to accept `block =
+  c("u", "b")` for personality-syndrome and plasticity-syndrome
+  separately. The **reaction-norm spaghetti plot** is the
+  load-bearing visual -- without it, readers see only matrices
+  and lose the per-individual rank-reversal intuition.
+- ⚪ **Article port + biological worked example**. Port
+  `random-slopes-personality-plasticity.Rmd` from
+  gllvmTMB-legacy (779 lines) updated for current API and
+  Ψ / ψ notation. Add Darwin's missing worked-example
+  question: *"Does temperature variability erode the
+  boldness-activity syndrome?"* using
+  $\boldsymbol\Sigma_B(x)$ from Eq. 54.
+
+### API decision (Boole-locked)
+
+**Extend existing `latent()` / `unique()` keywords** to accept
+augmented LHS:
+
+```r
+latent(0 + trait + (0 + trait):temp | ID, d = d_B) +
+unique(0 + trait + (0 + trait):temp | ID)
+```
+
+Byte-for-byte the paper's Appendix B.1 syntax. **No new
+keywords. 3 × 5 grid untouched.** Slopes are a property of the
+LHS column count Q, not a new mode dimension. `phylo_latent` /
+`spatial_latent` augmented-LHS flagged as
+`lifecycle::experimental` post-CRAN.
+
+### Phase 1c-slope close gate
+
+| Gate | Status | Verified by |
+|---|---|---|
+| Engine generalisation merged; intercept-only fits hash-identical | ⚪ Pending | — |
+| Extractor `block =` argument round-trips on RS-1 fixture | ⚪ Pending | — |
+| Recovery test passes all 5 DGPs | ⚪ Pending | — |
+| `check_identifiability()` 3 new flag classes return sensible output | ⚪ Pending | — |
+| 3 new plot types render + `vdiffr` snapshot tests pass | ⚪ Pending | — |
+| Article merged; Eq. 54 worked example fits + plots | ⚪ Pending | — |
+
+### Cross-refs
+
+- [`decisions.md` 2026-05-14 Phase 1c-slope ratification](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/decisions.md)
+- [`decisions.md` 2026-05-14 PIC / "two-U" retirement (prerequisite cleanup)](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/decisions.md)
+- [Phase 1a close after-task (Darwin / Fisher / Boole consult briefs captured)](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/after-task/2026-05-14-phase-1a-close.md)
+- Paper: Nakagawa et al. *in prep*, **Appendix B** (Eqs. 41 – 69)
 
 ---
 
@@ -697,6 +831,14 @@ after-task report.
 
 ## Recent merges (rolling, newest first)
 
+- **2026-05-14** PR #95 -- Phase 1a Batch D: drop
+  `gllvmTMB_wide()` demos in `morphometrics` +
+  `response-families` articles
+- **2026-05-14** PR #94 -- Phase 1a Batch B + NS-3b/4/5
+  notation stragglers (24+ residual `\mathbf S` / ASCII `+ S`
+  / `\Psi_t` capital across 11 R/ files + 4 vignettes)
+- **2026-05-14** PR #93 -- Roadmap page refresh + pkgdown
+  exposure (drmTMB-style)
 - **2026-05-14** PR #92 -- Phase 1a Batch A + NS stragglers
 - **2026-05-14** PR #91 -- NS-5 article math prose part 2 +
   NEWS (closes notation switch)
@@ -707,10 +849,6 @@ after-task report.
 - **2026-05-14** PR #87 -- NS-2 README + design docs
 - **2026-05-14** PR #86 -- NS-1 rule files + decisions +
   check-log
-- **2026-05-14** PR #85 -- coord-board Codex-absent assumption
-- **2026-05-14** PR #84 -- after-task: strategic plan revision
-- **2026-05-14** PR #83 -- check-log retrospective for the
-  2026-05-13 evening sweep
 - **2026-05-13** PR #82 -- Batch C: Ψ phase fixes + drop
   Phase D/K labels
 - **2026-05-13** PR #81 -- coord-board: seven-PR sweep merged

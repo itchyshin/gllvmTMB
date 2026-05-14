@@ -51,11 +51,26 @@
 #'   scale (1 for probit, \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
 #'   cloglog), which acts as the implicit unique component. Adding an
 #'   explicit `diag()` term on top is typically not identified.
-#' * **Phylogenetic shared term**. The `phylo_latent(species, d = K)` term
-#'   has no associated `unique()` because the phylogenetic prior is
-#'   already structured on tip × tip via the tree; trait-specific
-#'   *unique* variance lives separately at the non-phylogenetic
-#'   species tier.
+#' * **Phylogenetic shared term, three-piece fallback**. The
+#'   `phylo_latent(species, d = K)` term has no associated
+#'   `unique()` because the phylogenetic prior is already
+#'   structured on tip × tip via the tree; trait-specific *unique*
+#'   variance lives separately at the non-phylogenetic species
+#'   tier. This is the canonical fallback when the phylogenetic
+#'   uniqueness \eqn{\boldsymbol\Psi_{\text{phy}}} is not separately
+#'   identifiable (small `n_species`, weak phylogenetic signal,
+#'   single-replicate-per-tip).
+#' * **Phylogenetic shared term, paired four-component form**.
+#'   When \eqn{\boldsymbol\Psi_{\text{phy}}} IS separately
+#'   identifiable (typically crossed site × species with
+#'   `n_species` >= 100 and strong phylogenetic signal), pair
+#'   `phylo_latent()` with `phylo_unique(species)` following the
+#'   same `latent() + unique()` pattern used at the non-phylo
+#'   tier. The four-component paired form is canonical when both
+#'   \eqn{\boldsymbol\Psi} diagonals are identifiable; the
+#'   three-piece fallback above is the alternative. See
+#'   `vignettes/articles/pitfalls.Rmd` section 5 and
+#'   `docs/dev-log/decisions.md` 2026-05-14 entry.
 #' * **Confirmatory factor models**. Sometimes domain knowledge tells
 #'   you the latent-only model is correct (no trait-specific residuals);
 #'   confirm with a likelihood-ratio test.

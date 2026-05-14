@@ -60,11 +60,26 @@ link function fixes an implicit residual variance on the latent
 scale (1 for probit, \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
 cloglog), which acts as the implicit unique component. Adding an
 explicit \code{diag()} term on top is typically not identified.
-\item \strong{Phylogenetic shared term}. The \code{phylo_latent(species, d = K)} term
-has no associated \code{unique()} because the phylogenetic prior is
-already structured on tip × tip via the tree; trait-specific
-\emph{unique} variance lives separately at the non-phylogenetic
-species tier.
+\item \strong{Phylogenetic shared term, three-piece fallback}. The
+\code{phylo_latent(species, d = K)} term has no associated
+\code{unique()} because the phylogenetic prior is already
+structured on tip × tip via the tree; trait-specific \emph{unique}
+variance lives separately at the non-phylogenetic species
+tier. This is the canonical fallback when the phylogenetic
+uniqueness \eqn{\boldsymbol\Psi_{\text{phy}}} is not separately
+identifiable (small \code{n_species}, weak phylogenetic signal,
+single-replicate-per-tip).
+\item \strong{Phylogenetic shared term, paired four-component form}.
+When \eqn{\boldsymbol\Psi_{\text{phy}}} IS separately
+identifiable (typically crossed site × species with
+\code{n_species} >= 100 and strong phylogenetic signal), pair
+\code{phylo_latent()} with \code{phylo_unique(species)} following the
+same \code{latent() + unique()} pattern used at the non-phylo
+tier. The four-component paired form is canonical when both
+\eqn{\boldsymbol\Psi} diagonals are identifiable; the
+three-piece fallback above is the alternative. See
+\code{vignettes/articles/pitfalls.Rmd} section 5 and
+\code{docs/dev-log/decisions.md} 2026-05-14 entry.
 \item \strong{Confirmatory factor models}. Sometimes domain knowledge tells
 you the latent-only model is correct (no trait-specific residuals);
 confirm with a likelihood-ratio test.

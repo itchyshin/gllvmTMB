@@ -29,7 +29,7 @@ covariance dispatch via **three covstruct modes** expressed with four
 formula keywords:
 
 * **Paired decomposition** — `latent + unique` together gives
-  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathbf S$
+  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
   (shared low-rank plus per-trait unique).
 * **Marginal only** — `indep` alone gives $\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)$
   (per-trait variance, no cross-trait shared structure).
@@ -80,18 +80,18 @@ written equivalently as
 \[
 y_{it} \;=\; \eta_{it} + \varepsilon_{it},
 \qquad
-\varepsilon_{it} \sim \mathcal N(0,\, S_{tt}),
+\varepsilon_{it} \sim \mathcal N(0,\, \psi_{tt}),
 \]
 
 so the leftover $y_{it} - \eta_{it} = \varepsilon_{it}$ — what's
 not explained by the regression part and the shared latent dimensions
-— has variance $S_{tt}$ specific to response $t$. This is the
+— has variance $\psi_{tt}$ specific to response $t$. This is the
 **response-specific unique variance** (also called the "specific"
 variance in factor analysis). Stacking the $T$ such variances on the
 diagonal gives the $T \times T$ **diagonal matrix**
 
 \[
-\mathbf S \;=\; \mathrm{diag}(S_{11}, S_{22}, \ldots, S_{TT}) .
+\boldsymbol\Psi \;=\; \mathrm{diag}(\psi_{11}, \psi_{22}, \ldots, \psi_{TT}) .
 \]
 
 The marginal covariance among responses (after measured predictors)
@@ -102,7 +102,7 @@ then decomposes as
 \;=\;
 \underbrace{\boldsymbol\Lambda\,\boldsymbol\Lambda^\top}_{\text{shared}}
 \;+\;
-\underbrace{\mathbf S}_{\text{unique}} .
+\underbrace{\boldsymbol\Psi}_{\text{unique}} .
 \]
 
 The two pieces are complementary:
@@ -114,10 +114,10 @@ The two pieces are complementary:
   few latent dimensions instead of $T(T-1)/2$ free pairwise entries.
   In `gllvmTMB`, $\boldsymbol\Lambda$ is parameterised by the
   formula keyword `latent(0 + trait | unit, d = K)`.
-* $\mathbf S$ is the $T \times T$ **diagonal** of response-specific
-  unique variances $\mathrm{Var}(\varepsilon_{it}) = S_{tt}$ (one
+* $\boldsymbol\Psi$ is the $T \times T$ **diagonal** of response-specific
+  unique variances $\mathrm{Var}(\varepsilon_{it}) = \psi_{tt}$ (one
   entry per response, off-diagonal entries are zero by construction).
-  In `gllvmTMB`, $\mathbf S$ is parameterised by
+  In `gllvmTMB`, $\boldsymbol\Psi$ is parameterised by
   `unique(0 + trait | unit)`.
 
 A useful per-response summary is **communality**:
@@ -125,7 +125,7 @@ A useful per-response summary is **communality**:
 \[
 c_t^2 \;=\;
 \frac{(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt}}
-     {(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt} + S_{tt}} .
+     {(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt} + \psi_{tt}} .
 \]
 
 The numerator is the variance of response $t$ explained by the shared
@@ -144,7 +144,7 @@ A fitted GLLVM therefore returns:
 * **Loadings** $\boldsymbol\Lambda$ describing how strongly each
   response is associated with each latent dimension (biplot arrows).
 * **Residual covariance / correlation**
-  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathbf S$
+  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
   among responses.
 * **Communality** $c_t^2$ per response.
 
@@ -174,7 +174,7 @@ trait_names <- paste0("trait_", seq_len(n_traits))
 Lambda_true <- matrix(c( 1.0,  0.6, -0.4,  0.2,  0.5,
                          0.0,  0.8,  0.5, -0.3,  0.2),
                       nrow = n_traits, ncol = 2)
-S_B_true     <- c(0.20, 0.15, 0.30, 0.20, 0.25)
+psi_B_true     <- c(0.20, 0.15, 0.30, 0.20, 0.25)
 sigma_eps    <- 0.20
 alpha        <- c(0, 0.5, -0.3, 0.2, 0.1)
 
@@ -183,7 +183,7 @@ u <- matrix(rnorm(n_indiv * 2), n_indiv, 2)
 between_ind <- matrix(alpha, n_indiv, n_traits, byrow = TRUE) +
                u %*% t(Lambda_true) +
                matrix(rnorm(n_indiv * n_traits,
-                            sd = sqrt(S_B_true[col(matrix(0, n_indiv, n_traits))])),
+                            sd = sqrt(psi_B_true[col(matrix(0, n_indiv, n_traits))])),
                       n_indiv, n_traits)
 
 # Three sessions per individual, each with measurement noise
@@ -201,7 +201,7 @@ head(df, 6)
 
 The DGP has three variance sources: shared low-rank
 $\boldsymbol\Lambda\boldsymbol\Lambda^\top$, per-trait
-between-individual unique $\mathbf S_B$, and per-session noise
+between-individual unique $\boldsymbol\Psi_B$, and per-session noise
 $\sigma^2_\varepsilon$. The fit below recovers the first two via
 `latent()` and `unique()`; the per-session noise is absorbed into the
 Gaussian residual variance $\sigma^2_d$ (one parameter per trait).

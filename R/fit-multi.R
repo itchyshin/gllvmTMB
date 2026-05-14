@@ -610,13 +610,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "Detected {.code phylo_latent({species}) + latent({species}, d = K)} (or equivalent {.fn rr}-{.code | species} term) but {.code unit = {.val {site}}}.",
         "i" = "The engine has no {.val {species}}-level reduced-rank slot when {.code unit != {.val {species}}}; the term would be silently ignored.",
-        ">" = "For the three-piece decomposition Omega = Sigma_phy + Sigma_non,shared + U, pass {.code unit = {.val {species}}} so the {.val {species}}-level {.fn latent} term registers as the between-unit (B) tier."
+        ">" = "For the three-piece decomposition Omega = Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + Psi, pass {.code unit = {.val {species}}} so the {.val {species}}-level {.fn latent} term registers as the between-unit (B) tier."
       ))
     }
     if (species_diag && !identical(site, species)) {
       cli::cli_inform(c(
         "i" = "{.code phylo_unique({species}) + unique(0 + trait | {species})} at {.code unit = {.val {site}}} fits the {.val {species}}-level non-phylogenetic variance via the {.code diag | {species}} ({.code q_sp}) engine slot.",
-        "*" = "This is the {.code p_it + q_it} decomposition of the Nakagawa et al. functional-biogeography model. Joint identifiability is empirically reasonable at {.code n_species >= 100} with strong phylogenetic signal: {.code sigma2_Q} recovers within ~10% relative error; {.code sigma2_P} within ~50% (per-trait estimates can be noisy). Compare M1 (without the {.code unique({species})} term) to M2 (with it) to confirm both terms contribute on your data."
+        "*" = "This is the {.code p_it + q_it} decomposition of the Nakagawa et al. functional-biogeography model. Joint identifiability is empirically reasonable at {.code n_species >= 100} with strong phylogenetic signal: {.code sigma2_Q} recovers within ~10% relative error; {.code sigma2_P} within ~50% (per-trait estimates can be noisy). Compare the fit without the {.code unique({species})} term to the fit with it to confirm both terms contribute on your data."
       ), .frequency = "once",
          .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
     }

@@ -30,7 +30,8 @@ does NOT do" section), see
   `latent`, `unique`, `indep`, `dep`, `scalar`, with `phylo_*` and
   `spatial_*` variants.
 - The decomposition mode is the `latent + unique` pair:
-  Sigma = Lambda Lambda^T + diag(s).
+  Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
+  Psi; see `decisions.md` 2026-05-14 notation reversal).
 - `phylo_latent + phylo_unique` is the canonical phylogenetic
   decomposition; the standalone `phylo_unique` carries
   intra-phylogeny diagonal-only structure.

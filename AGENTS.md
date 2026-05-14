@@ -18,10 +18,13 @@ Model Builder.
   | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
 - The decomposition mode is `latent + unique` paired:
-  Sigma = Lambda Lambda^T + diag(s). Standalone `latent` is the
-  no-residual / rotation-invariant subset. Standalone `unique` is the
-  marginal / independent mode (Sigma = diag(s_t^2)) and is equivalent
-  to `indep`. `dep` alone is the full unstructured Sigma.
+  Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
+  Psi, lowercase psi for the per-trait scalar entries; see
+  `decisions.md` 2026-05-14 notation reversal). Standalone
+  `latent` is the no-residual / rotation-invariant subset.
+  Standalone `unique` is the marginal / independent mode
+  (Sigma = diag(psi_t^2)) and is equivalent to `indep`.
+  `dep` alone is the full unstructured Sigma.
 - Single-response models (no covstruct keyword) belong in `glmmTMB`.
   Spatial-only single-response models belong in `sdmTMB`.
   Higher-dimensional latent-variable models are `gllvmTMB`'s job.

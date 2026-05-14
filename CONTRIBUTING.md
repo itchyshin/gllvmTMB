@@ -52,7 +52,8 @@ The covariance dispatch is the 3 x 5 keyword grid:
 | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
 The decomposition mode is `latent + unique` paired:
-Sigma = Lambda Lambda^T + diag(s).
+Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
+Psi; see `decisions.md` 2026-05-14 notation reversal).
 
 ## Code Formatting
 

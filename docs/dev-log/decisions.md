@@ -414,3 +414,97 @@ When the phylo/two-U doc-validation branch (item #1 in the
 PR #37 dispatch queue) lands, the article body must use S/s in
 math, even though the article title and file paths can still
 reference "two-U" as the model nickname.
+
+## 2026-05-14  Naming convention: math notation reversed S/s -> Psi/psi
+
+Decision: **reverse the 2026-05-12 S/s convention.** The
+unique-variance diagonal in user-facing math (roxygen,
+vignettes, articles, README, design docs, NEWS) is now the
+Greek letter **Psi**, matching the factor-analysis / SEM
+literature (Bollen 1989, Mulaik 2010, lavaan documentation,
+Anderson 2003). The 2026-05-12 decision above is now
+superseded for math notation; the function- and file-name
+"two-U" task-label convention from that same entry is
+preserved (see below).
+
+Engine algebra in code-style:
+
+```
+Sigma = Lambda Lambda^T + diag(psi)
+```
+
+Math-style for matrices and tier-subscripted forms:
+
+- Within-tier covariance:
+  `\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi`
+  with `\boldsymbol\Psi = \mathrm{diag}(\psi)`.
+- Per-tier subscripts:
+  `\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}} \boldsymbol\Lambda_{\text{phy}}^{\!\top} + \boldsymbol\Psi_{\text{phy}}`,
+  `\boldsymbol\Sigma_{\text{non}} = \boldsymbol\Lambda_{\text{non}} \boldsymbol\Lambda_{\text{non}}^{\!\top} + \boldsymbol\Psi_{\text{non}}`.
+- Between- / within-unit tiers: `\boldsymbol\Psi_B`,
+  `\boldsymbol\Psi_W`, `\boldsymbol\Psi_R` (spatial),
+  `\boldsymbol\Psi_P` (phylogenetic in functional-
+  biogeography ladder).
+- Total: `\boldsymbol\Omega = \boldsymbol\Sigma_{\text{phy}} + \boldsymbol\Sigma_{\text{non}}`
+  (or the 3-piece fallback
+  `\boldsymbol\Omega = \boldsymbol\Lambda_{\text{phy}} \boldsymbol\Lambda_{\text{phy}}^{\!\top} + \boldsymbol\Lambda_{\text{non}} \boldsymbol\Lambda_{\text{non}}^{\!\top} + \boldsymbol\Psi`
+  when `\boldsymbol\Psi_{\text{phy}}` is not separately
+  identifiable).
+
+Per-trait scalars (italic lowercase) for derived quantities:
+
+- `extract_phylo_signal()` output:
+  `psi_t = 1 - H^2_t - C^2_{\text{non},t}` -- the t-th
+  per-trait uniqueness proportion. Partition:
+  `H^2_t + C^2_{\text{non},t} + psi^2_t = 1`. (Lowercase
+  `psi_t` to distinguish from the bold-capital
+  `\boldsymbol\Psi` matrix; mathematically `psi_t` is a
+  scaling of the t-th diagonal of `\boldsymbol\Psi`.)
+
+Function- and file-name "two-U" task-label retention:
+
+- Function names (`compare_dep_vs_two_U()`,
+  `compare_indep_vs_two_U()`, `extract_two_U_via_PIC()`,
+  `.is_two_U_fit()`) **stay** as-is per the 2026-05-12
+  task-label rule. Renaming to "two_psi" is a breaking API
+  change with no offsetting benefit; the task-label "U" is
+  a search anchor for legacy code.
+- File paths (`R/extract-two-U-cross-check.R`,
+  `R/extract-two-U-via-PIC.R`,
+  `tests/testthat/test-phylo-two-U.R`,
+  `tests/testthat/test-two-U-cross-check.R`) **stay**.
+
+The distinction is: **function-name / file-name "U" =
+legacy task-label nickname; math-notation "Psi/psi" =
+canonical algebra**. Same separation as the 2026-05-12
+entry; only the math letter changed.
+
+Migration: in-flight notation-switch PR sequence NS-1
+(rule files + decisions.md + check-log.md), NS-2 (README
++ design docs), NS-3 (R/ roxygen + `man/*.Rd` regen via
+`devtools::document()`), NS-4 (articles part 1), NS-5
+(articles part 2 + NEWS entry).
+
+Rationale: the 2026-05-12 S/s decision was a gllvmTMB-
+specific choice; subsequent reading and maintainer reflection
+found that the factor-analysis / SEM tradition uses Psi (and
+the lavaan + Bollen literature an applied user is likely to
+read alongside gllvmTMB articles uses Psi consistently).
+Pre-CRAN reversal cost is low; reversal post-CRAN would be
+much higher. The maintainer authorized the switch
+2026-05-14 ~07:00 MT.
+
+Cross-reference: `check-log.md` Kaizen points 8 and 9 are
+updated in the same notation-switch PR sequence to reflect
+the new math notation; historical check-log entries
+(append-only) keep their original S/s wording because that
+was the canon at the time of writing.
+
+Recording context: maintainer message 2026-05-14
+~06:50 MT (paraphrased): *"at the moment we use S for a
+unique bit (diagonal matrix) - I am thinking of changing it
+to \Psi (Greek letter) - which may be more consistent with
+the literature - many small changes through the pkgdown
+pages and function documentations - how much work is this?"*.
+Reply: 4-5 PRs, ~1-2 days mostly mechanical. Maintainer
+reply: *"let's go Psi!"*.

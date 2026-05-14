@@ -1076,52 +1076,68 @@ Concrete audit checklist for prose and roxygen:
    internal milestone labels do not belong in user-facing prose.
 8. **Every `phylo_*()` recommendation**: paired four-component
    (`phylo_latent + phylo_unique + latent + unique`) is canonical
-   **when both $S$ diagonals are identifiable** -- typically a
-   crossed (site x species) design with `n_species` >= 100 and
-   strong phylogenetic signal. When the phylogenetic uniqueness
-   $S_{\text{phy}}$ is not separately identifiable from
-   $\Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top}$, the
-   canonical fallback is bare `phylo_latent + latent + unique`,
-   which fits the **three-piece form**
+   **when both $\boldsymbol\Psi$ diagonals are identifiable** --
+   typically a crossed (site x species) design with `n_species`
+   >= 100 and strong phylogenetic signal. When the phylogenetic
+   uniqueness $\boldsymbol\Psi_{\text{phy}}$ is not separately
+   identifiable from $\boldsymbol\Lambda_{\text{phy}}
+   \boldsymbol\Lambda_{\text{phy}}^{\!\top}$, the canonical
+   fallback is bare `phylo_latent + latent + unique`, which
+   fits the **three-piece form**
 
    $$
-   \Omega = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\!\top} +
-   \Lambda_{\text{non}} \Lambda_{\text{non}}^{\!\top} + S
+   \boldsymbol\Omega = \boldsymbol\Lambda_{\text{phy}} \boldsymbol\Lambda_{\text{phy}}^{\!\top} +
+   \boldsymbol\Lambda_{\text{non}} \boldsymbol\Lambda_{\text{non}}^{\!\top} + \boldsymbol\Psi
    $$
 
-   -- two $\Lambda \Lambda^{\!\top}$ pieces (phylo + non-phylo)
-   plus a single non-tier-specific diagonal $S$. $\Omega$ here
-   is just the **total trait covariance**, the sum of every
-   variance component in the fit; the same $\Omega$ name covers
-   the four-piece paired form, this three-piece fallback, a
-   `spatial_*` extension with more pieces, or a pure
-   non-phylo `latent + unique` with two pieces. **The number
-   of pieces follows from the keyword terms in the formula.**
-   **Do not roll the phylo piece up as $\Sigma_{\text{phy}}$**
-   in the three-piece form, since $\Sigma_{\text{phy}} = \Lambda
-   \Lambda^{\!\top} + S_{\text{phy}}$ already implies a
-   $S_{\text{phy}}$ that the fallback does not have. **Do not
-   over-prescribe the paired form**; check identifiability
-   against the data shape before flipping a bare-form
-   recommendation to paired-only. (Lesson from the 2026-05-13
-   maintainer corrections: *"for phylogeny there are cases we
-   cannot get 2 Ss like you know - omega is usual in such a
-   context"*, *"one S for phylo is when we cannot really get 4
-   parts OK (3 parts are fine in such a case)"*, and *"omega can
-   be used for any combinations of adding all variance
-   components"*.)
-9. **Every `\Psi`, `\Omega`, `U`, `U_phy`, `U_non`**: math
-   notation should use `\mathbf S`, `\mathbf S_\text{phy}`,
-   `\mathbf S_\text{non}` per PR #40 + PR #72 naming convention
-   -- *except* `\Psi_t` is the canonical symbol for
-   `extract_phylo_signal()` output $\Psi_t = 1 - H^2 -
-   C^2_{\text{non}}$ (the "uniqueness" of the
-   $H^2 + C^2_{\text{non}} + \Psi^2 = 1$ partition). Distinguish:
-   `\mathbf{S}` is a model-side covariance diagonal;
-   `\Psi_t` is a derived per-trait scalar in the
-   communality-decomposition output. Do not blanket-replace
-   `\Psi` with `S` -- verify per occurrence whether the symbol
-   is the model-side diagonal or the derived scalar.
+   -- two $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$
+   pieces (phylo + non-phylo) plus a single non-tier-specific
+   diagonal $\boldsymbol\Psi$. $\boldsymbol\Omega$ here is just
+   the **total trait covariance**, the sum of every variance
+   component in the fit; the same $\boldsymbol\Omega$ name
+   covers the four-piece paired form, this three-piece fallback,
+   a `spatial_*` extension with more pieces, or a pure non-phylo
+   `latent + unique` with two pieces. **The number of pieces
+   follows from the keyword terms in the formula.** **Do not
+   roll the phylo piece up as $\boldsymbol\Sigma_{\text{phy}}$**
+   in the three-piece form, since $\boldsymbol\Sigma_{\text{phy}}
+   = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} +
+   \boldsymbol\Psi_{\text{phy}}$ already implies a
+   $\boldsymbol\Psi_{\text{phy}}$ that the fallback does not
+   have. **Do not over-prescribe the paired form**; check
+   identifiability against the data shape before flipping a
+   bare-form recommendation to paired-only. (Lesson from the
+   2026-05-13 maintainer corrections: *"for phylogeny there
+   are cases we cannot get 2 Ss like you know - omega is usual
+   in such a context"*, *"one S for phylo is when we cannot
+   really get 4 parts OK (3 parts are fine in such a case)"*,
+   and *"omega can be used for any combinations of adding all
+   variance components"*. Note: original quotes used "S"; the
+   2026-05-14 notation reversal changed math notation to
+   `\boldsymbol\Psi`. Function- and file-name "two-U" task
+   labels still use "U" per `decisions.md` 2026-05-12 +
+   2026-05-14 entries.)
+9. **Every `\Psi`, `\Omega`, `U`, `U_phy`, `U_non`** in
+   user-facing prose (post-2026-05-14): math notation uses
+   `\boldsymbol\Psi`, `\boldsymbol\Psi_{\text{phy}}`,
+   `\boldsymbol\Psi_{\text{non}}` (bold capital, tier-
+   subscripted) for the unique-variance diagonal matrices.
+   Per-trait derived scalars in the `extract_phylo_signal()`
+   output use **italic lowercase `\psi_t`**: partition is
+   $H^2_t + C^2_{\text{non},t} + \psi^2_t = 1$. Disambiguation:
+   bold capital `\boldsymbol\Psi` is the model-side covariance
+   diagonal matrix; italic lowercase `\psi_t` is a derived
+   per-trait scalar in the communality-decomposition output
+   (mathematically a scaling of the t-th diagonal of
+   $\boldsymbol\Psi$ over $\boldsymbol\Sigma_{tt}$). Legacy
+   bare `U`, `U_phy`, `U_non` are wrong outside function- /
+   file-name task labels (`compare_dep_vs_two_U()`,
+   `extract_two_U_via_PIC()`, `R/extract-two-U-cross-check.R`,
+   etc., which stay per `decisions.md` 2026-05-12 +
+   2026-05-14 entries). Do not blanket-replace `\Psi` with `S`
+   any more (that was the pre-2026-05-14 convention); verify
+   per occurrence whether the symbol is the bold-capital
+   matrix or the italic-lowercase derived scalar.
 
 **Process recommendation**: when porting or auditing an article,
 spawn a deep agent with the canonical model in its briefing and ask

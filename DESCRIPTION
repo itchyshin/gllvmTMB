@@ -11,7 +11,7 @@ Description: A standalone Template Model Builder (TMB) package for
     variable models (GLLVMs). The 3 x 5 covariance keyword grid pairs
     correlation structure (none / phylogenetic / spatial) with covariance
     mode (scalar / unique / indep / dep / latent). A reduced-rank latent
-    decomposition (Lambda Lambda^T + diag(s)) is the canonical
+    decomposition (Lambda Lambda^T + diag(psi)) is the canonical
     multivariate option; full unstructured and marginal modes are also
     supported. Phylogenetic models use a sparse A^-1 representation
     (Hadfield & Nakagawa 2010), the engine is built on Template Model

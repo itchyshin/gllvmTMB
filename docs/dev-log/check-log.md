@@ -1338,3 +1338,82 @@ bullet defects + process patterns, team-level learnings,
 per-agent learnings, open questions handed forward, Rose
 pre-publish audit sign-off.
 
+## 2026-05-14 -- Kaizen point 10: notation-sweep verification regex must actually parse
+
+**Trigger**: Phase 1a Batch B opened after Batch A's "0 hits"
+verification scan was reported clean. Re-running the scan with
+correct regex syntax found ~24 remaining stragglers across 9 R/
+source files + 4 vignettes that the NS-3b, NS-4, NS-5, and
+Batch A scans had all silently missed.
+
+**Root cause**: the scan used patterns of the form
+`\mathbf{?S}? | \boldsymbol{?S}? | S_phy | S_non | ...` joined
+with `|` (alternation). In ripgrep's default Rust regex engine:
+
+- `\m` is an undefined escape and may fail to parse (the
+  pattern silently matches nothing); the literal backslash
+  needs `\\` in the regex.
+- `{?` and `}?` may be parsed as quantifiers rather than
+  optional braces.
+- Unescaped `|` in bash splits the shell command at the pipe.
+
+The combination meant the scan returned 0 hits not because no
+stragglers existed but because the regex either failed silently
+or matched the empty string. The maintainer's "let me know if
+all S turned into psi" verification was therefore answered with
+high-confidence-but-wrong "0 hits across the surface."
+
+**Stragglers caught on rerun**:
+
+- `\mathbf S_\text{phy|non|tier|level}` matrix-S forms: 14
+  hits across `R/extract-omega.R`, `R/extract-sigma.R`,
+  `R/extract-two-U-cross-check.R`, `R/extract-two-U-via-PIC.R`,
+  `R/brms-sugar.R`, `R/gllvmTMB.R`,
+  `vignettes/articles/covariance-correlation.Rmd`.
+- ASCII `Lambda Lambda^T + S` / `diag(S)` forms in roxygen and
+  code comments: 8 hits across `R/extract-two-U-cross-check.R`,
+  `R/extract-two-U-via-PIC.R`, `R/extractors.R`,
+  `R/fit-multi.R`, `R/extract-sigma.R`, `R/unique-keyword.R`.
+- LaTeX `+ S_{\text{phy|non|unit|...}}` in articles: 8 hits
+  across `vignettes/articles/choose-your-model.Rmd`,
+  `vignettes/articles/pitfalls.Rmd`,
+  `vignettes/articles/phylogenetic-gllvm.Rmd`.
+- Capital `\Psi_t` (scalar, should be lowercase `\psi_t`): 3
+  hits in `R/extract-omega.R`.
+- Bare `\Psi` (should be `\psi^2` for partition or
+  `\boldsymbol{\Psi}` for matrix): 2 hits in
+  `R/extract-omega.R` and `vignettes/articles/pitfalls.Rmd`.
+
+**Lesson**: notation-sweep verification scans must use
+parse-tested regex. Specifically:
+
+1. Use **double-escaped backslashes** in ripgrep patterns:
+   `\\mathbf`, not `\mathbf`. The latter may match nothing.
+2. Use **single-quoted strings** in bash to prevent shell
+   expansion of `\` and unescaped `|`.
+3. Test the regex against a **known-positive fixture** before
+   trusting a 0-hit result. E.g. before scanning the package,
+   confirm the pattern matches a deliberately-planted
+   `\mathbf S` in a scratch file.
+4. **Run multiple complementary patterns**, not a single
+   alternation. Separate calls for `\\mathbf\s*\{?\s*S`,
+   `\+\s*S_\{`, `\bS_\\text\{`, `diag\([Ss]\)`, `\\Psi(?![a-zA-Z_])`
+   each catch a different family of stragglers; the union
+   covers the surface.
+5. **Spot-check the rendered output** as a sanity floor: run
+   `Rscript -e 'devtools::document()'` then `tail -20
+   man/<key>.Rd` and confirm the math reads `\boldsymbol\Psi`
+   not `\mathbf S`. Rendered-Rd inspection is the ground truth
+   the maintainer will see on pkgdown.
+
+**Process change adopted**: every future notation-sweep PR
+must include a "verification scan" section in the after-task
+report listing the **actual regex commands** used (not just
+"0 hits found"). The maintainer can re-run them. If the
+regexes don't parse cleanly, the scan is treated as
+non-verifying and a second pass is required.
+
+**Worked example**: Batch B (this PR) re-ran the scan with
+parse-tested patterns and caught the 24+ stragglers above.
+After-task report records each pattern verbatim.
+

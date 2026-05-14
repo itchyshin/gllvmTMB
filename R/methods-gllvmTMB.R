@@ -210,8 +210,8 @@
 #' * `print()` shows the active covstructs, the number of fixed effects,
 #'   and the converged log-likelihood.
 #' * `summary()` adds a fixed-effects table with SEs, the global and
-#'   local trait correlation matrices, per-trait ICCs (manuscript Eq. 13),
-#'   and global / local communalities (Eqs. 14-15).
+#'   local trait correlation matrices, per-trait ICCs,
+#'   and global / local communalities.
 #' * `logLik()` returns the converged maximum log-likelihood with
 #'   `df = length(opt$par)` and `nobs = length(y)`, so `AIC()` and
 #'   `BIC()` all work directly.

@@ -35,8 +35,8 @@ as usual.)
 \item \code{print()} shows the active covstructs, the number of fixed effects,
 and the converged log-likelihood.
 \item \code{summary()} adds a fixed-effects table with SEs, the global and
-local trait correlation matrices, per-trait ICCs (manuscript Eq. 13),
-and global / local communalities (Eqs. 14-15).
+local trait correlation matrices, per-trait ICCs,
+and global / local communalities.
 \item \code{logLik()} returns the converged maximum log-likelihood with
 \code{df = length(opt$par)} and \code{nobs = length(y)}, so \code{AIC()} and
 \code{BIC()} all work directly.

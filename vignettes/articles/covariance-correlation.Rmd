@@ -61,7 +61,7 @@ fit_latent_unique <- gllvmTMB(
 For the `latent() + unique()` model, the implied trait covariance is
 
 $$
-\boldsymbol\Sigma_\text{level} \;=\; \underbrace{\boldsymbol\Lambda_\text{level} \boldsymbol\Lambda_\text{level}^{\!\top}}_{\text{shared low-rank}} \;+\; \underbrace{\mathbf S_\text{level}}_{\text{trait-specific diagonal}},
+\boldsymbol\Sigma_\text{level} \;=\; \underbrace{\boldsymbol\Lambda_\text{level} \boldsymbol\Lambda_\text{level}^{\!\top}}_{\text{shared low-rank}} \;+\; \underbrace{\boldsymbol\Psi_\text{level}}_{\text{trait-specific diagonal}},
 $$
 
 where `level` names the covariance tier being extracted, such as `unit`
@@ -268,8 +268,8 @@ $$
 
 i.e. the proportion of total trait variance attributable to between-
 unit differences. Each piece needs the full decomposition for its
-level — $\Sigma_{\text{unit}} = \Lambda_{\text{unit}} \Lambda_{\text{unit}}^{\!\top} + S_{\text{unit}}$ and
-$\Sigma_{\text{unit\_obs}} = \Lambda_{\text{unit\_obs}} \Lambda_{\text{unit\_obs}}^{\!\top} + S_{\text{unit\_obs}}$. Both `unique()` terms
+level — $\Sigma_{\text{unit}} = \Lambda_{\text{unit}} \Lambda_{\text{unit}}^{\!\top} + \boldsymbol\Psi_{\text{unit}}$ and
+$\Sigma_{\text{unit\_obs}} = \Lambda_{\text{unit\_obs}} \Lambda_{\text{unit\_obs}}^{\!\top} + \boldsymbol\Psi_{\text{unit\_obs}}$. Both `unique()` terms
 are required (one per level) for $R_t$ to be honest.
 
 In gllvmTMB this is
@@ -327,9 +327,9 @@ fit_two_level <- gllvmTMB(
 ```
 
 giving
-$\boldsymbol\Sigma_{\text{unit}} = \boldsymbol\Lambda_{\text{unit}} \boldsymbol\Lambda_{\text{unit}}^{\!\top} + \mathbf S_{\text{unit}}$
+$\boldsymbol\Sigma_{\text{unit}} = \boldsymbol\Lambda_{\text{unit}} \boldsymbol\Lambda_{\text{unit}}^{\!\top} + \boldsymbol\Psi_{\text{unit}}$
 (behavioural syndromes — between-individual covariance) and
-$\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \boldsymbol\Lambda_{\text{unit\_obs}}^{\!\top} + \mathbf S_{\text{unit\_obs}}$
+$\boldsymbol\Sigma_{\text{unit\_obs}} = \boldsymbol\Lambda_{\text{unit\_obs}} \boldsymbol\Lambda_{\text{unit\_obs}}^{\!\top} + \boldsymbol\Psi_{\text{unit\_obs}}$
 (integrated plasticity — within-individual covariance).
 **Each level has its own `unique()`**.
 

@@ -108,15 +108,15 @@ gllvmTMB_diagnose <- function(object,
       cat(paste(round(diag(out_Sigma_W$Sigma_W), 3), collapse = "  "), "\n")
     }
     if (!is.null(ICC_site)) {
-      cat("\n  Per-trait site-level ICC (Eq. 13):\n  ")
+      cat("\n  Per-trait site-level ICC:\n  ")
       cat(paste(round(ICC_site, 3), collapse = "  "), "\n")
     }
     if (!is.null(comm_B)) {
-      cat("\n  Global communalities (Eq. 14):\n  ")
+      cat("\n  Global communalities:\n  ")
       cat(paste(round(comm_B, 3), collapse = "  "), "\n")
     }
     if (!is.null(comm_W)) {
-      cat("\n  Local communalities (Eq. 15):\n  ")
+      cat("\n  Local communalities:\n  ")
       cat(paste(round(comm_W, 3), collapse = "  "), "\n")
     }
   }

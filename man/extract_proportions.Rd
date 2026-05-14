@@ -47,7 +47,7 @@ optionally the binomial link's implicit residual.
 \details{
 This is the most general proportion-decomposition function in the
 package. \code{\link[=extract_phylo_signal]{extract_phylo_signal()}} is the focused PGLLVM
-\eqn{H^2 / C^2_\text{non} / \Psi} convenience wrapper for the
+\eqn{H^2 / C^2_\text{non} / \psi^2} convenience wrapper for the
 species-level case; \code{\link[=extract_communality]{extract_communality()}} gives the rr-only
 "shared" proportion at one tier; \code{\link[=extract_ICC_site]{extract_ICC_site()}} gives the
 between-vs-within proportion. \code{extract_proportions()} returns all of

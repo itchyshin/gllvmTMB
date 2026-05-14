@@ -137,8 +137,8 @@ trait-specific diagonal (`unique`). The full decomposition reads
 
 $$
 \Omega = (\Sigma_{\text{phy}} \otimes A) + (\Sigma_{\text{non}} \otimes I), \quad
-\Sigma_{\text{phy}} = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\top} + S_{\text{phy}}, \quad
-\Sigma_{\text{non}} = \Lambda_{\text{non}} \Lambda_{\text{non}}^{\top} + S_{\text{non}}.
+\Sigma_{\text{phy}} = \Lambda_{\text{phy}} \Lambda_{\text{phy}}^{\top} + \boldsymbol\Psi_{\text{phy}}, \quad
+\Sigma_{\text{non}} = \Lambda_{\text{non}} \Lambda_{\text{non}}^{\top} + \boldsymbol\Psi_{\text{non}}.
 $$
 
 Without all four components the decomposition is degenerate:

@@ -48,9 +48,9 @@ phylogenetic SDs. This path stays for backward compatibility.}
 \item{\strong{Paired with \code{phylo_latent()}} (two-U PGLLVM, recommended)}{
 When written together with \code{phylo_latent(species, d = K)}, the
 two terms co-fit as \strong{separate covariance components}:
-\deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\mathbf S_\text{phy}}_{\text{per-trait unique}}.}
+\deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\boldsymbol\Psi_\text{phy}}_{\text{per-trait unique}}.}
 \eqn{\boldsymbol\Lambda_\text{phy}} is filled by the rank-K shared
-latent factors; \eqn{\mathbf S_\text{phy}} carries
+latent factors; \eqn{\boldsymbol\Psi_\text{phy}} carries
 the per-trait phylogenetic variances not absorbed by the K shared
 axes. This is the manuscript-aligned PGLLVM decomposition
 (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et

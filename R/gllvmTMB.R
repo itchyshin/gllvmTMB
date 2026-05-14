@@ -21,7 +21,7 @@
 #' convention:
 #'
 #' * `latent + unique` (paired) — the **decomposition** mode:
-#'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}.
+#'   \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.
 #'   `unique` standalone is also legitimate (e.g. observation-level
 #'   random effects), but the canonical pattern is paired with `latent`.
 #' * `indep` (alone) — the **marginal-only** mode: each trait gets its

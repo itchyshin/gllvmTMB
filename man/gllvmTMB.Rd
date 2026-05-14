@@ -216,7 +216,7 @@ encode covstruct intent under a strict always-paired-vs-always-alone
 convention:
 \itemize{
 \item \code{latent + unique} (paired) — the \strong{decomposition} mode:
-\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \mathbf S}.
+\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.
 \code{unique} standalone is also legitimate (e.g. observation-level
 random effects), but the canonical pattern is paired with \code{latent}.
 \item \code{indep} (alone) — the \strong{marginal-only} mode: each trait gets its

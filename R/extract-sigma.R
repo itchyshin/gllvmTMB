@@ -1,6 +1,6 @@
 ## Unified covariance / correlation extractor for a fitted gllvmTMB_multi
-## model. Implements the manuscript decomposition Sigma = Lambda*Lambda^T + S
-## (Behavioural Syndromes paper, Eq. 30) for any chosen tier of the model
+## model. Implements the decomposition Sigma = Lambda*Lambda^T + Psi
+## for any chosen tier of the model
 ## (between-unit "B", within-unit "W", phylogenetic "phy"), and exposes
 ## three "parts": total / shared / unique.
 ##
@@ -282,12 +282,11 @@ link_residual_per_trait <- function(fit) {
 #' Extract the implied trait covariance / correlation at one tier
 #'
 #' Implements the decomposition
-#' \deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\mathbf S_\text{tier}}_{\text{unique (unique)}},}
+#' \deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\boldsymbol\Psi_\text{tier}}_{\text{unique (unique)}},}
 #' where \eqn{\boldsymbol\Lambda} comes from the `latent()` term at that tier
 #' and \eqn{\boldsymbol\Psi} comes from the corresponding `unique()` term. This is the
 #' same decomposition the behavioural-syndromes / phenotypic-integration
-#' literature uses (Bartholomew et al. 2011; Nakagawa et al. *in prep*),
-#' equations 15, 22, and 30 of the methods paper.
+#' literature uses (Bartholomew et al. 2011; Nakagawa et al. *in prep*).
 #'
 #' ## Why both `latent()` and `unique()` matter
 #'
@@ -323,7 +322,7 @@ link_residual_per_trait <- function(fit) {
 #'     \eqn{\sum_\ell \Lambda_{t\ell}^2}; these are *not* the trait
 #'     variances, they are the *shared* part of the trait variances.}
 #'   \item{`"unique"`}{
-#'     \eqn{\mathbf S_\text{tier}} only -- the trait-specific unique
+#'     \eqn{\boldsymbol\Psi_\text{tier}} only -- the trait-specific unique
 #'     variances, returned as a length-`T` named numeric vector (the
 #'     diagonal of \eqn{\boldsymbol\Psi}).}
 #' }
@@ -556,7 +555,7 @@ extract_Sigma <- function(fit,
         " is currently latent-only (Lambda Lambda^T) because no `",
         diag_call, "` term is in the formula. Trait-specific unique variance is not modelled, ",
         "so correlations from this matrix overstate cross-trait coupling. ",
-        "For the correct decomposition Sigma = Lambda Lambda^T + S, refit with `+ ",
+        "For the correct decomposition Sigma = Lambda Lambda^T + Psi, refit with `+ ",
         diag_call, "`."
       ))
     }
@@ -627,7 +626,7 @@ extract_Sigma <- function(fit,
       level = level_label, part = part, note = notes
     )
   } else {
-    ## "total": LLt + diag(S) + (optional) per-trait link-implicit residual
+    ## "total": LLt + diag(Psi) + (optional) per-trait link-implicit residual
     Sigma <- LLt + diag(Sd, nrow = T)
     if (any(link_resid_per_trait != 0))
       diag(Sigma) <- diag(Sigma) + link_resid_per_trait

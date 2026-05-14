@@ -28,7 +28,7 @@ A list with the following components:
 \item{\code{Lambda_phy}}{T x d_phy loading matrix.}
 \item{\code{U_phy}}{Length-T named vector of trait-specific phylogenetic
 unique variances (legacy component name for the diagonal of
-\eqn{\mathbf S_\text{phy}}).}
+\eqn{\boldsymbol\Psi_\text{phy}}).}
 \item{\code{Lambda_non}, \code{U_non}}{Analogous for the non-phylogenetic
 tier.}
 \item{\code{per_trait}}{Data frame with one row per trait, containing
@@ -45,8 +45,8 @@ only.} Uses phylogenetic independent contrasts (PIC; Felsenstein 1985)
 plus a per-trait Pagel's lambda mixed-model fit
 (\code{nlme::gls} + \code{ape::corPagel}) to identify the four components of
 the paired phylogenetic decomposition:
-\deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \mathbf S_\text{phy}, \qquad
-\boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \mathbf S_\text{non}.}
+\deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \boldsymbol\Psi_\text{phy}, \qquad
+\boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \boldsymbol\Psi_\text{non}.}
 }
 \details{
 \subsection{Scope and limitations}{

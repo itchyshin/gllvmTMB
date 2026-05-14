@@ -19,7 +19,7 @@ make_small_rrB_fit <- function(seed = 1, n_sites = 25, n_species = 6,
   sim <- simulate_site_trait(
     n_sites = n_sites, n_species = n_species, n_traits = n_traits,
     mean_species_per_site = 3, Lambda_B = Lam,
-    S_B = rep(0.3, n_traits), seed = seed
+    psi_B = rep(0.3, n_traits), seed = seed
   )
   fmla <- stats::as.formula(sprintf(
     "value ~ 0 + trait + latent(0 + trait | site, d = %d) + unique(0 + trait | site)",
@@ -31,7 +31,7 @@ make_small_rrB_fit <- function(seed = 1, n_sites = 25, n_species = 6,
 make_diag_only_fit <- function(seed = 2) {
   sim <- simulate_site_trait(
     n_sites = 25, n_species = 6, n_traits = 3, mean_species_per_site = 3,
-    S_B = c(0.3, 0.3, 0.3), seed = seed
+    psi_B = c(0.3, 0.3, 0.3), seed = seed
   )
   gllvmTMB(value ~ 0 + trait + unique(0 + trait | site), data = sim$data)
 }
@@ -53,7 +53,7 @@ test_that("extract_Sigma_B(): NULL when neither rr_B nor diag_B is in the fit", 
   ## A fit with only diag_W: no between-site covstruct
   sim <- simulate_site_trait(n_sites = 20, n_species = 5, n_traits = 3,
                              mean_species_per_site = 3,
-                             S_W = rep(0.3, 3), seed = 9)
+                             psi_W = rep(0.3, 3), seed = 9)
   fit <- gllvmTMB(value ~ 0 + trait + unique(0 + trait | site_species),
                   data = sim$data)
   expect_null(extract_Sigma_B(fit))
@@ -117,8 +117,8 @@ test_that("extract_ICC_site(): values are named by trait levels", {
   L_B <- matrix(c(0.8, 0.3, -0.2), 3, 1)
   sim <- simulate_site_trait(
     n_sites = 25, n_species = 6, n_traits = 3, mean_species_per_site = 3,
-    Lambda_B = L_B, S_B = c(0.3, 0.3, 0.3),
-    Lambda_W = matrix(c(0.5, 0.2, 0.0), 3, 1), S_W = c(0.3, 0.3, 0.3),
+    Lambda_B = L_B, psi_B = c(0.3, 0.3, 0.3),
+    Lambda_W = matrix(c(0.5, 0.2, 0.0), 3, 1), psi_W = c(0.3, 0.3, 0.3),
     seed = 3
   )
   fit <- suppressMessages(gllvmTMB(

@@ -15,8 +15,8 @@ simulate_site_trait(
   sigma2_eps = 0.5,
   Lambda_B = NULL,
   Lambda_W = NULL,
-  S_B = NULL,
-  S_W = NULL,
+  psi_B = NULL,
+  psi_W = NULL,
   sigma2_phy = NULL,
   sigma2_sp = NULL,
   Cphy = NULL,
@@ -44,15 +44,18 @@ if \code{NULL}.}
 \item{beta}{Optional \code{n_traits} x \code{n_predictors} matrix of trait-specific
 slopes; random if \code{NULL}.}
 
-\item{sigma2_eps}{Residual variance (\code{s_W} only term in fixed-effects-only
+\item{sigma2_eps}{Residual variance (\code{psi_W} only term in fixed-effects-only
 simulator). Default 0.5.}
 
 \item{Lambda_B, Lambda_W}{Optional \code{n_traits} x \code{d_B} / \code{n_traits} x \code{d_W}
 loading matrices for between-site / within-site reduced-rank components.
 Set to \code{NULL} (default) to omit.}
 
-\item{S_B, S_W}{Optional length-\code{n_traits} vectors of trait-specific specific
-variances at the global / local level.}
+\item{psi_B, psi_W}{Optional length-\code{n_traits} vectors of trait-specific
+variances at the global / local level. (Lowercase psi matches the
+factor-analysis convention -- \verb{\\boldsymbol\\Psi_B = diag(psi_B)},
+\verb{\\boldsymbol\\Psi_W = diag(psi_W)}; see \code{decisions.md} 2026-05-14
+notation reversal.)}
 
 \item{sigma2_phy, sigma2_sp}{Optional length-\code{n_traits} vectors of
 phylogenetic and non-phylogenetic species variance. \code{Cphy} is required
@@ -78,7 +81,7 @@ trait) observation: columns \code{site}, \code{species}, \code{trait}, \code{val
 \code{site_species}, predictors \code{env_1}, …, \code{env_n_predictors}, plus \code{lon}
 and \code{lat} if coords were generated.}
 \item{\code{truth}}{Named list of true parameter values (alpha, beta,
-Lambda_B, Lambda_W, S_B, S_W, sigma2_phy, sigma2_sp, sigma2_spa,
+Lambda_B, Lambda_W, psi_B, psi_W, sigma2_phy, sigma2_sp, sigma2_spa,
 spatial_range, sigma2_eps).}
 \item{\code{Cphy}}{The phylogenetic correlation matrix used (or \code{NULL}).}
 \item{\code{coords}}{Site coordinates used (or \code{NULL}).}

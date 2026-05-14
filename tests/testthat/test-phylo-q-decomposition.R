@@ -43,8 +43,8 @@ simulate_phylo_q_dgp <- function(n_species   = 100,
   ## Modest B and W noise so the species terms aren't drowned out.
   Lambda_B <- matrix(0.4, nrow = n_traits, ncol = 2L)
   Lambda_W <- matrix(0.3, nrow = n_traits, ncol = 1L)
-  S_B      <- rep(0.1, n_traits)
-  S_W      <- rep(0.1, n_traits)
+  psi_B      <- rep(0.1, n_traits)
+  psi_W      <- rep(0.1, n_traits)
 
   sim <- gllvmTMB::simulate_site_trait(
     n_sites               = n_sites,
@@ -55,8 +55,8 @@ simulate_phylo_q_dgp <- function(n_species   = 100,
     sigma2_eps            = sigma2_eps,
     Lambda_B              = Lambda_B,
     Lambda_W              = Lambda_W,
-    S_B                   = S_B,
-    S_W                   = S_W,
+    psi_B                   = psi_B,
+    psi_W                   = psi_W,
     Cphy                  = Cphy,
     sigma2_phy            = rep(sigma2_P, n_traits),   # p_it
     sigma2_sp             = rep(sigma2_Q, n_traits),   # q_it

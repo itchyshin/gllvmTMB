@@ -11,8 +11,8 @@ make_tiny_BW_fit_fz <- function(seed = 42L) {
     n_traits             = 3L,
     mean_species_per_site = 4L,
     Lambda_B             = matrix(c(0.9, 0.4, -0.3), 3L, 1L),
-    S_B                  = c(0.40, 0.30, 0.50),
-    S_W                  = c(0.30, 0.40, 0.30),
+    psi_B                  = c(0.40, 0.30, 0.50),
+    psi_W                  = c(0.30, 0.40, 0.30),
     beta                 = matrix(0, 3L, 2L),
     seed                 = seed
   )

@@ -7,9 +7,9 @@ test_that("extract_Sigma_B / Sigma_W return correlation matrices on the diagonal
     mean_species_per_site = 6,
     Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,
                         0.3, -0.5, 0.8, 0.2), nrow = 4, ncol = 2),
-    S_B = c(0.3, 0.3, 0.3, 0.3),
+    psi_B = c(0.3, 0.3, 0.3, 0.3),
     Lambda_W = matrix(c(0.8, 0.4, -0.2, 0.5), nrow = 4, ncol = 1),
-    S_W = c(0.4, 0.4, 0.4, 0.4),
+    psi_W = c(0.4, 0.4, 0.4, 0.4),
     seed = 2025
   )
   fit <- gllvmTMB(
@@ -36,9 +36,9 @@ test_that("ICC_site is in (0, 1) when both Sigma_B and Sigma_W are present", {
     mean_species_per_site = 6,
     Lambda_B = matrix(c(0.8, 0.5, -0.2,
                         0.2, -0.4, 0.6), nrow = 3, ncol = 2),
-    S_B = c(0.3, 0.3, 0.3),
+    psi_B = c(0.3, 0.3, 0.3),
     Lambda_W = matrix(c(0.6, 0.3, -0.2), nrow = 3, ncol = 1),
-    S_W = c(0.3, 0.3, 0.3),
+    psi_W = c(0.3, 0.3, 0.3),
     seed = 7
   )
   fit <- gllvmTMB(
@@ -60,7 +60,7 @@ test_that("Communalities are in (0, 1]", {
     mean_species_per_site = 5,
     Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,
                         0.3, -0.5, 0.8, 0.2), nrow = 4, ncol = 2),
-    S_B = c(0.4, 0.4, 0.4, 0.4),
+    psi_B = c(0.4, 0.4, 0.4, 0.4),
     seed = 11
   )
   fit <- gllvmTMB(

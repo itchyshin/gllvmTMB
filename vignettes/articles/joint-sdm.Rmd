@@ -251,7 +251,7 @@ Lam_true <- matrix(c(
 sim <- simulate_site_trait(
   n_sites = n_sites, n_species = 6, n_traits = T,
   mean_species_per_site = 5,
-  Lambda_B = Lam_true, S_B = rep(0.4, T),
+  Lambda_B = Lam_true, psi_B = rep(0.4, T),
   sigma2_eps = 0.01, seed = 2025
 )
 df <- sim$data

@@ -54,7 +54,7 @@ test_that("phylo_latent and phylo_scalar are recognized canonical aliases", {
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 7
+    psi_B = c(0.05, 0.05, 0.05), seed = 7
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label
@@ -133,7 +133,7 @@ test_that("`unique(..., common = TRUE)` ties trait variances to one shared param
     mean_species_per_site = 4,
     Lambda_B = matrix(c(0.6, 0.4, -0.3, 0.2,
                         0.0, 0.5,  0.3, -0.2), 4, 2),
-    S_B = c(0.3, 0.3, 0.3, 0.3),  # truly shared
+    psi_B = c(0.3, 0.3, 0.3, 0.3),  # truly shared
     seed = 2026
   )
   ## With `common = TRUE`, all traits should share one sd_B value.
@@ -164,9 +164,9 @@ test_that("`unique(..., common = TRUE)` works at the W tier too", {
     n_sites = 30, n_species = 8, n_traits = 4,
     mean_species_per_site = 5,
     Lambda_B = matrix(c(1, 0.5, -0.4, 0.3, 0, 0.8, 0.4, -0.2), 4, 2),
-    S_B  = c(0.2, 0.15, 0.1, 0.25),
+    psi_B  = c(0.2, 0.15, 0.1, 0.25),
     Lambda_W = matrix(c(0.4, 0.2, -0.1, 0.3), 4, 1),
-    S_W  = c(0.1, 0.1, 0.1, 0.1),  # shared at W
+    psi_W  = c(0.1, 0.1, 0.1, 0.1),  # shared at W
     seed = 7
   )
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -192,7 +192,7 @@ test_that("PGLLVM foot-gun: phylo_latent + latent/unique without `unit = species
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 7
+    psi_B = c(0.05, 0.05, 0.05), seed = 7
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label
@@ -243,7 +243,7 @@ test_that("phylo_indep(0+trait|species) standalone fits identically to phylo_uni
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 11
+    psi_B = c(0.05, 0.05, 0.05), seed = 11
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label
@@ -286,7 +286,7 @@ test_that("phylo_indep + phylo_latent is a hard error", {
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 13
+    psi_B = c(0.05, 0.05, 0.05), seed = 13
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label
@@ -324,7 +324,7 @@ test_that("print(fit) labels phylo_indep distinctly from phylo_unique", {
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 15
+    psi_B = c(0.05, 0.05, 0.05), seed = 15
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label
@@ -375,7 +375,7 @@ test_that("phylo_dep(0+trait|species) standalone fits identically to phylo_laten
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 21
+    psi_B = c(0.05, 0.05, 0.05), seed = 21
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label
@@ -444,7 +444,7 @@ test_that("phylo_dep + phylo_latent is a hard error", {
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 23
+    psi_B = c(0.05, 0.05, 0.05), seed = 23
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label
@@ -470,7 +470,7 @@ test_that("phylo_dep + phylo_unique is a redundancy error", {
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 25
+    psi_B = c(0.05, 0.05, 0.05), seed = 25
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label
@@ -496,7 +496,7 @@ test_that("phylo_dep + phylo_indep is a redundancy error", {
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = 27
+    psi_B = c(0.05, 0.05, 0.05), seed = 27
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label

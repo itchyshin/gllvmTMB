@@ -117,20 +117,20 @@ test_that("simulate_site_trait(): wrong-nrow Lambda_B errors", {
   )
 })
 
-# ---- S_B / S_W -----------------------------------------------------------
+# ---- psi_B / psi_W -----------------------------------------------------------
 
-test_that("simulate_site_trait(): S_B is recycled to length n_traits in truth", {
-  ## S_B = scalar 0.4 -> truth$S_B should be length n_traits after rep_len
+test_that("simulate_site_trait(): psi_B is recycled to length n_traits in truth", {
+  ## psi_B = scalar 0.4 -> truth$psi_B should be length n_traits after rep_len
   s <- simulate_site_trait(n_sites = 12, n_species = 4, n_traits = 3,
-                           mean_species_per_site = 2, S_B = 0.4, seed = 1)
-  expect_length(s$truth$S_B, 3L)
-  expect_true(all(s$truth$S_B == 0.4))
+                           mean_species_per_site = 2, psi_B = 0.4, seed = 1)
+  expect_length(s$truth$psi_B, 3L)
+  expect_true(all(s$truth$psi_B == 0.4))
 })
 
-test_that("simulate_site_trait(): S_W is recycled to length n_traits in truth", {
+test_that("simulate_site_trait(): psi_W is recycled to length n_traits in truth", {
   s <- simulate_site_trait(n_sites = 12, n_species = 4, n_traits = 4,
-                           mean_species_per_site = 2, S_W = 0.5, seed = 1)
-  expect_length(s$truth$S_W, 4L)
+                           mean_species_per_site = 2, psi_W = 0.5, seed = 1)
+  expect_length(s$truth$psi_W, 4L)
 })
 
 # ---- sigma2_phy + Cphy ---------------------------------------------------
@@ -212,7 +212,7 @@ test_that("simulate_site_trait(): truth list contains all expected names", {
   expect_named(
     s$truth,
     c("alpha", "beta", "sigma2_eps", "Lambda_B", "Lambda_W",
-      "S_B", "S_W", "sigma2_phy", "sigma2_sp", "sigma2_spa", "spatial_range")
+      "psi_B", "psi_W", "sigma2_phy", "sigma2_sp", "sigma2_spa", "spatial_range")
   )
 })
 

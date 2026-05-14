@@ -147,7 +147,7 @@ sim <- simulate_site_trait(
   n_sites = n_sites, n_species = n_species, n_traits = n_traits,
   mean_species_per_site = 5,
   Lambda_B = Lambda_B_true, Lambda_W = Lambda_W_true,
-  S_B = S_B_true, S_W = S_W_true,
+  psi_B = S_B_true, psi_W = S_W_true,
   Cphy = ape::vcv(tree, corr = TRUE),
   sigma2_phy    = rep(0.10, n_traits),
   sigma2_sp     = rep(0.05, n_traits),

@@ -32,7 +32,7 @@ make_phylo_sim <- function(n_sp = 50, n_traits = 4, seed = 7) {
     n_traits              = n_traits,
     mean_species_per_site = n_sp,
     Lambda_B              = matrix(0.0, n_traits, 1),
-    S_B                   = rep(0.05, n_traits),
+    psi_B                   = rep(0.05, n_traits),
     Cphy                  = Cphy,
     sigma2_phy            = rep(0.5, n_traits),
     seed                  = seed

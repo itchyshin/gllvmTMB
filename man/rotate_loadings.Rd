@@ -54,7 +54,7 @@ sim <- simulate_site_trait(
   Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.5,
                       0.3, -0.5, 0.8, 0.2),
                     nrow = 4, ncol = 2),
-  S_B = c(0.3, 0.3, 0.3, 0.3),
+  psi_B = c(0.3, 0.3, 0.3, 0.3),
   seed = 1
 )
 fit <- gllvmTMB(value ~ 0 + trait +

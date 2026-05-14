@@ -27,13 +27,16 @@
 #'   if `NULL`.
 #' @param beta Optional `n_traits` x `n_predictors` matrix of trait-specific
 #'   slopes; random if `NULL`.
-#' @param sigma2_eps Residual variance (`s_W` only term in fixed-effects-only
+#' @param sigma2_eps Residual variance (`psi_W` only term in fixed-effects-only
 #'   simulator). Default 0.5.
 #' @param Lambda_B,Lambda_W Optional `n_traits` x `d_B` / `n_traits` x `d_W`
 #'   loading matrices for between-site / within-site reduced-rank components.
 #'   Set to `NULL` (default) to omit.
-#' @param S_B,S_W Optional length-`n_traits` vectors of trait-specific specific
-#'   variances at the global / local level.
+#' @param psi_B,psi_W Optional length-`n_traits` vectors of trait-specific
+#'   variances at the global / local level. (Lowercase psi matches the
+#'   factor-analysis convention -- `\boldsymbol\Psi_B = diag(psi_B)`,
+#'   `\boldsymbol\Psi_W = diag(psi_W)`; see `decisions.md` 2026-05-14
+#'   notation reversal.)
 #' @param sigma2_phy,sigma2_sp Optional length-`n_traits` vectors of
 #'   phylogenetic and non-phylogenetic species variance. `Cphy` is required
 #'   if `sigma2_phy` is supplied.
@@ -53,7 +56,7 @@
 #'     `site_species`, predictors `env_1`, …, `env_n_predictors`, plus `lon`
 #'     and `lat` if coords were generated.}
 #'   \item{`truth`}{Named list of true parameter values (alpha, beta,
-#'     Lambda_B, Lambda_W, S_B, S_W, sigma2_phy, sigma2_sp, sigma2_spa,
+#'     Lambda_B, Lambda_W, psi_B, psi_W, sigma2_phy, sigma2_sp, sigma2_spa,
 #'     spatial_range, sigma2_eps).}
 #'   \item{`Cphy`}{The phylogenetic correlation matrix used (or `NULL`).}
 #'   \item{`coords`}{Site coordinates used (or `NULL`).}
@@ -76,8 +79,8 @@ simulate_site_trait <- function(n_sites = 50,
                                 sigma2_eps = 0.5,
                                 Lambda_B = NULL,
                                 Lambda_W = NULL,
-                                S_B = NULL,
-                                S_W = NULL,
+                                psi_B = NULL,
+                                psi_W = NULL,
                                 sigma2_phy = NULL,
                                 sigma2_sp = NULL,
                                 Cphy = NULL,
@@ -120,10 +123,10 @@ simulate_site_trait <- function(n_sites = 50,
                   nrow = n_sites, ncol = ncol(Lambda_B))
     u_mat <- u_mat + Z_B %*% t(Lambda_B)
   }
-  if (!is.null(S_B)) {
-    S_B <- rep_len(S_B, n_traits)
+  if (!is.null(psi_B)) {
+    psi_B <- rep_len(psi_B, n_traits)
     for (t in seq_len(n_traits))
-      u_mat[, t] <- u_mat[, t] + stats::rnorm(n_sites, sd = sqrt(S_B[t]))
+      u_mat[, t] <- u_mat[, t] + stats::rnorm(n_sites, sd = sqrt(psi_B[t]))
   }
 
   ## ---- Species-level p_{it} (phylo) and q_{it} (non-phylo) ----------------
@@ -162,9 +165,9 @@ simulate_site_trait <- function(n_sites = 50,
         z_W <- stats::rnorm(ncol(Lambda_W))
         e_sit <- as.numeric(Lambda_W %*% z_W)
       }
-      if (!is.null(S_W)) {
-        S_W <- rep_len(S_W, n_traits)
-        e_sit <- e_sit + stats::rnorm(n_traits, sd = sqrt(S_W))
+      if (!is.null(psi_W)) {
+        psi_W <- rep_len(psi_W, n_traits)
+        e_sit <- e_sit + stats::rnorm(n_traits, sd = sqrt(psi_W))
       }
 
       for (t in seq_len(n_traits)) {
@@ -202,8 +205,8 @@ simulate_site_trait <- function(n_sites = 50,
     sigma2_eps     = sigma2_eps,
     Lambda_B       = Lambda_B,
     Lambda_W       = Lambda_W,
-    S_B            = S_B,
-    S_W            = S_W,
+    psi_B          = psi_B,
+    psi_W          = psi_W,
     sigma2_phy     = sigma2_phy,
     sigma2_sp      = sigma2_sp,
     sigma2_spa     = sigma2_spa,

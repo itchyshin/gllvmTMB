@@ -22,7 +22,7 @@ make_phy_fixture <- function(seed = 7) {
     mean_species_per_site = n_sp,
     Cphy = Cphy, sigma2_phy = rep(0.5, 3),
     Lambda_B = matrix(c(0.4, 0.2, 0.3), 3, 1),
-    S_B = c(0.05, 0.05, 0.05), seed = seed
+    psi_B = c(0.05, 0.05, 0.05), seed = seed
   )
   df <- sim$data
   levels(df$species) <- tree$tip.label

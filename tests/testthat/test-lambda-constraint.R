@@ -26,7 +26,7 @@ make_sim <- function(n_traits = 4, d = 2, seed = 1) {
     n_traits              = n_traits,
     mean_species_per_site = 5,
     Lambda_B              = Lam_B_true,
-    S_B                   = rep(0.3, n_traits),
+    psi_B                   = rep(0.3, n_traits),
     seed                  = seed
   )
 }

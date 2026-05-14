@@ -9,7 +9,7 @@ test_that("Stage 39: n_init > 1 runs the requested number of restarts", {
     n_sites = 40, n_species = 10, n_traits = 3,
     mean_species_per_site = 4,
     Lambda_B = matrix(c(1.0, 0.7, -0.3, 0.3, -0.5, 0.8), nrow = 3, ncol = 2),
-    S_B = c(0.3, 0.3, 0.3),
+    psi_B = c(0.3, 0.3, 0.3),
     seed = 7
   )
   fit <- gllvmTMB(

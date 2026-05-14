@@ -31,7 +31,7 @@ make_gauss <- function(seed = 1L) {
     n_sites = 30, n_species = 1, n_traits = 4,
     mean_species_per_site = 1,
     Lambda_B = matrix(rnorm(8, sd = 0.4), 4, 2),
-    S_B = rep(0.2, 4),
+    psi_B = rep(0.2, 4),
     seed = seed
   )
   sim$data
@@ -151,7 +151,7 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
     mean_species_per_site = 1,
     sigma2_eps = 0.0,                  # turn off the simulator's noise
     Lambda_B   = matrix(rnorm(6, sd = 0.4), 3, 2),
-    S_B        = rep(0.2, 3),
+    psi_B        = rep(0.2, 3),
     seed       = 42L
   )
   df <- sim$data

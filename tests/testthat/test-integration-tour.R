@@ -12,9 +12,9 @@ test_that("integration: simulate -> fit -> all extractors -> predict -> simulate
     Lambda_B              = matrix(c(1.0, 0.7, -0.3, 0.5,
                                      0.3, -0.5, 0.8, 0.2),
                                    nrow = 4, ncol = 2),
-    S_B                   = c(0.3, 0.3, 0.3, 0.3),
+    psi_B                   = c(0.3, 0.3, 0.3, 0.3),
     Lambda_W              = matrix(c(0.6, 0.3, -0.2, 0.4), nrow = 4, ncol = 1),
-    S_W                   = c(0.4, 0.4, 0.4, 0.4),
+    psi_W                   = c(0.4, 0.4, 0.4, 0.4),
     seed                  = 2025
   )
 

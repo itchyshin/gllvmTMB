@@ -8,8 +8,8 @@ make_BW_fit <- function(seed = 1) {
   Lambda_W <- matrix(c(0.4, 0.2, -0.1, 0.3), Tn, 1)
   s <- gllvmTMB::simulate_site_trait(
     n_sites = 50, n_species = 8, n_traits = Tn, mean_species_per_site = 5,
-    Lambda_B = Lambda_B, S_B = c(0.20, 0.15, 0.10, 0.25),
-    Lambda_W = Lambda_W, S_W = c(0.10, 0.08, 0.05, 0.12),
+    Lambda_B = Lambda_B, psi_B = c(0.20, 0.15, 0.10, 0.25),
+    Lambda_W = Lambda_W, psi_W = c(0.10, 0.08, 0.05, 0.12),
     beta = matrix(0, Tn, 2), seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

@@ -14,7 +14,7 @@ test_that("extract_Sigma accepts canonical and legacy level names", {
     n_sites = 30, n_species = 1, n_traits = 4,
     mean_species_per_site = 1,
     Lambda_B = matrix(rnorm(8, sd = 0.6), 4, 2),
-    S_B = rep(0.3, 4)
+    psi_B = rep(0.3, 4)
   )
   fit <- suppressMessages(gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2) +
@@ -44,7 +44,7 @@ test_that("extract_communality accepts canonical and legacy level names", {
     n_sites = 30, n_species = 1, n_traits = 4,
     mean_species_per_site = 1,
     Lambda_B = matrix(rnorm(8, sd = 0.6), 4, 2),
-    S_B = rep(0.3, 4)
+    psi_B = rep(0.3, 4)
   )
   fit <- suppressMessages(gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2) +
@@ -70,7 +70,7 @@ test_that("extract_correlations accepts canonical and legacy tier names", {
     n_sites = 30, n_species = 1, n_traits = 4,
     mean_species_per_site = 1,
     Lambda_B = matrix(rnorm(8, sd = 0.6), 4, 2),
-    S_B = rep(0.3, 4)
+    psi_B = rep(0.3, 4)
   )
   fit <- suppressMessages(gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2) +

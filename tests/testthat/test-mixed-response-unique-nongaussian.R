@@ -75,7 +75,7 @@ test_that("recovery: pure Poisson + unique(0+trait|obs) recovers per-trait OLRE 
   expect_true(is.na(fit$tmb_obj$env$map$log_sigma_eps[[1]]),
               label = "log_sigma_eps mapped to NA for pure Poisson")
 
-  ## Pull recovered per-trait sigma2_e from S_W diagonal.
+  ## Pull recovered per-trait sigma2_e from psi_W diagonal.
   ## extract_Sigma returns a named vector; use unname() so expect_equal
   ## compares values only (not names vs unnamed expected vector).
   res <- suppressMessages(extract_Sigma(fit, level = "W", part = "unique"))

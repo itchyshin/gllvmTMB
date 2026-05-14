@@ -117,7 +117,7 @@
 #'   n_sites = 30, n_species = 4, n_traits = 3,
 #'   mean_species_per_site = 4,
 #'   Lambda_B = matrix(c(0.9, 0.4, -0.3), 3, 1),
-#'   S_B = c(0.20, 0.15, 0.10),
+#'   psi_B = c(0.20, 0.15, 0.10),
 #'   beta = matrix(0, 3, 2), seed = 1
 #' )
 #' fit <- gllvmTMB(

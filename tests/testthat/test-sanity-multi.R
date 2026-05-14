@@ -7,7 +7,7 @@ test_that("sanity_multi() reports the expected fields", {
     mean_species_per_site = 5,
     Lambda_B = matrix(c(0.8, 0.5, -0.2, 0.2, -0.4, 0.6),
                       nrow = 3, ncol = 2),
-    S_B = c(0.3, 0.3, 0.3),
+    psi_B = c(0.3, 0.3, 0.3),
     seed = 2025
   )
   fit <- gllvmTMB(
@@ -26,7 +26,7 @@ test_that("predict() with re_form ~ . differs from re_form ~ 0", {
     n_sites = 30, n_species = 8, n_traits = 3,
     mean_species_per_site = 4,
     Lambda_B = matrix(c(0.8, 0.5, -0.2), nrow = 3, ncol = 1),
-    S_B = c(0.3, 0.3, 0.3),
+    psi_B = c(0.3, 0.3, 0.3),
     seed = 1
   )
   fit <- gllvmTMB(

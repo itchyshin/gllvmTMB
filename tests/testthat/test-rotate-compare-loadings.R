@@ -9,7 +9,7 @@ make_rrB_fit <- function(seed = 1, d = 2, n_traits = 4) {
   sim <- simulate_site_trait(
     n_sites = 30, n_species = 1, n_traits = n_traits,
     mean_species_per_site = 1,
-    Lambda_B = Lam, S_B = rep(0, n_traits),
+    Lambda_B = Lam, psi_B = rep(0, n_traits),
     beta = matrix(0, n_traits, 2), seed = seed
   )
   fmla <- stats::as.formula(sprintf(

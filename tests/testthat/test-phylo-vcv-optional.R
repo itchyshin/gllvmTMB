@@ -16,7 +16,7 @@ make_phylo_data <- function(n_sp = 20, n_traits = 3, seed = 1) {
   Cphy <- ape::vcv(tree, corr = TRUE)
   sim <- simulate_site_trait(
     n_sites = 30, n_species = n_sp, n_traits = n_traits, mean_species_per_site = 5,
-    Lambda_B = matrix(0, n_traits, 1), S_B = rep(0.05, n_traits),
+    Lambda_B = matrix(0, n_traits, 1), psi_B = rep(0.05, n_traits),
     Cphy = Cphy, sigma2_phy = rep(0.5, n_traits),
     beta = matrix(0, n_traits, 2), seed = seed
   )

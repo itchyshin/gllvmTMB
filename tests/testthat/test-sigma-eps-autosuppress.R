@@ -10,7 +10,7 @@ make_per_row_data <- function(seed = 42, n = 50, Tn = 4) {
   ## n_species = 1, mean_species_per_site = 1 => one row per (site, trait)
   s <- gllvmTMB::simulate_site_trait(
     n_sites = n, n_species = 1, n_traits = Tn, mean_species_per_site = 1,
-    Lambda_B = Lambda, S_B = S_diag,
+    Lambda_B = Lambda, psi_B = S_diag,
     beta = matrix(0, Tn, 2), seed = seed
   )
   s$data
@@ -23,8 +23,8 @@ make_multi_row_data <- function(seed = 43, n_sites = 30, n_species = 8, Tn = 4) 
   s <- gllvmTMB::simulate_site_trait(
     n_sites = n_sites, n_species = n_species, n_traits = Tn,
     mean_species_per_site = 5,
-    Lambda_B = Lambda, S_B = c(0.20, 0.15, 0.10, 0.25),
-    Lambda_W = Lambda_W, S_W = c(0.10, 0.08, 0.05, 0.12),
+    Lambda_B = Lambda, psi_B = c(0.20, 0.15, 0.10, 0.25),
+    Lambda_W = Lambda_W, psi_W = c(0.10, 0.08, 0.05, 0.12),
     beta = matrix(0, Tn, 2), seed = seed
   )
   s$data

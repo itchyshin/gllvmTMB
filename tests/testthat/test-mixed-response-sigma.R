@@ -18,13 +18,13 @@ simulate_mixed_BW <- function(seed = 7) {
   Lambda_B <- matrix(c( 1.4,  1.1, -0.7,
                         0.4, -1.0,  1.0),
                      nrow = Tn, ncol = 2)
-  S_B <- c(0.20, 0.20, 0.20)
+  psi_B <- c(0.20, 0.20, 0.20)
   ## Generate the per-site latent contribution on the same scale for all
   ## three traits.
   Z_B   <- matrix(stats::rnorm(n_sites * 2L), nrow = n_sites, ncol = 2L)
   u_mat <- Z_B %*% t(Lambda_B)
   for (t in seq_len(Tn))
-    u_mat[, t] <- u_mat[, t] + stats::rnorm(n_sites, sd = sqrt(S_B[t]))
+    u_mat[, t] <- u_mat[, t] + stats::rnorm(n_sites, sd = sqrt(psi_B[t]))
   alpha <- c(0, 0, log(2))   # poisson trait gets a mean ~2
   rows <- list()
   for (s in seq_len(n_sites)) {
@@ -54,12 +54,12 @@ simulate_mixed_BW <- function(seed = 7) {
   dat$site_species <- factor(dat$site_species)
   dat$trait        <- factor(dat$trait, levels = paste0("trait_", 1:Tn))
   dat$family       <- factor(dat$family, levels = c("g", "b", "p"))
-  ## True latent-scale Sigma_B = Lambda Lambda^T + diag(S_B): traits on
+  ## True latent-scale Sigma_B = Lambda Lambda^T + diag(psi_B): traits on
   ## the same (latent) scale, cross-family correlations are well-defined.
-  Sigma_true <- Lambda_B %*% t(Lambda_B) + diag(S_B)
+  Sigma_true <- Lambda_B %*% t(Lambda_B) + diag(psi_B)
   R_true     <- cov2cor(Sigma_true)
   list(data = dat, Sigma_true = Sigma_true, R_true = R_true,
-       Lambda_B = Lambda_B, S_B = S_B)
+       Lambda_B = Lambda_B, psi_B = psi_B)
 }
 
 test_that("link_residual_per_trait() returns the expected per-family vector", {
@@ -110,7 +110,7 @@ test_that("extract_Sigma() with mixed families uses per-trait link residuals", {
   expect_true(all(abs(Md) < 1e-10))
 
   ## Per-trait diagonal recovery (latent scale): true diagonals are
-  ## diag(Lambda Lambda^T) + S_B; auto diagonal should be that plus v
+  ## diag(Lambda Lambda^T) + psi_B; auto diagonal should be that plus v
   ## (which equals what the engine reports + link residual).
   Sigma_true_total <- sim$Sigma_true
   diag_true_lat    <- diag(Sigma_true_total) + v

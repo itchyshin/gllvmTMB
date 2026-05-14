@@ -10,7 +10,7 @@ skip_if_not_glmmTMB <- function() {
 
 simulate_rr_diag <- function(n_sites = 60, n_species = 12, n_traits = 4,
                              mean_species_per_site = 6, n_predictors = 2,
-                             Lambda_B = NULL, S_B = NULL, seed = 2025) {
+                             Lambda_B = NULL, psi_B = NULL, seed = 2025) {
   simulate_site_trait(
     n_sites               = n_sites,
     n_species             = n_species,
@@ -18,7 +18,7 @@ simulate_rr_diag <- function(n_sites = 60, n_species = 12, n_traits = 4,
     mean_species_per_site = mean_species_per_site,
     n_predictors          = n_predictors,
     Lambda_B              = Lambda_B,
-    S_B                   = S_B,
+    psi_B                   = psi_B,
     sigma2_eps            = 0.5,
     seed                  = seed
   )
@@ -28,7 +28,7 @@ test_that("Stage 2: rr() alone matches glmmTMB log-likelihood exactly", {
   skip_if_not_glmmTMB()
   Lambda_B <- matrix(c(1.0, 0.7, -0.3, 0.5,
                        0.3, -0.5, 0.8, 0.2), nrow = 4, ncol = 2)
-  sim <- simulate_rr_diag(Lambda_B = Lambda_B, S_B = NULL, seed = 2025)
+  sim <- simulate_rr_diag(Lambda_B = Lambda_B, psi_B = NULL, seed = 2025)
   df <- sim$data
 
   fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
@@ -52,7 +52,7 @@ test_that("Stage 2: rr() alone matches glmmTMB log-likelihood exactly", {
 test_that("Stage 2: diag() alone matches glmmTMB log-likelihood exactly", {
   skip_if_not_glmmTMB()
   sim <- simulate_rr_diag(Lambda_B = NULL,
-                          S_B = c(0.5, 0.5, 0.5, 0.5),
+                          psi_B = c(0.5, 0.5, 0.5, 0.5),
                           seed = 2025)
   df <- sim$data
 
@@ -77,7 +77,7 @@ test_that("Stage 2: rr() + diag() on the same grouping matches glmmTMB", {
                        0.2, -0.4, 0.6, 0.1), nrow = 4, ncol = 2)
   sim <- simulate_rr_diag(n_sites = 80,
                           Lambda_B = Lambda_B,
-                          S_B = c(0.4, 0.4, 0.4, 0.4),
+                          psi_B = c(0.4, 0.4, 0.4, 0.4),
                           seed = 7)
   df <- sim$data
 
@@ -113,7 +113,7 @@ test_that("Stage 2: residual sigma is recovered well", {
                        0.2, -0.4, 0.6, 0.1), nrow = 4, ncol = 2)
   sim <- simulate_rr_diag(n_sites = 100,
                           Lambda_B = Lambda_B,
-                          S_B = c(0.3, 0.3, 0.3, 0.3),
+                          psi_B = c(0.3, 0.3, 0.3, 0.3),
                           seed = 11)
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2) + unique(0 + trait | site),

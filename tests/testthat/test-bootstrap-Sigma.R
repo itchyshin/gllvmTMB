@@ -9,14 +9,14 @@ make_tiny_fit <- function(seed = 1) {
   n_sites <- 30L; Tn <- 3L
   Lambda_B <- matrix(c(0.9, 0.4, -0.3,
                        0.0, 0.6,  0.2), Tn, 2)
-  S_B <- c(0.20, 0.15, 0.10)
+  psi_B <- c(0.20, 0.15, 0.10)
   Lambda_W <- matrix(c(0.4, 0.2, -0.1), Tn, 1)
-  S_W <- c(0.10, 0.08, 0.05)
+  psi_W <- c(0.10, 0.08, 0.05)
   s <- gllvmTMB::simulate_site_trait(
     n_sites = n_sites, n_species = 4, n_traits = Tn,
     mean_species_per_site = 4,
-    Lambda_B = Lambda_B, S_B = S_B,
-    Lambda_W = Lambda_W, S_W = S_W,
+    Lambda_B = Lambda_B, psi_B = psi_B,
+    Lambda_W = Lambda_W, psi_W = psi_W,
     beta = matrix(0, Tn, 2), seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

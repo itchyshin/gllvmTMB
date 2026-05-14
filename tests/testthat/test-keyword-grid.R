@@ -42,7 +42,7 @@ test_that("phylo_unique fits and stores per-trait variances on a diagonal Lambda
     Cphy = Cphy,
     sigma2_phy = c(0.4, 0.6, 0.3),
     Lambda_B = matrix(0, 3, 1),         # no other shared structure
-    S_B      = c(0.05, 0.05, 0.05),     # tiny non-phylo nuisance
+    psi_B      = c(0.05, 0.05, 0.05),     # tiny non-phylo nuisance
     seed     = 11
   )
   df <- sim$data
@@ -187,7 +187,7 @@ test_that("phylo_unique appears in extract_Omega() at the phy tier", {
     Cphy = Cphy,
     sigma2_phy = c(0.4, 0.6, 0.3),
     Lambda_B = matrix(0, 3, 1),
-    S_B      = c(0.05, 0.05, 0.05),
+    psi_B      = c(0.05, 0.05, 0.05),
     seed     = 11
   )
   df <- sim$data

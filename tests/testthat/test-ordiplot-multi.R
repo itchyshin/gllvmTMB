@@ -23,7 +23,7 @@ make_multi_rrB <- function(seed = 1, d = 2, n_traits = 3) {
   sim <- simulate_site_trait(
     n_sites = 25, n_species = 5, n_traits = n_traits,
     mean_species_per_site = 3,
-    Lambda_B = Lam, S_B = rep(0.3, n_traits), seed = seed
+    Lambda_B = Lam, psi_B = rep(0.3, n_traits), seed = seed
   )
   fmla <- stats::as.formula(sprintf(
     "value ~ 0 + trait + latent(0 + trait | site, d = %d)",

@@ -7,7 +7,7 @@ test_that("tidy(fixed) returns a coefficient table with SEs and a link column", 
     mean_species_per_site = 5,
     Lambda_B = matrix(c(1.0, 0.7, -0.3,
                         0.3, -0.5, 0.8), nrow = 3, ncol = 2),
-    S_B = c(0.3, 0.3, 0.3),
+    psi_B = c(0.3, 0.3, 0.3),
     seed = 2025
   )
   fit <- gllvmTMB(
@@ -143,7 +143,7 @@ test_that("tidy(ran_pars) returns rows for active covstructs", {
     mean_species_per_site = 5,
     Lambda_B = matrix(c(1.0, 0.7, -0.3,
                         0.3, -0.5, 0.8), nrow = 3, ncol = 2),
-    S_B = c(0.3, 0.3, 0.3),
+    psi_B = c(0.3, 0.3, 0.3),
     seed = 7
   )
   fit <- gllvmTMB(

@@ -8,14 +8,14 @@ make_fit_BW_diag <- function(seed = 1) {
   n_sites <- 50; Tn <- 4; n_per_site <- 5
   Lambda_B <- matrix(c(1.0, 0.5, -0.4, 0.3,
                        0.0, 0.8,  0.4, -0.2), Tn, 2)
-  S_B <- c(0.20, 0.15, 0.10, 0.25)
+  psi_B <- c(0.20, 0.15, 0.10, 0.25)
   Lambda_W <- matrix(c(0.4, 0.2, -0.1, 0.3), Tn, 1)
-  S_W <- c(0.10, 0.08, 0.05, 0.12)
+  psi_W <- c(0.10, 0.08, 0.05, 0.12)
   s <- gllvmTMB::simulate_site_trait(
     n_sites = n_sites, n_species = 8, n_traits = Tn,
     mean_species_per_site = n_per_site,
-    Lambda_B = Lambda_B, S_B = S_B,
-    Lambda_W = Lambda_W, S_W = S_W,
+    Lambda_B = Lambda_B, psi_B = psi_B,
+    Lambda_W = Lambda_W, psi_W = psi_W,
     beta = matrix(0, Tn, 2), seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -33,7 +33,7 @@ make_fit_B_rr_only <- function(seed = 2) {
   s <- gllvmTMB::simulate_site_trait(
     n_sites = n_sites, n_species = 1, n_traits = Tn,
     mean_species_per_site = 1,
-    Lambda_B = Lambda, S_B = rep(0, Tn),
+    Lambda_B = Lambda, psi_B = rep(0, Tn),
     beta = matrix(0, Tn, 2), seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

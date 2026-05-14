@@ -10,7 +10,7 @@ make_tiny_B_fit <- function(seed = 42L) {
     n_traits             = 3L,
     mean_species_per_site = 4L,
     Lambda_B             = matrix(c(0.9, 0.4, -0.3), 3L, 1L),
-    S_B                  = c(0.20, 0.15, 0.10),
+    psi_B                  = c(0.20, 0.15, 0.10),
     beta                 = matrix(0, 3L, 2L),
     seed                 = seed
   )
@@ -100,7 +100,7 @@ test_that("confint(fit, parm='Sigma_B') errors for a gllvmTMB_multi fit without 
     n_sites = 25L, n_species = 4L, n_traits = 2L,
     mean_species_per_site = 4L,
     Lambda_W = matrix(c(0.5, -0.3), 2L, 1L),
-    S_W = c(0.10, 0.08),
+    psi_W = c(0.10, 0.08),
     beta = matrix(0, 2L, 2L), seed = 7L
   )
   fit_W_only <- suppressMessages(suppressWarnings(

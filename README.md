@@ -110,7 +110,7 @@ sim <- simulate_site_trait(
   n_traits = 3,
   mean_species_per_site = 3,
   Lambda_B = matrix(c(0.8, 0.4, -0.3), ncol = 1),
-  S_B = c(0.2, 0.3, 0.2),
+  psi_B = c(0.2, 0.3, 0.2),
   seed = 1
 )
 

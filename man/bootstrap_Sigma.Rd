@@ -109,7 +109,7 @@ set.seed(1)
 s <- simulate_site_trait(n_sites = 30, n_species = 1, n_traits = 3,
                          mean_species_per_site = 1,
                          Lambda_B = matrix(c(1, .5, -.4), 3, 1),
-                         S_B = c(.2, .15, .1))
+                         psi_B = c(.2, .15, .1))
 fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1) +
                            unique(0 + trait | site),
                 data = s$data)

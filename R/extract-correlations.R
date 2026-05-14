@@ -103,7 +103,7 @@
 #'   n_sites = 80, n_species = 6, n_traits = 4,
 #'   mean_species_per_site = 4,
 #'   Lambda_B = matrix(c(0.9, 0.4, -0.3, 0.5), 4, 1),
-#'   S_B = c(0.4, 0.3, 0.5, 0.2)
+#'   psi_B = c(0.4, 0.3, 0.5, 0.2)
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +

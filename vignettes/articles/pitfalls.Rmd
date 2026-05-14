@@ -84,7 +84,7 @@ sim <- simulate_site_trait(
   mean_species_per_site = 1,
   Lambda_B = matrix(c(1.0, 0.4, -0.3,
                       0.0, 0.8,  0.5), 3, 2),
-  S_B  = rep(0, 3), beta = matrix(0, 3, 2), seed = 1
+  psi_B  = rep(0, 3), beta = matrix(0, 3, 2), seed = 1
 )
 fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
                 data = sim$data)
@@ -111,27 +111,27 @@ $\hat{\boldsymbol\Sigma}_{\text{unit}}$ diagonals, even with hundreds of sites.
 **Diagnosis.** `simulate_site_trait()` ships with sensible defaults
 that include random environmental fixed effects
 ($\beta_{tk} \sim \mathcal{N}(0, 0.5^2)$) and a per-trait diagonal
-$S_B$. If your fitted model has no environmental term and no
+$psi_B$. If your fitted model has no environmental term and no
 `unique(0 + trait | site)`, that variance has nowhere to go and gets
 absorbed into $\hat{\boldsymbol\Lambda}_B$. This was a real harness
 bug caught during simulation work.
 
 ```{r pitfall-3}
-# CLEAN latent()-only DGP: explicitly switch off beta and S_B
+# CLEAN latent()-only DGP: explicitly switch off beta and psi_B
 sim_clean <- simulate_site_trait(
   n_sites = 50, n_species = 1, n_traits = 3,
   mean_species_per_site = 1,
   Lambda_B = matrix(c(1.0, 0.4, -0.3,
                       0.0, 0.8,  0.5), 3, 2),
   beta = matrix(0, 3, 2),   # <-- no env effects
-  S_B  = rep(0, 3),         # <-- no diagonal trait variance
+  psi_B  = rep(0, 3),         # <-- no diagonal trait variance
   seed = 1
 )
 ```
 
 **Rule of thumb.** *When simulating to test recovery of a latent()-only
 fit, set `beta = matrix(0, n_traits, n_predictors)` and
-`S_B = rep(0, n_traits)`. If you want those components in the DGP,
+`psi_B = rep(0, n_traits)`. If you want those components in the DGP,
 include them in the formula too: `+ (0 + trait):env_1` and/or
 `+ unique(0 + trait | site)`.*
 

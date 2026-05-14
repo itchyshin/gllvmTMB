@@ -44,7 +44,5 @@ gllvmTMB_diagnose(fit)
 }
 \seealso{
 \code{\link[=sanity_multi]{sanity_multi()}}, \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}},
-\code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_communality]{extract_communality()}},
-\code{\link[=compare_dep_vs_two_U]{compare_dep_vs_two_U()}} / \code{\link[=compare_indep_vs_two_U]{compare_indep_vs_two_U()}} for
-identifiability cross-checks.
+\code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_communality]{extract_communality()}}.
 }

@@ -292,7 +292,7 @@ package author, written against the TMB API.
   runs in seconds-to-minutes rather than minutes-to-hours.
 
 A full scope comparison and decision matrix lives in
-[`docs/design/04-sister-package-scope.md`](docs/design/04-sister-package-scope.md).
+[`docs/design/04-sister-package-scope.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/04-sister-package-scope.md).
 
 ## Roadmap
 

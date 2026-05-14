@@ -341,7 +341,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## When ONLY phylo_unique is present, the engine still works (use_phylo_rr
   ## is FALSE; only the diag block fires). When BOTH are present, they
   ## co-fit as separate components: Sigma_phy = Lambda_phy Lambda_phy^T +
-  ## Psi_phy. This is the manuscript-aligned two-U PGLLVM decomposition
+  ## Psi_phy. This is the manuscript-aligned paired PGLLVM decomposition
   ## (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et al.
   ## 2025).
   phy_idx        <- which(kinds == "phylo_rr")
@@ -1803,10 +1803,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       d_phy        = d_phy,
       d_spde_lv    = d_spde_lv,
       mesh         = mesh,
-      ## Phylogenetic inputs are stored on the fit so post-fit diagnostics
-      ## (e.g. compare_dep_vs_two_U / compare_indep_vs_two_U) can refit
-      ## the same data with different covstruct intent without requiring
-      ## the user to pass the tree/VCV again.
+      ## Phylogenetic inputs are stored on the fit so post-fit refits
+      ## (e.g. fitting the same data with a different covstruct intent)
+      ## do not require the user to pass the tree/VCV again.
       phylo_vcv    = phylo_vcv,
       phylo_tree   = phylo_tree,
       X_fix        = X_fix,

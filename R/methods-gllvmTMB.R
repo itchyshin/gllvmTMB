@@ -115,7 +115,7 @@
 ## NOTE: phylo_unique (LEGACY-alone path), spatial_scalar, and spatial_latent
 ## are sub-flavours of phylo_rr / spde respectively (same engine, different
 ## parameterisation). When phylo_unique co-occurs with phylo_latent, it
-## populates a separate `phylo_diag` engine slot (two-U PGLLVM); both
+## populates a separate `phylo_diag` engine slot (paired phylo decomposition); both
 ## phylo_rr and phylo_diag are printed as their respective canonical
 ## keywords.
 ##

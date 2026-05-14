@@ -1,7 +1,8 @@
 # Phylogenetic GLLVM Contract
 
 This note records the current phylogenetic stacked-trait contract
-after the long/wide reader sweep and the "two-U" naming decision.
+after the long/wide reader sweep and the 2026-05-14 PIC / "two-U"
+retirement decision (see `docs/dev-log/decisions.md`).
 It adapts the useful parts of the legacy phylogenetic design notes to
 the current package vocabulary.
 
@@ -48,11 +49,11 @@ Sigma_non = Lambda_non Lambda_non^T + Psi_non
 `Psi_phy` and `Psi_non` are diagonal matrices of trait-specific
 unique variance (the Greek letter Psi, matching the factor-
 analysis / SEM convention; see `docs/dev-log/decisions.md`
-2026-05-14 notation reversal). The legacy nickname "two-U" may
-remain in file names, function names, and task labels, but
-public math uses `\boldsymbol\Psi` / `\psi_t` -- bold capital
-Psi for matrices, italic lowercase psi (subscripted by trait)
-for the per-trait scalars from `extract_phylo_signal()`.
+2026-05-14 notation reversal). The legacy "two-U" task label has
+been retired entirely (2026-05-14 PIC / "two-U" retirement
+decision); public math uses `\boldsymbol\Psi` / `\psi_t` -- bold
+capital Psi for matrices, italic lowercase psi (subscripted by
+trait) for the per-trait scalars from `extract_phylo_signal()`.
 
 When `Psi_phy` is not separately identifiable from
 `Lambda_phy Lambda_phy^T` (small `n_species`, weak phylogenetic
@@ -98,10 +99,10 @@ explicit trait-stacked form.
   diagonal vector `s_phy`.
 - `extract_Sigma(fit, level = "phy", part = "total")` returns
   `Sigma_phy`.
-- `compare_dep_vs_two_U()` refits with `phylo_dep + dep` and compares
-  total `Sigma_phy` and `Sigma_non`.
-- `compare_indep_vs_two_U()` refits with `phylo_indep + indep` and
-  compares only per-trait diagonal totals.
+- Joint-vs-unstructured and PIC-based cross-checks were retired
+  2026-05-14 (PIC / "two-U" retirement decision). The canonical
+  diagnostic path for paired phylogenetic identifiability is now
+  `check_identifiability()` (Phase 1b deliverable).
 
 ## Identifiability Guidance
 

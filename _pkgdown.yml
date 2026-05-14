@@ -119,8 +119,6 @@ reference:
     contents:
     - sanity_multi
     - gllvmTMB_diagnose
-    - compare_dep_vs_two_U
-    - compare_indep_vs_two_U
     - bootstrap_Sigma
     - tmbprofile_wrapper
 

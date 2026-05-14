@@ -339,10 +339,10 @@ $$
 In the `gllvmTMB` formula:
 
 - `latent(0 + trait | individual, d = 2)` fits $\boldsymbol{\Lambda}_B$
-  and the individual scores $\mathbf{U}_B$.
+  and the individual scores $\mathbf{Z}_B$.
 - `unique(0 + trait | individual)` fits the diagonal $\boldsymbol{\Psi}_B$.
 - `latent(0 + trait | session_id, d = 1)` fits $\boldsymbol{\Lambda}_W$
-  and the session scores $\mathbf{U}_W$.
+  and the session scores $\mathbf{Z}_W$.
 - `unique(0 + trait | session_id)` fits the diagonal $\boldsymbol{\Psi}_W$.
 
 The `unit = "individual"` argument tells the engine which column

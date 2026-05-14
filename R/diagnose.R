@@ -24,9 +24,7 @@
 #'   and `hints` (character vector of suggested actions).
 #' @export
 #' @seealso [sanity_multi()], [suggest_lambda_constraint()],
-#'   [extract_Sigma()], [extract_communality()],
-#'   [compare_dep_vs_two_U()] / [compare_indep_vs_two_U()] for
-#'   identifiability cross-checks.
+#'   [extract_Sigma()], [extract_communality()].
 #' @examples
 #' \dontrun{
 #' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2), data = dat)

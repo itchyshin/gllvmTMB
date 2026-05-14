@@ -50,12 +50,11 @@ vector of unique variances), \code{level}, \code{part}, \code{note}.
 }
 \description{
 Implements the decomposition
-\deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\mathbf S_\text{tier}}_{\text{unique (unique)}},}
+\deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\boldsymbol\Psi_\text{tier}}_{\text{unique (unique)}},}
 where \eqn{\boldsymbol\Lambda} comes from the \code{latent()} term at that tier
 and \eqn{\boldsymbol\Psi} comes from the corresponding \code{unique()} term. This is the
 same decomposition the behavioural-syndromes / phenotypic-integration
-literature uses (Bartholomew et al. 2011; Nakagawa et al. \emph{in prep}),
-equations 15, 22, and 30 of the methods paper.
+literature uses (Bartholomew et al. 2011; Nakagawa et al. \emph{in prep}).
 }
 \details{
 \subsection{Why both \code{latent()} and \code{unique()} matter}{
@@ -93,7 +92,7 @@ reduced-rank, rotation-invariant component. Diagonals are
 \eqn{\sum_\ell \Lambda_{t\ell}^2}; these are \emph{not} the trait
 variances, they are the \emph{shared} part of the trait variances.}
 \item{\code{"unique"}}{
-\eqn{\mathbf S_\text{tier}} only -- the trait-specific unique
+\eqn{\boldsymbol\Psi_\text{tier}} only -- the trait-specific unique
 variances, returned as a length-\code{T} named numeric vector (the
 diagonal of \eqn{\boldsymbol\Psi}).}
 }

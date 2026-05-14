@@ -47,7 +47,7 @@ extract_Sigma_W <- function(fit) {
   list(Sigma_W = out$Sigma, R_W = out$R)
 }
 
-#' Site / individual-level ICC per trait (manuscript Eq. 24)
+#' Site / individual-level ICC per trait
 #'
 #' \deqn{\mathrm{ICC}_t \;=\; \frac{(\boldsymbol\Sigma_B)_{tt}}{(\boldsymbol\Sigma_B)_{tt} + (\boldsymbol\Sigma_W)_{tt}}.}
 #'
@@ -86,9 +86,9 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
   icc
 }
 
-#' Communality of each trait (manuscript Eq. 32)
+#' Communality of each trait
 #'
-#' \deqn{c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + S_{tt}}.}
+#' \deqn{c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}}.}
 #'
 #' The proportion of trait \eqn{t}'s variance that is *shared* with the
 #' other traits via the latent factors. Bounded between 0 and 1. Calls
@@ -163,7 +163,7 @@ extract_communality <- function(fit,
   method <- match.arg(method)
   rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
   if (!rr_used) return(NULL)
-  ## Pull shared (LL^T) and total (LL^T + S [+ link residual]) via extract_Sigma.
+  ## Pull shared (LL^T) and total (LL^T + Psi [+ link residual]) via extract_Sigma.
   ## We've already done the boundary normalisation here, so set
   ## `.skip_warn = TRUE` to prevent extract_Sigma from re-warning on the
   ## same legacy alias.

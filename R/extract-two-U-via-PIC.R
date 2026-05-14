@@ -236,7 +236,7 @@
   list(Sphy = Sphy, Snon = Snon)
 }
 
-#' Helper: factor-analyse a covariance matrix into Lambda * Lambda^T + S
+#' Helper: factor-analyse a covariance matrix into Lambda * Lambda^T + Psi
 #'
 #' Wraps `stats::factanal()` in a way that's robust to rank-deficient or
 #' near-singular Sigma. Returns Lambda (T x d) and U (length T). When
@@ -302,8 +302,8 @@
 #' plus a per-trait Pagel's lambda mixed-model fit
 #' (`nlme::gls` + `ape::corPagel`) to identify the four components of
 #' the paired phylogenetic decomposition:
-#' \deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \mathbf S_\text{phy}, \qquad
-#' \boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \mathbf S_\text{non}.}
+#' \deqn{\boldsymbol\Sigma_\text{phy} = \boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^\top + \boldsymbol\Psi_\text{phy}, \qquad
+#' \boldsymbol\Sigma_\text{non} = \boldsymbol\Lambda_\text{non}\boldsymbol\Lambda_\text{non}^\top + \boldsymbol\Psi_\text{non}.}
 #'
 #' @details
 #'
@@ -404,7 +404,7 @@
 #'   \item{`Lambda_phy`}{T x d_phy loading matrix.}
 #'   \item{`U_phy`}{Length-T named vector of trait-specific phylogenetic
 #'     unique variances (legacy component name for the diagonal of
-#'     \eqn{\mathbf S_\text{phy}}).}
+#'     \eqn{\boldsymbol\Psi_\text{phy}}).}
 #'   \item{`Lambda_non`, `U_non`}{Analogous for the non-phylogenetic
 #'     tier.}
 #'   \item{`per_trait`}{Data frame with one row per trait, containing
@@ -506,7 +506,7 @@ extract_two_U_via_PIC <- function(fit, tree, d_phy = 1L, d_non = 1L) {
 #' @details
 #' Returns per-component RMSE between PIC-MOM and joint estimates of
 #' \eqn{\boldsymbol\Sigma_\text{phy}}, \eqn{\boldsymbol\Sigma_\text{non}},
-#' \eqn{\mathbf S_\text{phy}}, and \eqn{\mathbf S_\text{non}}. The
+#' \eqn{\boldsymbol\Psi_\text{phy}}, and \eqn{\boldsymbol\Psi_\text{non}}. The
 #' component-wise RMSE is the Frobenius norm of (PIC - joint), divided
 #' by sqrt(T*T) for matrices and sqrt(T) for vectors. The `flag` is
 #' `TRUE` when any RMSE exceeds `threshold` times the magnitude of the

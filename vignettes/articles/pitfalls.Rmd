@@ -193,8 +193,8 @@ al. *in prep*; see the
 four components:
 
 $$
-\Sigma_{\text{phy}} = \Lambda_{\text{phy}}\Lambda_{\text{phy}}^{\!\top} + S_{\text{phy}}, \qquad
-\Sigma_{\text{non}} = \Lambda_{\text{non}}\Lambda_{\text{non}}^{\!\top} + S_{\text{non}}.
+\Sigma_{\text{phy}} = \Lambda_{\text{phy}}\Lambda_{\text{phy}}^{\!\top} + \boldsymbol\Psi_{\text{phy}}, \qquad
+\Sigma_{\text{non}} = \Lambda_{\text{non}}\Lambda_{\text{non}}^{\!\top} + \boldsymbol\Psi_{\text{non}}.
 $$
 
 ```{r pitfall-5, eval = requireNamespace("ape", quietly = TRUE)}
@@ -223,11 +223,11 @@ strong phylogenetic signal. Reserve `phylo_scalar()` for the
 simpler case where a single shared phylogenetic variance per trait
 is enough and trait correlations are the inferential target. The
 four-component form is what `extract_phylo_signal()` decomposes
-into $H^2 + C^2_{\text{non}} + \Psi = 1$; see
+into $H^2 + C^2_{\text{non}} + \psi^2 = 1$; see
 [phylogenetic-gllvm.html](phylogenetic-gllvm.html) for the
 worked example.*
 
-*When the phylogenetic uniqueness component $S_{\text{phy}}$ is
+*When the phylogenetic uniqueness component $\boldsymbol\Psi_{\text{phy}}$ is
 not separately identifiable from $\Lambda_{\text{phy}}
 \Lambda_{\text{phy}}^{\!\top}$ -- common in small `n_species`,
 weak phylogenetic signal, or single-replicate-per-tip data --

@@ -2,7 +2,7 @@
 % Please edit documentation in R/extractors.R
 \name{extract_communality}
 \alias{extract_communality}
-\title{Communality of each trait (manuscript Eq. 32)}
+\title{Communality of each trait}
 \usage{
 extract_communality(
   fit,
@@ -46,7 +46,7 @@ When \code{ci = TRUE}: a data frame with columns \code{trait}, \code{tier}, \cod
 \code{lower}, \code{upper}, \code{method}.
 }
 \description{
-\deqn{c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + S_{tt}}.}
+\deqn{c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}}.}
 }
 \details{
 The proportion of trait \eqn{t}'s variance that is \emph{shared} with the

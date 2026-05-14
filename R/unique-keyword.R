@@ -12,14 +12,14 @@
 #' together implements the standard psychometric / behavioural-syndrome
 #' decomposition
 #'
-#' \deqn{\Sigma_g = \Lambda \Lambda^\top + S,}
+#' \deqn{\boldsymbol\Sigma_g = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi,}
 #'
 #' where \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} is the
 #' low-rank shared component (from `latent()`) and \eqn{\boldsymbol\Psi} is a
 #' diagonal matrix of trait-specific unique variances (from `unique()`).
 #' This is the decomposition every published GLLVM treatment uses
 #' (Bartholomew et al. 2011; McGillycuddy et al. 2025; Nakagawa et al.
-#' *in prep*, Eq. 30).
+#' *in prep*).
 #'
 #' ## Why you almost always want `unique()` for Gaussian / lognormal / Gamma fits
 #'
@@ -91,8 +91,8 @@
 #'
 #' ## Phylogenetic + non-phylogenetic species-level models
 #'
-#' For a species-level fit with phylogeny (Nakagawa et al. *in prep*,
-#' Eq. 19), the natural three-component decomposition is
+#' For a species-level fit with phylogeny (Nakagawa et al. *in prep*),
+#' the natural three-component decomposition is
 #'
 #' \deqn{\Omega = \Sigma_\mathrm{phy} + \Sigma_\mathrm{non,shared} + U.}
 #'

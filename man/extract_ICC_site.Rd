@@ -2,7 +2,7 @@
 % Please edit documentation in R/extractors.R
 \name{extract_ICC_site}
 \alias{extract_ICC_site}
-\title{Site / individual-level ICC per trait (manuscript Eq. 24)}
+\title{Site / individual-level ICC per trait}
 \usage{
 extract_ICC_site(fit, link_residual = c("auto", "none"))
 }

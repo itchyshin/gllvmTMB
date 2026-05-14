@@ -45,13 +45,13 @@ Each covariance can use the same `latent() + unique()` decomposition:
 
 $$
 \Sigma_{\mathrm{phy}} =
-\Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^T + S_{\mathrm{phy}},
+\Lambda_{\mathrm{phy}}\Lambda_{\mathrm{phy}}^T + \boldsymbol\Psi_{\mathrm{phy}},
 \qquad
 \Sigma_{\mathrm{non}} =
-\Lambda_{\mathrm{non}}\Lambda_{\mathrm{non}}^T + S_{\mathrm{non}}.
+\Lambda_{\mathrm{non}}\Lambda_{\mathrm{non}}^T + \boldsymbol\Psi_{\mathrm{non}}.
 $$
 
-Here `Lambda` is the shared low-rank structure and `S` is the
+Here `Lambda` is the shared low-rank structure and `Psi` is the
 trait-specific diagonal variance. The old project nickname "two-U"
 means this paired phylogenetic and non-phylogenetic decomposition; the
 math in current gllvmTMB uses `S` / `s` for the unique diagonal.

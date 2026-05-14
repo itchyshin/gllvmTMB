@@ -134,7 +134,7 @@
   )
 }
 
-#' Extract joint two-U Sigma_phy and Sigma_non implied by Lambda Lambda^T + S
+#' Extract joint two-U Sigma_phy and Sigma_non implied by Lambda Lambda^T + Psi
 #'
 #' For Sigma_phy: this is the implied phylogenetic covariance from the
 #' joint fit, computed as `Lambda_phy %*% t(Lambda_phy) + Psi_phy`.
@@ -319,7 +319,7 @@
 #' non-phylogenetic trait covariances (`phylo_dep + dep`) using the same
 #' engine, family, link, and unit / cluster grouping as the supplied
 #' two-U fit. Compares the joint two-U fit's implied
-#' \eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \mathbf S_{\mathrm{phy}}}
+#' \eqn{\boldsymbol\Sigma_{\mathrm{phy}} = \boldsymbol\Lambda_{\mathrm{phy}}\boldsymbol\Lambda_{\mathrm{phy}}^\top + \boldsymbol\Psi_{\mathrm{phy}}}
 #' (and the analogous \eqn{\boldsymbol\Sigma_{\mathrm{non}}}) against
 #' the unstructured baseline. Per-component RMSE plus a `flag` field
 #' (`TRUE` when any component disagrees beyond `threshold`) identifies
@@ -342,7 +342,7 @@
 #'     answers Level 2 directly. The two estimators target the SAME
 #'     total covariance with different parameterisations, so agreement
 #'     is the identifiability check.}
-#'   \item{Level 3: split into Lambda Lambda^T + S?}{Diagnostic
+#'   \item{Level 3: split into Lambda Lambda^T + Psi?}{Diagnostic
 #'     does not test Level 3 directly; Level 2 agreement is the
 #'     pre-requisite for Level 3 to be meaningful.}
 #' }

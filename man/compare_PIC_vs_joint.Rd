@@ -56,7 +56,7 @@ family the engine supports.
 
 Returns per-component RMSE between PIC-MOM and joint estimates of
 \eqn{\boldsymbol\Sigma_\text{phy}}, \eqn{\boldsymbol\Sigma_\text{non}},
-\eqn{\mathbf S_\text{phy}}, and \eqn{\mathbf S_\text{non}}. The
+\eqn{\boldsymbol\Psi_\text{phy}}, and \eqn{\boldsymbol\Psi_\text{non}}. The
 component-wise RMSE is the Frobenius norm of (PIC - joint), divided
 by sqrt(T*T) for matrices and sqrt(T) for vectors. The \code{flag} is
 \code{TRUE} when any RMSE exceeds \code{threshold} times the magnitude of the

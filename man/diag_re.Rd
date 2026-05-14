@@ -20,14 +20,14 @@ together implements the standard psychometric / behavioural-syndrome
 decomposition
 }
 \details{
-\deqn{\Sigma_g = \Lambda \Lambda^\top + S,}
+\deqn{\boldsymbol\Sigma_g = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi,}
 
 where \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} is the
 low-rank shared component (from \code{latent()}) and \eqn{\boldsymbol\Psi} is a
 diagonal matrix of trait-specific unique variances (from \code{unique()}).
 This is the decomposition every published GLLVM treatment uses
 (Bartholomew et al. 2011; McGillycuddy et al. 2025; Nakagawa et al.
-\emph{in prep}, Eq. 30).
+\emph{in prep}).
 \subsection{Why you almost always want \code{unique()} for Gaussian / lognormal / Gamma fits}{
 
 If your formula has only \code{latent(0 + trait | site, d = K)} and no
@@ -102,8 +102,8 @@ and \eqn{\boldsymbol\Sigma_W = \boldsymbol\Lambda_W \boldsymbol\Lambda_W^\top + 
 
 \subsection{Phylogenetic + non-phylogenetic species-level models}{
 
-For a species-level fit with phylogeny (Nakagawa et al. \emph{in prep},
-Eq. 19), the natural three-component decomposition is
+For a species-level fit with phylogeny (Nakagawa et al. \emph{in prep}),
+the natural three-component decomposition is
 
 \deqn{\Omega = \Sigma_\mathrm{phy} + \Sigma_\mathrm{non,shared} + U.}
 

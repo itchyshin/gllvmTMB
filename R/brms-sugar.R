@@ -595,9 +595,9 @@ phylo_scalar <- function(species, tree = NULL, vcv = NULL) {
 #'   \item{**Paired with `phylo_latent()`** (two-U PGLLVM, recommended)}{
 #'     When written together with `phylo_latent(species, d = K)`, the
 #'     two terms co-fit as **separate covariance components**:
-#'     \deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\mathbf S_\text{phy}}_{\text{per-trait unique}}.}
+#'     \deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\boldsymbol\Psi_\text{phy}}_{\text{per-trait unique}}.}
 #'     \eqn{\boldsymbol\Lambda_\text{phy}} is filled by the rank-K shared
-#'     latent factors; \eqn{\mathbf S_\text{phy}} carries
+#'     latent factors; \eqn{\boldsymbol\Psi_\text{phy}} carries
 #'     the per-trait phylogenetic variances not absorbed by the K shared
 #'     axes. This is the manuscript-aligned PGLLVM decomposition
 #'     (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et
@@ -1010,7 +1010,7 @@ indep <- function(formula) {
 #' Use `phylo_indep()` for an explicit marginal-only phylogenetic fit
 #' (no cross-trait phylogenetic decomposition). Use `phylo_latent()`
 #' paired with `phylo_unique()` for the paired phylogenetic decomposition
-#' \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \mathbf S_{\text{phy}}}.
+#' \eqn{\boldsymbol\Sigma_{\text{phy}} = \boldsymbol\Lambda_{\text{phy}}\boldsymbol\Lambda_{\text{phy}}^\top + \boldsymbol\Psi_{\text{phy}}}.
 #'
 #' ## Mutual exclusion with `phylo_latent()`
 #'

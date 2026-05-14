@@ -138,8 +138,8 @@ extract_residual_split <- function(fit) {
 #'
 #' Sum of \eqn{\boldsymbol\Sigma_\text{tier}} matrices across the user-
 #' selected tiers. The canonical PGLLVM use case is the species-level
-#' three-piece decomposition (Nakagawa et al. *in prep*, Eq. 19):
-#' \deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \mathbf S_\text{non}.}
+#' three-piece decomposition (Nakagawa et al. *in prep*):
+#' \deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \boldsymbol\Psi_\text{non}.}
 #' Here `tiers = c("phy", "B")` returns
 #' \eqn{\boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{B}} where
 #' \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^{\!\top} + \boldsymbol\Psi_B}
@@ -148,7 +148,7 @@ extract_residual_split <- function(fit) {
 #' For two-level behavioural-syndrome fits, `tiers = c("B", "W")`
 #' returns the **phenotypic** trait covariance
 #' \eqn{\boldsymbol\Sigma_P = \boldsymbol\Sigma_B + \boldsymbol\Sigma_W}
-#' (Nakagawa et al. *in prep*, Eq. 28).
+#' (Nakagawa et al. *in prep*).
 #'
 #' @param fit A `gllvmTMB_multi` fit.
 #' @param tiers Character vector. Subset of `c("B", "W", "phy")`. Default
@@ -245,15 +245,15 @@ extract_Omega <- function(fit,
   out
 }
 
-#' Phylogenetic-signal proportions per trait (PGLLVM Eq. 23-25)
+#' Phylogenetic-signal proportions per trait
 #'
 #' For a phylogenetic species-level GLLVM, decomposes each trait's
 #' between-species latent variance into three additive components that
 #' sum to one:
-#' \deqn{H_t^2 \;=\; \frac{[\boldsymbol\Sigma_\text{phy}]_{tt}}{V_{\eta,t}}, \qquad C^2_{\text{non},t} \;=\; \frac{[\boldsymbol\Sigma_\text{non,shared}]_{tt}}{V_{\eta,t}}, \qquad \Psi_t \;=\; \frac{[\mathbf S_\text{non}]_{tt}}{V_{\eta,t}},}
-#' where \eqn{V_{\eta,t} = [\boldsymbol\Sigma_\text{phy}]_{tt} + [\boldsymbol\Sigma_\text{non,shared}]_{tt} + [\mathbf S_\text{non}]_{tt}}
+#' \deqn{H_t^2 \;=\; \frac{[\boldsymbol\Sigma_\text{phy}]_{tt}}{V_{\eta,t}}, \qquad C^2_{\text{non},t} \;=\; \frac{[\boldsymbol\Sigma_\text{non,shared}]_{tt}}{V_{\eta,t}}, \qquad \psi_t \;=\; \frac{[\boldsymbol\Psi_\text{non}]_{tt}}{V_{\eta,t}},}
+#' where \eqn{V_{\eta,t} = [\boldsymbol\Sigma_\text{phy}]_{tt} + [\boldsymbol\Sigma_\text{non,shared}]_{tt} + [\boldsymbol\Psi_\text{non}]_{tt}}
 #' is the total between-species latent variance for trait \eqn{t}
-#' (Nakagawa et al. *in prep*, PGLLVM paper Eq. 19, 22-25).
+#' (Nakagawa et al. *in prep*).
 #'
 #' Interpretation:
 #' \describe{
@@ -261,18 +261,18 @@ extract_Omega <- function(fit,
 #'     species latent variance attributable to phylogenetically structured
 #'     variation ("evolutionary conservatism"). When the model includes
 #'     both `phylo_latent()` and `phylo_unique()`, \eqn{\boldsymbol\Sigma_\text{phy}}
-#'     is the sum \eqn{\boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top} + \mathbf S_\text{phy}}
+#'     is the sum \eqn{\boldsymbol\Lambda_\text{phy} \boldsymbol\Lambda_\text{phy}^{\!\top} + \boldsymbol\Psi_\text{phy}}
 #'     and \eqn{H_t^2} reflects the *total* phylogenetic variance.}
 #'   \item{\eqn{C^2_{\text{non},t}}}{non-phylogenetic communality —
 #'     proportion of variance attributable to shared non-phylogenetic
 #'     axes ("coordinated tip-level lability" across traits).}
-#'   \item{\eqn{\Psi_t}}{uniqueness — proportion of variance not captured
+#'   \item{\eqn{\psi_t}}{uniqueness — proportion of variance not captured
 #'     by any shared axis ("relative modularity").}
 #' }
 #'
 #' Requires `phylo_latent()` (and optionally `phylo_unique()`) plus
 #' species-level `latent()` AND `unique()` in the fit. If `unique()` at
-#' the species tier is missing, \eqn{\Psi_t = 0} for all traits and a
+#' the species tier is missing, \eqn{\psi_t = 0} for all traits and a
 #' `cli::cli_inform()` advisory fires.
 #'
 #' @param fit A `gllvmTMB_multi` fit with a `phylo_latent()` term.
@@ -390,7 +390,7 @@ extract_phylo_signal <- function(fit,
 #'
 #' This is the most general proportion-decomposition function in the
 #' package. [extract_phylo_signal()] is the focused PGLLVM
-#' \eqn{H^2 / C^2_\text{non} / \Psi} convenience wrapper for the
+#' \eqn{H^2 / C^2_\text{non} / \psi^2} convenience wrapper for the
 #' species-level case; [extract_communality()] gives the rr-only
 #' "shared" proportion at one tier; [extract_ICC_site()] gives the
 #' between-vs-within proportion. `extract_proportions()` returns all of

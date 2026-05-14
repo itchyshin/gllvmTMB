@@ -32,8 +32,8 @@ from \code{\link[=extract_residual_split]{extract_residual_split()}}.
 \description{
 Sum of \eqn{\boldsymbol\Sigma_\text{tier}} matrices across the user-
 selected tiers. The canonical PGLLVM use case is the species-level
-three-piece decomposition (Nakagawa et al. \emph{in prep}, Eq. 19):
-\deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \mathbf S_\text{non}.}
+three-piece decomposition (Nakagawa et al. \emph{in prep}):
+\deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \boldsymbol\Psi_\text{non}.}
 Here \code{tiers = c("phy", "B")} returns
 \eqn{\boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{B}} where
 \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^{\!\top} + \boldsymbol\Psi_B}
@@ -43,7 +43,7 @@ aggregates the non-phylogenetic shared and unique components.
 For two-level behavioural-syndrome fits, \code{tiers = c("B", "W")}
 returns the \strong{phenotypic} trait covariance
 \eqn{\boldsymbol\Sigma_P = \boldsymbol\Sigma_B + \boldsymbol\Sigma_W}
-(Nakagawa et al. \emph{in prep}, Eq. 28).
+(Nakagawa et al. \emph{in prep}).
 }
 \examples{
 \dontrun{

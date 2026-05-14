@@ -1491,7 +1491,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## `+ unique(0 + trait | <row-level group>)` is for unique(S) to BE the
     ## row-level residual. We honour that by fixing sigma_eps to a tiny
     ## fraction of the response sd so the Gaussian density stays well-defined
-    ## while diag(S) absorbs the row-level variation.
+    ## while diag(Psi) absorbs the row-level variation.
     if (per_row_diag_W || per_row_diag_B) {
       level_lab <- if (per_row_diag_W) ss_name else site
       data_sd  <- stats::sd(y)

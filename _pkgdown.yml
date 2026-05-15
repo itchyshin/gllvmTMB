@@ -50,6 +50,7 @@ articles:
     desc: Inference machinery and validation of derived quantities
     contents:
     - articles/profile-likelihood-ci
+    - articles/cross-package-validation
 
   - title: Project
     navbar: ~

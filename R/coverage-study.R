@@ -92,7 +92,7 @@
 #'   \describe{
 #'     \item{`$coverage`}{Data frame, one row per (parm x method):
 #'       `parm`, `method`, `n_reps`, `n_covered`, `n_excluded`,
-#'       `rate` (coverage rate in [0, 1]), `passes_94pct`
+#'       `rate` (coverage rate, between 0 and 1), `passes_94pct`
 #'       (logical, the audit's exit-gate flag).}
 #'     \item{`$intervals`}{Long-format data frame, one row per
 #'       (rep, parm, method): `rep`, `parm`, `method`, `truth`,

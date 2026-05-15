@@ -53,7 +53,7 @@ components:
 \describe{
 \item{\verb{$coverage}}{Data frame, one row per (parm x method):
 \code{parm}, \code{method}, \code{n_reps}, \code{n_covered}, \code{n_excluded},
-\code{rate} (coverage rate in \link{0, 1}), \code{passes_94pct}
+\code{rate} (coverage rate, between 0 and 1), \code{passes_94pct}
 (logical, the audit's exit-gate flag).}
 \item{\verb{$intervals}}{Long-format data frame, one row per
 (rep, parm, method): \code{rep}, \code{parm}, \code{method}, \code{truth},

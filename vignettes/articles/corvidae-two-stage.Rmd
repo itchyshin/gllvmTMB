@@ -1,0 +1,326 @@
+---
+title: "Two-stage workflow for species-level trait data (Corvidae-style proxy)"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Two-stage workflow for species-level trait data (Corvidae-style proxy)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+> **Note on data.** The original Nakagawa et al. (in prep)
+> functional-biogeography manuscript demonstrates this workflow on
+> the Corvidae 123-species AVONET-style dataset. To keep this
+> article self-contained and avoid data-licensing concerns, we use
+> a **simulated proxy** with the same structure (~30 species x 6
+> traits, with species-level trait constants and a coalescent
+> phylogeny). The numbers in this article are not real Corvidae
+> values -- they illustrate the workflow only.
+
+When trait values are **species-level constants** (typical of
+AVONET-style trait data: each species has one beak length, one
+wing length, etc., not multiple replicates per species), the
+full one-shot stacked-trait GLLVM is poorly informed about
+between-site covariance -- the data simply do not contain enough
+sites-of-the-same-species to estimate global functional
+integration directly. The recommended workflow is **two-stage**:
+
+* **Stage 1** -- fit one model per trait,
+  `value ~ 0 + site + phylo_scalar(species)`,
+  to extract site-level fixed-effect estimates and their standard
+  errors (which give the marginal sampling variances).
+
+* **Stage 2** -- fit a multivariate site-level model on the
+  stage-1 estimates using `meta_known_V(value, V = V)` so that
+  stage-1 sampling uncertainty is propagated into the stage-2
+  covariance estimates (rather than treating the stage-1 values
+  as error-free data).
+
+Both stages use **direct `gllvmTMB()` calls** -- no helper
+functions are needed.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ape)
+```
+
+## Simulate a Corvidae-style proxy
+
+We simulate ~30 species x 6 traits with a known between-site
+loading structure: traits 1-3 (beak morphology) load on one
+latent variable and traits 4-6 (body size) load on another. A
+coalescent phylogeny gives realistic between-species correlation.
+
+```{r sim}
+set.seed(123)
+n_sp     <- 30
+n_traits <- 6
+
+tree <- ape::rcoal(n_sp)
+tree$tip.label <- paste0("sp", seq_len(n_sp))
+Cphy <- ape::vcv(tree, corr = TRUE)
+
+trait_names <- c("Beak.Length", "Beak.Width", "Beak.Depth",
+                 "Tarsus.Length", "Wing.Length", "Mass")
+
+# True between-site reduced-rank loadings (hand-set so traits 1-3
+# load on a "beak" axis and traits 4-6 on a "body-size" axis)
+Lambda_B_true <- matrix(c(
+   1.0,  0.7,  0.6,  0.1,  0.2,  0.0,   # LV 1: beak axis
+   0.0,  0.2, -0.1,  0.8,  1.0,  0.9    # LV 2: body axis
+), nrow = n_traits, ncol = 2)
+
+sim <- simulate_site_trait(
+  n_sites               = 40,
+  n_species             = n_sp,
+  n_traits              = n_traits,
+  mean_species_per_site = 8,
+  Lambda_B   = Lambda_B_true,
+  psi_B      = rep(0.2, n_traits),
+  Cphy       = Cphy,
+  sigma2_phy = rep(0.5, n_traits),
+  seed       = 123
+)
+df_long <- sim$data
+levels(df_long$species) <- tree$tip.label
+levels(df_long$trait)   <- trait_names
+
+dim(df_long)
+table(df_long$trait)[1:3]
+```
+
+## Stage 1: per-trait gllvmTMB() fits with phylogenetic random effect
+
+For each trait we fit a univariate model with a site fixed effect
+and a phylogenetic random effect on species. The formula
+`value ~ 0 + site + phylo_scalar(species)` gives one coefficient
+per site (the site-level BLUP) and its standard error (which
+becomes the per-cell sampling variance at stage 2).
+
+```{r stage1}
+trait_levels <- levels(df_long$trait)
+stage1_fits <- lapply(trait_levels, function(tl) {
+  sub <- droplevels(df_long[df_long$trait == tl, , drop = FALSE])
+  sp_here <- levels(sub$species)
+  C_sub   <- Cphy[sp_here, sp_here, drop = FALSE]
+  gllvmTMB(
+    value ~ 0 + site + phylo_scalar(species, vcv = C_sub),
+    data  = sub,
+    trait = "trait",
+    unit  = "site"
+  )
+})
+names(stage1_fits) <- trait_levels
+```
+
+Extract site-level estimates and sampling variances from each
+fit. The fixed effects are the `site*` coefficients; their
+squared standard errors are the per-cell sampling variances that
+stage 2 propagates.
+
+```{r stage1-extract}
+stage1_list <- lapply(trait_levels, function(tl) {
+  td <- tidy(stage1_fits[[tl]], "fixed", conf.int = FALSE)
+  site_rows <- grepl("^site", td$term)
+  td <- td[site_rows, , drop = FALSE]
+  data.frame(
+    site         = factor(sub("^site", "", td$term)),
+    trait        = factor(tl, levels = trait_levels),
+    value        = td$estimate,
+    sampling_var = td$std.error^2,
+    stringsAsFactors = FALSE,
+    row.names    = NULL
+  )
+})
+
+stage1_summary <- do.call(rbind, stage1_list)
+rownames(stage1_summary) <- NULL
+
+# Keep only sites that appear in every trait (required for stacking)
+site_counts <- table(stage1_summary$site)
+keep_sites  <- names(site_counts)[site_counts == length(trait_levels)]
+stage1_summary <- droplevels(
+  stage1_summary[as.character(stage1_summary$site) %in% keep_sites, ]
+)
+
+head(stage1_summary, 8)
+```
+
+Each row of `stage1_summary` is one `(site, trait)` pair with the
+site-level estimate and its propagated sampling variance.
+
+## Stage 2: multivariate site-level meta-regression
+
+Stage 2 fits a between-site reduced-rank covariance on the
+stage-1 estimates. We call `gllvmTMB()` directly with
+`meta_known_V()` to inject the stage-1 sampling variances as a
+known-V term:
+
+```{r stage2}
+# Build the known-V diagonal matrix (independent rows: one
+# estimate per cell).
+V <- diag(stage1_summary$sampling_var)
+
+fit2 <- gllvmTMB(
+  value ~ 0 + trait +
+          latent(0 + trait | site, d = 2) +
+          unique(0 + trait | site) +
+          meta_known_V(value, V = V),
+  data    = stage1_summary,
+  known_V = V,
+  trait   = "trait",
+  unit    = "site"
+)
+fit2$opt$convergence
+```
+
+`meta_known_V(value, V = V)` fixes the residual covariance of the
+observed stage-1 estimates to the known sampling-variance matrix
+`V`. The `latent(0 + trait | site, d = 2)` term recovers the
+two-factor between-site structure that generated the data.
+
+### When rows share within-study sampling correlation
+
+If multiple effect sizes come from the same study (e.g. multiple
+traits measured on the same individual), the off-diagonal blocks
+of `V` are non-zero. Use `block_V()` to build a block-diagonal
+`V`:
+
+```{r block-v-example, eval = FALSE}
+# Example (not run): 3 effect sizes per study, compound-symmetric
+# within-study correlation
+V_blk <- block_V(
+  study_id     = stage1_summary$site,
+  sampling_var = stage1_summary$sampling_var,
+  rho_within   = 0.4
+)
+
+fit2_blk <- gllvmTMB(
+  value ~ 0 + trait +
+          latent(0 + trait | site, d = 2) +
+          meta_known_V(value, V = V_blk),
+  data    = stage1_summary,
+  known_V = V_blk,
+  trait   = "trait",
+  unit    = "site"
+)
+```
+
+## Compare recovered Sigma_B to truth
+
+The headline recovery check: the implied between-site covariance
+$\boldsymbol{\Sigma}_B = \boldsymbol\Lambda_B
+\boldsymbol\Lambda_B^{\top}$ should match the truth (up to
+rotation; the diagonal entries and off-diagonal pattern are
+rotation-invariant).
+
+```{r compare-sigma}
+Sigma_B_true  <- Lambda_B_true %*% t(Lambda_B_true)
+Sigma_B_hat   <- fit2$report$Lambda_B %*% t(fit2$report$Lambda_B)
+rownames(Sigma_B_true) <- colnames(Sigma_B_true) <- trait_names
+rownames(Sigma_B_hat)  <- colnames(Sigma_B_hat)  <- trait_names
+
+list(true      = round(Sigma_B_true, 2),
+     recovered = round(Sigma_B_hat, 2))
+```
+
+The off-diagonal pattern of the recovered $\boldsymbol\Sigma_B$
+should match the truth: traits 1-3 (beak) positively correlated
+with each other and weakly correlated with traits 4-6 (body);
+traits 4-6 positively correlated with each other.
+
+```{r plot-sigma, fig.cap = "Recovered Sigma_B entries vs the true values used to simulate the data. Points should lie along the 1:1 line; deviations come from sampling noise (single simulation; the recovery improves with more sites and more replication per species).", eval = requireNamespace("ggplot2", quietly = TRUE)}
+library(ggplot2)
+df_sigma <- data.frame(
+  true   = as.vector(Sigma_B_true),
+  fitted = as.vector(Sigma_B_hat)
+)
+ggplot(df_sigma, aes(true, fitted)) +
+  geom_abline(slope = 1, intercept = 0,
+              colour = "grey40", linetype = 2) +
+  geom_point(colour = "#1f78b4", size = 2) +
+  labs(x = "True Sigma_B[i,j]",
+       y = "Recovered Sigma_B[i,j]",
+       title = "Stage-2 recovery of the between-site trait covariance",
+       subtitle = "Single Corvidae-style proxy run") +
+  theme_minimal(base_size = 12) +
+  coord_equal()
+```
+
+## When to use the two-stage workflow
+
+* **Use it** when each species has only one trait value (the
+  AVONET-style scenario) and your sites contribute species
+  occupancy / abundance information rather than repeated trait
+  measurement.
+* **Do not use it** when you have replicate trait measurements per
+  species per site -- the one-shot stacked-trait GLLVM can fit
+  those directly. See
+  [Functional biogeography](functional-biogeography.html).
+* **The propagation matters**: stage 2 with `meta_known_V()`
+  correctly propagates the stage-1 sampling variances. Naively
+  feeding stage-1 estimates as if they were error-free data will
+  **under-estimate** Sigma_B uncertainty.
+
+## Summary: the direct-call pattern
+
+You do not need helper functions. The full two-stage workflow in
+three steps:
+
+```r
+# Step 1 -- per-trait gllvmTMB() fits
+stage1_fits <- lapply(trait_levels, function(tl) {
+  sub   <- droplevels(df_long[df_long$trait == tl, ])
+  C_sub <- Cphy[levels(sub$species), levels(sub$species)]
+  gllvmTMB(value ~ 0 + site + phylo_scalar(species, vcv = C_sub),
+           data = sub)
+})
+names(stage1_fits) <- trait_levels
+
+# Step 2 -- assemble stage-1 summary (estimates + sampling variances)
+stage1_summary <- do.call(rbind, lapply(trait_levels, function(tl) {
+  td <- tidy(stage1_fits[[tl]], "fixed")
+  td <- td[grepl("^site", td$term), ]
+  data.frame(site = factor(sub("^site", "", td$term)),
+             trait = factor(tl), value = td$estimate,
+             sampling_var = td$std.error^2)
+}))
+
+# Step 3 -- stage-2 multivariate fit with meta_known_V()
+V    <- diag(stage1_summary$sampling_var)
+fit2 <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2) +
+                      meta_known_V(value, V = V),
+  data    = stage1_summary,
+  known_V = V,
+  trait   = "trait",
+  unit    = "site"
+)
+```
+
+## See also
+
+* [Functional biogeography](functional-biogeography.html) -- the
+  one-shot version when replicate trait data are available.
+* [Phylogenetic GLLVM](phylogenetic-gllvm.html) -- the paired
+  phylogenetic + non-phylogenetic decomposition used as the
+  one-shot alternative for species-level data with replication.
+* [Choose your model](choose-your-model.html) -- decision tree for
+  which workflow matches your data shape.

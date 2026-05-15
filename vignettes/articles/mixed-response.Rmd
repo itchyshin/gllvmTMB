@@ -1,0 +1,209 @@
+---
+title: "Mixed responses: Gaussian + binomial + Poisson rows in one model"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Mixed responses: Gaussian + binomial + Poisson rows in one model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+Some Unit x Trait datasets mix response distributions: one trait is
+continuous (e.g. body mass), another is binary (e.g. presence /
+absence of a behaviour), a third is a count (e.g. number of
+offspring). Standard JSDM software typically forces all responses
+into one family and either log-transforms / scales or drops responses
+that don't fit. `gllvmTMB` borrows GALAMM's `gfam(list(...))`
+mechanism (Sorensen 2024) and lets the user specify a different
+response family per row -- all in the same fit, with shared latent
+structure.
+
+## API
+
+Pass a **list** of family objects via the `family` argument and add
+a `family_var` attribute pointing to the column of `data` that picks
+the family per row:
+
+```r
+fam <- list(gaussian(), binomial(), poisson())
+attr(fam, "family_var") <- "family"   # name of the column on `data`
+
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  data   = df,
+  family = fam
+)
+```
+
+Each row of `data` whose `family` value is `"g"` (the first level of
+the `family` factor, mapped to family code 0 internally) goes through
+the Gaussian (identity-link) likelihood; rows with `"b"` go through
+the binomial (logit), and `"p"` rows through the Poisson (log).
+Latent structure (`latent`, `unique`, `phylo_*`, `spatial_*`, ...) is
+shared across families. The implementation is verified by
+`tests/testthat/test-stage37-mixed-family.R`.
+
+## Worked example
+
+Three "traits", one per response distribution. We simulate Gaussian
+data on the link scale, then transform two of the columns to binary
+and to counts so each trait is on its natural scale.
+
+```{r setup}
+library(gllvmTMB)
+```
+
+```{r sim}
+set.seed(2025)
+n_traits <- 3
+sim <- simulate_site_trait(
+  n_sites               = 50,
+  n_species             = 10,
+  n_traits              = n_traits,
+  mean_species_per_site = 5,
+  Lambda_B = matrix(c(1.0,  0.7, -0.3,
+                      0.3, -0.5,  0.8),
+                    nrow = n_traits, ncol = 2),
+  psi_B    = rep(0.3, n_traits),
+  seed     = 2025
+)
+df <- sim$data
+
+# Recode trait_1 as Gaussian (raw), trait_2 as binary, trait_3 as count
+df$family <- factor(
+  with(df, ifelse(trait == "trait_1", "g",
+           ifelse(trait == "trait_2", "b", "p"))),
+  levels = c("g", "b", "p")
+)
+df$value[df$family == "b"] <- as.integer(df$value[df$family == "b"] > 0)
+df$value[df$family == "p"] <- pmax(0L,
+  as.integer(round(df$value[df$family == "p"] + 1))
+)
+
+table(family = df$family)
+head(df[, c("site", "species", "trait", "family", "value")], 6)
+```
+
+## Fit
+
+```{r fit}
+fam <- list(gaussian(), binomial(), poisson())
+attr(fam, "family_var") <- "family"
+
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  data   = df,
+  family = fam
+)
+fit
+```
+
+The `family_id_vec` data field stores the per-row family code
+(0 = Gaussian, 1 = binomial, 2 = Poisson). Every row gets the correct
+one:
+
+```{r family-id}
+table(family_id_vec = fit$tmb_data$family_id_vec)
+```
+
+The wide-format `traits(...)` entry point cannot express per-row
+family dispatch directly, because per-row family selection needs a
+long-format `family` column (one value per `(unit, trait)` row). For
+fully mixed-family fits the canonical recipe is the long-format
+formula above. For a Gaussian-only subset of the same traits the
+wide form is fine; this article keeps the focus on the mixed-family
+mechanic.
+
+## What's shared, what's per-family
+
+* **Shared across families**: the latent scores `Z` (one per site,
+  length `d = 2`) and the loadings `Lambda` (`n_traits x d`). This is
+  the point of fitting the three trait columns jointly -- they share
+  latent structure.
+* **Per-family**: the link function and the observation likelihood.
+  The Gaussian rows contribute a `dnorm()` term (with a single
+  `sigma_eps`), the binomial rows a
+  `dbinom(size = 1, prob = plogis(eta))` term, and the Poisson rows a
+  `dpois(lambda = exp(eta))` term.
+
+## Currently supported families
+
+The list passed to `family =` can mix any of these 15 families.
+Each row of `data` picks the family from the list via the
+`family_var` column:
+
+| Family | `family_id_vec` code | Link | Notes |
+|---|---|---|---|
+| `gaussian()` | 0 | identity | continuous, real-valued |
+| `binomial()` | 1 | logit / probit / cloglog | binary 0/1 or multi-trial via `cbind(succ, fail)` / `weights` |
+| `poisson()` | 2 | log | non-negative integer counts |
+| `lognormal()` | 3 | log | positive continuous; uses `sigma_eps` as the log-scale SD |
+| `Gamma(link = "log")` | 4 | log | positive continuous; uses `sigma_eps` as the coefficient of variation |
+| `nbinom2()` | 5 | log | over-dispersed counts; per-trait `phi_nbinom2` |
+| `tweedie()` | 6 | log | continuous w/ Dirac point mass at 0; per-trait `phi_tweedie`, `p_tweedie` |
+| `Beta()` | 7 | logit | continuous on (0, 1); per-trait `phi_beta` |
+| `betabinomial()` | 8 | logit | over-dispersed binary / multi-trial; per-trait `phi_betabinom` |
+| `student()` | 9 | identity | heavy-tailed continuous; per-trait `sigma_student`, `df_student` |
+| `truncated_poisson()` | 10 | log | zero-truncated counts |
+| `truncated_nbinom2()` | 11 | log | zero-truncated over-dispersed counts; per-trait `phi_truncnb2` |
+| `delta_lognormal()` | 12 | logit / log | hurdle; per-trait `sigma_lognormal_delta` |
+| `delta_gamma()` | 13 | logit / log | hurdle; per-trait `phi_gamma_delta` |
+| `ordinal_probit()` | 14 | probit | ordered categorical; per-trait cut-points (see [Ordinal-probit](ordinal-probit.html)) |
+
+`sigma_eps` is shared across the "continuous-noise" families
+(Gaussian, lognormal, Gamma); for binomial and Poisson rows it is
+unused. If you mix Gaussian + lognormal + Gamma, the single
+`sigma_eps` is interpreted on each family's natural scale (SD on the
+response scale for Gaussian, SD on the log scale for lognormal, CV
+for Gamma); their values may not be directly comparable but each is
+the correct conditional noise parameter for its family's likelihood.
+
+## Backward compatibility
+
+Passing a scalar `family = gaussian()` (or any single family) goes
+through the same code path with `family_id_vec` filled with a single
+value -- no change in behaviour relative to single-family fits. This
+is verified by the "scalar family still works (backward compatible)"
+test in `tests/testthat/test-stage37-mixed-family.R`.
+
+## When to use mixed-response models
+
+The general rule: **only when the latent structure should be shared
+across response distributions.** If your binary "behaviour"
+measurements and your continuous "body mass" measurements are
+genuinely capturing parts of the same multivariate phenomenon (e.g.
+"individual quality"), a mixed-response GLLVM is the right tool. If
+they're independent, fit them separately.
+
+## See also
+
+* `?gllvmTMB` -- the `family` argument is documented under "Mixed
+  responses".
+* [Lambda constraints](lambda-constraint.html) -- when you also want
+  to **pin** specific loading entries in a mixed-family fit (e.g. a
+  CFA pattern where Gaussian items load on one factor and binary
+  items on another), combine `family = list(...)` with
+  `lambda_constraint = list(B = M)`.
+* [Ordinal-probit](ordinal-probit.html) -- the threshold model used
+  for the `ordinal_probit()` family in the table above.
+* `tests/testthat/test-stage37-mixed-family.R` -- verifies per-row
+  dispatch and backward compatibility with scalar `family`.
+* **Sorensen, O. (2024)** Multilevel semiparametric latent variable
+  modeling in R with galamm. *Multivariate Behavioral Research*
+  59(5):1098-1105. <https://doi.org/10.1080/00273171.2024.2385336>
+  -- the original `gfam(list(...))` mechanism.

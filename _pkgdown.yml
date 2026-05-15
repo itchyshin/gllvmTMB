@@ -26,6 +26,7 @@ articles:
     - articles/phylogenetic-gllvm
     - articles/functional-biogeography
     - articles/psychometrics-irt
+    - articles/mixed-response
 
   - title: Concepts and reference
     navbar: Concepts

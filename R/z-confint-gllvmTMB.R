@@ -25,6 +25,84 @@
     parm %in% c("Sigma_B", "Sigma_W", "sigma_phy")
 }
 
+## Internal helper (P1a 2026-05-15): recognise parm tokens that match
+## the `profile_targets()` inventory (e.g. "sigma_eps", "sd_B[1]",
+## "phi_nbinom2[2]", "Lambda_B_packed[3]"). These are variance,
+## dispersion, scaling, loading-packed, or threshold-class targets;
+## the fixed-effect path below already handles b_fix elements via
+## tidy(). Returns TRUE when parm is character, length >= 1, and
+## every entry matches a profile-target label in
+## profile_targets(object).
+.is_profile_target_parm <- function(object, parm) {
+  if (missing(parm) || !is.character(parm) || length(parm) == 0L)
+    return(FALSE)
+  if (any(parm %in% c("Sigma_B", "Sigma_W", "sigma_phy")))
+    return(FALSE)
+  tgt <- tryCatch(profile_targets(object, ready_only = FALSE),
+                  error = function(e) NULL)
+  if (is.null(tgt)) return(FALSE)
+  all(parm %in% tgt$parm)
+}
+
+## Internal helper (P1a 2026-05-15): build a matrix CI for direct
+## profile targets via tmbprofile_wrapper(). Mirrors the Sigma-path
+## matrix shape (lower / upper, with the requested parm rownames).
+.confint_profile_targets <- function(object, parm, level, ...) {
+  targets <- profile_targets(object, ready_only = FALSE)
+  chosen <- targets[targets$parm %in% as.character(parm), , drop = FALSE]
+  ## Filter out derived rows with a typed message pointing at the
+  ## right extractor.
+  derived_rows <- chosen[chosen$target_type == "derived", , drop = FALSE]
+  if (nrow(derived_rows) > 0L) {
+    derived_pointers <- derived_rows$parm
+    cli::cli_warn(c(
+      "Profile CIs for {length(derived_pointers)} derived target{?s} ({.val {derived_pointers}}) are not produced by {.fn confint}.",
+      "i" = "Use the matching {.fn extract_*} extractor with {.code method = \"profile\"} instead. See {.fn profile_targets} for the full mapping."
+    ))
+    chosen <- chosen[chosen$target_type == "direct", , drop = FALSE]
+  }
+  not_ready <- chosen[!chosen$profile_ready, , drop = FALSE]
+  if (nrow(not_ready) > 0L) {
+    cli::cli_abort(c(
+      "Cannot profile {nrow(not_ready)} target{?s}: {.val {not_ready$parm}}.",
+      "i" = "Reason{?s}: {.val {unique(not_ready$profile_note)}}.",
+      ">" = "If the fit object has been serialised, refit before calling {.fn confint}."
+    ))
+  }
+  lower <- numeric(nrow(chosen))
+  upper <- numeric(nrow(chosen))
+  for (i in seq_len(nrow(chosen))) {
+    row <- chosen[i, ]
+    tf <- row$transformation
+    transform_fun <- switch(
+      tf,
+      "linear_predictor"  = identity,
+      "exp"               = exp,
+      "logit"             = stats::plogis,
+      "logit_p_tweedie"   = function(x) 1 + stats::plogis(x),
+      "lambda_packed"     = identity,
+      "ordinal_threshold" = exp,
+      identity
+    )
+    which_idx <- if (is.na(row$index)) 1L else row$index
+    args <- list(fit = object, name = row$tmb_parameter,
+                 which = which_idx, level = level,
+                 transform = transform_fun)
+    extra <- list(...)
+    args <- modifyList(args, extra[!names(extra) %in% names(args)])
+    res <- do.call(tmbprofile_wrapper, args)
+    lower[i] <- unname(res["lower"])
+    upper[i] <- unname(res["upper"])
+  }
+  out <- cbind(lower, upper)
+  rownames(out) <- chosen$parm
+  colnames(out) <- c(
+    sprintf("%.1f %%", 100 * (1 - level) / 2),
+    sprintf("%.1f %%", 100 * (1 + level) / 2)
+  )
+  out
+}
+
 #' Confidence intervals for a \code{gllvmTMB_multi} fit
 #'
 #' Returns 95% (or other-level) confidence intervals for fixed effects,
@@ -153,6 +231,25 @@ confint.gllvmTMB_multi <- function(object,
   if (.is_sigma_parm(parm)) {
     return(.confint_sigma(object, parm = parm, level = level,
                           method = method, nsim = nsim, seed = seed))
+  }
+
+  ## ---- profile_targets() inventory path (P1a, 2026-05-15) ------------------
+  ## When `parm` matches a `profile_targets()` user-facing label
+  ## (e.g. "sigma_eps", "sd_B[1]", "phi_nbinom2[2]") and method ==
+  ## "profile", route through `.confint_profile_targets()` instead of
+  ## the fixed-effects path. b_fix elements continue through the
+  ## fixed-effects path so existing callers don't break.
+  if (method == "profile" && .is_profile_target_parm(object, parm)) {
+    ## Only catch non-b_fix targets here; b_fix entries fall through
+    ## to the existing .confint_fixef_profile path which already
+    ## handles them.
+    tgt_filt <- profile_targets(object, ready_only = FALSE)
+    is_b_fix <- as.character(parm) %in%
+                tgt_filt$parm[tgt_filt$tmb_parameter == "b_fix" &
+                              !is.na(tgt_filt$tmb_parameter)]
+    if (!all(is_b_fix))
+      return(.confint_profile_targets(object, parm = parm,
+                                      level = level, ...))
   }
 
   ## ---- Fixed-effects / variance-component path -----------------------------

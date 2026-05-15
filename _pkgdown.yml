@@ -136,6 +136,7 @@ reference:
     - compare_indep_vs_two_psi
     - bootstrap_Sigma
     - tmbprofile_wrapper
+    - profile_targets
 
   - title: Loadings (Lambda) and confirmatory factor analysis
     desc: Extract, rotate, and constrain the loading matrix

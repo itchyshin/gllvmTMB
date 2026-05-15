@@ -1,5 +1,40 @@
 # gllvmTMB (development version)
 
+## New exports (P1a audit response)
+
+* **`profile_targets(fit, ready_only = FALSE)`** -- profile-likelihood
+  target inventory. Returns a tidy data frame with one row per
+  direct or derived profile target, with columns `parm`,
+  `target_class`, `tmb_parameter`, `index`, `estimate`,
+  `link_estimate`, `scale`, `transformation`, `target_type`,
+  `profile_ready`, `profile_note`. Direct targets correspond to
+  individual TMB parameter elements (e.g. `b_fix[1]`, `sigma_eps`,
+  `sd_B[2]`, `phi_nbinom2[1]`); derived targets (communality,
+  repeatability, phylogenetic signal, trait correlations) point
+  the user at the matching `extract_*(method = "profile")`
+  extractor via the `profile_note` column. Controlled vocabularies
+  on `target_type`, `profile_note`, and `transformation` mirror
+  drmTMB's `profile_targets()` (per the 2026-05-15 cross-team
+  scan in PR #109) so the broader TMB-package family stays
+  consistent.
+
+## Behaviour changes (P1a audit response)
+
+* **`confint.gllvmTMB_multi(method = "profile")` now routes
+  non-Sigma, non-fixed-effect `parm` labels through
+  `profile_targets()`**. Previously, `confint(fit, parm =
+  "sigma_eps", method = "profile")` would fall through to the
+  fixed-effect Wald path and return `NA` bounds (the parm wasn't
+  matched against `tidy(fit, "fixed")$term`). Now it consults
+  `profile_targets(fit, ready_only = TRUE)`, looks up the matching
+  TMB parameter and index, and calls `tmbprofile_wrapper()` with
+  the right transformation. Derived-target requests
+  (`parm = "communality"` etc.) now emit a typed warning that
+  points the user at the matching `extract_*(method = "profile")`
+  extractor instead. The Sigma-matrix path (parm in
+  `{Sigma_B, Sigma_W, sigma_phy}`) and the fixed-effect Wald /
+  profile paths are unchanged.
+
 ## New exports (Phase 1b)
 
 * **`check_auto_residual(fit)`** -- safeguard for the

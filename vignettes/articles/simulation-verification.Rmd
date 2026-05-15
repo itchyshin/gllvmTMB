@@ -1,0 +1,315 @@
+---
+title: "Simulation-based verification of gllvmTMB fits"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Simulation-based verification of gllvmTMB fits}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache    = FALSE,
+  eval     = TRUE,
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+A multivariate latent-variable fit summarises a lot of data into a
+small set of statements: *here are the loadings, this is the
+correlation matrix, communality is high, phylogenetic signal is
+moderate*. Before you build a paper on those statements, you
+should verify that the model + inference + extractor pipeline
+actually recovers the values you put in. This article walks
+through the canonical simulate-fit-check loop with the four
+diagnostic functions gllvmTMB ships:
+
+- [`check_identifiability()`](../reference/check_identifiability.html)
+  -- Procrustes-aligned simulate-refit identifiability test.
+- [`gllvmTMB_check_consistency()`](../reference/gllvmTMB_check_consistency.html)
+  -- Laplace-approximation score-centering test.
+- [`coverage_study()`](../reference/coverage_study.html) -- empirical
+  CI coverage rates against the audit's `>= 94%` exit gate.
+- [`confint_inspect()`](../reference/confint_inspect.html) -- visual
+  profile-curve verification for a single target.
+
+If you are new to the vocabulary in this article, see
+[gllvmTMB vocabulary](gllvm-vocabulary.html) first. If you want
+the failure-mode catalogue for profile CIs in particular, see
+[Troubleshooting profile-likelihood CIs](troubleshooting-profile.html).
+
+## 1. Why simulate?
+
+Simulation is the only way to verify *the full pipeline*. Unit
+tests check that individual functions work; simulation checks that
+they compose correctly into the recovery story you intend to tell.
+
+A correctly-implemented gllvmTMB fit on data simulated from a
+known DGP should recover (to within sampling noise):
+
+- the loading matrix $\boldsymbol{\Lambda}$ up to rotation;
+- the implied trait covariance $\boldsymbol{\Sigma}$ exactly (it's
+  rotation-invariant);
+- per-trait communality $c_t^2$;
+- per-trait phylogenetic signal $H^2$;
+- per-trait repeatability $R_t$.
+
+When recovery fails, one of three things is wrong:
+**(a)** the DGP doesn't match the fitted model; **(b)** the data
+don't constrain some parameter; **(c)** the inference machinery
+mis-reports the uncertainty.
+
+## 2. Anatomy of a simulation: DGP -> fit -> check
+
+```{r setup}
+library(gllvmTMB)
+```
+
+### 2a. Simulate from a known DGP
+
+The package's `simulate_site_trait()` is the canonical DGP for the
+worked examples. The truth here is hand-set: three traits with a
+shared rank-1 axis (Lambda_B = (0.8, 0.4, -0.3)) plus a
+trait-specific unique-variance diagonal (psi_B = (0.3, 0.3, 0.3)).
+
+```{r sim}
+set.seed(1)
+n_traits <- 3
+truth <- list(
+  Lambda_B = matrix(c(0.8, 0.4, -0.3), n_traits, 1),
+  psi_B    = c(0.3, 0.3, 0.3)
+)
+sim <- simulate_site_trait(
+  n_sites = 40, n_species = 6, n_traits = n_traits,
+  mean_species_per_site = 4,
+  Lambda_B = truth$Lambda_B, psi_B = truth$psi_B,
+  seed = 1
+)
+df <- sim$data
+```
+
+### 2b. Fit the model
+
+```{r fit}
+fit <- gllvmTMB(
+  value ~ 0 + trait +
+          latent(0 + trait | site, d = 1) +
+          unique(0 + trait | site),
+  data = df
+)
+fit$opt$convergence  # should be 0L
+```
+
+### 2c. Compare truth to the fitted Sigma
+
+The implied between-site covariance is the rotation-invariant
+biological target. Compare it to the truth:
+
+```{r recover-sigma}
+Sigma_truth <- truth$Lambda_B %*% t(truth$Lambda_B) +
+               diag(truth$psi_B)
+Sigma_fit   <- extract_Sigma(fit, level = "unit", part = "total")$Sigma
+data.frame(
+  cell  = paste0("[", row(Sigma_truth), ",", col(Sigma_truth), "]"),
+  truth = as.numeric(Sigma_truth),
+  fit   = as.numeric(Sigma_fit),
+  diff  = as.numeric(Sigma_fit - Sigma_truth)
+)
+```
+
+The diagonal entries (variances) are recovered to within sampling
+noise; the off-diagonals (covariances) match the rank-1 structure
+encoded in `Lambda_B`. This is the **headline recovery check**:
+if `diff` is large on a Tier-1 fixture, something is wrong before
+you go any further.
+
+## 3. Common harness mistakes
+
+The verification fails for a *different reason* than the model
+fails. The four mistakes that cost the most analysis time:
+
+### 3a. Truth contains terms the fit doesn't (variance absorption)
+
+If the DGP includes a phylogenetic random effect but the fitted
+model omits `phylo_*()` terms, the phylogenetic variance gets
+absorbed into `Lambda_B` (the fit "captures" what it can with the
+machinery you gave it). Symptoms: `Lambda_B` looks bigger than the
+truth; communality looks inflated; the phylo-signal extractor
+reports zero (because the model has no phy tier).
+
+**Fix**: match the fitted model to the DGP exactly during
+verification. After verification passes, you can fit *more
+parsimonious* models on real data, but the verification fit
+should mirror the DGP's structure.
+
+### 3b. Trait-factor level order silently mis-aligned
+
+Long-format data has a `trait` factor column. R defaults to
+alphabetical level ordering. If your DGP `Lambda_B` is indexed in
+the order you simulated traits in (e.g. `("length", "mass",
+"wing")`) but the data frame's trait factor sorts alphabetically
+to `("length", "mass", "wing")` -- ok that order matches -- but
+`("Beak.Length", "Beak.Width", "Beak.Depth", "Tarsus.Length")`
+sorts to alphabetical `("Beak.Depth", "Beak.Length", "Beak.Width",
+"Tarsus.Length")`. Then `Sigma_fit` and `Sigma_truth` have rows in
+different orders. Recovery looks broken when only the row labels
+are misaligned.
+
+**Fix**: when building the long-format data frame, set
+`levels = trait_names` explicitly on the trait factor so the
+order matches your `Lambda_B` rows.
+
+### 3c. Insufficient sample size for the rank you fit
+
+A rank-2 latent factor needs more sites than a rank-1. If you fit
+`latent(0 + trait | site, d = 2)` on `n_sites = 20`, the second
+column of `Lambda_B` will look noisy in the recovery comparison
+even when the engine is correct. Use
+[`check_identifiability()`](../reference/check_identifiability.html)
+to confirm: the spurious factor shows a column of near-zero
+Procrustes-aligned residuals across simulate-refit replicates.
+
+**Fix**: fit a smaller rank, get more data, or use
+`lambda_constraint` to pin a structural zero.
+
+### 3d. Wrong scale comparison for non-Gaussian traits
+
+When the DGP includes a binomial trait, the "truth" loadings live
+on the latent linear-predictor scale. Comparing them to the
+fitted `Lambda_B` on the response scale will look like a 1000%
+recovery error. The package's
+[`extract_correlations(link_residual = "auto")`](../reference/extract_correlations.html)
+default adds the family-specific latent-scale residual to the
+implied $\boldsymbol\Sigma$ diagonal before computing correlations;
+the recovery target should live on the same scale.
+
+**Fix**: do all comparisons on the latent linear-predictor scale.
+
+## 4. The user's verification checklist
+
+Before treating a fit as publication-ready, run all four:
+
+### 4a. `sanity_multi()` -- structural convergence
+
+```{r sanity}
+sanity_multi(fit)
+```
+
+If anything in `sanity_multi()` returns FALSE -- convergence,
+positive-definite Hessian, no large gradient, no implausibly large
+SEs -- stop here. The fit has not converged in a useful sense.
+
+### 4b. `check_identifiability()` -- Procrustes recovery
+
+`check_identifiability(fit, sim_reps = 100L)` simulates from the
+fit, refits each replica, Procrustes-aligns the loadings, and
+reports per-parameter recovery + Hessian rank checks. It catches
+the **spurious extra factor** failure mode that no other diagnostic
+catches: `pdHess = TRUE`, `sanity_multi()` passes, profile CIs
+look tight -- but a column of $\boldsymbol{\Lambda}$ has near-zero
+Procrustes-aligned residual magnitude because it's unidentifiable
+in direction. See
+[`check_identifiability()`](../reference/check_identifiability.html).
+
+(Heavy: `sim_reps = 100` takes a few minutes on a Tier-1 fixture.
+For routine checks use `sim_reps = 10`.)
+
+### 4c. `gllvmTMB_check_consistency()` -- Laplace approximation
+
+`gllvmTMB_check_consistency(fit, n_sim = 100L)` wraps
+`TMB::checkConsistency()` and tests whether the approximate
+marginal score is centred. A non-centred score is a sign that the
+Laplace approximation is unreliable for *this* fit. See
+[`gllvmTMB_check_consistency()`](../reference/gllvmTMB_check_consistency.html).
+
+```{r check-consistency, eval = FALSE}
+gllvmTMB_check_consistency(fit, n_sim = 50L, seed = 1)
+```
+
+(Not evaluated inline; the call is slow. Run it locally before
+publication-grade reporting.)
+
+### 4d. `coverage_study()` -- empirical CI coverage
+
+`coverage_study(fit, n_reps = 30L)` is the audit's recommended
+empirical-coverage check: simulate, refit, count CI hit rate
+against the original fit's estimates, flag any rows below the
+audit's `>= 94%` exit gate. See
+[`coverage_study()`](../reference/coverage_study.html).
+
+```{r coverage, eval = FALSE}
+coverage_study(fit, parm = c("sigma_eps", "sd_B[1]", "sd_B[2]", "sd_B[3]"),
+               n_reps = 30L, methods = c("wald"), seed = 1,
+               progress = FALSE)
+```
+
+(Also slow. Run locally.)
+
+## 5. Anatomy of a profile curve: when Wald CIs fail
+
+The four diagnostics above answer "is the fit OK?" at the
+overall-model level. For a single parameter,
+[`confint_inspect()`](../reference/confint_inspect.html) is the
+visual companion: it computes the full profile-likelihood curve
+and overlays the MLE, the chi-squared threshold, the profile
+bounds (solid green), and the Wald bounds (dashed orange) on the
+natural scale.
+
+Profile shape tells you which CI method to trust:
+
+- **Quadratic + symmetric near the MLE**: Wald and profile
+  agree. Either method is fine.
+- **Asymmetric / skewed**: Wald is wrong; the profile bound is
+  right.
+- **Flat at the MLE**: weak identifiability; the profile is right
+  and Wald hides the flatness. The CI is genuinely wide.
+- **Hits the parameter range bound on one side**: boundary
+  parameter (variance pinned at 0) or unidentified upper tail.
+  Profile reports `+/-Inf`.
+- **No crossing**: profile didn't converge. Switch to bootstrap.
+
+```{r confint-inspect, eval = FALSE}
+inspect <- confint_inspect(fit, parm = "sigma_eps")
+inspect$bounds
+inspect$plot
+```
+
+The four canonical failure-mode shapes are catalogued in
+[`troubleshooting-profile`](troubleshooting-profile.html).
+
+## Summary
+
+A fit has passed verification when:
+
+1. `sanity_multi()` returns clean (convergence, Hessian PD, no
+   huge SEs).
+2. `check_identifiability()` shows no spurious-factor collapse.
+3. `gllvmTMB_check_consistency()` reports `"centred"`.
+4. `coverage_study()` shows `passes_94pct = TRUE` on every target
+   that matters for the paper.
+5. `confint_inspect()` on the headline parameters shows
+   well-behaved (`"quadratic"`) profile curves.
+
+If any of these fail, the four common harness mistakes in section
+3 are the most likely culprits before the model machinery itself
+becomes suspect.
+
+## See also
+
+- [Choose your model](choose-your-model.html) -- pick the right
+  model before you verify it.
+- [Data-shape flowchart](data-shape-flowchart.html) -- which
+  worked example matches your data.
+- [Profile-likelihood CIs](profile-likelihood-ci.html) -- the CI
+  machinery being audited.
+- [Troubleshooting profile-likelihood CIs](troubleshooting-profile.html)
+  -- four failure-mode catalogue.
+- [Pitfalls](pitfalls.html) -- broader common-gotcha catalogue.

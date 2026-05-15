@@ -104,6 +104,11 @@ link_residual_per_trait <- function(fit) {
   ## trait_id stored on tmb_data is 0-based.
   tids_obs    <- fit$tmb_data$trait_id + 1L
   eta         <- fit$report$eta
+  ## NOTE: `sigma_eps` on `fit$report` is the Gaussian observation-scale
+  ## residual SD. In a mixed-family fit (e.g. Gaussian + Gamma traits),
+  ## the Gamma branch below uses `sigma_eps` for its `nu_hat` shape; that
+  ## reuse is an approximation valid only for single-family Gamma fits
+  ## and is a known limitation flagged for a separate (Phase 1b) PR.
   sigma_eps   <- as.numeric(fit$report$sigma_eps %||% 1)
   out         <- numeric(Tn)
   names(out)  <- trait_names
@@ -193,6 +198,15 @@ link_residual_per_trait <- function(fit) {
         out[t] <- 0
       } else {
         mu_t <- mean(stats::plogis(eta[rows_t]))
+        ## Clamp mu_t away from 0 and 1 before forming a_t, b_t. Without
+        ## this, a saturated Beta fit (eta -> +/-Inf, so plogis(eta) -> 0
+        ## or 1) collapses one of (a_t, b_t) to the 1e-12 floor, making
+        ## trigamma(1e-12) ~ 1e24 and crushing any reported correlation
+        ## to zero. Clamping `mu_t` keeps `a_t` and `b_t` interpretable;
+        ## the residual `max(.., 1e-12)` on `a_t, b_t` is now defence-in-
+        ## depth for degenerate `phi_t` rather than the primary guard.
+        ## Phase 1b mu_t clamp (Gauss persona consult 2026-05-14).
+        mu_t <- pmin(pmax(mu_t, 1e-6), 1 - 1e-6)
         a_t  <- max(mu_t * phi_t, 1e-12)
         b_t  <- max((1 - mu_t) * phi_t, 1e-12)
         out[t] <- trigamma(a_t) + trigamma(b_t)
@@ -208,6 +222,12 @@ link_residual_per_trait <- function(fit) {
         out[t] <- pi^2 / 3
       } else {
         mu_t <- mean(stats::plogis(eta[rows_t]))
+        ## Same mu_t clamp as the Beta branch above; without it a
+        ## saturated betabinomial fit yields a meaningless near-zero
+        ## correlation via the trigamma(1e-12) blow-up. The pi^2/3
+        ## baseline keeps the result finite without the clamp, but the
+        ## Beta-overdispersion contribution still inflates spuriously.
+        mu_t <- pmin(pmax(mu_t, 1e-6), 1 - 1e-6)
         a_t  <- max(mu_t * phi_t, 1e-12)
         b_t  <- max((1 - mu_t) * phi_t, 1e-12)
         out[t] <- pi^2 / 3 + trigamma(a_t) + trigamma(b_t)

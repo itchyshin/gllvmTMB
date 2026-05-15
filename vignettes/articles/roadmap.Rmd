@@ -18,5 +18,43 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r child = "../../ROADMAP.md"}
+```{r render-roadmap, results = "asis"}
+## Resolve the path to ROADMAP.md robustly across render contexts.
+##
+## Why this is not a `child = "../../ROADMAP.md"` chunk:
+## `pkgdown::build_site()` runs each article through `callr::r_safe()` which
+## copies the .Rmd into a tempdir before rendering; a relative `child =
+## "../../ROADMAP.md"` chunk path then resolves to `/ROADMAP.md` (the system
+## root) and fails with "Permission denied". This bit us once already
+## (pkgdown workflow run #94 on commit `d345ca1`). Local
+## `pkgdown::build_article("articles/roadmap")` does NOT use the tmp-copy
+## path, so the relative `child =` works locally -- but CI does not.
+##
+## The fix: read `ROADMAP.md` programmatically (no knitr `child = ` file
+## copy) and try several plausible locations. The package source root is
+## what we want; we try a few angles.
+
+candidate_paths <- c(
+  "ROADMAP.md",         # pkgdown CI: knit_root_dir = pkg root
+  "../../ROADMAP.md"    # local rmarkdown::render from vignettes/articles/
+)
+
+## rprojroot fallback: walks up the directory tree looking for DESCRIPTION;
+## errors if the tree doesn't contain a package root. Wrap in tryCatch.
+rproj_path <- tryCatch(
+  file.path(rprojroot::find_package_root_file(), "ROADMAP.md"),
+  error = function(e) NA_character_
+)
+if (!is.na(rproj_path)) {
+  candidate_paths <- c(candidate_paths, rproj_path)
+}
+
+existing <- Filter(file.exists, candidate_paths)
+if (length(existing) == 0L) {
+  stop("ROADMAP.md not found in any of: ",
+       paste(candidate_paths, collapse = ", "))
+}
+roadmap_path <- existing[[1L]]
+
+cat(readLines(roadmap_path, encoding = "UTF-8"), sep = "\n")
 ```

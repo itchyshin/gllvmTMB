@@ -28,6 +28,7 @@ articles:
     - articles/psychometrics-irt
     - articles/mixed-response
     - articles/corvidae-two-stage
+    - articles/stacked-trait-gllvm
 
   - title: Concepts and reference
     navbar: Concepts

@@ -29,6 +29,7 @@ articles:
     - articles/mixed-response
     - articles/corvidae-two-stage
     - articles/stacked-trait-gllvm
+    - articles/phylo-spatial-meta-analysis
 
   - title: Concepts and reference
     navbar: Concepts

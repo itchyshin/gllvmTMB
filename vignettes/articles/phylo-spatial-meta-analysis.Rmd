@@ -1,0 +1,443 @@
+---
+title: "A unified phylogenetic + spatial meta-analysis: gllvmTMB-style"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{A unified phylogenetic + spatial meta-analysis: gllvmTMB-style}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+## 1. The Mizuno et al. framework
+
+**Mizuno, Williams, Lagisz, Senior & Nakagawa (2026)** *A unified
+framework for phylogenetic and spatial meta-analysis*, EcoEvoRxiv,
+<https://doi.org/10.32942/X2WT1B> (companion tutorial code at
+<https://ayumi-495.github.io/phylo_spatial_tutorial/>) shows that a
+**phylogenetic meta-analysis** and a **spatial meta-analysis** are
+the *same* statistical object -- a correlated random-effect model
+on a distance metric. The only thing that changes between them is
+**what metric defines correlation**: shared evolutionary time for
+the phylogenetic case, geographic distance for the spatial case.
+Effect sizes $g_k$ with known sampling variances $v_k$ are modelled
+as
+
+\[
+ g_k \;=\; \mu \;+\; p_{\,i(k)} \;+\; r_{\,s(k)} \;+\; e_k,
+ \qquad
+ \mathbf{p} \sim \mathcal{N}(\mathbf{0},\,\sigma^{2}_{\text{phy}}\,\mathbf{C}_{\text{phy}}),
+ \quad
+ \mathbf{r} \sim \mathcal{N}(\mathbf{0},\,\sigma^{2}_{\text{spa}}\,\mathbf{K}_{\text{spa}}),
+ \quad
+ e_k \sim \mathcal{N}(0, v_k),
+\]
+
+with $\mathbf{C}_{\text{phy}}$ a phylogenetic correlation matrix
+and $\mathbf{K}_{\text{spa}}$ a Matérn correlation built from
+geographic distance. The Mizuno et al. paper covers single-trait
+univariate fits in `metafor`, `glmmTMB`, and `brms`. It explicitly
+flags **two open gaps**:
+
+1. **Combining phylogeny *and* space in one model** is rarely done
+   in practice, even though both terms can be present in the same
+   dataset.
+2. **Multi-trait outcomes** (e.g. "growth response" *and* "survival
+   response" jointly) require an extra trait-covariance layer that
+   their three reference packages do not supply directly.
+
+This article fills both gaps using `gllvmTMB`. The same engine that
+handles reduced-rank GLLVMs has the building blocks needed:
+`phylo_scalar()` for the phylogenetic random effect,
+`spatial_unique()` for the sparse-precision spatial Matérn
+($\nu = 1$; one independent field per outcome; see
+`?spatial_unique` and the
+[SPDE benchmark article](spde-vs-glmmTMB.html)),
+`meta_known_V()` to plug in known sampling variances, and
+`latent()` to add the trait-covariance layer when there is more
+than one outcome.
+
+## 2. Simulate a meta-analytic dataset
+
+```{r setup}
+library(gllvmTMB)
+library(ape)
+```
+
+Two outcomes -- *growth response* and *survival response* --
+measured across 30 species sharing a phylogeny and 30 study sites
+scattered in a unit square. Each outcome contributes 100 effect
+sizes with known sampling variances; that is 200 effect sizes in
+total. The phylogenetic species effect is shared across outcomes
+(one variance); the spatial study effect is independent across
+outcomes.
+
+```{r sim}
+set.seed(2025)
+
+n_species <- 30
+tree <- ape::rcoal(n_species)
+tree$tip.label <- paste0("sp", seq_len(n_species))
+Cphy <- ape::vcv(tree, corr = TRUE)
+
+n_studies <- 30
+study_lon <- runif(n_studies)
+study_lat <- runif(n_studies)
+D <- as.matrix(stats::dist(cbind(study_lon, study_lat)))
+range_sim <- 0.3
+K_spa <- exp(-D / range_sim)
+
+sigma2_phy_true <- 0.30
+sigma2_spa_true <- 0.20
+
+n_eff_per_outcome <- 100
+n_eff <- 2 * n_eff_per_outcome
+
+species_idx <- sample.int(n_species, n_eff, replace = TRUE)
+study_idx   <- sample.int(n_studies, n_eff, replace = TRUE)
+outcome_lab <- factor(rep(c("growth", "survival"), each = n_eff_per_outcome),
+                      levels = c("growth", "survival"))
+
+mu_outcome <- c(growth = 0.20, survival = 0.05)
+
+phy_eff <- as.numeric(t(chol(sigma2_phy_true * Cphy + 1e-8 * diag(n_species))) %*%
+                      rnorm(n_species))
+spa_eff_growth   <- as.numeric(t(chol(sigma2_spa_true * K_spa + 1e-8 * diag(n_studies))) %*%
+                                rnorm(n_studies))
+spa_eff_survival <- as.numeric(t(chol(sigma2_spa_true * K_spa + 1e-8 * diag(n_studies))) %*%
+                                rnorm(n_studies))
+
+vi <- runif(n_eff, 0.04, 0.16)             # known sampling variances
+e  <- rnorm(n_eff, sd = sqrt(vi))           # sampling error per effect
+spa_vec <- ifelse(outcome_lab == "growth",
+                  spa_eff_growth[study_idx],
+                  spa_eff_survival[study_idx])
+
+g <- mu_outcome[as.character(outcome_lab)] +
+     phy_eff[species_idx] + spa_vec + e
+
+df <- data.frame(
+  study   = factor(paste0("s", study_idx),
+                   levels = paste0("s", seq_len(n_studies))),
+  species = factor(paste0("sp", species_idx),
+                   levels = paste0("sp", seq_len(n_species))),
+  lon     = study_lon[study_idx],
+  lat     = study_lat[study_idx],
+  outcome = outcome_lab,
+  value   = g,
+  vi      = vi
+)
+head(df, 4)
+```
+
+The `value` column is the Hedges'-$g$-style estimate; `vi` is its
+known sampling variance. The columns `species`, `study`, `outcome`
+are the three correlation-structure dimensions (phylogenetic,
+spatial, trait-covariance).
+
+## 3. Single-trait phylogenetic meta-analysis
+
+Following the Mizuno et al. equation 3 template, slice to the
+*growth* outcome and fit a phylogenetic-only meta-analysis:
+
+```{r df1}
+df1 <- df[df$outcome == "growth", , drop = FALSE]
+df1$outcome <- droplevels(df1$outcome)
+
+## meta_known_V() desugars to equalto(0 + obs | grp_V, V).
+## The data must carry an `obs` factor (one level per row) and a
+## `grp_V` factor (single level), and known_V must hold the
+## diagonal V.
+df1$obs   <- factor(seq_len(nrow(df1)))
+df1$grp_V <- factor(rep("a", nrow(df1)))
+V1 <- diag(df1$vi)
+```
+
+The fixed effect is the meta-analytic intercept. We use `~ 1`
+rather than `~ 0 + outcome` because the filtered subset has only
+one outcome level (`0 + factor` with a single level fails the
+base R contrast check).
+
+```{r fit-phy}
+fit_phy <- gllvmTMB(
+  value ~ 1 + phylo_scalar(species, vcv = Cphy) +
+          meta_known_V(value, sampling_var = vi),
+  data    = df1,
+  trait   = "outcome",
+  unit    = "study",
+  known_V = V1
+)
+fit_phy$opt$convergence
+fit_phy$report$lam_phy   # phylogenetic variance
+```
+
+`lam_phy` is the scale on $\mathbf{C}_{\text{phy}}$, i.e.
+$\hat\sigma^{2}_{\text{phy}}$. It should be near the true value of
+0.30. This matches the structure of Mizuno et al. equation 3: a
+Gaussian outcome with a phylogenetic random effect and a fixed
+sampling-error term.
+
+## 4. Single-trait spatial meta-analysis
+
+Same data, but use a **spatial** correlation in place of the
+phylogenetic one (Mizuno et al. equation 4). Build a triangulated
+mesh on the study coordinates and call `spatial_unique()`:
+
+```{r fit-spa}
+mesh1 <- make_mesh(df1, c("lon", "lat"), cutoff = 0.07)
+mesh1$mesh$n      # number of mesh nodes
+
+fit_spa <- gllvmTMB(
+  value ~ 1 + spatial_unique(0 + outcome | coords) +
+              meta_known_V(value, sampling_var = vi),
+  data    = df1,
+  mesh    = mesh1,
+  trait   = "outcome",
+  unit    = "study",
+  known_V = V1
+)
+fit_spa$opt$convergence
+as.numeric(fit_spa$report$kappa)               # inverse-range
+sqrt(8) / as.numeric(fit_spa$report$kappa)     # practical range
+```
+
+The estimated practical range -- the distance at which spatial
+correlation drops to $\sim 0.13$ -- should sit near the simulated
+correlation length 0.3. Note that the simulator drew an
+*exponential* field (Matérn $\nu = 1/2$) while `spatial_unique()`
+fits Matérn $\nu = 1$, so the two ranges are not numerically
+identical; the *shape* of the spatial decay is what is being
+recovered.
+
+## 5. Combined phylogenetic + spatial meta-analysis (gap 1)
+
+Mizuno et al. note that combining both correlation sources in one
+model is rarely done in practice. With `gllvmTMB` the syntax is
+just the union of sections 3 and 4:
+
+```{r fit-both}
+fit_both <- gllvmTMB(
+  value ~ 1 + phylo_scalar(species, vcv = Cphy) +
+              spatial_unique(0 + outcome | coords, mesh = mesh1) +
+              meta_known_V(value, sampling_var = vi),
+  data    = df1,
+  trait   = "outcome",
+  unit    = "study",
+  known_V = V1
+)
+fit_both$opt$convergence
+```
+
+```{r both-vc}
+data.frame(
+  source            = c("single phylo", "single spatial",
+                        "combined phylo", "combined spatial"),
+  variance_or_kappa = c(
+    fit_phy$report$lam_phy,
+    as.numeric(fit_spa$report$kappa),
+    fit_both$report$lam_phy,
+    as.numeric(fit_both$report$kappa)
+  )
+)
+sqrt(8) / as.numeric(fit_both$report$kappa)    # spatial practical range, combined
+```
+
+A few practical notes on identifiability:
+
+* When phylogenetic and spatial signals overlap in *space* -- i.e.
+  closely related species tend to be sampled at nearby sites --
+  the two random-effect terms compete for variance and the
+  individual variance estimates can shrink relative to the
+  single-source fits. In our simulated data the species and study
+  indices were drawn independently, so the two variances are well
+  separated.
+* The phylogenetic variance scalar (`lam_phy`) is shared across
+  outcomes when more than one outcome is present
+  (`phylo_scalar()` desugars to `propto(0 + species | trait)` with
+  a single $\sigma^2_{\text{phy}}$ parameter).
+* The SPDE field has its own per-trait precision parameter
+  (`tau`) and a *shared* range parameter (`kappa`).
+
+## 6. Multi-trait meta-analysis (gap 2)
+
+Now use **both** outcomes jointly. The extra layer is
+`latent(0 + outcome | study, d = 1)`, a rank-1 reduced-rank
+between-study term that captures *correlation between outcomes at
+the study level* -- a quantity neither `metafor`, `glmmTMB`, nor
+`brms` exposes as cleanly when paired with phylogeny and a
+sparse-precision spatial field.
+
+```{r df-both}
+df_both <- df
+df_both$obs   <- factor(seq_len(nrow(df_both)))
+df_both$grp_V <- factor(rep("a", nrow(df_both)))
+V_both <- diag(df_both$vi)
+mesh_both <- make_mesh(df_both, c("lon", "lat"), cutoff = 0.07)
+mesh_both$mesh$n
+```
+
+```{r fit-multi}
+fit_multi <- gllvmTMB(
+  value ~ 0 + outcome +
+              latent(0 + outcome | study, d = 1) +
+              phylo_scalar(species, vcv = Cphy) +
+              spatial_unique(0 + outcome | coords, mesh = mesh_both) +
+              meta_known_V(value, sampling_var = vi),
+  data    = df_both,
+  trait   = "outcome",
+  unit    = "study",
+  known_V = V_both
+)
+fit_multi$opt$convergence
+fit_multi$report$lam_phy                          # phylogenetic variance
+sqrt(8) / as.numeric(fit_multi$report$kappa)      # spatial practical range
+```
+
+The `latent(0 + outcome | study, d = 1)` term gives a rank-1 trait
+covariance $\boldsymbol{\Sigma}_{\text{unit}} = \boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^{\top}$.
+This is where `gllvmTMB` extends beyond the Mizuno et al. trio:
+combining phylogeny *and* a sparse-precision spatial field *and* a
+trait-covariance layer in one fit, all under a single TMB
+negative log-likelihood.
+
+## 7. Block-diagonal V: when effect sizes within a study are correlated
+
+Sections 3--6 use **diagonal** `V` (`known_V = diag(vi)`), which
+assumes the sampling errors of different rows are independent.
+That holds when every row comes from a distinct study, but a
+meta-analyst often has *several effect sizes from the same study*
+(multiple outcomes, multiple time points, or multiple
+sub-experiments) -- and within-study sampling errors are then
+correlated.
+
+`gllvmTMB::block_V()` builds the standard compound-symmetric
+block-diagonal `V` for this case:
+$\mathbf{V}_s = \mathbf{D}_s^{1/2} \mathbf{R}_s \mathbf{D}_s^{1/2}$
+within each study, with $\mathbf{R}_s$ having 1 on the diagonal
+and `rho_within` on the off-diagonal.
+
+```{r block-V-demo}
+## Build a block-diagonal V from the simulated multi-trait data,
+## treating the two outcomes from the same study as correlated
+## (rho_within = 0.5).
+V_blk <- block_V(study_id     = df_both$study,
+                 sampling_var = df_both$vi,
+                 rho_within   = 0.5)
+
+## Sanity-check: same diagonal as before, plus within-study
+## off-diagonals
+all.equal(diag(V_blk), df_both$vi)
+range(V_blk[upper.tri(V_blk)])     # > 0 within studies, 0 across
+```
+
+Refit the multi-trait model with the block-diagonal `V`:
+
+```{r fit-blockV}
+fit_multi_block <- gllvmTMB(
+  value ~ 0 + outcome +
+          latent(0 + outcome | study, d = 1) +
+          phylo_scalar(species, vcv = Cphy) +
+          spatial_unique(0 + outcome | coords, mesh = mesh_both) +
+          meta_known_V(value, sampling_var = vi),
+  data    = df_both,
+  trait   = "outcome",
+  unit    = "study",
+  known_V = V_blk
+)
+
+c(lam_phy_blk = as.numeric(fit_multi_block$report$lam_phy),
+  range_blk   = sqrt(8) / as.numeric(fit_multi_block$report$kappa))
+```
+
+Compared to the diagonal-V fit in section 6, the block-diagonal
+fit typically *deflates* the residual between-study variance --
+because the within-study correlation that the diagonal model
+attributed to "genuine between-study heterogeneity" is now
+correctly attributed to known sampling correlation. In a real
+meta-analysis where you have genuine reason to believe
+within-study sampling correlation, this is the correct
+specification.
+
+The `meta_known_V(value, V = V)` term in the formula handles the
+known-V propagation; pass `known_V = V` to `gllvmTMB()` alongside
+it.
+
+## 8. Diagnostics and interpretation
+
+```{r diagnose}
+gllvmTMB_diagnose(fit_multi, verbose = TRUE)
+```
+
+The implied between-study trait covariance and correlation
+matrices:
+
+```{r sigma-b}
+SB <- extract_Sigma(fit_multi, level = "unit")
+round(SB$Sigma, 3)
+round(SB$R,     3)
+```
+
+Interpretation for the meta-analyst:
+
+* **$\boldsymbol{\Sigma}_{\text{unit}}$ diagonals** are
+  between-study residual variances of each outcome *after*
+  phylogeny, geography, and within-study sampling error have been
+  removed. They tell you how much study-to-study heterogeneity
+  remains in the trait-covariance layer.
+* **$\mathbf{R}_{\text{unit}}$ off-diagonal** is the correlation
+  between *growth* and *survival* responses across studies. A
+  strongly positive value means studies that report large
+  positive effects on growth also tend to report large positive
+  effects on survival, after the other structures are accounted
+  for.
+* `lam_phy` and the SPDE practical range ($\sqrt{8}/\hat\kappa$)
+  are the same quantities reported in sections 3--5, now estimated
+  jointly with the trait-covariance layer.
+* Warnings from `gllvmTMB_diagnose()` on small simulated data are
+  normal: meta-analytic intercepts are often weakly identified
+  when most of the variance is absorbed by the random-effect
+  structure, which inflates fixed-effect standard errors. In a
+  real application, check the diagnostic on the full dataset
+  rather than on a 200-row simulation.
+
+## 9. See also
+
+* [Choose your model](choose-your-model.html) -- decision tree.
+* [Stacked-trait GLLVM](stacked-trait-gllvm.html) -- the full
+  six-piece decomposition with replicated trait data
+  (the alternative to two-stage when data shape allows).
+* [Corvidae two-stage workflow](corvidae-two-stage.html) -- a
+  different `meta_known_V()` use case: species-level trait
+  constants via stage-1 / stage-2 meta-analysis.
+* [Phylogenetic GLLVM](phylogenetic-gllvm.html) -- the multi-trait
+  reduced-rank phylogenetic case.
+* [SPDE benchmark](spde-vs-glmmTMB.html) -- why the spatial term
+  is a Matérn $\nu = 1$ sparse-precision field rather than the
+  exponential dense one used by `metafor::SPEXP` and
+  `glmmTMB::exp()`.
+* [Cross-package validation](cross-package-validation.html) --
+  agreement of `meta_known_V()` against `glmmTMB::equalto()`.
+* [Simulation-based recovery](simulation-recovery.html) -- recovery
+  of `phylo_scalar()` and `spatial_unique()` parameters on
+  simulated data.
+* [Pitfalls](pitfalls.html) -- identifiability and common mistakes
+  when stacking covariance structures.
+* **Mizuno, Williams, Lagisz, Senior & Nakagawa (2026)** *A unified
+  framework for phylogenetic and spatial meta-analysis*,
+  EcoEvoRxiv, <https://doi.org/10.32942/X2WT1B> -- the conceptual
+  paper; this article extends its single-trait univariate
+  framework into the combined-and-multivariate case.

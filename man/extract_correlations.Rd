@@ -38,7 +38,7 @@ See Details.}
 effective sample size used in Fisher's
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
 formula. Only consulted for \code{method \%in\% c("fisher-z",
-  "wald")}. The default heuristic uses \code{fit$n_sites} for tier
+"wald")}. The default heuristic uses \code{fit$n_sites} for tier
 \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
 \code{"phy"}, and \code{fit$n_sites} elsewhere — adequate for

@@ -46,7 +46,9 @@ but |0.5| is generally beyond noise for \code{n_sim = 100}).}
 \code{"centred"} (well-behaved), \code{"marginal_score_non_centred"},
 \code{"joint_score_non_centred"},
 \code{"information_matrix_singular"} (TMB couldn't invert it;
-interpret with caution).}
+interpret with caution), \code{"marginal_p_value_unavailable"}
+(TMB returned NA without a captured warning; usually
+happens on tiny / weakly-identified fixtures).}
 \item{\verb{$raw}}{The full \code{TMB::checkConsistency()} return value
 in case the user wants the per-replicate gradient matrix.}
 \item{\verb{$call}}{\code{match.call()} of the invocation.}

@@ -40,6 +40,33 @@
   `"phi_nbinom2[2]"`, `"b_fix[1]"`); derived targets emit a typed
   error pointing at the matching `extract_*(method = "profile")`
   extractor. Audit + TMB-report recommendation 2026-05-15.
+* **`coverage_study(fit, parm, n_reps, methods, level, seed)`** --
+  empirical coverage-rate estimator. For each of `n_reps`
+  parametric-bootstrap replicates, simulates from the fit, refits,
+  computes confidence intervals via the requested methods, and
+  counts the fraction of CIs that contain the original fit's
+  estimate. Returns an object of class `gllvmTMB_coverage_study`
+  with `$coverage` (rate per `parm x method`, plus a
+  `passes_94pct` flag for the audit's empirical-coverage exit
+  gate), `$intervals` (long-format per-rep table for
+  re-aggregation), `$n_failed_refits`. Audit recommendation
+  2026-05-15: the >= 94% gate is the Phase 1b validation
+  milestone's empirical exit criterion. Defaults to all
+  profile-ready direct targets except packed Lambda entries
+  (rotation-ambiguous; coverage would be misleading).
+
+## Behaviour changes (Phase 1b validation milestone)
+
+* **`confint(fit, parm = "sigma_eps", method = "wald")` now
+  works on non-fixed-effect direct parm labels.** Previously
+  only `method = "profile"` consulted `profile_targets()`; the
+  Wald path went through `tidy(fit, "fixed")$term` and returned
+  NA for variance / dispersion / scaling parameters. New helper
+  `.confint_wald_targets()` computes Wald CIs from
+  `fit$sd_report$cov.fixed` directly and applies the registered
+  natural-scale transformation. This closes the symmetric API
+  gap left by PR #119 and unblocks `coverage_study()` on Wald
+  CIs.
 
 ## New exports (P1a audit response)
 

@@ -140,6 +140,7 @@ reference:
     - tmbprofile_wrapper
     - profile_targets
     - confint_inspect
+    - coverage_study
 
   - title: Loadings (Lambda) and confirmatory factor analysis
     desc: Extract, rotate, and constrain the loading matrix

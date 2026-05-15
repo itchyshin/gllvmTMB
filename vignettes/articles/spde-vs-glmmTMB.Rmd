@@ -1,0 +1,238 @@
+---
+title: "Why gllvmTMB: SPDE vs glmmTMB exp() spatial covariance"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Why gllvmTMB: SPDE vs glmmTMB exp() spatial covariance}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+This article fits the **same** spatial multivariate model two ways and
+times each fit. The point is to make the case for the sparse SPDE
+engine concrete: when does it beat the dense `glmmTMB::exp()`
+covariance path, and by how much?
+
+For the broader case that a spatial random field is the same
+statistical object as a phylogenetic random effect -- both
+correlated-random-effect models on a distance metric -- see
+Mizuno, Williams, Lagisz, Senior & Nakagawa (2026), *A unified
+framework for phylogenetic and spatial meta-analysis*, EcoEvoRxiv,
+<https://doi.org/10.32942/X2WT1B>. The benchmark below is on the
+spatial side.
+
+The model is a long-format multi-trait regression with one
+independent Gaussian random field per trait:
+
+* **gllvmTMB**: `value ~ 0 + trait + spatial_unique(0 + trait | coords)`
+  -- sdmTMB-style sparse SPDE / GMRF precision matrix
+  $Q = \kappa^4 M_0 + 2\kappa^2 M_1 + M_2$ built once on the R side,
+  with $n_{\text{mesh}} \times n_{\text{mesh}}$ non-zeros
+  (Lindgren, Rue & Lindström 2011).
+* **glmmTMB**: `value ~ 0 + trait + exp(pos + 0 | trait)` -- dense
+  exponential covariance matrix $V[i, j] = \sigma^2 \exp(-\|p_i - p_j\| / \rho)$,
+  one $n \times n$ matrix per trait.
+
+The two engines fit covariance models in the same Matérn family but
+at different smoothnesses (the SPDE here approximates Matérn
+$\nu = 1$; `exp()` is exactly Matérn $\nu = 0.5$). They are not
+numerically identical, but they are directly comparable for the
+question this article asks: **how does fit time scale with $n$?**
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(glmmTMB)
+library(ggplot2)
+```
+
+## Benchmark code
+
+This is the function that produces the benchmark numbers. We set
+`eval = FALSE` here so the article renders quickly; the actual
+numbers shown below were produced on the maintainer's hardware and
+are reproduced as a literal data frame.
+
+```{r benchmark-code, eval = FALSE}
+bench_one <- function(n_sites, n_traits = 3, seed = 1, reps = 3) {
+  sim <- simulate_site_trait(
+    n_sites               = n_sites,
+    n_species             = 1,
+    n_traits              = n_traits,
+    mean_species_per_site = 1,
+    Lambda_B              = matrix(0.0, n_traits, 1),
+    psi_B                 = rep(0.1, n_traits),
+    spatial_range         = 0.3,
+    sigma2_spa            = rep(0.4, n_traits),
+    seed                  = seed
+  )
+  df   <- sim$data
+  mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
+  df$pos <- glmmTMB::numFactor(df$lon, df$lat)
+
+  t_gllvm <- replicate(reps, {
+    t0 <- Sys.time()
+    gllvmTMB(value ~ 0 + trait + spatial_unique(0 + trait | coords),
+             data = df, mesh = mesh, family = gaussian())
+    as.numeric(Sys.time() - t0, units = "secs")
+  })
+  t_glmm <- replicate(reps, {
+    t0 <- Sys.time()
+    suppressWarnings(glmmTMB::glmmTMB(
+      value ~ 0 + trait + exp(pos + 0 | trait),
+      data = df, family = gaussian(), REML = FALSE))
+    as.numeric(Sys.time() - t0, units = "secs")
+  })
+
+  data.frame(n_sites = n_sites, n_obs = nrow(df), n_mesh = mesh$mesh$n,
+             gllvmTMB_s = median(t_gllvm), glmmTMB_s = median(t_glmm),
+             speedup = median(t_glmm) / median(t_gllvm))
+}
+
+set.seed(1)
+res <- do.call(rbind, lapply(c(40, 80, 160), bench_one))
+```
+
+## Benchmark results (reproduced literally)
+
+```{r load-bench}
+res <- data.frame(
+  n_sites    = c(40,         80,         160),
+  n_obs      = c(120,        240,        480),
+  n_mesh     = c(64,         74,         102),
+  gllvmTMB_s = c(0.2398331,  0.1216240,  0.1632252),
+  glmmTMB_s  = c(0.1872749,  0.5952530,  1.0435259),
+  speedup    = c(0.7808552,  4.8942069,  6.3931678)
+)
+res
+```
+
+## Plot: fit time vs `n_sites`
+
+```{r plot, fig.cap = "Median fit time over 3 replications. Both axes log-scale. SPDE engine in blue, glmmTMB::exp() in red."}
+res_long <- rbind(
+  data.frame(n_sites = res$n_sites, time_s = res$gllvmTMB_s,
+             engine  = "gllvmTMB::spatial_unique() -- sparse SPDE (Matern nu=1)"),
+  data.frame(n_sites = res$n_sites, time_s = res$glmmTMB_s,
+             engine  = "glmmTMB::exp() -- dense exponential (Matern nu=1/2)")
+)
+
+ggplot(res_long, aes(n_sites, time_s, colour = engine, shape = engine)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 3) +
+  scale_x_log10(breaks = res$n_sites) +
+  scale_y_log10() +
+  scale_colour_manual(values = c("#1f78b4", "#e31a1c")) +
+  labs(x = "Number of sites", y = "Median fit time (seconds, log)",
+       colour = NULL, shape = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top", legend.direction = "vertical")
+```
+
+## What we found
+
+```{r summary, results = "asis"}
+cat(sprintf(
+  "* At **n_sites = %d** (%d observations, mesh size %d), `glmmTMB::exp()` is %.2fx faster than `gllvmTMB::spatial_unique()`. The SPDE engine carries fixed mesh-setup overhead that dominates at small n.\n",
+  res$n_sites[1], res$n_obs[1], res$n_mesh[1], 1 / res$speedup[1]))
+cat(sprintf(
+  "* At **n_sites = %d** (%d observations, mesh size %d), `gllvmTMB::spatial_unique()` is %.2fx faster.\n",
+  res$n_sites[2], res$n_obs[2], res$n_mesh[2], res$speedup[2]))
+cat(sprintf(
+  "* At **n_sites = %d** (%d observations, mesh size %d), `gllvmTMB::spatial_unique()` is %.2fx faster.\n",
+  res$n_sites[3], res$n_obs[3], res$n_mesh[3], res$speedup[3]))
+```
+
+The **crossover** -- the $n$ at which the two engines take the same
+time -- sits between `n_sites = 40` and `n_sites = 80` on this
+hardware. Below the crossover, `glmmTMB::exp()` wins because its
+dense $n \times n$ matrix is small enough that fixed mesh-setup
+overhead dominates the SPDE path. Above the crossover the dense-
+matrix cost grows faster than the sparse-precision cost and the SPDE
+engine pulls ahead -- by **`r round(res$speedup[3], 1)`× at
+n_sites = `r res$n_sites[3]`** on this hardware.
+
+## What's actually different
+
+```{r whats-different, eval = FALSE}
+# gllvmTMB (sdmTMB style)  : Q_spde = kappa^4 M0 + 2 kappa^2 M1 + M2
+#                            sparse, n_mesh x n_mesh, GMRF density
+# glmmTMB (exp covariance) : V[i, j] = sigma^2 exp(-||p_i - p_j|| / range)
+#                            dense, n_pos x n_pos
+```
+
+The sparse-precision approach evaluates `n_mesh` basis functions on
+a triangular mesh and projects the field to observation locations
+via a sparse $n \times n_{\text{mesh}}$ matrix $A$. The dense-
+covariance approach builds an $n \times n$ distance matrix per
+trait and Cholesky-factors it. Asymptotic complexity differs
+accordingly:
+
+* SPDE / GMRF: $O(n_{\text{mesh}}^{1.5})$ for sparse Cholesky, plus
+  one sparse mat-vec per data point.
+* Dense `exp()`: $O(n^3)$ Cholesky.
+
+When $n_{\text{mesh}}$ is held roughly constant (controlled by
+`cutoff`) and $n$ grows, the SPDE path's per-iteration cost grows
+much more slowly.
+
+## Caveats
+
+* The two engines fit Matérn fields at **different smoothnesses**
+  ($\nu = 1$ for SPDE, $\nu = 0.5$ for `exp()`). The point-estimates
+  of range and $\sigma$ are not directly comparable. The runtime
+  comparison is.
+* The benchmark above runs **3 replications per cell** to keep
+  vignette build time short. For a publication-grade timing,
+  increase `reps` and use `bench::mark()` or
+  `microbenchmark::microbenchmark()`.
+* Mesh size depends on `cutoff` and on the spatial extent of the
+  data, not just on `n_sites`. With finer meshes the SPDE engine
+  slows down; with coarser meshes its accuracy degrades. The
+  `cutoff = 0.07` used here produces mesh sizes between
+  `r res$n_mesh[1]` and `r res$n_mesh[3]`, which is well below
+  $n_{\text{sites}}$ at every grid point.
+
+## Reproducibility
+
+The benchmark code above (`bench_one()`) is the canonical timing
+function. The numbers in the table are pre-computed values from one
+run on the maintainer's hardware. To re-run on your machine, install
+`gllvmTMB` and `glmmTMB` and execute the `benchmark-code` chunk
+above. Numbers will vary with hardware, BLAS, and TMB version. The
+shape of the curves is the invariant claim.
+
+## See also
+
+* The spatial covstruct family: `?spatial_scalar`, `?spatial_unique`,
+  `?spatial_indep`, `?spatial_latent`, `?spatial_dep`.
+* [Functional biogeography](functional-biogeography.html) -- the
+  SPDE term as part of the full stacked-trait decomposition.
+* [Stacked-trait GLLVM](stacked-trait-gllvm.html) -- the foundational
+  worked example showing all five covariance modes including
+  `spatial_unique()` together.
+* Anderson SC, Ward EJ, English PA, Barnett LAK, Thorson JT (2025).
+  *sdmTMB: an R package for fast, flexible, and user-friendly
+  generalized linear mixed effects models with spatial and
+  spatiotemporal random fields.* Journal of Statistical Software
+  115 (2): 1--46. <https://doi.org/10.18637/jss.v115.i02>
+* Lindgren F, Rue H, Lindström J (2011). *An explicit link between
+  Gaussian fields and Gaussian Markov random fields: the SPDE
+  approach.* Journal of the Royal Statistical Society B
+  73 (4): 423--498. <https://doi.org/10.1111/j.1467-9868.2011.00777.x>

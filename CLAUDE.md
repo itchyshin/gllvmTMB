@@ -121,6 +121,24 @@ When opening a PR for maintainer review, follow up in chat with a
 specific list of what the maintainer needs to check or decide. Do not
 leave review items for the maintainer to discover by browsing the PR.
 
+### Surface review touchpoints at stopping points (maintainer 2026-05-15)
+
+At every natural stopping point -- task end, series-of-tasks end,
+waiting on CI, waiting on permissions, end of a phase, before
+switching context -- post a chat message that lists:
+
+1. **Open PR links** (e.g. `https://github.com/itchyshin/gllvmTMB/pull/123`)
+   that the maintainer can click to read.
+2. **After-task report paths** that just landed or are about to land
+   (e.g. `docs/dev-log/after-task/2026-05-15-day-recap.md`).
+3. **Anything blocking** that the maintainer needs to decide or
+   approve (prefixed with the 🔴 **Needs you:** chip per AGENTS.md).
+
+The maintainer does not browse PRs on their own. The default
+assumption is that if a stopping point arrives and the chat does not
+surface links, the maintainer cannot review. This rule is durable and
+applies to every session.
+
 ## Reusing sdmTMB / drmTMB Code
 
 The R-side spatial helpers (`R/mesh.R`, `R/crs.R`, `R/plot.R`'s

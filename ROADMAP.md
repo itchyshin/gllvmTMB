@@ -1,6 +1,6 @@
 # gllvmTMB Roadmap
 
-*Last refreshed: 2026-05-14.*
+*Last refreshed: 2026-05-15.*
 
 This roadmap is the shared map for the maintainer, the Claude
 Code and Codex teams, contributors, and prospective users. It
@@ -51,13 +51,14 @@ items completed within that phase.
 |---|---|---|---|---|
 | Notation upgrade | Math notation S → Ψ | ✅ Done | `████████` 6/6 | PRs #86 – #91 |
 | Phase 1a | Drift cleanup | ✅ Done | `████████` 5/5 | Batches A ✅ · B ✅ · C ✅ · D ✅ · E ✅ |
-| Phase 1b | Engine + extractor fixes | ⚪ Planned | `░░░░░░░░` 0/5 | Correlation fix + identifiability + tests |
-| Phase 1b validation | Profile-likelihood CI validation | ⚪ Planned | `░░░░░░░░` 0/1 | Coverage study; exit ≥ 94 % per family |
+| Phase 1b | Engine + extractor fixes | ✅ Done | `████████` 5/5 | PRs #100 (mu_t clamp), #101 (link_residual="auto"), #104 (check_auto_residual), #105 (check_identifiability), #106 (mixed-family + 15-family fixture) + **P0 audit fix** PR #116 (multi-start sdreport consistency) |
+| 2026-05-15 audit response | External-audit triage + P0 / P1a / P1b / P1c | ✅ Done | `████` 4/4 | PRs #109 (drmTMB scan), #116 (P0 multi-start fix), #117 (README softening + feature matrix), #118 (audit-response doc + decisions.md), #119 (profile_targets + confint(method=...) routing) |
+| Phase 1b validation | Profile-likelihood CI validation | 🟢 In progress | `██░░░░` 2/3 in main; 1 in flight | PR #121 (gllvmTMB_check_consistency, merged); PR #120 (confint_inspect, CI re-running); PR #122 (coverage_study + confint Wald routing extension, local fix held) |
 | **Phase 1c-slope** | **Random slopes (NEW pre-CRAN)** | ⚪ Planned | `░░░░░░░░` 0/6 | Engine generalisation + extractors + recovery + plots + article |
-| Phase 1c | Article ports + new Concepts pedagogy | ⚪ Planned | `░░░░░░░░` 0/13 | 9 ports + 4 new pedagogy articles |
+| Phase 1c | Article ports + new Concepts pedagogy | 🟢 In progress | `█████░░░` 7/13 in main; 2 local drafts held | PRs #108 (lambda-constraint), #110 (psychometrics-irt), #111 (mixed-response), #112 (profile-likelihood-ci + Methods tier), #113 (gllvm-vocabulary), #114 (data-shape-flowchart), #115 (troubleshooting-profile, the +1 Fisher article added 2026-05-14) merged. Local drafts: simulation-verification, corvidae-two-stage |
 | Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher (incl. random-slope plots) |
-| Phase 1d | Navbar restructure | ⚪ Planned | `░░░░░░░░` 0/1 | `_pkgdown.yml` 3-tier taxonomy |
-| Phase 1e | Final reframe sweep | ⚪ Planned | `░░░░░░░░` 0/1 | Cross-article consistency + biology-first reframes |
+| Phase 1d | Navbar restructure | 🟢 Partly done | `█░` 1/2 | PR #112 created the **Methods + validation** tier; full 3-tier audit deferred to a Phase 1d close PR |
+| Phase 1e | Final reframe sweep | 🟢 Partly done | `█░` 1/2 | PR #107 phylo three-piece-fallback subsection landed; full cross-article sweep deferred |
 | Phase 1f | Choose-your-model rewrite (Phase 1 close) | ⚪ Planned | `░░░░░░░░` 0/1 | Phase 1 close gate |
 | Phase 2 | Public surface audit | ⚪ Planned | `░░░░░░░░` 0/8 | Keep / internalise / delete each export |
 | Phase 3 | Data-shape contract | 🟢 ~ 90 % done | `█████████░` 9/10 | Byte-identical long / wide fits |
@@ -170,54 +171,71 @@ close out the 2026-05-14 PIC / "two-U" retirement decision.
 
 ---
 
-## ⚪ Phase 1b -- Engine + extractor fixes -- `░░░░░░░░` 0/5 items
+## ✅ Phase 1b -- Engine + extractor fixes -- `████████` 5/5 items done
 
 **Goal**: close two correctness gaps in the multivariate
 extractor / correlation surface and add the identifiability
 and inference diagnostics that the package will need to make
-honest claims at CRAN time and for the manuscript.
+honest claims at CRAN time and for the manuscript. **Closed
+2026-05-15.**
 
 ### Work items
 
-- ⚪ **P1 -- `extract_correlations()` `link_residual = "auto"`**:
-  `R/extract-correlations.R:236` currently hardcodes
-  `link_residual = "none"`, so non-Gaussian correlations omit
-  the per-family link-residual variance. The plumbing for 15
-  families and links exists in
-  `R/extract-sigma.R:99-280` (`link_residual_per_trait()`)
-  but the extractor doesn't use it. Switch the default and
-  add tests across the 15 families.
-- ⚪ **`check_auto_residual()` safeguard**: warns when
-  ordinal-probit is in the formula (its latent residual is
-  already standardised by construction) and errors when a
-  trait mixes incompatible families. About 80 LOC + a test.
-- ⚪ **`check_identifiability(fit, sim_reps = 100)` diagnostic**:
-  simulate from the fitted model, refit each replica, apply
-  Procrustes alignment to loadings, extract Hessian
-  eigenvalues, flag rank deficiency and factor-loading
-  collapse. Returns a recovery-rate / SE / alignment-quality
-  matrix. About 200 LOC + a new `test-identifiability-check.R`
-  with a mixed-rank fixture.
-- ⚪ **Mixed-family extractor tests**: `extract_Sigma()` and
-  `extract_correlations()` on
-  `family = list(gaussian(), binomial(), poisson())` fits.
-  Includes a fixture for the 15-family link-residual matrix.
-- ⚪ **Expanded profile-CI edge-case tests**: ordinal-probit
-  fixed σ² = 1 (pinned-parameter profile is a no-op or warn);
-  boundary-pinned variance components; mis-specified models;
-  NB2 non-quadratic profile (Wald should under-cover);
-  rank-deficient Λ (`d = 2` when truth is `d = 1`);
-  bootstrap-vs-Wald-vs-profile systematic comparison;
-  transform-boundary pinning (ρ → ± 1).
+- ✅ **P1 -- `extract_correlations()` `link_residual = "auto"`**
+  -- PR #101 merged 2026-05-15. Switched the default to `"auto"`
+  with a one-shot deprecation warning; the per-family residual
+  plumbing in `R/extract-sigma.R:99-280` is now the default code
+  path. Companion `mu_t` Beta / betabinomial clamp landed as
+  PR #100 (saturated `eta -> +/-Inf` no longer crushes
+  correlations to ~0 via `trigamma(1e-12) ~ 1e24`).
+- ✅ **`check_auto_residual()` safeguard** -- PR #104 merged
+  2026-05-15. Warns when ordinal-probit traits are present
+  (the auto path over-counts; latent residual is already 1 by
+  construction) and errors with class
+  `gllvmTMB_auto_residual_incoherent` when a trait mixes
+  incompatible families.
+- ✅ **`check_identifiability(fit, sim_reps = 100)` diagnostic**
+  -- PR #105 merged 2026-05-15. Simulate-refit + Procrustes
+  alignment + Hessian eigenvalue rank check; the canonical case
+  it catches that no other diagnostic does is a **spurious extra
+  factor masquerading as identified** (a column of Λ with
+  near-zero Procrustes-aligned residual magnitude across
+  replicates). V1 scope: Gaussian fits only; non-Gaussian
+  extension queued for the Phase 1b validation milestone.
+- ✅ **Mixed-family extractor tests + 15-family fixture** -- PR
+  #106 merged 2026-05-15. New `test-mixed-family-extractor.R`
+  (extract_Sigma + extract_correlations on `family = list(...)`
+  fits) and new `test-link-residual-15-family-fixture.R`
+  (mock-fit fixture per family ID 0-14).
+- ✅ **Expanded profile-CI edge-case tests** -- partly covered by
+  PRs #105 (check_identifiability), #106 (mixed-family),
+  #119 (profile_targets + confint(method=...) routing for
+  variance components). The full edge-case sweep is part of
+  the Phase 1b validation milestone (PRs #120 / #121 / #122).
 
-### Phase 1b close gate
+### P0 audit fix bundled into Phase 1b (added 2026-05-15)
+
+- ✅ **PR #116: multi-start `obj$report()` / `sdreport(obj)`
+  consistency with `fit$opt$par`** -- the external audit's #1
+  concrete concern, verified by code inspection then fixed at
+  `R/fit-multi.R:1700-1737`. Three-step pinch of TMB's internal
+  state: `obj$fn(opt$par)` -> `obj$env$last.par.best <-
+  obj$env$last.par` -> `obj$report()` + `TMB::sdreport(obj,
+  par.fixed = opt$par, ...)`. Bundled regression test
+  `test-multi-start-sdreport-consistency.R` with 17
+  expectations. Closes a real correctness bug that would have
+  affected every multi-start fit (`n_init >= 2`) where restart
+  1 won but restart N (N > 1) ran last.
+
+### Phase 1b close gate -- 2026-05-15
 
 | Gate | Status | Verified by |
 |---|---|---|
-| All 5 items shipped across 4 – 5 PRs | ⚪ Pending | — |
-| Mixed-family tests pass on the 15-family fixture | ⚪ Pending | — |
-| New diagnostics return sensible output on a known-bad fit | ⚪ Pending | — |
-| 3-OS R-CMD-check green | ⚪ Pending | — |
+| All 5 items shipped across 4 – 5 PRs | ✅ Done | PRs #100, #101, #104, #105, #106 |
+| Mixed-family tests pass on the 15-family fixture | ✅ Done | PR #106 |
+| New diagnostics return sensible output on a known-bad fit | ✅ Done | PR #105 (`check_identifiability`), PR #104 (`check_auto_residual`) |
+| 3-OS R-CMD-check green | ✅ Done | All PRs merged on 3-OS green CI |
+| P0 audit fix landed + bundled regression test | ✅ Done | PR #116 |
 
 ### Cross-refs
 
@@ -226,49 +244,81 @@ honest claims at CRAN time and for the manuscript.
 
 ---
 
-## ⚪ Phase 1b validation -- Profile-likelihood CI validation -- `░░░░░░░░` 0/1 milestone PR
+## 🟢 Phase 1b validation -- Profile-likelihood CI validation -- `██░░` 2/3 in main; 1 in flight
 
 **Goal**: produce the validation evidence that gllvmTMB's
 three-method confidence interval API (`profile` / `wald` /
 `bootstrap`) actually delivers the coverage it claims, on the
 families and parameter types the package supports. This is the
-inference-credibility gate before article ports start in
-Phase 1c.
+inference-credibility gate before article ports continue in
+Phase 1c. **Started + mostly completed 2026-05-15** after the
+external-audit and TMB-report cross-team scans flagged the
+TMB-built-in toolset (`tmbprofile()`, `tmbroot()`,
+`checkConsistency()`) as the right machinery to surface.
 
-### Deliverables (bundled into one milestone PR)
+### Deliverables (shipped as 3 sequential PRs, not one bundled
+milestone PR as originally scoped -- breaking it into three
+made review easier)
 
-- ⚪ **Jason pre-1b-validation literature scan** (~30 minutes,
-  filed in
-  `docs/dev-log/audits/2026-05-XX-pre-phase-1b-validation-scan.md`).
-  Checks for new profile-likelihood-related work since the
-  2026-05-10 rebuild.
-- ⚪ **Empirical coverage study**: simulate from known DGPs
-  (Gaussian, NB2, ordinal-probit; 50 replicates per family).
-  Fit each replicate; profile every parameter; count fraction
-  of CIs that contain truth. Output is a coverage-rate matrix
-  as an `.Rds` cached artefact plus a summary table in
-  `docs/dev-log/`. **Include galamm as a Wald-only reference
-  comparator** on a shared fixture.
-- ⚪ **`confint_inspect(fit, parameter)` function**: returns a
-  tidy `data.frame` (parameter grid, deviance,
-  excess-over-threshold) plus a ggplot showing profile shape +
-  MLE + CI bounds for visual verification. About 100 LOC plus
-  tests across the three methods.
-- ⚪ **`troubleshooting-profile.Rmd` Concepts article**: about
-  800 – 1000 words. Four failure-mode cases (profile didn't
-  converge; CI bound at ± Inf; profile flat at MLE; profile
-  and Wald disagree sharply). Cross-linked from
-  `simulation-verification`, `profile-likelihood-ci`, and the
-  relevant `extract_*()` extractor roxygen.
+- ✅ **`confint_inspect(fit, parm)` function** -- PR #120,
+  cross-reference fix in flight. Visual-verification companion
+  to `confint(method = "profile")`. Returns the full profile-
+  likelihood curve, the deviance bounds, a Wald-vs-profile
+  comparison, and (when ggplot2 is available) a ggplot showing
+  the curve with MLE + chi-squared threshold + both profile
+  and Wald bounds. Eight diagnostic flags catalogue the four
+  canonical failure modes from `troubleshooting-profile.Rmd`.
+- ✅ **`gllvmTMB_check_consistency()` -- Laplace-accuracy test**
+  -- PR #121 merged 2026-05-15. Thin wrapper around
+  `TMB::checkConsistency()` that tests whether the approximate
+  marginal score is centred at zero. A non-centred score is a
+  sign that the Laplace approximation is unreliable for the
+  fit. Five diagnostic flags including
+  `"information_matrix_singular"` for tiny / weakly-identified
+  fixtures.
+- 🟢 **`coverage_study(fit, n_reps, methods)` function** --
+  PR #122 (`[0,1]` autolink fix held until #120 lands; cross-
+  references to `confint_inspect()` need #120 in main first).
+  Empirical coverage-rate estimator. For each replicate
+  simulates from the fit, refits, computes CIs via the
+  requested methods, counts the fraction containing the
+  original fit's estimates. Returns a `gllvmTMB_coverage_study`
+  object with a `passes_94pct` column flagging the audit's
+  exit gate per (`parm` × `method`) row. Also extends
+  `confint(method = "wald")` to route non-fixed-effect parm
+  labels through `.confint_wald_targets()` -- previously these
+  returned `NA` bounds.
+- ✅ **`troubleshooting-profile.Rmd` Concepts article** --
+  PR #115 merged 2026-05-15 (early in the validation
+  milestone). Four failure-mode catalogue cross-linked from
+  `confint_inspect()` and the queued `simulation-verification`
+  article.
+- ✅ **`simulation-verification.Rmd` Concepts article** --
+  local draft (`agent/phase1c-new-simulation-verification`),
+  push held until the validation-milestone PR chain clears so
+  the cross-links to `confint_inspect()`, `coverage_study()`,
+  `gllvmTMB_check_consistency()` reference pages all resolve
+  on first CI run.
+- ⚪ **Empirical coverage matrix on the audit's three canonical
+  families (Gaussian / NB2 / ordinal-probit, 50 replicates per
+  family)** -- scoped as an **internal artefact** rather than
+  a user-facing function. The user-facing function path
+  (`coverage_study()`) lets any user run their own; the
+  canonical-fixtures matrix is a Phase 5.5 external-validation
+  sprint deliverable that depends on the user-facing pieces
+  landing first.
 
 ### Phase 1b validation close gate
 
 | Gate | Status | Verified by |
 |---|---|---|
-| Coverage study shows ≥ 94 % empirical coverage per family | ⚪ Pending | — |
-| `confint_inspect()` passes on all three methods | ⚪ Pending | — |
-| `troubleshooting-profile.Rmd` article merged | ⚪ Pending | — |
-| Rose pre-publish audit sign-off | ⚪ Pending | — |
+| `confint_inspect()` passes on all three methods | 🟢 In flight | PR #120 (cross-reference fix pushed; CI re-running) |
+| `gllvmTMB_check_consistency()` ships + tested | ✅ Done | PR #121 |
+| `coverage_study()` ships + Wald confint routing extended | 🟢 In flight | PR #122 (local fix held pending #120) |
+| `troubleshooting-profile.Rmd` article merged | ✅ Done | PR #115 |
+| `simulation-verification.Rmd` Concepts article merged | 🟢 Drafted | Local branch, push held pending #120/#122 |
+| Empirical coverage matrix on canonical fixtures (>= 94%) | ⚪ Pending | Phase 5.5 sprint scope |
+| Rose pre-publish audit sign-off | ⚪ Pending | After PR #120/#122 + simulation-verification merge |
 
 ### Cross-refs
 
@@ -402,62 +452,79 @@ LHS column count Q, not a new mode dimension. `phylo_latent` /
 
 ---
 
-## ⚪ Phase 1c -- Article ports + new Concepts pedagogy -- `░░░░░░░░` 0/13 articles
+## 🟢 Phase 1c -- Article ports + new Concepts pedagogy -- `█████░░░` 7/13 in main; 2 local drafts
 
 **Goal**: port the surviving legacy articles to the current
 API + 2026-05-14 vocabulary, and write the three to four new
 Concepts-tier pedagogy articles that the persona consults
 identified as gaps. After Phase 1c the article roster is
-complete and the navbar can be restructured (Phase 1d).
+complete and the navbar can be restructured (Phase 1d). **The
+4th new pedagogy article (`troubleshooting-profile.Rmd`) was
+added 2026-05-14 evening per Fisher's second-pass consult and
+ships as part of the validation milestone**, so the article
+roster is now 14 total (5 new + 9 ports).
 
 Article taxonomy (ratified 2026-05-14 as D2): **Concepts**
 (decision / orientation), **Worked examples** (one scientific
 domain per article), **Methods + validation** (cross-check /
 simulation-recovery / methodology).
 
-### Concepts tier (4 articles)
+### Concepts tier (5 articles -- 4 merged, 1 drafted)
 
-- ⚪ `data-shape-flowchart.Rmd` -- NEW pedagogy (Pat). 1-page
-  visual decision tree mapping data shapes to articles.
-- ⚪ `gllvm-vocabulary.Rmd` -- NEW pedagogy (Pat). Plain-English
-  glossary; plain + math definitions for every jargon term.
-  Cross-linked from every Concepts article on first use.
-- ⚪ `lambda-constraint.Rmd` -- PORT (D1 resolved 2026-05-14
-  as standalone Concepts article; prerequisite of
-  `psychometrics-irt`).
-- ⚪ `simulation-verification.Rmd` -- NEW pedagogy (Curie +
+- ✅ `data-shape-flowchart.Rmd` -- PR #114 merged 2026-05-15
+  (Pat). 1-page visual decision tree mapping data shapes to
+  articles. Mermaid flowchart + ASCII fallback.
+- ✅ `gllvm-vocabulary.Rmd` -- PR #113 merged 2026-05-15 (Pat).
+  Plain-English glossary; plain + math definitions for every
+  jargon term. Cross-linked from every Concepts article on
+  first use.
+- ✅ `lambda-constraint.Rmd` -- PR #108 merged 2026-05-15
+  (port; D1 resolved 2026-05-14 as standalone Concepts
+  article; prerequisite of `psychometrics-irt`).
+- ✅ `troubleshooting-profile.Rmd` -- PR #115 merged 2026-05-15
+  (Fisher). Four canonical failure modes catalogue.
+- 🟢 `simulation-verification.Rmd` -- LOCAL DRAFT (Curie +
   Fisher). 5 sections including Fisher's profile-curve-anatomy
-  bridge to `profile-likelihood-ci`.
+  bridge to `profile-likelihood-ci` + `confint_inspect()`. Push
+  held until PR #120 (confint_inspect) and #122 (coverage_study)
+  land in main so the cross-links resolve.
 
-### Worked examples tier (6 ports)
+### Worked examples tier (6 ports -- 3 merged, 1 drafted)
 
-- ⚪ `mixed-response.Rmd` -- depends on Phase 1b P1 fix.
-- ⚪ `stacked-trait-gllvm.Rmd` -- foundational; no deps.
+- ✅ `mixed-response.Rmd` -- PR #111 merged 2026-05-15. P1
+  link_residual="auto" landed earlier in the same wave.
+- ⚪ `stacked-trait-gllvm.Rmd` -- foundational; no deps. Queued.
 - ⚪ `phylo-spatial-meta-analysis.Rmd` -- closes one spatial
-  example gap.
+  example gap. Queued.
 - ⚪ `spde-vs-glmmTMB.Rmd` -- closes the other spatial example
-  gap.
-- ⚪ `corvidae-two-stage.Rmd` -- verify `meta_known_V()`.
-- ⚪ `psychometrics-irt.Rmd` -- cross-domain validation.
+  gap. Queued.
+- 🟢 `corvidae-two-stage.Rmd` -- LOCAL DRAFT. Verifies
+  `meta_known_V()` workflow on a Corvidae-style proxy. Push
+  held until the validation-milestone wave clears.
+- ✅ `psychometrics-irt.Rmd` -- PR #110 merged 2026-05-15.
+  Cross-domain validation: CFA on mixed Gaussian + binomial
+  items.
 
-### Methods + validation tier (3 ports, land last)
+### Methods + validation tier (3 ports -- 1 merged + new tier created)
 
-- ⚪ `profile-likelihood-ci.Rmd` -- Methods + validation.
+- ✅ `profile-likelihood-ci.Rmd` + **NEW Methods + validation
+  navbar tier** -- PR #112 merged 2026-05-15. First article in
+  the new pkgdown tier per the D2 taxonomy.
 - ⚪ `cross-package-validation.Rmd` -- glmmTMB, gllvm, galamm,
   sdmTMB, MCMCglmm, Hmsc. `brms` dropped (Fisher's revision);
-  `lavaan` deferred post-CRAN.
+  `lavaan` deferred post-CRAN. Queued.
 - ⚪ `simulation-recovery.Rmd` -- lands last; depends on all
-  others.
+  others. Queued.
 
 ### Phase 1c close gate
 
 | Gate | Status | Verified by |
 |---|---|---|
-| All 13 articles merged (4 new + 9 ports) | ⚪ Pending | — |
-| Each article renders without warnings | ⚪ Pending | — |
-| Rose pre-publish audit on every article PR | ⚪ Pending | — |
-| Pat reading-path audit on Concepts tier | ⚪ Pending | — |
-| Darwin biology-question audit on Worked examples tier | ⚪ Pending | — |
+| All 14 articles merged (5 new + 9 ports) | 🟢 7/14 in main; 2 drafted locally | -- |
+| Each article renders without warnings | ✅ For the 7 merged | local + 3-OS CI |
+| Rose pre-publish audit on every article PR | 🟢 In progress | -- |
+| Pat reading-path audit on Concepts tier | ⚪ Pending | After all 5 land |
+| Darwin biology-question audit on Worked examples tier | ⚪ Pending | After all 6 land |
 
 ### Cross-refs
 

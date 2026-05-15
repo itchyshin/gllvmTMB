@@ -32,6 +32,7 @@ articles:
     desc: Decision tree, concept articles, and API lookup
     contents:
     - articles/choose-your-model
+    - articles/gllvm-vocabulary
     - articles/covariance-correlation
     - articles/pitfalls
     - articles/api-keyword-grid

@@ -258,7 +258,13 @@ df <- sim$data
 df$value <- as.integer(df$value > 0)   # binarise
 ```
 
+The same JSDM fits in both long format and the `traits(...)` wide
+format. The long form is shown first; the wide form is the
+formula-API equivalent on a pivoted data frame. Both reach the
+same engine.
+
 ```{r jsdm-fit}
+# Long format -- one row per (site, species) observation
 fit_jsdm <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 +
           latent(0 + trait | site, d = 2),
@@ -268,18 +274,36 @@ fit_jsdm <- gllvmTMB(
 fit_jsdm
 ```
 
+```{r jsdm-fit-wide, eval = FALSE}
+# Wide format -- one row per site, one column per species, after
+# pivoting `df` to wide (e.g. with `tidyr::pivot_wider`, treating
+# missing (site, species) cells as absences = 0 for a binomial
+# JSDM). The `traits(...)` LHS names the species columns; the
+# compact RHS shorthand uses `1 + env_1` which expands internally
+# to `0 + trait + (0 + trait):env_1`.
+fit_jsdm_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3, trait_4,
+         trait_5, trait_6, trait_7, trait_8) ~
+    1 + env_1 + latent(1 | site, d = 2),
+  data   = df_wide,
+  unit   = "site",
+  family = binomial()
+)
+all.equal(logLik(fit_jsdm), logLik(fit_jsdm_wide))
+```
+
 ### Long or wide data shape
 
-The fit above is long-format
-(`gllvmTMB(value ~ ..., data = df_long)`). If your data are stored
-with one row per `(site, species)` and one column per trait, the
-same JSDM fits via the `traits(...)` LHS marker on a pivoted wide
-data frame; internally the engine pivots back to long. For the
-JSDM special case where the response factor `trait` indexes
-species (each row already carries the species identity), the long
-form is the natural shape and is shown here. See the Get Started
-vignette and [`morphometrics`](morphometrics.html) for the
-long/wide equivalence check on a simpler shape.
+JSDM is the package's natural long-format use case because each
+row already carries `(site, species)` and the response factor
+`trait` indexes species. The wide form above is shown for syntactic
+parallelism with the
+[`morphometrics`](morphometrics.html) and
+[Get Started](../gllvmTMB.html) examples; the runnable byte-identical
+long/wide equivalence check on this JSDM scenario depends on the
+absence-fill convention (sparse `mean_species_per_site` simulation
+vs every-site-sees-every-species filled with zeros) and lives in the
+Phase 1c article-port programme.
 
 ## Latent-scale residual species correlations (with 95% CIs)
 

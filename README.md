@@ -292,11 +292,14 @@ package author, written against the TMB API.
   runs in seconds-to-minutes rather than minutes-to-hours.
 
 A full scope comparison and decision matrix lives in
-[`docs/design/04-sister-package-scope.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/04-sister-package-scope.md).
+[`docs/design/04-sister-package-scope.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/04-sister-package-scope.md)
+on GitHub.
 
 ## Roadmap
 
-The package is pre-CRAN; the
+The package is pre-CRAN. The
 [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html)
 shows what is stable today, what is in flight, and what is
-planned next. It is refreshed as work progresses.
+planned next; it is refreshed as work progresses, and it is the
+canonical place to check the current status of every phase
+before adopting `gllvmTMB` for a project.

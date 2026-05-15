@@ -1,0 +1,180 @@
+---
+title: "Data-shape flowchart: which worked example matches your data?"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Data-shape flowchart: which worked example matches your data?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE
+)
+```
+
+The `gllvmTMB` worked-example library covers many situations, and
+choosing the right starting article is mostly a question of **what
+shape your data has**, not which model machinery you want. This page
+maps the common data shapes to specific worked examples in one
+flowchart, so you can land on the right page without reading
+everything.
+
+If you already know the *question* you want to answer (e.g. "is there
+phylogenetic signal in these traits?") rather than the data shape,
+start with the [Choose your model](choose-your-model.html) page
+instead. This page is the data-first companion. New to the
+vocabulary? See [gllvmTMB vocabulary](gllvm-vocabulary.html) first.
+
+## The flowchart
+
+```{r flowchart, echo = FALSE, eval = requireNamespace("DiagrammeR", quietly = TRUE)}
+DiagrammeR::mermaid("
+graph TD
+  A[Start: what is each row in your data?]
+  A -->|One row per individual, several traits as columns| B[Cross-sectional traits, no grouping]
+  A -->|One row per site x species observation| C[Site x species long format]
+  A -->|One row per respondent x item| D[Survey / IRT data]
+  A -->|One row per species, traits = columns| E[Species-level constants]
+
+  B --> B1[morphometrics<br/>Rank-2 GLLVM, size + shape axes]
+  C --> C1{Phylogeny on species?}
+  C1 -->|No| C2{Spatial autocorrelation between sites?}
+  C1 -->|Yes| C3[phylogenetic-gllvm<br/>Paired phylo + non-phylo decomposition]
+  C2 -->|No| C4{Repeated measures on same individual?}
+  C2 -->|Yes| C5[joint-sdm<br/>SPDE / mesh, presence-absence]
+  C4 -->|No| C6[functional-biogeography<br/>Trait integration, between + within site]
+  C4 -->|Yes| C7[behavioural-syndromes<br/>Repeatability, between vs within individual]
+  D --> D1{Items mix Likert + binary + counts?}
+  D1 -->|Yes| D2[psychometrics-irt<br/>+ mixed-response<br/>CFA + per-row family dispatch]
+  D1 -->|No| D3[psychometrics-irt<br/>CFA with one item family]
+  E --> E1[corvidae-two-stage<br/>Stage-1 per-trait fits, stage-2 meta-V]
+", height = 700)
+```
+
+A static fallback in case the JavaScript-rendered diagram doesn't
+load:
+
+```
+Start: what is each row in your data?
+
+  1) One row per individual, several traits as columns
+     -> morphometrics                          (Rank-2 GLLVM)
+
+  2) One row per (site x species) observation
+     2a) No phylogeny, no spatial, no repeated measures
+         -> functional-biogeography            (between + within site)
+     2b) No phylogeny, no spatial, repeated measures on individuals
+         -> behavioural-syndromes              (repeatability)
+     2c) No phylogeny, spatial autocorrelation between sites
+         -> joint-sdm                          (SPDE / mesh)
+     2d) Phylogeny on species
+         -> phylogenetic-gllvm                 (paired phylo decomposition)
+     2e) Mixed response families per row
+         -> mixed-response                     (Gaussian + binomial + Poisson)
+
+  3) One row per (respondent x item) -- survey / IRT
+     -> psychometrics-irt                      (CFA, optionally mixed-family)
+
+  4) One row per species, traits are columns (AVONET-style)
+     -> corvidae-two-stage                     (stage-1 per-trait + stage-2 meta-V)
+```
+
+## Notes on the branches
+
+**Cross-sectional traits, no grouping** ([morphometrics](morphometrics.html))
+&mdash; The simplest case. One observational level (individuals),
+several continuous traits per individual, shared low-rank covariance
+between traits. No phylogeny, no spatial structure, no nesting. This
+is the foundation for everything else; if your data fits here, start
+here even if you eventually need a more complex model.
+
+**Site x species long format, between + within decomposition**
+([functional-biogeography](functional-biogeography.html)) &mdash; Each
+row is one species's trait value at one site. The "trait integration"
+question asks whether trait covariance is mostly **between** sites
+(do entire sites have a syndrome) or **within** sites (do co-occurring
+species share a syndrome regardless of site). The paired
+`latent() + unique()` decomposition fits both layers.
+
+**Site x species with repeated measures**
+([behavioural-syndromes](behavioural-syndromes.html)) &mdash; Same data
+shape as functional-biogeography, but with repeated observations on
+the same individual. The model decomposes variance into
+between-individual (the "personality" axis) and within-individual
+(the residual / plasticity axis); the canonical behavioural-ecology
+summary is per-trait *repeatability* $R_t$.
+
+**Site x species with spatial autocorrelation**
+([joint-sdm](joint-sdm.html)) &mdash; When sites have spatial
+coordinates and species-presence patterns are spatially clustered, the
+SPDE / mesh approximation models the between-site covariance as a
+continuous spatial Gaussian field rather than an independent random
+effect. This is the spatial-ecology variant of functional-biogeography.
+
+**Site x species with phylogeny on species**
+([phylogenetic-gllvm](phylogenetic-gllvm.html)) &mdash; When species
+share a phylogenetic tree, the canonical model is the paired
+phylogenetic + non-phylogenetic decomposition (four pieces:
+$\boldsymbol{\Lambda}_{\rm phy}$, $\boldsymbol{\Psi}_{\rm phy}$,
+$\boldsymbol{\Lambda}_{\rm non}$, $\boldsymbol{\Psi}_{\rm non}$).
+For small trees, a [three-piece fallback]
+(phylogenetic-gllvm.html#three-piece-fallback-when-the-paired-form-is-under-identified)
+is sometimes more appropriate. The output of `extract_phylo_signal()`
+reports the partition $H^2 + C^2_{\rm non} + \Psi = 1$.
+
+**Mixed-family rows in one fit**
+([mixed-response](mixed-response.html)) &mdash; Use when one trait is
+continuous, another is binary, another is a count, and you want them
+to share latent structure. Pass `family = list(gaussian(),
+binomial(), poisson())` with a `family_var` column.
+
+**Survey / IRT data**
+([psychometrics-irt](psychometrics-irt.html)) &mdash; One row per
+(respondent, item). The article shows a Confirmatory Factor Analysis
+(CFA) with the lambda-constraint mechanism: pinning the block-
+diagonal off-pattern entries to zero. Mixing item families (Likert
+items as Gaussian, yes/no items as binomial) uses the same `family =
+list(...)` dispatch as `mixed-response`.
+
+**Species-level constants** (corvidae-two-stage) &mdash; When each
+species has one trait value (no within-species replication), the
+one-shot stacked-trait GLLVM is poorly informed. The recommended
+workflow is two-stage: (1) per-trait univariate fits to extract
+site-level estimates and their SEs; (2) a multivariate
+meta-regression on the stage-1 estimates using `meta_known_V()` to
+propagate the stage-1 uncertainty into the stage-2 covariance.
+
+## When the branches overlap
+
+Real data often fits more than one branch. Some examples:
+
+- **Site x species + phylogeny + spatial**: use the
+  [functional-biogeography](functional-biogeography.html) article as
+  the base (between/within decomposition), then add a `phylo_*()`
+  term plus a `spatial_*()` term. The keyword grid composes; each
+  tier gets its own paired decomposition.
+- **Mixed-family + CFA structure**: combine the
+  [mixed-response](mixed-response.html) recipe (per-row `family =
+  list(...)`) with the
+  [lambda-constraint](lambda-constraint.html) recipe (pinned
+  off-pattern entries). Both arguments accept their pieces
+  simultaneously.
+- **IRT + repeated measures**: the
+  [behavioural-syndromes](behavioural-syndromes.html) example
+  generalises trivially; the "individual" is now "respondent" and
+  the "trait" is now "item". The model machinery doesn't change.
+
+## See also
+
+- [Choose your model](choose-your-model.html) -- the question-first
+  decision tree (this page is the data-shape-first companion).
+- [gllvmTMB vocabulary](gllvm-vocabulary.html) -- plain-English
+  glossary for the terms used in each branch.
+- [API keyword grid](api-keyword-grid.html) -- the 3x5 covariance
+  keyword reference.

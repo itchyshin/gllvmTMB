@@ -1,0 +1,228 @@
+---
+title: "gllvmTMB vocabulary: a plain-English glossary"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{gllvmTMB vocabulary: a plain-English glossary}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE
+)
+```
+
+GLLVMs draw on three traditions (psychometrics, factor analysis,
+random-effects mixed models) that each carry their own vocabulary
+for the same objects. This article gives a one-stop, plain-English
+glossary keyed to the terms used in the other articles. Every
+Concepts article cross-links here on first use of the underlined
+terms.
+
+The math notation matches the rest of the package:
+$\boldsymbol{\Lambda}$ is the loading matrix; $\boldsymbol{\Sigma}$ is
+the implied trait covariance; $\boldsymbol{\Psi}$ is the unique-
+variance diagonal; $\boldsymbol{Z}$ is the latent-score matrix.
+
+## Core latent-variable terms
+
+**Latent factor (latent variable, latent score, score, $\boldsymbol{Z}$)**
+&mdash; An unobserved variable that gllvmTMB *infers* from how the
+observed traits move together. Each unit (site, individual,
+respondent) has a vector of $d$ latent scores. You don't measure
+them directly; the engine reads them off the trait covariance
+pattern.
+*Math*: $\boldsymbol{Z}$ is the $N \times d$ score matrix; row
+$i$ is the latent vector for unit $i$.
+
+**Loading (loadings, weight, factor loading, $\Lambda_{t,k}$)**
+&mdash; The strength with which trait $t$ depends on latent factor
+$k$. A high $|\Lambda_{t,k}|$ means trait $t$ moves with factor
+$k$; a near-zero loading means it doesn't. Loadings are what you
+read off the columns of `fit$report$Lambda_B`.
+*Math*: $\boldsymbol{\Lambda}$ is the $T \times d$ loading matrix;
+$\Lambda_{t,k}$ is the entry in row $t$, column $k$.
+
+**Latent factor model (reduced-rank, low-rank, RR, latent
+covariance)** &mdash; The shared part of the trait covariance:
+$\boldsymbol{\Lambda} \boldsymbol{\Lambda}^{\top}$. With $d < T$
+this is a rank-$d$ approximation to the $T \times T$ trait
+covariance &mdash; "shared" because the $d$ latent factors are common
+to all traits.
+
+**Unique variance (specific variance, residual variance, idiosyncratic
+variance, $\boldsymbol{\Psi}$, $\psi_t$)** &mdash; The trait-specific
+part of the variance that the latent factors don't explain. Each
+trait has its own diagonal entry $\psi_t$; the matrix
+$\boldsymbol{\Psi} = \mathrm{diag}(\psi_1, \ldots, \psi_T)$ is
+diagonal by construction. The `unique()` keyword in the formula
+estimates this.
+*Math*: $\boldsymbol{\Sigma} = \boldsymbol{\Lambda}
+\boldsymbol{\Lambda}^{\top} + \boldsymbol{\Psi}$ (factor
+decomposition); $\psi_t$ is the $t$-th diagonal of
+$\boldsymbol{\Psi}$ and the per-trait derived scalar reported by
+`extract_phylo_signal()`.
+
+**Implied trait covariance ($\boldsymbol{\Sigma}$, $\boldsymbol{\Sigma}_{\rm unit}$,
+between-trait covariance)** &mdash; The $T \times T$ covariance matrix
+that the data imply between the $T$ traits at a given tier
+(site/respondent/species). It combines the shared (latent) and
+unique parts. This is what `extract_Sigma(fit, level = ...)`
+returns. It is **rotation-invariant**, even though the underlying
+$\boldsymbol{\Lambda}$ is not.
+
+**Communality ($c_t^2$, $h_t^2$)** &mdash; The fraction of trait
+$t$'s total within-tier variance that the shared latent axis
+explains: $c_t^2 = (\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\top})_{tt}
+/ \Sigma_{tt}$. Values near 1 mean trait $t$ is dominated by the
+shared structure; near 0 means the trait is mostly idiosyncratic
+at that tier. Reported by `extract_communality()`.
+
+## Tier and group terms
+
+**Tier (level, axis, group)** &mdash; A grouping factor that gives the
+fit one block of covariance. Standard tiers are `unit` (between-site
+or between-individual; "B"), `unit_obs` (within-site or
+within-individual; "W"), `phy` (between-species via the phylogenetic
+correlation matrix), `spatial` (between-site via the SPDE mesh),
+and `cluster` (additional crossed grouping factor). Most articles
+fit at least the `unit` tier plus optionally one of the structured
+tiers.
+
+**Stacked-trait long format** &mdash; The canonical data shape:
+one row per `(unit, trait)` observation, with a `value` column
+holding the trait reading, a `trait` column holding the trait name
+as a factor, and a `unit` column holding the grouping factor. The
+formula `value ~ 0 + trait + latent(0 + trait | unit, d = K)` reads
+naturally on this shape.
+
+**Wide format / `traits(...)` LHS** &mdash; The companion data
+shape: one row per unit, one column per trait. The
+`traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = K)` formula recipe
+pivots wide to long internally; the engine fits the same long-form
+model either way. Most worked examples show both.
+
+## Family / link / residual terms
+
+**Family (response distribution, distribution family)** &mdash; The
+likelihood used for one trait (or one row, in mixed-family fits):
+Gaussian, binomial, Poisson, Gamma, Beta, ordinal-probit, etc. 15
+families are supported (see [Mixed-response
+families](mixed-response.html)).
+
+**Link function** &mdash; The transformation that maps the latent
+linear predictor $\eta$ to the natural scale of the response.
+Gaussian uses identity; binomial uses logit (or probit, or
+cloglog); Poisson uses log; Beta uses logit. Per-trait in a mixed-
+family fit.
+
+**Link-scale residual (latent-scale residual variance,
+distribution-specific residual)** &mdash; The variance the
+likelihood adds on the link scale when you back-transform to a
+correlation. For a logit-binomial trait it's $\pi^2/3 \approx
+3.29$; for an ordinal-probit trait it's 1; for a Gamma trait it's
+$\mathrm{trigamma}(\nu)$ where $\nu$ is the shape. Without this
+correction, correlations on non-Gaussian traits are inflated.
+`extract_correlations(link_residual = "auto")` (the default since
+the 2026-05-15 release) adds it automatically.
+
+## Ambiguity and identification
+
+**Rotational ambiguity (rotation-invariant, identifiable up to
+rotation)** &mdash; A reduced-rank loading matrix
+$\boldsymbol{\Lambda}$ and its rotation
+$\boldsymbol{\Lambda}\boldsymbol{Q}$ (with $\boldsymbol{Q}$
+orthogonal) imply the *same* $\boldsymbol{\Sigma}$, so the
+numerical $\hat{\boldsymbol{\Lambda}}$ is not unique. Reading a
+specific loading entry "trait 3 loads $-0.45$ on factor 2" requires
+a constraint. Workarounds: pin entries via `lambda_constraint`
+([Lambda-constraint](lambda-constraint.html)); use rotation-
+invariant accessors (`extract_Sigma`, `extract_communality`); or
+apply a post-hoc rotation (varimax).
+
+**Identifiable (well-identified, point-identified)** &mdash; A
+parameter is identifiable when the data + model constrain it to a
+single value (up to non-rotational sign / permutation). A
+spurious-extra-factor model is *not* identifiable in the loadings:
+running `check_identifiability()` exposes this by showing a column
+of $\boldsymbol{\Lambda}$ with near-zero Procrustes-aligned
+residual across simulate-refit replicates.
+
+**Boundary parameter (variance pinned at zero)** &mdash; A variance
+component that hits the constraint $\sigma^2 \geq 0$. The
+asymptotic Wald CI is unreliable near boundaries; profile-
+likelihood CIs are conservative there (one-sided when the lower
+bound hits zero). See [Profile-likelihood CIs](profile-likelihood-ci.html).
+
+## Phylogenetic and spatial terms
+
+**Phylogenetic signal ($H^2$, phylogenetic heritability)** &mdash;
+The fraction of total trait variance attributable to the
+phylogenetic tier:
+$H^2_t = \Sigma_{\rm phy, tt} / V_{\eta, t}$. Reported by
+`extract_phylo_signal()`. Distinct from communality, which is
+within-tier; $H^2$ is between-tier.
+
+**Paired two-Psi (paired decomposition)** &mdash; A phylogenetic
+GLLVM that estimates both a phylogenetic-shared axis
+$\boldsymbol{\Lambda}_{\rm phy}$ + diagonal
+$\boldsymbol{\Psi}_{\rm phy}$, and a non-phylogenetic-shared axis
+$\boldsymbol{\Lambda}_{\rm non}$ + diagonal
+$\boldsymbol{\Psi}_{\rm non}$. Four pieces total. The canonical
+form when the tree is rich.
+
+**Three-piece fallback** &mdash; The simpler model when the paired
+form is under-identified on small trees: one shared phylo axis +
+one shared non-phylo axis + a single $\boldsymbol{\Psi}$ (not
+tier-specific). See [Phylogenetic-gllvm: three-piece fallback]
+(phylogenetic-gllvm.html#three-piece-fallback-when-the-paired-form-is-under-identified).
+
+**SPDE / GMRF / mesh** &mdash; The Stochastic Partial Differential
+Equation approximation to a continuous spatial Gaussian random
+field, discretised on a triangular mesh. Each site is associated
+with the mesh nodes nearest to it; the spatial correlation between
+sites is the Matern correlation evaluated at the inter-node
+distance. The mesh is built once with `make_mesh()` and passed to
+`spatial_*()` keywords.
+
+## Inference terms
+
+**Wald CI** &mdash; Symmetric CI on the natural parameter scale
+computed from `sd_report` (the inverse of the Hessian at the MLE).
+Fast, but unreliable near boundaries and skewed sampling
+distributions.
+
+**Profile-likelihood CI** &mdash; CI computed by walking the
+profile log-likelihood out from the MLE and reading where it drops
+by $\chi^2_1(0.95)/2$. Slower than Wald but respects skewness and
+boundaries. The default for ratio extractors. See
+[Profile-likelihood CIs](profile-likelihood-ci.html).
+
+**Bootstrap CI (parametric bootstrap)** &mdash; CI computed by
+simulating new datasets from the fitted model, refitting, and
+taking percentile bounds. Slowest of the three. Use when the
+profile fails (multi-modal, joint constraints) or when you need
+the full sampling distribution.
+
+**Fisher-z CI (Fisher transform CI)** &mdash; The default CI method
+for correlations specifically. Apply $z = \mathrm{atanh}(r)$ (which
+is approximately normal), build a symmetric Wald interval on $z$,
+back-transform via $\tanh$. Closed-form, bounded by construction,
+and well-behaved on $[-1, 1]$.
+
+## See also
+
+- [Choose your model](choose-your-model.html) -- decision tree for
+  which model to fit given your data shape.
+- [API keyword grid](api-keyword-grid.html) -- the 3x5 covariance
+  keyword reference.
+- [Covariance vs correlation](covariance-correlation.html) -- when
+  to report $\boldsymbol{\Sigma}$ versus its correlation
+  $\boldsymbol{R}$.
+- [Pitfalls](pitfalls.html) -- common gotchas.

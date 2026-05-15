@@ -210,6 +210,49 @@ For a small tree, do not over-interpret either split (between
 targets are often the totals `Sigma_phy` and `Sigma_non`, especially
 when the tree is small or the ranks are exploratory.
 
+### Three-piece fallback when the paired form is under-identified
+
+The paired decomposition fits **four pieces**:
+`Lambda_phy`, `Psi_phy`, `Lambda_non`, `Psi_non`. For small trees
+(say `n_species < 30`) or near-zero phylogenetic signal, the two
+`Psi` diagonals tend to trade off against each other -- only their
+sum is well-determined by the data, and `sanity_multi()` will often
+flag the fit as boundary-pinned or rank-deficient.
+
+The **three-piece fallback** drops one `Psi` and keeps a single
+trait-specific diagonal that is not assigned to either tier:
+
+$$
+\boldsymbol{\Omega} =
+\boldsymbol{\Lambda}_{\mathrm{phy}}\boldsymbol{\Lambda}_{\mathrm{phy}}^{\top} +
+\boldsymbol{\Lambda}_{\mathrm{non}}\boldsymbol{\Lambda}_{\mathrm{non}}^{\top} +
+\boldsymbol{\Psi}.
+$$
+
+To fit it, drop `phylo_unique()` from the formula and let the single
+`unique()` carry all of the trait-specific diagonal variance:
+
+```r
+fit_3piece <- gllvmTMB(
+  value ~ 0 + trait +
+    phylo_latent(species, d = 1, tree = tree) +    # Lambda_phy
+    latent(0 + trait | species, d = 1) +           # Lambda_non
+    unique(0 + trait | species),                   # single Psi
+  data = df_long,
+  trait = "trait", unit = "species"
+)
+```
+
+When you read the output of `extract_phylo_signal()` on a three-piece
+fit, `Psi` is the **single** shared diagonal (not the tier-specific
+`psi_non` used by the paired form), and the three-way decomposition
+`H^2 + C^2_non + Psi = 1` is interpreted with the entire `Psi`
+attributed to "trait-specific variance not separated by tier" rather
+than to a specifically non-phylogenetic source. The paired form is
+preferable when the data support it (it gives a cleaner H^2 reading);
+the three-piece fallback is the conservative choice when `sanity_multi()`
+or visual inspection flag the paired form as over-parameterised.
+
 ## Communality (within each tier)
 
 Communality `c_t^2` is the fraction of a trait's within-tier variance

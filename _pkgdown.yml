@@ -52,6 +52,7 @@ articles:
     contents:
     - articles/profile-likelihood-ci
     - articles/cross-package-validation
+    - articles/simulation-recovery
 
   - title: Project
     navbar: ~

@@ -928,3 +928,53 @@ Cross-references:
 - Active plan:
   `/Users/z3437171/.claude/plans/please-have-a-robust-elephant.md`
   -- revised 2026-05-15 with the audit-driven section.
+
+## 2026-05-15 (evening)  External audit #2 -- triage outcome
+
+A second external audit landed on the evening of 2026-05-15
+(*"Architectural Review and Strategic Evaluation of the drmTMB
+and gllvmTMB Statistical Computing Frameworks"*). The audit
+explicitly stated it did not have access to the source code,
+so its "strategic recommendations" were back-inferred from
+the lab's published track record + general TMB / GLLVM
+theory.
+
+The triage (in
+`docs/dev-log/audits/2026-05-15-external-audit-2-response.md`)
+found that ~9 of the audit's ~10 headline recommendations
+describe features already in main: rotation-invariance
+constraints via `glmmTMB::rr()`, known-variance support via
+`meta_known_V()` + `block_V()`, identifiability diagnostics
+via `check_identifiability()`, Laplace-breakdown diagnostics
+via `gllvmTMB_check_consistency()`, coverage / bias via
+`coverage_study()`, profile-curve interpretation via
+`confint_inspect()`, robust multi-start (P0 fix bundled in
+PR #122), pkgdown pedagogy with 13 articles in main, 3-OS CI.
+
+Two items remain genuinely new and queued:
+
+**A1 (post-CRAN)**: adaptive Gauss-Hermite quadrature as an
+alternative integrator for sparse Bernoulli fits where the
+Laplace Gaussian approximation degrades. Substantial change
+to `src/gllvmTMB.cpp`. Not blocking CRAN; queued as a
+**Phase 6 / 0.3.0 candidate**. Present-day user protection
+comes via `gllvmTMB_check_consistency()` (PR #121) which
+detects the breakdown.
+
+**A2 (Phase 1e)**: single-paragraph addition to `pitfalls.Rmd`
+(or `simulation-recovery.Rmd` Caveats) saying *"an inflated
+$\boldsymbol{\Psi}$ diagonal is not automatically biological
+heterogeneity -- supply `meta_known_V()` if you have known
+sampling variances"*. Bundled into the Phase 1e Rose+Darwin
+reframe sweep.
+
+Both items are tracked in
+`docs/dev-log/audits/2026-05-15-external-audit-2-response.md`
+so they do not dissolve into chat.
+
+The principle established here: when an audit doesn't read
+the code, treat it as a confidence check that the published
+record aligns with the actual package state -- not as a
+punch list. Audit #1 produced a CRAN-blocking fix (the
+multi-start `obj$report()` bug). Audit #2 produced two
+queued items, neither blocking. Both filed for the record.

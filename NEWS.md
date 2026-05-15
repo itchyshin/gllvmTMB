@@ -12,6 +12,23 @@
   because the probit link's latent residual is already 1 by
   construction and the auto path over-counts. Silent on well-formed
   fits. Phase 1b item 3 (Emmy persona consult 2026-05-14).
+* **`check_identifiability(fit, sim_reps = 100L)`** -- identifiability
+  diagnostic for a `gllvmTMB_multi` fit. Simulates `sim_reps` datasets
+  from the fitted model, refits each replica under the same formula,
+  applies Procrustes alignment to the per-tier loading matrices, and
+  aggregates per-parameter recovery statistics plus Hessian-eigenvalue
+  rank checks. The canonical case this catches that no other
+  diagnostic does is a **spurious extra factor masquerading as
+  identified**: when `d_B` is mis-specified (e.g. fit `d = 2` when
+  truth is `d = 1`), `pdHess` may be `TRUE`, `sanity_multi()` may
+  pass, and profile CIs on derived quantities may look tight -- but
+  the second factor is noise. Procrustes alignment across replicates
+  exposes the spurious column as a near-zero residual magnitude.
+  Returns an object of class `gllvmTMB_identifiability` with
+  components `$recovery`, `$loadings`, `$hessian`, and `$flags`. V1
+  scope: Gaussian fits only (non-Gaussian / mixed-family support is
+  queued for the Phase 1b validation milestone). Phase 1b item 4
+  (Fisher persona consult 2026-05-14).
 
 ## Behaviour changes (Phase 1b)
 

@@ -843,3 +843,88 @@ gllvmTMB-legacy -- also it should be named
 compare_indep_vs_two_psi and you may find a function
 named like that."* (No `compare_*_vs_two_psi` existed in
 legacy; the rename happens in this restoration PR.)
+
+## 2026-05-15  Audit-driven replan: P0 multi-start fix + P1 API surface + partial reset of Phase 1c sequencing
+
+Context: an external code/architecture/statistical-design
+audit of gllvmTMB was shared 2026-05-15 (after the morning's
+wave of Phase 1b merges -- #100, #101, #102, #103, #104,
+#105, #106, #109, plus the Phase 1e phylo-3piece-fallback
+PR #107 and the Phase 1c lambda-constraint port PR #108).
+The audit's full text and triage live in
+`docs/dev-log/audits/2026-05-15-external-audit-response.md`.
+
+Three ratified outcomes from this audit:
+
+### 1. P0 fix: multi-start `obj$report()` / `sdreport(obj)` consistency
+
+The audit's #1 concrete concern was a multi-start
+bookkeeping bug at `R/fit-multi.R:1700-1702`: `obj$report()`
+with no args uses `obj$env$last.par` (TMB's LAST-evaluation
+tracking, NOT necessarily `best_opt$par`). When restart 1
+won but restart N (N > 1) ran last, every downstream
+extractor reading `fit$report` consumed values for the
+wrong parameter vector.
+
+Verified by code inspection (~30 min before patching).
+Fix: three-step pinch of TMB's internal state to `opt$par`
+(`obj$fn(opt$par); obj$env$last.par.best <- obj$env$last.par;
+obj$report() + TMB::sdreport(obj, par.fixed = opt$par)`).
+Regression test bundled (`tests/testthat/test-multi-start-sdreport-consistency.R`,
+17 expectations). Shipped as PR #116.
+
+### 2. P1 API-surface alignment
+
+Three follow-on docs/API PRs, all small:
+
+- **P1a**: `profile_targets()` inventory + `confint(method =
+  c("wald", "profile", "bootstrap"))` for fixed effects.
+  Mirrors drmTMB's pattern (per PR #109 scan and the
+  Explore-agent surface map). Closes the API mismatch
+  between gllvmTMB's profile-likelihood machinery and the
+  current Wald-only `confint()` surface.
+- **P1b**: `README.md:23` and `README.md:291` softening from
+  "ML / REML estimates" to "ML estimates" (matches NEWS.md
+  which is already honest). Plus a Stable-core feature
+  matrix in the README per the audit's recommendation.
+- **P1c**: the external-audit-response doc + this
+  `decisions.md` entry.
+
+### 3. Partial reset of Phase 1c sequencing
+
+Maintainer decision (via AskUserQuestion 2026-05-15
+afternoon): the 6 in-flight docs PRs from earlier today
+(#110-#115) keep flowing and merge as their CI clears.
+After they land, **pause new Phase 1c article ports** and
+pivot to P0 -> P1a/P1b/P1c -> Phase 1b validation
+milestone. Resume Phase 1c article ports only after the
+validation milestone closes (estimated ~3-7 days).
+
+Items the audit raises that are explicitly deferred to
+post-CRAN / Phase 6:
+
+- C++ template modularization (audit says "becoming too
+  large", not "currently broken").
+- Storage controls (`keep_tmb_object = FALSE`); mirror
+  drmTMB.
+- Family-aware `simulate.gllvmTMB_multi()` rewrite (Phase
+  5.5 will exercise; pre-CRAN scope item, but not in this
+  replan).
+- Family-aware `predict.gllvmTMB_multi()` (typed outputs
+  for ordinal-probit / delta / mixed-family).
+- Dense known-V threshold warning.
+
+Random slopes (Phase 1c-slope in the original roadmap)
+remain queued. The audit explicitly says: don't add until
+P0 + P1 + Phase 1b validation milestone are stable. This
+matches the existing roadmap order.
+
+Cross-references:
+- `docs/dev-log/audits/2026-05-15-external-audit-response.md`
+  -- full triage.
+- `docs/dev-log/audits/2026-05-15-drmtmb-cross-team-scan.md`
+  (PR #109, merged) -- drmTMB `profile_targets()` reference
+  pattern.
+- Active plan:
+  `/Users/z3437171/.claude/plans/please-have-a-robust-elephant.md`
+  -- revised 2026-05-15 with the audit-driven section.

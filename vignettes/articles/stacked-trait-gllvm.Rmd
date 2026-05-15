@@ -1,0 +1,230 @@
+---
+title: "Stacked-trait GLLVMs with gllvmTMB"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Stacked-trait GLLVMs with gllvmTMB}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse   = TRUE,
+  comment    = "#>",
+  fig.width  = 6,
+  fig.height = 4,
+  fig.align  = "center",
+  cache      = FALSE,
+  eval       = TRUE,
+  message    = FALSE,
+  warning    = FALSE
+)
+```
+
+```{r setup}
+library(gllvmTMB)
+library(ape)
+```
+
+This is the **foundational** worked example for the package. It walks
+through the canonical full-decomposition `gllvmTMB()` fit -- a
+stacked-trait, multivariate generalised linear latent variable model
+with fast SPDE spatial fields and (optionally) phylogenetic random
+effects.
+
+## The scientific question
+
+A single fit answers a multi-part question that ecology has historically
+needed several separate analyses for:
+
+1. **Between-site functional integration**: do trait values *covary*
+   across sites? When site A is high in trait 1, is it also high in
+   trait 2? (`latent + unique` on `site`)
+2. **Within-site functional integration**: when site A's species
+   deviate from site A's average, do those deviations covary? (`latent +
+   unique` on `site_species`)
+3. **Phylogenetic signal**: is some of the species-level variance
+   driven by shared ancestry? (`phylo_scalar(species)`)
+4. **Residual species effects**: what's left over after accounting for
+   phylogeny? (`unique(species)`)
+5. **Residual spatial autocorrelation**: do nearby sites' trait values
+   look similar after accounting for the predictors and the
+   above? (`spatial_unique(coords)`)
+
+The corresponding decomposition is
+
+$$y_{sit} = \alpha_t + \mathbf{x}_s^\top \boldsymbol{\beta}_t
+  + r_{st} + u_{st} + e_{sit} + p_{it} + q_{it} + \epsilon_{sit}$$
+
+where:
+
+* $\mu_{st} = \alpha_t + \mathbf{x}_s^\top \boldsymbol{\beta}_t$ -- trait-specific fixed effects;
+* $r_{st}$ -- residual spatial autocorrelation among sites for trait $t$;
+* $u_{st}$ -- non-spatial between-site axes (global functional integration);
+* $e_{sit}$ -- within-site species deviations (local functional integration);
+* $p_{it}$ -- phylogenetically structured species effect;
+* $q_{it}$ -- non-phylogenetic species effect;
+* $\epsilon_{sit}$ -- per-observation residual (Gaussian here).
+
+The reduced-rank decomposition $\Sigma = \boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top + \boldsymbol{\Psi}$
+is the stacked-trait GLLVM workhorse (Hui et al. 2017,
+*Methods in Ecology and Evolution*; Niku et al. 2017,
+*Environmental and Ecological Statistics*) using $\boldsymbol{\Psi}$ for
+the diagonal trait-unique-variance matrix (factor-analysis / SEM
+convention; Bollen 1989, Mulaik 2010). The SPDE-mesh spatial term
+$r_{st}$ is inherited from `sdmTMB` (Anderson et al. 2025,
+*Journal of Open Source Software*).
+
+## 1. Simulate a dataset
+
+`simulate_site_trait()` is a flexible simulator that follows the full
+decomposition above. We pick a small but realistic example: 4 traits,
+60 sites, 12 species, with both global (rank-2) and local (rank-1)
+covariance plus a Brownian-motion phylogeny.
+
+```{r sim}
+set.seed(42)
+
+# Phylogeny
+n_sp  <- 12
+tree  <- ape::rcoal(n_sp); tree$tip.label <- paste0("sp", seq_len(n_sp))
+Cphy  <- ape::vcv(tree, corr = TRUE)
+
+sim <- simulate_site_trait(
+  n_sites               = 60,
+  n_species             = n_sp,
+  n_traits              = 4,
+  mean_species_per_site = 6,
+  Lambda_B              = matrix(c(1.0, 0.7, -0.3, 0.5,
+                                   0.3, -0.5, 0.8, 0.2),
+                                 nrow = 4, ncol = 2),
+  psi_B                 = c(0.3, 0.3, 0.3, 0.3),
+  Lambda_W              = matrix(c(0.6, 0.3, -0.2, 0.4), nrow = 4, ncol = 1),
+  psi_W                 = c(0.4, 0.4, 0.4, 0.4),
+  Cphy                  = Cphy,
+  sigma2_phy            = c(0.5, 0.5, 0.5, 0.5),
+  sigma2_sp             = c(0.2, 0.2, 0.2, 0.2),
+  spatial_range         = 0.3,
+  sigma2_spa            = c(0.4, 0.4, 0.4, 0.4),
+  seed                  = 42
+)
+
+df <- sim$data
+levels(df$species) <- paste0("sp", seq_len(n_sp))
+str(df)
+```
+
+## 2. Fit the full model
+
+```{r fit, eval = FALSE}
+mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
+
+fit <- gllvmTMB(
+  value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
+          spatial_unique(0 + trait | coords, mesh = mesh) +
+          latent(0 + trait | site, d = 2) +
+          unique(0 + trait | site) +
+          latent(0 + trait | site_species, d = 1) +
+          unique(0 + trait | site_species) +
+          unique(0 + trait | species) +
+          phylo_scalar(species, vcv = Cphy),
+  data = df
+)
+```
+
+Each formula term carries a specific role:
+
+- `0 + trait + (0 + trait):env_*` -- trait-specific intercepts and slopes.
+- `spatial_unique(0 + trait | coords)` -- fast SPDE spatial term using
+  the precomputed `mesh`. Replaces the slow dense
+  `glmmTMB::glmmTMB(... + exp(coords + 0 | trait))` /
+  `... + gau(...)` paths.
+- `latent(0 + trait | site, d = 2)` + `unique(0 + trait | site)` --
+  global reduced-rank + diagonal covariance giving
+  $\boldsymbol{\Sigma}_{\text{unit}} = \boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^\top + \boldsymbol{\Psi}_B$.
+- `latent(0 + trait | site_species, d = 1)` + `unique(0 + trait | site_species)`
+  -- local reduced-rank + diagonal covariance giving
+  $\boldsymbol{\Sigma}_{\text{unit\_obs}} = \boldsymbol{\Lambda}_W \boldsymbol{\Lambda}_W^\top + \boldsymbol{\Psi}_W$.
+- `unique(0 + trait | species)` -- non-phylogenetic species term
+  $q_{it}$.
+- `phylo_scalar(species, vcv = Cphy)` -- phylogenetic random effect
+  $p_{it}$ using an in-keyword `vcv = Cphy` argument.
+
+The `latent + unique` pair is the canonical decomposition mode; see
+[the GLLVM vocabulary article](gllvm-vocabulary.html) for the term
+glossary and [the API keyword grid](api-keyword-grid.html) for the
+full $3\times 5$ keyword grid that organises the formula language.
+
+## 3. Biological summaries
+
+```{r extract, eval = FALSE}
+extract_Sigma(fit, level = "unit")$R       # global trait correlation matrix
+extract_Sigma(fit, level = "unit_obs")$R   # local trait correlation matrix
+extract_ICC_site(fit)                       # site-level ICC per trait
+extract_communality(fit, "unit")            # global communality H^2
+extract_communality(fit, "unit_obs")        # local communality
+ord <- extract_ordination(fit, "unit")
+head(ord$scores)                            # site scores on global functional axes
+ord$loadings                                # trait loadings
+```
+
+Each extractor returns a tidy summary of one biological question. For
+the inferential surface (Wald / profile / bootstrap CIs on these
+derived quantities) see
+[Profile-likelihood CIs](profile-likelihood-ci.html). For the
+verification surface (does the fit actually recover what it claims?)
+see [Simulation-based verification](simulation-verification.html).
+
+## 4. Two-stage workflow for species-level trait data
+
+When trait values are species-level constants (typical of AVONET-style
+trait data: one beak length per species, not multiple replicates per
+species per site), the one-shot fit above is **poorly informed about
+between-site covariance** -- the data simply don't contain enough
+sites-of-the-same-species to estimate global functional integration
+directly. The recommended workflow is a **two-stage analysis**:
+
+* **Stage 1**: fit one `gllvmTMB()` model per trait with
+  `value ~ 0 + site + phylo_scalar(species, vcv = Cphy)`,
+  returning site-level estimates with their sampling variances.
+* **Stage 2**: fit the multivariate model on the stage-1 estimates
+  using `meta_known_V(value, V = V)` so the stage-1 sampling
+  uncertainty propagates into the stage-2 covariance estimates.
+
+Both stages use direct `gllvmTMB()` calls. See
+[the corvidae-two-stage worked example](corvidae-two-stage.html) for
+the complete pipeline.
+
+## 5. Cross-validation against `glmmTMB`
+
+For the non-spatial covstructs (`latent()`, `unique()`,
+`phylo_scalar()`, `meta_known_V()` -- which map internally to
+`glmmTMB`'s `rr` / `diag` / `propto` / `equalto`),
+`gllvmTMB`'s log-likelihood matches `glmmTMB::glmmTMB()` exactly to
+TMB tolerance; see `tests/testthat/test-stage[2-3]-*.R` in the source
+for worked examples. The advantage over `glmmTMB` is that the same fit
+can include `spatial_unique(0 + trait | coords)` for sparse-precision
+spatial fields, which is dramatically faster than `exp()` / `gau()`
+on more than a few hundred sites (Anderson et al. 2025).
+
+## References
+
+* Anderson SC, Ward EJ, English PA, Barnett LAK, Thorson JT (2025).
+  *sdmTMB: An R package for fast, flexible, and user-friendly
+  generalized linear mixed effects models with spatial and
+  spatiotemporal random fields.* Journal of Open Source Software,
+  10 (109), 7536. <https://doi.org/10.21105/joss.07536>
+* Bollen KA (1989). *Structural Equations with Latent Variables.*
+  Wiley.
+* Hui FKC, Taskinen S, Pledger S, Foster SD, Warton DI (2017).
+  *Model-based approaches to unconstrained ordination.* Methods in
+  Ecology and Evolution, 6 (4), 399--411.
+* Mulaik SA (2010). *Foundations of Factor Analysis*, 2nd ed. CRC
+  Press.
+* Niku J, Warton DI, Hui FKC, Taskinen S (2017). *Generalized linear
+  latent variable models for multivariate count and biomass data in
+  ecology.* Journal of Agricultural, Biological, and Environmental
+  Statistics, 22 (4), 498--522.

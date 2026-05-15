@@ -99,10 +99,16 @@ explicit trait-stacked form.
   diagonal vector `s_phy`.
 - `extract_Sigma(fit, level = "phy", part = "total")` returns
   `Sigma_phy`.
-- Joint-vs-unstructured and PIC-based cross-checks were retired
-  2026-05-14 (PIC / "two-U" retirement decision). The canonical
-  diagnostic path for paired phylogenetic identifiability is now
-  `check_identifiability()` (Phase 1b deliverable).
+- `compare_dep_vs_two_psi()` refits with `phylo_dep + dep` and
+  compares total `Sigma_phy` and `Sigma_non` against the paired-Psi
+  fit; canonical gold-standard cross-check.
+- `compare_indep_vs_two_psi()` refits with `phylo_indep + indep`
+  and compares only per-trait diagonal totals; cheap fallback when
+  `T >= 30` and the unstructured fit is intractable.
+- PIC-MOM cross-checks (`extract_two_U_via_PIC()`,
+  `compare_PIC_vs_joint()`) were retired 2026-05-14; the
+  `check_identifiability()` diagnostic (Phase 1b deliverable) is
+  the planned general-purpose replacement.
 
 ## Identifiability Guidance
 

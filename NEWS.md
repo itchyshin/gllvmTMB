@@ -42,13 +42,16 @@ phylogenetic signal, or spatial structure.
   subscripted by trait) for the per-trait derived scalar, matching
   the factor-analysis / SEM convention (Bollen 1989, Mulaik 2010,
   lavaan). The legacy "two_U" task label has been retired from
-  function and file names; the PIC-based cross-check diagnostics
-  (`compare_PIC_vs_joint()`, `extract_two_U_via_PIC()`) and the
-  joint-vs-unstructured cross-checks (`compare_dep_vs_two_U()`,
-  `compare_indep_vs_two_U()`) are removed. There is now only one
-  canonical phylogenetic fit per parameterisation. See
+  function and file names: the PIC-based cross-check diagnostics
+  (`compare_PIC_vs_joint()`, `extract_two_U_via_PIC()`) are
+  removed entirely, and the joint-vs-unstructured cross-checks
+  are renamed to `compare_dep_vs_two_psi()` /
+  `compare_indep_vs_two_psi()` (same signatures and behaviour,
+  new names matching the Psi notation). See
   `docs/dev-log/decisions.md` 2026-05-14 entries (notation reversal
-  + two-U/PIC retirement).
+  + two-U/PIC retirement) and `docs/dev-log/decisions.md`
+  2026-05-15 entry (partial restoration of the joint-vs-unstructured
+  cross-checks under the `two_psi` rename).
 
 * Per-trait response families: gaussian, binomial (with multi-trial
   via `cbind(succ, fail)` or weights), betabinomial, poisson,

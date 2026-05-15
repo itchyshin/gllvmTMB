@@ -75,14 +75,16 @@ Returns the full profile-likelihood curve, the deviance bounds,
 and (when \code{ggplot2} is available) a \code{ggplot} visualisation showing
 the curve, the MLE, the chi-squared threshold, and the resulting
 confidence-interval bounds. This is the visual-verification
-companion to \link{confint(fit, method = "profile")}: it answers the
+companion to \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} with
+\code{method = "profile"}: it answers the
 question "is this profile well-behaved?" before the user
 interprets the bound.
 }
 \details{
 Common failure modes to look for in the returned plot
-(cross-referenced in
-\code{vignette("troubleshooting-profile", package = "gllvmTMB")}):
+(cross-referenced in the
+\href{https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html}{troubleshooting-profile}
+vignette):
 \itemize{
 \item \strong{Quadratic + symmetric near the MLE}: Wald and profile agree.
 Either method is fine.
@@ -115,6 +117,8 @@ inspect$plot         # ggplot of the profile curve
 extractor; same \code{parm} vocabulary), \code{\link[=profile_targets]{profile_targets()}} (the
 target inventory), \code{\link[=tmbprofile_wrapper]{tmbprofile_wrapper()}} (the lower-level
 profile API),
-\link{vignette("troubleshooting-profile", package = "gllvmTMB")}
-(the four failure-mode catalogue this function helps diagnose).
+the
+\href{https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html}{troubleshooting-profile}
+vignette (the four failure-mode catalogue this function
+helps diagnose).
 }

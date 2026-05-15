@@ -21,13 +21,15 @@
 #' and (when `ggplot2` is available) a `ggplot` visualisation showing
 #' the curve, the MLE, the chi-squared threshold, and the resulting
 #' confidence-interval bounds. This is the visual-verification
-#' companion to [confint(fit, method = "profile")]: it answers the
+#' companion to [confint.gllvmTMB_multi()] with
+#' `method = "profile"`: it answers the
 #' question "is this profile well-behaved?" before the user
 #' interprets the bound.
 #'
 #' Common failure modes to look for in the returned plot
-#' (cross-referenced in
-#' `vignette("troubleshooting-profile", package = "gllvmTMB")`):
+#' (cross-referenced in the
+#' [troubleshooting-profile](https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html)
+#' vignette):
 #'
 #' * **Quadratic + symmetric near the MLE**: Wald and profile agree.
 #'   Either method is fine.
@@ -95,8 +97,10 @@
 #'   extractor; same `parm` vocabulary), [profile_targets()] (the
 #'   target inventory), [tmbprofile_wrapper()] (the lower-level
 #'   profile API),
-#'   [vignette("troubleshooting-profile", package = "gllvmTMB")]
-#'   (the four failure-mode catalogue this function helps diagnose).
+#'   the
+#'   [troubleshooting-profile](https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html)
+#'   vignette (the four failure-mode catalogue this function
+#'   helps diagnose).
 #'
 #' @examples
 #' \dontrun{

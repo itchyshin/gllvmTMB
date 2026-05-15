@@ -1,3 +1,29 @@
+# gllvmTMB (development version)
+
+## Behaviour changes (Phase 1b)
+
+* **`extract_correlations()` `link_residual` default change.** The
+  default of the new `link_residual` parameter is `"auto"`. Previously
+  the function hardcoded the equivalent of `link_residual = "none"`.
+  For non-Gaussian fits this means correlations are now reported on
+  the latent-liability scale (with the family-specific link residual
+  -- e.g. \eqn{\pi^2/3} for binomial-logit, \eqn{1} for probit,
+  trigamma terms for Gamma / NB2 / Beta / etc. -- added to the
+  diagonal of the implied `Sigma`). Gaussian fits are unaffected (the
+  link residual is zero). A one-shot warning fires the first time a
+  non-Gaussian fit is processed without an explicit `link_residual`
+  argument; pass `link_residual = "auto"` to lock the new behaviour
+  and suppress the warning, or `link_residual = "none"` to restore
+  the previous behaviour.
+* **`extract-sigma.R` Beta / beta-binomial saturation fix.** The
+  `mu_t` clamp at `[1e-6, 1 - 1e-6]` (per Gauss's correctness flag)
+  now applies before forming the trigamma arguments. Previously a
+  saturated Beta / beta-binomial fit (`eta -> +/-Inf`) collapsed one
+  of `(a_t, b_t)` to the `1e-12` floor and `trigamma(1e-12) ~ 1e24`
+  crushed any reported correlation to ~0. The new clamp keeps the
+  fit's degeneracy numerically visible (a large but finite trigamma
+  value) rather than silently producing meaningless correlations.
+
 # gllvmTMB 0.2.0 (first CRAN release)
 
 First public release of `gllvmTMB`, a Template Model Builder (TMB)

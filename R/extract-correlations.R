@@ -65,6 +65,31 @@
 #' @param nsim Number of bootstrap replicates when
 #'   \code{method = "bootstrap"}. Default 500.
 #' @param seed Optional RNG seed for the bootstrap.
+#' @param link_residual How to treat the family-specific link-residual
+#'   variance on the diagonal of the implied \eqn{\boldsymbol\Sigma} before
+#'   computing correlations:
+#'   \describe{
+#'     \item{\code{"auto"} (default, Phase 1b 2026-05-15)}{For
+#'       non-Gaussian fits, add the link-specific implicit residual
+#'       (e.g. \eqn{\pi^2/3} for binomial-logit; \eqn{1} for probit;
+#'       \code{trigamma()} terms for Gamma / NB2 / Beta / etc.) to the
+#'       diagonal before computing correlations. Returned correlations
+#'       are on the latent-liability scale; this is the convention most
+#'       readers expect. Gaussian fits are unaffected (link residual is
+#'       \eqn{0}).}
+#'     \item{\code{"none"}}{Use the latent + unique-implied \eqn{\Sigma}
+#'       directly with no link-residual addition. Correlations come out
+#'       on the model-implied scale without the family adjustment.}
+#'   }
+#'
+#'   **Behaviour change in this release**: the previous version
+#'   hardcoded \code{link_residual = "none"}. Non-Gaussian callers who
+#'   relied on that behaviour will see different correlation values
+#'   under the new default. A one-shot warning fires the first time per
+#'   session that a non-Gaussian fit is processed without an explicit
+#'   \code{link_residual} argument. Pass \code{link_residual = "auto"}
+#'   to suppress the warning and lock the new behaviour, or
+#'   \code{link_residual = "none"} to restore the previous behaviour.
 #'
 #' @return A data frame (tibble-like) with columns:
 #' \describe{
@@ -129,7 +154,14 @@ extract_correlations <- function(fit,
                                             "wald", "bootstrap"),
                                  n_eff = NULL,
                                  nsim  = 500L,
-                                 seed  = NULL) {
+                                 seed  = NULL,
+                                 link_residual = c("auto", "none")) {
+  ## Detect whether the caller passed link_residual explicitly BEFORE
+  ## match.arg() reassigns the variable. Used below to fire the once-
+  ## per-session warning about the default change.
+  link_residual_missing <- missing(link_residual)
+  link_residual <- match.arg(link_residual)
+
   ## Boundary translation (Design 02 Stage 2): per-tier alias
   ## normalisation. `tier` may be "all", a single name, or a vector
   ## of names; map any canonical user-facing name back to the
@@ -140,6 +172,29 @@ extract_correlations <- function(fit,
   if (!inherits(fit, "gllvmTMB_multi"))
     cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
   method <- match.arg(method)
+
+  ## Phase 1b 2026-05-15: the default of `link_residual` changed from
+  ## "none" to "auto". For non-Gaussian fits, the new default adds the
+  ## family-specific link-residual variance to diag(Sigma) before
+  ## computing correlations -- so off-diagonal correlations come out
+  ## smaller. Fire a one-shot warning to surface the change for callers
+  ## who didn't specify the argument; silent on Gaussian fits where the
+  ## link residual is 0 and the change has no numerical impact.
+  if (link_residual_missing) {
+    fids <- fit$tmb_data$family_id_vec
+    is_non_gaussian <- !is.null(fids) && any(fids != 0L)
+    if (is_non_gaussian) {
+      cache_key <- "gllvmTMB.warned_link_residual_default_changed"
+      if (is.null(getOption(cache_key))) {
+        cli::cli_warn(c(
+          "The default of {.arg link_residual} in {.fun extract_correlations} changed in this release from {.val none} to {.val auto}.",
+          "i" = "Non-Gaussian fits now get the per-family link-residual variance added to the diagonal of the implied {.var Sigma} before computing correlations; off-diagonal correlations come out smaller as a result.",
+          ">" = "Pass {.code link_residual = \"auto\"} explicitly to lock the new behaviour and suppress this warning, or {.code link_residual = \"none\"} to restore the pre-2026-05-15 behaviour."
+        ), class = "gllvmTMB_link_residual_default_changed")
+        options(stats::setNames(list(TRUE), cache_key))
+      }
+    }
+  }
 
   ## Design 09: "wald" is now a backward-compat alias for "fisher-z"
   ## (the existing implementation already used Fisher's z-transform with
@@ -233,7 +288,7 @@ extract_correlations <- function(fit,
     ## at the boundary above); skip extract_Sigma's re-normalisation
     ## warning.
     sig <- suppressMessages(extract_Sigma(fit, level = tk, part = "total",
-                                          link_residual = "none",
+                                          link_residual = link_residual,
                                           .skip_warn = TRUE))
     if (is.null(sig)) {
       results[[k]] <- NULL

@@ -42,6 +42,7 @@ articles:
     - articles/ordinal-probit
     - articles/lambda-constraint
     - articles/troubleshooting-profile
+    - articles/simulation-verification
 
   - title: Methods and validation
     navbar: Methods

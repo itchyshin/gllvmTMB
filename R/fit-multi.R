@@ -1698,8 +1698,50 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (is.null(best_opt))
     cli::cli_abort("All {control$n_init} restarts failed.")
   opt <- best_opt
-  rep <- obj$report()
-  sd_rep <- TMB::sdreport(obj, getJointPrecision = FALSE)
+
+  ## ---- Force TMB internal state to the selected optimum --------------
+  ## After the multi-start loop, TMB's internal `obj$env$last.par` is
+  ## whatever the FINAL restart evaluated last -- not necessarily
+  ## `best_opt$par`. `obj$env$last.par.best` is TMB's globally-best-seen
+  ## evaluation, which is usually `best_opt$par` but can disagree in
+  ## pathological cases (a restart's optimizer transiently visited
+  ## better params and walked away).
+  ##
+  ## Without this block, `obj$report()` (default arg is `last.par`)
+  ## returned report values for the LAST restart's last step rather
+  ## than for `opt$par`. Every downstream extractor reading
+  ## `fit$report` -- extract_Sigma, extract_correlations,
+  ## extract_communality, extract_phylo_signal, ordination,
+  ## communality, repeatability, plot.gllvmTMB_multi, ... -- then
+  ## reported quantities inconsistent with `fit$opt$par` and
+  ## `fit$opt$objective`. The bug only manifested when restart-1
+  ## won AND restart-N (N > 1) ran last.
+  ##
+  ## Fix: (1) re-evaluate `obj$fn(opt$par)` so the inner optim runs
+  ## at the selected fixed-effect optimum AND `obj$env$last.par`
+  ## gets re-populated with the FULL parameter vector (fixed-effect
+  ## block = `opt$par`, random-effect block = the conditional mode
+  ## of RE given `opt$par`); (2) force `last.par.best <- last.par`
+  ## so downstream consumers reading `last.par.best`
+  ## (R/plot.R, R/extractors.R, R/extract-repeatability.R,
+  ## R/methods-gllvmTMB.R) also see `opt$par`-aligned values;
+  ## (3) call `obj$report()` with no args (so it reads the just-
+  ## forced `last.par`) and `TMB::sdreport(obj, par.fixed = opt$par,
+  ## ...)` with explicit `par.fixed = opt$par` so the report and
+  ## sdreport are self-consistent regardless of TMB's internal-state
+  ## quirks. NOTE: `obj$report(opt$par)` would be incorrect --
+  ## `obj$report()` expects the FULL parameter vector (fixed + RE),
+  ## not just the fixed-effects-only `opt$par`. The correct idiom
+  ## is `obj$fn(opt$par); obj$report()`.
+  ##
+  ## See docs/dev-log/audits/2026-05-15-external-audit-response.md
+  ## for the bug history.
+  invisible(obj$fn(opt$par))
+  obj$env$last.par.best <- obj$env$last.par
+
+  rep    <- obj$report()
+  sd_rep <- TMB::sdreport(obj, par.fixed = opt$par,
+                          getJointPrecision = FALSE)
 
   ## Track whether the user fitted a latent() / phylo_latent() with rank > 1 and
   ## without a `lambda_constraint`. The implied Sigma is identifiable, but

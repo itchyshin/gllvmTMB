@@ -1,0 +1,331 @@
+---
+title: "Profile-likelihood confidence intervals"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Profile-likelihood confidence intervals}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+`gllvmTMB` uses **profile-likelihood confidence intervals** as the
+default for the ratio-quantity extractors (`extract_repeatability()`,
+`extract_communality()`, `extract_phylo_signal()`). Profile likelihood
+is fast (TMB's C++ inner optim warm-started from the joint MLE),
+respects the skewness of variance-component sampling distributions
+(Wald CIs do not), and gives accurate coverage near boundaries (where
+Wald often breaks down).
+
+**Note** for cross-trait correlations specifically:
+[`extract_correlations()`](../reference/extract_correlations.html)
+defaults to `method = "fisher-z"`. Correlations are bounded in
+$[-1, 1]$ (not $[0, \infty)$ like variance components), and Fisher's
+$z$-transform Wald CI with $\tanh$ back-transform is closed-form and
+bounded by construction -- both faster and better-behaved than profile
+for correlations specifically. Pass `method = "profile"` explicitly
+to get profile-likelihood CIs on correlations.
+
+This article walks through the three-method API, shows how the
+methods agree on a simulated DGP, and discusses the speed and
+coverage trade-offs. It is also the place to point readers at the
+underlying TMB tools (`TMB::tmbprofile()`, `TMB::tmbroot()`,
+`TMB::checkConsistency()`) that gllvmTMB's wrappers build on.
+
+```{r setup}
+library(gllvmTMB)
+set.seed(42)
+```
+
+## The three-method API
+
+Every CI-producing function in `gllvmTMB` accepts a `method` argument
+with three values:
+
+| Method | Speed | Coverage | When |
+|---|---|---|---|
+| `"wald"` | fastest | poor near boundary, assumes symmetry | small-N quick check |
+| `"profile"` *(default for derived ratio quantities)* | fast | accurate, respects skewness | most cases |
+| `"bootstrap"` | slowest | accurate, full sampling distribution | non-monotone profile, full-$\boldsymbol\Sigma$ sampling |
+
+The default `method = "profile"` is based on the maintainer's
+observation that parametric bootstrap was ~10-50x slower than the
+profile likelihood for the same coverage on routine fits. Bootstrap
+is preserved as a fallback for non-monotone cases or when full
+sampling distributions are needed (e.g. to draw scatterplots of
+joint parameter uncertainty).
+
+### What is profile likelihood?
+
+For a single-parameter null $H_0:\, \theta_t = \theta_0$ where
+$\theta_t$ is one component of the parameter vector, the profile
+log-likelihood is
+
+$$
+\ell_p(\theta_0) = \max_{\theta_{-t}} \ell(\theta_0, \theta_{-t}),
+$$
+
+where $\theta_{-t}$ denotes all parameters other than $\theta_t$. By
+Wilks's theorem,
+
+$$
+2\,(\hat\ell - \ell_p(\theta_0)) \xrightarrow{d} \chi^2_1
+$$
+
+asymptotically under $H_0$. The 95% CI for $\theta_t$ is the set of
+$\theta_0$ values where the deviance crosses $\chi^2_1(0.95) \approx 3.84$.
+[Pawitan (2001)](https://academic.oup.com/book/9268) gives the
+canonical exposition; [Venzon & Moolgavkar
+(1988)](https://doi.org/10.2307/2347496) was the first uniroot-based
+numerical algorithm.
+
+For a derived quantity $q = g(\theta)$, the profile is
+
+$$
+\ell_p(q_0) = \max_{\theta:\, g(\theta) = q_0} \ell(\theta).
+$$
+
+The constraint $g(\theta) = q_0$ is enforced via Lagrange-style
+fix-and-refit, warm-started in TMB's C++ inner optim from the joint
+MLE -- typically order-of-magnitude faster than refitting in pure R.
+
+## Worked example: variance components, repeatability, correlations
+
+Simulate a 3-trait, 50-site fit with both between- and within-site
+structure (the canonical "behavioural syndromes" set-up):
+
+```{r sim}
+s <- simulate_site_trait(
+  n_sites               = 50, n_species = 6, n_traits = 3,
+  mean_species_per_site = 4,
+  Lambda_B              = matrix(c(0.9, 0.4, -0.3), 3, 1),
+  psi_B                 = c(0.40, 0.30, 0.50),
+  psi_W                 = c(0.30, 0.40, 0.30),
+  beta                  = matrix(0, 3, 2), seed = 42
+)
+df_long <- s$data
+```
+
+The same model can be fitted from either the long-format data above
+or its wide-format equivalent. We show both for the variance-component
+fit; the rest of the article re-uses the long-form fit.
+
+```{r build-wide}
+library(tidyr)
+df_wide <- tidyr::pivot_wider(
+  df_long, id_cols = c(site, site_species),
+  names_from = trait, values_from = value
+)
+```
+
+```{r fit}
+# Long format (canonical)
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 1) + unique(0 + trait | site) +
+    unique(0 + trait | site_species),
+  data = df_long
+)
+
+# Wide data-frame format (same model with compact formula syntax)
+fit_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3) ~ 1 +
+    latent(1 | site, d = 1) + unique(1 | site) +
+    unique(1 | site_species),
+  data = df_wide
+)
+
+cat("Long/wide logLik difference:",
+    signif(abs(as.numeric(logLik(fit_long)) -
+               as.numeric(logLik(fit_wide))), 3), "\n")
+
+fit <- fit_long
+```
+
+### Variance components: `tmbprofile_wrapper()`
+
+For direct profile-likelihood CIs on individual variance components,
+`tmbprofile_wrapper()` exposes a single-parameter or single-contrast
+profile:
+
+```{r tmbprof}
+## Profile CI for the third trait's between-site log-SD
+ci_log <- tmbprofile_wrapper(
+  fit, name = "theta_diag_B", which = 3, level = 0.95
+)
+ci_log
+
+## Same profile, transformed to the natural variance scale
+ci_var <- tmbprofile_wrapper(
+  fit, name = "theta_diag_B", which = 3, level = 0.95,
+  transform = function(x) exp(2 * x)
+)
+ci_var
+```
+
+If the lower bound is `NA`, the profile became one-sided at the
+boundary $\sigma^2 \to 0$. This is the standard near-boundary
+behaviour for variance components (the constraint $\sigma^2 \geq 0$
+makes the asymptotic $\chi^2_1$ approximation conservative; see e.g.
+[Self & Liang (1987)](https://doi.org/10.2307/2289471) on boundary
+cases). The upper bound is finite and well-behaved either way.
+
+### Repeatability with three CI methods
+
+Per-trait repeatability $R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} +
+\sigma^2_{W,t})$ is the canonical behavioural-ecology summary. The
+profile CI uses the linear contrast $2(\theta_{B,t} - \theta_{W,t})$
+in `TMB::tmbprofile()`'s `lincomb` argument, then transforms via
+$\mathrm{plogis}$ to map back to the unit interval.
+
+> **Honest fallback**: when the fit has a full-$\boldsymbol\Sigma$
+> structure (i.e. `latent()` factor model on top of `unique()`),
+> proper Lagrange-style profile-likelihood CIs for the ratio quantity
+> require a constrained refit per parameter that is not yet
+> implemented. `extract_repeatability(method = "profile")` currently
+> **falls back to Wald (delta-method)** in this case and emits a
+> one-shot inform message. The output's `method` column then reports
+> `"wald"` so the actual computation is honest. Use
+> `method = "bootstrap"` for an empirical CI in the meantime.
+
+```{r rep}
+rep_p <- extract_repeatability(fit, level = 0.95, method = "profile")
+rep_w <- extract_repeatability(fit, level = 0.95, method = "wald")
+rep_b <- extract_repeatability(fit, level = 0.95, method = "bootstrap",
+                               nsim = 30, seed = 1)
+rep_p   # method column reads "wald" when profile path falls back
+rep_w   # explicit Wald (identical to rep_p above on full-Sigma fits)
+rep_b   # genuine bootstrap distribution
+```
+
+For this fit, `rep_p` and `rep_w` are typically **identical** because
+the profile path falls back to Wald (see callout). `rep_b` shows the
+genuine sampling distribution and is what you would cite for
+publication-grade CIs today. The Wald CI is symmetric on the natural
+scale (which is why it can occasionally violate $R \in [0, 1]$ near
+the boundary); a proper profile CI would be symmetric on the
+contrast scale (keeping $R$ inside the natural support). Use
+`bootstrap` until the contrast-scale profile lands.
+
+### Cross-trait correlations: `extract_correlations()`
+
+`extract_correlations()` returns the implied trait-correlation matrix
+at one or more tiers as a tidy data frame. For $T$ traits there are
+$T(T-1)/2$ unique correlations per tier.
+
+```{r cors}
+cors_w <- extract_correlations(fit, tier = "unit", level = 0.95,
+                               method = "wald")
+cors_w
+```
+
+Bootstrap CIs use the existing `bootstrap_Sigma()` machinery:
+
+```{r cors_boot}
+cors_b <- extract_correlations(fit, tier = "unit", level = 0.95,
+                               method = "bootstrap", nsim = 30, seed = 1)
+cors_b
+```
+
+### Phylogenetic signal $H^2$
+
+When the fit has both `phylo_unique(species)` and
+`unique(0 + trait | species)`, $H^2 = \sigma^2_{\rm phy} /
+(\sigma^2_{\rm phy} + \sigma^2_{\rm non})$ is profileable via a
+single linear contrast (analogous to repeatability). For richer
+3-component decompositions (PGLLVM with
+`phylo_latent + latent + unique`), the extractor returns the point
+estimate with a `method = "wald(approx)"` flag in the output's
+method column. The constrained-refit profile for the 3-component
+case is a known gap; bootstrap is the recommended interim.
+
+## Speed comparison
+
+For a fit with $T = 3$ traits, the three CI methods on per-trait
+repeatability take roughly:
+
+| Method | Cost | What it computes |
+|---|---|---|
+| `"wald"` | free given the fit | transforms `sd_report` directly |
+| `"profile"` | ~1-3 s per trait | ~5-10 inner optim evaluations per CI bound, warm-started from the joint MLE |
+| `"bootstrap"` *(100 reps)* | ~10-30 s | linear in `nsim`; the bootstrap-Sigma machinery refits the model on each replicate |
+
+For a full 6-trait fit with all derived quantities (~75 correlations
++ 6 $H^2$ + 6 repeatabilities + 30 communalities = ~120 derived
+parameters), the profile path completes in seconds whereas a
+1000-replicate bootstrap takes minutes to hours.
+
+## When to fall back to bootstrap
+
+Profile likelihood assumes the constrained optimum is unique
+(monotone profile). It can fail when:
+
+1. **Multi-modal likelihood**: latent-factor models with weakly
+   identified rotation can have multiple equivalent optima.
+2. **Boundary cases**: variance components pinned at zero produce
+   one-sided profiles. Lower bound is `NA`; report half-CIs
+   explicitly.
+3. **Joint constraints**: when two derived quantities co-move (e.g.
+   $\sigma^2_B + \sigma^2_W$ at fixed total), profile CIs on each
+   separately understate joint uncertainty. Bootstrap (or a Bayesian
+   fit via `tmbstan::tmbstan(fit$tmb_obj)`) gives the joint
+   distribution.
+
+For these cases, switch to `method = "bootstrap"`.
+
+## Related TMB tools
+
+`gllvmTMB`'s profile wrappers are thin layers on top of TMB's own
+profile-likelihood machinery. For direct access:
+
+* **`TMB::tmbprofile(fit$tmb_obj, name = ...)`** traces the
+  profile-likelihood curve for a single parameter or a linear
+  contrast. `tmbprofile_wrapper()` above wraps this with the right
+  defaults and a transform argument.
+* **`TMB::tmbroot(fit$tmb_obj, name = ...)`** is a root-finding
+  variant that returns just the two CI bounds rather than tracing the
+  full curve. Faster when you only need bounds; doesn't show the
+  shape of the profile.
+* **`TMB::checkConsistency(fit$tmb_obj, n = 100)`** simulates from the
+  fitted model and checks whether the approximate marginal score is
+  centred. A non-centred score is a sign that the Laplace
+  approximation is unreliable for that fit (the random-effects
+  posterior is far from Gaussian, or the data don't constrain the
+  random effects well). Use it during development; it's slower than
+  `sanity_multi()` but gives a complementary signal.
+
+## References
+
+* Pawitan, Y. (2001). *In All Likelihood: Statistical Modelling and
+  Inference Using Likelihood*. Oxford University Press, ch. 9.
+* Venzon, D. J. & Moolgavkar, S. H. (1988). A method for computing
+  profile-likelihood-based confidence intervals. *Applied Statistics*
+  **37**, 87-94.
+* Nakagawa, S. & Schielzeth, H. (2010). Repeatability for Gaussian
+  and non-Gaussian data. *Biological Reviews* **85**, 935-956.
+* Self, S. G. & Liang, K.-Y. (1987). Asymptotic properties of
+  maximum likelihood estimators and likelihood ratio tests under
+  nonstandard conditions. *JASA* **82**, 605-610.
+* Bates, D. *et al.* `lme4::profile.merMod()` source -- the canonical
+  profile-likelihood implementation in R for mixed models.
+* Viechtbauer, W. (2010). `metafor::confint.rma.uni()` source --
+  the canonical profile-CI implementation for meta-analysis variance
+  components.
+* Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H., & Bell, B. M.
+  (2016). TMB: Automatic Differentiation and Laplace Approximation.
+  *Journal of Statistical Software* **70**(5).
+  <https://doi.org/10.18637/jss.v070.i05>

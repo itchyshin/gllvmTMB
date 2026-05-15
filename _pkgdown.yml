@@ -39,6 +39,12 @@ articles:
     - articles/ordinal-probit
     - articles/lambda-constraint
 
+  - title: Methods and validation
+    navbar: Methods
+    desc: Inference machinery and validation of derived quantities
+    contents:
+    - articles/profile-likelihood-ci
+
   - title: Project
     navbar: ~
     desc: Project meta (roadmap, etc.) -- not in the articles dropdown; surfaced via a dedicated navbar entry

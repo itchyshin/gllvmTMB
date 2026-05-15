@@ -1417,3 +1417,48 @@ non-verifying and a second pass is required.
 parse-tested patterns and caught the 24+ stragglers above.
 After-task report records each pattern verbatim.
 
+
+## 2026-05-15 -- Kaizen point 11: R CMD check --as-cran banned cross-reference patterns
+
+**Lesson learned (three separate PR failures today)**:
+R CMD check `--as-cran` with `error_on = "warning"` rejects
+missing-Rd-link warnings as build failures. Several roxygen
+patterns silently break with this configuration:
+
+| Banned pattern | Why | Fix |
+|---|---|---|
+| `[fn(args)]` -- autolink with function arguments | R CMD check can't resolve a `[fn(args)]` target | Use bare `[fn()]` or canonical S3 form `[fn.class()]` |
+| `[vignette("...", package = "...")]` | `vignette(...)` is not an autolinkable Rd target | Plain markdown URL to the rendered pkgdown article |
+| `` `vignette("...")` `` (backtick form) | Even in backticks, R CMD check sometimes parses it as a link target | Same: plain markdown URL |
+| `[0, 1]` -- interval bounds in prose | Parsed as `[link target]` | Rewrite as prose "between 0 and 1" |
+| Cross-references to functions on sibling-branch PRs | Target Rd doesn't exist in main yet | Merge the prerequisite PR first OR drop the cross-link until both are in main OR use a plain markdown URL |
+
+**Worked examples from today** (all 2026-05-15):
+
+- PR #105 (`check_identifiability`) cross-referenced
+  `check_auto_residual()` which was on PR #104 -- failed 3-OS
+  on the missing-link warning until #104 merged.
+- PR #120 (`confint_inspect`) used
+  `[confint(fit, method = "profile")]` and
+  `[vignette("troubleshooting-profile", package = "gllvmTMB")]`
+  in roxygen `@seealso`. Both flagged. Fix replaced the first
+  with `[confint.gllvmTMB_multi()]` + an inline arg note, and
+  the second with a plain markdown URL to the rendered article.
+- PR #122 (`coverage_study`) had `[0, 1]` in a prose description
+  of a coverage rate. Replaced with "between 0 and 1".
+
+**Detection recipe**: before pushing any new R/ file with a
+`@seealso` block or descriptive math (intervals, function-call
+references), run:
+
+```r
+tools::checkRd(file.path("man", "<new_function>.Rd"))
+```
+
+Empty return = clean. Any "Missing link(s)" output is a CI
+blocker under `error_on = "warning"`.
+
+**Process change adopted**: this banned-pattern catalogue is
+the new go-to reference for any PR that touches roxygen
+`@seealso` blocks. The detection recipe above is the canonical
+local-check step before pushing.

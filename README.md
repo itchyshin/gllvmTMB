@@ -20,9 +20,10 @@ Three things distinguish `gllvmTMB`:
   the phylogenetic and spatial variants (`phylo_latent`,
   `spatial_unique`, etc.) extend the same grammar to species
   relatedness and spatial fields.
-- **TMB engine, ML / REML estimates.** Fits take seconds to
-  minutes; profile-likelihood and bootstrap intervals are
-  first-class.
+- **TMB engine, maximum-likelihood (ML) estimates.** Fits take
+  seconds to minutes; profile-likelihood and bootstrap intervals
+  are first-class. (REML is on the post-0.2.0 roadmap as a
+  Gaussian-only feature -- see `NEWS.md`.)
 
 ## What "stacked-trait" means
 
@@ -88,6 +89,53 @@ This is preview version `0.2.0`. The package is pre-CRAN and
 intentionally bounded: use it for the implemented stacked-trait
 workflows above, and treat unsupported model classes as roadmap
 work rather than hidden features.
+
+## Status of supported features
+
+The matrix below sorts each feature into three buckets so you
+can tell at a glance whether a path is ready for publication-
+quality use (**stable**), works but has known caveats or is
+under active validation (**experimental**), or is on the
+roadmap but not yet implemented (**planned**). See
+[`Current boundaries`](#current-boundaries) further down for the
+discussion of what is intentionally out of scope.
+
+| Feature | Status | Notes |
+|---|---|---|
+| **Gaussian `latent()` + `unique()`** | stable | Worked example: [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
+| **Binomial / Poisson / NB2 / Tweedie / Gamma / lognormal `latent()`** | stable | 15 families supported; see [Mixed responses](https://itchyshin.github.io/gllvmTMB/articles/mixed-response.html) for the full table. |
+| **Beta / beta-binomial / Student-t** | stable | `mu_t` clamp guards against trigamma blow-up on saturated fits. |
+| **Truncated / delta / hurdle families** | stable | `truncated_poisson`, `truncated_nbinom2`, `delta_lognormal`, `delta_gamma`. |
+| **Ordinal-probit** | stable | Per-trait cutpoints. See [Ordinal-probit](https://itchyshin.github.io/gllvmTMB/articles/ordinal-probit.html). |
+| **Mixed-family per-row dispatch** | stable | `family = list(...)` with a `family_var` column. |
+| **`extract_Sigma()`, `extract_correlations()`, `extract_communality()`** | stable | `link_residual = "auto"` adds family-specific residuals to the diagonal. |
+| **`extract_repeatability()`, `extract_phylo_signal()`** | stable | Profile CI default; falls back to Wald on full-Sigma fits with a one-shot inform message. |
+| **Profile-likelihood CIs (direct parameters)** | stable | `tmbprofile_wrapper()` for direct profile + transform. |
+| **Profile-likelihood CIs (derived ratio quantities)** | experimental | Lagrange fix-and-refit pattern; empirical coverage study is the Phase 1b validation milestone. |
+| **`extract_correlations(method = "profile")` for correlations** | experimental | Falls back to Wald on full-Sigma fits. |
+| **`check_identifiability()` Procrustes diagnostic** | stable | Simulate-refit + Procrustes alignment; catches spurious extra factors. |
+| **`check_auto_residual()` safeguard** | stable | Guards `link_residual = "auto"` against mixed-family / ordinal-probit edge cases. |
+| **Phylogenetic covariance (`phylo_*()`)** | stable | Paired two-Psi form is the canonical recipe; three-piece fallback documented for small trees. |
+| **Spatial covariance (`spatial_*()`, SPDE / mesh)** | stable | Inherited from `sdmTMB`; see [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html). |
+| **`meta_known_V()` for known sampling covariance** | stable | Diagonal V scales well; dense V is small-to-moderate `n` only. |
+| **Long-format engine + wide `traits(...)` LHS** | stable | Equivalent fits; long is canonical, wide is the convenience entry point. |
+| **`lambda_constraint` (confirmatory loadings)** | stable | GALAMM-style entry pinning. See [Lambda constraints](https://itchyshin.github.io/gllvmTMB/articles/lambda-constraint.html). |
+| **Multi-start optimisation (`n_init >= 2`)** | stable | Reduced-rank fits recommended to use `n_init >= 5`. |
+| **`simulate.gllvmTMB_multi()`** | experimental | Gaussian-noise + selected RE tiers; non-Gaussian fits fall back to conditional simulation. Family-aware redraws are roadmap (Phase 5.5). |
+| **`predict.gllvmTMB_multi()`** | experimental | `type = c("link", "response")`. Typed outputs for ordinal-probit category probabilities, delta presence / positive-mean, and mixed-family per-trait `linkinv` are roadmap. |
+| **REML estimation** | planned | Roadmap for a post-0.2.0 release as a Gaussian-only feature. |
+| **Random slopes `(1 + x | g)`** | planned | Phase 1c-slope; depends on the Phase 1b validation milestone closing first. |
+| **`confint(method = c("wald", "profile", "bootstrap"))` for fixed effects** | planned | API surface to be aligned with the existing `profile_ci_*()` family (drmTMB-style `profile_targets()` inventory). |
+| **Storage controls (`keep_tmb_object = FALSE`)** | planned | Mirror `drmTMB`'s pattern for serialised-fit footprint. |
+| **Zero-inflated count families** | planned | Post-CRAN extension. |
+| **SPDE barrier mesh** | planned | Post-CRAN extension. |
+
+The **stable** rows are the core surface you can use in
+publication-quality work today; the **experimental** rows are
+under active validation (Phase 1b validation milestone in
+progress); the **planned** rows are explicit gaps that future
+releases will close. Items not in either of these three buckets
+are out of scope -- see [`Current boundaries`](#current-boundaries).
 
 ## Install
 
@@ -287,9 +335,9 @@ package author, written against the TMB API.
   the 3 x 5 keyword grid, and integrated phylogenetic / spatial
   paths in one engine.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
-  phylogenetic / multi-response models; `gllvmTMB` returns ML /
-  REML point estimates with profile / Wald / bootstrap CIs and
-  runs in seconds-to-minutes rather than minutes-to-hours.
+  phylogenetic / multi-response models; `gllvmTMB` returns ML
+  point estimates with profile / Wald / bootstrap CIs and runs
+  in seconds-to-minutes rather than minutes-to-hours.
 
 A full scope comparison and decision matrix lives in
 [`docs/design/04-sister-package-scope.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/04-sister-package-scope.md)

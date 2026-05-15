@@ -44,5 +44,7 @@ gllvmTMB_diagnose(fit)
 }
 \seealso{
 \code{\link[=sanity_multi]{sanity_multi()}}, \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}},
-\code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_communality]{extract_communality()}}.
+\code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_communality]{extract_communality()}},
+\code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}} / \code{\link[=compare_indep_vs_two_psi]{compare_indep_vs_two_psi()}} for
+identifiability cross-checks on the paired phylogenetic fit.
 }

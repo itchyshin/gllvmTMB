@@ -24,7 +24,9 @@
 #'   and `hints` (character vector of suggested actions).
 #' @export
 #' @seealso [sanity_multi()], [suggest_lambda_constraint()],
-#'   [extract_Sigma()], [extract_communality()].
+#'   [extract_Sigma()], [extract_communality()],
+#'   [compare_dep_vs_two_psi()] / [compare_indep_vs_two_psi()] for
+#'   identifiability cross-checks on the paired phylogenetic fit.
 #' @examples
 #' \dontrun{
 #' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2), data = dat)

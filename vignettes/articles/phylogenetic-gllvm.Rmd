@@ -52,9 +52,9 @@ $$
 $$
 
 Here `Lambda` is the shared low-rank structure and `Psi` is the
-trait-specific diagonal variance. The old project nickname "two-U"
-means this paired phylogenetic and non-phylogenetic decomposition; the
-math in current gllvmTMB uses `S` / `s` for the unique diagonal.
+trait-specific diagonal variance. The "two-Psi" nickname refers to
+this paired phylogenetic and non-phylogenetic decomposition (two
+`Psi` diagonals, one at each tier).
 
 ## Setup
 
@@ -276,33 +276,33 @@ Three nested covariance intents bracket the four-component model:
 - **Dependent** (`phylo_dep + dep`): a full unstructured covariance
   at each tier. Saturated; no shared/unique split is enforced.
 
-The two-U decomposition sits between independent (too restrictive
+The two-Psi decomposition sits between independent (too restrictive
 when traits are correlated) and dependent (too many parameters when
 the number of traits grows). The cross-check functions refit the
 data under the independent and dependent baselines and compare each
-component's implied total covariance against the two-U fit.
+component's implied total covariance against the two-Psi fit.
 
 ```{r compare-indep}
-diag_indep <- compare_indep_vs_two_U(fit)
+diag_indep <- compare_indep_vs_two_psi(fit)
 diag_indep$agreement
 diag_indep$flag
 ```
 
 ```{r compare-dep}
-diag_dep <- compare_dep_vs_two_U(fit)
+diag_dep <- compare_dep_vs_two_psi(fit)
 diag_dep$agreement
 diag_dep$flag
 ```
 
 Each `$agreement` row shows the Frobenius relative disagreement
-between the two-U fit and the baseline (`rmse / baseline_mag`).
+between the two-Psi fit and the baseline (`rmse / baseline_mag`).
 `flag = TRUE` means relative disagreement exceeds `0.10`. A flag is
 not a failed model; it tells you the data do not strongly support
 the chosen decomposition at the requested rank.
 
-Use `compare_indep_vs_two_U()` first when the number of traits is
+Use `compare_indep_vs_two_psi()` first when the number of traits is
 large -- it only refits the diagonal and stays cheap. Use
-`compare_dep_vs_two_U()` when the number of traits is modest and the
+`compare_dep_vs_two_psi()` when the number of traits is modest and the
 saturated refit is affordable -- it is the more informative
 benchmark for off-diagonal cross-trait structure.
 
@@ -325,13 +325,13 @@ fit_phylo_dep <- gllvmTMB(
 
 `phylo_dep() + dep()` estimates full unstructured trait covariances
 at each tier without asking the data to separate a low-rank shared
-axis from the diagonal. It is the natural fallback when the two-U
+axis from the diagonal. It is the natural fallback when the two-Psi
 diagnostics flag.
 
 ## What to read next
 
-- [`compare_dep_vs_two_U()`](../reference/compare_dep_vs_two_U.html)
-  and [`compare_indep_vs_two_U()`](../reference/compare_indep_vs_two_U.html)
+- [`compare_dep_vs_two_psi()`](../reference/compare_dep_vs_two_psi.html)
+  and [`compare_indep_vs_two_psi()`](../reference/compare_indep_vs_two_psi.html)
   are the likelihood-based cross-checks for this model.
 - [`functional-biogeography`](functional-biogeography.html) shows how
   phylogenetic terms behave as controls in a larger site--species--trait

@@ -133,6 +133,7 @@ reference:
     - gllvmTMB_diagnose
     - check_auto_residual
     - check_identifiability
+    - gllvmTMB_check_consistency
     - compare_dep_vs_two_psi
     - compare_indep_vs_two_psi
     - bootstrap_Sigma

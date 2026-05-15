@@ -1,5 +1,29 @@
 # gllvmTMB (development version)
 
+## New exports (Phase 1b validation milestone)
+
+* **`gllvmTMB_check_consistency(fit, n_sim = 100L, seed = NULL,
+  estimate = FALSE)`** -- thin wrapper around
+  `TMB::checkConsistency()` that tests whether the approximate
+  marginal score is centred at zero. A non-centred score is a
+  sign that the Laplace approximation is **unreliable** for the
+  fit -- the random-effects posterior is far from Gaussian or
+  the data don't constrain the random effects well. Complementary
+  to `sanity_multi()` (structural / convergence checks) and
+  `check_identifiability()` (Procrustes-aligned loadings recovery
+  across simulate-refit replicates); slower than both but the
+  only diagnostic that targets the **Laplace approximation itself**
+  rather than the optimisation outcome or the parameter
+  identification. Returns an object of class
+  `gllvmTMB_check_consistency` with `$marginal_p_value`,
+  `$marginal_bias` (per-parameter), `$joint_p_value`
+  (when `estimate = TRUE`), `$flagged_parameters`,
+  `$diagnostics`, `$raw` (the full TMB::checkConsistency()
+  return). Diagnostic vocabulary: `"centred"` (well-behaved),
+  `"marginal_score_non_centred"`, `"joint_score_non_centred"`,
+  `"information_matrix_singular"`, `"marginal_p_value_unavailable"`.
+  Audit + TMB-report recommendation 2026-05-15.
+
 ## New exports (P1a audit response)
 
 * **`profile_targets(fit, ready_only = FALSE)`** -- profile-likelihood

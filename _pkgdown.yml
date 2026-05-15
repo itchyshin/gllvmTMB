@@ -119,6 +119,7 @@ reference:
     contents:
     - sanity_multi
     - gllvmTMB_diagnose
+    - check_auto_residual
     - compare_dep_vs_two_psi
     - compare_indep_vs_two_psi
     - bootstrap_Sigma

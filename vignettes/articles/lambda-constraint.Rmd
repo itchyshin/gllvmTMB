@@ -1,0 +1,392 @@
+---
+title: "Confirmatory loadings: pinning Lambda entries with `lambda_constraint`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Confirmatory loadings: pinning Lambda entries with `lambda_constraint`}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+By default, `gllvmTMB`'s reduced-rank loading matrix
+$\boldsymbol{\Lambda}$ is exploratory: lower-triangular with positive
+diagonal, identifiable up to *trait permutation* and *column rotation*.
+This is fine for ordination, but **for confirmatory hypotheses you
+often want to fix specific entries during MLE** -- e.g.
+
+* "Trait $t_1$ defines factor 1 (set $\Lambda_{1,1} = 1$, all other
+  loadings on factor 1 free)" -- the GALAMM (Sorensen 2024) /
+  classical IRT convention.
+* "Trait $t_3$ does NOT load on factor 2 (set $\Lambda_{3,2} = 0$)" --
+  testing a structural zero implied by theory.
+
+`gllvmTMB` supports both via the `lambda_constraint` argument, which
+takes an `n_traits x d` matrix where `NA` means "estimate freely" and
+a numeric value means "pin to that value during fit". The mechanism
+follows GALAMM (Sorensen 2024) and is verified by recovery tests in
+`tests/testthat/test-lambda-constraint.R`.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+```
+
+## When do you actually *need* `lambda_constraint`?
+
+The honest answer: **less often than you might think**. The
+implied trait covariance
+$\boldsymbol{\Sigma}_{\text{unit}} = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol{\Psi}$
+is *always* identifiable, regardless of any rotational ambiguity in
+$\boldsymbol\Lambda$ itself. A short decision tree:
+
+| Your goal | Do you need `lambda_constraint`? |
+|---|---|
+| Estimate $\boldsymbol\Sigma_{\text{unit}}$ (correlations between traits, communalities) | **No.** $\boldsymbol\Sigma_{\text{unit}}$ is rotation-invariant. Just fit and call `extract_Sigma(level = "unit")`. |
+| Plot an ordination (`ordiplot()`) | **No.** Axes are rotation-invariant up to reflection / ordering. |
+| Compare loadings across two `gllvmTMB` fits on the same data | **No.** Use `compare_loadings()` (Procrustes alignment) instead. |
+| Compare loadings against another package (`gllvm`, `glmmTMB::rr()`, ...) | **No.** Use Procrustes alignment again -- both packages have their own arbitrary rotation. |
+| Test "does trait $t$ load on factor $k$?" (confirmatory) | **Yes.** Pin $\Lambda_{t,k} = 0$ and likelihood-ratio test against the unconstrained fit. |
+| Anchor factor 1 to a specific trait (GALAMM / IRT convention) | **Yes.** Pin $\Lambda_{1,1} = 1$. |
+| Get a *unique* numerical $\boldsymbol\Lambda$ for one-shot reporting | **Yes.** Pin to lower-triangular (call `suggest_lambda_constraint()` below). |
+
+If your goal isn't in the bottom three rows, fitting without any
+constraint and using rotation-invariant accessors (`extract_Sigma`,
+`extract_communality`, `extract_ordination`) is usually the right
+move.
+
+## Pre-check: ask the package what it would suggest
+
+If you decide you do want a constraint, the package can construct a
+sensible default for you. `suggest_lambda_constraint()` takes either
+a fitted model or a `formula + data` and returns the matrix to pass
+to `lambda_constraint = list(B = ...)`.
+
+```{r suggest-pre-check}
+sim_pre <- simulate_site_trait(
+  n_sites = 60, n_species = 1, n_traits = 4, mean_species_per_site = 1,
+  Lambda_B = matrix(0.0, 4, 2), psi_B = rep(0, 4),
+  beta = matrix(0, 4, 2), seed = 1
+)
+sug_lt <- suggest_lambda_constraint(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2) +
+                      unique(0 + trait | site),
+  data = sim_pre$data,
+  convention = "lower_triangular"
+)
+sug_lt$constraint
+sug_lt$note
+sug_lt$usage_hint
+```
+
+The three available conventions:
+
+| Convention | What it pins | When to use |
+|---|---|---|
+| `"lower_triangular"` *(default)* | Upper triangle of $\boldsymbol\Lambda$ pinned to 0 -- `K(K-1)/2` pins | Standard rotational fix; gives a unique $\hat{\boldsymbol\Lambda}$ |
+| `"pin_top_one"` | $\Lambda_{1,1} = 1$ only | Single-anchor convention (GALAMM / IRT) -- sets scale, does *not* remove rotation |
+| `"none"` | All `NA` (no pins) | If you plan to use post-hoc rotation (varimax) instead |
+
+For $K = 1$, `lower_triangular` returns all-`NA` because there is no
+rotational ambiguity to fix -- the function knows this and tells you
+in `note`.
+
+## Hands-on: four `lambda_constraint` patterns
+
+This article demonstrates four `lambda_constraint` patterns on the
+same simulated data:
+
+1. **Exploratory** -- no constraint (default).
+2. **Diagonal pinned to 1** -- the GALAMM / IRT convention.
+3. **Off-diagonal pinned to 0** -- structural zero.
+4. **Off-diagonal pinned to a non-zero target** -- confirmatory test.
+
+## Simulate a known $\boldsymbol{\Lambda}_B$
+
+Four traits, two latent factors, 60 sites -- same simulator as the
+package's recovery tests.
+
+```{r sim}
+set.seed(1)
+n_traits <- 4
+d        <- 2
+Lambda_B_true <- matrix(0, nrow = n_traits, ncol = d)
+Lambda_B_true[lower.tri(Lambda_B_true, diag = TRUE)] <-
+  c(1.0,  0.4, -0.3,  0.2,    # column 1: diag + below
+    1.0,  0.6, -0.2)           # column 2: diag + below
+Lambda_B_true
+
+sim <- simulate_site_trait(
+  n_sites               = 60,
+  n_species             = 10,
+  n_traits              = n_traits,
+  mean_species_per_site = 5,
+  Lambda_B              = Lambda_B_true,
+  psi_B                 = rep(0.3, n_traits),
+  seed                  = 1
+)
+df_long <- sim$data
+head(df_long, 4)
+```
+
+The simulator returns long-format data (one row per `(site, species, trait)`
+observation). The same simulated data can be reshaped to one of the
+two wide forms accepted by `gllvmTMB`:
+
+```{r build-wide}
+library(tidyr)
+df_wide <- tidyr::pivot_wider(
+  df_long,
+  id_cols     = c(site, site_species),
+  names_from  = trait,
+  values_from = value
+)
+head(df_wide, 4)
+```
+
+## 1. Exploratory fit (no constraint)
+
+The same model can be fitted from either data shape. We show both for
+the exploratory fit; the constrained fits in the next sections re-use
+the long-form recipe.
+
+```{r fit-exploratory}
+# Long format (canonical)
+fit0_long <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2) +
+                      unique(0 + trait | site),
+  data = df_long
+)
+
+# Wide data-frame format (same model with compact formula syntax)
+fit0_wide <- gllvmTMB(
+  traits(trait_1, trait_2, trait_3, trait_4) ~ 1 +
+          latent(1 | site, d = 2) +
+          unique(1 | site),
+  data = df_wide
+)
+
+# Verify the two routes give the same fit.
+cat("Long/wide logLik difference:",
+    signif(abs(as.numeric(logLik(fit0_long)) -
+               as.numeric(logLik(fit0_wide))), 3),
+    "\n")
+
+# The rest of the article uses the canonical long-format fit.
+fit0 <- fit0_long
+L0 <- fit0$report$Lambda_B
+rownames(L0) <- paste0("trait_", seq_len(n_traits))
+colnames(L0) <- paste0("LV", seq_len(d))
+round(L0, 3)
+```
+
+The lower-triangular convention forces $\Lambda_{1,2} = 0$ and
+$\Lambda_{1,1}, \Lambda_{2,2} > 0$ for identifiability. The remaining
+five entries are free.
+
+## 2. Diagonal pinned to 1 (GALAMM / IRT convention)
+
+```{r fit-galamm}
+cnst_diag <- matrix(NA_real_, nrow = n_traits, ncol = d)
+diag(cnst_diag) <- 1
+cnst_diag
+
+fit_diag <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2) +
+                      unique(0 + trait | site),
+  data              = df_long,
+  lambda_constraint = list(B = cnst_diag)
+)
+L_diag <- fit_diag$report$Lambda_B
+rownames(L_diag) <- paste0("trait_", seq_len(n_traits))
+colnames(L_diag) <- paste0("LV", seq_len(d))
+round(L_diag, 3)
+```
+
+The first two diagonal entries are exactly 1 (verified by the
+`test-lambda-constraint.R` recovery tests). The remaining
+lower-triangle entries are free and the fit finds their MLE under
+that constraint.
+
+## 3. Off-diagonal pin to zero (structural zero)
+
+Hypothesis: trait 4 should not load on factor 2 -- there is a
+biological reason to believe its variance is fully captured by factor
+1 plus its unique variance. Set $\Lambda_{4,2} = 0$:
+
+```{r fit-zero-pin}
+cnst_zero <- matrix(NA_real_, nrow = n_traits, ncol = d)
+diag(cnst_zero) <- 1
+cnst_zero[4, 2] <- 0    # trait 4 does NOT load on LV 2
+cnst_zero
+
+fit_zero <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2) +
+                      unique(0 + trait | site),
+  data              = df_long,
+  lambda_constraint = list(B = cnst_zero)
+)
+L_zero <- fit_zero$report$Lambda_B
+rownames(L_zero) <- paste0("trait_", seq_len(n_traits))
+colnames(L_zero) <- paste0("LV", seq_len(d))
+round(L_zero, 3)
+```
+
+The pinned entry is exactly 0 (machine precision). A likelihood-ratio
+test against the unconstrained model tests whether the structural
+zero is supported by the data:
+
+```{r lrt-zero}
+ll_diag <- as.numeric(stats::logLik(fit_diag))
+ll_zero <- as.numeric(stats::logLik(fit_zero))
+LR      <- 2 * (ll_diag - ll_zero)
+df_diff <- 1
+p_value <- pchisq(LR, df = df_diff, lower.tail = FALSE)
+data.frame(
+  ll_unconstrained = ll_diag,
+  ll_zero_pinned   = ll_zero,
+  LR_stat          = LR,
+  df               = df_diff,
+  p_value          = p_value
+)
+```
+
+If `p_value` is large, the data are compatible with $\Lambda_{4,2} = 0$;
+if small, the data reject the structural zero. (Remember
+likelihood-ratio tests on boundary parameters can have
+non-standard reference distributions; treat as a heuristic.)
+
+## 4. Off-diagonal pin to a non-zero target
+
+The previous case used 0; you can pin to any value. For example, fix
+$\Lambda_{3,1}$ at $-0.5$ and let everything else float:
+
+```{r fit-nonzero-pin}
+cnst_05 <- matrix(NA_real_, nrow = n_traits, ncol = d)
+diag(cnst_05) <- 1
+cnst_05[3, 1] <- -0.5
+cnst_05
+
+fit_05 <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2) +
+                      unique(0 + trait | site),
+  data              = df_long,
+  lambda_constraint = list(B = cnst_05)
+)
+L_05 <- fit_05$report$Lambda_B
+rownames(L_05) <- paste0("trait_", seq_len(n_traits))
+colnames(L_05) <- paste0("LV", seq_len(d))
+round(L_05, 3)
+```
+
+`L_05[3, 1]` is exactly $-0.5$ (verified by the recovery tests).
+
+## Comparison across the four fits
+
+```{r side-by-side}
+side_by_side <- list(
+  exploratory       = round(L0,     3),
+  diag_pinned_to_1  = round(L_diag, 3),
+  zero_pin_at_42    = round(L_zero, 3),
+  nonzero_pin_at_31 = round(L_05,   3)
+)
+side_by_side
+```
+
+A faceted heatmap makes the structure obvious -- each panel shows
+$\hat{\boldsymbol\Lambda}_B$ from one of the four fits, with red /
+blue indicating the sign of each loading. Pinned cells are outlined
+in heavy black:
+
+```{r side-by-side-heatmap, fig.width = 7.5, fig.height = 4, eval = requireNamespace("ggplot2", quietly = TRUE), fig.cap = "Recovered Lambda_B from the four fits. Each panel is a 4 (trait) x 2 (latent factor) heatmap. Heavy black outlines mark cells whose value was pinned by `lambda_constraint`."}
+library(ggplot2)
+make_long <- function(L, fit_name, pinned_idx = matrix(integer(0), 0, 2)) {
+  df_l <- data.frame(
+    trait  = factor(rep(rownames(L), ncol(L)), levels = rownames(L)),
+    factor = factor(rep(colnames(L), each = nrow(L)), levels = colnames(L)),
+    value  = as.vector(L),
+    pinned = FALSE,
+    fit    = fit_name
+  )
+  for (k in seq_len(nrow(pinned_idx))) {
+    df_l$pinned[df_l$trait  == rownames(L)[pinned_idx[k, 1]] &
+                df_l$factor == colnames(L)[pinned_idx[k, 2]]] <- TRUE
+  }
+  df_l
+}
+pinned_diag <- rbind(c(1, 1), c(2, 2))
+pinned_zero <- rbind(c(1, 1), c(2, 2), c(4, 2))
+pinned_05   <- rbind(c(1, 1), c(2, 2), c(3, 1))
+df_heat <- rbind(
+  make_long(L0,     "1. exploratory"),
+  make_long(L_diag, "2. diag pinned to 1",        pinned_diag),
+  make_long(L_zero, "3. + zero pin at L[4,2]",    pinned_zero),
+  make_long(L_05,   "4. + nonzero pin at L[3,1]", pinned_05)
+)
+df_heat$fit <- factor(df_heat$fit, levels = c(
+  "1. exploratory", "2. diag pinned to 1",
+  "3. + zero pin at L[4,2]", "4. + nonzero pin at L[3,1]"))
+
+ggplot(df_heat, aes(factor, trait, fill = value)) +
+  geom_tile(colour = "grey90") +
+  geom_tile(data = subset(df_heat, pinned),
+            colour = "black", linewidth = 1, fill = NA) +
+  geom_text(aes(label = sprintf("%.2f", value)),
+            colour = "black", size = 3) +
+  scale_fill_gradient2(low = "#3b82c6", mid = "white", high = "#d33",
+                       midpoint = 0,
+                       limits = c(-1, 1) * max(abs(df_heat$value)) * 1.1) +
+  facet_wrap(~ fit, ncol = 4) +
+  labs(x = "latent factor", y = "trait",
+       fill = expression(hat(Lambda))) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid = element_blank(),
+        legend.position = "right",
+        strip.text = element_text(face = "bold"))
+```
+
+The two off-pattern pins ($\Lambda_{4,2}$ in panel 3, $\Lambda_{3,1}$
+in panel 4) are held *exactly* at their target values; everything
+else floats and adjusts. Panel 1's exploratory loadings are
+rotation-only-identified -- a different optimisation start could give
+a numerically different $\hat{\boldsymbol\Lambda}$ but the same
+implied $\boldsymbol\Sigma_{\text{unit}}$.
+
+## How `lambda_constraint` is implemented
+
+Internally, `lambda_constraint = list(B = M)` is translated to a TMB
+`map` factor that fixes the corresponding entries of the packed-theta
+parameter vector. The bookkeeping (which packed-theta index
+corresponds to which $\Lambda_{i,j}$) lives in
+`R/lambda-constraint.R` and is verified by
+`tests/testthat/test-lambda-constraint.R` (pinning diagonals,
+off-diagonals to zero, off-diagonals to non-zero, upper-triangle
+pins silently ignored, dimension-mismatch errors, `W`-level
+constraints, combined `B + W` constraints).
+
+## See also
+
+* `?gllvmTMB` -- the `lambda_constraint` argument is documented under
+  "Confirmatory loadings".
+* [`vignette("functional-biogeography")`](functional-biogeography.html)
+  -- the full Nakagawa et al. model also accepts `lambda_constraint`
+  for $\boldsymbol\Lambda_B$ and $\boldsymbol\Lambda_W$ simultaneously.
+* **Sorensen, O. (2024)** Multilevel semiparametric latent variable
+  modeling in R with galamm. *Multivariate Behavioral Research*
+  59(5):1098-1105. <https://doi.org/10.1080/00273171.2024.2385336> --
+  the original `lambda` mechanism in galamm.

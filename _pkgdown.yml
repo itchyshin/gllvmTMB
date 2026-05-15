@@ -137,7 +137,10 @@ reference:
     - add_utm_columns
     - plot_anisotropy
 
-news:
-  releases:
-  - text: "Version 0.2.0"
-    href: https://github.com/itchyshin/gllvmTMB/releases/tag/v0.2.0
+## news.releases intentionally omitted pre-CRAN: the v0.2.0 git tag /
+## GitHub release does not exist yet (we are mid Phase 1b on the path
+## to first CRAN submission per ROADMAP.md). Once Phase 5 lands a real
+## release tag, re-add a `releases:` block here pointing at it.
+##
+## In the meantime, the navbar "News" dropdown will show only the
+## "Changelog" entry (NEWS.md) — which is the correct pre-release UX.

@@ -1,0 +1,212 @@
+---
+title: "Troubleshooting profile-likelihood CIs: four failure modes"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Troubleshooting profile-likelihood CIs: four failure modes}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE
+)
+```
+
+[Profile-likelihood confidence intervals](profile-likelihood-ci.html)
+are the package's default for variance components, repeatabilities,
+communalities, and phylogenetic signal. They are accurate near
+boundaries, respect skewness, and avoid the symmetry assumption of
+Wald CIs. **But they can fail.** This article catalogues the four
+failure modes that show up in practice and what to do about each.
+
+If a profile call returns `NA` for one or both bounds, an
+infinite bound, two bounds that are equal, or a bound that
+disagrees sharply with Wald, one of the four cases below applies.
+
+## Failure mode 1: the profile didn't converge
+
+**Symptom**: `tmbprofile_wrapper()` (or any of the derived-quantity
+profile extractors) returns `NA` for one or both bounds with no
+warning, or emits "profile did not converge" messages.
+
+**Causes**:
+
+- **Boundary parameter (most common)**. A variance component pinned
+  near $0$ has no lower-side likelihood ridge to walk along; the
+  asymptotic $\chi^2_1$ approximation is one-sided. Lower bound
+  comes back as `NA` is correct behaviour; the upper bound should
+  still be finite.
+- **Joint non-identifiability**. Two parameters are perfectly
+  confounded in the data; profiling one leaves the other to drift
+  freely. The inner optimisation may diverge or hit the boundary
+  on a different parameter.
+- **Numerical precision**. A flat profile near the MLE can produce
+  spurious `NA`s when the deviance step size is too small to
+  resolve the threshold crossing.
+
+**What to do**:
+
+1. Inspect the fit with [`sanity_multi()`](../reference/sanity_multi.html)
+   and [`gllvmTMB_diagnose()`](../reference/gllvmTMB_diagnose.html)
+   to confirm whether a parameter is boundary-pinned or
+   non-identifiable.
+2. If boundary-pinned: report a one-sided CI explicitly (cite
+   [Self & Liang 1987](https://doi.org/10.2307/2289471) on
+   boundary cases).
+3. If non-identifiable: simplify the model (drop the redundant
+   covariance term) or add a `lambda_constraint` to pin the
+   ambiguous direction.
+4. As a fallback, switch to `method = "bootstrap"` (parametric
+   bootstrap doesn't require the profile to converge, only the
+   joint fit to converge on each replicate).
+
+## Failure mode 2: CI bound at $\pm\infty$
+
+**Symptom**: One bound is reported as `Inf` (or `-Inf`); the other
+bound is finite.
+
+**Causes**:
+
+- **Effectively no upper bound from the data**. The likelihood is
+  monotone in the direction of the boundary: increasing the
+  parameter doesn't decrease the likelihood by enough to cross the
+  $\chi^2_1$ threshold within any reasonable range.
+- **Profile walk hit an internal bound and stopped**. The TMB
+  inner optimiser has a soft upper limit on parameter movement per
+  step; the profile may terminate early when the walk wanders
+  into a region where the inner optim fails to converge.
+
+**What to do**:
+
+1. The `Inf` bound is **honest**: the data don't constrain the
+   parameter on that side. Report it as `Inf` in publications;
+   don't replace with a Wald upper bound, which would be misleading
+   precision.
+2. If you need a numerical upper bound for downstream calculations,
+   use a parametric bootstrap with a generous `nsim` (say 500 or
+   1000); the bootstrap distribution will give you a finite upper
+   percentile even when the profile doesn't.
+3. Consider whether the parameter is even worth reporting. A
+   variance component with $[0.4, \infty)$ tells the reader
+   "non-zero, but we have no idea how big". A model simplification
+   (drop the component, or pool it with another) may give a more
+   defensible inference.
+
+## Failure mode 3: profile flat at the MLE
+
+**Symptom**: `tmbprofile_wrapper()` returns a CI that's much wider
+than Wald's, sometimes by an order of magnitude. The
+`extract_communality(method = "profile")` output shows
+`(lower, upper)` covering almost the full $[0, 1]$ even for a
+trait whose communality estimate is unambiguous.
+
+**Causes**:
+
+- **Weak identifiability**. The shared latent structure and the
+  unique-variance diagonal are jointly identified only by the
+  off-diagonals of the implied $\boldsymbol{\Sigma}$; for a trait
+  whose off-diagonals are noisy, individual communality is poorly
+  pinned. Wald CIs hide this (they read the Hessian at the MLE,
+  which may be locally well-conditioned), but the profile sees the
+  full likelihood surface and reports the actual flatness.
+- **Rotational ambiguity** for individual loadings (not for
+  communality, which is rotation-invariant) -- the relevant case
+  is when a derived quantity sits at the edge of the rotational
+  equivalence class.
+
+**What to do**:
+
+1. The profile is **right** here, not the Wald CI. Trust the wider
+   interval and report it as the honest precision.
+2. Confirm with [`check_identifiability(fit, sim_reps = 100L)`](../reference/check_identifiability.html):
+   if the per-trait Procrustes residual for that loading column is
+   large, the corresponding communality estimate is genuinely
+   uncertain. Reduce $d$ (the latent rank) and refit.
+3. For a sharper CI, get more data (longer time series, more
+   sites, more replicates on the noisy trait) or use a model with
+   a stronger prior. Profile likelihood cannot manufacture
+   information that isn't in the data.
+
+## Failure mode 4: profile and Wald disagree sharply
+
+**Symptom**: $|$Wald lower $-$ profile lower$|$ or
+$|$Wald upper $-$ profile upper$|$ exceeds, say, twice the Wald CI's
+half-width. The profile is shifted, sometimes substantially, from
+the Wald CI.
+
+**Causes**:
+
+- **Non-quadratic profile surface** (most common, and a feature
+  not a bug). Variance components, repeatabilities, and any
+  parameter near a boundary have non-quadratic profiles by
+  construction. Wald assumes the profile is quadratic at the MLE;
+  when it isn't, Wald is wrong and profile is right.
+- **Skewed sampling distribution**. The same root cause: the MLE
+  is far enough from the boundary or the tail that the local
+  curvature doesn't match the global shape.
+- **Boundary on a different parameter**. If a related parameter
+  (e.g. another variance component) is itself boundary-pinned,
+  profiling parameter A may force parameter B to the boundary;
+  the resulting inner optim behaviour can make the profile look
+  jagged.
+
+**What to do**:
+
+1. **Trust the profile**. Wald assumes symmetry the profile does
+   not.
+2. Plot the profile curve via the underlying
+   [`TMB::tmbprofile()`](https://kaskr.github.io/adcomp/_book/Profiling.html)
+   call (the wrapper returns the underlying object's
+   `parameters`, `value` columns; pass them to `plot()`). A
+   visibly skewed or kinked curve confirms the disagreement is
+   real, not numerical.
+3. For correlations specifically, use
+   `extract_correlations(method = "fisher-z")` (the default):
+   the Fisher-$z$ transform is the closed-form profile for
+   correlations and avoids both the Wald-symmetry assumption and
+   the profile-likelihood walk.
+4. Consider whether the model is at fault. A near-boundary
+   variance component is a sign of over-parameterisation;
+   dropping the term and reporting a simpler model may be the
+   right answer.
+
+## When to switch to bootstrap
+
+If two or more of the above failure modes hit the same fit (e.g.
+boundary-pinned variance + non-quadratic profile + sharp
+Wald-profile disagreement), the profile path is fragile. The
+parametric bootstrap is the more robust option in these cases:
+
+- `extract_repeatability(method = "bootstrap", nsim = 500)`
+- `extract_communality(method = "bootstrap", nsim = 500)`
+- `extract_phylo_signal(method = "bootstrap", nsim = 500)`
+- `bootstrap_Sigma(fit, n_boot = 500)`
+
+Bootstrap is ~10-30x slower than profile per derived quantity, but
+it's a different inference method altogether: it doesn't depend on
+the Laplace approximation being a good fit at every grid point of
+the profile walk. For a single canonical fit you plan to publish,
+500 bootstrap reps takes minutes and gives the gold-standard CI.
+
+## See also
+
+- [Profile-likelihood CIs](profile-likelihood-ci.html) -- the main
+  reference for the three-method API.
+- [`check_identifiability()`](../reference/check_identifiability.html)
+  -- diagnoses weak identifiability via Procrustes-aligned
+  simulate-refit.
+- [`sanity_multi()`](../reference/sanity_multi.html) and
+  [`gllvmTMB_diagnose()`](../reference/gllvmTMB_diagnose.html) --
+  generic fit diagnostics that surface boundary-pinned components
+  and rotational concerns.
+- [Pitfalls](pitfalls.html) -- broader catalogue of model-fitting
+  gotchas.
+- **Self, S. G. & Liang, K.-Y. (1987)** Asymptotic properties of
+  MLE and LRT under nonstandard conditions. *JASA* **82**, 605-610
+  -- the canonical reference on boundary cases.

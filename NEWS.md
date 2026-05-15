@@ -1,5 +1,18 @@
 # gllvmTMB (development version)
 
+## New exports (Phase 1b)
+
+* **`check_auto_residual(fit)`** -- safeguard for the
+  `link_residual = "auto"` path in the multi-trait extractors. Inspects
+  the fit's per-row family vector and flags two configurations that
+  make the auto path incoherent: (a) **within-trait family mixing**
+  (a single trait carries rows from more than one family) -- errors
+  with `class = "gllvmTMB_auto_residual_incoherent"`; (b) **ordinal-probit
+  traits** -- warns with `class = "gllvmTMB_auto_residual_ordinal_probit_overcount"`
+  because the probit link's latent residual is already 1 by
+  construction and the auto path over-counts. Silent on well-formed
+  fits. Phase 1b item 3 (Emmy persona consult 2026-05-14).
+
 ## Behaviour changes (Phase 1b)
 
 * **`extract_correlations()` `link_residual` default change.** The

@@ -55,17 +55,27 @@ produced. It is a docs-only PR.
 9. Continuous integration across R versions -- 3-OS
    R-CMD-check on every push + PR.
 
-**Genuinely new (2 items, both queued)**:
+**Genuinely new (resolution after 2026-05-15 evening refinement)**:
 
-- **A1 (post-CRAN)**: adaptive Gauss-Hermite quadrature for
-  sparse Bernoulli. Real gap; the Laplace approximation can
-  degrade on highly sparse binary matrices. Currently
-  handled via *diagnosis* (`check_consistency()`), not
-  *method-switch*. Substantial `src/gllvmTMB.cpp` change.
-  Queued as Phase 6 / 0.3.0.
+- **A1 (deprioritised: "stay Laplacian", maintainer 2026-05-15
+  evening)**: the audit's adaptive Gauss-Hermite quadrature
+  prescription is theoretically correct but practically
+  low-impact at the gllvmTMB user base's typical data shapes
+  (20--50 items per person, $d = 2$--$3$; $\ge 20$ species per
+  site for JSDM). Literature (Pinheiro & Chao 2006; Joe 2008;
+  Niku et al. 2017, 2019) shows Laplace and AGHQ agree to 3
+  decimals on most parameters in this regime. Resolution: no
+  engine implementation; single-paragraph pedagogy note in
+  `psychometrics-irt.Rmd` (Phase 1e) routing problematic
+  cases to `mirt` (AGHQ-capable) or Bayesian alternatives.
 - **A2 (Phase 1e)**: single-paragraph "measurement error vs
   biological heterogeneity" callout. Bundled into the Phase
   1e Rose+Darwin reframe sweep PR (probably with `pitfalls.Rmd`).
+- **A3 (new, higher-priority post-CRAN integrator candidate)**:
+  variational approximation (VA) for high-$d$ binary JSDM. The
+  regime where Laplace genuinely degrades and AGHQ is
+  infeasible anyway. Still not committed; implement only if
+  Phase 5.5 external validation surfaces real user cases.
 
 **Hallucinated / confused (4 items, recorded for the canon)**:
 

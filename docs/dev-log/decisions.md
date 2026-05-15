@@ -953,13 +953,46 @@ PR #122), pkgdown pedagogy with 13 articles in main, 3-OS CI.
 
 Two items remain genuinely new and queued:
 
-**A1 (post-CRAN)**: adaptive Gauss-Hermite quadrature as an
-alternative integrator for sparse Bernoulli fits where the
-Laplace Gaussian approximation degrades. Substantial change
-to `src/gllvmTMB.cpp`. Not blocking CRAN; queued as a
-**Phase 6 / 0.3.0 candidate**. Present-day user protection
-comes via `gllvmTMB_check_consistency()` (PR #121) which
-detects the breakdown.
+**A1 (deprioritised after maintainer review 2026-05-15
+evening: "stay Laplacian")**: adaptive Gauss-Hermite
+quadrature was the audit's prescription. On reflection
+against the literature (Pinheiro & Chao 2006; Joe 2008;
+Niku et al. 2017, 2019), AGHQ would be cosmetic at the
+gllvmTMB user base's typical data shapes (20--50 items per
+person, $d = 2$--$3$ for IRT; $n_\text{species} \ge 20$ per
+site for JSDM). The Laplace approximation's bias rate
+$O(1/n_i)$ puts the empirical discrepancy from MCMC
+ground-truth within sampling noise on identifiable
+parameters. The narrow regimes where AGHQ would actually
+help -- short scales ($\le 10$ items), floor/ceiling
+respondents, $d = 1$ unidimensional IRT, hyper-sparse JSDM
+-- are not flagship gllvmTMB use cases.
+
+**Resolution**: no engine implementation. Instead, a
+single-paragraph pedagogy note in `psychometrics-irt.Rmd`
+during the Phase 1e Rose+Darwin sweep:
+
+> *"`gllvmTMB` uses the Laplace approximation. For typical
+> IRT data ($\ge 15$ items per person, $d \le 3$), this is
+> accurate to within sampling noise on identifiable
+> parameters. For very short scales or fits flagged by
+> `gllvmTMB_check_consistency()`, cross-check against
+> `mirt` (with AGHQ) or a Bayesian fit."*
+
+Present-day user protection comes via `gllvmTMB_check_consistency()`
+(PR #121) which detects when Laplace fails on a specific fit.
+
+**A3 (new, higher-priority post-CRAN integrator candidate)**:
+variational approximation (VA) for high-$d$ binary JSDM. This
+is the regime where Laplace genuinely degrades (5+ latent
+factors, hyper-sparse rare-species detections) and AGHQ is
+infeasible anyway (dimensionality curse: $K^d$ quadrature
+points). The gllvm package's authors (Niku, Hui, Taskinen,
+Warton 2017, 2019) chose VA over Laplace for exactly this
+regime. If any post-CRAN integrator work is undertaken, VA
+ranks above AGHQ. Still **not committed**; implement only if
+the Phase 5.5 external validation sprint surfaces specific
+user cases where Laplace clearly fails on high-$d$ JSDM.
 
 **A2 (Phase 1e)**: single-paragraph addition to `pitfalls.Rmd`
 (or `simulation-recovery.Rmd` Caveats) saying *"an inflated

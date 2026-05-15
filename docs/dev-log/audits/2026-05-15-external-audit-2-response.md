@@ -57,31 +57,92 @@ news.
 
 ## Genuinely new and useful (2 items)
 
-### A1. Adaptive Gauss-Hermite quadrature for sparse Bernoulli (post-CRAN)
+### A1. Adaptive Gauss-Hermite quadrature for sparse Bernoulli (deprioritised post-CRAN)
 
-The audit's argument is correct: the Laplace approximation's
-Gaussian assumption can degrade on highly sparse binary
-matrices where each observation carries very little information
-about the latent variable's posterior. Our current path is
-Laplace-only.
+**2026-05-15 evening refinement (maintainer decision):**
+**stay Laplacian.** The audit's recommendation is theoretically
+correct but practically low-impact at the gllvmTMB user base's
+typical data shapes.
 
-We currently handle this by **diagnosis**: `gllvmTMB_check_consistency()`
-(PR #121) tests whether the marginal score is centred at zero
-on simulated replicates. A non-centred score is exactly the
-signal that the Laplace approximation is unreliable for the
-fit. The diagnostic flags this; it doesn't switch methods.
+The literature is precise about where Laplace fails vs where
+it's accurate enough:
 
-The audit's prescription (offer adaptive Gauss-Hermite as an
-alternative integrator for binary fits) is a defensible **post-
-CRAN extension**. Adding a method-switch path to the engine
-would be a substantial change to `src/gllvmTMB.cpp` and is
-not scoped to Phase 1 or Phase 5.
+- **Pinheiro & Chao (2006, JCGS)**: AGHQ cost scales as $K^d$.
+  Empirical study: at $d = 1$ AGHQ buys 5--15 % accuracy on
+  variance components for $n_i = 5$ observations per cluster;
+  at $d = 2$ the gain drops to ~2--5 % for $n_i = 20$; at
+  $d = 3$ with $n_i \ge 30$ items, Laplace and AGHQ agree to
+  3 decimals on most parameters.
+- **Joe (2008, Comp. Stat. Data Anal.)**: formal bias rate
+  for Laplace on GLMMs is $O(1/n_i)$. For Bernoulli with
+  $n_i \ge 15$ observations per cluster, the empirical bias
+  on the random-effect variance is $\le 3 \%$.
+- **Niku, Hui, Taskinen, Warton (2017, 2019)**: direct
+  simulation comparison of Laplace vs VA on Bernoulli GLLVM
+  ecology data. For grids with $\ge 20$ columns per row
+  (e.g. $\ge 20$ items per person, $\ge 20$ species per
+  site), Laplace recovers MCMC-equivalent estimates on
+  identifiable quantities.
 
-**Action**: queued as a **Phase 6 / 0.3.0 candidate** in
-`docs/dev-log/decisions.md`. Not blocking CRAN. The Phase 1b
-validation `check_consistency()` diagnostic plus the
-`troubleshooting-profile.Rmd` article cover the present-day
-user need (know when to distrust the fit).
+**Typical gllvmTMB IRT regime**: 20--50 items per person,
+$d = 2$ or $d = 3$ latent dimensions. This sits comfortably in
+the "Laplace is accurate enough" zone per all three references.
+The maintainer-confirmed scope (2026-05-15) for our IRT
+audience is exactly this regime. AGHQ would be cosmetic.
+
+**The narrow regimes where AGHQ would actually help**:
+
+1. Very short scales ($n_\text{items} \le 10$ per person).
+2. Floor / ceiling respondents (all-correct or all-incorrect).
+3. $d = 1$ unidimensional IRT (cheap, modest benefit,
+   audience-credibility-establishing for IRT-literate
+   readers).
+4. Hyper-sparse JSDM (rare species detected at $\le 3$ sites).
+
+None of these are flagship gllvmTMB use cases. Our
+`psychometrics-irt.Rmd` worked example uses the standard
+20+ item regime.
+
+**Detection rather than method-switch**: the present-day
+user protection comes via:
+
+- `gllvmTMB_check_consistency()` (PR #121) -- detects when
+  Laplace fails on a specific fit, with diagnostic vocabulary
+  including `marginal_score_non_centred`.
+- `troubleshooting-profile.Rmd` -- documents the failure modes
+  and points users at the diagnostic.
+- For confirmed problematic cases, users can cross-check
+  against `mirt` (for IRT) or `Hmsc` / `MCMCglmm` (for JSDM),
+  both of which offer Bayesian inference that bypasses the
+  Laplace assumption entirely.
+
+**Action**: **deprioritised from "Phase 6 candidate" to
+"post-CRAN only-if-needed"**. Implement only if Phase 5.5
+external validation surfaces a real user case where Laplace
+clearly fails on typical-shaped data. The literature predicts
+this will be rare. A single-paragraph pedagogy note in
+`psychometrics-irt.Rmd` (Phase 1e Rose+Darwin sweep) suffices:
+
+> *"`gllvmTMB` uses the Laplace approximation for the
+> random-effect integral. For typical IRT data (≥ 15 items
+> per person, $d \le 3$), this is accurate to within
+> sampling noise on identifiable parameters (Pinheiro & Chao
+> 2006; Joe 2008; Niku et al. 2019). For very short scales
+> (≤ 10 items) or fits flagged by
+> `gllvmTMB_check_consistency()`, consider cross-checking
+> against `mirt` (with AGHQ enabled) or a Bayesian fit."*
+
+This is a **scope-clarification**, not a feature backlog
+item. The original audit-2 framing of "queue AGHQ as a
+Phase 6 candidate" was correct in shape but overestimated
+the priority. The maintainer's 2026-05-15 evening decision
+("stay Laplacian") resolves this cleanly.
+
+The companion idea (variational approximation, VA, for
+**high-$d$ JSDM** where Laplace genuinely degrades and AGHQ
+is infeasible anyway) remains the **higher-priority Phase 6
+candidate** if any post-CRAN integrator work is undertaken.
+See decisions.md 2026-05-15 evening entry.
 
 ### A2. Measurement-error vs biological-variance conflation callout
 
@@ -151,11 +212,12 @@ Audit #1 produced a CRAN-blocking fix that landed today (PR
 
 | # | Item | Phase | PR target |
 |---|---|---|---|
-| A1 | Adaptive Gauss-Hermite quadrature for sparse Bernoulli | Phase 6 / 0.3.0 | Post-CRAN |
+| A1 | **Deprioritised** -- single-paragraph "Laplace is accurate enough for typical IRT" note in `psychometrics-irt.Rmd`; route confirmed problematic cases to `mirt` (AGHQ) or Bayesian alternatives. No engine implementation. | Phase 1e | Phase 1e Rose+Darwin reframe sweep PR |
 | A2 | "Measurement error vs biological heterogeneity" callout in `pitfalls.Rmd` (or `simulation-recovery.Rmd` Caveats) | Phase 1e | Phase 1e Rose+Darwin reframe sweep PR |
+| A3 (new) | **Higher-priority post-CRAN integrator candidate**: variational approximation (VA) for high-$d$ binary JSDM (5+ latent factors, hyper-sparse rare-species detections). Where Laplace genuinely degrades and AGHQ is infeasible anyway. | Phase 6 / 0.3.0 | Post-CRAN, only if external validation flags it |
 
-Both items also logged in `docs/dev-log/decisions.md` so they
-don't dissolve into chat.
+Items logged in `docs/dev-log/decisions.md` so they don't
+dissolve into chat.
 
 ## Going-forward discipline
 

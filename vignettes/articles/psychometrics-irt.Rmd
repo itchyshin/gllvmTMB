@@ -1,0 +1,310 @@
+---
+title: "Psychometrics: confirmatory factor analysis with mixed-response items"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Psychometrics: confirmatory factor analysis with mixed-response items}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+`gllvmTMB` is mostly developed for ecological data, but the underlying
+GLLVM machinery is the same one used in psychometrics, item-response
+theory (IRT), and structural equation modelling. This article walks
+through a **confirmatory factor analysis (CFA)** in `gllvmTMB`'s
+syntax: the loading matrix is partly known *a priori*, and a fitting
+procedure recovers the free entries while *pinning* the rest at their
+hypothesised values.
+
+The example also mixes Likert-scale (continuous, treated Gaussian)
+and binary (yes/no) items in one fit via the per-row family
+dispatch -- i.e. the same engine call that ecologists use for
+`family = list(gaussian(), binomial(), poisson())`.
+
+This article is a **cross-domain validation** of the same engine: it
+demonstrates that the package's stacked-trait grammar handles
+psychometric data without modification. It is also a worked example
+of the [Lambda-constraint pedagogy](lambda-constraint.html) applied
+to a CFA pattern (block-diagonal off-pattern zeros) rather than the
+exploratory lower-triangular convention.
+
+## The setup
+
+Imagine a survey with $n = 200$ respondents and 6 items:
+
+| Item | Response type | Hypothesised loading |
+|---|---|---|
+| `attention_1` | Likert 1-5 (Gaussian) | factor 1 (Attention) |
+| `attention_2` | Likert 1-5 (Gaussian) | factor 1 (Attention) |
+| `attention_3` | Likert 1-5 (Gaussian) | factor 1 (Attention) |
+| `mood_1`      | Yes/No (Binary)       | factor 2 (Mood) |
+| `mood_2`      | Yes/No (Binary)       | factor 2 (Mood) |
+| `mood_3`      | Yes/No (Binary)       | factor 2 (Mood) |
+
+The CFA structural hypothesis: each item loads on **exactly one**
+factor. The loading matrix has two free columns (one per factor) but
+the off-pattern entries (e.g. `attention_1`'s loading on factor 2)
+are pinned at zero.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+```
+
+## Simulate
+
+The latent factors are 2 orthogonal axes; "attention" items load on
+factor 1 with positive loadings, "mood" items load on factor 2.
+
+```{r sim}
+set.seed(2025)
+n_resp <- 200
+T <- 6
+item_names <- c("attention_1", "attention_2", "attention_3",
+                "mood_1",      "mood_2",      "mood_3")
+
+# True loadings: block-diagonal pattern (the CFA hypothesis)
+Lambda_true <- matrix(c(
+  0.8,  0.0,
+  1.0,  0.0,
+  0.7,  0.0,
+  0.0,  0.9,
+  0.0,  0.6,
+  0.0,  0.8
+), nrow = T, ncol = 2, byrow = TRUE,
+   dimnames = list(item_names, c("attention", "mood")))
+
+# Latent factors (one per respondent)
+u <- matrix(rnorm(n_resp * 2), n_resp, 2)
+eta <- u %*% t(Lambda_true)   # n_resp x 6 linear predictor
+
+# Three Likert (Gaussian, sigma_eps = 0.4) + three binary
+y_likert <- eta[, 1:3] + matrix(rnorm(n_resp * 3, sd = 0.4), n_resp, 3)
+y_bin    <- matrix(rbinom(n_resp * 3, 1,
+                          plogis(eta[, 4:6])), n_resp, 3)
+y <- cbind(y_likert, y_bin)
+colnames(y) <- item_names
+```
+
+Reshape to long format and tag each row's response family. The
+per-row family dispatch needs an `item_family` factor column whose
+levels match the order of the `family = list(...)` argument:
+
+The trait-column in the long-format frame is literally called
+`trait` because the formula's `latent(0 + trait | respondent, ...)`
+references that symbol; in psychometrics the "traits" are survey
+items, so we keep the `item_names` vector for labelling and use it
+as the factor levels:
+
+```{r long}
+df_long <- data.frame(
+  respondent = factor(rep(seq_len(n_resp), each = T)),
+  trait      = factor(rep(item_names, n_resp), levels = item_names),
+  value      = as.vector(t(y))
+)
+df_long$item_family <- factor(
+  ifelse(grepl("^attention", df_long$trait), "g", "b"),
+  levels = c("g", "b")
+)
+table(item = df_long$trait, family = df_long$item_family)
+```
+
+The same data also has a natural wide-format representation -- one
+row per respondent, one column per item:
+
+```{r wide}
+df_wide <- data.frame(
+  respondent = factor(seq_len(n_resp)),
+  y,
+  check.names = FALSE
+)
+# Show the first 6 rows; rounding only the numeric trait columns.
+cbind(df_wide["respondent"], round(df_wide[, item_names], 2)) |> head()
+```
+
+## Exploratory fit (no constraint)
+
+First fit without any constraint -- exploratory (rotational) loadings.
+The `family = list(...)` mechanism dispatches per row using the
+`item_family` column. Both data shapes give the same fit:
+
+```{r fit-exploratory}
+fam <- list(gaussian(), binomial())
+attr(fam, "family_var") <- "item_family"
+
+# Long format (canonical)
+fit_exp_long <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | respondent, d = 2),
+  data   = df_long,
+  unit   = "respondent",
+  family = fam
+)
+
+# Wide-format companion: the mixed-family dispatch on a `traits(...)`
+# wide formula is not supported (per-row family needs a long-format
+# `item_family` column). We compute the wide form only for the
+# Gaussian-only sub-fit on the Likert items as a sanity check.
+fit_exp_wide_gaussian <- gllvmTMB(
+  traits(attention_1, attention_2, attention_3) ~ 1 +
+    latent(1 | respondent, d = 2),
+  data = df_wide,
+  unit = "respondent"
+)
+# The wide path fits the same Gaussian sub-model on the Likert items.
+# The full mixed-family CFA uses the long-format `fit_exp_long`.
+fit_exp <- fit_exp_long
+fit_exp
+```
+
+The exploratory loadings are rotation-invariant; the implied trait
+covariance is what we trust:
+
+```{r sigma-exp}
+SB_exp <- extract_Sigma(fit_exp, level = "unit")
+round(SB_exp$Sigma, 2)
+round(SB_exp$R,     2)
+```
+
+But for *interpreting* which item loads on which factor, the raw
+loadings need to be either pinned (CFA) or rotated (varimax /
+post-hoc). The package's rotation advisory in `print(fit_exp)`
+already tells us this.
+
+## Confirmatory fit with `lambda_constraint`
+
+Now enforce the CFA hypothesis: pin the off-pattern entries
+(`attention_*` items' loadings on factor 2, and `mood_*` items'
+loadings on factor 1) to zero. The `suggest_lambda_constraint()`
+helper produces a default lower-triangular template; we adapt it
+for the block-diagonal CFA pattern by hand. See the
+[Lambda-constraint article](lambda-constraint.html) for the
+four-pattern walk-through that this CFA fit specialises.
+
+```{r cfa-constraint}
+# Build the CFA constraint matrix:
+#   attention_*  items free on factor 1, pinned to 0 on factor 2
+#   mood_*       items pinned to 0 on factor 1, free on factor 2
+cnst_cfa <- matrix(NA_real_, nrow = T, ncol = 2,
+                   dimnames = list(item_names, c("f1", "f2")))
+cnst_cfa[1:3, 2] <- 0   # attention items: factor 2 loading = 0
+cnst_cfa[4:6, 1] <- 0   # mood items:      factor 1 loading = 0
+cnst_cfa
+```
+
+Fit with this confirmatory pattern:
+
+```{r fit-cfa}
+fit_cfa <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | respondent, d = 2),
+  data              = df_long,
+  unit              = "respondent",
+  family            = fam,
+  lambda_constraint = list(B = cnst_cfa)
+)
+
+L_cfa <- fit_cfa$report$Lambda_B
+rownames(L_cfa) <- item_names; colnames(L_cfa) <- c("attention", "mood")
+round(L_cfa, 2)
+```
+
+Compare to truth:
+
+```{r recover-cfa}
+data.frame(
+  item     = item_names,
+  truth_F1 = Lambda_true[, "attention"],
+  fit_F1   = round(L_cfa[, "attention"], 2),
+  truth_F2 = Lambda_true[, "mood"],
+  fit_F2   = round(L_cfa[, "mood"], 2)
+)
+```
+
+The pinned-zero pattern is held exactly during fitting, and the free
+entries recover their true values to within ~0.1 at this sample size.
+This is the GALAMM-style confirmatory loading workflow (Sorensen
+2024) that the package supports natively.
+
+## Likelihood-ratio test: is the CFA structure supported?
+
+The exploratory fit nests the CFA fit (CFA pins 6 entries that the
+exploratory fit estimates freely). A likelihood-ratio test asks
+whether those constraints are statistically defensible:
+
+```{r lrt}
+ll_exp <- as.numeric(stats::logLik(fit_exp))
+ll_cfa <- as.numeric(stats::logLik(fit_cfa))
+LR     <- 2 * (ll_exp - ll_cfa)
+df_diff <- 6   # 6 pinned entries
+p_value <- pchisq(LR, df = df_diff, lower.tail = FALSE)
+
+data.frame(
+  ll_exploratory = ll_exp,
+  ll_cfa         = ll_cfa,
+  LR_stat        = LR,
+  df             = df_diff,
+  p_value        = p_value
+)
+```
+
+A small `LR` statistic (and a large p-value) means the CFA pattern
+is consistent with the data; a large `LR` (small p-value) would
+suggest residual cross-loadings that the CFA hypothesis does not
+explain. (Standard caveat: LRT on boundary parameters can have
+non-standard reference distributions; treat as a heuristic.)
+
+## Diagnostics
+
+```{r diagnose}
+gllvmTMB_diagnose(fit_cfa, verbose = TRUE)
+```
+
+The rotation advisory should now report **no rotational concern** for
+$\boldsymbol{\Lambda}_B$ -- the CFA pattern fixes the rotation
+completely.
+
+## What this article does *not* cover
+
+* **Multilevel CFA**: items nested within respondents nested within
+  groups -- would need a `+ latent(0 + item | group, d = K)`
+  between-group term too.
+* **Polytomous IRT (graded response / partial credit)**: ordered
+  categorical responses are now supported via the `ordinal_probit()`
+  family (see the [ordinal-probit article](ordinal-probit.html)). A
+  multi-trait polytomous IRT mixing Likert + ordinal + binary items
+  in one fit is supported by the engine but is not yet a worked
+  example here.
+* **Cross-loadings**: the CFA above pins all off-pattern entries to
+  zero. A "modification index" workflow (free one zero at a time,
+  refit, LRT) is the standard way to explore -- straightforward to do
+  by hand here.
+
+## See also
+
+* [Lambda constraints](lambda-constraint.html) -- the four-pattern
+  walkthrough of `lambda_constraint` that this CFA example
+  specialises.
+* [Ordinal-probit](ordinal-probit.html) -- the article that documents
+  the threshold-model family used by polytomous IRT.
+* [Choose your model](choose-your-model.html) -- decision tree.
+* [Pitfalls](pitfalls.html) -- common gotchas including rotation
+  invariance.
+* **Sorensen, O. (2024)** Multilevel semiparametric latent variable
+  modeling in R with galamm. *Multivariate Behavioral Research*
+  59(5):1098-1105. <https://doi.org/10.1080/00273171.2024.2385336>
+  -- the original `lambda` (= `lambda_constraint`) mechanism.

@@ -38,6 +38,7 @@ articles:
     - articles/response-families
     - articles/ordinal-probit
     - articles/lambda-constraint
+    - articles/troubleshooting-profile
 
   - title: Methods and validation
     navbar: Methods

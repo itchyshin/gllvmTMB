@@ -139,6 +139,7 @@ reference:
     - bootstrap_Sigma
     - tmbprofile_wrapper
     - profile_targets
+    - confint_inspect
 
   - title: Loadings (Lambda) and confirmatory factor analysis
     desc: Extract, rotate, and constrain the loading matrix

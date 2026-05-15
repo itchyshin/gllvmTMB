@@ -23,6 +23,23 @@
   `"marginal_score_non_centred"`, `"joint_score_non_centred"`,
   `"information_matrix_singular"`, `"marginal_p_value_unavailable"`.
   Audit + TMB-report recommendation 2026-05-15.
+* **`confint_inspect(fit, parm)`** -- visual-verification companion
+  to `confint(method = "profile")`. Returns the full profile-
+  likelihood curve, the deviance bounds, a Wald-vs-profile
+  comparison, and (when `ggplot2` is available) a ggplot showing
+  the curve with MLE + chi-squared threshold + both profile and
+  Wald bounds. Diagnostic flags catalogue the four canonical
+  failure modes documented in the troubleshooting-profile vignette
+  (PR #115):
+  `"quadratic"` (well-behaved), `"asymmetric"` (Wald-profile
+  disagree), `"flat_at_mle"` (weak identifiability),
+  `"hits_lower_bound"` / `"hits_upper_bound"` (boundary parameter),
+  `"no_lower_crossing"` / `"no_upper_crossing"` (profile didn't
+  converge), `"profile_failed"`. Accepts any direct profile-target
+  label from `profile_targets()` (e.g. `"sigma_eps"`, `"sd_B[1]"`,
+  `"phi_nbinom2[2]"`, `"b_fix[1]"`); derived targets emit a typed
+  error pointing at the matching `extract_*(method = "profile")`
+  extractor. Audit + TMB-report recommendation 2026-05-15.
 
 ## New exports (P1a audit response)
 

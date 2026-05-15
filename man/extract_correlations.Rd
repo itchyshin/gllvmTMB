@@ -12,7 +12,8 @@ extract_correlations(
   method = c("fisher-z", "profile", "wald", "bootstrap"),
   n_eff = NULL,
   nsim = 500L,
-  seed = NULL
+  seed = NULL,
+  link_residual = c("auto", "none")
 )
 }
 \arguments{
@@ -51,6 +52,32 @@ joint-SDM where species mediates the cross-trait correlation).}
 \code{method = "bootstrap"}. Default 500.}
 
 \item{seed}{Optional RNG seed for the bootstrap.}
+
+\item{link_residual}{How to treat the family-specific link-residual
+variance on the diagonal of the implied \eqn{\boldsymbol\Sigma} before
+computing correlations:
+\describe{
+\item{\code{"auto"} (default, Phase 1b 2026-05-15)}{For
+non-Gaussian fits, add the link-specific implicit residual
+(e.g. \eqn{\pi^2/3} for binomial-logit; \eqn{1} for probit;
+\code{trigamma()} terms for Gamma / NB2 / Beta / etc.) to the
+diagonal before computing correlations. Returned correlations
+are on the latent-liability scale; this is the convention most
+readers expect. Gaussian fits are unaffected (link residual is
+\eqn{0}).}
+\item{\code{"none"}}{Use the latent + unique-implied \eqn{\Sigma}
+directly with no link-residual addition. Correlations come out
+on the model-implied scale without the family adjustment.}
+}
+
+\strong{Behaviour change in this release}: the previous version
+hardcoded \code{link_residual = "none"}. Non-Gaussian callers who
+relied on that behaviour will see different correlation values
+under the new default. A one-shot warning fires the first time per
+session that a non-Gaussian fit is processed without an explicit
+\code{link_residual} argument. Pass \code{link_residual = "auto"}
+to suppress the warning and lock the new behaviour, or
+\code{link_residual = "none"} to restore the previous behaviour.}
 }
 \value{
 A data frame (tibble-like) with columns:

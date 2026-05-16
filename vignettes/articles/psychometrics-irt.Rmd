@@ -23,6 +23,17 @@ knitr::opts_chunk$set(
 )
 ```
 
+> **Preview — slated for re-authoring in M2.5 once binary IRT machinery is validated.**
+>
+> The current article uses `lambda_constraint` for binary IRT
+> (LAM-03 `partial` in the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
+> Re-authoring follows after **M2.3** validates the binary IRT
+> path; the **M2.5** slice re-writes this article against the
+> validated machinery. See the
+> [rewrite-prep handoff](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md)
+> for the rewrite contract.
+
 `gllvmTMB` is mostly developed for ecological data, but the underlying
 GLLVM machinery is the same one used in psychometrics, item-response
 theory (IRT), and structural equation modelling. This article walks

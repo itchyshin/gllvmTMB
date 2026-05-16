@@ -23,6 +23,18 @@ knitr::opts_chunk$set(
 )
 ```
 
+> **Preview — slated for rewrite in Phase 1f after M1 + M2 + M3 close.**
+>
+> The current decision tree branches to articles whose backing
+> machinery is partly `partial` in the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
+> **Phase 1f** rewrites this article after **M1** (mixed-family
+> extractor rigour), **M2** (binary completeness), and **M3**
+> (mixed-family CI extension) close, so each branch points at a
+> validated worked example. See the
+> [rewrite-prep handoff](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md)
+> for the rewrite contract.
+
 `gllvmTMB` covers a large model space — one or two observational
 levels, optional phylogenetic structure, optional spatial structure,
 Gaussian / binary / Poisson / mixed responses, reduced-rank or

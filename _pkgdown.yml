@@ -26,8 +26,6 @@ articles:
     - articles/phylogenetic-gllvm
     - articles/functional-biogeography
     - articles/psychometrics-irt
-    - articles/mixed-response
-    - articles/corvidae-two-stage
     - articles/stacked-trait-gllvm
 
   - title: Concepts and reference
@@ -52,7 +50,6 @@ articles:
     contents:
     - articles/profile-likelihood-ci
     - articles/cross-package-validation
-    - articles/simulation-recovery
 
   - title: Project
     navbar: ~

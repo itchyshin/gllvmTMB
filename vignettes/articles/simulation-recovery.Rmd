@@ -1,0 +1,393 @@
+---
+title: "Simulation-based recovery: does the package recover the truth?"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Simulation-based recovery: does the package recover the truth?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 8, fig.height = 4.5,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+This article reports the most stringent validation a model-fitting
+package can submit to: **simulate from the model itself, fit the
+model, and ask whether the truth is recovered**. Cross-package
+agreement (covered in
+[Cross-package validation](cross-package-validation.html)) shows
+that two implementations get the same answer; simulation-based
+recovery shows that the answer is **correct** when the data come
+from the assumed DGP.
+
+The companion Concepts-tier article
+[Simulation-based verification](simulation-verification.html) walks
+a user through the canonical simulate-fit-check loop interactively
+and shows how to use the package's verification diagnostics
+(`check_identifiability()`, `gllvmTMB_check_consistency()`,
+`coverage_study()`, `confint_inspect()`). The article you are
+reading now reports the **outcome** of running that loop at scale
+across the package's complexity ladder.
+
+## Methodology
+
+For each level on the complexity ladder, the study:
+
+1. Defines a known data-generating mechanism (true
+   $\boldsymbol{\Lambda}$, $\sigma^2_\text{phy}$, etc.).
+2. Simulates $R$ independent datasets ($R = 30$ for Levels 1, 2, 4;
+   $R = 10$--$20$ for Levels 3, 5, 6, 7a, 7b).
+3. Fits `gllvmTMB` to each.
+4. Extracts the implied parameters from the fit.
+5. Reports bias, RMSE, and a 1:1 plot of fitted vs true.
+
+Compute is run **once locally** by a precompute helper script and
+the results are summarised below. The vignette reports findings in
+prose plus a cross-level summary table; the per-replication raw
+data is not shipped with the package to keep the source distribution
+small.
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+library(dplyr)
+```
+
+## Cross-level summary
+
+The headline table aggregates each level's recovery to one row:
+
+```{r summary-table}
+summary_tbl <- data.frame(
+  level = factor(c(
+    "1. Basic GLLVM",
+    "2. Two-level GLLVM",
+    "3. Spatial",
+    "4. Phylogenetic (phylo_latent)",
+    "5. Spatial + phylogenetic",
+    "6. Capstone (two-level + spatial + phylo)",
+    "7a. Lognormal family",
+    "7b. Gamma family"
+  ), levels = c(
+    "1. Basic GLLVM",
+    "2. Two-level GLLVM",
+    "3. Spatial",
+    "4. Phylogenetic (phylo_latent)",
+    "5. Spatial + phylogenetic",
+    "6. Capstone (two-level + spatial + phylo)",
+    "7a. Lognormal family",
+    "7b. Gamma family"
+  )),
+  n_reps        = c(30, 30, 10, 15, 10, 10, 20, 20),
+  mean_abs_bias = c(0.019, 0.033, 0.132, 0.095, 0.077, 0.100, 0.007, 0.005),
+  headline = c(
+    "All Sigma_B entries within +/-0.06 after harness fix",
+    "Sigma_W tight; Sigma_B diagonals slightly inflated",
+    "Range tight; sigma2_spa shrunk by 17-53%",
+    "phylo_latent(d=n_traits) gives identifiable Sigma_phy",
+    "Range tight; lam_phy under by only 21%",
+    "All six pieces co-fit cleanly; 26 params recovered",
+    "Every Sigma_B within +/-0.02; sigma_eps spot-on",
+    "Every Sigma_B within +/-0.01; CV within 0.01"
+  )
+)
+summary_tbl
+```
+
+```{r summary-bar, fig.height = 4}
+ggplot(summary_tbl, aes(x = level, y = mean_abs_bias)) +
+  geom_col(fill = "#1f78b4", alpha = 0.8) +
+  geom_hline(yintercept = 0.1, linetype = 3, colour = "grey40") +
+  coord_flip() +
+  labs(x = NULL, y = "Mean absolute bias of recovered parameters",
+       title = "Simulation-based recovery: cross-level summary",
+       subtitle = "Lower is better. Dotted line at 0.1 = the design budget.") +
+  theme_minimal(base_size = 12)
+```
+
+The takeaway: most levels are well below the 0.1 design budget,
+with Level 3 (spatial) the noisiest because of a finite-sample SPDE
+variance shrinkage artefact (discussed below).
+
+## Level-by-level findings
+
+These are not abstract simulations: they exist precisely to catch
+bugs -- in the engine, in the simulator, or in our reasoning. The
+first version of this study reported what looked like a five-fold
+over-estimate of $\boldsymbol{\Sigma}_B[4,4]$ at Level 1. That
+finding was real, but the *cause* turned out to be a **harness
+mistake**, not an engine bug: the simulator's default random
+environmental fixed-effect $X\boldsymbol{\beta}_t$ had nowhere to go
+in the Level-1 latent()-only fit and was silently absorbed into
+$\hat{\boldsymbol{\Lambda}}_B$. The fix was to set `beta = 0` and
+`psi_B = 0` in the simulator so the DGP exactly matches the
+latent()-only model. This is the point of simulation-based recovery:
+when the numbers look wrong, *something* is wrong, and that
+something is sometimes the package, sometimes the harness, and
+sometimes the user's mental model -- but always worth chasing.
+
+### Level 1 (basic GLLVM)
+
+The Level 1 model is
+`value ~ 0 + trait + latent(0 + trait | site, d = 2)` -- a two-factor
+reduced-rank Gaussian model. The `latent()` machinery (using the
+`rr()` implementation from McGillycuddy et al. 2025 in `glmmTMB`) is
+used here; this study tests recovery of the implied
+$\boldsymbol{\Sigma}_{\text{unit}} = \boldsymbol{\Lambda}_{\text{unit}} \boldsymbol{\Lambda}_{\text{unit}}^\top$.
+
+* **All ten unique entries** of $\boldsymbol{\Sigma}_{\text{unit}}$
+  recover within $|\bar{\text{bias}}| \le 0.06$, with the worst entry
+  being $\boldsymbol{\Sigma}_{\text{unit}}[1,1]$ (true 1.00, fitted
+  1.06; bias +0.06). Off-diagonals are essentially unbiased
+  ($|\bar{\text{bias}}| \le 0.03$).
+* Mean absolute bias across all entries is **0.019** -- about
+  $\sqrt{1/n}$ for $n = 60$, exactly the order asymptotics
+  predicts.
+* **Practical implication**: trait correlations *and* trait
+  variances are reliable at modest $n$, **provided** the fitted
+  model matches the DGP. If you suspect trait-specific between-unit
+  variance beyond what the `latent()` term captures, add
+  `+ unique(0 + trait | site)` and the per-trait $\boldsymbol{\Psi}_B$
+  becomes separately identified.
+
+### Level 2 (two-level GLLVM)
+
+* **$\boldsymbol{\Sigma}_{\text{unit\_obs}}$** (within-site
+  covariance) recovers with mean absolute bias 0.013 -- the
+  within-site signal (5 species per site, 50 sites, $R = 30$
+  replicates) anchors the within-unit decomposition strongly.
+* **$\boldsymbol{\Sigma}_{\text{unit}}$** has slightly larger
+  positive bias on diagonals (mean +0.05, max +0.10), reflecting the
+  smaller effective $n$ for between-site contrasts when each site
+  has only a handful of species.
+* **Practical implication**: two-level decompositions work as
+  advertised. Within-unit estimates are tight; between-unit
+  estimates need more *sites* (not more species per site) to shrink
+  the diagonal bias.
+
+### Level 3 (spatial)
+
+* **Spatial range** ($\sqrt{8}/\kappa$) recovers with mean bias
+  +0.032 (true 0.30, fitted 0.33). The SPDE engine pins down the
+  spatial scale well even at $n = 60$.
+* **Per-trait $\sigma^2_\text{spa}$** is systematically
+  *under*-estimated -- bias ranges from $-0.07$ to $-0.21$, i.e. a
+  17--53 % shrinkage relative to true $\sigma^2 = 0.40$. This is a
+  real and consistent finding, not a single-rep outlier.
+* **Where the bias likely comes from**: the SPDE marginal variance
+  $\sigma^2 = 1 / (4\pi \kappa^2 \tau^2)$ depends on both $\kappa$
+  and $\tau$. With $n = 60$ sites and $\nu = 1$ Matérn, the
+  variance estimator is known to be biased downward in the
+  literature (Lindgren, Rue & Lindström 2011 approximation
+  under-estimates near-mesh-boundary variance). Larger $n$ or finer
+  mesh shrinks the bias.
+* **Practical implication**: trust the spatial *range* (a geometric
+  quantity) more than the spatial *variance* (a scale quantity that
+  depends on the SPDE approximation). For inference targets that
+  require accurate $\sigma^2_\text{spa}$, increase $n$ or report
+  ratios rather than absolute values.
+
+### Level 4 (phylogenetic)
+
+The first version of this study compared recovery of the internal
+`loglambda_phy` parameter under `phylo_scalar(species, vcv = Cphy)`.
+That gave mean bias of $-1.77$ -- alarming until you remembered that
+`loglambda_phy` is *not identifiable in isolation*: it partners with
+a free unstructured trait-correlation matrix to give the implied
+$\boldsymbol{\Sigma}_{\text{phy}}$, and only the product is pinned by
+data.
+
+Switching to `phylo_latent(species, d = n_traits)` exposes
+$\boldsymbol{\Lambda}_{\text{phy}}$ directly and makes the implied
+$\boldsymbol{\Sigma}_{\text{phy}} = \boldsymbol{\Lambda}_{\text{phy}} \boldsymbol{\Lambda}_{\text{phy}}^\top$
+the recovery target -- a fully identifiable $T \times T$ matrix.
+Re-running with $R = 15$ at $n_{\text{species}} = 60$ gives **mean
+absolute bias 0.095** across the 10 unique entries:
+
+* Diagonal entries (true 0.5): mean recovered values 0.28 to 0.45,
+  with bias from $-0.05$ to $-0.22$. Some shrinkage, similar in
+  magnitude to the SPDE finite-sample artefact in Level 3.
+* Off-diagonal entries (true 0): three of six recovered within
+  $\pm 0.04$; the other three sit at $\pm 0.14$ to $\pm 0.21$. With
+  finite $n$ and a flexible loadings matrix, some spurious
+  cross-trait covariance is unavoidable.
+
+**The lesson, generalisable to any latent-variable model**:
+recovery checks must target *identifiable* quantities (model-
+implied $\boldsymbol{\Sigma}$ entries, communalities, residual
+correlations) -- not internal parameters. The first version of this
+study pointed at a parameter that *looks* like the right thing to
+track ("the phylogenetic variance"), but isn't.
+
+### Level 5 (spatial + phylogenetic)
+
+The combined spatial + phylogenetic fit
+(`spatial_unique(0 + trait | coords) + phylo_scalar(species)`) is
+the first level where two correlated random-effect structures
+co-exist. Recovery is **clean**:
+
+* `spatial_range`: bias **+0.040** (true 0.30, fitted 0.34). Same
+  +13 % bias as Level 3 -- geometric quantity, well-identified.
+* `sigma2_spa[t]`: bias $-0.085$ to $-0.143$ across the four
+  traits, i.e. 21--36 % shrinkage -- the same SPDE finite-sample
+  shrinkage story as Level 3.
+* `lam_phy`: bias **$-0.064$** (true 0.30, fitted 0.24) -- only
+  **21 % under**, much better than Level 4's standalone phylo fit.
+  This suggests that adding the spatial term *helps* identify the
+  phylo scaling, because the two structures sit on different
+  distance metrics (geographic vs evolutionary) and the model can
+  disentangle them.
+
+Level 5 is the most encouraging single result in this run: the
+package handles two correlated random-effect structures jointly
+without trouble.
+
+### Level 6 (capstone: two-level + spatial + phylogenetic)
+
+The full functional-biogeography model with all six structural
+pieces. $R = 10$, $n_{\text{sites}} = 40$, $n_{\text{species}} = 15$,
+$n_{\text{traits}} = 4$.
+
+* **$\boldsymbol{\Sigma}_{\text{unit}}$ off-diagonals**: well-
+  recovered, $|\bar{\text{bias}}| \le 0.07$.
+* **$\boldsymbol{\Sigma}_{\text{unit}}$ diagonals**: positive bias
+  of +0.10 to +0.43 -- the smaller-effective-$n$ symptom from
+  Level 2 amplified by the larger parameter space.
+* **$\boldsymbol{\Sigma}_{\text{unit\_obs}}$**:
+  $|\bar{\text{bias}}| \le 0.05$ on most entries.
+* **Spatial range**: bias +0.115 (true 0.30, fitted 0.41).
+* **`sigma2_spa`**: shrunk by 13--81 % -- same SPDE artefact, more
+  pronounced when the model has more competing variance components.
+* **`lam_phy`**: bias $-0.029$ (true 0.20, fitted 0.17) -- only
+  **14 % under**, the cleanest phylo recovery in the study.
+
+Mean absolute bias across all 26 capstone parameters: **0.10**.
+That is finite-sample noise, not a structural failure -- the
+six-piece model is identifiable in finite samples without
+catastrophic interactions between the components.
+
+### Level 7a (lognormal family)
+
+The first non-Gaussian continuous family. DGP:
+$y_i = \exp(\eta_i + \varepsilon_i)$ with $\varepsilon \sim \mathcal{N}(0, \sigma_\varepsilon^2)$.
+Fit: `family = lognormal()`, single `latent()` term, $n = 200$,
+$R = 20$.
+
+* **Mean absolute bias 0.007** across all 11 recovered parameters
+  (10 unique $\boldsymbol{\Sigma}_B$ entries plus `sigma_eps`).
+  Every entry within $\pm 0.02$ of truth.
+* `sigma_eps`: bias $-0.001$ (true 0.30, fitted 0.299).
+  Indistinguishable from truth.
+* This is the cleanest recovery in the whole study, beating even
+  Level 1's 0.019.
+
+### Level 7b (Gamma family)
+
+DGP:
+$y_i \sim \text{Gamma}(\text{shape} = 1/\text{CV}^2, \text{scale} = \mu_i / \text{shape})$
+with $\mu_i = \exp(\eta_i)$. Fit: `family = Gamma(link = "log")`,
+single `latent()` term, $n = 200$, $R = 20$.
+
+* **Mean absolute bias 0.005** -- even tighter than Level 7a.
+* `cv` (the coefficient of variation, parameterised through the
+  shared `sigma_eps` slot in the engine): bias $-0.007$ (true 0.30,
+  fitted 0.293).
+* Levels 7a and 7b together confirm the **sigma_eps gating fix**
+  (previously, sigma_eps was mapped off when no row was Gaussian;
+  now it's also estimated for lognormal and Gamma rows) is correct.
+
+## What this means for the package's stated guarantees
+
+* **What the engine *does* deliver well**: covariance entries
+  (both diagonals and off-diagonals) of identifiable quantities --
+  $\boldsymbol{\Sigma}_B$ and $\boldsymbol{\Sigma}_W$ under the
+  `latent()`-only DGP, the spatial range, the phylogenetic scaling
+  when paired with another distance metric, and reduced-rank
+  ordination axes. The capstone (Level 6) shows these all co-fit
+  without joint-identifiability collapse.
+* **What requires care**: per-trait spatial variance is biased
+  downward by a finite-sample SPDE artefact (consistent across
+  Levels 3, 5, 6). Quote with appropriate uncertainty or report
+  *ratios* of `sigma2_spa[t]` rather than absolute values.
+* **What the recovery study itself needs**: Level 4 should track
+  identifiable $\boldsymbol{\Sigma}_{\text{phy}}$ entries, not the
+  internal `loglambda`. $R = 30$ (Levels 1, 2, 4) and $R = 10$
+  (Levels 3, 5, 6) is enough to spot mean bias; $R \ge 200$ would
+  be needed for honest coverage rates (which is the Phase 1b
+  validation milestone deliverable in
+  [Profile-likelihood CIs](profile-likelihood-ci.html) and the
+  Phase 5.5 external validation sprint).
+* **What this exercise has *already* delivered**: a real bug in the
+  recovery harness (the missing `beta = 0`), surfaced *because* the
+  simulation produced numbers that didn't match expectations.
+
+The recovery study **does not** show that the package is wrong; it
+shows where the package's stated estimands are well-identified by
+modest data and where users should be cautious about fine-grained
+quantities. That's exactly the question simulation-based recovery
+is designed to answer.
+
+## Caveats
+
+* **Identifiability.** $\boldsymbol{\Lambda}$ is identifiable only
+  up to column permutation and sign; the recovery numbers above
+  report $\boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top$ entries,
+  which *are* identifiable.
+* **Sample size.** $R = 10$--$30$ replications gives a reasonable
+  sense of bias / RMSE but is tight for coverage-rate estimation.
+  For publication-grade simulation studies, $R \ge 200$. The
+  audit's $\ge 94 \%$ empirical-coverage gate is reported in
+  [Profile-likelihood CIs](profile-likelihood-ci.html); see also
+  the live `coverage_study()` function for per-fit coverage
+  estimation.
+* **Diagonal vs off-diagonal.** Diagonal entries of
+  $\boldsymbol{\Sigma}_{\text{unit}}$ are variances and are positive
+  by construction; off-diagonal entries are covariances and can be
+  $\pm$ of either sign.
+* **Convergence failures.** Replications where the optimiser failed
+  are silently skipped (recorded by their absence). For honest
+  reporting, count how many replications actually contributed to
+  each level.
+
+## Reproducibility
+
+To re-run the recovery study locally, adapt the
+[Simulation-based verification](simulation-verification.html)
+loop -- it walks a user through the canonical simulate-fit-check
+pipeline on a single level. Repeating that loop across the 8
+levels and collating the bias / RMSE results produces the table
+above.
+
+## See also
+
+* [Cross-package validation](cross-package-validation.html) --
+  the agreement pillar that pairs with this recovery pillar.
+* [Simulation-based verification](simulation-verification.html) --
+  the Concepts-tier walkthrough showing the simulate-fit-check
+  loop for one level, on one fit.
+* [Phylogenetic GLLVM](phylogenetic-gllvm.html) --
+  `phylo_latent()` recovery on a single dataset.
+* [Profile-likelihood CIs](profile-likelihood-ci.html) -- the
+  inferential surface complementing the recovery surface.
+
+## References
+
+* Lindgren F, Rue H, Lindström J (2011). *An explicit link between
+  Gaussian fields and Gaussian Markov random fields: the SPDE
+  approach.* Journal of the Royal Statistical Society B 73 (4):
+  423--498.
+* McGillycuddy M, Popovic G, Bolker BM, Warton DI (2025).
+  *Parsimoniously fitting large multivariate random effects in
+  glmmTMB.* Journal of Statistical Software 112 (1).

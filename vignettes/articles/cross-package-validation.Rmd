@@ -1,11 +1,11 @@
 ---
-title: "Cross-package validation: gllvmTMB vs glmmTMB, gllvm, and queued comparators"
+title: "Cross-package validation: gllvmTMB vs glmmTMB and gllvm"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Cross-package validation: gllvmTMB vs glmmTMB, gllvm, and queued comparators}
+  %\VignetteIndexEntry{Cross-package validation: gllvmTMB vs glmmTMB and gllvm}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -29,20 +29,17 @@ package, **`gllvmTMB` reproduces the reference package's
 log-likelihood or parameter estimates to numerical tolerance** on
 identical data.
 
-The companion article -- [Simulation-based recovery](simulation-recovery.html) --
-shows that the model recovers the truth when the data come from the
-assumed DGP. Together, the two cover the validation hierarchy:
-*correctness* (recovery) and *agreement* (cross-package).
+The wider cross-package agreement programme — including Bayesian
+comparators (`MCMCglmm`, `Hmsc`) and the spatial / mixed-family /
+constrained-loadings neighbours (`sdmTMB`, `galamm`) — is Phase 5.5
+external-validation-sprint work and ships as a separate article
+once those runs complete.
 
 ## Validation matrix
 
-The columns mark current status:
-
-* ✅ **live**: comparison runs in this article, or an existing test
-  asserts the agreement.
-* ⏳ **queued**: the comparator package isn't installed in the build
-  environment yet; the comparison is planned and the structural
-  argument is described.
+Every row in the matrix below is **live**: the comparison either
+runs in this article, or an existing test in `tests/testthat/`
+asserts the agreement.
 
 | gllvmTMB term | Reference package | Status | Detail |
 |---|---|---|---|
@@ -51,19 +48,6 @@ The columns mark current status:
 | <code>unique(0 + trait &#124; site)</code> | `glmmTMB::glmmTMB(diag())` | ✅ live (this article) | log-likelihood match to 1e-4 |
 | `phylo_scalar(species)` | `glmmTMB::glmmTMB(propto())` | ✅ tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-4 |
 | `meta_known_V(value, V = V)` | `glmmTMB::glmmTMB(equalto())` | ✅ tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-3 |
-| `phylo_scalar(species)` | `MCMCglmm` (Bayesian phylo MM) | ⏳ queued (Phase 5.5) | Will compare implied $\boldsymbol{\Sigma}_{\text{phy}}$ at converged values |
-| `family = list(gaussian, binomial)` | `galamm::galamm(family = gfam(...))` | ⏳ queued (Phase 5.5) | Mixed-response agreement on shared fixture |
-| `lambda_constraint = list(B = M)` | `galamm::galamm(lambda = M)` | ⏳ queued (Phase 5.5) | Pinned-loading recovery; **galamm CIs are Wald-only**, so this comparison highlights where `gllvmTMB`'s profile path wins |
-| <code>spatial_unique(0 + trait &#124; coords)</code> | `sdmTMB::sdmTMB(spatial = "on")` (single trait) | ⏳ queued (Phase 5.5) | Reduce to single-response, match log-likelihood |
-| `phylo_latent(species, d = K)` | `Hmsc::Hmsc(phyloTree, ...)` | ⏳ queued (Phase 5.5) | Compare implied $\boldsymbol{\Sigma}_{\text{phy}}$ on a small Bayesian fit |
-
-Per the Fisher persona review 2026-05-14, `brms` is deferred
-post-CRAN because of known identifiability pathologies on
-GLLVM-style models (double-peaked posteriors when only
-$\boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top$ is identifiable;
-residual covariance unidentifiability when latent variance and
-residual variance both float). `lavaan` is similarly deferred
-post-CRAN.
 
 ## Setup
 
@@ -343,76 +327,16 @@ by
 The article does not re-fit these here (they're slower); the
 agreement is part of the regular test suite that runs on every CI.
 
-## Queued comparators (Phase 5.5 external validation sprint)
-
-The Phase 5.5 external validation sprint (see ROADMAP) will run the
-remaining queued comparisons on a wider DGP grid with external
-reviewers. Each queued comparator validates a different part of the
-engine:
-
-* **MCMCglmm** (Hadfield 2010) -- Bayesian phylogenetic mixed
-  model. Compare `gllvmTMB`'s $\sigma^2_{\text{phy}}$ MLE against
-  `MCMCglmm`'s posterior mean, modulo MCMC noise. **Why it
-  matters**: Hadfield & Nakagawa (2010) is the original methods
-  paper for the sparse-$A^{-1}$ trick that `phylo_latent()` uses;
-  agreement against `MCMCglmm` closes the loop.
-* **Hmsc** (Tikhonov et al. 2020) -- Bayesian joint species
-  distribution model with phylogeny, traits, and spatial structure.
-  Compare residual correlation structure on a small dataset.
-  **Why it matters**: `Hmsc` is the most fully-featured Bayesian
-  alternative for joint phylogeny + spatial GLLVM. If `gllvmTMB`
-  agrees with `Hmsc` on a small example, the package can stand in
-  for slow MCMC fits at much larger $n$.
-* **galamm** (Sørensen, Fjell & Walhovd 2023) -- generalised
-  additive latent and mixed model. Two specific points to verify:
-  (a) `gllvmTMB`'s `family = list(gaussian, binomial)` +
-  `family_var` should match `galamm`'s `gfam(list(...))` on
-  equivalent data; (b) `gllvmTMB`'s
-  `lambda_constraint = list(B = M)` should match `galamm`'s
-  `lambda` argument. **Why it matters**: `galamm` is the source
-  of these specific patterns; agreement confirms the port is
-  faithful. The comparison will also surface where `gllvmTMB`'s
-  profile CIs add coverage that `galamm`'s Wald-only path
-  misses (variance-component boundaries, correlation extremes).
-* **sdmTMB** (Anderson et al. 2025) -- single-response spatial
-  fit. `sdmTMB::sdmTMB(y ~ x, mesh = mesh)` vs
-  `gllvmTMB(value ~ ... + spatial_unique(0 + trait | coords))`
-  with one trait. **Why it matters**: confirms that the
-  multi-trait engine reduces correctly to the single-response
-  case (the SPDE / mesh / anisotropy helpers are inherited from
-  `sdmTMB`, but a live agreement is reassuring).
-
-The runtime cost of `MCMCglmm` and `Hmsc` (each can take minutes to
-hours per fit) means these comparisons will be **pre-computed
-locally** and shipped as RDS, so the article renders quickly.
-
 ## See also
 
-* [Simulation-based recovery](simulation-recovery.html) -- the
-  complementary "do we get the right answer?" pillar.
-* [SPDE vs glmmTMB](spde-vs-glmmTMB.html) -- the same methodology
-  applied to the spatial term.
-* [Phylogenetic GLLVM](phylogenetic-gllvm.html) -- the phylogenetic
-  engine that `MCMCglmm` and `Hmsc` will benchmark against in
-  Phase 5.5.
-* [Profile-likelihood CIs](profile-likelihood-ci.html) -- the
+* [Phylogenetic GLLVM](phylogenetic-gllvm.html) — the phylogenetic
+  engine, validated against `glmmTMB::propto()` on the same fixture.
+* [Profile-likelihood CIs](profile-likelihood-ci.html) — the
   inference surface that gives `gllvmTMB` its inference
   differentiator over `gllvm` and `galamm`.
 
 ## References
 
-* Anderson SC, Ward EJ, English PA, Barnett LAK, Thorson JT (2025).
-  *sdmTMB: an R package for fast, flexible, and user-friendly
-  generalized linear mixed effects models with spatial and
-  spatiotemporal random fields.* Journal of Statistical Software,
-  115 (2): 1--46. <https://doi.org/10.18637/jss.v115.i02>
-* Hadfield JD (2010). *MCMC methods for multi-response generalized
-  linear mixed models: the MCMCglmm R package.* Journal of
-  Statistical Software, 33 (2): 1--22.
-* Hadfield JD, Nakagawa S (2010). *General quantitative genetic
-  methods for comparative biology: phylogenies, taxonomies and
-  multi-trait models for continuous and categorical characters.*
-  Journal of Evolutionary Biology, 23 (3): 494--508.
 * McGillycuddy M, Popovic G, Bolker BM, Warton DI (2025).
   *Parsimoniously fitting large multivariate random effects in
   glmmTMB.* Journal of Statistical Software, 112 (1).
@@ -423,6 +347,3 @@ locally** and shipped as RDS, so the article renders quickly.
 * Sørensen Ø, Fjell AM, Walhovd KB (2023). *Longitudinal modeling
   of age-dependent latent traits with generalized additive latent
   and mixed models.* Psychometrika, 88 (2): 456--486.
-* Tikhonov G, et al. (2020). *Joint species distribution modelling
-  with the R-package Hmsc.* Methods in Ecology and Evolution,
-  11 (3): 442--447.

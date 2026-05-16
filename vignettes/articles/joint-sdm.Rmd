@@ -128,9 +128,7 @@ wasted effort:
 | Affects $\boldsymbol\Sigma_{\text{latent}}$? | Marginal — diagonal becomes $\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\hat{sd}_B^2) + (\pi^2/3) \mathbf I$, but $\hat{sd}_B^2 \approx 0$ at the boundary so it's essentially the same as without `unique()` |
 | Affects fit time / Hessian | Slightly: extra $T$ parameters pinned at the boundary, Hessian can be ill-conditioned. `sanity_multi(fit)` may flag it |
 
-Bottom line: drop `unique()` for **pure** binary fits. Keep it for
-**mixed-family** fits where it's freely estimated for the non-binary
-traits.
+Bottom line: drop `unique()` for **pure** binary fits.
 
 ### What about `dep` and `indep` for binary?
 
@@ -167,26 +165,7 @@ What this confirms:
 Recommended for binary: **`latent(d = K)` with `K < T`**. Skip `dep`
 (no advantage), skip `indep` (broken).
 
-### Mixed-family fits
-
-When the response includes a *mix* of families (some traits binary,
-some Gaussian, some Poisson, …), the picture changes:
-
-- For **non-binary traits**, the unique component $\psi_{tt}$ IS
-  identifiable. Including `unique(0 + trait | unit)` adds a
-  per-trait random intercept that's freely estimated.
-- For **binary traits in a mixed fit**, $\psi_{tt}$ is still
-  unidentifiable; the optimiser pins it near zero (boundary).
-
-So `unique()` is fine in mixed-family fits — you just need to know
-the per-trait `sd_B` will report effectively-zero values for binary
-rows. A planned follow-up will add per-family-aware
-`map`-suppression so the optimiser doesn't waste iterations on
-those boundary parameters; current behaviour is correct, just
-slightly inefficient. The `extract_Sigma()` machinery handles each
-trait's link residual separately by family — table below.
-
-### How `extract_Sigma()` handles non-Gaussian and mixed-family fits
+### How `extract_Sigma()` handles non-Gaussian fits
 
 `extract_Sigma(fit, part = "total")` looks up each trait's family /
 link, and adds the **per-trait latent-scale residual** $\sigma^2_d$ to
@@ -208,11 +187,15 @@ from Nakagawa & Schielzeth (2010) + Nakagawa, Johnson & Schielzeth
 | `betabinomial(logit)` | $\psi'(\mu\phi) + \psi'((1-\mu)\phi) + \pi^2/3$ |
 | `delta_lognormal` | $\hat\sigma^2_{\text{logn}} + \pi^2/3$ |
 
-For mixed-family fits, each trait gets the residual implied by **its
-own** family; the diagonal of $\boldsymbol\Sigma$ is therefore on a
-unified latent scale. Pass `link_residual = "none"` to suppress this
-addition and recover the bare $\boldsymbol\Lambda\boldsymbol\Lambda^\top
-+ \boldsymbol\Psi$ form.
+Each trait gets the residual implied by its family; the diagonal of
+$\boldsymbol\Sigma$ is therefore on a unified latent scale. Pass
+`link_residual = "none"` to suppress this addition and recover the
+bare $\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$ form.
+
+The article body below fits a **pure binomial** JSDM. End-to-end
+mixed-family rigour (validated extractors on `family = list(...)`
+fits across the 15-family matrix) is M1 milestone work — see
+[validation-debt register MIX-03..MIX-08](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md#section-7--mixed-family-fits).
 
 ## Setup
 

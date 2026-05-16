@@ -979,13 +979,13 @@ spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1) {
   invisible(NULL)
 }
 
-#' Known-V meta-analytic random effect: `meta_known_V(value, V = V)`
+#' Known-V meta-analytic random effect (deprecated alias): `meta_known_V(value, V = V)`
 #'
-#' Canonical name for the known-sampling-error term in two-stage
-#' meta-regression workflows. Formerly `meta(value, sampling_var = v)`
-#' -- same engine, new name; the new name makes it explicit that what's
-#' "known" is the **V** matrix (the sampling-error covariance), not
-#' some piece of metadata.
+#' Deprecated alias for [meta_V()] (renamed 2026-05-16 per vision
+#' item 4). Both names desugar identically; new code should prefer
+#' `meta_V(value, V = V)`. The shorter `meta_V` is the canonical
+#' 0.2.0 name; `meta_known_V` is retained as an alias for
+#' back-compatibility.
 #'
 #' @param value Response column name (typically the stage-1 BLUP or an
 #'   effect-size column).
@@ -994,9 +994,40 @@ spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1) {
 #'   block-diagonal V, build it via [block_V()] and pass as the
 #'   `known_V =` argument to [gllvmTMB()].
 #' @return A formula marker; never evaluated.
-#' @seealso [meta_known_V()] (canonical name); [meta()] (deprecated alias); [block_V()]; [gllvmTMB()].
+#' @seealso [meta_V()] (canonical name; preferred for new code);
+#'   [meta()] (older deprecated short alias); [block_V()];
+#'   [gllvmTMB()].
 #' @export
 meta_known_V <- function(value, V) {
+  invisible(NULL)
+}
+
+#' Known-V meta-analytic random effect (canonical name): `meta_V(value, V = V)`
+#'
+#' Canonical formula keyword for the known-sampling-error term in
+#' two-stage meta-regression workflows. The name makes it explicit
+#' that what is "known" is the **V** matrix (the sampling-error
+#' covariance). Renamed from [meta_known_V()] in 0.2.0 per vision
+#' item 4 (2026-05-16); the older name is retained as a deprecated
+#' alias. Both names desugar identically in the formula parser.
+#'
+#' Pass the matrix `V` via the top-level `known_V = V` argument to
+#' [gllvmTMB()] when using the additive (default) form. For
+#' block-diagonal within-study correlation, build `V` via
+#' [block_V()].
+#'
+#' @param value Response column name (typically the stage-1 BLUP or
+#'   an effect-size column).
+#' @param V Either a column name holding per-row sampling variances
+#'   (diagonal V) or a length-1 numeric used for every row. For
+#'   block-diagonal V, build it via [block_V()] and pass as the
+#'   `known_V =` argument to [gllvmTMB()].
+#' @return A formula marker; never evaluated.
+#' @seealso [meta_known_V()] (deprecated alias); [block_V()];
+#'   [gllvmTMB()]; vision doc "Planned extensions" for the future
+#'   `meta_V(scale = "proportional")` mode (Nakagawa 2022).
+#' @export
+meta_V <- function(value, V) {
   invisible(NULL)
 }
 
@@ -2076,8 +2107,11 @@ rewrite_canonical_aliases <- function(formula) {
                               extras))
         return(new_call)
       }
-      ## `meta_known_V(value, V = X)` -> `meta(value, sampling_var = X)`
-      if (fn == "meta_known_V") {
+      ## `meta_V(value, V = X)` (canonical) and `meta_known_V(value, V = X)`
+      ## (deprecated alias) -> `meta(value, sampling_var = X)`.
+      ## Both names desugar identically; see vision item 4 (2026-05-16
+      ## rename) and validation-debt register MET-01.
+      if (fn == "meta_V" || fn == "meta_known_V") {
         ## V= argument is named "V" (or positional 3rd arg); rename to
         ## sampling_var= which the existing meta() sugar consumes.
         new_call <- e

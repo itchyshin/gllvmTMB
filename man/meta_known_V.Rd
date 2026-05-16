@@ -2,7 +2,7 @@
 % Please edit documentation in R/brms-sugar.R
 \name{meta_known_V}
 \alias{meta_known_V}
-\title{Known-V meta-analytic random effect: \code{meta_known_V(value, V = V)}}
+\title{Known-V meta-analytic random effect (deprecated alias): \code{meta_known_V(value, V = V)}}
 \usage{
 meta_known_V(value, V)
 }
@@ -19,12 +19,14 @@ block-diagonal V, build it via \code{\link[=block_V]{block_V()}} and pass as the
 A formula marker; never evaluated.
 }
 \description{
-Canonical name for the known-sampling-error term in two-stage
-meta-regression workflows. Formerly \code{meta(value, sampling_var = v)}
--- same engine, new name; the new name makes it explicit that what's
-"known" is the \strong{V} matrix (the sampling-error covariance), not
-some piece of metadata.
+Deprecated alias for \code{\link[=meta_V]{meta_V()}} (renamed 2026-05-16 per vision
+item 4). Both names desugar identically; new code should prefer
+\code{meta_V(value, V = V)}. The shorter \code{meta_V} is the canonical
+0.2.0 name; \code{meta_known_V} is retained as an alias for
+back-compatibility.
 }
 \seealso{
-\code{\link[=meta_known_V]{meta_known_V()}} (canonical name); \code{\link[=meta]{meta()}} (deprecated alias); \code{\link[=block_V]{block_V()}}; \code{\link[=gllvmTMB]{gllvmTMB()}}.
+\code{\link[=meta_V]{meta_V()}} (canonical name; preferred for new code);
+\code{\link[=meta]{meta()}} (older deprecated short alias); \code{\link[=block_V]{block_V()}};
+\code{\link[=gllvmTMB]{gllvmTMB()}}.
 }

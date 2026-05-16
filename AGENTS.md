@@ -73,6 +73,30 @@ Model Builder.
 9. If code is ported from `sdmTMB` or another upstream package,
    document provenance in `inst/COPYRIGHTS` before treating the
    change as complete.
+10. **Convention changes cascade to every place the example
+    code lives** (drmTMB / Rose-team discipline ratified by
+    maintainer 2026-05-16). When an argument name, keyword
+    default, function signature, or syntax requirement changes,
+    the **same PR** must update:
+    - the function's roxygen block (`@param`, `@usage`,
+      `@examples`) and the regenerated `man/*.Rd` help file —
+      **every R function is bound to its help file and the two
+      must agree**;
+    - every other roxygen `@examples` block that uses the
+      changed convention;
+    - every vignette / article code chunk that uses it;
+    - the canonical example in `00-vision.md`, the keyword
+      grid in this file, the Tiny example in `README.md`,
+      and any NEWS code chunk;
+    - the validation-debt register row(s) if test evidence
+      moves.
+
+    The after-task report **must enumerate every example file
+    touched** and explicitly state which files were verified
+    clean. A convention change merged without the cascade is a
+    hard violation. See `docs/design/10-after-task-protocol.md`
+    "Convention-Change Cascade" section for the operational
+    checklist.
 
 ## Standard Commands
 

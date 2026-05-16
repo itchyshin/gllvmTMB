@@ -219,11 +219,12 @@ data on disk; the engine pivots as needed.
   one `value` column for the response:
   ```r
   gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 2),
-           data = df_long, unit = "...")
+           data = df_long, trait = "trait", unit = "...")
   ```
 - **Wide data frame** -- one row per unit, one column per trait;
   the `traits(...)` LHS marker names the response columns and the
-  RHS uses compact wide shorthand:
+  RHS uses compact wide shorthand (no `trait =` argument needed --
+  the LHS *is* the trait spec):
   ```r
   gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
            data = df_wide, unit = "unit")
@@ -242,14 +243,15 @@ fit <- gllvmTMB(
   value ~ 0 + trait +
     latent(0 + trait | site, d = 1) +
     unique(0 + trait | site),
-  data = sim$data,    # long: one row per (site, trait)
-  unit = "site"
+  data  = sim$data,    # long: one row per (site, trait)
+  trait = "trait",     # column holding the trait factor
+  unit  = "site"       # column holding the between-unit grouping
 )
 ```
 
 The same model in wide form -- one row per site, columns `t1`,
 `t2`, `t3` for the three traits -- uses the `traits(...)` LHS
-marker:
+marker (no `trait =` needed; the LHS *is* the trait spec):
 
 ```r
 fit_wide <- gllvmTMB(

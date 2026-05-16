@@ -145,18 +145,24 @@ appropriate column name.
 ```r
 gllvmTMB(
   value ~ 0 + trait
-        + latent(0 + trait | site, d = 2)         # B-tier shared
-        + unique(0 + trait | site)                # B-tier diagonal
-        + latent(0 + trait | site_species, d = 1) # W-tier shared
-        + unique(0 + trait | site_species)        # W-tier diagonal
-        + phylo_latent(species, d = 1)            # phylogenetic LV
-        + phylo_unique(species),                  # phylogenetic diagonal
-  data = df,
-  family = gaussian()
+        + latent(0 + trait | site, d = 2)         # share of unit-tier variance
+        + unique(0 + trait | site)                # unit-tier trait-diagonal
+        + latent(0 + trait | site_species, d = 1) # share of unit_obs variance
+        + unique(0 + trait | site_species)        # unit_obs trait-diagonal
+        + phylo_latent(species, d = 1)            # phylogenetic share of unit
+        + phylo_unique(species),                  # phylogenetic trait-diagonal
+  data     = df,
+  family   = gaussian(),
+  trait    = "trait",          # long-format column holding trait factor
+  unit     = "site",           # between-unit grouping
+  unit_obs = "site_species",   # within-unit (observation-level) grouping
+  cluster  = "species"         # cluster axis (here: phylogeny)
 )
 ```
 
-The equivalent wide-format call with the same model:
+The equivalent wide-format call with the same model. The
+`traits()` LHS *is* the trait spec, so no `trait =` argument is
+passed (or accepted):
 
 ```r
 gllvmTMB(
@@ -164,8 +170,11 @@ gllvmTMB(
         + latent(1 | site, d = 2) + unique(1 | site)
         + latent(1 | site_species, d = 1) + unique(1 | site_species)
         + phylo_latent(species, d = 1) + phylo_unique(species),
-  data = df_wide,
-  family = gaussian()
+  data     = df_wide,
+  family   = gaussian(),
+  unit     = "site",
+  unit_obs = "site_species",
+  cluster  = "species"
 )
 ```
 

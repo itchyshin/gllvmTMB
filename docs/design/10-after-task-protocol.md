@@ -102,8 +102,12 @@ articles, or roxygen:
 # Legacy S/U notation (canonical is psi / Psi per decisions.md 2026-05-14)
 rg "\\bS_B\\b|\\bS_W\\b|\\\\bf S" .
 
-# Redundant trait="trait" default-arg noise in code chunks
-rg "trait\\s*=\\s*\"trait\"" R vignettes
+# Long-format gllvmTMB() calls MUST pass trait = "..." explicitly
+# (Option A uniform-naming rule per 01-formula-grammar.md). Enumerate
+# every gllvmTMB( call site below; manually verify each long-format
+# call has trait = "..." present. Wide-format calls (traits(...) LHS)
+# do NOT take a trait = argument.
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
 
 # Foundational in-prep citations (engine-specific in-prep validation
 # claims are OK; foundational results should cite published literature)
@@ -271,6 +275,61 @@ Generic coverage prose ("the test exercises X, Y, Z") does not
 give the reader the same signal. Where the test was prophylactic
 (no specific bug, just covering a contract), say that explicitly
 instead.
+
+## Convention-Change Cascade
+
+When a PR changes an argument name, keyword default, function
+signature, or syntax requirement (any *convention*), the same PR
+must propagate the change to **every place the example code
+lives** — not just the function source. Per AGENTS.md Design
+Rule #10:
+
+**Required cascade targets**:
+
+1. **Function ↔ help-file binding.** The function's roxygen
+   block (`@param` / `@usage` / `@examples`) AND the
+   regenerated `man/*.Rd` file. Run `devtools::document()`
+   in the same PR. Every R function is bound to its help
+   file; the two must agree.
+2. **All other `@examples` blocks in `R/`** that use the
+   changed convention.
+3. **All vignette / article code chunks** under `vignettes/`.
+4. **Canonical examples in design docs and root files**:
+   `docs/design/00-vision.md` signature feature, the keyword
+   grid in `AGENTS.md`, the Tiny example in `README.md`,
+   `CLAUDE.md` if present, any `NEWS.md` code chunk.
+5. **Validation-debt register row(s)** in
+   `docs/design/35-validation-debt-register.md` if test
+   evidence moves.
+
+**Operational checklist** (run during after-task audit):
+
+```sh
+# Enumerate all gllvmTMB( call sites in the repository
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
+
+# Enumerate roxygen @examples blocks
+rg -ln "@examples" R
+
+# Enumerate man/*.Rd files (regenerated; should be in sync
+# with R/ roxygen)
+ls man/*.Rd | wc -l
+```
+
+For each enumerated call site, the audit **verifies** the
+example uses the post-change convention. The audit verdict
+records, file by file, whether the cascade is complete.
+
+**The after-task report enumerates every example file
+touched.** A convention change merged without the cascade is
+a hard violation (the kind that ships an article saying
+`trait = "trait"` is redundant while the same PR makes it
+required — exactly the discrepancy the 2026-05-16 Phase 0A
+session would have shipped without this gate).
+
+Pattern adapted from drmTMB / Rose-team discipline; in their
+project, every argument-rename or default-change PR enumerates
+its cascade and runs the audit before merge.
 
 ## Closing Rule
 

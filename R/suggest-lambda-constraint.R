@@ -56,7 +56,9 @@
 #' )
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-#'   data = my_data,
+#'   data              = my_data,
+#'   trait             = "trait",
+#'   unit              = "site",
 #'   lambda_constraint = list(B = sug$constraint)
 #' )
 #' }

@@ -153,7 +153,9 @@ s <- simulate_site_trait(
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
           unique(0 + trait | site),
-  data = s$data
+  data  = s$data,
+  trait = "trait",
+  unit  = "site"
 )
 ## Default Fisher-z Wald CIs (fast, bounded inside \eqn{[-1, 1]}).
 cors <- extract_correlations(fit, tier = "unit")

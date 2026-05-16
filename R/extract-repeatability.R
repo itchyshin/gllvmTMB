@@ -51,7 +51,10 @@
 #'           latent(0 + trait | site, d = 1) +
 #'           unique(0 + trait | site) +
 #'           unique(0 + trait | site_species),
-#'   data = df
+#'   data     = df,
+#'   trait    = "trait",
+#'   unit     = "site",
+#'   unit_obs = "site_species"
 #' )
 #' extract_repeatability(fit)
 #' }

@@ -78,7 +78,9 @@ denominator by default; pass \code{link_residual = "none"} to suppress.
     value ~ 0 + trait +
             latent(0 + trait | site, d = 2) +
             unique(0 + trait | site),
-    data = sim$data
+    data  = sim$data,
+    trait = "trait",
+    unit  = "site"
   )
   ## Per-trait between-unit communality.
   extract_communality(fit, level = "unit")

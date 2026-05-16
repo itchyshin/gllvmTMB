@@ -23,7 +23,8 @@ diagnostic when validating against another package.
 }
 \examples{
 \dontrun{
-fit_g <- gllvmTMB(value ~ 0 + trait + latent(0+trait|site, d=2), data = df)
+fit_g <- gllvmTMB(value ~ 0 + trait + latent(0+trait|site, d=2),
+                  data = df, trait = "trait", unit = "site")
 fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0+trait|site, d=2),
                          data = df, REML = FALSE)
 L_g <- extract_ordination(fit_g, "B")$loadings

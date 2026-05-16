@@ -76,7 +76,11 @@ fit <- gllvmTMB(
   value ~ 0 + trait + phylo_latent(species, d = 2) +
                       latent(0 + trait | species, d = 2) +
                       unique(0 + trait | species),
-  data = df, phylo_tree = tree, unit = "species"
+  data       = df,
+  trait      = "trait",
+  unit       = "species",
+  cluster    = "species",
+  phylo_tree = tree
 )
 extract_phylo_signal(fit)
 }

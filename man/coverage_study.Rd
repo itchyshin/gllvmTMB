@@ -102,7 +102,9 @@ fitted model. Refit and retry.
 fit <- gllvmTMB(value ~ 0 + trait +
                 latent(0 + trait | site, d = 1) +
                 unique(0 + trait | site),
-                data = sim$data)
+                data  = sim$data,
+                trait = "trait",
+                unit  = "site")
 res <- coverage_study(fit, n_reps = 30L, seed = 1)
 res$coverage
 # passes_94pct column flags which targets meet the audit's

@@ -98,20 +98,29 @@ convention; user muscle memory transfers.
 library(fmesher)
 # Single shared spatial-field variance (= spatial_scalar)
 fit_s <- gllvmTMB(value ~ 0 + trait + spatial(1 | site, mesh = mesh),
-                  data = df)
+                  data  = df,
+                  trait = "trait",
+                  unit  = "site")
 # Per-trait independent fields on shared mesh (= spatial_unique)
 fit_u <- gllvmTMB(value ~ 0 + trait +
                     spatial(0 + trait | coords, mode = "diag",
                             mesh = mesh),
-                  data = df)
+                  data  = df,
+                  trait = "trait",
+                  unit  = "site")
 # Reduced-rank shared spatial latent factors (= spatial_latent)
 fit_l <- gllvmTMB(value ~ 0 + trait +
                     spatial(0 + trait | coords, mode = "latent",
                             d = 2, mesh = mesh),
-                  data = df)
+                  data  = df,
+                  trait = "trait",
+                  unit  = "site")
 # Backward-compat: legacy bare-formula form
 fit_legacy <- gllvmTMB(value ~ 0 + trait + spatial(0 + trait | coords),
-                       data = df, mesh = mesh)
+                       data  = df,
+                       trait = "trait",
+                       unit  = "site",
+                       mesh  = mesh)
 }
 }
 \seealso{

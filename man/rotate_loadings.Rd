@@ -60,7 +60,9 @@ sim <- simulate_site_trait(
 fit <- gllvmTMB(value ~ 0 + trait +
                         latent(0 + trait | site, d = 2) +
                         unique(0 + trait | site),
-                data = sim$data)
+                data  = sim$data,
+                trait = "trait",
+                unit  = "site")
 raw <- extract_ordination(fit, "unit")
 rot <- rotate_loadings(fit, level = "unit", method = "varimax")
 # raw$loadings - lower-triangular (hard to read)

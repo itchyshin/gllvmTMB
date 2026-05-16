@@ -75,7 +75,11 @@ Family \tab Link \tab \eqn{\sigma^2_d} \cr
 df$site_species <- factor(seq_len(nrow(df)))
 fit <- gllvmTMB(
   value ~ 0 + trait + unique(0 + trait | site_species),
-  data = df, family = poisson()
+  data     = df,
+  trait    = "trait",
+  unit     = "site",
+  unit_obs = "site_species",
+  family   = poisson()
 )
 extract_residual_split(fit)
 }

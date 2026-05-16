@@ -51,11 +51,11 @@ similarly redundant and also errors.
 \dontrun{
 # Marginal-only fit (per-trait variance, identity correlation):
 fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site),
-                data = df, unit = "site")
+                data = df, trait = "trait", unit = "site")
 
 # The mathematically-equivalent decomposition form:
 fit <- gllvmTMB(value ~ 0 + trait + unique(0 + trait | site),
-                data = df, unit = "site")
+                data = df, trait = "trait", unit = "site")
 
 # ERROR: indep + latent on the same grouping is over-parameterised.
 # gllvmTMB(value ~ 0 + trait +

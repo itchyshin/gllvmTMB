@@ -29,7 +29,8 @@
 #'   identifiability cross-checks on the paired phylogenetic fit.
 #' @examples
 #' \dontrun{
-#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2), data = dat)
+#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
+#'                 data = dat, trait = "trait", unit = "site")
 #' gllvmTMB_diagnose(fit)
 #' }
 gllvmTMB_diagnose <- function(object,

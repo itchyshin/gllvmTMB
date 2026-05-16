@@ -65,7 +65,9 @@ alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
     value ~ 0 + trait +
             spatial_latent(0 + trait | site, d = 2,
                            coords = c("lon", "lat")),
-    data = sim$data
+    data  = sim$data,
+    trait = "trait",
+    unit  = "site"
   )
 }
 }

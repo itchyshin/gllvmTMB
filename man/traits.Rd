@@ -86,8 +86,10 @@ long-format weight path used by \code{\link[=gllvmTMB]{gllvmTMB()}}. For per-cel
 matrices use the matrix-in entry point \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}}.
 }
 \seealso{
-\code{\link[=gllvmTMB]{gllvmTMB()}} for the long-format engine, \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}}
-for the matrix-in API (use that when you have per-cell weight
-matrices or come from a \code{gllvm}-style workflow). The source-tree
-contract is \code{docs/design/02-data-shape-and-weights.md}.
+\code{\link[=gllvmTMB]{gllvmTMB()}} for the long-format engine. The legacy
+matrix wrapper \code{gllvmTMB_wide(Y, ...)} was removed in 0.2.0
+(validation-debt register row FG-16); wide-data fits now use
+the \code{traits(...)} LHS through the single \code{gllvmTMB()} entry
+point. The source-tree contract is
+\code{docs/design/01-formula-grammar.md}.
 }

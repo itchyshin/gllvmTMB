@@ -37,11 +37,14 @@
 #' # Add a study-level random intercept on top of a latent() block:
 #' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2) +
 #'                          (1 | study),
-#'                 data = df)
+#'                 data  = df,
+#'                 trait = "trait",
+#'                 unit  = "site")
 #'
 #' # Two random intercepts (e.g. study + dataset):
 #' fit <- gllvmTMB(value ~ 0 + trait + (1 | study) + (1 | dataset),
-#'                 data = df)
+#'                 data  = df,
+#'                 trait = "trait")
 #' ```
 #'
 #' The fitted variance components live at

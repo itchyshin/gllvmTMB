@@ -46,13 +46,19 @@ V    <- diag(stage1_summary$sampling_var)
 fit2 <- gllvmTMB(value ~ 0 + trait +
                    latent(0 + trait | site, d = 2) +
                    meta_known_V(value, V = V),
-                 data = stage1_summary, known_V = V)
+                 data    = stage1_summary,
+                 trait   = "trait",
+                 unit    = "site",
+                 known_V = V)
 
 # Deprecated form (still works, emits a warning):
 fit2 <- gllvmTMB(value ~ 0 + trait +
                    latent(0 + trait | site, d = 2) +
                    meta(value, sampling_var = sampling_var),
-                 data = stage1_summary, known_V = V)
+                 data    = stage1_summary,
+                 trait   = "trait",
+                 unit    = "site",
+                 known_V = V)
 }
 }
 \seealso{

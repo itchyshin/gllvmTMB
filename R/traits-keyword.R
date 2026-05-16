@@ -88,10 +88,12 @@
 #' @return A formula marker; never evaluated as a function call. The
 #'   parser recognises `traits(...)` on the LHS of a `gllvmTMB()`
 #'   formula and dispatches to the wide-format pivot pre-pass.
-#' @seealso [gllvmTMB()] for the long-format engine, [gllvmTMB_wide()]
-#'   for the matrix-in API (use that when you have per-cell weight
-#'   matrices or come from a `gllvm`-style workflow). The source-tree
-#'   contract is `docs/design/02-data-shape-and-weights.md`.
+#' @seealso [gllvmTMB()] for the long-format engine. The legacy
+#'   matrix wrapper `gllvmTMB_wide(Y, ...)` was removed in 0.2.0
+#'   (validation-debt register row FG-16); wide-data fits now use
+#'   the `traits(...)` LHS through the single `gllvmTMB()` entry
+#'   point. The source-tree contract is
+#'   `docs/design/01-formula-grammar.md`.
 #' @export
 traits <- function(...) {
   invisible(NULL)

@@ -44,7 +44,11 @@ for the full discussion of the two paths.
   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
   fit <- gllvmTMB(
     value ~ 0 + trait + phylo_scalar(species),
-    data = sim$data, phylo_tree = tree
+    data       = sim$data,
+    trait      = "trait",
+    unit       = "species",
+    cluster    = "species",
+    phylo_tree = tree
   )
 }
 }

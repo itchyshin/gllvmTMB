@@ -63,7 +63,11 @@ justification.
   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
   fit <- gllvmTMB(
     value ~ 0 + trait + phylo_latent(species, d = 2),
-    data = sim$data, phylo_tree = tree
+    data       = sim$data,
+    trait      = "trait",
+    unit       = "species",
+    cluster    = "species",
+    phylo_tree = tree
   )
 }
 }

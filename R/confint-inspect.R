@@ -107,7 +107,9 @@
 #' fit <- gllvmTMB(value ~ 0 + trait +
 #'                 latent(0 + trait | site, d = 1) +
 #'                 unique(0 + trait | site),
-#'                 data = sim$data)
+#'                 data  = sim$data,
+#'                 trait = "trait",
+#'                 unit  = "site")
 #' inspect <- confint_inspect(fit, parm = "sigma_eps")
 #' inspect$bounds       # the CI + Wald comparison
 #' inspect$diagnostics  # any shape flags

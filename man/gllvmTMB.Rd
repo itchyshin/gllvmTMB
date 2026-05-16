@@ -359,7 +359,9 @@ sim <- simulate_site_trait(n_sites = 50, n_species = 8, n_traits = 3,
 fit <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
   data   = sim$data,
-  family = gaussian()
+  family = gaussian(),
+  trait  = "trait",
+  unit   = "site"
 )
 summary(fit)
 }

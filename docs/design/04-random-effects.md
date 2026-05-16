@@ -286,38 +286,57 @@ symmetric block-diagonal `V` construction.
 adds the multiplicative weighted-regression mode per Nakagawa
 2022 EcoLetters. See vision doc "Planned extensions".
 
-## Random slopes — design plan (M1 work; max 3 slopes)
+## Random slopes — design plan (M1 work; ONE random slope only)
 
 `gllvmTMB` does NOT currently support random slopes inside the
 3 × 5 keywords. The M1 Gaussian completeness milestone (per
-ROADMAP, post-Phase-0C) adds random-slope support for the
+ROADMAP, post-Phase-0C) adds **a single random slope** to the
 `latent + unique` paired keywords. This section is the design
 contract; the M1.1 slice doc
 `docs/design/42-random-slopes-grammar.md` (forthcoming) covers
 parser + TMB-template details.
 
-### Combinatorial scope: why we cap at 3 slopes
+### Why we cap at 1 slope for the foreseeable future
+
+Maintainer 2026-05-16 design decision: **start with 1 slope
+only**. Reasoning:
+
+- **Slope-slope correlations get hard fast.** With 2 random
+  slopes per trait, the model estimates per-trait
+  intercept-intercept, slope-intercept, slope-slope, AND
+  cross-trait correlations for each. The reduced-rank Lambda
+  absorbs some of this, but identification is fragile.
+- **Most ecological use cases need only 1 slope.** Personality
+  plasticity to one environment, longitudinal trait change
+  with time, reaction norms across a single gradient — all
+  single-slope cases. JSDM env-by-species is typically a
+  fixed-effect `(0 + trait):env` interaction, not a random
+  slope.
+- **Validation cost scales fast.** A single coverage study at
+  $s = 1$ across families is already substantial; doing it at
+  $s = 2$ and $s = 3$ doubles and triples the validation surface.
+- **Easier to expand than to retreat.** If 1-slope fits work
+  cleanly through M1 and post-M1 user feedback shows real
+  demand for 2 slopes, we can add 2 slopes in a focused
+  follow-up. Releasing 3-slope support that turns out to be
+  unreliable would be worse than waiting.
+
+### Cost-scaling reference (informational only)
 
 For $T$ traits and $s$ random slopes, the per-level random-effect
-vector has length $T(1+s)$. Costs scale linearly in slopes, but
-identification difficulty (slope-slope and slope-intercept
-correlations getting tangled) scales worse:
+vector has length $T(1+s)$:
 
 | Slopes | Latent vector per level | Unstructured $\Sigma$ entries | Reduced-rank ($K$) |
 |--------|-------------------------|-------------------------------|---------------------|
 | 0 (intercept only) | $T$ | $T(T+1)/2$ | $TK$ loadings + $T$ diag |
-| 1 slope | $2T$ | $T(2T+1)$ | $2TK$ + $2T$ diag |
-| 2 slopes | $3T$ | $\frac{3T(3T+1)}{2}$ | $3TK$ + $3T$ diag |
-| 3 slopes | $4T$ | $2T(4T+1)$ | $4TK$ + $4T$ diag |
-| 4+ slopes | $5T+$ | huge | huge |
+| **1 slope (M1 scope)** | $2T$ | $T(2T+1)$ | $2TK$ + $2T$ diag |
+| 2 slopes (planned, post-M1) | $3T$ | $\frac{3T(3T+1)}{2}$ | $3TK$ + $3T$ diag |
+| 3 slopes (planned, post-2-slopes) | $4T$ | $2T(4T+1)$ | $4TK$ + $4T$ diag |
+| 4+ slopes | $5T+$ | huge | rejected at parse time |
 
-For $T = 10$: 0 → 55 cov entries; 1 → 210; 2 → 465; 3 → 820;
-4 → 1275. Real ecological use cases (personality plasticity,
-reaction norms, longitudinal trait change, JSDM
-environment-by-species interactions) almost never need more
-than 2-3 slopes. **Maintainer 2026-05-16 decision: cap at 3.**
+For $T = 10$: 0 → 55 cov entries; 1 → 210; 2 → 465; 3 → 820.
 
-### Allowed long-format syntax (M1)
+### Allowed long-format syntax (M1 scope)
 
 ```r
 # 0 random slopes (current; intercept only). Status: covered.
@@ -338,22 +357,12 @@ gllvmTMB(
   unit = "site"
 )
 
-# 2 random slopes (M1.2). Status: claimed.
-gllvmTMB(
-  value ~ 0 + trait + (0 + trait):env1 + (0 + trait):env2 +
-    latent(0 + trait + (0 + trait):env1 + (0 + trait):env2 | site, d = 2) +
-    unique(0 + trait + (0 + trait):env1 + (0 + trait):env2 | site),
-  data = df,
-  unit = "site"
-)
-
-# 3 random slopes (M1.3, the maximum). Status: claimed.
-# Same pattern with env1 + env2 + env3.
-
-# 4+ random slopes: REJECTED at parse time.
+# 2+ random slopes: REJECTED at parse time in M1.
+# (Will be planned for a post-M1 slice if user feedback shows
+# real demand AND M1.1 stabilises.)
 ```
 
-### Allowed wide-format syntax (M1)
+### Allowed wide-format syntax (M1 scope)
 
 ```r
 # 1 random slope via traits() LHS shorthand:
@@ -374,10 +383,22 @@ Same engine.
 | Slopes inside `latent + unique` | Status | Parser behaviour |
 |---------------------------------|--------|------------------|
 | 0 | `covered` | accepted (current path) |
-| 1 | `claimed` (M1.1) | accepted; per-trait intercept + slope |
-| 2 | `claimed` (M1.2) | accepted; per-trait intercept + 2 slopes |
-| 3 | `claimed` (M1.3) | accepted; per-trait intercept + 3 slopes (the maximum) |
-| 4+ | **rejected at parse time** | error `class = "gllvmTMB_too_many_slopes"` with message: *"Random slopes inside `latent + unique` are capped at 3 (the maintainer 2026-05-16 design decision; see `docs/design/04-random-effects.md` 'Random-slope cap' section). Reduce the number of slope predictors OR use a reduced-rank covariance structure (`indep` / `dep`) to absorb the variation."* |
+| 1 | `claimed` (M1.1) | accepted; per-trait intercept + 1 slope |
+| 2 | `planned (post-M1)` | **rejected at parse time in M1** with `class = "gllvmTMB_too_many_slopes"`; revisited as a focused post-M1 slice if user demand surfaces AND M1.1 stabilises |
+| 3 | `planned (post-2-slopes)` | rejected; conditional on the 2-slope slice landing first |
+| 4+ | `rejected (long-term)` | always rejected; this combinatorial regime is not in scope |
+
+Error message for the rejected cases:
+
+> *"Random slopes inside `latent + unique` are capped at 1 in
+> the 0.2.0 release (the maintainer 2026-05-16 design decision;
+> see `docs/design/04-random-effects.md` 'Random slopes — design
+> plan' section). 2-slope and 3-slope support are planned for
+> post-M1 releases conditional on validation evidence. For now,
+> reduce to a single random slope OR use a reduced-rank
+> covariance structure (`indep` / `dep`) to absorb the
+> across-predictor variation, OR fit the additional predictors
+> as fixed-effect `(0 + trait):x` interactions."*
 
 ### What happens internally for $s$ slopes
 
@@ -440,17 +461,20 @@ fixture (M1.5):
 
 ### Coverage study scope
 
-M1.5 `coverage_study()` runs on each slope-count case:
-$s \in \{0, 1, 2, 3\}$, $T = 10$ traits, $n_g = 50$ to $100$
-sites, $K \in \{1, 2, 3\}$, $R = 200$ replicates per cell.
-Target $\ge 94 \%$ empirical coverage on:
+M1.5 `coverage_study()` runs on the M1 slope-count cases:
+$s \in \{0, 1\}$, $T = 10$ traits, $n_g = 50$ to $100$ sites,
+$K \in \{1, 2, 3\}$, $R = 200$ replicates per cell. Target
+$\ge 94 \%$ empirical coverage on:
 
 - per-trait random-intercept variances $\psi_t^2$
-- per-trait random-slope variances
-- pairwise intercept-slope correlations (within trait)
-- pairwise slope-slope correlations (across traits)
-- the implied repeatability (intercept-only and intercept-slope
+- per-trait random-slope variance (at $s = 1$)
+- pairwise intercept-slope correlations within trait (at $s = 1$)
+- the implied repeatability (intercept-only and intercept+slope
   cases)
+
+Slope-slope correlation coverage (which would test the 2-slope
+or 3-slope regime) is deferred to the post-M1 slice that adds
+2 random slopes, IF that slice ships.
 
 ### Slope-only random effects (planned, post-M1)
 

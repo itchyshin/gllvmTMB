@@ -19,6 +19,14 @@ knitr::opts_chunk$set(
 )
 ```
 
+> **Preview — `ordinal_probit` family validation is M2 (Binary completeness) milestone work.**
+>
+> The `ordinal_probit()` family exists and works in smoke tests
+> (FAM-14 `partial` in the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
+> Full per-cell validation walks the row to `covered` after the
+> **M2** milestone closes.
+
 Use `ordinal_probit()` when a trait is ordered categorical with at
 least three categories and the scientific target is a latent continuous
 scale: behavioural intensity scores, ordered parasite-load scores,

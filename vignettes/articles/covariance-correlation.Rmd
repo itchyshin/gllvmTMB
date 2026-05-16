@@ -23,6 +23,14 @@ knitr::opts_chunk$set(
 )
 ```
 
+> **Preview — Gaussian validated; mixed-family `extract_correlations()` is M1 milestone work.**
+>
+> The Σ vs correlation decomposition shown here is `covered` on
+> Gaussian fits (EXT-01 + EXT-04 Fisher-z/Wald `covered`).
+> `extract_correlations()` profile + bootstrap on mixed-family
+> fits walks to `covered` after the **M1** milestone closes. See
+> the [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
+
 Suppose you want between-individual correlations among behaviours such as
 boldness, exploration, activity, aggression, and sociability. If you fit only
 `latent()`, the recovered correlations can be too large because the model has

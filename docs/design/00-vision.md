@@ -4,7 +4,7 @@
 **Reviewers:** Darwin (biology-first framing) and Rose (consistency
 audit).
 
-`gllvmTMB` is the fast, user-first R package for **multivariate
+`gllvmTMB` is the fast, **user-first** R package for **multivariate
 latent-variable models** in ecology, evolution, and environmental
 science. The unit × trait framework -- one model that handles many
 response traits per observational unit -- is the organising idea.
@@ -15,6 +15,31 @@ The package identity is:
 > and spatial extensions, **all in one engine, all in one formula
 > grammar**. Built on TMB for speed; designed for biology-first
 > reading.
+
+## Lab motto
+
+The package is built under the Nakagawa lab's research-software
+principles:
+
+- **Transparent** -- every claim is backed by code, tests, and
+  evidence; nothing is hidden behind "trust the engine".
+- **Reproducible** -- the simulation harnesses ship; the artefacts
+  ship; running `pkgdown::build_articles()` reproduces the
+  rendered evidence locally.
+- **Super easy to use** -- a new applied user reads one article,
+  copies one formula, gets a sensible fit. Error messages tell
+  the user what to try next when syntax is unsupported.
+- **Accessible** -- documentation, vignettes, and pkgdown pages
+  meet a working-PhD-student bar; no hidden jargon; cross-links
+  to plain-English glossary entries.
+- **Inclusive** -- examples span ecology, evolution, behavioural
+  ecology, environmental science, psychometrics, and applied
+  biostatistics. Cross-domain readers should be able to find a
+  worked example in their dialect.
+
+We care about users. Every design decision passes through Pat
+(applied PhD user lens) before merging. Every article asks: can a
+new reader copy this code and have it work on their data?
 
 `gllvm` (Niku et al.), `glmmTMB`'s `rr()` machinery (McGillycuddy
 et al.), `galamm` (Sørensen et al.), and `Hmsc` are important
@@ -279,6 +304,45 @@ The development sequence to CRAN:
 Articles that describe machinery beyond what is currently
 validated are either pulled (per the validation-debt register)
 or marked "Preview" with a clear pointer to the relevant phase.
+
+## Planned extensions (post-CRAN backlog)
+
+These are forward-looking design intents captured here so the
+architecture stays open to them. **Not implemented yet; not on
+the CRAN-blocking critical path.**
+
+- **`weights` argument** (separate from `meta_known_V()`). A
+  per-row `weights = w` argument matching the `glmmTMB` convention.
+  Weights multiply observation log-likelihood contributions.
+  Distinct from `meta_known_V(V = V)` which supplies known sampling
+  covariance. Some applied use cases need ordinary weighted
+  likelihoods without a meta-analytic framing (e.g. survey weights,
+  inverse-probability weights). The two arguments must coexist
+  cleanly: `meta_known_V()` rejects non-unit `weights` until a
+  joint-block weighting design is documented (mirroring drmTMB's
+  Phase 2b discipline).
+- **`meta_V()` unifying known and proportional sampling-variance
+  patterns.** The current `meta_known_V(value, V = V)` treats `V`
+  as known and adds it additively to the residual covariance. The
+  Nakagawa lab's "unifying meta-analysis" framework (Nakagawa
+  2022, EcoLetters; the `unifying_model` repository) shows that
+  weighted regression and meta-analysis can be unified by
+  replacing the known-V additive term with a *proportional* term
+  $\pi_i \sim \mathcal{N}(0, \phi_\pi / w_i)$ where $\phi_\pi$ is
+  estimated and $w_i$ is a per-row weight. This lets users
+  switch between additive (classic meta-analysis) and
+  proportional (unified weighted-regression / meta-analysis)
+  forms inside one keyword. Proposed future API:
+
+  ```r
+  meta_V(value, V = V)                            # additive (current behaviour)
+  meta_V(value, w = w, scale = "proportional")    # multiplicative
+  ```
+
+  When this lands, `meta_known_V()` becomes a deprecated alias for
+  `meta_V(scale = "known")`. References:
+  `/Users/z3437171/Dropbox/Github Local/unifying_model/R/unifying.Rmd`
+  + Nakagawa 2022, EcoLetters.
 
 ## Team
 

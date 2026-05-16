@@ -183,7 +183,7 @@ Row-owner: **Fisher + Boole** (meta-analysis with known V).
 | MET-01 | Single-V `meta_V(value, V = V)` (additive scale, default) | `partial` | `test-block-V.R` | block-V verified; named-V verified; single-V smoke only |
 | MET-02 | Block-V within-study correlation | `covered` | `test-block-V.R` | |
 | MET-03 | `meta_V(scale = "proportional")` (Nakagawa 2022) | `blocked` | n/a | post-CRAN; not yet implemented |
-| MET-04 | `corvidae-two-stage` two-stage workflow | `partial` | n/a | article exists; live cross-check is Phase 1c |
+| MET-04 | `corvidae-two-stage` two-stage workflow | `partial` | n/a | article pulled to `dev/workshop-articles/` in PR-0C.PULL (Gaussian meta-analytical example; deferred per maintainer 2026-05-16 — restore once a live cross-check fixture exists) |
 
 ### Section 7 — Mixed-family fits
 

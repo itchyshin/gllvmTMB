@@ -244,6 +244,7 @@ Row-owner: **Curie + Fisher** (diagnostic / identifiability).
 
 ### Section 10 — Confidence intervals
 
+
 Row-owner: **Fisher** (inference completeness lead).
 
 | ID | Capability | Status | Test evidence | Notes |
@@ -255,7 +256,7 @@ Row-owner: **Fisher** (inference completeness lead).
 | CI-05 | `profile_ci_phylo_signal()` (PR #105) | `covered` | `test-profile-ci.R` | |
 | CI-06 | `profile_ci_communality()` (PR #120) | `covered` | `test-profile-ci.R` | |
 | CI-07 | `profile_ci_correlation()` (PR #122) | `covered` | `test-profile-ci.R` | |
-| CI-08 | `coverage_study()` ≥ 94 % empirical coverage gate (PR #120) | `partial` | `test-coverage-study.R` | smoke fixture exists; full R = 200 grid is M3 |
+| CI-08 | `coverage_study()` ≥ 94 % empirical coverage gate (PR #120) | `partial` (M3 walk to `covered`) | `test-coverage-study.R`; `dev/precomputed/coverage-gaussian-d2.rds` (R = 200, PR-0C.COVERAGE) | Gaussian d=2 cell at R=200 shipped via `dev/precompute-vignettes.R`; binomial / nbinom2 / ordinal-probit / mixed-family cells walk to `covered` at M3.3 |
 | CI-09 | Fisher-z CI on correlations | `covered` | `test-fisher-z-correlations.R` | |
 | CI-10 | profile / Wald / bootstrap on mixed-family fits | `partial` | n/a | M3 work |
 

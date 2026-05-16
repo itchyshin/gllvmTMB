@@ -1,6 +1,6 @@
 # gllvmTMB Roadmap
 
-*Last refreshed: 2026-05-15.*
+*Last refreshed: 2026-05-16 (function-first milestone insertion).*
 
 This roadmap is the shared map for the maintainer, the Claude
 Code and Codex teams, contributors, and prospective users. It
@@ -54,8 +54,14 @@ items completed within that phase.
 | Phase 1b | Engine + extractor fixes | ✅ Done | `████████` 5/5 | PRs #100 (mu_t clamp), #101 (link_residual="auto"), #104 (check_auto_residual), #105 (check_identifiability), #106 (mixed-family + 15-family fixture) + **P0 audit fix** PR #116 (multi-start sdreport consistency) |
 | 2026-05-15 audit response | External-audit triage + P0 / P1a / P1b / P1c | ✅ Done | `████` 4/4 | PRs #109 (drmTMB scan), #116 (P0 multi-start fix), #117 (README softening + feature matrix), #118 (audit-response doc + decisions.md), #119 (profile_targets + confint(method=...) routing) |
 | Phase 1b validation | Profile-likelihood CI validation | 🟢 In progress | `██░░░░` 2/3 in main; 1 in flight | PR #121 (gllvmTMB_check_consistency, merged); PR #120 (confint_inspect, CI re-running); PR #122 (coverage_study + confint Wald routing extension, local fix held) |
-| **Phase 1c-slope** | **Random slopes (NEW pre-CRAN)** | ⚪ Planned | `░░░░░░░░` 0/6 | Engine generalisation + extractors + recovery + plots + article |
-| Phase 1c | Article ports + new Concepts pedagogy | 🟢 In progress | `█████░░░` 7/13 in main; 2 local drafts held | PRs #108 (lambda-constraint), #110 (psychometrics-irt), #111 (mixed-response), #112 (profile-likelihood-ci + Methods tier), #113 (gllvm-vocabulary), #114 (data-shape-flowchart), #115 (troubleshooting-profile, the +1 Fisher article added 2026-05-14) merged. Local drafts: simulation-verification, corvidae-two-stage |
+| Phase 0A | Function-first infrastructure prep | ✅ Done | `████████` 1/1 | PR #132. 8 design docs + AGENTS.md DoD + after-task 10-section template + stop-checkpoint skill + validation-debt register (102 rows). |
+| Phase 0B | Empirical verification (zero `claimed` rows) | ✅ Done | `████████` 4/4 | PRs #134–#139. Walked every `claimed` formula-grammar row to `covered` / `partial` / `blocked`; 9 new smoke tests. |
+| **Phase 0C** | **Transition cleanup (article overpromise)** | 🟢 In progress | `████░░` 4/6 | PRs #140 (triage), #141 (paper notes), #142 (pkgdown hotfix), #143 (PULL), #144 (TRIM), #145 (PREVIEW), #146 (REWRITE-PREP). Remaining: ROADMAP (this PR), COVERAGE. |
+| **Phase 1c-slope** | **Random slopes (NEW pre-CRAN)** | ⚪ Planned | `░░░░░░░░` 0/6 | Engine generalisation + extractors + recovery + plots + article. **Capped at 1 slope per fit** per M1 design. |
+| Phase 1c article ports | Article ports + new Concepts pedagogy | 🔵 Frozen at 7/14 | `█████░░░` 7/14 | **Superseded 2026-05-15** by the function-first M1 / M2 / M3 milestone sequence below. Remaining article work absorbed into M1.9 (mixed-family-extractors), M2.5 (psychometrics-irt rewrite), M3.6 (simulation-recovery-validated), and Phase 1f (choose-your-model rewrite). |
+| **M1** | **Mixed-family extractor rigour** | ⚪ Planned | `░░░░░░░░` 0/10 | Weeks 1–2. Every extractor validated on `family = list(...)` fits; new `mixed-family-extractors.Rmd` ships. |
+| **M2** | **Binary completeness** | ⚪ Planned | `░░░░░░░░` 0/7 | Weeks 3–5. `lambda_constraint` binary IRT; restore `psychometrics-irt.Rmd` against validated machinery. |
+| **M3** | **Inference completeness across families** | ⚪ Planned | `░░░░░░░░` 0/8 | Weeks 5–7. `coverage_study()` ≥ 94 % on Gaussian / binomial / nbinom2 / ordinal-probit / mixed-family at R = 200. |
 | Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher (incl. random-slope plots) |
 | Phase 1d | Navbar restructure | 🟢 Partly done | `█░` 1/2 | PR #112 created the **Methods + validation** tier; full 3-tier audit deferred to a Phase 1d close PR |
 | Phase 1e | Final reframe sweep | 🟢 Partly done | `█░` 1/2 | PR #107 phylo three-piece-fallback subsection landed; full cross-article sweep deferred |
@@ -690,6 +696,103 @@ banner above flips to 🟡 **Try with caution**.
 
 ---
 
+## ⚪ Phase 1 milestones -- M1 / M2 / M3 (function-first machinery completeness)
+
+The **function-first pivot** (2026-05-15; ratified in
+[`decisions.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/decisions.md)
+item 9) replaced the article-port-centric Phase 1c plan with
+three milestones (M1, M2, M3) that walk advertised machinery to
+empirically validated machinery before any further article
+work. **Machinery is designed and tested before examples are
+written.** Articles describing M1 / M2 / M3 machinery ship as
+part of each milestone's close PR, not ahead of it.
+
+Each slice follows the drmTMB-team rhythm: **Goal → Main work →
+Done when**. Per-slice owners are named; reviewers are recorded
+in each slice's after-task report.
+
+### ⚪ M1 -- Mixed-family extractor rigour -- `░░░░░░░░` 0/10
+
+> **Goal**: every extractor returns correct, unit-tested values
+> on `family = list(...)` fits across the 15-family matrix. The
+> unparalleled-capability differentiator (vision item 5) walks
+> from `partial` to `covered` in the validation-debt register.
+
+| Slice | Goal | Lead | Done when |
+|-------|------|------|-----------|
+| **M1.1** | Per-extractor mixed-family audit (which paths handle `family = list(...)` correctly) | Boole + Emmy | Audit table filed at `docs/dev-log/audits/2026-05-NN-mixed-family-extractor-audit.md`. |
+| **M1.2** | Mixed-family fixture (3-family + 5-family fits with known DGP) | Curie | `inst/extdata/mixed-family-fixture.rds` ships; fixture loads in CI. |
+| **M1.3** | `extract_Sigma()` mixed-family validation | Emmy | Tests pass on both fixtures; matches reference Sigma to TMB tolerance. **Walks MIX-03 → `covered`.** |
+| **M1.4** | `extract_correlations()` mixed-family (Fisher-z + Wald + profile + bootstrap) | Fisher | Tests pass on all 4 methods × both fixtures. **Walks MIX-04 → `covered`.** |
+| **M1.5** | `extract_communality()` mixed-family | Emmy | Tests pass; $H^2 + C^2 + \psi^2 = 1$ within tolerance. **Walks MIX-05 → `covered`.** |
+| **M1.6** | `extract_repeatability()` + `extract_phylo_signal()` mixed-family | Emmy + Fisher | Tests pass. **Walks MIX-06 → `covered`.** |
+| **M1.7** | `extract_Omega()` cross-tier on mixed-family fits | Emmy | Tests pass; cross-tier integration verified. |
+| **M1.8** | `bootstrap_Sigma()` mixed-family (per-row family preserved in resamples) | Curie | Tests pass; 100 reps complete in CI under 5 min. **Walks MIX-08 → `covered`.** |
+| **M1.9** | NEW article `mixed-family-extractors.Rmd` | Pat | Article renders; logLik + extractor outputs match fixture-truth; banner removed from `covariance-correlation.Rmd`. |
+| **M1.10** | M1 close gate (after-phase report; Shannon audit; 3-OS green) | Ada | PR merged with after-task report; ROADMAP M1 row → ✅. |
+
+**M1 scope boundary**: profile-likelihood CIs on derived
+quantities (communality, repeatability, phylo signal) for
+mixed-family fits are M3 work. M1 extends extractors to
+mixed-family at the point-estimate + Fisher-z + Wald level.
+
+### ⚪ M2 -- Binary completeness -- `░░░░░░░░` 0/7
+
+> **Goal**: every binary capability is end-to-end-validated,
+> including `lambda_constraint` for confirmatory binary IRT
+> loadings (vision rule: binary is the second family validated
+> after Gaussian; "binary completeness" gates the M2.5 article
+> rewrite).
+
+| Slice | Goal | Lead | Done when |
+|-------|------|------|-----------|
+| **M2.1** | Binary design note expanded from Phase 0B baseline | Boole | `docs/design/41-binary-completeness.md` filed; identifies gaps for binomial GLLVM + binary IRT vs M1 Gaussian baseline. |
+| **M2.2** | Binary extractor + CI validation (extend M1 suite to `family = binomial()`) | Fisher | All M1 slice tests pass on `binomial(probit)` + `binomial(logit)` fits. **Walks FAM-02 deep validation rows → `covered`.** |
+| **M2.3** | `lambda_constraint` validation on binary (confirmatory loadings; pin $\Lambda$ entries; parameter recovery) | Boole + Emmy | LAM-03 walks to `covered`; recovery study at `n_items ∈ {10, 20, 50} × d ∈ {1, 2, 3}` regimes passes. |
+| **M2.4** | `suggest_lambda_constraint()` validation on binary | Boole + Pat | Suggester produces sensible constraint matrices across binary regimes; reliability regime documented. |
+| **M2.5** | Restore `psychometrics-irt.Rmd` against validated machinery | Pat | Article re-authored per [PR-0C.REWRITE-PREP handoff](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md); `mirt::mirt()` cross-check live; audit-2 A1 "Stay Laplacian" note added; banner removed. |
+| **M2.6** | Restore binary JSDM in `joint-sdm.Rmd` (long+wide pair; audit-2 A1 Laplace note) | Darwin | Article body validated; cross-references `suggest_lambda_constraint()` for users who want to identify their loadings. |
+| **M2.7** | M2 close gate (after-phase report; Shannon audit; 3-OS green) | Ada | PR merged; ROADMAP M2 row → ✅; FAM-14 walks to `covered`; banner removed from `lambda-constraint.Rmd` and `ordinal-probit.Rmd`. |
+
+**M2 scope boundary**: Gaussian + binary are end-to-end
+validated after M2. Other families (Poisson, NB2, Gamma, Beta,
+ordinal-probit deep validation, delta, Tweedie) remain `partial`
+until post-CRAN per family-by-family validation slices.
+
+### ⚪ M3 -- Inference completeness across families -- `░░░░░░░░` 0/8
+
+> **Goal**: `coverage_study()` reports ≥ 94 % empirical
+> coverage on Gaussian / binomial / nbinom2 / ordinal-probit /
+> mixed-family at R = 200 replicates per cell. The audit-1
+> empirical coverage exit gate.
+
+| Slice | Goal | Lead | Done when |
+|-------|------|------|-----------|
+| **M3.1** | DGP grid (4 families × 3 dims × 200 reps + mixed-family cell) | Fisher + Curie | DGP grid documented in `docs/design/29-phase1b-empirical-coverage.md`; runs locally < 6 h. |
+| **M3.2** | `dev/precompute-vignettes.R` reproducible pipeline | Curie + Grace | Script + cached RDS shipped; reproducible from clean checkout. |
+| **M3.3** | Per-family profile CI accuracy validation | Fisher | All cells ≥ 94 % coverage; coverage-rate matrix filed at `docs/dev-log/audits/2026-05-NN-phase1b-empirical-coverage.md`. |
+| **M3.4** | `gllvmTMB_check_consistency()` at boundary regimes | Curie | Flagged regimes (sparse-Bernoulli at d=3; ordinal-probit at d=2 with rare categories) documented in `troubleshooting-profile.Rmd`. |
+| **M3.5** | Derived-quantity coverage (communality, repeatability, phylo signal) | Fisher | Coverage table reported per family; Wald-vs-profile-vs-bootstrap differential documented. |
+| **M3.6** | NEW article `simulation-recovery-validated.Rmd` (replaces pulled article) | Curie + Pat | Article renders from precomputed RDS; reproducible by running `dev/precompute-vignettes.R`. |
+| **M3.7** | Capstone composite validation (functional-biogeography.Rmd) | Darwin + Fisher | Composite-fit identifiability empirically demonstrated; banner removed; M3 row pointer extended to capstone. |
+| **M3.8** | M3 close gate (after-phase report; Shannon audit; 3-OS green) | Ada | PR merged; ROADMAP M3 row → ✅; banners removed from `profile-likelihood-ci.Rmd` and `functional-biogeography.Rmd`. |
+
+**M3 scope boundary**: M3 establishes empirical coverage on
+simulated data drawn from the model. M5.5 extends to cross-
+package agreement on real fixtures (where the truth is
+different) and external-reviewer validation. The two are
+complementary; neither replaces the other.
+
+### Cross-refs
+
+- [`decisions.md` 2026-05-16 item 9 -- Phase 0A / 0B / 0C sequencing](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/decisions.md)
+- [`docs/design/00-vision.md` -- function-first sequencing + "What we will NOT do"](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/00-vision.md)
+- [`docs/design/35-validation-debt-register.md` -- row-level status the milestone walks are pegged to](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
+- [`docs/dev-log/audits/2026-05-16-phase0c-article-triage.md` -- the triage that informed Phase 0C and the M1/M2/M3 restoration roadmap](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-16-phase0c-article-triage.md)
+- [`docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md` -- M2.5 + Phase 1f rewrite contracts](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md)
+
+---
+
 ## ⚪ Phase 2 -- Public surface audit -- `░░░░░░░░` 0/8 PRs
 
 **Goal**: the exported API, pkgdown reference index, examples,
@@ -898,6 +1001,35 @@ after-task report.
 
 ## Recent merges (rolling, newest first)
 
+- **2026-05-16** PR #146 -- PR-0C.REWRITE-PREP: banner +
+  rewrite handoff for `psychometrics-irt` (M2.5) +
+  `choose-your-model` (Phase 1f)
+- **2026-05-16** PR #145 -- PR-0C.PREVIEW: Preview banners on
+  5 articles citing validation-debt rows + milestones
+- **2026-05-16** PR #144 -- PR-0C.TRIM: trim overpromise
+  sections in `joint-sdm` + `cross-package-validation`
+- **2026-05-16** PR #143 -- PR-0C.PULL: pull 3 overpromise
+  articles to `dev/workshop-articles/`
+- **2026-05-16** PR #142 -- PR-0C.PKGDOWN-HOTFIX: add `meta_V`
+  to `_pkgdown.yml` reference index
+- **2026-05-16** PR #141 -- Phase 0C paper-findings notes
+  (Nakagawa et al. *in prep* 2026-05-16 reading)
+- **2026-05-16** PR #140 -- Phase 0C planning audit: article
+  triage for 24 vignettes/articles
+- **2026-05-16** PR #139 -- PR-0B.4: `meta_V` R/ alias rename +
+  restored test 9 + walk row #15 to `covered` → **ZERO
+  `claimed` rows**
+- **2026-05-16** PR #138 -- PR-0B.3: audit-and-confirm (walk 3
+  `claimed` rows to `covered`)
+- **2026-05-16** PR #137 -- PR-0B.2: 9 smoke tests in
+  `test-formula-grammar-smoke.R`
+- **2026-05-16** PR #134 -- PR-0B.1: per-row formula-grammar
+  test audit
+- **2026-05-16** PR #133 -- Cascade #1: function ↔ help-file
+  binding sweep
+- **2026-05-16** PR #132 -- **Phase 0A**: function-first
+  infrastructure prep (8 design docs + DoD + 10-section
+  template + stop-checkpoint skill + validation-debt register)
 - **2026-05-14** PR #95 -- Phase 1a Batch D: drop
   `gllvmTMB_wide()` demos in `morphometrics` +
   `response-families` articles

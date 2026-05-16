@@ -163,25 +163,53 @@ is implemented; Phase 0B verifies each.
 |--------|---------------|---------|-------|--------|--------|
 | Ordinal probit | `ordinal_probit()` | latent `mu`, `cutpoints` (vector) | probit (latent), identity (cutpoints on log-difference scale) | $\{1, 2, \ldots, K\}$ ordered categories | claimed |
 
-### Hurdle / delta families (positive-mass + continuous-positive)
+### Hurdle / delta families — DEFERRED to post-CRAN
+
+**Status: `planned (post-CRAN)`** for the entire family group.
 
 These two-stage families combine a binary occurrence component
 (`hu` = hurdle probability) with a positive-continuous component.
-The `delta_*` prefix matches the `sdmTMB` convention; see
-`sdmTMB::sdmTMB(family = delta_*)` for the inheritance.
+The `delta_*` prefix matches the `sdmTMB` convention.
 
-| Family | R constructor | Components | Status |
-|--------|---------------|------------|--------|
-| Delta-lognormal | `delta_lognormal()` | hurdle (binomial) + lognormal (positive) | claimed |
-| Delta-lognormal mixture | `delta_lognormal_mix()` | hurdle + lognormal mixture | claimed |
-| Delta-Gamma | `delta_gamma()` | hurdle + Gamma | claimed |
-| Delta-Gamma mixture | `delta_gamma_mix()` | hurdle + Gamma mixture | claimed |
-| Delta-Beta | `delta_beta()` | hurdle + Beta (on $(0, 1)$ proportions with point mass at 0) | claimed |
-| Delta-gengamma | `delta_gengamma()` | hurdle + generalised Gamma | claimed |
-| Delta-truncated nbinom1 | `delta_truncated_nbinom1()` | hurdle + truncated nbinom1 (positive counts) | claimed |
-| Delta-truncated nbinom2 | `delta_truncated_nbinom2()` | hurdle + truncated nbinom2 | claimed |
-| Delta Poisson-link Gamma | `delta_poisson_link_gamma()` | Thorson-style Poisson-link decomposition | claimed |
-| Delta Poisson-link lognormal | `delta_poisson_link_lognormal()` | Thorson-style Poisson-link decomposition | claimed |
+**Why deferred** (maintainer 2026-05-16):
+
+The latent-scale correlation contract — applying a per-family
+link residual to the latent diagonal so `extract_correlations()`
+can report mixed-family correlations on a common scale — is
+**currently undefined for two-stage hurdle/delta families**.
+Each delta family has *two* scales (binary occurrence on the
+probit/logit latent + continuous-positive on its own scale), and
+there is no clean way to collapse them into a single latent
+residual without losing information.
+
+Since latent-scale correlations on mixed-family fits is the
+package's headline differentiator (vision item 5), it would be
+dishonest to include delta families in the 0.2.0 advertised
+surface without first solving this. The families are deferred
+to post-CRAN, contingent on a derivation that gives a defensible
+single latent-residual value per delta family (or a principled
+two-component correlation reporting scheme).
+
+The engine code for these families exists (constructors,
+density-id mappings, TMB likelihood). The deferral is to the
+**public-API and validation-debt surface**, not to the engine.
+Users who want single-family delta-* fits today can use them at
+their own risk; cross-family correlation reporting on
+mixed-family fits that include a delta family is **rejected** by
+`check_auto_residual()`.
+
+| Family | R constructor (engine has it) | Components | Public status |
+|--------|------------------------------|------------|---------------|
+| Delta-lognormal | `delta_lognormal()` | hurdle (binomial) + lognormal (positive) | planned (post-CRAN) |
+| Delta-lognormal mixture | `delta_lognormal_mix()` | hurdle + lognormal mixture | planned (post-CRAN) |
+| Delta-Gamma | `delta_gamma()` | hurdle + Gamma | planned (post-CRAN) |
+| Delta-Gamma mixture | `delta_gamma_mix()` | hurdle + Gamma mixture | planned (post-CRAN) |
+| Delta-Beta | `delta_beta()` | hurdle + Beta (on $(0, 1)$ proportions with point mass at 0) | planned (post-CRAN) |
+| Delta-gengamma | `delta_gengamma()` | hurdle + generalised Gamma | planned (post-CRAN) |
+| Delta-truncated nbinom1 | `delta_truncated_nbinom1()` | hurdle + truncated nbinom1 (positive counts) | planned (post-CRAN) |
+| Delta-truncated nbinom2 | `delta_truncated_nbinom2()` | hurdle + truncated nbinom2 | planned (post-CRAN) |
+| Delta Poisson-link Gamma | `delta_poisson_link_gamma()` | Thorson-style Poisson-link decomposition | planned (post-CRAN) |
+| Delta Poisson-link lognormal | `delta_poisson_link_lognormal()` | Thorson-style Poisson-link decomposition | planned (post-CRAN) |
 
 ## Mixed-family support
 
@@ -253,10 +281,21 @@ link_residual = "auto")` on a `family = list(...)` fit is a
 These are family-related directions captured for the roadmap but
 NOT in the registry today:
 
+- **Mixed-family fits combining a delta/hurdle family with another
+  family** — e.g. `family = list(gaussian, delta_lognormal)` is
+  **not a supported configuration in 0.2.0**. `check_auto_residual()`
+  rejects these with `class = "gllvmTMB_auto_residual_delta_undefined"`
+  (planned safeguard; Phase 0B writes the test). Reason: the
+  latent-scale correlation contract is undefined for two-stage
+  families (see "Hurdle / delta families" section above).
+- **Latent-scale correlations on single-family delta fits** —
+  even a fit with `family = list(delta_lognormal, delta_lognormal)`
+  has no defined per-row link residual. Deferred to post-CRAN.
 - **Zero-inflated count families on multi-trait fits** (planned;
   post-CRAN). Single-trait zero-inflated count via the delta-*
-  hurdle path is `claimed`; the structural-zero `zi` parameter
-  on a non-delta family is not.
+  hurdle path is in the engine but its multi-trait correlation
+  surface is `planned (post-CRAN)` for the same two-scales reason
+  as the delta families.
 - **Skew-normal / skew-t** for skewed continuous-response
   modelling (planned; post-CRAN).
 - **Compound Poisson-Gamma direct parameterisation** (the Tweedie

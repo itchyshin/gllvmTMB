@@ -83,11 +83,19 @@ formula grammar, the following five capabilities:
    Treats meta-analysis as multi-trait GLLVM with known sampling
    covariance. (`meta_known_V()` is retained as a deprecated alias
    in 0.2.0.)
-5. **Latent-scale correlations on mixed-family fits.** Different
-   families per trait (or per row); the engine applies the
-   appropriate per-family link residual (π²/3 for binomial-logit,
-   1 for probit, trigamma terms for Gamma / NB2 / Beta / etc.) on
-   the latent liability and reports correlations on that scale.
+5. **Latent-scale correlations on mixed-family fits (non-delta
+   families).** Different families per trait (or per row); the
+   engine applies the appropriate per-family link residual
+   (π²/3 for binomial-logit, 1 for probit, trigamma terms for
+   Gamma / NB2 / Beta / etc.) on the latent liability and reports
+   correlations on that scale. The 0.2.0 surface covers
+   single-stage families (Gaussian, binomial, Poisson, NB,
+   Gamma, Beta, ordinal-probit, lognormal, etc.).
+   **Two-stage hurdle/delta families are deferred to post-CRAN**
+   — their latent-scale residual is not yet defined (the family
+   has two scales, no clean collapse to a single latent term).
+   See `docs/design/02-family-registry.md` "Hurdle / delta
+   families — DEFERRED to post-CRAN" for the rationale.
 
 Item 5 is the **unparalleled capability**: no current package
 offers mixed-family latent-scale correlations cleanly. `gllvm` is

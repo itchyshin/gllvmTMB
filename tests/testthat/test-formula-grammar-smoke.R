@@ -231,13 +231,32 @@ test_that("spatial_scalar(0 + trait | sites, mesh = mesh) parses and fits (SPA-0
 })
 
 # ---- Test 9: meta_V() single-V additive (MET-01) -----------------------------
-#
-# DEFERRED to PR-0B.4 per maintainer 2026-05-16 decision (b).
-# Reason: the smoke surfaced that `meta_V` is documented as canonical
-# (vision item 4, formula-grammar row #15, decisions.md item 8) but
-# NAMESPACE exports `meta_known_V` only. The R/ rename is
-# documentation-only. PR-0B.4 will (1) add `meta_V` as the canonical
-# alias of `meta_known_V` in R/, (2) update NAMESPACE, (3) add this
-# smoke test back. MET-01 stays `partial` in the validation-debt
-# register and row #15 stays `claimed` in 01-formula-grammar.md until
-# PR-0B.4 closes the rename.
+# Added in PR-0B.4 once `meta_V` was added as the canonical alias of
+# `meta_known_V` in R/brms-sugar.R. Both names desugar identically in
+# the parser; this smoke confirms the new canonical name works.
+
+test_that("meta_V(value, V = V) single-V additive fit parses and converges (MET-01)", {
+  set.seed(131)
+  n_eff   <- 50
+  n_trait <- 3
+  df <- expand.grid(
+    site  = factor(seq_len(n_eff)),
+    trait = factor(paste0("t", seq_len(n_trait)))
+  )
+  df$value <- rnorm(nrow(df), sd = 0.5)
+  # Per-row known sampling variance (single-V, no within-study correlation):
+  df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
+  V <- diag(df$sampling_var)
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+            meta_V(value, V = V),
+    data    = df,
+    trait   = "trait",
+    unit    = "site",
+    known_V = V
+  )
+
+  expect_s3_class(fit, "gllvmTMB_multi")
+  expect_equal(fit$opt$convergence, 0L)
+})

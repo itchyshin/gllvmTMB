@@ -276,19 +276,37 @@ unique(0 + trait | site)                # Psi_B is T x T diagonal
 
 `gllvmTMB()` looks for these column names by default:
 
-| Default name | Role | Override argument |
-|--------------|------|-------------------|
-| `trait` | trait factor (long format) | `trait = "..."` |
+| Column name | Role | Override argument |
+|-------------|------|-------------------|
+| **`trait`** | trait factor (long format) — **required column name; no override** | (none) |
 | `site` | between-unit grouping (canonical for JSDM) | `unit = "..."` |
 | `site_species` | within-unit grouping (two-level) | `unit_obs = "..."` |
 | `species` | species / cluster axis | `cluster = "..."` |
 
+**Design rule (Pat + Ada 2026-05-16): no `trait = "..."` argument.**
+`trait` is always the *why* — the response-variable axis being
+modelled. The column **must be named `trait`** in long format, or
+specified via the `traits(t1, t2, ...)` LHS helper in wide format.
+If a user has a column with a different name, they rename it (or
+pivot via `traits()`) before fitting. This is a deliberate API
+simplification: every long-format `gllvmTMB()` call reads with
+`0 + trait` on the RHS, so requiring the column name to match
+that reference removes a class of confusion (and a no-op argument
+the user has to look up).
+
 **Persona-active naming rule (Pat 2026-05-16)**: examples KEEP the
 explicit `unit = "..."`, `unit_obs = "..."`, `cluster = "..."`
 arguments even when they match defaults, because they tell the
-reader which data column plays which role. DROP only the literal
-`trait = "trait"` which is pure noise when the column is named
-`trait`.
+reader which data column plays which role. There is no `trait =`
+argument to add or drop.
+
+> **Implementation status**: the current `gllvmTMB()` signature
+> still accepts a `trait =` parameter as a backward-compatibility
+> path. **Planned deprecation in 0.2.0**: a soft-deprecation
+> warning fires when `trait =` is passed; the argument is removed
+> entirely in 0.3.0. This change tracks as a `planned` row in
+> `docs/design/35-validation-debt-register.md` until the deprecation
+> ships.
 
 ## Unit, unit_obs, and cluster: crossed vs nested
 

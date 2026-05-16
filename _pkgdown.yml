@@ -89,6 +89,7 @@ reference:
     - spatial_latent
     - spde
     - spatial
+    - meta_V
     - meta_known_V
 
   - title: Deprecated keyword aliases

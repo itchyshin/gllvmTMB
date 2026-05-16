@@ -78,10 +78,11 @@ formula grammar, the following five capabilities:
 3. **Spatial GLLVMs** via fast SPDE / GMRF precision matrices
    (inherited from `sdmTMB`; Lindgren et al. 2011). Multi-trait
    spatial fields, not just one trait at a time.
-4. **Meta-analytic GLLVMs** via `meta_known_V(value, V = V)`,
-   including block-diagonal within-study correlation through
-   `block_V()`. Treats meta-analysis as multi-trait GLLVM with
-   known sampling covariance.
+4. **Meta-analytic GLLVMs** via `meta_V(value, V = V)`, including
+   block-diagonal within-study correlation through `block_V()`.
+   Treats meta-analysis as multi-trait GLLVM with known sampling
+   covariance. (`meta_known_V()` is retained as a deprecated alias
+   in 0.2.0.)
 5. **Latent-scale correlations on mixed-family fits.** Different
    families per trait (or per row); the engine applies the
    appropriate per-family link residual (π²/3 for binomial-logit,
@@ -114,8 +115,9 @@ A model is defined by:
 
 4. a per-trait response family from `R/families.R` (single family
    or `family = list(...)` for mixed-family);
-5. optional `meta_known_V(value, V = V)` for known-sampling-
-   covariance meta-analysis.
+5. optional `meta_V(value, V = V)` for known-sampling-covariance
+   meta-analysis (renamed from `meta_known_V()` in 0.2.0; the old
+   name is a deprecated alias).
 
 The decomposition mode is the `latent + unique` pair:
 **Σ = ΛΛᵀ + Ψ**, where `Λ` is a low-rank loading matrix and `Ψ`
@@ -238,8 +240,13 @@ ratification 2026-05-16:
    Every claim in README / NEWS / vignettes / pkgdown is backed
    by a row in `docs/design/35-validation-debt-register.md` with
    test evidence, diagnostic status, and interval status. If a
-   capability is "covered" we ship it; if it is "partial" we say
-   so explicitly; if it is "blocked" we do not advertise it.
+   capability is `covered` we ship it; if it is `partial` we say
+   so explicitly; if it is `blocked` we do not advertise it.
+   (The validation-debt register uses `covered / partial / opt-in
+   / blocked`. The separate **parser-syntax** state map in
+   `docs/design/01-formula-grammar.md` uses `covered / claimed /
+   reserved / planned` — different artefact, different vocabulary,
+   both intentional.)
 2. **No /loop autopilot for article ports** or any other
    multi-step batch. Each article PR gets Pat + Rose review
    *before* edits, not retrospectively. (The 2026-05-15
@@ -321,26 +328,27 @@ the CRAN-blocking critical path.**
   cleanly: `meta_known_V()` rejects non-unit `weights` until a
   joint-block weighting design is documented (mirroring drmTMB's
   Phase 2b discipline).
-- **`meta_V()` unifying known and proportional sampling-variance
-  patterns.** The current `meta_known_V(value, V = V)` treats `V`
-  as known and adds it additively to the residual covariance. The
-  Nakagawa lab's "unifying meta-analysis" framework (Nakagawa
-  2022, EcoLetters; the `unifying_model` repository) shows that
-  weighted regression and meta-analysis can be unified by
-  replacing the known-V additive term with a *proportional* term
-  $\pi_i \sim \mathcal{N}(0, \phi_\pi / w_i)$ where $\phi_\pi$ is
-  estimated and $w_i$ is a per-row weight. This lets users
-  switch between additive (classic meta-analysis) and
-  proportional (unified weighted-regression / meta-analysis)
-  forms inside one keyword. Proposed future API:
+- **`meta_V(scale = "proportional")` mode** — current `meta_V(value, V = V)`
+  treats `V` as known and adds it additively to the residual
+  covariance. The Nakagawa lab's "unifying meta-analysis" framework
+  (Nakagawa 2022, EcoLetters; the `unifying_model` repository)
+  shows that weighted regression and meta-analysis can be unified
+  by replacing the known-V additive term with a *proportional*
+  term $\pi_i \sim \mathcal{N}(0, \phi_\pi / w_i)$ where $\phi_\pi$
+  is estimated and $w_i$ is a per-row weight. This lets users
+  switch between additive (classic meta-analysis) and proportional
+  (unified weighted-regression / meta-analysis) forms inside one
+  keyword. Future API:
 
   ```r
-  meta_V(value, V = V)                            # additive (current behaviour)
-  meta_V(value, w = w, scale = "proportional")    # multiplicative
+  meta_V(value, V = V)                            # additive (current; default scale = "known")
+  meta_V(value, w = w, scale = "proportional")    # multiplicative (post-CRAN)
   ```
 
-  When this lands, `meta_known_V()` becomes a deprecated alias for
-  `meta_V(scale = "known")`. References:
+  **Note**: the rename from `meta_known_V()` → `meta_V()` itself is
+  **current in 0.2.0**, not post-CRAN. `meta_known_V()` ships as a
+  deprecated alias. Only the `scale = "proportional"` mode is
+  post-CRAN. References:
   `/Users/z3437171/Dropbox/Github Local/unifying_model/R/unifying.Rmd`
   + Nakagawa 2022, EcoLetters.
 

@@ -1,10 +1,26 @@
 # Phylogenetic GLLVM Contract
 
+**Maintained by:** Boole (formula API + parser owner) and Noether
+(math-vs-implementation alignment).
+**Reviewers:** Gauss (numerical correctness), Darwin (comparative-
+methods audience), Rose (consistency audit).
+
 This note records the current phylogenetic stacked-trait contract
 after the long/wide reader sweep and the 2026-05-14 PIC / "two-U"
 retirement decision (see `docs/dev-log/decisions.md`).
 It adapts the useful parts of the legacy phylogenetic design notes to
 the current package vocabulary.
+
+**Status discipline**: this document was written before Phase 0A's
+4-state vocabulary (`covered / claimed / reserved / planned`) was
+introduced. Until Phase 0B verifies the contract end-to-end via
+the smoke-test pass, treat every assertion below as **claimed
+(Phase 0B verification pending)** unless explicitly cross-linked
+to a test file. The cross-references to
+`docs/design/01-formula-grammar.md` (the canonical syntax contract)
+and `docs/design/35-validation-debt-register.md` (the validation
+ledger, forthcoming Phase 0A step 7) anchor every claim that needs
+verification.
 
 ## Reader Problem
 
@@ -18,11 +34,12 @@ The current public examples should show both:
 - wide data-frame data: one row per species, one column per trait,
   using `traits(...)` on the formula left-hand side.
 
-`gllvmTMB_wide()` is not the primary shortcut for this row-phylogeny
-case because that matrix wrapper treats matrix columns as the trait
-axis. It is the natural matrix entry point for site-by-species or
-unit-by-response matrices where the response columns are the biological
-traits/species/outcomes being modelled.
+**The matrix-in entry point `gllvmTMB_wide(Y, ...)` is removed in
+0.2.0** (maintainer 2026-05-16 decision; see
+`docs/design/01-formula-grammar.md`). The formula API path
+`gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide)` is the
+canonical wide-format entry point for phylogenetic GLLVMs and
+everything else.
 
 ## Mathematical Contract
 
@@ -129,6 +146,34 @@ rank-sensitive decomposition.
 ## What This Does Not Change
 
 This note does not change the formula grammar, likelihood,
-parameterisation, exported functions, or the 3 x 5 keyword grid. It
+parameterisation, exported functions, or the 3 × 5 keyword grid. It
 documents how the existing current-code path should be explained in
 articles and examples.
+
+## Cross-references
+
+- `docs/design/00-vision.md` — package vision, "What makes
+  gllvmTMB different" lists phylogenetic GLLVMs as one of the
+  five differentiating capabilities.
+- `docs/design/01-formula-grammar.md` — canonical formula grammar
+  contract; defines the `phylo_*` keywords + their `tree = ` /
+  `vcv = ` keyword arguments; defines the unit / unit_obs /
+  cluster grouping-factor convention (with cluster = `species`
+  as the default for phylogenetic keywords).
+- `docs/design/35-validation-debt-register.md` (forthcoming,
+  Phase 0A step 7) — the validation ledger that every claim in
+  this doc must reference once Phase 0B has verified.
+- `docs/dev-log/decisions.md` 2026-05-14 PIC / "two-U" retirement
+  entry — historical context for the `Psi` notation and the
+  retirement of the PIC-MOM cross-check path.
+
+## Persona-active engagement
+
+When this doc was originally drafted (post-2026-05-14 PIC
+retirement), Noether validated the math-vs-implementation
+alignment for $\boldsymbol{\Psi}_\text{phy}$ / $\boldsymbol{\Psi}_\text{non}$
+and Gauss reviewed the three-piece fallback's numerical
+identifiability. Boole owns the `phylo_*` keyword surface and
+revises this doc whenever the formula grammar changes (AGENTS.md
+Design Rule #3 applies via the cross-reference to
+`01-formula-grammar.md`).

@@ -23,6 +23,14 @@ knitr::opts_chunk$set(
 )
 ```
 
+> **Preview — Gaussian path validated; binary IRT is M2.3 milestone work.**
+>
+> The Gaussian-path `lambda_constraint` workflow (LAM-01 + LAM-02
+> `covered` per PR-0B.3 row #18 walk) is the production surface
+> today. Binary IRT confirmatory-loadings (LAM-03) walks to
+> `covered` after the **M2.3** milestone closes. See the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
+
 By default, `gllvmTMB`'s reduced-rank loading matrix
 $\boldsymbol{\Lambda}$ is exploratory: lower-triangular with positive
 diagonal, identifiable up to *trait permutation* and *column rotation*.

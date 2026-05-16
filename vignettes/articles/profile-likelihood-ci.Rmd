@@ -23,6 +23,14 @@ knitr::opts_chunk$set(
 )
 ```
 
+> **Preview — Gaussian validated; mixed-family extension is M3 milestone work.**
+>
+> Profile, Wald, and bootstrap CIs are end-to-end-validated for
+> Gaussian fits (CI-02..CI-07 `covered` in the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
+> Extension to non-Gaussian and mixed-family fits is **M3**
+> milestone work.
+
 `gllvmTMB` uses **profile-likelihood confidence intervals** as the
 default for the ratio-quantity extractors (`extract_repeatability()`,
 `extract_communality()`, `extract_phylo_signal()`). Profile likelihood

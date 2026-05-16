@@ -23,6 +23,16 @@ knitr::opts_chunk$set(
 )
 ```
 
+> **Preview — capstone composite fit is M3 milestone work.**
+>
+> Each individual covariance component shown below (`latent`,
+> `unique`, `phylo_*`, `spatial_*`, `meta_V`) is `covered` in the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
+> The full six-piece kitchen-sink composite's identifiability and
+> interpretability on real data is **M3** milestone work
+> (R ≥ 200 empirical-coverage gate). Treat this as a method demo
+> until M3 closes.
+
 The replicated site--species--trait GLLVM is the canonical
 functional-biogeography model (Nakagawa et al., in preparation).
 This article fits it as a **model ladder**:

@@ -286,31 +286,195 @@ symmetric block-diagonal `V` construction.
 adds the multiplicative weighted-regression mode per Nakagawa
 2022 EcoLetters. See vision doc "Planned extensions".
 
-## Random slopes — `reserved` (M1 work)
+## Random slopes — design plan (M1 work; max 3 slopes)
 
 `gllvmTMB` does NOT currently support random slopes inside the
 3 × 5 keywords. The M1 Gaussian completeness milestone (per
 ROADMAP, post-Phase-0C) adds random-slope support for the
-`latent + unique` paired keywords:
+`latent + unique` paired keywords. This section is the design
+contract; the M1.1 slice doc
+`docs/design/42-random-slopes-grammar.md` (forthcoming) covers
+parser + TMB-template details.
+
+### Combinatorial scope: why we cap at 3 slopes
+
+For $T$ traits and $s$ random slopes, the per-level random-effect
+vector has length $T(1+s)$. Costs scale linearly in slopes, but
+identification difficulty (slope-slope and slope-intercept
+correlations getting tangled) scales worse:
+
+| Slopes | Latent vector per level | Unstructured $\Sigma$ entries | Reduced-rank ($K$) |
+|--------|-------------------------|-------------------------------|---------------------|
+| 0 (intercept only) | $T$ | $T(T+1)/2$ | $TK$ loadings + $T$ diag |
+| 1 slope | $2T$ | $T(2T+1)$ | $2TK$ + $2T$ diag |
+| 2 slopes | $3T$ | $\frac{3T(3T+1)}{2}$ | $3TK$ + $3T$ diag |
+| 3 slopes | $4T$ | $2T(4T+1)$ | $4TK$ + $4T$ diag |
+| 4+ slopes | $5T+$ | huge | huge |
+
+For $T = 10$: 0 → 55 cov entries; 1 → 210; 2 → 465; 3 → 820;
+4 → 1275. Real ecological use cases (personality plasticity,
+reaction norms, longitudinal trait change, JSDM
+environment-by-species interactions) almost never need more
+than 2-3 slopes. **Maintainer 2026-05-16 decision: cap at 3.**
+
+### Allowed long-format syntax (M1)
 
 ```r
-# Planned M1 syntax:
+# 0 random slopes (current; intercept only). Status: covered.
+gllvmTMB(
+  value ~ 0 + trait + (0 + trait):env +
+    latent(0 + trait | site, d = 2) +
+    unique(0 + trait | site),
+  data = df,
+  unit = "site"
+)
+
+# 1 random slope (M1.1). Status: claimed (M1.1 verifies).
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):env +
     latent(0 + trait + (0 + trait):env | site, d = 2) +
     unique(0 + trait + (0 + trait):env | site),
-  data = df
+  data = df,
+  unit = "site"
+)
+
+# 2 random slopes (M1.2). Status: claimed.
+gllvmTMB(
+  value ~ 0 + trait + (0 + trait):env1 + (0 + trait):env2 +
+    latent(0 + trait + (0 + trait):env1 + (0 + trait):env2 | site, d = 2) +
+    unique(0 + trait + (0 + trait):env1 + (0 + trait):env2 | site),
+  data = df,
+  unit = "site"
+)
+
+# 3 random slopes (M1.3, the maximum). Status: claimed.
+# Same pattern with env1 + env2 + env3.
+
+# 4+ random slopes: REJECTED at parse time.
+```
+
+### Allowed wide-format syntax (M1)
+
+```r
+# 1 random slope via traits() LHS shorthand:
+gllvmTMB(
+  traits(t1, t2, t3) ~ 1 + env +
+    latent(1 + env | site, d = 2) +
+    unique(1 + env | site),
+  data = df_wide,
+  unit = "site"
 )
 ```
 
-The slope adds another layer to the random-effects covariance:
-$\boldsymbol\Sigma$ on (trait + trait:env) jointly, not just on
-trait. Design doc `docs/design/42-random-slopes-grammar.md`
-(forthcoming, M1.1 slice) specifies the parser, the TMB
-template extension, and the identifiability constraints.
+Expansion: `1` → `0 + trait`; `1 + env` → `0 + trait + (0 + trait):env`.
+Same engine.
 
-Other 3 × 5 cells (`indep`, `dep`, `phylo_*`, `spatial_*`)
-get random-slope support one at a time after M1 closes.
+### Slope cap (parser-enforced)
+
+| Slopes inside `latent + unique` | Status | Parser behaviour |
+|---------------------------------|--------|------------------|
+| 0 | `covered` | accepted (current path) |
+| 1 | `claimed` (M1.1) | accepted; per-trait intercept + slope |
+| 2 | `claimed` (M1.2) | accepted; per-trait intercept + 2 slopes |
+| 3 | `claimed` (M1.3) | accepted; per-trait intercept + 3 slopes (the maximum) |
+| 4+ | **rejected at parse time** | error `class = "gllvmTMB_too_many_slopes"` with message: *"Random slopes inside `latent + unique` are capped at 3 (the maintainer 2026-05-16 design decision; see `docs/design/04-random-effects.md` 'Random-slope cap' section). Reduce the number of slope predictors OR use a reduced-rank covariance structure (`indep` / `dep`) to absorb the variation."* |
+
+### What happens internally for $s$ slopes
+
+For `latent(0 + trait + (0 + trait):x_1 + ... + (0 + trait):x_s | g, d = K)`:
+
+- The per-level random-effect vector has length $T(1 + s)$,
+  indexed by (trait, intercept-or-slope-index).
+- $\boldsymbol\Lambda \in \mathbb{R}^{T(1+s) \times K}$ captures
+  shared variation across intercepts and slopes.
+- The implied covariance is
+  $\boldsymbol\Sigma_g = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
+  on the $T(1+s)$-dimensional vector.
+- $\boldsymbol\Psi$ has $T(1+s)$ diagonal entries (one per
+  (trait, intercept-or-slope) combination).
+- Slope-slope correlations (across $T$ traits, across $s$
+  slopes) are captured implicitly through $\boldsymbol\Lambda$'s
+  rows.
+
+This is mathematically the **same structure** as the
+intercept-only case — just with a wider per-level vector. The
+reduced-rank decomposition still applies; $K$ can stay
+modest (1, 2, or 3) regardless of how many slopes.
+
+### Computational cost
+
+- $T(1+s)$ latent variables per group level → $T(1+s) \cdot K$
+  loadings → Laplace approximation cost scales with $K$ (not
+  with $T$ or $s$ directly, because the random-effect vector
+  reshapes into the $K$-dim factor scores).
+- Each group level $\ell$ has $K$ factor scores per
+  intercept-or-slope; total integration is over $K \cdot n_g$
+  random variables.
+- Roughly linear in $T \cdot s$ for the loadings dimension; not
+  combinatorial in $T$.
+
+### Phylogenetic / spatial random slopes — `planned (post-M1)`
+
+`phylo_slope(species, d = K, tree = tree, slope = ~ env)` and
+`spatial_slope(0 + trait | sites, mesh = mesh, slope = ~ env)`
+are **NOT** in the M1 scope. After M1 lands and stabilises
+Gaussian random slopes on the non-phylo, non-spatial keywords,
+the phylo / spatial extensions get their own design + slice.
+
+The combinatorial cap also applies: max 3 slopes inside
+`phylo_latent + phylo_unique` and `spatial_latent + spatial_unique`
+respectively. Parser enforcement extends to the phylo/spatial
+keywords when they ship.
+
+### Identifiability diagnostic
+
+`check_identifiability(fit)` extends to flag rank-deficiency in
+the $T(1+s) \times K$ Lambda when slopes are present. Test
+fixture (M1.5):
+
+1. Simulate from $d = K$ truth with $s$ random slopes per
+   $T$ traits.
+2. Fit with $d = K+1$ (spurious extra factor).
+3. Verify `check_identifiability()` flags the spurious column
+   via Procrustes-aligned near-zero residual magnitude.
+
+### Coverage study scope
+
+M1.5 `coverage_study()` runs on each slope-count case:
+$s \in \{0, 1, 2, 3\}$, $T = 10$ traits, $n_g = 50$ to $100$
+sites, $K \in \{1, 2, 3\}$, $R = 200$ replicates per cell.
+Target $\ge 94 \%$ empirical coverage on:
+
+- per-trait random-intercept variances $\psi_t^2$
+- per-trait random-slope variances
+- pairwise intercept-slope correlations (within trait)
+- pairwise slope-slope correlations (across traits)
+- the implied repeatability (intercept-only and intercept-slope
+  cases)
+
+### Slope-only random effects (planned, post-M1)
+
+The current design assumes random slopes accompany a random
+intercept (the `(0 + trait + (0 + trait):x | g)` pattern). Pure
+slope-only random effects (`(0 + (0 + trait):x | g)`, no
+intercept) are **`planned (post-M1)`**. The use case (slope
+varies across levels, but no per-level intercept offset) is
+rare; comes back as a follow-up slice after M1 closes.
+
+### Other 3 × 5 cells
+
+Other 3 × 5 cells (`indep`, `dep`, and the phylo / spatial
+analogues) get random-slope support **one at a time after M1
+closes**. The order is:
+
+1. M1.1-M1.3: `latent + unique` paired keyword with 1, 2, 3
+   slopes (Gaussian).
+2. M2: same machinery extended to binomial (`family =
+   binomial()`).
+3. Post-M2: `phylo_latent + phylo_unique` slopes.
+4. Post-M2: `spatial_latent + spatial_unique` slopes.
+5. Post-CRAN: `indep` / `dep` slopes (less common; lower
+   priority).
 
 ## Crossed-vs-nested encoding
 

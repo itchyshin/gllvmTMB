@@ -1,5 +1,37 @@
 # Task allocation: Claude × Codex × Maintainer
 
+> ## ⏸️ PAUSED — 2026-05-16
+>
+> **Maintained by:** Ada (orchestrator).
+>
+> Maintainer 2026-05-16 paused this document for the Phase 0A / 0B /
+> 0C / Phase 1 cycle: we are **not asking Codex to help** during
+> these phases. The active team is Claude (me, the orchestrator) +
+> the AGENTS.md standing review roles (Boole, Gauss, Noether,
+> Darwin, Fisher, Emmy, Pat, Jason, Curie, Grace, Rose, Shannon)
+> dispatched as review lenses on each task.
+>
+> **Why the pause**: the 2026-05-15 article-port crisis showed that
+> the two-team (Codex × Claude) lane discipline was complicating
+> the discipline upgrade work that Phase 0A is now installing.
+> Phase 0A → 0C and Phase 1 (M1 + M2) are Claude-team-only so the
+> persona-active-naming convention can be applied consistently
+> without lane-coordination overhead.
+>
+> **When to revisit**: Codex may resume contributions after Phase
+> 1 close gate (M2 done) when the discipline scaffolding is fully
+> ratified and stable. At that point this document gets refreshed
+> to reflect the post-Phase-1 lane structure, OR if Codex remains
+> absent it gets archived to `docs/dev-log/legacy/`.
+>
+> The historical content below is preserved as the **2026-05-11
+> baseline** for whenever the Codex × Claude lane structure
+> resumes.
+
+---
+
+## Historical content (2026-05-11 baseline)
+
 This document shows how Claude Code, Codex, and the maintainer (Ada)
 divide work within and across the six phases of `ROADMAP.md`. It
 exists so the maintainer can see at a glance who is supposed to do

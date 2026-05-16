@@ -38,20 +38,31 @@ Model Builder.
 
 ## Design Rules
 
-1. Do not add a new family without simulation tests (see the
-   `add-simulation-test` skill, especially the symbolic-math <->
-   implementation alignment table).
+1. Do not add a new family without simulation tests. See the
+   `add-simulation-test` skill (especially the symbolic-math <->
+   implementation alignment table), `docs/design/02-family-registry.md`
+   for the 14-slot per-family contract, and
+   `docs/design/03-likelihoods.md` for the per-family TMB likelihood
+   path.
 2. Do not add user-facing functions without roxygen2 documentation
-   and a runnable example.
-3. Do not change formula grammar (the 3 x 5 keyword grid) without
-   updating the canonical grammar documentation (the 3 x 5 grid
-   table in this file and in `CLAUDE.md`; a dedicated
-   `docs/design/01-formula-grammar.md` was once planned but has
-   not yet been written).
+   and a runnable example. The return-value contract for every
+   exported `extract_*()` is recorded in
+   `docs/design/06-extractors-contract.md`.
+3. Do not change formula grammar (the 3 x 5 keyword grid +
+   `traits()` LHS) without updating `docs/design/01-formula-grammar.md`
+   (the canonical grammar contract), the 3 x 5 grid table in this
+   file, and the parallel table in `CLAUDE.md`.
 4. Do not change likelihood parameterisation in `src/gllvmTMB.cpp`
-   without applying the `tmb-likelihood-review` skill.
-5. Do not add new tiers (B, W, phy, spatial, cluster) without
-   simulation recovery on a known DGP at the new tier.
+   without applying the `tmb-likelihood-review` skill and updating
+   `docs/design/03-likelihoods.md`.
+5. Do not add new grouping levels (`unit` / `unit_obs` / `cluster`)
+   or new variance-share keyword categories (`phylo_*` / `spatial_*`
+   / `meta_V` / any future axis) without simulation recovery on a
+   known DGP and updates to `docs/design/04-random-effects.md` +
+   `docs/design/05-testing-strategy.md`. (Per the Option C revision
+   2026-05-16, `phy` and `spatial` are *variance-share* shortcuts
+   on the unit-tier covariance, not peer grouping levels — see
+   `docs/design/06-extractors-contract.md` Section 1.)
 6. Keep pull requests small and focused. The 2026-05-10 lesson:
    work-in-progress > 1 produces cancel-cascades on CI.
 7. Every meaningful change should append to
@@ -62,6 +73,30 @@ Model Builder.
 9. If code is ported from `sdmTMB` or another upstream package,
    document provenance in `inst/COPYRIGHTS` before treating the
    change as complete.
+10. **Convention changes cascade to every place the example
+    code lives** (drmTMB / Rose-team discipline ratified by
+    maintainer 2026-05-16). When an argument name, keyword
+    default, function signature, or syntax requirement changes,
+    the **same PR** must update:
+    - the function's roxygen block (`@param`, `@usage`,
+      `@examples`) and the regenerated `man/*.Rd` help file —
+      **every R function is bound to its help file and the two
+      must agree**;
+    - every other roxygen `@examples` block that uses the
+      changed convention;
+    - every vignette / article code chunk that uses it;
+    - the canonical example in `00-vision.md`, the keyword
+      grid in this file, the Tiny example in `README.md`,
+      and any NEWS code chunk;
+    - the validation-debt register row(s) if test evidence
+      moves.
+
+    The after-task report **must enumerate every example file
+    touched** and explicitly state which files were verified
+    clean. A convention change merged without the cascade is a
+    hard violation. See `docs/design/10-after-task-protocol.md`
+    "Convention-Change Cascade" section for the operational
+    checklist.
 
 ## Standard Commands
 
@@ -73,11 +108,74 @@ pkgdown::check_pkgdown()
 pkgdown::build_articles(lazy = FALSE)  # for parser-touching changes
 ```
 
+## Recovery Checkpoints
+
+For long runs, stream failures, context-compaction events, or
+handoffs between agents, write a compact recovery checkpoint
+*before* continuing. Drop a Markdown file under
+`docs/dev-log/recovery-checkpoints/` named
+`YYYY-MM-DD-HHMMSS-<agent>-checkpoint.md` with:
+
+- current branch and `git status --short` output;
+- changed files and `git diff --stat`;
+- commands already run, with exact outcomes;
+- commands that still need to run;
+- next safest action;
+- any blocking question for the maintainer.
+
+After a crash or context-compaction event, **the repository is
+authoritative**. Rehydrate from:
+
+```sh
+git status --short --branch
+git diff --stat
+git diff
+```
+
+Then read the newest check-log entry and the newest recovery
+checkpoint *before* editing. Do not trust private agent memory
+alone. (Kit absorption from drmTMB 2026-05-16; closes the
+context-loss gap demonstrated in the 2026-05-16 Phase 0A
+session.)
+
 ## Definition of Done
 
-A feature is done only when implementation, simulation tests,
-documentation, examples, check logs, after-task notes, and a review
-pass are all present.
+A feature is "done" only when **all six** items below are
+present. This is a hard contract (drmTMB-team discipline
+ratified by maintainer 2026-05-16). The after-task report
+names which of these were checked and by whom.
+
+1. **Implementation.** Code merged on `main` with passing
+   3-OS CI.
+2. **Simulation recovery test** for any new likelihood,
+   family, keyword, or estimator. See `add-simulation-test`
+   skill and `docs/design/05-testing-strategy.md` for the
+   test-layer contract. Curie signs off on test fidelity.
+3. **Documentation.** Roxygen `@param` + `@return` +
+   `@examples` complete; `man/*.Rd` regenerated; affected
+   article(s) updated. The return-value contract for any
+   new extractor lands in
+   `docs/design/06-extractors-contract.md`.
+4. **Runnable user-facing example.** README, vignette, or
+   article example exercising the feature on data the
+   reader can copy. Pat reads it as an applied PhD user.
+5. **`docs/dev-log/check-log.md` entry** recording the exact
+   commands run, the exact rg patterns used for stale-wording
+   scans, and what was deliberately not run.
+6. **Review pass for likelihood / parameterization /
+   scope.** Gauss + Noether on TMB-likelihood touches; Boole
+   on formula-grammar touches; Fisher on inference-machinery
+   touches; Rose on the cross-file consistency audit before
+   merge. The after-task report names which reviewers
+   actively engaged.
+
+If one of these six is genuinely not appropriate, the
+after-task report must say **why**. Skipping silently is a
+hard violation. **And every advertised capability must have
+a row in `docs/design/35-validation-debt-register.md`**
+marked `covered` (with test evidence path), `partial`, or
+`blocked` — see the Writing Style section's scope-boundary
+rule.
 
 ## CI Pacing Discipline
 
@@ -115,9 +213,11 @@ package contributors.
 - Use active voice when the actor matters.
 - Do not turn prose into bullets unless the content is a genuine
   list.
-- Keep terms stable: `Sigma`, `Lambda`, `s`, `latent`, `unique`,
-  `indep`, `dep`, `phylo_*`, `spatial_*`, `meta_known_V(V = V)`.
-  These should not drift across documents.
+- Keep terms stable: `Sigma`, `Lambda`, `psi` (per-trait
+  scalar) / `Psi` (matrix), `latent`, `unique`, `indep`, `dep`,
+  `phylo_*`, `spatial_*`, `meta_V(value, V = V)`. These should
+  not drift across documents. (`meta_known_V` is retained as
+  a deprecated alias through 0.2.x; new examples use `meta_V`.)
 - Support factual, statistical, or literature claims with a citation,
   local evidence, or a clear note that the statement is a design
   assumption.
@@ -136,11 +236,26 @@ package contributors.
   shorthand applies to `indep()`, `dep()`, and `spatial_*()` terms;
   ordinary `(1 | group)` random intercepts pass through unchanged.
   The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` is
-  soft-deprecated as of 0.2.0; new examples should use the
+  **removed in 0.2.0** (per validation-debt register row
+  FG-16); new examples must use the `traits(...)` LHS
   formula API.
   Roxygen `@examples` blocks for individual keyword or extractor
   functions may stay single-form when the keyword is intrinsically
   one shape.
+- **Scope-boundary statement required** on every NEWS entry,
+  vignette, article, README section, and roxygen `@description`
+  that advertises a capability. State explicitly:
+  - what is **IN** (`covered` rows in
+    `docs/design/35-validation-debt-register.md`);
+  - what is **PARTIAL** (`partial` rows; works in the named
+    regime, not yet at the depth advertised elsewhere);
+  - what is **PLANNED** or **REJECTED** (`blocked` rows; not
+    advertised in user-facing prose, only in the register).
+
+  Reference register row IDs (e.g. FG-NN, FAM-NN, MIX-NN) so
+  readers and future auditors can trace each claim to evidence.
+  This rule, had it existed 2026-05-15, would have prevented
+  the article-port overpromise crisis.
 
 Use the project-local `prose-style-review` skill for substantial
 README, vignette, pkgdown, after-task, release, or paper-oriented

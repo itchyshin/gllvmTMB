@@ -1462,3 +1462,80 @@ blocker under `error_on = "warning"`.
 the new go-to reference for any PR that touches roxygen
 `@seealso` blocks. The detection recipe above is the canonical
 local-check step before pushing.
+
+## 2026-05-16 -- Phase 0A infrastructure prep + the autopilot-overpromise Kaizen lesson
+
+Scope:
+
+- 14 commits on `agent/phase0-infrastructure-prep` produced 8
+  design docs (1 refresh + 7 new), AGENTS.md with new Rule #10
+  (Convention-Change Cascade), `10-after-task-protocol.md`
+  with 3-rule tests contract + 10-section template, README
+  Stable-core feature matrix refresh, 2 skill upgrades + 1
+  new skill (`stop-checkpoint`), and Option A / Option C
+  ratifications.
+- ~50 files touched, ~2,800 net lines added. Zero R/ source
+  touched.
+
+Evidence:
+
+- drmTMB-parity gap: 38 design docs / 321 after-task reports
+  / 16 R/ files (drmTMB) vs 6 design docs / 86 after-task
+  reports / 47 R/ files (gllvmTMB pre-Phase-0A). drmTMB writes
+  more about what they're doing than they write code.
+- 2026-05-15 article-port crisis: `/loop` autopilot shipped
+  articles describing aspirational capabilities past Pat +
+  Rose review.
+- 2026-05-16 Phase 0A session itself: the agent shipped
+  Steps 5 / 6 / 7 commits in sequence WITHOUT surfacing for
+  maintainer review between artefacts. The maintainer caught
+  it ("I do want to check all these different documents you're
+  writing as we have been doing so far"). The `stop-checkpoint`
+  skill is the operational fix.
+
+Kaizen points (appended to the rolling catalogue):
+
+10. **Autopilot is the failure mode the validation-debt
+    register exists to prevent.** When momentum builds — a
+    streak of clean commits, an obvious next step, an
+    apparently mechanical batch — the discipline correction is
+    to slow down and surface for review before each artefact,
+    not to chain through. Two-layer fix:
+    - **operational** (`stop-checkpoint` skill): artefact →
+      checkpoint → action, never artefact → action directly;
+    - **structural** (validation-debt register +
+      scope-boundary template): every advertised claim maps
+      to a register row with status evidence; no "stable"
+      claim is allowed without a `covered` row backing it.
+
+11. **Convention changes cascade through help files.** Option A
+    uniform-naming was ratified in `01-formula-grammar.md` but
+    did NOT propagate to the README Tiny example until the
+    maintainer caught it mid-Phase-0A. The deeper lesson:
+    every R function is bound to its help file (roxygen →
+    `man/*.Rd`); convention changes propagate to roxygen
+    `@examples`, vignette / article code chunks, README, NEWS,
+    design-doc examples, and validation-debt register rows in
+    the same PR. Codified as AGENTS.md Design Rule #10.
+    Follow-up PR(s) apply the cascade to all 26 R/ `@examples`
+    blocks, 20 vignettes/articles, and NEWS code chunks.
+
+12. **The skill that catches stale wording can itself have
+    stale wording.** `rose-pre-publish-audit/SKILL.md` was
+    enforcing "math uses S / s" (from 2026-05-12) even though
+    `decisions.md` 2026-05-14 reversed the convention to
+    Ψ / ψ. Similar: `gllvmTMB_wide()` described as
+    "soft-deprecated" when it was actually REMOVED in 0.2.0;
+    rg patterns named `meta_known_V` as primary after `meta_V`
+    had become canonical. Step 11's skill upgrade fixed these
+    self-references. The deeper Kaizen: every skill is itself
+    subject to the convention-cascade rule.
+
+Process changes adopted:
+
+- AGENTS.md Design Rule #10 (Convention-Change Cascade) — new.
+- `10-after-task-protocol.md` Convention-Change Cascade
+  section — new operational checklist.
+- `stop-checkpoint` skill — new; Shannon authors, Ada invokes.
+- Validation-debt register row-ID cross-check in every
+  after-task report and Rose pre-publish audit.

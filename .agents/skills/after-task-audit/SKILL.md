@@ -1,6 +1,6 @@
 ---
 name: after-task-audit
-description: Audit a completed gllvmTMB task or phase before closing it, checking implementation, equations, examples, tests, docs, pkgdown, roadmap, NEWS, known limitations, stale wording, and after-task reporting. Includes the 2026-05-10 anti-patterns (success-complacency, coverage-of-acceptance, drmTMB-benchmark).
+description: Audit a completed gllvmTMB task or phase before closing it. Checks implementation, equations, examples, tests, docs, pkgdown, roadmap, NEWS, known limitations, stale wording, after-task reporting, AGENTS.md Rule #10 convention-change cascade, and validation-debt register row IDs. Includes the 2026-05-10 anti-patterns (success-complacency, coverage-of-acceptance, drmTMB-benchmark) and the gllvmTMB-specific stale-wording rg patterns ratified in Phase 0A (2026-05-16).
 ---
 
 # After-Task Audit
@@ -29,7 +29,8 @@ in doubt about section scope or required content.
    `add-simulation-test` skill.
 4. Check examples and vignettes use supported syntax.
 5. Check tests exercise the intended behaviour and at least one
-   failure path.
+   failure path. (See "Tests of the Tests" below for the 3-rule
+   contract ratified in Phase 0A 2026-05-16.)
 6. Run targeted tests for touched behaviour.
 7. Run broader package checks when practical:
    - `devtools::test()`
@@ -55,20 +56,84 @@ in doubt about section scope or required content.
     current status, `ROADMAP.md`, `NEWS.md`,
     `docs/dev-log/known-limitations.md`, the relevant design docs in
     `docs/design/`, and `_pkgdown.yml` when navigation should change.
-    Record the exact `rg` patterns used; do not write only
-    "stale-wording scans".
-11. Update roadmap, NEWS, known limitations, and design docs when
-    behaviour changed.
-12. Add a compact after-task report under `docs/dev-log/after-task/`.
+    Record the exact `rg` patterns used **verbatim** in the
+    after-task report or check-log entry; do not write only
+    "stale-wording scans" (Phase 0A 2026-05-16 ratification).
+11. **Convention-Change Cascade check (AGENTS.md Design Rule #10).**
+    If this PR changes an argument name, keyword default, function
+    signature, or syntax requirement, the same PR MUST update:
+    - the function's roxygen block AND regenerated `man/*.Rd`
+      (every R function is bound to its help file; both must
+      agree);
+    - every other roxygen `@examples` block using the changed
+      convention;
+    - every vignette / article code chunk;
+    - canonical examples in `docs/design/00-vision.md`,
+      `AGENTS.md` keyword grid, `README.md` Tiny example,
+      `CLAUDE.md` if present, any `NEWS.md` code chunk;
+    - the validation-debt register row(s) if test evidence moves.
+
+    The after-task report enumerates every example file
+    touched. A convention change merged without the cascade is
+    a hard violation. See
+    `docs/design/10-after-task-protocol.md` "Convention-Change
+    Cascade" section for the operational checklist.
+12. **Validation-debt register row-ID cross-check.** For any
+    capability advertised in user-facing prose (README, NEWS,
+    articles, vignettes, roxygen `@description`), confirm the
+    claim maps to a row in
+    `docs/design/35-validation-debt-register.md` with status
+    `covered` (stable), `partial` (experimental), or `blocked`
+    (planned / removed). Reference the row ID (FG-NN, FAM-NN,
+    MIX-NN, etc.) in the after-task report. The scope-boundary
+    statement template in AGENTS.md Writing Style section names
+    this rule.
+13. Update roadmap, NEWS, known limitations, and design docs
+    when behaviour changed.
+14. Add a compact after-task report under `docs/dev-log/after-task/`
+    following the 10-section template (see below).
 
 ## Stale-Wording Searches
 
 Use task-specific searches. Common `gllvmTMB` patterns:
 
 ```sh
+# Cross-feature presence
 rg "Sigma_B|Sigma_W|Lambda_B|Lambda_W|latent\\(|unique\\(|indep\\(|dep\\(" README.md ROADMAP.md docs vignettes R tests
 rg "phylo_latent|phylo_unique|spatial_latent|spatial_unique" README.md ROADMAP.md docs vignettes R tests
 rg "full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1" README.md ROADMAP.md NEWS.md docs vignettes
+```
+
+**gllvmTMB-specific stale-wording patterns** (Phase 0A 2026-05-16 — run
+on every PR touching user-facing prose, articles, or roxygen):
+
+```sh
+# Legacy S/U notation (canonical: psi / Psi per decisions.md 2026-05-14
+# notation reversal)
+rg "\\bS_B\\b|\\bS_W\\b|\\\\bf S" .
+
+# Long-format gllvmTMB() calls MUST pass trait = "..." explicitly
+# (Option A uniform-naming rule per 01-formula-grammar.md). Enumerate
+# every gllvmTMB( call site and manually verify each long-format
+# call has trait = "..." present. Wide-format (traits() LHS) does NOT
+# take a trait = argument.
+rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design
+
+# Foundational in-prep citations (engine-specific in-prep validation
+# claims are OK; foundational results should cite published literature)
+rg "in prep|in preparation" docs vignettes
+
+# Deprecated keyword aliases that should not appear in user-facing
+# prose
+rg "\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes
+
+# meta_known_V is now a deprecated alias (canonical: meta_V)
+rg "meta_known_V" README.md NEWS.md docs vignettes
+
+# gllvmTMB_wide() is REMOVED in 0.2.0 per validation-debt register
+# row FG-16; any prose calling it "soft-deprecated" or as a current
+# API is stale
+rg "gllvmTMB_wide" README.md NEWS.md docs vignettes
 ```
 
 Generated pkgdown pages can also contain stale text after a site build:
@@ -77,19 +142,50 @@ Generated pkgdown pages can also contain stale text after a site build:
 rg "full.*rejected|only diagonal|planned.*implemented" docs
 ```
 
+**Record the exact rg patterns used, verbatim, in the after-task
+report or check-log entry.** A generic phrase such as
+"stale-wording scans" or "ran the audit" is not enough for later
+auditors — they need the exact pattern + scope to reproduce the
+check after a related change.
+
 Do not mechanically delete historical after-task notes. If an old note
 was true when written, leave it; add the new after-task report to
 supersede it.
 
 ## Tests Of The Tests
 
-For new tests, verify at least one of the following:
+**3-rule contract (Phase 0A 2026-05-16 ratification).** Every new
+test must satisfy at least **one** of:
 
-- the new test failed before the fix;
-- the test compares the likelihood to an independent calculation;
-- the test checks a boundary, malformed input, or missing-data path;
-- the test combines the new feature with an already-supported
-  neighbouring feature.
+1. **Failure-before-fix verification**: the test was demonstrated
+   to fail before the fix (a reproducer of a real bug).
+2. **Boundary case**: the test exercises a boundary, malformed
+   input, missing-data path, or family × $d$ edge regime
+   (variance near zero, rank-deficiency, fixed-residual ordinal,
+   etc.).
+3. **Feature combination**: the test combines the new feature
+   with at least one already-supported neighbouring feature
+   (mixed-family × phylo, random slope × `lambda_constraint`,
+   etc.).
+
+A "happy-path-only" test that adds coverage without satisfying
+any of the three is acceptable only when explicitly marked
+prophylactic (no specific bug, just covering a contract).
+
+When adding tests, also confirm that they actually exercise the
+intended behaviour:
+
+- inspect failure messages before relaxing expectations;
+- check that parser tests assert parsed fields, not only object
+  classes;
+- use deterministic seeds for simulation tests;
+- add a negative test when a rule should reject unsupported
+  syntax or data (kit absorption from drmTMB 2026-05-16);
+- pair every guard's rejection-case test with the matching
+  acceptance-case test (the 2026-05-10 lesson — see
+  Anti-patterns below).
+- when a likelihood is involved, compare to an independent
+  calculation when possible.
 
 ## Anti-patterns from 2026-05-10 (do not re-derive)
 

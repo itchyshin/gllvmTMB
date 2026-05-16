@@ -1011,3 +1011,100 @@ record aligns with the actual package state -- not as a
 punch list. Audit #1 produced a CRAN-blocking fix (the
 multi-start `obj$report()` bug). Audit #2 produced two
 queued items, neither blocking. Both filed for the record.
+
+## 2026-05-16  Phase 0A infrastructure prep — function-first pivot + drmTMB-parity discipline upgrade
+
+Decision: ratify the function-first pivot and the discipline
+upgrade delivered in Phase 0A PR (`agent/phase0-infrastructure-prep`,
+14 commits, ~50 files, zero R/ source touched).
+
+Trigger: the 2026-05-15 article-port batch shipped articles
+describing capabilities that were partially or aspirationally
+implemented (mixed-family extractors; queued cross-package
+comparators; hard-coded recovery numbers). The team had skipped
+the drmTMB-style "machinery first, examples second" discipline.
+Maintainer-led replan 2026-05-16 established Phase 0A as a
+docs-only infrastructure PR before any further article work.
+
+Ratified scope:
+
+1. **Vision**: `gllvmTMB` is the user-first R package for
+   multivariate latent-variable models in ecology / evolution /
+   environmental sciences. Lab motto: transparent / reproducible
+   / super easy to use / accessible / inclusive. The
+   unparalleled-capability differentiator is mixed-family
+   latent-scale correlations on **non-delta families**. Delta
+   families deferred post-CRAN (two-scales problem).
+2. **8 design docs as canon**: `00-vision.md` (refresh),
+   `01-formula-grammar.md` (NEW), `02-family-registry.md`
+   (NEW), `03-likelihoods.md` (NEW), `04-random-effects.md`
+   (NEW), `05-testing-strategy.md` (NEW),
+   `06-extractors-contract.md` (NEW),
+   `35-validation-debt-register.md` (NEW). Plus
+   `03-phylogenetic-gllvm.md` refresh and
+   `11-task-allocation.md` PAUSED banner.
+3. **Validation-debt register** with 102 honest rows
+   (40 covered, 48 partial, 0 opt-in, 14 blocked). drmTMB
+   Doc #34 template. This is the overpromise-preventer.
+4. **AGENTS.md upgrade**: 6-item Definition of Done hard
+   contract; scope-boundary statement template in Writing
+   Style; Design Rules 1–5 cross-refs to the new design docs;
+   Recovery Checkpoints section (drmTMB kit absorption); NEW
+   Design Rule #10 — Convention-Change Cascade (function ↔
+   help-file binding).
+5. **`10-after-task-protocol.md` upgrade**: 6 gllvmTMB-specific
+   stale-wording rg patterns; rg-patterns-verbatim recording
+   rule; 3-rule tests-of-the-tests contract (failure-before-fix
+   / boundary / feature-combination); paragraph-per-engaged-
+   role team-learning depth rule; Convention-Change Cascade
+   section; 10-section after-task report template; strengthened
+   Closing Rule.
+6. **README upgrade**: Stable-core feature matrix refreshed
+   against the validation-debt register; vocabulary mapping
+   (stable ⇔ covered, experimental ⇔ partial, planned ⇔
+   blocked); register row-IDs cited; Current boundaries
+   expanded with explicit "Removed in 0.2.0" and "Deferred to
+   post-CRAN" subsections.
+7. **Skills**: `after-task-audit` upgraded to 14-item Required
+   Audit + 3-rule tests contract + gllvmTMB rg patterns;
+   `rose-pre-publish-audit` fixed its own stale guidance (S/s
+   → Ψ/ψ; gllvmTMB_wide REMOVED, not soft-deprecated;
+   meta_known_V → meta_V) + added validation-debt /
+   stable-core matrix / cascade-verification cross-checks; NEW
+   `stop-checkpoint` skill (Shannon authors, Ada invokes).
+8. **Convention decisions ratified in this PR**:
+   - **Option A uniform-naming**: long-format `gllvmTMB()`
+     calls always pass `trait`, `unit`, `unit_obs`, `cluster`
+     explicitly. Wide-format (`traits()` LHS) does not take
+     `trait =`.
+   - **Option C variance-share framing**: `level = "phy"` and
+     `level = "spatial"` are variance-share shortcuts on the
+     unit-tier covariance, NOT peer grouping levels. Engine
+     code unchanged; documentation matches real semantics.
+   - **1-slope cap for M1 random slopes.** Higher slope counts
+     are post-M1, contingent on validation evidence.
+   - **`meta_known_V()` → `meta_V(value, V = V)` rename**;
+     old name is a deprecated alias.
+   - **`gllvmTMB_wide(Y, ...)` REMOVED in 0.2.0** per
+     validation-debt register FG-16.
+9. **Phase 0A / 0B / 0C sequencing**:
+   - 0A (this PR): docs-only infrastructure.
+   - 0B: empirical verification — walk every `claimed` row
+     to `covered` or honestly downgrade. No new features.
+   - 0C: transition cleanup (revert overpromise articles;
+     rewrite ROADMAP; Phase 1b empirical coverage artefact).
+10. **Persona-active naming** as first-class discipline: every
+    design doc has a "Maintained by" header naming lead +
+    reviewers; commit messages name the lead persona;
+    after-task reports have per-persona contribution
+    paragraphs for engine / article / scope PRs.
+
+Rationale: drmTMB ships 3× more design docs and 3.7× more
+after-task reports for 1/3 the R/ source files. They write more
+about what they're doing than they write code. Phase 0A closes
+that gap before any further machinery work.
+
+Next: Phase 0B walks every `claimed` row to evidence; Phase 0C
+cleans up overpromise articles; Phase 1 M1 Gaussian completeness
+adds random slopes (capped at 1) and validates the full
+extractor surface on Gaussian.

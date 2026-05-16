@@ -66,24 +66,24 @@ support from end-to-end verification:
 
 | Syntax | Current status | Notes |
 | --- | --- | --- |
-| `gllvmTMB(value ~ ..., data = df_long)` | claimed | Canonical long-format entry point. One row per `(unit, trait)`. Phase 0B verifies via a smoke test in `tests/testthat/test-gllvmTMB-basics.R`. |
-| `gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide)` | claimed | Wide-format entry point. The `traits(...)` LHS marker triggers internal pivot to long. The long+wide `logLik` agreement is part of the contract; Phase 0B writes the per-keyword smoke test. |
+| `gllvmTMB(value ~ ..., data = df_long)` | **covered** | Canonical long-format entry point. One row per `(unit, trait)`. Test evidence: `tests/testthat/test-canonical-keywords.R`, `test-keyword-grid.R` (validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
+| `gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide)` | **covered** | Wide-format entry point. The `traits(...)` LHS marker triggers internal pivot to long; long+wide `logLik` agreement is part of the contract. Test evidence: `test-traits-keyword.R`, `test-wide-weights-matrix.R` (validation-debt register FG-01, FG-03; Phase 0B promotion 2026-05-16). |
 | `gllvmTMB_wide(Y, ...)` | **removed in 0.2.0** | Matrix-in entry point. Removed per maintainer 2026-05-16 decision; use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
-| `0 + trait` and `(0 + trait):x` | claimed | Long-form trait-stacked fixed-effect grammar. Smoke test in Phase 0B. |
-| `latent(0 + trait \| g, d = K)` | claimed | Reduced-rank loadings for $T$ traits across grouping factor `g`, rank $K \le T$. |
-| `unique(0 + trait \| g)` | claimed | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. |
-| `latent + unique` paired | claimed | The decomposition $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$. |
+| `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
+| `latent(0 + trait \| g, d = K)` | **covered** | Reduced-rank loadings for $T$ traits across grouping factor `g`, rank $K \le T$. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R` (validation-debt register FG-04; Phase 0B promotion 2026-05-16). |
+| `unique(0 + trait \| g)` | **covered** | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. Test evidence: `test-stage2-rr-diag.R`, `test-cross-sectional-unique.R` (validation-debt register FG-05; Phase 0B promotion 2026-05-16). |
+| `latent + unique` paired | **covered** | The decomposition $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$. Test evidence: `test-stage2-rr-diag.R`, `test-mixed-response-sigma.R` (validation-debt register FG-06; Phase 0B promotion 2026-05-16). |
 | `indep(0 + trait \| g)` | claimed | Compound-symmetric trait covariance (all off-diagonals equal). |
 | `dep(0 + trait \| g)` | claimed | Fully unstructured trait covariance estimated directly. |
 | `(omit)` ↔ scalar covariance | claimed | Omitting the `unique`/`indep`/`dep` slot means *no trait-specific term*; only the keyword's correlation source contributes. |
-| `phylo_latent(species, d = K, tree = tree)` | claimed | Reduced-rank phylogenetic loadings using sparse $A^{-1}$. |
-| `phylo_unique(species, tree = tree)` | claimed | Trait-diagonal $\boldsymbol\Psi_\text{phy}$ scaled by phylogenetic covariance. |
+| `phylo_latent(species, d = K, tree = tree)` | **covered** | Reduced-rank phylogenetic loadings using sparse $A^{-1}$. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16). |
+| `phylo_unique(species, tree = tree)` | **covered** | Trait-diagonal $\boldsymbol\Psi_\text{phy}$ scaled by phylogenetic covariance. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16). |
 | `phylo_scalar(species, vcv = Cphy)` | claimed | Single trait-scalar phylogenetic random effect; the simplest phylogenetic mixed-model form. |
 | `phylo_indep` / `phylo_dep` | claimed | Compound-symmetric and unstructured phylogenetic trait covariance. |
 | `spatial_latent(0 + trait \| sites, mesh = mesh)` or `spatial_latent(0 + trait \| sites, coords = c("lon", "lat"))` and siblings | claimed | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). See "Spatial axis convention" below. |
 | `meta_V(value, V = V)` | claimed (renaming from `meta_known_V`; see "Meta-analysis keyword" below) | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. |
-| `block_V(study, sampling_var, rho_within)` helper | claimed | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. |
-| `(1 \| group)` ordinary random intercept | claimed | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 3 × 5 keyword grid. |
+| `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
+| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 3 × 5 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
 | `(1 + x \| g)` ordinary random slope | **reserved** | Parser does not accept random slopes inside the 3 × 5 keywords yet. Planned for M1 (Gaussian completeness). |
 | `(1 \| g1/g2)` slash-form nested random effects | **rejected** | Not parsed. Use globally unique level names instead (see "Crossed-vs-nested" below). |
 | `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | claimed | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Phase M2 verifies on binary. |

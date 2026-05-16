@@ -48,11 +48,14 @@ terms:
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{# Add a study-level random intercept on top of a latent() block:
 fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                          (1 | study),
-                data = df)
+                data  = df,
+                trait = "trait",
+                unit  = "site")
 
 # Two random intercepts (e.g. study + dataset):
 fit <- gllvmTMB(value ~ 0 + trait + (1 | study) + (1 | dataset),
-                data = df)
+                data  = df,
+                trait = "trait")
 }\if{html}{\out{</div>}}
 
 The fitted variance components live at

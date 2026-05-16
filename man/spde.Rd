@@ -120,7 +120,10 @@ coordinate columns of \code{data}:
 mesh   <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
 fit    <- gllvmTMB(
   value ~ 0 + trait + spatial_unique(0 + trait | coords),
-  data = df, mesh = mesh
+  data  = df,
+  trait = "trait",
+  unit  = "site",
+  mesh  = mesh
 )
 }\if{html}{\out{</div>}}
 
@@ -144,7 +147,10 @@ s <- simulate_site_trait(
 df   <- s$data
 mesh <- make_mesh(df, c("lon", "lat"), cutoff = 0.07)
 fit  <- gllvmTMB(value ~ 0 + trait + spatial_unique(0 + trait | coords),
-                 data = df, mesh = mesh)
+                 data  = df,
+                 trait = "trait",
+                 unit  = "site",
+                 mesh  = mesh)
 fit$report$kappa            # inverse-range parameter
 sqrt(8) / fit$report$kappa  # practical range
 }

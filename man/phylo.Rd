@@ -87,20 +87,33 @@ library(ape)
 tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
 # Single shared phylogenetic variance (= phylo_scalar)
 fit_s <- gllvmTMB(value ~ 0 + trait + phylo(1 | species, tree = tree),
-                  data = df)
+                  data    = df,
+                  trait   = "trait",
+                  unit    = "species",
+                  cluster = "species")
 # Per-trait phylogenetic variances on shared A (= phylo_unique)
 fit_u <- gllvmTMB(value ~ 0 + trait +
                     phylo(0 + trait | species, mode = "diag", tree = tree),
-                  data = df)
+                  data    = df,
+                  trait   = "trait",
+                  unit    = "species",
+                  cluster = "species")
 # Reduced-rank cross-trait phylogenetic decomposition (= phylo_latent)
 fit_l <- gllvmTMB(value ~ 0 + trait +
                     phylo(0 + trait | species, mode = "latent",
                           d = 2, tree = tree),
-                  data = df)
+                  data    = df,
+                  trait   = "trait",
+                  unit    = "species",
+                  cluster = "species")
 # Backward-compat: legacy bare-name form
 Cphy <- vcv(tree, corr = TRUE)
 fit_legacy <- gllvmTMB(value ~ 0 + trait + phylo(species),
-                       data = df, phylo_vcv = Cphy)
+                       data      = df,
+                       trait     = "trait",
+                       unit      = "species",
+                       cluster   = "species",
+                       phylo_vcv = Cphy)
 }
 }
 \seealso{

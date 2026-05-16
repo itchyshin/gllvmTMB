@@ -63,7 +63,10 @@ library(ape)
 tree <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
 fit <- gllvmTMB(value ~ 0 + trait +
                   phylo_indep(0 + trait | species, tree = tree),
-                data = df)
+                data    = df,
+                trait   = "trait",
+                unit    = "species",
+                cluster = "species")
 }
 }
 \references{

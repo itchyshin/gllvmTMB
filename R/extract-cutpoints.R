@@ -45,8 +45,11 @@
 #' \dontrun{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + phylo_unique(species, tree = tree),
-#'   data = ordinal_dat, unit = "individual", cluster = "species",
-#'   family = ordinal_probit()
+#'   data    = ordinal_dat,
+#'   trait   = "trait",
+#'   unit    = "individual",
+#'   cluster = "species",
+#'   family  = ordinal_probit()
 #' )
 #' extract_cutpoints(fit)
 #' }

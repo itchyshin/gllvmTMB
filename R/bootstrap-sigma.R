@@ -116,7 +116,9 @@
 #'                          psi_B = c(.2, .15, .1))
 #' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1) +
 #'                            unique(0 + trait | site),
-#'                 data = s$data)
+#'                 data  = s$data,
+#'                 trait = "trait",
+#'                 unit  = "site")
 #' boot <- bootstrap_Sigma(fit, n_boot = 50, level = "B",
 #'                         what = c("Sigma", "R"), seed = 42)
 #' boot$point_est$Sigma_B

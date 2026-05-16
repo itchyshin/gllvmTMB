@@ -348,7 +348,9 @@
 #' \dontrun{
 #' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1) +
 #'                          unique(0 + trait | site),
-#'                 data = sim$data)
+#'                 data  = sim$data,
+#'                 trait = "trait",
+#'                 unit  = "site")
 #' targets <- profile_targets(fit)
 #' head(targets)
 #' profile_targets(fit, ready_only = TRUE)

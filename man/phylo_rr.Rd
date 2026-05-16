@@ -45,11 +45,19 @@ Used inside a \code{gllvmTMB()} formula:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{# recommended: pass tree
 gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
-         data = df, phylo_tree = tree)
+         data       = df,
+         trait      = "trait",
+         unit       = "species",
+         cluster    = "species",
+         phylo_tree = tree)
 
 # legacy: pass dense covariance only
 gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
-         data = df, phylo_vcv = Cphy)
+         data      = df,
+         trait     = "trait",
+         unit      = "species",
+         cluster   = "species",
+         phylo_vcv = Cphy)
 }\if{html}{\out{</div>}}
 }
 \examples{
@@ -58,6 +66,10 @@ library(ape)
 tree   <- rcoal(20); tree$tip.label <- paste0("sp", 1:20)
 Cphy   <- vcv(tree, corr = TRUE)
 fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
-                data = df, phylo_vcv = Cphy)
+                data      = df,
+                trait     = "trait",
+                unit      = "species",
+                cluster   = "species",
+                phylo_vcv = Cphy)
 }
 }

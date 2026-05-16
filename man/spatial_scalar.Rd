@@ -55,7 +55,9 @@ alias and emits a one-shot \code{lifecycle::deprecate_warn()} per session
   fit <- gllvmTMB(
     value ~ 0 + trait +
             spatial_scalar(0 + trait | site, coords = c("lon", "lat")),
-    data = sim$data
+    data  = sim$data,
+    trait = "trait",
+    unit  = "site"
   )
 }
 }

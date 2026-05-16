@@ -85,7 +85,11 @@
 #' df$site_species <- factor(seq_len(nrow(df)))
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + unique(0 + trait | site_species),
-#'   data = df, family = poisson()
+#'   data     = df,
+#'   trait    = "trait",
+#'   unit     = "site",
+#'   unit_obs = "site_species",
+#'   family   = poisson()
 #' )
 #' extract_residual_split(fit)
 #' }
@@ -303,7 +307,11 @@ extract_Omega <- function(fit,
 #'   value ~ 0 + trait + phylo_latent(species, d = 2) +
 #'                       latent(0 + trait | species, d = 2) +
 #'                       unique(0 + trait | species),
-#'   data = df, phylo_tree = tree, unit = "species"
+#'   data       = df,
+#'   trait      = "trait",
+#'   unit       = "species",
+#'   cluster    = "species",
+#'   phylo_tree = tree
 #' )
 #' extract_phylo_signal(fit)
 #' }

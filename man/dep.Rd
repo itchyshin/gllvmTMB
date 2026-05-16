@@ -60,11 +60,11 @@ raises \code{cli::cli_abort()} in any of these cases.
 \dontrun{
 # Full unstructured trait covariance fit:
 fit <- gllvmTMB(value ~ 0 + trait + dep(0 + trait | site),
-                data = df, unit = "site")
+                data = df, trait = "trait", unit = "site")
 
 # The mathematically-equivalent decomposition form (full rank):
 fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = T),
-                data = df, unit = "site")
+                data = df, trait = "trait", unit = "site")
 
 # ERROR: dep + latent on the same grouping is over-parameterised.
 # gllvmTMB(value ~ 0 + trait +

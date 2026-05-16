@@ -57,7 +57,9 @@ canonical orientation, so existing fits remain byte-identical.
   fit <- gllvmTMB(
     value ~ 0 + trait +
             spatial_unique(0 + trait | site, coords = c("lon", "lat")),
-    data = sim$data
+    data  = sim$data,
+    trait = "trait",
+    unit  = "site"
   )
 }
 }

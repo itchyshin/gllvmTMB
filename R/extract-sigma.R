@@ -465,7 +465,9 @@ link_residual_per_trait <- function(fit) {
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
 #'           latent(0 + trait | unit, d = 2) + unique(0 + trait | unit),
-#'   data = df
+#'   data  = df,
+#'   trait = "trait",
+#'   unit  = "unit"
 #' )
 #' extract_Sigma(fit, level = "unit", part = "total")$Sigma   # full T x T cov
 #' extract_Sigma(fit, level = "unit", part = "shared")$Sigma  # rr-only

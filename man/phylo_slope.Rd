@@ -67,7 +67,11 @@ slopes are on the roadmap.
   sim$data$x <- rnorm(nrow(sim$data))
   fit <- gllvmTMB(
     value ~ 0 + trait + (0 + trait):x + phylo_slope(x | species),
-    data = sim$data, phylo_tree = tree
+    data       = sim$data,
+    trait      = "trait",
+    unit       = "species",
+    cluster    = "species",
+    phylo_tree = tree
   )
 }
 }

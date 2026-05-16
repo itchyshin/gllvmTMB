@@ -326,7 +326,9 @@
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2,
 #'   data   = sim$data,
-#'   family = gaussian()
+#'   family = gaussian(),
+#'   trait  = "trait",
+#'   unit   = "site"
 #' )
 #' summary(fit)
 #' }

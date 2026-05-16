@@ -59,7 +59,9 @@
 #' fit <- gllvmTMB(value ~ 0 + trait +
 #'                         latent(0 + trait | site, d = 2) +
 #'                         unique(0 + trait | site),
-#'                 data = sim$data)
+#'                 data  = sim$data,
+#'                 trait = "trait",
+#'                 unit  = "site")
 #' raw <- extract_ordination(fit, "unit")
 #' rot <- rotate_loadings(fit, level = "unit", method = "varimax")
 #' # raw$loadings - lower-triangular (hard to read)
@@ -119,7 +121,8 @@ rotate_loadings <- function(fit,
 #' @export
 #' @examples
 #' \dontrun{
-#' fit_g <- gllvmTMB(value ~ 0 + trait + latent(0+trait|site, d=2), data = df)
+#' fit_g <- gllvmTMB(value ~ 0 + trait + latent(0+trait|site, d=2),
+#'                   data = df, trait = "trait", unit = "site")
 #' fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0+trait|site, d=2),
 #'                          data = df, REML = FALSE)
 #' L_g <- extract_ordination(fit_g, "B")$loadings

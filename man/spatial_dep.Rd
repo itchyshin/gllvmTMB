@@ -60,7 +60,9 @@ Combining \code{spatial_dep(0 + trait | coords)} with \code{spatial_latent} is
   fit <- gllvmTMB(
     value ~ 0 + trait +
             spatial_dep(0 + trait | site, coords = c("lon", "lat")),
-    data = sim$data
+    data  = sim$data,
+    trait = "trait",
+    unit  = "site"
   )
 }
 }

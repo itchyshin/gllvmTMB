@@ -91,7 +91,9 @@ audit's recommended Bayesian-comparison path).
 fit <- gllvmTMB(value ~ 0 + trait +
                 latent(0 + trait | site, d = 1) +
                 unique(0 + trait | site),
-                data = sim$data)
+                data  = sim$data,
+                trait = "trait",
+                unit  = "site")
 res <- gllvmTMB_check_consistency(fit, n_sim = 50L, seed = 1)
 res
 res$marginal_bias

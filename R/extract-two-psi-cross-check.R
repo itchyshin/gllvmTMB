@@ -422,7 +422,11 @@
 #' fit  <- gllvmTMB(
 #'   value ~ 0 + trait + phylo_latent(species, d = 1) +
 #'           phylo_unique(species) + unique(0 + trait | species),
-#'   data = df, phylo_vcv = Cphy, cluster = "species"
+#'   data      = df,
+#'   trait     = "trait",
+#'   unit      = "species",
+#'   cluster   = "species",
+#'   phylo_vcv = Cphy
 #' )
 #' diag <- compare_dep_vs_two_psi(fit)
 #' diag$flag

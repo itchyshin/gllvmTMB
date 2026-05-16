@@ -141,7 +141,9 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'     value ~ 0 + trait +
 #'             latent(0 + trait | site, d = 2) +
 #'             unique(0 + trait | site),
-#'     data = sim$data
+#'     data  = sim$data,
+#'     trait = "trait",
+#'     unit  = "site"
 #'   )
 #'   ## Per-trait between-unit communality.
 #'   extract_communality(fit, level = "unit")
@@ -235,7 +237,9 @@ extract_communality <- function(fit,
 #'     value ~ 0 + trait +
 #'             latent(0 + trait | site, d = 2) +
 #'             unique(0 + trait | site),
-#'     data = sim$data
+#'     data  = sim$data,
+#'     trait = "trait",
+#'     unit  = "site"
 #'   )
 #'   ord <- extract_ordination(fit, level = "unit")
 #'   head(ord$scores)

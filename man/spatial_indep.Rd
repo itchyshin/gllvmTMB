@@ -63,7 +63,9 @@ with \code{spatial_unique} is redundant and also errors.
   fit <- gllvmTMB(
     value ~ 0 + trait +
             spatial_indep(0 + trait | site, coords = c("lon", "lat")),
-    data = sim$data
+    data  = sim$data,
+    trait = "trait",
+    unit  = "site"
   )
 }
 }

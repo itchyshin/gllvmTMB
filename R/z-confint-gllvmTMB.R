@@ -268,7 +268,9 @@
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
 #'           unique(0 + trait | site),
-#'   data = s$data
+#'   data  = s$data,
+#'   trait = "trait",
+#'   unit  = "site"
 #' )
 #'
 #' ## Profile-likelihood CIs for the between-site covariance matrix (default)

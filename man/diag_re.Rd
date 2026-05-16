@@ -183,7 +183,10 @@ fit <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | individual, d = 2) + unique(0 + trait | individual) +
           latent(0 + trait | obs_id,    d = 1) + unique(0 + trait | obs_id),
-  data = df, unit = "individual"
+  data     = df,
+  trait    = "trait",
+  unit     = "individual",
+  unit_obs = "obs_id"
 )
 extract_Sigma(fit, level = "B", part = "shared")$Sigma   # Lambda_B Lambda_B^T
 extract_Sigma(fit, level = "B", part = "unique")$s       # diag(Psi_B)

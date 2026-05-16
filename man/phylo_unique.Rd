@@ -79,7 +79,11 @@ Pass the phylogeny via \code{tree = phylo} (canonical, sparse \eqn{\mathbf{A}^{-
   sim$data$species <- factor(sim$data$species, levels = tree$tip.label)
   fit <- gllvmTMB(
     value ~ 0 + trait + phylo_unique(species),
-    data = sim$data, phylo_tree = tree
+    data       = sim$data,
+    trait      = "trait",
+    unit       = "species",
+    cluster    = "species",
+    phylo_tree = tree
   )
 }
 }

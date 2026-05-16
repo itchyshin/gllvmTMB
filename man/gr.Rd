@@ -31,9 +31,17 @@ reader, but is \strong{not} used by the engine. Same convention as
 \dontrun{
 # Recommended:
 fit <- gllvmTMB(value ~ 0 + trait + gr(species),
-                data = df, phylo_vcv = Cphy)
+                data      = df,
+                trait     = "trait",
+                unit      = "species",
+                cluster   = "species",
+                phylo_vcv = Cphy)
 # Also valid (cov = Cphy ignored by engine):
 fit <- gllvmTMB(value ~ 0 + trait + gr(species, cov = Cphy),
-                data = df, phylo_vcv = Cphy)
+                data      = df,
+                trait     = "trait",
+                unit      = "species",
+                cluster   = "species",
+                phylo_vcv = Cphy)
 }
 }

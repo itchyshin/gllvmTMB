@@ -29,7 +29,9 @@ Ordination scores and loadings at one level
     value ~ 0 + trait +
             latent(0 + trait | site, d = 2) +
             unique(0 + trait | site),
-    data = sim$data
+    data  = sim$data,
+    trait = "trait",
+    unit  = "site"
   )
   ord <- extract_ordination(fit, level = "unit")
   head(ord$scores)

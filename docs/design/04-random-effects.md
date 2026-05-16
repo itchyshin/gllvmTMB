@@ -208,6 +208,36 @@ where $A$ is the phylogenetic correlation matrix derived from
 the tree. $A$ is dense ($n_\text{species} \times n_\text{species}$)
 but $A^{-1}$ is sparse when the tree has many internal nodes.
 
+### Tier vs partition
+
+A clarification that matters for users coming from a "tier"
+mental model: when the phylo keyword's grouping factor equals
+`unit` (the canonical case where `unit = species`), `phylo_*`
+terms are conceptually a **partition of the between-unit
+variance** distinguished by phylogenetic correlation across
+species — *not* a separate grouping level. The total
+between-species variance for trait $t$ is
+
+$$
+\sigma^2_t \;=\; (\Lambda_\text{phy}\Lambda_\text{phy}^\top)_{tt}
+            + (\Lambda_\text{non}\Lambda_\text{non}^\top)_{tt}
+            + \psi^2_t
+$$
+
+— all at the same grouping factor (species), distinguished
+by *correlation structure across species* ($A^{-1}$ versus
+$I$), not by *grouping*. `extract_Omega()` returns the
+integrated $\Omega$ in this case;
+`extract_Sigma(level = "phy")` returns the phylo *share*
+alone, useful for slot-level inspection but conceptually a
+partition of `level = "unit"`.
+
+When the phylo grouping factor differs from `unit` (e.g.
+`unit = individual`, phylo grouping = `species`), phylo
+genuinely lives at a different grouping axis and the
+"separate tier" reading applies. The keyword grammar is the
+same; only the interpretation shifts with the data layout.
+
 ### `phylo_latent + phylo_unique` paired decomposition
 
 Mirrors the non-phylo pair:
@@ -266,6 +296,20 @@ spatial_unique(0 + trait | sites, coords = c("lon", "lat"))
 Both reach the same engine via the precomputed mesh. The
 `sites` grouping factor groups observations sharing a spatial
 location; the geometry argument supplies the SPDE mesh.
+
+### Tier vs partition
+
+Same logic as the phylogenetic "Tier vs partition" subsection
+above. When the spatial keyword's grouping factor equals
+`unit` (the canonical case where `unit = sites`),
+`spatial_*` terms are a **partition of the between-unit
+variance with spatial correlation structure** ($Q_\text{spde}$
+versus $I$), not a separate grouping level.
+`extract_Sigma(level = "spatial")` returns the spatial
+*share* — useful for slot-level inspection, but conceptually
+a partition of `level = "unit"` in the canonical case. When
+the spatial grouping factor differs from `unit`, spatial
+genuinely lives at a different grouping axis.
 
 ## `meta_V()` known-sampling-covariance random effect
 

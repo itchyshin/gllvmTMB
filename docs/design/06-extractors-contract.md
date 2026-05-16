@@ -51,10 +51,10 @@ verification pending), `r` reserved (planned for M1/M2),
 
 | Extractor | G | B | N | M | Notes |
 |-----------|---|---|---|---|-------|
-| `extract_Sigma(fit, level, part)` | c | cl | cl | cl | per-tier $\Sigma = \Lambda\Lambda^\top + \Psi$ |
-| `extract_Sigma_B(fit)` | c | cl | cl | cl | legacy alias for `level = "B"` |
-| `extract_Sigma_W(fit)` | c | cl | cl | cl | legacy alias for `level = "W"` |
-| `extract_Omega(fit)` | c | cl | cl | cl | cross-tier integration |
+| `extract_Sigma(fit, level, part)` | c | cl | cl | cl | per-level $\Sigma = \Lambda\Lambda^\top + \Psi$; `level = "phy"/"spatial"` are variance-share shortcuts, not peer levels |
+| `extract_Sigma_B(fit)` | c | cl | cl | cl | legacy alias for `level = "B"` ($\equiv$ `"unit"`) |
+| `extract_Sigma_W(fit)` | c | cl | cl | cl | legacy alias for `level = "W"` ($\equiv$ `"unit_obs"`) |
+| `extract_Omega(fit)` | c | cl | cl | cl | cross-partition integration (phy/spatial shares back into unit-tier) |
 | `extract_correlations(fit, method, link_residual)` | c | cl | cl | cl | Fisher-z, Wald, profile, bootstrap |
 | `extract_communality(fit)` | c | cl | cl | cl | $H^2 + C^2 + \psi^2 = 1$ partition |
 | `extract_repeatability(fit)` | c | cl | cl | cl | ICC / R |
@@ -96,21 +96,59 @@ link-residual / OLRE caveats.
 
 ### 1. Covariance family
 
-#### `extract_Sigma(fit, level = c("unit", "unit_obs", "phy"), part = c("total", "shared", "unique"))`
+#### `extract_Sigma(fit, level = c("unit", "unit_obs", "cluster", "phy", "spatial"), part = c("total", "shared", "unique"))`
 
 **Return**: a `T x T` symmetric positive-semidefinite matrix
 with row and column names = trait labels.
 
-- `level = "unit"` (default): the between-unit covariance
-  (the latent + unique pair on the between-unit tier).
+The `level` argument accepts two conceptually distinct
+classes of value. The engine treats both uniformly as
+internal $\Lambda$-slot selectors, but users should read
+them differently.
+
+**Grouping levels (peer values)** — distinct random-effect
+grouping factors:
+
+- `level = "unit"` (default): the full between-unit
+  covariance. When phylogenetic or spatial keywords are
+  present *at the unit grouping factor* (the canonical
+  `unit = species` or `unit = sites` cases), their shares
+  are partitions of this level — see
+  `extract_Omega()` for the cross-partition integration.
 - `level = "unit_obs"`: the within-unit (observation-level)
   covariance.
-- `level = "phy"`: the phylogenetic tier covariance (only
-  for fits with a `phylo_*` keyword present).
+- `level = "cluster"`: the third-slot cluster-level
+  covariance (when a `cluster` argument was provided).
+
+**Within-unit variance-share shortcuts** — kept for direct
+engine-internal-slot inspection. Conceptually these are
+*parts* of the unit-tier variance, not peers of
+`level = "unit"`, in the canonical case where the phylo or
+spatial keyword's grouping factor equals `unit`:
+
+- `level = "phy"`: the phylogenetic *share* of the between-
+  unit variance, $\Lambda_{\text{phy}}\Lambda_{\text{phy}}^\top
+  + \Psi_{\text{phy}}$. Errors with class
+  `gllvmTMB_extract_sigma_no_phy` for fits without any
+  `phylo_*` term. In the canonical case (`unit = species`),
+  this is a partition of `level = "unit"`, not a separate
+  grouping level — the distinction matters for users
+  coming from the "tier" mental model.
+- `level = "spatial"`: the spatial *share* of the between-
+  unit variance — same logic. Errors with class
+  `gllvmTMB_extract_sigma_no_spatial` for fits without any
+  `spatial_*` term.
+
+**Partition within the chosen level** (the `part` argument):
+
 - `part = "total"` (default): $\Sigma = \Lambda\Lambda^\top
-  + \Psi$ (shared + unique).
+  + \Psi$ (shared + unique) *at the chosen level*.
 - `part = "shared"`: $\Lambda\Lambda^\top$ alone.
 - `part = "unique"`: $\Psi = \text{diag}(\psi^2)$ alone.
+
+"Total" means total within the chosen level, not total
+across the model. Cross-level integration is
+`extract_Omega()`'s job.
 
 **Invariants**:
 
@@ -142,9 +180,13 @@ slated for `lifecycle::deprecate_soft()` in 0.3.0 per Phase
 #### `extract_Omega(fit, level)`
 
 **Return**: a `T x T` symmetric matrix representing the
-cross-tier integrated covariance. For paired phylogenetic
-fits with `latent + unique` on the unit tier and
-`phylo_latent + phylo_unique` on the phy tier:
+cross-partition integrated covariance — the natural place
+where phylogenetic and spatial *shares* re-enter as
+partitions of the unit-tier variance rather than as
+separate levels. For paired phylogenetic fits with
+`latent + unique` on the unit grouping factor and
+`phylo_latent + phylo_unique` adding a phylogenetically-
+correlated share to the same unit-level variance:
 
 $$
 \Omega = \Lambda_{\text{phy}}\Lambda_{\text{phy}}^\top

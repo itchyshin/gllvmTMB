@@ -274,39 +274,93 @@ unique(0 + trait | site)                # Psi_B is T x T diagonal
 
 ## Default column names
 
-`gllvmTMB()` looks for these column names by default:
+`gllvmTMB()` looks for these column names by default in long format:
 
-| Column name | Role | Override argument |
-|-------------|------|-------------------|
-| **`trait`** | trait factor (long format) — **required column name; no override** | (none) |
+| Default column name | Role | Override argument |
+|---------------------|------|-------------------|
+| `trait` | trait factor (long format) | `trait = "..."` |
 | `site` | between-unit grouping (canonical for JSDM) | `unit = "..."` |
 | `site_species` | within-unit grouping (two-level) | `unit_obs = "..."` |
 | `species` | species / cluster axis | `cluster = "..."` |
 
-**Design rule (Pat + Ada 2026-05-16): no `trait = "..."` argument.**
-`trait` is always the *why* — the response-variable axis being
-modelled. The column **must be named `trait`** in long format, or
-specified via the `traits(t1, t2, ...)` LHS helper in wide format.
-If a user has a column with a different name, they rename it (or
-pivot via `traits()`) before fitting. This is a deliberate API
-simplification: every long-format `gllvmTMB()` call reads with
-`0 + trait` on the RHS, so requiring the column name to match
-that reference removes a class of confusion (and a no-op argument
-the user has to look up).
+All four arguments tell the engine which data column plays which
+semantic role. The engine ships with sensible defaults (JSDM-style
+`site` / `site_species` / `species` / `trait`), but real-world
+data rarely matches those names — a behavioural-ecology study has
+column `behavior`, a meta-analysis has `outcome`, a psychometric
+study has `item`, an evolutionary study has `measurement`, etc.
 
-**Persona-active naming rule (Pat 2026-05-16)**: examples KEEP the
-explicit `unit = "..."`, `unit_obs = "..."`, `cluster = "..."`
-arguments even when they match defaults, because they tell the
-reader which data column plays which role. There is no `trait =`
-argument to add or drop.
+### `trait =` argument is long-format only
 
-> **Implementation status**: the current `gllvmTMB()` signature
-> still accepts a `trait =` parameter as a backward-compatibility
-> path. **Planned deprecation in 0.2.0**: a soft-deprecation
-> warning fires when `trait =` is passed; the argument is removed
-> entirely in 0.3.0. This change tracks as a `planned` row in
-> `docs/design/35-validation-debt-register.md` until the deprecation
-> ships.
+In **long format**, the `trait =` argument names the column that
+holds the trait factor. Default is `"trait"`; override when the
+column has a different name:
+
+```r
+# Long format with non-default trait column:
+gllvmTMB(
+  response ~ 0 + behavior + (0 + behavior):env +
+    latent(0 + behavior | individual, d = 2) +
+    unique(0 + behavior | individual),
+  data = df_long,
+  trait = "behavior",
+  unit  = "individual"
+)
+```
+
+In **wide format**, the `traits(t1, t2, ...)` LHS helper *is* the
+trait spec — the engine pivots internally and generates a `trait`
+factor column with levels `t1, t2, ...`. **No `trait =` argument
+is needed (or accepted) in wide format**; the LHS marker does the
+job:
+
+```r
+# Wide format (no trait = argument; traits() LHS is the spec):
+gllvmTMB(
+  traits(boldness, exploration, aggression) ~ 1 + env +
+    latent(1 | individual, d = 2) +
+    unique(1 | individual),
+  data = df_wide,
+  unit = "individual"
+)
+```
+
+The two paths reach the same engine through the same internal long
+format. Both produce byte-identical log-likelihoods (the long+wide
+agreement contract — `morphometrics.Rmd` pattern).
+
+### Persona-active naming rule (Pat + Ada 2026-05-16)
+
+Examples KEEP all four arguments explicitly **even when they match
+defaults**, because they tell the reader which data column plays
+which role. The rule applies **uniformly** to `trait`, `unit`,
+`unit_obs`, `cluster` — no special case for any of them.
+
+**Why explicit always**: a reader who doesn't know the defaults
+(most readers) gets the role-to-column mapping at a glance. Verbose
+but legible. The two-line cost of writing four explicit arguments
+is repaid every time someone reads the example without having to
+look up the function signature.
+
+### Example variety: trait-column variants
+
+Articles should show varied trait-column names across the worked-
+example roster to make the API feel real:
+
+| Article | Trait column | Reason |
+|---------|-------------|--------|
+| `morphometrics.Rmd` | `trait` (default) | Generic 5-trait body-measurement example; default name fits. |
+| `joint-sdm.Rmd` | `species` (overridden as `trait =`)* | JSDM trait axis is actually species columns. |
+| `behavioural-syndromes.Rmd` | `behavior` | Behavioural ecology phrasing. |
+| `psychometrics-irt.Rmd` | `item` | Psychometric phrasing. |
+| `phylo-spatial-meta-analysis.Rmd` | `outcome` | Meta-analytic effect-size phrasing. |
+| `mixed-response.Rmd` | `measurement` or `kind` | Mixed-family domain phrasing. |
+
+\* In JSDM the trait axis literally is species; the data column
+might still be named `species` and the formula uses
+`0 + species + (0 + species):env`. This is a naming clash with
+the `cluster` slot (also `species` by default) — JSDM articles
+must call this out explicitly to avoid reader confusion.
 
 ## Unit, unit_obs, and cluster: crossed vs nested
 

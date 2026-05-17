@@ -178,7 +178,11 @@ bootstrap_Sigma <- function(fit,
   trait   <- fit$trait_col
   site    <- fit$unit_col
   species <- fit$species_col
-  family  <- fit$family
+  ## M1.8 (2026-05-17): prefer family_input (the original family list with
+  ## family_var attribute for mixed-family fits) over family (the
+  ## first-family-only view used by predict's linkinv). Pre-M1.8 fits
+  ## without family_input fall back to family.
+  family  <- if (!is.null(fit$family_input)) fit$family_input else fit$family
   data    <- fit$data
   ## get_response() was an sdmTMB helper; the trimmed package extracts
   ## the response symbol directly here.

@@ -634,14 +634,31 @@ simulate.gllvmTMB_multi <- function(object, nsim = 1, seed = NULL,
   ## we cannot redraw RE tiers for unseen levels.
   if (!is.null(newdata) || isTRUE(condition_on_RE)) {
     if (is.null(newdata)) {
+      ## eta length matches family_id_vec length — family-aware OK.
       eta <- as.numeric(object$report$eta)
+      out <- replicate(nsim, .draw_y_per_family(object, eta))
     } else {
+      ## newdata supplied — eta length doesn't necessarily match the
+      ## training data's family_id_vec. Fall back to Gaussian-on-link-
+      ## scale draws and one-shot warn. Family-aware newdata simulation
+      ## is M2/M3 work (needs a per-row family extractor from newdata).
       pp  <- predict(object, newdata = newdata)
       eta <- pp$est
+      sigma <- as.numeric(object$report$sigma_eps)
+      if (is.null(sigma) || length(sigma) == 0L) {
+        sigma <- exp(unname(object$opt$par["log_sigma_eps"]))
+      }
+      cache_key <- "gllvmTMB.warned_simulate_newdata_gaussian_fallback"
+      if (is.null(getOption(cache_key))) {
+        cli::cli_warn(c(
+          "{.fn simulate} with {.arg newdata} falls back to Gaussian-on-link-scale draws.",
+          "i" = "Family-aware {.arg newdata} simulation needs per-row family lookup from {.arg newdata}; that is M2/M3 work.",
+          ">" = "For mixed-family bootstrap-style refits, call {.fn simulate} without {.arg newdata}."
+        ), class = "gllvmTMB_simulate_newdata_gaussian_fallback")
+        options(stats::setNames(list(TRUE), cache_key))
+      }
+      out <- replicate(nsim, eta + stats::rnorm(length(eta), sd = sigma))
     }
-    sigma <- as.numeric(object$report$sigma_eps)
-    if (is.null(sigma)) sigma <- exp(unname(object$opt$par["log_sigma_eps"]))
-    out <- replicate(nsim, eta + stats::rnorm(length(eta), sd = sigma))
     if (is.null(dim(out))) out <- as.matrix(out)
     return(out)
   }
@@ -665,14 +682,109 @@ simulate.gllvmTMB_multi <- function(object, nsim = 1, seed = NULL,
                                    condition_on_RE = TRUE))
   }
 
-  sigma <- as.numeric(object$report$sigma_eps)
-  if (is.null(sigma)) sigma <- exp(unname(object$opt$par["log_sigma_eps"]))
+  ## M1.8 (2026-05-17): family-aware per-row draw. For mixed-family fits,
+  ## each row uses its own (family, link) to map eta -> y. Single-family
+  ## Gaussian fits behave exactly as before (sigma_eps shared).
   out <- replicate(nsim, {
     eta_new <- .simulate_eta_unconditional(object)
-    eta_new + stats::rnorm(length(eta_new), sd = sigma)
+    .draw_y_per_family(object, eta_new)
   })
   if (is.null(dim(out))) out <- as.matrix(out)
   out
+}
+
+#' Family-aware per-row draw from a fitted model
+#'
+#' For each row in the long-format data, look up `(family_id, link_id)`
+#' from `fit$tmb_data` and draw `y` from the appropriate distribution
+#' at the linear predictor `eta`. Supports the 5 families exercised by
+#' the M1.2 fixture (Gaussian, binomial, Poisson, Gamma, nbinom2) plus
+#' lognormal. Other families warn once per session and fall back to
+#' Gaussian-on-the-link-scale (i.e., previous behaviour) until M2 / M3
+#' family-completeness slices add their per-family draws.
+#'
+#' @keywords internal
+#' @noRd
+.draw_y_per_family <- function(fit, eta) {
+  fids <- fit$tmb_data$family_id_vec
+  lids <- fit$tmb_data$link_id_vec
+  tids <- fit$tmb_data$trait_id        # 0-indexed in TMB
+  n    <- length(eta)
+  y    <- numeric(n)
+
+  ## sigma_eps is scalar (shared across Gaussian + Gamma traits per the
+  ## C++ template at src/gllvmTMB.cpp:760, where Gamma uses sigma_eps as
+  ## the CV).
+  sigma_eps <- as.numeric(fit$report$sigma_eps)
+  if (is.null(sigma_eps) || length(sigma_eps) == 0L) {
+    sigma_eps <- exp(unname(fit$opt$par["log_sigma_eps"]))
+    if (is.na(sigma_eps)) sigma_eps <- 1
+  }
+  sigma_eps <- sigma_eps[1L]
+  phi_nbinom2 <- fit$report$phi_nbinom2  # length n_traits
+
+  ## Pre-flag any unsupported families with a one-shot warning so users
+  ## know fall-back-to-Gaussian-on-link-scale is in play.
+  uniq_fids <- unique(fids)
+  supported <- c(0L, 1L, 2L, 3L, 4L, 5L)
+  unsupp    <- setdiff(uniq_fids, supported)
+  if (length(unsupp) > 0L) {
+    cache_key <- "gllvmTMB.warned_simulate_unsupported_family"
+    if (is.null(getOption(cache_key))) {
+      cli::cli_warn(c(
+        "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
+        "i" = "Affected rows fall back to Gaussian-on-link-scale draws (pre-M1.8 behaviour). This is M2/M3 family-completeness work.",
+        ">" = "Supported in M1.8: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5)."
+      ), class = "gllvmTMB_simulate_unsupported_family")
+      options(stats::setNames(list(TRUE), cache_key))
+    }
+  }
+
+  for (i in seq_len(n)) {
+    fid   <- fids[i]
+    lid   <- lids[i]
+    tid_1 <- tids[i] + 1L              # 1-indexed for R
+    eta_i <- eta[i]
+
+    if (fid == 0L) {
+      ## Gaussian, identity link
+      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+    } else if (fid == 1L) {
+      ## Binomial — gllvmTMB does 1-trial Bernoulli per row
+      p <- if (lid == 0L) {
+        stats::plogis(eta_i)                  # logit
+      } else if (lid == 1L) {
+        stats::pnorm(eta_i)                   # probit
+      } else if (lid == 2L) {
+        1 - exp(-exp(eta_i))                  # cloglog
+      } else {
+        stats::plogis(eta_i)                  # fallback
+      }
+      y[i] <- stats::rbinom(1L, size = 1L, prob = p)
+    } else if (fid == 2L) {
+      ## Poisson, log link
+      y[i] <- stats::rpois(1L, lambda = exp(eta_i))
+    } else if (fid == 3L) {
+      ## Lognormal — y = exp(eta + N(0, sigma_eps))
+      y[i] <- exp(eta_i + stats::rnorm(1L, sd = sigma_eps))
+    } else if (fid == 4L) {
+      ## Gamma, log link with sigma_eps as the CV
+      ## shape = 1/sigma_eps^2; scale = mu * sigma_eps^2; E(y) = mu.
+      mu    <- exp(eta_i)
+      shape <- 1 / (sigma_eps * sigma_eps)
+      scale <- mu * sigma_eps * sigma_eps
+      y[i]  <- stats::rgamma(1L, shape = shape, scale = scale)
+    } else if (fid == 5L) {
+      ## nbinom2, log link
+      mu   <- exp(eta_i)
+      size <- if (is.null(phi_nbinom2)) 1 else phi_nbinom2[tid_1]
+      y[i] <- stats::rnbinom(1L, mu = mu, size = size)
+    } else {
+      ## Unsupported family — Gaussian-on-link-scale fallback (warned above)
+      y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)
+    }
+  }
+  y
 }
 
 #' @keywords internal

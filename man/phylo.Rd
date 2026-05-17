@@ -33,7 +33,7 @@ phylogenetic keywords (\code{phylo_scalar}, \code{phylo_unique}, \code{phylo_ind
 \code{phylo_latent}, \code{phylo_dep}). It accepts an lme4-bar formula on the
 first argument and dispatches to the appropriate canonical keyword
 based on the LHS shape and the optional \code{mode = ...} argument. The
-five canonical keywords stay first-class — \code{phylo()} is an additive
+five canonical keywords stay first-class -- \code{phylo()} is an additive
 alias matching the lme4 / brms / drmTMB convention.
 }
 \section{Dispatch rules}{
@@ -50,7 +50,7 @@ alias matching the lme4 / brms / drmTMB convention.
 When the LHS expands to a single column (\code{1}, intercept-only), \code{mode}
 is degenerate: it defaults silently to \code{"scalar"}, and explicit
 \code{mode = "scalar"} is accepted (no warning). When the LHS is
-\code{0 + trait}, \code{mode} is \strong{mandatory} — choosing between \code{"diag"} /
+\code{0 + trait}, \code{mode} is \strong{mandatory} -- choosing between \code{"diag"} /
 \code{"indep"} / \code{"latent"} / \code{"dep"} is a meaningful decision (per-trait
 diagonal vs reduced-rank decomposition vs full unstructured) and the
 parser refuses to silently default.
@@ -67,16 +67,16 @@ covariance from the top-level \verb{phylo_vcv =} argument to \code{\link[=gllvmT
 
 \section{Augmented LHS (Stage 3, not yet shipped)}{
 
-Augmented LHS forms — \code{1 + x} (intercept + slope), \code{0 + trait + (0 + trait):x}
+Augmented LHS forms -- \code{1 + x} (intercept + slope), \code{0 + trait + (0 + trait):x}
 (per-trait intercepts + per-trait slopes on covariate \code{x}), \code{x || species}
-(uncorrelated) — are reserved for Design 07 Stage 3 engine work. The
+(uncorrelated) -- are reserved for Design 07 Stage 3 engine work. The
 parser currently raises an error pointing at this status.
 }
 
 \section{Cross-package coexistence}{
 
 drmTMB also exposes \code{phylo(1 | species, tree = tree)} with the same
-Hadfield–Nakagawa sparse \eqn{\mathbf A^{-1}} internal path. Both
+Hadfield-Nakagawa sparse \eqn{\mathbf A^{-1}} internal path. Both
 packages share the same calling convention; user muscle memory
 transfers.
 }

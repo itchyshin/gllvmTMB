@@ -79,7 +79,7 @@ individual at a time) to broadest (geographic distance).
 |---|---|---|---|
 | none | independent groups | sites, individuals, sessions | — |
 | **animal** | **the additive-genetic relatedness matrix A** | **individuals in a pedigree** | **`pedigree =` (3-column id/sire/dam) or `A =` or `Ainv =`** |
-| phylo | a phylogenetic relationship matrix from `tree` or `vcv` | species or clades | `tree =` or `vcv =` (legacy; `A =` / `Ainv =` aliases coming) |
+| phylo | a phylogenetic relationship matrix from `tree` or `vcv` | species or clades | `tree =` or `vcv =` or **`A =`** or **`Ainv =`** (A / Ainv aliases align with `animal_*` per Design 14 §3) |
 | spatial | an SPDE/GMRF spatial precision matrix from `mesh` | sites with coordinates | `mesh =` |
 
 **The A vs V naming boundary.** The `animal_*` and `phylo_*` keywords

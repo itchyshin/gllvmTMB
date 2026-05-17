@@ -22,7 +22,7 @@ densified for v0.2.0; sparse engine path is a v0.3.0 follow-up.}
 }
 \value{
 Used inside a \code{\link[=gllvmTMB]{gllvmTMB()}} formula. Returns \code{invisible(NULL)}
-when called outside a formula — the keyword is a syntactic marker
+when called outside a formula -- the keyword is a syntactic marker
 that the parser rewrites internally to the canonical
 \code{\link[=phylo_scalar]{phylo_scalar()}} path (which is family-agnostic at the math level).
 }
@@ -36,11 +36,11 @@ where \eqn{\mathbf A} is the \strong{additive genetic relatedness matrix}
 \eqn{\sigma^{2}_{\text{a}}} is shared across traits.
 }
 \details{
-Mathematical parallel to \code{\link[=phylo_scalar]{phylo_scalar()}} — same engine path; the
+Mathematical parallel to \code{\link[=phylo_scalar]{phylo_scalar()}} -- same engine path; the
 only difference is that \strong{A} is supplied via \verb{pedigree =} (a
 3-column data frame: id, sire, dam), \verb{A =} (dense \eqn{n \times n}
 relatedness matrix), or \verb{Ainv =} (sparse precision; densified
-internally for v0.2.0 — sparse-Ainv direct engine path is a v0.3.0
+internally for v0.2.0 -- sparse-Ainv direct engine path is a v0.3.0
 follow-up).
 }
 \seealso{

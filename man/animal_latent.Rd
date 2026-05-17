@@ -36,7 +36,7 @@ themselves carry the \eqn{\mathbf A} structure across individuals.
 \details{
 This is the canonical "factor-analytic G-matrix" model from
 quantitative genetics (Kirkpatrick & Meyer 2004; Meyer 2009; the
-WOMBAT method). Mathematical parallel to \code{\link[=phylo_latent]{phylo_latent()}} — same
+WOMBAT method). Mathematical parallel to \code{\link[=phylo_latent]{phylo_latent()}} -- same
 engine path with a pedigree-derived relatedness matrix instead of
 phylogenetic VCV.
 }

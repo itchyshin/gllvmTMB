@@ -22,7 +22,7 @@ genetic relatedness matrix \eqn{\mathbf A}. Mathematically:
 }
 \details{
 This is the canonical \strong{quantitative-genetic random-regression}
-(reaction-norm) model — heritable variation in the slope on an
+(reaction-norm) model -- heritable variation in the slope on an
 environmental gradient. Mathematical parallel to \code{\link[=phylo_slope]{phylo_slope()}};
 the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
 \code{\link[=animal_scalar]{animal_scalar()}} / \code{\link[=animal_latent]{animal_latent()}}.

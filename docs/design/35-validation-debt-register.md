@@ -194,12 +194,12 @@ vision-item-5 differentiator).
 |----|------------|--------|---------------|-------|
 | MIX-01 | Engine accepts `family = list(...)` long format | `covered` | `test-stage37-mixed-family.R` | M0 baseline |
 | MIX-02 | Per-row `family_var` column dispatch | `covered` | `test-stage37-mixed-family.R` | |
-| MIX-03 | `extract_Sigma()` on mixed-family fits | `partial` | `test-mixed-family-extractor.R`, `test-mixed-response-sigma.R` | M1 expand |
-| MIX-04 | `extract_correlations()` on mixed-family fits | `partial` | `test-link-residual-15-family-fixture.R`, `test-fisher-z-correlations.R` | M1 expand |
-| MIX-05 | `extract_communality()` on mixed-family fits | `partial` | `test-mixed-family-extractor.R` | M1 expand |
-| MIX-06 | `extract_repeatability()` on mixed-family fits | `partial` | `test-mixed-family-extractor.R` | M1 expand |
-| MIX-07 | OLRE-bearing trait in mixed-family fits | `covered` | `test-mixed-family-olre.R`, `test-mixed-response-unique-nongaussian.R` | |
-| MIX-08 | `bootstrap_Sigma()` on mixed-family fits | `partial` | `test-bootstrap-Sigma.R` | per-row family preservation in resamples is M1 verification |
+| MIX-03 | `extract_Sigma()` on mixed-family fits | `covered` | `test-m1-3-extract-sigma-mixed-family.R`, `test-mixed-family-extractor.R`, `test-mixed-response-sigma.R` | M1.3 (PR #151) |
+| MIX-04 | `extract_correlations()` on mixed-family fits | `covered` | `test-m1-4-extract-correlations-mixed-family.R`, `test-link-residual-15-family-fixture.R`, `test-fisher-z-correlations.R` | M1.4 (PR #151) — Fisher-z + Wald + bootstrap on $\Sigma_\text{total}$; profile path operates on $\Sigma_\text{shared}$ per profile-correlation-surface audit |
+| MIX-05 | `extract_communality()` on mixed-family fits | `covered` | `test-m1-5-extract-communality-mixed-family.R`, `test-mixed-family-extractor.R` | M1.5 (PR #154) |
+| MIX-06 | `extract_repeatability()` on mixed-family fits | `covered` | `test-m1-6-extract-repeatability-mixed-family.R`, `test-mixed-family-extractor.R` | M1.6 (PR #154) — `vW` formula corrected to add per-family `sigma2_d` |
+| MIX-07 | OLRE-bearing trait in mixed-family fits | `covered` | `test-mixed-family-olre.R`, `test-mixed-response-unique-nongaussian.R` | M0 baseline; M1.7 cross-tier integration via `test-m1-7-extract-omega-phylo-signal-mixed-family.R` |
+| MIX-08 | `bootstrap_Sigma()` on mixed-family fits | `covered` | `test-m1-8-bootstrap-mixed-family.R`, `test-bootstrap-Sigma.R` | M1.8 (PR #157) — per-row family preserved via `fit$family_input` |
 | MIX-09 | `link_residual = "auto"` default (PR #101) | `covered` | `test-link-residual-auto-default.R`, `test-link-residual-15-family-fixture.R`, `test-link-residual-clamp.R` | M0 baseline |
 | MIX-10 | Mixed-family with delta / hurdle family (latent-scale correlation) | `blocked` | `test-check-auto-residual.R` | two-scales-undefined; safeguard errors with class `gllvmTMB_auto_residual_delta_undefined` |
 
@@ -282,7 +282,7 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 | MIS-02 | `gllvmTMB(traits(...) ~ ...)` wide format | `covered` | `test-traits-keyword.R`, `test-wide-weights-matrix.R` | |
 | MIS-03 | `gllvmTMB_wide(Y, ...)` legacy constructor | `blocked` | `test-gllvmTMB-wide.R` (now tests removal) | removed in 0.2.0 |
 | MIS-04 | Weight column unified handling | `covered` | `test-weights-unified.R`, `test-lme4-style-weights.R` | |
-| MIS-05 | `simulate_site_trait()` Gaussian + selected tiers | `partial` | `test-simulate-site-trait.R` | family-aware simulate is M2 |
+| MIS-05 | `simulate.gllvmTMB_multi()` family-aware draws (per-row family dispatch) | `covered` | `test-m1-8-bootstrap-mixed-family.R`, `test-simulate-site-trait.R` | M1.8 (PR #157) — `.draw_y_per_family()` dispatches by `family_id_vec`; 6 families (gaussian / binomial / poisson / lognormal / Gamma / nbinom2) covered; others fall back with one-time warning |
 | MIS-06 | `tidy.gllvmTMB_multi()` broom-style output | `covered` | `test-tidy-predict.R` | |
 | MIS-07 | `predict.gllvmTMB_multi()` link / response | `partial` | `test-tidy-predict.R` | family-aware predict typed outputs is M2 |
 | MIS-08 | `print.gllvmTMB_multi()` summary label discipline | `covered` | `test-print-labels.R` | |
@@ -316,6 +316,17 @@ rows + audit every `covered` row + correctly mark every
 **The vision's claim of "unparalleled capability" depends on
 walking the `partial` mixed-family rows (MIX-03 through
 MIX-08) to `covered`.** M1 milestone delivers that walk.
+
+### Update — M1 close (2026-05-17)
+
+Six rows walked from `partial` → `covered` in M1.10 close
+gate: MIX-03, MIX-04, MIX-05, MIX-06, MIX-08, and MIS-05.
+EXT-07 stayed `covered` with extended test-file evidence
+(M1.7 cross-tier composition). MIX-10 stays `blocked` (delta
+/ hurdle two-scales-undefined; safeguard error class
+`gllvmTMB_auto_residual_delta_undefined` is the honest
+answer). Per
+[`docs/dev-log/after-phase/2026-05-17-m1-close.md`](../dev-log/after-phase/2026-05-17-m1-close.md).
 
 ## What this register does NOT do
 

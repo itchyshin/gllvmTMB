@@ -59,7 +59,7 @@ items completed within that phase.
 | **Phase 0C** | **Transition cleanup (article overpromise)** | 🟢 Closing | `██████` 6/6 (pending merge) | PRs #140 (triage), #141 (paper notes), #142 (pkgdown hotfix), #143 (PULL), #144 (TRIM), #145 (PREVIEW), #146 (REWRITE-PREP), #147 (ROADMAP), PR-0C.COVERAGE (this PR). After this merges, Phase 0C closes and M1 begins. |
 | **Phase 1c-slope** | **Random slopes (NEW pre-CRAN)** | ⚪ Planned | `░░░░░░░░` 0/6 | Engine generalisation + extractors + recovery + plots + article. **Capped at 1 slope per fit** per M1 design. |
 | Phase 1c article ports | Article ports + new Concepts pedagogy | 🔵 Frozen at 7/14 | `█████░░░` 7/14 | **Superseded 2026-05-15** by the function-first M1 / M2 / M3 milestone sequence below. Remaining article work absorbed into M1.9 (mixed-family-extractors), M2.5 (psychometrics-irt rewrite), M3.6 (simulation-recovery-validated), and Phase 1f (choose-your-model rewrite). |
-| **M1** | **Mixed-family extractor rigour** | ⚪ Planned | `░░░░░░░░` 0/10 | Weeks 1–2. Every extractor validated on `family = list(...)` fits; new `mixed-family-extractors.Rmd` ships. |
+| **M1** | **Mixed-family extractor rigour** | ✅ Done | `████████` 10/10 | PRs #149 – #158 + M1.10 close gate. Every extractor validated on `family = list(...)` fits; `mixed-family-extractors.Rmd` shipped; MIX-03..MIX-06, MIX-08, MIS-05 walked to `covered`. |
 | **M2** | **Binary completeness** | ⚪ Planned | `░░░░░░░░` 0/7 | Weeks 3–5. `lambda_constraint` binary IRT; restore `psychometrics-irt.Rmd` against validated machinery. |
 | **M3** | **Inference completeness across families** | ⚪ Planned | `░░░░░░░░` 0/8 | Weeks 5–7. `coverage_study()` ≥ 94 % on Gaussian / binomial / nbinom2 / ordinal-probit / mixed-family at R = 200. |
 | Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher (incl. random-slope plots) |
@@ -711,7 +711,7 @@ Each slice follows the drmTMB-team rhythm: **Goal → Main work →
 Done when**. Per-slice owners are named; reviewers are recorded
 in each slice's after-task report.
 
-### ⚪ M1 -- Mixed-family extractor rigour -- `░░░░░░░░` 0/10
+### ✅ M1 -- Mixed-family extractor rigour -- `████████` 10/10
 
 > **Goal**: every extractor returns correct, unit-tested values
 > on `family = list(...)` fits across the 15-family matrix. The

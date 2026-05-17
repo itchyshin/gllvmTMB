@@ -34,8 +34,8 @@ Each item is a one-line decision; the executing PR is a single
 | # | Bucket | README line(s) | Issue | Proposed fix | Decision |
 |---|---|---|---|---|---|
 | **1** | **FIX** (citation) | L140 | `**Hadfield A⁻¹ phylogenetic + paired …**` — author-surname-only label, no full citation. | Replace `Hadfield A⁻¹` with `Hadfield & Nakagawa (2010) sparse $A^{-1}$`; keep the math symbol $A^{-1}$ as math, the citation as a parenthetical. | maintainer ratify |
-| **2** | **FIX** (citation) | L145 | `**meta_V(scale = "proportional") (Nakagawa 2022)**` — year-only, no journal / DOI. | Replace `(Nakagawa 2022)` with `(Nakagawa 2022, *Res. Synth. Methods*)` or whichever the actual journal is — maintainer to confirm publication venue. | maintainer ratify (need journal) |
-| **3** | **FIX** (citation) | L337 | `**meta_V(scale = "proportional")** — Nakagawa 2022 unifying weighted-regression / meta-analysis mode` — same year-only citation in the Deferred section. | Same fix as #2; consistent shape across both sites. | maintainer ratify (need journal) |
+| **2** | **FIX** (citation) | L145 | `**meta_V(scale = "proportional") (Nakagawa 2022)**` — year-only, no journal / DOI. | Replace `(Nakagawa 2022)` with `(Nakagawa et al., *in prep*)`. **Maintainer 2026-05-17 confirmed** the source is the in-preparation methods paper *"A calibrated diagnostic for misspecified sampling variances in multilevel meta-analysis"* (companion code at `github.com/itchyshin/unifying_model`). | ✅ ratified |
+| **3** | **FIX** (citation) | L337 | `**meta_V(scale = "proportional")** — Nakagawa 2022 unifying weighted-regression / meta-analysis mode` — same year-only citation in the Deferred section. | Same fix as #2: `Nakagawa et al. (in prep)`. | ✅ ratified |
 | **4** | **REORDER** | L94 (Status table) vs L169 (Install) + L~200 (Tiny example) | The matrix dominates before any worked example. Pat: "Pat bounces; never reaches the runnable 5-line fit." | Move `## Install` + `## Tiny example` *before* `## Status of supported features`. The matrix is developer-facing triage; the runnable fit closes Pat's "should I install?" loop. | maintainer ratify |
 | **5** | **CUT / FOLD** | L140–141 (phylo variants) | 2 phylo rows (`Hadfield A⁻¹ paired` + `phylo_scalar / indep / dep / slope`) read as one fold-able set; together they take ~6 visual lines on a laptop. | Fold to **one** row: `Phylogenetic covariance (Hadfield & Nakagawa 2010 sparse $A^{-1}$ + paired latent/unique covered; scalar/indep/dep/slope smoke)` — status: `stable (paired) / experimental (variants)`. Register refs: PHY-01..PHY-10. Saves ~1 row + ~3 visual lines. | maintainer ratify |
 | **6** | **CUT / FOLD** | L142–143 (spatial variants) | Same pattern: 2 spatial rows (SPDE mesh + 5 spatial keywords) fold-able. | Fold to one row: `Spatial covariance (SPDE mesh + spatial_latent/unique/scalar/indep/dep)` — status: `stable (mesh + dispatch) / experimental (variants)`. Register refs: SPA-01..SPA-07. Saves 1 row. | maintainer ratify |
@@ -91,13 +91,29 @@ one FINAL CHECKPOINT before merge.
 - `.agents/skills/rose-pre-publish-audit/SKILL.md` (16 checks; checks 1, 7, 9, 12, 14 fired; check 13 inapplicable here).
 - `docs/dev-log/audits/2026-05-16-phase0c-article-triage.md` (the parallel triage for vignettes/articles).
 
-## Decisions needed (maintainer 2026-05-17)
+## Decisions (maintainer 2026-05-17, ratified)
 
-1. **Citation FIXES (items 1, 2, 3)** — approve as-is, OR provide the correct journal name for the Nakagawa 2022 paper (item 2 + 3).
-2. **REORDER (item 4)** — approve moving Install + Tiny example before Status matrix.
-3. **CUT / FOLD (items 5, 6, 7)** — approve folding phylo, spatial, and extractor matrix rows.
-4. **TIGHTEN (item 8)** — approve trimming "What can I model now?" to 4 short bullets.
-5. **DEFER (item 9)** — approve flagging the Covariance keyword grid extraction for a future PR.
+1. **Citation FIXES (items 1, 2, 3)** — ✅ ratified. Items 2 + 3
+   resolved as `Nakagawa et al. (in prep)` against the in-preparation
+   methods paper *"A calibrated diagnostic for misspecified sampling
+   variances in multilevel meta-analysis"* (Nakagawa et al., dated
+   2026-05-01; companion code `github.com/itchyshin/unifying_model`).
+2. **REORDER (item 4)** — ✅ ratified. Status matrix demoted to
+   after Tiny example (executed as a single-block move; original
+   Install → Data shapes → Tiny example sub-order preserved).
+3. **CUT / FOLD (items 5, 6, 7)** — ✅ ratified.
+4. **TIGHTEN (item 8)** — ✅ ratified.
+5. **DEFER (item 9)** — ✅ ratified (Covariance keyword grid
+   extraction flagged for future small PR).
 
-Once ratified, one PR (`PR-0C.LANDING-PAGE-FIX`) executes 1–8;
-item 9 is flagged for a future small PR.
+## Future follow-up flagged (out of scope for this PR)
+
+- **Machinery-naming question**: the Nakagawa et al. (in prep)
+  paper uses *multiplicative* terminology throughout (σ²_v as the
+  multiplicative residual scale, re-parameterising Stanley &
+  Doucouliagos's φ²). The current `meta_V(scale = "proportional")`
+  argument name uses "proportional". When MET-03 lands as part of
+  M3 / post-CRAN work, the argument name should be reconciled with
+  the paper's terminology (`scale = "multiplicative"`?) or the
+  paper should be cited as introducing both names. Flag for the
+  MET-03 design slice.

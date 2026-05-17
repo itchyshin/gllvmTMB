@@ -97,8 +97,14 @@ extract_repeatability <- function(fit,
   if (method == "wald") {
     ## Wald CI for FULL-Sigma R = vB[t] / (vB[t] + vW[t]), where
     ##   vB[t] = (Lambda_B Lambda_B^T)[t,t] + sd_B[t]^2
-    ##   vW[t] = (Lambda_W Lambda_W^T)[t,t] + sd_W[t]^2
-    ## (Bell 2009; Nakagawa & Schielzeth 2010 standard definition).
+    ##   vW[t] = (Lambda_W Lambda_W^T)[t,t] + sd_W[t]^2 + sigma2_d[t]
+    ## (Bell 2009; Nakagawa & Schielzeth 2010 latent-scale formula).
+    ## sigma2_d[t] is the per-trait distribution-specific / observation-
+    ## level latent-scale residual (0 for Gaussian, pi^2/3 for
+    ## binomial-logit, log(1 + 1/mu_t) for Poisson, etc.) — see
+    ## link_residual_per_trait() in R/extract-sigma.R. Added in M1.6;
+    ## pre-fix code omitted this term, biasing repeatability upward
+    ## (toward 1) on non-Gaussian fits.
     ## Delta method on the log-odds: log_v[t] = log(vB[t]) - log(vW[t]),
     ## R[t] = plogis(log_v[t]). SE(log_v) computed via numerical
     ## Jacobian of log_v wrt the fixed parameters, times the joint
@@ -115,6 +121,18 @@ extract_repeatability <- function(fit,
     }
     par_fix_at_mle <- par_full_at_mle[fix_idx]
 
+    ## M1.6 fix (2026-05-17): add the per-trait link-residual variance
+    ## to vW so the latent-scale repeatability is correctly defined for
+    ## non-Gaussian / mixed-family fits. For Gaussian traits the link
+    ## residual is 0 and the formula reduces to the previous behaviour
+    ## exactly. The link residual is evaluated once at the MLE and
+    ## treated as a constant w.r.t. theta_fix in the delta-method
+    ## Jacobian — exact for binomial / probit / cloglog (link-defined
+    ## constants); first-order approximation for Poisson / NB / Gamma
+    ## where sigma2_d depends on fitted mu / phi. Improving Jacobian
+    ## accuracy on those families is M3 inference-completeness work.
+    sigma2_d <- unname(link_residual_per_trait(fit))
+
     log_v_function <- function(theta_fix) {
       par_full <- par_full_at_mle
       par_full[fix_idx] <- theta_fix
@@ -124,7 +142,7 @@ extract_repeatability <- function(fit,
       sd_B     <- if (is.null(rep$sd_B))     rep(0, T)       else rep$sd_B
       sd_W     <- if (is.null(rep$sd_W))     rep(0, T)       else rep$sd_W
       vB <- diag(Lambda_B %*% t(Lambda_B)) + sd_B^2
-      vW <- diag(Lambda_W %*% t(Lambda_W)) + sd_W^2
+      vW <- diag(Lambda_W %*% t(Lambda_W)) + sd_W^2 + sigma2_d
       if (any(vB <= 0) || any(vW <= 0))
         cli::cli_abort("Wald repeatability needs vB > 0 and vW > 0; refit with both {.code latent + unique} or {.code unique} alone at each tier.")
       log(vB) - log(vW)

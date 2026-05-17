@@ -72,7 +72,7 @@ test_that("gllvmTMB and glmmTMB agree on per-trait intercepts for binomial(logit
   expect_equal(fit_gllvm$opt$convergence, 0L,
                info = "gllvmTMB 2-trait binomial fit did not converge")
 
-  td <- suppressMessages(broom::tidy(fit_gllvm, "fixed", conf.int = FALSE))
+  td <- suppressMessages(gllvmTMB::tidy(fit_gllvm, "fixed", conf.int = FALSE))
   gllvm_t1 <- td$estimate[td$term == "traitt1"]
   gllvm_t2 <- td$estimate[td$term == "traitt2"]
   glmm_t1  <- glmm_betas["traitt1"]

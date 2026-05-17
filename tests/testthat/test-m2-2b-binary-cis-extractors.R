@@ -61,8 +61,8 @@ test_that("Wald CIs (tidy + conf.int) on binomial fit return sensible bounds (CI
   obj <- build_logit_fit(seed = 20260601L)
   expect_equal(obj$fit$opt$convergence, 0L)
 
-  td <- suppressMessages(broom::tidy(obj$fit, "fixed",
-                                     conf.int = TRUE, conf.level = 0.95))
+  td <- suppressMessages(gllvmTMB::tidy(obj$fit, "fixed",
+                                        conf.int = TRUE, conf.level = 0.95))
   expect_true(nrow(td) >= obj$T)        # at least one row per trait
   expect_true(all(c("estimate", "conf.low", "conf.high") %in% names(td)))
   expect_true(all(is.finite(td$estimate)))

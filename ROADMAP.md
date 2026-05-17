@@ -56,11 +56,11 @@ items completed within that phase.
 | Phase 1b validation | Profile-likelihood CI validation | 🟢 Gaussian baseline | `█████░` 3/3 (Gaussian) | PR #121 (gllvmTMB_check_consistency, merged); PR #120 (confint_inspect, merged); PR-0C.COVERAGE (R = 200 Gaussian d=2 grid shipped at `dev/precomputed/coverage-gaussian-d2.rds`). Binomial / nbinom2 / ordinal-probit / mixed-family cells walk via M3.3. |
 | Phase 0A | Function-first infrastructure prep | ✅ Done | `████████` 1/1 | PR #132. 8 design docs + AGENTS.md DoD + after-task 10-section template + stop-checkpoint skill + validation-debt register (102 rows). |
 | Phase 0B | Empirical verification (zero `claimed` rows) | ✅ Done | `████████` 4/4 | PRs #134–#139. Walked every `claimed` formula-grammar row to `covered` / `partial` / `blocked`; 9 new smoke tests. |
-| **Phase 0C** | **Transition cleanup (article overpromise)** | 🟢 Closing | `██████` 6/6 (pending merge) | PRs #140 (triage), #141 (paper notes), #142 (pkgdown hotfix), #143 (PULL), #144 (TRIM), #145 (PREVIEW), #146 (REWRITE-PREP), #147 (ROADMAP), PR-0C.COVERAGE (this PR). After this merges, Phase 0C closes and M1 begins. |
+| Phase 0C | Transition cleanup (article overpromise) | ✅ Done | `████████` 6/6 | PRs #140 (triage), #141 (paper notes), #142 (pkgdown hotfix), #143 (PULL), #144 (TRIM), #145 (PREVIEW), #146 (REWRITE-PREP), #147 (ROADMAP), PR-0C.COVERAGE. Phase 0C closed; M1 dispatched at PR #149; M1 closed at PR #160. |
 | **Phase 1c-slope** | **Random slopes (NEW pre-CRAN)** | ⚪ Planned | `░░░░░░░░` 0/6 | Engine generalisation + extractors + recovery + plots + article. **Capped at 1 slope per fit** per M1 design. |
 | Phase 1c article ports | Article ports + new Concepts pedagogy | 🔵 Frozen at 7/14 | `█████░░░` 7/14 | **Superseded 2026-05-15** by the function-first M1 / M2 / M3 milestone sequence below. Remaining article work absorbed into M1.9 (mixed-family-extractors), M2.5 (psychometrics-irt rewrite), M3.6 (simulation-recovery-validated), and Phase 1f (choose-your-model rewrite). |
 | **M1** | **Mixed-family extractor rigour** | ✅ Done | `████████` 10/10 | PRs #149 – #158 + M1.10 close gate. Every extractor validated on `family = list(...)` fits; `mixed-family-extractors.Rmd` shipped; MIX-03..MIX-06, MIX-08, MIS-05 walked to `covered`. |
-| **M2** | **Binary completeness** | 🟢 In progress | `█░░░░░░░` 1/7 | Weeks 3–5. M2.1 design note shipped 2026-05-17; `lambda_constraint` binary IRT; restore `psychometrics-irt.Rmd` against validated machinery. |
+| **M2** | **Binary completeness** | 🟢 In progress | `██░░░░░░` 2/7 | Weeks 3–5. M2.1 design note + M2.2-A binary family recovery shipped 2026-05-17; `lambda_constraint` binary IRT; restore `psychometrics-irt.Rmd` against validated machinery. |
 | **M3** | **Inference completeness across families** | ⚪ Planned | `░░░░░░░░` 0/8 | Weeks 5–7. `coverage_study()` ≥ 94 % on Gaussian / binomial / nbinom2 / ordinal-probit / mixed-family at R = 200. |
 | Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher (incl. random-slope plots) |
 | Phase 1d | Navbar restructure | 🟢 Partly done | `█░` 1/2 | PR #112 created the **Methods + validation** tier; full 3-tier audit deferred to a Phase 1d close PR |
@@ -736,7 +736,7 @@ quantities (communality, repeatability, phylo signal) for
 mixed-family fits are M3 work. M1 extends extractors to
 mixed-family at the point-estimate + Fisher-z + Wald level.
 
-### 🟢 M2 -- Binary completeness -- `█░░░░░░░` 1/7
+### 🟢 M2 -- Binary completeness -- `██░░░░░░` 2/7
 
 > **Goal**: every binary capability is end-to-end-validated,
 > including `lambda_constraint` for confirmatory binary IRT

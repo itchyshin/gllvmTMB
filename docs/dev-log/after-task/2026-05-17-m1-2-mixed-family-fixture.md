@@ -12,14 +12,39 @@ ship a deterministic mixed-family **test fixture** so the M1.3..M1.8
 extractor PRs can write byte-stable tests without each one
 re-defining its own DGP.
 
-The fixture covers two variants:
+**Three-tier design (maintainer 2026-05-17, ratified mid-PR after
+identifiability discussion)**:
 
-- **3-family**: Gaussian + binomial + Poisson, 60 sites × 3 traits.
-- **5-family**: + Gamma + nbinom2, 60 sites × 5 traits.
+- **3-family** *(small / fast)*: Gaussian + binomial + Poisson,
+  60 sites × **3 traits**, **d = 1**. Well-identified small surface
+  for M1 extractor tests; no rotation slack; fastest CI.
+- **5-family** *(medium / demo)*: 5 unique families across
+  60 sites × **8 traits** (2 Gaussian + 2 binomial + 2 Poisson +
+  1 Gamma + 1 nbinom2), **d = 2**. Demo-grade `d = 2` ordination;
+  supports M2.5 (psychometrics-irt rewrite) and M3.6
+  (simulation-recovery-validated) as a reusable template.
+- **Future** *(showcase)*: T = 20-30 traits, d = 3, mixed-family.
+  **Post-CRAN** vignette example, not a test fixture (too slow
+  for CI; the M5 fitter-stability gate is the prerequisite).
 
-Both are produced by a seeded builder (`seed = 20260517L`) and
-cached as data only (not as fitted objects — see §2 for the
-TMB-portability rationale).
+Both fixtures are produced by a seeded builder
+(`seed = 20260517L`) and cached as data only (not as fitted
+objects — see §2 for the TMB-portability rationale).
+
+The three-tier choice trades off identifiability + demonstration
+value vs CI compute cost:
+
+| Tier | $T$ | $d$ | Identifiability | Demo value | CI cost |
+|---|---|---|---|---|---|
+| 3-family (test) | 3 | 1 | clean (no rotation) | n/a — test fixture | ~0.3 s fit |
+| 5-family (demo) | 8 | 2 | $(T-d)(T-d-1) = 30 \geq 2d = 4$; clean recovery | usable for M2.5 / M3.6 biplots | ~3.1 s fit |
+| Future T=20-30 | 20–30 | 3 | $(T-d)(T-d-1) \geq 240 \gg 2d = 6$; clean recovery | full GLLVM ordination showcase | post-CRAN |
+
+`T = 3, d = 2` (the original draft) was on the boundary of
+parameter-counting identifiability — the second factor's loadings
+are largely arbitrary on so few traits. The revision moves the
+test fixture to `T = 3, d = 1` (cleaner) and the demo fixture to
+`T = 8, d = 2` (genuine 2-axis structure).
 
 ## 2. Implemented
 
@@ -66,19 +91,33 @@ This design choice is documented in the top-of-file comment in
 
 ### DGP details
 
-The 5-family Lambda_B matrix gives each trait a clear share of
-two latent axes:
+**3-family (T = 3, d = 1)**: Lambda_B is 3 × 1, one latent axis.
 
 ```
-trait_1 (gaussian):  ( 1.0,  0.3)
-trait_2 (binomial):  ( 0.7, -0.5)
-trait_3 (poisson):   (-0.3,  0.8)
-trait_4 (Gamma):     ( 0.6,  0.2)
-trait_5 (nbinom2):   ( 0.4, -0.4)
-psi_B = rep(0.3, n_traits)
+trait_1 (gaussian):  ( 1.0)
+trait_2 (binomial):  ( 0.7)
+trait_3 (poisson):   (-0.3)
+psi_B = rep(0.3, 3)
 ```
 
-The 3-family variant uses the first three rows.
+**5-family (T = 8, d = 2)**: Lambda_B is 8 × 2, two latent axes.
+First-row second entry pinned to 0 (lower-triangular convention).
+
+```
+trait_1 (gaussian):  ( 1.0,  0.0)   # constrained for lower-triangular Λ
+trait_2 (gaussian):  ( 0.7, -0.5)
+trait_3 (binomial):  (-0.3,  0.8)
+trait_4 (binomial):  ( 0.6,  0.2)
+trait_5 (poisson):   ( 0.4, -0.4)
+trait_6 (poisson):   (-0.5,  0.7)
+trait_7 (Gamma):     ( 0.8,  0.4)
+trait_8 (nbinom2):   (-0.2, -0.6)
+psi_B = rep(0.3, 8)
+```
+
+Loadings designed so each trait has a clear contribution to one
+or both axes; the second axis has a mix of positive and negative
+signs to ensure it's not a near-duplicate of the first.
 
 After `simulate_site_trait()` returns Gaussian-scale `value`,
 each row is cast per family with **group-wise mean centring** to
@@ -100,8 +139,11 @@ to scalars; the group-wise loop is the correct shape.
 Both fits converge in the fitter wrapper (`fit_mixed_family_fixture()`),
 which asserts `fit$opt$convergence == 0` and aborts otherwise:
 
-- 3-family: convergence = 0; logLik = -240.16; ~0.5 s
-- 5-family: convergence = 0; logLik = -514.03; ~1.7 s
+- 3-family (T=3, d=1): convergence = 0; logLik = -230.01; ~0.3 s
+- 5-family (T=8, d=2): convergence = 0; logLik = -740.33; ~3.1 s
+
+The 5-family fit time (~3.1 s) is acceptable per CI budget; the
+larger T more than offsets the larger d in compute cost.
 
 ## 3. Files Changed
 
@@ -239,9 +281,10 @@ PRs (M1.3..M1.8).
 
 - **M1.3 dispatches next** (Emmy lead): `extract_Sigma()`
   mixed-family validation. Walks **MIX-03 → covered**.
-- The fixture is **intentionally small** (60 sites, 3–5 traits).
+- The fixture is **intentionally small** (60 sites; T = 3 or 8).
   Larger DGPs (R = 200 grids for M3, real-data fixtures for
-  M5.5) follow the same pattern but live in separate files.
+  M5.5, T = 20-30 d = 3 vignette showcase post-CRAN) follow
+  the same pattern but live in separate files.
 - The cached RDS includes **the simulated `value` + `family`
   column** but not the `gllvmTMB_multi` fit. Tests rebuild the
   fit. If a future PR needs a serialised fit (e.g., for
@@ -254,3 +297,23 @@ PRs (M1.3..M1.8).
   trap from §8). A new check could grep test files for
   `expect_equal` on factor objects without `as.character()`.
   Deferred to next skill upgrade cycle.
+- **$d = 3$ showcase fixture (post-CRAN)**: T = 20-30 traits,
+  d = 3, mixed-family. Lives in `vignettes/articles/` rather
+  than `inst/extdata/` so vignette knit precomputes; cached
+  fit summary instead of obj. ROADMAP M3 deferred row;
+  prerequisite is M5 fitter-stability gate (large-d
+  convergence + sdreport stable).
+
+### Mid-PR design revision (maintainer 2026-05-17)
+
+The first draft of this PR shipped 3-family (T = 3, d = 2) +
+5-family (T = 5, d = 2) fixtures. The maintainer pointed out
+mid-review that T = 3, d = 2 is on the parameter-counting
+identifiability boundary (the second factor's loadings are
+largely arbitrary on so few traits) and that demo-grade
+ordination needs T ≥ 7-8 for d = 2 to recover clean factors.
+
+The revision (executed in this same PR before merge) moved to
+the three-tier design: small/test = T=3 d=1; medium/demo =
+T=8 d=2; large/showcase = T=20-30 d=3 post-CRAN. This is now
+the canonical fixture-design template for M1-M3.

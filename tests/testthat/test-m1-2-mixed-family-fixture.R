@@ -17,7 +17,7 @@
 
 # ---- shape + load ---------------------------------------------------
 
-test_that("3-family fixture loads from cache with expected shape (M1.2)", {
+test_that("3-family fixture loads from cache with expected shape (M1.2; T=3 d=1)", {
   skip_on_cran()
   fx <- gllvmTMB:::load_mixed_family_fixture(n_families = 3L)
   expect_named(fx, c("data", "truth", "family_list", "family_var"),
@@ -25,21 +25,27 @@ test_that("3-family fixture loads from cache with expected shape (M1.2)", {
   expect_equal(fx$family_var, "family")
   expect_identical(fx$truth$families,
                    c("gaussian", "binomial", "poisson"))
+  expect_equal(fx$truth$n_traits, 3L)
+  expect_equal(fx$truth$d_B, 1L)
   expect_equal(nrow(fx$data), 60L * 3L)
   expect_true(all(c("trait", "family", "value", "site") %in% names(fx$data)))
   expect_identical(levels(fx$data$family),
                    c("gaussian", "binomial", "poisson"))
 })
 
-test_that("5-family fixture loads from cache with expected shape (M1.2)", {
+test_that("5-family fixture loads from cache with expected shape (M1.2; T=8 d=2)", {
   skip_on_cran()
   fx <- gllvmTMB:::load_mixed_family_fixture(n_families = 5L)
   expect_equal(fx$family_var, "family")
   expect_identical(fx$truth$families,
                    c("gaussian", "binomial", "poisson", "Gamma", "nbinom2"))
-  expect_equal(nrow(fx$data), 60L * 5L)
+  expect_equal(fx$truth$n_traits, 8L)
+  expect_equal(fx$truth$d_B, 2L)
+  expect_equal(nrow(fx$data), 60L * 8L)
   expect_identical(levels(fx$data$family),
                    c("gaussian", "binomial", "poisson", "Gamma", "nbinom2"))
+  ## 8 traits split as (gaussian x 2, binomial x 2, poisson x 2, Gamma x 1, nbinom2 x 1)
+  expect_equal(nlevels(fx$data$trait), 8L)
 })
 
 # ---- cache vs in-process builder are bit-identical ------------------
@@ -98,8 +104,12 @@ test_that("each fixture family has a non-degenerate value distribution (M1.2)", 
                 info = sprintf(
                   "%d-family: every family must have sd(value) > 0.1; got %s",
                   k, paste(round(spread, 3), collapse = " / ")))
-    counts <- tapply(fx$data$value, fx$data$family, length)
-    expect_true(all(counts == 60L),
-                info = sprintf("%d-family: each family should have 60 obs", k))
+    ## Each *trait* (not family) has exactly 60 observations
+    ## (one row per (site, trait) pair). Families with multiple
+    ## traits (5-family has gaussian/binomial/poisson x 2 each)
+    ## therefore have 60 or 120 observations depending on count.
+    trait_counts <- tapply(fx$data$value, fx$data$trait, length)
+    expect_true(all(trait_counts == 60L),
+                info = sprintf("%d-family: each trait should have 60 obs", k))
   }
 })

@@ -1,11 +1,24 @@
 ## Mixed-family fixture for M1 extractor-rigour testing.
 ##
 ## Provides reproducible 3-family and 5-family fixtures backing the
-## M1 milestone (mixed-family extractor rigour). Each fixture pairs:
+## M1 milestone (mixed-family extractor rigour). Three-tier design
+## ratified by maintainer 2026-05-17:
 ##
+##   - 3-family: T = 3 traits across 3 unique families, d = 1.
+##     Well-identified small surface for M1 extractor tests; no
+##     rotation slack; fastest CI.
+##   - 5-family: T = 8 traits across 5 unique families
+##     (2 Gaussian + 2 binomial + 2 Poisson + 1 Gamma + 1 nbinom2),
+##     d = 2. Demo-grade d = 2 ordination; supports M2.5 (psychometrics-
+##     irt rewrite) and M3.6 (simulation-recovery-validated) as a
+##     reusable template.
+##   - (Future: T = 20-30, d = 3 vignette fixture is post-CRAN.)
+##
+## Each fixture pairs:
 ##   - a deterministic data frame (60 sites x T traits in long format,
 ##     with a `family` column for per-row family dispatch),
-##   - the DGP truth (`Lambda_B`, `psi_B`, family assignments per trait),
+##   - the DGP truth (`Lambda_B`, `psi_B`, trait-to-family mapping,
+##     n_traits, d_B, seed),
 ##   - a small smoke test that the fit converges.
 ##
 ## DESIGN NOTE — why we cache *data*, not *fits*:
@@ -52,26 +65,45 @@
   n_families <- as.integer(match.arg(as.character(n_families),
                                      choices = c("3", "5")))
   n_sites  <- 60L
-  n_traits <- n_families
-  d_B      <- 2L
 
-  ## Family assignment per trait and per-trait scaling.
-  ## Loadings designed so each trait gets a clear share of the two
-  ## latent axes without near-degenerate structure.
+  ## Three-tier fixture design (maintainer 2026-05-17):
+  ## - 3-family: T = 3 traits across 3 unique families, d = 1.
+  ##   Well-identified small surface for M1 extractor tests.
+  ## - 5-family: T = 8 traits across 5 unique families, d = 2.
+  ##   Demo-grade d = 2 ordination; supports M2.5 / M3.6 articles.
+  ## (Future T = 20-30, d = 3 vignette fixture is post-CRAN.)
+  ##
+  ## Per-trait family assignment is encoded by the `family` column in
+  ## the simulated data. The `family_list` passed to gllvmTMB() has
+  ## one entry per UNIQUE family (3 or 5), and gllvmTMB dispatches
+  ## per-row via `attr(family_list, "family_var") = "family"`.
   if (n_families == 3L) {
-    families <- c("gaussian", "binomial", "poisson")
-    Lambda_B <- matrix(c( 1.0,  0.3,
-                          0.7, -0.5,
-                         -0.3,  0.8),
+    families       <- c("gaussian", "binomial", "poisson")
+    trait_families <- families       # one trait per family
+    n_traits       <- 3L
+    d_B            <- 1L
+    Lambda_B <- matrix(c( 1.0,
+                          0.7,
+                         -0.3),
                        nrow = n_traits, ncol = d_B, byrow = TRUE)
     psi_B    <- rep(0.3, n_traits)
-  } else {  # n_families == 5L
-    families <- c("gaussian", "binomial", "poisson", "Gamma", "nbinom2")
-    Lambda_B <- matrix(c( 1.0,  0.3,
+  } else {  # n_families == 5L  →  T = 8, d = 2
+    families       <- c("gaussian", "binomial", "poisson", "Gamma", "nbinom2")
+    trait_families <- c("gaussian", "gaussian",
+                        "binomial", "binomial",
+                        "poisson",  "poisson",
+                        "Gamma",
+                        "nbinom2")
+    n_traits       <- length(trait_families)  # 8
+    d_B            <- 2L
+    Lambda_B <- matrix(c( 1.0,  0.0,    # first row constrained for lower-triangular Λ
                           0.7, -0.5,
                          -0.3,  0.8,
                           0.6,  0.2,
-                          0.4, -0.4),
+                          0.4, -0.4,
+                         -0.5,  0.7,
+                          0.8,  0.4,
+                         -0.2, -0.6),
                        nrow = n_traits, ncol = d_B, byrow = TRUE)
     psi_B    <- rep(0.3, n_traits)
   }
@@ -89,11 +121,12 @@
   )
   df <- sim$data
 
-  ## Trait-to-family lookup.
+  ## Trait-to-family lookup. When n_traits > n_families, multiple
+  ## traits map to the same family (the 5-family / T = 8 case).
   trait_levels <- levels(df$trait)
-  fam_lookup   <- setNames(families, trait_levels)
+  fam_lookup   <- setNames(trait_families, trait_levels)
   df$family    <- factor(fam_lookup[as.character(df$trait)],
-                         levels = unname(fam_lookup))
+                         levels = families)
 
   ## Cast `value` per family (group-wise, NOT row-wise — group means
   ## are only meaningful on the whole family block).
@@ -126,7 +159,11 @@
       Lambda_B  = Lambda_B,
       psi_B     = psi_B,
       families  = families,
+      trait_families = trait_families,
       fam_lookup = fam_lookup,
+      n_sites   = n_sites,
+      n_traits  = n_traits,
+      d_B       = d_B,
       seed      = seed
     ),
     family_list = family_list,
@@ -190,17 +227,26 @@ load_mixed_family_fixture <- function(n_families = c(3L, 5L)) {
 #' @noRd
 fit_mixed_family_fixture <- function(n_families = c(3L, 5L)) {
   fixture <- load_mixed_family_fixture(n_families = n_families)
+  d_B <- fixture$truth$d_B
+  formula <- if (d_B == 1L) {
+    value ~ 0 + trait + latent(0 + trait | site, d = 1)
+  } else if (d_B == 2L) {
+    value ~ 0 + trait + latent(0 + trait | site, d = 2)
+  } else {
+    stop(sprintf("Unsupported d_B in fixture: %d", d_B))
+  }
   fit <- suppressMessages(suppressWarnings(
     gllvmTMB::gllvmTMB(
-      value ~ 0 + trait + latent(0 + trait | site, d = 2),
+      formula,
       data   = fixture$data,
       family = fixture$family_list
     )
   ))
   if (!isTRUE(fit$opt$convergence == 0L)) {
     stop(sprintf(
-      "Mixed-family fixture (%d-family) fit failed to converge: convergence = %s",
-      n_families, as.character(fit$opt$convergence)
+      "Mixed-family fixture (%d-family, T = %d, d = %d) fit failed to converge: convergence = %s",
+      n_families, fixture$truth$n_traits, d_B,
+      as.character(fit$opt$convergence)
     ))
   }
   fit

@@ -173,6 +173,39 @@ roughly an order of magnitude. The
 benchmark, the worked four-component recovery, and the
 `extract_communality()` / `extract_phylo_signal()` outputs.
 
+### 3a. Are individuals related by a pedigree (animal model)?
+
+If your rows are **individuals** rather than species, and you
+have a **pedigree** (a three-column id/sire/dam table) instead of
+a phylogeny, swap `phylo_*()` for the parallel `animal_*()`
+family. Mathematically identical to the phylogenetic case — both
+use a known relatedness matrix $\mathbf A$ — only the source of
+$\mathbf A$ differs (pedigree → Henderson's recursive formula vs
+tree → branch-length VCV). The `animal_*` keywords accept three
+input forms:
+
+```r
+# 1. Three-column pedigree (MCMCglmm-style; columns id/sire/dam
+#    or animal/dam/sire — resolved by name with positional fallback):
++ animal_latent(individual, d = K, pedigree = ped)
+
+# 2. Pre-computed A matrix:
++ animal_latent(individual, d = K, A = A_matrix)
+
+# 3. Sparse precision Ainv (densified for v0.2.0):
++ animal_latent(individual, d = K, Ainv = Ainv_matrix)
+```
+
+The full 5-keyword grid (`animal_scalar`, `animal_unique`,
+`animal_indep`, `animal_dep`, `animal_latent`) plus the random-
+regression `animal_slope(x | individual)` mirror their `phylo_*`
+siblings 1-to-1. Use the animal family for quantitative-genetics
+animal models: variance-component decompositions, factor-analytic
+G-matrix estimation, reaction-norm (random regression) models.
+See [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
+for the math + the **A-vs-V naming boundary** (A for relatedness;
+V is reserved for `meta_known_V()` sampling variance — do not blur).
+
 ## 4. Are rows spatially organised?
 
 If your sites carry coordinates and you suspect residual spatial

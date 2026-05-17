@@ -41,6 +41,7 @@ graph TD
   A -->|One row per site x species observation| C[Site x species long format]
   A -->|One row per respondent x item| D[Survey / IRT data]
   A -->|One row per species, traits = columns| E[Species-level constants]
+  A -->|Pedigree available: id / sire / dam| F[Animal-model quantitative genetics]
 
   B --> B1[morphometrics<br/>Rank-2 GLLVM, size + shape axes]
   C --> C1{Phylogeny on species?}
@@ -54,7 +55,8 @@ graph TD
   D1 -->|Yes| D2[psychometrics-irt<br/>+ mixed-response<br/>CFA + per-row family dispatch]
   D1 -->|No| D3[psychometrics-irt<br/>CFA with one item family]
   E --> E1[corvidae-two-stage<br/>Stage-1 per-trait fits, stage-2 meta-V]
-", height = 700)
+  F --> F1[animal_*() keywords<br/>V_A via pedigree-derived A matrix<br/>Worked example: v0.3.0 ANI-09]
+", height = 750)
 ```
 
 A static fallback in case the JavaScript-rendered diagram doesn't
@@ -83,6 +85,10 @@ Start: what is each row in your data?
 
   4) One row per species, traits are columns (AVONET-style)
      -> corvidae-two-stage                     (stage-1 per-trait + stage-2 meta-V)
+
+  5) Pedigree available (3-column id / sire / dam table)
+     -> animal_*() keywords                    (V_A via pedigree-derived A;
+                                                v0.3.0 worked example, ANI-09)
 ```
 
 ## Notes on the branches
@@ -150,6 +156,21 @@ site-level estimates and their SEs; (2) a multivariate
 meta-regression on the stage-1 estimates using `meta_known_V()` to
 propagate the stage-1 uncertainty into the stage-2 covariance.
 
+**Pedigree available — animal-model quantitative genetics** &mdash;
+When rows are individuals and you have a three-column pedigree
+(id, sire, dam), use the `animal_*()` keyword family. This is the
+canonical QG animal model: the random effect's covariance is the
+pedigree-derived additive-genetic relatedness matrix
+$\mathbf{A}$ (Henderson 1976). Pass the pedigree directly:
+`animal_latent(individual, d = K, pedigree = ped)`, or pre-compute
+with `pedigree_to_A(ped)` and pass `A =`. The full grid
+(`animal_scalar`, `_unique`, `_indep`, `_dep`, `_latent` plus
+`animal_slope` for random regression / reaction norms) mirrors
+`phylo_*()` 1-to-1. See [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
+for the math and the A-vs-V naming boundary (A for relatedness; V
+is reserved for `meta_known_V()` sampling variance). A full worked
+example with simulation recovery is v0.3.0 work (ANI-09).
+
 ## When the branches overlap
 
 Real data often fits more than one branch. Some examples:
@@ -176,5 +197,6 @@ Real data often fits more than one branch. Some examples:
   decision tree (this page is the data-shape-first companion).
 - [gllvmTMB vocabulary](gllvm-vocabulary.html) -- plain-English
   glossary for the terms used in each branch.
-- [API keyword grid](api-keyword-grid.html) -- the 3x5 covariance
-  keyword reference.
+- [API keyword grid](api-keyword-grid.html) -- the 4x5 covariance
+  keyword reference (animal · phylo · spatial · none × scalar ·
+  unique · indep · dep · latent).

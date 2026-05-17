@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-Six recurring mistakes that look like bugs but aren't, plus the
+Seven recurring mistakes that look like bugs but aren't, plus the
 one-line fix for each. Each pitfall starts with the symptom, then the
 diagnosis, a short reproducible chunk, and a rule of thumb.
 
@@ -283,6 +283,44 @@ fit_ind$unit_col
 `site`, pass `unit = "<your_column>"` to `gllvmTMB()`. The
 [morphometrics article](morphometrics.html) shows this in the
 canonical individual × trait setup.*
+
+## 7. A vs V: relatedness covariance vs sampling variance
+
+**Symptom.** You're setting up an animal-model fit, see that
+`meta_known_V()` accepts a `V =` argument, and try to pass your
+pedigree-derived relatedness matrix as `V =`. The fit either
+errors with a shape mismatch or produces nonsense estimates.
+
+**Diagnosis.** **A** and **V** mean different things in gllvmTMB:
+
+| Symbol | Meaning | Keyword(s) | Shape |
+|--------|---------|-----------|-------|
+| **A** / **Ainv** | Known *relatedness* covariance (or its inverse) | `animal_*(..., A = A)`, `animal_*(..., Ainv = Ainv)`, `phylo_*(..., A = A)`, `phylo_*(..., Ainv = Ainv)` | $n \times n$ symmetric PSD |
+| **V** | Known *sampling variance* (measurement-error variance in meta-analysis) | `meta_known_V(value, V = V)` | scalar per row OR a block-V matrix |
+
+The math is genuinely distinct: $\mathbf{A}$ is the
+between-individual relatedness matrix from a pedigree or
+phylogeny; $\mathbf{V}$ is the between-study measurement-error
+variance from a meta-analysis. Conflating them produces
+nonsensical fits because the engine expects each at a different
+place in the variance decomposition.
+
+```r
+# WRONG: passing relatedness matrix as V to meta_known_V
+fit <- gllvmTMB(value ~ 0 + trait + meta_known_V(value, V = A_pedigree),
+                data = df)
+# RIGHT: relatedness goes to animal_* / phylo_*, sampling variance to meta_known_V
+fit <- gllvmTMB(value ~ 0 + trait +
+                  animal_scalar(individual, A = A_pedigree) +
+                  meta_known_V(value, V = sampling_variance),
+                data = df)
+```
+
+**Rule of thumb.** *Use **A** / **Ainv** for relatedness, use **V**
+for sampling variance. Never blur the two. See
+[Design 14 §3](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
+for the full convention; [the gllvmTMB vocabulary
+glossary](gllvm-vocabulary.html) has the long-form definitions.*
 
 ## See also
 

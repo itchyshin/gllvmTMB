@@ -167,13 +167,6 @@ in the long form) estimates the shared non-phylogenetic axis, and
 `unique(1 | species)` (expanding to `unique(0 + trait | species)`)
 estimates the trait-specific non-phylogenetic diagonal.
 
-`gllvmTMB_wide()` is not the right shortcut for this row-phylogeny
-example. That matrix entry point treats matrix columns as the trait
-axis and is most natural for site-by-species response matrices, where
-the phylogeny belongs to the response columns. Here the phylogeny
-belongs to the row unit `species`, so the formula-wide `traits(...)`
-path is the readable wide form.
-
 ## Recover the phylogenetic covariance
 
 `extract_Sigma(level = "phy")` returns the phylogenetic trait
@@ -381,6 +374,22 @@ diagnostics flag.
   model.
 - [`morphometrics`](morphometrics.html) is the simplest non-phylogenetic
   `latent() + unique()` worked example.
+- **Animal models with individual pedigrees.** If your rows are
+  *individuals* with a known pedigree rather than *species* with a
+  phylogeny, swap `phylo_*()` for the parallel `animal_*()` family
+  ([`animal_scalar`](../reference/animal_scalar.html),
+  [`animal_unique`](../reference/animal_unique.html),
+  [`animal_indep`](../reference/animal_indep.html),
+  [`animal_dep`](../reference/animal_dep.html),
+  [`animal_latent`](../reference/animal_latent.html), and
+  [`animal_slope`](../reference/animal_slope.html) for
+  random-regression / reaction-norm models). The math is
+  identical — both keyword families use a known relatedness
+  matrix $\mathbf{A}$ — only the source differs (pedigree via
+  [`pedigree_to_A()`](../reference/pedigree_to_A.html) vs tree
+  via `ape::vcv()`). See
+  [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
+  for the unified math and the A-vs-V naming boundary.
 
 References: Hadfield and Nakagawa (2010) for the phylogenetic mixed
 model representation; Meyer and Kirkpatrick (2008) for reduced-rank

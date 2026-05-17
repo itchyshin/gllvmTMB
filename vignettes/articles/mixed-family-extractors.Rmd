@@ -1,0 +1,211 @@
+---
+title: "Mixed-family fits: latent-scale covariance and correlations"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Mixed-family fits: latent-scale covariance and correlations}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+`gllvmTMB` fits **mixed-family** GLLVMs where each trait can have a
+different response distribution (Gaussian + binomial + Poisson + …)
+within a single fit. The package's headline differentiator is that
+the latent-factor structure is shared *across* traits even when the
+response distributions differ. This article walks through fitting a
+mixed-family model and using the extractors to recover the
+trait-covariance structure on a common, comparable latent scale.
+
+## The setup
+
+The package ships a small reproducible fixture for testing and
+illustration: three traits, three families.
+
+```{r setup}
+library(gllvmTMB)
+```
+
+```{r fixture}
+fixture <- gllvmTMB:::load_mixed_family_fixture(n_families = 3L)
+str(fixture, max.level = 1)
+```
+
+The data is in long format — one row per `(site, trait)` pair —
+with a `family` column that tells the engine which response
+distribution applies to each row:
+
+```{r fixture-data}
+head(fixture$data[, c("site", "trait", "family", "value")], 6)
+table(fixture$data$family)
+```
+
+trait_1 is Gaussian, trait_2 is binomial (binary 0/1), trait_3 is
+Poisson (non-negative integers). The `family_list` attribute
+`family_var = "family"` tells `gllvmTMB()` to dispatch per-row by
+the `family` column.
+
+## Fitting
+
+A single `gllvmTMB()` call handles the mixed-family case:
+
+```{r fit, results='hide'}
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 1),
+  data   = fixture$data,
+  family = fixture$family_list   # list(gaussian(), binomial(), poisson())
+)
+```
+
+```{r fit-summary}
+fit$opt$convergence            # 0 = converged
+as.numeric(logLik(fit))
+```
+
+Each row of the engine evaluates the likelihood appropriate for its
+own family — Gaussian rows use the Gaussian density, binomial rows
+use the Bernoulli, Poisson rows use the Poisson — while sharing a
+single rank-1 latent factor across traits.
+
+## Sigma on the latent scale
+
+`extract_Sigma()` returns the trait-covariance matrix on the latent
+scale. For a mixed-family fit, the diagonal includes the per-family
+**link residual** — the variance of the link function's underlying
+distribution (π²/3 for binomial-logit, $\log(1 + 1/\mu)$ for
+Poisson-log, etc.). This puts all traits on a common scale so the
+off-diagonal correlations are interpretable:
+
+```{r sigma}
+Sigma <- extract_Sigma(fit, level = "unit", part = "total",
+                       link_residual = "auto")
+Sigma$Sigma
+```
+
+The `$R` element gives the implied correlation matrix:
+
+```{r corr}
+round(Sigma$R, 3)
+```
+
+By default `link_residual = "auto"` adds the per-family residual to
+the diagonal. Passing `link_residual = "none"` returns the bare
+$\Lambda\Lambda^\top + \Psi$ matrix — useful for comparing factor
+structure across fits but not for interpreting correlations between
+traits of different families.
+
+## Correlations with uncertainty
+
+`extract_correlations()` returns a tidy data frame of pairwise
+correlations + confidence intervals. Three CI methods are
+available:
+
+```{r corr-fisher}
+extract_correlations(fit, tier = "unit", method = "fisher-z",
+                     link_residual = "auto")
+```
+
+The default (Fisher-z) is fast + bounded in $[-1, 1]$. For
+variance-component-style boundary cases, profile-likelihood CIs
+are tighter:
+
+```{r corr-bootstrap, results='hide'}
+boot_ci <- extract_correlations(fit, tier = "unit", method = "bootstrap",
+                                nsim = 30L, seed = 42L,
+                                link_residual = "auto")
+```
+
+```{r corr-bootstrap-show}
+boot_ci
+```
+
+Bootstrap and Fisher-z CIs target the same surface
+(correlation on $\Sigma_\text{total}$). The
+`method = "profile"` path operates on a different (rotation-
+invariant) target — the rank-$d$ factor structure
+$\Lambda\Lambda^\top$ — and is recommended when you need
+inference on the latent factor pattern rather than on the
+observable-scale correlation.
+
+## Communality: how much variance is explained by the latent factor?
+
+`extract_communality()` returns the proportion of each trait's
+latent-scale variance attributable to the shared rank-$d$
+factor:
+
+```{r communality}
+extract_communality(fit, level = "unit", link_residual = "auto")
+```
+
+For mixed-family fits, the denominator includes the per-family
+link residual, so the partition is honest: non-Gaussian traits
+have larger denominators (from the link residual) and therefore
+typically smaller $H^2$.
+
+## Bootstrap inference on the full Σ matrix
+
+`bootstrap_Sigma()` re-fits the model on parametric-bootstrap
+replicates of the data and returns percentile CIs on every cell
+of $\Sigma$. The simulate step is family-aware: binomial rows
+get fresh 0/1 draws, Poisson rows get fresh non-negative-integer
+draws, etc.
+
+```{r bootstrap, results='hide'}
+boot <- bootstrap_Sigma(
+  fit, n_boot = 20L, level = "unit", what = "Sigma",
+  conf = 0.95, seed = 42L, progress = FALSE
+)
+```
+
+```{r bootstrap-show}
+boot$point_est$Sigma_unit
+boot$ci_lower$Sigma_unit
+boot$ci_upper$Sigma_unit
+```
+
+`boot$n_failed` records how many refits failed to converge; with
+a well-identified fixture this should be small (a handful at most).
+
+## What's covered today
+
+This article uses the M1 validated machinery:
+
+| Capability | Status (validation-debt register) |
+|---|---|
+| Mixed-family engine acceptance (`family = list(...)`) | covered (MIX-01, MIX-02) |
+| `extract_Sigma()` on mixed-family | covered (MIX-03) |
+| `extract_correlations()` Fisher-z + Wald | covered (MIX-04) |
+| `extract_communality()` on mixed-family | covered (MIX-05) |
+| `extract_repeatability()` on mixed-family | covered (MIX-06; M1.6 added the per-family `sigma2_d` to vW) |
+| `extract_Omega()` cross-tier | covered (MIX-07) |
+| `bootstrap_Sigma()` per-row family preserved | covered (MIX-08) |
+| `simulate.gllvmTMB_multi()` family-aware draws | covered (MIS-05; 6 families) |
+
+See the
+[validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
+for the full row-by-row evidence.
+
+## See also
+
+- [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) — the conceptual primer on Σ vs correlation + when `unique()` is needed.
+- [Profile-likelihood CIs](https://itchyshin.github.io/gllvmTMB/articles/profile-likelihood-ci.html) — inference machinery for derived quantities.
+- [Choose your model](https://itchyshin.github.io/gllvmTMB/articles/choose-your-model.html) — decision tree mapping data shapes to articles.
+
+## References
+
+- Nakagawa S, Schielzeth H (2010). *Repeatability for Gaussian and non-Gaussian data: a practical guide for biologists.* Biol. Rev. **85**: 935–956.
+- Nakagawa S, Johnson PCD, Schielzeth H (2017). *The coefficient of determination $R^2$ and intra-class correlation coefficient from generalized linear mixed-effects models revisited and expanded.* J. R. Soc. Interface **14**: 20170213.

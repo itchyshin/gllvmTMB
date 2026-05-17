@@ -170,6 +170,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     link_id_vec   <- lids[fam_idx]
     for (i in seq_along(family_per_row)) family_per_row[[i]] <- family[[fam_idx[i]]]
     family_id <- 0L
+    family_input <- family    # M1.8: preserve original list (with family_var attr)
     family    <- family[[1]]   # keep one for downstream linkinv
   } else {
     fl_pair <- family_to_id(family)
@@ -179,6 +180,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     family_id_vec <- rep(family_id, n_obs)
     link_id_vec   <- rep(link_id,   n_obs)
     for (i in seq_along(family_per_row)) family_per_row[[i]] <- family
+    family_input <- family    # M1.8: single-family path; family_input == family
   }
 
   ## ---- Identify which RE terms are present and on which grouping --------
@@ -1770,6 +1772,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       formula      = parsed$fixed,
       covstructs   = parsed$covstructs,
       family       = family,
+      ## M1.8 (2026-05-17): preserve the original `family` argument
+      ## (potentially a list with `family_var` attribute for mixed-family
+      ## fits) so downstream callers — notably `bootstrap_Sigma()`'s
+      ## refit_one — can pass the correct family list back to `gllvmTMB()`.
+      ## For single-family fits, `family_input == family`.
+      family_input = family_input,
       data         = data,
       trait_col    = trait,
       unit_col     = site,

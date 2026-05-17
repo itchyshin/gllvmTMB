@@ -30,11 +30,11 @@
 #' (the pedigree-derived numerator-relationship matrix). The variance
 #' \eqn{\sigma^{2}_{\text{a}}} is shared across traits.
 #'
-#' Mathematical parallel to [phylo_scalar()] — same engine path; the
+#' Mathematical parallel to [phylo_scalar()] -- same engine path; the
 #' only difference is that **A** is supplied via `pedigree =` (a
 #' 3-column data frame: id, sire, dam), `A =` (dense \eqn{n \times n}
 #' relatedness matrix), or `Ainv =` (sparse precision; densified
-#' internally for v0.2.0 — sparse-Ainv direct engine path is a v0.3.0
+#' internally for v0.2.0 -- sparse-Ainv direct engine path is a v0.3.0
 #' follow-up).
 #'
 #' @param id Bare column name of the individual factor.
@@ -48,7 +48,7 @@
 #'   densified for v0.2.0; sparse engine path is a v0.3.0 follow-up.
 #'
 #' @return Used inside a [gllvmTMB()] formula. Returns `invisible(NULL)`
-#'   when called outside a formula — the keyword is a syntactic marker
+#'   when called outside a formula -- the keyword is a syntactic marker
 #'   that the parser rewrites internally to the canonical
 #'   [phylo_scalar()] path (which is family-agnostic at the math level).
 #'
@@ -105,7 +105,7 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' This is the canonical "factor-analytic G-matrix" model from
 #' quantitative genetics (Kirkpatrick & Meyer 2004; Meyer 2009; the
-#' WOMBAT method). Mathematical parallel to [phylo_latent()] — same
+#' WOMBAT method). Mathematical parallel to [phylo_latent()] -- same
 #' engine path with a pedigree-derived relatedness matrix instead of
 #' phylogenetic VCV.
 #'
@@ -146,7 +146,7 @@ animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'       \sigma^2_{\text{slope}}\,\mathbf A\bigr).}
 #'
 #' This is the canonical **quantitative-genetic random-regression**
-#' (reaction-norm) model — heritable variation in the slope on an
+#' (reaction-norm) model -- heritable variation in the slope on an
 #' environmental gradient. Mathematical parallel to [phylo_slope()];
 #' the engine recycles the same \eqn{\mathbf A^{-1}} prepared by
 #' [animal_scalar()] / [animal_latent()].
@@ -178,7 +178,7 @@ animal_slope <- function(formula) {
 #' Founder individuals (both parents unknown) are assumed unrelated
 #' and non-inbred: \eqn{A_{founder, founder} = 1}.
 #'
-#' Users typically don't call `pedigree_to_A()` directly — pass
+#' Users typically don't call `pedigree_to_A()` directly -- pass
 #' `pedigree = ped` to an [animal_scalar()] / [animal_unique()] /
 #' [animal_latent()] / [animal_indep()] / [animal_dep()] keyword in
 #' the formula, and the keyword's parser handles the conversion
@@ -202,8 +202,8 @@ animal_slope <- function(formula) {
 #'     \item Dam (mother) column: `dam` or `mother`.
 #'   }
 #'   If none of the named synonyms is present, the function falls
-#'   back to **positional** access — column 1 = id, column 2 =
-#'   sire, column 3 = dam — with a soft note. Unknown parents
+#'   back to **positional** access -- column 1 = id, column 2 =
+#'   sire, column 3 = dam -- with a soft note. Unknown parents
 #'   encoded as `NA` or `0` (both treated as missing).
 #' @return Dense numeric matrix \eqn{n \times n} with `rownames` /
 #'   `colnames` equal to the individual IDs.

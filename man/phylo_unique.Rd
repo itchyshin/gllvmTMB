@@ -12,7 +12,13 @@ phylo_unique(species, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 \item{tree}{An \code{ape::phylo} object. \strong{Canonical.}}
 
 \item{vcv}{A tip-only phylogenetic correlation matrix
-(\verb{n_species x n_species}). Legacy / superseded.}
+(\verb{n_species x n_species}). Legacy alias of \verb{A =}.}
+
+\item{A}{Tip-level relatedness matrix (\verb{n_species x n_species})
+-- alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
+argument naming (M2.8b, 2026-05-17).}
+
+\item{Ainv}{Sparse precision matrix (inverse of \code{A}).}
 }
 \value{
 A formula marker; never evaluated.

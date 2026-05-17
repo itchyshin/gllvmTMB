@@ -100,7 +100,7 @@
 #' `phylo_latent`, `phylo_dep`). It accepts an lme4-bar formula on the
 #' first argument and dispatches to the appropriate canonical keyword
 #' based on the LHS shape and the optional `mode = ...` argument. The
-#' five canonical keywords stay first-class — `phylo()` is an additive
+#' five canonical keywords stay first-class -- `phylo()` is an additive
 #' alias matching the lme4 / brms / drmTMB convention.
 #'
 #' @section Dispatch rules:
@@ -115,7 +115,7 @@
 #' When the LHS expands to a single column (`1`, intercept-only), `mode`
 #' is degenerate: it defaults silently to `"scalar"`, and explicit
 #' `mode = "scalar"` is accepted (no warning). When the LHS is
-#' `0 + trait`, `mode` is **mandatory** — choosing between `"diag"` /
+#' `0 + trait`, `mode` is **mandatory** -- choosing between `"diag"` /
 #' `"indep"` / `"latent"` / `"dep"` is a meaningful decision (per-trait
 #' diagonal vs reduced-rank decomposition vs full unstructured) and the
 #' parser refuses to silently default.
@@ -128,14 +128,14 @@
 #' covariance from the top-level `phylo_vcv =` argument to [gllvmTMB()].
 #'
 #' @section Augmented LHS (Stage 3, not yet shipped):
-#' Augmented LHS forms — `1 + x` (intercept + slope), `0 + trait + (0 + trait):x`
+#' Augmented LHS forms -- `1 + x` (intercept + slope), `0 + trait + (0 + trait):x`
 #' (per-trait intercepts + per-trait slopes on covariate `x`), `x || species`
-#' (uncorrelated) — are reserved for Design 07 Stage 3 engine work. The
+#' (uncorrelated) -- are reserved for Design 07 Stage 3 engine work. The
 #' parser currently raises an error pointing at this status.
 #'
 #' @section Cross-package coexistence:
 #' drmTMB also exposes `phylo(1 | species, tree = tree)` with the same
-#' Hadfield–Nakagawa sparse \eqn{\mathbf A^{-1}} internal path. Both
+#' Hadfield-Nakagawa sparse \eqn{\mathbf A^{-1}} internal path. Both
 #' packages share the same calling convention; user muscle memory
 #' transfers.
 #'
@@ -468,7 +468,14 @@ NULL
 #' @param tree An `ape::phylo` object. **Canonical.** Use this if
 #'   you have a tree.
 #' @param vcv A tip-only phylogenetic correlation matrix
-#'   (`n_species x n_species`). Legacy / superseded.
+#'   (`n_species x n_species`). Legacy alias of `A =`.
+#' @param A Tip-level relatedness matrix (`n_species x n_species`)
+#'   -- alias of `vcv =`, aligned with the `animal_*` family's
+#'   argument naming (M2.8b, 2026-05-17). Supply one of `tree`,
+#'   `vcv`, or `A` / `Ainv`.
+#' @param Ainv Sparse precision matrix (inverse of `A`). Densified
+#'   via `solve()` internally for v0.2.0; sparse direct engine
+#'   path is a v0.3.0 follow-up.
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_scalar()], [phylo_unique()], [phylo_indep()],
 #'   [phylo_dep()], [phylo_rr()] (deprecated alias).
@@ -587,7 +594,11 @@ phylo_slope <- function(formula) {
 #' @param species Unquoted column name for the species factor.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
-#'   (`n_species x n_species`). Legacy / superseded.
+#'   (`n_species x n_species`). Legacy alias of `A =`.
+#' @param A Tip-level relatedness matrix (`n_species x n_species`)
+#'   -- alias of `vcv =`, aligned with the `animal_*` family's
+#'   argument naming (M2.8b, 2026-05-17).
+#' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_unique()], [phylo_latent()], [phylo_indep()],
 #'   [phylo_dep()], [phylo()] (deprecated alias).
@@ -669,7 +680,11 @@ phylo_scalar <- function(species, tree = NULL, vcv = NULL,
 #' @param species Unquoted column name for the species factor.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
-#'   (`n_species x n_species`). Legacy / superseded.
+#'   (`n_species x n_species`). Legacy alias of `A =`.
+#' @param A Tip-level relatedness matrix (`n_species x n_species`)
+#'   -- alias of `vcv =`, aligned with the `animal_*` family's
+#'   argument naming (M2.8b, 2026-05-17).
+#' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_scalar()], [phylo_latent()], [phylo_indep()],
 #'   [phylo_dep()], [extract_Sigma()].
@@ -881,7 +896,7 @@ spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
 #' `spatial_latent`, `spatial_dep`). It accepts an lme4-bar formula on
 #' the first argument and dispatches to the appropriate canonical
 #' keyword based on the LHS shape and the optional `mode = ...` argument.
-#' The five canonical keywords stay first-class — `spatial()` is an
+#' The five canonical keywords stay first-class -- `spatial()` is an
 #' additive alias matching the lme4 / brms / drmTMB convention.
 #'
 #' This is the spatial parallel of the [phylo()] mode-dispatch wrapper:
@@ -900,7 +915,7 @@ spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
 #' When the LHS expands to a single column (`1`, intercept-only), `mode`
 #' is degenerate: it defaults silently to `"scalar"`, and explicit
 #' `mode = "scalar"` is accepted (no warning). When the LHS is
-#' `0 + trait`, `mode` is **mandatory** — choosing between `"diag"` /
+#' `0 + trait`, `mode` is **mandatory** -- choosing between `"diag"` /
 #' `"indep"` / `"latent"` / `"dep"` is a meaningful decision (per-trait
 #' marginal vs reduced-rank decomposition vs full unstructured) and the
 #' parser refuses to silently default.
@@ -915,9 +930,9 @@ spatial_latent <- function(formula, d = 1, coords = NULL, mesh = NULL) {
 #' [gllvmTMB()].
 #'
 #' @section Augmented LHS (Stage 3, not yet shipped):
-#' Augmented LHS forms — `1 + x` (intercept + slope), `0 + trait + (0 + trait):x`
+#' Augmented LHS forms -- `1 + x` (intercept + slope), `0 + trait + (0 + trait):x`
 #' (per-trait intercepts + per-trait slopes on covariate `x`), `x || coords`
-#' (uncorrelated) — are reserved for Design 07 Stage 3 engine work. The
+#' (uncorrelated) -- are reserved for Design 07 Stage 3 engine work. The
 #' parser currently raises an error pointing at this status.
 #'
 #' @section Cross-package coexistence:
@@ -1139,7 +1154,11 @@ indep <- function(formula) {
 #'   `0 + trait` (the trait factor); the RHS is the species column.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
-#'   (`n_species x n_species`). Legacy / superseded.
+#'   (`n_species x n_species`). Legacy alias of `A =`.
+#' @param A Tip-level relatedness matrix (`n_species x n_species`)
+#'   -- alias of `vcv =`, aligned with the `animal_*` family's
+#'   argument naming (M2.8b, 2026-05-17).
+#' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_unique()], [phylo_latent()], [phylo_dep()], [indep()],
 #'   [spatial_indep()], [extract_Sigma()].
@@ -1238,7 +1257,7 @@ spatial_indep <- function(formula, coords = NULL, mesh = NULL) {
 #' with \eqn{T(T+1)/2} free parameters via a Cholesky parameterisation
 #' \eqn{\boldsymbol\Sigma = \mathbf{L}\mathbf{L}^\top}. Mathematically
 #' identical to `latent(0 + trait | g, d = T)` standalone (where \eqn{T}
-#' is the number of traits) — the engine's existing packed-triangular
+#' is the number of traits) -- the engine's existing packed-triangular
 #' \eqn{\boldsymbol\Lambda} at full rank IS the Cholesky factor of an
 #' unstructured \eqn{\boldsymbol\Sigma}. The keyword choice is
 #' documentary: `dep` declares user intent that the full unstructured
@@ -1332,7 +1351,11 @@ dep <- function(formula) {
 #'   `0 + trait` (the trait factor); the RHS is the species column.
 #' @param tree An `ape::phylo` object. **Canonical.**
 #' @param vcv A tip-only phylogenetic correlation matrix
-#'   (`n_species x n_species`). Legacy / superseded.
+#'   (`n_species x n_species`). Legacy alias of `A =`.
+#' @param A Tip-level relatedness matrix (`n_species x n_species`)
+#'   -- alias of `vcv =`, aligned with the `animal_*` family's
+#'   argument naming (M2.8b, 2026-05-17).
+#' @param Ainv Sparse precision matrix (inverse of `A`).
 #' @return A formula marker; never evaluated.
 #' @seealso [phylo_latent()], [phylo_unique()], [phylo_indep()],
 #'   [dep()], [spatial_dep()], [extract_Sigma()].
@@ -1448,7 +1471,7 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## `lifecycle::deprecate_warn()` per session before being normalised to
 ## the canonical orientation. The downstream engine reads neither side
 ## of the bar (the `spde()` covstruct's parsed `lhs` / `group` are
-## placeholders only — see `parse_multi_formula()` and `R/fit-multi.R`),
+## placeholders only -- see `parse_multi_formula()` and `R/fit-multi.R`),
 ## so the flip is purely cosmetic on the parser side and existing fits
 ## remain byte-identical.
 ##
@@ -1649,7 +1672,7 @@ rewrite_canonical_aliases <- function(formula) {
   ## `A = A_matrix`, `Ainv = Ainv_matrix` to an unevaluated expression
   ## that yields the dense relatedness matrix A when evaluated in the
   ## formula's environment (later, in parse_covstruct_call). Returns
-  ## NULL if no relatedness input is given — animal_slope() allows this
+  ## NULL if no relatedness input is given -- animal_slope() allows this
   ## (the engine reuses A from a sibling animal_* term in the same
   ## formula).
   .animal_resolve_vcv_call <- function(e, fn) {
@@ -1825,7 +1848,7 @@ rewrite_canonical_aliases <- function(formula) {
                     "spatial", "spatial_indep", "spatial_dep")) {
         e <- normalise_spatial_orientation(e)
       }
-      ## PHYLO `A =` / `Ainv =` alias normaliser. Per Design 14 §3
+      ## PHYLO `A =` / `Ainv =` alias normaliser. Per Design 14 sec 3
       ## (A-vs-V boundary): `A` / `Ainv` are the canonical relatedness
       ## inputs across phylo_* and animal_*; `vcv` is the legacy phylo
       ## input retained for backward compatibility. Translate `A =` /
@@ -1838,7 +1861,7 @@ rewrite_canonical_aliases <- function(formula) {
           if ("vcv" %in% nm) {
             cli::cli_abort(c(
               "{.fn {fn}} got both {.arg A} and {.arg vcv}.",
-              "i" = "These are aliases — supply only one."
+              "i" = "These are aliases -- supply only one."
             ))
           }
           e[["vcv"]] <- e[[which(nm == "A")]]
@@ -1849,7 +1872,7 @@ rewrite_canonical_aliases <- function(formula) {
           if ("vcv" %in% nm) {
             cli::cli_abort(c(
               "{.fn {fn}} got both {.arg Ainv} and {.arg vcv}.",
-              "i" = "These are aliases — supply only one."
+              "i" = "These are aliases -- supply only one."
             ))
           }
           Ainv_expr <- e[[which(nm == "Ainv")]]
@@ -1857,7 +1880,7 @@ rewrite_canonical_aliases <- function(formula) {
           e[["Ainv"]] <- NULL
         }
       }
-      ## ANIMAL-model keyword family — resolves `pedigree =` / `A =` /
+      ## ANIMAL-model keyword family -- resolves `pedigree =` / `A =` /
       ## `Ainv =` to a `vcv =` named arg, then emits the same engine-
       ## recognised target form that the equivalent `phylo_*` branch
       ## emits. No new TMB likelihood, no parser change downstream;

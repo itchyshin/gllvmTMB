@@ -17,8 +17,8 @@ synonyms:
 \item Dam (mother) column: \code{dam} or \code{mother}.
 }
 If none of the named synonyms is present, the function falls
-back to \strong{positional} access — column 1 = id, column 2 =
-sire, column 3 = dam — with a soft note. Unknown parents
+back to \strong{positional} access -- column 1 = id, column 2 =
+sire, column 3 = dam -- with a soft note. Unknown parents
 encoded as \code{NA} or \code{0} (both treated as missing).}
 }
 \value{
@@ -42,7 +42,7 @@ first).
 Founder individuals (both parents unknown) are assumed unrelated
 and non-inbred: \eqn{A_{founder, founder} = 1}.
 
-Users typically don't call \code{pedigree_to_A()} directly — pass
+Users typically don't call \code{pedigree_to_A()} directly -- pass
 \code{pedigree = ped} to an \code{\link[=animal_scalar]{animal_scalar()}} / \code{\link[=animal_unique]{animal_unique()}} /
 \code{\link[=animal_latent]{animal_latent()}} / \code{\link[=animal_indep]{animal_indep()}} / \code{\link[=animal_dep]{animal_dep()}} keyword in
 the formula, and the keyword's parser handles the conversion

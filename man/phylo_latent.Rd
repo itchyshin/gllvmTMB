@@ -15,7 +15,16 @@ phylo_latent(species, d = 1, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 you have a tree.}
 
 \item{vcv}{A tip-only phylogenetic correlation matrix
-(\verb{n_species x n_species}). Legacy / superseded.}
+(\verb{n_species x n_species}). Legacy alias of \verb{A =}.}
+
+\item{A}{Tip-level relatedness matrix (\verb{n_species x n_species})
+-- alias of \verb{vcv =}, aligned with the \verb{animal_*} family's
+argument naming (M2.8b, 2026-05-17). Supply one of \code{tree},
+\code{vcv}, or \code{A} / \code{Ainv}.}
+
+\item{Ainv}{Sparse precision matrix (inverse of \code{A}). Densified
+via \code{solve()} internally for v0.2.0; sparse direct engine
+path is a v0.3.0 follow-up.}
 }
 \value{
 A formula marker; never evaluated.

@@ -61,6 +61,29 @@ test_that("pedigree_to_A() returns a valid relatedness matrix", {
   expect_equal(A["a", "b"], 0)
 })
 
+test_that("pedigree_to_A() accepts MCMCglmm-style column names", {
+  ## MCMCglmm convention: animal/dam/sire (or id/dam/sire)
+  ped_mcmc <- data.frame(animal = c("a", "b", "c", "d"),
+                         dam    = c(NA, NA, "b", "b"),
+                         sire   = c(NA, NA, "a", "a"))
+  A_mcmc <- gllvmTMB::pedigree_to_A(ped_mcmc)
+  ## Same fixture, gllvmTMB id/sire/dam positional order:
+  ped_pos <- data.frame(id   = c("a", "b", "c", "d"),
+                        sire = c(NA, NA, "a", "a"),
+                        dam  = c(NA, NA, "b", "b"))
+  A_pos <- gllvmTMB::pedigree_to_A(ped_pos)
+  expect_equal(unname(A_mcmc), unname(A_pos),
+               info = "MCMCglmm column-name lookup should give the same A as positional access.")
+})
+
+test_that("pedigree_to_A() accepts mother / father synonyms", {
+  ped_plain <- data.frame(id     = c("a", "b", "c", "d"),
+                          father = c(NA, NA, "a", "a"),
+                          mother = c(NA, NA, "b", "b"))
+  A_plain <- gllvmTMB::pedigree_to_A(ped_plain)
+  expect_equal(A_plain["c", "d"], 0.5)  # full-sibs
+})
+
 test_that("pedigree_to_A() detects parents-after-offspring ordering", {
   ped <- data.frame(id = c("offspring", "sire"),
                     sire = c("sire", NA),

@@ -192,24 +192,53 @@ animal_slope <- function(formula) {
 #' established implementations, see `nadiv::makeAinv()` (sparse
 #' \eqn{\mathbf A^{-1}}).
 #'
-#' @param pedigree A data frame with columns `id` (factor or
-#'   character), `sire`, `dam`. Unknown parents encoded as `NA` or
-#'   `0` (both treated as missing).
+#' @param pedigree A data frame with one row per individual and
+#'   columns identifying the individual, sire, and dam. **Column
+#'   names are resolved BY NAME** (MCMCglmm-style) using these
+#'   synonyms:
+#'   \itemize{
+#'     \item Individual ID column: `id` or `animal`.
+#'     \item Sire (father) column: `sire` or `father`.
+#'     \item Dam (mother) column: `dam` or `mother`.
+#'   }
+#'   If none of the named synonyms is present, the function falls
+#'   back to **positional** access — column 1 = id, column 2 =
+#'   sire, column 3 = dam — with a soft note. Unknown parents
+#'   encoded as `NA` or `0` (both treated as missing).
 #' @return Dense numeric matrix \eqn{n \times n} with `rownames` /
-#'   `colnames` equal to `as.character(pedigree$id)`.
+#'   `colnames` equal to the individual IDs.
 #' @seealso [animal_scalar()] and siblings.
 #' @export
 pedigree_to_A <- function(pedigree) {
   if (!is.data.frame(pedigree) || ncol(pedigree) < 3L) {
     cli::cli_abort(c(
       "{.arg pedigree} must be a data frame with at least 3 columns.",
-      "i" = "Expected columns: {.field id}, {.field sire}, {.field dam}.",
+      "i" = "Expected columns: {.field id}/{.field animal}, {.field sire}/{.field father}, {.field dam}/{.field mother}.",
       "i" = "Got: {.code {paste(names(pedigree), collapse = ', ')}}."
     ))
   }
-  ids   <- as.character(pedigree[[1L]])
-  sires <- as.character(pedigree[[2L]])
-  dams  <- as.character(pedigree[[3L]])
+  ## MCMCglmm-style by-name column lookup with synonyms.
+  nm <- names(pedigree)
+  pick <- function(syn) {
+    hit <- which(tolower(nm) %in% tolower(syn))
+    if (length(hit) >= 1L) return(hit[1L]) else return(NA_integer_)
+  }
+  id_col   <- pick(c("id", "animal"))
+  sire_col <- pick(c("sire", "father"))
+  dam_col  <- pick(c("dam", "mother"))
+  if (anyNA(c(id_col, sire_col, dam_col))) {
+    ## Fall back to positional access with a soft note.
+    cli::cli_inform(c(
+      "i" = "{.fn pedigree_to_A}: column names not recognised; using positional access (col 1 = id, col 2 = sire, col 3 = dam).",
+      ">" = "Rename columns to {.field id}/{.field sire}/{.field dam} (MCMCglmm convention) for explicit by-name lookup."
+    ))
+    id_col   <- 1L
+    sire_col <- 2L
+    dam_col  <- 3L
+  }
+  ids   <- as.character(pedigree[[id_col]])
+  sires <- as.character(pedigree[[sire_col]])
+  dams  <- as.character(pedigree[[dam_col]])
   ## Normalise missing-parent encodings: NA or "0" or "" -> NA.
   sires[sires %in% c("0", "")] <- NA_character_
   dams[dams %in% c("0", "")]   <- NA_character_

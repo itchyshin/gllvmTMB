@@ -7,13 +7,23 @@
 pedigree_to_A(pedigree)
 }
 \arguments{
-\item{pedigree}{A data frame with columns \code{id} (factor or
-character), \code{sire}, \code{dam}. Unknown parents encoded as \code{NA} or
-\code{0} (both treated as missing).}
+\item{pedigree}{A data frame with one row per individual and
+columns identifying the individual, sire, and dam. \strong{Column
+names are resolved BY NAME} (MCMCglmm-style) using these
+synonyms:
+\itemize{
+\item Individual ID column: \code{id} or \code{animal}.
+\item Sire (father) column: \code{sire} or \code{father}.
+\item Dam (mother) column: \code{dam} or \code{mother}.
+}
+If none of the named synonyms is present, the function falls
+back to \strong{positional} access — column 1 = id, column 2 =
+sire, column 3 = dam — with a soft note. Unknown parents
+encoded as \code{NA} or \code{0} (both treated as missing).}
 }
 \value{
 Dense numeric matrix \eqn{n \times n} with \code{rownames} /
-\code{colnames} equal to \code{as.character(pedigree$id)}.
+\code{colnames} equal to the individual IDs.
 }
 \description{
 Computes the dense numerator-relationship matrix \eqn{\mathbf A}

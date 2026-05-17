@@ -242,7 +242,6 @@ let you trace any claim to its test-file evidence.
 | **`predict.gllvmTMB_multi()` typed family outputs** | planned | `link` / `response` work (MIS-07); ordinal-probit category probabilities, delta presence / positive-mean, and mixed-family per-trait `linkinv` are M2 work. |
 | **REML estimation** | planned | Post-0.2.0 release as a Gaussian-only feature. |
 | **Storage controls (`keep_tmb_object = FALSE`)** | planned | Mirror `drmTMB`'s pattern for serialised-fit footprint. |
-| **Zero-inflated count families** | planned | Post-CRAN extension. |
 | **SPDE barrier mesh** | planned | Post-CRAN extension. |
 
 The **stable** rows are the core surface you can use in
@@ -322,8 +321,15 @@ overpromise):
   (*in prep*) unifying weighted-regression / meta-analysis
   mode; the current default is the additive `scale = "known"`
   form (MET-03).
-- **Zero-inflated count families, SPDE barrier meshes, REML
-  estimation, storage controls.**
+- **SPDE barrier meshes, REML estimation, storage controls.**
+- **Zero-inflated / hurdle / two-stage delta families with
+  latent-scale correlations.** Two-sub-model families have two
+  latent scales (the zero-inflation logit + the count log; or
+  the hurdle binary + the conditional-positive scale); the
+  latent-scale correlation matrix is therefore ambiguous and
+  requires reporting two correlations rather than one.
+  Deferred indefinitely until a clean reporting convention is
+  agreed.
 
 For the complete row-by-row scope ledger including diagnostic
 status and interval status, see the

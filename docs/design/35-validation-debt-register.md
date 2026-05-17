@@ -107,7 +107,7 @@ Row-owner: **Gauss** (TMB likelihood per family).
 | ID | Family | Status | Test evidence | Notes |
 |----|--------|--------|---------------|-------|
 | FAM-01 | gaussian (identity) | `covered` | many tests | M0 baseline |
-| FAM-02 | binomial (logit) | `covered` | `test-m2-2a-binary-recovery.R`, `test-multi-trial-binomial.R`, `test-stage33-non-gaussian.R` | M2.2-A added Σ recovery at d = 1 |
+| FAM-02 | binomial (logit) | `covered` | `test-m2-2a-binary-recovery.R`, `test-m2-2b-binary-cis-extractors.R`, `test-m2-2b-glmmTMB-cross-check.R`, `test-multi-trial-binomial.R`, `test-stage33-non-gaussian.R` | M2.2-A: Σ recovery at d = 1. M2.2-B: CIs (Wald + Fisher-z + bootstrap) + 4 ratio extractors + glmmTMB cross-package agreement |
 | FAM-03 | binomial (probit) | `covered` | `test-m2-2a-binary-recovery.R`, `test-stage33-non-gaussian.R` | M2.2-A walks; Σ recovery + identification (σ²_d = 1 by construction) |
 | FAM-04 | binomial (cloglog) | `covered` | `test-m2-2a-binary-recovery.R`, `test-stage33-non-gaussian.R` | M2.2-A walks; Σ recovery + σ²_d = π²/6 verified |
 | FAM-05 | betabinomial | `partial` | `test-betabinomial-recovery.R` | recovery test exists; full M2 |

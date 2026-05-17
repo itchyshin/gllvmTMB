@@ -1,5 +1,30 @@
 # gllvmTMB (development version)
 
+## New exports (M2.8 animal-model keyword family, 2026-05-17)
+
+* **`animal_scalar()`, `animal_unique()`, `animal_indep()`,
+  `animal_dep()`, `animal_latent()`, `animal_slope()`** — the
+  `animal_*` keyword family for animal-model GLLVMs with
+  pedigree-derived additive-genetic relatedness. Each keyword
+  parallels its `phylo_*` sibling exactly; the three input forms
+  `pedigree =` (3-column id/sire/dam), `A =` (dense relatedness
+  matrix), and `Ainv =` (sparse precision; densified internally
+  for v0.2.0) are all accepted. The keyword family expands the
+  covariance keyword grid from **3 × 5 to 4 × 5**, with rows now
+  going from finest-grained (individual pedigree) to broadest
+  (geographic). Per
+  [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md).
+
+* **`pedigree_to_A()`** — exported helper that computes the
+  dense numerator-relationship matrix A from a 3-column pedigree
+  via Henderson's (1976) recursive formula.
+
+**A vs V naming boundary.** The new `animal_*` family uses **A**
+/ **Ainv** / **pedigree** for relatedness inputs. The separate
+`meta_known_V()` keyword uses **V** for *sampling variance* in
+meta-analysis. Existing `phylo_*(vcv = ...)` keeps working
+through v0.3.0; `A =` / `Ainv =` aliases are coming.
+
 ## New exports (Phase 1b validation milestone)
 
 * **`gllvmTMB_check_consistency(fit, n_sim = 100L, seed = NULL,

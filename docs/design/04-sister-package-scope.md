@@ -53,7 +53,7 @@ The five things that distinguish `gllvmTMB` from sister packages:
    `Sigma_non = Lambda_non Lambda_non^T + diag(s_non)`, summing
    to `Omega`. Most sister packages give you only one of these
    layers at a time.
-3. **3 x 5 keyword grid** as the canonical formula surface:
+3. **4 x 5 keyword grid** as the canonical formula surface:
    `latent / unique / indep / dep / scalar` cross
    `none / phylo_ / spatial_`. Memorable, parseable, and
    internally consistent.
@@ -96,7 +96,7 @@ Overlap: both fit multivariate GLLVMs. `gllvm` (Niku et al.) is
 the older and more cited package; it uses variational
 approximation by default and has its own matrix-in API.
 `gllvmTMB` is the TMB-Laplace alternative with explicit formula
-grammar, the 3 x 5 keyword grid, and integrated phylogenetic /
+grammar, the 4 x 5 keyword grid, and integrated phylogenetic /
 spatial paths.
 
 Rule: **use `gllvm` for pure VA-GLLVM with a numeric response

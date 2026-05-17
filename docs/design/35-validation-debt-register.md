@@ -185,6 +185,28 @@ Row-owner: **Fisher + Boole** (meta-analysis with known V).
 | MET-03 | `meta_V(scale = "proportional")` (Nakagawa 2022) | `blocked` | n/a | post-CRAN; not yet implemented |
 | MET-04 | `corvidae-two-stage` two-stage workflow | `partial` | n/a | article pulled to `dev/workshop-articles/` in PR-0C.PULL (Gaussian meta-analytical example; deferred per maintainer 2026-05-16 — restore once a live cross-check fixture exists) |
 
+### Section 6.5 — Known-relatedness keyword family (animal models)
+
+Row-owner: **Boole + Gauss + Rose** (formula grammar + engine +
+A-vs-V boundary). Added M2.8 (2026-05-17) per
+[`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md).
+The animal_* keyword family is pure sugar over the existing
+`phylo_*` engine path; byte-equivalence with `phylo_*(vcv = A)` is
+the test contract.
+
+| ID | Capability | Status | Test evidence | Notes |
+|----|------------|--------|---------------|-------|
+| ANI-01 | `animal_scalar(id, pedigree=/A=/Ainv=)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_scalar(species, vcv = pedigree_to_A(ped))` to 1e-6 |
+| ANI-02 | `animal_unique(id, ...)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_unique(vcv = A)` |
+| ANI-03 | `animal_indep(0 + trait \| id, ...)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_indep(vcv = A)` |
+| ANI-04 | `animal_dep(0 + trait \| id, ...)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_dep(vcv = A)` |
+| ANI-05 | `animal_latent(id, d = K, ...)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_latent(vcv = A)` |
+| ANI-06 | `animal_slope(x \| id)` | `partial` | `test-animal-keyword.R` (smoke) | parser-accepted; recovery study deferred |
+| ANI-07 | `pedigree_to_A()` Henderson formula | `covered` | `test-animal-keyword.R` | `nadiv::makeAinv()` cross-check available when nadiv installed |
+| ANI-08 | Sparse `Ainv = ` direct engine path | `blocked` | n/a | `Ainv` is currently densified via `solve()`; sparse direct path is v0.3.0 work |
+| ANI-09 | Multi-matrix animal models (G + permanent-environment + maternal) | `partial` | n/a | Achievable today by combining `animal_*` with sibling `(1 \| id)`; idiomatic article example v0.3.0 |
+| ANI-10 | Cross-package agreement against MCMCglmm / WOMBAT | `partial` | n/a | Phase 5.5 grid work |
+
 ### Section 7 — Mixed-family fits
 
 Row-owner: **Boole + Fisher + Emmy** (mixed-family is the

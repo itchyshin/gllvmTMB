@@ -1640,6 +1640,39 @@ rewrite_canonical_aliases <- function(formula) {
     if (is.null(nms) || length(args) == 0L) return(list())
     args[nms %in% keep & nzchar(nms)]
   }
+  ## Animal-keyword input normaliser. Resolves any of `pedigree = ped`,
+  ## `A = A_matrix`, `Ainv = Ainv_matrix` to an unevaluated expression
+  ## that yields the dense relatedness matrix A when evaluated in the
+  ## formula's environment (later, in parse_covstruct_call). Returns
+  ## NULL if no relatedness input is given — animal_slope() allows this
+  ## (the engine reuses A from a sibling animal_* term in the same
+  ## formula).
+  .animal_resolve_vcv_call <- function(e, fn) {
+    nm <- names(e)
+    if (is.null(nm)) {
+      if (fn == "animal_slope") return(NULL)
+      cli::cli_abort(c(
+        "{.fn {fn}} requires one of {.arg pedigree}, {.arg A}, or {.arg Ainv}.",
+        ">" = "e.g. {.code {fn}(id, pedigree = ped)}."
+      ))
+    }
+    if ("pedigree" %in% nm) {
+      ped_expr <- e[[which(nm == "pedigree")]]
+      return(bquote(pedigree_to_A(.(ped_expr))))
+    }
+    if ("A" %in% nm) {
+      return(e[[which(nm == "A")]])
+    }
+    if ("Ainv" %in% nm) {
+      Ainv_expr <- e[[which(nm == "Ainv")]]
+      return(bquote(solve(as.matrix(.(Ainv_expr)))))
+    }
+    if (fn == "animal_slope") return(NULL)
+    cli::cli_abort(c(
+      "{.fn {fn}} requires one of {.arg pedigree}, {.arg A}, or {.arg Ainv}.",
+      ">" = "e.g. {.code {fn}(id, pedigree = ped)}."
+    ))
+  }
   rewrite <- function(e) {
     if (is.call(e)) {
       fn <- as.character(e[[1L]])
@@ -1786,6 +1819,83 @@ rewrite_canonical_aliases <- function(formula) {
       if (fn %in% c("spatial_unique", "spatial_scalar", "spatial_latent",
                     "spatial", "spatial_indep", "spatial_dep")) {
         e <- normalise_spatial_orientation(e)
+      }
+      ## ANIMAL-model keyword family — resolves `pedigree =` / `A =` /
+      ## `Ainv =` to a `vcv =` named arg, then emits the same engine-
+      ## recognised target form that the equivalent `phylo_*` branch
+      ## emits. No new TMB likelihood, no parser change downstream;
+      ## animal_* is sugar that routes through the existing phylo_rr /
+      ## propto engine path. Per docs/design/14-known-relatedness-keywords.md.
+      if (fn %in% c("animal_scalar", "animal_unique", "animal_latent",
+                    "animal_indep", "animal_dep", "animal_slope")) {
+        vcv_expr <- .animal_resolve_vcv_call(e, fn)
+        nm <- names(e)
+        ## animal_scalar(id, ...) -> phylo(id, vcv = A)   (then desugar to propto)
+        if (fn == "animal_scalar") {
+          new_call <- call("phylo", e[[2L]])
+          new_call[["vcv"]] <- vcv_expr
+          return(new_call)
+        }
+        ## animal_unique(id, ...) -> phylo_rr(id, .phylo_unique = TRUE, vcv = A)
+        if (fn == "animal_unique") {
+          new_call <- as.call(c(list(as.name("phylo_rr"), e[[2L]]),
+                                list(.phylo_unique = TRUE),
+                                list(vcv = vcv_expr)))
+          return(new_call)
+        }
+        ## animal_latent(id, d = K, ...) -> phylo_rr(id, d = K, vcv = A)
+        if (fn == "animal_latent") {
+          d_val <- if (!is.null(nm) && "d" %in% nm) e[[which(nm == "d")]] else 1L
+          new_call <- as.call(c(list(as.name("phylo_rr"), e[[2L]]),
+                                list(d = d_val),
+                                list(vcv = vcv_expr)))
+          return(new_call)
+        }
+        ## animal_indep(0 + trait | id, ...) -> phylo_rr(id, .phylo_unique = TRUE,
+        ##                                               .indep = TRUE, vcv = A)
+        if (fn == "animal_indep") {
+          bar <- e[[2L]]
+          if (!(is.call(bar) && identical(bar[[1L]], as.name("|")) &&
+                length(bar) == 3L)) {
+            cli::cli_abort(c(
+              "{.fn animal_indep} expects a {.code 0 + trait | id} formula.",
+              "i" = "Got: {.code {deparse(bar)}}.",
+              ">" = "Use {.code animal_indep(0 + trait | id, pedigree = ped)}."
+            ))
+          }
+          species_arg <- bar[[3L]]
+          new_call <- as.call(c(list(as.name("phylo_rr"), species_arg),
+                                list(.phylo_unique = TRUE, .indep = TRUE),
+                                list(vcv = vcv_expr)))
+          return(new_call)
+        }
+        ## animal_dep(0 + trait | id, ...) -> phylo_rr(id, d = .deferred_n_traits,
+        ##                                             .dep = TRUE, vcv = A)
+        if (fn == "animal_dep") {
+          bar <- e[[2L]]
+          if (!(is.call(bar) && identical(bar[[1L]], as.name("|")) &&
+                length(bar) == 3L)) {
+            cli::cli_abort(c(
+              "{.fn animal_dep} expects a {.code 0 + trait | id} formula.",
+              "i" = "Got: {.code {deparse(bar)}}.",
+              ">" = "Use {.code animal_dep(0 + trait | id, pedigree = ped)}."
+            ))
+          }
+          species_arg <- bar[[3L]]
+          new_call <- as.call(c(list(as.name("phylo_rr"), species_arg),
+                                list(d = as.name(".deferred_n_traits"),
+                                     .dep = TRUE),
+                                list(vcv = vcv_expr)))
+          return(new_call)
+        }
+        ## animal_slope(x | id) -> phylo_slope(x | id, vcv = A) if A given;
+        ## otherwise the engine reuses A from a sibling animal_* term.
+        if (fn == "animal_slope") {
+          new_call <- e
+          new_call[[1L]] <- as.name("phylo_slope")
+          if (!is.null(vcv_expr)) new_call[["vcv"]] <- vcv_expr
+          return(new_call)
+        }
       }
       ## latent / unique / phylo_latent / spatial_unique: just rename the head
       if (fn %in% c("latent", "phylo_latent", "spatial_unique", "spatial")) {

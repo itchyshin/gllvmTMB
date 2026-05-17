@@ -259,14 +259,25 @@ For the row-by-row evidence backing every "stable" claim
 
 ## Covariance keyword grid
 
-The formula grammar is a 3 x 5 grid: correlation source crossed
-with covariance mode.
+The formula grammar is a **4 x 5** grid: correlation source crossed
+with covariance mode. Rows go from finest-grained (individual
+pedigree) to broadest (geography).
 
 |                | scalar             | unique             | indep             | dep             | latent             |
 |---             |---                 |---                 |---                |---              |---                 |
 | **none**       | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
+| **animal**     | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
 | **phylo**      | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
 | **spatial**    | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+
+Plus the random-slope keywords `phylo_slope(x | species)` and
+`animal_slope(x | id)` for per-group random regression slopes.
+
+**A vs V naming boundary**: `animal_*` and `phylo_*` keywords accept
+**A** (relatedness covariance), **Ainv** (sparse precision), or
+**pedigree** (animal-only); the separate `meta_known_V(value, V = V)`
+keyword accepts **V** for *sampling variance* in meta-analysis.
+See [Design 14](docs/design/14-known-relatedness-keywords.md).
 
 The decomposition mode is `latent + unique` paired:
 
@@ -359,7 +370,7 @@ package author, written against the TMB API.
 - `gllvm` (Niku et al.) is the original multivariate GLLVM package
   with a variational-approximation engine and a matrix-in API;
   `gllvmTMB` is the TMB-Laplace alternative with formula grammar,
-  the 3 x 5 keyword grid, and integrated phylogenetic / spatial
+  the 4 x 5 keyword grid, and integrated phylogenetic / spatial
   paths in one engine.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
   phylogenetic / multi-response models; `gllvmTMB` returns ML

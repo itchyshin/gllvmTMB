@@ -693,7 +693,13 @@ detect_covstruct_terms <- function(formula) {
   found <- character(0)
   walk <- function(e) {
     if (is.call(e)) {
-      fn <- as.character(e[[1L]])
+      ## Defensive: only treat `e[[1L]]` as a function name when it is a
+      ## plain symbol. Namespaced calls (`pkg::fn` / `pkg:::fn`) — which
+      ## can appear inside argument expressions like
+      ## `vcv = gllvmTMB:::.pedigree_to_A(ped)` (M2.8 animal-keyword
+      ## rewrite) — must not crash this walk.
+      head <- e[[1L]]
+      fn <- if (is.name(head)) as.character(head) else ""
       if (
         fn %in%
           c(

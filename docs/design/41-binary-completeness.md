@@ -54,10 +54,31 @@ validated machinery per the M2.5 rewrite contract.
   grid stays as-is. Random slopes (`(1 + x | g)`) and
   latent × observed interaction stay deferred to Phase 1c-slope
   and post-CRAN.
-- **M2 does not establish cross-package empirical agreement.**
-  That is Phase 5.5 work. M2.5 includes a `mirt::mirt()`
-  cross-check on a single IRT fixture as a sanity check, not
-  as the full grid.
+- **M2 does NOT run the full Phase 5.5 cross-package empirical-
+  agreement grid.** M2 includes **light cross-package sanity
+  checks** (one shared fixture per comparator: `glmmTMB` for
+  binomial-logit GLMM, `galamm` for confirmatory factor
+  loadings, `mirt::mirt()` for binary IRT 2PL). Per maintainer
+  2026-05-17: *"checking against glmmTMB and galamm — it does
+  not need to be big tests (I am later planning big tests)."*
+  Big tests live at Phase 5.5.
+
+### Item Response Theory (IRT) confirmation
+
+M2 covers IRT explicitly. Per maintainer 2026-05-17:
+
+- **Binary 2PL IRT** (probit or logit) is the M2.3 + M2.5
+  flagship: confirmatory loadings via `lambda_constraint`,
+  re-authored `psychometrics-irt.Rmd` worked example, and
+  cross-check against `mirt::mirt()` on a single shared
+  fixture.
+- **Ordinal IRT** (graded-response model) is covered via the
+  `ordinal_probit` family in M2.2 + M2.7 with the
+  `ordinal-probit.Rmd` article's Preview banner removed at
+  M2.7 close gate.
+- **Exploratory factor structure** (no constraint pinning) is
+  the M2.4 `suggest_lambda_constraint()` reliability work +
+  M2.6 binary JSDM section in `joint-sdm.Rmd`.
 
 ## 2. Baseline — what M1 already gives us for binary
 
@@ -114,6 +135,7 @@ Per slice (mirroring the M1 slice contract pattern in ROADMAP):
 | CI-01..03 on binary fits | `covered` (Gaussian baseline) | Wald + profile + bootstrap each tested on a binomial fit; profile shape (quadratic vs skewed) noted |
 | `extract_correlations()` on binary fits | `covered` via M1.4 mixed-family | Single-family binomial fit tested; both Fisher-z and Wald paths |
 | `extract_repeatability()` on binary fits | `covered` via M1.6 mixed-family | Single-family binomial fit tested; verify `vW` includes $\pi^2/3$ residual (M1.6 fix) |
+| **`glmmTMB` cross-check** (binomial-logit single-trait) | n/a | One shared $n_\text{units} = 100, d = 1$ fixture fit by both `glmmTMB::glmmTMB(y ~ x + (1\|g), family = binomial)` and `gllvmTMB()` (single-trait reduces to a binomial GLMM); report fixed-effect + variance-component agreement |
 
 ### M2.3 — `lambda_constraint` validation on binary IRT
 
@@ -121,7 +143,8 @@ Per slice (mirroring the M1 slice contract pattern in ROADMAP):
 |---|---|---|
 | LAM-03 binary IRT recovery | `partial` smoke | Recovery study at $n_\text{items} \in \{10, 20, 50\} \times d \in \{1, 2, 3\}$ |
 | Confirmatory loadings: pin $\Lambda_{ij} = c$ | accepts; not deep | Verify the engine respects the pin; recover the free entries to truth |
-| `mirt::mirt()` cross-check on shared fixture | n/a | One $n_\text{items} = 20, d = 1$ fixture fit by both packages; report parameter-disagreement table |
+| **`mirt::mirt()` cross-check on shared fixture** | n/a | One $n_\text{items} = 20, d = 1$ fixture fit by both packages; report parameter-disagreement table |
+| **`galamm` cross-check on confirmatory loadings** | n/a | Same fixture as the `mirt` check, fit by `galamm::galamm(...)` with the equivalent `lambda` constraint matrix; report parameter agreement (modulo rotation) |
 | Probit IRT 2PL recovery | n/a | Standard probit IRT model fit; recover slopes + intercepts |
 
 ### M2.4 — `suggest_lambda_constraint()` reliability
@@ -165,6 +188,35 @@ Per the [Phase 0C rewrite-prep handoff](../dev-log/audits/2026-05-16-phase0c-rew
   FAM-14, LAM-03, LAM-04 → `covered`.
 - Preview banners removed from `lambda-constraint.Rmd`,
   `psychometrics-irt.Rmd`, `ordinal-probit.Rmd`.
+
+### Cross-package light sanity checks (M2 scope, NOT Phase 5.5 grid)
+
+Per maintainer 2026-05-17, M2 bundles **light** cross-package
+sanity checks against three external packages — *one shared
+fixture per comparator*, not a sweep. The intent is to surface
+gross disagreement quickly (e.g., a sign-flipped loading or a
+mis-scaled variance component) without running the full Phase
+5.5 simulation grid.
+
+| Slice | Comparator | Fixture | What's reported |
+|-------|------------|---------|-----------------|
+| **M2.2** | `glmmTMB::glmmTMB()` | Single-trait binomial-logit GLMM with $n = 100, p = 1$ random effect | Fixed-effect + variance-component agreement to within 5 % RMSE; both packages should give numerically equivalent point estimates (gllvmTMB single-trait reduces to a glmmTMB binomial GLMM modulo the stacked-formula plumbing) |
+| **M2.3** | `mirt::mirt()` | Binary 2PL IRT $n_\text{items} = 20, d = 1, n_\text{respondents} = 500$ | Item slopes + intercepts agreement; rotation-aligned comparison |
+| **M2.3** | `galamm::galamm()` | Same fixture as the `mirt` check | Slopes + intercepts agreement modulo `gllvmTMB`'s stacked-long vs `galamm`'s wide-data API translation; documents how the `lambda` matrix maps to `lambda_constraint` |
+| **M2.5** | `mirt::mirt()` | Reused for the re-authored `psychometrics-irt.Rmd` worked example | Cross-package agreement chunk runs live in the article (CRAN-safe) or via a precomputed RDS (CRAN-large) — TBD by M2.5 author per `dev/precompute-vignettes.R` convention |
+
+**Scope guard**: each cross-check is *one fixture, one fit per
+comparator*. No grid. No simulation replicates. If a comparator
+disagrees significantly, the M2 slice author either (a) flags
+it as an open issue and downgrades the M2 close gate's
+validation claim, or (b) escalates to a fresh design-doc
+discussion before the slice merges.
+
+**The full Phase 5.5 grid** (R = 200 replicates, multiple
+fixtures per family-comparator pair, parameter-recovery +
+CI-coverage agreement matrices) stays deferred to the
+external-validation sprint per
+[`ROADMAP.md`](../../ROADMAP.md) Phase 5.5 block.
 
 ## 4. Per-family identification conventions (audit)
 
@@ -300,6 +352,8 @@ What M2.3 + M2.4 add:
 - [ ] `tests/testthat/test-m2-2-ordinal-probit-recovery.R` (FAM-14 recovery).
 - [ ] `tests/testthat/test-m2-2-binary-cis.R` (Wald + profile + bootstrap on binomial fit).
 - [ ] `tests/testthat/test-m2-3-lambda-constraint-binary.R` (LAM-03 recovery).
+- [ ] `tests/testthat/test-m2-3-mirt-cross-check.R` (one shared 2PL IRT fixture; `mirt::mirt()` and `galamm::galamm()` comparators).
+- [ ] `tests/testthat/test-m2-2-glmmTMB-cross-check.R` (single-trait binomial-logit GLMM agreement with `glmmTMB`).
 - [ ] `tests/testthat/test-m2-4-suggest-lambda-constraint.R` (LAM-04 reliability).
 - [ ] `R/data-binary-irt.R` (M2.3 fixture — a known-DGP binary IRT 2PL fit).
 - [ ] `vignettes/articles/psychometrics-irt.Rmd` re-authored at M2.5.
@@ -316,10 +370,14 @@ What M2.3 + M2.4 add:
 These are flagged for resolution during M2.2 / M2.3 / M2.4, not
 in this M2.1 design note.
 
-- **`mirt::mirt()` comparator scope**. For LAM-03 cross-check,
-  do we run a single representative fixture (recommended for
-  M2.3 to stay scope-narrow) or a grid? Defer to M2.3 author
-  (Boole + Emmy) with Fisher review.
+- **`mirt::mirt()` + `galamm` + `glmmTMB` comparator scope**.
+  Per maintainer 2026-05-17: one shared fixture per comparator,
+  not a grid. The full Phase 5.5 grid (R = 200, multiple
+  fixtures) stays deferred. M2.2 + M2.3 authors confirm which
+  exact fixture is shared between mirt + galamm (recommended:
+  the same binary 2PL IRT $n_\text{items} = 20, d = 1, n = 500$
+  fixture). Fixture lives at `R/data-binary-irt.R` (~50 LOC
+  internal helper, follows the M1.2 fixture pattern).
 - **Probit identification regime**. Does the engine handle
   binomial-probit with `unique()` keyword (free per-trait
   residual variance) by erroring + suggesting `link_residual = "none"`,
@@ -358,7 +416,12 @@ After M2 closes:
 > **Empirical coverage at R = 200** stays M3 work for all
 > families, including those validated in M1 + M2.
 >
-> **Cross-package empirical agreement** stays Phase 5.5 work.
-> M2.5 includes a single `mirt::mirt()` cross-check on a
-> shared IRT fixture as a sanity check, not as the full
-> Phase 5.5 grid.
+> **Cross-package empirical agreement at the full grid scale**
+> stays Phase 5.5 work. M2 includes **light cross-package
+> sanity checks**: one shared fixture each against
+> `glmmTMB` (binomial-logit GLMM, M2.2), `mirt::mirt()` (binary
+> 2PL IRT, M2.3 + M2.5), and `galamm::galamm()` (confirmatory
+> loadings, M2.3). Each check is a single fit per comparator;
+> no replicates; no grid. Per maintainer 2026-05-17:
+> *"it does not need to be big tests (I am later planning big
+> tests)."*

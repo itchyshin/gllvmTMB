@@ -32,9 +32,13 @@ change. The design doc records the M2 plan; subsequent slices
 
 ## 2. Implemented
 
-### `docs/design/41-binary-completeness.md` (new, ~310 lines)
+### `docs/design/41-binary-completeness.md` (new, ~360 lines after cross-package addendum)
 
-10 sections:
+10 sections, plus an IRT-confirmation paragraph + a dedicated
+**Cross-package light sanity checks** subsection (per maintainer
+2026-05-17 dispatch of cross-package checks against `glmmTMB` +
+`galamm` + `mirt`, scoped explicitly as "not big tests; big
+tests are Phase 5.5"):
 
 1. **Goal** — including a clear "What M2 is NOT" boundary that
    leaves empirical R = 200 coverage for M3 and cross-package
@@ -72,7 +76,34 @@ change. The design doc records the M2 plan; subsequent slices
    slice PRs (not in this M2.1 design note).
 10. **Honest scope boundary statement** — what's validated
     after M2, what stays `partial`, what's deferred to M3 /
-    Phase 5.5 / post-CRAN.
+    Phase 5.5 / post-CRAN. Cross-package light-check rule
+    quoted verbatim from the maintainer dispatch.
+
+### Cross-package light sanity checks (added 2026-05-17)
+
+Per maintainer 2026-05-17 follow-up to the M2.1 PR: M2 covers
+IRT explicitly, and bundles light cross-package checks against
+glmmTMB + galamm (in addition to the mirt::mirt() check that
+was already in §3). Scope: **one shared fixture per comparator,
+no replicates, no grid.** The Phase 5.5 full grid stays
+deferred.
+
+Three comparator rows added to the gap-analysis tables:
+
+- **M2.2 + `glmmTMB`** — single-trait binomial-logit GLMM
+  fixture; `gllvmTMB` single-trait reduces to a `glmmTMB`
+  binomial GLMM modulo the stacked-formula plumbing. Test at
+  `test-m2-2-glmmTMB-cross-check.R`.
+- **M2.3 + `mirt::mirt()`** — binary 2PL IRT
+  $n_\text{items} = 20, d = 1, n_\text{respondents} = 500$
+  fixture. Item-slope + intercept agreement.
+- **M2.3 + `galamm::galamm()`** — same fixture as the `mirt`
+  check; tests the `lambda_constraint` ↔ `galamm`-`lambda`-
+  matrix translation. Documents API-mapping difference.
+
+Both M2.3 cross-checks live at `test-m2-3-mirt-cross-check.R`.
+Both share the same `R/data-binary-irt.R` fixture (one fit
+per package).
 
 ## 3. Files Changed
 

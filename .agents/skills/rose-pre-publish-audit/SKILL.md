@@ -1,6 +1,6 @@
 ---
 name: rose-pre-publish-audit
-description: Run Rose's narrow pre-publish consistency gate for gllvmTMB README, vignettes, pkgdown navigation, NEWS, roxygen, or Rd changes. Cross-checks claims against the validation-debt register, the README stable-core feature matrix, and the AGENTS.md scope-boundary rule. Phase 0A 2026-05-16 ratified.
+description: Run Rose's narrow pre-publish consistency gate for gllvmTMB README, vignettes, pkgdown navigation, NEWS, roxygen, or Rd changes. Cross-checks claims against the validation-debt register, the README stable-core feature matrix, the AGENTS.md scope-boundary rule, and (per Phase 0C closeout 2026-05-16) the export ↔ pkgdown reference parity, the removed-article cross-reference cascade, the Preview-banner citation discipline, the REWRITE-PREP contract, and the ROADMAP slice "Done when" deliverable rule.
 ---
 
 # Rose Pre-Publish Audit
@@ -88,6 +88,64 @@ file references.
     `AGENTS.md` / `README.md` / `NEWS.md` updated, and the
     validation-debt register row(s) updated. The after-task report
     must enumerate every file touched.
+12. **`@export` ↔ `_pkgdown.yml` reference-index parity (Phase 0C
+    closeout 2026-05-16).** Every roxygen `@export` in `R/*.R` must
+    appear in the `_pkgdown.yml` reference index OR be explicitly
+    marked `@keywords internal`. The gap that surfaced as PR #142
+    pkgdown hotfix (`meta_V` was exported but missed in
+    `_pkgdown.yml` → docs-build red) is the canonical regression
+    this check prevents. If the PR adds, renames, or removes an
+    `@export`, verify the reference-index row was added / renamed /
+    removed in lockstep.
+13. **Removed-article cross-reference sweep (Phase 0C closeout
+    2026-05-16).** When a PR removes, moves, or renames an article
+    in `vignettes/articles/` (e.g., a PULL to `dev/workshop-articles/`
+    or a REWRITE-PREP banner addition), grep every *surviving*
+    article for cross-references to the affected slug (typical
+    pattern: `articles/<slug>.html`, `[<title>](<slug>.html)`, or
+    bare `<slug>.html`). Any surviving cross-link to the moved /
+    removed article is `FAIL` unless explicitly retained as a
+    workshop pointer with the absolute GitHub URL. The gap that
+    surfaced as the orphan `simulation-recovery.html` link in
+    `cross-package-validation.Rmd` after PR-0C.PULL is the
+    canonical regression this check prevents.
+14. **Preview-banner citation discipline (Phase 0C closeout
+    2026-05-16).** Every `> **Preview —` blockquote in
+    `vignettes/articles/*.Rmd` must (a) cite at least one
+    validation-debt register row ID (e.g., `FAM-14`, `LAM-03`,
+    `MIX-03..MIX-08`, `CI-08`), AND (b) name a specific milestone
+    at which the cited row walks to `covered` — one of `M1`, `M2`,
+    `M2.3`, `M2.5`, `M3`, `M3.3`, `Phase 1f`, `M5.5`, `post-CRAN`.
+    REWRITE-PREP banners ("slated for re-authoring in `<Mn>`")
+    additionally cite the rewrite-prep handoff doc at
+    `docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md`.
+    Banners that do not cite a register row + milestone are `FAIL`
+    (silent overpromise).
+15. **REWRITE-PREP contract verification (Phase 0C closeout
+    2026-05-16).** When a PR re-authors an article previously
+    marked REWRITE-PREP — currently `psychometrics-irt.Rmd`
+    (M2.5 contract) and `choose-your-model.Rmd` (Phase 1f
+    contract) — verify (a) every fitted-example claim in the
+    re-authored article cites a `covered` row in the validation-
+    debt register at the time of the rewrite PR; (b) the rewrite
+    contract from
+    `docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md` is
+    satisfied in full (e.g., M2.5 contract item 3 = include one
+    live `mirt::mirt()` cross-check; M2.5 contract item 2 =
+    audit-2 A1 "Stay Laplacian" pedagogy note); (c) the Preview
+    banner is removed only after the contract is satisfied. A
+    rewrite that lands without contract items is `FAIL`.
+16. **ROADMAP slice "Done when" deliverable rule (Phase 0C closeout
+    2026-05-16).** Every slice under a Phase-1 milestone heading
+    (`### ⚪ M1 ...`, `### ⚪ M2 ...`, `### ⚪ M3 ...`) in
+    `ROADMAP.md` must have a "Done when" cell that cites at least
+    one of: a specific test file path (e.g.,
+    `tests/testthat/test-m1-3-...`), an audit doc path (e.g.,
+    `docs/dev-log/audits/2026-05-NN-...`), a validation-debt
+    register row-ID walk (e.g., "MIX-03 → covered"), a fixture
+    path (e.g., `inst/extdata/...`), or a vignette path (e.g.,
+    `vignettes/articles/...`). Slices with vague "Done when"
+    conditions (e.g., "feature works", "tests pass") are `FAIL`.
 
 ## Suggested Commands
 
@@ -114,6 +172,29 @@ rg "meta_known_V" README.md NEWS.md docs vignettes
 # In-prep citations (engine-specific OK; foundational must cite
 # published literature)
 rg "in prep|in preparation" docs vignettes
+
+# Check 12: @export ↔ _pkgdown.yml reference parity
+# (list every @export in R/, list every function under `reference:
+# contents:` in _pkgdown.yml, diff)
+rg -nH "^#' @export" R/ | awk -F"#' @export" '{print $1}' | xargs -I{} grep -oE "^[a-zA-Z_.]+ *<- *function" {} 2>/dev/null | head
+# Cross-check against _pkgdown.yml
+rg "^    - [a-zA-Z_.]+ *$" _pkgdown.yml | sort -u
+
+# Check 13: removed-article cross-reference sweep
+# (replace <slug> with the article being removed; e.g. simulation-recovery)
+rg "articles/<slug>\\.html|<slug>\\.html|\\[.*\\]\\(<slug>\\.html\\)" vignettes/
+
+# Check 14: Preview-banner citation discipline
+# (each banner must mention a register row ID + a milestone)
+rg -B 0 -A 8 "^> \\*\\*Preview" vignettes/articles/
+
+# Check 15: REWRITE-PREP contract verification
+# (when re-authoring psychometrics-irt.Rmd or choose-your-model.Rmd,
+# the contract lives here:)
+cat docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md
+
+# Check 16: ROADMAP slice "Done when" deliverable rule
+rg "^\\| \\*\\*M[0-9]+\\.[0-9]+\\*\\* \\|" ROADMAP.md
 ```
 
 ## Output

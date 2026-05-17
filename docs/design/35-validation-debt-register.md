@@ -270,7 +270,7 @@ M2 binary).
 | LAM-01 | `lambda_constraint` argument accepted | `covered` | `test-lambda-constraint.R` | |
 | LAM-02 | `lambda_constraint` Gaussian fits | `partial` | `test-lambda-constraint.R` | smoke only |
 | LAM-03 | `lambda_constraint` on binary fits (confirmatory IRT) | `covered` | `test-m2-3-lambda-constraint-binary.R`, `test-m2-3-mirt-cross-check.R`, `test-m2-3-galamm-cross-check.R`, `test-lambda-constraint.R` | M2.3 walks: binary 2PL IRT recovery at d ∈ {1, 2} × n_items ∈ {20, 50} + mirt + galamm cross-checks |
-| LAM-04 | `suggest_lambda_constraint()` | `partial` | `test-suggest-lambda-constraint.R` | smoke; M2.4 milestone |
+| LAM-04 | `suggest_lambda_constraint()` | `covered` | `test-m2-4-suggest-lambda-constraint-binary.R`, `test-suggest-lambda-constraint.R` | M2.4 walks: suggester output structure + suggester→fit recovery cycle on binary IRT at d ∈ {1, 2, 3}; d=3 n_items=10 boundary documented |
 
 ### Section 12 — Miscellaneous public surface
 

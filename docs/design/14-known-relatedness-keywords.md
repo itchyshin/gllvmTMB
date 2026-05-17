@@ -150,7 +150,7 @@ animal_X(id, pedigree = ped)  ≡  animal_X(id, A = pedigree_to_A(ped))
 
 | Family | Position 1 | Named args (relatedness input) | Other |
 |---|---|---|---|
-| `phylo_*` | bare `species` (or bar-form for `_indep`/`_dep`/`_slope`) | `tree = phy` OR `vcv = C` OR (soft-deprecate plan: `A = A` / `Ainv = Ainv`) | `d = K` on `_latent` |
+| `phylo_*` | bare `species` (or bar-form for `_indep`/`_dep`/`_slope`) | `tree = phy` OR `vcv = C` OR **`A = A`** OR **`Ainv = Ainv`** (`A` / `Ainv` aliases shipped 2026-05-17) | `d = K` on `_latent` |
 | `spatial_*` | bar-form `0 + trait \| coords` | `mesh = mesh` (SPDE) | `d = K` on `_latent` |
 | `animal_*` | bare `id` (or bar-form for `_indep`/`_dep`/`_slope`) | `pedigree = ped` OR `A = A` OR `Ainv = Ainv` | `d = K` on `_latent` |
 
@@ -166,8 +166,11 @@ animal_X(id, pedigree = ped)  ≡  animal_X(id, A = pedigree_to_A(ped))
 ## 8. Scope boundary — what's NOT in M2.8
 
 - **No engine work.** TMB template untouched.
-- **Phylo soft-deprecate (`vcv =` → `A =` / `Ainv =`)** deferred to
-  a separate small PR. Existing `phylo_*(vcv = ...)` keeps working
+- **Phylo soft-deprecate (`vcv =` → `A =` / `Ainv =`)** — shipped
+  2026-05-17 as a small follow-up PR (M2.8b). All 5 `phylo_*`
+  grid keywords (`phylo_scalar`, `_unique`, `_indep`, `_dep`,
+  `_latent`) accept `A =` and `Ainv =` aliases byte-equivalently
+  with `vcv =`. Existing `phylo_*(vcv = ...)` continues to work
   unchanged.
 - **No `relmat_*` / `user_*` keyword.** Skipped per §2; documented
   on `phylo_*` roxygen that `A = ` accepts any known relatedness

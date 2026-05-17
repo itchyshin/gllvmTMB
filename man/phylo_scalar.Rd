@@ -4,7 +4,7 @@
 \alias{phylo_scalar}
 \title{Single-shared-variance phylogenetic random effect: \code{phylo_scalar(species)}}
 \usage{
-phylo_scalar(species, tree = NULL, vcv = NULL)
+phylo_scalar(species, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
 \item{species}{Unquoted column name for the species factor.}

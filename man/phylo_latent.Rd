@@ -4,7 +4,7 @@
 \alias{phylo_latent}
 \title{Reduced-rank phylogenetic latent factors: \code{phylo_latent(species, d = K)}}
 \usage{
-phylo_latent(species, d = 1, tree = NULL, vcv = NULL)
+phylo_latent(species, d = 1, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
 \item{species}{Unquoted column name for the species factor.}

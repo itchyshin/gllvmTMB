@@ -1,5 +1,16 @@
 # gllvmTMB (development version)
 
+## phylo_* `A =` / `Ainv =` aliases (M2.8b, 2026-05-17)
+
+* The 5 `phylo_*` grid keywords (`phylo_scalar`, `phylo_unique`,
+  `phylo_indep`, `phylo_dep`, `phylo_latent`) now accept **`A =`**
+  and **`Ainv =`** as byte-equivalent aliases for **`vcv =`**.
+  Aligns phylo_* with the M2.8 `animal_*` family's A-vs-V naming
+  convention (A for relatedness, V for sampling variance —
+  reserved for `meta_known_V()`). The legacy `vcv =` continues to
+  work unchanged through v0.3.0. Supplying both `vcv` and `A`
+  (or both `vcv` and `Ainv`) errors with a typed message.
+
 ## New exports (M2.8 animal-model keyword family, 2026-05-17)
 
 * **`animal_scalar()`, `animal_unique()`, `animal_indep()`,
@@ -23,7 +34,7 @@
 / **Ainv** / **pedigree** for relatedness inputs. The separate
 `meta_known_V()` keyword uses **V** for *sampling variance* in
 meta-analysis. Existing `phylo_*(vcv = ...)` keeps working
-through v0.3.0; `A =` / `Ainv =` aliases are coming.
+through v0.3.0; `A =` / `Ainv =` aliases shipped 2026-05-17 (M2.8b).
 
 ## New exports (Phase 1b validation milestone)
 

@@ -4,7 +4,7 @@
 \alias{phylo_dep}
 \title{Full unstructured phylogenetic trait covariance: \code{phylo_dep(0 + trait | species)}}
 \usage{
-phylo_dep(formula, tree = NULL, vcv = NULL)
+phylo_dep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
 \item{formula}{\code{0 + trait | species} style formula. The LHS must be

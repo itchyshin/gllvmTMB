@@ -4,7 +4,7 @@
 \alias{phylo_unique}
 \title{Per-trait independent phylogenetic random intercepts: \code{phylo_unique(species)}}
 \usage{
-phylo_unique(species, tree = NULL, vcv = NULL)
+phylo_unique(species, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
 \item{species}{Unquoted column name for the species factor.}

@@ -4,7 +4,7 @@
 \alias{phylo_indep}
 \title{Per-trait phylogenetic marginal variance: \code{phylo_indep(0 + trait | species)}}
 \usage{
-phylo_indep(formula, tree = NULL, vcv = NULL)
+phylo_indep(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
 \item{formula}{\code{0 + trait | species} style formula. The LHS must be

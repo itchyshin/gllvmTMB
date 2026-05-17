@@ -496,7 +496,8 @@ NULL
 #'   )
 #' }
 #' @export
-phylo_latent <- function(species, d = 1, tree = NULL, vcv = NULL) {
+phylo_latent <- function(species, d = 1, tree = NULL, vcv = NULL,
+                         A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 
@@ -610,7 +611,8 @@ phylo_slope <- function(formula) {
 #'   )
 #' }
 #' @export
-phylo_scalar <- function(species, tree = NULL, vcv = NULL) {
+phylo_scalar <- function(species, tree = NULL, vcv = NULL,
+                         A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 
@@ -700,7 +702,8 @@ phylo_scalar <- function(species, tree = NULL, vcv = NULL) {
 #'   )
 #' }
 #' @export
-phylo_unique <- function(species, tree = NULL, vcv = NULL) {
+phylo_unique <- function(species, tree = NULL, vcv = NULL,
+                         A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 
@@ -1157,7 +1160,8 @@ indep <- function(formula) {
 #'                 unit    = "species",
 #'                 cluster = "species")
 #' }
-phylo_indep <- function(formula, tree = NULL, vcv = NULL) {
+phylo_indep <- function(formula, tree = NULL, vcv = NULL,
+                        A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 
@@ -1352,7 +1356,8 @@ dep <- function(formula) {
 #'   )
 #' }
 #' @export
-phylo_dep <- function(formula, tree = NULL, vcv = NULL) {
+phylo_dep <- function(formula, tree = NULL, vcv = NULL,
+                      A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 
@@ -1819,6 +1824,38 @@ rewrite_canonical_aliases <- function(formula) {
       if (fn %in% c("spatial_unique", "spatial_scalar", "spatial_latent",
                     "spatial", "spatial_indep", "spatial_dep")) {
         e <- normalise_spatial_orientation(e)
+      }
+      ## PHYLO `A =` / `Ainv =` alias normaliser. Per Design 14 §3
+      ## (A-vs-V boundary): `A` / `Ainv` are the canonical relatedness
+      ## inputs across phylo_* and animal_*; `vcv` is the legacy phylo
+      ## input retained for backward compatibility. Translate `A =` /
+      ## `Ainv =` to `vcv =` BEFORE the phylo_X branch dispatches, so
+      ## the existing rewrite logic is unchanged.
+      if (fn %in% c("phylo_scalar", "phylo_unique", "phylo_latent",
+                    "phylo_indep", "phylo_dep")) {
+        nm <- names(e)
+        if (!is.null(nm) && "A" %in% nm) {
+          if ("vcv" %in% nm) {
+            cli::cli_abort(c(
+              "{.fn {fn}} got both {.arg A} and {.arg vcv}.",
+              "i" = "These are aliases — supply only one."
+            ))
+          }
+          e[["vcv"]] <- e[[which(nm == "A")]]
+          e[["A"]]   <- NULL
+          nm <- names(e)
+        }
+        if (!is.null(nm) && "Ainv" %in% nm) {
+          if ("vcv" %in% nm) {
+            cli::cli_abort(c(
+              "{.fn {fn}} got both {.arg Ainv} and {.arg vcv}.",
+              "i" = "These are aliases — supply only one."
+            ))
+          }
+          Ainv_expr <- e[[which(nm == "Ainv")]]
+          e[["vcv"]]  <- bquote(solve(as.matrix(.(Ainv_expr))))
+          e[["Ainv"]] <- NULL
+        }
       }
       ## ANIMAL-model keyword family — resolves `pedigree =` / `A =` /
       ## `Ainv =` to a `vcv =` named arg, then emits the same engine-

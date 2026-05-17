@@ -191,6 +191,72 @@ sites is the Matern correlation evaluated at the inter-node
 distance. The mesh is built once with `make_mesh()` and passed to
 `spatial_*()` keywords.
 
+## Quantitative-genetics terms
+
+**Animal model** &mdash; A linear mixed model with a random
+effect per individual whose covariance is the pedigree-derived
+additive-genetic relatedness matrix $\mathbf{A}$. The canonical
+QG generalisation of a one-way random-intercept model: the random
+effect's individuals are not independent, they are correlated by
+pedigree. In gllvmTMB it is the `animal_*()` keyword family.
+
+**Pedigree** &mdash; A three-column table (`id`, `sire`, `dam`)
+recording the parentage of each individual in the sample. Unknown
+parents are encoded as `NA`. Founders (both parents unknown) are
+assumed unrelated and non-inbred. The pedigree gets converted to
+the $\mathbf{A}$ matrix by Henderson's (1976) recursive formula;
+`pedigree_to_A()` is the exported helper.
+
+**A matrix (additive-genetic relatedness matrix, numerator-
+relationship matrix, $\mathbf{A}$)** &mdash; The $n \times n$
+matrix where $A_{ii} = 1 + F_i$ ($F_i$ = inbreeding coefficient
+of individual $i$, zero for outbred founders) and
+$A_{ij} = 2 \phi_{ij}$ where $\phi_{ij}$ is the kinship
+coefficient. Full sibs have $A = 0.5$; half-sibs $A = 0.25$;
+parent-offspring $A = 0.5$. Mathematically identical to a
+phylogenetic VCV — only the source differs (pedigree vs tree).
+
+**Kinship coefficient ($\phi_{ij}$)** &mdash; The probability
+that one randomly-drawn allele from individual $i$ and one
+randomly-drawn allele from individual $j$ are identical by
+descent. Equals $A_{ij} / 2$. Full-sibs have $\phi = 0.25$.
+
+**Additive genetic variance ($V_A$, $\sigma^2_A$)** &mdash; The
+variance component of a phenotype attributable to the additive
+effects of pedigree-correlated genes. Estimated from the
+random-effect variance on the `animal_*()` keyword's $\mathbf{A}$-
+indexed term. The numerator of narrow-sense heritability.
+
+**Narrow-sense heritability ($h^2$)** &mdash; The proportion of
+phenotypic variance attributable to additive genetic variance:
+$h^2 = V_A / V_P$, where $V_P$ is total phenotypic variance. In
+gllvmTMB you compute it on the latent scale from the variance-
+component split of an `animal_*()` fit.
+
+**G matrix (genetic covariance matrix, $\mathbf{G}$)** &mdash;
+The multi-trait analogue of $V_A$: a $T \times T$ matrix of
+additive-genetic covariances between traits. A factor-analytic
+$\mathbf{G} = \boldsymbol{\Lambda}_g \boldsymbol{\Lambda}_g^\top$
+(Kirkpatrick & Meyer 2004; Meyer 2009) is exactly what
+`animal_latent(individual, d = K, pedigree = ped)` fits.
+
+**Reaction norm / random regression** &mdash; A model where
+individuals carry a slope on an environmental gradient and those
+slopes are heritable (correlated by $\mathbf{A}$). In gllvmTMB it
+is `animal_slope(x | individual, pedigree = ped)`. Used to quantify
+heritable variation in phenotypic plasticity.
+
+**A vs V naming boundary** &mdash; In gllvmTMB, **A** (and its
+inverse **Ainv**) is reserved for *relatedness* covariance —
+the pedigree-derived or phylogeny-derived matrix that correlates
+random-effect levels by ancestry. **V** is reserved for
+*sampling variance* — the known measurement-error variance in
+a meta-analytic regression, accepted by `meta_known_V(..., V = V)`.
+These two concepts are mathematically distinct (relatedness
+covariance vs measurement-error variance) and the package keeps
+them visually separated. See [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
+§3 for the full rule.
+
 ## Inference terms
 
 **Wald CI** &mdash; Symmetric CI on the natural parameter scale
@@ -220,8 +286,9 @@ and well-behaved on $[-1, 1]$.
 
 - [Choose your model](choose-your-model.html) -- decision tree for
   which model to fit given your data shape.
-- [API keyword grid](api-keyword-grid.html) -- the 3x5 covariance
-  keyword reference.
+- [API keyword grid](api-keyword-grid.html) -- the 4x5 covariance
+  keyword reference (animal · phylo · spatial · none × scalar ·
+  unique · indep · dep · latent).
 - [Covariance vs correlation](covariance-correlation.html) -- when
   to report $\boldsymbol{\Sigma}$ versus its correlation
   $\boldsymbol{R}$.

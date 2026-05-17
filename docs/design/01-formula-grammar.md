@@ -4,7 +4,7 @@
 **Reviewers:** Noether (math-vs-implementation alignment) and Rose
 (public-consistency audit).
 
-The formula grammar is the heart of `gllvmTMB`. The 3 × 5 covariance
+The formula grammar is the heart of `gllvmTMB`. The 4 × 5 covariance
 keyword grid is the public-API contract; everything in the engine
 serves it. Per **AGENTS.md Design Rule #3**, no change to this grammar
 ships without updating this document first.
@@ -83,8 +83,8 @@ support from end-to-end verification:
 | `spatial_latent(0 + trait \| sites, mesh = mesh)` or `spatial_latent(0 + trait \| sites, coords = c("lon", "lat"))` and siblings | **covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). See "Spatial axis convention" below. Test evidence: `test-spatial-latent-recovery.R` (spatial_latent), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). |
 | `meta_V(value, V = V)` | **covered** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form) + `test-block-V.R` (block-V form via `block_V()` helper) (validation-debt register MET-01, MET-02; Phase 0B.4 promotion 2026-05-16). The legacy `meta_known_V(value, V = V)` is retained as a deprecated alias; both names desugar identically in the parser. See "Meta-analysis keyword" below for the rename history. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
-| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 3 × 5 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
-| `(1 + x \| g)` ordinary random slope | **reserved** | Parser does not accept random slopes inside the 3 × 5 keywords yet. Planned for M1 (Gaussian completeness). |
+| `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 4 × 5 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
+| `(1 + x \| g)` ordinary random slope | **reserved** | Parser does not accept random slopes inside the 4 × 5 keywords yet. Planned for M1 (Gaussian completeness). |
 | `(1 \| g1/g2)` slash-form nested random effects | **rejected** | Not parsed. Use globally unique level names instead (see "Crossed-vs-nested" below). |
 | `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | **covered (Gaussian)** | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Test evidence: `test-lambda-constraint.R` asserts pinned-entry values within `1e-8` tolerance for diagonal-pin, off-diagonal-pin-to-zero, off-diagonal-pin-to-non-zero, W-level, and simultaneous B+W pin cases (validation-debt register LAM-01, LAM-02; Phase 0B.3 promotion 2026-05-16). Phase M2 verifies on binary (LAM-03 stays partial until M2.3). |
 | `suggest_lambda_constraint(fit)` | **covered (Gaussian)** | Helper that recommends constraint matrices. Test evidence: `test-suggest-lambda-constraint.R` asserts the helper returns well-typed `T x d` matrices with correct upper-triangle pinning, dimension, row/column names, and `usage_hint` for `lower_triangular` and `pin_top_one` conventions across `K = 1, 2, 3` (validation-debt register LAM-04 Gaussian regime; Phase 0B.3 promotion 2026-05-16). Phase M2 verifies on binary at $n_\text{items} \in \{10, 20, 50\}$, $d \in \{1, 2, 3\}$ (LAM-04 binary stays partial until M2.4). |
@@ -179,7 +179,7 @@ data frame and call `gllvmTMB(traits(...) ~ ..., data = df_wide)`.
 (Migration helper for legacy users may be considered post-CRAN
 if external feedback shows persistent matrix-first workflows.)
 
-## The 3 × 5 covariance keyword grid
+## The 4 × 5 covariance keyword grid
 
 The grid is the user-facing public-API contract. Rows are
 correlation sources; columns are covariance modes:
@@ -187,8 +187,22 @@ correlation sources; columns are covariance modes:
 | correlation \ mode | scalar | unique | indep | dep | latent |
 |---|---|---|---|---|---|
 | **none** | (omit) | `unique()` | `indep()` | `dep()` | `latent()` |
+| **animal** | `animal_scalar()` | `animal_unique()` | `animal_indep()` | `animal_dep()` | `animal_latent()` |
 | **phylo** | `phylo_scalar()` | `phylo_unique()` | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
 | **spatial** | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+
+The four correlation rows go from finest-grained (individual
+pedigree) to broadest (geographic distance). Plus the random-slope
+keywords `phylo_slope(x | species)` and `animal_slope(x | id)` for
+per-group random regression slopes — see
+[`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)
+for the team-ratified convention.
+
+**The A vs V naming boundary** (per Design 14 §3): `animal_*` and
+`phylo_*` keywords accept **A** / **Ainv** for *relatedness*
+covariance; the separate `meta_known_V(value, V = V)` keyword
+accepts **V** for *sampling variance* in meta-analysis. Do not
+blur — these are mathematically distinct quantities.
 
 **Column meanings** (what the keyword does to the $T \times T$
 trait covariance):
@@ -518,7 +532,7 @@ Currently:
   keywords as the default random-intercept on the grouping
   factor.
 - **Random slopes** `(0 + x | g)` or `(1 + x | g)`: **reserved**.
-  Not currently parsed inside the 3 × 5 keywords. The M1 Gaussian
+  Not currently parsed inside the 4 × 5 keywords. The M1 Gaussian
   completeness milestone (per ROADMAP) adds random-slope support
   for the `latent + unique` paired keywords as the first
   random-slope path. Other 3 × 5 cells get random-slope support

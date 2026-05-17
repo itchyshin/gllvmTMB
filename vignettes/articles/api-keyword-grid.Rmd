@@ -21,15 +21,21 @@ knitr::opts_chunk$set(
 
 This reference is for readers who already know they need a
 stacked-trait model and want to choose the right covariance keyword.
-The keywords are organised as a 3 x 5 grid: the row names the
+The keywords are organised as a 4 x 5 grid: the row names the
 correlation across units, and the column names the covariance mode
-across traits.
+across traits. The four correlation rows go from finest-grained
+(individual pedigree) to broadest (geography).
 
 | correlation \ mode | scalar | unique | indep | dep | latent |
 |---|---|---|---|---|---|
 | none | (omit) | `unique()` | `indep()` | `dep()` | `latent()` |
+| **animal** | `animal_scalar()` | `animal_unique()` | `animal_indep()` | `animal_dep()` | `animal_latent()` |
 | phylo | `phylo_scalar()` | `phylo_unique()` | `phylo_indep()` | `phylo_dep()` | `phylo_latent()` |
 | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+
+Plus the **random-slope** keywords alongside the grid:
+`phylo_slope(x | species)` and `animal_slope(x | id)` — for
+per-group random regression slopes on a continuous covariate.
 
 Use this page as a grammar lookup. For a worked example, start with
 [`morphometrics`](morphometrics.html) for non-phylogenetic
@@ -63,19 +69,33 @@ interpretation is intentional. `dep()` is the full unstructured
 baseline and should not be combined with the matching `latent()`,
 `unique()`, or `indep()` term at the same level.
 
-## The Three Correlation Rows
+## The Four Correlation Rows
 
-The row controls how the grouping units are correlated.
+The row controls how the grouping units are correlated. The rows
+are pedagogically ordered from finest-grained (pedigree, one
+individual at a time) to broadest (geographic distance).
 
-| row | Unit correlation | Typical grouping |
-|---|---|---|
-| none | independent groups | sites, individuals, sessions |
-| phylo | a phylogenetic relationship matrix from `tree` or `vcv` | species or clades |
-| spatial | an SPDE/GMRF spatial precision matrix from `mesh` | sites with coordinates |
+| row | Unit correlation | Typical grouping | How A is supplied |
+|---|---|---|---|
+| none | independent groups | sites, individuals, sessions | — |
+| **animal** | **the additive-genetic relatedness matrix A** | **individuals in a pedigree** | **`pedigree =` (3-column id/sire/dam) or `A =` or `Ainv =`** |
+| phylo | a phylogenetic relationship matrix from `tree` or `vcv` | species or clades | `tree =` or `vcv =` (legacy; `A =` / `Ainv =` aliases coming) |
+| spatial | an SPDE/GMRF spatial precision matrix from `mesh` | sites with coordinates | `mesh =` |
+
+**The A vs V naming boundary.** The `animal_*` and `phylo_*` keywords
+accept the **A** (or **Ainv**) argument for *relatedness*. The
+separate `meta_known_V(value, V = V)` keyword accepts **V** for
+*sampling variance* in meta-analysis. These are mathematically
+distinct (relatedness covariance vs measurement-error variance),
+and the argument naming keeps them visually separated. See
+[`docs/design/14-known-relatedness-keywords.md`](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
+§3 for the full rule.
 
 No-prefix keywords such as `latent()`, `unique()`, `indep()`, and
-`dep()` use independent group effects. The phylogenetic row uses
-`phylo_*()` keywords and a tree or covariance matrix. The spatial row
+`dep()` use independent group effects. The animal row uses
+`animal_*()` keywords with a pedigree (or pre-computed A / Ainv).
+The phylogenetic row uses `phylo_*()` keywords and a tree or
+covariance matrix. The spatial row
 uses `spatial_*()` keywords and an SPDE mesh, often created with
 `make_mesh()`.
 

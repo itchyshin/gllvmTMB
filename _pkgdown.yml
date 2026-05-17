@@ -74,6 +74,13 @@ reference:
     - unique
     - indep
     - dep
+    - animal_scalar
+    - animal_unique
+    - animal_indep
+    - animal_dep
+    - animal_latent
+    - animal_slope
+    - pedigree_to_A
     - phylo_scalar
     - phylo_unique
     - phylo_indep

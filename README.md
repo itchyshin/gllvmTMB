@@ -242,7 +242,6 @@ let you trace any claim to its test-file evidence.
 | **`predict.gllvmTMB_multi()` typed family outputs** | planned | `link` / `response` work (MIS-07); ordinal-probit category probabilities, delta presence / positive-mean, and mixed-family per-trait `linkinv` are M2 work. |
 | **REML estimation** | planned | Post-0.2.0 release as a Gaussian-only feature. |
 | **Storage controls (`keep_tmb_object = FALSE`)** | planned | Mirror `drmTMB`'s pattern for serialised-fit footprint. |
-| **Zero-inflated count families** | planned | Post-CRAN extension. |
 | **SPDE barrier mesh** | planned | Post-CRAN extension. |
 
 The **stable** rows are the core surface you can use in
@@ -259,14 +258,25 @@ For the row-by-row evidence backing every "stable" claim
 
 ## Covariance keyword grid
 
-The formula grammar is a 3 x 5 grid: correlation source crossed
-with covariance mode.
+The formula grammar is a **4 x 5** grid: correlation source crossed
+with covariance mode. Rows go from finest-grained (individual
+pedigree) to broadest (geography).
 
 |                | scalar             | unique             | indep             | dep             | latent             |
 |---             |---                 |---                 |---                |---              |---                 |
 | **none**       | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
+| **animal**     | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
 | **phylo**      | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
 | **spatial**    | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+
+Plus the random-slope keywords `phylo_slope(x | species)` and
+`animal_slope(x | id)` for per-group random regression slopes.
+
+**A vs V naming boundary**: `animal_*` and `phylo_*` keywords accept
+**A** (relatedness covariance), **Ainv** (sparse precision), or
+**pedigree** (animal-only); the separate `meta_known_V(value, V = V)`
+keyword accepts **V** for *sampling variance* in meta-analysis.
+See [Design 14](docs/design/14-known-relatedness-keywords.md).
 
 The decomposition mode is `latent + unique` paired:
 
@@ -311,8 +321,15 @@ overpromise):
   (*in prep*) unifying weighted-regression / meta-analysis
   mode; the current default is the additive `scale = "known"`
   form (MET-03).
-- **Zero-inflated count families, SPDE barrier meshes, REML
-  estimation, storage controls.**
+- **SPDE barrier meshes, REML estimation, storage controls.**
+- **Zero-inflated / hurdle / two-stage delta families with
+  latent-scale correlations.** Two-sub-model families have two
+  latent scales (the zero-inflation logit + the count log; or
+  the hurdle binary + the conditional-positive scale); the
+  latent-scale correlation matrix is therefore ambiguous and
+  requires reporting two correlations rather than one.
+  Deferred indefinitely until a clean reporting convention is
+  agreed.
 
 For the complete row-by-row scope ledger including diagnostic
 status and interval status, see the
@@ -359,7 +376,7 @@ package author, written against the TMB API.
 - `gllvm` (Niku et al.) is the original multivariate GLLVM package
   with a variational-approximation engine and a matrix-in API;
   `gllvmTMB` is the TMB-Laplace alternative with formula grammar,
-  the 3 x 5 keyword grid, and integrated phylogenetic / spatial
+  the 4 x 5 keyword grid, and integrated phylogenetic / spatial
   paths in one engine.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
   phylogenetic / multi-response models; `gllvmTMB` returns ML

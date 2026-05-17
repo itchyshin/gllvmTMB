@@ -1,6 +1,6 @@
 # Random Effects
 
-**Maintained by:** Boole (R API + parser owner for the 3 × 5
+**Maintained by:** Boole (R API + parser owner for the 4 × 5
 keyword grid) and Fisher (inference semantics on the
 reduced-rank decomposition).
 **Reviewers:** Curie (simulation-recovery + boundary cases),
@@ -9,7 +9,7 @@ implementation alignment), Emmy (S3 dispatch on the random-
 effects output).
 
 The random-effects machinery is the heart of `gllvmTMB`. The
-3 × 5 covariance keyword grid (see
+4 × 5 covariance keyword grid (see
 `docs/design/01-formula-grammar.md`) is the user-facing surface;
 this document describes the contract underneath — what each
 keyword does to the latent variables, how the TMB template
@@ -18,7 +18,7 @@ integrates them, and how identifiability is managed.
 **Status discipline**: 4-state vocabulary (`covered / claimed /
 reserved / planned`). Most current rows are `claimed`; Phase 0B
 verifies via per-keyword simulation-recovery tests. Random
-**slopes** inside the 3 × 5 keywords are `reserved` (M1 work).
+**slopes** inside the 4 × 5 keywords are `reserved` (M1 work).
 
 ## Order of implementation
 
@@ -29,7 +29,7 @@ discipline, adapted for the multi-trait stacked grammar):
    `value ~ 0 + trait + (0 + trait):env`. Baseline; serves
    primarily as a comparator for the random-effects fits.
 2. **Ordinary random intercepts** `(1 | g)`. Pass-through to
-   `glmmTMB::glmmTMB()`-style RE. Orthogonal to the 3 × 5 grid;
+   `glmmTMB::glmmTMB()`-style RE. Orthogonal to the 4 × 5 grid;
    used for groupings that are NOT the unit / unit_obs / cluster
    axes. **Status: `claimed`** (Phase 0B verifies).
 3. **`unique(0 + trait | g)` trait-diagonal** $\boldsymbol\Psi$.
@@ -52,7 +52,7 @@ discipline, adapted for the multi-trait stacked grammar):
     **Status: `claimed`** (Phase 0B verifies via comparator vs
     `glmmTMB::equalto()`).
 11. **Random slopes** `(0 + x | g)` or `(1 + x | g)` inside the
-    3 × 5 keywords. **Status: `reserved`** (M1 Gaussian
+    4 × 5 keywords. **Status: `reserved`** (M1 Gaussian
     completeness work; see `docs/design/42-random-slopes-grammar.md`
     forthcoming).
 12. **Phylogenetic / spatial random slopes** (`phylo_slope`,
@@ -61,18 +61,20 @@ discipline, adapted for the multi-trait stacked grammar):
 
 ## Vocabulary
 
-The 3 × 5 keyword grid plus ordinary RE form the
-random-effects vocabulary:
+The **4 × 5** keyword grid plus ordinary RE form the
+random-effects vocabulary (expanded from 4 × 5 in M2.8 by
+adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)):
 
 | Source | Keyword pattern | What it adds to the linear predictor |
 |--------|-----------------|-------------------------------------|
 | Ordinary RE | `(1 \| g)` | Standard random intercept by `g`; not multi-trait-aware |
-| 3 × 5 grid: scalar | (omit / `phylo_scalar` / `spatial_scalar`) | Single scalar covariance source for all traits |
-| 3 × 5 grid: `unique` | `unique() / phylo_unique() / spatial_unique()` | Per-trait variance ($\Psi$) on grouping factor |
-| 3 × 5 grid: `indep` | `indep() / phylo_indep() / spatial_indep()` | Compound-symmetric trait covariance |
-| 3 × 5 grid: `dep` | `dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
-| 3 × 5 grid: `latent` | `latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
-| `meta_V` | `meta_V(value, V = V)` | Known sampling covariance added to residual |
+| 4 × 5 grid: scalar | (omit / `animal_scalar` / `phylo_scalar` / `spatial_scalar`) | Single scalar covariance source for all traits |
+| 4 × 5 grid: `unique` | `unique() / animal_unique() / phylo_unique() / spatial_unique()` | Per-trait variance ($\Psi$) on grouping factor |
+| 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Compound-symmetric trait covariance |
+| 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
+| 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
+| Random slope | `phylo_slope(x \| g) / animal_slope(x \| g)` | Per-group random regression slope on covariate `x`; slopes correlated by A |
+| `meta_known_V` | `meta_known_V(value, V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. |
 
 ## Reduced-rank reparameterisation (`latent(...)`)
 
@@ -333,7 +335,7 @@ adds the multiplicative weighted-regression mode per Nakagawa
 ## Random slopes — design plan (M1 work; ONE random slope only)
 
 `gllvmTMB` does NOT currently support random slopes inside the
-3 × 5 keywords. The M1 Gaussian completeness milestone (per
+4 × 5 keywords. The M1 Gaussian completeness milestone (per
 ROADMAP, post-Phase-0C) adds **a single random slope** to the
 `latent + unique` paired keywords. This section is the design
 contract; the M1.1 slice doc
@@ -529,9 +531,9 @@ intercept) are **`planned (post-M1)`**. The use case (slope
 varies across levels, but no per-level intercept offset) is
 rare; comes back as a follow-up slice after M1 closes.
 
-### Other 3 × 5 cells
+### Other 4 × 5 cells
 
-Other 3 × 5 cells (`indep`, `dep`, and the phylo / spatial
+Other 4 × 5 cells (`indep`, `dep`, and the phylo / spatial
 analogues) get random-slope support **one at a time after M1
 closes**. The order is:
 
@@ -637,11 +639,11 @@ The remaining three are Phase 0B verification targets.
 
 ## Cross-references
 
-- `docs/design/00-vision.md` — package vision; the 3 × 5 grid
+- `docs/design/00-vision.md` — package vision; the 4 × 5 grid
   + reduced-rank decomposition + phylogenetic and spatial
   extensions ARE the package's identity.
 - `docs/design/01-formula-grammar.md` — full formula grammar
-  contract; the 3 × 5 keyword grid + `traits()` LHS expansion
+  contract; the 4 × 5 keyword grid + `traits()` LHS expansion
   + unit / unit_obs / cluster taxonomy + crossed-vs-nested rule.
 - `docs/design/02-family-registry.md` — per-family registry;
   the link-residual contract that combines with the trait
@@ -669,7 +671,7 @@ The remaining three are Phase 0B verification targets.
 
 ## Persona-active engagement
 
-- **Boole** owns the parser surface for the 3 × 5 keywords +
+- **Boole** owns the parser surface for the 4 × 5 keywords +
   ordinary RE + slash-form-rejected enforcement.
 - **Fisher** reviews inference semantics on the reduced-rank
   decomposition — what $\boldsymbol\Lambda$ rotation does to

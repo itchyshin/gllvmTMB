@@ -203,7 +203,7 @@ the test contract.
 | ANI-05 | `animal_latent(id, d = K, ...)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_latent(vcv = A)` |
 | ANI-06 | `animal_slope(x \| id)` | `partial` | `test-animal-keyword.R` (smoke) | parser-accepted; recovery study deferred |
 | ANI-07 | `pedigree_to_A()` Henderson formula | `covered` | `test-animal-keyword.R` | `nadiv::makeAinv()` cross-check available when nadiv installed |
-| ANI-08 | Sparse `Ainv = ` direct engine path | `blocked` | n/a | `Ainv` is currently densified via `solve()`; sparse direct path is v0.3.0 work |
+| ANI-08 | Sparse `Ainv = ` direct engine path | `partial` (helper shipped 2026-05-18; auto-routing follow-on PR) | `tests/testthat/test-pedigree-sparse-ainv.R` | Design 47. `pedigree_to_Ainv_sparse()` helper exported + byte-equivalent vs `solve(pedigree_to_A())`. Engine still densifies via brms-sugar `Ainv` resolver; auto-routing PR walks this row to `covered`. **Pre-CRAN per maintainer 2026-05-18.** |
 | ANI-09 | Multi-matrix animal models (G + permanent-environment + maternal) | `partial` | n/a | Achievable today by combining `animal_*` with sibling `(1 \| id)`; idiomatic article example v0.3.0 |
 | ANI-10 | Cross-package agreement against MCMCglmm / WOMBAT | `partial` | n/a | Phase 5.5 grid work |
 

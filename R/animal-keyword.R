@@ -299,3 +299,108 @@ pedigree_to_A <- function(pedigree) {
 
   A
 }
+
+
+#' Sparse pedigree inverse-A via Henderson-Quaas (MCMCglmm engine)
+#'
+#' Builds the sparse precision matrix \eqn{\mathbf A^{-1}} for an animal-
+#' model pedigree directly, **without** ever forming the dense
+#' \eqn{n \times n} relatedness matrix \eqn{\mathbf A}. For wild
+#' pedigrees with \eqn{n_{\text{individuals}} > 500} this is the
+#' canonical fast path; storage is \eqn{O(n)} rather than \eqn{O(n^2)}
+#' and the fit is \eqn{O(n)} rather than \eqn{O(n^3)}. Internally wraps
+#' [MCMCglmm::inverseA()].
+#'
+#' Usage pattern (sparse pre-CRAN; auto-routing follow-on PR):
+#'
+#' ```r
+#' Ainv <- pedigree_to_Ainv_sparse(ped)
+#' fit  <- gllvmTMB(value ~ 0 + trait +
+#'                    animal_scalar(id, Ainv = Ainv),
+#'                  data = df, unit = "id", cluster = "id")
+#' ```
+#'
+#' The pedigree must follow MCMCglmm's column convention:
+#' **(id, sire, dam)** in that order, OR named columns matching
+#' `id`/`animal`, `sire`/`father`, `dam`/`mother` for by-name lookup.
+#' Unknown parents are encoded as `NA` or `0`. Founders (both parents
+#' unknown) are treated as unrelated.
+#'
+#' @param pedigree A 3-column data frame: `id` (or `animal`),
+#'   `sire` (or `father`), `dam` (or `mother`).
+#' @return A sparse `dgCMatrix` of dimension `n_individuals` x
+#'   `n_individuals` with rownames and colnames equal to the
+#'   individual IDs. Sparse storage; typical density is
+#'   \eqn{O(1/n)}.
+#' @seealso [pedigree_to_A()] for the dense companion;
+#'   [animal_scalar()] and siblings for the keyword family;
+#'   [MCMCglmm::inverseA()] for the underlying algorithm.
+#' @references
+#' Henderson, C. R. (1976). A simple method for computing the inverse
+#' of a numerator relationship matrix used in prediction of breeding
+#' values. *Biometrics* 32: 69-83.
+#'
+#' Hadfield, J. D. (2010). MCMC methods for multi-response generalised
+#' linear mixed models: the MCMCglmm R package. *Journal of
+#' Statistical Software* 33: 1-22.
+#' @export
+#' @examples
+#' \dontrun{
+#' ped <- data.frame(
+#'   id   = paste0("i", 1:6),
+#'   sire = c(NA, NA, "i1", "i1", "i3", "i3"),
+#'   dam  = c(NA, NA, "i2", "i2", "i4", "i4")
+#' )
+#' Ainv <- pedigree_to_Ainv_sparse(ped)
+#' class(Ainv)  # "dgCMatrix"
+#' dim(Ainv)    # 6 x 6
+#' }
+pedigree_to_Ainv_sparse <- function(pedigree) {
+  if (!requireNamespace("MCMCglmm", quietly = TRUE)) {
+    cli::cli_abort(c(
+      "{.pkg MCMCglmm} is required for {.fn pedigree_to_Ainv_sparse}.",
+      "i" = "Install via {.code install.packages('MCMCglmm')}.",
+      ">" = "Alternative: use the dense path via {.code pedigree_to_A(pedigree)} and pass as {.arg A = .} to the animal_* keyword."
+    ))
+  }
+  if (!is.data.frame(pedigree) || ncol(pedigree) < 3L) {
+    cli::cli_abort(c(
+      "{.arg pedigree} must be a data frame with at least 3 columns.",
+      "i" = "Expected columns: {.field id}/{.field animal}, {.field sire}/{.field father}, {.field dam}/{.field mother}.",
+      "i" = "Got: {.code {paste(names(pedigree), collapse = ', ')}}."
+    ))
+  }
+  ## MCMCglmm-style by-name lookup (same convention as pedigree_to_A).
+  ## Falls back to positional access if names are unrecognised.
+  nm <- names(pedigree)
+  pick <- function(syn) {
+    hit <- which(tolower(nm) %in% tolower(syn))
+    if (length(hit) >= 1L) hit[1L] else NA_integer_
+  }
+  id_col   <- pick(c("id", "animal"))
+  sire_col <- pick(c("sire", "father"))
+  dam_col  <- pick(c("dam", "mother"))
+  if (anyNA(c(id_col, sire_col, dam_col))) {
+    cli::cli_inform(c(
+      "i" = "{.fn pedigree_to_Ainv_sparse}: column names not recognised; using positional access (col 1 = id, col 2 = sire, col 3 = dam).",
+      ">" = "Rename columns to {.field id}/{.field sire}/{.field dam} (MCMCglmm convention) for explicit by-name lookup."
+    ))
+    id_col   <- 1L
+    sire_col <- 2L
+    dam_col  <- 3L
+  }
+  ## Build standardised data frame in MCMCglmm's (animal, sire, dam) order.
+  ped_std <- data.frame(
+    animal = as.character(pedigree[[id_col]]),
+    sire   = as.character(pedigree[[sire_col]]),
+    dam    = as.character(pedigree[[dam_col]]),
+    stringsAsFactors = FALSE
+  )
+  ## Normalise missing-parent encodings.
+  ped_std$sire[ped_std$sire %in% c("0", "")] <- NA_character_
+  ped_std$dam[ped_std$dam %in% c("0", "")]   <- NA_character_
+
+  inv <- MCMCglmm::inverseA(ped_std)
+  ## inv$Ainv is dgCMatrix; rownames inherit from the standardised pedigree.
+  inv$Ainv
+}

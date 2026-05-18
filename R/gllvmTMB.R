@@ -619,6 +619,16 @@ gllvmTMB <- function(
 #' @param init_jitter Standard deviation of N(0, σ) jitter applied to
 #'   the starting parameter vector across the `n_init` restarts.
 #'   Default 0.3.
+#' @param init_strategy One of `"default"` (current behaviour) or
+#'   `"single_trait_warmup"`. The warmup option (Design 48 Mitigation A
+#'   for M3.4 boundary regimes) fits an intercept-only univariate GLM
+#'   per trait — with that trait's family — and seeds the matching
+#'   `log_phi_*` entries before `MakeADFun()`. Recommended for count
+#'   families (especially `nbinom2`) where the default initialisation
+#'   can leave the optimiser walking the
+#'   \eqn{(\psi_t, \phi_t)} trade-off ridge. No effect for traits whose
+#'   family doesn't carry a `phi` parameter (Gaussian, Poisson, binomial).
+#'   Default `"default"`.
 #' @param verbose If `TRUE`, prints a one-line summary per restart so
 #'   the user can see which seed led to the winning fit. Default
 #'   `FALSE`.
@@ -654,11 +664,13 @@ gllvmTMBcontrol <- function(
   optimizer = c("nlminb", "optim"),
   optArgs = list(),
   init_jitter = 0.3,
+  init_strategy = c("default", "single_trait_warmup"),
   verbose = FALSE,
   ...
 ) {
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
+  init_strategy <- match.arg(init_strategy)
   if (...length() > 0L) {
     cli::cli_warn(
       "Extra arguments to {.fun gllvmTMBcontrol} are ignored in this version."
@@ -672,6 +684,7 @@ gllvmTMBcontrol <- function(
     optimizer = optimizer,
     optArgs = optArgs,
     init_jitter = init_jitter,
+    init_strategy = init_strategy,
     verbose = verbose
   )
 }

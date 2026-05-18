@@ -1192,6 +1192,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     c(rep(0.5, rank), rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
   }
 
+  ## Design 48 §2-B (M3.4 boundary regimes): clamp initial value of any
+  ## log_phi_* parameter to [log(0.01), log(100)]. Default zero inits are
+  ## already inside this range (this is a no-op for the default path);
+  ## warm-started values and multi-start jittered values that drift to
+  ## near-Poisson (phi → 0) or near-flat-likelihood (phi → ∞) get
+  ## reined in. The OPTIMIZER stays unconstrained — only the starting
+  ## value is clamped. Mirrors the gllvm pattern (`gllvm.TMB:599-602`).
+  .clamp_log_phi <- function(x) pmax(pmin(x, log(100.0)), log(0.01))
+
   tmb_params <- list(
     b_fix        = unname(b_fix_init),
     log_sigma_eps = log_sigma_eps_init,
@@ -1240,15 +1249,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
     ## NB2 / Tweedie per-trait dispersion. log(phi) starts at 0 (phi = 1);
     ## logit(p) starts at 0 (p = 1.5, mid of the compound-Poisson regime).
-    log_phi_nbinom2  = rep(0.0, n_traits),
-    log_phi_tweedie  = rep(0.0, n_traits),
+    ## Design 48 phi-clamp ([0.01, 100]) applied below.
+    log_phi_nbinom2  = .clamp_log_phi(rep(0.0, n_traits)),
+    log_phi_tweedie  = .clamp_log_phi(rep(0.0, n_traits)),
     logit_p_tweedie  = rep(0.0, n_traits),
     ## Beta / beta-binomial per-trait precision. log(phi) starts at 1.0 so
     ## phi = e ~ 2.72, a moderate-concentration default that avoids the
     ## degenerate phi -> 0 boundary while not being so peaked that the
     ## inner Newton stalls (Smithson & Verkuilen 2006; Hilbe 2014).
-    log_phi_beta      = rep(1.0, n_traits),
-    log_phi_betabinom = rep(1.0, n_traits),
+    log_phi_beta      = .clamp_log_phi(rep(1.0, n_traits)),
+    log_phi_betabinom = .clamp_log_phi(rep(1.0, n_traits)),
     ## Student-t per-trait scale (sigma) and log(df-1) (so df > 1).
     ## log(0) = 0 -> sigma = 1; log(df-1) = log(2) -> df = 3 (a common
     ## heavy-tailed default; Lange et al. 1989).
@@ -1256,12 +1266,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_df_student    = rep(log(2.0), n_traits),
     ## truncated_nbinom2 per-trait dispersion. Same parameterisation as
     ## NB2 (Var = mu + mu^2/phi), but conditioned on y >= 1.
-    log_phi_truncnb2  = rep(0.0, n_traits),
+    log_phi_truncnb2  = .clamp_log_phi(rep(0.0, n_traits)),
     ## Delta (hurdle) families: per-trait dispersion of the *positive*
     ## component only. log(sigma) starts at 0 (sigma_lognormal = 1);
     ## log(phi) starts at 0 (gamma CV = 1, ~Exponential).
     log_sigma_lognormal_delta = rep(0.0, n_traits),
-    log_phi_gamma_delta       = rep(0.0, n_traits),
+    log_phi_gamma_delta       = .clamp_log_phi(rep(0.0, n_traits)),
     ## ordinal_probit cutpoint log-increments. Length = sum(K_t - 2) over
     ## ordinal traits (or 1 stub when no trait is ordinal). Initialised
     ## from MASS::polr(method = "probit") per ordinal trait when sample
@@ -1649,6 +1659,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_phylo_diag) random <- c(random, "g_phy_diag")
   if (use_phylo_slope) random <- c(random, "b_phy_slope")
   if (use_re_int)   random <- c(random, "u_re_int")
+
+  ## Design 48 §2 Mitigation A (single-trait warmup). Opt-in via
+  ## `control$init_strategy = "single_trait_warmup"`. Fits an
+  ## intercept-only univariate GLM per trait (with that trait's
+  ## family) and seeds the matching `log_phi_*` entries before
+  ## MakeADFun. No-op for traits whose family doesn't carry a phi
+  ## parameter (e.g. Gaussian, Poisson, binomial).
+  if (identical(control$init_strategy, "single_trait_warmup")) {
+    trait_vec_int <- as.integer(data[[trait]])
+    warm <- .gllvmTMB_single_trait_warmup(
+      trait_vec     = trait_vec_int,
+      y             = as.numeric(y),
+      family_per_row = family_per_row,
+      n_traits      = n_traits,
+      verbose       = isTRUE(control$verbose)
+    )
+    for (nm in names(warm)) tmb_params[[nm]] <- warm[[nm]]
+  }
 
   obj <- TMB::MakeADFun(
     data       = tmb_data,

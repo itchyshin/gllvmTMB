@@ -315,6 +315,8 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 | MIS-13 | Integration tour (end-to-end) | `covered` | `test-integration-tour.R` | M0 baseline |
 | MIS-14 | `gllvmTMB-args.R` argument validation | `covered` | `test-gllvmTMB-args.R` | |
 | MIS-15 | `profile_targets()` controlled vocabulary (PR #109) | `covered` | `test-profile-targets.R` | drmTMB-style |
+| MIS-16 | `init_strategy = "single_trait_warmup"` (M3.4 Mitigation A) | `covered` | `test-m3-4-warmstart-phi-clamp.R` | Design 48 §2-A. Opt-in via `gllvmTMBcontrol(init_strategy = "single_trait_warmup")`. Fits an intercept-only univariate GLM per trait (with that trait's family) and seeds `log_phi_*` entries before MakeADFun. Phi-bearing families covered: nbinom1, nbinom2, beta, betabinomial, truncated_nbinom2, gamma_delta (intercept-only seed only; per-trait `b_fix` warmup deferred). |
+| MIS-17 | Phi starting-value clamp `[0.01, 100]` (M3.4 Mitigation B) | `covered` | `test-m3-4-warmstart-phi-clamp.R` | Design 48 §2-B. Applied to all `log_phi_*` entries at init regardless of `init_strategy`. Defensive — clamps both default zero inits (no-op) and warm-started values (pulls pathological theta from glm.nb iteration-limit cases back into a safe range). |
 
 ## Honest scope statement
 

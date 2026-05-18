@@ -331,5 +331,8 @@ glossary](gllvm-vocabulary.html) has the long-form definitions.*
 * [phylogenetic-gllvm.html](phylogenetic-gllvm.html) — canonical
   paired four-component phylogenetic decomposition with worked
   recovery + `extract_phylo_signal()`.
+* [animal-model.html](animal-model.html) — the quantitative-genetic
+  parallel: heritability, bivariate G, and factor-analytic G via
+  `animal_*()` keywords on a pedigree.
 * `?suggest_lambda_constraint`, `?extract_Sigma`,
   `?simulate_site_trait` — the function-level help pages.

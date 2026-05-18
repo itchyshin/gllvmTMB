@@ -56,15 +56,18 @@ m3_sample_truth <- function(family, d,
   Sigma <- tcrossprod(Lambda) + diag(psi, n_traits)
   diag_Sigma <- diag(Sigma)
 
-  ## Family-specific nuisance
+  ## Family-specific nuisance. Mixed-family populates ALL of them since
+  ## it cycles families across trait rows.
   nuisance <- list()
-  if (family == "nbinom2") {
+  if (family == "nbinom2" || family == "mixed") {
     nuisance$phi <- stats::rgamma(1, shape = 5, rate = 5)  # ~1.0 mean
-  } else if (family == "ordinal_probit") {
+  }
+  if (family == "ordinal_probit") {
     K <- 4L  # n_categories
     nuisance$K <- K
     nuisance$cutpoints <- stats::qnorm(seq_len(K - 1L) / K)
-  } else if (family == "gaussian") {
+  }
+  if (family == "gaussian" || family == "mixed") {
     nuisance$sigma_eps <- 0.5  # Fix residual SD so identifiability is OK
   }
 
@@ -121,7 +124,9 @@ m3_simulate_response <- function(truth) {
       gaussian = eta_t + stats::rnorm(n_units, sd = truth$nuisance$sigma_eps %||% 0.5),
       binomial = stats::rbinom(n_units, size = 1L, prob = stats::plogis(eta_t)),
       nbinom2  = {
-        mu_t  <- exp(eta_t)
+        ## Clamp eta to [-10, 10] -> mu in [4.5e-5, 22000]; protects
+        ## rnbinom against NaN from extreme draws of Lambda x Z.
+        mu_t  <- exp(pmin(pmax(eta_t, -10), 10))
         phi_t <- truth$nuisance$phi
         stats::rnbinom(n_units, mu = mu_t,
                        size = phi_t)  # size = dispersion (TMB convention)
@@ -178,21 +183,23 @@ m3_run_cell <- function(family, d, n_reps = 10L, seed_base = 42L,
                              n_units = n_units, seed = rep_seed)
     sim <- m3_simulate_response(truth)
 
-    ## Family list for mixed-family fits
+    ## Family list for mixed-family fits.
+    ## gllvmTMB needs the family helpers (function calls), not strings,
+    ## for the non-base families.
     fam_list <- if (family == "mixed") {
       lapply(sim$row_family, function(f) switch(
         f,
         gaussian = stats::gaussian(),
         binomial = stats::binomial(),
-        nbinom2  = "nbinom2"
+        nbinom2  = gllvmTMB::nbinom2()
       ))
     } else {
       switch(
         family,
         gaussian       = stats::gaussian(),
         binomial       = stats::binomial(),
-        nbinom2        = "nbinom2",
-        ordinal_probit = "ordinal_probit",
+        nbinom2        = gllvmTMB::nbinom2(),
+        ordinal_probit = gllvmTMB::ordinal_probit(),
         stop("Unknown family: ", family)
       )
     }

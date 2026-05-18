@@ -34,9 +34,10 @@ The current public examples should show both:
 - wide data-frame data: one row per species, one column per trait,
   using `traits(...)` on the formula left-hand side.
 
-**The matrix-in entry point `gllvmTMB_wide(Y, ...)` is removed in
-0.2.0** (maintainer 2026-05-16 decision; see
-`docs/design/01-formula-grammar.md`). The formula API path
+**The matrix-in entry point `gllvmTMB_wide(Y, ...)` is
+soft-deprecated in 0.2.0** (see
+`docs/design/01-formula-grammar.md`). It remains exported for
+migration and matrix-first workflows, but the formula API path
 `gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide)` is the
 canonical wide-format entry point for phylogenetic GLLVMs and
 everything else.
@@ -146,7 +147,7 @@ rank-sensitive decomposition.
 ## What This Does Not Change
 
 This note does not change the formula grammar, likelihood,
-parameterisation, exported functions, or the 3 × 5 keyword grid. It
+parameterisation, exported functions, or the 4 × 5 keyword grid. It
 documents how the existing current-code path should be explained in
 articles and examples.
 

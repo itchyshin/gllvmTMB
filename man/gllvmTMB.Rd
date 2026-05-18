@@ -27,8 +27,8 @@ gllvmTMB(
 \arguments{
 \item{formula}{A glmmTMB-style formula, e.g.
 \code{value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip}.
-Fixed effects and any of the 3 x 5 keyword-grid covstructs above are
-supported (plus \code{\link[=phylo_slope]{phylo_slope()}} and \code{\link[=meta_known_V]{meta_known_V()}}).}
+Fixed effects and any of the 4 x 5 keyword-grid covstructs above are
+supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_slope]{animal_slope()}}, and \code{\link[=meta_V]{meta_V()}}).}
 
 \item{data}{A long-format data frame with one row per (unit, trait)
 observation. Must include the response (LHS of \code{formula}),
@@ -199,14 +199,15 @@ Nakagawa et al. (in prep) functional biogeography (and the related
 behavioural-syndromes / phylogenetic / systematic-mapping reduced-rank
 models). Long-format input with one row per (unit, trait)
 observation; glmmTMB-style formula syntax for fixed effects, plus
-a 3 x 5 grid of covariance-structure keywords organised by
-\emph{correlation} (none / phylo / spatial) and \emph{mode}
+a 4 x 5 grid of covariance-structure keywords organised by
+\emph{correlation source} (none / animal / phylo / spatial) and \emph{mode}
 (scalar / unique / indep / dep / latent):
 }
 \details{
 \tabular{llllll}{
-\strong{correlation \\ mode} \tab \strong{scalar} \tab \strong{unique} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
+\strong{source \\ mode} \tab \strong{scalar} \tab \strong{unique} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
 \emph{none}    \tab (omit)             \tab \code{\link[=unique]{unique()}}         \tab \code{\link[=indep]{indep()}}         \tab \code{\link[=dep]{dep()}}         \tab \code{\link[=latent]{latent()}}         \cr
+\emph{animal}  \tab \code{\link[=animal_scalar]{animal_scalar()}}  \tab \code{\link[=animal_unique]{animal_unique()}}  \tab \code{\link[=animal_indep]{animal_indep()}}  \tab \code{\link[=animal_dep]{animal_dep()}}  \tab \code{\link[=animal_latent]{animal_latent()}}  \cr
 \emph{phylo}   \tab \code{\link[=phylo_scalar]{phylo_scalar()}}   \tab \code{\link[=phylo_unique]{phylo_unique()}}   \tab \code{\link[=phylo_indep]{phylo_indep()}}   \tab \code{\link[=phylo_dep]{phylo_dep()}}   \tab \code{\link[=phylo_latent]{phylo_latent()}}   \cr
 \emph{spatial} \tab \code{\link[=spatial_scalar]{spatial_scalar()}} \tab \code{\link[=spatial_unique]{spatial_unique()}} \tab \code{\link[=spatial_indep]{spatial_indep()}} \tab \code{\link[=spatial_dep]{spatial_dep()}} \tab \code{\link[=spatial_latent]{spatial_latent()}} \cr
 }
@@ -225,8 +226,9 @@ own variance, no cross-trait covariance.
 is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 }
 
-Plus the supporting \code{\link[=phylo_slope]{phylo_slope()}} (random slope), \code{\link[=meta_known_V]{meta_known_V()}}
-(known-V meta-analytic), and the engine-internal \code{propto()} /
+Plus the supporting \code{\link[=phylo_slope]{phylo_slope()}} / \code{\link[=animal_slope]{animal_slope()}} (random
+slopes), \code{\link[=meta_V]{meta_V()}} (known-V meta-analytic; \code{\link[=meta_known_V]{meta_known_V()}} is a
+deprecated alias), and the engine-internal \code{propto()} /
 \code{equalto()} covstructs (used by the canonical keywords above; not
 typically called directly). See \code{vignette("api-keyword-grid")} for a
 one-paragraph tour of each cell.

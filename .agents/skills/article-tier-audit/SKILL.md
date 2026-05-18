@@ -84,7 +84,8 @@ Tier-2 article supersedes it.
    the section.
 5. **First use of each technical term gets a one-line gloss.**
    `Sigma`, `Lambda`, `latent`, `unique`, `indep`, `dep`,
-   `phylo_*`, `spatial_*`, `meta_known_V` -- gloss each at first use.
+   `phylo_*`, `spatial_*`, `animal_*`, `meta_V` -- gloss each at
+   first use. `meta_known_V()` is only a deprecated alias.
 6. **End each section with a forward link.** A code block the reader
    can run, a follow-up question the next section answers, or a
    cross-reference to a sibling article.

@@ -6,24 +6,26 @@ support. The `after-task-audit` skill greps this file for terms like
 this file in the same PR that changes the supported surface, so the
 durable record never lags the code.
 
-Last refreshed 2026-05-12 (post-PR #39 sugar pivot; Phase 5
-CRAN-readiness pre-audit per PR #44).
+Last refreshed 2026-05-18 (Codex drmTMB-parity hygiene pass).
 
 ## Implemented
 
 ### Covariance grammar
 
-- The 3 x 5 covariance keyword grid (correlation x mode):
+- The 4 x 5 covariance keyword grid (correlation source x mode):
   - none: `unique`, `indep`, `dep`, `latent`;
+  - animal: `animal_scalar`, `animal_unique`, `animal_indep`,
+    `animal_dep`, `animal_latent`;
   - phylogenetic: `phylo_scalar`, `phylo_unique`, `phylo_indep`,
     `phylo_dep`, `phylo_latent`, `phylo_slope`;
   - spatial: `spatial_scalar`, `spatial_unique`, `spatial_indep`,
     `spatial_dep`, `spatial_latent`.
 - The decomposition mode `latent + unique` paired:
-  `Sigma = Lambda Lambda^T + diag(s)`. Standalone `latent()` is the
-  no-residual reduced-rank subset; standalone `unique()` is the
-  marginal independent mode and is equivalent to `indep()`; `dep()`
-  estimates a full unstructured Sigma.
+  `Sigma = Lambda Lambda^T + Psi`, where `Psi = diag(psi^2)`.
+  Standalone `latent()` is the no-residual reduced-rank subset;
+  standalone `unique()` is the marginal independent mode and is
+  equivalent to `indep()`; `dep()` estimates a full unstructured
+  Sigma.
 
 ### Response families
 
@@ -40,8 +42,9 @@ delta_gamma, ordinal_probit. Mixed-family fits are accepted via
   plus optional `phylo_vcv = Cphy` direct VCV input.
 - Spatial covariance via the SPDE/GMRF approximation inherited from
   `sdmTMB`; supports isotropic and anisotropic mesh choices.
-- Known sampling covariance via `meta_known_V(V = V)` for
-  multivariate meta-analytic models.
+- Known sampling covariance via `meta_V(value, V = V)` for
+  multivariate meta-analytic models. `meta_known_V()` is retained
+  as a deprecated alias.
 
 ### Inference
 
@@ -147,12 +150,13 @@ These are intentional design boundaries of the sugar layer, not bugs:
 - **Bayesian sampling**. Out of scope by design; use `MCMCglmm` or
   `brms` for posterior samples.
 
-In math, the unique-variance diagonal is written as `S` (the
-diagonal matrix) and `s` (its diagonal vector), per the
-2026-05-12 naming convention in `docs/dev-log/decisions.md`.
+In math, the unique-variance diagonal is written as `Psi` (the
+diagonal matrix) and `psi` (its per-trait scalar), per the
+2026-05-14 notation reversal in `docs/dev-log/decisions.md`.
 The function names `compare_dep_vs_two_U()` /
 `compare_indep_vs_two_U()` / `extract_two_U_via_PIC()` and the
-informal task label "two-U" remain as is.
+informal task label "two-U" remain as historical implementation
+labels only.
 
 ## Pre-CRAN backlog (Phase 5, in flight)
 

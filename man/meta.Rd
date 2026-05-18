@@ -13,7 +13,7 @@ meta-analytic dataset).}
 
 \item{sampling_var}{Either an unquoted column name holding the
 per-row sampling variance, or a length-1 numeric used for every row.
-Deprecated in favour of \code{meta_known_V(value, V = V)}.}
+Deprecated in favour of \code{meta_V(value, V = V)}.}
 }
 \value{
 A formula marker; never evaluated.
@@ -26,8 +26,8 @@ sampling variances are known. This keyword desugars to
 \code{equalto(0 + obs | grp_V, V)} inside \code{gllvmTMB()}.
 }
 \details{
-\strong{Deprecated alias.} Use \code{\link[=meta_known_V]{meta_known_V()}} in new code:
-\code{meta_known_V(value, V = V)}.
+\strong{Deprecated alias.} Use \code{\link[=meta_V]{meta_V()}} in new code:
+\code{meta_V(value, V = V)}.
 \subsection{Diagonal vs block-diagonal V}{
 
 \code{meta(value, sampling_var = vi)} describes the \strong{diagonal} case --
@@ -41,11 +41,11 @@ V with \code{\link[=block_V]{block_V()}} and pass it to \code{gllvmTMB()} as \co
 }
 \examples{
 \dontrun{
-# Preferred (canonical) form -- use meta_known_V():
+# Preferred (canonical) form -- use meta_V():
 V    <- diag(stage1_summary$sampling_var)
 fit2 <- gllvmTMB(value ~ 0 + trait +
                    latent(0 + trait | site, d = 2) +
-                   meta_known_V(value, V = V),
+                   meta_V(value, V = V),
                  data    = stage1_summary,
                  trait   = "trait",
                  unit    = "site",
@@ -62,7 +62,7 @@ fit2 <- gllvmTMB(value ~ 0 + trait +
 }
 }
 \seealso{
-\code{\link[=meta_known_V]{meta_known_V()}} (canonical replacement); \code{\link[=block_V]{block_V()}} for
+\code{\link[=meta_V]{meta_V()}} (canonical replacement); \code{\link[=block_V]{block_V()}} for
 constructing a block-diagonal sampling-V from a study factor;
 \code{\link[=gllvmTMB]{gllvmTMB()}} for the stage-2 fit.
 }

@@ -38,34 +38,37 @@ reader would otherwise have to infer it from context.
    and "leverages".
 6. Do not over-bullet. Use bullets for genuine lists; use prose for
    one or two connected ideas.
-7. Keep terms stable: `Sigma`, `Lambda`, `s`, `latent()`, `unique()`,
-   `indep()`, `dep()`, `phylo_*()`, `spatial_*()`, `meta_known_V(V =
-   V)`, `traits()`. The decomposition mode is `latent + unique`
-   paired (Sigma = Lambda Lambda^T + diag(s)); standalone `latent`
-   is the no-residual subset and standalone `unique` is the
-   marginal/independent mode -- describe these correctly.
+7. Keep terms stable: `Sigma`, `Lambda`, `psi` / `Psi`,
+   `latent()`, `unique()`, `indep()`, `dep()`, `phylo_*()`,
+   `spatial_*()`, `animal_*()`, `meta_V(value, V = V)`,
+   `traits()`. `meta_known_V()` is only a deprecated alias. The
+   decomposition mode is `latent + unique` paired
+   (Sigma = Lambda Lambda^T + Psi, with Psi = diag(psi^2));
+   standalone `latent` is the no-residual subset and standalone
+   `unique` is the marginal/independent mode -- describe these
+   correctly.
    **Notation convention** (per `decisions.md`, 2026-05-12):
-   the unique-variance diagonal in math is always `S` / `s`,
-   never `U`. The string "two-U" is OK as a task label / function
+   the unique-variance diagonal in math is always `Psi` / `psi`,
+   never `U`, `S`, or `s`. The string "two-U" is OK as a task label / function
    nickname (it matches existing function names and file paths),
    but in user-facing math prose write `Sigma_phy = Lambda_phy
-   Lambda_phy^T + diag(s_phy)`, `Omega = Sigma_phy + Sigma_non`,
-   etc. A `diag(U)` in roxygen or article body is a drift to flag.
-8. **Two-shape data framing** (per `decisions.md`, Option B + sugar
-   pivot in PR #39): the package accepts data as either *long*
-   (`gllvmTMB(value ~ ..., data = df_long, ...)`) or *wide*
-   (`gllvmTMB_wide(Y, ...)` where `Y` is a numeric matrix or a
-   wide data frame). The `traits(...)` formula LHS marker is the
-   parser path that also accepts the sugar form
-   `traits(...) ~ 1 + latent(1 | unit, d = K)`. Tier-1 and
-   user-facing prose should describe two shapes, not three.
+   Lambda_phy^T + Psi_phy`, `Omega = Sigma_phy + Sigma_non`,
+   etc. A `diag(U)`, `diag(S)`, or `diag(s)` in roxygen or article
+   body is a drift to flag unless it is explicitly historical.
+8. **Two-shape data framing**: teach *long*
+   (`gllvmTMB(value ~ ..., data = df_long, ...)`) and *wide
+   data-frame formula*
+   (`gllvmTMB(traits(...) ~ ..., data = df_wide, ...)`). The
+   legacy matrix wrapper `gllvmTMB_wide(Y, ...)` remains exported
+   as a soft-deprecated migration path and should not be the
+   primary user-facing route.
 8. Support factual, statistical, or literature claims with citations,
    local evidence, check outputs, or a clear "design assumption" label.
 9. For tutorials and error-message docs, tell the reader what to do
    next when a model or syntax is unsupported.
-10. Define each technical term at first use. The 3 x 5 keyword grid
-    (correlation x mode) is the most-glossed concept; treat it as
-    new every time.
+10. Define each technical term at first use. The 4 x 5 keyword grid
+    (correlation source x mode) is the most-glossed concept; treat
+    it as new every time.
 11. End paragraphs with the point the reader should carry forward.
 12. Avoid repeated sentence openings and repeated paragraph-summary
     closers.

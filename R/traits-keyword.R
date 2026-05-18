@@ -7,9 +7,9 @@
 ## (`0 + trait`, `(0 + trait):x`, `latent(0 + trait | g)`), and
 ## dispatches to the long-format engine.
 ##
-## Companion to `gllvmTMB_wide()` (the matrix-in API). traits() is the
-## formula-level wide data-frame path for users who prefer formula syntax
-## over the gllvm-style matrix wrapper.
+## Companion to the soft-deprecated `gllvmTMB_wide()` matrix wrapper.
+## traits() is the formula-level wide data-frame path and is the path
+## new examples should teach.
 
 #' Wide-format trait marker for the `gllvmTMB()` formula LHS
 #'
@@ -17,18 +17,20 @@
 #' (one row per individual, one column per trait) instead of the
 #' canonical long-format `(unit, trait)` data.
 #'
-#' The package thinks in **two shapes**, long or wide:
+#' The package teaches **two shapes**, long or wide data-frame:
 #'
 #' - **long**: `gllvmTMB(value ~ ..., data = df_long, ...)` -- one
 #'   row per `(unit, trait)` observation.
 #' - **wide data frame**: `gllvmTMB(traits(t1, t2, ...) ~ ...,
 #'   data = df_wide, ...)` -- one row per unit, one column per trait,
 #'   with compact formula syntax.
-#' - **wide matrix**: `gllvmTMB_wide(Y, ...)` -- a numeric matrix or
-#'   data frame wrapper for matrix-first workflows.
 #'
-#' All paths reach the same long-format engine; the user picks whichever
-#' shape matches their data on disk.
+#' The soft-deprecated `gllvmTMB_wide(Y, ...)` wrapper remains exported
+#' for migration and matrix-first workflows, but new examples should use
+#' `traits(...)` through [gllvmTMB()].
+#'
+#' Both taught shapes reach the same long-format engine; the user picks
+#' whichever shape matches their data on disk.
 #'
 #' @details
 #' Because the LHS already names the response traits, the RHS can use a
@@ -80,7 +82,9 @@
 #' argument. Per-row weight vectors of length `nrow(data)` are also
 #' replicated across traits automatically, then passed to the same
 #' long-format weight path used by [gllvmTMB()]. For per-cell weight
-#' matrices use the matrix-in entry point [gllvmTMB_wide()].
+#' matrices, pivot to long format and pass a `weights` column aligned
+#' with `(unit, trait)` rows. The legacy matrix wrapper
+#' [gllvmTMB_wide()] still accepts matrix weights for migration code.
 #'
 #' @param ... Column-selection expression(s) passed verbatim to
 #'   `tidyr::pivot_longer(cols = ...)`. Bare names or any tidyselect
@@ -89,10 +93,10 @@
 #'   parser recognises `traits(...)` on the LHS of a `gllvmTMB()`
 #'   formula and dispatches to the wide-format pivot pre-pass.
 #' @seealso [gllvmTMB()] for the long-format engine. The legacy
-#'   matrix wrapper `gllvmTMB_wide(Y, ...)` was removed in 0.2.0
-#'   (validation-debt register row FG-16); wide-data fits now use
-#'   the `traits(...)` LHS through the single `gllvmTMB()` entry
-#'   point. The source-tree contract is
+#'   matrix wrapper `gllvmTMB_wide(Y, ...)` is soft-deprecated in
+#'   0.2.0 (validation-debt register rows FG-16 and MIS-03);
+#'   wide-data examples now use the `traits(...)` LHS through
+#'   [gllvmTMB()]. The source-tree contract is
 #'   `docs/design/01-formula-grammar.md`.
 #' @export
 traits <- function(...) {

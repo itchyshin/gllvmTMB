@@ -27,7 +27,7 @@ file references.
 2. Default-value claims match function formals or source defaults.
 3. Function names mentioned in prose or references are exported or
    explicitly marked as internal.
-4. The 3 × 5 keyword grid matches the current covariance keyword
+4. The 4 × 5 keyword grid matches the current covariance keyword
    surface (per `docs/design/01-formula-grammar.md`).
 5. Argument-name claims match current function signatures, especially
    `unit`, `unit_obs`, `trait`, `cluster`, and `level`. **Long-format
@@ -51,10 +51,11 @@ file references.
      canonical math uses `Ψ` / `ψ` (psi)**; the "two-U" / "two-psi"
      task labels remain on function names (`extract_two_psi_via_PIC`)
      per PR #40 logic but never as math notation;
-   - **`gllvmTMB_wide(Y, ...)` described as a current API or
-     "soft-deprecated"** — it is **REMOVED in 0.2.0** per
-     validation-debt register row FG-16; new examples use the
-     `traits(...)` LHS;
+   - **`gllvmTMB_wide(Y, ...)` described as the primary new-user API
+     or as already removed** — it is **soft-deprecated in 0.2.0**
+     per validation-debt register rows FG-16 and MIS-03; new
+     examples use the `traits(...)` LHS while the export remains
+     live for migration;
    - **`meta_known_V` used as the primary keyword name** —
      canonical is `meta_V(value, V = V)` since 0.2.0;
      `meta_known_V` is a deprecated alias.

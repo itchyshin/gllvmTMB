@@ -31,23 +31,24 @@ that produced PR #13 backfill on 2026-05-11.
 ## Scope
 
 The package is for stacked-trait multivariate GLLVMs. Two
-user-facing data shapes -- **long** (`gllvmTMB(value ~ ...,
-data = df_long, ...)`) and **wide** (`gllvmTMB_wide(Y, ...)` where
-`Y` is a numeric matrix or a wide data frame). Both reach the same
-engine. New examples, articles, and roxygen `@examples` blocks
-should use one of these two canonical shapes. The formula-LHS
-`traits(...)` marker stays exported for back-compatibility but is
-internal (`@keywords internal`); new user-facing prose should not
-recommend it.
+user-facing data shapes are current: **long**
+(`gllvmTMB(value ~ ..., data = df_long, ...)`) and **wide data
+frame** (`gllvmTMB(traits(...) ~ ..., data = df_wide, ...)`). Both
+reach the same long-format engine. New examples, articles, and
+roxygen `@examples` blocks should use one of these two formula-API
+shapes. The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` remains
+exported but is soft-deprecated in 0.2.0; do not use it in new
+user-facing prose except in migration notes.
 
 Single-response models belong in `glmmTMB`; spatial single-response
 models belong in `sdmTMB`.
 
-The covariance dispatch is the 3 x 5 keyword grid:
+The covariance dispatch is the 4 x 5 keyword grid:
 
 | correlation \ mode | scalar | unique | indep | dep | latent |
 |---|---|---|---|---|---|
 | none    | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
+| animal  | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
 | phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
 | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
@@ -111,7 +112,7 @@ parallel substitute for the full check.
 Any PR touching public prose or reference navigation should run the
 Rose pre-publish audit before merge. The audit is deliberately narrow:
 method lists, default-value claims, exported function names, the
-3 x 5 keyword grid, argument names, family lists, and stale
+4 x 5 keyword grid, argument names, family lists, and stale
 terminology. It is a consistency gate, not a general rewrite pass.
 
 ## Cross-Team Coordination Audit

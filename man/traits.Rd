@@ -22,18 +22,20 @@ Formula-LHS marker that lets \code{\link[=gllvmTMB]{gllvmTMB()}} accept a wide d
 canonical long-format \verb{(unit, trait)} data.
 }
 \details{
-The package thinks in \strong{two shapes}, long or wide:
+The package teaches \strong{two shapes}, long or wide data-frame:
 \itemize{
 \item \strong{long}: \code{gllvmTMB(value ~ ..., data = df_long, ...)} -- one
 row per \verb{(unit, trait)} observation.
 \item \strong{wide data frame}: \code{gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide, ...)} -- one row per unit, one column per trait,
 with compact formula syntax.
-\item \strong{wide matrix}: \code{gllvmTMB_wide(Y, ...)} -- a numeric matrix or
-data frame wrapper for matrix-first workflows.
 }
 
-All paths reach the same long-format engine; the user picks whichever
-shape matches their data on disk.
+The soft-deprecated \code{gllvmTMB_wide(Y, ...)} wrapper remains exported
+for migration and matrix-first workflows, but new examples should use
+\code{traits(...)} through \code{\link[=gllvmTMB]{gllvmTMB()}}.
+
+Both taught shapes reach the same long-format engine; the user picks
+whichever shape matches their data on disk.
 
 Because the LHS already names the response traits, the RHS can use a
 compact wide shorthand. \code{1} expands to the trait-specific intercepts
@@ -83,13 +85,15 @@ the long-format engine; \code{traits()} does not intercept the family
 argument. Per-row weight vectors of length \code{nrow(data)} are also
 replicated across traits automatically, then passed to the same
 long-format weight path used by \code{\link[=gllvmTMB]{gllvmTMB()}}. For per-cell weight
-matrices use the matrix-in entry point \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}}.
+matrices, pivot to long format and pass a \code{weights} column aligned
+with \verb{(unit, trait)} rows. The legacy matrix wrapper
+\code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} still accepts matrix weights for migration code.
 }
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}} for the long-format engine. The legacy
-matrix wrapper \code{gllvmTMB_wide(Y, ...)} was removed in 0.2.0
-(validation-debt register row FG-16); wide-data fits now use
-the \code{traits(...)} LHS through the single \code{gllvmTMB()} entry
-point. The source-tree contract is
+matrix wrapper \code{gllvmTMB_wide(Y, ...)} is soft-deprecated in
+0.2.0 (validation-debt register rows FG-16 and MIS-03);
+wide-data examples now use the \code{traits(...)} LHS through
+\code{\link[=gllvmTMB]{gllvmTMB()}}. The source-tree contract is
 \code{docs/design/01-formula-grammar.md}.
 }

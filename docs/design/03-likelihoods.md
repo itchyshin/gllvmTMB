@@ -143,11 +143,11 @@ The random-effects block decomposes as:
   per-trait variance terms; trait-specific per-level deviations
   $\mathbf{v}_t \sim \mathcal{N}(0, \psi_t^2)$.
 
-- **Compound-symmetric `indep(0 + trait | g)`** and unstructured
+- **Marginal-only `indep(0 + trait | g)`** and unstructured
   **`dep(0 + trait | g)`** terms parameterise the trait
-  covariance directly (no rank reduction). Internal scales: log
-  on diagonals, atanh on the (single) off-diagonal correlation
-  for `indep`; full Cholesky on `dep`.
+  covariance directly (no rank reduction). `indep` is the diagonal
+  model (same covariance as standalone `unique()`); `dep` uses a
+  full Cholesky factor.
 
 - **Scalar `(omit) ↔ no trait-specific term`** contributes the
   correlation-source structure to the linear predictor but no
@@ -155,7 +155,7 @@ The random-effects block decomposes as:
 
 The phylogenetic and spatial keywords plug into the same
 random-effects machinery via the correlation-source rows of the
-3 × 5 grid (see `docs/design/01-formula-grammar.md`).
+4 × 5 grid (see `docs/design/01-formula-grammar.md`).
 
 ### Laplace accuracy caveat
 

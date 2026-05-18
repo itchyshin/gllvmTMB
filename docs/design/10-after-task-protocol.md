@@ -120,9 +120,10 @@ rg "\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes
 # user-facing prose that still uses the old name as primary
 rg "meta_known_V" README.md NEWS.md docs vignettes
 
-# gllvmTMB_wide() is REMOVED in 0.2.0 (per validation-debt register
-# row FG-16); any user-facing reference describing it as
-# "soft-deprecated" or as a current API is stale
+# gllvmTMB_wide() is soft-deprecated in 0.2.0 (validation-debt
+# rows FG-16 and MIS-03); new examples should use traits(...).
+# Flag any user-facing reference that presents it as the primary API
+# or claims it has already been removed while the export remains live.
 rg "gllvmTMB_wide" README.md NEWS.md docs vignettes
 ```
 

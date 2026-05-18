@@ -4,15 +4,15 @@
 ## was deprecated in 0.1.x and dropped in 0.2.0; users should call
 ## `gllvmTMB()` directly with `phylo_scalar(species)` /
 ## `phylo_latent(species, d = K)` for stage-1 phylogenetic fits, then
-## stage-2 multivariate fits with `meta_known_V(V = V)`.
+## stage-2 multivariate fits with `meta_V(value, V = V)`.
 ##
 ## What remains here is `block_V()`, the small helper that builds a
-## block-diagonal sampling-variance matrix to feed `meta_known_V()`.
+## block-diagonal sampling-variance matrix to feed `meta_V()`.
 
 #' Build a block-diagonal sampling-variance matrix V
 #'
 #' Constructs a block-diagonal `n x n` matrix V suitable for the
-#' [meta_known_V()] / `equalto()` covstruct in [gllvmTMB()], where
+#' [meta_V()] / `equalto()` covstruct in [gllvmTMB()], where
 #' rows belonging to the same `study_id` are correlated and rows
 #' from different studies are independent. Each block is a compound-
 #' symmetric covariance matrix
@@ -41,7 +41,7 @@
 #'
 #' @return A symmetric positive-definite `n x n` matrix.
 #'
-#' @seealso [meta_known_V()] for the canonical keyword that consumes
+#' @seealso [meta_V()] for the canonical keyword that consumes
 #'   the matrix produced here.
 #' @examples
 #' set.seed(1)

@@ -3,18 +3,19 @@
 ## The package exposes a layer of plain-English formula keywords that
 ## desugar to the underlying glmmTMB-style covstruct calls. The new
 ## canonical names match the unit x trait framework directly. The full
-## 3 x 5 keyword grid (correlation x mode) is:
+## 4 x 5 keyword grid (correlation source x mode) is:
 ##
-##                    | scalar          | unique          | latent
-##   -----------------+-----------------+-----------------+------------------
-##   none             | (no keyword)    | unique()        | latent()
-##   phylo            | phylo_scalar()  | phylo_unique()  | phylo_latent()
-##   spatial          | spatial_scalar()| spatial_unique()| spatial_latent()
+##                    | scalar           | unique           | latent
+##   -----------------+------------------+------------------+-------------------
+##   none             | (no keyword)     | unique()         | latent()
+##   animal           | animal_scalar()  | animal_unique()  | animal_latent()
+##   phylo            | phylo_scalar()   | phylo_unique()   | phylo_latent()
+##   spatial          | spatial_scalar() | spatial_unique() | spatial_latent()
 ##
 ## The "clean quartet" for explicit covstruct intent:
 ##
 ##   * `latent(...)`        --- shared cross-trait covariance (Sigma_shared = Lambda Lambda^T)
-##   * `unique(...)`        --- trait-specific residual paired with `latent()` (Sigma_unique = S)
+##   * `unique(...)`        --- trait-specific residual paired with `latent()` (Sigma_unique = Psi)
 ##   * `indep(...)`         --- per-trait marginal variance, no decomposition (Sigma = diag(sigma^2_t))
 ##   * `dep(...)`           --- full unstructured cross-trait covariance (Sigma free, PSD via Cholesky)
 ##
@@ -50,7 +51,7 @@
 ##   spatial_latent(0 + trait | coords, d = K)    (engine path: spde_lv_k = K)
 ##   spatial(0 + trait | coords)                  DEPRECATED alias for
 ##                                                spatial_unique()
-##   meta_known_V(value, V = V)                   meta(value, sampling_var = V)
+##   meta_V(value, V = V)                         meta(value, sampling_var = V)
 ##                                                (still desugars further to
 ##                                                equalto(...) for the engine)
 ##
@@ -310,8 +311,8 @@ gr <- function(group, cov = NULL) {
 #' sampling variances are known. This keyword desugars to
 #' `equalto(0 + obs | grp_V, V)` inside `gllvmTMB()`.
 #'
-#' **Deprecated alias.** Use [meta_known_V()] in new code:
-#' `meta_known_V(value, V = V)`.
+#' **Deprecated alias.** Use [meta_V()] in new code:
+#' `meta_V(value, V = V)`.
 #'
 #' ## Diagonal vs block-diagonal V
 #'
@@ -328,20 +329,20 @@ gr <- function(group, cov = NULL) {
 #'   meta-analytic dataset).
 #' @param sampling_var Either an unquoted column name holding the
 #'   per-row sampling variance, or a length-1 numeric used for every row.
-#'   Deprecated in favour of `meta_known_V(value, V = V)`.
+#'   Deprecated in favour of `meta_V(value, V = V)`.
 #'
 #' @return A formula marker; never evaluated.
-#' @seealso [meta_known_V()] (canonical replacement); [block_V()] for
+#' @seealso [meta_V()] (canonical replacement); [block_V()] for
 #'   constructing a block-diagonal sampling-V from a study factor;
 #'   [gllvmTMB()] for the stage-2 fit.
 #' @export
 #' @examples
 #' \dontrun{
-#' # Preferred (canonical) form -- use meta_known_V():
+#' # Preferred (canonical) form -- use meta_V():
 #' V    <- diag(stage1_summary$sampling_var)
 #' fit2 <- gllvmTMB(value ~ 0 + trait +
 #'                    latent(0 + trait | site, d = 2) +
-#'                    meta_known_V(value, V = V),
+#'                    meta_V(value, V = V),
 #'                  data    = stage1_summary,
 #'                  trait   = "trait",
 #'                  unit    = "site",
@@ -1649,7 +1650,7 @@ normalise_spatial_orientation <- function(e) {
 ##                                      [fit-multi flips spde_lv_k = d and
 ##                                       allocates Lambda_spde + omega_spde_lv]
 ##   spatial(form)                    -> spde(form) (deprecation warn on the way)
-##   meta_known_V(value, V = V)       -> meta(value, sampling_var = V)
+##   meta_V(value, V = V)             -> meta(value, sampling_var = V)
 ##
 ## Spatial keywords additionally get their bar normalised to
 ## `0 + trait | coords` via `normalise_spatial_orientation()` before the
@@ -2314,10 +2315,10 @@ rewrite_canonical_aliases <- function(formula) {
 ##   phylo     -> use phylo_scalar()
 ##   spde      -> use spatial_unique()
 ##   spatial   -> use spatial_unique() (lifecycle::deprecate_warn at 0.1.2)
-##   meta      -> use meta_known_V()
+##   meta      -> use meta_V()
 ##   gr        -> use phylo_scalar() (or propto() power-user)
 ##   propto    -> internal; users should use phylo_scalar / phylo_latent
-##   equalto   -> internal; users should use meta_known_V
+##   equalto   -> internal; users should use meta_V
 ##
 ## We do NOT warn on `propto` / `equalto` even though they're internal,
 ## because the brms-sugar layer rewrites phylo()/meta() to those before
@@ -2329,7 +2330,7 @@ scan_for_deprecated <- function(rhs) {
     phylo_rr  = list(new = "phylo_latent",   args = "species, d = K"),
     phylo     = list(new = "phylo_scalar",   args = "species"),
     spde      = list(new = "spatial_unique", args = "coords | trait"),
-    meta      = list(new = "meta_known_V",   args = "value, V = V"),
+    meta      = list(new = "meta_V",         args = "value, V = V"),
     gr        = list(new = "phylo_scalar",   args = "species")
   )
   walk <- function(e) {
@@ -2345,7 +2346,7 @@ scan_for_deprecated <- function(rhs) {
           what = "spatial()",
           with = "spatial_unique()",
           details = c(
-            "i" = "spatial(coords | trait) is now an alias for spatial_unique(0 + trait | coords), the unique cell of the 3 x 5 keyword grid.",
+            "i" = "spatial(coords | trait) is now an alias for spatial_unique(0 + trait | coords), the unique cell of the 4 x 5 keyword grid.",
             ">" = "Update existing code to spatial_unique() to keep the rank explicit."
           )
         )
@@ -2372,7 +2373,7 @@ desugar_brms_sugar <- function(formula,
   scan_for_deprecated(formula[[length(formula)]])
 
   ## ---- Pass 1: rewrite canonical aliases (latent / unique / phylo_latent
-  ## / phylo_scalar / spatial / meta_known_V) to engine-internal names.
+  ## / phylo_scalar / spatial / meta_V / meta_known_V) to engine-internal names.
   ## Done before the legacy brms desugaring below so e.g. phylo_scalar
   ## becomes phylo() which then becomes propto().
   formula <- rewrite_canonical_aliases(formula)

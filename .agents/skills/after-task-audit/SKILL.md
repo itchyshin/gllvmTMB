@@ -130,9 +130,10 @@ rg "\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes
 # meta_known_V is now a deprecated alias (canonical: meta_V)
 rg "meta_known_V" README.md NEWS.md docs vignettes
 
-# gllvmTMB_wide() is REMOVED in 0.2.0 per validation-debt register
-# row FG-16; any prose calling it "soft-deprecated" or as a current
-# API is stale
+# gllvmTMB_wide() is soft-deprecated in 0.2.0 per validation-debt
+# rows FG-16 and MIS-03; new examples should use traits(...).
+# Any prose calling it primary or already removed while the export
+# remains live is stale
 rg "gllvmTMB_wide" README.md NEWS.md docs vignettes
 ```
 

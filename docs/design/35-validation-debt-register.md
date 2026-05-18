@@ -76,7 +76,7 @@ This snapshot is the input to Phase 0B. Every row marked
 marked `covered` gets a Rose audit confirming the test
 evidence is real.
 
-### Section 1 — Formula grammar (3×5 keyword grid)
+### Section 1 — Formula grammar (4×5 keyword grid)
 
 Row-owner: **Boole** (formula-grammar parser).
 
@@ -97,7 +97,7 @@ Row-owner: **Boole** (formula-grammar parser).
 | FG-13 | `spatial_*` family (6 keywords) | `partial` | `test-stage4-spde.R`, `test-spatial-latent-recovery.R`, `test-spatial-mode-dispatch.R`, `test-spatial-orientation.R` | smoke + mode-dispatch; full coverage Phase 0B |
 | FG-14 | `meta_V(value, V = V)` | `partial` | `test-block-V.R` | block-V verified; named-V verified; single-V Phase 0B |
 | FG-15 | `phylo_slope()` random-slope keyword | `partial` | `test-phylo-slope.R` | smoke only; full M1 |
-| FG-16 | `gllvmTMB_wide(Y, ...)` legacy constructor | `blocked` | n/a | removed in 0.2.0 per maintainer (NEWS entry pending) |
+| FG-16 | `gllvmTMB_wide(Y, ...)` legacy constructor | `partial` | `test-gllvmTMB-wide.R`, `test-wide-weights-matrix.R` | soft-deprecated in 0.2.0; new examples use `traits(...)`; removal is a later API-change decision while export remains live |
 | FG-17 | Slash form `(1 \| g1/g2)` nesting | `blocked` | `test-augmented-lhs-guard.R` | parser rejects with snapshot-pinned error |
 
 ### Section 2 — Response families (15 advertised)
@@ -302,7 +302,7 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 |----|------------|--------|---------------|-------|
 | MIS-01 | `gllvmTMB()` long-format constructor | `covered` | many tests | M0 baseline |
 | MIS-02 | `gllvmTMB(traits(...) ~ ...)` wide format | `covered` | `test-traits-keyword.R`, `test-wide-weights-matrix.R` | |
-| MIS-03 | `gllvmTMB_wide(Y, ...)` legacy constructor | `blocked` | `test-gllvmTMB-wide.R` (now tests removal) | removed in 0.2.0 |
+| MIS-03 | `gllvmTMB_wide(Y, ...)` legacy constructor | `partial` | `test-gllvmTMB-wide.R`, `test-wide-weights-matrix.R` | soft-deprecated in 0.2.0; retained for migration and matrix-first workflows |
 | MIS-04 | Weight column unified handling | `covered` | `test-weights-unified.R`, `test-lme4-style-weights.R` | |
 | MIS-05 | `simulate.gllvmTMB_multi()` family-aware draws (per-row family dispatch) | `covered` | `test-m1-8-bootstrap-mixed-family.R`, `test-simulate-site-trait.R` | M1.8 (PR #157) — `.draw_y_per_family()` dispatches by `family_id_vec`; 6 families (gaussian / binomial / poisson / lognormal / Gamma / nbinom2) covered; others fall back with one-time warning |
 | MIS-06 | `tidy.gllvmTMB_multi()` broom-style output | `covered` | `test-tidy-predict.R` | |

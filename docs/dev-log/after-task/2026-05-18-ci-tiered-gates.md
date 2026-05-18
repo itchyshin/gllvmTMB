@@ -48,6 +48,8 @@ changed.
   collector.
 - Follow-up PR CI run (`26062918120`) - full R-CMD-check passed on
   ubuntu-latest, macos-latest, and windows-latest.
+- Rose read-only audit - found a CONTRIBUTING/workflow mismatch in
+  the process-only path list; fixed before merge.
 
 ## Tests Of The Tests
 

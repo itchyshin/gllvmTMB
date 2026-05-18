@@ -1707,6 +1707,11 @@ Evidence:
   R-CMD-check on ubuntu-latest, macos-latest, and windows-latest.
   Because the PR changed the workflow file, this was the intentional
   full-check path rather than the new process-only fast path.
+- Rose's read-only overnight audit found one policy mismatch before
+  merge: the workflow fast-pass list included
+  `docs/dev-log/team-improvements.md` and
+  `docs/dev-log/recovery-checkpoints/*`, but the CONTRIBUTING table
+  did not. The table now matches the workflow path list.
 - The policy table in `CONTRIBUTING.md` now separates package-
   affecting PRs, docs/prose PRs, process-only PRs, and long
   simulation/power-analysis experiments.

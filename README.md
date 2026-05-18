@@ -274,8 +274,9 @@ Plus the random-slope keywords `phylo_slope(x | species)` and
 
 **A vs V naming boundary**: `animal_*` and `phylo_*` keywords accept
 **A** (relatedness covariance), **Ainv** (sparse precision), or
-**pedigree** (animal-only); the separate `meta_known_V(value, V = V)`
-keyword accepts **V** for *sampling variance* in meta-analysis.
+**pedigree** (animal-only); the separate `meta_V(value, V = V)`
+keyword accepts **V** for *sampling variance* in meta-analysis
+(`meta_known_V()` is the deprecated alias).
 See [Design 14](docs/design/14-known-relatedness-keywords.md).
 
 The decomposition mode is `latent + unique` paired:
@@ -296,12 +297,13 @@ models belong in `glmmTMB`; spatial single-response models belong
 in `sdmTMB`; one- or two-response distributional regression
 belongs in `drmTMB`.
 
-**Removed in 0.2.0:**
+**Soft-deprecated in 0.2.0:**
 
-- The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` is removed
-  (validation-debt register FG-16). Wide-data fits now use the
-  formula-API `traits(...)` LHS through the single `gllvmTMB()`
-  entry point.
+- The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` remains
+  exported but is superseded by the formula-API `traits(...)` LHS
+  through the single `gllvmTMB()` entry point. New examples and
+  articles should use `traits(...)`; removal is a later API-change
+  decision while the export remains live.
 
 **Deferred to post-CRAN** (advertised in the roadmap, currently
 not validated; named here so user-facing prose does not

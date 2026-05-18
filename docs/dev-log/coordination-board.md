@@ -26,45 +26,36 @@ coord-board: <agent> picked up <lane>
 coord-board: <agent> resolved <question>
 ```
 
-## Codex-absent assumption (effective 2026-05-14)
+## Codex-return status (effective 2026-05-18)
 
-**Codex is assumed absent for the foreseeable future.**
-Maintainer guidance 2026-05-14: *"codex might not come back so
-you should plan to do it"*. Original pause was 2026-05-13 ->
-~2026-05-17 (Codex completed PR #69 and handed off via
-maintainer). With no confirmed return date, all lanes
-formerly reserved for Codex are reassigned to Claude on a
-working-assumption basis.
+**Codex is back for a bounded review / hygiene lane.** The
+2026-05-14 Codex-absent assumption is no longer the current
+working state, but it remains a useful historical explanation
+for why Claude carried several Codex-owned lanes during the
+pause.
 
-Operational rules under the absent assumption:
+Current operating rule:
 
-- All R/ implementation work is Claude's. Discipline gates
-  (Gauss + Noether + Fisher + Rose persona reviews per PR)
-  remain in force; reviews are persona-style read-only
-  Explore agents, not separate human agents.
-- All previously-queued Codex lanes (drift-scan Batches A +
-  B; further `_pkgdown.yml` work; cross-package validation
-  port) are reassigned to Claude.
-- The audit trail for each Claude-handled R/ PR records that
-  Codex was absent (no Codex review available) and lists the
-  persona-side reviews that substituted.
-- **If Codex returns**, restore the original file-ownership
-  rows below, hand back any in-flight R/ work that hasn't
-  reached CI green, and finish near-merge work before
-  rolling over.
+- PR #181 (sparse pedigree A-inverse engine pass-through) and
+  PR #182 (M3.4 warm-start + phi-clamp) were reviewed by Codex
+  and merged to `main` on 2026-05-18.
+- Codex now owns the only open PR, #184
+  (`codex/drmtmb-parity-hygiene`): live board repair,
+  `team-improvements.md`, source-of-truth cascade fixes, and this
+  post-merge sync against current `main`.
+- No new implementation lane should start until #184 is green and
+  either merged or explicitly held.
+- Both teams should keep write scopes explicit in this file until
+  the open PR count returns to zero.
 
 ## Active lanes
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | 2026-05-13 evening-sweep retrospective | #83 / `agent/post-merge-retrospective-2026-05-13` | `docs/dev-log/check-log.md` | CI pending; self-merge eligible |
-| Claude | 2026-05-14 strategic-plan-revision after-task | #84 / `agent/after-task-strategic-plan-revision` | `docs/dev-log/after-task/...` | CI pending; self-merge eligible |
-| Claude | Coord-board: Codex-absent assumption | this PR / `agent/coord-board-codex-absent` | this file | CI pending; self-merge eligible |
-| Codex | -- (assumed absent for the foreseeable future) | -- | -- | maintainer 2026-05-14: "plan to do it" |
+| Codex | drmTMB-parity hygiene and source-of-truth cascade | #184 / `codex/drmtmb-parity-hygiene` | board, process docs, source-of-truth docs, narrow roxygen/Rd wording | active; synced with post-#181/#182 `main`; CI pending |
 
-**WIP**: 3 Claude PRs open. At the soft cap of 3 -- the three
-PRs are all docs-only / dev-log and self-merge eligible; new
-lanes wait until they merge.
+**WIP**: one open PR (#184). No new implementation lane should start
+until this hygiene lane is settled.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -73,41 +64,37 @@ PR opens, fill `PR / branch`. When the PR merges, move the row to
 ## Queued lanes (not yet picked up)
 
 Per `docs/dev-log/audits/2026-05-13-post-overnight-drift-scan.md`
-batching plan + the 2026-05-14 strategic plan revision. With
-Codex absent, Claude carries all of these:
+batching plan + the 2026-05-14 strategic plan revision. Many older
+rows below were completed or superseded during the Codex pause; keep
+new queued rows current and move stale history to after-task reports
+instead of expanding this table.
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Claude | Phase 1a Batch A: paired-canon corrections in `R/unique-keyword.R`, `R/fit-multi.R` (roxygen + cli_inform prose; expanded scope per 2026-05-14 plan) | #83, #84, this PR merged |
-| Claude | Phase 1a Batch B: drop in-prep `Eq. N` citations across R/diagnose.R, R/methods-gllvmTMB.R, R/extract-omega.R (incl. an `@title`), R/unique-keyword.R, R/extractors.R (2 `@title` lines) | #83, #84, this PR merged |
-| Claude | Phase 1a Batch D: convert active `gllvmTMB_wide()` recommendations to `traits(...)` form in `morphometrics.Rmd` + `response-families.Rmd` | #83, #84, this PR merged |
-| Claude | Phase 1a Batch E: `\mathbf{U} -> \mathbf{S}` in `behavioural-syndromes.Rmd` math; roxygen-only sweep of `R/extract-two-U-via-PIC.R` (function name stays) | #83, #84, this PR merged |
-| Claude | Phase 1b: `extract_correlations()` `link_residual = "auto"` + `check_auto_residual()` + `check_identifiability()` + expanded profile-CI edge tests | After 1a |
-| Claude | Phase 1b': Profile-CI Validation milestone (Jason pre-scan + coverage study + `confint_inspect()` + `troubleshooting-profile.Rmd` Concepts article) | After 1b |
-| Claude | Phase 1c: 13-PR article-port programme (9 ports + 4 new pedagogy articles) | After 1b' |
+| Codex + Claude | Revisit `drmTMB` workflow lessons for reader path, pkgdown shape, and slice discipline | after #184 is green and settled |
+| Codex | Next small reader-facing lane | after maintainer chooses whether this should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing |
 
 Move a row to "Active lanes" when you start it.
 
 ## File ownership for the current docs / navigation pass
 
-Per PR #64 Section K (the joint plan) + 2026-05-14 Codex-absent
-reassignment. Lock these files behind the named owner; if the
-other agent (Codex if/when they return) needs to touch them,
-they should leave a coordination comment first and wait for
-acknowledgement.
+Current ownership is lane-specific. Lock these files behind the
+named owner; if the other agent needs to touch them, they should
+leave a coordination comment first and wait for acknowledgement.
 
 | File | Owner (this pass) |
 |---|---|
-| `vignettes/articles/covariance-correlation.Rmd` | Claude (Codex absent; PR #61 + #69 done by Codex earlier; settled content-wise) |
-| `_pkgdown.yml` | Claude (Codex absent); restore to Codex if/when Codex returns |
-| `README.md` | Claude (PR #65 dropped wide-matrix block; PR #67 D1+D2+D4 landed; PR #80 added wide-form Tiny example) |
-| `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` | Claude (rule files) |
-| `docs/design/*` | open; coordinate per file |
+| `docs/dev-log/coordination-board.md` | Codex for current hygiene lane |
+| `docs/dev-log/team-improvements.md` | Codex for current hygiene lane |
+| `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` | Codex for source-of-truth cascade; coordinate before further edits |
+| `_pkgdown.yml`, `README.md`, selected design docs | Codex for narrow wording cascade only; no article/nav rewrite in this lane |
+| `vignettes/articles/covariance-correlation.Rmd` | no active owner in this lane; do not edit here |
+| `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
-| Tier-1 article rewrites (`choose-your-model`, `phylogenetic-gllvm`, etc.) | Claude (Codex absent) |
-| `R/*` | **Claude (Codex absent assumption, effective 2026-05-14)**; restore to Codex if/when Codex returns. Claude PRs to R/ must carry Gauss + Noether + Fisher + Rose persona reviews. |
-| `tests/testthat/*` | Claude (Codex absent); persona reviews include Curie + Fisher for test design |
-| `src/gllvmTMB.cpp` | **Claude (Codex absent)** for any prose / comment / header changes; engine code is more fragile -- consult Gauss persona before any C++ edit; defer non-trivial C++ to Codex return |
+| Tier-1 article rewrites (`choose-your-model`, `phylogenetic-gllvm`, etc.) | paused; revisit after this hygiene stop point |
+| `R/*` | no active engine owner after #181 / #182 merged. This hygiene lane made narrow wording-only roxygen/comment updates in `R/gllvmTMB.R`, `R/traits-keyword.R`, `R/brms-sugar.R`, `R/two-stage.R`, and `R/animal-keyword.R`; engine logic now on `main` came from #181 / #182. Coordinate before further R edits. |
+| `tests/testthat/*` | no active owner after #181 / #182 merged; new tests from those PRs are now on `main` |
+| `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a
@@ -115,7 +102,12 @@ PR comment, wait for the other agent's acknowledgement.
 
 ## Pending coordination questions
 
-(None as of 2026-05-13 05:00 MT.)
+None open.
+
+Resolved 2026-05-18: maintainer asked Codex to review and merge
+the held engine PRs before the next `drmTMB` workflow revisit.
+Codex reviewed #181 and #182, simulated the combined merge order,
+ran the targeted tests, and merged #181 then #182.
 
 Active question template (when adding):
 
@@ -129,6 +121,14 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-18 ~13:00 MT**: PR #181 sparse pedigree A-inverse
+  engine pass-through and PR #182 M3.4 warm-start + phi-clamp
+  were reviewed by Codex and merged to `main`. Combined
+  #181 -> #182 tree was simulated before merge; targeted checks
+  passed with `NOT_CRAN=true` + `devtools::load_all(".")`:
+  sparse-Ainv engine 8/8 and M3.4 warm-start / phi-clamp 14/14.
+  #184 is now the only open PR and has been synced with the
+  post-merge `main`.
 - **2026-05-13 ~20:30 MT**: Seven-PR evening sweep merged after
   maintainer authorization. In chronological merge order on
   main: #76 (cov-corr misleading-section removal, landed

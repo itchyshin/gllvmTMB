@@ -68,18 +68,18 @@ support from end-to-end verification:
 | --- | --- | --- |
 | `gllvmTMB(value ~ ..., data = df_long)` | **covered** | Canonical long-format entry point. One row per `(unit, trait)`. Test evidence: `tests/testthat/test-canonical-keywords.R`, `test-keyword-grid.R` (validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `gllvmTMB(traits(t1, t2, ...) ~ ..., data = df_wide)` | **covered** | Wide-format entry point. The `traits(...)` LHS marker triggers internal pivot to long; long+wide `logLik` agreement is part of the contract. Test evidence: `test-traits-keyword.R`, `test-wide-weights-matrix.R` (validation-debt register FG-01, FG-03; Phase 0B promotion 2026-05-16). |
-| `gllvmTMB_wide(Y, ...)` | **removed in 0.2.0** | Matrix-in entry point. Removed per maintainer 2026-05-16 decision; use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
+| `gllvmTMB_wide(Y, ...)` | **partial / soft-deprecated in 0.2.0** | Legacy matrix-in wrapper. It remains exported for migration and matrix-first workflows, but new examples use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
 | `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `latent(0 + trait \| g, d = K)` | **covered** | Reduced-rank loadings for $T$ traits across grouping factor `g`, rank $K \le T$. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R` (validation-debt register FG-04; Phase 0B promotion 2026-05-16). |
 | `unique(0 + trait \| g)` | **covered** | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. Test evidence: `test-stage2-rr-diag.R`, `test-cross-sectional-unique.R` (validation-debt register FG-05; Phase 0B promotion 2026-05-16). |
 | `latent + unique` paired | **covered** | The decomposition $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$. Test evidence: `test-stage2-rr-diag.R`, `test-mixed-response-sigma.R` (validation-debt register FG-06; Phase 0B promotion 2026-05-16). |
-| `indep(0 + trait \| g)` | **covered** | Compound-symmetric trait covariance (all off-diagonals equal). Test evidence: `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (binomial) (validation-debt register FG-07; Phase 0B.2 promotion 2026-05-16). |
+| `indep(0 + trait \| g)` | **covered** | Explicit marginal / independent mode; same diagonal covariance as standalone `unique()` and always used alone. Test evidence: `test-canonical-keywords.R` (standalone equivalence with `unique()`), `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (binomial) (validation-debt register FG-07; Phase 0B.2 promotion 2026-05-16). |
 | `dep(0 + trait \| g)` | **covered** | Fully unstructured trait covariance estimated directly. Test evidence: `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (Poisson) (validation-debt register FG-08; Phase 0B.2 promotion 2026-05-16). |
 | `(omit)` ↔ scalar covariance | **covered** | Omitting the `unique`/`indep`/`dep` slot means *no trait-specific term*; only the keyword's correlation source contributes. Test evidence: `test-stage2-rr-diag.R` (`rr() alone matches glmmTMB`), `test-canonical-keywords.R` (`latent()`-only fits without diagonal pairing) (Phase 0B.3 promotion 2026-05-16 — the omit cell is exercised whenever `latent()` is used without `unique()`/`indep()`/`dep()`). |
 | `phylo_latent(species, d = K, tree = tree)` | **covered** | Reduced-rank phylogenetic loadings using sparse $A^{-1}$. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16). |
 | `phylo_unique(species, tree = tree)` | **covered** | Trait-diagonal $\boldsymbol\Psi_\text{phy}$ scaled by phylogenetic covariance. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16). |
 | `phylo_scalar(species, vcv = Cphy)` | **covered** | Single trait-scalar phylogenetic random effect; the simplest phylogenetic mixed-model form. Test evidence: `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (dense-vcv path) (validation-debt register PHY-04; Phase 0B.2 promotion 2026-05-16). |
-| `phylo_indep` / `phylo_dep` | **covered** | Compound-symmetric and unstructured phylogenetic trait covariance. Test evidence: `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
+| `phylo_indep` / `phylo_dep` | **covered** | Marginal-only phylogenetic trait covariance (`phylo_indep`, equivalent to `phylo_unique`) and full-rank phylogenetic latent covariance (`phylo_dep`, equivalent to `phylo_latent(..., d = n_traits)`). Test evidence: `test-canonical-keywords.R`, `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
 | `spatial_latent(0 + trait \| sites, mesh = mesh)` or `spatial_latent(0 + trait \| sites, coords = c("lon", "lat"))` and siblings | **covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). See "Spatial axis convention" below. Test evidence: `test-spatial-latent-recovery.R` (spatial_latent), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). |
 | `meta_V(value, V = V)` | **covered** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form) + `test-block-V.R` (block-V form via `block_V()` helper) (validation-debt register MET-01, MET-02; Phase 0B.4 promotion 2026-05-16). The legacy `meta_known_V(value, V = V)` is retained as a deprecated alias; both names desugar identically in the parser. See "Meta-analysis keyword" below for the rename history. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
@@ -169,15 +169,18 @@ should pair the long and wide forms side-by-side with a `logLik`
 agreement check (the `morphometrics.Rmd` pattern). This is a
 public-API contract: both forms produce identical fits.
 
-### Removed: `gllvmTMB_wide(Y, ...)` matrix-in API
+### Soft-deprecated: `gllvmTMB_wide(Y, ...)` matrix-in API
 
 The legacy matrix-in entry point `gllvmTMB_wide(Y, ...)` is
-**removed from the public API in 0.2.0** (maintainer 2026-05-16
-decision). Users with matrix-format data should pivot to a wide
+**soft-deprecated in 0.2.0**. It remains exported for migration,
+per-cell matrix-weight workflows, and existing matrix-first code,
+but it is no longer the path taught in README, articles, or new
+examples. Users with matrix-format data should pivot to a wide
 data frame and call `gllvmTMB(traits(...) ~ ..., data = df_wide)`.
 
-(Migration helper for legacy users may be considered post-CRAN
-if external feedback shows persistent matrix-first workflows.)
+Removal is a later API-change decision and must not be claimed while
+the export remains live (validation-debt register rows FG-16 and
+MIS-03).
 
 ## The 4 × 5 covariance keyword grid
 
@@ -200,9 +203,10 @@ for the team-ratified convention.
 
 **The A vs V naming boundary** (per Design 14 §3): `animal_*` and
 `phylo_*` keywords accept **A** / **Ainv** for *relatedness*
-covariance; the separate `meta_known_V(value, V = V)` keyword
-accepts **V** for *sampling variance* in meta-analysis. Do not
-blur — these are mathematically distinct quantities.
+covariance; the separate `meta_V(value, V = V)` keyword accepts
+**V** for *sampling variance* in meta-analysis. The legacy
+`meta_known_V()` spelling is a deprecated alias. Do not blur —
+these are mathematically distinct quantities.
 
 **Column meanings** (what the keyword does to the $T \times T$
 trait covariance):
@@ -213,8 +217,9 @@ trait covariance):
 - **unique** → trait-diagonal $\boldsymbol\Psi$; per-trait variances.
   Paired with `latent` to form the rank-$K$ + diagonal
   decomposition.
-- **indep** → compound-symmetric trait covariance (all off-diagonal
-  pairs equal); estimates one off-diagonal correlation.
+- **indep** → explicit marginal / independent trait covariance;
+  same diagonal model as standalone `unique()` and always used
+  alone.
 - **dep** → fully unstructured $T \times T$ trait covariance,
   estimated directly with $T(T+1)/2$ free entries.
 - **latent** → reduced-rank loadings $\Lambda \in \mathbb{R}^{T \times K}$
@@ -528,14 +533,14 @@ within-study correlation, build `V` via
 
 Currently:
 
-- **Random intercepts** `(1 | group)`: claimed inside the 3 × 5
+- **Random intercepts** `(1 | group)`: covered alongside the 4 × 5
   keywords as the default random-intercept on the grouping
   factor.
 - **Random slopes** `(0 + x | g)` or `(1 + x | g)`: **reserved**.
   Not currently parsed inside the 4 × 5 keywords. The M1 Gaussian
   completeness milestone (per ROADMAP) adds random-slope support
   for the `latent + unique` paired keywords as the first
-  random-slope path. Other 3 × 5 cells get random-slope support
+  random-slope path. Other 4 × 5 cells get random-slope support
   one keyword at a time after M1 closes.
 
 Random-slope design and parser details will live in
@@ -582,9 +587,10 @@ not enter later releases:
 - Zero-inflated count families on multi-trait fits. Post-CRAN.
 - SPDE barrier-mesh for irregular spatial domains. Post-CRAN
   (track sdmTMB's barrier-mesh work).
-- `gllvmTMB_wide(Y, ...)` matrix-in API. **Removed in 0.2.0**
-  per maintainer 2026-05-16 decision. The formula API with
-  `traits(...)` LHS is the recommended path.
+- `gllvmTMB_wide(Y, ...)` matrix-in API. **Soft-deprecated in
+  0.2.0**. The formula API with `traits(...)` LHS is the
+  recommended path; removal is a later API-change decision while
+  the wrapper remains exported.
 
 ## Cross-references
 

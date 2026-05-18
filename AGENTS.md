@@ -9,13 +9,14 @@ Model Builder.
 - The package fits multi-response models on long-format data: one row
   per `(unit, trait)` observation. The "unit" is typically a site or
   individual; the "trait" is one column of a multivariate response.
-- The covariance dispatch is the 3 x 5 keyword grid:
+- The covariance dispatch is the 4 x 5 keyword grid:
 
-  | correlation \ mode | scalar | unique | indep | dep | latent |
-  |---|---|---|---|---|---|
-  | none    | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
-  | phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
-  | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
+| correlation \ mode | scalar | unique | indep | dep | latent |
+|---|---|---|---|---|---|
+| none    | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
+| animal  | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
+| phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
+| spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
 - The decomposition mode is `latent + unique` paired:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
@@ -48,9 +49,9 @@ Model Builder.
    and a runnable example. The return-value contract for every
    exported `extract_*()` is recorded in
    `docs/design/06-extractors-contract.md`.
-3. Do not change formula grammar (the 3 x 5 keyword grid +
+3. Do not change formula grammar (the 4 x 5 keyword grid +
    `traits()` LHS) without updating `docs/design/01-formula-grammar.md`
-   (the canonical grammar contract), the 3 x 5 grid table in this
+   (the canonical grammar contract), the 4 x 5 grid table in this
    file, and the parallel table in `CLAUDE.md`.
 4. Do not change likelihood parameterisation in `src/gllvmTMB.cpp`
    without applying the `tmb-likelihood-review` skill and updating
@@ -236,9 +237,10 @@ package contributors.
   shorthand applies to `indep()`, `dep()`, and `spatial_*()` terms;
   ordinary `(1 | group)` random intercepts pass through unchanged.
   The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` is
-  **removed in 0.2.0** (per validation-debt register row
-  FG-16); new examples must use the `traits(...)` LHS
-  formula API.
+  **soft-deprecated in 0.2.0**; new examples must use the
+  `traits(...)` LHS formula API. Removal is a later API-change
+  decision and must not be described as complete while the export
+  remains live.
   Roxygen `@examples` blocks for individual keyword or extractor
   functions may stay single-form when the keyword is intrinsically
   one shape.
@@ -317,7 +319,7 @@ implementation reviewer.
 Use one narrow Rose pre-publish audit for any PR that touches
 README, vignettes, `_pkgdown.yml`, NEWS, roxygen for exported
 functions, or generated Rd files. The gate checks method lists,
-default-value claims, exported function names, the 3 x 5 keyword grid,
+default-value claims, exported function names, the 4 x 5 keyword grid,
 argument names, family lists, and stale terminology. It does not
 replace Boole, Gauss, Noether, Grace, Pat, or Darwin; it only checks
 cross-file consistency before user-facing content is published.

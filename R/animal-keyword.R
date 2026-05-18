@@ -17,8 +17,9 @@
 ##   animal_slope(formula)                              phylo_slope
 ##
 ## Argument convention: **A** / **Ainv** for relatedness covariance /
-## precision. **V** is reserved for `meta_known_V()` (meta-analytic
-## sampling variance) and **must not** be used for relatedness.
+## precision. **V** is reserved for `meta_V()` (meta-analytic
+## sampling variance; `meta_known_V()` is the deprecated alias) and
+## **must not** be used for relatedness.
 
 #' Single-shared-variance animal-model random effect: `animal_scalar(id)`
 #'
@@ -54,7 +55,7 @@
 #'
 #' @seealso [animal_unique()], [animal_indep()], [animal_latent()],
 #'   [animal_dep()], [animal_slope()], [phylo_scalar()],
-#'   [meta_known_V()] (sampling variance, distinct from relatedness).
+#'   [meta_V()] (sampling variance, distinct from relatedness).
 #'
 #' @export
 animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {

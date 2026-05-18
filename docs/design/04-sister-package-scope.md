@@ -33,7 +33,7 @@ recommended package.
 | Site x species occurrences (joint SDM) | multivariate binomial / count | **`gllvmTMB`** | Joint species distribution modelling is one of the canonical use cases. |
 | Multi-trait data with phylogenetic correlation across traits | multivariate phylogenetic | **`gllvmTMB`** | Phylogenetic GLLVM (`phylo_latent + phylo_unique`) is canonical. |
 | Multi-trait data with spatial correlation across units | multivariate spatial | **`gllvmTMB`** | Spatial GLLVM (`spatial_latent + spatial_unique`) is canonical. |
-| Meta-analytic data with a known sampling covariance | univariate or multivariate meta | `gllvmTMB` (with `meta_known_V`) or `metafor` | `meta_known_V(V = V)` is the gllvmTMB keyword; `metafor` is the dedicated meta-analysis package. |
+| Meta-analytic data with a known sampling covariance | univariate or multivariate meta | `gllvmTMB` (with `meta_V`) or `metafor` | `meta_V(value, V = V)` is the gllvmTMB keyword; `meta_known_V()` is a deprecated alias. `metafor` is the dedicated meta-analysis package. |
 | Bayesian multi-response with phylogeny + posterior samples | multivariate Bayesian | `MCMCglmm` or `brms` | gllvmTMB returns ML / REML estimates with Laplace marginal likelihood; Bayesian inference is out of scope. |
 | Bayesian multi-response without phylogeny | multivariate Bayesian | `brms` (with `mvbind()`) | brms's HMC sampler and prior flexibility are the Bayesian counterpart. |
 
@@ -55,12 +55,14 @@ The five things that distinguish `gllvmTMB` from sister packages:
    layers at a time.
 3. **4 x 5 keyword grid** as the canonical formula surface:
    `latent / unique / indep / dep / scalar` cross
-   `none / phylo_ / spatial_`. Memorable, parseable, and
-   internally consistent.
+   `none / animal_ / phylo_ / spatial_`. Memorable, parseable,
+   and internally consistent.
 4. **Two data shapes, one engine.** Long format
    (`gllvmTMB(value ~ ..., data = df_long)`) and wide format
-   (`gllvmTMB_wide(Y, ...)` accepting matrix or wide data frame)
-   are surface-level views of the same fit.
+   (`gllvmTMB(traits(...) ~ ..., data = df_wide)`) are
+   surface-level views of the same fit. The legacy
+   `gllvmTMB_wide(Y, ...)` wrapper remains exported as a
+   soft-deprecated migration path.
 5. **TMB / Laplace speed.** Sparse phylogenetic A-inverse and
    SPDE GMRF meshes both run inside one compiled TMB template.
 

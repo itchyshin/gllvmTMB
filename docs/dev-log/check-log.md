@@ -1539,3 +1539,85 @@ Process changes adopted:
 - `stop-checkpoint` skill — new; Shannon authors, Ada invokes.
 - Validation-debt register row-ID cross-check in every
   after-task report and Rose pre-publish audit.
+
+## 2026-05-18 -- drmTMB-parity hygiene: stale source-of-truth correction
+
+Scope:
+
+- Branch `codex/drmtmb-parity-hygiene` updated the live coordination
+  board, added `docs/dev-log/team-improvements.md`, and repaired
+  high-risk contradictions across AGENTS / CLAUDE / CONTRIBUTING /
+  README / NEWS / DESCRIPTION / pkgdown labels / design docs /
+  known-limitations / skills / roxygen / generated Rd.
+- No likelihood, engine, test, article-rewrite, or PR #181 / #182
+  review work was done in this lane.
+
+Evidence:
+
+- Open PR census before edits: #181 (`agent/sparse-pedigree-ainv-engine`)
+  and #182 (`agent/m3-4-warmstart-phi-clamp`) were both open and
+  green / held for Codex review.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed
+  cleanly.
+- `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-traits-keyword.R")'`
+  completed with 41 pass, 2 skip, 0 fail.
+- `Rscript --vanilla -e 'devtools::test(filter = "brms-sugar", reporter = "summary")'`
+  completed successfully. A first naked `test_file()` attempt on
+  `test-brms-sugar.R` failed because package helpers were not loaded;
+  the `devtools::test()` rerun is the meaningful check.
+- `git diff --check` completed cleanly.
+- Stale-wording scan used verbatim:
+  `rg -n '3 x 5|3 × 5|removed in 0\\.2\\.0|REMOVED in 0\\.2\\.0|compound-symmetric \`indep|Compound-symmetric \`indep|indep.*compound-symmetric|off-diagonals equal|single trait-by-trait correlation|meta_known_V\\(V|reserved for \`meta_known_V|gllvmTMB_wide\\(Y, \\.\\.\\.\\) was removed' AGENTS.md CLAUDE.md CONTRIBUTING.md DESCRIPTION README.md NEWS.md _pkgdown.yml docs/design docs/dev-log/known-limitations.md .agents/skills R man`
+  Remaining hits were expected: NEWS's historical "3 x 5 to 4 x 5"
+  wording and a `R/gllvmTMB.R` no-covstruct fallback comment, not the
+  legacy matrix wrapper.
+
+Kaizen points:
+
+13. **Append-only process logs can preserve wrong corrections.** The
+    2026-05-16 check-log point 12 said `gllvmTMB_wide()` was "actually
+    REMOVED in 0.2.0". Current code exports it and the maintainer asked
+    Claude to deprecate it, so the correct current contract is:
+    `gllvmTMB_wide(Y, ...)` is **soft-deprecated**, new examples use
+    `gllvmTMB(traits(...) ~ ..., data = df_wide)`, and removal is a
+    later API-change decision while the export remains live. Future
+    agents should treat this 2026-05-18 entry as the superseding rule.
+
+14. **A source-of-truth cascade must include Roxygen and skill files.**
+    The stale claims were not limited to README or design docs:
+    project-local skills, `DESCRIPTION`, top-level `gllvmTMB()`
+    roxygen, `traits()` help, and generated Rd pages also encoded old
+    contracts. Rose's pre-publish gate should audit the tools that do
+    the auditing.
+
+15. **Equivalence tests outrank intuitive keyword names.** Several
+    docs described `indep()` as compound-symmetric, but current code
+    and `test-canonical-keywords.R` assert standalone `indep()` is
+    byte-equivalent to standalone `unique()` (marginal / diagonal).
+    The documentation contract now follows the tested implementation:
+    `indep()` is the explicit marginal-only diagonal path.
+
+16. **drmTMB's success pattern is a closed loop, not a larger
+    context dump.** The follow-up local `drmTMB` audit found the same
+    loop repeated across recent slices: small PR, explicit scope wall,
+    targeted checks, after-task report, check-log entry, and a visible
+    next surface. The reusable lesson for `gllvmTMB` is to keep PRs
+    smaller and make the README / pkgdown entrance task-shaped
+    ("start here", supported surfaces, worked guides, concepts /
+    reference), while keeping validation-debt status visible before
+    broad claims reach Tier-1 articles.
+
+Post-merge sync:
+
+- Maintainer then asked Codex to review and merge Claude's held
+  engine PRs first. Codex reviewed #181 and #182, simulated the
+  combined #181 -> #182 tree, ran targeted tests with
+  `NOT_CRAN=true` + `devtools::load_all(".")`, and merged #181 then
+  #182 to `main`.
+- This branch then merged `origin/main` cleanly and updated
+  `docs/dev-log/coordination-board.md`, this after-task report, and
+  `docs/dev-log/team-improvements.md` so #184 no longer preserves
+  stale "held PR" wording.
+- Post-sync local verification passed for sparse-Ainv engine (8/8),
+  M3.4 warm-start / phi-clamp (14/14), traits keyword (44 pass,
+  1 expected skip), and `brms-sugar`.

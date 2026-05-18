@@ -78,7 +78,7 @@ sampling variance.** Do not blur.
 | **A** | Known relatedness covariance matrix (\eqn{n \times n}). Population-genetics convention. | `phylo_*(..., A = A)`, `animal_*(..., A = A)`, `spatial_*` (via mesh + parameters) |
 | **Ainv** | Sparse precision matrix (inverse of A). For pedigree + tree, Ainv is sparse and structured. | `phylo_*(..., Ainv = Ainv)`, `animal_*(..., Ainv = Ainv)` |
 | **pedigree** | Three-column data frame (`id`, `sire`, `dam`); converted to A internally via [pedigree_to_A()]. | `animal_*(..., pedigree = ped)` (only animal family) |
-| **V** | **Sampling variance** — the known measurement-error variance in **meta-analysis**. Reserved for `meta_known_V(value, V = vi_or_V)`. | `meta_known_V(value, V = V)` |
+| **V** | **Sampling variance** — the known measurement-error variance in **meta-analysis**. Reserved for `meta_V(value, V = vi_or_V)`. | `meta_V(value, V = V)` (`meta_known_V()` is a deprecated alias) |
 
 The boundary matters because population geneticists, comparative
 biologists, and meta-analysts use overlapping but distinct

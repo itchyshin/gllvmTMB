@@ -39,8 +39,9 @@ discipline, adapted for the multi-trait stacked grammar):
    adapted to the trait-stacked grammar. **Status: `claimed`**.
 5. **`latent + unique` paired decomposition** producing
    $\Sigma = \Lambda\Lambda^\top + \Psi$. **Status: `claimed`**.
-6. **`indep(0 + trait | g)` compound-symmetric** trait
-   covariance. **Status: `claimed`**.
+6. **`indep(0 + trait | g)` marginal / independent** trait
+   covariance, equivalent to standalone `unique()` and always
+   used alone. **Status: `claimed`**.
 7. **`dep(0 + trait | g)` unstructured** trait covariance.
    **Status: `claimed`**.
 8. **Phylogenetic random effects** (`phylo_*` keywords) via
@@ -70,11 +71,11 @@ adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-rel
 | Ordinary RE | `(1 \| g)` | Standard random intercept by `g`; not multi-trait-aware |
 | 4 × 5 grid: scalar | (omit / `animal_scalar` / `phylo_scalar` / `spatial_scalar`) | Single scalar covariance source for all traits |
 | 4 × 5 grid: `unique` | `unique() / animal_unique() / phylo_unique() / spatial_unique()` | Per-trait variance ($\Psi$) on grouping factor |
-| 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Compound-symmetric trait covariance |
+| 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal |
 | 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
 | 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
 | Random slope | `phylo_slope(x \| g) / animal_slope(x \| g)` | Per-group random regression slope on covariate `x`; slopes correlated by A |
-| `meta_known_V` | `meta_known_V(value, V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. |
+| `meta_V` | `meta_V(value, V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
 
 ## Reduced-rank reparameterisation (`latent(...)`)
 
@@ -163,18 +164,22 @@ This is the **headline decomposition** named in
 `docs/design/00-vision.md`. See `01-formula-grammar.md` for the
 pairing rule's full mechanics.
 
-## Compound-symmetric `indep(...)` and unstructured `dep(...)`
+## Marginal-only `indep(...)` and unstructured `dep(...)`
 
-**`indep(0 + trait | g)`** estimates a single trait-by-trait
-correlation $\rho$ shared across all off-diagonal pairs:
+**`indep(0 + trait | g)`** is the explicit marginal-only fit:
+each trait gets its own variance and cross-trait covariance is
+fixed at zero. It is equivalent to standalone `unique(0 + trait |
+g)` and exists so users can say, unambiguously, "fit the diagonal
+model rather than the `latent + unique` decomposition":
 
 $$
-\boldsymbol\Sigma_\text{indep} = \sigma^2 [(1 - \rho) I_T + \rho \mathbf{1}\mathbf{1}^\top]
+\boldsymbol\Sigma_\text{indep} =
+\text{diag}(\psi_1^2, \ldots, \psi_T^2).
 $$
 
-Two free parameters: $\sigma^2$ (log scale) and $\rho$ (atanh
-scale with guarded $0.99999999 \cdot \tanh$ to ensure positive
-definiteness).
+One variance parameter per trait. It cannot be paired with
+`latent()` or `unique()` on the same grouping factor because it
+already chooses the diagonal-only model.
 
 **`dep(0 + trait | g)`** estimates the full $T \times T$
 unstructured trait covariance via Cholesky factorisation:
@@ -188,8 +193,8 @@ diagonal. $T(T+1)/2$ free parameters.
 
 **Use case distinction**:
 - `unique` alone → trait-independent (no off-diagonal).
-- `indep` → all trait pairs share one correlation; useful when
-  there's no prior reason for asymmetric structure.
+- `indep` → explicit alias for the same marginal-only model; useful
+  when the reader should see that the diagonal model is intentional.
 - `dep` → estimate every entry; statistically expensive but
   most flexible.
 - `latent + unique` → reduced-rank shared structure +

@@ -7,7 +7,8 @@
   and **`Ainv =`** as byte-equivalent aliases for **`vcv =`**.
   Aligns phylo_* with the M2.8 `animal_*` family's A-vs-V naming
   convention (A for relatedness, V for sampling variance —
-  reserved for `meta_known_V()`). The legacy `vcv =` continues to
+  reserved for `meta_V()`, with `meta_known_V()` retained as a
+  deprecated alias). The legacy `vcv =` continues to
   work unchanged through v0.3.0. Supplying both `vcv` and `A`
   (or both `vcv` and `Ainv`) errors with a typed message.
 
@@ -32,9 +33,10 @@
 
 **A vs V naming boundary.** The new `animal_*` family uses **A**
 / **Ainv** / **pedigree** for relatedness inputs. The separate
-`meta_known_V()` keyword uses **V** for *sampling variance* in
-meta-analysis. Existing `phylo_*(vcv = ...)` keeps working
-through v0.3.0; `A =` / `Ainv =` aliases shipped 2026-05-17 (M2.8b).
+`meta_V()` keyword uses **V** for *sampling variance* in
+meta-analysis; `meta_known_V()` is the deprecated alias. Existing
+`phylo_*(vcv = ...)` keeps working through v0.3.0; `A =` /
+`Ainv =` aliases shipped 2026-05-17 (M2.8b).
 
 ## New exports (Phase 1b validation milestone)
 
@@ -217,16 +219,18 @@ phylogenetic signal, or spatial structure.
     Species-axis `phylo_scalar()` / `phylo_unique()` /
     `phylo_latent()` calls and ordinary `(1 | group)` random
     intercepts pass through unchanged.
-  * `gllvmTMB_wide(Y, ...)` is the matrix-in entry point for
-    matrix-first workflows and the only path that accepts per-cell
-    weight matrices.
+  * `gllvmTMB_wide(Y, ...)` remains exported as a soft-deprecated
+    matrix-in wrapper for migration and the current per-cell
+    weight-matrix path. New examples should use the `traits(...)`
+    formula LHS.
 
-* The covariance grammar is a 3 x 5 keyword grid (correlation x
-  mode):
+* The covariance grammar is a 4 x 5 keyword grid (correlation source
+  x mode):
 
   | correlation \ mode | scalar | unique | indep | dep | latent |
   |---|---|---|---|---|---|
   | none    | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
+  | animal  | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
   | phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
   | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 

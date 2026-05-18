@@ -109,9 +109,9 @@ The audit-1 ≥ 94% empirical coverage gate (Phase 0C deliverable
 0C.1–0C.2) is the formal Tier-2 exit criterion for the Phase
 1b validation milestone closure.
 
-## Per-keyword required tests (the 3 × 5 grid)
+## Per-keyword required tests (the 4 × 5 grid)
 
-Every cell of the 3 × 5 grid + ordinary RE + `meta_V()` gets
+Every cell of the 4 × 5 grid + ordinary RE + `meta_V()` gets
 its own simulation-recovery test. The minimum contract per
 keyword:
 
@@ -378,7 +378,7 @@ names.
   matched against an independent calculation (the
   comparator-test discipline).
 - `docs/design/04-random-effects.md` — every keyword in the
-  3 × 5 grid gets a recovery test; M1.5 coverage study at
+  4 × 5 grid gets a recovery test; M1.5 coverage study at
   $s \in \{0, 1\}$.
 - `docs/design/06-extractors-contract.md` (forthcoming) — every
   `extract_*()` gets a per-family + per-keyword test.
@@ -445,7 +445,7 @@ step 7). As `claimed` rows promote to `covered`:
 
 drmTMB's `tests/testthat/` has 39 test files at v0.1.1 because
 they cover fewer families and a narrower keyword grid; ours
-will exceed that as the 3 × 5 keyword grid × 15+ families
+will exceed that as the 4 × 5 keyword grid × 15+ families
 matrix fills in. The discipline is the same: each test
 asserts a specific value; each new feature ships with a test;
 each ` claimed → covered` promotion is backed by a test-file

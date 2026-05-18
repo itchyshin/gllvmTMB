@@ -1,11 +1,13 @@
 # Data Shape And Weights Contract
 
-This document specifies the contract for the two public data shapes
-and the three engine entry paths into `gllvmTMB`: `gllvmTMB()`
-(long-format, canonical), `traits(...)` (wide data-frame formula
-shorthand inside a `gllvmTMB()` call), and `gllvmTMB_wide()` (wide
-matrix/data-frame wrapper). It is the design input for `ROADMAP.md`
-Phase 3 -- "Unify Data Shapes and Weights" -- and is paired with
+This document specifies the contract for the two taught public data
+shapes and the legacy matrix wrapper. New prose should teach
+`gllvmTMB()` for long-format data and `gllvmTMB(traits(...) ~ ...,
+data = df_wide)` for wide data frames. The older
+`gllvmTMB_wide()` matrix/data-frame wrapper remains exported as a
+soft-deprecated migration path and as the current matrix-weight
+bridge. It is the design input for `ROADMAP.md` Phase 3 -- "Unify
+Data Shapes and Weights" -- and is paired with
 `docs/design/11-task-allocation.md` Phase 3.
 
 ## Status
@@ -28,10 +30,13 @@ trait. The user shouldn't have to long-pivot by hand and write
 before they can fit a multivariate GLLVM. (`brms` solves the
 analogous problem via `mvbind()`; `metafor` via
 `rma.mv(yi ~ ..., V = V)`; the `gllvm` package takes a
-wide-format matrix.) The two `gllvmTMB` entry points -- long
-format (`gllvmTMB(value ~ ..., data = df_long)`) and wide format
-(`gllvmTMB_wide(Y, ...)` accepting matrix or wide data frame) --
-should feel like two views of one model.
+wide-format matrix.) The two taught `gllvmTMB` data shapes -- long
+format (`gllvmTMB(value ~ ..., data = df_long)`) and wide
+data-frame formula format (`gllvmTMB(traits(...) ~ ..., data =
+df_wide)`) -- should feel like two views of one model. The legacy
+matrix wrapper `gllvmTMB_wide(Y, ...)` continues to route through
+the same engine, but it is not the first path new examples should
+present.
 
 The user picks the shape that matches their mental model -- long
 tibble (`(unit, trait)` per row) or wide matrix / data frame
@@ -49,7 +54,8 @@ Concretely:
 
 - `gllvmTMB()` is canonical and never special-cases wide input.
 - `gllvmTMB_wide(Y, X, ...)` pivots `Y` to long and dispatches to
-  `gllvmTMB()`.
+  `gllvmTMB()`; this is the soft-deprecated legacy wrapper, not
+  the preferred teaching surface.
 - `gllvmTMB(traits(t1, t2, ...) ~ rhs, data = wide_df, ...)`
   pivots `wide_df[, traits]` to long, expands compact wide RHS syntax
   to the long trait-stacked grammar, and dispatches to the long-format
@@ -59,9 +65,9 @@ Concretely:
   case to the long-format representation before the engine starts
   building the model matrix.
 
-## The Three Engine Paths
+## The Public Shapes And Legacy Wrapper
 
-| Property | `gllvmTMB()` (long) | `gllvmTMB_wide()` (wide matrix) | `gllvmTMB(traits(...) ~ rhs, data = wide_df)` (wide data frame) |
+| Property | `gllvmTMB()` (long) | `gllvmTMB_wide()` (legacy wide matrix) | `gllvmTMB(traits(...) ~ rhs, data = wide_df)` (wide data frame) |
 |---|---|---|---|
 | Response shape | one column of `data`, length `n_obs` | matrix `Y` with `dim(Y) = c(n_units, n_traits)` | wide data frame with one column per trait |
 | Identifier columns | `unit`, `trait`, `unit_obs`, `cluster` named in `data` | `unit` = rownames(Y); `trait` = colnames(Y); `unit_obs`, `cluster` optional via `...` to `gllvmTMB()` | `unit` named explicitly; `trait` synthesised from `traits()` call; `unit_obs`, `cluster` named explicitly |
@@ -93,8 +99,9 @@ calls:
 
 What does NOT need to match:
 
-- The user-visible call signature (long vs wide -- that is the
-  point of having two entry points).
+- The user-visible call signature (long, wide data-frame formula,
+  or legacy matrix wrapper -- that is the point of having multiple
+  surfaces over one engine).
 - The internal data frame's row order, provided the response,
   predictor, and weight vectors are aligned to the same
   permutation. The byte-identical contract is at the engine input

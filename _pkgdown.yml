@@ -70,7 +70,7 @@ reference:
     - simulate_site_trait
 
   - title: Covariance keywords
-    desc: The 3 x 5 keyword grid (correlation x mode)
+    desc: The 4 x 5 keyword grid (correlation source x mode)
     contents:
     - latent
     - unique

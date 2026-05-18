@@ -52,8 +52,9 @@ The animal-model side of this discussion uses **A** = pedigree-
 derived additive relatedness matrix. ASReml shares the same
 convention (its `nrm` / "numerator relationship matrix" is our
 **A**). In what follows, **A** always means relatedness; **V**
-in our codebase is reserved for `meta_known_V()` (meta-analytic
-sampling variance). ASReml uses **V** for the marginal
+in our codebase is reserved for `meta_V()` (meta-analytic
+sampling variance; `meta_known_V()` is the deprecated alias).
+ASReml uses **V** for the marginal
 phenotypic covariance ($V = ZGZ^{\!\top} + R$). When citing
 ASReml literature in M3+, be careful not to import their **V**
 notation into gllvmTMB prose without translation.

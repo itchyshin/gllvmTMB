@@ -25,7 +25,7 @@ A symmetric positive-definite \verb{n x n} matrix.
 }
 \description{
 Constructs a block-diagonal \verb{n x n} matrix V suitable for the
-\code{\link[=meta_known_V]{meta_known_V()}} / \code{equalto()} covstruct in \code{\link[=gllvmTMB]{gllvmTMB()}}, where
+\code{\link[=meta_V]{meta_V()}} / \code{equalto()} covstruct in \code{\link[=gllvmTMB]{gllvmTMB()}}, where
 rows belonging to the same \code{study_id} are correlated and rows
 from different studies are independent. Each block is a compound-
 symmetric covariance matrix
@@ -52,6 +52,6 @@ V <- block_V(df$study, df$var, rho_within = 0.5)
 round(V, 3)
 }
 \seealso{
-\code{\link[=meta_known_V]{meta_known_V()}} for the canonical keyword that consumes
+\code{\link[=meta_V]{meta_V()}} for the canonical keyword that consumes
 the matrix produced here.
 }

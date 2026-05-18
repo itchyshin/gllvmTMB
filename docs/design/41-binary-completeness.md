@@ -50,7 +50,7 @@ validated machinery per the M2.5 rewrite contract.
   (Gamma, Beta, Tweedie, delta / hurdle, nbinom1, betabinomial,
   truncated) stay `partial` until post-CRAN family-by-family
   validation.
-- **M2 does not add new keywords.** The 3 × 5 covariance keyword
+- **M2 does not add new keywords.** The 4 × 5 covariance keyword
   grid stays as-is. Random slopes (`(1 + x | g)`) and
   latent × observed interaction stay deferred to Phase 1c-slope
   and post-CRAN.

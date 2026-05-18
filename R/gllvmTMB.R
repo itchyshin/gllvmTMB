@@ -5,13 +5,14 @@
 #' behavioural-syndromes / phylogenetic / systematic-mapping reduced-rank
 #' models). Long-format input with one row per (unit, trait)
 #' observation; glmmTMB-style formula syntax for fixed effects, plus
-#' a 3 x 5 grid of covariance-structure keywords organised by
-#' \emph{correlation} (none / phylo / spatial) and \emph{mode}
+#' a 4 x 5 grid of covariance-structure keywords organised by
+#' \emph{correlation source} (none / animal / phylo / spatial) and \emph{mode}
 #' (scalar / unique / indep / dep / latent):
 #'
 #' \tabular{llllll}{
-#'   \strong{correlation \\ mode} \tab \strong{scalar} \tab \strong{unique} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
+#'   \strong{source \\ mode} \tab \strong{scalar} \tab \strong{unique} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
 #'   \emph{none}    \tab (omit)             \tab [unique()]         \tab [indep()]         \tab [dep()]         \tab [latent()]         \cr
+#'   \emph{animal}  \tab [animal_scalar()]  \tab [animal_unique()]  \tab [animal_indep()]  \tab [animal_dep()]  \tab [animal_latent()]  \cr
 #'   \emph{phylo}   \tab [phylo_scalar()]   \tab [phylo_unique()]   \tab [phylo_indep()]   \tab [phylo_dep()]   \tab [phylo_latent()]   \cr
 #'   \emph{spatial} \tab [spatial_scalar()] \tab [spatial_unique()] \tab [spatial_indep()] \tab [spatial_dep()] \tab [spatial_latent()] \cr
 #' }
@@ -29,16 +30,17 @@
 #' * `dep` (alone) — the **full unstructured** mode: \eqn{\boldsymbol\Sigma}
 #'   is free with \eqn{T(T+1)/2} parameters via a Cholesky factor.
 #'
-#' Plus the supporting [phylo_slope()] (random slope), [meta_known_V()]
-#' (known-V meta-analytic), and the engine-internal `propto()` /
+#' Plus the supporting [phylo_slope()] / [animal_slope()] (random
+#' slopes), [meta_V()] (known-V meta-analytic; [meta_known_V()] is a
+#' deprecated alias), and the engine-internal `propto()` /
 #' `equalto()` covstructs (used by the canonical keywords above; not
 #' typically called directly). See `vignette("api-keyword-grid")` for a
 #' one-paragraph tour of each cell.
 #'
 #' @param formula A glmmTMB-style formula, e.g.
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
-#'   Fixed effects and any of the 3 x 5 keyword-grid covstructs above are
-#'   supported (plus [phylo_slope()] and [meta_known_V()]).
+#'   Fixed effects and any of the 4 x 5 keyword-grid covstructs above are
+#'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
 #' @param data A long-format data frame with one row per (unit, trait)
 #'   observation. Must include the response (LHS of `formula`),
 #'   the columns named in `unit`, `unit_obs`, `cluster`, `trait`, and any

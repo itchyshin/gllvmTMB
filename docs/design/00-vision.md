@@ -342,14 +342,14 @@ These are forward-looking design intents captured here so the
 architecture stays open to them. **Not implemented yet; not on
 the CRAN-blocking critical path.**
 
-- **`weights` argument** (separate from `meta_known_V()`). A
+- **`weights` argument** (separate from `meta_V()`). A
   per-row `weights = w` argument matching the `glmmTMB` convention.
   Weights multiply observation log-likelihood contributions.
-  Distinct from `meta_known_V(V = V)` which supplies known sampling
+  Distinct from `meta_V(value, V = V)` which supplies known sampling
   covariance. Some applied use cases need ordinary weighted
   likelihoods without a meta-analytic framing (e.g. survey weights,
   inverse-probability weights). The two arguments must coexist
-  cleanly: `meta_known_V()` rejects non-unit `weights` until a
+  cleanly: `meta_V()` rejects non-unit `weights` until a
   joint-block weighting design is documented (mirroring drmTMB's
   Phase 2b discipline).
 - **`meta_V(scale = "proportional")` mode** — current `meta_V(value, V = V)`

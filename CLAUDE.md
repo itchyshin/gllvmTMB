@@ -26,18 +26,19 @@ does NOT do" section), see
 
 ## Syntax Rules to Preserve
 
-- Use the canonical 3 x 5 keyword grid (correlation x mode):
+- Use the canonical 4 x 5 keyword grid (correlation x mode):
   `latent`, `unique`, `indep`, `dep`, `scalar`, with `phylo_*` and
-  `spatial_*` variants.
+  `spatial_*` variants plus the `animal_*` known-pedigree row.
 - The decomposition mode is the `latent + unique` pair:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi; see `decisions.md` 2026-05-14 notation reversal).
 - `phylo_latent + phylo_unique` is the canonical phylogenetic
   decomposition; the standalone `phylo_unique` carries
   intra-phylogeny diagonal-only structure.
-- `meta_known_V(V = V)` is the meta-analytic known-sampling-covariance
-  keyword. `block_V(study, sampling_var, rho_within)` is the helper
-  that builds V.
+- `meta_V(value, V = V)` is the canonical meta-analytic
+  known-sampling-covariance keyword. `meta_known_V(value, V = V)` is
+  a deprecated alias. `block_V(study, sampling_var, rho_within)` is
+  the helper that builds V.
 - Wide data-frame input uses the simplified `traits(...)` LHS grammar:
   `traits(t1, t2, ...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`.
   The same shorthand covers `indep()`, `dep()`, and `spatial_*()`;
@@ -45,7 +46,8 @@ does NOT do" section), see
   Long-format `gllvmTMB()` uses the explicit `0 + trait` /
   `(0 + trait):x` grammar. Both shapes go through one entry point:
   `gllvmTMB()`. The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` is
-  soft-deprecated as of 0.2.0 -- new code should use the formula API.
+  soft-deprecated as of 0.2.0 -- new code should use the formula API,
+  and removal must not be claimed while the export remains live.
 
 ## Before Finishing Work
 

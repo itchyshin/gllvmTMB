@@ -12,6 +12,7 @@ gllvmTMBcontrol(
   optimizer = c("nlminb", "optim"),
   optArgs = list(),
   init_jitter = 0.3,
+  init_strategy = c("default", "single_trait_warmup"),
   verbose = FALSE,
   ...
 )
@@ -41,6 +42,17 @@ latter together with \code{optArgs} for finicky two-level rr fits.}
 \item{init_jitter}{Standard deviation of N(0, σ) jitter applied to
 the starting parameter vector across the \code{n_init} restarts.
 Default 0.3.}
+
+\item{init_strategy}{One of \code{"default"} (current behaviour) or
+\code{"single_trait_warmup"}. The warmup option (Design 48 Mitigation A
+for M3.4 boundary regimes) fits an intercept-only univariate GLM
+per trait — with that trait's family — and seeds the matching
+\verb{log_phi_*} entries before \code{MakeADFun()}. Recommended for count
+families (especially \code{nbinom2}) where the default initialisation
+can leave the optimiser walking the
+\eqn{(\psi_t, \phi_t)} trade-off ridge. No effect for traits whose
+family doesn't carry a \code{phi} parameter (Gaussian, Poisson, binomial).
+Default \code{"default"}.}
 
 \item{verbose}{If \code{TRUE}, prints a one-line summary per restart so
 the user can see which seed led to the winning fit. Default

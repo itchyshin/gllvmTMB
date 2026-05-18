@@ -240,3 +240,91 @@ Expected: identical to TMB tolerance (~1e-10).
 5. **N5** — After-task report + commit + push
 6. **N6** — Follow-on PR: auto-routing parser change for
    `animal_*(pedigree=ped)` → sparse Ainv. **NOT this PR.**
+
+## 10. Follow-on PR (shipped 2026-05-18)
+
+**Lead**: Boole (parser) + Gauss (engine) + Curie (tests).
+**Reviewers**: Pat (user-visible behaviour), Rose (scope honesty
++ docs), Ada (coordinator).
+**Branch**: `agent/sparse-pedigree-ainv-engine`.
+**Status**: shipped (this PR).
+
+### What this follow-on changed
+
+The building-block PR (#179) shipped `pedigree_to_Ainv_sparse()`
+and validated it in isolation. **The brms-sugar resolver still
+fed `animal_*(pedigree = ped)` through the dense
+`pedigree_to_A()` path**, so end-users wanting sparse Ainv had
+to invoke the helper manually and pass `Ainv = .` themselves.
+
+This follow-on closes that gap:
+
+1. **`R/brms-sugar.R` `.animal_resolve_vcv_call`** — the
+   `pedigree =` branch now emits `pedigree_to_Ainv_sparse(ped)`
+   instead of `pedigree_to_A(ped)`. The `Ainv =` branch routes
+   through a new internal helper
+   `.gllvmTMB_maybe_keep_sparse_ainv()` that passes sparse Ainv
+   unchanged and inverts dense Ainv to dense A (preserves M2.8b
+   `Ainv =` API for callers who pass a dense Ainv).
+2. **`R/animal-keyword.R`** — adds
+   `.gllvmTMB_maybe_keep_sparse_ainv()` helper. Also patches
+   `pedigree_to_Ainv_sparse()` to mirror rownames into colnames
+   on the returned `dgCMatrix` (MCMCglmm leaves colnames `NULL`,
+   which broke `Ainv[levs, levs]` subset by character in the
+   engine path).
+3. **`R/fit-multi.R`** — three changes:
+   - The Phase L harvester (line ~990) now accepts sparse
+     input for the in-keyword `vcv =` argument, not just dense
+     matrix.
+   - The phylo VCV preparation block (line ~1048) adds a third
+     path: when `phylo_vcv` is `sparseMatrix`, it IS the
+     pre-computed Ainv — use it directly as `Ainv_phy_rr`,
+     mirroring the `phylo_tree → MCMCglmm::inverseA` path at
+     line ~1037.
+   - The `propto` block (line ~1092) adds a sparse branch:
+     when `phylo_vcv` is sparse, treat it as Ainv directly,
+     densifying into `Cphy_inv` for the dense propto engine
+     path (animal_scalar → propto). The speed gain here is in
+     *construction* (sparse Henderson rules) — runtime matvecs
+     in the propto path remain dense.
+4. **`tests/testthat/test-pedigree-sparse-ainv-engine.R`** (NEW,
+   8 tests):
+   - `fit$phylo_vcv` is a `sparseMatrix` when `pedigree =` is
+     used (proves the new path is hit, not just the legacy
+     dense one)
+   - `fit$phylo_vcv` is dense when `A =` is used (legacy path
+     preserved)
+   - sparse Ainv and dense A inputs give byte-equivalent fits
+     for both `animal_scalar` (propto path) and `animal_unique`
+     (phylo_rr path)
+   - bad sparse Ainv (no rownames) errors with a clear message
+
+### Verification
+
+- All 8 new engine-path tests pass.
+- All 5 ANI-01..05 byte-equivalence tests in
+  `test-animal-keyword.R` still pass (proves no regression on
+  the `pedigree =` → engine pipeline now that it routes
+  through sparse).
+- Full pedigree/animal/phylo test suite green (122 PASS, 0 FAIL,
+  1 unrelated nadiv skip).
+
+### Resolved open questions
+
+- **Q-Gauss-1** (log_det_A computation): we use the generic
+  `Matrix::determinant(Ainv, logarithm = TRUE)` path for sparse
+  input. MCMCglmm's `dii` shortcut isn't preserved as an
+  attribute on the sparse Ainv returned by
+  `pedigree_to_Ainv_sparse()`, so the generic determinant is
+  the one consistent code path. Numerical agreement at
+  `tolerance = 1e-6` is empirically demonstrated by the
+  byte-equivalence tests.
+- **Q-Boole-1** (export): `pedigree_to_Ainv_sparse()` was
+  exported in PR #179. **Kept exported** — useful for users who
+  want to inspect Ainv structure, cache it for repeated fits,
+  or time the conversion separately.
+- **Q-Curie-1** (tolerance): `1e-6` for `logLik` agreement is
+  the project's M2.8 byte-equivalence convention; preserved.
+- **Q-Ada-1** (register status): **`covered`** as of this
+  follow-on — `animal_*(pedigree = ped)` now auto-routes
+  through the sparse path with no manual user step required.

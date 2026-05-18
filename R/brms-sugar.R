@@ -1687,14 +1687,24 @@ rewrite_canonical_aliases <- function(formula) {
     }
     if ("pedigree" %in% nm) {
       ped_expr <- e[[which(nm == "pedigree")]]
-      return(bquote(pedigree_to_A(.(ped_expr))))
+      ## Design 47 follow-on (2026-05-18): route pedigree through
+      ## the sparse A^{-1} engine path. `pedigree_to_Ainv_sparse()`
+      ## returns a sparse dgCMatrix; the phylo VCV preparation
+      ## block in `R/fit-multi.R` detects sparse input and uses it
+      ## directly as Ainv_phy_rr (mirroring the phylo_tree route at
+      ## `R/fit-multi.R:1037`).
+      return(bquote(pedigree_to_Ainv_sparse(.(ped_expr))))
     }
     if ("A" %in% nm) {
       return(e[[which(nm == "A")]])
     }
     if ("Ainv" %in% nm) {
       Ainv_expr <- e[[which(nm == "Ainv")]]
-      return(bquote(solve(as.matrix(.(Ainv_expr)))))
+      ## If user passes a sparse Ainv directly, pass it through
+      ## unchanged so fit-multi.R's sparse-Ainv path detects it.
+      ## Dense Ainv inputs are inverted to dense A for the legacy
+      ## dense path (preserves backward compatibility).
+      return(bquote(.gllvmTMB_maybe_keep_sparse_ainv(.(Ainv_expr))))
     }
     if (fn == "animal_slope") return(NULL)
     cli::cli_abort(c(

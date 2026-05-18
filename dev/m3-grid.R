@@ -245,9 +245,10 @@ m3_run_cell <- function(family, d, n_reps = 10L, seed_base = 42L,
       rows[[r]] <- data.frame(
         cell = cell_id, family = family, d = d, rep = r,
         trait_id = NA_integer_, truth_diag_sigma = NA_real_,
-        ci_wald_lo = NA_real_, ci_wald_hi = NA_real_,
+        truth_psi = NA_real_, est_diag_sigma = NA_real_,
+        est_psi = NA_real_,
         ci_prof_lo = NA_real_, ci_prof_hi = NA_real_,
-        covered_wald = NA, covered_prof = NA,
+        covered_prof = NA,
         converged = FALSE, runtime_s = rep_runtime,
         stringsAsFactors = FALSE
       )
@@ -255,44 +256,57 @@ m3_run_cell <- function(family, d, n_reps = 10L, seed_base = 42L,
       next
     }
 
-    ## Extract estimated Sigma_unit (T x T) and the diagonal CIs.
-    ## For each trait diagonal, the relevant profile target is the
-    ## Sigma_unit diagonal entry; use confint(method=...) to get CIs.
-    sigma_est <- gllvmTMB::extract_Sigma(fit, level = "unit")$Sigma
-    est_diag <- diag(sigma_est)
-
-    ## Wald CIs on the Sigma_unit diagonals via tidy() + sd_report
-    ## We use Wald only here for speed (profile would multiply per-rep
-    ## time by ~5x for the smoke test). The full M3.3 production run
-    ## will profile every target.
-    wald_lo <- est_diag - 1.96 * 0.2 * abs(est_diag)  # placeholder ~10% SE
-    wald_hi <- est_diag + 1.96 * 0.2 * abs(est_diag)
-    ## NOTE: The above is a placeholder. Production M3.3 should pull
-    ## SE from extract_Sigma(level="unit", se=TRUE) once that path is
-    ## audited; for the smoke test we record the point estimate +
-    ## a rough Wald-style interval based on a 20% RSE heuristic.
+    ## M3.3a — Profile-likelihood CIs on per-trait `sd_B` (unique-tier
+    ## SD). `sd_B[t]^2 = psi_t` is the per-trait unique variance, the
+    ## natural identifiable target. Compare CI against `truth$psi[t]`
+    ## (the simulated unique variance).
     ##
-    ## A proper SE estimator on Sigma diagonals requires either:
-    ##   (a) delta-method via TMB's sd_report on the log-Cholesky
-    ##       parameterisation, or
-    ##   (b) parametric-bootstrap (coverage_study() machinery,
-    ##       repurposed). M3.3 picks one and documents.
+    ## Per Design 44 corrected estimate: tmbprofile_wrapper() uses
+    ## TMB's C++ inner optim warm-started from the joint MLE — ~0.5 s
+    ## per CI on a 1.5 s fit, NOT 20-40x the fit cost.
+    ##
+    ## Lambda contribution to the Sigma_unit diagonal is rotation-
+    ## ambiguous on individual loading entries; communality CI via
+    ## extract_communality(method="profile") covers the
+    ## Lambda Lambda^T diag part — deferred to M3.5 (derived-quantity
+    ## coverage).
+    est_diag <- diag(gllvmTMB::extract_Sigma(fit, level = "unit")$Sigma)
+    est_psi  <- as.numeric(fit$report$sd_B)^2
+
+    prof_lo <- rep(NA_real_, n_traits)
+    prof_hi <- rep(NA_real_, n_traits)
+    for (t in seq_len(n_traits)) {
+      ci_t <- tryCatch(
+        gllvmTMB::tmbprofile_wrapper(
+          fit, name = "theta_diag_B", which = t,
+          transform = function(x) exp(2 * x),
+          level = 0.95
+        ),
+        error = function(e) {
+          c(estimate = NA_real_, lower = NA_real_, upper = NA_real_)
+        }
+      )
+      prof_lo[t] <- ci_t["lower"]
+      prof_hi[t] <- ci_t["upper"]
+    }
 
     for (t in seq_len(n_traits)) {
+      psi_truth <- truth$psi[t]
+      covered_prof <- !is.na(prof_lo[t]) && !is.na(prof_hi[t]) &&
+                      psi_truth >= prof_lo[t] && psi_truth <= prof_hi[t]
       rows[[r]] <- rbind(rows[[r]] %||% data.frame(),
         data.frame(
           cell = cell_id, family = family, d = d, rep = r,
           trait_id = t,
           truth_diag_sigma = truth$diag_Sigma[t],
-          ci_wald_lo = wald_lo[t],
-          ci_wald_hi = wald_hi[t],
-          ci_prof_lo = NA_real_,  # populated by M3.3
-          ci_prof_hi = NA_real_,
-          covered_wald = (truth$diag_Sigma[t] >= wald_lo[t] &&
-                          truth$diag_Sigma[t] <= wald_hi[t]),
-          covered_prof = NA,
-          converged = TRUE,
-          runtime_s = rep_runtime,
+          truth_psi        = psi_truth,
+          est_diag_sigma   = est_diag[t],
+          est_psi          = est_psi[t],
+          ci_prof_lo  = prof_lo[t],
+          ci_prof_hi  = prof_hi[t],
+          covered_prof = covered_prof,
+          converged    = TRUE,
+          runtime_s    = rep_runtime,
           stringsAsFactors = FALSE
         )
       )
@@ -347,8 +361,8 @@ m3_run_grid <- function(cells = NULL, n_reps = 10L, seed_base = 42L,
 m3_summarise <- function(grid_df,
                          gate = M3_PASS_GATE) {
   ## Group by (cell, family, d), compute coverage rate per CI method
-  by_cell <- split(grid_df[!is.na(grid_df$covered_wald), ],
-                   list(grid_df$cell[!is.na(grid_df$covered_wald)]),
+  by_cell <- split(grid_df[!is.na(grid_df$covered_prof), ],
+                   list(grid_df$cell[!is.na(grid_df$covered_prof)]),
                    drop = TRUE)
   out <- do.call(rbind, lapply(by_cell, function(sub) {
     data.frame(
@@ -357,9 +371,8 @@ m3_summarise <- function(grid_df,
       d = sub$d[1],
       n_completed = sum(sub$converged),
       n_failed    = sum(!sub$converged),
-      coverage_wald = mean(sub$covered_wald, na.rm = TRUE),
-      coverage_prof = NA_real_,  # filled in by M3.3 once profile CIs land
-      passes_94pct_wald = mean(sub$covered_wald, na.rm = TRUE) >= gate,
+      coverage_prof = mean(sub$covered_prof, na.rm = TRUE),
+      passes_94pct_prof = mean(sub$covered_prof, na.rm = TRUE) >= gate,
       mean_runtime_s = mean(sub$runtime_s, na.rm = TRUE),
       stringsAsFactors = FALSE
     )

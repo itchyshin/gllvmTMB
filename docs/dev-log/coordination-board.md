@@ -40,12 +40,15 @@ Current operating rule:
   PR #182 (M3.4 warm-start + phi-clamp) were reviewed by Codex
   and merged to `main` on 2026-05-18.
 - PR #184 (drmTMB-parity hygiene cascade) was green on three OSes
-  and merged to `main` on 2026-05-18.
+  before merge and merged to `main` on 2026-05-18. Its first
+  post-merge main run failed once, then the failed-job rerun recovered.
+- PR #186 (red-main M3.4 test hygiene) merged on 2026-05-18 to
+  stabilize the smoke-test contract exposed by that failed main run.
 - Codex now owns the Slice 1 discipline branch
   (`codex/pr-slice-contract`): PR template, contributing pointer,
   check-log entry, and after-task report only.
 - No new implementation lane should start until this Slice 1 PR is
-  green and either merged or explicitly held.
+  synced with post-#186 `main` and either merged or explicitly held.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -53,9 +56,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Slice 1 PR slice contract | `codex/pr-slice-contract` | `.github/pull_request_template.md`, `CONTRIBUTING.md`, board, check-log, after-task report | active; process-only |
+| Codex | Slice 1 PR slice contract | #185 / `codex/pr-slice-contract` | `.github/pull_request_template.md`, `CONTRIBUTING.md`, board, check-log, after-task report | active; process-only; syncing after #186 |
 
-**WIP**: one process branch, PR pending. No new implementation lane
+**WIP**: one open process PR (#185). No new implementation lane
 should start until this slice is settled.
 
 Update protocol: when you start a lane, add a row. When the lane's

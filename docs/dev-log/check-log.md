@@ -1622,6 +1622,39 @@ Post-merge sync:
   M3.4 warm-start / phi-clamp (14/14), traits keyword (44 pass,
   1 expected skip), and `brms-sugar`.
 
+## 2026-05-18 -- Red-main M3.4 smoke-test hygiene
+
+Scope:
+
+- Branch `codex/red-main-m34-test-hygiene` responds to the
+  post-merge `main` R-CMD-check failure after PR #184.
+- No package code, likelihood, formula grammar, exported API, roxygen,
+  Rd, vignette, article, or validation-debt status changed.
+
+Evidence:
+
+- Failed run: `26057303978`, attempt 1.
+- Ubuntu failed in `test-m3-4-warmstart-phi-clamp.R:113` because the
+  tiny nbinom2 warm-start smoke fixture returned optimizer convergence
+  code `1` once.
+- Windows failed before R setup at `setup-pandoc`, consistent with an
+  infrastructure/setup failure rather than package test evidence.
+- Local targeted check before edits:
+  `Rscript --vanilla -e 'devtools::test(filter = "m3-4-warmstart-phi-clamp")'`
+  passed with 14 pass, 0 fail, 0 warn.
+- Local targeted check before edits:
+  `Rscript --vanilla -e 'devtools::test(filter = "wide-weights-matrix")'`
+  passed with 25 pass, 0 fail, 7 expected-warning leaks from
+  deliberate `gllvmTMB_wide()` legacy-wrapper calls.
+
+Kaizen point:
+
+17. **Smoke tests should pin smoke-test contracts, not production-grid
+    claims.** The M3.4 nbinom2 warm-start smoke test should assert
+    finite, clamped, non-default phi seeds. Convergence-rate,
+    coverage, and power claims belong in replicated simulation
+    artifacts, not in a single CRAN-time optimizer draw.
+
 ## 2026-05-18 -- Slice 1 PR slice contract
 
 Scope:
@@ -1641,7 +1674,7 @@ Evidence:
 
 Kaizen point:
 
-17. **The PR surface is the first discipline gate.** If the team wants
+18. **The PR surface is the first discipline gate.** If the team wants
     small slices, fewer contradictions, and better handoffs, every PR
     needs to say its one-sentence goal, intentional file scope, checks
     run, checks not run, role reviewers, and next slice before review.

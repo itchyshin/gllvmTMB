@@ -83,6 +83,7 @@ reference:
     - animal_latent
     - animal_slope
     - pedigree_to_A
+    - pedigree_to_Ainv_sparse
     - phylo_scalar
     - phylo_unique
     - phylo_indep

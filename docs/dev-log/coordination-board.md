@@ -39,15 +39,16 @@ Current operating rule:
 - PR #181 (sparse pedigree A-inverse engine pass-through) and
   PR #182 (M3.4 warm-start + phi-clamp) were reviewed by Codex
   and merged to `main` on 2026-05-18.
-- PR #184 (drmTMB-parity hygiene) was merged to `main` on
-  2026-05-18, but its post-merge main R-CMD-check failed once.
-- PR #185 (`codex/pr-slice-contract`) is open as a process-only
-  follow-up.
-- Codex is also carrying an urgent red-main test-hygiene fix branch,
-  `codex/red-main-m34-test-hygiene`, to stabilize the M3.4 smoke
-  test contract exposed by the failed main run.
-- No new implementation lane should start until #185 and the red-main
-  fix are settled.
+- PR #184 (drmTMB-parity hygiene cascade) was green on three OSes
+  before merge and merged to `main` on 2026-05-18. Its first
+  post-merge main run failed once, then the failed-job rerun recovered.
+- PR #186 (red-main M3.4 test hygiene) merged on 2026-05-18 to
+  stabilize the smoke-test contract exposed by that failed main run.
+- Codex now owns the Slice 1 discipline branch
+  (`codex/pr-slice-contract`): PR template, contributing pointer,
+  check-log entry, and after-task report only.
+- No new implementation lane should start until this Slice 1 PR is
+  synced with post-#186 `main` and either merged or explicitly held.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -55,11 +56,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Slice 1 PR slice contract | #185 / `codex/pr-slice-contract` | `.github/pull_request_template.md`, `CONTRIBUTING.md`, board, check-log, after-task report | active; process-only; Windows CI pending |
-| Codex | Red-main M3.4 test hygiene | `codex/red-main-m34-test-hygiene` | `tests/testthat/test-m3-4-warmstart-phi-clamp.R`, `tests/testthat/test-wide-weights-matrix.R`, board, check-log, after-task report | active; urgent red-main fix |
+| Codex | Slice 1 PR slice contract | #185 / `codex/pr-slice-contract` | `.github/pull_request_template.md`, `CONTRIBUTING.md`, board, check-log, after-task report | active; process-only; syncing after #186 |
 
-**WIP**: one open process PR plus one urgent red-main fix branch. No
-new implementation lane should start until these are settled.
+**WIP**: one open process PR (#185). No new implementation lane
+should start until this slice is settled.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -75,7 +75,8 @@ instead of expanding this table.
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Codex + Claude | Revisit `drmTMB` workflow lessons for reader path, pkgdown shape, and slice discipline | after #184 is green and settled |
+| Codex | Slice 2 after-task template | after Slice 1 PR template lands |
+| Codex + Claude | Revisit `drmTMB` workflow lessons for reader path and pkgdown shape | after Slice 1/2 discipline surfaces are in place |
 | Codex | Next small reader-facing lane | after maintainer chooses whether this should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing |
 
 Move a row to "Active lanes" when you start it.
@@ -88,10 +89,13 @@ leave a coordination comment first and wait for acknowledgement.
 
 | File | Owner (this pass) |
 |---|---|
-| `docs/dev-log/coordination-board.md` | Codex for current hygiene lane |
-| `docs/dev-log/team-improvements.md` | Codex for current hygiene lane |
-| `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` | Codex for source-of-truth cascade; coordinate before further edits |
-| `_pkgdown.yml`, `README.md`, selected design docs | Codex for narrow wording cascade only; no article/nav rewrite in this lane |
+| `.github/pull_request_template.md` | Codex for Slice 1 |
+| `CONTRIBUTING.md` | Codex for Slice 1 pointer only |
+| `docs/dev-log/coordination-board.md` | Codex for current Slice 1 lane |
+| `docs/dev-log/check-log.md` | Codex for current Slice 1 entry |
+| `docs/dev-log/after-task/2026-05-18-pr-slice-contract.md` | Codex for current Slice 1 after-task report |
+| `CLAUDE.md`, `AGENTS.md` | no active owner in this lane; do not edit |
+| `_pkgdown.yml`, `README.md`, selected design docs | no active owner in this lane; do not edit |
 | `vignettes/articles/covariance-correlation.Rmd` | no active owner in this lane; do not edit here |
 | `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
@@ -125,6 +129,9 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-18 ~14:02 MT**: PR #184 drmTMB-parity hygiene cascade
+  merged after three-OS R-CMD-check success. Open PR count returned
+  to zero before Slice 1 (`codex/pr-slice-contract`) started.
 - **2026-05-18 ~13:00 MT**: PR #181 sparse pedigree A-inverse
   engine pass-through and PR #182 M3.4 warm-start + phi-clamp
   were reviewed by Codex and merged to `main`. Combined

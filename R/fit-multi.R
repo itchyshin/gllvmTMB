@@ -987,7 +987,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ))
         }
       }
-      if (!is.null(vcv_inkey) && is.matrix(vcv_inkey)) {
+      if (!is.null(vcv_inkey) &&
+          (is.matrix(vcv_inkey) || inherits(vcv_inkey, "sparseMatrix"))) {
+        ## Design 47 follow-on (2026-05-18): the sparseMatrix branch
+        ## carries pre-computed A^{-1} from `pedigree_to_Ainv_sparse()`
+        ## (via the animal_*(pedigree=ped) sugar) or from a user-supplied
+        ## sparse Ainv. The fit-multi.R phylo VCV preparation block
+        ## detects sparse input and uses it directly as Ainv_phy_rr.
         if (is.null(phylo_vcv)) {
           phylo_vcv <- vcv_inkey
         } else if (!identical(dim(phylo_vcv), dim(vcv_inkey))) {
@@ -1045,6 +1051,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       if (anyNA(tip_to_aug))
         cli::cli_abort("Internal: tip names not all found in inverseA(tree)$Ainv rownames.")
       species_aug_id <- tip_to_aug[species_id + 1L] - 1L  # 0-indexed for C++
+    } else if (inherits(phylo_vcv, "sparseMatrix")) {
+      ## --- Sparse Ainv direct engine path (Design 47 follow-on,
+      ## 2026-05-18) -------------------------------------------------
+      ## When `phylo_vcv` is a sparse Matrix (e.g. dgCMatrix), treat
+      ## it as the pre-computed A^{-1} and use it directly, mirroring
+      ## the `phylo_tree` route at the top of this block. Triggered
+      ## by `animal_*(id, pedigree = ped)` (via
+      ## `pedigree_to_Ainv_sparse()` in the brms-sugar resolver) and
+      ## by `animal_*(id, Ainv = sparse_Ainv)` (via
+      ## `.gllvmTMB_maybe_keep_sparse_ainv()`).
+      if (is.null(rownames(phylo_vcv)))
+        cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} must have rownames matching levels of {.var {species}}.")
+      levs <- levels(data[[species]])
+      if (!all(levs %in% rownames(phylo_vcv)))
+        cli::cli_abort("Sparse {.arg phylo_vcv}/{.arg Ainv} rownames do not cover all species levels.")
+      Ainv_phy_rr      <- phylo_vcv[levs, levs, drop = FALSE]
+      ## log_det_A = -log|det(Ainv)|; sparse Cholesky via Matrix.
+      log_det_A_phy_rr <- -as.numeric(Matrix::determinant(Ainv_phy_rr,
+                                                          logarithm = TRUE)$modulus)
+      n_aug_phy        <- nrow(Ainv_phy_rr)
+      species_aug_id   <- species_id    # tip-only sparse path: identity
     } else {
       ## --- Legacy dense path: invert tip-only Cphy and store sparse-format
       if (is.null(phylo_vcv))
@@ -1070,10 +1097,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     levs <- levels(data[[species]])
     if (!all(levs %in% rownames(phylo_vcv)))
       cli::cli_abort("phylo_vcv rownames do not cover all species levels.")
-    Cphy <- phylo_vcv[levs, levs, drop = FALSE]
-    Cphy <- Cphy + diag(1e-8, nrow = nrow(Cphy)) ## numerical jitter
-    Cphy_inv     <- solve(Cphy)
-    log_det_Cphy <- as.numeric(determinant(Cphy, logarithm = TRUE)$modulus)
+    if (inherits(phylo_vcv, "sparseMatrix")) {
+      ## Design 47 follow-on (2026-05-18): sparse `phylo_vcv` IS the
+      ## precomputed A^{-1} (from `pedigree_to_Ainv_sparse()` via the
+      ## animal_scalar sugar, or a user-supplied sparse Ainv). The
+      ## propto C++ branch uses `Cphy_inv` directly; populate it from
+      ## the sparse Ainv and recover `log_det_Cphy = log|det(A)| =
+      ## -log|det(Ainv)|`. We densify here because the propto engine
+      ## path is dense; the speed gain from `pedigree_to_Ainv_sparse`
+      ## relative to `solve(pedigree_to_A(ped))` is in *construction*
+      ## (sparse Henderson rules) rather than runtime matvecs.
+      Ainv_sub <- phylo_vcv[levs, levs, drop = FALSE]
+      Cphy_inv <- as.matrix(Ainv_sub)
+      log_det_Cphy <- -as.numeric(Matrix::determinant(Ainv_sub,
+                                                      logarithm = TRUE)$modulus)
+    } else {
+      Cphy <- phylo_vcv[levs, levs, drop = FALSE]
+      Cphy <- Cphy + diag(1e-8, nrow = nrow(Cphy)) ## numerical jitter
+      Cphy_inv     <- solve(Cphy)
+      log_det_Cphy <- as.numeric(determinant(Cphy, logarithm = TRUE)$modulus)
+    }
   }
 
   ## ---- SPDE preparation -------------------------------------------------

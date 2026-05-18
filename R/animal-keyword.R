@@ -401,6 +401,24 @@ pedigree_to_Ainv_sparse <- function(pedigree) {
   ped_std$dam[ped_std$dam %in% c("0", "")]   <- NA_character_
 
   inv <- MCMCglmm::inverseA(ped_std)
-  ## inv$Ainv is dgCMatrix; rownames inherit from the standardised pedigree.
-  inv$Ainv
+  ## inv$Ainv is dgCMatrix; rownames inherit from the standardised
+  ## pedigree but MCMCglmm leaves colnames NULL. Mirror rownames into
+  ## colnames so character-subset `Ainv[levs, levs, drop = FALSE]` in
+  ## the fit-multi.R sparse engine path works.
+  Ainv <- inv$Ainv
+  if (is.null(colnames(Ainv))) colnames(Ainv) <- rownames(Ainv)
+  Ainv
+}
+
+
+## Internal helper for the brms-sugar `Ainv =` resolver
+## (Design 47 follow-on, 2026-05-18). Sparse Ainv input is passed
+## through unchanged so the sparse-Ainv engine path in
+## `R/fit-multi.R` picks it up; dense Ainv input is inverted to
+## dense A for the legacy dense path (preserves backward
+## compatibility with the M2.8b `Ainv =` API).
+#' @keywords internal
+#' @noRd
+.gllvmTMB_maybe_keep_sparse_ainv <- function(x) {
+  if (inherits(x, "sparseMatrix")) x else solve(as.matrix(x))
 }

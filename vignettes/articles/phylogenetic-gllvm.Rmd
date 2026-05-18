@@ -387,7 +387,9 @@ diagnostics flag.
   identical — both keyword families use a known relatedness
   matrix $\mathbf{A}$ — only the source differs (pedigree via
   [`pedigree_to_A()`](../reference/pedigree_to_A.html) vs tree
-  via `ape::vcv()`). See
+  via `ape::vcv()`). The pedigree-side worked example with
+  heritability, bivariate $\mathbf{G}$, and factor-analytic
+  $\mathbf{G}$ is [animal-model](animal-model.html). See
   [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
   for the unified math and the A-vs-V naming boundary.
 

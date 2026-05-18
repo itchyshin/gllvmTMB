@@ -236,9 +236,12 @@ component split of an `animal_*()` fit.
 **G matrix (genetic covariance matrix, $\mathbf{G}$)** &mdash;
 The multi-trait analogue of $V_A$: a $T \times T$ matrix of
 additive-genetic covariances between traits. A factor-analytic
-$\mathbf{G} = \boldsymbol{\Lambda}_g \boldsymbol{\Lambda}_g^\top$
-(Kirkpatrick & Meyer 2004; Meyer 2009) is exactly what
-`animal_latent(individual, d = K, pedigree = ped)` fits.
+$\mathbf{G} = \boldsymbol{\Lambda}_g \boldsymbol{\Lambda}_g^\top
++ \boldsymbol{\Psi}$ (Kirkpatrick & Meyer 2004; Meyer 2009;
+Runcie & Mukherjee 2013) is exactly what `animal_latent(individual,
+d = K, pedigree = ped) + animal_unique(individual, pedigree = ped)`
+fits. Worked example: [Animal model: heritability and genetic
+covariance](animal-model.html).
 
 **Reaction norm / random regression** &mdash; A model where
 individuals carry a slope on an environmental gradient and those

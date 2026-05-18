@@ -1,0 +1,452 @@
+---
+title: "The animal model: heritability and genetic covariance"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{The animal model: heritability and genetic covariance}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache    = FALSE,
+  eval     = requireNamespace("MASS", quietly = TRUE),
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+This article is for an evolutionary or ecological reader with
+phenotypes measured on individuals whose genealogy is known
+(pedigree). The working question is: **how much of the phenotypic
+variance is additive genetic, and how do genetic variances and
+covariances among traits structure microevolution?**
+
+The animal model is the standard quantitative-genetic tool for that
+question (Henderson 1976; Kruuk 2004; Wilson *et al.* 2010). In
+`gllvmTMB` it is the `animal_*()` keyword family — a pedigree-
+indexed parallel to the phylogenetic `phylo_*()` family, routed
+through the same engine path (Hadfield & Nakagawa 2010).
+
+## Variance partition
+
+For a single trait measured on individual $i$, the simple animal
+model is
+
+$$
+y_i = \mu + a_i + e_i,
+$$
+
+where $a_i$ is individual $i$'s **breeding value** (additive
+genetic merit) and $e_i$ is a residual. Stacked over all $n$
+individuals:
+
+$$
+\boldsymbol y = \mu \boldsymbol 1 +
+\boldsymbol u + \boldsymbol e,
+\qquad
+\boldsymbol u \sim
+\mathrm{MVN}(\boldsymbol 0,\, \sigma^2_{\mathrm A}\, \boldsymbol A),
+\qquad
+\boldsymbol e \sim
+\mathrm{MVN}(\boldsymbol 0,\, \sigma^2_{\mathrm R}\, \boldsymbol I).
+$$
+
+Here $\boldsymbol A$ is the **additive genetic relationship matrix**
+derived from the pedigree (Henderson's recursive formula; or
+equivalently $A_{ij} = 2\theta_{ij}$ where $\theta_{ij}$ is the
+coefficient of coancestry). $\sigma^2_{\mathrm A}$ is the
+**additive genetic variance**, $\sigma^2_{\mathrm R}$ is the
+**residual variance**, and their sum is the total phenotypic
+variance $V_{\mathrm P} = V_{\mathrm A} + V_{\mathrm R}$.
+**Narrow-sense heritability** is the proportion explained by
+additive genetics:
+
+$$
+h^2 = \frac{V_{\mathrm A}}{V_{\mathrm P}}.
+$$
+
+For two or more traits, $V_{\mathrm A}$ becomes a $T \times T$
+**genetic covariance matrix** $\boldsymbol G$, and the residual a
+matrix $\boldsymbol R$. The trait-stacked model reads
+
+$$
+\mathrm{vec}(\boldsymbol u) \sim
+\mathrm{MVN}\!\bigl(\boldsymbol 0,\, \boldsymbol G \otimes \boldsymbol A\bigr),
+\qquad
+\mathrm{vec}(\boldsymbol e) \sim
+\mathrm{MVN}\!\bigl(\boldsymbol 0,\, \boldsymbol R \otimes \boldsymbol I\bigr).
+$$
+
+`gllvmTMB` estimates $\boldsymbol G$ either as a full unstructured
+matrix (`animal_dep()`), per-trait independent diagonal entries
+(`animal_unique()`), or as a reduced-rank factor-analytic
+parameterisation $\boldsymbol G \approx \boldsymbol\Lambda
+\boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
+(`animal_latent()` paired with `animal_unique()`).
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(MASS)
+```
+
+## A small pedigree fixture
+
+We construct a 4-founder, 16-offspring half-sib pedigree (20
+individuals total). Half-sib designs are the simplest informative
+pedigree because each offspring shares one parent with several
+siblings, generating the relatedness structure animal models exploit.
+
+```{r ped}
+set.seed(7)
+n_founders <- 4L
+n_offspring <- 16L
+n_ind <- n_founders + n_offspring
+
+ped <- data.frame(
+  id   = paste0("i", seq_len(n_ind)),
+  sire = c(rep(NA, n_founders),
+           rep(c("i1", "i2"), length.out = n_offspring)),
+  dam  = c(rep(NA, n_founders),
+           rep(c("i3", "i4"), length.out = n_offspring)),
+  stringsAsFactors = FALSE
+)
+head(ped)
+```
+
+`gllvmTMB::pedigree_to_A()` builds the relatedness matrix
+$\boldsymbol A$ from the pedigree using Henderson's recursive
+formula. Founders are assumed unrelated and non-inbred
+($A_{\mathrm{founder},\mathrm{founder}} = 1$).
+
+```{r A}
+A <- pedigree_to_A(ped)
+round(A[1:6, 1:6], 3)
+```
+
+Diagonal entries are 1 (founders) or $1 + F_i$ (inbred individuals;
+none here). Off-diagonals carry the additive relatedness — full
+siblings share 0.5, half-siblings 0.25, parents and offspring 0.5.
+
+## Tutorial 1: Heritability of a single trait
+
+We simulate a single trait with known $V_{\mathrm A} = 0.5$ and
+$V_{\mathrm R} = 0.5$, so true $h^2 = 0.5$.
+
+```{r sim1}
+VA_true <- 0.5
+VR_true <- 0.5
+
+u <- as.numeric(MASS::mvrnorm(1, mu = rep(0, n_ind),
+                              Sigma = VA_true * A))
+e <- rnorm(n_ind, sd = sqrt(VR_true))
+y <- u + e
+
+df1 <- data.frame(
+  id    = factor(ped$id, levels = ped$id),
+  trait = factor("body_size"),
+  value = y
+)
+```
+
+The single-trait animal model uses `animal_scalar()` for the
+additive genetic component. Because there is only one trait, the
+fixed-effect part is just an intercept (`~ 1`) rather than the
+`0 + trait` parameterisation used in the multi-trait sections
+below. The `unit` and `cluster` keys are both the individual
+identifier.
+
+```{r fit1}
+fit1 <- gllvmTMB(
+  value ~ 1 + animal_scalar(id, pedigree = ped),
+  data = df1,
+  unit = "id",
+  cluster = "id"
+)
+fit1$opt$convergence
+```
+
+Extract the variance components and heritability. `animal_scalar()`
+reports its variance σ²_a as `fit$report$lam_phy` (the
+phylogenetic-tier shared variance — recall that `animal_*` and
+`phylo_*` share the engine path, hence the `phy` naming). The
+residual variance is `sigma_eps²`.
+
+```{r h1}
+VA_hat <- as.numeric(fit1$report$lam_phy)
+VR_hat <- as.numeric(fit1$report$sigma_eps)^2
+h2 <- VA_hat / (VA_hat + VR_hat)
+data.frame(
+  param = c("V_A", "V_R", "h^2"),
+  true  = c(VA_true, VR_true, VA_true / (VA_true + VR_true)),
+  est   = signif(c(VA_hat, VR_hat, h2), 3)
+)
+```
+
+For 20 individuals the estimate is noisy — Kruuk (2004) and Wilson
+*et al.* (2010) both note that animal models on wild data typically
+need hundreds to thousands of records with informative pedigree
+links. This example is for syntax illustration, not power.
+
+## Tutorial 2: Bivariate genetic covariance
+
+We now simulate two correlated traits with $\boldsymbol G =
+\bigl(\begin{smallmatrix}0.50 & 0.30\\ 0.30 & 0.45\end{smallmatrix}\bigr)$
+and $\boldsymbol R = 0.5\,\boldsymbol I$. The true genetic
+correlation is $r_{\mathrm G} = 0.30 / \sqrt{0.50 \cdot 0.45}
+\approx 0.632$.
+
+```{r sim2}
+G_true <- matrix(c(0.50, 0.30,
+                   0.30, 0.45), 2, 2)
+R_true <- diag(c(0.50, 0.50))
+
+U <- MASS::mvrnorm(1, mu = rep(0, 2 * n_ind),
+                   Sigma = kronecker(G_true, A))
+U <- matrix(U, n_ind, 2, byrow = FALSE)
+E <- matrix(rnorm(2 * n_ind, sd = sqrt(0.5)), n_ind, 2)
+Y <- U + E
+colnames(Y) <- c("body_size", "wing_length")
+
+df2 <- data.frame(
+  id    = factor(rep(ped$id, each = 2), levels = ped$id),
+  trait = factor(rep(colnames(Y), times = n_ind),
+                 levels = colnames(Y)),
+  value = as.numeric(t(Y))
+)
+head(df2)
+```
+
+The full unstructured $\boldsymbol G$ is fit by pairing
+`animal_latent()` (the shared factor-analytic part) with
+`animal_unique()` (the trait-specific diagonal). At $d = T$, the
+paired form spans the full $T \times T$ space — equivalent to
+`animal_dep()` on a full $\boldsymbol G$.
+
+```{r fit2}
+fit2 <- gllvmTMB(
+  value ~ 0 + trait +
+    animal_latent(id, d = 1, pedigree = ped) +
+    animal_unique(id, pedigree = ped) +
+    unique(0 + trait | id),
+  data = df2,
+  unit = "id",
+  cluster = "id"
+)
+fit2$opt$convergence
+```
+
+The model has a one-factor genetic structure (`animal_latent(d = 1)`)
+plus per-trait genetic diagonal (`animal_unique`), plus a non-genetic
+trait-level residual covariance (`unique(0 + trait | id)`). The
+genetic covariance matrix $\boldsymbol G$ is rotation-invariant and
+recovered by combining the shared and diagonal parts:
+
+```{r G2}
+phy <- extract_Sigma(fit2, level = "phy")
+list(G_true  = G_true,
+     G_hat   = round(phy$Sigma, 3),
+     rG_true = round(0.30 / sqrt(0.50 * 0.45), 3),
+     rG_hat  = round(phy$R[1, 2], 3))
+```
+
+The bivariate $\boldsymbol G$ encodes both the per-trait variances
+(diagonals) and the genetic covariance (off-diagonal). The genetic
+correlation $r_{\mathrm G}$ — returned as the `$R` component of
+`extract_Sigma(fit, level = "phy")`, or independently via
+`extract_correlations(fit, tier = "phy")` if you need a CI — is the
+standardised version and is the parameter usually reported in
+evolutionary studies (Wilson *et al.* 2010, Tutorial 2).
+
+## Tutorial 3: Factor-analytic G matrix
+
+For $T \geq 3$ traits the full $\boldsymbol G$ has $T(T+1)/2$ free
+parameters, which is a lot to estimate from a noisy wild pedigree.
+**Factor-analytic** $\boldsymbol G$ matrices are the parsimonious
+alternative (Smith, Cullis & Gilmour 2001; Kirkpatrick & Meyer 2004;
+Runcie & Mukherjee 2013): approximate
+$\boldsymbol G \approx \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}
++ \boldsymbol\Psi$ where $\boldsymbol\Lambda$ is a $T \times d$
+loading matrix ($d \ll T$) and $\boldsymbol\Psi$ is diagonal. In
+`gllvmTMB` this is `animal_latent(d = K) + animal_unique()` — the
+same pairing as Tutorial 2, but with $d < T$.
+
+The biological justification (Cheverud 1996; Wagner & Altenberg 1996;
+Runcie & Mukherjee 2013) is that organisms develop through a limited
+number of **modular** pathways, so the trait covariance is expected
+to be sparse and low rank. Runcie & Mukherjee's BSFG (Bayesian
+Sparse Factor analysis of G-matrices) scales this idea to thousands
+of traits via shrinkage priors on $\boldsymbol\Lambda$. `gllvmTMB`'s
+`animal_latent()` is the frequentist (TMB Laplace) counterpart —
+faster on moderate-dim problems, applicable to mixed response
+families via the GLLVM machinery, no sparsity penalty in v0.2.0.
+
+Below we simulate three traits with a rank-1 shared genetic axis
+plus trait-specific genetic and non-genetic noise.
+
+```{r sim3}
+n_traits <- 3
+Lambda_g_true <- matrix(c(0.70, 0.50, 0.30), n_traits, 1)
+psi_g_true <- c(0.10, 0.12, 0.08)
+psi_r_true <- c(0.20, 0.18, 0.22)
+trait_names <- c("body_size", "wing_length", "tarsus")
+
+g_shared <- as.numeric(MASS::mvrnorm(1, mu = rep(0, n_ind),
+                                     Sigma = A))
+g_trait <- sapply(seq_len(n_traits), function(t) {
+  as.numeric(MASS::mvrnorm(1, mu = rep(0, n_ind),
+                           Sigma = psi_g_true[t] * A))
+})
+
+Y3 <- g_shared %*% t(Lambda_g_true) + g_trait +
+  sweep(matrix(rnorm(n_ind * n_traits), n_ind, n_traits),
+        2, sqrt(psi_r_true), "*")
+colnames(Y3) <- trait_names
+
+df3 <- data.frame(
+  id    = factor(rep(ped$id, each = n_traits), levels = ped$id),
+  trait = factor(rep(trait_names, times = n_ind),
+                 levels = trait_names),
+  value = as.numeric(t(Y3))
+)
+```
+
+```{r fit3}
+fit3 <- gllvmTMB(
+  value ~ 0 + trait +
+    animal_latent(id, d = 1, pedigree = ped) +
+    animal_unique(id, pedigree = ped) +
+    unique(0 + trait | id),
+  data = df3,
+  unit = "id",
+  cluster = "id"
+)
+fit3$opt$convergence
+```
+
+Extract the implied $\boldsymbol G$, the rank-1 loadings, and the
+genetic correlation matrix:
+
+```{r G3}
+phy3 <- extract_Sigma(fit3, level = "phy")
+Lambda_hat <- fit3$report$Lambda_phy  # shared loadings (rotation-ambiguous)
+list(G_hat      = round(phy3$Sigma, 3),
+     R_G_hat    = round(phy3$R, 3),
+     Lambda_hat = round(Lambda_hat, 3))
+```
+
+The shared $\boldsymbol\Lambda$ is **rotation-invariant only up to
+sign and orthogonal rotation** — individual entries are not directly
+interpretable without a constraint. The implied $\boldsymbol G$ and
+the genetic correlation matrix $\boldsymbol R_{\mathrm G}$ are
+rotation-invariant and are the right summaries to report. See
+[lambda-constraint](lambda-constraint.html) for confirmatory loadings
+when interpretation of $\boldsymbol\Lambda$ entries is required.
+
+## Adding non-genetic random effects
+
+Wild quantitative-genetic models often need additional random effects
+to avoid confounding (Kruuk 2004 §4; Wilson *et al.* 2010 Table 1):
+
+- **Permanent environment** ($V_{\mathrm{PE}}$): non-genetic
+  individual effect when individuals are measured multiple times.
+- **Maternal environmental** ($V_{\mathrm M}$): shared environment
+  among offspring of the same mother (e.g. lactation effects).
+- **Common environment** ($V_{\mathrm{CE}}$): shared nest, year, or
+  spatial unit.
+
+These all map to ordinary `re_int` random intercepts via the
+`(1 | g)` syntax — distinct from `animal_*()` which is reserved for
+the pedigree-structured genetic part. A model with $V_{\mathrm A} +
+V_{\mathrm M} + V_{\mathrm R}$ would read
+
+```r
+gllvmTMB(
+  value ~ 0 + trait +
+    animal_scalar(id, pedigree = ped) +    # V_A
+    (1 | mother) +                          # V_M (environmental)
+    ...,
+  data = df, unit = "id", cluster = "id"
+)
+```
+
+(not fit here for space).
+
+## What's not yet supported
+
+`animal_*()` in `gllvmTMB` v0.2.0 covers the **single-A-matrix**
+animal model — one pedigree-derived relatedness matrix, applied to
+the genetic part of the model. Several v0.3.0 follow-ups extend
+this:
+
+- **Maternal-genetic effects** ($V_{\mathrm C}$ in Wilson *et al.*
+  2010): a second pedigree-indexed random effect with its own
+  variance. Estimating $V_{\mathrm A}$, $V_{\mathrm C}$, and their
+  covariance requires *two* simultaneous A-matrix terms in the same
+  fit. Tracked as register row **ANI-09**.
+- **Sparse $\boldsymbol A^{-1}$ direct engine path** (Hadfield &
+  Nakagawa 2010). v0.2.0 densifies $\boldsymbol A^{-1}$ internally;
+  large pedigrees ($n \gtrsim 500$) will be substantially faster
+  when the direct sparse path lands. Tracked as **ANI-08**.
+- **Random-regression / heritable slopes**
+  (`animal_slope(x | id)`): per-individual slope on a covariate
+  with a $\boldsymbol G$-matrix covariance — the canonical
+  quantitative-genetic reaction-norm model (Meyer & Hill 1997).
+  Parser support is staged; engine support is v0.3.0.
+
+For these post-v0.2.0 needs the workhorse alternatives are
+[`MCMCglmm`](https://cran.r-project.org/package=MCMCglmm) (Hadfield
+2010, Bayesian), [ASReml-R](https://www.vsni.co.uk/software/asreml-r)
+(commercial, REML), and [`WOMBAT`](https://didgeridoo.une.edu.au/km/wombat.php)
+(free, REML).
+
+## Citations and further reading
+
+- **Henderson (1976)** *Biometrics* 32:69 — recursive formula for
+  $\boldsymbol A^{-1}$ from pedigree.
+- **Kruuk (2004)** *Phil. Trans. R. Soc. B* 359:873 — review of the
+  animal model in natural populations; the conceptual anchor for
+  evolutionary-ecology use.
+- **Wilson *et al.* (2010)** *J. Anim. Ecol.* 79:13 — practical
+  tutorial for ecologists, with the gryphon worked examples in ASReml,
+  MCMCglmm, and WOMBAT.
+- **Hadfield & Nakagawa (2010)** *J. Evol. Biol.* 23:494 — sparse
+  $\boldsymbol A^{-1}$ representation used by `MCMCglmm` and inherited
+  by `gllvmTMB`'s engine path.
+- **Smith, Cullis & Gilmour (2001)** *Crop Sci.* 41:1138 —
+  factor-analytic $\boldsymbol G$ matrices in plant-breeding
+  multi-environment trials (one origin of the parameterisation
+  behind `animal_latent()`).
+- **Kirkpatrick & Meyer (2004)** *Heredity* 93:512 — reduced-rank
+  $\boldsymbol G$ matrices in animal-breeding context.
+- **Runcie & Mukherjee (2013)** *Genetics* 194:753 — Bayesian Sparse
+  Factor analysis of $\boldsymbol G$ matrices (BSFG); the canonical
+  high-dimensional factor-analytic genetic model. `animal_latent()`
+  is the frequentist (TMB Laplace) counterpart, faster on moderate
+  $T$ and extensible to mixed response families.
+- **Cheverud (1996)** *Am. Zool.* 36:44 and **Wagner & Altenberg
+  (1996)** *Evolution* 50:967 — biological argument for modular
+  (low-rank, sparse) $\boldsymbol G$.
+
+## See also
+
+- [Phylogenetic trait covariance](phylogenetic-gllvm.html) — the
+  cross-species parallel, sharing the engine path.
+- [Lambda constraint](lambda-constraint.html) — pinning loading
+  entries for confirmatory analysis.
+- [GLLVM vocabulary](gllvm-vocabulary.html) — definitions of
+  $\boldsymbol\Lambda$, $\boldsymbol\Sigma$, $h^2$, and the rotation
+  ambiguity.
+- [Choose your model](choose-your-model.html) — decision tree across
+  the 4×5 covariance keyword grid.
+- [Pitfalls](pitfalls.html) — the **A** (relatedness) vs **V**
+  (sampling variance) naming distinction and other gotchas.

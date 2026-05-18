@@ -28,6 +28,19 @@ Next Actions). Fill in as work progresses. The file's presence is the
 structural prevention of the "forgot to write an after-task" failure
 that produced PR #13 backfill on 2026-05-11.
 
+## PR Slice Contract
+
+Every pull request should use `.github/pull_request_template.md`.
+Keep the slice goal to one bounded change, list files intentionally
+touched and intentionally not touched, name validation-debt rows when
+advertised capability status moves, record exact checks run, and name
+only the review roles that actually engaged.
+
+If a change needs several independent surfaces -- for example an
+engine change, a README rewrite, a pkgdown navigation change, and a
+validation-readiness matrix -- split it into several PRs unless the
+maintainer explicitly asks for one bundled cascade.
+
 ## Scope
 
 The package is for stacked-trait multivariate GLLVMs. Two

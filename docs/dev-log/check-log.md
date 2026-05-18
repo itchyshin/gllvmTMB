@@ -1621,3 +1621,28 @@ Post-merge sync:
 - Post-sync local verification passed for sparse-Ainv engine (8/8),
   M3.4 warm-start / phi-clamp (14/14), traits keyword (44 pass,
   1 expected skip), and `brms-sugar`.
+
+## 2026-05-18 -- Slice 1 PR slice contract
+
+Scope:
+
+- Branch `codex/pr-slice-contract` adds the first small
+  drmTMB-inspired discipline surface: a GitHub PR template plus a
+  short CONTRIBUTING pointer.
+- No package code, likelihood, formula grammar, family, vignette,
+  article, pkgdown navigation, generated Rd, or validation-debt status
+  was changed.
+
+Evidence:
+
+- #184 was allowed to finish 3-OS R-CMD-check and merge before this
+  branch started.
+- Open PR census before edits: zero open PRs.
+
+Kaizen point:
+
+17. **The PR surface is the first discipline gate.** If the team wants
+    small slices, fewer contradictions, and better handoffs, every PR
+    needs to say its one-sentence goal, intentional file scope, checks
+    run, checks not run, role reviewers, and next slice before review.
+    This makes "small PR" inspectable instead of aspirational.

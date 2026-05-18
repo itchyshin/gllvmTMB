@@ -115,10 +115,28 @@ pkgdown::build_articles(lazy = FALSE)
 Long simulation studies should live outside CRAN-time tests, gated
 by `Sys.getenv("RUN_SLOW_TESTS")` or moved to `data-raw/`.
 
-Keep work-in-progress to one open PR, and let GitHub Actions finish
-before pushing a follow-up commit. The pkgdown workflow is sequenced
-after a green `R-CMD-check` on `main`; do not use pkgdown as a
-parallel substitute for the full check.
+### Tiered CI policy
+
+Use the smallest check that can catch the class of failure introduced
+by the slice.
+
+| Change type | Local evidence before PR | Full GitHub R-CMD-check |
+| --- | --- | --- |
+| TMB likelihood, formula grammar, exported API, generated Rd, package metadata | targeted tests plus relevant docs; run full local or CI check when practical | required on every PR before merge |
+| Tests, simulation helpers, gallery renderers | targeted `devtools::test()` plus artifact smoke render when relevant | required before merge, but later slices can be planned while it runs |
+| README, NEWS, pkgdown, vignettes, articles, design docs, user-facing prose | render or check the affected surface; run `pkgdown::check_pkgdown()` when pkgdown or reference navigation is touched | batch small docs PRs or run at a checkpoint |
+| Pure process files (`.github/pull_request_template.md`, `CONTRIBUTING.md`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/`, `docs/dev-log/shannon-audits/`, `docs/dev-log/while-away/`) | `git diff --check` plus Shannon/Rose review as relevant | fast-passed by CI unless bundled with package-affecting files |
+| Long simulation and power-analysis experiments | manifest-driven local/cluster run with saved artifacts and summary checks | not inside ordinary R-CMD-check |
+
+The `R-CMD-check` workflow keeps the same OS-named checks on every
+pull request. For process-only diffs it exits quickly after classifying
+the changed files, so required checks do not remain pending. Unknown
+or mixed file scopes fall back to the full R CMD check.
+
+Keep work-in-progress to one open PR when possible, and let package-
+affecting GitHub Actions finish before pushing a follow-up commit. The
+pkgdown workflow is sequenced after a green `R-CMD-check` on `main`;
+do not use pkgdown as a parallel substitute for the full check.
 
 ## Pre-Publish Audit
 

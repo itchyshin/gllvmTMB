@@ -44,11 +44,10 @@ Current operating rule:
   post-merge main run failed once, then the failed-job rerun recovered.
 - PR #186 (red-main M3.4 test hygiene) merged on 2026-05-18 to
   stabilize the smoke-test contract exposed by that failed main run.
-- Codex now owns the Slice 1 discipline branch
-  (`codex/pr-slice-contract`): PR template, contributing pointer,
-  check-log entry, and after-task report only.
-- No new implementation lane should start until this Slice 1 PR is
-  synced with post-#186 `main` and either merged or explicitly held.
+- PR #185 (Slice 1 PR slice contract) merged on 2026-05-18.
+- Codex now owns the CI tiered-gates branch
+  (`codex/ci-tiered-gates`): R-CMD-check scope classifier plus the
+  contributing/check-log/after-task record for the fewer-R-CMD policy.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -56,10 +55,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Slice 1 PR slice contract | #185 / `codex/pr-slice-contract` | `.github/pull_request_template.md`, `CONTRIBUTING.md`, board, check-log, after-task report | active; process-only; syncing after #186 |
+| Codex | CI tiered gates | `codex/ci-tiered-gates` | `.github/workflows/R-CMD-check.yaml`, `CONTRIBUTING.md`, board, check-log, after-task report | active; CI policy |
 
-**WIP**: one open process PR (#185). No new implementation lane
-should start until this slice is settled.
+**WIP**: one CI policy branch. No new implementation lane should start
+until this slice is settled.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

@@ -18,12 +18,11 @@ concurrency:
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
-    # Temporary: 45 instead of drmTMB's 30. Windows-latest R CMD check
-    # takes ~30-35 min on this package's current 1250-test surface;
-    # ubuntu / macos finish in 21-24 min. The 45 still catches real
-    # regressions while letting Windows complete. Phase 1 ROADMAP item:
-    # gate the slowest tests behind `RUN_SLOW_TESTS=true` so Windows
-    # fits within drmTMB's 30-min budget.
+    # Full package checks currently need 45 minutes because Windows
+    # takes ~35-40 min on this package's 1800+ assertion surface.
+    # Process-only PRs skip the expensive R setup/check steps below
+    # while preserving this OS-named check for branch-protection
+    # compatibility.
     timeout-minutes: 45
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
@@ -42,19 +41,116 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Classify R CMD check scope
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          full_required=true
+          reason="R CMD check required by default."
+
+          is_process_only_path() {
+            case "$1" in
+              .github/pull_request_template.md) return 0 ;;
+              CONTRIBUTING.md) return 0 ;;
+              docs/dev-log/check-log.md) return 0 ;;
+              docs/dev-log/coordination-board.md) return 0 ;;
+              docs/dev-log/team-improvements.md) return 0 ;;
+              docs/dev-log/after-task/*) return 0 ;;
+              docs/dev-log/shannon-audits/*) return 0 ;;
+              docs/dev-log/while-away/*) return 0 ;;
+              docs/dev-log/recovery-checkpoints/*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          changed_file_args=()
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+            base_ref="origin/${{ github.base_ref }}"
+            mapfile -t changed_file_args < <(git diff --name-only "${base_ref}...HEAD")
+            full_required=false
+            reason="PR changes are limited to process-only paths."
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" != "tag" ]]; then
+            before="${{ github.event.before }}"
+            if [[ "$before" =~ ^0+$ ]]; then
+              changed_file_args=()
+              full_required=true
+              reason="Push has no usable before SHA; running full R CMD check."
+            else
+              mapfile -t changed_file_args < <(git diff --name-only "$before" "${{ github.sha }}")
+              full_required=false
+              reason="Push changes are limited to process-only paths."
+            fi
+          else
+            changed_file_args=()
+            full_required=true
+            reason="Manual dispatch or tag build; running full R CMD check."
+          fi
+
+          if [[ ${#changed_file_args[@]} -eq 0 && "$full_required" == "false" ]]; then
+            full_required=true
+            reason="No changed files detected; running full R CMD check."
+          fi
+
+          if [[ "$full_required" == "false" ]]; then
+            for path in "${changed_file_args[@]}"; do
+              if ! is_process_only_path "$path"; then
+                full_required=true
+                reason="R CMD check required because '${path}' is outside process-only paths."
+                break
+              fi
+            done
+          fi
+
+          {
+            echo "full_required=${full_required}"
+            echo "reason=${reason}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### R CMD check scope"
+            echo
+            echo "- Full R CMD check required: \`${full_required}\`"
+            echo "- Reason: ${reason}"
+            echo
+            echo "Changed files:"
+            if [[ ${#changed_file_args[@]} -eq 0 ]]; then
+              echo "- (none detected)"
+            else
+              for path in "${changed_file_args[@]}"; do
+                echo "- \`${path}\`"
+              done
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: r-lib/actions/setup-pandoc@v2
+        if: steps.scope.outputs.full_required == 'true'
 
       - uses: r-lib/actions/setup-r@v2
+        if: steps.scope.outputs.full_required == 'true'
         with:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v2
+        if: steps.scope.outputs.full_required == 'true'
         with:
           extra-packages: any::rcmdcheck
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
+        if: steps.scope.outputs.full_required == 'true'
         with:
           upload-snapshots: true
+
+      - name: Fast pass for process-only change
+        if: steps.scope.outputs.full_required != 'true'
+        shell: bash
+        run: |
+          echo "Full R CMD check skipped: ${{ steps.scope.outputs.reason }}"

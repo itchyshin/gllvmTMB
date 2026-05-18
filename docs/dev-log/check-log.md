@@ -1679,3 +1679,34 @@ Kaizen point:
     needs to say its one-sentence goal, intentional file scope, checks
     run, checks not run, role reviewers, and next slice before review.
     This makes "small PR" inspectable instead of aspirational.
+
+## 2026-05-18 -- CI tiered gates
+
+Scope:
+
+- Branch `codex/ci-tiered-gates` adds a conservative classifier to
+  `.github/workflows/R-CMD-check.yaml`.
+- Known process-only paths fast-pass after checkout/classification;
+  all package-affecting, unknown, mixed, manual, and tag-triggered
+  runs still execute full R CMD check.
+- No package code, likelihood, formula grammar, exported API, roxygen,
+  Rd, vignette, article, pkgdown navigation, or validation-debt status
+  changed.
+
+Evidence:
+
+- GitHub documentation says workflows skipped by path filtering can
+  leave associated checks pending. The workflow therefore keeps the
+  same OS-named jobs and fast-passes inside the job instead of using
+  `paths-ignore`.
+- The policy table in `CONTRIBUTING.md` now separates package-
+  affecting PRs, docs/prose PRs, process-only PRs, and long
+  simulation/power-analysis experiments.
+
+Kaizen point:
+
+19. **Fewer R CMD checks needs a visible replacement gate.** The team
+    should not skip expensive checks silently. The replacement is a
+    conservative changed-file classifier, a workflow summary naming
+    why R CMD was or was not required, and a fallback to full R CMD
+    for every unknown or mixed path.

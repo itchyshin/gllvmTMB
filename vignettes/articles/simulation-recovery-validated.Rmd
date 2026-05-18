@@ -41,22 +41,27 @@ The full M3 grid is described in
 [Design 42](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/42-m3-dgp-grid.md):
 5 family cells × 3 latent ranks × R = 200 replicates = 3000 fits,
 with profile-likelihood CIs on each free parameter. This article
-shows **the M3.2 smoke output** — a 3-cell × 10-rep × Wald-only
-sanity-check version of that grid, used to verify the pipeline
-machinery before the M3.3 production run. The numbers below are
-**placeholder Wald** values; the M3.3 production grid will replace
-them with profile-likelihood CIs and re-render this article.
+shows **the M3.2 smoke output** — a 12-cell × 10-rep × Wald-only
+sanity-check version of that grid (4 families: Gaussian, binomial,
+nbinom2, ordinal-probit, at $d \in \{1, 2, 3\}$ each). Mixed-family
+is excluded from smoke pending M3.3's integration of the
+`family = list(...)` + `family_var` lookup pattern. The numbers
+below are **placeholder Wald** values; the M3.3 production grid
+will replace them with profile-likelihood CIs and re-render this
+article.
 
 ## The grid
 
-The smoke output covers Gaussian fits at $d \in \{1, 2, 3\}$, 10
-replicates each. Per replicate, the DGP samples a fresh
+Per replicate, the DGP samples a fresh
 $\boldsymbol\Lambda_{\mathrm{true}} \sim \mathrm{Uniform}(-1.5, 1.5)^{5 \times d}$
 and $\boldsymbol\psi_{\mathrm{true}} \sim \mathrm{Gamma}(2, 2)^5$,
 simulates 60 units × 5 traits from that truth, fits `gllvmTMB` with
-the matching `latent() + unique()` formula, and records whether the
-fit's CI on each $\Sigma_{\mathrm{unit}, tt}$ diagonal contains the
-generative truth.
+the matching `latent() + unique()` formula and family, and records
+whether the fit's CI on each $\Sigma_{\mathrm{unit}, tt}$ diagonal
+contains the generative truth. Per-family non-Gaussian responses:
+binomial uses `rbinom(size = 1)`; nbinom2 uses `rnbinom(mu, size = phi)`
+with `phi ~ Gamma(5, 5)`; ordinal-probit uses 4 categories with
+quantile-spaced cutpoints.
 
 ## Reading the precomputed RDS
 
@@ -114,6 +119,31 @@ single <- subset(artefact$grid, cell == "gaussian-d2" & rep == 1L)
 single[, c("trait_id", "truth_diag_sigma",
            "ci_wald_lo", "ci_wald_hi", "covered_wald")]
 ```
+
+## Notes on per-family smoke behaviour
+
+A few patterns visible in the smoke summary above:
+
+- **Gaussian** cells run fastest (~0.5-0.7s per fit) and reach the
+  highest placeholder-Wald coverage (54-82%). M3.3 will replace
+  Wald with profile and expect coverage near 95% nominal.
+- **Binomial** cells run at ~0.7-1s per fit; placeholder coverage
+  is low (32-66%) because the 20% RSE heuristic is mis-calibrated
+  for Bernoulli inferences. Proper profile CIs in M3.3 should
+  recover near-nominal coverage.
+- **nbinom2** cells are the slowest (~2-3s per fit) and show
+  some non-convergence (45/50 or 40/50 reps converge) due to the
+  challenging two-parameter (mean + dispersion) likelihood at the
+  small `n = 60 units × 5 traits` regime. M3.3 will diagnose
+  whether converged-set coverage is itself near-nominal.
+- **Ordinal-probit** cells run at ~1-1.5s per fit; placeholder
+  coverage in the 40-50% range. Cutpoint estimation adds K-1 = 3
+  extra parameters per trait, so the small-n regime is taxing.
+- **Mixed-family** is excluded from smoke — the `family = list(...)`
+  + `attr(., 'family_var')` mixed-family API requires a `family_id`
+  column in the long-format data frame; M3.3 wires that integration
+  per the M1 mixed-family-fixture pattern
+  (`inst/extdata/mixed-family-fixture.rds`).
 
 Each row is a trait's $\Sigma_{\mathrm{unit}, tt}$ diagonal. The
 `truth_diag_sigma` is the generative truth for that rep; the Wald

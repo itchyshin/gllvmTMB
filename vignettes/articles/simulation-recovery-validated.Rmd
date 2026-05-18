@@ -41,12 +41,32 @@ The full M3 grid is described in
 [Design 42](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/42-m3-dgp-grid.md):
 5 family cells × 3 latent ranks × R = 200 replicates = 3000 fits,
 with profile-likelihood CIs on each free parameter. This article
-shows **the M3.2 smoke output** — a 15-cell × 10-rep × Wald-only
-sanity-check version of that grid (5 families: Gaussian, binomial,
-nbinom2, ordinal-probit, and mixed-family, at $d \in \{1, 2, 3\}$
-each). The numbers below are **placeholder Wald** values; the M3.3
-production grid will replace them with profile-likelihood CIs and
-re-render this article.
+shows **the M3.3a smoke output** — a 15-cell × 10-rep version of
+that grid with **profile-likelihood CIs** on per-trait
+unique-tier variance $\psi_t = \mathrm{sd\_B}_t^2$. The M3.3
+production grid scales R = 10 to R = 200 (Monte Carlo error
+±15 pp → ±3 pp at the 95% level).
+
+## The target
+
+The DGP simulates a fresh truth
+$\boldsymbol\Lambda_{\mathrm{true}} \sim \mathrm{Uniform}(-1.5, 1.5)^{5 \times d}$
+and $\boldsymbol\psi_{\mathrm{true}} \sim \mathrm{Gamma}(2, 2)^5$
+per replicate, then asks: does the fit's profile-likelihood CI
+on each per-trait $\psi_t$ contain the generative truth? $\psi_t$
+is the **rotation-invariant target** — it's the per-trait
+unique-tier variance, identifiable up to non-rotational sign +
+permutation. The shared-Lambda contribution to the full
+$\Sigma_{\mathrm{unit}}$ diagonal is rotation-ambiguous on
+individual loading entries; the **communality** $c_t^2 =
+(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt} / \Sigma_{tt}$
+is the corresponding rotation-invariant target for the Lambda
+side, deferred to M3.5 (derived-quantity coverage).
+
+Profile CIs are computed via `tmbprofile_wrapper()` warm-started
+from the joint MLE — typically ~0.5-1s per CI on a 1.5s fit
+(per `R/profile-ci.R:127`), making the production-scale grid
+feasible (~12h serial, ~1.5h on 8 cores).
 
 ## The grid
 
@@ -55,11 +75,11 @@ $\boldsymbol\Lambda_{\mathrm{true}} \sim \mathrm{Uniform}(-1.5, 1.5)^{5 \times d
 and $\boldsymbol\psi_{\mathrm{true}} \sim \mathrm{Gamma}(2, 2)^5$,
 simulates 60 units × 5 traits from that truth, fits `gllvmTMB` with
 the matching `latent() + unique()` formula and family, and records
-whether the fit's CI on each $\Sigma_{\mathrm{unit}, tt}$ diagonal
-contains the generative truth. Per-family non-Gaussian responses:
-binomial uses `rbinom(size = 1)`; nbinom2 uses `rnbinom(mu, size = phi)`
-with `phi ~ Gamma(5, 5)`; ordinal-probit uses 4 categories with
-quantile-spaced cutpoints.
+whether the fit's profile-CI on each per-trait $\psi_t$ contains
+the generative truth $\boldsymbol\psi_{\mathrm{true}, t}$.
+Per-family non-Gaussian responses: binomial uses `rbinom(size = 1)`;
+nbinom2 uses `rnbinom(mu, size = phi)` with `phi ~ Gamma(5, 5)`;
+ordinal-probit uses 4 categories with quantile-spaced cutpoints.
 
 ## Reading the precomputed RDS
 
@@ -74,39 +94,53 @@ artefact$meta[c("label", "gllvmTMB_ver", "n_cells", "n_reps", "elapsed_s")]
 artefact$summary
 ```
 
-The `coverage_wald` column is the fraction of (rep × trait) pairs
-whose Wald CI contained the truth. The `passes_94pct_wald` flag
-checks against the M3 exit gate.
+The `coverage_prof` column is the fraction of (rep × trait) pairs
+whose profile-likelihood CI on $\psi_t$ contained the truth.
+`passes_94pct_prof` flags cells that meet the M3 audit-1 exit
+gate (≥ 94 % nominal at 95 % level).
 
 ```{r smoke-honesty, results = "asis"}
-n_reps_total <- nrow(artefact$grid)
-n_pass <- sum(artefact$summary$passes_94pct_wald)
+n_pass <- sum(artefact$summary$passes_94pct_prof)
 n_cells <- nrow(artefact$summary)
+fam_avg <- aggregate(coverage_prof ~ family,
+                     data = artefact$summary, FUN = mean)
 cat(sprintf(
-  "**Smoke status**: %d / %d cells pass the 94%% gate at this Wald-placeholder level.\n",
+  "**Smoke status**: %d / %d cells pass the 94%% gate at smoke scale (R = 10 reps; Monte Carlo error ~±15 pp).\n\n",
   n_pass, n_cells
 ))
+cat("**Per-family average coverage**:\n\n")
+for (i in seq_len(nrow(fam_avg))) {
+  cat(sprintf("- %s: %.2f\n", fam_avg$family[i], fam_avg$coverage_prof[i]))
+}
 ```
 
-These rates are below the 94% gate because **the Wald CIs are a
-placeholder** in the M3.2 pipeline — a rough 20% RSE heuristic that
-is intentionally crude. The pipeline is a smoke test of the *plumbing*
-(simulate → fit → extract → record), not a validation of inference.
+Interpretation:
+
+- **Gaussian** and **binomial** profile CIs land near nominal at
+  smoke scale — the inference machinery works on the
+  well-conditioned cases.
+- **Ordinal-probit**, **mixed-family**, and especially
+  **nbinom2** under-cover — these are real, not placeholder
+  artefacts. Likely causes: small-n likelihood non-concavity,
+  boundary parameters near zero (where Wald-like profile crossings
+  miss the true coverage), and per-trait variance pinning when
+  one trait carries little variance signal. M3.4 (boundary
+  regimes) and M3.5 (derived-quantity coverage) work on these.
+
 The M3.3 production pass will:
 
-1. Replace the placeholder Wald with proper delta-method Wald and
-   profile-likelihood CIs on `extract_Sigma(level = "unit")`
-   diagonals.
-2. Expand from Gaussian-only to all 5 families (binomial, nbinom2,
-   ordinal-probit, mixed-family).
-3. Increase `n_reps` from 10 to 200 (Monte Carlo error ±3 pp at 95%
-   nominal).
-4. Compute the same machinery for derived quantities (communality,
-   repeatability) — M3.5.
+1. Increase R = 10 → R = 200 (Monte Carlo error ±15 pp → ±3 pp
+   at the 95 % level — current 0.95 estimates at R = 10 can't
+   be distinguished from 0.92 or 0.98 statistically).
+2. Run in parallel (`future::multisession`); expected
+   ~1.5 h on 8 cores.
+3. Land in CI via `workflow_dispatch` so re-runs don't cost
+   local compute.
+4. Extend coverage to derived quantities (communality,
+   repeatability, phylo signal) — M3.5.
 
-When M3.3 lands, this article will re-render with the production
-numbers. The placeholder columns (`coverage_prof`, `ci_prof_lo`,
-`ci_prof_hi`) are filled in then.
+When M3.3 (production scale, R = 200) lands, this article will
+re-render with tighter coverage estimates.
 
 ## Inspecting individual fits
 
@@ -114,41 +148,40 @@ For diagnostic purposes, you can pull a single rep's outputs:
 
 ```{r single-rep}
 single <- subset(artefact$grid, cell == "gaussian-d2" & rep == 1L)
-single[, c("trait_id", "truth_diag_sigma",
-           "ci_wald_lo", "ci_wald_hi", "covered_wald")]
+single[, c("trait_id", "truth_psi", "est_psi",
+           "ci_prof_lo", "ci_prof_hi", "covered_prof")]
 ```
+
+Each row is a trait's $\psi_t$ (per-trait unique variance) target.
+`truth_psi` is the generative truth for that rep; `est_psi` is
+the point estimate; `ci_prof_lo` / `ci_prof_hi` are the 95 %
+profile-likelihood CI bounds; `covered_prof` is whether the CI
+contained the truth.
 
 ## Notes on per-family smoke behaviour
 
-A few patterns visible in the smoke summary above:
+Per-family runtimes and convergence are stable across the smoke
+runs; what M3.3a surfaces is the **inference-quality pattern**:
 
-- **Gaussian** cells run fastest (~0.5-0.7s per fit) and reach the
-  highest placeholder-Wald coverage (54-82%). M3.3 will replace
-  Wald with profile and expect coverage near 95% nominal.
-- **Binomial** cells run at ~0.7-1s per fit; placeholder coverage
-  is low (32-66%) because the 20% RSE heuristic is mis-calibrated
-  for Bernoulli inferences. Proper profile CIs in M3.3 should
-  recover near-nominal coverage.
-- **nbinom2** cells are the slowest (~2-3s per fit) and show
-  some non-convergence (45/50 or 40/50 reps converge) due to the
-  challenging two-parameter (mean + dispersion) likelihood at the
-  small `n = 60 units × 5 traits` regime. M3.3 will diagnose
-  whether converged-set coverage is itself near-nominal.
-- **Ordinal-probit** cells run at ~1-1.5s per fit; placeholder
-  coverage in the 40-50% range. Cutpoint estimation adds K-1 = 3
-  extra parameters per trait, so the small-n regime is taxing.
-- **Mixed-family** runs in ~0.9-1.8s per fit; placeholder coverage
-  ~40-70%. Cycles `gaussian` → `binomial` → `nbinom2` across trait
-  rows via the `family = list(...)` + `attr(., 'family_var')` API
-  (matching the M1 mixed-family-fixture pattern). Convergence is
-  lower for d=2, d=3 (35/50 reps) than for single-family cells,
-  reflecting the higher per-row likelihood complexity — flagged
-  for M3.4 boundary-regime investigation.
+- **Gaussian** (avg 0.95 coverage; ~0.7s per fit): near-nominal at
+  smoke scale, as expected for the well-conditioned baseline.
+- **Binomial** (avg 0.95; ~0.7-1s): also near-nominal. Profile CIs
+  correctly handle the bounded-likelihood geometry.
+- **Ordinal-probit** (avg 0.75; ~1-1.5s): under-covers. K-1
+  cutpoints per trait + small n = harder identifiability. M3.4
+  will diagnose whether single-trait warmup helps.
+- **Mixed-family** (avg 0.64; ~0.9-1.8s): under-covers + 30%
+  non-convergence at d=2, d=3. Per-row family dispatch tests the
+  hardest path. M3.4 priority.
+- **nbinom2** (avg 0.38; ~2-3s): worst cell. Two-parameter
+  (mean + dispersion) likelihood at small n is genuinely
+  unstable. M3.4 + a possible engine-side fix for dispersion
+  identifiability are next.
 
-Each row is a trait's $\Sigma_{\mathrm{unit}, tt}$ diagonal. The
-`truth_diag_sigma` is the generative truth for that rep; the Wald
-CI bounds and `covered_wald` flag are the placeholder smoke-test
-results.
+These are real inference patterns, not placeholder artefacts.
+M3.3 (production at R = 200) will tighten the estimates; the
+qualitative ranking (Gaussian/binomial near-nominal,
+counts/ordinal under-covering) is unlikely to change.
 
 ## Reproducing the smoke run
 

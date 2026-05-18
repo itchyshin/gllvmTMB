@@ -366,6 +366,31 @@ status-inventory cascade (README, NEWS, ROADMAP, design docs,
 vignettes, generated `man/*.Rd`), not only the implementation
 file.
 
+## 3a. Decisions and Rejected Alternatives
+
+**Added 2026-05-18 per the Memory-OS discipline upgrade item 4.**
+
+For every load-bearing decision made during the slice — design
+choice, API choice, scope cut, deferral, persona role assignment
+— a single bullet of the form:
+
+> **Decision**: <one-sentence statement>.
+> **Rationale**: <why, with cite to evidence or persona>.
+> **Rejected alternative**: <what we considered and why we didn't>.
+> **Confidence**: <high / medium / low>.
+
+This is the "lossy-summary defence" — without an explicit
+decisions block, important rationale is compressed away when the
+report becomes an end-of-session artefact. Per the Memory-OS PDF
+§8 ("Save: decisions with rationale and rejected alternatives;
+Format: include date and source when possible") and §9 ("end-of-
+session prompts force decisions, files, tests, blockers and next
+actions").
+
+Trivial PRs (typo fixes, version bumps) may write `Decisions: none
+beyond execution`. Engine / API / scope / article PRs MUST have at
+least one decision bullet.
+
 ## 4. Checks Run
 
 Every command + its exact outcome. Include the **verbatim** rg

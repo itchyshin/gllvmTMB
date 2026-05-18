@@ -41,14 +41,12 @@ The full M3 grid is described in
 [Design 42](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/42-m3-dgp-grid.md):
 5 family cells × 3 latent ranks × R = 200 replicates = 3000 fits,
 with profile-likelihood CIs on each free parameter. This article
-shows **the M3.2 smoke output** — a 12-cell × 10-rep × Wald-only
-sanity-check version of that grid (4 families: Gaussian, binomial,
-nbinom2, ordinal-probit, at $d \in \{1, 2, 3\}$ each). Mixed-family
-is excluded from smoke pending M3.3's integration of the
-`family = list(...)` + `family_var` lookup pattern. The numbers
-below are **placeholder Wald** values; the M3.3 production grid
-will replace them with profile-likelihood CIs and re-render this
-article.
+shows **the M3.2 smoke output** — a 15-cell × 10-rep × Wald-only
+sanity-check version of that grid (5 families: Gaussian, binomial,
+nbinom2, ordinal-probit, and mixed-family, at $d \in \{1, 2, 3\}$
+each). The numbers below are **placeholder Wald** values; the M3.3
+production grid will replace them with profile-likelihood CIs and
+re-render this article.
 
 ## The grid
 
@@ -139,11 +137,13 @@ A few patterns visible in the smoke summary above:
 - **Ordinal-probit** cells run at ~1-1.5s per fit; placeholder
   coverage in the 40-50% range. Cutpoint estimation adds K-1 = 3
   extra parameters per trait, so the small-n regime is taxing.
-- **Mixed-family** is excluded from smoke — the `family = list(...)`
-  + `attr(., 'family_var')` mixed-family API requires a `family_id`
-  column in the long-format data frame; M3.3 wires that integration
-  per the M1 mixed-family-fixture pattern
-  (`inst/extdata/mixed-family-fixture.rds`).
+- **Mixed-family** runs in ~0.9-1.8s per fit; placeholder coverage
+  ~40-70%. Cycles `gaussian` → `binomial` → `nbinom2` across trait
+  rows via the `family = list(...)` + `attr(., 'family_var')` API
+  (matching the M1 mixed-family-fixture pattern). Convergence is
+  lower for d=2, d=3 (35/50 reps) than for single-family cells,
+  reflecting the higher per-row likelihood complexity — flagged
+  for M3.4 boundary-regime investigation.
 
 Each row is a trait's $\Sigma_{\mathrm{unit}, tt}$ diagonal. The
 `truth_diag_sigma` is the generative truth for that rep; the Wald

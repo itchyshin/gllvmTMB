@@ -156,6 +156,15 @@ m3_simulate_response <- function(truth) {
     value = as.numeric(t(Y))
   )
 
+  ## For mixed-family, attach a per-row `family_id` lookup column so
+  ## the gllvmTMB() `family = list(...)` + `attr(., 'family_var')`
+  ## API can dispatch the per-row family. The column maps every row
+  ## (a given trait observation) to that trait's assigned family.
+  if (family == "mixed") {
+    df$family_id <- factor(rep(row_family, times = n_units),
+                           levels = unique(row_family))
+  }
+
   list(data = df, row_family = row_family)
 }
 
@@ -186,13 +195,22 @@ m3_run_cell <- function(family, d, n_reps = 10L, seed_base = 42L,
     ## Family list for mixed-family fits.
     ## gllvmTMB needs the family helpers (function calls), not strings,
     ## for the non-base families.
+    ## For mixed-family: list ELEMENTS NAMED by the row-family string;
+    ## `attr(family_list, 'family_var') <- 'family_id'` directs the
+    ## engine to look up the per-row family from the `family_id`
+    ## column in the data frame. Matches the M1 mixed-family fixture
+    ## pattern (inst/extdata/mixed-family-fixture.rds).
     fam_list <- if (family == "mixed") {
-      lapply(sim$row_family, function(f) switch(
+      unique_families <- unique(sim$row_family)
+      fl <- lapply(unique_families, function(f) switch(
         f,
         gaussian = stats::gaussian(),
         binomial = stats::binomial(),
         nbinom2  = gllvmTMB::nbinom2()
       ))
+      names(fl) <- unique_families
+      attr(fl, "family_var") <- "family_id"
+      fl
     } else {
       switch(
         family,

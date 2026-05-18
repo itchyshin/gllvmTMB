@@ -40,15 +40,11 @@ config <- switch(
     label  = "smoke-gaussian"
   ),
   `all-fams` = list(
-    ## Mixed-family is excluded from smoke -- the M1 mixed-family API
-    ## requires a `family_var` column in the data + `attr(family,
-    ## 'family_var')` set; the M3.2 pipeline simulator emits per-trait
-    ## family but doesn't yet construct the lookup column. Deferred to
-    ## M3.3 (production grid) which will integrate properly with the
-    ## `family = list(...) + family_var` pattern documented in
-    ## `inst/extdata/mixed-family-fixture.rds`.
+    ## All 5 families × 3 dims = 15 cells.
+    ## Mixed-family integration uses the M1 fixture pattern: per-row
+    ## `family_id` column + `attr(family_list, 'family_var')` lookup.
     cells = expand.grid(
-      family = setdiff(M3_FAMILIES, "mixed"), d = c(1L, 2L, 3L),
+      family = M3_FAMILIES, d = c(1L, 2L, 3L),
       stringsAsFactors = FALSE
     ),
     n_reps = 10L,

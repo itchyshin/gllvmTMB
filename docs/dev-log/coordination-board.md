@@ -39,12 +39,15 @@ Current operating rule:
 - PR #181 (sparse pedigree A-inverse engine pass-through) and
   PR #182 (M3.4 warm-start + phi-clamp) were reviewed by Codex
   and merged to `main` on 2026-05-18.
-- Codex now owns the only open PR, #184
-  (`codex/drmtmb-parity-hygiene`): live board repair,
-  `team-improvements.md`, source-of-truth cascade fixes, and this
-  post-merge sync against current `main`.
-- No new implementation lane should start until #184 is green and
-  either merged or explicitly held.
+- PR #184 (drmTMB-parity hygiene) was merged to `main` on
+  2026-05-18, but its post-merge main R-CMD-check failed once.
+- PR #185 (`codex/pr-slice-contract`) is open as a process-only
+  follow-up.
+- Codex is also carrying an urgent red-main test-hygiene fix branch,
+  `codex/red-main-m34-test-hygiene`, to stabilize the M3.4 smoke
+  test contract exposed by the failed main run.
+- No new implementation lane should start until #185 and the red-main
+  fix are settled.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -52,10 +55,11 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | drmTMB-parity hygiene and source-of-truth cascade | #184 / `codex/drmtmb-parity-hygiene` | board, process docs, source-of-truth docs, narrow roxygen/Rd wording | active; synced with post-#181/#182 `main`; CI pending |
+| Codex | Slice 1 PR slice contract | #185 / `codex/pr-slice-contract` | `.github/pull_request_template.md`, `CONTRIBUTING.md`, board, check-log, after-task report | active; process-only; Windows CI pending |
+| Codex | Red-main M3.4 test hygiene | `codex/red-main-m34-test-hygiene` | `tests/testthat/test-m3-4-warmstart-phi-clamp.R`, `tests/testthat/test-wide-weights-matrix.R`, board, check-log, after-task report | active; urgent red-main fix |
 
-**WIP**: one open PR (#184). No new implementation lane should start
-until this hygiene lane is settled.
+**WIP**: one open process PR plus one urgent red-main fix branch. No
+new implementation lane should start until these are settled.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

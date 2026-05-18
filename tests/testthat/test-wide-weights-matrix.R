@@ -149,7 +149,9 @@ test_that("weights matrix wrong shape errors", {
   Y <- make_small_Y(n_sites = 20, n_species = 4, seed = 6)
   W_wrong <- matrix(1, nrow = 19, ncol = 4)
   expect_error(
-    suppressMessages(gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = W_wrong)),
+    suppressWarnings(suppressMessages(
+      gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = W_wrong)
+    )),
     regexp = "shape|dim|same shape|matrix"
   )
 })
@@ -159,7 +161,9 @@ test_that("Negative weights at non-NA Y cells error", {
   W <- matrix(1, nrow(Y), ncol(Y))
   W[3, 2] <- -0.5
   expect_error(
-    suppressMessages(gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = W)),
+    suppressWarnings(suppressMessages(
+      gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = W)
+    )),
     regexp = "non-negative|negative"
   )
 })
@@ -169,7 +173,9 @@ test_that("NA in weights at a non-NA Y cell errors (NA-mask mismatch)", {
   W <- matrix(1, nrow(Y), ncol(Y))
   W[3, 2] <- NA_real_   # Y[3,2] is non-NA, so weight NA is illegal
   expect_error(
-    suppressMessages(gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = W)),
+    suppressWarnings(suppressMessages(
+      gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = W)
+    )),
     regexp = "NA"
   )
 })
@@ -179,7 +185,9 @@ test_that("Missing NA in weights when Y is NA errors", {
   Y[3, 2] <- NA_real_
   W <- matrix(1, nrow(Y), ncol(Y))   # weights[3,2] is non-NA but Y[3,2] is NA
   expect_error(
-    suppressMessages(gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = W)),
+    suppressWarnings(suppressMessages(
+      gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = W)
+    )),
     regexp = "NA"
   )
 })
@@ -187,7 +195,9 @@ test_that("Missing NA in weights when Y is NA errors", {
 test_that("Non-numeric weights error with informative message", {
   Y <- make_small_Y(n_sites = 20, n_species = 4, seed = 10)
   expect_error(
-    suppressMessages(gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = "a")),
+    suppressWarnings(suppressMessages(
+      gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = "a")
+    )),
     regexp = "matrix|numeric|scalar"
   )
 })
@@ -241,15 +251,17 @@ test_that("Vector weights with wrong length error", {
   Y <- make_small_Y(n_sites = 25, n_species = 5, seed = 16)
   w_wrong <- runif(nrow(Y) - 3)   # length mismatch
   expect_error(
-    suppressMessages(gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = w_wrong)),
+    suppressWarnings(suppressMessages(
+      gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = w_wrong)
+    )),
     regexp = "length|nrow|shape"
   )
   ## And a length matching ncol(Y) but not nrow(Y) on a non-square
   ## matrix must also error (caught by the "must equal nrow(Y)" rule).
   expect_error(
-    suppressMessages(
+    suppressWarnings(suppressMessages(
       gllvmTMB::gllvmTMB_wide(Y, d = 1, weights = runif(ncol(Y)))
-    ),
+    )),
     regexp = "length|nrow|shape"
   )
 })

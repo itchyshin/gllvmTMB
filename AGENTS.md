@@ -350,6 +350,7 @@ perspectives; do not rename them in status updates or project notes.
 | Gauss | TMB likelihood and numerical reviewer | Is the likelihood correct and numerically stable? |
 | Noether | Mathematical consistency reviewer | Do the symbolic equations, R syntax, and TMB implementation match exactly? |
 | Darwin | Ecology / evolution audience reviewer | Does the example answer a real biological question for the target audience? |
+| Florence | Scientific figure editor and visualization reviewer | Are plots publication-quality, interpretable, accessible, and honest about uncertainty? |
 | Fisher | Statistical inference reviewer | Do simulations, comparator checks, likelihood profiles, and identifiability diagnostics support the claim? |
 | Pat | Applied PhD student user tester | Can a new applied user follow the tutorial, interpret output, recover from errors, and avoid hidden jargon? |
 | Jason | Landscape and source-map scout | What do related packages and papers already do, and what should `gllvmTMB` learn or avoid? |

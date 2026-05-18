@@ -70,10 +70,17 @@ jobs:
 
           changed_file_args=()
 
+          collect_changed_files() {
+            changed_file_args=()
+            while IFS= read -r path; do
+              [[ -n "$path" ]] && changed_file_args+=("$path")
+            done < <(git diff --name-only "$@")
+          }
+
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
             base_ref="origin/${{ github.base_ref }}"
-            mapfile -t changed_file_args < <(git diff --name-only "${base_ref}...HEAD")
+            collect_changed_files "${base_ref}...HEAD"
             full_required=false
             reason="PR changes are limited to process-only paths."
           elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" != "tag" ]]; then
@@ -83,7 +90,7 @@ jobs:
               full_required=true
               reason="Push has no usable before SHA; running full R CMD check."
             else
-              mapfile -t changed_file_args < <(git diff --name-only "$before" "${{ github.sha }}")
+              collect_changed_files "$before" "${{ github.sha }}"
               full_required=false
               reason="Push changes are limited to process-only paths."
             fi

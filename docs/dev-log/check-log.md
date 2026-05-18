@@ -1699,6 +1699,10 @@ Evidence:
   leave associated checks pending. The workflow therefore keeps the
   same OS-named jobs and fast-passes inside the job instead of using
   `paths-ignore`.
+- First PR CI run exposed a macOS portability bug in the classifier:
+  `mapfile` is not available in the macOS runner's default Bash. The
+  classifier now collects changed files with a Bash 3.2-compatible
+  `while IFS= read -r` loop.
 - The policy table in `CONTRIBUTING.md` now separates package-
   affecting PRs, docs/prose PRs, process-only PRs, and long
   simulation/power-analysis experiments.

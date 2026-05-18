@@ -18,6 +18,8 @@ quality gates.
   `windows-latest`) so future required-check settings do not get stuck
   on path-skipped workflows.
 - Fast-pass process-only PRs and pushes after checkout/classification.
+- Use Bash 3.2-compatible changed-file collection so the classifier
+  runs on the macOS runner as well as ubuntu and Windows.
 - Fall back to full R CMD check for package-affecting, unknown, mixed,
   manual, or tag-triggered runs.
 - Documented the tiered CI policy in `CONTRIBUTING.md`.
@@ -40,6 +42,10 @@ changed.
 
 - `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/R-CMD-check.yaml"); puts "yaml ok"'` - passed (`yaml ok`).
 - `git diff --check` - passed (no whitespace errors).
+- First PR CI run (`26062792482`) - macOS failed in the classifier
+  before R setup because the original script used `mapfile`, which is
+  unavailable in macOS Bash 3.2. Fixed with a portable `while read`
+  collector.
 
 ## Tests Of The Tests
 
@@ -61,6 +67,10 @@ process/test-hygiene slices still paid for 30-40 minute Windows R CMD
 checks under the old workflow. The red-main #184 rerun also showed that
 R CMD is valuable, but it should catch package risks, not consume a
 full runner cycle for files that R CMD cannot exercise.
+
+The first PR run also reminded us that GitHub Actions shell snippets
+must run on macOS's older Bash, not only the newer GNU Bash available
+on Linux.
 
 ## Team Learning
 

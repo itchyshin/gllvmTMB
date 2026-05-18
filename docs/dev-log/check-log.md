@@ -1703,6 +1703,10 @@ Evidence:
   `mapfile` is not available in the macOS runner's default Bash. The
   classifier now collects changed files with a Bash 3.2-compatible
   `while IFS= read -r` loop.
+- Follow-up PR CI run `26062918120` passed the full 3-OS
+  R-CMD-check on ubuntu-latest, macos-latest, and windows-latest.
+  Because the PR changed the workflow file, this was the intentional
+  full-check path rather than the new process-only fast path.
 - The policy table in `CONTRIBUTING.md` now separates package-
   affecting PRs, docs/prose PRs, process-only PRs, and long
   simulation/power-analysis experiments.

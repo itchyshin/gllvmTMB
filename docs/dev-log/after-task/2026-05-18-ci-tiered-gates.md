@@ -46,6 +46,8 @@ changed.
   before R setup because the original script used `mapfile`, which is
   unavailable in macOS Bash 3.2. Fixed with a portable `while read`
   collector.
+- Follow-up PR CI run (`26062918120`) - full R-CMD-check passed on
+  ubuntu-latest, macos-latest, and windows-latest.
 
 ## Tests Of The Tests
 
@@ -91,8 +93,7 @@ manifest, or a pkgdown-specific classifier.
 
 ## Next Actions
 
-1. Open the CI policy PR and let full R CMD run once because this PR
-   changes the workflow itself.
+1. Merge the CI policy PR after the green full 3-OS R-CMD-check.
 2. Use the next process-only PR to confirm the fast path exits in
    minutes.
 3. Plan the separate simulation/power-analysis workflow and cluster

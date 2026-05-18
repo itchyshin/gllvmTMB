@@ -45,9 +45,8 @@ Current operating rule:
 - PR #186 (red-main M3.4 test hygiene) merged on 2026-05-18 to
   stabilize the smoke-test contract exposed by that failed main run.
 - PR #185 (Slice 1 PR slice contract) merged on 2026-05-18.
-- Codex now owns the CI tiered-gates branch
-  (`codex/ci-tiered-gates`): R-CMD-check scope classifier plus the
-  contributing/check-log/after-task record for the fewer-R-CMD policy.
+- PR #187 (CI tiered gates) passed full three-OS R-CMD-check on
+  2026-05-18 and is ready to merge.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -55,10 +54,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | CI tiered gates | `codex/ci-tiered-gates` | `.github/workflows/R-CMD-check.yaml`, `CONTRIBUTING.md`, board, check-log, after-task report | active; CI policy |
+| _None_ | _None_ | _None_ | _None_ | waiting for next explicit lane |
 
-**WIP**: one CI policy branch. No new implementation lane should start
-until this slice is settled.
+**WIP**: none after PR #187 merges. Do not start a new implementation
+lane until `main` is synced and the overnight lane plan is explicit.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -128,6 +127,10 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-18 ~16:35 MT**: PR #187 CI tiered gates passed full
+  three-OS R-CMD-check after a macOS Bash 3.2 classifier fix. The
+  workflow now preserves the OS-named required checks while fast-
+  passing known process-only paths inside the job.
 - **2026-05-18 ~14:02 MT**: PR #184 drmTMB-parity hygiene cascade
   merged after three-OS R-CMD-check success. Open PR count returned
   to zero before Slice 1 (`codex/pr-slice-contract`) started.

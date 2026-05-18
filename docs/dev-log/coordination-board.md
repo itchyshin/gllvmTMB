@@ -44,11 +44,9 @@ Current operating rule:
   post-merge main run failed once, then the failed-job rerun recovered.
 - PR #186 (red-main M3.4 test hygiene) merged on 2026-05-18 to
   stabilize the smoke-test contract exposed by that failed main run.
-- Codex now owns the Slice 1 discipline branch
-  (`codex/pr-slice-contract`): PR template, contributing pointer,
-  check-log entry, and after-task report only.
-- No new implementation lane should start until this Slice 1 PR is
-  synced with post-#186 `main` and either merged or explicitly held.
+- PR #185 (Slice 1 PR slice contract) merged on 2026-05-18.
+- PR #187 (CI tiered gates) passed full three-OS R-CMD-check on
+  2026-05-18 and is ready to merge.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -56,10 +54,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Slice 1 PR slice contract | #185 / `codex/pr-slice-contract` | `.github/pull_request_template.md`, `CONTRIBUTING.md`, board, check-log, after-task report | active; process-only; syncing after #186 |
+| _None_ | _None_ | _None_ | _None_ | waiting for next explicit lane |
 
-**WIP**: one open process PR (#185). No new implementation lane
-should start until this slice is settled.
+**WIP**: none after PR #187 merges. Do not start a new implementation
+lane until `main` is synced and the overnight lane plan is explicit.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -129,6 +127,10 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-18 ~16:35 MT**: PR #187 CI tiered gates passed full
+  three-OS R-CMD-check after a macOS Bash 3.2 classifier fix. The
+  workflow now preserves the OS-named required checks while fast-
+  passing known process-only paths inside the job.
 - **2026-05-18 ~14:02 MT**: PR #184 drmTMB-parity hygiene cascade
   merged after three-OS R-CMD-check success. Open PR count returned
   to zero before Slice 1 (`codex/pr-slice-contract`) started.

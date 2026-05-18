@@ -1596,3 +1596,28 @@ Kaizen points:
     byte-equivalent to standalone `unique()` (marginal / diagonal).
     The documentation contract now follows the tested implementation:
     `indep()` is the explicit marginal-only diagonal path.
+
+16. **drmTMB's success pattern is a closed loop, not a larger
+    context dump.** The follow-up local `drmTMB` audit found the same
+    loop repeated across recent slices: small PR, explicit scope wall,
+    targeted checks, after-task report, check-log entry, and a visible
+    next surface. The reusable lesson for `gllvmTMB` is to keep PRs
+    smaller and make the README / pkgdown entrance task-shaped
+    ("start here", supported surfaces, worked guides, concepts /
+    reference), while keeping validation-debt status visible before
+    broad claims reach Tier-1 articles.
+
+Post-merge sync:
+
+- Maintainer then asked Codex to review and merge Claude's held
+  engine PRs first. Codex reviewed #181 and #182, simulated the
+  combined #181 -> #182 tree, ran targeted tests with
+  `NOT_CRAN=true` + `devtools::load_all(".")`, and merged #181 then
+  #182 to `main`.
+- This branch then merged `origin/main` cleanly and updated
+  `docs/dev-log/coordination-board.md`, this after-task report, and
+  `docs/dev-log/team-improvements.md` so #184 no longer preserves
+  stale "held PR" wording.
+- Post-sync local verification passed for sparse-Ainv engine (8/8),
+  M3.4 warm-start / phi-clamp (14/14), traits keyword (44 pass,
+  1 expected skip), and `brms-sugar`.

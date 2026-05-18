@@ -36,32 +36,26 @@ pause.
 
 Current operating rule:
 
-- Codex owns the `codex/drmtmb-parity-hygiene` branch: live board
-  repair, `team-improvements.md`, source-of-truth cascade fixes,
-  and a stop point before engine PR review.
-- Claude's two held engine PRs remain open and green:
-  [#181](https://github.com/itchyshin/gllvmTMB/pull/181)
-  sparse pedigree A-inverse engine pass-through, and
-  [#182](https://github.com/itchyshin/gllvmTMB/pull/182)
-  M3.4 warm-start + phi-clamp.
-- Codex will not merge or edit `#181` / `#182` in this hygiene
-  lane. Per maintainer direction, the stop point is before the
-  engine-PR review sequence so the team can reassess what to
-  copy from `drmTMB`.
+- PR #181 (sparse pedigree A-inverse engine pass-through) and
+  PR #182 (M3.4 warm-start + phi-clamp) were reviewed by Codex
+  and merged to `main` on 2026-05-18.
+- Codex now owns the only open PR, #184
+  (`codex/drmtmb-parity-hygiene`): live board repair,
+  `team-improvements.md`, source-of-truth cascade fixes, and this
+  post-merge sync against current `main`.
+- No new implementation lane should start until #184 is green and
+  either merged or explicitly held.
 - Both teams should keep write scopes explicit in this file until
-  the open PR count returns to one or zero.
+  the open PR count returns to zero.
 
 ## Active lanes
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | drmTMB-parity hygiene and source-of-truth cascade | `codex/drmtmb-parity-hygiene` | board, process docs, source-of-truth docs, narrow roxygen/Rd wording | active; stop before `#182` / `#181` review |
-| Claude | Sparse pedigree A-inverse engine pass-through | #181 / `agent/sparse-pedigree-ainv-engine` | `R/animal-keyword.R`, `R/brms-sugar.R`, `R/fit-multi.R`, tests, design/dev-log | held for Codex review; 3-OS green |
-| Claude | M3.4 warm-start + phi-clamp | #182 / `agent/m3-4-warmstart-phi-clamp` | `R/fit-multi.R`, `R/gllvmTMB.R`, `R/init-warmstart.R`, tests, design/dev-log | held for Codex review; 3-OS green |
+| Codex | drmTMB-parity hygiene and source-of-truth cascade | #184 / `codex/drmtmb-parity-hygiene` | board, process docs, source-of-truth docs, narrow roxygen/Rd wording | active; synced with post-#181/#182 `main`; CI pending |
 
-**WIP**: two engine PRs plus this hygiene branch. No new
-implementation lane should start until this hygiene lane stops and
-the team decides the `#181` / `#182` review order.
+**WIP**: one open PR (#184). No new implementation lane should start
+until this hygiene lane is settled.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -77,9 +71,8 @@ instead of expanding this table.
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Codex | Review #182 M3.4 warm-start + phi-clamp | after this hygiene lane stops and maintainer confirms review sequence |
-| Codex | Review #181 sparse A-inverse engine pass-through | after #182 review findings are recorded, unless maintainer asks to reverse order |
-| Codex + Claude | Revisit `drmTMB` workflow lessons | after hygiene lane stop point |
+| Codex + Claude | Revisit `drmTMB` workflow lessons for reader path, pkgdown shape, and slice discipline | after #184 is green and settled |
+| Codex | Next small reader-facing lane | after maintainer chooses whether this should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing |
 
 Move a row to "Active lanes" when you start it.
 
@@ -99,8 +92,8 @@ leave a coordination comment first and wait for acknowledgement.
 | `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
 | Tier-1 article rewrites (`choose-your-model`, `phylogenetic-gllvm`, etc.) | paused; revisit after this hygiene stop point |
-| `R/*` | held by open PRs #181 / #182 where applicable. This hygiene lane made narrow wording-only roxygen/comment updates in `R/gllvmTMB.R`, `R/traits-keyword.R`, `R/brms-sugar.R`, `R/two-stage.R`, and `R/animal-keyword.R`; no engine logic or tests. Coordinate before further R edits. |
-| `tests/testthat/*` | held by open PRs #181 / #182 where applicable; no new edits in this hygiene lane |
+| `R/*` | no active engine owner after #181 / #182 merged. This hygiene lane made narrow wording-only roxygen/comment updates in `R/gllvmTMB.R`, `R/traits-keyword.R`, `R/brms-sugar.R`, `R/two-stage.R`, and `R/animal-keyword.R`; engine logic now on `main` came from #181 / #182. Coordinate before further R edits. |
+| `tests/testthat/*` | no active owner after #181 / #182 merged; new tests from those PRs are now on `main` |
 | `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
 
 If a file's owner needs to change (e.g. Claude needs to touch
@@ -109,13 +102,12 @@ PR comment, wait for the other agent's acknowledgement.
 
 ## Pending coordination questions
 
-**Q (2026-05-18, Codex)**: After the hygiene lane, should Codex
-review #182 before #181 (highest suspected correctness risk first)
-or respect Claude's proposed merge order #181 then #182?
-Open until: before any engine PR review comment.
-Touches: `R/fit-multi.R`, `R/gllvmTMB.R`, `R/init-warmstart.R`,
-`R/animal-keyword.R`, `R/brms-sugar.R`, tests and design docs in
-those PRs.
+None open.
+
+Resolved 2026-05-18: maintainer asked Codex to review and merge
+the held engine PRs before the next `drmTMB` workflow revisit.
+Codex reviewed #181 and #182, simulated the combined merge order,
+ran the targeted tests, and merged #181 then #182.
 
 Active question template (when adding):
 
@@ -129,6 +121,14 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-18 ~13:00 MT**: PR #181 sparse pedigree A-inverse
+  engine pass-through and PR #182 M3.4 warm-start + phi-clamp
+  were reviewed by Codex and merged to `main`. Combined
+  #181 -> #182 tree was simulated before merge; targeted checks
+  passed with `NOT_CRAN=true` + `devtools::load_all(".")`:
+  sparse-Ainv engine 8/8 and M3.4 warm-start / phi-clamp 14/14.
+  #184 is now the only open PR and has been synced with the
+  post-merge `main`.
 - **2026-05-13 ~20:30 MT**: Seven-PR evening sweep merged after
   maintainer authorization. In chronological merge order on
   main: #76 (cov-corr misleading-section removal, landed

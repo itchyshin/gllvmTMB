@@ -55,3 +55,34 @@ validation-debt register.
   simulation recovery, and troubleshooting pages discoverable while routing new
   users first through Get Started, Choose Your Model, Morphometrics, Joint SDM,
   Covariance and Correlation, and Common Pitfalls.
+
+## 2026-05-18 - drmTMB Closed-Loop Slice Discipline
+
+- Improvement adopted: copy the loop, not the size of the archive. The
+  `drmTMB` pattern is a closed cycle: one small PR, explicit scope wall,
+  targeted checks, after-task report, check-log entry, and a visible next
+  surface. `gllvmTMB` should avoid broad "fix the docs" lanes that mix
+  navigation, articles, engine wording, and validation promises without a
+  stop point.
+- Improvement adopted: make the README / pkgdown entrance task-shaped. The
+  `drmTMB` site routes readers through "Start here", "What can I model now?",
+  stable-core boundaries, model guides, tutorials, and developer notes. For
+  `gllvmTMB`, the analogous route should separate worked model guides from
+  concepts/reference pages and should keep the supported-versus-planned
+  status visible before readers reach deep articles.
+- Improvement adopted: use readiness matrices before comprehensive simulation
+  claims. `drmTMB` does not say a model surface is ready just because one fit
+  runs; it records likelihood, parser boundary, extractor, diagnostic,
+  interval, and recovery-test status. `gllvmTMB` should use the validation-debt
+  register the same way: an advertised feature is only reader-facing when the
+  evidence row says what is covered, partial, or blocked.
+- Improvement adopted: after-task reports should include "tests of tests" and
+  named-reader review, not only a command list. Pat should see whether the
+  article or README path is usable; Rose should see stale claims; Grace should
+  see CI/pkgdown implications; Curie/Fisher should see whether simulation or
+  interval evidence actually supports the claim.
+- Improvement adopted: CI pacing is part of the social contract. `drmTMB`
+  keeps three-OS checks strict, uses small slices, and lets pkgdown run after
+  main checks. `gllvmTMB` should keep one open implementation PR at a time
+  when compiled code or formula grammar is involved, and avoid rapid push
+  cascades while a 3-OS run is still active.

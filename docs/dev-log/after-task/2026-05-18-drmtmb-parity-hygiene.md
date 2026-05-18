@@ -2,8 +2,10 @@
 
 **Branch**: `codex/drmtmb-parity-hygiene`
 **Date**: 2026-05-18
-**Scope**: process / docs / roxygen consistency. No likelihood,
-engine, test, or merge work on PR #181 / #182.
+**Scope**: process / docs / roxygen consistency. The original
+hygiene commit did not include likelihood, engine, or test changes
+from PR #181 / #182; this branch was later synced with `main` after
+those two PRs were reviewed and merged.
 **Lead personas**: Ada (coordination), Rose (cross-file consistency),
 Boole (formula/API language), Pat (reader path), Grace (verification),
 Shannon (cross-team lane boundary).
@@ -20,7 +22,11 @@ that into a small hygiene lane:
 - repair high-risk contradictions across source-of-truth docs,
   roxygen, generated Rd, and project-local skills;
 - stop before reviewing or merging Claude's held engine PRs #181 and
-  #182.
+  #182, unless the maintainer explicitly redirected the sequence.
+
+Maintainer then asked Codex to review and merge #181 / #182 first.
+Codex did that, then merged current `main` into this branch so #184
+does not preserve stale "held PR" coordination text.
 
 ## 2. What changed
 
@@ -28,8 +34,9 @@ that into a small hygiene lane:
 
 - `docs/dev-log/coordination-board.md`: replaced the stale
   Codex-absent assumption with the current bounded hygiene lane,
-  recorded open Claude PRs #181 / #182 as held and green, and named
-  the stop point before engine PR review.
+  recorded open Claude PRs #181 / #182 while they were held, then
+  updated the board again after those PRs merged so #184 is the only
+  active lane.
 - `docs/dev-log/team-improvements.md`: new process log capturing
   lessons from `drmTMB`: closure discipline, live lane ownership,
   source-of-truth cascades, exact completed checks, and reader-path
@@ -66,6 +73,13 @@ Touched only wording/comment surfaces in R files:
   `man/gllvmTMB-package.Rd`, `man/traits.Rd`, `man/meta.Rd`,
   `man/block_V.Rd`, and `man/animal_scalar.Rd`.
 
+### Post-merge sync
+
+After #181 and #182 merged to `main`, this branch merged
+`origin/main` with no conflicts requiring manual resolution. The
+branch now contains the current engine changes from `main`, but #184's
+own additional edits remain the hygiene/source-of-truth cascade.
+
 ## 3. Checks run
 
 - `gh pr list --repo itchyshin/gllvmTMB --state open` before edits:
@@ -86,13 +100,27 @@ Touched only wording/comment surfaces in R files:
   returned only two expected non-action hits: NEWS historical
   "3 x 5 to 4 x 5" wording and a `R/gllvmTMB.R` comment about the
   removed no-covstruct fallback, not `gllvmTMB_wide()`.
+- Post-#181/#182 merge simulation before merging the engine PRs:
+  combined #181 -> #182 tree had no conflict markers.
+- Targeted post-simulation checks before merging the engine PRs:
+  `Sys.setenv(NOT_CRAN="true"); devtools::load_all("."); testthat::test_file("tests/testthat/test-pedigree-sparse-ainv-engine.R")`
+  passed 8/8, and
+  `Sys.setenv(NOT_CRAN="true"); devtools::load_all("."); testthat::test_file("tests/testthat/test-m3-4-warmstart-phi-clamp.R")`
+  passed 14/14.
+- `git merge --no-edit origin/main`: clean automatic merge of the
+  post-#181/#182 `main` into this branch.
+- Post-sync local verification:
+  `Rscript --vanilla -e 'Sys.setenv(NOT_CRAN="true"); devtools::load_all("."); testthat::test_file("tests/testthat/test-pedigree-sparse-ainv-engine.R"); testthat::test_file("tests/testthat/test-m3-4-warmstart-phi-clamp.R"); testthat::test_file("tests/testthat/test-traits-keyword.R"); devtools::test(filter = "brms-sugar", reporter = "summary")'`
+  passed: sparse-Ainv engine 8/8; M3.4 warm-start / phi-clamp 14/14;
+  traits keyword 44 pass, 1 expected skip; brms-sugar pass.
 
 ## 4. What did not run
 
 - No full `devtools::test()`, `devtools::check()`, or
-  `pkgdown::check_pkgdown()`; this is a hygiene branch and the agreed
-  stop point is before the engine PR review sequence.
-- No review, merge, or code change for PR #181 or #182.
+  `pkgdown::check_pkgdown()` on this branch after the post-merge
+  sync.
+- No new engine logic was authored in #184. Engine logic in the branch
+  after the sync comes from already-merged #181 / #182.
 - No article rewrite or navbar redesign.
 
 ## 5. Cross-team notes
@@ -103,18 +131,13 @@ Touched only wording/comment surfaces in R files:
   and
   `docs/dev-log/shannon-audits/2026-05-18-handover-to-codex-team.md`.
 - This branch makes narrow wording-only edits in `R/brms-sugar.R`,
-  `R/animal-keyword.R`, and `R/gllvmTMB.R`, which are also near open
-  Claude engine PR territory. No engine logic changed, but merge order
-  should be checked before combining with #181 / #182.
+  `R/animal-keyword.R`, and `R/gllvmTMB.R`. The nearby engine changes
+  from #181 / #182 are now on `main` and were merged into this branch.
 
 ## 6. Next safest action
 
-Stop here and let the maintainer decide whether to:
-
-1. commit/open this hygiene PR first, then review #182 / #181; or
-2. hold this branch while the team revisits more `drmTMB` process
-   lessons before any PR movement.
-
-Recommended sequence if continuing later: review #182 first
-(M3.4 warm-start + phi-clamp), then #181 (sparse Ainv), because #182
-has the higher model-behaviour risk even though both are green.
+Keep #184 as the only open PR until CI is green and the maintainer is
+comfortable with the source-of-truth cascade. After #184 is settled,
+the next small lane should be chosen from the `drmTMB` workflow
+lessons: reader-path pkgdown navigation, Tier-1 article re-read, or
+validation-debt surfacing.

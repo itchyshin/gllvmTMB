@@ -56,10 +56,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Families doc (mixed-family + usage) | #190 / `codex/families-doc-mixed-family` | `R/families.R`, `man/*.Rd` + dev-log artifacts | PR open; waiting for 3-OS `R-CMD-check` |
+| (none) | (none) | (none) | (none) | WIP = 0 |
 
-**WIP**: one doc-only PR (#190). Avoid parallel edits to roxygen/Rd and the
-Families help topic until CI is green and the PR is merged or explicitly held.
+**WIP**: 0. Safe to start the next small, bounded lane.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -129,6 +128,8 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~05:19 MT**: PR #190 (Families help topic mixed-family
+  selector-column documentation) merged to `main`.
 - **2026-05-18 ~16:35 MT**: PR #187 CI tiered gates passed full
   three-OS R-CMD-check after a macOS Bash 3.2 classifier fix. The
   workflow now preserves the OS-named required checks while fast-

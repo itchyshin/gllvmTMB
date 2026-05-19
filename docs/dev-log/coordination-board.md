@@ -64,7 +64,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Ada (Codex) | M3.3 target-scale audit | `codex/m3-3-target-scale-audit-2026-05-19` | M3.3 target audit, Design 42/44, dev/m3-grid.R comments, check-log, after-task, coordination board | in progress |
+| Ada (Codex) | M3.3 target-scale audit | PR #202 / `codex/m3-3-target-scale-audit-2026-05-19` | M3.3 target audit, Design 42/44, dev/m3-grid.R comments, check-log, after-task, coordination board | in review |
 
 **WIP**: 1. Avoid parallel M3.3 target-scale, check-log,
 after-task, design-note, and coordination-board edits until this lane

@@ -44,12 +44,20 @@
 - PR #190 merged to `main` at 2026-05-19T11:18:43Z (GitHub UI time); merge commit `da373a5`.
 - `main` now contains the Families mixed-family documentation + dev-log artifacts.
 
+### 2026-05-19 05:48 MDT
+
+- PR #193 (in-prep citation discipline) merged to `main`; merge commit `c23f0bd`.
+- PR #192 (ROADMAP refresh after families lanes) merged to `main`; merge commit `3566534`.
+- Coordination board now shows WIP back to 0 after closing the PR #193 lane.
+
 ## PRs / branches
 
 - Merged: PR #187, `Add tiered R CMD check gate`.
 - Merged: PR #188, `Record overnight Shannon handoff`.
 - Merged: PR #189, `Fix pkgdown families reference index`.
 - Merged: PR #190, `Docs: clarify mixed-family family selector usage`.
+- Merged: PR #192, `Docs: refresh ROADMAP after families lanes`.
+- Merged: PR #193, `Docs: in-prep citation discipline`.
 
 ## CI status
 
@@ -100,5 +108,5 @@
 ## Next actions
 
 1. Wait for the post-merge `main` 3-OS `R-CMD-check` to complete.
-2. With WIP back to 0, start the next low-risk doc slice (candidate: in-prep citation hygiene) as its own PR.
-3. After the next lane is chosen, refresh `ROADMAP.md` with a small, explicit tick for the completed Families-doc + pkgdown families discoverability work.
+2. Start Slice 2 after-task template (process-only PR).
+3. Proceed to M3.3 production grid `workflow_dispatch` wiring (reproducible dispatch + artifacts; keep inference changes out of this lane).

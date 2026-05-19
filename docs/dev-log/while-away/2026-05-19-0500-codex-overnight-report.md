@@ -23,25 +23,34 @@
 - Corrected `_pkgdown.yml` to list `Families`, then `pkgdown::check_pkgdown()` passed with "No problems found."
 - Ran `pkgdown::build_reference(lazy = FALSE)` and confirmed the rendered Response families section lists the family constructors through `families.html` plus `ordinal_probit()`.
 
+### 2026-05-18 (late) / 2026-05-19
+
+- Repo evidence update: PR #187 (tiered CI gate) and PR #189 (pkgdown Response families reference index) are merged on `main`.
+- Process-only fast-pass verified in real CI on PR #188 (all three OS jobs ran the "Classify R CMD check scope" step, skipped R setup/dependencies/check steps, and completed via "Fast pass for process-only change").
+- Connectivity note: this shell cannot resolve `github.com` (`gh`/`git push` fail host resolution), so GitHub state is queried via the GitHub connector.
+- Started the next reader-facing doc slice on local branch `codex/families-doc-mixed-family`: expanded the `Families` help topic to document the mixed-family selector-column API (`family` list + `data$family` / `attr(family, \"family_var\")`); ran `devtools::document()` + `pkgdown::check_pkgdown()`; appended `docs/dev-log/check-log.md` and drafted an after-task report. Not pushed yet due to the connectivity block.
+
 ## PRs / branches
 
-- Active branch: `codex/overnight-shannon-audits`.
+- Merged: PR #187, `Add tiered R CMD check gate`.
 - Merged: PR #188, `Record overnight Shannon handoff`.
-- Active branch: `codex/pkgdown-families-index`.
+- Merged: PR #189, `Fix pkgdown families reference index`.
+- Local WIP (not pushed): `codex/families-doc-mixed-family`.
 
 ## CI status
 
-- Local shell cannot reach github.com, so CI checks are queried via the GitHub connector when needed.
-- Correction after rehydration: local `gh` access is working in this shell. `gh run list` showed `main` R-CMD-check for `ef451cf` succeeded and the `pkgdown` workflow for `ef451cf` was still in progress at 18:00 MDT.
+- Local shell cannot resolve `github.com`, so CI checks are queried via the GitHub connector when needed.
 
 ## Files changed locally (so far)
 
 - `docs/dev-log/while-away/2026-05-19-0500-codex-overnight-report.md` (new; running report)
-- `docs/dev-log/shannon-audits/2026-05-18-codex-kickoff-brief.md` (new; Shannon kickoff snapshot)
-- `docs/dev-log/shannon-audits/2026-05-18-handover-to-codex-team.md` (new; full Shannon handover snapshot)
-- `_pkgdown.yml` (planned next slice; Response families `Families` topic)
-- `docs/dev-log/after-task/2026-05-18-pkgdown-families-index.md` (planned next slice)
-- `docs/dev-log/check-log.md` (planned next slice)
+- `docs/dev-log/shannon-audits/2026-05-18-codex-kickoff-brief.md` (merged in PR #188)
+- `docs/dev-log/shannon-audits/2026-05-18-handover-to-codex-team.md` (merged in PR #188)
+- `_pkgdown.yml` (merged in PR #189)
+- `docs/dev-log/check-log.md` (merged in PR #189; updated again locally for the Families doc slice)
+- `docs/dev-log/coordination-board.md` (updated locally to record the active Families doc lane + merge state)
+- `R/families.R` (local WIP: new mixed-family usage docs)
+- `man/families.Rd` (local WIP: regenerated after `devtools::document()`)
 
 ## Checks run
 
@@ -59,6 +68,10 @@
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` (first failed on lowercase `families`; second passed after changing to `Families`)
 - `Rscript --vanilla -e 'pkgdown::build_reference(lazy = FALSE)'` (completed)
 - `rg -n "Response families|families.html|Additional families|ordinal_probit" pkgdown-site/reference/index.html` (confirmed rendered index)
+- GitHub connector: open-PR census -> none; PR #188 merged; PR #187 merged; PR #189 merged.
+- GitHub connector: PR #188 head workflow run `R-CMD-check` job steps show the intended fast-pass (`Classify R CMD check scope` + skipped setup/check + `Fast pass for process-only change`).
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` (regenerated `man/families.Rd`).
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` (passed, "No problems found.")
 
 ## Named-perspective notes
 
@@ -69,6 +82,11 @@
 
 ## Next actions
 
-1. Commit and open the small pkgdown Response families reference-index PR.
-2. Wait for the active `main` pkgdown run to finish before pushing this branch.
-3. Do not bundle stale `trait =` cleanup or citation triage into this PR.
+1. When `github.com` connectivity returns for this shell, push
+   `codex/families-doc-mixed-family` and open a small PR; wait for
+   full 3-OS R-CMD-check before merge (roxygen/Rd touched).
+2. Keep the scope doc-only: no family implementations, likelihoods, or
+   formula-grammar changes.
+3. If CI/doc churn is unexpectedly large, split the "Families mixed-family
+   docs" from the roxygen Rd normalisation into two commits to keep review
+   tight.

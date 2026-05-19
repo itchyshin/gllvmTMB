@@ -45,8 +45,10 @@ Current operating rule:
 - PR #186 (red-main M3.4 test hygiene) merged on 2026-05-18 to
   stabilize the smoke-test contract exposed by that failed main run.
 - PR #185 (Slice 1 PR slice contract) merged on 2026-05-18.
-- PR #187 (CI tiered gates) passed full three-OS R-CMD-check on
-  2026-05-18 and is ready to merge.
+- PR #187 (CI tiered gates) merged on 2026-05-18; the process-only
+  fast-pass behaviour was verified in real CI on PR #188.
+- PR #188 (process-only Shannon handoff snapshots) merged on 2026-05-19.
+- PR #189 (pkgdown Response families reference index) merged on 2026-05-18.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -54,10 +56,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| _None_ | _None_ | _None_ | _None_ | waiting for next explicit lane |
+| Codex | Families doc (mixed-family + usage) | `codex/families-doc-mixed-family` | `R/families.R`, `man/families.Rd` | local WIP (GitHub offline) |
 
-**WIP**: none after PR #187 merges. Do not start a new implementation
-lane until `main` is synced and the overnight lane plan is explicit.
+**WIP**: one doc-only lane in progress; avoid parallel edits to the same
+roxygen/Rd files until this slice is closed or explicitly abandoned.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

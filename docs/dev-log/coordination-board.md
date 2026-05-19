@@ -68,11 +68,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Ada (Codex) | M3 target-explicit roadmap refresh | PR #204 / `codex/m3-3-roadmap-refresh-2026-05-19` | ROADMAP, Design 42/43/44/48, check-log, after-task, coordination board | in review; expected fast-path CI because files are ignored-source docs/process files |
+| none | none | none | none | WIP is currently zero |
 
-**WIP**: 1. Avoid parallel ROADMAP, Design 42 / 43 / 44 / 48,
-check-log, after-task, and coordination-board edits until this lane
-lands or is explicitly held.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -104,12 +102,12 @@ leave a coordination comment first and wait for acknowledgement.
 | `.github/workflows/R-CMD-check.yaml` | no active owner after PR #203 merged |
 | `.github/pull_request_template.md` | no active owner in this lane; do not edit |
 | `CONTRIBUTING.md` | no active owner after PR #203 merged |
-| `docs/dev-log/coordination-board.md` | Ada (Codex) for current M3 roadmap refresh lane |
-| `docs/dev-log/check-log.md` | Ada (Codex) for current M3 roadmap refresh entry |
+| `docs/dev-log/coordination-board.md` | no active owner |
+| `docs/dev-log/check-log.md` | no active owner |
 | `docs/dev-log/after-task/2026-05-18-pr-slice-contract.md` | Codex for current Slice 1 after-task report |
 | `CLAUDE.md`, `AGENTS.md` | no active owner in this lane; do not edit |
 | `_pkgdown.yml`, `README.md` | no active owner in this lane; do not edit |
-| `docs/design/42-m3-dgp-grid.md`, `docs/design/43-asreml-speed-techniques.md`, `docs/design/44-m3-3-inference-replacement.md`, `docs/design/48-m3-4-boundary-regimes.md` | Ada (Codex) for target-explicit roadmap refresh only |
+| `docs/design/42-m3-dgp-grid.md`, `docs/design/43-asreml-speed-techniques.md`, `docs/design/44-m3-3-inference-replacement.md`, `docs/design/48-m3-4-boundary-regimes.md` | no active owner after PR #204 merged |
 | `vignettes/articles/covariance-correlation.Rmd` | no active owner in this lane; do not edit here |
 | `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
@@ -160,6 +158,11 @@ Resolved questions move to "Recently resolved" with the answer.
   classifier now fast-passes ignored-source planning/doc changes with
   visible replacement gates instead of relying on workflow-level path
   skips.
+- **2026-05-19 ~15:10 MT**: PR #204 (M3 target-explicit roadmap
+  refresh) merged to `main` after the new fast-path CI completed in
+  seconds on all three OS-named checks. ROADMAP and Design 42 / 43 /
+  44 / 48 now agree that `psi` is diagnostic and total
+  `Sigma_unit[tt]` is the primary M3.3 promotion target.
 - **2026-05-19 ~11:43 MT**: PR #199 (M3.3 production artifact review)
   merged to `main` after three-OS R-CMD-check passed. The production
   workflow passed compute but failed the statistical coverage gate, so

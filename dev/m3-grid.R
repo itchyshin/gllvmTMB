@@ -8,18 +8,21 @@
 ##   2. Simulate response (per-family inverse link + sampling).
 ##   3. Fit gllvmTMB with the matching family + d.
 ##   4. Compute profile CIs on per-trait psi (the unique-variance
-##      parameter with the cleanest current profile target).
-##   5. Record whether CIs cover the TRUE Sigma_unit diagonals.
+##      parameter with the cleanest current direct profile target).
+##   5. Record both TRUE Sigma_unit diagonals and TRUE psi. The current
+##      `covered_prof` column is psi coverage; primary Sigma_unit coverage
+##      needs a derived/profile or bootstrap CI path before promotion.
 ##
 ## Public entry points:
 ##   m3_run_cell(family, d, n_reps, seed, ...)
 ##   m3_run_grid(cells, n_reps, ..., parallel = TRUE)
 ##
-## "Truth" = the simulated Sigma_unit diagonals
+## "Truth" = the simulated Sigma_unit diagonals plus psi
 ##   Sigma_unit_tt = (Lambda_true %*% t(Lambda_true))_tt + psi_true_t
-## This is the canonical rotation-invariant target (per pitfalls §2
-## and Design 42 §3): we check whether the fit's CIs cover the true
-## generative covariance diagonals.
+## Sigma_unit is the canonical rotation-invariant target (per pitfalls
+## and Design 42). The 2026-05-19 production grid profiles psi because
+## theta_diag_B is the available direct profile target; see the M3.3
+## target-scale audit before treating this diagnostic as a promotion gate.
 ##
 ## Source from precompute-vignettes.R via `source("dev/m3-grid.R")`.
 ## This file is in `.Rbuildignore` (dev/ directory) — NOT shipped with
@@ -299,9 +302,11 @@ m3_run_cell <- function(
     }
 
     ## M3.3a — Profile-likelihood CIs on per-trait `sd_B` (unique-tier
-    ## SD). `sd_B[t]^2 = psi_t` is the per-trait unique variance, the
-    ## natural identifiable target. Compare CI against `truth$psi[t]`
-    ## (the simulated unique variance).
+    ## SD). `sd_B[t]^2 = psi_t` is the per-trait unique variance.
+    ## Compare CI against `truth$psi[t]` (the simulated unique variance).
+    ## After the 2026-05-19 target-scale audit this is treated as a
+    ## diagnostic target; total `Sigma_unit` coverage remains the primary
+    ## rotation-invariant validation target for promotion.
     ##
     ## Per Design 44 corrected estimate: tmbprofile_wrapper() uses
     ## TMB's C++ inner optim warm-started from the joint MLE — ~0.5 s

@@ -212,6 +212,17 @@ failure mode is diagnosed and a rerun supports the gate. The current
 evidence points to profile-CI calibration / convergence triage rather
 than publication-ready coverage.
 
+**2026-05-19 target-scale follow-up.** The failure-mode ledger showed
+that every uncovered converged row missed above the `psi` profile
+upper bound. The target-scale audit then found that the production
+grid's `covered_prof` column validates `psi`, while Design 42's
+primary validation target is total `Sigma_unit[tt]`. The next M3.3
+implementation slice should make the artifact target-explicit:
+`psi` as a diagnostic target, total `Sigma_unit[tt]` as the primary
+promotion target. The same audit also keeps `glmmTMB` as the direct
+single-trait nbinom2 comparator and keeps `galamm` for multivariate
+Gaussian/binomial/Poisson latent-loading comparisons, not nbinom2.
+
 ## 7. Honest scope: what M3.3 does NOT do
 
 - **REML-based CIs**: not in v0.2.0 (REML is post-CRAN per README).

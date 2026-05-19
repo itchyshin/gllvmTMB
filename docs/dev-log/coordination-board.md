@@ -62,7 +62,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Ada (Codex) | M3.3 failure-mode ledger | `codex/m3-3-failure-mode-triage-2026-05-19` | M3.3 audit, check-log, after-task, coordination board | active |
+| Ada (Codex) | M3.3 failure-mode ledger | PR #201 / `codex/m3-3-failure-mode-triage-2026-05-19` | M3.3 audit, check-log, after-task, coordination board | in review |
 
 **WIP**: 1. Avoid parallel M3.3 artifact-ledger, check-log,
 after-task, and coordination-board edits until this lane lands or is

@@ -1965,3 +1965,52 @@ Kaizen point:
     helper filters out `NA` coverage rows first, it can make every cell
     look like `n_failed = 0` even when the full grid records failed
     replicate fits.
+
+## 2026-05-19 -- ROADMAP post-M3 evidence refresh
+
+Scope:
+
+- Refresh `ROADMAP.md` after PR #199 merged and the M3.3 production
+  artifact review established that the compute workflow passed but the
+  statistical coverage gate failed.
+- Sync the detailed M3 heading with the phase-at-a-glance row.
+- Replace verified stale roadmap wording for merged PRs #120, #122,
+  #125, and #170.
+- Update the coordination board and add an after-task report for this
+  bounded documentation/process lane.
+- No public R API, likelihood, formula grammar, response family,
+  roxygen, Rd, vignette, README, NEWS, pkgdown navigation,
+  validation-debt status, or test expectation changed.
+
+Evidence:
+
+- `gh pr view 199 --repo itchyshin/gllvmTMB --json number,state,mergedAt,mergeCommit,url`
+  -> PR #199 merged at `2026-05-19T17:42:48Z` as merge commit
+  `6a1e5d5f5f26545d7d2a1d23194e27cf70ef2ce8`.
+- `git switch main` -> switched from the PR #199 branch to `main`.
+- `git pull --ff-only` -> fast-forwarded `main` from `020e305` to
+  `6a1e5d5`.
+- Pre-edit lane check: `gh pr list --state open --limit 20` -> no open
+  PR rows.
+- Pre-edit lane check: `git log --all --oneline --since="6 hours ago"`
+  inspected recent merges through PR #199.
+- `gh pr view 170 --repo itchyshin/gllvmTMB --json number,title,state,mergedAt,url`
+  -> PR #170 merged at `2026-05-18T01:09:12Z`.
+- `gh pr view 120 --repo itchyshin/gllvmTMB --json number,title,state,mergedAt,url`
+  -> PR #120 merged at `2026-05-15T19:45:43Z`.
+- `gh pr view 122 --repo itchyshin/gllvmTMB --json number,title,state,mergedAt,url`
+  -> PR #122 merged at `2026-05-15T20:28:41Z`.
+- `gh pr view 125 --repo itchyshin/gllvmTMB --json number,title,state,mergedAt,url`
+  -> PR #125 merged at `2026-05-15T20:35:38Z`.
+- ``rg -n 'PR #170, in flight|2/3 in main; 1 in flight|cross-reference fix in flight|PR #122.*held|simulation-verification\\.Rmd.*LOCAL DRAFT|### ⚪ M3 -- Inference completeness across families -- `░░░░░░░░` 0/8' ROADMAP.md``
+  -> no remaining stale roadmap status hits.
+- `rg -n "PR #197|PR #198|PR #199|M3\\.3 production|26100827665|2/15|CI-08|CI-10|failure-mode triage" ROADMAP.md docs/dev-log/coordination-board.md`
+  -> expected current-status hits only.
+- `git diff --check` -> clean.
+
+Kaizen point:
+
+27. **Sweep the detailed section after each roadmap tick.** When a
+    phase-at-a-glance row changes, check the matching detailed heading,
+    milestone bullets, and adjacent "in flight" wording before the
+    roadmap lane closes.

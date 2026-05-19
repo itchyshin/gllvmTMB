@@ -51,6 +51,8 @@ Current operating rule:
 - PR #189 (pkgdown Response families reference index) merged on 2026-05-18.
 - PR #195 (Slice 2 after-task templates) merged on 2026-05-19.
 - PR #197 (M3.3 production grid workflow) merged on 2026-05-19.
+- PR #199 (M3.3 production artifact review) merged on 2026-05-19
+  after 3-OS R-CMD-check passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -58,11 +60,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | M3.3 production grid dispatch + artifact review | PR #199 / `codex/m3-production-artifact-review-2026-05-19` | GitHub Actions run artifacts + validation-debt/roadmap/dev-log follow-up | artifact review complete; CI running |
+| Codex | Post-M3 evidence ROADMAP consistency refresh | `codex/roadmap-post-m3-evidence-refresh-2026-05-19` | `ROADMAP.md`, check-log, after-task, coordination board | active |
 
-**WIP**: 1. Avoid parallel M3.3 artifact aggregation,
-validation-debt, roadmap, and dev-log edits until this lane lands or is
-explicitly held.
+**WIP**: 1. Avoid parallel ROADMAP, check-log, after-task, and
+coordination-board edits until this lane lands or is explicitly held.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -131,6 +132,10 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~11:43 MT**: PR #199 (M3.3 production artifact review)
+  merged to `main` after three-OS R-CMD-check passed. The production
+  workflow passed compute but failed the statistical coverage gate, so
+  CI-08 / CI-10 stayed partial and M3.3 moved to failure-mode triage.
 - **2026-05-19 ~07:23 MT**: PR #197 (M3.3 production grid
   `workflow_dispatch` wiring) merged to `main` after 3-OS
   R-CMD-check passed.

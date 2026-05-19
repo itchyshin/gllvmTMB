@@ -21,10 +21,5 @@ Useful links:
 \author{
 \strong{Maintainer}: Shinichi Nakagawa \email{itchyshin@gmail.com} (\href{https://orcid.org/0000-0002-7765-5182}{ORCID}) [copyright holder]
 
-Authors:
-\itemize{
-  \item Shinichi Nakagawa \email{itchyshin@gmail.com} (\href{https://orcid.org/0000-0002-7765-5182}{ORCID}) [copyright holder]
-}
-
 }
 \keyword{internal}

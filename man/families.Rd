@@ -169,7 +169,10 @@ Beta(link = "logit")
 ## Mixed-family example: per-row family chosen by a `family` column
 sim <- simulate_site_trait(n_sites = 40, n_species = 10, n_traits = 2,
                            mean_species_per_site = 5)
-sim$data$family <- factor(sim$data$trait, levels = levels(sim$data$trait))
+sim$data$family <- factor(
+  ifelse(sim$data$trait == levels(sim$data$trait)[1], "gaussian", "binomial"),
+  levels = c("gaussian", "binomial")
+)
 fam <- list(gaussian(), binomial())
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 1),

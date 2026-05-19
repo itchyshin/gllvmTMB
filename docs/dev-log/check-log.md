@@ -1791,3 +1791,27 @@ Kaizen point:
     the family object is consumed by `gllvmTMB()`, especially for
     mixed-family models where the selector-column contract is easy to
     miss.
+
+## 2026-05-19 -- Roadmap refresh after families lanes
+
+Scope:
+
+- Refresh `ROADMAP.md` to reflect the recent reader-facing families
+  discoverability work (PR #189) and the mixed-family Families help
+  topic documentation (PR #190), plus the process-only lane close
+  (PR #191).
+- Add a short “next small steps” list to keep the doc-slice queue
+  explicit and low-risk.
+
+Evidence:
+
+- Pre-edit lane check: `gh pr list --state open` -> no open PR rows.
+- Pre-edit lane check: `git log --all --oneline --since='6 hours ago'`
+  confirmed the recent merge order through #190/#191.
+
+Kaizen point:
+
+22. **Keep the roadmap “hot” for reader-path work.** After small
+    discoverability fixes merge, record them in `ROADMAP.md` along with
+    the next 1–3 low-risk lanes; otherwise the queue drifts into stale
+    handoff bullets.

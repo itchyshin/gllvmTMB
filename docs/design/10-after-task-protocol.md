@@ -22,6 +22,11 @@ Phase reports live in:
 docs/dev-log/after-phase/
 ```
 
+Copy/paste templates live alongside the folders:
+
+- `docs/dev-log/after-task/_TEMPLATE.md`
+- `docs/dev-log/after-phase/_TEMPLATE.md`
+
 ## Required Sections
 
 Each report should include:

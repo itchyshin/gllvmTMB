@@ -56,9 +56,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| (none) | (none) | (none) | (none) | WIP = 0 |
+| Codex | Slice 2 after-task templates | `codex/after-task-template-slice2` | `docs/design/10-after-task-protocol.md` + template files + dev-log | in progress (process-only) |
 
-**WIP**: 0. Safe to start the next small, bounded lane.
+**WIP**: 1 (process-only). Avoid parallel edits to shared process files
+until this lane is merged.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

@@ -43,6 +43,7 @@
 - GitHub connector: PR #190 is open on branch `codex/families-doc-mixed-family` (head SHA `9d719c6`).
 - This shell still cannot resolve `github.com`, so `gh` and `git push` fail (`Could not resolve host: github.com`).
 - Local note: this checkout has one additional after-task refresh commit (`ed9c0f1`) not yet pushed to the PR branch due to the DNS outage.
+- GitHub connector: PR #190 CI is running as workflow run `R-CMD-check` id `26092238455` (all three OS jobs reached `check-r-package`).
 
 ## PRs / branches
 

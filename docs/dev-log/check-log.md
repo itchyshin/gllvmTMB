@@ -1865,3 +1865,42 @@ Kaizen point:
     enough; keep a copy/paste `_TEMPLATE.md` in the folder so authors
     can start an after-task/after-phase report without reconstructing
     section headings from memory.
+
+## 2026-05-19 -- M3.3 production grid workflow
+
+Scope:
+
+- Add a manual `workflow_dispatch` GitHub Actions workflow for the
+  15-cell M3.3 production grid.
+- Add cell filters, output-prefix controls, and `init_strategy`
+  forwarding to the dev precompute scripts.
+- Update Design 44, the roadmap queue, the coordination board, and the
+  after-task report.
+- No public R API, likelihood, formula grammar, family, generated Rd,
+  vignette, pkgdown navigation, or validation-debt status changed.
+
+Evidence:
+
+- Pre-edit lane check: `gh pr list --state open --limit 20` -> no open
+  PR rows.
+- Pre-edit lane check: `git log --all --oneline --since="6 hours ago"`
+  inspected recent merges through PR #196.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/m3-production-grid.yaml"); puts "yaml ok"'`
+  passed.
+- `air format dev/m3-grid.R dev/precompute-m3-grid.R` completed.
+- `Rscript --vanilla -e 'parse("dev/m3-grid.R"); parse("dev/precompute-m3-grid.R")'`
+  parsed both scripts.
+- One-rep Gaussian d=1 driver checks passed with both
+  `--init-strategy=default` and `--init-strategy=single_trait_warmup`.
+- The warm-start one-rep driver check was rerun after formatting.
+- Malformed `--family=bogus` check failed loudly as expected.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-4-warmstart-phi-clamp")'`
+  passed (16 tests).
+- `git diff --check` clean.
+
+Kaizen point:
+
+25. **Separate dispatch wiring from evidence claims.** Production
+    compute infrastructure can land before the R = 200 artifacts, but
+    coverage rows, roadmap progress, and article claims should move only
+    after the artifacts are reviewed.

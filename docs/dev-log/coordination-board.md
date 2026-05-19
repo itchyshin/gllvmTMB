@@ -57,9 +57,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| (none) | (none) | (none) | (none) | WIP = 0 |
+| Codex | M3.3 production grid workflow | `codex/m3-production-grid-workflow-2026-05-19` | `.github/workflows/m3-production-grid.yaml`, `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, dev-log closeout | in progress |
 
-**WIP**: 0. Safe to start the next small, bounded lane.
+**WIP**: 1. Avoid parallel edits to the M3 grid driver, production
+workflow, and this lane's dev-log files until the PR lands or is held.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

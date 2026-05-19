@@ -68,7 +68,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Ada (Codex) | M3 target-explicit roadmap refresh | `codex/m3-3-roadmap-refresh-2026-05-19` (PR pending) | ROADMAP, Design 42/43/44/48, check-log, after-task, coordination board | local docs branch; opening PR after final checks |
+| Ada (Codex) | M3 target-explicit roadmap refresh | PR #204 / `codex/m3-3-roadmap-refresh-2026-05-19` | ROADMAP, Design 42/43/44/48, check-log, after-task, coordination board | in review; expected fast-path CI because files are ignored-source docs/process files |
 
 **WIP**: 1. Avoid parallel ROADMAP, Design 42 / 43 / 44 / 48,
 check-log, after-task, and coordination-board edits until this lane

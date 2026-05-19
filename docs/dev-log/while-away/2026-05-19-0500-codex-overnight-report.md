@@ -30,6 +30,13 @@
 - Connectivity note: this shell cannot resolve `github.com` (`gh`/`git push` fail host resolution), so GitHub state is queried via the GitHub connector.
 - Started the next reader-facing doc slice on local branch `codex/families-doc-mixed-family`: expanded the `Families` help topic to document the mixed-family selector-column API (`family` list + `data$family` / `attr(family, \"family_var\")`); ran `devtools::document()` + `pkgdown::check_pkgdown()`; appended `docs/dev-log/check-log.md` and drafted an after-task report. Not pushed yet due to the connectivity block.
 
+### 2026-05-19 02:58 MDT
+
+- Rehydrated repo evidence: working tree clean on `codex/families-doc-mixed-family`; diff vs `main` is still confined to the Families-doc slice.
+- Confirmed the local shell still has no DNS resolution for `github.com` / `api.github.com`, so `gh` and `git push` remain unusable from this environment.
+- GitHub connector check: open PR census is still empty.
+- Decision: keep work-in-progress bounded to the Families-doc lane and leave the branch in a ready-to-push state; do not start a second slice until CI can be triggered on this lane.
+
 ## PRs / branches
 
 - Merged: PR #187, `Add tiered R CMD check gate`.

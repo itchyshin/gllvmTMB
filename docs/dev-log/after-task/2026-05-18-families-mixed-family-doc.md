@@ -30,10 +30,8 @@ machinery, or advertised capability status changed.
 
 - `R/families.R`
 - `man/families.Rd` (regenerated)
-- `docs/dev-log/coordination-board.md`
 - `docs/dev-log/check-log.md`
-- `docs/dev-log/while-away/2026-05-19-0500-codex-overnight-report.md`
-- `docs/dev-log/recovery-checkpoints/2026-05-19-000630-codex-checkpoint.md`
+- `docs/dev-log/recovery-checkpoints/2026-05-19-020433-codex-checkpoint.md`
 
 ## Checks Run
 

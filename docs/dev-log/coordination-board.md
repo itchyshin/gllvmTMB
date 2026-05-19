@@ -68,9 +68,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| none | none | none | none | WIP is currently zero |
+| Ada (Codex) | M3.3 target-explicit pilot implementation | `codex/m3-3-target-explicit-pilot-2026-05-19` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, Design 42 / 44, dev-log closeout | local smoke checks passing; PR not opened yet |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -103,11 +103,12 @@ leave a coordination comment first and wait for acknowledgement.
 | `.github/pull_request_template.md` | no active owner in this lane; do not edit |
 | `CONTRIBUTING.md` | no active owner after PR #203 merged |
 | `docs/dev-log/coordination-board.md` | no active owner |
-| `docs/dev-log/check-log.md` | no active owner |
+| `docs/dev-log/check-log.md` | Ada (Codex) for M3.3 target-explicit pilot closeout |
 | `docs/dev-log/after-task/2026-05-18-pr-slice-contract.md` | Codex for current Slice 1 after-task report |
 | `CLAUDE.md`, `AGENTS.md` | no active owner in this lane; do not edit |
 | `_pkgdown.yml`, `README.md` | no active owner in this lane; do not edit |
-| `docs/design/42-m3-dgp-grid.md`, `docs/design/43-asreml-speed-techniques.md`, `docs/design/44-m3-3-inference-replacement.md`, `docs/design/48-m3-4-boundary-regimes.md` | no active owner after PR #204 merged |
+| `docs/design/42-m3-dgp-grid.md`, `docs/design/44-m3-3-inference-replacement.md` | Ada (Codex) for M3.3 target-explicit pilot implementation |
+| `docs/design/43-asreml-speed-techniques.md`, `docs/design/48-m3-4-boundary-regimes.md` | no active owner after PR #204 merged |
 | `vignettes/articles/covariance-correlation.Rmd` | no active owner in this lane; do not edit here |
 | `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |

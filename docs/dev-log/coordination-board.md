@@ -55,6 +55,8 @@ Current operating rule:
   after 3-OS R-CMD-check passed.
 - PR #200 (post-M3 ROADMAP evidence refresh) merged on 2026-05-19
   after 3-OS R-CMD-check passed.
+- PR #201 (M3.3 failure-mode ledger) merged on 2026-05-19 after
+  3-OS R-CMD-check passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -62,11 +64,11 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Ada (Codex) | M3.3 failure-mode ledger | PR #201 / `codex/m3-3-failure-mode-triage-2026-05-19` | M3.3 audit, check-log, after-task, coordination board | in review |
+| Ada (Codex) | M3.3 target-scale audit | PR #202 / `codex/m3-3-target-scale-audit-2026-05-19` | M3.3 target audit, Design 42/44, dev/m3-grid.R comments, check-log, after-task, coordination board | in review |
 
-**WIP**: 1. Avoid parallel M3.3 artifact-ledger, check-log,
-after-task, and coordination-board edits until this lane lands or is
-explicitly held.
+**WIP**: 1. Avoid parallel M3.3 target-scale, check-log,
+after-task, design-note, and coordination-board edits until this lane
+lands or is explicitly held.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -97,11 +99,12 @@ leave a coordination comment first and wait for acknowledgement.
 |---|---|
 | `.github/pull_request_template.md` | Codex for Slice 1 |
 | `CONTRIBUTING.md` | Codex for Slice 1 pointer only |
-| `docs/dev-log/coordination-board.md` | Codex for current Slice 1 lane |
-| `docs/dev-log/check-log.md` | Codex for current Slice 1 entry |
+| `docs/dev-log/coordination-board.md` | Ada (Codex) for current M3.3 target-scale lane |
+| `docs/dev-log/check-log.md` | Ada (Codex) for current M3.3 target-scale entry |
 | `docs/dev-log/after-task/2026-05-18-pr-slice-contract.md` | Codex for current Slice 1 after-task report |
 | `CLAUDE.md`, `AGENTS.md` | no active owner in this lane; do not edit |
-| `_pkgdown.yml`, `README.md`, selected design docs | no active owner in this lane; do not edit |
+| `_pkgdown.yml`, `README.md` | no active owner in this lane; do not edit |
+| `docs/design/42-m3-dgp-grid.md`, `docs/design/44-m3-3-inference-replacement.md` | Ada (Codex) for target-scale clarification only |
 | `vignettes/articles/covariance-correlation.Rmd` | no active owner in this lane; do not edit here |
 | `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
@@ -139,6 +142,10 @@ Resolved questions move to "Recently resolved" with the answer.
   refresh) merged to `main` after three-OS R-CMD-check passed. The
   roadmap now records PR #199's production-evidence outcome and keeps
   M3.3 in failure-mode triage.
+- **2026-05-19 ~13:31 MT**: PR #201 (M3.3 failure-mode ledger)
+  merged to `main` after three-OS R-CMD-check passed. The ledger found
+  systematic above-upper-bound `psi` misses and recorded glmmTMB /
+  galamm comparator scope.
 - **2026-05-19 ~11:43 MT**: PR #199 (M3.3 production artifact review)
   merged to `main` after three-OS R-CMD-check passed. The production
   workflow passed compute but failed the statistical coverage gate, so

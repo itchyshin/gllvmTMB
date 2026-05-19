@@ -2064,3 +2064,59 @@ Kaizen point:
     whether the promotion target is `psi`, total `Sigma_unit[tt]`, or
     both. Otherwise a clean rerun could still validate the wrong
     quantity.
+
+## 2026-05-19 -- M3.3 target-scale audit
+
+Scope:
+
+- Re-read the M3.3 production artifacts from run 26100827665 after the
+  failure-mode ledger landed.
+- Determine whether the next M3.3 run should validate `psi`, total
+  `Sigma_unit[tt]`, or both.
+- Record the user-suggested galamm comparator lane without treating it
+  as an nbinom2 comparator.
+- Update Design 42, Design 44, and `dev/m3-grid.R` comments to keep the
+  target distinction visible.
+- No public R API, likelihood, formula grammar, response family,
+  roxygen, Rd, vignette, README, NEWS, pkgdown navigation,
+  validation-debt status, or test expectation changed.
+
+Evidence:
+
+- PR #201 merged to `main` at `2026-05-19T19:31:43Z` as merge commit
+  `f3dee1e4151d054a518b5443938f3910e6f4c797`.
+- `git switch main && git pull --ff-only` fast-forwarded `main` from
+  `f0e2dc0` to `f3dee1e`.
+- Pre-edit lane check: `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt`
+  -> no open PRs.
+- Pre-edit lane check: `git log --all --oneline --since="6 hours ago"`
+  inspected recent M3 merges through PR #201.
+- `git switch -c codex/m3-3-target-scale-audit-2026-05-19`
+  created the Slice 2 branch.
+- R artifact reconstruction from the previously downloaded
+  `/tmp/gllvmtmb-m3-artifacts-26100827665-triage` grids computed
+  target-allocation summaries:
+  - binomial median `est_psi / truth_psi` = `1.28e-09`, median
+    `est_Sigma_diag / truth_Sigma_diag` = `1.928`;
+  - nbinom2 median `est_psi / truth_psi` = `7.29e-07`, median
+    `est_Sigma_diag / truth_Sigma_diag` = `2.613`;
+  - ordinal-probit median `est_psi / truth_psi` = `5.44e-09`, median
+    `est_Sigma_diag / truth_Sigma_diag` = `0.837`;
+  - mixed-family median `est_psi / truth_psi` = `1.94e-07`, median
+    `est_Sigma_diag / truth_Sigma_diag` = `1.360`;
+  - Gaussian median `est_psi / truth_psi` = `0.610`, median
+    `est_Sigma_diag / truth_Sigma_diag` = `0.830`.
+- `nl -ba docs/design/42-m3-dgp-grid.md`, `nl -ba docs/design/44-m3-3-inference-replacement.md`,
+  `nl -ba dev/m3-grid.R`, and the existing
+  `tests/testthat/test-m2-3-galamm-cross-check.R` were inspected for
+  target and comparator wording.
+- The audit is filed at
+  `docs/dev-log/audits/2026-05-19-m3-3-target-scale-audit.md`.
+
+Kaizen point:
+
+29. **Name the target in every simulation artifact column.** A generic
+    `ci_prof_lo/hi` and `covered_prof` field is too easy to misread once
+    the design has both `psi` and total `Sigma_unit[tt]` targets. Future
+    grid artifacts should either use a long `target` column or explicit
+    names such as `covered_psi_prof` and `covered_sigma_diag_boot`.

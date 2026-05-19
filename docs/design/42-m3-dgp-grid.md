@@ -39,7 +39,7 @@ coverage at n = 10 000.
 | binomial (logit) | logit link, 1-trial Bernoulli | M2 baseline; tests the link-residual machinery | 200 |
 | nbinom2 | log link, dispersion = φ | Common ecology count regime | 200 |
 | ordinal-probit | probit link, K-1 cutpoints | Psychometrics regime; tests the cutpoint estimation | 200 |
-| mixed-family | per-row family list (Gaussian + binomial + nbinom2 + ordinal) | The package's signature differentiator | 200 |
+| mixed-family | per-row family list (Gaussian + binomial + nbinom2 in the 2026-05-19 production run; ordinal-in-mixed needs an explicit later rerun) | The package's signature differentiator | 200 |
 
 | Latent rank d | Why included |
 |---|---|
@@ -66,8 +66,8 @@ Each replicate `r ∈ 1..200` runs the following recipe:
    ordinal cutpoints `c_k = qnorm(k / (K+1))`).
 2. **Simulate response.** Use `simulate_site_trait()` (M1 fixture
    API) extended with per-family responses; for ordinal, simulate
-   K = 4 categories; for mixed-family, alternate families across
-   trait rows.
+   K = 4 categories; for the current mixed-family production cell,
+   alternate Gaussian, binomial, and nbinom2 across trait rows.
 3. **Fit.** Run `gllvmTMB(..., family = ...)` with the same model
    structure as the DGP (no model-misspecification in M3.1; that's
    M3.4 work).
@@ -80,6 +80,14 @@ Each replicate `r ∈ 1..200` runs the following recipe:
      $|\Lambda_{1,1}|$ post-Procrustes alignment).
 5. **Record.** Truth, point estimate, CI bounds, convergence
    flag, runtime, into a row of a long-format data frame.
+
+**Target-scale update, 2026-05-19.** The production implementation
+for run 26100827665 profiled `theta_diag_B` and therefore tested
+`psi_t` coverage, while this design section's primary target is the
+rotation-invariant total diagonal `Sigma_unit[tt]`. Treat `psi`
+coverage as a diagnostic until a target-explicit rerun computes
+total-variance CIs. See
+`docs/dev-log/audits/2026-05-19-m3-3-target-scale-audit.md`.
 
 Per-replicate runtime budgets (anchored on the
 `agent/animal-model-article` workstation, Sun May 17 18:34 MDT 2026):
@@ -132,6 +140,9 @@ Two artefacts:
    ci_prof_lo, ci_prof_hi, covered_prof, converged, runtime_s)`.
    Failed refits stay in this grid as one row per replicate with
    `trait_id = NA`, `covered_prof = NA`, and `converged = FALSE`.
+   In the 2026-05-19 production artifact, `ci_prof_lo`,
+   `ci_prof_hi`, and `covered_prof` are `psi` profile fields, not
+   total `Sigma_unit` profile fields.
 2. `dev/precomputed/m3-coverage-summary.rds` — per-cell aggregate:
    `(cell, family, d, n_completed, n_failed, coverage_prof,
    passes_94pct_prof, mean_runtime_s)`. `n_completed` and

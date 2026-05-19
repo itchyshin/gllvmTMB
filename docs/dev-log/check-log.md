@@ -1815,3 +1815,30 @@ Kaizen point:
     discoverability fixes merge, record them in `ROADMAP.md` along with
     the next 1–3 low-risk lanes; otherwise the queue drifts into stale
     handoff bullets.
+
+## 2026-05-19 -- In-prep citation discipline
+
+Scope:
+
+- Replace or remove "`in prep` / `in preparation`" citations in
+  user-facing roxygen help, README, and a small number of Tier-1
+  articles, preferring published anchors already in the repository.
+- No likelihoods, formula grammar, tests, or validation-debt status
+  changed.
+
+Evidence:
+
+- `rg -n "in prep|in preparation" README.md R vignettes/articles | head -n 200`
+  enumerated all in-prep references before editing.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` regenerated
+  affected `man/*.Rd` topics.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` passed (`No problems found.`).
+- Post-edit `rg` shows no remaining in-prep literature placeholders in
+  the touched user-facing surfaces.
+
+Kaizen point:
+
+23. **Prefer published anchors over “in prep” placeholders.** If a
+    methods paper is not yet published, cite the package via
+    `inst/CITATION` and reserve “in preparation” wording for internal
+    dev-log notes, not for public help pages and tutorials.

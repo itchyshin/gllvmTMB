@@ -34,7 +34,7 @@ knitr::opts_chunk$set(
 > until M3 closes.
 
 The replicated site--species--trait GLLVM is the canonical
-functional-biogeography model (Nakagawa et al., in preparation).
+functional-biogeography model in this package.
 This article fits it as a **model ladder**:
 
 * **§1 -- Core syndrome model.** Trait covariation decomposed

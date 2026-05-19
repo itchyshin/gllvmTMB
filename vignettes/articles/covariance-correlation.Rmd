@@ -311,7 +311,7 @@ for the worked example.
 ## Two-level (between + within) models: two `unique()` terms
 
 For repeated-measures data the recommended pattern is two `latent() + unique()`
-pairs (Nakagawa et al. *in prep*):
+pairs (Nakagawa & Schielzeth 2010; Nakagawa, Johnson & Schielzeth 2017):
 
 ```r
 fit_two_level <- gllvmTMB(
@@ -370,4 +370,4 @@ Nakagawa, Johnson & Schielzeth 2017).
 * [`?suggest_lambda_constraint`](../reference/suggest_lambda_constraint.html) — a helper for confirmatory loading structures
 * [Choose your model](choose-your-model.html) — decision tree
 * **Nakagawa & Schielzeth (2010)** Repeatability for Gaussian and non-Gaussian data: a practical guide for biologists. *Biological Reviews* 85(4):935–956. <https://doi.org/10.1111/j.1469-185X.2010.00141.x>
-* **Nakagawa et al.** (*in prep*) Quantifying between- and within-individual correlations and the degree of trait integration.
+* **Westneat, Wright & Dingemanse** (2015) The biology hidden inside residual within-individual phenotypic variation. *Biological Reviews* **90**, 729–743. <https://doi.org/10.1111/brv.12131>

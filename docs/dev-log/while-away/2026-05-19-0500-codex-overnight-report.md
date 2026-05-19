@@ -75,7 +75,7 @@
 
 ## Named-perspective notes
 
-- Pat: prioritize response-family discoverability + redundant defaults cleanup (queued).
+- Pat: response-family discoverability fixed (PR #189); mixed-family selector-column API now documented in `Families` help.
 - Rose: keep process-only lane small; record any cross-file inconsistencies immediately.
 - Emmy: keep architecture untouched in these doc/process slices.
 - Grace: verify the new tiered-gate classifier behaves as intended on a process-only PR.
@@ -87,6 +87,5 @@
    full 3-OS R-CMD-check before merge (roxygen/Rd touched).
 2. Keep the scope doc-only: no family implementations, likelihoods, or
    formula-grammar changes.
-3. If CI/doc churn is unexpectedly large, split the "Families mixed-family
-   docs" from the roxygen Rd normalisation into two commits to keep review
-   tight.
+3. Current branch already splits content vs. dev-log into two commits:
+   `docs(families): ...` and `dev-log: ...`.

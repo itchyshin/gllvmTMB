@@ -66,7 +66,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Ada (Codex) | CI ignored-source fast path | `codex/ci-ignored-docs-fast-path-2026-05-19` | `.github/workflows/R-CMD-check.yaml`, CONTRIBUTING, check-log, after-task, coordination board | in progress |
+| Ada (Codex) | CI ignored-source fast path | PR #203 / `codex/ci-ignored-docs-fast-path-2026-05-19` | `.github/workflows/R-CMD-check.yaml`, CONTRIBUTING, check-log, after-task, coordination board | in review; full 3-OS R-CMD-check expected because workflow file changed |
 
 **WIP**: 1. Avoid parallel R-CMD-check workflow, CONTRIBUTING,
 check-log, after-task, and coordination-board edits until this lane

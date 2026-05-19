@@ -2168,3 +2168,63 @@ Kaizen point:
     stays required for package surfaces. Ignored-source PRs should use a
     visible replacement gate instead of paying 30-40 minutes for a check
     that cannot exercise the changed files.
+
+## 2026-05-19 -- M3 roadmap target-explicit refresh
+
+Scope:
+
+- Refresh `ROADMAP.md` after PR #201 and PR #202 so the next M3.3
+  slice is a target-explicit pilot, not another generic failure-mode
+  triage.
+- Align Design 42 / 44 with CI-08 and CI-10 rather than the stale
+  `M3-COV` placeholder.
+- Align Design 43 / 48 with the implemented M3.4 warmup + phi-clamp
+  status: MIS-16 / MIS-17 are covered, while empirical rerun evidence
+  and default-policy remain open.
+- Keep README and `simulation-recovery-validated.Rmd` for a later
+  Pat/Rose reader-facing honesty lane.
+- Update the coordination board now that PR #203 has merged and this
+  roadmap refresh is Ada's active lane.
+- No public R API, likelihood, formula grammar, response family,
+  roxygen, Rd, vignette, README, NEWS, pkgdown navigation,
+  validation-debt status, or test expectation changed.
+
+Evidence:
+
+- PR #203 merged to `main` at `2026-05-19T21:05:15Z` as merge commit
+  `5dd3316d5a3b4f7a1d216986baea9f7d6f48f90f`.
+- `git switch main && git pull --ff-only` fast-forwarded the primary
+  worktree from `10bc859` to `5dd3316`.
+- Roadmap worktree rebase: `git stash push -u -m 'm3-roadmap-target-explicit-refresh-draft' && git rebase origin/main && git stash pop`
+  -> rebase succeeded and the stash applied cleanly.
+- Pre-edit lane check: `gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,files --jq '.[] | {number,title,headRefName,files: [.files[].path]}'`
+  -> before PR #203 merged, only PR #203 was open; it did not touch
+  `ROADMAP.md` or the Design 42 / 43 / 44 / 48 files.
+- Pre-edit lane check: `git log --all --oneline --since='6 hours ago'`
+  inspected recent M3 and CI fast-path commits through PR #203.
+- Rose read-only audit found stale roadmap/design wording and
+  recommended one source-of-truth docs PR before the later README /
+  article honesty lane.
+- Gauss read-only review recommended bootstrap total
+  `Sigma_unit[tt]` rows before derived-profile fix-and-refit and kept
+  ADREPORT/delta as a later fast diagnostic.
+- Curie read-only review recommended the first pilot cells
+  `gaussian-d2`, `nbinom2-d1`, and `mixed-d2`, with
+  `ordinal_probit-d1` blocked until ordinal simulation supports family
+  ID 14.
+- Stale-wording scan:
+  `rg -n 'M3-COV|failure-mode triage|precompute-vignettes|follow-on PR per two-PR pattern|Implementation follow-on PR|Easy add, not implemented|No implementation in this PR|proposed M3.4 fix|profile-likelihood specifically|post-CRAN\\. No v0\\.2\\.0' ROADMAP.md docs/design/42-m3-dgp-grid.md docs/design/43-asreml-speed-techniques.md docs/design/44-m3-3-inference-replacement.md docs/design/48-m3-4-boundary-regimes.md`
+  -> no hits.
+- `git diff --check` -> clean.
+- After-task report filed at
+  `docs/dev-log/after-task/2026-05-19-m3-roadmap-target-explicit-refresh.md`.
+- Coordination board moved PR #203 to recently resolved and listed
+  `codex/m3-3-roadmap-refresh-2026-05-19` as the active Ada lane.
+
+Kaizen point:
+
+31. **Refresh source-of-truth docs before reader-facing honesty.** When
+    M3 evidence changes the interpretation of a failed run, first align
+    ROADMAP and design docs on target, method, and status. Then Pat and
+    Rose can update README/articles without inheriting inconsistent
+    source language.

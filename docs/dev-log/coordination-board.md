@@ -59,6 +59,8 @@ Current operating rule:
   3-OS R-CMD-check passed.
 - PR #202 (M3.3 target-scale audit) merged on 2026-05-19 after
   3-OS R-CMD-check passed.
+- PR #203 (CI ignored-source fast path) merged on 2026-05-19 after
+  3-OS R-CMD-check passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -66,9 +68,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Ada (Codex) | CI ignored-source fast path | PR #203 / `codex/ci-ignored-docs-fast-path-2026-05-19` | `.github/workflows/R-CMD-check.yaml`, CONTRIBUTING, check-log, after-task, coordination board | in review; full 3-OS R-CMD-check expected because workflow file changed |
+| Ada (Codex) | M3 target-explicit roadmap refresh | `codex/m3-3-roadmap-refresh-2026-05-19` (PR pending) | ROADMAP, Design 42/43/44/48, check-log, after-task, coordination board | local docs branch; opening PR after final checks |
 
-**WIP**: 1. Avoid parallel R-CMD-check workflow, CONTRIBUTING,
+**WIP**: 1. Avoid parallel ROADMAP, Design 42 / 43 / 44 / 48,
 check-log, after-task, and coordination-board edits until this lane
 lands or is explicitly held.
 
@@ -99,15 +101,15 @@ leave a coordination comment first and wait for acknowledgement.
 
 | File | Owner (this pass) |
 |---|---|
-| `.github/workflows/R-CMD-check.yaml` | Ada (Codex) for CI ignored-source fast path |
+| `.github/workflows/R-CMD-check.yaml` | no active owner after PR #203 merged |
 | `.github/pull_request_template.md` | no active owner in this lane; do not edit |
-| `CONTRIBUTING.md` | Ada (Codex) for CI ignored-source fast path |
-| `docs/dev-log/coordination-board.md` | Ada (Codex) for current CI ignored-source lane |
-| `docs/dev-log/check-log.md` | Ada (Codex) for current CI ignored-source entry |
+| `CONTRIBUTING.md` | no active owner after PR #203 merged |
+| `docs/dev-log/coordination-board.md` | Ada (Codex) for current M3 roadmap refresh lane |
+| `docs/dev-log/check-log.md` | Ada (Codex) for current M3 roadmap refresh entry |
 | `docs/dev-log/after-task/2026-05-18-pr-slice-contract.md` | Codex for current Slice 1 after-task report |
 | `CLAUDE.md`, `AGENTS.md` | no active owner in this lane; do not edit |
 | `_pkgdown.yml`, `README.md` | no active owner in this lane; do not edit |
-| `docs/design/42-m3-dgp-grid.md`, `docs/design/44-m3-3-inference-replacement.md` | Ada (Codex) for target-scale clarification only |
+| `docs/design/42-m3-dgp-grid.md`, `docs/design/43-asreml-speed-techniques.md`, `docs/design/44-m3-3-inference-replacement.md`, `docs/design/48-m3-4-boundary-regimes.md` | Ada (Codex) for target-explicit roadmap refresh only |
 | `vignettes/articles/covariance-correlation.Rmd` | no active owner in this lane; do not edit here |
 | `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
@@ -153,6 +155,11 @@ Resolved questions move to "Recently resolved" with the answer.
   to `main` after three-OS R-CMD-check passed. The audit split `psi`
   into a diagnostic target and total `Sigma_unit[tt]` into the primary
   promotion target for the next M3.3 pilot.
+- **2026-05-19 ~15:05 MT**: PR #203 (CI ignored-source fast path)
+  merged to `main` after three-OS R-CMD-check passed. The in-job
+  classifier now fast-passes ignored-source planning/doc changes with
+  visible replacement gates instead of relying on workflow-level path
+  skips.
 - **2026-05-19 ~11:43 MT**: PR #199 (M3.3 production artifact review)
   merged to `main` after three-OS R-CMD-check passed. The production
   workflow passed compute but failed the statistical coverage gate, so

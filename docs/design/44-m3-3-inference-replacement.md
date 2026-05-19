@@ -4,9 +4,9 @@
 (pipeline-side integration). **Active reviewers**: Gauss
 (TMB-side numerics), Boole (R API surface), Rose (scope honesty),
 Ada (coordinator).
-**Status**: Draft — design pre-stages the M3.3 dispatch decision.
-No implementation in this PR; the maintainer ratifies the approach
-before dispatch.
+**Status**: Active design record — historical method comparison plus
+the current target-explicit pilot plan before the next production
+dispatch.
 **Implementation update (2026-05-18/19)**: M3.3a has since moved to
 the profile-primary path recorded in
 `docs/dev-log/after-task/2026-05-18-m3-3a-profile-primary.md`.
@@ -16,8 +16,8 @@ profile-CI grid with the post-M3.4 `init_strategy` option rather
 than adding another inference method.
 **Closes**: gap between M3.2 smoke (placeholder Wald) and the M3
 exit gate (≥ 94 % empirical coverage at 95 % nominal).
-**Backed by**: validation-debt register row **M3-COV** (to be
-added when M3.3 ships the first production cells).
+**Backed by**: validation-debt rows **CI-08** (`coverage_study()`
+empirical coverage) and **CI-10** (mixed-family inference).
 
 ## 1. Goal
 
@@ -111,7 +111,12 @@ mentioned this as a candidate.
 - Method A or B is the proper validation step; C is more like
   "fast first pass to see if the engine is even close".
 
-## 3. Recommendation: hybrid (A → B as time allows)
+## 3. Historical recommendation: hybrid (A → B as time allows)
+
+This section records the method comparison that led to the first
+M3.3 production run. It is no longer the active dispatch order by
+itself: the 2026-05-19 artifact review and target-scale audit showed
+that the next slice must first make the interval target explicit.
 
 Three-step rollout, dispatched as separate slices:
 
@@ -167,8 +172,10 @@ M3.3. M3.3 can either:
   change in `R/fit-multi.R` to expose `init_strategy =
   "single_trait_warmup"` per Design 43).
 
-Recommendation: (a) — keep M3.3 focused on inference; M3.4 owns
-convergence improvements.
+Recommendation: (a) held for the first implementation wave — M3.3
+stayed focused on inference while M3.4 shipped the warmup and phi
+clamp. The current M3.3 pilot should use those mitigations without
+turning this slice into a new convergence-engine PR.
 
 ## 5. Compute budget and CI plan
 
@@ -223,6 +230,53 @@ promotion target. The same audit also keeps `glmmTMB` as the direct
 single-trait nbinom2 comparator and keeps `galamm` for multivariate
 Gaussian/binomial/Poisson latent-loading comparisons, not nbinom2.
 
+**Dispatch refinement after Gauss + Curie review.** Do not launch
+the full 15-cell production rerun next. Add target-explicit columns
+to the M3 grid first:
+
+- `target = "psi"` with `ci_method = "profile"` for the existing
+  profile-`psi` diagnostic rows;
+- `target = "Sigma_unit_diag"` with `ci_method = "bootstrap"` for
+  the primary total-variance rows, using the existing
+  `confint(fit, parm = "Sigma_B", method = "bootstrap")` /
+  `bootstrap_Sigma()` path;
+- optional `ci_method = "wald"` later as a fast diagnostic, not the
+  M3.3 gate.
+
+For `latent() + unique()` fits, total `Sigma_unit[tt]` is a nonlinear
+function of rotation-equivalent loadings plus `psi`. A derived
+profile fix-and-refit path is possible, but it is a larger numerical
+slice than the next pilot. Bootstrap total-Sigma rows are therefore
+the next safest primary target; derived profiles can follow if the
+bootstrap pilot exposes a calibration problem.
+
+Curie's pilot cells are:
+
+1. `gaussian-d2` — checks the Gaussian d = 2 anomaly.
+2. `nbinom2-d1` — checks the simplest count-family failure.
+3. `mixed-d2` — checks the first nontrivial mixed-family rank.
+
+`ordinal_probit-d1` waits until ordinal bootstrap simulation is
+legitimate. The current simulator covers family IDs 0-5 and falls
+back with a warning for unsupported family IDs; ordinal-probit is
+family ID 14.
+
+Artifact columns for the pilot should be:
+`cell`, `family`, `d`, `rep`, `trait_id`, `target`, `truth`,
+`estimate`, `ci_method`, `ci_level`, `ci_lo`, `ci_hi`, `covered`,
+`ci_available`, `fit_converged`, `ci_failed`, `miss_side`,
+`runtime_s`, `n_boot`, `init_strategy`, `seed_base`.
+
+Per-cell summaries should be:
+`cell`, `family`, `d`, `target`, `ci_method`, `n_reps`,
+`n_completed`, `n_failed`, `n_trait_rows`, `n_ci_missing`,
+`coverage`, `miss_below`, `miss_above`, `median_est_truth_ratio`,
+`mean_runtime_s`, `pilot_status`.
+
+Use `n_reps = 10` for smoke, `n_reps = 50` for pilot, and
+`n_reps = 200` for promotion. Pilot labels are `PASS_TO_SCALE`,
+`TARGET_FAIL`, and `COMPUTE_FAIL`.
+
 ## 7. Honest scope: what M3.3 does NOT do
 
 - **REML-based CIs**: not in v0.2.0 (REML is post-CRAN per README).
@@ -236,8 +290,8 @@ Gaussian/binomial/Poisson latent-loading comparisons, not nbinom2.
 
 - Design 42 — M3 DGP grid specification.
 - Design 43 — ASReml speed techniques (Tier A #4
-  single-trait-warmup is the proposed M3.4 fix for the
-  convergence drops M3.2c surfaced).
+  single-trait-warmup is now the implemented M3.4 mitigation for
+  phi-bearing warm starts).
 - `R/coverage-study.R` — per-fit parametric-bootstrap coverage
   (complementary; takes an existing fit and bootstraps from its
   parameters as truth).
@@ -251,28 +305,19 @@ Gaussian/binomial/Poisson latent-loading comparisons, not nbinom2.
 
 ## 9. Open questions
 
-- **Q-Fisher-1**: should M3.3a default to B = 100 or B = 30 for
-  the production grid? My recommendation: B = 100, accepting the
-  ~15 h × 8 cores compute. The cost is paid once.
-- **Q-Gauss-1**: is `extract_Sigma(level = "unit", se = TRUE)`
-  feasible via the existing TMB sd_report path, or does
-  `src/gllvmTMB.cpp` need an `ADREPORT(diag(Sigma_unit))`
-  declaration? If the latter, M3.3c is engine-side work that
-  needs separate maintainer approval.
-- **Q-Boole-1**: confirm `bootstrap_Sigma()` accepts mixed-family
-  fits (M3.2c form) without further integration. M1 tests cover
-  the M1 fixture pattern; the M3.2c fits use the same pattern,
-  so this should work — but worth a unit test before the smoke
-  run.
-- **Q-Rose-1**: should the smoke RDS continue to ship the
-  placeholder Wald (as a regression baseline) AND the new
-  bootstrap CIs, or fully replace? My recommendation: replace —
-  the placeholder served its purpose (verifying the plumbing).
-- **Q-Ada-1**: dispatch order — M3.3a alone, or M3.3a + M3.4
-  warmup together? Coupling them speeds the convergence-drop
-  fix but expands the M3.3 slice. Recommendation: split (M3.3a
-  proper inference; then M3.4 warmup using M3.3a's failure logs
-  as the test case).
+- **Q-Fisher-1**: for target-explicit total `Sigma_unit[tt]`,
+  should the pilot use `n_boot = 30` or `n_boot = 100`? Current
+  recommendation: `n_boot = 30` for `n_reps = 50` pilot, then
+  `n_boot = 100` only if the pilot reaches `PASS_TO_SCALE`.
+- **Q-Gauss-1**: `ADREPORT(diag(Sigma_unit))` / delta-method Wald is
+  useful as a fast diagnostic, but it should not replace bootstrap
+  or profile evidence for the M3.3 promotion gate.
+- **Q-Curie-1**: ordinal-probit bootstrap is blocked until
+  `simulate.gllvmTMB_multi()` supports family ID 14 rather than
+  falling back to Gaussian-on-link-scale simulation.
+- **Q-Rose-1**: the smoke RDS should replace placeholder-Wald
+  coverage with target-explicit rows; if the old columns remain for
+  backward compatibility, their names must state the target.
 
 ## 10. Persona contributions to this draft
 

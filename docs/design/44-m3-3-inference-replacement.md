@@ -198,10 +198,19 @@ M3.3a production → walks per-family rows to `covered` if the cell
 hits ≥94%, or to `partial` / `blocked` with the failure-mode
 flagged.
 
-The register row **M3-COV** added by M3.3 has 15 sub-rows (one per
-cell). Each sub-row carries the evidence path
-(`inst/extdata/m3-coverage-grid-production.rds`) and the
-coverage rate.
+**2026-05-19 production outcome.** Manual Actions run
+26100827665 completed all 15 cells with `n_reps = 200` and
+`init_strategy = "single_trait_warmup"`, but the artifact review
+found that only 2/15 cells cleared the 94 % profile-psi coverage
+gate. The review is filed at
+`docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md`.
+No production RDS was promoted to `inst/extdata/`, and CI-08 / CI-10
+remain `partial`.
+
+The planned 15 sub-row production promotion is deferred until the
+failure mode is diagnosed and a rerun supports the gate. The current
+evidence points to profile-CI calibration / convergence triage rather
+than publication-ready coverage.
 
 ## 7. Honest scope: what M3.3 does NOT do
 

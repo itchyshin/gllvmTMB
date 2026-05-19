@@ -1904,3 +1904,49 @@ Kaizen point:
     compute infrastructure can land before the R = 200 artifacts, but
     coverage rows, roadmap progress, and article claims should move only
     after the artifacts are reviewed.
+
+## 2026-05-19 -- M3.3 production artifact review
+
+Scope:
+
+- Dispatch and review the R = 200 M3.3 production grid artifacts from
+  the manual Actions workflow.
+- Patch `m3_summarise()` so future summaries count failed replicate
+  fits before filtering to converged coverage rows.
+- File the artifact audit and keep CI-08 / CI-10 in `partial` status
+  because the statistical gate failed.
+- Update Design 42 / Design 44, ROADMAP, validation-debt register, and
+  coordination board to match the evidence.
+- No public R API, likelihood, formula grammar, family, roxygen, Rd,
+  vignette, README, NEWS, or pkgdown navigation changed.
+
+Evidence:
+
+- Pre-edit lane check: `gh pr list --state open --limit 20` -> no open
+  PR rows.
+- Pre-edit lane check: `git log --all --oneline --since="6 hours ago"`
+  inspected recent merges through PR #198.
+- `gh workflow run m3-production-grid.yaml --ref main -f n_reps=200 -f init_strategy=single_trait_warmup -f retention_days=14`
+  dispatched run 26100827665.
+- `gh run watch 26100827665 --exit-status --interval 60` -> success;
+  15/15 matrix jobs completed and uploaded artifacts.
+- `gh run download 26100827665 --dir /tmp/gllvmtmb-m3-artifacts-26100827665`
+  downloaded 15 artifact directories, each with grid + summary RDS.
+- Artifact aggregation from full grid RDS files found only 2/15 cells
+  passing the 94 % profile-psi gate and 236/3000 failed replicate
+  fits; see `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md`.
+- `air format dev/m3-grid.R tests/testthat/test-m3-grid-summary.R`
+  completed.
+- `Rscript --vanilla -e 'parse("dev/m3-grid.R"); parse("tests/testthat/test-m3-grid-summary.R")'`
+  parsed both files.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  passed (10 tests).
+- `git diff --check` clean.
+
+Kaizen point:
+
+26. **Count failures before filtering to coverage rows.** Coverage
+    summaries must keep failed-refit denominators visible. If a summary
+    helper filters out `NA` coverage rows first, it can make every cell
+    look like `n_failed = 0` even when the full grid records failed
+    replicate fits.

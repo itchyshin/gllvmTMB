@@ -58,7 +58,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | M3.3 production grid dispatch + artifact review | `codex/m3-production-artifact-review-2026-05-19` | GitHub Actions run artifacts + validation-debt/roadmap/dev-log follow-up | dispatching production workflow |
+| Codex | M3.3 production grid dispatch + artifact review | `codex/m3-production-artifact-review-2026-05-19` | GitHub Actions run artifacts + validation-debt/roadmap/dev-log follow-up | artifact review complete; PR pending |
 
 **WIP**: 1. Avoid parallel M3.3 artifact aggregation,
 validation-debt, roadmap, and dev-log edits until this lane lands or is

@@ -1,6 +1,6 @@
 # gllvmTMB Roadmap
 
-*Last refreshed: 2026-05-19 (families docs, citation hygiene, process templates, M3 workflow queue).*
+*Last refreshed: 2026-05-19 (families docs, citation hygiene, process templates, M3 production evidence gate).*
 
 This roadmap is the shared map for the maintainer, the Claude
 Code and Codex teams, contributors, and prospective users. It
@@ -33,9 +33,9 @@ those sources.
 
 These are intentionally bounded lanes. Treat each as its own PR.
 
-1. **M3.3 production grid `workflow_dispatch` wiring (Curie + Fisher + Grace)**: add the manual GitHub Actions workflow for the R = 200 production grid (no new inference method changes; just reproducible dispatch + artifacts).
-2. **M3.3 production artifact review (Curie + Fisher + Rose)**: after the manual grid run, aggregate the per-cell artifacts, classify coverage cells, and update the validation-debt register.
-3. **Reader-facing lane after M3 evidence**: choose whether the next public-surface PR should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing.
+1. **M3.3 failure-mode triage (Fisher + Curie + Gauss)**: diagnose why the R = 200 production profile-psi grid cleared the workflow but failed the 94 % coverage gate in 13/15 cells. Start from the audit table, failed-replicate counts, and profile target/transform assumptions.
+2. **M3.3 rerun plan after correction (Curie + Grace)**: run only the corrected minimal cells first, then schedule a full production rerun once the failure mode is explained.
+3. **Reader-facing honesty lane after M3 evidence (Pat + Rose)**: surface the failed gate in validation-debt prose and keep article banners until the rerun supports the advertised coverage claim.
 
 Note: “redundant `trait = \"trait\"` cleanup” is *not* a mechanical cleanup under Option A uniform naming; treat it as a policy change proposal rather than a queued doc sweep.
 
@@ -79,7 +79,7 @@ items completed within that phase.
 | Phase 1c article ports | Article ports + new Concepts pedagogy | 🔵 Frozen at 7/14 | `█████░░░` 7/14 | **Superseded 2026-05-15** by the function-first M1 / M2 / M3 milestone sequence below. Remaining article work absorbed into M1.9 (mixed-family-extractors), M2.5 (psychometrics-irt rewrite), M3.6 (simulation-recovery-validated), and Phase 1f (choose-your-model rewrite). |
 | **M1** | **Mixed-family extractor rigour** | ✅ Done | `████████` 10/10 | PRs #149 – #158 + M1.10 close gate. Every extractor validated on `family = list(...)` fits; `mixed-family-extractors.Rmd` shipped; MIX-03..MIX-06, MIX-08, MIS-05 walked to `covered`. |
 | **M2** | **Binary completeness** | 🟢 In progress (M2.5 + M2.6 deferred until after M3) | `█████░░░` 5/7 | Weeks 3–5. M2.1 design note + M2.2-A binary family recovery + M2.2-B CIs/extractors/glmmTMB cross-check + M2.3 `lambda_constraint` binary IRT + mirt + galamm cross-checks + M2.4 `suggest_lambda_constraint()` reliability shipped 2026-05-17. **Parallel scope expansion**: M2.8 (animal_* keyword family — 4×5 grid; PR #167), M2.8b (`phylo_*` `A=`/`Ainv=` aliases + non-ASCII / @param / Suggests CI fixes; PR #168), M2.8c (article cascade: choose-your-model + data-shape-flowchart + gllvm-vocabulary + phylogenetic-gllvm + pitfalls; PR #169), and animal-model.Rmd worked example with Kruuk 2004 + Wilson 2010 + Runcie & Mukherjee 2013 anchors (PR #170, in flight). M2.5 (psychometrics-irt re-author) + M2.6 (joint-sdm binary restoration) deferred until after M3 so they can cite R≥200 coverage. |
-| **M3** | **Inference completeness across families** | 🟢 In progress | `███░░░░░` 3/8 | Weeks 5–7. `coverage_study()` ≥ 94 % on Gaussian / binomial / nbinom2 / ordinal-probit / mixed-family at R = 200. M3.1 DGP grid design note shipped (Design 42). M3.2 pipeline machinery (`dev/m3-grid.R` + `dev/precompute-m3-grid.R`) + smoke artefact (Gaussian × 3 dims × 10 reps; 18s) shipped in `inst/extdata/`. M3.6 article scaffold (`simulation-recovery-validated.Rmd`) shipped reading from the smoke RDS via `system.file()`. M3.3 (production grid run with proper inference replacing placeholder Wald) is next. |
+| **M3** | **Inference completeness across families** | 🟢 In progress | `███░░░░░` 3/8 | Weeks 5–7. `coverage_study()` ≥ 94 % on Gaussian / binomial / nbinom2 / ordinal-probit / mixed-family at R = 200. M3.1 DGP grid design note shipped (Design 42). M3.2 pipeline machinery (`dev/m3-grid.R` + `dev/precompute-m3-grid.R`) + smoke artefact (Gaussian × 3 dims × 10 reps; 18s) shipped in `inst/extdata/`. M3.6 article scaffold (`simulation-recovery-validated.Rmd`) shipped reading from the smoke RDS via `system.file()`. M3.3 production workflow run 26100827665 passed all 15 Actions jobs, but artifact review found only 2/15 profile-psi cells ≥94 %; M3.3 now stays in failure-mode triage before any `covered` promotion. |
 | Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher (incl. random-slope plots) |
 | Phase 1d | Navbar restructure | 🟢 Partly done | `█░` 1/2 | PR #112 created the **Methods + validation** tier; full 3-tier audit deferred to a Phase 1d close PR |
 | Phase 1e | Final reframe sweep | 🟢 Partly done | `█░` 1/2 | PR #107 phylo three-piece-fallback subsection landed; full cross-article sweep deferred |
@@ -788,7 +788,7 @@ until post-CRAN per family-by-family validation slices.
 |-------|------|------|-----------|
 | **M3.1** | DGP grid (5 families × 3 dims × 200 reps incl. mixed-family cell) | Fisher + Curie | ✅ DGP grid documented in [Design 42](docs/design/42-m3-dgp-grid.md); 15 cells (Gauss, binomial, nbinom2, ordinal-probit, mixed-family × d ∈ {1,2,3}); Option A parallel default (~4-5 h on 8 cores). |
 | **M3.2** | DGP grid pipeline machinery + smoke artefact | Curie + Grace | ✅ `dev/m3-grid.R` (library) + `dev/precompute-m3-grid.R` (driver) shipped; smoke RDS (Gaussian × 3 dims × 10 reps; 150 rows; ~18 s) committed to `inst/extdata/m3-coverage-{grid,summary}-smoke.rds`. Reproducible via `Rscript dev/precompute-m3-grid.R`. **Note**: smoke uses placeholder Wald (20 % RSE heuristic) — proper delta-method / profile-likelihood CIs deferred to M3.3. |
-| **M3.3** | Per-family profile CI accuracy validation | Fisher | All cells ≥ 94 % coverage; coverage-rate matrix filed at `docs/dev-log/audits/2026-05-NN-phase1b-empirical-coverage.md`. |
+| **M3.3** | Per-family profile CI accuracy validation | Fisher | 🔴 2026-05-19 production grid passed compute but failed the statistical gate; see `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md`. Done only when all cells ≥94 % coverage and the coverage-rate matrix supports moving CI-08 / CI-10. |
 | **M3.4** | `gllvmTMB_check_consistency()` at boundary regimes | Curie | Flagged regimes (sparse-Bernoulli at d=3; ordinal-probit at d=2 with rare categories) documented in `troubleshooting-profile.Rmd`. |
 | **M3.5** | Derived-quantity coverage (communality, repeatability, phylo signal) | Fisher | Coverage table reported per family; Wald-vs-profile-vs-bootstrap differential documented. |
 | **M3.6** | NEW article `simulation-recovery-validated.Rmd` (replaces pulled article) | Curie + Pat | ✅ scaffold shipped; reads smoke RDS from `inst/extdata/` via `system.file()`; honest framing of placeholder Wald + M3.3 production replacement plan. Article re-renders automatically when M3.3 ships proper inference (same `system.file()` path; only RDS contents change). |

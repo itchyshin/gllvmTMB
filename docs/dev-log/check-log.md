@@ -1723,3 +1723,42 @@ Kaizen point:
     conservative changed-file classifier, a workflow summary naming
     why R CMD was or was not required, and a fallback to full R CMD
     for every unknown or mixed path.
+
+## 2026-05-18 -- pkgdown families reference index
+
+Scope:
+
+- Branch `codex/pkgdown-families-index` fixes the Response families
+  section of the pkgdown reference index.
+- `_pkgdown.yml` now points at the actual `Families` topic instead of
+  `has_keyword("families")`, because the family constructors share
+  `@rdname families` and do not carry `@keywords families`.
+- No package code, likelihood, formula grammar, family implementation,
+  roxygen, Rd, vignette, article, or validation-debt status changed.
+
+Evidence:
+
+- Pre-edit open PR census: zero open PR rows.
+- Pre-edit recent-log check inspected local history through PR #188.
+- `man/families.Rd` contains the `Families` topic and aliases for the exported family
+  constructors (`Beta`, `betabinomial`, `nbinom1`, `nbinom2`,
+  `tweedie`, `student`, `delta_*`, and related families), confirming
+  `Families` is the topic that pkgdown should list.
+- The suggested redundant `trait = "trait"` cleanup from the Shannon
+  handoff was not implemented because current Option A evidence says
+  long-format examples should pass `trait =` explicitly.
+- First `pkgdown::check_pkgdown()` failed on lowercase `families`; the
+  corrected capitalized `Families` selector passed.
+- `pkgdown::build_reference(lazy = FALSE)` completed, and the rendered
+  `pkgdown-site/reference/index.html` Response families section listed
+  the family constructors via `families.html` plus `ordinal_probit()`.
+- Maintainer clarified during the run that `trait =` is helpful and may
+  be needed for long format, but not wide format.
+
+Kaizen point:
+
+20. **Reference-index selectors should target real topics or real
+    keywords.** A `has_keyword()` selector can silently hide an
+    exported surface when the roxygen source uses `@rdname` aliases
+    instead of `@keywords`. For pkgdown navigation bugs, check both
+    `_pkgdown.yml` and the generated `man/*.Rd` aliases before editing.

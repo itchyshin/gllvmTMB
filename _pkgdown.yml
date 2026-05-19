@@ -111,7 +111,7 @@ reference:
 
   - title: Response families
     contents:
-    - has_keyword("families")
+    - Families
     - ordinal_probit
 
   - title: Extractors

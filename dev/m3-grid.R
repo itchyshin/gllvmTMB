@@ -431,24 +431,35 @@ m3_run_grid <- function(
 ## ---- Summary -----------------------------------------------------------
 
 m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
-  ## Group by (cell, family, d), compute coverage rate per CI method
+  ## Group by (cell, family, d), count failed replicates before
+  ## dropping rows with unavailable CIs, then compute coverage on
+  ## converged trait rows.
   by_cell <- split(
-    grid_df[!is.na(grid_df$covered_prof), ],
-    list(grid_df$cell[!is.na(grid_df$covered_prof)]),
+    grid_df,
+    list(grid_df$cell),
     drop = TRUE
   )
   out <- do.call(
     rbind,
     lapply(by_cell, function(sub) {
+      rep_status <- split(sub$converged, sub$rep, drop = TRUE)
+      rep_converged <- vapply(rep_status, all, logical(1))
+      rep_runtime <- tapply(sub$runtime_s, sub$rep, max, na.rm = TRUE)
+      conv_rows <- sub[!is.na(sub$covered_prof), , drop = FALSE]
+      coverage_prof <- if (nrow(conv_rows)) {
+        mean(conv_rows$covered_prof, na.rm = TRUE)
+      } else {
+        NA_real_
+      }
       data.frame(
         cell = sub$cell[1],
         family = sub$family[1],
         d = sub$d[1],
-        n_completed = sum(sub$converged),
-        n_failed = sum(!sub$converged),
-        coverage_prof = mean(sub$covered_prof, na.rm = TRUE),
-        passes_94pct_prof = mean(sub$covered_prof, na.rm = TRUE) >= gate,
-        mean_runtime_s = mean(sub$runtime_s, na.rm = TRUE),
+        n_completed = sum(rep_converged),
+        n_failed = sum(!rep_converged),
+        coverage_prof = coverage_prof,
+        passes_94pct_prof = !is.na(coverage_prof) && coverage_prof >= gate,
+        mean_runtime_s = mean(rep_runtime, na.rm = TRUE),
         stringsAsFactors = FALSE
       )
     })

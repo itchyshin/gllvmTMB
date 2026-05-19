@@ -127,20 +127,22 @@ command: `Rscript dev/precompute-vignettes.R --milestone M3`.
 Two artefacts:
 
 1. `dev/precomputed/m3-coverage-grid.rds` — long-format data frame
-   with columns: `(family, d, n_units, n_traits, seed, parameter,
-   truth, est, ci_lo, ci_hi, covered, convergence, runtime_s)`.
-   Approximately 3000 rows × ~6 parameter targets per fit ≈ 18 000
-   rows. ~5 MB compressed.
+   with columns: `(cell, family, d, rep, trait_id,
+   truth_diag_sigma, truth_psi, est_diag_sigma, est_psi,
+   ci_prof_lo, ci_prof_hi, covered_prof, converged, runtime_s)`.
+   Failed refits stay in this grid as one row per replicate with
+   `trait_id = NA`, `covered_prof = NA`, and `converged = FALSE`.
 2. `dev/precomputed/m3-coverage-summary.rds` — per-cell aggregate:
-   `(family, d, parameter, coverage_rate, mean_ci_width,
-   pct_converged, n_completed)`. Used by M3.6 article and the
-   validation-debt register entry.
+   `(cell, family, d, n_completed, n_failed, coverage_prof,
+   passes_94pct_prof, mean_runtime_s)`. `n_completed` and
+   `n_failed` count replicate fits; `coverage_prof` is computed on
+   the converged `(rep, trait)` rows only.
 
-Both are committed to the repo (CRAN-safe by `.Rbuildignore`-ing
-`dev/`); the M3.6 article reads from them without re-running.
-Reproducibility check is part of M3.7 close gate: any contributor
-can run `Rscript dev/precompute-vignettes.R --milestone M3` and
-verify byte-identical (modulo stochastic floor) re-creation.
+Smoke artefacts are committed under `inst/extdata/` for the M3.6
+article. Production artefacts are uploaded by the manual GitHub
+Actions workflow and promoted to `inst/extdata/` only if the evidence
+is publication-ready. The 2026-05-19 production run was not promoted
+because the statistical gate failed.
 
 ## 6. Honest scope
 

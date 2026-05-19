@@ -58,9 +58,11 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| (none) | (none) | (none) | (none) | WIP = 0 |
+| Codex | M3.3 production grid dispatch + artifact review | PR #199 / `codex/m3-production-artifact-review-2026-05-19` | GitHub Actions run artifacts + validation-debt/roadmap/dev-log follow-up | artifact review complete; CI running |
 
-**WIP**: 0. Safe to start the next small, bounded lane.
+**WIP**: 1. Avoid parallel M3.3 artifact aggregation,
+validation-debt, roadmap, and dev-log edits until this lane lands or is
+explicitly held.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -76,7 +78,6 @@ instead of expanding this table.
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Codex | M3.3 production grid dispatch + artifact review | after PR #197 workflow lands on `main` |
 | Codex + Claude | Revisit `drmTMB` workflow lessons for reader path and pkgdown shape | after Slice 1/2 discipline surfaces are in place |
 | Codex | Next small reader-facing lane | after maintainer chooses whether this should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing |
 

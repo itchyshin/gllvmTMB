@@ -2014,3 +2014,53 @@ Kaizen point:
     phase-at-a-glance row changes, check the matching detailed heading,
     milestone bullets, and adjacent "in flight" wording before the
     roadmap lane closes.
+
+## 2026-05-19 -- M3.3 failure-mode ledger
+
+Scope:
+
+- Start M3.3 failure-mode triage from the production run 26100827665
+  full grid artifacts.
+- Classify undercoverage by miss side, failed-refit rate, family, rank,
+  and trait.
+- Add a small glmmTMB nbinom2 comparator probe requested by the
+  maintainer.
+- Check galamm availability and record why it is not a direct nbinom2
+  comparator for this slice.
+- No public R API, likelihood, formula grammar, response family,
+  roxygen, Rd, vignette, README, NEWS, pkgdown navigation,
+  validation-debt status, or test expectation changed.
+
+Evidence:
+
+- Pre-edit lane check: `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,updatedAt,url`
+  -> no open PRs.
+- Pre-edit lane check: `git log --all --oneline --since="6 hours ago"`
+  inspected recent M3/roadmap merges through PR #200.
+- `git switch -c codex/m3-3-failure-mode-triage-2026-05-19`
+  created the triage branch.
+- `gh run download 26100827665 --repo itchyshin/gllvmTMB --dir /tmp/gllvmtmb-m3-artifacts-26100827665-triage`
+  downloaded all 15 production grid/summary artifact pairs.
+- R artifact reconstruction from `*grid.rds` files found all uncovered
+  converged rows missed above the profile upper bound; no lower-bound
+  misses.
+- Cell-level coverage/failure classes were recorded in
+  `docs/dev-log/audits/2026-05-19-m3-3-failure-mode-ledger.md`.
+- `Rscript --vanilla -e 'cat(as.character(utils::packageVersion("glmmTMB")), "\n")'`
+  -> `1.1.13`.
+- Small glmmTMB nbinom2 comparator, d = 1, 20 reps x 5 traits:
+  99/100 fits converged, 70/100 profile bounds available, 0.914
+  coverage among available profile intervals, 0.640 if missing profile
+  bounds count as failures.
+- `Rscript --vanilla -e 'cat(requireNamespace("galamm", quietly = TRUE), "\n"); if (requireNamespace("galamm", quietly = TRUE)) cat(as.character(utils::packageVersion("galamm")), "\n")'`
+  -> `TRUE`, `0.4.0`.
+- galamm single-trait binomial random-intercept probe failed with:
+  `number of levels of each grouping factor must be < number of observations`.
+
+Kaizen point:
+
+28. **Separate target failure from optimizer failure before rerun.**
+    M3.3 should not rerun all 15 cells until Fisher and Gauss decide
+    whether the promotion target is `psi`, total `Sigma_unit[tt]`, or
+    both. Otherwise a clean rerun could still validate the wrong
+    quantity.

@@ -53,6 +53,8 @@ Current operating rule:
 - PR #197 (M3.3 production grid workflow) merged on 2026-05-19.
 - PR #199 (M3.3 production artifact review) merged on 2026-05-19
   after 3-OS R-CMD-check passed.
+- PR #200 (post-M3 ROADMAP evidence refresh) merged on 2026-05-19
+  after 3-OS R-CMD-check passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -60,10 +62,11 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Post-M3 evidence ROADMAP consistency refresh | PR #200 / `codex/roadmap-post-m3-evidence-refresh-2026-05-19` | `ROADMAP.md`, check-log, after-task, coordination board | in review |
+| Ada (Codex) | M3.3 failure-mode ledger | PR #201 / `codex/m3-3-failure-mode-triage-2026-05-19` | M3.3 audit, check-log, after-task, coordination board | in review |
 
-**WIP**: 1. Avoid parallel ROADMAP, check-log, after-task, and
-coordination-board edits until this lane lands or is explicitly held.
+**WIP**: 1. Avoid parallel M3.3 artifact-ledger, check-log,
+after-task, and coordination-board edits until this lane lands or is
+explicitly held.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -132,6 +135,10 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~12:33 MT**: PR #200 (post-M3 ROADMAP evidence
+  refresh) merged to `main` after three-OS R-CMD-check passed. The
+  roadmap now records PR #199's production-evidence outcome and keeps
+  M3.3 in failure-mode triage.
 - **2026-05-19 ~11:43 MT**: PR #199 (M3.3 production artifact review)
   merged to `main` after three-OS R-CMD-check passed. The production
   workflow passed compute but failed the statistical coverage gate, so

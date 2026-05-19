@@ -28,7 +28,7 @@
 - Repo evidence update: PR #187 (tiered CI gate) and PR #189 (pkgdown Response families reference index) are merged on `main`.
 - Process-only fast-pass verified in real CI on PR #188 (all three OS jobs ran the "Classify R CMD check scope" step, skipped R setup/dependencies/check steps, and completed via "Fast pass for process-only change").
 - Connectivity note: this shell cannot resolve `github.com` (`gh`/`git push` fail host resolution), so GitHub state is queried via the GitHub connector.
-- Started the next reader-facing doc slice on local branch `codex/families-doc-mixed-family`: expanded the `Families` help topic to document the mixed-family selector-column API (`family` list + `data$family` / `attr(family, \"family_var\")`); ran `devtools::document()` + `pkgdown::check_pkgdown()`; appended `docs/dev-log/check-log.md` and drafted an after-task report. Not pushed yet due to the connectivity block.
+- Started the next reader-facing doc slice on local branch `codex/families-doc-mixed-family`: expanded the `Families` help topic to document the mixed-family selector-column API (`family` list + `data$family` / `attr(family, \"family_var\")`); ran `devtools::document()` + `pkgdown::check_pkgdown()`; appended `docs/dev-log/check-log.md` and drafted an after-task report.
 
 ### 2026-05-19 02:58 MDT
 
@@ -37,14 +37,12 @@
 - GitHub connector check: open PR census is still empty.
 - Decision: keep work-in-progress bounded to the Families-doc lane and leave the branch in a ready-to-push state; do not start a second slice until CI can be triggered on this lane.
 
-### 2026-05-19 04:44 MDT
+### 2026-05-19 04:46 MDT
 
-- Crash/restart rehydration: verified clean working tree and zero open PRs, then confirmed network + `gh` access is restored.
-- Ran lane-appropriate checks:
-  - `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
-  - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` (passed)
-- Pushed `codex/families-doc-mixed-family` and opened PR #190 (`Docs: clarify mixed-family family selector usage`).
-- Updated `docs/dev-log/coordination-board.md` to reflect PR #190 as the active lane.
+- Crash/restart rehydration: verified clean working tree and rehydrated PR state via the GitHub connector.
+- GitHub connector: PR #190 is open on branch `codex/families-doc-mixed-family` (head SHA `9d719c6`).
+- This shell still cannot resolve `github.com`, so `gh` and `git push` fail (`Could not resolve host: github.com`).
+- Local note: this checkout has one additional after-task refresh commit (`ed9c0f1`) not yet pushed to the PR branch due to the DNS outage.
 
 ## PRs / branches
 
@@ -56,7 +54,7 @@
 ## CI status
 
 - Local shell cannot resolve `github.com`, so CI checks are queried via the GitHub connector when needed.
-- GitHub connector in this Codex environment appears read-only: attempting to create a remote branch via the integration returned `403 Resource not accessible by integration`, so opening a PR for `codex/families-doc-mixed-family` is still blocked until shell connectivity returns (or integration permissions change).
+- GitHub connector in this Codex environment appears read-only (`403 Resource not accessible by integration` when trying to create a branch ref), so it cannot be used to push updates to PR #190 as a workaround for the DNS outage.
 
 ## Files changed locally (so far)
 
@@ -88,6 +86,8 @@
 - GitHub connector: open-PR census -> none; PR #188 merged; PR #187 merged; PR #189 merged.
 - GitHub connector: PR #188 head workflow run `R-CMD-check` job steps show the intended fast-pass (`Classify R CMD check scope` + skipped setup/check + `Fast pass for process-only change`).
 - GitHub connector: PR #187 metadata (`merged_at = 2026-05-18T23:25:09Z`) + head SHA workflow run `R-CMD-check` id `26064947669` (`conclusion = success`).
+- GitHub connector: open PR census -> PR #190 open (`Docs: clarify mixed-family family selector usage`).
+- `git push -u origin HEAD` -> failed (`Could not resolve host: github.com`).
 - `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` (regenerated `man/families.Rd`).
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` (passed, "No problems found.")
 
@@ -100,12 +100,9 @@
 
 ## Next actions
 
-1. When `github.com` connectivity returns for this shell, push
-   `codex/families-doc-mixed-family` and open a small PR; wait for
-   full 3-OS R-CMD-check before merge (roxygen/Rd touched).
+1. Monitor PR #190 CI (3-OS `R-CMD-check`) via GitHub once connectivity
+   returns in this shell (or via the GitHub connector).
 2. Keep the scope doc-only: no family implementations, likelihoods, or
    formula-grammar changes.
-3. If shell connectivity does not return soon, push this branch from a
-   networked environment (outside Codex sandbox) or grant the GitHub
-   integration write permission (it is currently read-only in this
-   sandbox).
+3. When DNS recovers, push the remaining local commit (`ed9c0f1`) to the
+   PR branch and re-check CI.

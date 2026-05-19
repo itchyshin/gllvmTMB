@@ -36,6 +36,27 @@ add_to_family <- function(x) {
 #' elements `delta` (logical) and `type` (standard vs. Poisson-link).
 #'
 #' @details
+#' Most models use standard R family objects such as `gaussian()`,
+#' `binomial()`, `poisson()`, or `Gamma(link = "log")`. This help topic
+#' documents additional family constructors shipped by **gllvmTMB** (for
+#' example `Beta()`, `betabinomial()`, `nbinom1()`, `nbinom2()`,
+#' `student()`, `tweedie()`, `lognormal()`, delta/hurdle families, and
+#' truncated count families).
+#'
+#' ## Mixed-family fits (one model, multiple response families)
+#'
+#' You can fit different response families within one multivariate model
+#' by passing `family` as a list of family objects and adding a selector
+#' column to `data` that chooses which family applies to each row.
+#'
+#' By default the selector column is named `"family"`. To use a different
+#' column name, set `attr(family, "family_var") <- "colname"`. For
+#' reproducibility, make the selector a factor whose levels are in the
+#' same order as the `family` list. The length of `family` must match the
+#' number of distinct selector levels.
+#'
+#' ## Delta-family defaults
+#'
 #' The default `link1` for delta models of `type = "standard"` is `"logit"`.
 #' The default `link1` for delta models of `type = "poisson-link"` is `"log"`.
 #'
@@ -45,6 +66,20 @@ add_to_family <- function(x) {
 #'
 #' @examples
 #' Beta(link = "logit")
+#' \dontrun{
+#' ## Mixed-family example: per-row family chosen by a `family` column
+#' sim <- simulate_site_trait(n_sites = 40, n_species = 10, n_traits = 2,
+#'                            mean_species_per_site = 5)
+#' sim$data$family <- factor(sim$data$trait, levels = levels(sim$data$trait))
+#' fam <- list(gaussian(), binomial())
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
+#'   data   = sim$data,
+#'   family = fam,
+#'   trait  = "trait",
+#'   unit   = "site"
+#' )
+#' }
 Beta <- function(link = "logit") {
   linktemp <- substitute(link)
   if (!is.character(linktemp))

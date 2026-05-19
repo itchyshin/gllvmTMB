@@ -4,8 +4,9 @@
 fixtures lead). **Active reviewers**: Boole (parser correctness),
 Rose (pre-publish + scope honesty), Ada (coordinator).
 **Status**: Active — Phase M3.1 (in progress 2026-05-17).
-**Closes**: M3.1 gate in `ROADMAP.md`. Backed by validation-debt
-register row **M3-COV** (to be added in M3.2).
+**Closes**: M3.1 gate in `ROADMAP.md`. Coverage evidence feeds
+validation-debt rows **CI-08** (`coverage_study()` empirical
+coverage) and **CI-10** (mixed-family inference).
 
 ## 1. Goal
 
@@ -15,8 +16,8 @@ coverage". The DGP grid is the empirical surface against which
 that claim is verified. Concretely:
 
 > For each (family × latent-rank × sample-size) cell, the 95 %
-> profile-likelihood CIs computed by `gllvmTMB` must contain the
-> true parameter ≥ 94 % of the time across R = 200 simulated
+> target-appropriate CIs computed by `gllvmTMB` must contain the
+> true target parameter ≥ 94 % of the time across R = 200 simulated
 > replicates.
 
 The 94 % gate is the audit-1 exit criterion (Fisher, 2026-05-14);
@@ -71,13 +72,13 @@ Each replicate `r ∈ 1..200` runs the following recipe:
 3. **Fit.** Run `gllvmTMB(..., family = ...)` with the same model
    structure as the DGP (no model-misspecification in M3.1; that's
    M3.4 work).
-4. **Profile-CI each free parameter.** Call `profile_ci_*()` on:
-   - the diagonals of $\boldsymbol\Sigma_{\text{unit}}$ (per-trait
-     unit-tier variance) — primary;
-   - the per-trait communality $c_t^2$ — derived;
-   - the family-specific dispersion (where present);
-   - 1 representative loading-derived quantity (e.g.
-     $|\Lambda_{1,1}|$ post-Procrustes alignment).
+4. **Compute CI for each explicit target.** Record the target and
+   method for each interval row. The primary target is the diagonal
+   of $\boldsymbol\Sigma_{\text{unit}}$ (per-trait unit-tier
+   variance); `psi` is diagnostic; derived targets include
+   communality $c_t^2$, family-specific dispersion (where present),
+   and one representative loading-derived quantity (e.g.
+   $|\Lambda_{1,1}|$ post-Procrustes alignment).
 5. **Record.** Truth, point estimate, CI bounds, convergence
    flag, runtime, into a row of a long-format data frame.
 
@@ -125,10 +126,11 @@ about itself. The trade-off is that the 94 % nominal-coverage gate
 has wider Monte Carlo error at N = 100 (±5 pp at the 95 % level)
 versus N = 200 (±3 pp).
 
-The M3.2 pipeline (`dev/precompute-vignettes.R` extension) defaults
-to Option A on `parallel::detectCores() - 1` workers, with N = 200,
-and graceful degradation if a worker dies. Re-running is a single
-command: `Rscript dev/precompute-vignettes.R --milestone M3`.
+The M3.2 pipeline (`dev/m3-grid.R` library +
+`dev/precompute-m3-grid.R` driver) defaults to Option A on
+`parallel::detectCores() - 1` workers, with N = 200, and graceful
+degradation if a worker dies. Re-running is a single command:
+`Rscript dev/precompute-m3-grid.R`.
 
 ## 5. Output
 
@@ -143,6 +145,8 @@ Two artefacts:
    In the 2026-05-19 production artifact, `ci_prof_lo`,
    `ci_prof_hi`, and `covered_prof` are `psi` profile fields, not
    total `Sigma_unit` profile fields.
+   The next target-explicit pilot adds `target` and `ci_method`
+   columns before any production promotion.
 2. `dev/precomputed/m3-coverage-summary.rds` — per-cell aggregate:
    `(cell, family, d, n_completed, n_failed, coverage_prof,
    passes_94pct_prof, mean_runtime_s)`. `n_completed` and
@@ -165,17 +169,18 @@ because the statistical gate failed.
 
 ### What M3.2 does
 
-- Implements `dev/precompute-vignettes.R --milestone M3`.
+- Implements `dev/m3-grid.R` and `dev/precompute-m3-grid.R`.
 - Runs the grid (Option A by default).
 - Ships the two RDS artefacts.
 
 ### What M3.3 does
 
-- Sanity-checks the per-family profile-CI accuracy on the
-  precomputed RDS.
+- Sanity-checks the target-explicit CI accuracy on the precomputed
+  RDS: total `Sigma_unit[tt]` is the primary promotion target and
+  `psi` is a diagnostic target.
 - Flags any cell that misses the 94 % gate.
-- Updates the validation-debt register entry (covered / partial /
-  blocked) for each cell, with the RDS path as evidence.
+- Updates CI-08 / CI-10 (covered / partial / blocked) with the RDS
+  path and audit report as evidence.
 
 ### What M3 does NOT cover (intentional boundary)
 
@@ -185,9 +190,11 @@ because the statistical gate failed.
 - **Asymptotic large-n behaviour.** The grid is anchored at
   n_units = 60. n = 600 + n = 6000 cells are deferred to a v0.3.0
   scaling-study design note.
-- **Bayesian or Wald CIs.** M3.1's gate is profile-likelihood
-  specifically. Wald-vs-profile-vs-bootstrap differential is
-  M3.5 derived-quantity work.
+- **Bayesian model comparison.** Not M3. Wald intervals may be
+  recorded as diagnostics, but they do not replace target-explicit
+  bootstrap/profile evidence for the promotion gate. The broader
+  Wald-vs-profile-vs-bootstrap differential is M3.5 derived-quantity
+  work.
 - **Derived-quantity coverage at multivariate scale.** Communality
   and repeatability are partially covered here (one per fit). The
   full 6-extractor coverage grid is M3.5.
@@ -216,8 +223,8 @@ because the statistical gate failed.
 
 ## 8. Cross-references
 
-- Validation-debt register entry — to be added in M3.2 commit as
-  **M3-COV** (covered / partial / blocked per cell).
+- Validation-debt register rows **CI-08** and **CI-10** (covered /
+  partial / blocked per evidence tier).
 - Engine path: `R/profile-ci.R`, `R/profile-derived.R`,
   `R/coverage-study.R` (existing single-cell helper).
 - Articles: M3.6 will be `vignettes/articles/simulation-recovery-validated.Rmd`,

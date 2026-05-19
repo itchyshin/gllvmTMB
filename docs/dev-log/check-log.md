@@ -1842,3 +1842,26 @@ Kaizen point:
     methods paper is not yet published, cite the package via
     `inst/CITATION` and reserve “in preparation” wording for internal
     dev-log notes, not for public help pages and tutorials.
+
+## 2026-05-19 -- Slice 2 after-task templates
+
+Scope:
+
+- Add copy/paste templates for after-task and after-phase reports.
+- Point the after-task protocol at the new template files.
+- No package code, likelihood, formula grammar, families, roxygen, Rd,
+  vignettes, README, NEWS, workflows, or validation-debt status changed.
+
+Evidence:
+
+- Pre-edit lane check: `gh pr list --state open` -> no open PR rows.
+- Pre-edit lane check: `git log --all --oneline --since="6 hours ago"`
+  inspected recent merges through PR #194.
+- `git diff --check` clean.
+
+Kaizen point:
+
+24. **Make process templates easy to reuse.** A protocol doc is not
+    enough; keep a copy/paste `_TEMPLATE.md` in the folder so authors
+    can start an after-task/after-phase report without reconstructing
+    section headings from memory.

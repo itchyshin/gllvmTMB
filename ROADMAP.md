@@ -28,6 +28,12 @@ those sources.
 - PR #191 closed the Families-doc lane in the dev-log (process-only; no package changes).
 - PR #193 removed public "`in prep`" citation placeholders from user-facing help, README, and selected Tier-1 articles where published anchors already existed.
 - PR #195 added copy/paste after-task and after-phase templates; PR #196 closed that process lane in the coordination board.
+- PR #197 added the manual M3 production-grid GitHub Actions workflow.
+- PR #198 closed the M3 production-grid workflow lane in the dev-log.
+- PR #199 reviewed the R = 200 M3 production artifacts: the compute
+  workflow passed, but only 2/15 profile-psi cells cleared the 94 %
+  gate; CI-08 and CI-10 therefore stay `partial`, and failed-refit
+  counts now stay visible in `m3_summarise()`.
 
 ## Next small steps (proposed)
 
@@ -78,7 +84,7 @@ items completed within that phase.
 | **Phase 1c-slope** | **Random slopes (NEW pre-CRAN)** | ⚪ Planned | `░░░░░░░░` 0/6 | Engine generalisation + extractors + recovery + plots + article. **Capped at 1 slope per fit** per M1 design. |
 | Phase 1c article ports | Article ports + new Concepts pedagogy | 🔵 Frozen at 7/14 | `█████░░░` 7/14 | **Superseded 2026-05-15** by the function-first M1 / M2 / M3 milestone sequence below. Remaining article work absorbed into M1.9 (mixed-family-extractors), M2.5 (psychometrics-irt rewrite), M3.6 (simulation-recovery-validated), and Phase 1f (choose-your-model rewrite). |
 | **M1** | **Mixed-family extractor rigour** | ✅ Done | `████████` 10/10 | PRs #149 – #158 + M1.10 close gate. Every extractor validated on `family = list(...)` fits; `mixed-family-extractors.Rmd` shipped; MIX-03..MIX-06, MIX-08, MIS-05 walked to `covered`. |
-| **M2** | **Binary completeness** | 🟢 In progress (M2.5 + M2.6 deferred until after M3) | `█████░░░` 5/7 | Weeks 3–5. M2.1 design note + M2.2-A binary family recovery + M2.2-B CIs/extractors/glmmTMB cross-check + M2.3 `lambda_constraint` binary IRT + mirt + galamm cross-checks + M2.4 `suggest_lambda_constraint()` reliability shipped 2026-05-17. **Parallel scope expansion**: M2.8 (animal_* keyword family — 4×5 grid; PR #167), M2.8b (`phylo_*` `A=`/`Ainv=` aliases + non-ASCII / @param / Suggests CI fixes; PR #168), M2.8c (article cascade: choose-your-model + data-shape-flowchart + gllvm-vocabulary + phylogenetic-gllvm + pitfalls; PR #169), and animal-model.Rmd worked example with Kruuk 2004 + Wilson 2010 + Runcie & Mukherjee 2013 anchors (PR #170, in flight). M2.5 (psychometrics-irt re-author) + M2.6 (joint-sdm binary restoration) deferred until after M3 so they can cite R≥200 coverage. |
+| **M2** | **Binary completeness** | 🟢 In progress (M2.5 + M2.6 deferred until after M3) | `█████░░░` 5/7 | Weeks 3–5. M2.1 design note + M2.2-A binary family recovery + M2.2-B CIs/extractors/glmmTMB cross-check + M2.3 `lambda_constraint` binary IRT + mirt + galamm cross-checks + M2.4 `suggest_lambda_constraint()` reliability shipped 2026-05-17. **Parallel scope expansion**: M2.8 (animal_* keyword family — 4×5 grid; PR #167), M2.8b (`phylo_*` `A=`/`Ainv=` aliases + non-ASCII / @param / Suggests CI fixes; PR #168), M2.8c (article cascade: choose-your-model + data-shape-flowchart + gllvm-vocabulary + phylogenetic-gllvm + pitfalls; PR #169), and animal-model.Rmd worked example with Kruuk 2004 + Wilson 2010 + Runcie & Mukherjee 2013 anchors (PR #170, merged). M2.5 (psychometrics-irt re-author) + M2.6 (joint-sdm binary restoration) deferred until after M3 so they can cite R≥200 coverage. |
 | **M3** | **Inference completeness across families** | 🟢 In progress | `███░░░░░` 3/8 | Weeks 5–7. `coverage_study()` ≥ 94 % on Gaussian / binomial / nbinom2 / ordinal-probit / mixed-family at R = 200. M3.1 DGP grid design note shipped (Design 42). M3.2 pipeline machinery (`dev/m3-grid.R` + `dev/precompute-m3-grid.R`) + smoke artefact (Gaussian × 3 dims × 10 reps; 18s) shipped in `inst/extdata/`. M3.6 article scaffold (`simulation-recovery-validated.Rmd`) shipped reading from the smoke RDS via `system.file()`. M3.3 production workflow run 26100827665 passed all 15 Actions jobs, but artifact review found only 2/15 profile-psi cells ≥94 %; M3.3 now stays in failure-mode triage before any `covered` promotion. |
 | Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher (incl. random-slope plots) |
 | Phase 1d | Navbar restructure | 🟢 Partly done | `█░` 1/2 | PR #112 created the **Methods + validation** tier; full 3-tier audit deferred to a Phase 1d close PR |
@@ -268,7 +274,7 @@ honest claims at CRAN time and for the manuscript. **Closed
 
 ---
 
-## 🟢 Phase 1b validation -- Profile-likelihood CI validation -- `██░░` 2/3 in main; 1 in flight
+## 🟢 Phase 1b validation -- Profile-likelihood CI validation -- `█████░` 3/3 Gaussian baseline
 
 **Goal**: produce the validation evidence that gllvmTMB's
 three-method confidence interval API (`profile` / `wald` /
@@ -284,9 +290,9 @@ TMB-built-in toolset (`tmbprofile()`, `tmbroot()`,
 milestone PR as originally scoped -- breaking it into three
 made review easier)
 
-- ✅ **`confint_inspect(fit, parm)` function** -- PR #120,
-  cross-reference fix in flight. Visual-verification companion
-  to `confint(method = "profile")`. Returns the full profile-
+- ✅ **`confint_inspect(fit, parm)` function** -- PR #120
+  merged 2026-05-15. Visual-verification companion to
+  `confint(method = "profile")`. Returns the full profile-
   likelihood curve, the deviance bounds, a Wald-vs-profile
   comparison, and (when ggplot2 is available) a ggplot showing
   the curve with MLE + chi-squared threshold + both profile
@@ -300,10 +306,9 @@ made review easier)
   fit. Five diagnostic flags including
   `"information_matrix_singular"` for tiny / weakly-identified
   fixtures.
-- 🟢 **`coverage_study(fit, n_reps, methods)` function** --
-  PR #122 (`[0,1]` autolink fix held until #120 lands; cross-
-  references to `confint_inspect()` need #120 in main first).
-  Empirical coverage-rate estimator. For each replicate
+- ✅ **`coverage_study(fit, n_reps, methods)` function** --
+  PR #122 merged 2026-05-15. Empirical coverage-rate estimator.
+  For each replicate
   simulates from the fit, refits, computes CIs via the
   requested methods, counts the fraction containing the
   original fit's estimates. Returns a `gllvmTMB_coverage_study`
@@ -318,11 +323,9 @@ made review easier)
   `confint_inspect()` and the queued `simulation-verification`
   article.
 - ✅ **`simulation-verification.Rmd` Concepts article** --
-  local draft (`agent/phase1c-new-simulation-verification`),
-  push held until the validation-milestone PR chain clears so
-  the cross-links to `confint_inspect()`, `coverage_study()`,
-  `gllvmTMB_check_consistency()` reference pages all resolve
-  on first CI run.
+  PR #125 merged 2026-05-15 after PR #120 / #122 landed, so the
+  cross-links to `confint_inspect()`, `coverage_study()`, and
+  `gllvmTMB_check_consistency()` resolved on first render.
 - ⚪ **Empirical coverage matrix on the audit's three canonical
   families (Gaussian / NB2 / ordinal-probit, 50 replicates per
   family)** -- scoped as an **internal artefact** rather than
@@ -336,13 +339,13 @@ made review easier)
 
 | Gate | Status | Verified by |
 |---|---|---|
-| `confint_inspect()` passes on all three methods | 🟢 In flight | PR #120 (cross-reference fix pushed; CI re-running) |
+| `confint_inspect()` passes on all three methods | ✅ Done | PR #120 merged 2026-05-15 |
 | `gllvmTMB_check_consistency()` ships + tested | ✅ Done | PR #121 |
-| `coverage_study()` ships + Wald confint routing extended | 🟢 In flight | PR #122 (local fix held pending #120) |
+| `coverage_study()` ships + Wald confint routing extended | ✅ Done | PR #122 merged 2026-05-15 |
 | `troubleshooting-profile.Rmd` article merged | ✅ Done | PR #115 |
-| `simulation-verification.Rmd` Concepts article merged | 🟢 Drafted | Local branch, push held pending #120/#122 |
+| `simulation-verification.Rmd` Concepts article merged | ✅ Done | PR #125 merged 2026-05-15 |
 | Empirical coverage matrix on canonical fixtures (>= 94%) | ⚪ Pending | Phase 5.5 sprint scope |
-| Rose pre-publish audit sign-off | ⚪ Pending | After PR #120/#122 + simulation-verification merge |
+| Rose pre-publish audit sign-off | ✅ Done | PR #125 self-audit + 3-OS R-CMD-check |
 
 ### Cross-refs
 
@@ -493,7 +496,7 @@ Article taxonomy (ratified 2026-05-14 as D2): **Concepts**
 domain per article), **Methods + validation** (cross-check /
 simulation-recovery / methodology).
 
-### Concepts tier (5 articles -- 4 merged, 1 drafted)
+### Concepts tier (5 articles -- 5 merged)
 
 - ✅ `data-shape-flowchart.Rmd` -- PR #114 merged 2026-05-15
   (Pat). 1-page visual decision tree mapping data shapes to
@@ -507,11 +510,9 @@ simulation-recovery / methodology).
   article; prerequisite of `psychometrics-irt`).
 - ✅ `troubleshooting-profile.Rmd` -- PR #115 merged 2026-05-15
   (Fisher). Four canonical failure modes catalogue.
-- 🟢 `simulation-verification.Rmd` -- LOCAL DRAFT (Curie +
-  Fisher). 5 sections including Fisher's profile-curve-anatomy
-  bridge to `profile-likelihood-ci` + `confint_inspect()`. Push
-  held until PR #120 (confint_inspect) and #122 (coverage_study)
-  land in main so the cross-links resolve.
+- ✅ `simulation-verification.Rmd` -- PR #125 merged 2026-05-15
+  (Curie + Fisher). 5 sections including Fisher's profile-curve-
+  anatomy bridge to `profile-likelihood-ci` + `confint_inspect()`.
 
 ### Worked examples tier (6 ports -- 3 merged, 1 drafted)
 
@@ -777,7 +778,7 @@ validated after M2. Other families (Poisson, NB2, Gamma, Beta,
 ordinal-probit deep validation, delta, Tweedie) remain `partial`
 until post-CRAN per family-by-family validation slices.
 
-### ⚪ M3 -- Inference completeness across families -- `░░░░░░░░` 0/8
+### 🟢 M3 -- Inference completeness across families -- `███░░░░░` 3/8
 
 > **Goal**: `coverage_study()` reports ≥ 94 % empirical
 > coverage on Gaussian / binomial / nbinom2 / ordinal-probit /

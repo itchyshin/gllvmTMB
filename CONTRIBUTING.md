@@ -124,14 +124,15 @@ by the slice.
 | --- | --- | --- |
 | TMB likelihood, formula grammar, exported API, generated Rd, package metadata | targeted tests plus relevant docs; run full local or CI check when practical | required on every PR before merge |
 | Tests, simulation helpers, gallery renderers | targeted `devtools::test()` plus artifact smoke render when relevant | required before merge, but later slices can be planned while it runs |
-| README, NEWS, pkgdown, vignettes, articles, design docs, user-facing prose | render or check the affected surface; run `pkgdown::check_pkgdown()` when pkgdown or reference navigation is touched | batch small docs PRs or run at a checkpoint |
-| Pure process files (`.github/pull_request_template.md`, `CONTRIBUTING.md`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/team-improvements.md`, `docs/dev-log/after-task/`, `docs/dev-log/recovery-checkpoints/`, `docs/dev-log/shannon-audits/`, `docs/dev-log/while-away/`) | `git diff --check` plus Shannon/Rose review as relevant | fast-passed by CI unless bundled with package-affecting files |
+| README, NEWS, pkgdown, vignettes, articles, generated Rd, package-facing examples | render or check the affected surface; run `pkgdown::check_pkgdown()` when pkgdown or reference navigation is touched | required before merge, usually batched at a checkpoint |
+| Ignored-source docs and planning files (`docs/`, `dev/`, `ROADMAP.md`, `AGENTS.md`, `CLAUDE.md`, `.github/pull_request_template.md`, `CONTRIBUTING.md`) | `git diff --check` plus Shannon/Rose review as relevant; changed ignored `dev/*.R` scripts also get an R parse check in CI | fast-passed by CI unless bundled with package-affecting files |
 | Long simulation and power-analysis experiments | manifest-driven local/cluster run with saved artifacts and summary checks | not inside ordinary R-CMD-check |
 
 The `R-CMD-check` workflow keeps the same OS-named checks on every
-pull request. For process-only diffs it exits quickly after classifying
-the changed files, so required checks do not remain pending. Unknown
-or mixed file scopes fall back to the full R CMD check.
+pull request. For ignored-source / process-only diffs it exits quickly
+after classifying the changed files and running light validation, so
+required checks do not remain pending. Unknown or mixed file scopes
+fall back to the full R CMD check.
 
 Keep work-in-progress to one open PR when possible, and let package-
 affecting GitHub Actions finish before pushing a follow-up commit. The

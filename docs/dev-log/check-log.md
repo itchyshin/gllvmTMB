@@ -2120,3 +2120,51 @@ Kaizen point:
     the design has both `psi` and total `Sigma_unit[tt]` targets. Future
     grid artifacts should either use a long `target` column or explicit
     names such as `covered_psi_prof` and `covered_sigma_diag_boot`.
+
+## 2026-05-19 -- CI ignored-source fast path
+
+Scope:
+
+- Expand the existing in-job R-CMD-check classifier so PRs touching only
+  ignored-source planning/doc files can fast-pass more often.
+- Keep full R CMD check for package-facing paths and mixed scopes.
+- Add light validation for fast-passed changes: `git diff --check` for
+  every fast path and `Rscript parse(file = ...)` for ignored `dev/*.R`
+  scripts.
+- Update `CONTRIBUTING.md`, the coordination board, and the after-task
+  report.
+
+Evidence:
+
+- PR #202 merged to `main` at `2026-05-19T20:13:53Z` as merge commit
+  `10bc85988e851f982ca40cba3728f8ad423994f5`.
+- Pre-edit lane check: `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt`
+  -> no open PRs.
+- Pre-edit lane check: `git log --all --oneline --since="6 hours ago"`
+  inspected recent M3 merges through PR #202.
+- Official GitHub Actions workflow syntax docs were checked for path
+  filter behaviour; skipped required workflows can leave checks pending,
+  so this change keeps the in-job classifier rather than adding
+  workflow-level `paths-ignore`.
+- `.Rbuildignore` confirms `docs`, `dev`, `AGENTS.md`, `CLAUDE.md`,
+  `CONTRIBUTING.md`, and `ROADMAP.md` are excluded from package builds.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/R-CMD-check.yaml"); puts "yaml ok"'`
+  -> `yaml ok`.
+- Extracted every workflow `run:` block with GitHub expressions replaced
+  by `DUMMY`; `bash -n` returned cleanly for each script.
+- Local classifier simulation:
+  - `docs/design/42-m3-dgp-grid.md`, `docs/dev-log/check-log.md`,
+    `ROADMAP.md`, and `AGENTS.md` -> fast path, no R parse.
+  - `dev/m3-grid.R` -> fast path plus R parse.
+  - `R/fit-multi.R`, `src/gllvmTMB.cpp`, `README.md`, and
+    `.github/workflows/R-CMD-check.yaml` -> full R CMD check.
+- `Rscript --vanilla -e 'parse(file = "dev/m3-grid.R"); cat("r parse ok\n")'`
+  -> `r parse ok`.
+- `git diff --check` -> clean.
+
+Kaizen point:
+
+30. **Fast-pass only where R CMD cannot add evidence.** R CMD check
+    stays required for package surfaces. Ignored-source PRs should use a
+    visible replacement gate instead of paying 30-40 minutes for a check
+    that cannot exercise the changed files.

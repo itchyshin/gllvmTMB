@@ -57,6 +57,8 @@ Current operating rule:
   after 3-OS R-CMD-check passed.
 - PR #201 (M3.3 failure-mode ledger) merged on 2026-05-19 after
   3-OS R-CMD-check passed.
+- PR #202 (M3.3 target-scale audit) merged on 2026-05-19 after
+  3-OS R-CMD-check passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -64,10 +66,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Ada (Codex) | M3.3 target-scale audit | PR #202 / `codex/m3-3-target-scale-audit-2026-05-19` | M3.3 target audit, Design 42/44, dev/m3-grid.R comments, check-log, after-task, coordination board | in review |
+| Ada (Codex) | CI ignored-source fast path | `codex/ci-ignored-docs-fast-path-2026-05-19` | `.github/workflows/R-CMD-check.yaml`, CONTRIBUTING, check-log, after-task, coordination board | in progress |
 
-**WIP**: 1. Avoid parallel M3.3 target-scale, check-log,
-after-task, design-note, and coordination-board edits until this lane
+**WIP**: 1. Avoid parallel R-CMD-check workflow, CONTRIBUTING,
+check-log, after-task, and coordination-board edits until this lane
 lands or is explicitly held.
 
 Update protocol: when you start a lane, add a row. When the lane's
@@ -97,10 +99,11 @@ leave a coordination comment first and wait for acknowledgement.
 
 | File | Owner (this pass) |
 |---|---|
-| `.github/pull_request_template.md` | Codex for Slice 1 |
-| `CONTRIBUTING.md` | Codex for Slice 1 pointer only |
-| `docs/dev-log/coordination-board.md` | Ada (Codex) for current M3.3 target-scale lane |
-| `docs/dev-log/check-log.md` | Ada (Codex) for current M3.3 target-scale entry |
+| `.github/workflows/R-CMD-check.yaml` | Ada (Codex) for CI ignored-source fast path |
+| `.github/pull_request_template.md` | no active owner in this lane; do not edit |
+| `CONTRIBUTING.md` | Ada (Codex) for CI ignored-source fast path |
+| `docs/dev-log/coordination-board.md` | Ada (Codex) for current CI ignored-source lane |
+| `docs/dev-log/check-log.md` | Ada (Codex) for current CI ignored-source entry |
 | `docs/dev-log/after-task/2026-05-18-pr-slice-contract.md` | Codex for current Slice 1 after-task report |
 | `CLAUDE.md`, `AGENTS.md` | no active owner in this lane; do not edit |
 | `_pkgdown.yml`, `README.md` | no active owner in this lane; do not edit |
@@ -146,6 +149,10 @@ Resolved questions move to "Recently resolved" with the answer.
   merged to `main` after three-OS R-CMD-check passed. The ledger found
   systematic above-upper-bound `psi` misses and recorded glmmTMB /
   galamm comparator scope.
+- **2026-05-19 ~14:13 MT**: PR #202 (M3.3 target-scale audit) merged
+  to `main` after three-OS R-CMD-check passed. The audit split `psi`
+  into a diagnostic target and total `Sigma_unit[tt]` into the primary
+  promotion target for the next M3.3 pilot.
 - **2026-05-19 ~11:43 MT**: PR #199 (M3.3 production artifact review)
   merged to `main` after three-OS R-CMD-check passed. The production
   workflow passed compute but failed the statistical coverage gate, so

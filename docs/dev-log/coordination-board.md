@@ -56,10 +56,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Families doc (mixed-family + usage) | `codex/families-doc-mixed-family` | `R/families.R`, `man/families.Rd` | local WIP (GitHub offline) |
+| Codex | Families doc (mixed-family + usage) | #190 / `codex/families-doc-mixed-family` | `R/families.R`, `man/*.Rd` + dev-log artifacts | PR open; waiting for 3-OS `R-CMD-check` |
 
-**WIP**: one doc-only lane in progress; avoid parallel edits to the same
-roxygen/Rd files until this slice is closed or explicitly abandoned.
+**WIP**: one doc-only PR (#190). Avoid parallel edits to roxygen/Rd and the
+Families help topic until CI is green and the PR is merged or explicitly held.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

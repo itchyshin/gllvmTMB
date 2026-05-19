@@ -37,12 +37,21 @@
 - GitHub connector check: open PR census is still empty.
 - Decision: keep work-in-progress bounded to the Families-doc lane and leave the branch in a ready-to-push state; do not start a second slice until CI can be triggered on this lane.
 
+### 2026-05-19 04:44 MDT
+
+- Crash/restart rehydration: verified clean working tree and zero open PRs, then confirmed network + `gh` access is restored.
+- Ran lane-appropriate checks:
+  - `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` (passed)
+- Pushed `codex/families-doc-mixed-family` and opened PR #190 (`Docs: clarify mixed-family family selector usage`).
+- Updated `docs/dev-log/coordination-board.md` to reflect PR #190 as the active lane.
+
 ## PRs / branches
 
 - Merged: PR #187, `Add tiered R CMD check gate`.
 - Merged: PR #188, `Record overnight Shannon handoff`.
 - Merged: PR #189, `Fix pkgdown families reference index`.
-- Local WIP (not pushed): `codex/families-doc-mixed-family`.
+- Open: PR #190, `Docs: clarify mixed-family family selector usage` (`codex/families-doc-mixed-family`).
 
 ## CI status
 

@@ -22,7 +22,10 @@ than assuming the production grid would clear the coverage gate.
 - Patched `m3_summarise()` so failed replicate fits are counted before
   unavailable coverage rows are filtered out.
 - Added `tests/testthat/test-m3-grid-summary.R` to catch that summary
-  failure path.
+  failure path in local repository tests and GitHub Actions checks. The
+  test uses `GITHUB_WORKSPACE` to find the checkout copy of
+  `dev/m3-grid.R` when the source tarball omits `dev/`, and skips
+  explicitly only when no development checkout is available.
 
 No public R API, likelihood, formula grammar, response family,
 roxygen, generated Rd, vignette, README, NEWS, or pkgdown navigation
@@ -90,6 +93,18 @@ No example file changed.
   -> parsed both files.
 - `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
   -> PASS 10, WARN 0, SKIP 0, FAIL 0.
+- PR #199 initial `gh run watch 26106481687 --exit-status --interval 60`
+  -> failed on ubuntu-latest, macos-latest, and windows-latest. The
+  shared failure was `tests/testthat/test-m3-grid-summary.R` trying to
+  source `../../dev/m3-grid.R` under `R CMD check`, where `dev/` is
+  excluded by `.Rbuildignore`.
+- `air format tests/testthat/test-m3-grid-summary.R`
+  -> completed after the source-harness fix.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  -> PASS 10, WARN 0, SKIP 0, FAIL 0 after the source-harness fix.
+- Temporary no-`dev/` test-harness emulation with `testthat::test_file()`
+  -> SKIP 2, FAIL 0 when `GITHUB_WORKSPACE` was unset; PASS 10, FAIL 0
+  when `GITHUB_WORKSPACE` pointed to the repository checkout.
 - `git diff --check`
   -> clean.
 
@@ -132,6 +147,13 @@ summary bug that hid failed replicate counts in the uploaded
 per-cell summaries. Reading the full grid artifacts caught the issue
 before the validation-debt register could accidentally promote a weak
 claim.
+
+PR #199's first 3-OS `R CMD check` run also caught a test-harness
+mistake: the new regression sourced a development script that is not
+shipped in the source tarball. The fix keeps the regression active in
+the repository and in GitHub Actions by using the checkout path, while
+still skipping explicitly in installed-package check contexts that have
+no development checkout.
 
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 

@@ -1,9 +1,20 @@
+source_m3_grid <- function() {
+  workspace <- Sys.getenv("GITHUB_WORKSPACE", unset = NA_character_)
+  candidates <- c(
+    file.path("dev", "m3-grid.R"),
+    file.path("..", "..", "dev", "m3-grid.R"),
+    if (!is.na(workspace)) file.path(workspace, "dev", "m3-grid.R")
+  )
+  dev_file <- candidates[file.exists(candidates)][1]
+  testthat::skip_if(
+    is.na(dev_file),
+    "dev/m3-grid.R is unavailable in this source-tarball context"
+  )
+  source(dev_file, local = parent.frame())
+}
+
 test_that("M3 grid summary counts failed replicates before coverage filtering", {
-  dev_file <- file.path("dev", "m3-grid.R")
-  if (!file.exists(dev_file)) {
-    dev_file <- file.path("..", "..", "dev", "m3-grid.R")
-  }
-  source(dev_file, local = TRUE)
+  source_m3_grid()
 
   grid_df <- data.frame(
     cell = "gaussian-d1",
@@ -26,11 +37,7 @@ test_that("M3 grid summary counts failed replicates before coverage filtering", 
 })
 
 test_that("M3 grid summary handles cells with no converged coverage rows", {
-  dev_file <- file.path("dev", "m3-grid.R")
-  if (!file.exists(dev_file)) {
-    dev_file <- file.path("..", "..", "dev", "m3-grid.R")
-  }
-  source(dev_file, local = TRUE)
+  source_m3_grid()
 
   grid_df <- data.frame(
     cell = "nbinom2-d1",

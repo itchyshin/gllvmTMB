@@ -1941,6 +1941,21 @@ Evidence:
   parsed both files.
 - `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
   passed (10 tests).
+- PR #199 initial `gh run watch 26106481687 --exit-status --interval 60`
+  failed on ubuntu-latest, macos-latest, and windows-latest because
+  `tests/testthat/test-m3-grid-summary.R` sourced `../../dev/m3-grid.R`
+  during `R CMD check`, but `dev/` is deliberately excluded by
+  `.Rbuildignore`.
+- `air format tests/testthat/test-m3-grid-summary.R` completed after the
+  test harness was changed to find `dev/m3-grid.R` through the GitHub
+  Actions checkout when `GITHUB_WORKSPACE` is set and to skip explicitly
+  when no development checkout is available.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  passed again locally (10 tests).
+- Temporary no-`dev/` test-harness emulation using `testthat::test_file()`
+  skipped the two M3-grid-summary tests cleanly when `GITHUB_WORKSPACE`
+  was unset and passed all 10 checks when `GITHUB_WORKSPACE` pointed to
+  the repository checkout.
 - `git diff --check` clean.
 
 Kaizen point:

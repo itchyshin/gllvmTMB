@@ -56,9 +56,11 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| (none) | (none) | (none) | (none) | WIP = 0 |
+| Codex | In-prep citation discipline | #193 / `codex/in-prep-citation-hygiene-2026-05-19` | roxygen/README + selected Tier-1 articles + Rd + dev-log | PR open; waiting for 3-OS `R-CMD-check` |
 
-**WIP**: 0. Safe to start the next small, bounded lane.
+**WIP**: 1 (PR #193). Avoid parallel edits to the touched roxygen/Rd
+and the edited Tier-1 articles until CI is green and the PR is merged
+or explicitly held.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

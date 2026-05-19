@@ -60,7 +60,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Post-M3 evidence ROADMAP consistency refresh | `codex/roadmap-post-m3-evidence-refresh-2026-05-19` | `ROADMAP.md`, check-log, after-task, coordination board | active |
+| Codex | Post-M3 evidence ROADMAP consistency refresh | PR #200 / `codex/roadmap-post-m3-evidence-refresh-2026-05-19` | `ROADMAP.md`, check-log, after-task, coordination board | in review |
 
 **WIP**: 1. Avoid parallel ROADMAP, check-log, after-task, and
 coordination-board edits until this lane lands or is explicitly held.

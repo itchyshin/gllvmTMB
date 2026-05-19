@@ -1,6 +1,6 @@
 # gllvmTMB Roadmap
 
-*Last refreshed: 2026-05-19 (families discoverability + mixed-family docs).*
+*Last refreshed: 2026-05-19 (families docs, citation hygiene, process templates, M3 workflow queue).*
 
 This roadmap is the shared map for the maintainer, the Claude
 Code and Codex teams, contributors, and prospective users. It
@@ -26,14 +26,16 @@ those sources.
 - PR #189 fixed pkgdown Reference navigation: “Response families” now lists the consolidated `Families` topic (instead of an empty keyword selector).
 - PR #190 documented the mixed-family selector-column contract in the `Families` help topic, so users can specify `family = list(...)` plus a selector column without guessing the mapping.
 - PR #191 closed the Families-doc lane in the dev-log (process-only; no package changes).
+- PR #193 removed public "`in prep`" citation placeholders from user-facing help, README, and selected Tier-1 articles where published anchors already existed.
+- PR #195 added copy/paste after-task and after-phase templates; PR #196 closed that process lane in the coordination board.
 
 ## Next small steps (proposed)
 
-These are intentionally low-risk, reader-first lanes. Treat each as its own PR.
+These are intentionally bounded lanes. Treat each as its own PR.
 
-1. **In-prep citation discipline (Rose + Darwin)**: replace `Nakagawa et al. (in prep)` placeholders with published anchors where available; reserve in-prep for genuinely new engine-specific claims.
-2. **Slice 2 after-task template (process)**: finish the small process-doc follow-on to Slice 1 PR template so future lanes stay consistent.
-3. **M3.3 production grid workflow_dispatch (Curie + Fisher + Grace)**: add the workflow wiring for the R=200 production grid (no new inference method changes; just reproducible dispatch + artifacts).
+1. **M3.3 production grid `workflow_dispatch` wiring (Curie + Fisher + Grace)**: add the manual GitHub Actions workflow for the R = 200 production grid (no new inference method changes; just reproducible dispatch + artifacts).
+2. **M3.3 production artifact review (Curie + Fisher + Rose)**: after the manual grid run, aggregate the per-cell artifacts, classify coverage cells, and update the validation-debt register.
+3. **Reader-facing lane after M3 evidence**: choose whether the next public-surface PR should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing.
 
 Note: “redundant `trait = \"trait\"` cleanup” is *not* a mechanical cleanup under Option A uniform naming; treat it as a policy change proposal rather than a queued doc sweep.
 

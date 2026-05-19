@@ -7,6 +7,13 @@ Ada (coordinator).
 **Status**: Draft — design pre-stages the M3.3 dispatch decision.
 No implementation in this PR; the maintainer ratifies the approach
 before dispatch.
+**Implementation update (2026-05-18/19)**: M3.3a has since moved to
+the profile-primary path recorded in
+`docs/dev-log/after-task/2026-05-18-m3-3a-profile-primary.md`.
+The candidate-method comparison below is retained as historical
+rationale; the production workflow dispatches the current
+profile-CI grid with the post-M3.4 `init_strategy` option rather
+than adding another inference method.
 **Closes**: gap between M3.2 smoke (placeholder Wald) and the M3
 exit gate (≥ 94 % empirical coverage at 95 % nominal).
 **Backed by**: validation-debt register row **M3-COV** (to be
@@ -165,18 +172,22 @@ convergence improvements.
 
 ## 5. Compute budget and CI plan
 
-Compute estimates anchored on M3.2c smoke runtimes (15 cells in
-~3 min at 10 reps; ~30 min at 100 reps; ~hours at 200 reps).
+Compute estimates are anchored on M3.2c smoke runtimes and the
+post-M3.4 warm-start mitigation lane. M3.3 production runs by
+manual GitHub Actions `workflow_dispatch`, with one Linux matrix job
+per family × dimension cell and per-cell RDS artifacts uploaded for
+later aggregation.
 
 | Run | Cells × reps × B | Estimated wall | Output |
 |---|---|---|---|
 | **Smoke M3.3a** | 15 × 10 × 30 | ~2 h serial / ~20 min ×8 cores | `inst/extdata/m3-coverage-grid-smoke.rds` refresh |
-| **Production M3.3a** | 15 × 200 × 100 | ~5 d serial / ~15 h ×8 cores | `inst/extdata/m3-coverage-grid-production.rds` (separate file from smoke; both shipped) |
+| **Production M3.3a** | 15 × 200 | Manual Actions matrix; bounded by slowest cell and `max-parallel` | Per-cell workflow artifacts; follow-up PR aggregates to `inst/extdata/m3-coverage-grid-production.rds` if the evidence is publication-ready |
 | **M3.3b cross-validation** | 9 × 50 × N/A (profile) | ~12 h serial / ~2 h ×8 cores | `inst/extdata/m3-coverage-profile-subset.rds` |
 
-The production run is too long for CI; runs on a dedicated machine
-and the result RDS is committed via PR. CI just rebuilds the
-vignette from the shipped RDS.
+The workflow PR only installs reproducible dispatch and artifact
+capture. The production evidence is not claimed until a manual run
+finishes, the artifacts are reviewed, and a follow-up PR records the
+coverage summary, validation-debt status, and reader-facing figures.
 
 ## 6. Validation-debt register interaction
 

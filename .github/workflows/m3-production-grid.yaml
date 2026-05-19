@@ -1,0 +1,83 @@
+on:
+  workflow_dispatch:
+    inputs:
+      n_reps:
+        description: "Replicates per M3 cell"
+        required: true
+        default: "200"
+        type: number
+      init_strategy:
+        description: "gllvmTMBcontrol() init strategy"
+        required: true
+        default: "single_trait_warmup"
+        type: choice
+        options:
+          - single_trait_warmup
+          - default
+      retention_days:
+        description: "Artifact retention in days"
+        required: true
+        default: "14"
+        type: number
+
+name: M3 production grid
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m3-production-grid-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  m3-cell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    name: ${{ matrix.family }} d=${{ matrix.d }}
+
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        family: [gaussian, binomial, nbinom2, ordinal_probit, mixed]
+        d: [1, 2, 3]
+
+    env:
+      OUT_PREFIX: m3-coverage-${{ matrix.family }}-d${{ matrix.d }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Run M3 cell
+        shell: bash
+        run: |
+          Rscript dev/precompute-m3-grid.R \
+            --full \
+            --family=${{ matrix.family }} \
+            --d=${{ matrix.d }} \
+            --n-reps=${{ inputs.n_reps }} \
+            --init-strategy=${{ inputs.init_strategy }} \
+            --out-prefix="${OUT_PREFIX}"
+
+      - name: Upload M3 cell artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUT_PREFIX }}
+          path: |
+            dev/precomputed/${{ env.OUT_PREFIX }}-grid.rds
+            dev/precomputed/${{ env.OUT_PREFIX }}-summary.rds
+          retention-days: ${{ inputs.retention_days }}

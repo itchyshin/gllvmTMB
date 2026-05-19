@@ -233,7 +233,7 @@ let you trace any claim to its test-file evidence.
 | **Phylogenetic covariance: Hadfield & Nakagawa (2010, *J. Evol. Biol.* 23: 494–508) sparse $A^{-1}$ + paired `phylo_latent + phylo_unique`; `phylo_scalar / indep / dep / slope` variants** | stable (paired) / experimental (variants) | Paired form + three-piece fallback for small trees covered; variants smoke-tested; full verification Phase 0B / M1 (PHY-01..PHY-10). |
 | **Spatial covariance: SPDE mesh + `spatial_latent / unique / scalar / indep / dep`** | stable (mesh + dispatch) / experimental (variants) | SPDE machinery inherited from `sdmTMB` (SPA-01, SPA-05..SPA-07); per-keyword variants smoke / recovery tested; full verification Phase 0B (SPA-02..SPA-04). See [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html). |
 | **`meta_V(value, V = V)` with `block_V()` within-study correlation** | stable (block-V) / experimental (single-V) | Block-V form covered (MET-02); single-V partial (MET-01). Renamed from `meta_known_V()` in 0.2.0; old name is a deprecated alias. |
-| **`meta_V(scale = "proportional")` (Nakagawa et al., *in prep*)** | planned | Post-CRAN extension (MET-03); current default `scale = "known"` is additive. |
+| **`meta_V(scale = "proportional")` (Nakagawa 2022)** | planned | Post-CRAN extension (MET-03); current default `scale = "known"` is additive. |
 | **`lambda_constraint` confirmatory loadings** | experimental | Gaussian smoke test (LAM-02); binary IRT validation is the M2.3 milestone (LAM-03). See [Lambda constraints](https://itchyshin.github.io/gllvmTMB/articles/lambda-constraint.html). |
 | **`suggest_lambda_constraint()`** | experimental | Smoke test (LAM-04); M2.4 milestone covers the binary regime. |
 | **Multi-start optimisation (`n_init >= 2`)** | stable | Reduced-rank fits recommended to use `n_init >= 5`; multi-start sdreport / report consistency fixed in PR #100 (DIA-06). |
@@ -319,8 +319,8 @@ overpromise):
 - **Random slopes through `(1 + x | g)` syntax**, capped at one
   slope for M1, with 2- and 3-slope support conditional on
   validation evidence (RE-02..RE-03).
-- **`meta_V(scale = "proportional")`** — Nakagawa et al.
-  (*in prep*) unifying weighted-regression / meta-analysis
+- **`meta_V(scale = "proportional")`** — Nakagawa (2022) unifying
+  weighted-regression / meta-analysis
   mode; the current default is the additive `scale = "known"`
   form (MET-03).
 - **SPDE barrier meshes, REML estimation, storage controls.**
@@ -343,9 +343,9 @@ If you use gllvmTMB, please cite the package and the engine /
 dependency papers it builds on. Run `citation("gllvmTMB")` for
 formatted entries; the curated list is:
 
-- **gllvmTMB**: Nakagawa S (in prep). *gllvmTMB: stacked-trait,
+- **gllvmTMB**: Nakagawa S (2026). *gllvmTMB: stacked-trait,
   long-format multivariate generalised linear latent variable
-  models with TMB.* R package version 0.2.0.
+  models with TMB.* R package version 0.2.0. <https://itchyshin.github.io/gllvmTMB/>
 - **TMB engine**: Kristensen K, Nielsen A, Berg CW, Skaug H,
   Bell BM (2016). *TMB: Automatic Differentiation and Laplace
   Approximation.* Journal of Statistical Software, 70(5), 1-21.

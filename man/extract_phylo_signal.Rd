@@ -47,7 +47,7 @@ sum to one:
 \deqn{H_t^2 \;=\; \frac{[\boldsymbol\Sigma_\text{phy}]_{tt}}{V_{\eta,t}}, \qquad C^2_{\text{non},t} \;=\; \frac{[\boldsymbol\Sigma_\text{non,shared}]_{tt}}{V_{\eta,t}}, \qquad \psi_t \;=\; \frac{[\boldsymbol\Psi_\text{non}]_{tt}}{V_{\eta,t}},}
 where \eqn{V_{\eta,t} = [\boldsymbol\Sigma_\text{phy}]_{tt} + [\boldsymbol\Sigma_\text{non,shared}]_{tt} + [\boldsymbol\Psi_\text{non}]_{tt}}
 is the total between-species latent variance for trait \eqn{t}
-(Nakagawa et al. \emph{in prep}).
+.
 }
 \details{
 Interpretation:

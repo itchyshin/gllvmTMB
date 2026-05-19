@@ -187,8 +187,7 @@ multiplying a free trait correlation matrix, so only the product
 $\lambda \cdot \rho_{tt'}$ is identifiable. Neither bare form
 recovers per-trait phylogenetic variances reliably.
 
-The **canonical paired phylogenetic decomposition** (Nakagawa et
-al. *in prep*; see the
+The **canonical paired phylogenetic decomposition** (see the
 [Phylogenetic GLLVM article](phylogenetic-gllvm.html)) pairs
 four components:
 

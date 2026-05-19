@@ -18,8 +18,7 @@
 #' low-rank shared component (from `latent()`) and \eqn{\boldsymbol\Psi} is a
 #' diagonal matrix of trait-specific unique variances (from `unique()`).
 #' This is the decomposition every published GLLVM treatment uses
-#' (Bartholomew et al. 2011; McGillycuddy et al. 2025; Nakagawa et al.
-#' *in prep*).
+#' (Bartholomew et al. 2011; McGillycuddy et al. 2025).
 #'
 #' ## Why you almost always want `unique()` for Gaussian / lognormal / Gamma fits
 #'
@@ -78,7 +77,7 @@
 #' ## Two-level (between + within) models
 #'
 #' For repeated-measures / behavioural-syndrome data, the recommended
-#' pattern is **two `latent() + unique()` pairs** (Nakagawa et al. *in prep*):
+#' pattern is **two `latent() + unique()` pairs**:
 #'
 #' ```r
 #' value ~ 0 + trait +
@@ -91,8 +90,8 @@
 #'
 #' ## Phylogenetic + non-phylogenetic species-level models
 #'
-#' For a species-level fit with phylogeny (Nakagawa et al. *in prep*),
-#' the natural three-component decomposition is
+#' For a species-level fit with phylogeny, the natural three-component
+#' decomposition is
 #'
 #' \deqn{\Omega = \Sigma_\mathrm{phy} + \Sigma_\mathrm{non,shared} + U.}
 #'
@@ -180,10 +179,10 @@
 #'     Fitting Large Multivariate Random Effects in glmmTMB.
 #'     *J. Stat. Softw.* 112(1).
 #'     <https://doi.org/10.18637/jss.v112.i01>
-#'   * **Nakagawa et al.** (*in prep*) Quantifying between- and
-#'     within-individual correlations and the degree of trait
-#'     integration: leveraging latent variable modelling to study
-#'     behavioural syndromes and other phenotypic integration.
+#'   * **Westneat, Wright & Dingemanse** (2015) The biology hidden inside
+#'     residual within-individual phenotypic variation.
+#'     *Biological Reviews* **90**: 729--743.
+#'     <https://doi.org/10.1111/brv.12131>
 #' @name diag_re
 #' @aliases diag-keyword
 #' @keywords internal

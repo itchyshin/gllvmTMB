@@ -207,7 +207,6 @@ phylo <- function(formula, tree = NULL, vcv = NULL, mode = NULL, d = 1) {
 #' \deqn{p_{it} = \sum_{k=1}^{d} \Lambda_{\mathrm{phy},tk}\, g_{ik},
 #'       \qquad g_{\cdot k} \sim \mathcal{N}(\mathbf{0}, \mathbf{A}_{\mathrm{phy}}).}
 #'
-#' This is the model of Nakagawa et al. (*in prep*).
 #' When the user supplies `phylo_tree` (an `ape::phylo` object), the
 #' implementation builds the sparse inverse \eqn{\mathbf{A}_{\mathrm{phy}}^{-1}}
 #' over tips + internal nodes via `MCMCglmm::inverseA(tree)` and

@@ -1,7 +1,7 @@
 ## extract_Omega() / extract_phylo_signal() / extract_proportions() /
 ## extract_residual_split():
 ## convenience layers on top of extract_Sigma() for the multi-tier PGLLVM
-## decomposition (Nakagawa et al. *in prep* PGLLVM paper).
+## decomposition.
 ## See also: extract_residual_split() for separating the per-trait OLRE
 ## variance sigma^2_e from the distribution-specific sigma^2_d.
 
@@ -142,7 +142,7 @@ extract_residual_split <- function(fit) {
 #'
 #' Sum of \eqn{\boldsymbol\Sigma_\text{tier}} matrices across the user-
 #' selected tiers. The canonical PGLLVM use case is the species-level
-#' three-piece decomposition (Nakagawa et al. *in prep*):
+#' three-piece decomposition:
 #' \deqn{\boldsymbol\Omega \;=\; \boldsymbol\Sigma_\text{phy} \;+\; \boldsymbol\Sigma_\text{non,shared} \;+\; \boldsymbol\Psi_\text{non}.}
 #' Here `tiers = c("phy", "B")` returns
 #' \eqn{\boldsymbol\Sigma_\text{phy} + \boldsymbol\Sigma_\text{B}} where
@@ -152,7 +152,7 @@ extract_residual_split <- function(fit) {
 #' For two-level behavioural-syndrome fits, `tiers = c("B", "W")`
 #' returns the **phenotypic** trait covariance
 #' \eqn{\boldsymbol\Sigma_P = \boldsymbol\Sigma_B + \boldsymbol\Sigma_W}
-#' (Nakagawa et al. *in prep*).
+#' .
 #'
 #' @param fit A `gllvmTMB_multi` fit.
 #' @param tiers Character vector. Subset of `c("B", "W", "phy")`. Default
@@ -257,7 +257,7 @@ extract_Omega <- function(fit,
 #' \deqn{H_t^2 \;=\; \frac{[\boldsymbol\Sigma_\text{phy}]_{tt}}{V_{\eta,t}}, \qquad C^2_{\text{non},t} \;=\; \frac{[\boldsymbol\Sigma_\text{non,shared}]_{tt}}{V_{\eta,t}}, \qquad \psi_t \;=\; \frac{[\boldsymbol\Psi_\text{non}]_{tt}}{V_{\eta,t}},}
 #' where \eqn{V_{\eta,t} = [\boldsymbol\Sigma_\text{phy}]_{tt} + [\boldsymbol\Sigma_\text{non,shared}]_{tt} + [\boldsymbol\Psi_\text{non}]_{tt}}
 #' is the total between-species latent variance for trait \eqn{t}
-#' (Nakagawa et al. *in prep*).
+#' .
 #'
 #' Interpretation:
 #' \describe{

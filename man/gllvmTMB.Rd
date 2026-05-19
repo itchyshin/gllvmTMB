@@ -194,10 +194,10 @@ specific methods (e.g. trait-level \code{extract_ICC_site()},
 \code{extract_communality()}) are available for multi-trait fits.
 }
 \description{
-Top-level entry point for the multivariate site--trait model of
-Nakagawa et al. (in prep) functional biogeography (and the related
-behavioural-syndromes / phylogenetic / systematic-mapping reduced-rank
-models). Long-format input with one row per (unit, trait)
+Top-level entry point for stacked-trait, long-format multivariate
+GLLVMs, including the functional-biogeography, behavioural-syndromes,
+phylogenetic, and systematic-mapping reduced-rank examples in the
+package vignettes. Long-format input with one row per (unit, trait)
 observation; glmmTMB-style formula syntax for fixed effects, plus
 a 4 x 5 grid of covariance-structure keywords organised by
 \emph{correlation source} (none / animal / phylo / spatial) and \emph{mode}

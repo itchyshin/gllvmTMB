@@ -54,7 +54,7 @@ Implements the decomposition
 where \eqn{\boldsymbol\Lambda} comes from the \code{latent()} term at that tier
 and \eqn{\boldsymbol\Psi} comes from the corresponding \code{unique()} term. This is the
 same decomposition the behavioural-syndromes / phenotypic-integration
-literature uses (Bartholomew et al. 2011; Nakagawa et al. \emph{in prep}).
+literature uses (Bartholomew et al. 2011).
 }
 \details{
 \subsection{Why both \code{latent()} and \code{unique()} matter}{

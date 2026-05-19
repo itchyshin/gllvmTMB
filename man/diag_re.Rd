@@ -26,8 +26,7 @@ where \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} is the
 low-rank shared component (from \code{latent()}) and \eqn{\boldsymbol\Psi} is a
 diagonal matrix of trait-specific unique variances (from \code{unique()}).
 This is the decomposition every published GLLVM treatment uses
-(Bartholomew et al. 2011; McGillycuddy et al. 2025; Nakagawa et al.
-\emph{in prep}).
+(Bartholomew et al. 2011; McGillycuddy et al. 2025).
 \subsection{Why you almost always want \code{unique()} for Gaussian / lognormal / Gamma fits}{
 
 If your formula has only \code{latent(0 + trait | site, d = K)} and no
@@ -89,7 +88,7 @@ confirm with a likelihood-ratio test.
 \subsection{Two-level (between + within) models}{
 
 For repeated-measures / behavioural-syndrome data, the recommended
-pattern is \strong{two \code{latent() + unique()} pairs} (Nakagawa et al. \emph{in prep}):
+pattern is \strong{two \code{latent() + unique()} pairs}:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait +
         latent(0 + trait | individual, d = d_B) + unique(0 + trait | individual) +
@@ -102,8 +101,8 @@ and \eqn{\boldsymbol\Sigma_W = \boldsymbol\Lambda_W \boldsymbol\Lambda_W^\top + 
 
 \subsection{Phylogenetic + non-phylogenetic species-level models}{
 
-For a species-level fit with phylogeny (Nakagawa et al. \emph{in prep}),
-the natural three-component decomposition is
+For a species-level fit with phylogeny, the natural three-component
+decomposition is
 
 \deqn{\Omega = \Sigma_\mathrm{phy} + \Sigma_\mathrm{non,shared} + U.}
 
@@ -202,10 +201,10 @@ ISBN 978-0-470-97192-5.
 Fitting Large Multivariate Random Effects in glmmTMB.
 \emph{J. Stat. Softw.} 112(1).
 \url{https://doi.org/10.18637/jss.v112.i01}
-\item \strong{Nakagawa et al.} (\emph{in prep}) Quantifying between- and
-within-individual correlations and the degree of trait
-integration: leveraging latent variable modelling to study
-behavioural syndromes and other phenotypic integration.
+\item \strong{Westneat, Wright & Dingemanse} (2015) The biology hidden inside
+residual within-individual phenotypic variation.
+\emph{Biological Reviews} \strong{90}: 729--743.
+\url{https://doi.org/10.1111/brv.12131}
 }
 }
 \seealso{

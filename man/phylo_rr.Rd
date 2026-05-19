@@ -28,7 +28,6 @@ a lower-triangular \verb{n_traits x d} loading matrix. Mathematically:
 \deqn{p_{it} = \sum_{k=1}^{d} \Lambda_{\mathrm{phy},tk}\, g_{ik},
       \qquad g_{\cdot k} \sim \mathcal{N}(\mathbf{0}, \mathbf{A}_{\mathrm{phy}}).}
 
-This is the model of Nakagawa et al. (\emph{in prep}).
 When the user supplies \code{phylo_tree} (an \code{ape::phylo} object), the
 implementation builds the sparse inverse \eqn{\mathbf{A}_{\mathrm{phy}}^{-1}}
 over tips + internal nodes via \code{MCMCglmm::inverseA(tree)} and

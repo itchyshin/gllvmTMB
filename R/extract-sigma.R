@@ -306,7 +306,7 @@ link_residual_per_trait <- function(fit) {
 #' where \eqn{\boldsymbol\Lambda} comes from the `latent()` term at that tier
 #' and \eqn{\boldsymbol\Psi} comes from the corresponding `unique()` term. This is the
 #' same decomposition the behavioural-syndromes / phenotypic-integration
-#' literature uses (Bartholomew et al. 2011; Nakagawa et al. *in prep*).
+#' literature uses (Bartholomew et al. 2011).
 #'
 #' ## Why both `latent()` and `unique()` matter
 #'

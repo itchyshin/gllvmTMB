@@ -37,25 +37,23 @@
 - GitHub connector check: open PR census is still empty.
 - Decision: keep work-in-progress bounded to the Families-doc lane and leave the branch in a ready-to-push state; do not start a second slice until CI can be triggered on this lane.
 
-### 2026-05-19 04:46 MDT
+### 2026-05-19 05:20 MDT
 
-- Crash/restart rehydration: verified clean working tree and rehydrated PR state via the GitHub connector.
-- GitHub connector: PR #190 is open on branch `codex/families-doc-mixed-family` (head SHA `9d719c6`).
-- This shell still cannot resolve `github.com`, so `gh` and `git push` fail (`Could not resolve host: github.com`).
-- Local note: this checkout has one additional after-task refresh commit (`ed9c0f1`) not yet pushed to the PR branch due to the DNS outage.
-- GitHub connector: PR #190 CI is running as workflow run `R-CMD-check` id `26092238455` (all three OS jobs reached `check-r-package`).
+- Connectivity recovered: `git push` to GitHub succeeded again.
+- Pushed the final `codex/families-doc-mixed-family` commits to PR #190 (head SHA `5b3937f`).
+- PR #190 merged to `main` at 2026-05-19T11:18:43Z (GitHub UI time); merge commit `da373a5`.
+- `main` now contains the Families mixed-family documentation + dev-log artifacts.
 
 ## PRs / branches
 
 - Merged: PR #187, `Add tiered R CMD check gate`.
 - Merged: PR #188, `Record overnight Shannon handoff`.
 - Merged: PR #189, `Fix pkgdown families reference index`.
-- Open: PR #190, `Docs: clarify mixed-family family selector usage` (`codex/families-doc-mixed-family`).
+- Merged: PR #190, `Docs: clarify mixed-family family selector usage`.
 
 ## CI status
 
-- Local shell cannot resolve `github.com`, so CI checks are queried via the GitHub connector when needed.
-- GitHub connector in this Codex environment appears read-only (`403 Resource not accessible by integration` when trying to create a branch ref), so it cannot be used to push updates to PR #190 as a workaround for the DNS outage.
+- Post-merge `main` CI run is in progress (triggered by merge of PR #190).
 
 ## Files changed locally (so far)
 
@@ -101,9 +99,6 @@
 
 ## Next actions
 
-1. Monitor PR #190 CI (3-OS `R-CMD-check`) via GitHub once connectivity
-   returns in this shell (or via the GitHub connector).
-2. Keep the scope doc-only: no family implementations, likelihoods, or
-   formula-grammar changes.
-3. When DNS recovers, push the remaining local commit (`ed9c0f1`) to the
-   PR branch and re-check CI.
+1. Wait for the post-merge `main` 3-OS `R-CMD-check` to complete.
+2. With WIP back to 0, start the next low-risk doc slice (candidate: in-prep citation hygiene) as its own PR.
+3. After the next lane is chosen, refresh `ROADMAP.md` with a small, explicit tick for the completed Families-doc + pkgdown families discoverability work.

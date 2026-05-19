@@ -20,9 +20,9 @@ jobs:
     runs-on: ${{ matrix.config.os }}
     # Full package checks currently need 45 minutes because Windows
     # takes ~35-40 min on this package's 1800+ assertion surface.
-    # Process-only PRs skip the expensive R setup/check steps below
-    # while preserving this OS-named check for branch-protection
-    # compatibility.
+    # Ignored-source/process PRs skip the expensive dependency/check
+    # steps below while preserving this OS-named check for branch-
+    # protection compatibility.
     timeout-minutes: 45
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
@@ -53,10 +53,17 @@ jobs:
           full_required=true
           reason="R CMD check required by default."
 
-          is_process_only_path() {
+          is_fast_path_allowed() {
             case "$1" in
+              AGENTS.md) return 0 ;;
+              CLAUDE.md) return 0 ;;
               .github/pull_request_template.md) return 0 ;;
               CONTRIBUTING.md) return 0 ;;
+              ROADMAP.md) return 0 ;;
+              docs/*) return 0 ;;
+              docs/**) return 0 ;;
+              dev/*) return 0 ;;
+              dev/**) return 0 ;;
               docs/dev-log/check-log.md) return 0 ;;
               docs/dev-log/coordination-board.md) return 0 ;;
               docs/dev-log/team-improvements.md) return 0 ;;
@@ -68,7 +75,16 @@ jobs:
             esac
           }
 
+          requires_light_r_parse() {
+            case "$1" in
+              dev/*.R) return 0 ;;
+              dev/**/*.R) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
           changed_file_args=()
+          light_r_required=false
 
           collect_changed_files() {
             changed_file_args=()
@@ -82,7 +98,7 @@ jobs:
             base_ref="origin/${{ github.base_ref }}"
             collect_changed_files "${base_ref}...HEAD"
             full_required=false
-            reason="PR changes are limited to process-only paths."
+            reason="PR changes are limited to ignored-source/process paths."
           elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" != "tag" ]]; then
             before="${{ github.event.before }}"
             if [[ "$before" =~ ^0+$ ]]; then
@@ -92,7 +108,7 @@ jobs:
             else
               collect_changed_files "$before" "${{ github.sha }}"
               full_required=false
-              reason="Push changes are limited to process-only paths."
+              reason="Push changes are limited to ignored-source/process paths."
             fi
           else
             changed_file_args=()
@@ -107,16 +123,24 @@ jobs:
 
           if [[ "$full_required" == "false" ]]; then
             for path in "${changed_file_args[@]}"; do
-              if ! is_process_only_path "$path"; then
+              if ! is_fast_path_allowed "$path"; then
                 full_required=true
-                reason="R CMD check required because '${path}' is outside process-only paths."
+                reason="R CMD check required because '${path}' is outside ignored-source/process paths."
                 break
+              fi
+              if requires_light_r_parse "$path" && [[ -f "$path" ]]; then
+                light_r_required=true
               fi
             done
           fi
 
+          if [[ "$full_required" == "true" ]]; then
+            light_r_required=false
+          fi
+
           {
             echo "full_required=${full_required}"
+            echo "light_r_required=${light_r_required}"
             echo "reason=${reason}"
           } >> "$GITHUB_OUTPUT"
 
@@ -124,6 +148,7 @@ jobs:
             echo "### R CMD check scope"
             echo
             echo "- Full R CMD check required: \`${full_required}\`"
+            echo "- Light R parse required: \`${light_r_required}\`"
             echo "- Reason: ${reason}"
             echo
             echo "Changed files:"
@@ -145,6 +170,12 @@ jobs:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
+      - uses: r-lib/actions/setup-r@v2
+        if: steps.scope.outputs.full_required != 'true' && steps.scope.outputs.light_r_required == 'true'
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         if: steps.scope.outputs.full_required == 'true'
         with:
@@ -156,8 +187,67 @@ jobs:
         with:
           upload-snapshots: true
 
-      - name: Fast pass for process-only change
+      - name: Fast pass for ignored-source/process change
         if: steps.scope.outputs.full_required != 'true'
         shell: bash
         run: |
-          echo "Full R CMD check skipped: ${{ steps.scope.outputs.reason }}"
+          set -euo pipefail
+
+          changed_file_args=()
+          collect_changed_files() {
+            changed_file_args=()
+            while IFS= read -r path; do
+              [[ -n "$path" ]] && changed_file_args+=("$path")
+            done < <(git diff --name-only "$@")
+          }
+
+          diff_check() {
+            git diff --check "$@"
+          }
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+            base_ref="origin/${{ github.base_ref }}"
+            collect_changed_files "${base_ref}...HEAD"
+            diff_check "${base_ref}...HEAD"
+          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" != "tag" ]]; then
+            before="${{ github.event.before }}"
+            if [[ "$before" =~ ^0+$ ]]; then
+              echo "No fast-path diff available for this event; classifier should have required full R CMD check."
+              exit 1
+            fi
+            collect_changed_files "$before" "${{ github.sha }}"
+            diff_check "$before" "${{ github.sha }}"
+          else
+            echo "No fast-path diff available for this event; classifier should have required full R CMD check."
+            exit 1
+          fi
+
+          r_files=()
+          for path in "${changed_file_args[@]}"; do
+            case "$path" in
+              dev/*.R|dev/**/*.R)
+                [[ -f "$path" ]] && r_files+=("$path")
+                ;;
+            esac
+          done
+
+          if [[ "${{ steps.scope.outputs.light_r_required }}" == "true" ]]; then
+            if [[ ${#r_files[@]} -eq 0 ]]; then
+              echo "Expected changed dev/*.R files but found none."
+              exit 1
+            fi
+            Rscript --vanilla -e 'files <- commandArgs(TRUE); for (f in files) parse(file = f)' "${r_files[@]}"
+          fi
+
+          {
+            echo "### Fast-path validation"
+            echo
+            echo "Full R CMD check skipped: ${{ steps.scope.outputs.reason }}"
+            echo
+            echo "Validation run:"
+            echo "- \`git diff --check\` on the changed-file range"
+            if [[ ${#r_files[@]} -gt 0 ]]; then
+              echo "- \`Rscript parse(file = ...)\` for changed ignored dev R scripts"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

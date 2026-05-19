@@ -50,6 +50,7 @@ Current operating rule:
 - PR #188 (process-only Shannon handoff snapshots) merged on 2026-05-19.
 - PR #189 (pkgdown Response families reference index) merged on 2026-05-18.
 - PR #195 (Slice 2 after-task templates) merged on 2026-05-19.
+- PR #197 (M3.3 production grid workflow) merged on 2026-05-19.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -57,10 +58,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | M3.3 production grid workflow | `codex/m3-production-grid-workflow-2026-05-19` | `.github/workflows/m3-production-grid.yaml`, `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, dev-log closeout | in progress |
+| (none) | (none) | (none) | (none) | WIP = 0 |
 
-**WIP**: 1. Avoid parallel edits to the M3 grid driver, production
-workflow, and this lane's dev-log files until the PR lands or is held.
+**WIP**: 0. Safe to start the next small, bounded lane.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -76,6 +76,7 @@ instead of expanding this table.
 
 | Agent | Lane | Wait condition |
 |---|---|---|
+| Codex | M3.3 production grid dispatch + artifact review | after PR #197 workflow lands on `main` |
 | Codex + Claude | Revisit `drmTMB` workflow lessons for reader path and pkgdown shape | after Slice 1/2 discipline surfaces are in place |
 | Codex | Next small reader-facing lane | after maintainer chooses whether this should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing |
 
@@ -129,6 +130,9 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~07:23 MT**: PR #197 (M3.3 production grid
+  `workflow_dispatch` wiring) merged to `main` after 3-OS
+  R-CMD-check passed.
 - **2026-05-19 ~06:32 MT**: PR #195 (Slice 2 after-task templates)
   merged to `main`.
 - **2026-05-19 ~05:47 MT**: PR #193 (in-prep citation discipline)

@@ -265,17 +265,26 @@ Artifact columns for the pilot should be:
 `cell`, `family`, `d`, `rep`, `trait_id`, `target`, `truth`,
 `estimate`, `ci_method`, `ci_level`, `ci_lo`, `ci_hi`, `covered`,
 `ci_available`, `fit_converged`, `ci_failed`, `miss_side`,
-`runtime_s`, `n_boot`, `init_strategy`, `seed_base`.
+`runtime_s`, `n_boot`, `n_boot_failed`, `init_strategy`,
+`seed_base`.
 
 Per-cell summaries should be:
 `cell`, `family`, `d`, `target`, `ci_method`, `n_reps`,
 `n_completed`, `n_failed`, `n_trait_rows`, `n_ci_missing`,
-`coverage`, `miss_below`, `miss_above`, `median_est_truth_ratio`,
+`n_boot_failed`, `n_boot_attempted`, `boot_fail_rate`, `coverage`,
+`miss_below`, `miss_above`, `median_est_truth_ratio`,
 `mean_runtime_s`, `pilot_status`.
 
 Use `n_reps = 10` for smoke, `n_reps = 50` for pilot, and
 `n_reps = 200` for promotion. Pilot labels are `PASS_TO_SCALE`,
 `TARGET_FAIL`, and `COMPUTE_FAIL`.
+
+Implementation guard: the M3 driver should pass `unit = "unit"` and
+leave `cluster` at the default placeholder. Passing
+`cluster = "unit"` double-registers `unique(0 + trait | unit)` as
+both `diag_B` and `diag_species`, which adds an unintended cluster
+variance component and makes `bootstrap_Sigma()` fall back to
+conditional simulation.
 
 ## 7. Honest scope: what M3.3 does NOT do
 

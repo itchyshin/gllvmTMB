@@ -7,11 +7,12 @@
 ##   1. Sample truth (Lambda_true, psi_true, family-specific nuisance).
 ##   2. Simulate response (per-family inverse link + sampling).
 ##   3. Fit gllvmTMB with the matching family + d.
-##   4. Compute profile CIs on per-trait psi (the unique-variance
-##      parameter with the cleanest current direct profile target).
-##   5. Record both TRUE Sigma_unit diagonals and TRUE psi. The current
-##      `covered_prof` column is psi coverage; primary Sigma_unit coverage
-##      needs a derived/profile or bootstrap CI path before promotion.
+##   4. Compute target-explicit CIs:
+##      - profile CIs on per-trait psi (diagnostic target);
+##      - optional bootstrap CIs on total Sigma_unit[tt] (primary target).
+##   5. Record both legacy profile-psi columns and target-explicit
+##      long-form columns so old audit scripts remain readable while the
+##      next M3.3 pilot can validate the intended target.
 ##
 ## Public entry points:
 ##   m3_run_cell(family, d, n_reps, seed, ...)
@@ -36,6 +37,66 @@ M3_DEFAULT_N_UNITS <- 60L
 M3_DEFAULT_N_TRAITS <- 5L
 M3_DEFAULT_NOMINAL <- 0.95
 M3_PASS_GATE <- 0.94 # audit-1 exit threshold
+M3_INTERVAL_TARGETS <- c("psi", "Sigma_unit_diag")
+
+m3_normalise_targets <- function(targets = "psi") {
+  if (is.null(targets) || !length(targets)) {
+    targets <- "psi"
+  }
+  targets <- unique(trimws(as.character(targets)))
+  if ("all" %in% targets) {
+    targets <- M3_INTERVAL_TARGETS
+  }
+  unknown <- setdiff(targets, M3_INTERVAL_TARGETS)
+  if (length(unknown)) {
+    stop("Unknown M3 interval target(s): ", paste(unknown, collapse = ", "))
+  }
+  targets
+}
+
+m3_target_method <- function(target) {
+  switch(
+    target,
+    psi = "profile",
+    Sigma_unit_diag = "bootstrap",
+    stop("Unknown M3 interval target: ", target)
+  )
+}
+
+m3_miss_side <- function(truth, lo, hi, covered, ci_available) {
+  if (!isTRUE(ci_available)) {
+    return("ci_unavailable")
+  }
+  if (isTRUE(covered)) {
+    return("covered")
+  }
+  if (is.na(truth) || is.na(lo) || is.na(hi)) {
+    return("ci_unavailable")
+  }
+  if (truth < lo) {
+    return("truth_below_lower")
+  }
+  if (truth > hi) {
+    return("truth_above_upper")
+  }
+  "other_miss"
+}
+
+m3_bootstrap_supported <- function(fit) {
+  fids <- unique(fit$tmb_data$family_id_vec)
+  unsupported <- setdiff(fids, 0:5)
+  list(ok = length(unsupported) == 0L, unsupported = unsupported)
+}
+
+m3_muffle_bootstrap_warning <- function(w) {
+  if (grepl(
+    '`level = "B"` is deprecated as of gllvmTMB 0.2.0',
+    conditionMessage(w),
+    fixed = TRUE
+  )) {
+    invokeRestart("muffleWarning")
+  }
+}
 
 ## ---- Truth sampler ----------------------------------------------------
 
@@ -194,13 +255,30 @@ m3_run_cell <- function(
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
   init_strategy = "default",
+  targets = "psi",
+  n_boot = 30L,
+  ci_level = M3_DEFAULT_NOMINAL,
   verbose = TRUE
 ) {
   stopifnot(family %in% M3_FAMILIES, d >= 1L, n_reps >= 1L)
   init_strategy <- match.arg(init_strategy, c("default", "single_trait_warmup"))
+  targets <- m3_normalise_targets(targets)
+  n_boot <- as.integer(n_boot)
+  if (is.na(n_boot) || n_boot < 1L) {
+    stop("n_boot must be a positive integer")
+  }
+  if (!is.numeric(ci_level) || length(ci_level) != 1L ||
+      ci_level <= 0 || ci_level >= 1) {
+    stop("ci_level must be a single number in (0, 1)")
+  }
   cell_id <- sprintf("%s-d%d", family, d)
   if (verbose) {
-    cat(sprintf("[m3] cell %s, %d reps\n", cell_id, n_reps))
+    cat(sprintf(
+      "[m3] cell %s, %d reps; targets = %s\n",
+      cell_id,
+      n_reps,
+      paste(targets, collapse = ",")
+    ))
   }
 
   rows <- vector("list", n_reps)
@@ -260,7 +338,10 @@ m3_run_cell <- function(
           data = sim$data,
           family = fam_list,
           unit = "unit",
-          cluster = "unit",
+          ## Keep the third grouping at the default placeholder. Setting
+          ## cluster = "unit" makes the same `unique(... | unit)` term also
+          ## activate the cluster diagonal tier (`diag_species`), which is
+          ## not part of the M3 latent + unique DGP.
           control = gllvmTMB::gllvmTMBcontrol(
             init_strategy = init_strategy
           )
@@ -278,23 +359,42 @@ m3_run_cell <- function(
     if (
       !fit_ok || !inherits(fit, "gllvmTMB_multi") || fit$opt$convergence != 0L
     ) {
-      rows[[r]] <- data.frame(
-        cell = cell_id,
-        family = family,
-        d = d,
-        rep = r,
-        trait_id = NA_integer_,
-        truth_diag_sigma = NA_real_,
-        truth_psi = NA_real_,
-        est_diag_sigma = NA_real_,
-        est_psi = NA_real_,
-        ci_prof_lo = NA_real_,
-        ci_prof_hi = NA_real_,
-        covered_prof = NA,
-        converged = FALSE,
-        runtime_s = rep_runtime,
-        stringsAsFactors = FALSE
-      )
+      rows[[r]] <- do.call(rbind, lapply(targets, function(target) {
+        data.frame(
+          cell = cell_id,
+          family = family,
+          d = d,
+          rep = r,
+          trait_id = NA_integer_,
+          truth_diag_sigma = NA_real_,
+          truth_psi = NA_real_,
+          est_diag_sigma = NA_real_,
+          est_psi = NA_real_,
+          ci_prof_lo = NA_real_,
+          ci_prof_hi = NA_real_,
+          covered_prof = NA,
+          converged = FALSE,
+          target = target,
+          truth = NA_real_,
+          estimate = NA_real_,
+          ci_method = m3_target_method(target),
+          ci_level = ci_level,
+          ci_lo = NA_real_,
+          ci_hi = NA_real_,
+          covered = NA,
+          ci_available = FALSE,
+          fit_converged = FALSE,
+          ci_failed = TRUE,
+          miss_side = "fit_failed",
+          n_boot = if (identical(target, "Sigma_unit_diag")) n_boot else NA_integer_,
+          n_boot_failed = NA_integer_,
+          init_strategy = init_strategy,
+          seed_base = seed_base,
+          rep_seed = rep_seed,
+          runtime_s = rep_runtime,
+          stringsAsFactors = FALSE
+        )
+      }))
       if (verbose && r %% 5L == 0L) {
         cat(sprintf("  rep %d/%d (failed)\n", r, n_reps))
       }
@@ -320,34 +420,35 @@ m3_run_cell <- function(
     est_diag <- diag(gllvmTMB::extract_Sigma(fit, level = "unit")$Sigma)
     est_psi <- as.numeric(fit$report$sd_B)^2
 
-    prof_lo <- rep(NA_real_, n_traits)
-    prof_hi <- rep(NA_real_, n_traits)
-    for (t in seq_len(n_traits)) {
-      ci_t <- tryCatch(
-        gllvmTMB::tmbprofile_wrapper(
-          fit,
-          name = "theta_diag_B",
-          which = t,
-          transform = function(x) exp(2 * x),
-          level = 0.95
-        ),
-        error = function(e) {
-          c(estimate = NA_real_, lower = NA_real_, upper = NA_real_)
-        }
-      )
-      prof_lo[t] <- ci_t["lower"]
-      prof_hi[t] <- ci_t["upper"]
-    }
+    rep_rows <- list()
 
-    for (t in seq_len(n_traits)) {
-      psi_truth <- truth$psi[t]
-      covered_prof <- !is.na(prof_lo[t]) &&
-        !is.na(prof_hi[t]) &&
-        psi_truth >= prof_lo[t] &&
-        psi_truth <= prof_hi[t]
-      rows[[r]] <- rbind(
-        rows[[r]] %||% data.frame(),
-        data.frame(
+    if ("psi" %in% targets) {
+      prof_lo <- rep(NA_real_, n_traits)
+      prof_hi <- rep(NA_real_, n_traits)
+      for (t in seq_len(n_traits)) {
+        ci_t <- tryCatch(
+          gllvmTMB::tmbprofile_wrapper(
+            fit,
+            name = "theta_diag_B",
+            which = t,
+            transform = function(x) exp(2 * x),
+            level = ci_level
+          ),
+          error = function(e) {
+            c(estimate = NA_real_, lower = NA_real_, upper = NA_real_)
+          }
+        )
+        prof_lo[t] <- ci_t["lower"]
+        prof_hi[t] <- ci_t["upper"]
+      }
+
+      for (t in seq_len(n_traits)) {
+        psi_truth <- truth$psi[t]
+        ci_available <- !is.na(prof_lo[t]) && !is.na(prof_hi[t])
+        covered_prof <- ci_available &&
+          psi_truth >= prof_lo[t] &&
+          psi_truth <= prof_hi[t]
+        rep_rows[[length(rep_rows) + 1L]] <- data.frame(
           cell = cell_id,
           family = family,
           d = d,
@@ -361,11 +462,115 @@ m3_run_cell <- function(
           ci_prof_hi = prof_hi[t],
           covered_prof = covered_prof,
           converged = TRUE,
+          target = "psi",
+          truth = psi_truth,
+          estimate = est_psi[t],
+          ci_method = "profile",
+          ci_level = ci_level,
+          ci_lo = prof_lo[t],
+          ci_hi = prof_hi[t],
+          covered = covered_prof,
+          ci_available = ci_available,
+          fit_converged = TRUE,
+          ci_failed = !ci_available,
+          miss_side = m3_miss_side(
+            psi_truth,
+            prof_lo[t],
+            prof_hi[t],
+            covered_prof,
+            ci_available
+          ),
+          n_boot = NA_integer_,
+          n_boot_failed = NA_integer_,
+          init_strategy = init_strategy,
+          seed_base = seed_base,
+          rep_seed = rep_seed,
           runtime_s = rep_runtime,
           stringsAsFactors = FALSE
         )
-      )
+      }
     }
+
+    if ("Sigma_unit_diag" %in% targets) {
+      boot_ok <- m3_bootstrap_supported(fit)
+      boot <- NULL
+      if (boot_ok$ok) {
+        boot <- tryCatch(
+          suppressMessages(withCallingHandlers(
+            gllvmTMB::bootstrap_Sigma(
+              fit,
+              n_boot = n_boot,
+              level = "unit",
+              what = "Sigma",
+              conf = ci_level,
+              seed = rep_seed + 9000000L,
+              progress = FALSE
+            ),
+            warning = m3_muffle_bootstrap_warning
+          )),
+          error = function(e) NULL
+        )
+      }
+      boot_available <- !is.null(boot) &&
+        !is.null(boot$ci_lower$Sigma_B) &&
+        !is.null(boot$ci_upper$Sigma_B)
+      sig_lo <- if (boot_available) diag(boot$ci_lower$Sigma_B) else rep(NA_real_, n_traits)
+      sig_hi <- if (boot_available) diag(boot$ci_upper$Sigma_B) else rep(NA_real_, n_traits)
+      n_boot_failed <- if (boot_available) boot$n_failed else NA_integer_
+
+      for (t in seq_len(n_traits)) {
+        sig_truth <- truth$diag_Sigma[t]
+        ci_available <- boot_available &&
+          !is.na(sig_lo[t]) &&
+          !is.na(sig_hi[t])
+        covered_sig <- ci_available &&
+          sig_truth >= sig_lo[t] &&
+          sig_truth <= sig_hi[t]
+        miss_side <- if (!boot_ok$ok) {
+          paste0("unsupported_family_id_", paste(boot_ok$unsupported, collapse = "_"))
+        } else {
+          m3_miss_side(sig_truth, sig_lo[t], sig_hi[t], covered_sig, ci_available)
+        }
+        rep_rows[[length(rep_rows) + 1L]] <- data.frame(
+          cell = cell_id,
+          family = family,
+          d = d,
+          rep = r,
+          trait_id = t,
+          truth_diag_sigma = sig_truth,
+          truth_psi = truth$psi[t],
+          est_diag_sigma = est_diag[t],
+          est_psi = est_psi[t],
+          ci_prof_lo = NA_real_,
+          ci_prof_hi = NA_real_,
+          covered_prof = NA,
+          converged = TRUE,
+          target = "Sigma_unit_diag",
+          truth = sig_truth,
+          estimate = est_diag[t],
+          ci_method = "bootstrap",
+          ci_level = ci_level,
+          ci_lo = sig_lo[t],
+          ci_hi = sig_hi[t],
+          covered = covered_sig,
+          ci_available = ci_available,
+          fit_converged = TRUE,
+          ci_failed = !ci_available,
+          miss_side = miss_side,
+          n_boot = n_boot,
+          n_boot_failed = n_boot_failed,
+          init_strategy = init_strategy,
+          seed_base = seed_base,
+          rep_seed = rep_seed,
+          runtime_s = rep_runtime,
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+
+    rep_runtime <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+    rows[[r]] <- do.call(rbind, rep_rows)
+    rows[[r]]$runtime_s <- rep_runtime
 
     if (verbose && (r %% 5L == 0L || r == n_reps)) {
       cat(sprintf("  rep %d/%d (%.1fs)\n", r, n_reps, rep_runtime))
@@ -384,9 +589,13 @@ m3_run_grid <- function(
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
   init_strategy = "default",
+  targets = "psi",
+  n_boot = 30L,
+  ci_level = M3_DEFAULT_NOMINAL,
   parallel = FALSE
 ) {
   init_strategy <- match.arg(init_strategy, c("default", "single_trait_warmup"))
+  targets <- m3_normalise_targets(targets)
   if (is.null(cells)) {
     cells <- expand.grid(
       family = M3_FAMILIES,
@@ -410,6 +619,9 @@ m3_run_grid <- function(
           n_units = n_units,
           n_traits = n_traits,
           init_strategy = init_strategy,
+          targets = targets,
+          n_boot = n_boot,
+          ci_level = ci_level,
           verbose = FALSE
         )
       },
@@ -425,6 +637,9 @@ m3_run_grid <- function(
         n_units = n_units,
         n_traits = n_traits,
         init_strategy = init_strategy,
+        targets = targets,
+        n_boot = n_boot,
+        ci_level = ci_level,
         verbose = TRUE
       )
     }
@@ -435,36 +650,214 @@ m3_run_grid <- function(
 
 ## ---- Summary -----------------------------------------------------------
 
+m3_pilot_status <- function(
+  coverage,
+  n_ci_missing,
+  n_trait_rows,
+  n_failed,
+  n_reps,
+  family,
+  miss_below,
+  miss_above,
+  n_boot_failed = 0L,
+  n_boot_attempted = 0L
+) {
+  fail_rate <- if (n_reps > 0L) n_failed / n_reps else 1
+  fail_limit <- if (identical(family, "mixed")) 0.30 else 0.20
+  boot_fail_rate <- if (n_boot_attempted > 0L) {
+    n_boot_failed / n_boot_attempted
+  } else {
+    0
+  }
+  missing_rate <- if (n_trait_rows > 0L) n_ci_missing / n_trait_rows else 1
+  total_miss <- miss_below + miss_above
+  one_sided <- total_miss > 0L &&
+    max(miss_below, miss_above) / total_miss >= 0.80
+
+  if (
+    fail_rate > fail_limit ||
+      boot_fail_rate > fail_limit ||
+      missing_rate > 0.10 ||
+      is.na(coverage)
+  ) {
+    return("COMPUTE_FAIL")
+  }
+  if (coverage >= 0.90 && !one_sided) {
+    return("PASS_TO_SCALE")
+  }
+  if (coverage < 0.85 || one_sided) {
+    return("TARGET_FAIL")
+  }
+  "TARGET_FAIL"
+}
+
 m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
+  if (!"target" %in% names(grid_df)) {
+    ## Legacy M3.2 / first-production artifacts.
+    by_cell <- split(
+      grid_df,
+      list(grid_df$cell),
+      drop = TRUE
+    )
+    out <- do.call(
+      rbind,
+      lapply(by_cell, function(sub) {
+        rep_status <- split(sub$converged, sub$rep, drop = TRUE)
+        rep_converged <- vapply(rep_status, all, logical(1))
+        rep_runtime <- tapply(sub$runtime_s, sub$rep, max, na.rm = TRUE)
+        conv_rows <- sub[!is.na(sub$covered_prof), , drop = FALSE]
+        coverage_prof <- if (nrow(conv_rows)) {
+          mean(conv_rows$covered_prof, na.rm = TRUE)
+        } else {
+          NA_real_
+        }
+        data.frame(
+          cell = sub$cell[1],
+          family = sub$family[1],
+          d = sub$d[1],
+          n_completed = sum(rep_converged),
+          n_failed = sum(!rep_converged),
+          coverage_prof = coverage_prof,
+          passes_94pct_prof = !is.na(coverage_prof) && coverage_prof >= gate,
+          mean_runtime_s = mean(rep_runtime, na.rm = TRUE),
+          stringsAsFactors = FALSE
+        )
+      })
+    )
+    rownames(out) <- NULL
+    return(out)
+  }
+
   ## Group by (cell, family, d), count failed replicates before
-  ## dropping rows with unavailable CIs, then compute coverage on
-  ## converged trait rows.
+  ## dropping rows with unavailable CIs, then compute target-specific
+  ## coverage on converged trait rows.
   by_cell <- split(
     grid_df,
-    list(grid_df$cell),
+    list(grid_df$cell, grid_df$target, grid_df$ci_method),
     drop = TRUE
   )
   out <- do.call(
     rbind,
     lapply(by_cell, function(sub) {
-      rep_status <- split(sub$converged, sub$rep, drop = TRUE)
+      fit_converged <- if ("fit_converged" %in% names(sub)) {
+        sub$fit_converged
+      } else {
+        sub$converged
+      }
+      rep_status <- split(fit_converged, sub$rep, drop = TRUE)
       rep_converged <- vapply(rep_status, all, logical(1))
       rep_runtime <- tapply(sub$runtime_s, sub$rep, max, na.rm = TRUE)
-      conv_rows <- sub[!is.na(sub$covered_prof), , drop = FALSE]
-      coverage_prof <- if (nrow(conv_rows)) {
-        mean(conv_rows$covered_prof, na.rm = TRUE)
+
+      trait_rows <- sub[
+        fit_converged & !is.na(sub$trait_id),
+        ,
+        drop = FALSE
+      ]
+      ci_available <- if ("ci_available" %in% names(trait_rows)) {
+        trait_rows$ci_available
+      } else {
+        !is.na(trait_rows$covered_prof)
+      }
+      available_rows <- trait_rows[
+        ci_available & !is.na(trait_rows$covered),
+        ,
+        drop = FALSE
+      ]
+      coverage <- if (nrow(available_rows)) {
+        mean(available_rows$covered, na.rm = TRUE)
       } else {
         NA_real_
       }
+      miss_side <- if ("miss_side" %in% names(trait_rows)) {
+        trait_rows$miss_side
+      } else {
+        rep(NA_character_, nrow(trait_rows))
+      }
+      miss_below <- sum(miss_side == "truth_below_lower", na.rm = TRUE)
+      miss_above <- sum(miss_side == "truth_above_upper", na.rm = TRUE)
+      ratio_rows <- trait_rows[
+        is.finite(trait_rows$truth) &
+          is.finite(trait_rows$estimate) &
+          trait_rows$truth != 0,
+        ,
+        drop = FALSE
+      ]
+      median_est_truth_ratio <- if (nrow(ratio_rows)) {
+        stats::median(ratio_rows$estimate / ratio_rows$truth, na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+      n_reps <- length(rep_status)
+      n_failed <- sum(!rep_converged)
+      n_trait_rows <- nrow(trait_rows)
+      n_ci_missing <- sum(!ci_available, na.rm = TRUE)
+      if ("n_boot_failed" %in% names(sub) && "n_boot" %in% names(sub)) {
+        boot_by_rep <- split(sub, sub$rep, drop = TRUE)
+        rep_boot_failed <- vapply(
+          boot_by_rep,
+          function(rep_df) {
+            x <- rep_df$n_boot_failed
+            if (all(is.na(x))) 0 else max(x, na.rm = TRUE)
+          },
+          numeric(1)
+        )
+        rep_boot_attempted <- vapply(
+          boot_by_rep,
+          function(rep_df) {
+            x <- rep_df$n_boot
+            if (all(is.na(x))) 0 else max(x, na.rm = TRUE)
+          },
+          numeric(1)
+        )
+        n_boot_failed <- sum(rep_boot_failed, na.rm = TRUE)
+        n_boot_attempted <- sum(rep_boot_attempted, na.rm = TRUE)
+      } else {
+        n_boot_failed <- 0
+        n_boot_attempted <- 0
+      }
+      boot_fail_rate <- if (n_boot_attempted > 0) {
+        n_boot_failed / n_boot_attempted
+      } else {
+        0
+      }
+      pilot_status <- m3_pilot_status(
+        coverage = coverage,
+        n_ci_missing = n_ci_missing,
+        n_trait_rows = n_trait_rows,
+        n_failed = n_failed,
+        n_reps = n_reps,
+        family = sub$family[1],
+        miss_below = miss_below,
+        miss_above = miss_above,
+        n_boot_failed = n_boot_failed,
+        n_boot_attempted = n_boot_attempted
+      )
+      coverage_prof <- if (
+        identical(sub$target[1], "psi") &&
+          identical(sub$ci_method[1], "profile")
+      ) coverage else NA_real_
       data.frame(
         cell = sub$cell[1],
         family = sub$family[1],
         d = sub$d[1],
+        target = sub$target[1],
+        ci_method = sub$ci_method[1],
+        n_reps = n_reps,
         n_completed = sum(rep_converged),
-        n_failed = sum(!rep_converged),
+        n_failed = n_failed,
+        n_trait_rows = n_trait_rows,
+        n_ci_missing = n_ci_missing,
+        n_boot_failed = n_boot_failed,
+        n_boot_attempted = n_boot_attempted,
+        boot_fail_rate = boot_fail_rate,
+        coverage = coverage,
+        miss_below = miss_below,
+        miss_above = miss_above,
+        median_est_truth_ratio = median_est_truth_ratio,
+        mean_runtime_s = mean(rep_runtime, na.rm = TRUE),
+        pilot_status = pilot_status,
         coverage_prof = coverage_prof,
         passes_94pct_prof = !is.na(coverage_prof) && coverage_prof >= gate,
-        mean_runtime_s = mean(rep_runtime, na.rm = TRUE),
         stringsAsFactors = FALSE
       )
     })

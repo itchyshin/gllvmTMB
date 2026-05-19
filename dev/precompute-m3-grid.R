@@ -10,6 +10,9 @@
 ##   Rscript dev/precompute-m3-grid.R --full       # full grid (200 reps; ~hours)
 ##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=2 \
 ##     --n-reps=200 --init-strategy=single_trait_warmup
+##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 \
+##     --n-reps=50 --init-strategy=single_trait_warmup \
+##     --targets=psi,Sigma_unit_diag --n-boot=30
 ##
 ## Output:
 ##   dev/precomputed/m3-coverage-grid.rds (long-format)
@@ -18,6 +21,8 @@
 ## Scope (M3.2/M3.3 — Curie + Grace lead; Fisher review):
 ##   * Pipeline machinery + a working smoke artefact.
 ##   * Profile CIs on per-trait psi for the production grid.
+##   * Optional bootstrap CIs on total Sigma_unit[tt] for the
+##     target-explicit M3.3 pilot.
 ##   * Full 5-family x 3-d grid execution is dispatched by the
 ##     M3 production-grid GitHub Actions workflow.
 
@@ -124,6 +129,15 @@ init_strategy <- match.arg(
   arg_value("--init-strategy", "default"),
   c("default", "single_trait_warmup")
 )
+targets <- m3_normalise_targets(split_arg(arg_value("--targets", "psi")))
+n_boot <- as.integer(arg_value("--n-boot", "30"))
+if (is.na(n_boot) || n_boot < 1L) {
+  stop("--n-boot must be a positive integer")
+}
+ci_level <- as.numeric(arg_value("--ci-level", as.character(M3_DEFAULT_NOMINAL)))
+if (is.na(ci_level) || ci_level <= 0 || ci_level >= 1) {
+  stop("--ci-level must be a number in (0, 1)")
+}
 
 OUT_DIR <- arg_value("--out-dir", file.path("dev", "precomputed"))
 out_prefix <- arg_value("--out-prefix", "m3-coverage")
@@ -137,11 +151,13 @@ if (!dir.exists(OUT_DIR)) {
 ## ---- Run --------------------------------------------------------------
 
 cat(sprintf(
-  "[m3] mode = %s (%d cells x %d reps; init_strategy = %s)\n",
+  "[m3] mode = %s (%d cells x %d reps; init_strategy = %s; targets = %s; n_boot = %d)\n",
   mode,
   nrow(config$cells),
   config$n_reps,
-  init_strategy
+  init_strategy,
+  paste(targets, collapse = ","),
+  n_boot
 ))
 
 t_start <- Sys.time()
@@ -152,6 +168,9 @@ grid_df <- m3_run_grid(
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
   init_strategy = init_strategy,
+  targets = targets,
+  n_boot = n_boot,
+  ci_level = ci_level,
   parallel = FALSE # workflow matrix parallelises cells
 )
 t_elapsed <- as.numeric(difftime(Sys.time(), t_start, units = "secs"))
@@ -180,7 +199,10 @@ artefact <- list(
     seed_base = 20260517L,
     n_reps = config$n_reps,
     n_cells = nrow(config$cells),
-    init_strategy = init_strategy
+    init_strategy = init_strategy,
+    targets = targets,
+    n_boot = n_boot,
+    ci_level = ci_level
   ),
   grid = grid_df,
   summary = summary_df

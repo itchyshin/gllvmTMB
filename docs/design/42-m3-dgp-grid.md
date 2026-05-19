@@ -71,7 +71,12 @@ Each replicate `r ∈ 1..200` runs the following recipe:
    alternate Gaussian, binomial, and nbinom2 across trait rows.
 3. **Fit.** Run `gllvmTMB(..., family = ...)` with the same model
    structure as the DGP (no model-misspecification in M3.1; that's
-   M3.4 work).
+   M3.4 work). The current M3 driver passes `unit = "unit"` and
+   leaves `cluster` at its default placeholder. Do **not** pass
+   `cluster = "unit"` for this grid: it makes
+   `unique(0 + trait | unit)` match both the unit tier (`diag_B`) and
+   the cluster tier (`diag_species`), adding a variance component that
+   is not in the DGP and blocking unconditional bootstrap simulation.
 4. **Compute CI for each explicit target.** Record the target and
    method for each interval row. The primary target is the diagonal
    of $\boldsymbol\Sigma_{\text{unit}}$ (per-trait unit-tier

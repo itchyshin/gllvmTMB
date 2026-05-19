@@ -2228,3 +2228,86 @@ Kaizen point:
     ROADMAP and design docs on target, method, and status. Then Pat and
     Rose can update README/articles without inheriting inconsistent
     source language.
+
+## 2026-05-19 -- M3.3 target-explicit pilot implementation
+
+Scope:
+
+- Implement target-explicit M3 grid rows in `dev/m3-grid.R`.
+- Keep profile-`psi` rows as the diagnostic target and add
+  bootstrap total `Sigma_unit[tt]` rows as the primary pilot target.
+- Add `--targets=`, `--n-boot=`, and `--ci-level=` to
+  `dev/precompute-m3-grid.R`.
+- Add bootstrap refit failure accounting to the summary so
+  `COMPUTE_FAIL` can reflect unstable resampling, not only original
+  fit failure or missing CIs.
+- Fix the M3 driver's grouping call: leave `cluster` at the default
+  placeholder instead of passing `cluster = "unit"`, which
+  double-registered `unique(0 + trait | unit)` as both `diag_B` and
+  `diag_species`.
+- No package API, formula grammar, TMB likelihood, roxygen, Rd,
+  README, vignette, NEWS, pkgdown navigation, or validation-debt
+  status changed.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch && gh pr list --state open --repo itchyshin/gllvmTMB --json number,title,headRefName,files --jq '.[] | {number,title,headRefName,files: [.files[].path]}' && git log --all --oneline --since='6 hours ago'`
+  -> clean branch point on `main`, no open PRs, recent M3 / CI merges
+  inspected.
+- `Rscript --vanilla -e 'invisible(parse(file = "dev/m3-grid.R")); invisible(parse(file = "dev/precompute-m3-grid.R")); cat("parse ok\n")'`
+  -> `parse ok`.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); stopifnot(identical(m3_normalise_targets("all"), M3_INTERVAL_TARGETS)); stopifnot(m3_target_method("Sigma_unit_diag") == "bootstrap"); stopifnot(identical(m3_miss_side(1, 0, 2, TRUE, TRUE), "covered")); cat("helpers ok\n")'`
+  -> `helpers ok`.
+- Summary mock:
+  `Rscript --vanilla -e 'source("dev/m3-grid.R"); df <- data.frame(cell="gaussian-d1", family="gaussian", d=1L, rep=c(1L,1L,1L,1L), trait_id=c(1L,2L,1L,2L), converged=TRUE, fit_converged=TRUE, target=rep(c("psi","Sigma_unit_diag"), each=2), ci_method=rep(c("profile","bootstrap"), each=2), truth=c(1,2,3,4), estimate=c(1.1,1.8,2.9,4.2), ci_lo=c(.5,1.5,2.5,3.5), ci_hi=c(1.5,2.5,3.5,4.5), covered=c(TRUE,TRUE,TRUE,TRUE), ci_available=TRUE, runtime_s=1, miss_side="covered", n_boot=c(NA,NA,10,10), n_boot_failed=c(NA,NA,1,1), covered_prof=c(TRUE,TRUE,NA,NA)); print(m3_summarise(df), row.names=FALSE)'`
+  -> two target summaries; bootstrap row reported
+  `n_boot_failed = 1`, `n_boot_attempted = 10`,
+  `boot_fail_rate = 0.1`.
+- Legacy summary mock:
+  `Rscript --vanilla -e 'source("dev/m3-grid.R"); old <- data.frame(cell="gaussian-d1", family="gaussian", d=1L, rep=c(1L,1L), trait_id=1:2, covered_prof=c(TRUE,FALSE), converged=TRUE, runtime_s=c(1,1)); print(m3_summarise(old), row.names=FALSE)'`
+  -> old no-`target` artifacts still summarise with `coverage_prof`
+  and `passes_94pct_prof`.
+- Before-fix grouping reproducer:
+  `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); source("dev/m3-grid.R"); truth <- m3_sample_truth("gaussian", 1, n_traits=2, n_units=25, seed=1); sim <- m3_simulate_response(truth); fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 1) + unique(0 + trait | unit), data = sim$data, family = gaussian(), unit="unit", cluster="unit", control=gllvmTMBcontrol(init_strategy="default")); cat("diag_species=", fit$use$diag_species, "\n"); print(gllvmTMB:::.check_simulate_unconditional(fit));'`
+  -> explicit `cluster = "unit"` reproduces `diag_species = TRUE` and
+  `can_redraw = FALSE`.
+- Grouping reproducer:
+  `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); source("dev/m3-grid.R"); truth <- m3_sample_truth("gaussian", 1, n_traits=2, n_units=25, seed=1); sim <- m3_simulate_response(truth); fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 1) + unique(0 + trait | unit), data = sim$data, family = gaussian(), unit="unit", control=gllvmTMBcontrol(init_strategy="default")); print(fit$use); print(gllvmTMB:::.check_simulate_unconditional(fit));'`
+  -> `diag_species = FALSE`, `can_redraw = TRUE`.
+- Combined-target smoke:
+  `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); source("dev/m3-grid.R"); grid <- m3_run_cell("gaussian", d = 1, n_reps = 1, seed_base = 20260521L, n_units = 25L, n_traits = 2L, targets = c("psi", "Sigma_unit_diag"), n_boot = 2L, ci_level = 0.80, verbose = FALSE); print(m3_summarise(grid), row.names = FALSE)'`
+  -> separate `psi/profile` and `Sigma_unit_diag/bootstrap` rows;
+  both had zero bootstrap refit failures in that toy run.
+- CLI driver smoke:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=gaussian --d=1 --n-reps=1 --targets=Sigma_unit_diag --n-boot=2 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-target-pilot-smoke --out-prefix=smoke2`
+  -> completed and saved `/tmp/gllvmtmb-m3-target-pilot-smoke/smoke2-grid.rds`
+  and `/tmp/gllvmtmb-m3-target-pilot-smoke/smoke2-summary.rds`.
+- Tiny `nbinom2-d1` smoke:
+  `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); source("dev/m3-grid.R"); grid <- m3_run_cell("nbinom2", d = 1, n_reps = 1, seed_base = 20260522L, n_units = 25L, n_traits = 2L, targets = "Sigma_unit_diag", n_boot = 2L, ci_level = 0.80, verbose = TRUE); print(grid[, c("cell", "target", "ci_method", "trait_id", "fit_converged", "ci_available", "n_boot_failed", "miss_side", "runtime_s")], row.names = FALSE); print(m3_summarise(grid), row.names = FALSE)'`
+  -> original fit converged; one of two bootstrap refits failed; summary
+  labelled the toy cell `COMPUTE_FAIL`.
+- Stale-target scan:
+  `rg -n 'profile-psi primary|profile.*primary target|M3-COV' ROADMAP.md docs/design/42-m3-dgp-grid.md docs/design/44-m3-3-inference-replacement.md dev/m3-grid.R dev/precompute-m3-grid.R`
+  -> no hits.
+- Grouping guard scan:
+  `rg -n 'cluster\s*=\s*"unit"' dev/m3-grid.R docs/design/42-m3-dgp-grid.md docs/design/44-m3-3-inference-replacement.md`
+  -> hits only the intentional implementation/design guard text; no
+  active `gllvmTMB(..., cluster = "unit")` call remains in
+  `dev/m3-grid.R`.
+- Bootstrap-summary scan:
+  `rg -n 'n_boot_failed|boot_fail_rate|n_boot_attempted' dev/m3-grid.R dev/precompute-m3-grid.R docs/design/42-m3-dgp-grid.md docs/design/44-m3-3-inference-replacement.md`
+  -> Design 44 and implementation agree on the bootstrap-failure
+  columns.
+- `git diff --check` -> clean.
+- After-task report filed at
+  `docs/dev-log/after-task/2026-05-19-m3-3-target-explicit-pilot.md`.
+
+Kaizen point:
+
+32. **Warnings can reveal target invalidity, not just log noise.** The
+    first bootstrap smoke warned that unconditional simulation fell back
+    to conditional simulation. Tracing that warning found an unintended
+    `diag_species` tier from `cluster = "unit"`. For simulation evidence
+    lanes, treat unexpected warnings as part of the model contract until
+    the target, grouping, and simulation path are confirmed.

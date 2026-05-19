@@ -110,12 +110,34 @@ elements \code{delta} (logical) and \code{type} (standard vs. Poisson-link).
 Additional families compatible with \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }
 \details{
+Most models use standard R family objects such as \code{gaussian()},
+\code{binomial()}, \code{poisson()}, or \code{Gamma(link = "log")}. This help topic
+documents additional family constructors shipped by \strong{gllvmTMB} (for
+example \code{Beta()}, \code{betabinomial()}, \code{nbinom1()}, \code{nbinom2()},
+\code{student()}, \code{tweedie()}, \code{lognormal()}, delta/hurdle families, and
+truncated count families).
+\subsection{Mixed-family fits (one model, multiple response families)}{
+
+You can fit different response families within one multivariate model
+by passing \code{family} as a list of family objects and adding a selector
+column to \code{data} that chooses which family applies to each row.
+
+By default the selector column is named \code{"family"}. To use a different
+column name, set \code{attr(family, "family_var") <- "colname"}. For
+reproducibility, make the selector a factor whose levels are in the
+same order as the \code{family} list. The length of \code{family} must match the
+number of distinct selector levels.
+}
+
+\subsection{Delta-family defaults}{
+
 The default \code{link1} for delta models of \code{type = "standard"} is \code{"logit"}.
 The default \code{link1} for delta models of \code{type = "poisson-link"} is \code{"log"}.
 
 \code{delta_poisson_link_gamma()} and \code{delta_poisson_link_lognormal()} have been
 deprecated in favour of \code{delta_gamma(type = "poisson-link")} and
 \code{delta_lognormal(type = "poisson-link")}.
+}
 
 The \code{gengamma()} family was implemented by J.T. Thorson and uses the Prentice
 (1974) parameterization such that the lognormal occurs as the internal
@@ -143,6 +165,23 @@ You can fix it at a specific value by providing a number > 1 (e.g., \code{df = 3
 }
 \examples{
 Beta(link = "logit")
+\dontrun{
+## Mixed-family example: per-row family chosen by a `family` column
+sim <- simulate_site_trait(n_sites = 40, n_species = 10, n_traits = 2,
+                           mean_species_per_site = 5)
+sim$data$family <- factor(
+  ifelse(sim$data$trait == levels(sim$data$trait)[1], "gaussian", "binomial"),
+  levels = c("gaussian", "binomial")
+)
+fam <- list(gaussian(), binomial())
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 1),
+  data   = sim$data,
+  family = fam,
+  trait  = "trait",
+  unit   = "site"
+)
+}
 lognormal(link = "log")
 gamma_mix(link = "log")
 lognormal_mix(link = "log")

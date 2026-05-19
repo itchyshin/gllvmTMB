@@ -23,25 +23,50 @@
 - Corrected `_pkgdown.yml` to list `Families`, then `pkgdown::check_pkgdown()` passed with "No problems found."
 - Ran `pkgdown::build_reference(lazy = FALSE)` and confirmed the rendered Response families section lists the family constructors through `families.html` plus `ordinal_probit()`.
 
+### 2026-05-18 (late) / 2026-05-19
+
+- Repo evidence update: PR #187 (tiered CI gate) and PR #189 (pkgdown Response families reference index) are merged on `main`.
+- Process-only fast-pass verified in real CI on PR #188 (all three OS jobs ran the "Classify R CMD check scope" step, skipped R setup/dependencies/check steps, and completed via "Fast pass for process-only change").
+- Connectivity note: this shell cannot resolve `github.com` (`gh`/`git push` fail host resolution), so GitHub state is queried via the GitHub connector.
+- Started the next reader-facing doc slice on local branch `codex/families-doc-mixed-family`: expanded the `Families` help topic to document the mixed-family selector-column API (`family` list + `data$family` / `attr(family, \"family_var\")`); ran `devtools::document()` + `pkgdown::check_pkgdown()`; appended `docs/dev-log/check-log.md` and drafted an after-task report.
+
+### 2026-05-19 02:58 MDT
+
+- Rehydrated repo evidence: working tree clean on `codex/families-doc-mixed-family`; diff vs `main` is still confined to the Families-doc slice.
+- Confirmed the local shell still has no DNS resolution for `github.com` / `api.github.com`, so `gh` and `git push` remain unusable from this environment.
+- GitHub connector check: open PR census is still empty.
+- Decision: keep work-in-progress bounded to the Families-doc lane and leave the branch in a ready-to-push state; do not start a second slice until CI can be triggered on this lane.
+
+### 2026-05-19 04:46 MDT
+
+- Crash/restart rehydration: verified clean working tree and rehydrated PR state via the GitHub connector.
+- GitHub connector: PR #190 is open on branch `codex/families-doc-mixed-family` (head SHA `9d719c6`).
+- This shell still cannot resolve `github.com`, so `gh` and `git push` fail (`Could not resolve host: github.com`).
+- Local note: this checkout has one additional after-task refresh commit (`ed9c0f1`) not yet pushed to the PR branch due to the DNS outage.
+- GitHub connector: PR #190 CI is running as workflow run `R-CMD-check` id `26092238455` (all three OS jobs reached `check-r-package`).
+
 ## PRs / branches
 
-- Active branch: `codex/overnight-shannon-audits`.
+- Merged: PR #187, `Add tiered R CMD check gate`.
 - Merged: PR #188, `Record overnight Shannon handoff`.
-- Active branch: `codex/pkgdown-families-index`.
+- Merged: PR #189, `Fix pkgdown families reference index`.
+- Open: PR #190, `Docs: clarify mixed-family family selector usage` (`codex/families-doc-mixed-family`).
 
 ## CI status
 
-- Local shell cannot reach github.com, so CI checks are queried via the GitHub connector when needed.
-- Correction after rehydration: local `gh` access is working in this shell. `gh run list` showed `main` R-CMD-check for `ef451cf` succeeded and the `pkgdown` workflow for `ef451cf` was still in progress at 18:00 MDT.
+- Local shell cannot resolve `github.com`, so CI checks are queried via the GitHub connector when needed.
+- GitHub connector in this Codex environment appears read-only (`403 Resource not accessible by integration` when trying to create a branch ref), so it cannot be used to push updates to PR #190 as a workaround for the DNS outage.
 
 ## Files changed locally (so far)
 
 - `docs/dev-log/while-away/2026-05-19-0500-codex-overnight-report.md` (new; running report)
-- `docs/dev-log/shannon-audits/2026-05-18-codex-kickoff-brief.md` (new; Shannon kickoff snapshot)
-- `docs/dev-log/shannon-audits/2026-05-18-handover-to-codex-team.md` (new; full Shannon handover snapshot)
-- `_pkgdown.yml` (planned next slice; Response families `Families` topic)
-- `docs/dev-log/after-task/2026-05-18-pkgdown-families-index.md` (planned next slice)
-- `docs/dev-log/check-log.md` (planned next slice)
+- `docs/dev-log/shannon-audits/2026-05-18-codex-kickoff-brief.md` (merged in PR #188)
+- `docs/dev-log/shannon-audits/2026-05-18-handover-to-codex-team.md` (merged in PR #188)
+- `_pkgdown.yml` (merged in PR #189)
+- `docs/dev-log/check-log.md` (merged in PR #189; updated again locally for the Families doc slice)
+- `docs/dev-log/coordination-board.md` (updated locally to record the active Families doc lane + merge state)
+- `R/families.R` (local WIP: new mixed-family usage docs)
+- `man/families.Rd` (local WIP: regenerated after `devtools::document()`)
 
 ## Checks run
 
@@ -59,16 +84,26 @@
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` (first failed on lowercase `families`; second passed after changing to `Families`)
 - `Rscript --vanilla -e 'pkgdown::build_reference(lazy = FALSE)'` (completed)
 - `rg -n "Response families|families.html|Additional families|ordinal_probit" pkgdown-site/reference/index.html` (confirmed rendered index)
+- GitHub connector: open-PR census -> none; PR #188 merged; PR #187 merged; PR #189 merged.
+- GitHub connector: PR #188 head workflow run `R-CMD-check` job steps show the intended fast-pass (`Classify R CMD check scope` + skipped setup/check + `Fast pass for process-only change`).
+- GitHub connector: PR #187 metadata (`merged_at = 2026-05-18T23:25:09Z`) + head SHA workflow run `R-CMD-check` id `26064947669` (`conclusion = success`).
+- GitHub connector: open PR census -> PR #190 open (`Docs: clarify mixed-family family selector usage`).
+- `git push -u origin HEAD` -> failed (`Could not resolve host: github.com`).
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` (regenerated `man/families.Rd`).
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` (passed, "No problems found.")
 
 ## Named-perspective notes
 
-- Pat: prioritize response-family discoverability + redundant defaults cleanup (queued).
+- Pat: response-family discoverability fixed (PR #189); mixed-family selector-column API now documented in `Families` help.
 - Rose: keep process-only lane small; record any cross-file inconsistencies immediately.
 - Emmy: keep architecture untouched in these doc/process slices.
 - Grace: verify the new tiered-gate classifier behaves as intended on a process-only PR.
 
 ## Next actions
 
-1. Commit and open the small pkgdown Response families reference-index PR.
-2. Wait for the active `main` pkgdown run to finish before pushing this branch.
-3. Do not bundle stale `trait =` cleanup or citation triage into this PR.
+1. Monitor PR #190 CI (3-OS `R-CMD-check`) via GitHub once connectivity
+   returns in this shell (or via the GitHub connector).
+2. Keep the scope doc-only: no family implementations, likelihoods, or
+   formula-grammar changes.
+3. When DNS recovers, push the remaining local commit (`ed9c0f1`) to the
+   PR branch and re-check CI.

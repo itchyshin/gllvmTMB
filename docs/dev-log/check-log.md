@@ -1762,3 +1762,32 @@ Kaizen point:
     exported surface when the roxygen source uses `@rdname` aliases
     instead of `@keywords`. For pkgdown navigation bugs, check both
     `_pkgdown.yml` and the generated `man/*.Rd` aliases before editing.
+
+## 2026-05-18 -- Families help topic: document mixed-family usage
+
+Scope:
+
+- Add a short "how to use families with `gllvmTMB()`" paragraph to the
+  `Families` help topic, focused on mixed-family fits.
+- No changes to likelihoods, formula grammar, family implementations,
+  or validation-debt status.
+
+Evidence:
+
+- `R/families.R`: `@details` now documents the mixed-family API: pass
+  `family` as a list of `family` objects plus a selector column in
+  `data` (default name `"family"`; override with
+  `attr(family, "family_var") <- "colname"`). Also records the
+  ordering contract: selector levels are mapped in list order and the
+  list length must match the number of selector levels.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` regenerated
+  `man/families.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> `No problems found.`
+
+Kaizen point:
+
+21. **Document the "glue" API where users look first.** A page listing
+    available families is only half the job; it should also explain how
+    the family object is consumed by `gllvmTMB()`, especially for
+    mixed-family models where the selector-column contract is easy to
+    miss.

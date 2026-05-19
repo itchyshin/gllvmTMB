@@ -49,6 +49,7 @@ Current operating rule:
   fast-pass behaviour was verified in real CI on PR #188.
 - PR #188 (process-only Shannon handoff snapshots) merged on 2026-05-19.
 - PR #189 (pkgdown Response families reference index) merged on 2026-05-18.
+- PR #195 (Slice 2 after-task templates) merged on 2026-05-19.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -56,10 +57,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | Slice 2 after-task templates | `codex/after-task-template-slice2` | `docs/design/10-after-task-protocol.md` + template files + dev-log | in progress (process-only) |
+| (none) | (none) | (none) | (none) | WIP = 0 |
 
-**WIP**: 1 (process-only). Avoid parallel edits to shared process files
-until this lane is merged.
+**WIP**: 0. Safe to start the next small, bounded lane.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -75,7 +75,6 @@ instead of expanding this table.
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Codex | Slice 2 after-task template | after Slice 1 PR template lands |
 | Codex + Claude | Revisit `drmTMB` workflow lessons for reader path and pkgdown shape | after Slice 1/2 discipline surfaces are in place |
 | Codex | Next small reader-facing lane | after maintainer chooses whether this should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing |
 
@@ -129,6 +128,8 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~06:32 MT**: PR #195 (Slice 2 after-task templates)
+  merged to `main`.
 - **2026-05-19 ~05:47 MT**: PR #193 (in-prep citation discipline)
   merged to `main`.
 - **2026-05-19 ~05:19 MT**: PR #190 (Families help topic mixed-family

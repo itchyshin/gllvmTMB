@@ -47,6 +47,7 @@
 ## CI status
 
 - Local shell cannot resolve `github.com`, so CI checks are queried via the GitHub connector when needed.
+- GitHub connector in this Codex environment appears read-only: attempting to create a remote branch via the integration returned `403 Resource not accessible by integration`, so opening a PR for `codex/families-doc-mixed-family` is still blocked until shell connectivity returns (or integration permissions change).
 
 ## Files changed locally (so far)
 
@@ -77,6 +78,7 @@
 - `rg -n "Response families|families.html|Additional families|ordinal_probit" pkgdown-site/reference/index.html` (confirmed rendered index)
 - GitHub connector: open-PR census -> none; PR #188 merged; PR #187 merged; PR #189 merged.
 - GitHub connector: PR #188 head workflow run `R-CMD-check` job steps show the intended fast-pass (`Classify R CMD check scope` + skipped setup/check + `Fast pass for process-only change`).
+- GitHub connector: PR #187 metadata (`merged_at = 2026-05-18T23:25:09Z`) + head SHA workflow run `R-CMD-check` id `26064947669` (`conclusion = success`).
 - `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` (regenerated `man/families.Rd`).
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` (passed, "No problems found.")
 
@@ -94,5 +96,7 @@
    full 3-OS R-CMD-check before merge (roxygen/Rd touched).
 2. Keep the scope doc-only: no family implementations, likelihoods, or
    formula-grammar changes.
-3. Current branch already splits content vs. dev-log into two commits:
-   `docs(families): ...` and `dev-log: ...`.
+3. If shell connectivity does not return soon, push this branch from a
+   networked environment (outside Codex sandbox) or grant the GitHub
+   integration write permission (it is currently read-only in this
+   sandbox).

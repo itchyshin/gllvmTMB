@@ -56,11 +56,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | In-prep citation discipline | #193 / `codex/in-prep-citation-hygiene-2026-05-19` | roxygen/README + selected Tier-1 articles + Rd + dev-log | PR open; waiting for 3-OS `R-CMD-check` |
+| (none) | (none) | (none) | (none) | WIP = 0 |
 
-**WIP**: 1 (PR #193). Avoid parallel edits to the touched roxygen/Rd
-and the edited Tier-1 articles until CI is green and the PR is merged
-or explicitly held.
+**WIP**: 0. Safe to start the next small, bounded lane.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -130,6 +128,8 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~05:47 MT**: PR #193 (in-prep citation discipline)
+  merged to `main`.
 - **2026-05-19 ~05:19 MT**: PR #190 (Families help topic mixed-family
   selector-column documentation) merged to `main`.
 - **2026-05-18 ~16:35 MT**: PR #187 CI tiered gates passed full

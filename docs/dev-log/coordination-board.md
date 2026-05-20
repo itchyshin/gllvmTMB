@@ -80,6 +80,10 @@ Current operating rule:
 - PR #213 (M3.3a `nbinom2` fitted phi / link-residual diagnostics)
   merged on 2026-05-20 after 3-OS R-CMD-check passed on the PR
   branch; post-merge main R-CMD-check and pkgdown also passed.
+- PR #214 (M3.3a `nbinom2` known-phi point diagnostic) merged on
+  2026-05-20. The post-merge main R-CMD-check later passed; the
+  pkgdown deploy from the same merge was still running when the
+  docs-only cross-learning branch was pushed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -87,7 +91,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex/Ada | M3.3a `nbinom2` known-phi point diagnostic | `codex/m3-3a-nbinom2-known-phi-diagnostic-2026-05-20` | `dev/m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `docs/design/42-m3-dgp-grid.md`, dev-log audit/after-task/check-log | In progress; r10 point-only pilot, focused tests, and pkgdown passed locally; devtools check has 0 errors / 1 warning / 5 notes |
+| Codex/Ada | M3.3 drmTMB cross-learning and roadmap checkpoint | PR #215 / `codex/m3-3-drmtmb-cross-learning-2026-05-20` | `ROADMAP.md`, dev-log audit/after-task/check-log/coordination-board | In progress; read-only sister-repo audit complete; docs-only PR open |
 
 **WIP**: 1.
 
@@ -105,7 +109,6 @@ instead of expanding this table.
 
 | Agent | Lane | Wait condition |
 |---|---|---|
-| Codex + Claude | Revisit `drmTMB` workflow lessons for reader path and pkgdown shape | after Slice 1/2 discipline surfaces are in place |
 | Codex | Next small reader-facing lane | after maintainer chooses whether this should be README/pkgdown navigation, a Tier-1 article re-read, or validation-debt surfacing |
 
 Move a row to "Active lanes" when you start it.
@@ -161,6 +164,13 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~04:57 MT**: PR #214 (M3.3a `nbinom2` known-phi
+  point diagnostic) merged to `main` as merge commit `66d7b6b`. The
+  diagnostic fixed `phi_nbinom2` at the DGP value in point fits and
+  improved median `Sigma_unit_diag` estimate/truth ratios, but the
+  baseline scenario remained below truth. EXT-13 / CI-08 / CI-10 stay
+  partial; fixed-phi bootstrap needs a refit path before any coverage
+  claim.
 - **2026-05-20 ~03:31 MT**: PR #213 (M3.3a `nbinom2` fitted
   phi / link-residual diagnostics) merged to `main` as squash commit
   `b652063` after PR R-CMD-check run `26150065112` passed on ubuntu,

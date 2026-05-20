@@ -14,6 +14,9 @@
 ##     --n-reps=50 --init-strategy=single_trait_warmup \
 ##     --start-method=res --start-jitter=0.2 --n-init=5 \
 ##     --targets=psi,Sigma_unit_diag --n-boot=30 --n-cores-boot=4
+##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 \
+##     --n-units=120 --phi=0.4 --lambda-scale=0.5 --psi-scale=1.5 \
+##     --targets=Sigma_unit_diag --n-reps=10 --n-boot=10
 ##
 ## Output:
 ##   dev/precomputed/m3-coverage-grid.rds (long-format)
@@ -130,6 +133,39 @@ if (!is.null(n_reps_override)) {
   }
 }
 
+n_units <- as.integer(arg_value("--n-units", as.character(M3_DEFAULT_N_UNITS)))
+if (is.na(n_units) || n_units < 1L) {
+  stop("--n-units must be a positive integer")
+}
+n_traits <- as.integer(arg_value("--n-traits", as.character(M3_DEFAULT_N_TRAITS)))
+if (is.na(n_traits) || n_traits < 2L) {
+  stop("--n-traits must be an integer >= 2")
+}
+lambda_scale <- as.numeric(arg_value(
+  "--lambda-scale",
+  as.character(M3_DEFAULT_LAMBDA_SCALE)
+))
+if (is.na(lambda_scale) || lambda_scale <= 0) {
+  stop("--lambda-scale must be a positive number")
+}
+psi_scale <- as.numeric(arg_value("--psi-scale", as.character(M3_DEFAULT_PSI_SCALE)))
+if (is.na(psi_scale) || psi_scale <= 0) {
+  stop("--psi-scale must be a positive number")
+}
+phi_arg <- arg_value("--phi")
+phi <- if (is.null(phi_arg)) NULL else as.numeric(phi_arg)
+if (!is.null(phi) && (is.na(phi) || phi <= 0)) {
+  stop("--phi must be a positive number")
+}
+phi_shape <- as.numeric(arg_value("--phi-shape", as.character(M3_DEFAULT_PHI_SHAPE)))
+if (is.na(phi_shape) || phi_shape <= 0) {
+  stop("--phi-shape must be a positive number")
+}
+phi_rate <- as.numeric(arg_value("--phi-rate", as.character(M3_DEFAULT_PHI_RATE)))
+if (is.na(phi_rate) || phi_rate <= 0) {
+  stop("--phi-rate must be a positive number")
+}
+
 init_strategy <- match.arg(
   arg_value("--init-strategy", "default"),
   c("default", "single_trait_warmup")
@@ -189,10 +225,15 @@ if (!dir.exists(OUT_DIR)) {
 ## ---- Run --------------------------------------------------------------
 
 cat(sprintf(
-  "[m3] mode = %s (%d cells x %d reps; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
+  "[m3] mode = %s (%d cells x %d reps; n_units = %d; n_traits = %d; lambda_scale = %.3g; psi_scale = %.3g; phi = %s; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
   mode,
   nrow(config$cells),
   config$n_reps,
+  n_units,
+  n_traits,
+  lambda_scale,
+  psi_scale,
+  if (is.null(phi)) "sampled" else format(phi, scientific = FALSE),
   init_strategy,
   start_method_name,
   optimizer,
@@ -207,8 +248,13 @@ grid_df <- m3_run_grid(
   cells = config$cells,
   n_reps = config$n_reps,
   seed_base = 20260517L,
-  n_units = M3_DEFAULT_N_UNITS,
-  n_traits = M3_DEFAULT_N_TRAITS,
+  n_units = n_units,
+  n_traits = n_traits,
+  lambda_scale = lambda_scale,
+  psi_scale = psi_scale,
+  phi = phi,
+  phi_shape = phi_shape,
+  phi_rate = phi_rate,
   init_strategy = init_strategy,
   start_method = start_method,
   optimizer = optimizer,
@@ -248,6 +294,13 @@ artefact <- list(
     seed_base = 20260517L,
     n_reps = config$n_reps,
     n_cells = nrow(config$cells),
+    n_units = n_units,
+    n_traits = n_traits,
+    lambda_scale = lambda_scale,
+    psi_scale = psi_scale,
+    phi = phi,
+    phi_shape = phi_shape,
+    phi_rate = phi_rate,
     init_strategy = init_strategy,
     start_method = start_method_name,
     start_jitter = start_jitter,

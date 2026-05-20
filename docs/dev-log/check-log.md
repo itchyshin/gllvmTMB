@@ -2691,3 +2691,75 @@ Kaizen point:
     the dev-script evidence branch first, then rebase the prose branch.
     That keeps chronology readable and avoids burying simulation
     evidence behind later article wording.
+
+## 2026-05-19 -- M3.3a nbinom2 stress-smoke controls
+
+Scope:
+
+- Start the next local Codex lane after PR #207 and PR #208 merged to
+  `main`.
+- Add dev-pipeline DGP controls so the `nbinom2-d1` stress grid can
+  vary sample size, dispersion, latent variance, and unique variance.
+- Run a tiny stress smoke to classify failure modes without claiming
+  validation evidence.
+
+Evidence:
+
+- `date '+%Y-%m-%d %H:%M:%S %Z'`
+  -> `2026-05-19 21:38:36 MDT`.
+- `gh pr list --state open --limit 20`
+  -> no open PRs.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent Codex PRs #205, #207, and #208 visible; no newer
+  conflicting shared-file lane.
+- `Rscript --vanilla -e 'invisible(parse(file="dev/m3-grid.R")); invisible(parse(file="dev/precompute-m3-grid.R")); cat("parse ok\n")'`
+  -> `parse ok`.
+- `Rscript --vanilla dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 --n-reps=1 --n-units=20 --n-traits=3 --phi=0.4 --lambda-scale=0.5 --psi-scale=1.5 --init-strategy=single_trait_warmup --start-method=res --start-jitter=0.2 --n-init=2 --init-jitter=0.05 --optimizer=optim --optim-method=BFGS --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-stress-smoke --out-prefix=nbinom2-phi04-lam05-psi15-n20-r1`
+  -> completed; artifact metadata recorded `n_units = 20`,
+  `n_traits = 3`, `lambda_scale = 0.5`, `psi_scale = 1.5`,
+  `phi = 0.4`, and per-row `truth_phi = 0.4`.
+- Four-scenario direct `m3_run_grid()` stress smoke saved to
+  `/tmp/gllvmtmb-m3-3a-stress-grid/nbinom2-four-scenario-smoke.rds`.
+  Scenario summaries:
+  `baseline_phi1_n60` original fits 2/2, bootstrap failures 4/8,
+  coverage 0.10, median estimate/truth 2.16;
+  `lowphi_n60` original fits 2/2, bootstrap failures 3/8,
+  coverage 0.00, median estimate/truth 6.60;
+  `lowphi_n120` original fits 2/2, bootstrap failures 1/8,
+  coverage 0.00, median estimate/truth 6.01;
+  `lowphi_lowlatent_highunique_n60` original fits 2/2, bootstrap
+  failures 3/8, coverage 0.00, median estimate/truth 8.79.
+- Focused two-scenario direct `m3_run_grid()` stress smoke saved to
+  `/tmp/gllvmtmb-m3-3a-stress-grid/nbinom2-two-scenario-r5.rds`.
+  Scenario summaries:
+  `baseline_phi1_n60_r5` original fits 5/5, bootstrap failures 4/30,
+  coverage 0.12, median estimate/truth 3.29;
+  `lowphi_n120_r5` original fits 5/5, bootstrap failures 0/30,
+  coverage 0.00, median estimate/truth 9.77.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); tr <- m3_sample_truth("nbinom2", d = 1, n_traits = 3, n_units = 7, seed = 1, lambda_scale = 0.5, psi_scale = 1.5, phi = 0.4); stopifnot(tr$n_units == 7L, tr$n_traits == 3L, identical(unname(tr$nuisance$phi), 0.4), isTRUE(all.equal(tr$lambda_scale, 0.5)), isTRUE(all.equal(tr$psi_scale, 1.5))); s <- m3_summarise(data.frame(cell = "nbinom2-d1", family = "nbinom2", d = 1L, rep = c(1L, 1L), trait_id = c(1L, 1L), target = "Sigma_unit_diag", ci_method = "bootstrap", truth = c(1, 1), estimate = c(1, 1), covered = c(TRUE, TRUE), ci_available = TRUE, fit_converged = TRUE, miss_side = "covered", n_boot = 1L, n_boot_failed = 0L, runtime_s = 1, scenario = c("a", "b"))); stopifnot(nrow(s) == 2L); cat("dgp controls ok\n")'`
+  -> `dgp controls ok`.
+- `gh run view 26139437409 --json status,conclusion,jobs`
+  -> post-merge main R-CMD-check from PR #208 passed on ubuntu,
+  macOS, and Windows before this branch was pushed.
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg -n 'lambda_scale|psi_scale|truth_phi|phi_shape|phi_rate|n_units = n_units' dev/m3-grid.R dev/precompute-m3-grid.R`
+  -> new controls appear in truth sampling, grid dispatch, row
+  metadata, CLI parsing, and artifact metadata.
+- `rg -n 'scenario' dev/m3-grid.R docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-stress-smoke.md docs/dev-log/after-task/2026-05-19-m3-3a-nbinom2-stress-smoke.md`
+  -> optional scenario grouping is documented and implemented.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-19-m3-3a-nbinom2-stress-smoke.md`
+
+Kaizen point:
+
+38. **Stress grids need scenario keys before replicate counts rise.**
+    The first direct smoke reused `rep = 1, 2` in each scenario, and
+    the summarizer collapsed them until `scenario` became an optional
+    grouping key. Future simulation grids should make scenario labels
+    first-class before running expensive fits.

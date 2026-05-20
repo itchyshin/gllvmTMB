@@ -35,6 +35,10 @@ M3_FAMILIES <- c("gaussian", "binomial", "nbinom2", "ordinal_probit", "mixed")
 
 M3_DEFAULT_N_UNITS <- 60L
 M3_DEFAULT_N_TRAITS <- 5L
+M3_DEFAULT_LAMBDA_SCALE <- 1
+M3_DEFAULT_PSI_SCALE <- 1
+M3_DEFAULT_PHI_SHAPE <- 5
+M3_DEFAULT_PHI_RATE <- 5
 M3_DEFAULT_NOMINAL <- 0.95
 M3_PASS_GATE <- 0.94 # audit-1 exit threshold
 M3_INTERVAL_TARGETS <- c("psi", "Sigma_unit_diag")
@@ -191,9 +195,34 @@ m3_sample_truth <- function(
   d,
   n_traits = M3_DEFAULT_N_TRAITS,
   n_units = M3_DEFAULT_N_UNITS,
-  seed
+  seed,
+  lambda_scale = M3_DEFAULT_LAMBDA_SCALE,
+  psi_scale = M3_DEFAULT_PSI_SCALE,
+  phi = NULL,
+  phi_shape = M3_DEFAULT_PHI_SHAPE,
+  phi_rate = M3_DEFAULT_PHI_RATE
 ) {
   stopifnot(family %in% M3_FAMILIES, d >= 1L)
+  if (!is.numeric(lambda_scale) || length(lambda_scale) != 1L ||
+      !is.finite(lambda_scale) || lambda_scale <= 0) {
+    stop("lambda_scale must be one positive finite number")
+  }
+  if (!is.numeric(psi_scale) || length(psi_scale) != 1L ||
+      !is.finite(psi_scale) || psi_scale <= 0) {
+    stop("psi_scale must be one positive finite number")
+  }
+  if (!is.null(phi) && (!is.numeric(phi) || length(phi) != 1L ||
+      !is.finite(phi) || phi <= 0)) {
+    stop("phi must be NULL or one positive finite number")
+  }
+  if (!is.numeric(phi_shape) || length(phi_shape) != 1L ||
+      !is.finite(phi_shape) || phi_shape <= 0) {
+    stop("phi_shape must be one positive finite number")
+  }
+  if (!is.numeric(phi_rate) || length(phi_rate) != 1L ||
+      !is.finite(phi_rate) || phi_rate <= 0) {
+    stop("phi_rate must be one positive finite number")
+  }
   set.seed(seed)
 
   ## Lambda: T x d, uniform on [-1.5, 1.5]
@@ -201,9 +230,9 @@ m3_sample_truth <- function(
     stats::runif(n_traits * d, -1.5, 1.5),
     nrow = n_traits,
     ncol = d
-  )
+  ) * lambda_scale
   ## psi (per-trait unique variance): Gamma(2, 2) -> mean 1.0, sd 0.7
-  psi <- stats::rgamma(n_traits, shape = 2, rate = 2)
+  psi <- stats::rgamma(n_traits, shape = 2, rate = 2) * psi_scale
   ## Latent factor scores
   Z <- matrix(stats::rnorm(n_units * d), nrow = n_units, ncol = d)
 
@@ -215,7 +244,7 @@ m3_sample_truth <- function(
   ## it cycles families across trait rows.
   nuisance <- list()
   if (family == "nbinom2" || family == "mixed") {
-    nuisance$phi <- stats::rgamma(1, shape = 5, rate = 5) # ~1.0 mean
+    nuisance$phi <- phi %||% stats::rgamma(1, shape = phi_shape, rate = phi_rate)
   }
   if (family == "ordinal_probit") {
     K <- 4L # n_categories
@@ -236,7 +265,11 @@ m3_sample_truth <- function(
     family = family,
     d = d,
     n_units = n_units,
-    n_traits = n_traits
+    n_traits = n_traits,
+    lambda_scale = lambda_scale,
+    psi_scale = psi_scale,
+    phi_shape = phi_shape,
+    phi_rate = phi_rate
   )
 }
 
@@ -340,6 +373,11 @@ m3_run_cell <- function(
   seed_base = 42L,
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
+  lambda_scale = M3_DEFAULT_LAMBDA_SCALE,
+  psi_scale = M3_DEFAULT_PSI_SCALE,
+  phi = NULL,
+  phi_shape = M3_DEFAULT_PHI_SHAPE,
+  phi_rate = M3_DEFAULT_PHI_RATE,
   init_strategy = "default",
   start_method = list(method = NULL, jitter.sd = 0),
   optimizer = "nlminb",
@@ -354,6 +392,26 @@ m3_run_cell <- function(
   verbose = TRUE
 ) {
   stopifnot(family %in% M3_FAMILIES, d >= 1L, n_reps >= 1L)
+  if (!is.numeric(lambda_scale) || length(lambda_scale) != 1L ||
+      !is.finite(lambda_scale) || lambda_scale <= 0) {
+    stop("lambda_scale must be one positive finite number")
+  }
+  if (!is.numeric(psi_scale) || length(psi_scale) != 1L ||
+      !is.finite(psi_scale) || psi_scale <= 0) {
+    stop("psi_scale must be one positive finite number")
+  }
+  if (!is.null(phi) && (!is.numeric(phi) || length(phi) != 1L ||
+      !is.finite(phi) || phi <= 0)) {
+    stop("phi must be NULL or one positive finite number")
+  }
+  if (!is.numeric(phi_shape) || length(phi_shape) != 1L ||
+      !is.finite(phi_shape) || phi_shape <= 0) {
+    stop("phi_shape must be one positive finite number")
+  }
+  if (!is.numeric(phi_rate) || length(phi_rate) != 1L ||
+      !is.finite(phi_rate) || phi_rate <= 0) {
+    stop("phi_rate must be one positive finite number")
+  }
   init_strategy <- match.arg(init_strategy, c("default", "single_trait_warmup"))
   optimizer <- match.arg(optimizer, c("nlminb", "optim"))
   n_init <- as.integer(n_init)
@@ -400,7 +458,12 @@ m3_run_cell <- function(
       d,
       n_traits = n_traits,
       n_units = n_units,
-      seed = rep_seed
+      seed = rep_seed,
+      lambda_scale = lambda_scale,
+      psi_scale = psi_scale,
+      phi = phi,
+      phi_shape = phi_shape,
+      phi_rate = phi_rate
     )
     sim <- m3_simulate_response(truth)
 
@@ -514,6 +577,11 @@ m3_run_cell <- function(
           optimizer = optimizer,
           n_init = n_init,
           init_jitter = init_jitter,
+          n_units = n_units,
+          n_traits = n_traits,
+          lambda_scale = lambda_scale,
+          psi_scale = psi_scale,
+          truth_phi = truth$nuisance$phi %||% NA_real_,
           se = se,
           seed_base = seed_base,
           rep_seed = rep_seed,
@@ -615,6 +683,11 @@ m3_run_cell <- function(
           optimizer = optimizer,
           n_init = n_init,
           init_jitter = init_jitter,
+          n_units = n_units,
+          n_traits = n_traits,
+          lambda_scale = lambda_scale,
+          psi_scale = psi_scale,
+          truth_phi = truth$nuisance$phi %||% NA_real_,
           se = se,
           seed_base = seed_base,
           rep_seed = rep_seed,
@@ -700,6 +773,11 @@ m3_run_cell <- function(
           optimizer = optimizer,
           n_init = n_init,
           init_jitter = init_jitter,
+          n_units = n_units,
+          n_traits = n_traits,
+          lambda_scale = lambda_scale,
+          psi_scale = psi_scale,
+          truth_phi = truth$nuisance$phi %||% NA_real_,
           se = se,
           seed_base = seed_base,
           rep_seed = rep_seed,
@@ -729,6 +807,11 @@ m3_run_grid <- function(
   seed_base = 42L,
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
+  lambda_scale = M3_DEFAULT_LAMBDA_SCALE,
+  psi_scale = M3_DEFAULT_PSI_SCALE,
+  phi = NULL,
+  phi_shape = M3_DEFAULT_PHI_SHAPE,
+  phi_rate = M3_DEFAULT_PHI_RATE,
   init_strategy = "default",
   start_method = list(method = NULL, jitter.sd = 0),
   optimizer = "nlminb",
@@ -767,6 +850,11 @@ m3_run_grid <- function(
           seed_base = seed_base,
           n_units = n_units,
           n_traits = n_traits,
+          lambda_scale = lambda_scale,
+          psi_scale = psi_scale,
+          phi = phi,
+          phi_shape = phi_shape,
+          phi_rate = phi_rate,
           init_strategy = init_strategy,
           start_method = start_method,
           optimizer = optimizer,
@@ -792,6 +880,11 @@ m3_run_grid <- function(
         seed_base = seed_base,
         n_units = n_units,
         n_traits = n_traits,
+        lambda_scale = lambda_scale,
+        psi_scale = psi_scale,
+        phi = phi,
+        phi_shape = phi_shape,
+        phi_rate = phi_rate,
         init_strategy = init_strategy,
         start_method = start_method,
         optimizer = optimizer,
@@ -894,11 +987,11 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
   ## Group by (cell, family, d), count failed replicates before
   ## dropping rows with unavailable CIs, then compute target-specific
   ## coverage on converged trait rows.
-  by_cell <- split(
-    grid_df,
-    list(grid_df$cell, grid_df$target, grid_df$ci_method),
-    drop = TRUE
-  )
+  split_keys <- list(grid_df$cell, grid_df$target, grid_df$ci_method)
+  if ("scenario" %in% names(grid_df)) {
+    split_keys <- c(list(grid_df$scenario), split_keys)
+  }
+  by_cell <- split(grid_df, split_keys, drop = TRUE)
   out <- do.call(
     rbind,
     lapply(by_cell, function(sub) {
@@ -1027,7 +1120,7 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         identical(sub$target[1], "psi") &&
           identical(sub$ci_method[1], "profile")
       ) coverage else NA_real_
-      data.frame(
+      row <- data.frame(
         cell = sub$cell[1],
         family = sub$family[1],
         d = sub$d[1],
@@ -1056,6 +1149,15 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         passes_94pct_prof = !is.na(coverage_prof) && coverage_prof >= gate,
         stringsAsFactors = FALSE
       )
+      if ("scenario" %in% names(sub)) {
+        row <- data.frame(
+          scenario = sub$scenario[1],
+          row,
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      }
+      row
     })
   )
   rownames(out) <- NULL

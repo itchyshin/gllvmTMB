@@ -77,6 +77,9 @@ Current operating rule:
 - PR #212 (M3.3a corrected `nbinom2` r20 stress audit) merged on
   2026-05-20 after fast-path R-CMD-check passed on the PR branch;
   post-merge main R-CMD-check and pkgdown also passed.
+- PR #213 (M3.3a `nbinom2` fitted phi / link-residual diagnostics)
+  merged on 2026-05-20 after 3-OS R-CMD-check passed on the PR
+  branch; post-merge main R-CMD-check and pkgdown also passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -84,9 +87,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex/Ada | M3.3a `nbinom2` fitted phi / link-residual diagnostics | `codex/m3-3a-nbinom2-fit-diagnostics-2026-05-20` | `dev/m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, dev-log after-task/check-log | In progress; focused parser/test/smoke passed locally |
+| (none) | (none active) | - | - | No active lane after PR #213 closeout |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -158,6 +161,15 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~03:31 MT**: PR #213 (M3.3a `nbinom2` fitted
+  phi / link-residual diagnostics) merged to `main` as squash commit
+  `b652063` after PR R-CMD-check run `26150065112` passed on ubuntu,
+  macOS, and Windows. Post-merge main R-CMD-check run `26151851845`
+  and pkgdown run `26153970065` also passed. The lane added M3 row
+  diagnostics for fitted `phi_nbinom2` and fitted link-residual
+  increments; EXT-13 / CI-08 / CI-10 remain partial because the r20/b20
+  diagnostic grid still showed low latent+unique `Sigma_unit_diag`
+  estimates.
 - **2026-05-20 ~01:23 MT**: PR #212 (M3.3a corrected
   `nbinom2` r20 stress audit) merged to `main` as squash commit
   `ff395ce` after the PR fast-path R-CMD-check run `26147568512`

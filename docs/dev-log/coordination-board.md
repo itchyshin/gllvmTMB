@@ -75,7 +75,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | M3.3a `nbinom2` stress-smoke controls | local branch `codex/m3-3a-nbinom2-stress-2026-05-19` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `docs/dev-log/*` | Scenario controls and stress smokes complete; post-merge main R-CMD-check for #208 passed; ready to push/open PR |
+| Codex / Ada | M3.3a `nbinom2` stress-smoke controls | PR #209 / `codex/m3-3a-nbinom2-stress-2026-05-19` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `docs/dev-log/*` | PR open; scenario controls and stress smokes complete; waiting for PR checks |
 
 **WIP**: 1.
 

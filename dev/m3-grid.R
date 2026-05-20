@@ -195,6 +195,50 @@ m3_add_fit_health <- function(df, diag) {
   cbind(df, diag[rep(1L, nrow(df)), , drop = FALSE])
 }
 
+m3_fitted_nbinom2_phi <- function(fit, n_traits) {
+  out <- rep(NA_real_, n_traits)
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    return(out)
+  }
+  fids <- fit$tmb_data$family_id_vec
+  tids <- fit$tmb_data$trait_id + 1L
+  phi <- as.numeric(fit$report$phi_nbinom2 %||% rep(NA_real_, n_traits))
+  for (t in seq_len(n_traits)) {
+    rows_t <- which(tids == t)
+    if (length(rows_t) && any(fids[rows_t] == 5L)) {
+      out[t] <- if (length(phi) >= t) phi[t] else phi[1L]
+    }
+  }
+  out
+}
+
+m3_fitted_link_residual <- function(fit, n_traits) {
+  out <- rep(NA_real_, n_traits)
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    return(out)
+  }
+  sigma_none <- tryCatch(
+    gllvmTMB::extract_Sigma(
+      fit,
+      level = "unit",
+      link_residual = "none"
+    ),
+    error = function(e) NULL
+  )
+  sigma_auto <- tryCatch(
+    suppressMessages(gllvmTMB::extract_Sigma(
+      fit,
+      level = "unit",
+      link_residual = "auto"
+    )),
+    error = function(e) NULL
+  )
+  if (is.null(sigma_none) || is.null(sigma_auto)) {
+    return(out)
+  }
+  diag(sigma_auto$Sigma) - diag(sigma_none$Sigma)
+}
+
 ## ---- Truth sampler ----------------------------------------------------
 
 m3_sample_truth <- function(
@@ -612,6 +656,8 @@ m3_run_cell <- function(
               truth_psi = NA_real_,
               est_diag_sigma = NA_real_,
               est_psi = NA_real_,
+              est_phi_nbinom2 = NA_real_,
+              est_link_residual = NA_real_,
               ci_prof_lo = NA_real_,
               ci_prof_hi = NA_real_,
               covered_prof = NA,
@@ -686,6 +732,8 @@ m3_run_cell <- function(
       )$Sigma
     )
     est_psi <- as.numeric(fit$report$sd_B)^2
+    est_phi_nbinom2 <- m3_fitted_nbinom2_phi(fit, n_traits)
+    est_link_residual <- m3_fitted_link_residual(fit, n_traits)
 
     rep_rows <- list()
 
@@ -725,6 +773,8 @@ m3_run_cell <- function(
           truth_psi = psi_truth,
           est_diag_sigma = est_diag[t],
           est_psi = est_psi[t],
+          est_phi_nbinom2 = est_phi_nbinom2[t],
+          est_link_residual = est_link_residual[t],
           ci_prof_lo = prof_lo[t],
           ci_prof_hi = prof_hi[t],
           covered_prof = covered_prof,
@@ -839,6 +889,8 @@ m3_run_cell <- function(
           truth_psi = truth$psi[t],
           est_diag_sigma = est_diag[t],
           est_psi = est_psi[t],
+          est_phi_nbinom2 = est_phi_nbinom2[t],
+          est_link_residual = est_link_residual[t],
           ci_prof_lo = NA_real_,
           ci_prof_hi = NA_real_,
           covered_prof = NA,
@@ -1134,6 +1186,54 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
       } else {
         NA_real_
       }
+      phi_ratio_rows <- if (
+        all(c("est_phi_nbinom2", "truth_phi") %in% names(trait_rows))
+      ) {
+        trait_rows[
+          is.finite(trait_rows$est_phi_nbinom2) &
+            is.finite(trait_rows$truth_phi) &
+            trait_rows$truth_phi != 0,
+          ,
+          drop = FALSE
+        ]
+      } else {
+        trait_rows[FALSE, , drop = FALSE]
+      }
+      median_est_phi_truth_ratio <- if (nrow(phi_ratio_rows)) {
+        stats::median(
+          phi_ratio_rows$est_phi_nbinom2 / phi_ratio_rows$truth_phi,
+          na.rm = TRUE
+        )
+      } else {
+        NA_real_
+      }
+      link_residual_rows <- if ("est_link_residual" %in% names(trait_rows)) {
+        trait_rows[
+          is.finite(trait_rows$est_link_residual),
+          ,
+          drop = FALSE
+        ]
+      } else {
+        trait_rows[FALSE, , drop = FALSE]
+      }
+      median_est_link_residual <- if (nrow(link_residual_rows)) {
+        stats::median(link_residual_rows$est_link_residual, na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+      link_truth_rows <- link_residual_rows[
+        is.finite(link_residual_rows$truth) & link_residual_rows$truth != 0,
+        ,
+        drop = FALSE
+      ]
+      median_link_residual_truth_ratio <- if (nrow(link_truth_rows)) {
+        stats::median(
+          link_truth_rows$est_link_residual / link_truth_rows$truth,
+          na.rm = TRUE
+        )
+      } else {
+        NA_real_
+      }
       n_reps <- length(rep_status)
       n_failed <- sum(!rep_converged)
       n_trait_rows <- nrow(trait_rows)
@@ -1238,6 +1338,9 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         miss_below = miss_below,
         miss_above = miss_above,
         median_est_truth_ratio = median_est_truth_ratio,
+        median_est_phi_truth_ratio = median_est_phi_truth_ratio,
+        median_est_link_residual = median_est_link_residual,
+        median_link_residual_truth_ratio = median_link_residual_truth_ratio,
         mean_runtime_s = mean(rep_runtime, na.rm = TRUE),
         pilot_status = pilot_status,
         coverage_prof = coverage_prof,

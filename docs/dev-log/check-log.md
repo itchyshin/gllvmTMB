@@ -2958,3 +2958,70 @@ Kaizen point:
     about 57-61% of truth. The next M3 diagnostic columns should
     include fitted `phi` and fitted link residuals so variance
     underestimation can be separated from dispersion calibration.
+
+## 2026-05-20 -- M3.3a nbinom2 fitted phi / link-residual diagnostics
+
+Scope:
+
+- Add M3 row-level diagnostics for fitted `phi_nbinom2` and fitted
+  link-residual increments without changing the M3 target definition.
+- Preserve the corrected `Sigma_unit_diag` target as
+  `diag(Lambda Lambda^T + Psi)` via `link_residual = "none"`.
+- Keep EXT-13 / CI-08 / CI-10 partial; this is diagnostic plumbing,
+  not a repaired coverage claim.
+
+Evidence:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB`
+  -> no open PRs at lane start.
+- `git log --all --oneline --since="6 hours ago"`
+  -> reviewed recent #209-#212 and board closeout commits before
+  editing shared dev-log files.
+- `Rscript --vanilla -e 'invisible(parse(file="dev/m3-grid.R")); cat("parse ok\n")'`
+  -> passed.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 15 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 5 notes. The warning was in package
+  installation; notes were future timestamp verification, top-level
+  `air.toml` / `Rplots.pdf`, NEWS heading extraction, unused `nlme`,
+  and base namespace notes for `setNames` / `modifyList`.
+- `Rscript --vanilla -e 'devtools::load_all(".",
+  quiet = TRUE); source("dev/m3-grid.R"); x <- m3_run_cell(...);
+  stopifnot(all(c("est_phi_nbinom2", "est_link_residual") %in%
+  names(x))); ...; cat("m3 diagnostics smoke ok\n")'`
+  -> tiny direct `nbinom2`/`Sigma_unit_diag` smoke returned finite
+  fitted-diagnostic columns and summary medians, then printed
+  `m3 diagnostics smoke ok`.
+- `Rscript --vanilla - <<'EOF' ... EOF`
+  -> created
+  `/tmp/gllvmtmb-m3-3a-fit-diagnostics-r20/nbinom2-two-scenario-fit-diagnostics-r20-b20.rds`.
+  Baseline: 20/20 fits, 70/400 bootstrap failures, coverage 0.76,
+  miss below 0, miss above 24, median estimate/truth 0.546,
+  median fitted phi/truth 0.691, median link residual/truth 2.038.
+  Low-phi: 20/20 fits, 12/400 bootstrap failures, coverage 0.54,
+  miss below 2, miss above 44, median estimate/truth 0.520,
+  median fitted phi/truth 0.799, median link residual/truth 7.487.
+
+Consistency and stale-wording scans:
+
+- `rg -n 'est_phi_nbinom2|est_link_residual|median_est_phi_truth_ratio|median_link_residual_truth_ratio|CI-08|CI-10|EXT-13|partial' dev/m3-grid.R tests/testthat/test-m3-grid-summary.R docs/design/42-m3-dgp-grid.md docs/dev-log/audits/2026-05-20-m3-3a-nbinom2-fit-diagnostics-r20.md docs/dev-log/after-task/2026-05-20-m3-3a-nbinom2-fit-diagnostics.md docs/dev-log/check-log.md`
+  -> code, tests, Design 42, audit, after-task, and check-log
+  consistently name the fitted-diagnostic columns and keep EXT-13 /
+  CI-08 / CI-10 partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-m3-3a-nbinom2-fit-diagnostics.md`
+
+Kaizen point:
+
+42. **Calibration diagnostics belong in the grid rows before the next
+    expensive grid.** After the target-scale correction, one-sided
+    `Sigma_unit_diag` misses could come from unit-tier covariance
+    underestimation, dispersion calibration, or link-residual
+    conventions. Recording fitted `phi_nbinom2` and the fitted
+    link-residual increment in every row makes the next r20/r50 grid
+    interpretable without re-fitting each cell manually.

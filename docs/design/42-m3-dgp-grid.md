@@ -144,19 +144,26 @@ Two artefacts:
 1. `dev/precomputed/m3-coverage-grid.rds` — long-format data frame
    with columns: `(cell, family, d, rep, trait_id,
    truth_diag_sigma, truth_psi, est_diag_sigma, est_psi,
-   ci_prof_lo, ci_prof_hi, covered_prof, converged, runtime_s)`.
+   est_phi_nbinom2, est_link_residual, ci_prof_lo, ci_prof_hi,
+   covered_prof, converged, runtime_s)`.
    Failed refits stay in this grid as one row per replicate with
    `trait_id = NA`, `covered_prof = NA`, and `converged = FALSE`.
    In the 2026-05-19 production artifact, `ci_prof_lo`,
    `ci_prof_hi`, and `covered_prof` are `psi` profile fields, not
    total `Sigma_unit` profile fields.
-   The next target-explicit pilot adds `target` and `ci_method`
-   columns before any production promotion.
+   The target-explicit pilot adds `target` and `ci_method` columns
+   before any production promotion. The 2026-05-20 `nbinom2`
+   diagnostic lane adds fitted `phi_nbinom2` and fitted
+   link-residual columns so CI misses can be separated into unit-tier
+   covariance bias versus family-dispersion calibration.
 2. `dev/precomputed/m3-coverage-summary.rds` — per-cell aggregate:
    `(cell, family, d, n_completed, n_failed, coverage_prof,
-   passes_94pct_prof, mean_runtime_s)`. `n_completed` and
-   `n_failed` count replicate fits; `coverage_prof` is computed on
-   the converged `(rep, trait)` rows only.
+   passes_94pct_prof, median_est_truth_ratio,
+   median_est_phi_truth_ratio, median_est_link_residual,
+   median_link_residual_truth_ratio, mean_runtime_s)`.
+   `n_completed` and `n_failed` count replicate fits;
+   `coverage_prof` is computed on the converged `(rep, trait)` rows
+   only.
 
 Smoke artefacts are committed under `inst/extdata/` for the M3.6
 article. Production artefacts are uploaded by the manual GitHub

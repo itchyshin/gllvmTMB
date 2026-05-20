@@ -97,9 +97,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | #223 citation/provenance hygiene + #227 `meta_V()` V-only syntax | PR #226 / `codex/sister-package-citation-hygiene-2026-05-20` | citation docs, `meta_V()` parser/docs/tests, wide `traits()` marker path, check-log, after-task | Active 2026-05-20 12:56 MDT; PR open, local focused tests + pkgdown check passed; ready for push / Actions |
+| (none) | -- | -- | -- | No active Codex lane after PR #226 merge |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -141,8 +141,8 @@ leave a coordination comment first and wait for acknowledgement.
 | `docs/design/*` | coordinate per file; this lane only touches stale source-of-truth wording |
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
 | Tier-1 article rewrites (`choose-your-model`, `phylogenetic-gllvm`, etc.) | paused; revisit after this hygiene stop point |
-| `R/*` | no active engine owner after #181 / #182 merged. This hygiene lane made narrow wording-only roxygen/comment updates in `R/gllvmTMB.R`, `R/traits-keyword.R`, `R/brms-sugar.R`, `R/two-stage.R`, and `R/animal-keyword.R`; engine logic now on `main` came from #181 / #182. Coordinate before further R edits. |
-| `tests/testthat/*` | no active owner after #181 / #182 merged; new tests from those PRs are now on `main` |
+| `R/*` | no active engine owner after #226 merged. Recent parser/API edits on `main` are from PR #226 (`meta_V(V = V)`, `type = "exact"`, wide `traits()` marker preservation). Coordinate before further R edits. |
+| `tests/testthat/*` | no active owner after #226 merged; new `meta_V()` parser and wide-format tests are now on `main` |
 | `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
 
 If a file's owner needs to change (e.g. Claude needs to touch
@@ -170,6 +170,16 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~13:37 MT**: PR #226 (sister-package citation
+  hygiene + `meta_V()` V-only syntax) merged to `main` as squash
+  commit `f71de5f` after PR R-CMD-check run `26183610311` passed on
+  ubuntu, macOS, and Windows. The lane closed #223 and #227, updated
+  citation/provenance boundaries, made `meta_V(V = V)` /
+  `meta_V(V, type = "exact")` canonical, preserved compatibility for
+  old parser spelling, reserved `type = "proportional"` as blocked
+  future work, fixed wide `traits(...)` marker preservation, and
+  updated NEWS, roxygen/Rd, design docs, validation-debt rows,
+  check-log, and the after-task report.
 - **2026-05-20 ~11:18 MT**: PR #225 (M3.3b source-map dashboard /
   Florence contact sheet) merged to `main` as squash commit
   `223919b` after PR R-CMD-check run `26176399868` passed on ubuntu,

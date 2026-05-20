@@ -92,9 +92,8 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | Issue-ledger after-task protocol | `codex/issue-ledger-after-task-protocol-2026-05-20` | `docs/design/10-after-task-protocol.md`, `docs/dev-log/after-task/_TEMPLATE.md`, `ROADMAP.md`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-issue-ledger-protocol.md` | Active; wiring issue tracker inspection into closeout and opening PR to close #216. |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -165,6 +164,12 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~06:22 MT**: PR #219 (issue-ledger after-task
+  protocol) merged to `main` as merge commit `2e516ec`. PR
+  R-CMD-check run `26161369265`, post-merge main R-CMD-check run
+  `26161403057`, and pkgdown run `26161420569` all passed. Issue #216
+  auto-closed; #217 now carries the rolling next-30-slice queue, and
+  #218 carries the Florence / diagnostic visualization cross-link.
 - **2026-05-20 ~05:42 MT**: PR #215 (M3.3 drmTMB cross-learning
   checkpoint) merged to `main` as merge commit `26dbc1e`. PR
   R-CMD-check run `26160169174`, post-merge main R-CMD-check run

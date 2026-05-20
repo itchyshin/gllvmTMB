@@ -92,8 +92,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
+| Codex / Ada | Issue-ledger after-task protocol | `codex/issue-ledger-after-task-protocol-2026-05-20` | `docs/design/10-after-task-protocol.md`, `docs/dev-log/after-task/_TEMPLATE.md`, `ROADMAP.md`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-issue-ledger-protocol.md` | Active; wiring issue tracker inspection into closeout and opening PR to close #216. |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

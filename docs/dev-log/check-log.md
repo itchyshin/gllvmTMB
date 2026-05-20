@@ -3135,3 +3135,50 @@ Kaizen point:
     full M3 rerun. Florence belongs in that lane because latent
     covariance, trait-level bias, fitted-dispersion drift, and
     bootstrap-failure structure are too easy to bury in tables.
+
+## 2026-05-20 -- Issue-ledger closeout protocol
+
+Scope:
+
+- Add a required GitHub Issue Ledger to the after-task template and
+  protocol.
+- Update the roadmap maintenance discipline so roadmap-changing PRs
+  keep `ROADMAP.md`, GitHub Issues, and after-task reports aligned.
+- Create durable tracker issues for the immediate M3 continuation:
+  #216 for the process change, #217 for the M3.3b surface-admission
+  gate, and #218 for the M3 diagnostic visualization / Florence gate.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt,url`
+  -> no open PRs at lane start.
+- `git log --all --oneline --since="6 hours ago"`
+  -> reviewed recent M3.3 / coordination commits through `ca2dae9`.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,labels,url,updatedAt`
+  -> confirmed open issues #216, #217, and #218 are present after
+  creation.
+- `gh issue comment 217 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted the rolling next-30-slice queue as issue comment
+  `https://github.com/itchyshin/gllvmTMB/issues/217#issuecomment-4498189180`.
+- `gh issue comment 218 --repo itchyshin/gllvmTMB --body-file -`
+  -> linked the visualization / Florence gate to the relevant rolling
+  slices as issue comment
+  `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4498190178`.
+- `git diff --check`
+  -> clean.
+- `rg -n 'GitHub Issue Ledger|issue ledger|Issue Ledger|Roadmap tick|#216|#217|#218' docs/dev-log/after-task/_TEMPLATE.md docs/design/10-after-task-protocol.md ROADMAP.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-05-20-issue-ledger-protocol.md`
+  -> expected hits in the template, protocol, roadmap, check-log,
+  coordination-board lane, and after-task report.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-issue-ledger-protocol.md`
+
+Kaizen point:
+
+45. **Issues are the public work ledger, not an optional backlog.**
+    After-task reports now include a GitHub Issue Ledger so completed
+    work inspects relevant issues, comments when a scope moved, closes
+    resolved requests, and creates follow-up issues before the next
+    slice starts. Roadmap ticks, issue comments, and after-task reports
+    should point to the same next action.

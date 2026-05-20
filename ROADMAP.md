@@ -1,7 +1,8 @@
 # gllvmTMB Roadmap
 
 *Last refreshed: 2026-05-20 (M3.3a NB2 dispersion diagnostics,
-known-phi point evidence, and drmTMB cross-learning checkpoint).*
+known-phi point evidence, drmTMB cross-learning checkpoint, and
+issue-ledger closeout discipline).*
 
 This roadmap is the shared map for the maintainer, the Claude
 Code and Codex teams, contributors, and prospective users. It
@@ -60,6 +61,10 @@ those sources.
   also moves Florence's visualization review into the M3 diagnostic
   critical path rather than leaving plots only to the later
   visualization phase.
+- The after-task protocol now treats GitHub Issues as part of the
+  project ledger: every meaningful closeout records which issues were
+  inspected, commented, closed, or created, and roadmap-changing PRs
+  keep the roadmap and issue tracker in sync.
 - The robust-modeling roadmap is now captured in
   `docs/design/49-robust-modeling-roadmap.md`. The first slice adds
   start provenance, restart history, protected/skipped `sdreport()`
@@ -1164,6 +1169,11 @@ page accurate:
   edits `ROADMAP.md` (small change to the row's chip and
   progress bar). The pkgdown workflow re-renders this article
   on the next `main` push.
+- **Every after-task report includes a GitHub Issue Ledger**
+  stating which relevant issues were inspected, commented, closed,
+  or created. Roadmap-changing PRs update both this page and the
+  relevant tracker issue so roadmap, issue comments, and after-task
+  reports do not drift apart.
 - **New phases or sub-phases** are added via a
   `docs/dev-log/decisions.md` entry first (so the addition is
   canon) and then this page is updated to surface it. Phase

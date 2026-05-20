@@ -12,7 +12,8 @@
 ##     --n-reps=200 --init-strategy=single_trait_warmup
 ##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 \
 ##     --n-reps=50 --init-strategy=single_trait_warmup \
-##     --targets=psi,Sigma_unit_diag --n-boot=30
+##     --start-method=res --start-jitter=0.2 --n-init=5 \
+##     --targets=psi,Sigma_unit_diag --n-boot=30 --n-cores-boot=4
 ##
 ## Output:
 ##   dev/precomputed/m3-coverage-grid.rds (long-format)
@@ -27,7 +28,11 @@
 ##     M3 production-grid GitHub Actions workflow.
 
 suppressPackageStartupMessages({
-  library(gllvmTMB)
+  if (requireNamespace("pkgload", quietly = TRUE)) {
+    pkgload::load_all(".", quiet = TRUE)
+  } else {
+    library(gllvmTMB)
+  }
 })
 
 source("dev/m3-grid.R")
@@ -129,10 +134,43 @@ init_strategy <- match.arg(
   arg_value("--init-strategy", "default"),
   c("default", "single_trait_warmup")
 )
+start_method_name <- arg_value("--start-method", "default")
+if (!start_method_name %in% c("default", "res", "indep")) {
+  stop("--start-method must be one of default, res, indep")
+}
+start_jitter <- as.numeric(arg_value("--start-jitter", "0"))
+if (is.na(start_jitter) || start_jitter < 0) {
+  stop("--start-jitter must be a non-negative number")
+}
+start_method <- if (identical(start_method_name, "default")) {
+  list(method = NULL, jitter.sd = 0)
+} else {
+  list(method = start_method_name, jitter.sd = start_jitter)
+}
+optimizer <- match.arg(arg_value("--optimizer", "nlminb"), c("nlminb", "optim"))
+optim_method <- arg_value("--optim-method", "BFGS")
+optArgs <- if (identical(optimizer, "optim")) list(method = optim_method) else list()
+n_init <- as.integer(arg_value("--n-init", "1"))
+if (is.na(n_init) || n_init < 1L) {
+  stop("--n-init must be a positive integer")
+}
+init_jitter <- as.numeric(arg_value("--init-jitter", "0.3"))
+if (is.na(init_jitter) || init_jitter < 0) {
+  stop("--init-jitter must be a non-negative number")
+}
+se <- tolower(arg_value("--se", "true"))
+if (!se %in% c("true", "false")) {
+  stop("--se must be true or false")
+}
+se <- identical(se, "true")
 targets <- m3_normalise_targets(split_arg(arg_value("--targets", "psi")))
 n_boot <- as.integer(arg_value("--n-boot", "30"))
 if (is.na(n_boot) || n_boot < 1L) {
   stop("--n-boot must be a positive integer")
+}
+n_cores_boot <- as.integer(arg_value("--n-cores-boot", "1"))
+if (is.na(n_cores_boot) || n_cores_boot < 1L) {
+  stop("--n-cores-boot must be a positive integer")
 }
 ci_level <- as.numeric(arg_value("--ci-level", as.character(M3_DEFAULT_NOMINAL)))
 if (is.na(ci_level) || ci_level <= 0 || ci_level >= 1) {
@@ -151,13 +189,17 @@ if (!dir.exists(OUT_DIR)) {
 ## ---- Run --------------------------------------------------------------
 
 cat(sprintf(
-  "[m3] mode = %s (%d cells x %d reps; init_strategy = %s; targets = %s; n_boot = %d)\n",
+  "[m3] mode = %s (%d cells x %d reps; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
   mode,
   nrow(config$cells),
   config$n_reps,
   init_strategy,
+  start_method_name,
+  optimizer,
+  n_init,
   paste(targets, collapse = ","),
-  n_boot
+  n_boot,
+  n_cores_boot
 ))
 
 t_start <- Sys.time()
@@ -168,8 +210,15 @@ grid_df <- m3_run_grid(
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
   init_strategy = init_strategy,
+  start_method = start_method,
+  optimizer = optimizer,
+  optArgs = optArgs,
+  n_init = n_init,
+  init_jitter = init_jitter,
+  se = se,
   targets = targets,
   n_boot = n_boot,
+  n_cores_boot = n_cores_boot,
   ci_level = ci_level,
   parallel = FALSE # workflow matrix parallelises cells
 )
@@ -200,8 +249,16 @@ artefact <- list(
     n_reps = config$n_reps,
     n_cells = nrow(config$cells),
     init_strategy = init_strategy,
+    start_method = start_method_name,
+    start_jitter = start_jitter,
+    optimizer = optimizer,
+    optArgs = optArgs,
+    n_init = n_init,
+    init_jitter = init_jitter,
+    se = se,
     targets = targets,
     n_boot = n_boot,
+    n_cores_boot = n_cores_boot,
     ci_level = ci_level
   ),
   grid = grid_df,

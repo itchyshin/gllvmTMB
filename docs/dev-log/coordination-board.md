@@ -72,8 +72,9 @@ Current operating rule:
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
 | Codex / Ada | Robust modeling starts + diagnostics slice | `codex/rr-residual-starts-2026-05-19` | `R/fit-multi.R`, `R/diagnose.R`, `R/gllvmTMB.R`, `R/init-warmstart.R`, `R/methods-gllvmTMB.R`, `tests/testthat/*start*`, `tests/testthat/test-sanity-multi.R`, `ROADMAP.md`, `NEWS.md`, `_pkgdown.yml`, `docs/design/35-validation-debt-register.md`, `docs/design/43-asreml-speed-techniques.md`, `docs/design/48-m3-4-boundary-regimes.md`, `docs/design/49-robust-modeling-roadmap.md`, `docs/dev-log/*` | Implementation complete locally; full `devtools::test()` passed with 0 failures, focused se/diagnostic tests passed, pkgdown passed; needs PR and 3-OS CI before merge |
+| Codex / Ada | M3.3a fit-health pilot schema | `codex/m3-3a-fit-health-pilot-2026-05-19` (dependent on #206) | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `docs/dev-log/*` | Active; schema smokes complete for Gaussian, nbinom2, mixed, multicore bootstrap, and separate two-level Gaussian diagnostic path |
 
-**WIP**: 1.
+**WIP**: 2.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

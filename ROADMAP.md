@@ -1,8 +1,9 @@
 # gllvmTMB Roadmap
 
 *Last refreshed: 2026-05-20 (M3.3a NB2 dispersion diagnostics,
-known-phi point evidence, drmTMB cross-learning checkpoint, and
-issue-ledger closeout discipline).*
+known-phi point evidence, drmTMB cross-learning checkpoint,
+issue-ledger closeout discipline, and M3.3b surface-admission /
+Florence diagnostic-report gate).*
 
 This roadmap is the shared map for the maintainer, the Claude
 Code and Codex teams, contributors, and prospective users. It
@@ -65,6 +66,10 @@ those sources.
   project ledger: every meaningful closeout records which issues were
   inspected, commented, closed, or created, and roadmap-changing PRs
   keep the roadmap and issue tracker in sync.
+- Design 50 now defines the M3.3b surface-admission gate. The next
+  M3 compute lane must admit a surface with explicit target, interval
+  method, fit mode, failure ledger, and rendered diagnostic report
+  before r50/r200 scaling.
 - The robust-modeling roadmap is now captured in
   `docs/design/49-robust-modeling-roadmap.md`. The first slice adds
   start provenance, restart history, protected/skipped `sdreport()`
@@ -76,10 +81,10 @@ those sources.
 These are intentionally bounded lanes. Treat each as its own PR.
 
 1. **M3.3b surface-admission plan (Ada + Fisher + Curie + Jason +
-   Rose)**: turn the NB2 evidence trail into a small operating-
-   characteristics programme. Each candidate surface must name the
-   estimand, interval method, fit mode, start strategy, failure
-   ledger, and visual diagnostic before it enters a larger grid.
+   Rose)**: use Design 50 and issue #217 to admit each candidate
+   surface before compute. Each surface must name the estimand,
+   interval method, fit mode, start strategy, failure ledger, and
+   visual diagnostic before it enters a larger grid.
 2. **NB2 dispersion/variance stress map (Fisher + Curie + Gauss)**:
    expand the known-phi diagnostic only enough to separate dispersion
    estimation, latent+unique variance scale, sample size, and rank.
@@ -90,9 +95,10 @@ These are intentionally bounded lanes. Treat each as its own PR.
    parameter bootstrap refit path. Until then, known-phi evidence is
    point-estimate evidence only.
 4. **Diagnostic report and figure gate (Florence + Pat + Grace)**:
-   add a tiny rendered M3 diagnostic report before another production
-   grid. Plots must show estimate/truth, fitted phi/truth, link
-   residuals, failure counts, and method labels without hiding weak
+   use Design 50 plus the Design 46 M3 addendum and issue #218 to add
+   a tiny rendered M3 diagnostic report before another production grid.
+   Plots must show estimate/truth, fitted phi/truth, link residuals,
+   failure counts, method labels, and denominators without hiding weak
    cells behind averages. For `gllvmTMB`, this is not a polish pass:
    high-dimensional latent/covariance diagnostics need visual checks
    because tables alone can hide rank, trait, and refit-failure
@@ -844,7 +850,7 @@ until post-CRAN per family-by-family validation slices.
 |-------|------|------|-----------|
 | **M3.1** | DGP grid (5 families × 3 dims × 200 reps incl. mixed-family cell) | Fisher + Curie | ✅ DGP grid documented in [Design 42](docs/design/42-m3-dgp-grid.md); 15 cells (Gauss, binomial, nbinom2, ordinal-probit, mixed-family × d ∈ {1,2,3}); Option A parallel default (~4-5 h on 8 cores). |
 | **M3.2** | DGP grid pipeline machinery + smoke artefact | Curie + Grace | ✅ `dev/m3-grid.R` (library) + `dev/precompute-m3-grid.R` (driver) shipped; smoke RDS (Gaussian × 3 dims × 10 reps; 150 rows; ~18 s) committed to `inst/extdata/m3-coverage-{grid,summary}-smoke.rds`. Reproducible via `Rscript dev/precompute-m3-grid.R`. **Note**: smoke uses placeholder Wald (20 % RSE heuristic) — proper delta-method / profile-likelihood CIs deferred to M3.3. |
-| **M3.3** | Per-family target-explicit CI accuracy validation | Fisher | 🔴 2026-05-19 production grid passed compute but failed the statistical gate on profile-`psi`; see `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md` and `docs/dev-log/audits/2026-05-19-m3-3-target-scale-audit.md`. PRs #213-#214 then showed that corrected NB2 `Sigma_unit_diag` remains underestimated, fitted `phi_nbinom2` is often below truth, and known-phi point refits improve but do not fully repair the target. Done only when target-explicit total `Sigma_unit[tt]` coverage reaches ≥94 % and the coverage-rate matrix supports moving CI-08 / CI-10. `psi` and known-phi point ratios remain diagnostic targets. |
+| **M3.3** | Per-family target-explicit CI accuracy validation | Fisher | 🔴 2026-05-19 production grid passed compute but failed the statistical gate on profile-`psi`; see `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md` and `docs/dev-log/audits/2026-05-19-m3-3-target-scale-audit.md`. PRs #213-#214 then showed that corrected NB2 `Sigma_unit_diag` remains underestimated, fitted `phi_nbinom2` is often below truth, and known-phi point refits improve but do not fully repair the target. Design 50 now requires M3.3b surface admission before r50/r200 scaling. Done only when target-explicit total `Sigma_unit[tt]` coverage reaches ≥94 % and the coverage-rate matrix supports moving CI-08 / CI-10. `psi` and known-phi point ratios remain diagnostic targets. |
 | **M3.4** | Robust modeling: starts, `pdHess`, fit health, and boundary diagnostics | Curie + Fisher + Gauss | 🟢 Partial. `init_strategy = "single_trait_warmup"`, phi clamp, residual starts, simpler-model starts, restart history, protected/skipped `sdreport()` status, `gllvmTMBcontrol(se = FALSE)`, `fit_health`, and `check_gllvmTMB()` are implemented on `main`. The convergence/start-values article is drafted in PR #208 and teaches the no-SE plus bootstrap/profile workflow for hard fits. Covered/partial rows: MIS-16..MIS-20 and DIA-08..DIA-10. Remaining work is target-explicit empirical evidence, default-policy decisions, and family-specific stress lanes. |
 | **M3.5** | Derived-quantity coverage (communality, repeatability, phylo signal) | Fisher | Coverage table reported per family; Wald-vs-profile-vs-bootstrap differential documented. |
 | **M3.6** | NEW article `simulation-recovery-validated.Rmd` (replaces pulled article) | Curie + Pat | ✅ scaffold shipped; reads smoke RDS from `inst/extdata/` via `system.file()`; honest framing of placeholder Wald + M3.3 production replacement plan. Article re-renders automatically when M3.3 ships proper inference (same `system.file()` path; only RDS contents change). |

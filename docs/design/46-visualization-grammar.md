@@ -67,6 +67,33 @@ tutorial, gallery, or report.
 | **Composability** | The helper returns an ordinary `ggplot` object. The underlying data table is exposed via `$data` and `attr(., 'gllvmTMB_meta')`. Custom downstream plots (ecology/evolution figures combining multiple extractors) compose naturally. |
 | **Rotation honesty** | When loadings `Lambda` are displayed without a constraint, the caption notes "loading sign and rotation are not identifiable; the rotation-invariant target is the implied Sigma". Required for any `loadings`-type plot. |
 
+## 3a. M3 Diagnostic Report Gate
+
+M3 diagnostic figures are not deferred to the later Phase 1c-viz public
+plot layer. They are part of the M3.3b surface-admission gate defined
+in `docs/design/50-m3-3b-surface-admission.md`.
+
+Before any r50 or r200 M3.3b run, Florence reviews a tiny rendered
+diagnostic report. The report must show:
+
+- coverage against the 0.90 pilot threshold and 0.94 promotion gate;
+- estimate/truth ratios by trait, with a ratio = 1 reference line;
+- fitted NB2 `phi`/truth and fitted link-residual diagnostics when
+  NB2 is present;
+- fit failures, CI missingness, bootstrap failures, `pdHess`, and
+  `sdreport` status;
+- target, method, and fit-mode labels on every panel.
+
+The report data must preserve one row per replicate and trait whenever
+that grain exists. Failed fits and missing intervals stay visible.
+`psi/profile` diagnostics must not be drawn as if they were total
+`Sigma_unit_diag/bootstrap` promotion evidence, and known-phi
+point-only diagnostics must not be plotted as coverage evidence.
+
+Florence can fail the report if the figure hides weak cells behind
+averages, drops denominators, uses default-looking panels, or makes the
+main inference decision depend on a caption the reader can miss.
+
 ## 4. Skills powering Florence's work
 
 Four skills installed at `.agents/skills/` (2026-05-18):

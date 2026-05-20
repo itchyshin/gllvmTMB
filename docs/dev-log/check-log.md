@@ -3182,3 +3182,59 @@ Kaizen point:
     resolved requests, and creates follow-up issues before the next
     slice starts. Roadmap ticks, issue comments, and after-task reports
     should point to the same next action.
+
+## 2026-05-20 -- M3.3b surface-admission and diagnostic-report gate
+
+Scope:
+
+- Add Design 50 as the M3.3b surface-admission gate before any r50/r200
+  M3 compute lane.
+- Add an M3 diagnostic-report gate to Design 46 so Florence enters the
+  M3 inference lane before broad simulation reruns.
+- Retire the older Design 44 `M3.3b` label for an optional
+  profile-likelihood subset.
+- Update ROADMAP and validation-debt rows EXT-13 / CI-08 / CI-10
+  without changing their statuses.
+- Comment on #217 and #218 so the issue tracker records the branch
+  checkpoint.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt,url`
+  -> no open PRs at lane start.
+- `git log --all --oneline --since="6 hours ago" | head -40`
+  -> reviewed recent M3.3 / board commits through `8ad6e16`.
+- `gh run list --repo itchyshin/gllvmTMB --limit 5 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,createdAt`
+  -> latest main R-CMD-check and pkgdown were green before this branch.
+- `gh issue comment 217 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted branch checkpoint:
+  `https://github.com/itchyshin/gllvmTMB/issues/217#issuecomment-4498443559`.
+- `gh issue comment 218 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted branch checkpoint:
+  `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4498445342`.
+- `git diff --check`
+  -> clean.
+- `rg -n 'Design 50|M3.3b|surface-admission|diagnostic report|Florence|#217|#218|EXT-13|CI-08|CI-10' ROADMAP.md docs/design/35-validation-debt-register.md docs/design/44-m3-3-inference-replacement.md docs/design/46-visualization-grammar.md docs/design/50-m3-3b-surface-admission.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-05-20-m3-3b-surface-visual-gate.md`
+  -> expected hits in roadmap, validation debt, Design 44, Design 46,
+  Design 50, check-log, coordination board, and the after-task report.
+- `rg -n 'Former M3.3b label|profile-likelihood subset|surface-admission' docs/design/44-m3-3-inference-replacement.md docs/design/50-m3-3b-surface-admission.md ROADMAP.md`
+  -> confirmed Design 44 now marks the old profile-subset label as
+  historical while Design 50 and ROADMAP own current M3.3b surface
+  admission.
+- `rg -n 'known-phi|n_boot = 0|point-estimate evidence|coverage evidence' docs/design/50-m3-3b-surface-admission.md docs/design/46-visualization-grammar.md ROADMAP.md docs/design/35-validation-debt-register.md`
+  -> confirmed known-phi diagnostics are labelled as point-estimate
+  evidence only, not coverage evidence.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-m3-3b-surface-visual-gate.md`
+
+Kaizen point:
+
+46. **Parallel scouting is useful only when integration has one
+    contract.** The #217 and #218 scouts separated inference and
+    visualization questions, but the write path recombined them in
+    Design 50 because plots, admission thresholds, and validation-debt
+    status all depend on the same target/method/fit-mode labels.

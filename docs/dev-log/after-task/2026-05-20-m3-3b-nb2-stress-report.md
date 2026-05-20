@@ -133,7 +133,12 @@ decision. EXT-13, CI-08, and CI-10 remain unchanged.
   `https://github.com/itchyshin/gllvmTMB/issues/217#issuecomment-4498901315`.
 - Commented on #218 with the diagnostic-report checkpoint:
   `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4498903633`.
-- #217 and #218 remain open. This PR advances both but does not close
+- Opened PR #221:
+  `https://github.com/itchyshin/gllvmTMB/pull/221`.
+- Added PR #221 ledger comments to #217 and #218:
+  `https://github.com/itchyshin/gllvmTMB/issues/217#issuecomment-4498947292`;
+  `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4498947501`.
+- #217 and #218 remain open. PR #221 advances both but does not close
   either, because no r10/r20 evidence or rendered Florence figure has
   been accepted yet.
 

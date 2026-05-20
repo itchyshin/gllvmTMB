@@ -3226,6 +3226,15 @@ Evidence:
   evidence only, not coverage evidence.
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
   -> passed: `No problems found.`
+- `gh pr create --repo itchyshin/gllvmTMB --base main --head codex/m3-3b-nb2-stress-report-2026-05-20`
+  -> opened PR #221:
+  `https://github.com/itchyshin/gllvmTMB/pull/221`.
+- `gh issue comment 217 --repo itchyshin/gllvmTMB ...`
+  -> linked PR #221 without closing #217:
+  `https://github.com/itchyshin/gllvmTMB/issues/217#issuecomment-4498947292`.
+- `gh issue comment 218 --repo itchyshin/gllvmTMB ...`
+  -> linked PR #221 without closing #218:
+  `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4498947501`.
 
 After-task report:
 

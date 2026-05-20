@@ -97,7 +97,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada + Fisher + Curie + Florence + Rose + Shannon | M3.3b NB2 stress-map/report bundle (rolling slices 4, 6, 9 first; sets up 5-13) | `codex/m3-3b-nb2-stress-report-2026-05-20` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-m3-3b-nb2-stress-report.md`, issue comments #217/#218 | Active; building the stress-map design/source-map/report scaffold before compute. |
+| Codex / Ada + Fisher + Curie + Florence + Rose + Shannon | M3.3b NB2 stress-map/report bundle (rolling slices 4, 6, 9 first; sets up 5-13) | PR #221 / `codex/m3-3b-nb2-stress-report-2026-05-20` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-m3-3b-nb2-stress-report.md`, issue comments #217/#218 | Active; CI running for stress-map scaffold. |
 
 **WIP**: 1.
 

@@ -84,8 +84,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
+| Codex/Ada | M3.3a `nbinom2` fitted phi / link-residual diagnostics | `codex/m3-3a-nbinom2-fit-diagnostics-2026-05-20` | `dev/m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, dev-log after-task/check-log | In progress; focused parser/test/smoke passed locally |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

@@ -173,6 +173,13 @@ When the next run uses GitHub Actions or HPC shards, the grid should
 carry `worker_id`, `artifact_id`, or equivalent provenance so a figure
 can trace each point back to its compute source.
 
+The first implementation is dev-only: `m3_source_map_dashboard_data()`
+keeps the long-grid-derived trait ratios, failure ledger, and verdict
+rows separate, and `m3_write_source_map_dashboard()` writes a PNG
+contact sheet beside the Markdown diagnostic report for diagnostic
+modes. Point-only cells are labelled `POINT_ONLY` and
+`NOT_EVALUATED`, not plotted as coverage evidence.
+
 ## 8. Florence gate for M3 diagnostics
 
 Florence can reject a diagnostic figure even when the underlying run

@@ -2134,6 +2134,576 @@ m3_diagnostic_report_data <- function(
   )
 }
 
+## ---- Diagnostic dashboard data ----------------------------------------
+
+m3_source_map_probe_label <- function(probe_id) {
+  probe_id <- as.character(probe_id)
+  probe_id <- sub("^current_res_bfgs_", "current ", probe_id)
+  probe_id <- sub("^res_bfgs_", "BFGS ", probe_id)
+  probe_id <- sub("^res_nlminb_", "nlminb ", probe_id)
+  probe_id <- gsub("_", " ", probe_id, fixed = TRUE)
+  probe_id <- gsub("j0", "j=0.", probe_id, fixed = TRUE)
+  probe_id
+}
+
+m3_source_map_label <- function(df, include_probe = TRUE) {
+  source <- if ("scenario" %in% names(df)) {
+    as.character(df$scenario)
+  } else if ("surface_id" %in% names(df)) {
+    as.character(df$surface_id)
+  } else {
+    as.character(df$cell)
+  }
+  source <- gsub("_", " ", source, fixed = TRUE)
+  if ("fit_phi_mode" %in% names(df)) {
+    mode <- ifelse(
+      df$fit_phi_mode == "known",
+      "known phi",
+      "estimated phi"
+    )
+    source <- paste0(source, " | ", mode)
+  }
+  if (isTRUE(include_probe) && "probe_id" %in% names(df)) {
+    source <- paste0(source, " | ", m3_source_map_probe_label(df$probe_id))
+  }
+  source
+}
+
+m3_source_map_dashboard_data <- function(
+  grid_df,
+  pilot_gate = 0.90,
+  promotion_gate = M3_PASS_GATE
+) {
+  report <- m3_diagnostic_report_data(
+    grid_df,
+    pilot_gate = pilot_gate,
+    promotion_gate = promotion_gate
+  )
+  summary <- report$summary
+  include_probe <- "probe_id" %in% names(summary) &&
+    length(unique(stats::na.omit(summary$probe_id))) > 1L
+  summary$source_label <- m3_source_map_label(
+    summary,
+    include_probe = include_probe
+  )
+  summary$source_label <- factor(
+    summary$source_label,
+    levels = rev(unique(summary$source_label))
+  )
+
+  trait <- report$trait_ratios
+  if (nrow(trait)) {
+    trait$source_label <- m3_source_map_label(
+      trait,
+      include_probe = include_probe
+    )
+    trait$source_label <- factor(
+      trait$source_label,
+      levels = levels(summary$source_label)
+    )
+  }
+
+  ratio_specs <- list(
+    list(
+      metric = "Sigma estimate/truth",
+      column = "median_est_truth_ratio"
+    ),
+    list(
+      metric = "NB2 phi estimate/truth",
+      column = "median_est_phi_truth_ratio"
+    ),
+    list(
+      metric = "Link residual/truth",
+      column = "median_link_residual_truth_ratio"
+    )
+  )
+  ratio_points <- do.call(rbind, lapply(ratio_specs, function(spec) {
+    if (!nrow(trait) || !spec$column %in% names(trait)) {
+      return(NULL)
+    }
+    value <- trait[[spec$column]]
+    keep <- is.finite(value)
+    if (!any(keep)) {
+      return(NULL)
+    }
+    cols <- intersect(
+      c(
+        "source_label", "surface_id", "scenario", "family", "d",
+        "target", "ci_method", "fit_phi_mode", "trait_id",
+        "probe_id", "probe_label", "n_trait_rows", "n_ci_available"
+      ),
+      names(trait)
+    )
+    out <- trait[keep, cols, drop = FALSE]
+    out$metric <- spec$metric
+    out$value <- value[keep]
+    out$reference <- 1
+    out
+  }))
+  if (is.null(ratio_points)) {
+    ratio_points <- data.frame()
+  } else {
+    rownames(ratio_points) <- NULL
+    ratio_points$metric <- factor(
+      ratio_points$metric,
+      levels = c(
+        "Sigma estimate/truth",
+        "NB2 phi estimate/truth",
+        "Link residual/truth"
+      )
+    )
+  }
+
+  ledger <- report$failure_ledger
+  if (nrow(ledger)) {
+    ledger$source_label <- m3_source_map_label(
+      ledger,
+      include_probe = include_probe
+    )
+    ledger$source_label <- factor(
+      ledger$source_label,
+      levels = levels(summary$source_label)
+    )
+  }
+  rate_specs <- list(
+    list(
+      metric = "Fit failed",
+      numerator = "n_failed",
+      denominator = "n_reps",
+      reference = 0.10
+    ),
+    list(
+      metric = "CI missing",
+      numerator = "n_ci_missing",
+      denominator = "n_trait_rows",
+      reference = 0.10
+    ),
+    list(
+      metric = "Bootstrap failed",
+      numerator = "n_boot_failed",
+      denominator = "n_boot_attempted",
+      reference = 0.10
+    ),
+    list(
+      metric = "pdHess TRUE",
+      numerator = "pd_hessian_rate",
+      denominator = NA_character_,
+      reference = 1
+    ),
+    list(
+      metric = "sdreport OK",
+      numerator = "sdreport_ok_rate",
+      denominator = NA_character_,
+      reference = 1
+    )
+  )
+  failure_rates <- do.call(rbind, lapply(rate_specs, function(spec) {
+    if (!nrow(ledger) || !spec$numerator %in% names(ledger)) {
+      return(NULL)
+    }
+    cols <- intersect(
+      c(
+        "source_label", "surface_id", "scenario", "family", "d",
+        "target", "ci_method", "fit_phi_mode", "pilot_status",
+        "probe_id", "probe_label"
+      ),
+      names(ledger)
+    )
+    out <- ledger[, cols, drop = FALSE]
+    if (is.na(spec$denominator)) {
+      out$value <- ledger[[spec$numerator]]
+      out$denominator_label <- "rate"
+    } else {
+      denominator <- ledger[[spec$denominator]]
+      numerator <- ledger[[spec$numerator]]
+      out$value <- ifelse(
+        is.finite(denominator) & denominator > 0,
+        numerator / denominator,
+        NA_real_
+      )
+      out$denominator_label <- paste0(numerator, "/", denominator)
+    }
+    out$metric <- spec$metric
+    out$reference <- spec$reference
+    out
+  }))
+  if (is.null(failure_rates)) {
+    failure_rates <- data.frame()
+  } else {
+    rownames(failure_rates) <- NULL
+    point_only <- failure_rates$ci_method == "none" &
+      failure_rates$metric == "CI missing"
+    failure_rates$value[point_only] <- NA_real_
+    failure_rates$denominator_label[point_only] <- "point only"
+    failure_rates$value_label <- ifelse(
+      failure_rates$denominator_label == "point only",
+      "point only",
+      ifelse(
+        is.finite(failure_rates$value) &
+          failure_rates$denominator_label != "rate",
+        paste0(
+          sprintf("%.0f%%", 100 * failure_rates$value),
+          "\n",
+          failure_rates$denominator_label
+        ),
+        ifelse(
+          is.finite(failure_rates$value),
+          sprintf("%.2g", failure_rates$value),
+          "not reported"
+        )
+      )
+    )
+    failure_rates$status_bucket <- ifelse(
+      failure_rates$denominator_label == "point only",
+      "point only",
+      ifelse(
+        is.finite(failure_rates$value) & failure_rates$value == 0,
+        "zero",
+        ifelse(is.finite(failure_rates$value), "nonzero", "not reported")
+      )
+    )
+    failure_rates$metric <- factor(
+      failure_rates$metric,
+      levels = c(
+        "Fit failed", "CI missing", "Bootstrap failed",
+        "pdHess TRUE", "sdreport OK"
+      )
+    )
+  }
+
+  verdict_tiles <- summary[
+    ,
+    intersect(
+      c(
+        "source_label", "surface_id", "scenario", "family", "d",
+        "target", "ci_method", "fit_phi_mode", "pilot_status",
+        "profile_gate_status", "coverage", "n_reps", "n_completed",
+        "n_failed", "n_ci_missing", "n_trait_rows", "probe_id",
+        "probe_label"
+      ),
+      names(summary)
+    ),
+    drop = FALSE
+  ]
+  if (nrow(verdict_tiles)) {
+    verdict_tiles$status_label <- paste0(
+      verdict_tiles$pilot_status,
+      "\nprofile: ",
+      verdict_tiles$profile_gate_status
+    )
+    verdict_tiles$denominator_label <- paste0(
+      "fit ",
+      verdict_tiles$n_completed,
+      "/",
+      verdict_tiles$n_reps,
+      "; CI miss ",
+      verdict_tiles$n_ci_missing,
+      "/",
+      verdict_tiles$n_trait_rows
+    )
+  }
+
+  structure(
+    list(
+      report = report,
+      summary = summary,
+      ratio_points = ratio_points,
+      failure_rates = failure_rates,
+      verdict_tiles = verdict_tiles
+    ),
+    class = "m3_source_map_dashboard_data"
+  )
+}
+
+m3_require_ggplot2 <- function() {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("ggplot2 must be installed to render the M3 source-map dashboard")
+  }
+}
+
+m3_source_map_status_palette <- function() {
+  c(
+    PASS_TO_SCALE = "#0072B2",
+    POINT_ONLY = "#4D4D4D",
+    TARGET_FAIL = "#D55E00",
+    COMPUTE_FAIL = "#CC79A7",
+    PASS = "#009E73",
+    FAIL = "#D55E00",
+    NOT_EVALUATED = "#999999"
+  )
+}
+
+m3_plot_source_map_ratios <- function(dashboard) {
+  m3_require_ggplot2()
+  if (!inherits(dashboard, "m3_source_map_dashboard_data")) {
+    stop("dashboard must come from m3_source_map_dashboard_data()")
+  }
+  ratio_points <- dashboard$ratio_points
+  if (!nrow(ratio_points)) {
+    return(
+      ggplot2::ggplot() +
+        ggplot2::annotate(
+          "text",
+          x = 0,
+          y = 0,
+          label = "No finite estimate/truth ratios"
+        ) +
+        ggplot2::theme_void()
+    )
+  }
+  summary_status <- dashboard$summary[
+    ,
+    intersect(c("source_label", "pilot_status"), names(dashboard$summary))
+    ,
+    drop = FALSE
+  ]
+  summary_status <- unique(summary_status)
+  ratio_points <- merge(
+    ratio_points,
+    summary_status,
+    by = "source_label",
+    all.x = TRUE,
+    sort = FALSE
+  )
+  ratio_points$trait_label <- paste0("trait ", ratio_points$trait_id)
+  shape_var <- if ("fit_phi_mode" %in% names(ratio_points)) {
+    "fit_phi_mode"
+  } else {
+    "ci_method"
+  }
+  ggplot2::ggplot(
+    ratio_points,
+    ggplot2::aes(
+      x = .data$value,
+      y = .data$source_label,
+      colour = .data$pilot_status,
+      shape = .data[[shape_var]]
+    )
+  ) +
+    ggplot2::geom_vline(
+      xintercept = 1,
+      linewidth = 0.35,
+      linetype = "dashed",
+      colour = "grey35"
+    ) +
+    ggplot2::geom_point(
+      ggplot2::aes(group = .data$trait_label),
+      size = 2.1,
+      alpha = 0.86,
+      position = ggplot2::position_jitter(height = 0.08, width = 0)
+    ) +
+    ggplot2::facet_wrap(~ metric, scales = "free_x", ncol = 1) +
+    ggplot2::scale_colour_manual(
+      values = m3_source_map_status_palette(),
+      drop = FALSE
+    ) +
+    ggplot2::labs(
+      x = "Median estimate / truth by trait",
+      y = NULL,
+      colour = "Surface status",
+      shape = shape_var,
+      title = "M3.3b source-map ratios",
+      subtitle = "Point-only rows keep estimates visible but are not interval-coverage evidence."
+    ) +
+    ggplot2::theme_minimal(base_size = 10) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      panel.grid.minor = ggplot2::element_blank(),
+      strip.text = ggplot2::element_text(face = "bold"),
+      axis.text.y = ggplot2::element_text(size = 8)
+    )
+}
+
+m3_plot_source_map_failure_ledger <- function(dashboard) {
+  m3_require_ggplot2()
+  if (!inherits(dashboard, "m3_source_map_dashboard_data")) {
+    stop("dashboard must come from m3_source_map_dashboard_data()")
+  }
+  failure_rates <- dashboard$failure_rates
+  if (!nrow(failure_rates)) {
+    return(
+      ggplot2::ggplot() +
+        ggplot2::annotate("text", x = 0, y = 0, label = "No failure ledger") +
+        ggplot2::theme_void()
+    )
+  }
+  ggplot2::ggplot(
+    failure_rates,
+    ggplot2::aes(
+      x = .data$metric,
+      y = .data$source_label,
+      fill = .data$status_bucket
+    )
+  ) +
+    ggplot2::geom_tile(colour = "white", linewidth = 0.5) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = .data$value_label),
+      size = 2.5,
+      lineheight = 0.9
+    ) +
+    ggplot2::scale_fill_manual(
+      values = c(
+        "zero" = "#E6F2EF",
+        "nonzero" = "#F2D5C4",
+        "point only" = "#D9D9D9",
+        "not reported" = "#F0F0F0"
+      ),
+      drop = FALSE
+    ) +
+    ggplot2::labs(
+      x = NULL,
+      y = NULL,
+      fill = "Ledger cell",
+      title = "M3.3b failure ledger",
+      subtitle = "Each cell prints its denominator; point-only rows are labelled instead of counted as missing-CI failures."
+    ) +
+    ggplot2::theme_minimal(base_size = 10) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      panel.grid = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_text(angle = 20, hjust = 1),
+      axis.text.y = ggplot2::element_text(size = 8)
+    )
+}
+
+m3_plot_source_map_verdict <- function(dashboard) {
+  m3_require_ggplot2()
+  if (!inherits(dashboard, "m3_source_map_dashboard_data")) {
+    stop("dashboard must come from m3_source_map_dashboard_data()")
+  }
+  verdict_tiles <- dashboard$verdict_tiles
+  if (!nrow(verdict_tiles)) {
+    return(
+      ggplot2::ggplot() +
+        ggplot2::annotate("text", x = 0, y = 0, label = "No verdict rows") +
+        ggplot2::theme_void()
+    )
+  }
+  verdict_long <- rbind(
+    data.frame(
+      source_label = verdict_tiles$source_label,
+      metric = "Pilot status",
+      status_key = verdict_tiles$pilot_status,
+      label = verdict_tiles$pilot_status,
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      source_label = verdict_tiles$source_label,
+      metric = "Profile gate",
+      status_key = verdict_tiles$profile_gate_status,
+      label = verdict_tiles$profile_gate_status,
+      stringsAsFactors = FALSE
+    ),
+    data.frame(
+      source_label = verdict_tiles$source_label,
+      metric = "Denominator",
+      status_key = "NOT_EVALUATED",
+      label = verdict_tiles$denominator_label,
+      stringsAsFactors = FALSE
+    )
+  )
+  verdict_long$source_label <- factor(
+    verdict_long$source_label,
+    levels = levels(verdict_tiles$source_label)
+  )
+  verdict_long$metric <- factor(
+    verdict_long$metric,
+    levels = c("Pilot status", "Profile gate", "Denominator")
+  )
+  verdict_long$text_colour <- ifelse(
+    verdict_long$status_key %in% c("POINT_ONLY", "TARGET_FAIL", "COMPUTE_FAIL"),
+    "white",
+    "black"
+  )
+  ggplot2::ggplot(
+    verdict_long,
+    ggplot2::aes(
+      x = .data$metric,
+      y = .data$source_label,
+      fill = .data$status_key
+    )
+  ) +
+    ggplot2::geom_tile(colour = "white", linewidth = 0.5) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = .data$label, colour = .data$text_colour),
+      size = 2.5,
+      lineheight = 0.9
+    ) +
+    ggplot2::scale_fill_manual(
+      values = m3_source_map_status_palette(),
+      drop = FALSE
+    ) +
+    ggplot2::scale_colour_identity() +
+    ggplot2::labs(
+      x = NULL,
+      y = NULL,
+      fill = "Pilot status",
+      title = "M3.3b surface verdicts"
+    ) +
+    ggplot2::theme_minimal(base_size = 10) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_blank(),
+      panel.grid = ggplot2::element_blank(),
+      legend.position = "bottom",
+      axis.text.y = ggplot2::element_text(size = 8)
+    )
+}
+
+m3_plot_source_map_dashboard <- function(grid_df) {
+  dashboard <- m3_source_map_dashboard_data(grid_df)
+  structure(
+    list(
+      data = dashboard,
+      plots = list(
+        ratios = m3_plot_source_map_ratios(dashboard),
+        failure_ledger = m3_plot_source_map_failure_ledger(dashboard),
+        verdict = m3_plot_source_map_verdict(dashboard)
+      )
+    ),
+    class = "m3_source_map_dashboard"
+  )
+}
+
+m3_write_source_map_dashboard <- function(
+  grid_df,
+  path,
+  width = 11,
+  height = 12,
+  dpi = 150
+) {
+  m3_require_ggplot2()
+  dashboard <- m3_plot_source_map_dashboard(grid_df)
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  grDevices::png(
+    filename = path,
+    width = width,
+    height = height,
+    units = "in",
+    res = dpi
+  )
+  on.exit(grDevices::dev.off(), add = TRUE)
+  grid::grid.newpage()
+  layout <- grid::grid.layout(
+    nrow = 3,
+    ncol = 1,
+    heights = grid::unit(c(4.5, 3.6, 2.2), "null")
+  )
+  grid::pushViewport(grid::viewport(layout = layout))
+  print(
+    dashboard$plots$ratios,
+    vp = grid::viewport(layout.pos.row = 1, layout.pos.col = 1)
+  )
+  print(
+    dashboard$plots$failure_ledger,
+    vp = grid::viewport(layout.pos.row = 2, layout.pos.col = 1)
+  )
+  print(
+    dashboard$plots$verdict,
+    vp = grid::viewport(layout.pos.row = 3, layout.pos.col = 1)
+  )
+  invisible(path)
+}
+
 m3_markdown_table <- function(df, digits = 3) {
   if (!is.data.frame(df) || !nrow(df)) {
     return("_No rows._")

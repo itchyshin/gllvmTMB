@@ -94,6 +94,11 @@ Florence can fail the report if the figure hides weak cells behind
 averages, drops denominators, uses default-looking panels, or makes the
 main inference decision depend on a caption the reader can miss.
 
+Current dev implementation: `dev/m3-grid.R` builds the report from the
+long grid via `m3_source_map_dashboard_data()` and renders a dev-only
+PNG contact sheet with `m3_write_source_map_dashboard()`. This is not
+an exported plotting API; it is an M3 admission-review artefact.
+
 ## 4. Skills powering Florence's work
 
 Four skills installed at `.agents/skills/` (2026-05-18):

@@ -97,9 +97,8 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada + Fisher + Curie + Florence + Rose + Shannon | M3.3b NB2 stress-map/report bundle (rolling slices 4, 6, 9 first; sets up 5-13) | PR #221 / `codex/m3-3b-nb2-stress-report-2026-05-20` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-m3-3b-nb2-stress-report.md`, issue comments #217/#218 | Active; CI running for stress-map scaffold. |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -170,6 +169,15 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~08:48 MT**: PR #221 (M3.3b NB2 stress-map/report
+  scaffold) merged to `main` as squash commit `2266336` after PR
+  R-CMD-check run `26168086992` passed on ubuntu, macOS, and Windows.
+  The lane added the point-only NB2 stress-map surfaces, r10/r20
+  source-map evidence, diagnostic report semantics for
+  `POINT_ONLY` / `NOT_EVALUATED`, and issue-ledger updates for #217
+  and #218. No NB2 surface was admitted to r50; #217 and #218 remain
+  open for the start/local-basin probe and Florence-rendered source-map
+  dashboard.
 - **2026-05-20 ~06:55 MT**: PR #220 (M3.3b surface-admission +
   diagnostic visualization gate) merged to `main` as merge commit
   `f7e5a35`. PR R-CMD-check run `26163165179`, post-merge main

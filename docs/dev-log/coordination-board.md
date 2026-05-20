@@ -78,9 +78,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| _None_ | _No active lane_ | _n/a_ | _n/a_ | _WIP 0_ |
+| Codex / Ada | M3.3a `nbinom2` target-construction audit | local branch `codex/m3-3a-nbinom2-target-audit-2026-05-19` | `docs/dev-log/*` initially; source reads only | Started after PR #210 and board closeout CI/pkgdown passed |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

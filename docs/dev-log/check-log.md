@@ -3441,3 +3441,68 @@ Kaizen point:
     fix was not more computation; it was a better visual contract:
     compact source labels, tile denominators, and explicit
     `POINT_ONLY` / `NOT_EVALUATED` status on the figure itself.
+
+## 2026-05-20 -- Sister-package citation and provenance hygiene (#223)
+
+Scope:
+
+- Refresh the `gllvm` / EVA / `glmmTMB::rr()` literature map without
+  expanding `gllvmTMB` capability claims.
+- Fix live stale `3 x 5` wording in current source-facing prose.
+- Add simulation-reporting references to the M3 long-grid and
+  surface-admission contracts.
+- Keep recent phylogenetic location-scale work framed as background,
+  not an implemented `gllvmTMB` feature.
+
+Evidence:
+
+- `git status --short --branch`
+  -> clean `main` at lane start; work continued on
+  `codex/sister-package-citation-hygiene-2026-05-20`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt`
+  -> no open PRs at lane start.
+- `git log --all --oneline --since="6 hours ago"`
+  -> reviewed recent #225 / #224 / #221 / #220 history before editing
+  shared docs.
+- Literature/source checks:
+  `gllvm` 2.0 (Korhonen et al. 2025, PeerJ,
+  <https://doi.org/10.7717/peerj.20338>), EVA-GLLVM (Korhonen et al.
+  2023, Statistics and Computing,
+  <https://doi.org/10.1007/s11222-022-10189-w>), `glmmTMB::rr()`
+  (McGillycuddy et al. 2025, JSS,
+  <https://doi.org/10.18637/jss.v112.i01>), simulation reporting
+  (Morris, White & Crowther 2019,
+  <https://doi.org/10.1002/sim.8086>; Williams et al. 2024,
+  <https://doi.org/10.1111/2041-210X.14415>), and phylogenetic
+  location-scale background (Nakagawa, Mizuno et al. 2025,
+  <https://doi.org/10.1111/2041-210X.70160>).
+- `rg -n '3 x 5|3 × 5|3x5' AGENTS.md CLAUDE.md CONTRIBUTING.md DESCRIPTION README.md NEWS.md _pkgdown.yml inst/COPYRIGHTS docs/design docs/dev-log/known-limitations.md .agents/skills R man vignettes --glob '!docs/dev-log/after-task/**' --glob '!docs/dev-log/audits/**' --glob '!docs/dev-log/shannon-audits/**' --glob '!docs/dev-log/check-log.md'`
+  -> one remaining hit, NEWS's historical "3 × 5 to 4 × 5" release
+  note; no live stale grid wording.
+- `rg -n 'gllvmTMB_wide\(Y, \.\.\.\) was removed|removed in 0\.2\.0|REMOVED in 0\.2\.0|profile-likelihood default|trio|meta_known_V\(value|phylo\(|gr\(|meta\(|diag\(U\)|U_phy|U_non|\\bf S|S_B|S_W' README.md vignettes/articles/cross-package-validation.Rmd vignettes/articles/ordinal-probit.Rmd docs/design/00-vision.md docs/design/04-sister-package-scope.md docs/design/42-m3-dgp-grid.md docs/design/50-m3-3b-surface-admission.md inst/COPYRIGHTS`
+  -> 0 hits after the `meta_V()` article correction.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+
+Not run:
+
+- `devtools::test()` / `devtools::check()` -- no code, roxygen,
+  generated Rd, examples, or parser behaviour changed; PR CI remains
+  the 3-OS integration gate.
+- `pkgdown::build_articles(lazy = FALSE)` -- prose-only article
+  edits; no article code chunks or formula parsing changed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-sister-package-citation-hygiene.md`
+
+Kaizen point:
+
+50. **Comparator prose needs a novelty boundary.** The useful claim is
+    not "we invented reduced-rank GLLVMs"; `gllvm`, EVA-GLLVM, and
+    `glmmTMB::rr()` already own much of that landscape. The local
+    claim should stay narrower: stacked-trait formula grammar, the
+    4 x 5 covariance keyword surface, explicit validation-debt rows,
+    and traceable simulation artefacts.

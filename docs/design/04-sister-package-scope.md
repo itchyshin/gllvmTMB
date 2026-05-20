@@ -14,7 +14,7 @@ reviewers: scope-creep proposals run into this document first.
 | `drmTMB` (sister) | Univariate and bivariate distributional regression: mean / scale / shape / nu components, location-scale models. One or two responses; no GLLVM layer. | TMB + Laplace |
 | `glmmTMB` | General single-response GLMMs: families, random effects, zero-inflation, dispersion. The reference TMB-based mixed-model package. | TMB + Laplace |
 | `sdmTMB` | Single-response spatial GLMMs with SPDE Gaussian random fields. Builds on `glmmTMB` for mixed-effects structure and `fmesher`/`INLA` for SPDE meshes. | TMB + Laplace + SPDE |
-| `gllvm` | Original multivariate GLLVM package (Niku et al.). Variational approximation or Laplace; wide-format matrix-in API; less syntactic surface than `gllvmTMB`. | TMB + VA / Laplace |
+| `gllvm` | Established multivariate GLLVM / ordination package (Niku et al. 2019; Korhonen et al. 2025 for `gllvm` 2.0). Variational, extended-variational, or Laplace approximation; matrix-in and study-design APIs; a different syntactic surface from `gllvmTMB`. | TMB + VA / EVA / Laplace |
 | `MCMCglmm` | Bayesian multi-response GLMMs with phylogenetic correlation. MCMC sampler; conjugate-style priors; supports `us(trait):unit` multi-response. | Gibbs sampler (custom C) |
 | `brms` | Bayesian multilevel models on top of Stan; `mvbind()` syntax for multi-response. Slower but more flexible priors and posteriors. | Stan + HMC/NUTS |
 
@@ -94,17 +94,24 @@ of locations, with cross-trait spatial covariance -- live in
 
 ### `gllvmTMB` vs `gllvm`
 
-Overlap: both fit multivariate GLLVMs. `gllvm` (Niku et al.) is
-the older and more cited package; it uses variational
-approximation by default and has its own matrix-in API.
-`gllvmTMB` is the TMB-Laplace alternative with explicit formula
-grammar, the 4 x 5 keyword grid, and integrated phylogenetic /
-spatial paths.
+Overlap: both fit multivariate GLLVMs. `gllvm` (Niku et al. 2019;
+Korhonen et al. 2025 for `gllvm` 2.0) is the established ecology
+package for GLLVM ordination and joint species-distribution models.
+Its approximation toolkit includes variational approximation,
+extended variational approximation (Korhonen et al. 2023), and
+Laplace options. `gllvmTMB` should not claim novelty for
+reduced-rank GLLVMs, ordination, or VA/EVA estimation; its local
+surface is the TMB-Laplace stacked-trait formula grammar, the 4 x 5
+keyword grid, and validation-debt-led phylogenetic / spatial
+covariance paths.
 
-Rule: **use `gllvm` for pure VA-GLLVM with a numeric response
-matrix.** Use `gllvmTMB` when you want formula-grammar control,
-phylogeny / spatial keywords in the same model, mixed-family
-per-trait, or fast Laplace inference on larger datasets.
+Rule: **use `gllvm` when the primary workflow is matrix-in
+ordination / JSDM with `gllvm`'s VA/EVA/Laplace approximation
+choices.** Use `gllvmTMB` when you want long-format formula-grammar
+control, the 4 x 5 covariance keyword grid, mixed-family per-trait
+data, validation-debt-tracked phylogenetic / spatial covariance
+paths, or profile / bootstrap inference under the `gllvmTMB`
+object model.
 
 ### `gllvmTMB` vs `drmTMB`
 
@@ -142,6 +149,13 @@ cover:
 - **Single-response spatial models** -- use `sdmTMB`.
 - **Distributional regression on one or two responses** -- use
   `drmTMB`.
+- **Phylogenetic location-scale models for trait mean and variance**
+  -- Nakagawa, Mizuno et al. (2025,
+  <https://doi.org/10.1111/2041-210X.70160>) is important background
+  for distributional-regression roadmaps, but it is not a current
+  `gllvmTMB` capability. Current `gllvmTMB` phylogenetic rows are
+  covariance models across stacked traits / units, not
+  predictor-dependent phylogenetic scale models.
 - **Bayesian inference with posterior samples** -- use
   `MCMCglmm` (multivariate phylogenetic) or `brms` (general
   Bayesian).

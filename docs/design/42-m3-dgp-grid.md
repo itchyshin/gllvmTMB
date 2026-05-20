@@ -26,6 +26,13 @@ at R = 200". Cells that fall short are flagged in the validation-
 debt register as **partial** or **blocked** rather than papered
 over.
 
+The grid is reported in ADEMP terms--aims, data-generating
+mechanisms, estimands, methods, and performance measures--following
+Morris, White & Crowther (2019). For ecology/evolution readers, the
+long-grid artefacts, seeds, failed-fit rows, and retained workflow
+outputs also follow the transparent simulation-reporting discipline
+summarised by Williams et al. (2024).
+
 ## 2. Grid scope
 
 Five family cells, three latent-rank cells, and one fixed sample-

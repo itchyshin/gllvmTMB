@@ -87,7 +87,7 @@ The species-axis phylogenetic keyword already names the grouping axis,
 so it is unchanged between long and wide forms. For non-phylogenetic
 ordinal traits, replace `phylo_unique()` with the ordinary covariance
 keyword you need, such as `latent()` or `unique()`. The family does
-not change the 3 x 5 covariance keyword grammar.
+not change the 4 x 5 covariance keyword grammar.
 
 ## Cutpoints
 

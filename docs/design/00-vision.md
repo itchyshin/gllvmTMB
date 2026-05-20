@@ -41,12 +41,14 @@ We care about users. Every design decision passes through Pat
 (applied PhD user lens) before merging. Every article asks: can a
 new reader copy this code and have it work on their data?
 
-`gllvm` (Niku et al.), `glmmTMB`'s `rr()` machinery (McGillycuddy
-et al.), `galamm` (Sørensen et al.), and `Hmsc` are important
-conceptual references, but `gllvmTMB` should not copy any of their
-grammars wholesale. The public grammar should be easy to remember
-for applied biologists and strict enough to keep the TMB
-implementation identifiable.
+`gllvm` (Niku et al. 2019; Korhonen et al. 2025 for `gllvm` 2.0),
+extended variational approximation for GLLVMs (Korhonen et al.
+2023), `glmmTMB`'s `rr()` machinery (McGillycuddy et al. 2025),
+`galamm` (Sørensen et al.), and `Hmsc` are important conceptual
+references, but `gllvmTMB` should not copy any of their grammars
+wholesale. The public grammar should be easy to remember for applied
+biologists and strict enough to keep the TMB implementation
+identifiable.
 
 Every implemented model class should have two parallel
 representations:
@@ -219,8 +221,9 @@ validation claims (e.g. the Nakagawa et al. in-prep functional-
 biogeography methods paper, as a citation for the *specific
 six-piece model*). Foundational claims (reduced-rank GLLVM,
 phylogenetic mixed model, SPDE spatial) cite the published
-literature (Hui 2017, Niku 2017, 2019, Hadfield & Nakagawa 2010,
-Lindgren et al. 2011, Anderson et al. 2025, Mizuno et al. 2026).
+literature (Hui 2017; Niku et al. 2017, 2019; Korhonen et al.
+2023, 2025; Hadfield & Nakagawa 2010; Lindgren et al. 2011;
+Anderson et al. 2025; Nakagawa, Mizuno et al. 2025).
 
 ## Sibling Boundary
 
@@ -238,13 +241,17 @@ sister packages have separate scopes:
 - **`glmmTMB`** -- single-response mixed models. `gllvmTMB`'s
   reduced-rank `latent()` and diagonal `unique()` keywords share
   the `glmmTMB::rr()` / `diag()` machinery (McGillycuddy et al.
-  2025); we extend it to the multi-trait stacked-trait grammar.
+  2025); the local claim is not novelty of reduced rank alone, but
+  the paired `latent + unique` grammar inside a multi-trait
+  stacked-trait interface.
 - **`gllvm`** -- peer GLLVM package, ecology-focused, with
-  variational-approximation default for binary high-dimensional
-  fits. `gllvmTMB` differs by offering phylogenetic + spatial in
-  the same engine, mixed-family fits with latent-scale
-  correlations, and a stacked-trait long-format grammar that maps
-  to `glmmTMB`-style formula syntax.
+  variational, extended-variational, and Laplace approximation
+  paths. `gllvm` 2.0 also covers advanced ordination and joint
+  species-distribution workflows. `gllvmTMB` differs by centering
+  the stacked-trait long-format grammar, the explicit 4 x 5
+  covariance keyword grid, mixed-family per-row data, and
+  validation-debt rows for its phylogenetic / spatial covariance
+  paths.
 - **`galamm`** -- generalised additive latent and mixed models;
   SEM-style. No phylogenetic or spatial keywords. Wald-only
   inference. `gllvmTMB` differs by offering profile-likelihood and

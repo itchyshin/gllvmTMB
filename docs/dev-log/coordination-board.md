@@ -97,9 +97,8 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada + Fisher + Gauss + Curie + Rose + Florence | M3.3b NB2 start/local-basin probe scaffold | PR #224 / `codex/m3-3b-nb2-start-probe-2026-05-20` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `ROADMAP.md`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-m3-3b-nb2-start-probe.md` | Active; PR opened, local tests and selected-config smoke passed. |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -170,6 +169,15 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~09:51 MT**: PR #224 (M3.3b NB2 start/local-basin
+  probe scaffold) merged to `main` as squash commit `ae7d1f8` after
+  PR R-CMD-check run `26171605952` passed on ubuntu, macOS, and
+  Windows. The lane added dev-only `--nb2-start-probe`,
+  `--probe-config`, probe metadata in summaries/reports, and local
+  smoke evidence showing the full four-config one-rep probe took
+  749.4 s while the selected-config smoke took 60.6 s. Issues #217
+  and #218 remain open for the selected-seed source-map artifact and
+  Florence-rendered dashboard.
 - **2026-05-20 ~08:48 MT**: PR #221 (M3.3b NB2 stress-map/report
   scaffold) merged to `main` as squash commit `2266336` after PR
   R-CMD-check run `26168086992` passed on ubuntu, macOS, and Windows.

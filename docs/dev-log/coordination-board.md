@@ -97,9 +97,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | #222 posterior-predictive + randomized-quantile diagnostic design/prototype | PR #229 / `codex/ppc-rq-diagnostics-2026-05-20` | `docs/design/`, `dev/`, `tests/testthat/`, `docs/dev-log/check-log.md`, `docs/dev-log/after-task/2026-05-20-ppc-rq-diagnostics.md` | PR open; design/prototype only, no public API promise yet |
+| (none) | -- | -- | -- | No active Codex lane after PR #229 merge |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -144,7 +144,7 @@ leave a coordination comment first and wait for acknowledgement.
 | `R/*` | no active engine owner after #226 merged. Recent parser/API edits on `main` are from PR #226 (`meta_V(V = V)`, `type = "exact"`, wide `traits()` marker preservation). Coordinate before further R edits. |
 | `tests/testthat/*` | no active owner after #226 merged; new `meta_V()` parser and wide-format tests are now on `main` |
 | `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
-| `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | Codex / Ada for #222 design/prototype lane |
+| `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | no active owner after PR #229 merged |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a
@@ -171,6 +171,14 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~16:08 MT**: PR #229 (fitted-model predictive /
+  simulation-rank diagnostic prototype) merged to `main` as squash
+  commit `2479a9d` after PR R-CMD-check run `26190941251` passed on
+  ubuntu, macOS, and Windows. The lane closed #222, added
+  non-exported `inst/prototypes/ppcheck-diagnostics.R`, Design 51,
+  DIA-11 / DIA-12 partial rows, Gaussian / Poisson / NB2 prototype
+  tests, and follow-up issue #228 for public `pp_check()` / exact
+  randomized-quantile residual promotion.
 - **2026-05-20 ~13:37 MT**: PR #226 (sister-package citation
   hygiene + `meta_V()` V-only syntax) merged to `main` as squash
   commit `f71de5f` after PR R-CMD-check run `26183610311` passed on

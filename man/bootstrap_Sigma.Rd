@@ -13,7 +13,8 @@ bootstrap_Sigma(
   seed = NULL,
   n_cores = 1,
   progress = TRUE,
-  keep_draws = FALSE
+  keep_draws = FALSE,
+  link_residual = c("auto", "none")
 )
 }
 \arguments{
@@ -44,6 +45,15 @@ replicate (sequential only). Default \code{TRUE}.}
 \item{keep_draws}{Logical; if \code{TRUE}, the full \code{n_boot} x ...
 matrices of bootstrap draws are returned as \verb{$draws}. Default
 \code{FALSE} (CIs only — saves memory for large n_boot).}
+
+\item{link_residual}{How to treat family-specific link-implicit
+residual variance when extracting \code{Sigma}, \code{R}, \code{communality}, and
+\code{ICC}.
+\code{"auto"} (default) matches \code{\link[=extract_Sigma]{extract_Sigma()}} and adds the
+family/link residual to non-Gaussian trait diagonals; \code{"none"}
+returns the fitted latent + unique covariance only. Use \code{"none"}
+when validating against a DGP target defined as
+\eqn{\Lambda\Lambda^\top + \Psi}.}
 }
 \value{
 A list with components:
@@ -54,6 +64,8 @@ requested summary at each requested level (e.g. \code{Sigma_B},
 \item{\code{ci_lower}, \code{ci_upper}}{Named lists of percentile CI bounds,
 element-wise the same shape as the corresponding \code{point_est}.}
 \item{\code{ci_method}}{Character; currently \code{"percentile"}.}
+\item{\code{link_residual}}{Character; the link-residual convention used
+in point estimates and bootstrap refit summaries.}
 \item{\code{conf}, \code{n_boot}, \code{n_failed}}{Configuration metadata.}
 \item{\code{draws}}{\code{NULL} unless \code{keep_draws = TRUE}; otherwise a
 named list of bootstrap draw arrays.}
@@ -88,10 +100,10 @@ an \code{n_cores = 1} run with the same seed (different RNG streams).
 \itemize{
 \item Uses the existing \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} method, which
 conditions on the fitted random effects (\eqn{\eta = \hat\eta})
-and adds Gaussian residual noise. CIs reflect \emph{residual}-level
-uncertainty in the random-effect modes, not the full posterior
-uncertainty in the variance components. For non-Gaussian families
-the simulator is not yet implemented; this function will error.
+and redraws the response from the fitted family where implemented.
+CIs reflect parametric simulate-refit variability, not the full
+posterior uncertainty in variance components. Unsupported families
+fall back through the simulator's own warning path.
 \item Refits use the same \code{formula} reconstructed from
 \code{fit$formula} and \code{fit$covstructs}. Auxiliary arguments such as
 \code{phylo_vcv}, \code{mesh}, \code{lambda_constraint} are NOT currently

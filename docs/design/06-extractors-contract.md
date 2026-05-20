@@ -64,7 +64,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `extract_proportions(fit)` | r | r | r | r | delta-family conditional probability — reserved (post-CRAN; depends on delta-family support) |
 | `extract_cutpoints(fit)` | r | r | cl | r | ordinal-probit thresholds only (single-family ordinal) |
 | `extract_ICC_site(fit)` | c | cl | cl | cl | legacy ICC; superseded by `extract_repeatability()` |
-| `bootstrap_Sigma(fit, R, parallel)` | c | cl | cl | cl | parametric-bootstrap path |
+| `bootstrap_Sigma(fit, n_boot, level, what, link_residual)` | c | cl | cl | cl | parametric-bootstrap path |
 | `getLoadings(fit, rotation)` | c | cl | cl | cl | raw $\Lambda$ matrix |
 | `rotate_loadings(fit, rotation)` | c | cl | cl | cl | varimax / quartimax post-fit rotation |
 | `getLV(fit)` | c | cl | cl | cl | legacy ordination alias |
@@ -198,14 +198,28 @@ For three-piece fallback fits (when paired is not
 identifiable), Ω uses a single non-tier-specific Ψ. See
 `docs/design/03-phylogenetic-gllvm.md`.
 
-#### `bootstrap_Sigma(fit, R = 100, parallel = c("none", "future"))`
+#### `bootstrap_Sigma(fit, n_boot = 200, level, what, conf, seed, n_cores = 1, progress = TRUE, keep_draws = FALSE, link_residual = c("auto", "none"))`
 
 **Return**: a `list` with elements
 
-- `Sigma_array`: a `T x T x R` array of bootstrap-resampled
-  $\Sigma$ matrices.
-- `summary`: a `data.frame` with point estimates and
-  empirical quantile intervals per trait pair.
+- `point_est`: named list of point estimates for the requested
+  summaries and levels, such as `Sigma_B`, `R_B`,
+  `communality_B`, or `ICC_site`.
+- `ci_lower` / `ci_upper`: named lists with empirical percentile
+  intervals matching `point_est` shapes.
+- `ci_method`: currently `"percentile"`.
+- `link_residual`: the link-residual convention used for the point
+  estimate and every bootstrap refit summary.
+- `conf`, `n_boot`, `n_failed`, `level`, `what`, and optional
+  `draws`.
+
+`link_residual = "auto"` matches `extract_Sigma()` and adds
+family/link implicit residual variance to non-Gaussian trait
+diagonals before computing `Sigma`, `R`, `communality`, and `ICC`.
+`link_residual = "none"` returns the fitted latent + unique
+covariance only. Use `"none"` for validation targets whose DGP
+truth is $\Lambda\Lambda^\top + \Psi$ rather than the marginal
+latent response variance.
 
 Mixed-family bootstrap is **claimed** — the per-row family
 must be preserved in each resample. M1 slice 1.8 in the

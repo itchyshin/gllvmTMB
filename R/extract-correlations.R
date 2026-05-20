@@ -148,16 +148,17 @@
 #' cors_b <- extract_correlations(fit, tier = "unit", method = "bootstrap",
 #'                                nsim = 200, seed = 42)
 #' }
-extract_correlations <- function(fit,
-                                 tier  = "all",
-                                 pair  = NULL,
-                                 level = 0.95,
-                                 method = c("fisher-z", "profile",
-                                            "wald", "bootstrap"),
-                                 n_eff = NULL,
-                                 nsim  = 500L,
-                                 seed  = NULL,
-                                 link_residual = c("auto", "none")) {
+extract_correlations <- function(
+  fit,
+  tier = "all",
+  pair = NULL,
+  level = 0.95,
+  method = c("fisher-z", "profile", "wald", "bootstrap"),
+  n_eff = NULL,
+  nsim = 500L,
+  seed = NULL,
+  link_residual = c("auto", "none")
+) {
   ## Detect whether the caller passed link_residual explicitly BEFORE
   ## match.arg() reassigns the variable. Used below to fire the once-
   ## per-session warning about the default change.
@@ -171,8 +172,9 @@ extract_correlations <- function(fit,
   if (is.character(tier) && !(length(tier) == 1L && identical(tier, "all"))) {
     tier <- vapply(tier, .normalise_level, character(1L), arg_name = "tier")
   }
-  if (!inherits(fit, "gllvmTMB_multi"))
+  if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  }
   method <- match.arg(method)
 
   ## Phase 1b 2026-05-15: the default of `link_residual` changed from
@@ -188,11 +190,14 @@ extract_correlations <- function(fit,
     if (is_non_gaussian) {
       cache_key <- "gllvmTMB.warned_link_residual_default_changed"
       if (is.null(getOption(cache_key))) {
-        cli::cli_warn(c(
-          "The default of {.arg link_residual} in {.fun extract_correlations} changed in this release from {.val none} to {.val auto}.",
-          "i" = "Non-Gaussian fits now get the per-family link-residual variance added to the diagonal of the implied {.var Sigma} before computing correlations; off-diagonal correlations come out smaller as a result.",
-          ">" = "Pass {.code link_residual = \"auto\"} explicitly to lock the new behaviour and suppress this warning, or {.code link_residual = \"none\"} to restore the pre-2026-05-15 behaviour."
-        ), class = "gllvmTMB_link_residual_default_changed")
+        cli::cli_warn(
+          c(
+            "The default of {.arg link_residual} in {.fun extract_correlations} changed in this release from {.val none} to {.val auto}.",
+            "i" = "Non-Gaussian fits now get the per-family link-residual variance added to the diagonal of the implied {.var Sigma} before computing correlations; off-diagonal correlations come out smaller as a result.",
+            ">" = "Pass {.code link_residual = \"auto\"} explicitly to lock the new behaviour and suppress this warning, or {.code link_residual = \"none\"} to restore the pre-2026-05-15 behaviour."
+          ),
+          class = "gllvmTMB_link_residual_default_changed"
+        )
         options(stats::setNames(list(TRUE), cache_key))
       }
     }
@@ -205,10 +210,13 @@ extract_correlations <- function(fit,
   if (identical(method, "wald")) {
     cache_key <- "gllvmTMB.warned_extract_correlations_wald_alias"
     if (is.null(getOption(cache_key))) {
-      cli::cli_inform(c(
-        "i" = "{.code method = \"wald\"} is an alias for {.code method = \"fisher-z\"} (the existing implementation used Fisher's z-transform internally; the new name is more accurate).",
-        ">" = "Switch to {.code method = \"fisher-z\"} for clarity. {.code \"wald\"} continues to work and is reported as-is in the output {.field method} column."
-      ), class = "gllvmTMB_method_alias")
+      cli::cli_inform(
+        c(
+          "i" = "{.code method = \"wald\"} is an alias for {.code method = \"fisher-z\"} (the existing implementation used Fisher's z-transform internally; the new name is more accurate).",
+          ">" = "Switch to {.code method = \"fisher-z\"} for clarity. {.code \"wald\"} continues to work and is reported as-is in the output {.field method} column."
+        ),
+        class = "gllvmTMB_method_alias"
+      )
       options(stats::setNames(list(TRUE), cache_key))
     }
   }
@@ -216,13 +224,19 @@ extract_correlations <- function(fit,
   ## for the output so existing scripts that filter on method == "wald"
   ## keep working.
   out_method_label <- method
-  if (identical(method, "wald")) method <- "fisher-z"
+  if (identical(method, "wald")) {
+    method <- "fisher-z"
+  }
 
   ## Validate n_eff override: must be NULL or integer >= 4 (Fisher's
   ## 1/sqrt(N - 3) requires N - 3 >= 1).
   if (!is.null(n_eff)) {
-    if (!is.numeric(n_eff) || length(n_eff) != 1L || n_eff < 4 ||
-        !is.finite(n_eff)) {
+    if (
+      !is.numeric(n_eff) ||
+        length(n_eff) != 1L ||
+        n_eff < 4 ||
+        !is.finite(n_eff)
+    ) {
       cli::cli_abort(c(
         "{.arg n_eff} must be at least 4.",
         "x" = "You passed {.code n_eff = {n_eff}}.",
@@ -234,26 +248,36 @@ extract_correlations <- function(fit,
 
   ## Determine available tiers in the fit
   available <- character(0)
-  if (isTRUE(fit$use$rr_B)   || isTRUE(fit$use$diag_B))   available <- c(available, "B")
-  if (isTRUE(fit$use$rr_W)   || isTRUE(fit$use$diag_W))   available <- c(available, "W")
-  if (isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)) available <- c(available, "phy")
-  if (isTRUE(fit$use$spatial_latent)) available <- c(available, "spde")
+  if (isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B)) {
+    available <- c(available, "B")
+  }
+  if (isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W)) {
+    available <- c(available, "W")
+  }
+  if (isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)) {
+    available <- c(available, "phy")
+  }
+  if (isTRUE(fit$use$spatial_latent)) {
+    available <- c(available, "spde")
+  }
 
-  if (length(available) == 0L)
+  if (length(available) == 0L) {
     cli::cli_abort(c(
       "No covariance tiers found in the fit.",
       "i" = "Add a {.code latent() / unique() / phylo_*() / spatial_*()} term to the formula."
     ))
+  }
 
   if (length(tier) == 1L && identical(tier, "all")) {
     tier <- available
   } else {
     tier <- intersect(tier, available)
-    if (length(tier) == 0L)
+    if (length(tier) == 0L) {
       cli::cli_abort(c(
         "None of the requested tiers are present in the fit.",
         "i" = "Available: {.val {available}}."
       ))
+    }
   }
 
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -262,23 +286,27 @@ extract_correlations <- function(fit,
   ## Resolve pair argument
   pair_idx <- NULL
   if (!is.null(pair)) {
-    if (length(pair) != 2L)
+    if (length(pair) != 2L) {
       cli::cli_abort("{.arg pair} must be length 2.")
+    }
     if (is.character(pair)) {
       pi <- match(pair[1], trait_names)
       pj <- match(pair[2], trait_names)
-      if (anyNA(c(pi, pj)))
+      if (anyNA(c(pi, pj))) {
         cli::cli_abort("{.arg pair} entries not found in trait names.")
+      }
       pair_idx <- sort(c(pi, pj))
     } else if (is.numeric(pair)) {
       pair_idx <- sort(as.integer(pair))
-      if (any(pair_idx < 1L) || any(pair_idx > T))
+      if (any(pair_idx < 1L) || any(pair_idx > T)) {
         cli::cli_abort("{.arg pair} indices out of range.")
+      }
     } else {
       cli::cli_abort("{.arg pair} must be character or integer.")
     }
-    if (pair_idx[1] == pair_idx[2])
+    if (pair_idx[1] == pair_idx[2]) {
       cli::cli_abort("{.arg pair} must give two distinct traits.")
+    }
   }
 
   ## Build pairs for each tier
@@ -289,16 +317,24 @@ extract_correlations <- function(fit,
     ## tk is already legacy/internal (we normalised via .normalise_level
     ## at the boundary above); skip extract_Sigma's re-normalisation
     ## warning.
-    sig <- suppressMessages(extract_Sigma(fit, level = tk, part = "total",
-                                          link_residual = link_residual,
-                                          .skip_warn = TRUE))
+    sig <- suppressMessages(extract_Sigma(
+      fit,
+      level = tk,
+      part = "total",
+      link_residual = link_residual,
+      .skip_warn = TRUE
+    ))
     if (is.null(sig)) {
       results[[k]] <- NULL
       next
     }
     R <- sig$R
-    if (is.null(rownames(R))) rownames(R) <- trait_names
-    if (is.null(colnames(R))) colnames(R) <- trait_names
+    if (is.null(rownames(R))) {
+      rownames(R) <- trait_names
+    }
+    if (is.null(colnames(R))) {
+      colnames(R) <- trait_names
+    }
 
     ## Pairs: either a single pair or all upper-tri pairs
     if (!is.null(pair_idx)) {
@@ -319,25 +355,34 @@ extract_correlations <- function(fit,
       boot_levels <- intersect(c("B", "W", "phy"), lvl_b)
       if (length(boot_levels) == 0L) {
         ## spde is not in bootstrap_Sigma's level list yet; fall back to wald
-        cli::cli_inform("Bootstrap not implemented for tier {.val {tk}}; falling back to Wald.")
+        cli::cli_inform(
+          "Bootstrap not implemented for tier {.val {tk}}; falling back to Wald."
+        )
         method_used <- "wald"
       } else {
         boot <- suppressMessages(bootstrap_Sigma(
-          fit, n_boot = as.integer(nsim), level = lvl_b, what = "R",
-          conf = level, seed = seed, progress = FALSE
+          fit,
+          n_boot = as.integer(nsim),
+          level = .canonical_level_name(lvl_b),
+          what = "R",
+          conf = level,
+          link_residual = link_residual,
+          seed = seed,
+          progress = FALSE
         ))
         Rb_lo <- boot$ci_lower[[paste0("R_", lvl_b)]]
         Rb_hi <- boot$ci_upper[[paste0("R_", lvl_b)]]
         for (m in seq_len(n_pairs)) {
-          i <- pairs[m, 1L]; j <- pairs[m, 2L]
+          i <- pairs[m, 1L]
+          j <- pairs[m, 2L]
           out_rows[[m]] <- data.frame(
-            tier        = tk,
-            trait_i     = trait_names[i],
-            trait_j     = trait_names[j],
+            tier = tk,
+            trait_i = trait_names[i],
+            trait_j = trait_names[j],
             correlation = R[i, j],
-            lower       = if (!is.null(Rb_lo)) Rb_lo[i, j] else NA_real_,
-            upper       = if (!is.null(Rb_hi)) Rb_hi[i, j] else NA_real_,
-            method      = "bootstrap",
+            lower = if (!is.null(Rb_lo)) Rb_lo[i, j] else NA_real_,
+            upper = if (!is.null(Rb_hi)) Rb_hi[i, j] else NA_real_,
+            method = "bootstrap",
             stringsAsFactors = FALSE
           )
         }
@@ -345,19 +390,22 @@ extract_correlations <- function(fit,
     }
     if (method == "profile") {
       for (m in seq_len(n_pairs)) {
-        i <- pairs[m, 1L]; j <- pairs[m, 2L]
+        i <- pairs[m, 1L]
+        j <- pairs[m, 2L]
         ci <- tryCatch(
           profile_ci_correlation(fit, tier = tk, i = i, j = j, level = level),
-          error = function(e) c(estimate = R[i, j], lower = NA_real_, upper = NA_real_)
+          error = function(e) {
+            c(estimate = R[i, j], lower = NA_real_, upper = NA_real_)
+          }
         )
         out_rows[[m]] <- data.frame(
-          tier        = tk,
-          trait_i     = trait_names[i],
-          trait_j     = trait_names[j],
+          tier = tk,
+          trait_i = trait_names[i],
+          trait_j = trait_names[j],
           correlation = unname(ci["estimate"]),
-          lower       = unname(ci["lower"]),
-          upper       = unname(ci["upper"]),
-          method      = "profile",
+          lower = unname(ci["lower"]),
+          upper = unname(ci["upper"]),
+          method = "profile",
           stringsAsFactors = FALSE
         )
       }
@@ -373,36 +421,47 @@ extract_correlations <- function(fit,
       if (!is.null(n_eff)) {
         n_eff_used <- n_eff
       } else {
-        n_eff_used <- if (tk == "B") fit$n_sites
-                      else if (tk == "W") fit$n_site_species
-                      else if (tk == "phy") fit$n_species
-                      else fit$n_sites
+        n_eff_used <- if (tk == "B") {
+          fit$n_sites
+        } else if (tk == "W") {
+          fit$n_site_species
+        } else if (tk == "phy") {
+          fit$n_species
+        } else {
+          fit$n_sites
+        }
         if (is.null(n_eff_used) || n_eff_used < 4L) n_eff_used <- 30L
       }
       z <- stats::qnorm(1 - (1 - level) / 2)
       for (m in seq_len(n_pairs)) {
-        i <- pairs[m, 1L]; j <- pairs[m, 2L]
+        i <- pairs[m, 1L]
+        j <- pairs[m, 2L]
         rho <- R[i, j]
         if (is.na(rho) || abs(rho) >= 1) {
           out_rows[[m]] <- data.frame(
-            tier = tk, trait_i = trait_names[i], trait_j = trait_names[j],
-            correlation = rho, lower = NA_real_, upper = NA_real_,
-            method = out_method_label, stringsAsFactors = FALSE
+            tier = tk,
+            trait_i = trait_names[i],
+            trait_j = trait_names[j],
+            correlation = rho,
+            lower = NA_real_,
+            upper = NA_real_,
+            method = out_method_label,
+            stringsAsFactors = FALSE
           )
           next
         }
-        zr  <- atanh(rho)
-        se  <- 1 / sqrt(max(n_eff_used - 3L, 1L))
+        zr <- atanh(rho)
+        se <- 1 / sqrt(max(n_eff_used - 3L, 1L))
         lo <- tanh(zr - z * se)
         hi <- tanh(zr + z * se)
         out_rows[[m]] <- data.frame(
-          tier        = tk,
-          trait_i     = trait_names[i],
-          trait_j     = trait_names[j],
+          tier = tk,
+          trait_i = trait_names[i],
+          trait_j = trait_names[j],
           correlation = rho,
-          lower       = lo,
-          upper       = hi,
-          method      = out_method_label,
+          lower = lo,
+          upper = hi,
+          method = out_method_label,
           stringsAsFactors = FALSE
         )
       }
@@ -412,9 +471,14 @@ extract_correlations <- function(fit,
   out <- do.call(rbind, results[!vapply(results, is.null, logical(1))])
   if (is.null(out)) {
     out <- data.frame(
-      tier = character(0), trait_i = character(0), trait_j = character(0),
-      correlation = numeric(0), lower = numeric(0), upper = numeric(0),
-      method = character(0), stringsAsFactors = FALSE
+      tier = character(0),
+      trait_i = character(0),
+      trait_j = character(0),
+      correlation = numeric(0),
+      lower = numeric(0),
+      upper = numeric(0),
+      method = character(0),
+      stringsAsFactors = FALSE
     )
   }
   rownames(out) <- NULL

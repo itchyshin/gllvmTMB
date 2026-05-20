@@ -2818,3 +2818,94 @@ Kaizen point:
     bootstrap failures but still 0.00 coverage with all misses below
     the interval. The next useful slice is target construction and
     link-implicit residual allocation, not another optimizer ladder.
+
+## 2026-05-19 -- M3.3a nbinom2 target-construction audit
+
+Scope:
+
+- Diagnose the `nbinom2` `Sigma_unit_diag` target path after the r10
+  stress pilot showed mostly successful fits/refits but low coverage.
+- Fix the M3 runner so `Sigma_unit_diag` validates the fitted latent +
+  unique unit-tier covariance against `truth$diag_Sigma`, not the
+  marginal response-scale covariance with link residuals added.
+- Keep EXT-13 / CI-08 / CI-10 partial pending a corrected stress rerun.
+
+Evidence:
+
+- `gh pr list --state open --limit 20`
+  -> no open PRs at lane start.
+- `git status --short --branch`
+  -> clean `main...origin/main` before branch creation.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent #207-#210/main commits reviewed before editing shared
+  dev-log and design files.
+- `Rscript --vanilla - <<'EOF' ... EOF`
+  -> re-read
+  `/tmp/gllvmtmb-m3-3a-stress-pilot-r10/nbinom2-two-scenario-r10-b10.rds`
+  and compared old truth to `truth + trigamma(phi)`. Baseline coverage
+  moved 0.32 -> 0.70, low-phi coverage moved 0.00 -> 0.58; this
+  confirmed a target-scale mismatch but left dispersion-calibration
+  risk.
+- `air format R/bootstrap-sigma.R R/extractors.R dev/m3-grid.R tests/testthat/test-bootstrap-Sigma.R tests/testthat/test-m1-8-bootstrap-mixed-family.R`
+  -> formatting completed.
+- `air format R/extract-correlations.R`
+  -> formatting completed.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/bootstrap_Sigma.Rd`.
+- `tail -5 man/bootstrap_Sigma.Rd && grep -c '^\\keyword' man/bootstrap_Sigma.Rd`
+  -> Rd tail was normal and grep count was `0`; command exit status was
+  1 because grep found zero keyword lines, which is expected here.
+- `Rscript --vanilla -e 'devtools::test(filter = "bootstrap-Sigma")'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 39 ]`.
+- `Rscript --vanilla -e 'devtools::test(filter = "m1-8-bootstrap-mixed-family")'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 31 ]`.
+- `Rscript --vanilla -e 'devtools::test(filter = "m1-4-extract-correlations-mixed-family|m1-5-extract-communality-mixed-family")'`
+  -> `[ FAIL 0 | WARN 2 | SKIP 0 | PASS 57 ]`; warnings are
+  pre-existing legacy `B` alias warnings in the profile-path test.
+- `Rscript --vanilla - <<'EOF' ... EOF`
+  -> M3 direct smoke with `devtools::load_all(".")`, `n_reps = 1`,
+  `n_boot = 3`, `targets = "Sigma_unit_diag"` returned finite
+  estimates and CIs for all five traits, `n_boot_failed = 0`, and
+  `m3 bootstrap target smoke ok`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 4 notes. Warning was local Apple clang/R
+  header noise:
+  `R_ext/Boolean.h: warning: unknown warning group '-Wfixed-enum-extension'`.
+  Notes were existing top-level `air.toml` / ignored `Rplots.pdf`,
+  old NEWS heading parse notes, unused `nlme` import, and base-function
+  namespace notes for `setNames` / `modifyList`.
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg -n 'link_residual|Sigma_unit_diag|truth\\$diag_Sigma|Lambda\\\\Lambda|CI-08|CI-10|EXT-13|MIX-08|MIX-09' NEWS.md R/bootstrap-sigma.R R/extractors.R R/extract-correlations.R dev/m3-grid.R docs/design/06-extractors-contract.md docs/design/44-m3-3-inference-replacement.md man/bootstrap_Sigma.Rd tests/testthat/test-bootstrap-Sigma.R tests/testthat/test-m1-8-bootstrap-mixed-family.R`
+  -> touched files consistently name the new scale convention and
+  validation-debt rows.
+- `rg -n 'bootstrap_Sigma' _pkgdown.yml R/bootstrap-sigma.R man/bootstrap_Sigma.Rd NEWS.md docs/design/06-extractors-contract.md docs/design/44-m3-3-inference-replacement.md`
+  -> `_pkgdown.yml` already lists `bootstrap_Sigma`.
+- `rg -n 'method *=|default|fisher-z|profile|wald|bootstrap|n_boot|nsim' R NEWS.md man docs/design/06-extractors-contract.md docs/design/44-m3-3-inference-replacement.md`
+  -> found and corrected two stale design-doc signatures.
+- `rg -n 'unit_obs|unit =|trait =|cluster =|level =' NEWS.md R/bootstrap-sigma.R man/bootstrap_Sigma.Rd docs/design/06-extractors-contract.md docs/design/44-m3-3-inference-replacement.md docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-target-construction-audit.md`
+  -> level and long-format naming stayed consistent.
+- `rg '\\bS_B\\b|\\bS_W\\b|\\\\bf S' NEWS.md R/bootstrap-sigma.R man/bootstrap_Sigma.Rd docs/design/06-extractors-contract.md docs/design/44-m3-3-inference-replacement.md docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-target-construction-audit.md`
+  -> no stale S notation in touched public prose.
+- `rg -n 'EXT-13|CI-08|CI-10|MIX-08|MIX-09|covered|partial' docs/design/35-validation-debt-register.md NEWS.md docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-target-construction-audit.md`
+  -> claims map to MIX-08/MIX-09 covered and EXT-13/CI-08/CI-10
+  partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-19-m3-3a-nbinom2-target-audit.md`
+
+Kaizen point:
+
+40. **M3 targets must name their variance scale in code, not only in
+    prose.** `truth$diag_Sigma` was latent + unique
+    `diag(Lambda Lambda^T + Psi)`, while the extractor default had
+    drifted to link-residual-augmented marginal variance. Future M3
+    targets should pass explicit scale arguments at the call site and
+    include one smoke that compares the runner estimate to the
+    corresponding extractor call.

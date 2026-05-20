@@ -3578,3 +3578,71 @@ Kaizen point:
     formulas fragile. `meta_V(V = V, type = "exact")` matches the
     mathematical object, leaves room for proportional V, and avoids a
     parser special case that users cannot reason about.
+
+## 2026-05-20 -- #222 fitted-model predictive / simulation-rank diagnostic prototype
+
+Scope:
+
+- Start issue #222 as a bounded design/prototype lane, not a public
+  diagnostic API promise.
+- Add `inst/prototypes/ppcheck-diagnostics.R` with non-exported helpers for fitted-model
+  predictive draws, simulation-rank residuals, and three ggplot diagnostic
+  views (`dens_overlay`, `stat_grouped`, `rq_qq`).
+- Add Design 51 to separate fitted-model predictive checks, exact
+  randomized-quantile residuals, and simulation-rank residuals.
+- Add DIA-11 and DIA-12 validation-debt rows as `partial`.
+- Update `ROADMAP.md` M3.4 notes without moving the M3 progress bar.
+- Create follow-up issue #228 for public API / exact residual promotion so
+  issue #222 can close as the prototype lane.
+
+Evidence:
+
+- `Rscript --vanilla -e 'parse("inst/prototypes/ppcheck-diagnostics.R"); parse("tests/testthat/test-ppcheck-diagnostics-prototype.R")'`
+  -> both files parsed successfully.
+- `Rscript --vanilla -e 'devtools::test(filter = "ppcheck-diagnostics-prototype")'`
+  -> passed: 45 tests, no warnings, no skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB|ppcheck-diagnostics-prototype")'`
+  -> passed: 82 tests, no warnings, no skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> completed with 0 errors, 1 local installation warning, and 5 notes. The
+  earlier source-tarball test error from sourcing `dev/ppcheck-diagnostics.R`
+  is fixed after moving the prototype to `inst/prototypes/`. The remaining
+  install warning is the local Apple `xcrun --show-sdk-version` warning also
+  reproduced by direct `R CMD INSTALL`; notes are pre-existing top-level
+  `air.toml` / `Rplots.pdf`, NEWS heading format, unused `nlme`, and missing
+  import suggestions for `setNames` / `modifyList`.
+- `tmp=$(mktemp -d); R CMD INSTALL --library="$tmp" .`
+  -> installed successfully; reproduced only the local Apple
+  `xcrun --show-sdk-version` warning.
+- Florence visual spot-check: rendered `/tmp/gllvmTMB-ppc-rq-qq.png` and
+  `/tmp/gllvmTMB-ppc-density-v3.png` from the non-exported prototype. Q-Q plot was
+  acceptable for prototype; density legend was revised from square-looking
+  keys to line keys. Density overlays for counts remain prototype-only.
+- `rg -n "pp_check\\.gllvmTMB|residuals\\.gllvmTMB_multi|randomized_quantile" R NAMESPACE man README.md NEWS.md docs/design vignettes tests/testthat inst/prototypes`
+  -> only intentional prototype/design mentions of future public API names and
+  out-of-scope boundaries.
+- `rg -n "posterior predictive|posterior-predictive|randomized[- ]quantile|simulation-rank|DIA-11|DIA-12|pp_check|gllvmTMB_pp_check_prototype" README.md ROADMAP.md NEWS.md docs/design vignettes R inst/prototypes tests/testthat`
+  -> hits confined to the new prototype, Design 51, ROADMAP partial-status
+  note, validation-debt rows, and tests.
+- `rg -n "S_B|S_W|\\\\bf S|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|in prep|in preparation" docs/design/51-posterior-predictive-diagnostics.md inst/prototypes/ppcheck-diagnostics.R tests/testthat/test-ppcheck-diagnostics-prototype.R`
+  -> no hits in the new design/prototype/test files.
+- `gh issue view 222 --repo itchyshin/gllvmTMB --json ...`
+  -> inspected #222 before implementation.
+- `gh issue create ...`
+  -> created follow-up #228.
+- `gh issue comment 222 ...`
+  -> posted prototype-lane status and cross-linked #228.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-ppc-rq-diagnostics.md`
+
+Kaizen point:
+
+52. **Name the residual we actually computed.** A simulation-rank
+    residual is not the same claim as an exact family-CDF randomized
+    quantile residual, and fitted-model predictive draws are not Bayesian
+    posterior draws. Keeping those names separate prevents a useful
+    diagnostic prototype from becoming an accidental public overpromise.

@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Bootstrap covariance scale control (M3.3a, 2026-05-19)
+
+* **`bootstrap_Sigma()`** gains `link_residual = c("auto", "none")`, matching `extract_Sigma()` so bootstrap point estimates and refit summaries can either include family/link implicit residuals (`"auto"`, the existing default) or report the fitted latent + unique covariance only (`"none"`). IN: mixed-family bootstrap refits still preserve per-row family dispatch (MIX-08) and the default link-residual formulas remain covered (MIX-09). PARTIAL: non-Gaussian bootstrap inference remains experimental under EXT-13 / CI-08 / CI-10 until the M3 target-explicit grid is rerun with the corrected `Sigma_unit_diag` convention.
+
 ## Robust modelling diagnostics and start provenance (M3.4, 2026-05-19)
 
 * **`check_gllvmTMB()`** is a new machine-readable fit-health table for `gllvmTMB_multi` fits. It reports optimizer convergence, maximum gradient, `sdreport()` availability, `pdHess`, maximum fixed-effect SE, restart-history availability, selected restart, and simple boundary flags. `gllvmTMBcontrol(se = FALSE)` now intentionally skips `TMB::sdreport()` and keeps the point-estimate fit for bootstrap/profile uncertainty workflows. `pdHess = FALSE` is reported as an inference / identifiability warning, not automatic proof that point estimates or rotation-invariant covariance summaries are unusable. Fits now also retain `restart_history`, `start_provenance`, `fit_health`, and `sdreport_error` fields so multi-start, residual-start, simpler-start, and optimizer-fallback workflows can be audited before they are promoted by M3 target-explicit simulation evidence.

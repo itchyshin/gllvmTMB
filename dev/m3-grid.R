@@ -93,11 +93,13 @@ m3_bootstrap_supported <- function(fit) {
 }
 
 m3_muffle_bootstrap_warning <- function(w) {
-  if (grepl(
-    '`level = "B"` is deprecated as of gllvmTMB 0.2.0',
-    conditionMessage(w),
-    fixed = TRUE
-  )) {
+  if (
+    grepl(
+      '`level = "B"` is deprecated as of gllvmTMB 0.2.0',
+      conditionMessage(w),
+      fixed = TRUE
+    )
+  ) {
     invokeRestart("muffleWarning")
   }
 }
@@ -150,7 +152,9 @@ m3_fit_health_row <- function(fit = NULL, fit_error = NULL) {
       } else {
         max(abs(grad), na.rm = TRUE)
       },
-      pd_hessian = if (!is.null(fit$sd_report) && !is.null(fit$sd_report$pdHess)) {
+      pd_hessian = if (
+        !is.null(fit$sd_report) && !is.null(fit$sd_report$pdHess)
+      ) {
         isTRUE(fit$sd_report$pdHess)
       } else {
         NA
@@ -179,7 +183,10 @@ m3_fit_health_row <- function(fit = NULL, fit_error = NULL) {
     selected_restart = health$selected_restart %||% NA_integer_,
     restart_count = nrow(rh),
     objective_spread = if (length(obj) >= 2L) max(obj) - min(obj) else NA_real_,
-    boundary_flags = paste(health$boundary_flags %||% character(0), collapse = ";"),
+    boundary_flags = paste(
+      health$boundary_flags %||% character(0),
+      collapse = ";"
+    ),
     stringsAsFactors = FALSE
   )
 }
@@ -203,24 +210,42 @@ m3_sample_truth <- function(
   phi_rate = M3_DEFAULT_PHI_RATE
 ) {
   stopifnot(family %in% M3_FAMILIES, d >= 1L)
-  if (!is.numeric(lambda_scale) || length(lambda_scale) != 1L ||
-      !is.finite(lambda_scale) || lambda_scale <= 0) {
+  if (
+    !is.numeric(lambda_scale) ||
+      length(lambda_scale) != 1L ||
+      !is.finite(lambda_scale) ||
+      lambda_scale <= 0
+  ) {
     stop("lambda_scale must be one positive finite number")
   }
-  if (!is.numeric(psi_scale) || length(psi_scale) != 1L ||
-      !is.finite(psi_scale) || psi_scale <= 0) {
+  if (
+    !is.numeric(psi_scale) ||
+      length(psi_scale) != 1L ||
+      !is.finite(psi_scale) ||
+      psi_scale <= 0
+  ) {
     stop("psi_scale must be one positive finite number")
   }
-  if (!is.null(phi) && (!is.numeric(phi) || length(phi) != 1L ||
-      !is.finite(phi) || phi <= 0)) {
+  if (
+    !is.null(phi) &&
+      (!is.numeric(phi) || length(phi) != 1L || !is.finite(phi) || phi <= 0)
+  ) {
     stop("phi must be NULL or one positive finite number")
   }
-  if (!is.numeric(phi_shape) || length(phi_shape) != 1L ||
-      !is.finite(phi_shape) || phi_shape <= 0) {
+  if (
+    !is.numeric(phi_shape) ||
+      length(phi_shape) != 1L ||
+      !is.finite(phi_shape) ||
+      phi_shape <= 0
+  ) {
     stop("phi_shape must be one positive finite number")
   }
-  if (!is.numeric(phi_rate) || length(phi_rate) != 1L ||
-      !is.finite(phi_rate) || phi_rate <= 0) {
+  if (
+    !is.numeric(phi_rate) ||
+      length(phi_rate) != 1L ||
+      !is.finite(phi_rate) ||
+      phi_rate <= 0
+  ) {
     stop("phi_rate must be one positive finite number")
   }
   set.seed(seed)
@@ -230,7 +255,8 @@ m3_sample_truth <- function(
     stats::runif(n_traits * d, -1.5, 1.5),
     nrow = n_traits,
     ncol = d
-  ) * lambda_scale
+  ) *
+    lambda_scale
   ## psi (per-trait unique variance): Gamma(2, 2) -> mean 1.0, sd 0.7
   psi <- stats::rgamma(n_traits, shape = 2, rate = 2) * psi_scale
   ## Latent factor scores
@@ -244,7 +270,8 @@ m3_sample_truth <- function(
   ## it cycles families across trait rows.
   nuisance <- list()
   if (family == "nbinom2" || family == "mixed") {
-    nuisance$phi <- phi %||% stats::rgamma(1, shape = phi_shape, rate = phi_rate)
+    nuisance$phi <- phi %||%
+      stats::rgamma(1, shape = phi_shape, rate = phi_rate)
   }
   if (family == "ordinal_probit") {
     K <- 4L # n_categories
@@ -392,24 +419,42 @@ m3_run_cell <- function(
   verbose = TRUE
 ) {
   stopifnot(family %in% M3_FAMILIES, d >= 1L, n_reps >= 1L)
-  if (!is.numeric(lambda_scale) || length(lambda_scale) != 1L ||
-      !is.finite(lambda_scale) || lambda_scale <= 0) {
+  if (
+    !is.numeric(lambda_scale) ||
+      length(lambda_scale) != 1L ||
+      !is.finite(lambda_scale) ||
+      lambda_scale <= 0
+  ) {
     stop("lambda_scale must be one positive finite number")
   }
-  if (!is.numeric(psi_scale) || length(psi_scale) != 1L ||
-      !is.finite(psi_scale) || psi_scale <= 0) {
+  if (
+    !is.numeric(psi_scale) ||
+      length(psi_scale) != 1L ||
+      !is.finite(psi_scale) ||
+      psi_scale <= 0
+  ) {
     stop("psi_scale must be one positive finite number")
   }
-  if (!is.null(phi) && (!is.numeric(phi) || length(phi) != 1L ||
-      !is.finite(phi) || phi <= 0)) {
+  if (
+    !is.null(phi) &&
+      (!is.numeric(phi) || length(phi) != 1L || !is.finite(phi) || phi <= 0)
+  ) {
     stop("phi must be NULL or one positive finite number")
   }
-  if (!is.numeric(phi_shape) || length(phi_shape) != 1L ||
-      !is.finite(phi_shape) || phi_shape <= 0) {
+  if (
+    !is.numeric(phi_shape) ||
+      length(phi_shape) != 1L ||
+      !is.finite(phi_shape) ||
+      phi_shape <= 0
+  ) {
     stop("phi_shape must be one positive finite number")
   }
-  if (!is.numeric(phi_rate) || length(phi_rate) != 1L ||
-      !is.finite(phi_rate) || phi_rate <= 0) {
+  if (
+    !is.numeric(phi_rate) ||
+      length(phi_rate) != 1L ||
+      !is.finite(phi_rate) ||
+      phi_rate <= 0
+  ) {
     stop("phi_rate must be one positive finite number")
   }
   init_strategy <- match.arg(init_strategy, c("default", "single_trait_warmup"))
@@ -418,8 +463,12 @@ m3_run_cell <- function(
   if (is.na(n_init) || n_init < 1L) {
     stop("n_init must be a positive integer")
   }
-  if (!is.numeric(init_jitter) || length(init_jitter) != 1L ||
-      !is.finite(init_jitter) || init_jitter < 0) {
+  if (
+    !is.numeric(init_jitter) ||
+      length(init_jitter) != 1L ||
+      !is.finite(init_jitter) ||
+      init_jitter < 0
+  ) {
     stop("init_jitter must be one finite non-negative number")
   }
   if (!is.logical(se) || length(se) != 1L || is.na(se)) {
@@ -434,8 +483,12 @@ m3_run_cell <- function(
   if (is.na(n_cores_boot) || n_cores_boot < 1L) {
     stop("n_cores_boot must be a positive integer")
   }
-  if (!is.numeric(ci_level) || length(ci_level) != 1L ||
-      ci_level <= 0 || ci_level >= 1) {
+  if (
+    !is.numeric(ci_level) ||
+      length(ci_level) != 1L ||
+      ci_level <= 0 ||
+      ci_level >= 1
+  ) {
     stop("ci_level must be a single number in (0, 1)")
   }
   cell_id <- sprintf("%s-d%d", family, d)
@@ -533,7 +586,11 @@ m3_run_cell <- function(
     )
     fit_diag <- m3_fit_health_row(
       if (inherits(fit, "gllvmTMB_multi")) fit else NULL,
-      fit_error = if (inherits(fit, "error")) conditionMessage(fit) else NA_character_
+      fit_error = if (inherits(fit, "error")) {
+        conditionMessage(fit)
+      } else {
+        NA_character_
+      }
     )
 
     rep_runtime <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
@@ -541,54 +598,60 @@ m3_run_cell <- function(
     if (
       !fit_ok || !inherits(fit, "gllvmTMB_multi") || fit$opt$convergence != 0L
     ) {
-      rows[[r]] <- m3_add_fit_health(do.call(rbind, lapply(targets, function(target) {
-        data.frame(
-          cell = cell_id,
-          family = family,
-          d = d,
-          rep = r,
-          trait_id = NA_integer_,
-          truth_diag_sigma = NA_real_,
-          truth_psi = NA_real_,
-          est_diag_sigma = NA_real_,
-          est_psi = NA_real_,
-          ci_prof_lo = NA_real_,
-          ci_prof_hi = NA_real_,
-          covered_prof = NA,
-          converged = FALSE,
-          target = target,
-          truth = NA_real_,
-          estimate = NA_real_,
-          ci_method = m3_target_method(target),
-          ci_level = ci_level,
-          ci_lo = NA_real_,
-          ci_hi = NA_real_,
-          covered = NA,
-          ci_available = FALSE,
-          fit_converged = FALSE,
-          ci_failed = TRUE,
-          miss_side = "fit_failed",
-          n_boot = NA_integer_,
-          n_boot_failed = NA_integer_,
-          n_cores_boot = NA_integer_,
-          init_strategy = init_strategy,
-          start_method = m3_start_method_label(start_method),
-          start_method_jitter_sd = m3_start_method_jitter(start_method),
-          optimizer = optimizer,
-          n_init = n_init,
-          init_jitter = init_jitter,
-          n_units = n_units,
-          n_traits = n_traits,
-          lambda_scale = lambda_scale,
-          psi_scale = psi_scale,
-          truth_phi = truth$nuisance$phi %||% NA_real_,
-          se = se,
-          seed_base = seed_base,
-          rep_seed = rep_seed,
-          runtime_s = rep_runtime,
-          stringsAsFactors = FALSE
-        )
-      })), fit_diag)
+      rows[[r]] <- m3_add_fit_health(
+        do.call(
+          rbind,
+          lapply(targets, function(target) {
+            data.frame(
+              cell = cell_id,
+              family = family,
+              d = d,
+              rep = r,
+              trait_id = NA_integer_,
+              truth_diag_sigma = NA_real_,
+              truth_psi = NA_real_,
+              est_diag_sigma = NA_real_,
+              est_psi = NA_real_,
+              ci_prof_lo = NA_real_,
+              ci_prof_hi = NA_real_,
+              covered_prof = NA,
+              converged = FALSE,
+              target = target,
+              truth = NA_real_,
+              estimate = NA_real_,
+              ci_method = m3_target_method(target),
+              ci_level = ci_level,
+              ci_lo = NA_real_,
+              ci_hi = NA_real_,
+              covered = NA,
+              ci_available = FALSE,
+              fit_converged = FALSE,
+              ci_failed = TRUE,
+              miss_side = "fit_failed",
+              n_boot = NA_integer_,
+              n_boot_failed = NA_integer_,
+              n_cores_boot = NA_integer_,
+              init_strategy = init_strategy,
+              start_method = m3_start_method_label(start_method),
+              start_method_jitter_sd = m3_start_method_jitter(start_method),
+              optimizer = optimizer,
+              n_init = n_init,
+              init_jitter = init_jitter,
+              n_units = n_units,
+              n_traits = n_traits,
+              lambda_scale = lambda_scale,
+              psi_scale = psi_scale,
+              truth_phi = truth$nuisance$phi %||% NA_real_,
+              se = se,
+              seed_base = seed_base,
+              rep_seed = rep_seed,
+              runtime_s = rep_runtime,
+              stringsAsFactors = FALSE
+            )
+          })
+        ),
+        fit_diag
+      )
       if (verbose && r %% 5L == 0L) {
         cat(sprintf("  rep %d/%d (failed)\n", r, n_reps))
       }
@@ -611,7 +674,17 @@ m3_run_cell <- function(
     ## extract_communality(method="profile") covers the
     ## Lambda Lambda^T diag part — deferred to M3.5 (derived-quantity
     ## coverage).
-    est_diag <- diag(gllvmTMB::extract_Sigma(fit, level = "unit")$Sigma)
+    ## M3 validates the fitted latent+unique unit-tier covariance against
+    ## truth$diag_Sigma = diag(Lambda Lambda^T + Psi). Do not add the
+    ## family/link observation residual here; that is a different marginal
+    ## response-scale target handled by extract_Sigma(link_residual = "auto").
+    est_diag <- diag(
+      gllvmTMB::extract_Sigma(
+        fit,
+        level = "unit",
+        link_residual = "none"
+      )$Sigma
+    )
     est_psi <- as.numeric(fit$report$sd_B)^2
 
     rep_rows <- list()
@@ -709,6 +782,7 @@ m3_run_cell <- function(
               level = "unit",
               what = "Sigma",
               conf = ci_level,
+              link_residual = "none",
               seed = rep_seed + 9000000L,
               n_cores = n_cores_boot,
               progress = FALSE
@@ -721,8 +795,16 @@ m3_run_cell <- function(
       boot_available <- !is.null(boot) &&
         !is.null(boot$ci_lower$Sigma_B) &&
         !is.null(boot$ci_upper$Sigma_B)
-      sig_lo <- if (boot_available) diag(boot$ci_lower$Sigma_B) else rep(NA_real_, n_traits)
-      sig_hi <- if (boot_available) diag(boot$ci_upper$Sigma_B) else rep(NA_real_, n_traits)
+      sig_lo <- if (boot_available) {
+        diag(boot$ci_lower$Sigma_B)
+      } else {
+        rep(NA_real_, n_traits)
+      }
+      sig_hi <- if (boot_available) {
+        diag(boot$ci_upper$Sigma_B)
+      } else {
+        rep(NA_real_, n_traits)
+      }
       n_boot_failed <- if (boot_available) boot$n_failed else NA_integer_
 
       for (t in seq_len(n_traits)) {
@@ -734,9 +816,18 @@ m3_run_cell <- function(
           sig_truth >= sig_lo[t] &&
           sig_truth <= sig_hi[t]
         miss_side <- if (!boot_ok$ok) {
-          paste0("unsupported_family_id_", paste(boot_ok$unsupported, collapse = "_"))
+          paste0(
+            "unsupported_family_id_",
+            paste(boot_ok$unsupported, collapse = "_")
+          )
         } else {
-          m3_miss_side(sig_truth, sig_lo[t], sig_hi[t], covered_sig, ci_available)
+          m3_miss_side(
+            sig_truth,
+            sig_lo[t],
+            sig_hi[t],
+            covered_sig,
+            ci_available
+          )
         }
         rep_rows[[length(rep_rows) + 1L]] <- data.frame(
           cell = cell_id,
@@ -1119,7 +1210,11 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
       coverage_prof <- if (
         identical(sub$target[1], "psi") &&
           identical(sub$ci_method[1], "profile")
-      ) coverage else NA_real_
+      ) {
+        coverage
+      } else {
+        NA_real_
+      }
       row <- data.frame(
         cell = sub$cell[1],
         family = sub$family[1],

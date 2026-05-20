@@ -24,8 +24,15 @@
 #' @keywords internal
 #' @export
 extract_Sigma_B <- function(fit) {
-  out <- extract_Sigma(fit, level = "unit", part = "total", link_residual = "none")
-  if (is.null(out)) return(NULL)
+  out <- extract_Sigma(
+    fit,
+    level = "unit",
+    part = "total",
+    link_residual = "none"
+  )
+  if (is.null(out)) {
+    return(NULL)
+  }
   list(Sigma_B = out$Sigma, R_B = out$R)
 }
 
@@ -42,8 +49,15 @@ extract_Sigma_B <- function(fit) {
 #' @keywords internal
 #' @export
 extract_Sigma_W <- function(fit) {
-  out <- extract_Sigma(fit, level = "unit_obs", part = "total", link_residual = "none")
-  if (is.null(out)) return(NULL)
+  out <- extract_Sigma(
+    fit,
+    level = "unit_obs",
+    part = "total",
+    link_residual = "none"
+  )
+  if (is.null(out)) {
+    return(NULL)
+  }
   list(Sigma_W = out$Sigma, R_W = out$R)
 }
 
@@ -76,9 +90,21 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
   link_residual <- match.arg(link_residual)
   ## Implicit residual contributes to within-unit variance only (W tier),
   ## not to between-unit variance (B tier).
-  B <- extract_Sigma(fit, level = "unit", part = "total", link_residual = "none")
-  W <- extract_Sigma(fit, level = "unit_obs", part = "total", link_residual = link_residual)
-  if (is.null(B) || is.null(W)) return(NULL)
+  B <- extract_Sigma(
+    fit,
+    level = "unit",
+    part = "total",
+    link_residual = "none"
+  )
+  W <- extract_Sigma(
+    fit,
+    level = "unit_obs",
+    part = "total",
+    link_residual = link_residual
+  )
+  if (is.null(B) || is.null(W)) {
+    return(NULL)
+  }
   vB <- diag(B$Sigma)
   vW <- diag(W$Sigma)
   icc <- vB / (vB + vW)
@@ -151,36 +177,54 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   extract_communality(fit, level = "unit", ci = TRUE)
 #' }
 #' @export
-extract_communality <- function(fit,
-                                level = c("unit", "unit_obs", "B", "W"),
-                                link_residual = c("auto", "none"),
-                                ci = FALSE,
-                                conf_level = 0.95,
-                                method = c("profile", "wald", "bootstrap"),
-                                nsim = 500L,
-                                seed = NULL) {
+extract_communality <- function(
+  fit,
+  level = c("unit", "unit_obs", "B", "W"),
+  link_residual = c("auto", "none"),
+  ci = FALSE,
+  conf_level = 0.95,
+  method = c("profile", "wald", "bootstrap"),
+  nsim = 500L,
+  seed = NULL
+) {
   level <- match.arg(level)
   level <- .normalise_level(level, arg_name = "level")
   link_residual <- match.arg(link_residual)
   method <- match.arg(method)
   rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
-  if (!rr_used) return(NULL)
+  if (!rr_used) {
+    return(NULL)
+  }
   ## Pull shared (LL^T) and total (LL^T + Psi [+ link residual]) via extract_Sigma.
   ## We've already done the boundary normalisation here, so set
   ## `.skip_warn = TRUE` to prevent extract_Sigma from re-warning on the
   ## same legacy alias.
   shared <- suppressMessages(
-    extract_Sigma(fit, level = level, part = "shared",
-                  link_residual = "none", .skip_warn = TRUE))
-  total  <- extract_Sigma(fit, level = level, part = "total",
-                          link_residual = link_residual,
-                          .skip_warn = TRUE)
-  if (is.null(shared) || is.null(total)) return(NULL)
+    extract_Sigma(
+      fit,
+      level = level,
+      part = "shared",
+      link_residual = "none",
+      .skip_warn = TRUE
+    )
+  )
+  total <- extract_Sigma(
+    fit,
+    level = level,
+    part = "total",
+    link_residual = link_residual,
+    .skip_warn = TRUE
+  )
+  if (is.null(shared) || is.null(total)) {
+    return(NULL)
+  }
   out_pe <- diag(shared$Sigma) / diag(total$Sigma)
   trait_names <- levels(fit$data[[fit$trait_col]])
   names(out_pe) <- trait_names
 
-  if (!isTRUE(ci)) return(out_pe)
+  if (!isTRUE(ci)) {
+    return(out_pe)
+  }
 
   ## CI path
   if (method == "profile") {
@@ -196,8 +240,14 @@ extract_communality <- function(fit,
   }
   ## bootstrap
   boot <- suppressMessages(bootstrap_Sigma(
-    fit, n_boot = as.integer(nsim), level = level,
-    what = "communality", conf = conf_level, seed = seed, progress = FALSE
+    fit,
+    n_boot = as.integer(nsim),
+    level = level,
+    what = "communality",
+    conf = conf_level,
+    link_residual = link_residual,
+    seed = seed,
+    progress = FALSE
   ))
   key <- paste0("communality_", level)
   pe <- boot$point_est[[key]]
@@ -205,17 +255,21 @@ extract_communality <- function(fit,
   hi <- boot$ci_upper[[key]]
   if (is.null(pe)) {
     return(data.frame(
-      trait = trait_names, tier = level, c2 = out_pe,
-      lower = NA_real_, upper = NA_real_, method = "bootstrap",
+      trait = trait_names,
+      tier = level,
+      c2 = out_pe,
+      lower = NA_real_,
+      upper = NA_real_,
+      method = "bootstrap",
       stringsAsFactors = FALSE
     ))
   }
   data.frame(
-    trait  = trait_names,
-    tier   = level,
-    c2     = as.numeric(pe),
-    lower  = as.numeric(lo),
-    upper  = as.numeric(hi),
+    trait = trait_names,
+    tier = level,
+    c2 = as.numeric(pe),
+    lower = as.numeric(lo),
+    upper = as.numeric(hi),
     method = "bootstrap",
     stringsAsFactors = FALSE
   )
@@ -250,35 +304,43 @@ extract_communality <- function(fit,
 extract_ordination <- function(fit, level = c("unit", "unit_obs", "B", "W")) {
   level <- match.arg(level)
   level <- .normalise_level(level, arg_name = "level")
-  obj  <- fit$tmb_obj
-  par  <- obj$env$last.par.best
+  obj <- fit$tmb_obj
+  par <- obj$env$last.par.best
   trait_names <- levels(fit$data[[fit$trait_col]])
   if (level == "B") {
-    if (!fit$use$rr_B) return(NULL)
+    if (!fit$use$rr_B) {
+      return(NULL)
+    }
     z_B <- matrix(par[names(par) == "z_B"], nrow = fit$d_B, ncol = fit$n_sites)
     Lambda <- fit$report$Lambda_B
     rownames(Lambda) <- trait_names
     colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
     site_names <- levels(fit$data[[fit$unit_col]])
-    scores     <- t(z_B)
+    scores <- t(z_B)
     rownames(scores) <- site_names
     colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
-    list(scores   = scores,
-         loadings = Lambda,
-         row_id   = site_names)
+    list(scores = scores, loadings = Lambda, row_id = site_names)
   } else {
-    if (!fit$use$rr_W) return(NULL)
-    z_W <- matrix(par[names(par) == "z_W"], nrow = fit$d_W, ncol = fit$n_site_species)
+    if (!fit$use$rr_W) {
+      return(NULL)
+    }
+    z_W <- matrix(
+      par[names(par) == "z_W"],
+      nrow = fit$d_W,
+      ncol = fit$n_site_species
+    )
     Lambda <- fit$report$Lambda_W
     rownames(Lambda) <- trait_names
     colnames(Lambda) <- paste0("LV", seq_len(ncol(Lambda)))
-    obs_col  <- if (!is.null(fit$unit_obs_col)) fit$unit_obs_col else "site_species"
+    obs_col <- if (!is.null(fit$unit_obs_col)) {
+      fit$unit_obs_col
+    } else {
+      "site_species"
+    }
     ss_names <- levels(fit$data[[obs_col]])
-    scores   <- t(z_W)
+    scores <- t(z_W)
     rownames(scores) <- ss_names
     colnames(scores) <- paste0("LV", seq_len(ncol(scores)))
-    list(scores   = scores,
-         loadings = Lambda,
-         row_id   = ss_names)
+    list(scores = scores, loadings = Lambda, row_id = ss_names)
   }
 }

@@ -74,6 +74,14 @@
 #' @param keep_draws Logical; if `TRUE`, the full `n_boot` x ...
 #'   matrices of bootstrap draws are returned as `$draws`. Default
 #'   `FALSE` (CIs only — saves memory for large n_boot).
+#' @param link_residual How to treat family-specific link-implicit
+#'   residual variance when extracting `Sigma`, `R`, `communality`, and
+#'   `ICC`.
+#'   `"auto"` (default) matches [extract_Sigma()] and adds the
+#'   family/link residual to non-Gaussian trait diagonals; `"none"`
+#'   returns the fitted latent + unique covariance only. Use `"none"`
+#'   when validating against a DGP target defined as
+#'   \eqn{\Lambda\Lambda^\top + \Psi}.
 #'
 #' @return A list with components:
 #' \describe{
@@ -83,6 +91,8 @@
 #'   \item{`ci_lower`, `ci_upper`}{Named lists of percentile CI bounds,
 #'     element-wise the same shape as the corresponding `point_est`.}
 #'   \item{`ci_method`}{Character; currently `"percentile"`.}
+#'   \item{`link_residual`}{Character; the link-residual convention used
+#'     in point estimates and bootstrap refit summaries.}
 #'   \item{`conf`, `n_boot`, `n_failed`}{Configuration metadata.}
 #'   \item{`draws`}{`NULL` unless `keep_draws = TRUE`; otherwise a
 #'     named list of bootstrap draw arrays.}
@@ -92,10 +102,10 @@
 #' \itemize{
 #'   \item Uses the existing [simulate.gllvmTMB_multi()] method, which
 #'     conditions on the fitted random effects (\eqn{\eta = \hat\eta})
-#'     and adds Gaussian residual noise. CIs reflect *residual*-level
-#'     uncertainty in the random-effect modes, not the full posterior
-#'     uncertainty in the variance components. For non-Gaussian families
-#'     the simulator is not yet implemented; this function will error.
+#'     and redraws the response from the fitted family where implemented.
+#'     CIs reflect parametric simulate-refit variability, not the full
+#'     posterior uncertainty in variance components. Unsupported families
+#'     fall back through the simulator's own warning path.
 #'   \item Refits use the same `formula` reconstructed from
 #'     `fit$formula` and `fit$covstructs`. Auxiliary arguments such as
 #'     `phylo_vcv`, `mesh`, `lambda_constraint` are NOT currently
@@ -125,48 +135,57 @@
 #' boot$ci_lower$Sigma_B
 #' boot$ci_upper$Sigma_B
 #' }
-bootstrap_Sigma <- function(fit,
-                            n_boot     = 200,
-                            level      = c("unit", "unit_obs", "phy",
-                                           "B", "W"),
-                            what       = c("Sigma", "R", "communality", "ICC"),
-                            conf       = 0.95,
-                            seed       = NULL,
-                            n_cores    = 1,
-                            progress   = TRUE,
-                            keep_draws = FALSE) {
-  if (!inherits(fit, "gllvmTMB_multi"))
+bootstrap_Sigma <- function(
+  fit,
+  n_boot = 200,
+  level = c("unit", "unit_obs", "phy", "B", "W"),
+  what = c("Sigma", "R", "communality", "ICC"),
+  conf = 0.95,
+  seed = NULL,
+  n_cores = 1,
+  progress = TRUE,
+  keep_draws = FALSE,
+  link_residual = c("auto", "none")
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  }
   level <- match.arg(level, several.ok = TRUE)
   level <- vapply(level, .normalise_level, character(1L), arg_name = "level")
-  what  <- match.arg(what,  several.ok = TRUE)
-  if (!is.numeric(conf) || conf <= 0 || conf >= 1)
+  what <- match.arg(what, several.ok = TRUE)
+  link_residual <- match.arg(link_residual)
+  if (!is.numeric(conf) || conf <= 0 || conf >= 1) {
     cli::cli_abort("{.arg conf} must be in (0, 1); got {conf}.")
-  if (!is.numeric(n_boot) || n_boot < 1)
+  }
+  if (!is.numeric(n_boot) || n_boot < 1) {
     cli::cli_abort("{.arg n_boot} must be a positive integer; got {n_boot}.")
-  n_boot  <- as.integer(n_boot)
+  }
+  n_boot <- as.integer(n_boot)
   n_cores <- as.integer(n_cores)
 
   ## Drop levels not present in the fit
   level_avail <- c(
-    B   = isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B),
-    W   = isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W),
+    B = isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B),
+    W = isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W),
     ## Two-U PGLLVM: phy tier is present when EITHER phylo_latent OR
     ## phylo_unique-with-latent (phylo_diag) is fit.
     phy = isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   )
   level_kept <- level[level_avail[level]]
-  if (length(level_kept) == 0L)
+  if (length(level_kept) == 0L) {
     cli::cli_abort(c(
       "None of the requested {.arg level}(s) are present in the fit.",
       "i" = "Available: {.val {names(level_avail)[level_avail]}}."
     ))
+  }
   level <- level_kept
 
   ## ICC needs both B and W
   want_icc <- "ICC" %in% what
   if (want_icc && !all(c("B", "W") %in% level)) {
-    cli::cli_inform("ICC requires both B and W tiers; dropping ICC from {.arg what}.")
+    cli::cli_inform(
+      "ICC requires both B and W tiers; dropping ICC from {.arg what}."
+    )
     what <- setdiff(what, "ICC")
     want_icc <- FALSE
   }
@@ -175,31 +194,44 @@ bootstrap_Sigma <- function(fit,
   ## fit$formula / fit$covstructs upstream; we deliberately do not take a
   ## formula argument here to keep the API minimal.
   formula <- .reconstruct_multi_formula(fit)
-  trait   <- fit$trait_col
-  site    <- fit$unit_col
+  trait <- fit$trait_col
+  site <- fit$unit_col
   species <- fit$species_col
   ## M1.8 (2026-05-17): prefer family_input (the original family list with
   ## family_var attribute for mixed-family fits) over family (the
   ## first-family-only view used by predict's linkinv). Pre-M1.8 fits
   ## without family_input fall back to family.
-  family  <- if (!is.null(fit$family_input)) fit$family_input else fit$family
-  data    <- fit$data
+  family <- if (!is.null(fit$family_input)) fit$family_input else fit$family
+  data <- fit$data
   ## get_response() was an sdmTMB helper; the trimmed package extracts
   ## the response symbol directly here.
-  resp    <- all.vars(fit$formula)[1]
-  if (!resp %in% names(data))
-    cli::cli_abort("Response column {.var {resp}} not found in {.code fit$data}.")
+  resp <- all.vars(fit$formula)[1]
+  if (!resp %in% names(data)) {
+    cli::cli_abort(
+      "Response column {.var {resp}} not found in {.code fit$data}."
+    )
+  }
 
   ## Pre-draw the simulated response matrix once, in the parent process,
   ## so the replicates are reproducible regardless of n_cores. Each
   ## column is one bootstrap response vector.
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
   Y_sim <- simulate(fit, nsim = n_boot)
-  if (!is.matrix(Y_sim) || ncol(Y_sim) != n_boot)
-    cli::cli_abort("Internal: {.fn simulate.gllvmTMB_multi} did not return an n x n_boot matrix.")
+  if (!is.matrix(Y_sim) || ncol(Y_sim) != n_boot) {
+    cli::cli_abort(
+      "Internal: {.fn simulate.gllvmTMB_multi} did not return an n x n_boot matrix."
+    )
+  }
 
   ## Point estimate from the original fit
-  point_est <- .extract_summaries(fit, level = level, what = what)
+  point_est <- .extract_summaries(
+    fit,
+    level = level,
+    what = what,
+    link_residual = link_residual
+  )
 
   ## One-replicate worker: drop in the b-th simulated response, refit,
   ## extract summaries. Returns a named list of summaries (matrices or
@@ -209,14 +241,14 @@ bootstrap_Sigma <- function(fit,
   ## them up as closure globals (parallel workers only see the package
   ## namespace, not bootstrap_Sigma()'s calling env).
   extract_fn <- .extract_summaries
-  na_fn      <- .na_summaries
+  na_fn <- .na_summaries
   ## Auxiliary fit arguments to forward: phylo correlation matrix or
   ## tree, SPDE mesh, lambda_constraint, etc. Without these, refits of
   ## phylogenetic / spatial fits all fail.
   aux <- list(
-    phylo_vcv         = fit$phylo_vcv,
-    phylo_tree        = fit$phylo_tree,
-    mesh              = fit$mesh,
+    phylo_vcv = fit$phylo_vcv,
+    phylo_tree = fit$phylo_tree,
+    mesh = fit$mesh,
     lambda_constraint = fit$lambda_constraint
   )
   aux <- aux[!vapply(aux, is.null, logical(1))]
@@ -225,9 +257,15 @@ bootstrap_Sigma <- function(fit,
     dat <- data
     dat[[resp]] <- Y_sim[, b]
     call_args <- c(
-      list(formula = formula, data = dat,
-           trait = trait, site = site, species = species,
-           family = family, silent = TRUE),
+      list(
+        formula = formula,
+        data = dat,
+        trait = trait,
+        site = site,
+        species = species,
+        family = family,
+        silent = TRUE
+      ),
       aux
     )
     out <- tryCatch(
@@ -239,25 +277,32 @@ bootstrap_Sigma <- function(fit,
       ),
       error = function(e) NULL
     )
-    if (is.null(out) || !inherits(out, "gllvmTMB_multi") ||
-        !isTRUE(out$opt$convergence == 0L)) {
+    if (
+      is.null(out) ||
+        !inherits(out, "gllvmTMB_multi") ||
+        !isTRUE(out$opt$convergence == 0L)
+    ) {
       return(na_fn(point_est))
     }
-    extract_fn(out, level = level, what = what)
+    extract_fn(out, level = level, what = what, link_residual = link_residual)
   }
 
   ## Dispatch sequential or parallel
   if (n_cores > 1L) {
-    if (!requireNamespace("future", quietly = TRUE) ||
-        !requireNamespace("future.apply", quietly = TRUE))
+    if (
+      !requireNamespace("future", quietly = TRUE) ||
+        !requireNamespace("future.apply", quietly = TRUE)
+    ) {
       cli::cli_abort(c(
         "{.arg n_cores > 1} requires {.pkg future} and {.pkg future.apply}.",
         "i" = "Install with {.code install.packages(c('future', 'future.apply'))}."
       ))
+    }
     oplan <- future::plan(future::multisession, workers = n_cores)
     on.exit(future::plan(oplan), add = TRUE)
     draws <- future.apply::future_lapply(
-      seq_len(n_boot), refit_one,
+      seq_len(n_boot),
+      refit_one,
       future.seed = if (is.null(seed)) TRUE else seed,
       future.packages = "gllvmTMB"
     )
@@ -272,22 +317,26 @@ bootstrap_Sigma <- function(fit,
   }
 
   ## Tally failures and aggregate
-  n_failed <- sum(vapply(draws, function(d) isTRUE(attr(d, "failed")),
-                         logical(1)))
+  n_failed <- sum(vapply(
+    draws,
+    function(d) isTRUE(attr(d, "failed")),
+    logical(1)
+  ))
 
   ci <- .summarise_draws(draws, point_est, conf = conf)
 
   out <- list(
     point_est = point_est,
-    ci_lower  = ci$lower,
-    ci_upper  = ci$upper,
+    ci_lower = ci$lower,
+    ci_upper = ci$upper,
     ci_method = "percentile",
-    conf      = conf,
-    n_boot    = n_boot,
-    n_failed  = n_failed,
-    level     = level,
-    what      = what,
-    draws     = if (keep_draws) draws else NULL
+    link_residual = link_residual,
+    conf = conf,
+    n_boot = n_boot,
+    n_failed = n_failed,
+    level = level,
+    what = what,
+    draws = if (keep_draws) draws else NULL
   )
   class(out) <- c("bootstrap_Sigma", "list")
   out
@@ -299,28 +348,64 @@ bootstrap_Sigma <- function(fit,
 #'
 #' @keywords internal
 #' @noRd
-.extract_summaries <- function(fit, level, what) {
+.extract_summaries <- function(
+  fit,
+  level,
+  what,
+  link_residual = c("auto", "none")
+) {
+  link_residual <- match.arg(link_residual)
   out <- list()
   for (lvl in level) {
     sigma_call <- if (lvl == "phy") {
-      tryCatch(suppressMessages(extract_Sigma(fit, level = "phy", part = "total")),
-               error = function(e) NULL)
+      tryCatch(
+        suppressMessages(extract_Sigma(
+          fit,
+          level = "phy",
+          part = "total",
+          link_residual = link_residual,
+          .skip_warn = TRUE
+        )),
+        error = function(e) NULL
+      )
     } else {
-      tryCatch(suppressMessages(extract_Sigma(fit, level = lvl, part = "total")),
-               error = function(e) NULL)
+      tryCatch(
+        suppressMessages(extract_Sigma(
+          fit,
+          level = lvl,
+          part = "total",
+          link_residual = link_residual,
+          .skip_warn = TRUE
+        )),
+        error = function(e) NULL
+      )
     }
-    if (is.null(sigma_call)) next
-    if ("Sigma" %in% what)
+    if (is.null(sigma_call)) {
+      next
+    }
+    if ("Sigma" %in% what) {
       out[[paste0("Sigma_", lvl)]] <- sigma_call$Sigma
-    if ("R" %in% what)
-      out[[paste0("R_", lvl)]]     <- sigma_call$R
+    }
+    if ("R" %in% what) {
+      out[[paste0("R_", lvl)]] <- sigma_call$R
+    }
     if ("communality" %in% what && lvl %in% c("B", "W")) {
-      cm <- tryCatch(extract_communality(fit, level = lvl), error = function(e) NULL)
+      cm <- tryCatch(
+        extract_communality(
+          fit,
+          level = .canonical_level_name(lvl),
+          link_residual = link_residual
+        ),
+        error = function(e) NULL
+      )
       if (!is.null(cm)) out[[paste0("communality_", lvl)]] <- cm
     }
   }
   if ("ICC" %in% what && all(c("B", "W") %in% level)) {
-    icc <- tryCatch(extract_ICC_site(fit), error = function(e) NULL)
+    icc <- tryCatch(
+      extract_ICC_site(fit, link_residual = link_residual),
+      error = function(e) NULL
+    )
     if (!is.null(icc)) out[["ICC_site"]] <- icc
   }
   out
@@ -353,36 +438,73 @@ bootstrap_Sigma <- function(fit,
   q_hi <- 1 - alpha / 2
 
   nms <- names(point_est)
-  lower <- list(); upper <- list()
+  lower <- list()
+  upper <- list()
   for (nm in nms) {
     ref <- point_est[[nm]]
     ## Stack along a leading replicate dimension
     if (is.matrix(ref)) {
-      stacked <- vapply(draws, function(d) {
-        v <- d[[nm]]
-        if (is.null(v)) rep(NA_real_, length(ref)) else as.numeric(v)
-      }, numeric(length(ref)))
+      stacked <- vapply(
+        draws,
+        function(d) {
+          v <- d[[nm]]
+          if (is.null(v)) rep(NA_real_, length(ref)) else as.numeric(v)
+        },
+        numeric(length(ref))
+      )
       ## stacked is length(ref) x n_boot
-      lo <- apply(stacked, 1L, stats::quantile,
-                  probs = q_lo, na.rm = TRUE, names = FALSE)
-      hi <- apply(stacked, 1L, stats::quantile,
-                  probs = q_hi, na.rm = TRUE, names = FALSE)
-      lo_m <- ref; lo_m[] <- lo
-      hi_m <- ref; hi_m[] <- hi
+      lo <- apply(
+        stacked,
+        1L,
+        stats::quantile,
+        probs = q_lo,
+        na.rm = TRUE,
+        names = FALSE
+      )
+      hi <- apply(
+        stacked,
+        1L,
+        stats::quantile,
+        probs = q_hi,
+        na.rm = TRUE,
+        names = FALSE
+      )
+      lo_m <- ref
+      lo_m[] <- lo
+      hi_m <- ref
+      hi_m[] <- hi
       lower[[nm]] <- lo_m
       upper[[nm]] <- hi_m
     } else {
       ## Numeric vector
-      stacked <- vapply(draws, function(d) {
-        v <- d[[nm]]
-        if (is.null(v)) rep(NA_real_, length(ref)) else as.numeric(v)
-      }, numeric(length(ref)))
-      lo <- apply(stacked, 1L, stats::quantile,
-                  probs = q_lo, na.rm = TRUE, names = FALSE)
-      hi <- apply(stacked, 1L, stats::quantile,
-                  probs = q_hi, na.rm = TRUE, names = FALSE)
-      lo_v <- ref; lo_v[] <- lo
-      hi_v <- ref; hi_v[] <- hi
+      stacked <- vapply(
+        draws,
+        function(d) {
+          v <- d[[nm]]
+          if (is.null(v)) rep(NA_real_, length(ref)) else as.numeric(v)
+        },
+        numeric(length(ref))
+      )
+      lo <- apply(
+        stacked,
+        1L,
+        stats::quantile,
+        probs = q_lo,
+        na.rm = TRUE,
+        names = FALSE
+      )
+      hi <- apply(
+        stacked,
+        1L,
+        stats::quantile,
+        probs = q_hi,
+        na.rm = TRUE,
+        names = FALSE
+      )
+      lo_v <- ref
+      lo_v[] <- lo
+      hi_v <- ref
+      hi_v[] <- hi
       lower[[nm]] <- lo_v
       upper[[nm]] <- hi_v
     }

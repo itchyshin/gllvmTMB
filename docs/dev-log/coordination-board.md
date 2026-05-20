@@ -75,7 +75,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | M3.3a `nbinom2` r10 stress pilot | local branch `codex/m3-3a-nbinom2-stress-pilot-r10-2026-05-19` | `docs/dev-log/*` | Local pilot complete; writing audit/check-log/after-task report; no PR yet |
+| Codex / Ada | M3.3a `nbinom2` r10 stress pilot | PR #210 / branch `codex/m3-3a-nbinom2-stress-pilot-r10-2026-05-19` | `docs/dev-log/*` | PR open; waiting on R-CMD-check |
 
 **WIP**: 1.
 

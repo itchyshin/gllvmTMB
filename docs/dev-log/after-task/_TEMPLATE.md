@@ -36,6 +36,12 @@
 
 <Which ROADMAP row changed, or N/A.>
 
+## 7a. GitHub Issue Ledger
+
+<Issues inspected, commented, closed, or created. Include exact issue
+numbers and links. If no issue applies, write "No relevant open issue;
+no new issue created" and say why.>
+
 ## 8. What Did Not Go Smoothly
 
 <Honest friction notes: process gaps, surprises, delays.>
@@ -47,4 +53,3 @@
 ## 10. Known Limitations And Next Actions
 
 <What is still partial/blocked, and the next slice(s).>
-

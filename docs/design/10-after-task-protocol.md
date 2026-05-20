@@ -62,6 +62,9 @@ Each report should include:
 - **Roadmap tick**: one-line statement of which `ROADMAP.md`
   row's status chip or progress bar changed in this PR, or
   `N/A` if no row changed. See the dedicated section below;
+- **GitHub issue ledger**: exact issues inspected, commented,
+  closed, created, or explicitly judged not relevant. See the
+  dedicated section below;
 - known limitations and next actions.
 
 ## Mathematical Contract
@@ -196,6 +199,31 @@ roadmap article on the next `main` push.
 Lesson recorded after the 2026-05-14 roadmap refresh, when Rose
 flagged the drift pattern during persona consults. See
 `docs/dev-log/after-task/2026-05-14-roadmap-refresh.md`.
+
+## GitHub Issue Ledger
+
+Every meaningful after-task report includes a **GitHub Issue Ledger**
+before the task is treated as closed. The ledger records:
+
+1. relevant open issues inspected before closeout;
+2. issues commented because the PR advanced, narrowed, or redirected
+   their scope without closing them;
+3. issues closed by the PR;
+4. issues created for follow-up work that should not live only in
+   chat, `check-log.md`, or an after-task report;
+5. issue numbers judged not relevant, with a short reason when that
+   judgment might surprise the next agent.
+
+Use targeted `gh issue list` and `gh issue view` calls rather than a
+generic memory of the tracker. If no issue applies, the report says:
+`No relevant open issue; no new issue created`, followed by the reason.
+
+Roadmap ticks and issue comments should agree. When a PR changes
+roadmap direction, status, or follow-up priority, update `ROADMAP.md`
+and the relevant tracker issue in the same closeout. When a PR resolves
+the process or feature request that created the issue, include the
+closing keyword in the PR body and record the closure in the after-task
+report.
 
 ## Prose Audit
 

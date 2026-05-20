@@ -45,6 +45,7 @@ M3_DEFAULT_NOMINAL <- 0.95
 M3_PASS_GATE <- 0.94 # audit-1 exit threshold
 M3_INTERVAL_TARGETS <- c("psi", "Sigma_unit_diag")
 M3_STRESS_RUN_STAGE <- "point_stress"
+M3_START_PROBE_STAGE <- "start_probe"
 
 m3_normalise_targets <- function(targets = "psi") {
   if (is.null(targets) || !length(targets)) {
@@ -1472,6 +1473,145 @@ m3_run_surface_register <- function(
   do.call(rbind, rows)
 }
 
+m3_nb2_start_probe_configs <- function(include_optimizer_probe = TRUE) {
+  configs <- data.frame(
+    probe_id = c(
+      "current_res_bfgs_n3_j005",
+      "res_bfgs_n10_j020",
+      "res_bfgs_n10_j050",
+      "indep_bfgs_n10_j020"
+    ),
+    probe_label = c(
+      "current residual BFGS n_init=3",
+      "residual BFGS n_init=10 jitter=0.20",
+      "residual BFGS n_init=10 jitter=0.50",
+      "independent BFGS n_init=10 jitter=0.20"
+    ),
+    init_strategy = "single_trait_warmup",
+    start_method_name = c("res", "res", "res", "indep"),
+    start_jitter = c(0.2, 0.2, 0.2, 0.2),
+    optimizer = "optim",
+    optim_method = "BFGS",
+    n_init = c(3L, 10L, 10L, 10L),
+    init_jitter = c(0.05, 0.2, 0.5, 0.2),
+    stringsAsFactors = FALSE
+  )
+
+  if (isTRUE(include_optimizer_probe)) {
+    configs <- rbind(
+      configs,
+      data.frame(
+        probe_id = "res_nlminb_n10_j020",
+        probe_label = "residual nlminb n_init=10 jitter=0.20",
+        init_strategy = "single_trait_warmup",
+        start_method_name = "res",
+        start_jitter = 0.2,
+        optimizer = "nlminb",
+        optim_method = NA_character_,
+        n_init = 10L,
+        init_jitter = 0.2,
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+
+  rownames(configs) <- NULL
+  configs
+}
+
+m3_run_start_probe <- function(
+  surfaces = m3_nb2_stress_surfaces(),
+  configs = m3_nb2_start_probe_configs(),
+  n_reps = 5L,
+  seed_base = 20260520L,
+  targets = "Sigma_unit_diag",
+  n_boot = 0L,
+  n_cores_boot = 1L,
+  se = FALSE,
+  ci_level = M3_DEFAULT_NOMINAL,
+  verbose = TRUE
+) {
+  required <- c(
+    "probe_id", "probe_label", "init_strategy", "start_method_name",
+    "start_jitter", "optimizer", "n_init", "init_jitter"
+  )
+  missing <- setdiff(required, names(configs))
+  if (length(missing)) {
+    stop("Start-probe config missing columns: ", paste(missing, collapse = ", "))
+  }
+  targets <- m3_normalise_targets(targets)
+  n_boot <- as.integer(n_boot)
+  if (is.na(n_boot) || n_boot < 0L) {
+    stop("n_boot must be a non-negative integer")
+  }
+  n_cores_boot <- as.integer(n_cores_boot)
+  if (is.na(n_cores_boot) || n_cores_boot < 1L) {
+    stop("n_cores_boot must be a positive integer")
+  }
+
+  surfaces <- surfaces[surfaces$family == "nbinom2", , drop = FALSE]
+  surfaces$target <- paste(targets, collapse = ",")
+  surfaces$n_boot <- n_boot
+  surfaces$n_cores_boot <- n_cores_boot
+  surfaces$ci_method <- if (n_boot == 0L) "none" else "bootstrap"
+  surfaces$run_stage <- M3_START_PROBE_STAGE
+
+  rows <- vector("list", nrow(configs))
+  for (i in seq_len(nrow(configs))) {
+    cfg <- configs[i, , drop = FALSE]
+    if (verbose) {
+      cat(sprintf(
+        "[m3] start probe %s (%s)\n",
+        cfg$probe_id,
+        cfg$probe_label
+      ))
+    }
+    start_method <- list(
+      method = if (identical(cfg$start_method_name, "default")) {
+        NULL
+      } else {
+        cfg$start_method_name
+      },
+      jitter.sd = as.numeric(cfg$start_jitter)
+    )
+    optArgs <- if (identical(cfg$optimizer, "optim")) {
+      method <- cfg$optim_method
+      if (is.null(method) || length(method) == 0L || is.na(method)) {
+        method <- "BFGS"
+      }
+      list(method = method)
+    } else {
+      list()
+    }
+    grid_i <- m3_run_surface_register(
+      surfaces = surfaces,
+      n_reps = n_reps,
+      seed_base = seed_base,
+      init_strategy = cfg$init_strategy,
+      start_method = start_method,
+      optimizer = cfg$optimizer,
+      optArgs = optArgs,
+      n_init = as.integer(cfg$n_init),
+      init_jitter = as.numeric(cfg$init_jitter),
+      se = se,
+      ci_level = ci_level,
+      verbose = verbose
+    )
+    grid_i$probe_id <- cfg$probe_id
+    grid_i$probe_label <- cfg$probe_label
+    grid_i$probe_stage <- M3_START_PROBE_STAGE
+    grid_i$probe_start_method <- cfg$start_method_name
+    grid_i$probe_start_jitter <- as.numeric(cfg$start_jitter)
+    grid_i$probe_optimizer <- cfg$optimizer
+    grid_i$probe_optim_method <- cfg$optim_method
+    grid_i$probe_n_init <- as.integer(cfg$n_init)
+    grid_i$probe_init_jitter <- as.numeric(cfg$init_jitter)
+    rows[[i]] <- grid_i
+  }
+
+  do.call(rbind, rows)
+}
+
 ## ---- Summary -----------------------------------------------------------
 
 m3_pilot_status <- function(
@@ -1558,6 +1698,9 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
   split_keys <- list(grid_df$cell, grid_df$target, grid_df$ci_method)
   if ("surface_id" %in% names(grid_df)) {
     split_keys <- c(list(grid_df$surface_id), split_keys)
+  }
+  if ("probe_id" %in% names(grid_df)) {
+    split_keys <- c(list(grid_df$probe_id), split_keys)
   }
   if ("fit_phi_mode" %in% names(grid_df)) {
     split_keys <- c(list(grid_df$fit_phi_mode), split_keys)
@@ -1818,6 +1961,22 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
           stringsAsFactors = FALSE
         )
       }
+      probe_cols <- intersect(
+        c(
+          "probe_id", "probe_label", "probe_stage", "probe_start_method",
+          "probe_start_jitter", "probe_optimizer", "probe_optim_method",
+          "probe_n_init", "probe_init_jitter"
+        ),
+        names(sub)
+      )
+      if (length(probe_cols)) {
+        row <- data.frame(
+          sub[1, probe_cols, drop = FALSE],
+          row,
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      }
       if ("run_stage" %in% names(sub)) {
         row <- data.frame(
           run_stage = sub$run_stage[1],
@@ -1868,7 +2027,10 @@ m3_diagnostic_report_data <- function(
       "surface_id", "scenario", "run_stage", "family", "d", "n_units",
       "n_traits", "lambda_scale", "psi_scale", "truth_phi", "target",
       "ci_method", "fit_phi_mode", "declared_link_residual", "n_boot",
-      "n_cores_boot", "seed_base"
+      "n_cores_boot", "seed_base", "probe_id", "probe_label",
+      "probe_stage", "probe_start_method", "probe_start_jitter",
+      "probe_optimizer", "probe_optim_method", "probe_n_init",
+      "probe_init_jitter"
     ),
     names(grid_df)
   )
@@ -1884,8 +2046,8 @@ m3_diagnostic_report_data <- function(
     drop = FALSE
   ]
   trait_keys <- c(
-    "surface_id", "scenario", "family", "d", "target", "ci_method",
-    "fit_phi_mode", "trait_id"
+    "probe_id", "surface_id", "scenario", "family", "d", "target",
+    "ci_method", "fit_phi_mode", "trait_id"
   )
   trait_ratios <- m3_split_apply(trait_rows, trait_keys, function(sub) {
     key <- sub[1, intersect(trait_keys, names(sub)), drop = FALSE]
@@ -1941,7 +2103,10 @@ m3_diagnostic_report_data <- function(
       "ci_method", "n_reps", "n_completed", "n_failed", "n_trait_rows",
       "n_ci_missing", "n_boot_failed", "n_boot_attempted",
       "boot_fail_rate", "pd_hessian_rate", "sdreport_ok_rate",
-      "median_max_gradient", "pilot_status"
+      "median_max_gradient", "median_restart_count",
+      "median_objective_spread", "pilot_status", "probe_id",
+      "probe_label", "probe_stage", "probe_start_method",
+      "probe_optimizer", "probe_n_init", "probe_init_jitter"
     ),
     names(summary)
   )
@@ -1958,7 +2123,8 @@ m3_diagnostic_report_data <- function(
         intersect(
           c(
             "surface_id", "scenario", "fit_phi_mode", "target",
-            "ci_method", "pilot_status"
+            "ci_method", "pilot_status", "probe_id", "probe_label",
+            "probe_stage"
           ),
           names(summary)
         )

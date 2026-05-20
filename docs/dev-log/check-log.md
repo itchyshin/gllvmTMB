@@ -3331,3 +3331,56 @@ Kaizen point:
     That prevents a table or figure from turning an intentional
     point-estimate diagnostic into either false coverage evidence or a
     bogus CI failure.
+
+## 2026-05-20 -- M3.3b NB2 start/local-basin probe scaffold
+
+Scope:
+
+- Add a dev-only `--nb2-start-probe` mode to reuse the M3.3b NB2
+  stress surfaces with paired-seed start/restart configurations.
+- Preserve `POINT_ONLY` / `NOT_EVALUATED` semantics: this probe is
+  about point estimates, objectives, restart spread, fitted `phi`, and
+  link-residual diagnostics, not interval coverage.
+- Add `probe_id` / start-configuration metadata to summaries and
+  diagnostic reports so dashboards can compare starts without merging
+  them into one surface row.
+- Add `--probe-config=` to make future smoke checks bounded after the
+  first full smoke showed that low-phi n120 known-phi cells are slow.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt,url`
+  -> no open PRs at lane start.
+- `git log --all --oneline --since="6 hours ago" | head -80`
+  -> reviewed recent M3.3b / issue-ledger commits through `deab93f`.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); str(m3_nb2_start_probe_configs(include_optimizer_probe = FALSE)); surfaces <- m3_nb2_stress_surfaces(); configs <- m3_nb2_start_probe_configs(FALSE); cat(nrow(surfaces), nrow(configs), "\n")'`
+  -> source-loaded the helper and confirmed 6 NB2 surface/mode rows x
+  4 bounded BFGS probe configs.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  -> passed: 53 tests.
+- `Rscript --vanilla dev/precompute-m3-grid.R --nb2-start-probe --no-optimizer-probe --n-reps=1 --out-dir=/tmp/gllvmtmb-m3-3b-start-probe-smoke --out-prefix=m3-nb2-start-probe-smoke`
+  -> passed; wrote full four-config smoke artifacts under
+  `/tmp/gllvmtmb-m3-3b-start-probe-smoke/`; total runtime 749.4 s.
+- `Rscript --vanilla -e 'x <- readRDS("/tmp/gllvmtmb-m3-3b-start-probe-smoke/m3-nb2-start-probe-smoke-grid.rds"); stopifnot("probe_id" %in% names(x$grid), length(unique(x$summary$probe_id)) == 4L, all(x$summary$pilot_status == "POINT_ONLY")); print(unique(x$summary[, c("probe_id", "probe_n_init", "profile_gate_status")]))'`
+  -> confirmed four `probe_id` groups and
+  `profile_gate_status = "NOT_EVALUATED"`.
+- `Rscript --vanilla dev/precompute-m3-grid.R --nb2-start-probe --probe-config=current_res_bfgs_n3_j005 --n-reps=1 --out-dir=/tmp/gllvmtmb-m3-3b-start-probe-smoke-selected --out-prefix=m3-nb2-start-probe-selected-smoke`
+  -> passed; wrote selected-config smoke artifacts under
+  `/tmp/gllvmtmb-m3-3b-start-probe-smoke-selected/`; total runtime
+  60.6 s.
+- `git diff --check`
+  -> clean.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-m3-3b-nb2-start-probe.md`
+
+Kaizen point:
+
+48. **Every long diagnostic needs a small smoke selector.** The first
+    start-probe smoke used only one replicate but still took 749.4 s
+    because the low-phi n120 known-phi cells are expensive under
+    larger restart configurations. The CLI now supports
+    `--probe-config=<id>` so future smoke checks can verify plumbing in
+    about one minute while leaving the full comparison table available
+    for deliberate source-map artifacts.

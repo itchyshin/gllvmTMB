@@ -103,7 +103,12 @@ These are intentionally bounded lanes. Treat each as its own PR.
    NB2-specific starts or larger jitter on the r20 surfaces before any
    r50 admission. Carver's read-only audit found no obvious target or
    `phi` scale bug, leaving finite-sample identifiability and local
-   basins as the leading explanation.
+   basins as the leading explanation. A dev-only start-probe scaffold
+   now records `probe_id`, restart counts, objective spread,
+   estimate/truth ratios, fitted `phi`, and link residuals while
+   keeping rows `POINT_ONLY` / `NOT_EVALUATED`; full source-map runs
+   should stay selected-seed artifacts because low-phi n120 known-phi
+   cells are slow.
 3. **Fixed-phi bootstrap design checkpoint (Gauss + Noether +
    Fisher)**: decide whether the development grid needs a mapped-
    parameter bootstrap refit path. Until then, known-phi evidence is

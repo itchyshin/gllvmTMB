@@ -97,7 +97,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex/Ada | M3.3b source-map dashboard / Florence contact sheet | branch `codex/m3-3b-source-map-dashboard-2026-05-20` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `docs/design/46-visualization-grammar.md`, `docs/design/50-m3-3b-surface-admission.md`, `ROADMAP.md`, dev-log files | In progress; local dashboard render passed, PR not yet opened |
+| Codex/Ada | M3.3b source-map dashboard / Florence contact sheet | PR #225 / branch `codex/m3-3b-source-map-dashboard-2026-05-20` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `docs/design/46-visualization-grammar.md`, `docs/design/50-m3-3b-surface-admission.md`, `ROADMAP.md`, dev-log files | PR open; local dashboard render, focused tests, `git diff --check`, and pkgdown check passed |
 
 **WIP**: 1.
 

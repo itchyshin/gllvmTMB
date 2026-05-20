@@ -1,5 +1,7 @@
-make_ppc_diag_fit <- function(family_name = c("gaussian", "poisson", "nbinom2"),
-                              seed = 1L) {
+make_ppc_diag_fit <- function(
+  family_name = c("gaussian", "poisson", "nbinom2"),
+  seed = 1L
+) {
   family_name <- match.arg(family_name)
   set.seed(seed)
   n_ind <- 36L
@@ -10,10 +12,16 @@ make_ppc_diag_fit <- function(family_name = c("gaussian", "poisson", "nbinom2"),
   y <- switch(
     family_name,
     gaussian = eta + matrix(stats::rnorm(n_ind * Tn, sd = 0.25), n_ind, Tn),
-    poisson = matrix(stats::rpois(n_ind * Tn, lambda = exp(as.vector(eta))),
-                     n_ind, Tn),
-    nbinom2 = matrix(stats::rnbinom(n_ind * Tn, mu = exp(as.vector(eta)),
-                                    size = 3), n_ind, Tn)
+    poisson = matrix(
+      stats::rpois(n_ind * Tn, lambda = exp(as.vector(eta))),
+      n_ind,
+      Tn
+    ),
+    nbinom2 = matrix(
+      stats::rnbinom(n_ind * Tn, mu = exp(as.vector(eta)), size = 3),
+      n_ind,
+      Tn
+    )
   )
 
   df <- data.frame(
@@ -36,10 +44,18 @@ make_ppc_diag_fit <- function(family_name = c("gaussian", "poisson", "nbinom2"),
   )))
 }
 
+source_ppcheck_diagnostics_prototype <- function(envir = parent.frame()) {
+  path <- system.file("prototypes/ppcheck-diagnostics.R", package = "gllvmTMB")
+  if (identical(path, "")) {
+    path <- test_path("../../inst/prototypes/ppcheck-diagnostics.R")
+  }
+  source(path, local = envir)
+}
+
 test_that("posterior-predictive prototype works on Gaussian, Poisson, and NB2 fits", {
   skip_on_cran()
   testthat::skip_if_not_installed("ggplot2")
-  source(test_path("../../dev/ppcheck-diagnostics.R"), local = TRUE)
+  source_ppcheck_diagnostics_prototype()
 
   fits <- list(
     gaussian = make_ppc_diag_fit("gaussian", seed = 1L),
@@ -57,8 +73,19 @@ test_that("posterior-predictive prototype works on Gaussian, Poisson, and NB2 fi
     )
     expect_s3_class(res, "data.frame")
     expect_equal(nrow(res), length(fit$tmb_data$y))
-    expect_true(all(c(".row", "trait", "family", "observed", "u",
-                      "residual", "status", "nsim") %in% names(res)))
+    expect_true(all(
+      c(
+        ".row",
+        "trait",
+        "family",
+        "observed",
+        "u",
+        "residual",
+        "status",
+        "nsim"
+      ) %in%
+        names(res)
+    ))
     expect_true(all(res$family == nm))
     expect_true(all(res$status == "ok"))
 
@@ -81,7 +108,7 @@ test_that("posterior-predictive prototype works on Gaussian, Poisson, and NB2 fi
 test_that("prototype density and grouped-stat plots carry auditable metadata", {
   skip_on_cran()
   testthat::skip_if_not_installed("ggplot2")
-  source(test_path("../../dev/ppcheck-diagnostics.R"), local = TRUE)
+  source_ppcheck_diagnostics_prototype()
 
   fit <- make_ppc_diag_fit("poisson", seed = 4L)
 
@@ -95,8 +122,10 @@ test_that("prototype density and grouped-stat plots carry auditable metadata", {
   expect_s3_class(p_density, "ggplot")
   density_meta <- attr(p_density, "gllvmTMB_diagnostic")
   expect_equal(density_meta$type, "dens_overlay")
-  expect_true(all(c(".row", "trait", "family", "draw", "value", "source") %in%
-                    names(density_meta$data)))
+  expect_true(all(
+    c(".row", "trait", "family", "draw", "value", "source") %in%
+      names(density_meta$data)
+  ))
   expect_true(any(density_meta$data$source == "observed"))
   expect_true(any(density_meta$data$source == "simulated"))
 
@@ -111,13 +140,15 @@ test_that("prototype density and grouped-stat plots carry auditable metadata", {
   expect_s3_class(p_grouped, "ggplot")
   grouped_meta <- attr(p_grouped, "gllvmTMB_diagnostic")
   expect_equal(grouped_meta$type, "stat_grouped")
-  expect_true(all(c("group", "observed", "sim_median", "sim_low",
-                    "sim_high", "stat") %in% names(grouped_meta$data)))
+  expect_true(all(
+    c("group", "observed", "sim_median", "sim_low", "sim_high", "stat") %in%
+      names(grouped_meta$data)
+  ))
 })
 
 test_that("simulation-rank residual prototype retains non-finite rows", {
   skip_on_cran()
-  source(test_path("../../dev/ppcheck-diagnostics.R"), local = TRUE)
+  source_ppcheck_diagnostics_prototype()
 
   fit <- make_ppc_diag_fit("gaussian", seed = 5L)
   fit$tmb_data$y[1] <- Inf
@@ -135,7 +166,7 @@ test_that("simulation-rank residual prototype retains non-finite rows", {
 })
 
 test_that("prototype argument validation is explicit", {
-  source(test_path("../../dev/ppcheck-diagnostics.R"), local = TRUE)
+  source_ppcheck_diagnostics_prototype()
 
   expect_error(
     gllvmTMB_ppc_draws_prototype(list(), ndraws = 8L),

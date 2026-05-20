@@ -14,7 +14,7 @@ patterns. Issue #222 starts a separate model-checking lane: fitted-model
 predictive checks and simulation-rank residuals that return auditable
 tables and `ggplot` objects.
 
-This lane is deliberately conservative. The dev prototype uses
+This lane is deliberately conservative. The non-exported prototype uses
 `simulate.gllvmTMB_multi()` to generate fitted-model draws. Those draws are
 useful for posterior-predictive-style checks, but they are not Bayesian
 posterior draws unless a future workflow supplies parameter draws. The
@@ -52,8 +52,8 @@ Sources checked on 2026-05-20:
 
 ## Prototype Surface
 
-The dev-only file `dev/ppcheck-diagnostics.R` defines three helper
-families:
+The non-exported file `inst/prototypes/ppcheck-diagnostics.R` defines
+three helper families:
 
 ```r
 gllvmTMB_ppc_draws_prototype(

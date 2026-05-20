@@ -13,7 +13,7 @@ or exact residual method before the semantics are ready.
 
 ## 2. Implemented
 
-- Added dev-only `dev/ppcheck-diagnostics.R`.
+- Added non-exported `inst/prototypes/ppcheck-diagnostics.R`.
 - Added `gllvmTMB_ppc_draws_prototype()` for fitted-model draw tables.
 - Added `gllvmTMB_simulation_rank_residuals_prototype()` with explicit row
   status for non-finite observed or simulated values.
@@ -28,7 +28,7 @@ or exact residual method before the semantics are ready.
 
 ## 3. Files Changed
 
-- `dev/ppcheck-diagnostics.R`
+- `inst/prototypes/ppcheck-diagnostics.R`
 - `tests/testthat/test-ppcheck-diagnostics-prototype.R`
 - `docs/design/51-posterior-predictive-diagnostics.md`
 - `docs/design/35-validation-debt-register.md`
@@ -48,7 +48,7 @@ CDF plumbing; the prototype uses simulation ranks from `simulate()`. Rejected:
 shipping this as `residuals(type = "randomized_quantile")`.
 Confidence: high.
 
-Decision: keep the predictive-check helper dev-only. Rationale:
+Decision: keep the predictive-check helper non-exported. Rationale:
 `bayesplot::pp_check()` and `brms::pp_check()` are posterior-predictive
 interfaces; `gllvmTMB` currently supplies fitted-model simulation draws, not
 Bayesian parameter draws. Rejected: exporting `pp_check.gllvmTMB_multi()` in
@@ -60,7 +60,7 @@ cleanup inside #222. Confidence: high.
 
 ## 4. Checks Run
 
-- `Rscript --vanilla -e 'parse("dev/ppcheck-diagnostics.R"); parse("tests/testthat/test-ppcheck-diagnostics-prototype.R")'`
+- `Rscript --vanilla -e 'parse("inst/prototypes/ppcheck-diagnostics.R"); parse("tests/testthat/test-ppcheck-diagnostics-prototype.R")'`
   -> both files parsed successfully.
 - `Rscript --vanilla -e 'devtools::test(filter = "ppcheck-diagnostics-prototype")'`
   -> passed: 45 tests, no warnings, no skips.
@@ -70,6 +70,19 @@ cleanup inside #222. Confidence: high.
   -> passed: `No problems found.`
 - `git diff --check`
   -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> first run failed because tests sourced a checkout-only `dev/` file from
+  the source-tarball check environment. The prototype was moved to
+  `inst/prototypes/` so the installed package can test it without exporting it.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> rerun completed with 0 errors, 1 local installation warning, and 5 notes.
+  The PR-specific source-tarball test error was gone. The remaining install
+  warning is the local Apple `xcrun --show-sdk-version` warning, reproduced by
+  direct `R CMD INSTALL`; notes are pre-existing top-level file, NEWS heading,
+  unused-import, and missing-import-suggestion notes.
+- `tmp=$(mktemp -d); R CMD INSTALL --library="$tmp" .`
+  -> installed successfully and reproduced only the local Apple
+  `xcrun --show-sdk-version` warning.
 - One-off visual QA rendered `/tmp/gllvmTMB-ppc-rq-qq.png` and
   `/tmp/gllvmTMB-ppc-density-v3.png` from a Poisson fit. The Q-Q plot was
   acceptable for prototype. The density plot legend was revised after the
@@ -90,13 +103,13 @@ conflicts, and missing grouping variables.
 
 ## 6. Consistency Audit
 
-- `rg -n "pp_check\\.gllvmTMB|residuals\\.gllvmTMB_multi|randomized_quantile" R NAMESPACE man README.md NEWS.md docs/design vignettes tests/testthat dev`
-  -> only intentional dev/design mentions of future public API names and
+- `rg -n "pp_check\\.gllvmTMB|residuals\\.gllvmTMB_multi|randomized_quantile" R NAMESPACE man README.md NEWS.md docs/design vignettes tests/testthat inst/prototypes`
+  -> only intentional prototype/design mentions of future public API names and
   out-of-scope boundaries.
-- `rg -n "posterior predictive|posterior-predictive|randomized[- ]quantile|simulation-rank|DIA-11|DIA-12|pp_check|gllvmTMB_pp_check_prototype" README.md ROADMAP.md NEWS.md docs/design vignettes R dev tests/testthat`
+- `rg -n "posterior predictive|posterior-predictive|randomized[- ]quantile|simulation-rank|DIA-11|DIA-12|pp_check|gllvmTMB_pp_check_prototype" README.md ROADMAP.md NEWS.md docs/design vignettes R inst/prototypes tests/testthat`
   -> hits confined to the new prototype, Design 51, ROADMAP partial-status
   note, validation-debt rows, and tests.
-- `rg -n "S_B|S_W|\\\\bf S|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|in prep|in preparation" docs/design/51-posterior-predictive-diagnostics.md dev/ppcheck-diagnostics.R tests/testthat/test-ppcheck-diagnostics-prototype.R`
+- `rg -n "S_B|S_W|\\\\bf S|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|in prep|in preparation" docs/design/51-posterior-predictive-diagnostics.md inst/prototypes/ppcheck-diagnostics.R tests/testthat/test-ppcheck-diagnostics-prototype.R`
   -> no hits in the new design/prototype/test files.
 - `rg -n "meta_known_V" README.md NEWS.md docs vignettes`
   -> pre-existing intentional deprecated-alias / historical hits only; no
@@ -110,7 +123,7 @@ conflicts, and missing grouping variables.
 ## 7. Roadmap Tick
 
 **Roadmap tick**: M3 progress stays `███░░░░░` 3/8. M3.4 notes now mention
-the #222 dev-only fitted-model predictive / simulation-rank residual
+the #222 non-exported fitted-model predictive / simulation-rank residual
 prototype, and name DIA-11 / DIA-12 as partial.
 
 ## 7a. GitHub Issue Ledger
@@ -122,6 +135,11 @@ prototype, and name DIA-11 / DIA-12 as partial.
   continuation.
 
 ## 8. What Did Not Go Smoothly
+
+The first full local R CMD check caught that tests cannot source a
+checkout-only `dev/` file from the source-tarball check environment. Grace
+moved the prototype to `inst/prototypes/`, which keeps it non-exported but
+available to installed-package tests.
 
 The first density-overlay visual check produced a clumsy legend for a line
 plot. Florence caught it, and the prototype switched to line-based density
@@ -163,7 +181,8 @@ collision was present.
 
 ## 10. Known Limitations And Next Actions
 
-- The prototype is dev-only and unexported.
+- The prototype is non-exported and lives under `inst/prototypes/` so R CMD
+  check can test it from the installed package source.
 - Exact randomized-quantile residuals are not implemented.
 - The prototype is not DHARMa-compatible.
 - Density overlays for count data are temporary, not publication-quality.

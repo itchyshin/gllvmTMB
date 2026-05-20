@@ -1,21 +1,23 @@
 ## Prototype posterior-predictive / simulation-rank diagnostics for #222.
 ##
-## This file is intentionally dev-only. Source it from the repository root
-## after loading gllvmTMB, for example:
+## This file is intentionally non-exported prototype code. Source it after
+## loading gllvmTMB, for example:
 ##
 ##   pkgload::load_all()
-##   source("dev/ppcheck-diagnostics.R")
+##   source("inst/prototypes/ppcheck-diagnostics.R")
 ##
 ## The public API is still under design. These helpers exercise the proposed
 ## data contract and figure contract without exporting `pp_check()` or
 ## `residuals(type = "randomized_quantile")` prematurely.
 
-gllvmTMB_ppc_draws_prototype <- function(object,
-                                         nsim = NULL,
-                                         ndraws = NULL,
-                                         seed = NULL,
-                                         trait = NULL,
-                                         condition_on_RE = FALSE) {
+gllvmTMB_ppc_draws_prototype <- function(
+  object,
+  nsim = NULL,
+  ndraws = NULL,
+  seed = NULL,
+  trait = NULL,
+  condition_on_RE = FALSE
+) {
   validate_gllvmTMB_ppc_fit(object)
   nsim <- resolve_gllvmTMB_ppc_nsim(nsim, ndraws)
 
@@ -27,8 +29,10 @@ gllvmTMB_ppc_draws_prototype <- function(object,
     condition_on_RE = condition_on_RE
   )
   simulations <- as.matrix(simulations)
-  if (nrow(simulations) != length(observed) &&
-      ncol(simulations) == length(observed)) {
+  if (
+    nrow(simulations) != length(observed) &&
+      ncol(simulations) == length(observed)
+  ) {
     simulations <- t(simulations)
   }
   if (nrow(simulations) != length(observed)) {
@@ -61,13 +65,15 @@ gllvmTMB_ppc_draws_prototype <- function(object,
   out
 }
 
-gllvmTMB_simulation_rank_residuals_prototype <- function(object,
-                                                        nsim = NULL,
-                                                        ndraws = NULL,
-                                                        seed = NULL,
-                                                        trait = NULL,
-                                                        condition_on_RE = FALSE,
-                                                        scale = c("normal", "uniform")) {
+gllvmTMB_simulation_rank_residuals_prototype <- function(
+  object,
+  nsim = NULL,
+  ndraws = NULL,
+  seed = NULL,
+  trait = NULL,
+  condition_on_RE = FALSE,
+  scale = c("normal", "uniform")
+) {
   scale <- match.arg(scale)
   draws <- gllvmTMB_ppc_draws_prototype(
     object,
@@ -128,15 +134,17 @@ gllvmTMB_simulation_rank_residuals_prototype <- function(object,
   out
 }
 
-gllvmTMB_pp_check_prototype <- function(object,
-                                        type = c("dens_overlay", "stat_grouped", "rq_qq"),
-                                        nsim = NULL,
-                                        ndraws = NULL,
-                                        seed = NULL,
-                                        trait = NULL,
-                                        group = NULL,
-                                        stat = c("mean", "median", "zero_fraction"),
-                                        condition_on_RE = FALSE) {
+gllvmTMB_pp_check_prototype <- function(
+  object,
+  type = c("dens_overlay", "stat_grouped", "rq_qq"),
+  nsim = NULL,
+  ndraws = NULL,
+  seed = NULL,
+  trait = NULL,
+  group = NULL,
+  stat = c("mean", "median", "zero_fraction"),
+  condition_on_RE = FALSE
+) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("gllvmTMB_pp_check_prototype() requires ggplot2.", call. = FALSE)
   }
@@ -176,7 +184,11 @@ gllvmTMB_pp_check_prototype <- function(object,
   plot <- switch(
     type,
     dens_overlay = plot_gllvmTMB_ppc_density(draws),
-    stat_grouped = plot_gllvmTMB_ppc_stat_grouped(draws, group = group, stat = stat)
+    stat_grouped = plot_gllvmTMB_ppc_stat_grouped(
+      draws,
+      group = group,
+      stat = stat
+    )
   )
   attach_gllvmTMB_ppc_metadata(
     plot,
@@ -193,8 +205,9 @@ gllvmTMB_ppc_row_metadata <- function(object) {
   n <- length(object$tmb_data$y)
   dat <- object$data
   trait_col <- object$trait_col
-  trait <- if (!is.null(trait_col) && trait_col %in% names(dat) &&
-               nrow(dat) == n) {
+  trait <- if (
+    !is.null(trait_col) && trait_col %in% names(dat) && nrow(dat) == n
+  ) {
     as.character(dat[[trait_col]])
   } else {
     paste0("trait_", object$tmb_data$trait_id + 1L)
@@ -202,8 +215,12 @@ gllvmTMB_ppc_row_metadata <- function(object) {
 
   family_id <- object$tmb_data$family_id_vec
   link_id <- object$tmb_data$link_id_vec
-  if (length(family_id) != n) family_id <- rep(NA_integer_, n)
-  if (length(link_id) != n) link_id <- rep(NA_integer_, n)
+  if (length(family_id) != n) {
+    family_id <- rep(NA_integer_, n)
+  }
+  if (length(link_id) != n) {
+    link_id <- rep(NA_integer_, n)
+  }
 
   data.frame(
     .row = seq_len(n),
@@ -225,8 +242,14 @@ plot_gllvmTMB_ppc_density <- function(draws) {
       stringsAsFactors = FALSE
     )
   )
-  sim_index <- rep(seq_len(ncol(draws$simulations)), each = nrow(draws$simulations))
-  row_index <- rep(seq_len(nrow(draws$simulations)), times = ncol(draws$simulations))
+  sim_index <- rep(
+    seq_len(ncol(draws$simulations)),
+    each = nrow(draws$simulations)
+  )
+  row_index <- rep(
+    seq_len(nrow(draws$simulations)),
+    times = ncol(draws$simulations)
+  )
   simulated_df <- cbind(
     draws$row_data[row_index, , drop = FALSE],
     data.frame(
@@ -237,7 +260,10 @@ plot_gllvmTMB_ppc_density <- function(draws) {
     )
   )
   plot_data <- rbind(observed_df, simulated_df)
-  plot_data$source <- factor(plot_data$source, levels = c("simulated", "observed"))
+  plot_data$source <- factor(
+    plot_data$source,
+    levels = c("simulated", "observed")
+  )
 
   ggplot2::ggplot(plot_data, ggplot2::aes(x = value)) +
     ggplot2::stat_density(
@@ -270,13 +296,18 @@ plot_gllvmTMB_ppc_density <- function(draws) {
     theme_gllvmTMB_ppc()
 }
 
-plot_gllvmTMB_ppc_stat_grouped <- function(draws,
-                                           group = NULL,
-                                           stat = c("mean", "median", "zero_fraction")) {
+plot_gllvmTMB_ppc_stat_grouped <- function(
+  draws,
+  group = NULL,
+  stat = c("mean", "median", "zero_fraction")
+) {
   stat <- match.arg(stat)
   group <- if (is.null(group)) "trait" else group
   if (!group %in% names(draws$row_data)) {
-    stop("group must name a column in the diagnostic row metadata.", call. = FALSE)
+    stop(
+      "group must name a column in the diagnostic row metadata.",
+      call. = FALSE
+    )
   }
   group_value <- draws$row_data[[group]]
   stat_fun <- switch(
@@ -302,10 +333,22 @@ plot_gllvmTMB_ppc_stat_grouped <- function(draws,
     group = names(observed),
     observed = as.numeric(observed),
     sim_median = vapply(split_sim, stats::median, numeric(1), na.rm = TRUE),
-    sim_low = vapply(split_sim, stats::quantile, numeric(1), probs = 0.025,
-                     na.rm = TRUE, names = FALSE),
-    sim_high = vapply(split_sim, stats::quantile, numeric(1), probs = 0.975,
-                      na.rm = TRUE, names = FALSE),
+    sim_low = vapply(
+      split_sim,
+      stats::quantile,
+      numeric(1),
+      probs = 0.025,
+      na.rm = TRUE,
+      names = FALSE
+    ),
+    sim_high = vapply(
+      split_sim,
+      stats::quantile,
+      numeric(1),
+      probs = 0.975,
+      na.rm = TRUE,
+      names = FALSE
+    ),
     stat = stat,
     stringsAsFactors = FALSE
   )
@@ -379,21 +422,29 @@ theme_gllvmTMB_ppc <- function(base_size = 11) {
   ggplot2::theme_minimal(base_size = base_size) +
     ggplot2::theme(
       panel.grid.minor = ggplot2::element_blank(),
-      panel.grid.major.x = ggplot2::element_line(colour = "#E5E7EB", linewidth = 0.25),
-      panel.grid.major.y = ggplot2::element_line(colour = "#E5E7EB", linewidth = 0.25),
+      panel.grid.major.x = ggplot2::element_line(
+        colour = "#E5E7EB",
+        linewidth = 0.25
+      ),
+      panel.grid.major.y = ggplot2::element_line(
+        colour = "#E5E7EB",
+        linewidth = 0.25
+      ),
       strip.text = ggplot2::element_text(face = "bold"),
       plot.title = ggplot2::element_text(face = "bold"),
       legend.position = "bottom"
     )
 }
 
-attach_gllvmTMB_ppc_metadata <- function(plot,
-                                         data,
-                                         type,
-                                         method,
-                                         seed,
-                                         nsim,
-                                         condition_on_RE) {
+attach_gllvmTMB_ppc_metadata <- function(
+  plot,
+  data,
+  type,
+  method,
+  seed,
+  nsim,
+  condition_on_RE
+) {
   attr(plot, "gllvmTMB_diagnostic") <- list(
     data = data,
     type = type,
@@ -401,7 +452,11 @@ attach_gllvmTMB_ppc_metadata <- function(plot,
     seed = seed,
     nsim = nsim,
     condition_on_RE = isTRUE(condition_on_RE),
-    invalid_rows = if ("status" %in% names(data)) sum(data$status != "ok") else NA_integer_
+    invalid_rows = if ("status" %in% names(data)) {
+      sum(data$status != "ok")
+    } else {
+      NA_integer_
+    }
   )
   plot
 }
@@ -414,8 +469,10 @@ validate_gllvmTMB_ppc_fit <- function(object) {
   missing <- setdiff(required, names(object$tmb_data))
   if (length(missing) > 0L) {
     stop(
-      paste0("object$tmb_data is missing required field(s): ",
-             paste(missing, collapse = ", ")),
+      paste0(
+        "object$tmb_data is missing required field(s): ",
+        paste(missing, collapse = ", ")
+      ),
       call. = FALSE
     )
   }
@@ -423,10 +480,23 @@ validate_gllvmTMB_ppc_fit <- function(object) {
 }
 
 resolve_gllvmTMB_ppc_nsim <- function(nsim = NULL, ndraws = NULL) {
-  if (!is.null(nsim) && !is.null(ndraws) && !identical(as.integer(nsim), as.integer(ndraws))) {
-    stop("Specify only one of nsim or ndraws, or give them the same value.", call. = FALSE)
+  if (
+    !is.null(nsim) &&
+      !is.null(ndraws) &&
+      !identical(as.integer(nsim), as.integer(ndraws))
+  ) {
+    stop(
+      "Specify only one of nsim or ndraws, or give them the same value.",
+      call. = FALSE
+    )
   }
-  out <- if (!is.null(nsim)) nsim else if (!is.null(ndraws)) ndraws else 50L
+  out <- if (!is.null(nsim)) {
+    nsim
+  } else if (!is.null(ndraws)) {
+    ndraws
+  } else {
+    50L
+  }
   if (length(out) != 1L || is.na(out) || out < 2L || out != as.integer(out)) {
     stop("nsim / ndraws must be a single integer >= 2.", call. = FALSE)
   }

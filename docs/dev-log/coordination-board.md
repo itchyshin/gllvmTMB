@@ -144,7 +144,7 @@ leave a coordination comment first and wait for acknowledgement.
 | `R/*` | no active engine owner after #226 merged. Recent parser/API edits on `main` are from PR #226 (`meta_V(V = V)`, `type = "exact"`, wide `traits()` marker preservation). Coordinate before further R edits. |
 | `tests/testthat/*` | no active owner after #226 merged; new `meta_V()` parser and wide-format tests are now on `main` |
 | `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
-| `dev/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | Codex / Ada for #222 design/prototype lane |
+| `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | Codex / Ada for #222 design/prototype lane |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a

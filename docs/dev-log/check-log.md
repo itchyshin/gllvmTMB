@@ -2909,3 +2909,52 @@ Kaizen point:
     targets should pass explicit scale arguments at the call site and
     include one smoke that compares the runner estimate to the
     corresponding extractor call.
+
+## 2026-05-20 -- M3.3a corrected nbinom2 r20 stress audit
+
+Scope:
+
+- Record the first bounded stress evidence after PR #211 corrected the
+  M3 `Sigma_unit_diag` target scale.
+- Use the already-computed local artifact from the PR #211 branch:
+  `/tmp/gllvmtmb-m3-3a-corrected-stress-r20/nbinom2-two-scenario-corrected-r20-b20.rds`.
+- Keep EXT-13 / CI-08 / CI-10 partial.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20`
+  -> no open PRs at lane start.
+- `git status --short --branch && git pull --ff-only`
+  -> clean `main...origin/main`, already up to date.
+- `git log --all --oneline --since='6 hours ago' | head -80`
+  -> recent #209-#211 and board closeout commits reviewed before
+  editing shared dev-log files.
+- `Rscript --vanilla -e 'x <- readRDS("/tmp/gllvmtmb-m3-3a-corrected-stress-r20/nbinom2-two-scenario-corrected-r20-b20.rds"); stopifnot(x$meta$n_reps == 20L, x$meta$n_boot == 20L, nrow(x$summary) == 2L); print(x$summary[, c("scenario", "n_completed", "n_failed", "n_boot_failed", "n_boot_attempted", "coverage", "miss_below", "miss_above", "median_est_truth_ratio", "pilot_status")], row.names = FALSE); cat("corrected r20 artifact ok\n")'`
+  -> artifact integrity passed. Baseline: 20/20 fits, 62/400
+  bootstrap failures, coverage 0.77, miss below 1, miss above 22,
+  median estimate/truth 0.610. Low-phi: 20/20 fits, 16/400 bootstrap
+  failures, coverage 0.58, miss below 1, miss above 41, median
+  estimate/truth 0.574.
+- `Rscript --vanilla - <<'EOF' ... EOF`
+  -> trait-level medians and miss-side table confirmed the corrected
+  run now mostly misses above the interval, not below it.
+
+Consistency and stale-wording scans:
+
+- `rg -n 'corrected-r20|baseline_phi1_n60_r20|lowphi_n120_r20|CI-08|CI-10|EXT-13|partial' docs/dev-log/audits/2026-05-20-m3-3a-nbinom2-corrected-r20.md docs/dev-log/after-task/2026-05-20-m3-3a-nbinom2-corrected-r20.md docs/dev-log/check-log.md`
+  -> audit, after-task, and check log consistently name the artifact,
+  scenarios, and partial scope status.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-m3-3a-nbinom2-corrected-r20.md`
+
+Kaizen point:
+
+41. **After fixing a target scale, rerun a small grid before
+    declaring the model repaired.** The corrected `nbinom2` r20 pilot
+    flipped the miss direction: truth was now usually above the
+    bootstrap interval and median fitted `Sigma_unit_diag` was only
+    about 57-61% of truth. The next M3 diagnostic columns should
+    include fitted `phi` and fitted link residuals so variance
+    underestimation can be separated from dispersion calibration.

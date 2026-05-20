@@ -631,6 +631,29 @@ gllvmTMB <- function(
 #'   \eqn{(\psi_t, \phi_t)} trade-off ridge. No effect for traits whose
 #'   family doesn't carry a `phi` parameter (Gaussian, Poisson, binomial).
 #'   Default `"default"`.
+#' @param start_method Optional reduced-rank starting-value method, modelled
+#'   after `glmmTMB::glmmTMBControl(start_method = ...)` but extended for
+#'   two-level gllvmTMB models. Use `list(method = "res", jitter.sd = 0.2)`
+#'   to seed `latent()` loadings and latent scores from a reduced-rank
+#'   decomposition of fixed-effect residuals. Use `list(method = "indep")`
+#'   to first fit the matching independent `unique()`-only GLMM/GLLVM and
+#'   copy its estimated fixed effects, per-trait variance starts, and random
+#'   effects into the full latent+unique fit. `jitter.sd` adds Normal jitter
+#'   to residual-start latent scores. Default
+#'   `list(method = NULL, jitter.sd = 0)` keeps the historical starts.
+#' @param start_from Optional fitted `gllvmTMB` object, usually a simpler
+#'   model such as one `latent()` tier or an independent `unique()`-only
+#'   model. Any estimated TMB parameters with shapes matching the current
+#'   model are copied into the starting parameter list before optimisation.
+#'   This implements the "fit simpler, then use it as starting values"
+#'   workflow recommended for complex reduced-rank models.
+#' @param se Logical; if `TRUE`, compute `TMB::sdreport()` after
+#'   optimisation so Wald standard errors and Hessian diagnostics are
+#'   available. If `FALSE`, skip standard-error calculation and return the
+#'   point-estimate fit with `sd_report = NULL` and a diagnostic note. This
+#'   is useful for hard models where the point estimate is needed and
+#'   uncertainty will be obtained by bootstrap or profile methods. Default
+#'   `TRUE`.
 #' @param verbose If `TRUE`, prints a one-line summary per restart so
 #'   the user can see which seed led to the winning fit. Default
 #'   `FALSE`.
@@ -649,13 +672,16 @@ gllvmTMB <- function(
 #' 2. If that fails to converge cleanly, switch the optimiser to
 #'    `optim` with `BFGS`:
 #'    `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))`.
-#' 3. For very complex models, fit a simpler version first (e.g. drop
-#'    one rr term) and warm-start the full fit by passing
-#'    `start_from = simpler_fit` (planned; not yet implemented).
-#'
-#' The earlier `start_method = "res"` (gllvm-style residual seeding)
-#' was tested empirically and **does not improve two-level rr fits**;
-#' it is intended for non-Gaussian responses only.
+#' 3. For factor-analytic models, try
+#'    `start_method = list(method = "res", jitter.sd = 0.2)`. This fits
+#'    the fixed-effects part first, decomposes the residual matrix into
+#'    starting values for \eqn{\Lambda} and the latent scores, and can be
+#'    combined with `n_init > 1` to check whether the optimiser repeatedly
+#'    reaches the same likelihood basin.
+#' 4. For Gaussian two-level models, prefer
+#'    `start_method = list(method = "indep")` or manually fit a simpler
+#'    model and pass it through `start_from = simpler_fit`. This is a GLMM
+#'    warm start rather than a fixed-effect-only GLM residual start.
 #'
 #' @export
 gllvmTMBcontrol <- function(
@@ -667,12 +693,19 @@ gllvmTMBcontrol <- function(
   optArgs = list(),
   init_jitter = 0.3,
   init_strategy = c("default", "single_trait_warmup"),
+  start_method = list(method = NULL, jitter.sd = 0),
+  start_from = NULL,
+  se = TRUE,
   verbose = FALSE,
   ...
 ) {
   spde_mode <- match.arg(spde_mode)
   optimizer <- match.arg(optimizer)
   init_strategy <- match.arg(init_strategy)
+  start_method <- .gllvmTMB_normalize_start_method(start_method)
+  if (!is.logical(se) || length(se) != 1L || is.na(se)) {
+    cli::cli_abort("{.arg se} must be a single {.code TRUE} or {.code FALSE} value.")
+  }
   if (...length() > 0L) {
     cli::cli_warn(
       "Extra arguments to {.fun gllvmTMBcontrol} are ignored in this version."
@@ -687,8 +720,46 @@ gllvmTMBcontrol <- function(
     optArgs = optArgs,
     init_jitter = init_jitter,
     init_strategy = init_strategy,
+    start_method = start_method,
+    start_from = start_from,
+    se = se,
     verbose = verbose
   )
+}
+
+.gllvmTMB_normalize_start_method <- function(start_method) {
+  if (is.null(start_method)) {
+    return(list(method = NULL, jitter.sd = 0))
+  }
+  if (is.character(start_method) && length(start_method) == 1L) {
+    start_method <- list(method = start_method)
+  }
+  if (!is.list(start_method)) {
+    cli::cli_abort("{.arg start_method} must be a list, e.g. {.code list(method = \"res\", jitter.sd = 0.2)}.")
+  }
+
+  method <- start_method$method
+  if (is.null(method) || length(method) == 0L ||
+      (length(method) == 1L && is.na(method))) {
+    method <- NULL
+  } else {
+    if (!is.character(method) || length(method) != 1L) {
+      cli::cli_abort("{.arg start_method$method} must be NULL or the string {.val res}.")
+    }
+    if (!method %in% c("res", "indep")) {
+      cli::cli_abort(c(
+        "Unknown {.arg start_method$method}: {.val {method}}.",
+        "i" = "Currently supported: {.code NULL} (default), {.code \"res\"}, or {.code \"indep\"}."
+      ))
+    }
+  }
+
+  jitter.sd <- start_method$jitter.sd %||% 0
+  if (!is.numeric(jitter.sd) || length(jitter.sd) != 1L ||
+      !is.finite(jitter.sd) || jitter.sd < 0) {
+    cli::cli_abort("{.arg start_method$jitter.sd} must be one finite non-negative number.")
+  }
+  list(method = method, jitter.sd = as.numeric(jitter.sd))
 }
 
 

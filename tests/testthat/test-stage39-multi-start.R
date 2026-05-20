@@ -20,6 +20,16 @@ test_that("Stage 39: n_init > 1 runs the requested number of restarts", {
   expect_s3_class(fit, "gllvmTMB_multi")
   expect_equal(fit$opt$convergence, 0L)
   expect_true(is.finite(-fit$opt$objective))
+  expect_s3_class(fit$restart_history, "data.frame")
+  expect_equal(nrow(fit$restart_history), 3L)
+  expect_equal(sum(fit$restart_history$selected), 1L)
+  expect_equal(
+    fit$start_provenance$selected_restart,
+    fit$restart_history$restart[fit$restart_history$selected]
+  )
+  expect_true(all(c("restart", "start_method", "optimizer", "objective",
+                    "convergence", "elapsed_s", "success", "selected") %in%
+                    names(fit$restart_history)))
 })
 
 test_that("Stage 39: optimizer = 'optim' with BFGS is dispatched", {

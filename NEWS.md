@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Robust modelling diagnostics and start provenance (M3.4, 2026-05-19)
+
+* **`check_gllvmTMB()`** is a new machine-readable fit-health table for `gllvmTMB_multi` fits. It reports optimizer convergence, maximum gradient, `sdreport()` availability, `pdHess`, maximum fixed-effect SE, restart-history availability, selected restart, and simple boundary flags. `gllvmTMBcontrol(se = FALSE)` now intentionally skips `TMB::sdreport()` and keeps the point-estimate fit for bootstrap/profile uncertainty workflows. `pdHess = FALSE` is reported as an inference / identifiability warning, not automatic proof that point estimates or rotation-invariant covariance summaries are unusable. Fits now also retain `restart_history`, `start_provenance`, `fit_health`, and `sdreport_error` fields so multi-start, residual-start, simpler-start, and optimizer-fallback workflows can be audited before they are promoted by M3 target-explicit simulation evidence.
+
 ## phylo_* `A =` / `Ainv =` aliases (M2.8b, 2026-05-17)
 
 * The 5 `phylo_*` grid keywords (`phylo_scalar`, `phylo_unique`,

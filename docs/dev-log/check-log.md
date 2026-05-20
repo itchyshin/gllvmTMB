@@ -2311,3 +2311,101 @@ Kaizen point:
     `diag_species` tier from `cluster = "unit"`. For simulation evidence
     lanes, treat unexpected warnings as part of the model contract until
     the target, grouping, and simulation path are confirmed.
+
+## 2026-05-19 -- Robust modeling starts, fit-health diagnostics, and roadmap scaffold
+
+Scope:
+
+- Implement the first code-bearing slice of Design 49:
+  start provenance, restart history, protected/skipped `sdreport()`
+  status, `gllvmTMBcontrol(se = FALSE)`, `fit_health`, and
+  `check_gllvmTMB()`.
+- Keep residual starts, simpler-model starts, and optimizer fallback as
+  opt-in tools; do not claim default-policy promotion until M3.3a/M3.4
+  simulation evidence exists.
+- Update the validation-debt register, roadmap, NEWS, pkgdown reference
+  navigation, and the robust-modeling design note so user-facing claims
+  distinguish implemented, partial, and evidence-pending behavior.
+
+Evidence:
+
+- Pre-edit recovery checkpoint:
+  `docs/dev-log/recovery-checkpoints/2026-05-19-173400-codex-checkpoint.md`
+  recorded branch, `git status --short --branch`, `git diff --stat`,
+  `gh pr list --state open --limit 20`, recent `git log --all --oneline --since="6 hours ago"`,
+  newest check-log entry, and newest recovery checkpoint.
+- `git status --short --branch`
+  -> branch `codex/rr-residual-starts-2026-05-19` with expected
+  start/diagnostic code, docs, generated Rd, and test files modified.
+- `gh pr list --state open --limit 20`
+  -> no open PR rows printed.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent M3 / CI merges inspected, including PRs #199 through #205.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `NAMESPACE`, `man/gllvmTMBcontrol.Rd`, and
+  `man/check_gllvmTMB.Rd`.
+- `Rscript --vanilla -e 'invisible(parse(file="R/fit-multi.R")); invisible(parse(file="R/diagnose.R")); invisible(parse(file="R/methods-gllvmTMB.R")); cat("parse ok\n")'`
+  -> `parse ok`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); cat("load_all ok\n")'`
+  -> `load_all ok`.
+- `Rscript --vanilla -e 'devtools::test(filter = "sanity-multi")'`
+  -> 14 passed, 0 failed, 0 warnings, 0 skipped.
+- `Rscript --vanilla -e 'devtools::test(filter = "stage39-multi-start")'`
+  -> 15 passed, 0 failed, 0 warnings, 0 skipped.
+- `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMB-diagnose")'`
+  -> 10 passed, 0 failed, 0 warnings, 0 skipped after replacing
+  deprecated `"B"` / `"W"` communality aliases with `"unit"` /
+  `"unit_obs"` in `gllvmTMB_diagnose()`.
+- `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMBcontrol|start-method-residual|multi-start-sdreport-consistency")'`
+  -> 60 passed, 0 failed, 0 warnings, 0 skipped.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> 0 failed, 19 warnings, 14 skipped, 1875 passed; duration 1669.3 s.
+  Slow points included `phylo-q-decomposition` (666.9 s) and
+  `profile-ci` (352.1 s).
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> rerun after adding `gllvmTMBcontrol(se = FALSE)`; regenerated
+  `man/gllvmTMBcontrol.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMBcontrol|sanity-multi")'`
+  -> 54 passed, 0 failed, 0 warnings, 0 skipped.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg "\bS_B\b|\bS_W\b|\\bf S" .`
+  -> hits only historical/dev-log/check-log/protocol/audit notes; no
+  new touched public files reintroduced legacy S notation.
+- `rg -n "gllvmTMB\(" R vignettes README.md NEWS.md docs/design`
+  -> manually checked this lane's new `R/diagnose.R` example has
+  `trait = "trait"` and `unit = "site"`; new Design 48 snippets are
+  schematic design prose, not runnable long-format examples.
+- `rg "in prep|in preparation" docs vignettes`
+  -> hits only existing historical/internal records; no new
+  robust-modeling docs introduced foundational in-prep claims.
+- `rg "\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(" vignettes`
+  -> no hits.
+- `rg "meta_known_V" README.md NEWS.md docs vignettes`
+  -> existing intended alias/deprecation/history hits only; no new
+  robust-modeling docs present `meta_known_V` as primary syntax.
+- `rg "gllvmTMB_wide" README.md NEWS.md docs vignettes`
+  -> existing soft-deprecation/history hits only; no new
+  robust-modeling docs present `gllvmTMB_wide()` as primary syntax or
+  claim removal while exported.
+
+Kaizen point:
+
+33. **Record fit health as data, not prose.** Robust-modeling work
+    should make convergence state, `pdHess`, `sdreport()` status,
+    starts, optimizer choice, and selected restarts table-shaped early.
+    That keeps simulations, diagnostics, articles, and reviewer audits
+    from parsing human messages and makes failures visible without
+    pretending every warning invalidates the whole fitted model.
+
+34. **Hard fits need a no-SE path plus bootstrap.** Some difficult
+    multivariate latent models can have useful point estimates while
+    `pdHess = FALSE` or Hessian-based SEs fail. Mirror the drmTMB
+    workflow: allow intentional SE skipping (`gllvmTMBcontrol(se =
+    FALSE)`), report degraded inference honestly, and route uncertainty
+    to bootstrap/profile workflows, ideally with multicore support.

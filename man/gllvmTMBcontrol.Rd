@@ -13,6 +13,9 @@ gllvmTMBcontrol(
   optArgs = list(),
   init_jitter = 0.3,
   init_strategy = c("default", "single_trait_warmup"),
+  start_method = list(method = NULL, jitter.sd = 0),
+  start_from = NULL,
+  se = TRUE,
   verbose = FALSE,
   ...
 )
@@ -54,6 +57,32 @@ can leave the optimiser walking the
 family doesn't carry a \code{phi} parameter (Gaussian, Poisson, binomial).
 Default \code{"default"}.}
 
+\item{start_method}{Optional reduced-rank starting-value method, modelled
+after \code{glmmTMB::glmmTMBControl(start_method = ...)} but extended for
+two-level gllvmTMB models. Use \code{list(method = "res", jitter.sd = 0.2)}
+to seed \code{latent()} loadings and latent scores from a reduced-rank
+decomposition of fixed-effect residuals. Use \code{list(method = "indep")}
+to first fit the matching independent \code{unique()}-only GLMM/GLLVM and
+copy its estimated fixed effects, per-trait variance starts, and random
+effects into the full latent+unique fit. \code{jitter.sd} adds Normal jitter
+to residual-start latent scores. Default
+\code{list(method = NULL, jitter.sd = 0)} keeps the historical starts.}
+
+\item{start_from}{Optional fitted \code{gllvmTMB} object, usually a simpler
+model such as one \code{latent()} tier or an independent \code{unique()}-only
+model. Any estimated TMB parameters with shapes matching the current
+model are copied into the starting parameter list before optimisation.
+This implements the "fit simpler, then use it as starting values"
+workflow recommended for complex reduced-rank models.}
+
+\item{se}{Logical; if \code{TRUE}, compute \code{TMB::sdreport()} after
+optimisation so Wald standard errors and Hessian diagnostics are
+available. If \code{FALSE}, skip standard-error calculation and return the
+point-estimate fit with \code{sd_report = NULL} and a diagnostic note. This
+is useful for hard models where the point estimate is needed and
+uncertainty will be obtained by bootstrap or profile methods. Default
+\code{TRUE}.}
+
 \item{verbose}{If \code{TRUE}, prints a one-line summary per restart so
 the user can see which seed led to the winning fit. Default
 \code{FALSE}.}
@@ -77,12 +106,15 @@ with the lowest \code{-logLik}.
 \item If that fails to converge cleanly, switch the optimiser to
 \code{optim} with \code{BFGS}:
 \code{gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))}.
-\item For very complex models, fit a simpler version first (e.g. drop
-one rr term) and warm-start the full fit by passing
-\code{start_from = simpler_fit} (planned; not yet implemented).
+\item For factor-analytic models, try
+\code{start_method = list(method = "res", jitter.sd = 0.2)}. This fits
+the fixed-effects part first, decomposes the residual matrix into
+starting values for \eqn{\Lambda} and the latent scores, and can be
+combined with \code{n_init > 1} to check whether the optimiser repeatedly
+reaches the same likelihood basin.
+\item For Gaussian two-level models, prefer
+\code{start_method = list(method = "indep")} or manually fit a simpler
+model and pass it through \code{start_from = simpler_fit}. This is a GLMM
+warm start rather than a fixed-effect-only GLM residual start.
 }
-
-The earlier \code{start_method = "res"} (gllvm-style residual seeding)
-was tested empirically and \strong{does not improve two-level rr fits};
-it is intended for non-Gaussian responses only.
 }

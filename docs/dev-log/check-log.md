@@ -2409,3 +2409,116 @@ Kaizen point:
     workflow: allow intentional SE skipping (`gllvmTMBcontrol(se =
     FALSE)`), report degraded inference honestly, and route uncertainty
     to bootstrap/profile workflows, ideally with multicore support.
+
+## 2026-05-19 -- M3.3a fit-health pilot schema
+
+Scope:
+
+- Start dependent Branch B from PR #206 so M3.3a pilot artifacts can
+  use `fit_health`, `restart_history`, `start_provenance`, `pdHess`,
+  `sdreport` status, and `gllvmTMBcontrol(se = FALSE)`.
+- Extend `dev/m3-grid.R` and `dev/precompute-m3-grid.R` with
+  start-method, optimizer, restart, skipped-SE, and bootstrap-core
+  metadata.
+- Keep this as a schema and tiny-smoke slice, not a production coverage
+  claim.
+
+Evidence:
+
+- PR #206 CI: R-CMD-check passed on ubuntu-latest, macos-latest, and
+  windows-latest for run 26134392947; PR marked ready for review.
+- Branch switch:
+  `git switch -c codex/m3-3a-fit-health-pilot-2026-05-19`
+  -> new dependent branch created from PR #206 head.
+- `Rscript --vanilla -e 'invisible(parse(file="dev/m3-grid.R")); invisible(parse(file="dev/precompute-m3-grid.R")); cat("parse ok\n")'`
+  -> `parse ok`.
+- Summary mock with new diagnostic columns:
+  `Rscript --vanilla -e 'source("dev/m3-grid.R"); df <- data.frame(cell="gaussian-d1", family="gaussian", d=1L, rep=c(1L,1L), trait_id=1:2, converged=TRUE, fit_converged=TRUE, target="Sigma_unit_diag", ci_method="bootstrap", truth=c(1,2), estimate=c(1.1,1.9), ci_lo=c(.8,1.6), ci_hi=c(1.3,2.3), covered=TRUE, ci_available=TRUE, runtime_s=1, miss_side="covered", n_boot=10L, n_boot_failed=1L, init_strategy="default", start_method="res", start_method_jitter_sd=.2, optimizer="nlminb", n_init=5L, init_jitter=.3, se=FALSE, fit_error=NA_character_, fit_convergence_code=0L, fit_message="", fit_objective=10, max_gradient=.001, pd_hessian=FALSE, sdreport_ok=FALSE, sdreport_error="skipped", selected_restart=2L, restart_count=5L, objective_spread=.5, boundary_flags=""); print(m3_summarise(df), row.names=FALSE)'`
+  -> summary included `pd_hessian_rate`, `sdreport_ok_rate`,
+  `median_max_gradient`, `median_restart_count`, and
+  `median_objective_spread`.
+- Driver smoke:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=gaussian --d=1 --n-reps=1 --start-method=res --start-jitter=0.1 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-fit-health-smoke --out-prefix=gaussian-res-sefalse2`
+  -> completed; artifact grid contains start method `res`, `n_init =
+  2`, `se = FALSE`, `sdreport_ok = FALSE`, restart count 2, and
+  `n_cores_boot = 1`.
+- Tiny `nbinom2` smoke with same settings:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 --n-reps=1 --start-method=res --start-jitter=0.1 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-fit-health-smoke --out-prefix=nbinom2-res-sefalse`
+  -> fit completed, bootstrap refits completed, summary `TARGET_FAIL`
+  in the one-rep toy run; median estimate/truth ratio was above 2,
+  suggesting `nbinom2` still needs a real stress lane.
+- Tiny mixed-family smoke with same settings:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=mixed --d=1 --n-reps=1 --start-method=res --start-jitter=0.1 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-fit-health-smoke --out-prefix=mixed-res-sefalse`
+  -> fit completed, bootstrap refits completed, summary `TARGET_FAIL`
+  in the one-rep toy run.
+- Multicore bootstrap smoke:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=gaussian --d=1 --n-reps=1 --start-method=res --start-jitter=0.1 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=2 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-fit-health-smoke --out-prefix=gaussian-res-sefalse-cores2`
+  -> completed; artifact recorded `n_cores_boot = 2`.
+- Two-level Gaussian smoke outside the unit-tier M3 grid:
+  `Rscript --vanilla -e 'devtools::load_all(".", quiet=TRUE); set.seed(9201); sim <- simulate_site_trait(n_sites=18, n_species=6, n_traits=3, mean_species_per_site=4, Lambda_B=matrix(c(.7,.4,-.2),3,1), Lambda_W=matrix(c(.5,-.3,.2),3,1), psi_B=c(.3,.3,.3), psi_W=c(.2,.2,.2), seed=9201); fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d=1) + unique(0 + trait | site) + latent(0 + trait | site_species, d=1) + unique(0 + trait | site_species), data=sim$data, control=gllvmTMBcontrol(start_method=list(method="indep"), n_init=2, init_jitter=.05, se=FALSE)); print(check_gllvmTMB(fit), row.names=FALSE); print(fit$restart_history[, c("restart", "start_method", "objective", "convergence", "selected")], row.names=FALSE); cat("sdreport_ok=", fit$fit_health$sdreport_ok, " selected_restart=", fit$fit_health$selected_restart, "\n")'`
+  -> optimizer converged, max gradient passed, `sdreport` warned
+  because `se = FALSE`, selected restart 2, and boundary flags exposed
+  near-zero unit-tier SD.
+
+Kaizen point:
+
+35. **Pilot artifacts need diagnostic metadata before bigger grids.**
+    M3.3a should not only say whether coverage passed. Each row should
+    carry the start strategy, optimizer, restart count, selected
+    restart, objective spread, gradient, `pdHess`, `sdreport` status,
+    skipped-SE status, bootstrap failures, and bootstrap core count.
+    Otherwise `nbinom2` failures blur into one bucket instead of showing
+    whether the problem is fitting, Hessian inference, refit failure, or
+    target-scale bias.
+
+## 2026-05-19 -- M3.3a nbinom2 night pilot
+
+Scope:
+
+- Run a small `nbinom2` start-strategy comparison using the Branch B
+  fit-health schema after PR #206 merged to `main`.
+- Keep artifacts in `/tmp` and record only the summary in a dev-log
+  audit because this is pilot evidence, not a promoted package
+  dataset.
+
+Evidence:
+
+- PR #206 merged as squash commit `a89aac8`.
+- Branch #207 was rebased onto `origin/main`, force-pushed, and its
+  PR base was changed from `codex/rr-residual-starts-2026-05-19` to
+  `main`.
+- `Rscript --vanilla -e 'invisible(parse(file="dev/m3-grid.R")); invisible(parse(file="dev/precompute-m3-grid.R")); cat("parse ok\n")'`
+  -> `parse ok`.
+- `Rscript --vanilla dev/precompute-m3-grid.R --full --family=gaussian --d=1 --n-reps=2 --start-method=res --start-jitter=0.1 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-night-smoke --out-prefix=gaussian-res-sefalse-n2`
+  -> completed 2 / 2 original fits; 0 / 4 bootstrap refits failed.
+- `Rscript --vanilla dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 --n-reps=2 --init-strategy=single_trait_warmup --start-method=res --start-jitter=0.2 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-night-smoke --out-prefix=nbinom2-res-sefalse-n2`
+  -> completed 1 / 2 original fits; 1 / 2 bootstrap refits failed.
+- `Rscript --vanilla dev/precompute-m3-grid.R --full --family=mixed --d=1 --n-reps=2 --start-method=res --start-jitter=0.1 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-night-smoke --out-prefix=mixed-res-sefalse-n2`
+  -> completed 2 / 2 original fits; 0 / 4 bootstrap refits failed.
+- Four `nbinom2` `n_reps = 5`, `n_boot = 5` start grids:
+  default, single-trait warmup, warmup + residual multistart, and
+  warmup + residual multistart + BFGS. Residual multistart removed
+  original fit failures in this toy grid; BFGS lowered bootstrap
+  refit failure rate from 0.20 to 0.12; coverage remained poor
+  (0.08 to 0.20) with mostly lower misses and estimates above truth.
+- Multicore smoke:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 --n-reps=3 --init-strategy=single_trait_warmup --start-method=res --start-jitter=0.2 --n-init=5 --init-jitter=0.05 --optimizer=optim --optim-method=BFGS --se=false --targets=Sigma_unit_diag --n-boot=6 --n-cores-boot=2 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-night-nb-multicore --out-prefix=nbinom2-warmup-res-bfgs-cores2-n3`
+  -> completed 3 / 3 original fits; 2 / 18 bootstrap refits failed;
+  artifact recorded `n_cores_boot = 2`.
+- `git diff --check`
+  -> clean.
+
+Audit report:
+
+- `docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-night-pilot.md`
+
+Kaizen point:
+
+36. **nbinom2 looks under-started and target-biased, not merely slow.**
+    In the toy night grid, residual multistart fixed original optimizer
+    failures, and BFGS helped bootstrap refit failures. But
+    `Sigma_unit_diag` still missed badly, mostly below the interval
+    with estimates above truth. The next lane should separate optimizer
+    failure, bootstrap refit failure, Hessian/SE failure, and
+    target-scale bias instead of treating "nbinom2 failed" as one
+    bucket.

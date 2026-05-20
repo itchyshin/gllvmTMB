@@ -98,6 +98,92 @@ m3_muffle_bootstrap_warning <- function(w) {
   }
 }
 
+m3_start_method_label <- function(start_method) {
+  if (is.null(start_method)) {
+    return("default")
+  }
+  if (is.character(start_method) && length(start_method) == 1L) {
+    return(start_method)
+  }
+  method <- start_method$method
+  if (is.null(method) || length(method) == 0L || is.na(method)) {
+    return("default")
+  }
+  as.character(method)
+}
+
+m3_start_method_jitter <- function(start_method) {
+  if (is.list(start_method) && !is.null(start_method$jitter.sd)) {
+    return(as.numeric(start_method$jitter.sd))
+  }
+  0
+}
+
+m3_fit_health_row <- function(fit = NULL, fit_error = NULL) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    return(data.frame(
+      fit_error = fit_error %||% NA_character_,
+      fit_convergence_code = NA_integer_,
+      fit_message = NA_character_,
+      fit_objective = NA_real_,
+      max_gradient = NA_real_,
+      pd_hessian = NA,
+      sdreport_ok = NA,
+      sdreport_error = NA_character_,
+      selected_restart = NA_integer_,
+      restart_count = NA_integer_,
+      objective_spread = NA_real_,
+      boundary_flags = NA_character_,
+      stringsAsFactors = FALSE
+    ))
+  }
+  health <- fit$fit_health
+  if (is.null(health)) {
+    grad <- tryCatch(fit$tmb_obj$gr(fit$opt$par), error = function(e) NA_real_)
+    health <- list(
+      max_gradient = if (length(grad) == 0L || all(is.na(grad))) {
+        NA_real_
+      } else {
+        max(abs(grad), na.rm = TRUE)
+      },
+      pd_hessian = if (!is.null(fit$sd_report) && !is.null(fit$sd_report$pdHess)) {
+        isTRUE(fit$sd_report$pdHess)
+      } else {
+        NA
+      },
+      sdreport_ok = !is.null(fit$sd_report),
+      sdreport_error = fit$sdreport_error %||% NA_character_,
+      selected_restart = NA_integer_,
+      boundary_flags = character(0)
+    )
+  }
+  rh <- fit$restart_history %||% data.frame()
+  obj <- if (nrow(rh) && "objective" %in% names(rh)) {
+    rh$objective[is.finite(rh$objective)]
+  } else {
+    numeric(0)
+  }
+  data.frame(
+    fit_error = NA_character_,
+    fit_convergence_code = fit$opt$convergence %||% NA_integer_,
+    fit_message = fit$opt$message %||% NA_character_,
+    fit_objective = fit$opt$objective %||% NA_real_,
+    max_gradient = health$max_gradient %||% NA_real_,
+    pd_hessian = health$pd_hessian %||% NA,
+    sdreport_ok = health$sdreport_ok %||% NA,
+    sdreport_error = health$sdreport_error %||% NA_character_,
+    selected_restart = health$selected_restart %||% NA_integer_,
+    restart_count = nrow(rh),
+    objective_spread = if (length(obj) >= 2L) max(obj) - min(obj) else NA_real_,
+    boundary_flags = paste(health$boundary_flags %||% character(0), collapse = ";"),
+    stringsAsFactors = FALSE
+  )
+}
+
+m3_add_fit_health <- function(df, diag) {
+  cbind(df, diag[rep(1L, nrow(df)), , drop = FALSE])
+}
+
 ## ---- Truth sampler ----------------------------------------------------
 
 m3_sample_truth <- function(
@@ -255,17 +341,40 @@ m3_run_cell <- function(
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
   init_strategy = "default",
+  start_method = list(method = NULL, jitter.sd = 0),
+  optimizer = "nlminb",
+  optArgs = list(),
+  n_init = 1L,
+  init_jitter = 0.3,
+  se = TRUE,
   targets = "psi",
   n_boot = 30L,
+  n_cores_boot = 1L,
   ci_level = M3_DEFAULT_NOMINAL,
   verbose = TRUE
 ) {
   stopifnot(family %in% M3_FAMILIES, d >= 1L, n_reps >= 1L)
   init_strategy <- match.arg(init_strategy, c("default", "single_trait_warmup"))
+  optimizer <- match.arg(optimizer, c("nlminb", "optim"))
+  n_init <- as.integer(n_init)
+  if (is.na(n_init) || n_init < 1L) {
+    stop("n_init must be a positive integer")
+  }
+  if (!is.numeric(init_jitter) || length(init_jitter) != 1L ||
+      !is.finite(init_jitter) || init_jitter < 0) {
+    stop("init_jitter must be one finite non-negative number")
+  }
+  if (!is.logical(se) || length(se) != 1L || is.na(se)) {
+    stop("se must be TRUE or FALSE")
+  }
   targets <- m3_normalise_targets(targets)
   n_boot <- as.integer(n_boot)
   if (is.na(n_boot) || n_boot < 1L) {
     stop("n_boot must be a positive integer")
+  }
+  n_cores_boot <- as.integer(n_cores_boot)
+  if (is.na(n_cores_boot) || n_cores_boot < 1L) {
+    stop("n_cores_boot must be a positive integer")
   }
   if (!is.numeric(ci_level) || length(ci_level) != 1L ||
       ci_level <= 0 || ci_level >= 1) {
@@ -343,7 +452,13 @@ m3_run_cell <- function(
           ## activate the cluster diagonal tier (`diag_species`), which is
           ## not part of the M3 latent + unique DGP.
           control = gllvmTMB::gllvmTMBcontrol(
-            init_strategy = init_strategy
+            init_strategy = init_strategy,
+            start_method = start_method,
+            optimizer = optimizer,
+            optArgs = optArgs,
+            n_init = n_init,
+            init_jitter = init_jitter,
+            se = se
           )
         ),
         warning = function(w) invokeRestart("muffleWarning")
@@ -353,13 +468,17 @@ m3_run_cell <- function(
         e
       }
     )
+    fit_diag <- m3_fit_health_row(
+      if (inherits(fit, "gllvmTMB_multi")) fit else NULL,
+      fit_error = if (inherits(fit, "error")) conditionMessage(fit) else NA_character_
+    )
 
     rep_runtime <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
     if (
       !fit_ok || !inherits(fit, "gllvmTMB_multi") || fit$opt$convergence != 0L
     ) {
-      rows[[r]] <- do.call(rbind, lapply(targets, function(target) {
+      rows[[r]] <- m3_add_fit_health(do.call(rbind, lapply(targets, function(target) {
         data.frame(
           cell = cell_id,
           family = family,
@@ -386,15 +505,22 @@ m3_run_cell <- function(
           fit_converged = FALSE,
           ci_failed = TRUE,
           miss_side = "fit_failed",
-          n_boot = if (identical(target, "Sigma_unit_diag")) n_boot else NA_integer_,
+          n_boot = NA_integer_,
           n_boot_failed = NA_integer_,
+          n_cores_boot = NA_integer_,
           init_strategy = init_strategy,
+          start_method = m3_start_method_label(start_method),
+          start_method_jitter_sd = m3_start_method_jitter(start_method),
+          optimizer = optimizer,
+          n_init = n_init,
+          init_jitter = init_jitter,
+          se = se,
           seed_base = seed_base,
           rep_seed = rep_seed,
           runtime_s = rep_runtime,
           stringsAsFactors = FALSE
         )
-      }))
+      })), fit_diag)
       if (verbose && r %% 5L == 0L) {
         cat(sprintf("  rep %d/%d (failed)\n", r, n_reps))
       }
@@ -482,7 +608,14 @@ m3_run_cell <- function(
           ),
           n_boot = NA_integer_,
           n_boot_failed = NA_integer_,
+          n_cores_boot = NA_integer_,
           init_strategy = init_strategy,
+          start_method = m3_start_method_label(start_method),
+          start_method_jitter_sd = m3_start_method_jitter(start_method),
+          optimizer = optimizer,
+          n_init = n_init,
+          init_jitter = init_jitter,
+          se = se,
           seed_base = seed_base,
           rep_seed = rep_seed,
           runtime_s = rep_runtime,
@@ -504,6 +637,7 @@ m3_run_cell <- function(
               what = "Sigma",
               conf = ci_level,
               seed = rep_seed + 9000000L,
+              n_cores = n_cores_boot,
               progress = FALSE
             ),
             warning = m3_muffle_bootstrap_warning
@@ -559,7 +693,14 @@ m3_run_cell <- function(
           miss_side = miss_side,
           n_boot = n_boot,
           n_boot_failed = n_boot_failed,
+          n_cores_boot = n_cores_boot,
           init_strategy = init_strategy,
+          start_method = m3_start_method_label(start_method),
+          start_method_jitter_sd = m3_start_method_jitter(start_method),
+          optimizer = optimizer,
+          n_init = n_init,
+          init_jitter = init_jitter,
+          se = se,
           seed_base = seed_base,
           rep_seed = rep_seed,
           runtime_s = rep_runtime,
@@ -569,7 +710,7 @@ m3_run_cell <- function(
     }
 
     rep_runtime <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-    rows[[r]] <- do.call(rbind, rep_rows)
+    rows[[r]] <- m3_add_fit_health(do.call(rbind, rep_rows), fit_diag)
     rows[[r]]$runtime_s <- rep_runtime
 
     if (verbose && (r %% 5L == 0L || r == n_reps)) {
@@ -589,12 +730,20 @@ m3_run_grid <- function(
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
   init_strategy = "default",
+  start_method = list(method = NULL, jitter.sd = 0),
+  optimizer = "nlminb",
+  optArgs = list(),
+  n_init = 1L,
+  init_jitter = 0.3,
+  se = TRUE,
   targets = "psi",
   n_boot = 30L,
+  n_cores_boot = 1L,
   ci_level = M3_DEFAULT_NOMINAL,
   parallel = FALSE
 ) {
   init_strategy <- match.arg(init_strategy, c("default", "single_trait_warmup"))
+  optimizer <- match.arg(optimizer, c("nlminb", "optim"))
   targets <- m3_normalise_targets(targets)
   if (is.null(cells)) {
     cells <- expand.grid(
@@ -619,8 +768,15 @@ m3_run_grid <- function(
           n_units = n_units,
           n_traits = n_traits,
           init_strategy = init_strategy,
+          start_method = start_method,
+          optimizer = optimizer,
+          optArgs = optArgs,
+          n_init = n_init,
+          init_jitter = init_jitter,
+          se = se,
           targets = targets,
           n_boot = n_boot,
+          n_cores_boot = n_cores_boot,
           ci_level = ci_level,
           verbose = FALSE
         )
@@ -637,8 +793,15 @@ m3_run_grid <- function(
         n_units = n_units,
         n_traits = n_traits,
         init_strategy = init_strategy,
+        start_method = start_method,
+        optimizer = optimizer,
+        optArgs = optArgs,
+        n_init = n_init,
+        init_jitter = init_jitter,
+        se = se,
         targets = targets,
         n_boot = n_boot,
+        n_cores_boot = n_cores_boot,
         ci_level = ci_level,
         verbose = TRUE
       )
@@ -820,6 +983,34 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
       } else {
         0
       }
+      rep_first <- sub[!duplicated(sub$rep), , drop = FALSE]
+      pd_hessian_rate <- if ("pd_hessian" %in% names(rep_first)) {
+        x <- rep_first$pd_hessian
+        if (all(is.na(x))) NA_real_ else mean(x %in% TRUE)
+      } else {
+        NA_real_
+      }
+      sdreport_ok_rate <- if ("sdreport_ok" %in% names(rep_first)) {
+        x <- rep_first$sdreport_ok
+        if (all(is.na(x))) NA_real_ else mean(x %in% TRUE)
+      } else {
+        NA_real_
+      }
+      median_max_gradient <- if ("max_gradient" %in% names(rep_first)) {
+        stats::median(rep_first$max_gradient, na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+      median_restart_count <- if ("restart_count" %in% names(rep_first)) {
+        stats::median(rep_first$restart_count, na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+      median_objective_spread <- if ("objective_spread" %in% names(rep_first)) {
+        stats::median(rep_first$objective_spread, na.rm = TRUE)
+      } else {
+        NA_real_
+      }
       pilot_status <- m3_pilot_status(
         coverage = coverage,
         n_ci_missing = n_ci_missing,
@@ -850,6 +1041,11 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         n_boot_failed = n_boot_failed,
         n_boot_attempted = n_boot_attempted,
         boot_fail_rate = boot_fail_rate,
+        pd_hessian_rate = pd_hessian_rate,
+        sdreport_ok_rate = sdreport_ok_rate,
+        median_max_gradient = median_max_gradient,
+        median_restart_count = median_restart_count,
+        median_objective_spread = median_objective_spread,
         coverage = coverage,
         miss_below = miss_below,
         miss_above = miss_above,

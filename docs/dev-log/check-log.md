@@ -2589,3 +2589,66 @@ Kaizen point:
     path is diagnostic table -> start ladder -> no-SE point estimate
     when appropriate -> bootstrap/profile uncertainty, with multicore
     bootstrap treated as normal user infrastructure.
+
+## 2026-05-19 -- Convergence/start-values article Rose pass
+
+Scope:
+
+- Continue PR #208 from the replacement Codex thread after #206
+  merged to `main`.
+- Tighten scope-boundary wording so the article's bootstrap/profile
+  recommendations cite validation-debt rows, not only the diagnostic
+  rows.
+- Update the M3.4 roadmap wording from "current robust-modeling
+  branch" to implementation on `main`, with the article still in
+  PR #208.
+
+Evidence:
+
+- `date '+%Y-%m-%d %H:%M:%S %Z'`
+  -> `2026-05-19 20:34:55 MDT`.
+- `git status --short --branch`
+  -> clean start on
+  `codex/convergence-start-values-article-2026-05-19`.
+- `gh pr list --state open --limit 20`
+  -> #208 draft convergence/start-values article and #207 draft M3.3a
+  fit-health pilot.
+- `gh pr view 208 --json number,title,state,isDraft,headRefName,baseRefName,body,mergeStateStatus,statusCheckRollup,reviewDecision,comments`
+  -> PR #208 draft against `main`; 3 OS R-CMD-check jobs were still
+  in progress at rehydration.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet=TRUE); set.seed(20260519); sim <- simulate_site_trait(n_sites=24,n_species=1,n_traits=2,mean_species_per_site=1,Lambda_B=matrix(c(0.7,0.4),2,1),psi_B=c(0.3,0.3),seed=20260519); fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1) + unique(0 + trait | site), data = sim$data, trait="trait", unit="site", control=gllvmTMBcontrol(se=FALSE, n_init=2, init_jitter=0.05)); print(check_gllvmTMB(fit)); print(fit$restart_history[, c("restart", "start_method", "objective", "convergence", "selected")]); print(fit$fit_health$sdreport_ok); print(fit$sdreport_error);'`
+  -> optimizer and gradient passed; `sdreport` intentionally warned
+  as skipped; `pd_hessian` and fixed-SE rows warned as expected for
+  the no-SE path; restart history recorded two starts.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rendered `articles/convergence-start-values.html`; same existing
+  missing-template-image note for `../logo.png`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg -n "DIA-08|DIA-09|DIA-10|EXT-13|CI-02|CI-03|MIS-16|MIS-18|MIS-19|MIS-20" vignettes/articles/convergence-start-values.Rmd docs/design/35-validation-debt-register.md`
+  -> article now explicitly cites the diagnostic rows plus bootstrap
+  and profile rows.
+- `rg -n "gllvmTMB\(" vignettes/articles/convergence-start-values.Rmd`
+  -> long-format call has `trait = "trait"` and `unit = "site"`;
+  wide-format call uses `traits(...)`.
+- `rg -n "S_B|S_W|\\\\bf S|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|in prep|in preparation" vignettes/articles/convergence-start-values.Rmd _pkgdown.yml ROADMAP.md`
+  -> no new article hits; remaining hits are existing `_pkgdown.yml`
+  alias registration or ROADMAP history.
+- `rg -n "full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1|current robust-modeling branch|#206 open / ready|merge or rebase after #206|Stacked on #206" README.md ROADMAP.md NEWS.md docs vignettes .github 2>/dev/null`
+  -> no live PR #208 wording that needs a public-prose fix; remaining
+  hits are existing protocol/history/check-log lines or intentional
+  old evidence records.
+
+Kaizen point:
+
+36. **Scope rows must follow every public recovery path.** A
+    troubleshooting article can start with fit-health diagnostics, but
+    once it tells the user to switch to bootstrap or profile
+    uncertainty, Rose expects those uncertainty claims to cite their
+    own validation rows too. Otherwise the article quietly overextends
+    DIA rows into CI claims.

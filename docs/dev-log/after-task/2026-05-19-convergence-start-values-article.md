@@ -58,7 +58,8 @@ recommendation wording until the M3.3a pilot produces larger evidence.
 - `git diff --stat`
   -> no uncommitted diff at lane start.
 - `gh pr list --state open`
-  -> #206 open / ready branch, #207 draft stacked branch.
+  -> #206 open / ready branch and #207 draft stacked branch at lane
+  start; #206 later merged and this branch was rebased onto `main`.
 - `git log --all --oneline --since="6 hours ago"`
   -> recent M3 / robust-modeling commits inspected.
 - `git switch codex/rr-residual-starts-2026-05-19`
@@ -73,6 +74,14 @@ recommendation wording until the M3.3a pilot produces larger evidence.
 - `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
   -> rendered `articles/convergence-start-values.html`; pkgdown
   printed the existing missing-template-image note for `../logo.png`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- Replacement-thread Rose pass after #206 merged:
+  `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rendered `articles/convergence-start-values.html`; same existing
+  missing-template-image note for `../logo.png`.
 - `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
   -> `No problems found.`
 - `git diff --check`
@@ -93,8 +102,11 @@ namespace.
   wide-format call uses the `traits(...)` LHS and does not pass a
   `trait` argument.
 - `rg -n "DIA-08|DIA-09|DIA-10|MIS-16|MIS-18|MIS-19|MIS-20|EXT-13|CI-02|CI-03" docs/design/35-validation-debt-register.md`
-  -> article claims map to explicit covered / partial register rows.
-- `rg -n "convergence-start-values|se = FALSE|pdHess|bootstrap|start_method|check_gllvmTMB" README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design _pkgdown.yml vignettes/articles/convergence-start-values.Rmd`
+  and the same row-ID scan over
+  `vignettes/articles/convergence-start-values.Rmd`
+  -> article claims map to explicit covered / partial register rows
+  for diagnostics, bootstrap, and profile routes.
+- `rg -n "convergence-start-values|se = FALSE|pdHess|bootstrap|start_method|check_gllvmTMB|EXT-13|CI-02|CI-03" README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design _pkgdown.yml vignettes/articles/convergence-start-values.Rmd`
   -> new article and roadmap wording are consistent with Design 49,
   NEWS, and the validation-debt register.
 - `rg -n "full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1" README.md ROADMAP.md NEWS.md docs vignettes`
@@ -144,9 +156,9 @@ branch-local namespace.
 Rose checked that the article cites validation-debt rows and avoids
 claiming default start-policy evidence before M3.3a/M3.4 simulations.
 
-Shannon's lane check kept the PR stack explicit: #206 is the green
-robust-modeling base, #207 is the draft M3.3a script branch, and this
-docs branch stays separate.
+Shannon's lane check kept the PR stack explicit: #206 became the
+merged robust-modeling base, #207 is the draft M3.3a script branch,
+and this docs branch stays separate.
 
 ## 10. Known Limitations And Next Actions
 
@@ -157,6 +169,6 @@ docs branch stays separate.
 - The article shows multicore bootstrap as an uncertainty workflow,
   but larger local / Slurm / Canada Compute wrappers remain Branch B
   and later infrastructure work.
-- Next: merge or rebase after #206, then use Branch B's M3.3a schema
-  to run larger Gaussian, `nbinom2`, mixed-family, and two-level
-  pilot cells.
+- Next: make PR #208 ready after CI and local article checks, then use
+  Branch B's M3.3a schema to run larger Gaussian, `nbinom2`,
+  mixed-family, and two-level pilot cells.

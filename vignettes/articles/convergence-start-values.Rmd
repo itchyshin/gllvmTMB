@@ -31,6 +31,9 @@ knitr::opts_chunk$set(
 > `check_gllvmTMB()` and the `se = FALSE` point-estimate path as
 > covered (DIA-08, DIA-10), while a deterministic in-fit
 > `sdreport()` failure fixture remains partial (DIA-09).
+> Bootstrap and profile uncertainty are the recommended follow-up
+> paths when Wald SEs are unsafe; those claims trace to EXT-13,
+> CI-02, and CI-03, with non-Gaussian bootstrap still partial.
 > Start-method convergence-rate claims are still M3.3a/M3.4 evidence
 > work, not default-policy claims.
 
@@ -188,6 +191,11 @@ false, when `sdreport()` fails, or when the target is nonlinear.
 Laptops often have enough cores to make bootstrap practical, so
 `bootstrap_Sigma()` exposes `n_cores`.
 
+The current validation register marks `bootstrap_Sigma()` covered for
+Gaussian fits and partial for non-Gaussian fits (EXT-13). Treat a
+non-Gaussian bootstrap as an audit trail until its family-specific row
+moves to covered.
+
 ```{r bootstrap, eval = FALSE}
 boot <- bootstrap_Sigma(
   fit,
@@ -220,6 +228,12 @@ Wald or bootstrap while constrained-profile machinery is expanded.
 The output method column should be read literally: if it says
 `"wald"`, the interval is Hessian-based even if the requested method
 was `"profile"`.
+
+The generic `confint(method = "profile")` and
+`confint(method = "bootstrap")` routes are covered in the validation
+register (CI-02, CI-03). Target-specific profile helpers are narrower:
+check `profile_targets(fit)` before treating a derived quantity as
+profile-ready.
 
 ## Troubleshooting Ladder
 

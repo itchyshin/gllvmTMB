@@ -75,8 +75,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
+| Codex / Ada | M3.3a `nbinom2` r10 stress pilot | local branch `codex/m3-3a-nbinom2-stress-pilot-r10-2026-05-19` | `docs/dev-log/*` | Local pilot complete; writing audit/check-log/after-task report; no PR yet |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

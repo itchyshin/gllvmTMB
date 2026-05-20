@@ -2763,3 +2763,58 @@ Kaizen point:
     the summarizer collapsed them until `scenario` became an optional
     grouping key. Future simulation grids should make scenario labels
     first-class before running expensive fits.
+
+## 2026-05-19 -- M3.3a nbinom2 stress pilot r10
+
+Scope:
+
+- Start a bounded evidence-only lane after PR #209 merged and all
+  main checks passed.
+- Use the merged scenario controls to compare baseline `nbinom2-d1`
+  against low-dispersion `nbinom2-d1` with larger sample size.
+- Keep CI-08 / CI-10 unchanged; this is triage evidence, not
+  validation promotion.
+
+Evidence:
+
+- `gh pr list --state open --limit 20`
+  -> no open PRs at lane start.
+- `git status --short --branch`
+  -> clean `main...origin/main` before branch creation.
+- `Rscript --vanilla - <<'EOF' ... EOF`
+  -> ran two-scenario direct `m3_run_grid()` pilot with `n_reps = 10`,
+  `n_boot = 10`, `n_cores_boot = 2`, `ci_level = 0.95`, residual
+  starts, BFGS, `n_init = 5`, and `se = FALSE`; saved
+  `/tmp/gllvmtmb-m3-3a-stress-pilot-r10/nbinom2-two-scenario-r10-b10.rds`.
+- Scenario summaries:
+  `baseline_phi1_n60_r10` original fits 10/10, bootstrap failures
+  14/100, coverage 0.32, miss below 34, miss above 0, median
+  estimate/truth 2.48, median gradient 5.53e-04;
+  `lowphi_n120_r10` original fits 10/10, bootstrap failures 3/100,
+  coverage 0.00, miss below 50, miss above 0, median estimate/truth
+  8.09, median gradient 4.16e-04.
+- `Rscript --vanilla -e 'x <- readRDS("/tmp/gllvmtmb-m3-3a-stress-pilot-r10/nbinom2-two-scenario-r10-b10.rds"); stopifnot(x$meta$n_reps == 10L, x$meta$n_boot == 10L, x$meta$ci_level == 0.95, nrow(x$summary) == 2L); print(x$summary[, c("scenario", "n_completed", "n_failed", "n_boot_failed", "n_boot_attempted", "coverage", "miss_below", "miss_above", "median_est_truth_ratio", "pilot_status")], row.names = FALSE); cat("artifact ok\n")'`
+  -> artifact integrity check passed.
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg -n 'baseline_phi1_n60_r10|lowphi_n120_r10|nbinom2-two-scenario-r10-b10' docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-stress-pilot-r10.md docs/dev-log/after-task/2026-05-19-m3-3a-nbinom2-stress-pilot-r10.md docs/dev-log/check-log.md`
+  -> scenario labels and artifact path are recorded in the audit,
+  after-task report, and check log.
+- `rg -n 'CI-08|CI-10|covered|partial' docs/design/35-validation-debt-register.md docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-stress-pilot-r10.md`
+  -> validation-debt rows remain partial; the audit states this is not
+  promotion evidence.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-19-m3-3a-nbinom2-stress-pilot-r10.md`
+
+Kaizen point:
+
+39. **When bootstrap refits recover but coverage stays at zero, stop
+    tuning starts.** The low-dispersion 120-unit pilot had only 3/100
+    bootstrap failures but still 0.00 coverage with all misses below
+    the interval. The next useful slice is target construction and
+    link-implicit residual allocation, not another optimizer ladder.

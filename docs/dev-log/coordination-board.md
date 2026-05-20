@@ -81,9 +81,10 @@ Current operating rule:
   merged on 2026-05-20 after 3-OS R-CMD-check passed on the PR
   branch; post-merge main R-CMD-check and pkgdown also passed.
 - PR #214 (M3.3a `nbinom2` known-phi point diagnostic) merged on
-  2026-05-20. The post-merge main R-CMD-check later passed; the
-  pkgdown deploy from the same merge was still running when the
-  docs-only cross-learning branch was pushed.
+  2026-05-20. Post-merge main R-CMD-check and pkgdown passed.
+- PR #215 (M3.3 drmTMB cross-learning checkpoint) merged on
+  2026-05-20 after the PR fast-path R-CMD-check passed on all three
+  OS-named jobs; post-merge main R-CMD-check and pkgdown also passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -91,9 +92,8 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex/Ada | M3.3 drmTMB cross-learning and roadmap checkpoint | PR #215 / `codex/m3-3-drmtmb-cross-learning-2026-05-20` | `ROADMAP.md`, dev-log audit/after-task/check-log/coordination-board | In progress; read-only sister-repo audit complete; docs-only PR open |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -164,6 +164,13 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~05:42 MT**: PR #215 (M3.3 drmTMB cross-learning
+  checkpoint) merged to `main` as merge commit `26dbc1e`. PR
+  R-CMD-check run `26160169174`, post-merge main R-CMD-check run
+  `26160261072`, and pkgdown run `26160276713` all passed. The
+  checkpoint moved the next M3 step to M3.3b surface admission and
+  made Florence's diagnostic visualization gate part of the M3
+  critical path, not just the later Phase 1c-viz layer.
 - **2026-05-20 ~04:57 MT**: PR #214 (M3.3a `nbinom2` known-phi
   point diagnostic) merged to `main` as merge commit `66d7b6b`. The
   diagnostic fixed `phi_nbinom2` at the DGP value in point fits and

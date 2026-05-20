@@ -85,6 +85,11 @@ Current operating rule:
 - PR #215 (M3.3 drmTMB cross-learning checkpoint) merged on
   2026-05-20 after the PR fast-path R-CMD-check passed on all three
   OS-named jobs; post-merge main R-CMD-check and pkgdown also passed.
+- PR #219 (issue-ledger after-task protocol) merged on 2026-05-20;
+  post-merge main R-CMD-check and pkgdown passed.
+- PR #220 (M3.3b surface-admission + diagnostic visualization gate)
+  merged on 2026-05-20 after PR R-CMD-check, post-merge main
+  R-CMD-check, and pkgdown all passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -92,9 +97,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada + Ramanujan + Euler | M3.3b surface-admission + diagnostic visualization gate | `codex/m3-3b-surface-visual-gate-2026-05-20` | `docs/design/50-m3-3b-surface-admission.md`, `docs/design/44-m3-3-inference-replacement.md`, `docs/design/46-visualization-grammar.md`, `docs/design/35-validation-debt-register.md`, `ROADMAP.md`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-m3-3b-surface-visual-gate.md` | Active; integrating read-only parallel scout outputs for #217 and #218 into a small spec PR. |
+| _None_ | _No active Codex/Claude lane recorded._ | _n/a_ | _n/a_ | WIP clear after PR #220 merge and post-merge checks. |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -165,6 +170,14 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~06:55 MT**: PR #220 (M3.3b surface-admission +
+  diagnostic visualization gate) merged to `main` as merge commit
+  `f7e5a35`. PR R-CMD-check run `26163165179`, post-merge main
+  R-CMD-check run `26163201467`, and pkgdown run `26163219728` all
+  passed. Issues #217 and #218 remain open; PR #220 advances both by
+  adding Design 50 and the M3 diagnostic-report / Florence gate, but
+  does not close them until real surface evidence and a rendered
+  report exist.
 - **2026-05-20 ~06:22 MT**: PR #219 (issue-ledger after-task
   protocol) merged to `main` as merge commit `2e516ec`. PR
   R-CMD-check run `26161369265`, post-merge main R-CMD-check run

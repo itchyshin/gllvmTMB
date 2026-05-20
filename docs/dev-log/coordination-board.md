@@ -75,7 +75,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | Convergence/start-values article | PR #208 / `codex/convergence-start-values-article-2026-05-19` | `vignettes/articles/convergence-start-values.Rmd`, `_pkgdown.yml`, `ROADMAP.md`, `docs/dev-log/*` | Rebased onto `main` after #207; local article render and `pkgdown::check_pkgdown()` passed; refreshed GitHub R-CMD-check pending |
+| Codex / Ada | M3.3a `nbinom2` stress-smoke controls | PR #209 / `codex/m3-3a-nbinom2-stress-2026-05-19` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `docs/dev-log/*` | PR open; scenario controls and stress smokes complete; waiting for PR checks |
 
 **WIP**: 1.
 
@@ -149,6 +149,11 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~21:18 MT**: PR #208 (convergence/start-values
+  article) merged to `main` as squash commit `3bb01c8` after three-OS
+  R-CMD-check passed on the final PR head. Post-merge main
+  R-CMD-check run `26139437409` also passed on ubuntu, macOS, and
+  Windows before the next M3.3a stress-smoke branch was pushed.
 - **2026-05-19 ~20:24 MT**: PR #206 (robust modeling diagnostics and
   start provenance) merged to `main` as squash commit `a89aac8` after
   three-OS R-CMD-check passed on the PR branch. Branches #207 and #208

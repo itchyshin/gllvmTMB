@@ -2652,3 +2652,39 @@ Kaizen point:
     uncertainty, Rose expects those uncertainty claims to cite their
     own validation rows too. Otherwise the article quietly overextends
     DIA rows into CI claims.
+
+## 2026-05-19 -- PR #208 rebase after PR #207 merge
+
+Scope:
+
+- Rebase the convergence/start-values article branch after PR #207
+  merged to `main` so append-only dev-log entries land in a stable
+  order.
+
+Evidence:
+
+- `gh pr merge 207 --squash --delete-branch`
+  -> PR #207 merged to `main` as `2af6a61`.
+- `git rebase origin/main`
+  -> one conflict in `docs/dev-log/check-log.md`.
+- Conflict resolution:
+  preserved the M3.3a fit-health pilot schema and nbinom2 night-pilot
+  entries first, then preserved the convergence/start-values article
+  and Rose-pass entries after them.
+- `git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-05-19-convergence-start-values-article.md vignettes/articles/convergence-start-values.Rmd ROADMAP.md _pkgdown.yml`
+  -> no conflict markers.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rendered after the rebase; same existing missing-template-image
+  note for `../logo.png`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check origin/main...HEAD`
+  -> clean.
+
+Kaizen point:
+
+37. **Merge append-only dev-log branches before polishing prose
+    branches.** When two open PRs both append to `check-log.md`, merge
+    the dev-script evidence branch first, then rebase the prose branch.
+    That keeps chronology readable and avoids burying simulation
+    evidence behind later article wording.

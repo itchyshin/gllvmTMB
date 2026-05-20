@@ -78,6 +78,18 @@ recommendation wording until the M3.3a pilot produces larger evidence.
   -> `No problems found.`
 - `git diff --check`
   -> clean.
+- After PR #207 merged:
+  `git rebase origin/main`
+  -> one append-only conflict in `docs/dev-log/check-log.md`; resolved
+  by preserving the merged M3.3a pilot entries first and the
+  convergence/start-values article entries after them.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rendered after the rebase; same existing missing-template-image
+  note for `../logo.png`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check origin/main...HEAD`
+  -> clean.
 - Replacement-thread Rose pass after #206 merged:
   `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
   -> rendered `articles/convergence-start-values.html`; same existing
@@ -157,8 +169,8 @@ Rose checked that the article cites validation-debt rows and avoids
 claiming default start-policy evidence before M3.3a/M3.4 simulations.
 
 Shannon's lane check kept the PR stack explicit: #206 became the
-merged robust-modeling base, #207 is the draft M3.3a script branch,
-and this docs branch stays separate.
+merged robust-modeling base, #207 merged first after final CI, and
+this docs branch was rebased onto that new `main`.
 
 ## 10. Known Limitations And Next Actions
 

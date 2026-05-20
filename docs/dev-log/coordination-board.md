@@ -74,6 +74,9 @@ Current operating rule:
 - PR #211 (M3.3a `nbinom2` target-construction audit) merged on
   2026-05-20 after 3-OS R-CMD-check passed on the PR branch;
   post-merge main R-CMD-check and pkgdown also passed.
+- PR #212 (M3.3a corrected `nbinom2` r20 stress audit) merged on
+  2026-05-20 after fast-path R-CMD-check passed on the PR branch;
+  post-merge main R-CMD-check and pkgdown also passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -81,9 +84,8 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | M3.3a corrected `nbinom2` r20 stress audit | local branch `codex/m3-3a-nbinom2-corrected-r20-audit-2026-05-20` | `docs/dev-log/*` evidence only | Started after PR #211 and board closeout CI/pkgdown passed |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -155,6 +157,15 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~01:23 MT**: PR #212 (M3.3a corrected
+  `nbinom2` r20 stress audit) merged to `main` as squash commit
+  `ff395ce` after the PR fast-path R-CMD-check run `26147568512`
+  passed on ubuntu, macOS, and Windows. Post-merge main
+  R-CMD-check run `26147643167` and pkgdown run `26147660756`
+  also passed. The corrected r20/b20 artifact still failed the 0.94
+  coverage gate, with coverage 0.77 in the baseline scenario and
+  0.58 in the low-dispersion scenario; the next M3.3a slice should
+  add fitted `phi` / link-residual diagnostics before another grid.
 - **2026-05-20 ~00:54 MT**: PR #211 (M3.3a `nbinom2`
   target-construction audit) merged to `main` as squash commit
   `bfad49c` after the PR R-CMD-check run `26143597267` passed on

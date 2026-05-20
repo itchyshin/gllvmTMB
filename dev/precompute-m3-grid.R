@@ -28,6 +28,8 @@
 ## Output:
 ##   dev/precomputed/m3-coverage-grid.rds (long-format)
 ##   dev/precomputed/m3-coverage-summary.rds (per-cell aggregate)
+##   dev/precomputed/*-diagnostic-report.md and
+##   dev/precomputed/*-source-map-dashboard.png for diagnostic modes
 ##
 ## Scope (M3.2/M3.3 — Curie + Grace lead; Fisher review):
 ##   * Pipeline machinery + a working smoke artefact.
@@ -401,6 +403,25 @@ report <- if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
 } else {
   NULL
 }
+dashboard_path <- NULL
+if (
+  !is.null(report) &&
+    requireNamespace("ggplot2", quietly = TRUE) &&
+    isTRUE(capabilities("png"))
+) {
+  dashboard_path <- file.path(
+    OUT_DIR,
+    paste0(out_prefix, "-source-map-dashboard.png")
+  )
+  m3_write_source_map_dashboard(grid_df, dashboard_path)
+} else if (!is.null(report)) {
+  reason <- if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    "ggplot2 is unavailable"
+  } else {
+    "PNG device is unavailable"
+  }
+  warning(paste0(reason, "; skipping M3 source-map dashboard render"), call. = FALSE)
+}
 
 cat(sprintf(
   "[m3] total time: %.1fs (%d cells, %d reps each)\n",
@@ -452,7 +473,12 @@ artefact <- list(
   ),
   grid = grid_df,
   summary = summary_df,
-  diagnostic_report = report
+  diagnostic_report = report,
+  diagnostic_dashboard = if (!is.null(dashboard_path)) {
+    list(path = dashboard_path)
+  } else {
+    NULL
+  }
 )
 
 saveRDS(artefact, GRID_RDS)
@@ -461,6 +487,9 @@ if (!is.null(report)) {
   REPORT_MD <- file.path(OUT_DIR, paste0(out_prefix, "-diagnostic-report.md"))
   m3_write_diagnostic_report(report, REPORT_MD)
   cat(sprintf("[m3] saved -> %s (diagnostic report)\n", REPORT_MD))
+  if (!is.null(dashboard_path)) {
+    cat(sprintf("[m3] saved -> %s (source-map dashboard)\n", dashboard_path))
+  }
 }
 
 cat(sprintf("[m3] saved -> %s (long-format)\n", GRID_RDS))

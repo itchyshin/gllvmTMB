@@ -97,8 +97,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
+| Codex/Ada | M3.3b source-map dashboard / Florence contact sheet | branch `codex/m3-3b-source-map-dashboard-2026-05-20` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `docs/design/46-visualization-grammar.md`, `docs/design/50-m3-3b-surface-admission.md`, `ROADMAP.md`, dev-log files | In progress; local dashboard render passed, PR not yet opened |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -175,18 +176,18 @@ Resolved questions move to "Recently resolved" with the answer.
   Windows. The lane added dev-only `--nb2-start-probe`,
   `--probe-config`, probe metadata in summaries/reports, and local
   smoke evidence showing the full four-config one-rep probe took
-  749.4 s while the selected-config smoke took 60.6 s. Issues #217
-  and #218 remain open for the selected-seed source-map artifact and
-  Florence-rendered dashboard.
+  749.4 s while the selected-config smoke took 60.6 s. Issue #217 was
+  closed after this lane; #218 remains open for the Florence-rendered
+  dashboard.
 - **2026-05-20 ~08:48 MT**: PR #221 (M3.3b NB2 stress-map/report
   scaffold) merged to `main` as squash commit `2266336` after PR
   R-CMD-check run `26168086992` passed on ubuntu, macOS, and Windows.
   The lane added the point-only NB2 stress-map surfaces, r10/r20
   source-map evidence, diagnostic report semantics for
   `POINT_ONLY` / `NOT_EVALUATED`, and issue-ledger updates for #217
-  and #218. No NB2 surface was admitted to r50; #217 and #218 remain
-  open for the start/local-basin probe and Florence-rendered source-map
-  dashboard.
+  and #218. No NB2 surface was admitted to r50; #217 later closed via
+  the start/local-basin probe, while #218 remains open for the
+  Florence-rendered source-map dashboard.
 - **2026-05-20 ~06:55 MT**: PR #220 (M3.3b surface-admission +
   diagnostic visualization gate) merged to `main` as merge commit
   `f7e5a35`. PR R-CMD-check run `26163165179`, post-merge main

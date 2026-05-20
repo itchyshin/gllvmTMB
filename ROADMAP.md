@@ -82,6 +82,12 @@ those sources.
   residual ratios remained high. Gaussian and Poisson controls were
   much closer to truth, so the next M3.3b lane is NB2 source mapping
   and figure semantics, not broad production scaling.
+- The first rendered M3.3b source-map dashboard is now dev-only. It
+  writes a PNG contact sheet beside the Markdown diagnostic report,
+  using the long grid to show trait-level estimate/truth ratios, NB2
+  phi and link-residual ratios, failure-ledger denominators, and
+  `POINT_ONLY` / `NOT_EVALUATED` status. This is figure-gate evidence,
+  not a public plotting API and not interval-coverage evidence.
 - The robust-modeling roadmap is now captured in
   `docs/design/49-robust-modeling-roadmap.md`. The first slice adds
   start provenance, restart history, protected/skipped `sdreport()`
@@ -114,14 +120,14 @@ These are intentionally bounded lanes. Treat each as its own PR.
    parameter bootstrap refit path. Until then, known-phi evidence is
    point-estimate evidence only.
 4. **Rendered diagnostic figure gate (Florence + Pat + Grace)**:
-   turn the Markdown report tables into small rendered panels before
-   another production grid. Plots must show estimate/truth, fitted
-   phi/truth, link residuals, failure counts, method labels, and
-   denominators without hiding weak cells behind averages. Point-only
-   rows must show `profile_gate_status = "NOT_EVALUATED"`, not failed
-   coverage. For `gllvmTMB`, this is not a polish pass: high-dimensional
-   latent/covariance diagnostics need visual checks because tables
-   alone can hide rank, trait, and refit-failure structure.
+   use the new dev-only source-map contact sheet before another
+   production grid. Plots must show estimate/truth, fitted phi/truth,
+   link residuals, failure counts, method labels, and denominators
+   without hiding weak cells behind averages. Point-only rows must show
+   `profile_gate_status = "NOT_EVALUATED"`, not failed coverage. For
+   `gllvmTMB`, this is not a polish pass: high-dimensional
+   latent/covariance diagnostics need visual checks because tables alone
+   can hide rank, trait, and refit-failure structure.
 
 Note: “redundant `trait = \"trait\"` cleanup” is *not* a mechanical cleanup under Option A uniform naming; treat it as a policy change proposal rather than a queued doc sweep.
 

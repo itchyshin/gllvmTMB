@@ -3384,3 +3384,60 @@ Kaizen point:
     `--probe-config=<id>` so future smoke checks can verify plumbing in
     about one minute while leaving the full comparison table available
     for deliberate source-map artifacts.
+
+## 2026-05-20 -- M3.3b source-map dashboard / Florence contact sheet
+
+Scope:
+
+- Add dev-only M3.3b source-map dashboard data and ggplot renderers
+  using the long diagnostic grid.
+- Write a PNG contact sheet beside the Markdown diagnostic report for
+  `--nb2-stress-map` and `--nb2-start-probe` modes when `ggplot2` is
+  available.
+- Keep current NB2 dashboard rows labelled `POINT_ONLY` and
+  `NOT_EVALUATED`; this is not interval-coverage evidence and not a
+  public plotting API.
+- Record the Florence figure review note for issue #218.
+
+Evidence:
+
+- `gh pr list --state open --json number,title,headRefName,baseRefName,author,updatedAt`
+  -> no open PRs at lane start.
+- `git log --all --oneline --since="6 hours ago"`
+  -> reviewed recent M3.3b / issue-ledger commits through `d3e8a09`.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  -> passed: 63 tests, no warnings.
+- `Rscript --vanilla dev/precompute-m3-grid.R --nb2-start-probe --probe-config=current_res_bfgs_n3_j005 --n-reps=1 --out-dir=/tmp/gllvmtmb-m3-3b-dashboard-smoke --out-prefix=m3-nb2-dashboard-smoke`
+  -> passed in 62.2 s; wrote the diagnostic report, dashboard PNG,
+  long-grid RDS, and summary RDS.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); art <- readRDS("/tmp/gllvmtmb-m3-3b-dashboard-smoke/m3-nb2-dashboard-smoke-grid.rds"); m3_write_source_map_dashboard(art$grid, "/tmp/gllvmtmb-m3-3b-dashboard-smoke/m3-nb2-dashboard-smoke-source-map-dashboard-v2.png")'`
+  -> passed; rerendered the dashboard after the first Florence layout
+  revision.
+- `view_image("/tmp/gllvmtmb-m3-3b-dashboard-smoke/m3-nb2-dashboard-smoke-source-map-dashboard-v2.png")`
+  -> visual inspection passed the dev-facing Florence gate: ratio
+  panels, denominator tiles, and verdict tiles are readable; point-only
+  status is explicit.
+- `git diff --check`
+  -> clean.
+- `rg -n 'POINT_ONLY|NOT_EVALUATED|source-map dashboard|m3_write_source_map_dashboard|#218|Kaizen point|WIP' ROADMAP.md docs/design/46-visualization-grammar.md docs/design/50-m3-3b-surface-admission.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-05-20-m3-3b-source-map-dashboard.md docs/dev-log/audits/2026-05-20-m3-3b-source-map-dashboard-florence.md dev/m3-grid.R dev/precompute-m3-grid.R tests/testthat/test-m3-grid-summary.R`
+  -> confirmed the issue, roadmap, source-map dashboard, and
+  point-only status wording appears in the intended files.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-m3-3b-source-map-dashboard.md`
+
+Florence audit:
+
+- `docs/dev-log/audits/2026-05-20-m3-3b-source-map-dashboard-florence.md`
+
+Kaizen point:
+
+49. **A diagnostic figure can fail after the code passes.** The first
+    source-map PNG technically rendered but Florence rejected it
+    because the failure ledger and verdict text were unreadable. The
+    fix was not more computation; it was a better visual contract:
+    compact source labels, tile denominators, and explicit
+    `POINT_ONLY` / `NOT_EVALUATED` status on the figure itself.

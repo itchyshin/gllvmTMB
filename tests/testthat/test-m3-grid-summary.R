@@ -349,3 +349,65 @@ test_that("M3 diagnostic report data keeps trait ratios and failure ledger", {
   expect_equal(unique(report$summary$profile_gate_status), "NOT_EVALUATED")
   expect_true(all(is.na(report$trait_ratios$coverage)))
 })
+
+test_that("M3 source-map dashboard keeps point-only rows visually explicit", {
+  source_m3_grid()
+  skip_if_not_installed("ggplot2")
+
+  grid_df <- data.frame(
+    surface_id = "nbinom2-d1-baseline-phi1-n60",
+    scenario = "baseline_phi1_n60",
+    run_stage = M3_STRESS_RUN_STAGE,
+    cell = "nbinom2-d1",
+    family = "nbinom2",
+    d = 1L,
+    target = "Sigma_unit_diag",
+    ci_method = "none",
+    fit_phi_mode = rep(c("estimated", "known"), each = 2L),
+    rep = c(1L, 1L, 1L, 1L),
+    trait_id = c(1L, 2L, 1L, 2L),
+    fit_converged = TRUE,
+    converged = TRUE,
+    ci_available = FALSE,
+    covered = NA,
+    miss_side = "ci_unavailable",
+    truth = c(2, 4, 2, 4),
+    estimate = c(1, 2, 1.5, 3),
+    truth_phi = 2,
+    est_phi_nbinom2 = c(1, 1, 2, 2),
+    est_link_residual = c(3, 3, 2, 2),
+    n_boot_failed = 0L,
+    n_boot = 0L,
+    n_cores_boot = 1L,
+    n_units = 60L,
+    n_traits = 5L,
+    lambda_scale = 1,
+    psi_scale = 1,
+    seed_base = 20260520L,
+    runtime_s = 1
+  )
+
+  dashboard <- m3_source_map_dashboard_data(grid_df)
+  expect_s3_class(dashboard, "m3_source_map_dashboard_data")
+  expect_true(all(c("ratio_points", "failure_rates", "verdict_tiles") %in% names(dashboard)))
+  expect_equal(unique(dashboard$verdict_tiles$pilot_status), "POINT_ONLY")
+  expect_equal(
+    unique(dashboard$failure_rates$denominator_label[
+      dashboard$failure_rates$metric == "CI missing"
+    ]),
+    "point only"
+  )
+
+  ratios <- m3_plot_source_map_ratios(dashboard)
+  ledger <- m3_plot_source_map_failure_ledger(dashboard)
+  verdict <- m3_plot_source_map_verdict(dashboard)
+  expect_s3_class(ratios, "ggplot")
+  expect_s3_class(ledger, "ggplot")
+  expect_s3_class(verdict, "ggplot")
+
+  skip_if_not(capabilities("png"), "PNG device unavailable")
+  png_path <- tempfile(fileext = ".png")
+  expect_equal(m3_write_source_map_dashboard(grid_df, png_path), png_path)
+  expect_true(file.exists(png_path))
+  expect_gt(file.info(png_path)$size, 0)
+})

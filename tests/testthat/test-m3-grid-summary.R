@@ -227,6 +227,8 @@ test_that("M3 point-only Sigma diagnostics are not coverage evidence", {
 
   expect_equal(summary_df$ci_method, c("none", "none"))
   expect_true(all(is.na(summary_df$coverage)))
+  expect_true(all(is.na(summary_df$passes_94pct_prof)))
+  expect_equal(summary_df$profile_gate_status, c("NOT_EVALUATED", "NOT_EVALUATED"))
   expect_equal(summary_df$pilot_status, c("POINT_ONLY", "POINT_ONLY"))
   expect_equal(summary_df$median_est_truth_ratio, c(0.5, 0.75))
 })
@@ -274,5 +276,7 @@ test_that("M3 diagnostic report data keeps trait ratios and failure ledger", {
   expect_equal(sort(unique(report$trait_ratios$fit_phi_mode)), c("estimated", "known"))
   expect_equal(unique(report$failure_ledger$pilot_status), "POINT_ONLY")
   expect_true(all(report$summary$ci_method == "none"))
+  expect_true(all(is.na(report$summary$passes_94pct_prof)))
+  expect_equal(unique(report$summary$profile_gate_status), "NOT_EVALUATED")
   expect_true(all(is.na(report$trait_ratios$coverage)))
 })

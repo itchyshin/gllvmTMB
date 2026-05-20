@@ -3235,6 +3235,38 @@ Evidence:
 - `gh issue comment 218 --repo itchyshin/gllvmTMB ...`
   -> linked PR #221 without closing #218:
   `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4498947501`.
+- `Rscript --vanilla dev/precompute-m3-grid.R --nb2-stress-map --n-reps=10 --out-dir=/tmp/gllvmtmb-m3-3b-stress-r10 --out-prefix=m3-nb2-stress-r10`
+  -> passed; 60/60 NB2 point-only fits completed with zero failures.
+- Control r10 run using `m3_nb2_stress_surfaces(include_controls = TRUE)`
+  subset to Gaussian and Poisson controls
+  -> passed; Gaussian median estimate/truth ratio 1.150 and Poisson
+  median estimate/truth ratio 0.933.
+- `Rscript --vanilla dev/precompute-m3-grid.R --nb2-stress-map --n-reps=20 --out-dir=/tmp/gllvmtmb-m3-3b-stress-r20 --out-prefix=m3-nb2-stress-r20`
+  -> passed in about 870.6 seconds; 120/120 NB2 point-only fits
+  completed with zero failures.
+- Sidecar read-only audits:
+  Carver found no obvious target mismatch, no `phi` inverse bug, and
+  no link-residual leakage into the target; leading source-map
+  explanation is NB2 finite-sample / unit-tier variance identifiability
+  plus start/local-basin behavior. Godel marked the report layer
+  `REVISE` until a rendered point-only source-map dashboard exists.
+- `gh issue comment 217 --repo itchyshin/gllvmTMB ...`
+  -> posted the r10/r20 evidence checkpoint and kept #217 open:
+  `https://github.com/itchyshin/gllvmTMB/issues/217#issuecomment-4499227668`.
+- `gh issue comment 218 --repo itchyshin/gllvmTMB ...`
+  -> posted the report-semantics / Florence checkpoint and kept #218
+  open:
+  `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4499227897`.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); x <- readRDS("/tmp/gllvmtmb-m3-3b-stress-r20/m3-nb2-stress-r20-grid.rds"); report <- m3_diagnostic_report_data(x$grid); print(unique(report$summary[, c("ci_method", "coverage_prof", "passes_94pct_prof", "profile_gate_status", "pilot_status")]))'`
+  -> confirmed `ci_method = "none"`, `coverage_prof = NA`,
+  `passes_94pct_prof = NA`, `profile_gate_status = "NOT_EVALUATED"`,
+  and `pilot_status = "POINT_ONLY"`.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  -> passed after the report-gate fix: 44 tests.
+
+Source-map audit:
+
+- `docs/dev-log/audits/2026-05-20-m3-3b-nb2-r20-source-map.md`
 
 After-task report:
 

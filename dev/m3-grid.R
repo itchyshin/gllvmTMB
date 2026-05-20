@@ -1749,6 +1749,18 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
       } else {
         NA_real_
       }
+      profile_gate_status <- if (is.na(coverage_prof)) {
+        "NOT_EVALUATED"
+      } else if (coverage_prof >= gate) {
+        "PASS"
+      } else {
+        "FAIL"
+      }
+      passes_94pct_prof <- if (is.na(coverage_prof)) {
+        NA
+      } else {
+        coverage_prof >= gate
+      }
       row <- data.frame(
         cell = sub$cell[1],
         family = sub$family[1],
@@ -1778,7 +1790,8 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         mean_runtime_s = mean(rep_runtime, na.rm = TRUE),
         pilot_status = pilot_status,
         coverage_prof = coverage_prof,
-        passes_94pct_prof = !is.na(coverage_prof) && coverage_prof >= gate,
+        passes_94pct_prof = passes_94pct_prof,
+        profile_gate_status = profile_gate_status,
         stringsAsFactors = FALSE
       )
       if ("scenario" %in% names(sub)) {

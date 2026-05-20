@@ -96,6 +96,21 @@ intentional point-estimate diagnostic.
   -> clean.
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
   -> passed: `No problems found.`
+- `Rscript --vanilla dev/precompute-m3-grid.R --nb2-stress-map --n-reps=10 --out-dir=/tmp/gllvmtmb-m3-3b-stress-r10 --out-prefix=m3-nb2-stress-r10`
+  -> passed; 60/60 NB2 point-only fits completed with zero failures.
+- Control r10 run using the Gaussian and Poisson rows from
+  `m3_nb2_stress_surfaces(include_controls = TRUE)`
+  -> passed; Gaussian median estimate/truth ratio 1.150 and Poisson
+  median estimate/truth ratio 0.933.
+- `Rscript --vanilla dev/precompute-m3-grid.R --nb2-stress-map --n-reps=20 --out-dir=/tmp/gllvmtmb-m3-3b-stress-r20 --out-prefix=m3-nb2-stress-r20`
+  -> passed in about 870.6 seconds; 120/120 NB2 point-only fits
+  completed with zero failures.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); x <- readRDS("/tmp/gllvmtmb-m3-3b-stress-r20/m3-nb2-stress-r20-grid.rds"); report <- m3_diagnostic_report_data(x$grid); print(unique(report$summary[, c("ci_method", "coverage_prof", "passes_94pct_prof", "profile_gate_status", "pilot_status")]))'`
+  -> confirmed no-interval rows now report
+  `profile_gate_status = "NOT_EVALUATED"` and
+  `passes_94pct_prof = NA`.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  -> passed after the report-gate fix: 44 tests.
 
 ## 5. Tests of the Tests
 
@@ -122,9 +137,9 @@ claims:
 ## 7. Roadmap Tick
 
 **Roadmap tick**: M3 stays `3/8` and M3.3 stays red. `ROADMAP.md`
-now records that the M3.3b scaffold exists, but the next evidence step
-is still a real r10/r20 NB2 stress-map run and surface-admission
-decision. EXT-13, CI-08, and CI-10 remain unchanged.
+now records that the M3.3b scaffold exists and that local r10/r20
+point-only evidence did not admit any NB2 surface to r50. EXT-13,
+CI-08, and CI-10 remain unchanged.
 
 ## 7a. GitHub Issue Ledger
 
@@ -138,9 +153,13 @@ decision. EXT-13, CI-08, and CI-10 remain unchanged.
 - Added PR #221 ledger comments to #217 and #218:
   `https://github.com/itchyshin/gllvmTMB/issues/217#issuecomment-4498947292`;
   `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4498947501`.
+- Added r10/r20 evidence and report-semantics checkpoints to #217 and
+  #218:
+  `https://github.com/itchyshin/gllvmTMB/issues/217#issuecomment-4499227668`;
+  `https://github.com/itchyshin/gllvmTMB/issues/218#issuecomment-4499227897`.
 - #217 and #218 remain open. PR #221 advances both but does not close
-  either, because no r10/r20 evidence or rendered Florence figure has
-  been accepted yet.
+  either, because the r10/r20 evidence is point-only and did not admit
+  an r50 surface, and no rendered Florence figure has been accepted yet.
 
 ## 8. What Did Not Go Smoothly
 
@@ -153,6 +172,11 @@ The first smoke also exposed a misleading CLI header: it printed global
 `n_units = 60` even when stress surfaces were surface-specific. The
 stress-map header now says `surface-specific`.
 
+Florence/Pat review caught a subtler reporting problem: blank
+`coverage_prof` beside `passes_94pct_prof = FALSE` could be read as
+failed coverage. The summary now uses `passes_94pct_prof = NA` and
+`profile_gate_status = "NOT_EVALUATED"` when no intervals exist.
+
 ## 9. Team Learning (per AGENTS.md Standing Review Roles)
 
 Ada: the lane should stay as dev infrastructure until the report
@@ -161,6 +185,11 @@ proves useful on r10/r20 evidence.
 Fisher: the scaffold now separates point-estimate diagnostics from
 coverage evidence. No row can move CI-08 or CI-10 while
 `ci_method = "none"`.
+
+Gauss: Carver's read-only source-map audit found no obvious target
+mismatch, no `phi` inverse bug, and no link-residual leakage into the
+target estimate. The leading suspects are NB2 finite-sample
+identifiability and start/local-basin behavior.
 
 Curie: the surface register gives the next run a small, reproducible
 grid shape before any r50/r200 compute.
@@ -180,9 +209,10 @@ move back to WIP 0 after merge and post-merge checks.
 
 ## 10. Known Limitations And Next Actions
 
-- Run the real r10/r20 NB2 stress map without controls first.
+- Probe NB2 starts/local basins before any r50 surface admission.
 - Turn the Markdown report tables into rendered diagnostic figures for
-  Florence review.
+  Florence review, with point-only rows labelled `NOT_EVALUATED` for
+  coverage gates.
 - Decide whether fixed-phi bootstrap needs a mapped-parameter refit
   path before any fixed-phi coverage claim.
 - Keep #217 and #218 open until the first surface is admitted,

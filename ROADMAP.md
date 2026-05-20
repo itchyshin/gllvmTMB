@@ -75,6 +75,13 @@ those sources.
   and Poisson control surfaces, and a Markdown diagnostic report
   writer. The scaffold keeps these rows as `POINT_ONLY`; it does not
   move CI-08 or CI-10.
+- Local r10/r20 NB2 stress-map evidence from PR #221 completed all
+  point-only fits with zero failures, but did not admit an r50
+  surface. Known `phi_nbinom2` improved `Sigma_unit_diag`
+  estimate/truth ratios to about 0.78-0.83, while low-dispersion link
+  residual ratios remained high. Gaussian and Poisson controls were
+  much closer to truth, so the next M3.3b lane is NB2 source mapping
+  and figure semantics, not broad production scaling.
 - The robust-modeling roadmap is now captured in
   `docs/design/49-robust-modeling-roadmap.md`. The first slice adds
   start provenance, restart history, protected/skipped `sdreport()`
@@ -85,17 +92,18 @@ those sources.
 
 These are intentionally bounded lanes. Treat each as its own PR.
 
-1. **Run the NB2 stress-map scaffold at r10/r20 (Fisher + Curie +
-   Rose)**: use `dev/precompute-m3-grid.R --nb2-stress-map` and
-   issue #217 to compare estimated versus known `phi_nbinom2` across
-   baseline, low-dispersion, and weak-variance surfaces. These rows
-   remain `POINT_ONLY` unless `n_boot > 0` is explicitly requested.
-2. **NB2 dispersion/variance source-map decision (Fisher + Curie +
+1. **NB2 dispersion/variance source-map decision (Fisher + Curie +
    Gauss)**: use the stress-map report to decide whether the next
    model problem is dispersion calibration, latent+unique variance
    scale, sample size, rank, or their interaction. Do not call this
    coverage evidence until the refit path preserves the intended
    estimand.
+2. **Start-strategy and local-basin probe (Fisher + Gauss + Rose)**:
+   compare the current residual/SVD warm start against a small set of
+   NB2-specific starts or larger jitter on the r20 surfaces before any
+   r50 admission. Carver's read-only audit found no obvious target or
+   `phi` scale bug, leaving finite-sample identifiability and local
+   basins as the leading explanation.
 3. **Fixed-phi bootstrap design checkpoint (Gauss + Noether +
    Fisher)**: decide whether the development grid needs a mapped-
    parameter bootstrap refit path. Until then, known-phi evidence is
@@ -104,8 +112,9 @@ These are intentionally bounded lanes. Treat each as its own PR.
    turn the Markdown report tables into small rendered panels before
    another production grid. Plots must show estimate/truth, fitted
    phi/truth, link residuals, failure counts, method labels, and
-   denominators without hiding weak cells behind averages. For
-   `gllvmTMB`, this is not a polish pass: high-dimensional
+   denominators without hiding weak cells behind averages. Point-only
+   rows must show `profile_gate_status = "NOT_EVALUATED"`, not failed
+   coverage. For `gllvmTMB`, this is not a polish pass: high-dimensional
    latent/covariance diagnostics need visual checks because tables
    alone can hide rank, trait, and refit-failure structure.
 

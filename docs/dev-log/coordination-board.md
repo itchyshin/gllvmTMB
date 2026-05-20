@@ -68,6 +68,9 @@ Current operating rule:
   2026-05-19 after 3-OS R-CMD-check passed on the PR branch.
 - PR #207 (M3.3a fit-health pilot metadata) merged on 2026-05-19
   after 3-OS R-CMD-check passed on the PR branch.
+- PR #210 (M3.3a `nbinom2` r10 stress pilot evidence) merged on
+  2026-05-19 after fast-path R-CMD-check passed on the PR branch;
+  post-merge main R-CMD-check and pkgdown also passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -75,9 +78,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | M3.3a `nbinom2` r10 stress pilot | PR #210 / branch `codex/m3-3a-nbinom2-stress-pilot-r10-2026-05-19` | `docs/dev-log/*` | PR open; waiting on R-CMD-check |
+| _None_ | _No active lane_ | _n/a_ | _n/a_ | _WIP 0_ |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -149,6 +152,11 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~22:34 MT**: PR #210 (M3.3a `nbinom2` r10
+  stress-pilot evidence) merged to `main` as squash commit `6fdf45f`
+  after the PR fast-path R-CMD-check passed on ubuntu, macOS, and
+  Windows. Post-merge main R-CMD-check run `26141523308` and pkgdown
+  run `26141533866` also passed.
 - **2026-05-19 ~22:12 MT**: PR #209 (M3.3a `nbinom2`
   stress-grid controls) merged to `main` as squash commit `34e74ec`
   after the PR fast-path R-CMD-check passed on ubuntu, macOS, and

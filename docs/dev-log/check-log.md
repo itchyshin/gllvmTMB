@@ -2522,3 +2522,172 @@ Kaizen point:
     failure, bootstrap refit failure, Hessian/SE failure, and
     target-scale bias instead of treating "nbinom2 failed" as one
     bucket.
+
+## 2026-05-19 -- Convergence/start-values article
+
+Scope:
+
+- Draft the reader-facing article
+  `vignettes/articles/convergence-start-values.Rmd`.
+- Register it in `_pkgdown.yml` under Methods and validation.
+- Update the M3.4 roadmap row to say the article is drafted while
+  target-explicit empirical evidence and family stress lanes remain.
+
+Evidence:
+
+- `git status --short --branch`
+  -> clean start on `codex/m3-3a-fit-health-pilot-2026-05-19`.
+- `git diff --stat`
+  -> no uncommitted diff at lane start.
+- `gh pr list --state open`
+  -> #206 open / ready branch and #207 draft stacked branch.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent M3 / robust-modeling commits inspected.
+- `git switch codex/rr-residual-starts-2026-05-19`
+  -> switched to the robust-modeling branch.
+- `git switch -c codex/convergence-start-values-article-2026-05-19`
+  -> created this docs branch from #206.
+- `Rscript --vanilla -e 'pkgdown::build_article("convergence-start-values")'`
+  -> failed because the article lives under `vignettes/articles/`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/convergence-start-values")'`
+  -> found the article but failed because the installed package did
+  not yet export branch-local `check_gllvmTMB()`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rendered `articles/convergence-start-values.html`; pkgdown
+  printed the existing missing-template-image note for `../logo.png`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg -n "gllvmTMB\(" vignettes/articles/convergence-start-values.Rmd`
+  -> long-format call has `trait = "trait"` and `unit = "site"`;
+  wide-format call uses `traits(...)`.
+- `rg -n "DIA-08|DIA-09|DIA-10|MIS-16|MIS-18|MIS-19|MIS-20|EXT-13|CI-02|CI-03" docs/design/35-validation-debt-register.md`
+  -> article claims map to explicit validation-debt rows.
+- `rg -n "convergence-start-values|se = FALSE|pdHess|bootstrap|start_method|check_gllvmTMB" README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design _pkgdown.yml vignettes/articles/convergence-start-values.Rmd`
+  -> article, roadmap, Design 49, NEWS, and register wording agree.
+- `rg -n "full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1" README.md ROADMAP.md NEWS.md docs vignettes`
+  -> hits only existing protocol / limitations text and an intentional
+  `indep()` explanation, not the new article.
+- `rg -n "S_B|S_W|\\\\bf S|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|in prep|in preparation" vignettes/articles/convergence-start-values.Rmd _pkgdown.yml`
+  -> only hit is the existing `_pkgdown.yml` reference topic for
+  deprecated alias `meta_known_V`; no new article hit.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-19-convergence-start-values-article.md`
+
+Kaizen point:
+
+35. **Teach hard-fit uncertainty as a workflow, not a warning label.**
+    The user-facing article now says the crucial thing directly:
+    `pdHess = FALSE` blocks naive Hessian-based inference, but it does
+    not automatically throw away point estimates. The public teaching
+    path is diagnostic table -> start ladder -> no-SE point estimate
+    when appropriate -> bootstrap/profile uncertainty, with multicore
+    bootstrap treated as normal user infrastructure.
+
+## 2026-05-19 -- Convergence/start-values article Rose pass
+
+Scope:
+
+- Continue PR #208 from the replacement Codex thread after #206
+  merged to `main`.
+- Tighten scope-boundary wording so the article's bootstrap/profile
+  recommendations cite validation-debt rows, not only the diagnostic
+  rows.
+- Update the M3.4 roadmap wording from "current robust-modeling
+  branch" to implementation on `main`, with the article still in
+  PR #208.
+
+Evidence:
+
+- `date '+%Y-%m-%d %H:%M:%S %Z'`
+  -> `2026-05-19 20:34:55 MDT`.
+- `git status --short --branch`
+  -> clean start on
+  `codex/convergence-start-values-article-2026-05-19`.
+- `gh pr list --state open --limit 20`
+  -> #208 draft convergence/start-values article and #207 draft M3.3a
+  fit-health pilot.
+- `gh pr view 208 --json number,title,state,isDraft,headRefName,baseRefName,body,mergeStateStatus,statusCheckRollup,reviewDecision,comments`
+  -> PR #208 draft against `main`; 3 OS R-CMD-check jobs were still
+  in progress at rehydration.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet=TRUE); set.seed(20260519); sim <- simulate_site_trait(n_sites=24,n_species=1,n_traits=2,mean_species_per_site=1,Lambda_B=matrix(c(0.7,0.4),2,1),psi_B=c(0.3,0.3),seed=20260519); fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1) + unique(0 + trait | site), data = sim$data, trait="trait", unit="site", control=gllvmTMBcontrol(se=FALSE, n_init=2, init_jitter=0.05)); print(check_gllvmTMB(fit)); print(fit$restart_history[, c("restart", "start_method", "objective", "convergence", "selected")]); print(fit$fit_health$sdreport_ok); print(fit$sdreport_error);'`
+  -> optimizer and gradient passed; `sdreport` intentionally warned
+  as skipped; `pd_hessian` and fixed-SE rows warned as expected for
+  the no-SE path; restart history recorded two starts.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rendered `articles/convergence-start-values.html`; same existing
+  missing-template-image note for `../logo.png`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg -n "DIA-08|DIA-09|DIA-10|EXT-13|CI-02|CI-03|MIS-16|MIS-18|MIS-19|MIS-20" vignettes/articles/convergence-start-values.Rmd docs/design/35-validation-debt-register.md`
+  -> article now explicitly cites the diagnostic rows plus bootstrap
+  and profile rows.
+- `rg -n "gllvmTMB\(" vignettes/articles/convergence-start-values.Rmd`
+  -> long-format call has `trait = "trait"` and `unit = "site"`;
+  wide-format call uses `traits(...)`.
+- `rg -n "S_B|S_W|\\\\bf S|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|in prep|in preparation" vignettes/articles/convergence-start-values.Rmd _pkgdown.yml ROADMAP.md`
+  -> no new article hits; remaining hits are existing `_pkgdown.yml`
+  alias registration or ROADMAP history.
+- `rg -n "full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1|current robust-modeling branch|#206 open / ready|merge or rebase after #206|Stacked on #206" README.md ROADMAP.md NEWS.md docs vignettes .github 2>/dev/null`
+  -> no live PR #208 wording that needs a public-prose fix; remaining
+  hits are existing protocol/history/check-log lines or intentional
+  old evidence records.
+
+Kaizen point:
+
+36. **Scope rows must follow every public recovery path.** A
+    troubleshooting article can start with fit-health diagnostics, but
+    once it tells the user to switch to bootstrap or profile
+    uncertainty, Rose expects those uncertainty claims to cite their
+    own validation rows too. Otherwise the article quietly overextends
+    DIA rows into CI claims.
+
+## 2026-05-19 -- PR #208 rebase after PR #207 merge
+
+Scope:
+
+- Rebase the convergence/start-values article branch after PR #207
+  merged to `main` so append-only dev-log entries land in a stable
+  order.
+
+Evidence:
+
+- `gh pr merge 207 --squash --delete-branch`
+  -> PR #207 merged to `main` as `2af6a61`.
+- `git rebase origin/main`
+  -> one conflict in `docs/dev-log/check-log.md`.
+- Conflict resolution:
+  preserved the M3.3a fit-health pilot schema and nbinom2 night-pilot
+  entries first, then preserved the convergence/start-values article
+  and Rose-pass entries after them.
+- Coordination board updated:
+  WIP reduced to 1; PR #207 moved to recently resolved; PR #208 kept
+  as the only active lane with refreshed GitHub R-CMD-check pending.
+- `git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-05-19-convergence-start-values-article.md vignettes/articles/convergence-start-values.Rmd ROADMAP.md _pkgdown.yml`
+  -> no conflict markers.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rendered after the rebase; same existing missing-template-image
+  note for `../logo.png`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check origin/main...HEAD`
+  -> clean.
+
+Kaizen point:
+
+37. **Merge append-only dev-log branches before polishing prose
+    branches.** When two open PRs both append to `check-log.md`, merge
+    the dev-script evidence branch first, then rebase the prose branch.
+    That keeps chronology readable and avoids burying simulation
+    evidence behind later article wording.

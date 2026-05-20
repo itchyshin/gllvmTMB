@@ -50,6 +50,7 @@ articles:
     navbar: Methods
     desc: Inference machinery and validation of derived quantities
     contents:
+    - articles/convergence-start-values
     - articles/profile-likelihood-ci
     - articles/cross-package-validation
     - articles/simulation-recovery-validated

@@ -1,0 +1,278 @@
+---
+title: "Convergence, identifiability, and start values"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Convergence, identifiability, and start values}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+> **Scope boundary.** This article covers the robust-modeling
+> diagnostics implemented in Design 49: `check_gllvmTMB()`,
+> `fit$fit_health`, `fit$restart_history`, `fit$start_provenance`,
+> protected or skipped `TMB::sdreport()` status, and
+> `gllvmTMBcontrol(se = FALSE)`. The validation-debt register marks
+> `check_gllvmTMB()` and the `se = FALSE` point-estimate path as
+> covered (DIA-08, DIA-10), while a deterministic in-fit
+> `sdreport()` failure fixture remains partial (DIA-09).
+> Start-method convergence-rate claims are still M3.3a/M3.4 evidence
+> work, not default-policy claims.
+
+Some multivariate latent models are hard because the likelihood has
+several plausible basins, weakly identified variance splits, or a
+flat curvature direction near a boundary. The practical question is
+therefore not just "did the optimizer print convergence code 0?" but
+"which part of the fit is healthy, which part is weak, and what should
+I try next?"
+
+The most important rule is simple: `pdHess = FALSE` means
+Hessian-based standard errors and naive Wald intervals are unsafe. It
+does not automatically mean the point estimates, fitted values,
+likelihood, or rotation-invariant covariance summaries are useless.
+When the point estimate is scientifically useful but the Hessian is
+weak, fit with `se = FALSE` or keep the degraded `sdreport()` status
+visible, then use bootstrap or profile workflows for uncertainty.
+
+```{r setup}
+library(gllvmTMB)
+set.seed(20260519)
+```
+
+## Fit A Small Model
+
+The example below uses a two-trait Gaussian model. The scientific
+target is the trait covariance
+`Sigma = Lambda Lambda^T + Psi`, where `Lambda` contains the shared
+latent loadings and `Psi` is the diagonal trait-specific variance.
+
+```{r simulate}
+sim <- simulate_site_trait(
+  n_sites = 24, n_species = 1, n_traits = 2,
+  mean_species_per_site = 1,
+  Lambda_B = matrix(c(0.7, 0.4), nrow = 2, ncol = 1),
+  psi_B = c(0.3, 0.3),
+  seed = 20260519
+)
+df_long <- sim$data
+```
+
+The long-format call is the canonical interface: one row per
+`(unit, trait)` observation, with the `trait` and `unit` columns named
+explicitly.
+
+```{r fit-long}
+fit <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | site, d = 1) +
+    unique(0 + trait | site),
+  data = df_long,
+  trait = "trait",
+  unit = "site",
+  control = gllvmTMBcontrol(se = FALSE, n_init = 2, init_jitter = 0.05)
+)
+```
+
+The same model can be written with the wide data-frame formula
+interface. This route is useful when your data start as one row per
+unit and one column per trait.
+
+```{r wide-form, eval = FALSE}
+df_wide <- stats::reshape(
+  df_long[c("site", "trait", "value")],
+  idvar = "site", timevar = "trait", direction = "wide"
+)
+names(df_wide) <- sub("^value\\.", "", names(df_wide))
+
+fit_wide <- gllvmTMB(
+  traits(trait_1, trait_2) ~ 1 +
+    latent(1 | site, d = 1) +
+    unique(1 | site),
+  data = df_wide,
+  unit = "site",
+  control = gllvmTMBcontrol(se = FALSE, n_init = 2, init_jitter = 0.05)
+)
+```
+
+## Read Fit Health
+
+`check_gllvmTMB()` returns a stable table. It is designed for users,
+tests, and simulation scripts so they do not have to parse optimizer
+messages by hand.
+
+```{r diagnose}
+check_gllvmTMB(fit)
+```
+
+The components have different meanings:
+
+| Component | What it answers | Typical next action |
+|---|---|---|
+| optimizer convergence | Did the optimizer report a clean stop? | If not, try more starts, a longer optimizer budget, or `optim(BFGS)`. |
+| max gradient | Is the objective flat at the reported optimum? | Rescale predictors, simplify the model, or compare optimizers. |
+| `pdHess` | Is local curvature positive definite for Hessian-based inference? | If false, avoid naive Wald intervals and inspect boundary or rank flags. |
+| `sdreport` | Did `TMB::sdreport()` produce standard errors? | If skipped or failed, keep point estimates but route uncertainty elsewhere. |
+| restart history | Did several starts reach the same basin? | Use the objective spread to decide whether starts are stable. |
+| boundary flags | Are variance or loading parameters near a boundary? | Try a lower rank, simpler covariance structure, or profile the target. |
+
+This separation matters. A fit can have useful point estimates while
+`sdreport` is skipped or while `pdHess` is false. The diagnosis should
+tell the user what is degraded, not flatten every warning into model
+failure.
+
+## Choose A Start Strategy
+
+Start values are opt-in tools. The default remains conservative until
+M3.3a/M3.4 simulations show which strategies improve recovery across
+families and ranks.
+
+| Situation | Control |
+|---|---|
+| Routine fit | `gllvmTMBcontrol()` |
+| Suspect local optima | `gllvmTMBcontrol(n_init = 5, init_jitter = 0.1)` |
+| Non-Gaussian reduced-rank fit | `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` |
+| Gaussian two-level latent+unique fit | `gllvmTMBcontrol(start_method = list(method = "indep"))` |
+| Known simpler model is available | `gllvmTMBcontrol(start_from = simpler_fit)` |
+| Count-family dispersion is unstable | `gllvmTMBcontrol(init_strategy = "single_trait_warmup")` |
+| `nlminb` reports a suspicious stop | `gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))` |
+| Point estimate is needed but SE calculation is unreliable | `gllvmTMBcontrol(se = FALSE)` |
+
+For a difficult model, start with more than one restart and inspect
+`fit$restart_history`:
+
+```{r restart-history}
+fit$restart_history[, c("restart", "start_method", "objective",
+                        "convergence", "selected")]
+```
+
+Do not privilege a start method simply because it converged. Compare
+the objective value, the diagnostics, and the scientific summaries.
+Reduced-rank likelihoods can converge cleanly in an inferior basin.
+
+## Use No-SE Fits Honestly
+
+`gllvmTMBcontrol(se = FALSE)` intentionally skips `TMB::sdreport()`.
+This mirrors the workflow used for difficult TMB-family models: keep
+the point estimate, record that Hessian-based standard errors were not
+computed, and obtain uncertainty from a refit-based method.
+
+```{r se-false-status}
+fit$fit_health$sdreport_ok
+fit$sdreport_error
+```
+
+This option is not a way to hide convergence problems. It is a way to
+avoid making Hessian-based uncertainty claims when the Hessian path is
+the fragile part of the workflow.
+
+## Bootstrap With Multiple Cores
+
+Bootstrap is slower than Wald intervals because it refits the model
+many times. It is also the natural uncertainty path when `pdHess` is
+false, when `sdreport()` fails, or when the target is nonlinear.
+Laptops often have enough cores to make bootstrap practical, so
+`bootstrap_Sigma()` exposes `n_cores`.
+
+```{r bootstrap, eval = FALSE}
+boot <- bootstrap_Sigma(
+  fit,
+  n_boot = 200,
+  level = "unit",
+  what = c("Sigma", "R", "communality"),
+  seed = 1,
+  n_cores = 4
+)
+
+boot$n_failed
+boot$ci_lower$Sigma_B
+boot$ci_upper$Sigma_B
+```
+
+Use `n_cores = 1` for the first smoke test. Once the model refits
+cleanly, increase `n_cores` and record the failure count. A bootstrap
+CI with many failed refits is a diagnostic result, not just an
+inconvenience.
+
+## Profile When The Target Is Scalar
+
+Profile likelihood is often faster than bootstrap for scalar targets
+such as repeatability, communality, selected correlations, or a
+single variance share. Use it when the target has a stable profile
+and the model is not bouncing between likelihood basins.
+
+For full latent+unique models, some derived targets still fall back to
+Wald or bootstrap while constrained-profile machinery is expanded.
+The output method column should be read literally: if it says
+`"wald"`, the interval is Hessian-based even if the requested method
+was `"profile"`.
+
+## Troubleshooting Ladder
+
+Use this order when a hard model does not give clean inference:
+
+1. Read `check_gllvmTMB(fit)` and `fit$restart_history`.
+2. Check whether the optimizer, gradient, `pdHess`, or `sdreport`
+   component is the first weak link.
+3. Inspect boundary flags for near-zero variance, redundant rank, or
+   unstable dispersion.
+4. Try more starts and modest jitter.
+5. Try residual starts for non-Gaussian reduced-rank models.
+6. Try independent or simpler-model starts for Gaussian two-level
+   models.
+7. Try `optim(BFGS)` or a longer `nlminb` budget.
+8. If point estimates are stable but `pdHess` remains false, use
+   bootstrap or profile uncertainty.
+9. If the target still changes across starts, simplify rank or
+   covariance structure before making a scientific claim.
+
+## What Is Next
+
+Implemented now:
+
+- machine-readable fit health via `check_gllvmTMB()` and
+  `fit$fit_health`;
+- restart history and start provenance;
+- protected or skipped `sdreport()` status;
+- `gllvmTMBcontrol(se = FALSE)` for point-estimate-first hard fits;
+- explicit controls for multistart, jitter, residual starts,
+  independent starts, manual starts, single-trait warmup, and
+  `optim(BFGS)`.
+
+Partial:
+
+- direct in-fit `sdreport()` failure tests are still hard to trigger
+  deterministically in a small test, so DIA-09 remains partial;
+- non-Gaussian start-method recommendations are available but not yet
+  promoted as defaults.
+
+Planned:
+
+- the M3.3a target-explicit pilot will compare Gaussian, `nbinom2`,
+  mixed-family, and two-level Gaussian fits using the new diagnostic
+  fields;
+- larger stress lanes will decide whether `nbinom2` fragility is a
+  model-identifiability problem or a start/diagnostic problem;
+- profile and bootstrap workflows will gain stronger target-parallel
+  tooling for local multicore and larger compute runs;
+- simulation diagnostic plots will show convergence, `pdHess`,
+  objective spread, selected-start frequency, coverage, and failed
+  refits by family and start strategy.
+
+The carry-forward principle is that hard fits need honest triage. A
+weak Hessian should change the uncertainty workflow, not automatically
+discard every point estimate the model produced.

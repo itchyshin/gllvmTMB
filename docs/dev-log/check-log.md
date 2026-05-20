@@ -2522,3 +2522,70 @@ Kaizen point:
     failure, bootstrap refit failure, Hessian/SE failure, and
     target-scale bias instead of treating "nbinom2 failed" as one
     bucket.
+
+## 2026-05-19 -- Convergence/start-values article
+
+Scope:
+
+- Draft the reader-facing article
+  `vignettes/articles/convergence-start-values.Rmd`.
+- Register it in `_pkgdown.yml` under Methods and validation.
+- Update the M3.4 roadmap row to say the article is drafted while
+  target-explicit empirical evidence and family stress lanes remain.
+
+Evidence:
+
+- `git status --short --branch`
+  -> clean start on `codex/m3-3a-fit-health-pilot-2026-05-19`.
+- `git diff --stat`
+  -> no uncommitted diff at lane start.
+- `gh pr list --state open`
+  -> #206 open / ready branch and #207 draft stacked branch.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent M3 / robust-modeling commits inspected.
+- `git switch codex/rr-residual-starts-2026-05-19`
+  -> switched to the robust-modeling branch.
+- `git switch -c codex/convergence-start-values-article-2026-05-19`
+  -> created this docs branch from #206.
+- `Rscript --vanilla -e 'pkgdown::build_article("convergence-start-values")'`
+  -> failed because the article lives under `vignettes/articles/`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/convergence-start-values")'`
+  -> found the article but failed because the installed package did
+  not yet export branch-local `check_gllvmTMB()`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rendered `articles/convergence-start-values.html`; pkgdown
+  printed the existing missing-template-image note for `../logo.png`.
+- `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg -n "gllvmTMB\(" vignettes/articles/convergence-start-values.Rmd`
+  -> long-format call has `trait = "trait"` and `unit = "site"`;
+  wide-format call uses `traits(...)`.
+- `rg -n "DIA-08|DIA-09|DIA-10|MIS-16|MIS-18|MIS-19|MIS-20|EXT-13|CI-02|CI-03" docs/design/35-validation-debt-register.md`
+  -> article claims map to explicit validation-debt rows.
+- `rg -n "convergence-start-values|se = FALSE|pdHess|bootstrap|start_method|check_gllvmTMB" README.md ROADMAP.md NEWS.md docs/dev-log/known-limitations.md docs/design _pkgdown.yml vignettes/articles/convergence-start-values.Rmd`
+  -> article, roadmap, Design 49, NEWS, and register wording agree.
+- `rg -n "full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1" README.md ROADMAP.md NEWS.md docs vignettes`
+  -> hits only existing protocol / limitations text and an intentional
+  `indep()` explanation, not the new article.
+- `rg -n "S_B|S_W|\\\\bf S|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|in prep|in preparation" vignettes/articles/convergence-start-values.Rmd _pkgdown.yml`
+  -> only hit is the existing `_pkgdown.yml` reference topic for
+  deprecated alias `meta_known_V`; no new article hit.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-19-convergence-start-values-article.md`
+
+Kaizen point:
+
+35. **Teach hard-fit uncertainty as a workflow, not a warning label.**
+    The user-facing article now says the crucial thing directly:
+    `pdHess = FALSE` blocks naive Hessian-based inference, but it does
+    not automatically throw away point estimates. The public teaching
+    path is diagnostic table -> start ladder -> no-SE point estimate
+    when appropriate -> bootstrap/profile uncertainty, with multicore
+    bootstrap treated as normal user infrastructure.

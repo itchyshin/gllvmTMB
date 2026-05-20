@@ -70,6 +70,11 @@ those sources.
   M3 compute lane must admit a surface with explicit target, interval
   method, fit mode, failure ledger, and rendered diagnostic report
   before r50/r200 scaling.
+- The M3.3b NB2 stress-report scaffold adds a `--nb2-stress-map`
+  dev driver, point-only `ci_method = "none"` rows, optional Gaussian
+  and Poisson control surfaces, and a Markdown diagnostic report
+  writer. The scaffold keeps these rows as `POINT_ONLY`; it does not
+  move CI-08 or CI-10.
 - The robust-modeling roadmap is now captured in
   `docs/design/49-robust-modeling-roadmap.md`. The first slice adds
   start provenance, restart history, protected/skipped `sdreport()`
@@ -80,29 +85,29 @@ those sources.
 
 These are intentionally bounded lanes. Treat each as its own PR.
 
-1. **M3.3b surface-admission plan (Ada + Fisher + Curie + Jason +
-   Rose)**: use Design 50 and issue #217 to admit each candidate
-   surface before compute. Each surface must name the estimand,
-   interval method, fit mode, start strategy, failure ledger, and
-   visual diagnostic before it enters a larger grid.
-2. **NB2 dispersion/variance stress map (Fisher + Curie + Gauss)**:
-   expand the known-phi diagnostic only enough to separate dispersion
-   estimation, latent+unique variance scale, sample size, and rank.
-   Do not call this coverage evidence until the refit path preserves
-   the intended estimand.
+1. **Run the NB2 stress-map scaffold at r10/r20 (Fisher + Curie +
+   Rose)**: use `dev/precompute-m3-grid.R --nb2-stress-map` and
+   issue #217 to compare estimated versus known `phi_nbinom2` across
+   baseline, low-dispersion, and weak-variance surfaces. These rows
+   remain `POINT_ONLY` unless `n_boot > 0` is explicitly requested.
+2. **NB2 dispersion/variance source-map decision (Fisher + Curie +
+   Gauss)**: use the stress-map report to decide whether the next
+   model problem is dispersion calibration, latent+unique variance
+   scale, sample size, rank, or their interaction. Do not call this
+   coverage evidence until the refit path preserves the intended
+   estimand.
 3. **Fixed-phi bootstrap design checkpoint (Gauss + Noether +
    Fisher)**: decide whether the development grid needs a mapped-
    parameter bootstrap refit path. Until then, known-phi evidence is
    point-estimate evidence only.
-4. **Diagnostic report and figure gate (Florence + Pat + Grace)**:
-   use Design 50 plus the Design 46 M3 addendum and issue #218 to add
-   a tiny rendered M3 diagnostic report before another production grid.
-   Plots must show estimate/truth, fitted phi/truth, link residuals,
-   failure counts, method labels, and denominators without hiding weak
-   cells behind averages. For `gllvmTMB`, this is not a polish pass:
-   high-dimensional latent/covariance diagnostics need visual checks
-   because tables alone can hide rank, trait, and refit-failure
-   structure.
+4. **Rendered diagnostic figure gate (Florence + Pat + Grace)**:
+   turn the Markdown report tables into small rendered panels before
+   another production grid. Plots must show estimate/truth, fitted
+   phi/truth, link residuals, failure counts, method labels, and
+   denominators without hiding weak cells behind averages. For
+   `gllvmTMB`, this is not a polish pass: high-dimensional
+   latent/covariance diagnostics need visual checks because tables
+   alone can hide rank, trait, and refit-failure structure.
 
 Note: “redundant `trait = \"trait\"` cleanup” is *not* a mechanical cleanup under Option A uniform naming; treat it as a policy change proposal rather than a queued doc sweep.
 
@@ -146,7 +151,7 @@ items completed within that phase.
 | Phase 1c article ports | Article ports + new Concepts pedagogy | 🔵 Frozen at 7/14 | `█████░░░` 7/14 | **Superseded 2026-05-15** by the function-first M1 / M2 / M3 milestone sequence below. Remaining article work absorbed into M1.9 (mixed-family-extractors), M2.5 (psychometrics-irt rewrite), M3.6 (simulation-recovery-validated), and Phase 1f (choose-your-model rewrite). |
 | **M1** | **Mixed-family extractor rigour** | ✅ Done | `████████` 10/10 | PRs #149 – #158 + M1.10 close gate. Every extractor validated on `family = list(...)` fits; `mixed-family-extractors.Rmd` shipped; MIX-03..MIX-06, MIX-08, MIS-05 walked to `covered`. |
 | **M2** | **Binary completeness** | 🟢 In progress (M2.5 + M2.6 deferred until after M3) | `█████░░░` 5/7 | Weeks 3–5. M2.1 design note + M2.2-A binary family recovery + M2.2-B CIs/extractors/glmmTMB cross-check + M2.3 `lambda_constraint` binary IRT + mirt + galamm cross-checks + M2.4 `suggest_lambda_constraint()` reliability shipped 2026-05-17. **Parallel scope expansion**: M2.8 (animal_* keyword family — 4×5 grid; PR #167), M2.8b (`phylo_*` `A=`/`Ainv=` aliases + non-ASCII / @param / Suggests CI fixes; PR #168), M2.8c (article cascade: choose-your-model + data-shape-flowchart + gllvm-vocabulary + phylogenetic-gllvm + pitfalls; PR #169), and animal-model.Rmd worked example with Kruuk 2004 + Wilson 2010 + Runcie & Mukherjee 2013 anchors (PR #170, merged). M2.5 (psychometrics-irt re-author) + M2.6 (joint-sdm binary restoration) deferred until after M3 so they can cite R≥200 coverage. |
-| **M3** | **Inference completeness across families** | 🟢 In progress | `███░░░░░` 3/8 | Weeks 5–7. `coverage_study()` ≥ 94 % on Gaussian / binomial / nbinom2 / ordinal-probit / mixed-family at R = 200. M3.1 DGP grid design note shipped (Design 42). M3.2 pipeline machinery (`dev/m3-grid.R` + `dev/precompute-m3-grid.R`) + smoke artefact shipped in `inst/extdata/`. M3.6 article scaffold (`simulation-recovery-validated.Rmd`) shipped. M3.3 production workflow run 26100827665 passed compute but failed the statistical gate. PR #202 clarified that `psi` coverage is diagnostic and total `Sigma_unit[tt]` is the primary promotion target; PRs #213-#214 show NB2 dispersion calibration is a major contributor but not a full repair. The next step is an M3.3b surface-admission programme, not a broad rerun. |
+| **M3** | **Inference completeness across families** | 🟢 In progress | `███░░░░░` 3/8 | Weeks 5–7. `coverage_study()` ≥ 94 % on Gaussian / binomial / nbinom2 / ordinal-probit / mixed-family at R = 200. M3.1 DGP grid design note shipped (Design 42). M3.2 pipeline machinery (`dev/m3-grid.R` + `dev/precompute-m3-grid.R`) + smoke artefact shipped in `inst/extdata/`. M3.6 article scaffold (`simulation-recovery-validated.Rmd`) shipped. M3.3 production workflow run 26100827665 passed compute but failed the statistical gate. PR #202 clarified that `psi` coverage is diagnostic and total `Sigma_unit[tt]` is the primary promotion target; PRs #213-#214 show NB2 dispersion calibration is a major contributor but not a full repair. The M3.3b scaffold now supports point-only NB2 stress maps and Gaussian/Poisson controls, but the next evidence step is still surface admission, not a broad rerun. |
 | Phase 1c-viz | Visualization layer completion | ⚪ Planned | `░░░░░░░░` 0/7 | Static + interactive plot dispatcher (incl. random-slope plots) |
 | Phase 1d | Navbar restructure | 🟢 Partly done | `█░` 1/2 | PR #112 created the **Methods + validation** tier; full 3-tier audit deferred to a Phase 1d close PR |
 | Phase 1e | Final reframe sweep | 🟢 Partly done | `█░` 1/2 | PR #107 phylo three-piece-fallback subsection landed; full cross-article sweep deferred |

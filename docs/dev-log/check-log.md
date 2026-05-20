@@ -3238,3 +3238,55 @@ Kaizen point:
     visualization questions, but the write path recombined them in
     Design 50 because plots, admission thresholds, and validation-debt
     status all depend on the same target/method/fit-mode labels.
+
+## 2026-05-20 -- M3.3b NB2 stress-map and report scaffold
+
+Scope:
+
+- Add a Design 50-aligned `--nb2-stress-map` dev mode to
+  `dev/precompute-m3-grid.R`.
+- Add an NB2 stress-surface register with estimated versus known
+  `phi_nbinom2`, baseline / low-dispersion / weak-variance scenarios,
+  and optional Gaussian + Poisson controls.
+- Label point-only `Sigma_unit_diag` diagnostics as
+  `ci_method = "none"` and `pilot_status = "POINT_ONLY"` so they do
+  not look like coverage evidence.
+- Add dev-facing M3 diagnostic report data and Markdown writer.
+- Keep EXT-13 / CI-08 / CI-10 status unchanged.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt,url`
+  -> no open PRs at lane start.
+- `git log --all --oneline --since="6 hours ago" | head -50`
+  -> reviewed recent issue-ledger and M3.3b surface-gate commits
+  through `e2a5660`.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  -> passed: 40 tests.
+- `Rscript --vanilla dev/precompute-m3-grid.R --nb2-stress-map --include-controls --n-reps=1 --out-dir=/tmp/gllvmtmb-m3-3b-stress-smoke --out-prefix=m3-nb2-stress-smoke`
+  -> passed; wrote grid, summary, and diagnostic-report artifacts under
+  `/tmp/gllvmtmb-m3-3b-stress-smoke/`.
+- `Rscript --vanilla -e 'x <- readRDS("/tmp/gllvmtmb-m3-3b-stress-smoke/m3-nb2-stress-smoke-grid.rds"); cat("trait coverage unique: "); print(unique(x$diagnostic_report$trait_ratios$coverage)); print(unique(x$diagnostic_report$summary[, c("ci_method", "coverage", "pilot_status")]))'`
+  -> confirmed trait-level and summary coverage stay `NA`, while
+  `ci_method = "none"` and `pilot_status = "POINT_ONLY"`.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-m3-3b-nb2-stress-report.md`
+
+Smoke audit:
+
+- `docs/dev-log/audits/2026-05-20-m3-3b-nb2-stress-report-smoke.md`
+
+Kaizen point:
+
+47. **Point-only diagnostics need a different label from failed
+    intervals.** The stress-map scaffold now writes `ci_method =
+    "none"` and `pilot_status = "POINT_ONLY"` for `n_boot = 0` rows.
+    That prevents a table or figure from turning an intentional
+    point-estimate diagnostic into either false coverage evidence or a
+    bogus CI failure.

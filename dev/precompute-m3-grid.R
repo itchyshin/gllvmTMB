@@ -17,6 +17,8 @@
 ##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 \
 ##     --n-units=120 --phi=0.4 --lambda-scale=0.5 --psi-scale=1.5 \
 ##     --targets=Sigma_unit_diag --n-reps=10 --n-boot=10
+##   Rscript dev/precompute-m3-grid.R --nb2-stress-map --n-reps=10 \
+##     --out-prefix=m3-nb2-stress-point
 ##
 ## Output:
 ##   dev/precomputed/m3-coverage-grid.rds (long-format)
@@ -43,7 +45,9 @@ source("dev/m3-grid.R")
 ## ---- Argument parsing -------------------------------------------------
 
 args <- commandArgs(trailingOnly = TRUE)
-mode <- if ("--full" %in% args) {
+mode <- if ("--nb2-stress-map" %in% args) {
+  "nb2-stress-map"
+} else if ("--full" %in% args) {
   "full"
 } else if ("--all-fams" %in% args) {
   "all-fams"
@@ -98,13 +102,20 @@ config <- switch(
     ),
     n_reps = 200L,
     label = "full-grid"
+  ),
+  `nb2-stress-map` = list(
+    cells = m3_nb2_stress_surfaces(
+      include_controls = "--include-controls" %in% args
+    ),
+    n_reps = 10L,
+    label = "nb2-stress-map"
   )
 )
 
 family_filter <- split_arg(arg_value("--family"))
 d_filter <- split_arg(arg_value("--d"))
 if (!is.null(family_filter)) {
-  unknown <- setdiff(family_filter, M3_FAMILIES)
+  unknown <- setdiff(family_filter, M3_SUPPORTED_FAMILIES)
   if (length(unknown)) {
     stop("Unknown --family value(s): ", paste(unknown, collapse = ", "))
   }
@@ -167,14 +178,23 @@ if (is.na(phi_rate) || phi_rate <= 0) {
 }
 
 init_strategy <- match.arg(
-  arg_value("--init-strategy", "default"),
+  arg_value(
+    "--init-strategy",
+    if (identical(mode, "nb2-stress-map")) "single_trait_warmup" else "default"
+  ),
   c("default", "single_trait_warmup")
 )
-start_method_name <- arg_value("--start-method", "default")
+start_method_name <- arg_value(
+  "--start-method",
+  if (identical(mode, "nb2-stress-map")) "res" else "default"
+)
 if (!start_method_name %in% c("default", "res", "indep")) {
   stop("--start-method must be one of default, res, indep")
 }
-start_jitter <- as.numeric(arg_value("--start-jitter", "0"))
+start_jitter <- as.numeric(arg_value(
+  "--start-jitter",
+  if (identical(mode, "nb2-stress-map")) "0.2" else "0"
+))
 if (is.na(start_jitter) || start_jitter < 0) {
   stop("--start-jitter must be a non-negative number")
 }
@@ -183,26 +203,46 @@ start_method <- if (identical(start_method_name, "default")) {
 } else {
   list(method = start_method_name, jitter.sd = start_jitter)
 }
-optimizer <- match.arg(arg_value("--optimizer", "nlminb"), c("nlminb", "optim"))
+optimizer <- match.arg(
+  arg_value("--optimizer", if (identical(mode, "nb2-stress-map")) "optim" else "nlminb"),
+  c("nlminb", "optim")
+)
 optim_method <- arg_value("--optim-method", "BFGS")
 optArgs <- if (identical(optimizer, "optim")) list(method = optim_method) else list()
-n_init <- as.integer(arg_value("--n-init", "1"))
+n_init <- as.integer(arg_value(
+  "--n-init",
+  if (identical(mode, "nb2-stress-map")) "3" else "1"
+))
 if (is.na(n_init) || n_init < 1L) {
   stop("--n-init must be a positive integer")
 }
-init_jitter <- as.numeric(arg_value("--init-jitter", "0.3"))
+init_jitter <- as.numeric(arg_value(
+  "--init-jitter",
+  if (identical(mode, "nb2-stress-map")) "0.05" else "0.3"
+))
 if (is.na(init_jitter) || init_jitter < 0) {
   stop("--init-jitter must be a non-negative number")
 }
-se <- tolower(arg_value("--se", "true"))
+se <- tolower(arg_value(
+  "--se",
+  if (identical(mode, "nb2-stress-map")) "false" else "true"
+))
 if (!se %in% c("true", "false")) {
   stop("--se must be true or false")
 }
 se <- identical(se, "true")
-targets <- m3_normalise_targets(split_arg(arg_value("--targets", "psi")))
-n_boot <- as.integer(arg_value("--n-boot", "30"))
-if (is.na(n_boot) || n_boot < 1L) {
-  stop("--n-boot must be a positive integer")
+target_default <- if (identical(mode, "nb2-stress-map")) {
+  "Sigma_unit_diag"
+} else {
+  "psi"
+}
+targets <- m3_normalise_targets(split_arg(arg_value("--targets", target_default)))
+n_boot <- as.integer(arg_value(
+  "--n-boot",
+  if (identical(mode, "nb2-stress-map")) "0" else "30"
+))
+if (is.na(n_boot) || n_boot < 0L) {
+  stop("--n-boot must be a non-negative integer")
 }
 n_cores_boot <- as.integer(arg_value("--n-cores-boot", "1"))
 if (is.na(n_cores_boot) || n_cores_boot < 1L) {
@@ -224,16 +264,23 @@ if (!dir.exists(OUT_DIR)) {
 
 ## ---- Run --------------------------------------------------------------
 
+if (identical(mode, "nb2-stress-map")) {
+  config$cells$target <- paste(targets, collapse = ",")
+  config$cells$n_boot <- n_boot
+  config$cells$n_cores_boot <- n_cores_boot
+  config$cells$ci_method <- if (n_boot == 0L) "none" else "bootstrap"
+}
+
 cat(sprintf(
-  "[m3] mode = %s (%d cells x %d reps; n_units = %d; n_traits = %d; lambda_scale = %.3g; psi_scale = %.3g; phi = %s; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
+  "[m3] mode = %s (%d cells x %d reps; n_units = %s; n_traits = %s; lambda_scale = %s; psi_scale = %s; phi = %s; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
   mode,
   nrow(config$cells),
   config$n_reps,
-  n_units,
-  n_traits,
-  lambda_scale,
-  psi_scale,
-  if (is.null(phi)) "sampled" else format(phi, scientific = FALSE),
+  if (identical(mode, "nb2-stress-map")) "surface-specific" else as.character(n_units),
+  if (identical(mode, "nb2-stress-map")) "surface-specific" else as.character(n_traits),
+  if (identical(mode, "nb2-stress-map")) "surface-specific" else sprintf("%.3g", lambda_scale),
+  if (identical(mode, "nb2-stress-map")) "surface-specific" else sprintf("%.3g", psi_scale),
+  if (identical(mode, "nb2-stress-map")) "surface-specific" else if (is.null(phi)) "sampled" else format(phi, scientific = FALSE),
   init_strategy,
   start_method_name,
   optimizer,
@@ -244,33 +291,55 @@ cat(sprintf(
 ))
 
 t_start <- Sys.time()
-grid_df <- m3_run_grid(
-  cells = config$cells,
-  n_reps = config$n_reps,
-  seed_base = 20260517L,
-  n_units = n_units,
-  n_traits = n_traits,
-  lambda_scale = lambda_scale,
-  psi_scale = psi_scale,
-  phi = phi,
-  phi_shape = phi_shape,
-  phi_rate = phi_rate,
-  init_strategy = init_strategy,
-  start_method = start_method,
-  optimizer = optimizer,
-  optArgs = optArgs,
-  n_init = n_init,
-  init_jitter = init_jitter,
-  se = se,
-  targets = targets,
-  n_boot = n_boot,
-  n_cores_boot = n_cores_boot,
-  ci_level = ci_level,
-  parallel = FALSE # workflow matrix parallelises cells
-)
+if (identical(mode, "nb2-stress-map")) {
+  grid_df <- m3_run_surface_register(
+    surfaces = config$cells,
+    n_reps = config$n_reps,
+    seed_base = 20260520L,
+    init_strategy = init_strategy,
+    start_method = start_method,
+    optimizer = optimizer,
+    optArgs = optArgs,
+    n_init = n_init,
+    init_jitter = init_jitter,
+    se = se,
+    ci_level = ci_level,
+    verbose = TRUE
+  )
+} else {
+  grid_df <- m3_run_grid(
+    cells = config$cells,
+    n_reps = config$n_reps,
+    seed_base = 20260517L,
+    n_units = n_units,
+    n_traits = n_traits,
+    lambda_scale = lambda_scale,
+    psi_scale = psi_scale,
+    phi = phi,
+    phi_shape = phi_shape,
+    phi_rate = phi_rate,
+    init_strategy = init_strategy,
+    start_method = start_method,
+    optimizer = optimizer,
+    optArgs = optArgs,
+    n_init = n_init,
+    init_jitter = init_jitter,
+    se = se,
+    targets = targets,
+    n_boot = n_boot,
+    n_cores_boot = n_cores_boot,
+    ci_level = ci_level,
+    parallel = FALSE # workflow matrix parallelises cells
+  )
+}
 t_elapsed <- as.numeric(difftime(Sys.time(), t_start, units = "secs"))
 
 summary_df <- m3_summarise(grid_df)
+report <- if (identical(mode, "nb2-stress-map")) {
+  m3_diagnostic_report_data(grid_df)
+} else {
+  NULL
+}
 
 cat(sprintf(
   "[m3] total time: %.1fs (%d cells, %d reps each)\n",
@@ -315,11 +384,17 @@ artefact <- list(
     ci_level = ci_level
   ),
   grid = grid_df,
-  summary = summary_df
+  summary = summary_df,
+  diagnostic_report = report
 )
 
 saveRDS(artefact, GRID_RDS)
 saveRDS(summary_df, SUMM_RDS)
+if (!is.null(report)) {
+  REPORT_MD <- file.path(OUT_DIR, paste0(out_prefix, "-diagnostic-report.md"))
+  m3_write_diagnostic_report(report, REPORT_MD)
+  cat(sprintf("[m3] saved -> %s (diagnostic report)\n", REPORT_MD))
+}
 
 cat(sprintf("[m3] saved -> %s (long-format)\n", GRID_RDS))
 cat(sprintf("[m3] saved -> %s (per-cell summary)\n", SUMM_RDS))

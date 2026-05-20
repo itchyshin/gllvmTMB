@@ -36,6 +36,8 @@ multicore bootstrap behavior.
 - `dev/precompute-m3-grid.R`
 - `docs/dev-log/check-log.md`
 - `docs/dev-log/after-task/2026-05-19-m3-3a-fit-health-pilot-schema.md`
+- `docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-night-pilot.md`
+- `docs/dev-log/coordination-board.md`
 
 ## 3a. Mathematical Contract
 
@@ -88,6 +90,9 @@ a rushed schema change.
   - Outcome: optimizer converged, max gradient passed, `sdreport`
     warned because `se = FALSE`, selected restart 2, and boundary flags
     exposed near-zero unit-tier SD.
+- GitHub PR #207 R-CMD-check
+  - Outcome: passed on ubuntu-latest, macos-latest, and windows-latest
+    after the branch was rebased onto `main`.
 
 ## 5. Tests of the Tests
 
@@ -133,8 +138,8 @@ single-core and two-core bootstrap smoke paths.
 **Rose** kept the validation-debt status unchanged. No coverage row
 moves until a real M3.3a pilot runs.
 
-**Shannon** tracked this as a dependent branch while PR #206 remains
-open and green.
+**Shannon** tracked this as a dependent branch until PR #206 merged,
+then verified PR #207 was rebased onto `main` with three-OS CI green.
 
 ## 10. Known Limitations And Next Actions
 

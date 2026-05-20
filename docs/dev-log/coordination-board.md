@@ -71,6 +71,9 @@ Current operating rule:
 - PR #210 (M3.3a `nbinom2` r10 stress pilot evidence) merged on
   2026-05-19 after fast-path R-CMD-check passed on the PR branch;
   post-merge main R-CMD-check and pkgdown also passed.
+- PR #211 (M3.3a `nbinom2` target-construction audit) merged on
+  2026-05-20 after 3-OS R-CMD-check passed on the PR branch;
+  post-merge main R-CMD-check and pkgdown also passed.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -78,9 +81,8 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | M3.3a `nbinom2` target-construction audit | local branch `codex/m3-3a-nbinom2-target-audit-2026-05-19` | `docs/dev-log/*` initially; source reads only | Started after PR #210 and board closeout CI/pkgdown passed |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -152,6 +154,14 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-20 ~00:54 MT**: PR #211 (M3.3a `nbinom2`
+  target-construction audit) merged to `main` as squash commit
+  `bfad49c` after the PR R-CMD-check run `26143597267` passed on
+  ubuntu, macOS, and Windows. Post-merge main R-CMD-check run
+  `26145028175` and pkgdown run `26146548419` also passed. The lane
+  added explicit `bootstrap_Sigma(link_residual = "none")` target
+  handling for M3 `Sigma_unit_diag`; EXT-13 / CI-08 / CI-10 remain
+  partial pending corrected stress-grid evidence.
 - **2026-05-19 ~22:34 MT**: PR #210 (M3.3a `nbinom2` r10
   stress-pilot evidence) merged to `main` as squash commit `6fdf45f`
   after the PR fast-path R-CMD-check passed on ubuntu, macOS, and

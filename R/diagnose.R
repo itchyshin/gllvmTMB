@@ -4,6 +4,236 @@
 ## or FAIL signal. Designed to be the first call a user makes after
 ## fitting.
 
+.gllvmTMB_build_fit_health <- function(object) {
+  if (!inherits(object, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  }
+
+  grad <- tryCatch(object$tmb_obj$gr(object$opt$par),
+                   error = function(e) NA_real_)
+  se <- if (!is.null(object$sd_report)) {
+    tryCatch(suppressWarnings(summary(object$sd_report, "fixed"))[, "Std. Error"],
+             error = function(e) NA_real_)
+  } else {
+    NA_real_
+  }
+  max_se <- if (length(se) == 0L || all(is.na(se))) {
+    NA_real_
+  } else {
+    max(se, na.rm = TRUE)
+  }
+  restart_history <- object$restart_history %||% data.frame()
+  selected_restart <- if (nrow(restart_history) > 0L &&
+      "selected" %in% names(restart_history) &&
+      any(restart_history$selected)) {
+    restart_history$restart[which(restart_history$selected)[1L]]
+  } else {
+    NA_integer_
+  }
+
+  list(
+    optimizer = if (nrow(restart_history) > 0L) {
+      restart_history$optimizer[which.max(restart_history$selected)]
+    } else {
+      NA_character_
+    },
+    convergence = object$opt$convergence %||% NA_integer_,
+    message = object$opt$message %||% "",
+    objective = object$opt$objective %||% NA_real_,
+    max_gradient = if (length(grad) == 0L || all(is.na(grad))) {
+      NA_real_
+    } else {
+      max(abs(grad), na.rm = TRUE)
+    },
+    pd_hessian = if (!is.null(object$sd_report) &&
+        !is.null(object$sd_report$pdHess)) {
+      isTRUE(object$sd_report$pdHess)
+    } else {
+      NA
+    },
+    sdreport_ok = !is.null(object$sd_report),
+    sdreport_error = object$sdreport_error %||% NA_character_,
+    max_fixed_se = max_se,
+    boundary_flags = .gllvmTMB_boundary_flags(object),
+    start_provenance = object$start_provenance %||% list(),
+    selected_restart = selected_restart
+  )
+}
+
+.gllvmTMB_boundary_flags <- function(object,
+                                     loading_thresh = 1e-3,
+                                     sd_thresh = 1e-4) {
+  flags <- character(0)
+  rep <- object$report
+  if (isTRUE(object$use$rr_B) && !is.null(rep$Lambda_B)) {
+    diag_B <- diag(rep$Lambda_B[seq_len(object$d_B),
+                                seq_len(object$d_B), drop = FALSE])
+    if (any(abs(diag_B) < loading_thresh)) {
+      flags <- c(flags, "near_zero_B_loading")
+    }
+  }
+  if (isTRUE(object$use$rr_W) && !is.null(rep$Lambda_W)) {
+    diag_W <- diag(rep$Lambda_W[seq_len(object$d_W),
+                                seq_len(object$d_W), drop = FALSE])
+    if (any(abs(diag_W) < loading_thresh)) {
+      flags <- c(flags, "near_zero_W_loading")
+    }
+  }
+  for (nm in intersect(c("sd_B", "sd_W", "sd_phy", "sd_spde"), names(rep))) {
+    val <- as.numeric(rep[[nm]])
+    val <- val[is.finite(val)]
+    if (length(val) > 0L && any(val < sd_thresh)) {
+      flags <- c(flags, paste0("near_zero_", nm))
+    }
+  }
+  unique(flags)
+}
+
+.gllvmTMB_check_row <- function(component, status, value = NA_character_,
+                                threshold = NA_character_,
+                                message = "", action = "") {
+  data.frame(
+    component = component,
+    status = status,
+    value = as.character(value),
+    threshold = as.character(threshold),
+    message = message,
+    action = action,
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Machine-readable convergence and fit-health checks
+#'
+#' `check_gllvmTMB()` returns a stable table of the main fit-health
+#' diagnostics for a fitted `gllvmTMB_multi` object. It is the
+#' machine-readable companion to [gllvmTMB_diagnose()]: use this in
+#' simulations, tests, and reports where parsing printed messages would
+#' be brittle.
+#'
+#' Scope boundary: this helper reports optimisation and inference-risk
+#' signals. A `WARN` row, including `pdHess = FALSE`, means that Wald
+#' standard errors or curvature-based inference need more care; it is
+#' not by itself proof that the fitted mean, likelihood, or
+#' rotation-invariant covariance summaries are unusable.
+#'
+#' @param object A `gllvmTMB_multi` fit.
+#' @param gradient_thresh Maximum allowed absolute gradient component.
+#'   Default 0.01.
+#' @param se_thresh Threshold above which a fixed-effect standard error
+#'   is flagged as weakly identified. Default 100.
+#' @return A data frame with columns `component`, `status`, `value`,
+#'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
+#'   `"WARN"`, or `"FAIL"`.
+#' @export
+#' @examples
+#' \dontrun{
+#' fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
+#'                 data = dat, trait = "trait", unit = "site")
+#' check_gllvmTMB(fit)
+#' }
+check_gllvmTMB <- function(object,
+                           gradient_thresh = 1e-2,
+                           se_thresh = 100) {
+  if (!inherits(object, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  }
+  health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
+  rows <- list(
+    .gllvmTMB_check_row(
+      "optimizer_convergence",
+      if (isTRUE(health$convergence == 0L)) "PASS" else "FAIL",
+      health$convergence,
+      "0",
+      if (isTRUE(health$convergence == 0L)) {
+        "optimizer reported convergence"
+      } else {
+        health$message %||% "optimizer did not report clean convergence"
+      },
+      "try multiple starts, stronger starts, rescaling, or an alternative optimizer"
+    ),
+    .gllvmTMB_check_row(
+      "max_gradient",
+      if (is.finite(health$max_gradient) &&
+          health$max_gradient < gradient_thresh) "PASS" else "WARN",
+      signif(health$max_gradient, 4),
+      gradient_thresh,
+      "largest absolute gradient component at the selected optimum",
+      "tighten optimization, rescale predictors, or inspect weak components"
+    ),
+    .gllvmTMB_check_row(
+      "sdreport",
+      if (isTRUE(health$sdreport_ok)) "PASS" else "WARN",
+      isTRUE(health$sdreport_ok),
+      TRUE,
+      if (isTRUE(health$sdreport_ok)) {
+        "sdreport available"
+      } else {
+        health$sdreport_error %||% "sdreport unavailable"
+      },
+      "use point summaries cautiously and prefer profile/bootstrap intervals"
+    ),
+    .gllvmTMB_check_row(
+      "pd_hessian",
+      if (isTRUE(health$pd_hessian)) "PASS" else "WARN",
+      health$pd_hessian,
+      TRUE,
+      "positive-definite Hessian for curvature-based inference",
+      "check gradients, boundary variances, rank, starts, and profile/bootstrap targets"
+    ),
+    .gllvmTMB_check_row(
+      "max_fixed_se",
+      if (is.finite(health$max_fixed_se) &&
+          health$max_fixed_se < se_thresh) "PASS" else "WARN",
+      signif(health$max_fixed_se, 4),
+      se_thresh,
+      "largest fixed-effect standard error",
+      "check collinearity, scaling, or weakly identified fixed effects"
+    )
+  )
+
+  restart_history <- object$restart_history %||% data.frame()
+  rows <- c(rows, list(
+    .gllvmTMB_check_row(
+      "restart_history",
+      if (nrow(restart_history) > 0L) "PASS" else "WARN",
+      nrow(restart_history),
+      ">= 1",
+      "number of optimizer starts recorded on the fit",
+      "refit with current gllvmTMB if provenance is missing"
+    ),
+    .gllvmTMB_check_row(
+      "selected_restart",
+      if (is.finite(health$selected_restart)) "PASS" else "WARN",
+      health$selected_restart,
+      "finite restart id",
+      "restart selected by minimum objective",
+      "inspect restart_history for competing likelihood basins"
+    )
+  ))
+
+  flags <- health$boundary_flags %||% character(0)
+  if (length(flags) == 0L) {
+    rows <- c(rows, list(.gllvmTMB_check_row(
+      "boundary_flags", "PASS", "none", "none",
+      "no simple boundary flags detected",
+      "still inspect profile/bootstrap output for target-specific weakness"
+    )))
+  } else {
+    for (flag in flags) {
+      rows <- c(rows, list(.gllvmTMB_check_row(
+        "boundary_flags", "WARN", flag, "none",
+        "near-boundary loading or variance component detected",
+        "consider lower rank, simpler covariance, or stronger starts"
+      )))
+    }
+  }
+
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
 #' One-call diagnostic + biological summary for a `gllvmTMB_multi` fit
 #'
 #' This is the function to call right after `fit <- gllvmTMB(...)`. It
@@ -80,9 +310,9 @@ gllvmTMB_diagnose <- function(object,
   out_Sigma_B <- tryCatch(extract_Sigma_B(object), error = function(e) NULL)
   out_Sigma_W <- tryCatch(extract_Sigma_W(object), error = function(e) NULL)
   ICC_site    <- tryCatch(extract_ICC_site(object), error = function(e) NULL)
-  comm_B      <- tryCatch(extract_communality(object, "B"),
+  comm_B      <- tryCatch(extract_communality(object, "unit"),
                           error = function(e) NULL)
-  comm_W      <- tryCatch(extract_communality(object, "W"),
+  comm_W      <- tryCatch(extract_communality(object, "unit_obs"),
                           error = function(e) NULL)
 
   if (verbose) {
@@ -128,7 +358,9 @@ gllvmTMB_diagnose <- function(object,
     hints <- c(hints, paste(
       "Optimiser did NOT converge.",
       "Try `gllvmTMBcontrol(n_init = 5, optimizer = \"optim\",",
-      "optArgs = list(method = \"BFGS\"))` and refit."
+      "optArgs = list(method = \"BFGS\"))`, residual starts for",
+      "non-Gaussian latent fits, or `start_method = list(method = \"indep\")`",
+      "for simpler-model warm starts."
     ))
   }
   if (isTRUE(san$max_gradient >= gradient_thresh)) {
@@ -141,10 +373,11 @@ gllvmTMB_diagnose <- function(object,
   }
   if (!isTRUE(san$pd_hessian)) {
     hints <- c(hints, paste(
-      "Hessian is not positive-definite. Some parameters are not",
-      "identified. Inspect `summary(fit)` for NaN SEs and consider",
-      "removing redundant covstruct terms or pinning loadings via",
-      "`suggest_lambda_constraint()`."
+      "Hessian is not positive-definite. Treat this as an inference",
+      "and identifiability warning rather than automatic point-estimate",
+      "failure. Inspect `check_gllvmTMB(fit)`, gradients, boundary",
+      "variances, redundant latent dimensions, and prefer profile or",
+      "bootstrap intervals for interpretable Sigma targets."
     ))
   }
   if (!is.na(san$max_se) && san$max_se >= se_thresh) {

@@ -1323,6 +1323,134 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                ordinal_init_log_incs else 0.0
   )
 
+  ## McGillycuddy / glmmTMB-style residual starts for factor-analytic
+  ## random effects. The fixed-effects pseudo-fit above gives
+  ## `resid_init`; here we reshape those residuals to group x trait matrices
+  ## and use a reduced-rank SVD start for Lambda + latent scores. This is
+  ## opt-in because random starts and the existing phi warmup remain useful
+  ## in difficult M3.3/M3.4 regimes.
+  start_method <- .gllvmTMB_normalize_start_method(
+    control$start_method %||% list(method = NULL, jitter.sd = 0)
+  )
+  start_from_fit <- control$start_from %||% NULL
+  start_provenance <- list(
+    init_strategy = control$init_strategy,
+    start_method = start_method$method %||% "default",
+    start_method_jitter_sd = start_method$jitter.sd,
+    start_from = !is.null(start_from_fit),
+    start_from_source = if (!is.null(start_from_fit)) "user" else NULL,
+    start_from_copied = character(0),
+    auto_indep_fit = FALSE
+  )
+  if (identical(start_method$method, "indep")) {
+    drop_rr <- kinds == "rr" & groupings %in% c(site, ss_name)
+    keep_covstruct <- !drop_rr
+    has_indep_terms <- any(kinds == "diag" & groupings %in% c(site, ss_name))
+    if (any(drop_rr) && has_indep_terms) {
+      parsed_indep <- parsed
+      parsed_indep$covstructs <- parsed$covstructs[keep_covstruct]
+      control_indep <- control
+      control_indep$start_method <- list(method = NULL, jitter.sd = 0)
+      control_indep$start_from <- NULL
+      control_indep$n_init <- 1L
+      control_indep$verbose <- FALSE
+      auto_start <- tryCatch(
+        gllvmTMB_multi_fit(
+          parsed = parsed_indep,
+          data = data,
+          trait = trait,
+          site = site,
+          species = species,
+          family = family_input,
+          weights = weights,
+          phylo_vcv = phylo_vcv,
+          phylo_tree = phylo_tree,
+          known_V = known_V,
+          mesh = mesh,
+          lambda_constraint = lambda_constraint,
+          control = control_indep,
+          silent = silent,
+          unit_obs = unit_obs
+        ),
+        error = function(e) e
+      )
+      if (inherits(auto_start, "error")) {
+        cli::cli_warn(c(
+          "{.arg start_method = list(method = \"indep\")} failed while fitting the simpler independent model; continuing with the default starts.",
+          "i" = conditionMessage(auto_start)
+        ))
+      } else if (is.null(start_from_fit)) {
+        start_from_fit <- auto_start
+        start_provenance$start_from <- TRUE
+        start_provenance$start_from_source <- "auto_indep"
+        start_provenance$auto_indep_fit <- TRUE
+        if (isTRUE(control$verbose)) {
+          cat("  start_method='indep': fitted unique-only warm-start model\n")
+        }
+      }
+    } else if (isTRUE(control$verbose)) {
+      cat("  start_method='indep': skipped (no paired unique() terms to fit)\n")
+    }
+  }
+  if (identical(start_method$method, "res")) {
+    if (use_rr_B) {
+      start_B <- .gllvmTMB_residual_factor_start(
+        resid = resid_init,
+        trait_id = trait_id,
+        group_id = site_id,
+        n_traits = n_traits,
+        n_groups = n_sites,
+        rank = d_B,
+        jitter.sd = start_method$jitter.sd,
+        default_theta = tmb_params$theta_rr_B
+      )
+      if (isTRUE(start_B$usable)) {
+        tmb_params$theta_rr_B <- start_B$theta_rr
+        tmb_params$z_B <- start_B$z
+        if (use_diag_B) {
+          tmb_params$theta_diag_B <- start_B$theta_diag
+          tmb_params$s_B <- start_B$s
+        }
+      }
+      if (isTRUE(control$verbose)) {
+        cat(sprintf("  start_method='res' B-tier: %s\n", start_B$reason))
+      }
+    }
+    if (use_rr_W) {
+      start_W <- .gllvmTMB_residual_factor_start(
+        resid = resid_init,
+        trait_id = trait_id,
+        group_id = site_species_id,
+        n_traits = n_traits,
+        n_groups = n_site_species,
+        rank = d_W,
+        jitter.sd = start_method$jitter.sd,
+        default_theta = tmb_params$theta_rr_W
+      )
+      if (isTRUE(start_W$usable)) {
+        tmb_params$theta_rr_W <- start_W$theta_rr
+        tmb_params$z_W <- start_W$z
+        if (use_diag_W) {
+          tmb_params$theta_diag_W <- start_W$theta_diag
+          tmb_params$s_W <- start_W$s
+        }
+      }
+      if (isTRUE(control$verbose)) {
+        cat(sprintf("  start_method='res' W-tier: %s\n", start_W$reason))
+      }
+    }
+  }
+  if (!is.null(start_from_fit)) {
+    warm <- .gllvmTMB_apply_start_from(
+      tmb_params = tmb_params,
+      start_from = start_from_fit,
+      verbose = isTRUE(control$verbose)
+    )
+    tmb_params <- warm$params
+    start_provenance$start_from <- TRUE
+    start_provenance$start_from_copied <- warm$copied
+  }
+
   ## ---- Map: zero-out unused parameters ---------------------------------
   tmb_map <- list()
   if (!use_rr_B) {
@@ -1735,17 +1863,36 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## robust than nlminb for two-level rr fits).
   run_one <- function(par_init) {
     if (identical(control$optimizer, "optim")) {
-      method <- control$optArgs$method %||% "BFGS"
       opt_args <- control$optArgs
+      method <- opt_args$method %||% "BFGS"
       opt_args$method <- method
+      opt_args$control <- utils::modifyList(
+        list(maxit = 2000),
+        opt_args$control %||% list()
+      )
       do.call(stats::optim,
-              c(list(par = par_init, fn = obj$fn, gr = obj$gr,
-                     control = list(maxit = 2000)), opt_args)) -> raw
+              c(list(par = par_init, fn = obj$fn, gr = obj$gr), opt_args)) -> raw
       list(par = raw$par, objective = raw$value,
-           convergence = raw$convergence, message = raw$message)
+           convergence = raw$convergence, message = raw$message %||% "",
+           iterations = unname(raw$counts[["function"]] %||% NA_integer_),
+           evaluations = unname(raw$counts[["gradient"]] %||% NA_integer_))
     } else {
-      stats::nlminb(par_init, obj$fn, obj$gr,
-                    control = list(eval.max = 2000, iter.max = 1500))
+      nlminb_args <- control$optArgs
+      keep <- names(nlminb_args) %in% c("control", "lower", "upper", "scale")
+      if (length(nlminb_args) > 0L && any(!keep) && isTRUE(control$verbose)) {
+        cat(sprintf(
+          "  nlminb optArgs ignored: %s\n",
+          paste(names(nlminb_args)[!keep], collapse = ", ")
+        ))
+      }
+      nlminb_args <- nlminb_args[keep]
+      nlminb_args$control <- utils::modifyList(
+        list(eval.max = 2000, iter.max = 1500),
+        nlminb_args$control %||% list()
+      )
+      do.call(stats::nlminb,
+              c(list(start = par_init, objective = obj$fn,
+                     gradient = obj$gr), nlminb_args))
     }
   }
 
@@ -1753,24 +1900,71 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## vectors (per Maeve McGillycuddy's recommendation), keep the best.
   best_opt <- NULL
   best_obj <- Inf
-  for (i in seq_len(max(1L, control$n_init))) {
-    par0 <- if (i == 1L) obj$par
-            else obj$par + stats::rnorm(length(obj$par),
-                                        sd = control$init_jitter)
-    opt_i <- tryCatch(run_one(par0), error = function(e) NULL)
-    if (is.null(opt_i)) next
+  n_restarts <- max(1L, control$n_init)
+  restart_history <- vector("list", n_restarts)
+  for (i in seq_len(n_restarts)) {
+    par0 <- if (i == 1L) {
+      obj$par
+    } else {
+      .gllvmTMB_reclamp_start_par(
+        obj$par + stats::rnorm(length(obj$par), sd = control$init_jitter)
+      )
+    }
+    elapsed_start <- proc.time()[["elapsed"]]
+    opt_i <- tryCatch(run_one(par0), error = function(e) e)
+    elapsed_s <- proc.time()[["elapsed"]] - elapsed_start
+    if (inherits(opt_i, "error")) {
+      restart_history[[i]] <- .gllvmTMB_restart_history_row(
+        restart = i,
+        start_label = if (i == 1L) "initial" else "jitter",
+        start_method = start_provenance$start_method,
+        optimizer = control$optimizer,
+        jitter_sd = if (i == 1L) 0 else control$init_jitter,
+        objective = NA_real_,
+        convergence = NA_integer_,
+        message = conditionMessage(opt_i),
+        elapsed_s = elapsed_s,
+        iterations = NA_integer_,
+        evaluations = NA_integer_,
+        success = FALSE
+      )
+      next
+    }
     if (isTRUE(control$verbose))
       cat(sprintf("  restart %d: -logLik = %.3f, conv = %s\n",
                   i, opt_i$objective,
                   ifelse(is.null(opt_i$convergence), "?", opt_i$convergence)))
+    restart_history[[i]] <- .gllvmTMB_restart_history_row(
+      restart = i,
+      start_label = if (i == 1L) "initial" else "jitter",
+      start_method = start_provenance$start_method,
+      optimizer = control$optimizer,
+      jitter_sd = if (i == 1L) 0 else control$init_jitter,
+      objective = opt_i$objective,
+      convergence = opt_i$convergence %||% NA_integer_,
+      message = opt_i$message %||% "",
+      elapsed_s = elapsed_s,
+      iterations = opt_i$iterations %||% NA_integer_,
+      evaluations = opt_i$evaluations %||% NA_integer_,
+      success = is.finite(opt_i$objective)
+    )
     if (opt_i$objective < best_obj) {
       best_obj <- opt_i$objective
       best_opt <- opt_i
     }
   }
+  restart_history <- do.call(rbind, restart_history)
   if (is.null(best_opt))
     cli::cli_abort("All {control$n_init} restarts failed.")
   opt <- best_opt
+  restart_history$selected <- FALSE
+  selectable <- which(restart_history$success &
+                        is.finite(restart_history$objective))
+  selected_idx <- selectable[which.min(restart_history$objective[selectable])]
+  restart_history$selected[selected_idx] <- TRUE
+  start_provenance$selected_restart <- restart_history$restart[
+    which(restart_history$selected)[1L]
+  ]
 
   ## ---- Force TMB internal state to the selected optimum --------------
   ## After the multi-start loop, TMB's internal `obj$env$last.par` is
@@ -1812,9 +2006,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   invisible(obj$fn(opt$par))
   obj$env$last.par.best <- obj$env$last.par
 
-  rep    <- obj$report()
-  sd_rep <- TMB::sdreport(obj, par.fixed = opt$par,
-                          getJointPrecision = FALSE)
+  rep <- obj$report()
+  sdreport_error <- NULL
+  sd_rep <- if (isFALSE(control$se)) {
+    sdreport_error <- "standard-error calculation skipped by gllvmTMBcontrol(se = FALSE)"
+    NULL
+  } else {
+    tryCatch(
+      TMB::sdreport(obj, par.fixed = opt$par,
+                    getJointPrecision = FALSE),
+      error = function(e) {
+        sdreport_error <<- conditionMessage(e)
+        NULL
+      }
+    )
+  }
 
   ## Track whether the user fitted a latent() / phylo_latent() with rank > 1 and
   ## without a `lambda_constraint`. The implied Sigma is identifiable, but
@@ -1933,12 +2139,59 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       X_fix_names  = colnames(X_fix),
       lambda_constraint     = lambda_constraint,
       needs_rotation_advice = needs_rotation_advice,
+      restart_history = restart_history,
+      start_provenance = start_provenance,
+      sdreport_error = sdreport_error,
       package_version = utils::packageVersion("gllvmTMB"),
       stage        = 2L
     ),
     class = c("gllvmTMB_multi", "gllvmTMB")
   )
+  fit$fit_health <- .gllvmTMB_build_fit_health(fit)
   fit
 }
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
+
+.gllvmTMB_reclamp_start_par <- function(par) {
+  nm <- names(par)
+  if (is.null(nm)) return(par)
+  phi <- grepl("(^|\\.)log_phi", nm) | grepl("^log_phi", nm)
+  if (any(phi)) {
+    par[phi] <- pmax(pmin(par[phi], log(100.0)), log(0.01))
+  }
+  par
+}
+
+.gllvmTMB_restart_history_row <- function(restart, start_label, start_method,
+                                          optimizer, jitter_sd, objective,
+                                          convergence, message, elapsed_s,
+                                          iterations, evaluations, success) {
+  scalar_num <- function(x, missing = NA_real_) {
+    if (is.null(x) || length(x) == 0L) return(missing)
+    x <- as.numeric(x)
+    if (length(x) > 1L) return(sum(x, na.rm = TRUE))
+    x
+  }
+  scalar_int <- function(x) as.integer(round(scalar_num(x, NA_real_)))
+  scalar_chr <- function(x) {
+    if (is.null(x) || length(x) == 0L) return("")
+    paste(as.character(x), collapse = "; ")
+  }
+  data.frame(
+    restart = scalar_int(restart),
+    start_label = scalar_chr(start_label),
+    start_method = scalar_chr(start_method),
+    optimizer = scalar_chr(optimizer),
+    jitter_sd = scalar_num(jitter_sd),
+    objective = scalar_num(objective),
+    convergence = scalar_int(convergence),
+    message = scalar_chr(message),
+    elapsed_s = scalar_num(elapsed_s),
+    iterations = scalar_int(iterations),
+    evaluations = scalar_int(evaluations),
+    success = isTRUE(success),
+    selected = FALSE,
+    stringsAsFactors = FALSE
+  )
+}

@@ -908,14 +908,33 @@ sanity_multi <- function(object,
               flags$max_gradient))
 
   ## 3. Hessian PD-ness
-  pd <- !is.null(object$sd_report$pdHess) && object$sd_report$pdHess
+  sdreport_ok <- !is.null(object$sd_report)
+  flags$sdreport_ok <- sdreport_ok
+  if (!sdreport_ok) {
+    flags$sdreport_error <- object$sdreport_error %||% "sdreport unavailable"
+  }
+  pd <- sdreport_ok && !is.null(object$sd_report$pdHess) &&
+    object$sd_report$pdHess
   flags$pd_hessian <- pd
   cat(sprintf("%-44s %s\n", "Hessian positive-definite:",
               if (pd) "PASS" else "WARN"))
+  if (!sdreport_ok) {
+    cat(sprintf("%-44s WARN (%s)\n", "sdreport available:",
+                flags$sdreport_error))
+  }
 
   ## 4. Largest fixed-effect SE
-  se <- summary(object$sd_report, "fixed")[, "Std. Error"]
-  flags$max_se <- if (length(se) == 0) NA else max(se, na.rm = TRUE)
+  se <- if (sdreport_ok) {
+    tryCatch(suppressWarnings(summary(object$sd_report, "fixed"))[, "Std. Error"],
+             error = function(e) NA_real_)
+  } else {
+    NA_real_
+  }
+  flags$max_se <- if (length(se) == 0 || all(is.na(se))) {
+    NA_real_
+  } else {
+    max(se, na.rm = TRUE)
+  }
   cat(sprintf("%-44s %s (max SE = %.3g)\n",
               sprintf("Max fixed-effect SE < %g:", se_thresh),
               if (!is.na(flags$max_se) && flags$max_se < se_thresh) "PASS" else "WARN",

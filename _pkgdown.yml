@@ -144,6 +144,7 @@ reference:
     desc: Evaluate a fitted gllvmTMB_multi model
     contents:
     - sanity_multi
+    - check_gllvmTMB
     - gllvmTMB_diagnose
     - check_auto_residual
     - check_identifiability

@@ -19,6 +19,69 @@ test_that("sanity_multi() reports the expected fields", {
   expect_true(is.finite(out$max_gradient))
   expect_true(is.logical(out$pd_hessian))
   expect_true("rr_B_min_loading" %in% names(out))
+
+  chk <- check_gllvmTMB(fit)
+  expect_s3_class(chk, "data.frame")
+  expect_named(chk, c("component", "status", "value", "threshold",
+                      "message", "action"))
+  expect_true(all(c("optimizer_convergence", "pd_hessian",
+                    "restart_history", "selected_restart") %in%
+                  chk$component))
+  expect_equal(chk$status[chk$component == "optimizer_convergence"], "PASS")
+  expect_equal(chk$status[chk$component == "restart_history"], "PASS")
+})
+
+test_that("diagnostics degrade gracefully when sdreport is unavailable", {
+  set.seed(2026)
+  sim <- simulate_site_trait(
+    n_sites = 30, n_species = 8, n_traits = 3,
+    mean_species_per_site = 4,
+    Lambda_B = matrix(c(0.8, 0.5, -0.2), nrow = 3, ncol = 1),
+    psi_B = c(0.3, 0.3, 0.3),
+    seed = 2026
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) + unique(0 + trait | site),
+    data = sim$data
+  )
+  fit$sd_report <- NULL
+  fit$fit_health <- NULL
+  fit$sdreport_error <- "forced sdreport failure"
+
+  flags <- capture.output(out <- sanity_multi(fit))
+  expect_false(out$sdreport_ok)
+  expect_equal(out$sdreport_error, "forced sdreport failure")
+
+  chk <- check_gllvmTMB(fit)
+  expect_equal(chk$status[chk$component == "sdreport"], "WARN")
+  expect_match(chk$message[chk$component == "sdreport"],
+               "forced sdreport failure")
+})
+
+test_that("se = FALSE keeps point estimates and records skipped sdreport status", {
+  set.seed(2027)
+  sim <- simulate_site_trait(
+    n_sites = 24, n_species = 6, n_traits = 2,
+    mean_species_per_site = 3,
+    Lambda_B = matrix(c(0.7, 0.4), nrow = 2, ncol = 1),
+    psi_B = c(0.3, 0.3),
+    seed = 2027
+  )
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | site, d = 1) + unique(0 + trait | site),
+    data = sim$data,
+    control = gllvmTMBcontrol(se = FALSE)
+  )
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_null(fit$sd_report)
+  expect_match(fit$sdreport_error, "se = FALSE", fixed = TRUE)
+  expect_false(fit$fit_health$sdreport_ok)
+
+  chk <- check_gllvmTMB(fit)
+  expect_equal(chk$status[chk$component == "sdreport"], "WARN")
+  expect_match(chk$message[chk$component == "sdreport"],
+               "se = FALSE", fixed = TRUE)
 })
 
 test_that("predict() with re_form ~ . differs from re_form ~ 0", {

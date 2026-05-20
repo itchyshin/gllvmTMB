@@ -74,6 +74,8 @@ Numbered for cross-reference; status reflects gllvmTMB v0.2.0.
 | 6 | **Sparse Cholesky reordering (AMD / MMD)** | Davis (2006) "Direct Methods for Sparse Linear Systems" §7 (CHOLMOD reference) | **Likely already optimal**. TMB uses CHOLMOD under the hood, which applies AMD by default. ASReml uses MMD. Both are O(n^{3/2}) on regular sparsity patterns. Would need to profile gllvmTMB on the n > 500 phylo/pedigree regime to confirm CHOLMOD's default is fine; deferred until ANI-08 implementation surfaces a real bottleneck. |
 | 7 | **Block-diagonal MME exploitation** | Lynch & Walsh (1998) §27 | **Not exploited**. When the trait covariance is block-diagonal (no cross-trait covariance), the MME decouples into per-trait blocks. TMB's autodiff doesn't automatically exploit this. Worth checking on T > 10 cases. Low priority. |
 | 8 | **OpenMP parallel inner-loop** | Standard practice in ASReml + WOMBAT | **Not implemented**. TMB supports `#pragma omp parallel for` in C++ inner loops. Worth a profile-then-parallelise pass on the inner Laplace eval for large n. Post-CRAN; possibly Phase 5.5 if a pilot user hits a slow case. |
+| 9 | **Residual reduced-rank starts** | McGillycuddy, Popovic, Bolker & Warton (2025), JSS 112(1), `glmmTMBControl(start_method = list(method = "res"))` | **Implemented as opt-in**. `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))` now seeds `latent()` loadings and latent scores from a reduced-rank decomposition of fixed-effect residuals, with paired `unique()` residual starts when present. Covered by MIS-18 / `test-start-method-residual.R`. |
+| 10 | **Simpler GLMM/GLLVM starts** | McGillycuddy correspondence with maintainer (2026-04-15): fit simpler models and use their estimated parameters as starts for complex rr fits | **Implemented as opt-in**. `gllvmTMBcontrol(start_method = list(method = "indep"))` fits the matching independent `unique()`-only model first and copies same-shaped TMB parameters into the full latent+unique fit. Manual `start_from = simpler_fit` also supports one-rr-term starts. Covered by MIS-19 / `test-start-method-residual.R`. |
 
 ## 5. Cost-benefit ranking for gllvmTMB
 
@@ -88,6 +90,13 @@ Highest-impact first, given our M3+ trajectory:
   families as an opt-in M3.4 mitigation. The remaining question is
   empirical: whether the next target-explicit M3.3 pilot supports
   keeping it opt-in or making it the count-family default later.
+- **#9 — Residual reduced-rank starts.** Implemented as an opt-in
+  glmmTMB/JSS-style start method for factor-analytic terms. Treat
+  this primarily as a non-Gaussian reduced-rank rescue path.
+- **#10 — Simpler GLMM/GLLVM starts.** Implemented as the more
+  relevant Gaussian two-level rescue path. The remaining question is
+  empirical: whether it should stay a manual rescue option or become
+  the default for `latent()` fits after M3 target-explicit evidence.
 
 **Tier B — worth a profile pass before committing effort.**
 
@@ -126,6 +135,10 @@ items derived from it are tracked in:
   A⁻¹ — Tier A item #2 above).
 - `docs/design/35-validation-debt-register.md` MIS-16 / MIS-17
   (single-trait warmup and phi clamp — M3.4 implemented scope).
+- `docs/design/35-validation-debt-register.md` MIS-18
+  (residual reduced-rank starts — glmmTMB/JSS-style opt-in scope).
+- `docs/design/35-validation-debt-register.md` MIS-19
+  (simpler independent GLMM starts and manual `start_from`).
 
 ## 8. Cross-references
 

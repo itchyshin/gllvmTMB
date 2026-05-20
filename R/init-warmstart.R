@@ -180,3 +180,196 @@
   ## Unrecognised — no warm-up.
   NULL
 }
+
+## Residual reduced-rank starts
+## ============================
+##
+## glmmTMB's `start_method = list(method = "res")` fits the fixed-effects
+## part first, computes residuals, and fits a reduced-rank Gaussian model to
+## those residuals to seed the latent scores and loadings. gllvmTMB already
+## computes a fixed-effects pseudo-response fit in R/fit-multi.R; this helper
+## applies the same residual-factor idea to the grouped trait matrix used by
+## the B/W-tier covariance blocks.
+
+.gllvmTMB_residual_factor_start <- function(resid, trait_id, group_id,
+                                            n_traits, n_groups, rank,
+                                            jitter.sd = 0,
+                                            default_theta = NULL) {
+  rank <- as.integer(rank)
+  if (rank < 0L) cli::cli_abort("Internal error: residual-factor rank must be non-negative.")
+  if (n_traits < 1L || n_groups < 1L) {
+    return(list(usable = FALSE, reason = "empty grouped residual matrix"))
+  }
+
+  mat <- .gllvmTMB_group_trait_residual_matrix(
+    resid = resid, trait_id = trait_id, group_id = group_id,
+    n_traits = n_traits, n_groups = n_groups
+  )
+  R <- mat$resid
+
+  lambda <- if (rank > 0L) .gllvmTMB_default_rr_lambda(n_traits, rank)
+            else matrix(0.0, n_traits, 0L)
+  z <- if (rank > 0L) matrix(0.0, n_groups, rank)
+       else matrix(0.0, n_groups, 0L)
+  theta_rr <- if (rank > 0L) {
+    default_theta %||% .gllvmTMB_pack_rr_theta(lambda)
+  } else NULL
+
+  observed_traits <- rowSums(mat$count > 0L)
+  enough_groups <- sum(observed_traits >= min(2L, n_traits)) >= max(2L, rank + 1L)
+  has_signal <- any(is.finite(R)) && stats::var(as.numeric(R)) > 1e-12
+
+  can_factor <- rank > 0L && enough_groups && has_signal
+
+  if (can_factor) {
+    r_svd <- min(rank, nrow(R), ncol(R))
+    sv <- tryCatch(svd(R, nu = r_svd, nv = r_svd),
+                   error = function(e) NULL)
+    if (!is.null(sv) && length(sv$d) > 0L) {
+      keep <- which(sv$d[seq_len(r_svd)] > sqrt(.Machine$double.eps))
+      if (length(keep) > 0L) {
+        r_eff <- min(rank, max(keep))
+        scale_n <- sqrt(max(n_groups - 1L, 1L))
+        scores <- sv$u[, seq_len(r_eff), drop = FALSE] * scale_n
+        loadings <- sv$v[, seq_len(r_eff), drop = FALSE] %*%
+          diag(sv$d[seq_len(r_eff)] / scale_n, nrow = r_eff)
+
+        rotated <- .gllvmTMB_lower_triangular_rotation(loadings, scores)
+        lambda[, seq_len(r_eff)] <- rotated$loadings
+        z[, seq_len(r_eff)] <- rotated$scores
+        theta_rr <- .gllvmTMB_pack_rr_theta(lambda)
+      }
+    }
+  }
+
+  fitted <- if (rank > 0L) z %*% t(lambda) else matrix(0.0, n_groups, n_traits)
+  remainder <- R - fitted
+  sd_rem <- apply(remainder, 2L, stats::sd)
+  sd_rem[!is.finite(sd_rem)] <- 0
+  theta_diag <- log(pmax(sd_rem, 1e-3))
+
+  z_tmb <- if (rank > 0L) t(z) else matrix(0.0, 1L, n_groups)
+  if (rank > 0L && jitter.sd > 0) {
+    z_tmb <- z_tmb + stats::rnorm(length(z_tmb), sd = jitter.sd)
+  }
+
+  list(
+    usable = can_factor,
+    reason = if (can_factor) "ok"
+             else if (!has_signal) "residual matrix has no usable signal"
+             else "too few groups with multiple observed traits",
+    theta_rr = theta_rr,
+    z = z_tmb,
+    theta_diag = theta_diag,
+    s = t(remainder)
+  )
+}
+
+.gllvmTMB_group_trait_residual_matrix <- function(resid, trait_id, group_id,
+                                                  n_traits, n_groups) {
+  sums <- matrix(0.0, nrow = n_groups, ncol = n_traits)
+  count <- matrix(0L, nrow = n_groups, ncol = n_traits)
+  for (i in seq_along(resid)) {
+    g <- group_id[i] + 1L
+    t <- trait_id[i] + 1L
+    if (is.na(g) || is.na(t) || g < 1L || t < 1L ||
+        g > n_groups || t > n_traits || !is.finite(resid[i])) next
+    sums[g, t] <- sums[g, t] + resid[i]
+    count[g, t] <- count[g, t] + 1L
+  }
+
+  out <- sums
+  observed <- count > 0L
+  out[observed] <- sums[observed] / count[observed]
+  for (t in seq_len(n_traits)) {
+    obs_t <- observed[, t]
+    if (any(obs_t)) {
+      mu_t <- mean(out[obs_t, t])
+      out[obs_t, t] <- out[obs_t, t] - mu_t
+    }
+    out[!obs_t, t] <- 0.0
+  }
+  list(resid = out, count = count)
+}
+
+.gllvmTMB_default_rr_lambda <- function(p, rank) {
+  lambda <- matrix(0.0, nrow = p, ncol = rank)
+  diag_idx <- seq_len(min(p, rank))
+  if (length(diag_idx) > 0L) lambda[cbind(diag_idx, diag_idx)] <- 0.5
+  lambda
+}
+
+.gllvmTMB_lower_triangular_rotation <- function(loadings, scores) {
+  rank <- ncol(loadings)
+  if (rank == 0L) return(list(loadings = loadings, scores = scores))
+  block <- loadings[seq_len(rank), seq_len(rank), drop = FALSE]
+  qr_block <- qr(t(block))
+  q <- qr.Q(qr_block, complete = TRUE)
+  loadings <- loadings %*% q
+  scores <- scores %*% q
+  for (k in seq_len(rank)) {
+    if (is.finite(loadings[k, k]) && loadings[k, k] < 0) {
+      loadings[, k] <- -loadings[, k]
+      scores[, k] <- -scores[, k]
+    }
+  }
+  list(loadings = loadings, scores = scores)
+}
+
+.gllvmTMB_pack_rr_theta <- function(lambda) {
+  p <- nrow(lambda)
+  rank <- ncol(lambda)
+  if (rank == 0L) return(numeric(0))
+  out <- diag(lambda[seq_len(rank), seq_len(rank), drop = FALSE])
+  for (j in seq_len(rank)) {
+    if (j < p) out <- c(out, lambda[(j + 1L):p, j])
+  }
+  unname(out)
+}
+
+## Copy estimated parameters from a simpler gllvmTMB fit into the current
+## model's starting list. This intentionally copies only same-shaped entries:
+## an independent `unique()` fit can seed b_fix, theta_diag_*, and s_*; a
+## one-tier latent fit can also seed the matching theta_rr_* and z_* block.
+.gllvmTMB_apply_start_from <- function(tmb_params, start_from,
+                                       verbose = FALSE) {
+  if (is.null(start_from)) {
+    return(list(params = tmb_params, copied = character(0)))
+  }
+  if (!inherits(start_from, "gllvmTMB")) {
+    cli::cli_abort("{.arg start_from} must be a fitted {.cls gllvmTMB} object.")
+  }
+  if (is.null(start_from$tmb_obj) || is.null(start_from$opt)) {
+    cli::cli_abort("{.arg start_from} does not contain the TMB object and optimizer result needed for warm starts.")
+  }
+
+  par_full <- start_from$tmb_obj$env$last.par.best
+  if (is.null(par_full)) {
+    invisible(start_from$tmb_obj$fn(start_from$opt$par))
+    par_full <- start_from$tmb_obj$env$last.par
+  }
+  source_params <- tryCatch(
+    start_from$tmb_obj$env$parList(start_from$opt$par, par_full),
+    error = function(e) NULL
+  )
+  if (is.null(source_params)) {
+    cli::cli_abort("Could not extract TMB parameters from {.arg start_from}.")
+  }
+
+  copied <- character(0)
+  for (nm in intersect(names(tmb_params), names(source_params))) {
+    src <- source_params[[nm]]
+    dst <- tmb_params[[nm]]
+    same_shape <- identical(dim(src), dim(dst)) && length(src) == length(dst)
+    if (!same_shape || !is.numeric(src) || any(!is.finite(src))) next
+    tmb_params[[nm]] <- src
+    copied <- c(copied, nm)
+  }
+
+  if (verbose && length(copied) > 0L) {
+    cat(sprintf("  start_from copied: %s\n", paste(copied, collapse = ", ")))
+  } else if (verbose) {
+    cat("  start_from copied: none (no matching parameter shapes)\n")
+  }
+  list(params = tmb_params, copied = copied)
+}

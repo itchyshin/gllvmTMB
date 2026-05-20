@@ -244,7 +244,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-10 | `extract_cutpoints()` ordinal-probit | `partial` | `test-ordinal-probit.R` | smoke |
 | EXT-11 | `extract_proportions()` delta-family | `blocked` | n/a | post-CRAN |
 | EXT-12 | `extract_ICC_site()` legacy | `covered` | `test-extractors.R` | superseded by `extract_repeatability()` |
-| EXT-13 | `bootstrap_Sigma()` | `covered` (Gaussian) / `partial` (non-Gaussian) | `test-bootstrap-Sigma.R` | |
+| EXT-13 | `bootstrap_Sigma()` | `covered` (Gaussian) / `partial` (non-Gaussian) | `test-bootstrap-Sigma.R` | M3.3b surface admission (Design 50) controls the next non-Gaussian evidence movement. Known-phi point diagnostics are not bootstrap coverage. |
 | EXT-14 | `getLoadings()` raw $\Lambda$ | `covered` | `test-rotate-compare-loadings.R` | rotation-variant; warn |
 | EXT-15 | `rotate_loadings()` varimax / quartimax | `covered` | `test-rotate-compare-loadings.R`, `test-rotation-advisory.R` | |
 | EXT-16 | `getLV()` legacy ordination alias | `covered` | `test-extractors.R` | slated for `deprecate_soft()` 0.3.0 |
@@ -281,9 +281,9 @@ Row-owner: **Fisher** (inference completeness lead).
 | CI-05 | `profile_ci_phylo_signal()` (PR #105) | `covered` | `test-profile-ci.R` | |
 | CI-06 | `profile_ci_communality()` (PR #120) | `covered` | `test-profile-ci.R` | |
 | CI-07 | `profile_ci_correlation()` (PR #122) | `covered` | `test-profile-ci.R` | |
-| CI-08 | `coverage_study()` ≥ 94 % empirical coverage gate (PR #120) | `partial` (M3.3 production gate failed) | `test-coverage-study.R`; `dev/precomputed/coverage-gaussian-d2.rds` (R = 200, PR-0C.COVERAGE); `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md` (R = 200 Actions run 26100827665) | M3.3 profile-psi production run completed 2026-05-19: workflow passed 15/15 jobs, but only Gaussian d=1 and Gaussian d=3 cleared the 94 % gate; 13/15 cells remain below gate and 236/3000 replicate fits failed. No production RDS promoted to `inst/extdata/`; next lane diagnoses CI calibration / convergence before coverage claims move. |
+| CI-08 | `coverage_study()` ≥ 94 % empirical coverage gate (PR #120) | `partial` (M3.3 production gate failed) | `test-coverage-study.R`; `dev/precomputed/coverage-gaussian-d2.rds` (R = 200, PR-0C.COVERAGE); `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md` (R = 200 Actions run 26100827665) | M3.3 profile-psi production run completed 2026-05-19: workflow passed 15/15 jobs, but only Gaussian d=1 and Gaussian d=3 cleared the 94 % gate; 13/15 cells remain below gate and 236/3000 replicate fits failed. No production RDS promoted to `inst/extdata/`; Design 50 now requires surface admission, target-explicit total `Sigma_unit[tt]`, and a diagnostic report before coverage claims move. |
 | CI-09 | Fisher-z CI on correlations | `covered` | `test-fisher-z-correlations.R` | |
-| CI-10 | profile / Wald / bootstrap on mixed-family fits | `partial` | `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md` | M3.3 mixed-family production cells did not clear the profile-psi coverage gate: d=1 0.820, d=2 0.685, d=3 0.550, with 105/600 failed replicate fits. This is evidence for further M3 triage, not `covered` status. |
+| CI-10 | profile / Wald / bootstrap on mixed-family fits | `partial` | `docs/dev-log/audits/2026-05-19-m3-production-grid-artifact-review.md` | M3.3 mixed-family production cells did not clear the profile-psi coverage gate: d=1 0.820, d=2 0.685, d=3 0.550, with 105/600 failed replicate fits. Design 50 keeps this as triage evidence until target-explicit mixed-family surfaces pass admission and promotion gates. |
 
 ### Section 11 — Lambda constraint (M2 binary IRT)
 

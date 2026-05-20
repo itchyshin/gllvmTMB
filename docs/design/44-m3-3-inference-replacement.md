@@ -7,6 +7,10 @@ Ada (coordinator).
 **Status**: Active design record — historical method comparison plus
 the current target-explicit pilot plan before the next production
 dispatch.
+**2026-05-20 naming update**: `M3.3b` now names the surface-admission
+gate in `docs/design/50-m3-3b-surface-admission.md`. The older
+profile-likelihood subset below is retained as historical method
+context only.
 **Implementation update (2026-05-18/19)**: M3.3a has since moved to
 the profile-primary path recorded in
 `docs/dev-log/after-task/2026-05-18-m3-3a-profile-primary.md`.
@@ -138,13 +142,15 @@ matches the audit's "≥94% empirical coverage" wording so long
 as the bootstrap CIs cover; if any cell falls short, M3.4
 investigates that boundary regime.**
 
-### M3.3b — Profile-likelihood on a small subset (optional)
+### Former M3.3b label — profile-likelihood subset (historical)
 
 Only the d=1 Gaussian + binomial + ordinal-probit cells, R = 50
 reps (not 200). Verifies that profile CIs hit ≥94% where bootstrap
 does. The slice serves as a cross-validation of M3.3a's bootstrap
-output. If they agree to 1-2 pp, we have high confidence in the
-smaller-N production grid. ~12 h compute.
+output. This is no longer the active meaning of M3.3b; profile subset
+checks can return later as one admitted surface under Design 50. If
+they agree to 1-2 pp, we have high confidence in the smaller-N
+production grid. ~12 h compute.
 
 ### M3.3c — Delta-method Wald as the fast diagnostic
 
@@ -191,7 +197,7 @@ later aggregation.
 |---|---|---|---|
 | **Smoke M3.3a** | 15 × 10 × 30 | ~2 h serial / ~20 min ×8 cores | `inst/extdata/m3-coverage-grid-smoke.rds` refresh |
 | **Production M3.3a** | 15 × 200 | Manual Actions matrix; bounded by slowest cell and `max-parallel` | Per-cell workflow artifacts; follow-up PR aggregates to `inst/extdata/m3-coverage-grid-production.rds` if the evidence is publication-ready |
-| **M3.3b cross-validation** | 9 × 50 × N/A (profile) | ~12 h serial / ~2 h ×8 cores | `inst/extdata/m3-coverage-profile-subset.rds` |
+| **Former profile-subset cross-validation** | 9 × 50 × N/A (profile) | ~12 h serial / ~2 h ×8 cores | `inst/extdata/m3-coverage-profile-subset.rds` |
 
 The workflow PR only installs reproducible dispatch and artifact
 capture. The production evidence is not claimed until a manual run
@@ -311,7 +317,8 @@ conditional simulation.
   parameters as truth).
 - `R/bootstrap-sigma.R` — the existing machinery for
   bootstrap CIs on Sigma summaries.
-- `R/profile-ci.R` + `R/profile-derived.R` — the M3.3b machinery.
+- `R/profile-ci.R` + `R/profile-derived.R` — profile machinery for a
+  future admitted profile subset.
 - `inst/extdata/mixed-family-fixture.rds` — the M1 pattern the
   M3.2c integration mirrored.
 - `vignettes/articles/simulation-recovery-validated.Rmd` — the
@@ -346,5 +353,6 @@ conditional simulation.
   mixed-family integration confirmed via M3.2c precedent.
 - **Rose** (review): scope honesty in §7; Q-Rose-1 above flags
   the placeholder-vs-replace decision.
-- **Ada** (coordinator): M3.3a / M3.3b / M3.3c slicing; deferral
-  of M3.3c to post-M3 polish; cross-link to M3.4 boundary work.
+- **Ada** (coordinator): original M3.3 method slicing; deferral of
+  delta-method Wald work to post-M3 polish; cross-link to M3.4
+  boundary work.

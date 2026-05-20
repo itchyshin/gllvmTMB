@@ -92,8 +92,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
+| Codex / Ada + Ramanujan + Euler | M3.3b surface-admission + diagnostic visualization gate | `codex/m3-3b-surface-visual-gate-2026-05-20` | `docs/design/50-m3-3b-surface-admission.md`, `docs/design/44-m3-3-inference-replacement.md`, `docs/design/46-visualization-grammar.md`, `docs/design/35-validation-debt-register.md`, `ROADMAP.md`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-m3-3b-surface-visual-gate.md` | Active; integrating read-only parallel scout outputs for #217 and #218 into a small spec PR. |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

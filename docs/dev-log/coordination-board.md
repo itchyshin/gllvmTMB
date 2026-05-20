@@ -66,6 +66,8 @@ Current operating rule:
   OS-named jobs.
 - PR #206 (robust modeling diagnostics and starts) merged on
   2026-05-19 after 3-OS R-CMD-check passed on the PR branch.
+- PR #207 (M3.3a fit-health pilot metadata) merged on 2026-05-19
+  after 3-OS R-CMD-check passed on the PR branch.
 - Both teams should keep write scopes explicit in this file until
   the open PR count returns to zero.
 
@@ -73,10 +75,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | M3.3a fit-health pilot schema | PR #207 / `codex/m3-3a-fit-health-pilot-2026-05-19` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `docs/dev-log/*` | Rebased onto `main` after #206; GitHub R-CMD-check passed; night `nbinom2` pilot shows residual multistart fixes original failures in toy runs but target-scale bias remains |
-| Codex / Ada | Convergence/start-values article | PR #208 / `codex/convergence-start-values-article-2026-05-19` | `vignettes/articles/convergence-start-values.Rmd`, `_pkgdown.yml`, `ROADMAP.md`, `docs/dev-log/*` | Rebased onto `main` after #206; GitHub R-CMD-check still running |
+| Codex / Ada | Convergence/start-values article | PR #208 / `codex/convergence-start-values-article-2026-05-19` | `vignettes/articles/convergence-start-values.Rmd`, `_pkgdown.yml`, `ROADMAP.md`, `docs/dev-log/*` | Rebased onto `main` after #207; local article render and `pkgdown::check_pkgdown()` passed; refreshed GitHub R-CMD-check pending |
 
-**WIP**: 2.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -152,6 +153,11 @@ Resolved questions move to "Recently resolved" with the answer.
   start provenance) merged to `main` as squash commit `a89aac8` after
   three-OS R-CMD-check passed on the PR branch. Branches #207 and #208
   were rebased onto `main`.
+- **2026-05-19 ~20:45 MT**: PR #207 (M3.3a fit-health pilot
+  metadata) merged to `main` as squash commit `2af6a61` after
+  three-OS R-CMD-check passed on the final PR head. PR #208 was then
+  rebased onto the new `main` with both check-log append blocks
+  preserved.
 - **2026-05-19 ~15:52 MT**: PR #205 (M3.3 target-explicit pilot
   grid) merged to `main` after the fast-path R-CMD-check parser gate
   passed on ubuntu, macOS, and Windows. The dev grid now records

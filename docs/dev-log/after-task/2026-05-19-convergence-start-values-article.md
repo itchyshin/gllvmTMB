@@ -31,6 +31,7 @@ bootstrap or profile uncertainty.
 - `ROADMAP.md`
 - `vignettes/articles/convergence-start-values.Rmd`
 - `docs/dev-log/check-log.md`
+- `docs/dev-log/coordination-board.md`
 - `docs/dev-log/after-task/2026-05-19-convergence-start-values-article.md`
 
 No generated Rd, NAMESPACE, R source, tests, family code, formula
@@ -90,6 +91,9 @@ recommendation wording until the M3.3a pilot produces larger evidence.
   -> `No problems found.`
 - `git diff --check origin/main...HEAD`
   -> clean.
+- Coordination-board sync after PR #207 merged
+  -> WIP reduced to 1; #207 moved to recently resolved; #208 marked
+  rebased onto `main` after #207 with refreshed CI pending.
 - Replacement-thread Rose pass after #206 merged:
   `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
   -> rendered `articles/convergence-start-values.html`; same existing

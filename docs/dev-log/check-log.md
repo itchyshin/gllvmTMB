@@ -2671,6 +2671,9 @@ Evidence:
   preserved the M3.3a fit-health pilot schema and nbinom2 night-pilot
   entries first, then preserved the convergence/start-values article
   and Rose-pass entries after them.
+- Coordination board updated:
+  WIP reduced to 1; PR #207 moved to recently resolved; PR #208 kept
+  as the only active lane with refreshed GitHub R-CMD-check pending.
 - `git grep -n -E '^(<<<<<<<|=======|>>>>>>>)' -- docs/dev-log/check-log.md docs/dev-log/after-task/2026-05-19-convergence-start-values-article.md vignettes/articles/convergence-start-values.Rmd ROADMAP.md _pkgdown.yml`
   -> no conflict markers.
 - `Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`

@@ -97,8 +97,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
+| Codex / Ada | #223 sister-package citation and provenance hygiene | `codex/sister-package-citation-hygiene-2026-05-20` | `inst/COPYRIGHTS`, comparator docs, M3 diagnostic docs, check-log, after-task | Active 2026-05-20 12:00 MDT; patching stale `3 x 5` wording and literature-map context |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

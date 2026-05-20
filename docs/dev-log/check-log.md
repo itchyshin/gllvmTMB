@@ -2470,3 +2470,55 @@ Kaizen point:
     Otherwise `nbinom2` failures blur into one bucket instead of showing
     whether the problem is fitting, Hessian inference, refit failure, or
     target-scale bias.
+
+## 2026-05-19 -- M3.3a nbinom2 night pilot
+
+Scope:
+
+- Run a small `nbinom2` start-strategy comparison using the Branch B
+  fit-health schema after PR #206 merged to `main`.
+- Keep artifacts in `/tmp` and record only the summary in a dev-log
+  audit because this is pilot evidence, not a promoted package
+  dataset.
+
+Evidence:
+
+- PR #206 merged as squash commit `a89aac8`.
+- Branch #207 was rebased onto `origin/main`, force-pushed, and its
+  PR base was changed from `codex/rr-residual-starts-2026-05-19` to
+  `main`.
+- `Rscript --vanilla -e 'invisible(parse(file="dev/m3-grid.R")); invisible(parse(file="dev/precompute-m3-grid.R")); cat("parse ok\n")'`
+  -> `parse ok`.
+- `Rscript --vanilla dev/precompute-m3-grid.R --full --family=gaussian --d=1 --n-reps=2 --start-method=res --start-jitter=0.1 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-night-smoke --out-prefix=gaussian-res-sefalse-n2`
+  -> completed 2 / 2 original fits; 0 / 4 bootstrap refits failed.
+- `Rscript --vanilla dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 --n-reps=2 --init-strategy=single_trait_warmup --start-method=res --start-jitter=0.2 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-night-smoke --out-prefix=nbinom2-res-sefalse-n2`
+  -> completed 1 / 2 original fits; 1 / 2 bootstrap refits failed.
+- `Rscript --vanilla dev/precompute-m3-grid.R --full --family=mixed --d=1 --n-reps=2 --start-method=res --start-jitter=0.1 --n-init=2 --init-jitter=0.05 --se=false --targets=Sigma_unit_diag --n-boot=2 --n-cores-boot=1 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-night-smoke --out-prefix=mixed-res-sefalse-n2`
+  -> completed 2 / 2 original fits; 0 / 4 bootstrap refits failed.
+- Four `nbinom2` `n_reps = 5`, `n_boot = 5` start grids:
+  default, single-trait warmup, warmup + residual multistart, and
+  warmup + residual multistart + BFGS. Residual multistart removed
+  original fit failures in this toy grid; BFGS lowered bootstrap
+  refit failure rate from 0.20 to 0.12; coverage remained poor
+  (0.08 to 0.20) with mostly lower misses and estimates above truth.
+- Multicore smoke:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 --n-reps=3 --init-strategy=single_trait_warmup --start-method=res --start-jitter=0.2 --n-init=5 --init-jitter=0.05 --optimizer=optim --optim-method=BFGS --se=false --targets=Sigma_unit_diag --n-boot=6 --n-cores-boot=2 --ci-level=0.80 --out-dir=/tmp/gllvmtmb-m3-3a-night-nb-multicore --out-prefix=nbinom2-warmup-res-bfgs-cores2-n3`
+  -> completed 3 / 3 original fits; 2 / 18 bootstrap refits failed;
+  artifact recorded `n_cores_boot = 2`.
+- `git diff --check`
+  -> clean.
+
+Audit report:
+
+- `docs/dev-log/audits/2026-05-19-m3-3a-nbinom2-night-pilot.md`
+
+Kaizen point:
+
+36. **nbinom2 looks under-started and target-biased, not merely slow.**
+    In the toy night grid, residual multistart fixed original optimizer
+    failures, and BFGS helped bootstrap refit failures. But
+    `Sigma_unit_diag` still missed badly, mostly below the interval
+    with estimates above truth. The next lane should separate optimizer
+    failure, bootstrap refit failure, Hessian/SE failure, and
+    target-scale bias instead of treating "nbinom2 failed" as one
+    bucket.

@@ -97,8 +97,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
+| Codex / Ada + Fisher + Gauss + Curie + Rose + Florence | M3.3b NB2 start/local-basin probe scaffold | PR #224 / `codex/m3-3b-nb2-start-probe-2026-05-20` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `ROADMAP.md`, `docs/dev-log/check-log.md`, `docs/dev-log/coordination-board.md`, `docs/dev-log/after-task/2026-05-20-m3-3b-nb2-start-probe.md` | Active; PR opened, local tests and selected-config smoke passed. |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

@@ -186,6 +186,20 @@ test_that("M3 stress register can include Gaussian and Poisson controls", {
   expect_true(all(sim$data$value >= 0))
 })
 
+test_that("M3 NB2 start probe configs are bounded and labelled", {
+  source_m3_grid()
+
+  configs <- m3_nb2_start_probe_configs(include_optimizer_probe = FALSE)
+
+  expect_equal(configs$probe_id[1], "current_res_bfgs_n3_j005")
+  expect_true(all(c(
+    "probe_id", "probe_label", "start_method_name", "optimizer",
+    "n_init", "init_jitter"
+  ) %in% names(configs)))
+  expect_true(all(configs$optimizer == "optim"))
+  expect_true(any(configs$n_init > configs$n_init[1]))
+})
+
 test_that("M3 point-only Sigma diagnostics are not coverage evidence", {
   source_m3_grid()
 
@@ -231,6 +245,61 @@ test_that("M3 point-only Sigma diagnostics are not coverage evidence", {
   expect_equal(summary_df$profile_gate_status, c("NOT_EVALUATED", "NOT_EVALUATED"))
   expect_equal(summary_df$pilot_status, c("POINT_ONLY", "POINT_ONLY"))
   expect_equal(summary_df$median_est_truth_ratio, c(0.5, 0.75))
+})
+
+test_that("M3 summaries keep start-probe rows separated", {
+  source_m3_grid()
+
+  base <- data.frame(
+    probe_id = rep(c("current_res_bfgs_n3_j005", "res_bfgs_n10_j020"), each = 4L),
+    probe_label = rep(c("current", "more restarts"), each = 4L),
+    probe_stage = M3_START_PROBE_STAGE,
+    probe_start_method = rep(c("res", "res"), each = 4L),
+    probe_optimizer = rep(c("optim", "optim"), each = 4L),
+    probe_n_init = rep(c(3L, 10L), each = 4L),
+    probe_init_jitter = rep(c(0.05, 0.2), each = 4L),
+    surface_id = "nbinom2-d1-baseline-phi1-n60",
+    scenario = "baseline_phi1_n60",
+    run_stage = M3_START_PROBE_STAGE,
+    cell = "nbinom2-d1",
+    family = "nbinom2",
+    d = 1L,
+    target = "Sigma_unit_diag",
+    ci_method = "none",
+    fit_phi_mode = "estimated",
+    rep = rep(c(1L, 1L, 1L, 1L), 2L),
+    trait_id = rep(c(1L, 2L, 1L, 2L), 2L),
+    fit_converged = TRUE,
+    converged = TRUE,
+    ci_available = FALSE,
+    covered = NA,
+    miss_side = "ci_unavailable",
+    truth = rep(c(2, 4, 2, 4), 2L),
+    estimate = c(1, 2, 1, 2, 1.5, 3, 1.5, 3),
+    truth_phi = 2,
+    est_phi_nbinom2 = c(1, 1, 1, 1, 1.5, 1.5, 1.5, 1.5),
+    est_link_residual = 2,
+    n_boot_failed = 0L,
+    n_boot = 0L,
+    n_cores_boot = 1L,
+    n_units = 60L,
+    n_traits = 5L,
+    lambda_scale = 1,
+    psi_scale = 1,
+    seed_base = 20260520L,
+    restart_count = rep(c(3L, 10L), each = 4L),
+    objective_spread = rep(c(0.1, 0.02), each = 4L),
+    runtime_s = 1
+  )
+
+  summary_df <- m3_summarise(base)
+  summary_df <- summary_df[order(summary_df$probe_id), ]
+
+  expect_equal(nrow(summary_df), 2L)
+  expect_equal(summary_df$probe_id, c("current_res_bfgs_n3_j005", "res_bfgs_n10_j020"))
+  expect_equal(summary_df$pilot_status, c("POINT_ONLY", "POINT_ONLY"))
+  expect_equal(summary_df$median_est_truth_ratio, c(0.5, 0.75))
+  expect_equal(summary_df$median_restart_count, c(3, 10))
 })
 
 test_that("M3 diagnostic report data keeps trait ratios and failure ledger", {

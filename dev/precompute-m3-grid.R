@@ -19,6 +19,11 @@
 ##     --targets=Sigma_unit_diag --n-reps=10 --n-boot=10
 ##   Rscript dev/precompute-m3-grid.R --nb2-stress-map --n-reps=10 \
 ##     --out-prefix=m3-nb2-stress-point
+##   Rscript dev/precompute-m3-grid.R --nb2-start-probe --n-reps=5 \
+##     --out-prefix=m3-nb2-start-probe
+##   Rscript dev/precompute-m3-grid.R --nb2-start-probe --n-reps=1 \
+##     --probe-config=current_res_bfgs_n3_j005 \
+##     --out-prefix=m3-nb2-start-probe-smoke
 ##
 ## Output:
 ##   dev/precomputed/m3-coverage-grid.rds (long-format)
@@ -45,7 +50,9 @@ source("dev/m3-grid.R")
 ## ---- Argument parsing -------------------------------------------------
 
 args <- commandArgs(trailingOnly = TRUE)
-mode <- if ("--nb2-stress-map" %in% args) {
+mode <- if ("--nb2-start-probe" %in% args) {
+  "nb2-start-probe"
+} else if ("--nb2-stress-map" %in% args) {
   "nb2-stress-map"
 } else if ("--full" %in% args) {
   "full"
@@ -109,6 +116,14 @@ config <- switch(
     ),
     n_reps = 10L,
     label = "nb2-stress-map"
+  ),
+  `nb2-start-probe` = list(
+    cells = m3_nb2_stress_surfaces(include_controls = FALSE),
+    start_configs = m3_nb2_start_probe_configs(
+      include_optimizer_probe = !("--no-optimizer-probe" %in% args)
+    ),
+    n_reps = 5L,
+    label = "nb2-start-probe"
   )
 )
 
@@ -134,6 +149,20 @@ if (!is.null(d_filter)) {
 }
 if (!nrow(config$cells)) {
   stop("No M3 cells selected")
+}
+if (identical(mode, "nb2-start-probe")) {
+  probe_filter <- split_arg(arg_value("--probe-config"))
+  if (!is.null(probe_filter) && !"all" %in% probe_filter) {
+    unknown <- setdiff(probe_filter, config$start_configs$probe_id)
+    if (length(unknown)) {
+      stop("Unknown --probe-config value(s): ", paste(unknown, collapse = ", "))
+    }
+    config$start_configs <- config$start_configs[
+      config$start_configs$probe_id %in% probe_filter,
+      ,
+      drop = FALSE
+    ]
+  }
 }
 
 n_reps_override <- arg_value("--n-reps")
@@ -180,20 +209,24 @@ if (is.na(phi_rate) || phi_rate <= 0) {
 init_strategy <- match.arg(
   arg_value(
     "--init-strategy",
-    if (identical(mode, "nb2-stress-map")) "single_trait_warmup" else "default"
+    if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+      "single_trait_warmup"
+    } else {
+      "default"
+    }
   ),
   c("default", "single_trait_warmup")
 )
 start_method_name <- arg_value(
   "--start-method",
-  if (identical(mode, "nb2-stress-map")) "res" else "default"
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "res" else "default"
 )
 if (!start_method_name %in% c("default", "res", "indep")) {
   stop("--start-method must be one of default, res, indep")
 }
 start_jitter <- as.numeric(arg_value(
   "--start-jitter",
-  if (identical(mode, "nb2-stress-map")) "0.2" else "0"
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "0.2" else "0"
 ))
 if (is.na(start_jitter) || start_jitter < 0) {
   stop("--start-jitter must be a non-negative number")
@@ -204,34 +237,37 @@ start_method <- if (identical(start_method_name, "default")) {
   list(method = start_method_name, jitter.sd = start_jitter)
 }
 optimizer <- match.arg(
-  arg_value("--optimizer", if (identical(mode, "nb2-stress-map")) "optim" else "nlminb"),
+  arg_value(
+    "--optimizer",
+    if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "optim" else "nlminb"
+  ),
   c("nlminb", "optim")
 )
 optim_method <- arg_value("--optim-method", "BFGS")
 optArgs <- if (identical(optimizer, "optim")) list(method = optim_method) else list()
 n_init <- as.integer(arg_value(
   "--n-init",
-  if (identical(mode, "nb2-stress-map")) "3" else "1"
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "3" else "1"
 ))
 if (is.na(n_init) || n_init < 1L) {
   stop("--n-init must be a positive integer")
 }
 init_jitter <- as.numeric(arg_value(
   "--init-jitter",
-  if (identical(mode, "nb2-stress-map")) "0.05" else "0.3"
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "0.05" else "0.3"
 ))
 if (is.na(init_jitter) || init_jitter < 0) {
   stop("--init-jitter must be a non-negative number")
 }
 se <- tolower(arg_value(
   "--se",
-  if (identical(mode, "nb2-stress-map")) "false" else "true"
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "false" else "true"
 ))
 if (!se %in% c("true", "false")) {
   stop("--se must be true or false")
 }
 se <- identical(se, "true")
-target_default <- if (identical(mode, "nb2-stress-map")) {
+target_default <- if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
   "Sigma_unit_diag"
 } else {
   "psi"
@@ -239,7 +275,7 @@ target_default <- if (identical(mode, "nb2-stress-map")) {
 targets <- m3_normalise_targets(split_arg(arg_value("--targets", target_default)))
 n_boot <- as.integer(arg_value(
   "--n-boot",
-  if (identical(mode, "nb2-stress-map")) "0" else "30"
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "0" else "30"
 ))
 if (is.na(n_boot) || n_boot < 0L) {
   stop("--n-boot must be a non-negative integer")
@@ -264,23 +300,35 @@ if (!dir.exists(OUT_DIR)) {
 
 ## ---- Run --------------------------------------------------------------
 
-if (identical(mode, "nb2-stress-map")) {
+if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
   config$cells$target <- paste(targets, collapse = ",")
   config$cells$n_boot <- n_boot
   config$cells$n_cores_boot <- n_cores_boot
   config$cells$ci_method <- if (n_boot == 0L) "none" else "bootstrap"
 }
 
+n_start_configs <- if (identical(mode, "nb2-start-probe")) {
+  nrow(config$start_configs)
+} else {
+  1L
+}
+run_seed_base <- if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+  20260520L
+} else {
+  20260517L
+}
+
 cat(sprintf(
-  "[m3] mode = %s (%d cells x %d reps; n_units = %s; n_traits = %s; lambda_scale = %s; psi_scale = %s; phi = %s; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
+  "[m3] mode = %s (%d cells x %d reps x %d start configs; n_units = %s; n_traits = %s; lambda_scale = %s; psi_scale = %s; phi = %s; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
   mode,
   nrow(config$cells),
   config$n_reps,
-  if (identical(mode, "nb2-stress-map")) "surface-specific" else as.character(n_units),
-  if (identical(mode, "nb2-stress-map")) "surface-specific" else as.character(n_traits),
-  if (identical(mode, "nb2-stress-map")) "surface-specific" else sprintf("%.3g", lambda_scale),
-  if (identical(mode, "nb2-stress-map")) "surface-specific" else sprintf("%.3g", psi_scale),
-  if (identical(mode, "nb2-stress-map")) "surface-specific" else if (is.null(phi)) "sampled" else format(phi, scientific = FALSE),
+  n_start_configs,
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else as.character(n_units),
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else as.character(n_traits),
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else sprintf("%.3g", lambda_scale),
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else sprintf("%.3g", psi_scale),
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else if (is.null(phi)) "sampled" else format(phi, scientific = FALSE),
   init_strategy,
   start_method_name,
   optimizer,
@@ -295,7 +343,7 @@ if (identical(mode, "nb2-stress-map")) {
   grid_df <- m3_run_surface_register(
     surfaces = config$cells,
     n_reps = config$n_reps,
-    seed_base = 20260520L,
+    seed_base = run_seed_base,
     init_strategy = init_strategy,
     start_method = start_method,
     optimizer = optimizer,
@@ -306,11 +354,24 @@ if (identical(mode, "nb2-stress-map")) {
     ci_level = ci_level,
     verbose = TRUE
   )
+} else if (identical(mode, "nb2-start-probe")) {
+  grid_df <- m3_run_start_probe(
+    surfaces = config$cells,
+    configs = config$start_configs,
+    n_reps = config$n_reps,
+    seed_base = run_seed_base,
+    targets = targets,
+    n_boot = n_boot,
+    n_cores_boot = n_cores_boot,
+    se = se,
+    ci_level = ci_level,
+    verbose = TRUE
+  )
 } else {
   grid_df <- m3_run_grid(
     cells = config$cells,
     n_reps = config$n_reps,
-    seed_base = 20260517L,
+    seed_base = run_seed_base,
     n_units = n_units,
     n_traits = n_traits,
     lambda_scale = lambda_scale,
@@ -335,7 +396,7 @@ if (identical(mode, "nb2-stress-map")) {
 t_elapsed <- as.numeric(difftime(Sys.time(), t_start, units = "secs"))
 
 summary_df <- m3_summarise(grid_df)
-report <- if (identical(mode, "nb2-stress-map")) {
+report <- if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
   m3_diagnostic_report_data(grid_df)
 } else {
   NULL
@@ -360,9 +421,15 @@ artefact <- list(
     gllvmTMB_ver = as.character(utils::packageVersion("gllvmTMB")),
     R_version = R.version.string,
     elapsed_s = t_elapsed,
-    seed_base = 20260517L,
+    seed_base = run_seed_base,
     n_reps = config$n_reps,
     n_cells = nrow(config$cells),
+    n_start_configs = n_start_configs,
+    start_configs = if (identical(mode, "nb2-start-probe")) {
+      config$start_configs
+    } else {
+      NULL
+    },
     n_units = n_units,
     n_traits = n_traits,
     lambda_scale = lambda_scale,

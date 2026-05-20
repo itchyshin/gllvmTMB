@@ -57,7 +57,7 @@ file references.
      examples use the `traits(...)` LHS while the export remains
      live for migration;
    - **`meta_known_V` used as the primary keyword name** —
-     canonical is `meta_V(value, V = V)` since 0.2.0;
+     canonical is `meta_V(V = V)` since 0.2.0;
      `meta_known_V` is a deprecated alias.
 8. **Validation-debt register cross-check (Phase 0A 2026-05-16).**
    Every "stable" / "covered" claim in user-facing prose maps to a

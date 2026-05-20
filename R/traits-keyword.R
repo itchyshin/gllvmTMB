@@ -196,6 +196,7 @@ is_traits_lhs <- function(formula) {
   "phylo_slope",
   "propto",
   "equalto",
+  "meta_V",
   "meta_known_V",
   "meta"
 )

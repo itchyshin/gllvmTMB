@@ -51,7 +51,7 @@
 ##   spatial_latent(0 + trait | coords, d = K)    (engine path: spde_lv_k = K)
 ##   spatial(0 + trait | coords)                  DEPRECATED alias for
 ##                                                spatial_unique()
-##   meta_V(value, V = V)                         meta(value, sampling_var = V)
+##   meta_V(V = V)                                meta(sampling_var = V)
 ##                                                (still desugars further to
 ##                                                equalto(...) for the engine)
 ##
@@ -311,7 +311,7 @@ gr <- function(group, cov = NULL) {
 #' `equalto(0 + obs | grp_V, V)` inside `gllvmTMB()`.
 #'
 #' **Deprecated alias.** Use [meta_V()] in new code:
-#' `meta_V(value, V = V)`.
+#' `meta_V(V = V)`.
 #'
 #' ## Diagonal vs block-diagonal V
 #'
@@ -328,7 +328,7 @@ gr <- function(group, cov = NULL) {
 #'   meta-analytic dataset).
 #' @param sampling_var Either an unquoted column name holding the
 #'   per-row sampling variance, or a length-1 numeric used for every row.
-#'   Deprecated in favour of `meta_V(value, V = V)`.
+#'   Deprecated in favour of `meta_V(V = V)`.
 #'
 #' @return A formula marker; never evaluated.
 #' @seealso [meta_V()] (canonical replacement); [block_V()] for
@@ -341,7 +341,7 @@ gr <- function(group, cov = NULL) {
 #' V    <- diag(stage1_summary$sampling_var)
 #' fit2 <- gllvmTMB(value ~ 0 + trait +
 #'                    latent(0 + trait | site, d = 2) +
-#'                    meta_V(value, V = V),
+#'                    meta_V(V = V),
 #'                  data    = stage1_summary,
 #'                  trait   = "trait",
 #'                  unit    = "site",
@@ -503,8 +503,14 @@ NULL
 #'   )
 #' }
 #' @export
-phylo_latent <- function(species, d = 1, tree = NULL, vcv = NULL,
-                         A = NULL, Ainv = NULL) {
+phylo_latent <- function(
+  species,
+  d = 1,
+  tree = NULL,
+  vcv = NULL,
+  A = NULL,
+  Ainv = NULL
+) {
   invisible(NULL)
 }
 
@@ -622,8 +628,13 @@ phylo_slope <- function(formula) {
 #'   )
 #' }
 #' @export
-phylo_scalar <- function(species, tree = NULL, vcv = NULL,
-                         A = NULL, Ainv = NULL) {
+phylo_scalar <- function(
+  species,
+  tree = NULL,
+  vcv = NULL,
+  A = NULL,
+  Ainv = NULL
+) {
   invisible(NULL)
 }
 
@@ -717,8 +728,13 @@ phylo_scalar <- function(species, tree = NULL, vcv = NULL,
 #'   )
 #' }
 #' @export
-phylo_unique <- function(species, tree = NULL, vcv = NULL,
-                         A = NULL, Ainv = NULL) {
+phylo_unique <- function(
+  species,
+  tree = NULL,
+  vcv = NULL,
+  A = NULL,
+  Ainv = NULL
+) {
   invisible(NULL)
 }
 
@@ -997,30 +1013,31 @@ spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1) {
   invisible(NULL)
 }
 
-#' Known-V meta-analytic random effect (deprecated alias): `meta_known_V(value, V = V)`
+#' Known-V meta-analytic random effect (deprecated alias): `meta_known_V(V = V)`
 #'
 #' Deprecated alias for [meta_V()] (renamed 2026-05-16 per vision
 #' item 4). Both names desugar identically; new code should prefer
-#' `meta_V(value, V = V)`. The shorter `meta_V` is the canonical
+#' `meta_V(V = V)`. The shorter `meta_V` is the canonical
 #' 0.2.0 name; `meta_known_V` is retained as an alias for
 #' back-compatibility.
 #'
-#' @param value Response column name (typically the stage-1 BLUP or an
-#'   effect-size column).
-#' @param V Either a column name holding per-row sampling variances
-#'   (diagonal V) or a length-1 numeric used for every row. For
-#'   block-diagonal V, build it via [block_V()] and pass as the
-#'   `known_V =` argument to [gllvmTMB()].
+#' @param V Known sampling variance or covariance marker. In current
+#'   exact-additive fits, pass the actual matrix via the top-level
+#'   `known_V =` argument to [gllvmTMB()]. Formula-level `V = V` names
+#'   the marker and keeps the syntax aligned with `drmTMB::meta_V()`.
+#' @param type Sampling-covariance mode. `"exact"` is implemented.
+#'   `"proportional"` is reserved for the planned post-CRAN extension
+#'   and currently fails loud in the formula parser.
 #' @return A formula marker; never evaluated.
 #' @seealso [meta_V()] (canonical name; preferred for new code);
 #'   [meta()] (older deprecated short alias); [block_V()];
 #'   [gllvmTMB()].
 #' @export
-meta_known_V <- function(value, V) {
+meta_known_V <- function(V, type = "exact") {
   invisible(NULL)
 }
 
-#' Known-V meta-analytic random effect (canonical name): `meta_V(value, V = V)`
+#' Known-V meta-analytic random effect (canonical name): `meta_V(V = V)`
 #'
 #' Canonical formula keyword for the known-sampling-error term in
 #' two-stage meta-regression workflows. The name makes it explicit
@@ -1030,22 +1047,25 @@ meta_known_V <- function(value, V) {
 #' alias. Both names desugar identically in the formula parser.
 #'
 #' Pass the matrix `V` via the top-level `known_V = V` argument to
-#' [gllvmTMB()] when using the additive (default) form. For
-#' block-diagonal within-study correlation, build `V` via
-#' [block_V()].
+#' [gllvmTMB()] when using the exact-additive (default) form. For
+#' block-diagonal within-study correlation, build `V` via [block_V()].
+#' The future proportional-sampling-variance mode will use
+#' `type = "proportional"`; in 0.2.x this value is deliberately
+#' rejected rather than silently treated as exact.
 #'
-#' @param value Response column name (typically the stage-1 BLUP or
-#'   an effect-size column).
-#' @param V Either a column name holding per-row sampling variances
-#'   (diagonal V) or a length-1 numeric used for every row. For
-#'   block-diagonal V, build it via [block_V()] and pass as the
-#'   `known_V =` argument to [gllvmTMB()].
+#' @param V Known sampling variance or covariance marker. In current
+#'   exact-additive fits, pass the actual matrix via the top-level
+#'   `known_V =` argument to [gllvmTMB()]. Formula-level `V = V` names
+#'   the marker and keeps the syntax aligned with `drmTMB::meta_V()`.
+#' @param type Sampling-covariance mode. `"exact"` is implemented.
+#'   `"proportional"` is reserved for the planned post-CRAN extension
+#'   and currently fails loud in the formula parser.
 #' @return A formula marker; never evaluated.
 #' @seealso [meta_known_V()] (deprecated alias); [block_V()];
 #'   [gllvmTMB()]; vision doc "Planned extensions" for the future
-#'   `meta_V(scale = "proportional")` mode (Nakagawa 2022).
+#'   `meta_V(type = "proportional")` mode (Nakagawa 2022).
 #' @export
-meta_V <- function(value, V) {
+meta_V <- function(V, type = "exact") {
   invisible(NULL)
 }
 
@@ -1179,8 +1199,13 @@ indep <- function(formula) {
 #'                 unit    = "species",
 #'                 cluster = "species")
 #' }
-phylo_indep <- function(formula, tree = NULL, vcv = NULL,
-                        A = NULL, Ainv = NULL) {
+phylo_indep <- function(
+  formula,
+  tree = NULL,
+  vcv = NULL,
+  A = NULL,
+  Ainv = NULL
+) {
   invisible(NULL)
 }
 
@@ -1379,8 +1404,7 @@ dep <- function(formula) {
 #'   )
 #' }
 #' @export
-phylo_dep <- function(formula, tree = NULL, vcv = NULL,
-                      A = NULL, Ainv = NULL) {
+phylo_dep <- function(formula, tree = NULL, vcv = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
 }
 
@@ -1488,7 +1512,9 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   is.call(e) &&
     identical(e[[1L]], as.name("+")) &&
     length(e) == 3L &&
-    is.numeric(e[[2L]]) && length(e[[2L]]) == 1L && e[[2L]] == 0 &&
+    is.numeric(e[[2L]]) &&
+    length(e[[2L]]) == 1L &&
+    e[[2L]] == 0 &&
     is.name(e[[3L]])
 }
 
@@ -1511,10 +1537,13 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## If the first arg is not a bar at all (e.g. legacy `unique(grp)` bare-
 ## name form), this helper is a no-op.
 .assert_no_augmented_lhs <- function(fn, e) {
-  if (!is.call(e) || length(e) < 2L) return(invisible(NULL))
+  if (!is.call(e) || length(e) < 2L) {
+    return(invisible(NULL))
+  }
   bar <- e[[2L]]
-  if (!(is.call(bar) && identical(bar[[1L]], as.name("|")) &&
-        length(bar) == 3L)) {
+  if (
+    !(is.call(bar) && identical(bar[[1L]], as.name("|")) && length(bar) == 3L)
+  ) {
     return(invisible(NULL))
   }
   lhs <- bar[[2L]]
@@ -1523,13 +1552,17 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
   ## (per-trait intercepts). Anything else is augmented LHS, not yet
   ## supported by the engine.
   is_intercept_only <- (is.numeric(lhs) && length(lhs) == 1L && lhs == 1) ||
-                       (is.symbol(lhs) && identical(as.character(lhs), "1"))
+    (is.symbol(lhs) && identical(as.character(lhs), "1"))
   is_zero_plus_trait <- is.call(lhs) &&
     identical(lhs[[1L]], as.name("+")) &&
     length(lhs) == 3L &&
-    is.numeric(lhs[[2L]]) && lhs[[2L]] == 0 &&
-    is.symbol(lhs[[3L]]) && identical(as.character(lhs[[3L]]), "trait")
-  if (is_intercept_only || is_zero_plus_trait) return(invisible(NULL))
+    is.numeric(lhs[[2L]]) &&
+    lhs[[2L]] == 0 &&
+    is.symbol(lhs[[3L]]) &&
+    identical(as.character(lhs[[3L]]), "trait")
+  if (is_intercept_only || is_zero_plus_trait) {
+    return(invisible(NULL))
+  }
   cli::cli_abort(c(
     "{.fn {fn}} augmented LHS is not yet supported.",
     "i" = "You wrote {.code {fn}({deparse(bar)})}.",
@@ -1541,15 +1574,26 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 normalise_spatial_orientation <- function(e) {
   ## `e` is a call like spatial_unique(<bar>, ...). Replace its first
   ## positional argument with the canonically-oriented bar.
-  if (!is.call(e) || length(e) < 2L) return(e)
+  if (!is.call(e) || length(e) < 2L) {
+    return(e)
+  }
   fn <- as.character(e[[1L]])
-  if (!(fn %in% c("spatial_unique", "spatial_scalar", "spatial_latent",
-                  "spatial", "spatial_indep"))) {
+  if (
+    !(fn %in%
+      c(
+        "spatial_unique",
+        "spatial_scalar",
+        "spatial_latent",
+        "spatial",
+        "spatial_indep"
+      ))
+  ) {
     return(e)
   }
   bar <- e[[2L]]
-  if (!(is.call(bar) && identical(bar[[1L]], as.name("|")) &&
-        length(bar) == 3L)) {
+  if (
+    !(is.call(bar) && identical(bar[[1L]], as.name("|")) && length(bar) == 3L)
+  ) {
     cli::cli_abort(c(
       "{.fn {fn}} expects a {.code 0 + trait | coords} formula as its first argument.",
       "i" = "Got: {.code {deparse(bar)}}.",
@@ -1581,10 +1625,16 @@ normalise_spatial_orientation <- function(e) {
       what = I(sprintf("%s(coords | trait)", fn)),
       with = I(sprintf("%s(0 + trait | coords)", fn)),
       details = c(
-        i = paste0("The canonical formula orientation for spatial_* keywords is now ",
-                   "`0 + trait | coords`, matching `latent()`, `unique()`, and ",
-                   "glmmTMB's `gau(0 + trait | pos)` / `exp(0 + trait | pos)`."),
-        ">" = sprintf("Update `%s(coords | trait)` to `%s(0 + trait | coords)`.", fn, fn)
+        i = paste0(
+          "The canonical formula orientation for spatial_* keywords is now ",
+          "`0 + trait | coords`, matching `latent()`, `unique()`, and ",
+          "glmmTMB's `gau(0 + trait | pos)` / `exp(0 + trait | pos)`."
+        ),
+        ">" = sprintf(
+          "Update `%s(coords | trait)` to `%s(0 + trait | coords)`.",
+          fn,
+          fn
+        )
       ),
       id = sprintf("gllvmTMB-spatial-orientation-flip-%s", fn)
     )
@@ -1649,7 +1699,7 @@ normalise_spatial_orientation <- function(e) {
 ##                                      [fit-multi flips spde_lv_k = d and
 ##                                       allocates Lambda_spde + omega_spde_lv]
 ##   spatial(form)                    -> spde(form) (deprecation warn on the way)
-##   meta_V(value, V = V)             -> meta(value, sampling_var = V)
+##   meta_V(V = V)                    -> meta(sampling_var = V)
 ##
 ## Spatial keywords additionally get their bar normalised to
 ## `0 + trait | coords` via `normalise_spatial_orientation()` before the
@@ -1664,9 +1714,61 @@ rewrite_canonical_aliases <- function(formula) {
   ## from the original call so the rewritten call carries them through.
   .pass_through_extras <- function(e, keep) {
     args <- as.list(e)[-c(1L, 2L)]
-    nms  <- names(args)
-    if (is.null(nms) || length(args) == 0L) return(list())
+    nms <- names(args)
+    if (is.null(nms) || length(args) == 0L) {
+      return(list())
+    }
     args[nms %in% keep & nzchar(nms)]
+  }
+  .meta_type <- function(e, fn) {
+    nm <- names(e)
+    type_idx <- if (is.null(nm)) integer(0L) else which(nm == "type")
+    if (length(type_idx) == 0L) {
+      return("exact")
+    }
+    type_expr <- e[[type_idx[[1L]]]]
+    if (!is.character(type_expr) || length(type_expr) != 1L) {
+      cli::cli_abort(c(
+        "{.fn {fn}} requires {.arg type} to be a literal string.",
+        ">" = "Use {.code {fn}(V = V, type = \"exact\")}.",
+        "i" = "{.code type = \"proportional\"} is planned but not implemented in 0.2.x."
+      ))
+    }
+    type <- match.arg(type_expr, c("exact", "proportional"))
+    if (identical(type, "proportional")) {
+      cli::cli_abort(c(
+        "{.code {fn}(type = \"proportional\")} is planned but not implemented.",
+        "i" = "The current implementation supports exact additive known sampling covariance only.",
+        ">" = "Use {.code {fn}(V = V, type = \"exact\")} with {.arg known_V = V}."
+      ))
+    }
+    type
+  }
+  .meta_V_expr <- function(e, fn) {
+    nm <- names(e)
+    if (is.null(nm)) {
+      nm <- rep("", length(e))
+    }
+    nm[is.na(nm)] <- ""
+    V_idx <- which(nm == "V")
+    if (length(V_idx) > 0L) {
+      return(e[[V_idx[[1L]]]])
+    }
+    unnamed_idx <- which(nm == "")
+    unnamed_idx <- unnamed_idx[unnamed_idx != 1L]
+    if (length(unnamed_idx) >= 2L) {
+      ## Back-compat for the old positional spelling
+      ## `meta_V(value, V)` / `meta_known_V(value, V)`.
+      return(e[[unnamed_idx[[2L]]]])
+    }
+    if (length(unnamed_idx) == 1L) {
+      ## Canonical short spelling: `meta_V(V)`.
+      return(e[[unnamed_idx[[1L]]]])
+    }
+    cli::cli_abort(c(
+      "{.fn {fn}} requires a known sampling variance/covariance marker.",
+      ">" = "Use {.code {fn}(V = V)} and pass the matrix itself as {.code known_V = V} to {.fn gllvmTMB}."
+    ))
   }
   ## Animal-keyword input normaliser. Resolves any of `pedigree = ped`,
   ## `A = A_matrix`, `Ainv = Ainv_matrix` to an unevaluated expression
@@ -1678,7 +1780,9 @@ rewrite_canonical_aliases <- function(formula) {
   .animal_resolve_vcv_call <- function(e, fn) {
     nm <- names(e)
     if (is.null(nm)) {
-      if (fn == "animal_slope") return(NULL)
+      if (fn == "animal_slope") {
+        return(NULL)
+      }
       cli::cli_abort(c(
         "{.fn {fn}} requires one of {.arg pedigree}, {.arg A}, or {.arg Ainv}.",
         ">" = "e.g. {.code {fn}(id, pedigree = ped)}."
@@ -1705,7 +1809,9 @@ rewrite_canonical_aliases <- function(formula) {
       ## dense path (preserves backward compatibility).
       return(bquote(.gllvmTMB_maybe_keep_sparse_ainv(.(Ainv_expr))))
     }
-    if (fn == "animal_slope") return(NULL)
+    if (fn == "animal_slope") {
+      return(NULL)
+    }
     cli::cli_abort(c(
       "{.fn {fn}} requires one of {.arg pedigree}, {.arg A}, or {.arg Ainv}.",
       ">" = "e.g. {.code {fn}(id, pedigree = ped)}."
@@ -1729,35 +1835,45 @@ rewrite_canonical_aliases <- function(formula) {
       ## Must run BEFORE normalise_spatial_orientation() because (a)
       ## LHS = `1` and (b) augmented LHS would both be rejected as
       ## malformed bars by the orientation flip otherwise.
-      if (fn == "spatial" && length(e) >= 2L && is.call(e[[2L]]) &&
-          identical(e[[2L]][[1L]], as.name("|"))) {
+      if (
+        fn == "spatial" &&
+          length(e) >= 2L &&
+          is.call(e[[2L]]) &&
+          identical(e[[2L]][[1L]], as.name("|"))
+      ) {
         bar <- e[[2L]]
         lhs <- bar[[2L]]
         rhs <- bar[[3L]]
         ## Inspect named args.
         args_named <- as.list(e)[-c(1L, 2L)]
-        nms        <- names(args_named)
-        if (is.null(nms)) nms <- rep("", length(args_named))
+        nms <- names(args_named)
+        if (is.null(nms)) {
+          nms <- rep("", length(args_named))
+        }
         get_arg <- function(name, default = NULL) {
           ix <- which(nms == name)
-          if (length(ix) == 0L) return(default)
+          if (length(ix) == 0L) {
+            return(default)
+          }
           args_named[[ix[1L]]]
         }
-        mode_arg   <- get_arg("mode",   default = NULL)
-        mesh_arg   <- get_arg("mesh",   default = NULL)
+        mode_arg <- get_arg("mode", default = NULL)
+        mesh_arg <- get_arg("mesh", default = NULL)
         coords_arg <- get_arg("coords", default = NULL)
-        d_arg      <- get_arg("d",      default = NULL)
+        d_arg <- get_arg("d", default = NULL)
 
         ## Detect LHS shape.
-        is_intercept_only <- (is.numeric(lhs) && length(lhs) == 1L &&
-                              lhs == 1) ||
-                             (is.symbol(lhs) && identical(as.character(lhs), "1"))
+        is_intercept_only <- (is.numeric(lhs) &&
+          length(lhs) == 1L &&
+          lhs == 1) ||
+          (is.symbol(lhs) && identical(as.character(lhs), "1"))
         is_zero_plus_trait <- is.call(lhs) &&
           identical(lhs[[1L]], as.name("+")) &&
           length(lhs) == 3L &&
-          is.numeric(lhs[[2L]]) && lhs[[2L]] == 0 &&
-          is.symbol(lhs[[3L]]) && identical(as.character(lhs[[3L]]),
-                                            "trait")
+          is.numeric(lhs[[2L]]) &&
+          lhs[[2L]] == 0 &&
+          is.symbol(lhs[[3L]]) &&
+          identical(as.character(lhs[[3L]]), "trait")
 
         ## The dispatch fires only when the user gave us a clear hint
         ## that they want the new path: an intercept-only LHS (`1`),
@@ -1765,16 +1881,21 @@ rewrite_canonical_aliases <- function(formula) {
         ## legacy form `spatial(0 + trait | coords)` (no mode, no mesh,
         ## LHS = `0 + trait`) keeps flowing through the existing
         ## deprecation alias rewrite to `spatial_unique`.
-        new_path <- is_intercept_only || !is.null(mode_arg) ||
-                    !is.null(mesh_arg)
+        new_path <- is_intercept_only ||
+          !is.null(mode_arg) ||
+          !is.null(mesh_arg)
 
         if (new_path) {
           ## Helper: extras to splice into the rewritten call (named
           ## args mesh/coords only -- mode/d are interpreted here, not
           ## forwarded).
           extras <- list()
-          if (!is.null(mesh_arg))   extras$mesh   <- mesh_arg
-          if (!is.null(coords_arg)) extras$coords <- coords_arg
+          if (!is.null(mesh_arg)) {
+            extras$mesh <- mesh_arg
+          }
+          if (!is.null(coords_arg)) {
+            extras$coords <- coords_arg
+          }
 
           ## Augmented LHS (intercept + slope, per-trait + slope, ||):
           ## not yet supported by the engine. Stage 3 deliverable.
@@ -1793,7 +1914,9 @@ rewrite_canonical_aliases <- function(formula) {
           if (is_intercept_only) {
             ## LHS = `1`: mode is degenerate. Default to "scalar"; accept
             ## explicit "scalar"; error on any other explicit value.
-            if (is.null(mode_str)) mode_str <- "scalar"
+            if (is.null(mode_str)) {
+              mode_str <- "scalar"
+            }
             if (!identical(mode_str, "scalar")) {
               cli::cli_abort(c(
                 "{.code mode = {.val {mode_str}}} is degenerate when LHS is {.code 1} (intercept-only).",
@@ -1804,10 +1927,15 @@ rewrite_canonical_aliases <- function(formula) {
             ## The downstream spde engine reads neither side of the bar,
             ## so we synthesise the canonical bar regardless of what the
             ## user wrote on the RHS (could be `site`, `coords`, ...).
-            new_bar <- call("|", call("+", 0, as.name("trait")),
-                            as.name("coords"))
-            new_call <- as.call(c(list(as.name("spatial_scalar"), new_bar),
-                                  extras))
+            new_bar <- call(
+              "|",
+              call("+", 0, as.name("trait")),
+              as.name("coords")
+            )
+            new_call <- as.call(c(
+              list(as.name("spatial_scalar"), new_bar),
+              extras
+            ))
             return(rewrite(new_call))
           }
 
@@ -1828,24 +1956,23 @@ rewrite_canonical_aliases <- function(formula) {
           }
 
           if (mode_str == "diag") {
-            new_call <- as.call(c(list(as.name("spatial_unique"), bar),
-                                  extras))
+            new_call <- as.call(c(list(as.name("spatial_unique"), bar), extras))
             return(rewrite(new_call))
           }
           if (mode_str == "indep") {
-            new_call <- as.call(c(list(as.name("spatial_indep"), bar),
-                                  extras))
+            new_call <- as.call(c(list(as.name("spatial_indep"), bar), extras))
             return(rewrite(new_call))
           }
           if (mode_str == "latent") {
             d_use <- if (is.null(d_arg)) 1 else d_arg
-            new_call <- as.call(c(list(as.name("spatial_latent"), bar,
-                                       d = d_use), extras))
+            new_call <- as.call(c(
+              list(as.name("spatial_latent"), bar, d = d_use),
+              extras
+            ))
             return(rewrite(new_call))
           }
           if (mode_str == "dep") {
-            new_call <- as.call(c(list(as.name("spatial_dep"), bar),
-                                  extras))
+            new_call <- as.call(c(list(as.name("spatial_dep"), bar), extras))
             return(rewrite(new_call))
           }
         }
@@ -1854,8 +1981,17 @@ rewrite_canonical_aliases <- function(formula) {
       ## (`coords | trait` -> `0 + trait | coords`) BEFORE the rename so
       ## the lifecycle deprecation warning fires once per keyword per
       ## session and downstream code sees only the canonical form.
-      if (fn %in% c("spatial_unique", "spatial_scalar", "spatial_latent",
-                    "spatial", "spatial_indep", "spatial_dep")) {
+      if (
+        fn %in%
+          c(
+            "spatial_unique",
+            "spatial_scalar",
+            "spatial_latent",
+            "spatial",
+            "spatial_indep",
+            "spatial_dep"
+          )
+      ) {
         e <- normalise_spatial_orientation(e)
       }
       ## PHYLO `A =` / `Ainv =` alias normaliser. Per Design 14 sec 3
@@ -1864,8 +2000,16 @@ rewrite_canonical_aliases <- function(formula) {
       ## input retained for backward compatibility. Translate `A =` /
       ## `Ainv =` to `vcv =` BEFORE the phylo_X branch dispatches, so
       ## the existing rewrite logic is unchanged.
-      if (fn %in% c("phylo_scalar", "phylo_unique", "phylo_latent",
-                    "phylo_indep", "phylo_dep")) {
+      if (
+        fn %in%
+          c(
+            "phylo_scalar",
+            "phylo_unique",
+            "phylo_latent",
+            "phylo_indep",
+            "phylo_dep"
+          )
+      ) {
         nm <- names(e)
         if (!is.null(nm) && "A" %in% nm) {
           if ("vcv" %in% nm) {
@@ -1875,7 +2019,7 @@ rewrite_canonical_aliases <- function(formula) {
             ))
           }
           e[["vcv"]] <- e[[which(nm == "A")]]
-          e[["A"]]   <- NULL
+          e[["A"]] <- NULL
           nm <- names(e)
         }
         if (!is.null(nm) && "Ainv" %in% nm) {
@@ -1886,7 +2030,7 @@ rewrite_canonical_aliases <- function(formula) {
             ))
           }
           Ainv_expr <- e[[which(nm == "Ainv")]]
-          e[["vcv"]]  <- bquote(solve(as.matrix(.(Ainv_expr))))
+          e[["vcv"]] <- bquote(solve(as.matrix(.(Ainv_expr))))
           e[["Ainv"]] <- NULL
         }
       }
@@ -1896,8 +2040,17 @@ rewrite_canonical_aliases <- function(formula) {
       ## emits. No new TMB likelihood, no parser change downstream;
       ## animal_* is sugar that routes through the existing phylo_rr /
       ## propto engine path. Per docs/design/14-known-relatedness-keywords.md.
-      if (fn %in% c("animal_scalar", "animal_unique", "animal_latent",
-                    "animal_indep", "animal_dep", "animal_slope")) {
+      if (
+        fn %in%
+          c(
+            "animal_scalar",
+            "animal_unique",
+            "animal_latent",
+            "animal_indep",
+            "animal_dep",
+            "animal_slope"
+          )
+      ) {
         vcv_expr <- .animal_resolve_vcv_call(e, fn)
         nm <- names(e)
         ## animal_scalar(id, ...) -> phylo(id, vcv = A)   (then desugar to propto)
@@ -1908,25 +2061,36 @@ rewrite_canonical_aliases <- function(formula) {
         }
         ## animal_unique(id, ...) -> phylo_rr(id, .phylo_unique = TRUE, vcv = A)
         if (fn == "animal_unique") {
-          new_call <- as.call(c(list(as.name("phylo_rr"), e[[2L]]),
-                                list(.phylo_unique = TRUE),
-                                list(vcv = vcv_expr)))
+          new_call <- as.call(c(
+            list(as.name("phylo_rr"), e[[2L]]),
+            list(.phylo_unique = TRUE),
+            list(vcv = vcv_expr)
+          ))
           return(new_call)
         }
         ## animal_latent(id, d = K, ...) -> phylo_rr(id, d = K, vcv = A)
         if (fn == "animal_latent") {
-          d_val <- if (!is.null(nm) && "d" %in% nm) e[[which(nm == "d")]] else 1L
-          new_call <- as.call(c(list(as.name("phylo_rr"), e[[2L]]),
-                                list(d = d_val),
-                                list(vcv = vcv_expr)))
+          d_val <- if (!is.null(nm) && "d" %in% nm) {
+            e[[which(nm == "d")]]
+          } else {
+            1L
+          }
+          new_call <- as.call(c(
+            list(as.name("phylo_rr"), e[[2L]]),
+            list(d = d_val),
+            list(vcv = vcv_expr)
+          ))
           return(new_call)
         }
         ## animal_indep(0 + trait | id, ...) -> phylo_rr(id, .phylo_unique = TRUE,
         ##                                               .indep = TRUE, vcv = A)
         if (fn == "animal_indep") {
           bar <- e[[2L]]
-          if (!(is.call(bar) && identical(bar[[1L]], as.name("|")) &&
-                length(bar) == 3L)) {
+          if (
+            !(is.call(bar) &&
+              identical(bar[[1L]], as.name("|")) &&
+              length(bar) == 3L)
+          ) {
             cli::cli_abort(c(
               "{.fn animal_indep} expects a {.code 0 + trait | id} formula.",
               "i" = "Got: {.code {deparse(bar)}}.",
@@ -1934,17 +2098,22 @@ rewrite_canonical_aliases <- function(formula) {
             ))
           }
           species_arg <- bar[[3L]]
-          new_call <- as.call(c(list(as.name("phylo_rr"), species_arg),
-                                list(.phylo_unique = TRUE, .indep = TRUE),
-                                list(vcv = vcv_expr)))
+          new_call <- as.call(c(
+            list(as.name("phylo_rr"), species_arg),
+            list(.phylo_unique = TRUE, .indep = TRUE),
+            list(vcv = vcv_expr)
+          ))
           return(new_call)
         }
         ## animal_dep(0 + trait | id, ...) -> phylo_rr(id, d = .deferred_n_traits,
         ##                                             .dep = TRUE, vcv = A)
         if (fn == "animal_dep") {
           bar <- e[[2L]]
-          if (!(is.call(bar) && identical(bar[[1L]], as.name("|")) &&
-                length(bar) == 3L)) {
+          if (
+            !(is.call(bar) &&
+              identical(bar[[1L]], as.name("|")) &&
+              length(bar) == 3L)
+          ) {
             cli::cli_abort(c(
               "{.fn animal_dep} expects a {.code 0 + trait | id} formula.",
               "i" = "Got: {.code {deparse(bar)}}.",
@@ -1952,10 +2121,11 @@ rewrite_canonical_aliases <- function(formula) {
             ))
           }
           species_arg <- bar[[3L]]
-          new_call <- as.call(c(list(as.name("phylo_rr"), species_arg),
-                                list(d = as.name(".deferred_n_traits"),
-                                     .dep = TRUE),
-                                list(vcv = vcv_expr)))
+          new_call <- as.call(c(
+            list(as.name("phylo_rr"), species_arg),
+            list(d = as.name(".deferred_n_traits"), .dep = TRUE),
+            list(vcv = vcv_expr)
+          ))
           return(new_call)
         }
         ## animal_slope(x | id) -> phylo_slope(x | id, vcv = A) if A given;
@@ -1963,7 +2133,9 @@ rewrite_canonical_aliases <- function(formula) {
         if (fn == "animal_slope") {
           new_call <- e
           new_call[[1L]] <- as.name("phylo_slope")
-          if (!is.null(vcv_expr)) new_call[["vcv"]] <- vcv_expr
+          if (!is.null(vcv_expr)) {
+            new_call[["vcv"]] <- vcv_expr
+          }
           return(new_call)
         }
       }
@@ -1975,12 +2147,16 @@ rewrite_canonical_aliases <- function(formula) {
         ## (phylo_indep/phylo_dep at line ~1672/1738, spatial via
         ## normalise_spatial_orientation at line ~1198), so we only need
         ## to gate the non-phylo non-spatial `latent` here.
-        if (identical(fn, "latent")) .assert_no_augmented_lhs(fn, e)
-        target <- switch(fn,
-                         latent         = "rr",
-                         phylo_latent   = "phylo_rr",
-                         spatial_unique = "spde",
-                         spatial        = "spde")
+        if (identical(fn, "latent")) {
+          .assert_no_augmented_lhs(fn, e)
+        }
+        target <- switch(
+          fn,
+          latent = "rr",
+          phylo_latent = "phylo_rr",
+          spatial_unique = "spde",
+          spatial = "spde"
+        )
         new_call <- e
         new_call[[1L]] <- as.name(target)
         return(new_call)
@@ -2002,41 +2178,55 @@ rewrite_canonical_aliases <- function(formula) {
       ## `phylo(species)` and `phylo(species, vcv = Cphy)` fall through
       ## to the existing legacy rewrite in walk() (line ~1505) which
       ## maps them to `propto(0 + species | trait)`.
-      if (fn == "phylo" && length(e) >= 2L && is.call(e[[2L]]) &&
-          identical(e[[2L]][[1L]], as.name("|"))) {
-        bar      <- e[[2L]]
-        lhs      <- bar[[2L]]
-        rhs      <- bar[[3L]]   # the species factor (bare name)
+      if (
+        fn == "phylo" &&
+          length(e) >= 2L &&
+          is.call(e[[2L]]) &&
+          identical(e[[2L]][[1L]], as.name("|"))
+      ) {
+        bar <- e[[2L]]
+        lhs <- bar[[2L]]
+        rhs <- bar[[3L]] # the species factor (bare name)
         ## Inspect named args.
         args_named <- as.list(e)[-c(1L, 2L)]
-        nms        <- names(args_named)
-        if (is.null(nms)) nms <- rep("", length(args_named))
+        nms <- names(args_named)
+        if (is.null(nms)) {
+          nms <- rep("", length(args_named))
+        }
         get_arg <- function(name, default = NULL) {
           ix <- which(nms == name)
-          if (length(ix) == 0L) return(default)
+          if (length(ix) == 0L) {
+            return(default)
+          }
           args_named[[ix[1L]]]
         }
         mode_arg <- get_arg("mode", default = NULL)
         tree_arg <- get_arg("tree", default = NULL)
-        vcv_arg  <- get_arg("vcv",  default = NULL)
-        d_arg    <- get_arg("d",    default = NULL)
+        vcv_arg <- get_arg("vcv", default = NULL)
+        d_arg <- get_arg("d", default = NULL)
 
         ## Helper: extras to splice into the rewritten call (named args
         ## tree/vcv only -- mode/d are interpreted here, not forwarded).
         extras <- list()
-        if (!is.null(tree_arg)) extras$tree <- tree_arg
-        if (!is.null(vcv_arg))  extras$vcv  <- vcv_arg
+        if (!is.null(tree_arg)) {
+          extras$tree <- tree_arg
+        }
+        if (!is.null(vcv_arg)) {
+          extras$vcv <- vcv_arg
+        }
 
         ## Detect LHS shape.
-        is_intercept_only <- (is.numeric(lhs) && length(lhs) == 1L &&
-                              lhs == 1) ||
-                             (is.symbol(lhs) && identical(as.character(lhs), "1"))
+        is_intercept_only <- (is.numeric(lhs) &&
+          length(lhs) == 1L &&
+          lhs == 1) ||
+          (is.symbol(lhs) && identical(as.character(lhs), "1"))
         is_zero_plus_trait <- is.call(lhs) &&
           identical(lhs[[1L]], as.name("+")) &&
           length(lhs) == 3L &&
-          is.numeric(lhs[[2L]]) && lhs[[2L]] == 0 &&
-          is.symbol(lhs[[3L]]) && identical(as.character(lhs[[3L]]),
-                                            "trait")
+          is.numeric(lhs[[2L]]) &&
+          lhs[[2L]] == 0 &&
+          is.symbol(lhs[[3L]]) &&
+          identical(as.character(lhs[[3L]]), "trait")
 
         ## Augmented LHS (intercept + slope, per-trait + slope, ||): not
         ## yet supported by the engine. Stage 3 deliverable. Error with
@@ -2055,7 +2245,9 @@ rewrite_canonical_aliases <- function(formula) {
         if (is_intercept_only) {
           ## LHS = `1`: mode is degenerate. Default to "scalar"; accept
           ## explicit "scalar"; error on any other explicit value.
-          if (is.null(mode_str)) mode_str <- "scalar"
+          if (is.null(mode_str)) {
+            mode_str <- "scalar"
+          }
           if (!identical(mode_str, "scalar")) {
             cli::cli_abort(c(
               "{.code mode = {.val {mode_str}}} is degenerate when LHS is {.code 1} (intercept-only).",
@@ -2064,7 +2256,7 @@ rewrite_canonical_aliases <- function(formula) {
           }
           ## Rewrite to phylo_scalar(rhs, tree = tree, vcv = vcv).
           new_call <- as.call(c(list(as.name("phylo_scalar"), rhs), extras))
-          return(rewrite(new_call))   # recurse so phylo_scalar -> engine
+          return(rewrite(new_call)) # recurse so phylo_scalar -> engine
         }
 
         ## LHS = `0 + trait`: mode is mandatory; pick from
@@ -2096,8 +2288,10 @@ rewrite_canonical_aliases <- function(formula) {
         if (mode_str == "latent") {
           ## phylo_latent(species, d = K, tree = ..., vcv = ...).
           d_use <- if (is.null(d_arg)) 1 else d_arg
-          new_call <- as.call(c(list(as.name("phylo_latent"), rhs,
-                                     d = d_use), extras))
+          new_call <- as.call(c(
+            list(as.name("phylo_latent"), rhs, d = d_use),
+            extras
+          ))
           return(rewrite(new_call))
         }
         if (mode_str == "dep") {
@@ -2118,9 +2312,11 @@ rewrite_canonical_aliases <- function(formula) {
       ## machinery without a new TMB switch.
       if (fn == "phylo_unique") {
         extras <- .pass_through_extras(e, c("tree", "vcv"))
-        new_call <- as.call(c(list(as.name("phylo_rr"), e[[2L]]),
-                              list(.phylo_unique = TRUE),
-                              extras))
+        new_call <- as.call(c(
+          list(as.name("phylo_rr"), e[[2L]]),
+          list(.phylo_unique = TRUE),
+          extras
+        ))
         return(new_call)
       }
       ## `spatial_scalar(form)` -> `spde(form, .spatial_scalar = TRUE)`
@@ -2128,9 +2324,11 @@ rewrite_canonical_aliases <- function(formula) {
       ## when it sees the marker.
       if (fn == "spatial_scalar") {
         extras <- .pass_through_extras(e, c("coords", "mesh"))
-        new_call <- as.call(c(list(as.name("spde"), e[[2L]]),
-                              list(.spatial_scalar = TRUE),
-                              extras))
+        new_call <- as.call(c(
+          list(as.name("spde"), e[[2L]]),
+          list(.spatial_scalar = TRUE),
+          extras
+        ))
         return(new_call)
       }
       ## `spatial_latent(form, d)` -> `spde(form, .spatial_latent = TRUE, d = d)`.
@@ -2140,9 +2338,11 @@ rewrite_canonical_aliases <- function(formula) {
         nm <- names(e)
         d_val <- if (!is.null(nm) && "d" %in% nm) e[[which(nm == "d")]] else 1L
         extras <- .pass_through_extras(e, c("coords", "mesh"))
-        new_call <- as.call(c(list(as.name("spde"), e[[2L]]),
-                              list(.spatial_latent = TRUE, d = d_val),
-                              extras))
+        new_call <- as.call(c(
+          list(as.name("spde"), e[[2L]]),
+          list(.spatial_latent = TRUE, d = d_val),
+          extras
+        ))
         return(new_call)
       }
       ## `indep(form)` -> `diag(form, .indep = TRUE)`
@@ -2153,8 +2353,10 @@ rewrite_canonical_aliases <- function(formula) {
       if (fn == "indep") {
         ## Stage 2.5: fail-loud against augmented LHS.
         .assert_no_augmented_lhs(fn, e)
-        new_call <- as.call(c(list(as.name("diag"), e[[2L]]),
-                              list(.indep = TRUE)))
+        new_call <- as.call(c(
+          list(as.name("diag"), e[[2L]]),
+          list(.indep = TRUE)
+        ))
         return(new_call)
       }
       ## `phylo_indep(0 + trait | species)` -> `phylo_rr(species,
@@ -2165,8 +2367,11 @@ rewrite_canonical_aliases <- function(formula) {
       ## phylo_indep+phylo_latent over-parameterisation guard.
       if (fn == "phylo_indep") {
         bar <- e[[2L]]
-        if (!(is.call(bar) && identical(bar[[1L]], as.name("|")) &&
-              length(bar) == 3L)) {
+        if (
+          !(is.call(bar) &&
+            identical(bar[[1L]], as.name("|")) &&
+            length(bar) == 3L)
+        ) {
           cli::cli_abort(c(
             "{.fn phylo_indep} expects a {.code 0 + trait | species} formula.",
             "i" = "Got: {.code {deparse(bar)}}.",
@@ -2193,9 +2398,11 @@ rewrite_canonical_aliases <- function(formula) {
           ))
         }
         extras <- .pass_through_extras(e, c("tree", "vcv"))
-        new_call <- as.call(c(list(as.name("phylo_rr"), species_arg),
-                              list(.phylo_unique = TRUE, .indep = TRUE),
-                              extras))
+        new_call <- as.call(c(
+          list(as.name("phylo_rr"), species_arg),
+          list(.phylo_unique = TRUE, .indep = TRUE),
+          extras
+        ))
         return(new_call)
       }
       ## `spatial_indep(0 + trait | coords)` -> `spde(form, .spatial_indep = TRUE)`
@@ -2205,9 +2412,11 @@ rewrite_canonical_aliases <- function(formula) {
       ## over-parameterisation guard.
       if (fn == "spatial_indep") {
         extras <- .pass_through_extras(e, c("coords", "mesh"))
-        new_call <- as.call(c(list(as.name("spde"), e[[2L]]),
-                              list(.spatial_indep = TRUE),
-                              extras))
+        new_call <- as.call(c(
+          list(as.name("spde"), e[[2L]]),
+          list(.spatial_indep = TRUE),
+          extras
+        ))
         return(new_call)
       }
       ## `dep(0 + trait | g)` -> `rr(form, d = .deferred_n_traits, .dep = TRUE)`
@@ -2224,9 +2433,10 @@ rewrite_canonical_aliases <- function(formula) {
       if (fn == "dep") {
         ## Stage 2.5: fail-loud against augmented LHS.
         .assert_no_augmented_lhs(fn, e)
-        new_call <- as.call(c(list(as.name("rr"), e[[2L]]),
-                              list(d = as.name(".deferred_n_traits"),
-                                   .dep = TRUE)))
+        new_call <- as.call(c(
+          list(as.name("rr"), e[[2L]]),
+          list(d = as.name(".deferred_n_traits"), .dep = TRUE)
+        ))
         return(new_call)
       }
       ## `phylo_dep(0 + trait | species)` -> `phylo_rr(species,
@@ -2236,8 +2446,11 @@ rewrite_canonical_aliases <- function(formula) {
       ## matrix, which is exactly the Cholesky factor of unstructured Sigma_phy.
       if (fn == "phylo_dep") {
         bar <- e[[2L]]
-        if (!(is.call(bar) && identical(bar[[1L]], as.name("|")) &&
-              length(bar) == 3L)) {
+        if (
+          !(is.call(bar) &&
+            identical(bar[[1L]], as.name("|")) &&
+            length(bar) == 3L)
+        ) {
           cli::cli_abort(c(
             "{.fn phylo_dep} expects a {.code 0 + trait | species} formula.",
             "i" = "Got: {.code {deparse(bar)}}.",
@@ -2261,10 +2474,11 @@ rewrite_canonical_aliases <- function(formula) {
           ))
         }
         extras <- .pass_through_extras(e, c("tree", "vcv"))
-        new_call <- as.call(c(list(as.name("phylo_rr"), species_arg),
-                              list(d = as.name(".deferred_n_traits"),
-                                   .dep = TRUE),
-                              extras))
+        new_call <- as.call(c(
+          list(as.name("phylo_rr"), species_arg),
+          list(d = as.name(".deferred_n_traits"), .dep = TRUE),
+          extras
+        ))
         return(new_call)
       }
       ## `spatial_dep(0 + trait | coords)` -> `spde(form, .spatial_latent = TRUE,
@@ -2280,31 +2494,32 @@ rewrite_canonical_aliases <- function(formula) {
         ## normalise_spatial_orientation at line ~1198.)
         .assert_no_augmented_lhs(fn, e)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
-        new_call <- as.call(c(list(as.name("spde"), e[[2L]]),
-                              list(.spatial_latent = TRUE,
-                                   d = as.name(".deferred_n_traits"),
-                                   .dep = TRUE),
-                              extras))
+        new_call <- as.call(c(
+          list(as.name("spde"), e[[2L]]),
+          list(
+            .spatial_latent = TRUE,
+            d = as.name(".deferred_n_traits"),
+            .dep = TRUE
+          ),
+          extras
+        ))
         return(new_call)
       }
-      ## `meta_V(value, V = X)` (canonical) and `meta_known_V(value, V = X)`
-      ## (deprecated alias) -> `meta(value, sampling_var = X)`.
+      ## `meta_V(V = X)` (canonical) and `meta_known_V(V = X)`
+      ## (deprecated alias) -> `meta(sampling_var = X)`.
+      ## Back-compat: `meta_V(value, V = X)` still desugars the same way,
+      ## but new examples should not mention the response column here.
       ## Both names desugar identically; see vision item 4 (2026-05-16
       ## rename) and validation-debt register MET-01.
       if (fn == "meta_V" || fn == "meta_known_V") {
-        ## V= argument is named "V" (or positional 3rd arg); rename to
-        ## sampling_var= which the existing meta() sugar consumes.
-        new_call <- e
-        new_call[[1L]] <- as.name("meta")
-        nm <- names(new_call)
-        if (!is.null(nm)) {
-          nm[nm == "V"] <- "sampling_var"
-          names(new_call) <- nm
-        }
-        return(new_call)
+        invisible(.meta_type(e, fn))
+        V_expr <- .meta_V_expr(e, fn)
+        return(as.call(c(list(as.name("meta")), list(sampling_var = V_expr))))
       }
       ## Recurse into subexpressions
-      for (i in seq_along(e)[-1L]) e[[i]] <- rewrite(e[[i]])
+      for (i in seq_along(e)[-1L]) {
+        e[[i]] <- rewrite(e[[i]])
+      }
     }
     e
   }
@@ -2334,13 +2549,13 @@ rewrite_canonical_aliases <- function(formula) {
 ## the parser sees them -- so they appear in every formula post-desugar.
 scan_for_deprecated <- function(rhs) {
   deprecated_map <- list(
-    rr        = list(new = "latent",         args = "0 + trait | g, d = K"),
-    diag      = list(new = "unique",         args = "0 + trait | g"),
-    phylo_rr  = list(new = "phylo_latent",   args = "species, d = K"),
-    phylo     = list(new = "phylo_scalar",   args = "species"),
-    spde      = list(new = "spatial_unique", args = "coords | trait"),
-    meta      = list(new = "meta_V",         args = "value, V = V"),
-    gr        = list(new = "phylo_scalar",   args = "species")
+    rr = list(new = "latent", args = "0 + trait | g, d = K"),
+    diag = list(new = "unique", args = "0 + trait | g"),
+    phylo_rr = list(new = "phylo_latent", args = "species, d = K"),
+    phylo = list(new = "phylo_scalar", args = "species"),
+    spde = list(new = "spatial_unique", args = "coords | trait"),
+    meta = list(new = "meta_V", args = "V = V"),
+    gr = list(new = "phylo_scalar", args = "species")
   )
   walk <- function(e) {
     if (is.call(e)) {
@@ -2363,7 +2578,9 @@ scan_for_deprecated <- function(rhs) {
         d <- deprecated_map[[fn]]
         .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args)
       }
-      for (i in seq_along(e)[-1L]) walk(e[[i]])
+      for (i in seq_along(e)[-1L]) {
+        walk(e[[i]])
+      }
     }
     invisible(NULL)
   }
@@ -2372,10 +2589,12 @@ scan_for_deprecated <- function(rhs) {
 }
 
 
-desugar_brms_sugar <- function(formula,
-                               trait_col = "trait",
-                               obs_col   = "obs",
-                               grp_V_col = "grp_V") {
+desugar_brms_sugar <- function(
+  formula,
+  trait_col = "trait",
+  obs_col = "obs",
+  grp_V_col = "grp_V"
+) {
   ## ---- Pass 0: scan the original AST for deprecated keywords and emit
   ## one-shot soft warnings. Done before any rewriting so we see what the
   ## user actually typed.
@@ -2404,12 +2623,16 @@ desugar_brms_sugar <- function(formula,
         # downstream Phase L Stage 1 harvester picks it up.
         species_arg <- e[[2L]]
         nm <- names(e)
-        if (is.null(nm)) nm <- rep("", length(e))
-        vcv_idx  <- which(nm %in% c("vcv", "cov"))
+        if (is.null(nm)) {
+          nm <- rep("", length(e))
+        }
+        vcv_idx <- which(nm %in% c("vcv", "cov"))
         tree_idx <- which(nm == "tree")
-        if (length(vcv_idx) == 0L && length(tree_idx) == 0L &&
-            length(e) >= 3L)
-          vcv_idx <- 3L  # positional fallback only when no named args
+        if (
+          length(vcv_idx) == 0L && length(tree_idx) == 0L && length(e) >= 3L
+        ) {
+          vcv_idx <- 3L
+        } # positional fallback only when no named args
         bar <- call("|", call("+", 0, species_arg), as.name(trait_col))
         out <- if (length(vcv_idx) > 0L) {
           call("propto", bar, e[[vcv_idx]])
@@ -2426,7 +2649,9 @@ desugar_brms_sugar <- function(formula,
         bar <- call("|", call("+", 0, as.name(obs_col)), as.name(grp_V_col))
         return(call("equalto", bar, as.name("V")))
       }
-      for (i in seq_along(e)[-1L]) e[[i]] <- walk(e[[i]])
+      for (i in seq_along(e)[-1L]) {
+        e[[i]] <- walk(e[[i]])
+      }
     }
     e
   }

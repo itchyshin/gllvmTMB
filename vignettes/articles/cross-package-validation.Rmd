@@ -47,7 +47,7 @@ asserts the agreement.
 | <code>latent(0 + trait &#124; site, d)</code> (binary) | `gllvm::gllvm(num.lv)` | ✅ live (this article) | Procrustes-aligned $\boldsymbol{\Lambda}$, per-factor $\rho > 0.95$ |
 | <code>unique(0 + trait &#124; site)</code> | `glmmTMB::glmmTMB(diag())` | ✅ live (this article) | log-likelihood match to 1e-4 |
 | `phylo_scalar(species)` | `glmmTMB::glmmTMB(propto())` | ✅ tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-4 |
-| `meta_V(value, V = V)` | `glmmTMB::glmmTMB(equalto())` | ✅ tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-3 |
+| `meta_V(V = V)` | `glmmTMB::glmmTMB(equalto())` | ⚠ partial (`test-formula-grammar-smoke.R`, `test-gllvmTMB-args.R`) | parser / dimension / smoke coverage exists; direct equalto LL comparator remains MET-01 validation debt |
 
 ## Setup
 
@@ -323,14 +323,14 @@ two axes:
 
 ## `phylo_scalar()` / `meta_V()`: existing test agreement
 
-The `propto` (phylogenetic) and `equalto` (known-V) covstructs
-match `glmmTMB::glmmTMB()` to 1e-4 and 1e-3 respectively, asserted
-by
+The `propto` (phylogenetic) covstruct matches
+`glmmTMB::glmmTMB()` to 1e-4 in
 [`tests/testthat/test-stage3-propto-equalto.R`](https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-stage3-propto-equalto.R).
-The current public keyword is `meta_V(value, V = V)`; the older
-`meta_known_V()` spelling remains only as a deprecated alias. The
-article does not re-fit these here (they're slower); the
-agreement is part of the regular test suite that runs on every CI.
+For known-V meta-analysis, the current public keyword is
+`meta_V(V = V)`; the older `meta_known_V()` spelling remains only as a
+deprecated alias. Parser / dimension / smoke coverage is live, but a
+direct `glmmTMB::equalto()` log-likelihood comparator remains MET-01
+validation debt.
 
 ## See also
 

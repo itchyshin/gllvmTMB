@@ -13,7 +13,7 @@ meta-analytic dataset).}
 
 \item{sampling_var}{Either an unquoted column name holding the
 per-row sampling variance, or a length-1 numeric used for every row.
-Deprecated in favour of \code{meta_V(value, V = V)}.}
+Deprecated in favour of \code{meta_V(V = V)}.}
 }
 \value{
 A formula marker; never evaluated.
@@ -27,7 +27,7 @@ sampling variances are known. This keyword desugars to
 }
 \details{
 \strong{Deprecated alias.} Use \code{\link[=meta_V]{meta_V()}} in new code:
-\code{meta_V(value, V = V)}.
+\code{meta_V(V = V)}.
 \subsection{Diagonal vs block-diagonal V}{
 
 \code{meta(value, sampling_var = vi)} describes the \strong{diagonal} case --
@@ -45,7 +45,7 @@ V with \code{\link[=block_V]{block_V()}} and pass it to \code{gllvmTMB()} as \co
 V    <- diag(stage1_summary$sampling_var)
 fit2 <- gllvmTMB(value ~ 0 + trait +
                    latent(0 + trait | site, d = 2) +
-                   meta_V(value, V = V),
+                   meta_V(V = V),
                  data    = stage1_summary,
                  trait   = "trait",
                  unit    = "site",

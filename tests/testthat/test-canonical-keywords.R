@@ -1,5 +1,5 @@
 ## Canonical formula-keyword syntax: latent / unique / phylo_latent /
-## phylo_scalar / spatial / meta_known_V are silent canonical names;
+## phylo_scalar / spatial / meta_V are silent canonical names;
 ## the older rr / diag / phylo_rr / phylo / spde / meta still work as
 ## deprecated aliases that emit a one-shot soft warning per session.
 

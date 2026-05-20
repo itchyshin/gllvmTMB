@@ -204,7 +204,7 @@ verifies via a single-trait sdmTMB cross-comparison.
 
 ## `meta_V()` additive sampling-covariance contribution
 
-When `meta_V(value, V = V)` is in the formula, the likelihood
+When `meta_V(V = V)` is in the formula, the likelihood
 adds a known-covariance residual term:
 
 $$
@@ -218,9 +218,10 @@ where $V$ is supplied as the `known_V = V` argument to
 multivariate normal density with covariance $V + \sigma^2 I$ via
 a sparse or dense Cholesky depending on $V$'s structure (block-
 diagonal via `block_V()` → sparse; full → dense). Status:
-`claimed`; Phase 0B verifies via comparison to `glmmTMB::equalto()`
-on a shared fixture (the `tests/testthat/test-stage3-propto-equalto.R`
-agreement contract).
+`partial`; current tests cover parser desugaring, dimension guards,
+wide `traits(...)` preservation, and smoke fits. A direct
+`glmmTMB::equalto()` log-likelihood agreement fixture is still a
+validation-debt item for MET-01.
 
 ## Link-residual computation for mixed-family correlations
 

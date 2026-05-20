@@ -3506,3 +3506,75 @@ Kaizen point:
     claim should stay narrower: stacked-trait formula grammar, the
     4 x 5 covariance keyword surface, explicit validation-debt rows,
     and traceable simulation artefacts.
+
+## 2026-05-20 -- `meta_V()` V-only formula marker (#227, PR #226 extension)
+
+Scope:
+
+- Change the canonical known-V formula marker from
+  `meta_V(value, V = V)` to `meta_V(V = V)` / `meta_V(V,
+  type = "exact")`, following the maintainer's review of the
+  rendered reference page and the `drmTMB::meta_V()` spelling.
+- Keep `meta_V(value, V = V)` and `meta_known_V(V = V)` accepted by
+  the parser for compatibility, but remove the response-placeholder
+  spelling from new examples.
+- Reserve `type = "proportional"` for the planned Nakagawa-style
+  proportional sampling-variance mode and error explicitly when users
+  request it before implementation.
+- Fix the wide `traits(...)` RHS expander so `meta_V()` is preserved
+  as a covariance marker rather than expanded as a trait interaction.
+- Downgrade stale known-V comparator prose from "equalto LL covered"
+  to partial MET-01 validation debt; no direct
+  `glmmTMB::equalto()` log-likelihood comparator exists yet.
+
+Evidence:
+
+- GitHub issue created:
+  `gh issue create --repo itchyshin/gllvmTMB --title "Simplify meta_V syntax to V-only marker" ...`
+  -> #227.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/meta.Rd`, `man/meta_V.Rd`, and
+  `man/meta_known_V.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "formula-grammar-smoke")'`
+  -> passed: 27 tests, no warnings, no skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "traits-keyword")'`
+  -> passed: 49 tests, 1 pre-existing skip, no warnings.
+- `Rscript --vanilla -e 'devtools::test(filter = "canonical-keywords")'`
+  -> passed: 48 tests, 3 skips for missing INLA, no warnings.
+- `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMB-args")'`
+  -> passed: 24 tests, 4 pre-existing no-covstruct skips, no warnings.
+- `git diff --check`
+  -> clean.
+- `rg -n 'meta_V\(value, V = V\)|meta_known_V\(value|scale = "proportional"|scale = "known"|meta_V\(value, w|meta_V\(scale' README.md NEWS.md AGENTS.md CLAUDE.md R docs/design vignettes tests/testthat man .agents/skills/rose-pre-publish-audit/SKILL.md`
+  -> only expected compatibility mentions remained: NEWS migration
+  note, parser comments, one parser compatibility test, and Design 01
+  rename-history prose.
+- `rg -n 'glmmTMB::equalto\(.*\).*LL match|LL match to 1e-3|log-likelihood match to 1e-3|test-stage3-propto-equalto\.R.*equalto|equalto.*covered' README.md docs/design vignettes tests/testthat`
+  -> no stale known-V equalto-coverage claims after the MET-01
+  downgrade.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> failed before article rendering reached the touched files because
+  the new pkgdown process loaded an older installed `gllvmTMB` lacking
+  the current `pedigree_to_A()` export.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/animal-model", lazy = FALSE, new_process = FALSE, quiet = TRUE)'`
+  -> passed against the current checkout; emitted only the pre-existing
+  `../logo.png` missing-image warning.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); arts <- c("articles/api-keyword-grid", "articles/choose-your-model", "articles/cross-package-validation", "articles/data-shape-flowchart", "articles/gllvm-vocabulary", "articles/pitfalls", "articles/stacked-trait-gllvm"); for (a in arts) { message("Building ", a); pkgdown::build_article(a, lazy = FALSE, new_process = FALSE, quiet = TRUE) }'`
+  -> all seven touched articles rendered against the current checkout;
+  emitted only pre-existing `../logo.png` missing-image warnings and
+  existing Pandoc TeX warnings in data-shape / vocabulary articles.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-sister-package-citation-hygiene.md`
+
+Kaizen point:
+
+51. **A formula-marker argument should name the thing the marker
+    contributes.** `meta_V(value, V = V)` smuggled the response column
+    into a marker that never used it and made wide `traits(...)`
+    formulas fragile. `meta_V(V = V, type = "exact")` matches the
+    mathematical object, leaves room for proportional V, and avoids a
+    parser special case that users cannot reason about.

@@ -21,6 +21,7 @@
 ##   7. No regression on the long-format API (no traits() in call).
 ##   8. Vector weights pass-through, byte-equivalent to manual replication.
 ##   9. Matrix weights are rejected with a redirect to gllvmTMB_wide().
+##  10. meta_V(V = V) is preserved as a covariance marker in wide formulas.
 
 ## ---- Helpers --------------------------------------------------------------
 
@@ -148,7 +149,8 @@ test_that("traits() compact phylo two-U syntax matches explicit long syntax", {
   g_phy <- Lphy %*% stats::rnorm(n_sp)
   e_phy <- Lphy %*% matrix(stats::rnorm(n_sp * n_traits), n_sp, n_traits)
   e_non <- matrix(stats::rnorm(n_sp * n_traits), n_sp, n_traits)
-  Y <- g_phy %*% t(Lambda_phy) +
+  Y <- g_phy %*%
+    t(Lambda_phy) +
     sweep(e_phy, 2, sqrt(s_phy), "*") +
     sweep(e_non, 2, sqrt(s_non), "*")
   rownames(Y) <- tree$tip.label
@@ -173,7 +175,8 @@ test_that("traits() compact phylo two-U syntax matches explicit long syntax", {
 
   long <- make_long_df(wide, trait_cols)
   fit_long <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    .y_wide_ ~ 0 + trait +
+    .y_wide_ ~ 0 +
+      trait +
       phylo_latent(species, d = 1, tree = tree) +
       phylo_unique(species, tree = tree) +
       unique(0 + trait | species),
@@ -185,8 +188,11 @@ test_that("traits() compact phylo two-U syntax matches explicit long syntax", {
 
   expect_equal(fit_wide$opt$convergence, 0L)
   expect_equal(fit_long$opt$convergence, 0L)
-  expect_equal(fit_wide$opt$objective, fit_long$opt$objective,
-               tolerance = 1e-10)
+  expect_equal(
+    fit_wide$opt$objective,
+    fit_long$opt$objective,
+    tolerance = 1e-10
+  )
 })
 
 test_that("traits() compact RHS preserves regular random intercepts", {
@@ -245,7 +251,9 @@ test_that("traits() RHS expander recognises the covariance keyword grid", {
       spatial_indep(1 | individual) +
       spatial_latent(1 | individual, d = 1) +
       spatial_dep(1 | individual) +
-      spatial(1 | individual)
+      spatial(1 | individual) +
+      meta_V(V = V) +
+      meta_known_V(V = V)
   )
 
   expanded <- paste(deparse(gllvmTMB:::.traits_expand_rhs(rhs)), collapse = " ")
@@ -272,10 +280,31 @@ test_that("traits() RHS expander recognises the covariance keyword grid", {
   )
   expect_match(expanded, "spatial_dep\\(0 \\+ trait \\| individual\\)")
   expect_match(expanded, "spatial\\(1 \\| individual\\)")
+  expect_match(expanded, "meta_V\\(V = V\\)")
+  expect_match(expanded, "meta_known_V\\(V = V\\)")
   expect_no_match(
     expanded,
-    ":phylo_latent|:phylo_unique|:spatial_latent|:\\(1 \\| batch\\)"
+    ":phylo_latent|:phylo_unique|:spatial_latent|:meta_V|:meta_known_V|:\\(1 \\| batch\\)"
   )
+})
+
+test_that("traits() accepts meta_V(V = V) as a wide-format covariance marker", {
+  skip_if_not_installed("tidyr")
+  wide <- make_wide_df(seed = 227)
+  trait_cols <- c("trait_1", "trait_2")
+  V <- diag(rep(0.03, nrow(wide) * length(trait_cols)))
+  rewritten <- gllvmTMB:::rewrite_traits_lhs(
+    traits(tidyselect::all_of(trait_cols)) ~ 1 +
+      latent(1 | individual, d = 1) +
+      meta_V(V = V),
+    data = wide
+  )
+  formula_long <- paste(deparse(rewritten$formula_long), collapse = " ")
+  formula_long <- gsub("\\s+", " ", formula_long)
+
+  expect_match(formula_long, "latent\\(0 \\+ trait \\| individual, d = 1\\)")
+  expect_match(formula_long, "meta_V\\(V = V\\)")
+  expect_no_match(formula_long, ":meta_V")
 })
 
 test_that("traits() RHS expander preserves intercept-control minus one", {

@@ -191,7 +191,7 @@ directly. The recommended workflow is a **two-stage analysis**:
   `value ~ 0 + site + phylo_scalar(species, vcv = Cphy)`,
   returning site-level estimates with their sampling variances.
 * **Stage 2**: fit the multivariate model on the stage-1 estimates
-  using `meta_known_V(value, V = V)` so the stage-1 sampling
+  using `meta_V(V = V)` so the stage-1 sampling
   uncertainty propagates into the stage-2 covariance estimates.
 
 Both stages use direct `gllvmTMB()` calls. See
@@ -201,7 +201,7 @@ the complete pipeline.
 ## 5. Cross-validation against `glmmTMB`
 
 For the non-spatial covstructs (`latent()`, `unique()`,
-`phylo_scalar()`, `meta_known_V()` -- which map internally to
+`phylo_scalar()`, `meta_V()` -- which map internally to
 `glmmTMB`'s `rr` / `diag` / `propto` / `equalto`),
 `gllvmTMB`'s log-likelihood matches `glmmTMB::glmmTMB()` exactly to
 TMB tolerance; see `tests/testthat/test-stage[2-3]-*.R` in the source

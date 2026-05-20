@@ -35,8 +35,8 @@ does NOT do" section), see
 - `phylo_latent + phylo_unique` is the canonical phylogenetic
   decomposition; the standalone `phylo_unique` carries
   intra-phylogeny diagonal-only structure.
-- `meta_V(value, V = V)` is the canonical meta-analytic
-  known-sampling-covariance keyword. `meta_known_V(value, V = V)` is
+- `meta_V(V = V)` is the canonical meta-analytic
+  known-sampling-covariance keyword. `meta_known_V(V = V)` is
   a deprecated alias. `block_V(study, sampling_var, rho_within)` is
   the helper that builds V.
 - Wide data-frame input uses the simplified `traits(...)` LHS grammar:

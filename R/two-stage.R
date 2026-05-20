@@ -4,7 +4,7 @@
 ## was deprecated in 0.1.x and dropped in 0.2.0; users should call
 ## `gllvmTMB()` directly with `phylo_scalar(species)` /
 ## `phylo_latent(species, d = K)` for stage-1 phylogenetic fits, then
-## stage-2 multivariate fits with `meta_V(value, V = V)`.
+## stage-2 multivariate fits with `meta_V(V = V)`.
 ##
 ## What remains here is `block_V()`, the small helper that builds a
 ## block-diagonal sampling-variance matrix to feed `meta_V()`.

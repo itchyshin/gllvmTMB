@@ -97,7 +97,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | #223 sister-package citation and provenance hygiene | PR #226 / `codex/sister-package-citation-hygiene-2026-05-20` | `inst/COPYRIGHTS`, comparator docs, M3 diagnostic docs, check-log, after-task | Active 2026-05-20 12:08 MDT; PR open and waiting for Actions |
+| Codex / Ada | #223 citation/provenance hygiene + #227 `meta_V()` V-only syntax | PR #226 / `codex/sister-package-citation-hygiene-2026-05-20` | citation docs, `meta_V()` parser/docs/tests, wide `traits()` marker path, check-log, after-task | Active 2026-05-20 12:56 MDT; PR open, local focused tests + pkgdown check passed; ready for push / Actions |
 
 **WIP**: 1.
 

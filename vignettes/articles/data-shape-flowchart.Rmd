@@ -153,7 +153,7 @@ species has one trait value (no within-species replication), the
 one-shot stacked-trait GLLVM is poorly informed. The recommended
 workflow is two-stage: (1) per-trait univariate fits to extract
 site-level estimates and their SEs; (2) a multivariate
-meta-regression on the stage-1 estimates using `meta_known_V()` to
+meta-regression on the stage-1 estimates using `meta_V(V = V)` to
 propagate the stage-1 uncertainty into the stage-2 covariance.
 
 **Pedigree available — animal-model quantitative genetics** &mdash;
@@ -168,7 +168,7 @@ with `pedigree_to_A(ped)` and pass `A =`. The full grid
 `animal_slope` for random regression / reaction norms) mirrors
 `phylo_*()` 1-to-1. See [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
 for the math and the A-vs-V naming boundary (A for relatedness; V
-is reserved for `meta_known_V()` sampling variance). The basic
+is reserved for `meta_V()` sampling variance). The basic
 single-A-matrix workflow is covered with three tutorials
 (heritability, bivariate G, factor-analytic G) in [The animal
 model: heritability and genetic covariance](animal-model.html);

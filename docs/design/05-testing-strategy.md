@@ -67,7 +67,7 @@ Implemented (or planned) comparator smoke tests:
 |-----------|------------|---------------------------|--------|
 | `glmmTMB::rr() + diag()` for Gaussian | `glmmTMB::glmmTMB(..., rr(0 + trait \| g, d = K) + diag(0 + trait \| g))` | `latent + unique` paired decomposition; log-likelihood match to 1e-4 (per `tests/testthat/test-stage2-rr-diag.R`) | covered (verify in Phase 0B) |
 | `glmmTMB::propto()` for phylogenetic | `glmmTMB::glmmTMB(..., propto(0 + trait \| species, A))` | `phylo_scalar()`; log-likelihood match to 1e-4 (per `tests/testthat/test-stage3-propto-equalto.R`) | covered |
-| `glmmTMB::equalto()` for known-V | `glmmTMB::glmmTMB(..., equalto(0 + obs \| grp_V, V))` | `meta_V(value, V = V)` (renamed from `meta_known_V`); LL match to 1e-3 | covered |
+| `glmmTMB::equalto()` for known-V | `glmmTMB::glmmTMB(..., equalto(0 + obs \| grp_V, V))` | `meta_V(V = V)` (renamed from `meta_known_V`); parser, dimension, wide-format, and smoke-fit coverage exist; direct LL comparator still needed | partial |
 | `gllvm::gllvm()` binary GLLVM | Procrustes-aligned loadings + per-factor $\rho > 0.95$ | binary GLLVM with `latent()`; rotation-aware comparison via `compare_loadings()` | claimed (M2 work) |
 | `sdmTMB::sdmTMB()` single-trait spatial | LL match to TMB tolerance | single-trait `spatial_unique()` reduces correctly | planned (Phase 5.5) |
 | `lme4::lmer()` Gaussian random intercepts | LL match on `(1 \| g)` ordinary RE | ordinary RE path | claimed |
@@ -240,7 +240,7 @@ in M1 scope; $s \ge 2$ rejected at parse time with
 - Block-diagonal `V` via `block_V(study_id, sampling_var,
   rho_within)`: log-likelihood agreement to TMB tolerance vs
   `glmmTMB::equalto()`.
-- The future proportional mode (`meta_V(scale =
+- The future proportional mode (`meta_V(type =
   "proportional")`) is planned post-CRAN.
 
 ## Diagnostics tests

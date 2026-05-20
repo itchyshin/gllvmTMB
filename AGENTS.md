@@ -216,7 +216,7 @@ package contributors.
   list.
 - Keep terms stable: `Sigma`, `Lambda`, `psi` (per-trait
   scalar) / `Psi` (matrix), `latent`, `unique`, `indep`, `dep`,
-  `phylo_*`, `spatial_*`, `meta_V(value, V = V)`. These should
+  `phylo_*`, `spatial_*`, `meta_V(V = V)`. These should
   not drift across documents. (`meta_known_V` is retained as
   a deprecated alias through 0.2.x; new examples use `meta_V`.)
 - Support factual, statistical, or literature claims with a citation,

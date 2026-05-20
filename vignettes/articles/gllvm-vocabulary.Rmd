@@ -254,7 +254,7 @@ inverse **Ainv**) is reserved for *relatedness* covariance —
 the pedigree-derived or phylogeny-derived matrix that correlates
 random-effect levels by ancestry. **V** is reserved for
 *sampling variance* — the known measurement-error variance in
-a meta-analytic regression, accepted by `meta_known_V(..., V = V)`.
+a meta-analytic regression, accepted by `meta_V(V = V)`.
 These two concepts are mathematically distinct (relatedness
 covariance vs measurement-error variance) and the package keeps
 them visually separated. See [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)

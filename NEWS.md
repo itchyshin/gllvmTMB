@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## `meta_V()` formula-marker syntax (#227, 2026-05-20)
+
+* **`meta_V()`** now uses `meta_V(V = V)` or `meta_V(V, type = "exact")` as the canonical known-sampling-covariance formula marker. IN: exact additive known-V workflows remain the implemented surface (MET-01 / MET-02), and wide `traits(...)` formulas now preserve `meta_V()` as a covariance marker. PARTIAL: single-V statistical validation is still smoke-level under MET-01. PLANNED: `type = "proportional"` remains blocked under MET-03 and now errors explicitly rather than being silently treated as exact. The older parser spelling `meta_V(value, V = V)` and deprecated alias `meta_known_V(V = V)` remain accepted for compatibility.
+
 ## Bootstrap covariance scale control (M3.3a, 2026-05-19)
 
 * **`bootstrap_Sigma()`** gains `link_residual = c("auto", "none")`, matching `extract_Sigma()` so bootstrap point estimates and refit summaries can either include family/link implicit residuals (`"auto"`, the existing default) or report the fitted latent + unique covariance only (`"none"`). IN: mixed-family bootstrap refits still preserve per-row family dispatch (MIX-08) and the default link-residual formulas remain covered (MIX-09). PARTIAL: non-Gaussian bootstrap inference remains experimental under EXT-13 / CI-08 / CI-10 until the M3 target-explicit grid is rerun with the corrected `Sigma_unit_diag` convention.

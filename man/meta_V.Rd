@@ -2,18 +2,19 @@
 % Please edit documentation in R/brms-sugar.R
 \name{meta_V}
 \alias{meta_V}
-\title{Known-V meta-analytic random effect (canonical name): \code{meta_V(value, V = V)}}
+\title{Known-V meta-analytic random effect (canonical name): \code{meta_V(V = V)}}
 \usage{
-meta_V(value, V)
+meta_V(V, type = "exact")
 }
 \arguments{
-\item{value}{Response column name (typically the stage-1 BLUP or
-an effect-size column).}
+\item{V}{Known sampling variance or covariance marker. In current
+exact-additive fits, pass the actual matrix via the top-level
+\verb{known_V =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}. Formula-level \code{V = V} names
+the marker and keeps the syntax aligned with \code{drmTMB::meta_V()}.}
 
-\item{V}{Either a column name holding per-row sampling variances
-(diagonal V) or a length-1 numeric used for every row. For
-block-diagonal V, build it via \code{\link[=block_V]{block_V()}} and pass as the
-\verb{known_V =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{type}{Sampling-covariance mode. \code{"exact"} is implemented.
+\code{"proportional"} is reserved for the planned post-CRAN extension
+and currently fails loud in the formula parser.}
 }
 \value{
 A formula marker; never evaluated.
@@ -28,12 +29,14 @@ alias. Both names desugar identically in the formula parser.
 }
 \details{
 Pass the matrix \code{V} via the top-level \code{known_V = V} argument to
-\code{\link[=gllvmTMB]{gllvmTMB()}} when using the additive (default) form. For
-block-diagonal within-study correlation, build \code{V} via
-\code{\link[=block_V]{block_V()}}.
+\code{\link[=gllvmTMB]{gllvmTMB()}} when using the exact-additive (default) form. For
+block-diagonal within-study correlation, build \code{V} via \code{\link[=block_V]{block_V()}}.
+The future proportional-sampling-variance mode will use
+\code{type = "proportional"}; in 0.2.x this value is deliberately
+rejected rather than silently treated as exact.
 }
 \seealso{
 \code{\link[=meta_known_V]{meta_known_V()}} (deprecated alias); \code{\link[=block_V]{block_V()}};
 \code{\link[=gllvmTMB]{gllvmTMB()}}; vision doc "Planned extensions" for the future
-\code{meta_V(scale = "proportional")} mode (Nakagawa 2022).
+\code{meta_V(type = "proportional")} mode (Nakagawa 2022).
 }

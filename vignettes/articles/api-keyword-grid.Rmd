@@ -84,7 +84,7 @@ individual at a time) to broadest (geographic distance).
 
 **The A vs V naming boundary.** The `animal_*` and `phylo_*` keywords
 accept the **A** (or **Ainv**) argument for *relatedness*. The
-separate `meta_known_V(value, V = V)` keyword accepts **V** for
+separate `meta_V(V = V)` keyword accepts **V** for
 *sampling variance* in meta-analysis. These are mathematically
 distinct (relatedness covariance vs measurement-error variance),
 and the argument naming keeps them visually separated. See
@@ -216,7 +216,7 @@ Two exported helpers are related to the grid but are not grid cells.
 covariate `x`. It is an extension hook, not one of the five covariance
 modes.
 
-`meta_known_V(value, V = V)` adds known sampling covariance for
+`meta_V(V = V)` adds known sampling covariance for
 meta-analytic workflows. It uses a user-supplied covariance matrix
 rather than one of the grid's estimated correlation rows.
 

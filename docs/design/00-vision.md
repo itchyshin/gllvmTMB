@@ -86,7 +86,7 @@ formula grammar, the following five capabilities:
 3. **Spatial GLLVMs** via fast SPDE / GMRF precision matrices
    (inherited from `sdmTMB`; Lindgren et al. 2011). Multi-trait
    spatial fields, not just one trait at a time.
-4. **Meta-analytic GLLVMs** via `meta_V(value, V = V)`, including
+4. **Meta-analytic GLLVMs** via `meta_V(V = V)`, including
    block-diagonal within-study correlation through `block_V()`.
    Treats meta-analysis as multi-trait GLLVM with known sampling
    covariance. (`meta_known_V()` is retained as a deprecated alias
@@ -132,7 +132,7 @@ A model is defined by:
 
 4. a per-trait response family from `R/families.R` (single family
    or `family = list(...)` for mixed-family);
-5. optional `meta_V(value, V = V)` for known-sampling-covariance
+5. optional `meta_V(V = V)` for known-sampling-covariance
    meta-analysis (renamed from `meta_known_V()` in 0.2.0; the old
    name is a deprecated alias).
 
@@ -352,14 +352,14 @@ the CRAN-blocking critical path.**
 - **`weights` argument** (separate from `meta_V()`). A
   per-row `weights = w` argument matching the `glmmTMB` convention.
   Weights multiply observation log-likelihood contributions.
-  Distinct from `meta_V(value, V = V)` which supplies known sampling
+  Distinct from `meta_V(V = V)` which supplies known sampling
   covariance. Some applied use cases need ordinary weighted
   likelihoods without a meta-analytic framing (e.g. survey weights,
   inverse-probability weights). The two arguments must coexist
   cleanly: `meta_V()` rejects non-unit `weights` until a
   joint-block weighting design is documented (mirroring drmTMB's
   Phase 2b discipline).
-- **`meta_V(scale = "proportional")` mode** — current `meta_V(value, V = V)`
+- **`meta_V(type = "proportional")` mode** — current `meta_V(V = V)`
   treats `V` as known and adds it additively to the residual
   covariance. The Nakagawa lab's "unifying meta-analysis" framework
   (Nakagawa 2022, EcoLetters; the `unifying_model` repository)
@@ -372,13 +372,13 @@ the CRAN-blocking critical path.**
   keyword. Future API:
 
   ```r
-  meta_V(value, V = V)                            # additive (current; default scale = "known")
-  meta_V(value, w = w, scale = "proportional")    # multiplicative (post-CRAN)
+  meta_V(V = V)                            # additive (current; type = "exact")
+  meta_V(V = V, type = "proportional")    # multiplicative (post-CRAN)
   ```
 
   **Note**: the rename from `meta_known_V()` → `meta_V()` itself is
   **current in 0.2.0**, not post-CRAN. `meta_known_V()` ships as a
-  deprecated alias. Only the `scale = "proportional"` mode is
+  deprecated alias. Only the `type = "proportional"` mode is
   post-CRAN. References:
   `/Users/z3437171/Dropbox/Github Local/unifying_model/R/unifying.Rmd`
   + Nakagawa 2022, EcoLetters.

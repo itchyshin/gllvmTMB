@@ -75,9 +75,8 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | M3.3a `nbinom2` stress-smoke controls | PR #209 / `codex/m3-3a-nbinom2-stress-2026-05-19` | `dev/m3-grid.R`, `dev/precompute-m3-grid.R`, `docs/dev-log/*` | PR open; scenario controls and stress smokes complete; waiting for PR checks |
 
-**WIP**: 1.
+**WIP**: 0.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -149,6 +148,11 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-19 ~22:12 MT**: PR #209 (M3.3a `nbinom2`
+  stress-grid controls) merged to `main` as squash commit `34e74ec`
+  after the PR fast-path R-CMD-check passed on ubuntu, macOS, and
+  Windows. Post-merge main run `26140777583` also passed on all three
+  OS-named jobs.
 - **2026-05-19 ~21:18 MT**: PR #208 (convergence/start-values
   article) merged to `main` as squash commit `3bb01c8` after three-OS
   R-CMD-check passed on the final PR head. Post-merge main

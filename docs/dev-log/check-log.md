@@ -3090,3 +3090,48 @@ Kaizen point:
     diagnostic, use `n_boot = 0` and interpret point-estimate ratios
     only; add a fixed-phi bootstrap path before making fixed-phi
     coverage claims.
+
+## 2026-05-20 -- M3.3 drmTMB cross-learning and roadmap checkpoint
+
+Scope:
+
+- Record the sister-package lesson from drmTMB Phase 18 staging before
+  continuing the M3.3 sequence.
+- Refresh the M3 roadmap language so the next step is an M3.3b
+  surface-admission programme, not a broad rerun.
+- Keep EXT-13 / CI-08 / CI-10 partial.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> no open PRs after PR #214 merged.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent M3.3a commits through merge commit `66d7b6b` reviewed.
+- Read gllvmTMB `ROADMAP.md`, `docs/design/42-m3-dgp-grid.md`,
+  `docs/design/49-robust-modeling-roadmap.md`, and the PR #214
+  audit/after-task report.
+- Read drmTMB `ROADMAP.md`, repo status, and recent after-task reports
+  for Phase 18 first-wave runners, bootstrap smoke, full tests, and
+  merge-prep consolidation. The drmTMB repo had uncommitted local
+  changes, so this was read-only evidence.
+- Main R-CMD-check for PR #214 passed before this branch was pushed;
+  the pkgdown deploy from the same merge was still running.
+- `git diff --check`
+  -> clean.
+- `rg -n 'M3.3b|drmTMB|known-phi|fit_phi_mode|EXT-13|CI-08|CI-10|surface-admission|partial' ROADMAP.md docs/dev-log/audits/2026-05-20-m3-3-drmtmb-cross-learning.md docs/dev-log/after-task/2026-05-20-m3-3-drmtmb-cross-learning.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md`
+  -> expected roadmap, audit, after-task, check-log, and board hits.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-m3-3-drmtmb-cross-learning.md`
+
+Kaizen point:
+
+44. **Do not spend broad simulation compute while the surface is still
+    being admitted.** drmTMB's Phase 18 gate shows the safer pattern:
+    small surface-specific pilots, explicit method labels, failure
+    ledgers, and rendered diagnostic reports before scaling. For
+    gllvmTMB, the next M3 action is M3.3b surface admission, not a
+    full M3 rerun. Florence belongs in that lane because latent
+    covariance, trait-level bias, fitted-dispersion drift, and
+    bootstrap-failure structure are too easy to bury in tables.

@@ -2,18 +2,19 @@
 % Please edit documentation in R/brms-sugar.R
 \name{meta_known_V}
 \alias{meta_known_V}
-\title{Known-V meta-analytic random effect (deprecated alias): \code{meta_known_V(value, V = V)}}
+\title{Known-V meta-analytic random effect (deprecated alias): \code{meta_known_V(V = V)}}
 \usage{
-meta_known_V(value, V)
+meta_known_V(V, type = "exact")
 }
 \arguments{
-\item{value}{Response column name (typically the stage-1 BLUP or an
-effect-size column).}
+\item{V}{Known sampling variance or covariance marker. In current
+exact-additive fits, pass the actual matrix via the top-level
+\verb{known_V =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}. Formula-level \code{V = V} names
+the marker and keeps the syntax aligned with \code{drmTMB::meta_V()}.}
 
-\item{V}{Either a column name holding per-row sampling variances
-(diagonal V) or a length-1 numeric used for every row. For
-block-diagonal V, build it via \code{\link[=block_V]{block_V()}} and pass as the
-\verb{known_V =} argument to \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{type}{Sampling-covariance mode. \code{"exact"} is implemented.
+\code{"proportional"} is reserved for the planned post-CRAN extension
+and currently fails loud in the formula parser.}
 }
 \value{
 A formula marker; never evaluated.
@@ -21,7 +22,7 @@ A formula marker; never evaluated.
 \description{
 Deprecated alias for \code{\link[=meta_V]{meta_V()}} (renamed 2026-05-16 per vision
 item 4). Both names desugar identically; new code should prefer
-\code{meta_V(value, V = V)}. The shorter \code{meta_V} is the canonical
+\code{meta_V(V = V)}. The shorter \code{meta_V} is the canonical
 0.2.0 name; \code{meta_known_V} is retained as an alias for
 back-compatibility.
 }

@@ -48,7 +48,7 @@ discipline, adapted for the multi-trait stacked grammar):
    sparse $A^{-1}$. **Status: `claimed`**.
 9. **Spatial random effects** (`spatial_*` keywords) via SPDE
    / GMRF precision. **Status: `claimed`**.
-10. **`meta_V(value, V = V)` known-sampling-covariance random
+10. **`meta_V(V = V)` known-sampling-covariance random
     effect**. Desugars to `equalto(0 + obs | grp_V, V)`.
     **Status: `claimed`** (Phase 0B verifies via comparator vs
     `glmmTMB::equalto()`).
@@ -75,7 +75,7 @@ adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-rel
 | 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
 | 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
 | Random slope | `phylo_slope(x \| g) / animal_slope(x \| g)` | Per-group random regression slope on covariate `x`; slopes correlated by A |
-| `meta_V` | `meta_V(value, V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
+| `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
 
 ## Reduced-rank reparameterisation (`latent(...)`)
 
@@ -320,7 +320,7 @@ genuinely lives at a different grouping axis.
 
 ## `meta_V()` known-sampling-covariance random effect
 
-`meta_V(value, V = V)` adds a known sampling-covariance term
+`meta_V(V = V)` adds a known sampling-covariance term
 to the residual:
 
 $$
@@ -333,7 +333,7 @@ where $V$ is supplied as `known_V = V`. Internally desugars to
 for the desugaring details and `block_V()` for compound-
 symmetric block-diagonal `V` construction.
 
-**Planned post-CRAN**: `meta_V(value, w = w, scale = "proportional")`
+**Planned post-CRAN**: `meta_V(V = V, type = "proportional")`
 adds the multiplicative weighted-regression mode per Nakagawa
 2022 EcoLetters. See vision doc "Planned extensions".
 

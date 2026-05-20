@@ -41,12 +41,14 @@ We care about users. Every design decision passes through Pat
 (applied PhD user lens) before merging. Every article asks: can a
 new reader copy this code and have it work on their data?
 
-`gllvm` (Niku et al.), `glmmTMB`'s `rr()` machinery (McGillycuddy
-et al.), `galamm` (Sørensen et al.), and `Hmsc` are important
-conceptual references, but `gllvmTMB` should not copy any of their
-grammars wholesale. The public grammar should be easy to remember
-for applied biologists and strict enough to keep the TMB
-implementation identifiable.
+`gllvm` (Niku et al. 2019; Korhonen et al. 2025 for `gllvm` 2.0),
+extended variational approximation for GLLVMs (Korhonen et al.
+2023), `glmmTMB`'s `rr()` machinery (McGillycuddy et al. 2025),
+`galamm` (Sørensen et al.), and `Hmsc` are important conceptual
+references, but `gllvmTMB` should not copy any of their grammars
+wholesale. The public grammar should be easy to remember for applied
+biologists and strict enough to keep the TMB implementation
+identifiable.
 
 Every implemented model class should have two parallel
 representations:
@@ -84,7 +86,7 @@ formula grammar, the following five capabilities:
 3. **Spatial GLLVMs** via fast SPDE / GMRF precision matrices
    (inherited from `sdmTMB`; Lindgren et al. 2011). Multi-trait
    spatial fields, not just one trait at a time.
-4. **Meta-analytic GLLVMs** via `meta_V(value, V = V)`, including
+4. **Meta-analytic GLLVMs** via `meta_V(V = V)`, including
    block-diagonal within-study correlation through `block_V()`.
    Treats meta-analysis as multi-trait GLLVM with known sampling
    covariance. (`meta_known_V()` is retained as a deprecated alias
@@ -130,7 +132,7 @@ A model is defined by:
 
 4. a per-trait response family from `R/families.R` (single family
    or `family = list(...)` for mixed-family);
-5. optional `meta_V(value, V = V)` for known-sampling-covariance
+5. optional `meta_V(V = V)` for known-sampling-covariance
    meta-analysis (renamed from `meta_known_V()` in 0.2.0; the old
    name is a deprecated alias).
 
@@ -219,8 +221,9 @@ validation claims (e.g. the Nakagawa et al. in-prep functional-
 biogeography methods paper, as a citation for the *specific
 six-piece model*). Foundational claims (reduced-rank GLLVM,
 phylogenetic mixed model, SPDE spatial) cite the published
-literature (Hui 2017, Niku 2017, 2019, Hadfield & Nakagawa 2010,
-Lindgren et al. 2011, Anderson et al. 2025, Mizuno et al. 2026).
+literature (Hui 2017; Niku et al. 2017, 2019; Korhonen et al.
+2023, 2025; Hadfield & Nakagawa 2010; Lindgren et al. 2011;
+Anderson et al. 2025; Nakagawa, Mizuno et al. 2025).
 
 ## Sibling Boundary
 
@@ -238,13 +241,17 @@ sister packages have separate scopes:
 - **`glmmTMB`** -- single-response mixed models. `gllvmTMB`'s
   reduced-rank `latent()` and diagonal `unique()` keywords share
   the `glmmTMB::rr()` / `diag()` machinery (McGillycuddy et al.
-  2025); we extend it to the multi-trait stacked-trait grammar.
+  2025); the local claim is not novelty of reduced rank alone, but
+  the paired `latent + unique` grammar inside a multi-trait
+  stacked-trait interface.
 - **`gllvm`** -- peer GLLVM package, ecology-focused, with
-  variational-approximation default for binary high-dimensional
-  fits. `gllvmTMB` differs by offering phylogenetic + spatial in
-  the same engine, mixed-family fits with latent-scale
-  correlations, and a stacked-trait long-format grammar that maps
-  to `glmmTMB`-style formula syntax.
+  variational, extended-variational, and Laplace approximation
+  paths. `gllvm` 2.0 also covers advanced ordination and joint
+  species-distribution workflows. `gllvmTMB` differs by centering
+  the stacked-trait long-format grammar, the explicit 4 x 5
+  covariance keyword grid, mixed-family per-row data, and
+  validation-debt rows for its phylogenetic / spatial covariance
+  paths.
 - **`galamm`** -- generalised additive latent and mixed models;
   SEM-style. No phylogenetic or spatial keywords. Wald-only
   inference. `gllvmTMB` differs by offering profile-likelihood and
@@ -345,14 +352,14 @@ the CRAN-blocking critical path.**
 - **`weights` argument** (separate from `meta_V()`). A
   per-row `weights = w` argument matching the `glmmTMB` convention.
   Weights multiply observation log-likelihood contributions.
-  Distinct from `meta_V(value, V = V)` which supplies known sampling
+  Distinct from `meta_V(V = V)` which supplies known sampling
   covariance. Some applied use cases need ordinary weighted
   likelihoods without a meta-analytic framing (e.g. survey weights,
   inverse-probability weights). The two arguments must coexist
   cleanly: `meta_V()` rejects non-unit `weights` until a
   joint-block weighting design is documented (mirroring drmTMB's
   Phase 2b discipline).
-- **`meta_V(scale = "proportional")` mode** — current `meta_V(value, V = V)`
+- **`meta_V(type = "proportional")` mode** — current `meta_V(V = V)`
   treats `V` as known and adds it additively to the residual
   covariance. The Nakagawa lab's "unifying meta-analysis" framework
   (Nakagawa 2022, EcoLetters; the `unifying_model` repository)
@@ -365,13 +372,13 @@ the CRAN-blocking critical path.**
   keyword. Future API:
 
   ```r
-  meta_V(value, V = V)                            # additive (current; default scale = "known")
-  meta_V(value, w = w, scale = "proportional")    # multiplicative (post-CRAN)
+  meta_V(V = V)                            # additive (current; type = "exact")
+  meta_V(V = V, type = "proportional")    # multiplicative (post-CRAN)
   ```
 
   **Note**: the rename from `meta_known_V()` → `meta_V()` itself is
   **current in 0.2.0**, not post-CRAN. `meta_known_V()` ships as a
-  deprecated alias. Only the `scale = "proportional"` mode is
+  deprecated alias. Only the `type = "proportional"` mode is
   post-CRAN. References:
   `/Users/z3437171/Dropbox/Github Local/unifying_model/R/unifying.Rmd`
   + Nakagawa 2022, EcoLetters.

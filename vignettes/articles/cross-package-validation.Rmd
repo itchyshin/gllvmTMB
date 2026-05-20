@@ -47,7 +47,7 @@ asserts the agreement.
 | <code>latent(0 + trait &#124; site, d)</code> (binary) | `gllvm::gllvm(num.lv)` | ✅ live (this article) | Procrustes-aligned $\boldsymbol{\Lambda}$, per-factor $\rho > 0.95$ |
 | <code>unique(0 + trait &#124; site)</code> | `glmmTMB::glmmTMB(diag())` | ✅ live (this article) | log-likelihood match to 1e-4 |
 | `phylo_scalar(species)` | `glmmTMB::glmmTMB(propto())` | ✅ tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-4 |
-| `meta_known_V(value, V = V)` | `glmmTMB::glmmTMB(equalto())` | ✅ tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-3 |
+| `meta_V(V = V)` | `glmmTMB::glmmTMB(equalto())` | ⚠ partial (`test-formula-grammar-smoke.R`, `test-gllvmTMB-args.R`) | parser / dimension / smoke coverage exists; direct equalto LL comparator remains MET-01 validation debt |
 
 ## Setup
 
@@ -67,7 +67,9 @@ Statistical Software* 112 (1),
 `latent()` term is a direct re-use of that machinery, ported into
 the long-format unit $\times$ trait engine. The agreement test below
 exists precisely to verify that the port preserves the original
-likelihood numerically.
+likelihood numerically. The claim here is therefore a port and
+stacked-trait grammar claim, not a novelty claim about reduced-rank
+random effects themselves.
 
 Simulate one Gaussian dataset with a between-site reduced-rank
 covariance plus per-trait diagonal variance, then fit it both ways
@@ -139,10 +141,11 @@ visible to readers, not just hidden in test code.
 
 ## `gllvm::gllvm()`: Procrustes-aligned ordinations agree
 
-`gllvm` (Niku et al. 2019, *Methods in Ecology and Evolution*) is
+`gllvm` (Niku et al. 2019; Korhonen et al. 2025 for `gllvm` 2.0) is
 the closest peer package: both `gllvm` and `gllvmTMB` fit Gaussian /
-binary / Poisson reduced-rank GLLVMs via TMB. The two engines
-parameterise the loadings differently (`gllvm` pins
+binary / Poisson reduced-rank GLLVMs via TMB, while `gllvm` also
+offers VA/EVA approximation workflows. The two engines parameterise
+the loadings differently (`gllvm` pins
 $\boldsymbol{\Lambda}$ to be lower-triangular with a unit diagonal
 and absorbs the scale into a separate `sigma.lv`; `gllvmTMB`
 inherits the `glmmTMB::rr()` parameterisation), and both leave the
@@ -318,14 +321,16 @@ two axes:
    (variance components near zero, correlations near $\pm 1$,
    under-identified factor loadings).
 
-## `phylo_scalar()` / `meta_known_V()`: existing test agreement
+## `phylo_scalar()` / `meta_V()`: existing test agreement
 
-The `propto` (phylogenetic) and `equalto` (known-V) covstructs
-match `glmmTMB::glmmTMB()` to 1e-4 and 1e-3 respectively, asserted
-by
+The `propto` (phylogenetic) covstruct matches
+`glmmTMB::glmmTMB()` to 1e-4 in
 [`tests/testthat/test-stage3-propto-equalto.R`](https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-stage3-propto-equalto.R).
-The article does not re-fit these here (they're slower); the
-agreement is part of the regular test suite that runs on every CI.
+For known-V meta-analysis, the current public keyword is
+`meta_V(V = V)`; the older `meta_known_V()` spelling remains only as a
+deprecated alias. Parser / dimension / smoke coverage is live, but a
+direct `glmmTMB::equalto()` log-likelihood comparator remains MET-01
+validation debt.
 
 ## See also
 
@@ -344,6 +349,14 @@ agreement is part of the regular test suite that runs on every CI.
   analysis of multivariate abundance data with generalized linear
   latent variable models in R.* Methods in Ecology and Evolution,
   10 (12): 2173--2182.
+* Korhonen P, Hui FKC, Niku J, Taskinen S, van der Veen B (2025).
+  *gllvm 2.0: fast fitting of advanced ordination methods and joint
+  species distribution models.* PeerJ, 13:e20338.
+  <https://doi.org/10.7717/peerj.20338>
+* Korhonen P, Hui FKC, Niku J, Taskinen S (2023). *Fast and universal
+  estimation of latent variable models using extended variational
+  approximations.* Statistics and Computing, 33:26.
+  <https://doi.org/10.1007/s11222-022-10189-w>
 * Sørensen Ø, Fjell AM, Walhovd KB (2023). *Longitudinal modeling
   of age-dependent latent traits with generalized additive latent
   and mixed models.* Psychometrika, 88 (2): 456--486.

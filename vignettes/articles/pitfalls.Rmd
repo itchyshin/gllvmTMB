@@ -286,7 +286,7 @@ canonical individual × trait setup.*
 ## 7. A vs V: relatedness covariance vs sampling variance
 
 **Symptom.** You're setting up an animal-model fit, see that
-`meta_known_V()` accepts a `V =` argument, and try to pass your
+`meta_V()` accepts a `V =` argument, and try to pass your
 pedigree-derived relatedness matrix as `V =`. The fit either
 errors with a shape mismatch or produces nonsense estimates.
 
@@ -295,7 +295,7 @@ errors with a shape mismatch or produces nonsense estimates.
 | Symbol | Meaning | Keyword(s) | Shape |
 |--------|---------|-----------|-------|
 | **A** / **Ainv** | Known *relatedness* covariance (or its inverse) | `animal_*(..., A = A)`, `animal_*(..., Ainv = Ainv)`, `phylo_*(..., A = A)`, `phylo_*(..., Ainv = Ainv)` | $n \times n$ symmetric PSD |
-| **V** | Known *sampling variance* (measurement-error variance in meta-analysis) | `meta_known_V(value, V = V)` | scalar per row OR a block-V matrix |
+| **V** | Known *sampling variance* (measurement-error variance in meta-analysis) | `meta_V(V = V)` | scalar per row OR a block-V matrix |
 
 The math is genuinely distinct: $\mathbf{A}$ is the
 between-individual relatedness matrix from a pedigree or
@@ -305,13 +305,13 @@ nonsensical fits because the engine expects each at a different
 place in the variance decomposition.
 
 ```r
-# WRONG: passing relatedness matrix as V to meta_known_V
-fit <- gllvmTMB(value ~ 0 + trait + meta_known_V(value, V = A_pedigree),
+# WRONG: passing relatedness matrix as V to meta_V
+fit <- gllvmTMB(value ~ 0 + trait + meta_V(V = A_pedigree),
                 data = df)
-# RIGHT: relatedness goes to animal_* / phylo_*, sampling variance to meta_known_V
+# RIGHT: relatedness goes to animal_* / phylo_*, sampling variance to meta_V
 fit <- gllvmTMB(value ~ 0 + trait +
                   animal_scalar(individual, A = A_pedigree) +
-                  meta_known_V(value, V = sampling_variance),
+                  meta_V(V = sampling_variance),
                 data = df)
 ```
 

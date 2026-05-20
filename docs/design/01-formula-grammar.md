@@ -81,14 +81,14 @@ support from end-to-end verification:
 | `phylo_scalar(species, vcv = Cphy)` | **covered** | Single trait-scalar phylogenetic random effect; the simplest phylogenetic mixed-model form. Test evidence: `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (dense-vcv path) (validation-debt register PHY-04; Phase 0B.2 promotion 2026-05-16). |
 | `phylo_indep` / `phylo_dep` | **covered** | Marginal-only phylogenetic trait covariance (`phylo_indep`, equivalent to `phylo_unique`) and full-rank phylogenetic latent covariance (`phylo_dep`, equivalent to `phylo_latent(..., d = n_traits)`). Test evidence: `test-canonical-keywords.R`, `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
 | `spatial_latent(0 + trait \| sites, mesh = mesh)` or `spatial_latent(0 + trait \| sites, coords = c("lon", "lat"))` and siblings | **covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). See "Spatial axis convention" below. Test evidence: `test-spatial-latent-recovery.R` (spatial_latent), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). |
-| `meta_V(value, V = V)` | **covered** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form) + `test-block-V.R` (block-V form via `block_V()` helper) (validation-debt register MET-01, MET-02; Phase 0B.4 promotion 2026-05-16). The legacy `meta_known_V(value, V = V)` is retained as a deprecated alias; both names desugar identically in the parser. See "Meta-analysis keyword" below for the rename history. |
+| `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
 | `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 4 × 5 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
 | `(1 + x \| g)` ordinary random slope | **reserved** | Parser does not accept random slopes inside the 4 × 5 keywords yet. Planned for M1 (Gaussian completeness). |
 | `(1 \| g1/g2)` slash-form nested random effects | **rejected** | Not parsed. Use globally unique level names instead (see "Crossed-vs-nested" below). |
 | `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | **covered (Gaussian)** | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Test evidence: `test-lambda-constraint.R` asserts pinned-entry values within `1e-8` tolerance for diagonal-pin, off-diagonal-pin-to-zero, off-diagonal-pin-to-non-zero, W-level, and simultaneous B+W pin cases (validation-debt register LAM-01, LAM-02; Phase 0B.3 promotion 2026-05-16). Phase M2 verifies on binary (LAM-03 stays partial until M2.3). |
 | `suggest_lambda_constraint(fit)` | **covered (Gaussian)** | Helper that recommends constraint matrices. Test evidence: `test-suggest-lambda-constraint.R` asserts the helper returns well-typed `T x d` matrices with correct upper-triangle pinning, dimension, row/column names, and `usage_hint` for `lower_triangular` and `pin_top_one` conventions across `K = 1, 2, 3` (validation-debt register LAM-04 Gaussian regime; Phase 0B.3 promotion 2026-05-16). Phase M2 verifies on binary at $n_\text{items} \in \{10, 20, 50\}$, $d \in \{1, 2, 3\}$ (LAM-04 binary stays partial until M2.4). |
-| `meta_V(value, w = w, scale = "proportional")` | **planned (post-CRAN)** | Unification of known-additive and proportional sampling-variance forms per Nakagawa 2022 EcoLetters. See vision doc "Planned extensions". |
+| `meta_V(V = V, type = "proportional")` | **planned (post-CRAN)** | Unification of known-additive and proportional sampling-variance forms per Nakagawa 2022 EcoLetters. See vision doc "Planned extensions". |
 | `weights = w` argument | **planned (post-CRAN)** | glmmTMB-style row-weights, separate from `meta_V()`. See vision doc "Planned extensions". |
 
 **Persona-active engagement on this table:** Boole owns the column
@@ -203,7 +203,7 @@ for the team-ratified convention.
 
 **The A vs V naming boundary** (per Design 14 §3): `animal_*` and
 `phylo_*` keywords accept **A** / **Ainv** for *relatedness*
-covariance; the separate `meta_V(value, V = V)` keyword accepts
+covariance; the separate `meta_V(V = V)` keyword accepts
 **V** for *sampling variance* in meta-analysis. The legacy
 `meta_known_V()` spelling is a deprecated alias. Do not blur —
 these are mathematically distinct quantities.
@@ -501,28 +501,30 @@ additionally take `coords =` or `mesh =`).
 
 ## Meta-analysis keyword: `meta_V` (renamed from `meta_known_V`)
 
-Maintainer 2026-05-16: the current `meta_known_V(value, V = V)` is
-being **renamed to `meta_V(value, V = V)`** as part of this design
-revision (NOT post-CRAN). The renamed keyword opens the door to a
-future `scale = "proportional"` mode that unifies the additive
-known-V form with the multiplicative weighted-regression form per
-Nakagawa 2022 EcoLetters (see vision doc "Planned extensions").
+Maintainer 2026-05-16: `meta_known_V(V = V)` was renamed to
+`meta_V(V = V)` as part of this design revision (NOT post-CRAN).
+Maintainer 2026-05-20: the formula marker drops the old response
+placeholder, so new examples use `meta_V(V = V)` rather than
+`meta_V(value, V = V)`. The keyword keeps room for a future
+`type = "proportional"` mode that unifies the additive known-V form
+with the multiplicative weighted-regression form per Nakagawa 2022
+EcoLetters (see vision doc "Planned extensions").
 
 ```r
 # Current name (deprecated alias):
-meta_known_V(value, V = V)
+meta_known_V(V = V)
 
 # New canonical name:
-meta_V(value, V = V)            # additive known-V (current behaviour)
-meta_V(value, V = V, scale = "known")  # explicit; equivalent
+meta_V(V = V)            # additive known-V (current behaviour)
+meta_V(V = V, type = "exact")  # explicit; equivalent
 
 # Future post-CRAN extension:
-# meta_V(value, w = w, scale = "proportional")
+# meta_V(V = V, type = "proportional")
 ```
 
 Both names parse the same way internally (the keyword desugars to
 `equalto(0 + obs | grp_V, V)`). `meta_known_V()` is retained as a
-deprecated alias with a soft-deprecation warning starting 0.2.0.
+deprecated compatibility alias through 0.2.x.
 
 Users supply the matrix `V` via the top-level `known_V = V`
 argument when using the additive form. For block-diagonal
@@ -553,11 +555,11 @@ These are **NOT** currently parsed. They are documented here so the
 public-API surface stays open to them and so future work knows the
 target shape.
 
-- `meta_V(value, w = w, scale = "proportional")` — proportional
+- `meta_V(V = V, type = "proportional")` — proportional
   / multiplicative sampling-variance mode (post-CRAN).
 - `weights = w` argument on `gllvmTMB()` — glmmTMB-style row-
-  weights; post-CRAN. Must coexist cleanly with `meta_V(scale =
-  "known")` per the drmTMB Phase 2b discipline.
+  weights; post-CRAN. Must coexist cleanly with `meta_V(type =
+  "exact")` per the drmTMB Phase 2b discipline.
 - `phylo_slope(...)` / `spatial_slope(...)` — phylogenetic and
   spatial random slopes; post-M1.
 - `latent_interact(0 + trait | unit, d = K, by = x)` — galamm-style

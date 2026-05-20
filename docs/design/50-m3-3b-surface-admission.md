@@ -109,6 +109,12 @@ Required interval fields:
 The long grid is the source of truth. Summary tables may be rendered,
 but they must not be the only artifact.
 
+This is a simulation-reporting rule, not just an implementation
+preference: the surface record must keep the ADEMP pieces visible
+(Morris, White & Crowther 2019) and preserve enough failure,
+seed, and artifact provenance for transparent ecology/evolution
+simulation reporting (Williams et al. 2024).
+
 ## 5. Admission thresholds
 
 The current `m3_pilot_status()` thresholds are the admission floor:

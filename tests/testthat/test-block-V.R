@@ -70,4 +70,4 @@ test_that("block_V errors on missing study in named rho_within", {
 
 ## fit_site_meta() / fit_trait_stage1() were dropped in 0.2.0 (see
 ## R/two-stage.R header). The tests below were retired with them; users
-## now call gllvmTMB() directly with phylo_*/meta_known_V() keywords.
+## now call gllvmTMB() directly with phylo_*/meta_V() keywords.

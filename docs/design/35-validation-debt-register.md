@@ -95,7 +95,7 @@ Row-owner: **Boole** (formula-grammar parser).
 | FG-11 | Crossed random effects (e.g. site × year) | `partial` | `test-stage1-stacked-fixed-effects.R` | smoke only; not exhaustive |
 | FG-12 | `phylo_*` family (5 keywords) | `covered` | `test-stage35-phylo-rr.R`, `test-phylo-hadfield.R`, `test-phylo-mode-dispatch.R`, `test-phylo-q-decomposition.R`, `test-phylo-vcv-optional.R` | M0 baseline |
 | FG-13 | `spatial_*` family (6 keywords) | `partial` | `test-stage4-spde.R`, `test-spatial-latent-recovery.R`, `test-spatial-mode-dispatch.R`, `test-spatial-orientation.R` | smoke + mode-dispatch; full coverage Phase 0B |
-| FG-14 | `meta_V(value, V = V)` | `partial` | `test-block-V.R` | block-V verified; named-V verified; single-V Phase 0B |
+| FG-14 | `meta_V(V = V)` | `partial` | `test-formula-grammar-smoke.R`, `test-traits-keyword.R`, `test-block-V.R` | V-only named and positional parser forms verified; wide `traits(...)` marker preservation verified; block-V helper verified; single-V inference validation remains partial |
 | FG-15 | `phylo_slope()` random-slope keyword | `partial` | `test-phylo-slope.R` | smoke only; full M1 |
 | FG-16 | `gllvmTMB_wide(Y, ...)` legacy constructor | `partial` | `test-gllvmTMB-wide.R`, `test-wide-weights-matrix.R` | soft-deprecated in 0.2.0; new examples use `traits(...)`; removal is a later API-change decision while export remains live |
 | FG-17 | Slash form `(1 \| g1/g2)` nesting | `blocked` | `test-augmented-lhs-guard.R` | parser rejects with snapshot-pinned error |
@@ -180,9 +180,9 @@ Row-owner: **Fisher + Boole** (meta-analysis with known V).
 
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
-| MET-01 | Single-V `meta_V(value, V = V)` (additive scale, default) | `partial` | `test-block-V.R` | block-V verified; named-V verified; single-V smoke only |
+| MET-01 | Single-V `meta_V(V = V)` (additive `type = "exact"` default) | `partial` | `test-formula-grammar-smoke.R`, `test-traits-keyword.R`, `test-gllvmTMB-args.R` | V-only named and positional parser forms verified; wide `traits(...)` marker preservation verified; single-V smoke only; direct `glmmTMB::equalto()` LL comparator still needed |
 | MET-02 | Block-V within-study correlation | `covered` | `test-block-V.R` | |
-| MET-03 | `meta_V(scale = "proportional")` (Nakagawa 2022) | `blocked` | n/a | post-CRAN; not yet implemented |
+| MET-03 | `meta_V(V = V, type = "proportional")` (Nakagawa 2022) | `blocked` | n/a | post-CRAN; parser errors explicitly rather than silently treating it as exact |
 | MET-04 | `corvidae-two-stage` two-stage workflow | `partial` | n/a | article pulled to `dev/workshop-articles/` in PR-0C.PULL (Gaussian meta-analytical example; deferred per maintainer 2026-05-16 — restore once a live cross-check fixture exists) |
 
 ### Section 6.5 — Known-relatedness keyword family (animal models)

@@ -61,7 +61,7 @@ layout.
 - **Binary, count, or ordinal multivariate responses**: any of 15 response families, single- or mixed-family. → [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html).
 - **Phylogenetic trait covariance**: `phylo_latent()` + `phylo_unique()` with a species tree.
 - **Spatial multivariate structure**: `spatial_*()` keywords with SPDE meshes from `make_mesh()`.
-- **Meta-analytic known sampling covariance**: `meta_V(value, V = V)` for multivariate meta-analysis.
+- **Meta-analytic known sampling covariance**: `meta_V(V = V)` for multivariate meta-analysis.
 
 This is preview version `0.2.0` (pre-CRAN). The Status matrix
 further below shows what is stable today, experimental (under
@@ -232,8 +232,8 @@ let you trace any claim to its test-file evidence.
 | **`check_identifiability()`, `gllvmTMB_check_consistency()`, `check_auto_residual()`, `confint_inspect()`, `sanity_multi()`** | stable | Diagnostic surface complete (DIA-01..DIA-07); Phase 1b validation milestone closed five of seven. |
 | **Phylogenetic covariance: Hadfield & Nakagawa (2010, *J. Evol. Biol.* 23: 494–508) sparse $A^{-1}$ + paired `phylo_latent + phylo_unique`; `phylo_scalar / indep / dep / slope` variants** | stable (paired) / experimental (variants) | Paired form + three-piece fallback for small trees covered; variants smoke-tested; full verification Phase 0B / M1 (PHY-01..PHY-10). |
 | **Spatial covariance: SPDE mesh + `spatial_latent / unique / scalar / indep / dep`** | stable (mesh + dispatch) / experimental (variants) | SPDE machinery inherited from `sdmTMB` (SPA-01, SPA-05..SPA-07); per-keyword variants smoke / recovery tested; full verification Phase 0B (SPA-02..SPA-04). See [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html). |
-| **`meta_V(value, V = V)` with `block_V()` within-study correlation** | stable (block-V) / experimental (single-V) | Block-V form covered (MET-02); single-V partial (MET-01). Renamed from `meta_known_V()` in 0.2.0; old name is a deprecated alias. |
-| **`meta_V(scale = "proportional")` (Nakagawa 2022)** | planned | Post-CRAN extension (MET-03); current default `scale = "known"` is additive. |
+| **`meta_V(V = V)` with `block_V()` within-study correlation** | stable (block-V) / experimental (single-V) | Block-V form covered (MET-02); single-V partial (MET-01). Renamed from `meta_known_V()` in 0.2.0; old name is a deprecated alias. |
+| **`meta_V(type = "proportional")` (Nakagawa 2022)** | planned | Post-CRAN extension (MET-03); current implemented `type = "exact"` mode is additive known-V. |
 | **`lambda_constraint` confirmatory loadings** | experimental | Gaussian smoke test (LAM-02); binary IRT validation is the M2.3 milestone (LAM-03). See [Lambda constraints](https://itchyshin.github.io/gllvmTMB/articles/lambda-constraint.html). |
 | **`suggest_lambda_constraint()`** | experimental | Smoke test (LAM-04); M2.4 milestone covers the binary regime. |
 | **Multi-start optimisation (`n_init >= 2`)** | stable | Reduced-rank fits recommended to use `n_init >= 5`; multi-start sdreport / report consistency fixed in PR #100 (DIA-06). |
@@ -274,7 +274,7 @@ Plus the random-slope keywords `phylo_slope(x | species)` and
 
 **A vs V naming boundary**: `animal_*` and `phylo_*` keywords accept
 **A** (relatedness covariance), **Ainv** (sparse precision), or
-**pedigree** (animal-only); the separate `meta_V(value, V = V)`
+**pedigree** (animal-only); the separate `meta_V(V = V)`
 keyword accepts **V** for *sampling variance* in meta-analysis
 (`meta_known_V()` is the deprecated alias).
 See [Design 14](docs/design/14-known-relatedness-keywords.md).
@@ -319,10 +319,10 @@ overpromise):
 - **Random slopes through `(1 + x | g)` syntax**, capped at one
   slope for M1, with 2- and 3-slope support conditional on
   validation evidence (RE-02..RE-03).
-- **`meta_V(scale = "proportional")`** — Nakagawa (2022) unifying
+- **`meta_V(type = "proportional")`** — Nakagawa (2022) unifying
   weighted-regression / meta-analysis
-  mode; the current default is the additive `scale = "known"`
-  form (MET-03).
+  mode; the current implemented mode is additive `type = "exact"`
+  known-V (MET-03).
 - **SPDE barrier meshes, REML estimation, storage controls.**
 - **Zero-inflated / hurdle / two-stage delta families with
   latent-scale correlations.** Two-sub-model families have two
@@ -375,11 +375,13 @@ package author, written against the TMB API.
 - `sdmTMB` fits spatial single-response models. `gllvmTMB`
   inherits sdmTMB's SPDE and mesh code for its `spatial_*()`
   keywords.
-- `gllvm` (Niku et al.) is the original multivariate GLLVM package
-  with a variational-approximation engine and a matrix-in API;
-  `gllvmTMB` is the TMB-Laplace alternative with formula grammar,
-  the 4 x 5 keyword grid, and integrated phylogenetic / spatial
-  paths in one engine.
+- `gllvm` (Niku et al. 2019; Korhonen et al. 2025 for `gllvm`
+  2.0) is the established multivariate GLLVM / ordination package,
+  with variational, extended-variational, and Laplace approximation
+  paths plus a matrix-in API; `gllvmTMB` is the TMB-Laplace
+  alternative with stacked-trait formula grammar, the 4 x 5 keyword
+  grid, and issue-tracked validation for its phylogenetic / spatial
+  covariance paths.
 - `MCMCglmm` and `brms` are Bayesian alternatives for multivariate
   phylogenetic / multi-response models; `gllvmTMB` returns ML
   point estimates with profile / Wald / bootstrap CIs and runs

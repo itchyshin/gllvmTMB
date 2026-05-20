@@ -97,8 +97,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
+| Codex / Ada | #223 citation/provenance hygiene + #227 `meta_V()` V-only syntax | PR #226 / `codex/sister-package-citation-hygiene-2026-05-20` | citation docs, `meta_V()` parser/docs/tests, wide `traits()` marker path, check-log, after-task | Active 2026-05-20 12:56 MDT; PR open, local focused tests + pkgdown check passed; ready for push / Actions |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

@@ -435,6 +435,211 @@ m3_simulate_response <- function(truth) {
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
+m3_refit_known_nbinom2_phi <- function(
+  fit,
+  phi,
+  optimizer = "nlminb",
+  optArgs = list(),
+  n_init = 1L,
+  init_jitter = 0.3
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    stop("fit must be a gllvmTMB_multi object")
+  }
+  if (!is.numeric(phi) || length(phi) != 1L || !is.finite(phi) || phi <= 0) {
+    stop("phi must be one positive finite number")
+  }
+  optimizer <- match.arg(optimizer, c("nlminb", "optim"))
+  n_init <- as.integer(n_init)
+  if (is.na(n_init) || n_init < 1L) {
+    stop("n_init must be a positive integer")
+  }
+  if (
+    !is.numeric(init_jitter) ||
+      length(init_jitter) != 1L ||
+      !is.finite(init_jitter) ||
+      init_jitter < 0
+  ) {
+    stop("init_jitter must be one finite non-negative number")
+  }
+  if (!any(fit$tmb_data$family_id_vec == 5L)) {
+    stop("known NB2 phi refit requires nbinom2 rows")
+  }
+
+  params <- fit$tmb_params
+  params$log_phi_nbinom2 <- rep(
+    log(phi),
+    length(params$log_phi_nbinom2)
+  )
+  map <- fit$tmb_map
+  map$log_phi_nbinom2 <- factor(rep(
+    NA_integer_,
+    length(params$log_phi_nbinom2)
+  ))
+
+  obj <- TMB::MakeADFun(
+    data = fit$tmb_data,
+    parameters = params,
+    map = map,
+    random = fit$tmb_obj$env$random,
+    DLL = "gllvmTMB",
+    silent = TRUE
+  )
+
+  run_one <- function(par_init) {
+    if (identical(optimizer, "optim")) {
+      opt_args <- optArgs
+      method <- opt_args$method %||% "BFGS"
+      opt_args$method <- method
+      opt_args$control <- utils::modifyList(
+        list(maxit = 2000),
+        opt_args$control %||% list()
+      )
+      raw <- do.call(
+        stats::optim,
+        c(list(par = par_init, fn = obj$fn, gr = obj$gr), opt_args)
+      )
+      return(list(
+        par = raw$par,
+        objective = raw$value,
+        convergence = raw$convergence,
+        message = raw$message %||% "",
+        iterations = unname(raw$counts[["function"]] %||% NA_integer_),
+        evaluations = unname(raw$counts[["gradient"]] %||% NA_integer_)
+      ))
+    }
+
+    nlminb_args <- optArgs
+    keep <- names(nlminb_args) %in% c("control", "lower", "upper", "scale")
+    nlminb_args <- nlminb_args[keep]
+    nlminb_args$control <- utils::modifyList(
+      list(eval.max = 2000, iter.max = 1500),
+      nlminb_args$control %||% list()
+    )
+    raw <- do.call(
+      stats::nlminb,
+      c(
+        list(start = par_init, objective = obj$fn, gradient = obj$gr),
+        nlminb_args
+      )
+    )
+    list(
+      par = raw$par,
+      objective = raw$objective,
+      convergence = raw$convergence,
+      message = raw$message %||% "",
+      iterations = raw$iterations %||% NA_integer_,
+      evaluations = raw$evaluations %||% NA_integer_
+    )
+  }
+
+  restart_row <- function(
+    restart,
+    start_label,
+    jitter_sd,
+    objective = NA_real_,
+    convergence = NA_integer_,
+    message = "",
+    elapsed_s = NA_real_,
+    iterations = NA_integer_,
+    evaluations = NA_integer_,
+    success = FALSE
+  ) {
+    data.frame(
+      restart = restart,
+      start_label = start_label,
+      start_method = "known_phi",
+      optimizer = optimizer,
+      jitter_sd = jitter_sd,
+      objective = objective,
+      convergence = convergence,
+      message = message,
+      elapsed_s = elapsed_s,
+      iterations = iterations,
+      evaluations = evaluations,
+      success = success,
+      selected = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  best_opt <- NULL
+  best_obj <- Inf
+  restart_history <- vector("list", n_init)
+  for (i in seq_len(n_init)) {
+    par0 <- if (i == 1L) {
+      obj$par
+    } else {
+      obj$par + stats::rnorm(length(obj$par), sd = init_jitter)
+    }
+    elapsed_start <- proc.time()[["elapsed"]]
+    opt_i <- tryCatch(run_one(par0), error = function(e) e)
+    elapsed_s <- proc.time()[["elapsed"]] - elapsed_start
+    if (inherits(opt_i, "error")) {
+      restart_history[[i]] <- restart_row(
+        restart = i,
+        start_label = if (i == 1L) "initial" else "jitter",
+        jitter_sd = if (i == 1L) 0 else init_jitter,
+        message = conditionMessage(opt_i),
+        elapsed_s = elapsed_s,
+        success = FALSE
+      )
+      next
+    }
+    restart_history[[i]] <- restart_row(
+      restart = i,
+      start_label = if (i == 1L) "initial" else "jitter",
+      jitter_sd = if (i == 1L) 0 else init_jitter,
+      objective = opt_i$objective,
+      convergence = opt_i$convergence %||% NA_integer_,
+      message = opt_i$message %||% "",
+      elapsed_s = elapsed_s,
+      iterations = opt_i$iterations %||% NA_integer_,
+      evaluations = opt_i$evaluations %||% NA_integer_,
+      success = is.finite(opt_i$objective)
+    )
+    if (is.finite(opt_i$objective) && opt_i$objective < best_obj) {
+      best_obj <- opt_i$objective
+      best_opt <- opt_i
+    }
+  }
+  restart_history <- do.call(rbind, restart_history)
+  if (is.null(best_opt)) {
+    stop("All known-phi restarts failed")
+  }
+  selected <- which(
+    restart_history$success &
+      restart_history$objective == best_obj
+  )[1L]
+  restart_history$selected[selected] <- TRUE
+
+  invisible(obj$fn(best_opt$par))
+  obj$env$last.par.best <- obj$env$last.par
+
+  out <- fit
+  out$tmb_obj <- obj
+  out$tmb_params <- params
+  out$tmb_map <- map
+  out$opt <- best_opt
+  out$report <- obj$report()
+  out$sd_report <- NULL
+  out$sdreport_error <- paste0(
+    "standard-error calculation skipped by M3 known-phi diagnostic refit; ",
+    "log_phi_nbinom2 fixed at log(",
+    signif(phi, 6),
+    ")"
+  )
+  out$restart_history <- restart_history
+  out$start_provenance$known_phi_nbinom2 <- TRUE
+  out$start_provenance$known_phi_value <- phi
+  out$start_provenance$selected_restart <- restart_history$restart[selected]
+  out$fit_health <- getFromNamespace(
+    ".gllvmTMB_build_fit_health",
+    "gllvmTMB"
+  )(out)
+  out
+}
+
 ## ---- Per-cell driver --------------------------------------------------
 
 m3_run_cell <- function(
@@ -456,6 +661,7 @@ m3_run_cell <- function(
   n_init = 1L,
   init_jitter = 0.3,
   se = TRUE,
+  fit_phi_mode = c("estimated", "known"),
   targets = "psi",
   n_boot = 30L,
   n_cores_boot = 1L,
@@ -503,6 +709,10 @@ m3_run_cell <- function(
   }
   init_strategy <- match.arg(init_strategy, c("default", "single_trait_warmup"))
   optimizer <- match.arg(optimizer, c("nlminb", "optim"))
+  fit_phi_mode <- match.arg(fit_phi_mode)
+  if (!identical(fit_phi_mode, "estimated") && !identical(family, "nbinom2")) {
+    stop("fit_phi_mode = 'known' is only supported for family = 'nbinom2'")
+  }
   n_init <- as.integer(n_init)
   if (is.na(n_init) || n_init < 1L) {
     stop("n_init must be a positive integer")
@@ -520,8 +730,8 @@ m3_run_cell <- function(
   }
   targets <- m3_normalise_targets(targets)
   n_boot <- as.integer(n_boot)
-  if (is.na(n_boot) || n_boot < 1L) {
-    stop("n_boot must be a positive integer")
+  if (is.na(n_boot) || n_boot < 0L) {
+    stop("n_boot must be a non-negative integer")
   }
   n_cores_boot <- as.integer(n_cores_boot)
   if (is.na(n_cores_boot) || n_cores_boot < 1L) {
@@ -637,6 +847,36 @@ m3_run_cell <- function(
       }
     )
 
+    if (
+      fit_ok &&
+        inherits(fit, "gllvmTMB_multi") &&
+        fit$opt$convergence == 0L &&
+        identical(fit_phi_mode, "known")
+    ) {
+      fit <- tryCatch(
+        m3_refit_known_nbinom2_phi(
+          fit,
+          phi = truth$nuisance$phi,
+          optimizer = optimizer,
+          optArgs = optArgs,
+          n_init = n_init,
+          init_jitter = init_jitter
+        ),
+        error = function(e) {
+          fit_ok <<- FALSE
+          e
+        }
+      )
+      fit_diag <- m3_fit_health_row(
+        if (inherits(fit, "gllvmTMB_multi")) fit else NULL,
+        fit_error = if (inherits(fit, "error")) {
+          conditionMessage(fit)
+        } else {
+          NA_character_
+        }
+      )
+    }
+
     rep_runtime <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
     if (
@@ -683,6 +923,7 @@ m3_run_cell <- function(
               optimizer = optimizer,
               n_init = n_init,
               init_jitter = init_jitter,
+              fit_phi_mode = fit_phi_mode,
               n_units = n_units,
               n_traits = n_traits,
               lambda_scale = lambda_scale,
@@ -806,6 +1047,7 @@ m3_run_cell <- function(
           optimizer = optimizer,
           n_init = n_init,
           init_jitter = init_jitter,
+          fit_phi_mode = fit_phi_mode,
           n_units = n_units,
           n_traits = n_traits,
           lambda_scale = lambda_scale,
@@ -823,7 +1065,7 @@ m3_run_cell <- function(
     if ("Sigma_unit_diag" %in% targets) {
       boot_ok <- m3_bootstrap_supported(fit)
       boot <- NULL
-      if (boot_ok$ok) {
+      if (boot_ok$ok && n_boot > 0L) {
         boot <- tryCatch(
           suppressMessages(withCallingHandlers(
             gllvmTMB::bootstrap_Sigma(
@@ -855,7 +1097,13 @@ m3_run_cell <- function(
       } else {
         rep(NA_real_, n_traits)
       }
-      n_boot_failed <- if (boot_available) boot$n_failed else NA_integer_
+      n_boot_failed <- if (boot_available) {
+        boot$n_failed
+      } else if (n_boot == 0L) {
+        0L
+      } else {
+        NA_integer_
+      }
 
       for (t in seq_len(n_traits)) {
         sig_truth <- truth$diag_Sigma[t]
@@ -916,6 +1164,7 @@ m3_run_cell <- function(
           optimizer = optimizer,
           n_init = n_init,
           init_jitter = init_jitter,
+          fit_phi_mode = fit_phi_mode,
           n_units = n_units,
           n_traits = n_traits,
           lambda_scale = lambda_scale,
@@ -962,6 +1211,7 @@ m3_run_grid <- function(
   n_init = 1L,
   init_jitter = 0.3,
   se = TRUE,
+  fit_phi_mode = c("estimated", "known"),
   targets = "psi",
   n_boot = 30L,
   n_cores_boot = 1L,
@@ -970,6 +1220,7 @@ m3_run_grid <- function(
 ) {
   init_strategy <- match.arg(init_strategy, c("default", "single_trait_warmup"))
   optimizer <- match.arg(optimizer, c("nlminb", "optim"))
+  fit_phi_mode <- match.arg(fit_phi_mode)
   targets <- m3_normalise_targets(targets)
   if (is.null(cells)) {
     cells <- expand.grid(
@@ -1005,6 +1256,7 @@ m3_run_grid <- function(
           n_init = n_init,
           init_jitter = init_jitter,
           se = se,
+          fit_phi_mode = fit_phi_mode,
           targets = targets,
           n_boot = n_boot,
           n_cores_boot = n_cores_boot,
@@ -1035,6 +1287,7 @@ m3_run_grid <- function(
         n_init = n_init,
         init_jitter = init_jitter,
         se = se,
+        fit_phi_mode = fit_phi_mode,
         targets = targets,
         n_boot = n_boot,
         n_cores_boot = n_cores_boot,
@@ -1131,6 +1384,9 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
   ## dropping rows with unavailable CIs, then compute target-specific
   ## coverage on converged trait rows.
   split_keys <- list(grid_df$cell, grid_df$target, grid_df$ci_method)
+  if ("fit_phi_mode" %in% names(grid_df)) {
+    split_keys <- c(list(grid_df$fit_phi_mode), split_keys)
+  }
   if ("scenario" %in% names(grid_df)) {
     split_keys <- c(list(grid_df$scenario), split_keys)
   }
@@ -1350,6 +1606,14 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
       if ("scenario" %in% names(sub)) {
         row <- data.frame(
           scenario = sub$scenario[1],
+          row,
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      }
+      if ("fit_phi_mode" %in% names(sub)) {
+        row <- data.frame(
+          fit_phi_mode = sub$fit_phi_mode[1],
           row,
           check.names = FALSE,
           stringsAsFactors = FALSE

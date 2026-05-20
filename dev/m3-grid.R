@@ -32,6 +32,8 @@
 ## ---- Constants --------------------------------------------------------
 
 M3_FAMILIES <- c("gaussian", "binomial", "nbinom2", "ordinal_probit", "mixed")
+M3_CONTROL_FAMILIES <- c("poisson")
+M3_SUPPORTED_FAMILIES <- unique(c(M3_FAMILIES, M3_CONTROL_FAMILIES))
 
 M3_DEFAULT_N_UNITS <- 60L
 M3_DEFAULT_N_TRAITS <- 5L
@@ -42,6 +44,7 @@ M3_DEFAULT_PHI_RATE <- 5
 M3_DEFAULT_NOMINAL <- 0.95
 M3_PASS_GATE <- 0.94 # audit-1 exit threshold
 M3_INTERVAL_TARGETS <- c("psi", "Sigma_unit_diag")
+M3_STRESS_RUN_STAGE <- "point_stress"
 
 m3_normalise_targets <- function(targets = "psi") {
   if (is.null(targets) || !length(targets)) {
@@ -58,13 +61,21 @@ m3_normalise_targets <- function(targets = "psi") {
   targets
 }
 
-m3_target_method <- function(target) {
+m3_target_method <- function(target, n_boot = NULL) {
   switch(
     target,
     psi = "profile",
-    Sigma_unit_diag = "bootstrap",
+    Sigma_unit_diag = if (!is.null(n_boot) && identical(as.integer(n_boot), 0L)) {
+      "none"
+    } else {
+      "bootstrap"
+    },
     stop("Unknown M3 interval target: ", target)
   )
+}
+
+m3_family_seed_index <- function(family) {
+  match(family, M3_SUPPORTED_FAMILIES)
 }
 
 m3_miss_side <- function(truth, lo, hi, covered, ci_available) {
@@ -253,7 +264,7 @@ m3_sample_truth <- function(
   phi_shape = M3_DEFAULT_PHI_SHAPE,
   phi_rate = M3_DEFAULT_PHI_RATE
 ) {
-  stopifnot(family %in% M3_FAMILIES, d >= 1L)
+  stopifnot(family %in% M3_SUPPORTED_FAMILIES, d >= 1L)
   if (
     !is.numeric(lambda_scale) ||
       length(lambda_scale) != 1L ||
@@ -385,6 +396,10 @@ m3_simulate_response <- function(truth) {
       gaussian = eta_t +
         stats::rnorm(n_units, sd = truth$nuisance$sigma_eps %||% 0.5),
       binomial = stats::rbinom(n_units, size = 1L, prob = stats::plogis(eta_t)),
+      poisson = {
+        mu_t <- exp(pmin(pmax(eta_t, -10), 10))
+        stats::rpois(n_units, lambda = mu_t)
+      },
       nbinom2 = {
         ## Clamp eta to [-10, 10] -> mu in [4.5e-5, 22000]; protects
         ## rnbinom against NaN from extreme draws of Lambda x Z.
@@ -668,7 +683,7 @@ m3_run_cell <- function(
   ci_level = M3_DEFAULT_NOMINAL,
   verbose = TRUE
 ) {
-  stopifnot(family %in% M3_FAMILIES, d >= 1L, n_reps >= 1L)
+  stopifnot(family %in% M3_SUPPORTED_FAMILIES, d >= 1L, n_reps >= 1L)
   if (
     !is.numeric(lambda_scale) ||
       length(lambda_scale) != 1L ||
@@ -757,7 +772,7 @@ m3_run_cell <- function(
 
   rows <- vector("list", n_reps)
   for (r in seq_len(n_reps)) {
-    rep_seed <- seed_base + 1000L * d + 100000L * match(family, M3_FAMILIES) + r
+    rep_seed <- seed_base + 1000L * d + 100000L * m3_family_seed_index(family) + r
     t0 <- Sys.time()
 
     truth <- m3_sample_truth(
@@ -800,6 +815,7 @@ m3_run_cell <- function(
         family,
         gaussian = stats::gaussian(),
         binomial = stats::binomial(),
+        poisson = stats::poisson(),
         nbinom2 = gllvmTMB::nbinom2(),
         ordinal_probit = gllvmTMB::ordinal_probit(),
         stop("Unknown family: ", family)
@@ -905,7 +921,7 @@ m3_run_cell <- function(
               target = target,
               truth = NA_real_,
               estimate = NA_real_,
-              ci_method = m3_target_method(target),
+              ci_method = m3_target_method(target, n_boot = n_boot),
               ci_level = ci_level,
               ci_lo = NA_real_,
               ci_hi = NA_real_,
@@ -1001,9 +1017,11 @@ m3_run_cell <- function(
       for (t in seq_len(n_traits)) {
         psi_truth <- truth$psi[t]
         ci_available <- !is.na(prof_lo[t]) && !is.na(prof_hi[t])
-        covered_prof <- ci_available &&
-          psi_truth >= prof_lo[t] &&
-          psi_truth <= prof_hi[t]
+        covered_prof <- if (ci_available) {
+          psi_truth >= prof_lo[t] && psi_truth <= prof_hi[t]
+        } else {
+          NA
+        }
         rep_rows[[length(rep_rows) + 1L]] <- data.frame(
           cell = cell_id,
           family = family,
@@ -1110,9 +1128,11 @@ m3_run_cell <- function(
         ci_available <- boot_available &&
           !is.na(sig_lo[t]) &&
           !is.na(sig_hi[t])
-        covered_sig <- ci_available &&
-          sig_truth >= sig_lo[t] &&
-          sig_truth <= sig_hi[t]
+        covered_sig <- if (ci_available) {
+          sig_truth >= sig_lo[t] && sig_truth <= sig_hi[t]
+        } else {
+          NA
+        }
         miss_side <- if (!boot_ok$ok) {
           paste0(
             "unsupported_family_id_",
@@ -1146,14 +1166,14 @@ m3_run_cell <- function(
           target = "Sigma_unit_diag",
           truth = sig_truth,
           estimate = est_diag[t],
-          ci_method = "bootstrap",
+          ci_method = m3_target_method("Sigma_unit_diag", n_boot = n_boot),
           ci_level = ci_level,
           ci_lo = sig_lo[t],
           ci_hi = sig_hi[t],
           covered = covered_sig,
           ci_available = ci_available,
           fit_converged = TRUE,
-          ci_failed = !ci_available,
+          ci_failed = if (n_boot == 0L) FALSE else !ci_available,
           miss_side = miss_side,
           n_boot = n_boot,
           n_boot_failed = n_boot_failed,
@@ -1300,6 +1320,158 @@ m3_run_grid <- function(
   do.call(rbind, rows)
 }
 
+## ---- Surface registers ------------------------------------------------
+
+m3_nb2_stress_surfaces <- function(include_controls = FALSE) {
+  nb2 <- data.frame(
+    surface_id = c(
+      "nbinom2-d1-baseline-phi1-n60",
+      "nbinom2-d1-lowphi-n120",
+      "nbinom2-d1-weakvar-phi1-n60"
+    ),
+    scenario = c(
+      "baseline_phi1_n60",
+      "lowphi_n120",
+      "weakvar_phi1_n60"
+    ),
+    family = "nbinom2",
+    d = 1L,
+    n_units = c(60L, 120L, 60L),
+    n_traits = 5L,
+    lambda_scale = c(1, 1, 0.5),
+    psi_scale = c(1, 1, 1.5),
+    phi = c(1, 0.4, 1),
+    fit_phi_modes = "estimated,known",
+    target = "Sigma_unit_diag",
+    ci_method = "none",
+    link_residual = "none",
+    n_boot = 0L,
+    n_cores_boot = 1L,
+    run_stage = M3_STRESS_RUN_STAGE,
+    stringsAsFactors = FALSE
+  )
+
+  rows <- nb2
+  if (isTRUE(include_controls)) {
+    controls <- data.frame(
+      surface_id = c(
+        "gaussian-d1-baseline-n60",
+        "poisson-d1-baseline-n60"
+      ),
+      scenario = c(
+        "gaussian_control_n60",
+        "poisson_control_n60"
+      ),
+      family = c("gaussian", "poisson"),
+      d = 1L,
+      n_units = 60L,
+      n_traits = 5L,
+      lambda_scale = 1,
+      psi_scale = 1,
+      phi = NA_real_,
+      fit_phi_modes = "estimated",
+      target = "Sigma_unit_diag",
+      ci_method = "none",
+      link_residual = "none",
+      n_boot = 0L,
+      n_cores_boot = 1L,
+      run_stage = M3_STRESS_RUN_STAGE,
+      stringsAsFactors = FALSE
+    )
+    rows <- rbind(rows, controls)
+  }
+
+  split_rows <- lapply(seq_len(nrow(rows)), function(i) {
+    modes <- strsplit(rows$fit_phi_modes[i], ",", fixed = TRUE)[[1L]]
+    out <- rows[rep(i, length(modes)), , drop = FALSE]
+    out$fit_phi_mode <- trimws(modes)
+    out
+  })
+  out <- do.call(rbind, split_rows)
+  out$fit_phi_modes <- NULL
+  rownames(out) <- NULL
+  out
+}
+
+m3_run_surface_register <- function(
+  surfaces,
+  n_reps = 10L,
+  seed_base = 20260520L,
+  init_strategy = "single_trait_warmup",
+  start_method = list(method = "res", jitter.sd = 0.2),
+  optimizer = "optim",
+  optArgs = list(method = "BFGS"),
+  n_init = 3L,
+  init_jitter = 0.05,
+  se = FALSE,
+  ci_level = M3_DEFAULT_NOMINAL,
+  verbose = TRUE
+) {
+  required <- c(
+    "surface_id", "scenario", "family", "d", "n_units", "n_traits",
+    "lambda_scale", "psi_scale", "fit_phi_mode", "target", "n_boot",
+    "n_cores_boot", "run_stage"
+  )
+  missing <- setdiff(required, names(surfaces))
+  if (length(missing)) {
+    stop("Surface register missing columns: ", paste(missing, collapse = ", "))
+  }
+
+  rows <- vector("list", nrow(surfaces))
+  for (i in seq_len(nrow(surfaces))) {
+    s <- surfaces[i, , drop = FALSE]
+    phi_i <- if ("phi" %in% names(s) && is.finite(s$phi)) s$phi else NULL
+    target_i <- m3_normalise_targets(strsplit(
+      as.character(s$target),
+      ",",
+      fixed = TRUE
+    )[[1L]])
+    if (verbose) {
+      cat(sprintf(
+        "[m3] surface %s (%s, fit_phi_mode = %s)\n",
+        s$surface_id,
+        s$scenario,
+        s$fit_phi_mode
+      ))
+    }
+    grid_i <- m3_run_grid(
+      cells = data.frame(
+        family = s$family,
+        d = as.integer(s$d),
+        stringsAsFactors = FALSE
+      ),
+      n_reps = n_reps,
+      seed_base = seed_base,
+      n_units = as.integer(s$n_units),
+      n_traits = as.integer(s$n_traits),
+      lambda_scale = as.numeric(s$lambda_scale),
+      psi_scale = as.numeric(s$psi_scale),
+      phi = phi_i,
+      init_strategy = init_strategy,
+      start_method = start_method,
+      optimizer = optimizer,
+      optArgs = optArgs,
+      n_init = n_init,
+      init_jitter = init_jitter,
+      se = se,
+      fit_phi_mode = s$fit_phi_mode,
+      targets = target_i,
+      n_boot = as.integer(s$n_boot),
+      n_cores_boot = as.integer(s$n_cores_boot),
+      ci_level = ci_level,
+      parallel = FALSE
+    )
+    grid_i$surface_id <- s$surface_id
+    grid_i$scenario <- s$scenario
+    grid_i$run_stage <- s$run_stage
+    grid_i$declared_ci_method <- s$ci_method %||% NA_character_
+    grid_i$declared_link_residual <- s$link_residual %||% NA_character_
+    rows[[i]] <- grid_i
+  }
+
+  do.call(rbind, rows)
+}
+
 ## ---- Summary -----------------------------------------------------------
 
 m3_pilot_status <- function(
@@ -1384,6 +1556,9 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
   ## dropping rows with unavailable CIs, then compute target-specific
   ## coverage on converged trait rows.
   split_keys <- list(grid_df$cell, grid_df$target, grid_df$ci_method)
+  if ("surface_id" %in% names(grid_df)) {
+    split_keys <- c(list(grid_df$surface_id), split_keys)
+  }
   if ("fit_phi_mode" %in% names(grid_df)) {
     split_keys <- c(list(grid_df$fit_phi_mode), split_keys)
   }
@@ -1563,6 +1738,9 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         n_boot_failed = n_boot_failed,
         n_boot_attempted = n_boot_attempted
       )
+      if (identical(sub$ci_method[1], "none")) {
+        pilot_status <- "POINT_ONLY"
+      }
       coverage_prof <- if (
         identical(sub$target[1], "psi") &&
           identical(sub$ci_method[1], "profile")
@@ -1570,6 +1748,18 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         coverage
       } else {
         NA_real_
+      }
+      profile_gate_status <- if (is.na(coverage_prof)) {
+        "NOT_EVALUATED"
+      } else if (coverage_prof >= gate) {
+        "PASS"
+      } else {
+        "FAIL"
+      }
+      passes_94pct_prof <- if (is.na(coverage_prof)) {
+        NA
+      } else {
+        coverage_prof >= gate
       }
       row <- data.frame(
         cell = sub$cell[1],
@@ -1600,7 +1790,8 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         mean_runtime_s = mean(rep_runtime, na.rm = TRUE),
         pilot_status = pilot_status,
         coverage_prof = coverage_prof,
-        passes_94pct_prof = !is.na(coverage_prof) && coverage_prof >= gate,
+        passes_94pct_prof = passes_94pct_prof,
+        profile_gate_status = profile_gate_status,
         stringsAsFactors = FALSE
       )
       if ("scenario" %in% names(sub)) {
@@ -1619,9 +1810,213 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
           stringsAsFactors = FALSE
         )
       }
+      if ("surface_id" %in% names(sub)) {
+        row <- data.frame(
+          surface_id = sub$surface_id[1],
+          row,
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      }
+      if ("run_stage" %in% names(sub)) {
+        row <- data.frame(
+          run_stage = sub$run_stage[1],
+          row,
+          check.names = FALSE,
+          stringsAsFactors = FALSE
+        )
+      }
       row
     })
   )
   rownames(out) <- NULL
   out
+}
+
+## ---- Diagnostic report data -------------------------------------------
+
+m3_split_apply <- function(df, keys, fun) {
+  keys <- intersect(keys, names(df))
+  if (!length(keys) || !nrow(df)) {
+    return(data.frame())
+  }
+  groups <- split(df, df[keys], drop = TRUE)
+  out <- lapply(groups, fun)
+  out <- out[!vapply(out, is.null, logical(1))]
+  if (!length(out)) {
+    return(data.frame())
+  }
+  out <- do.call(rbind, out)
+  rownames(out) <- NULL
+  out
+}
+
+m3_diagnostic_report_data <- function(
+  grid_df,
+  pilot_gate = 0.90,
+  promotion_gate = M3_PASS_GATE
+) {
+  if (!is.data.frame(grid_df) || !nrow(grid_df)) {
+    stop("grid_df must be a non-empty data frame")
+  }
+  summary <- m3_summarise(grid_df, gate = promotion_gate)
+  summary$pilot_gate <- pilot_gate
+  summary$promotion_gate <- promotion_gate
+
+  header_cols <- intersect(
+    c(
+      "surface_id", "scenario", "run_stage", "family", "d", "n_units",
+      "n_traits", "lambda_scale", "psi_scale", "truth_phi", "target",
+      "ci_method", "fit_phi_mode", "declared_link_residual", "n_boot",
+      "n_cores_boot", "seed_base"
+    ),
+    names(grid_df)
+  )
+  header <- unique(grid_df[header_cols])
+  rownames(header) <- NULL
+
+  trait_rows <- grid_df[
+    !is.na(grid_df$trait_id) &
+      is.finite(grid_df$truth) &
+      is.finite(grid_df$estimate) &
+      grid_df$truth != 0,
+    ,
+    drop = FALSE
+  ]
+  trait_keys <- c(
+    "surface_id", "scenario", "family", "d", "target", "ci_method",
+    "fit_phi_mode", "trait_id"
+  )
+  trait_ratios <- m3_split_apply(trait_rows, trait_keys, function(sub) {
+    key <- sub[1, intersect(trait_keys, names(sub)), drop = FALSE]
+    ratio <- sub$estimate / sub$truth
+    phi_ratio <- if (all(c("est_phi_nbinom2", "truth_phi") %in% names(sub))) {
+      x <- sub$est_phi_nbinom2 / sub$truth_phi
+      x[is.finite(x)]
+    } else {
+      numeric(0)
+    }
+    link_ratio <- if ("est_link_residual" %in% names(sub)) {
+      x <- sub$est_link_residual / sub$truth
+      x[is.finite(x)]
+    } else {
+      numeric(0)
+    }
+    data.frame(
+      key,
+      n_trait_rows = nrow(sub),
+      n_ci_available = if ("ci_available" %in% names(sub)) {
+        sum(sub$ci_available %in% TRUE)
+      } else {
+        NA_integer_
+      },
+      coverage = if (
+        "covered" %in% names(sub) &&
+          "ci_available" %in% names(sub) &&
+          any(sub$ci_available %in% TRUE & !is.na(sub$covered))
+      ) {
+        mean(sub$covered[sub$ci_available %in% TRUE], na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      median_est_truth_ratio = stats::median(ratio, na.rm = TRUE),
+      median_est_phi_truth_ratio = if (length(phi_ratio)) {
+        stats::median(phi_ratio, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      median_link_residual_truth_ratio = if (length(link_ratio)) {
+        stats::median(link_ratio, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
+
+  failure_cols <- intersect(
+    c(
+      "surface_id", "scenario", "fit_phi_mode", "family", "d", "target",
+      "ci_method", "n_reps", "n_completed", "n_failed", "n_trait_rows",
+      "n_ci_missing", "n_boot_failed", "n_boot_attempted",
+      "boot_fail_rate", "pd_hessian_rate", "sdreport_ok_rate",
+      "median_max_gradient", "pilot_status"
+    ),
+    names(summary)
+  )
+  failure_ledger <- summary[failure_cols]
+  rownames(failure_ledger) <- NULL
+
+  structure(
+    list(
+      header = header,
+      summary = summary,
+      trait_ratios = trait_ratios,
+      failure_ledger = failure_ledger,
+      verdict = unique(summary[
+        intersect(
+          c(
+            "surface_id", "scenario", "fit_phi_mode", "target",
+            "ci_method", "pilot_status"
+          ),
+          names(summary)
+        )
+      ])
+    ),
+    class = "m3_diagnostic_report"
+  )
+}
+
+m3_markdown_table <- function(df, digits = 3) {
+  if (!is.data.frame(df) || !nrow(df)) {
+    return("_No rows._")
+  }
+  fmt <- function(x) {
+    if (is.numeric(x)) {
+      out <- ifelse(is.na(x), "", format(round(x, digits), nsmall = 0))
+      return(out)
+    }
+    ifelse(is.na(x), "", as.character(x))
+  }
+  out <- as.data.frame(lapply(df, fmt), stringsAsFactors = FALSE)
+  header <- paste0("| ", paste(names(out), collapse = " | "), " |")
+  sep <- paste0("| ", paste(rep("---", ncol(out)), collapse = " | "), " |")
+  rows <- apply(out, 1L, function(z) {
+    paste0("| ", paste(z, collapse = " | "), " |")
+  })
+  paste(c(header, sep, rows), collapse = "\n")
+}
+
+m3_write_diagnostic_report <- function(report, path) {
+  if (!inherits(report, "m3_diagnostic_report")) {
+    stop("report must come from m3_diagnostic_report_data()")
+  }
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  lines <- c(
+    "# M3 Diagnostic Report",
+    "",
+    "## Surface Header",
+    "",
+    m3_markdown_table(report$header),
+    "",
+    "## Summary",
+    "",
+    m3_markdown_table(report$summary),
+    "",
+    "## Trait Estimate/Truth Ratios",
+    "",
+    m3_markdown_table(report$trait_ratios),
+    "",
+    "## Failure Ledger",
+    "",
+    m3_markdown_table(report$failure_ledger),
+    "",
+    "## Surface Verdict",
+    "",
+    m3_markdown_table(report$verdict),
+    ""
+  )
+  writeLines(lines, path)
+  invisible(path)
 }

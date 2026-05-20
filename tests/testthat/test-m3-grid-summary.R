@@ -153,3 +153,130 @@ test_that("M3 grid summary separates estimated and known phi modes", {
   expect_equal(summary_df$median_est_truth_ratio, c(0.5, 0.75))
   expect_equal(summary_df$median_est_phi_truth_ratio, c(0.5, 1))
 })
+
+test_that("M3 NB2 stress surface register expands fit-phi modes", {
+  source_m3_grid()
+
+  surfaces <- m3_nb2_stress_surfaces()
+
+  expect_equal(nrow(surfaces), 6L)
+  expect_true(all(surfaces$family == "nbinom2"))
+  expect_equal(sort(unique(surfaces$fit_phi_mode)), c("estimated", "known"))
+  expect_true(all(surfaces$target == "Sigma_unit_diag"))
+  expect_true(all(surfaces$ci_method == "none"))
+  expect_true(all(surfaces$n_boot == 0L))
+  expect_true(all(surfaces$run_stage == M3_STRESS_RUN_STAGE))
+})
+
+test_that("M3 stress register can include Gaussian and Poisson controls", {
+  source_m3_grid()
+
+  surfaces <- m3_nb2_stress_surfaces(include_controls = TRUE)
+
+  expect_true(any(surfaces$family == "gaussian"))
+  expect_true(any(surfaces$family == "poisson"))
+  expect_equal(
+    unique(surfaces$fit_phi_mode[surfaces$family == "poisson"]),
+    "estimated"
+  )
+
+  truth <- m3_sample_truth("poisson", d = 1L, seed = 1L)
+  sim <- m3_simulate_response(truth)
+  expect_true(all(sim$row_family == "poisson"))
+  expect_true(all(sim$data$value >= 0))
+})
+
+test_that("M3 point-only Sigma diagnostics are not coverage evidence", {
+  source_m3_grid()
+
+  grid_df <- data.frame(
+    surface_id = "nbinom2-d1-baseline-phi1-n60",
+    scenario = "baseline_phi1_n60",
+    run_stage = M3_STRESS_RUN_STAGE,
+    cell = "nbinom2-d1",
+    family = "nbinom2",
+    d = 1L,
+    target = "Sigma_unit_diag",
+    ci_method = "none",
+    fit_phi_mode = rep(c("estimated", "known"), each = 2L),
+    rep = c(1L, 1L, 1L, 1L),
+    trait_id = c(1L, 2L, 1L, 2L),
+    fit_converged = TRUE,
+    converged = TRUE,
+    ci_available = FALSE,
+    covered = NA,
+    miss_side = "ci_unavailable",
+    truth = c(2, 4, 2, 4),
+    estimate = c(1, 2, 1.5, 3),
+    truth_phi = 2,
+    est_phi_nbinom2 = c(1, 1, 2, 2),
+    est_link_residual = c(3, 3, 2, 2),
+    n_boot_failed = 0L,
+    n_boot = 0L,
+    n_cores_boot = 1L,
+    n_units = 60L,
+    n_traits = 5L,
+    lambda_scale = 1,
+    psi_scale = 1,
+    seed_base = 20260520L,
+    runtime_s = 1
+  )
+
+  summary_df <- m3_summarise(grid_df)
+  summary_df <- summary_df[order(summary_df$fit_phi_mode), ]
+
+  expect_equal(summary_df$ci_method, c("none", "none"))
+  expect_true(all(is.na(summary_df$coverage)))
+  expect_true(all(is.na(summary_df$passes_94pct_prof)))
+  expect_equal(summary_df$profile_gate_status, c("NOT_EVALUATED", "NOT_EVALUATED"))
+  expect_equal(summary_df$pilot_status, c("POINT_ONLY", "POINT_ONLY"))
+  expect_equal(summary_df$median_est_truth_ratio, c(0.5, 0.75))
+})
+
+test_that("M3 diagnostic report data keeps trait ratios and failure ledger", {
+  source_m3_grid()
+
+  grid_df <- data.frame(
+    surface_id = "nbinom2-d1-baseline-phi1-n60",
+    scenario = "baseline_phi1_n60",
+    run_stage = M3_STRESS_RUN_STAGE,
+    cell = "nbinom2-d1",
+    family = "nbinom2",
+    d = 1L,
+    target = "Sigma_unit_diag",
+    ci_method = "none",
+    fit_phi_mode = rep(c("estimated", "known"), each = 2L),
+    rep = c(1L, 1L, 1L, 1L),
+    trait_id = c(1L, 2L, 1L, 2L),
+    fit_converged = TRUE,
+    converged = TRUE,
+    ci_available = FALSE,
+    covered = NA,
+    miss_side = "ci_unavailable",
+    truth = c(2, 4, 2, 4),
+    estimate = c(1, 2, 1.5, 3),
+    truth_phi = 2,
+    est_phi_nbinom2 = c(1, 1, 2, 2),
+    est_link_residual = c(3, 3, 2, 2),
+    n_boot_failed = 0L,
+    n_boot = 0L,
+    n_cores_boot = 1L,
+    n_units = 60L,
+    n_traits = 5L,
+    lambda_scale = 1,
+    psi_scale = 1,
+    seed_base = 20260520L,
+    runtime_s = 1
+  )
+
+  report <- m3_diagnostic_report_data(grid_df)
+
+  expect_s3_class(report, "m3_diagnostic_report")
+  expect_true(all(c("header", "summary", "trait_ratios", "failure_ledger") %in% names(report)))
+  expect_equal(sort(unique(report$trait_ratios$fit_phi_mode)), c("estimated", "known"))
+  expect_equal(unique(report$failure_ledger$pilot_status), "POINT_ONLY")
+  expect_true(all(report$summary$ci_method == "none"))
+  expect_true(all(is.na(report$summary$passes_94pct_prof)))
+  expect_equal(unique(report$summary$profile_gate_status), "NOT_EVALUATED")
+  expect_true(all(is.na(report$trait_ratios$coverage)))
+})

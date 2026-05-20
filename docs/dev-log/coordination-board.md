@@ -97,7 +97,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex / Ada | #222 posterior-predictive + randomized-quantile diagnostic design/prototype | `codex/ppc-rq-diagnostics-2026-05-20` | `docs/design/`, `dev/`, `tests/testthat/`, `docs/dev-log/check-log.md`, `docs/dev-log/after-task/2026-05-20-ppc-rq-diagnostics.md` | Started; design/prototype only, no public API promise yet |
+| Codex / Ada | #222 posterior-predictive + randomized-quantile diagnostic design/prototype | PR #229 / `codex/ppc-rq-diagnostics-2026-05-20` | `docs/design/`, `dev/`, `tests/testthat/`, `docs/dev-log/check-log.md`, `docs/dev-log/after-task/2026-05-20-ppc-rq-diagnostics.md` | PR open; design/prototype only, no public API promise yet |
 
 **WIP**: 1.
 

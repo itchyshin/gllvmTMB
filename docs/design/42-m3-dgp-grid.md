@@ -155,10 +155,15 @@ Two artefacts:
    before any production promotion. The 2026-05-20 `nbinom2`
    diagnostic lane adds fitted `phi_nbinom2` and fitted
    link-residual columns so CI misses can be separated into unit-tier
-   covariance bias versus family-dispersion calibration.
+   covariance bias versus family-dispersion calibration. The
+   follow-up `fit_phi_mode` column records whether the NB2 dispersion
+   was estimated in the ordinary fit or fixed at the known DGP value
+   in a dev-grid diagnostic refit. For point-estimate-only diagnostics,
+   `n_boot = 0` records `Sigma_unit_diag` point estimates without
+   interpreting coverage.
 2. `dev/precomputed/m3-coverage-summary.rds` — per-cell aggregate:
-   `(cell, family, d, n_completed, n_failed, coverage_prof,
-   passes_94pct_prof, median_est_truth_ratio,
+   `(cell, family, d, fit_phi_mode, n_completed, n_failed,
+   coverage_prof, passes_94pct_prof, median_est_truth_ratio,
    median_est_phi_truth_ratio, median_est_link_residual,
    median_link_residual_truth_ratio, mean_runtime_s)`.
    `n_completed` and `n_failed` count replicate fits;

@@ -118,3 +118,38 @@ test_that("M3 grid summary preserves fitted phi and link-residual diagnostics", 
   expect_equal(summary_df$median_est_link_residual, 2)
   expect_equal(summary_df$median_link_residual_truth_ratio, 0.625)
 })
+
+test_that("M3 grid summary separates estimated and known phi modes", {
+  source_m3_grid()
+
+  grid_df <- data.frame(
+    cell = "nbinom2-d1",
+    family = "nbinom2",
+    d = 1L,
+    target = "Sigma_unit_diag",
+    ci_method = "bootstrap",
+    fit_phi_mode = rep(c("estimated", "known"), each = 2L),
+    rep = c(1L, 1L, 1L, 1L),
+    trait_id = c(1L, 2L, 1L, 2L),
+    fit_converged = TRUE,
+    converged = TRUE,
+    ci_available = TRUE,
+    covered = TRUE,
+    miss_side = "covered",
+    truth = c(2, 4, 2, 4),
+    estimate = c(1, 2, 1.5, 3),
+    truth_phi = 2,
+    est_phi_nbinom2 = c(1, 1, 2, 2),
+    est_link_residual = c(3, 3, 2, 2),
+    n_boot_failed = 0L,
+    n_boot = 2L,
+    runtime_s = 1
+  )
+
+  summary_df <- m3_summarise(grid_df)
+  summary_df <- summary_df[order(summary_df$fit_phi_mode), ]
+
+  expect_equal(summary_df$fit_phi_mode, c("estimated", "known"))
+  expect_equal(summary_df$median_est_truth_ratio, c(0.5, 0.75))
+  expect_equal(summary_df$median_est_phi_truth_ratio, c(0.5, 1))
+})

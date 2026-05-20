@@ -3025,3 +3025,68 @@ Kaizen point:
     conventions. Recording fitted `phi_nbinom2` and the fitted
     link-residual increment in every row makes the next r20/r50 grid
     interpretable without re-fitting each cell manually.
+
+## 2026-05-20 -- M3.3a nbinom2 known-phi point diagnostic
+
+Scope:
+
+- Add a development-only M3 diagnostic mode,
+  `fit_phi_mode = c("estimated", "known")`, for `family = "nbinom2"`.
+- In known-phi mode, rebuild the TMB object from the ordinary fit,
+  map `log_phi_nbinom2` off, fix it at the DGP value, and re-optimize
+  the remaining parameters.
+- Allow `n_boot = 0` in `dev/m3-grid.R` for point-estimate-only
+  diagnostics. This avoids interpreting bootstrap CIs from ordinary
+  estimated-phi refits as if they were fixed-phi intervals.
+
+Evidence:
+
+- `gh pr list --state open --repo itchyshin/gllvmTMB`
+  -> no open PRs at lane start.
+- `git log --all --oneline --since="6 hours ago"`
+  -> reviewed recent M3.3a commits through board closeout `354e995`.
+- `Rscript --vanilla -e 'invisible(parse(file="dev/m3-grid.R")); cat("parse ok\n")'`
+  -> passed.
+- `Rscript --vanilla -e 'devtools::test(filter = "m3-grid-summary")'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 18 ]`.
+- `Rscript --vanilla - <<'EOF' ... EOF`
+  -> tiny known-phi point-only smoke passed; fitted `phi_nbinom2`
+  equaled truth and `n_boot = 0` was preserved.
+- `Rscript --vanilla - <<'EOF' ... EOF`
+  -> created
+  `/tmp/gllvmtmb-m3-3a-known-phi-point-r10/nbinom2-known-phi-point-r10.rds`.
+  Median `Sigma_unit_diag` estimate/truth improved from 0.557 to 0.697
+  in the baseline scenario, from 0.649 to 0.856 in the low-dispersion
+  scenario, and from 0.701 to 0.942 in the weak-variance scenario when
+  `phi` was fixed at truth.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 5 notes; nonzero exit because R CMD check
+  found a package-installation warning. Notes were future timestamp
+  verification, top-level `air.toml` / `Rplots.pdf`, NEWS heading
+  extraction, unused `nlme`, and base namespace notes for `setNames` /
+  `modifyList`.
+- `git diff --check`
+  -> clean.
+
+Consistency and stale-wording scans:
+
+- `rg -n 'fit_phi_mode|known-phi|known phi|n_boot = 0|EXT-13|CI-08|CI-10|partial' dev/m3-grid.R tests/testthat/test-m3-grid-summary.R docs/design/42-m3-dgp-grid.md docs/dev-log/audits/2026-05-20-m3-3a-nbinom2-known-phi-point-r10.md docs/dev-log/after-task/2026-05-20-m3-3a-nbinom2-known-phi-point.md docs/dev-log/check-log.md`
+  -> code, tests, Design 42, audit, after-task, and check-log
+  consistently describe the point-only known-phi diagnostic and keep
+  EXT-13 / CI-08 / CI-10 partial.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-m3-3a-nbinom2-known-phi-point.md`
+
+Kaizen point:
+
+43. **Do not read bootstrap coverage from a refit path that changes the
+    estimand.** The known-phi diagnostic fixed `log_phi_nbinom2` in the
+    point fit, but `bootstrap_Sigma()` currently refits through the
+    ordinary public API and would estimate `phi` again. For this
+    diagnostic, use `n_boot = 0` and interpret point-estimate ratios
+    only; add a fixed-phi bootstrap path before making fixed-phi
+    coverage claims.

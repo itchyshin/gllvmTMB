@@ -87,9 +87,9 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| (none) | (none active) | - | - | No active lane after PR #213 closeout |
+| Codex/Ada | M3.3a `nbinom2` known-phi point diagnostic | `codex/m3-3a-nbinom2-known-phi-diagnostic-2026-05-20` | `dev/m3-grid.R`, `tests/testthat/test-m3-grid-summary.R`, `docs/design/42-m3-dgp-grid.md`, dev-log audit/after-task/check-log | In progress; r10 point-only pilot, focused tests, and pkgdown passed locally; devtools check has 0 errors / 1 warning / 5 notes |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to

@@ -21,9 +21,11 @@ shared and trait-specific parts:
 So `Sigma = Lambda Lambda^T + Psi` means: total trait covariance =
 shared multivariate structure + response-specific variation.
 
-You can fit the same model from long data or wide data. Long data are
-canonical; wide data use the `traits(...)` formula marker and are pivoted
-internally.
+Most readers will start from a wide data frame: one row per unit, one
+column per trait. Use that shape directly with the `traits(...)` formula
+marker. If your data are already stacked long, use the same `gllvmTMB()`
+entry point with `value ~ ...`, `trait =`, and `unit =`. Internally, both
+paths reach the same stacked-trait model.
 
 ## Start Here
 
@@ -45,10 +47,11 @@ rendered HTML review pass.
 
 ## What "stacked-trait" Means
 
-Internally, every fit sees one row per `(unit, trait)` observation.
-Five traits on 100 individuals become 500 rows, with the trait identity
-in a `trait` column and the response in a `value` column. The same entry
-point also accepts a wide data frame through `traits(...)`.
+The user-facing data shape can be wide or long. The model itself is
+stacked-trait: internally, every fit sees one row per `(unit, trait)`
+observation. Five traits on 100 individuals become 500 model rows. The
+wide `traits(...)` interface does that stacking for you; the long
+interface lets you supply the stacked table yourself.
 
 ## Install
 
@@ -65,23 +68,28 @@ Then load the package and run a small smoke test:
 ```r
 library(gllvmTMB)
 
-sim <- simulate_site_trait(
-  n_sites = 12,
-  n_species = 5,
-  n_traits = 3,
-  mean_species_per_site = 3,
-  Lambda_B = matrix(c(0.8, 0.4, -0.3), ncol = 1),
-  psi_B = c(0.2, 0.3, 0.2),
-  seed = 1
+set.seed(1)
+n_ind <- 30
+n_rep <- 3
+individual <- factor(rep(seq_len(n_ind), each = n_rep))
+
+z <- rnorm(n_ind)[individual]
+u <- matrix(rnorm(n_ind * 3, sd = 0.35), n_ind, 3)[individual, ]
+
+df_wide <- data.frame(
+  individual = individual,
+  visit = rep(seq_len(n_rep), times = n_ind),
+  bill_length = 0.8 * z + u[, 1] + rnorm(n_ind * n_rep, sd = 0.5),
+  body_mass = 0.5 * z + u[, 2] + rnorm(n_ind * n_rep, sd = 0.5),
+  wing_length = -0.3 * z + u[, 3] + rnorm(n_ind * n_rep, sd = 0.5)
 )
 
 fit <- gllvmTMB(
-  value ~ 0 + trait +
-    latent(0 + trait | site, d = 1) +
-    unique(0 + trait | site),
-  data = sim$data,
-  trait = "trait",
-  unit = "site"
+  traits(bill_length, body_mass, wing_length) ~ 1 +
+    latent(1 | individual, d = 1) +
+    unique(1 | individual),
+  data = df_wide,
+  unit = "individual"
 )
 
 fit
@@ -95,24 +103,25 @@ while compiling C++, install the usual R build tools for your
 platform: Rtools on Windows, Xcode Command Line Tools on macOS,
 or the R development toolchain on Linux.
 
-## Data shapes: long or wide, one entry point
+## Data shapes: wide or long, one entry point
 
-One entry point handles both shapes. Use whichever matches your
-data on disk; the engine pivots as needed.
+One entry point handles both shapes. Start with wide data if that is
+what you have on disk; use long data when your workflow already stores
+one response per row.
 
-- **Long data frame** -- one row per `(unit, trait)` observation,
-  one `value` column for the response:
-  ```r
-  gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 2),
-           data = df_long, trait = "trait", unit = "...")
-  ```
-- **Wide data frame** -- one row per unit, one column per trait;
-  the `traits(...)` LHS marker names the response columns and the
-  RHS uses compact wide shorthand (no `trait =` argument needed --
-  the LHS *is* the trait spec):
+- **Wide data frame** -- one row per unit, one column per trait. The
+  `traits(...)` LHS marker names the response columns and the RHS uses
+  compact wide shorthand (no `trait =` argument needed -- the LHS *is*
+  the trait spec):
   ```r
   gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
            data = df_wide, unit = "unit")
+  ```
+- **Long data frame** -- one row per `(unit, trait)` observation, one
+  `value` column for the response:
+  ```r
+  gllvmTMB(value ~ 0 + trait + latent(0 + trait | unit, d = 2),
+           data = df_long, trait = "trait", unit = "unit")
   ```
 
 Predictors go into the formula in either form. Both paths reach
@@ -125,26 +134,25 @@ is:
 
 ```r
 fit <- gllvmTMB(
-  value ~ 0 + trait +
-    latent(0 + trait | site, d = 1) +
-    unique(0 + trait | site),
-  data  = sim$data,    # long: one row per (site, trait)
-  trait = "trait",     # column holding the trait factor
-  unit  = "site"       # column holding the between-unit grouping
+  traits(bill_length, body_mass, wing_length) ~ 1 +
+    latent(1 | individual, d = 1) +
+    unique(1 | individual),
+  data = df_wide,       # wide: one row per observation occasion
+  unit = "individual"   # between-unit grouping
 )
 ```
 
-The same model in wide form -- one row per site, columns `t1`,
-`t2`, `t3` for the three traits -- uses the `traits(...)` LHS
-marker (no `trait =` needed; the LHS *is* the trait spec):
+The same model in long form -- one row per `(individual, trait)`
+observation -- uses explicit trait indicators:
 
 ```r
-fit_wide <- gllvmTMB(
-  traits(t1, t2, t3) ~ 1 +
-    latent(1 | site, d = 1) +
-    unique(1 | site),
-  data = df_wide,     # wide: one row per site
-  unit = "site"
+fit_long <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | individual, d = 1) +
+    unique(0 + trait | individual),
+  data  = df_long,      # long: one row per (individual, trait)
+  trait = "trait",      # column holding the trait factor
+  unit  = "individual"
 )
 ```
 
@@ -152,11 +160,13 @@ Both calls reach the same long-format engine and produce
 byte-identical fits. See the Get Started vignette for the
 runnable long-to-wide pivot.
 
-Here `latent(0 + trait | site, d = 1)` estimates one shared latent
-axis across traits, and `unique(0 + trait | site)` estimates the
-trait-specific residual variance left over after that shared axis.
-The fitted object reports ordination scores, loadings, Sigma,
-pairwise correlations, and per-trait communality.
+In the wide call, `latent(1 | individual, d = 1)` estimates one shared
+latent axis across traits, and `unique(1 | individual)` estimates the
+trait-specific residual variance left over after that shared axis. In
+the long call, the equivalent terms are `latent(0 + trait | individual,
+d = 1)` and `unique(0 + trait | individual)`. The fitted object reports
+ordination scores, loadings, Sigma, pairwise correlations, and per-trait
+communality.
 
 In notation, the trait covariance the model fits is
 

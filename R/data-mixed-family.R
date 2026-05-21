@@ -124,7 +124,7 @@
   ## Trait-to-family lookup. When n_traits > n_families, multiple
   ## traits map to the same family (the 5-family / T = 8 case).
   trait_levels <- levels(df$trait)
-  fam_lookup   <- setNames(trait_families, trait_levels)
+  fam_lookup   <- stats::setNames(trait_families, trait_levels)
   df$family    <- factor(fam_lookup[as.character(df$trait)],
                          levels = families)
 

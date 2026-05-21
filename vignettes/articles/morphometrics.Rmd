@@ -241,7 +241,9 @@ cat("Frobenius |Sigma_hat - Sigma_true| / |Sigma_true| =",
 ```
 
 A side-by-side correlation heatmap shows whether the recovered
-trait correlations agree with truth at the entry level:
+trait correlations agree with truth at the entry level. The fitted
+panel uses `extract_Sigma_table()` so the article works from the same
+report-ready table that plotting helpers consume:
 
 ```{r corr-heatmap, fig.width = 7.5, fig.height = 3.5, fig.cap = "True (left) vs fitted (right) trait-pair correlations from the total between-unit covariance Sigma_B = Lambda Lambda^T + Psi. The diagonal is muted because self-correlation is fixed at 1; the off-diagonal agreement is the visual recovery check."}
 suppressPackageStartupMessages(library(ggplot2))
@@ -256,8 +258,19 @@ make_corr_long <- function(M, label) {
 }
 rownames(Sigma_true) <- colnames(Sigma_true) <- trait_names
 rownames(Sigma_hat)  <- colnames(Sigma_hat)  <- trait_names
-df_corr <- rbind(make_corr_long(Sigma_true, "True"),
-                 make_corr_long(Sigma_hat,  "Fitted"))
+fit_corr <- extract_Sigma_table(
+  fit,
+  level = "unit",
+  measure = "correlation",
+  entries = "all"
+)
+fit_corr <- data.frame(
+  trait_i = factor(fit_corr$trait_i, levels = trait_names),
+  trait_j = factor(fit_corr$trait_j, levels = trait_names),
+  rho     = fit_corr$estimate,
+  panel   = "Fitted"
+)
+df_corr <- rbind(make_corr_long(Sigma_true, "True"), fit_corr)
 df_corr$panel <- factor(df_corr$panel, levels = c("True", "Fitted"))
 df_corr$display_rho <- ifelse(df_corr$trait_i == df_corr$trait_j,
                               NA_real_, df_corr$rho)

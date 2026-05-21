@@ -33,7 +33,10 @@ supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_s
 \item{data}{A long-format data frame with one row per (unit, trait)
 observation. Must include the response (LHS of \code{formula}),
 the columns named in \code{unit}, \code{unit_obs}, \code{cluster}, \code{trait}, and any
-predictors referenced in the formula.}
+predictors referenced in the formula. Missing response values are
+allowed and are dropped row-wise before fitting, so other observed
+traits for the same unit remain in the likelihood; missing predictor
+or design-matrix values still error.}
 
 \item{trait}{Name of the column holding the trait factor (the
 "trait" dimension of the unit × trait response matrix). Default
@@ -256,6 +259,17 @@ glmmTMB API).
 Both interfaces produce identical fits. For Bernoulli data, omit
 \code{weights} and use a 0/1 response; the engine sets \code{n_trials = 1} and
 the likelihood is identical to the previous Bernoulli-only behaviour.
+
+\strong{Missing responses.} \code{NA} response cells are treated as unobserved
+unit-trait cells and are dropped before the TMB likelihood is built.
+This applies to both explicit long-format data and wide
+\code{traits(...)} formulas. For \code{cbind(successes, failures)} binomial
+responses, a row is dropped when either response component is missing.
+Observation weights, when supplied, are subset to the retained
+response rows before validation. This is response-missingness support
+only: missing predictors, grouping variables, or fixed-effect design
+values still error because the model cannot construct a design row.
+This contract is covered by validation-debt register row MIS-21.
 
 \strong{Delta (hurdle) families.} \code{delta_lognormal()} and \code{delta_gamma()}
 use a \emph{single} linear predictor for both components: presence is

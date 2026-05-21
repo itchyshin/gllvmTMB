@@ -4519,3 +4519,174 @@ Deliberately not pushed yet:
 
 - The follow-up commit can be made locally, but pushing is deliberately paused
   until the active PR #233 CI run finishes, per CI pacing discipline.
+
+## 2026-05-21 -- Report-ready Sigma table and wide-first landing page
+
+Scope:
+
+- Added `extract_Sigma_table()` as a report-ready point-estimate table
+  view over `extract_Sigma()` for Sigma / Psi / R entries.
+- Refactored the correlation and correlation-ellipse plot data path to use
+  `extract_Sigma_table()` instead of hand-flattening matrices.
+- Updated the README/pkgdown landing page to present the wide
+  `traits(...)` formula path first, while keeping the long data-frame
+  formula beside it as the transparent stacked-trait equivalent.
+- Updated Morphometrics so the fitted correlation heatmap consumes
+  `extract_Sigma_table()` for the fitted panel.
+
+Evidence:
+
+- Pre-edit lane check for shared log/design files:
+  `gh pr list --state open`
+  -> only draft PR #233 (`codex/symbol-syntax-alignment-2026-05-21`) was
+  open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the current PR #233 branch and merged PR #232; no
+  competing shared-log lane was visible.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/extract_Sigma_table.Rd`.
+- `tail -8 man/extract_Sigma_table.Rd && grep -c '^\\keyword' man/extract_Sigma_table.Rd`
+  -> Rd ended in the expected `\seealso{...}` block; keyword count was `0`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table|plot-gllvmTMB")'`
+  -> 164 passes, 0 failures, 0 warnings, 0 skips.
+- README smoke test for the new wide-first example:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); ...; stopifnot(fit$opt$convergence == 0L); print(extract_communality(fit, level = "unit")); print(extract_correlations(fit, tier = "unit"))'`
+  -> convergence `0`; communality and Fisher-z correlations printed.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", new_process = FALSE)'`
+  -> rebuilt `articles/morphometrics.html`.
+- `Rscript --vanilla -e 'pkgdown::build_home()'`
+  -> rebuilt `pkgdown-site/index.html` / `404.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- Rendered-home text check:
+  `rg -n 'Most readers|Data shapes: wide or long|traits\\(bill_length|One `gllvmTMB\\(\\)`' pkgdown-site/index.html README.md`
+  -> expected wide-first landing text and examples in README plus rendered
+  `pkgdown-site/index.html`.
+
+Rose / stale-wording scans:
+
+- `rg -n "Long data are canonical|long data are canonical|Data shapes: long or wide|gllvmTMB_wide\\(Y, \\.\\.\\.\\) was removed|removed in 0\\.2\\.0|diag\\(S\\)|diag\\(s\\)|diag\\(U\\)|\\\\bf S|S_B|S_W|profile-likelihood default|profile default" README.md NEWS.md R/extract-sigma-table.R man/extract_Sigma_table.Rd vignettes/articles/morphometrics.Rmd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/index.html`
+  -> no matches.
+- `rg -n "gllvmTMB\\(" README.md R/extract-sigma-table.R man/extract_Sigma_table.Rd vignettes/articles/morphometrics.Rmd NEWS.md docs/design/06-extractors-contract.md`
+  -> every touched long-format call uses `trait = "..."`; wide calls use
+  `traits(...)` and no `trait =`.
+
+Change:
+
+- `extract_Sigma_table()` returns stable report-ready columns:
+  `estimand`, `trait_i`, `trait_j`, `i`, `j`, `level`, `component`,
+  `matrix`, `estimate`, interval placeholders, `scale`,
+  `validation_row`, `diagonal`, and `triangle`.
+- `_pkgdown.yml`, `NAMESPACE`, `man/extract_Sigma_table.Rd`, `NEWS.md`,
+  `docs/design/06-extractors-contract.md`, and
+  `docs/design/35-validation-debt-register.md` now register the new
+  exported helper (`EXT-18`).
+- README now leads with the wide data-frame path and a runnable
+  repeated-measures wide example, then shows the long equivalent.
+- Existing `plot(type = "correlation")` and
+  `plot(type = "correlation_ellipse")` metadata now reports
+  `source = "extract_Sigma_table"`.
+
+Deliberately not counted as passing evidence:
+
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  was started before the landing-page pivot and was still silent after a
+  long run. It was killed when the maintainer redirected the lane to the
+  wide-first landing-page update. No final `devtools::check()` result was
+  obtained, so it is not evidence for this slice.
+
+## 2026-05-21 -- Missing response cells in long and wide data
+
+Scope:
+
+- Made explicit long-format response `NA` rows behave like unobserved
+  unit-trait cells: dropped before weight normalisation and before TMB.
+- Kept predictor/design-matrix `NA` as an error.
+- Re-enabled the wide `traits(...)` missing-cell test and added long scalar
+  plus `cbind(successes, failures)` missing-response coverage.
+- Registered the capability as `MIS-21`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the current PR #233 branch and merged PR #232; no
+  competing shared-log lane was visible.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/gllvmTMB.Rd`.
+- `tail -5 man/gllvmTMB.Rd`
+  -> ended in the expected `\seealso{...}` block.
+- `grep -c '^\\keyword' man/gllvmTMB.Rd`
+  -> `0`.
+- `Rscript --vanilla -e 'devtools::test(filter = "missing-response|traits-keyword")'`
+  -> 63 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "missing-response|traits-keyword|weights-unified|gllvmTMB-args")'`
+  -> 117 passes, 0 failures, 0 warnings, 4 expected skips in
+  `test-gllvmTMB-args.R`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Rose / stale-wording scans:
+
+Command:
+
+```sh
+rg -n 'NA in response or design matrix|remove NA rows before fitting|Missing response|Response `NA`s|MIS-21' R/gllvmTMB.R R/fit-multi.R man/gllvmTMB.Rd NEWS.md docs/design/35-validation-debt-register.md tests/testthat/test-missing-response.R tests/testthat/test-traits-keyword.R
+```
+
+Verdict: old combined NA wording is gone; new MIS-21 documentation appears in
+roxygen, Rd, NEWS, and the validation register.
+
+- `rg -n 'trio|profile-likelihood default|gllvmTMB_wide\\(Y, \\.\\.\\.\\) was removed|removed in 0\\.2\\.0|meta_known_V\\(|diag\\(S\\)|diag\\(s\\)|diag\\(U\\)|\\\\bf S|\\bS_B\\b|\\bS_W\\b|unsupported .* implemented|all-missing traits' NEWS.md R/gllvmTMB.R man/gllvmTMB.Rd README.md vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/06-extractors-contract.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> only intentional existing mentions were found: `meta_known_V()` as a
+  deprecated alias, an internal source comment about the removed sdmTMB
+  fallback, and the new NEWS limitation that all-missing traits still need
+  explicit user-side decisions.
+- `rg -n 'gllvmTMB\\(' NEWS.md R/gllvmTMB.R man/gllvmTMB.Rd README.md vignettes/articles/morphometrics.Rmd docs/design/06-extractors-contract.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> touched long-format examples still pass `trait = "..."` explicitly
+  where required; wide examples use `traits(...)` and no `trait =`.
+- `rg -n "@export|export\\(extract_Sigma_table\\)|extract_Sigma_table" R/extract-sigma-table.R NAMESPACE _pkgdown.yml man/extract_Sigma_table.Rd docs/design/35-validation-debt-register.md NEWS.md`
+  -> previous slice's new export is present in `NAMESPACE`, generated Rd,
+  `_pkgdown.yml`, NEWS, and row `EXT-18`.
+
+Issue ledger:
+
+- `gh issue list --state open --search "missing response NA" --limit 10`
+  -> no open matching issues.
+- `gh issue list --state open --search "traits NA" --limit 10`
+  -> no open matching issues.
+- `gh issue list --state open --search "wide format" --limit 10`
+  -> found #230, "Article surface reset and user-first tooling gate".
+- `gh issue view 230 --json number,title,body,labels,url`
+  -> #230 is a broad public article/tooling gate; no comment added because
+  this lower-level constructor hardening does not close one of its enumerated
+  gates.
+
+Deliberately not run:
+
+- Full check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 4 notes before the namespace-note cleanup. The
+  warning came from local macOS SDK lookup / compile warnings during package
+  install (`xcrun --show-sdk-version` exits 1 on this machine). Notes were:
+  top-level `air.toml` plus ignored generated `Rplots.pdf`, legacy NEWS section
+  parsing, unused `nlme`, and unqualified `setNames` / `modifyList`.
+- Local install probe:
+  `R CMD INSTALL --preclean --library=/tmp/gllvmtmb-install-lib .`
+  -> package installed; reproduced the same local SDK warning.
+- Cleanup after the full check:
+  removed ignored generated `Rplots.pdf`; qualified `stats::setNames()` in
+  `R/data-mixed-family.R`; qualified `utils::modifyList()` in
+  `R/z-confint-gllvmTMB.R`.
+- `Rscript --vanilla -e 'devtools::test(filter = "missing-response|traits-keyword|weights-unified|gllvmTMB-args|stage37-mixed-family|confint")'`
+  -> 165 passes, 0 failures, 1 expected deprecation warning, 4 expected skips.
+- Short check after cleanup:
+  `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE)'`
+  -> 0 errors, 1 local SDK install warning, 3 notes (`air.toml`, legacy NEWS
+  section parsing, unused `nlme`). The prior global-function NOTE was gone.

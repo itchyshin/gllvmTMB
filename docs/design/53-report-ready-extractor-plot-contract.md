@@ -85,12 +85,14 @@ layers. This keeps article code from digging through layer internals.
 | `variance` | `extract_proportions` | `unit`, `unit_obs` | `rotation_invariant` | `p$data`; `attr(p, "gllvmTMB_data")` |
 | `ordination` | `extract_ordination` | requested canonical level | `rotation_ambiguous_loadings` | `attr(p, "gllvmTMB_data")` |
 
-The current correlation plot data includes both backwards-compatible plotting
-columns (`row`, `col`, `value`) and report-ready columns (`trait_i`, `trait_j`,
-`estimate`, `level`, `triangle`, `interval_method`, `interval_status`,
-`scale`). It also includes visual-support columns (`display_value`, `label`,
-`label_colour`) so the diagonal can be muted without deleting the self-
-correlation rows. Article chunks should use the report-ready columns.
+The current correlation plot data is built from `extract_Sigma_table()`. It
+includes both backwards-compatible plotting columns (`row`, `col`, `value`) and
+report-ready columns (`estimand`, `trait_i`, `trait_j`, `estimate`, `level`,
+`component`, `matrix`, `triangle`, `interval_method`, `interval_status`,
+`scale`, `validation_row`). It also includes visual-support columns
+(`display_value`, `label`, `label_colour`) so the diagonal can be muted without
+deleting the self-correlation rows. Article chunks should use the report-ready
+columns.
 
 The current correlation-ellipse plot data converts the same correlation cells
 into ellipse polygons. It preserves `trait_i`, `trait_j`, `estimate`, `level`,
@@ -134,8 +136,9 @@ A figure-heavy article should not become public unless:
 
 ## Current Limitations
 
-- `extract_Sigma()` is still matrix-first. A tidy covariance/correlation table
-  helper is the next useful infrastructure step.
+- `extract_Sigma_table()` is point-estimate only. Interval columns are present
+  for compatibility, but table-level interval joins still need a separate
+  implementation.
 - Plot metadata and first-pass Florence palette/caption safeguards exist, but
   the visual designs are not yet publication-grade until rendered HTML review
   passes.
@@ -146,12 +149,11 @@ A figure-heavy article should not become public unless:
 
 ## Next Implementation Targets
 
-1. Add tidy table helpers for covariance/correlation heatmaps.
-2. Add figure-ready estimate-vs-truth tables for example objects.
-3. Add interval-aware correlation and communality table contracts so ellipse
+1. Add figure-ready estimate-vs-truth tables for example objects.
+2. Add interval-aware correlation and communality table contracts so ellipse
    borders/stars and communality whiskers reflect real uncertainty rather than
    point estimates.
-4. Add dominant-axis loading and score-distribution helpers for the GLLVM
+3. Add dominant-axis loading and score-distribution helpers for the GLLVM
    overview Figure 3 family of plots.
-5. Add one Florence-reviewed correlation heatmap for Morphometrics or
+4. Add one Florence-reviewed correlation heatmap for Morphometrics or
    Covariance/correlation before restoring figure-heavy hidden articles.

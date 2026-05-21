@@ -52,6 +52,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | Extractor | G | B | N | M | Notes |
 |-----------|---|---|---|---|-------|
 | `extract_Sigma(fit, level, part)` | c | cl | cl | cl | per-level $\Sigma = \Lambda\Lambda^\top + \Psi$; `level = "phy"/"spatial"` are variance-share shortcuts, not peer levels |
+| `extract_Sigma_table(fit, level, part, measure)` | c | cl | cl | c | report-ready point-estimate table view over `extract_Sigma()`; intervals intentionally absent |
 | `extract_Sigma_B(fit)` | c | cl | cl | cl | legacy alias for `level = "B"` ($\equiv$ `"unit"`) |
 | `extract_Sigma_W(fit)` | c | cl | cl | cl | legacy alias for `level = "W"` ($\equiv$ `"unit_obs"`) |
 | `extract_Omega(fit)` | c | cl | cl | cl | cross-partition integration (phy/spatial shares back into unit-tier) |
@@ -168,6 +169,33 @@ across the model. Cross-level integration is
 because $\Lambda\Lambda^\top = (\Lambda Q)(\Lambda Q)^\top$
 for any orthogonal $Q$. Tests assert $\Sigma$ identity rather
 than $\Lambda$ identity.
+
+#### `extract_Sigma_table(fit, level, part, measure, entries)`
+
+**Return**: a data frame with one row per requested covariance,
+variance, or correlation entry. It is a report-ready view over
+`extract_Sigma()`, not a second covariance implementation.
+
+Stable columns:
+
+- `estimand`, `trait_i`, `trait_j`, integer indices `i` and `j`;
+- `level`, `component`, `matrix`, `estimate`;
+- `lower`, `upper`, `interval_method`, `interval_status`;
+- `scale`, `validation_row`, `diagonal`, and `triangle`.
+
+`entries = "unique"` returns the diagonal plus upper triangle,
+one row per symmetric estimand. `entries = "all"` returns every
+matrix cell for heatmaps and plot helpers. `measure = "correlation"`
+is allowed only for `part = "total"` because report-ready
+correlations should be based on the full
+$\Lambda\Lambda^\top + \Psi$ covariance. Interval columns are
+present for table compatibility but deliberately set to `NA` /
+`"none"`; interval estimation remains the job of
+`extract_correlations()` and `bootstrap_Sigma()`.
+
+Validation-debt row: `EXT-18`. Underlying Sigma coverage still
+inherits the relevant `extract_Sigma()` rows (`EXT-01` and
+`MIX-03` for mixed-family fits).
 
 #### `extract_Sigma_B(fit)` and `extract_Sigma_W(fit)`
 

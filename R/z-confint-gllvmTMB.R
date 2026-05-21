@@ -89,7 +89,7 @@
                  which = which_idx, level = level,
                  transform = transform_fun)
     extra <- list(...)
-    args <- modifyList(args, extra[!names(extra) %in% names(args)])
+    args <- utils::modifyList(args, extra[!names(extra) %in% names(args)])
     res <- do.call(tmbprofile_wrapper, args)
     lower[i] <- unname(res["lower"])
     upper[i] <- unname(res["upper"])

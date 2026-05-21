@@ -249,6 +249,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-15 | `rotate_loadings()` varimax / quartimax | `covered` | `test-rotate-compare-loadings.R`, `test-rotation-advisory.R` | |
 | EXT-16 | `getLV()` legacy ordination alias | `covered` | `test-extractors.R` | slated for `deprecate_soft()` 0.3.0 |
 | EXT-17 | `getResidualCor / Cov()` glmmTMB-style | `covered` | `test-extractors.R` | |
+| EXT-18 | `extract_Sigma_table()` report-ready Sigma/Psi/R table | `covered` | `test-extract-sigma-table.R`, `test-plot-gllvmTMB.R` | point-estimate table view over `extract_Sigma()`; interval columns intentionally `none` / `NA` |
 
 ### Section 9 — Diagnostics
 
@@ -325,6 +326,7 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 | MIS-18 | `start_method = list(method = "res")` residual reduced-rank starts | `covered` | `test-start-method-residual.R`, `test-gllvmTMBcontrol.R` | Design 48 §2-A2. Opt-in via `gllvmTMBcontrol(start_method = list(method = "res", jitter.sd = 0.2))`. Seeds `theta_rr_*` and latent scores from grouped fixed-effect residual matrices, rotates loadings to the engine's lower-triangular convention, and seeds paired `unique()` residual terms when present. Contract-tested; convergence-rate claims remain M3 production-grid evidence, not unit-test evidence. |
 | MIS-19 | `start_method = list(method = "indep")` and manual `start_from` simpler-fit starts | `covered` | `test-start-method-residual.R`, `test-gllvmTMBcontrol.R` | Design 48 §2-A3. Opt-in GLMM/GLLVM warm start for Gaussian two-level latent+unique fits: fit the matching independent `unique()`-only model or a user-supplied simpler fit, then copy same-shaped estimated TMB parameters into the full model's starting list. Contract-tested; default-policy and convergence-rate claims require M3 target-explicit evidence. |
 | MIS-20 | `restart_history` and `start_provenance` on fitted objects | `covered` | `test-stage39-multi-start.R`, `test-sanity-multi.R` | Design 49. Every fit records one row per attempted optimizer start, the selected restart, optimizer/start method, jitter scale, objective, convergence code, message, elapsed time, and start provenance. This is provenance only; it does not itself validate a start strategy's convergence-rate benefit. |
+| MIS-21 | Missing response cells in long and wide data | `covered` | `test-missing-response.R`, `test-traits-keyword.R`, `test-wide-weights-matrix.R` | Response-missing rows/cells are dropped before fitting; other observed traits for the same unit remain in the likelihood. Predictor/design missingness still errors. |
 
 ## Honest scope statement
 

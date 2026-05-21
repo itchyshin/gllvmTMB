@@ -1,5 +1,13 @@
 # gllvmTMB (development version)
 
+## Missing response cells (2026-05-21)
+
+* **Response `NA`s are now accepted in both long-format and wide `traits(...)` data.** IN: missing unit-trait response cells are dropped before fitting, preserving other observed traits for the same unit; `cbind(successes, failures)` rows are dropped when either response component is missing; weights are subset to retained response rows before validation (MIS-21). PARTIAL: this is response-missingness support only. Missing predictors, grouping variables, design-matrix entries, or all-missing traits still require user-side data cleaning or explicit modelling decisions.
+
+## Report-ready Sigma tables (#233 follow-up, 2026-05-21)
+
+* **`extract_Sigma_table()`** is a new report-ready table view over `extract_Sigma()` for covariance and correlation entries, with stable columns for `estimand`, trait pair, level, component, estimate, interval status, scale, validation row, and matrix position. IN: point-estimate Sigma/Psi/R tables for levels already handled by `extract_Sigma()` are covered by EXT-18, with underlying mixed-family Sigma evidence in MIX-03. PARTIAL: interval columns are intentionally `NA` / `none`; use `extract_correlations()` or `bootstrap_Sigma()` for interval estimates. PLANNED: interval-aware table joins for Florence-grade plot annotations remain future infrastructure.
+
 ## `meta_V()` formula-marker syntax (#227, 2026-05-20)
 
 * **`meta_V()`** now uses `meta_V(V = V)` or `meta_V(V, type = "exact")` as the canonical known-sampling-covariance formula marker. IN: exact additive known-V workflows remain the implemented surface (MET-01 / MET-02), and wide `traits(...)` formulas now preserve `meta_V()` as a covariance marker. PARTIAL: single-V statistical validation is still smoke-level under MET-01. PLANNED: `type = "proportional"` remains blocked under MET-03 and now errors explicitly rather than being silently treated as exact. The older parser spelling `meta_V(value, V = V)` and deprecated alias `meta_known_V(V = V)` remain accepted for compatibility.
@@ -219,11 +227,11 @@ phylogenetic signal, or spatial structure.
 
 ## User-facing API
 
-* Two entry points share one long-format engine:
-  * `gllvmTMB(value ~ ..., data = df_long, unit = "...")` accepts
-    long-format data (one row per `(unit, trait)` observation) and
-    wide data frames marked with the formula-LHS helper
-    `traits(...)`. The wide form uses compact syntax such as
+* One `gllvmTMB()` entry point shares one long-format engine:
+  * `gllvmTMB(value ~ ..., data = df_long, trait = "trait",
+    unit = "...")` accepts long-format data (one row per
+    `(unit, trait)` observation) and wide data frames marked with the
+    formula-LHS helper `traits(...)`. The wide form uses compact syntax such as
     `traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2)`; the parser
     expands fixed predictors, `latent()` / `unique()` / `indep()` /
     `dep()`, bar-style `phylo_indep()` / `phylo_dep()`, and

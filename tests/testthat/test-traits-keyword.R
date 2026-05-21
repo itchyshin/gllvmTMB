@@ -397,9 +397,6 @@ test_that("traits() supports tidyselect verbs (all_of, starts_with, matches, bar
 ## ---- Test 4: NA handling drops cells, reports count -----------------------
 
 test_that("traits() drops NA cells with values_drop_na = TRUE and reports count", {
-  skip(
-    "0.2.0: fix-effects-only fit hits the removed sdmTMB() fallback. Migrate to covstruct + drop-NA in 0.2.x."
-  )
   skip_if_not_installed("tidyr")
   wide <- make_wide_df()
   trait_cols <- c("trait_1", "trait_2", "trait_3", "trait_4")
@@ -408,16 +405,17 @@ test_that("traits() drops NA cells with values_drop_na = TRUE and reports count"
   wide$trait_2[2] <- NA
   wide$trait_3[3] <- NA
   ## Capture the inform message and verify it reports n_dropped = 3.
-  ## Use a fixed-effects-only fit so the long-format engine doesn't
-  ## demand a clean convergence on a 3-cell ragged design — the contract
-  ## here is the parser pre-pass + drop count, not engine convergence.
   msgs <- character()
   withCallingHandlers(
     fit <- suppressWarnings(gllvmTMB::gllvmTMB(
-      traits(tidyselect::all_of(trait_cols)) ~ 0 + trait + (0 + trait):env_temp,
+      traits(tidyselect::all_of(trait_cols)) ~ 1 +
+        env_temp +
+        latent(1 | individual, d = 1) +
+        unique(1 | individual),
       data = wide,
       unit = "individual",
-      family = gaussian()
+      family = gaussian(),
+      control = gllvmTMBcontrol(se = FALSE)
     )),
     message = function(m) {
       msgs <<- c(msgs, conditionMessage(m))
@@ -425,6 +423,7 @@ test_that("traits() drops NA cells with values_drop_na = TRUE and reports count"
     }
   )
   ## Successful return, parser-side: traits_meta records the dropped count.
+  expect_s3_class(fit, "gllvmTMB")
   expect_equal(fit$traits_meta$n_dropped, 3L)
   ## Inform message should mention "3" (the count of dropped cells).
   expect_true(

@@ -23,28 +23,37 @@ expect_gtmb_plot_meta <- function(p, type, source) {
 make_BW_fit_for_plot <- function(seed = 1) {
   set.seed(seed)
   Tn <- 4
-  Lambda_B <- matrix(c(1.0, 0.5, -0.4, 0.3,
-                       0.0, 0.8,  0.4, -0.2), Tn, 2)
+  Lambda_B <- matrix(c(1.0, 0.5, -0.4, 0.3, 0.0, 0.8, 0.4, -0.2), Tn, 2)
   Lambda_W <- matrix(c(0.4, 0.2, -0.1, 0.3), Tn, 1)
   s <- gllvmTMB::simulate_site_trait(
-    n_sites = 30, n_species = 6, n_traits = Tn,
+    n_sites = 30,
+    n_species = 6,
+    n_traits = Tn,
     mean_species_per_site = 4,
-    Lambda_B = Lambda_B, psi_B = c(0.20, 0.15, 0.10, 0.25),
-    Lambda_W = Lambda_W, psi_W = c(0.10, 0.08, 0.05, 0.12),
-    beta = matrix(0, Tn, 2), seed = seed
+    Lambda_B = Lambda_B,
+    psi_B = c(0.20, 0.15, 0.10, 0.25),
+    Lambda_W = Lambda_W,
+    psi_W = c(0.10, 0.08, 0.05, 0.12),
+    beta = matrix(0, Tn, 2),
+    seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait +
-            latent(0 + trait | site,         d = 2) + unique(0 + trait | site) +
-            latent(0 + trait | site_species, d = 1) + unique(0 + trait | site_species),
+    value ~ 0 +
+      trait +
+      latent(0 + trait | site, d = 2) +
+      unique(0 + trait | site) +
+      latent(0 + trait | site_species, d = 1) +
+      unique(0 + trait | site_species),
     data = s$data
   )))
 }
 
-make_fake_ordination_fit <- function(d = 3L,
-                                     n_units = 18L,
-                                     n_traits = 5L,
-                                     seed = 99L) {
+make_fake_ordination_fit <- function(
+  d = 3L,
+  n_units = 18L,
+  n_traits = 5L,
+  seed = 99L
+) {
   set.seed(seed)
   traits <- paste0("T", seq_len(n_traits))
   units <- paste0("unit", seq_len(n_units))
@@ -67,7 +76,10 @@ make_fake_ordination_fit <- function(d = 3L,
       report = list(Lambda_B = Lambda),
       tmb_obj = list(
         env = list(
-          last.par.best = stats::setNames(as.vector(t(scores)), rep("z_B", n_units * d))
+          last.par.best = stats::setNames(
+            as.vector(t(scores)),
+            rep("z_B", n_units * d)
+          )
         )
       )
     ),
@@ -80,16 +92,28 @@ test_that("plot(type = 'correlation') returns a ggplot with combined upper/lower
   fit <- make_BW_fit_for_plot()
   p <- suppressMessages(plot(fit, type = "correlation"))
   expect_s3_class(p, "ggplot")
-  meta <- expect_gtmb_plot_meta(p, "correlation", "extract_Sigma")
+  meta <- expect_gtmb_plot_meta(p, "correlation", "extract_Sigma_table")
   expect_equal(meta$level, c("unit", "unit_obs"))
   expect_equal(meta$rotation_status, "rotation_invariant")
   expect_silent(print(p))
   ## n_traits^2 cells (diag + both triangles populated)
   expect_equal(nrow(p$data), fit$n_traits^2)
-  expect_true(all(c(
-    "trait_i", "trait_j", "row", "col", "estimate", "value",
-    "level", "triangle", "interval_method", "interval_status", "scale"
-  ) %in% names(p$data)))
+  expect_true(all(
+    c(
+      "trait_i",
+      "trait_j",
+      "row",
+      "col",
+      "estimate",
+      "value",
+      "level",
+      "triangle",
+      "interval_method",
+      "interval_status",
+      "scale"
+    ) %in%
+      names(p$data)
+  ))
   expect_true(all(p$data$value >= -1 & p$data$value <= 1))
   expect_true(all(p$data$estimate >= -1 & p$data$estimate <= 1))
   expect_setequal(
@@ -108,14 +132,25 @@ test_that("plot(type = 'correlation_ellipse') returns Figure-3-style ellipse dat
   fit <- make_BW_fit_for_plot()
   p <- suppressMessages(plot(fit, type = "correlation_ellipse"))
   expect_s3_class(p, "ggplot")
-  meta <- expect_gtmb_plot_meta(p, "correlation_ellipse", "extract_Sigma")
+  meta <- expect_gtmb_plot_meta(p, "correlation_ellipse", "extract_Sigma_table")
   expect_equal(meta$level, c("unit", "unit_obs"))
   plot_data <- attr(p, "gllvmTMB_data")
   expect_s3_class(plot_data, "data.frame")
-  expect_true(all(c(
-    "x", "y", "group", "trait_i", "trait_j", "estimate", "level",
-    "triangle", "significant", "border_colour"
-  ) %in% names(plot_data)))
+  expect_true(all(
+    c(
+      "x",
+      "y",
+      "group",
+      "trait_i",
+      "trait_j",
+      "estimate",
+      "level",
+      "triangle",
+      "significant",
+      "border_colour"
+    ) %in%
+      names(plot_data)
+  ))
   expect_false(any(plot_data$triangle == "diagonal"))
   expect_true(all(plot_data$estimate >= -1 & plot_data$estimate <= 1))
   expect_silent(print(p))
@@ -133,8 +168,10 @@ test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {
   expect_silent(print(p))
   ## n_traits * (d_B + d_W) = 4 * (2 + 1) = 12 rows
   expect_equal(nrow(p$data), fit$n_traits * (fit$d_B + fit$d_W))
-  expect_true(all(c("trait", "factor", "loading", "level", "pinned") %in%
-                    names(p$data)))
+  expect_true(all(
+    c("trait", "factor", "loading", "level", "pinned") %in%
+      names(p$data)
+  ))
   ## Single-level call works and shows just one level
   withr::local_options(gllvmTMB.warned_level_B = NULL)
   p_B <- NULL
@@ -163,7 +200,9 @@ test_that("plot(type = 'integration') returns a ggplot with three indices per tr
   p <- suppressMessages(plot(fit, type = "integration"))
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_plot_meta(
-    p, "integration", "extract_ICC_site + extract_communality"
+    p,
+    "integration",
+    "extract_ICC_site + extract_communality"
   )
   expect_equal(meta$level, c("unit", "unit_obs"))
   expect_equal(meta$interval_status, "none")
@@ -171,8 +210,10 @@ test_that("plot(type = 'integration') returns a ggplot with three indices per tr
   expect_silent(print(p))
   ## 3 indices x n_traits rows
   expect_equal(nrow(p$data), 3L * fit$n_traits)
-  expect_setequal(as.character(unique(p$data$index)),
-                  c("Repeatability", "Communality (B)", "Communality (W)"))
+  expect_setequal(
+    as.character(unique(p$data$index)),
+    c("Repeatability", "Communality (B)", "Communality (W)")
+  )
   ## Without boot, lower/upper should be all NA
   expect_true(all(is.na(p$data$lower)))
 })
@@ -185,10 +226,14 @@ test_that("plot(type = 'communality') returns stacked shared/unique bars", {
   meta <- expect_gtmb_plot_meta(p, "communality", "extract_communality")
   expect_equal(meta$level, c("unit", "unit_obs"))
   expect_identical(attr(p, "gllvmTMB_data"), p$data)
-  expect_true(all(c("trait", "level", "component", "proportion", "communality") %in%
-                    names(p$data)))
-  expect_setequal(as.character(unique(p$data$component)),
-                  c("Shared latent (c^2)", "Trait-specific uniqueness"))
+  expect_true(all(
+    c("trait", "level", "component", "proportion", "communality") %in%
+      names(p$data)
+  ))
+  expect_setequal(
+    as.character(unique(p$data$component)),
+    c("Shared latent (c^2)", "Trait-specific uniqueness")
+  )
   totals <- stats::aggregate(
     proportion ~ trait + level,
     data = p$data,
@@ -219,7 +264,9 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   p_default <- suppressMessages(plot(fit, type = "ordination"))
   expect_s3_class(p_default, "ggplot")
   meta_default <- expect_gtmb_plot_meta(
-    p_default, "ordination", "extract_ordination"
+    p_default,
+    "ordination",
+    "extract_ordination"
   )
   expect_equal(meta_default$level, "unit")
 
@@ -238,10 +285,14 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   expect_silent(print(p))
   ## ggplot()-with-data-in-layers: top-level p$data is empty waiver().
   ## Verify the layers see scores + loadings instead.
-  layer_data_n <- vapply(p$layers, function(l) {
-    d <- l$data
-    if (inherits(d, "waiver") || is.null(d)) NA_integer_ else nrow(d)
-  }, integer(1))
+  layer_data_n <- vapply(
+    p$layers,
+    function(l) {
+      d <- l$data
+      if (inherits(d, "waiver") || is.null(d)) NA_integer_ else nrow(d)
+    },
+    integer(1)
+  )
   expect_true(any(!is.na(layer_data_n)))
 })
 
@@ -268,15 +319,21 @@ test_that("plot(type = 'ordination') returns a static 3D pair grid for d = 3", {
 test_that("plot(type = 'ordination') can use two selected axes from d > 3", {
   skip_if_no_ggplot2()
   fit <- make_fake_ordination_fit(d = 4L)
-  p <- suppressMessages(plot(fit, type = "ordination", level = "unit",
-                             axes = c(2, 4)))
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    axes = c(2, 4)
+  ))
   expect_s3_class(p, "ggplot")
   plot_data <- attr(p, "gllvmTMB_data")
   expect_named(plot_data, c("scores", "loadings"))
   expect_equal(nrow(plot_data$scores), fit$n_sites)
   expect_equal(nrow(plot_data$loadings), length(levels(fit$data$trait)))
-  expect_true(all(c("loading_x", "loading_y", "display_scale") %in%
-                    names(plot_data$loadings)))
+  expect_true(all(
+    c("loading_x", "loading_y", "display_scale") %in%
+      names(plot_data$loadings)
+  ))
   expect_silent(print(p))
 })
 
@@ -316,8 +373,12 @@ test_that("plot.gllvmTMB_multi errors on bad type and bad axes", {
   expect_error(plot(fit, type = "nonsense"), regexp = "should be one of")
   ## d_B = 2 here, ask for axis 5 -> error
   expect_error(
-    suppressMessages(plot(fit, type = "ordination", level = "unit",
-                          axes = c(1, 5))),
+    suppressMessages(plot(
+      fit,
+      type = "ordination",
+      level = "unit",
+      axes = c(1, 5)
+    )),
     regexp = "exceed"
   )
 })

@@ -73,16 +73,16 @@ articles:
     - articles/roadmap
 
 reference:
-  - title: Top-level entry points
-    desc: Fit a stacked-trait GLLVM
+  - title: Start here
+    desc: Fit a stacked-trait GLLVM and load beginner-friendly examples
     contents:
     - gllvmTMB
     - traits
     - gllvmTMBcontrol
     - simulate_site_trait
 
-  - title: Covariance keywords
-    desc: The 4 x 5 keyword grid (correlation source x mode)
+  - title: Core covariance keywords
+    desc: First-line formula keywords for the 4 x 5 grid (correlation source x mode)
     contents:
     - latent
     - unique
@@ -107,27 +107,33 @@ reference:
     - spatial_indep
     - spatial_dep
     - spatial_latent
-    - spde
-    - spatial
     - meta_V
-    - meta_known_V
-
-  - title: Deprecated keyword aliases
-    desc: Older keyword names kept for backward compatibility
-    contents:
-    - phylo
-    - phylo_rr
-    - gr
-    - meta
     - block_V
+
+  - title: Advanced formula keywords and shorthands
+    desc: Useful after the core grid is familiar; public articles prefer the explicit core keywords
+    contents:
+    - animal_slope
+    - phylo_slope
+    - phylo
+    - spatial
+
+  - title: Relatedness and spatial helpers
+    desc: Build relationship matrices, sparse precisions, meshes, and spatial diagnostics
+    contents:
+    - pedigree_to_A
+    - pedigree_to_Ainv_sparse
+    - make_mesh
+    - add_utm_columns
+    - plot_anisotropy
 
   - title: Response families
     contents:
     - Families
     - ordinal_probit
 
-  - title: Extractors
-    desc: Recover Sigma, Lambda, repeatability, communality, phylogenetic signal
+  - title: Report-ready extractors
+    desc: Recover covariance, correlation, ordination, repeatability, communality, phylogenetic signal, and variance proportions
     contents:
     - extract_Sigma
     - extract_Omega
@@ -136,12 +142,11 @@ reference:
     - extract_repeatability
     - extract_phylo_signal
     - extract_proportions
-    - extract_residual_split
     - extract_ordination
-    - extract_ICC_site
     - extract_cutpoints
 
-  - title: S3 methods on `gllvmTMB_multi` fits
+  - title: Methods and plots on fitted models
+    desc: Standard summaries, predictions, simulations, confidence intervals, and current plotting entry point
     contents:
     - print.gllvmTMB_multi
     - summary.gllvmTMB_multi
@@ -152,21 +157,24 @@ reference:
     - predict.gllvmTMB_multi
     - plot.gllvmTMB_multi
 
-  - title: Diagnostics
-    desc: Evaluate a fitted gllvmTMB_multi model
+  - title: First-line diagnostics and uncertainty
+    desc: Start here before interpreting covariance, ordination, or interval estimates
     contents:
-    - sanity_multi
     - check_gllvmTMB
     - gllvmTMB_diagnose
+    - bootstrap_Sigma
+    - confint_inspect
+
+  - title: Advanced validation utilities
+    desc: Slower or developer-facing checks; use when a model or interval claim needs stronger evidence
+    contents:
+    - sanity_multi
     - check_auto_residual
     - check_identifiability
     - gllvmTMB_check_consistency
     - compare_dep_vs_two_psi
     - compare_indep_vs_two_psi
-    - bootstrap_Sigma
-    - tmbprofile_wrapper
     - profile_targets
-    - confint_inspect
     - coverage_study
 
   - title: Loadings (Lambda) and confirmatory factor analysis
@@ -175,12 +183,6 @@ reference:
     - rotate_loadings
     - compare_loadings
     - suggest_lambda_constraint
-
-  - title: Spatial mesh helpers
-    contents:
-    - make_mesh
-    - add_utm_columns
-    - plot_anisotropy
 
 ## news.releases intentionally omitted pre-CRAN: the v0.2.0 git tag /
 ## GitHub release does not exist yet (we are mid Phase 1b on the path

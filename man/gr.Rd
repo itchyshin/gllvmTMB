@@ -45,3 +45,4 @@ fit <- gllvmTMB(value ~ 0 + trait + gr(species, cov = Cphy),
                 phylo_vcv = Cphy)
 }
 }
+\keyword{internal}

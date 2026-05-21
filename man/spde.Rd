@@ -166,3 +166,4 @@ Methodology)} \strong{73}(4): 423–498.
 \seealso{
 \code{\link[=make_mesh]{make_mesh()}}, \code{\link[=add_utm_columns]{add_utm_columns()}}, \code{vignette("spde-vs-glmmTMB")}
 }
+\keyword{internal}

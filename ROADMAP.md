@@ -48,6 +48,9 @@ conditions pass.
 | 8 | Morphometrics example object | Curie, Pat, Fisher | Done: `inst/extdata/examples/morphometrics-example.rds`; Get Started and Morphometrics use it; long/wide equivalence is tested. |
 | 9 | Covariance edge-case example object | Curie, Fisher, Pat | Done when `covariance-edge-cases-example.rds` backs the covariance and pitfalls pages, and long/wide equivalence plus `unique()` effect are tested. |
 | 10 | Extraction/plotting contracts | Emmy, Fisher, Florence, Pat | Done when report-ready table columns are specified and plot helpers expose metadata/data for article audits. |
+| 11 | Reference index cleanup | Rose, Grace, Pat | Done when `_pkgdown.yml` separates first-line APIs from advanced diagnostics, hides deprecated aliases where appropriate, and `pkgdown::check_pkgdown()` passes. |
+| 12 | Symbol-to-syntax alignment blocks | Boole, Noether, Pat | Done when public conceptual pages pair each equation with defined symbols, the matching R formula, and a plain-language interpretation. |
+| 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Done when covariance/correlation, ordination, loading, communality, repeatability, and diagnostic plots pass rendered figure review and colour-accessibility checks. |
 
 Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 have passed the
 public-site launch gate. The six visible pages, Get Started, article index,
@@ -57,6 +60,24 @@ publication-grade figure interpretation still needs Florence review as each
 model guide becomes final.
 
 After these infrastructure slices, resume article restoration one page at a time.
+
+## Long Horizon To Finish
+
+The live roadmap stays short by design, but it must still show the path to the
+end. The old roadmap was archived because it mixed ready work, aspirations, and
+draft articles too freely. This replacement keeps a compact horizon and expands
+only when a stage becomes active.
+
+| Stage | Goal | Main gate before moving on |
+|---|---|---|
+| Reset public surface | Keep only the small user-first site visible. | Six pages, landing page, Get Started, Reference, and Roadmap agree. |
+| Infrastructure first | Provide prepared examples, internal scenario generators, extractor tables, and diagnostics so examples are not long setup scripts. | Example objects and report-ready tables are tested. |
+| Symbol and syntax clarity | Reintroduce enough math to teach the model without losing applied users. | Every symbol is defined and paired with R syntax plus interpretation. |
+| Florence plot system | Move from functional plots to publication-quality scientific graphics. | Rendered figures are informative, colour-blind friendly, uncertainty-aware, and reviewed in HTML. |
+| Diagnostics and uncertainty | Stabilise `pdHess`, profile, bootstrap, and simulation-grid language. | #228 resumes only after diagnostic terms and plot semantics are stable. |
+| Article restoration | Bring hidden articles back one at a time. | Each article has its example object, long/wide status, validation rows, figure review, and maintainer HTML review. |
+| Pre-CRAN | Audit public API, examples, docs, pkgdown, reverse dependencies, and CRAN notes. | Local checks and 3-OS CI are clean; validation-debt register is current. |
+| Publication-quality claims | Support strong methodological claims with target-explicit simulation and external comparators. | M3 inference gates and Phase 5.5 comparator evidence pass. |
 
 ## Article Gate Matrix
 
@@ -78,7 +99,7 @@ to reverse-engineer it from long setup chunks.
 | Example data | Reproducible prepared objects with long data, wide data, truth, estimands, formulas, fit arguments, story, and alignment table. | `morphometrics-example.rds`; `covariance-edge-cases-example.rds` |
 | Simulation helpers | Internal scenario generators with stable seeds and named estimands. | Morphometrics, covariance edge cases, behavioural syndrome. |
 | Extraction tables | Report-ready covariance, correlation, communality, repeatability, phylogenetic signal, ordination, diagnostics, and uncertainty tables. | Contract in `docs/design/53-report-ready-extractor-plot-contract.md`; first tidy table helper still pending. |
-| Plot helpers | Data-first plots that consume extractor tables and expose audit metadata. | `plot.gllvmTMB_multi()` now attaches `gllvmTMB_meta` and `gllvmTMB_data`; Figure-3-style `correlation_ellipse`, `communality`, and dimension-aware 1D/2D/3D `ordination` are implemented. Dominant-axis forests, score distributions, interval-aware ellipse borders, and rendered figure review remain pending before publication-grade claims. |
+| Plot helpers | Data-first plots that consume extractor tables and expose audit metadata. | `plot.gllvmTMB_multi()` now attaches `gllvmTMB_meta` and `gllvmTMB_data`; current plot helpers are functional but still basic. Figure-3-style `correlation_ellipse`, `communality`, and dimension-aware 1D/2D/3D `ordination` are the starting grammar. Dominant-axis forests, score distributions, interval-aware ellipse borders, richer uncertainty displays, colour-blind palettes, and rendered Florence review are pending before publication-grade claims. |
 | Diagnostics | `check_gllvmTMB()` first; `pdHess = FALSE` treated as an uncertainty warning, not automatic model death. | Public methods pages. |
 | Profile/bootstrap uncertainty | Explicit fallback language and worker-level diagnostics before claims. | Keep `profile-likelihood-ci` hidden. |
 | Validation evidence | Every public claim cites a validation-debt row as `covered`, `partial`, or `blocked`. | Six visible articles. |

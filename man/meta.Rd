@@ -66,3 +66,4 @@ fit2 <- gllvmTMB(value ~ 0 + trait +
 constructing a block-diagonal sampling-V from a study factor;
 \code{\link[=gllvmTMB]{gllvmTMB()}} for the stage-2 fit.
 }
+\keyword{internal}

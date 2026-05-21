@@ -33,7 +33,7 @@ Visualization touches **three layers**:
 
 | Layer | What | Owner |
 |---|---|---|
-| **Engine outputs** | `R/plot-gllvmTMB.R` 5-type dispatcher (`correlation`, `loadings`, `integration`, `variance`, `ordination`) | Florence + Emmy |
+| **Engine outputs** | `R/plot-gllvmTMB.R` dispatcher (`correlation`, `correlation_ellipse`, `loadings`, `integration`, `communality`, `variance`, `ordination`) | Florence + Emmy |
 | **Article figures** | Each Worked Example + Concepts article's inline ggplot chunks | Florence + Pat + Darwin |
 | **Gallery / tutorial** | New `visualizing-gllvmTMB.Rmd` (planned) — all plot types side-by-side with rotation caveats + interactive demo | Florence + Pat |
 
@@ -61,7 +61,7 @@ tutorial, gallery, or report.
 | Gate | Minimum standard for gllvmTMB |
 |---|---|
 | **Interpretability** | The title, axes, facets, and caption name the biological / latent-variable question, the fitted parameter (Lambda, Sigma_unit, h^2, etc.), the **rotation status** (rotation-invariant target vs rotation-ambiguous direction), and the reporting scale (link / response / standardised). |
-| **Uncertainty** | Confidence bands, interval bars, or missing-interval markers match the **CI method** (`fisher-z` / `wald` / `profile` / `bootstrap`) and the `interval_status` returned by the extractor (`covered` / `partial` / `blocked` / `boundary`). A plain line is **not** presented as an interval. Boundary-pinned variances are visually marked (one-sided arrow / open glyph), not silently truncated. |
+| **Uncertainty** | Confidence bands, interval bars, or missing-interval markers match the **CI method** (`fisher-z` / `wald` / `profile` / `bootstrap`) and the plotting `interval_status` (`none` / `provided` / `partial` / `missing` / `boundary` / `failed` / `not_applicable`). Capability status (`covered` / `partial` / `blocked`) belongs in the validation-debt register, not in a figure legend. A plain line is **not** presented as an interval. Boundary-pinned variances are visually marked (one-sided arrow / open glyph), not silently truncated. |
 | **Evidence** | The plot's data table is inspectable. Raw observations, prediction grids, the `extract_*()` output, or simulation-recovery RDS files are visible in the surrounding workflow when needed for interpretation. `check_identifiability()` / `gllvmTMB_check_consistency()` outputs appear in companion plots when the fit is at a boundary regime. |
 | **Accessibility** | Colour choices are colourblind-friendly (default to viridis or Okabe-Ito); line widths remain legible in print at single-column manuscript width; panels are readable at pkgdown defaults; redundant encodings used when groups matter (colour AND shape). |
 | **Composability** | The helper returns an ordinary `ggplot` object. The underlying data table is exposed via `$data` and `attr(., 'gllvmTMB_meta')`. Custom downstream plots (ecology/evolution figures combining multiple extractors) compose naturally. |
@@ -115,6 +115,56 @@ ggplot, or `man/plot.*.Rd`, Florence is invoked via the
 relevant skill(s) as the default lead. Pat / Fisher / Darwin
 contribute as reviewers per the figure-gate dimensions above.
 
+## 4a. Florence operating mode upgrade (2026-05-21)
+
+Florence is now the **lead scientific illustrator and ggplot engineer** for
+the public visual layer, not only an end-stage reviewer. Plot work starts with
+her questions:
+
+1. What scientific comparison should the reader see within a few seconds?
+2. What estimand, scale, level, interval method/status, and rotation status are
+   visible in the figure or caption?
+3. Does the plot use a colourblind-safe palette and redundant encoding where
+   groups matter?
+4. Does the plotted data remain inspectable through `attr(p, "gllvmTMB_data")`
+   and `attr(p, "gllvmTMB_meta")`?
+5. What would Pat, Darwin, Fisher, Noether, Grace, and Rose reject before a
+   figure-dependent article goes public?
+
+The current helper baseline is deliberately modest:
+
+- signed quantities use a blue-white-vermillion diverging scale;
+- grouped summaries use Okabe-Ito-inspired colours plus shapes where possible;
+- loadings and ordination captions state rotation/sign ambiguity;
+- integration plots carry row-level interval status;
+- correlation plots preserve extractor notes so latent-only correlation
+  warnings are not hidden behind polished heatmaps.
+
+This is a **safety and accessibility upgrade**, not a publication-ready
+stamp. A public article figure still needs rendered HTML review by Florence
+and Pat, plus Noether whenever a caption states a `Sigma`, `Lambda`, `Psi`, or
+rotation-invariance claim.
+
+## 4b. GLLVM overview Figure 3 plot-suite target (2026-05-21)
+
+The GLLVM overview paper's Figure 3 is the current visual north star for
+ordinary multivariate GLLVM summaries. Florence interprets it as four related
+outputs, not one monolithic plot:
+
+| Figure 3 panel / user example | gllvmTMB helper target | Current status |
+|---|---|---|
+| Ordination biplot: scores plus trait loading arrows | `plot(type = "ordination")` | Implemented as dimension-aware static output: 1D score strip, 2D biplot, 3D pair-grid; d > 3 uses selected axes. |
+| Loading matrix table | Extractor/table helper, not a plot | Planned; should be a report table because the reader needs exact signs and magnitudes. |
+| Correlation ellipse matrix | `plot(type = "correlation_ellipse")` | Implemented for point-estimate correlations from `extract_Sigma()`. Black-border/star support is future-compatible but waits for interval-aware tidy correlation tables. |
+| Communality / uniqueness bars | `plot(type = "communality")` | Implemented for point-estimate `extract_communality()` output. Interval overlays wait for bootstrap/profile table plumbing. |
+| Dominant-axis loading forest with bootstrap CIs | Future `plot(type = "dominant_loadings")` or a table-driven helper | Planned; requires bootstrap-aligned loading/axis summaries and rotation/sign convention checks. |
+| Score histograms / density panels | Future score-distribution helper | Planned; should consume `extract_ordination()` score tables and avoid over-interpreting latent axes as mechanisms. |
+| Integration-index forest with repeatability and communality CIs | `plot(type = "integration")` | Implemented for point estimates and optional user-supplied bootstrap intervals; still needs first-class bootstrap object contract. |
+
+Panel composition for articles should happen at the article/gallery layer. The
+S3 plot method should keep returning ordinary ggplot objects with audit
+metadata so each panel can be inspected, tested, and rewritten independently.
+
 ## 5. Implementation contract for `plot_*()` helpers
 
 Public plot helpers in `R/plot-gllvmTMB.R` and any new helpers:
@@ -137,11 +187,13 @@ Public plot helpers in `R/plot-gllvmTMB.R` and any new helpers:
 ROADMAP currently has Phase 1c-viz at 0/7. Florence inherits this
 scope:
 
-1. Extend dispatcher with 3 missing static types (`communality`,
-   `phylo_signal`, `residual_split`).
+1. Extend dispatcher with missing static types. `communality` and
+   `correlation_ellipse` are now present; `phylo_signal` and
+   `residual_split` remain planned.
 2. Add `repeatability_forest` plot type (ICC headline).
 3. Dimension-aware `ordination`: d=1 strip / d=2 biplot /
-   d=3 pair-grid / d>3 user-selected axes.
+   d=3 pair-grid / d>3 user-selected axes. Implemented as a static ggplot
+   path; true interactive 3D remains planned.
 4. First-class interactive option via plotly (`type =
    "ordination", interactive = TRUE`).
 5. Polish: rotation-disclaimer captions; shared/unique/total

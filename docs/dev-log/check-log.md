@@ -2371,6 +2371,9 @@ Evidence:
   -> `No problems found.`
 - `git diff --check`
   -> clean.
+- `gh issue comment 230 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted Florence follow-up:
+  `https://github.com/itchyshin/gllvmTMB/issues/230#issuecomment-4507836372`.
 
 Consistency and stale-wording scans:
 
@@ -3646,3 +3649,633 @@ Kaizen point:
     quantile residual, and fitted-model predictive draws are not Bayesian
     posterior draws. Keeping those names separate prevents a useful
     diagnostic prototype from becoming an accidental public overpromise.
+
+## 2026-05-20 -- article surface reset and drmTMB lessons sweep
+
+Scope:
+
+- Pause broad article exposure and record an infrastructure-first article
+  plan.
+- Hide premature articles from the visible pkgdown article dropdown without
+  deleting source files.
+- Add an article inventory and rendered-HTML review protocol.
+- Add a drmTMB comparative sweep focused on what gllvmTMB should borrow,
+  adapt, and surpass.
+- Reopen ROADMAP Phase 1d around article-surface reset and user-first tooling
+  gates.
+- Create issue #230 as the ledger home for the reset. Keep #228 parked until
+  diagnostics have a clear article/tooling surface.
+- Record the new process rule in `docs/dev-log/team-improvements.md`: long +
+  wide article examples and rendered HTML review are gates, not polish.
+
+Evidence:
+
+- `git status --short --branch`
+  -> branch `codex/article-audit-2026-05-20`; changed files were
+  `ROADMAP.md`, `_pkgdown.yml`, and the two new audit files.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate --max-count=20`
+  -> recent work included the parked #228 diagnostics checkpoint branch and
+  current `main`; no open PR collision found.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- `gh issue list --repo itchyshin/gllvmTMB --state open --limit 40`
+  -> only #228 was open before the reset issue was created.
+- `gh issue create --repo itchyshin/gllvmTMB --title "Article surface reset and user-first tooling gate" ...`
+  -> created #230.
+- `gh issue view 228 --repo itchyshin/gllvmTMB --json number,title,state,labels,updatedAt,url`
+  -> #228 remains open as the public diagnostics lane.
+- `gh issue view 230 --repo itchyshin/gllvmTMB --json number,title,state,labels,updatedAt,url`
+  -> #230 is open with `documentation` and `enhancement`.
+- `rg -n "gllvmTMB\\(|traits\\(|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|in prep|in preparation|\\bS_B\\b|\\bS_W\\b|\\\\bf S" ROADMAP.md docs/dev-log/audits/2026-05-20-article-surface-reset.md docs/dev-log/audits/2026-05-20-drmtmb-lessons-for-gllvmtmb.md _pkgdown.yml`
+  -> new hits were intentional long/wide formula and `check_gllvmTMB()`
+  planning mentions; old ROADMAP historical `in prep`, `gllvmTMB_wide()`,
+  and `meta_known_V` mentions remain known roadmap/reference inventory, not
+  new claims from this reset.
+- `rg -n "articles/(animal-model|behavioural-syndromes|joint-sdm|phylogenetic-gllvm|functional-biogeography|psychometrics-irt|simulation-recovery-validated|cross-package-validation|choose-your-model|data-shape-flowchart)" README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd vignettes/articles/covariance-correlation.Rmd vignettes/articles/pitfalls.Rmd`
+  -> found README links to hidden `choose-your-model` and `joint-sdm`; landing
+  page cleanup remains a known next action under #230.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-article-surface-reset-drmtmb-lessons.md`
+
+Kaizen point:
+
+53. **Articles should advertise tools that already carry their own weight.**
+    For gllvmTMB, that means scenario simulators, extraction tables, plotting
+    helpers, diagnostics, and uncertainty status first; only then should a
+    worked example become public HTML.
+
+## 2026-05-20 -- implement public-surface reset and simpler landing page
+
+Scope:
+
+- Archived the pre-reset long roadmap at
+  `docs/dev-log/roadmap-archive/2026-05-20-pre-reset-roadmap.md`.
+- Replaced `ROADMAP.md` with a short live dashboard: current public
+  surface, next 8 slices, article gate matrix link, infrastructure gates,
+  restoration queue, finish-line criteria, and reset working rules.
+- Updated `_pkgdown.yml` so the public article dropdown contains only:
+  Model guide (`morphometrics`), Concepts (`covariance-correlation`,
+  `api-keyword-grid`, `response-families`), and Methods
+  (`convergence-start-values`, `pitfalls`). Roadmap remains a top-nav item
+  only; all other articles stay under hidden `Under audit`.
+- Simplified `README.md` as the pkgdown landing page: plain user-first
+  purpose, six-page learning path, pre-CRAN/audit warning, compact current
+  status table, and no first-screen links to hidden articles.
+- Replaced the oversized homepage feature-status matrix with a compact
+  status summary linking to the validation-debt register and roadmap.
+- Added `docs/dev-log/audits/2026-05-20-article-gate-matrix.md`.
+- Public article safety fixes:
+  - added explicit `trait = "trait"` to public long examples where needed;
+  - changed stale `S` wording to `Psi` / `psi`;
+  - softened morphometrics `latent + unique` versus `dep` language to the
+    simulated rank-2 Gaussian truth;
+  - removed visible recommended-next-step links to hidden immature articles.
+
+Evidence:
+
+- `git status --short --branch`
+  -> branch `codex/article-audit-2026-05-20`; modified README, ROADMAP,
+  `_pkgdown.yml`, six public article files, Get Started, check-log, and
+  team-improvements; new roadmap archive and audit files.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate --max-count=30`
+  -> no open-PR collision found; #228 diagnostic work remains parked on its
+  checkpoint branch.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- First targeted render:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); arts <- c("gllvmTMB", "articles/morphometrics", "articles/covariance-correlation", "articles/api-keyword-grid", "articles/response-families", "articles/convergence-start-values", "articles/pitfalls", "articles/roadmap"); for (a in arts) { message("Building ", a); pkgdown::build_article(a, lazy = FALSE, new_process = FALSE, quiet = TRUE) }'`
+  -> failed in `gllvmTMB.Rmd` because the simplified Get Started example
+  removed `session` but the wide reshape still used `idvar = c("individual",
+  "session")`. Fixed by reshaping with `idvar = "individual"`.
+- Second targeted render with the same article command
+  -> passed for Get Started, the six visible articles, and roadmap; emitted
+  only the pre-existing `../logo.png` missing-image warnings.
+- Homepage render command:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_home(new_process = FALSE, quiet = TRUE); ...'`
+  -> failed because this pkgdown version's `build_home()` does not accept
+  `new_process`.
+- Corrected homepage + article render:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_home(quiet = TRUE); arts <- c("gllvmTMB", "articles/morphometrics", "articles/covariance-correlation", "articles/api-keyword-grid", "articles/response-families", "articles/convergence-start-values", "articles/pitfalls", "articles/roadmap"); for (a in arts) { message("Building ", a); pkgdown::build_article(a, lazy = FALSE, new_process = FALSE, quiet = TRUE) }'`
+  -> passed; emitted only pre-existing missing `logo.png` / `../logo.png`
+  warnings. The render created transient `vignettes/ord-1.png`, which was
+  removed after the check.
+- Stale hidden-link scan:
+  `rg -n 'articles/(animal-model|behavioural-syndromes|joint-sdm|phylogenetic-gllvm|functional-biogeography|psychometrics-irt|simulation-recovery-validated|cross-package-validation|choose-your-model|data-shape-flowchart|lambda-constraint|profile-likelihood-ci|mixed-family-extractors|ordinal-probit|troubleshooting-profile|stacked-trait-gllvm|gllvm-vocabulary)' README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd vignettes/articles/convergence-start-values.Rmd vignettes/articles/pitfalls.Rmd`
+  -> no hits.
+- Stale notation scan:
+  ``rg -n 'S_true|S only|matrix `S`|diag\\(S\\)|\\\\bf S|\\bS_B\\b|\\bS_W\\b' README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd vignettes/articles/convergence-start-values.Rmd vignettes/articles/pitfalls.Rmd``
+  -> no hits.
+- Overclaim scan:
+  `rg -n 'publication-quality work today|any of 15 response families|Choose your model|Joint species distribution modelling|joint-sdm|choose-your-model|lambda-constraint.html|ordinal-probit.html' README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd vignettes/articles/convergence-start-values.Rmd vignettes/articles/pitfalls.Rmd`
+  -> no hits.
+- `mcp__codex_apps__github._add_comment_to_issue(...)`
+  -> failed with GitHub API 403 (`Resource not accessible by integration`).
+- `gh issue comment 230 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted implementation update:
+  `https://github.com/itchyshin/gllvmTMB/issues/230#issuecomment-4503649236`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-public-surface-reset-implementation.md`
+
+Kaizen point:
+
+54. **The homepage is not the validation register.** New users need a plain
+    entry path first; the audit ledger should stay linked and traceable, but
+    it should not be the first thing they have to read.
+
+## 2026-05-20 -- slices 7 and 8 example object contract + morphometrics object
+
+Scope:
+
+- Added `docs/design/52-example-object-contract.md` to define required fields
+  for prepared teaching objects: `data_long`, `data_wide`, `truth`,
+  `estimands`, `formula_long`, `formula_wide`, `fit_args`, `story`, and
+  `alignment`.
+- Added `data-raw/examples/make-morphometrics-example.R`, a reproducible
+  generator for the morphometrics fixture.
+- Generated `inst/extdata/examples/morphometrics-example.rds`.
+- Added `tests/testthat/test-example-morphometrics.R` to check object shape,
+  long/wide data consistency, long/wide likelihood equivalence, optimizer /
+  gradient health, and covariance recovery against known truth.
+- Updated Get Started and `vignettes/articles/morphometrics.Rmd` to load the
+  prepared object instead of showing a long DGP block before the first fit.
+- Removed the 20-replicate simulation loop from Morphometrics; the article now
+  presents one teaching data set and states that broader coverage claims belong
+  in simulation-grid articles.
+- Updated `ROADMAP.md` slices 7 and 8 to done and refreshed the article gate
+  matrix row for Morphometrics.
+
+Evidence:
+
+- `Rscript data-raw/examples/make-morphometrics-example.R`
+  -> generated `inst/extdata/examples/morphometrics-example.rds` (14,511
+  bytes). First attempt failed because base `diag()` does not accept a
+  `dimnames =` argument; fixed by assigning `dimnames(Psi)` after `diag()`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics")'`
+  -> passed: 26 tests, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); path <- system.file("extdata", "examples", "morphometrics-example.rds", package = "gllvmTMB", mustWork = TRUE); ex <- readRDS(path); print(names(ex)); print(dim(ex$data_long)); print(dim(ex$data_wide)); print(ex$formula_long); print(ex$formula_wide)'`
+  -> object has the expected 10 fields; long data `750 x 3`; wide data
+  `150 x 6`; formulas print as the expected long `value ~ ...` and wide
+  `traits(length, mass, wing, tarsus, bill) ~ ...` formulas.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_home(quiet = TRUE); arts <- c("gllvmTMB", "articles/morphometrics", "articles/roadmap"); for (a in arts) { message("Building ", a); pkgdown::build_article(a, lazy = FALSE, new_process = FALSE, quiet = TRUE) }'`
+  -> passed for homepage, Get Started, Morphometrics, and Roadmap; emitted only
+  pre-existing `logo.png` / `../logo.png` warnings. The render created
+  transient `vignettes/ord-1.png`, which was removed.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- `git diff --check`
+  -> clean.
+- DGP-removal scan:
+  `rg -n 'simulate_site_trait\\(|set.seed\\(|rnorm\\(|psi2_true|Recovery across replicates|temporary setup' vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd`
+  -> no hits.
+- Hidden-link scan:
+  `rg -n 'articles/(animal-model|behavioural-syndromes|joint-sdm|phylogenetic-gllvm|functional-biogeography|psychometrics-irt|simulation-recovery-validated|cross-package-validation|choose-your-model|data-shape-flowchart|lambda-constraint|profile-likelihood-ci|mixed-family-extractors|ordinal-probit|troubleshooting-profile|stacked-trait-gllvm|gllvm-vocabulary)' README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd`
+  -> no hits.
+- Stale notation scan:
+  ``rg -n 'S_true|S only|matrix `S`|diag\\(S\\)|\\\\bf S|\\bS_B\\b|\\bS_W\\b|psi_t\\^2|psi2_true' README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd docs/design/52-example-object-contract.md data-raw/examples/make-morphometrics-example.R tests/testthat/test-example-morphometrics.R``
+  -> no hits.
+- Rendered HTML inspection by source scan:
+  `rg -n "morphometrics-example|prepared morphometrics|formula_long|formula_wide|value ~ 0 \\+ trait|traits\\(length|Frobenius|Current Status|Start Here" pkgdown-site/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/morphometrics.html`
+  -> confirmed the rendered homepage has Start Here / Current Status and the
+  rendered Get Started + Morphometrics pages show the prepared object and both
+  formulas.
+- `gh issue comment 230 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted slice 7/8 update:
+  `https://github.com/itchyshin/gllvmTMB/issues/230#issuecomment-4503754431`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-20-example-object-contract-morphometrics.md`
+
+Kaizen point:
+
+55. **Teach from objects, test from objects.** If a public article relies on a
+    simulated world, the data, truth, formulas, story, and alignment should be
+    a tested package artifact rather than prose and setup code scattered
+    through the vignette.
+
+## 2026-05-21 -- slice 9 covariance edge-case example object
+
+Scope:
+
+- Added `data-raw/examples/make-covariance-edge-cases-example.R`.
+- Generated `inst/extdata/examples/covariance-edge-cases-example.rds`.
+- Added `tests/testthat/test-example-covariance-edge-cases.R`.
+- Updated `vignettes/articles/covariance-correlation.Rmd` to use the prepared
+  object instead of an inline data-generating block.
+- Updated `vignettes/articles/pitfalls.Rmd` to use the same object for the
+  factor-level-order pitfall.
+- Updated `docs/design/52-example-object-contract.md`, `ROADMAP.md`, and
+  `docs/dev-log/audits/2026-05-20-article-gate-matrix.md`.
+- Fixed `_pkgdown.yml` article navigation after render showed that
+  `navbar: ~` still exposed the hidden "Under audit" pages in pkgdown 2.1.3.
+  The visible Articles dropdown is now explicit, and hidden pages live in the
+  pkgdown `internal` section.
+- Hid source-tree fallback plumbing in rendered articles; readers see the
+  simple `system.file()` path, while local renders still work from the source
+  tree.
+
+Evidence:
+
+- `Rscript --vanilla data-raw/examples/make-covariance-edge-cases-example.R`
+  -> generated `inst/extdata/examples/covariance-edge-cases-example.rds`
+  (17,217 bytes).
+- Scratch fit before adding tests:
+  `Rscript --vanilla -e 'devtools::load_all(".", quiet=TRUE); ...'`
+  -> long and wide recommended fits had identical log-likelihoods; latent-only
+  correlation mean absolute error was about 0.160 versus about 0.024 for
+  `latent() + unique()`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-covariance-edge-cases")'`
+  -> passed: 32 tests, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-(morphometrics|covariance-edge-cases)")'`
+  -> passed: 58 tests, 0 failures, 0 warnings, 0 skips.
+- First clean targeted render of covariance/pitfalls failed because
+  `system.file()` could not see the new source-tree RDS in a clean pkgdown
+  process. Fixed by adding source-tree fallbacks, then hiding those fallbacks
+  from rendered HTML.
+- Targeted renders:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/covariance-correlation", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  and
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/pitfalls", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> passed after the path fix; only pre-existing `../logo.png` warnings.
+- Source-loaded visible render:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); arts <- c("gllvmTMB", "articles/morphometrics", "articles/covariance-correlation", "articles/pitfalls"); for (a in arts) { message("Building ", a); pkgdown::build_article(a, pkg = ".", lazy = FALSE, new_process = FALSE, quiet = TRUE) }; pkgdown::build_articles_index(pkg = ".")'`
+  -> passed; only pre-existing `../logo.png` warnings.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- `git diff --check`
+  -> clean.
+- Local HTTP check:
+  `curl -I --silent --show-error http://127.0.0.1:8765/articles/covariance-correlation.html http://127.0.0.1:8765/articles/pitfalls.html http://127.0.0.1:8765/articles/gllvmTMB.html http://127.0.0.1:8765/articles/morphometrics.html | rg 'HTTP/|Content-Length'`
+  -> all four pages returned `HTTP/1.0 200 OK`.
+
+Stale-wording and rendered-site scans:
+
+- Hidden-link scan:
+  `rg -n 'articles/(animal-model|behavioural-syndromes|joint-sdm|phylogenetic-gllvm|functional-biogeography|psychometrics-irt|simulation-recovery-validated|cross-package-validation|choose-your-model|data-shape-flowchart|lambda-constraint|profile-likelihood-ci|mixed-family-extractors|ordinal-probit|troubleshooting-profile|stacked-trait-gllvm|gllvm-vocabulary)' pkgdown-site/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/morphometrics.html pkgdown-site/articles/covariance-correlation.html pkgdown-site/articles/pitfalls.html pkgdown-site/articles/index.html vignettes/articles/covariance-correlation.Rmd vignettes/articles/pitfalls.Rmd`
+  -> no hits after `_pkgdown.yml` fix and re-render.
+- Hidden-dropdown text scan:
+  `rg -n 'Under audit|More articles|Joint species|Profile-likelihood|Animal model|Simulation recovery' pkgdown-site/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/morphometrics.html pkgdown-site/articles/covariance-correlation.html pkgdown-site/articles/pitfalls.html pkgdown-site/articles/index.html`
+  -> only intentional "Under audit" explanatory text in Morphometrics/Pitfalls;
+  no hidden navbar or article-index links.
+- Fallback-code scan:
+  `rg -n 'file.path\("inst"|\\.\\., "inst"|stopifnot\(!is.na|example_path <- c\(|covex_path <- c\(' pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/morphometrics.html pkgdown-site/articles/covariance-correlation.html pkgdown-site/articles/pitfalls.html`
+  -> no hits; fallback plumbing is hidden from readers.
+- Stale notation scan:
+  ``rg -n 'S_true|S only|matrix `S`|diag\(S\)|\\bf S|\bS_B\b|\bS_W\b|diag\(s_|s_unit|psi_t\^2|psi2_true' vignettes/articles/covariance-correlation.Rmd vignettes/articles/pitfalls.Rmd data-raw/examples/make-covariance-edge-cases-example.R tests/testthat/test-example-covariance-edge-cases.R docs/design/52-example-object-contract.md``
+  -> no hits.
+- DGP-location scan:
+  `rg -n 'simulate_site_trait\(|set.seed\(|rnorm\(' vignettes/articles/covariance-correlation.Rmd data-raw/examples/make-covariance-edge-cases-example.R vignettes/articles/pitfalls.Rmd`
+  -> covariance article has no inline DGP hits; generator contains the intended
+  seed and `rnorm()` calls; Pitfalls retains simulator examples for simulator-
+  specific pitfalls.
+- Fit-call scan:
+  `rg -n 'gllvmTMB\(' vignettes/articles/covariance-correlation.Rmd vignettes/articles/pitfalls.Rmd tests/testthat/test-example-covariance-edge-cases.R`
+  -> covariance article and tests show long calls with explicit `trait =` and
+  wide calls through `traits(...)`; Pitfalls still has long-form diagnostic
+  examples and remains under HTML review.
+
+Browser review:
+
+- Started local server:
+  `python3 -m http.server 8765 --bind 127.0.0.1 --directory pkgdown-site`
+- Opened:
+  `http://127.0.0.1:8765/articles/covariance-correlation.html`,
+  `http://127.0.0.1:8765/articles/pitfalls.html`,
+  `http://127.0.0.1:8765/articles/gllvmTMB.html`, and
+  `http://127.0.0.1:8765/articles/morphometrics.html`.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-21-covariance-edge-case-example.md`
+
+Kaizen point:
+
+56. **Render the navbar, not just the article body.** A source article can have
+    no hidden links while pkgdown still exposes hidden pages through generated
+    navigation. The rendered HTML is the truth users see.
+
+## 2026-05-21 -- slice 10 extraction/plotting contract metadata
+
+Scope:
+
+- Added `docs/design/53-report-ready-extractor-plot-contract.md`.
+- Updated `plot.gllvmTMB_multi()` internals so every plot returns a ggplot with
+  `attr(p, "gllvmTMB_meta")`.
+- Added `attr(p, "gllvmTMB_data")` for ordination plots so articles can inspect
+  scores/loadings without digging through ggplot layers.
+- Updated `tests/testthat/test-plot-gllvmTMB.R` to assert plot metadata for
+  correlation, loadings, integration, variance, and ordination plots.
+- Updated `R/plot-gllvmTMB.R` roxygen and regenerated
+  `man/plot.gllvmTMB_multi.Rd`.
+- Updated `ROADMAP.md` slice 10 and infrastructure-gate rows.
+
+Evidence:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`
+  -> passed: 85 tests, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `rg -n "gllvmTMB_meta|gllvmTMB_data|report-ready|slice 10|Extraction/plotting" R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd docs/design/53-report-ready-extractor-plot-contract.md ROADMAP.md`
+  -> confirmed code, tests, generated help, design doc, and roadmap all mention
+  the metadata contract.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- `git diff --check`
+  -> clean.
+- `gh issue view 230 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,url`
+  -> #230 open; used as reset ledger.
+- `gh issue view 228 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,url`
+  -> #228 open and still parked.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-21-extraction-plotting-contract.md`
+
+Kaizen point:
+
+57. **A plot is an audit object, not just a picture.** Before making figures
+    prettier, make them traceable: type, source extractor, level, interval
+    status, and rotation status should travel with the ggplot object.
+
+## 2026-05-21 -- Florence-led plot safety pass
+
+Scope:
+
+- Promoted Florence from end-stage reviewer to visual lead for the plot-helper
+  lane, with Pat, Noether/Fisher, Grace, and Rose review feedback.
+- Added an internal colourblind-safe palette, figure theme, diverging fill
+  helper, label-colour helper, and plot-level interval-status helper in
+  `R/plot-gllvmTMB.R`.
+- Updated plot helpers:
+  - `correlation`: data-first helper, muted diagonal, tier border legend,
+    extractor notes preserved in metadata.
+  - `loadings`: symmetric diverging scale, optional tile labels, pinned-cell
+    marker legend, rotation/sign caption.
+  - `integration`: row-level `has_interval`, `interval_method`, and
+    `interval_status`; point-only / missing-interval caption.
+  - `variance`: horizontal reader-labelled stacked bars with colourblind-safe
+    component palette.
+  - `ordination`: captions state display-scaled loadings and arbitrary
+    orientation; default omitted `level` now uses `unit`.
+- Fixed Morphometrics heatmap caption and palette: total
+  `Sigma_B = Lambda Lambda^T + Psi`, muted diagonal, colourblind-safe gradient.
+- Harmonised interval-status vocabulary in the figure design docs.
+- Added recovery checkpoint
+  `docs/dev-log/recovery-checkpoints/2026-05-21-052517-codex-checkpoint.md`.
+
+Evidence:
+
+- `git status --short --branch`
+  -> confirmed branch `codex/article-audit-2026-05-20` and broad reset lane
+  dirty tree.
+- `gh pr list --state open --repo itchyshin/gllvmTMB`
+  -> no open PRs returned.
+- `git log --all --oneline --since='6 hours ago'`
+  -> no recent commits returned.
+- `Rscript --vanilla -e 'parse("R/plot-gllvmTMB.R"); cat("parse ok\n")'`
+  -> parse ok.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`
+  -> passed after Florence/default updates: 98 tests, 0 failures, 0 warnings,
+  0 skips.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/morphometrics", pkg = ".", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/morphometrics.html`; only pre-existing
+  `../logo.png` warning.
+- `rg -n 'total between-unit covariance|Lambda Lambda\^T|diagonal is muted|visual recovery' pkgdown-site/articles/morphometrics.html`
+  -> rendered caption uses total `Sigma_B = Lambda Lambda^T + Psi`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Stale-wording and figure-risk scans:
+
+- `rg -n "steelblue|firebrick|#d33|#3b82c6|scale_fill_gradient2\\(" R/plot-gllvmTMB.R vignettes/articles/morphometrics.Rmd`
+  -> only intentional colourblind-safe `scale_fill_gradient2()` calls remain.
+- `rg -n "covered / partial / blocked|covered.*boundary|blocked.*boundary|interval_status.*covered" docs/design/46-visualization-grammar.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> no stale capability-status vocabulary remains as figure interval status;
+  the only hit explains the distinction.
+- `rg -n "ordination.*default|single level required|omitted.*level" R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd`
+  -> roxygen and Rd agree that omitted ordination `level` defaults to `unit`.
+- `rg --pcre2 -n "Sigma_B = Lambda Lambda\\^T(?!\\s*\\+\\s*Psi)" vignettes/articles/morphometrics.Rmd pkgdown-site/articles/morphometrics.html`
+  -> no hits.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-21-extraction-plotting-contract.md`
+
+Kaizen point:
+
+58. **Florence leads at design time.** Beautiful scientific figures are not a
+    late colour pass. They need data contracts, visible uncertainty/rotation
+    status, colourblind-safe scales, caption math checks, rendered HTML review,
+    and Pat/Fisher/Noether/Rose/Grace feedback before an article can lean on
+    them.
+
+## 2026-05-21 -- GLLVM overview Figure 3 plot-suite reminder
+
+Scope:
+
+- Read the maintainer-supplied local PDF
+  `/Users/z3437171/Downloads/GLLVM_overview.pdf` and inspected Figure 3 as a
+  plot-suite target for ordinary GLLVM output.
+- Inspected the maintainer-supplied example PNGs
+  `/Users/z3437171/Downloads/plot_zoom_png-12.png` and
+  `/Users/z3437171/Downloads/plot_zoom_png-5.png`.
+- Added two Figure-3-style plot types to `plot.gllvmTMB_multi()`:
+  - `correlation_ellipse`: ellipse matrix of pairwise trait correlations from
+    `extract_Sigma()`;
+  - `communality`: shared latent `c^2` versus trait-specific uniqueness bars
+    from `extract_communality()`.
+- Upgraded `plot(type = "ordination")` to dimension-aware behavior:
+  - d = 1: score strip plus trait loading lollipops;
+  - d = 2: ordinary score/loading biplot;
+  - d = 3: static pair-grid biplot for LV1/LV2, LV1/LV3, LV2/LV3;
+  - d > 3: selected length-2 or length-3 axes.
+- Updated `docs/design/46-visualization-grammar.md` with the Figure 3 plot
+  suite and remaining planned helpers: dominant-axis loading forest,
+  score-distribution panels, interval-aware ellipse borders/stars, and true
+  interactive 3D later.
+- Updated `docs/design/53-report-ready-extractor-plot-contract.md`,
+  `ROADMAP.md`, roxygen/Rd, and plot tests.
+- Rendered throwaway PNG previews under `/tmp/gllvmTMB-figure3-preview` for
+  Florence visual sanity checks and shortened captions after the first preview
+  showed caption clipping at ordinary figure sizes.
+- Removed temporary PDF extraction output under `tmp/pdfs/gllvm-overview`.
+
+Evidence:
+
+- `git status --short --branch`
+  -> branch `codex/article-audit-2026-05-20`; dirty reset working tree.
+- `gh pr list --state open --repo itchyshin/gllvmTMB`
+  -> no open PRs returned.
+- `git log --all --oneline --since='6 hours ago'`
+  -> no recent commits returned.
+- `pdfinfo /Users/z3437171/Downloads/GLLVM_overview.pdf`
+  -> 21-page PDF, created 2026-05-21 05:59 MDT.
+- `pdftotext /Users/z3437171/Downloads/GLLVM_overview.pdf tmp/pdfs/gllvm-overview/GLLVM_overview.txt`
+  -> extracted text for Figure 3 lookup.
+- `pdftoppm -f 13 -l 15 -png -r 160 /Users/z3437171/Downloads/GLLVM_overview.pdf tmp/pdfs/gllvm-overview/render/page`
+  -> rendered local Figure 3 page for visual inspection.
+- `Rscript --vanilla -e 'invisible(parse("R/plot-gllvmTMB.R")); invisible(parse("tests/testthat/test-plot-gllvmTMB.R")); cat("parse ok\n")'`
+  -> parse ok.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`
+  -> passed: 139 tests, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed: `No problems found.`
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla - <<'RS' ... ggplot2::ggsave('/tmp/gllvmTMB-figure3-preview/*.png', ...)`
+  -> rendered throwaway previews for correlation ellipses, communality bars,
+  and 3D ordination pair-grid; captions were visually inspected and tightened.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`
+  -> rerun after caption tightening: 139 tests, 0 failures, 0 warnings,
+  0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> rerun after caption tightening: `No problems found.`
+- `git diff --check`
+  -> rerun after caption tightening: clean.
+- `rg -n "correlation_ellipse|communality|3D ordination|pair grid|Figure 3|length-3|d = 3|d > 3|static pair" R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd ROADMAP.md docs/design/46-visualization-grammar.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> source, tests, generated help, roadmap, and design docs agree on the new
+  plot types and ordination dimension behavior.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-21-figure-3-plot-suite.md`
+
+Issue ledger:
+
+- #230 commented with the Figure 3 plot-suite update:
+  <https://github.com/itchyshin/gllvmTMB/issues/230#issuecomment-4508178451>.
+
+Kaizen point:
+
+59. **Figure families need contracts before composite figures.** The GLLVM
+    overview Figure 3 is not one helper; it is a suite: ordination,
+    correlation ellipses, communality/uniqueness, loading summaries, score
+    distributions, and integration indices. Build these as inspectable ggplots
+    first, then compose them in articles once intervals and examples are ready.
+
+## 2026-05-21 -- Public-site launch audit for reset surface
+
+Scope:
+
+- Audited the revised public pkgdown surface after the roadmap reset, example
+  object slices, and Figure-3 plot-suite work.
+- Kept the audit narrow: launch blockers only, not a broad rewrite of the six
+  visible articles.
+- Fixed two reader-path issues found during the audit:
+  - `vignettes/articles/morphometrics.Rmd` no longer tells readers to follow
+    under-audit ladder rungs; it now labels those rungs as deliberately hidden
+    until their gates pass.
+  - `vignettes/gllvmTMB.Rmd` now opens with the biological question, prepared
+    morphometrics object, long/wide fit path, and first summaries rather than
+    beginning with covariance-dispatch theory.
+
+Evidence:
+
+- `git status --short --branch`
+  -> branch `codex/article-audit-2026-05-20`; dirty reset working tree.
+- `gh pr list --state open --repo itchyshin/gllvmTMB`
+  -> no open PRs returned during the launch-audit checkpoint.
+- `git log --all --oneline --since='6 hours ago'`
+  -> no recent commits returned during the launch-audit checkpoint.
+- `Rscript --vanilla -e 'pkgdown::build_site(lazy = FALSE)'`
+  -> passed; rendered the full site, including hidden/internal articles.
+- `Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", lazy = FALSE)'`
+  -> passed after the Get Started opening rewrite.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> passed twice after the full site build and Get Started patch:
+  `No problems found.`
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> passed: `FAIL 0 | WARN 16 | SKIP 14 | PASS 2158`.
+  Warnings were legacy/deprecation-path warnings, not launch blockers.
+- Browser inspection through `http://127.0.0.1:8765`:
+  - home page rendered;
+  - Get Started rendered with the revised user-first opening;
+  - Articles index showed only Model guide / Concepts / Methods;
+  - Roadmap rendered as top-nav page;
+  - all six visible articles rendered;
+  - no hidden article links surfaced in the navbar or public article index.
+
+Stale-link and wording scans:
+
+- `rg -n "articles/(joint-sdm|profile-likelihood-ci|behavioural-syndromes|mixed-family-extractors|animal-model|phylogenetic-gllvm|psychometrics-irt|lambda-constraint|simulation-recovery-validated|cross-package-validation|functional-biogeography|choose-your-model)\\.html|\\]\\((joint-sdm|profile-likelihood-ci|behavioural-syndromes|mixed-family-extractors|animal-model|phylogenetic-gllvm|psychometrics-irt|lambda-constraint|simulation-recovery-validated|cross-package-validation|functional-biogeography|choose-your-model)\\.html\\)" README.md vignettes/gllvmTMB.Rmd vignettes/articles/{morphometrics,covariance-correlation,api-keyword-grid,response-families,convergence-start-values,pitfalls}.Rmd ROADMAP.md pkgdown-site/index.html pkgdown-site/articles/{index,gllvmTMB,roadmap,morphometrics,covariance-correlation,api-keyword-grid,response-families,convergence-start-values,pitfalls}.html`
+  -> no public clickable links to hidden article pages.
+- `rg -n "publication-ready|any of 15|choose-your-model|meta_known_V|profile-likelihood default|diag\\(U\\)|U_phy|U_non|S_B|S_W|\\\\bf S|trio" README.md vignettes/gllvmTMB.Rmd vignettes/articles/{morphometrics,covariance-correlation,api-keyword-grid,response-families,convergence-start-values,pitfalls}.Rmd ROADMAP.md _pkgdown.yml`
+  -> acceptable hits only: roadmap says visible is not publication-ready;
+  `_pkgdown.yml` lists `choose-your-model` under `title: internal`; reference
+  index keeps deprecated `meta_known_V` as a documented alias.
+- `Rscript --vanilla -e 'utils::help("build_articles", package = "pkgdown")'`
+  and `rg -n "internal|will not be displayed|displayed on the index" .../pkgdown/NEWS.md`
+  -> confirmed `title: internal` is the pkgdown-supported way to keep draft
+  articles off the public article index.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-05-21-public-site-launch-audit.md`
+
+Issue ledger:
+
+- #230 commented with the launch-audit result:
+  <https://github.com/itchyshin/gllvmTMB/issues/230#issuecomment-4508579203>.
+
+Kaizen point:
+
+60. **Launch audit is a reader-path gate, not just a build gate.** `pkgdown`
+    can build a site that still starts in the wrong place for beginners. The
+    browser pass caught that Get Started opened with theory instead of the
+    prepared example; that kind of issue should stay part of the public-site
+    release checklist.
+
+## 2026-05-21 -- PR packaging for public-surface reset
+
+Scope:
+
+- Packaged the reset branch for PR after the public-site launch audit.
+- Rechecked coordination state before staging.
+
+Evidence:
+
+- `git status --short --branch`
+  -> branch `codex/article-audit-2026-05-20`; reset working tree dirty before
+  staging.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,url,statusCheckRollup,mergeStateStatus`
+  -> no open PRs returned.
+- `git log --all --oneline --since='6 hours ago'`
+  -> no recent commits returned.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed and loaded `gllvmTMB`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors | 1 warning | 5 notes`; failed locally because warnings are
+  treated as fatal. The install warning was local toolchain/compiler output
+  (`xcrun` SDK lookup plus C++ warnings). Notes were future timestamp,
+  top-level `Rplots.pdf` / `air.toml`, existing NEWS heading parse notes,
+  unused `nlme` import, and unqualified base helper notes.
+- `R CMD INSTALL --preclean --library=/tmp/gllvmTMB-install-lib .`
+  -> install completed successfully; warning output reproduced the local
+  compiler/toolchain source of the check install warning.
+
+Decision:
+
+- Proceed with a draft PR and let GitHub Actions provide the cross-platform
+  check verdict. The local `R CMD check` warning is not from the article reset
+  or plotting API changes, and widening this PR into CRAN-hygiene cleanup would
+  blur the scope.

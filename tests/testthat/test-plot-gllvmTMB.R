@@ -8,6 +8,18 @@ skip_if_no_ggplot2 <- function() {
   testthat::skip_if_not_installed("ggplot2")
 }
 
+expect_gtmb_plot_meta <- function(p, type, source) {
+  meta <- attr(p, "gllvmTMB_meta")
+  expect_type(meta, "list")
+  expect_named(
+    meta,
+    c("type", "source", "level", "interval_status", "rotation_status", "notes")
+  )
+  expect_equal(meta$type, type)
+  expect_equal(meta$source, source)
+  invisible(meta)
+}
+
 make_BW_fit_for_plot <- function(seed = 1) {
   set.seed(seed)
   Tn <- 4
@@ -29,16 +41,84 @@ make_BW_fit_for_plot <- function(seed = 1) {
   )))
 }
 
+make_fake_ordination_fit <- function(d = 3L,
+                                     n_units = 18L,
+                                     n_traits = 5L,
+                                     seed = 99L) {
+  set.seed(seed)
+  traits <- paste0("T", seq_len(n_traits))
+  units <- paste0("unit", seq_len(n_units))
+  scores <- matrix(rnorm(n_units * d), nrow = n_units, ncol = d)
+  Lambda <- matrix(rnorm(n_traits * d, sd = 0.45), nrow = n_traits, ncol = d)
+  rownames(Lambda) <- traits
+  colnames(Lambda) <- paste0("LV", seq_len(d))
+  structure(
+    list(
+      data = data.frame(
+        trait = factor(rep(traits, each = n_units), levels = traits),
+        unit = factor(rep(units, times = n_traits), levels = units)
+      ),
+      trait_col = "trait",
+      unit_col = "unit",
+      use = list(rr_B = TRUE, rr_W = FALSE),
+      d_B = d,
+      d_W = 0L,
+      n_sites = n_units,
+      report = list(Lambda_B = Lambda),
+      tmb_obj = list(
+        env = list(
+          last.par.best = stats::setNames(as.vector(t(scores)), rep("z_B", n_units * d))
+        )
+      )
+    ),
+    class = "gllvmTMB_multi"
+  )
+}
+
 test_that("plot(type = 'correlation') returns a ggplot with combined upper/lower triangle data", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()
   p <- suppressMessages(plot(fit, type = "correlation"))
   expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "correlation", "extract_Sigma")
+  expect_equal(meta$level, c("unit", "unit_obs"))
+  expect_equal(meta$rotation_status, "rotation_invariant")
   expect_silent(print(p))
   ## n_traits^2 cells (diag + both triangles populated)
   expect_equal(nrow(p$data), fit$n_traits^2)
-  expect_true(all(c("row", "col", "value") %in% names(p$data)))
+  expect_true(all(c(
+    "trait_i", "trait_j", "row", "col", "estimate", "value",
+    "level", "triangle", "interval_method", "interval_status", "scale"
+  ) %in% names(p$data)))
   expect_true(all(p$data$value >= -1 & p$data$value <= 1))
+  expect_true(all(p$data$estimate >= -1 & p$data$estimate <= 1))
+  expect_setequal(
+    as.character(unique(p$data$triangle)),
+    c("upper", "lower", "diagonal")
+  )
+  expect_setequal(
+    as.character(unique(p$data$level)),
+    c("unit", "unit_obs", "diagonal")
+  )
+  expect_identical(attr(p, "gllvmTMB_data"), p$data)
+})
+
+test_that("plot(type = 'correlation_ellipse') returns Figure-3-style ellipse data", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  p <- suppressMessages(plot(fit, type = "correlation_ellipse"))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "correlation_ellipse", "extract_Sigma")
+  expect_equal(meta$level, c("unit", "unit_obs"))
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_s3_class(plot_data, "data.frame")
+  expect_true(all(c(
+    "x", "y", "group", "trait_i", "trait_j", "estimate", "level",
+    "triangle", "significant", "border_colour"
+  ) %in% names(plot_data)))
+  expect_false(any(plot_data$triangle == "diagonal"))
+  expect_true(all(plot_data$estimate >= -1 & plot_data$estimate <= 1))
+  expect_silent(print(p))
 })
 
 test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {
@@ -46,6 +126,10 @@ test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {
   fit <- make_BW_fit_for_plot()
   p <- suppressMessages(plot(fit, type = "loadings"))
   expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "loadings", "getLoadings")
+  expect_equal(meta$level, c("unit", "unit_obs"))
+  expect_equal(meta$rotation_status, "rotation_ambiguous_loadings")
+  expect_identical(attr(p, "gllvmTMB_data"), p$data)
   expect_silent(print(p))
   ## n_traits * (d_B + d_W) = 4 * (2 + 1) = 12 rows
   expect_equal(nrow(p$data), fit$n_traits * (fit$d_B + fit$d_W))
@@ -59,6 +143,8 @@ test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {
     "deprecated"
   )
   expect_s3_class(p_B, "ggplot")
+  meta_B <- expect_gtmb_plot_meta(p_B, "loadings", "getLoadings")
+  expect_equal(meta_B$level, "unit")
   expect_equal(nrow(p_B$data), fit$n_traits * fit$d_B)
 
   p_unit <- expect_warning(
@@ -66,6 +152,8 @@ test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {
     NA
   )
   expect_s3_class(p_unit, "ggplot")
+  meta_unit <- expect_gtmb_plot_meta(p_unit, "loadings", "getLoadings")
+  expect_equal(meta_unit$level, "unit")
   expect_equal(nrow(p_unit$data), fit$n_traits * fit$d_B)
 })
 
@@ -74,6 +162,12 @@ test_that("plot(type = 'integration') returns a ggplot with three indices per tr
   fit <- make_BW_fit_for_plot()
   p <- suppressMessages(plot(fit, type = "integration"))
   expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(
+    p, "integration", "extract_ICC_site + extract_communality"
+  )
+  expect_equal(meta$level, c("unit", "unit_obs"))
+  expect_equal(meta$interval_status, "none")
+  expect_identical(attr(p, "gllvmTMB_data"), p$data)
   expect_silent(print(p))
   ## 3 indices x n_traits rows
   expect_equal(nrow(p$data), 3L * fit$n_traits)
@@ -83,11 +177,35 @@ test_that("plot(type = 'integration') returns a ggplot with three indices per tr
   expect_true(all(is.na(p$data$lower)))
 })
 
+test_that("plot(type = 'communality') returns stacked shared/unique bars", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  p <- suppressMessages(plot(fit, type = "communality"))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "communality", "extract_communality")
+  expect_equal(meta$level, c("unit", "unit_obs"))
+  expect_identical(attr(p, "gllvmTMB_data"), p$data)
+  expect_true(all(c("trait", "level", "component", "proportion", "communality") %in%
+                    names(p$data)))
+  expect_setequal(as.character(unique(p$data$component)),
+                  c("Shared latent (c^2)", "Trait-specific uniqueness"))
+  totals <- stats::aggregate(
+    proportion ~ trait + level,
+    data = p$data,
+    FUN = sum
+  )
+  expect_equal(totals$proportion, rep(1, nrow(totals)), tolerance = 1e-8)
+  expect_silent(print(p))
+})
+
 test_that("plot(type = 'variance') returns a stacked-bar ggplot summing to 1 per trait", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()
   p <- suppressMessages(plot(fit, type = "variance"))
   expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "variance", "extract_proportions")
+  expect_equal(meta$level, c("unit", "unit_obs"))
+  expect_identical(attr(p, "gllvmTMB_data"), p$data)
   expect_silent(print(p))
   expect_true(all(c("trait", "component", "proportion") %in% names(p$data)))
   ## Per-trait proportions sum to 1 (within numerical tolerance)
@@ -98,11 +216,25 @@ test_that("plot(type = 'variance') returns a stacked-bar ggplot summing to 1 per
 test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()
+  p_default <- suppressMessages(plot(fit, type = "ordination"))
+  expect_s3_class(p_default, "ggplot")
+  meta_default <- expect_gtmb_plot_meta(
+    p_default, "ordination", "extract_ordination"
+  )
+  expect_equal(meta_default$level, "unit")
+
   p <- expect_warning(
     suppressMessages(plot(fit, type = "ordination", level = "unit")),
     NA
   )
   expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "ordination", "extract_ordination")
+  expect_equal(meta$level, "unit")
+  expect_equal(meta$rotation_status, "rotation_ambiguous_loadings")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_named(plot_data, c("scores", "loadings"))
+  expect_s3_class(plot_data$scores, "data.frame")
+  expect_s3_class(plot_data$loadings, "data.frame")
   expect_silent(print(p))
   ## ggplot()-with-data-in-layers: top-level p$data is empty waiver().
   ## Verify the layers see scores + loadings instead.
@@ -111,6 +243,41 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
     if (inherits(d, "waiver") || is.null(d)) NA_integer_ else nrow(d)
   }, integer(1))
   expect_true(any(!is.na(layer_data_n)))
+})
+
+test_that("plot(type = 'ordination') returns a static 3D pair grid for d = 3", {
+  skip_if_no_ggplot2()
+  fit <- make_fake_ordination_fit(d = 3L)
+  p <- suppressMessages(plot(fit, type = "ordination", level = "unit"))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "ordination", "extract_ordination")
+  expect_equal(meta$level, "unit")
+  expect_equal(meta$rotation_status, "rotation_ambiguous_loadings")
+  expect_match(meta$notes, "static pair grid")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_named(plot_data, c("scores", "loadings"))
+  expect_setequal(
+    as.character(unique(plot_data$scores$pair)),
+    c("LV1 vs LV2", "LV1 vs LV3", "LV2 vs LV3")
+  )
+  expect_equal(nrow(plot_data$scores), 3L * fit$n_sites)
+  expect_equal(nrow(plot_data$loadings), 3L * length(levels(fit$data$trait)))
+  expect_silent(print(p))
+})
+
+test_that("plot(type = 'ordination') can use two selected axes from d > 3", {
+  skip_if_no_ggplot2()
+  fit <- make_fake_ordination_fit(d = 4L)
+  p <- suppressMessages(plot(fit, type = "ordination", level = "unit",
+                             axes = c(2, 4)))
+  expect_s3_class(p, "ggplot")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_named(plot_data, c("scores", "loadings"))
+  expect_equal(nrow(plot_data$scores), fit$n_sites)
+  expect_equal(nrow(plot_data$loadings), length(levels(fit$data$trait)))
+  expect_true(all(c("loading_x", "loading_y", "display_scale") %in%
+                    names(plot_data$loadings)))
+  expect_silent(print(p))
 })
 
 test_that("canonical level names do not warn when wrappers call extractors", {
@@ -137,6 +304,9 @@ test_that("plot(type = 'ordination', level = 'W') gives 1D lollipop when d_W = 1
     "deprecated"
   )
   expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "ordination", "extract_ordination")
+  expect_equal(meta$level, "unit_obs")
+  expect_named(attr(p, "gllvmTMB_data"), c("scores", "loadings"))
   expect_silent(print(p))
 })
 

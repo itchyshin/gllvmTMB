@@ -6,7 +6,8 @@
 \usage{
 \method{plot}{gllvmTMB_multi}(
   x,
-  type = c("correlation", "loadings", "integration", "variance", "ordination"),
+  type = c("correlation", "correlation_ellipse", "loadings", "integration",
+    "communality", "variance", "ordination"),
   level = c("unit", "unit_obs"),
   boot = NULL,
   axes = c(1L, 2L),
@@ -16,17 +17,17 @@
 \arguments{
 \item{x}{A \code{gllvmTMB_multi} fit.}
 
-\item{type}{One of \code{"correlation"}, \code{"loadings"}, \code{"integration"},
-\code{"variance"}, \code{"ordination"}.}
+\item{type}{One of \code{"correlation"}, \code{"correlation_ellipse"}, \code{"loadings"},
+\code{"integration"}, \code{"communality"}, \code{"variance"}, \code{"ordination"}.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
 Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.
 Used by \code{"loadings"} (which level to plot; the default
 \code{c("unit", "unit_obs")} means "both available levels, faceted
 side-by-side"; pass a length-1 string to plot one tier) and
-\code{"ordination"} (single level required, default \code{"unit"}). Ignored for
-\code{"correlation"} (which always shows both if available), \code{"integration"},
-and \code{"variance"}.
+\code{"ordination"} (single level required; omitted \code{level} defaults to
+\code{"unit"}). Ignored for \code{"correlation"} (which always shows both if
+available), \code{"integration"}, and \code{"variance"}.
 
 \emph{Note}: the default \code{level = c("unit", "unit_obs")} is intentionally a
 length-2 vector, not the usual \code{match.arg} shortcut. The dispatcher
@@ -41,17 +42,25 @@ collapse the default to \code{"B"} and drop the W panel).}
 frame with columns \code{trait}, \code{lower}, \code{upper}) used to add whiskers
 to the \code{"integration"} plot. Default \code{NULL} skips whiskers.}
 
-\item{axes}{Length-2 integer vector for \code{"ordination"} when
-\code{d >= 2}. Default \code{c(1, 2)}. Ignored when \code{d = 1}.}
+\item{axes}{Length-2 or length-3 integer vector for \code{"ordination"} when
+\code{d >= 2}. Length 2 draws a single biplot. Length 3 draws a static
+pair-grid of the three axis pairs. For \code{d = 3}, the default
+\code{c(1, 2)} is promoted to \code{c(1, 2, 3)} so all three axes are visible.
+Ignored when \code{d = 1}.}
 
 \item{...}{Currently unused.}
 }
 \value{
-A \code{ggplot} object.
+A \code{ggplot} object with a \code{gllvmTMB_meta} attribute describing
+the plot type, source extractor, covariance level, interval status, and
+rotation status. Metadata also carries extractor notes when a plotted
+summary has an important caveat. Plots also carry a \code{gllvmTMB_data}
+attribute with the prepared plotting data; ordination stores separate
+\code{scores} and \code{loadings} tables.
 }
 \description{
 Produces a variety of \code{ggplot2} visualisations for a stacked-trait
-multivariate GLLVM. Dispatches on \code{type} to one of five panels:
+multivariate GLLVM. Dispatches on \code{type} to one of seven panels:
 }
 \details{
 \describe{
@@ -60,6 +69,10 @@ Upper triangle = between-unit correlations (\code{level = "unit"}),
 lower triangle = within-unit correlations (\code{level = "unit_obs"}),
 diagonal = 1. Falls back to whichever level is present if the
 other tier is absent.}
+\item{\code{"correlation_ellipse"}}{Ellipse matrix of trait correlations.
+Ellipse direction and eccentricity encode the sign and strength of
+the correlation. This is the Figure-3-style alternative to the tile
+heatmap.}
 \item{\code{"loadings"}}{Tile heatmap of \code{Lambda_B} (and \code{Lambda_W} if
 present), faceted by level. Rows = traits, columns = factors.
 Pinned cells (from \code{lambda_constraint}) are drawn with a heavy
@@ -68,11 +81,16 @@ outline.}
 between-tier communality and within-tier communality per trait,
 sorted by repeatability. Optional whiskers from a \code{boot} object
 (skipped if \code{boot = NULL}).}
+\item{\code{"communality"}}{Figure-3-style stacked bars of per-trait
+communality (\code{c^2}, shared latent proportion) and uniqueness
+(\code{1 - c^2}) for the available latent tiers.}
 \item{\code{"variance"}}{Stacked-bar variance partition per trait, using
 \code{extract_proportions(format = "long")}. One bar per trait,
 stacks summing to 1.}
-\item{\code{"ordination"}}{Two-axis biplot of latent scores plus loading
-arrows. 1D fits (\code{d = 1}) get a horizontal lollipop; 2D fits get
-a standard biplot; for \code{d >= 3} pick the axis pair via \code{axes}.}
+\item{\code{"ordination"}}{Dimension-aware latent-score ordination.
+1D fits (\code{d = 1}) get a horizontal score strip with trait loading
+lollipops; 2D fits get a standard biplot; 3D fits get a static
+pair-grid biplot for the three axis pairs. For \code{d > 3}, pick two
+or three axes via \code{axes}.}
 }
 }

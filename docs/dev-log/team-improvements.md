@@ -56,6 +56,32 @@ validation-debt register.
   users first through Get Started, Choose Your Model, Morphometrics, Joint SDM,
   Covariance and Correlation, and Common Pitfalls.
 
+## 2026-05-20 - Article Surface Reset And User-First Tooling
+
+- Improvement adopted: public Tier-1 examples must show both the canonical
+  long-format `gllvmTMB(value ~ ..., data = df_long, trait = "...")` route and
+  the wide data-frame `gllvmTMB(traits(...) ~ ..., data = df_wide)` route,
+  unless the article explicitly records why a wide companion is unsupported.
+  Codex has repeatedly forgotten this requirement; future article reviews
+  should treat it as a publication gate, not an optional polish item.
+- Improvement adopted: no new or restored public article should be launched
+  from source review alone. Build the HTML, show it to the maintainer, inspect
+  examples, wording, truth-vs-fit recovery, scope boundaries, and figures, and
+  only then make the page visible.
+- Improvement adopted: examples should showcase infrastructure that already
+  works. For gllvmTMB, that means scenario simulation helpers, extraction
+  tables, plotting helpers, diagnostics, and uncertainty status before broad
+  articles.
+- Improvement adopted: copy drmTMB's operating system, not its article count:
+  reader-intent navigation, tutorial contracts, worked-example inventory,
+  readiness matrices, figure gates, issue ledgers, and after-task reports.
+- Improvement adopted: Florence leads figure work from the start, not only at
+  the end. For plot helpers and figure-heavy articles, she owns the scientific
+  visual brief, colourblind-safe palette, rotation/uncertainty caption checks,
+  and rendered-HTML verdict. Pat checks reader comprehension, Darwin checks
+  biological meaning, Fisher checks uncertainty, Noether checks math captions,
+  Grace checks pkgdown/CI risk, and Rose checks stale claims.
+
 ## 2026-05-18 - drmTMB Closed-Loop Slice Discipline
 
 - Improvement adopted: copy the loop, not the size of the archive. The

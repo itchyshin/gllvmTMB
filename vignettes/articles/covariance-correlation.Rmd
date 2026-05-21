@@ -33,14 +33,14 @@ matrix.
 ```{r early-fit-pattern, eval = FALSE}
 fit_latent_only <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | individual, d = 2),
-  data = df, unit = "individual"
+  data = df, trait = "trait", unit = "individual"
 )
 
 fit_latent_unique <- gllvmTMB(
   value ~ 0 + trait +
     latent(0 + trait | individual, d = 2) +
     unique(0 + trait | individual),
-  data = df, unit = "individual"
+  data = df, trait = "trait", unit = "individual"
 )
 ```
 
@@ -84,10 +84,13 @@ same; $\mathbf R$ swells.
 
 ## A side-by-side demonstration
 
-Simulate one Gaussian dataset where the true between-individual
-covariance has both a shared low-rank component and a trait-specific
-unique diagonal, then
-fit it two ways:
+We use a prepared Gaussian behavioural-syndrome example object. The generator
+is `data-raw/examples/make-covariance-edge-cases-example.R`; the article uses
+the shipped object so the first thing the reader sees is the model, not a long
+data-generating block.
+
+The truth has both a shared low-rank component and a trait-specific unique
+diagonal. Fit the same data two ways:
 
 * `Model A`: `latent(0 + trait | individual, d = 2)` only
 * `Model B`: `latent(0 + trait | individual, d = 2) + unique(0 + trait | individual)`
@@ -97,50 +100,93 @@ library(gllvmTMB)
 library(ggplot2)
 ```
 
-```{r sim}
-set.seed(2026)
-n_ind <- 200
-trait_names <- c("boldness", "exploration", "activity",
-                 "aggression", "sociability")
-T <- length(trait_names)
+```{r load-example, eval = FALSE}
+covex <- readRDS(system.file(
+  "extdata", "examples", "covariance-edge-cases-example.rds",
+  package = "gllvmTMB"
+))
+df <- covex$data_long
+df_wide <- covex$data_wide
+truth <- covex$truth
+```
 
-## True between-individual covariance Sigma_unit = Lambda Lambda^T + diag(psi)
-Lambda_true <- matrix(c(
-  0.9,  0.1,
-  1.0,  0.2,
-  0.8, -0.4,
-  0.7, -0.5,
-  0.6,  0.6
-), nrow = T, ncol = 2, byrow = TRUE,
-   dimnames = list(trait_names, c("syndrome_1", "syndrome_2")))
-S_true     <- c(0.30, 0.20, 0.40, 0.25, 0.35)
-Sigma_true <- Lambda_true %*% t(Lambda_true) + diag(S_true)
-sigma2_eps_true <- 0.05  # tiny observation-level noise
-
-u <- matrix(rnorm(n_ind * 2), n_ind, 2)
-e <- matrix(rnorm(n_ind * T, sd = sqrt(S_true[col(matrix(0, n_ind, T))])),
-            n_ind, T)
-y <- u %*% t(Lambda_true) + e +
-     matrix(rnorm(n_ind * T, sd = sqrt(sigma2_eps_true)), n_ind, T)
-
-df <- data.frame(
-  individual = factor(rep(seq_len(n_ind), each = T)),
-  trait      = factor(rep(trait_names, n_ind), levels = trait_names),
-  value      = as.vector(t(y))
+```{r load-example-data, include = FALSE}
+covex_path <- system.file(
+  "extdata", "examples", "covariance-edge-cases-example.rds",
+  package = "gllvmTMB"
 )
+covex_path <- c(
+  covex_path,
+  file.path("inst", "extdata", "examples", "covariance-edge-cases-example.rds"),
+  file.path("..", "inst", "extdata", "examples", "covariance-edge-cases-example.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "covariance-edge-cases-example.rds")
+)
+covex_path <- covex_path[nzchar(covex_path) & file.exists(covex_path)][1]
+stopifnot(!is.na(covex_path))
+covex <- readRDS(covex_path)
+df <- covex$data_long
+df_wide <- covex$data_wide
+truth <- covex$truth
+trait_names <- truth$trait_names
+Sigma_true <- truth$Sigma
+```
+
+```{r show-example}
+covex$story$question
+head(df, 6)
+```
+
+The long-format formulas are:
+
+```{r formulas-long}
+covex$edge_cases$latent_only$formula_long
+covex$formula_long
+```
+
+The wide data-frame formula expresses the same recommended model through the
+`traits(...)` left-hand side:
+
+```{r formula-wide}
+covex$formula_wide
 ```
 
 ```{r fit}
+ctl <- gllvmTMBcontrol(se = FALSE)
+
 fit_A <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | individual, d = 2),
-  data = df, unit = "individual"
+  covex$edge_cases$latent_only$formula_long,
+  data = df,
+  trait = covex$fit_args$trait,
+  unit = covex$fit_args$unit,
+  family = covex$fit_args$family,
+  control = ctl
 )
 
 fit_B <- gllvmTMB(
-  value ~ 0 + trait +
-          latent(0 + trait | individual, d = 2) +
-          unique(0 + trait | individual),
-  data = df, unit = "individual"
+  covex$formula_long,
+  data = df,
+  trait = covex$fit_args$trait,
+  unit = covex$fit_args$unit,
+  family = covex$fit_args$family,
+  control = ctl
+)
+
+fit_B_wide <- gllvmTMB(
+  covex$formula_wide,
+  data = df_wide,
+  unit = covex$fit_args$unit,
+  family = covex$fit_args$family,
+  control = ctl
+)
+```
+
+Long and wide fits use different data shapes, but here they represent the same
+likelihood:
+
+```{r long-wide-check}
+c(
+  long = as.numeric(logLik(fit_B)),
+  wide = as.numeric(logLik(fit_B_wide))
 )
 ```
 
@@ -216,10 +262,10 @@ explicitly:
 # Lambda Lambda^T alone (the "shared" component)
 extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
 
-# diag(s_unit) — trait-specific unique variances (the "unique" component)
+# psi — trait-specific unique variances (the "unique" component)
 extract_Sigma(fit_B, level = "unit", part = "unique")$s    |> round(2)
 
-# Sigma_unit = Lambda Lambda^T + diag(s_unit)  (the "total" — what you usually want)
+# Sigma_unit = Lambda Lambda^T + Psi  (the "total" — what you usually want)
 extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
 ```
 
@@ -300,13 +346,11 @@ extract_Sigma(fit_binary, level = "unit", part = "total",
               link_residual = "auto")
 ```
 
-For everything else — continuous traits, count traits, mixed
-families — the recommended pattern is the paired `latent() +
-unique()` decomposition. The phylogenetic case extends this to a
-paired four-component decomposition (`phylo_latent +
-phylo_unique` on the phy side, `latent + unique` on the non-phy
-side); see the [Phylogenetic GLLVM article](phylogenetic-gllvm.html)
-for the worked example.
+For continuous traits, the recommended starting pattern is the paired
+`latent() + unique()` decomposition. For count, mixed-family,
+phylogenetic, and spatial fits, use the same idea only after checking
+the corresponding validation-row status; those worked examples remain
+under audit during the public-surface reset.
 
 ## Two-level (between + within) models: two `unique()` terms
 
@@ -321,6 +365,7 @@ fit_two_level <- gllvmTMB(
     latent(0 + trait | obs_id, d = d_W) +
     unique(0 + trait | obs_id),
   data = df,
+  trait = "trait",
   unit = "individual",
   unit_obs = "obs_id"
 )
@@ -360,7 +405,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 | Phylogenetic decomposition | `phylo_latent() + phylo_unique()` for the phylogenetic tier; add `latent() + unique()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `diag(psi)` pieces. |
 | Communality | `extract_communality(fit)` + the right latent/unique pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |
-| `S` only | `extract_Sigma(fit, part = "unique")` | Trait-specific unique variances as a vector. |
+| `Psi` / `psi` only | `extract_Sigma(fit, part = "unique")` | Trait-specific unique variances as a vector. |
 
 ## See also
 
@@ -368,6 +413,6 @@ Nakagawa, Johnson & Schielzeth 2017).
 * [`?unique`](../reference/unique.html) — the formula keyword for the unique diagonal
 * [`?extract_Sigma`](../reference/extract_Sigma.html) — the unified extractor
 * [`?suggest_lambda_constraint`](../reference/suggest_lambda_constraint.html) — a helper for confirmatory loading structures
-* [Choose your model](choose-your-model.html) — decision tree
+* [Formula keyword grid](api-keyword-grid.html) — syntax map for moving from this decomposition to other covariance rows
 * **Nakagawa & Schielzeth (2010)** Repeatability for Gaussian and non-Gaussian data: a practical guide for biologists. *Biological Reviews* 85(4):935–956. <https://doi.org/10.1111/j.1469-185X.2010.00141.x>
 * **Westneat, Wright & Dingemanse** (2015) The biology hidden inside residual within-individual phenotypic variation. *Biological Reviews* **90**, 729–743. <https://doi.org/10.1111/brv.12131>

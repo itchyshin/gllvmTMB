@@ -82,6 +82,17 @@ sum of squared loadings *plus* the trait-specific unique variance.
 Drop $\boldsymbol\Psi$ and the diagonal shrinks; the off-diagonals stay the
 same; $\mathbf R$ swells.
 
+Read the equation beside the R syntax:
+
+| Symbol | R syntax or extractor | Plain meaning |
+|---|---|---|
+| `level` | `level = "unit"` or `level = "unit_obs"` | Which covariance tier you are extracting. |
+| $\boldsymbol\Lambda_\text{level}$ | `latent(..., d = K)` | The `K` loading axes that create shared cross-trait covariance. |
+| $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ | `extract_Sigma(fit, level = "unit", part = "shared")$Sigma` | The covariance explained by the shared latent axes only. |
+| $\boldsymbol\Psi_\text{level}$ and $\psi_{tt}$ | `unique(...)`; `extract_Sigma(fit, level = "unit", part = "unique")$s` | Trait-specific variance that stays in the denominator of correlations. |
+| $\boldsymbol\Sigma_\text{level}$ | `latent(...) + unique(...)`; `extract_Sigma(fit, level = "unit", part = "total")$Sigma` | The full trait covariance matrix used for reporting. |
+| $\mathbf R$ | `extract_correlations(fit, tier = "unit")` or `$R` from `extract_Sigma()` | The correlation matrix after standardising $\boldsymbol\Sigma$. |
+
 ## A side-by-side demonstration
 
 We use a prepared Gaussian behavioural-syndrome example object. The generator
@@ -292,6 +303,14 @@ This is the proportion of trait $t$'s variance that is *shared* with
 the other traits via the latent factors. It is bounded between 0 and 1
 and is a proportion-of-variance summary, analogous in scale to $h^2$
 (heritability) or $R^2$.
+
+For a reader-facing table, the alignment is:
+
+| Symbol | R output | Interpretation |
+|---|---|---|
+| $c_t^2$ | `extract_communality(fit, level = "unit")` | Fraction of trait `t` variance explained by the shared latent axes. |
+| numerator | `extract_Sigma(fit, level = "unit", part = "shared")` diagonal | Shared variance for trait `t`. |
+| denominator | `extract_Sigma(fit, level = "unit", part = "total")` diagonal | Shared variance plus trait-specific unique variance. |
 
 **The catch**: with latent-only fits, $\psi_{tt} = 0$ for every trait by
 construction, so $c_t^2 = 1$ for every trait — the communality is

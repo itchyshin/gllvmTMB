@@ -4397,3 +4397,75 @@ Shannon handoff check:
 - Handoff status: `WARN`, only because work is uncommitted on a feature
   branch. No open-PR overlap was found; after-task report and issue comment
   are present. Next action is to review, then commit/PR this focused slice.
+
+## 2026-05-21 -- Symbol-to-syntax alignment first pass
+
+Scope:
+
+- Added explicit symbol / R syntax / interpretation alignment blocks to
+  visible public pages where the math was already central:
+  `vignettes/articles/covariance-correlation.Rmd`,
+  `vignettes/articles/api-keyword-grid.Rmd`, and
+  `vignettes/articles/convergence-start-values.Rmd`.
+- Kept this as article-prose infrastructure only: no R implementation,
+  likelihood, parser, extractor, or plotting code changed.
+- Merged the green Reference cleanup PR #232 before editing shared ledger
+  files so this slice was based on the updated reset dashboard.
+
+Evidence:
+
+- `gh pr view 232 --repo itchyshin/gllvmTMB --json number,isDraft,mergeable,reviewDecision,statusCheckRollup --jq '{number,isDraft,mergeable,reviewDecision,checks:[.statusCheckRollup[] | {name,status,conclusion}]}'`
+  -> PR #232 was mergeable and all three checks were green.
+- `gh pr ready 232 --repo itchyshin/gllvmTMB`
+  -> marked #232 ready for review.
+- `gh pr merge 232 --repo itchyshin/gllvmTMB --squash --delete-branch`
+  -> merged #232 as <https://github.com/itchyshin/gllvmTMB/pull/232>.
+- `git fetch origin main`
+  -> updated `origin/main` to include
+  `2946b49 docs: clean reference index (#232)`.
+- `git rebase origin/main`
+  -> current branch rebased cleanly.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/covariance-correlation")'`
+  -> rebuilt `pkgdown-site/articles/covariance-correlation.html`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/api-keyword-grid")'`
+  -> rebuilt `pkgdown-site/articles/api-keyword-grid.html`.
+- `Rscript --vanilla -e 'pkgload::load_all(export_all = FALSE); stopifnot(exists("check_gllvmTMB")); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rebuilt `pkgdown-site/articles/convergence-start-values.html`.
+  A plain `pkgdown::build_article("articles/convergence-start-values")`
+  loaded an older installed package where `check_gllvmTMB()` was unavailable;
+  the `new_process = FALSE` render used the local namespace.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rg -n "diag\\(S\\)|diag\\(s\\)|boldsymbol\\{S\\}|gllvmTMB_wide|two-U" vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/convergence-start-values.Rmd`
+  -> no matches; no stale `S`/`s`/legacy wide-wrapper wording added.
+- Browser DOM checks:
+  - `http://127.0.0.1:8765/articles/covariance-correlation.html#the-decomposition`
+    contained the explicit `extract_Sigma(fit, level = "unit", part = "shared")`
+    and `part = "total"` alignment rows.
+  - `http://127.0.0.1:8765/articles/api-keyword-grid.html#the-five-modes`
+    contained the long/wide/mathematical-target alignment table.
+  - `http://127.0.0.1:8765/articles/convergence-start-values.html#fit-a-small-model`
+    contained the `Lambda` / `Psi` / `Sigma` diagnostics alignment block.
+
+Change:
+
+- `covariance-correlation` now defines `level`, `Lambda`, `Lambda Lambda^T`,
+  `Psi` / `psi_tt`, `Sigma`, and `R` beside the exact formula terms and
+  extractor calls.
+- `api-keyword-grid` now maps `latent`, `unique`, `latent + unique`,
+  `indep`, and `dep` to both long and wide syntax plus their mathematical
+  covariance targets.
+- `convergence-start-values` now gives readers a compact `Lambda` / `Psi` /
+  `Sigma` table before diagnostics and start-value advice.
+- `ROADMAP.md` records this as a Slice 12 first pass rather than a blanket
+  claim that all future article math is done.
+
+Deliberately not run:
+
+- `devtools::document()` was not run because no roxygen or exported API files
+  changed.
+- `devtools::test()` and `devtools::check()` were not run because this slice
+  changed public article prose only. Article rendering, pkgdown config check,
+  stale-wording scans, and browser DOM checks were the relevant gates.

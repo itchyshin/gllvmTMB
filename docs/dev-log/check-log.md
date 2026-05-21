@@ -4312,3 +4312,88 @@ Reason:
 - This matches the robust-modeling policy: optimizer status is a diagnostic
   signal, not automatic model death when gradients and estimand recovery are
   acceptable.
+
+## 2026-05-21 -- Reference index cleanup and roadmap horizon
+
+Scope:
+
+- Cleaned the pkgdown Reference index after the public-site reset.
+- Kept the public API intact, but demoted deprecated aliases and developer-ish
+  utilities away from the main Reference path.
+- Added a compact long-horizon section to `ROADMAP.md` so the short reset
+  dashboard still shows the path to infrastructure, plots, validation, CRAN,
+  and article restoration.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeable --jq '.[] | [.number, .headRefName, .isDraft, .mergeable, .title] | @tsv'`
+  -> no open PRs returned.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent history was `36631ec Reset public site surface`,
+  `825cb9a test: relax covariance fixture optimizer check`,
+  `de27ecb docs: reset public site surface`.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed; regenerated `man/phylo_rr.Rd`, `man/gr.Rd`,
+  `man/meta.Rd`, `man/meta_known_V.Rd`, and `man/spde.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'pkgdown::build_reference()'`
+  -> rebuilt `pkgdown-site/reference/index.html`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/roadmap")'`
+  -> rebuilt `pkgdown-site/articles/roadmap.html`.
+- `rg -n "Start here|Core covariance|Advanced formula|Relatedness|Deprecated keyword|meta_known_V|phylo_rr|<code><a href=\"gr.html\"|spde\\(\\)|extract_residual_split|extract_ICC_site|tmbprofile_wrapper" pkgdown-site/reference/index.html || true`
+  -> new Reference sections are present; old alias/internal entries are absent
+  from the index.
+- `rg -n "Long Horizon To Finish|Reference index cleanup|Florence-grade plot polish|current plot helpers are functional but still basic" pkgdown-site/articles/roadmap.html`
+  -> roadmap HTML contains the new horizon and plotting-status language.
+- `git diff --check`
+  -> clean.
+- Export/reference/internal parity R script:
+  -> `PASS export/reference/internal parity` after accounting for aliases
+  listed under grouped Rd topics and the `tidy` re-export.
+- In-app browser check:
+  -> `http://127.0.0.1:8765/reference/index.html` shows sections
+  `Start here`, `Core covariance keywords`, `Advanced formula keywords and shorthands`,
+  `Relatedness and spatial helpers`, `Response families`,
+  `Report-ready extractors`, `Methods and plots on fitted models`,
+  `First-line diagnostics and uncertainty`, `Advanced validation utilities`,
+  and `Loadings (Lambda) and confirmatory factor analysis`.
+  Browser text check found no visible `Deprecated keyword aliases`,
+  `meta_known_V()`, `phylo_rr()`, `gr()`, `spde()`,
+  `extract_residual_split()`, `extract_ICC_site()`, or
+  `tmbprofile_wrapper()`.
+- #230 commented with Reference cleanup status and checks:
+  <https://github.com/itchyshin/gllvmTMB/issues/230#issuecomment-4510578911>.
+
+Change:
+
+- `_pkgdown.yml` now separates first-line APIs from advanced diagnostics and
+  compatibility shorthands.
+- Deprecated aliases `phylo_rr()`, `gr()`, `meta()`, `meta_known_V()`, and
+  `spde()` are still exported for compatibility but marked
+  `@keywords internal`, so they do not anchor the Reference index.
+- `block_V()` moved out of the deprecated-alias bucket and now sits beside
+  `meta_V()` as the real known-V helper.
+- `ROADMAP.md` now says the short dashboard is deliberate, and adds a compact
+  long horizon through reset, infrastructure, symbol/R-syntax clarity,
+  Florence-grade plots, diagnostics/uncertainty, article restoration, pre-CRAN,
+  and publication-quality validation.
+
+Deliberately not run:
+
+- `devtools::test()` and `devtools::check()` were not run because this slice
+  changed pkgdown navigation, roxygen keyword visibility, generated Rd
+  keywords, and roadmap prose only. No R implementation path changed.
+
+Shannon handoff check:
+
+- Current branch: `codex/reference-cleanup-2026-05-21`.
+- Open PR census:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeable --jq '.[] | [.number, .headRefName, .isDraft, .mergeable, .title] | @tsv'`
+  -> no open PRs returned.
+- Recent Actions:
+  `gh run list --repo itchyshin/gllvmTMB --limit 8 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url --jq '.[] | [.databaseId,.workflowName,.status,.conclusion,.headBranch,.displayTitle] | @tsv'`
+  -> most recent main `R-CMD-check` and `pkgdown` runs succeeded.
+- Handoff status: `WARN`, only because work is uncommitted on a feature
+  branch. No open-PR overlap was found; after-task report and issue comment
+  are present. Next action is to review, then commit/PR this focused slice.

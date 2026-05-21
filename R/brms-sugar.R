@@ -246,6 +246,7 @@ phylo <- function(formula, tree = NULL, vcv = NULL, mode = NULL, d = 1) {
 #'
 #' @return A formula marker; never evaluated.
 #' @export
+#' @keywords internal
 #' @examples
 #' \dontrun{
 #' library(ape)
@@ -281,6 +282,7 @@ phylo_rr <- function(species, d = 1) {
 #'
 #' @return A formula marker; never evaluated.
 #' @export
+#' @keywords internal
 #' @examples
 #' \dontrun{
 #' # Recommended:
@@ -335,6 +337,7 @@ gr <- function(group, cov = NULL) {
 #'   constructing a block-diagonal sampling-V from a study factor;
 #'   [gllvmTMB()] for the stage-2 fit.
 #' @export
+#' @keywords internal
 #' @examples
 #' \dontrun{
 #' # Preferred (canonical) form -- use meta_V():
@@ -1033,6 +1036,7 @@ spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1) {
 #'   [meta()] (older deprecated short alias); [block_V()];
 #'   [gllvmTMB()].
 #' @export
+#' @keywords internal
 meta_known_V <- function(V, type = "exact") {
   invisible(NULL)
 }

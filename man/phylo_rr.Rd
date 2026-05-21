@@ -72,3 +72,4 @@ fit <- gllvmTMB(value ~ 0 + trait + phylo_rr(species, d = 2),
                 phylo_vcv = Cphy)
 }
 }
+\keyword{internal}

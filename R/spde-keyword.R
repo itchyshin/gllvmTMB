@@ -129,6 +129,7 @@
 #'
 #' @return A formula marker; never evaluated as a call.
 #' @export
+#' @keywords internal
 #' @seealso [make_mesh()], [add_utm_columns()], `vignette("spde-vs-glmmTMB")`
 #' @references
 #'   Lindgren, F., Rue, H. & Lindström, J. (2011). An explicit link

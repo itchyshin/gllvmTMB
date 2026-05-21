@@ -31,3 +31,4 @@ back-compatibility.
 \code{\link[=meta]{meta()}} (older deprecated short alias); \code{\link[=block_V]{block_V()}};
 \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }
+\keyword{internal}

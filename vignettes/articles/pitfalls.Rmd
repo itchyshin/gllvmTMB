@@ -28,14 +28,30 @@ one-line fix for each. Each pitfall starts with the symptom, then the
 diagnosis, a short reproducible chunk, and a rule of thumb.
 
 The pitfalls below use the long-format API
-(`gllvmTMB(value ~ ..., data = df_long)`). Every pitfall has an
-equivalent wide-data-frame form via the `traits(...)` LHS marker
-(`gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = K),
-data = df_wide)`); the same gotcha and the same fix apply. See
-the Get Started vignette for the long/wide equivalence check.
+(`gllvmTMB(value ~ ..., data = df_long, trait = "trait")`). Many
+bar-style examples have an equivalent wide-data-frame form via the
+`traits(...)` LHS marker, but this page shows long form so the
+diagnostic target is explicit. See the Get Started vignette for the
+long/wide equivalence check.
 
 ```{r setup}
 library(gllvmTMB)
+```
+
+```{r load-example-data, include = FALSE}
+covex_path <- system.file(
+  "extdata", "examples", "covariance-edge-cases-example.rds",
+  package = "gllvmTMB"
+)
+covex_path <- c(
+  covex_path,
+  file.path("inst", "extdata", "examples", "covariance-edge-cases-example.rds"),
+  file.path("..", "inst", "extdata", "examples", "covariance-edge-cases-example.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "covariance-edge-cases-example.rds")
+)
+covex_path <- covex_path[nzchar(covex_path) & file.exists(covex_path)][1]
+stopifnot(!is.na(covex_path))
+covex <- readRDS(covex_path)
 ```
 
 ## 1. Factor level order on `trait`
@@ -44,20 +60,20 @@ library(gllvmTMB)
 with the rows of your true `Lambda`.
 
 **Diagnosis.** `factor(rep(traits, n))` defaults to sorting levels
-alphabetically. If your `traits` vector is `c("length", "mass", "wing")`,
-the model sees levels `c("length", "mass", "wing")`; if it is
-`c("wing", "mass", "length")`, the model still sees alphabetical
-order. The model is correct; the row labels are out of sync with
-your truth matrix.
+alphabetically. If your `traits` vector is
+`c("boldness", "exploration", "activity")`, the model sees levels
+`c("activity", "boldness", "exploration")` unless you pin the order.
+The model is correct; the row labels are out of sync with your truth
+matrix.
 
 ```{r pitfall-1}
-traits <- c("length", "mass", "wing", "tarsus", "bill")
+traits <- covex$truth$trait_names
 
-# WRONG: alphabetical levels (bill, length, mass, tarsus, wing)
-levels(factor(rep(traits, 3)))
+# WRONG: alphabetical levels (activity, aggression, boldness, ...)
+levels(factor(rep(traits, 3)))[1:3]
 
 # RIGHT: pin levels to your declared order
-levels(factor(rep(traits, 3), levels = traits))
+levels(factor(rep(traits, 3), levels = traits))[1:3]
 ```
 
 **Rule of thumb.** *If you defined a true `Lambda` with named rows,
@@ -87,7 +103,7 @@ sim <- simulate_site_trait(
   psi_B  = rep(0, 3), beta = matrix(0, 3, 2), seed = 1
 )
 fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
-                data = sim$data)
+                data = sim$data, trait = "trait")
 
 S_hat    <- extract_Sigma(fit, level = "unit")$Sigma
 LLt_true <- tcrossprod(sim$truth$Lambda_B)
@@ -169,8 +185,8 @@ sug$constraint
 `rotate_loadings(fit, method = "varimax")` for a unique post-hoc
 rotation. Use `suggest_lambda_constraint()` plus a refit only if you
 need a specific identifiable $\boldsymbol\Lambda$ for confirmatory
-testing — see the [lambda-constraint article](lambda-constraint.html)
-for the full decision tree.*
+testing. The confirmatory-loading article is under audit during the
+public-surface reset.*
 
 ## 5. Phylogenetic decomposition: paired or scalar?
 
@@ -187,9 +203,8 @@ multiplying a free trait correlation matrix, so only the product
 $\lambda \cdot \rho_{tt'}$ is identifiable. Neither bare form
 recovers per-trait phylogenetic variances reliably.
 
-The **canonical paired phylogenetic decomposition** (see the
-[Phylogenetic GLLVM article](phylogenetic-gllvm.html)) pairs
-four components:
+The **canonical paired phylogenetic decomposition** pairs four
+components:
 
 $$
 \Sigma_{\text{phy}} = \Lambda_{\text{phy}}\Lambda_{\text{phy}}^{\!\top} + \boldsymbol\Psi_{\text{phy}}, \qquad
@@ -222,9 +237,9 @@ strong phylogenetic signal. Reserve `phylo_scalar()` for the
 simpler case where a single shared phylogenetic variance per trait
 is enough and trait correlations are the inferential target. The
 four-component form is what `extract_phylo_signal()` decomposes
-into $H^2 + C^2_{\text{non}} + \psi^2 = 1$; see
-[phylogenetic-gllvm.html](phylogenetic-gllvm.html) for the
-worked example.*
+into $H^2 + C^2_{\text{non}} + \psi^2 = 1$. The worked phylogenetic
+article is under audit until its helper, validation rows, and rendered
+HTML review pass.*
 
 *When the phylogenetic uniqueness component $\boldsymbol\Psi_{\text{phy}}$ is
 not separately identifiable from $\Lambda_{\text{phy}}
@@ -246,9 +261,10 @@ add `spatial_*` or extra latent tiers). The number of pieces
 follows from the keywords in the formula. `gllvmTMB(... +
 phylo_latent + latent + unique, ...)` is the canonical form for
 this three-piece case. The
-[functional-biogeography article](functional-biogeography.html)
-walks through this $p_{it} + q_{it}$ identifiability case in
-detail; in the same regime, $\sigma^2_Q$ recovers within
+future functional-biogeography capstone will walk through this
+$p_{it} + q_{it}$ identifiability case after its component helpers
+and validation evidence are ready; in the same regime,
+$\sigma^2_Q$ recovers within
 $\sim$10% relative error while $\sigma^2_P$ can be noisier.*
 
 ## 6. The `unit = "..."` argument
@@ -267,13 +283,14 @@ df$individual <- df$site
 df$site <- NULL
 
 # WRONG (uncomment to see the error):
-# gllvmTMB(value ~ 0 + trait + latent(0 + trait | individual, d = 2), data = df)
+# gllvmTMB(value ~ 0 + trait + latent(0 + trait | individual, d = 2),
+#          data = df, trait = "trait")
 # #> Error: Column site not found in data
 
 # RIGHT: tell the engine which column groups observations
 fit_ind <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | individual, d = 2),
-  data = df, unit = "individual"
+  data = df, trait = "trait", unit = "individual"
 )
 fit_ind$unit_col
 ```
@@ -307,31 +324,28 @@ place in the variance decomposition.
 ```r
 # WRONG: passing relatedness matrix as V to meta_V
 fit <- gllvmTMB(value ~ 0 + trait + meta_V(V = A_pedigree),
-                data = df)
+                data = df, trait = "trait")
 # RIGHT: relatedness goes to animal_* / phylo_*, sampling variance to meta_V
 fit <- gllvmTMB(value ~ 0 + trait +
                   animal_scalar(individual, A = A_pedigree) +
                   meta_V(V = sampling_variance),
-                data = df)
+                data = df, trait = "trait")
 ```
 
 **Rule of thumb.** *Use **A** / **Ainv** for relatedness, use **V**
 for sampling variance. Never blur the two. See
 [Design 14 §3](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
-for the full convention; [the gllvmTMB vocabulary
-glossary](gllvm-vocabulary.html) has the long-form definitions.*
+for the full convention. The public vocabulary glossary is under audit.*
 
 ## See also
 
 * [morphometrics.html](morphometrics.html) — single-level GLLVM with
   `unit = "individual"`.
-* [lambda-constraint.html](lambda-constraint.html) — the full
-  decision tree for whether you actually need a constraint.
-* [phylogenetic-gllvm.html](phylogenetic-gllvm.html) — canonical
-  paired four-component phylogenetic decomposition with worked
-  recovery + `extract_phylo_signal()`.
-* [animal-model.html](animal-model.html) — the quantitative-genetic
-  parallel: heritability, bivariate G, and factor-analytic G via
-  `animal_*()` keywords on a pedigree.
+* [Formula keyword grid](api-keyword-grid.html) — syntax map for
+  covariance keywords and status labels.
+* [Response families](response-families.html) — status-labelled family
+  lookup.
+* Under audit: lambda constraints, phylogenetic GLLVMs, and animal-model
+  examples will return after their example and validation gates pass.
 * `?suggest_lambda_constraint`, `?extract_Sigma`,
   `?simulate_site_trait` — the function-level help pages.

@@ -21,134 +21,27 @@ knitr::opts_chunk$set(
 )
 ```
 
-`gllvmTMB` fits **generalised linear latent variable models (GLLVMs)**
-for unit × trait data — site × species, individual × trait, species
-× trait, paper × item, or any other Unit × Trait formulation. The
-package is a TMB engine that supports `glmmTMB` / `brms`-style
-covariance dispatch via **three covstruct modes** expressed with four
-formula keywords:
+`gllvmTMB` fits multivariate models for data where each site,
+individual, species, or study has several responses. The first
+question is usually not mathematical:
 
-* **Paired decomposition** — `latent + unique` together gives
-  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
-  (shared low-rank plus per-trait unique).
-* **Marginal only** — `indep` alone gives $\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)$
-  (per-trait variance, no cross-trait shared structure).
-* **Full unstructured** — `dep` alone gives $\boldsymbol\Sigma$ free,
-  parameterised via Cholesky.
+> Which responses vary together, and how much variation is shared
+> rather than response-specific?
 
-Built on top: response distributions for binary / count / continuous
-/ ordinal / hurdle data, sparse SPDE spatial random fields,
-phylogenetic random effects (sparse-$A^{-1}$ representation for big
-trees), and multi-tier hierarchies — all turned on **only when the
-biological question requires them**. Each topical article in the
-side-bar walks through one such extension on a runnable example.
+This page does one small, reproducible example. It loads a prepared
+morphometrics object, fits the same model from long data and wide
+data, checks that the fits agree, and extracts the covariance,
+correlation, communality, and ordination summaries a reader normally
+wants first.
 
-## What a GLLVM estimates
+The example uses the safest public path: Gaussian stacked-trait data
+with one observational level, a shared low-rank latent structure, and
+trait-specific unique variance. Advanced spatial, phylogenetic,
+meta-analytic, mixed-family, and profile-likelihood tutorials remain
+under audit until their example objects, diagnostics, and rendered
+HTML reviews are ready.
 
-A GLLVM models multivariate data: a matrix of responses
-$\mathbf Y = (y_{it})$ with rows $i = 1, \ldots, n$ (units — sites,
-individuals, species, …) and columns $t = 1, \ldots, T$ (responses —
-species, traits, behaviours, items, …). It combines two familiar
-ideas:
-
-* Like a **generalised linear mixed model**, each response gets its
-  own distribution and link function $g_t$ so binary, count, and
-  continuous responses are all on the same footing.
-* Like **factor analysis**, the covariance among the $T$ responses
-  is summarised by a small number $d \ll T$ of latent dimensions.
-
-The expected value $\mu_{it} = E(y_{it})$ is linked to a linear
-predictor through $g_t(\mu_{it}) = \eta_{it}$, where
-
-\[
-\eta_{it} = \mathbf x_i^\top \boldsymbol\beta_t
-          + \mathbf z_i^\top \boldsymbol\lambda_t .
-\]
-
-* $\mathbf x_i$ are measured predictors with response-specific
-  coefficients $\boldsymbol\beta_t$ — the regression part of the
-  model.
-* $\mathbf z_i$ is a length-$d$ vector of latent scores for unit $i$,
-  and $\boldsymbol\lambda_t$ is a length-$d$ loading vector for
-  response $t$. Stacking the loadings across responses gives a
-  $T \times d$ matrix $\boldsymbol\Lambda$ whose $t$-th row is
-  $\boldsymbol\lambda_t$.
-
-In the Gaussian case ($g_t = \mathrm{identity}$), the model can be
-written equivalently as
-
-\[
-y_{it} \;=\; \eta_{it} + \varepsilon_{it},
-\qquad
-\varepsilon_{it} \sim \mathcal N(0,\, \psi_{tt}),
-\]
-
-so the leftover $y_{it} - \eta_{it} = \varepsilon_{it}$ — what's
-not explained by the regression part and the shared latent dimensions
-— has variance $\psi_{tt}$ specific to response $t$. This is the
-**response-specific unique variance** (also called the "specific"
-variance in factor analysis). Stacking the $T$ such variances on the
-diagonal gives the $T \times T$ **diagonal matrix**
-
-\[
-\boldsymbol\Psi \;=\; \mathrm{diag}(\psi_{11}, \psi_{22}, \ldots, \psi_{TT}) .
-\]
-
-The marginal covariance among responses (after measured predictors)
-then decomposes as
-
-\[
-\boldsymbol\Sigma
-\;=\;
-\underbrace{\boldsymbol\Lambda\,\boldsymbol\Lambda^\top}_{\text{shared}}
-\;+\;
-\underbrace{\boldsymbol\Psi}_{\text{unique}} .
-\]
-
-The two pieces are complementary:
-
-* $\boldsymbol\Lambda \boldsymbol\Lambda^\top$ is the $T \times T$
-  **shared** covariance among responses, induced through the $d$
-  latent dimensions. Because $d \ll T$, the shared component has
-  reduced rank — covariance among many responses is captured by a
-  few latent dimensions instead of $T(T-1)/2$ free pairwise entries.
-  In `gllvmTMB`, $\boldsymbol\Lambda$ is parameterised by the
-  formula keyword `latent(0 + trait | unit, d = K)`.
-* $\boldsymbol\Psi$ is the $T \times T$ **diagonal** of response-specific
-  unique variances $\mathrm{Var}(\varepsilon_{it}) = \psi_{tt}$ (one
-  entry per response, off-diagonal entries are zero by construction).
-  In `gllvmTMB`, $\boldsymbol\Psi$ is parameterised by
-  `unique(0 + trait | unit)`.
-
-A useful per-response summary is **communality**:
-
-\[
-c_t^2 \;=\;
-\frac{(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt}}
-     {(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt} + \psi_{tt}} .
-\]
-
-The numerator is the variance of response $t$ explained by the shared
-latent structure; the denominator is the total model-implied residual
-variance of response $t$. So $c_t^2$ is the proportion of response
-$t$'s variance shared with the others. High $c_t^2$ means response
-$t$ is strongly integrated; low $c_t^2$ means response-specific
-variation dominates.
-
-A fitted GLLVM therefore returns:
-
-* **Regression coefficients** $\boldsymbol\beta_t$ for measured
-  predictors.
-* **Latent scores** $\mathbf Z$ placing units in $d$-dimensional
-  latent space (model-based ordination).
-* **Loadings** $\boldsymbol\Lambda$ describing how strongly each
-  response is associated with each latent dimension (biplot arrows).
-* **Residual covariance / correlation**
-  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$
-  among responses.
-* **Communality** $c_t^2$ per response.
-
-## Example: Individual × Trait morphology
+## First fit: Individual × Trait morphology
 
 We have `n` individuals, each measured on `T` morphological traits
 across a few sessions. The biological question: do the traits covary
@@ -161,91 +54,86 @@ identifiable. No spatial or phylogenetic structure here.
 library(gllvmTMB)
 ```
 
-Simulate `n = 60` individuals × `T = 5` traits × 3 sessions with two
-true latent axes plus trait-specific unique variance:
+For a first fit, load the prepared morphometrics example object. It
+contains long data, wide data, the truth table, and the two formulas
+used below. The reproducible generator is
+`data-raw/examples/make-morphometrics-example.R`, but beginners do not
+need to read the generator before fitting the model.
 
-```{r sim}
-set.seed(1)
-n_indiv   <- 60
-n_session <- 3
-n_traits  <- 5
-trait_names <- paste0("trait_", seq_len(n_traits))
+```{r example-data, eval = FALSE}
+morph <- readRDS(system.file(
+  "extdata", "examples", "morphometrics-example.rds",
+  package = "gllvmTMB"
+))
+df <- morph$data_long
+df_wide <- morph$data_wide
+truth <- morph$truth
+```
 
-Lambda_true <- matrix(c( 1.0,  0.6, -0.4,  0.2,  0.5,
-                         0.0,  0.8,  0.5, -0.3,  0.2),
-                      nrow = n_traits, ncol = 2)
-psi_B_true     <- c(0.20, 0.15, 0.30, 0.20, 0.25)
-sigma_eps    <- 0.20
-alpha        <- c(0, 0.5, -0.3, 0.2, 0.1)
+```{r example-data-load, include = FALSE}
+example_path <- system.file(
+  "extdata", "examples", "morphometrics-example.rds",
+  package = "gllvmTMB"
+)
+example_path <- c(
+  example_path,
+  file.path("inst", "extdata", "examples", "morphometrics-example.rds"),
+  file.path("..", "inst", "extdata", "examples", "morphometrics-example.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-example.rds")
+)
+example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
+stopifnot(!is.na(example_path))
+morph <- readRDS(example_path)
 
-# Stable per-individual trait values (between-individual rr + unique)
-u <- matrix(rnorm(n_indiv * 2), n_indiv, 2)
-between_ind <- matrix(alpha, n_indiv, n_traits, byrow = TRUE) +
-               u %*% t(Lambda_true) +
-               matrix(rnorm(n_indiv * n_traits,
-                            sd = sqrt(psi_B_true[col(matrix(0, n_indiv, n_traits))])),
-                      n_indiv, n_traits)
+df <- morph$data_long
+df_wide <- morph$data_wide
+truth <- morph$truth
+trait_names <- truth$trait_names
+n_traits <- length(trait_names)
+Lambda_true <- truth$Lambda
+```
 
-# Three sessions per individual, each with measurement noise
-df <- expand.grid(individual_id = seq_len(n_indiv),
-                  session_id    = seq_len(n_session),
-                  trait_idx     = seq_len(n_traits))
-df$value <- between_ind[cbind(df$individual_id, df$trait_idx)] +
-            rnorm(nrow(df), sd = sigma_eps)
-df$individual <- factor(df$individual_id)
-df$trait      <- factor(trait_names[df$trait_idx], levels = trait_names)
-df$session    <- factor(paste(df$individual_id, df$session_id, sep = "_"))
-df <- df[, c("individual", "session", "trait", "value")]
+```{r example-data-preview}
+morph$story$question
 head(df, 6)
 ```
 
-The DGP has three variance sources: shared low-rank
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top$, per-trait
-between-individual unique $\boldsymbol\Psi_B$, and per-session noise
-$\sigma^2_\varepsilon$. The fit below recovers the first two via
-`latent()` and `unique()`; the per-session noise is absorbed into the
-Gaussian residual variance $\sigma^2_d$ (one parameter per trait).
+The example has shared low-rank covariance
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ plus per-trait unique
+variance $\boldsymbol\Psi$. The fit below recovers the individual-level
+covariance via `latent()` and `unique()`.
 
 Fit a `d = 2` reduced-rank GLLVM with **`latent() + unique()`** at the
 individual level — the shared low-rank structure plus trait-specific
 unique variance:
 
 ```{r fit-call}
+morph$formula_long
+
 fit <- gllvmTMB(
-  value ~ 0 + trait +
-          latent(0 + trait | individual, d = 2) +
-          unique(0 + trait | individual),
+  morph$formula_long,
   data = df,
-  unit = "individual"
+  trait = morph$fit_args$trait,
+  unit = morph$fit_args$unit,
+  family = morph$fit_args$family
 )
 fit
 ```
 
 ### Same model, wide data frame
 
-The same fit reads from a wide data frame (one row per
-observation, one column per trait) via the `traits(...)`
-formula-LHS marker. Internally the engine pivots to long
-format, so the fit is byte-identical:
+The same fit reads from a wide data frame (one row per individual, one
+column per trait) via the `traits(...)` formula-LHS marker. Internally
+the engine pivots to long format, so the fit is byte-identical:
 
 ```{r fit-wide}
-# Pivot the long df to wide (one row per (individual, session),
-# one column per trait):
-df_wide <- reshape(
-  df,
-  idvar     = c("individual", "session"),
-  timevar   = "trait",
-  direction = "wide",
-  v.names   = "value"
-)
-names(df_wide) <- sub("^value\\.", "", names(df_wide))
+morph$formula_wide
 
 fit_wide <- gllvmTMB(
-  traits(trait_1, trait_2, trait_3, trait_4, trait_5) ~ 1 +
-    latent(1 | individual, d = 2) +
-    unique(1 | individual),
+  morph$formula_wide,
   data = df_wide,
-  unit = "individual"
+  unit = morph$fit_args$unit,
+  family = morph$fit_args$family
 )
 
 # Same fit:
@@ -269,6 +157,12 @@ what should agree — diagonals include unique variance):
 ```{r cov}
 list(true_LL  = round(Lambda_true %*% t(Lambda_true), 2),
      fitted_LL = round(Lambda_hat  %*% t(Lambda_hat),  2))
+```
+
+The full covariance target is stored in the example object:
+
+```{r sigma-truth}
+round(truth$Sigma, 2)
 ```
 
 Ordination of individuals on the two latent axes:

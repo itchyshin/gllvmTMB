@@ -3,12 +3,12 @@
 ## Lifted in spirit from gllvm2lev::plot.gllvm2lev() but re-implemented
 ## around gllvmTMB's extractor API: extract_Sigma(), extract_proportions(),
 ## extract_communality(), extract_ICC_site(), extract_ordination(),
-## getLoadings(). One dispatcher, five plot types.
+## getLoadings(). One dispatcher, seven plot types.
 
 #' Plot a fitted multivariate `gllvmTMB_multi` model
 #'
 #' Produces a variety of `ggplot2` visualisations for a stacked-trait
-#' multivariate GLLVM. Dispatches on `type` to one of five panels:
+#' multivariate GLLVM. Dispatches on `type` to one of seven panels:
 #'
 #' \describe{
 #'   \item{`"correlation"`}{Combined heatmap of trait correlations.
@@ -16,6 +16,10 @@
 #'     lower triangle = within-unit correlations (`level = "unit_obs"`),
 #'     diagonal = 1. Falls back to whichever level is present if the
 #'     other tier is absent.}
+#'   \item{`"correlation_ellipse"`}{Ellipse matrix of trait correlations.
+#'     Ellipse direction and eccentricity encode the sign and strength of
+#'     the correlation. This is the Figure-3-style alternative to the tile
+#'     heatmap.}
 #'   \item{`"loadings"`}{Tile heatmap of `Lambda_B` (and `Lambda_W` if
 #'     present), faceted by level. Rows = traits, columns = factors.
 #'     Pinned cells (from `lambda_constraint`) are drawn with a heavy
@@ -24,25 +28,30 @@
 #'     between-tier communality and within-tier communality per trait,
 #'     sorted by repeatability. Optional whiskers from a `boot` object
 #'     (skipped if `boot = NULL`).}
+#'   \item{`"communality"`}{Figure-3-style stacked bars of per-trait
+#'     communality (`c^2`, shared latent proportion) and uniqueness
+#'     (`1 - c^2`) for the available latent tiers.}
 #'   \item{`"variance"`}{Stacked-bar variance partition per trait, using
 #'     `extract_proportions(format = "long")`. One bar per trait,
 #'     stacks summing to 1.}
-#'   \item{`"ordination"`}{Two-axis biplot of latent scores plus loading
-#'     arrows. 1D fits (`d = 1`) get a horizontal lollipop; 2D fits get
-#'     a standard biplot; for `d >= 3` pick the axis pair via `axes`.}
+#'   \item{`"ordination"`}{Dimension-aware latent-score ordination.
+#'     1D fits (`d = 1`) get a horizontal score strip with trait loading
+#'     lollipops; 2D fits get a standard biplot; 3D fits get a static
+#'     pair-grid biplot for the three axis pairs. For `d > 3`, pick two
+#'     or three axes via `axes`.}
 #' }
 #'
 #' @param x A `gllvmTMB_multi` fit.
-#' @param type One of `"correlation"`, `"loadings"`, `"integration"`,
-#'   `"variance"`, `"ordination"`.
+#' @param type One of `"correlation"`, `"correlation_ellipse"`, `"loadings"`,
+#'   `"integration"`, `"communality"`, `"variance"`, `"ordination"`.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
 #'   Used by `"loadings"` (which level to plot; the default
 #'   `c("unit", "unit_obs")` means "both available levels, faceted
 #'   side-by-side"; pass a length-1 string to plot one tier) and
-#'   `"ordination"` (single level required, default `"unit"`). Ignored for
-#'   `"correlation"` (which always shows both if available), `"integration"`,
-#'   and `"variance"`.
+#'   `"ordination"` (single level required; omitted `level` defaults to
+#'   `"unit"`). Ignored for `"correlation"` (which always shows both if
+#'   available), `"integration"`, and `"variance"`.
 #'
 #'   *Note*: the default `level = c("unit", "unit_obs")` is intentionally a
 #'   length-2 vector, not the usual `match.arg` shortcut. The dispatcher
@@ -55,15 +64,24 @@
 #'   `repeatability`, `communality_B`, `communality_W`, each a data
 #'   frame with columns `trait`, `lower`, `upper`) used to add whiskers
 #'   to the `"integration"` plot. Default `NULL` skips whiskers.
-#' @param axes Length-2 integer vector for `"ordination"` when
-#'   `d >= 2`. Default `c(1, 2)`. Ignored when `d = 1`.
+#' @param axes Length-2 or length-3 integer vector for `"ordination"` when
+#'   `d >= 2`. Length 2 draws a single biplot. Length 3 draws a static
+#'   pair-grid of the three axis pairs. For `d = 3`, the default
+#'   `c(1, 2)` is promoted to `c(1, 2, 3)` so all three axes are visible.
+#'   Ignored when `d = 1`.
 #' @param ... Currently unused.
-#' @return A `ggplot` object.
+#' @return A `ggplot` object with a `gllvmTMB_meta` attribute describing
+#'   the plot type, source extractor, covariance level, interval status, and
+#'   rotation status. Metadata also carries extractor notes when a plotted
+#'   summary has an important caveat. Plots also carry a `gllvmTMB_data`
+#'   attribute with the prepared plotting data; ordination stores separate
+#'   `scores` and `loadings` tables.
 #' @method plot gllvmTMB_multi
 #' @export
 plot.gllvmTMB_multi <- function(x,
-                                type = c("correlation", "loadings",
-                                         "integration", "variance",
+                                type = c("correlation", "correlation_ellipse",
+                                         "loadings", "integration",
+                                         "communality", "variance",
                                          "ordination"),
                                 level = c("unit", "unit_obs"),
                                 boot  = NULL,
@@ -72,6 +90,7 @@ plot.gllvmTMB_multi <- function(x,
   if (!requireNamespace("ggplot2", quietly = TRUE))
     cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
   type  <- match.arg(type)
+  level_missing <- missing(level)
   ## level intentionally not match.arg'd up-front: each helper decides
   ## whether to require a single value or accept "both/NULL".
   ## Boundary normalisation per element when present, then de-duplicate
@@ -88,11 +107,17 @@ plot.gllvmTMB_multi <- function(x,
     level <- unique(level)
   }
   switch(type,
-    correlation = .plot_correlation_gtmb(x),
-    loadings    = .plot_loadings_gtmb(x, level),
-    integration = .plot_integration_gtmb(x, boot = boot),
-    variance    = .plot_variance_gtmb(x),
-    ordination  = .plot_ordination_gtmb(x, level, axes = axes)
+    correlation         = .plot_correlation_gtmb(x),
+    correlation_ellipse = .plot_correlation_ellipse_gtmb(x),
+    loadings            = .plot_loadings_gtmb(x, level),
+    integration         = .plot_integration_gtmb(x, boot = boot),
+    communality         = .plot_communality_gtmb(x),
+    variance            = .plot_variance_gtmb(x),
+    ordination          = .plot_ordination_gtmb(
+      x,
+      if (level_missing) "B" else level,
+      axes = axes
+    )
   )
 }
 
@@ -103,64 +128,369 @@ plot.gllvmTMB_multi <- function(x,
   levels(fit$data[[fit$trait_col]])
 }
 
+.gtmb_plot_contract <- function(p,
+                                type,
+                                source,
+                                level = NULL,
+                                interval_status = "none",
+                                rotation_status = "rotation_invariant",
+                                data = NULL,
+                                notes = character(0)) {
+  notes <- unique(as.character(notes[!is.na(notes)]))
+  attr(p, "gllvmTMB_meta") <- list(
+    type = type,
+    source = source,
+    level = level,
+    interval_status = interval_status,
+    rotation_status = rotation_status,
+    notes = notes
+  )
+  if (!is.null(data)) {
+    attr(p, "gllvmTMB_data") <- data
+  }
+  p
+}
+
+.gtmb_canonical_levels <- function(level) {
+  vapply(level, .canonical_level_name, character(1L), USE.NAMES = FALSE)
+}
+
+.gtmb_plot_palette <- c(
+  blue       = "#0072B2",
+  sky        = "#56B4E9",
+  green      = "#009E73",
+  orange     = "#E69F00",
+  vermillion = "#D55E00",
+  purple     = "#CC79A7",
+  ink        = "#2B2B2B",
+  grey       = "#6B6B6B",
+  pale_grey  = "#F4F4F4",
+  grid       = "#D9D9D9"
+)
+
+.gtmb_theme_figure <- function(base_size = 11) {
+  ggplot2::theme_minimal(base_size = base_size) +
+    ggplot2::theme(
+      panel.grid.minor = ggplot2::element_blank(),
+      plot.title = ggplot2::element_text(
+        face = "bold",
+        colour = .gtmb_plot_palette[["ink"]]
+      ),
+      plot.subtitle = ggplot2::element_text(
+        colour = .gtmb_plot_palette[["grey"]],
+        margin = ggplot2::margin(b = 6)
+      ),
+      plot.caption = ggplot2::element_text(
+        colour = .gtmb_plot_palette[["grey"]],
+        hjust = 0
+      ),
+      axis.title = ggplot2::element_text(colour = .gtmb_plot_palette[["ink"]]),
+      axis.text = ggplot2::element_text(colour = .gtmb_plot_palette[["ink"]]),
+      strip.text = ggplot2::element_text(
+        face = "bold",
+        colour = .gtmb_plot_palette[["ink"]]
+      ),
+      legend.position = "bottom",
+      legend.title = ggplot2::element_text(face = "bold")
+    )
+}
+
+.gtmb_scale_fill_diverging <- function(name, limits = NULL) {
+  ggplot2::scale_fill_gradient2(
+    low = .gtmb_plot_palette[["blue"]],
+    mid = "#F7F7F7",
+    high = .gtmb_plot_palette[["vermillion"]],
+    midpoint = 0,
+    limits = limits,
+    na.value = .gtmb_plot_palette[["pale_grey"]],
+    name = name
+  )
+}
+
+.gtmb_symmetric_limits <- function(x) {
+  lim <- max(abs(x), na.rm = TRUE)
+  if (!is.finite(lim) || lim == 0) return(NULL)
+  c(-lim, lim)
+}
+
+.gtmb_tile_label_colour <- function(x, threshold = 0.65, relative = FALSE) {
+  out <- rep(.gtmb_plot_palette[["ink"]], length(x))
+  finite <- is.finite(x)
+  if (!any(finite)) return(out)
+  cutoff <- threshold
+  if (isTRUE(relative)) {
+    lim <- max(abs(x[finite]), na.rm = TRUE)
+    if (!is.finite(lim) || lim == 0) return(out)
+    cutoff <- threshold * lim
+  }
+  out[finite & abs(x) >= cutoff] <- "white"
+  out
+}
+
+.gtmb_interval_status <- function(status) {
+  status <- unique(as.character(status[!is.na(status)]))
+  if (length(status) == 0L || identical(status, "none")) return("none")
+  if (all(status == "provided")) return("provided")
+  if ("provided" %in% status) return("partial")
+  paste(status, collapse = ";")
+}
+
 
 # ---- correlation heatmap --------------------------------------------------
 
-.plot_correlation_gtmb <- function(fit) {
+.correlation_plot_data_gtmb <- function(fit) {
   tn <- .gtmb_trait_names(fit)
   Tn <- length(tn)
 
-  R_B <- if (isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B))
-    suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))$R else NULL
-  R_W <- if (isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W))
-    suppressMessages(extract_Sigma(fit, level = "unit_obs", part = "total"))$R else NULL
+  res_B <- if (isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B))
+    suppressMessages(extract_Sigma(fit, level = "unit", part = "total")) else NULL
+  res_W <- if (isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W))
+    suppressMessages(extract_Sigma(fit, level = "unit_obs", part = "total")) else NULL
+  R_B <- if (!is.null(res_B)) res_B$R else NULL
+  R_W <- if (!is.null(res_W)) res_W$R else NULL
+  notes <- unique(c(res_B$note %||% character(0),
+                    res_W$note %||% character(0)))
 
   if (is.null(R_B) && is.null(R_W))
     cli::cli_abort("No correlation matrix available -- neither B nor W tier has rr/diag.")
 
-  ## Combined matrix: upper = B, lower = W, diag = 1
   combined <- matrix(NA_real_, Tn, Tn, dimnames = list(tn, tn))
-  if (!is.null(R_B)) combined[upper.tri(combined)] <- R_B[upper.tri(R_B)]
-  if (!is.null(R_W)) combined[lower.tri(combined)] <- R_W[lower.tri(R_W)]
-  diag(combined) <- 1
+  level_mat <- matrix(NA_character_, Tn, Tn, dimnames = list(tn, tn))
 
-  ## In single-tier fallback fill the *empty* triangle with the available one
-  if (is.null(R_B) && !is.null(R_W))
+  if (!is.null(R_B)) {
+    combined[upper.tri(combined)] <- R_B[upper.tri(R_B)]
+    level_mat[upper.tri(level_mat)] <- "unit"
+  }
+  if (!is.null(R_W)) {
+    combined[lower.tri(combined)] <- R_W[lower.tri(R_W)]
+    level_mat[lower.tri(level_mat)] <- "unit_obs"
+  }
+  diag(combined) <- 1
+  diag(level_mat) <- "diagonal"
+
+  ## In single-tier fallback fill the empty triangle with the available level.
+  if (is.null(R_B) && !is.null(R_W)) {
     combined[upper.tri(combined)] <- R_W[upper.tri(R_W)]
-  if (!is.null(R_B) && is.null(R_W))
+    level_mat[upper.tri(level_mat)] <- "unit_obs"
+  }
+  if (!is.null(R_B) && is.null(R_W)) {
     combined[lower.tri(combined)] <- R_B[lower.tri(R_B)]
+    level_mat[lower.tri(level_mat)] <- "unit"
+  }
 
   idx <- which(!is.na(combined), arr.ind = TRUE)
-  dat <- data.frame(
-    row   = factor(tn[idx[, 1L]], levels = rev(tn)),
-    col   = factor(tn[idx[, 2L]], levels = tn),
+  triangle <- ifelse(
+    idx[, 1L] == idx[, 2L], "diagonal",
+    ifelse(idx[, 1L] < idx[, 2L], "upper", "lower")
+  )
+  level <- level_mat[idx]
+
+  out <- data.frame(
+    trait_i = tn[idx[, 1L]],
+    trait_j = tn[idx[, 2L]],
+    row = factor(tn[idx[, 1L]], levels = rev(tn)),
+    col = factor(tn[idx[, 2L]], levels = tn),
+    estimate = combined[idx],
     value = combined[idx],
+    display_value = ifelse(triangle == "diagonal", NA_real_, combined[idx]),
+    label = ifelse(triangle == "diagonal", "", sprintf("%.2f", combined[idx])),
+    level = factor(level, levels = c("unit", "unit_obs", "diagonal")),
+    triangle = factor(triangle, levels = c("upper", "lower", "diagonal")),
+    interval_method = "none",
+    interval_status = "none",
+    scale = "correlation",
     stringsAsFactors = FALSE
   )
+  attr(out, "notes") <- notes
+  out
+}
 
-  subtitle <- if (!is.null(R_B) && !is.null(R_W)) {
+.plot_correlation_gtmb <- function(fit) {
+  dat <- .correlation_plot_data_gtmb(fit)
+  notes <- attr(dat, "notes") %||% character(0)
+  dat$label_colour <- .gtmb_tile_label_colour(dat$display_value)
+  levels_available <- intersect(
+    c("unit", "unit_obs"),
+    unique(as.character(dat$level))
+  )
+
+  subtitle <- if (all(c("unit", "unit_obs") %in% levels_available)) {
     "Upper triangle: between-unit  |  Lower triangle: within-unit"
-  } else if (!is.null(R_B)) {
+  } else if (identical(levels_available, "unit")) {
     "Between-unit only"
   } else {
     "Within-unit only"
   }
 
-  ggplot2::ggplot(dat,
-                  ggplot2::aes(x = .data$col, y = .data$row,
-                               fill = .data$value)) +
-    ggplot2::geom_tile(colour = "grey90") +
-    ggplot2::geom_text(ggplot2::aes(label = sprintf("%.2f", .data$value)),
-                       size = 3) +
-    ggplot2::scale_fill_gradient2(
-      low = "steelblue", mid = "white", high = "firebrick",
-      midpoint = 0, limits = c(-1, 1), name = "rho"
+  p <- ggplot2::ggplot(dat,
+                       ggplot2::aes(x = .data$col, y = .data$row,
+                                    fill = .data$display_value)) +
+    ggplot2::geom_tile(
+      ggplot2::aes(colour = .data$level),
+      linewidth = 0.65
     ) +
+    ggplot2::geom_text(
+      ggplot2::aes(label = .data$label),
+      colour = dat$label_colour,
+      size = 3
+    ) +
+    .gtmb_scale_fill_diverging("rho", limits = c(-1, 1)) +
+    ggplot2::scale_colour_manual(
+      values = c(
+        unit = .gtmb_plot_palette[["blue"]],
+        unit_obs = .gtmb_plot_palette[["orange"]],
+        diagonal = .gtmb_plot_palette[["grid"]]
+      ),
+      breaks = c("unit", "unit_obs", "diagonal"),
+      labels = c("Between-unit", "Within-unit", "Diagonal"),
+      name = "Tier"
+    ) +
+    ggplot2::coord_equal() +
     ggplot2::labs(x = NULL, y = NULL,
                   title = "Trait correlation matrix",
-                  subtitle = subtitle) +
-    ggplot2::theme_minimal() +
+                  subtitle = subtitle,
+                  caption = paste(
+                    "Cells show total correlations from extract_Sigma();",
+                    "diagonal cells are muted because self-correlation is fixed at 1."
+                  )) +
+    .gtmb_theme_figure() +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
+
+  .gtmb_plot_contract(
+    p,
+    type = "correlation",
+    source = "extract_Sigma",
+    level = levels_available,
+    data = dat,
+    notes = notes
+  )
+}
+
+.correlation_ellipse_plot_data_gtmb <- function(fit, n = 80L) {
+  cells <- .correlation_plot_data_gtmb(fit)
+  notes <- attr(cells, "notes") %||% character(0)
+  cells <- cells[!is.na(cells$display_value) &
+                   cells$triangle != "diagonal", , drop = FALSE]
+  if (nrow(cells) == 0L)
+    cli::cli_abort("No off-diagonal correlations available for an ellipse plot.")
+
+  theta <- seq(0, 2 * pi, length.out = n)
+  out <- vector("list", nrow(cells))
+  for (i in seq_len(nrow(cells))) {
+    rho <- cells$estimate[i]
+    a <- 0.45 * sqrt(1 + abs(rho))
+    b <- 0.45 * sqrt(1 - abs(rho))
+    phi <- if (rho >= 0) pi / 4 else -pi / 4
+    x0 <- as.numeric(cells$col[i])
+    y0 <- as.numeric(cells$row[i])
+    x <- x0 + a * cos(theta) * cos(phi) - b * sin(theta) * sin(phi)
+    y <- y0 + a * cos(theta) * sin(phi) + b * sin(theta) * cos(phi)
+    significant <- all(c("lower", "upper") %in% names(cells)) &&
+      is.finite(cells$lower[i]) && is.finite(cells$upper[i]) &&
+      cells$lower[i] * cells$upper[i] > 0
+    out[[i]] <- data.frame(
+      group = i,
+      trait_i = cells$trait_i[i],
+      trait_j = cells$trait_j[i],
+      x = x,
+      y = y,
+      cell_x = x0,
+      cell_y = y0,
+      estimate = rho,
+      value = rho,
+      level = cells$level[i],
+      triangle = cells$triangle[i],
+      interval_method = cells$interval_method[i],
+      interval_status = cells$interval_status[i],
+      significant = significant,
+      border_colour = if (significant) .gtmb_plot_palette[["ink"]]
+        else "#BDBDBD",
+      stringsAsFactors = FALSE
+    )
+  }
+  ell <- do.call(rbind, out)
+  attr(ell, "notes") <- notes
+  ell
+}
+
+.plot_correlation_ellipse_gtmb <- function(fit) {
+  ell <- .correlation_ellipse_plot_data_gtmb(fit)
+  notes <- attr(ell, "notes") %||% character(0)
+  tn <- .gtmb_trait_names(fit)
+  y_labels <- rev(tn)
+  levels_available <- intersect(
+    c("unit", "unit_obs"),
+    unique(as.character(ell$level))
+  )
+
+  subtitle <- if (all(c("unit", "unit_obs") %in% levels_available)) {
+    "Upper triangle: between-unit  |  Lower triangle: within-unit"
+  } else if (identical(levels_available, "unit")) {
+    "Between-unit only"
+  } else {
+    "Within-unit only"
+  }
+
+  star_dat <- unique(ell[ell$significant,
+                         c("group", "cell_x", "cell_y"),
+                         drop = FALSE])
+
+  p <- ggplot2::ggplot(
+    ell,
+    ggplot2::aes(x = .data$x, y = .data$y,
+                 group = .data$group, fill = .data$estimate)
+  ) +
+    ggplot2::geom_polygon(
+      ggplot2::aes(colour = .data$border_colour),
+      linewidth = 0.6
+    ) +
+    ggplot2::scale_colour_identity(guide = "none") +
+    .gtmb_scale_fill_diverging("rho", limits = c(-1, 1)) +
+    ggplot2::scale_x_continuous(
+      breaks = seq_along(tn),
+      labels = tn,
+      expand = ggplot2::expansion(mult = 0.04)
+    ) +
+    ggplot2::scale_y_continuous(
+      breaks = seq_along(tn),
+      labels = y_labels,
+      expand = ggplot2::expansion(mult = 0.04)
+    ) +
+    ggplot2::coord_equal() +
+    ggplot2::labs(
+      x = NULL, y = NULL,
+      title = "Trait correlations (ellipses)",
+      subtitle = subtitle,
+      caption = paste(
+        "Ellipse tilt/eccentricity show correlation sign and strength.",
+        "Black borders/stars require interval-aware summaries.",
+        sep = "\n"
+      )
+    ) +
+    .gtmb_theme_figure() +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(colour = "#EAEAEA"),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    )
+
+  if (nrow(star_dat) > 0L) {
+    p <- p + ggplot2::geom_text(
+      data = star_dat,
+      ggplot2::aes(x = .data$cell_x, y = .data$cell_y, label = "*"),
+      inherit.aes = FALSE,
+      fontface = "bold",
+      size = 4
+    )
+  }
+
+  .gtmb_plot_contract(
+    p,
+    type = "correlation_ellipse",
+    source = "extract_Sigma",
+    level = levels_available,
+    data = ell,
+    notes = notes
+  )
 }
 
 
@@ -210,13 +540,26 @@ plot.gllvmTMB_multi <- function(x,
 
   dat <- do.call(rbind, rows)
   dat$trait <- factor(dat$trait, levels = rev(tn))
+  dat$label <- sprintf("%.2f", dat$loading)
+  dat$label_colour <- .gtmb_tile_label_colour(
+    dat$loading,
+    threshold = 0.65,
+    relative = TRUE
+  )
+  show_tile_labels <- nrow(dat) <= 60L
 
   p <- ggplot2::ggplot(dat,
                        ggplot2::aes(x = .data$factor, y = .data$trait,
                                     fill = .data$loading)) +
-    ggplot2::geom_tile(colour = "grey90") +
-    ggplot2::geom_text(ggplot2::aes(label = sprintf("%.2f", .data$loading)),
-                       size = 3)
+    ggplot2::geom_tile(colour = "white", linewidth = 0.6)
+
+  if (show_tile_labels) {
+    p <- p + ggplot2::geom_text(
+      ggplot2::aes(label = .data$label),
+      colour = dat$label_colour,
+      size = 3
+    )
+  }
 
   ## Heavy outline on pinned cells
   if (any(dat$pinned)) {
@@ -225,18 +568,45 @@ plot.gllvmTMB_multi <- function(x,
       colour  = "black",
       fill    = NA,
       linewidth = 1
-    )
+    ) +
+      ggplot2::geom_point(
+        data = dat[dat$pinned, , drop = FALSE],
+        ggplot2::aes(x = .data$factor, y = .data$trait,
+                     shape = "Fixed loading"),
+        inherit.aes = FALSE,
+        colour = "black",
+        size = 2.5,
+        stroke = 0.8
+      ) +
+      ggplot2::scale_shape_manual(
+        values = c("Fixed loading" = 4),
+        name = "Constraint"
+      )
   }
 
-  p +
-    ggplot2::scale_fill_gradient2(
-      low = "steelblue", mid = "white", high = "firebrick",
-      midpoint = 0, name = "Loading"
+  p <- p +
+    .gtmb_scale_fill_diverging(
+      "Loading",
+      limits = .gtmb_symmetric_limits(dat$loading)
     ) +
     ggplot2::facet_wrap(~ level) +
+    ggplot2::coord_equal() +
     ggplot2::labs(x = "Latent factor", y = NULL,
-                  title = "Factor loadings (Lambda)") +
-    ggplot2::theme_minimal()
+                  title = "Factor loadings (Lambda)",
+                  caption = paste(
+                    "Loadings depend on rotation and sign.",
+                    "Use implied Sigma/correlations for rotation-invariant interpretation."
+                  )) +
+    .gtmb_theme_figure()
+
+  .gtmb_plot_contract(
+    p,
+    type = "loadings",
+    source = "getLoadings",
+    level = .gtmb_canonical_levels(levels_to_plot),
+    rotation_status = "rotation_ambiguous_loadings",
+    data = dat
+  )
 }
 
 
@@ -295,6 +665,13 @@ plot.gllvmTMB_multi <- function(x,
     )
   }
   dat <- do.call(rbind, rows)
+  dat$has_interval <- is.finite(dat$lower) & is.finite(dat$upper)
+  dat$interval_method <- ifelse(dat$has_interval, "bootstrap", "none")
+  dat$interval_status <- ifelse(
+    dat$has_interval,
+    "provided",
+    if (is.null(boot)) "none" else "missing"
+  )
 
   ## Order by repeatability descending if available, else by name
   if (!is.null(rep)) {
@@ -315,21 +692,169 @@ plot.gllvmTMB_multi <- function(x,
     ggplot2::geom_point(size = 3,
                         position = ggplot2::position_dodge(width = 0.5))
 
-  if (any(!is.na(dat$lower))) {
+  if (any(dat$has_interval)) {
     p <- p + ggplot2::geom_errorbarh(
+      data = dat[dat$has_interval, , drop = FALSE],
       ggplot2::aes(xmin = .data$lower, xmax = .data$upper),
       height = 0.2,
       position = ggplot2::position_dodge(width = 0.5)
     )
   }
+  if (any(dat$interval_status == "missing")) {
+    p <- p + ggplot2::geom_point(
+      data = dat[dat$interval_status == "missing", , drop = FALSE],
+      ggplot2::aes(x = .data$estimate, y = .data$trait),
+      inherit.aes = FALSE,
+      shape = 1,
+      colour = .gtmb_plot_palette[["ink"]],
+      size = 4,
+      stroke = 0.8,
+      position = ggplot2::position_dodge(width = 0.5)
+    )
+  }
 
-  p +
+  p <- p +
+    ggplot2::scale_colour_manual(
+      values = c(
+        "Repeatability" = .gtmb_plot_palette[["blue"]],
+        "Communality (B)" = .gtmb_plot_palette[["green"]],
+        "Communality (W)" = .gtmb_plot_palette[["orange"]]
+      )
+    ) +
+    ggplot2::scale_shape_manual(
+      values = c(
+        "Repeatability" = 16,
+        "Communality (B)" = 17,
+        "Communality (W)" = 15
+      )
+    ) +
     ggplot2::scale_x_continuous(limits = c(0, 1)) +
     ggplot2::labs(x = "Estimate", y = NULL,
                   colour = NULL, shape = NULL,
-                  title = "Integration indices by trait") +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(legend.position = "bottom")
+                  title = "Integration indices by trait",
+                  caption = if (any(dat$has_interval)) {
+                    "Whiskers show supplied bootstrap intervals; open rings mark requested intervals that were missing."
+                  } else {
+                    "Point estimates only; no intervals supplied."
+                  }) +
+    .gtmb_theme_figure()
+
+  .gtmb_plot_contract(
+    p,
+    type = "integration",
+    source = "extract_ICC_site + extract_communality",
+    level = c("unit", "unit_obs"),
+    interval_status = .gtmb_interval_status(dat$interval_status),
+    data = dat
+  )
+}
+
+
+# ---- communality / uniqueness --------------------------------------------
+
+.communality_plot_data_gtmb <- function(fit) {
+  tn <- .gtmb_trait_names(fit)
+  rows <- list()
+  if (isTRUE(fit$use$rr_B)) {
+    c2 <- suppressMessages(extract_communality(fit, level = "unit"))
+    if (!is.null(c2)) {
+      rows[[length(rows) + 1L]] <- data.frame(
+        trait = tn,
+        level = "unit",
+        communality = unname(c2[tn]),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (isTRUE(fit$use$rr_W)) {
+    c2 <- suppressMessages(extract_communality(fit, level = "unit_obs"))
+    if (!is.null(c2)) {
+      rows[[length(rows) + 1L]] <- data.frame(
+        trait = tn,
+        level = "unit_obs",
+        communality = unname(c2[tn]),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (length(rows) == 0L)
+    cli::cli_abort("No communality is available -- fit a latent() term first.")
+
+  dat <- do.call(rbind, rows)
+  dat$uniqueness <- pmax(0, 1 - dat$communality)
+  dat$trait <- factor(dat$trait, levels = rev(tn))
+  dat$level <- factor(dat$level, levels = c("unit", "unit_obs"))
+
+  shared <- data.frame(
+    trait = dat$trait,
+    level = dat$level,
+    component = "Shared latent (c^2)",
+    proportion = dat$communality,
+    communality = dat$communality,
+    stringsAsFactors = FALSE
+  )
+  unique <- data.frame(
+    trait = dat$trait,
+    level = dat$level,
+    component = "Trait-specific uniqueness",
+    proportion = dat$uniqueness,
+    communality = dat$communality,
+    stringsAsFactors = FALSE
+  )
+  out <- rbind(shared, unique)
+  out$component <- factor(
+    out$component,
+    levels = c("Shared latent (c^2)", "Trait-specific uniqueness")
+  )
+  out
+}
+
+.plot_communality_gtmb <- function(fit) {
+  dat <- .communality_plot_data_gtmb(fit)
+  levels_available <- as.character(unique(dat$level))
+
+  pal <- c(
+    "Shared latent (c^2)" = .gtmb_plot_palette[["green"]],
+    "Trait-specific uniqueness" = "#D0D0D0"
+  )
+
+  p <- ggplot2::ggplot(
+    dat,
+    ggplot2::aes(x = .data$proportion, y = .data$trait,
+                 fill = .data$component)
+  ) +
+    ggplot2::geom_col(
+      position = "stack",
+      colour = "white",
+      linewidth = 0.25,
+      width = 0.72
+    ) +
+    ggplot2::scale_fill_manual(values = pal, name = NULL) +
+    ggplot2::scale_x_continuous(
+      limits = c(0, 1.001),
+      labels = function(x) paste0(round(100 * x), "%"),
+      expand = ggplot2::expansion(mult = c(0, 0.02))
+    ) +
+    ggplot2::facet_wrap(~ level) +
+    ggplot2::labs(
+      x = "Proportion of trait variance",
+      y = NULL,
+      title = "Communality and uniqueness by trait",
+      caption = paste(
+        "Shared latent bars show c^2; grey bars show 1 - c^2.",
+        "Read communality with rank and convergence diagnostics.",
+        sep = "\n"
+      )
+    ) +
+    .gtmb_theme_figure()
+
+  .gtmb_plot_contract(
+    p,
+    type = "communality",
+    source = "extract_communality",
+    level = levels_available,
+    data = dat
+  )
 }
 
 
@@ -340,41 +865,71 @@ plot.gllvmTMB_multi <- function(x,
   ## extract_proportions already returns trait + component as factors,
   ## variance + proportion numeric.
 
-  ## Stable, pleasant component palette
+  component_labels <- c(
+    shared_phy      = "Shared phylogenetic",
+    shared_unit     = "Shared between-unit",
+    unique_unit     = "Unique between-unit",
+    shared_unit_obs = "Shared within-unit",
+    unique_unit_obs = "Unique within-unit",
+    link_residual   = "Link residual"
+  )
+  dat$component_label <- unname(component_labels[as.character(dat$component)])
+  dat$component_label[is.na(dat$component_label)] <- as.character(
+    dat$component[is.na(dat$component_label)]
+  )
+  component_levels <- c(
+    unname(component_labels[component_labels %in% dat$component_label]),
+    setdiff(unique(dat$component_label), unname(component_labels))
+  )
+  dat$component_label <- factor(
+    dat$component_label,
+    levels = component_levels
+  )
+
+  ## Stable colourblind-friendly component palette.
   pal <- c(
-    "shared_phy"      = "#762A83",
-    "shared_unit"     = "#2166AC",
-    "unique_unit"     = "#92C5DE",
-    "shared_unit_obs" = "#B2182B",
-    "unique_unit_obs" = "#F4A582",
-    "link_residual"   = "grey70"
+    "Shared phylogenetic" = .gtmb_plot_palette[["purple"]],
+    "Shared between-unit" = .gtmb_plot_palette[["blue"]],
+    "Unique between-unit" = .gtmb_plot_palette[["sky"]],
+    "Shared within-unit" = .gtmb_plot_palette[["vermillion"]],
+    "Unique within-unit" = .gtmb_plot_palette[["orange"]],
+    "Link residual" = "#BDBDBD"
   )
   ## Drop entries the data does not contain (so the legend is tight)
-  pal <- pal[intersect(names(pal), levels(dat$component))]
+  pal <- pal[intersect(names(pal), levels(dat$component_label))]
 
-  ggplot2::ggplot(dat,
-                  ggplot2::aes(x = .data$trait,
-                               y = .data$proportion,
-                               fill = .data$component)) +
-    ggplot2::geom_col(position = "stack") +
+  p <- ggplot2::ggplot(dat,
+                       ggplot2::aes(x = .data$proportion,
+                                    y = .data$trait,
+                                    fill = .data$component_label)) +
+    ggplot2::geom_col(position = "stack", colour = "white", linewidth = 0.25,
+                      width = 0.72) +
     ggplot2::scale_fill_manual(values = pal, name = "Component") +
-    ggplot2::scale_y_continuous(limits = c(0, 1.001),
+    ggplot2::scale_x_continuous(limits = c(0, 1.001),
                                 expand = ggplot2::expansion(mult = c(0, 0.02))) +
-    ggplot2::labs(x = NULL, y = "Proportion of variance",
-                  title = "Variance decomposition by trait") +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-      legend.position = "bottom"
-    )
+    ggplot2::labs(x = "Proportion of variance", y = NULL,
+                  title = "Variance decomposition by trait",
+                  caption = paste(
+                    "Point decomposition from extract_proportions();",
+                    "shared/unique splits should be interpreted with diagnostics."
+                  )) +
+    .gtmb_theme_figure()
+
+  .gtmb_plot_contract(
+    p,
+    type = "variance",
+    source = "extract_proportions",
+    level = c("unit", "unit_obs"),
+    data = dat
+  )
 }
 
 
 # ---- ordination biplot ----------------------------------------------------
 
 .plot_ordination_gtmb <- function(fit, level, axes = c(1L, 2L)) {
-  ## The dispatcher's default is the c("B","W") internal vector; for
-  ## ordination the user must pick one explicitly.
+  ## The dispatcher supplies "B" when the user omits level; an explicit
+  ## ordination request with multiple levels is still ambiguous.
   if (missing(level) || is.null(level) || length(level) != 1L)
     cli::cli_abort("Specify a single {.arg level} for ordination: {.val unit} or {.val unit_obs}.")
   if (!level %in% c("B", "W"))
@@ -397,6 +952,7 @@ plot.gllvmTMB_multi <- function(x,
     dat_l <- data.frame(
       trait   = rownames(L),
       loading = L[, 1L],
+      display_scale = 1,
       stringsAsFactors = FALSE
     )
     dat_s <- data.frame(
@@ -405,23 +961,29 @@ plot.gllvmTMB_multi <- function(x,
       stringsAsFactors = FALSE
     )
     p <- ggplot2::ggplot() +
-      ggplot2::geom_hline(yintercept = 0, colour = "grey80") +
+      ggplot2::geom_hline(
+        yintercept = 0,
+        colour = .gtmb_plot_palette[["grid"]]
+      ) +
       ggplot2::geom_point(data = dat_s,
                           ggplot2::aes(x = .data$x, y = .data$y),
-                          colour = "grey50", alpha = 0.6) +
+                          colour = .gtmb_plot_palette[["grey"]],
+                          alpha = 0.45) +
       ggplot2::geom_segment(
         data = dat_l,
         ggplot2::aes(x = .data$loading, xend = .data$loading,
                      y = 0, yend = 0.5 * sign(.data$loading) +
                        ifelse(.data$loading == 0, 0.3, 0)),
-        colour = "firebrick", linewidth = 0.6
+        colour = .gtmb_plot_palette[["vermillion"]],
+        linewidth = 0.7
       ) +
       ggplot2::geom_point(
         data = dat_l,
         ggplot2::aes(x = .data$loading,
                      y = 0.5 * sign(.data$loading) +
                        ifelse(.data$loading == 0, 0.3, 0)),
-        colour = "firebrick", size = 2
+        colour = .gtmb_plot_palette[["vermillion"]],
+        size = 2.3
       ) +
       ggplot2::geom_text(
         data = dat_l,
@@ -429,23 +991,137 @@ plot.gllvmTMB_multi <- function(x,
                      y = 0.5 * sign(.data$loading) +
                        ifelse(.data$loading == 0, 0.3, 0),
                      label = .data$trait),
+        colour = .gtmb_plot_palette[["vermillion"]],
         vjust = -0.5, size = 3.5
       ) +
       ggplot2::labs(x = "LV1", y = NULL,
-                    title = paste0("Level ", level_label, ": 1D ordination")) +
-      ggplot2::theme_minimal() +
+                    title = paste0("Level ", level_label, ": 1D ordination"),
+                    caption = paste(
+                      "Trait positions show loadings on LV1.",
+                      "Loading signs depend on the chosen orientation."
+                    )) +
+      .gtmb_theme_figure() +
       ggplot2::theme(
         axis.text.y  = ggplot2::element_blank(),
         axis.ticks.y = ggplot2::element_blank()
       )
-    return(p)
+    return(.gtmb_plot_contract(
+      p,
+      type = "ordination",
+      source = "extract_ordination",
+      level = level_label,
+      rotation_status = "rotation_ambiguous_loadings",
+      data = list(scores = dat_s, loadings = dat_l)
+    ))
   }
 
-  ## d >= 2: 2D biplot of the requested axis pair.
-  if (length(axes) != 2L)
-    cli::cli_abort("{.arg axes} must be length 2.")
+  ## d >= 2: 2D biplot or 3-axis pair-grid.
+  axes <- as.integer(axes)
+  if (d == 3L && identical(axes, c(1L, 2L))) {
+    axes <- 1:3
+  }
+  if (!length(axes) %in% c(2L, 3L))
+    cli::cli_abort("{.arg axes} must be length 2 or length 3.")
+  if (anyDuplicated(axes))
+    cli::cli_abort("{.arg axes} must contain unique axis numbers.")
+  if (min(axes) < 1L)
+    cli::cli_abort("{.arg axes} must contain positive axis numbers.")
   if (max(axes) > d)
-    cli::cli_abort("Requested {.arg axes = c({axes[1L]}, {axes[2L]})} exceed d_{level_label} = {d}.")
+    cli::cli_abort("Requested {.arg axes = c({paste(axes, collapse = ', ')})} exceed d_{level_label} = {d}.")
+
+  if (length(axes) == 3L) {
+    axis_pairs <- utils::combn(axes, 2L)
+    selected_scores <- Sc[, axes, drop = FALSE]
+    span <- max(abs(selected_scores), na.rm = TRUE)
+    loading_max <- max(abs(L[, axes, drop = FALSE]), 1e-9)
+    sc <- 0.7 * span / loading_max
+
+    score_rows <- vector("list", ncol(axis_pairs))
+    loading_rows <- vector("list", ncol(axis_pairs))
+    for (j in seq_len(ncol(axis_pairs))) {
+      a1 <- axis_pairs[1L, j]
+      a2 <- axis_pairs[2L, j]
+      pair_label <- paste0("LV", a1, " vs LV", a2)
+      score_rows[[j]] <- data.frame(
+        row_id = rownames(Sc) %||% seq_len(nrow(Sc)),
+        x = Sc[, a1],
+        y = Sc[, a2],
+        axis_x = paste0("LV", a1),
+        axis_y = paste0("LV", a2),
+        pair = pair_label,
+        stringsAsFactors = FALSE
+      )
+      loading_rows[[j]] <- data.frame(
+        trait = rownames(L),
+        loading_x = L[, a1],
+        loading_y = L[, a2],
+        x = L[, a1] * sc,
+        y = L[, a2] * sc,
+        axis_x = paste0("LV", a1),
+        axis_y = paste0("LV", a2),
+        pair = pair_label,
+        display_scale = sc,
+        stringsAsFactors = FALSE
+      )
+    }
+    dat_s <- do.call(rbind, score_rows)
+    dat_l <- do.call(rbind, loading_rows)
+    dat_s$pair <- factor(dat_s$pair, levels = unique(dat_s$pair))
+    dat_l$pair <- factor(dat_l$pair, levels = levels(dat_s$pair))
+
+    p <- ggplot2::ggplot() +
+      ggplot2::geom_hline(yintercept = 0,
+                          colour = .gtmb_plot_palette[["grid"]],
+                          linetype = "dashed") +
+      ggplot2::geom_vline(xintercept = 0,
+                          colour = .gtmb_plot_palette[["grid"]],
+                          linetype = "dashed") +
+      ggplot2::geom_point(data = dat_s,
+                          ggplot2::aes(x = .data$x, y = .data$y),
+                          colour = .gtmb_plot_palette[["grey"]],
+                          alpha = 0.35,
+                          size = 1.4) +
+      ggplot2::geom_segment(
+        data = dat_l,
+        ggplot2::aes(x = 0, y = 0, xend = .data$x, yend = .data$y),
+        arrow = ggplot2::arrow(length = ggplot2::unit(0.18, "cm")),
+        colour = .gtmb_plot_palette[["vermillion"]],
+        linewidth = 0.65
+      ) +
+      ggplot2::geom_text(
+        data = dat_l,
+        ggplot2::aes(x = .data$x, y = .data$y, label = .data$trait),
+        colour = .gtmb_plot_palette[["vermillion"]],
+        vjust = -0.5,
+        size = 3.2,
+        check_overlap = TRUE
+      ) +
+      ggplot2::coord_equal() +
+      ggplot2::facet_wrap(~ pair, nrow = 1L) +
+      ggplot2::labs(
+        x = "Latent score / display-scaled loading",
+        y = "Latent score / display-scaled loading",
+        title = paste0("Level ", level_label, ": 3D ordination pair grid"),
+        caption = paste(
+          "Each panel shows one pair of latent axes from the same 3D ordination.",
+          "Grey points are latent scores; arrows are display-scaled trait loadings.",
+          "Axes and signs depend on rotation/orientation.",
+          sep = "\n"
+        )
+      ) +
+      .gtmb_theme_figure()
+
+    return(.gtmb_plot_contract(
+      p,
+      type = "ordination",
+      source = "extract_ordination",
+      level = level_label,
+      rotation_status = "rotation_ambiguous_loadings",
+      data = list(scores = dat_s, loadings = dat_l),
+      notes = "3D ordination is shown as a static pair grid, not a perspective 3D rendering."
+    ))
+  }
+
   a1 <- axes[1L]; a2 <- axes[2L]
 
   dat_s <- data.frame(
@@ -459,35 +1135,57 @@ plot.gllvmTMB_multi <- function(x,
   sc <- 0.7 * span / loading_max
   dat_l <- data.frame(
     trait = rownames(L),
-    x     = L[, a1] * sc,
-    y     = L[, a2] * sc,
+    loading_x = L[, a1],
+    loading_y = L[, a2],
+    x = L[, a1] * sc,
+    y = L[, a2] * sc,
+    display_scale = sc,
     stringsAsFactors = FALSE
   )
 
-  ggplot2::ggplot() +
-    ggplot2::geom_hline(yintercept = 0, colour = "grey80",
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_hline(yintercept = 0,
+                        colour = .gtmb_plot_palette[["grid"]],
                         linetype = "dashed") +
-    ggplot2::geom_vline(xintercept = 0, colour = "grey80",
+    ggplot2::geom_vline(xintercept = 0,
+                        colour = .gtmb_plot_palette[["grid"]],
                         linetype = "dashed") +
     ggplot2::geom_point(data = dat_s,
                         ggplot2::aes(x = .data$x, y = .data$y),
-                        colour = "grey50", alpha = 0.5) +
+                        colour = .gtmb_plot_palette[["grey"]],
+                        alpha = 0.45) +
     ggplot2::geom_segment(
       data = dat_l,
       ggplot2::aes(x = 0, y = 0, xend = .data$x, yend = .data$y),
       arrow = ggplot2::arrow(length = ggplot2::unit(0.2, "cm")),
-      colour = "firebrick", linewidth = 0.6
+      colour = .gtmb_plot_palette[["vermillion"]],
+      linewidth = 0.7
     ) +
     ggplot2::geom_text(
       data = dat_l,
       ggplot2::aes(x = .data$x, y = .data$y, label = .data$trait),
-      colour = "firebrick", vjust = -0.5, size = 3.5
+      colour = .gtmb_plot_palette[["vermillion"]],
+      vjust = -0.5, size = 3.5
     ) +
     ggplot2::coord_equal() +
     ggplot2::labs(
       x = paste0("LV", a1),
       y = paste0("LV", a2),
-      title = paste0("Level ", level_label, ": ordination biplot")
+      title = paste0("Level ", level_label, ": ordination biplot"),
+      caption = paste(
+        "Grey points are latent scores; arrows are display-scaled trait loadings.",
+        "Axes and signs depend on rotation/orientation.",
+        sep = "\n"
+      )
     ) +
-    ggplot2::theme_minimal()
+    .gtmb_theme_figure()
+
+  .gtmb_plot_contract(
+    p,
+    type = "ordination",
+    source = "extract_ordination",
+    level = level_label,
+    rotation_status = "rotation_ambiguous_loadings",
+    data = list(scores = dat_s, loadings = dat_l)
+  )
 }

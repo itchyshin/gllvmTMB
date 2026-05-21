@@ -37,11 +37,21 @@ Plus the **random-slope** keywords alongside the grid:
 `phylo_slope(x | species)` and `animal_slope(x | id)` — for
 per-group random regression slopes on a continuous covariate.
 
+Status labels during the public-surface reset:
+
+| row | Public status | Validation note |
+|---|---|---|
+| none | covered for the core Gaussian `latent() + unique()` and long/wide grammar | FG-02, FG-03, FG-06, FAM-01 |
+| animal | partial | parser and relatedness plumbing exist; the worked animal-model article is hidden until a stronger fixture and recovery story pass |
+| phylo | partial | paired phylogenetic paths are implemented, but the public article is hidden until the phylo/non-phylo split and validation rows are reviewed |
+| spatial | partial | mesh and dispatch are implemented; figure-heavy spatial examples wait for diagnostics and Florence review |
+| meta_V | partial | exact known-V support exists; proportional mode is planned, so meta-analysis examples stay hidden |
+
 Use this page as a grammar lookup. For a worked example, start with
 [`morphometrics`](morphometrics.html) for non-phylogenetic
-`latent() + unique()` models or
-[`phylogenetic-gllvm`](phylogenetic-gllvm.html) for phylogenetic
-trait covariance.
+`latent() + unique()` models. Phylogenetic, spatial, animal, and
+meta-analysis worked examples are under audit until their validation
+and rendered HTML gates pass.
 
 ## The Five Modes
 
@@ -51,7 +61,7 @@ level.
 | mode | Meaning | Use when |
 |---|---|---|
 | scalar | one shared variance for all traits | every trait should have the same group-level scale |
-| unique | a diagonal matrix `S` of trait-specific variances | pairing with `latent()` or fitting independent trait variances |
+| unique | a diagonal matrix `Psi` of trait-specific variances `psi` | pairing with `latent()` or fitting independent trait variances |
 | indep | the same diagonal covariance as standalone `unique()` | you want to state marginal-only intent explicitly |
 | dep | a full unstructured positive-definite `Sigma` | the number of traits is small enough for a saturated covariance |
 | latent | low-rank shared covariance `Lambda Lambda^T` | a few latent axes should explain cross-trait association |
@@ -112,6 +122,7 @@ fit_long <- gllvmTMB(
     latent(0 + trait | individual, d = 2) +
     unique(0 + trait | individual),
   data = df_long,
+  trait = "trait",
   unit = "individual"
 )
 

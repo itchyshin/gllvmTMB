@@ -1,71 +1,49 @@
 # gllvmTMB
 
-`gllvmTMB` fits **multivariate models** for data where the same
-rows carry several measurements at once -- five body traits per
-bird, twenty species occurrences per site, three behaviours per
-session, several outcomes per study. The scientific target is
-the **trait covariance**: which measurements co-vary, what drives
-that covariance (a shared latent axis? a phylogenetic signal? a
-spatial pattern?), and how much variance is trait-specific.
+`gllvmTMB` fits multivariate models for data where each site,
+individual, species, or study has several responses: body traits,
+species occurrences, behaviours, outcomes, or similar measurements.
+The main question is simple:
 
-Three things distinguish `gllvmTMB`:
+> Which responses vary together, and how much of that variation is shared
+> versus response-specific?
 
-- **Stacked-trait long format.** Internally the engine works on
-  `(unit, trait)` observations stacked into a long data frame, so
-  one fit can handle several traits with different response
-  distributions, missing cells, and per-row predictors. Wide data
-  frames are accepted; the package pivots for you.
-- **One formula grammar** for trait covariance. `latent()` adds a
-  low-rank shared axis; `unique()` adds a trait-specific diagonal;
-  the phylogenetic and spatial variants (`phylo_latent`,
-  `spatial_unique`, etc.) extend the same grammar to species
-  relatedness and spatial fields.
-- **TMB engine, maximum-likelihood (ML) estimates.** Fits take
-  seconds to minutes; profile-likelihood and bootstrap intervals
-  are first-class. (REML is on the post-0.2.0 roadmap as a
-  Gaussian-only feature -- see `NEWS.md`.)
+The first public examples focus on the safest path: Gaussian
+stacked-trait models with a shared latent axis plus trait-specific
+unique variance,
 
-## What "stacked-trait" means
+```text
+Sigma = Lambda Lambda^T + Psi.
+```
 
-Internally, every fit sees one row per `(unit, trait)`
-observation. Five traits on 100 individuals become 500 rows, each
-with the trait identity in a `trait` column and the response in a
-`value` column. Different traits can use different response
-distributions; missing cells drop out automatically. You can hand
-the engine a long data frame directly, or a wide data frame via
-the `traits(...)` formula-LHS marker -- the package pivots wide
-to long for you.
+You can fit the same model from long data or wide data. Long data are
+canonical; wide data use the `traits(...)` formula marker and are pivoted
+internally.
 
-The data shape is general: site x species, individual x trait,
-species x trait, paper x outcome, or any similar `unit x response`
-layout.
+## Start Here
 
-## Start here
+| If you want to... | Read this |
+|---|---|
+| fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
+| see the full worked example | [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html) |
+| interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
+| choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
+| check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
+| diagnose hard fits | [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) and [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html) |
 
-- New to the package? Read
-  [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html).
-- Not sure which covariance structure to use? Read
-  [Choose your model](https://itchyshin.github.io/gllvmTMB/articles/choose-your-model.html).
-- Fitting continuous traits for individuals? Start with
-  [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html).
-- Fitting binary species occurrences across sites? See
-  [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html).
-- Interpreting Sigma, correlations, and communality? Read
-  [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html).
-- Avoiding common syntax and identifiability traps? Read
-  [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html).
+This is preview version `0.2.0` and the package is pre-CRAN. Advanced
+worked examples -- joint SDMs, profile-likelihood intervals, animal
+models, phylogenetic GLLVMs, spatial models, mixed-family examples, and
+meta-analysis -- are under audit. They will return to the public navbar
+only after their example data, diagnostics, validation evidence, and
+rendered HTML review pass.
 
-## What can I model now?
+## What "stacked-trait" Means
 
-- **Continuous stacked traits** (individual × trait, site × trait, species × trait): Gaussian GLLVMs with `latent()` + `unique()`. → [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html).
-- **Binary, count, or ordinal multivariate responses**: any of 15 response families, single- or mixed-family. → [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html).
-- **Phylogenetic trait covariance**: `phylo_latent()` + `phylo_unique()` with a species tree.
-- **Spatial multivariate structure**: `spatial_*()` keywords with SPDE meshes from `make_mesh()`.
-- **Meta-analytic known sampling covariance**: `meta_V(V = V)` for multivariate meta-analysis.
-
-This is preview version `0.2.0` (pre-CRAN). The Status matrix
-further below shows what is stable today, experimental (under
-active validation), or planned (named future releases).
+Internally, every fit sees one row per `(unit, trait)` observation.
+Five traits on 100 individuals become 500 rows, with the trait identity
+in a `trait` column and the response in a `value` column. The same entry
+point also accepts a wide data frame through `traits(...)`.
 
 ## Install
 
@@ -97,6 +75,7 @@ fit <- gllvmTMB(
     latent(0 + trait | site, d = 1) +
     unique(0 + trait | site),
   data = sim$data,
+  trait = "trait",
   unit = "site"
 )
 
@@ -185,110 +164,20 @@ where `Lambda` is the shared-axis loading matrix (set by
 factor-analysis / SEM convention) is the trait-specific
 residual variance (set by `unique()`).
 
-## Status of supported features
+## Current Status
 
-The matrix below sorts each feature into three buckets so you
-can tell at a glance whether a path is ready for publication-
-quality use (**stable**), works but has known caveats or is
-under active validation (**experimental**), or is on the
-roadmap but not yet implemented (**planned**). See
-[`Current boundaries`](#current-boundaries) below for the
-discussion of what is intentionally out of scope or removed.
+The public site is intentionally small while `gllvmTMB` is pre-CRAN.
+Use the table below as the homepage version; the detailed evidence lives in
+the [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
+and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 
-**Vocabulary** (refreshed 2026-05-16 against the
-[validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md),
-which is the developer-facing source of truth with 102 rows of
-test-evidence-backed status):
-
-- **stable** ⇔ register row `covered` for the primary advertised
-  regime (Gaussian, or whatever is named in the row);
-- **experimental** ⇔ register row `partial` (works in the named
-  regime, but coverage is shallower than advertised elsewhere
-  — typically extends to non-Gaussian families, mixed-family
-  fits, or non-default keyword combinations pending Phase 0B
-  verification or M1 / M2 validation);
-- **planned** ⇔ register row `blocked` (advertised in the
-  roadmap but not yet validated; future-release work).
-
-Where a feature is stable in one regime and experimental in
-another, the table calls that out explicitly. Register row IDs
-(`FG-NN`, `FAM-NN`, `MIX-NN`, etc.) cited in the Notes column
-let you trace any claim to its test-file evidence.
-
-| Feature | Status | Notes |
-|---|---|---|
-| **Gaussian `latent()` + `unique()` paired decomposition** | stable | M0 baseline; $\Sigma = \Lambda\Lambda^\top + \Psi$. Worked example: [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). (Register FG-04..FG-06, FAM-01.) |
-| **Single-family non-Gaussian: binomial-logit, Poisson, NB2** | stable | Engine + recovery tests. (FAM-02, FAM-06, FAM-08.) |
-| **Single-family non-Gaussian: other links + Beta, Gamma, lognormal, Student-t, Tweedie, betabinomial, truncated** | experimental | Smoke tests or recovery tests; depth varies by family. See register FAM-03..FAM-15 for per-family detail. |
-| **Single-family ordinal-probit** | experimental | Smoke test; full M2 validation pending (FAM-14). Per-trait cutpoints work. |
-| **Single-family delta / hurdle (`delta_gamma`, `delta_lognormal`, etc.)** | experimental | Engine + per-family recovery tests; mixed-family with delta is deferred (see Current boundaries). |
-| **Mixed-family fits `family = list(...)` (non-delta)** | experimental | Engine + per-row dispatch covered (MIX-01..MIX-02); extractors `partial` on mixed-family (MIX-03..MIX-08). The **M1 milestone** walks these to stable. |
-| **Long-format engine + wide `traits(...)` LHS** | stable | Equivalent fits; long is canonical, wide is the convenience entry point (FG-01..FG-03). |
-| **Extractors: `extract_Sigma / Omega / correlations / communality / repeatability / phylo_signal / residual_split`** | stable (Gaussian) / experimental (non-Gaussian + mixed-family) | Gaussian single-family covered; non-Gaussian and mixed-family partial — the **M1 milestone** walks MIX-03..MIX-08 to stable (EXT-01..EXT-08). |
-| **`extract_ordination()`, `getLoadings()`, `rotate_loadings()`** | stable | Rotation-variant; helpers carry rotation-disclaimer captions (EXT-09, EXT-14, EXT-15). |
-| **`confint(method = c("wald", "profile", "bootstrap"))`** | stable | All three methods backed by tests; PR #100 fixed multi-start sdreport consistency; PR #109 added drmTMB-style `profile_targets()` controlled vocabulary (CI-01..CI-03). |
-| **Profile-likelihood CIs on derived quantities (communality, repeatability, phylo signal, latent-scale correlation)** | stable (Gaussian) / experimental (mixed-family) | All four `profile_ci_*()` helpers covered for Gaussian (CI-04..CI-07; PRs #105 / #120 / #122). Mixed-family is M3 work (CI-10). |
-| **`coverage_study()` empirical coverage gate (≥ 94 %)** | experimental | Smoke fixture (CI-08, PR #120); full R = 200 grid is the M3 milestone. |
-| **`check_identifiability()`, `gllvmTMB_check_consistency()`, `check_auto_residual()`, `confint_inspect()`, `sanity_multi()`** | stable | Diagnostic surface complete (DIA-01..DIA-07); Phase 1b validation milestone closed five of seven. |
-| **Phylogenetic covariance: Hadfield & Nakagawa (2010, *J. Evol. Biol.* 23: 494–508) sparse $A^{-1}$ + paired `phylo_latent + phylo_unique`; `phylo_scalar / indep / dep / slope` variants** | stable (paired) / experimental (variants) | Paired form + three-piece fallback for small trees covered; variants smoke-tested; full verification Phase 0B / M1 (PHY-01..PHY-10). |
-| **Spatial covariance: SPDE mesh + `spatial_latent / unique / scalar / indep / dep`** | stable (mesh + dispatch) / experimental (variants) | SPDE machinery inherited from `sdmTMB` (SPA-01, SPA-05..SPA-07); per-keyword variants smoke / recovery tested; full verification Phase 0B (SPA-02..SPA-04). See [Joint species distribution modelling](https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html). |
-| **`meta_V(V = V)` with `block_V()` within-study correlation** | stable (block-V) / experimental (single-V) | Block-V form covered (MET-02); single-V partial (MET-01). Renamed from `meta_known_V()` in 0.2.0; old name is a deprecated alias. |
-| **`meta_V(type = "proportional")` (Nakagawa 2022)** | planned | Post-CRAN extension (MET-03); current implemented `type = "exact"` mode is additive known-V. |
-| **`lambda_constraint` confirmatory loadings** | experimental | Gaussian smoke test (LAM-02); binary IRT validation is the M2.3 milestone (LAM-03). See [Lambda constraints](https://itchyshin.github.io/gllvmTMB/articles/lambda-constraint.html). |
-| **`suggest_lambda_constraint()`** | experimental | Smoke test (LAM-04); M2.4 milestone covers the binary regime. |
-| **Multi-start optimisation (`n_init >= 2`)** | stable | Reduced-rank fits recommended to use `n_init >= 5`; multi-start sdreport / report consistency fixed in PR #100 (DIA-06). |
-| **Random slopes inside `latent + unique` (single slope, `s = 1`)** | planned | M1 milestone per `docs/design/04-random-effects.md`; capped at 1 slope for M1, with 2- and 3-slope support conditional on validation evidence (RE-02..RE-03). |
-| **`simulate.gllvmTMB_multi()` family-aware redraws** | planned | Gaussian-only + selected tiers currently work (MIS-05); family-aware redraws are M2 work. |
-| **`predict.gllvmTMB_multi()` typed family outputs** | planned | `link` / `response` work (MIS-07); ordinal-probit category probabilities, delta presence / positive-mean, and mixed-family per-trait `linkinv` are M2 work. |
-| **REML estimation** | planned | Post-0.2.0 release as a Gaussian-only feature. |
-| **Storage controls (`keep_tmb_object = FALSE`)** | planned | Mirror `drmTMB`'s pattern for serialised-fit footprint. |
-| **SPDE barrier mesh** | planned | Post-CRAN extension. |
-
-The **stable** rows are the core surface you can use in
-publication-quality work today; the **experimental** rows are
-under active validation (the M1 / M2 / M3 milestones close many
-of them); the **planned** rows are explicit gaps that named
-future releases will close. Items not in any of these three
-buckets are either out of scope or removed — see
-[`Current boundaries`](#current-boundaries).
-
-For the row-by-row evidence backing every "stable" claim
-(test-file path, diagnostic status, interval status), see the
-[validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
-
-## Covariance keyword grid
-
-The formula grammar is a **4 x 5** grid: correlation source crossed
-with covariance mode. Rows go from finest-grained (individual
-pedigree) to broadest (geography).
-
-|                | scalar             | unique             | indep             | dep             | latent             |
-|---             |---                 |---                 |---                |---              |---                 |
-| **none**       | (omit)             | `unique()`         | `indep()`         | `dep()`         | `latent()`         |
-| **animal**     | `animal_scalar()`  | `animal_unique()`  | `animal_indep()`  | `animal_dep()`  | `animal_latent()`  |
-| **phylo**      | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
-| **spatial**    | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
-
-Plus the random-slope keywords `phylo_slope(x | species)` and
-`animal_slope(x | id)` for per-group random regression slopes.
-
-**A vs V naming boundary**: `animal_*` and `phylo_*` keywords accept
-**A** (relatedness covariance), **Ainv** (sparse precision), or
-**pedigree** (animal-only); the separate `meta_V(V = V)`
-keyword accepts **V** for *sampling variance* in meta-analysis
-(`meta_known_V()` is the deprecated alias).
-See [Design 14](docs/design/14-known-relatedness-keywords.md).
-
-The decomposition mode is `latent + unique` paired:
-
-```text
-Sigma = Lambda Lambda^T + diag(psi)
-```
-
-Standalone `latent()` is the no-residual reduced-rank subset.
-Standalone `unique()` is the marginal independent mode and is
-equivalent to `indep()`. `dep()` estimates a full unstructured
-Sigma.
+| Surface | Current message |
+|---|---|
+| Long and wide data | Both are supported through `gllvmTMB()`: long data use `value ~ ...` with `trait = "trait"`; wide data use `traits(...) ~ ...`. |
+| First worked model | Gaussian `latent() + unique()` is the safest public example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
+| Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
+| Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
+| Advanced examples | Joint SDM, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI articles are under audit until their example objects, diagnostics, and validation gates pass. |
 
 ## Current boundaries
 

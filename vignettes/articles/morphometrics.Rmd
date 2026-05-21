@@ -43,69 +43,76 @@ library(ggplot2)
 library(dplyr)
 ```
 
-## Simulate
+## Example Data
 
-We pretend to measure $n = 150$ sparrows on five body traits. The
-true loading matrix has a *size* axis (factor 1, all positive: bigger
-birds tend to be bigger on every measurement) and a *shape* axis
-(factor 2, mixed signs: long-and-skinny vs. short-and-stocky). Each
-trait also has a small trait-specific unique variance $\psi_t^2$:
+We use a prepared example object rather than asking you to read the
+data-generating script first. The script is still in the repository
+(`data-raw/examples/make-morphometrics-example.R`) so the fixture is
+reproducible, but the article starts where a user starts: with data,
+truth, formulas, and one biological question.
 
-```{r sim}
-set.seed(2025)
-n_ind <- 150
-trait_names <- c("length", "mass", "wing", "tarsus", "bill")
+```{r example-data, eval = FALSE}
+morph <- readRDS(system.file(
+  "extdata", "examples", "morphometrics-example.rds",
+  package = "gllvmTMB"
+))
+df <- morph$data_long
+df_wide <- morph$data_wide
+truth <- morph$truth
+estimands <- morph$estimands
+```
+
+```{r example-data-load, include = FALSE}
+example_path <- system.file(
+  "extdata", "examples", "morphometrics-example.rds",
+  package = "gllvmTMB"
+)
+example_path <- c(
+  example_path,
+  file.path("inst", "extdata", "examples", "morphometrics-example.rds"),
+  file.path("..", "inst", "extdata", "examples", "morphometrics-example.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-example.rds")
+)
+example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
+stopifnot(!is.na(example_path))
+morph <- readRDS(example_path)
+
+df <- morph$data_long
+df_wide <- morph$data_wide
+truth <- morph$truth
+estimands <- morph$estimands
+
+n_ind <- truth$n_individuals
+trait_names <- truth$trait_names
 T <- length(trait_names)
+Lambda_true <- truth$Lambda
+psi_true <- truth$psi
+Sigma_true <- truth$Sigma
+```
 
-# True loadings: factor 1 = "size", factor 2 = "shape"
-Lambda_true <- matrix(c(
-  0.9,  0.1,
-  1.0,  0.2,
-  0.8, -0.4,
-  0.7, -0.5,
-  0.6,  0.6
-), nrow = T, ncol = 2, byrow = TRUE,
-   dimnames = list(trait_names, c("size", "shape")))
-
-# True trait-specific unique (residual) variances
-psi2_true <- c(length = 0.15, mass = 0.10, wing = 0.20, tarsus = 0.12, bill = 0.18)
-
-# Latent factors + trait-specific residuals (no global sigma_eps in truth)
-u <- matrix(rnorm(n_ind * 2), n_ind, 2)
-eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(psi2_true[t])))
-Y <- u %*% t(Lambda_true) + eps
-rownames(Y) <- as.character(seq_len(n_ind))
-colnames(Y) <- trait_names
-
-# Wide-format data: one row per individual, one column per trait
-df_wide <- data.frame(
-  individual = factor(seq_len(n_ind)),
-  Y,
-  check.names = FALSE
-)
-
-# Long-format data: one row per (individual, trait)
-df <- data.frame(
-  individual = factor(rep(seq_len(n_ind), each = T)),
-  trait      = factor(rep(trait_names, n_ind), levels = trait_names),
-  value      = as.vector(t(Y))
-)
+```{r example-data-preview}
+morph$story$question
 head(df, 8)
 ```
 
+The object represents `r n_ind` individual birds measured on five
+traits: body length, mass, wing chord, tarsus length, and bill depth.
+The true loading matrix has a *size* axis (factor 1, all positive:
+bigger birds tend to be bigger on every measurement) and a *shape*
+axis (factor 2, mixed signs: long-and-skinny vs. short-and-stocky).
+Each trait also has a trait-specific unique variance `psi`.
+
 ```{r sim-truth}
-Sigma_true <- Lambda_true %*% t(Lambda_true) + diag(psi2_true)  # full between-individual covariance
 round(Sigma_true, 2)
+estimands
 ```
 
-> **Pitfall: factor level order.** The line
-> `factor(rep(trait_names, n_ind), levels = trait_names)` is critical.
-> Without the explicit `levels = trait_names`, R sorts levels
-> alphabetically (`bill, length, mass, tarsus, wing`), and the rows
-> of fitted $\hat{\boldsymbol\Sigma}_B$ will not match the rows of
-> your `Lambda_true`. The model is correct; the comparison is not.
-> This is a subtle data-prep gotcha worth flagging because it makes
-> "recovery" look broken when only the row labels are misaligned.
+> **Pitfall: factor level order.** The example object pins
+> `levels(df$trait)` to `truth$trait_names`. Without explicit levels,
+> R may sort levels alphabetically (`bill, length, mass, tarsus,
+> wing`), and the rows of fitted $\hat{\boldsymbol\Sigma}_B$ will not
+> match the rows of the truth table. The model is correct; the
+> comparison is not.
 
 ## Fit
 
@@ -115,22 +122,25 @@ the wide forms are the convenient equivalents for readers who already
 have one row per individual and one column per trait.
 
 ```{r fit}
+# The object stores the exact long and wide formulas used below:
+morph$formula_long
+morph$formula_wide
+
 # Long format (canonical)
 fit_long <- gllvmTMB(
-  value ~ 0 + trait +
-          latent(0 + trait | individual, d = 2) +
-          unique(0 + trait | individual),
+  morph$formula_long,
   data = df,
-  unit = "individual"      # tell the engine which column groups observations
+  trait = morph$fit_args$trait,
+  unit = morph$fit_args$unit,
+  family = morph$fit_args$family
 )
 
 # Wide data-frame format (same model with compact formula syntax)
 fit_wide_formula <- gllvmTMB(
-  traits(length, mass, wing, tarsus, bill) ~ 1 +
-          latent(1 | individual, d = 2) +
-          unique(1 | individual),
+  morph$formula_wide,
   data = df_wide,
-  unit = "individual"
+  unit = morph$fit_args$unit,
+  family = morph$fit_args$family
 )
 
 # The rest of the article uses the canonical long-format fit.
@@ -202,8 +212,8 @@ first, trait-specific variation second.
 > $\sigma_\varepsilon$ to a negligibly small constant (and prints an
 > `i Auto-suppressing sigma_eps: ...` message), so the `unique()` term
 > absorbs the full observation-level residual and becomes the
-> trait-specific residual variance $\psi_t^2$. The confounding that would
-> arise if both $\sigma_\varepsilon$ and $\psi_t^2$ were estimated freely
+> trait-specific residual variance $\psi_t$. The confounding that would
+> arise if both $\sigma_\varepsilon$ and $\psi_t$ were estimated freely
 > is therefore resolved by construction — you do not need to choose
 > between them. With *longitudinal* data (multiple sessions per
 > individual), both terms are separately identified and can be
@@ -214,10 +224,10 @@ first, trait-specific variation second.
 > for the side-by-side comparison.
 
 ```{r fit-unique-s}
-# Trait-specific unique standard deviations (psi_t)
+# Trait-specific unique variances (psi_t)
 psi_hat <- extract_Sigma(fit, level = "unit", part = "unique")$s
 cat("Estimated psi_t:", round(psi_hat, 3), "\n")
-cat("True      psi_t:", round(sqrt(psi2_true), 3), "\n")
+cat("True      psi_t:", round(psi_true, 3), "\n")
 ```
 
 ## Recovered $\hat{\boldsymbol\Sigma}_B$ vs truth
@@ -233,7 +243,7 @@ cat("Frobenius |Sigma_hat - Sigma_true| / |Sigma_true| =",
 A side-by-side correlation heatmap shows whether the recovered
 trait correlations agree with truth at the entry level:
 
-```{r corr-heatmap, fig.width = 7.5, fig.height = 3.5, fig.cap = "True (left) vs fitted (right) trait-pair correlations from Sigma_B = Lambda Lambda^T. The 1:1 agreement of the colours and labels is the visual signature of clean recovery."}
+```{r corr-heatmap, fig.width = 7.5, fig.height = 3.5, fig.cap = "True (left) vs fitted (right) trait-pair correlations from the total between-unit covariance Sigma_B = Lambda Lambda^T + Psi. The diagonal is muted because self-correlation is fixed at 1; the off-diagonal agreement is the visual recovery check."}
 suppressPackageStartupMessages(library(ggplot2))
 make_corr_long <- function(M, label) {
   R <- cov2cor(M)
@@ -249,14 +259,23 @@ rownames(Sigma_hat)  <- colnames(Sigma_hat)  <- trait_names
 df_corr <- rbind(make_corr_long(Sigma_true, "True"),
                  make_corr_long(Sigma_hat,  "Fitted"))
 df_corr$panel <- factor(df_corr$panel, levels = c("True", "Fitted"))
+df_corr$display_rho <- ifelse(df_corr$trait_i == df_corr$trait_j,
+                              NA_real_, df_corr$rho)
+df_corr$label <- ifelse(df_corr$trait_i == df_corr$trait_j,
+                        "", sprintf("%.2f", df_corr$rho))
+df_corr$label_colour <- ifelse(abs(df_corr$display_rho) >= 0.65,
+                               "white", "#2B2B2B")
+df_corr$label_colour[is.na(df_corr$label_colour)] <- "#2B2B2B"
 
-ggplot(df_corr, aes(trait_j, trait_i, fill = rho)) +
-  geom_tile(colour = "white") +
-  geom_text(aes(label = sprintf("%.2f", rho)), size = 3.2) +
-  scale_fill_gradient2(low = "#3b82c6", mid = "white", high = "#d33",
-                       midpoint = 0, limits = c(-1, 1)) +
+ggplot(df_corr, aes(trait_j, trait_i, fill = display_rho)) +
+  geom_tile(colour = "white", linewidth = 0.6) +
+  geom_text(aes(label = label), colour = df_corr$label_colour, size = 3.2) +
+  scale_fill_gradient2(low = "#0072B2", mid = "#F7F7F7", high = "#D55E00",
+                       midpoint = 0, limits = c(-1, 1),
+                       na.value = "#F4F4F4") +
   facet_wrap(~ panel) +
   scale_y_discrete(limits = rev) +
+  coord_equal() +
   labs(x = NULL, y = NULL, fill = expression(rho)) +
   theme_minimal(base_size = 11) +
   theme(panel.grid = element_blank(),
@@ -297,86 +316,11 @@ is the fraction of trait $t$'s variance shared with the others via
 the latent factors; high $c_t^2$ means strongly integrated, low
 $c_t^2$ means trait-specific variation dominates.
 
-## Recovery across replicates
-
-A single fit cannot tell you whether the model is recovering truth
-or just one lucky draw. Repeat over `R = 20` independently simulated
-datasets and look at the distribution of the bias. The loop uses the
-same long/wide formula pair as above; it checks the wide equivalent on
-the first replicate only, so the article does not double the cost of
-every recovery fit.
-
-```{r recover-replicates, fig.height = 4}
-run_one <- function(seed) {
-  set.seed(seed)
-  u   <- matrix(rnorm(n_ind * 2), n_ind, 2)
-  eps <- sapply(seq_len(T), function(t) rnorm(n_ind, sd = sqrt(psi2_true[t])))
-  Y   <- u %*% t(Lambda_true) + eps
-  colnames(Y) <- trait_names
-  df_rep_wide <- data.frame(
-    individual = factor(seq_len(n_ind)),
-    Y,
-    check.names = FALSE
-  )
-  df_rep <- data.frame(
-    individual = factor(rep(seq_len(n_ind), each = T)),
-    trait      = factor(rep(trait_names, n_ind), levels = trait_names),
-    value      = as.vector(t(Y))
-  )
-
-  fit_rep_long <- suppressMessages(suppressWarnings(gllvmTMB(
-    value ~ 0 + trait +
-            latent(0 + trait | individual, d = 2) +
-            unique(0 + trait | individual),
-    data = df_rep, unit = "individual"
-  )))
-  if (identical(seed, 1L)) {
-    fit_rep_wide <- suppressMessages(suppressWarnings(gllvmTMB(
-      traits(length, mass, wing, tarsus, bill) ~ 1 +
-              latent(1 | individual, d = 2) +
-              unique(1 | individual),
-      data = df_rep_wide, unit = "individual"
-    )))
-    stopifnot(
-      abs(as.numeric(logLik(fit_rep_long)) -
-            as.numeric(logLik(fit_rep_wide))) < 1e-6
-    )
-  }
-  Sigma_hat_rep <- extract_Sigma(fit_rep_long, level = "unit")$Sigma
-  data.frame(
-    seed = seed,
-    entry = paste0("[", rep(1:T, each = T), ",", rep(1:T, T), "]"),
-    true = as.vector(Sigma_true),
-    fitted = as.vector(Sigma_hat_rep)
-  )
-}
-rep_df <- do.call(rbind, lapply(1:20, run_one))
-
-ggplot(rep_df, aes(true, fitted)) +
-  geom_abline(slope = 1, intercept = 0, colour = "grey40", linetype = 2) +
-  geom_point(alpha = 0.4, colour = "#1f78b4", size = 1.6) +
-  labs(x = expression("True"~Sigma[B]~"entry"),
-       y = expression("Fitted"~hat(Sigma)[B]~"entry"),
-       title = "Recovery on 20 replicate datasets, n = 150 individuals") +
-  theme_minimal(base_size = 11)
-```
-
-```{r recover-summary}
-rep_df |>
-  mutate(off_diag = sub("\\[(.),(.)\\]", "\\1\\2", entry),
-         off_diag = substr(off_diag, 1, 1) != substr(off_diag, 2, 2)) |>
-  group_by(off_diag) |>
-  summarise(
-    bias = mean(fitted - true),
-    rmse = sqrt(mean((fitted - true)^2)),
-    .groups = "drop"
-  )
-```
-
-The off-diagonal entries (the cross-trait covariances — the *biology*)
-are recovered with bias close to zero. Diagonal entries are slightly
-under at $n = 150$, which is the expected $O(n^{-1/2})$ finite-sample
-behaviour and shrinks as $n$ grows.
+This single generated data set is a teaching example, not a full
+simulation study. The test suite refits the long and wide formulas from
+the shipped object and checks that the off-diagonal covariance pattern
+recovers the known truth. Broader coverage and interval-calibration
+claims belong in the simulation-grid articles, which remain under audit.
 
 ## Why `latent + unique`? `dep` and `indep` on the same data
 
@@ -392,7 +336,7 @@ under each to see what the user actually loses or gains.
 fit_full_long <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | individual, d = T),
-  data = df, unit = "individual"
+  data = df, trait = "trait", unit = "individual"
 )
 fit_full_wide <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 1 +
@@ -403,7 +347,7 @@ fit_full_wide <- gllvmTMB(
 fit_dep_long <- gllvmTMB(
   value ~ 0 + trait +
           dep(0 + trait | individual),
-  data = df, unit = "individual"
+  data = df, trait = "trait", unit = "individual"
 )
 fit_dep_wide <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 1 +
@@ -414,7 +358,7 @@ fit_dep_wide <- gllvmTMB(
 fit_indep_long <- gllvmTMB(
   value ~ 0 + trait +
           indep(0 + trait | individual),
-  data = df, unit = "individual"
+  data = df, trait = "trait", unit = "individual"
 )
 fit_indep_wide <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 1 +
@@ -474,17 +418,13 @@ What this shows:
   correlation with truth is `NA` because the fitted off-diagonals are
   exactly zero by construction. logL is materially worse.
 
-This is the **Gaussian counterpart** to the binary comparison in
-[Joint species distribution](joint-sdm.html). The qualitative ordering
-is the same — `latent + unique` ≥ `dep` ≫ `indep` in modelling
-flexibility — but the quantitative gap between `indep` and the others
-is much smaller for Gaussian (a few hundred nats here, vs `indep` being
-*pinned at zero diagonals* for binary 1-obs-per-cell). Pick `latent + unique`
-when you have a strong rank-$K$ hypothesis (size + shape, here);
-fall back to `dep` if you suspect $K \approx T$ and want the saturated
-fit; reach for `indep` only when you genuinely believe traits are
-mutually independent — a rare default for ecological / morphological
-data.
+For this simulated rank-2 Gaussian truth, `latent + unique` and the
+saturated `dep` fit recover nearly the same covariance pattern, while
+`indep` cannot recover off-diagonal association because it sets those
+entries to zero by construction. Pick `latent + unique` when you have a
+strong rank-$K$ hypothesis (size + shape, here); fall back to `dep` if
+you suspect $K \approx T$ and want the saturated fit; reach for `indep`
+only when you genuinely believe traits are mutually independent.
 
 ## What the latent factors mean
 
@@ -513,21 +453,24 @@ factor" of body size. The second axis picks up shape contrasts.
 
 ## What this article does *not* cover
 
-This is the bottom rung of the ladder. The next rungs add structure:
+This is the bottom rung of the ladder. The next rungs are under audit
+until their example objects, diagnostics, and rendered HTML reviews pass:
 
 | Rung | New piece | Article |
 |---|---|---|
-| 1 | Discrete (binary) responses, individuals as sites | [Joint species distribution](joint-sdm.html) |
-| 2 | Phylogenetic dependence between rows | [Phylogenetic GLLVM](phylogenetic-gllvm.html) |
-| 3 | Spatial dependence between rows | `spatial_*()` keywords (see reference index); article in preparation |
-| 4 | Two observational levels (between- and within-unit) | [Behavioural syndromes](behavioural-syndromes.html) |
-| 5 | All of the above at once | [Functional biogeography](functional-biogeography.html) |
+| 1 | Discrete (binary) responses, individuals as sites | Under audit: joint SDM example object and binary validation caveats. |
+| 2 | Phylogenetic dependence between rows | Under audit: phylogenetic helper, split covariance, validation rows. |
+| 3 | Spatial dependence between rows | Under audit: spatial helper, diagnostics, figure review. |
+| 4 | Two observational levels (between- and within-unit) | Under audit: behavioural-syndrome example object and repeatability. |
+| 5 | All of the above at once | Under audit: final functional-biogeography capstone. |
 
-Read the rungs in order if you are new to GLLVMs. Jump straight to
-the rung that matches your data if you are not.
+Use this table as a map of what is deliberately *not* public yet. Each
+rung returns only after its example object, diagnostics, and rendered
+HTML review pass.
 
 ## See also
 
-* [Lambda constraints](lambda-constraint.html) — pin specific entries
-  of $\boldsymbol\Lambda$ when you have prior knowledge of the
-  factor structure (for example, a confirmatory factor analysis).
+* [Covariance and correlation](covariance-correlation.html) — why
+  `unique()` matters for interpreting trait correlations.
+* [Formula keyword grid](api-keyword-grid.html) — the syntax map for
+  moving from this example to other covariance rows and modes.

@@ -4469,3 +4469,53 @@ Deliberately not run:
 - `devtools::test()` and `devtools::check()` were not run because this slice
   changed public article prose only. Article rendering, pkgdown config check,
   stale-wording scans, and browser DOM checks were the relevant gates.
+
+## 2026-05-21 -- Landing-page covariance explanation
+
+Scope:
+
+- Rewrote the first README/pkgdown-home explanation of
+  `Sigma = Lambda Lambda^T + Psi` so the landing page explains the
+  model pieces before sending readers to the covariance article.
+- Kept the change prose-only: no R code, parser, extractor, plotting, or
+  navigation files changed.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,statusCheckRollup`
+  -> only PR #233 is open; its three R-CMD checks were still in progress
+  before this local follow-up edit.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work is PR #233, merged PR #232, and the public-site reset line;
+  no competing shared-ledger lane was visible.
+- `Rscript --vanilla -e 'pkgdown::build_home()'`
+  -> rebuilt `pkgdown-site/index.html`, `ROADMAP.html`, and `404.html`.
+- Browser check at `http://127.0.0.1:8765/index.html`
+  -> confirmed the homepage now shows the `Sigma` / `Lambda Lambda^T` /
+  `Psi` table and the plain-language sentence:
+  "total trait covariance = shared multivariate structure +
+  response-specific variation."
+
+Change:
+
+- The landing-page equation block is now a small alignment table:
+  `Sigma` maps to `extract_Sigma()`, `Lambda Lambda^T` maps to
+  `latent(..., d = K)`, and `Psi` maps to `unique(...)`.
+- The page states the interpretation immediately after the table, rather
+  than showing a naked equation with no reader-facing explanation.
+
+Additional checks:
+
+- `git diff --check`
+  -> clean.
+- `rg -n "diag\\(S\\)|diag\\(s\\)|boldsymbol\\{S\\}|gllvmTMB_wide|two-U|Sigma = Lambda Lambda\\^T \\+ Psi" README.md docs/dev-log/after-task/2026-05-21-landing-equation-explanation.md`
+  -> expected matches only: the new homepage interpretation sentence, the
+  after-task description of the old landing issue, and the existing README
+  note that `gllvmTMB_wide()` remains a soft-deprecated migration path.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Deliberately not pushed yet:
+
+- The follow-up commit can be made locally, but pushing is deliberately paused
+  until the active PR #233 CI run finishes, per CI pacing discipline.

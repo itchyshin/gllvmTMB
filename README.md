@@ -9,12 +9,17 @@ The main question is simple:
 > versus response-specific?
 
 The first public examples focus on the safest path: Gaussian
-stacked-trait models with a shared latent axis plus trait-specific
-unique variance,
+stacked-trait models that split the trait covariance matrix into
+shared and trait-specific parts:
 
-```text
-Sigma = Lambda Lambda^T + Psi.
-```
+| Model piece | R syntax | What the reader should see |
+|---|---|---|
+| `Sigma` | `extract_Sigma(fit, level = "unit")` | The total covariance among traits. |
+| `Lambda Lambda^T` | `latent(..., d = K)` | Shared axes: traits that rise and fall together across units. |
+| `Psi` | `unique(...)` | Trait-specific variance left over after the shared axes. |
+
+So `Sigma = Lambda Lambda^T + Psi` means: total trait covariance =
+shared multivariate structure + response-specific variation.
 
 You can fit the same model from long data or wide data. Long data are
 canonical; wide data use the `traits(...)` formula marker and are pivoted

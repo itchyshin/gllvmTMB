@@ -134,7 +134,11 @@ rotate_loadings <- function(
       anchor_traits = rep(NA_character_, d)
     ))
   }
-  if (method == "varimax") {
+  if (d == 1L) {
+    T <- diag(1L)
+    Lambda_rot <- Lambda
+    Z_rot <- Z
+  } else if (method == "varimax") {
     rt <- stats::varimax(Lambda, normalize = TRUE)
     T <- as.matrix(rt$rotmat) # orthogonal
     Lambda_rot <- Lambda %*% T

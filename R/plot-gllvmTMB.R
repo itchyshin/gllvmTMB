@@ -75,6 +75,10 @@
 #'   pair-grid of the three axis pairs. For `d = 3`, the default
 #'   `c(1, 2)` is promoted to `c(1, 2, 3)` so all three axes are visible.
 #'   Ignored when `d = 1`.
+#' @param rotation One of `"none"`, `"varimax"`, or `"promax"` for
+#'   `"ordination"` plots. The default `"none"` shows the raw computational
+#'   orientation. `"varimax"` and `"promax"` call [rotate_loadings()], which
+#'   orders axes by shared variance and anchors signs for interpretation.
 #' @param ... Currently unused.
 #' @return A `ggplot` object with a `gllvmTMB_meta` attribute describing
 #'   the plot type, source extractor, covariance level, interval status, and
@@ -98,12 +102,14 @@ plot.gllvmTMB_multi <- function(
   level = c("unit", "unit_obs"),
   boot = NULL,
   axes = c(1L, 2L),
+  rotation = c("none", "varimax", "promax"),
   ...
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
   }
   type <- match.arg(type)
+  rotation <- match.arg(rotation)
   level_missing <- missing(level)
   ## level intentionally not match.arg'd up-front: each helper decides
   ## whether to require a single value or accept "both/NULL".
@@ -131,7 +137,8 @@ plot.gllvmTMB_multi <- function(
     ordination = .plot_ordination_gtmb(
       x,
       if (level_missing) "B" else level,
-      axes = axes
+      axes = axes,
+      rotation = rotation
     )
   )
 }
@@ -1268,7 +1275,13 @@ plot.gllvmTMB_multi <- function(
 
 # ---- ordination biplot ----------------------------------------------------
 
-.plot_ordination_gtmb <- function(fit, level, axes = c(1L, 2L)) {
+.plot_ordination_gtmb <- function(
+  fit,
+  level,
+  axes = c(1L, 2L),
+  rotation = c("none", "varimax", "promax")
+) {
+  rotation <- match.arg(rotation)
   ## The dispatcher supplies "B" when the user omits level; an explicit
   ## ordination request with multiple levels is still ambiguous.
   if (missing(level) || is.null(level) || length(level) != 1L) {
@@ -1291,12 +1304,47 @@ plot.gllvmTMB_multi <- function(
     )
   }
 
-  L <- ord$loadings
-  Sc <- ord$scores
+  rotation_info <- NULL
+  ord_source <- "extract_ordination"
+  rotation_status <- "rotation_ambiguous_loadings"
+  if (rotation == "none") {
+    L <- ord$loadings
+    Sc <- ord$scores
+  } else {
+    rotation_info <- suppressMessages(rotate_loadings(
+      fit,
+      level = level_label,
+      method = rotation
+    ))
+    L <- rotation_info$Lambda
+    Sc <- rotation_info$scores
+    ord_source <- "rotate_loadings"
+    rotation_status <- paste0(rotation, "_ordered_sign_anchored")
+  }
   if (is.null(rownames(L))) {
     rownames(L) <- .gtmb_trait_names(fit)
   }
   d <- ncol(L)
+  rotation_caption <- if (rotation == "none") {
+    "Axes and signs use the raw fitted orientation."
+  } else {
+    paste0(
+      "Axes use ",
+      rotation,
+      " rotation, ordered by shared variance and sign-anchored for interpretation."
+    )
+  }
+  rotation_data <- if (is.null(rotation_info)) {
+    list(method = "none")
+  } else {
+    list(
+      method = rotation_info$method,
+      axis_variance = rotation_info$axis_variance,
+      axis_order = rotation_info$axis_order,
+      axis_sign = rotation_info$axis_sign,
+      anchor_traits = rotation_info$anchor_traits
+    )
+  }
 
   if (d == 1L) {
     ## 1D lollipop along x-axis, traits on x, points at y = 0.
@@ -1359,7 +1407,7 @@ plot.gllvmTMB_multi <- function(
         title = paste0("Level ", level_label, ": 1D ordination"),
         caption = paste(
           "Trait positions show loadings on LV1.",
-          "Loading signs depend on the chosen orientation."
+          rotation_caption
         )
       ) +
       .gtmb_theme_figure() +
@@ -1370,10 +1418,10 @@ plot.gllvmTMB_multi <- function(
     return(.gtmb_plot_contract(
       p,
       type = "ordination",
-      source = "extract_ordination",
+      source = ord_source,
       level = level_label,
-      rotation_status = "rotation_ambiguous_loadings",
-      data = list(scores = dat_s, loadings = dat_l)
+      rotation_status = rotation_status,
+      data = list(scores = dat_s, loadings = dat_l, rotation = rotation_data)
     ))
   }
 
@@ -1479,7 +1527,7 @@ plot.gllvmTMB_multi <- function(
         caption = paste(
           "Each panel shows one pair of latent axes from the same 3D ordination.",
           "Grey points are latent scores; arrows are display-scaled trait loadings.",
-          "Axes and signs depend on rotation/orientation.",
+          rotation_caption,
           sep = "\n"
         )
       ) +
@@ -1488,10 +1536,10 @@ plot.gllvmTMB_multi <- function(
     return(.gtmb_plot_contract(
       p,
       type = "ordination",
-      source = "extract_ordination",
+      source = ord_source,
       level = level_label,
-      rotation_status = "rotation_ambiguous_loadings",
-      data = list(scores = dat_s, loadings = dat_l),
+      rotation_status = rotation_status,
+      data = list(scores = dat_s, loadings = dat_l, rotation = rotation_data),
       notes = "3D ordination is shown as a static pair grid, not a perspective 3D rendering."
     ))
   }
@@ -1556,7 +1604,7 @@ plot.gllvmTMB_multi <- function(
       title = paste0("Level ", level_label, ": ordination biplot"),
       caption = paste(
         "Grey points are latent scores; arrows are display-scaled trait loadings.",
-        "Axes and signs depend on rotation/orientation.",
+        rotation_caption,
         sep = "\n"
       )
     ) +
@@ -1565,9 +1613,9 @@ plot.gllvmTMB_multi <- function(
   .gtmb_plot_contract(
     p,
     type = "ordination",
-    source = "extract_ordination",
+    source = ord_source,
     level = level_label,
-    rotation_status = "rotation_ambiguous_loadings",
-    data = list(scores = dat_s, loadings = dat_l)
+    rotation_status = rotation_status,
+    data = list(scores = dat_s, loadings = dat_l, rotation = rotation_data)
   )
 }

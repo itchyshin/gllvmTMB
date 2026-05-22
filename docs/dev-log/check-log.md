@@ -7664,6 +7664,54 @@ Deliberately not run:
   helper API slice. No vignettes/articles were edited or rendered. No 3-OS CI
   was available until the branch is pushed.
 
+## 2026-05-22 -- Rotated ordination plot option
+
+Scope:
+
+- Added an explicit `rotation = c("none", "varimax", "promax")` option to
+  `plot(type = "ordination")`.
+- The rotated plot path calls `rotate_loadings()`, so axes are ordered by
+  shared variance and sign-anchored before plotting.
+- The default remains `rotation = "none"` for now, so the visual change is
+  opt-in while Florence/Pat inspect output quality.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/rotate-loadings.R R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|output-methods|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 241 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/plot.gllvmTMB_multi.Rd; grep -Hc '^\\keyword' man/plot.gllvmTMB_multi.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Feature-presence scan:
+
+  ```sh
+  rg -n 'rotation = c\("none", "varimax", "promax"\)|rotate_loadings|varimax_ordered_sign_anchored|Axes use .* rotation' R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits in implementation, generated Rd, and focused tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  plotting option slice. No vignettes/articles were edited or rendered. No
+  browser screenshot or visual review was run yet; that should be the next
+  Florence slice before making rotation the default. No 3-OS CI was available
+  until the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

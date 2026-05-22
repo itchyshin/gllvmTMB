@@ -11,6 +11,7 @@
   level = c("unit", "unit_obs"),
   boot = NULL,
   axes = c(1L, 2L),
+  rotation = c("none", "varimax", "promax"),
   ...
 )
 }
@@ -50,6 +51,11 @@ whiskers to \code{"integration"}, and \code{c^2} boundary intervals to
 pair-grid of the three axis pairs. For \code{d = 3}, the default
 \code{c(1, 2)} is promoted to \code{c(1, 2, 3)} so all three axes are visible.
 Ignored when \code{d = 1}.}
+
+\item{rotation}{One of \code{"none"}, \code{"varimax"}, or \code{"promax"} for
+\code{"ordination"} plots. The default \code{"none"} shows the raw computational
+orientation. \code{"varimax"} and \code{"promax"} call \code{\link[=rotate_loadings]{rotate_loadings()}}, which
+orders axes by shared variance and anchors signs for interpretation.}
 
 \item{...}{Currently unused.}
 }

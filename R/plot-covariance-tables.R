@@ -385,10 +385,11 @@
 #'   overlay interval lines on confidence eyes. Rows without finite bounds remain
 #'   visible as points.
 #' @param style One of `"interval"` (default), `"eye"`, or `"raindrop"`.
-#'   `"eye"` draws a confidence eye: a pale compatibility shape reconstructed
-#'   from the estimate and finite interval bounds, plus a hollow estimate
-#'   circle. Correlation rows use Fisher's z scale. The shape is not a
-#'   posterior density. `"raindrop"` is accepted as a compatibility alias.
+#'   `"eye"` draws a confidence eye: a pale frequentist compatibility shape
+#'   reconstructed from the estimate and finite interval bounds, plus a hollow,
+#'   sign-coloured estimate circle. Correlation rows use Fisher's z scale. The
+#'   shape is not a posterior density. `"raindrop"` is accepted as a
+#'   compatibility alias.
 #' @param eye_level Confidence level represented by the supplied interval
 #'   bounds when `style = "eye"`. Defaults to `level`, so fitted-object calls
 #'   stay aligned with [extract_correlations()].
@@ -1028,10 +1029,11 @@ plot_Sigma_comparison <- function(
 #'   overlay interval lines on confidence eyes. Rows without finite bounds remain
 #'   visible as points.
 #' @param style One of `"interval"` (default), `"eye"`, or `"raindrop"`.
-#'   `"eye"` draws a confidence eye from the estimate and finite interval
-#'   bounds, using Fisher's z scale for correlations and the displayed estimate
-#'   scale for covariance rows. The shape is not a posterior density.
-#'   `"raindrop"` is accepted as a compatibility alias.
+#'   `"eye"` draws a confidence eye: a pale frequentist compatibility shape
+#'   reconstructed from the estimate and finite interval bounds, plus a hollow,
+#'   sign-coloured estimate circle. Correlation rows use Fisher's z scale and
+#'   covariance rows use the displayed estimate scale. The shape is not a
+#'   posterior density. `"raindrop"` is accepted as a compatibility alias.
 #' @param eye_level Confidence level represented by the supplied interval
 #'   bounds when `style = "eye"`. Default `0.95`.
 #' @param raindrop_level Compatibility alias for `eye_level`.

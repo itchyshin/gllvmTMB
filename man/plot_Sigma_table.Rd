@@ -49,10 +49,11 @@ overlay interval lines on confidence eyes. Rows without finite bounds remain
 visible as points.}
 
 \item{style}{One of \code{"interval"} (default), \code{"eye"}, or \code{"raindrop"}.
-\code{"eye"} draws a confidence eye from the estimate and finite interval
-bounds, using Fisher's z scale for correlations and the displayed estimate
-scale for covariance rows. The shape is not a posterior density.
-\code{"raindrop"} is accepted as a compatibility alias.}
+\code{"eye"} draws a confidence eye: a pale frequentist compatibility shape
+reconstructed from the estimate and finite interval bounds, plus a hollow,
+sign-coloured estimate circle. Correlation rows use Fisher's z scale and
+covariance rows use the displayed estimate scale. The shape is not a
+posterior density. \code{"raindrop"} is accepted as a compatibility alias.}
 
 \item{eye_level}{Confidence level represented by the supplied interval
 bounds when \code{style = "eye"}. Default \code{0.95}.}

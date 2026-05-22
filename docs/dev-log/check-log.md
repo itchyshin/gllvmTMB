@@ -7480,6 +7480,47 @@ Deliberately not run:
   be switched in a later article-specific pass. No 3-OS CI was available until
   the branch is pushed.
 
+## 2026-05-22 -- Confidence-eye reference docs
+
+Scope:
+
+- Tightened `plot_correlations()` and `plot_Sigma_table()` roxygen so reference
+  help describes a confidence eye as a pale frequentist compatibility shape
+  plus a hollow, sign-coloured estimate circle.
+- Regenerated `man/plot_correlations.Rd` and `man/plot_Sigma_table.Rd`.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `plot_correlations.Rd` and `plot_Sigma_table.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 161 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Reference wording scan:
+
+  ```sh
+  rg -n 'pale frequentist compatibility shape|hollow,|sign-coloured estimate circle|posterior density|raindrop" is accepted' R/plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd
+  ```
+
+  -> expected roxygen and Rd hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  narrow reference-doc slice. No articles were edited. No 3-OS CI was available
+  until the branch is pushed.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

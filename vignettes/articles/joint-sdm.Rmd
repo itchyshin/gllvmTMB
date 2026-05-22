@@ -330,7 +330,9 @@ Sigma_total_rows$level <- "Total latent liability"
 
 plot_Sigma_heatmap(
   rbind(Sigma_shared_rows, Sigma_total_rows),
-  label_digits = 1
+  label_digits = 1,
+  title = "Shared and total latent-liability Sigma",
+  subtitle = "Facets separate shared latent covariance from link-residual-adjusted total covariance."
 )
 ```
 

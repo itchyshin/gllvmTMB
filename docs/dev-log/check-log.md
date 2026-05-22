@@ -5757,6 +5757,53 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Remaining Sigma heatmap labels
+
+Scope:
+
+- Added custom `plot_Sigma_heatmap()` titles/subtitles to the Get Started,
+  behavioural-syndromes, functional-biogeography, and joint-SDM heatmaps that
+  still used generic defaults.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd`
+  -> completed without output.
+- `for article in gllvmTMB articles/behavioural-syndromes articles/functional-biogeography articles/joint-sdm; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> all four pages rendered locally.
+- Visual QA images inspected:
+  `pkgdown-site/articles/cor-matrix-1.png`,
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/inspect-1.png`,
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/inspect-w-1.png`,
+  `pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rb-1.png`,
+  `pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rw-1.png`, and
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-sigma-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'First-model trait correlations|Between-individual syndrome correlations|Within-individual lability correlations|Between-site trait correlations|Within-site trait correlations|Shared and total latent-liability Sigma|title = ' vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/behavioural-syndromes.html pkgdown-site/articles/functional-biogeography.html pkgdown-site/articles/joint-sdm.html`
+  -> edited labels are present in source and rendered HTML.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd`
+  -> one existing `two-U-phylogeny` article-link slug hit in
+  `functional-biogeography.Rmd`; no stale notation was introduced.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-label
+  polish. Four page renders, visual QA, `pkgdown::check_pkgdown()`,
+  whitespace check, stale-wording scans, and a short no-tests package check
+  were run.
+
 ## 2026-05-22 -- Sigma heatmap custom labels
 
 Scope:

@@ -414,7 +414,11 @@ R_B_long <- rbind(
   R_B_adj
 )
 
-plot_Sigma_heatmap(R_B_long)
+plot_Sigma_heatmap(
+  R_B_long,
+  title = "Between-site trait correlations",
+  subtitle = "Core and adjusted models preserve the trait-block structure."
+)
 ```
 
 ```{r heatmap-rw, fig.cap = "Cross-trait correlation matrix at the within-site (Sigma_W) tier under the core and adjusted models. The local-integration story is similarly stable to the addition of controls.", fig.width = 8, fig.height = 4}
@@ -423,7 +427,11 @@ R_W_long <- rbind(
   R_W_adj
 )
 
-plot_Sigma_heatmap(R_W_long)
+plot_Sigma_heatmap(
+  R_W_long,
+  title = "Within-site trait correlations",
+  subtitle = "Core and adjusted models show the local-integration structure."
+)
 ```
 
 The block structure of $\mathbf{R}_B$ -- traits 1-3 positively

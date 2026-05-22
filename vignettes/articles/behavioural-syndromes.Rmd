@@ -388,7 +388,11 @@ R_B_rows <- extract_Sigma_table(
   measure = "correlation",
   entries = "all"
 )
-plot_Sigma_heatmap(R_B_rows)
+plot_Sigma_heatmap(
+  R_B_rows,
+  title = "Between-individual syndrome correlations",
+  subtitle = "Point estimates from Sigma_B for personality structure."
+)
 ```
 
 The off-diagonal pattern reveals the syndrome structure. Traits on the
@@ -405,7 +409,11 @@ R_W_rows <- extract_Sigma_table(
   measure = "correlation",
   entries = "all"
 )
-plot_Sigma_heatmap(R_W_rows)
+plot_Sigma_heatmap(
+  R_W_rows,
+  title = "Within-individual lability correlations",
+  subtitle = "Point estimates from Sigma_W across repeated sessions."
+)
 ```
 
 The within-individual correlations reflect shared motivational state

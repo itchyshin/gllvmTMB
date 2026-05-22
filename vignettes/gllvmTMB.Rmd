@@ -223,7 +223,11 @@ sigma_corr_rows <- extract_Sigma_table(
   measure = "correlation",
   entries = "all"
 )
-plot_Sigma_heatmap(sigma_corr_rows)
+plot_Sigma_heatmap(
+  sigma_corr_rows,
+  title = "First-model trait correlations",
+  subtitle = "Cells are point estimates; use the pairwise rows above for intervals."
+)
 ```
 
 ## Acknowledgements

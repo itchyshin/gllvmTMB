@@ -3,26 +3,26 @@
 \name{getResidualCov}
 \alias{getResidualCov}
 \alias{getResidualCor}
-\title{Implied residual covariance / correlation matrix}
+\title{Extract implied trait covariance or correlation}
 \usage{
-getResidualCov(fit, level = c("unit", "unit_obs", "B", "W"))
+getResidualCov(fit, level = "unit")
 
-getResidualCor(fit, level = c("unit", "unit_obs", "B", "W"))
+getResidualCor(fit, level = "unit")
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
-Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
+Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 }
 \value{
 An \verb{n_traits × n_traits} matrix.
 }
 \description{
-\eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \mathrm{diag}(s_X^2)} for
-\code{level = "unit"} or \code{"unit_obs"}. \code{getResidualCor} returns the corresponding
-correlation matrix. Useful diagnostic when comparing the global vs
-local trait covariance.
+Returns the implied trait covariance at \code{level = "unit"} or
+\code{level = "unit_obs"}. For a reduced-rank plus unique tier this is
+\eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \Psi_X}. \code{getResidualCor()}
+returns the corresponding correlation matrix.
 }
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API for

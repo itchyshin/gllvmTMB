@@ -7,7 +7,7 @@
 VP(fit)
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
 An \verb{n_traits × n_components} matrix of variance shares (rows

@@ -1,4 +1,4 @@
-## gllvm-style output methods for `gllvmTMB_multi` fits.
+## gllvm-style output methods for multivariate gllvmTMB fits.
 ##
 ## These mirror the accessors / plot helpers users coming from the
 ## `gllvm` package expect: getLoadings(), getLV(), getResidualCov(),
@@ -6,17 +6,19 @@
 ## extractors so the API surface matches the canonical GLLVM
 ## software while keeping our internals long-format.
 
-#' Loadings matrix from a `gllvmTMB_multi` fit
+#' Extract the loading matrix from a fitted multivariate model
 #'
-#' Wraps [extract_ordination()] for users coming from `gllvm::getLoadings()`.
+#' Returns the trait loading matrix from a fit returned by [gllvmTMB()]. This
+#' is a small compatibility wrapper around [extract_ordination()] for readers
+#' familiar with `gllvm::getLoadings()`.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
-#'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
-#' @param rotate Optional `"varimax"` or `"promax"` post-hoc rotation.
+#'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
+#' @param rotate Optional `"varimax"` or `"promax"` rotation after fitting.
 #'   Default `"none"` returns the engine's native lower-triangular Λ.
 #' @return An `n_traits × d` numeric matrix.
-#' @seealso [extract_ordination()] for the canonical interface that
+#' @seealso [extract_ordination()] for the row-and-column interface that
 #'   returns scores and loadings together.
 #' @keywords internal
 #' @export
@@ -24,67 +26,80 @@
 #' \dontrun{
 #' getLoadings(fit, level = "unit", rotate = "varimax")
 #' }
-getLoadings <- function(fit,
-                        level  = c("unit", "unit_obs", "B", "W"),
-                        rotate = c("none", "varimax", "promax")) {
-  level  <- match.arg(level)
-  level  <- .normalise_level(level, arg_name = "level")
+getLoadings <- function(
+  fit,
+  level = "unit",
+  rotate = c("none", "varimax", "promax")
+) {
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
+  level <- .normalise_level(level, arg_name = "level")
   rotate <- match.arg(rotate)
   ## Surface a one-shot rotation hint when the user accesses RAW Lambda
   ## (rotate = "none") on an unconstrained rr() fit with rank > 1. Sigma_B is
   ## still identifiable; Lambda alone is not.
   if (rotate == "none") {
     advisory <- isTRUE(fit$needs_rotation_advice[[level]])
-    shown    <- isTRUE(attr(fit, ".rotation_hint_shown")[[level]])
+    shown <- isTRUE(attr(fit, ".rotation_hint_shown")[[level]])
     if (advisory && !shown) {
       cli::cli_inform(c(
         "i" = "{.code Lambda_{level}} is identified only up to rotation (d_{level} = {fit[[paste0('d_', level)]]}).",
-        "*" = "Use {.code rotate = \"varimax\"} for a quick post-hoc rotation, or",
+        "*" = "Use {.code rotate = \"varimax\"} for a quick rotation after fitting, or",
         "*" = "see {.fn suggest_lambda_constraint} for a default {.arg lambda_constraint} matrix to pass to a refit.",
         "*" = "{.fn extract_Sigma_{level}} is rotation-invariant and does not need this."
       ))
     }
   }
   ord <- extract_ordination(fit, level = .canonical_level_name(level))
-  if (is.null(ord)) return(NULL)
-  if (rotate == "none") return(ord$loadings)
+  if (is.null(ord)) {
+    return(NULL)
+  }
+  if (rotate == "none") {
+    return(ord$loadings)
+  }
   rotate_loadings(fit, .canonical_level_name(level), rotate)$Lambda
 }
 
-#' Latent-variable scores from a `gllvmTMB_multi` fit
+#' Extract latent-variable scores from a fitted multivariate model
 #'
-#' Wraps [extract_ordination()]'s `$scores` for users coming from
-#' `gllvm::getLV()`.
+#' Returns latent scores from a fit returned by [gllvmTMB()]. This is a small
+#' compatibility wrapper around [extract_ordination()] for readers familiar
+#' with `gllvm::getLV()`.
 #'
 #' @inheritParams getLoadings
 #' @return A matrix with one row per unit (`level = "unit"`) or one row per
 #'   within-unit observation (`level = "unit_obs"`), and one column per
 #'   latent factor.
-#' @seealso [extract_ordination()] for the canonical interface.
+#' @seealso [extract_ordination()] for scores and loadings together.
 #' @keywords internal
 #' @export
 #' @examples
 #' \dontrun{
 #' getLV(fit, level = "unit")
 #' }
-getLV <- function(fit,
-                  level  = c("unit", "unit_obs", "B", "W"),
-                  rotate = c("none", "varimax", "promax")) {
-  level  <- match.arg(level)
-  level  <- .normalise_level(level, arg_name = "level")
+getLV <- function(
+  fit,
+  level = "unit",
+  rotate = c("none", "varimax", "promax")
+) {
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
+  level <- .normalise_level(level, arg_name = "level")
   rotate <- match.arg(rotate)
   ord <- extract_ordination(fit, level = .canonical_level_name(level))
-  if (is.null(ord)) return(NULL)
-  if (rotate == "none") return(ord$scores)
+  if (is.null(ord)) {
+    return(NULL)
+  }
+  if (rotate == "none") {
+    return(ord$scores)
+  }
   rotate_loadings(fit, .canonical_level_name(level), rotate)$scores
 }
 
-#' Implied residual covariance / correlation matrix
+#' Extract implied trait covariance or correlation
 #'
-#' \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \mathrm{diag}(s_X^2)} for
-#' `level = "unit"` or `"unit_obs"`. `getResidualCor` returns the corresponding
-#' correlation matrix. Useful diagnostic when comparing the global vs
-#' local trait covariance.
+#' Returns the implied trait covariance at `level = "unit"` or
+#' `level = "unit_obs"`. For a reduced-rank plus unique tier this is
+#' \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \Psi_X}. `getResidualCor()`
+#' returns the corresponding correlation matrix.
 #'
 #' @inheritParams getLoadings
 #' @return An `n_traits × n_traits` matrix.
@@ -92,49 +107,54 @@ getLV <- function(fit,
 #'   between-/within-/phylogenetic Sigma at any tier.
 #' @keywords internal
 #' @export
-getResidualCov <- function(fit, level = c("unit", "unit_obs", "B", "W")) {
-  level <- match.arg(level)
+getResidualCov <- function(fit, level = "unit") {
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   out <- if (level == "B") extract_Sigma_B(fit) else extract_Sigma_W(fit)
-  if (is.null(out)) return(NULL)
+  if (is.null(out)) {
+    return(NULL)
+  }
   if (level == "B") out$Sigma_B else out$Sigma_W
 }
 
 #' @rdname getResidualCov
 #' @keywords internal
 #' @export
-getResidualCor <- function(fit, level = c("unit", "unit_obs", "B", "W")) {
-  level <- match.arg(level)
+getResidualCor <- function(fit, level = "unit") {
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   out <- if (level == "B") extract_Sigma_B(fit) else extract_Sigma_W(fit)
-  if (is.null(out)) return(NULL)
+  if (is.null(out)) {
+    return(NULL)
+  }
   if (level == "B") out$R_B else out$R_W
 }
 
 
-#' Two-axis ordination plot of a `gllvmTMB_multi` fit
+#' Draw a two-axis ordination plot for a fitted multivariate model
 #'
-#' A simple base-R biplot of the latent scores, with optional trait
-#' loadings overlaid. Mirrors `gllvm::ordiplot()` for users migrating
-#' from that package.
+#' Draws a simple base-R biplot of latent scores, with optional trait loadings
+#' overlaid, for a fit returned by [gllvmTMB()]. This method is a compatibility
+#' surface for users familiar with `gllvm::ordiplot()`; the package's richer
+#' ggplot-based model plots are available through `plot(fit, type = ...)`.
 #'
 #' This is an S3 generic so that dispatch is robust to load order with
 #' the `gllvm` package — `gllvm::ordiplot` is itself an S3 generic, and
 #' if it is loaded after `gllvmTMB` it masks our function. With S3
 #' methods registered, either generic correctly routes a multi-response
-#' fit through `ordiplot.gllvmTMB_multi`.
+#' fit through the gllvmTMB ordination method.
 #'
-#' @param fit A `gllvmTMB` (single-response) or `gllvmTMB_multi` fit.
-#' @param level `"unit"` / `"B"` (between-unit) or `"unit_obs"` / `"W"`
-#'   (within-unit).
+#' @param fit A fitted multivariate model returned by [gllvmTMB()].
+#' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
+#'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @param axes Length-2 integer vector picking which two latent axes
 #'   to plot. Default `c(1, 2)`.
 #' @param biplot Logical; if `TRUE`, overlay scaled trait loadings as
 #'   arrows (default `TRUE`).
-#' @param rotate Post-hoc rotation: `"none"` (default), `"varimax"`, or
+#' @param rotate Rotation after fitting: `"none"` (default), `"varimax"`, or
 #'   `"promax"`.
 #' @param ... Passed to `plot()`.
-#' @seealso [plot.gllvmTMB_multi()] for the canonical S3 plot interface.
+#' @seealso [plot.gllvmTMB_multi()] for the available `type` choices.
 #' @keywords internal
 #' @export
 #' @rawNamespace if (requireNamespace("gllvm", quietly = TRUE)) S3method(gllvm::ordiplot, gllvmTMB_multi)
@@ -145,43 +165,65 @@ ordiplot <- function(fit, ...) {
 #' @rdname ordiplot
 #' @keywords internal
 #' @export
-ordiplot.gllvmTMB_multi <- function(fit,
-                                    level  = c("unit", "unit_obs", "B", "W"),
-                                    axes   = c(1, 2),
-                                    biplot = TRUE,
-                                    rotate = c("none", "varimax", "promax"),
-                                    ...) {
-  level  <- match.arg(level)
-  level  <- .normalise_level(level, arg_name = "level")
+ordiplot.gllvmTMB_multi <- function(
+  fit,
+  level = "unit",
+  axes = c(1, 2),
+  biplot = TRUE,
+  rotate = c("none", "varimax", "promax"),
+  ...
+) {
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
+  level <- .normalise_level(level, arg_name = "level")
   rotate <- match.arg(rotate)
-  if (length(axes) != 2L)
+  if (length(axes) != 2L) {
     cli::cli_abort("axes must be length 2.")
+  }
 
-  scores   <- getLV(fit, level, rotate)
+  scores <- getLV(fit, level, rotate)
   loadings <- getLoadings(fit, level, rotate)
-  if (is.null(scores) || ncol(scores) < max(axes))
+  if (is.null(scores) || ncol(scores) < max(axes)) {
     cli::cli_abort("Not enough latent axes for the requested {.code axes}.")
+  }
 
   rng <- function(x) range(x, na.rm = TRUE)
   xs <- scores[, axes[1L]]
   ys <- scores[, axes[2L]]
 
-  graphics::plot(xs, ys,
-       xlab = paste0("LV", axes[1L]),
-       ylab = paste0("LV", axes[2L]),
-       pch = 19, col = "grey40", asp = 1, ...)
+  graphics::plot(
+    xs,
+    ys,
+    xlab = paste0("LV", axes[1L]),
+    ylab = paste0("LV", axes[2L]),
+    pch = 19,
+    col = "grey40",
+    asp = 1,
+    ...
+  )
   graphics::abline(h = 0, v = 0, lty = 2, col = "grey80")
 
   if (isTRUE(biplot) && !is.null(loadings) && ncol(loadings) >= max(axes)) {
     sc <- max(abs(rng(xs)), abs(rng(ys))) /
-          max(abs(loadings[, axes]), 1e-9) * 0.7
+      max(abs(loadings[, axes]), 1e-9) *
+      0.7
     arrows_x <- loadings[, axes[1L]] * sc
     arrows_y <- loadings[, axes[2L]] * sc
-    graphics::arrows(0, 0, arrows_x, arrows_y, length = 0.08,
-                     col = "tomato", lwd = 1.5)
-    graphics::text(arrows_x * 1.1, arrows_y * 1.1,
-                   labels = rownames(loadings),
-                   col = "tomato", cex = 0.85)
+    graphics::arrows(
+      0,
+      0,
+      arrows_x,
+      arrows_y,
+      length = 0.08,
+      col = "tomato",
+      lwd = 1.5
+    )
+    graphics::text(
+      arrows_x * 1.1,
+      arrows_y * 1.1,
+      labels = rownames(loadings),
+      col = "tomato",
+      cex = 0.85
+    )
   }
   invisible(list(scores = scores, loadings = loadings))
 }
@@ -198,7 +240,7 @@ ordiplot.gllvmTMB_multi <- function(fit,
 #'
 #' Mirrors `gllvm::VP()` / `gllvm::plotVP()`.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @return An `n_traits × n_components` matrix of variance shares (rows
 #'   sum to 1). Columns are only those active in `fit$use`.
 #'
@@ -213,16 +255,19 @@ VP <- function(fit) {
     LL_B <- fit$report$Lambda_B %*% t(fit$report$Lambda_B)
     comps$rr_B <- diag(LL_B)
   }
-  if (fit$use$diag_B)
+  if (fit$use$diag_B) {
     comps$diag_B <- as.numeric(fit$report$sd_B)^2
+  }
   if (fit$use$rr_W) {
     LL_W <- fit$report$Lambda_W %*% t(fit$report$Lambda_W)
     comps$rr_W <- diag(LL_W)
   }
-  if (fit$use$diag_W)
+  if (fit$use$diag_W) {
     comps$diag_W <- as.numeric(fit$report$sd_W)^2
-  if (fit$use$diag_species)
+  }
+  if (fit$use$diag_species) {
     comps$diag_species <- as.numeric(fit$report$sd_q)^2
+  }
   if (isTRUE(fit$use$phylo_rr)) {
     LL_phy <- fit$report$Lambda_phy %*% t(fit$report$Lambda_phy)
     comps$phylo_rr <- diag(LL_phy)

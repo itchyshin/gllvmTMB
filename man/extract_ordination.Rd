@@ -2,22 +2,22 @@
 % Please edit documentation in R/extractors.R
 \name{extract_ordination}
 \alias{extract_ordination}
-\title{Ordination scores and loadings at one level}
+\title{Extract ordination scores and loadings from a fitted multivariate model}
 \usage{
-extract_ordination(fit, level = c("unit", "unit_obs", "B", "W"))
+extract_ordination(fit, level = "unit")
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} object.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
-Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
+Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 }
 \value{
 A list with \code{scores} (units or within-unit observations in rows,
 latent axes in columns) and \code{loadings} (traits in rows, axes in columns).
 }
 \description{
-Ordination scores and loadings at one level
+Extract ordination scores and loadings from a fitted multivariate model
 }
 \examples{
 \dontrun{

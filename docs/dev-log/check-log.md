@@ -5757,6 +5757,50 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Loadings / ordination reference cleanup
+
+Scope:
+
+- Completed the first cleanup cluster from
+  `docs/dev-log/audits/2026-05-22-reference-function-docs-audit.md`.
+- Reworded loadings, ordination, residual covariance, `VP()`, and
+  `suggest_lambda_constraint()` reference pages so users see "a fit returned by
+  `gllvmTMB()`" rather than the internal `gllvmTMB_multi` class.
+- Changed the displayed `level` defaults for the touched helpers to `"unit"`
+  while preserving `"B"` / `"W"` as deprecated accepted aliases.
+- Added after-task report
+  `docs/dev-log/after-task/2026-05-22-reference-loadings-docs.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,mergeStateStatus`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the merged PR #233 lane plus local audit commit
+  `b6fc4e0`; no GitHub PR overlap was present.
+- `air format R/rotate-loadings.R R/output-methods.R R/extractors.R R/suggest-lambda-constraint.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated affected Rd files. A redundant `@inheritParams` warning on
+  `extract_ordination()` was fixed; the final run completed without warnings.
+- `air format tests/testthat/test-suggest-lambda-constraint.R tests/testthat/test-rotate-compare-loadings.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "rotate|ordiplot|suggest-lambda-constraint|plot-gllvmTMB")'`
+  -> 309 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rg -n 'Legacy aliases|post-hoc|level = c\\(\"unit\", \"unit_obs\", \"B\", \"W\"\\)|Rotate the loadings of a fitted `gllvmTMB_multi`|Loadings matrix from a `gllvmTMB_multi`|Latent-variable scores from a `gllvmTMB_multi`|Two-axis ordination plot of a `gllvmTMB_multi`|A `gllvmTMB_multi` fit|A \\\\code\\{gllvmTMB_multi\\} fit|A \\\\code\\{gllvmTMB_multi\\} object' R/rotate-loadings.R R/output-methods.R R/suggest-lambda-constraint.R man/rotate_loadings.Rd man/getLoadings.Rd man/getLV.Rd man/getResidualCov.Rd man/ordiplot.Rd man/extract_ordination.Rd man/suggest_lambda_constraint.Rd man/VP.Rd`
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not run for this roxygen/reference cleanup.
+- Article renders were not run because this slice deliberately touched no
+  articles.
+
 ## 2026-05-22 -- Reference function documentation audit plan
 
 Scope:

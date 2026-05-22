@@ -2,21 +2,17 @@
 % Please edit documentation in R/output-methods.R
 \name{getLV}
 \alias{getLV}
-\title{Latent-variable scores from a \code{gllvmTMB_multi} fit}
+\title{Extract latent-variable scores from a fitted multivariate model}
 \usage{
-getLV(
-  fit,
-  level = c("unit", "unit_obs", "B", "W"),
-  rotate = c("none", "varimax", "promax")
-)
+getLV(fit, level = "unit", rotate = c("none", "varimax", "promax"))
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
-Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
+Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
-\item{rotate}{Optional \code{"varimax"} or \code{"promax"} post-hoc rotation.
+\item{rotate}{Optional \code{"varimax"} or \code{"promax"} rotation after fitting.
 Default \code{"none"} returns the engine's native lower-triangular Λ.}
 }
 \value{
@@ -25,8 +21,9 @@ within-unit observation (\code{level = "unit_obs"}), and one column per
 latent factor.
 }
 \description{
-Wraps \code{\link[=extract_ordination]{extract_ordination()}}'s \verb{$scores} for users coming from
-\code{gllvm::getLV()}.
+Returns latent scores from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. This is a small
+compatibility wrapper around \code{\link[=extract_ordination]{extract_ordination()}} for readers familiar
+with \code{gllvm::getLV()}.
 }
 \examples{
 \dontrun{
@@ -34,6 +31,6 @@ getLV(fit, level = "unit")
 }
 }
 \seealso{
-\code{\link[=extract_ordination]{extract_ordination()}} for the canonical interface.
+\code{\link[=extract_ordination]{extract_ordination()}} for scores and loadings together.
 }
 \keyword{internal}

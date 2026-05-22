@@ -2,19 +2,15 @@
 % Please edit documentation in R/rotate-loadings.R
 \name{rotate_loadings}
 \alias{rotate_loadings}
-\title{Rotate the loadings of a fitted \code{gllvmTMB_multi} model}
+\title{Rotate the loadings of a fitted multivariate model}
 \usage{
-rotate_loadings(
-  fit,
-  level = c("unit", "unit_obs", "B", "W"),
-  method = c("varimax", "promax", "none")
-)
+rotate_loadings(fit, level = "unit", method = c("varimax", "promax", "none"))
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
-Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
+Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
 \item{method}{One of \code{"varimax"}, \code{"promax"}, or \code{"none"}.}
 }
@@ -25,18 +21,18 @@ and the rotation matrix \code{T} such that
 \eqn{\Lambda_{\text{rotated}} = \Lambda T}.
 }
 \description{
-Applies a post-hoc rotation (e.g. varimax) to the loading matrix
-\eqn{\Lambda} of either the between-unit (\code{level = "unit"}) or
-within-unit (\code{level = "unit_obs"}) reduced-rank component. The latent scores are
-rotated by the inverse transform so the linear predictor (and the
-fitted log-likelihood) is unchanged; only the \emph{parameterisation}
-changes.
+Applies a varimax or promax rotation to the loading matrix \eqn{\Lambda}
+from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. Use \code{level = "unit"} for the
+between-unit reduced-rank component and \code{level = "unit_obs"} for the
+within-unit component. The latent scores are rotated by the complementary
+transform so the linear predictor, fitted log-likelihood, and implied
+covariance are unchanged.
 }
 \details{
-Useful when the lower-triangular constraint inherited from the
-glmmTMB-style lower-triangular constraint produces hard-to-interpret factors;
-a varimax rotation almost always yields cleaner trait-loading
-patterns.
+Rotation is for interpretation of the loading columns. It does not change
+the fitted model, and rotation-invariant quantities such as
+\eqn{\Lambda \Lambda^\top} should be compared on the unrotated or rotated
+scale equivalently.
 
 The rotation is applied to \eqn{\Lambda} on the \emph{left} and to the
 latent scores on the \emph{right} using the inverse transform, so

@@ -1,4 +1,4 @@
-## Post-hoc rotation of the gllvmTMB loading matrix.
+## Rotation of the gllvmTMB loading matrix after fitting.
 ##
 ## The lifted glmmTMB rr() machinery enforces lower-triangular Lambda
 ## with a free-positive diagonal. That removes rotation and sign
@@ -11,23 +11,23 @@
 ## `galamm` supports confirmatory specification but no rotation;
 ## `glmmTMB` exposes neither. gllvmTMB now provides both.
 
-#' Rotate the loadings of a fitted `gllvmTMB_multi` model
+#' Rotate the loadings of a fitted multivariate model
 #'
-#' Applies a post-hoc rotation (e.g. varimax) to the loading matrix
-#' \eqn{\Lambda} of either the between-unit (`level = "unit"`) or
-#' within-unit (`level = "unit_obs"`) reduced-rank component. The latent scores are
-#' rotated by the inverse transform so the linear predictor (and the
-#' fitted log-likelihood) is unchanged; only the *parameterisation*
-#' changes.
+#' Applies a varimax or promax rotation to the loading matrix \eqn{\Lambda}
+#' from a fit returned by [gllvmTMB()]. Use `level = "unit"` for the
+#' between-unit reduced-rank component and `level = "unit_obs"` for the
+#' within-unit component. The latent scores are rotated by the complementary
+#' transform so the linear predictor, fitted log-likelihood, and implied
+#' covariance are unchanged.
 #'
-#' Useful when the lower-triangular constraint inherited from the
-#' glmmTMB-style lower-triangular constraint produces hard-to-interpret factors;
-#' a varimax rotation almost always yields cleaner trait-loading
-#' patterns.
+#' Rotation is for interpretation of the loading columns. It does not change
+#' the fitted model, and rotation-invariant quantities such as
+#' \eqn{\Lambda \Lambda^\top} should be compared on the unrotated or rotated
+#' scale equivalently.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
-#'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
+#'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @param method One of `"varimax"`, `"promax"`, or `"none"`.
 #'
 #' @return A list with rotated `Lambda` (n_traits × d), rotated
@@ -67,53 +67,62 @@
 #' # raw$loadings - lower-triangular (hard to read)
 #' # rot$Lambda  - varimax-rotated (typically simpler structure)
 #' }
-rotate_loadings <- function(fit,
-                            level  = c("unit", "unit_obs", "B", "W"),
-                            method = c("varimax", "promax", "none")) {
-  level  <- match.arg(level)
-  level  <- .normalise_level(level, arg_name = "level")
+rotate_loadings <- function(
+  fit,
+  level = "unit",
+  method = c("varimax", "promax", "none")
+) {
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
+  level <- .normalise_level(level, arg_name = "level")
   method <- match.arg(method)
-  if (!inherits(fit, "gllvmTMB_multi"))
+  if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Pass a gllvmTMB_multi fit.")
+  }
 
   ord <- extract_ordination(fit, level = .canonical_level_name(level))
-  if (is.null(ord))
-    cli::cli_abort("latent() not active at level {.val {level}}; nothing to rotate.")
+  if (is.null(ord)) {
+    cli::cli_abort(
+      "latent() not active at level {.val {level}}; nothing to rotate."
+    )
+  }
   Lambda <- ord$loadings
-  Z      <- ord$scores
+  Z <- ord$scores
 
   if (method == "none") {
-    return(list(Lambda = Lambda, scores = Z, T = diag(ncol(Lambda)),
-                method = "none"))
+    return(list(
+      Lambda = Lambda,
+      scores = Z,
+      T = diag(ncol(Lambda)),
+      method = "none"
+    ))
   }
   if (method == "varimax") {
     rt <- stats::varimax(Lambda, normalize = TRUE)
-    T  <- as.matrix(rt$rotmat)        # orthogonal
+    T <- as.matrix(rt$rotmat) # orthogonal
     Lambda_rot <- Lambda %*% T
-    Z_rot      <- Z      %*% T
+    Z_rot <- Z %*% T
   } else if (method == "promax") {
     rt <- stats::promax(Lambda)
-    T  <- as.matrix(rt$rotmat)        # oblique
+    T <- as.matrix(rt$rotmat) # oblique
     Lambda_rot <- Lambda %*% T
-    Z_rot      <- Z      %*% solve(t(T))   # complementary transform
+    Z_rot <- Z %*% solve(t(T)) # complementary transform
   }
   list(
     Lambda = Lambda_rot,
     scores = Z_rot,
-    T      = T,
+    T = T,
     method = method
   )
 }
 
 
-#' Compare two loading matrices (Procrustes alignment)
+#' Compare two loading matrices after Procrustes alignment
 #'
-#' When fitting two models with latent() on the same dataset (e.g. a
-#' gllvmTMB fit and a glmmTMB or gllvm fit) the loadings are only
-#' identified up to rotation/sign. Procrustes alignment finds the
-#' orthogonal transform that brings one as close to the other as
-#' possible, then reports the residual disagreement. Useful as a
-#' diagnostic when validating against another package.
+#' When two latent-variable fits use the same traits, the loading matrices are
+#' only identified up to rotation and sign. Procrustes alignment finds the
+#' orthogonal transform that brings one matrix as close as possible to the
+#' other, then reports the residual disagreement. This is mainly a validation
+#' helper for comparing [gllvmTMB()] with another implementation.
 #'
 #' @param Lambda_a,Lambda_b Two `n_traits × d` loading matrices.
 #' @return A list with the optimal rotation `R`, the rotated `Lambda_a_rot`,
@@ -121,30 +130,33 @@ rotate_loadings <- function(fit,
 #' @export
 #' @examples
 #' \dontrun{
-#' fit_g <- gllvmTMB(value ~ 0 + trait + latent(0+trait|site, d=2),
+#' fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
 #'                   data = df, trait = "trait", unit = "site")
-#' fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0+trait|site, d=2),
+#' fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0 + trait | site, d = 2),
 #'                          data = df, REML = FALSE)
-#' L_g <- extract_ordination(fit_g, "B")$loadings
+#' L_g <- extract_ordination(fit_g, "unit")$loadings
 #' L_t <- attr(glmmTMB::ranef(fit_t)$cond$site, "loadings")
 #' compare_loadings(L_g, L_t)
 #' }
 compare_loadings <- function(Lambda_a, Lambda_b) {
-  if (!is.matrix(Lambda_a) || !is.matrix(Lambda_b))
+  if (!is.matrix(Lambda_a) || !is.matrix(Lambda_b)) {
     cli::cli_abort("Lambda_a and Lambda_b must be matrices.")
-  if (!all(dim(Lambda_a) == dim(Lambda_b)))
+  }
+  if (!all(dim(Lambda_a) == dim(Lambda_b))) {
     cli::cli_abort("Lambda_a and Lambda_b must have the same dimensions.")
+  }
   M <- crossprod(Lambda_b, Lambda_a)
   sv <- svd(M)
   R <- sv$v %*% t(sv$u)
   Lambda_a_rot <- Lambda_a %*% R
   list(
-    R              = R,
-    Lambda_a_rot   = Lambda_a_rot,
-    frobenius      = sqrt(sum((Lambda_a_rot - Lambda_b)^2)),
-    cor_per_factor = vapply(seq_len(ncol(Lambda_a)),
-                            function(k) stats::cor(Lambda_a_rot[, k],
-                                                   Lambda_b[, k]),
-                            numeric(1))
+    R = R,
+    Lambda_a_rot = Lambda_a_rot,
+    frobenius = sqrt(sum((Lambda_a_rot - Lambda_b)^2)),
+    cor_per_factor = vapply(
+      seq_len(ncol(Lambda_a)),
+      function(k) stats::cor(Lambda_a_rot[, k], Lambda_b[, k]),
+      numeric(1)
+    )
   )
 }

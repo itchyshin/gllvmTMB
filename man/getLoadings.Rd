@@ -2,28 +2,26 @@
 % Please edit documentation in R/output-methods.R
 \name{getLoadings}
 \alias{getLoadings}
-\title{Loadings matrix from a \code{gllvmTMB_multi} fit}
+\title{Extract the loading matrix from a fitted multivariate model}
 \usage{
-getLoadings(
-  fit,
-  level = c("unit", "unit_obs", "B", "W"),
-  rotate = c("none", "varimax", "promax")
-)
+getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
-Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
+Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
-\item{rotate}{Optional \code{"varimax"} or \code{"promax"} post-hoc rotation.
+\item{rotate}{Optional \code{"varimax"} or \code{"promax"} rotation after fitting.
 Default \code{"none"} returns the engine's native lower-triangular Λ.}
 }
 \value{
 An \verb{n_traits × d} numeric matrix.
 }
 \description{
-Wraps \code{\link[=extract_ordination]{extract_ordination()}} for users coming from \code{gllvm::getLoadings()}.
+Returns the trait loading matrix from a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. This
+is a small compatibility wrapper around \code{\link[=extract_ordination]{extract_ordination()}} for readers
+familiar with \code{gllvm::getLoadings()}.
 }
 \examples{
 \dontrun{
@@ -31,7 +29,7 @@ getLoadings(fit, level = "unit", rotate = "varimax")
 }
 }
 \seealso{
-\code{\link[=extract_ordination]{extract_ordination()}} for the canonical interface that
+\code{\link[=extract_ordination]{extract_ordination()}} for the row-and-column interface that
 returns scores and loadings together.
 }
 \keyword{internal}

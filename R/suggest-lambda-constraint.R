@@ -3,21 +3,21 @@
 ## covariance Lambda Lambda^T is identifiable; Lambda alone is not. Users
 ## then pass the returned matrix to `gllvmTMB(..., lambda_constraint = ...)`.
 
-#' Suggest a `lambda_constraint` matrix for a reduced-rank GLLVM
+#' Suggest a `lambda_constraint` matrix for a reduced-rank fit
 #'
-#' Produces a sensible default constraint matrix `M` that resolves the
-#' rotational ambiguity of the reduced-rank loadings Lambda in models of
-#' the form
-#' `value ~ 0 + trait + latent(0 + trait | site, d = K) + ...`. The matrix is
-#' returned in the format expected by [gllvmTMB()]'s `lambda_constraint`
-#' argument: `NA` in free entries, numeric in pinned entries.
+#' Produces a default constraint matrix `M` for the reduced-rank loadings
+#' Lambda in a fit returned by [gllvmTMB()] or in a formula-data pair that will
+#' be passed to [gllvmTMB()]. The matrix is returned in the format expected by
+#' the `lambda_constraint` argument: `NA` in free entries, numeric values in
+#' pinned entries.
 #'
-#' @param fit_or_formula Either a fitted `gllvmTMB_multi` object or a
-#'   formula. If a formula, `data` must also be supplied.
+#' @param fit_or_formula Either a fitted multivariate model returned by
+#'   [gllvmTMB()] or a formula. If a formula, `data` must also be supplied.
 #' @param data A data frame. Required when `fit_or_formula` is a formula;
 #'   ignored when it is a fit.
-#' @param level Which loading matrix to constrain: `"B"` (between-site,
-#'   default) or `"W"` (within-site).
+#' @param level Which loading matrix to constrain: `"unit"` (between-unit,
+#'   default) or `"unit_obs"` (within-unit). Deprecated aliases `"B"` and
+#'   `"W"` are still accepted with a warning.
 #' @param convention One of:
 #'   \describe{
 #'     \item{`"lower_triangular"` (default)}{Pin every upper-triangular
@@ -27,7 +27,7 @@
 #'       rest `NA`. Sets the scale of factor 1; does NOT remove rotational
 #'       ambiguity.}
 #'     \item{`"none"`}{All-`NA` matrix -- no pins. Useful if you plan to
-#'       apply post-hoc rotation (e.g. varimax) instead.}
+#'       rotate the fitted loadings after fitting instead.}
 #'   }
 #' @param trait,unit Name of the trait and unit (site) columns. Forwarded when
 #'   `fit_or_formula` is a formula and the data does not already use
@@ -63,23 +63,25 @@
 #' )
 #' }
 #' @export
-suggest_lambda_constraint <- function(fit_or_formula,
-                                      data = NULL,
-                                      level = c("unit", "unit_obs", "B", "W"),
-                                      convention = c("lower_triangular",
-                                                     "pin_top_one",
-                                                     "none"),
-                                      trait = "trait",
-                                      unit = "site",
-                                      site = NULL) {
-  level <- match.arg(level)
+suggest_lambda_constraint <- function(
+  fit_or_formula,
+  data = NULL,
+  level = "unit",
+  convention = c("lower_triangular", "pin_top_one", "none"),
+  trait = "trait",
+  unit = "site",
+  site = NULL
+) {
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   ## Backward-compat: `site` is a deprecated alias for `unit`.
   if (!is.null(site)) {
-    .Deprecated(msg = paste0(
-      "The `site` argument of `suggest_lambda_constraint()` is deprecated. ",
-      "Use `unit` instead."
-    ))
+    .Deprecated(
+      msg = paste0(
+        "The `site` argument of `suggest_lambda_constraint()` is deprecated. ",
+        "Use `unit` instead."
+      )
+    )
     unit <- site
   }
   ## level was already normalised at function entry (line above)
@@ -89,48 +91,72 @@ suggest_lambda_constraint <- function(fit_or_formula,
   if (inherits(fit_or_formula, "gllvmTMB_multi")) {
     fit <- fit_or_formula
     if (level == "B") {
-      if (!isTRUE(fit$use$rr_B))
-        cli::cli_abort("Fit has no {.code latent(... | unit, ...)} term -- nothing to constrain at level {.val B}.")
+      if (!isTRUE(fit$use$rr_B)) {
+        cli::cli_abort(
+          "Fit has no {.code latent(... | unit, ...)} term -- nothing to constrain at level {.val unit}."
+        )
+      }
       K <- as.integer(fit$d_B)
     } else {
-      if (!isTRUE(fit$use$rr_W))
-        cli::cli_abort("Fit has no {.code latent()} term at the within-unit (W) tier -- nothing to constrain at level {.val W}.")
+      if (!isTRUE(fit$use$rr_W)) {
+        cli::cli_abort(
+          "Fit has no {.code latent()} term at the within-unit tier -- nothing to constrain at level {.val unit_obs}."
+        )
+      }
       K <- as.integer(fit$d_W)
     }
-    n_traits    <- as.integer(fit$n_traits)
+    n_traits <- as.integer(fit$n_traits)
     trait_names <- levels(fit$data[[fit$trait_col]])
   } else if (inherits(fit_or_formula, "formula")) {
-    if (is.null(data))
-      cli::cli_abort("{.arg data} is required when {.arg fit_or_formula} is a formula.")
+    if (is.null(data)) {
+      cli::cli_abort(
+        "{.arg data} is required when {.arg fit_or_formula} is a formula."
+      )
+    }
     ## Run the canonical-keyword + brms-sugar rewriter so that formulas
     ## using `latent()` / `unique()` / `phylo_latent()` etc. are
     ## recognised by parse_multi_formula() (which only knows the
     ## engine-internal names `rr`, `diag`, `phylo_rr`).
     fit_or_formula <- desugar_brms_sugar(fit_or_formula, trait_col = trait)
-    parsed   <- parse_multi_formula(fit_or_formula)
-    kinds    <- vapply(parsed$covstructs, function(cs) cs$kind, character(1))
-    groups   <- vapply(parsed$covstructs, function(cs) deparse(cs$group), character(1))
+    parsed <- parse_multi_formula(fit_or_formula)
+    kinds <- vapply(parsed$covstructs, function(cs) cs$kind, character(1))
+    groups <- vapply(
+      parsed$covstructs,
+      function(cs) deparse(cs$group),
+      character(1)
+    )
     target_group <- if (level == "B") unit else "site_species"
     idx <- which(kinds == "rr" & groups == target_group)
-    if (length(idx) == 0L)
-      cli::cli_abort("Formula has no {.code latent(... | {target_group}, ...)} term -- nothing to constrain at level {.val {level}}.")
+    if (length(idx) == 0L) {
+      cli::cli_abort(
+        "Formula has no {.code latent(... | {target_group}, ...)} term -- nothing to constrain at level {.val {level}}."
+      )
+    }
     cs <- parsed$covstructs[[idx[1]]]
-    K  <- as.integer(cs$extra$d %||% 1L)
-    if (!trait %in% names(data))
+    K <- as.integer(cs$extra$d %||% 1L)
+    if (!trait %in% names(data)) {
       cli::cli_abort("Column {.val {trait}} not found in {.arg data}.")
+    }
     tcol <- data[[trait]]
-    trait_names <- if (is.factor(tcol)) levels(tcol) else sort(unique(as.character(tcol)))
+    trait_names <- if (is.factor(tcol)) {
+      levels(tcol)
+    } else {
+      sort(unique(as.character(tcol)))
+    }
     n_traits <- length(trait_names)
   } else {
-    cli::cli_abort("{.arg fit_or_formula} must be a {.cls gllvmTMB_multi} fit or a formula.")
+    cli::cli_abort(
+      "{.arg fit_or_formula} must be a {.cls gllvmTMB_multi} fit or a formula."
+    )
   }
 
   ## ---- Validate K vs T --------------------------------------------------
-  if (K > n_traits)
+  if (K > n_traits) {
     cli::cli_abort(c(
       "Number of factors K = {K} exceeds number of traits T = {n_traits}.",
       "i" = "A T x K loadings matrix requires K <= T."
     ))
+  }
 
   ## ---- Build constraint matrix ----------------------------------------
   M <- matrix(NA_real_, nrow = n_traits, ncol = K)
@@ -138,7 +164,7 @@ suggest_lambda_constraint <- function(fit_or_formula,
   colnames(M) <- paste0("f", seq_len(K))
 
   n_pins <- 0L
-  note   <- ""
+  note <- ""
   if (convention == "lower_triangular") {
     if (K == 1L) {
       note <- paste0(
@@ -153,7 +179,8 @@ suggest_lambda_constraint <- function(fit_or_formula,
       }
       n_pins <- as.integer(K * (K - 1L) / 2L)
       note <- paste0(
-        "Pinned the K(K-1)/2 = ", n_pins,
+        "Pinned the K(K-1)/2 = ",
+        n_pins,
         " upper-triangular entries of Lambda to 0 (lower-triangular ",
         "convention). Removes the rotational ambiguity completely."
       )
@@ -164,12 +191,12 @@ suggest_lambda_constraint <- function(fit_or_formula,
     note <- paste0(
       "Pinned M[1, 1] = 1 (single-anchor convention). Sets the scale of ",
       "factor 1 but does NOT remove the rotational ambiguity; consider ",
-      "post-hoc rotation (e.g. varimax) for interpretation."
+      "rotation after fitting (e.g. varimax) for interpretation."
     )
   } else {
     note <- paste0(
       "No pins. Returned matrix is all NA. Use this if you intend to ",
-      "rotate the fitted Lambda post-hoc (e.g. varimax)."
+      "rotate the fitted Lambda after fitting (e.g. varimax)."
     )
   }
 
@@ -179,9 +206,9 @@ suggest_lambda_constraint <- function(fit_or_formula,
   list(
     constraint = M,
     convention = convention,
-    d          = K,
-    n_pins     = n_pins,
-    note       = note,
+    d = K,
+    n_pins = n_pins,
+    note = note,
     usage_hint = usage_hint
   )
 }

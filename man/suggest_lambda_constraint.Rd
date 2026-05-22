@@ -2,12 +2,12 @@
 % Please edit documentation in R/suggest-lambda-constraint.R
 \name{suggest_lambda_constraint}
 \alias{suggest_lambda_constraint}
-\title{Suggest a \code{lambda_constraint} matrix for a reduced-rank GLLVM}
+\title{Suggest a \code{lambda_constraint} matrix for a reduced-rank fit}
 \usage{
 suggest_lambda_constraint(
   fit_or_formula,
   data = NULL,
-  level = c("unit", "unit_obs", "B", "W"),
+  level = "unit",
   convention = c("lower_triangular", "pin_top_one", "none"),
   trait = "trait",
   unit = "site",
@@ -15,14 +15,15 @@ suggest_lambda_constraint(
 )
 }
 \arguments{
-\item{fit_or_formula}{Either a fitted \code{gllvmTMB_multi} object or a
-formula. If a formula, \code{data} must also be supplied.}
+\item{fit_or_formula}{Either a fitted multivariate model returned by
+\code{\link[=gllvmTMB]{gllvmTMB()}} or a formula. If a formula, \code{data} must also be supplied.}
 
 \item{data}{A data frame. Required when \code{fit_or_formula} is a formula;
 ignored when it is a fit.}
 
-\item{level}{Which loading matrix to constrain: \code{"B"} (between-site,
-default) or \code{"W"} (within-site).}
+\item{level}{Which loading matrix to constrain: \code{"unit"} (between-unit,
+default) or \code{"unit_obs"} (within-unit). Deprecated aliases \code{"B"} and
+\code{"W"} are still accepted with a warning.}
 
 \item{convention}{One of:
 \describe{
@@ -33,7 +34,7 @@ rotational ambiguity completely. Pins \code{K(K-1)/2} entries.}
 rest \code{NA}. Sets the scale of factor 1; does NOT remove rotational
 ambiguity.}
 \item{\code{"none"}}{All-\code{NA} matrix -- no pins. Useful if you plan to
-apply post-hoc rotation (e.g. varimax) instead.}
+rotate the fitted loadings after fitting instead.}
 }}
 
 \item{trait, unit}{Name of the trait and unit (site) columns. Forwarded when
@@ -58,12 +59,11 @@ the returned matrix with \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 }
 \description{
-Produces a sensible default constraint matrix \code{M} that resolves the
-rotational ambiguity of the reduced-rank loadings Lambda in models of
-the form
-\code{value ~ 0 + trait + latent(0 + trait | site, d = K) + ...}. The matrix is
-returned in the format expected by \code{\link[=gllvmTMB]{gllvmTMB()}}'s \code{lambda_constraint}
-argument: \code{NA} in free entries, numeric in pinned entries.
+Produces a default constraint matrix \code{M} for the reduced-rank loadings
+Lambda in a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} or in a formula-data pair that will
+be passed to \code{\link[=gllvmTMB]{gllvmTMB()}}. The matrix is returned in the format expected by
+the \code{lambda_constraint} argument: \code{NA} in free entries, numeric values in
+pinned entries.
 }
 \examples{
 \dontrun{

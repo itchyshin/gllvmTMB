@@ -4,16 +4,24 @@
 
 make_rrB_fit <- function(seed = 1, d = 2, n_traits = 4) {
   set.seed(seed)
-  Lam <- matrix(c(1.0, 0.5, -0.4, 0.3,
-                  0.0, 0.8, 0.4, -0.2)[1:(n_traits * d)], n_traits, d)
+  Lam <- matrix(
+    c(1.0, 0.5, -0.4, 0.3, 0.0, 0.8, 0.4, -0.2)[1:(n_traits * d)],
+    n_traits,
+    d
+  )
   sim <- simulate_site_trait(
-    n_sites = 30, n_species = 1, n_traits = n_traits,
+    n_sites = 30,
+    n_species = 1,
+    n_traits = n_traits,
     mean_species_per_site = 1,
-    Lambda_B = Lam, psi_B = rep(0, n_traits),
-    beta = matrix(0, n_traits, 2), seed = seed
+    Lambda_B = Lam,
+    psi_B = rep(0, n_traits),
+    beta = matrix(0, n_traits, 2),
+    seed = seed
   )
   fmla <- stats::as.formula(sprintf(
-    "value ~ 0 + trait + latent(0 + trait | site, d = %d)", d
+    "value ~ 0 + trait + latent(0 + trait | site, d = %d)",
+    d
   ))
   suppressMessages(suppressWarnings(gllvmTMB(fmla, data = sim$data)))
 }
@@ -26,20 +34,23 @@ test_that("rotate_loadings(): non-fit input errors", {
 
 test_that("rotate_loadings(): unknown method errors via match.arg", {
   fit <- make_rrB_fit(seed = 1, d = 2)
-  expect_error(rotate_loadings(fit, "B", method = "oblimin"),
-               regexp = "should be one of")
+  expect_error(
+    rotate_loadings(fit, "B", method = "oblimin"),
+    regexp = "should be one of"
+  )
 })
 
 test_that("rotate_loadings(): unknown level errors via match.arg", {
   fit <- make_rrB_fit(seed = 1, d = 2)
-  expect_error(rotate_loadings(fit, level = "Z"),
-               regexp = "should be one of")
+  expect_error(rotate_loadings(fit, level = "Z"), regexp = "should be one of")
 })
 
 test_that("rotate_loadings(): errors when level not in fit", {
   fit <- make_rrB_fit(seed = 1, d = 2)
-  expect_error(rotate_loadings(fit, "W", "varimax"),
-               regexp = "latent.*not active")
+  expect_error(
+    rotate_loadings(fit, "unit_obs", "varimax"),
+    regexp = "latent.*not active"
+  )
 })
 
 test_that("rotate_loadings(method='none'): identity rotation", {
@@ -67,9 +78,7 @@ test_that("rotate_loadings(method='varimax'): preserves Lambda Lambda' (rotation
   ord <- suppressMessages(extract_ordination(fit, "B"))
   L_raw <- ord$loadings
   rt <- rotate_loadings(fit, "B", "varimax")
-  expect_equal(L_raw %*% t(L_raw),
-               rt$Lambda %*% t(rt$Lambda),
-               tolerance = 1e-8)
+  expect_equal(L_raw %*% t(L_raw), rt$Lambda %*% t(rt$Lambda), tolerance = 1e-8)
 })
 
 test_that("rotate_loadings(method='varimax'): scores rotated by T preserve Lambda %*% z", {
@@ -78,7 +87,7 @@ test_that("rotate_loadings(method='varimax'): scores rotated by T preserve Lambd
   rt <- rotate_loadings(fit, "B", "varimax")
   ## Lambda_rot %*% z_rot' should equal Lambda %*% z' for each site
   L_raw <- ord$loadings
-  Z_raw <- ord$scores                        # nrow = n_sites
+  Z_raw <- ord$scores # nrow = n_sites
   pred_raw <- Z_raw %*% t(L_raw)
   pred_rot <- rt$scores %*% t(rt$Lambda)
   expect_equal(pred_raw, pred_rot, tolerance = 1e-8)
@@ -100,7 +109,7 @@ test_that("rotate_loadings(method='promax'): preserves linear predictor (Lambda 
   ord <- suppressMessages(extract_ordination(fit, "B"))
   rt <- rotate_loadings(fit, "B", "promax")
   pred_raw <- ord$scores %*% t(ord$loadings)
-  pred_rot <- rt$scores  %*% t(rt$Lambda)
+  pred_rot <- rt$scores %*% t(rt$Lambda)
   expect_equal(pred_raw, pred_rot, tolerance = 1e-8)
 })
 
@@ -135,7 +144,7 @@ test_that("compare_loadings(): rotated input recovers the rotation R", {
   set.seed(11)
   M <- matrix(rnorm(9), 3, 3)
   qr_obj <- qr(M)
-  Q <- qr.Q(qr_obj)                      # orthogonal
+  Q <- qr.Q(qr_obj) # orthogonal
   L_rot <- L %*% Q
   out <- compare_loadings(L_rot, L)
   ## The recovered rotation R should bring L_rot back to L
@@ -165,6 +174,8 @@ test_that("compare_loadings(): cor_per_factor in [-1, 1]", {
   La <- matrix(rnorm(20), 5, 4)
   Lb <- matrix(rnorm(20), 5, 4)
   out <- compare_loadings(La, Lb)
-  expect_true(all(out$cor_per_factor >= -1 - 1e-8 &
-                  out$cor_per_factor <= 1 + 1e-8))
+  expect_true(all(
+    out$cor_per_factor >= -1 - 1e-8 &
+      out$cor_per_factor <= 1 + 1e-8
+  ))
 })

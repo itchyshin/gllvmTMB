@@ -3,13 +3,13 @@
 \name{ordiplot}
 \alias{ordiplot}
 \alias{ordiplot.gllvmTMB_multi}
-\title{Two-axis ordination plot of a \code{gllvmTMB_multi} fit}
+\title{Draw a two-axis ordination plot for a fitted multivariate model}
 \usage{
 ordiplot(fit, ...)
 
 \method{ordiplot}{gllvmTMB_multi}(
   fit,
-  level = c("unit", "unit_obs", "B", "W"),
+  level = "unit",
   axes = c(1, 2),
   biplot = TRUE,
   rotate = c("none", "varimax", "promax"),
@@ -17,12 +17,12 @@ ordiplot(fit, ...)
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB} (single-response) or \code{gllvmTMB_multi} fit.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{...}{Passed to \code{plot()}.}
 
-\item{level}{\code{"unit"} / \code{"B"} (between-unit) or \code{"unit_obs"} / \code{"W"}
-(within-unit).}
+\item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
+Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
 \item{axes}{Length-2 integer vector picking which two latent axes
 to plot. Default \code{c(1, 2)}.}
@@ -30,22 +30,23 @@ to plot. Default \code{c(1, 2)}.}
 \item{biplot}{Logical; if \code{TRUE}, overlay scaled trait loadings as
 arrows (default \code{TRUE}).}
 
-\item{rotate}{Post-hoc rotation: \code{"none"} (default), \code{"varimax"}, or
+\item{rotate}{Rotation after fitting: \code{"none"} (default), \code{"varimax"}, or
 \code{"promax"}.}
 }
 \description{
-A simple base-R biplot of the latent scores, with optional trait
-loadings overlaid. Mirrors \code{gllvm::ordiplot()} for users migrating
-from that package.
+Draws a simple base-R biplot of latent scores, with optional trait loadings
+overlaid, for a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. This method is a compatibility
+surface for users familiar with \code{gllvm::ordiplot()}; the package's richer
+ggplot-based model plots are available through \code{plot(fit, type = ...)}.
 }
 \details{
 This is an S3 generic so that dispatch is robust to load order with
 the \code{gllvm} package — \code{gllvm::ordiplot} is itself an S3 generic, and
 if it is loaded after \code{gllvmTMB} it masks our function. With S3
 methods registered, either generic correctly routes a multi-response
-fit through \code{ordiplot.gllvmTMB_multi}.
+fit through the gllvmTMB ordination method.
 }
 \seealso{
-\code{\link[=plot.gllvmTMB_multi]{plot.gllvmTMB_multi()}} for the canonical S3 plot interface.
+\code{\link[=plot.gllvmTMB_multi]{plot.gllvmTMB_multi()}} for the available \code{type} choices.
 }
 \keyword{internal}

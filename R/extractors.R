@@ -386,10 +386,11 @@ extract_communality <- function(
   tbl
 }
 
-#' Ordination scores and loadings at one level
+#' Extract ordination scores and loadings from a fitted multivariate model
 #'
-#' @inheritParams extract_communality
-#' @param fit A `gllvmTMB_multi` object.
+#' @param fit A fitted multivariate model returned by [gllvmTMB()].
+#' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
+#'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @return A list with `scores` (units or within-unit observations in rows,
 #'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
 #'
@@ -413,8 +414,8 @@ extract_communality <- function(
 #' }
 #'
 #' @export
-extract_ordination <- function(fit, level = c("unit", "unit_obs", "B", "W")) {
-  level <- match.arg(level)
+extract_ordination <- function(fit, level = "unit") {
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   obj <- fit$tmb_obj
   par <- obj$env$last.par.best

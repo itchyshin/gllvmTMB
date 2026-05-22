@@ -7129,7 +7129,7 @@ Evidence:
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
   -> `No problems found.`
 - `git diff --check`
-  -> clean before the check-log / after-task entry.
+  -> clean after the check-log / after-task entry.
 - Stale wording scan:
 
   ```sh
@@ -7286,3 +7286,62 @@ Deliberately not run:
 - Full `devtools::test()` and full `devtools::check()` were not rerun for this
   reference-prose slice. No vignettes or articles were edited or rendered. No
   3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Test surface cleanup after reference / confidence-eye slices
+
+Scope:
+
+- Updated tests that still expected pre-cleanup public wording or pre-rename
+  confidence-eye metadata.
+- Replaced legacy `B` / `W` level and tier spellings in the touched tests with
+  canonical `unit` / `unit_obs` spellings where legacy aliases were not the
+  behavior under test.
+- Suppressed intentional `gllvmTMB_wide()` deprecation warnings in legacy
+  wrapper tests so the test surface stays quiet while the migration wrapper
+  remains covered.
+- Confirmed the missing-response contract is already implemented and tested:
+  long `NA` response rows and wide `traits(...)` `NA` cells are dropped as
+  unobserved unit-trait cells.
+
+Evidence:
+
+- Starting state:
+  `git status --short --branch`
+  -> `codex/reference-function-audit-2026-05-22`, clean, ahead 7.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,createdAt,updatedAt,event,url`
+  -> latest `main` R-CMD-check and follow-on pkgdown both succeeded for
+  `c1dc2e4`; earlier manual pkgdown dispatch failure was superseded by the
+  successful deploy.
+- `gh run view 26282665628 --repo itchyshin/gllvmTMB --json databaseId,displayTitle,workflowName,status,conclusion,event,headBranch,headSha,createdAt,updatedAt,jobs,url`
+  -> failed manual pkgdown dispatch on `codex/symbol-syntax-alignment-2026-05-21`
+  at `299660d`; job had no recorded steps/logs.
+- `Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'`
+  -> interrupted after it exposed stale test failures and then spent several
+  minutes in `phylo-q-decomposition`. Captured failures were a stale
+  `correlations_raindrop` metadata expectation and stale
+  `gllvmTMB_multi` wrong-object regexes; captured warnings were legacy alias
+  test calls.
+- `air format tests/testthat/test-example-morphometrics.R tests/testthat/test-extractors-extra.R tests/testthat/test-cross-sectional-unique.R tests/testthat/test-fisher-z-correlations.R tests/testthat/test-gllvmTMB-wide.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics|extractors-extra|cross-sectional-unique|fisher-z-correlations|gllvmTMB-wide|missing-response|traits-keyword|plot-covariance-tables|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 526 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale test-surface scan:
+
+  ```sh
+  rg -n 'tier = "B"|tier = "W"|level = "B"|level = "W"|"gllvmTMB_multi"\)|regexp = "gllvmTMB_multi"|correlations_raindrop' tests/testthat/test-example-morphometrics.R tests/testthat/test-extractors-extra.R tests/testthat/test-cross-sectional-unique.R tests/testthat/test-fisher-z-correlations.R tests/testthat/test-gllvmTMB-wide.R
+  ```
+
+  -> only legitimate `expect_s3_class(fit, "gllvmTMB_multi")` class checks
+  remain in `test-gllvmTMB-wide.R`.
+
+Deliberately not run:
+
+- Full `devtools::test()` was attempted but not completed after the actionable
+  failures were captured; the focused suite covering edited tests and plot
+  helpers is clean. `pkgdown::check_pkgdown()` was not rerun because no
+  documentation or pkgdown navigation files changed. No 3-OS CI was available
+  until the branch is pushed.

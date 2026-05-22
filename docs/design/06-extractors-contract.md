@@ -174,7 +174,8 @@ than $\Lambda$ identity.
 
 **Return**: a data frame with one row per requested covariance,
 variance, or correlation entry. It is a report-ready view over
-`extract_Sigma()`, not a second covariance implementation.
+`extract_Sigma()` or over a `bootstrap_Sigma()` result, not a
+second covariance implementation.
 
 Stable columns:
 
@@ -188,14 +189,18 @@ one row per symmetric estimand. `entries = "all"` returns every
 matrix cell for heatmaps and plot helpers. `measure = "correlation"`
 is allowed only for `part = "total"` because report-ready
 correlations should be based on the full
-$\Lambda\Lambda^\top + \Psi$ covariance. Interval columns are
-present for table compatibility but deliberately set to `NA` /
-`"none"`; interval estimation remains the job of
-`extract_correlations()` and `bootstrap_Sigma()`.
+$\Lambda\Lambda^\top + \Psi$ covariance. For fitted-model input,
+interval columns are present for table compatibility but deliberately
+set to `NA` / `"none"`; interval estimation remains the job of
+`extract_correlations()` and `bootstrap_Sigma()`. For `bootstrap_Sigma`
+input, the same columns carry bootstrap percentile bounds already
+stored in the object, with `interval_method = "bootstrap"` and
+row-level `interval_status` values.
 
-Validation-debt row: `EXT-18`. Underlying Sigma coverage still
-inherits the relevant `extract_Sigma()` rows (`EXT-01` and
-`MIX-03` for mixed-family fits).
+Validation-debt rows: `EXT-18` for fitted-model point tables and
+`EXT-20` for bootstrap interval rows. Underlying Sigma coverage still
+inherits the relevant `extract_Sigma()` / `bootstrap_Sigma()` rows
+(`EXT-01`, `EXT-13`, and `MIX-03` for mixed-family fits).
 
 #### `extract_Sigma_B(fit)` and `extract_Sigma_W(fit)`
 

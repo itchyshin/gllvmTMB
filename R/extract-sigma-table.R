@@ -125,26 +125,133 @@
   )
 }
 
+.sigma_table_bootstrap_levels <- function(boot, measure) {
+  prefix <- if (identical(measure, "correlation")) "R_" else "Sigma_"
+  sub(
+    paste0("^", prefix),
+    "",
+    grep(paste0("^", prefix), names(boot$point_est), value = TRUE)
+  )
+}
+
+.sigma_table_from_bootstrap <- function(boot, level, measure, entries) {
+  available <- .sigma_table_bootstrap_levels(boot, measure)
+  if (length(available) == 0L) {
+    what <- if (identical(measure, "correlation")) "R" else "Sigma"
+    cli::cli_abort(c(
+      "No {.val {what}} bootstrap summaries are available.",
+      "i" = "Call {.fun bootstrap_Sigma} with {.code what = {.val {what}}}."
+    ))
+  }
+
+  if (length(level) == 1L && identical(level, "all")) {
+    levels_to_extract <- available
+  } else {
+    levels_to_extract <- vapply(
+      level,
+      .normalise_level,
+      character(1L),
+      arg_name = "level"
+    )
+    levels_to_extract <- intersect(unique(levels_to_extract), available)
+    if (length(levels_to_extract) == 0L) {
+      available_levels <- vapply(
+        available,
+        .canonical_level_name,
+        character(1L),
+        USE.NAMES = FALSE
+      )
+      cli::cli_abort(c(
+        "None of the requested covariance levels are present in the bootstrap object.",
+        "i" = "Available: {.val {available_levels}}."
+      ))
+    }
+  }
+
+  prefix <- if (identical(measure, "correlation")) "R_" else "Sigma_"
+  matrix_label <- if (identical(measure, "correlation")) "R" else "Sigma"
+  scale <- if (identical(measure, "correlation")) "correlation" else "latent"
+  pieces <- vector("list", length(levels_to_extract))
+  for (k in seq_along(levels_to_extract)) {
+    lv <- levels_to_extract[[k]]
+    key <- paste0(prefix, lv)
+    mat <- boot$point_est[[key]]
+    if (is.null(mat)) {
+      pieces[[k]] <- NULL
+      next
+    }
+    tbl <- .sigma_table_from_matrix(
+      mat = mat,
+      level = .canonical_level_name(lv),
+      component = "total",
+      matrix_label = matrix_label,
+      entries = entries,
+      scale = scale,
+      validation_row = "EXT-20"
+    )
+    lower <- boot$ci_lower[[key]]
+    upper <- boot$ci_upper[[key]]
+    if (!is.null(lower)) {
+      tbl$lower <- lower[cbind(tbl$i, tbl$j)]
+    }
+    if (!is.null(upper)) {
+      tbl$upper <- upper[cbind(tbl$i, tbl$j)]
+    }
+    has_interval <- is.finite(tbl$lower) & is.finite(tbl$upper)
+    tbl$interval_method <- "bootstrap"
+    tbl$interval_status <- ifelse(
+      has_interval,
+      "provided",
+      if (isTRUE(boot$n_failed >= boot$n_boot)) "failed" else "missing"
+    )
+    pieces[[k]] <- tbl
+  }
+
+  out <- do.call(rbind, pieces[!vapply(pieces, is.null, logical(1L))])
+  if (is.null(out)) {
+    out <- .empty_sigma_table()
+  }
+  rownames(out) <- NULL
+  attr(out, "notes") <- sprintf(
+    "Bootstrap percentile intervals from bootstrap_Sigma(); n_boot = %s, n_failed = %s, conf = %s.",
+    boot$n_boot,
+    boot$n_failed,
+    boot$conf
+  )
+  attr(out, "bootstrap") <- list(
+    conf = boot$conf,
+    n_boot = boot$n_boot,
+    n_failed = boot$n_failed,
+    ci_method = boot$ci_method,
+    link_residual = boot$link_residual
+  )
+  out
+}
+
 #' Extract a report-ready table of Sigma or correlation entries
 #'
 #' `extract_Sigma()` returns matrices because that is the most convenient
 #' interactive representation. `extract_Sigma_table()` returns the same
 #' covariance target as one row per matrix entry so articles, tables, and
-#' plot helpers can work without hand-indexing matrices.
+#' plot helpers can work without hand-indexing matrices. It can also turn a
+#' [bootstrap_Sigma()] result into the same row schema with bootstrap interval
+#' columns filled in.
 #'
 #' Scope boundary: IN, the helper is a report-ready point-estimate table for
 #' the same covariance and correlation matrices returned by [extract_Sigma()]
-#' (EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor).
-#' PARTIAL, interval columns are present but not computed here. PLANNED,
-#' interval-aware Sigma and correlation table joins remain future plotting
-#' infrastructure; use [extract_correlations()] or [bootstrap_Sigma()] when
-#' intervals are needed today.
+#' (EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor), and a
+#' bootstrap interval table when `fit` is a [bootstrap_Sigma()] result
+#' (EXT-20). PARTIAL, bootstrap intervals cover the summaries already present
+#' in the bootstrap object and do not add profile or Wald intervals. PLANNED,
+#' richer interval joins remain future plotting infrastructure.
 #'
 #' The table is a point-estimate view over [extract_Sigma()]. It does not
-#' compute confidence intervals. Use [extract_correlations()] when you need
-#' pairwise correlation intervals.
+#' compute confidence intervals from a fitted model directly. Use
+#' [extract_correlations()] when you need pairwise correlation intervals, or
+#' [bootstrap_Sigma()] followed by `extract_Sigma_table()` when you need
+#' bootstrap intervals for Sigma or correlation matrix entries.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A `gllvmTMB_multi` fit or a `bootstrap_Sigma` object.
 #' @param level Character vector of covariance levels, or `"all"` for every
 #'   level present in the fit. Canonical levels are `"unit"`, `"unit_obs"`,
 #'   `"cluster"`, `"phy"`, and `"spatial"`; legacy aliases `"B"`, `"W"`,
@@ -186,6 +293,9 @@
 #' extract_Sigma_table(fit, level = "unit")
 #' extract_Sigma_table(fit, level = "unit", measure = "correlation")
 #' extract_Sigma_table(fit, level = c("unit", "unit_obs"), entries = "all")
+#' boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
+#'                         what = "Sigma", progress = FALSE)
+#' extract_Sigma_table(boot, level = "unit", entries = "upper")
 #' }
 extract_Sigma_table <- function(
   fit,
@@ -195,13 +305,31 @@ extract_Sigma_table <- function(
   entries = c("unique", "all", "upper", "lower", "offdiag", "diag"),
   link_residual = c("auto", "none")
 ) {
-  if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
-  }
   part <- match.arg(part)
   measure <- match.arg(measure)
   entries <- match.arg(entries)
   link_residual <- match.arg(link_residual)
+
+  if (inherits(fit, "bootstrap_Sigma")) {
+    if (!identical(part, "total")) {
+      cli::cli_abort(c(
+        "{.cls bootstrap_Sigma} table extraction is only available with {.code part = \"total\"}.",
+        "i" = "Bootstrap summaries currently store total Sigma and R entries."
+      ))
+    }
+    return(.sigma_table_from_bootstrap(
+      boot = fit,
+      level = level,
+      measure = measure,
+      entries = entries
+    ))
+  }
+
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort(
+      "Provide a {.cls gllvmTMB_multi} fit or a {.cls bootstrap_Sigma} object."
+    )
+  }
 
   if (identical(measure, "correlation") && !identical(part, "total")) {
     cli::cli_abort(c(

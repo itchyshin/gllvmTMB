@@ -14,7 +14,7 @@ extract_Sigma_table(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A \code{gllvmTMB_multi} fit or a \code{bootstrap_Sigma} object.}
 
 \item{level}{Character vector of covariance levels, or \code{"all"} for every
 level present in the fit. Canonical levels are \code{"unit"}, \code{"unit_obs"},
@@ -50,20 +50,24 @@ because this helper is point-estimate only.
 \code{extract_Sigma()} returns matrices because that is the most convenient
 interactive representation. \code{extract_Sigma_table()} returns the same
 covariance target as one row per matrix entry so articles, tables, and
-plot helpers can work without hand-indexing matrices.
+plot helpers can work without hand-indexing matrices. It can also turn a
+\code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} result into the same row schema with bootstrap interval
+columns filled in.
 }
 \details{
 Scope boundary: IN, the helper is a report-ready point-estimate table for
 the same covariance and correlation matrices returned by \code{\link[=extract_Sigma]{extract_Sigma()}}
-(EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor).
-PARTIAL, interval columns are present but not computed here. PLANNED,
-interval-aware Sigma and correlation table joins remain future plotting
-infrastructure; use \code{\link[=extract_correlations]{extract_correlations()}} or \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} when
-intervals are needed today.
+(EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor), and a
+bootstrap interval table when \code{fit} is a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} result
+(EXT-20). PARTIAL, bootstrap intervals cover the summaries already present
+in the bootstrap object and do not add profile or Wald intervals. PLANNED,
+richer interval joins remain future plotting infrastructure.
 
 The table is a point-estimate view over \code{\link[=extract_Sigma]{extract_Sigma()}}. It does not
-compute confidence intervals. Use \code{\link[=extract_correlations]{extract_correlations()}} when you need
-pairwise correlation intervals.
+compute confidence intervals from a fitted model directly. Use
+\code{\link[=extract_correlations]{extract_correlations()}} when you need pairwise correlation intervals, or
+\code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} followed by \code{extract_Sigma_table()} when you need
+bootstrap intervals for Sigma or correlation matrix entries.
 }
 \examples{
 \dontrun{
@@ -77,6 +81,9 @@ fit <- gllvmTMB(
 extract_Sigma_table(fit, level = "unit")
 extract_Sigma_table(fit, level = "unit", measure = "correlation")
 extract_Sigma_table(fit, level = c("unit", "unit_obs"), entries = "all")
+boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
+                        what = "Sigma", progress = FALSE)
+extract_Sigma_table(boot, level = "unit", entries = "upper")
 }
 }
 \seealso{

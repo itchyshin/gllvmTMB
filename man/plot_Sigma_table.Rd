@@ -20,10 +20,10 @@ plot_Sigma_table(
 )
 }
 \arguments{
-\item{x}{Either a \code{gllvmTMB_multi} fit or a data frame returned by
-\code{\link[=extract_Sigma_table]{extract_Sigma_table()}}. Data frames must contain \code{level}, \code{trait_i},
-\code{trait_j}, \code{estimate}, \code{lower}, \code{upper}, \code{matrix}, \code{component},
-\code{diagonal}, and \code{triangle}.}
+\item{x}{A \code{gllvmTMB_multi} fit, a \code{bootstrap_Sigma} object, or a data frame
+returned by \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}. Data frames must contain \code{level},
+\code{trait_i}, \code{trait_j}, \code{estimate}, \code{lower}, \code{upper}, \code{matrix},
+\code{component}, \code{diagonal}, and \code{triangle}.}
 
 \item{level, part, measure, entries, link_residual}{Passed to
 \code{\link[=extract_Sigma_table]{extract_Sigma_table()}} when \code{x} is a fitted model. The plotting default

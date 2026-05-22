@@ -4896,3 +4896,63 @@ Deliberately not run:
 - Full `devtools::check()` was not rerun for this docs/plot-surface slice.
   The affected rendered pages, focused plot/extractor tests, generated Rd,
   `pkgdown::check_pkgdown()`, and `git diff --check` were rerun.
+
+## 2026-05-21 -- Bootstrap Sigma table interval rows
+
+Scope:
+
+- Extended `extract_Sigma_table()` so it accepts `bootstrap_Sigma()` objects in
+  addition to fitted `gllvmTMB_multi` models.
+- Bootstrap Sigma/R summaries now convert to the same report-ready row schema
+  as fitted-model Sigma tables, with `lower`, `upper`,
+  `interval_method = "bootstrap"`, and row-level `interval_status`.
+- `plot_Sigma_table()` now accepts a `bootstrap_Sigma()` object directly, so
+  bootstrap-derived Sigma rows can be plotted as interval forests or raindrops
+  without hand-built joins in articles.
+- Added validation-debt row `EXT-20`.
+- Updated `NEWS.md`, `docs/design/06-extractors-contract.md`, and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the current plot-helper branch plus PR #233's base slice.
+- `Rscript --vanilla -e 'parse("R/extract-sigma-table.R"); parse("R/plot-covariance-tables.R")'`
+  -> parsed successfully.
+- `air format R/extract-sigma-table.R R/plot-covariance-tables.R tests/testthat/test-extract-sigma-table.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_Sigma_table.Rd` and `man/plot_Sigma_table.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table|plot-covariance-tables|bootstrap-Sigma")'`
+  -> 167 passes, 0 failures, 0 warnings, 0 skips after formatter and
+  documentation regeneration.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 local install warning, 3 notes. The warning matched the
+  existing local SDK/compiler install-warning pattern; notes were the existing
+  `air.toml`, legacy NEWS section parsing, and unused `nlme`.
+- Synthetic visual QA render:
+  `plot_Sigma_table(boot, level = "unit", entries = "upper", style = "raindrop")`
+  wrote `/tmp/gllvmTMB-bootstrap-sigma-raindrop.png`.
+  Florence review verdict: PASS for the new bootstrap-object path; the plot
+  shows three unique Sigma pairs with finite compatibility shapes and no
+  duplicated symmetric rows.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-20|bootstrap_Sigma\\(\\)|bootstrap interval|interval_method = \"bootstrap\"|bootstrap_Sigma object" NEWS.md R/extract-sigma-table.R R/plot-covariance-tables.R man/extract_Sigma_table.Rd man/plot_Sigma_table.Rd tests/testthat/test-extract-sigma-table.R tests/testthat/test-plot-covariance-tables.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new bootstrap table surface is present in code, tests, Rd, NEWS, and
+  design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow
+  inference-table slice. Focused extractor/plot/bootstrap tests, documentation
+  regeneration, visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and
+  a short no-tests package check were run.

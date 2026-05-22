@@ -27,6 +27,47 @@ make_sigma_table_fit <- function(seed = 20260521L) {
   )))
 }
 
+make_bootstrap_sigma_table_object <- function() {
+  Sigma <- matrix(
+    c(
+      1.00,
+      0.20,
+      -0.10,
+      0.20,
+      0.80,
+      0.30,
+      -0.10,
+      0.30,
+      1.20
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(c("length", "mass", "wing"), c("length", "mass", "wing"))
+  )
+  R <- stats::cov2cor(Sigma)
+  boot <- list(
+    point_est = list(Sigma_B = Sigma, R_B = R),
+    ci_lower = list(
+      Sigma_B = Sigma - 0.05,
+      R_B = pmax(R - 0.10, -1)
+    ),
+    ci_upper = list(
+      Sigma_B = Sigma + 0.05,
+      R_B = pmin(R + 0.10, 1)
+    ),
+    ci_method = "percentile",
+    link_residual = "auto",
+    conf = 0.95,
+    n_boot = 20L,
+    n_failed = 1L,
+    level = "B",
+    what = c("Sigma", "R"),
+    draws = NULL
+  )
+  class(boot) <- c("bootstrap_Sigma", "list")
+  boot
+}
+
 test_that("extract_Sigma_table returns one row per unique covariance entry", {
   fit <- make_sigma_table_fit()
   tbl <- suppressMessages(extract_Sigma_table(fit, level = "unit"))
@@ -137,4 +178,72 @@ test_that("extract_Sigma_table preserves mixed-family link-residual Sigma rows",
   expect_equal(tbl$estimate, mat[cbind(tbl$i, tbl$j)], tolerance = 1e-10)
   expect_equal(unique(tbl$scale), "latent")
   expect_equal(unique(tbl$validation_row), "EXT-18")
+})
+
+test_that("extract_Sigma_table accepts bootstrap_Sigma objects with intervals", {
+  boot <- make_bootstrap_sigma_table_object()
+  tbl <- extract_Sigma_table(boot, level = "unit", entries = "upper")
+
+  expect_s3_class(tbl, "data.frame")
+  expect_equal(nrow(tbl), 3L)
+  expect_equal(unique(tbl$level), "unit")
+  expect_equal(unique(tbl$matrix), "Sigma")
+  expect_equal(unique(tbl$validation_row), "EXT-20")
+  expect_equal(unique(tbl$interval_method), "bootstrap")
+  expect_equal(unique(tbl$interval_status), "provided")
+  expect_true(all(is.finite(tbl$lower)))
+  expect_true(all(is.finite(tbl$upper)))
+  expect_equal(
+    tbl$estimate,
+    boot$point_est$Sigma_B[cbind(tbl$i, tbl$j)]
+  )
+  expect_equal(
+    tbl$lower,
+    boot$ci_lower$Sigma_B[cbind(tbl$i, tbl$j)]
+  )
+  expect_equal(attr(tbl, "bootstrap")$n_failed, 1L)
+})
+
+test_that("extract_Sigma_table returns bootstrap correlation rows", {
+  boot <- make_bootstrap_sigma_table_object()
+  tbl <- extract_Sigma_table(
+    boot,
+    level = "unit",
+    measure = "correlation",
+    entries = "all"
+  )
+
+  expect_equal(nrow(tbl), 9L)
+  expect_equal(unique(tbl$matrix), "R")
+  expect_equal(unique(tbl$scale), "correlation")
+  expect_equal(unique(tbl$interval_method), "bootstrap")
+  expect_equal(unique(tbl$interval_status), "provided")
+  expect_equal(tbl$estimate, boot$point_est$R_B[cbind(tbl$i, tbl$j)])
+})
+
+test_that("extract_Sigma_table marks missing bootstrap intervals", {
+  boot <- make_bootstrap_sigma_table_object()
+  boot$ci_lower$Sigma_B[1L, 2L] <- NA_real_
+  tbl <- extract_Sigma_table(boot, level = "unit", entries = "upper")
+
+  expect_equal(
+    tbl$interval_status[tbl$trait_i == "length" & tbl$trait_j == "mass"],
+    "missing"
+  )
+  expect_equal(
+    tbl$interval_status[tbl$trait_i == "mass" & tbl$trait_j == "wing"],
+    "provided"
+  )
+})
+
+test_that("extract_Sigma_table rejects unsupported bootstrap table requests", {
+  boot <- make_bootstrap_sigma_table_object()
+  expect_error(
+    extract_Sigma_table(boot, level = "unit_obs"),
+    regexp = "Available"
+  )
+  expect_error(
+    extract_Sigma_table(boot, part = "shared"),
+    regexp = "part = \"total\""
+  )
 })

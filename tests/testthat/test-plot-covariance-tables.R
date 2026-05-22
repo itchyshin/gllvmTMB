@@ -267,3 +267,52 @@ test_that("plot_Sigma_table can render raindrops from finite table intervals", {
   )
   expect_true("GeomSegment" %in% gtmb_plot_geom_names(p_with_line))
 })
+
+test_that("plot_Sigma_table accepts bootstrap_Sigma objects", {
+  skip_if_no_ggplot2()
+  Sigma <- matrix(
+    c(
+      1.0,
+      0.2,
+      -0.1,
+      0.2,
+      0.8,
+      0.3,
+      -0.1,
+      0.3,
+      1.2
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(c("length", "mass", "wing"), c("length", "mass", "wing"))
+  )
+  boot <- list(
+    point_est = list(Sigma_B = Sigma),
+    ci_lower = list(Sigma_B = Sigma - 0.05),
+    ci_upper = list(Sigma_B = Sigma + 0.05),
+    ci_method = "percentile",
+    link_residual = "auto",
+    conf = 0.95,
+    n_boot = 20L,
+    n_failed = 0L,
+    level = "B",
+    what = "Sigma",
+    draws = NULL
+  )
+  class(boot) <- c("bootstrap_Sigma", "list")
+
+  p <- plot_Sigma_table(boot, level = "unit", entries = "upper")
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "sigma_table_forest",
+    "extract_Sigma_table"
+  )
+  expect_equal(meta$interval_status, "provided")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(nrow(plot_data), 3L)
+  expect_equal(unique(plot_data$interval_method), "bootstrap")
+  expect_true(all(plot_data$.draw_interval))
+  expect_silent(ggplot2::ggplot_build(p))
+})

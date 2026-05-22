@@ -14,9 +14,14 @@
 
 .gtmb_pretty_levels <- function(level) {
   level <- as.character(level)
-  vapply(level, function(x) {
-    .canonical_level_name(.normalise_level(x, .skip_warn = TRUE))
-  }, character(1L), USE.NAMES = FALSE)
+  vapply(
+    level,
+    function(x) {
+      .canonical_level_name(.normalise_level(x, .skip_warn = TRUE))
+    },
+    character(1L),
+    USE.NAMES = FALSE
+  )
 }
 
 .gtmb_pair_label <- function(trait_i, trait_j, diagonal = FALSE) {
@@ -97,7 +102,10 @@
   dat <- dat[ord, , drop = FALSE]
   dat$.row_key <- paste0(seq_len(nrow(dat)), "__", dat$.pair_label)
   dat$.y <- rev(seq_len(nrow(dat)))
-  attr(dat, "row_labels") <- stats::setNames(dat$.pair_label, as.character(dat$.y))
+  attr(dat, "row_labels") <- stats::setNames(
+    dat$.pair_label,
+    as.character(dat$.y)
+  )
   dat
 }
 
@@ -499,10 +507,10 @@ plot_correlations <- function(
 #' compute Sigma intervals. PLANNED, uncertainty propagation for arbitrary
 #' Sigma entries belongs in bootstrap/profile infrastructure.
 #'
-#' @param x Either a `gllvmTMB_multi` fit or a data frame returned by
-#'   [extract_Sigma_table()]. Data frames must contain `level`, `trait_i`,
-#'   `trait_j`, `estimate`, `lower`, `upper`, `matrix`, `component`,
-#'   `diagonal`, and `triangle`.
+#' @param x A `gllvmTMB_multi` fit, a `bootstrap_Sigma` object, or a data frame
+#'   returned by [extract_Sigma_table()]. Data frames must contain `level`,
+#'   `trait_i`, `trait_j`, `estimate`, `lower`, `upper`, `matrix`,
+#'   `component`, `diagonal`, and `triangle`.
 #' @param level,part,measure,entries,link_residual Passed to
 #'   [extract_Sigma_table()] when `x` is a fitted model. The plotting default
 #'   `entries = "upper"` shows each pairwise covariance/correlation once; pass
@@ -575,7 +583,7 @@ plot_Sigma_table <- function(
   raindrop_level <- .gtmb_validate_interval_level(raindrop_level)
   draw_interval_line <- .gtmb_resolve_interval_line(show_intervals, style)
 
-  if (inherits(x, "gllvmTMB_multi")) {
+  if (inherits(x, "gllvmTMB_multi") || inherits(x, "bootstrap_Sigma")) {
     dat <- extract_Sigma_table(
       x,
       level = level,
@@ -588,15 +596,23 @@ plot_Sigma_table <- function(
     dat <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a {.cls gllvmTMB_multi} fit or a data frame from {.fun extract_Sigma_table}."
+      "{.arg x} must be a {.cls gllvmTMB_multi} fit, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
     )
   }
 
   .gtmb_require_plot_columns(
     dat,
     c(
-      "level", "trait_i", "trait_j", "estimate", "lower", "upper",
-      "matrix", "component", "diagonal", "triangle"
+      "level",
+      "trait_i",
+      "trait_j",
+      "estimate",
+      "lower",
+      "upper",
+      "matrix",
+      "component",
+      "diagonal",
+      "triangle"
     )
   )
   if (!isTRUE(include_diagonal)) {

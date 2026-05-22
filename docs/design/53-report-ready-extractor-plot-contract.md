@@ -117,8 +117,8 @@ estimate scale. Rows without finite bounds remain point-only and are drawn as
 open points so the missing uncertainty display is visible. For fitted
 correlation rows, `extract_correlations(..., method = "bootstrap")` is the
 usual next path when bootstrap uncertainty is appropriate. For Sigma-table
-rows, the plot helper needs bootstrap-derived or otherwise interval-bearing
-rows; `extract_Sigma_table()` itself is still point-estimate infrastructure.
+rows, call `bootstrap_Sigma()` first and then `extract_Sigma_table()` on the
+bootstrap object to carry percentile bounds into the plot helper.
 Raindrops omit interval segments by default so the midpoint and compatibility
 shape carry the display; callers can set `show_intervals = TRUE` when an
 overlaid CI line is genuinely useful. These raindrops are not posterior
@@ -161,12 +161,12 @@ A figure-heavy article should not become public unless:
 
 ## Current Limitations
 
-- `extract_Sigma_table()` is point-estimate only. Interval columns are present
-  for compatibility, but table-level interval joins still need a separate
-  implementation.
+- `extract_Sigma_table()` fills interval columns only when the input is a
+  `bootstrap_Sigma()` object that already contains Sigma/R percentile bounds.
+  Fitted-model calls remain point-estimate only.
 - `plot_Sigma_table(style = "raindrop")` can draw raindrops only when supplied
-  rows already contain finite interval bounds. It does not compute Sigma
-  intervals.
+  rows already contain finite interval bounds. It does not run bootstrap
+  refits.
 - Plot metadata and first-pass Florence palette/caption safeguards exist, but
   every new article figure still needs rendered HTML review before it is
   treated as publication-grade.

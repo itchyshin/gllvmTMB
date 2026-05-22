@@ -222,6 +222,10 @@ test_that("plot_correlations validates required tidy columns", {
     plot_correlations(bad),
     regexp = "missing required column"
   )
+  expect_error(
+    plot_correlations(list()),
+    regexp = "fit returned by .*gllvmTMB"
+  )
 })
 
 test_that("plot_Sigma_table omits diagonal rows by default", {
@@ -507,6 +511,14 @@ test_that("plot_Sigma_heatmap validates required tidy columns", {
   expect_error(
     plot_Sigma_heatmap(transform(bad, trait_j = "mass"), title = NA_character_),
     regexp = "title"
+  )
+  expect_error(
+    plot_Sigma_table(list()),
+    regexp = "fit returned by .*gllvmTMB"
+  )
+  expect_error(
+    plot_Sigma_heatmap(list()),
+    regexp = "fit returned by .*gllvmTMB"
   )
 })
 

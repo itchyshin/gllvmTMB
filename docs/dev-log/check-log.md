@@ -7601,6 +7601,42 @@ Deliberately not run:
   likelihood, or formula grammar files changed. No 3-OS CI was available until
   the branch is pushed.
 
+## 2026-05-22 -- Wrong-object message regression tests
+
+Scope:
+
+- Added focused tests that guard the new `fit returned by gllvmTMB()` wording
+  for covariance plot helpers and `suggest_lambda_constraint()`.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format tests/testthat/test-plot-covariance-tables.R tests/testthat/test-suggest-lambda-constraint.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|suggest-lambda-constraint", stop_on_failure = TRUE)'`
+  -> 237 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Test-guard scan:
+
+  ```sh
+  rg -n 'wrong object|fit returned by .*gllvmTMB|plot_correlations\(list\(\)\)|plot_Sigma_table\(list\(\)\)|plot_Sigma_heatmap\(list\(\)\)|suggest_lambda_constraint\(list\(\)\)' tests/testthat/test-plot-covariance-tables.R tests/testthat/test-suggest-lambda-constraint.R
+  ```
+
+  -> expected tests for all four wrong-object surfaces.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()`
+  were not rerun for this test-only guard slice. No roxygen, Rd, article,
+  likelihood, or formula grammar files changed. No 3-OS CI was available until
+  the branch is pushed.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

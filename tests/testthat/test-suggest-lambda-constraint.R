@@ -127,3 +127,10 @@ test_that("level = 'unit_obs' on a formula without a within-unit latent() term e
     "no .*latent.*term"
   )
 })
+
+test_that("wrong object errors name the gllvmTMB constructor", {
+  expect_error(
+    suggest_lambda_constraint(list()),
+    regexp = "fit returned by .*gllvmTMB"
+  )
+})

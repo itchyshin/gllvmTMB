@@ -7385,3 +7385,44 @@ Deliberately not run:
 - Full `devtools::test()` and `devtools::check()` were not rerun for this
   roxygen-only cleanup. No vignettes/articles were edited or rendered. No
   3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Wide traits reference wording
+
+Scope:
+
+- Cleaned exported help for `traits()` and the fitted-model S3 methods so the
+  public reference surface presents wide `traits(...)` data and already-stacked
+  long data as two user paths into the same stacked-trait model.
+- Removed stale public wording that made long-format data sound like the
+  primary entry point on these pages.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB_multi-methods.Rd` and `man/traits.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/gllvmTMB_multi-methods.Rd man/traits.Rd; grep -Hc '^\\keyword' man/gllvmTMB_multi-methods.Rd man/traits.Rd || true`
+  -> normal endings; zero keyword entries.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'on long-format multivariate data|canonical long-format|Both taught shapes reach the same long-format engine|for the long-format engine|long-format engine; `traits\(\)`|level = "B"|level = "W"|Long data are canonical|Stacked-Trait GLLVMs with TMB|standalone Template Model Builder' R/methods-gllvmTMB.R man/gllvmTMB_multi-methods.Rd R/traits-keyword.R man/traits.Rd README.md DESCRIPTION pkgdown-site/index.html
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  wording-only cleanup. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.

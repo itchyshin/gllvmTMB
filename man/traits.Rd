@@ -18,8 +18,8 @@ formula and dispatches to the wide-format pivot pre-pass.
 }
 \description{
 Formula-LHS marker that lets \code{\link[=gllvmTMB]{gllvmTMB()}} accept a wide data frame
-(one row per individual, one column per trait) instead of the
-canonical long-format \verb{(unit, trait)} data.
+(one row per unit, one column per trait) without making the user
+pivot first to one row per \verb{(unit, trait)} observation.
 }
 \details{
 The package teaches \strong{two shapes}, long or wide data-frame:
@@ -34,8 +34,8 @@ The soft-deprecated \code{gllvmTMB_wide(Y, ...)} wrapper remains exported
 for migration and matrix-first workflows, but new examples should use
 \code{traits(...)} through \code{\link[=gllvmTMB]{gllvmTMB()}}.
 
-Both taught shapes reach the same long-format engine; the user picks
-whichever shape matches their data on disk.
+Both taught shapes reach the same stacked-trait model after internal
+stacking; the user picks whichever shape matches their data on disk.
 
 Because the LHS already names the response traits, the RHS can use a
 compact wide shorthand. \code{1} expands to the trait-specific intercepts
@@ -80,17 +80,16 @@ Cells with \code{NA} responses are dropped via
 who want strict listwise drop should pre-filter the wide data before
 calling.
 
-Mixed-family fits (\code{family = list(...)} keyed by trait) flow through
-the long-format engine; \code{traits()} does not intercept the family
-argument. Per-row weight vectors of length \code{nrow(data)} are also
-replicated across traits automatically, then passed to the same
-long-format weight path used by \code{\link[=gllvmTMB]{gllvmTMB()}}. For per-cell weight
-matrices, pivot to long format and pass a \code{weights} column aligned
-with \verb{(unit, trait)} rows. The legacy matrix wrapper
+Mixed-family fits (\code{family = list(...)} keyed by trait) use the same
+family handling after internal stacking; \code{traits()} does not
+intercept the family argument. Per-row weight vectors of length
+\code{nrow(data)} are also replicated across traits automatically. For
+per-cell weight matrices, pivot to long format and pass a \code{weights}
+column aligned with \verb{(unit, trait)} rows. The legacy matrix wrapper
 \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} still accepts matrix weights for migration code.
 }
 \seealso{
-\code{\link[=gllvmTMB]{gllvmTMB()}} for the long-format engine. The legacy
+\code{\link[=gllvmTMB]{gllvmTMB()}} for model fitting. The legacy
 matrix wrapper \code{gllvmTMB_wide(Y, ...)} is soft-deprecated in
 0.2.0 (validation-debt register rows FG-16 and MIS-03);
 wide-data examples now use the \code{traits(...)} LHS through

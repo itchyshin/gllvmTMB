@@ -223,11 +223,12 @@
 
 #' Methods on a fitted gllvmTMB model
 #'
-#' Standard model-object accessors for a fit returned by [gllvmTMB()]
-#' on long-format multivariate data. (Internally the fit has class
+#' Standard model-object accessors for a multivariate fit returned by
+#' [gllvmTMB()], whether the call started from wide `traits(...)` data
+#' or already-stacked long data. Internally the fit has class
 #' `gllvmTMB_multi`, which is what these S3 methods dispatch on, but
-#' you just call `print(fit)`, `summary(fit)`, `logLik(fit)` etc.
-#' as usual.)
+#' you just call `print(fit)`, `summary(fit)`, `logLik(fit)` etc. as
+#' usual.
 #'
 #' * `print()` shows the active covstructs, the number of fixed effects,
 #'   and the converged log-likelihood.

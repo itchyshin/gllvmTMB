@@ -7673,6 +7673,39 @@ Deliberately not run:
   roxygen, Rd, article, likelihood, or formula grammar files changed. No 3-OS
   CI was available until the branch is pushed.
 
+## 2026-05-22 -- Reference/plot 12-slice baseline
+
+Scope:
+
+- Ran a Shannon/Rose/Grace baseline before continuing the maintainer-requested
+  12-slice block after the first 30 local commits.
+- Wrote the audit checkpoint to
+  `docs/dev-log/audits/2026-05-22-reference-plot-12-slice-baseline.md`.
+
+Evidence:
+
+- `git status --short --branch`
+  -> clean, `codex/reference-function-audit-2026-05-22...origin/main [ahead 30]`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json ...`
+  -> no open PRs (`[]`).
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json ...`
+  -> latest `main` `R-CMD-check` and `pkgdown` runs at `c1dc2e4` were
+  successful.
+- Rose stale-public-surface scan found the visible morphometrics article still
+  calling `style = "raindrop"`; this is supported by the alias but should teach
+  `style = "eye"` instead.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|plot-gllvmTMB|suggest-lambda-constraint", stop_on_failure = TRUE)'`
+  -> 444 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and 3-OS CI were not run at
+  this baseline checkpoint. No code was changed in the audit slice.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

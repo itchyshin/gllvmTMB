@@ -5756,3 +5756,51 @@ Deliberately not run:
   cleanup. Focused helper tests, article render, pkgdown check, whitespace
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
+
+## 2026-05-21 -- Behavioural-syndromes truth comparison
+
+Scope:
+
+- Replaced manual between-individual Sigma_B correlation comparison code in
+  `vignettes/articles/behavioural-syndromes.Rmd`.
+- Used `compare_Sigma_table()` and `plot_Sigma_comparison(style = "scatter")`
+  for the lower-triangle correlation recovery plot.
+- Shortened scatter comparison labels and widened the article chunk so the
+  rendered PNG does not clip title, subtitle, or caption.
+- Added regression expectations for the scatter label contract.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/behavioural-syndromes.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 130 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/recovery-sigma-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma_B_hat|true_corr|hat_corr|df_sigma|Optional: compare Sigma_B|Off-diagonal indices|True.*Sigma|Recovery of between-individual trait correlations' vignettes/articles/behavioural-syndromes.Rmd`
+  -> no hits.
+- `rg -n 'compare_Sigma_table\\(|plot_Sigma_comparison\\(|Correlation estimates vs truth|Segments are errors, not CIs|fig.width = 7.2' vignettes/articles/behavioural-syndromes.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> helper calls and label expectations are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/behavioural-syndromes.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this hidden-article
+  cleanup. Focused helper tests, article render, pkgdown check, whitespace
+  check, stale-wording scans, visual QA, and a short no-tests package check
+  were run.

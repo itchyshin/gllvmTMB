@@ -823,12 +823,16 @@ plot_Sigma_comparison <- function(
         x = if (is_correlation) "Truth (correlation)" else "Truth",
         y = if (is_correlation) "Estimate (correlation)" else "Estimate",
         title = if (is_correlation) {
-          "Correlation estimates compared with truth"
+          "Correlation estimates vs truth"
         } else {
-          "Sigma estimates compared with truth"
+          "Sigma estimates vs truth"
         },
-        subtitle = "One-to-one line = exact agreement; segments = error.",
-        caption = caption
+        subtitle = "One-to-one = exact; segments = error.",
+        caption = if (all(dat$.can_compare)) {
+          "Segments are errors, not CIs."
+        } else {
+          caption
+        }
       )
     if (!identical(facet, "none") && length(unique(draw$.facet)) > 1L) {
       p <- p + ggplot2::facet_wrap(stats::as.formula("~.facet"))

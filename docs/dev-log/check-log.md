@@ -7531,6 +7531,46 @@ Deliberately not run:
   narrow reference wording cleanup. No vignettes/articles were edited or
   rendered. No 3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Paired phylogenetic terminology
+
+Scope:
+
+- Replaced the remaining new-facing `two-U` wording in the `phylo_unique()`
+  reference path and adjacent source comments with paired phylogenetic /
+  two-psi language.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/phylo_unique.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/phylo_unique.Rd; grep -Hc '^\\keyword' man/phylo_unique.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'two-U|Two-U|U \(uniqueness\)|diag\(U\)' R/brms-sugar.R R/bootstrap-sigma.R R/extract-sigma.R R/extract-two-psi-cross-check.R R/fit-multi.R man/phylo_unique.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Focused tests, full `devtools::test()`, and `devtools::check()` were not
+  rerun because this was a comment/roxygen terminology-only cleanup. No
+  vignettes/articles were edited or rendered. No 3-OS CI was available until
+  the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

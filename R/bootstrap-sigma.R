@@ -185,7 +185,7 @@ bootstrap_Sigma <- function(
   level_avail <- c(
     B = isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B),
     W = isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W),
-    ## Two-U PGLLVM: phy tier is present when EITHER phylo_latent OR
+    ## Paired phylogenetic PGLLVM: phy tier is present when EITHER phylo_latent OR
     ## phylo_unique-with-latent (phylo_diag) is fit.
     phy = isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   )

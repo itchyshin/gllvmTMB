@@ -51,7 +51,7 @@ internally as \code{phylo_latent(species, d = T)} with a diagonal
 \eqn{\boldsymbol\Lambda_{\text{phy}}}. The diagonal entries of
 \eqn{\boldsymbol\Lambda_{\text{phy}}} are the per-trait
 phylogenetic SDs. This path stays for backward compatibility.}
-\item{\strong{Paired with \code{phylo_latent()}} (two-U PGLLVM, recommended)}{
+\item{\strong{Paired with \code{phylo_latent()}} (paired PGLLVM, recommended)}{
 When written together with \code{phylo_latent(species, d = K)}, the
 two terms co-fit as \strong{separate covariance components}:
 \deqn{\boldsymbol\Sigma_\text{phy} \;=\; \underbrace{\boldsymbol\Lambda_\text{phy}\boldsymbol\Lambda_\text{phy}^{\!\top}}_{\text{shared (rank K)}} \;+\; \underbrace{\boldsymbol\Psi_\text{phy}}_{\text{per-trait unique}}.}

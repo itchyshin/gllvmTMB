@@ -575,7 +575,7 @@ extract_Sigma <- function(
     if (has_phy_rr) {
       L <- fit$report$Lambda_phy
     }
-    ## Two-U PGLLVM: when phylo_diag is fit (phylo_unique co-fit with
+    ## Paired phylogenetic PGLLVM: when phylo_diag is fit (phylo_unique co-fit with
     ## phylo_latent), pull the per-trait phylogenetic SDs from the report
     ## and square them to get the diagonal psi_phy variances. When the
     ## legacy phylo_unique-alone path is used (rank-T diagonal Lambda),

@@ -173,7 +173,7 @@
     cli::cli_abort("Internal: cannot extract Sigma_phy from the two-psi fit.")
   }
   Sigma_phy <- phy_total$Sigma
-  ## Non-phylogenetic side. Two-U layouts in the wild:
+  ## Non-phylogenetic side. Two-psi layouts in the wild:
   ##  * cluster tier (legacy):    `unique(0 + trait | species)`
   ##  * unit-tier (functional bio): `unique(0 + trait | site_species)`
   ##  * paired with `latent + unique` at unit level

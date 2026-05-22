@@ -5865,6 +5865,50 @@ Deliberately not run:
   cleanup. Get Started render, visual QA, pkgdown check, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-21 -- Behavioural-syndromes Sigma heatmaps
+
+Scope:
+
+- Replaced printed between- and within-individual correlation matrices in
+  `vignettes/articles/behavioural-syndromes.Rmd`.
+- Used `extract_Sigma_table(..., measure = "correlation", entries = "all")`
+  plus `plot_Sigma_heatmap()` for both displays.
+- Left the existing estimate-vs-truth recovery scatter unchanged.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/behavioural-syndromes.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA images inspected:
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/inspect-1.png`
+  and
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/inspect-w-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'R_B_hat|R_W_hat|round\\(R_B_hat|round\\(R_W_hat|Estimated between-individual trait correlation matrix|Estimated within-individual trait correlation matrix|plot_Sigma_heatmap\\(|R_B_rows|R_W_rows' vignettes/articles/behavioural-syndromes.Rmd pkgdown-site/articles/behavioural-syndromes.html`
+  -> the old printed matrices are gone; helper-backed source and rendered HTML
+  are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/behavioural-syndromes.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-21 -- Behavioural-syndromes truth comparison
 
 Scope:

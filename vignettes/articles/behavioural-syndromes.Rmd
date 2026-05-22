@@ -380,11 +380,14 @@ flag indicate whether the MLE is reliable.
 
 ### Between-individual trait correlation (personality structure)
 
-```{r inspect}
-# Between-individual correlation matrix
-R_B_hat <- extract_Sigma(fit, level = "unit")$R
-cat("Estimated between-individual trait correlation matrix (R_B):\n")
-round(R_B_hat, 3)
+```{r inspect, fig.width = 6.6, fig.height = 5.0, fig.cap = "Estimated between-individual trait correlations. Cells are point estimates from the fitted Sigma_B matrix."}
+R_B_rows <- extract_Sigma_table(
+  fit,
+  level = "unit",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(R_B_rows)
 ```
 
 The off-diagonal pattern reveals the syndrome structure. Traits on the
@@ -394,11 +397,14 @@ be weak.
 
 ### Within-individual trait correlation (lability structure)
 
-```{r inspect-w}
-# Within-individual correlation matrix
-R_W_hat <- extract_Sigma(fit, level = "unit_obs")$R
-cat("Estimated within-individual trait correlation matrix (R_W):\n")
-round(R_W_hat, 3)
+```{r inspect-w, fig.width = 6.6, fig.height = 5.0, fig.cap = "Estimated within-individual trait correlations. Cells are point estimates from the fitted Sigma_W matrix."}
+R_W_rows <- extract_Sigma_table(
+  fit,
+  level = "unit_obs",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(R_W_rows)
 ```
 
 The within-individual correlations reflect shared motivational state

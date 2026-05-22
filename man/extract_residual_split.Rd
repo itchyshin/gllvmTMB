@@ -8,7 +8,7 @@ residual}
 extract_residual_split(fit)
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
 A data frame with one row per trait and columns:

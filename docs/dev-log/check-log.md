@@ -7386,6 +7386,53 @@ Deliberately not run:
   roxygen-only cleanup. No vignettes/articles were edited or rendered. No
   3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Omega extractor user-path cleanup
+
+Scope:
+
+- Cleaned the Omega/proportion extractor family so wrong-object errors and
+  argument docs direct readers to `gllvmTMB()` instead of exposing the internal
+  `gllvmTMB_multi` class.
+- Replaced leftover two-U / `U (uniqueness)` wording in the phylogenetic signal
+  advisory path with canonical `Psi_non` / paired phylogenetic PGLLVM language.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/extract-omega.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_residual_split.Rd`, `man/extract_Omega.Rd`,
+  `man/extract_phylo_signal.Rd`, and `man/extract_proportions.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-omega|olre-separation|m1-7-extract-omega|mixed-response-sigma", stop_on_failure = TRUE)'`
+  -> 68 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/extract_Omega.Rd man/extract_phylo_signal.Rd man/extract_proportions.Rd man/extract_residual_split.Rd; grep -Hc '^\\keyword' man/extract_Omega.Rd man/extract_phylo_signal.Rd man/extract_proportions.Rd man/extract_residual_split.Rd`
+  -> normal endings; only `extract_residual_split.Rd` keeps its expected
+  `internal` keyword.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'A `gllvmTMB_multi` fit|A \\code\{gllvmTMB_multi\} fit|Provide a \{\.cls gllvmTMB_multi\} fit|requires a gllvmTMB_multi|U \(uniqueness\)|U_diag|Two-U|two-U' R/extract-omega.R man/extract_Omega.Rd man/extract_phylo_signal.Rd man/extract_proportions.Rd man/extract_residual_split.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  extractor wording and advisory cleanup. No vignettes/articles were edited or
+  rendered. No 3-OS CI was available until the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

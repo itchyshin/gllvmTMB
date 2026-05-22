@@ -11,7 +11,7 @@ extract_proportions(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{link_residual}{For non-Gaussian fits: \code{"auto"} (default) adds the
 link's implicit residual as its own per-trait component (e.g.

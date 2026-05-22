@@ -7,7 +7,7 @@
 extract_Omega(fit, tiers = NULL, link_residual = c("auto", "none"))
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{tiers}{Character vector. Subset of \code{c("B", "W", "phy")}. Default
 \code{NULL} auto-detects: includes \code{"phy"} if \code{phylo_latent()} is in the

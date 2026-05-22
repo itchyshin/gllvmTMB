@@ -5890,6 +5890,50 @@ Deliberately not run:
   cleanup. Article render, pkgdown check, whitespace check, stale-wording scans,
   and a short no-tests package check were run.
 
+## 2026-05-22 -- Get Started wide-first flow
+
+Scope:
+
+- Reordered `vignettes/gllvmTMB.Rmd` so the first runnable fit uses the wide
+  `traits(...)` formula and `df_wide`.
+- Moved the long-format `value ~ ...`, `trait =` call into the equivalence
+  check.
+- Kept the missing-response note beside the wide-first path.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/gllvmTMB.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Generated render byproducts removed:
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'wide individual-by-trait|morph\\$formula_wide|fit_long <- gllvmTMB|fit_wide|Same model, long data|trait = morph\\$fit_args\\$trait|Wide trait tables do not need' vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html`
+  -> wide-first source/rendered HTML is present; the old `fit_wide` secondary
+  object is gone.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|long data and wide data|fits the same model from long" vignettes/gllvmTMB.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-flow
+  cleanup. Article render, pkgdown check, whitespace check, stale-wording scans,
+  and a short no-tests package check were run.
+
 ## 2026-05-22 -- Phylogenetic Sigma tables
 
 Scope:

@@ -193,9 +193,7 @@ boot <- bootstrap_Sigma(
 ```
 
 ```{r bootstrap-show}
-boot$point_est$Sigma_unit
-boot$ci_lower$Sigma_unit
-boot$ci_upper$Sigma_unit
+extract_Sigma_table(boot, level = "unit", entries = "upper")
 ```
 
 `boot$n_failed` records how many refits failed to converge; with

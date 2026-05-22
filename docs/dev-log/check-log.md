@@ -5976,6 +5976,45 @@ Deliberately not run:
   example cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace
   check, stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-22 -- Mixed-family bootstrap Sigma rows
+
+Scope:
+
+- Replaced raw bootstrap Sigma matrix prints in
+  `vignettes/articles/mixed-family-extractors.Rmd` with
+  `extract_Sigma_table(boot, level = "unit", entries = "upper")`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/mixed-family-extractors.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/mixed-family-extractors", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(boot, level = "unit", entries = "upper"\\)|boot\\$point_est\\$Sigma_unit|boot\\$ci_lower\\$Sigma_unit|boot\\$ci_upper\\$Sigma_unit' vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
+  -> row-first bootstrap Sigma display is present; old raw matrix prints are
+  gone from source.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/mixed-family-extractors.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article display
+  cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-22 -- Sigma heatmap custom labels
 
 Scope:

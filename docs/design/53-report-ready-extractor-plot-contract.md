@@ -43,6 +43,12 @@ interactive use. When an article needs comparison, annotation, or plotting, use
 or build a tidy table with the columns above rather than indexing internals
 inside the article.
 
+For simulation and teaching figures with known truth,
+`compare_Sigma_table()` joins `extract_Sigma_table()` rows to a supplied truth
+matrix and adds `truth`, `error`, `abs_error`, and `comparison_status` columns
+(EXT-25). It is a table helper only; plotting geometry remains an article or
+future helper decision.
+
 ## Plot Metadata Contract
 
 Every public `plot.gllvmTMB_multi()` result and exported plot helper now
@@ -207,7 +213,9 @@ A figure-heavy article should not become public unless:
 
 ## Next Implementation Targets
 
-1. Add figure-ready estimate-vs-truth tables for example objects.
+1. Add estimate-vs-truth plot helpers for example objects.
+   `compare_Sigma_table()` now supplies the reusable row-first table; the next
+   step is a plotting helper for simulation articles.
 2. Add rendered article examples that use interval-aware ellipse borders/stars
    without running bootstrap inside article chunks. The morphometrics article
    now covers the direct `plot_correlations(boot, style = "raindrop")` path

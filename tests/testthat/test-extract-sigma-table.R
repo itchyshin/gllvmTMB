@@ -247,3 +247,53 @@ test_that("extract_Sigma_table rejects unsupported bootstrap table requests", {
     regexp = "part = \"total\""
   )
 })
+
+test_that("compare_Sigma_table joins estimate rows to truth matrices", {
+  boot <- make_bootstrap_sigma_table_object()
+  rows <- extract_Sigma_table(
+    boot,
+    level = "unit",
+    measure = "correlation",
+    entries = "upper"
+  )
+  truth <- boot$point_est$Sigma_B
+  truth[1L, 2L] <- truth[2L, 1L] <- 0.15
+
+  cmp <- compare_Sigma_table(rows, truth, measure = "correlation")
+
+  expect_s3_class(cmp, "data.frame")
+  expect_named(
+    cmp,
+    c(names(rows), "truth", "error", "abs_error", "comparison_status")
+  )
+  expect_equal(nrow(cmp), nrow(rows))
+  expect_equal(unique(cmp$comparison_status), "compared")
+  expect_equal(
+    cmp$truth,
+    stats::cov2cor(truth)[cbind(
+      match(cmp$trait_i, rownames(truth)),
+      match(cmp$trait_j, colnames(truth))
+    )]
+  )
+  expect_equal(cmp$error, cmp$estimate - cmp$truth)
+  expect_match(
+    paste(attr(cmp, "notes"), collapse = " "),
+    "Compared 3 rows",
+    fixed = TRUE
+  )
+})
+
+test_that("compare_Sigma_table validates truth names", {
+  rows <- data.frame(
+    trait_i = "length",
+    trait_j = "mass",
+    estimate = 0.4
+  )
+  truth <- diag(2)
+  rownames(truth) <- colnames(truth) <- c("length", "wing")
+
+  expect_error(
+    compare_Sigma_table(rows, truth, measure = "correlation"),
+    regexp = "missing trait name"
+  )
+})

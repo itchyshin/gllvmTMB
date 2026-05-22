@@ -256,6 +256,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-22 | `extract_repeatability()` bootstrap object rows and integration plot intervals | `covered` | `test-extract-repeatability-bootstrap.R`, `test-plot-gllvmTMB.R` | Reuses `bootstrap_Sigma(..., what = "ICC")` point estimates and percentile bounds without rerunning refits; `plot(type = "integration", boot = boot)` accepts raw `bootstrap_Sigma()` objects for repeatability and communality intervals. |
 | EXT-23 | `plot(type = "correlation")` / `plot(type = "correlation_ellipse")` bootstrap correlation intervals | `covered` | `test-plot-gllvmTMB.R` | Merges `bootstrap_Sigma(..., what = "R")` percentile bounds into correlation heatmap and ellipse data; ellipse borders/stars mark supplied intervals that do not cross zero. |
 | EXT-24 | `plot_correlations()` bootstrap object input | `covered` | `test-plot-covariance-tables.R` | Converts `bootstrap_Sigma(..., what = "R")` summaries to row-first correlation forest/raindrop plots without requiring hand-built pairwise rows. |
+| EXT-25 | `compare_Sigma_table()` estimate-vs-truth table helper | `covered` | `test-extract-sigma-table.R` | Joins fitted/report-ready Sigma or R rows to a supplied truth matrix for simulation and teaching figures; table helper only, no plotting or calibration claim. |
 
 ### Section 9 — Diagnostics
 

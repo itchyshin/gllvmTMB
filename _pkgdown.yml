@@ -137,6 +137,7 @@ reference:
     contents:
     - extract_Sigma
     - extract_Sigma_table
+    - compare_Sigma_table
     - extract_Omega
     - extract_communality
     - extract_correlations

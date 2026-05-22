@@ -421,3 +421,156 @@ extract_Sigma_table <- function(
   attr(out, "notes") <- notes
   out
 }
+
+#' Compare fitted Sigma-table rows with a known truth matrix
+#'
+#' `compare_Sigma_table()` joins report-ready [extract_Sigma_table()] rows to
+#' a known covariance or correlation matrix. It is designed for simulation and
+#' teaching articles that need estimate-vs-truth tables without hand-indexing
+#' matrices inside the article.
+#'
+#' Scope boundary: IN, the helper compares fitted or precomputed
+#' `extract_Sigma_table()` rows against one supplied truth matrix (EXT-25).
+#' PARTIAL, it is a table helper only: it does not compute uncertainty,
+#' simulate data, or choose graphical geometry. PLANNED, plot helpers for
+#' estimate-vs-truth article figures remain future visualization work.
+#'
+#' @param x A `gllvmTMB_multi` fit or a data frame returned by
+#'   [extract_Sigma_table()].
+#' @param truth Square numeric covariance or correlation matrix. Row and column
+#'   names should match the trait names in `x`; unnamed matrices are accepted
+#'   only when their dimension matches the traits in `x`.
+#' @param level,part,measure,entries,link_residual Passed to
+#'   [extract_Sigma_table()] when `x` is a fitted model.
+#'
+#' @return A data frame with the columns from [extract_Sigma_table()] plus
+#'   `truth`, `error`, `abs_error`, and `comparison_status`.
+#' @seealso [extract_Sigma_table()], [plot_Sigma_table()].
+#' @export
+#' @examples
+#' rows <- data.frame(
+#'   estimand = "R_unit[length,mass]",
+#'   trait_i = "length",
+#'   trait_j = "mass",
+#'   i = 1L,
+#'   j = 2L,
+#'   level = "unit",
+#'   component = "total",
+#'   matrix = "R",
+#'   estimate = 0.62,
+#'   lower = NA_real_,
+#'   upper = NA_real_,
+#'   interval_method = "none",
+#'   interval_status = "none",
+#'   scale = "correlation",
+#'   validation_row = "EXT-18",
+#'   diagonal = FALSE,
+#'   triangle = "upper"
+#' )
+#' truth_R <- matrix(c(1, 0.6, 0.6, 1), 2,
+#'   dimnames = list(c("length", "mass"), c("length", "mass"))
+#' )
+#' compare_Sigma_table(rows, truth_R, measure = "correlation")
+compare_Sigma_table <- function(
+  x,
+  truth,
+  level = "unit",
+  part = c("total", "shared", "unique"),
+  measure = c("covariance", "correlation"),
+  entries = c("unique", "all", "upper", "lower", "offdiag", "diag"),
+  link_residual = c("auto", "none")
+) {
+  part <- match.arg(part)
+  measure <- match.arg(measure)
+  entries <- match.arg(entries)
+  link_residual <- match.arg(link_residual)
+
+  if (inherits(x, "gllvmTMB_multi")) {
+    rows <- extract_Sigma_table(
+      x,
+      level = level,
+      part = part,
+      measure = measure,
+      entries = entries,
+      link_residual = link_residual
+    )
+  } else if (is.data.frame(x)) {
+    rows <- x
+  } else {
+    cli::cli_abort(
+      "{.arg x} must be a {.cls gllvmTMB_multi} fit or a data frame from {.fun extract_Sigma_table}."
+    )
+  }
+
+  required <- c("trait_i", "trait_j", "estimate")
+  missing <- setdiff(required, names(rows))
+  if (length(missing) > 0L) {
+    cli::cli_abort(
+      "{.arg x} is missing required column{?s}: {.field {missing}}."
+    )
+  }
+  if (nrow(rows) == 0L) {
+    cli::cli_abort("No Sigma table rows to compare.")
+  }
+
+  truth_mat <- as.matrix(truth)
+  if (!is.numeric(truth_mat) || length(dim(truth_mat)) != 2L) {
+    cli::cli_abort("{.arg truth} must be a numeric matrix.")
+  }
+  if (nrow(truth_mat) != ncol(truth_mat)) {
+    cli::cli_abort("{.arg truth} must be a square matrix.")
+  }
+  if (identical(measure, "correlation")) {
+    truth_mat <- stats::cov2cor(truth_mat)
+  }
+
+  truth_traits <- rownames(truth_mat)
+  if (is.null(truth_traits) || is.null(colnames(truth_mat))) {
+    row_traits <- unique(c(
+      as.character(rows$trait_i),
+      as.character(rows$trait_j)
+    ))
+    if (length(row_traits) != nrow(truth_mat)) {
+      cli::cli_abort(c(
+        "{.arg truth} must have dimnames or the same number of traits as {.arg x}.",
+        "i" = "Rows in {.arg x} contain {length(row_traits)} trait names; {.arg truth} has {nrow(truth_mat)} rows."
+      ))
+    }
+    truth_traits <- row_traits
+    rownames(truth_mat) <- colnames(truth_mat) <- truth_traits
+  }
+  if (!identical(rownames(truth_mat), colnames(truth_mat))) {
+    cli::cli_abort("{.arg truth} row names and column names must match.")
+  }
+
+  idx_i <- match(as.character(rows$trait_i), truth_traits)
+  idx_j <- match(as.character(rows$trait_j), truth_traits)
+  if (anyNA(idx_i) || anyNA(idx_j)) {
+    missing_traits <- unique(c(
+      as.character(rows$trait_i)[is.na(idx_i)],
+      as.character(rows$trait_j)[is.na(idx_j)]
+    ))
+    cli::cli_abort(
+      "{.arg truth} is missing trait name{?s}: {.val {missing_traits}}."
+    )
+  }
+
+  out <- rows
+  out$truth <- as.numeric(truth_mat[cbind(idx_i, idx_j)])
+  out$error <- out$estimate - out$truth
+  out$abs_error <- abs(out$error)
+  out$comparison_status <- ifelse(
+    is.finite(out$estimate) & is.finite(out$truth),
+    "compared",
+    "missing"
+  )
+  attr(out, "notes") <- unique(c(
+    attr(rows, "notes") %||% character(0),
+    sprintf(
+      "Compared %s rows against supplied %s truth matrix.",
+      nrow(out),
+      measure
+    )
+  ))
+  out
+}

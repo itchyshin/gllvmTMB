@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Sigma estimate-vs-truth table helper (2026-05-21)
+
+* **`compare_Sigma_table()`** joins report-ready `extract_Sigma_table()` rows to a supplied covariance or correlation truth matrix for simulation and teaching figures (EXT-25). IN: example articles can build estimate-vs-truth tables without hand-indexing matrices. PARTIAL: this is a table helper only; it does not draw a plot, compute uncertainty, or validate simulation calibration. PLANNED: plot helpers for estimate-vs-truth article figures remain future visualization work.
+
 ## Bootstrap provenance in plot metadata (2026-05-21)
 
 * **`plot_correlations()` and `plot_Sigma_table()`** now preserve extractor notes in `attr(p, "gllvmTMB_meta")$notes`, including cached bootstrap provenance such as `n_boot`, failed refits, and confidence level when the input came from `bootstrap_Sigma()` (EXT-19 / EXT-20 / EXT-24). IN: report and article code can audit interval provenance from the plot object. PARTIAL: this records existing extractor notes only; it does not compute new intervals or validate bootstrap calibration. PLANNED: richer article-level provenance summaries remain future reporting work.

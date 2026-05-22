@@ -5465,3 +5465,55 @@ Deliberately not run:
 
 - No R tests, pkgdown render, or package check were run because this slice only
   added internal audit/check-log Markdown files.
+
+## 2026-05-21 -- Sigma truth-comparison table helper
+
+Scope:
+
+- Added exported `compare_Sigma_table()` for joining fitted/report-ready
+  Sigma or correlation rows to a supplied truth matrix.
+- Added `truth`, `error`, `abs_error`, and `comparison_status` columns.
+- Added roxygen/Rd, pkgdown navigation, NEWS, validation row EXT-25, and the
+  report-ready extractor/plot contract entry.
+- Added focused acceptance and rejection tests.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/extract-sigma-table.R tests/testthat/test-extract-sigma-table.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/compare_Sigma_table.Rd`.
+- `tail -5 man/compare_Sigma_table.Rd && grep -c '^\\keyword' man/compare_Sigma_table.Rd`
+  -> Rd tail was well formed and keyword count was `0`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table")'`
+  -> first run failed because the test expected every note to match the
+  comparison sentence; after tightening the assertion, the rerun returned
+  55 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'compare_Sigma_table|EXT-25|estimate-vs-truth|truth matrix|comparison_status|abs_error' NEWS.md R/extract-sigma-table.R man/compare_Sigma_table.Rd tests/testthat/test-extract-sigma-table.R _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md NAMESPACE`
+  -> new helper is present in export, help, tests, pkgdown navigation, NEWS,
+  validation-debt register, and the report-ready contract.
+- `gh issue list --state open --limit 20 --search "Sigma truth"`
+  and `gh issue list --state open --limit 20 --search "estimate truth"`
+  -> both surfaced issue #230 as the relevant open issue.
+- `gh issue view 230 --comments`
+  -> issue #230 is the active broad article surface reset/tooling ledger.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow exported
+  helper slice. Focused tests, roxygen generation, pkgdown check, whitespace
+  check, stale-wording scan, Rd spot-check, issue scan, and a short no-tests
+  package check were run.
+- No article render was needed because no vignette changed.

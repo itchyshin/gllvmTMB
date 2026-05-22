@@ -5618,3 +5618,45 @@ Deliberately not run:
   integration. The article render, focused morphometrics test, pkgdown check,
   whitespace check, stale-wording scans, visual QA, and a short no-tests
   package check were run.
+
+## 2026-05-21 -- Sigma comparison facets
+
+Scope:
+
+- Added `facet = "comparison"` to `plot_Sigma_comparison()`.
+- Required a `comparison` column when the new facet mode is requested.
+- Added tests and refreshed roxygen/Rd, NEWS, validation row EXT-26, and the
+  report-ready plot contract.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/plot_Sigma_comparison.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 125 passes, 0 failures, 0 warnings, 0 skips.
+- `tail -5 man/plot_Sigma_comparison.Rd; grep -c '^\\keyword' man/plot_Sigma_comparison.Rd`
+  -> Rd tail was well formed and keyword count was `0`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'facet = "comparison"|comparison column|model/specification|plot_Sigma_comparison|EXT-26' NEWS.md R/plot-covariance-tables.R man/plot_Sigma_comparison.Rd tests/testthat/test-plot-covariance-tables.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> comparison-facet support is present in code, tests, NEWS, generated help,
+  validation-debt register, and the report-ready contract.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow plot-helper
+  extension. Focused plot tests, roxygen generation, pkgdown check, whitespace
+  check, stale-wording scan, Rd spot-check, and a short no-tests package check
+  were run.

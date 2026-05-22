@@ -489,6 +489,43 @@ test_that("plot_Sigma_comparison can plot precomputed scatter comparisons", {
   expect_silent(ggplot2::ggplot_build(p))
 })
 
+test_that("plot_Sigma_comparison facets named comparisons", {
+  skip_if_no_ggplot2()
+  rows_a <- data.frame(
+    level = "unit",
+    trait_i = c("length", "length"),
+    trait_j = c("mass", "wing"),
+    estimate = c(0.70, -0.16),
+    truth = c(0.60, -0.05),
+    error = c(0.10, -0.11),
+    abs_error = c(0.10, 0.11),
+    comparison_status = "compared",
+    comparison = "Model A",
+    matrix = "R",
+    diagonal = FALSE,
+    scale = "correlation",
+    stringsAsFactors = FALSE
+  )
+  rows_b <- rows_a
+  rows_b$estimate <- c(0.62, -0.08)
+  rows_b$error <- rows_b$estimate - rows_b$truth
+  rows_b$abs_error <- abs(rows_b$error)
+  rows_b$comparison <- "Model B"
+  rows <- rbind(rows_a, rows_b)
+
+  p <- plot_Sigma_comparison(
+    rows,
+    measure = "correlation",
+    facet = "comparison"
+  )
+
+  expect_s3_class(p, "ggplot")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_setequal(plot_data$.facet, c("Model A", "Model B"))
+  expect_true(inherits(p$facet, "FacetWrap"))
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
 test_that("plot_Sigma_comparison validates comparison inputs", {
   skip_if_no_ggplot2()
   bad <- data.frame(

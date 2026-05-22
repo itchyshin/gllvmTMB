@@ -2,7 +2,7 @@
 
 ## Sigma estimate-vs-truth plot helper (2026-05-21)
 
-* **`plot_Sigma_comparison()`** plots `compare_Sigma_table()` rows as row-labelled error plots or estimate-vs-truth scatter plots for simulation and teaching figures (EXT-26). IN: example articles can show `estimate - truth` without hand-building ggplot scaffolding. PARTIAL: this is a visual comparison helper only; it does not run simulations, compute intervals, or validate calibration. PLANNED: article-specific calibration summaries remain future visualization work.
+* **`plot_Sigma_comparison()`** plots `compare_Sigma_table()` rows as row-labelled error plots or estimate-vs-truth scatter plots for simulation and teaching figures (EXT-26). IN: example articles can show `estimate - truth` without hand-building ggplot scaffolding, including `facet = "comparison"` panels for precomputed rows from several model specifications. PARTIAL: this is a visual comparison helper only; it does not run simulations, compute intervals, or validate calibration. PLANNED: article-specific calibration summaries remain future visualization work.
 
 ## Sigma estimate-vs-truth table helper (2026-05-21)
 

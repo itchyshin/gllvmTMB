@@ -219,7 +219,7 @@
       panel.grid.major.y = ggplot2::element_blank(),
       legend.position = "none"
     )
-  if (identical(facet, "level") && length(unique(dat$.facet)) > 1L) {
+  if (!identical(facet, "none") && length(unique(dat$.facet)) > 1L) {
     facet_args <- list(
       facets = stats::as.formula("~.facet"),
       ncol = 1L,
@@ -622,7 +622,9 @@ plot_correlations <- function(
 #' @param include_diagonal Logical. Include diagonal rows if they are present?
 #'   The default is `FALSE` because variances are usually on a different scale
 #'   from pairwise covariance/correlation rows.
-#' @param facet One of `"level"` (default) or `"none"`.
+#' @param facet One of `"level"` (default), `"comparison"`, or `"none"`.
+#'   Use `"comparison"` when precomputed rows contain a `comparison` column,
+#'   for example to compare two model specifications against the same truth.
 #' @param sort Row ordering for `style = "difference"`: `"abs_error"`
 #'   (default), `"error"`, `"estimate"`, `"truth"`, `"trait"`, or `"level"`.
 #' @param style One of `"difference"` (default) or `"scatter"`.
@@ -666,7 +668,7 @@ plot_Sigma_comparison <- function(
   entries = c("upper", "unique", "all", "offdiag", "lower", "diag"),
   link_residual = c("auto", "none"),
   include_diagonal = FALSE,
-  facet = c("level", "none"),
+  facet = c("level", "comparison", "none"),
   sort = c("abs_error", "error", "estimate", "truth", "trait", "level"),
   style = c("difference", "scatter")
 ) {
@@ -744,7 +746,12 @@ plot_Sigma_comparison <- function(
       "No finite comparison rows to plot; check {.field estimate} and {.field truth}."
     )
   }
-  dat$.facet <- .gtmb_pretty_levels(dat$level)
+  if (identical(facet, "comparison")) {
+    .gtmb_require_plot_columns(dat, "comparison")
+    dat$.facet <- as.character(dat$comparison)
+  } else {
+    dat$.facet <- .gtmb_pretty_levels(dat$level)
+  }
   dat$.pair_label <- .gtmb_pair_label(
     dat$trait_i,
     dat$trait_j,
@@ -816,7 +823,7 @@ plot_Sigma_comparison <- function(
         subtitle = "One-to-one line = exact agreement; segments = error.",
         caption = caption
       )
-    if (identical(facet, "level") && length(unique(draw$.facet)) > 1L) {
+    if (!identical(facet, "none") && length(unique(draw$.facet)) > 1L) {
       p <- p + ggplot2::facet_wrap(stats::as.formula("~.facet"))
     }
     if (is_correlation) {

@@ -145,10 +145,11 @@ densities and should not be captioned as Bayesian credible distributions.
 The exported `plot_Sigma_comparison()` helper is a row-first visual layer over
 `compare_Sigma_table()` (EXT-26). Its default difference style draws
 `estimate - truth` for each row with zero as the reference value. Its scatter
-style draws estimate versus truth with a one-to-one reference line. Segment
-geometry in both styles is comparison error, not uncertainty; the plot metadata
-therefore records `interval_status = "not_applicable"` and adds
-`comparison_status`.
+style draws estimate versus truth with a one-to-one reference line. Precomputed
+rows can include a `comparison` column and use `facet = "comparison"` for
+model/specification panels. Segment geometry in both styles is comparison
+error, not uncertainty; the plot metadata therefore records
+`interval_status = "not_applicable"` and adds `comparison_status`.
 
 The current integration plot data includes row-level `has_interval`,
 `interval_method`, and `interval_status` columns. The plot-level metadata uses

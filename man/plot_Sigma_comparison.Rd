@@ -13,7 +13,7 @@ plot_Sigma_comparison(
   entries = c("upper", "unique", "all", "offdiag", "lower", "diag"),
   link_residual = c("auto", "none"),
   include_diagonal = FALSE,
-  facet = c("level", "none"),
+  facet = c("level", "comparison", "none"),
   sort = c("abs_error", "error", "estimate", "truth", "trait", "level"),
   style = c("difference", "scatter")
 )
@@ -34,7 +34,9 @@ plot_Sigma_comparison(
 The default is \code{FALSE} because variances are usually on a different scale
 from pairwise covariance/correlation rows.}
 
-\item{facet}{One of \code{"level"} (default) or \code{"none"}.}
+\item{facet}{One of \code{"level"} (default), \code{"comparison"}, or \code{"none"}.
+Use \code{"comparison"} when precomputed rows contain a \code{comparison} column,
+for example to compare two model specifications against the same truth.}
 
 \item{sort}{Row ordering for \code{style = "difference"}: \code{"abs_error"}
 (default), \code{"error"}, \code{"estimate"}, \code{"truth"}, \code{"trait"}, or \code{"level"}.}

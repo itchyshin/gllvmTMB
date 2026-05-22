@@ -7555,3 +7555,42 @@ Deliberately not run:
 - Full `devtools::test()` and `devtools::check()` were not rerun for this
   small helper cleanup. No roxygen, pkgdown, or article files changed. No 3-OS
   CI was available until the branch is pushed.
+
+## 2026-05-22 -- Stacked response reference wording
+
+Scope:
+
+- Cleaned small `gllvmTMB()` and `spde()` reference phrases that still
+  described user-facing paths as "long-format engine/vector" rather than the
+  shared stacked-trait model plumbing.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB.Rd` and `man/spde.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/gllvmTMB.Rd man/spde.Rd; grep -Hc '^\\keyword' man/gllvmTMB.Rd man/spde.Rd`
+  -> normal endings; `spde` keeps its expected `internal` keyword.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'canonical place to document|long-format engine treats|long-format vector before fitting|same long-format vector|long-format engine|canonical long-format' R/spde-keyword.R R/gllvmTMB.R man/spde.Rd man/gllvmTMB.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  roxygen-only cleanup. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.

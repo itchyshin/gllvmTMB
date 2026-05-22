@@ -258,6 +258,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-24 | `plot_correlations()` bootstrap object input | `covered` | `test-plot-covariance-tables.R` | Converts `bootstrap_Sigma(..., what = "R")` summaries to row-first correlation forest/raindrop plots without requiring hand-built pairwise rows. |
 | EXT-25 | `compare_Sigma_table()` estimate-vs-truth table helper | `covered` | `test-extract-sigma-table.R` | Joins fitted/report-ready Sigma or R rows to a supplied truth matrix for simulation and teaching figures; table helper only, no plotting or calibration claim. |
 | EXT-26 | `plot_Sigma_comparison()` estimate-vs-truth plot helper | `covered` | `test-plot-covariance-tables.R` | Plots `compare_Sigma_table()` rows as row-labelled error plots or estimate-vs-truth scatter plots, including optional `facet = "comparison"` panels for precomputed model/specification labels; visual comparison helper only, no simulation or calibration claim. |
+| EXT-27 | `plot_Sigma_heatmap()` matrix-style Sigma/R heatmap helper | `covered` | `test-plot-covariance-tables.R` | Plots `extract_Sigma_table()` rows as trait-by-trait heatmaps for covariance or correlation matrices; point-estimate visual helper only, intervals are preserved in plot data but not displayed. |
 
 ### Section 9 — Diagnostics
 

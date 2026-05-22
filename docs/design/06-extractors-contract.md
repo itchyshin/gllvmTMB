@@ -202,6 +202,14 @@ Validation-debt rows: `EXT-18` for fitted-model point tables and
 inherits the relevant `extract_Sigma()` / `bootstrap_Sigma()` rows
 (`EXT-01`, `EXT-13`, and `MIX-03` for mixed-family fits).
 
+Plot helpers consume the same row schema rather than indexing matrices
+directly. `plot_Sigma_table()` draws row-first interval or raindrop
+views for selected entries (`EXT-19`). `plot_Sigma_heatmap()` draws
+matrix-style point-estimate heatmaps from `entries = "all"` rows and
+does not display uncertainty intervals (`EXT-27`). Known-truth displays
+use `compare_Sigma_table()` plus `plot_Sigma_comparison()` (`EXT-25` /
+`EXT-26`).
+
 #### `extract_Sigma_B(fit)` and `extract_Sigma_W(fit)`
 
 Legacy aliases. `extract_Sigma_B(fit) = extract_Sigma(fit,

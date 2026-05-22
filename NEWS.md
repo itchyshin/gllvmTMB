@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Sigma heatmap plot helper (2026-05-21)
+
+* **`plot_Sigma_heatmap()`** plots `extract_Sigma_table()` rows as trait-by-trait covariance or correlation heatmaps (EXT-27). IN: articles and reports can show matrix block structure without extracting `Sigma`, calling `cov2cor()`, or hand-building `geom_tile()` layers; the first integration replaces the functional-biogeography article's bespoke correlation heatmaps. PARTIAL: heatmaps show point estimates only and do not display uncertainty intervals or truth comparisons. PLANNED: vdiffr snapshots and richer multi-model layout helpers remain future visualization work.
+
 ## Sigma estimate-vs-truth plot helper (2026-05-21)
 
 * **`plot_Sigma_comparison()`** plots `compare_Sigma_table()` rows as row-labelled error plots or estimate-vs-truth scatter plots for simulation and teaching figures (EXT-26). IN: example articles can show `estimate - truth` without hand-building ggplot scaffolding, including `facet = "comparison"` panels for precomputed rows from several model specifications. PARTIAL: this is a visual comparison helper only; it does not run simulations, compute intervals, or validate calibration. PLANNED: article-specific calibration summaries remain future visualization work.

@@ -5757,6 +5757,73 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-21 -- Sigma heatmap helper and functional-biogeography integration
+
+Scope:
+
+- Added exported `plot_Sigma_heatmap()` for trait-by-trait Sigma/R heatmaps
+  from `extract_Sigma_table()` rows.
+- Added plot-helper tests for heatmap geoms, facet order, correlation fill
+  clamping, diagonal/label display options, and validation.
+- Added roxygen/Rd, NAMESPACE, pkgdown reference, NEWS, extractor-contract, and
+  validation-debt register row `EXT-27`.
+- Replaced the functional-biogeography article's manual correlation heatmaps
+  with `extract_Sigma_table()` rows plus `plot_Sigma_heatmap()`.
+- Updated the same article's long-format calls to include `trait = "trait"`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/functional-biogeography.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `plot_Sigma_heatmap.Rd`.
+- `tail -5 man/plot_Sigma_heatmap.Rd`
+  -> final lines were the expected `\seealso{}` block.
+- `grep -c '^\\keyword' man/plot_Sigma_heatmap.Rd`
+  -> `0`.
+- `Rscript --vanilla -e 'tools::Rd2txt("man/plot_Sigma_heatmap.Rd", out = tempfile())'`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 153 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/functional-biogeography", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA images inspected:
+  `pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rb-1.png`
+  and
+  `pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rw-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'heatmap_df|geom_tile\\(|geom_text\\(|scale_fill_gradient2\\(|facet_wrap\\(~ model\\)|Sigma_B_adj|Sigma_W_adj|cov2cor\\(' vignettes/articles/functional-biogeography.Rmd`
+  -> no hits.
+- `rg -n 'plot_Sigma_heatmap\\(|EXT-27|sigma_heatmap|not_displayed|entries = "all"' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/functional-biogeography.Rmd NAMESPACE NEWS.md _pkgdown.yml docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md man/plot_Sigma_heatmap.Rd`
+  -> helper export, tests, article integration, docs, pkgdown, and register row
+  are present.
+- `rg -n "gllvmTMB\\(" vignettes/articles/functional-biogeography.Rmd`
+  -> all runnable/static long-format calls now include `trait = "trait"`; the
+  wide `traits(...)` inline example intentionally does not take `trait =`.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|estimate-vs-truth article figures remain future|plotting geometry remains" R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/functional-biogeography.Rmd NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md man/plot_Sigma_heatmap.Rd _pkgdown.yml`
+  -> hits only in existing NEWS / validation-register compatibility rows, not
+  in the new helper or touched article code.
+- `rg -n "in prep|in preparation|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes/articles/functional-biogeography.Rmd R/plot-covariance-tables.R man/plot_Sigma_heatmap.Rd NEWS.md docs/design/06-extractors-contract.md`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this new helper. Focused
+  helper tests, roxygen generation/Rd spot-check, article render, pkgdown
+  check, whitespace check, stale-wording scans, visual QA, and a short no-tests
+  package check were run.
+
 ## 2026-05-21 -- Behavioural-syndromes truth comparison
 
 Scope:

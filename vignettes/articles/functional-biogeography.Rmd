@@ -57,7 +57,7 @@ This article fits it as a **model ladder**:
   there.
 
 All fits below use the long-format API
-(`gllvmTMB(value ~ ..., data = df_long)`). Each model has an
+(`gllvmTMB(value ~ ..., data = df_long, trait = "trait")`). Each model has an
 equivalent wide-data-frame form via the `traits(...)` LHS marker
 (`gllvmTMB(traits(t1, t2, t3) ~ 1 + latent(1 | site, d = K) + ...,
 data = df_wide)`); see the Get Started vignette and
@@ -211,6 +211,7 @@ fit_core <- gllvmTMB(
           latent(0 + trait | site_species, d = 1) +
           unique(0 + trait | site_species),
   data    = df,
+  trait   = "trait",
   cluster = "species"
 )
 t_M1 <- round(as.numeric(Sys.time() - t0, units = "secs"), 1)
@@ -267,6 +268,7 @@ fit_core_d1 <- gllvmTMB(
           latent(0 + trait | site_species, d = 1) +
           unique(0 + trait | site_species),
   data    = df,
+  trait   = "trait",
   cluster = "species"
 )
 rbind(
@@ -342,6 +344,7 @@ fit_adj <- gllvmTMB(
           unique(0 + trait | species) +              # q_it
           phylo_unique(species, tree = tree),         # p_it
   data    = df,
+  trait   = "trait",
   cluster = "species"
 )
 t_M2 <- round(as.numeric(Sys.time() - t0, units = "secs"), 1)
@@ -364,74 +367,58 @@ detects the pairing.
 
 ## The pedagogical moment: do the controls move the syndrome?
 
-Re-extract $\boldsymbol{\Sigma}_B$ and $\boldsymbol{\Sigma}_W$ from
-the adjusted model and compare to the core model's:
+Re-extract correlation-table rows from the adjusted model and compare
+them to the core model's:
 
 ```{r m2-sigma}
-Sigma_B_adj <- extract_Sigma(fit_adj, level = "unit",     part = "total")$Sigma
-Sigma_W_adj <- extract_Sigma(fit_adj, level = "unit_obs", part = "total")$Sigma
+correlation_rows <- function(fit, level, label) {
+  rows <- extract_Sigma_table(
+    fit,
+    level = level,
+    measure = "correlation",
+    entries = "all"
+  )
+  rows$level <- label
+  rows
+}
 
-R_B_core <- extract_Sigma(fit_core, level = "unit")$R
-R_B_adj <- extract_Sigma(fit_adj, level = "unit")$R
-R_W_core <- extract_Sigma(fit_core, level = "unit_obs")$R
-R_W_adj <- extract_Sigma(fit_adj, level = "unit_obs")$R
+correlation_shift <- function(core, adjusted) {
+  both <- merge(
+    core[c("trait_i", "trait_j", "estimate")],
+    adjusted[c("trait_i", "trait_j", "estimate")],
+    by = c("trait_i", "trait_j"),
+    suffixes = c("_core", "_adjusted")
+  )
+  max(abs(both$estimate_adjusted - both$estimate_core))
+}
 
-c(max_abs_diff_R_B = round(max(abs(R_B_adj - R_B_core)), 3),
-  max_abs_diff_R_W = round(max(abs(R_W_adj - R_W_core)), 3))
+R_B_core <- correlation_rows(fit_core, "unit", "Core (no controls)")
+R_B_adj <- correlation_rows(fit_adj, "unit", "Adjusted (+ space + phylo)")
+R_W_core <- correlation_rows(fit_core, "unit_obs", "Core (no controls)")
+R_W_adj <- correlation_rows(fit_adj, "unit_obs", "Adjusted (+ space + phylo)")
+
+c(max_abs_diff_R_B = round(correlation_shift(R_B_core, R_B_adj), 3),
+  max_abs_diff_R_W = round(correlation_shift(R_W_core, R_W_adj), 3))
 ```
 
 Side-by-side correlation-matrix heatmaps:
 
 ```{r heatmap-rb, fig.cap = "Cross-trait correlation matrix at the between-site (Sigma_B) tier under the core model (no controls) and the adjusted model (with spatial + phylogenetic adjustment). The block structure (traits 1-3 vs 4-6) is preserved across models.", fig.width = 8, fig.height = 4}
-heatmap_df <- function(R, label) {
-  rn <- rownames(R) %||% paste0("trait_", seq_len(nrow(R)))
-  data.frame(
-    model  = label,
-    trait_i = factor(rep(rn, ncol(R)), levels = rn),
-    trait_j = factor(rep(rn, each = nrow(R)), levels = rn),
-    rho     = as.vector(R)
-  )
-}
-
 R_B_long <- rbind(
-  heatmap_df(R_B_core, "Core (no controls)"),
-  heatmap_df(R_B_adj, "Adjusted (+ space + phylo)")
+  R_B_core,
+  R_B_adj
 )
 
-ggplot(R_B_long, aes(trait_i, trait_j, fill = rho)) +
-  geom_tile(colour = "white") +
-  geom_text(aes(label = sprintf("%.2f", rho)), size = 2.8) +
-  scale_fill_gradient2(low = "#1f78b4", mid = "white", high = "#b2182b",
-                       midpoint = 0, limits = c(-1, 1)) +
-  facet_wrap(~ model) +
-  coord_equal() +
-  labs(x = NULL, y = NULL,
-       title = expression("Between-site trait correlations " *
-                          R[B] * " = cor(" * Sigma[B] * ")")) +
-  theme_minimal(base_size = 11) +
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 45, hjust = 1))
+plot_Sigma_heatmap(R_B_long)
 ```
 
 ```{r heatmap-rw, fig.cap = "Cross-trait correlation matrix at the within-site (Sigma_W) tier under the core and adjusted models. The local-integration story is similarly stable to the addition of controls.", fig.width = 8, fig.height = 4}
 R_W_long <- rbind(
-  heatmap_df(R_W_core, "Core (no controls)"),
-  heatmap_df(R_W_adj, "Adjusted (+ space + phylo)")
+  R_W_core,
+  R_W_adj
 )
 
-ggplot(R_W_long, aes(trait_i, trait_j, fill = rho)) +
-  geom_tile(colour = "white") +
-  geom_text(aes(label = sprintf("%.2f", rho)), size = 2.8) +
-  scale_fill_gradient2(low = "#1f78b4", mid = "white", high = "#b2182b",
-                       midpoint = 0, limits = c(-1, 1)) +
-  facet_wrap(~ model) +
-  coord_equal() +
-  labs(x = NULL, y = NULL,
-       title = expression("Within-site trait correlations " *
-                          R[W] * " = cor(" * Sigma[W] * ")")) +
-  theme_minimal(base_size = 11) +
-  theme(panel.grid = element_blank(),
-        axis.text.x = element_text(angle = 45, hjust = 1))
+plot_Sigma_heatmap(R_W_long)
 ```
 
 The block structure of $\mathbf{R}_B$ -- traits 1-3 positively
@@ -504,7 +491,7 @@ fit_M3 <- gllvmTMB(
           latent(0 + trait | site_species, d = 1) +
           unique(0 + trait | site_species) +
           phylo_unique(species, tree = tree),
-  data = df, cluster = "species"
+  data = df, trait = "trait", cluster = "species"
 )
 ```
 
@@ -537,7 +524,10 @@ fit_M4 <- gllvmTMB(
           unique(0 + trait | site_species) +
           phylo_latent(species, d = 2, tree = tree) +
           phylo_unique(species, tree = tree),
-  data = df, cluster = "species", unit = "species"  # PGLLVM mode
+  data = df,
+  trait = "trait",
+  cluster = "species",
+  unit = "species"  # PGLLVM mode
 )
 ```
 

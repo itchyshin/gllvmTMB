@@ -202,6 +202,32 @@
   dat
 }
 
+.gtmb_heatmap_trait_levels <- function(dat) {
+  trait <- c(as.character(dat$trait_i), as.character(dat$trait_j))
+  if (all(c("i", "j") %in% names(dat))) {
+    idx <- c(dat$i, dat$j)
+    ord <- order(idx, trait)
+    return(unique(trait[ord]))
+  }
+  unique(trait)
+}
+
+.gtmb_heatmap_label_colour <- function(x, is_correlation) {
+  finite <- is.finite(x)
+  if (!any(finite)) {
+    return(rep("dark", length(x)))
+  }
+  limit <- if (is_correlation) {
+    1
+  } else {
+    max(abs(x[finite]), na.rm = TRUE)
+  }
+  if (!is.finite(limit) || limit <= 0) {
+    limit <- 1
+  }
+  ifelse(abs(x) / limit >= 0.55, "light", "dark")
+}
+
 .gtmb_add_pair_facets <- function(p, dat, facet) {
   label_lookup <- attr(dat, "row_labels") %||% character(0)
   label_fun <- function(x) {
@@ -1257,4 +1283,239 @@ plot_Sigma_table <- function(
     attr(p, "gllvmTMB_raindrop_data") <- raindrop
   }
   p
+}
+
+#' Plot Sigma-table rows as a trait-by-trait heatmap
+#'
+#' `plot_Sigma_heatmap()` turns rows from [extract_Sigma_table()] into a
+#' matrix-style heatmap. It is designed for articles that need to show the
+#' block structure of a covariance or correlation matrix without manually
+#' extracting `Sigma`, calling `cov2cor()`, or rebuilding `geom_tile()` layers.
+#' Heatmap cells are point estimates only; interval columns, when present, are
+#' kept in the attached plot data but are not displayed.
+#'
+#' Scope boundary: IN, the helper plots point-estimate heatmaps from
+#' [extract_Sigma_table()] rows or extracts those rows from a fitted
+#' `gllvmTMB_multi` / `bootstrap_Sigma` object (EXT-27; built on EXT-18 /
+#' EXT-20). PARTIAL, it does not display interval bounds or compare fitted
+#' values to known truth. Use [plot_Sigma_table()] for interval forests or
+#' raindrops, and [plot_Sigma_comparison()] for estimate-vs-truth displays.
+#' PLANNED, vdiffr snapshots and richer multi-model layout helpers remain
+#' future figure work.
+#'
+#' @param x A `gllvmTMB_multi` fit, a `bootstrap_Sigma` object, or a data frame
+#'   returned by [extract_Sigma_table()]. Data frames must contain `level`,
+#'   `trait_i`, `trait_j`, `estimate`, `matrix`, `component`, `diagonal`, and
+#'   `triangle`; `i` and `j` columns are used for trait ordering when present.
+#' @param level,part,measure,entries,link_residual Passed to
+#'   [extract_Sigma_table()] when `x` is a fitted model. The plotting default
+#'   `entries = "all"` shows the full matrix.
+#' @param include_diagonal Logical. Include diagonal rows when present?
+#' @param facet One of `"level"` (default) or `"none"`.
+#' @param label Logical. Print numeric estimates inside cells?
+#' @param label_digits Number of decimal places for cell labels.
+#'
+#' @return A `ggplot2` plot object with `gllvmTMB_meta` and `gllvmTMB_data`
+#'   attributes.
+#' @seealso [extract_Sigma_table()], [plot_Sigma_table()],
+#'   [plot_Sigma_comparison()].
+#' @export
+#' @examples
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   rows <- data.frame(
+#'     level = "unit",
+#'     trait_i = rep(c("length", "mass"), each = 2),
+#'     trait_j = rep(c("length", "mass"), 2),
+#'     estimate = c(1, 0.35, 0.35, 1),
+#'     matrix = "R",
+#'     component = "total",
+#'     diagonal = c(TRUE, FALSE, FALSE, TRUE),
+#'     triangle = c("diagonal", "lower", "upper", "diagonal")
+#'   )
+#'   plot_Sigma_heatmap(rows)
+#' }
+plot_Sigma_heatmap <- function(
+  x,
+  level = "unit",
+  part = c("total", "shared", "unique"),
+  measure = c("correlation", "covariance"),
+  entries = c("all", "unique", "upper", "lower", "offdiag", "diag"),
+  link_residual = c("auto", "none"),
+  include_diagonal = TRUE,
+  facet = c("level", "none"),
+  label = TRUE,
+  label_digits = 2
+) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
+  }
+  part <- match.arg(part)
+  measure <- match.arg(measure)
+  entries <- match.arg(entries)
+  link_residual <- match.arg(link_residual)
+  facet <- match.arg(facet)
+  if (
+    !is.logical(include_diagonal) ||
+      length(include_diagonal) != 1L ||
+      is.na(include_diagonal)
+  ) {
+    cli::cli_abort(
+      "{.arg include_diagonal} must be {.code TRUE} or {.code FALSE}."
+    )
+  }
+  if (!is.logical(label) || length(label) != 1L || is.na(label)) {
+    cli::cli_abort("{.arg label} must be {.code TRUE} or {.code FALSE}.")
+  }
+  if (
+    !is.numeric(label_digits) ||
+      length(label_digits) != 1L ||
+      is.na(label_digits) ||
+      label_digits < 0 ||
+      label_digits != floor(label_digits)
+  ) {
+    cli::cli_abort("{.arg label_digits} must be a non-negative whole number.")
+  }
+
+  if (inherits(x, "gllvmTMB_multi") || inherits(x, "bootstrap_Sigma")) {
+    dat <- extract_Sigma_table(
+      x,
+      level = level,
+      part = part,
+      measure = measure,
+      entries = entries,
+      link_residual = link_residual
+    )
+  } else if (is.data.frame(x)) {
+    dat <- x
+  } else {
+    cli::cli_abort(
+      "{.arg x} must be a {.cls gllvmTMB_multi} fit, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
+    )
+  }
+
+  .gtmb_require_plot_columns(
+    dat,
+    c(
+      "level",
+      "trait_i",
+      "trait_j",
+      "estimate",
+      "matrix",
+      "component",
+      "diagonal",
+      "triangle"
+    )
+  )
+  if (!isTRUE(include_diagonal)) {
+    dat <- dat[!(dat$diagonal %in% TRUE), , drop = FALSE]
+  }
+  if (nrow(dat) == 0L) {
+    cli::cli_abort(c(
+      "No Sigma table rows to plot.",
+      "i" = "If you passed only diagonal rows, set {.code include_diagonal = TRUE}."
+    ))
+  }
+  plot_notes <- attr(dat, "notes") %||% character(0)
+
+  dat$.estimate <- dat$estimate
+  pretty_levels <- .gtmb_pretty_levels(dat$level)
+  dat$.facet <- factor(pretty_levels, levels = unique(pretty_levels))
+  if (identical(facet, "none")) {
+    dat$.facet <- factor("All rows")
+  }
+  trait_levels <- .gtmb_heatmap_trait_levels(dat)
+  dat$.trait_x <- factor(as.character(dat$trait_j), levels = trait_levels)
+  dat$.trait_y <- factor(as.character(dat$trait_i), levels = rev(trait_levels))
+
+  is_correlation <- any(dat$matrix == "R", na.rm = TRUE)
+  if ("scale" %in% names(dat)) {
+    is_correlation <- is_correlation ||
+      any(dat$scale == "correlation", na.rm = TRUE)
+  }
+  fill_name <- if (is_correlation) "Correlation" else "Estimate"
+  fill_limits <- if (is_correlation) {
+    c(-1, 1)
+  } else {
+    finite_est <- dat$.estimate[is.finite(dat$.estimate)]
+    max_abs <- if (length(finite_est) > 0L) {
+      max(abs(finite_est), na.rm = TRUE)
+    } else {
+      1
+    }
+    if (!is.finite(max_abs) || max_abs <= 0) {
+      max_abs <- 1
+    }
+    c(-max_abs, max_abs)
+  }
+  dat$.fill_estimate <- if (is_correlation) {
+    pmax(pmin(dat$.estimate, 1), -1)
+  } else {
+    dat$.estimate
+  }
+  dat$.label <- ifelse(
+    is.finite(dat$.estimate),
+    sprintf(paste0("%.", label_digits, "f"), dat$.estimate),
+    ""
+  )
+  dat$.label_colour <- .gtmb_heatmap_label_colour(
+    dat$.fill_estimate,
+    is_correlation = is_correlation
+  )
+
+  p <- ggplot2::ggplot(
+    dat,
+    ggplot2::aes(
+      x = .data$.trait_x,
+      y = .data$.trait_y,
+      fill = .data$.fill_estimate
+    )
+  ) +
+    ggplot2::geom_tile(
+      colour = "white",
+      linewidth = 0.45
+    )
+  if (isTRUE(label)) {
+    p <- p +
+      ggplot2::geom_text(
+        ggplot2::aes(label = .data$.label, colour = .data$.label_colour),
+        size = 3.0,
+        show.legend = FALSE
+      ) +
+      ggplot2::scale_colour_manual(
+        values = c(dark = .gtmb_plot_palette[["ink"]], light = "white")
+      )
+  }
+  p <- p +
+    .gtmb_scale_fill_diverging(fill_name, limits = fill_limits) +
+    ggplot2::coord_equal() +
+    ggplot2::labs(
+      x = NULL,
+      y = NULL,
+      title = if (is_correlation) {
+        "Sigma-derived trait correlations"
+      } else {
+        "Sigma entries by trait"
+      },
+      subtitle = "Cells are point estimates from extract_Sigma_table().",
+      caption = "Heatmaps do not display uncertainty intervals."
+    ) +
+    .gtmb_theme_figure() +
+    ggplot2::theme(
+      panel.grid = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+      legend.position = "right"
+    )
+  if (!identical(facet, "none") && length(unique(dat$.facet)) > 1L) {
+    p <- p + ggplot2::facet_wrap(stats::as.formula("~.facet"))
+  }
+
+  .gtmb_plot_contract(
+    p,
+    type = "sigma_heatmap",
+    source = "extract_Sigma_table",
+    level = unique(as.character(dat$.facet)),
+    interval_status = "not_displayed",
+    data = dat,
+    notes = plot_notes
+  )
 }

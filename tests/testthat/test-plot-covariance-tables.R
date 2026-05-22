@@ -406,6 +406,90 @@ test_that("plot_Sigma_table accepts bootstrap_Sigma objects", {
   expect_silent(ggplot2::ggplot_build(p))
 })
 
+test_that("plot_Sigma_heatmap renders Sigma-table rows as matrix cells", {
+  skip_if_no_ggplot2()
+  corr_rows <- data.frame(
+    level = rep(c("Core model", "Adjusted model"), each = 4L),
+    trait_i = rep(c("length", "length", "mass", "mass"), 2L),
+    trait_j = rep(c("length", "mass", "length", "mass"), 2L),
+    i = rep(c(1L, 1L, 2L, 2L), 2L),
+    j = rep(c(1L, 2L, 1L, 2L), 2L),
+    estimate = c(1 + 1e-12, 0.35, 0.35, 1, 1, 0.28, 0.28, 1),
+    matrix = "R",
+    component = "total",
+    diagonal = rep(c(TRUE, FALSE, FALSE, TRUE), 2L),
+    triangle = rep(c("diagonal", "upper", "lower", "diagonal"), 2L),
+    scale = "correlation",
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_Sigma_heatmap(corr_rows)
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "sigma_heatmap",
+    "extract_Sigma_table"
+  )
+  expect_equal(meta$interval_status, "not_displayed")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(nrow(plot_data), nrow(corr_rows))
+  expect_setequal(plot_data$.facet, c("Core model", "Adjusted model"))
+  expect_equal(levels(plot_data$.facet), c("Core model", "Adjusted model"))
+  expect_lte(max(plot_data$.fill_estimate), 1)
+  expect_equal(levels(plot_data$.trait_x), c("length", "mass"))
+  expect_equal(levels(plot_data$.trait_y), c("mass", "length"))
+  expect_true("GeomTile" %in% gtmb_plot_geom_names(p))
+  expect_true("GeomText" %in% gtmb_plot_geom_names(p))
+  expect_true(inherits(p$facet, "FacetWrap"))
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_Sigma_heatmap can omit diagonals and labels", {
+  skip_if_no_ggplot2()
+  sigma_rows <- data.frame(
+    level = "unit",
+    trait_i = c("length", "length", "mass"),
+    trait_j = c("length", "mass", "mass"),
+    estimate = c(0.80, 0.22, 0.50),
+    matrix = "Sigma",
+    component = "total",
+    diagonal = c(TRUE, FALSE, TRUE),
+    triangle = c("diagonal", "upper", "diagonal"),
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_Sigma_heatmap(
+    sigma_rows,
+    include_diagonal = FALSE,
+    label = FALSE
+  )
+
+  expect_s3_class(p, "ggplot")
+  expect_equal(nrow(attr(p, "gllvmTMB_data")), 1L)
+  expect_false(any(attr(p, "gllvmTMB_data")$diagonal))
+  expect_true("GeomTile" %in% gtmb_plot_geom_names(p))
+  expect_false("GeomText" %in% gtmb_plot_geom_names(p))
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_Sigma_heatmap validates required tidy columns", {
+  skip_if_no_ggplot2()
+  bad <- data.frame(
+    level = "unit",
+    trait_i = "length",
+    estimate = 0.2
+  )
+  expect_error(
+    plot_Sigma_heatmap(bad),
+    regexp = "missing required column"
+  )
+  expect_error(
+    plot_Sigma_heatmap(transform(bad, trait_j = "mass"), label_digits = -1),
+    regexp = "label_digits"
+  )
+})
+
 test_that("plot_Sigma_comparison plots row-wise truth errors", {
   skip_if_no_ggplot2()
   rows <- data.frame(

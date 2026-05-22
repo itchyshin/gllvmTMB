@@ -5789,6 +5789,42 @@ Deliberately not run:
   cleanup. The slice-40 report records the broader overnight validation, and
   the PR branch will receive 3-OS CI after push.
 
+## 2026-05-22 -- Rose preview-banner register citations
+
+Scope:
+
+- Tightened Preview banners in four touched public articles before updating
+  draft PR #233.
+- Replaced generic validation-register references with concrete row IDs in
+  `functional-biogeography.Rmd` and `choose-your-model.Rmd`.
+- Updated stale binary-IRT wording in `lambda-constraint.Rmd` and
+  `psychometrics-irt.Rmd` now that LAM-03 is `covered`.
+
+Evidence:
+
+- Pre-edit lane check had already been rerun in the same pre-push session:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt,url`
+  -> only draft PR #233 was open.
+- `rg -n "latent\\(|unique\\(|phylo_|spatial_|meta_V|FG-|MET-|SP|PHY|LAM-|MIX-|FAM-" docs/design/35-validation-debt-register.md`
+  -> confirmed the relevant row IDs and current statuses.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); for (article in c("articles/functional-biogeography", "articles/choose-your-model", "articles/lambda-constraint", "articles/psychometrics-irt")) pkgdown::build_article(article, quiet = TRUE, new_process = FALSE)'`
+  -> rendered all four articles.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean after edits.
+- Stale preview wording scan:
+  ```sh
+  rg -n 'LAM-03 `partial`|walks to `covered` after|Each individual covariance component.*`covered`|machinery is partly `partial`|R ≥' vignettes/articles/functional-biogeography.Rmd vignettes/articles/choose-your-model.Rmd vignettes/articles/lambda-constraint.Rmd vignettes/articles/psychometrics-irt.Rmd
+  ```
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this prose-only Rose fix. The
+  touched articles rendered, pkgdown checked clean, and the PR branch will
+  receive 3-OS CI after push.
+
 ## 2026-05-22 -- Remaining Sigma heatmap labels
 
 Scope:

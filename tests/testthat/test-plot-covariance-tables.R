@@ -456,6 +456,25 @@ test_that("plot_Sigma_comparison plots row-wise truth errors", {
   expect_true("GeomSegment" %in% gtmb_plot_geom_names(p))
   expect_match(p$labels$caption, "not confidence intervals", fixed = TRUE)
   expect_silent(ggplot2::ggplot_build(p))
+
+  diag_rows <- transform(
+    rows[1L, ],
+    trait_j = trait_i,
+    estimate = 0.72,
+    truth = 0.70,
+    error = 0.02,
+    abs_error = 0.02,
+    comparison_status = "compared",
+    matrix = "Sigma",
+    diagonal = TRUE,
+    scale = "covariance"
+  )
+  p_diag <- plot_Sigma_comparison(
+    diag_rows,
+    measure = "covariance",
+    include_diagonal = TRUE
+  )
+  expect_equal(p_diag$labels$title, "Sigma error by entry")
 })
 
 test_that("plot_Sigma_comparison can plot precomputed scatter comparisons", {

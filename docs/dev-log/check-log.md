@@ -5708,3 +5708,51 @@ Deliberately not run:
   integration. Focused helper tests, focused example tests, article render,
   pkgdown check, whitespace check, stale-wording scan, visual QA, and a short
   no-tests package check were run.
+
+## 2026-05-21 -- Simulation-verification truth comparison
+
+Scope:
+
+- Replaced manual Sigma truth-vs-fit table construction in
+  `vignettes/articles/simulation-verification.Rmd`.
+- Used `compare_Sigma_table()` and `plot_Sigma_comparison()` for the
+  between-site Sigma recovery check.
+- Updated `plot_Sigma_comparison()` title logic so diagonal-inclusive plots
+  say "Sigma error by entry".
+- Added a regression expectation for that title.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 127 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/simulation-verification", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/simulation-verification_files/figure-html/recover-sigma-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'row\\(|col\\(|Sigma_fit|diff\\s*=|data.frame\\(|compare_Sigma_table\\(|plot_Sigma_comparison\\(|Sigma error by entry' vignettes/articles/simulation-verification.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> the changed recovery section now uses comparison helpers; remaining
+  `Sigma_fit` / `Sigma_truth` wording is the intentional trait-factor-order
+  failure-mode explanation.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/simulation-verification.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this hidden-article
+  cleanup. Focused helper tests, article render, pkgdown check, whitespace
+  check, stale-wording scans, visual QA, and a short no-tests package check
+  were run.

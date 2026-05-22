@@ -773,6 +773,13 @@ plot_Sigma_comparison <- function(
   } else {
     "Estimate - truth"
   }
+  title <- if (any(dat$diagonal %in% TRUE, na.rm = TRUE)) {
+    if (is_correlation) "Correlation error by entry" else "Sigma error by entry"
+  } else if (is_correlation) {
+    "Correlation error by trait pair"
+  } else {
+    "Sigma error by trait pair"
+  }
   caption <- if (all(dat$.can_compare)) {
     "Segments show estimate - truth; not confidence intervals."
   } else {
@@ -868,11 +875,7 @@ plot_Sigma_comparison <- function(
       ggplot2::labs(
         x = x_lab,
         y = NULL,
-        title = if (is_correlation) {
-          "Correlation error by trait pair"
-        } else {
-          "Sigma error by trait pair"
-        },
+        title = title,
         subtitle = "Points show estimate minus supplied truth for each row.",
         caption = caption
       )

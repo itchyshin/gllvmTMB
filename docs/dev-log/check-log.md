@@ -5909,6 +5909,49 @@ Deliberately not run:
   cleanup. Article render, visual QA, pkgdown check, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-21 -- Joint-SDM Sigma heatmap
+
+Scope:
+
+- Added `trait = "trait"` to the long-format JSDM fit in
+  `vignettes/articles/joint-sdm.Rmd`.
+- Replaced printed `Sigma_shared` / `Sigma_total` matrices with
+  `extract_Sigma_table()` rows and `plot_Sigma_heatmap()`.
+- Kept the prose explaining that total latent-liability covariance adds the
+  fixed logistic link residual on the diagonal.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/joint-sdm.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/joint-sdm", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-sigma-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma_shared <-|Sigma_total\\s*<-|round\\(Sigma_shared|round\\(Sigma_total|list\\(Sigma_shared|plot_Sigma_heatmap\\(|Sigma_shared_rows|Sigma_total_rows|trait\\s*=\\s*"trait"' vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/joint-sdm.html`
+  -> printed matrices are gone; helper-backed source/rendered HTML and explicit
+  `trait = "trait"` are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/joint-sdm.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-21 -- Behavioural-syndromes truth comparison
 
 Scope:

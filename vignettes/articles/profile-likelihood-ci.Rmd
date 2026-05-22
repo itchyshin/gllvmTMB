@@ -146,7 +146,8 @@ fit_long <- gllvmTMB(
   value ~ 0 + trait +
     latent(0 + trait | site, d = 1) + unique(0 + trait | site) +
     unique(0 + trait | site_species),
-  data = df_long
+  data = df_long,
+  trait = "trait"
 )
 
 # Wide data-frame format (same model with compact formula syntax)

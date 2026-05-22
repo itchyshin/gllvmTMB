@@ -103,7 +103,8 @@ fit <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | site, d = 1) +
           unique(0 + trait | site),
-  data = df
+  data = df,
+  trait = "trait"
 )
 fit$opt$convergence  # should be 0L
 ```

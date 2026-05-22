@@ -178,7 +178,8 @@ the long-form recipe.
 fit0_long <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                       unique(0 + trait | site),
-  data = df_long
+  data = df_long,
+  trait = "trait"
 )
 
 # Wide data-frame format (same model with compact formula syntax)
@@ -218,6 +219,7 @@ fit_diag <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                       unique(0 + trait | site),
   data              = df_long,
+  trait             = "trait",
   lambda_constraint = list(B = cnst_diag)
 )
 L_diag <- fit_diag$report$Lambda_B
@@ -247,6 +249,7 @@ fit_zero <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                       unique(0 + trait | site),
   data              = df_long,
+  trait             = "trait",
   lambda_constraint = list(B = cnst_zero)
 )
 L_zero <- fit_zero$report$Lambda_B
@@ -294,6 +297,7 @@ fit_05 <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                       unique(0 + trait | site),
   data              = df_long,
+  trait             = "trait",
   lambda_constraint = list(B = cnst_05)
 )
 L_05 <- fit_05$report$Lambda_B

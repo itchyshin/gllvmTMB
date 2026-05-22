@@ -5757,6 +5757,52 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Remaining explicit trait article cleanup
+
+Scope:
+
+- Added `trait = "trait"` to remaining inspected long-format public examples in
+  `behavioural-syndromes`, `choose-your-model`, `cross-package-validation`,
+  `lambda-constraint`, `mixed-family-extractors`, `profile-likelihood-ci`, and
+  `simulation-verification`.
+- Updated the long-format shorthand in `choose-your-model` prose so it names
+  the trait column explicitly.
+- Left wide `traits(...)` examples unchanged.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/cross-package-validation.Rmd vignettes/articles/choose-your-model.Rmd vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/lambda-constraint.Rmd vignettes/articles/profile-likelihood-ci.Rmd vignettes/articles/simulation-verification.Rmd vignettes/articles/behavioural-syndromes.Rmd`
+  -> completed without output.
+- `for article in articles/cross-package-validation articles/choose-your-model articles/mixed-family-extractors articles/lambda-constraint articles/profile-likelihood-ci articles/simulation-verification articles/behavioural-syndromes; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> all seven articles rendered locally. The profile-likelihood article emitted
+  an existing Pandoc math warning about `\rm`, unrelated to this slice.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- Structural source scan across `README.md`, `vignettes/gllvmTMB.Rmd`, and
+  `vignettes/articles/*.Rmd` for actual `gllvmTMB(value ~ ...)` calls without
+  `trait =`
+  -> no hits after tightening the scanner to ignore prose-only `gllvmTMB()`
+  mentions.
+- `rg -n "gllvmTMB\\(value ~ \\.\\.\\., data = df_long, unit|gllvmTMB\\(value ~ \\.\\.\\., data = df_long\\)" README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd`
+  -> no stale shorthand hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this documentation
+  convention cleanup. Seven article renders, pkgdown check, whitespace check,
+  stale-wording scans, a structural source scan, and a short no-tests package
+  check were run.
+
 ## 2026-05-21 -- Sigma heatmap helper and functional-biogeography integration
 
 Scope:

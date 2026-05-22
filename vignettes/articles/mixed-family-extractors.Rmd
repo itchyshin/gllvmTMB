@@ -67,6 +67,7 @@ A single `gllvmTMB()` call handles the mixed-family case:
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 1),
   data   = fixture$data,
+  trait  = "trait",
   family = fixture$family_list   # list(gaussian(), binomial(), poisson())
 )
 ```

@@ -86,7 +86,8 @@ canonical assembled formulas for the most common combinations.
 
 `gllvmTMB` accepts data in two shapes through one entry point.
 Long-format data have one row per `(unit, trait)` observation
-(`gllvmTMB(value ~ ..., data = df_long, unit = "...")`); wide-
+(`gllvmTMB(value ~ ..., data = df_long, trait = "trait", unit = "...")`);
+wide-
 format data have one row per unit and one column per trait,
 marked by `traits(...)` on the formula left-hand side
 (`gllvmTMB(traits(t1, t2, t3) ~ ..., data = df_wide,
@@ -277,6 +278,7 @@ df_ind <- data.frame(
 fit_ind <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | individual, d = 2),
   data = df_ind,
+  trait = "trait",
   unit = "individual"
 )
 ```
@@ -302,6 +304,7 @@ fit_jsdm <- gllvmTMB(
           latent(0 + trait | site, d = 2) +
           unique(0 + trait | site),
   data   = df_b,
+  trait  = "trait",
   family = binomial()
 )
 ```
@@ -338,6 +341,7 @@ fit_phy <- gllvmTMB(
           latent(0 + trait | species, d = 1) +
           unique(0 + trait | species),
   data = df_p,
+  trait = "trait",
   unit = "species"
 )
 ```
@@ -364,7 +368,8 @@ mesh <- make_mesh(df_s, c("lon", "lat"), cutoff = 0.1)
 
 fit_spa <- gllvmTMB(
   value ~ 0 + trait + spatial_unique(0 + trait | coords, mesh = mesh),
-  data = df_s
+  data = df_s,
+  trait = "trait"
 )
 ```
 
@@ -386,7 +391,8 @@ fit_full <- gllvmTMB(
           unique(0 + trait | site_species) +
           phylo_latent(species, d = 1, tree = tree) +
           phylo_unique(species, tree = tree),
-  data = df
+  data = df,
+  trait = "trait"
 )
 ```
 

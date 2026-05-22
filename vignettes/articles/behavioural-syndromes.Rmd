@@ -357,6 +357,7 @@ fit <- gllvmTMB(
           latent(0 + trait | session_id, d = 1) +   # within-individual lability axis
           unique(0 + trait | session_id),            # trait-specific within-individual residual
   data     = df,
+  trait    = "trait",
   unit     = "individual",
   unit_obs = "session_id"
 )

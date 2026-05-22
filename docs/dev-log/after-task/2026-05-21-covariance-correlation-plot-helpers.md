@@ -1,7 +1,7 @@
 # After Task: Covariance/Correlation Plot Helpers And Raindrops
 
-**Branch**: `codex/florence-covariance-plots-2026-05-21`  
-**Date**: `2026-05-21`  
+**Branch**: `codex/florence-covariance-plots-2026-05-21`
+**Date**: `2026-05-21`
 **Roles (engaged)**: `Ada / Emmy / Florence / Fisher / Pat / Rose / Grace`
 
 ## 1. Goal
@@ -62,23 +62,23 @@ Design and audit:
 ## 3a. Decisions and Rejected Alternatives
 
 Decision: keep forest intervals as the default, and make raindrops an explicit
-`style`.  
+`style`.
 Rationale: forest plots are familiar for table review; raindrops are better
 when the display needs to show that interval compatibility is not uniform.
 Rejected alternative: replacing all intervals with raindrops immediately.
 Confidence: high.
 
-Decision: omit CI interval lines from raindrops by default.  
+Decision: omit CI interval lines from raindrops by default.
 Rationale: the midpoint plus compatibility shape is cleaner and less
 misleading. The line overlay makes the display busier and pulls attention back
-to the flat-interval reading.  
+to the flat-interval reading.
 Rejected alternative: always draw both the drop and the CI line.
 Confidence: high after visual QA.
 
 Decision: call raindrops frequentist compatibility displays, not posterior
-densities.  
+densities.
 Rationale: the shape is reconstructed from estimates and interval bounds; it
-is not a Bayesian posterior sample or density.  
+is not a Bayesian posterior sample or density.
 Rejected alternative: posterior-like wording in captions.
 Confidence: high.
 

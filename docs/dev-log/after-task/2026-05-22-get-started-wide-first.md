@@ -1,9 +1,9 @@
 # After-task report: Get Started wide-first flow
 
-**Date:** 2026-05-22  
-**Branch:** `codex/florence-covariance-plots-2026-05-21`  
-**Agent:** Codex / Ada  
-**Active review lenses:** Pat, Grace, Rose  
+**Date:** 2026-05-22
+**Branch:** `codex/florence-covariance-plots-2026-05-21`
+**Agent:** Codex / Ada
+**Active review lenses:** Pat, Grace, Rose
 **Spawned subagents:** none
 
 ## Task Goal

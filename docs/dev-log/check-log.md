@@ -5757,6 +5757,38 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Pre-push whitespace hygiene for slice-40 stack
+
+Scope:
+
+- Removed trailing whitespace from the newly added slice reports, audit notes,
+  and the slice-40 while-away report before updating draft PR #233.
+- Added this narrow hygiene record so the pre-push correction is visible in the
+  repository ledger.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt,url`
+  -> only draft PR #233 was open, targeting branch
+  `codex/symbol-syntax-alignment-2026-05-21`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `git diff --check origin/codex/symbol-syntax-alignment-2026-05-21..HEAD`
+  -> found trailing whitespace in new dev-log / after-task / while-away files.
+- `git diff --check origin/codex/symbol-syntax-alignment-2026-05-21..HEAD | sed -n 's/:.*trailing whitespace.*//p' | sort -u | xargs perl -pi -e 's/[ \t]+$//'`
+  -> mechanically removed trailing spaces from the flagged files.
+- `git diff --check`
+  -> clean for the working-tree cleanup.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this dev-log-only whitespace
+  cleanup. The slice-40 report records the broader overnight validation, and
+  the PR branch will receive 3-OS CI after push.
+
 ## 2026-05-22 -- Remaining Sigma heatmap labels
 
 Scope:

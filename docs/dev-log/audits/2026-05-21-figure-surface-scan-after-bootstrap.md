@@ -1,8 +1,8 @@
 # Figure Surface Scan After Bootstrap Plot Slices
 
-**Date:** 2026-05-21  
-**Branch:** `codex/florence-covariance-plots-2026-05-21`  
-**Review lenses:** Rose, Florence, Fisher, Pat, Grace  
+**Date:** 2026-05-21
+**Branch:** `codex/florence-covariance-plots-2026-05-21`
+**Review lenses:** Rose, Florence, Fisher, Pat, Grace
 **Spawned subagents:** none
 
 ## Purpose

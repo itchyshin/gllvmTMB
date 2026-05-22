@@ -1,9 +1,9 @@
 # After-task report: Sigma truth-comparison plot helper
 
-**Date:** 2026-05-21  
-**Branch:** `codex/florence-covariance-plots-2026-05-21`  
-**Agent:** Codex / Ada  
-**Active review lenses:** Emmy, Fisher, Florence, Pat, Grace, Rose  
+**Date:** 2026-05-21
+**Branch:** `codex/florence-covariance-plots-2026-05-21`
+**Agent:** Codex / Ada
+**Active review lenses:** Emmy, Fisher, Florence, Pat, Grace, Rose
 **Spawned subagents:** none
 
 ## Task Goal

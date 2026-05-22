@@ -1,7 +1,7 @@
 # After Task: Public Covariance Plot Surface Scan
 
-**Branch**: `codex/florence-covariance-plots-2026-05-21`  
-**Date**: `2026-05-21`  
+**Branch**: `codex/florence-covariance-plots-2026-05-21`
+**Date**: `2026-05-21`
 **Roles (engaged)**: `Ada / Rose / Florence / Fisher / Pat / Grace`
 
 ## 1. Goal

@@ -1,7 +1,7 @@
 # After Task: Morphometrics Raindrop Figure
 
-**Branch**: `codex/florence-covariance-plots-2026-05-21`  
-**Date**: `2026-05-21`  
+**Branch**: `codex/florence-covariance-plots-2026-05-21`
+**Date**: `2026-05-21`
 **Roles (engaged)**: `Ada / Florence / Fisher / Pat / Rose / Grace`
 
 ## 1. Goal

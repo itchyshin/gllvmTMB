@@ -1,9 +1,9 @@
 # After-task report: missing-response public docs
 
-**Date:** 2026-05-21  
-**Branch:** `codex/florence-covariance-plots-2026-05-21`  
-**Agent:** Codex / Ada  
-**Active review lenses:** Pat, Rose, Grace  
+**Date:** 2026-05-21
+**Branch:** `codex/florence-covariance-plots-2026-05-21`
+**Agent:** Codex / Ada
+**Active review lenses:** Pat, Rose, Grace
 **Spawned subagents:** none
 
 ## Scope

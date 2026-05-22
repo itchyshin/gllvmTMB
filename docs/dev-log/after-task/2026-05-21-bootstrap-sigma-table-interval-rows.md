@@ -1,7 +1,7 @@
 # After Task: Bootstrap Sigma Table Interval Rows
 
-**Branch**: `codex/florence-covariance-plots-2026-05-21`  
-**Date**: `2026-05-21`  
+**Branch**: `codex/florence-covariance-plots-2026-05-21`
+**Date**: `2026-05-21`
 **Roles (engaged)**: `Ada / Emmy / Fisher / Florence / Rose / Grace`
 
 ## 1. Goal

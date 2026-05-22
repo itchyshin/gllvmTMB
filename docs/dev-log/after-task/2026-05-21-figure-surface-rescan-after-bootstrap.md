@@ -1,9 +1,9 @@
 # After-task report: figure surface rescan after bootstrap plot slices
 
-**Date:** 2026-05-21  
-**Branch:** `codex/florence-covariance-plots-2026-05-21`  
-**Agent:** Codex / Ada  
-**Active review lenses:** Rose, Florence, Fisher, Pat, Grace  
+**Date:** 2026-05-21
+**Branch:** `codex/florence-covariance-plots-2026-05-21`
+**Agent:** Codex / Ada
+**Active review lenses:** Rose, Florence, Fisher, Pat, Grace
 **Spawned subagents:** none
 
 ## Scope

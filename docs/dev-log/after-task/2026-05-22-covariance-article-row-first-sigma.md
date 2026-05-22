@@ -1,9 +1,9 @@
 # After-task report: Covariance article row-first Sigma section
 
-**Date:** 2026-05-22  
-**Branch:** `codex/florence-covariance-plots-2026-05-21`  
-**Agent:** Codex / Ada  
-**Active review lenses:** Pat, Florence, Grace, Rose  
+**Date:** 2026-05-22
+**Branch:** `codex/florence-covariance-plots-2026-05-21`
+**Agent:** Codex / Ada
+**Active review lenses:** Pat, Florence, Grace, Rose
 **Spawned subagents:** none
 
 ## Task Goal

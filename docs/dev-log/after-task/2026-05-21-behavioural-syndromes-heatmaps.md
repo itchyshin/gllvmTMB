@@ -1,9 +1,9 @@
 # After-task report: Behavioural-syndromes Sigma heatmaps
 
-**Date:** 2026-05-21  
-**Branch:** `codex/florence-covariance-plots-2026-05-21`  
-**Agent:** Codex / Ada  
-**Active review lenses:** Pat, Florence, Fisher, Grace, Rose  
+**Date:** 2026-05-21
+**Branch:** `codex/florence-covariance-plots-2026-05-21`
+**Agent:** Codex / Ada
+**Active review lenses:** Pat, Florence, Fisher, Grace, Rose
 **Spawned subagents:** none
 
 ## Task Goal

@@ -1,9 +1,9 @@
 # After-task report: bootstrap provenance in plot metadata
 
-**Date:** 2026-05-21  
-**Branch:** `codex/florence-covariance-plots-2026-05-21`  
-**Agent:** Codex / Ada  
-**Active review lenses:** Emmy, Fisher, Grace, Rose  
+**Date:** 2026-05-21
+**Branch:** `codex/florence-covariance-plots-2026-05-21`
+**Agent:** Codex / Ada
+**Active review lenses:** Emmy, Fisher, Grace, Rose
 **Spawned subagents:** none
 
 ## Scope

@@ -17,7 +17,7 @@
 \method{logLik}{gllvmTMB_multi}(object, ...)
 }
 \arguments{
-\item{x, object}{A \code{gllvmTMB_multi} fit.}
+\item{x, object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{...}{Currently unused.}
 

@@ -5,7 +5,7 @@
 ## extract_communality(), extract_ICC_site(), extract_ordination(),
 ## getLoadings(). One dispatcher, seven plot types.
 
-#' Plot a fitted multivariate `gllvmTMB_multi` model
+#' Plot a fitted multivariate gllvmTMB model
 #'
 #' Produces a variety of `ggplot2` visualisations for a stacked-trait
 #' multivariate GLLVM. Dispatches on `type` to one of seven panels:
@@ -44,7 +44,7 @@
 #'     or three axes via `axes`.}
 #' }
 #'
-#' @param x A `gllvmTMB_multi` fit.
+#' @param x A fit returned by [gllvmTMB()].
 #' @param type One of `"correlation"`, `"correlation_ellipse"`, `"loadings"`,
 #'   `"integration"`, `"communality"`, `"variance"`, `"ordination"`.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).

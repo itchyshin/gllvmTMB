@@ -5846,6 +5846,56 @@ Deliberately not run:
 - Article renders were not run because this slice deliberately touched no
   articles.
 
+## 2026-05-22 -- Method and plot reference wording cleanup
+
+Scope:
+
+- Cleaned S3 method titles and argument text so fitted-model help pages lead
+  with "fit returned by `gllvmTMB()`" rather than `gllvmTMB_multi`.
+- Reworded `plot_correlations()`, `plot_Sigma_table()`, and
+  `plot_Sigma_heatmap()` input text in the same reader-first style.
+- Replaced the public `plot_Sigma_heatmap()` phrase "attached plot data" with
+  "returned plot data".
+- Added after-task report
+  `docs/dev-log/after-task/2026-05-22-method-plot-reference-docs.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,mergeStateStatus`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the merged PR #233 lane plus local reference-doc commits;
+  no GitHub PR overlap was present.
+- `air format R/methods-gllvmTMB.R R/plot-gllvmTMB.R R/plot-covariance-tables.R`
+  -> reflowed too much of `R/methods-gllvmTMB.R`; that uncommitted formatting
+  noise was restored before the final diff.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated the affected S3 method and plot-helper Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|plot-gllvmTMB|mixed-family")'`
+  -> 569 passes, 0 failures, 2 warnings, 0 skips. The warnings came from
+  existing legacy `"B"` alias use in an unrelated mixed-family profile test, so
+  a narrower clean run was used for slice evidence.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(plot-covariance-tables|plot-gllvmTMB|sanity-multi|tidy-predict)$")'`
+  -> 385 passes, 0 failures, 0 warnings, 0 skips.
+- `rg -n 'attached plot data|Plot a fitted multivariate `gllvmTMB_multi` model|Confidence intervals on fixed effects of a `gllvmTMB_multi` fit|Tidy a `gllvmTMB_multi` fit|Simulate new responses from a fitted `gllvmTMB_multi`|Predict from a `gllvmTMB_multi` fit|Convergence and parameter sanity report for a `gllvmTMB_multi` fit|A `gllvmTMB_multi` fit\\.|A \\\\code\\{gllvmTMB_multi\\} fit\\.' R/methods-gllvmTMB.R R/plot-gllvmTMB.R R/plot-covariance-tables.R man/gllvmTMB_multi-methods.Rd man/confint.gllvmTMB_multi.Rd man/tidy.gllvmTMB_multi.Rd man/simulate.gllvmTMB_multi.Rd man/sanity_multi.Rd man/predict.gllvmTMB_multi.Rd man/plot.gllvmTMB_multi.Rd man/plot_correlations.Rd man/plot_Sigma_table.Rd man/plot_Sigma_heatmap.Rd`
+  -> no hits.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `gh run view 26288313415 --repo itchyshin/gllvmTMB --json status,conclusion,jobs,updatedAt`
+  -> post-PR #233 main R-CMD-check was still blocked on the Windows job; the
+  earlier manual pkgdown failure was diagnosed separately as a rejected
+  branch deployment, not a pkgdown build failure.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not run for this roxygen/reference wording
+  cleanup.
+- Article renders were not run because this slice deliberately touched no
+  articles.
+
 ## 2026-05-22 -- Reference function documentation audit plan
 
 Scope:

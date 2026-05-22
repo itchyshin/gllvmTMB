@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot-gllvmTMB.R
 \name{plot.gllvmTMB_multi}
 \alias{plot.gllvmTMB_multi}
-\title{Plot a fitted multivariate \code{gllvmTMB_multi} model}
+\title{Plot a fitted multivariate gllvmTMB model}
 \usage{
 \method{plot}{gllvmTMB_multi}(
   x,
@@ -15,7 +15,7 @@
 )
 }
 \arguments{
-\item{x}{A \code{gllvmTMB_multi} fit.}
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{type}{One of \code{"correlation"}, \code{"correlation_ellipse"}, \code{"loadings"},
 \code{"integration"}, \code{"communality"}, \code{"variance"}, \code{"ordination"}.}

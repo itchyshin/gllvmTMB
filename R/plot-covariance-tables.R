@@ -360,15 +360,15 @@
 #' [extract_correlations()].
 #'
 #' Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
-#' [extract_correlations()], extracts those rows from a fitted
-#' `gllvmTMB_multi` object (EXT-19; built on EXT-04/EXT-18 extractor
-#' contracts), or converts `bootstrap_Sigma()` correlation summaries to the
-#' same plotting schema (EXT-24). PARTIAL, the plot does not compute new
-#' intervals; it displays whatever interval method the input rows already
-#' contain. PLANNED, matrix-style visual comparisons against known truth remain
-#' article code rather than part of this helper.
+#' [extract_correlations()], extracts those rows from a fit returned by
+#' [gllvmTMB()] (EXT-19; built on EXT-04/EXT-18 extractor contracts), or
+#' converts `bootstrap_Sigma()` correlation summaries to the same plotting
+#' schema (EXT-24). PARTIAL, the plot does not compute new intervals; it
+#' displays whatever interval method the input rows already contain. PLANNED,
+#' matrix-style visual comparisons against known truth remain article code
+#' rather than part of this helper.
 #'
-#' @param x Either a `gllvmTMB_multi` fit, a `bootstrap_Sigma` object with
+#' @param x Either a fit returned by [gllvmTMB()], a `bootstrap_Sigma` object with
 #'   `R_B` / `R_W` summaries, or a data frame returned by
 #'   [extract_correlations()]. Data frames must contain `tier`, `trait_i`,
 #'   `trait_j`, `correlation`, `lower`, `upper`, and `method`.
@@ -1000,14 +1000,14 @@ plot_Sigma_comparison <- function(
 #' leaves interval columns as placeholders.
 #'
 #' Scope boundary: IN, the helper plots point-estimate rows from
-#' [extract_Sigma_table()] or extracts those rows from a fitted
-#' `gllvmTMB_multi` object (EXT-19; built on EXT-18). PARTIAL, interval
-#' columns are displayed when present and finite, but this helper does not
-#' compute Sigma intervals. PLANNED, uncertainty propagation for arbitrary
-#' Sigma entries belongs in bootstrap/profile infrastructure.
+#' [extract_Sigma_table()] or extracts those rows from a fit returned by
+#' [gllvmTMB()] (EXT-19; built on EXT-18). PARTIAL, interval columns are
+#' displayed when present and finite, but this helper does not compute Sigma
+#' intervals. PLANNED, uncertainty propagation for arbitrary Sigma entries
+#' belongs in bootstrap/profile infrastructure.
 #'
-#' @param x A `gllvmTMB_multi` fit, a `bootstrap_Sigma` object, or a data frame
-#'   returned by [extract_Sigma_table()]. Data frames must contain `level`,
+#' @param x A fit returned by [gllvmTMB()], a `bootstrap_Sigma` object, or a data
+#'   frame returned by [extract_Sigma_table()]. Data frames must contain `level`,
 #'   `trait_i`, `trait_j`, `estimate`, `lower`, `upper`, `matrix`,
 #'   `component`, `diagonal`, and `triangle`.
 #' @param level,part,measure,entries,link_residual Passed to
@@ -1351,20 +1351,20 @@ plot_Sigma_table <- function(
 #' matrix-style heatmap. It is designed for articles that need to show the
 #' block structure of a covariance or correlation matrix without manually
 #' extracting `Sigma`, calling `cov2cor()`, or rebuilding `geom_tile()` layers.
-#' Heatmap cells are point estimates only; interval columns, when present, are
-#' kept in the attached plot data but are not displayed.
+#' Heatmap cells are point estimates only; interval columns, when present, stay
+#' available in the returned plot data but are not displayed.
 #'
 #' Scope boundary: IN, the helper plots point-estimate heatmaps from
-#' [extract_Sigma_table()] rows or extracts those rows from a fitted
-#' `gllvmTMB_multi` / `bootstrap_Sigma` object (EXT-27; built on EXT-18 /
+#' [extract_Sigma_table()] rows or extracts those rows from a fit returned by
+#' [gllvmTMB()] or from a `bootstrap_Sigma` object (EXT-27; built on EXT-18 /
 #' EXT-20). PARTIAL, it does not display interval bounds or compare fitted
 #' values to known truth. Use [plot_Sigma_table()] for interval forests or
 #' confidence eyes, and [plot_Sigma_comparison()] for estimate-vs-truth displays.
 #' PLANNED, vdiffr snapshots and richer multi-model layout helpers remain
 #' future figure work.
 #'
-#' @param x A `gllvmTMB_multi` fit, a `bootstrap_Sigma` object, or a data frame
-#'   returned by [extract_Sigma_table()]. Data frames must contain `level`,
+#' @param x A fit returned by [gllvmTMB()], a `bootstrap_Sigma` object, or a data
+#'   frame returned by [extract_Sigma_table()]. Data frames must contain `level`,
 #'   `trait_i`, `trait_j`, `estimate`, `matrix`, `component`, `diagonal`, and
 #'   `triangle`; `i` and `j` columns are used for trait ordering when present.
 #' @param level,part,measure,entries,link_residual Passed to

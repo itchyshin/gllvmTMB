@@ -2,12 +2,12 @@
 % Please edit documentation in R/methods-gllvmTMB.R
 \name{sanity_multi}
 \alias{sanity_multi}
-\title{Convergence and parameter sanity report for a \code{gllvmTMB_multi} fit}
+\title{Convergence and parameter sanity report for a fitted gllvmTMB model}
 \usage{
 sanity_multi(object, gradient_thresh = 0.01, se_thresh = 100)
 }
 \arguments{
-\item{object}{A \code{gllvmTMB_multi} fit.}
+\item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{gradient_thresh}{Maximum allowed absolute gradient component.
 Default 0.01.}

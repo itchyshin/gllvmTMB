@@ -23,7 +23,7 @@ plot_correlations(
 )
 }
 \arguments{
-\item{x}{Either a \code{gllvmTMB_multi} fit, a \code{bootstrap_Sigma} object with
+\item{x}{Either a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, a \code{bootstrap_Sigma} object with
 \code{R_B} / \code{R_W} summaries, or a data frame returned by
 \code{\link[=extract_correlations]{extract_correlations()}}. Data frames must contain \code{tier}, \code{trait_i},
 \code{trait_j}, \code{correlation}, \code{lower}, \code{upper}, and \code{method}.}
@@ -71,13 +71,13 @@ For fitted-object calls, open points can often be investigated by trying
 }
 \details{
 Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
-\code{\link[=extract_correlations]{extract_correlations()}}, extracts those rows from a fitted
-\code{gllvmTMB_multi} object (EXT-19; built on EXT-04/EXT-18 extractor
-contracts), or converts \code{bootstrap_Sigma()} correlation summaries to the
-same plotting schema (EXT-24). PARTIAL, the plot does not compute new
-intervals; it displays whatever interval method the input rows already
-contain. PLANNED, matrix-style visual comparisons against known truth remain
-article code rather than part of this helper.
+\code{\link[=extract_correlations]{extract_correlations()}}, extracts those rows from a fit returned by
+\code{\link[=gllvmTMB]{gllvmTMB()}} (EXT-19; built on EXT-04/EXT-18 extractor contracts), or
+converts \code{bootstrap_Sigma()} correlation summaries to the same plotting
+schema (EXT-24). PARTIAL, the plot does not compute new intervals; it
+displays whatever interval method the input rows already contain. PLANNED,
+matrix-style visual comparisons against known truth remain article code
+rather than part of this helper.
 }
 \examples{
 if (requireNamespace("ggplot2", quietly = TRUE)) {

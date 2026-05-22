@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods-gllvmTMB.R, R/z-confint-gllvmTMB.R
 \name{confint.gllvmTMB_multi}
 \alias{confint.gllvmTMB_multi}
-\title{Confidence intervals on fixed effects of a \code{gllvmTMB_multi} fit}
+\title{Fixed-effect confidence intervals for a fitted gllvmTMB model}
 \usage{
 \method{confint}{gllvmTMB_multi}(
   object,

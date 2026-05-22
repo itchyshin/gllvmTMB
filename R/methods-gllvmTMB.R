@@ -216,7 +216,7 @@
 #'   `df = length(opt$par)` and `nobs = length(y)`, so `AIC()` and
 #'   `BIC()` all work directly.
 #'
-#' @param x,object A `gllvmTMB_multi` fit.
+#' @param x,object A fit returned by [gllvmTMB()].
 #' @param digits Decimal digits in the printed summary. Default 3.
 #' @param ... Currently unused.
 #' @name gllvmTMB_multi-methods
@@ -421,9 +421,9 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   ll
 }
 
-#' Confidence intervals on fixed effects of a `gllvmTMB_multi` fit
+#' Fixed-effect confidence intervals for a fitted gllvmTMB model
 #'
-#' @param object A `gllvmTMB_multi` fit.
+#' @param object A fit returned by [gllvmTMB()].
 #' @param parm Optional integer or character vector of parameter
 #'   names (matched against the fixed-effect terms).
 #' @param level Confidence level (default 0.95).
@@ -448,7 +448,7 @@ confint.gllvmTMB_multi <- function(object, parm, level = 0.95, ...) {
   out
 }
 
-#' Tidy a `gllvmTMB_multi` fit
+#' Tidy a fitted gllvmTMB model
 #'
 #' Returns a tibble (or data.frame) of either the fixed-effect coefficient
 #' table, the random-effects variance / covariance terms, or the ordinal
@@ -456,7 +456,7 @@ confint.gllvmTMB_multi <- function(object, parm, level = 0.95, ...) {
 #' the additional covstructs and the gllvmTMB-native `ordinal_probit()`
 #' family.
 #'
-#' @param x A `gllvmTMB_multi` fit.
+#' @param x A fit returned by [gllvmTMB()].
 #' @param effects One of `"fixed"` (default), `"ran_pars"`, or
 #'   `"cutpoint"`. The `"cutpoint"` class returns the ordinal-probit
 #'   cutpoints (one row per (trait, threshold) pair); it is empty for
@@ -595,14 +595,14 @@ tidy.gllvmTMB_multi <- function(x,
   }
 }
 
-#' Simulate new responses from a fitted `gllvmTMB_multi`
+#' Simulate new responses from a fitted gllvmTMB model
 #'
 #' Conditional on the fitted parameters and posterior modes of the random
 #' effects, draws `nsim` new response vectors. Each draw uses the same
 #' linear predictor (`fit$report$eta`) and adds Gaussian residual noise
 #' with `sd = exp(log_sigma_eps)`.
 #'
-#' @param object A `gllvmTMB_multi` fit.
+#' @param object A fit returned by [gllvmTMB()].
 #' @param nsim Number of replicate response vectors to draw. Default 1.
 #' @param seed Optional RNG seed.
 #' @param newdata Optional new data frame; if supplied, predictions are
@@ -872,7 +872,7 @@ simulate.gllvmTMB_multi <- function(object, nsim = 1, seed = NULL,
 }
 
 
-#' Convergence and parameter sanity report for a `gllvmTMB_multi` fit
+#' Convergence and parameter sanity report for a fitted gllvmTMB model
 #'
 #' A lightweight convergence diagnostic tailored to the multi
 #' engine (analogous to `sdmTMB::sanity()` for single-response fits). Prints (and returns invisibly) a structured list of pass / warn
@@ -880,7 +880,7 @@ simulate.gllvmTMB_multi <- function(object, nsim = 1, seed = NULL,
 #' Hessian definiteness, parameter SEs, and identifiability of the latent()
 #' loadings.
 #'
-#' @param object A `gllvmTMB_multi` fit.
+#' @param object A fit returned by [gllvmTMB()].
 #' @param gradient_thresh Maximum allowed absolute gradient component.
 #'   Default 0.01.
 #' @param se_thresh Threshold above which a parameter SE is flagged as
@@ -891,7 +891,7 @@ sanity_multi <- function(object,
                          gradient_thresh = 1e-2,
                          se_thresh       = 100) {
   if (!inherits(object, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a gllvmTMB_multi fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   flags <- list()
 
   ## 1. nlminb convergence
@@ -964,7 +964,7 @@ sanity_multi <- function(object,
 }
 
 
-#' Predict from a `gllvmTMB_multi` fit
+#' Predict from a fitted gllvmTMB model
 #'
 #' Returns the linear predictor (and conditional response) at each
 #' observation in the training data, or the fixed-effects-only prediction
@@ -972,7 +972,7 @@ sanity_multi <- function(object,
 #' training data we cannot draw the corresponding random effects, so
 #' predictions are returned on the population mean).
 #'
-#' @param object A `gllvmTMB_multi` fit.
+#' @param object A fit returned by [gllvmTMB()].
 #' @param newdata Optional new data frame. If `NULL`, predictions are
 #'   produced for the training rows.
 #' @param type One of `"link"` (default) or `"response"`.

@@ -128,6 +128,13 @@ one response per row.
 Predictors go into the formula in either form. Both paths reach
 the same long-format engine and produce byte-identical fits.
 
+Missing response cells are allowed. IN (MIS-21): in a wide `traits(...)`
+data frame, an `NA` trait value is treated as an unobserved unit-trait
+cell; in long data, an `NA` in the response column is treated the same
+way. The other observed traits for that unit stay in the likelihood.
+OUT: missing predictors, grouping variables, or design-matrix values
+still error because the model cannot build that row.
+
 ## Tiny example
 
 A one-level Gaussian GLLVM with shared and unique trait covariance
@@ -190,6 +197,7 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Surface | Current message |
 |---|---|
 | Long and wide data | Both are supported through `gllvmTMB()`: long data use `value ~ ...` with `trait = "trait"`; wide data use `traits(...) ~ ...`. |
+| Missing response cells | Covered for long response rows and wide `traits(...)` cells: `NA` responses are dropped as unobserved unit-trait cells, while predictor/design missingness still errors (MIS-21). |
 | First worked model | Gaussian `latent() + unique()` is the safest public example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |

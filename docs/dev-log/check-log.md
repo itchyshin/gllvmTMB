@@ -5347,3 +5347,45 @@ Deliberately not run:
   visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and a short
   no-tests package check were run.
 - No vdiffr snapshot was added.
+
+## 2026-05-21 -- Missing-response public docs
+
+Scope:
+
+- Updated `README.md` so the landing page says `NA` response cells are allowed
+  for long response rows and wide `traits(...)` cells.
+- Updated `vignettes/gllvmTMB.Rmd` so Get Started gives the same advice after
+  the wide-formula example.
+- Used explicit IN / OUT wording tied to MIS-21: response missingness is in;
+  predictor, grouping-variable, and design-matrix missingness remain out.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = TRUE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/gllvmTMB.html` successfully.
+- Render byproducts `vignettes/cor-plot-1.png` and `vignettes/ord-1.png`
+  were removed after the Get Started render.
+- `rg -n "IN \\(MIS-21\\)|IN under MIS-21|OUT: missing|Missing response cells|unit-trait cell" README.md vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html docs/design/35-validation-debt-register.md`
+  -> README, source article, rendered article, and validation register carry
+  the same missing-response contract.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|profile-likelihood default|trio|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W" README.md vignettes/gllvmTMB.Rmd`
+  -> only the intentional README soft-deprecation note for
+  `gllvmTMB_wide(Y, ...)`.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this documentation-only
+  slice. Get Started render, pkgdown check, whitespace check, stale-wording
+  scans, and a short no-tests package check were run.

@@ -140,6 +140,14 @@ fit_wide <- gllvmTMB(
 all.equal(as.numeric(logLik(fit)), as.numeric(logLik(fit_wide)))
 ```
 
+Wide trait tables do not need to be perfectly rectangular. IN under
+MIS-21: if an individual is missing one trait measurement, leave that
+response cell as `NA`; `gllvmTMB()` drops only the unobserved unit-trait
+cell and keeps the other observed traits for that individual. The same
+rule applies to long data with `NA` in the response column. OUT: missing
+predictors, unit labels, or design-matrix values still error because the
+model cannot construct that row.
+
 The recovered loadings (up to column rotation / sign — only
 $\boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top$ is identifiable from
 the data):

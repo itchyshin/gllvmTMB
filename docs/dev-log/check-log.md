@@ -5848,6 +5848,51 @@ Deliberately not run:
   cleanup. Article render, visual QA, pkgdown check, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-22 -- Phylogenetic Sigma tables
+
+Scope:
+
+- Replaced raw `Sigma_phy_*` and `Sigma_non_*` matrix extraction/rounding in
+  `vignettes/articles/phylogenetic-gllvm.Rmd`.
+- Used `extract_Sigma_table()` for shared, unique, and total component rows.
+- Added a faceted `plot_Sigma_heatmap()` display for total phylogenetic versus
+  non-phylogenetic correlations.
+- Rewired the phylogenetic communality calculation to use the table rows.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> completed without output.
+- First render failed because the communality chunk still referenced
+  `Sigma_phy_shared`; after rewiring to `Sigma_phy_rows`,
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/phylogenetic-gllvm", quiet = TRUE, new_process = FALSE)'`
+  rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/phylogenetic-gllvm_files/figure-html/extract-total-correlations-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma_phy_shared|Sigma_phy_unique|Sigma_phy_total|Sigma_non_shared|Sigma_non_unique|Sigma_non_total|round\\(Sigma_phy|round\\(Sigma_non|extract_Sigma_table\\(|plot_Sigma_heatmap\\(|extract-total-correlations|phy_shared_diag' vignettes/articles/phylogenetic-gllvm.Rmd pkgdown-site/articles/phylogenetic-gllvm.html`
+  -> removed matrix objects are gone; helper-backed source/rendered HTML and
+  the table-backed communality ratio are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-22 -- Animal-model Sigma tables
 
 Scope:

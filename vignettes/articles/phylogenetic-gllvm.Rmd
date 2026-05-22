@@ -176,26 +176,46 @@ covariance. The shared part is
 `psi_phy`; the total is their sum.
 
 ```{r extract-phy}
-Sigma_phy_shared <- extract_Sigma(fit, level = "phy", part = "shared")$Sigma
-Sigma_phy_unique <- extract_Sigma(fit, level = "phy", part = "unique")$s
-Sigma_phy_total <- extract_Sigma(fit, level = "phy", part = "total")$Sigma
-
-round(Sigma_phy_shared, 2)
-round(Sigma_phy_unique, 2)
-round(Sigma_phy_total, 2)
+Sigma_phy_rows <- rbind(
+  extract_Sigma_table(fit, level = "phy", part = "shared",
+                      entries = "unique"),
+  extract_Sigma_table(fit, level = "phy", part = "unique",
+                      entries = "diag"),
+  extract_Sigma_table(fit, level = "phy", part = "total",
+                      entries = "unique")
+)
+Sigma_phy_rows[, c("component", "trait_i", "trait_j",
+                   "estimate", "interval_status")]
 ```
 
 The non-phylogenetic species-level covariance has the same paired
 decomposition as the phylogenetic side:
 
 ```{r extract-non}
-Sigma_non_shared <- extract_Sigma(fit, level = "unit", part = "shared")$Sigma
-Sigma_non_unique <- extract_Sigma(fit, level = "unit", part = "unique")$s
-Sigma_non_total  <- extract_Sigma(fit, level = "unit", part = "total")$Sigma
+Sigma_non_rows <- rbind(
+  extract_Sigma_table(fit, level = "unit", part = "shared",
+                      entries = "unique"),
+  extract_Sigma_table(fit, level = "unit", part = "unique",
+                      entries = "diag"),
+  extract_Sigma_table(fit, level = "unit", part = "total",
+                      entries = "unique")
+)
+Sigma_non_rows[, c("component", "trait_i", "trait_j",
+                   "estimate", "interval_status")]
+```
 
-round(Sigma_non_shared, 2)
-round(Sigma_non_unique, 2)
-round(Sigma_non_total, 2)
+On the correlation scale, compare the two total covariance targets side
+by side:
+
+```{r extract-total-correlations, fig.width = 7.4, fig.height = 4.6}
+Sigma_corr_rows <- extract_Sigma_table(
+  fit,
+  level = c("phy", "unit"),
+  part = "total",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(Sigma_corr_rows, label_digits = 2)
 ```
 
 For a small tree, do not over-interpret either split (between
@@ -261,8 +281,13 @@ c2_non <- extract_communality(fit, level = "unit")
 round(c2_non, 2)
 
 # Phylogenetic communality is the same ratio, computed from the
-# Sigma_phy decomposition above.
-c2_phy <- diag(Sigma_phy_shared) / diag(Sigma_phy_total)
+# Sigma_phy decomposition table above.
+phy_shared_diag <- subset(Sigma_phy_rows,
+                          component == "shared" & diagonal)
+phy_total_diag <- subset(Sigma_phy_rows,
+                         component == "total" & diagonal)
+c2_phy <- phy_shared_diag$estimate / phy_total_diag$estimate
+names(c2_phy) <- phy_shared_diag$trait_i
 round(c2_phy, 2)
 ```
 
@@ -283,12 +308,13 @@ above.
 The convenience extractor returns the full three-way decomposition
 `H^2 + C^2_non + Psi = 1` per trait, where:
 
-- `H^2` = phylogenetic share = `diag(Sigma_phy_total) / V_eta`
+- `H^2` = phylogenetic share = the diagonal of the total phylogenetic
+  Sigma divided by `V_eta`
 - `C^2_non` = non-phylogenetic *shared* share =
-  `diag(Lambda_non Lambda_non^T) / V_eta`
+  the diagonal of `Lambda_non Lambda_non^T` divided by `V_eta`
 - `Psi` = non-phylogenetic *unique* share = `psi_non / V_eta`
 
-with `V_eta = diag(Sigma_phy_total) + diag(Lambda_non Lambda_non^T) + psi_non`.
+Here `V_eta` is the sum of those three diagonal contributions for each trait.
 
 ```{r phylo-heritability}
 extract_phylo_signal(fit)

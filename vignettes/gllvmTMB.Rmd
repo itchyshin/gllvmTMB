@@ -215,8 +215,14 @@ plot_correlations(corr_rows, sort = "magnitude")
 The matrix form, if you want to look at the correlation structure as
 a whole rather than per pair:
 
-```{r cor-matrix}
-round(cov2cor(extract_Sigma(fit, level = "unit")$Sigma), 2)
+```{r cor-matrix, fig.width = 6.4, fig.height = 4.8, fig.cap = "Trait correlation matrix from the first fitted model. Cells are point estimates; use the pairwise correlation table above when interval bounds matter."}
+sigma_corr_rows <- extract_Sigma_table(
+  fit,
+  level = "unit",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(sigma_corr_rows)
 ```
 
 ## Acknowledgements

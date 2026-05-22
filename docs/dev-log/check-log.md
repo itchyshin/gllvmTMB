@@ -5824,6 +5824,47 @@ Deliberately not run:
   check, whitespace check, stale-wording scans, visual QA, and a short no-tests
   package check were run.
 
+## 2026-05-21 -- Get Started Sigma heatmap
+
+Scope:
+
+- Replaced the Get Started raw `round(cov2cor(extract_Sigma(...)))` matrix
+  print with `extract_Sigma_table()` plus `plot_Sigma_heatmap()`.
+- Kept `plot_correlations()` as the interval-bearing pairwise display and used
+  the heatmap only for the whole-matrix point-estimate view.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/gllvmTMB.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/cor-matrix-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'cov2cor\\(|round\\(cov2cor|extract_Sigma\\(fit, level = "unit"\\)\\$Sigma|plot_Sigma_heatmap\\(|sigma_corr_rows|cor-matrix' vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html`
+  -> the old `cov2cor(extract_Sigma(...))` print is gone; helper-backed source
+  and rendered HTML are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/gllvmTMB.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this vignette-only
+  cleanup. Get Started render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-21 -- Behavioural-syndromes truth comparison
 
 Scope:

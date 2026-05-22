@@ -75,10 +75,10 @@
 #'   pair-grid of the three axis pairs. For `d = 3`, the default
 #'   `c(1, 2)` is promoted to `c(1, 2, 3)` so all three axes are visible.
 #'   Ignored when `d = 1`.
-#' @param rotation One of `"none"`, `"varimax"`, or `"promax"` for
-#'   `"ordination"` plots. The default `"none"` shows the raw computational
-#'   orientation. `"varimax"` and `"promax"` call [rotate_loadings()], which
-#'   orders axes by shared variance and anchors signs for interpretation.
+#' @param rotation One of `"varimax"`, `"none"`, or `"promax"` for
+#'   `"ordination"` plots. The default `"varimax"` uses rotated,
+#'   shared-variance-ordered, sign-anchored axes for interpretation.
+#'   Use `"none"` to show the raw computational orientation.
 #' @param ... Currently unused.
 #' @return A `ggplot` object with a `gllvmTMB_meta` attribute describing
 #'   the plot type, source extractor, covariance level, interval status, and
@@ -102,7 +102,7 @@ plot.gllvmTMB_multi <- function(
   level = c("unit", "unit_obs"),
   boot = NULL,
   axes = c(1L, 2L),
-  rotation = c("none", "varimax", "promax"),
+  rotation = c("varimax", "none", "promax"),
   ...
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
@@ -1279,7 +1279,7 @@ plot.gllvmTMB_multi <- function(
   fit,
   level,
   axes = c(1L, 2L),
-  rotation = c("none", "varimax", "promax")
+  rotation = c("varimax", "none", "promax")
 ) {
   rotation <- match.arg(rotation)
   ## The dispatcher supplies "B" when the user omits level; an explicit

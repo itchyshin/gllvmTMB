@@ -428,12 +428,18 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   meta_default <- expect_gtmb_plot_meta(
     p_default,
     "ordination",
-    "extract_ordination"
+    "rotate_loadings"
   )
   expect_equal(meta_default$level, "unit")
+  expect_equal(meta_default$rotation_status, "varimax_ordered_sign_anchored")
 
   p <- expect_warning(
-    suppressMessages(plot(fit, type = "ordination", level = "unit")),
+    suppressMessages(plot(
+      fit,
+      type = "ordination",
+      level = "unit",
+      rotation = "none"
+    )),
     NA
   )
   expect_s3_class(p, "ggplot")
@@ -462,7 +468,12 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
 test_that("plot(type = 'ordination') returns a static 3D pair grid for d = 3", {
   skip_if_no_ggplot2()
   fit <- make_fake_ordination_fit(d = 3L)
-  p <- suppressMessages(plot(fit, type = "ordination", level = "unit"))
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    rotation = "none"
+  ))
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_plot_meta(p, "ordination", "extract_ordination")
   expect_equal(meta$level, "unit")
@@ -487,7 +498,8 @@ test_that("plot(type = 'ordination') can use two selected axes from d > 3", {
     fit,
     type = "ordination",
     level = "unit",
-    axes = c(2, 4)
+    axes = c(2, 4),
+    rotation = "none"
   ))
   expect_s3_class(p, "ggplot")
   plot_data <- attr(p, "gllvmTMB_data")
@@ -522,7 +534,12 @@ test_that("plot(type = 'ordination', level = 'W') gives 1D lollipop when d_W = 1
   withr::local_options(gllvmTMB.warned_level_W = NULL)
   p <- NULL
   expect_warning(
-    p <- suppressMessages(plot(fit, type = "ordination", level = "W")),
+    p <- suppressMessages(plot(
+      fit,
+      type = "ordination",
+      level = "W",
+      rotation = "none"
+    )),
     "deprecated"
   )
   expect_s3_class(p, "ggplot")

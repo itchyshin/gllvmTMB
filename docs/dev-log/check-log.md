@@ -7712,6 +7712,54 @@ Deliberately not run:
   Florence slice before making rotation the default. No 3-OS CI was available
   until the branch is pushed.
 
+## 2026-05-22 -- Varimax default for ordination plots
+
+Scope:
+
+- Made `rotation = "varimax"` the default for `plot(type = "ordination")`.
+- Kept `rotation = "none"` available for users who want the raw computational
+  orientation.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- Visual QA rendered raw and varimax ordination PNGs at
+  `/tmp/gllvmTMB-rotation-qa/ordination-raw.png` and
+  `/tmp/gllvmTMB-rotation-qa/ordination-varimax.png`; Florence read: rotated
+  output was clearer and captioned honestly, with label-repulsion polish left
+  for a later slice.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|output-methods|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 242 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/plot.gllvmTMB_multi.Rd; grep -Hc '^\\keyword' man/plot.gllvmTMB_multi.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Default-rotation scan:
+
+  ```sh
+  rg -n 'rotation = c\("varimax", "none", "promax"\)|default.*varimax|varimax_ordered_sign_anchored' R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits in implementation, generated Rd, and focused tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  plotting-default slice. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

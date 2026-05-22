@@ -403,7 +403,7 @@ After any fit, run through these in order:
 | Check | How |
 |---|---|
 | Optimiser convergence and Hessian PD-ness. | `sanity_multi(fit)` |
-| Implied between-unit trait covariance. | `extract_Sigma(fit, level = "unit")` (and `extract_Sigma(fit, level = "unit_obs")` for two-level fits). |
+| Implied between-unit trait covariance. | `extract_Sigma_table(fit, level = "unit")` (and `extract_Sigma_table(fit, level = "unit_obs")` for two-level fits). |
 | Interpretable loadings. | `getLoadings(fit, level = "unit", rotate = "varimax")` |
 | Did you fit unconstrained `latent()` with `d > 1`? Loadings are not unique. | Use `rotate = "varimax"` for a quick post-hoc rotation, or call `suggest_lambda_constraint()` to propose a confirmatory `lambda_constraint` matrix and refit. |
 | Communalities / ICCs. | `extract_ICC_site(fit)`, `extract_communality(fit, level = "unit")`, `extract_communality(fit, level = "unit_obs")` |

@@ -162,8 +162,8 @@ full $3\times 5$ keyword grid that organises the formula language.
 ## 3. Biological summaries
 
 ```{r extract, eval = FALSE}
-extract_Sigma(fit, level = "unit")$R       # global trait correlation matrix
-extract_Sigma(fit, level = "unit_obs")$R   # local trait correlation matrix
+extract_correlations(fit, tier = "unit")      # global pairwise trait correlations
+extract_correlations(fit, tier = "unit_obs")  # local pairwise trait correlations
 extract_ICC_site(fit)                       # site-level ICC per trait
 extract_communality(fit, "unit")            # global communality H^2
 extract_communality(fit, "unit_obs")        # local communality

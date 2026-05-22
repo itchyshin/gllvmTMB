@@ -5896,6 +5896,46 @@ Deliberately not run:
   whitespace check, stale-wording scans, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Guide articles row extractors
+
+Scope:
+
+- Updated `vignettes/articles/choose-your-model.Rmd` so the diagnostic
+  checklist points to `extract_Sigma_table()` for implied covariance rows.
+- Updated `vignettes/articles/stacked-trait-gllvm.Rmd` so the biological
+  summaries use `extract_correlations()` rather than `$R` from
+  `extract_Sigma()`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd`
+  -> completed without output.
+- `for article in articles/choose-your-model articles/stacked-trait-gllvm; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> both articles rendered locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|extract_correlations\\(fit, tier = "unit"\\)|extract_correlations\\(fit, tier = "unit_obs"\\)|extract_Sigma\\(fit, level = "unit"\\)\\$R|extract_Sigma\\(fit, level = "unit"\\)' vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd pkgdown-site/articles/choose-your-model.html pkgdown-site/articles/stacked-trait-gllvm.html`
+  -> new row extractor calls are present; old `$R` examples are gone.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this static guide-text
+  cleanup. Two article renders, `pkgdown::check_pkgdown()`, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-22 -- Sigma heatmap custom labels
 
 Scope:

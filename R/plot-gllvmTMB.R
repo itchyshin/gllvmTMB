@@ -530,20 +530,20 @@ plot.gllvmTMB_multi <- function(
   ])
   caption <- if (any(ell$significant)) {
     paste(
-      "Ellipse tilt/eccentricity show correlation sign and strength.",
-      "Black borders/stars mark supplied intervals that do not cross zero.",
+      "Ellipse shape shows correlation sign and strength.",
+      "Black border/star means the interval excludes zero.",
       sep = "\n"
     )
   } else if (any(ell$interval_status == "provided")) {
     paste(
-      "Ellipse tilt/eccentricity show correlation sign and strength.",
-      "Supplied intervals cross zero for the displayed correlations.",
+      "Ellipse shape shows correlation sign and strength.",
+      "Supplied intervals cross zero for displayed correlations.",
       sep = "\n"
     )
   } else {
     paste(
-      "Ellipse tilt/eccentricity show correlation sign and strength.",
-      "Black borders/stars require interval-aware summaries.",
+      "Ellipse shape shows correlation sign and strength.",
+      "Add interval summaries for black borders/stars.",
       sep = "\n"
     )
   }

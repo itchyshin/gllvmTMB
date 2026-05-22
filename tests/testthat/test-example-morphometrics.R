@@ -132,4 +132,28 @@ test_that("morphometrics bootstrap correlation fixture is plot-ready", {
   expect_equal(meta$interval_status, "provided")
   expect_equal(nrow(attr(p, "gllvmTMB_data")), 10L)
   expect_silent(ggplot2::ggplot_build(p))
+
+  ctl <- gllvmTMBcontrol(se = FALSE)
+  fit <- suppressMessages(gllvmTMB(
+    ex$formula_long,
+    data = ex$data_long,
+    trait = ex$fit_args$trait,
+    unit = ex$fit_args$unit,
+    family = ex$fit_args$family,
+    control = ctl
+  ))
+  p_ellipse <- plot(
+    fit,
+    type = "correlation_ellipse",
+    level = "unit",
+    boot = boot
+  )
+  ellipse_meta <- attr(p_ellipse, "gllvmTMB_meta")
+  expect_equal(ellipse_meta$type, "correlation_ellipse")
+  expect_equal(ellipse_meta$interval_status, "provided")
+  ellipse_rows <- unique(
+    attr(p_ellipse, "gllvmTMB_data")[c("trait_i", "trait_j", "significant")]
+  )
+  expect_true(any(ellipse_rows$significant))
+  expect_silent(ggplot2::ggplot_build(p_ellipse))
 })

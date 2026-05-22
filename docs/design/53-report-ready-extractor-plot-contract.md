@@ -208,7 +208,8 @@ A figure-heavy article should not become public unless:
 2. Add rendered article examples that use interval-aware ellipse borders/stars
    without running bootstrap inside article chunks. The morphometrics article
    now covers the direct `plot_correlations(boot, style = "raindrop")` path
-   with a cached `R_B` fixture; ellipse-border examples remain open.
+   and `plot(type = "correlation_ellipse", boot = boot)` with a cached `R_B`
+   fixture.
 3. Add dominant-axis loading and score-distribution helpers for the GLLVM
    overview Figure 3 family of plots.
 4. Continue the Rose/Florence surface scan for hidden or technical articles

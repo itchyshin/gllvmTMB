@@ -5284,3 +5284,66 @@ Deliberately not run:
   `pkgdown::check_pkgdown()`, `git diff --check`, and a short no-tests package
   check were run.
 - No vdiffr snapshot was added.
+
+## 2026-05-21 -- Morphometrics bootstrap ellipse figure
+
+Scope:
+
+- Added a morphometrics article figure for
+  `plot(fit, type = "correlation_ellipse", level = "unit", boot = morph_boot_R)`.
+- Updated the article wording to explain that ellipse shape / fill show
+  correlation direction and strength, while black borders and stars mark
+  supplied bootstrap intervals that do not cross zero.
+- Shortened the built-in correlation-ellipse caption so it fits the rendered
+  article figure.
+- Extended the morphometrics fixture test to check the cached object drives the
+  ellipse plot path.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`, and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- Exploratory visual render:
+  `plot(fit, type = "correlation_ellipse", level = "unit", boot = boot)` wrote
+  `/tmp/gllvmTMB-morphometrics-correlation-ellipse-bootstrap.png` and reported
+  `interval_status = provided`.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-example-morphometrics.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`
+  -> 176 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics")'`
+  -> 49 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/morphometrics.html` successfully.
+- Rendered PNG reviewed:
+  `pkgdown-site/articles/morphometrics_files/figure-html/ci-correlation-ellipse-1.png`
+  -> Florence PASS after caption shortening; labels, stars, borders, legend,
+  and bottom caption are readable at article size.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- First scan attempt used a double-quoted shell pattern containing backticks and
+  emitted `zsh:1: command not found: R_B`; reran with single quotes.
+- `rg -n 'correlation_ellipse|black border|black borders|stars mark|interval excludes zero|EXT-23|MIS-22|ellipse-border|cached R_B|plot\\(type = "correlation_ellipse"' NEWS.md R/plot-gllvmTMB.R tests/testthat/test-example-morphometrics.R tests/testthat/test-plot-gllvmTMB.R vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/articles/morphometrics.html`
+  -> ellipse fixture path is present in code, tests, public article, rendered
+  HTML, NEWS, and design / validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow article
+  figure slice. Focused plot and fixture tests, single-article render,
+  visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and a short
+  no-tests package check were run.
+- No vdiffr snapshot was added.

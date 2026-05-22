@@ -351,6 +351,15 @@ drops near 1 are supplied by the cached bootstrap object
 final inference should use a bootstrap size chosen for the study rather
 than the article's lightweight fixture.
 
+The same cached intervals can be shown as a matrix-style ellipse plot.
+Here the shape and fill show the sign and strength of each correlation;
+black borders and stars mark pairs whose supplied bootstrap interval does
+not cross zero.
+
+```{r ci-correlation-ellipse, fig.width = 6.6, fig.height = 5.2, fig.cap = "Ellipse view of the same cached between-individual correlation intervals. Ellipse tilt and colour show the fitted correlation; black borders and stars mark bootstrap percentile intervals that do not cross zero."}
+plot(fit, type = "correlation_ellipse", level = "unit", boot = morph_boot_R)
+```
+
 ```{r ci-communality}
 extract_communality(fit, level = "unit")
 ```

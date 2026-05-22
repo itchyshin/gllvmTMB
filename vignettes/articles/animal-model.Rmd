@@ -169,6 +169,7 @@ identifier.
 fit1 <- gllvmTMB(
   value ~ 1 + animal_scalar(id, pedigree = ped),
   data = df1,
+  trait = "trait",
   unit = "id",
   cluster = "id"
 )
@@ -239,6 +240,7 @@ fit2 <- gllvmTMB(
     animal_unique(id, pedigree = ped) +
     unique(0 + trait | id),
   data = df2,
+  trait = "trait",
   unit = "id",
   cluster = "id"
 )
@@ -327,6 +329,7 @@ fit3 <- gllvmTMB(
     animal_unique(id, pedigree = ped) +
     unique(0 + trait | id),
   data = df3,
+  trait = "trait",
   unit = "id",
   cluster = "id"
 )
@@ -375,7 +378,7 @@ gllvmTMB(
     animal_scalar(id, pedigree = ped) +    # V_A
     (1 | mother) +                          # V_M (environmental)
     ...,
-  data = df, unit = "id", cluster = "id"
+  data = df, trait = "trait", unit = "id", cluster = "id"
 )
 ```
 

@@ -5909,6 +5909,48 @@ Deliberately not run:
   cleanup. Article render, visual QA, pkgdown check, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-21 -- Explicit trait article cleanup
+
+Scope:
+
+- Added `trait = "trait"` to inspected long-format public examples in
+  `animal-model`, `ordinal-probit`, `phylogenetic-gllvm`,
+  `psychometrics-irt`, and `stacked-trait-gllvm`.
+- Left wide `traits(...)` examples unchanged because the LHS names the response
+  columns and does not take `trait =`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/animal-model.Rmd`
+  -> completed without output.
+- `for article in articles/animal-model articles/ordinal-probit articles/phylogenetic-gllvm articles/psychometrics-irt articles/stacked-trait-gllvm; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> all five articles rendered locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n "gllvmTMB\\(" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
+  -> inspected each call; touched long-format calls now include `trait =
+  "trait"`, while wide `traits(...)` calls intentionally do not.
+- `rg -n "trait\\s*=\\s*\\\"trait\\\"" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
+  -> explicit trait arguments are present at the edited long-format call sites.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this documentation
+  convention cleanup. Five article renders, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-21 -- Joint-SDM Sigma heatmap
 
 Scope:

@@ -163,6 +163,7 @@ attr(fam, "family_var") <- "item_family"
 fit_exp_long <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | respondent, d = 2),
   data   = df_long,
+  trait  = "trait",
   unit   = "respondent",
   family = fam
 )
@@ -224,6 +225,7 @@ Fit with this confirmatory pattern:
 fit_cfa <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | respondent, d = 2),
   data              = df_long,
+  trait             = "trait",
   unit              = "respondent",
   family            = fam,
   lambda_constraint = list(B = cnst_cfa)

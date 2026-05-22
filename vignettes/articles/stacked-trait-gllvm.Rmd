@@ -131,7 +131,8 @@ fit <- gllvmTMB(
           unique(0 + trait | site_species) +
           unique(0 + trait | species) +
           phylo_scalar(species, vcv = Cphy),
-  data = df
+  data = df,
+  trait = "trait"
 )
 ```
 

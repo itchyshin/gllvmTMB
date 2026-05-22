@@ -62,6 +62,7 @@ fit_long <- gllvmTMB(
   value ~ 0 + trait +
     phylo_unique(species, tree = tree),
   data = df_long,
+  trait = "trait",
   unit = "individual",
   cluster = "species",
   family = ordinal_probit()

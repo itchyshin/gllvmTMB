@@ -134,6 +134,7 @@ fit_long <- gllvmTMB(
     latent(0 + trait | species, d = 1) +
     unique(0 + trait | species),
   data = df,
+  trait = "trait",
   unit = "species",
   cluster = "species"
 )
@@ -354,6 +355,7 @@ fit_phylo_dep <- gllvmTMB(
   value ~ 0 + trait + phylo_dep(0 + trait | species, tree = tree) +
                       dep(0 + trait | species),
   data = df,
+  trait = "trait",
   unit = "species",
   cluster = "species"
 )

@@ -7637,6 +7637,42 @@ Deliberately not run:
   likelihood, or formula grammar files changed. No 3-OS CI was available until
   the branch is pushed.
 
+## 2026-05-22 -- Plot dispatcher validation-row refresh
+
+Scope:
+
+- Updated validation-debt row MIS-09 for `plot.gllvmTMB_multi()` so it no
+  longer says the dispatcher has five plot types.
+- Recorded the current seven dispatcher plot types and why the row remains
+  `partial`: visual snapshots / broader rendered-figure QA and 3-OS CI are
+  still outstanding.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Register wording scan:
+
+  ```sh
+  rg -n 'MIS-09|5 plot types|Phase 1c-viz|Seven dispatcher types|visual snapshots' docs/design/35-validation-debt-register.md R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> MIS-09 now records seven dispatcher types; no stale `5 plot types` or
+  `Phase 1c-viz` wording remains in the scanned files.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()`
+  were not rerun for this one-row validation-register update. No code,
+  roxygen, Rd, article, likelihood, or formula grammar files changed. No 3-OS
+  CI was available until the branch is pushed.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

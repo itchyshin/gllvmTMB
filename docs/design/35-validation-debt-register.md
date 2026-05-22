@@ -323,7 +323,7 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 | MIS-06 | `tidy.gllvmTMB_multi()` broom-style output | `covered` | `test-tidy-predict.R` | |
 | MIS-07 | `predict.gllvmTMB_multi()` link / response | `partial` | `test-tidy-predict.R` | family-aware predict typed outputs is M2 |
 | MIS-08 | `print.gllvmTMB_multi()` summary label discipline | `covered` | `test-print-labels.R` | |
-| MIS-09 | `plot.gllvmTMB_multi()` dispatcher | `partial` | `test-plot-gllvmTMB.R` | 5 plot types; Phase 1c-viz extends to 8+ |
+| MIS-09 | `plot.gllvmTMB_multi()` dispatcher | `partial` | `test-plot-gllvmTMB.R` | Seven dispatcher types are object-shape tested (`correlation`, `correlation_ellipse`, `loadings`, `integration`, `communality`, `variance`, `ordination`), including bootstrap interval overlays and rotated ordination metadata. Still partial until visual snapshots / broader rendered-figure QA and 3-OS CI cover the figure surface. |
 | MIS-10 | brms-style sugar | `covered` | `test-brms-sugar.R` | |
 | MIS-11 | `traits(...)` LHS expansion | `covered` | `test-traits-keyword.R` | |
 | MIS-12 | `gllvmTMBcontrol()` control object | `covered` | `test-gllvmTMBcontrol.R` | |

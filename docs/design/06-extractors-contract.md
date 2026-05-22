@@ -322,10 +322,19 @@ stacked communality / uniqueness bars.
 #### `extract_repeatability(fit)`
 
 **Return**: a `data.frame` with one row per trait and
-columns `trait`, `R` (the ICC / repeatability), `n_obs`,
-`var_unit` (between-unit), `var_unit_obs` (within-unit),
-plus a `class = "gllvmTMB_repeatability"` attribute used by
-S3 print methods.
+columns `trait`, `R` (the ICC / repeatability), `lower`, `upper`, and
+`method`.
+
+For fitted `gllvmTMB_multi` objects, `method = "profile"` currently reports an
+honest fallback to `method = "wald"` for full-Sigma repeatability, while
+`method = "bootstrap"` runs `bootstrap_Sigma(..., what = "ICC")` with both the
+`unit` and `unit_obs` levels. For existing `bootstrap_Sigma()` objects that
+already contain `ICC_site`, `extract_repeatability()` reuses the stored point
+estimates and percentile bounds without rerunning bootstrap refits (EXT-22).
+
+The companion `plot(type = "integration", boot = boot)` path accepts a raw
+`bootstrap_Sigma()` object and pulls repeatability plus communality intervals
+directly for the integration dot-and-whisker panel.
 
 #### `extract_phylo_signal(fit)`
 

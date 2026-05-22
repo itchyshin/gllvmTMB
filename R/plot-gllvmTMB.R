@@ -700,7 +700,7 @@ plot.gllvmTMB_multi <- function(
   }
 
   pull_ci <- function(boot, name, traits) {
-    if (is.null(boot) || is.null(boot[[name]])) {
+    if (is.null(boot)) {
       data.frame(
         trait = traits,
         lower = rep(NA_real_, length(traits)),
@@ -708,7 +708,42 @@ plot.gllvmTMB_multi <- function(
         stringsAsFactors = FALSE
       )
     } else {
-      ci <- boot[[name]]
+      ci <- NULL
+      if (inherits(boot, "bootstrap_Sigma")) {
+        ci <- switch(
+          name,
+          repeatability = tryCatch(
+            suppressMessages(extract_repeatability(boot)),
+            error = function(e) NULL
+          ),
+          communality_B = tryCatch(
+            suppressMessages(extract_communality(
+              boot,
+              level = "unit",
+              ci = TRUE
+            )),
+            error = function(e) NULL
+          ),
+          communality_W = tryCatch(
+            suppressMessages(extract_communality(
+              boot,
+              level = "unit_obs",
+              ci = TRUE
+            )),
+            error = function(e) NULL
+          )
+        )
+      } else {
+        ci <- boot[[name]]
+      }
+      if (is.null(ci)) {
+        return(data.frame(
+          trait = traits,
+          lower = rep(NA_real_, length(traits)),
+          upper = rep(NA_real_, length(traits)),
+          stringsAsFactors = FALSE
+        ))
+      }
       ci[match(traits, ci$trait), c("trait", "lower", "upper"), drop = FALSE]
     }
   }
@@ -784,10 +819,11 @@ plot.gllvmTMB_multi <- function(
 
   if (any(dat$has_interval)) {
     p <- p +
-      ggplot2::geom_errorbarh(
+      ggplot2::geom_errorbar(
         data = dat[dat$has_interval, , drop = FALSE],
         ggplot2::aes(xmin = .data$lower, xmax = .data$upper),
-        height = 0.2,
+        orientation = "y",
+        width = 0.2,
         position = ggplot2::position_dodge(width = 0.5)
       )
   }
@@ -827,8 +863,12 @@ plot.gllvmTMB_multi <- function(
       colour = NULL,
       shape = NULL,
       title = "Integration indices by trait",
-      caption = if (any(dat$has_interval)) {
+      caption = if (
+        any(dat$has_interval) && any(dat$interval_status == "missing")
+      ) {
         "Whiskers show supplied bootstrap intervals; open rings mark requested intervals that were missing."
+      } else if (any(dat$has_interval)) {
+        "Whiskers show supplied bootstrap intervals."
       } else {
         "Point estimates only; no intervals supplied."
       }

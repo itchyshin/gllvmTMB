@@ -127,7 +127,10 @@ densities and should not be captioned as Bayesian credible distributions.
 The current integration plot data includes row-level `has_interval`,
 `interval_method`, and `interval_status` columns. The plot-level metadata uses
 `interval_status = "partial"` when at least one interval is present and at
-least one requested interval is missing.
+least one requested interval is missing. The `boot` argument may be either a
+raw `bootstrap_Sigma()` object with `ICC_site`, `communality_B`, and
+`communality_W` summaries, or the older compatible list with `repeatability`,
+`communality_B`, and `communality_W` data frames.
 
 The current communality plot data has two rows per trait per available latent
 tier: `Shared latent (c^2)` and `Trait-specific uniqueness`, with
@@ -175,6 +178,9 @@ A figure-heavy article should not become public unless:
 - `plot(type = "communality", boot = boot)` can overlay bootstrap intervals
   only when `boot` already contains `communality` summaries. It does not run
   bootstrap refits.
+- `plot(type = "integration", boot = boot)` can draw repeatability /
+  communality whiskers only when `boot` already contains the relevant
+  `ICC_site` and `communality` summaries. It does not run bootstrap refits.
 - Plot metadata and first-pass Florence palette/caption safeguards exist, but
   every new article figure still needs rendered HTML review before it is
   treated as publication-grade.

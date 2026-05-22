@@ -218,6 +218,55 @@ test_that("plot(type = 'integration') returns a ggplot with three indices per tr
   expect_true(all(is.na(p$data$lower)))
 })
 
+test_that("plot(type = 'integration') accepts a bootstrap_Sigma object directly", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  traits <- levels(fit$data[[fit$trait_col]])
+  rep <- stats::setNames(c(0.42, 0.51, 0.34, 0.61), traits)
+  c2_B <- stats::setNames(c(0.62, 0.48, 0.35, 0.72), traits)
+  c2_W <- stats::setNames(c(0.24, 0.30, 0.18, 0.41), traits)
+  boot <- list(
+    point_est = list(
+      ICC_site = rep,
+      communality_B = c2_B,
+      communality_W = c2_W
+    ),
+    ci_lower = list(
+      ICC_site = pmax(0, rep - 0.07),
+      communality_B = pmax(0, c2_B - 0.08),
+      communality_W = pmax(0, c2_W - 0.06)
+    ),
+    ci_upper = list(
+      ICC_site = pmin(1, rep + 0.08),
+      communality_B = pmin(1, c2_B + 0.09),
+      communality_W = pmin(1, c2_W + 0.07)
+    ),
+    ci_method = "percentile",
+    link_residual = "auto",
+    conf = 0.95,
+    n_boot = 25L,
+    n_failed = 0L,
+    level = c("B", "W"),
+    what = c("ICC", "communality"),
+    draws = NULL
+  )
+  class(boot) <- c("bootstrap_Sigma", "list")
+
+  p <- suppressMessages(plot(fit, type = "integration", boot = boot))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(
+    p,
+    "integration",
+    "extract_ICC_site + extract_communality"
+  )
+  expect_equal(meta$interval_status, "provided")
+  expect_equal(nrow(p$data), 3L * fit$n_traits)
+  expect_true(all(p$data$interval_status == "provided"))
+  expect_true(all(is.finite(p$data$lower)))
+  expect_true(all(is.finite(p$data$upper)))
+  expect_silent(print(p))
+})
+
 test_that("plot(type = 'communality') returns stacked shared/unique bars", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()

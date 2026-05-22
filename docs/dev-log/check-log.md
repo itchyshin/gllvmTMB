@@ -5027,3 +5027,66 @@ Deliberately not run:
   a short no-tests package check were run.
 - No vdiffr snapshot was added; current plot evidence is object-shape tests
   plus manual rendered PNG review.
+
+## 2026-05-21 -- Repeatability bootstrap interval rows
+
+Scope:
+
+- Extended `extract_repeatability()` so it accepts `bootstrap_Sigma()` objects
+  containing `ICC_site` summaries.
+- Added the bootstrap-object reporting path for `trait`, `R`, `lower`,
+  `upper`, and `method = "bootstrap"` rows without rerunning refits.
+- Extended `plot(type = "integration", boot = boot)` so a raw
+  `bootstrap_Sigma()` object can supply repeatability and communality
+  intervals directly.
+- Switched the integration interval layer from `geom_errorbarh()` to
+  `geom_errorbar(orientation = "y")` to avoid ggplot2 4.0.0 deprecation
+  warnings when interval-bearing input is supplied.
+- Added validation-debt row `EXT-22`.
+- Updated `NEWS.md`, `docs/design/06-extractors-contract.md`, and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane plus PR #233 base
+  work.
+- `Rscript --vanilla -e 'parse("R/extract-repeatability.R"); parse("R/plot-gllvmTMB.R")'`
+  -> parsed successfully.
+- `air format R/extract-repeatability.R R/plot-gllvmTMB.R tests/testthat/test-extract-repeatability-bootstrap.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_repeatability.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-repeatability-bootstrap|plot-gllvmTMB")'`
+  -> 171 passes, 0 failures, 0 warnings, 0 skips after formatter and
+  documentation regeneration.
+- Synthetic visual QA render:
+  `plot(fit, type = "integration", boot = boot)` wrote
+  `/tmp/gllvmTMB-integration-bootstrap-overlay.png`.
+  Florence review verdict: PASS after removing the stale open-ring caption
+  clause when no intervals are missing.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-22|repeatability bootstrap|bootstrap_Sigma\\(.*ICC|plot\\(type = \\\"integration\\\"|ICC_site|extract_repeatability\\(boot" NEWS.md R/extract-repeatability.R R/plot-gllvmTMB.R man/extract_repeatability.Rd man/plot.gllvmTMB_multi.Rd tests/testthat/test-extract-repeatability-bootstrap.R tests/testthat/test-plot-gllvmTMB.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new repeatability interval surface is present in code, tests, Rd, NEWS,
+  and design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow
+  reporting/plotting slice. Focused extractor/plot tests, documentation
+  regeneration, visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and
+  a short no-tests package check were run.
+- No vdiffr snapshot was added; current plot evidence is object-shape tests
+  plus manual rendered PNG review.

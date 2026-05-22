@@ -276,7 +276,7 @@ phylogenetic signal, or spatial structure.
 
 ## User-facing API
 
-* One `gllvmTMB()` entry point shares one long-format engine:
+* One `gllvmTMB()` entry point fits one stacked-trait model:
   * `gllvmTMB(value ~ ..., data = df_long, trait = "trait",
     unit = "...")` accepts long-format data (one row per
     `(unit, trait)` observation) and wide data frames marked with the

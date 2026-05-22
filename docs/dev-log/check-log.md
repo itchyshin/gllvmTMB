@@ -7426,3 +7426,42 @@ Deliberately not run:
 - Full `devtools::test()` and `devtools::check()` were not rerun for this
   wording-only cleanup. No vignettes/articles were edited or rendered. No
   3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Homepage stacked-trait wording
+
+Scope:
+
+- Replaced residual README/NEWS wording that said long-format engine where the
+  public user-facing idea is now the same stacked-trait model reached from
+  either wide `traits(...)` data or already-stacked long data.
+- Re-rendered the local pkgdown home page so the source and local HTML can be
+  checked against the live-site concern.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'pkgdown::build_home()'`
+  -> wrote `pkgdown-site/index.html` and `404.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rendered-home stale wording scan:
+
+  ```sh
+  rg -n 'same long-format engine|shares one long-format engine|canonical long-format|Long data are canonical|Stacked-Trait GLLVMs with TMB|standalone Template Model Builder|Most readers will start from a wide data frame|same stacked-trait model|Fit Multivariate Models from Wide Response Data' README.md NEWS.md DESCRIPTION pkgdown-site/index.html
+  ```
+
+  -> no stale hits; confirmed wide-first title/source text and
+  `same stacked-trait model` in the rendered home page.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  prose-only cleanup. No articles were rendered beyond the pkgdown home page.
+  No 3-OS CI was available until the branch is pushed.

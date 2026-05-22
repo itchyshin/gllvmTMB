@@ -88,9 +88,9 @@ Read the equation beside the R syntax:
 |---|---|---|
 | `level` | `level = "unit"` or `level = "unit_obs"` | Which covariance tier you are extracting. |
 | $\boldsymbol\Lambda_\text{level}$ | `latent(..., d = K)` | The `K` loading axes that create shared cross-trait covariance. |
-| $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ | `extract_Sigma(fit, level = "unit", part = "shared")$Sigma` | The covariance explained by the shared latent axes only. |
-| $\boldsymbol\Psi_\text{level}$ and $\psi_{tt}$ | `unique(...)`; `extract_Sigma(fit, level = "unit", part = "unique")$s` | Trait-specific variance that stays in the denominator of correlations. |
-| $\boldsymbol\Sigma_\text{level}$ | `latent(...) + unique(...)`; `extract_Sigma(fit, level = "unit", part = "total")$Sigma` | The full trait covariance matrix used for reporting. |
+| $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ | `extract_Sigma_table(fit, level = "unit", part = "shared")` | The covariance explained by the shared latent axes only. |
+| $\boldsymbol\Psi_\text{level}$ and $\psi_{tt}$ | `unique(...)`; `extract_Sigma_table(fit, level = "unit", part = "unique")` | Trait-specific variance that stays in the denominator of correlations. |
+| $\boldsymbol\Sigma_\text{level}$ | `latent(...) + unique(...)`; `extract_Sigma_table(fit, level = "unit", part = "total")` | The full trait covariance matrix used for reporting. |
 | $\mathbf R$ | `extract_correlations(fit, tier = "unit")` or `$R` from `extract_Sigma()` | The correlation matrix after standardising $\boldsymbol\Sigma$. |
 
 ## A side-by-side demonstration
@@ -258,30 +258,11 @@ off-diagonals get inflated. Model B's $\hat{\boldsymbol\Sigma}$ has
 the full $\Lambda \Lambda^{\!\top} + \boldsymbol\Psi$ — diagonals at the right scale
 and correlations at the right magnitude.
 
-## What `extract_Sigma()` gives you
+## Report-ready Sigma rows
 
-The unified extractor exposes the three parts of the decomposition
-explicitly:
-
-```{r parts}
-# Lambda Lambda^T alone (the "shared" component)
-extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
-
-# psi — trait-specific unique variances (the "unique" component)
-extract_Sigma(fit_B, level = "unit", part = "unique")$s    |> round(2)
-
-# Sigma_unit = Lambda Lambda^T + Psi  (the "total" — what you usually want)
-extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
-```
-
-`part = "total"` is the default and is what you almost always want for
-reporting. `"shared"` is useful if you specifically want the latent-implied
-component (e.g. for ordination interpretation or communality). `"unique"`
-gives the diagonal of $\boldsymbol\Psi$ as a named numeric vector.
-
-Those matrices are convenient for algebra checks. For a report table or
-plot, use `extract_Sigma_table()` so each covariance target is one tidy
-row:
+For reports, make the row object first. Each covariance target is one
+tidy row with trait names, matrix part, estimate, interval placeholders,
+and validation status:
 
 ```{r sigma-table-rows}
 sigma_rows_B <- extract_Sigma_table(
@@ -292,6 +273,37 @@ sigma_rows_B <- extract_Sigma_table(
   entries = "upper"
 )
 sigma_rows_B
+```
+
+`part = "total"` is the default and is what you almost always want for
+reporting. `"shared"` is useful if you specifically want the latent-implied
+component (e.g. for ordination interpretation or communality). `"unique"`
+gives the diagonal of $\boldsymbol\Psi$ as a named numeric vector.
+
+The same table helper exposes the three decomposition parts without
+hand-indexing matrices:
+
+```{r sigma-part-rows}
+sigma_part_rows_B <- rbind(
+  extract_Sigma_table(fit_B, level = "unit", part = "shared", entries = "diag"),
+  extract_Sigma_table(fit_B, level = "unit", part = "unique", entries = "diag"),
+  extract_Sigma_table(fit_B, level = "unit", part = "total", entries = "diag")
+)
+
+sigma_part_rows_B[c("component", "matrix", "trait_i", "trait_j", "estimate")]
+```
+
+If you need a matrix for algebra checks, use `extract_Sigma()` directly:
+
+```{r sigma-matrix-backend}
+# Lambda Lambda^T alone (the "shared" component)
+extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
+
+# psi -- trait-specific unique variances (the "unique" component)
+extract_Sigma(fit_B, level = "unit", part = "unique")$s |> round(2)
+
+# Sigma_unit = Lambda Lambda^T + Psi (the "total" -- what you usually want)
+extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
 ```
 
 ```{r sigma-table-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Upper-triangle off-diagonal entries of Sigma_unit from the latent + unique model. Open points mark point estimates without finite interval bounds; bootstrap-derived rows are the next step for Sigma uncertainty."}

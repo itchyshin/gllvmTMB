@@ -5804,6 +5804,50 @@ Deliberately not run:
   whitespace check, stale-wording scans, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Covariance article row-first Sigma section
+
+Scope:
+
+- Updated `vignettes/articles/covariance-correlation.Rmd` so the canonical
+  `Sigma` section teaches `extract_Sigma_table()` rows before raw
+  `extract_Sigma()` matrices.
+- Added a small shared/unique/total diagonal row example and kept the raw matrix
+  output as the algebra backend.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/covariance-correlation.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/covariance-correlation_files/figure-html/sigma-table-plot-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Report-ready Sigma rows|sigma_part_rows_B|sigma-matrix-backend|extract_Sigma_table\\(fit, level = "unit", part = "shared"\\)|extract_Sigma_table\\(fit_B|extract_Sigma\\(fit_B, level = "unit", part = "shared"\\)\\$Sigma' vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html`
+  -> row-first heading, decomposition-row chunk, matrix-backend chunk, and
+  rendered HTML are present.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains|What `extract_Sigma\\(\\)` gives you' vignettes/articles/covariance-correlation.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  teaching-order change. Article render, visual QA, `pkgdown::check_pkgdown()`,
+  whitespace check, stale-wording scans, and a short no-tests package check
+  were run.
+
 ## 2026-05-22 -- Sigma heatmap custom labels
 
 Scope:

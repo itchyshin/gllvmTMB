@@ -7465,3 +7465,46 @@ Deliberately not run:
 - Full `devtools::test()` and `devtools::check()` were not rerun for this
   prose-only cleanup. No articles were rendered beyond the pkgdown home page.
   No 3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Summary canonical levels
+
+Scope:
+
+- Changed the normal `summary.gllvmTMB_multi()` path to call
+  `extract_communality()` with canonical `unit` / `unit_obs` levels instead
+  of the legacy `"B"` / `"W"` aliases.
+- Updated non-legacy extractor/integration tests to use canonical levels so
+  routine focused tests stay warning-free.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/methods-gllvmTMB.R tests/testthat/test-extractors.R tests/testthat/test-integration-tour.R`
+  -> completed without output.
+- First focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "print-labels|integration-tour|extractors", stop_on_failure = TRUE)'`
+  -> 112 passes, 0 failures, 2 warnings before test canonicalisation.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "print-labels|integration-tour|extractors", stop_on_failure = TRUE)'`
+  -> 112 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale internal-call scan:
+
+  ```sh
+  rg -n 'extract_communality\([^\n]*"B"|extract_communality\([^\n]*"W"|extract_ordination\([^\n]*"B"|extract_ordination\([^\n]*"W"' R tests/testthat | sed -n '1,180p'
+  ```
+
+  -> remaining hits are explicit legacy-alias tests or suppressed rotation
+  tests, not the normal summary path.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  small behavior-polish slice. No roxygen or pkgdown files changed. No 3-OS CI
+  was available until the branch is pushed.

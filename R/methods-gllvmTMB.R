@@ -382,8 +382,8 @@ summary.gllvmTMB_multi <- function(object, ...) {
   out$Sigma_B <- extract_Sigma_B(object)
   out$Sigma_W <- extract_Sigma_W(object)
   out$ICC_site <- extract_ICC_site(object)
-  out$communality_B <- extract_communality(object, "B")
-  out$communality_W <- extract_communality(object, "W")
+  out$communality_B <- extract_communality(object, "unit")
+  out$communality_W <- extract_communality(object, "unit_obs")
   class(out) <- "summary.gllvmTMB_multi"
   out
 }

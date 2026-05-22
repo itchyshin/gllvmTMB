@@ -1220,7 +1220,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Ainv_phy_rr      = Ainv_phy_rr,
     log_det_A_phy_rr = log_det_A_phy_rr,
     species_aug_id   = as.integer(species_aug_id),
-    ## Two-U PGLLVM: per-trait phylogenetic random intercepts (psi_phy diag)
+    ## Paired phylogenetic PGLLVM: per-trait phylogenetic random intercepts
+    ## (psi_phy diag)
     use_phylo_diag   = as.integer(use_phylo_diag),
     ## Q6: phylo_slope data
     use_phylo_slope  = as.integer(use_phylo_slope),
@@ -1290,7 +1291,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                      init_rr_theta_pkg(n_traits, d_phy)
                    } else 0.0,
     g_phy        = matrix(0, nrow = n_aug_phy, ncol = if (use_phylo_rr) d_phy else 1L),
-    ## Two-U PGLLVM: per-trait phylogenetic random intercept (psi_phy diag).
+    ## Paired phylogenetic PGLLVM: per-trait phylogenetic random intercept
+    ## (psi_phy diag).
     ## When use_phylo_diag = 0 these are mapped off below.
     log_sd_phy_diag = if (use_phylo_diag) rep(0.0, n_traits) else 0.0,
     g_phy_diag      = matrix(0, nrow = n_aug_phy,
@@ -2085,7 +2087,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           propto = use_propto, diag_species = use_diag_species,
                           equalto = use_equalto, spde = use_spde,
                           phylo_rr = use_phylo_rr,
-                          ## Two-U PGLLVM: phylo_diag is the new dedicated
+                          ## Paired phylogenetic PGLLVM: phylo_diag is the new dedicated
                           ## engine slot for per-trait phylogenetic random
                           ## intercepts. Co-fits with phylo_rr to give the
                           ## decomposition Sigma_phy = Lambda_phy

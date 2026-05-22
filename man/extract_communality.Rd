@@ -16,8 +16,8 @@ extract_communality(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} object. A \code{bootstrap_Sigma} object is also
-accepted when it contains \code{communality} summaries; in that case the
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. A \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} result is
+also accepted when it contains \code{communality} summaries; in that case the
 function reuses the stored point estimates and percentile bounds rather
 than refitting.}
 

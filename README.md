@@ -128,7 +128,7 @@ one response per row.
   ```
 
 Predictors go into the formula in either form. Both paths reach
-the same long-format engine and produce byte-identical fits.
+the same stacked-trait model and produce byte-identical fits.
 
 Missing response cells are allowed. IN (MIS-21): in a wide `traits(...)`
 data frame, an `NA` trait value is treated as an unobserved unit-trait
@@ -166,7 +166,7 @@ fit_long <- gllvmTMB(
 )
 ```
 
-Both calls reach the same long-format engine and produce
+Both calls reach the same stacked-trait model and produce
 byte-identical fits. See the Get Started vignette for the
 runnable long-to-wide pivot.
 

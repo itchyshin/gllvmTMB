@@ -14,7 +14,8 @@ extract_Sigma_table(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit or a \code{bootstrap_Sigma} object.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} or a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}
+result.}
 
 \item{level}{Character vector of covariance levels, or \code{"all"} for every
 level present in the fit. Canonical levels are \code{"unit"}, \code{"unit_obs"},

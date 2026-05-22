@@ -17,23 +17,31 @@
 
 make_tiny_gaussian_fit <- function(seed = 1L) {
   set.seed(seed)
-  n_sites <- 20L; Tn <- 3L
-  Lambda_B <- matrix(c(0.9, 0.4, -0.3,
-                       0.0, 0.6,  0.2), Tn, 2)
+  n_sites <- 20L
+  Tn <- 3L
+  Lambda_B <- matrix(c(0.9, 0.4, -0.3, 0.0, 0.6, 0.2), Tn, 2)
   psi_B <- c(0.20, 0.15, 0.10)
   Lambda_W <- matrix(c(0.4, 0.2, -0.1), Tn, 1)
   psi_W <- c(0.10, 0.08, 0.05)
   s <- gllvmTMB::simulate_site_trait(
-    n_sites = n_sites, n_species = 3, n_traits = Tn,
+    n_sites = n_sites,
+    n_species = 3,
+    n_traits = Tn,
     mean_species_per_site = 3,
-    Lambda_B = Lambda_B, psi_B = psi_B,
-    Lambda_W = Lambda_W, psi_W = psi_W,
-    beta = matrix(0, Tn, 2), seed = seed
+    Lambda_B = Lambda_B,
+    psi_B = psi_B,
+    Lambda_W = Lambda_W,
+    psi_W = psi_W,
+    beta = matrix(0, Tn, 2),
+    seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait +
-      latent(0 + trait | site,         d = 2) + unique(0 + trait | site) +
-      latent(0 + trait | site_species, d = 1) + unique(0 + trait | site_species),
+    value ~ 0 +
+      trait +
+      latent(0 + trait | site, d = 2) +
+      unique(0 + trait | site) +
+      latent(0 + trait | site_species, d = 1) +
+      unique(0 + trait | site_species),
     data = s$data
   )))
 }
@@ -51,10 +59,10 @@ make_mock_fit <- function(family_id_vec = 0L) {
 
 ## ---- input validation ---------------------------------------------------
 
-test_that("check_identifiability() errors on non-gllvmTMB_multi input", {
+test_that("check_identifiability() errors on non-fit input", {
   expect_error(
     gllvmTMB::check_identifiability(list(foo = 1), sim_reps = 10L),
-    "gllvmTMB_multi"
+    "fit returned by `gllvmTMB\\(\\)`"
   )
 })
 
@@ -135,16 +143,29 @@ test_that(".procrustes_align is a no-op when target/estimate have mismatched dim
 
 test_that("check_identifiability() returns the expected list structure (smoke test)", {
   skip_on_cran()
-  skip_on_ci()  ## sim-refit loop is too slow for routine CI; gate to local
+  skip_on_ci() ## sim-refit loop is too slow for routine CI; gate to local
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L,
-                                    seed = 42L, verbose = FALSE)
+    gllvmTMB::check_identifiability(
+      fit,
+      sim_reps = 10L,
+      seed = 42L,
+      verbose = FALSE
+    )
   ))
   expect_s3_class(res, "gllvmTMB_identifiability")
-  expect_named(res,
-               c("recovery", "loadings", "hessian", "flags",
-                 "call", "n_reps", "n_converged"))
+  expect_named(
+    res,
+    c(
+      "recovery",
+      "loadings",
+      "hessian",
+      "flags",
+      "call",
+      "n_reps",
+      "n_converged"
+    )
+  )
   expect_equal(res$n_reps, 10L)
   expect_true(res$n_converged >= 1L)
   expect_true(is.character(res$flags))
@@ -155,18 +176,32 @@ test_that("check_identifiability() $recovery has the documented columns", {
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L,
-                                    seed = 7L, verbose = FALSE)
+    gllvmTMB::check_identifiability(
+      fit,
+      sim_reps = 10L,
+      seed = 7L,
+      verbose = FALSE
+    )
   ))
-  expected_cols <- c("param", "tier", "truth", "mean_est",
-                     "bias", "rmse", "sd_est", "coverage_95",
-                     "n_converged")
+  expected_cols <- c(
+    "param",
+    "tier",
+    "truth",
+    "mean_est",
+    "bias",
+    "rmse",
+    "sd_est",
+    "coverage_95",
+    "n_converged"
+  )
   expect_true(all(expected_cols %in% colnames(res$recovery)))
   ## Recovery rows are non-empty for a converged smoke run.
   expect_gt(nrow(res$recovery), 0L)
   ## Tier column takes values from the documented set.
-  expect_true(all(res$recovery$tier %in%
-                    c("B", "W", "phy", "fixed")))
+  expect_true(all(
+    res$recovery$tier %in%
+      c("B", "W", "phy", "fixed")
+  ))
 })
 
 test_that("check_identifiability() $loadings is a named list of T x d matrices", {
@@ -174,15 +209,19 @@ test_that("check_identifiability() $loadings is a named list of T x d matrices",
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L,
-                                    seed = 19L, verbose = FALSE)
+    gllvmTMB::check_identifiability(
+      fit,
+      sim_reps = 10L,
+      seed = 19L,
+      verbose = FALSE
+    )
   ))
   ## Tier B should be present (the fixture has d_B = 2).
   expect_true("B" %in% names(res$loadings))
   M_B <- res$loadings$B
   expect_true(is.matrix(M_B))
-  expect_equal(nrow(M_B), 3L)   # Tn = 3 traits
-  expect_equal(ncol(M_B), 2L)   # d_B = 2
+  expect_equal(nrow(M_B), 3L) # Tn = 3 traits
+  expect_equal(ncol(M_B), 2L) # d_B = 2
   ## All entries are non-negative (mean-abs residuals).
   expect_true(all(is.finite(M_B)))
   expect_true(all(M_B >= 0))
@@ -193,14 +232,23 @@ test_that("check_identifiability() $hessian has one row per replicate with docum
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L,
-                                    seed = 3L, verbose = FALSE)
+    gllvmTMB::check_identifiability(
+      fit,
+      sim_reps = 10L,
+      seed = 3L,
+      verbose = FALSE
+    )
   ))
   expect_s3_class(res$hessian, "data.frame")
   expect_equal(nrow(res$hessian), 10L)
-  expected_hess_cols <- c("replicate", "min_eig", "max_eig",
-                          "condition_number", "n_zero_eig",
-                          "pdHess")
+  expected_hess_cols <- c(
+    "replicate",
+    "min_eig",
+    "max_eig",
+    "condition_number",
+    "n_zero_eig",
+    "pdHess"
+  )
   expect_true(all(expected_hess_cols %in% colnames(res$hessian)))
 })
 
@@ -209,11 +257,19 @@ test_that("check_identifiability() $flags is a subset of the documented set", {
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L,
-                                    seed = 31L, verbose = FALSE)
+    gllvmTMB::check_identifiability(
+      fit,
+      sim_reps = 10L,
+      seed = 31L,
+      verbose = FALSE
+    )
   ))
-  documented_flags <- c("rank_deficient", "loading_collapse",
-                        "slow_inference", "converged_rate < 0.9")
+  documented_flags <- c(
+    "rank_deficient",
+    "loading_collapse",
+    "slow_inference",
+    "converged_rate < 0.9"
+  )
   expect_true(all(res$flags %in% documented_flags))
 })
 
@@ -224,8 +280,12 @@ test_that("print.gllvmTMB_identifiability() runs without error", {
   skip_on_ci()
   fit <- make_tiny_gaussian_fit()
   res <- suppressMessages(suppressWarnings(
-    gllvmTMB::check_identifiability(fit, sim_reps = 10L,
-                                    seed = 5L, verbose = FALSE)
+    gllvmTMB::check_identifiability(
+      fit,
+      sim_reps = 10L,
+      seed = 5L,
+      verbose = FALSE
+    )
   ))
   ## cli::cli_h1 etc. write to stderr, so expect_output (stdout) cannot
   ## see them. The data-frame portion (printed via base::print()) does

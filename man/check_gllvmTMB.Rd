@@ -2,12 +2,12 @@
 % Please edit documentation in R/diagnose.R
 \name{check_gllvmTMB}
 \alias{check_gllvmTMB}
-\title{Machine-readable convergence and fit-health checks}
+\title{Check convergence, Hessian, gradients, and interval readiness}
 \usage{
 check_gllvmTMB(object, gradient_thresh = 0.01, se_thresh = 100)
 }
 \arguments{
-\item{object}{A \code{gllvmTMB_multi} fit.}
+\item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{gradient_thresh}{Maximum allowed absolute gradient component.
 Default 0.01.}
@@ -21,18 +21,25 @@ A data frame with columns \code{component}, \code{status}, \code{value},
 \code{"WARN"}, or \code{"FAIL"}.
 }
 \description{
-\code{check_gllvmTMB()} returns a stable table of the main fit-health
-diagnostics for a fitted \code{gllvmTMB_multi} object. It is the
-machine-readable companion to \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}: use this in
-simulations, tests, and reports where parsing printed messages would
-be brittle.
+Run \code{check_gllvmTMB()} right after fitting, before interpreting
+confidence intervals or covariance summaries. It returns a stable
+table of optimiser, gradient, Hessian, \code{sdreport()}, restart, and
+boundary diagnostics. It is the machine-readable companion to
+\code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}: use this in simulations, tests, and reports
+where parsing printed messages would be brittle.
 }
 \details{
-Scope boundary: this helper reports optimisation and inference-risk
-signals. A \code{WARN} row, including \code{pdHess = FALSE}, means that Wald
-standard errors or curvature-based inference need more care; it is
-not by itself proof that the fitted mean, likelihood, or
-rotation-invariant covariance summaries are unusable.
+Scope boundary (DIA-08 / DIA-10): IN, optimisation and
+inference-risk signals for fitted models, including the intentional
+\code{gllvmTMBcontrol(se = FALSE)} point-estimate path. PARTIAL, the
+table does not calibrate interval coverage by itself. PLANNED,
+target-explicit M3 simulations decide when broader interval claims
+move beyond diagnostic status.
+
+A \code{WARN} row, including \code{pdHess = FALSE}, means that Wald standard
+errors or curvature-based inference need more care; it is not by
+itself proof that the fitted mean, likelihood, or rotation-invariant
+covariance summaries are unusable.
 }
 \examples{
 \dontrun{

@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods-gllvmTMB.R
 \name{simulate.gllvmTMB_multi}
 \alias{simulate.gllvmTMB_multi}
-\title{Simulate new responses from a fitted \code{gllvmTMB_multi}}
+\title{Simulate new responses from a fitted gllvmTMB model}
 \usage{
 \method{simulate}{gllvmTMB_multi}(
   object,
@@ -14,7 +14,7 @@
 )
 }
 \arguments{
-\item{object}{A \code{gllvmTMB_multi} fit.}
+\item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{nsim}{Number of replicate response vectors to draw. Default 1.}
 

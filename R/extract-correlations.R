@@ -1,14 +1,17 @@
 ## Cross-trait correlations with confidence intervals.
 ## Phase K: extract_correlations() is a first-class user-facing extractor
-## for the implied trait correlations at each tier (B / W / phy / spde),
+## for the implied trait correlations at each level (unit / unit_obs /
+## phy / spatial),
 ## with four CI methods: fisher-z / profile / Wald alias / bootstrap.
 
 #' Cross-trait correlations with confidence intervals
 #'
-#' Returns the implied cross-trait correlations from a fitted
-#' gllvmTMB_multi model at one or more tiers (between-unit \code{B},
-#' within-unit \code{W}, phylogenetic \code{phy}, spatial \code{spde}),
-#' with 95% (or other-level) confidence intervals. Four method names are
+#' Returns the implied cross-trait correlations from a fit returned by
+#' [gllvmTMB()] at one or more covariance levels. Use the canonical input
+#' names \code{"unit"}, \code{"unit_obs"}, \code{"phy"}, and
+#' \code{"spatial"}; legacy aliases \code{"B"}, \code{"W"}, and
+#' \code{"spde"} still work. The helper returns 95% (or other-level)
+#' confidence intervals. Four method names are
 #' supported via the \code{method} argument:
 #'
 #' \itemize{
@@ -29,18 +32,20 @@
 #'     \code{method == "wald"}.
 #'   \item \code{"bootstrap"}: parametric bootstrap via
 #'     \code{\link{bootstrap_Sigma}}. Slowest (full sampling
-#'     distribution); use when you need full uncertainty propagation
-#'     to multiple downstream quantities.
+#'     distribution); use when a fitted model gives useful point estimates
+#'     but Hessian- or profile-based intervals are not the right uncertainty
+#'     summary.
 #' }
 #'
 #' For T traits at one tier, there are T(T-1)/2 unique correlations.
-#' A multi-trait fit at 5 tiers (B, W, phy, non, spde) with T = 6 has
-#' up to 75 cross-trait correlations to report.
+#' A fit with T = 6 and four covariance levels present has up to 60
+#' cross-trait correlations to report.
 #'
-#' @param fit A \code{gllvmTMB_multi} fit returned by \code{\link{gllvmTMB}}.
-#' @param tier Character vector. Subset of
-#'   \code{c("B", "W", "phy", "spde")}. Use \code{"all"} (the default) to
-#'   request every tier present in the fit.
+#' @param fit A fit returned by \code{\link{gllvmTMB}}.
+#' @param tier Character vector. Use \code{"all"} (the default) to request
+#'   every level present in the fit. Canonical inputs are \code{"unit"},
+#'   \code{"unit_obs"}, \code{"phy"}, and \code{"spatial"}; legacy aliases
+#'   \code{"B"}, \code{"W"}, and \code{"spde"} are accepted.
 #' @param pair Optional length-2 character or integer vector specifying
 #'   one trait pair (\code{c("trait_1", "trait_2")} or \code{c(1, 2)}).
 #'   When supplied, only that pair is returned for each requested tier.
@@ -93,8 +98,10 @@
 #'
 #' @return A data frame (tibble-like) with columns:
 #' \describe{
-#'   \item{\code{tier}}{Character: \code{"B"}, \code{"W"}, \code{"phy"},
-#'     or \code{"spde"}.}
+#'   \item{\code{tier}}{Character level label. The current output stores
+#'     internal labels \code{"B"}, \code{"W"}, \code{"phy"}, and
+#'     \code{"spde"}; use \code{"unit"} and \code{"unit_obs"} as input
+#'     names in new calls.}
 #'   \item{\code{trait_i}, \code{trait_j}}{Trait names with i < j.}
 #'   \item{\code{correlation}}{Point estimate.}
 #'   \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
@@ -108,12 +115,11 @@
 #'     factor model (the implied Σ is identifiable but the split into
 #'     \code{Lambda Lambda^T} and \code{S} is not). Fall back to
 #'     \code{method = "bootstrap"} when the profile fails.
-#'   \item Bootstrap uses \code{\link{bootstrap_Sigma}} which conditions on
-#'     the fitted random effects (parametric simulation), so the
-#'     bootstrap CIs reflect residual-level uncertainty rather than full
-#'     posterior uncertainty in the variance components. For full
-#'     posterior CIs use a Bayesian fit (e.g. \code{rstanarm} /
-#'     \code{brms}).
+#'   \item Bootstrap uses \code{\link{bootstrap_Sigma}} refits and is the
+#'     practical fallback when point estimates are useful but Hessian- or
+#'     profile-based intervals are unavailable. Inspect bootstrap warnings,
+#'     failed replicates, and interval width before treating the intervals
+#'     as final.
 #' }
 #'
 #' @seealso \code{\link{extract_Sigma}}, \code{\link{bootstrap_Sigma}},
@@ -173,7 +179,7 @@ extract_correlations <- function(
     tier <- vapply(tier, .normalise_level, character(1L), arg_name = "tier")
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
   method <- match.arg(method)
 
@@ -393,7 +399,13 @@ extract_correlations <- function(
         i <- pairs[m, 1L]
         j <- pairs[m, 2L]
         ci <- tryCatch(
-          profile_ci_correlation(fit, tier = tk, i = i, j = j, level = level),
+          profile_ci_correlation(
+            fit,
+            tier = .canonical_level_name(tk),
+            i = i,
+            j = j,
+            level = level
+          ),
           error = function(e) {
             c(estimate = R[i, j], lower = NA_real_, upper = NA_real_)
           }

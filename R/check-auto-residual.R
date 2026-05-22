@@ -39,7 +39,7 @@
 #' family mixing (errors) and ordinal-probit traits (warns; the latent
 #' residual is already standardised at 1, so adding 1 again over-counts).
 #'
-#' @param fit A `gllvmTMB_multi` fit returned by [gllvmTMB()].
+#' @param fit A fit returned by [gllvmTMB()].
 #'
 #' @return Invisibly, a list with components `status` (one of `"ok"`,
 #'   `"warn"`, or `"err"` -- though the `"err"` path is unreachable
@@ -58,8 +58,9 @@
 #'
 #' @export
 check_auto_residual <- function(fit) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
 
   fids <- fit$tmb_data$family_id_vec
   tids <- fit$tmb_data$trait_id
@@ -80,15 +81,20 @@ check_auto_residual <- function(fit) {
   ordinal_traits <- character()
   for (t in seq_len(Tn)) {
     rows_t <- which(tids_1 == t)
-    if (length(rows_t) == 0L) next
+    if (length(rows_t) == 0L) {
+      next
+    }
     fams_t <- unique(fids[rows_t])
     if (length(fams_t) > 1L) {
       mixed_traits <- c(mixed_traits, trait_names[t])
       mixed_details <- c(
         mixed_details,
         paste0(
-          "Trait {.val ", trait_names[t], "} has rows from families ",
-          paste(.family_name_from_id(fams_t), collapse = ", "), "."
+          "Trait {.val ",
+          trait_names[t],
+          "} has rows from families ",
+          paste(.family_name_from_id(fams_t), collapse = ", "),
+          "."
         )
       )
     } else if (identical(fams_t, 14L)) {
@@ -112,7 +118,8 @@ check_auto_residual <- function(fit) {
   ## ---- check (b): ordinal-probit traits ---------------------------------
   if (length(ordinal_traits) > 0L) {
     msg <- paste0(
-      "Ordinal-probit trait", if (length(ordinal_traits) > 1L) "s" else "",
+      "Ordinal-probit trait",
+      if (length(ordinal_traits) > 1L) "s" else "",
       " present: ",
       paste(paste0("{.val ", ordinal_traits, "}"), collapse = ", "),
       "."
@@ -127,7 +134,7 @@ check_auto_residual <- function(fit) {
       class = "gllvmTMB_auto_residual_ordinal_probit_overcount"
     )
     return(invisible(list(
-      status   = "warn",
+      status = "warn",
       messages = paste(
         "Ordinal-probit traits present;",
         "link_residual = 'auto' over-counts the latent residual (already 1 by construction)."
@@ -143,16 +150,16 @@ check_auto_residual <- function(fit) {
 ## so this safeguard does not depend on internal helpers.
 .family_name_from_id <- function(ids) {
   names <- c(
-    "0"  = "gaussian",
-    "1"  = "binomial",
-    "2"  = "poisson",
-    "3"  = "lognormal",
-    "4"  = "Gamma",
-    "5"  = "nbinom2",
-    "6"  = "tweedie",
-    "7"  = "Beta",
-    "8"  = "betabinomial",
-    "9"  = "student",
+    "0" = "gaussian",
+    "1" = "binomial",
+    "2" = "poisson",
+    "3" = "lognormal",
+    "4" = "Gamma",
+    "5" = "nbinom2",
+    "6" = "tweedie",
+    "7" = "Beta",
+    "8" = "betabinomial",
+    "9" = "student",
     "10" = "truncated_poisson",
     "11" = "truncated_nbinom2",
     "12" = "delta_lognormal",

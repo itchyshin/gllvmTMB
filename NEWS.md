@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Canonical `confint()` Sigma names (2026-05-22)
+
+* **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full latent + unique Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.
+
 ## Sigma heatmap plot helper (2026-05-21)
 
 * **`plot_Sigma_heatmap()`** plots `extract_Sigma_table()` rows as trait-by-trait covariance or correlation heatmaps (EXT-27). IN: articles and reports can show matrix block structure without extracting `Sigma`, calling `cov2cor()`, or hand-building `geom_tile()` layers; the first integration replaces the functional-biogeography article's bespoke correlation heatmaps. PARTIAL: heatmaps show point estimates only and do not display uncertainty intervals or truth comparisons. PLANNED: vdiffr snapshots and richer multi-model layout helpers remain future visualization work.
@@ -18,11 +22,11 @@
 
 ## Cached morphometrics bootstrap plot fixture (2026-05-21)
 
-* **Morphometrics article fixture** now ships a small cached `bootstrap_Sigma(..., what = "R")` object and uses it to render `plot_correlations(boot, style = "raindrop")` plus `plot(type = "correlation_ellipse", boot = boot)` without running bootstrap refits during pkgdown builds (MIS-22 / EXT-23 / EXT-24). IN: the article demonstrates the direct bootstrap plotting path on a reproducible stored object. PARTIAL: the fixture is for teaching and visual QA, not interval-calibration evidence for a scientific claim. PLANNED: fuller bootstrap calibration belongs in simulation-grid or study-specific workflows.
+* **Morphometrics article fixture** now ships a small cached `bootstrap_Sigma(..., what = "R")` object and uses it to render the confidence-eye correlation display plus `plot(type = "correlation_ellipse", boot = boot)` without running bootstrap refits during pkgdown builds (MIS-22 / EXT-23 / EXT-24). IN: the article demonstrates the direct bootstrap plotting path on a reproducible stored object. PARTIAL: the fixture is for teaching and visual QA, not interval-calibration evidence for a scientific claim. PLANNED: fuller bootstrap calibration belongs in simulation-grid or study-specific workflows.
 
 ## Direct bootstrap correlation plots (2026-05-21)
 
-* **`plot_correlations()`** now accepts `bootstrap_Sigma()` objects containing `R_B` / `R_W` summaries and converts them to the same row-first correlation plotting schema used by `extract_correlations()` rows (EXT-24). IN: users can call `plot_correlations(boot, style = "raindrop")` after `bootstrap_Sigma(..., what = "R")` without hand-building pairwise rows. PARTIAL: this is a display bridge only; it does not run bootstrap refits, and matrix-style truth overlays remain article code. PLANNED: rendered article examples using stored bootstrap fixtures remain future Figure-3 QA work.
+* **`plot_correlations()`** now accepts `bootstrap_Sigma()` objects containing `R_B` / `R_W` summaries and converts them to the same row-first correlation plotting schema used by `extract_correlations()` rows (EXT-24). IN: users can call `plot_correlations(boot, style = "eye")` after `bootstrap_Sigma(..., what = "R")` without hand-building pairwise rows; `style = "raindrop"` remains a compatibility alias. PARTIAL: this is a display bridge only; it does not run bootstrap refits, and matrix-style truth overlays remain article code. PLANNED: rendered article examples using stored bootstrap fixtures remain future Figure-3 QA work.
 
 ## Correlation ellipse bootstrap intervals (2026-05-21)
 
@@ -38,11 +42,11 @@
 
 ## Bootstrap Sigma table rows (2026-05-21)
 
-* **`extract_Sigma_table()`** now accepts `bootstrap_Sigma()` objects and returns the same report-ready row schema with bootstrap percentile `lower` / `upper` columns filled in (EXT-20). IN: Sigma and correlation summaries already present in the bootstrap object can be converted to tidy rows and passed directly to `plot_Sigma_table()` for interval forests or raindrop compatibility displays. PARTIAL: this does not compute bootstrap intervals itself and does not add shared/unique component covariance intervals; communality and repeatability reuse are covered separately by EXT-21 and EXT-22. PLANNED: broader Figure-3 visual QA remains future work.
+* **`extract_Sigma_table()`** now accepts `bootstrap_Sigma()` objects and returns the same report-ready row schema with bootstrap percentile `lower` / `upper` columns filled in (EXT-20). IN: Sigma and correlation summaries already present in the bootstrap object can be converted to tidy rows and passed directly to `plot_Sigma_table()` for interval forests or confidence-eye displays. PARTIAL: this does not compute bootstrap intervals itself and does not add shared/unique component covariance intervals; communality and repeatability reuse are covered separately by EXT-21 and EXT-22. PLANNED: broader Figure-3 visual QA remains future work.
 
 ## Covariance/correlation plot helpers (2026-05-21)
 
-* **`plot_correlations()` and `plot_Sigma_table()`** are new ggplot helpers for report-ready covariance and correlation rows. IN: tidy rows from `extract_correlations()` and `extract_Sigma_table()` can be drawn as forest plots or raindrop compatibility displays with metadata attached to `gllvmTMB_meta` / `gllvmTMB_data` (EXT-19). The first public integrations are in the README example, Get Started, Morphometrics, and Covariance/correlation articles. PARTIAL: these helpers display supplied finite interval bounds but do not compute new intervals; rows without finite interval bounds are shown as open points, and `plot_Sigma_table(style = "raindrop")` needs interval-bearing input rows. For fitted correlations, open points can often be investigated with `extract_correlations(..., method = "bootstrap")`; Sigma-table raindrops need bootstrap-derived or otherwise interval-bearing rows. Raindrops show frequentist compatibility, not posterior density, and omit CI lines by default so the midpoint and shape carry the display. Set `show_intervals = TRUE` to overlay interval lines when needed. PLANNED: hidden/technical article integration and vdiffr snapshots remain future figure work.
+* **`plot_correlations()` and `plot_Sigma_table()`** are new ggplot helpers for report-ready covariance and correlation rows. IN: tidy rows from `extract_correlations()` and `extract_Sigma_table()` can be drawn as forest plots or confidence-eye compatibility displays with metadata attached to `gllvmTMB_meta` / `gllvmTMB_data` (EXT-19). The first public integrations are in the README example, Get Started, Morphometrics, and Covariance/correlation articles. PARTIAL: these helpers display supplied finite interval bounds but do not compute new intervals; rows without finite interval bounds are shown as open points, and `plot_Sigma_table(style = "eye")` needs interval-bearing input rows. For fitted correlations, open points can often be investigated with `extract_correlations(..., method = "bootstrap")`; Sigma-table confidence eyes need bootstrap-derived or otherwise interval-bearing rows. Confidence eyes show frequentist compatibility, not posterior density, and omit CI lines by default so the hollow estimate circle and pale compatibility shape carry the display. Set `show_intervals = TRUE` to overlay interval lines when needed. `style = "raindrop"` remains a compatibility alias. PLANNED: hidden/technical article integration and vdiffr snapshots remain future figure work.
 
 ## Missing response cells (2026-05-21)
 
@@ -202,8 +206,9 @@ meta-analysis; `meta_known_V()` is the deprecated alias. Existing
   (`parm = "communality"` etc.) now emit a typed warning that
   points the user at the matching `extract_*(method = "profile")`
   extractor instead. The Sigma-matrix path (parm in
-  `{Sigma_B, Sigma_W, sigma_phy}`) and the fixed-effect Wald /
-  profile paths are unchanged.
+  `{Sigma_unit, Sigma_unit_obs, sigma_phy}`, with legacy aliases
+  `{Sigma_B, Sigma_W}`) and the fixed-effect Wald / profile paths are
+  unchanged.
 
 ## New exports (Phase 1b)
 
@@ -271,7 +276,7 @@ phylogenetic signal, or spatial structure.
 
 ## User-facing API
 
-* One `gllvmTMB()` entry point shares one long-format engine:
+* One `gllvmTMB()` entry point fits one stacked-trait model:
   * `gllvmTMB(value ~ ..., data = df_long, trait = "trait",
     unit = "...")` accepts long-format data (one row per
     `(unit, trait)` observation) and wide data frames marked with the

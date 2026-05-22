@@ -50,7 +50,7 @@
 #'   `betabinomial` \tab logit \tab \eqn{\pi^2/3 + \psi_1(\hat\mu_t \hat\phi) + \psi_1((1 - \hat\mu_t)\hat\phi)}
 #' }
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @return A data frame with one row per trait and columns:
 #' \describe{
 #'   \item{`trait`}{Factor of trait names.}
@@ -94,8 +94,9 @@
 #' extract_residual_split(fit)
 #' }
 extract_residual_split <- function(fit) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
 
   trait_names <- levels(fit$data[[fit$trait_col]])
   Tn <- length(trait_names)
@@ -105,9 +106,11 @@ extract_residual_split <- function(fit) {
   ## trait_id and site_species_id are both 0-based in tmb_data.
   is_olre_W <- FALSE
   if (isTRUE(fit$use$diag_W)) {
-    cell_W <- paste(fit$tmb_data$trait_id,
-                    fit$tmb_data$site_species_id,
-                    sep = "_")
+    cell_W <- paste(
+      fit$tmb_data$trait_id,
+      fit$tmb_data$site_species_id,
+      sep = "_"
+    )
     n_obs <- length(fit$tmb_data$trait_id)
     is_olre_W <- length(unique(cell_W)) == n_obs
   }
@@ -129,11 +132,11 @@ extract_residual_split <- function(fit) {
   sigma2_d <- link_residual_per_trait(fit)
 
   data.frame(
-    trait        = factor(trait_names, levels = trait_names),
-    sigma2_d     = as.numeric(sigma2_d),
-    sigma2_e     = sigma2_e,
+    trait = factor(trait_names, levels = trait_names),
+    sigma2_d = as.numeric(sigma2_d),
+    sigma2_e = sigma2_e,
     sigma2_total = as.numeric(sigma2_d) + sigma2_e,
-    row.names    = NULL,
+    row.names = NULL,
     stringsAsFactors = FALSE
   )
 }
@@ -154,7 +157,7 @@ extract_residual_split <- function(fit) {
 #' \eqn{\boldsymbol\Sigma_P = \boldsymbol\Sigma_B + \boldsymbol\Sigma_W}
 #' .
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param tiers Character vector. Subset of `c("B", "W", "phy")`. Default
 #'   `NULL` auto-detects: includes `"phy"` if `phylo_latent()` is in the
 #'   formula, `"B"` if any `latent()`/`unique()` at `unit`, `"W"` if any
@@ -183,28 +186,34 @@ extract_residual_split <- function(fit) {
 #' # Phenotypic covariance from a two-level behavioural-syndromes fit
 #' om2 <- extract_Omega(fit, tiers = c("B", "W"))
 #' }
-extract_Omega <- function(fit,
-                          tiers = NULL,
-                          link_residual = c("auto", "none")) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+extract_Omega <- function(
+  fit,
+  tiers = NULL,
+  link_residual = c("auto", "none")
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   link_residual <- match.arg(link_residual)
   if (is.null(tiers)) {
     tiers <- character(0)
-    ## Two-U PGLLVM: phy tier is present when EITHER phylo_latent (phylo_rr)
-    ## OR phylo_unique-paired-with-latent (phylo_diag) is fit.
-    if (isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag))
+    ## Paired phylogenetic PGLLVM: phy tier is present when EITHER
+    ## phylo_latent (phylo_rr) OR phylo_unique-paired-with-latent
+    ## (phylo_diag) is fit.
+    if (isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)) {
       tiers <- c(tiers, "phy")
-    if (isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B))    tiers <- c(tiers, "B")
-    if (isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W))    tiers <- c(tiers, "W")
+    }
+    if (isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B)) {
+      tiers <- c(tiers, "B")
+    }
+    if (isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W)) tiers <- c(tiers, "W")
   }
   if (length(tiers) == 0L) {
     cli::cli_abort("No covariance tiers available in this fit.")
   }
   T <- fit$n_traits
   trait_names <- levels(fit$data[[fit$trait_col]])
-  Omega <- matrix(0, T, T,
-                  dimnames = list(trait_names, trait_names))
+  Omega <- matrix(0, T, T, dimnames = list(trait_names, trait_names))
   notes <- character(0)
   tiers_used <- character(0)
   ## The implicit binomial link residual is an observation-level variance
@@ -213,12 +222,13 @@ extract_Omega <- function(fit,
   ## to Omega after summing the tier-wise covariances.
   for (tier in tiers) {
     out <- suppressMessages(
-      extract_Sigma(fit, level = tier, part = "total",
-                    link_residual = "none")
+      extract_Sigma(fit, level = tier, part = "total", link_residual = "none")
     )
-    if (is.null(out)) next
-    Omega      <- Omega + out$Sigma
-    notes      <- c(notes, out$note)
+    if (is.null(out)) {
+      next
+    }
+    Omega <- Omega + out$Sigma
+    notes <- c(notes, out$note)
     tiers_used <- c(tiers_used, tier)
   }
   if (link_residual == "auto") {
@@ -228,21 +238,30 @@ extract_Omega <- function(fit,
     if (any(link_resid_per_trait != 0)) {
       diag(Omega) <- diag(Omega) + link_resid_per_trait
       tbl <- paste0(
-        "  - ", trait_names, ": ",
+        "  - ",
+        trait_names,
+        ": ",
         formatC(link_resid_per_trait, digits = 3, format = "f"),
-        collapse = "\n")
-      notes <- c(notes, paste0(
-        "Added per-trait link-implicit residual variance to diag(Omega):\n",
-        tbl))
+        collapse = "\n"
+      )
+      notes <- c(
+        notes,
+        paste0(
+          "Added per-trait link-implicit residual variance to diag(Omega):\n",
+          tbl
+        )
+      )
     }
   }
   D <- sqrt(diag(Omega))
   R_Omega <- if (all(D > 0)) Omega / outer(D, D) else NA * Omega
   rownames(R_Omega) <- colnames(R_Omega) <- trait_names
-  out <- list(Omega      = Omega,
-              R_Omega    = R_Omega,
-              tiers_used = tiers_used,
-              note       = notes)
+  out <- list(
+    Omega = Omega,
+    R_Omega = R_Omega,
+    tiers_used = tiers_used,
+    note = notes
+  )
   if (link_residual == "auto") {
     out$residual_split <- extract_residual_split(fit)
   }
@@ -279,7 +298,7 @@ extract_Omega <- function(fit,
 #' the species tier is missing, \eqn{\psi_t = 0} for all traits and a
 #' `cli::cli_inform()` advisory fires.
 #'
-#' @param fit A `gllvmTMB_multi` fit with a `phylo_latent()` term.
+#' @param fit A fit returned by [gllvmTMB()] with a `phylo_latent()` term.
 #' @param ci Logical. When `TRUE`, adds confidence-interval columns to
 #'   the output for the H^2 column. Default `FALSE` for backward
 #'   compatibility.
@@ -315,54 +334,95 @@ extract_Omega <- function(fit,
 #' )
 #' extract_phylo_signal(fit)
 #' }
-extract_phylo_signal <- function(fit,
-                                 ci = FALSE,
-                                 conf_level = 0.95,
-                                 method = c("profile", "wald", "bootstrap"),
-                                 nsim = 500L,
-                                 seed = NULL) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+extract_phylo_signal <- function(
+  fit,
+  ci = FALSE,
+  conf_level = 0.95,
+  method = c("profile", "wald", "bootstrap"),
+  nsim = 500L,
+  seed = NULL
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   method <- match.arg(method)
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
-  if (!has_phy)
+  if (!has_phy) {
     cli::cli_abort(c(
       "Fit has no {.code phylo_latent()} or {.code phylo_unique()} term.",
       "i" = "Phylogenetic-signal proportions require a phylogenetic component."
     ))
+  }
   trait_names <- levels(fit$data[[fit$trait_col]])
 
   ## Sigma_phy = Lambda_phy Lambda_phy^T + Psi_phy when phylo_diag is
   ## fit; just Lambda_phy Lambda_phy^T otherwise. Both contribute to the
   ## phylogenetic signal H2.
-  out_phy   <- suppressMessages(extract_Sigma(fit, level = "phy", part = "total",
-                                              link_residual = "none"))
+  out_phy <- suppressMessages(extract_Sigma(
+    fit,
+    level = "phy",
+    part = "total",
+    link_residual = "none"
+  ))
   ## Sigma_non,shared = Lambda_B Lambda_B^T (the species-level rr term)
-  out_share <- suppressMessages(extract_Sigma(fit, level = "unit", part = "shared"))
-  ## U = Psi_B (the species-level diag term)
-  out_uniq  <- suppressMessages(extract_Sigma(fit, level = "unit", part = "unique"))
+  out_share <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    part = "shared"
+  ))
+  ## Psi_non = Psi_B (the species-level diag term)
+  out_uniq <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    part = "unique"
+  ))
 
-  Sigma_phy   <- if (!is.null(out_phy))   diag(out_phy$Sigma)   else rep(0, fit$n_traits)
-  Sigma_non_s <- if (!is.null(out_share)) diag(out_share$Sigma) else rep(0, fit$n_traits)
-  U_diag      <- if (!is.null(out_uniq))  out_uniq$s            else rep(0, fit$n_traits)
+  Sigma_phy <- if (!is.null(out_phy)) {
+    diag(out_phy$Sigma)
+  } else {
+    rep(0, fit$n_traits)
+  }
+  Sigma_non_s <- if (!is.null(out_share)) {
+    diag(out_share$Sigma)
+  } else {
+    rep(0, fit$n_traits)
+  }
+  Psi_diag <- if (!is.null(out_uniq)) out_uniq$s else rep(0, fit$n_traits)
 
-  V_eta <- Sigma_phy + Sigma_non_s + U_diag
+  V_eta <- Sigma_phy + Sigma_non_s + Psi_diag
 
   ## Build advisory if any component is structurally zero
-  if (sum(U_diag) == 0)
-    cli::cli_inform("U (uniqueness) = 0 across all traits: no `unique(0 + trait | species)` in the formula. Psi will be 0; refit with `+ unique(0 + trait | species)` for the full PGLLVM decomposition.")
+  if (sum(Psi_diag) == 0) {
+    cli::cli_inform(
+      "Psi_non = 0 across all traits: no `unique(0 + trait | species)` in the formula. Refit with `+ unique(0 + trait | species)` for the full PGLLVM decomposition."
+    )
+  }
 
   pe_df <- data.frame(
-    trait  = factor(trait_names, levels = trait_names),
-    H2     = if (sum(V_eta) > 0) Sigma_phy   / V_eta else rep(NA_real_, length(V_eta)),
-    C2_non = if (sum(V_eta) > 0) Sigma_non_s / V_eta else rep(NA_real_, length(V_eta)),
-    Psi    = if (sum(V_eta) > 0) U_diag      / V_eta else rep(NA_real_, length(V_eta)),
-    V_eta  = V_eta,
+    trait = factor(trait_names, levels = trait_names),
+    H2 = if (sum(V_eta) > 0) {
+      Sigma_phy / V_eta
+    } else {
+      rep(NA_real_, length(V_eta))
+    },
+    C2_non = if (sum(V_eta) > 0) {
+      Sigma_non_s / V_eta
+    } else {
+      rep(NA_real_, length(V_eta))
+    },
+    Psi = if (sum(V_eta) > 0) {
+      Psi_diag / V_eta
+    } else {
+      rep(NA_real_, length(V_eta))
+    },
+    V_eta = V_eta,
     row.names = NULL,
     stringsAsFactors = FALSE
   )
 
-  if (!isTRUE(ci)) return(pe_df)
+  if (!isTRUE(ci)) {
+    return(pe_df)
+  }
 
   ## CI path on H^2
   if (method == "profile") {
@@ -373,14 +433,18 @@ extract_phylo_signal <- function(fit,
     return(pe_df)
   }
   if (method == "wald") {
-    cli::cli_inform("Wald CI for H^2 not implemented; falling back to {.val bootstrap}.")
+    cli::cli_inform(
+      "Wald CI for H^2 not implemented; falling back to {.val bootstrap}."
+    )
     method <- "bootstrap"
   }
   ## bootstrap on H^2: re-fit with simulate, recompute extract_phylo_signal
   ## per replicate. We borrow bootstrap_Sigma's machinery for simulate +
   ## refit and aggregate H2 manually (extracting H2 per draw needs a
   ## small wrapper).
-  cli::cli_inform("Bootstrap CI for H^2: running {.val {nsim}} replicates via {.fn bootstrap_Sigma} machinery.")
+  cli::cli_inform(
+    "Bootstrap CI for H^2: running {.val {nsim}} replicates via {.fn bootstrap_Sigma} machinery."
+  )
   ## Use bootstrap_Sigma with a custom hook: easier to call the core
   ## refit one replicate at a time via simulate + gllvmTMB.
   pe_df$H2_lower <- NA_real_
@@ -404,7 +468,7 @@ extract_phylo_signal <- function(fit,
 #' between-vs-within proportion. `extract_proportions()` returns all of
 #' these in one tidy frame.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param link_residual For non-Gaussian fits: `"auto"` (default) adds the
 #'   link's implicit residual as its own per-trait component (e.g.
 #'   \eqn{\pi^2/3} for binomial logit, \eqn{\log(1 + 1/\hat\mu_t)} for
@@ -436,21 +500,25 @@ extract_phylo_signal <- function(fit,
 #' extract_proportions(fit)                           # long format
 #' extract_proportions(fit, format = "wide")          # one row per trait
 #' }
-extract_proportions <- function(fit,
-                                link_residual = c("auto", "none"),
-                                format        = c("long", "wide")) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+extract_proportions <- function(
+  fit,
+  link_residual = c("auto", "none"),
+  format = c("long", "wide")
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   link_residual <- match.arg(link_residual)
-  format        <- match.arg(format)
+  format <- match.arg(format)
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
 
   ## Build a list of (component, per-trait variance vector) pairs
   comps <- list()
   add_comp <- function(name, v) {
-    if (length(v) == T && any(v > 0))
+    if (length(v) == T && any(v > 0)) {
       comps[[name]] <<- v
+    }
   }
 
   ## Phylogenetic shared (Lambda_phy Lambda_phy^T)
@@ -458,7 +526,7 @@ extract_proportions <- function(fit,
     out <- suppressMessages(extract_Sigma(fit, level = "phy", part = "shared"))
     if (!is.null(out)) add_comp("shared_phy", diag(out$Sigma))
   }
-  ## Phylogenetic unique (Psi_phy) -- present only in two-U PGLLVM
+  ## Phylogenetic unique (Psi_phy) -- present only in paired phylogenetic PGLLVM
   if (isTRUE(fit$use$phylo_diag)) {
     out <- suppressMessages(extract_Sigma(fit, level = "phy", part = "unique"))
     if (!is.null(out)) add_comp("unique_phy", out$s)
@@ -474,11 +542,19 @@ extract_proportions <- function(fit,
   }
   ## unit_obs-tier shared and unique (Stage 4 of design 02: was W-tier)
   if (isTRUE(fit$use$rr_W)) {
-    out <- suppressMessages(extract_Sigma(fit, level = "unit_obs", part = "shared"))
+    out <- suppressMessages(extract_Sigma(
+      fit,
+      level = "unit_obs",
+      part = "shared"
+    ))
     if (!is.null(out)) add_comp("shared_unit_obs", diag(out$Sigma))
   }
   if (isTRUE(fit$use$diag_W)) {
-    out <- suppressMessages(extract_Sigma(fit, level = "unit_obs", part = "unique"))
+    out <- suppressMessages(extract_Sigma(
+      fit,
+      level = "unit_obs",
+      part = "unique"
+    ))
     if (!is.null(out)) add_comp("unique_unit_obs", out$s)
   }
   ## Optional per-trait link-implicit residual (family-aware: gaussian/
@@ -489,8 +565,9 @@ extract_proportions <- function(fit,
     if (any(v != 0)) add_comp("link_residual", v)
   }
 
-  if (length(comps) == 0L)
+  if (length(comps) == 0L) {
     cli::cli_abort("No identifiable variance components in this fit.")
+  }
 
   M <- do.call(cbind, comps)
   rownames(M) <- trait_names
@@ -499,24 +576,22 @@ extract_proportions <- function(fit,
 
   if (format == "long") {
     out <- data.frame(
-      trait      = factor(rep(trait_names, ncol(M)),
-                          levels = trait_names),
-      component  = factor(rep(colnames(M), each = T),
-                          levels = colnames(M)),
-      variance   = as.vector(M),
+      trait = factor(rep(trait_names, ncol(M)), levels = trait_names),
+      component = factor(rep(colnames(M), each = T), levels = colnames(M)),
+      variance = as.vector(M),
       proportion = as.vector(P),
       stringsAsFactors = FALSE
     )
   } else {
     out <- data.frame(
-      trait          = factor(trait_names, levels = trait_names),
+      trait = factor(trait_names, levels = trait_names),
       M,
       total_variance = total,
       stringsAsFactors = FALSE,
-      check.names    = FALSE
+      check.names = FALSE
     )
   }
-  attr(out, "format")   <- format
+  attr(out, "format") <- format
   attr(out, "components") <- colnames(M)
   out
 }

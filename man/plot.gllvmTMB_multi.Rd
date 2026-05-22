@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot-gllvmTMB.R
 \name{plot.gllvmTMB_multi}
 \alias{plot.gllvmTMB_multi}
-\title{Plot a fitted multivariate \code{gllvmTMB_multi} model}
+\title{Plot a fitted multivariate gllvmTMB model}
 \usage{
 \method{plot}{gllvmTMB_multi}(
   x,
@@ -11,11 +11,13 @@
   level = c("unit", "unit_obs"),
   boot = NULL,
   axes = c(1L, 2L),
+  rotation = c("varimax", "none", "promax"),
+  standardize_loadings = FALSE,
   ...
 )
 }
 \arguments{
-\item{x}{A \code{gllvmTMB_multi} fit.}
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{type}{One of \code{"correlation"}, \code{"correlation_ellipse"}, \code{"loadings"},
 \code{"integration"}, \code{"communality"}, \code{"variance"}, \code{"ordination"}.}
@@ -35,7 +37,7 @@ does \strong{not} call \code{match.arg(level)} itself; each helper inspects
 \code{level} and decides whether to plot one tier or both. If you copy
 one of these helpers into your own code, mirror that pattern rather
 than reflexively calling \code{match.arg(level)} (which would silently
-collapse the default to \code{"B"} and drop the W panel).}
+collapse the default to \code{"unit"} and drop the \code{unit_obs} panel).}
 
 \item{boot}{Optional bootstrap object. This can be either a
 \code{bootstrap_Sigma()} result or a list with elements \code{repeatability},
@@ -50,6 +52,19 @@ whiskers to \code{"integration"}, and \code{c^2} boundary intervals to
 pair-grid of the three axis pairs. For \code{d = 3}, the default
 \code{c(1, 2)} is promoted to \code{c(1, 2, 3)} so all three axes are visible.
 Ignored when \code{d = 1}.}
+
+\item{rotation}{One of \code{"varimax"}, \code{"none"}, or \code{"promax"} for
+\code{"ordination"} plots. The default \code{"varimax"} uses rotated,
+shared-variance-ordered, sign-anchored axes for interpretation.
+Use \code{"none"} to show the raw computational orientation. Rotation
+makes the biplot easier to label; use \code{Sigma}, correlations,
+communality, and uniqueness as the primary quantitative summaries.}
+
+\item{standardize_loadings}{Logical. For \code{"ordination"} plots, divide
+each trait loading by the square root of that trait's model-implied total
+variance before drawing arrows. This puts arrows on a correlation-like
+scale for mixed-scale traits. It changes the displayed arrow scale, not
+the model's communality or variance decomposition. Default \code{FALSE}.}
 
 \item{...}{Currently unused.}
 }

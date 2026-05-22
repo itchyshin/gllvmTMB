@@ -139,7 +139,7 @@ Default \code{NULL} is equivalent to a length-\code{nrow(data)} vector of
 ones (unweighted Bernoulli on binomial rows). Wide matrix calls
 through \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} and wide data-frame calls through
 \code{\link[=traits]{traits()}} normalise their accepted weight shapes to this same
-long-format vector before fitting.
+stacked response vector before fitting.
 }}
 
 \item{mesh}{Optional mesh object from \code{make_mesh()}. Required when the

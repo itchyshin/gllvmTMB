@@ -23,16 +23,28 @@
 ##   - check_identifiability()-- Procrustes-based loadings check
 ##   - confint_inspect()     -- visual profile-curve verification
 
-#' Laplace-consistency check via TMB::checkConsistency()
+#' Run an advanced Laplace-consistency check
 #'
-#' Simulates `n_sim` datasets from the fitted model under the joint
+#' `gllvmTMB_check_consistency()` is an advanced validation helper for
+#' the Laplace approximation, not a first-use diagnostic. Start with
+#' [check_gllvmTMB()] or [gllvmTMB_diagnose()]. Use this function when
+#' a fit looks numerically acceptable but you need a direct check of
+#' whether the approximate marginal score is centred.
+#'
+#' It simulates `n_sim` datasets from the fitted model under the joint
 #' parameter vector at the MLE, then tests whether the approximate
-#' marginal score function is centred at zero across the
-#' simulations. A non-centred score is a sign that the Laplace
-#' approximation is **unreliable** for this fit -- typically because
-#' the random-effects posterior is far from Gaussian (saturated
-#' binomial / Beta, sparse counts, weakly identified random effects)
-#' or the data don't constrain the random effects well.
+#' marginal score function is centred at zero across the simulations. A
+#' non-centred score is a sign that the Laplace approximation is
+#' **unreliable** for this fit -- typically because the random-effects
+#' posterior is far from Gaussian (saturated binomial / Beta, sparse
+#' counts, weakly identified random effects) or the data don't constrain
+#' the random effects well.
+#'
+#' Scope boundary (DIA-02): IN, local Laplace-consistency diagnostics
+#' for a fitted model. PARTIAL, this is a diagnostic signal rather than
+#' a substitute for bootstrap, profile, or external Bayesian
+#' calibration. PLANNED, broader calibration evidence belongs to the M3
+#' validation workflow.
 #'
 #' This is a complementary signal to [sanity_multi()] (which checks
 #' Hessian definiteness, gradient magnitude, convergence flags) and
@@ -54,7 +66,7 @@
 #' * Validating against `tmbstan::tmbstan(fit$tmb_obj)` (the
 #'   audit's recommended Bayesian-comparison path).
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param n_sim Integer number of simulate-evaluate replicates.
 #'   Default `100L`. Cost is roughly `n_sim` joint likelihood
 #'   evaluations; budget 5-30 seconds on a Tier-1 fixture
@@ -118,16 +130,22 @@
 #' }
 #'
 #' @export
-gllvmTMB_check_consistency <- function(fit,
-                                       n_sim    = 100L,
-                                       seed     = NULL,
-                                       estimate = FALSE) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+gllvmTMB_check_consistency <- function(
+  fit,
+  n_sim = 100L,
+  seed = NULL,
+  estimate = FALSE
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   n_sim <- as.integer(n_sim)
-  if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L)
+  if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L) {
     cli::cli_abort("{.arg n_sim} must be an integer >= 2.")
-  if (!is.null(seed)) set.seed(seed)
+  }
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
 
   ## TMB::checkConsistency emits a `Failed to invert information
   ## matrix` warning on tiny fixtures (small n, weakly identified
@@ -135,18 +153,19 @@ gllvmTMB_check_consistency <- function(fit,
   ## rather than during the call itself; capture both.
   raw <- NULL
   cap <- character(0)
-  withCallingHandlers({
-    raw <- TMB::checkConsistency(
-      fit$tmb_obj,
-      n        = n_sim,
-      estimate = isTRUE(estimate)
-    )
-    ## Force-call summary() to trigger any singular-matrix warnings
-    ## (TMB's summary path is where the information-matrix-inversion
-    ## actually runs for the marginal p-value). The output is
-    ## discarded; we just want the warning channel.
-    invisible(tryCatch(summary(raw), error = function(e) NULL))
-  },
+  withCallingHandlers(
+    {
+      raw <- TMB::checkConsistency(
+        fit$tmb_obj,
+        n = n_sim,
+        estimate = isTRUE(estimate)
+      )
+      ## Force-call summary() to trigger any singular-matrix warnings
+      ## (TMB's summary path is where the information-matrix-inversion
+      ## actually runs for the marginal p-value). The output is
+      ## discarded; we just want the warning channel.
+      invisible(tryCatch(summary(raw), error = function(e) NULL))
+    },
     warning = function(w) {
       cap <<- c(cap, conditionMessage(w))
       invokeRestart("muffleWarning")
@@ -158,13 +177,17 @@ gllvmTMB_check_consistency <- function(fit,
   ## information matrix is singular, but on some fixtures even the
   ## NA isn't populated and the slot is empty).
   marginal_p <- raw$marginal$p.value
-  if (is.null(marginal_p) || length(marginal_p) == 0L)
+  if (is.null(marginal_p) || length(marginal_p) == 0L) {
     marginal_p <- NA_real_
+  }
   marginal_b <- raw$marginal$bias
-  if (is.null(marginal_b)) marginal_b <- numeric(0L)
+  if (is.null(marginal_b)) {
+    marginal_b <- numeric(0L)
+  }
   joint_p <- if (isTRUE(estimate)) raw$joint$p.value else NA_real_
-  if (is.null(joint_p) || length(joint_p) == 0L)
+  if (is.null(joint_p) || length(joint_p) == 0L) {
     joint_p <- NA_real_
+  }
 
   threshold <- 0.5
   flagged <- character(0L)
@@ -177,33 +200,40 @@ gllvmTMB_check_consistency <- function(fit,
   }
 
   flags <- character(0L)
-  if (any(grepl("invert information matrix", cap)))
+  if (any(grepl("invert information matrix", cap))) {
     flags <- c(flags, "information_matrix_singular")
-  if (!is.na(marginal_p) && marginal_p <= 0.05)
+  }
+  if (!is.na(marginal_p) && marginal_p <= 0.05) {
     flags <- c(flags, "marginal_score_non_centred")
-  if (isTRUE(estimate) && !is.na(joint_p) && joint_p <= 0.05)
+  }
+  if (isTRUE(estimate) && !is.na(joint_p) && joint_p <= 0.05) {
     flags <- c(flags, "joint_score_non_centred")
-  if (length(flagged) > 0L && !"marginal_score_non_centred" %in% flags)
+  }
+  if (length(flagged) > 0L && !"marginal_score_non_centred" %in% flags) {
     flags <- c(flags, "marginal_score_non_centred")
+  }
   ## When the marginal p-value is NA AND no other flag fires (no
   ## singular-matrix warning, no per-parameter bias > threshold),
   ## the test is inconclusive: report that explicitly rather than
   ## falsely claiming "centred".
-  if (is.na(marginal_p) && length(flags) == 0L)
+  if (is.na(marginal_p) && length(flags) == 0L) {
     flags <- "marginal_p_value_unavailable"
-  if (length(flags) == 0L) flags <- "centred"
+  }
+  if (length(flags) == 0L) {
+    flags <- "centred"
+  }
 
   out <- list(
-    marginal_p_value    = marginal_p,
-    marginal_bias       = marginal_b,
-    joint_p_value       = joint_p,
-    flagged_parameters  = flagged,
-    n_sim               = n_sim,
-    threshold           = threshold,
-    diagnostics         = flags,
-    raw                 = raw,
-    warnings            = cap,
-    call                = match.call()
+    marginal_p_value = marginal_p,
+    marginal_bias = marginal_b,
+    joint_p_value = joint_p,
+    flagged_parameters = flagged,
+    n_sim = n_sim,
+    threshold = threshold,
+    diagnostics = flags,
+    raw = raw,
+    warnings = cap,
+    call = match.call()
   )
   class(out) <- "gllvmTMB_check_consistency"
   out

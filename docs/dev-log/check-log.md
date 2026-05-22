@@ -5757,6 +5757,193 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Loadings / ordination reference cleanup
+
+Scope:
+
+- Completed the first cleanup cluster from
+  `docs/dev-log/audits/2026-05-22-reference-function-docs-audit.md`.
+- Reworded loadings, ordination, residual covariance, `VP()`, and
+  `suggest_lambda_constraint()` reference pages so users see "a fit returned by
+  `gllvmTMB()`" rather than the internal `gllvmTMB_multi` class.
+- Changed the displayed `level` defaults for the touched helpers to `"unit"`
+  while preserving `"B"` / `"W"` as deprecated accepted aliases.
+- Added after-task report
+  `docs/dev-log/after-task/2026-05-22-reference-loadings-docs.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,mergeStateStatus`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the merged PR #233 lane plus local audit commit
+  `b6fc4e0`; no GitHub PR overlap was present.
+- `air format R/rotate-loadings.R R/output-methods.R R/extractors.R R/suggest-lambda-constraint.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated affected Rd files. A redundant `@inheritParams` warning on
+  `extract_ordination()` was fixed; the final run completed without warnings.
+- `air format tests/testthat/test-suggest-lambda-constraint.R tests/testthat/test-rotate-compare-loadings.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "rotate|ordiplot|suggest-lambda-constraint|plot-gllvmTMB")'`
+  -> 309 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rg -n 'Legacy aliases|post-hoc|level = c\\(\"unit\", \"unit_obs\", \"B\", \"W\"\\)|Rotate the loadings of a fitted `gllvmTMB_multi`|Loadings matrix from a `gllvmTMB_multi`|Latent-variable scores from a `gllvmTMB_multi`|Two-axis ordination plot of a `gllvmTMB_multi`|A `gllvmTMB_multi` fit|A \\\\code\\{gllvmTMB_multi\\} fit|A \\\\code\\{gllvmTMB_multi\\} object' R/rotate-loadings.R R/output-methods.R R/suggest-lambda-constraint.R man/rotate_loadings.Rd man/getLoadings.Rd man/getLV.Rd man/getResidualCov.Rd man/ordiplot.Rd man/extract_ordination.Rd man/suggest_lambda_constraint.Rd man/VP.Rd`
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not run for this roxygen/reference cleanup.
+- Article renders were not run because this slice deliberately touched no
+  articles.
+
+## 2026-05-22 -- Confidence-eye plot option
+
+Scope:
+
+- Added the public `style = "eye"` spelling to `plot_correlations()` and
+  `plot_Sigma_table()`.
+- Kept `style = "raindrop"` and `raindrop_level` as compatibility aliases.
+- Added `eye_level`, confidence-eye metadata, and hollow estimate-circle
+  geometry.
+- Updated generated Rd and plot-helper tests.
+- Added after-task report
+  `docs/dev-log/after-task/2026-05-22-confidence-eye-plots.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,mergeStateStatus`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the merged PR #233 lane plus local reference-doc commits;
+  no GitHub PR overlap was present.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `plot_correlations.Rd`, `plot_Sigma_table.Rd`, and
+  `plot_Sigma_heatmap.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 161 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rg -n 'confidence-I|Confidence-I|style = c\\(\"interval\", \"raindrop\"\\)|correlations_raindrop|sigma_table_raindrop|has_raindrop|Drops show|Drops use|Raindrops reconstruct|raindrops, and' R/plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd man/plot_Sigma_heatmap.Rd tests/testthat/test-plot-covariance-tables.R`
+  -> no hits.
+- `rg -n "Deprecated alias|deprecated alias" R/plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cors <- data.frame(tier = c("unit", "unit", "unit_obs", "unit_obs"), trait_i = c("length", "length", "length", "mass"), trait_j = c("mass", "wing", "mass", "wing"), correlation = c(0.42, -0.18, 0.10, -0.28), lower = c(0.12, -0.45, NA_real_, -0.53), upper = c(0.66, 0.12, NA_real_, 0.02), method = c("fisher-z", "fisher-z", "none", "fisher-z")); p <- plot_correlations(cors, style = "eye"); ggplot2::ggsave("/tmp/gllvmtmb-confidence-eye.png", p, width = 7.2, height = 3.8, dpi = 180, bg = "white")'`
+  -> rendered `/tmp/gllvmtmb-confidence-eye.png`; visual inspection passed.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not run for this plot-helper API/display slice.
+- Article renders were not run because this slice deliberately touched no
+  articles.
+
+## 2026-05-22 -- Method and plot reference wording cleanup
+
+Scope:
+
+- Cleaned S3 method titles and argument text so fitted-model help pages lead
+  with "fit returned by `gllvmTMB()`" rather than `gllvmTMB_multi`.
+- Reworded `plot_correlations()`, `plot_Sigma_table()`, and
+  `plot_Sigma_heatmap()` input text in the same reader-first style.
+- Replaced the public `plot_Sigma_heatmap()` phrase "attached plot data" with
+  "returned plot data".
+- Added after-task report
+  `docs/dev-log/after-task/2026-05-22-method-plot-reference-docs.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,mergeStateStatus`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the merged PR #233 lane plus local reference-doc commits;
+  no GitHub PR overlap was present.
+- `air format R/methods-gllvmTMB.R R/plot-gllvmTMB.R R/plot-covariance-tables.R`
+  -> reflowed too much of `R/methods-gllvmTMB.R`; that uncommitted formatting
+  noise was restored before the final diff.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated the affected S3 method and plot-helper Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|plot-gllvmTMB|mixed-family")'`
+  -> 569 passes, 0 failures, 2 warnings, 0 skips. The warnings came from
+  existing legacy `"B"` alias use in an unrelated mixed-family profile test, so
+  a narrower clean run was used for slice evidence.
+- `Rscript --vanilla -e 'devtools::test(filter = "^(plot-covariance-tables|plot-gllvmTMB|sanity-multi|tidy-predict)$")'`
+  -> 385 passes, 0 failures, 0 warnings, 0 skips.
+- `rg -n 'attached plot data|Plot a fitted multivariate `gllvmTMB_multi` model|Confidence intervals on fixed effects of a `gllvmTMB_multi` fit|Tidy a `gllvmTMB_multi` fit|Simulate new responses from a fitted `gllvmTMB_multi`|Predict from a `gllvmTMB_multi` fit|Convergence and parameter sanity report for a `gllvmTMB_multi` fit|A `gllvmTMB_multi` fit\\.|A \\\\code\\{gllvmTMB_multi\\} fit\\.' R/methods-gllvmTMB.R R/plot-gllvmTMB.R R/plot-covariance-tables.R man/gllvmTMB_multi-methods.Rd man/confint.gllvmTMB_multi.Rd man/tidy.gllvmTMB_multi.Rd man/simulate.gllvmTMB_multi.Rd man/sanity_multi.Rd man/predict.gllvmTMB_multi.Rd man/plot.gllvmTMB_multi.Rd man/plot_correlations.Rd man/plot_Sigma_table.Rd man/plot_Sigma_heatmap.Rd`
+  -> no hits.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `gh run view 26288313415 --repo itchyshin/gllvmTMB --json status,conclusion,jobs,updatedAt`
+  -> post-PR #233 main R-CMD-check was still blocked on the Windows job; the
+  earlier manual pkgdown failure was diagnosed separately as a rejected
+  branch deployment, not a pkgdown build failure.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not run for this roxygen/reference wording
+  cleanup.
+- Article renders were not run because this slice deliberately touched no
+  articles.
+
+## 2026-05-22 -- Reference function documentation audit plan
+
+Scope:
+
+- Started the post-#233 reference-function documentation lane on
+  `codex/reference-function-audit-2026-05-22`.
+- Added `docs/dev-log/audits/2026-05-22-reference-function-docs-audit.md`.
+- Kept the lane deliberately off new article work. The first planned clusters
+  are loadings/ordination docs, confidence-eye plot capability, method-page
+  wording, extractor pages, diagnostics, and deprecated alias wording.
+
+Evidence:
+
+- `git status --short --branch`
+  -> clean branch at start:
+  `## codex/reference-function-audit-2026-05-22...origin/main`.
+- `git diff --stat`
+  -> no diff before this audit note.
+- `tail -80 docs/dev-log/check-log.md`
+  -> latest completed entries were the covariance plot/helper slices.
+- `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-21-204819-codex-checkpoint.md`
+  -> prior compaction checkpoint read; it pointed to the earlier communality
+  lane, now superseded by the maintainer's function-documentation lane.
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,mergeStateStatus`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work includes PR #233 merge commit `c1dc2e4` and the overnight
+  covariance/doc commits; no open branch overlap was reported by GitHub.
+- `gh run view 26288313415 --repo itchyshin/gllvmTMB --json status,conclusion,jobs,url,headSha`
+  -> main R-CMD-check for `c1dc2e4` was still in progress while this audit
+  started.
+- `rg -n 'gllvmTMB_multi|Legacy aliases|deprecated alias|level = c\\(\"unit\", \"unit_obs\", \"B\", \"W\"\\)|post-hoc|post hoc|canonical interface|canonical replacement|long-format engine|stacked-trait|raindrop|confidence-I|extracting Sigma|matrix by hand' R man README.md _pkgdown.yml`
+  -> found the expected reference-page hotspots, especially loadings/
+  ordination pages, S3 method pages, extractor pages, and plot-helper docs.
+- `sed -n '120,190p' _pkgdown.yml`
+  -> Reference index still lists many internal S3 topic names under Methods
+  and plots on fitted models.
+- `sed -n '1,220p' R/rotate-loadings.R`
+  and `sed -n '1,230p' R/output-methods.R`
+  -> confirmed loadings/ordination cluster is the safest first cleanup target.
+
+Deliberately not run:
+
+- No R package checks were run for this audit note before the first roxygen or
+  code edit. The next documentation edit must run `devtools::document()`,
+  focused stale-word scans, `pkgdown::check_pkgdown()`, and `git diff --check`.
+
 ## 2026-05-22 -- User-facing site preview and pkgdown deploy diagnosis
 
 Scope:
@@ -6902,3 +7089,1526 @@ Deliberately not run:
   cleanup. Focused helper tests, article render, pkgdown check, whitespace
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
+
+## 2026-05-22 -- Extractor reference wording cleanup
+
+Scope:
+
+- Cleaned extractor and profile-helper reference wording so users see "fit
+  returned by `gllvmTMB()`" instead of internal `gllvmTMB_multi` class-first
+  language.
+- Updated `extract_correlations()` help to lead with canonical covariance
+  levels (`unit`, `unit_obs`, `phy`, `spatial`) while honestly noting that the
+  current output `tier` column still stores internal labels (`B`, `W`, `phy`,
+  `spde`).
+- Tightened bootstrap interval wording for correlations so useful point
+  estimates with unsafe Hessian/profile intervals are framed as a bootstrap
+  uncertainty workflow, not as model failure.
+- Fixed one public-to-internal boundary leak: `extract_correlations(tier =
+  "unit", method = "profile")` no longer emits legacy `B` deprecation warnings
+  from `profile_ci_correlation()`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch`
+  -> `codex/reference-function-audit-2026-05-22`, clean, ahead 4.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent local commits were the current reference-audit lane on top of
+  `origin/main` commit `c1dc2e4`.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated the affected extractor/profile Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|sigma-rename|extract-correlations|extract-communality|extract-repeatability|plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 376 passes, 0 failures, 0 warnings, 1 known skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|sigma-rename|extract-correlations|extract-communality|extract-repeatability|plot-covariance-tables|profile-ci", stop_on_failure = TRUE)'`
+  -> 417 passes, 0 failures, 2 warnings, 1 known skip. The warnings came from
+  existing `test-profile-ci.R` calls using legacy `tier = "B"` and
+  `parm = "Sigma_B"`; those belong to a later `confint()` naming sweep.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean after the check-log / after-task entry.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'gllvmTMB_multi model|A `gllvmTMB_multi` fit|A `gllvmTMB_multi` object|A \\code\\{gllvmTMB_multi\\} fit|fitted gllvmTMB_multi model|posterior uncertainty|5 tiers|non, spde|c\\("B", "W", "phy", "spde"\\)' R/extract-sigma.R R/extract-sigma-table.R R/extract-correlations.R R/extractors.R R/extract-repeatability.R R/profile-derived.R man/extract_Sigma.Rd man/extract_Sigma_table.Rd man/compare_Sigma_table.Rd man/extract_correlations.Rd man/extract_Sigma_B.Rd man/extract_Sigma_W.Rd man/extract_ICC_site.Rd man/extract_communality.Rd man/extract_repeatability.Rd man/profile_ci_correlation.Rd man/profile_ci_repeatability.Rd man/profile_ci_phylo_signal.Rd man/profile_ci_communality.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and full `devtools::check()` were not rerun for this
+  reference-wording slice. No articles were edited or rendered. No 3-OS CI was
+  available until the branch is pushed.
+
+## 2026-05-22 -- `confint()` canonical Sigma parameter names
+
+Scope:
+
+- Added canonical `confint()` Sigma parameter names:
+  `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"`.
+- Preserved legacy `parm = "Sigma_B"` and `parm = "Sigma_W"` as accepted
+  aliases. Output `parameter` labels follow the requested token so existing
+  scripts keep their historical labels.
+- Updated the `confint.gllvmTMB_multi()` reference page, NEWS, profile tests,
+  bootstrap-confint tests, and the M3.3 design note that referenced the old
+  `parm = "Sigma_B"` spelling.
+- Fixed one adjacent canonical-name leak: `extract_communality(level = "unit",
+  ci = TRUE, method = "bootstrap")` now passes canonical `level = "unit"` into
+  `bootstrap_Sigma()` instead of re-emitting the internal `B` alias.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch`
+  -> `codex/reference-function-audit-2026-05-22`, clean, ahead 5.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent local commits were the current reference-audit lane on top of
+  `origin/main` commit `c1dc2e4`.
+- `air format R/z-confint-gllvmTMB.R R/extractors.R tests/testthat/test-confint-bootstrap.R tests/testthat/test-profile-ci.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/confint.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "confint-bootstrap|profile-ci|profile-targets|sigma-rename", stop_on_failure = TRUE)'`
+  -> 106 passes, 0 failures, 0 warnings, 1 known skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-communality-bootstrap|m1-5-extract-communality-mixed-family|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 204 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Convention-cascade scan:
+
+  ```sh
+  rg -n 'confint\([^\n]*parm\s*=\s*"Sigma_B"|parm\s*=\s*"Sigma_W"|confint\([^\n]*Sigma_B|confint\([^\n]*Sigma_W|Sigma_B", method|Sigma_W", method' README.md NEWS.md docs/design vignettes R tests/testthat
+  ```
+
+  -> only the NEWS legacy-alias sentence and the dedicated
+  `test-confint-bootstrap.R` legacy-alias regression remained.
+- Stale primary-token scan:
+
+  ```sh
+  rg -n 'gllvmTMB_multi fit|A \\code\{gllvmTMB_multi\} fit|Confidence intervals for a \\code\{gllvmTMB_multi\} fit|\{Sigma_B, Sigma_W, sigma_phy\}|parm = "Sigma_B"' R/z-confint-gllvmTMB.R man/confint.gllvmTMB_multi.Rd NEWS.md docs/design/44-m3-3-inference-replacement.md
+  ```
+
+  -> no hits.
+- Register-row cross-check:
+
+  ```sh
+  rg -n 'CI-02|CI-03|EXT-01|EXT-13|CI-10|Sigma_unit|Sigma_unit_obs|method = c\("profile", "wald", "bootstrap"\)' R/z-confint-gllvmTMB.R man/confint.gllvmTMB_multi.Rd NEWS.md docs/design/35-validation-debt-register.md
+  ```
+
+  -> `confint()` method defaults, canonical Sigma names, and scope-boundary
+  row IDs were present in source/Rd/NEWS and backed by existing register rows.
+- Rd spot-check:
+  `tail -5 man/confint.gllvmTMB_multi.Rd && grep -c '^\\keyword' man/confint.gllvmTMB_multi.Rd`
+  -> normal ending; 0 keyword entries.
+
+Deliberately not run:
+
+- Full `devtools::test()` and full `devtools::check()` were not rerun for this
+  bounded `confint()` naming slice. No vignettes or articles were edited or
+  rendered because the cascade scan found no article examples using the old
+  `confint()` Sigma tokens. No 3-OS CI was available until the branch is
+  pushed.
+
+## 2026-05-22 -- Diagnostic reference docs
+
+Scope:
+
+- Cleaned the diagnostics and uncertainty reference cluster:
+  `confint_inspect()`, `profile_targets()`, `bootstrap_Sigma()`,
+  `check_gllvmTMB()`, `gllvmTMB_diagnose()`, `sanity_multi()`,
+  `check_identifiability()`, `coverage_study()`, and
+  `gllvmTMB_check_consistency()`.
+- Reframed first-line diagnostics as action-first pages for fitted models.
+- Marked profile inspection and simulation-validation helpers as advanced
+  diagnostics, not normal first-use workflow.
+- Reframed `bootstrap_Sigma()` as a practical uncertainty fallback when
+  Hessian, Wald, or profile intervals are unsafe, while avoiding posterior
+  language.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch`
+  -> `codex/reference-function-audit-2026-05-22`, clean, ahead 6.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent local work was the current reference-audit lane on top of
+  `origin/main` commit `c1dc2e4`.
+- `air format R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated affected diagnostic Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "confint-inspect|profile-targets|bootstrap-Sigma|sanity-multi|gllvmTMB-diagnose|coverage-study|check-identifiability|check-consistency|gllvmTMBcontrol", stop_on_failure = TRUE)'`
+  -> 221 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale first-line wording scan:
+
+  ```sh
+  rg -n 'gllvmTMB_multi fit|gllvmTMB_multi object|A \\code\\{gllvmTMB_multi\\} fit|posterior uncertainty|full posterior|Switch to bootstrap|Empirical coverage-rate study for a fitted gllvmTMB_multi|Parametric bootstrap for Sigma|Profile-likelihood target inventory for a \\code\\{gllvmTMB_multi\\} fit|Machine-readable convergence|One-call diagnostic' R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd
+  ```
+
+  -> only the internal source header `R/methods-gllvmTMB.R:1` remained.
+- Register-row cross-check:
+
+  ```sh
+  rg -n 'Scope boundary|DIA-01|DIA-02|DIA-03|DIA-05|DIA-07|DIA-08|DIA-10|MIS-15|EXT-13|CI-02|CI-03|CI-08|CI-10' R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd docs/design/35-validation-debt-register.md
+  ```
+
+  -> touched pages cite existing validation-debt rows.
+- Rose stale-terminology scan:
+
+  ```sh
+  rg -n '\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|U_phy|U_non|meta_known_V|gllvmTMB_wide|full.*posterior|profile-likelihood default|trio' R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd
+  ```
+
+  -> no hits.
+- Rd spot-check:
+  `tail -5 man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd`
+  -> normal endings.
+- Rd keyword check:
+  `grep -Hc '^\\keyword' man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd`
+  -> all 0 keyword entries.
+
+Deliberately not run:
+
+- Full `devtools::test()` and full `devtools::check()` were not rerun for this
+  reference-prose slice. No vignettes or articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Test surface cleanup after reference / confidence-eye slices
+
+Scope:
+
+- Updated tests that still expected pre-cleanup public wording or pre-rename
+  confidence-eye metadata.
+- Replaced legacy `B` / `W` level and tier spellings in the touched tests with
+  canonical `unit` / `unit_obs` spellings where legacy aliases were not the
+  behavior under test.
+- Suppressed intentional `gllvmTMB_wide()` deprecation warnings in legacy
+  wrapper tests so the test surface stays quiet while the migration wrapper
+  remains covered.
+- Confirmed the missing-response contract is already implemented and tested:
+  long `NA` response rows and wide `traits(...)` `NA` cells are dropped as
+  unobserved unit-trait cells.
+
+Evidence:
+
+- Starting state:
+  `git status --short --branch`
+  -> `codex/reference-function-audit-2026-05-22`, clean, ahead 7.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,createdAt,updatedAt,event,url`
+  -> latest `main` R-CMD-check and follow-on pkgdown both succeeded for
+  `c1dc2e4`; earlier manual pkgdown dispatch failure was superseded by the
+  successful deploy.
+- `gh run view 26282665628 --repo itchyshin/gllvmTMB --json databaseId,displayTitle,workflowName,status,conclusion,event,headBranch,headSha,createdAt,updatedAt,jobs,url`
+  -> failed manual pkgdown dispatch on `codex/symbol-syntax-alignment-2026-05-21`
+  at `299660d`; job had no recorded steps/logs.
+- `Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'`
+  -> interrupted after it exposed stale test failures and then spent several
+  minutes in `phylo-q-decomposition`. Captured failures were a stale
+  `correlations_raindrop` metadata expectation and stale
+  `gllvmTMB_multi` wrong-object regexes; captured warnings were legacy alias
+  test calls.
+- `air format tests/testthat/test-example-morphometrics.R tests/testthat/test-extractors-extra.R tests/testthat/test-cross-sectional-unique.R tests/testthat/test-fisher-z-correlations.R tests/testthat/test-gllvmTMB-wide.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics|extractors-extra|cross-sectional-unique|fisher-z-correlations|gllvmTMB-wide|missing-response|traits-keyword|plot-covariance-tables|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 526 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale test-surface scan:
+
+  ```sh
+  rg -n 'tier = "B"|tier = "W"|level = "B"|level = "W"|"gllvmTMB_multi"\)|regexp = "gllvmTMB_multi"|correlations_raindrop' tests/testthat/test-example-morphometrics.R tests/testthat/test-extractors-extra.R tests/testthat/test-cross-sectional-unique.R tests/testthat/test-fisher-z-correlations.R tests/testthat/test-gllvmTMB-wide.R
+  ```
+
+  -> only legitimate `expect_s3_class(fit, "gllvmTMB_multi")` class checks
+  remain in `test-gllvmTMB-wide.R`.
+
+Deliberately not run:
+
+- Full `devtools::test()` was attempted but not completed after the actionable
+  failures were captured; the focused suite covering edited tests and plot
+  helpers is clean. `pkgdown::check_pkgdown()` was not rerun because no
+  documentation or pkgdown navigation files changed. No 3-OS CI was available
+  until the branch is pushed.
+
+## 2026-05-22 -- Unique keyword reference cleanup
+
+Scope:
+
+- Cleaned the `unique()` / `diag_re` reference topic after the reference-page
+  audit found stale `level = "B"` examples and old `U` / `unique-S` notation.
+- Kept this slice documentation-only: no formula parser, likelihood, or test
+  behavior changed.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/diag_re.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/diag_re.Rd && grep -c '^\\keyword' man/diag_re.Rd`
+  -> normal ending; one expected `internal` keyword.
+- Stale wording scan:
+
+  ```sh
+  rg -n "unique\\(S\\)|s_\\{|S_B|S_W| U\\.|# U|level = \\\"B\\\"|level = \\\"W\\\"|diag\\(\\) term|unique-S|non,shared|Long data are canonical|attached plot data" R/unique-keyword.R man/diag_re.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  roxygen-only cleanup. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Confidence-eye no-outline refinement
+
+Scope:
+
+- Removed the outer upper/lower line layers from confidence eyes so the
+  compatibility display is a soft filled shape with a hollow estimate marker.
+- Added a quiet bottom x-axis line to the covariance-table plot theme.
+- Added tests that forbid confidence-eye perimeter `GeomLine` layers and check
+  the bottom-axis line.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- Initial formatter attempt:
+  `Rscript --vanilla -e 'air::air_format(c("R/plot-covariance-tables.R", "tests/testthat/test-plot-covariance-tables.R"))'`
+  -> failed because `air` is installed as the shell CLI, not an R package.
+- Correct formatter:
+  `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 180 passes, 0 failures, 0 warnings, 0 skips.
+- Rendered
+  `/tmp/gllvmTMB-confidence-eye-qa/confidence-eye-no-outline.png`.
+  Florence verdict: PASS for the maintainer-requested visual: no eye outline,
+  hollow estimate marker, and bottom x-axis line present.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Layer-contract scan:
+
+  ```sh
+  rg -n 'geom_line\(|GeomLine|axis\.line\.x\.bottom|gtmb_has_bottom_axis_line' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R
+  ```
+
+  -> expected hits in the bottom-axis implementation and tests that forbid
+  confidence-eye `GeomLine` layers.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `devtools::document()`, and
+  `pkgdown::check_pkgdown()` were not rerun for this plot-layer-only slice. No
+  roxygen, Rd, vignette, or article source files changed. No 3-OS CI was
+  available until the branch is pushed.
+
+## 2026-05-22 -- Rotation plotting workflow docs
+
+Scope:
+
+- Clarified `plot.gllvmTMB_multi()` reference wording so rotated ordination
+  axes are described as interpretable biplot orientations, not primary
+  inference targets.
+- Clarified `standardize_loadings` as a display-scale change only.
+- Updated ordination captions to point readers back to `Sigma` and correlation
+  summaries for rotation-invariant interpretation.
+- Clarified `rotate_loadings()` guidance: inspect covariance summaries first,
+  rotate `unit` and `unit_obs` separately, use varimax first, and reserve
+  promax for intended correlated axes.
+- Added plot tests that guard the caption wording.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-gllvmTMB.R R/rotate-loadings.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd` and `man/rotate_loadings.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB|rotate-compare-loadings|rotation-advisory", stop_on_failure = TRUE)'`
+  -> 261 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Wording scan:
+
+  ```sh
+  rg -n 'Use Sigma and correlation summaries|raw fitted orientation|uniquely "right"|primary quantitative summaries|standardized loadings|method = "promax"' R/plot-gllvmTMB.R R/rotate-loadings.R man/plot.gllvmTMB_multi.Rd man/rotate_loadings.Rd tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits in source, generated Rd, and tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  reference-doc and caption slice. No vignette/article source files changed.
+  No 3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Reference/plot readiness ledger
+
+Scope:
+
+- Refreshed the visual-debt ledger after the 12-slice reference/plot block.
+- Updated `docs/design/46-visualization-grammar.md` so it no longer says
+  Phase 1c-viz is 0/7.
+- Updated `docs/design/53-report-ready-extractor-plot-contract.md` with
+  explicit visual-QA debt before stable figure-surface claims.
+- Updated `docs/design/35-validation-debt-register.md` and
+  `docs/design/06-extractors-contract.md` to remove stale `quartimax` wording
+  and classify `raindrop` only as a compatibility alias.
+- Added
+  `docs/dev-log/audits/2026-05-22-reference-plot-readiness.md`.
+
+Evidence:
+
+- Lane check before editing shared design/dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'`
+  -> 2547 passes, 13 skips, 1 warning, 0 failures in 631.7 seconds.
+- Full-test warning:
+  `test-spatial-latent-recovery.R:140` still warns that
+  `level = "spde"` is deprecated and `level = "spatial"` should be used.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'Phase 1c-viz at 0/7|quartimax|Confidence-I|confidence-I|randrop|raindrop shows|Tight drops|ci-correlation-raindrop' docs/design NEWS.md README.md vignettes R man tests _pkgdown.yml
+  ```
+
+  -> no hits.
+- Raindrop compatibility scan:
+
+  ```sh
+  rg -n 'style = "raindrop"|raindrop|Raindrop|raindrop_level' R man tests NEWS.md docs/design vignettes README.md _pkgdown.yml
+  ```
+
+  -> expected hits only where `raindrop` is documented or tested as a
+  compatibility alias.
+
+Deliberately not run:
+
+- `devtools::check(args = "--no-manual")` was not rerun after this final
+  design-ledger slice. No 3-OS CI was available until the branch is pushed.
+  No `vdiffr` snapshots exist yet.
+
+## 2026-05-22 -- Install warning n_mesh cleanup
+
+Scope:
+
+- Removed the package-side `unused variable 'n_mesh'` compiler warning without
+  changing the TMB data interface or likelihood.
+- Investigated the remaining local install warning from the PR gate.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 3 notes in 11m 28.2s. The warning was in package
+  install; notes were top-level `air.toml`, legacy NEWS headings, and unused
+  `nlme`.
+- Install-log inspection showed the install warning included broken local SDK
+  lookup, Eigen/TMB warnings, an R-header warning, and the package-side
+  `gllvmTMB.cpp:92` unused `n_mesh` warning.
+- Direct SDK check:
+  `xcrun --show-sdk-version; echo exit:$?`
+  -> fails because `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`
+  cannot be located.
+- Clean SDK override:
+  `SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" xcrun --show-sdk-version`
+  -> `26.4`.
+- Install after the `n_mesh` patch:
+  `SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" R CMD INSTALL --preclean --library=/tmp/gllvmTMB-install-test-lib .`
+  -> completed successfully; the package-side unused `n_mesh` warning no
+  longer appeared.
+- Rejected source pragma attempt:
+  `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> R CMD check warned about non-portable diagnostic pragmas, so the pragma
+  change was removed.
+- Rejected Makevars suppression attempt:
+  package-level warning flags landed before R's default `-Wall`, so they did
+  not suppress the Eigen warnings; the Makevars change was removed.
+- Focused spatial tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "stage4-spde|spatial-mode-dispatch|spatial-orientation", stop_on_failure = TRUE)'`
+  -> 42 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+
+Deliberately not run:
+
+- Full `devtools::test()` was not rerun after the one-line C++ no-op marker;
+  the full suite had already passed earlier in this sitting. Full
+  `devtools::check(args = "--no-manual")` still needs either a fixed local
+  CommandLineTools SDK or CI evidence.
+
+## 2026-05-22 -- Ordination label placement
+
+Scope:
+
+- Improved `plot(type = "ordination")` trait-label placement for 2D biplots
+  and 3D pair-grid biplots.
+- Added deterministic arrow-end label offsets, direction-aware justification,
+  and a small within-panel relaxation pass for near-overlapping same-direction
+  labels.
+- Removed the 3D `check_overlap = TRUE` text-layer behavior so plotted trait
+  labels are not silently dropped.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- Focused plotting tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 207 passes, 0 failures, 0 warnings, 0 skips.
+- Visual QA render:
+  `/tmp/gllvmTMB-ordination-label-qa/ordination-labels.png`
+  -> inspected manually; labels sit outside arrow tips and same-direction label
+  crowding is reduced without dropping trait labels.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Feature scan:
+
+  ```sh
+  rg -n 'label_x|label_y|label_hjust|label_vjust|check_overlap|arrow_label_positions' R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits for label-position metadata and no remaining
+  `check_overlap` use in ordination text layers.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  narrow plot-rendering polish slice. No roxygen, pkgdown, article, likelihood,
+  or formula grammar files changed. No 3-OS CI was available until the branch
+  is pushed.
+
+## 2026-05-22 -- Confidence-eye wording alignment
+
+Scope:
+
+- Promoted `confidence eye` / `style = "eye"` as the primary name in NEWS and
+  the report-ready plot contract.
+- Kept `style = "raindrop"` only as a compatibility-alias phrase.
+- Updated validation-debt rows EXT-19, EXT-24, and MIS-22 so capability wording
+  matches the implemented plot types (`correlations_confidence_eye` and
+  `sigma_table_confidence_eye`).
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Primary-name scan:
+
+  ```sh
+  rg -n 'style = "eye"|confidence-eye|confidence eye|Confidence eye|Confidence eyes|confidence eyes|confidence_eye' NEWS.md docs/design/53-report-ready-extractor-plot-contract.md docs/design/35-validation-debt-register.md
+  ```
+
+  -> expected confidence-eye hits in NEWS, the design contract, and validation
+  register.
+- Legacy-primary scan:
+
+  ```sh
+  rg -n 'correlations_raindrop|sigma_table_raindrop|style = "raindrop"|raindrop plots|forest/raindrop|Raindrops|raindrops|Raindrop' NEWS.md docs/design/53-report-ready-extractor-plot-contract.md docs/design/35-validation-debt-register.md
+  ```
+
+  -> remaining hits are compatibility-alias statements only.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  wording-only alignment. Articles were deliberately not edited in this slice;
+  the morphometrics article still exercises the compatibility alias and should
+  be switched in a later article-specific pass. No 3-OS CI was available until
+  the branch is pushed.
+
+## 2026-05-22 -- Confidence-eye reference docs
+
+Scope:
+
+- Tightened `plot_correlations()` and `plot_Sigma_table()` roxygen so reference
+  help describes a confidence eye as a pale frequentist compatibility shape
+  plus a hollow, sign-coloured estimate circle.
+- Regenerated `man/plot_correlations.Rd` and `man/plot_Sigma_table.Rd`.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `plot_correlations.Rd` and `plot_Sigma_table.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 161 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Reference wording scan:
+
+  ```sh
+  rg -n 'pale frequentist compatibility shape|hollow,|sign-coloured estimate circle|posterior density|raindrop" is accepted' R/plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd
+  ```
+
+  -> expected roxygen and Rd hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  narrow reference-doc slice. No articles were edited. No 3-OS CI was available
+  until the branch is pushed.
+
+## 2026-05-22 -- Confidence-eye internal helper naming
+
+Scope:
+
+- Renamed the internal confidence-shape constructor from
+  `.gtmb_raindrop_data()` to `.gtmb_confidence_eye_data()`.
+- Kept the backward-compatible `gllvmTMB_raindrop_data` plot attribute while
+  continuing to expose the preferred `gllvmTMB_confidence_eye_data` attribute.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 161 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Internal naming scan:
+
+  ```sh
+  rg -n 'gtmb_raindrop_data|gtmb_confidence_eye_data|gllvmTMB_raindrop_data|gllvmTMB_confidence_eye_data' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R
+  ```
+
+  -> internal helper hits now use `gtmb_confidence_eye_data`; remaining
+  `gllvmTMB_raindrop_data` hits are the compatibility attribute and its alias
+  test.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()`
+  were not rerun for this internal helper-name cleanup. No roxygen, Rd, article,
+  likelihood, or formula grammar files changed. No 3-OS CI was available until
+  the branch is pushed.
+
+## 2026-05-22 -- Wrong-object message cleanup
+
+Scope:
+
+- Cleaned four user-facing wrong-object messages so they point users to a fit
+  returned by `gllvmTMB()` instead of exposing the internal `gllvmTMB_multi`
+  class name.
+- Touched `plot_correlations()`, `plot_Sigma_table()`,
+  `plot_Sigma_heatmap()`, and `suggest_lambda_constraint()`.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-covariance-tables.R R/suggest-lambda-constraint.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|suggest-lambda-constraint", stop_on_failure = TRUE)'`
+  -> 233 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Wrong-object wording scan:
+
+  ```sh
+  rg -n '\{\.cls gllvmTMB_multi\} fit|must be a .*gllvmTMB_multi.*fit|Pass a gllvmTMB_multi|fit returned by \{\.fun gllvmTMB\}' R/plot-covariance-tables.R R/suggest-lambda-constraint.R tests/testthat
+  ```
+
+  -> no stale wrong-object hits remain in the touched files; four replacement
+  `fit returned by {.fun gllvmTMB}` messages are present.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()`
+  were not rerun for this message-only cleanup. No roxygen, Rd, article,
+  likelihood, or formula grammar files changed. No 3-OS CI was available until
+  the branch is pushed.
+
+## 2026-05-22 -- Wrong-object message regression tests
+
+Scope:
+
+- Added focused tests that guard the new `fit returned by gllvmTMB()` wording
+  for covariance plot helpers and `suggest_lambda_constraint()`.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format tests/testthat/test-plot-covariance-tables.R tests/testthat/test-suggest-lambda-constraint.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|suggest-lambda-constraint", stop_on_failure = TRUE)'`
+  -> 237 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Test-guard scan:
+
+  ```sh
+  rg -n 'wrong object|fit returned by .*gllvmTMB|plot_correlations\(list\(\)\)|plot_Sigma_table\(list\(\)\)|plot_Sigma_heatmap\(list\(\)\)|suggest_lambda_constraint\(list\(\)\)' tests/testthat/test-plot-covariance-tables.R tests/testthat/test-suggest-lambda-constraint.R
+  ```
+
+  -> expected tests for all four wrong-object surfaces.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()`
+  were not rerun for this test-only guard slice. No roxygen, Rd, article,
+  likelihood, or formula grammar files changed. No 3-OS CI was available until
+  the branch is pushed.
+
+## 2026-05-22 -- Plot dispatcher validation-row refresh
+
+Scope:
+
+- Updated validation-debt row MIS-09 for `plot.gllvmTMB_multi()` so it no
+  longer says the dispatcher has five plot types.
+- Recorded the current seven dispatcher plot types and why the row remains
+  `partial`: visual snapshots / broader rendered-figure QA and 3-OS CI are
+  still outstanding.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Register wording scan:
+
+  ```sh
+  rg -n 'MIS-09|5 plot types|Phase 1c-viz|Seven dispatcher types|visual snapshots' docs/design/35-validation-debt-register.md R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> MIS-09 now records seven dispatcher types; no stale `5 plot types` or
+  `Phase 1c-viz` wording remains in the scanned files.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()`
+  were not rerun for this one-row validation-register update. No code,
+  roxygen, Rd, article, likelihood, or formula grammar files changed. No 3-OS
+  CI was available until the branch is pushed.
+
+## 2026-05-22 -- Reference/plot 12-slice baseline
+
+Scope:
+
+- Ran a Shannon/Rose/Grace baseline before continuing the maintainer-requested
+  12-slice block after the first 30 local commits.
+- Wrote the audit checkpoint to
+  `docs/dev-log/audits/2026-05-22-reference-plot-12-slice-baseline.md`.
+
+Evidence:
+
+- `git status --short --branch`
+  -> clean, `codex/reference-function-audit-2026-05-22...origin/main [ahead 30]`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json ...`
+  -> no open PRs (`[]`).
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json ...`
+  -> latest `main` `R-CMD-check` and `pkgdown` runs at `c1dc2e4` were
+  successful.
+- Rose stale-public-surface scan found the visible morphometrics article still
+  calling `style = "raindrop"`; this is supported by the alias but should teach
+  `style = "eye"` instead.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|plot-gllvmTMB|suggest-lambda-constraint", stop_on_failure = TRUE)'`
+  -> 444 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and 3-OS CI were not run at
+  this baseline checkpoint. No code was changed in the audit slice.
+
+## 2026-05-22 -- Morphometrics confidence-eye example
+
+Scope:
+
+- Switched the visible morphometrics article bootstrap-correlation example from
+  the compatibility alias `style = "raindrop"` to the preferred
+  `style = "eye"`.
+- Updated the figure caption and nearby prose from "raindrops" / "drops" to
+  "confidence eyes".
+- Updated the morphometrics fixture test to exercise the preferred style and
+  primary `gllvmTMB_confidence_eye_data` attribute.
+
+Evidence:
+
+- Lane check before editing shared files was the 12-slice baseline:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json ...` -> no open
+  PRs, and recent commits were all on this branch.
+- `air format tests/testthat/test-example-morphometrics.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics", stop_on_failure = TRUE)'`
+  -> 50 passes, 0 failures, 0 warnings, 0 skips.
+- First article render without `pkgload::load_all()` failed because the running
+  process saw an older namespace where `style = "eye"` was not available:
+  `'arg' should be one of "interval", "raindrop"`.
+- Final article render:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", lazy = FALSE, new_process = FALSE, quiet = TRUE)'`
+  -> wrote `articles/morphometrics.html`.
+- Stale article/test scan:
+
+  ```sh
+  rg -n 'style = "raindrop"|ci-correlation-raindrop|Raindrops|raindrops|Tight drops|style = "eye"|Confidence eyes|ci-correlation-eye' vignettes/articles/morphometrics.Rmd tests/testthat/test-example-morphometrics.R pkgdown-site/articles/morphometrics.html
+  ```
+
+  -> expected `style = "eye"`, `Confidence eyes`, and `ci-correlation-eye`
+  hits; no stale visible `raindrop` hits in the scanned morphometrics sources.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+
+Deliberately not run:
+
+- Full `pkgdown::build_site()`, full `devtools::test()`, `devtools::check()`,
+  and 3-OS CI were not run for this narrow article/example switch.
+
+## 2026-05-22 -- Confidence-eye marker polish
+
+Scope:
+
+- Made the confidence-eye compatibility envelope paler and the hollow estimate
+  circle stronger/brighter.
+- Added tests that inspect the confidence-eye point layer contract.
+
+Evidence:
+
+- Lane check before editing shared files was the 12-slice baseline:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json ...` -> no open
+  PRs, and recent commits were all on this branch.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|example-morphometrics", stop_on_failure = TRUE)'`
+  -> 226 passes, 0 failures, 0 warnings, 0 skips.
+- Rendered `/tmp/gllvmTMB-confidence-eye-qa/confidence-eye.png`.
+  Florence verdict: PASS for this slice; hollow estimate circles now read
+  clearly against the pale compatibility shapes.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Layer-contract scan:
+
+  ```sh
+  rg -n 'alpha = 0\.14|alpha = 0\.45|alpha = 0\.98|stroke = 1\.05|gtmb_confidence_eye_point_params|gllvmTMB_confidence_eye_data' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R
+  ```
+
+  -> expected code and test hits.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, full pkgdown site, and 3-OS CI
+  were not run for this narrow visual-polish slice.
+
+## 2026-05-22 -- Omega extractor user-path cleanup
+
+Scope:
+
+- Cleaned the Omega/proportion extractor family so wrong-object errors and
+  argument docs direct readers to `gllvmTMB()` instead of exposing the internal
+  `gllvmTMB_multi` class.
+- Replaced leftover two-U / `U (uniqueness)` wording in the phylogenetic signal
+  advisory path with canonical `Psi_non` / paired phylogenetic PGLLVM language.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/extract-omega.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_residual_split.Rd`, `man/extract_Omega.Rd`,
+  `man/extract_phylo_signal.Rd`, and `man/extract_proportions.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-omega|olre-separation|m1-7-extract-omega|mixed-response-sigma", stop_on_failure = TRUE)'`
+  -> 68 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/extract_Omega.Rd man/extract_phylo_signal.Rd man/extract_proportions.Rd man/extract_residual_split.Rd; grep -Hc '^\\keyword' man/extract_Omega.Rd man/extract_phylo_signal.Rd man/extract_proportions.Rd man/extract_residual_split.Rd`
+  -> normal endings; only `extract_residual_split.Rd` keeps its expected
+  `internal` keyword.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'A `gllvmTMB_multi` fit|A \\code\{gllvmTMB_multi\} fit|Provide a \{\.cls gllvmTMB_multi\} fit|requires a gllvmTMB_multi|U \(uniqueness\)|U_diag|Two-U|two-U' R/extract-omega.R man/extract_Omega.Rd man/extract_phylo_signal.Rd man/extract_proportions.Rd man/extract_residual_split.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  extractor wording and advisory cleanup. No vignettes/articles were edited or
+  rendered. No 3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Fit-object reference wording sweep
+
+Scope:
+
+- Cleaned remaining reference/helper surfaces in this sweep that asked users
+  for a `gllvmTMB_multi` object. Public docs and wrong-object errors now say a
+  fit returned by `gllvmTMB()`.
+- Updated matching tests that intentionally check non-fit error paths.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/check-auto-residual.R R/bootstrap-sigma.R R/extract-cutpoints.R R/gllvmTMB-wide.R R/plot-covariance-tables.R R/profile-ci.R R/diagnose.R R/check-consistency.R R/confint-inspect.R R/check-identifiability.R R/profile-targets.R R/coverage-study.R R/extract-two-psi-cross-check.R R/extract-sigma.R`
+  -> completed without output.
+- `air format tests/testthat/test-confint-inspect.R tests/testthat/test-check-consistency.R tests/testthat/test-coverage-study.R tests/testthat/test-gllvmTMB-diagnose.R tests/testthat/test-profile-targets.R tests/testthat/test-check-auto-residual.R tests/testthat/test-check-identifiability.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/check_auto_residual.Rd`, `man/extract_cutpoints.Rd`,
+  `man/gllvmTMB_wide.Rd`, `man/plot_Sigma_comparison.Rd`,
+  `man/tmbprofile_wrapper.Rd`, `man/compare_dep_vs_two_psi.Rd`, and
+  `man/compare_indep_vs_two_psi.Rd`.
+- First focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMB-diagnose|confint-inspect|bootstrap-Sigma|plot-covariance-tables|coverage-study|profile-ci|check-auto-residual|check-identifiability|check-consistency|profile-targets|wide-weights-matrix|gllvmTMB-wide|ordinal-probit", stop_on_failure = TRUE)'`
+  -> 448 passes, 7 failures, 0 warnings. Failures were stale tests still
+  expecting old `gllvmTMB_multi` error text.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMB-diagnose|confint-inspect|bootstrap-Sigma|plot-covariance-tables|coverage-study|profile-ci|check-auto-residual|check-identifiability|check-consistency|profile-targets|wide-weights-matrix|gllvmTMB-wide|ordinal-probit", stop_on_failure = TRUE)'`
+  -> 455 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/check_auto_residual.Rd man/extract_cutpoints.Rd man/gllvmTMB_wide.Rd man/plot_Sigma_comparison.Rd man/tmbprofile_wrapper.Rd man/compare_dep_vs_two_psi.Rd man/compare_indep_vs_two_psi.Rd; grep -Hc '^\\keyword' man/check_auto_residual.Rd man/extract_cutpoints.Rd man/gllvmTMB_wide.Rd man/plot_Sigma_comparison.Rd man/tmbprofile_wrapper.Rd man/compare_dep_vs_two_psi.Rd man/compare_indep_vs_two_psi.Rd`
+  -> normal endings; `gllvmTMB_wide` and `tmbprofile_wrapper` keep expected
+  `internal` keywords.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'A `gllvmTMB_multi` fit|A `gllvmTMB_multi` object|A \\code\{gllvmTMB_multi\} fit|A \\code\{gllvmTMB_multi\} object|gllvmTMB_multi model|fitted gllvmTMB_multi model|requires a gllvmTMB_multi|Provide a \{\.cls gllvmTMB_multi\} fit|Plot a fitted multivariate `gllvmTMB_multi`|Tidy a `gllvmTMB_multi`|Predict from a `gllvmTMB_multi`|Simulate new responses from a fitted `gllvmTMB_multi`|Confidence intervals on fixed effects of a `gllvmTMB_multi`|attached plot data' R man tests/testthat/test-confint-inspect.R tests/testthat/test-check-consistency.R tests/testthat/test-coverage-study.R tests/testthat/test-gllvmTMB-diagnose.R tests/testthat/test-profile-targets.R tests/testthat/test-check-auto-residual.R tests/testthat/test-check-identifiability.R
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  reference/error-text cleanup. No vignettes/articles were edited or rendered.
+  No 3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Wide data reference wording
+
+Scope:
+
+- Cleaned `traits()` and `gllvmTMB_wide()` reference wording so the wide path
+  is described as a public stacked-trait workflow, not as a "long-format
+  engine" or "matrix-first" primary story.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/traits-keyword.R R/gllvmTMB-wide.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/traits.Rd` and `man/gllvmTMB_wide.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "traits-keyword|gllvmTMB-wide|wide-weights-matrix|missing-response", stop_on_failure = TRUE)'`
+  -> 105 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/traits.Rd man/gllvmTMB_wide.Rd; grep -Hc '^\\keyword' man/traits.Rd man/gllvmTMB_wide.Rd`
+  -> normal endings; `gllvmTMB_wide` keeps its expected `internal` keyword.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'long-format engine|same long-format vector|matrix-first workflows|The long-format engine errors|canonical long-format' R/traits-keyword.R R/gllvmTMB-wide.R man/traits.Rd man/gllvmTMB_wide.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  narrow reference wording cleanup. No vignettes/articles were edited or
+  rendered. No 3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Paired phylogenetic terminology
+
+Scope:
+
+- Replaced the remaining new-facing `two-U` wording in the `phylo_unique()`
+  reference path and adjacent source comments with paired phylogenetic /
+  two-psi language.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/phylo_unique.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/phylo_unique.Rd; grep -Hc '^\\keyword' man/phylo_unique.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'two-U|Two-U|U \(uniqueness\)|diag\(U\)' R/brms-sugar.R R/bootstrap-sigma.R R/extract-sigma.R R/extract-two-psi-cross-check.R R/fit-multi.R man/phylo_unique.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Focused tests, full `devtools::test()`, and `devtools::check()` were not
+  rerun because this was a comment/roxygen terminology-only cleanup. No
+  vignettes/articles were edited or rendered. No 3-OS CI was available until
+  the branch is pushed.
+
+## 2026-05-22 -- Plot/profile wording edge cleanup
+
+Scope:
+
+- Fixed a stale `plot.gllvmTMB_multi()` note that said `match.arg(level)` would
+  collapse the default to `"B"` and drop the W panel; the current canonical
+  names are `"unit"` and `"unit_obs"`.
+- Fixed `.fun` -> `.fn` cli markup in profile-derived wrong-object errors.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-gllvmTMB.R R/profile-derived.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "profile-ci|profile-targets|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 250 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/plot.gllvmTMB_multi.Rd; grep -Hc '^\\keyword' man/plot.gllvmTMB_multi.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Stale wording scan:
+
+  ```sh
+  rg -n '\{\.fun gllvmTMB\}|collapse the default to `"B"`|drop the W panel|collapse the default to \\code\{"B"\}|drop the W panel' R/plot-gllvmTMB.R R/profile-derived.R man/plot.gllvmTMB_multi.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  narrow plot/profile wording cleanup. No vignettes/articles were edited or
+  rendered. No 3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Rotation axis ordering and sign anchoring
+
+Scope:
+
+- Extended `rotate_loadings()` so rotated outputs can be made plot-ready by
+  ordering axes by shared variance and sign-anchoring axes automatically or
+  with supplied anchor traits.
+- `method = "none"` remains the raw computational parameterisation.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/rotate-loadings.R tests/testthat/test-rotate-compare-loadings.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/rotate_loadings.Rd`.
+- First focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|output-methods|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 225 passes, 2 failures, 0 warnings. Failures were test assertions
+  comparing named and unnamed integer positions.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|output-methods|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 227 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/rotate_loadings.Rd; grep -Hc '^\\keyword' man/rotate_loadings.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Feature-presence scan:
+
+  ```sh
+  rg -n 'order_axes|sign_anchor|anchor_traits|axis_variance|axis_order|axis_sign' R/rotate-loadings.R man/rotate_loadings.Rd tests/testthat/test-rotate-compare-loadings.R
+  ```
+
+  -> expected hits in implementation, generated Rd, and focused tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  helper API slice. No vignettes/articles were edited or rendered. No 3-OS CI
+  was available until the branch is pushed.
+
+## 2026-05-22 -- Rotated ordination plot option
+
+Scope:
+
+- Added an explicit `rotation = c("none", "varimax", "promax")` option to
+  `plot(type = "ordination")`.
+- The rotated plot path calls `rotate_loadings()`, so axes are ordered by
+  shared variance and sign-anchored before plotting.
+- The default remains `rotation = "none"` for now, so the visual change is
+  opt-in while Florence/Pat inspect output quality.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/rotate-loadings.R R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|output-methods|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 241 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/plot.gllvmTMB_multi.Rd; grep -Hc '^\\keyword' man/plot.gllvmTMB_multi.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Feature-presence scan:
+
+  ```sh
+  rg -n 'rotation = c\("none", "varimax", "promax"\)|rotate_loadings|varimax_ordered_sign_anchored|Axes use .* rotation' R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits in implementation, generated Rd, and focused tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  plotting option slice. No vignettes/articles were edited or rendered. No
+  browser screenshot or visual review was run yet; that should be the next
+  Florence slice before making rotation the default. No 3-OS CI was available
+  until the branch is pushed.
+
+## 2026-05-22 -- Varimax default for ordination plots
+
+Scope:
+
+- Made `rotation = "varimax"` the default for `plot(type = "ordination")`.
+- Kept `rotation = "none"` available for users who want the raw computational
+  orientation.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- Visual QA rendered raw and varimax ordination PNGs at
+  `/tmp/gllvmTMB-rotation-qa/ordination-raw.png` and
+  `/tmp/gllvmTMB-rotation-qa/ordination-varimax.png`; Florence read: rotated
+  output was clearer and captioned honestly, with label-repulsion polish left
+  for a later slice.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|output-methods|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 242 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/plot.gllvmTMB_multi.Rd; grep -Hc '^\\keyword' man/plot.gllvmTMB_multi.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Default-rotation scan:
+
+  ```sh
+  rg -n 'rotation = c\("varimax", "none", "promax"\)|default.*varimax|varimax_ordered_sign_anchored' R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits in implementation, generated Rd, and focused tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  plotting-default slice. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Standardized ordination loading arrows
+
+Scope:
+
+- Added `standardize_loadings = TRUE` for `plot(type = "ordination")` so
+  users can draw trait arrows on a correlation-like scale when traits differ
+  in total variance.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB|rotate-compare-loadings", stop_on_failure = TRUE)'`
+  -> 245 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/plot.gllvmTMB_multi.Rd; grep -Hc '^\\keyword' man/plot.gllvmTMB_multi.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Feature-presence scan:
+
+  ```sh
+  rg -n 'standardize_loadings|loading_scale|standardized loadings|raw loadings' R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits in implementation, generated Rd, and focused tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  plotting option slice. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Wide traits reference wording
+
+Scope:
+
+- Cleaned exported help for `traits()` and the fitted-model S3 methods so the
+  public reference surface presents wide `traits(...)` data and already-stacked
+  long data as two user paths into the same stacked-trait model.
+- Removed stale public wording that made long-format data sound like the
+  primary entry point on these pages.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB_multi-methods.Rd` and `man/traits.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/gllvmTMB_multi-methods.Rd man/traits.Rd; grep -Hc '^\\keyword' man/gllvmTMB_multi-methods.Rd man/traits.Rd || true`
+  -> normal endings; zero keyword entries.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'on long-format multivariate data|canonical long-format|Both taught shapes reach the same long-format engine|for the long-format engine|long-format engine; `traits\(\)`|level = "B"|level = "W"|Long data are canonical|Stacked-Trait GLLVMs with TMB|standalone Template Model Builder' R/methods-gllvmTMB.R man/gllvmTMB_multi-methods.Rd R/traits-keyword.R man/traits.Rd README.md DESCRIPTION pkgdown-site/index.html
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  wording-only cleanup. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Homepage stacked-trait wording
+
+Scope:
+
+- Replaced residual README/NEWS wording that said long-format engine where the
+  public user-facing idea is now the same stacked-trait model reached from
+  either wide `traits(...)` data or already-stacked long data.
+- Re-rendered the local pkgdown home page so the source and local HTML can be
+  checked against the live-site concern.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'pkgdown::build_home()'`
+  -> wrote `pkgdown-site/index.html` and `404.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rendered-home stale wording scan:
+
+  ```sh
+  rg -n 'same long-format engine|shares one long-format engine|canonical long-format|Long data are canonical|Stacked-Trait GLLVMs with TMB|standalone Template Model Builder|Most readers will start from a wide data frame|same stacked-trait model|Fit Multivariate Models from Wide Response Data' README.md NEWS.md DESCRIPTION pkgdown-site/index.html
+  ```
+
+  -> no stale hits; confirmed wide-first title/source text and
+  `same stacked-trait model` in the rendered home page.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  prose-only cleanup. No articles were rendered beyond the pkgdown home page.
+  No 3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Summary canonical levels
+
+Scope:
+
+- Changed the normal `summary.gllvmTMB_multi()` path to call
+  `extract_communality()` with canonical `unit` / `unit_obs` levels instead
+  of the legacy `"B"` / `"W"` aliases.
+- Updated non-legacy extractor/integration tests to use canonical levels so
+  routine focused tests stay warning-free.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/methods-gllvmTMB.R tests/testthat/test-extractors.R tests/testthat/test-integration-tour.R`
+  -> completed without output.
+- First focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "print-labels|integration-tour|extractors", stop_on_failure = TRUE)'`
+  -> 112 passes, 0 failures, 2 warnings before test canonicalisation.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "print-labels|integration-tour|extractors", stop_on_failure = TRUE)'`
+  -> 112 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale internal-call scan:
+
+  ```sh
+  rg -n 'extract_communality\([^\n]*"B"|extract_communality\([^\n]*"W"|extract_ordination\([^\n]*"B"|extract_ordination\([^\n]*"W"' R tests/testthat | sed -n '1,180p'
+  ```
+
+  -> remaining hits are explicit legacy-alias tests or suppressed rotation
+  tests, not the normal summary path.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  small behavior-polish slice. No roxygen or pkgdown files changed. No 3-OS CI
+  was available until the branch is pushed.
+
+## 2026-05-22 -- Rotation helper cleanup
+
+Scope:
+
+- Cleaned `rotate_loadings()` wrong-object wording so it points users to
+  `gllvmTMB()` rather than exposing the internal `gllvmTMB_multi` class.
+- Updated rotation-helper tests to use canonical `level = "unit"` where legacy
+  alias behavior is not being tested.
+- Saved the maintainer's rotation-for-figures workflow as a Codex memory note
+  for a later plotting/documentation slice: covariance and communality first;
+  rotate for interpretation; varimax default; rotate levels separately; order
+  axes by shared variance; sign-anchor axes; standardize loadings when scales
+  differ.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/rotate-loadings.R tests/testthat/test-rotate-compare-loadings.R tests/testthat/test-rotation-advisory.R`
+  -> completed without output.
+- First focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|extractors-extra", stop_on_failure = TRUE)'`
+  -> 72 passes, 0 failures, 1 warning before updating
+  `test-rotation-advisory.R`.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|extractors-extra", stop_on_failure = TRUE)'`
+  -> 72 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale rotation-helper scan:
+
+  ```sh
+  rg -n 'Pass a gllvmTMB_multi|regexp = "gllvmTMB_multi"|rotate_loadings\([^\n]*"B"|extract_ordination\([^\n]*"B"|getLoadings\([^\n]*level = "B"' R/rotate-loadings.R tests/testthat/test-rotate-compare-loadings.R tests/testthat/test-rotation-advisory.R
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  small helper cleanup. No roxygen, pkgdown, or article files changed. No 3-OS
+  CI was available until the branch is pushed.
+
+## 2026-05-22 -- Stacked response reference wording
+
+Scope:
+
+- Cleaned small `gllvmTMB()` and `spde()` reference phrases that still
+  described user-facing paths as "long-format engine/vector" rather than the
+  shared stacked-trait model plumbing.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB.Rd` and `man/spde.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/gllvmTMB.Rd man/spde.Rd; grep -Hc '^\\keyword' man/gllvmTMB.Rd man/spde.Rd`
+  -> normal endings; `spde` keeps its expected `internal` keyword.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'canonical place to document|long-format engine treats|long-format vector before fitting|same long-format vector|long-format engine|canonical long-format' R/spde-keyword.R R/gllvmTMB.R man/spde.Rd man/gllvmTMB.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  roxygen-only cleanup. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.

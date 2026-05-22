@@ -428,22 +428,52 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   meta_default <- expect_gtmb_plot_meta(
     p_default,
     "ordination",
-    "extract_ordination"
+    "rotate_loadings"
   )
   expect_equal(meta_default$level, "unit")
+  expect_equal(meta_default$rotation_status, "varimax_ordered_sign_anchored")
+  expect_match(
+    p_default$labels$caption,
+    "Use Sigma and correlation summaries",
+    fixed = TRUE
+  )
 
   p <- expect_warning(
-    suppressMessages(plot(fit, type = "ordination", level = "unit")),
+    suppressMessages(plot(
+      fit,
+      type = "ordination",
+      level = "unit",
+      rotation = "none"
+    )),
     NA
   )
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_plot_meta(p, "ordination", "extract_ordination")
   expect_equal(meta$level, "unit")
   expect_equal(meta$rotation_status, "rotation_ambiguous_loadings")
+  expect_match(
+    p$labels$caption,
+    "raw fitted orientation",
+    fixed = TRUE
+  )
+  expect_match(
+    p$labels$caption,
+    "Use Sigma and correlation summaries",
+    fixed = TRUE
+  )
   plot_data <- attr(p, "gllvmTMB_data")
-  expect_named(plot_data, c("scores", "loadings"))
+  expect_named(plot_data, c("scores", "loadings", "rotation"))
+  expect_equal(plot_data$rotation$method, "none")
   expect_s3_class(plot_data$scores, "data.frame")
   expect_s3_class(plot_data$loadings, "data.frame")
+  expect_true(all(
+    c("label_x", "label_y", "label_hjust", "label_vjust") %in%
+      names(plot_data$loadings)
+  ))
+  expect_true(all(is.finite(plot_data$loadings$label_x)))
+  expect_true(all(is.finite(plot_data$loadings$label_y)))
+  expect_true(all(plot_data$loadings$label_hjust >= 0))
+  expect_true(all(plot_data$loadings$label_hjust <= 1))
   expect_silent(print(p))
   ## ggplot()-with-data-in-layers: top-level p$data is empty waiver().
   ## Verify the layers see scores + loadings instead.
@@ -461,20 +491,30 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
 test_that("plot(type = 'ordination') returns a static 3D pair grid for d = 3", {
   skip_if_no_ggplot2()
   fit <- make_fake_ordination_fit(d = 3L)
-  p <- suppressMessages(plot(fit, type = "ordination", level = "unit"))
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    rotation = "none"
+  ))
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_plot_meta(p, "ordination", "extract_ordination")
   expect_equal(meta$level, "unit")
   expect_equal(meta$rotation_status, "rotation_ambiguous_loadings")
   expect_match(meta$notes, "static pair grid")
   plot_data <- attr(p, "gllvmTMB_data")
-  expect_named(plot_data, c("scores", "loadings"))
+  expect_named(plot_data, c("scores", "loadings", "rotation"))
+  expect_equal(plot_data$rotation$method, "none")
   expect_setequal(
     as.character(unique(plot_data$scores$pair)),
     c("LV1 vs LV2", "LV1 vs LV3", "LV2 vs LV3")
   )
   expect_equal(nrow(plot_data$scores), 3L * fit$n_sites)
   expect_equal(nrow(plot_data$loadings), 3L * length(levels(fit$data$trait)))
+  expect_true(all(
+    c("label_x", "label_y", "label_hjust", "label_vjust") %in%
+      names(plot_data$loadings)
+  ))
   expect_silent(print(p))
 })
 
@@ -485,11 +525,13 @@ test_that("plot(type = 'ordination') can use two selected axes from d > 3", {
     fit,
     type = "ordination",
     level = "unit",
-    axes = c(2, 4)
+    axes = c(2, 4),
+    rotation = "none"
   ))
   expect_s3_class(p, "ggplot")
   plot_data <- attr(p, "gllvmTMB_data")
-  expect_named(plot_data, c("scores", "loadings"))
+  expect_named(plot_data, c("scores", "loadings", "rotation"))
+  expect_equal(plot_data$rotation$method, "none")
   expect_equal(nrow(plot_data$scores), fit$n_sites)
   expect_equal(nrow(plot_data$loadings), length(levels(fit$data$trait)))
   expect_true(all(
@@ -519,13 +561,60 @@ test_that("plot(type = 'ordination', level = 'W') gives 1D lollipop when d_W = 1
   withr::local_options(gllvmTMB.warned_level_W = NULL)
   p <- NULL
   expect_warning(
-    p <- suppressMessages(plot(fit, type = "ordination", level = "W")),
+    p <- suppressMessages(plot(
+      fit,
+      type = "ordination",
+      level = "W",
+      rotation = "none"
+    )),
     "deprecated"
   )
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_plot_meta(p, "ordination", "extract_ordination")
   expect_equal(meta$level, "unit_obs")
-  expect_named(attr(p, "gllvmTMB_data"), c("scores", "loadings"))
+  expect_named(attr(p, "gllvmTMB_data"), c("scores", "loadings", "rotation"))
+  expect_silent(print(p))
+})
+
+test_that("plot(type = 'ordination') can use rotated plot-ready axes", {
+  skip_if_no_ggplot2()
+  fit <- make_fake_ordination_fit(d = 3L)
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    rotation = "varimax"
+  ))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "ordination", "rotate_loadings")
+  expect_equal(meta$rotation_status, "varimax_ordered_sign_anchored")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_named(plot_data, c("scores", "loadings", "rotation"))
+  expect_equal(plot_data$rotation$method, "varimax")
+  expect_true(all(diff(plot_data$rotation$axis_variance) <= 1e-8))
+  expect_equal(
+    nrow(plot_data$loadings),
+    3L * length(levels(fit$data$trait))
+  )
+  expect_silent(print(p))
+})
+
+test_that("plot(type = 'ordination') can standardize loading arrows", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    standardize_loadings = TRUE
+  ))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "ordination", "rotate_loadings")
+  expect_equal(meta$rotation_status, "varimax_ordered_sign_anchored")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(plot_data$rotation$loading_scale, "standardized")
+  expect_true(all(is.finite(plot_data$loadings$loading_x)))
+  expect_true(all(is.finite(plot_data$loadings$loading_y)))
   expect_silent(print(p))
 })
 

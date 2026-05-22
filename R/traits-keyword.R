@@ -5,7 +5,7 @@
 ## internally, rewrites the LHS to `.y_wide_`, expands the compact wide
 ## RHS (`1`, `x`, `latent(1 | g)`) to the long trait-stacked grammar
 ## (`0 + trait`, `(0 + trait):x`, `latent(0 + trait | g)`), and
-## dispatches to the long-format engine.
+## dispatches to the same stacked-trait model fit.
 ##
 ## Companion to the soft-deprecated `gllvmTMB_wide()` matrix wrapper.
 ## traits() is the formula-level wide data-frame path and is the path
@@ -14,8 +14,8 @@
 #' Wide-format trait marker for the `gllvmTMB()` formula LHS
 #'
 #' Formula-LHS marker that lets [gllvmTMB()] accept a wide data frame
-#' (one row per individual, one column per trait) instead of the
-#' canonical long-format `(unit, trait)` data.
+#' (one row per unit, one column per trait) without making the user
+#' pivot first to one row per `(unit, trait)` observation.
 #'
 #' The package teaches **two shapes**, long or wide data-frame:
 #'
@@ -26,11 +26,11 @@
 #'   with compact formula syntax.
 #'
 #' The soft-deprecated `gllvmTMB_wide(Y, ...)` wrapper remains exported
-#' for migration and matrix-first workflows, but new examples should use
+#' for legacy matrix-wrapper workflows, but new examples should use
 #' `traits(...)` through [gllvmTMB()].
 #'
-#' Both taught shapes reach the same long-format engine; the user picks
-#' whichever shape matches their data on disk.
+#' Both taught shapes reach the same stacked-trait model after internal
+#' stacking; the user picks whichever shape matches their data on disk.
 #'
 #' @details
 #' Because the LHS already names the response traits, the RHS can use a
@@ -77,13 +77,12 @@
 #' who want strict listwise drop should pre-filter the wide data before
 #' calling.
 #'
-#' Mixed-family fits (`family = list(...)` keyed by trait) flow through
-#' the long-format engine; `traits()` does not intercept the family
-#' argument. Per-row weight vectors of length `nrow(data)` are also
-#' replicated across traits automatically, then passed to the same
-#' long-format weight path used by [gllvmTMB()]. For per-cell weight
-#' matrices, pivot to long format and pass a `weights` column aligned
-#' with `(unit, trait)` rows. The legacy matrix wrapper
+#' Mixed-family fits (`family = list(...)` keyed by trait) use the same
+#' family handling after internal stacking; `traits()` does not
+#' intercept the family argument. Per-row weight vectors of length
+#' `nrow(data)` are also replicated across traits automatically. For
+#' per-cell weight matrices, pivot to long format and pass a `weights`
+#' column aligned with `(unit, trait)` rows. The legacy matrix wrapper
 #' [gllvmTMB_wide()] still accepts matrix weights for migration code.
 #'
 #' @param ... Column-selection expression(s) passed verbatim to
@@ -92,7 +91,7 @@
 #' @return A formula marker; never evaluated as a function call. The
 #'   parser recognises `traits(...)` on the LHS of a `gllvmTMB()`
 #'   formula and dispatches to the wide-format pivot pre-pass.
-#' @seealso [gllvmTMB()] for the long-format engine. The legacy
+#' @seealso [gllvmTMB()] for model fitting. The legacy
 #'   matrix wrapper `gllvmTMB_wide(Y, ...)` is soft-deprecated in
 #'   0.2.0 (validation-debt register rows FG-16 and MIS-03);
 #'   wide-data examples now use the `traits(...)` LHS through

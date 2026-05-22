@@ -4,7 +4,7 @@
 ## identifiability, K - 2 free cutpoints {tau_2, ..., tau_{K-1}} estimated
 ## per ordinal trait. Returns one row per (trait, cutpoint) pair.
 
-#' Extract ordinal-probit cutpoints from a `gllvmTMB_multi` fit
+#' Extract ordinal-probit cutpoints from a fitted gllvmTMB model
 #'
 #' For traits fitted with [ordinal_probit()], returns a tidy data frame
 #' with the K - 2 estimated cutpoints \eqn{\tau_2, \ldots, \tau_{K-1}}
@@ -15,8 +15,8 @@
 #' as `cutpoint_2`, `cutpoint_3`, etc. This differs from `brms`, which
 #' reports K - 1 cutpoints as `Intercept[1..K-1]`.
 #'
-#' @param fit A `gllvmTMB_multi` fit produced with at least one
-#'   `ordinal_probit()` trait.
+#' @param fit A fit returned by [gllvmTMB()] with at least one
+#'   [ordinal_probit()] trait.
 #'
 #' @return A data frame with columns
 #'   \describe{
@@ -57,47 +57,55 @@
 #' @export
 extract_cutpoints <- function(fit) {
   out_empty <- data.frame(
-    trait          = character(0),
+    trait = character(0),
     cutpoint_index = integer(0),
     cutpoint_label = character(0),
-    tau_estimate   = numeric(0),
-    tau_se         = numeric(0),
+    tau_estimate = numeric(0),
+    tau_se = numeric(0),
     stringsAsFactors = FALSE
   )
-  if (!inherits(fit, "gllvmTMB_multi"))
-    stop("extract_cutpoints() requires a gllvmTMB_multi fit.", call. = FALSE)
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   fids <- fit$tmb_data$family_id_vec
-  if (!any(fids == 14L)) return(out_empty)
+  if (!any(fids == 14L)) {
+    return(out_empty)
+  }
   n_cuts_pt <- as.integer(fit$tmb_data$n_ordinal_cuts_per_trait)
-  off_pt    <- as.integer(fit$tmb_data$ordinal_offset_per_trait)
+  off_pt <- as.integer(fit$tmb_data$ordinal_offset_per_trait)
   trait_lab <- levels(fit$data[[fit$trait_col]])
-  taus      <- as.numeric(fit$report$ordinal_cutpoints %||% numeric(0))
+  taus <- as.numeric(fit$report$ordinal_cutpoints %||% numeric(0))
   ## Try to pull SEs from the sdreport (ADREPORT(ordinal_cutpoints)).
   ses <- rep(NA_real_, length(taus))
   if (!is.null(fit$sd_report)) {
     adr <- summary(fit$sd_report, "report")
     rows <- grep("^ordinal_cutpoints$", rownames(adr))
-    if (length(rows) == length(taus))
+    if (length(rows) == length(taus)) {
       ses <- adr[rows, "Std. Error"]
+    }
   }
   rows <- list()
   for (t in seq_along(n_cuts_pt)) {
     Kt_minus_2 <- n_cuts_pt[t]
-    if (Kt_minus_2 == 0L) next
+    if (Kt_minus_2 == 0L) {
+      next
+    }
     base <- off_pt[t]
     for (j in seq_len(Kt_minus_2)) {
-      idx <- base + j           # 1-based position in the flat vector
-      cp_index <- j + 1L        # tau_2 corresponds to j = 1
+      idx <- base + j # 1-based position in the flat vector
+      cp_index <- j + 1L # tau_2 corresponds to j = 1
       rows[[length(rows) + 1L]] <- data.frame(
-        trait          = trait_lab[t],
+        trait = trait_lab[t],
         cutpoint_index = cp_index,
         cutpoint_label = sprintf("cutpoint_%d", cp_index),
-        tau_estimate   = taus[idx],
-        tau_se         = ses[idx],
+        tau_estimate = taus[idx],
+        tau_se = ses[idx],
         stringsAsFactors = FALSE
       )
     }
   }
-  if (length(rows) == 0L) return(out_empty)
+  if (length(rows) == 0L) {
+    return(out_empty)
+  }
   do.call(rbind, rows)
 }

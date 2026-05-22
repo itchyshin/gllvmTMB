@@ -246,7 +246,7 @@ to the M3 grid first:
   profile-`psi` diagnostic rows;
 - `target = "Sigma_unit_diag"` with `ci_method = "bootstrap"` for
   the primary total-variance rows, using the existing
-  `confint(fit, parm = "Sigma_B", method = "bootstrap")` /
+  `confint(fit, parm = "Sigma_unit", method = "bootstrap")` /
   `bootstrap_Sigma(link_residual = "none")` path so the fitted
   target matches the DGP truth
   $\operatorname{diag}(\Lambda\Lambda^\top + \Psi)$ rather than the

@@ -42,7 +42,7 @@
 #' @param weights Optional per-cell observation weights, parallel to `Y`.
 #'   At wide level the semantic is always lme4 / glmmTMB-style: each
 #'   cell's log-likelihood contribution is multiplied by its weight.
-#'   Accepted shapes are normalised to the same long-format vector used
+#'   Accepted shapes are normalised to the same stacked response vector used
 #'   by [gllvmTMB()] and the wide data-frame [traits()] path:
 #'   * `NULL` (default): unit weights; byte-identical to the no-weight fit.
 #'   * `numeric(nrow(Y))`: row vector. Each cell `(i, j)` inherits
@@ -55,12 +55,12 @@
 #'   Disambiguation when `nrow(Y) == ncol(Y)`: `length(dim(weights))`
 #'   decides — `NULL` (1-d) → vector, row-broadcast; `c(n, m)` (2-d) →
 #'   per-cell. Values must be non-negative and finite (NA-aligned cells
-#'   excepted). For binomial trial-count semantics use the long-format
-#'   API ([gllvmTMB()] with `weights = n_trials`) instead.
+#'   excepted). For binomial trial-count semantics use an explicit long-data
+#'   [gllvmTMB()] call with `weights = n_trials` instead.
 #' @param ... Passed to [gllvmTMB()].
 #'
-#' @return A `gllvmTMB_multi` fit. The column dimension of `Y` is
-#'   exposed as the "trait" axis of the engine (so
+#' @return A fit returned by [gllvmTMB()]. The column dimension of `Y` is
+#'   exposed as the "trait" axis of the model (so
 #'   [extract_ordination()] returns the trait loadings). For the
 #'   site × species special case the columns are species, and the
 #'   loadings are species loadings; the same machinery returns
@@ -176,10 +176,10 @@ gllvmTMB_wide <- function(
     }
   }
 
-  ## NA-cell filtering. The long-format engine errors on NA in the
-  ## response, so drop NA-Y rows here. normalise_weights() has already
-  ## applied the same mask to w_long. This is structurally consistent with
-  ## the "NA Y -> no observation" contract and only kicks in when Y has NAs.
+  ## NA-cell filtering. The stacked response cannot contain NA rows, so
+  ## drop NA-Y rows here. normalise_weights() has already applied the same
+  ## mask to w_long. This is structurally consistent with the "NA Y -> no
+  ## observation" contract and only kicks in when Y has NAs.
   if (anyNA(long_df$value)) {
     keep <- !is.na(long_df$value)
     long_df <- long_df[keep, , drop = FALSE]

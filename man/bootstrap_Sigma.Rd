@@ -2,7 +2,7 @@
 % Please edit documentation in R/bootstrap-sigma.R
 \name{bootstrap_Sigma}
 \alias{bootstrap_Sigma}
-\title{Parametric bootstrap for Sigma, correlations, communalities, and ICCs}
+\title{Bootstrap covariance, correlation, communality, and ICC summaries}
 \usage{
 bootstrap_Sigma(
   fit,
@@ -18,13 +18,14 @@ bootstrap_Sigma(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} object.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{n_boot}{Integer; number of bootstrap replicates. Default 200.}
 
 \item{level}{Character vector; which tier(s) to bootstrap.
-Subset of \code{c("B", "W", "phy")}. Tiers absent from the fit are
-silently dropped. Default: all three.}
+Use the canonical levels \code{c("unit", "unit_obs", "phy")}; legacy
+aliases \code{"B"} and \code{"W"} are still accepted. Levels absent from
+the fit are silently dropped. Default: all available levels.}
 
 \item{what}{Character vector; which summaries to compute.
 Subset of \code{c("Sigma", "R", "communality", "ICC")}. Default: all
@@ -72,16 +73,32 @@ named list of bootstrap draw arrays.}
 }
 }
 \description{
-Generates \code{n_boot} parametric bootstrap replicates of a fitted
-\code{gllvmTMB_multi} model and returns percentile confidence intervals for
-the canonical biological summaries: trait covariance matrices
-\eqn{\hat\Sigma_B}, \eqn{\hat\Sigma_W}; the corresponding correlation
-matrices \eqn{\hat R_B}, \eqn{\hat R_W}; per-trait communalities
-\eqn{c_t^2 = (\Lambda \Lambda^\top)_{tt} / \Sigma_{tt}}; and per-trait
-site-level ICCs
-\eqn{R_t = (\Sigma_B)_{tt} / [(\Sigma_B)_{tt} + (\Sigma_W)_{tt}]}.
+Use \code{bootstrap_Sigma()} when Hessian, Wald, or profile intervals are
+unavailable or unsafe but the fitted model still has useful point
+estimates. A \code{pdHess = FALSE} or skipped \code{sdreport()} is an
+inference warning, not automatic proof that the fitted mean or
+rotation-invariant covariance summaries are unusable. Inspect
+\code{\link[=check_gllvmTMB]{check_gllvmTMB()}} / \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}} first, then use this
+helper for parametric simulate-refit uncertainty.
 }
 \details{
+The function generates \code{n_boot} parametric bootstrap replicates of a
+fitted model and returns percentile confidence intervals for the
+canonical biological summaries: trait covariance matrices
+\eqn{\hat\Sigma_\mathrm{unit}}, \eqn{\hat\Sigma_\mathrm{unit\_obs}};
+the corresponding correlation matrices; per-trait communalities
+\eqn{c_t^2 = (\Lambda \Lambda^\top)_{tt} / \Sigma_{tt}}; and
+per-trait site-level ICCs
+\eqn{R_t = (\Sigma_\mathrm{unit})_{tt} /
+[(\Sigma_\mathrm{unit})_{tt} + (\Sigma_\mathrm{unit\_obs})_{tt}]}.
+
+Scope boundary (EXT-13 / CI-03 / CI-10): IN, Gaussian bootstrap
+summaries and mixed-family refit plumbing covered by current tests.
+PARTIAL, non-Gaussian bootstrap calibration remains experimental
+until the M3 target-explicit grid is rerun. PLANNED, production
+calibration evidence for mixed-family intervals remains future M3
+work.
+
 Each bootstrap replicate (1) draws a new response vector from
 \code{simulate(fit, nsim = 1)}, (2) refits the model with the same formula
 on the simulated data, (3) extracts the requested summaries via
@@ -101,9 +118,10 @@ an \code{n_cores = 1} run with the same seed (different RNG streams).
 \item Uses the existing \code{\link[=simulate.gllvmTMB_multi]{simulate.gllvmTMB_multi()}} method, which
 conditions on the fitted random effects (\eqn{\eta = \hat\eta})
 and redraws the response from the fitted family where implemented.
-CIs reflect parametric simulate-refit variability, not the full
-posterior uncertainty in variance components. Unsupported families
-fall back through the simulator's own warning path.
+CIs reflect parametric simulate-refit variability, not a
+Bayesian posterior distribution for variance components.
+Unsupported families fall back through the simulator's own
+warning path.
 \item Refits use the same \code{formula} reconstructed from
 \code{fit$formula} and \code{fit$covstructs}. Auxiliary arguments such as
 \code{phylo_vcv}, \code{mesh}, \code{lambda_constraint} are NOT currently
@@ -127,7 +145,7 @@ fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1) +
                 data  = s$data,
                 trait = "trait",
                 unit  = "site")
-boot <- bootstrap_Sigma(fit, n_boot = 50, level = "B",
+boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
                         what = c("Sigma", "R"), seed = 42)
 boot$point_est$Sigma_B
 boot$ci_lower$Sigma_B

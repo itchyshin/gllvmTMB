@@ -12,8 +12,8 @@ columns are read from \code{mesh} (the second argument to
 \code{\link[=gllvmTMB]{gllvmTMB()}}).}
 
 \item{trait}{An unquoted token; usually the literal \code{trait} (the
-long-format engine treats every level of this factor as a
-separate response, with one SPDE field per level).}
+stacked-trait fit treats every level of this factor as a separate
+response, with one SPDE field per level).}
 }
 \value{
 A formula marker; never evaluated as a call.
@@ -22,8 +22,7 @@ A formula marker; never evaluated as a call.
 \strong{Deprecated alias.} Engine-internal name; users should write
 \code{\link[=spatial_unique]{spatial_unique()}} (or one of the other \code{\link[=spatial_scalar]{spatial_scalar()}} /
 \code{\link[=spatial_latent]{spatial_latent()}} keywords) in formulas. Kept for backward
-compatibility and as the canonical place to document the underlying
-Matérn / SPDE kernel.
+compatibility and to document the underlying Matérn / SPDE kernel.
 }
 \details{
 A formula keyword for adding a spatial random field to a \code{gllvmTMB()}

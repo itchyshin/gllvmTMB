@@ -1,4 +1,4 @@
-## One-call user-facing diagnostic for a fitted gllvmTMB_multi model.
+## One-call user-facing diagnostic for a fitted gllvmTMB model.
 ## Wraps sanity_multi(), checks rotation identifiability, reports the
 ## key biological summaries, and prints actionable hints for any WARN
 ## or FAIL signal. Designed to be the first call a user makes after
@@ -6,14 +6,17 @@
 
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
 
-  grad <- tryCatch(object$tmb_obj$gr(object$opt$par),
-                   error = function(e) NA_real_)
+  grad <- tryCatch(object$tmb_obj$gr(object$opt$par), error = function(e) {
+    NA_real_
+  })
   se <- if (!is.null(object$sd_report)) {
-    tryCatch(suppressWarnings(summary(object$sd_report, "fixed"))[, "Std. Error"],
-             error = function(e) NA_real_)
+    tryCatch(
+      suppressWarnings(summary(object$sd_report, "fixed"))[, "Std. Error"],
+      error = function(e) NA_real_
+    )
   } else {
     NA_real_
   }
@@ -23,9 +26,11 @@
     max(se, na.rm = TRUE)
   }
   restart_history <- object$restart_history %||% data.frame()
-  selected_restart <- if (nrow(restart_history) > 0L &&
+  selected_restart <- if (
+    nrow(restart_history) > 0L &&
       "selected" %in% names(restart_history) &&
-      any(restart_history$selected)) {
+      any(restart_history$selected)
+  ) {
     restart_history$restart[which(restart_history$selected)[1L]]
   } else {
     NA_integer_
@@ -45,8 +50,10 @@
     } else {
       max(abs(grad), na.rm = TRUE)
     },
-    pd_hessian = if (!is.null(object$sd_report) &&
-        !is.null(object$sd_report$pdHess)) {
+    pd_hessian = if (
+      !is.null(object$sd_report) &&
+        !is.null(object$sd_report$pdHess)
+    ) {
       isTRUE(object$sd_report$pdHess)
     } else {
       NA
@@ -60,21 +67,29 @@
   )
 }
 
-.gllvmTMB_boundary_flags <- function(object,
-                                     loading_thresh = 1e-3,
-                                     sd_thresh = 1e-4) {
+.gllvmTMB_boundary_flags <- function(
+  object,
+  loading_thresh = 1e-3,
+  sd_thresh = 1e-4
+) {
   flags <- character(0)
   rep <- object$report
   if (isTRUE(object$use$rr_B) && !is.null(rep$Lambda_B)) {
-    diag_B <- diag(rep$Lambda_B[seq_len(object$d_B),
-                                seq_len(object$d_B), drop = FALSE])
+    diag_B <- diag(rep$Lambda_B[
+      seq_len(object$d_B),
+      seq_len(object$d_B),
+      drop = FALSE
+    ])
     if (any(abs(diag_B) < loading_thresh)) {
       flags <- c(flags, "near_zero_B_loading")
     }
   }
   if (isTRUE(object$use$rr_W) && !is.null(rep$Lambda_W)) {
-    diag_W <- diag(rep$Lambda_W[seq_len(object$d_W),
-                                seq_len(object$d_W), drop = FALSE])
+    diag_W <- diag(rep$Lambda_W[
+      seq_len(object$d_W),
+      seq_len(object$d_W),
+      drop = FALSE
+    ])
     if (any(abs(diag_W) < loading_thresh)) {
       flags <- c(flags, "near_zero_W_loading")
     }
@@ -89,9 +104,14 @@
   unique(flags)
 }
 
-.gllvmTMB_check_row <- function(component, status, value = NA_character_,
-                                threshold = NA_character_,
-                                message = "", action = "") {
+.gllvmTMB_check_row <- function(
+  component,
+  status,
+  value = NA_character_,
+  threshold = NA_character_,
+  message = "",
+  action = ""
+) {
   data.frame(
     component = component,
     status = status,
@@ -103,21 +123,28 @@
   )
 }
 
-#' Machine-readable convergence and fit-health checks
+#' Check convergence, Hessian, gradients, and interval readiness
 #'
-#' `check_gllvmTMB()` returns a stable table of the main fit-health
-#' diagnostics for a fitted `gllvmTMB_multi` object. It is the
-#' machine-readable companion to [gllvmTMB_diagnose()]: use this in
-#' simulations, tests, and reports where parsing printed messages would
-#' be brittle.
+#' Run `check_gllvmTMB()` right after fitting, before interpreting
+#' confidence intervals or covariance summaries. It returns a stable
+#' table of optimiser, gradient, Hessian, `sdreport()`, restart, and
+#' boundary diagnostics. It is the machine-readable companion to
+#' [gllvmTMB_diagnose()]: use this in simulations, tests, and reports
+#' where parsing printed messages would be brittle.
 #'
-#' Scope boundary: this helper reports optimisation and inference-risk
-#' signals. A `WARN` row, including `pdHess = FALSE`, means that Wald
-#' standard errors or curvature-based inference need more care; it is
-#' not by itself proof that the fitted mean, likelihood, or
-#' rotation-invariant covariance summaries are unusable.
+#' Scope boundary (DIA-08 / DIA-10): IN, optimisation and
+#' inference-risk signals for fitted models, including the intentional
+#' `gllvmTMBcontrol(se = FALSE)` point-estimate path. PARTIAL, the
+#' table does not calibrate interval coverage by itself. PLANNED,
+#' target-explicit M3 simulations decide when broader interval claims
+#' move beyond diagnostic status.
 #'
-#' @param object A `gllvmTMB_multi` fit.
+#' A `WARN` row, including `pdHess = FALSE`, means that Wald standard
+#' errors or curvature-based inference need more care; it is not by
+#' itself proof that the fitted mean, likelihood, or rotation-invariant
+#' covariance summaries are unusable.
+#'
+#' @param object A fit returned by [gllvmTMB()].
 #' @param gradient_thresh Maximum allowed absolute gradient component.
 #'   Default 0.01.
 #' @param se_thresh Threshold above which a fixed-effect standard error
@@ -132,11 +159,9 @@
 #'                 data = dat, trait = "trait", unit = "site")
 #' check_gllvmTMB(fit)
 #' }
-check_gllvmTMB <- function(object,
-                           gradient_thresh = 1e-2,
-                           se_thresh = 100) {
+check_gllvmTMB <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
   rows <- list(
@@ -154,8 +179,14 @@ check_gllvmTMB <- function(object,
     ),
     .gllvmTMB_check_row(
       "max_gradient",
-      if (is.finite(health$max_gradient) &&
-          health$max_gradient < gradient_thresh) "PASS" else "WARN",
+      if (
+        is.finite(health$max_gradient) &&
+          health$max_gradient < gradient_thresh
+      ) {
+        "PASS"
+      } else {
+        "WARN"
+      },
       signif(health$max_gradient, 4),
       gradient_thresh,
       "largest absolute gradient component at the selected optimum",
@@ -183,8 +214,14 @@ check_gllvmTMB <- function(object,
     ),
     .gllvmTMB_check_row(
       "max_fixed_se",
-      if (is.finite(health$max_fixed_se) &&
-          health$max_fixed_se < se_thresh) "PASS" else "WARN",
+      if (
+        is.finite(health$max_fixed_se) &&
+          health$max_fixed_se < se_thresh
+      ) {
+        "PASS"
+      } else {
+        "WARN"
+      },
       signif(health$max_fixed_se, 4),
       se_thresh,
       "largest fixed-effect standard error",
@@ -193,39 +230,54 @@ check_gllvmTMB <- function(object,
   )
 
   restart_history <- object$restart_history %||% data.frame()
-  rows <- c(rows, list(
-    .gllvmTMB_check_row(
-      "restart_history",
-      if (nrow(restart_history) > 0L) "PASS" else "WARN",
-      nrow(restart_history),
-      ">= 1",
-      "number of optimizer starts recorded on the fit",
-      "refit with current gllvmTMB if provenance is missing"
-    ),
-    .gllvmTMB_check_row(
-      "selected_restart",
-      if (is.finite(health$selected_restart)) "PASS" else "WARN",
-      health$selected_restart,
-      "finite restart id",
-      "restart selected by minimum objective",
-      "inspect restart_history for competing likelihood basins"
+  rows <- c(
+    rows,
+    list(
+      .gllvmTMB_check_row(
+        "restart_history",
+        if (nrow(restart_history) > 0L) "PASS" else "WARN",
+        nrow(restart_history),
+        ">= 1",
+        "number of optimizer starts recorded on the fit",
+        "refit with current gllvmTMB if provenance is missing"
+      ),
+      .gllvmTMB_check_row(
+        "selected_restart",
+        if (is.finite(health$selected_restart)) "PASS" else "WARN",
+        health$selected_restart,
+        "finite restart id",
+        "restart selected by minimum objective",
+        "inspect restart_history for competing likelihood basins"
+      )
     )
-  ))
+  )
 
   flags <- health$boundary_flags %||% character(0)
   if (length(flags) == 0L) {
-    rows <- c(rows, list(.gllvmTMB_check_row(
-      "boundary_flags", "PASS", "none", "none",
-      "no simple boundary flags detected",
-      "still inspect profile/bootstrap output for target-specific weakness"
-    )))
+    rows <- c(
+      rows,
+      list(.gllvmTMB_check_row(
+        "boundary_flags",
+        "PASS",
+        "none",
+        "none",
+        "no simple boundary flags detected",
+        "still inspect profile/bootstrap output for target-specific weakness"
+      ))
+    )
   } else {
     for (flag in flags) {
-      rows <- c(rows, list(.gllvmTMB_check_row(
-        "boundary_flags", "WARN", flag, "none",
-        "near-boundary loading or variance component detected",
-        "consider lower rank, simpler covariance, or stronger starts"
-      )))
+      rows <- c(
+        rows,
+        list(.gllvmTMB_check_row(
+          "boundary_flags",
+          "WARN",
+          flag,
+          "none",
+          "near-boundary loading or variance component detected",
+          "consider lower rank, simpler covariance, or stronger starts"
+        ))
+      )
     }
   }
 
@@ -234,15 +286,24 @@ check_gllvmTMB <- function(object,
   out
 }
 
-#' One-call diagnostic + biological summary for a `gllvmTMB_multi` fit
+#' Diagnose a fitted model and suggest next actions
 #'
-#' This is the function to call right after `fit <- gllvmTMB(...)`. It
-#' rolls up the existing diagnostics ([sanity_multi()]), the rotation
-#' identifiability advisory, and the key biological summaries
-#' (correlation diagonals, ICCs, communalities) into a single human-
-#' readable report with explicit next-step hints for any WARN signal.
+#' This is the human-readable diagnostic to call right after
+#' `fit <- gllvmTMB(...)`. It combines the quick numerical screen
+#' ([sanity_multi()]), the rotation identifiability advisory, and key
+#' biological summaries (correlation diagonals, ICCs, communalities)
+#' into a single report with explicit next-step hints for any `WARN`
+#' signal. Use [check_gllvmTMB()] when you need the same fit-health
+#' checks as a stable table for scripts or reports.
 #'
-#' @param object A `gllvmTMB_multi` fit.
+#' Scope boundary (DIA-05 / DIA-08 / DIA-10): IN, first-line
+#' convergence, Hessian, standard-error, restart, and rotation
+#' diagnostics. PARTIAL, it reports risks and summaries but does not
+#' replace profile, bootstrap, or simulation calibration. PLANNED, M3
+#' target-explicit validation will decide which interval warnings can
+#' be promoted to broader guarantees.
+#'
+#' @param object A fit returned by [gllvmTMB()].
 #' @param gradient_thresh,se_thresh Forwarded to [sanity_multi()].
 #' @param big_corr_thresh Threshold above which a `Sigma_B` correlation
 #'   off-diagonal is flagged as worth highlighting. Default 0.5.
@@ -253,7 +314,8 @@ check_gllvmTMB <- function(object,
 #'   `Sigma_B`, `Sigma_W`, `ICC_site`, `communality_B`, `communality_W`,
 #'   and `hints` (character vector of suggested actions).
 #' @export
-#' @seealso [sanity_multi()], [suggest_lambda_constraint()],
+#' @seealso [check_gllvmTMB()], [sanity_multi()],
+#'   [suggest_lambda_constraint()],
 #'   [extract_Sigma()], [extract_communality()],
 #'   [compare_dep_vs_two_psi()] / [compare_indep_vs_two_psi()] for
 #'   identifiability cross-checks on the paired phylogenetic fit.
@@ -263,33 +325,42 @@ check_gllvmTMB <- function(object,
 #'                 data = dat, trait = "trait", unit = "site")
 #' gllvmTMB_diagnose(fit)
 #' }
-gllvmTMB_diagnose <- function(object,
-                              gradient_thresh = 1e-2,
-                              se_thresh       = 100,
-                              big_corr_thresh = 0.5,
-                              verbose = TRUE) {
-  if (!inherits(object, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+gllvmTMB_diagnose <- function(
+  object,
+  gradient_thresh = 1e-2,
+  se_thresh = 100,
+  big_corr_thresh = 0.5,
+  verbose = TRUE
+) {
+  if (!inherits(object, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
 
   ## ---- Pillar 1: sanity flags --------------------------------------
-  if (verbose) cli::cli_h2("1. Optimiser & numerical sanity")
+  if (verbose) {
+    cli::cli_h2("1. Optimiser & numerical sanity")
+  }
   san <- if (verbose) {
-    sanity_multi(object,
-                 gradient_thresh = gradient_thresh,
-                 se_thresh       = se_thresh)
+    sanity_multi(
+      object,
+      gradient_thresh = gradient_thresh,
+      se_thresh = se_thresh
+    )
   } else {
     ## Capture the print output so silent calls don't pollute stdout
     suppressWarnings(utils::capture.output({
-      flags <- sanity_multi(object,
-                            gradient_thresh = gradient_thresh,
-                            se_thresh       = se_thresh)
+      flags <- sanity_multi(
+        object,
+        gradient_thresh = gradient_thresh,
+        se_thresh = se_thresh
+      )
     }))
     flags
   }
 
   ## ---- Pillar 2: rotation identifiability --------------------------
   rot <- object$needs_rotation_advice %||%
-         list(B = FALSE, W = FALSE, phy = FALSE)
+    list(B = FALSE, W = FALSE, phy = FALSE)
   if (verbose) {
     cli::cli_h2("2. Rotational identifiability")
     if (any(unlist(rot, use.names = FALSE))) {
@@ -302,18 +373,23 @@ gllvmTMB_diagnose <- function(object,
         }
       }
     } else {
-      cli::cli_inform(c("v" = "No latent / phylo_latent term with rotational ambiguity."))
+      cli::cli_inform(c(
+        "v" = "No latent / phylo_latent term with rotational ambiguity."
+      ))
     }
   }
 
   ## ---- Pillar 3: biological summaries ------------------------------
   out_Sigma_B <- tryCatch(extract_Sigma_B(object), error = function(e) NULL)
   out_Sigma_W <- tryCatch(extract_Sigma_W(object), error = function(e) NULL)
-  ICC_site    <- tryCatch(extract_ICC_site(object), error = function(e) NULL)
-  comm_B      <- tryCatch(extract_communality(object, "unit"),
-                          error = function(e) NULL)
-  comm_W      <- tryCatch(extract_communality(object, "unit_obs"),
-                          error = function(e) NULL)
+  ICC_site <- tryCatch(extract_ICC_site(object), error = function(e) NULL)
+  comm_B <- tryCatch(extract_communality(object, "unit"), error = function(e) {
+    NULL
+  })
+  comm_W <- tryCatch(
+    extract_communality(object, "unit_obs"),
+    error = function(e) NULL
+  )
 
   if (verbose) {
     cli::cli_h2("3. Biological summaries")
@@ -325,12 +401,18 @@ gllvmTMB_diagnose <- function(object,
       big <- which(abs(R) > big_corr_thresh & lower.tri(R), arr.ind = TRUE)
       if (nrow(big) > 0) {
         nm <- rownames(R) %||% paste0("trait", seq_len(nrow(R)))
-        cat(sprintf("  %d trait pair(s) with |corr| > %.2f:\n",
-                    nrow(big), big_corr_thresh))
+        cat(sprintf(
+          "  %d trait pair(s) with |corr| > %.2f:\n",
+          nrow(big),
+          big_corr_thresh
+        ))
         for (i in seq_len(min(nrow(big), 8L))) {
-          cat(sprintf("    %s ~ %s : %+.2f\n",
-                      nm[big[i, 1]], nm[big[i, 2]],
-                      R[big[i, 1], big[i, 2]]))
+          cat(sprintf(
+            "    %s ~ %s : %+.2f\n",
+            nm[big[i, 1]],
+            nm[big[i, 2]],
+            R[big[i, 1], big[i, 2]]
+          ))
         }
       }
     }
@@ -355,45 +437,63 @@ gllvmTMB_diagnose <- function(object,
   ## ---- Pillar 4: actionable hints ----------------------------------
   hints <- character(0)
   if (!isTRUE(san$converged)) {
-    hints <- c(hints, paste(
-      "Optimiser did NOT converge.",
-      "Try `gllvmTMBcontrol(n_init = 5, optimizer = \"optim\",",
-      "optArgs = list(method = \"BFGS\"))`, residual starts for",
-      "non-Gaussian latent fits, or `start_method = list(method = \"indep\")`",
-      "for simpler-model warm starts."
-    ))
+    hints <- c(
+      hints,
+      paste(
+        "Optimiser did NOT converge.",
+        "Try `gllvmTMBcontrol(n_init = 5, optimizer = \"optim\",",
+        "optArgs = list(method = \"BFGS\"))`, residual starts for",
+        "non-Gaussian latent fits, or `start_method = list(method = \"indep\")`",
+        "for simpler-model warm starts."
+      )
+    )
   }
   if (isTRUE(san$max_gradient >= gradient_thresh)) {
-    hints <- c(hints, paste(
-      sprintf("Max |gradient| = %.3g exceeds %.1e.", san$max_gradient,
-              gradient_thresh),
-      "Optimum may not be tight; try multiple starts via",
-      "`gllvmTMBcontrol(n_init = 5)` or rescale predictors."
-    ))
+    hints <- c(
+      hints,
+      paste(
+        sprintf(
+          "Max |gradient| = %.3g exceeds %.1e.",
+          san$max_gradient,
+          gradient_thresh
+        ),
+        "Optimum may not be tight; try multiple starts via",
+        "`gllvmTMBcontrol(n_init = 5)` or rescale predictors."
+      )
+    )
   }
   if (!isTRUE(san$pd_hessian)) {
-    hints <- c(hints, paste(
-      "Hessian is not positive-definite. Treat this as an inference",
-      "and identifiability warning rather than automatic point-estimate",
-      "failure. Inspect `check_gllvmTMB(fit)`, gradients, boundary",
-      "variances, redundant latent dimensions, and prefer profile or",
-      "bootstrap intervals for interpretable Sigma targets."
-    ))
+    hints <- c(
+      hints,
+      paste(
+        "Hessian is not positive-definite. Treat this as an inference",
+        "and identifiability warning rather than automatic point-estimate",
+        "failure. Inspect `check_gllvmTMB(fit)`, gradients, boundary",
+        "variances, redundant latent dimensions, and prefer profile or",
+        "bootstrap intervals for interpretable Sigma targets."
+      )
+    )
   }
   if (!is.na(san$max_se) && san$max_se >= se_thresh) {
-    hints <- c(hints, paste(
-      sprintf("Largest fixed-effect SE = %.3g.", san$max_se),
-      "A coefficient is barely identified -- check for collinearity or",
-      "for a fixed effect that is absorbed by a random-effect group."
-    ))
+    hints <- c(
+      hints,
+      paste(
+        sprintf("Largest fixed-effect SE = %.3g.", san$max_se),
+        "A coefficient is barely identified -- check for collinearity or",
+        "for a fixed effect that is absorbed by a random-effect group."
+      )
+    )
   }
   if (any(unlist(rot, use.names = FALSE))) {
-    hints <- c(hints, paste(
-      "Lambda is identified only up to rotation. For a unique loading",
-      "matrix, see `suggest_lambda_constraint()`. For interpretation,",
-      "use `getLoadings(fit, rotate = \"varimax\")`. The implied Sigma",
-      "matrices are rotation-invariant and need no constraint."
-    ))
+    hints <- c(
+      hints,
+      paste(
+        "Lambda is identified only up to rotation. For a unique loading",
+        "matrix, see `suggest_lambda_constraint()`. For interpretation,",
+        "use `getLoadings(fit, rotate = \"varimax\")`. The implied Sigma",
+        "matrices are rotation-invariant and need no constraint."
+      )
+    )
   }
 
   if (verbose) {
@@ -401,18 +501,20 @@ gllvmTMB_diagnose <- function(object,
     if (length(hints) == 0) {
       cli::cli_inform(c("v" = "Nothing flagged. Fit looks healthy."))
     } else {
-      for (h in hints) cli::cli_inform(c("*" = h))
+      for (h in hints) {
+        cli::cli_inform(c("*" = h))
+      }
     }
   }
 
   invisible(list(
-    sanity        = san,
-    rotation      = rot,
-    Sigma_B       = out_Sigma_B,
-    Sigma_W       = out_Sigma_W,
-    ICC_site      = ICC_site,
+    sanity = san,
+    rotation = rot,
+    Sigma_B = out_Sigma_B,
+    Sigma_W = out_Sigma_W,
+    ICC_site = ICC_site,
     communality_B = comm_B,
     communality_W = comm_W,
-    hints         = hints
+    hints = hints
   ))
 }

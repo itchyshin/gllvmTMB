@@ -13,9 +13,10 @@ profile_ci_correlation(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{tier}{\code{"B"}, \code{"W"}, \code{"phy"}, or \code{"spde"}.}
+\item{tier}{\code{"unit"}, \code{"unit_obs"}, \code{"phy"}, or \code{"spatial"}.
+Legacy aliases \code{"B"}, \code{"W"}, and \code{"spde"} are accepted.}
 
 \item{i, j}{Trait indices (1-based, \code{i < j}).}
 
@@ -25,11 +26,11 @@ profile_ci_correlation(
 Length-3 numeric vector (\code{estimate}, \code{lower}, \code{upper}).
 }
 \description{
-For a fitted gllvmTMB_multi model, computes the profile-likelihood
+For a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, computes the profile-likelihood
 confidence interval for one cross-trait correlation
 \eqn{\rho_{ij} = \Sigma_{ij} / \sqrt{\Sigma_{ii}\Sigma_{jj}}} at one
-tier. Cross-trait correlations are first-class outputs of the
+covariance level. Cross-trait correlations are first-class outputs of the
 factor-analytic decomposition and need accurate CIs at scale (a 6-trait
-fit has 75 of them across 5 tiers).
+fit has 60 of them across four covariance levels).
 }
 \keyword{internal}

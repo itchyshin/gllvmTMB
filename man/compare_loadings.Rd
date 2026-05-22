@@ -2,7 +2,7 @@
 % Please edit documentation in R/rotate-loadings.R
 \name{compare_loadings}
 \alias{compare_loadings}
-\title{Compare two loading matrices (Procrustes alignment)}
+\title{Compare two loading matrices after Procrustes alignment}
 \usage{
 compare_loadings(Lambda_a, Lambda_b)
 }
@@ -14,20 +14,19 @@ A list with the optimal rotation \code{R}, the rotated \code{Lambda_a_rot},
 and the Frobenius distance after alignment.
 }
 \description{
-When fitting two models with latent() on the same dataset (e.g. a
-gllvmTMB fit and a glmmTMB or gllvm fit) the loadings are only
-identified up to rotation/sign. Procrustes alignment finds the
-orthogonal transform that brings one as close to the other as
-possible, then reports the residual disagreement. Useful as a
-diagnostic when validating against another package.
+When two latent-variable fits use the same traits, the loading matrices are
+only identified up to rotation and sign. Procrustes alignment finds the
+orthogonal transform that brings one matrix as close as possible to the
+other, then reports the residual disagreement. This is mainly a validation
+helper for comparing \code{\link[=gllvmTMB]{gllvmTMB()}} with another implementation.
 }
 \examples{
 \dontrun{
-fit_g <- gllvmTMB(value ~ 0 + trait + latent(0+trait|site, d=2),
+fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
                   data = df, trait = "trait", unit = "site")
-fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0+trait|site, d=2),
+fit_t <- glmmTMB::glmmTMB(value ~ 0 + trait + rr(0 + trait | site, d = 2),
                          data = df, REML = FALSE)
-L_g <- extract_ordination(fit_g, "B")$loadings
+L_g <- extract_ordination(fit_g, "unit")$loadings
 L_t <- attr(glmmTMB::ranef(fit_t)$cond$site, "loadings")
 compare_loadings(L_g, L_t)
 }

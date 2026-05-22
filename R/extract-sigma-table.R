@@ -251,7 +251,8 @@
 #' [bootstrap_Sigma()] followed by `extract_Sigma_table()` when you need
 #' bootstrap intervals for Sigma or correlation matrix entries.
 #'
-#' @param fit A `gllvmTMB_multi` fit or a `bootstrap_Sigma` object.
+#' @param fit A fit returned by [gllvmTMB()] or a [bootstrap_Sigma()]
+#'   result.
 #' @param level Character vector of covariance levels, or `"all"` for every
 #'   level present in the fit. Canonical levels are `"unit"`, `"unit_obs"`,
 #'   `"cluster"`, `"phy"`, and `"spatial"`; legacy aliases `"B"`, `"W"`,
@@ -327,7 +328,7 @@ extract_Sigma_table <- function(
 
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort(
-      "Provide a {.cls gllvmTMB_multi} fit or a {.cls bootstrap_Sigma} object."
+      "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
     )
   }
 
@@ -436,7 +437,7 @@ extract_Sigma_table <- function(
 #' layer, use [plot_Sigma_comparison()]; richer article-specific calibration
 #' summaries remain future visualization work.
 #'
-#' @param x A `gllvmTMB_multi` fit or a data frame returned by
+#' @param x A fit returned by [gllvmTMB()] or a data frame returned by
 #'   [extract_Sigma_table()].
 #' @param truth Square numeric covariance or correlation matrix. Row and column
 #'   names should match the trait names in `x`; unnamed matrices are accepted
@@ -500,7 +501,7 @@ compare_Sigma_table <- function(
     rows <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a {.cls gllvmTMB_multi} fit or a data frame from {.fun extract_Sigma_table}."
+      "{.arg x} must be a fit returned by {.fun gllvmTMB} or a data frame from {.fun extract_Sigma_table}."
     )
   }
 

@@ -7,7 +7,7 @@
 extract_ICC_site(fit, link_residual = c("auto", "none"))
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} object.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{link_residual}{For binomial fits: \code{"auto"} (default) adds the
 link-specific implicit residual to \eqn{(\boldsymbol\Sigma_W)_{tt}};

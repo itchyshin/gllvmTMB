@@ -7,7 +7,7 @@
 check_auto_residual(fit)
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
 Invisibly, a list with components \code{status} (one of \code{"ok"},

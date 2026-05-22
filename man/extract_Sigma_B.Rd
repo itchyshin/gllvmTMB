@@ -7,7 +7,7 @@
 extract_Sigma_B(fit)
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} object.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
 A list with \code{Sigma_B} (T x T covariance), \code{R_B} (correlation),

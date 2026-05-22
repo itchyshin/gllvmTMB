@@ -9,8 +9,7 @@
 #' \strong{Deprecated alias.} Engine-internal name; users should write
 #' [spatial_unique()] (or one of the other [spatial_scalar()] /
 #' [spatial_latent()] keywords) in formulas. Kept for backward
-#' compatibility and as the canonical place to document the underlying
-#' Matérn / SPDE kernel.
+#' compatibility and to document the underlying Matérn / SPDE kernel.
 #'
 #' A formula keyword for adding a spatial random field to a `gllvmTMB()`
 #' fit, one independent field per trait, sharing a common range
@@ -124,8 +123,8 @@
 #'   columns are read from `mesh` (the second argument to
 #'   [gllvmTMB()]).
 #' @param trait An unquoted token; usually the literal `trait` (the
-#'   long-format engine treats every level of this factor as a
-#'   separate response, with one SPDE field per level).
+#'   stacked-trait fit treats every level of this factor as a separate
+#'   response, with one SPDE field per level).
 #'
 #' @return A formula marker; never evaluated as a call.
 #' @export

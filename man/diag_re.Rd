@@ -49,7 +49,7 @@ others.
 }
 
 Adding \code{+ unique(0 + trait | site)} gives the engine a per-trait
-variance parameter \eqn{s_{B,t}^2}, restoring the full decomposition.
+variance parameter \eqn{\psi_{g,t}}, restoring the full decomposition.
 }
 
 \subsection{When you do \emph{not} need \code{unique()}}{
@@ -58,7 +58,7 @@ variance parameter \eqn{s_{B,t}^2}, restoring the full decomposition.
 link function fixes an implicit residual variance on the latent
 scale (1 for probit, \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
 cloglog), which acts as the implicit unique component. Adding an
-explicit \code{diag()} term on top is typically not identified.
+explicit \code{unique()} term on top is typically not identified.
 \item \strong{Phylogenetic shared term, three-piece fallback}. The
 \code{phylo_latent(species, d = K)} term has no associated
 \code{unique()} because the phylogenetic prior is already
@@ -104,19 +104,26 @@ and \eqn{\boldsymbol\Sigma_W = \boldsymbol\Lambda_W \boldsymbol\Lambda_W^\top + 
 For a species-level fit with phylogeny, the natural three-component
 decomposition is
 
-\deqn{\Omega = \Sigma_\mathrm{phy} + \Sigma_\mathrm{non,shared} + U.}
+\deqn{\boldsymbol\Omega = \boldsymbol\Sigma_\mathrm{phy} + \boldsymbol\Sigma_\mathrm{non}.}
+
+Here \eqn{\boldsymbol\Sigma_\mathrm{non}} is the non-phylogenetic
+species-level covariance:
+
+\deqn{\boldsymbol\Sigma_\mathrm{non} =
+      \boldsymbol\Lambda_\mathrm{non}\boldsymbol\Lambda_\mathrm{non}^\top +
+      \boldsymbol\Psi_\mathrm{non}.}
 
 In gllvmTMB syntax:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait +
         phylo_latent(species, d = K_phy) +             # Sigma_phy
-        latent(0 + trait | species, d = K_non) +       # Sigma_non,shared
-        unique(0 + trait | species)                    # U
+        latent(0 + trait | species, d = K_non) +       # Lambda_non Lambda_non^T
+        unique(0 + trait | species)                    # Psi_non
 }\if{html}{\out{</div>}}
 
 \code{\link[=extract_Sigma]{extract_Sigma()}} with \code{level = "phy"} returns \eqn{\Sigma_\mathrm{phy}};
-\code{level = "B"} returns \eqn{\Sigma_\mathrm{non,shared} + U}
-(the non-phylogenetic species-level covariance). Their sum is
+\code{level = "unit"} returns \eqn{\boldsymbol\Sigma_\mathrm{non}} (the
+non-phylogenetic species-level covariance). Their sum is
 \eqn{\boldsymbol\Omega}.
 }
 
@@ -126,19 +133,20 @@ For Gaussian / lognormal / Gamma fits, the engine also estimates a
 single observation-scale residual \code{sigma_eps} (the σ_ε of the response).
 If you place \code{unique(0 + trait | g)} at a grouping \code{g} that has \strong{one
 row per (trait, g) cell} (i.e. the unique random effects are at the
-per-row / per-observation level), the unique-S parameters and
+per-row / per-observation level), the unique-variance parameters and
 \code{sigma_eps} are jointly unidentifiable — only the sum
 \eqn{\mathrm{sd}_g[t]^2 + \sigma_\varepsilon^2} is identified.
 
 In that case the engine \strong{auto-suppresses} \code{sigma_eps} (fixed at
-\eqn{\approx 10^{-3}} of \code{sd(y)}) so the unique(S) random effects fully
+\eqn{\approx 10^{-3}} of \code{sd(y)}) so the unique random effects fully
 absorb the row-level residual variance, and emits a one-shot message
 announcing the suppression. This matches the user's intent when they
-write a per-row \code{unique()} term: they want the unique-S to \emph{be} the
-row-level residual, not to compete with \code{sigma_eps} for it.
+write a per-row \code{unique()} term: they want the unique variance to
+represent the row-level residual, not to compete with \code{sigma_eps}
+for it.
 
 If you have multiple rows per (trait, g) cell (e.g. \code{unique(0 + trait | site)} with several species per site), \code{sigma_eps} is the
-\emph{within-cell} residual and the unique-S random effects are the
+\emph{within-cell} residual and the unique random effects are the
 \emph{between-cell} per-trait variance — both are separately identified and
 both are estimated.
 }
@@ -187,9 +195,9 @@ fit <- gllvmTMB(
   unit     = "individual",
   unit_obs = "obs_id"
 )
-extract_Sigma(fit, level = "B", part = "shared")$Sigma   # Lambda_B Lambda_B^T
-extract_Sigma(fit, level = "B", part = "unique")$s       # diag(Psi_B)
-extract_Sigma(fit, level = "B", part = "total")$Sigma    # both, summed
+extract_Sigma(fit, level = "unit", part = "shared")$Sigma # Lambda Lambda^T
+extract_Sigma(fit, level = "unit", part = "unique")$s     # diag(Psi)
+extract_Sigma(fit, level = "unit", part = "total")$Sigma  # both, summed
 }
 }
 \references{

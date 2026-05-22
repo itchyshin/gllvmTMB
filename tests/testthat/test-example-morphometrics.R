@@ -124,13 +124,14 @@ test_that("morphometrics bootstrap correlation fixture is plot-ready", {
   expect_equal(rownames(boot$point_est$R_B), ex$truth$trait_names)
   expect_equal(colnames(boot$point_est$R_B), ex$truth$trait_names)
 
-  p <- plot_correlations(boot, tier = "unit", style = "raindrop")
+  p <- plot_correlations(boot, tier = "unit", style = "eye")
   expect_s3_class(p, "ggplot")
   meta <- attr(p, "gllvmTMB_meta")
-  expect_equal(meta$type, "correlations_raindrop")
+  expect_equal(meta$type, "correlations_confidence_eye")
   expect_equal(meta$source, "extract_Sigma_table")
   expect_equal(meta$interval_status, "provided")
   expect_equal(nrow(attr(p, "gllvmTMB_data")), 10L)
+  expect_s3_class(attr(p, "gllvmTMB_confidence_eye_data"), "data.frame")
   expect_silent(ggplot2::ggplot_build(p))
 
   ctl <- gllvmTMBcontrol(se = FALSE)

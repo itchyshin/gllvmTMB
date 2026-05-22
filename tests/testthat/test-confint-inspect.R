@@ -8,33 +8,36 @@
 make_tiny_fit_for_inspect <- function(seed = 1L) {
   set.seed(seed)
   sim <- gllvmTMB::simulate_site_trait(
-    n_sites = 20, n_species = 4, n_traits = 3,
+    n_sites = 20,
+    n_species = 4,
+    n_traits = 3,
     mean_species_per_site = 3,
     Lambda_B = matrix(c(0.8, 0.4, -0.3), 3, 1),
-    psi_B    = c(0.3, 0.3, 0.3),
-    seed     = seed
+    psi_B = c(0.3, 0.3, 0.3),
+    seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1) +
-            unique(0 + trait | site),
+    value ~ 0 +
+      trait +
+      latent(0 + trait | site, d = 1) +
+      unique(0 + trait | site),
     data = sim$data
   )))
 }
 
 ## ---- input validation ---------------------------------------------------
 
-test_that("confint_inspect() errors on non-gllvmTMB_multi", {
+test_that("confint_inspect() errors on non-fit input", {
   expect_error(
     gllvmTMB::confint_inspect(list(foo = 1), parm = "sigma_eps"),
-    "gllvmTMB_multi"
+    "fit returned by `gllvmTMB\\(\\)`"
   )
 })
 
 test_that("confint_inspect() errors on missing or multi-element parm", {
   skip_on_cran()
   fit <- make_tiny_fit_for_inspect()
-  expect_error(gllvmTMB::confint_inspect(fit),
-               "single character target label")
+  expect_error(gllvmTMB::confint_inspect(fit), "single character target label")
   expect_error(
     gllvmTMB::confint_inspect(fit, parm = c("sigma_eps", "b_fix[1]")),
     "single character target label"
@@ -72,18 +75,29 @@ test_that("confint_inspect() returns the documented structure", {
   ## $curve is a data.frame with the documented columns and >= 3 rows.
   expect_s3_class(res$curve, "data.frame")
   expect_gte(nrow(res$curve), 3L)
-  expected_curve_cols <- c("parm", "parm_value_natural",
-                           "parm_value_link", "nll", "deviance_drop",
-                           "excess_over_threshold", "in_ci")
+  expected_curve_cols <- c(
+    "parm",
+    "parm_value_natural",
+    "parm_value_link",
+    "nll",
+    "deviance_drop",
+    "excess_over_threshold",
+    "in_ci"
+  )
   expect_true(all(expected_curve_cols %in% colnames(res$curve)))
   ## $bounds is a 1-row data.frame with the documented columns.
   expect_s3_class(res$bounds, "data.frame")
   expect_equal(nrow(res$bounds), 1L)
-  expected_bounds_cols <- c("parm", "estimate_natural",
-                            "lower_natural", "upper_natural",
-                            "wald_lower_natural", "wald_upper_natural",
-                            "wald_profile_disagree_lower",
-                            "wald_profile_disagree_upper")
+  expected_bounds_cols <- c(
+    "parm",
+    "estimate_natural",
+    "lower_natural",
+    "upper_natural",
+    "wald_lower_natural",
+    "wald_upper_natural",
+    "wald_profile_disagree_lower",
+    "wald_profile_disagree_upper"
+  )
   expect_true(all(expected_bounds_cols %in% colnames(res$bounds)))
 })
 
@@ -104,7 +118,8 @@ test_that("sigma_eps profile is well-behaved and matches Wald to within 10%", {
   ## Profile and Wald should be within 10% half-width of each other
   ## for a smooth Gaussian fit.
   wald_hw <- (res$bounds$wald_upper_natural -
-              res$bounds$wald_lower_natural) / 2
+    res$bounds$wald_lower_natural) /
+    2
   expect_lt(
     abs(res$bounds$lower_natural - res$bounds$wald_lower_natural),
     0.10 * wald_hw
@@ -141,7 +156,8 @@ test_that("confint_inspect() works for a fixed-effect target", {
   ## b_fix is symmetric (linear predictor) -- profile should match
   ## Wald even more tightly than sigma_eps.
   wald_hw <- (res$bounds$wald_upper_natural -
-              res$bounds$wald_lower_natural) / 2
+    res$bounds$wald_lower_natural) /
+    2
   expect_lt(
     abs(res$bounds$lower_natural - res$bounds$wald_lower_natural),
     0.05 * wald_hw

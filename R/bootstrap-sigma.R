@@ -1,14 +1,14 @@
 ## Parametric-bootstrap CIs for Sigma / R / communality / ICC summaries
-## of a fitted gllvmTMB_multi model. Uses the existing
+## of a fitted gllvmTMB model. Uses the existing
 ## simulate.gllvmTMB_multi method to draw replicate response vectors,
 ## refits the same formula, and accumulates percentile CIs across the
 ## requested levels and summaries.
 
 #' Reconstruct the full formula (fixed + covstructs) from a
-#' `gllvmTMB_multi` fit. Used internally by `bootstrap_Sigma()` so the
+#' fitted gllvmTMB model. Used internally by `bootstrap_Sigma()` so the
 #' caller does not have to pass the original formula manually.
 #'
-#' @param fit A `gllvmTMB_multi` object.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @return A formula object combining `fit$formula` and `fit$covstructs`.
 #' @keywords internal
 #' @noRd
@@ -31,16 +31,32 @@
   stats::as.formula(paste(deparse(call("~", lhs, rhs)), collapse = " "))
 }
 
-#' Parametric bootstrap for Sigma, correlations, communalities, and ICCs
+#' Bootstrap covariance, correlation, communality, and ICC summaries
 #'
-#' Generates `n_boot` parametric bootstrap replicates of a fitted
-#' `gllvmTMB_multi` model and returns percentile confidence intervals for
-#' the canonical biological summaries: trait covariance matrices
-#' \eqn{\hat\Sigma_B}, \eqn{\hat\Sigma_W}; the corresponding correlation
-#' matrices \eqn{\hat R_B}, \eqn{\hat R_W}; per-trait communalities
-#' \eqn{c_t^2 = (\Lambda \Lambda^\top)_{tt} / \Sigma_{tt}}; and per-trait
-#' site-level ICCs
-#' \eqn{R_t = (\Sigma_B)_{tt} / [(\Sigma_B)_{tt} + (\Sigma_W)_{tt}]}.
+#' Use `bootstrap_Sigma()` when Hessian, Wald, or profile intervals are
+#' unavailable or unsafe but the fitted model still has useful point
+#' estimates. A `pdHess = FALSE` or skipped `sdreport()` is an
+#' inference warning, not automatic proof that the fitted mean or
+#' rotation-invariant covariance summaries are unusable. Inspect
+#' [check_gllvmTMB()] / [gllvmTMB_diagnose()] first, then use this
+#' helper for parametric simulate-refit uncertainty.
+#'
+#' The function generates `n_boot` parametric bootstrap replicates of a
+#' fitted model and returns percentile confidence intervals for the
+#' canonical biological summaries: trait covariance matrices
+#' \eqn{\hat\Sigma_\mathrm{unit}}, \eqn{\hat\Sigma_\mathrm{unit\_obs}};
+#' the corresponding correlation matrices; per-trait communalities
+#' \eqn{c_t^2 = (\Lambda \Lambda^\top)_{tt} / \Sigma_{tt}}; and
+#' per-trait site-level ICCs
+#' \eqn{R_t = (\Sigma_\mathrm{unit})_{tt} /
+#' [(\Sigma_\mathrm{unit})_{tt} + (\Sigma_\mathrm{unit\_obs})_{tt}]}.
+#'
+#' Scope boundary (EXT-13 / CI-03 / CI-10): IN, Gaussian bootstrap
+#' summaries and mixed-family refit plumbing covered by current tests.
+#' PARTIAL, non-Gaussian bootstrap calibration remains experimental
+#' until the M3 target-explicit grid is rerun. PLANNED, production
+#' calibration evidence for mixed-family intervals remains future M3
+#' work.
 #'
 #' Each bootstrap replicate (1) draws a new response vector from
 #' `simulate(fit, nsim = 1)`, (2) refits the model with the same formula
@@ -55,11 +71,12 @@
 #' reproducible given a fixed `seed`, but they are NOT bit-identical to
 #' an `n_cores = 1` run with the same seed (different RNG streams).
 #'
-#' @param fit A `gllvmTMB_multi` object.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param n_boot Integer; number of bootstrap replicates. Default 200.
 #' @param level Character vector; which tier(s) to bootstrap.
-#'   Subset of `c("B", "W", "phy")`. Tiers absent from the fit are
-#'   silently dropped. Default: all three.
+#'   Use the canonical levels `c("unit", "unit_obs", "phy")`; legacy
+#'   aliases `"B"` and `"W"` are still accepted. Levels absent from
+#'   the fit are silently dropped. Default: all available levels.
 #' @param what Character vector; which summaries to compute.
 #'   Subset of `c("Sigma", "R", "communality", "ICC")`. Default: all
 #'   four. `"ICC"` only makes sense at the site level and requires both
@@ -103,9 +120,10 @@
 #'   \item Uses the existing [simulate.gllvmTMB_multi()] method, which
 #'     conditions on the fitted random effects (\eqn{\eta = \hat\eta})
 #'     and redraws the response from the fitted family where implemented.
-#'     CIs reflect parametric simulate-refit variability, not the full
-#'     posterior uncertainty in variance components. Unsupported families
-#'     fall back through the simulator's own warning path.
+#'     CIs reflect parametric simulate-refit variability, not a
+#'     Bayesian posterior distribution for variance components.
+#'     Unsupported families fall back through the simulator's own
+#'     warning path.
 #'   \item Refits use the same `formula` reconstructed from
 #'     `fit$formula` and `fit$covstructs`. Auxiliary arguments such as
 #'     `phylo_vcv`, `mesh`, `lambda_constraint` are NOT currently
@@ -129,7 +147,7 @@
 #'                 data  = s$data,
 #'                 trait = "trait",
 #'                 unit  = "site")
-#' boot <- bootstrap_Sigma(fit, n_boot = 50, level = "B",
+#' boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
 #'                         what = c("Sigma", "R"), seed = 42)
 #' boot$point_est$Sigma_B
 #' boot$ci_lower$Sigma_B
@@ -148,7 +166,7 @@ bootstrap_Sigma <- function(
   link_residual = c("auto", "none")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   level <- match.arg(level, several.ok = TRUE)
   level <- vapply(level, .normalise_level, character(1L), arg_name = "level")
@@ -167,7 +185,7 @@ bootstrap_Sigma <- function(
   level_avail <- c(
     B = isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B),
     W = isTRUE(fit$use$rr_W) || isTRUE(fit$use$diag_W),
-    ## Two-U PGLLVM: phy tier is present when EITHER phylo_latent OR
+    ## Paired phylogenetic PGLLVM: phy tier is present when EITHER phylo_latent OR
     ## phylo_unique-with-latent (phylo_diag) is fit.
     phy = isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   )

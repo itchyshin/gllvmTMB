@@ -17,18 +17,19 @@
 \method{logLik}{gllvmTMB_multi}(object, ...)
 }
 \arguments{
-\item{x, object}{A \code{gllvmTMB_multi} fit.}
+\item{x, object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{...}{Currently unused.}
 
 \item{digits}{Decimal digits in the printed summary. Default 3.}
 }
 \description{
-Standard model-object accessors for a fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}
-on long-format multivariate data. (Internally the fit has class
+Standard model-object accessors for a multivariate fit returned by
+\code{\link[=gllvmTMB]{gllvmTMB()}}, whether the call started from wide \code{traits(...)} data
+or already-stacked long data. Internally the fit has class
 \code{gllvmTMB_multi}, which is what these S3 methods dispatch on, but
-you just call \code{print(fit)}, \code{summary(fit)}, \code{logLik(fit)} etc.
-as usual.)
+you just call \code{print(fit)}, \code{summary(fit)}, \code{logLik(fit)} etc. as
+usual.
 }
 \details{
 \itemize{

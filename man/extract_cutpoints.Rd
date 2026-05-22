@@ -2,13 +2,13 @@
 % Please edit documentation in R/extract-cutpoints.R
 \name{extract_cutpoints}
 \alias{extract_cutpoints}
-\title{Extract ordinal-probit cutpoints from a \code{gllvmTMB_multi} fit}
+\title{Extract ordinal-probit cutpoints from a fitted gllvmTMB model}
 \usage{
 extract_cutpoints(fit)
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit produced with at least one
-\code{ordinal_probit()} trait.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with at least one
+\code{\link[=ordinal_probit]{ordinal_probit()}} trait.}
 }
 \value{
 A data frame with columns

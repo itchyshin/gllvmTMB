@@ -15,7 +15,7 @@ compare_Sigma_table(
 )
 }
 \arguments{
-\item{x}{A \code{gllvmTMB_multi} fit or a data frame returned by
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} or a data frame returned by
 \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}.}
 
 \item{truth}{Square numeric covariance or correlation matrix. Row and column

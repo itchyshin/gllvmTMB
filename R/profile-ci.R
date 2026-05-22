@@ -1,4 +1,4 @@
-## Profile-likelihood confidence intervals for gllvmTMB_multi fits.
+## Profile-likelihood confidence intervals for fitted gllvmTMB models.
 ##
 ## This file implements the "direct" profile path: a parameter that exists
 ## in opt$par (or a linear combination of such parameters) is profiled via
@@ -24,8 +24,11 @@
 #' @keywords internal
 #' @noRd
 .qchisq_threshold <- function(level) {
-  if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1)
-    cli::cli_abort("{.arg level} must be a single value in (0, 1); got {level}.")
+  if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
+    cli::cli_abort(
+      "{.arg level} must be a single value in (0, 1); got {level}."
+    )
+  }
   stats::qchisq(level, df = 1L) / 2
 }
 
@@ -43,24 +46,30 @@
   par_names <- names(fit$opt$par)
   if (is.numeric(name)) {
     idx <- as.integer(name)
-    if (idx < 1L || idx > length(par_names))
-      cli::cli_abort("Parameter index {.val {idx}} out of range [1, {length(par_names)}].")
+    if (idx < 1L || idx > length(par_names)) {
+      cli::cli_abort(
+        "Parameter index {.val {idx}} out of range [1, {length(par_names)}]."
+      )
+    }
     return(idx)
   }
-  if (!is.character(name) || length(name) != 1L)
+  if (!is.character(name) || length(name) != 1L) {
     cli::cli_abort("{.arg name} must be a single character or integer.")
+  }
   hits <- which(par_names == name)
-  if (length(hits) == 0L)
+  if (length(hits) == 0L) {
     cli::cli_abort(c(
       "Parameter {.val {name}} not found in {.code opt$par}.",
       "i" = "Available names: {.val {unique(par_names)}}."
     ))
+  }
   which <- as.integer(which)
-  if (which < 1L || which > length(hits))
+  if (which < 1L || which > length(hits)) {
     cli::cli_abort(c(
       "{.arg which} = {which} out of range for {.val {name}}.",
       "i" = "There are {length(hits)} entries named {.val {name}}."
     ))
+  }
   hits[which]
 }
 
@@ -90,12 +99,14 @@
 
   find_cross <- function(idx, side = c("lower", "upper")) {
     side <- match.arg(side)
-    if (length(idx) < 2L) return(NA_real_)
+    if (length(idx) < 2L) {
+      return(NA_real_)
+    }
     p_sub <- pars[idx]
     v_sub <- vals[idx]
     e_sub <- v_sub - thresh
-    pos <- which(e_sub > 0)   # outside CI
-    neg <- which(e_sub <= 0)  # inside CI
+    pos <- which(e_sub > 0) # outside CI
+    neg <- which(e_sub <= 0) # inside CI
     ## Boundary case: tmbprofile() returned points on this side but the
     ## profile never reached the chi-square threshold. The variance is
     ## pinned at the natural boundary or weakly identified. Return the
@@ -103,15 +114,25 @@
     ## the natural CI boundary (plogis: R -> 0/1; tanh: rho -> -1/1;
     ## exp: sigma2 -> 0/Inf; identity: -Inf/Inf for unbounded params).
     ## NA is reserved for genuine profile failure.
-    if (length(pos) == 0L) return(if (side == "lower") -Inf else Inf)
-    if (length(neg) == 0L) return(NA_real_)
+    if (length(pos) == 0L) {
+      return(if (side == "lower") -Inf else Inf)
+    }
+    if (length(neg) == 0L) {
+      return(NA_real_)
+    }
     ## Standard case: find sign-change closest to MLE and linear-interpolate.
     transitions <- which(diff(sign(e_sub)) != 0)
-    if (length(transitions) == 0L) return(NA_real_)
+    if (length(transitions) == 0L) {
+      return(NA_real_)
+    }
     i <- if (side == "lower") max(transitions) else min(transitions)
-    p1 <- p_sub[i];     p2 <- p_sub[i + 1L]
-    e1 <- e_sub[i];     e2 <- e_sub[i + 1L]
-    if (e2 == e1) return(NA_real_)
+    p1 <- p_sub[i]
+    p2 <- p_sub[i + 1L]
+    e1 <- e_sub[i]
+    e2 <- e_sub[i + 1L]
+    if (e2 == e1) {
+      return(NA_real_)
+    }
     p1 + (0 - e1) * (p2 - p1) / (e2 - e1)
   }
 
@@ -126,8 +147,8 @@
 #'
 #' Wraps `TMB::tmbprofile()` with a chi-square root-finding step to return
 #' a 95% (or other-level) confidence interval for a single parameter (or
-#' a fixed linear combination of parameters) on a fitted gllvmTMB_multi
-#' model. The profile is computed in TMB's C++ inner optim warm-started
+#' a fixed linear combination of parameters) on a fitted gllvmTMB model.
+#' The profile is computed in TMB's C++ inner optim warm-started
 #' from the joint MLE — typically order-of-magnitude faster than refitting
 #' under a constraint in pure R.
 #'
@@ -135,7 +156,7 @@
 #' correlations, phylogenetic signal H^2), see the helpers in
 #' `R/profile-derived.R`.
 #'
-#' @param fit A `gllvmTMB_multi` fit returned by [gllvmTMB()].
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param name Either:
 #'   * A single character string giving the parameter name (matched
 #'     against `names(fit$opt$par)`; for vector parameters use `which`
@@ -176,35 +197,39 @@
 #'
 #' @keywords internal
 #' @export
-tmbprofile_wrapper <- function(fit,
-                               name       = NULL,
-                               which      = 1L,
-                               lincomb    = NULL,
-                               level      = 0.95,
-                               transform  = identity,
-                               ystep      = 0.5,
-                               ytol       = 2,
-                               parm.range = c(-Inf, Inf)) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+tmbprofile_wrapper <- function(
+  fit,
+  name = NULL,
+  which = 1L,
+  lincomb = NULL,
+  level = 0.95,
+  transform = identity,
+  ystep = 0.5,
+  ytol = 2,
+  parm.range = c(-Inf, Inf)
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   crit <- .qchisq_threshold(level)
   mle_val <- as.numeric(fit$opt$objective)
 
   if (!is.null(lincomb)) {
-    if (!is.numeric(lincomb) || length(lincomb) != length(fit$opt$par))
+    if (!is.numeric(lincomb) || length(lincomb) != length(fit$opt$par)) {
       cli::cli_abort(c(
         "{.arg lincomb} must be numeric of length {length(fit$opt$par)}.",
         "i" = "Got length {length(lincomb)}."
       ))
+    }
     mle_par <- as.numeric(crossprod(fit$opt$par, lincomb))
     prof <- tryCatch(
       TMB::tmbprofile(
         fit$tmb_obj,
-        lincomb    = lincomb,
-        ystep      = ystep,
-        ytol       = ytol,
+        lincomb = lincomb,
+        ystep = ystep,
+        ytol = ytol,
         parm.range = parm.range,
-        trace      = FALSE
+        trace = FALSE
       ),
       error = function(e) {
         cli::cli_warn("tmbprofile() failed for lincomb: {conditionMessage(e)}")
@@ -217,14 +242,16 @@ tmbprofile_wrapper <- function(fit,
     prof <- tryCatch(
       TMB::tmbprofile(
         fit$tmb_obj,
-        name       = idx,
-        ystep      = ystep,
-        ytol       = ytol,
+        name = idx,
+        ystep = ystep,
+        ytol = ytol,
         parm.range = parm.range,
-        trace      = FALSE
+        trace = FALSE
       ),
       error = function(e) {
-        cli::cli_warn("tmbprofile() failed for {.val {name}}: {conditionMessage(e)}")
+        cli::cli_warn(
+          "tmbprofile() failed for {.val {name}}: {conditionMessage(e)}"
+        )
         NULL
       }
     )
@@ -233,11 +260,16 @@ tmbprofile_wrapper <- function(fit,
   if (is.null(prof) || nrow(prof) < 3L) {
     return(c(estimate = transform(mle_par), lower = NA_real_, upper = NA_real_))
   }
-  bounds <- .profile_bounds(prof, mle_val = mle_val, mle_par = mle_par, crit = crit)
+  bounds <- .profile_bounds(
+    prof,
+    mle_val = mle_val,
+    mle_par = mle_par,
+    crit = crit
+  )
   c(
     estimate = transform(mle_par),
-    lower    = if (is.na(bounds$lower)) NA_real_ else transform(bounds$lower),
-    upper    = if (is.na(bounds$upper)) NA_real_ else transform(bounds$upper)
+    lower = if (is.na(bounds$lower)) NA_real_ else transform(bounds$lower),
+    upper = if (is.na(bounds$upper)) NA_real_ else transform(bounds$upper)
   )
 }
 
@@ -245,30 +277,44 @@ tmbprofile_wrapper <- function(fit,
 
 #' @keywords internal
 #' @noRd
-.tmbprofile_block <- function(fit, name, level = 0.95,
-                              transform = identity,
-                              labels = NULL,
-                              ystep = 0.5, ytol = 2) {
+.tmbprofile_block <- function(
+  fit,
+  name,
+  level = 0.95,
+  transform = identity,
+  labels = NULL,
+  ystep = 0.5,
+  ytol = 2
+) {
   par_names <- names(fit$opt$par)
   hits <- which(par_names == name)
-  if (length(hits) == 0L)
+  if (length(hits) == 0L) {
     return(NULL)
+  }
   out <- vector("list", length(hits))
   for (i in seq_along(hits)) {
     out[[i]] <- tmbprofile_wrapper(
-      fit, name = name, which = i, level = level,
+      fit,
+      name = name,
+      which = i,
+      level = level,
       transform = transform,
-      ystep = ystep, ytol = ytol
+      ystep = ystep,
+      ytol = ytol
     )
   }
   ## Build tidy data frame
-  parm <- if (!is.null(labels)) labels else paste0(name, "[", seq_along(hits), "]")
+  parm <- if (!is.null(labels)) {
+    labels
+  } else {
+    paste0(name, "[", seq_along(hits), "]")
+  }
   data.frame(
     parameter = parm,
-    estimate  = vapply(out, `[`, numeric(1), "estimate"),
-    lower     = vapply(out, `[`, numeric(1), "lower"),
-    upper     = vapply(out, `[`, numeric(1), "upper"),
-    method    = "profile",
+    estimate = vapply(out, `[`, numeric(1), "estimate"),
+    lower = vapply(out, `[`, numeric(1), "lower"),
+    upper = vapply(out, `[`, numeric(1), "upper"),
+    method = "profile",
     stringsAsFactors = FALSE,
     row.names = NULL
   )
@@ -281,21 +327,28 @@ tmbprofile_wrapper <- function(fit,
 
 #' @keywords internal
 #' @noRd
-.wald_block <- function(fit, name, level = 0.95,
-                        transform_estimate = identity,
-                        transform_se = NULL,
-                        labels = NULL) {
+.wald_block <- function(
+  fit,
+  name,
+  level = 0.95,
+  transform_estimate = identity,
+  transform_se = NULL,
+  labels = NULL
+) {
   par_names <- names(fit$opt$par)
   hits <- which(par_names == name)
-  if (length(hits) == 0L)
+  if (length(hits) == 0L) {
     return(NULL)
+  }
   alpha <- 1 - level
   z <- stats::qnorm(1 - alpha / 2)
   ## Pull SE from sd_report if available; tmb's $par.fixed corresponds to
   ## opt$par. If the gradient is bad / sd_report is NULL, return NA SE.
   se <- rep(NA_real_, length(hits))
   if (!is.null(fit$sd_report)) {
-    sds <- tryCatch(sqrt(diag(fit$sd_report$cov.fixed)), error = function(e) NULL)
+    sds <- tryCatch(sqrt(diag(fit$sd_report$cov.fixed)), error = function(e) {
+      NULL
+    })
     if (!is.null(sds) && length(sds) == length(par_names)) {
       se <- sds[hits]
     }
@@ -310,18 +363,27 @@ tmbprofile_wrapper <- function(fit,
     lo <- vapply(lo_log, transform_estimate, numeric(1))
     hi <- vapply(hi_log, transform_estimate, numeric(1))
   } else {
-    se_nat <- vapply(seq_along(est_log), function(i)
-      transform_se(est_log[i], se[i]), numeric(1))
+    se_nat <- vapply(
+      seq_along(est_log),
+      function(i) {
+        transform_se(est_log[i], se[i])
+      },
+      numeric(1)
+    )
     lo <- est - z * se_nat
     hi <- est + z * se_nat
   }
-  parm <- if (!is.null(labels)) labels else paste0(name, "[", seq_along(hits), "]")
+  parm <- if (!is.null(labels)) {
+    labels
+  } else {
+    paste0(name, "[", seq_along(hits), "]")
+  }
   data.frame(
     parameter = parm,
-    estimate  = est,
-    lower     = lo,
-    upper     = hi,
-    method    = "wald",
+    estimate = est,
+    lower = lo,
+    upper = hi,
+    method = "wald",
     stringsAsFactors = FALSE,
     row.names = NULL
   )

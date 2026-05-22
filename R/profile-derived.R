@@ -75,7 +75,7 @@
 #' [TMB::tmbprofile()] and back-transforms the bounds via
 #' \eqn{\mathrm{plogis}}. Fast and accurate for that specific quantity.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param trait_idx Integer index of the trait (1-based). `NULL` (the
 #'   default) returns CIs for all traits.
 #' @param level Confidence level. Default 0.95.
@@ -93,37 +93,44 @@
 #' @keywords internal
 #' @export
 profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   ix_B <- .par_indices(fit, "theta_diag_B")
   ix_W <- .par_indices(fit, "theta_diag_W")
-  if (length(ix_B) == 0L || length(ix_W) == 0L)
+  if (length(ix_B) == 0L || length(ix_W) == 0L) {
     cli::cli_abort(c(
       "Repeatability requires both {.code theta_diag_B} and {.code theta_diag_W} in the fit.",
       "i" = "Refit with {.code unique(0 + trait | <unit>)} and {.code unique(0 + trait | <obs>)}."
     ))
+  }
   T <- length(ix_B)
   trait_names <- levels(fit$data[[fit$trait_col]])
-  if (is.null(trait_idx)) trait_idx <- seq_len(T)
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_len(T)
+  }
   out_list <- vector("list", length(trait_idx))
   for (k in seq_along(trait_idx)) {
     t <- trait_idx[k]
-    if (t < 1L || t > T)
+    if (t < 1L || t > T) {
       cli::cli_abort("{.arg trait_idx} = {t} out of range [1, {T}].")
+    }
     lc <- .zero_lincomb(fit)
-    lc[ix_B[t]] <-  2
+    lc[ix_B[t]] <- 2
     lc[ix_W[t]] <- -2
     ## Transform: log(sigma2_B/sigma2_W) -> R = plogis(L)
     ci_log <- tmbprofile_wrapper(
-      fit, lincomb = lc, level = level,
+      fit,
+      lincomb = lc,
+      level = level,
       transform = stats::plogis
     )
     out_list[[k]] <- data.frame(
-      trait    = trait_names[t],
-      R        = unname(ci_log["estimate"]),
-      lower    = unname(ci_log["lower"]),
-      upper    = unname(ci_log["upper"]),
-      method   = "profile",
+      trait = trait_names[t],
+      R = unname(ci_log["estimate"]),
+      lower = unname(ci_log["lower"]),
+      upper = unname(ci_log["upper"]),
+      method = "profile",
       stringsAsFactors = FALSE,
       row.names = NULL
     )
@@ -152,7 +159,7 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' note; full profile would require fix-and-refit on the multi-component
 #' constraint and is logged as a future enhancement.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param trait_idx Integer index of the trait, or `NULL` for all.
 #' @param level Confidence level. Default 0.95.
 #' @return A data frame with columns `trait`, `H2`, `lower`, `upper`,
@@ -161,17 +168,21 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' @keywords internal
 #' @export
 profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
-  if (!has_phy)
+  if (!has_phy) {
     cli::cli_abort(c(
       "Phylogenetic signal requires a phylogenetic component.",
       "i" = "Refit with {.code phylo_latent()} or {.code phylo_unique()}."
     ))
+  }
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
-  if (is.null(trait_idx)) trait_idx <- seq_len(T)
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_len(T)
+  }
 
   ## Two-component ratio: phy_diag (log_sd_phy_diag) vs non-phy unique
   ## (diag_species, theta_diag_species). Available when:
@@ -180,19 +191,23 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   has_simple_2comp <-
     isTRUE(fit$use$phylo_diag) &&
     isTRUE(fit$use$diag_species) &&
-    !isTRUE(fit$use$rr_B) && !isTRUE(fit$use$diag_B)
+    !isTRUE(fit$use$rr_B) &&
+    !isTRUE(fit$use$diag_B)
 
   if (has_simple_2comp) {
     ix_phy <- .par_indices(fit, "log_sd_phy_diag")
     ix_non <- .par_indices(fit, "theta_diag_species")
     if (length(ix_phy) != T || length(ix_non) != T) {
-      cli::cli_inform("Per-trait dimensions mismatch; falling back to point estimate only.")
+      cli::cli_inform(
+        "Per-trait dimensions mismatch; falling back to point estimate only."
+      )
       ## Point estimate only (no CIs)
       ps <- extract_phylo_signal(fit)
       return(data.frame(
         trait = trait_names[trait_idx],
         H2 = ps$H2[trait_idx],
-        lower = NA_real_, upper = NA_real_,
+        lower = NA_real_,
+        upper = NA_real_,
         method = "(unavailable)",
         stringsAsFactors = FALSE
       ))
@@ -201,17 +216,20 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     for (k in seq_along(trait_idx)) {
       t <- trait_idx[k]
       lc <- .zero_lincomb(fit)
-      lc[ix_phy[t]] <-  2
+      lc[ix_phy[t]] <- 2
       lc[ix_non[t]] <- -2
       ci <- tmbprofile_wrapper(
-        fit, lincomb = lc, level = level, transform = stats::plogis
+        fit,
+        lincomb = lc,
+        level = level,
+        transform = stats::plogis
       )
       out_list[[k]] <- data.frame(
-        trait    = trait_names[t],
-        H2       = unname(ci["estimate"]),
-        lower    = unname(ci["lower"]),
-        upper    = unname(ci["upper"]),
-        method   = "profile",
+        trait = trait_names[t],
+        H2 = unname(ci["estimate"]),
+        lower = unname(ci["lower"]),
+        upper = unname(ci["upper"]),
+        method = "profile",
         stringsAsFactors = FALSE,
         row.names = NULL
       )
@@ -226,7 +244,8 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   out <- data.frame(
     trait = trait_names[trait_idx],
     H2 = ps$H2[trait_idx],
-    lower = NA_real_, upper = NA_real_,
+    lower = NA_real_,
+    upper = NA_real_,
     method = "wald(approx)",
     stringsAsFactors = FALSE
   )
@@ -246,41 +265,51 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
 
 #' @keywords internal
 #' @noRd
-.fix_and_refit_nll <- function(fit, target_fn, q_0,
-                               lambda = 1e6,
-                               control = list(eval.max = 100, iter.max = 100,
-                                              rel.tol = 1e-7)) {
+.fix_and_refit_nll <- function(
+  fit,
+  target_fn,
+  q_0,
+  lambda = 1e6,
+  control = list(eval.max = 100, iter.max = 100, rel.tol = 1e-7)
+) {
   obj <- fit$tmb_obj
   par0 <- fit$opt$par
   ## Penalised NLL
   fn_pen <- function(par) {
     val <- tryCatch(obj$fn(par), error = function(e) NA_real_)
-    if (is.na(val) || !is.finite(val)) return(.Machine$double.xmax / 1e3)
+    if (is.na(val) || !is.finite(val)) {
+      return(.Machine$double.xmax / 1e3)
+    }
     q <- as.numeric(target_fn(par, fit))
-    if (is.na(q) || !is.finite(q)) return(.Machine$double.xmax / 1e3)
+    if (is.na(q) || !is.finite(q)) {
+      return(.Machine$double.xmax / 1e3)
+    }
     val + lambda * (q - q_0)^2
   }
   ## Use TMB's analytical gradient for the NLL part, numerical gradient
   ## via finite-difference for the penalty part. Falls back to fully
   ## numerical gradient if obj$gr fails.
   opt_pen <- tryCatch(
-    stats::nlminb(start = par0, objective = fn_pen,
-                  control = control),
+    stats::nlminb(start = par0, objective = fn_pen, control = control),
     error = function(e) {
       NULL
     }
   )
-  if (is.null(opt_pen) || !is.finite(opt_pen$objective)) return(NA_real_)
+  if (is.null(opt_pen) || !is.finite(opt_pen$objective)) {
+    return(NA_real_)
+  }
   ## Pull the underlying NLL at the constrained optimum (sans penalty)
   par_hat <- opt_pen$par
   q_hat_ach <- as.numeric(target_fn(par_hat, fit))
   ## If the constraint wasn't met to reasonable precision, the penalty
   ## was too small or the optimum was elsewhere; flag and return NA.
-  if (is.na(q_hat_ach) || abs(q_hat_ach - q_0) > 0.05)
+  if (is.na(q_hat_ach) || abs(q_hat_ach - q_0) > 0.05) {
     return(NA_real_)
+  }
   nll_at_constraint <- tryCatch(obj$fn(par_hat), error = function(e) NA_real_)
-  if (is.na(nll_at_constraint) || !is.finite(nll_at_constraint))
+  if (is.na(nll_at_constraint) || !is.finite(nll_at_constraint)) {
     return(NA_real_)
+  }
   nll_at_constraint
 }
 
@@ -290,21 +319,34 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
 
 #' @keywords internal
 #' @noRd
-.profile_ci_via_refit <- function(fit, target_fn, q_hat, level = 0.95,
-                                  q_lo_hint = NULL, q_hi_hint = NULL,
-                                  q_lo_floor = -Inf, q_hi_ceiling = Inf,
-                                  lambda = 1e6) {
+.profile_ci_via_refit <- function(
+  fit,
+  target_fn,
+  q_hat,
+  level = 0.95,
+  q_lo_hint = NULL,
+  q_hi_hint = NULL,
+  q_lo_floor = -Inf,
+  q_hi_ceiling = Inf,
+  lambda = 1e6
+) {
   crit <- .qchisq_threshold(level)
   mle_val <- as.numeric(fit$opt$objective)
   ## Build a fast deviance-excess function for uniroot
   excess <- function(q_0) {
     nll <- .fix_and_refit_nll(fit, target_fn, q_0, lambda = lambda)
-    if (is.na(nll)) return(NA_real_)
+    if (is.na(nll)) {
+      return(NA_real_)
+    }
     (nll - mle_val) - crit
   }
   ## Default search ranges: spread out from q_hat
-  if (is.null(q_lo_hint)) q_lo_hint <- q_hat - 0.3
-  if (is.null(q_hi_hint)) q_hi_hint <- q_hat + 0.3
+  if (is.null(q_lo_hint)) {
+    q_lo_hint <- q_hat - 0.3
+  }
+  if (is.null(q_hi_hint)) {
+    q_hi_hint <- q_hat + 0.3
+  }
 
   ## Bracket on each side: try a small expanding sequence of trial points.
   ## If we hit the parameter floor/ceiling and the profile still hasn't
@@ -313,14 +355,14 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   find_bound <- function(direction) {
     if (direction == "lower") {
       trial <- q_lo_hint
-      step  <- (q_hat - q_lo_hint)
-      sign  <- -1
-      lim   <- q_lo_floor
+      step <- (q_hat - q_lo_hint)
+      sign <- -1
+      lim <- q_lo_floor
     } else {
       trial <- q_hi_hint
-      step  <- (q_hi_hint - q_hat)
-      sign  <- 1
-      lim   <- q_hi_ceiling
+      step <- (q_hi_hint - q_hat)
+      sign <- 1
+      lim <- q_hi_ceiling
     }
     e_trial <- excess(trial)
     if (is.na(e_trial)) {
@@ -330,7 +372,9 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
       ## still negative, the bound IS the boundary. If the boundary
       ## refit also fails, return NA (genuine refit failure).
       e_lim <- if (is.finite(lim)) excess(lim) else NA_real_
-      if (!is.na(e_lim) && e_lim < 0) return(lim)
+      if (!is.na(e_lim) && e_lim < 0) {
+        return(lim)
+      }
       return(NA_real_)
     }
 
@@ -340,10 +384,13 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     ## sign change in [hint, q_hat]. Use uniroot directly.
     if (e_trial > 0) {
       bound <- tryCatch(
-        stats::uniroot(excess,
-                       interval = sort(c(trial, q_hat)),
-                       extendInt = "no",
-                       tol = 0.005, maxiter = 25)$root,
+        stats::uniroot(
+          excess,
+          interval = sort(c(trial, q_hat)),
+          extendInt = "no",
+          tol = 0.005,
+          maxiter = 25
+        )$root,
         error = function(e) NA_real_
       )
       return(bound)
@@ -352,42 +399,53 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
     n_iter <- 0
     at_boundary <- FALSE
     while (!is.na(e_trial) && e_trial < 0 && n_iter < 6) {
-      trial_new <- q_hat + sign * (step * (1.6 ^ n_iter))
+      trial_new <- q_hat + sign * (step * (1.6^n_iter))
       if (direction == "lower" && trial_new < q_lo_floor) {
-        trial_new <- q_lo_floor; at_boundary <- TRUE
+        trial_new <- q_lo_floor
+        at_boundary <- TRUE
       }
       if (direction == "upper" && trial_new > q_hi_ceiling) {
-        trial_new <- q_hi_ceiling; at_boundary <- TRUE
+        trial_new <- q_hi_ceiling
+        at_boundary <- TRUE
       }
       e_new <- excess(trial_new)
       if (is.na(e_new)) {
         ## Mid-loop refit failure. If we were probing at the
         ## parameter boundary, the bound IS the boundary (refits
         ## near the limit are commonly singular). Otherwise NA.
-        if (at_boundary) return(lim)
+        if (at_boundary) {
+          return(lim)
+        }
         return(NA_real_)
       }
       if (e_new >= 0) {
         bound <- tryCatch(
-          stats::uniroot(excess,
-                         interval = sort(c(trial, trial_new)),
-                         extendInt = "no",
-                         tol = 0.005, maxiter = 25)$root,
+          stats::uniroot(
+            excess,
+            interval = sort(c(trial, trial_new)),
+            extendInt = "no",
+            tol = 0.005,
+            maxiter = 25
+          )$root,
           error = function(e) NA_real_
         )
         return(bound)
       }
       ## Reached the parameter boundary and profile still flat: report
       ## the boundary itself (CI extends to the natural limit).
-      if (at_boundary) return(lim)
-      trial   <- trial_new
+      if (at_boundary) {
+        return(lim)
+      }
+      trial <- trial_new
       e_trial <- e_new
-      n_iter  <- n_iter + 1
+      n_iter <- n_iter + 1
     }
     ## Iterations exhausted but we never reached the boundary either —
     ## treat this as "profile too flat to bracket within the search
     ## range"; return the boundary as the conservative answer.
-    if (is.finite(lim)) return(lim)
+    if (is.finite(lim)) {
+      return(lim)
+    }
     NA_real_
   }
   lo <- find_bound("lower")
@@ -412,63 +470,92 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
 #' This mirrors the McCune/Nakagawa `coxme_icc_ci()` pattern but
 #' warm-starts the inner optim from the joint MLE in TMB's C++.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param level Confidence level. Default 0.95.
-#' @param tier `"B"` or `"W"`. Default `"B"`.
+#' @param tier `"unit"` or `"unit_obs"`. Legacy aliases `"B"` and `"W"` are
+#'   accepted.
 #' @param trait_idx Integer index of trait, or `NULL` for all.
 #' @return A data frame with columns `trait`, `tier`, `c2`, `lower`,
 #'   `upper`, `method`.
 #'
 #' @keywords internal
 #' @export
-profile_ci_communality <- function(fit,
-                                   tier = c("unit", "unit_obs", "B", "W"),
-                                   trait_idx = NULL, level = 0.95) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+profile_ci_communality <- function(
+  fit,
+  tier = c("unit", "unit_obs", "B", "W"),
+  trait_idx = NULL,
+  level = 0.95
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
   rr_used <- if (tier == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
-  diag_used <- if (tier == "B") isTRUE(fit$use$diag_B) else isTRUE(fit$use$diag_W)
-  if (!rr_used)
-    cli::cli_abort("Communality at tier {.val {tier}} requires a {.code latent()} term in the fit.")
+  diag_used <- if (tier == "B") {
+    isTRUE(fit$use$diag_B)
+  } else {
+    isTRUE(fit$use$diag_W)
+  }
+  if (!rr_used) {
+    cli::cli_abort(
+      "Communality at tier {.val {tier}} requires a {.code latent()} term in the fit."
+    )
+  }
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
-  if (is.null(trait_idx)) trait_idx <- seq_len(T)
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_len(T)
+  }
 
   ## Point estimate
   c2_pt <- extract_communality(fit, level = tier)
-  if (is.null(c2_pt))
-    cli::cli_abort("Could not compute communality point estimate at tier {.val {tier}}.")
+  if (is.null(c2_pt)) {
+    cli::cli_abort(
+      "Could not compute communality point estimate at tier {.val {tier}}."
+    )
+  }
 
   ## Per-trait target function: re-build Lambda from theta_rr_<tier> and
   ## sigma2_t from theta_diag_<tier>; return c2_t.
   par_names <- names(fit$opt$par)
-  ix_rr   <- which(par_names == paste0("theta_rr_", tier))
+  ix_rr <- which(par_names == paste0("theta_rr_", tier))
   ix_diag <- which(par_names == paste0("theta_diag_", tier))
-  if (length(ix_rr) == 0L || length(ix_diag) == 0L)
-    cli::cli_abort("Communality requires both {.code latent()} and {.code unique()} terms at tier {.val {tier}} for the profile path.")
+  if (length(ix_rr) == 0L || length(ix_diag) == 0L) {
+    cli::cli_abort(
+      "Communality requires both {.code latent()} and {.code unique()} terms at tier {.val {tier}} for the profile path."
+    )
+  }
   d_tier <- if (tier == "B") fit$d_B else fit$d_W
   n_traits <- length(ix_diag)
   ## Length expected for theta_rr: n_traits * d - d*(d-1)/2 (lower-tri packed)
   expected_nt <- n_traits * d_tier - d_tier * (d_tier - 1) / 2
-  if (length(ix_rr) != expected_nt)
-    cli::cli_abort("theta_rr_{tier} has length {length(ix_rr)} but expected {expected_nt}.")
+  if (length(ix_rr) != expected_nt) {
+    cli::cli_abort(
+      "theta_rr_{tier} has length {length(ix_rr)} but expected {expected_nt}."
+    )
+  }
 
   build_Lambda <- function(theta_rr, p, rank) {
     L <- matrix(0, p, rank)
-    if (length(theta_rr) == 0L || rank == 0L) return(L)
-    lam_diag  <- theta_rr[seq_len(rank)]
+    if (length(theta_rr) == 0L || rank == 0L) {
+      return(L)
+    }
+    lam_diag <- theta_rr[seq_len(rank)]
     lam_lower <- theta_rr[-seq_len(rank)]
     ## Diagonal entries
-    for (j in seq_len(rank)) L[j, j] <- lam_diag[j]
+    for (j in seq_len(rank)) {
+      L[j, j] <- lam_diag[j]
+    }
     ## Strict-lower entries packed column by column (column j has p-j
     ## entries at rows j+1, ..., p), matching the engine's TMB packing.
     idx <- 1L
     for (j in seq_len(rank)) {
       if (j < p) {
         for (i in (j + 1L):p) {
-          if (idx <= length(lam_lower)) L[i, j] <- lam_lower[idx]
+          if (idx <= length(lam_lower)) {
+            L[i, j] <- lam_lower[idx]
+          }
           idx <- idx + 1L
         }
       }
@@ -487,23 +574,29 @@ profile_ci_communality <- function(fit,
       shared <- LLt[t, t]
       sigma2 <- exp(2 * th_diag[t])
       total <- shared + sigma2
-      if (total <= 0) return(NA_real_)
+      if (total <= 0) {
+        return(NA_real_)
+      }
       shared / total
     }
     q_hat <- c2_pt[t]
     bounds <- .profile_ci_via_refit(
-      fit, target_fn, q_hat, level = level,
+      fit,
+      target_fn,
+      q_hat,
+      level = level,
       q_lo_hint = max(q_hat - 0.3, 0.001),
       q_hi_hint = min(q_hat + 0.3, 0.999),
-      q_lo_floor = 0.001, q_hi_ceiling = 0.999
+      q_lo_floor = 0.001,
+      q_hi_ceiling = 0.999
     )
     out_list[[k]] <- data.frame(
-      trait    = trait_names[t],
-      tier     = tier,
-      c2       = q_hat,
-      lower    = bounds$lower,
-      upper    = bounds$upper,
-      method   = "profile",
+      trait = trait_names[t],
+      tier = tier,
+      c2 = q_hat,
+      lower = bounds$lower,
+      upper = bounds$upper,
+      method = "profile",
       stringsAsFactors = FALSE,
       row.names = NULL
     )
@@ -517,84 +610,107 @@ profile_ci_communality <- function(fit,
 
 #' Profile-likelihood CI for one cross-trait correlation
 #'
-#' For a fitted gllvmTMB_multi model, computes the profile-likelihood
+#' For a fit returned by [gllvmTMB()], computes the profile-likelihood
 #' confidence interval for one cross-trait correlation
 #' \eqn{\rho_{ij} = \Sigma_{ij} / \sqrt{\Sigma_{ii}\Sigma_{jj}}} at one
-#' tier. Cross-trait correlations are first-class outputs of the
+#' covariance level. Cross-trait correlations are first-class outputs of the
 #' factor-analytic decomposition and need accurate CIs at scale (a 6-trait
-#' fit has 75 of them across 5 tiers).
+#' fit has 60 of them across four covariance levels).
 #'
-#' @param fit A `gllvmTMB_multi` fit.
-#' @param tier `"B"`, `"W"`, `"phy"`, or `"spde"`.
+#' @param fit A fit returned by [gllvmTMB()].
+#' @param tier `"unit"`, `"unit_obs"`, `"phy"`, or `"spatial"`.
+#'   Legacy aliases `"B"`, `"W"`, and `"spde"` are accepted.
 #' @param i,j Trait indices (1-based, `i < j`).
 #' @param level Confidence level. Default 0.95.
 #' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
 #'
 #' @keywords internal
 #' @export
-profile_ci_correlation <- function(fit,
-                                   tier = c("unit", "unit_obs", "phy",
-                                            "spatial", "B", "W", "spde"),
-                                   i, j, level = 0.95) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+profile_ci_correlation <- function(
+  fit,
+  tier = c("unit", "unit_obs", "phy", "spatial", "B", "W", "spde"),
+  i,
+  j,
+  level = 0.95
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
-  if (i >= j)
+  if (i >= j) {
     cli::cli_abort("Provide {.arg i} < {.arg j}.")
+  }
 
   Sigma_pt <- suppressMessages(
-    extract_Sigma(fit, level = tier, part = "total", link_residual = "none")
+    extract_Sigma(
+      fit,
+      level = tier,
+      part = "total",
+      link_residual = "none",
+      .skip_warn = TRUE
+    )
   )
-  if (is.null(Sigma_pt))
+  if (is.null(Sigma_pt)) {
     cli::cli_abort("Could not extract Sigma at tier {.val {tier}}.")
+  }
   rho_hat <- Sigma_pt$R[i, j]
 
   ## Build target function from the tier's parameter blocks
   par_names <- names(fit$opt$par)
   if (tier == "B") {
-    ix_rr   <- which(par_names == "theta_rr_B")
+    ix_rr <- which(par_names == "theta_rr_B")
     ix_diag <- which(par_names == "theta_diag_B")
-    rank    <- fit$d_B
-    use_rr   <- isTRUE(fit$use$rr_B)
+    rank <- fit$d_B
+    use_rr <- isTRUE(fit$use$rr_B)
     use_diag <- isTRUE(fit$use$diag_B)
   } else if (tier == "W") {
-    ix_rr   <- which(par_names == "theta_rr_W")
+    ix_rr <- which(par_names == "theta_rr_W")
     ix_diag <- which(par_names == "theta_diag_W")
-    rank    <- fit$d_W
-    use_rr   <- isTRUE(fit$use$rr_W)
+    rank <- fit$d_W
+    use_rr <- isTRUE(fit$use$rr_W)
     use_diag <- isTRUE(fit$use$diag_W)
   } else if (tier == "phy") {
-    ix_rr   <- which(par_names == "theta_rr_phy")
+    ix_rr <- which(par_names == "theta_rr_phy")
     ix_diag <- which(par_names == "log_sd_phy_diag")
-    rank    <- fit$d_phy
-    use_rr   <- isTRUE(fit$use$phylo_rr)
+    rank <- fit$d_phy
+    use_rr <- isTRUE(fit$use$phylo_rr)
     use_diag <- isTRUE(fit$use$phylo_diag)
-  } else {  # spde
-    ix_rr   <- which(par_names == "theta_rr_spde_lv")
+  } else {
+    # spde
+    ix_rr <- which(par_names == "theta_rr_spde_lv")
     ix_diag <- integer(0)
-    rank    <- fit$d_spde_lv
-    use_rr   <- isTRUE(fit$use$spatial_latent)
+    rank <- fit$d_spde_lv
+    use_rr <- isTRUE(fit$use$spatial_latent)
     use_diag <- FALSE
   }
-  if (!use_rr)
-    cli::cli_abort("Tier {.val {tier}} has no {.code latent()} term; correlation profile not available.")
+  if (!use_rr) {
+    cli::cli_abort(
+      "Tier {.val {tier}} has no {.code latent()} term; correlation profile not available."
+    )
+  }
   n_traits <- fit$n_traits
 
   build_Lambda <- function(theta_rr, p, rank) {
     L <- matrix(0, p, rank)
-    if (length(theta_rr) == 0L || rank == 0L) return(L)
-    lam_diag  <- theta_rr[seq_len(rank)]
+    if (length(theta_rr) == 0L || rank == 0L) {
+      return(L)
+    }
+    lam_diag <- theta_rr[seq_len(rank)]
     lam_lower <- theta_rr[-seq_len(rank)]
     ## Diagonal entries
-    for (jj in seq_len(rank)) L[jj, jj] <- lam_diag[jj]
+    for (jj in seq_len(rank)) {
+      L[jj, jj] <- lam_diag[jj]
+    }
     ## Strict-lower entries packed column by column (column j has p-j
     ## entries at rows j+1, ..., p), matching the engine's TMB packing.
     idx <- 1L
     for (jj in seq_len(rank)) {
       if (jj < p) {
         for (ii in (jj + 1L):p) {
-          if (idx <= length(lam_lower)) L[ii, jj] <- lam_lower[idx]
+          if (idx <= length(lam_lower)) {
+            L[ii, jj] <- lam_lower[idx]
+          }
           idx <- idx + 1L
         }
       }
@@ -610,15 +726,21 @@ profile_ci_correlation <- function(fit,
       th_diag <- par[ix_diag]
       diag(Sigma) <- diag(Sigma) + exp(2 * th_diag)
     }
-    if (Sigma[i, i] <= 0 || Sigma[j, j] <= 0) return(NA_real_)
+    if (Sigma[i, i] <= 0 || Sigma[j, j] <= 0) {
+      return(NA_real_)
+    }
     Sigma[i, j] / sqrt(Sigma[i, i] * Sigma[j, j])
   }
 
   bounds <- .profile_ci_via_refit(
-    fit, target_fn, q_hat = rho_hat, level = level,
+    fit,
+    target_fn,
+    q_hat = rho_hat,
+    level = level,
     q_lo_hint = max(rho_hat - 0.3, -0.999),
     q_hi_hint = min(rho_hat + 0.3, 0.999),
-    q_lo_floor = -0.999, q_hi_ceiling = 0.999
+    q_lo_floor = -0.999,
+    q_hi_ceiling = 0.999
   )
   c(estimate = rho_hat, lower = bounds$lower, upper = bounds$upper)
 }

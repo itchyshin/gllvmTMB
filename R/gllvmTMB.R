@@ -149,7 +149,7 @@
 #'   ones (unweighted Bernoulli on binomial rows). Wide matrix calls
 #'   through [gllvmTMB_wide()] and wide data-frame calls through
 #'   [traits()] normalise their accepted weight shapes to this same
-#'   long-format vector before fitting.
+#'   stacked response vector before fitting.
 #' @param mesh Optional mesh object from `make_mesh()`. Required when the
 #'   formula includes a `spatial()` term; ignored otherwise.
 #' @param phylo_tree (legacy global) Optional `ape::phylo` tree. The

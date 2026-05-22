@@ -14,7 +14,7 @@ extract_phylo_signal(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit with a \code{phylo_latent()} term.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with a \code{phylo_latent()} term.}
 
 \item{ci}{Logical. When \code{TRUE}, adds confidence-interval columns to
 the output for the H^2 column. Default \code{FALSE} for backward

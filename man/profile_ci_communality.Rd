@@ -12,9 +12,10 @@ profile_ci_communality(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
-\item{tier}{\code{"B"} or \code{"W"}. Default \code{"B"}.}
+\item{tier}{\code{"unit"} or \code{"unit_obs"}. Legacy aliases \code{"B"} and \code{"W"} are
+accepted.}
 
 \item{trait_idx}{Integer index of trait, or \code{NULL} for all.}
 

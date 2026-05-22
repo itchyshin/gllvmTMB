@@ -21,8 +21,8 @@ plot_Sigma_heatmap(
 )
 }
 \arguments{
-\item{x}{A \code{gllvmTMB_multi} fit, a \code{bootstrap_Sigma} object, or a data frame
-returned by \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}. Data frames must contain \code{level},
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, a \code{bootstrap_Sigma} object, or a data
+frame returned by \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}. Data frames must contain \code{level},
 \code{trait_i}, \code{trait_j}, \code{estimate}, \code{matrix}, \code{component}, \code{diagonal}, and
 \code{triangle}; \code{i} and \code{j} columns are used for trait ordering when present.}
 
@@ -50,16 +50,16 @@ attributes.
 matrix-style heatmap. It is designed for articles that need to show the
 block structure of a covariance or correlation matrix without manually
 extracting \code{Sigma}, calling \code{cov2cor()}, or rebuilding \code{geom_tile()} layers.
-Heatmap cells are point estimates only; interval columns, when present, are
-kept in the attached plot data but are not displayed.
+Heatmap cells are point estimates only; interval columns, when present, stay
+available in the returned plot data but are not displayed.
 }
 \details{
 Scope boundary: IN, the helper plots point-estimate heatmaps from
-\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} rows or extracts those rows from a fitted
-\code{gllvmTMB_multi} / \code{bootstrap_Sigma} object (EXT-27; built on EXT-18 /
+\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} rows or extracts those rows from a fit returned by
+\code{\link[=gllvmTMB]{gllvmTMB()}} or from a \code{bootstrap_Sigma} object (EXT-27; built on EXT-18 /
 EXT-20). PARTIAL, it does not display interval bounds or compare fitted
 values to known truth. Use \code{\link[=plot_Sigma_table]{plot_Sigma_table()}} for interval forests or
-raindrops, and \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}} for estimate-vs-truth displays.
+confidence eyes, and \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}} for estimate-vs-truth displays.
 PLANNED, vdiffr snapshots and richer multi-model layout helpers remain
 future figure work.
 }

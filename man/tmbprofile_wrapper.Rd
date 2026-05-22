@@ -17,7 +17,7 @@ tmbprofile_wrapper(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{name}{Either:
 \itemize{
@@ -58,8 +58,8 @@ A length-3 named numeric vector (\code{estimate}, \code{lower}, \code{upper}).
 \description{
 Wraps \code{TMB::tmbprofile()} with a chi-square root-finding step to return
 a 95\% (or other-level) confidence interval for a single parameter (or
-a fixed linear combination of parameters) on a fitted gllvmTMB_multi
-model. The profile is computed in TMB's C++ inner optim warm-started
+a fixed linear combination of parameters) on a fitted gllvmTMB model.
+The profile is computed in TMB's C++ inner optim warm-started
 from the joint MLE — typically order-of-magnitude faster than refitting
 under a constraint in pure R.
 }

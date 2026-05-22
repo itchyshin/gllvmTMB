@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods-gllvmTMB.R
 \name{tidy.gllvmTMB_multi}
 \alias{tidy.gllvmTMB_multi}
-\title{Tidy a \code{gllvmTMB_multi} fit}
+\title{Tidy a fitted gllvmTMB model}
 \usage{
 \method{tidy}{gllvmTMB_multi}(
   x,
@@ -13,7 +13,7 @@
 )
 }
 \arguments{
-\item{x}{A \code{gllvmTMB_multi} fit.}
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{effects}{One of \code{"fixed"} (default), \code{"ran_pars"}, or
 \code{"cutpoint"}. The \code{"cutpoint"} class returns the ordinal-probit

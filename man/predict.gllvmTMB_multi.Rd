@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods-gllvmTMB.R
 \name{predict.gllvmTMB_multi}
 \alias{predict.gllvmTMB_multi}
-\title{Predict from a \code{gllvmTMB_multi} fit}
+\title{Predict from a fitted gllvmTMB model}
 \usage{
 \method{predict}{gllvmTMB_multi}(
   object,
@@ -13,7 +13,7 @@
 )
 }
 \arguments{
-\item{object}{A \code{gllvmTMB_multi} fit.}
+\item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{newdata}{Optional new data frame. If \code{NULL}, predictions are
 produced for the training rows.}

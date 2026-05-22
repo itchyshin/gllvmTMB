@@ -5,7 +5,7 @@
 ## extract_communality(), extract_ICC_site(), extract_ordination(),
 ## getLoadings(). One dispatcher, seven plot types.
 
-#' Plot a fitted multivariate `gllvmTMB_multi` model
+#' Plot a fitted multivariate gllvmTMB model
 #'
 #' Produces a variety of `ggplot2` visualisations for a stacked-trait
 #' multivariate GLLVM. Dispatches on `type` to one of seven panels:
@@ -44,7 +44,7 @@
 #'     or three axes via `axes`.}
 #' }
 #'
-#' @param x A `gllvmTMB_multi` fit.
+#' @param x A fit returned by [gllvmTMB()].
 #' @param type One of `"correlation"`, `"correlation_ellipse"`, `"loadings"`,
 #'   `"integration"`, `"communality"`, `"variance"`, `"ordination"`.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
@@ -62,7 +62,7 @@
 #'   `level` and decides whether to plot one tier or both. If you copy
 #'   one of these helpers into your own code, mirror that pattern rather
 #'   than reflexively calling `match.arg(level)` (which would silently
-#'   collapse the default to `"B"` and drop the W panel).
+#'   collapse the default to `"unit"` and drop the `unit_obs` panel).
 #' @param boot Optional bootstrap object. This can be either a
 #'   `bootstrap_Sigma()` result or a list with elements `repeatability`,
 #'   `communality_B`, `communality_W`, each a data frame with columns
@@ -75,6 +75,17 @@
 #'   pair-grid of the three axis pairs. For `d = 3`, the default
 #'   `c(1, 2)` is promoted to `c(1, 2, 3)` so all three axes are visible.
 #'   Ignored when `d = 1`.
+#' @param rotation One of `"varimax"`, `"none"`, or `"promax"` for
+#'   `"ordination"` plots. The default `"varimax"` uses rotated,
+#'   shared-variance-ordered, sign-anchored axes for interpretation.
+#'   Use `"none"` to show the raw computational orientation. Rotation
+#'   makes the biplot easier to label; use `Sigma`, correlations,
+#'   communality, and uniqueness as the primary quantitative summaries.
+#' @param standardize_loadings Logical. For `"ordination"` plots, divide
+#'   each trait loading by the square root of that trait's model-implied total
+#'   variance before drawing arrows. This puts arrows on a correlation-like
+#'   scale for mixed-scale traits. It changes the displayed arrow scale, not
+#'   the model's communality or variance decomposition. Default `FALSE`.
 #' @param ... Currently unused.
 #' @return A `ggplot` object with a `gllvmTMB_meta` attribute describing
 #'   the plot type, source extractor, covariance level, interval status, and
@@ -98,12 +109,15 @@ plot.gllvmTMB_multi <- function(
   level = c("unit", "unit_obs"),
   boot = NULL,
   axes = c(1L, 2L),
+  rotation = c("varimax", "none", "promax"),
+  standardize_loadings = FALSE,
   ...
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
   }
   type <- match.arg(type)
+  rotation <- match.arg(rotation)
   level_missing <- missing(level)
   ## level intentionally not match.arg'd up-front: each helper decides
   ## whether to require a single value or accept "both/NULL".
@@ -131,7 +145,9 @@ plot.gllvmTMB_multi <- function(
     ordination = .plot_ordination_gtmb(
       x,
       if (level_missing) "B" else level,
-      axes = axes
+      axes = axes,
+      rotation = rotation,
+      standardize_loadings = standardize_loadings
     )
   )
 }
@@ -230,6 +246,74 @@ plot.gllvmTMB_multi <- function(
     return(NULL)
   }
   c(-lim, lim)
+}
+
+.gtmb_arrow_label_positions <- function(
+  dat,
+  x_col = "x",
+  y_col = "y",
+  group_col = NULL
+) {
+  x <- dat[[x_col]]
+  y <- dat[[y_col]]
+  span <- max(abs(c(x, y)), na.rm = TRUE)
+  span <- if (is.finite(span) && span > 0) span else 1
+  pad <- 0.045 * span
+  radius <- sqrt(x^2 + y^2)
+  ux <- ifelse(is.finite(radius) & radius > 0, x / radius, 0)
+  uy <- ifelse(is.finite(radius) & radius > 0, y / radius, 1)
+  dat$label_x <- x + pad * ux
+  dat$label_y <- y + pad * uy
+  dat$label_hjust <- ifelse(ux > 0.2, 0, ifelse(ux < -0.2, 1, 0.5))
+  dat$label_vjust <- ifelse(uy > 0.2, 0, ifelse(uy < -0.2, 1, 0.5))
+  groups <- if (is.null(group_col)) {
+    rep("all", nrow(dat))
+  } else {
+    as.character(dat[[group_col]])
+  }
+  for (group in unique(groups)) {
+    rows <- which(groups == group)
+    angle_bin <- round(atan2(uy[rows], ux[rows]) / (pi / 8))
+    for (bin in unique(angle_bin)) {
+      idx <- rows[which(angle_bin == bin)]
+      if (length(idx) < 2L) {
+        next
+      }
+      idx <- idx[order(radius[idx], decreasing = TRUE)]
+      offsets <- (seq_along(idx) - mean(seq_along(idx))) * pad * 1.4
+      dat$label_x[idx] <- dat$label_x[idx] + offsets * -uy[idx]
+      dat$label_y[idx] <- dat$label_y[idx] + offsets * ux[idx]
+    }
+    for (pass in seq_len(3L)) {
+      if (length(rows) < 2L) {
+        next
+      }
+      for (i in seq_len(length(rows) - 1L)) {
+        for (j in seq.int(i + 1L, length(rows))) {
+          row_i <- rows[[i]]
+          row_j <- rows[[j]]
+          close_x <- abs(dat$label_x[[row_i]] - dat$label_x[[row_j]]) <
+            0.24 * span
+          close_y <- abs(dat$label_y[[row_i]] - dat$label_y[[row_j]]) <
+            0.16 * span
+          if (!isTRUE(close_x && close_y)) {
+            next
+          }
+          move <- 0.5 *
+            (0.16 * span - abs(dat$label_y[[row_i]] - dat$label_y[[row_j]])) +
+            0.015 * span
+          if (dat$label_y[[row_i]] <= dat$label_y[[row_j]]) {
+            dat$label_y[[row_i]] <- dat$label_y[[row_i]] - move
+            dat$label_y[[row_j]] <- dat$label_y[[row_j]] + move
+          } else {
+            dat$label_y[[row_i]] <- dat$label_y[[row_i]] + move
+            dat$label_y[[row_j]] <- dat$label_y[[row_j]] - move
+          }
+        }
+      }
+    }
+  }
+  dat
 }
 
 .gtmb_tile_label_colour <- function(x, threshold = 0.65, relative = FALSE) {
@@ -1268,7 +1352,14 @@ plot.gllvmTMB_multi <- function(
 
 # ---- ordination biplot ----------------------------------------------------
 
-.plot_ordination_gtmb <- function(fit, level, axes = c(1L, 2L)) {
+.plot_ordination_gtmb <- function(
+  fit,
+  level,
+  axes = c(1L, 2L),
+  rotation = c("varimax", "none", "promax"),
+  standardize_loadings = FALSE
+) {
+  rotation <- match.arg(rotation)
   ## The dispatcher supplies "B" when the user omits level; an explicit
   ## ordination request with multiple levels is still ambiguous.
   if (missing(level) || is.null(level) || length(level) != 1L) {
@@ -1291,12 +1382,80 @@ plot.gllvmTMB_multi <- function(
     )
   }
 
-  L <- ord$loadings
-  Sc <- ord$scores
+  rotation_info <- NULL
+  ord_source <- "extract_ordination"
+  rotation_status <- "rotation_ambiguous_loadings"
+  if (rotation == "none") {
+    L <- ord$loadings
+    Sc <- ord$scores
+  } else {
+    rotation_info <- suppressMessages(rotate_loadings(
+      fit,
+      level = level_label,
+      method = rotation
+    ))
+    L <- rotation_info$Lambda
+    Sc <- rotation_info$scores
+    ord_source <- "rotate_loadings"
+    rotation_status <- paste0(rotation, "_ordered_sign_anchored")
+  }
   if (is.null(rownames(L))) {
     rownames(L) <- .gtmb_trait_names(fit)
   }
+  loading_scale <- "raw"
+  if (isTRUE(standardize_loadings)) {
+    sigma_out <- suppressMessages(extract_Sigma(
+      fit,
+      level = level_label,
+      part = "total",
+      link_residual = "auto",
+      .skip_warn = TRUE
+    ))
+    if (is.null(sigma_out)) {
+      cli::cli_abort(
+        "Cannot standardize loadings because Sigma is unavailable at level {.val {level_label}}."
+      )
+    }
+    denom <- sqrt(diag(sigma_out$Sigma))
+    if (any(!is.finite(denom) | denom <= 0)) {
+      cli::cli_abort(
+        "Cannot standardize loadings because at least one trait has non-positive total variance."
+      )
+    }
+    L <- sweep(L, 1L, denom, "/")
+    loading_scale <- "standardized"
+  }
   d <- ncol(L)
+  rotation_caption <- if (rotation == "none") {
+    paste(
+      "Axes and signs use the raw fitted orientation.",
+      "Use Sigma and correlation summaries for rotation-invariant interpretation."
+    )
+  } else {
+    paste(
+      paste0(
+        "Axes use ",
+        rotation,
+        " rotation, ordered by shared variance and sign-anchored for interpretation."
+      ),
+      "Use Sigma and correlation summaries for rotation-invariant interpretation."
+    )
+  }
+  rotation_data <- if (is.null(rotation_info)) {
+    list(method = "none")
+  } else {
+    list(
+      method = rotation_info$method,
+      axis_variance = rotation_info$axis_variance,
+      axis_order = rotation_info$axis_order,
+      axis_sign = rotation_info$axis_sign,
+      anchor_traits = rotation_info$anchor_traits,
+      loading_scale = loading_scale
+    )
+  }
+  if (is.null(rotation_info)) {
+    rotation_data$loading_scale <- loading_scale
+  }
 
   if (d == 1L) {
     ## 1D lollipop along x-axis, traits on x, points at y = 0.
@@ -1358,8 +1517,12 @@ plot.gllvmTMB_multi <- function(
         y = NULL,
         title = paste0("Level ", level_label, ": 1D ordination"),
         caption = paste(
-          "Trait positions show loadings on LV1.",
-          "Loading signs depend on the chosen orientation."
+          if (loading_scale == "standardized") {
+            "Trait positions show standardized loadings on LV1."
+          } else {
+            "Trait positions show raw loadings on LV1."
+          },
+          rotation_caption
         )
       ) +
       .gtmb_theme_figure() +
@@ -1370,10 +1533,10 @@ plot.gllvmTMB_multi <- function(
     return(.gtmb_plot_contract(
       p,
       type = "ordination",
-      source = "extract_ordination",
+      source = ord_source,
       level = level_label,
-      rotation_status = "rotation_ambiguous_loadings",
-      data = list(scores = dat_s, loadings = dat_l)
+      rotation_status = rotation_status,
+      data = list(scores = dat_s, loadings = dat_l, rotation = rotation_data)
     ))
   }
 
@@ -1434,6 +1597,7 @@ plot.gllvmTMB_multi <- function(
     }
     dat_s <- do.call(rbind, score_rows)
     dat_l <- do.call(rbind, loading_rows)
+    dat_l <- .gtmb_arrow_label_positions(dat_l, group_col = "pair")
     dat_s$pair <- factor(dat_s$pair, levels = unique(dat_s$pair))
     dat_l$pair <- factor(dat_l$pair, levels = levels(dat_s$pair))
 
@@ -1464,11 +1628,15 @@ plot.gllvmTMB_multi <- function(
       ) +
       ggplot2::geom_text(
         data = dat_l,
-        ggplot2::aes(x = .data$x, y = .data$y, label = .data$trait),
+        ggplot2::aes(
+          x = .data$label_x,
+          y = .data$label_y,
+          label = .data$trait,
+          hjust = .data$label_hjust,
+          vjust = .data$label_vjust
+        ),
         colour = .gtmb_plot_palette[["vermillion"]],
-        vjust = -0.5,
-        size = 3.2,
-        check_overlap = TRUE
+        size = 3.2
       ) +
       ggplot2::coord_equal() +
       ggplot2::facet_wrap(~pair, nrow = 1L) +
@@ -1479,7 +1647,12 @@ plot.gllvmTMB_multi <- function(
         caption = paste(
           "Each panel shows one pair of latent axes from the same 3D ordination.",
           "Grey points are latent scores; arrows are display-scaled trait loadings.",
-          "Axes and signs depend on rotation/orientation.",
+          if (loading_scale == "standardized") {
+            "Trait arrows use standardized loadings."
+          } else {
+            "Trait arrows use raw loadings."
+          },
+          rotation_caption,
           sep = "\n"
         )
       ) +
@@ -1488,10 +1661,10 @@ plot.gllvmTMB_multi <- function(
     return(.gtmb_plot_contract(
       p,
       type = "ordination",
-      source = "extract_ordination",
+      source = ord_source,
       level = level_label,
-      rotation_status = "rotation_ambiguous_loadings",
-      data = list(scores = dat_s, loadings = dat_l),
+      rotation_status = rotation_status,
+      data = list(scores = dat_s, loadings = dat_l, rotation = rotation_data),
       notes = "3D ordination is shown as a static pair grid, not a perspective 3D rendering."
     ))
   }
@@ -1517,6 +1690,7 @@ plot.gllvmTMB_multi <- function(
     display_scale = sc,
     stringsAsFactors = FALSE
   )
+  dat_l <- .gtmb_arrow_label_positions(dat_l)
 
   p <- ggplot2::ggplot() +
     ggplot2::geom_hline(
@@ -1544,9 +1718,14 @@ plot.gllvmTMB_multi <- function(
     ) +
     ggplot2::geom_text(
       data = dat_l,
-      ggplot2::aes(x = .data$x, y = .data$y, label = .data$trait),
+      ggplot2::aes(
+        x = .data$label_x,
+        y = .data$label_y,
+        label = .data$trait,
+        hjust = .data$label_hjust,
+        vjust = .data$label_vjust
+      ),
       colour = .gtmb_plot_palette[["vermillion"]],
-      vjust = -0.5,
       size = 3.5
     ) +
     ggplot2::coord_equal() +
@@ -1556,7 +1735,12 @@ plot.gllvmTMB_multi <- function(
       title = paste0("Level ", level_label, ": ordination biplot"),
       caption = paste(
         "Grey points are latent scores; arrows are display-scaled trait loadings.",
-        "Axes and signs depend on rotation/orientation.",
+        if (loading_scale == "standardized") {
+          "Trait arrows use standardized loadings."
+        } else {
+          "Trait arrows use raw loadings."
+        },
+        rotation_caption,
         sep = "\n"
       )
     ) +
@@ -1565,9 +1749,9 @@ plot.gllvmTMB_multi <- function(
   .gtmb_plot_contract(
     p,
     type = "ordination",
-    source = "extract_ordination",
+    source = ord_source,
     level = level_label,
-    rotation_status = "rotation_ambiguous_loadings",
-    data = list(scores = dat_s, loadings = dat_l)
+    rotation_status = rotation_status,
+    data = list(scores = dat_s, loadings = dat_l, rotation = rotation_data)
   )
 }

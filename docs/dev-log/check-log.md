@@ -5848,6 +5848,48 @@ Deliberately not run:
   cleanup. Article render, visual QA, pkgdown check, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-22 -- Functional-biogeography Sigma rows
+
+Scope:
+
+- Replaced raw `Sigma_B_M1` and `Sigma_W_M1` matrix printing in
+  `vignettes/articles/functional-biogeography.Rmd`.
+- Used `extract_Sigma_table()` to report the core model's between-site and
+  within-site Sigma targets as tidy rows.
+- Left the downstream correlation-shift and heatmap figures unchanged.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/functional-biogeography.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/functional-biogeography", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma_B_M1|Sigma_W_M1|round\\(Sigma_B_M1|round\\(Sigma_W_M1|Sigma_M1_rows|extract_Sigma_table\\(' vignettes/articles/functional-biogeography.Rmd pkgdown-site/articles/functional-biogeography.html`
+  -> old matrix printout is gone; helper-backed source and rendered HTML are
+  present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/functional-biogeography.Rmd`
+  -> only the pre-existing `two-U-phylogeny` link slug was found; no new stale
+  notation was introduced.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, pkgdown check, whitespace check, stale-wording scans,
+  and a short no-tests package check were run.
+
 ## 2026-05-22 -- Phylogenetic Sigma tables
 
 Scope:

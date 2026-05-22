@@ -219,13 +219,18 @@ fit_core$opt$convergence
 ```
 
 Wall time: `r t_M1` s. Extract $\boldsymbol{\Sigma}_B$ and
-$\boldsymbol{\Sigma}_W$:
+$\boldsymbol{\Sigma}_W$ as report-ready rows:
 
 ```{r m1-sigma}
-Sigma_B_M1 <- extract_Sigma(fit_core, level = "unit",     part = "total")$Sigma
-Sigma_W_M1 <- extract_Sigma(fit_core, level = "unit_obs", part = "total")$Sigma
-round(Sigma_B_M1, 2)
-round(Sigma_W_M1, 2)
+Sigma_M1_rows <- extract_Sigma_table(
+  fit_core,
+  level = c("unit", "unit_obs"),
+  part = "total",
+  measure = "covariance",
+  entries = "unique"
+)
+Sigma_M1_rows[, c("level", "trait_i", "trait_j",
+                  "estimate", "interval_status")]
 ```
 
 The block structure is recovered: traits 1-3 covary positively,

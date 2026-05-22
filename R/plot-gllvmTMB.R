@@ -78,11 +78,14 @@
 #' @param rotation One of `"varimax"`, `"none"`, or `"promax"` for
 #'   `"ordination"` plots. The default `"varimax"` uses rotated,
 #'   shared-variance-ordered, sign-anchored axes for interpretation.
-#'   Use `"none"` to show the raw computational orientation.
+#'   Use `"none"` to show the raw computational orientation. Rotation
+#'   makes the biplot easier to label; use `Sigma`, correlations,
+#'   communality, and uniqueness as the primary quantitative summaries.
 #' @param standardize_loadings Logical. For `"ordination"` plots, divide
 #'   each trait loading by the square root of that trait's model-implied total
 #'   variance before drawing arrows. This puts arrows on a correlation-like
-#'   scale for mixed-scale traits. Default `FALSE`.
+#'   scale for mixed-scale traits. It changes the displayed arrow scale, not
+#'   the model's communality or variance decomposition. Default `FALSE`.
 #' @param ... Currently unused.
 #' @return A `ggplot` object with a `gllvmTMB_meta` attribute describing
 #'   the plot type, source extractor, covariance level, interval status, and
@@ -1424,12 +1427,18 @@ plot.gllvmTMB_multi <- function(
   }
   d <- ncol(L)
   rotation_caption <- if (rotation == "none") {
-    "Axes and signs use the raw fitted orientation."
+    paste(
+      "Axes and signs use the raw fitted orientation.",
+      "Use Sigma and correlation summaries for rotation-invariant interpretation."
+    )
   } else {
-    paste0(
-      "Axes use ",
-      rotation,
-      " rotation, ordered by shared variance and sign-anchored for interpretation."
+    paste(
+      paste0(
+        "Axes use ",
+        rotation,
+        " rotation, ordered by shared variance and sign-anchored for interpretation."
+      ),
+      "Use Sigma and correlation summaries for rotation-invariant interpretation."
     )
   }
   rotation_data <- if (is.null(rotation_info)) {

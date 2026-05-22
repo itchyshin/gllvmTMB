@@ -56,12 +56,15 @@ Ignored when \code{d = 1}.}
 \item{rotation}{One of \code{"varimax"}, \code{"none"}, or \code{"promax"} for
 \code{"ordination"} plots. The default \code{"varimax"} uses rotated,
 shared-variance-ordered, sign-anchored axes for interpretation.
-Use \code{"none"} to show the raw computational orientation.}
+Use \code{"none"} to show the raw computational orientation. Rotation
+makes the biplot easier to label; use \code{Sigma}, correlations,
+communality, and uniqueness as the primary quantitative summaries.}
 
 \item{standardize_loadings}{Logical. For \code{"ordination"} plots, divide
 each trait loading by the square root of that trait's model-implied total
 variance before drawing arrows. This puts arrows on a correlation-like
-scale for mixed-scale traits. Default \code{FALSE}.}
+scale for mixed-scale traits. It changes the displayed arrow scale, not
+the model's communality or variance decomposition. Default \code{FALSE}.}
 
 \item{...}{Currently unused.}
 }

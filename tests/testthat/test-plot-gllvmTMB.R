@@ -432,6 +432,11 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   )
   expect_equal(meta_default$level, "unit")
   expect_equal(meta_default$rotation_status, "varimax_ordered_sign_anchored")
+  expect_match(
+    p_default$labels$caption,
+    "Use Sigma and correlation summaries",
+    fixed = TRUE
+  )
 
   p <- expect_warning(
     suppressMessages(plot(
@@ -446,6 +451,16 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   meta <- expect_gtmb_plot_meta(p, "ordination", "extract_ordination")
   expect_equal(meta$level, "unit")
   expect_equal(meta$rotation_status, "rotation_ambiguous_loadings")
+  expect_match(
+    p$labels$caption,
+    "raw fitted orientation",
+    fixed = TRUE
+  )
+  expect_match(
+    p$labels$caption,
+    "Use Sigma and correlation summaries",
+    fixed = TRUE
+  )
   plot_data <- attr(p, "gllvmTMB_data")
   expect_named(plot_data, c("scores", "loadings", "rotation"))
   expect_equal(plot_data$rotation$method, "none")

@@ -50,10 +50,17 @@ transform so the linear predictor, fitted log-likelihood, and implied
 covariance are unchanged.
 }
 \details{
-Rotation is for interpretation of the loading columns. It does not change
-the fitted model, and rotation-invariant quantities such as
-\eqn{\Lambda \Lambda^\top} should be compared on the unrotated or rotated
-scale equivalently.
+Rotation is for interpretation of the loading columns, especially figures.
+It does not make the axes uniquely "right"; it chooses a readable
+orientation among mathematically equivalent orientations. For quantitative
+interpretation, start from the model-implied \code{Sigma}, correlations,
+communality, and uniqueness, then use rotated axes for labels and plots.
+
+A defensible plotting workflow is: fit the model, check convergence,
+reconstruct covariance summaries, then rotate loadings for visual
+interpretation. Rotate \code{level = "unit"} and \code{level = "unit_obs"} separately
+because they represent different covariance structures. \code{method = "varimax"} is the usual first choice for a simple loading pattern; use
+\code{method = "promax"} only when correlated latent axes are intended.
 
 The rotation is applied to \eqn{\Lambda} on the \emph{left} and to the
 latent scores on the \emph{right} using the inverse transform, so

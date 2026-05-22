@@ -7434,6 +7434,53 @@ Deliberately not run:
   roxygen, Rd, vignette, or article source files changed. No 3-OS CI was
   available until the branch is pushed.
 
+## 2026-05-22 -- Rotation plotting workflow docs
+
+Scope:
+
+- Clarified `plot.gllvmTMB_multi()` reference wording so rotated ordination
+  axes are described as interpretable biplot orientations, not primary
+  inference targets.
+- Clarified `standardize_loadings` as a display-scale change only.
+- Updated ordination captions to point readers back to `Sigma` and correlation
+  summaries for rotation-invariant interpretation.
+- Clarified `rotate_loadings()` guidance: inspect covariance summaries first,
+  rotate `unit` and `unit_obs` separately, use varimax first, and reserve
+  promax for intended correlated axes.
+- Added plot tests that guard the caption wording.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-gllvmTMB.R R/rotate-loadings.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd` and `man/rotate_loadings.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB|rotate-compare-loadings|rotation-advisory", stop_on_failure = TRUE)'`
+  -> 261 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Wording scan:
+
+  ```sh
+  rg -n 'Use Sigma and correlation summaries|raw fitted orientation|uniquely "right"|primary quantitative summaries|standardized loadings|method = "promax"' R/plot-gllvmTMB.R R/rotate-loadings.R man/plot.gllvmTMB_multi.Rd man/rotate_loadings.Rd tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits in source, generated Rd, and tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  reference-doc and caption slice. No vignette/article source files changed.
+  No 3-OS CI was available until the branch is pushed.
+
 ## 2026-05-22 -- Ordination label placement
 
 Scope:

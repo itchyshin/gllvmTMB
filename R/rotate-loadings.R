@@ -20,10 +20,11 @@
 #' transform so the linear predictor, fitted log-likelihood, and implied
 #' covariance are unchanged.
 #'
-#' Rotation is for interpretation of the loading columns. It does not change
-#' the fitted model, and rotation-invariant quantities such as
-#' \eqn{\Lambda \Lambda^\top} should be compared on the unrotated or rotated
-#' scale equivalently.
+#' Rotation is for interpretation of the loading columns, especially figures.
+#' It does not make the axes uniquely "right"; it chooses a readable
+#' orientation among mathematically equivalent orientations. For quantitative
+#' interpretation, start from the model-implied `Sigma`, correlations,
+#' communality, and uniqueness, then use rotated axes for labels and plots.
 #'
 #' @param fit A fitted multivariate model returned by [gllvmTMB()].
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
@@ -47,6 +48,13 @@
 #'   metadata after any ordering and sign anchoring.
 #'
 #' @details
+#' A defensible plotting workflow is: fit the model, check convergence,
+#' reconstruct covariance summaries, then rotate loadings for visual
+#' interpretation. Rotate `level = "unit"` and `level = "unit_obs"` separately
+#' because they represent different covariance structures. `method =
+#' "varimax"` is the usual first choice for a simple loading pattern; use
+#' `method = "promax"` only when correlated latent axes are intended.
+#'
 #' The rotation is applied to \eqn{\Lambda} on the *left* and to the
 #' latent scores on the *right* using the inverse transform, so
 #' \eqn{\Lambda_{\text{rot}} \mathbf{z}_{\text{rot}} = \Lambda \mathbf{z}}

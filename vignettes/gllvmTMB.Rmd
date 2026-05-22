@@ -193,7 +193,15 @@ alternatives, and `method = "wald"` is kept as an alias of
 `"fisher-z"`:
 
 ```{r cor}
-extract_correlations(fit, tier = "unit")
+corr_rows <- extract_correlations(fit, tier = "unit")
+corr_rows
+```
+
+For reports, plot the same tidy rows instead of hand-indexing a
+correlation matrix:
+
+```{r cor-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Pairwise trait correlations from the first fitted model. Points are Fisher-z estimates; horizontal segments are finite 95% interval bounds."}
+plot_correlations(corr_rows, sort = "magnitude")
 ```
 
 The matrix form, if you want to look at the correlation structure as

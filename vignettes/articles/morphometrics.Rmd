@@ -311,14 +311,27 @@ For inference on individual cross-trait correlations or per-trait
 communality, the canonical extractors return tidy data frames.
 `extract_correlations()` defaults to `method = "fisher-z"` (fast
 Fisher-transform Wald CI; bounds guaranteed in $[-1, 1]$).
-Communality point estimates are enough for this first worked example.
-When interval estimates matter, prefer profile or Wald-style intervals
-where the target supports them. Bootstrap is a slower, deliberate option
-for a separate cached check, not part of this rendered article.
+The table is useful for reporting exact numbers; the plot shows which
+trait pairs have the strongest evidence of positive or negative
+association. Communality point estimates are enough for this first
+worked example. When interval estimates matter, prefer profile or
+Wald-style intervals where the target supports them. Bootstrap is a
+slower, deliberate option for a separate cached check, not part of this
+rendered article.
 
 ```{r ci-correlations}
-extract_correlations(fit, tier = "unit")
+corr_rows <- extract_correlations(fit, tier = "unit")
+corr_rows
 ```
+
+```{r ci-correlation-raindrop, fig.width = 7, fig.height = 4.3, fig.cap = "Pairwise between-individual trait correlations from the fitted morphometrics model. Raindrops show frequentist compatibility reconstructed from Fisher-z intervals; points mark estimates. Open points would mark rows without finite interval bounds."}
+plot_correlations(corr_rows, style = "raindrop", sort = "trait")
+```
+
+In this teaching fit, all unit-tier trait correlations are positive, so
+the figure mainly ranks their strength along the shared size axis. Tight
+drops near 1 are Fisher-z intervals from the fitted Hessian; bootstrap
+intervals are the next check when those bounds drive an inference claim.
 
 ```{r ci-communality}
 extract_communality(fit, level = "unit")

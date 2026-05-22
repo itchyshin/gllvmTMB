@@ -285,6 +285,25 @@ reporting. `"shared"` is useful if you specifically want the latent-implied
 component (e.g. for ordination interpretation or communality). `"unique"`
 gives the diagonal of $\boldsymbol\Psi$ as a named numeric vector.
 
+Those matrices are convenient for algebra checks. For a report table or
+plot, use `extract_Sigma_table()` so each covariance target is one tidy
+row:
+
+```{r sigma-table-rows}
+sigma_rows_B <- extract_Sigma_table(
+  fit_B,
+  level = "unit",
+  part = "total",
+  measure = "covariance",
+  entries = "upper"
+)
+sigma_rows_B
+```
+
+```{r sigma-table-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Upper-triangle off-diagonal entries of Sigma_unit from the latent + unique model. Open points mark point estimates without finite interval bounds; bootstrap-derived rows are the next step for Sigma uncertainty."}
+plot_Sigma_table(sigma_rows_B, sort = "magnitude")
+```
+
 ## Communality and ICC need the full $\Sigma$ too
 
 Two trait-level summaries used in behavioural-syndromes and
@@ -321,6 +340,20 @@ informative.
 ```{r communality}
 extract_communality(fit_A, level = "unit")  # latent-only fit: all = 1, useless
 extract_communality(fit_B, level = "unit")  # latent + unique: meaningful
+```
+
+For the report surface, keep the exact table but compare the rows with
+the correlation plot helper. The plot uses the same Fisher-z intervals as
+`extract_correlations()`, so it shows uncertainty rather than only a
+matrix cell value:
+
+```{r communality-correlation-rows}
+corr_B <- extract_correlations(fit_B, tier = "unit")
+corr_B
+```
+
+```{r communality-correlation-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Pairwise correlations from the latent + unique model. Points are Fisher-z estimates; horizontal segments show finite 95% interval bounds."}
+plot_correlations(corr_B, sort = "magnitude")
 ```
 
 ### Site-level / individual-level ICC

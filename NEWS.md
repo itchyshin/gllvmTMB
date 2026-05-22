@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Covariance/correlation plot helpers (2026-05-21)
+
+* **`plot_correlations()` and `plot_Sigma_table()`** are new ggplot helpers for report-ready covariance and correlation rows. IN: tidy rows from `extract_correlations()` and `extract_Sigma_table()` can be drawn as forest plots or raindrop compatibility displays with metadata attached to `gllvmTMB_meta` / `gllvmTMB_data` (EXT-19). The first public integrations are in the README example, Get Started, Morphometrics, and Covariance/correlation articles. PARTIAL: these helpers display supplied finite interval bounds but do not compute new intervals; rows without finite interval bounds are shown as open points, and `plot_Sigma_table(style = "raindrop")` needs interval-bearing input rows. For fitted correlations, open points can often be investigated with `extract_correlations(..., method = "bootstrap")`; Sigma-table raindrops need bootstrap-derived or otherwise interval-bearing rows. Raindrops show frequentist compatibility, not posterior density, and omit CI lines by default so the midpoint and shape carry the display. Set `show_intervals = TRUE` to overlay interval lines when needed. PLANNED: interval-aware Sigma-table joins, communality intervals, and figure integration for hidden/technical articles remain future work.
+
 ## Missing response cells (2026-05-21)
 
 * **Response `NA`s are now accepted in both long-format and wide `traits(...)` data.** IN: missing unit-trait response cells are dropped before fitting, preserving other observed traits for the same unit; `cbind(successes, failures)` rows are dropped when either response component is missing; weights are subset to retained response rows before validation (MIS-21). PARTIAL: this is response-missingness support only. Missing predictors, grouping variables, design-matrix entries, or all-missing traits still require user-side data cleaning or explicit modelling decisions.

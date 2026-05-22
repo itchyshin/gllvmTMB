@@ -157,6 +157,8 @@ reference:
     - simulate.gllvmTMB_multi
     - predict.gllvmTMB_multi
     - plot.gllvmTMB_multi
+    - plot_correlations
+    - plot_Sigma_table
 
   - title: First-line diagnostics and uncertainty
     desc: Start here before interpreting covariance, ordination, or interval estimates

@@ -1,0 +1,803 @@
+## Publication-ready forest plots for tidy covariance/correlation tables.
+## These helpers sit above extract_correlations() and extract_Sigma_table()
+## so articles can plot report-ready rows without matrix indexing.
+
+.gtmb_require_plot_columns <- function(data, required, data_arg = "x") {
+  missing <- setdiff(required, names(data))
+  if (length(missing) > 0L) {
+    cli::cli_abort(c(
+      "{.arg {data_arg}} is missing required column{?s}: {.field {missing}}.",
+      "i" = "Pass the output of {.fun extract_correlations} or {.fun extract_Sigma_table}, or supply a data frame with the same columns."
+    ))
+  }
+}
+
+.gtmb_pretty_levels <- function(level) {
+  level <- as.character(level)
+  vapply(level, function(x) {
+    .canonical_level_name(.normalise_level(x, .skip_warn = TRUE))
+  }, character(1L), USE.NAMES = FALSE)
+}
+
+.gtmb_pair_label <- function(trait_i, trait_j, diagonal = FALSE) {
+  diagonal <- rep_len(diagonal, length(trait_i))
+  out <- paste0(trait_i, " - ", trait_j)
+  out[diagonal] <- paste0(trait_i[diagonal], " variance")
+  out
+}
+
+.gtmb_plot_sign <- function(x) {
+  out <- rep("zero", length(x))
+  out[x < 0] <- "negative"
+  out[x > 0] <- "positive"
+  factor(out, levels = c("negative", "zero", "positive"))
+}
+
+.gtmb_interval_state <- function(has_interval) {
+  if (!any(has_interval)) {
+    return("none")
+  }
+  if (all(has_interval)) {
+    return("provided")
+  }
+  "partial"
+}
+
+.gtmb_resolve_interval_line <- function(show_intervals, style) {
+  if (is.null(show_intervals)) {
+    return(identical(style, "interval"))
+  }
+  if (
+    !is.logical(show_intervals) ||
+      length(show_intervals) != 1L ||
+      is.na(show_intervals)
+  ) {
+    cli::cli_abort(
+      "{.arg show_intervals} must be {.code TRUE}, {.code FALSE}, or {.code NULL}."
+    )
+  }
+  isTRUE(show_intervals)
+}
+
+.gtmb_validate_interval_level <- function(level, arg = "raindrop_level") {
+  if (
+    !is.numeric(level) ||
+      length(level) != 1L ||
+      !is.finite(level) ||
+      level <= 0 ||
+      level >= 1
+  ) {
+    cli::cli_abort("{.arg {arg}} must be a single number between 0 and 1.")
+  }
+  level
+}
+
+.gtmb_order_pair_plot_rows <- function(dat, sort) {
+  sort <- match.arg(sort, c("estimate", "magnitude", "trait", "level"))
+  if (identical(sort, "estimate")) {
+    order(dat$.facet, dat$.estimate, dat$.pair_label)
+  } else if (identical(sort, "magnitude")) {
+    order(dat$.facet, abs(dat$.estimate), dat$.pair_label)
+  } else if (identical(sort, "level")) {
+    order(dat$.facet, dat$.pair_label)
+  } else {
+    order(dat$.pair_label, dat$.facet)
+  }
+}
+
+.gtmb_prepare_pair_plot_rows <- function(dat, sort, facet) {
+  if (identical(facet, "none")) {
+    multi_level <- length(unique(dat$.facet)) > 1L
+    if (multi_level) {
+      dat$.pair_label <- paste(dat$.pair_label, dat$.facet, sep = " | ")
+    }
+    dat$.facet <- "All rows"
+  }
+  ord <- .gtmb_order_pair_plot_rows(dat, sort)
+  dat <- dat[ord, , drop = FALSE]
+  dat$.row_key <- paste0(seq_len(nrow(dat)), "__", dat$.pair_label)
+  dat$.y <- rev(seq_len(nrow(dat)))
+  attr(dat, "row_labels") <- stats::setNames(dat$.pair_label, as.character(dat$.y))
+  dat
+}
+
+.gtmb_add_pair_facets <- function(p, dat, facet) {
+  label_lookup <- attr(dat, "row_labels") %||% character(0)
+  label_fun <- function(x) {
+    out <- unname(label_lookup[as.character(x)])
+    out[is.na(out)] <- x[is.na(out)]
+    out
+  }
+  p <- p +
+    ggplot2::scale_y_continuous(
+      breaks = sort(unique(dat$.y)),
+      labels = label_fun,
+      expand = ggplot2::expansion(add = c(0.55, 0.55))
+    ) +
+    ggplot2::theme(
+      panel.grid.major.y = ggplot2::element_blank(),
+      legend.position = "none"
+    )
+  if (identical(facet, "level") && length(unique(dat$.facet)) > 1L) {
+    facet_args <- list(
+      facets = stats::as.formula("~.facet"),
+      ncol = 1L,
+      scales = "free_y"
+    )
+    if ("space" %in% names(formals(ggplot2::facet_wrap))) {
+      facet_args$space <- "free_y"
+    }
+    p <- p + do.call(ggplot2::facet_wrap, facet_args)
+  }
+  p
+}
+
+.gtmb_raindrop_data <- function(
+  dat,
+  transform = c("identity", "correlation"),
+  level = 0.95,
+  width = 0.26,
+  n = 200L
+) {
+  transform <- match.arg(transform)
+  level <- .gtmb_validate_interval_level(level)
+  rows <- dat[dat$.has_interval, , drop = FALSE]
+  if (nrow(rows) == 0L) {
+    return(dat[0L, , drop = FALSE])
+  }
+  cutoff <- 0.5 * stats::qchisq(level, df = 1)
+  z_cutoff <- stats::qnorm(1 - (1 - level) / 2)
+  pieces <- vector("list", nrow(rows))
+  for (i in seq_len(nrow(rows))) {
+    estimate <- rows$.estimate[i]
+    lower <- rows$.lower[i]
+    upper <- rows$.upper[i]
+    if (
+      !all(is.finite(c(estimate, lower, upper))) ||
+        lower >= upper
+    ) {
+      next
+    }
+
+    if (identical(transform, "correlation")) {
+      if (any(abs(c(estimate, lower, upper)) >= 1)) {
+        next
+      }
+      centre <- atanh(estimate)
+      lower_t <- atanh(lower)
+      upper_t <- atanh(upper)
+      theta_to_value <- tanh
+    } else {
+      centre <- estimate
+      lower_t <- lower
+      upper_t <- upper
+      theta_to_value <- identity
+    }
+
+    se <- (upper_t - lower_t) / (2 * z_cutoff)
+    if (!is.finite(se) || se <= 0) {
+      next
+    }
+    theta <- seq(
+      centre - sqrt(2 * cutoff) * se,
+      centre + sqrt(2 * cutoff) * se,
+      length.out = n
+    )
+    compatibility <- cutoff - 0.5 * ((theta - centre) / se)^2
+    height <- pmax(compatibility, 0) / cutoff * width
+    pieces[[i]] <- data.frame(
+      .x = theta_to_value(theta),
+      .y = rows$.y[i],
+      .ymin = rows$.y[i] - height,
+      .ymax = rows$.y[i] + height,
+      .row_key = rows$.row_key[i],
+      .pair_label = rows$.pair_label[i],
+      .facet = rows$.facet[i],
+      .sign = rows$.sign[i],
+      stringsAsFactors = FALSE
+    )
+  }
+  out <- do.call(rbind, pieces[!vapply(pieces, is.null, logical(1L))])
+  if (is.null(out)) {
+    out <- dat[0L, , drop = FALSE]
+  }
+  out
+}
+
+#' Plot pairwise trait correlations with intervals
+#'
+#' `plot_correlations()` turns the tidy rows returned by
+#' [extract_correlations()] into a horizontal forest plot. It keeps point
+#' estimates visible as open points when interval bounds are missing, and draws
+#' interval segments only for rows with finite lower and upper bounds.
+#' For fitted-object calls, open points can often be investigated by trying
+#' `method = "bootstrap"` or another interval method supported by
+#' [extract_correlations()].
+#'
+#' Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
+#' [extract_correlations()] or extracts those rows from a fitted
+#' `gllvmTMB_multi` object (EXT-19; built on EXT-04/EXT-18 extractor
+#' contracts). PARTIAL, the plot does not compute new intervals; it displays
+#' whatever interval method the input rows already contain. PLANNED,
+#' matrix-style visual comparisons against known truth remain article code
+#' rather than part of this helper.
+#'
+#' @param x Either a `gllvmTMB_multi` fit or a data frame returned by
+#'   [extract_correlations()]. Data frames must contain `tier`, `trait_i`,
+#'   `trait_j`, `correlation`, `lower`, `upper`, and `method`.
+#' @param tier,pair,level,method,n_eff,nsim,seed,link_residual Passed to
+#'   [extract_correlations()] when `x` is a fitted model. Ignored when `x` is
+#'   already a data frame.
+#' @param facet One of `"level"` (default) or `"none"`. Facetting by level
+#'   keeps repeated trait pairs readable when several tiers are present.
+#' @param sort Row ordering: `"estimate"` (default), `"magnitude"`, `"trait"`,
+#'   or `"level"`.
+#' @param show_intervals Logical or `NULL`. If `NULL` (default), finite
+#'   `lower`/`upper` bounds are drawn as horizontal intervals for
+#'   `style = "interval"` and omitted for `style = "raindrop"`. Set `TRUE` to
+#'   overlay interval lines on raindrops. Rows without finite bounds remain
+#'   visible as points.
+#' @param style One of `"interval"` (default) or `"raindrop"`. `"raindrop"`
+#'   reconstructs a frequentist compatibility shape from the estimate and
+#'   finite interval bounds, using Fisher's z scale for correlations. It is not
+#'   a posterior density.
+#' @param raindrop_level Confidence level represented by the supplied interval
+#'   bounds when `style = "raindrop"`. Defaults to `level`, so fitted-object
+#'   calls stay aligned with [extract_correlations()].
+#'
+#' @return A `ggplot2` plot object with `gllvmTMB_meta` and `gllvmTMB_data`
+#'   attributes.
+#' @seealso [extract_correlations()], [plot_Sigma_table()],
+#'   [plot.gllvmTMB_multi()].
+#' @export
+#' @examples
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   cors <- data.frame(
+#'     tier = c("unit", "unit", "unit_obs"),
+#'     trait_i = c("length", "length", "length"),
+#'     trait_j = c("mass", "wing", "mass"),
+#'     correlation = c(0.42, -0.18, 0.10),
+#'     lower = c(0.12, -0.45, NA),
+#'     upper = c(0.66, 0.12, NA),
+#'     method = c("fisher-z", "fisher-z", "none")
+#'   )
+#'   plot_correlations(cors)
+#' }
+plot_correlations <- function(
+  x,
+  tier = "all",
+  pair = NULL,
+  level = 0.95,
+  method = c("fisher-z", "profile", "wald", "bootstrap"),
+  n_eff = NULL,
+  nsim = 500L,
+  seed = NULL,
+  link_residual = c("auto", "none"),
+  facet = c("level", "none"),
+  sort = c("estimate", "magnitude", "trait", "level"),
+  show_intervals = NULL,
+  style = c("interval", "raindrop"),
+  raindrop_level = level
+) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
+  }
+  facet <- match.arg(facet)
+  sort <- match.arg(sort)
+  style <- match.arg(style)
+  raindrop_level <- .gtmb_validate_interval_level(raindrop_level)
+  draw_interval_line <- .gtmb_resolve_interval_line(show_intervals, style)
+  link_residual <- match.arg(link_residual)
+  method <- match.arg(method)
+
+  if (inherits(x, "gllvmTMB_multi")) {
+    dat <- extract_correlations(
+      x,
+      tier = tier,
+      pair = pair,
+      level = level,
+      method = method,
+      n_eff = n_eff,
+      nsim = nsim,
+      seed = seed,
+      link_residual = link_residual
+    )
+  } else if (is.data.frame(x)) {
+    dat <- x
+  } else {
+    cli::cli_abort(
+      "{.arg x} must be a {.cls gllvmTMB_multi} fit or a data frame from {.fun extract_correlations}."
+    )
+  }
+
+  .gtmb_require_plot_columns(
+    dat,
+    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+  )
+  if (nrow(dat) == 0L) {
+    cli::cli_abort("No correlation rows to plot.")
+  }
+
+  dat$.estimate <- dat$correlation
+  dat$.lower <- dat$lower
+  dat$.upper <- dat$upper
+  dat$.has_interval <- is.finite(dat$.lower) & is.finite(dat$.upper)
+  dat$.draw_interval <- draw_interval_line & dat$.has_interval
+  dat$.facet <- .gtmb_pretty_levels(dat$tier)
+  dat$.pair_label <- .gtmb_pair_label(dat$trait_i, dat$trait_j)
+  dat$.sign <- .gtmb_plot_sign(dat$.estimate)
+  dat <- .gtmb_prepare_pair_plot_rows(dat, sort = sort, facet = facet)
+  raindrop <- if (identical(style, "raindrop")) {
+    .gtmb_raindrop_data(dat, transform = "correlation", level = raindrop_level)
+  } else {
+    dat[0L, , drop = FALSE]
+  }
+  dat$.has_raindrop <- FALSE
+  if (identical(style, "raindrop")) {
+    dat$.has_raindrop <- dat$.row_key %in% unique(raindrop$.row_key)
+  }
+  visible_interval <- if (identical(style, "raindrop")) {
+    dat$.has_raindrop
+  } else {
+    dat$.draw_interval
+  }
+  dat$.has_uncertainty_display <- visible_interval
+
+  p <- ggplot2::ggplot(
+    dat,
+    ggplot2::aes(x = .data$.estimate, y = .data$.y)
+  ) +
+    ggplot2::geom_vline(
+      xintercept = 0,
+      colour = .gtmb_plot_palette[["grid"]],
+      linewidth = 0.55
+    )
+  if (identical(style, "raindrop") && nrow(raindrop) > 0L) {
+    p <- p +
+      ggplot2::geom_ribbon(
+        data = raindrop,
+        ggplot2::aes(
+          x = .data$.x,
+          ymin = .data$.ymin,
+          ymax = .data$.ymax,
+          fill = .data$.sign,
+          group = .data$.row_key
+        ),
+        inherit.aes = FALSE,
+        alpha = 0.20,
+        colour = NA
+      ) +
+      ggplot2::geom_line(
+        data = raindrop,
+        ggplot2::aes(
+          x = .data$.x,
+          y = .data$.ymin,
+          colour = .data$.sign,
+          group = .data$.row_key
+        ),
+        inherit.aes = FALSE,
+        linewidth = 0.45,
+        alpha = 0.75
+      ) +
+      ggplot2::geom_line(
+        data = raindrop,
+        ggplot2::aes(
+          x = .data$.x,
+          y = .data$.ymax,
+          colour = .data$.sign,
+          group = .data$.row_key
+        ),
+        inherit.aes = FALSE,
+        linewidth = 0.45,
+        alpha = 0.75
+      ) +
+      ggplot2::scale_colour_manual(
+        values = c(
+          negative = .gtmb_plot_palette[["blue"]],
+          zero = .gtmb_plot_palette[["pale_grey"]],
+          positive = .gtmb_plot_palette[["vermillion"]]
+        )
+      )
+  }
+  if (any(dat$.draw_interval)) {
+    p <- p +
+      ggplot2::geom_segment(
+        data = dat[dat$.draw_interval, , drop = FALSE],
+        ggplot2::aes(
+          x = .data$.lower,
+          xend = .data$.upper,
+          y = .data$.y,
+          yend = .data$.y
+        ),
+        inherit.aes = FALSE,
+        colour = .gtmb_plot_palette[["grey"]],
+        linewidth = if (identical(style, "raindrop")) 0.45 else 0.85,
+        lineend = "round"
+      )
+  }
+  if (any(dat$.has_uncertainty_display)) {
+    p <- p +
+      ggplot2::geom_point(
+        data = dat[dat$.has_uncertainty_display, , drop = FALSE],
+        ggplot2::aes(fill = .data$.sign),
+        shape = 21,
+        size = 2.6,
+        stroke = 0.45,
+        colour = .gtmb_plot_palette[["ink"]]
+      )
+  }
+  if (any(!dat$.has_uncertainty_display)) {
+    p <- p +
+      ggplot2::geom_point(
+        data = dat[!dat$.has_uncertainty_display, , drop = FALSE],
+        shape = 21,
+        size = 2.6,
+        stroke = 0.8,
+        fill = "white",
+        colour = .gtmb_plot_palette[["grey"]]
+      )
+  }
+  if (any(dat$.has_uncertainty_display) || nrow(raindrop) > 0L) {
+    p <- p +
+      ggplot2::scale_fill_manual(
+        values = c(
+          negative = .gtmb_plot_palette[["blue"]],
+          zero = .gtmb_plot_palette[["pale_grey"]],
+          positive = .gtmb_plot_palette[["vermillion"]]
+        )
+      )
+  }
+  p <- p +
+    ggplot2::scale_x_continuous(breaks = seq(-1, 1, by = 0.5)) +
+    ggplot2::coord_cartesian(xlim = c(-1, 1)) +
+    ggplot2::labs(
+      x = "Correlation",
+      y = NULL,
+      title = "Pairwise trait correlations",
+      subtitle = if (identical(style, "raindrop")) {
+        "Drops show compatibility from finite intervals; points mark estimates."
+      } else {
+        "Points are estimates; horizontal segments show finite interval bounds."
+      },
+      caption = "Open points have no finite interval bounds; try bootstrap intervals when supported."
+    ) +
+    .gtmb_theme_figure()
+  p <- .gtmb_add_pair_facets(p, dat, facet = facet)
+
+  p <- .gtmb_plot_contract(
+    p,
+    type = if (identical(style, "raindrop")) {
+      "correlations_raindrop"
+    } else {
+      "correlations_forest"
+    },
+    source = "extract_correlations",
+    level = unique(dat$.facet),
+    interval_status = .gtmb_interval_state(visible_interval),
+    data = dat
+  )
+  if (identical(style, "raindrop")) {
+    attr(p, "gllvmTMB_raindrop_data") <- raindrop
+  }
+  p
+}
+
+#' Plot report-ready Sigma table rows
+#'
+#' `plot_Sigma_table()` turns rows from [extract_Sigma_table()] into a
+#' forest-style covariance or correlation plot. It is designed for reports and
+#' articles that need to show selected covariance entries without indexing the
+#' `Sigma` matrix by hand. Rows without finite interval bounds are drawn as
+#' open points. To display Sigma uncertainty, pass interval-bearing rows, for
+#' example from a bootstrap workflow; [extract_Sigma_table()] itself currently
+#' leaves interval columns as placeholders.
+#'
+#' Scope boundary: IN, the helper plots point-estimate rows from
+#' [extract_Sigma_table()] or extracts those rows from a fitted
+#' `gllvmTMB_multi` object (EXT-19; built on EXT-18). PARTIAL, interval
+#' columns are displayed when present and finite, but this helper does not
+#' compute Sigma intervals. PLANNED, uncertainty propagation for arbitrary
+#' Sigma entries belongs in bootstrap/profile infrastructure.
+#'
+#' @param x Either a `gllvmTMB_multi` fit or a data frame returned by
+#'   [extract_Sigma_table()]. Data frames must contain `level`, `trait_i`,
+#'   `trait_j`, `estimate`, `lower`, `upper`, `matrix`, `component`,
+#'   `diagonal`, and `triangle`.
+#' @param level,part,measure,entries,link_residual Passed to
+#'   [extract_Sigma_table()] when `x` is a fitted model. The plotting default
+#'   `entries = "upper"` shows each pairwise covariance/correlation once; pass
+#'   `entries = "diag"` for variances or `entries = "unique"` for the diagonal
+#'   plus upper triangle.
+#' @param include_diagonal Logical. Include diagonal rows if they are present
+#'   in `x`? The default is `FALSE` because covariance diagonals are variances
+#'   and are usually on a different interpretive scale than pairwise
+#'   covariances.
+#' @param facet One of `"level"` (default) or `"none"`.
+#' @param sort Row ordering: `"estimate"` (default), `"magnitude"`, `"trait"`,
+#'   or `"level"`.
+#' @param show_intervals Logical or `NULL`. If `NULL` (default), finite
+#'   `lower`/`upper` bounds are drawn as horizontal intervals for
+#'   `style = "interval"` and omitted for `style = "raindrop"`. Set `TRUE` to
+#'   overlay interval lines on raindrops. Rows without finite bounds remain
+#'   visible as points.
+#' @param style One of `"interval"` (default) or `"raindrop"`. `"raindrop"`
+#'   reconstructs a frequentist compatibility shape from the estimate and
+#'   finite interval bounds. Correlation rows use Fisher's z scale; covariance
+#'   rows use the displayed estimate scale. It is not a posterior density.
+#' @param raindrop_level Confidence level represented by the supplied interval
+#'   bounds when `style = "raindrop"`. Default `0.95`.
+#'
+#' @return A `ggplot2` plot object with `gllvmTMB_meta` and `gllvmTMB_data`
+#'   attributes.
+#' @seealso [extract_Sigma_table()], [plot_correlations()],
+#'   [plot.gllvmTMB_multi()].
+#' @export
+#' @examples
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   sigma_rows <- data.frame(
+#'     level = "unit",
+#'     trait_i = c("length", "length", "mass"),
+#'     trait_j = c("mass", "wing", "wing"),
+#'     estimate = c(0.22, -0.08, 0.15),
+#'     lower = NA_real_,
+#'     upper = NA_real_,
+#'     matrix = "Sigma",
+#'     component = "total",
+#'     diagonal = FALSE,
+#'     triangle = "upper"
+#'   )
+#'   plot_Sigma_table(sigma_rows)
+#' }
+plot_Sigma_table <- function(
+  x,
+  level = "unit",
+  part = c("total", "shared", "unique"),
+  measure = c("covariance", "correlation"),
+  entries = c("upper", "unique", "all", "offdiag", "lower", "diag"),
+  link_residual = c("auto", "none"),
+  include_diagonal = FALSE,
+  facet = c("level", "none"),
+  sort = c("estimate", "magnitude", "trait", "level"),
+  show_intervals = NULL,
+  style = c("interval", "raindrop"),
+  raindrop_level = 0.95
+) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
+  }
+  part <- match.arg(part)
+  measure <- match.arg(measure)
+  entries <- match.arg(entries)
+  link_residual <- match.arg(link_residual)
+  facet <- match.arg(facet)
+  sort <- match.arg(sort)
+  style <- match.arg(style)
+  raindrop_level <- .gtmb_validate_interval_level(raindrop_level)
+  draw_interval_line <- .gtmb_resolve_interval_line(show_intervals, style)
+
+  if (inherits(x, "gllvmTMB_multi")) {
+    dat <- extract_Sigma_table(
+      x,
+      level = level,
+      part = part,
+      measure = measure,
+      entries = entries,
+      link_residual = link_residual
+    )
+  } else if (is.data.frame(x)) {
+    dat <- x
+  } else {
+    cli::cli_abort(
+      "{.arg x} must be a {.cls gllvmTMB_multi} fit or a data frame from {.fun extract_Sigma_table}."
+    )
+  }
+
+  .gtmb_require_plot_columns(
+    dat,
+    c(
+      "level", "trait_i", "trait_j", "estimate", "lower", "upper",
+      "matrix", "component", "diagonal", "triangle"
+    )
+  )
+  if (!isTRUE(include_diagonal)) {
+    dat <- dat[!(dat$diagonal %in% TRUE), , drop = FALSE]
+  }
+  if (nrow(dat) == 0L) {
+    cli::cli_abort(c(
+      "No Sigma table rows to plot.",
+      "i" = "If you passed only diagonal rows, set {.code include_diagonal = TRUE}."
+    ))
+  }
+
+  dat$.estimate <- dat$estimate
+  dat$.lower <- dat$lower
+  dat$.upper <- dat$upper
+  dat$.has_interval <- is.finite(dat$.lower) & is.finite(dat$.upper)
+  dat$.draw_interval <- draw_interval_line & dat$.has_interval
+  dat$.facet <- .gtmb_pretty_levels(dat$level)
+  dat$.pair_label <- .gtmb_pair_label(
+    dat$trait_i,
+    dat$trait_j,
+    diagonal = dat$diagonal
+  )
+  dat$.sign <- .gtmb_plot_sign(dat$.estimate)
+  dat <- .gtmb_prepare_pair_plot_rows(dat, sort = sort, facet = facet)
+
+  is_correlation <- any(dat$matrix == "R", na.rm = TRUE)
+  if ("scale" %in% names(dat)) {
+    is_correlation <- is_correlation ||
+      any(dat$scale == "correlation", na.rm = TRUE)
+  }
+  x_lab <- if (is_correlation) {
+    "Correlation"
+  } else if (any(dat$diagonal %in% TRUE, na.rm = TRUE)) {
+    "Covariance / variance estimate"
+  } else {
+    "Covariance estimate"
+  }
+  title <- if (is_correlation) {
+    "Sigma-derived trait correlations"
+  } else {
+    "Selected Sigma entries"
+  }
+  raindrop <- if (identical(style, "raindrop")) {
+    .gtmb_raindrop_data(
+      dat,
+      transform = if (is_correlation) "correlation" else "identity",
+      level = raindrop_level
+    )
+  } else {
+    dat[0L, , drop = FALSE]
+  }
+  dat$.has_raindrop <- FALSE
+  if (identical(style, "raindrop")) {
+    dat$.has_raindrop <- dat$.row_key %in% unique(raindrop$.row_key)
+  }
+  visible_interval <- if (identical(style, "raindrop")) {
+    dat$.has_raindrop
+  } else {
+    dat$.draw_interval
+  }
+  dat$.has_uncertainty_display <- visible_interval
+
+  p <- ggplot2::ggplot(
+    dat,
+    ggplot2::aes(x = .data$.estimate, y = .data$.y)
+  ) +
+    ggplot2::geom_vline(
+      xintercept = 0,
+      colour = .gtmb_plot_palette[["grid"]],
+      linewidth = 0.55
+    )
+  if (identical(style, "raindrop") && nrow(raindrop) > 0L) {
+    p <- p +
+      ggplot2::geom_ribbon(
+        data = raindrop,
+        ggplot2::aes(
+          x = .data$.x,
+          ymin = .data$.ymin,
+          ymax = .data$.ymax,
+          fill = .data$.sign,
+          group = .data$.row_key
+        ),
+        inherit.aes = FALSE,
+        alpha = 0.20,
+        colour = NA
+      ) +
+      ggplot2::geom_line(
+        data = raindrop,
+        ggplot2::aes(
+          x = .data$.x,
+          y = .data$.ymin,
+          colour = .data$.sign,
+          group = .data$.row_key
+        ),
+        inherit.aes = FALSE,
+        linewidth = 0.45,
+        alpha = 0.75
+      ) +
+      ggplot2::geom_line(
+        data = raindrop,
+        ggplot2::aes(
+          x = .data$.x,
+          y = .data$.ymax,
+          colour = .data$.sign,
+          group = .data$.row_key
+        ),
+        inherit.aes = FALSE,
+        linewidth = 0.45,
+        alpha = 0.75
+      ) +
+      ggplot2::scale_colour_manual(
+        values = c(
+          negative = .gtmb_plot_palette[["blue"]],
+          zero = .gtmb_plot_palette[["pale_grey"]],
+          positive = .gtmb_plot_palette[["vermillion"]]
+        )
+      )
+  }
+  if (any(dat$.draw_interval)) {
+    p <- p +
+      ggplot2::geom_segment(
+        data = dat[dat$.draw_interval, , drop = FALSE],
+        ggplot2::aes(
+          x = .data$.lower,
+          xend = .data$.upper,
+          y = .data$.y,
+          yend = .data$.y
+        ),
+        inherit.aes = FALSE,
+        colour = .gtmb_plot_palette[["grey"]],
+        linewidth = if (identical(style, "raindrop")) 0.45 else 0.85,
+        lineend = "round"
+      )
+  }
+  if (any(dat$.has_uncertainty_display)) {
+    p <- p +
+      ggplot2::geom_point(
+        data = dat[dat$.has_uncertainty_display, , drop = FALSE],
+        ggplot2::aes(fill = .data$.sign),
+        shape = 21,
+        size = 2.6,
+        stroke = 0.45,
+        colour = .gtmb_plot_palette[["ink"]]
+      )
+  }
+  if (any(!dat$.has_uncertainty_display)) {
+    p <- p +
+      ggplot2::geom_point(
+        data = dat[!dat$.has_uncertainty_display, , drop = FALSE],
+        shape = 21,
+        size = 2.6,
+        stroke = 0.8,
+        fill = "white",
+        colour = .gtmb_plot_palette[["grey"]]
+      )
+  }
+  if (any(dat$.has_uncertainty_display) || nrow(raindrop) > 0L) {
+    p <- p +
+      ggplot2::scale_fill_manual(
+        values = c(
+          negative = .gtmb_plot_palette[["blue"]],
+          zero = .gtmb_plot_palette[["pale_grey"]],
+          positive = .gtmb_plot_palette[["vermillion"]]
+        )
+      )
+  }
+  p <- p +
+    ggplot2::labs(
+      x = x_lab,
+      y = NULL,
+      title = title,
+      subtitle = if (identical(style, "raindrop")) {
+        "Drops use finite bounds as compatibility displays; points mark estimates."
+      } else {
+        "Rows come from extract_Sigma_table(); finite bounds are drawn as intervals."
+      },
+      caption = "Open points have no finite interval bounds; use bootstrap-derived rows when needed."
+    ) +
+    .gtmb_theme_figure()
+  if (is_correlation) {
+    p <- p +
+      ggplot2::scale_x_continuous(breaks = seq(-1, 1, by = 0.5)) +
+      ggplot2::coord_cartesian(xlim = c(-1, 1))
+  }
+  p <- .gtmb_add_pair_facets(p, dat, facet = facet)
+
+  p <- .gtmb_plot_contract(
+    p,
+    type = if (identical(style, "raindrop")) {
+      "sigma_table_raindrop"
+    } else {
+      "sigma_table_forest"
+    },
+    source = "extract_Sigma_table",
+    level = unique(dat$.facet),
+    interval_status = .gtmb_interval_state(visible_interval),
+    data = dat
+  )
+  if (identical(style, "raindrop")) {
+    attr(p, "gllvmTMB_raindrop_data") <- raindrop
+  }
+  p
+}

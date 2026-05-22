@@ -4690,3 +4690,209 @@ Deliberately not run:
   `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE)'`
   -> 0 errors, 1 local SDK install warning, 3 notes (`air.toml`, legacy NEWS
   section parsing, unused `nlme`). The prior global-function NOTE was gone.
+
+## 2026-05-21 -- Covariance/correlation plot helpers and raindrops
+
+Scope:
+
+- Added exported `plot_correlations()` and `plot_Sigma_table()` helpers over
+  tidy covariance/correlation rows.
+- Added `style = "raindrop"` compatibility displays. Raindrops are frequentist
+  compatibility shapes reconstructed from finite intervals, not posterior
+  densities.
+- Made raindrops omit CI interval lines by default; `show_intervals = TRUE`
+  remains an explicit technical-display overlay.
+- Marked rows with no finite interval bounds as open points so point-only rows
+  are visibly different from rows with uncertainty displays.
+- Added bootstrap-oriented caption/doc language: fitted correlation open points
+  can often be followed up with `method = "bootstrap"`; Sigma-table raindrops
+  need bootstrap-derived or otherwise interval-bearing rows.
+- Adjusted multi-level facet spacing so sparse facets do not look visually more
+  important than denser facets.
+- Registered the capability as `EXT-19`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the current PR #233 branch; no competing shared-log lane
+  was visible.
+- `Rscript --vanilla -e 'parse("R/plot-covariance-tables.R")'`
+  -> parsed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/plot_correlations.Rd` and `man/plot_Sigma_table.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 70 passes, 0 failures, 0 warnings, 0 skips after adding open-point
+  coverage for missing interval bounds.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|plot-gllvmTMB|extract-sigma-table")'`
+  -> 234 passes, 0 failures, 0 warnings, 0 skips.
+- Visual QA render script using synthetic correlation and Sigma rows wrote:
+  `/tmp/gllvmTMB-plot-check/plot-correlations-raindrop-spaced.png` and
+  `/tmp/gllvmTMB-plot-check/plot-sigma-raindrop-spaced.png`.
+  Florence review verdict: spacing and no-line raindrop defaults are clearer
+  than the optional CI-line overlay.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. The install warning included local
+  `xcrun --show-sdk-version` status 1 plus existing compiler warnings from
+  Eigen/TMB and `gllvmTMB.cpp:92` unused `n_mesh`. Notes were existing
+  `air.toml`, legacy NEWS section parsing, and unused `nlme`.
+
+Rose / stale-wording scans:
+
+- `rg -n 'plot_correlations|plot_Sigma_table|raindrop|EXT-19|show_intervals' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd NEWS.md _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md NAMESPACE`
+  -> new exports, docs, tests, NEWS, pkgdown reference, validation row, and
+  design contract all mention the helper surface.
+- `rg -n 'Florence-reviewed|posterior density|credible distributions|Bayesian|compatibility' R/plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd NEWS.md docs/design/53-report-ready-extractor-plot-contract.md docs/design/35-validation-debt-register.md`
+  -> no stale `Florence-reviewed` wording remains; raindrops are consistently
+  described as compatibility displays and explicitly not posterior densities.
+- `rg -n 'space = "free_y"|expansion\\(add|GeomSegment|\\.draw_interval' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> additive y spacing, optional free-y facet space, and no-default-CI-line
+  tests are present.
+
+Issue ledger:
+
+- `gh issue list --state open --search "raindrop plot" --limit 10`
+  -> no matching open issues.
+- `gh issue list --state open --search "plot helper covariance" --limit 10`
+  -> found #230, "Article surface reset and user-first tooling gate". No
+  comment added because this helper infrastructure supports that gate but does
+  not complete the article integration.
+
+Deliberately not counted as passing evidence:
+
+- One short check against the pre-spacing version was terminated after the
+  maintainer correctly flagged misleading facet row spacing. The final short
+  check above was rerun after the spacing fix and is the only check evidence
+  counted for this slice.
+
+## 2026-05-21 -- Morphometrics raindrop figure integration
+
+Scope:
+
+- Added the new `plot_correlations()` raindrop display to
+  `vignettes/articles/morphometrics.Rmd`.
+- Kept the exact tidy correlation table in the article, then added the plot as
+  the interpretation surface rather than replacing the table.
+- Added reader-facing interpretation that all fitted unit-tier trait
+  correlations in the teaching example are positive, that the near-1 tight
+  drops are Fisher-z/Hessian intervals, and that bootstrap intervals are the
+  next check when those bounds carry an inference claim.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only the current PR #233 branch was visible as recent package work.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/morphometrics.html` successfully. The
+  source-tree load was needed because the installed package on this machine did
+  not yet include the branch's new extractor/plot-helper exports.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 70 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Rendered-output checks:
+
+- `rg -n "Tight drops near 1|ci-correlation-raindrop|Pairwise between-individual trait correlations" pkgdown-site/articles/morphometrics.html vignettes/articles/morphometrics.Rmd`
+  -> found the new chunk, rendered figure alt text/caption, and the
+  Fisher-z/bootstrap interpretation paragraph in the built HTML.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this article-only integration
+  slice. The broader plotting slice already ran a short check after the helper
+  implementation; this slice rerendered the affected article and reran the
+  focused plotting tests plus `pkgdown::check_pkgdown()`.
+
+## 2026-05-21 -- Public covariance/correlation plot surface scan
+
+Scope:
+
+- Ran a Rose/Florence scan for public and hidden article surfaces that still
+  show covariance, correlation, or communality output only as raw matrices or
+  tables.
+- Updated the README quick example to store `corr_rows` and call
+  `plot_correlations(corr_rows)`.
+- Updated Get Started (`vignettes/gllvmTMB.Rmd`) to keep exact
+  `extract_correlations()` rows and add a `plot_correlations()` figure before
+  the optional matrix view.
+- Updated the Covariance/correlation article to add:
+  `extract_Sigma_table(..., entries = "upper")` +
+  `plot_Sigma_table()` for upper-triangle `Sigma_unit` covariance rows, and
+  `extract_correlations()` + `plot_correlations()` for fitted correlation rows.
+- During visual QA, fixed `plot_Sigma_table()` fitted-object default entries
+  from `"offdiag"` to `"upper"` so symmetric pairs are not duplicated in
+  report plots.
+- Added the audit note
+  `docs/dev-log/audits/2026-05-21-covariance-plot-surface-scan.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only the current PR #233 branch was visible as recent package work.
+- Scan command:
+  `rg -n "extract_correlations\\(|extract_Sigma_table\\(|extract_communality\\(|plot_correlations\\(|plot_Sigma_table\\(|correlation|correlations|covariance|communality|Sigma" README.md vignettes _pkgdown.yml NEWS.md docs/design/53-report-ready-extractor-plot-contract.md --glob '!*.html'`
+  -> identified README, Get Started, Morphometrics, Covariance/correlation,
+  and hidden mixed-family / behavioural / phylogenetic / JSDM surfaces.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/gllvmTMB.html`; the new `cor-plot` chunk
+  ran.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/covariance-correlation.html`; the new
+  `sigma-table-plot` and `communality-correlation-plot` chunks ran.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot_Sigma_table.Rd` after the default `entries =
+  "upper"` documentation change.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|extract-sigma-table")'`
+  -> 97 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Rendered-output checks:
+
+- Viewed `pkgdown-site/articles/cor-plot-1.png`: PASS. The Get Started
+  correlation forest plot is readable and uses finite Fisher-z intervals.
+- Viewed
+  `pkgdown-site/articles/covariance-correlation_files/figure-html/communality-correlation-plot-1.png`:
+  PASS. The fitted correlation intervals are readable and honest.
+- Viewed
+  `pkgdown-site/articles/covariance-correlation_files/figure-html/sigma-table-plot-1.png`:
+  initial REVISION. The first pass duplicated symmetric pairs because the plot
+  used off-diagonal entries. Fixed by switching fitted-object default entries
+  and the article example to `"upper"`, then rerendered and viewed the corrected
+  plot: PASS.
+- `rg -n "plot_correlations\\(|plot_Sigma_table\\(|entries = \"upper\"|Upper-triangle|Covariance estimate|Covariance / variance estimate|offdiag" R/plot-covariance-tables.R man/plot_Sigma_table.Rd tests/testthat/test-plot-covariance-tables.R README.md vignettes/gllvmTMB.Rmd vignettes/articles/covariance-correlation.Rmd docs/dev-log/audits/2026-05-21-covariance-plot-surface-scan.md pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/covariance-correlation.html NEWS.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> confirmed helper calls, upper-triangle wording, generated HTML captions,
+  and the retained `offdiag` option as a non-default choice.
+
+Issue ledger:
+
+- `gh issue list --state open --search "Article surface reset" --limit 10`
+  -> found #230, "Article surface reset and user-first tooling gate".
+- `gh issue list --state open --search "plot helper" --limit 10`
+  -> found #230.
+- `gh issue list --state open --search "covariance correlation" --limit 10`
+  -> found #230. No comment added because this is meaningful partial progress
+  but does not close the broader article-surface gate.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this docs/plot-surface slice.
+  The affected rendered pages, focused plot/extractor tests, generated Rd,
+  `pkgdown::check_pkgdown()`, and `git diff --check` were rerun.

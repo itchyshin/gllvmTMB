@@ -94,7 +94,8 @@ fit <- gllvmTMB(
 
 fit
 extract_communality(fit, level = "unit")
-extract_correlations(fit, tier = "unit")
+corr_rows <- extract_correlations(fit, tier = "unit")
+plot_correlations(corr_rows)
 ```
 
 You need R 4.1.0 or newer and a working compiler toolchain because

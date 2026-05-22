@@ -45,7 +45,8 @@ inside the article.
 
 ## Plot Metadata Contract
 
-Every public `plot.gllvmTMB_multi()` result now carries:
+Every public `plot.gllvmTMB_multi()` result and exported plot helper now
+carries:
 
 ```r
 attr(p, "gllvmTMB_meta")
@@ -84,6 +85,10 @@ layers. This keeps article code from digging through layer internals.
 | `communality` | `extract_communality` | `unit`, `unit_obs`, or one available level | `rotation_invariant` | `p$data`; `attr(p, "gllvmTMB_data")` |
 | `variance` | `extract_proportions` | `unit`, `unit_obs` | `rotation_invariant` | `p$data`; `attr(p, "gllvmTMB_data")` |
 | `ordination` | `extract_ordination` | requested canonical level | `rotation_ambiguous_loadings` | `attr(p, "gllvmTMB_data")` |
+| `correlations_forest` | `extract_correlations` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
+| `correlations_raindrop` | `extract_correlations` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")`; `attr(p, "gllvmTMB_raindrop_data")` |
+| `sigma_table_forest` | `extract_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
+| `sigma_table_raindrop` | `extract_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")`; `attr(p, "gllvmTMB_raindrop_data")` |
 
 The current correlation plot data is built from `extract_Sigma_table()`. It
 includes both backwards-compatible plotting columns (`row`, `col`, `value`) and
@@ -101,6 +106,23 @@ columns `x`, `y`, `group`, `significant`, and `border_colour`. The
 `significant` column is future-compatible with interval-aware correlation
 tables; with the current matrix-first `extract_Sigma()` path it remains
 `FALSE`.
+
+The exported `plot_correlations()` and `plot_Sigma_table()` helpers are
+row-first views over tidy covariance/correlation tables. Their default
+`style = "interval"` is a forest plot with points for every estimate and
+interval segments only where finite bounds exist. `style = "raindrop"` adds a
+frequentist compatibility display reconstructed from finite interval bounds;
+correlation rows use Fisher's z scale and covariance rows use the displayed
+estimate scale. Rows without finite bounds remain point-only and are drawn as
+open points so the missing uncertainty display is visible. For fitted
+correlation rows, `extract_correlations(..., method = "bootstrap")` is the
+usual next path when bootstrap uncertainty is appropriate. For Sigma-table
+rows, the plot helper needs bootstrap-derived or otherwise interval-bearing
+rows; `extract_Sigma_table()` itself is still point-estimate infrastructure.
+Raindrops omit interval segments by default so the midpoint and compatibility
+shape carry the display; callers can set `show_intervals = TRUE` when an
+overlaid CI line is genuinely useful. These raindrops are not posterior
+densities and should not be captioned as Bayesian credible distributions.
 
 The current integration plot data includes row-level `has_interval`,
 `interval_method`, and `interval_status` columns. The plot-level metadata uses
@@ -120,9 +142,10 @@ Three-dimensional fits expose a static pair grid with rows repeated for
 ggplot representation, not a perspective 3D rendering.
 
 The current visual baseline uses colourblind-safe internal palettes and
-rotation/interval captions in the five built-in plot types. This metadata and
-palette work is still not a publication-quality claim. It is the plumbing
-Florence and Pat need before figures can be audited quickly in articles.
+rotation/interval captions in the built-in plot types and covariance table
+helpers. This metadata and palette work is still not a publication-quality
+claim. It is the plumbing Florence and Pat need before figures can be audited
+quickly in articles.
 
 ## Article Gate
 
@@ -132,16 +155,21 @@ A figure-heavy article should not become public unless:
 2. the caption names the biological question and the estimand;
 3. interval provenance is visible when intervals appear;
 4. rotation ambiguity is stated when loadings or ordination axes are shown;
-5. the rendered HTML has been reviewed by Florence and Pat.
+5. the rendered HTML has been reviewed by the relevant team roles: Florence
+   for visual quality, Fisher for uncertainty, Pat for reader interpretation,
+   and Rose for claim consistency.
 
 ## Current Limitations
 
 - `extract_Sigma_table()` is point-estimate only. Interval columns are present
   for compatibility, but table-level interval joins still need a separate
   implementation.
+- `plot_Sigma_table(style = "raindrop")` can draw raindrops only when supplied
+  rows already contain finite interval bounds. It does not compute Sigma
+  intervals.
 - Plot metadata and first-pass Florence palette/caption safeguards exist, but
-  the visual designs are not yet publication-grade until rendered HTML review
-  passes.
+  every new article figure still needs rendered HTML review before it is
+  treated as publication-grade.
 - `plot(type = "variance")` depends on `extract_proportions()` availability and
   remains tied to the current validation status of that extractor.
 - No `vdiffr` snapshot tests have been added yet; current tests inspect object
@@ -155,5 +183,6 @@ A figure-heavy article should not become public unless:
    point estimates.
 3. Add dominant-axis loading and score-distribution helpers for the GLLVM
    overview Figure 3 family of plots.
-4. Add one Florence-reviewed correlation heatmap for Morphometrics or
-   Covariance/correlation before restoring figure-heavy hidden articles.
+4. Continue the Rose/Florence surface scan for hidden or technical articles
+   that still present covariance, correlation, or communality outputs only as
+   raw matrices or tables.

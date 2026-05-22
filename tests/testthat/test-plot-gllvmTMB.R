@@ -572,6 +572,25 @@ test_that("plot(type = 'ordination') can use rotated plot-ready axes", {
   expect_silent(print(p))
 })
 
+test_that("plot(type = 'ordination') can standardize loading arrows", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    standardize_loadings = TRUE
+  ))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "ordination", "rotate_loadings")
+  expect_equal(meta$rotation_status, "varimax_ordered_sign_anchored")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(plot_data$rotation$loading_scale, "standardized")
+  expect_true(all(is.finite(plot_data$loadings$loading_x)))
+  expect_true(all(is.finite(plot_data$loadings$loading_y)))
+  expect_silent(print(p))
+})
+
 test_that("plot.gllvmTMB_multi errors on bad type and bad axes", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()

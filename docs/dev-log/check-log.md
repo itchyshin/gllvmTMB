@@ -7760,6 +7760,49 @@ Deliberately not run:
   plotting-default slice. No vignettes/articles were edited or rendered. No
   3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Standardized ordination loading arrows
+
+Scope:
+
+- Added `standardize_loadings = TRUE` for `plot(type = "ordination")` so
+  users can draw trait arrows on a correlation-like scale when traits differ
+  in total variance.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB|rotate-compare-loadings", stop_on_failure = TRUE)'`
+  -> 245 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/plot.gllvmTMB_multi.Rd; grep -Hc '^\\keyword' man/plot.gllvmTMB_multi.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Feature-presence scan:
+
+  ```sh
+  rg -n 'standardize_loadings|loading_scale|standardized loadings|raw loadings' R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits in implementation, generated Rd, and focused tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  plotting option slice. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

@@ -79,6 +79,10 @@
 #'   `"ordination"` plots. The default `"varimax"` uses rotated,
 #'   shared-variance-ordered, sign-anchored axes for interpretation.
 #'   Use `"none"` to show the raw computational orientation.
+#' @param standardize_loadings Logical. For `"ordination"` plots, divide
+#'   each trait loading by the square root of that trait's model-implied total
+#'   variance before drawing arrows. This puts arrows on a correlation-like
+#'   scale for mixed-scale traits. Default `FALSE`.
 #' @param ... Currently unused.
 #' @return A `ggplot` object with a `gllvmTMB_meta` attribute describing
 #'   the plot type, source extractor, covariance level, interval status, and
@@ -103,6 +107,7 @@ plot.gllvmTMB_multi <- function(
   boot = NULL,
   axes = c(1L, 2L),
   rotation = c("varimax", "none", "promax"),
+  standardize_loadings = FALSE,
   ...
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
@@ -138,7 +143,8 @@ plot.gllvmTMB_multi <- function(
       x,
       if (level_missing) "B" else level,
       axes = axes,
-      rotation = rotation
+      rotation = rotation,
+      standardize_loadings = standardize_loadings
     )
   )
 }
@@ -1279,7 +1285,8 @@ plot.gllvmTMB_multi <- function(
   fit,
   level,
   axes = c(1L, 2L),
-  rotation = c("varimax", "none", "promax")
+  rotation = c("varimax", "none", "promax"),
+  standardize_loadings = FALSE
 ) {
   rotation <- match.arg(rotation)
   ## The dispatcher supplies "B" when the user omits level; an explicit
@@ -1324,6 +1331,29 @@ plot.gllvmTMB_multi <- function(
   if (is.null(rownames(L))) {
     rownames(L) <- .gtmb_trait_names(fit)
   }
+  loading_scale <- "raw"
+  if (isTRUE(standardize_loadings)) {
+    sigma_out <- suppressMessages(extract_Sigma(
+      fit,
+      level = level_label,
+      part = "total",
+      link_residual = "auto",
+      .skip_warn = TRUE
+    ))
+    if (is.null(sigma_out)) {
+      cli::cli_abort(
+        "Cannot standardize loadings because Sigma is unavailable at level {.val {level_label}}."
+      )
+    }
+    denom <- sqrt(diag(sigma_out$Sigma))
+    if (any(!is.finite(denom) | denom <= 0)) {
+      cli::cli_abort(
+        "Cannot standardize loadings because at least one trait has non-positive total variance."
+      )
+    }
+    L <- sweep(L, 1L, denom, "/")
+    loading_scale <- "standardized"
+  }
   d <- ncol(L)
   rotation_caption <- if (rotation == "none") {
     "Axes and signs use the raw fitted orientation."
@@ -1342,8 +1372,12 @@ plot.gllvmTMB_multi <- function(
       axis_variance = rotation_info$axis_variance,
       axis_order = rotation_info$axis_order,
       axis_sign = rotation_info$axis_sign,
-      anchor_traits = rotation_info$anchor_traits
+      anchor_traits = rotation_info$anchor_traits,
+      loading_scale = loading_scale
     )
+  }
+  if (is.null(rotation_info)) {
+    rotation_data$loading_scale <- loading_scale
   }
 
   if (d == 1L) {
@@ -1406,7 +1440,11 @@ plot.gllvmTMB_multi <- function(
         y = NULL,
         title = paste0("Level ", level_label, ": 1D ordination"),
         caption = paste(
-          "Trait positions show loadings on LV1.",
+          if (loading_scale == "standardized") {
+            "Trait positions show standardized loadings on LV1."
+          } else {
+            "Trait positions show raw loadings on LV1."
+          },
           rotation_caption
         )
       ) +
@@ -1527,6 +1565,11 @@ plot.gllvmTMB_multi <- function(
         caption = paste(
           "Each panel shows one pair of latent axes from the same 3D ordination.",
           "Grey points are latent scores; arrows are display-scaled trait loadings.",
+          if (loading_scale == "standardized") {
+            "Trait arrows use standardized loadings."
+          } else {
+            "Trait arrows use raw loadings."
+          },
           rotation_caption,
           sep = "\n"
         )
@@ -1604,6 +1647,11 @@ plot.gllvmTMB_multi <- function(
       title = paste0("Level ", level_label, ": ordination biplot"),
       caption = paste(
         "Grey points are latent scores; arrows are display-scaled trait loadings.",
+        if (loading_scale == "standardized") {
+          "Trait arrows use standardized loadings."
+        } else {
+          "Trait arrows use raw loadings."
+        },
         rotation_caption,
         sep = "\n"
       )

@@ -12,6 +12,7 @@
   boot = NULL,
   axes = c(1L, 2L),
   rotation = c("varimax", "none", "promax"),
+  standardize_loadings = FALSE,
   ...
 )
 }
@@ -56,6 +57,11 @@ Ignored when \code{d = 1}.}
 \code{"ordination"} plots. The default \code{"varimax"} uses rotated,
 shared-variance-ordered, sign-anchored axes for interpretation.
 Use \code{"none"} to show the raw computational orientation.}
+
+\item{standardize_loadings}{Logical. For \code{"ordination"} plots, divide
+each trait loading by the square root of that trait's model-implied total
+variance before drawing arrows. This puts arrows on a correlation-like
+scale for mixed-scale traits. Default \code{FALSE}.}
 
 \item{...}{Currently unused.}
 }

@@ -5848,6 +5848,54 @@ Deliberately not run:
   whitespace check, stale-wording scans, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- README Sigma rows
+
+Scope:
+
+- Changed the homepage model-piece table so `Sigma` points to
+  `extract_Sigma_table(fit, level = "unit")`.
+- Added `sigma_rows <- extract_Sigma_table(fit, level = "unit")` to the README
+  smoke example before pairwise correlations.
+- Updated one sentence to say the fitted object reports `Sigma rows`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- README smoke, first attempt:
+  `Rscript --vanilla - <<'EOF' ... library(gllvmTMB) ... EOF`
+  -> failed at `extract_Sigma_table()` because it loaded the installed package
+  rather than this working tree.
+- README smoke, working-tree attempt:
+  `Rscript --vanilla - <<'EOF' ... devtools::load_all(quiet = TRUE) ... EOF`
+  -> fit, `extract_communality()`, `extract_Sigma_table()`,
+  `extract_correlations()`, and `plot_correlations()` all ran.
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = TRUE)'`
+  -> wrote `pkgdown-site/index.html` and `pkgdown-site/404.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|sigma_rows <- extract_Sigma_table|Sigma rows|report-ready row per entry' README.md pkgdown-site/index.html`
+  -> README source and rendered home page contain the row-first Sigma wording.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|extract_Sigma\\(fit, level = "unit"\\) \\| The total covariance' README.md`
+  -> one intentional `gllvmTMB_wide()` hit remains in the soft-deprecation
+  paragraph; the old matrix-first Sigma row is gone.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this README-only
+  homepage cleanup. README smoke, pkgdown home build, `pkgdown::check_pkgdown()`,
+  whitespace check, stale-wording scans, and a short no-tests package check
+  were run.
+
 ## 2026-05-22 -- Sigma heatmap custom labels
 
 Scope:

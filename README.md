@@ -14,7 +14,7 @@ shared and trait-specific parts:
 
 | Model piece | R syntax | What the reader should see |
 |---|---|---|
-| `Sigma` | `extract_Sigma(fit, level = "unit")` | The total covariance among traits. |
+| `Sigma` | `extract_Sigma_table(fit, level = "unit")` | The total covariance among traits, one report-ready row per entry. |
 | `Lambda Lambda^T` | `latent(..., d = K)` | Shared axes: traits that rise and fall together across units. |
 | `Psi` | `unique(...)` | Trait-specific variance left over after the shared axes. |
 
@@ -94,6 +94,8 @@ fit <- gllvmTMB(
 
 fit
 extract_communality(fit, level = "unit")
+sigma_rows <- extract_Sigma_table(fit, level = "unit")
+sigma_rows
 corr_rows <- extract_correlations(fit, tier = "unit")
 plot_correlations(corr_rows)
 ```
@@ -173,7 +175,7 @@ latent axis across traits, and `unique(1 | individual)` estimates the
 trait-specific residual variance left over after that shared axis. In
 the long call, the equivalent terms are `latent(0 + trait | individual,
 d = 1)` and `unique(0 + trait | individual)`. The fitted object reports
-ordination scores, loadings, Sigma, pairwise correlations, and per-trait
+ordination scores, loadings, Sigma rows, pairwise correlations, and per-trait
 communality.
 
 In notation, the trait covariance the model fits is

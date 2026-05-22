@@ -5517,3 +5517,60 @@ Deliberately not run:
   check, stale-wording scan, Rd spot-check, issue scan, and a short no-tests
   package check were run.
 - No article render was needed because no vignette changed.
+
+## 2026-05-21 -- Sigma truth-comparison plot helper
+
+Scope:
+
+- Added exported `plot_Sigma_comparison()` over `compare_Sigma_table()` rows.
+- Added default row-labelled `estimate - truth` plots and optional
+  estimate-versus-truth scatter plots.
+- Added `gllvmTMB_meta`, `gllvmTMB_data`, and `comparison_status` metadata.
+- Added focused tests, roxygen/Rd, pkgdown navigation, NEWS, validation row
+  EXT-26, and report-ready contract text.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/plot_Sigma_comparison.Rd`; after the Rose
+  stale-wording cleanup it also rewrote `man/compare_Sigma_table.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 121 passes, 0 failures, 0 warnings, 0 skips.
+- Rendered visual QA images:
+  `/tmp/gllvmTMB-sigma-comparison-difference.png` and
+  `/tmp/gllvmTMB-sigma-comparison-scatter.png`.
+- Visual QA catch:
+  the first scatter render clipped subtitle/caption text at 5.5 inches wide;
+  the wording was shortened and the scatter image regenerated cleanly.
+- `tail -5 man/plot_Sigma_comparison.Rd && grep -c '^\\keyword' man/plot_Sigma_comparison.Rd`
+  -> Rd tail was well formed and keyword count was `0`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.` This was rerun after the stale-wording cleanup.
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'plot_Sigma_comparison|EXT-26|sigma_comparison|estimate-vs-truth|comparison_status|not confidence intervals' NEWS.md R/plot-covariance-tables.R man/plot_Sigma_comparison.Rd tests/testthat/test-plot-covariance-tables.R _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md NAMESPACE`
+  -> new helper is present in export, help, tests, pkgdown navigation, NEWS,
+  validation-debt register, and the report-ready contract.
+- `rg -n 'estimate-vs-truth article figures remain future|interval-aware table joins|interval-aware Sigma-table joins|rendered article integration|plotting geometry remains' NEWS.md R docs/design man`
+  -> no hits after updating the previous table-helper and plot-helper wording.
+- `gh issue list --state open --limit 20 --search "plot Sigma comparison"`
+  and `gh issue list --state open --limit 20 --search "estimate truth plot"`
+  -> both surfaced issue #230 as the relevant open issue.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this plot-helper slice.
+  Focused plot tests, roxygen generation, pkgdown check, whitespace check,
+  stale-wording scan, Rd spot-check, visual QA renders, issue scan, and a short
+  no-tests package check were run.
+- No article render was needed because no vignette changed.

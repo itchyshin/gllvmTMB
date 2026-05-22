@@ -39,8 +39,9 @@ matrices inside the article.
 Scope boundary: IN, the helper compares fitted or precomputed
 \code{extract_Sigma_table()} rows against one supplied truth matrix (EXT-25).
 PARTIAL, it is a table helper only: it does not compute uncertainty,
-simulate data, or choose graphical geometry. PLANNED, plot helpers for
-estimate-vs-truth article figures remain future visualization work.
+simulate data, or validate calibration. For the first visual comparison
+layer, use \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}}; richer article-specific calibration
+summaries remain future visualization work.
 }
 \examples{
 rows <- data.frame(
@@ -68,5 +69,6 @@ truth_R <- matrix(c(1, 0.6, 0.6, 1), 2,
 compare_Sigma_table(rows, truth_R, measure = "correlation")
 }
 \seealso{
-\code{\link[=extract_Sigma_table]{extract_Sigma_table()}}, \code{\link[=plot_Sigma_table]{plot_Sigma_table()}}.
+\code{\link[=extract_Sigma_table]{extract_Sigma_table()}}, \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}},
+\code{\link[=plot_Sigma_table]{plot_Sigma_table()}}.
 }

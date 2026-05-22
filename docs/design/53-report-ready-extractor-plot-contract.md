@@ -46,8 +46,9 @@ inside the article.
 For simulation and teaching figures with known truth,
 `compare_Sigma_table()` joins `extract_Sigma_table()` rows to a supplied truth
 matrix and adds `truth`, `error`, `abs_error`, and `comparison_status` columns
-(EXT-25). It is a table helper only; plotting geometry remains an article or
-future helper decision.
+(EXT-25). It is a table helper only; `plot_Sigma_comparison()` is the current
+default visual layer, while article-specific calibration summaries remain an
+article or future helper decision.
 
 ## Plot Metadata Contract
 
@@ -95,6 +96,8 @@ layers. This keeps article code from digging through layer internals.
 | `correlations_raindrop` | `extract_correlations` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")`; `attr(p, "gllvmTMB_raindrop_data")` |
 | `sigma_table_forest` | `extract_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
 | `sigma_table_raindrop` | `extract_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")`; `attr(p, "gllvmTMB_raindrop_data")` |
+| `sigma_comparison_difference` | `compare_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
+| `sigma_comparison_scatter` | `compare_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
 
 The current correlation plot data is built from `extract_Sigma_table()`. It
 includes both backwards-compatible plotting columns (`row`, `col`, `value`) and
@@ -138,6 +141,14 @@ Raindrops omit interval segments by default so the midpoint and compatibility
 shape carry the display; callers can set `show_intervals = TRUE` when an
 overlaid CI line is genuinely useful. These raindrops are not posterior
 densities and should not be captioned as Bayesian credible distributions.
+
+The exported `plot_Sigma_comparison()` helper is a row-first visual layer over
+`compare_Sigma_table()` (EXT-26). Its default difference style draws
+`estimate - truth` for each row with zero as the reference value. Its scatter
+style draws estimate versus truth with a one-to-one reference line. Segment
+geometry in both styles is comparison error, not uncertainty; the plot metadata
+therefore records `interval_status = "not_applicable"` and adds
+`comparison_status`.
 
 The current integration plot data includes row-level `has_interval`,
 `interval_method`, and `interval_status` columns. The plot-level metadata uses
@@ -213,9 +224,8 @@ A figure-heavy article should not become public unless:
 
 ## Next Implementation Targets
 
-1. Add estimate-vs-truth plot helpers for example objects.
-   `compare_Sigma_table()` now supplies the reusable row-first table; the next
-   step is a plotting helper for simulation articles.
+1. Wire the estimate-vs-truth table and plot helpers into simulation/example
+   articles that still hand-index covariance matrices.
 2. Add rendered article examples that use interval-aware ellipse borders/stars
    without running bootstrap inside article chunks. The morphometrics article
    now covers the direct `plot_correlations(boot, style = "raindrop")` path

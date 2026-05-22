@@ -1,8 +1,12 @@
 # gllvmTMB (development version)
 
+## Sigma estimate-vs-truth plot helper (2026-05-21)
+
+* **`plot_Sigma_comparison()`** plots `compare_Sigma_table()` rows as row-labelled error plots or estimate-vs-truth scatter plots for simulation and teaching figures (EXT-26). IN: example articles can show `estimate - truth` without hand-building ggplot scaffolding. PARTIAL: this is a visual comparison helper only; it does not run simulations, compute intervals, or validate calibration. PLANNED: article-specific calibration summaries remain future visualization work.
+
 ## Sigma estimate-vs-truth table helper (2026-05-21)
 
-* **`compare_Sigma_table()`** joins report-ready `extract_Sigma_table()` rows to a supplied covariance or correlation truth matrix for simulation and teaching figures (EXT-25). IN: example articles can build estimate-vs-truth tables without hand-indexing matrices. PARTIAL: this is a table helper only; it does not draw a plot, compute uncertainty, or validate simulation calibration. PLANNED: plot helpers for estimate-vs-truth article figures remain future visualization work.
+* **`compare_Sigma_table()`** joins report-ready `extract_Sigma_table()` rows to a supplied covariance or correlation truth matrix for simulation and teaching figures (EXT-25). IN: example articles can build estimate-vs-truth tables without hand-indexing matrices. PARTIAL: this is a table helper only; use `plot_Sigma_comparison()` for the current visual layer, and keep richer calibration summaries as future visualization work.
 
 ## Bootstrap provenance in plot metadata (2026-05-21)
 
@@ -18,7 +22,7 @@
 
 ## Correlation ellipse bootstrap intervals (2026-05-21)
 
-* **`plot(type = "correlation")` and `plot(type = "correlation_ellipse")`** now accept a `bootstrap_Sigma()` object through `boot` and merge stored `R_B` / `R_W` percentile bounds into the plotted correlation data (EXT-23). IN: heatmap and ellipse plot metadata now report interval availability, and the ellipse plot marks supplied intervals that do not cross zero with black borders and stars. PARTIAL: the plot does not run bootstrap refits and only uses correlation summaries already present in the bootstrap object. PLANNED: rendered article integration and vdiffr snapshots remain future Figure-3 QA work.
+* **`plot(type = "correlation")` and `plot(type = "correlation_ellipse")`** now accept a `bootstrap_Sigma()` object through `boot` and merge stored `R_B` / `R_W` percentile bounds into the plotted correlation data (EXT-23). IN: heatmap and ellipse plot metadata now report interval availability, and the ellipse plot marks supplied intervals that do not cross zero with black borders and stars. PARTIAL: the plot does not run bootstrap refits and only uses correlation summaries already present in the bootstrap object. PLANNED: vdiffr snapshots and broader hidden/technical Figure-3 QA remain future work.
 
 ## Repeatability bootstrap interval rows (2026-05-21)
 
@@ -34,7 +38,7 @@
 
 ## Covariance/correlation plot helpers (2026-05-21)
 
-* **`plot_correlations()` and `plot_Sigma_table()`** are new ggplot helpers for report-ready covariance and correlation rows. IN: tidy rows from `extract_correlations()` and `extract_Sigma_table()` can be drawn as forest plots or raindrop compatibility displays with metadata attached to `gllvmTMB_meta` / `gllvmTMB_data` (EXT-19). The first public integrations are in the README example, Get Started, Morphometrics, and Covariance/correlation articles. PARTIAL: these helpers display supplied finite interval bounds but do not compute new intervals; rows without finite interval bounds are shown as open points, and `plot_Sigma_table(style = "raindrop")` needs interval-bearing input rows. For fitted correlations, open points can often be investigated with `extract_correlations(..., method = "bootstrap")`; Sigma-table raindrops need bootstrap-derived or otherwise interval-bearing rows. Raindrops show frequentist compatibility, not posterior density, and omit CI lines by default so the midpoint and shape carry the display. Set `show_intervals = TRUE` to overlay interval lines when needed. PLANNED: interval-aware Sigma-table joins, communality intervals, and figure integration for hidden/technical articles remain future work.
+* **`plot_correlations()` and `plot_Sigma_table()`** are new ggplot helpers for report-ready covariance and correlation rows. IN: tidy rows from `extract_correlations()` and `extract_Sigma_table()` can be drawn as forest plots or raindrop compatibility displays with metadata attached to `gllvmTMB_meta` / `gllvmTMB_data` (EXT-19). The first public integrations are in the README example, Get Started, Morphometrics, and Covariance/correlation articles. PARTIAL: these helpers display supplied finite interval bounds but do not compute new intervals; rows without finite interval bounds are shown as open points, and `plot_Sigma_table(style = "raindrop")` needs interval-bearing input rows. For fitted correlations, open points can often be investigated with `extract_correlations(..., method = "bootstrap")`; Sigma-table raindrops need bootstrap-derived or otherwise interval-bearing rows. Raindrops show frequentist compatibility, not posterior density, and omit CI lines by default so the midpoint and shape carry the display. Set `show_intervals = TRUE` to overlay interval lines when needed. PLANNED: hidden/technical article integration and vdiffr snapshots remain future figure work.
 
 ## Missing response cells (2026-05-21)
 
@@ -42,7 +46,7 @@
 
 ## Report-ready Sigma tables (#233 follow-up, 2026-05-21)
 
-* **`extract_Sigma_table()`** is a new report-ready table view over `extract_Sigma()` for covariance and correlation entries, with stable columns for `estimand`, trait pair, level, component, estimate, interval status, scale, validation row, and matrix position. IN: point-estimate Sigma/Psi/R tables for levels already handled by `extract_Sigma()` are covered by EXT-18, with underlying mixed-family Sigma evidence in MIX-03. PARTIAL: interval columns are intentionally `NA` / `none`; use `extract_correlations()` or `bootstrap_Sigma()` for interval estimates. PLANNED: interval-aware table joins for Florence-grade plot annotations remain future infrastructure.
+* **`extract_Sigma_table()`** is a new report-ready table view over `extract_Sigma()` for covariance and correlation entries, with stable columns for `estimand`, trait pair, level, component, estimate, interval status, scale, validation row, and matrix position. IN: point-estimate Sigma/Psi/R tables for levels already handled by `extract_Sigma()` are covered by EXT-18, with underlying mixed-family Sigma evidence in MIX-03. PARTIAL: fitted-model interval columns are intentionally `NA` / `none`; use `extract_correlations()` or `bootstrap_Sigma()` for interval estimates, and `compare_Sigma_table()` / `plot_Sigma_comparison()` for known-truth comparisons. PLANNED: richer article-specific calibration summaries remain future work.
 
 ## `meta_V()` formula-marker syntax (#227, 2026-05-20)
 

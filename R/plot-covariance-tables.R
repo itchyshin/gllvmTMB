@@ -163,6 +163,45 @@
   dat
 }
 
+.gtmb_order_comparison_rows <- function(dat, sort) {
+  sort <- match.arg(
+    sort,
+    c("abs_error", "error", "estimate", "truth", "trait", "level")
+  )
+  if (identical(sort, "abs_error")) {
+    order(dat$.facet, dat$.abs_error, dat$.pair_label)
+  } else if (identical(sort, "error")) {
+    order(dat$.facet, dat$.error, dat$.pair_label)
+  } else if (identical(sort, "estimate")) {
+    order(dat$.facet, dat$.estimate, dat$.pair_label)
+  } else if (identical(sort, "truth")) {
+    order(dat$.facet, dat$.truth, dat$.pair_label)
+  } else if (identical(sort, "level")) {
+    order(dat$.facet, dat$.pair_label)
+  } else {
+    order(dat$.pair_label, dat$.facet)
+  }
+}
+
+.gtmb_prepare_comparison_plot_rows <- function(dat, sort, facet) {
+  if (identical(facet, "none")) {
+    multi_level <- length(unique(dat$.facet)) > 1L
+    if (multi_level) {
+      dat$.pair_label <- paste(dat$.pair_label, dat$.facet, sep = " | ")
+    }
+    dat$.facet <- "All rows"
+  }
+  ord <- .gtmb_order_comparison_rows(dat, sort)
+  dat <- dat[ord, , drop = FALSE]
+  dat$.row_key <- paste0(seq_len(nrow(dat)), "__", dat$.pair_label)
+  dat$.y <- rev(seq_len(nrow(dat)))
+  attr(dat, "row_labels") <- stats::setNames(
+    dat$.pair_label,
+    as.character(dat$.y)
+  )
+  dat
+}
+
 .gtmb_add_pair_facets <- function(p, dat, facet) {
   label_lookup <- attr(dat, "row_labels") %||% character(0)
   label_fun <- function(x) {
@@ -554,6 +593,320 @@ plot_correlations <- function(
   if (identical(style, "raindrop")) {
     attr(p, "gllvmTMB_raindrop_data") <- raindrop
   }
+  p
+}
+
+#' Plot Sigma-table estimates against a known truth matrix
+#'
+#' `plot_Sigma_comparison()` turns [compare_Sigma_table()] rows into a
+#' row-labelled comparison plot. The default `style = "difference"` shows
+#' `estimate - truth` for each covariance or correlation row; `style =
+#' "scatter"` shows estimate versus truth with a one-to-one reference line.
+#' Segments in these plots are comparison residuals, not confidence intervals.
+#'
+#' Scope boundary: IN, the helper plots [compare_Sigma_table()] rows or builds
+#' them from a fitted model / Sigma table plus one supplied truth matrix
+#' (EXT-26; built on EXT-25). PARTIAL, it is a visual comparison helper only:
+#' it does not run simulations, compute intervals, or validate calibration.
+#' PLANNED, article-specific simulation summaries and richer calibration plots
+#' remain future work.
+#'
+#' @param x A `gllvmTMB_multi` fit, a data frame returned by
+#'   [extract_Sigma_table()], or a data frame already returned by
+#'   [compare_Sigma_table()].
+#' @param truth Square numeric covariance or correlation matrix passed to
+#'   [compare_Sigma_table()]. May be omitted only when `x` already contains
+#'   `truth`, `error`, `abs_error`, and `comparison_status` columns.
+#' @param level,part,measure,entries,link_residual Passed to
+#'   [compare_Sigma_table()] when `truth` is supplied.
+#' @param include_diagonal Logical. Include diagonal rows if they are present?
+#'   The default is `FALSE` because variances are usually on a different scale
+#'   from pairwise covariance/correlation rows.
+#' @param facet One of `"level"` (default) or `"none"`.
+#' @param sort Row ordering for `style = "difference"`: `"abs_error"`
+#'   (default), `"error"`, `"estimate"`, `"truth"`, `"trait"`, or `"level"`.
+#' @param style One of `"difference"` (default) or `"scatter"`.
+#'
+#' @return A `ggplot2` plot object with `gllvmTMB_meta` and `gllvmTMB_data`
+#'   attributes.
+#' @seealso [compare_Sigma_table()], [plot_Sigma_table()].
+#' @export
+#' @examples
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   rows <- data.frame(
+#'     level = "unit",
+#'     trait_i = c("length", "length", "mass"),
+#'     trait_j = c("mass", "wing", "wing"),
+#'     estimate = c(0.62, -0.10, 0.28),
+#'     lower = NA_real_,
+#'     upper = NA_real_,
+#'     matrix = "R",
+#'     component = "total",
+#'     diagonal = FALSE,
+#'     triangle = "upper",
+#'     scale = "correlation"
+#'   )
+#'   truth_R <- matrix(
+#'     c(1, 0.60, -0.05, 0.60, 1, 0.20, -0.05, 0.20, 1),
+#'     3,
+#'     byrow = TRUE,
+#'     dimnames = list(
+#'       c("length", "mass", "wing"),
+#'       c("length", "mass", "wing")
+#'     )
+#'   )
+#'   plot_Sigma_comparison(rows, truth_R, measure = "correlation")
+#' }
+plot_Sigma_comparison <- function(
+  x,
+  truth,
+  level = "unit",
+  part = c("total", "shared", "unique"),
+  measure = c("covariance", "correlation"),
+  entries = c("upper", "unique", "all", "offdiag", "lower", "diag"),
+  link_residual = c("auto", "none"),
+  include_diagonal = FALSE,
+  facet = c("level", "none"),
+  sort = c("abs_error", "error", "estimate", "truth", "trait", "level"),
+  style = c("difference", "scatter")
+) {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
+  }
+  part <- match.arg(part)
+  measure <- match.arg(measure)
+  entries <- match.arg(entries)
+  link_residual <- match.arg(link_residual)
+  facet <- match.arg(facet)
+  sort <- match.arg(sort)
+  style <- match.arg(style)
+
+  if (missing(truth)) {
+    if (!is.data.frame(x)) {
+      cli::cli_abort(
+        "{.arg truth} is required unless {.arg x} is already a data frame from {.fun compare_Sigma_table}."
+      )
+    }
+    dat <- x
+  } else {
+    dat <- compare_Sigma_table(
+      x,
+      truth = truth,
+      level = level,
+      part = part,
+      measure = measure,
+      entries = entries,
+      link_residual = link_residual
+    )
+  }
+
+  .gtmb_require_plot_columns(
+    dat,
+    c(
+      "trait_i",
+      "trait_j",
+      "estimate",
+      "truth",
+      "error",
+      "abs_error",
+      "comparison_status"
+    )
+  )
+  if (!"level" %in% names(dat)) {
+    dat$level <- level[[1L]]
+  }
+  if (!"diagonal" %in% names(dat)) {
+    dat$diagonal <- as.character(dat$trait_i) == as.character(dat$trait_j)
+  }
+  if (!"matrix" %in% names(dat)) {
+    dat$matrix <- if (identical(measure, "correlation")) "R" else "Sigma"
+  }
+  if (!isTRUE(include_diagonal)) {
+    dat <- dat[!(dat$diagonal %in% TRUE), , drop = FALSE]
+  }
+  if (nrow(dat) == 0L) {
+    cli::cli_abort(c(
+      "No Sigma comparison rows to plot.",
+      "i" = "If you passed only diagonal rows, set {.code include_diagonal = TRUE}."
+    ))
+  }
+
+  plot_notes <- attr(dat, "notes") %||% character(0)
+  dat$.estimate <- dat$estimate
+  dat$.truth <- dat$truth
+  dat$.error <- dat$error
+  dat$.abs_error <- dat$abs_error
+  dat$.can_compare <- is.finite(dat$.estimate) &
+    is.finite(dat$.truth) &
+    is.finite(dat$.error)
+  if (!any(dat$.can_compare)) {
+    cli::cli_abort(
+      "No finite comparison rows to plot; check {.field estimate} and {.field truth}."
+    )
+  }
+  dat$.facet <- .gtmb_pretty_levels(dat$level)
+  dat$.pair_label <- .gtmb_pair_label(
+    dat$trait_i,
+    dat$trait_j,
+    diagonal = dat$diagonal
+  )
+  error_for_sign <- dat$.error
+  error_for_sign[!is.finite(error_for_sign)] <- 0
+  dat$.error_sign <- .gtmb_plot_sign(error_for_sign)
+  dat <- .gtmb_prepare_comparison_plot_rows(dat, sort = sort, facet = facet)
+  draw <- dat[dat$.can_compare, , drop = FALSE]
+
+  is_correlation <- any(dat$matrix == "R", na.rm = TRUE)
+  if ("scale" %in% names(dat)) {
+    is_correlation <- is_correlation ||
+      any(dat$scale == "correlation", na.rm = TRUE)
+  }
+  x_lab <- if (is_correlation) {
+    "Estimate - truth (correlation)"
+  } else {
+    "Estimate - truth"
+  }
+  caption <- if (all(dat$.can_compare)) {
+    "Segments show estimate - truth; not confidence intervals."
+  } else {
+    "Rows with non-finite estimate or truth are retained in plot metadata but not drawn."
+  }
+  type <- if (identical(style, "scatter")) {
+    "sigma_comparison_scatter"
+  } else {
+    "sigma_comparison_difference"
+  }
+
+  if (identical(style, "scatter")) {
+    p <- ggplot2::ggplot(
+      draw,
+      ggplot2::aes(x = .data$.truth, y = .data$.estimate)
+    ) +
+      ggplot2::geom_abline(
+        intercept = 0,
+        slope = 1,
+        colour = .gtmb_plot_palette[["grid"]],
+        linewidth = 0.65
+      ) +
+      ggplot2::geom_segment(
+        ggplot2::aes(
+          xend = .data$.truth,
+          y = .data$.truth,
+          yend = .data$.estimate,
+          colour = .data$.error_sign
+        ),
+        linewidth = 0.65,
+        alpha = 0.85
+      ) +
+      ggplot2::geom_point(
+        ggplot2::aes(fill = .data$.error_sign),
+        shape = 21,
+        size = 2.8,
+        stroke = 0.5,
+        colour = .gtmb_plot_palette[["ink"]]
+      ) +
+      ggplot2::labs(
+        x = if (is_correlation) "Truth (correlation)" else "Truth",
+        y = if (is_correlation) "Estimate (correlation)" else "Estimate",
+        title = if (is_correlation) {
+          "Correlation estimates compared with truth"
+        } else {
+          "Sigma estimates compared with truth"
+        },
+        subtitle = "One-to-one line = exact agreement; segments = error.",
+        caption = caption
+      )
+    if (identical(facet, "level") && length(unique(draw$.facet)) > 1L) {
+      p <- p + ggplot2::facet_wrap(stats::as.formula("~.facet"))
+    }
+    if (is_correlation) {
+      p <- p +
+        ggplot2::scale_x_continuous(breaks = seq(-1, 1, by = 0.5)) +
+        ggplot2::scale_y_continuous(breaks = seq(-1, 1, by = 0.5)) +
+        ggplot2::coord_equal(xlim = c(-1, 1), ylim = c(-1, 1))
+    } else {
+      p <- p + ggplot2::coord_equal()
+    }
+  } else {
+    p <- ggplot2::ggplot(
+      dat,
+      ggplot2::aes(x = .data$.error, y = .data$.y)
+    ) +
+      ggplot2::geom_vline(
+        xintercept = 0,
+        colour = .gtmb_plot_palette[["grid"]],
+        linewidth = 0.6
+      ) +
+      ggplot2::geom_segment(
+        data = draw,
+        ggplot2::aes(
+          x = 0,
+          xend = .data$.error,
+          y = .data$.y,
+          yend = .data$.y,
+          colour = .data$.error_sign
+        ),
+        inherit.aes = FALSE,
+        linewidth = 0.85,
+        lineend = "round"
+      ) +
+      ggplot2::geom_point(
+        data = draw,
+        ggplot2::aes(fill = .data$.error_sign),
+        shape = 21,
+        size = 2.8,
+        stroke = 0.5,
+        colour = .gtmb_plot_palette[["ink"]]
+      ) +
+      ggplot2::labs(
+        x = x_lab,
+        y = NULL,
+        title = if (is_correlation) {
+          "Correlation error by trait pair"
+        } else {
+          "Sigma error by trait pair"
+        },
+        subtitle = "Points show estimate minus supplied truth for each row.",
+        caption = caption
+      )
+    p <- .gtmb_add_pair_facets(p, dat, facet = facet)
+  }
+  p <- p +
+    ggplot2::scale_colour_manual(
+      values = c(
+        negative = .gtmb_plot_palette[["blue"]],
+        zero = .gtmb_plot_palette[["grey"]],
+        positive = .gtmb_plot_palette[["vermillion"]]
+      ),
+      name = "Error sign"
+    ) +
+    ggplot2::scale_fill_manual(
+      values = c(
+        negative = .gtmb_plot_palette[["blue"]],
+        zero = .gtmb_plot_palette[["pale_grey"]],
+        positive = .gtmb_plot_palette[["vermillion"]]
+      ),
+      name = "Error sign"
+    ) +
+    ggplot2::guides(colour = "none") +
+    .gtmb_theme_figure()
+
+  p <- .gtmb_plot_contract(
+    p,
+    type = type,
+    source = "compare_Sigma_table",
+    level = unique(dat$.facet),
+    interval_status = "not_applicable",
+    data = dat,
+    notes = plot_notes
+  )
+  meta <- attr(p, "gllvmTMB_meta")
+  meta$comparison_status <- if (all(dat$.can_compare)) {
+    "compared"
+  } else {
+    "partial"
+  }
+  attr(p, "gllvmTMB_meta") <- meta
   p
 }
 

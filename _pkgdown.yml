@@ -160,6 +160,7 @@ reference:
     - plot.gllvmTMB_multi
     - plot_correlations
     - plot_Sigma_table
+    - plot_Sigma_comparison
 
   - title: First-line diagnostics and uncertainty
     desc: Start here before interpreting covariance, ordination, or interval estimates

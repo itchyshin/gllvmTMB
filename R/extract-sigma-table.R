@@ -432,8 +432,9 @@ extract_Sigma_table <- function(
 #' Scope boundary: IN, the helper compares fitted or precomputed
 #' `extract_Sigma_table()` rows against one supplied truth matrix (EXT-25).
 #' PARTIAL, it is a table helper only: it does not compute uncertainty,
-#' simulate data, or choose graphical geometry. PLANNED, plot helpers for
-#' estimate-vs-truth article figures remain future visualization work.
+#' simulate data, or validate calibration. For the first visual comparison
+#' layer, use [plot_Sigma_comparison()]; richer article-specific calibration
+#' summaries remain future visualization work.
 #'
 #' @param x A `gllvmTMB_multi` fit or a data frame returned by
 #'   [extract_Sigma_table()].
@@ -445,7 +446,8 @@ extract_Sigma_table <- function(
 #'
 #' @return A data frame with the columns from [extract_Sigma_table()] plus
 #'   `truth`, `error`, `abs_error`, and `comparison_status`.
-#' @seealso [extract_Sigma_table()], [plot_Sigma_table()].
+#' @seealso [extract_Sigma_table()], [plot_Sigma_comparison()],
+#'   [plot_Sigma_table()].
 #' @export
 #' @examples
 #' rows <- data.frame(

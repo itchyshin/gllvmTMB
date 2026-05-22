@@ -405,3 +405,99 @@ test_that("plot_Sigma_table accepts bootstrap_Sigma objects", {
   expect_true(all(plot_data$.draw_interval))
   expect_silent(ggplot2::ggplot_build(p))
 })
+
+test_that("plot_Sigma_comparison plots row-wise truth errors", {
+  skip_if_no_ggplot2()
+  rows <- data.frame(
+    level = "unit",
+    trait_i = c("length", "length", "mass"),
+    trait_j = c("mass", "wing", "wing"),
+    estimate = c(0.62, -0.10, 0.28),
+    lower = NA_real_,
+    upper = NA_real_,
+    matrix = "R",
+    component = "total",
+    diagonal = FALSE,
+    triangle = "upper",
+    scale = "correlation",
+    stringsAsFactors = FALSE
+  )
+  truth <- matrix(
+    c(
+      1,
+      0.60,
+      -0.05,
+      0.60,
+      1,
+      0.20,
+      -0.05,
+      0.20,
+      1
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(c("length", "mass", "wing"), c("length", "mass", "wing"))
+  )
+
+  p <- plot_Sigma_comparison(rows, truth, measure = "correlation")
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "sigma_comparison_difference",
+    "compare_Sigma_table"
+  )
+  expect_equal(meta$interval_status, "not_applicable")
+  expect_equal(meta$comparison_status, "compared")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(nrow(plot_data), 3L)
+  expect_equal(plot_data$.error, plot_data$estimate - plot_data$truth)
+  expect_true(all(plot_data$.can_compare))
+  expect_true("GeomSegment" %in% gtmb_plot_geom_names(p))
+  expect_match(p$labels$caption, "not confidence intervals", fixed = TRUE)
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_Sigma_comparison can plot precomputed scatter comparisons", {
+  skip_if_no_ggplot2()
+  rows <- data.frame(
+    level = "unit",
+    trait_i = c("length", "length"),
+    trait_j = c("mass", "wing"),
+    estimate = c(0.62, -0.10),
+    truth = c(0.60, -0.05),
+    error = c(0.02, -0.05),
+    abs_error = c(0.02, 0.05),
+    comparison_status = "compared",
+    matrix = "R",
+    diagonal = FALSE,
+    scale = "correlation",
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_Sigma_comparison(rows, style = "scatter", measure = "correlation")
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "sigma_comparison_scatter",
+    "compare_Sigma_table"
+  )
+  expect_equal(meta$comparison_status, "compared")
+  expect_equal(nrow(attr(p, "gllvmTMB_data")), 2L)
+  expect_true("GeomAbline" %in% gtmb_plot_geom_names(p))
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_Sigma_comparison validates comparison inputs", {
+  skip_if_no_ggplot2()
+  bad <- data.frame(
+    trait_i = "length",
+    trait_j = "mass",
+    estimate = 0.2
+  )
+  expect_error(
+    plot_Sigma_comparison(bad),
+    regexp = "missing required column"
+  )
+})

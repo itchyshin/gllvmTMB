@@ -5934,6 +5934,45 @@ Deliberately not run:
   cleanup. Article render, pkgdown check, whitespace check, stale-wording scans,
   and a short no-tests package check were run.
 
+## 2026-05-22 -- Profile math render cleanup
+
+Scope:
+
+- Replaced legacy `\rm` TeX in the profile-likelihood article's inline `H^2`
+  equation with `\mathrm{}`.
+- Confirmed the article render no longer emits the earlier Pandoc math warning.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/profile-likelihood-ci.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/profile-likelihood-ci", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally without the earlier Pandoc `\rm` warning.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n '\\\\rm|\\\\mathrm\\{phy\\}|\\\\mathrm\\{non\\}|H\\^2' vignettes/articles/profile-likelihood-ci.Rmd pkgdown-site/articles/profile-likelihood-ci.html`
+  -> no `\rm` remains; `\mathrm{phy}` and `\mathrm{non}` are present in source
+  and rendered HTML.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U" vignettes/articles/profile-likelihood-ci.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this TeX-only cleanup.
+  Article render, pkgdown check, whitespace check, stale-wording scans, and a
+  short no-tests package check were run.
+
 ## 2026-05-22 -- Phylogenetic Sigma tables
 
 Scope:

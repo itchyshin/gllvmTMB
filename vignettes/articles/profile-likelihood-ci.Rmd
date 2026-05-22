@@ -253,8 +253,8 @@ cors_b
 ### Phylogenetic signal $H^2$
 
 When the fit has both `phylo_unique(species)` and
-`unique(0 + trait | species)`, $H^2 = \sigma^2_{\rm phy} /
-(\sigma^2_{\rm phy} + \sigma^2_{\rm non})$ is profileable via a
+`unique(0 + trait | species)`, $H^2 = \sigma^2_{\mathrm{phy}} /
+(\sigma^2_{\mathrm{phy}} + \sigma^2_{\mathrm{non}})$ is profileable via a
 single linear contrast (analogous to repeatability). For richer
 3-component decompositions (PGLLVM with
 `phylo_latent + latent + unique`), the extractor returns the point

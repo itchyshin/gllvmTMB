@@ -188,9 +188,28 @@ The exploratory loadings are rotation-invariant; the implied trait
 covariance is what we trust:
 
 ```{r sigma-exp}
-SB_exp <- extract_Sigma(fit_exp, level = "unit")
-round(SB_exp$Sigma, 2)
-round(SB_exp$R,     2)
+SB_exp_rows <- extract_Sigma_table(
+  fit_exp,
+  level = "unit",
+  part = "total",
+  measure = "covariance",
+  entries = "unique"
+)
+SB_exp_rows[, c("trait_i", "trait_j", "estimate", "interval_status")]
+```
+
+The same rotation-invariant target is easier to scan as a correlation
+heatmap:
+
+```{r sigma-exp-corr, fig.width = 6.4, fig.height = 5.8}
+SB_exp_corr <- extract_Sigma_table(
+  fit_exp,
+  level = "unit",
+  part = "total",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(SB_exp_corr, label_digits = 2)
 ```
 
 But for *interpreting* which item loads on which factor, the raw

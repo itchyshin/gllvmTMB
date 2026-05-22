@@ -5848,6 +5848,50 @@ Deliberately not run:
   cleanup. Article render, visual QA, pkgdown check, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-22 -- Psychometrics Sigma heatmap
+
+Scope:
+
+- Replaced raw `SB_exp$Sigma` and `SB_exp$R` printing in
+  `vignettes/articles/psychometrics-irt.Rmd`.
+- Used `extract_Sigma_table()` for report-ready covariance rows and
+  `plot_Sigma_heatmap()` for the exploratory correlation matrix.
+- Preserved the article's caution that raw loadings require rotation or
+  constraints for direct item-factor interpretation.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/psychometrics-irt.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/psychometrics-irt", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/psychometrics-irt_files/figure-html/sigma-exp-corr-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'SB_exp <-|SB_exp\\$Sigma|SB_exp\\$R|round\\(SB_exp|extract_Sigma_table\\(|plot_Sigma_heatmap\\(|sigma-exp-corr' vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html`
+  -> old printed matrix calls are gone; helper-backed source and rendered HTML
+  are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/psychometrics-irt.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-21 -- Sigma heatmap helper and functional-biogeography integration
 
 Scope:

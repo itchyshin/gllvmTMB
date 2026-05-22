@@ -17,8 +17,9 @@ plot_correlations(
   facet = c("level", "none"),
   sort = c("estimate", "magnitude", "trait", "level"),
   show_intervals = NULL,
-  style = c("interval", "raindrop"),
-  raindrop_level = level
+  style = c("interval", "eye", "raindrop"),
+  eye_level = level,
+  raindrop_level = NULL
 )
 }
 \arguments{
@@ -39,18 +40,21 @@ or \code{"level"}.}
 
 \item{show_intervals}{Logical or \code{NULL}. If \code{NULL} (default), finite
 \code{lower}/\code{upper} bounds are drawn as horizontal intervals for
-\code{style = "interval"} and omitted for \code{style = "raindrop"}. Set \code{TRUE} to
-overlay interval lines on raindrops. Rows without finite bounds remain
+\code{style = "interval"} and omitted for \code{style = "eye"}. Set \code{TRUE} to
+overlay interval lines on confidence eyes. Rows without finite bounds remain
 visible as points.}
 
-\item{style}{One of \code{"interval"} (default) or \code{"raindrop"}. \code{"raindrop"}
-reconstructs a frequentist compatibility shape from the estimate and
-finite interval bounds, using Fisher's z scale for correlations. It is not
-a posterior density.}
+\item{style}{One of \code{"interval"} (default), \code{"eye"}, or \code{"raindrop"}.
+\code{"eye"} draws a confidence eye: a pale compatibility shape reconstructed
+from the estimate and finite interval bounds, plus a hollow estimate
+circle. Correlation rows use Fisher's z scale. The shape is not a
+posterior density. \code{"raindrop"} is accepted as a compatibility alias.}
 
-\item{raindrop_level}{Confidence level represented by the supplied interval
-bounds when \code{style = "raindrop"}. Defaults to \code{level}, so fitted-object
-calls stay aligned with \code{\link[=extract_correlations]{extract_correlations()}}.}
+\item{eye_level}{Confidence level represented by the supplied interval
+bounds when \code{style = "eye"}. Defaults to \code{level}, so fitted-object calls
+stay aligned with \code{\link[=extract_correlations]{extract_correlations()}}.}
+
+\item{raindrop_level}{Compatibility alias for \code{eye_level}.}
 }
 \value{
 A \code{ggplot2} plot object with \code{gllvmTMB_meta} and \code{gllvmTMB_data}

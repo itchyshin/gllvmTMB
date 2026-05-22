@@ -59,7 +59,7 @@ Scope boundary: IN, the helper plots point-estimate heatmaps from
 \code{gllvmTMB_multi} / \code{bootstrap_Sigma} object (EXT-27; built on EXT-18 /
 EXT-20). PARTIAL, it does not display interval bounds or compare fitted
 values to known truth. Use \code{\link[=plot_Sigma_table]{plot_Sigma_table()}} for interval forests or
-raindrops, and \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}} for estimate-vs-truth displays.
+confidence eyes, and \code{\link[=plot_Sigma_comparison]{plot_Sigma_comparison()}} for estimate-vs-truth displays.
 PLANNED, vdiffr snapshots and richer multi-model layout helpers remain
 future figure work.
 }

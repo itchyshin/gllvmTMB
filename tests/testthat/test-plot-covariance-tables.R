@@ -111,12 +111,12 @@ test_that("plot_correlations accepts bootstrap_Sigma correlation summaries", {
   skip_if_no_ggplot2()
   boot <- make_bootstrap_correlation_plot_object()
 
-  p <- plot_correlations(boot, style = "raindrop")
+  p <- plot_correlations(boot, style = "eye")
 
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_cov_plot_meta(
     p,
-    "correlations_raindrop",
+    "correlations_confidence_eye",
     "extract_Sigma_table"
   )
   expect_equal(meta$interval_status, "provided")
@@ -128,14 +128,14 @@ test_that("plot_correlations accepts bootstrap_Sigma correlation summaries", {
   expect_true(all(plot_data$.has_uncertainty_display))
   expect_match(p$labels$caption, "not posterior densities", fixed = TRUE)
   expect_no_match(p$labels$caption, "Open points", fixed = TRUE)
-  expect_s3_class(attr(p, "gllvmTMB_raindrop_data"), "data.frame")
+  expect_s3_class(attr(p, "gllvmTMB_confidence_eye_data"), "data.frame")
   expect_silent(ggplot2::ggplot_build(p))
 
   p_pair <- plot_correlations(boot, tier = "unit", pair = c("length", "mass"))
   expect_equal(nrow(attr(p_pair, "gllvmTMB_data")), 1L)
 })
 
-test_that("plot_correlations can render raindrop compatibility shapes", {
+test_that("plot_correlations can render confidence-eye compatibility shapes", {
   skip_if_no_ggplot2()
   cors <- data.frame(
     tier = c("unit", "unit"),
@@ -148,28 +148,36 @@ test_that("plot_correlations can render raindrop compatibility shapes", {
     stringsAsFactors = FALSE
   )
 
-  p <- plot_correlations(cors, style = "raindrop")
+  p <- plot_correlations(cors, style = "eye")
 
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_cov_plot_meta(
     p,
-    "correlations_raindrop",
+    "correlations_confidence_eye",
     "extract_correlations"
   )
   expect_equal(meta$interval_status, "provided")
-  rain <- attr(p, "gllvmTMB_raindrop_data")
-  expect_s3_class(rain, "data.frame")
-  expect_gt(nrow(rain), nrow(cors))
-  expect_true(all(rain$.x > -1 & rain$.x < 1))
+  eye <- attr(p, "gllvmTMB_confidence_eye_data")
+  expect_s3_class(eye, "data.frame")
+  expect_gt(nrow(eye), nrow(cors))
+  expect_true(all(eye$.x > -1 & eye$.x < 1))
   expect_false("GeomSegment" %in% gtmb_plot_geom_names(p))
   expect_silent(ggplot2::ggplot_build(p))
 
   p_with_line <- plot_correlations(
     cors,
-    style = "raindrop",
+    style = "eye",
     show_intervals = TRUE
   )
   expect_true("GeomSegment" %in% gtmb_plot_geom_names(p_with_line))
+
+  p_alias <- plot_correlations(cors, style = "raindrop")
+  expect_gtmb_cov_plot_meta(
+    p_alias,
+    "correlations_confidence_eye",
+    "extract_correlations"
+  )
+  expect_s3_class(attr(p_alias, "gllvmTMB_raindrop_data"), "data.frame")
 })
 
 test_that("plot_correlations marks rows without intervals as point-only", {
@@ -185,17 +193,17 @@ test_that("plot_correlations marks rows without intervals as point-only", {
     stringsAsFactors = FALSE
   )
 
-  p <- plot_correlations(cors, style = "raindrop")
+  p <- plot_correlations(cors, style = "eye")
 
   meta <- expect_gtmb_cov_plot_meta(
     p,
-    "correlations_raindrop",
+    "correlations_confidence_eye",
     "extract_correlations"
   )
   expect_equal(meta$interval_status, "partial")
   plot_data <- attr(p, "gllvmTMB_data")
   expect_equal(sum(plot_data$.has_interval), 2L)
-  expect_equal(sum(plot_data$.has_raindrop), 2L)
+  expect_equal(sum(plot_data$.has_confidence_eye), 2L)
   expect_equal(sum(plot_data$.has_uncertainty_display), 2L)
   expect_equal(sum(gtmb_plot_geom_names(p) == "GeomPoint"), 2L)
   expect_match(p$labels$caption, "Open points", fixed = TRUE)
@@ -298,23 +306,23 @@ test_that("plot_Sigma_table marks rows without intervals as point-only", {
     stringsAsFactors = FALSE
   )
 
-  p <- plot_Sigma_table(sigma_rows, style = "raindrop")
+  p <- plot_Sigma_table(sigma_rows, style = "eye")
 
   meta <- expect_gtmb_cov_plot_meta(
     p,
-    "sigma_table_raindrop",
+    "sigma_table_confidence_eye",
     "extract_Sigma_table"
   )
   expect_equal(meta$interval_status, "partial")
   plot_data <- attr(p, "gllvmTMB_data")
   expect_equal(sum(plot_data$.has_interval), 2L)
-  expect_equal(sum(plot_data$.has_raindrop), 2L)
+  expect_equal(sum(plot_data$.has_confidence_eye), 2L)
   expect_equal(sum(plot_data$.has_uncertainty_display), 2L)
   expect_equal(sum(gtmb_plot_geom_names(p) == "GeomPoint"), 2L)
   expect_silent(ggplot2::ggplot_build(p))
 })
 
-test_that("plot_Sigma_table can render raindrops from finite table intervals", {
+test_that("plot_Sigma_table can render confidence eyes from finite table intervals", {
   skip_if_no_ggplot2()
   sigma_rows <- data.frame(
     level = "unit",
@@ -330,19 +338,19 @@ test_that("plot_Sigma_table can render raindrops from finite table intervals", {
     stringsAsFactors = FALSE
   )
 
-  p <- plot_Sigma_table(sigma_rows, style = "raindrop")
+  p <- plot_Sigma_table(sigma_rows, style = "eye")
 
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_cov_plot_meta(
     p,
-    "sigma_table_raindrop",
+    "sigma_table_confidence_eye",
     "extract_Sigma_table"
   )
   expect_equal(meta$interval_status, "provided")
-  rain <- attr(p, "gllvmTMB_raindrop_data")
-  expect_s3_class(rain, "data.frame")
-  expect_gt(nrow(rain), nrow(sigma_rows))
-  expect_true(all(is.finite(rain$.x)))
+  eye <- attr(p, "gllvmTMB_confidence_eye_data")
+  expect_s3_class(eye, "data.frame")
+  expect_gt(nrow(eye), nrow(sigma_rows))
+  expect_true(all(is.finite(eye$.x)))
   expect_match(p$labels$caption, "not posterior densities", fixed = TRUE)
   expect_no_match(p$labels$caption, "Open points", fixed = TRUE)
   expect_false("GeomSegment" %in% gtmb_plot_geom_names(p))
@@ -350,7 +358,7 @@ test_that("plot_Sigma_table can render raindrops from finite table intervals", {
 
   p_with_line <- plot_Sigma_table(
     sigma_rows,
-    style = "raindrop",
+    style = "eye",
     show_intervals = TRUE
   )
   expect_true("GeomSegment" %in% gtmb_plot_geom_names(p_with_line))

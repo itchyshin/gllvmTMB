@@ -94,9 +94,9 @@
   if (!all(has_uncertainty_display)) {
     return(missing)
   }
-  if (identical(style, "raindrop")) {
+  if (identical(style, "eye")) {
     return(
-      "Raindrops reconstruct frequentist compatibility from finite interval bounds; they are not posterior densities."
+      "Confidence eyes reconstruct compatibility from finite interval bounds; they are not posterior densities."
     )
   }
   "Finite interval bounds are shown for all plotted rows."
@@ -118,7 +118,7 @@
   isTRUE(show_intervals)
 }
 
-.gtmb_validate_interval_level <- function(level, arg = "raindrop_level") {
+.gtmb_validate_interval_level <- function(level, arg = "eye_level") {
   if (
     !is.numeric(level) ||
       length(level) != 1L ||
@@ -129,6 +129,24 @@
     cli::cli_abort("{.arg {arg}} must be a single number between 0 and 1.")
   }
   level
+}
+
+.gtmb_normalise_uncertainty_style <- function(style) {
+  style <- match.arg(style, c("interval", "eye", "raindrop"))
+  if (identical(style, "raindrop")) {
+    return("eye")
+  }
+  style
+}
+
+.gtmb_resolve_eye_level <- function(eye_level, raindrop_level = NULL) {
+  if (!is.null(raindrop_level)) {
+    return(.gtmb_validate_interval_level(
+      raindrop_level,
+      arg = "raindrop_level"
+    ))
+  }
+  .gtmb_validate_interval_level(eye_level, arg = "eye_level")
 }
 
 .gtmb_order_pair_plot_rows <- function(dat, sort) {
@@ -363,16 +381,18 @@
 #'   or `"level"`.
 #' @param show_intervals Logical or `NULL`. If `NULL` (default), finite
 #'   `lower`/`upper` bounds are drawn as horizontal intervals for
-#'   `style = "interval"` and omitted for `style = "raindrop"`. Set `TRUE` to
-#'   overlay interval lines on raindrops. Rows without finite bounds remain
+#'   `style = "interval"` and omitted for `style = "eye"`. Set `TRUE` to
+#'   overlay interval lines on confidence eyes. Rows without finite bounds remain
 #'   visible as points.
-#' @param style One of `"interval"` (default) or `"raindrop"`. `"raindrop"`
-#'   reconstructs a frequentist compatibility shape from the estimate and
-#'   finite interval bounds, using Fisher's z scale for correlations. It is not
-#'   a posterior density.
-#' @param raindrop_level Confidence level represented by the supplied interval
-#'   bounds when `style = "raindrop"`. Defaults to `level`, so fitted-object
-#'   calls stay aligned with [extract_correlations()].
+#' @param style One of `"interval"` (default), `"eye"`, or `"raindrop"`.
+#'   `"eye"` draws a confidence eye: a pale compatibility shape reconstructed
+#'   from the estimate and finite interval bounds, plus a hollow estimate
+#'   circle. Correlation rows use Fisher's z scale. The shape is not a
+#'   posterior density. `"raindrop"` is accepted as a compatibility alias.
+#' @param eye_level Confidence level represented by the supplied interval
+#'   bounds when `style = "eye"`. Defaults to `level`, so fitted-object calls
+#'   stay aligned with [extract_correlations()].
+#' @param raindrop_level Compatibility alias for `eye_level`.
 #'
 #' @return A `ggplot2` plot object with `gllvmTMB_meta` and `gllvmTMB_data`
 #'   attributes.
@@ -405,16 +425,17 @@ plot_correlations <- function(
   facet = c("level", "none"),
   sort = c("estimate", "magnitude", "trait", "level"),
   show_intervals = NULL,
-  style = c("interval", "raindrop"),
-  raindrop_level = level
+  style = c("interval", "eye", "raindrop"),
+  eye_level = level,
+  raindrop_level = NULL
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
   }
   facet <- match.arg(facet)
   sort <- match.arg(sort)
-  style <- match.arg(style)
-  raindrop_level <- .gtmb_validate_interval_level(raindrop_level)
+  style <- .gtmb_normalise_uncertainty_style(style)
+  eye_level <- .gtmb_resolve_eye_level(eye_level, raindrop_level)
   draw_interval_line <- .gtmb_resolve_interval_line(show_intervals, style)
   link_residual <- match.arg(link_residual)
   method <- match.arg(method)
@@ -461,25 +482,30 @@ plot_correlations <- function(
   dat$.pair_label <- .gtmb_pair_label(dat$trait_i, dat$trait_j)
   dat$.sign <- .gtmb_plot_sign(dat$.estimate)
   dat <- .gtmb_prepare_pair_plot_rows(dat, sort = sort, facet = facet)
-  raindrop <- if (identical(style, "raindrop")) {
-    .gtmb_raindrop_data(dat, transform = "correlation", level = raindrop_level)
+  confidence_eye <- if (identical(style, "eye")) {
+    .gtmb_raindrop_data(dat, transform = "correlation", level = eye_level)
   } else {
     dat[0L, , drop = FALSE]
   }
-  dat$.has_raindrop <- FALSE
-  if (identical(style, "raindrop")) {
-    dat$.has_raindrop <- dat$.row_key %in% unique(raindrop$.row_key)
+  dat$.has_confidence_eye <- FALSE
+  if (identical(style, "eye")) {
+    dat$.has_confidence_eye <- dat$.row_key %in% unique(confidence_eye$.row_key)
   }
-  visible_interval <- if (identical(style, "raindrop")) {
-    dat$.has_raindrop
+  visible_interval <- if (identical(style, "eye")) {
+    dat$.has_confidence_eye
   } else {
     dat$.draw_interval
   }
   dat$.has_uncertainty_display <- visible_interval
+  missing_caption <- if (identical(style, "eye")) {
+    "Open points have no finite interval bounds; confidence eyes are not posterior densities."
+  } else {
+    "Open points have no finite interval bounds; try bootstrap intervals when supported."
+  }
   caption <- .gtmb_uncertainty_caption(
     dat$.has_uncertainty_display,
     style = style,
-    missing = "Open points have no finite interval bounds; try bootstrap intervals when supported."
+    missing = missing_caption
   )
 
   p <- ggplot2::ggplot(
@@ -491,10 +517,10 @@ plot_correlations <- function(
       colour = .gtmb_plot_palette[["grid"]],
       linewidth = 0.55
     )
-  if (identical(style, "raindrop") && nrow(raindrop) > 0L) {
+  if (identical(style, "eye") && nrow(confidence_eye) > 0L) {
     p <- p +
       ggplot2::geom_ribbon(
-        data = raindrop,
+        data = confidence_eye,
         ggplot2::aes(
           x = .data$.x,
           ymin = .data$.ymin,
@@ -503,11 +529,11 @@ plot_correlations <- function(
           group = .data$.row_key
         ),
         inherit.aes = FALSE,
-        alpha = 0.20,
+        alpha = 0.16,
         colour = NA
       ) +
       ggplot2::geom_line(
-        data = raindrop,
+        data = confidence_eye,
         ggplot2::aes(
           x = .data$.x,
           y = .data$.ymin,
@@ -516,10 +542,10 @@ plot_correlations <- function(
         ),
         inherit.aes = FALSE,
         linewidth = 0.45,
-        alpha = 0.75
+        alpha = 0.55
       ) +
       ggplot2::geom_line(
-        data = raindrop,
+        data = confidence_eye,
         ggplot2::aes(
           x = .data$.x,
           y = .data$.ymax,
@@ -528,7 +554,7 @@ plot_correlations <- function(
         ),
         inherit.aes = FALSE,
         linewidth = 0.45,
-        alpha = 0.75
+        alpha = 0.55
       ) +
       ggplot2::scale_colour_manual(
         values = c(
@@ -550,20 +576,32 @@ plot_correlations <- function(
         ),
         inherit.aes = FALSE,
         colour = .gtmb_plot_palette[["grey"]],
-        linewidth = if (identical(style, "raindrop")) 0.45 else 0.85,
+        linewidth = if (identical(style, "eye")) 0.45 else 0.85,
         lineend = "round"
       )
   }
   if (any(dat$.has_uncertainty_display)) {
-    p <- p +
-      ggplot2::geom_point(
-        data = dat[dat$.has_uncertainty_display, , drop = FALSE],
-        ggplot2::aes(fill = .data$.sign),
-        shape = 21,
-        size = 2.6,
-        stroke = 0.45,
-        colour = .gtmb_plot_palette[["ink"]]
-      )
+    if (identical(style, "eye")) {
+      p <- p +
+        ggplot2::geom_point(
+          data = dat[dat$.has_uncertainty_display, , drop = FALSE],
+          ggplot2::aes(colour = .data$.sign),
+          shape = 21,
+          size = 2.8,
+          stroke = 0.9,
+          fill = "white"
+        )
+    } else {
+      p <- p +
+        ggplot2::geom_point(
+          data = dat[dat$.has_uncertainty_display, , drop = FALSE],
+          ggplot2::aes(fill = .data$.sign),
+          shape = 21,
+          size = 2.6,
+          stroke = 0.45,
+          colour = .gtmb_plot_palette[["ink"]]
+        )
+    }
   }
   if (any(!dat$.has_uncertainty_display)) {
     p <- p +
@@ -576,7 +614,7 @@ plot_correlations <- function(
         colour = .gtmb_plot_palette[["grey"]]
       )
   }
-  if (any(dat$.has_uncertainty_display) || nrow(raindrop) > 0L) {
+  if (any(dat$.has_uncertainty_display) || nrow(confidence_eye) > 0L) {
     p <- p +
       ggplot2::scale_fill_manual(
         values = c(
@@ -593,8 +631,8 @@ plot_correlations <- function(
       x = "Correlation",
       y = NULL,
       title = "Pairwise trait correlations",
-      subtitle = if (identical(style, "raindrop")) {
-        "Drops show compatibility from finite intervals; points mark estimates."
+      subtitle = if (identical(style, "eye")) {
+        "Confidence eyes show compatibility from finite intervals; hollow circles mark estimates."
       } else {
         "Points are estimates; horizontal segments show finite interval bounds."
       },
@@ -605,8 +643,8 @@ plot_correlations <- function(
 
   p <- .gtmb_plot_contract(
     p,
-    type = if (identical(style, "raindrop")) {
-      "correlations_raindrop"
+    type = if (identical(style, "eye")) {
+      "correlations_confidence_eye"
     } else {
       "correlations_forest"
     },
@@ -616,8 +654,9 @@ plot_correlations <- function(
     data = dat,
     notes = plot_notes
   )
-  if (identical(style, "raindrop")) {
-    attr(p, "gllvmTMB_raindrop_data") <- raindrop
+  if (identical(style, "eye")) {
+    attr(p, "gllvmTMB_confidence_eye_data") <- confidence_eye
+    attr(p, "gllvmTMB_raindrop_data") <- confidence_eye
   }
   p
 }
@@ -985,15 +1024,17 @@ plot_Sigma_comparison <- function(
 #'   or `"level"`.
 #' @param show_intervals Logical or `NULL`. If `NULL` (default), finite
 #'   `lower`/`upper` bounds are drawn as horizontal intervals for
-#'   `style = "interval"` and omitted for `style = "raindrop"`. Set `TRUE` to
-#'   overlay interval lines on raindrops. Rows without finite bounds remain
+#'   `style = "interval"` and omitted for `style = "eye"`. Set `TRUE` to
+#'   overlay interval lines on confidence eyes. Rows without finite bounds remain
 #'   visible as points.
-#' @param style One of `"interval"` (default) or `"raindrop"`. `"raindrop"`
-#'   reconstructs a frequentist compatibility shape from the estimate and
-#'   finite interval bounds. Correlation rows use Fisher's z scale; covariance
-#'   rows use the displayed estimate scale. It is not a posterior density.
-#' @param raindrop_level Confidence level represented by the supplied interval
-#'   bounds when `style = "raindrop"`. Default `0.95`.
+#' @param style One of `"interval"` (default), `"eye"`, or `"raindrop"`.
+#'   `"eye"` draws a confidence eye from the estimate and finite interval
+#'   bounds, using Fisher's z scale for correlations and the displayed estimate
+#'   scale for covariance rows. The shape is not a posterior density.
+#'   `"raindrop"` is accepted as a compatibility alias.
+#' @param eye_level Confidence level represented by the supplied interval
+#'   bounds when `style = "eye"`. Default `0.95`.
+#' @param raindrop_level Compatibility alias for `eye_level`.
 #'
 #' @return A `ggplot2` plot object with `gllvmTMB_meta` and `gllvmTMB_data`
 #'   attributes.
@@ -1027,8 +1068,9 @@ plot_Sigma_table <- function(
   facet = c("level", "none"),
   sort = c("estimate", "magnitude", "trait", "level"),
   show_intervals = NULL,
-  style = c("interval", "raindrop"),
-  raindrop_level = 0.95
+  style = c("interval", "eye", "raindrop"),
+  eye_level = 0.95,
+  raindrop_level = NULL
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
@@ -1039,8 +1081,8 @@ plot_Sigma_table <- function(
   link_residual <- match.arg(link_residual)
   facet <- match.arg(facet)
   sort <- match.arg(sort)
-  style <- match.arg(style)
-  raindrop_level <- .gtmb_validate_interval_level(raindrop_level)
+  style <- .gtmb_normalise_uncertainty_style(style)
+  eye_level <- .gtmb_resolve_eye_level(eye_level, raindrop_level)
   draw_interval_line <- .gtmb_resolve_interval_line(show_intervals, style)
 
   if (inherits(x, "gllvmTMB_multi") || inherits(x, "bootstrap_Sigma")) {
@@ -1117,29 +1159,34 @@ plot_Sigma_table <- function(
   } else {
     "Selected Sigma entries"
   }
-  raindrop <- if (identical(style, "raindrop")) {
+  confidence_eye <- if (identical(style, "eye")) {
     .gtmb_raindrop_data(
       dat,
       transform = if (is_correlation) "correlation" else "identity",
-      level = raindrop_level
+      level = eye_level
     )
   } else {
     dat[0L, , drop = FALSE]
   }
-  dat$.has_raindrop <- FALSE
-  if (identical(style, "raindrop")) {
-    dat$.has_raindrop <- dat$.row_key %in% unique(raindrop$.row_key)
+  dat$.has_confidence_eye <- FALSE
+  if (identical(style, "eye")) {
+    dat$.has_confidence_eye <- dat$.row_key %in% unique(confidence_eye$.row_key)
   }
-  visible_interval <- if (identical(style, "raindrop")) {
-    dat$.has_raindrop
+  visible_interval <- if (identical(style, "eye")) {
+    dat$.has_confidence_eye
   } else {
     dat$.draw_interval
   }
   dat$.has_uncertainty_display <- visible_interval
+  missing_caption <- if (identical(style, "eye")) {
+    "Open points have no finite interval bounds; confidence eyes are not posterior densities."
+  } else {
+    "Open points have no finite interval bounds; use bootstrap-derived rows when needed."
+  }
   caption <- .gtmb_uncertainty_caption(
     dat$.has_uncertainty_display,
     style = style,
-    missing = "Open points have no finite interval bounds; use bootstrap-derived rows when needed."
+    missing = missing_caption
   )
 
   p <- ggplot2::ggplot(
@@ -1151,10 +1198,10 @@ plot_Sigma_table <- function(
       colour = .gtmb_plot_palette[["grid"]],
       linewidth = 0.55
     )
-  if (identical(style, "raindrop") && nrow(raindrop) > 0L) {
+  if (identical(style, "eye") && nrow(confidence_eye) > 0L) {
     p <- p +
       ggplot2::geom_ribbon(
-        data = raindrop,
+        data = confidence_eye,
         ggplot2::aes(
           x = .data$.x,
           ymin = .data$.ymin,
@@ -1163,11 +1210,11 @@ plot_Sigma_table <- function(
           group = .data$.row_key
         ),
         inherit.aes = FALSE,
-        alpha = 0.20,
+        alpha = 0.16,
         colour = NA
       ) +
       ggplot2::geom_line(
-        data = raindrop,
+        data = confidence_eye,
         ggplot2::aes(
           x = .data$.x,
           y = .data$.ymin,
@@ -1176,10 +1223,10 @@ plot_Sigma_table <- function(
         ),
         inherit.aes = FALSE,
         linewidth = 0.45,
-        alpha = 0.75
+        alpha = 0.55
       ) +
       ggplot2::geom_line(
-        data = raindrop,
+        data = confidence_eye,
         ggplot2::aes(
           x = .data$.x,
           y = .data$.ymax,
@@ -1188,7 +1235,7 @@ plot_Sigma_table <- function(
         ),
         inherit.aes = FALSE,
         linewidth = 0.45,
-        alpha = 0.75
+        alpha = 0.55
       ) +
       ggplot2::scale_colour_manual(
         values = c(
@@ -1210,20 +1257,32 @@ plot_Sigma_table <- function(
         ),
         inherit.aes = FALSE,
         colour = .gtmb_plot_palette[["grey"]],
-        linewidth = if (identical(style, "raindrop")) 0.45 else 0.85,
+        linewidth = if (identical(style, "eye")) 0.45 else 0.85,
         lineend = "round"
       )
   }
   if (any(dat$.has_uncertainty_display)) {
-    p <- p +
-      ggplot2::geom_point(
-        data = dat[dat$.has_uncertainty_display, , drop = FALSE],
-        ggplot2::aes(fill = .data$.sign),
-        shape = 21,
-        size = 2.6,
-        stroke = 0.45,
-        colour = .gtmb_plot_palette[["ink"]]
-      )
+    if (identical(style, "eye")) {
+      p <- p +
+        ggplot2::geom_point(
+          data = dat[dat$.has_uncertainty_display, , drop = FALSE],
+          ggplot2::aes(colour = .data$.sign),
+          shape = 21,
+          size = 2.8,
+          stroke = 0.9,
+          fill = "white"
+        )
+    } else {
+      p <- p +
+        ggplot2::geom_point(
+          data = dat[dat$.has_uncertainty_display, , drop = FALSE],
+          ggplot2::aes(fill = .data$.sign),
+          shape = 21,
+          size = 2.6,
+          stroke = 0.45,
+          colour = .gtmb_plot_palette[["ink"]]
+        )
+    }
   }
   if (any(!dat$.has_uncertainty_display)) {
     p <- p +
@@ -1236,7 +1295,7 @@ plot_Sigma_table <- function(
         colour = .gtmb_plot_palette[["grey"]]
       )
   }
-  if (any(dat$.has_uncertainty_display) || nrow(raindrop) > 0L) {
+  if (any(dat$.has_uncertainty_display) || nrow(confidence_eye) > 0L) {
     p <- p +
       ggplot2::scale_fill_manual(
         values = c(
@@ -1251,8 +1310,8 @@ plot_Sigma_table <- function(
       x = x_lab,
       y = NULL,
       title = title,
-      subtitle = if (identical(style, "raindrop")) {
-        "Drops use finite bounds as compatibility displays; points mark estimates."
+      subtitle = if (identical(style, "eye")) {
+        "Confidence eyes use finite bounds as compatibility displays; hollow circles mark estimates."
       } else {
         "Rows come from extract_Sigma_table(); finite bounds are drawn as intervals."
       },
@@ -1268,8 +1327,8 @@ plot_Sigma_table <- function(
 
   p <- .gtmb_plot_contract(
     p,
-    type = if (identical(style, "raindrop")) {
-      "sigma_table_raindrop"
+    type = if (identical(style, "eye")) {
+      "sigma_table_confidence_eye"
     } else {
       "sigma_table_forest"
     },
@@ -1279,8 +1338,9 @@ plot_Sigma_table <- function(
     data = dat,
     notes = plot_notes
   )
-  if (identical(style, "raindrop")) {
-    attr(p, "gllvmTMB_raindrop_data") <- raindrop
+  if (identical(style, "eye")) {
+    attr(p, "gllvmTMB_confidence_eye_data") <- confidence_eye
+    attr(p, "gllvmTMB_raindrop_data") <- confidence_eye
   }
   p
 }
@@ -1299,7 +1359,7 @@ plot_Sigma_table <- function(
 #' `gllvmTMB_multi` / `bootstrap_Sigma` object (EXT-27; built on EXT-18 /
 #' EXT-20). PARTIAL, it does not display interval bounds or compare fitted
 #' values to known truth. Use [plot_Sigma_table()] for interval forests or
-#' raindrops, and [plot_Sigma_comparison()] for estimate-vs-truth displays.
+#' confidence eyes, and [plot_Sigma_comparison()] for estimate-vs-truth displays.
 #' PLANNED, vdiffr snapshots and richer multi-model layout helpers remain
 #' future figure work.
 #'

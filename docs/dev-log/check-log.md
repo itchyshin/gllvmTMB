@@ -5801,6 +5801,51 @@ Deliberately not run:
 - Article renders were not run because this slice deliberately touched no
   articles.
 
+## 2026-05-22 -- Confidence-eye plot option
+
+Scope:
+
+- Added the public `style = "eye"` spelling to `plot_correlations()` and
+  `plot_Sigma_table()`.
+- Kept `style = "raindrop"` and `raindrop_level` as compatibility aliases.
+- Added `eye_level`, confidence-eye metadata, and hollow estimate-circle
+  geometry.
+- Updated generated Rd and plot-helper tests.
+- Added after-task report
+  `docs/dev-log/after-task/2026-05-22-confidence-eye-plots.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,mergeStateStatus`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the merged PR #233 lane plus local reference-doc commits;
+  no GitHub PR overlap was present.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `plot_correlations.Rd`, `plot_Sigma_table.Rd`, and
+  `plot_Sigma_heatmap.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 161 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rg -n 'confidence-I|Confidence-I|style = c\\(\"interval\", \"raindrop\"\\)|correlations_raindrop|sigma_table_raindrop|has_raindrop|Drops show|Drops use|Raindrops reconstruct|raindrops, and' R/plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd man/plot_Sigma_heatmap.Rd tests/testthat/test-plot-covariance-tables.R`
+  -> no hits.
+- `rg -n "Deprecated alias|deprecated alias" R/plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cors <- data.frame(tier = c("unit", "unit", "unit_obs", "unit_obs"), trait_i = c("length", "length", "length", "mass"), trait_j = c("mass", "wing", "mass", "wing"), correlation = c(0.42, -0.18, 0.10, -0.28), lower = c(0.12, -0.45, NA_real_, -0.53), upper = c(0.66, 0.12, NA_real_, 0.02), method = c("fisher-z", "fisher-z", "none", "fisher-z")); p <- plot_correlations(cors, style = "eye"); ggplot2::ggsave("/tmp/gllvmtmb-confidence-eye.png", p, width = 7.2, height = 3.8, dpi = 180, bg = "white")'`
+  -> rendered `/tmp/gllvmtmb-confidence-eye.png`; visual inspection passed.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not run for this plot-helper API/display slice.
+- Article renders were not run because this slice deliberately touched no
+  articles.
+
 ## 2026-05-22 -- Reference function documentation audit plan
 
 Scope:

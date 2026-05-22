@@ -119,9 +119,12 @@ correlation rows use Fisher's z scale and covariance rows use the displayed
 estimate scale. Rows without finite bounds remain point-only and are drawn as
 open points so the missing uncertainty display is visible. For fitted
 correlation rows, `extract_correlations(..., method = "bootstrap")` is the
-usual next path when bootstrap uncertainty is appropriate. For Sigma-table
-rows, call `bootstrap_Sigma()` first and then `extract_Sigma_table()` on the
-bootstrap object to carry percentile bounds into the plot helper.
+usual next path when bootstrap uncertainty is appropriate. If a
+`bootstrap_Sigma()` object already contains `R_B` / `R_W` summaries,
+`plot_correlations(boot)` converts those matrix summaries to pairwise rows
+directly (EXT-24). For Sigma-table rows, call `bootstrap_Sigma()` first and
+then `extract_Sigma_table()` on the bootstrap object to carry percentile bounds
+into the plot helper.
 Raindrops omit interval segments by default so the midpoint and compatibility
 shape carry the display; callers can set `show_intervals = TRUE` when an
 overlaid CI line is genuinely useful. These raindrops are not posterior
@@ -178,6 +181,9 @@ A figure-heavy article should not become public unless:
 - `plot_Sigma_table(style = "raindrop")` can draw raindrops only when supplied
   rows already contain finite interval bounds. It does not run bootstrap
   refits.
+- `plot_correlations(boot)` can draw bootstrap correlation forests or
+  raindrops only when `boot` already contains `R_B` / `R_W` summaries. It does
+  not run bootstrap refits.
 - `plot(type = "communality", boot = boot)` can overlay bootstrap intervals
   only when `boot` already contains `communality` summaries. It does not run
   bootstrap refits.

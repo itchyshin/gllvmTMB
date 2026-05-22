@@ -5148,3 +5148,59 @@ Deliberately not run:
   `pkgdown::check_pkgdown()`, `git diff --check`, and a short no-tests package
   check were run.
 - No rendered article was updated and no vdiffr snapshot was added.
+
+## 2026-05-21 -- Direct bootstrap correlation plots
+
+Scope:
+
+- Extended `plot_correlations()` so users can pass a `bootstrap_Sigma()` object
+  containing `R_B` / `R_W` summaries directly.
+- Converted bootstrap matrix summaries through
+  `extract_Sigma_table(..., measure = "correlation", entries = "upper")` so the
+  plotting schema remains row-first and pairwise.
+- Preserved `pair = c("trait_a", "trait_b")` filtering for bootstrap input.
+- Tightened covariance/correlation plot captions so open-point warnings appear
+  only when rows actually lack a finite uncertainty display.
+- Added validation-debt row `EXT-24`.
+- Updated `NEWS.md` and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane plus PR #233 base
+  work.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 98 passes, 0 failures, 0 warnings, 0 skips after the caption fix.
+- Synthetic visual QA render:
+  `plot_correlations(boot, style = "raindrop")` wrote
+  `/tmp/gllvmTMB-plot-correlations-bootstrap-raindrop.png`.
+  Florence review verdict: PASS; the two facets have similar row spacing, all
+  supplied intervals render as raindrops plus point estimates, and the caption
+  states that raindrops are frequentist compatibility displays rather than
+  posterior densities.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-24|plot_correlations\\(boot|bootstrap correlation|R_B|R_W|not posterior densities|Open points" NEWS.md R/plot-covariance-tables.R man/plot_correlations.Rd tests/testthat/test-plot-covariance-tables.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new direct bootstrap correlation plotting surface is present in code,
+  tests, Rd, NEWS, and design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow plotting
+  slice. Focused plot tests, visual QA, `pkgdown::check_pkgdown()`,
+  `git diff --check`, and a short no-tests package check were run.
+- No rendered article was updated and no vdiffr snapshot was added.

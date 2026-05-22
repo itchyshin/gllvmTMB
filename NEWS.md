@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Direct bootstrap correlation plots (2026-05-21)
+
+* **`plot_correlations()`** now accepts `bootstrap_Sigma()` objects containing `R_B` / `R_W` summaries and converts them to the same row-first correlation plotting schema used by `extract_correlations()` rows (EXT-24). IN: users can call `plot_correlations(boot, style = "raindrop")` after `bootstrap_Sigma(..., what = "R")` without hand-building pairwise rows. PARTIAL: this is a display bridge only; it does not run bootstrap refits, and matrix-style truth overlays remain article code. PLANNED: rendered article examples using stored bootstrap fixtures remain future Figure-3 QA work.
+
 ## Correlation ellipse bootstrap intervals (2026-05-21)
 
 * **`plot(type = "correlation")` and `plot(type = "correlation_ellipse")`** now accept a `bootstrap_Sigma()` object through `boot` and merge stored `R_B` / `R_W` percentile bounds into the plotted correlation data (EXT-23). IN: heatmap and ellipse plot metadata now report interval availability, and the ellipse plot marks supplied intervals that do not cross zero with black borders and stars. PARTIAL: the plot does not run bootstrap refits and only uses correlation summaries already present in the bootstrap object. PLANNED: rendered article integration and vdiffr snapshots remain future Figure-3 QA work.

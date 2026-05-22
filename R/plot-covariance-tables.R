@@ -31,6 +31,48 @@
   out
 }
 
+.gtmb_correlations_from_bootstrap <- function(boot, tier, pair = NULL) {
+  rows <- extract_Sigma_table(
+    boot,
+    level = tier,
+    measure = "correlation",
+    entries = "upper"
+  )
+  if (nrow(rows) == 0L) {
+    return(data.frame(
+      tier = character(0),
+      trait_i = character(0),
+      trait_j = character(0),
+      correlation = numeric(0),
+      lower = numeric(0),
+      upper = numeric(0),
+      method = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+  if (!is.null(pair)) {
+    if (!is.character(pair) || length(pair) != 2L) {
+      cli::cli_abort("{.arg pair} must be a character vector of length 2.")
+    }
+    keep <- (rows$trait_i == pair[[1L]] & rows$trait_j == pair[[2L]]) |
+      (rows$trait_i == pair[[2L]] & rows$trait_j == pair[[1L]])
+    rows <- rows[keep, , drop = FALSE]
+  }
+  out <- data.frame(
+    tier = rows$level,
+    trait_i = rows$trait_i,
+    trait_j = rows$trait_j,
+    correlation = rows$estimate,
+    lower = rows$lower,
+    upper = rows$upper,
+    method = rows$interval_method,
+    stringsAsFactors = FALSE
+  )
+  attr(out, "notes") <- attr(rows, "notes") %||% character(0)
+  attr(out, "bootstrap") <- attr(rows, "bootstrap")
+  out
+}
+
 .gtmb_plot_sign <- function(x) {
   out <- rep("zero", length(x))
   out[x < 0] <- "negative"
@@ -46,6 +88,18 @@
     return("provided")
   }
   "partial"
+}
+
+.gtmb_uncertainty_caption <- function(has_uncertainty_display, style, missing) {
+  if (!all(has_uncertainty_display)) {
+    return(missing)
+  }
+  if (identical(style, "raindrop")) {
+    return(
+      "Raindrops reconstruct frequentist compatibility from finite interval bounds; they are not posterior densities."
+    )
+  }
+  "Finite interval bounds are shown for all plotted rows."
 }
 
 .gtmb_resolve_interval_line <- function(show_intervals, style) {
@@ -223,14 +277,16 @@
 #' [extract_correlations()].
 #'
 #' Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
-#' [extract_correlations()] or extracts those rows from a fitted
+#' [extract_correlations()], extracts those rows from a fitted
 #' `gllvmTMB_multi` object (EXT-19; built on EXT-04/EXT-18 extractor
-#' contracts). PARTIAL, the plot does not compute new intervals; it displays
-#' whatever interval method the input rows already contain. PLANNED,
-#' matrix-style visual comparisons against known truth remain article code
-#' rather than part of this helper.
+#' contracts), or converts `bootstrap_Sigma()` correlation summaries to the
+#' same plotting schema (EXT-24). PARTIAL, the plot does not compute new
+#' intervals; it displays whatever interval method the input rows already
+#' contain. PLANNED, matrix-style visual comparisons against known truth remain
+#' article code rather than part of this helper.
 #'
-#' @param x Either a `gllvmTMB_multi` fit or a data frame returned by
+#' @param x Either a `gllvmTMB_multi` fit, a `bootstrap_Sigma` object with
+#'   `R_B` / `R_W` summaries, or a data frame returned by
 #'   [extract_correlations()]. Data frames must contain `tier`, `trait_i`,
 #'   `trait_j`, `correlation`, `lower`, `upper`, and `method`.
 #' @param tier,pair,level,method,n_eff,nsim,seed,link_residual Passed to
@@ -298,6 +354,7 @@ plot_correlations <- function(
   link_residual <- match.arg(link_residual)
   method <- match.arg(method)
 
+  source_label <- "extract_correlations"
   if (inherits(x, "gllvmTMB_multi")) {
     dat <- extract_correlations(
       x,
@@ -310,11 +367,14 @@ plot_correlations <- function(
       seed = seed,
       link_residual = link_residual
     )
+  } else if (inherits(x, "bootstrap_Sigma")) {
+    dat <- .gtmb_correlations_from_bootstrap(x, tier = tier, pair = pair)
+    source_label <- "extract_Sigma_table"
   } else if (is.data.frame(x)) {
     dat <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a {.cls gllvmTMB_multi} fit or a data frame from {.fun extract_correlations}."
+      "{.arg x} must be a {.cls gllvmTMB_multi} fit, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_correlations}."
     )
   }
 
@@ -350,6 +410,11 @@ plot_correlations <- function(
     dat$.draw_interval
   }
   dat$.has_uncertainty_display <- visible_interval
+  caption <- .gtmb_uncertainty_caption(
+    dat$.has_uncertainty_display,
+    style = style,
+    missing = "Open points have no finite interval bounds; try bootstrap intervals when supported."
+  )
 
   p <- ggplot2::ggplot(
     dat,
@@ -467,7 +532,7 @@ plot_correlations <- function(
       } else {
         "Points are estimates; horizontal segments show finite interval bounds."
       },
-      caption = "Open points have no finite interval bounds; try bootstrap intervals when supported."
+      caption = caption
     ) +
     .gtmb_theme_figure()
   p <- .gtmb_add_pair_facets(p, dat, facet = facet)
@@ -479,7 +544,7 @@ plot_correlations <- function(
     } else {
       "correlations_forest"
     },
-    source = "extract_correlations",
+    source = source_label,
     level = unique(dat$.facet),
     interval_status = .gtmb_interval_state(visible_interval),
     data = dat
@@ -675,6 +740,11 @@ plot_Sigma_table <- function(
     dat$.draw_interval
   }
   dat$.has_uncertainty_display <- visible_interval
+  caption <- .gtmb_uncertainty_caption(
+    dat$.has_uncertainty_display,
+    style = style,
+    missing = "Open points have no finite interval bounds; use bootstrap-derived rows when needed."
+  )
 
   p <- ggplot2::ggplot(
     dat,
@@ -790,7 +860,7 @@ plot_Sigma_table <- function(
       } else {
         "Rows come from extract_Sigma_table(); finite bounds are drawn as intervals."
       },
-      caption = "Open points have no finite interval bounds; use bootstrap-derived rows when needed."
+      caption = caption
     ) +
     .gtmb_theme_figure()
   if (is_correlation) {

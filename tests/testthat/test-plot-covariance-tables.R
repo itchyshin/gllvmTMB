@@ -14,6 +14,63 @@ gtmb_plot_geom_names <- function(p) {
   vapply(p$layers, function(layer) class(layer$geom)[1], character(1L))
 }
 
+make_bootstrap_correlation_plot_object <- function() {
+  traits <- c("length", "mass", "wing")
+  R_B <- matrix(
+    c(
+      1.00,
+      0.45,
+      -0.20,
+      0.45,
+      1.00,
+      0.30,
+      -0.20,
+      0.30,
+      1.00
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(traits, traits)
+  )
+  R_W <- matrix(
+    c(
+      1.00,
+      -0.25,
+      0.12,
+      -0.25,
+      1.00,
+      -0.35,
+      0.12,
+      -0.35,
+      1.00
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(traits, traits)
+  )
+  lower_B <- pmax(R_B - 0.12, -1)
+  upper_B <- pmin(R_B + 0.12, 1)
+  lower_W <- pmax(R_W - 0.10, -1)
+  upper_W <- pmin(R_W + 0.10, 1)
+  diag(lower_B) <- diag(upper_B) <- 1
+  diag(lower_W) <- diag(upper_W) <- 1
+  boot <- list(
+    point_est = list(R_B = R_B, R_W = R_W),
+    ci_lower = list(R_B = lower_B, R_W = lower_W),
+    ci_upper = list(R_B = upper_B, R_W = upper_W),
+    ci_method = "percentile",
+    link_residual = "auto",
+    conf = 0.95,
+    n_boot = 25L,
+    n_failed = 0L,
+    level = c("B", "W"),
+    what = "R",
+    draws = NULL
+  )
+  class(boot) <- c("bootstrap_Sigma", "list")
+  boot
+}
+
 test_that("plot_correlations returns an interval-aware forest plot", {
   skip_if_no_ggplot2()
   cors <- data.frame(
@@ -48,6 +105,33 @@ test_that("plot_correlations returns an interval-aware forest plot", {
   )
   expect_true(all(plot_data$.estimate >= -1 & plot_data$.estimate <= 1))
   expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_correlations accepts bootstrap_Sigma correlation summaries", {
+  skip_if_no_ggplot2()
+  boot <- make_bootstrap_correlation_plot_object()
+
+  p <- plot_correlations(boot, style = "raindrop")
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "correlations_raindrop",
+    "extract_Sigma_table"
+  )
+  expect_equal(meta$interval_status, "provided")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(nrow(plot_data), 6L)
+  expect_setequal(plot_data$.facet, c("unit", "unit_obs"))
+  expect_true(all(plot_data$.has_interval))
+  expect_true(all(plot_data$.has_uncertainty_display))
+  expect_match(p$labels$caption, "not posterior densities", fixed = TRUE)
+  expect_no_match(p$labels$caption, "Open points", fixed = TRUE)
+  expect_s3_class(attr(p, "gllvmTMB_raindrop_data"), "data.frame")
+  expect_silent(ggplot2::ggplot_build(p))
+
+  p_pair <- plot_correlations(boot, tier = "unit", pair = c("length", "mass"))
+  expect_equal(nrow(attr(p_pair, "gllvmTMB_data")), 1L)
 })
 
 test_that("plot_correlations can render raindrop compatibility shapes", {
@@ -113,6 +197,7 @@ test_that("plot_correlations marks rows without intervals as point-only", {
   expect_equal(sum(plot_data$.has_raindrop), 2L)
   expect_equal(sum(plot_data$.has_uncertainty_display), 2L)
   expect_equal(sum(gtmb_plot_geom_names(p) == "GeomPoint"), 2L)
+  expect_match(p$labels$caption, "Open points", fixed = TRUE)
   expect_silent(ggplot2::ggplot_build(p))
 })
 
@@ -257,6 +342,8 @@ test_that("plot_Sigma_table can render raindrops from finite table intervals", {
   expect_s3_class(rain, "data.frame")
   expect_gt(nrow(rain), nrow(sigma_rows))
   expect_true(all(is.finite(rain$.x)))
+  expect_match(p$labels$caption, "not posterior densities", fixed = TRUE)
+  expect_no_match(p$labels$caption, "Open points", fixed = TRUE)
   expect_false("GeomSegment" %in% gtmb_plot_geom_names(p))
   expect_silent(ggplot2::ggplot_build(p))
 

@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Cached morphometrics bootstrap plot fixture (2026-05-21)
+
+* **Morphometrics article fixture** now ships a small cached `bootstrap_Sigma(..., what = "R")` object and uses it to render `plot_correlations(boot, style = "raindrop")` without running bootstrap refits during pkgdown builds (MIS-22 / EXT-24). IN: the article demonstrates the direct bootstrap plotting path on a reproducible stored object. PARTIAL: the fixture is for teaching and visual QA, not interval-calibration evidence for a scientific claim. PLANNED: fuller bootstrap calibration belongs in simulation-grid or study-specific workflows.
+
 ## Direct bootstrap correlation plots (2026-05-21)
 
 * **`plot_correlations()`** now accepts `bootstrap_Sigma()` objects containing `R_B` / `R_W` summaries and converts them to the same row-first correlation plotting schema used by `extract_correlations()` rows (EXT-24). IN: users can call `plot_correlations(boot, style = "raindrop")` after `bootstrap_Sigma(..., what = "R")` without hand-building pairwise rows. PARTIAL: this is a display bridge only; it does not run bootstrap refits, and matrix-style truth overlays remain article code. PLANNED: rendered article examples using stored bootstrap fixtures remain future Figure-3 QA work.

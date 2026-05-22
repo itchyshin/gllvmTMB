@@ -5204,3 +5204,83 @@ Deliberately not run:
   slice. Focused plot tests, visual QA, `pkgdown::check_pkgdown()`,
   `git diff --check`, and a short no-tests package check were run.
 - No rendered article was updated and no vdiffr snapshot was added.
+
+## 2026-05-21 -- Morphometrics bootstrap correlation fixture
+
+Scope:
+
+- Added `data-raw/examples/make-morphometrics-bootstrap-correlation.R`.
+- Added `inst/extdata/examples/morphometrics-bootstrap-r.rds`, a small cached
+  `bootstrap_Sigma()` object with `R_B` point estimates and percentile bounds.
+- Updated `vignettes/articles/morphometrics.Rmd` to render
+  `plot_correlations(morph_boot_R, style = "raindrop")` without running
+  bootstrap refits during pkgdown.
+- Disclosed `n_boot = 100` and `n_failed = 4` in the article prose and labelled
+  the fixture as a rendered plotting example, not interval-calibration
+  evidence.
+- Added validation-debt row `MIS-22`.
+- Updated `NEWS.md` and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- Trial timing command:
+  `bootstrap_Sigma(..., n_boot = 3, level = "unit", what = "R", seed = 20260521L)`
+  -> 1.82 seconds, 0 failed refits.
+- First full fixture-generation run:
+  `Rscript --vanilla data-raw/examples/make-morphometrics-bootstrap-correlation.R`
+  -> stopped because the first generator required zero failed refits; the
+  bootstrap run had 4 failed refits.
+- Corrected fixture-generation run:
+  `Rscript --vanilla data-raw/examples/make-morphometrics-bootstrap-correlation.R`
+  -> saved `inst/extdata/examples/morphometrics-bootstrap-r.rds` (884 bytes)
+  with `n_boot = 100`, `seed = 20260521`, and `n_failed = 4`.
+- `air format data-raw/examples/make-morphometrics-bootstrap-correlation.R tests/testthat/test-example-morphometrics.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics")'`
+  -> 45 passes, 0 failures, 0 warnings, 0 skips.
+- Synthetic visual QA render:
+  `plot_correlations(boot, tier = "unit", style = "raindrop", sort = "trait")`
+  wrote `/tmp/gllvmTMB-morphometrics-bootstrap-raindrop.png`.
+  Florence review verdict: PASS; row spacing is even, point estimates remain
+  visible, and the caption states frequentist compatibility rather than
+  posterior density.
+- `Rscript --vanilla -e 'pkgdown::build_article("morphometrics", quiet = TRUE)'`
+  -> failed because pkgdown could not find the nested article slug.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/morphometrics", quiet = TRUE)'`
+  -> failed in a new process because the local installed package was stale and
+  did not expose `extract_Sigma_table()`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/morphometrics.html` successfully.
+- Rendered PNG reviewed:
+  `pkgdown-site/articles/morphometrics_files/figure-html/ci-correlation-raindrop-1.png`
+  -> Florence PASS.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "MIS-22|EXT-24|morphometrics-bootstrap-r|cached bootstrap|failed refits|interval-calibration|plot_correlations\\(morph_boot_R|bootstrap_Sigma\\(\\.\\.\\., what = \\\"R\\\"\\)" NEWS.md vignettes/articles/morphometrics.Rmd tests/testthat/test-example-morphometrics.R data-raw/examples/make-morphometrics-bootstrap-correlation.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/articles/morphometrics.html`
+  -> fixture, public prose, rendered HTML, tests, NEWS, and register rows tell
+  the same story.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|profile-likelihood default|trio|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W" vignettes/articles/morphometrics.Rmd NEWS.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> no stale terminology in the touched article or plot contract. Older NEWS
+  hits were pre-existing compatibility/deprecation text.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article/fixture
+  slice. Focused fixture tests, single-article render, visual QA,
+  `pkgdown::check_pkgdown()`, `git diff --check`, and a short no-tests package
+  check were run.
+- No vdiffr snapshot was added.

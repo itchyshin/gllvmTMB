@@ -1,6 +1,20 @@
 load_morphometrics_example <- function() {
   path <- system.file(
-    "extdata", "examples", "morphometrics-example.rds",
+    "extdata",
+    "examples",
+    "morphometrics-example.rds",
+    package = "gllvmTMB"
+  )
+  expect_true(nzchar(path))
+  expect_true(file.exists(path))
+  readRDS(path)
+}
+
+load_morphometrics_bootstrap_r <- function() {
+  path <- system.file(
+    "extdata",
+    "examples",
+    "morphometrics-bootstrap-r.rds",
     package = "gllvmTMB"
   )
   expect_true(nzchar(path))
@@ -14,9 +28,16 @@ test_that("morphometrics example object has the required contract fields", {
   expect_setequal(
     names(ex),
     c(
-      "data_long", "data_wide", "truth", "estimands",
-      "formula_long", "formula_wide", "fit_args", "story",
-      "alignment", "generator"
+      "data_long",
+      "data_wide",
+      "truth",
+      "estimands",
+      "formula_long",
+      "formula_wide",
+      "fit_args",
+      "story",
+      "alignment",
+      "generator"
     )
   )
   expect_s3_class(ex$data_long, "data.frame")
@@ -86,4 +107,29 @@ test_that("morphometrics example long and wide fits agree and recover truth", {
     norm(Sigma_hat - Sigma_true, "F") / norm(Sigma_true, "F"),
     0.35
   )
+})
+
+test_that("morphometrics bootstrap correlation fixture is plot-ready", {
+  testthat::skip_if_not_installed("ggplot2")
+  ex <- load_morphometrics_example()
+  boot <- load_morphometrics_bootstrap_r()
+
+  expect_s3_class(boot, "bootstrap_Sigma")
+  expect_equal(boot$what, "R")
+  expect_equal(boot$n_boot, 100L)
+  expect_lte(boot$n_failed, 5L)
+  expect_named(boot$point_est, "R_B")
+  expect_named(boot$ci_lower, "R_B")
+  expect_named(boot$ci_upper, "R_B")
+  expect_equal(rownames(boot$point_est$R_B), ex$truth$trait_names)
+  expect_equal(colnames(boot$point_est$R_B), ex$truth$trait_names)
+
+  p <- plot_correlations(boot, tier = "unit", style = "raindrop")
+  expect_s3_class(p, "ggplot")
+  meta <- attr(p, "gllvmTMB_meta")
+  expect_equal(meta$type, "correlations_raindrop")
+  expect_equal(meta$source, "extract_Sigma_table")
+  expect_equal(meta$interval_status, "provided")
+  expect_equal(nrow(attr(p, "gllvmTMB_data")), 10L)
+  expect_silent(ggplot2::ggplot_build(p))
 })

@@ -77,6 +77,20 @@ example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1
 stopifnot(!is.na(example_path))
 morph <- readRDS(example_path)
 
+boot_r_path <- system.file(
+  "extdata", "examples", "morphometrics-bootstrap-r.rds",
+  package = "gllvmTMB"
+)
+boot_r_path <- c(
+  boot_r_path,
+  file.path("inst", "extdata", "examples", "morphometrics-bootstrap-r.rds"),
+  file.path("..", "inst", "extdata", "examples", "morphometrics-bootstrap-r.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-bootstrap-r.rds")
+)
+boot_r_path <- boot_r_path[nzchar(boot_r_path) & file.exists(boot_r_path)][1]
+stopifnot(!is.na(boot_r_path))
+morph_boot_R <- readRDS(boot_r_path)
+
 df <- morph$data_long
 df_wide <- morph$data_wide
 truth <- morph$truth
@@ -316,22 +330,26 @@ trait pairs have the strongest evidence of positive or negative
 association. Communality point estimates are enough for this first
 worked example. When interval estimates matter, prefer profile or
 Wald-style intervals where the target supports them. Bootstrap is a
-slower, deliberate option for a separate cached check, not part of this
-rendered article.
+slower, deliberate option for a separate cached check. This article
+loads a small cached `bootstrap_Sigma()` object for the correlation
+figure so pkgdown does not refit bootstrap replicates while rendering.
 
 ```{r ci-correlations}
 corr_rows <- extract_correlations(fit, tier = "unit")
 corr_rows
 ```
 
-```{r ci-correlation-raindrop, fig.width = 7, fig.height = 4.3, fig.cap = "Pairwise between-individual trait correlations from the fitted morphometrics model. Raindrops show frequentist compatibility reconstructed from Fisher-z intervals; points mark estimates. Open points would mark rows without finite interval bounds."}
-plot_correlations(corr_rows, style = "raindrop", sort = "trait")
+```{r ci-correlation-raindrop, fig.width = 7, fig.height = 4.3, fig.cap = "Pairwise between-individual trait correlations from a cached morphometrics bootstrap fixture. Raindrops reconstruct frequentist compatibility from percentile intervals; points mark estimates. Use a larger bootstrap run before making a final interval-calibration claim."}
+plot_correlations(morph_boot_R, tier = "unit", style = "raindrop", sort = "trait")
 ```
 
 In this teaching fit, all unit-tier trait correlations are positive, so
 the figure mainly ranks their strength along the shared size axis. Tight
-drops near 1 are Fisher-z intervals from the fitted Hessian; bootstrap
-intervals are the next check when those bounds drive an inference claim.
+drops near 1 are supplied by the cached bootstrap object
+(`n_boot = `r morph_boot_R$n_boot`, failed refits =
+`r morph_boot_R$n_failed`). Treat this as a rendered plotting example;
+final inference should use a bootstrap size chosen for the study rather
+than the article's lightweight fixture.
 
 ```{r ci-communality}
 extract_communality(fit, level = "unit")

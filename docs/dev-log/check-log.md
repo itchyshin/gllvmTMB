@@ -7433,6 +7433,53 @@ Deliberately not run:
   or formula grammar files changed. No 3-OS CI was available until the branch
   is pushed.
 
+## 2026-05-22 -- Confidence-eye wording alignment
+
+Scope:
+
+- Promoted `confidence eye` / `style = "eye"` as the primary name in NEWS and
+  the report-ready plot contract.
+- Kept `style = "raindrop"` only as a compatibility-alias phrase.
+- Updated validation-debt rows EXT-19, EXT-24, and MIS-22 so capability wording
+  matches the implemented plot types (`correlations_confidence_eye` and
+  `sigma_table_confidence_eye`).
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Primary-name scan:
+
+  ```sh
+  rg -n 'style = "eye"|confidence-eye|confidence eye|Confidence eye|Confidence eyes|confidence eyes|confidence_eye' NEWS.md docs/design/53-report-ready-extractor-plot-contract.md docs/design/35-validation-debt-register.md
+  ```
+
+  -> expected confidence-eye hits in NEWS, the design contract, and validation
+  register.
+- Legacy-primary scan:
+
+  ```sh
+  rg -n 'correlations_raindrop|sigma_table_raindrop|style = "raindrop"|raindrop plots|forest/raindrop|Raindrops|raindrops|Raindrop' NEWS.md docs/design/53-report-ready-extractor-plot-contract.md docs/design/35-validation-debt-register.md
+  ```
+
+  -> remaining hits are compatibility-alias statements only.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  wording-only alignment. Articles were deliberately not edited in this slice;
+  the morphometrics article still exercises the compatibility alias and should
+  be switched in a later article-specific pass. No 3-OS CI was available until
+  the branch is pushed.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

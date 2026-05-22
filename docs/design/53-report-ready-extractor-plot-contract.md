@@ -93,9 +93,9 @@ layers. This keeps article code from digging through layer internals.
 | `variance` | `extract_proportions` | `unit`, `unit_obs` | `rotation_invariant` | `p$data`; `attr(p, "gllvmTMB_data")` |
 | `ordination` | `extract_ordination` | requested canonical level | `rotation_ambiguous_loadings` | `attr(p, "gllvmTMB_data")` |
 | `correlations_forest` | `extract_correlations` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
-| `correlations_raindrop` | `extract_correlations` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")`; `attr(p, "gllvmTMB_raindrop_data")` |
+| `correlations_confidence_eye` | `extract_correlations` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")`; `attr(p, "gllvmTMB_confidence_eye_data")` |
 | `sigma_table_forest` | `extract_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
-| `sigma_table_raindrop` | `extract_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")`; `attr(p, "gllvmTMB_raindrop_data")` |
+| `sigma_table_confidence_eye` | `extract_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")`; `attr(p, "gllvmTMB_confidence_eye_data")` |
 | `sigma_comparison_difference` | `compare_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
 | `sigma_comparison_scatter` | `compare_Sigma_table` | requested canonical level(s) | `rotation_invariant` | `attr(p, "gllvmTMB_data")` |
 
@@ -122,13 +122,15 @@ evidence. With the matrix-first fitted-object path and no `boot` object,
 The exported `plot_correlations()` and `plot_Sigma_table()` helpers are
 row-first views over tidy covariance/correlation tables. Their default
 `style = "interval"` is a forest plot with points for every estimate and
-interval segments only where finite bounds exist. `style = "raindrop"` adds a
-frequentist compatibility display reconstructed from finite interval bounds;
-correlation rows use Fisher's z scale and covariance rows use the displayed
-estimate scale. Rows without finite bounds remain point-only and are drawn as
-open points so the missing uncertainty display is visible. For fitted
-correlation rows, `extract_correlations(..., method = "bootstrap")` is the
-usual next path when bootstrap uncertainty is appropriate. If a
+interval segments only where finite bounds exist. `style = "eye"` draws a
+confidence eye: a pale frequentist compatibility shape reconstructed from
+finite interval bounds, plus a hollow estimate circle. Correlation rows use
+Fisher's z scale and covariance rows use the displayed estimate scale.
+`style = "raindrop"` remains a compatibility alias for the same display. Rows
+without finite bounds remain point-only and are drawn as open points so the
+missing uncertainty display is visible. For fitted correlation rows,
+`extract_correlations(..., method = "bootstrap")` is the usual next path when
+bootstrap uncertainty is appropriate. If a
 `bootstrap_Sigma()` object already contains `R_B` / `R_W` summaries,
 `plot_correlations(boot)` converts those matrix summaries to pairwise rows
 directly (EXT-24). For Sigma-table rows, call `bootstrap_Sigma()` first and
@@ -137,9 +139,9 @@ into the plot helper. Both helpers preserve extractor notes in
 `attr(p, "gllvmTMB_meta")$notes`, including bootstrap provenance such as
 `n_boot`, `n_failed`, and `conf` when those notes are supplied by the
 extractor.
-Raindrops omit interval segments by default so the midpoint and compatibility
-shape carry the display; callers can set `show_intervals = TRUE` when an
-overlaid CI line is genuinely useful. These raindrops are not posterior
+Confidence eyes omit interval segments by default so the hollow midpoint and
+compatibility shape carry the display; callers can set `show_intervals = TRUE`
+when an overlaid CI line is genuinely useful. Confidence eyes are not posterior
 densities and should not be captioned as Bayesian credible distributions.
 
 The exported `plot_Sigma_comparison()` helper is a row-first visual layer over
@@ -199,12 +201,12 @@ A figure-heavy article should not become public unless:
 - `extract_Sigma_table()` fills interval columns only when the input is a
   `bootstrap_Sigma()` object that already contains Sigma/R percentile bounds.
   Fitted-model calls remain point-estimate only.
-- `plot_Sigma_table(style = "raindrop")` can draw raindrops only when supplied
+- `plot_Sigma_table(style = "eye")` can draw confidence eyes only when supplied
   rows already contain finite interval bounds. It does not run bootstrap
-  refits.
+  refits. `style = "raindrop"` remains a compatibility alias.
 - `plot_correlations(boot)` can draw bootstrap correlation forests or
-  raindrops only when `boot` already contains `R_B` / `R_W` summaries. It does
-  not run bootstrap refits.
+  confidence eyes only when `boot` already contains `R_B` / `R_W` summaries.
+  It does not run bootstrap refits.
 - `plot(type = "communality", boot = boot)` can overlay bootstrap intervals
   only when `boot` already contains `communality` summaries. It does not run
   bootstrap refits.
@@ -229,7 +231,7 @@ A figure-heavy article should not become public unless:
    articles that still hand-index covariance matrices.
 2. Add rendered article examples that use interval-aware ellipse borders/stars
    without running bootstrap inside article chunks. The morphometrics article
-   now covers the direct `plot_correlations(boot, style = "raindrop")` path
+   now covers the direct `plot_correlations(boot, style = "eye")` path
    and `plot(type = "correlation_ellipse", boot = boot)` with a cached `R_B`
    fixture.
 3. Add dominant-axis loading and score-distribution helpers for the GLLVM

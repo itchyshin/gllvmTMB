@@ -5936,6 +5936,46 @@ Deliberately not run:
   cleanup. Two article renders, `pkgdown::check_pkgdown()`, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-22 -- Convergence article Sigma rows
+
+Scope:
+
+- Updated `vignettes/articles/convergence-start-values.Rmd` so its diagnostic
+  table points to `extract_Sigma_table()` for fitted Sigma.
+- Replaced direct bootstrap Sigma-bound matrix examples with
+  `extract_Sigma_table(boot, level = "unit", entries = "upper")`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/convergence-start-values.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = "unit", part = "total"\\)|extract_Sigma_table\\(boot, level = "unit", entries = "upper"\\)|boot\\$ci_lower\\$Sigma_B|boot\\$ci_upper\\$Sigma_B|extract_Sigma\\(fit, level = "unit", part = "total"\\)\\$Sigma' vignettes/articles/convergence-start-values.Rmd pkgdown-site/articles/convergence-start-values.html`
+  -> row-first fitted and bootstrap Sigma examples are present; old direct
+  bootstrap matrix-bound examples are gone.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/convergence-start-values.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this static article
+  example cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace
+  check, stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-22 -- Sigma heatmap custom labels
 
 Scope:

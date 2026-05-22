@@ -62,7 +62,7 @@
 #'   `level` and decides whether to plot one tier or both. If you copy
 #'   one of these helpers into your own code, mirror that pattern rather
 #'   than reflexively calling `match.arg(level)` (which would silently
-#'   collapse the default to `"B"` and drop the W panel).
+#'   collapse the default to `"unit"` and drop the `unit_obs` panel).
 #' @param boot Optional bootstrap object. This can be either a
 #'   `bootstrap_Sigma()` result or a list with elements `repeatability`,
 #'   `communality_B`, `communality_W`, each a data frame with columns

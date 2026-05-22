@@ -35,7 +35,7 @@ does \strong{not} call \code{match.arg(level)} itself; each helper inspects
 \code{level} and decides whether to plot one tier or both. If you copy
 one of these helpers into your own code, mirror that pattern rather
 than reflexively calling \code{match.arg(level)} (which would silently
-collapse the default to \code{"B"} and drop the W panel).}
+collapse the default to \code{"unit"} and drop the \code{unit_obs} panel).}
 
 \item{boot}{Optional bootstrap object. This can be either a
 \code{bootstrap_Sigma()} result or a list with elements \code{repeatability},

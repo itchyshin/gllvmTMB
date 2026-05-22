@@ -7571,6 +7571,50 @@ Deliberately not run:
   vignettes/articles were edited or rendered. No 3-OS CI was available until
   the branch is pushed.
 
+## 2026-05-22 -- Plot/profile wording edge cleanup
+
+Scope:
+
+- Fixed a stale `plot.gllvmTMB_multi()` note that said `match.arg(level)` would
+  collapse the default to `"B"` and drop the W panel; the current canonical
+  names are `"unit"` and `"unit_obs"`.
+- Fixed `.fun` -> `.fn` cli markup in profile-derived wrong-object errors.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-gllvmTMB.R R/profile-derived.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "profile-ci|profile-targets|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 250 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/plot.gllvmTMB_multi.Rd; grep -Hc '^\\keyword' man/plot.gllvmTMB_multi.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Stale wording scan:
+
+  ```sh
+  rg -n '\{\.fun gllvmTMB\}|collapse the default to `"B"`|drop the W panel|collapse the default to \\code\{"B"\}|drop the W panel' R/plot-gllvmTMB.R R/profile-derived.R man/plot.gllvmTMB_multi.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  narrow plot/profile wording cleanup. No vignettes/articles were edited or
+  rendered. No 3-OS CI was available until the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

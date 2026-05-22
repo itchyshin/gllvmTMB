@@ -5090,3 +5090,61 @@ Deliberately not run:
   a short no-tests package check were run.
 - No vdiffr snapshot was added; current plot evidence is object-shape tests
   plus manual rendered PNG review.
+
+## 2026-05-21 -- Correlation ellipse bootstrap intervals
+
+Scope:
+
+- Extended `plot(type = "correlation", boot = boot)` so a `bootstrap_Sigma()`
+  object with `R_B` / `R_W` summaries can supply row-level `lower`, `upper`,
+  `interval_method`, and `interval_status` metadata.
+- Extended `plot(type = "correlation_ellipse", boot = boot)` so black
+  borders/stars mark correlations whose supplied intervals do not cross zero.
+- Updated the ellipse caption to state the star/border interpretation when
+  interval evidence is present.
+- Added validation-debt row `EXT-23`.
+- Updated `NEWS.md` and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane plus PR #233 base
+  work.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`
+  -> 176 passes, 0 failures, 0 warnings, 0 skips after formatter and
+  documentation regeneration.
+- Synthetic visual QA render:
+  `plot(fit, type = "correlation_ellipse", boot = boot)` wrote
+  `/tmp/gllvmTMB-correlation-ellipse-bootstrap.png`.
+  Florence review verdict: PASS; black borders/stars are visible where supplied
+  bootstrap intervals do not cross zero, and the caption states that
+  interpretation directly.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-23|correlation ellipse|correlation_ellipse|R_B|R_W|interval-aware summaries|do not cross zero" NEWS.md R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd tests/testthat/test-plot-gllvmTMB.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new interval-aware correlation plot surface is present in code, tests, Rd,
+  NEWS, and design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow plotting
+  slice. Focused plot tests, documentation regeneration, visual QA,
+  `pkgdown::check_pkgdown()`, `git diff --check`, and a short no-tests package
+  check were run.
+- No rendered article was updated and no vdiffr snapshot was added.

@@ -96,16 +96,19 @@ report-ready columns (`estimand`, `trait_i`, `trait_j`, `estimate`, `level`,
 `component`, `matrix`, `triangle`, `interval_method`, `interval_status`,
 `scale`, `validation_row`). It also includes visual-support columns
 (`display_value`, `label`, `label_colour`) so the diagonal can be muted without
-deleting the self-correlation rows. Article chunks should use the report-ready
-columns.
+deleting the self-correlation rows. When `boot` is a `bootstrap_Sigma()` object
+containing `R_B` / `R_W` summaries, the plot data merges supplied percentile
+bounds into `lower`, `upper`, `interval_method`, and `interval_status`.
+Article chunks should use the report-ready columns.
 
 The current correlation-ellipse plot data converts the same correlation cells
 into ellipse polygons. It preserves `trait_i`, `trait_j`, `estimate`, `level`,
 `triangle`, `interval_method`, and `interval_status`, plus visual-support
 columns `x`, `y`, `group`, `significant`, and `border_colour`. The
-`significant` column is future-compatible with interval-aware correlation
-tables; with the current matrix-first `extract_Sigma()` path it remains
-`FALSE`.
+`significant` column is `TRUE` when supplied interval bounds do not cross zero;
+black borders and stars in the ellipse plot reflect that row-level interval
+evidence. With the matrix-first fitted-object path and no `boot` object,
+`significant` remains `FALSE`.
 
 The exported `plot_correlations()` and `plot_Sigma_table()` helpers are
 row-first views over tidy covariance/correlation tables. Their default
@@ -181,6 +184,10 @@ A figure-heavy article should not become public unless:
 - `plot(type = "integration", boot = boot)` can draw repeatability /
   communality whiskers only when `boot` already contains the relevant
   `ICC_site` and `communality` summaries. It does not run bootstrap refits.
+- `plot(type = "correlation", boot = boot)` and
+  `plot(type = "correlation_ellipse", boot = boot)` can show interval
+  metadata only when `boot` already contains `R_B` / `R_W` summaries. They do
+  not run bootstrap refits.
 - Plot metadata and first-pass Florence palette/caption safeguards exist, but
   every new article figure still needs rendered HTML review before it is
   treated as publication-grade.
@@ -192,8 +199,8 @@ A figure-heavy article should not become public unless:
 ## Next Implementation Targets
 
 1. Add figure-ready estimate-vs-truth tables for example objects.
-2. Add interval-aware correlation table contracts so ellipse borders/stars
-   reflect real uncertainty rather than point estimates.
+2. Add rendered article examples that use interval-aware ellipse borders/stars
+   without running bootstrap inside article chunks.
 3. Add dominant-axis loading and score-distribution helpers for the GLLVM
    overview Figure 3 family of plots.
 4. Continue the Rose/Florence surface scan for hidden or technical articles

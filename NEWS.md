@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Correlation ellipse bootstrap intervals (2026-05-21)
+
+* **`plot(type = "correlation")` and `plot(type = "correlation_ellipse")`** now accept a `bootstrap_Sigma()` object through `boot` and merge stored `R_B` / `R_W` percentile bounds into the plotted correlation data (EXT-23). IN: heatmap and ellipse plot metadata now report interval availability, and the ellipse plot marks supplied intervals that do not cross zero with black borders and stars. PARTIAL: the plot does not run bootstrap refits and only uses correlation summaries already present in the bootstrap object. PLANNED: rendered article integration and vdiffr snapshots remain future Figure-3 QA work.
+
 ## Repeatability bootstrap interval rows (2026-05-21)
 
 * **`extract_repeatability()`** now accepts `bootstrap_Sigma()` objects containing `ICC_site` summaries and returns the stored per-trait repeatability estimates plus percentile `lower` / `upper` columns (EXT-22). IN: bootstrap repeatability already computed by `bootstrap_Sigma(..., what = "ICC", level = c("unit", "unit_obs"))` can be reused without rerunning refits, and `plot(type = "integration", boot = boot)` now accepts a raw `bootstrap_Sigma()` object for repeatability and communality whiskers. PARTIAL: this reuses bootstrap-object summaries only; fitted-model calls still compute their own profile, Wald, or bootstrap intervals through `extract_repeatability(fit, method = ...)`, and the integration plot remains object-shape tested rather than vdiffr snapshot tested. PLANNED: a broader Figure-3 visual audit remains the next inference-plot step.

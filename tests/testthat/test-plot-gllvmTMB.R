@@ -156,6 +156,69 @@ test_that("plot(type = 'correlation_ellipse') returns Figure-3-style ellipse dat
   expect_silent(print(p))
 })
 
+test_that("correlation plots can use bootstrap_Sigma correlation intervals", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  traits <- levels(fit$data[[fit$trait_col]])
+  R_B <- diag(length(traits))
+  R_W <- diag(length(traits))
+  dimnames(R_B) <- dimnames(R_W) <- list(traits, traits)
+  R_B[1L, 2L] <- R_B[2L, 1L] <- 0.55
+  R_B[1L, 3L] <- R_B[3L, 1L] <- 0.20
+  R_B[2L, 4L] <- R_B[4L, 2L] <- -0.35
+  R_W[2L, 1L] <- R_W[1L, 2L] <- -0.50
+  R_W[3L, 1L] <- R_W[1L, 3L] <- 0.30
+  R_W[4L, 2L] <- R_W[2L, 4L] <- 0.15
+
+  lower_B <- pmax(R_B - 0.12, -1)
+  upper_B <- pmin(R_B + 0.12, 1)
+  lower_W <- pmax(R_W - 0.10, -1)
+  upper_W <- pmin(R_W + 0.10, 1)
+  diag(lower_B) <- diag(upper_B) <- 1
+  diag(lower_W) <- diag(upper_W) <- 1
+  boot <- list(
+    point_est = list(R_B = R_B, R_W = R_W),
+    ci_lower = list(R_B = lower_B, R_W = lower_W),
+    ci_upper = list(R_B = upper_B, R_W = upper_W),
+    ci_method = "percentile",
+    link_residual = "auto",
+    conf = 0.95,
+    n_boot = 25L,
+    n_failed = 0L,
+    level = c("B", "W"),
+    what = "R",
+    draws = NULL
+  )
+  class(boot) <- c("bootstrap_Sigma", "list")
+
+  p_heat <- suppressMessages(plot(fit, type = "correlation", boot = boot))
+  meta_heat <- expect_gtmb_plot_meta(
+    p_heat,
+    "correlation",
+    "extract_Sigma_table"
+  )
+  expect_equal(meta_heat$interval_status, "provided")
+  expect_true(any(is.finite(p_heat$data$lower)))
+
+  p_ell <- suppressMessages(plot(
+    fit,
+    type = "correlation_ellipse",
+    boot = boot
+  ))
+  meta_ell <- expect_gtmb_plot_meta(
+    p_ell,
+    "correlation_ellipse",
+    "extract_Sigma_table"
+  )
+  plot_data <- attr(p_ell, "gllvmTMB_data")
+  expect_equal(meta_ell$interval_status, "provided")
+  expect_true(any(plot_data$significant))
+  expect_true(any(
+    plot_data$border_colour == gllvmTMB:::.gtmb_plot_palette[["ink"]]
+  ))
+  expect_silent(print(p_ell))
+})
+
 test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()

@@ -15,11 +15,13 @@
 #'     Upper triangle = between-unit correlations (`level = "unit"`),
 #'     lower triangle = within-unit correlations (`level = "unit_obs"`),
 #'     diagonal = 1. Falls back to whichever level is present if the
-#'     other tier is absent.}
+#'     other tier is absent. Optional `boot` intervals are carried in the
+#'     plot data when supplied.}
 #'   \item{`"correlation_ellipse"`}{Ellipse matrix of trait correlations.
 #'     Ellipse direction and eccentricity encode the sign and strength of
 #'     the correlation. This is the Figure-3-style alternative to the tile
-#'     heatmap.}
+#'     heatmap. Optional `boot` intervals mark correlations whose interval
+#'     does not cross zero with black borders and stars.}
 #'   \item{`"loadings"`}{Tile heatmap of `Lambda_B` (and `Lambda_W` if
 #'     present), faceted by level. Rows = traits, columns = factors.
 #'     Pinned cells (from `lambda_constraint`) are drawn with a heavy
@@ -64,9 +66,10 @@
 #' @param boot Optional bootstrap object. This can be either a
 #'   `bootstrap_Sigma()` result or a list with elements `repeatability`,
 #'   `communality_B`, `communality_W`, each a data frame with columns
-#'   `trait`, `lower`, `upper`. It adds whiskers to the `"integration"`
-#'   plot and `c^2` boundary intervals to the `"communality"` plot. Default
-#'   `NULL` skips whiskers.
+#'   `trait`, `lower`, `upper`. A `bootstrap_Sigma()` object can add
+#'   correlation intervals to `"correlation"` / `"correlation_ellipse"`,
+#'   whiskers to `"integration"`, and `c^2` boundary intervals to
+#'   `"communality"`. Default `NULL` skips interval overlays.
 #' @param axes Length-2 or length-3 integer vector for `"ordination"` when
 #'   `d >= 2`. Length 2 draws a single biplot. Length 3 draws a static
 #'   pair-grid of the three axis pairs. For `d = 3`, the default
@@ -119,8 +122,8 @@ plot.gllvmTMB_multi <- function(
   }
   switch(
     type,
-    correlation = .plot_correlation_gtmb(x),
-    correlation_ellipse = .plot_correlation_ellipse_gtmb(x),
+    correlation = .plot_correlation_gtmb(x, boot = boot),
+    correlation_ellipse = .plot_correlation_ellipse_gtmb(x, boot = boot),
     loadings = .plot_loadings_gtmb(x, level),
     integration = .plot_integration_gtmb(x, boot = boot),
     communality = .plot_communality_gtmb(x, boot = boot),
@@ -264,7 +267,47 @@ plot.gllvmTMB_multi <- function(
 
 # ---- correlation heatmap --------------------------------------------------
 
-.correlation_plot_data_gtmb <- function(fit) {
+.correlation_merge_bootstrap_intervals <- function(tab, boot, level) {
+  if (is.null(tab) || is.null(boot)) {
+    return(tab)
+  }
+  if (!inherits(boot, "bootstrap_Sigma")) {
+    return(tab)
+  }
+  boot_tab <- tryCatch(
+    suppressMessages(extract_Sigma_table(
+      boot,
+      level = .canonical_level_name(level),
+      measure = "correlation",
+      entries = "all"
+    )),
+    error = function(e) NULL
+  )
+  if (is.null(boot_tab) || nrow(boot_tab) == 0L) {
+    tab$interval_status <- "missing"
+    return(tab)
+  }
+  key <- paste(tab$trait_i, tab$trait_j, tab$level, sep = "\r")
+  boot_key <- paste(
+    boot_tab$trait_i,
+    boot_tab$trait_j,
+    boot_tab$level,
+    sep = "\r"
+  )
+  hit <- match(key, boot_key)
+  has_hit <- !is.na(hit)
+  tab$lower[has_hit] <- boot_tab$lower[hit[has_hit]]
+  tab$upper[has_hit] <- boot_tab$upper[hit[has_hit]]
+  tab$interval_method[has_hit] <- boot_tab$interval_method[hit[has_hit]]
+  tab$interval_status <- ifelse(
+    has_hit,
+    boot_tab$interval_status[hit],
+    "missing"
+  )
+  tab
+}
+
+.correlation_plot_data_gtmb <- function(fit, boot = NULL) {
   tn <- .gtmb_trait_names(fit)
 
   tab_B <- if (isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B)) {
@@ -287,6 +330,8 @@ plot.gllvmTMB_multi <- function(
   } else {
     NULL
   }
+  tab_B <- .correlation_merge_bootstrap_intervals(tab_B, boot, "B")
+  tab_W <- .correlation_merge_bootstrap_intervals(tab_W, boot, "W")
   notes <- unique(c(
     attr(tab_B, "notes") %||% character(0),
     attr(tab_W, "notes") %||% character(0)
@@ -336,8 +381,8 @@ plot.gllvmTMB_multi <- function(
   out
 }
 
-.plot_correlation_gtmb <- function(fit) {
-  dat <- .correlation_plot_data_gtmb(fit)
+.plot_correlation_gtmb <- function(fit, boot = NULL) {
+  dat <- .correlation_plot_data_gtmb(fit, boot = boot)
   notes <- attr(dat, "notes") %||% character(0)
   dat$label_colour <- .gtmb_tile_label_colour(dat$display_value)
   levels_available <- intersect(
@@ -396,13 +441,14 @@ plot.gllvmTMB_multi <- function(
     type = "correlation",
     source = "extract_Sigma_table",
     level = levels_available,
+    interval_status = .gtmb_interval_status(dat$interval_status),
     data = dat,
     notes = notes
   )
 }
 
-.correlation_ellipse_plot_data_gtmb <- function(fit, n = 80L) {
-  cells <- .correlation_plot_data_gtmb(fit)
+.correlation_ellipse_plot_data_gtmb <- function(fit, boot = NULL, n = 80L) {
+  cells <- .correlation_plot_data_gtmb(fit, boot = boot)
   notes <- attr(cells, "notes") %||% character(0)
   cells <- cells[
     !is.na(cells$display_value) &
@@ -459,8 +505,8 @@ plot.gllvmTMB_multi <- function(
   ell
 }
 
-.plot_correlation_ellipse_gtmb <- function(fit) {
-  ell <- .correlation_ellipse_plot_data_gtmb(fit)
+.plot_correlation_ellipse_gtmb <- function(fit, boot = NULL) {
+  ell <- .correlation_ellipse_plot_data_gtmb(fit, boot = boot)
   notes <- attr(ell, "notes") %||% character(0)
   tn <- .gtmb_trait_names(fit)
   y_labels <- rev(tn)
@@ -482,6 +528,25 @@ plot.gllvmTMB_multi <- function(
     c("group", "cell_x", "cell_y"),
     drop = FALSE
   ])
+  caption <- if (any(ell$significant)) {
+    paste(
+      "Ellipse tilt/eccentricity show correlation sign and strength.",
+      "Black borders/stars mark supplied intervals that do not cross zero.",
+      sep = "\n"
+    )
+  } else if (any(ell$interval_status == "provided")) {
+    paste(
+      "Ellipse tilt/eccentricity show correlation sign and strength.",
+      "Supplied intervals cross zero for the displayed correlations.",
+      sep = "\n"
+    )
+  } else {
+    paste(
+      "Ellipse tilt/eccentricity show correlation sign and strength.",
+      "Black borders/stars require interval-aware summaries.",
+      sep = "\n"
+    )
+  }
 
   p <- ggplot2::ggplot(
     ell,
@@ -514,11 +579,7 @@ plot.gllvmTMB_multi <- function(
       y = NULL,
       title = "Trait correlations (ellipses)",
       subtitle = subtitle,
-      caption = paste(
-        "Ellipse tilt/eccentricity show correlation sign and strength.",
-        "Black borders/stars require interval-aware summaries.",
-        sep = "\n"
-      )
+      caption = caption
     ) +
     .gtmb_theme_figure() +
     ggplot2::theme(
@@ -542,6 +603,7 @@ plot.gllvmTMB_multi <- function(
     type = "correlation_ellipse",
     source = "extract_Sigma_table",
     level = levels_available,
+    interval_status = .gtmb_interval_status(ell$interval_status),
     data = ell,
     notes = notes
   )

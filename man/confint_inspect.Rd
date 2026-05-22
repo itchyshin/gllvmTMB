@@ -2,7 +2,7 @@
 % Please edit documentation in R/confint-inspect.R
 \name{confint_inspect}
 \alias{confint_inspect}
-\title{Inspect the profile-likelihood curve for a direct profile target}
+\title{Inspect profile confidence-interval shape for a fitted model}
 \usage{
 confint_inspect(
   fit,
@@ -14,7 +14,7 @@ confint_inspect(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{parm}{Character. A single profile-target label from
 \code{\link[=profile_targets]{profile_targets()}}. Examples: \code{"sigma_eps"}, \code{"sd_B[1]"},
@@ -71,16 +71,25 @@ Wald-vs-profile disagrees), \code{"flat_at_mle"},
 }
 }
 \description{
-Returns the full profile-likelihood curve, the deviance bounds,
-and (when \code{ggplot2} is available) a \code{ggplot} visualisation showing
-the curve, the MLE, the chi-squared threshold, and the resulting
-confidence-interval bounds. This is the visual-verification
-companion to \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} with
-\code{method = "profile"}: it answers the
-question "is this profile well-behaved?" before the user
-interprets the bound.
+Use \code{confint_inspect()} when a profile confidence interval is
+missing, one-sided, very wide, or hard to trust. Most users should
+start with \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} or the matching \verb{extract_*()}
+interval helper; this function is the advanced visual check for a
+direct profile target.
 }
 \details{
+It returns the full profile-likelihood curve, the deviance bounds,
+and (when \code{ggplot2} is available) a \code{ggplot} visualisation showing
+the curve, the MLE, the chi-squared threshold, and the resulting
+confidence-interval bounds. It answers the question "is this
+profile well-behaved?" before the user interprets the bound.
+
+Scope boundary (DIA-07 / CI-02): IN, direct profile-curve inspection
+for profile-ready targets from \code{\link[=profile_targets]{profile_targets()}}. PARTIAL, derived
+summaries such as communalities and correlations are inspected
+through their \code{extract_*(method = "profile")} helpers. PLANNED,
+broader target-explicit profile calibration remains M3 work.
+
 Common failure modes to look for in the returned plot
 (cross-referenced in the
 \href{https://itchyshin.github.io/gllvmTMB/articles/troubleshooting-profile.html}{troubleshooting-profile}
@@ -96,7 +105,8 @@ and the Wald CI hides the flatness.
 \code{bounds$lower = -Inf} or \code{bounds$upper = Inf}. Boundary
 parameter (variance pinned at 0) or unidentified upper tail.
 \item \strong{No crossing at all}: \code{bounds$lower = bounds$upper = NA}. The
-profile didn't converge. Switch to bootstrap.
+profile didn't converge. Use bootstrap uncertainty through
+\code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} or the matching extractor bootstrap method.
 }
 }
 \examples{

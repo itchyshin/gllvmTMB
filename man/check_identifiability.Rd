@@ -2,7 +2,7 @@
 % Please edit documentation in R/check-identifiability.R
 \name{check_identifiability}
 \alias{check_identifiability}
-\title{Identifiability diagnostic via simulate-refit + Procrustes alignment}
+\title{Run advanced simulate-refit identifiability checks}
 \usage{
 check_identifiability(
   fit,
@@ -15,7 +15,7 @@ check_identifiability(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit. \strong{Initial scope} (this release):
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. \strong{Initial scope} (this release):
 Gaussian fits only. Non-Gaussian / mixed-family support is
 queued for the Phase 1b validation milestone.}
 
@@ -59,14 +59,25 @@ fire.}
 }
 }
 \description{
-Simulates \code{sim_reps} datasets from the fitted model, refits each replica
-under the same formula, applies Procrustes alignment to the loading
-matrices, and aggregates per-parameter recovery statistics plus
-Hessian-eigenvalue rank checks. Returns an object of class
-\code{gllvmTMB_identifiability} with components \verb{$recovery}, \verb{$loadings},
-\verb{$hessian}, and \verb{$flags}.
+\code{check_identifiability()} is an advanced validation helper, not the
+first diagnostic to run after every model. Start with
+\code{\link[=check_gllvmTMB]{check_gllvmTMB()}} or \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}. Use this function when a
+reduced-rank fit appears numerically healthy but you need simulation
+evidence that the latent loading structure is identifiable.
 }
 \details{
+It simulates \code{sim_reps} datasets from the fitted model, refits each
+replica under the same formula, applies Procrustes alignment to the
+loading matrices, and aggregates per-parameter recovery statistics
+plus Hessian-eigenvalue rank checks. Returns an object of class
+\code{gllvmTMB_identifiability} with components \verb{$recovery}, \verb{$loadings},
+\verb{$hessian}, and \verb{$flags}.
+
+Scope boundary (DIA-03): IN, Gaussian simulate-refit loading
+identifiability checks. PARTIAL, non-Gaussian and mixed-family
+support is not yet implemented. PLANNED, broader family coverage
+belongs to the Phase 1b / M3 validation path.
+
 The canonical case this catches that no other diagnostic does is a
 \strong{spurious extra factor masquerading as identified}: when \code{d_B} is
 mis-specified (e.g. fit \code{d = 2} when truth is \code{d = 1}), \code{pdHess} may

@@ -2,12 +2,12 @@
 % Please edit documentation in R/profile-targets.R
 \name{profile_targets}
 \alias{profile_targets}
-\title{Profile-likelihood target inventory for a \code{gllvmTMB_multi} fit}
+\title{List profile-ready confidence-interval targets for a fitted model}
 \usage{
 profile_targets(object, ready_only = FALSE)
 }
 \arguments{
-\item{object}{A \code{gllvmTMB_multi} fit.}
+\item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{ready_only}{If \code{TRUE}, return only rows with
 \code{profile_ready = TRUE}. Default \code{FALSE} returns the full
@@ -46,16 +46,29 @@ directly to \code{confint(fit, parm = ..., method = "profile")}.}
 }
 }
 \description{
-Returns a tidy data frame, one row per profile target, indicating
-whether the target is profile-ready and (if not) why. Direct
-targets correspond to a single TMB parameter element (e.g.
-\code{b_fix[1]}, \code{sigma_eps}, \code{sd_B[2]}) and can be passed to
+\code{profile_targets()} is an advanced inventory for users who need to
+diagnose or script profile confidence intervals. Most users should
+start with \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}} or a report-ready extractor
+such as \code{\link[=extract_correlations]{extract_correlations()}}. This helper tells you which
+\code{parm} labels can be profiled directly and which derived summaries
+should be routed through an extractor.
+}
+\details{
+The returned tidy data frame has one row per profile target and
+records whether the target is profile-ready and, if not, why.
+Direct targets correspond to a single TMB parameter element (for
+example \code{b_fix[1]}, \code{sigma_eps}, or \code{sd_B[2]}) and can be passed to
 \code{confint(fit, parm = ..., method = "profile")}. Derived targets
 (communality, repeatability, phylogenetic signal, trait
 correlations) are computed by the matching \code{extract_*(method = "profile")} extractor, not by \code{confint()} directly; the
 \code{profile_note} column points the user at the right extractor.
-}
-\details{
+
+Scope boundary (MIS-15 / CI-02): IN, the controlled vocabulary and
+direct-profile routing are covered for fitted models with retained
+TMB objects. PARTIAL, derived targets depend on the corresponding
+extractor profile method. PLANNED, broader target-explicit profile
+calibration remains M3 work.
+
 The output's controlled vocabularies for \code{target_type},
 \code{profile_note}, and \code{transformation} mirror drmTMB's
 \code{profile_targets()} to keep the broader TMB-package family

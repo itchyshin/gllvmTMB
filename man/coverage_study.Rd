@@ -2,7 +2,7 @@
 % Please edit documentation in R/coverage-study.R
 \name{coverage_study}
 \alias{coverage_study}
-\title{Empirical coverage-rate study for a fitted gllvmTMB_multi}
+\title{Run an advanced empirical coverage study for a fitted model}
 \usage{
 coverage_study(
   fit,
@@ -15,7 +15,7 @@ coverage_study(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{parm}{Character vector of profile-target labels (see
 \code{\link[=profile_targets]{profile_targets()}}). Default \code{NULL} selects all
@@ -67,20 +67,34 @@ refit failed (a separate \code{n_excluded} column tracks this).}
 }
 }
 \description{
-For each of \code{n_reps} parametric-bootstrap replicates, simulates
-a new dataset from the fitted model, refits the same formula,
-computes confidence intervals via the requested \code{methods}, and
-counts the fraction of CIs that contain the \strong{original fit's}
-point estimate (the "truth" for this parametric-bootstrap study).
+\code{coverage_study()} is an advanced validation helper for interval
+calibration, not a first-use diagnostic. Start with
+\code{\link[=check_gllvmTMB]{check_gllvmTMB()}}, \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}, \code{\link[=confint.gllvmTMB_multi]{confint.gllvmTMB_multi()}},
+or the report-ready extractors. Use this function when you need a
+fit-specific simulate-refit audit of whether nominal confidence
+intervals contain the fitted model's generating values.
 }
 \details{
+For each of \code{n_reps} parametric-bootstrap replicates, it simulates a
+new dataset from the fitted model, refits the same formula, computes
+confidence intervals via the requested \code{methods}, and counts the
+fraction of CIs that contain the \strong{original fit's} point estimate
+(the "truth" for this parametric-bootstrap study).
+
 This is the empirical-validation counterpart to
 \code{gllvmTMB_check_consistency()} (which tests whether the Laplace
 marginal score is centred) and \code{check_identifiability()} (which
-tests Procrustes-aligned loading recovery). Per the audit's
-Phase 1b validation milestone, \strong{empirical coverage >= 94\%} on
-the parameters that matter is the recommended sanity check
-before treating CIs as publication-ready.
+tests Procrustes-aligned loading recovery). Per the audit's Phase
+1b validation milestone, \strong{empirical coverage >= 94\%} on the
+parameters that matter is the recommended fit-specific check before
+treating CIs as publication-ready.
+
+Scope boundary (CI-08 / CI-10): IN, the helper returns reproducible
+coverage summaries for a fitted model and the requested direct
+profile targets. PARTIAL, package-level production calibration has
+not yet passed for every family, dimension, and target surface.
+PLANNED, M3 target-explicit simulation grids decide when broader
+interval-calibration claims move to covered.
 
 When coverage rates fall below 94\%, common causes are:
 \itemize{

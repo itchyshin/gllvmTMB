@@ -7216,3 +7216,73 @@ Deliberately not run:
   rendered because the cascade scan found no article examples using the old
   `confint()` Sigma tokens. No 3-OS CI was available until the branch is
   pushed.
+
+## 2026-05-22 -- Diagnostic reference docs
+
+Scope:
+
+- Cleaned the diagnostics and uncertainty reference cluster:
+  `confint_inspect()`, `profile_targets()`, `bootstrap_Sigma()`,
+  `check_gllvmTMB()`, `gllvmTMB_diagnose()`, `sanity_multi()`,
+  `check_identifiability()`, `coverage_study()`, and
+  `gllvmTMB_check_consistency()`.
+- Reframed first-line diagnostics as action-first pages for fitted models.
+- Marked profile inspection and simulation-validation helpers as advanced
+  diagnostics, not normal first-use workflow.
+- Reframed `bootstrap_Sigma()` as a practical uncertainty fallback when
+  Hessian, Wald, or profile intervals are unsafe, while avoiding posterior
+  language.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch`
+  -> `codex/reference-function-audit-2026-05-22`, clean, ahead 6.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent local work was the current reference-audit lane on top of
+  `origin/main` commit `c1dc2e4`.
+- `air format R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated affected diagnostic Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "confint-inspect|profile-targets|bootstrap-Sigma|sanity-multi|gllvmTMB-diagnose|coverage-study|check-identifiability|check-consistency|gllvmTMBcontrol", stop_on_failure = TRUE)'`
+  -> 221 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale first-line wording scan:
+
+  ```sh
+  rg -n 'gllvmTMB_multi fit|gllvmTMB_multi object|A \\code\\{gllvmTMB_multi\\} fit|posterior uncertainty|full posterior|Switch to bootstrap|Empirical coverage-rate study for a fitted gllvmTMB_multi|Parametric bootstrap for Sigma|Profile-likelihood target inventory for a \\code\\{gllvmTMB_multi\\} fit|Machine-readable convergence|One-call diagnostic' R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd
+  ```
+
+  -> only the internal source header `R/methods-gllvmTMB.R:1` remained.
+- Register-row cross-check:
+
+  ```sh
+  rg -n 'Scope boundary|DIA-01|DIA-02|DIA-03|DIA-05|DIA-07|DIA-08|DIA-10|MIS-15|EXT-13|CI-02|CI-03|CI-08|CI-10' R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd docs/design/35-validation-debt-register.md
+  ```
+
+  -> touched pages cite existing validation-debt rows.
+- Rose stale-terminology scan:
+
+  ```sh
+  rg -n '\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|U_phy|U_non|meta_known_V|gllvmTMB_wide|full.*posterior|profile-likelihood default|trio' R/confint-inspect.R R/profile-targets.R R/bootstrap-sigma.R R/diagnose.R R/methods-gllvmTMB.R R/check-identifiability.R R/coverage-study.R R/check-consistency.R man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd
+  ```
+
+  -> no hits.
+- Rd spot-check:
+  `tail -5 man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd`
+  -> normal endings.
+- Rd keyword check:
+  `grep -Hc '^\\keyword' man/confint_inspect.Rd man/profile_targets.Rd man/bootstrap_Sigma.Rd man/check_gllvmTMB.Rd man/gllvmTMB_diagnose.Rd man/sanity_multi.Rd man/check_identifiability.Rd man/coverage_study.Rd man/gllvmTMB_check_consistency.Rd`
+  -> all 0 keyword entries.
+
+Deliberately not run:
+
+- Full `devtools::test()` and full `devtools::check()` were not rerun for this
+  reference-prose slice. No vignettes or articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.

@@ -2,12 +2,12 @@
 % Please edit documentation in R/check-consistency.R
 \name{gllvmTMB_check_consistency}
 \alias{gllvmTMB_check_consistency}
-\title{Laplace-consistency check via TMB::checkConsistency()}
+\title{Run an advanced Laplace-consistency check}
 \usage{
 gllvmTMB_check_consistency(fit, n_sim = 100L, seed = NULL, estimate = FALSE)
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{n_sim}{Integer number of simulate-evaluate replicates.
 Default \code{100L}. Cost is roughly \code{n_sim} joint likelihood
@@ -55,16 +55,28 @@ in case the user wants the per-replicate gradient matrix.}
 }
 }
 \description{
-Simulates \code{n_sim} datasets from the fitted model under the joint
-parameter vector at the MLE, then tests whether the approximate
-marginal score function is centred at zero across the
-simulations. A non-centred score is a sign that the Laplace
-approximation is \strong{unreliable} for this fit -- typically because
-the random-effects posterior is far from Gaussian (saturated
-binomial / Beta, sparse counts, weakly identified random effects)
-or the data don't constrain the random effects well.
+\code{gllvmTMB_check_consistency()} is an advanced validation helper for
+the Laplace approximation, not a first-use diagnostic. Start with
+\code{\link[=check_gllvmTMB]{check_gllvmTMB()}} or \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}. Use this function when
+a fit looks numerically acceptable but you need a direct check of
+whether the approximate marginal score is centred.
 }
 \details{
+It simulates \code{n_sim} datasets from the fitted model under the joint
+parameter vector at the MLE, then tests whether the approximate
+marginal score function is centred at zero across the simulations. A
+non-centred score is a sign that the Laplace approximation is
+\strong{unreliable} for this fit -- typically because the random-effects
+posterior is far from Gaussian (saturated binomial / Beta, sparse
+counts, weakly identified random effects) or the data don't constrain
+the random effects well.
+
+Scope boundary (DIA-02): IN, local Laplace-consistency diagnostics
+for a fitted model. PARTIAL, this is a diagnostic signal rather than
+a substitute for bootstrap, profile, or external Bayesian
+calibration. PLANNED, broader calibration evidence belongs to the M3
+validation workflow.
+
 This is a complementary signal to \code{\link[=sanity_multi]{sanity_multi()}} (which checks
 Hessian definiteness, gradient magnitude, convergence flags) and
 to \code{\link[=check_identifiability]{check_identifiability()}} (which checks Procrustes-aligned

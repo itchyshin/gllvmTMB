@@ -2,7 +2,7 @@
 % Please edit documentation in R/diagnose.R
 \name{gllvmTMB_diagnose}
 \alias{gllvmTMB_diagnose}
-\title{One-call diagnostic + biological summary for a \code{gllvmTMB_multi} fit}
+\title{Diagnose a fitted model and suggest next actions}
 \usage{
 gllvmTMB_diagnose(
   object,
@@ -13,7 +13,7 @@ gllvmTMB_diagnose(
 )
 }
 \arguments{
-\item{object}{A \code{gllvmTMB_multi} fit.}
+\item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{gradient_thresh, se_thresh}{Forwarded to \code{\link[=sanity_multi]{sanity_multi()}}.}
 
@@ -30,11 +30,21 @@ Invisibly a list with components: \code{sanity} (the
 and \code{hints} (character vector of suggested actions).
 }
 \description{
-This is the function to call right after \code{fit <- gllvmTMB(...)}. It
-rolls up the existing diagnostics (\code{\link[=sanity_multi]{sanity_multi()}}), the rotation
-identifiability advisory, and the key biological summaries
-(correlation diagonals, ICCs, communalities) into a single human-
-readable report with explicit next-step hints for any WARN signal.
+This is the human-readable diagnostic to call right after
+\code{fit <- gllvmTMB(...)}. It combines the quick numerical screen
+(\code{\link[=sanity_multi]{sanity_multi()}}), the rotation identifiability advisory, and key
+biological summaries (correlation diagonals, ICCs, communalities)
+into a single report with explicit next-step hints for any \code{WARN}
+signal. Use \code{\link[=check_gllvmTMB]{check_gllvmTMB()}} when you need the same fit-health
+checks as a stable table for scripts or reports.
+}
+\details{
+Scope boundary (DIA-05 / DIA-08 / DIA-10): IN, first-line
+convergence, Hessian, standard-error, restart, and rotation
+diagnostics. PARTIAL, it reports risks and summaries but does not
+replace profile, bootstrap, or simulation calibration. PLANNED, M3
+target-explicit validation will decide which interval warnings can
+be promoted to broader guarantees.
 }
 \examples{
 \dontrun{
@@ -44,7 +54,8 @@ gllvmTMB_diagnose(fit)
 }
 }
 \seealso{
-\code{\link[=sanity_multi]{sanity_multi()}}, \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}},
+\code{\link[=check_gllvmTMB]{check_gllvmTMB()}}, \code{\link[=sanity_multi]{sanity_multi()}},
+\code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}},
 \code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_communality]{extract_communality()}},
 \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}} / \code{\link[=compare_indep_vs_two_psi]{compare_indep_vs_two_psi()}} for
 identifiability cross-checks on the paired phylogenetic fit.

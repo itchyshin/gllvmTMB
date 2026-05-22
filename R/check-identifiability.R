@@ -25,14 +25,25 @@
 ## simulate.gllvmTMB_multi() method is extended to handle family-specific
 ## response draws beyond the current Gaussian-noise path.
 
-#' Identifiability diagnostic via simulate-refit + Procrustes alignment
+#' Run advanced simulate-refit identifiability checks
 #'
-#' Simulates `sim_reps` datasets from the fitted model, refits each replica
-#' under the same formula, applies Procrustes alignment to the loading
-#' matrices, and aggregates per-parameter recovery statistics plus
-#' Hessian-eigenvalue rank checks. Returns an object of class
+#' `check_identifiability()` is an advanced validation helper, not the
+#' first diagnostic to run after every model. Start with
+#' [check_gllvmTMB()] or [gllvmTMB_diagnose()]. Use this function when a
+#' reduced-rank fit appears numerically healthy but you need simulation
+#' evidence that the latent loading structure is identifiable.
+#'
+#' It simulates `sim_reps` datasets from the fitted model, refits each
+#' replica under the same formula, applies Procrustes alignment to the
+#' loading matrices, and aggregates per-parameter recovery statistics
+#' plus Hessian-eigenvalue rank checks. Returns an object of class
 #' `gllvmTMB_identifiability` with components `$recovery`, `$loadings`,
 #' `$hessian`, and `$flags`.
+#'
+#' Scope boundary (DIA-03): IN, Gaussian simulate-refit loading
+#' identifiability checks. PARTIAL, non-Gaussian and mixed-family
+#' support is not yet implemented. PLANNED, broader family coverage
+#' belongs to the Phase 1b / M3 validation path.
 #'
 #' The canonical case this catches that no other diagnostic does is a
 #' **spurious extra factor masquerading as identified**: when `d_B` is
@@ -42,7 +53,7 @@
 #' Procrustes alignment across replicates exposes the spurious column
 #' as a near-zero residual magnitude.
 #'
-#' @param fit A `gllvmTMB_multi` fit. **Initial scope** (this release):
+#' @param fit A fit returned by [gllvmTMB()]. **Initial scope** (this release):
 #'   Gaussian fits only. Non-Gaussian / mixed-family support is
 #'   queued for the Phase 1b validation milestone.
 #' @param sim_reps Integer number of simulate-refit replicates. Default
@@ -89,62 +100,75 @@
 #'   [check_auto_residual()], [bootstrap_Sigma()].
 #'
 #' @export
-check_identifiability <- function(fit,
-                                  sim_reps = 100L,
-                                  alpha    = 0.05,
-                                  parallel = FALSE,
-                                  seed     = NULL,
-                                  tier     = c("B", "W", "phy"),
-                                  verbose  = TRUE) {
-
+check_identifiability <- function(
+  fit,
+  sim_reps = 100L,
+  alpha = 0.05,
+  parallel = FALSE,
+  seed = NULL,
+  tier = c("B", "W", "phy"),
+  verbose = TRUE
+) {
   ## ---- validation -----------------------------------------------------
-  if (!inherits(fit, "gllvmTMB_multi"))
+  if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+  }
   sim_reps <- as.integer(sim_reps)
-  if (length(sim_reps) != 1L || is.na(sim_reps) || sim_reps < 2L)
+  if (length(sim_reps) != 1L || is.na(sim_reps) || sim_reps < 2L) {
     cli::cli_abort("{.arg sim_reps} must be an integer >= 2.")
-  if (length(alpha) != 1L || !is.finite(alpha) ||
-      alpha <= 0 || alpha >= 1)
+  }
+  if (length(alpha) != 1L || !is.finite(alpha) || alpha <= 0 || alpha >= 1) {
     cli::cli_abort("{.arg alpha} must be in (0, 1).")
-  if (isTRUE(parallel))
+  }
+  if (isTRUE(parallel)) {
     cli::cli_warn(
       "{.arg parallel = TRUE} is a placeholder in this release and runs serially. Use {.fn future_lapply} externally if needed."
     )
+  }
   tier <- match.arg(tier, several.ok = TRUE)
 
   ## ---- V1 scope: Gaussian only ---------------------------------------
   fids <- fit$tmb_data$family_id_vec
   if (!is.null(fids) && any(fids != 0L)) {
-    cli::cli_abort(c(
-      "{.fn check_identifiability} currently supports Gaussian fits only.",
-      "x" = "This fit contains non-Gaussian families.",
-      "i" = "Non-Gaussian / mixed-family support is queued for the Phase 1b validation milestone.",
-      ">" = "For now, use {.fn sanity_multi} + {.fn bootstrap_Sigma} as the inference-uncertainty surface for non-Gaussian fits."
-    ), class = "gllvmTMB_check_identifiability_nongaussian")
+    cli::cli_abort(
+      c(
+        "{.fn check_identifiability} currently supports Gaussian fits only.",
+        "x" = "This fit contains non-Gaussian families.",
+        "i" = "Non-Gaussian / mixed-family support is queued for the Phase 1b validation milestone.",
+        ">" = "For now, use {.fn sanity_multi} + {.fn bootstrap_Sigma} as the inference-uncertainty surface for non-Gaussian fits."
+      ),
+      class = "gllvmTMB_check_identifiability_nongaussian"
+    )
   }
 
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
 
   ## ---- extract truth --------------------------------------------------
   truth <- .ci_extract_truth(fit, tier = tier)
 
   ## ---- simulate response paths ---------------------------------------
-  if (verbose)
+  if (verbose) {
     cli::cli_inform("Simulating {sim_reps} response datasets ...")
+  }
   sim_y <- stats::simulate(fit, nsim = sim_reps)
-  if (!is.matrix(sim_y))
+  if (!is.matrix(sim_y)) {
     sim_y <- as.matrix(sim_y)
+  }
 
   ## ---- refit loop -----------------------------------------------------
-  if (verbose)
+  if (verbose) {
     cli::cli_inform(
       "Refitting {sim_reps} replicas (this is the slow part; budget ~5-15 minutes serial on a Tier-1 fixture) ..."
     )
+  }
   replicas <- vector("list", sim_reps)
   progress_step <- max(1L, sim_reps %/% 10L)
   for (i in seq_len(sim_reps)) {
-    if (verbose && (i %% progress_step == 0L || i == sim_reps))
+    if (verbose && (i %% progress_step == 0L || i == sim_reps)) {
       cli::cli_inform("  rep {i}/{sim_reps}")
+    }
     replicas[[i]] <- .ci_refit_one(fit, sim_y[, i], truth = truth)
   }
 
@@ -163,8 +187,10 @@ check_identifiability <- function(fit,
   if (converged_rate < 0.9) {
     flags <- c(flags, "converged_rate < 0.9")
   }
-  if (any(hess$n_zero_eig > 0L, na.rm = TRUE) ||
-      any(hess$min_eig < 1e-8 * hess$max_eig, na.rm = TRUE)) {
+  if (
+    any(hess$n_zero_eig > 0L, na.rm = TRUE) ||
+      any(hess$min_eig < 1e-8 * hess$max_eig, na.rm = TRUE)
+  ) {
     flags <- c(flags, "rank_deficient")
   }
   ## Loading collapse: any tier has a column with mean abs Procrustes
@@ -174,14 +200,18 @@ check_identifiability <- function(fit,
     collapse_hit <- FALSE
     for (lvl in names(loadings)) {
       M <- loadings[[lvl]]
-      if (is.null(M) || ncol(M) < 2L) next
+      if (is.null(M) || ncol(M) < 2L) {
+        next
+      }
       col_mag <- colMeans(abs(M))
       ## sort descending; if the smallest is < 0.1 * the second smallest
       ## (or near zero in absolute terms), call it collapse.
       sorted <- sort(col_mag)
-      if (length(sorted) >= 2L &&
+      if (
+        length(sorted) >= 2L &&
           sorted[1L] < 0.1 * sorted[2L] &&
-          sorted[1L] < 0.05) {
+          sorted[1L] < 0.05
+      ) {
         collapse_hit <- TRUE
         break
       }
@@ -189,9 +219,16 @@ check_identifiability <- function(fit,
     if (collapse_hit) flags <- c(flags, "loading_collapse")
   }
   ## Slow inference: median per-replicate refit time > 60 s.
-  median_t <- stats::median(vapply(replicas, function(r) {
-    if (is.null(r$elapsed)) NA_real_ else r$elapsed
-  }, numeric(1L)), na.rm = TRUE)
+  median_t <- stats::median(
+    vapply(
+      replicas,
+      function(r) {
+        if (is.null(r$elapsed)) NA_real_ else r$elapsed
+      },
+      numeric(1L)
+    ),
+    na.rm = TRUE
+  )
   if (is.finite(median_t) && median_t > 60) {
     flags <- c(flags, "slow_inference")
   }
@@ -200,10 +237,10 @@ check_identifiability <- function(fit,
   out <- list(
     recovery = recovery,
     loadings = loadings,
-    hessian  = hess,
-    flags    = flags,
-    call     = match.call(),
-    n_reps   = sim_reps,
+    hessian = hess,
+    flags = flags,
+    call = match.call(),
+    n_reps = sim_reps,
     n_converged = sum(vapply(replicas, `[[`, logical(1L), "converged"))
   )
   class(out) <- "gllvmTMB_identifiability"
@@ -223,8 +260,8 @@ check_identifiability <- function(fit,
   for (lvl in tier) {
     slot <- switch(
       lvl,
-      "B"   = "Lambda_B",
-      "W"   = "Lambda_W",
+      "B" = "Lambda_B",
+      "W" = "Lambda_W",
       "phy" = "Lambda_phy"
     )
     if (!is.null(rep_obj[[slot]])) {
@@ -237,8 +274,8 @@ check_identifiability <- function(fit,
   for (lvl in tier) {
     slot <- switch(
       lvl,
-      "B"   = "sd_B",
-      "W"   = "sd_W",
+      "B" = "sd_B",
+      "W" = "sd_W",
       "phy" = "sd_phy"
     )
     if (!is.null(rep_obj[[slot]])) {
@@ -271,27 +308,29 @@ check_identifiability <- function(fit,
 ## up `latent()` / `unique()` / `phylo_*()` / `spatial_*()` keywords. This
 ## is the same recipe `bootstrap_Sigma()` uses.
 .ci_refit_one <- function(fit, sim_y_i, truth) {
-  full_formula  <- .reconstruct_multi_formula(fit)
+  full_formula <- .reconstruct_multi_formula(fit)
   response_name <- all.vars(fit$formula[[2L]])[1L]
   df_i <- fit$data
   df_i[[response_name]] <- as.numeric(sim_y_i)
   t0 <- Sys.time()
   aux <- list(
-    phylo_vcv         = fit$phylo_vcv,
-    phylo_tree        = fit$phylo_tree,
-    mesh              = fit$mesh,
+    phylo_vcv = fit$phylo_vcv,
+    phylo_tree = fit$phylo_tree,
+    mesh = fit$mesh,
     lambda_constraint = fit$lambda_constraint
   )
   aux <- aux[!vapply(aux, is.null, logical(1L))]
   call_args <- c(
-    list(formula  = full_formula,
-         data     = df_i,
-         family   = fit$family,
-         trait    = fit$trait_col,
-         unit     = fit$unit_col,
-         unit_obs = fit$unit_obs_col,
-         cluster  = fit$cluster_col,
-         silent   = TRUE),
+    list(
+      formula = full_formula,
+      data = df_i,
+      family = fit$family,
+      trait = fit$trait_col,
+      unit = fit$unit_col,
+      unit_obs = fit$unit_obs_col,
+      cluster = fit$cluster_col,
+      silent = TRUE
+    ),
     aux
   )
   refit <- tryCatch(
@@ -302,35 +341,40 @@ check_identifiability <- function(fit,
   if (inherits(refit, "error")) {
     return(list(
       converged = FALSE,
-      elapsed   = elapsed,
-      error     = conditionMessage(refit),
-      loadings  = NULL,
-      psi       = NULL,
-      b_fix     = NULL,
-      hess      = NULL
+      elapsed = elapsed,
+      error = conditionMessage(refit),
+      loadings = NULL,
+      psi = NULL,
+      b_fix = NULL,
+      hess = NULL
     ))
   }
   b_idx <- which(names(refit$opt$par) == "b_fix")
   list(
     converged = identical(refit$opt$convergence, 0L) ||
-                isTRUE(refit$sd_report$pdHess),
-    elapsed   = elapsed,
-    error     = NA_character_,
-    loadings  = .extract_loadings_for_ci(refit),
-    psi       = .extract_psi_for_ci(refit),
-    b_fix     = if (length(b_idx) > 0L)
-                  as.numeric(refit$opt$par[b_idx]) else NULL,
-    hess      = .ci_hessian_one(refit)
+      isTRUE(refit$sd_report$pdHess),
+    elapsed = elapsed,
+    error = NA_character_,
+    loadings = .extract_loadings_for_ci(refit),
+    psi = .extract_psi_for_ci(refit),
+    b_fix = if (length(b_idx) > 0L) {
+      as.numeric(refit$opt$par[b_idx])
+    } else {
+      NULL
+    },
+    hess = .ci_hessian_one(refit)
   )
 }
 
 .extract_loadings_for_ci <- function(refit) {
   out <- list()
   for (lvl in c("B", "W", "phy")) {
-    slot <- switch(lvl,
-                   "B"   = "Lambda_B",
-                   "W"   = "Lambda_W",
-                   "phy" = "Lambda_phy")
+    slot <- switch(
+      lvl,
+      "B" = "Lambda_B",
+      "W" = "Lambda_W",
+      "phy" = "Lambda_phy"
+    )
     if (!is.null(refit$report[[slot]])) {
       out[[lvl]] <- refit$report[[slot]]
     }
@@ -341,10 +385,7 @@ check_identifiability <- function(fit,
 .extract_psi_for_ci <- function(refit) {
   out <- list()
   for (lvl in c("B", "W", "phy")) {
-    slot <- switch(lvl,
-                   "B"   = "sd_B",
-                   "W"   = "sd_W",
-                   "phy" = "sd_phy")
+    slot <- switch(lvl, "B" = "sd_B", "W" = "sd_W", "phy" = "sd_phy")
     if (!is.null(refit$report[[slot]])) {
       out[[lvl]] <- as.numeric(refit$report[[slot]])
     }
@@ -356,12 +397,20 @@ check_identifiability <- function(fit,
 ## estimate E (T x d), find an orthogonal matrix Q (d x d) such that
 ## ||T - E Q||_F is minimised. Solution via SVD of t(E) %*% T.
 .procrustes_align <- function(target, estimate) {
-  if (is.null(target) || is.null(estimate)) return(estimate)
-  if (!identical(dim(target), dim(estimate))) return(estimate)
-  if (ncol(target) < 1L) return(estimate)
+  if (is.null(target) || is.null(estimate)) {
+    return(estimate)
+  }
+  if (!identical(dim(target), dim(estimate))) {
+    return(estimate)
+  }
+  if (ncol(target) < 1L) {
+    return(estimate)
+  }
   cross <- crossprod(estimate, target)
   s <- tryCatch(svd(cross), error = function(e) NULL)
-  if (is.null(s)) return(estimate)
+  if (is.null(s)) {
+    return(estimate)
+  }
   Q <- s$u %*% t(s$v)
   estimate %*% Q
 }
@@ -373,18 +422,27 @@ check_identifiability <- function(fit,
   out <- list()
   for (lvl in tier) {
     target <- truth$loadings[[lvl]]
-    if (is.null(target)) next
+    if (is.null(target)) {
+      next
+    }
     aligned_residuals <- list()
     for (r in replicas) {
-      if (!isTRUE(r$converged)) next
+      if (!isTRUE(r$converged)) {
+        next
+      }
       est <- r$loadings[[lvl]]
-      if (is.null(est)) next
+      if (is.null(est)) {
+        next
+      }
       aligned <- .procrustes_align(target, est)
       aligned_residuals[[length(aligned_residuals) + 1L]] <- aligned - target
     }
-    if (length(aligned_residuals) == 0L) next
+    if (length(aligned_residuals) == 0L) {
+      next
+    }
     ## Stack into an array and take the mean abs across the rep dim.
-    M <- abs(Reduce("+", lapply(aligned_residuals, abs))) / length(aligned_residuals)
+    M <- abs(Reduce("+", lapply(aligned_residuals, abs))) /
+      length(aligned_residuals)
     rownames(M) <- rownames(target)
     colnames(M) <- colnames(target) %||% paste0("LV", seq_len(ncol(M)))
     out[[lvl]] <- M
@@ -397,8 +455,10 @@ check_identifiability <- function(fit,
   H <- tryCatch(solve(refit$sd_report$cov.fixed), error = function(e) NULL)
   if (is.null(H)) {
     return(data.frame(
-      min_eig = NA_real_, max_eig = NA_real_,
-      condition_number = NA_real_, n_zero_eig = NA_integer_,
+      min_eig = NA_real_,
+      max_eig = NA_real_,
+      condition_number = NA_real_,
+      n_zero_eig = NA_integer_,
       pdHess = isTRUE(refit$sd_report$pdHess)
     ))
   }
@@ -408,18 +468,22 @@ check_identifiability <- function(fit,
   )
   if (all(is.na(ev))) {
     return(data.frame(
-      min_eig = NA_real_, max_eig = NA_real_,
-      condition_number = NA_real_, n_zero_eig = NA_integer_,
+      min_eig = NA_real_,
+      max_eig = NA_real_,
+      condition_number = NA_real_,
+      n_zero_eig = NA_integer_,
       pdHess = isTRUE(refit$sd_report$pdHess)
     ))
   }
   min_ev <- min(ev)
   max_ev <- max(ev)
-  cond   <- if (min_ev > 0) max_ev / min_ev else Inf
+  cond <- if (min_ev > 0) max_ev / min_ev else Inf
   n_zero <- sum(ev < 1e-8 * max_ev)
   data.frame(
-    min_eig = min_ev, max_eig = max_ev,
-    condition_number = cond, n_zero_eig = as.integer(n_zero),
+    min_eig = min_ev,
+    max_eig = max_ev,
+    condition_number = cond,
+    n_zero_eig = as.integer(n_zero),
     pdHess = isTRUE(refit$sd_report$pdHess)
   )
 }
@@ -430,8 +494,10 @@ check_identifiability <- function(fit,
     h <- r$hess
     if (is.null(h)) {
       h <- data.frame(
-        min_eig = NA_real_, max_eig = NA_real_,
-        condition_number = NA_real_, n_zero_eig = NA_integer_,
+        min_eig = NA_real_,
+        max_eig = NA_real_,
+        condition_number = NA_real_,
+        n_zero_eig = NA_integer_,
         pdHess = FALSE
       )
     }
@@ -449,10 +515,14 @@ check_identifiability <- function(fit,
   n_ok <- length(ok)
   if (n_ok == 0L) {
     return(data.frame(
-      param = character(0), tier = character(0),
-      truth = numeric(0), mean_est = numeric(0),
-      bias = numeric(0), rmse = numeric(0),
-      sd_est = numeric(0), coverage_95 = numeric(0),
+      param = character(0),
+      tier = character(0),
+      truth = numeric(0),
+      mean_est = numeric(0),
+      bias = numeric(0),
+      rmse = numeric(0),
+      sd_est = numeric(0),
+      coverage_95 = numeric(0),
       n_converged = integer(0)
     ))
   }
@@ -460,36 +530,47 @@ check_identifiability <- function(fit,
   ## Lambda entries per tier.
   for (lvl in names(truth$loadings)) {
     target <- truth$loadings[[lvl]]
-    if (is.null(target)) next
-    Tn <- nrow(target); d <- ncol(target)
+    if (is.null(target)) {
+      next
+    }
+    Tn <- nrow(target)
+    d <- ncol(target)
     ests <- lapply(ok, function(r) r$loadings[[lvl]])
     ests <- ests[!vapply(ests, is.null, logical(1L))]
     ## Procrustes-align each estimate to the truth before aggregating.
     aligned <- lapply(ests, function(E) .procrustes_align(target, E))
-    if (length(aligned) == 0L) next
-    for (t in seq_len(Tn)) for (k in seq_len(d)) {
-      vec <- vapply(aligned, function(M) M[t, k], numeric(1L))
-      truth_val <- target[t, k]
-      rows[[length(rows) + 1L]] <- data.frame(
-        param = paste0("Lambda_", lvl, "[", t, ",", k, "]"),
-        tier = lvl,
-        truth = truth_val,
-        mean_est = mean(vec, na.rm = TRUE),
-        bias = mean(vec - truth_val, na.rm = TRUE),
-        rmse = sqrt(mean((vec - truth_val)^2, na.rm = TRUE)),
-        sd_est = stats::sd(vec, na.rm = TRUE),
-        coverage_95 = NA_real_,  ## not computed in V1; placeholder
-        n_converged = length(vec)
-      )
+    if (length(aligned) == 0L) {
+      next
+    }
+    for (t in seq_len(Tn)) {
+      for (k in seq_len(d)) {
+        vec <- vapply(aligned, function(M) M[t, k], numeric(1L))
+        truth_val <- target[t, k]
+        rows[[length(rows) + 1L]] <- data.frame(
+          param = paste0("Lambda_", lvl, "[", t, ",", k, "]"),
+          tier = lvl,
+          truth = truth_val,
+          mean_est = mean(vec, na.rm = TRUE),
+          bias = mean(vec - truth_val, na.rm = TRUE),
+          rmse = sqrt(mean((vec - truth_val)^2, na.rm = TRUE)),
+          sd_est = stats::sd(vec, na.rm = TRUE),
+          coverage_95 = NA_real_, ## not computed in V1; placeholder
+          n_converged = length(vec)
+        )
+      }
     }
   }
   ## Psi diagonals per tier.
   for (lvl in names(truth$psi)) {
     target <- truth$psi[[lvl]]
-    if (is.null(target)) next
+    if (is.null(target)) {
+      next
+    }
     ests <- lapply(ok, function(r) r$psi[[lvl]])
     ests <- ests[!vapply(ests, is.null, logical(1L))]
-    if (length(ests) == 0L) next
+    if (length(ests) == 0L) {
+      next
+    }
     Tn <- length(target)
     for (t in seq_len(Tn)) {
       vec <- vapply(ests, function(v) v[t], numeric(1L))
@@ -529,10 +610,14 @@ check_identifiability <- function(fit,
   }
   if (length(rows) == 0L) {
     return(data.frame(
-      param = character(0), tier = character(0),
-      truth = numeric(0), mean_est = numeric(0),
-      bias = numeric(0), rmse = numeric(0),
-      sd_est = numeric(0), coverage_95 = numeric(0),
+      param = character(0),
+      tier = character(0),
+      truth = numeric(0),
+      mean_est = numeric(0),
+      bias = numeric(0),
+      rmse = numeric(0),
+      sd_est = numeric(0),
+      coverage_95 = numeric(0),
       n_converged = integer(0)
     ))
   }

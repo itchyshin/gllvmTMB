@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods-gllvmTMB.R
 \name{sanity_multi}
 \alias{sanity_multi}
-\title{Convergence and parameter sanity report for a fitted gllvmTMB model}
+\title{Print a quick convergence and parameter sanity report}
 \usage{
 sanity_multi(object, gradient_thresh = 0.01, se_thresh = 100)
 }
@@ -19,9 +19,17 @@ suspiciously large. Default 100.}
 Invisibly a list of diagnostic results.
 }
 \description{
-A lightweight convergence diagnostic tailored to the multi
-engine (analogous to \code{sdmTMB::sanity()} for single-response fits). Prints (and returns invisibly) a structured list of pass / warn
-status flags covering: optimiser convergence, max gradient component,
-Hessian definiteness, parameter SEs, and identifiability of the latent()
-loadings.
+Use \code{sanity_multi()} as the fast first screen after fitting. It
+prints, and returns invisibly, pass / warn status flags covering
+optimiser convergence, max gradient component, Hessian definiteness,
+parameter standard errors, and identifiability of the \code{latent()}
+loadings. For report tables use \code{\link[=check_gllvmTMB]{check_gllvmTMB()}}; for a broader
+human-readable summary use \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}.
+}
+\details{
+Scope boundary (DIA-01): IN, fast numerical and loading-shape checks
+for fitted models. PARTIAL, a PASS here does not prove interval
+calibration or latent-rank identifiability. PLANNED, use
+\code{\link[=check_identifiability]{check_identifiability()}} and M3 calibration workflows for those
+heavier questions.
 }

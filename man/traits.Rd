@@ -31,7 +31,7 @@ with compact formula syntax.
 }
 
 The soft-deprecated \code{gllvmTMB_wide(Y, ...)} wrapper remains exported
-for migration and matrix-first workflows, but new examples should use
+for legacy matrix-wrapper workflows, but new examples should use
 \code{traits(...)} through \code{\link[=gllvmTMB]{gllvmTMB()}}.
 
 Both taught shapes reach the same stacked-trait model after internal

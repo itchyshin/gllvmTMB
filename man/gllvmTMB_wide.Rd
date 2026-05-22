@@ -41,7 +41,7 @@ effects, e.g. \code{~ env_temp + env_precip}. Defaults to \code{~ 1}.}
 \item{weights}{Optional per-cell observation weights, parallel to \code{Y}.
 At wide level the semantic is always lme4 / glmmTMB-style: each
 cell's log-likelihood contribution is multiplied by its weight.
-Accepted shapes are normalised to the same long-format vector used
+Accepted shapes are normalised to the same stacked response vector used
 by \code{\link[=gllvmTMB]{gllvmTMB()}} and the wide data-frame \code{\link[=traits]{traits()}} path:
 \itemize{
 \item \code{NULL} (default): unit weights; byte-identical to the no-weight fit.
@@ -55,8 +55,8 @@ Use this for meta-analytic / per-cell-uncertainty weighting.
 Disambiguation when \code{nrow(Y) == ncol(Y)}: \code{length(dim(weights))}
 decides — \code{NULL} (1-d) → vector, row-broadcast; \code{c(n, m)} (2-d) →
 per-cell. Values must be non-negative and finite (NA-aligned cells
-excepted). For binomial trial-count semantics use the long-format
-API (\code{\link[=gllvmTMB]{gllvmTMB()}} with \code{weights = n_trials}) instead.
+excepted). For binomial trial-count semantics use an explicit long-data
+\code{\link[=gllvmTMB]{gllvmTMB()}} call with \code{weights = n_trials} instead.
 }}
 
 \item{...}{Passed to \code{\link[=gllvmTMB]{gllvmTMB()}}.}

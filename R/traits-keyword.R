@@ -5,7 +5,7 @@
 ## internally, rewrites the LHS to `.y_wide_`, expands the compact wide
 ## RHS (`1`, `x`, `latent(1 | g)`) to the long trait-stacked grammar
 ## (`0 + trait`, `(0 + trait):x`, `latent(0 + trait | g)`), and
-## dispatches to the long-format engine.
+## dispatches to the same stacked-trait model fit.
 ##
 ## Companion to the soft-deprecated `gllvmTMB_wide()` matrix wrapper.
 ## traits() is the formula-level wide data-frame path and is the path
@@ -26,7 +26,7 @@
 #'   with compact formula syntax.
 #'
 #' The soft-deprecated `gllvmTMB_wide(Y, ...)` wrapper remains exported
-#' for migration and matrix-first workflows, but new examples should use
+#' for legacy matrix-wrapper workflows, but new examples should use
 #' `traits(...)` through [gllvmTMB()].
 #'
 #' Both taught shapes reach the same stacked-trait model after internal

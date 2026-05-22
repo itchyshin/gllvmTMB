@@ -7488,6 +7488,49 @@ Deliberately not run:
   reference/error-text cleanup. No vignettes/articles were edited or rendered.
   No 3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Wide data reference wording
+
+Scope:
+
+- Cleaned `traits()` and `gllvmTMB_wide()` reference wording so the wide path
+  is described as a public stacked-trait workflow, not as a "long-format
+  engine" or "matrix-first" primary story.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/traits-keyword.R R/gllvmTMB-wide.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/traits.Rd` and `man/gllvmTMB_wide.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "traits-keyword|gllvmTMB-wide|wide-weights-matrix|missing-response", stop_on_failure = TRUE)'`
+  -> 105 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/traits.Rd man/gllvmTMB_wide.Rd; grep -Hc '^\\keyword' man/traits.Rd man/gllvmTMB_wide.Rd`
+  -> normal endings; `gllvmTMB_wide` keeps its expected `internal` keyword.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'long-format engine|same long-format vector|matrix-first workflows|The long-format engine errors|canonical long-format' R/traits-keyword.R R/gllvmTMB-wide.R man/traits.Rd man/gllvmTMB_wide.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  narrow reference wording cleanup. No vignettes/articles were edited or
+  rendered. No 3-OS CI was available until the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

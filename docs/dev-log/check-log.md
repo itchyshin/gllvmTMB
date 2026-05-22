@@ -5757,6 +5757,54 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Reference function documentation audit plan
+
+Scope:
+
+- Started the post-#233 reference-function documentation lane on
+  `codex/reference-function-audit-2026-05-22`.
+- Added `docs/dev-log/audits/2026-05-22-reference-function-docs-audit.md`.
+- Kept the lane deliberately off new article work. The first planned clusters
+  are loadings/ordination docs, confidence-eye plot capability, method-page
+  wording, extractor pages, diagnostics, and deprecated alias wording.
+
+Evidence:
+
+- `git status --short --branch`
+  -> clean branch at start:
+  `## codex/reference-function-audit-2026-05-22...origin/main`.
+- `git diff --stat`
+  -> no diff before this audit note.
+- `tail -80 docs/dev-log/check-log.md`
+  -> latest completed entries were the covariance plot/helper slices.
+- `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-21-204819-codex-checkpoint.md`
+  -> prior compaction checkpoint read; it pointed to the earlier communality
+  lane, now superseded by the maintainer's function-documentation lane.
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,url,mergeStateStatus`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work includes PR #233 merge commit `c1dc2e4` and the overnight
+  covariance/doc commits; no open branch overlap was reported by GitHub.
+- `gh run view 26288313415 --repo itchyshin/gllvmTMB --json status,conclusion,jobs,url,headSha`
+  -> main R-CMD-check for `c1dc2e4` was still in progress while this audit
+  started.
+- `rg -n 'gllvmTMB_multi|Legacy aliases|deprecated alias|level = c\\(\"unit\", \"unit_obs\", \"B\", \"W\"\\)|post-hoc|post hoc|canonical interface|canonical replacement|long-format engine|stacked-trait|raindrop|confidence-I|extracting Sigma|matrix by hand' R man README.md _pkgdown.yml`
+  -> found the expected reference-page hotspots, especially loadings/
+  ordination pages, S3 method pages, extractor pages, and plot-helper docs.
+- `sed -n '120,190p' _pkgdown.yml`
+  -> Reference index still lists many internal S3 topic names under Methods
+  and plots on fitted models.
+- `sed -n '1,220p' R/rotate-loadings.R`
+  and `sed -n '1,230p' R/output-methods.R`
+  -> confirmed loadings/ordination cluster is the safest first cleanup target.
+
+Deliberately not run:
+
+- No R package checks were run for this audit note before the first roxygen or
+  code edit. The next documentation edit must run `devtools::document()`,
+  focused stale-word scans, `pkgdown::check_pkgdown()`, and `git diff --check`.
+
 ## 2026-05-22 -- User-facing site preview and pkgdown deploy diagnosis
 
 Scope:

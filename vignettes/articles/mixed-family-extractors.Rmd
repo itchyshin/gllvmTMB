@@ -92,15 +92,30 @@ Poisson-log, etc.). This puts all traits on a common scale so the
 off-diagonal correlations are interpretable:
 
 ```{r sigma}
-Sigma <- extract_Sigma(fit, level = "unit", part = "total",
-                       link_residual = "auto")
-Sigma$Sigma
+Sigma_rows <- extract_Sigma_table(
+  fit,
+  level = "unit",
+  part = "total",
+  measure = "covariance",
+  entries = "unique",
+  link_residual = "auto"
+)
+Sigma_rows[, c("trait_i", "trait_j", "estimate", "interval_status")]
 ```
 
-The `$R` element gives the implied correlation matrix:
+The corresponding heatmap shows the implied correlation matrix. Cells
+are point estimates on the same link-residual-adjusted scale:
 
-```{r corr}
-round(Sigma$R, 3)
+```{r corr, fig.width = 5.8, fig.height = 4.8}
+R_rows <- extract_Sigma_table(
+  fit,
+  level = "unit",
+  part = "total",
+  measure = "correlation",
+  entries = "all",
+  link_residual = "auto"
+)
+plot_Sigma_heatmap(R_rows, label_digits = 2)
 ```
 
 By default `link_residual = "auto"` adds the per-family residual to

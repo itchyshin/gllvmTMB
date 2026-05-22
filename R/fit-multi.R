@@ -743,8 +743,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   site_id         <- as.integer(data[[site]]) - 1L
   site_species_id <- as.integer(data[[ss_name]]) - 1L
 
-  if (any(is.na(y)) || any(is.na(X_fix)))
-    cli::cli_abort("NA in response or design matrix; remove NA rows before fitting.")
+  if (any(is.na(y))) {
+    cli::cli_abort(c(
+      "NA in response reached the fitting engine.",
+      "i" = "Public {.fn gllvmTMB} calls drop missing response rows before fitting; please report this internal preprocessing failure."
+    ))
+  }
+  if (any(is.na(X_fix))) {
+    cli::cli_abort(c(
+      "NA in the fixed-effect design matrix.",
+      "i" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting."
+    ))
+  }
   ## Sanity check: y must be in [0, n_trials] for binomial rows.
   bin_rows <- family_id_vec == 1L
   if (any(bin_rows)) {

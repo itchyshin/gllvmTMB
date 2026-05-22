@@ -69,13 +69,14 @@ decomposition); $\psi_t$ is the $t$-th diagonal of
 $\boldsymbol{\Psi}$ and the per-trait derived scalar reported by
 `extract_phylo_signal()`.
 
-**Implied trait covariance ($\boldsymbol{\Sigma}$, $\boldsymbol{\Sigma}_{\rm unit}$,
+**Implied trait covariance ($\boldsymbol{\Sigma}$, $\boldsymbol{\Sigma}_{\mathrm{unit}}$,
 between-trait covariance)** &mdash; The $T \times T$ covariance matrix
 that the data imply between the $T$ traits at a given tier
 (site/respondent/species). It combines the shared (latent) and
 unique parts. This is what `extract_Sigma(fit, level = ...)`
-returns. It is **rotation-invariant**, even though the underlying
-$\boldsymbol{\Lambda}$ is not.
+computes; `extract_Sigma_table(fit, level = ...)` reports the same
+target as tidy rows. It is **rotation-invariant**, even though the
+underlying $\boldsymbol{\Lambda}$ is not.
 
 **Communality ($c_t^2$, $h_t^2$)** &mdash; The fraction of trait
 $t$'s total within-tier variance that the shared latent axis
@@ -165,16 +166,16 @@ bound hits zero). See [Profile-likelihood CIs](profile-likelihood-ci.html).
 **Phylogenetic signal ($H^2$, phylogenetic heritability)** &mdash;
 The fraction of total trait variance attributable to the
 phylogenetic tier:
-$H^2_t = \Sigma_{\rm phy, tt} / V_{\eta, t}$. Reported by
+$H^2_t = \Sigma_{\mathrm{phy}, tt} / V_{\eta, t}$. Reported by
 `extract_phylo_signal()`. Distinct from communality, which is
 within-tier; $H^2$ is between-tier.
 
 **Paired two-Psi (paired decomposition)** &mdash; A phylogenetic
 GLLVM that estimates both a phylogenetic-shared axis
-$\boldsymbol{\Lambda}_{\rm phy}$ + diagonal
-$\boldsymbol{\Psi}_{\rm phy}$, and a non-phylogenetic-shared axis
-$\boldsymbol{\Lambda}_{\rm non}$ + diagonal
-$\boldsymbol{\Psi}_{\rm non}$. Four pieces total. The canonical
+$\boldsymbol{\Lambda}_{\mathrm{phy}}$ + diagonal
+$\boldsymbol{\Psi}_{\mathrm{phy}}$, and a non-phylogenetic-shared axis
+$\boldsymbol{\Lambda}_{\mathrm{non}}$ + diagonal
+$\boldsymbol{\Psi}_{\mathrm{non}}$. Four pieces total. The canonical
 form when the tree is rich.
 
 **Three-piece fallback** &mdash; The simpler model when the paired

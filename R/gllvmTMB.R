@@ -1,13 +1,14 @@
-#' Fit a stacked-trait, multivariate GLLVM
+#' Fit multivariate response models from wide or long data
 #'
-#' Top-level entry point for stacked-trait, long-format multivariate
-#' GLLVMs, including the functional-biogeography, behavioural-syndromes,
-#' phylogenetic, and systematic-mapping reduced-rank examples in the
-#' package vignettes. Long-format input with one row per (unit, trait)
-#' observation; glmmTMB-style formula syntax for fixed effects, plus
-#' a 4 x 5 grid of covariance-structure keywords organised by
-#' \emph{correlation source} (none / animal / phylo / spatial) and \emph{mode}
-#' (scalar / unique / indep / dep / latent):
+#' Top-level entry point for models with several responses per site,
+#' individual, species, or study. Start from a wide data frame with
+#' [traits()] on the formula left-hand side, or from already-stacked long
+#' data with one row per `(unit, trait)` observation. Both routes estimate
+#' the same trait covariance, pairwise correlations, shared latent axes,
+#' and trait-specific variance. The formula syntax also supports fixed
+#' effects plus covariance-structure keywords organised by
+#' \emph{correlation source} (none / animal / phylo / spatial) and
+#' \emph{mode} (scalar / unique / indep / dep / latent):
 #'
 #' \tabular{llllll}{
 #'   \strong{source \\ mode} \tab \strong{scalar} \tab \strong{unique} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
@@ -41,10 +42,14 @@
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
 #'   Fixed effects and any of the 4 x 5 keyword-grid covstructs above are
 #'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
-#' @param data A long-format data frame with one row per (unit, trait)
-#'   observation. Must include the response (LHS of `formula`),
-#'   the columns named in `unit`, `unit_obs`, `cluster`, `trait`, and any
-#'   predictors referenced in the formula.
+#' @param data A data frame. With an ordinary response LHS such as
+#'   `value ~ ...`, `data` is long: one row per `(unit, trait)`
+#'   observation, with the trait column named by `trait`. With a
+#'   [traits()] LHS, `data` is wide: one row per unit and one column per
+#'   response named inside `traits(...)`. Missing response values are
+#'   allowed and are dropped before fitting, so other observed traits for
+#'   the same unit remain in the likelihood; missing predictor or
+#'   design-matrix values still error.
 #' @param trait Name of the column holding the trait factor (the
 #'   "trait" dimension of the unit × trait response matrix). Default
 #'   `"trait"`.
@@ -190,11 +195,12 @@
 #'   `extract_communality()`) are available for multi-trait fits.
 #'
 #' @details
-#' `gllvmTMB()` parses the glmmTMB-style formula, checks the long-format
-#' data, and dispatches to the underlying TMB template (built on sdmTMB's
-#' SPDE machinery). Covariance-structure terms (`latent()`, `unique()`,
-#' `propto()`, `equalto()`, `spatial()`) are processed by extending the
-#' formula parser and the TMB template.
+#' `gllvmTMB()` parses the glmmTMB-style formula, converts wide
+#' [traits()] input to the same internal stacked-trait representation as
+#' explicit long data, and dispatches to the underlying TMB template.
+#' Covariance-structure terms (`latent()`, `unique()`, `propto()`,
+#' `equalto()`, `spatial()`) are processed by extending the formula parser
+#' and the TMB template.
 #'
 #' Per the manuscript, when stacking traits one should set
 #' `dispformula = ~ 0` so that no implicit residual variance competes
@@ -213,6 +219,17 @@
 #' Both interfaces produce identical fits. For Bernoulli data, omit
 #' `weights` and use a 0/1 response; the engine sets `n_trials = 1` and
 #' the likelihood is identical to the previous Bernoulli-only behaviour.
+#'
+#' **Missing responses.** `NA` response cells are treated as unobserved
+#' unit-trait cells and are dropped before the TMB likelihood is built.
+#' This applies to both explicit long-format data and wide
+#' `traits(...)` formulas. For `cbind(successes, failures)` binomial
+#' responses, a row is dropped when either response component is missing.
+#' Observation weights, when supplied, are subset to the retained
+#' response rows before validation. This is response-missingness support
+#' only: missing predictors, grouping variables, or fixed-effect design
+#' values still error because the model cannot construct a design row.
+#' This contract is covered by validation-debt register row MIS-21.
 #'
 #' **Delta (hurdle) families.** `delta_lognormal()` and `delta_gamma()`
 #' use a *single* linear predictor for both components: presence is
@@ -575,6 +592,13 @@ gllvmTMB <- function(
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
   parsed <- parse_multi_formula(formula)
+  observed_response <- drop_missing_response_rows(
+    fixed_formula = parsed$fixed,
+    data = data,
+    weights = weights
+  )
+  data <- observed_response$data
+  weights <- observed_response$weights
   weights <- normalise_weights(
     weights = weights,
     response_shape = "long",
@@ -597,6 +621,70 @@ gllvmTMB <- function(
     silent = silent,
     unit_obs = unit_obs
   )
+}
+
+drop_missing_response_rows <- function(fixed_formula, data, weights = NULL) {
+  mf <- stats::model.frame(
+    fixed_formula,
+    data = data,
+    na.action = stats::na.pass
+  )
+  y_raw <- stats::model.response(mf)
+  if (is.null(y_raw)) {
+    return(list(data = data, weights = weights, n_dropped = 0L))
+  }
+
+  response_missing <- if (is.matrix(y_raw) || is.data.frame(y_raw)) {
+    rowSums(is.na(y_raw)) > 0L
+  } else {
+    is.na(y_raw)
+  }
+  response_missing <- as.logical(response_missing)
+  response_missing[is.na(response_missing)] <- TRUE
+
+  n_dropped <- sum(response_missing)
+  if (n_dropped == 0L) {
+    return(list(data = data, weights = weights, n_dropped = 0L))
+  }
+
+  keep <- !response_missing
+  if (!any(keep)) {
+    cli::cli_abort(c(
+      "All response rows are missing.",
+      "i" = "At least one observed response value is required to fit a model."
+    ))
+  }
+
+  if (!is.null(weights)) {
+    w_dim <- dim(weights)
+    if (!is.null(w_dim)) {
+      cli::cli_abort(c(
+        "{.arg weights} must be a length-{nrow(data)} numeric vector in the long-format API.",
+        "i" = "Got {.code dim(weights)} = c({paste(w_dim, collapse = ', ')}).",
+        "i" = "For per-cell weights aligned with a wide response matrix, use {.fn gllvmTMB_wide}."
+      ))
+    }
+    if (!is.numeric(weights)) {
+      cli::cli_abort(c(
+        "{.arg weights} must be numeric.",
+        "i" = "Got class {.cls {class(weights)[1]}}."
+      ))
+    }
+    if (length(weights) != nrow(data)) {
+      cli::cli_abort(c(
+        "{.arg weights} must be a length-{nrow(data)} numeric vector in the long-format API.",
+        "i" = "Got length {length(weights)}."
+      ))
+    }
+    weights <- as.numeric(weights)[keep]
+  }
+
+  data <- data[keep, , drop = FALSE]
+  cli::cli_inform(c(
+    "i" = "{.fn gllvmTMB}: dropped {n_dropped} row{?s} with {.code NA} response."
+  ))
+
+  list(data = data, weights = weights, n_dropped = n_dropped)
 }
 
 

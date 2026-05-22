@@ -13,7 +13,10 @@ extract_repeatability(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit returned by \code{\link{gllvmTMB}}.}
+\item{fit}{A \code{gllvmTMB_multi} fit returned by \code{\link{gllvmTMB}}.
+A \code{bootstrap_Sigma} object is also accepted when it contains an
+\code{ICC_site} summary; in that case the function reuses the stored
+point estimates and percentile bounds rather than refitting.}
 
 \item{level}{Confidence level. Default 0.95.}
 
@@ -67,6 +70,9 @@ fit <- gllvmTMB(
   unit_obs = "site_species"
 )
 extract_repeatability(fit)
+boot <- bootstrap_Sigma(fit, n_boot = 50, level = c("unit", "unit_obs"),
+                        what = "ICC", progress = FALSE)
+extract_repeatability(boot)
 }
 }
 \seealso{

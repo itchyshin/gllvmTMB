@@ -37,10 +37,13 @@ one of these helpers into your own code, mirror that pattern rather
 than reflexively calling \code{match.arg(level)} (which would silently
 collapse the default to \code{"B"} and drop the W panel).}
 
-\item{boot}{Optional bootstrap object (currently a list with elements
-\code{repeatability}, \code{communality_B}, \code{communality_W}, each a data
-frame with columns \code{trait}, \code{lower}, \code{upper}) used to add whiskers
-to the \code{"integration"} plot. Default \code{NULL} skips whiskers.}
+\item{boot}{Optional bootstrap object. This can be either a
+\code{bootstrap_Sigma()} result or a list with elements \code{repeatability},
+\code{communality_B}, \code{communality_W}, each a data frame with columns
+\code{trait}, \code{lower}, \code{upper}. A \code{bootstrap_Sigma()} object can add
+correlation intervals to \code{"correlation"} / \code{"correlation_ellipse"},
+whiskers to \code{"integration"}, and \code{c^2} boundary intervals to
+\code{"communality"}. Default \code{NULL} skips interval overlays.}
 
 \item{axes}{Length-2 or length-3 integer vector for \code{"ordination"} when
 \code{d >= 2}. Length 2 draws a single biplot. Length 3 draws a static
@@ -68,11 +71,13 @@ multivariate GLLVM. Dispatches on \code{type} to one of seven panels:
 Upper triangle = between-unit correlations (\code{level = "unit"}),
 lower triangle = within-unit correlations (\code{level = "unit_obs"}),
 diagonal = 1. Falls back to whichever level is present if the
-other tier is absent.}
+other tier is absent. Optional \code{boot} intervals are carried in the
+plot data when supplied.}
 \item{\code{"correlation_ellipse"}}{Ellipse matrix of trait correlations.
 Ellipse direction and eccentricity encode the sign and strength of
 the correlation. This is the Figure-3-style alternative to the tile
-heatmap.}
+heatmap. Optional \code{boot} intervals mark correlations whose interval
+does not cross zero with black borders and stars.}
 \item{\code{"loadings"}}{Tile heatmap of \code{Lambda_B} (and \code{Lambda_W} if
 present), faceted by level. Rows = traits, columns = factors.
 Pinned cells (from \code{lambda_constraint}) are drawn with a heavy
@@ -83,7 +88,8 @@ sorted by repeatability. Optional whiskers from a \code{boot} object
 (skipped if \code{boot = NULL}).}
 \item{\code{"communality"}}{Figure-3-style stacked bars of per-trait
 communality (\code{c^2}, shared latent proportion) and uniqueness
-(\code{1 - c^2}) for the available latent tiers.}
+(\code{1 - c^2}) for the available latent tiers. Optional \code{boot}
+intervals are drawn on the \code{c^2} boundary when supplied.}
 \item{\code{"variance"}}{Stacked-bar variance partition per trait, using
 \code{extract_proportions(format = "long")}. One bar per trait,
 stacks summing to 1.}

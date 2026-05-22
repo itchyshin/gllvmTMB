@@ -59,6 +59,15 @@ hidden immature articles. Slice 6 has passed launch-level HTML review, but
 publication-grade figure interpretation still needs Florence review as each
 model guide becomes final.
 
+Symbol-to-syntax checkpoint, 2026-05-21: Slice 12 first pass added explicit
+alignment blocks to the math-heavy visible pages
+`covariance-correlation`, `api-keyword-grid`, and
+`convergence-start-values`. These blocks pair each displayed covariance
+symbol with the R formula/extractor and a plain-language interpretation.
+`morphometrics` already carries paired long/wide formulas and recovery
+equations; `pitfalls` and `response-families` remain wording-review targets
+as their examples are made more systematic.
+
 After these infrastructure slices, resume article restoration one page at a time.
 
 ## Long Horizon To Finish

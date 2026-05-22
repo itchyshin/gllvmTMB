@@ -64,6 +64,14 @@ target is the trait covariance
 `Sigma = Lambda Lambda^T + Psi`, where `Lambda` contains the shared
 latent loadings and `Psi` is the diagonal trait-specific variance.
 
+Use this alignment while reading the diagnostics:
+
+| Symbol | R syntax or object | Plain meaning |
+|---|---|---|
+| `Lambda` | `latent(0 + trait | site, d = 1)`; `Lambda_B` in the simulator | The shared loading axis that creates cross-trait covariance. |
+| `Psi` | `unique(0 + trait | site)`; `psi_B` in the simulator | Trait-specific variance that is not shared with the other trait. |
+| `Sigma` | `extract_Sigma_table(fit, level = "unit", part = "total")` | The full trait covariance, `Lambda Lambda^T + Psi`, used for interpretation. |
+
 ```{r simulate}
 sim <- simulate_site_trait(
   n_sites = 24, n_species = 1, n_traits = 2,
@@ -207,8 +215,7 @@ boot <- bootstrap_Sigma(
 )
 
 boot$n_failed
-boot$ci_lower$Sigma_B
-boot$ci_upper$Sigma_B
+extract_Sigma_table(boot, level = "unit", entries = "upper")
 ```
 
 Use `n_cores = 1` for the first smoke test. Once the model refits

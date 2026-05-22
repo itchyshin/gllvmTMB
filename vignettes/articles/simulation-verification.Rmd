@@ -103,7 +103,8 @@ fit <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | site, d = 1) +
           unique(0 + trait | site),
-  data = df
+  data = df,
+  trait = "trait"
 )
 fit$opt$convergence  # should be 0L
 ```
@@ -113,22 +114,31 @@ fit$opt$convergence  # should be 0L
 The implied between-site covariance is the rotation-invariant
 biological target. Compare it to the truth:
 
-```{r recover-sigma}
+```{r recover-sigma, fig.width = 7, fig.height = 4.2, fig.cap = "Between-site Sigma recovery against the known simulation truth. Points show fitted minus true covariance; diagonal rows are variances and off-diagonal rows are covariances."}
 Sigma_truth <- truth$Lambda_B %*% t(truth$Lambda_B) +
                diag(truth$psi_B)
-Sigma_fit   <- extract_Sigma(fit, level = "unit", part = "total")$Sigma
-data.frame(
-  cell  = paste0("[", row(Sigma_truth), ",", col(Sigma_truth), "]"),
-  truth = as.numeric(Sigma_truth),
-  fit   = as.numeric(Sigma_fit),
-  diff  = as.numeric(Sigma_fit - Sigma_truth)
+rownames(Sigma_truth) <- colnames(Sigma_truth) <- levels(df$trait)
+
+sigma_compare <- compare_Sigma_table(
+  fit,
+  truth = Sigma_truth,
+  level = "unit",
+  measure = "covariance",
+  entries = "unique"
+)
+
+sigma_compare[c("estimand", "truth", "estimate", "error")]
+plot_Sigma_comparison(
+  sigma_compare,
+  include_diagonal = TRUE,
+  sort = "trait"
 )
 ```
 
 The diagonal entries (variances) are recovered to within sampling
 noise; the off-diagonals (covariances) match the rank-1 structure
 encoded in `Lambda_B`. This is the **headline recovery check**:
-if `diff` is large on a Tier-1 fixture, something is wrong before
+if `error` is large on a Tier-1 fixture, something is wrong before
 you go any further.
 
 ## 3. Common harness mistakes

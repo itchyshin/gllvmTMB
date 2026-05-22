@@ -9,8 +9,8 @@
 bibentry(
   bibtype  = "Manual",
   key      = "gllvmTMB",
-  title    = "gllvmTMB: stacked-trait, long-format multivariate
-             generalised linear latent variable models with TMB",
+  title    = "gllvmTMB: Fit Multivariate Models from Wide Response
+             Data",
   author   = c(
     person("Shinichi", "Nakagawa")
   ),
@@ -19,8 +19,7 @@ bibentry(
   url      = "https://itchyshin.github.io/gllvmTMB/",
   textVersion = paste(
     "Nakagawa S (2026).",
-    "gllvmTMB: stacked-trait, long-format multivariate generalised",
-    "linear latent variable models with TMB.",
+    "gllvmTMB: Fit Multivariate Models from Wide Response Data.",
     "R package version 0.2.0; methods paper in preparation.",
     "https://itchyshin.github.io/gllvmTMB/"
   ),

@@ -135,7 +135,10 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
 #' denominator by default; pass `link_residual = "none"` to suppress.
 #'
-#' @param fit A `gllvmTMB_multi` object.
+#' @param fit A `gllvmTMB_multi` object. A `bootstrap_Sigma` object is also
+#'   accepted when it contains `communality` summaries; in that case the
+#'   function reuses the stored point estimates and percentile bounds rather
+#'   than refitting.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
 #' @param link_residual For binomial fits: `"auto"` (default) adds the
@@ -153,7 +156,8 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' @param seed Optional RNG seed for the bootstrap.
 #' @return When `ci = FALSE`: a numeric vector indexed by trait.
 #'   When `ci = TRUE`: a data frame with columns `trait`, `tier`, `c2`,
-#'   `lower`, `upper`, `method`.
+#'   `lower`, `upper`, `method`. For a `bootstrap_Sigma` input, the interval
+#'   columns are copied from the bootstrap object.
 #' @seealso [extract_Sigma()]; [extract_ICC_site()];
 #'   [extract_correlations()]; [extract_repeatability()];
 #'   [confint.gllvmTMB_multi()].
@@ -175,6 +179,9 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   extract_communality(fit, level = "unit")
 #'   ## With profile-likelihood CIs.
 #'   extract_communality(fit, level = "unit", ci = TRUE)
+#'   boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
+#'                           what = "communality", progress = FALSE)
+#'   extract_communality(boot, level = "unit", ci = TRUE)
 #' }
 #' @export
 extract_communality <- function(
@@ -191,6 +198,14 @@ extract_communality <- function(
   level <- .normalise_level(level, arg_name = "level")
   link_residual <- match.arg(link_residual)
   method <- match.arg(method)
+  if (inherits(fit, "bootstrap_Sigma")) {
+    return(.communality_from_bootstrap(fit, level = level, ci = isTRUE(ci)))
+  }
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort(
+      "Provide a {.cls gllvmTMB_multi} fit or a {.cls bootstrap_Sigma} object."
+    )
+  }
   rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
   if (!rr_used) {
     return(NULL)
@@ -275,9 +290,106 @@ extract_communality <- function(
   )
 }
 
+.communality_bootstrap_levels <- function(boot) {
+  sub(
+    "^communality_",
+    "",
+    grep("^communality_", names(boot$point_est), value = TRUE)
+  )
+}
+
+.communality_bootstrap_bound <- function(x, trait_names, field) {
+  if (is.null(x)) {
+    return(rep(NA_real_, length(trait_names)))
+  }
+  out <- as.numeric(x)
+  nm <- names(x)
+  if (!is.null(nm)) {
+    out <- out[match(trait_names, nm)]
+  }
+  if (length(out) != length(trait_names)) {
+    cli::cli_abort(
+      "Bootstrap communality {.field {field}} does not match the point-estimate length."
+    )
+  }
+  out
+}
+
+.communality_from_bootstrap <- function(boot, level, ci) {
+  available <- .communality_bootstrap_levels(boot)
+  if (length(available) == 0L) {
+    cli::cli_abort(c(
+      "No communality bootstrap summaries are available.",
+      "i" = "Call {.fun bootstrap_Sigma} with {.code what = \"communality\"}."
+    ))
+  }
+  if (!level %in% available) {
+    available_levels <- vapply(
+      available,
+      .canonical_level_name,
+      character(1L),
+      USE.NAMES = FALSE
+    )
+    cli::cli_abort(c(
+      "The requested communality level is not present in the bootstrap object.",
+      "i" = "Available: {.val {available_levels}}."
+    ))
+  }
+
+  key <- paste0("communality_", level)
+  pe <- boot$point_est[[key]]
+  if (is.null(pe)) {
+    cli::cli_abort("Bootstrap communality point estimates are missing.")
+  }
+  trait_names <- names(pe)
+  if (is.null(trait_names)) {
+    trait_names <- paste0("trait_", seq_along(pe))
+  }
+  out <- as.numeric(pe)
+  names(out) <- trait_names
+  if (!isTRUE(ci)) {
+    return(out)
+  }
+
+  lower <- .communality_bootstrap_bound(
+    boot$ci_lower[[key]],
+    trait_names = trait_names,
+    field = "ci_lower"
+  )
+  upper <- .communality_bootstrap_bound(
+    boot$ci_upper[[key]],
+    trait_names = trait_names,
+    field = "ci_upper"
+  )
+  tbl <- data.frame(
+    trait = trait_names,
+    tier = level,
+    c2 = unname(out),
+    lower = lower,
+    upper = upper,
+    method = "bootstrap",
+    stringsAsFactors = FALSE
+  )
+  attr(tbl, "notes") <- sprintf(
+    "Bootstrap percentile intervals from bootstrap_Sigma(); n_boot = %s, n_failed = %s, conf = %s.",
+    boot$n_boot,
+    boot$n_failed,
+    boot$conf
+  )
+  attr(tbl, "bootstrap") <- list(
+    conf = boot$conf,
+    n_boot = boot$n_boot,
+    n_failed = boot$n_failed,
+    ci_method = boot$ci_method,
+    link_residual = boot$link_residual
+  )
+  tbl
+}
+
 #' Ordination scores and loadings at one level
 #'
 #' @inheritParams extract_communality
+#' @param fit A `gllvmTMB_multi` object.
 #' @return A list with `scores` (units or within-unit observations in rows,
 #'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
 #'

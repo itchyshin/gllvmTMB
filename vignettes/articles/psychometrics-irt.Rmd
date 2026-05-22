@@ -23,14 +23,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — slated for re-authoring in M2.5 once binary IRT machinery is validated.**
+> **Preview — slated for re-authoring in M2.5 after binary IRT validation.**
 >
 > The current article uses `lambda_constraint` for binary IRT
-> (LAM-03 `partial` in the
+> (LAM-03 `covered` in the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
-> Re-authoring follows after **M2.3** validates the binary IRT
-> path; the **M2.5** slice re-writes this article against the
-> validated machinery. See the
+> The **M2.5** slice re-writes this article against that validated
+> machinery and the rewrite-prep pedagogy contract. See the
 > [rewrite-prep handoff](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md)
 > for the rewrite contract.
 
@@ -163,6 +162,7 @@ attr(fam, "family_var") <- "item_family"
 fit_exp_long <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | respondent, d = 2),
   data   = df_long,
+  trait  = "trait",
   unit   = "respondent",
   family = fam
 )
@@ -187,9 +187,33 @@ The exploratory loadings are rotation-invariant; the implied trait
 covariance is what we trust:
 
 ```{r sigma-exp}
-SB_exp <- extract_Sigma(fit_exp, level = "unit")
-round(SB_exp$Sigma, 2)
-round(SB_exp$R,     2)
+SB_exp_rows <- extract_Sigma_table(
+  fit_exp,
+  level = "unit",
+  part = "total",
+  measure = "covariance",
+  entries = "unique"
+)
+SB_exp_rows[, c("trait_i", "trait_j", "estimate", "interval_status")]
+```
+
+The same rotation-invariant target is easier to scan as a correlation
+heatmap:
+
+```{r sigma-exp-corr, fig.width = 6.4, fig.height = 5.8}
+SB_exp_corr <- extract_Sigma_table(
+  fit_exp,
+  level = "unit",
+  part = "total",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(
+  SB_exp_corr,
+  label_digits = 2,
+  title = "Exploratory item correlations",
+  subtitle = "Rotation-invariant correlations from the total unit-level Sigma."
+)
 ```
 
 But for *interpreting* which item loads on which factor, the raw
@@ -224,6 +248,7 @@ Fit with this confirmatory pattern:
 fit_cfa <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | respondent, d = 2),
   data              = df_long,
+  trait             = "trait",
   unit              = "respondent",
   family            = fam,
   lambda_constraint = list(B = cnst_cfa)

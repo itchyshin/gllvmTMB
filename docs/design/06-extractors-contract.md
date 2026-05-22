@@ -52,6 +52,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | Extractor | G | B | N | M | Notes |
 |-----------|---|---|---|---|-------|
 | `extract_Sigma(fit, level, part)` | c | cl | cl | cl | per-level $\Sigma = \Lambda\Lambda^\top + \Psi$; `level = "phy"/"spatial"` are variance-share shortcuts, not peer levels |
+| `extract_Sigma_table(fit, level, part, measure)` | c | cl | cl | c | report-ready point-estimate table view over `extract_Sigma()`; intervals intentionally absent |
 | `extract_Sigma_B(fit)` | c | cl | cl | cl | legacy alias for `level = "B"` ($\equiv$ `"unit"`) |
 | `extract_Sigma_W(fit)` | c | cl | cl | cl | legacy alias for `level = "W"` ($\equiv$ `"unit_obs"`) |
 | `extract_Omega(fit)` | c | cl | cl | cl | cross-partition integration (phy/spatial shares back into unit-tier) |
@@ -169,6 +170,46 @@ because $\Lambda\Lambda^\top = (\Lambda Q)(\Lambda Q)^\top$
 for any orthogonal $Q$. Tests assert $\Sigma$ identity rather
 than $\Lambda$ identity.
 
+#### `extract_Sigma_table(fit, level, part, measure, entries)`
+
+**Return**: a data frame with one row per requested covariance,
+variance, or correlation entry. It is a report-ready view over
+`extract_Sigma()` or over a `bootstrap_Sigma()` result, not a
+second covariance implementation.
+
+Stable columns:
+
+- `estimand`, `trait_i`, `trait_j`, integer indices `i` and `j`;
+- `level`, `component`, `matrix`, `estimate`;
+- `lower`, `upper`, `interval_method`, `interval_status`;
+- `scale`, `validation_row`, `diagonal`, and `triangle`.
+
+`entries = "unique"` returns the diagonal plus upper triangle,
+one row per symmetric estimand. `entries = "all"` returns every
+matrix cell for heatmaps and plot helpers. `measure = "correlation"`
+is allowed only for `part = "total"` because report-ready
+correlations should be based on the full
+$\Lambda\Lambda^\top + \Psi$ covariance. For fitted-model input,
+interval columns are present for table compatibility but deliberately
+set to `NA` / `"none"`; interval estimation remains the job of
+`extract_correlations()` and `bootstrap_Sigma()`. For `bootstrap_Sigma`
+input, the same columns carry bootstrap percentile bounds already
+stored in the object, with `interval_method = "bootstrap"` and
+row-level `interval_status` values.
+
+Validation-debt rows: `EXT-18` for fitted-model point tables and
+`EXT-20` for bootstrap interval rows. Underlying Sigma coverage still
+inherits the relevant `extract_Sigma()` / `bootstrap_Sigma()` rows
+(`EXT-01`, `EXT-13`, and `MIX-03` for mixed-family fits).
+
+Plot helpers consume the same row schema rather than indexing matrices
+directly. `plot_Sigma_table()` draws row-first interval or raindrop
+views for selected entries (`EXT-19`). `plot_Sigma_heatmap()` draws
+matrix-style point-estimate heatmaps from `entries = "all"` rows and
+does not display uncertainty intervals (`EXT-27`). Known-truth displays
+use `compare_Sigma_table()` plus `plot_Sigma_comparison()` (`EXT-25` /
+`EXT-26`).
+
 #### `extract_Sigma_B(fit)` and `extract_Sigma_W(fit)`
 
 Legacy aliases. `extract_Sigma_B(fit) = extract_Sigma(fit,
@@ -261,28 +302,47 @@ errors with class
 
 #### `extract_communality(fit, level)`
 
-**Return**: a `data.frame` with one row per trait $t$ and
-columns
+**Return**: by default a named numeric vector with one entry per trait,
+containing
 
-- `trait`: trait name
-- `H2`: phylogenetic communality
-  ($\Lambda_{\text{phy}}\Lambda_{\text{phy}}^\top / \Sigma_{tt}$)
-- `C2`: non-phylogenetic shared communality
-  ($\Lambda_{\text{non}}\Lambda_{\text{non}}^\top / \Sigma_{tt}$)
-- `psi2`: unique-variance share ($\Psi_{tt} / \Sigma_{tt}$)
-- `sum`: $H^2_t + C^2_t + \psi^2_t$, which should be 1 to
-  numerical precision (invariant test).
+$$
+c_t^2 =
+\frac{(\Lambda\Lambda^\top)_{tt}}{\Sigma_{tt}},
+$$
 
-For fits without phylogeny, `H2 = 0` and the partition
-reduces to $C^2 + \psi^2 = 1$.
+for the requested `level` (`unit` / internal `B`, or `unit_obs` / internal
+`W`). When `ci = TRUE`, the return is a `data.frame` with columns `trait`,
+`tier`, `c2`, `lower`, `upper`, and `method`.
+
+For fitted `gllvmTMB_multi` objects, `method = "profile"` delegates to
+`profile_ci_communality()`, while `method = "bootstrap"` runs
+`bootstrap_Sigma(..., what = "communality")` and returns the resulting
+percentile bounds. For existing `bootstrap_Sigma()` objects that already
+contain `communality_B` / `communality_W` summaries, `extract_communality()`
+reuses the stored point estimates and percentile bounds without rerunning
+bootstrap refits (EXT-21). This bootstrap-object path is intentionally a
+reporting bridge; it does not compute new intervals.
+
+The companion `plot(type = "communality", boot = boot)` path uses the same
+stored `communality` summaries to overlay `c^2` boundary intervals on the
+stacked communality / uniqueness bars.
 
 #### `extract_repeatability(fit)`
 
 **Return**: a `data.frame` with one row per trait and
-columns `trait`, `R` (the ICC / repeatability), `n_obs`,
-`var_unit` (between-unit), `var_unit_obs` (within-unit),
-plus a `class = "gllvmTMB_repeatability"` attribute used by
-S3 print methods.
+columns `trait`, `R` (the ICC / repeatability), `lower`, `upper`, and
+`method`.
+
+For fitted `gllvmTMB_multi` objects, `method = "profile"` currently reports an
+honest fallback to `method = "wald"` for full-Sigma repeatability, while
+`method = "bootstrap"` runs `bootstrap_Sigma(..., what = "ICC")` with both the
+`unit` and `unit_obs` levels. For existing `bootstrap_Sigma()` objects that
+already contain `ICC_site`, `extract_repeatability()` reuses the stored point
+estimates and percentile bounds without rerunning bootstrap refits (EXT-22).
+
+The companion `plot(type = "integration", boot = boot)` path accepts a raw
+`bootstrap_Sigma()` object and pulls repeatability plus communality intervals
+directly for the integration dot-and-whisker panel.
 
 #### `extract_phylo_signal(fit)`
 

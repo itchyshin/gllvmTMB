@@ -252,6 +252,7 @@ fit_jsdm <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 +
           latent(0 + trait | site, d = 2),
   data   = df,
+  trait  = "trait",
   family = binomial()
 )
 fit_jsdm
@@ -310,11 +311,29 @@ that the GLLVM estimates, and the **total latent-liability**
 covariance $\boldsymbol\Sigma_{\text{latent}} = \boldsymbol\Sigma_B + (\pi^2/3) \mathbf I$
 that adds the fixed link residual on the diagonal:
 
-```{r jsdm-sigma}
-Sigma_shared <- extract_Sigma(fit_jsdm, level = "unit", part = "shared")$Sigma
-Sigma_total  <- extract_Sigma(fit_jsdm, level = "unit", part = "total")$Sigma
-list(Sigma_shared = round(Sigma_shared, 2),
-     Sigma_total  = round(Sigma_total,  2))
+```{r jsdm-sigma, fig.width = 8, fig.height = 4.8, fig.cap = "Shared and total latent-liability covariance matrices from the fitted JSDM. The total matrix adds the fixed logistic link residual to the diagonal."}
+Sigma_shared_rows <- extract_Sigma_table(
+  fit_jsdm,
+  level = "unit",
+  part = "shared",
+  entries = "all"
+)
+Sigma_shared_rows$level <- "Shared"
+
+Sigma_total_rows <- extract_Sigma_table(
+  fit_jsdm,
+  level = "unit",
+  part = "total",
+  entries = "all"
+)
+Sigma_total_rows$level <- "Total latent liability"
+
+plot_Sigma_heatmap(
+  rbind(Sigma_shared_rows, Sigma_total_rows),
+  label_digits = 1,
+  title = "Shared and total latent-liability Sigma",
+  subtitle = "Facets separate shared latent covariance from link-residual-adjusted total covariance."
+)
 ```
 
 Notice the off-diagonals are identical (the link residual is

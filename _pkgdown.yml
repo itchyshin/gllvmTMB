@@ -136,6 +136,8 @@ reference:
     desc: Recover covariance, correlation, ordination, repeatability, communality, phylogenetic signal, and variance proportions
     contents:
     - extract_Sigma
+    - extract_Sigma_table
+    - compare_Sigma_table
     - extract_Omega
     - extract_communality
     - extract_correlations
@@ -156,6 +158,10 @@ reference:
     - simulate.gllvmTMB_multi
     - predict.gllvmTMB_multi
     - plot.gllvmTMB_multi
+    - plot_correlations
+    - plot_Sigma_table
+    - plot_Sigma_heatmap
+    - plot_Sigma_comparison
 
   - title: First-line diagnostics and uncertainty
     desc: Start here before interpreting covariance, ordination, or interval estimates

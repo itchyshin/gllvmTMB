@@ -16,7 +16,10 @@ extract_communality(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} object.}
+\item{fit}{A \code{gllvmTMB_multi} object. A \code{bootstrap_Sigma} object is also
+accepted when it contains \code{communality} summaries; in that case the
+function reuses the stored point estimates and percentile bounds rather
+than refitting.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
 Legacy aliases \code{"B"} and \code{"W"} are accepted with a deprecation warning.}
@@ -43,7 +46,8 @@ Default 500.}
 \value{
 When \code{ci = FALSE}: a numeric vector indexed by trait.
 When \code{ci = TRUE}: a data frame with columns \code{trait}, \code{tier}, \code{c2},
-\code{lower}, \code{upper}, \code{method}.
+\code{lower}, \code{upper}, \code{method}. For a \code{bootstrap_Sigma} input, the interval
+columns are copied from the bootstrap object.
 }
 \description{
 \deqn{c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}}.}
@@ -86,6 +90,9 @@ denominator by default; pass \code{link_residual = "none"} to suppress.
   extract_communality(fit, level = "unit")
   ## With profile-likelihood CIs.
   extract_communality(fit, level = "unit", ci = TRUE)
+  boot <- bootstrap_Sigma(fit, n_boot = 50, level = "unit",
+                          what = "communality", progress = FALSE)
+  extract_communality(boot, level = "unit", ci = TRUE)
 }
 }
 \seealso{

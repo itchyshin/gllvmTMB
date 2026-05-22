@@ -15,6 +15,9 @@
 #' intraclass correlation coefficient (ICC) at the unit level.
 #'
 #' @param fit A \code{gllvmTMB_multi} fit returned by \code{\link{gllvmTMB}}.
+#'   A \code{bootstrap_Sigma} object is also accepted when it contains an
+#'   \code{ICC_site} summary; in that case the function reuses the stored
+#'   point estimates and percentile bounds rather than refitting.
 #' @param level Confidence level. Default 0.95.
 #' @param method One of \code{"profile"} (default), \code{"wald"},
 #'   \code{"bootstrap"}.
@@ -57,14 +60,25 @@
 #'   unit_obs = "site_species"
 #' )
 #' extract_repeatability(fit)
+#' boot <- bootstrap_Sigma(fit, n_boot = 50, level = c("unit", "unit_obs"),
+#'                         what = "ICC", progress = FALSE)
+#' extract_repeatability(boot)
 #' }
-extract_repeatability <- function(fit,
-                                  level  = 0.95,
-                                  method = c("profile", "wald", "bootstrap"),
-                                  nsim   = 500L,
-                                  seed   = NULL) {
-  if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+extract_repeatability <- function(
+  fit,
+  level = 0.95,
+  method = c("profile", "wald", "bootstrap"),
+  nsim = 500L,
+  seed = NULL
+) {
+  if (inherits(fit, "bootstrap_Sigma")) {
+    return(.repeatability_from_bootstrap(fit))
+  }
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort(
+      "Provide a {.cls gllvmTMB_multi} fit or a {.cls bootstrap_Sigma} object."
+    )
+  }
   method <- match.arg(method)
 
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -110,8 +124,11 @@ extract_repeatability <- function(fit,
     ## Jacobian of log_v wrt the fixed parameters, times the joint
     ## fixed-parameter covariance from sd_report.
     cov_fix <- if (!is.null(fit$sd_report)) fit$sd_report$cov.fixed else NULL
-    if (is.null(cov_fix))
-      cli::cli_abort("Wald repeatability requires {.code sd_report}; check Hessian.")
+    if (is.null(cov_fix)) {
+      cli::cli_abort(
+        "Wald repeatability requires {.code sd_report}; check Hessian."
+      )
+    }
     par_full_at_mle <- fit$tmb_obj$env$last.par.best
     random_idx <- fit$tmb_obj$env$random
     fix_idx <- if (length(random_idx) > 0L) {
@@ -139,12 +156,15 @@ extract_repeatability <- function(fit,
       rep <- fit$tmb_obj$report(par_full)
       Lambda_B <- if (is.null(rep$Lambda_B)) matrix(0, T, 0) else rep$Lambda_B
       Lambda_W <- if (is.null(rep$Lambda_W)) matrix(0, T, 0) else rep$Lambda_W
-      sd_B     <- if (is.null(rep$sd_B))     rep(0, T)       else rep$sd_B
-      sd_W     <- if (is.null(rep$sd_W))     rep(0, T)       else rep$sd_W
+      sd_B <- if (is.null(rep$sd_B)) rep(0, T) else rep$sd_B
+      sd_W <- if (is.null(rep$sd_W)) rep(0, T) else rep$sd_W
       vB <- diag(Lambda_B %*% t(Lambda_B)) + sd_B^2
       vW <- diag(Lambda_W %*% t(Lambda_W)) + sd_W^2 + sigma2_d
-      if (any(vB <= 0) || any(vW <= 0))
-        cli::cli_abort("Wald repeatability needs vB > 0 and vW > 0; refit with both {.code latent + unique} or {.code unique} alone at each tier.")
+      if (any(vB <= 0) || any(vW <= 0)) {
+        cli::cli_abort(
+          "Wald repeatability needs vB > 0 and vW > 0; refit with both {.code latent + unique} or {.code unique} alone at each tier."
+        )
+      }
       log(vB) - log(vW)
     }
 
@@ -163,15 +183,15 @@ extract_repeatability <- function(fit,
 
     z <- stats::qnorm(1 - (1 - level) / 2)
     R_hat <- stats::plogis(log_v_at_mle)
-    lo    <- stats::plogis(log_v_at_mle - z * se)
-    hi    <- stats::plogis(log_v_at_mle + z * se)
+    lo <- stats::plogis(log_v_at_mle - z * se)
+    hi <- stats::plogis(log_v_at_mle + z * se)
 
     return(data.frame(
-      trait    = trait_names,
-      R        = unname(R_hat),
-      lower    = unname(lo),
-      upper    = unname(hi),
-      method   = "wald",
+      trait = trait_names,
+      R = unname(R_hat),
+      lower = unname(lo),
+      upper = unname(hi),
+      method = "wald",
       stringsAsFactors = FALSE,
       row.names = NULL
     ))
@@ -179,20 +199,89 @@ extract_repeatability <- function(fit,
 
   ## bootstrap
   boot <- suppressMessages(bootstrap_Sigma(
-    fit, n_boot = as.integer(nsim), level = c("unit", "unit_obs"),
-    what = "ICC", conf = level, seed = seed, progress = FALSE
+    fit,
+    n_boot = as.integer(nsim),
+    level = c("unit", "unit_obs"),
+    what = "ICC",
+    conf = level,
+    seed = seed,
+    progress = FALSE
   ))
   pe <- boot$point_est$ICC_site
   lo <- boot$ci_lower$ICC_site
   hi <- boot$ci_upper$ICC_site
-  if (is.null(pe))
+  if (is.null(pe)) {
     cli::cli_abort("ICC bootstrap failed; need both B and W tiers in the fit.")
+  }
   data.frame(
-    trait  = trait_names,
-    R      = as.numeric(pe),
-    lower  = as.numeric(lo),
-    upper  = as.numeric(hi),
+    trait = trait_names,
+    R = as.numeric(pe),
+    lower = as.numeric(lo),
+    upper = as.numeric(hi),
     method = "bootstrap",
     stringsAsFactors = FALSE
   )
+}
+
+.repeatability_bootstrap_bound <- function(x, trait_names, field) {
+  if (is.null(x)) {
+    return(rep(NA_real_, length(trait_names)))
+  }
+  out <- as.numeric(x)
+  nm <- names(x)
+  if (!is.null(nm)) {
+    out <- out[match(trait_names, nm)]
+  }
+  if (length(out) != length(trait_names)) {
+    cli::cli_abort(
+      "Bootstrap repeatability {.field {field}} does not match the point-estimate length."
+    )
+  }
+  out
+}
+
+.repeatability_from_bootstrap <- function(boot) {
+  pe <- boot$point_est$ICC_site
+  if (is.null(pe)) {
+    cli::cli_abort(c(
+      "No repeatability / ICC bootstrap summary is available.",
+      "i" = "Call {.fun bootstrap_Sigma} with {.code what = \"ICC\"} and both {.code level = c(\"unit\", \"unit_obs\")}."
+    ))
+  }
+  trait_names <- names(pe)
+  if (is.null(trait_names)) {
+    trait_names <- paste0("trait_", seq_along(pe))
+  }
+  lower <- .repeatability_bootstrap_bound(
+    boot$ci_lower$ICC_site,
+    trait_names = trait_names,
+    field = "ci_lower"
+  )
+  upper <- .repeatability_bootstrap_bound(
+    boot$ci_upper$ICC_site,
+    trait_names = trait_names,
+    field = "ci_upper"
+  )
+  tbl <- data.frame(
+    trait = trait_names,
+    R = unname(as.numeric(pe)),
+    lower = lower,
+    upper = upper,
+    method = "bootstrap",
+    stringsAsFactors = FALSE
+  )
+  attr(tbl, "notes") <- sprintf(
+    "Bootstrap percentile intervals from bootstrap_Sigma(); n_boot = %s, n_failed = %s, conf = %s.",
+    boot$n_boot,
+    boot$n_failed,
+    boot$conf
+  )
+  attr(tbl, "bootstrap") <- list(
+    conf = boot$conf,
+    n_boot = boot$n_boot,
+    n_failed = boot$n_failed,
+    ci_method = boot$ci_method,
+    link_residual = boot$link_residual
+  )
+  tbl
 }

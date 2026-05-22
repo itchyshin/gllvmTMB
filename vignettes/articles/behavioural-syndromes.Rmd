@@ -357,6 +357,7 @@ fit <- gllvmTMB(
           latent(0 + trait | session_id, d = 1) +   # within-individual lability axis
           unique(0 + trait | session_id),            # trait-specific within-individual residual
   data     = df,
+  trait    = "trait",
   unit     = "individual",
   unit_obs = "session_id"
 )
@@ -380,11 +381,18 @@ flag indicate whether the MLE is reliable.
 
 ### Between-individual trait correlation (personality structure)
 
-```{r inspect}
-# Between-individual correlation matrix
-R_B_hat <- extract_Sigma(fit, level = "unit")$R
-cat("Estimated between-individual trait correlation matrix (R_B):\n")
-round(R_B_hat, 3)
+```{r inspect, fig.width = 6.6, fig.height = 5.0, fig.cap = "Estimated between-individual trait correlations. Cells are point estimates from the fitted Sigma_B matrix."}
+R_B_rows <- extract_Sigma_table(
+  fit,
+  level = "unit",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(
+  R_B_rows,
+  title = "Between-individual syndrome correlations",
+  subtitle = "Point estimates from Sigma_B for personality structure."
+)
 ```
 
 The off-diagonal pattern reveals the syndrome structure. Traits on the
@@ -394,11 +402,18 @@ be weak.
 
 ### Within-individual trait correlation (lability structure)
 
-```{r inspect-w}
-# Within-individual correlation matrix
-R_W_hat <- extract_Sigma(fit, level = "unit_obs")$R
-cat("Estimated within-individual trait correlation matrix (R_W):\n")
-round(R_W_hat, 3)
+```{r inspect-w, fig.width = 6.6, fig.height = 5.0, fig.cap = "Estimated within-individual trait correlations. Cells are point estimates from the fitted Sigma_W matrix."}
+R_W_rows <- extract_Sigma_table(
+  fit,
+  level = "unit_obs",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(
+  R_W_rows,
+  title = "Within-individual lability correlations",
+  subtitle = "Point estimates from Sigma_W across repeated sessions."
+)
 ```
 
 The within-individual correlations reflect shared motivational state
@@ -526,33 +541,26 @@ ggplot(df_recovery, aes(true, fitted, colour = factor, shape = factor)) +
   theme(panel.grid.minor = element_blank())
 ```
 
-```{r recovery-sigma, fig.cap = "Estimated vs true between-individual trait correlations (off-diagonal entries of Sigma_B). Perfect recovery would put all points on the 1:1 line."}
-# Optional: compare Sigma_B off-diagonal entries
+```{r recovery-sigma, fig.width = 7.2, fig.height = 4.8, fig.cap = "Estimated vs true between-individual trait correlations (off-diagonal entries of Sigma_B). Perfect recovery would put all points on the 1:1 line."}
 Sigma_B_true <- Lambda_B_true %*% t(Lambda_B_true) + diag(psi_B_true)
-Sigma_B_hat  <- extract_Sigma(fit, level = "unit")$Sigma
+rownames(Sigma_B_true) <- colnames(Sigma_B_true) <- trait_names
 
-# Off-diagonal indices
-n_traits <- T
-off_diag <- which(lower.tri(matrix(0, n_traits, n_traits)))
-true_corr <- cov2cor(Sigma_B_true)[off_diag]
-hat_corr  <- cov2cor(Sigma_B_hat)[off_diag]
+sigma_corr <- compare_Sigma_table(
+  fit,
+  truth = Sigma_B_true,
+  level = "unit",
+  measure = "correlation",
+  entries = "lower"
+)
 
 cat("Correlation between estimated and true Sigma_B off-diagonal entries:",
-    round(cor(hat_corr, true_corr), 3), "\n")
+    round(cor(sigma_corr$estimate, sigma_corr$truth), 3), "\n")
 
-df_sigma <- data.frame(true = true_corr, fitted = hat_corr)
-
-ggplot(df_sigma, aes(true, fitted)) +
-  geom_abline(slope = 1, intercept = 0, linetype = 2, colour = "grey50") +
-  geom_point(colour = "#2c7bb6", alpha = 0.80, size = 2.5) +
-  labs(
-    x     = expression("True " * Sigma[B] * " correlation (off-diagonal)"),
-    y     = expression("Estimated " * hat(Sigma)[B] * " correlation (off-diagonal)"),
-    title = "Recovery of between-individual trait correlations"
-  ) +
-  xlim(-1, 1) + ylim(-1, 1) +
-  theme_minimal(base_size = 12) +
-  theme(panel.grid.minor = element_blank())
+plot_Sigma_comparison(
+  sigma_corr,
+  measure = "correlation",
+  style = "scatter"
+)
 ```
 
 ## Summary of recovered parameters
@@ -626,6 +634,6 @@ hidden inside residual within-individual phenotypic variation.
 *Biological Reviews* **90**, 729–743.
 <https://doi.org/10.1111/brv.12131>
 
-Nakagawa, S. (2026) *gllvmTMB: stacked-trait, long-format multivariate
-generalised linear latent variable models with TMB.* R package version
-0.2.0. <https://itchyshin.github.io/gllvmTMB/>
+Nakagawa, S. (2026) *gllvmTMB: Fit Multivariate Models from Wide
+Response Data.* R package version 0.2.0.
+<https://itchyshin.github.io/gllvmTMB/>

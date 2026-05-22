@@ -23,12 +23,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — Gaussian path validated; binary IRT is M2.3 milestone work.**
+> **Preview — Gaussian and binary IRT paths validated; article polish is M2.5 work.**
 >
-> The Gaussian-path `lambda_constraint` workflow (LAM-01 + LAM-02
-> `covered` per PR-0B.3 row #18 walk) is the production surface
-> today. Binary IRT confirmatory-loadings (LAM-03) walks to
-> `covered` after the **M2.3** milestone closes. See the
+> The Gaussian-path `lambda_constraint` workflow (LAM-01 + LAM-02)
+> and binary IRT confirmatory-loading workflow (LAM-03) are now
+> `covered` in the current register. The article remains in the
+> **M2.5** polish lane so its teaching path can be rebuilt against the
+> validated binary machinery rather than only the earlier Gaussian path.
+> See the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
 
 By default, `gllvmTMB`'s reduced-rank loading matrix
@@ -65,7 +67,7 @@ $\boldsymbol\Lambda$ itself. A short decision tree:
 
 | Your goal | Do you need `lambda_constraint`? |
 |---|---|
-| Estimate $\boldsymbol\Sigma_{\text{unit}}$ (correlations between traits, communalities) | **No.** $\boldsymbol\Sigma_{\text{unit}}$ is rotation-invariant. Just fit and call `extract_Sigma(level = "unit")`. |
+| Estimate $\boldsymbol\Sigma_{\text{unit}}$ (correlations between traits, communalities) | **No.** $\boldsymbol\Sigma_{\text{unit}}$ is rotation-invariant. Just fit and call `extract_Sigma_table(fit, level = "unit")`. |
 | Plot an ordination (`ordiplot()`) | **No.** Axes are rotation-invariant up to reflection / ordering. |
 | Compare loadings across two `gllvmTMB` fits on the same data | **No.** Use `compare_loadings()` (Procrustes alignment) instead. |
 | Compare loadings against another package (`gllvm`, `glmmTMB::rr()`, ...) | **No.** Use Procrustes alignment again -- both packages have their own arbitrary rotation. |
@@ -178,7 +180,8 @@ the long-form recipe.
 fit0_long <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                       unique(0 + trait | site),
-  data = df_long
+  data = df_long,
+  trait = "trait"
 )
 
 # Wide data-frame format (same model with compact formula syntax)
@@ -218,6 +221,7 @@ fit_diag <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                       unique(0 + trait | site),
   data              = df_long,
+  trait             = "trait",
   lambda_constraint = list(B = cnst_diag)
 )
 L_diag <- fit_diag$report$Lambda_B
@@ -247,6 +251,7 @@ fit_zero <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                       unique(0 + trait | site),
   data              = df_long,
+  trait             = "trait",
   lambda_constraint = list(B = cnst_zero)
 )
 L_zero <- fit_zero$report$Lambda_B
@@ -294,6 +299,7 @@ fit_05 <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2) +
                       unique(0 + trait | site),
   data              = df_long,
+  trait             = "trait",
   lambda_constraint = list(B = cnst_05)
 )
 L_05 <- fit_05$report$Lambda_B

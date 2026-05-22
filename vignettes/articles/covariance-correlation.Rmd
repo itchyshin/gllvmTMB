@@ -82,6 +82,17 @@ sum of squared loadings *plus* the trait-specific unique variance.
 Drop $\boldsymbol\Psi$ and the diagonal shrinks; the off-diagonals stay the
 same; $\mathbf R$ swells.
 
+Read the equation beside the R syntax:
+
+| Symbol | R syntax or extractor | Plain meaning |
+|---|---|---|
+| `level` | `level = "unit"` or `level = "unit_obs"` | Which covariance tier you are extracting. |
+| $\boldsymbol\Lambda_\text{level}$ | `latent(..., d = K)` | The `K` loading axes that create shared cross-trait covariance. |
+| $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ | `extract_Sigma_table(fit, level = "unit", part = "shared")` | The covariance explained by the shared latent axes only. |
+| $\boldsymbol\Psi_\text{level}$ and $\psi_{tt}$ | `unique(...)`; `extract_Sigma_table(fit, level = "unit", part = "unique")` | Trait-specific variance that stays in the denominator of correlations. |
+| $\boldsymbol\Sigma_\text{level}$ | `latent(...) + unique(...)`; `extract_Sigma_table(fit, level = "unit", part = "total")` | The full trait covariance matrix used for reporting. |
+| $\mathbf R$ | `extract_correlations(fit, tier = "unit")` or `$R` from `extract_Sigma()` | The correlation matrix after standardising $\boldsymbol\Sigma$. |
+
 ## A side-by-side demonstration
 
 We use a prepared Gaussian behavioural-syndrome example object. The generator
@@ -211,68 +222,93 @@ ext_A$note  # advisory: diag missing
 
 ## The correlations side by side
 
-```{r corr-comparison, fig.width = 8.5, fig.height = 4.5, fig.cap = "True (left) vs. recovered correlations from Model A (latent only) and Model B (latent + unique). Model A's off-diagonals are all systematically larger than truth — that's the inflation unique() prevents."}
-make_long <- function(R, label) {
-  data.frame(
-    trait_i = factor(rep(rownames(R), ncol(R)), levels = rownames(R)),
-    trait_j = factor(rep(colnames(R), each = nrow(R)), levels = colnames(R)),
-    rho     = as.vector(R),
-    panel   = label
-  )
-}
-R_true_named <- cov2cor(Sigma_true)
-rownames(R_true_named) <- colnames(R_true_named) <- trait_names
-df_corr <- rbind(
-  make_long(R_true_named,   "1. Truth"),
-  make_long(ext_A$R,        "2. Model A (latent only)"),
-  make_long(ext_B$R,        "3. Model B (latent + unique)")
+```{r corr-comparison, fig.width = 7.5, fig.height = 5.2, fig.cap = "Trait-pair correlation errors for the latent-only model and the latent + unique model. Positive values mean the fitted correlation is larger than truth; zero means exact recovery for that pair."}
+cmp_A <- compare_Sigma_table(
+  fit_A,
+  truth = Sigma_true,
+  level = "unit",
+  measure = "correlation",
+  entries = "upper"
 )
-df_corr$panel <- factor(df_corr$panel, levels = c(
-  "1. Truth", "2. Model A (latent only)", "3. Model B (latent + unique)"))
+cmp_A$comparison <- "Model A: latent only"
 
-ggplot(df_corr, aes(trait_j, trait_i, fill = rho)) +
-  geom_tile(colour = "white") +
-  geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
-  scale_fill_gradient2(low = "#3b82c6", mid = "white", high = "#d33",
-                       midpoint = 0, limits = c(-1, 1)) +
-  scale_y_discrete(limits = rev) +
-  facet_wrap(~ panel) +
-  labs(x = NULL, y = NULL, fill = expression(rho)) +
-  theme_minimal(base_size = 10) +
-  theme(panel.grid = element_blank(),
-        strip.text = element_text(face = "bold"),
-        axis.text.x = element_text(angle = 35, hjust = 1))
+cmp_B <- compare_Sigma_table(
+  fit_B,
+  truth = Sigma_true,
+  level = "unit",
+  measure = "correlation",
+  entries = "upper"
+)
+cmp_B$comparison <- "Model B: latent + unique"
+
+corr_comparison <- rbind(cmp_A, cmp_B)
+plot_Sigma_comparison(
+  corr_comparison,
+  measure = "correlation",
+  facet = "comparison",
+  sort = "trait"
+)
 ```
 
-The middle panel (`Model A`) shows correlations that are
-**uniformly larger** than truth (left panel). The right panel
-(`Model B`) recovers the true correlations to within sampling noise.
-The mechanism: Model A's $\hat{\boldsymbol\Sigma}$ has small diagonals
+`Model A` shows correlations that are **uniformly larger** than truth.
+`Model B` pulls those errors back toward zero. The mechanism:
+Model A's $\hat{\boldsymbol\Sigma}$ has small diagonals
 (only $\Lambda \Lambda^{\!\top}$), so when we divide by $\sqrt{D}$ the
 off-diagonals get inflated. Model B's $\hat{\boldsymbol\Sigma}$ has
 the full $\Lambda \Lambda^{\!\top} + \boldsymbol\Psi$ — diagonals at the right scale
 and correlations at the right magnitude.
 
-## What `extract_Sigma()` gives you
+## Report-ready Sigma rows
 
-The unified extractor exposes the three parts of the decomposition
-explicitly:
+For reports, make the row object first. Each covariance target is one
+tidy row with trait names, matrix part, estimate, interval placeholders,
+and validation status:
 
-```{r parts}
-# Lambda Lambda^T alone (the "shared" component)
-extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
-
-# psi — trait-specific unique variances (the "unique" component)
-extract_Sigma(fit_B, level = "unit", part = "unique")$s    |> round(2)
-
-# Sigma_unit = Lambda Lambda^T + Psi  (the "total" — what you usually want)
-extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
+```{r sigma-table-rows}
+sigma_rows_B <- extract_Sigma_table(
+  fit_B,
+  level = "unit",
+  part = "total",
+  measure = "covariance",
+  entries = "upper"
+)
+sigma_rows_B
 ```
 
 `part = "total"` is the default and is what you almost always want for
 reporting. `"shared"` is useful if you specifically want the latent-implied
 component (e.g. for ordination interpretation or communality). `"unique"`
 gives the diagonal of $\boldsymbol\Psi$ as a named numeric vector.
+
+The same table helper exposes the three decomposition parts without
+hand-indexing matrices:
+
+```{r sigma-part-rows}
+sigma_part_rows_B <- rbind(
+  extract_Sigma_table(fit_B, level = "unit", part = "shared", entries = "diag"),
+  extract_Sigma_table(fit_B, level = "unit", part = "unique", entries = "diag"),
+  extract_Sigma_table(fit_B, level = "unit", part = "total", entries = "diag")
+)
+
+sigma_part_rows_B[c("component", "matrix", "trait_i", "trait_j", "estimate")]
+```
+
+If you need a matrix for algebra checks, use `extract_Sigma()` directly:
+
+```{r sigma-matrix-backend}
+# Lambda Lambda^T alone (the "shared" component)
+extract_Sigma(fit_B, level = "unit", part = "shared")$Sigma |> round(2)
+
+# psi -- trait-specific unique variances (the "unique" component)
+extract_Sigma(fit_B, level = "unit", part = "unique")$s |> round(2)
+
+# Sigma_unit = Lambda Lambda^T + Psi (the "total" -- what you usually want)
+extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
+```
+
+```{r sigma-table-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Upper-triangle off-diagonal entries of Sigma_unit from the latent + unique model. Open points mark point estimates without finite interval bounds; bootstrap-derived rows are the next step for Sigma uncertainty."}
+plot_Sigma_table(sigma_rows_B, sort = "magnitude")
+```
 
 ## Communality and ICC need the full $\Sigma$ too
 
@@ -293,6 +329,14 @@ the other traits via the latent factors. It is bounded between 0 and 1
 and is a proportion-of-variance summary, analogous in scale to $h^2$
 (heritability) or $R^2$.
 
+For a reader-facing table, the alignment is:
+
+| Symbol | R output | Interpretation |
+|---|---|---|
+| $c_t^2$ | `extract_communality(fit, level = "unit")` | Fraction of trait `t` variance explained by the shared latent axes. |
+| numerator | `extract_Sigma(fit, level = "unit", part = "shared")` diagonal | Shared variance for trait `t`. |
+| denominator | `extract_Sigma(fit, level = "unit", part = "total")` diagonal | Shared variance plus trait-specific unique variance. |
+
 **The catch**: with latent-only fits, $\psi_{tt} = 0$ for every trait by
 construction, so $c_t^2 = 1$ for every trait — the communality is
 identically 1 and tells you nothing. Adding `unique()` gives the
@@ -302,6 +346,20 @@ informative.
 ```{r communality}
 extract_communality(fit_A, level = "unit")  # latent-only fit: all = 1, useless
 extract_communality(fit_B, level = "unit")  # latent + unique: meaningful
+```
+
+For the report surface, keep the exact table but compare the rows with
+the correlation plot helper. The plot uses the same Fisher-z intervals as
+`extract_correlations()`, so it shows uncertainty rather than only a
+matrix cell value:
+
+```{r communality-correlation-rows}
+corr_B <- extract_correlations(fit_B, tier = "unit")
+corr_B
+```
+
+```{r communality-correlation-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Pairwise correlations from the latent + unique model. Points are Fisher-z estimates; horizontal segments show finite 95% interval bounds."}
+plot_correlations(corr_B, sort = "magnitude")
 ```
 
 ### Site-level / individual-level ICC

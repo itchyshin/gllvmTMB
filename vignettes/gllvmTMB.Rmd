@@ -29,8 +29,8 @@ question is usually not mathematical:
 > rather than response-specific?
 
 This page does one small, reproducible example. It loads a prepared
-morphometrics object, fits the same model from long data and wide
-data, checks that the fits agree, and extracts the covariance,
+morphometrics object, fits the model from a wide trait table first,
+checks the equivalent long-data call, and extracts the covariance,
 correlation, communality, and ordination summaries a reader normally
 wants first.
 
@@ -41,7 +41,7 @@ meta-analytic, mixed-family, and profile-likelihood tutorials remain
 under audit until their example objects, diagnostics, and rendered
 HTML reviews are ready.
 
-## First fit: Individual × Trait morphology
+## First fit: wide individual-by-trait morphology
 
 We have `n` individuals, each measured on `T` morphological traits
 across a few sessions. The biological question: do the traits covary
@@ -108,36 +108,45 @@ individual level — the shared low-rank structure plus trait-specific
 unique variance:
 
 ```{r fit-call}
-morph$formula_long
+morph$formula_wide
 
 fit <- gllvmTMB(
-  morph$formula_long,
-  data = df,
-  trait = morph$fit_args$trait,
+  morph$formula_wide,
+  data = df_wide,
   unit = morph$fit_args$unit,
   family = morph$fit_args$family
 )
 fit
 ```
 
-### Same model, wide data frame
+Wide trait tables do not need to be perfectly rectangular. IN under
+MIS-21: if an individual is missing one trait measurement, leave that
+response cell as `NA`; `gllvmTMB()` drops only the unobserved unit-trait
+cell and keeps the other observed traits for that individual. The same
+rule applies to long data with `NA` in the response column. OUT: missing
+predictors, unit labels, or design-matrix values still error because the
+model cannot construct that row.
 
-The same fit reads from a wide data frame (one row per individual, one
-column per trait) via the `traits(...)` formula-LHS marker. Internally
-the engine pivots to long format, so the fit is byte-identical:
+### Same model, long data
 
-```{r fit-wide}
-morph$formula_wide
+If your workflow already stores one row per `(individual, trait)`
+observation, use the same entry point with the long formula and explicit
+`trait =` argument. Internally the wide formula pivots to this stacked
+form, so the fits are byte-identical:
 
-fit_wide <- gllvmTMB(
-  morph$formula_wide,
-  data = df_wide,
+```{r fit-long}
+morph$formula_long
+
+fit_long <- gllvmTMB(
+  morph$formula_long,
+  data = df,
+  trait = morph$fit_args$trait,
   unit = morph$fit_args$unit,
   family = morph$fit_args$family
 )
 
 # Same fit:
-all.equal(as.numeric(logLik(fit)), as.numeric(logLik(fit_wide)))
+all.equal(as.numeric(logLik(fit)), as.numeric(logLik(fit_long)))
 ```
 
 The recovered loadings (up to column rotation / sign — only
@@ -193,14 +202,32 @@ alternatives, and `method = "wald"` is kept as an alias of
 `"fisher-z"`:
 
 ```{r cor}
-extract_correlations(fit, tier = "unit")
+corr_rows <- extract_correlations(fit, tier = "unit")
+corr_rows
+```
+
+For reports, plot the same tidy rows instead of hand-indexing a
+correlation matrix:
+
+```{r cor-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Pairwise trait correlations from the first fitted model. Points are Fisher-z estimates; horizontal segments are finite 95% interval bounds."}
+plot_correlations(corr_rows, sort = "magnitude")
 ```
 
 The matrix form, if you want to look at the correlation structure as
 a whole rather than per pair:
 
-```{r cor-matrix}
-round(cov2cor(extract_Sigma(fit, level = "unit")$Sigma), 2)
+```{r cor-matrix, fig.width = 6.4, fig.height = 4.8, fig.cap = "Trait correlation matrix from the first fitted model. Cells are point estimates; use the pairwise correlation table above when interval bounds matter."}
+sigma_corr_rows <- extract_Sigma_table(
+  fit,
+  level = "unit",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(
+  sigma_corr_rows,
+  title = "First-model trait correlations",
+  subtitle = "Cells are point estimates; use the pairwise rows above for intervals."
+)
 ```
 
 ## Acknowledgements

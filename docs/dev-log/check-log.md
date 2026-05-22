@@ -4397,3 +4397,2508 @@ Shannon handoff check:
 - Handoff status: `WARN`, only because work is uncommitted on a feature
   branch. No open-PR overlap was found; after-task report and issue comment
   are present. Next action is to review, then commit/PR this focused slice.
+
+## 2026-05-21 -- Symbol-to-syntax alignment first pass
+
+Scope:
+
+- Added explicit symbol / R syntax / interpretation alignment blocks to
+  visible public pages where the math was already central:
+  `vignettes/articles/covariance-correlation.Rmd`,
+  `vignettes/articles/api-keyword-grid.Rmd`, and
+  `vignettes/articles/convergence-start-values.Rmd`.
+- Kept this as article-prose infrastructure only: no R implementation,
+  likelihood, parser, extractor, or plotting code changed.
+- Merged the green Reference cleanup PR #232 before editing shared ledger
+  files so this slice was based on the updated reset dashboard.
+
+Evidence:
+
+- `gh pr view 232 --repo itchyshin/gllvmTMB --json number,isDraft,mergeable,reviewDecision,statusCheckRollup --jq '{number,isDraft,mergeable,reviewDecision,checks:[.statusCheckRollup[] | {name,status,conclusion}]}'`
+  -> PR #232 was mergeable and all three checks were green.
+- `gh pr ready 232 --repo itchyshin/gllvmTMB`
+  -> marked #232 ready for review.
+- `gh pr merge 232 --repo itchyshin/gllvmTMB --squash --delete-branch`
+  -> merged #232 as <https://github.com/itchyshin/gllvmTMB/pull/232>.
+- `git fetch origin main`
+  -> updated `origin/main` to include
+  `2946b49 docs: clean reference index (#232)`.
+- `git rebase origin/main`
+  -> current branch rebased cleanly.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/covariance-correlation")'`
+  -> rebuilt `pkgdown-site/articles/covariance-correlation.html`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/api-keyword-grid")'`
+  -> rebuilt `pkgdown-site/articles/api-keyword-grid.html`.
+- `Rscript --vanilla -e 'pkgload::load_all(export_all = FALSE); stopifnot(exists("check_gllvmTMB")); pkgdown::build_article("articles/convergence-start-values", new_process = FALSE)'`
+  -> rebuilt `pkgdown-site/articles/convergence-start-values.html`.
+  A plain `pkgdown::build_article("articles/convergence-start-values")`
+  loaded an older installed package where `check_gllvmTMB()` was unavailable;
+  the `new_process = FALSE` render used the local namespace.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rg -n "diag\\(S\\)|diag\\(s\\)|boldsymbol\\{S\\}|gllvmTMB_wide|two-U" vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/convergence-start-values.Rmd`
+  -> no matches; no stale `S`/`s`/legacy wide-wrapper wording added.
+- Browser DOM checks:
+  - `http://127.0.0.1:8765/articles/covariance-correlation.html#the-decomposition`
+    contained the explicit `extract_Sigma(fit, level = "unit", part = "shared")`
+    and `part = "total"` alignment rows.
+  - `http://127.0.0.1:8765/articles/api-keyword-grid.html#the-five-modes`
+    contained the long/wide/mathematical-target alignment table.
+  - `http://127.0.0.1:8765/articles/convergence-start-values.html#fit-a-small-model`
+    contained the `Lambda` / `Psi` / `Sigma` diagnostics alignment block.
+
+Change:
+
+- `covariance-correlation` now defines `level`, `Lambda`, `Lambda Lambda^T`,
+  `Psi` / `psi_tt`, `Sigma`, and `R` beside the exact formula terms and
+  extractor calls.
+- `api-keyword-grid` now maps `latent`, `unique`, `latent + unique`,
+  `indep`, and `dep` to both long and wide syntax plus their mathematical
+  covariance targets.
+- `convergence-start-values` now gives readers a compact `Lambda` / `Psi` /
+  `Sigma` table before diagnostics and start-value advice.
+- `ROADMAP.md` records this as a Slice 12 first pass rather than a blanket
+  claim that all future article math is done.
+
+Deliberately not run:
+
+- `devtools::document()` was not run because no roxygen or exported API files
+  changed.
+- `devtools::test()` and `devtools::check()` were not run because this slice
+  changed public article prose only. Article rendering, pkgdown config check,
+  stale-wording scans, and browser DOM checks were the relevant gates.
+
+## 2026-05-21 -- Landing-page covariance explanation
+
+Scope:
+
+- Rewrote the first README/pkgdown-home explanation of
+  `Sigma = Lambda Lambda^T + Psi` so the landing page explains the
+  model pieces before sending readers to the covariance article.
+- Kept the change prose-only: no R code, parser, extractor, plotting, or
+  navigation files changed.
+
+Evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,statusCheckRollup`
+  -> only PR #233 is open; its three R-CMD checks were still in progress
+  before this local follow-up edit.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work is PR #233, merged PR #232, and the public-site reset line;
+  no competing shared-ledger lane was visible.
+- `Rscript --vanilla -e 'pkgdown::build_home()'`
+  -> rebuilt `pkgdown-site/index.html`, `ROADMAP.html`, and `404.html`.
+- Browser check at `http://127.0.0.1:8765/index.html`
+  -> confirmed the homepage now shows the `Sigma` / `Lambda Lambda^T` /
+  `Psi` table and the plain-language sentence:
+  "total trait covariance = shared multivariate structure +
+  response-specific variation."
+
+Change:
+
+- The landing-page equation block is now a small alignment table:
+  `Sigma` maps to `extract_Sigma()`, `Lambda Lambda^T` maps to
+  `latent(..., d = K)`, and `Psi` maps to `unique(...)`.
+- The page states the interpretation immediately after the table, rather
+  than showing a naked equation with no reader-facing explanation.
+
+Additional checks:
+
+- `git diff --check`
+  -> clean.
+- `rg -n "diag\\(S\\)|diag\\(s\\)|boldsymbol\\{S\\}|gllvmTMB_wide|two-U|Sigma = Lambda Lambda\\^T \\+ Psi" README.md docs/dev-log/after-task/2026-05-21-landing-equation-explanation.md`
+  -> expected matches only: the new homepage interpretation sentence, the
+  after-task description of the old landing issue, and the existing README
+  note that `gllvmTMB_wide()` remains a soft-deprecated migration path.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Deliberately not pushed yet:
+
+- The follow-up commit can be made locally, but pushing is deliberately paused
+  until the active PR #233 CI run finishes, per CI pacing discipline.
+
+## 2026-05-21 -- Report-ready Sigma table and wide-first landing page
+
+Scope:
+
+- Added `extract_Sigma_table()` as a report-ready point-estimate table
+  view over `extract_Sigma()` for Sigma / Psi / R entries.
+- Refactored the correlation and correlation-ellipse plot data path to use
+  `extract_Sigma_table()` instead of hand-flattening matrices.
+- Updated the README/pkgdown landing page to present the wide
+  `traits(...)` formula path first, while keeping the long data-frame
+  formula beside it as the transparent stacked-trait equivalent.
+- Updated Morphometrics so the fitted correlation heatmap consumes
+  `extract_Sigma_table()` for the fitted panel.
+
+Evidence:
+
+- Pre-edit lane check for shared log/design files:
+  `gh pr list --state open`
+  -> only draft PR #233 (`codex/symbol-syntax-alignment-2026-05-21`) was
+  open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the current PR #233 branch and merged PR #232; no
+  competing shared-log lane was visible.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/extract_Sigma_table.Rd`.
+- `tail -8 man/extract_Sigma_table.Rd && grep -c '^\\keyword' man/extract_Sigma_table.Rd`
+  -> Rd ended in the expected `\seealso{...}` block; keyword count was `0`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table|plot-gllvmTMB")'`
+  -> 164 passes, 0 failures, 0 warnings, 0 skips.
+- README smoke test for the new wide-first example:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); ...; stopifnot(fit$opt$convergence == 0L); print(extract_communality(fit, level = "unit")); print(extract_correlations(fit, tier = "unit"))'`
+  -> convergence `0`; communality and Fisher-z correlations printed.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", new_process = FALSE)'`
+  -> rebuilt `articles/morphometrics.html`.
+- `Rscript --vanilla -e 'pkgdown::build_home()'`
+  -> rebuilt `pkgdown-site/index.html` / `404.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- Rendered-home text check:
+  `rg -n 'Most readers|Data shapes: wide or long|traits\\(bill_length|One `gllvmTMB\\(\\)`' pkgdown-site/index.html README.md`
+  -> expected wide-first landing text and examples in README plus rendered
+  `pkgdown-site/index.html`.
+
+Rose / stale-wording scans:
+
+- `rg -n "Long data are canonical|long data are canonical|Data shapes: long or wide|gllvmTMB_wide\\(Y, \\.\\.\\.\\) was removed|removed in 0\\.2\\.0|diag\\(S\\)|diag\\(s\\)|diag\\(U\\)|\\\\bf S|S_B|S_W|profile-likelihood default|profile default" README.md NEWS.md R/extract-sigma-table.R man/extract_Sigma_table.Rd vignettes/articles/morphometrics.Rmd docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/index.html`
+  -> no matches.
+- `rg -n "gllvmTMB\\(" README.md R/extract-sigma-table.R man/extract_Sigma_table.Rd vignettes/articles/morphometrics.Rmd NEWS.md docs/design/06-extractors-contract.md`
+  -> every touched long-format call uses `trait = "..."`; wide calls use
+  `traits(...)` and no `trait =`.
+
+Change:
+
+- `extract_Sigma_table()` returns stable report-ready columns:
+  `estimand`, `trait_i`, `trait_j`, `i`, `j`, `level`, `component`,
+  `matrix`, `estimate`, interval placeholders, `scale`,
+  `validation_row`, `diagonal`, and `triangle`.
+- `_pkgdown.yml`, `NAMESPACE`, `man/extract_Sigma_table.Rd`, `NEWS.md`,
+  `docs/design/06-extractors-contract.md`, and
+  `docs/design/35-validation-debt-register.md` now register the new
+  exported helper (`EXT-18`).
+- README now leads with the wide data-frame path and a runnable
+  repeated-measures wide example, then shows the long equivalent.
+- Existing `plot(type = "correlation")` and
+  `plot(type = "correlation_ellipse")` metadata now reports
+  `source = "extract_Sigma_table"`.
+
+Deliberately not counted as passing evidence:
+
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  was started before the landing-page pivot and was still silent after a
+  long run. It was killed when the maintainer redirected the lane to the
+  wide-first landing-page update. No final `devtools::check()` result was
+  obtained, so it is not evidence for this slice.
+
+## 2026-05-21 -- Missing response cells in long and wide data
+
+Scope:
+
+- Made explicit long-format response `NA` rows behave like unobserved
+  unit-trait cells: dropped before weight normalisation and before TMB.
+- Kept predictor/design-matrix `NA` as an error.
+- Re-enabled the wide `traits(...)` missing-cell test and added long scalar
+  plus `cbind(successes, failures)` missing-response coverage.
+- Registered the capability as `MIS-21`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the current PR #233 branch and merged PR #232; no
+  competing shared-log lane was visible.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/gllvmTMB.Rd`.
+- `tail -5 man/gllvmTMB.Rd`
+  -> ended in the expected `\seealso{...}` block.
+- `grep -c '^\\keyword' man/gllvmTMB.Rd`
+  -> `0`.
+- `Rscript --vanilla -e 'devtools::test(filter = "missing-response|traits-keyword")'`
+  -> 63 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "missing-response|traits-keyword|weights-unified|gllvmTMB-args")'`
+  -> 117 passes, 0 failures, 0 warnings, 4 expected skips in
+  `test-gllvmTMB-args.R`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Rose / stale-wording scans:
+
+Command:
+
+```sh
+rg -n 'NA in response or design matrix|remove NA rows before fitting|Missing response|Response `NA`s|MIS-21' R/gllvmTMB.R R/fit-multi.R man/gllvmTMB.Rd NEWS.md docs/design/35-validation-debt-register.md tests/testthat/test-missing-response.R tests/testthat/test-traits-keyword.R
+```
+
+Verdict: old combined NA wording is gone; new MIS-21 documentation appears in
+roxygen, Rd, NEWS, and the validation register.
+
+- `rg -n 'trio|profile-likelihood default|gllvmTMB_wide\\(Y, \\.\\.\\.\\) was removed|removed in 0\\.2\\.0|meta_known_V\\(|diag\\(S\\)|diag\\(s\\)|diag\\(U\\)|\\\\bf S|\\bS_B\\b|\\bS_W\\b|unsupported .* implemented|all-missing traits' NEWS.md R/gllvmTMB.R man/gllvmTMB.Rd README.md vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/06-extractors-contract.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> only intentional existing mentions were found: `meta_known_V()` as a
+  deprecated alias, an internal source comment about the removed sdmTMB
+  fallback, and the new NEWS limitation that all-missing traits still need
+  explicit user-side decisions.
+- `rg -n 'gllvmTMB\\(' NEWS.md R/gllvmTMB.R man/gllvmTMB.Rd README.md vignettes/articles/morphometrics.Rmd docs/design/06-extractors-contract.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> touched long-format examples still pass `trait = "..."` explicitly
+  where required; wide examples use `traits(...)` and no `trait =`.
+- `rg -n "@export|export\\(extract_Sigma_table\\)|extract_Sigma_table" R/extract-sigma-table.R NAMESPACE _pkgdown.yml man/extract_Sigma_table.Rd docs/design/35-validation-debt-register.md NEWS.md`
+  -> previous slice's new export is present in `NAMESPACE`, generated Rd,
+  `_pkgdown.yml`, NEWS, and row `EXT-18`.
+
+Issue ledger:
+
+- `gh issue list --state open --search "missing response NA" --limit 10`
+  -> no open matching issues.
+- `gh issue list --state open --search "traits NA" --limit 10`
+  -> no open matching issues.
+- `gh issue list --state open --search "wide format" --limit 10`
+  -> found #230, "Article surface reset and user-first tooling gate".
+- `gh issue view 230 --json number,title,body,labels,url`
+  -> #230 is a broad public article/tooling gate; no comment added because
+  this lower-level constructor hardening does not close one of its enumerated
+  gates.
+
+Deliberately not run:
+
+- Full check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 4 notes before the namespace-note cleanup. The
+  warning came from local macOS SDK lookup / compile warnings during package
+  install (`xcrun --show-sdk-version` exits 1 on this machine). Notes were:
+  top-level `air.toml` plus ignored generated `Rplots.pdf`, legacy NEWS section
+  parsing, unused `nlme`, and unqualified `setNames` / `modifyList`.
+- Local install probe:
+  `R CMD INSTALL --preclean --library=/tmp/gllvmtmb-install-lib .`
+  -> package installed; reproduced the same local SDK warning.
+- Cleanup after the full check:
+  removed ignored generated `Rplots.pdf`; qualified `stats::setNames()` in
+  `R/data-mixed-family.R`; qualified `utils::modifyList()` in
+  `R/z-confint-gllvmTMB.R`.
+- `Rscript --vanilla -e 'devtools::test(filter = "missing-response|traits-keyword|weights-unified|gllvmTMB-args|stage37-mixed-family|confint")'`
+  -> 165 passes, 0 failures, 1 expected deprecation warning, 4 expected skips.
+- Short check after cleanup:
+  `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE)'`
+  -> 0 errors, 1 local SDK install warning, 3 notes (`air.toml`, legacy NEWS
+  section parsing, unused `nlme`). The prior global-function NOTE was gone.
+
+## 2026-05-21 -- Covariance/correlation plot helpers and raindrops
+
+Scope:
+
+- Added exported `plot_correlations()` and `plot_Sigma_table()` helpers over
+  tidy covariance/correlation rows.
+- Added `style = "raindrop"` compatibility displays. Raindrops are frequentist
+  compatibility shapes reconstructed from finite intervals, not posterior
+  densities.
+- Made raindrops omit CI interval lines by default; `show_intervals = TRUE`
+  remains an explicit technical-display overlay.
+- Marked rows with no finite interval bounds as open points so point-only rows
+  are visibly different from rows with uncertainty displays.
+- Added bootstrap-oriented caption/doc language: fitted correlation open points
+  can often be followed up with `method = "bootstrap"`; Sigma-table raindrops
+  need bootstrap-derived or otherwise interval-bearing rows.
+- Adjusted multi-level facet spacing so sparse facets do not look visually more
+  important than denser facets.
+- Registered the capability as `EXT-19`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the current PR #233 branch; no competing shared-log lane
+  was visible.
+- `Rscript --vanilla -e 'parse("R/plot-covariance-tables.R")'`
+  -> parsed successfully.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/plot_correlations.Rd` and `man/plot_Sigma_table.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 70 passes, 0 failures, 0 warnings, 0 skips after adding open-point
+  coverage for missing interval bounds.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|plot-gllvmTMB|extract-sigma-table")'`
+  -> 234 passes, 0 failures, 0 warnings, 0 skips.
+- Visual QA render script using synthetic correlation and Sigma rows wrote:
+  `/tmp/gllvmTMB-plot-check/plot-correlations-raindrop-spaced.png` and
+  `/tmp/gllvmTMB-plot-check/plot-sigma-raindrop-spaced.png`.
+  Florence review verdict: spacing and no-line raindrop defaults are clearer
+  than the optional CI-line overlay.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. The install warning included local
+  `xcrun --show-sdk-version` status 1 plus existing compiler warnings from
+  Eigen/TMB and `gllvmTMB.cpp:92` unused `n_mesh`. Notes were existing
+  `air.toml`, legacy NEWS section parsing, and unused `nlme`.
+
+Rose / stale-wording scans:
+
+- `rg -n 'plot_correlations|plot_Sigma_table|raindrop|EXT-19|show_intervals' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd NEWS.md _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md NAMESPACE`
+  -> new exports, docs, tests, NEWS, pkgdown reference, validation row, and
+  design contract all mention the helper surface.
+- `rg -n 'Florence-reviewed|posterior density|credible distributions|Bayesian|compatibility' R/plot-covariance-tables.R man/plot_correlations.Rd man/plot_Sigma_table.Rd NEWS.md docs/design/53-report-ready-extractor-plot-contract.md docs/design/35-validation-debt-register.md`
+  -> no stale `Florence-reviewed` wording remains; raindrops are consistently
+  described as compatibility displays and explicitly not posterior densities.
+- `rg -n 'space = "free_y"|expansion\\(add|GeomSegment|\\.draw_interval' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> additive y spacing, optional free-y facet space, and no-default-CI-line
+  tests are present.
+
+Issue ledger:
+
+- `gh issue list --state open --search "raindrop plot" --limit 10`
+  -> no matching open issues.
+- `gh issue list --state open --search "plot helper covariance" --limit 10`
+  -> found #230, "Article surface reset and user-first tooling gate". No
+  comment added because this helper infrastructure supports that gate but does
+  not complete the article integration.
+
+Deliberately not counted as passing evidence:
+
+- One short check against the pre-spacing version was terminated after the
+  maintainer correctly flagged misleading facet row spacing. The final short
+  check above was rerun after the spacing fix and is the only check evidence
+  counted for this slice.
+
+## 2026-05-21 -- Morphometrics raindrop figure integration
+
+Scope:
+
+- Added the new `plot_correlations()` raindrop display to
+  `vignettes/articles/morphometrics.Rmd`.
+- Kept the exact tidy correlation table in the article, then added the plot as
+  the interpretation surface rather than replacing the table.
+- Added reader-facing interpretation that all fitted unit-tier trait
+  correlations in the teaching example are positive, that the near-1 tight
+  drops are Fisher-z/Hessian intervals, and that bootstrap intervals are the
+  next check when those bounds carry an inference claim.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only the current PR #233 branch was visible as recent package work.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/morphometrics.html` successfully. The
+  source-tree load was needed because the installed package on this machine did
+  not yet include the branch's new extractor/plot-helper exports.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 70 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Rendered-output checks:
+
+- `rg -n "Tight drops near 1|ci-correlation-raindrop|Pairwise between-individual trait correlations" pkgdown-site/articles/morphometrics.html vignettes/articles/morphometrics.Rmd`
+  -> found the new chunk, rendered figure alt text/caption, and the
+  Fisher-z/bootstrap interpretation paragraph in the built HTML.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this article-only integration
+  slice. The broader plotting slice already ran a short check after the helper
+  implementation; this slice rerendered the affected article and reran the
+  focused plotting tests plus `pkgdown::check_pkgdown()`.
+
+## 2026-05-21 -- Public covariance/correlation plot surface scan
+
+Scope:
+
+- Ran a Rose/Florence scan for public and hidden article surfaces that still
+  show covariance, correlation, or communality output only as raw matrices or
+  tables.
+- Updated the README quick example to store `corr_rows` and call
+  `plot_correlations(corr_rows)`.
+- Updated Get Started (`vignettes/gllvmTMB.Rmd`) to keep exact
+  `extract_correlations()` rows and add a `plot_correlations()` figure before
+  the optional matrix view.
+- Updated the Covariance/correlation article to add:
+  `extract_Sigma_table(..., entries = "upper")` +
+  `plot_Sigma_table()` for upper-triangle `Sigma_unit` covariance rows, and
+  `extract_correlations()` + `plot_correlations()` for fitted correlation rows.
+- During visual QA, fixed `plot_Sigma_table()` fitted-object default entries
+  from `"offdiag"` to `"upper"` so symmetric pairs are not duplicated in
+  report plots.
+- Added the audit note
+  `docs/dev-log/audits/2026-05-21-covariance-plot-surface-scan.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only the current PR #233 branch was visible as recent package work.
+- Scan command:
+  `rg -n "extract_correlations\\(|extract_Sigma_table\\(|extract_communality\\(|plot_correlations\\(|plot_Sigma_table\\(|correlation|correlations|covariance|communality|Sigma" README.md vignettes _pkgdown.yml NEWS.md docs/design/53-report-ready-extractor-plot-contract.md --glob '!*.html'`
+  -> identified README, Get Started, Morphometrics, Covariance/correlation,
+  and hidden mixed-family / behavioural / phylogenetic / JSDM surfaces.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/gllvmTMB.html`; the new `cor-plot` chunk
+  ran.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/covariance-correlation.html`; the new
+  `sigma-table-plot` and `communality-correlation-plot` chunks ran.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot_Sigma_table.Rd` after the default `entries =
+  "upper"` documentation change.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|extract-sigma-table")'`
+  -> 97 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Rendered-output checks:
+
+- Viewed `pkgdown-site/articles/cor-plot-1.png`: PASS. The Get Started
+  correlation forest plot is readable and uses finite Fisher-z intervals.
+- Viewed
+  `pkgdown-site/articles/covariance-correlation_files/figure-html/communality-correlation-plot-1.png`:
+  PASS. The fitted correlation intervals are readable and honest.
+- Viewed
+  `pkgdown-site/articles/covariance-correlation_files/figure-html/sigma-table-plot-1.png`:
+  initial REVISION. The first pass duplicated symmetric pairs because the plot
+  used off-diagonal entries. Fixed by switching fitted-object default entries
+  and the article example to `"upper"`, then rerendered and viewed the corrected
+  plot: PASS.
+- `rg -n "plot_correlations\\(|plot_Sigma_table\\(|entries = \"upper\"|Upper-triangle|Covariance estimate|Covariance / variance estimate|offdiag" R/plot-covariance-tables.R man/plot_Sigma_table.Rd tests/testthat/test-plot-covariance-tables.R README.md vignettes/gllvmTMB.Rmd vignettes/articles/covariance-correlation.Rmd docs/dev-log/audits/2026-05-21-covariance-plot-surface-scan.md pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/covariance-correlation.html NEWS.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> confirmed helper calls, upper-triangle wording, generated HTML captions,
+  and the retained `offdiag` option as a non-default choice.
+
+Issue ledger:
+
+- `gh issue list --state open --search "Article surface reset" --limit 10`
+  -> found #230, "Article surface reset and user-first tooling gate".
+- `gh issue list --state open --search "plot helper" --limit 10`
+  -> found #230.
+- `gh issue list --state open --search "covariance correlation" --limit 10`
+  -> found #230. No comment added because this is meaningful partial progress
+  but does not close the broader article-surface gate.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this docs/plot-surface slice.
+  The affected rendered pages, focused plot/extractor tests, generated Rd,
+  `pkgdown::check_pkgdown()`, and `git diff --check` were rerun.
+
+## 2026-05-21 -- Bootstrap Sigma table interval rows
+
+Scope:
+
+- Extended `extract_Sigma_table()` so it accepts `bootstrap_Sigma()` objects in
+  addition to fitted `gllvmTMB_multi` models.
+- Bootstrap Sigma/R summaries now convert to the same report-ready row schema
+  as fitted-model Sigma tables, with `lower`, `upper`,
+  `interval_method = "bootstrap"`, and row-level `interval_status`.
+- `plot_Sigma_table()` now accepts a `bootstrap_Sigma()` object directly, so
+  bootstrap-derived Sigma rows can be plotted as interval forests or raindrops
+  without hand-built joins in articles.
+- Added validation-debt row `EXT-20`.
+- Updated `NEWS.md`, `docs/design/06-extractors-contract.md`, and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the current plot-helper branch plus PR #233's base slice.
+- `Rscript --vanilla -e 'parse("R/extract-sigma-table.R"); parse("R/plot-covariance-tables.R")'`
+  -> parsed successfully.
+- `air format R/extract-sigma-table.R R/plot-covariance-tables.R tests/testthat/test-extract-sigma-table.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_Sigma_table.Rd` and `man/plot_Sigma_table.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table|plot-covariance-tables|bootstrap-Sigma")'`
+  -> 167 passes, 0 failures, 0 warnings, 0 skips after formatter and
+  documentation regeneration.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 local install warning, 3 notes. The warning matched the
+  existing local SDK/compiler install-warning pattern; notes were the existing
+  `air.toml`, legacy NEWS section parsing, and unused `nlme`.
+- Synthetic visual QA render:
+  `plot_Sigma_table(boot, level = "unit", entries = "upper", style = "raindrop")`
+  wrote `/tmp/gllvmTMB-bootstrap-sigma-raindrop.png`.
+  Florence review verdict: PASS for the new bootstrap-object path; the plot
+  shows three unique Sigma pairs with finite compatibility shapes and no
+  duplicated symmetric rows.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-20|bootstrap_Sigma\\(\\)|bootstrap interval|interval_method = \"bootstrap\"|bootstrap_Sigma object" NEWS.md R/extract-sigma-table.R R/plot-covariance-tables.R man/extract_Sigma_table.Rd man/plot_Sigma_table.Rd tests/testthat/test-extract-sigma-table.R tests/testthat/test-plot-covariance-tables.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new bootstrap table surface is present in code, tests, Rd, NEWS, and
+  design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow
+  inference-table slice. Focused extractor/plot/bootstrap tests, documentation
+  regeneration, visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and
+  a short no-tests package check were run.
+
+## 2026-05-21 -- Communality bootstrap interval rows
+
+Scope:
+
+- Extended `extract_communality()` so it accepts `bootstrap_Sigma()` objects
+  containing `communality_B` / `communality_W` summaries.
+- Added the bootstrap-object reporting path for `trait`, `tier`, `c2`,
+  `lower`, `upper`, and `method = "bootstrap"` rows without rerunning refits.
+- Extended `plot(type = "communality", boot = boot)` so supplied bootstrap
+  intervals are overlaid on the stacked communality / uniqueness bars at the
+  `c^2` boundary.
+- Added validation-debt row `EXT-21`.
+- Updated `NEWS.md`, `docs/design/06-extractors-contract.md`, and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Recovery after context compaction:
+  `git status --short --branch`, `git diff --stat`, `git diff`,
+  `tail -80 docs/dev-log/check-log.md`, and
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-21-063743-codex-launch-audit-checkpoint.md`
+  were read before continuing.
+- Recovery checkpoint written:
+  `docs/dev-log/recovery-checkpoints/2026-05-21-204819-codex-checkpoint.md`.
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane plus PR #233 base
+  work.
+- `Rscript --vanilla -e 'parse("R/extractors.R"); parse("R/plot-gllvmTMB.R")'`
+  -> parsed successfully.
+- `air format R/extractors.R R/plot-gllvmTMB.R tests/testthat/test-extract-communality-bootstrap.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_communality.Rd` and
+  `man/plot.gllvmTMB_multi.Rd`; `man/extract_ordination.Rd` was checked after a
+  parameter-inheritance correction and no longer carries the bootstrap-object
+  wording.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-communality-bootstrap|plot-gllvmTMB")'`
+  -> 165 passes, 0 failures, 0 warnings, 0 skips after formatter and
+  documentation regeneration.
+- Synthetic visual QA render:
+  `plot(fit, type = "communality", boot = boot)` wrote
+  `/tmp/gllvmTMB-communality-bootstrap-overlay.png`.
+  Florence review verdict: PASS after adding horizontal facet spacing; bars
+  have consistent row heights, interval points/whiskers are legible, and centre
+  axis labels no longer collide.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-21|communality bootstrap|bootstrap_Sigma\\(.*communality|plot\\(type = \\\"communality\\\"|has_interval|interval_status" NEWS.md R/extractors.R R/plot-gllvmTMB.R man/extract_communality.Rd man/plot.gllvmTMB_multi.Rd tests/testthat/test-extract-communality-bootstrap.R tests/testthat/test-plot-gllvmTMB.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new communality interval surface is present in code, tests, Rd, NEWS, and
+  design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow
+  reporting/plotting slice. Focused extractor/plot tests, documentation
+  regeneration, visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and
+  a short no-tests package check were run.
+- No vdiffr snapshot was added; current plot evidence is object-shape tests
+  plus manual rendered PNG review.
+
+## 2026-05-21 -- Repeatability bootstrap interval rows
+
+Scope:
+
+- Extended `extract_repeatability()` so it accepts `bootstrap_Sigma()` objects
+  containing `ICC_site` summaries.
+- Added the bootstrap-object reporting path for `trait`, `R`, `lower`,
+  `upper`, and `method = "bootstrap"` rows without rerunning refits.
+- Extended `plot(type = "integration", boot = boot)` so a raw
+  `bootstrap_Sigma()` object can supply repeatability and communality
+  intervals directly.
+- Switched the integration interval layer from `geom_errorbarh()` to
+  `geom_errorbar(orientation = "y")` to avoid ggplot2 4.0.0 deprecation
+  warnings when interval-bearing input is supplied.
+- Added validation-debt row `EXT-22`.
+- Updated `NEWS.md`, `docs/design/06-extractors-contract.md`, and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane plus PR #233 base
+  work.
+- `Rscript --vanilla -e 'parse("R/extract-repeatability.R"); parse("R/plot-gllvmTMB.R")'`
+  -> parsed successfully.
+- `air format R/extract-repeatability.R R/plot-gllvmTMB.R tests/testthat/test-extract-repeatability-bootstrap.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_repeatability.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-repeatability-bootstrap|plot-gllvmTMB")'`
+  -> 171 passes, 0 failures, 0 warnings, 0 skips after formatter and
+  documentation regeneration.
+- Synthetic visual QA render:
+  `plot(fit, type = "integration", boot = boot)` wrote
+  `/tmp/gllvmTMB-integration-bootstrap-overlay.png`.
+  Florence review verdict: PASS after removing the stale open-ring caption
+  clause when no intervals are missing.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-22|repeatability bootstrap|bootstrap_Sigma\\(.*ICC|plot\\(type = \\\"integration\\\"|ICC_site|extract_repeatability\\(boot" NEWS.md R/extract-repeatability.R R/plot-gllvmTMB.R man/extract_repeatability.Rd man/plot.gllvmTMB_multi.Rd tests/testthat/test-extract-repeatability-bootstrap.R tests/testthat/test-plot-gllvmTMB.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new repeatability interval surface is present in code, tests, Rd, NEWS,
+  and design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow
+  reporting/plotting slice. Focused extractor/plot tests, documentation
+  regeneration, visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and
+  a short no-tests package check were run.
+- No vdiffr snapshot was added; current plot evidence is object-shape tests
+  plus manual rendered PNG review.
+
+## 2026-05-21 -- Correlation ellipse bootstrap intervals
+
+Scope:
+
+- Extended `plot(type = "correlation", boot = boot)` so a `bootstrap_Sigma()`
+  object with `R_B` / `R_W` summaries can supply row-level `lower`, `upper`,
+  `interval_method`, and `interval_status` metadata.
+- Extended `plot(type = "correlation_ellipse", boot = boot)` so black
+  borders/stars mark correlations whose supplied intervals do not cross zero.
+- Updated the ellipse caption to state the star/border interpretation when
+  interval evidence is present.
+- Added validation-debt row `EXT-23`.
+- Updated `NEWS.md` and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane plus PR #233 base
+  work.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`
+  -> 176 passes, 0 failures, 0 warnings, 0 skips after formatter and
+  documentation regeneration.
+- Synthetic visual QA render:
+  `plot(fit, type = "correlation_ellipse", boot = boot)` wrote
+  `/tmp/gllvmTMB-correlation-ellipse-bootstrap.png`.
+  Florence review verdict: PASS; black borders/stars are visible where supplied
+  bootstrap intervals do not cross zero, and the caption states that
+  interpretation directly.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-23|correlation ellipse|correlation_ellipse|R_B|R_W|interval-aware summaries|do not cross zero" NEWS.md R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd tests/testthat/test-plot-gllvmTMB.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new interval-aware correlation plot surface is present in code, tests, Rd,
+  NEWS, and design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow plotting
+  slice. Focused plot tests, documentation regeneration, visual QA,
+  `pkgdown::check_pkgdown()`, `git diff --check`, and a short no-tests package
+  check were run.
+- No rendered article was updated and no vdiffr snapshot was added.
+
+## 2026-05-21 -- Direct bootstrap correlation plots
+
+Scope:
+
+- Extended `plot_correlations()` so users can pass a `bootstrap_Sigma()` object
+  containing `R_B` / `R_W` summaries directly.
+- Converted bootstrap matrix summaries through
+  `extract_Sigma_table(..., measure = "correlation", entries = "upper")` so the
+  plotting schema remains row-first and pairwise.
+- Preserved `pair = c("trait_a", "trait_b")` filtering for bootstrap input.
+- Tightened covariance/correlation plot captions so open-point warnings appear
+  only when rows actually lack a finite uncertainty display.
+- Added validation-debt row `EXT-24`.
+- Updated `NEWS.md` and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane plus PR #233 base
+  work.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 98 passes, 0 failures, 0 warnings, 0 skips after the caption fix.
+- Synthetic visual QA render:
+  `plot_correlations(boot, style = "raindrop")` wrote
+  `/tmp/gllvmTMB-plot-correlations-bootstrap-raindrop.png`.
+  Florence review verdict: PASS; the two facets have similar row spacing, all
+  supplied intervals render as raindrops plus point estimates, and the caption
+  states that raindrops are frequentist compatibility displays rather than
+  posterior densities.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-24|plot_correlations\\(boot|bootstrap correlation|R_B|R_W|not posterior densities|Open points" NEWS.md R/plot-covariance-tables.R man/plot_correlations.Rd tests/testthat/test-plot-covariance-tables.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new direct bootstrap correlation plotting surface is present in code,
+  tests, Rd, NEWS, and design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow plotting
+  slice. Focused plot tests, visual QA, `pkgdown::check_pkgdown()`,
+  `git diff --check`, and a short no-tests package check were run.
+- No rendered article was updated and no vdiffr snapshot was added.
+
+## 2026-05-21 -- Morphometrics bootstrap correlation fixture
+
+Scope:
+
+- Added `data-raw/examples/make-morphometrics-bootstrap-correlation.R`.
+- Added `inst/extdata/examples/morphometrics-bootstrap-r.rds`, a small cached
+  `bootstrap_Sigma()` object with `R_B` point estimates and percentile bounds.
+- Updated `vignettes/articles/morphometrics.Rmd` to render
+  `plot_correlations(morph_boot_R, style = "raindrop")` without running
+  bootstrap refits during pkgdown.
+- Disclosed `n_boot = 100` and `n_failed = 4` in the article prose and labelled
+  the fixture as a rendered plotting example, not interval-calibration
+  evidence.
+- Added validation-debt row `MIS-22`.
+- Updated `NEWS.md` and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- Trial timing command:
+  `bootstrap_Sigma(..., n_boot = 3, level = "unit", what = "R", seed = 20260521L)`
+  -> 1.82 seconds, 0 failed refits.
+- First full fixture-generation run:
+  `Rscript --vanilla data-raw/examples/make-morphometrics-bootstrap-correlation.R`
+  -> stopped because the first generator required zero failed refits; the
+  bootstrap run had 4 failed refits.
+- Corrected fixture-generation run:
+  `Rscript --vanilla data-raw/examples/make-morphometrics-bootstrap-correlation.R`
+  -> saved `inst/extdata/examples/morphometrics-bootstrap-r.rds` (884 bytes)
+  with `n_boot = 100`, `seed = 20260521`, and `n_failed = 4`.
+- `air format data-raw/examples/make-morphometrics-bootstrap-correlation.R tests/testthat/test-example-morphometrics.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics")'`
+  -> 45 passes, 0 failures, 0 warnings, 0 skips.
+- Synthetic visual QA render:
+  `plot_correlations(boot, tier = "unit", style = "raindrop", sort = "trait")`
+  wrote `/tmp/gllvmTMB-morphometrics-bootstrap-raindrop.png`.
+  Florence review verdict: PASS; row spacing is even, point estimates remain
+  visible, and the caption states frequentist compatibility rather than
+  posterior density.
+- `Rscript --vanilla -e 'pkgdown::build_article("morphometrics", quiet = TRUE)'`
+  -> failed because pkgdown could not find the nested article slug.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/morphometrics", quiet = TRUE)'`
+  -> failed in a new process because the local installed package was stale and
+  did not expose `extract_Sigma_table()`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/morphometrics.html` successfully.
+- Rendered PNG reviewed:
+  `pkgdown-site/articles/morphometrics_files/figure-html/ci-correlation-raindrop-1.png`
+  -> Florence PASS.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "MIS-22|EXT-24|morphometrics-bootstrap-r|cached bootstrap|failed refits|interval-calibration|plot_correlations\\(morph_boot_R|bootstrap_Sigma\\(\\.\\.\\., what = \\\"R\\\"\\)" NEWS.md vignettes/articles/morphometrics.Rmd tests/testthat/test-example-morphometrics.R data-raw/examples/make-morphometrics-bootstrap-correlation.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/articles/morphometrics.html`
+  -> fixture, public prose, rendered HTML, tests, NEWS, and register rows tell
+  the same story.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|profile-likelihood default|trio|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W" vignettes/articles/morphometrics.Rmd NEWS.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> no stale terminology in the touched article or plot contract. Older NEWS
+  hits were pre-existing compatibility/deprecation text.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article/fixture
+  slice. Focused fixture tests, single-article render, visual QA,
+  `pkgdown::check_pkgdown()`, `git diff --check`, and a short no-tests package
+  check were run.
+- No vdiffr snapshot was added.
+
+## 2026-05-21 -- Morphometrics bootstrap ellipse figure
+
+Scope:
+
+- Added a morphometrics article figure for
+  `plot(fit, type = "correlation_ellipse", level = "unit", boot = morph_boot_R)`.
+- Updated the article wording to explain that ellipse shape / fill show
+  correlation direction and strength, while black borders and stars mark
+  supplied bootstrap intervals that do not cross zero.
+- Shortened the built-in correlation-ellipse caption so it fits the rendered
+  article figure.
+- Extended the morphometrics fixture test to check the cached object drives the
+  ellipse plot path.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`, and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- Exploratory visual render:
+  `plot(fit, type = "correlation_ellipse", level = "unit", boot = boot)` wrote
+  `/tmp/gllvmTMB-morphometrics-correlation-ellipse-bootstrap.png` and reported
+  `interval_status = provided`.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-example-morphometrics.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB")'`
+  -> 176 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics")'`
+  -> 49 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/morphometrics.html` successfully.
+- Rendered PNG reviewed:
+  `pkgdown-site/articles/morphometrics_files/figure-html/ci-correlation-ellipse-1.png`
+  -> Florence PASS after caption shortening; labels, stars, borders, legend,
+  and bottom caption are readable at article size.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- First scan attempt used a double-quoted shell pattern containing backticks and
+  emitted `zsh:1: command not found: R_B`; reran with single quotes.
+- `rg -n 'correlation_ellipse|black border|black borders|stars mark|interval excludes zero|EXT-23|MIS-22|ellipse-border|cached R_B|plot\\(type = "correlation_ellipse"' NEWS.md R/plot-gllvmTMB.R tests/testthat/test-example-morphometrics.R tests/testthat/test-plot-gllvmTMB.R vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md pkgdown-site/articles/morphometrics.html`
+  -> ellipse fixture path is present in code, tests, public article, rendered
+  HTML, NEWS, and design / validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow article
+  figure slice. Focused plot and fixture tests, single-article render,
+  visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and a short
+  no-tests package check were run.
+- No vdiffr snapshot was added.
+
+## 2026-05-21 -- Missing-response public docs
+
+Scope:
+
+- Updated `README.md` so the landing page says `NA` response cells are allowed
+  for long response rows and wide `traits(...)` cells.
+- Updated `vignettes/gllvmTMB.Rmd` so Get Started gives the same advice after
+  the wide-formula example.
+- Used explicit IN / OUT wording tied to MIS-21: response missingness is in;
+  predictor, grouping-variable, and design-matrix missingness remain out.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = TRUE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/gllvmTMB.html` successfully.
+- Render byproducts `vignettes/cor-plot-1.png` and `vignettes/ord-1.png`
+  were removed after the Get Started render.
+- `rg -n "IN \\(MIS-21\\)|IN under MIS-21|OUT: missing|Missing response cells|unit-trait cell" README.md vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html docs/design/35-validation-debt-register.md`
+  -> README, source article, rendered article, and validation register carry
+  the same missing-response contract.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|profile-likelihood default|trio|diag\\(U\\)|U_phy|U_non|\\\\bf S|S_B|S_W" README.md vignettes/gllvmTMB.Rmd`
+  -> only the intentional README soft-deprecation note for
+  `gllvmTMB_wide(Y, ...)`.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this documentation-only
+  slice. Get Started render, pkgdown check, whitespace check, stale-wording
+  scans, and a short no-tests package check were run.
+
+## 2026-05-21 -- Bootstrap provenance in plot metadata
+
+Scope:
+
+- Updated `plot_correlations()` to preserve extractor notes in
+  `attr(p, "gllvmTMB_meta")$notes`.
+- Updated `plot_Sigma_table()` to preserve extractor notes in the same metadata
+  field.
+- Added tests that bootstrap-derived plot objects expose `n_boot` provenance in
+  metadata notes.
+- Updated `NEWS.md` and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 100 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n 'Bootstrap provenance|gllvmTMB_meta.*notes|n_boot|n_failed|plot_correlations\\(\\)|plot_Sigma_table\\(\\)|EXT-19|EXT-20|EXT-24' NEWS.md R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R docs/design/53-report-ready-extractor-plot-contract.md`
+  -> provenance metadata surface is present in NEWS, code, tests, and the plot
+  contract.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow metadata
+  slice. Focused plot tests, pkgdown check, whitespace check, stale-wording
+  scan, and a short no-tests package check were run.
+- No article render was needed because no vignette changed.
+
+## 2026-05-21 -- Figure surface rescan after bootstrap plot slices
+
+Scope:
+
+- Re-scanned README and article source for covariance/correlation/communality
+  surfaces that still hand-build matrices, heatmaps, or tables.
+- Added
+  `docs/dev-log/audits/2026-05-21-figure-surface-scan-after-bootstrap.md`.
+- Identified the next code target as a reusable estimate-vs-truth table helper
+  for example objects.
+- Identified hidden/technical article targets: functional-biogeography,
+  behavioural-syndromes, mixed-family-extractors, joint-sdm, and
+  phylogenetic-gllvm.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `rg -n "extract_Sigma\\(|extract_Sigma_table\\(|extract_correlations\\(|plot_correlations\\(|plot_Sigma_table\\(|cov2cor\\(|geom_tile\\(|geom_text\\(|extract_communality\\(|extract_repeatability\\(|plot\\(fit.*type = \\\"correlation|type = \\\"communality|type = \\\"integration" vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd README.md`
+  -> source map summarized in the new audit doc.
+- `git diff --check`
+  -> clean after the audit/check-log files were written.
+
+Deliberately not run:
+
+- No R tests, pkgdown render, or package check were run because this slice only
+  added internal audit/check-log Markdown files.
+
+## 2026-05-21 -- Sigma truth-comparison table helper
+
+Scope:
+
+- Added exported `compare_Sigma_table()` for joining fitted/report-ready
+  Sigma or correlation rows to a supplied truth matrix.
+- Added `truth`, `error`, `abs_error`, and `comparison_status` columns.
+- Added roxygen/Rd, pkgdown navigation, NEWS, validation row EXT-25, and the
+  report-ready extractor/plot contract entry.
+- Added focused acceptance and rejection tests.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/extract-sigma-table.R tests/testthat/test-extract-sigma-table.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/compare_Sigma_table.Rd`.
+- `tail -5 man/compare_Sigma_table.Rd && grep -c '^\\keyword' man/compare_Sigma_table.Rd`
+  -> Rd tail was well formed and keyword count was `0`.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table")'`
+  -> first run failed because the test expected every note to match the
+  comparison sentence; after tightening the assertion, the rerun returned
+  55 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'compare_Sigma_table|EXT-25|estimate-vs-truth|truth matrix|comparison_status|abs_error' NEWS.md R/extract-sigma-table.R man/compare_Sigma_table.Rd tests/testthat/test-extract-sigma-table.R _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md NAMESPACE`
+  -> new helper is present in export, help, tests, pkgdown navigation, NEWS,
+  validation-debt register, and the report-ready contract.
+- `gh issue list --state open --limit 20 --search "Sigma truth"`
+  and `gh issue list --state open --limit 20 --search "estimate truth"`
+  -> both surfaced issue #230 as the relevant open issue.
+- `gh issue view 230 --comments`
+  -> issue #230 is the active broad article surface reset/tooling ledger.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow exported
+  helper slice. Focused tests, roxygen generation, pkgdown check, whitespace
+  check, stale-wording scan, Rd spot-check, issue scan, and a short no-tests
+  package check were run.
+- No article render was needed because no vignette changed.
+
+## 2026-05-21 -- Sigma truth-comparison plot helper
+
+Scope:
+
+- Added exported `plot_Sigma_comparison()` over `compare_Sigma_table()` rows.
+- Added default row-labelled `estimate - truth` plots and optional
+  estimate-versus-truth scatter plots.
+- Added `gllvmTMB_meta`, `gllvmTMB_data`, and `comparison_status` metadata.
+- Added focused tests, roxygen/Rd, pkgdown navigation, NEWS, validation row
+  EXT-26, and report-ready contract text.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/plot_Sigma_comparison.Rd`; after the Rose
+  stale-wording cleanup it also rewrote `man/compare_Sigma_table.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 121 passes, 0 failures, 0 warnings, 0 skips.
+- Rendered visual QA images:
+  `/tmp/gllvmTMB-sigma-comparison-difference.png` and
+  `/tmp/gllvmTMB-sigma-comparison-scatter.png`.
+- Visual QA catch:
+  the first scatter render clipped subtitle/caption text at 5.5 inches wide;
+  the wording was shortened and the scatter image regenerated cleanly.
+- `tail -5 man/plot_Sigma_comparison.Rd && grep -c '^\\keyword' man/plot_Sigma_comparison.Rd`
+  -> Rd tail was well formed and keyword count was `0`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.` This was rerun after the stale-wording cleanup.
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'plot_Sigma_comparison|EXT-26|sigma_comparison|estimate-vs-truth|comparison_status|not confidence intervals' NEWS.md R/plot-covariance-tables.R man/plot_Sigma_comparison.Rd tests/testthat/test-plot-covariance-tables.R _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md NAMESPACE`
+  -> new helper is present in export, help, tests, pkgdown navigation, NEWS,
+  validation-debt register, and the report-ready contract.
+- `rg -n 'estimate-vs-truth article figures remain future|interval-aware table joins|interval-aware Sigma-table joins|rendered article integration|plotting geometry remains' NEWS.md R docs/design man`
+  -> no hits after updating the previous table-helper and plot-helper wording.
+- `gh issue list --state open --limit 20 --search "plot Sigma comparison"`
+  and `gh issue list --state open --limit 20 --search "estimate truth plot"`
+  -> both surfaced issue #230 as the relevant open issue.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this plot-helper slice.
+  Focused plot tests, roxygen generation, pkgdown check, whitespace check,
+  stale-wording scan, Rd spot-check, visual QA renders, issue scan, and a short
+  no-tests package check were run.
+- No article render was needed because no vignette changed.
+
+## 2026-05-21 -- Morphometrics truth-comparison helper integration
+
+Scope:
+
+- Replaced the hand-built true-vs-fitted correlation heatmap scaffold in
+  `vignettes/articles/morphometrics.Rmd`.
+- Used `compare_Sigma_table()` and `plot_Sigma_comparison()` for the
+  row-level between-unit correlation recovery figure.
+- Kept the figure focused on fitted minus true correlation, with text stating
+  that zero means exact recovery for the trait pair.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> wrote `pkgdown-site/articles/morphometrics.html`.
+- Visual QA image inspected:
+  `pkgdown-site/articles/morphometrics_files/figure-html/corr-comparison-1.png`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics")'`
+  -> 49 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'corr-heatmap|make_corr_long|df_corr|geom_tile\\(|geom_text\\(|scale_fill_gradient2\\(|compare_Sigma_table\\(|plot_Sigma_comparison\\(' vignettes/articles/morphometrics.Rmd`
+  -> only `compare_Sigma_table()` and `plot_Sigma_comparison()` remain in the
+  changed section; the article-local heatmap scaffolding is gone.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains|estimate-vs-truth article figures remain future" vignettes/articles/morphometrics.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this single-article
+  integration. The article render, focused morphometrics test, pkgdown check,
+  whitespace check, stale-wording scans, visual QA, and a short no-tests
+  package check were run.
+
+## 2026-05-21 -- Sigma comparison facets
+
+Scope:
+
+- Added `facet = "comparison"` to `plot_Sigma_comparison()`.
+- Required a `comparison` column when the new facet mode is requested.
+- Added tests and refreshed roxygen/Rd, NEWS, validation row EXT-26, and the
+  report-ready plot contract.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/plot_Sigma_comparison.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 125 passes, 0 failures, 0 warnings, 0 skips.
+- `tail -5 man/plot_Sigma_comparison.Rd; grep -c '^\\keyword' man/plot_Sigma_comparison.Rd`
+  -> Rd tail was well formed and keyword count was `0`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'facet = "comparison"|comparison column|model/specification|plot_Sigma_comparison|EXT-26' NEWS.md R/plot-covariance-tables.R man/plot_Sigma_comparison.Rd tests/testthat/test-plot-covariance-tables.R docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> comparison-facet support is present in code, tests, NEWS, generated help,
+  validation-debt register, and the report-ready contract.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow plot-helper
+  extension. Focused plot tests, roxygen generation, pkgdown check, whitespace
+  check, stale-wording scan, Rd spot-check, and a short no-tests package check
+  were run.
+
+## 2026-05-21 -- Covariance/correlation truth-comparison figure
+
+Scope:
+
+- Replaced the hand-built three-panel correlation heatmap in
+  `vignettes/articles/covariance-correlation.Rmd`.
+- Used `compare_Sigma_table()` and
+  `plot_Sigma_comparison(facet = "comparison")` to show correlation errors for
+  the latent-only and latent + unique models.
+- Fixed `plot_Sigma_comparison(sort = "trait", facet = "comparison")` so y
+  positions are contiguous within comparison panels.
+- Added a regression expectation for the facet ordering.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 126 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/covariance-correlation_files/figure-html/corr-comparison-1.png`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-covariance-edge-cases")'`
+  -> 31 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'make_long|df_corr|geom_tile\\(|geom_text\\(|scale_fill_gradient2\\(|facet_wrap\\(~ panel\\)|compare_Sigma_table\\(|plot_Sigma_comparison\\(|facet = "comparison"' vignettes/articles/covariance-correlation.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> old article-local heatmap scaffolding is gone from the touched article;
+  the helper and comparison-facet path are present in article and tests.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article/helper
+  integration. Focused helper tests, focused example tests, article render,
+  pkgdown check, whitespace check, stale-wording scan, visual QA, and a short
+  no-tests package check were run.
+
+## 2026-05-21 -- Simulation-verification truth comparison
+
+Scope:
+
+- Replaced manual Sigma truth-vs-fit table construction in
+  `vignettes/articles/simulation-verification.Rmd`.
+- Used `compare_Sigma_table()` and `plot_Sigma_comparison()` for the
+  between-site Sigma recovery check.
+- Updated `plot_Sigma_comparison()` title logic so diagonal-inclusive plots
+  say "Sigma error by entry".
+- Added a regression expectation for that title.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 127 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/simulation-verification", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/simulation-verification_files/figure-html/recover-sigma-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'row\\(|col\\(|Sigma_fit|diff\\s*=|data.frame\\(|compare_Sigma_table\\(|plot_Sigma_comparison\\(|Sigma error by entry' vignettes/articles/simulation-verification.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> the changed recovery section now uses comparison helpers; remaining
+  `Sigma_fit` / `Sigma_truth` wording is the intentional trait-factor-order
+  failure-mode explanation.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/simulation-verification.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this hidden-article
+  cleanup. Focused helper tests, article render, pkgdown check, whitespace
+  check, stale-wording scans, visual QA, and a short no-tests package check
+  were run.
+
+## 2026-05-22 -- User-facing site preview and pkgdown deploy diagnosis
+
+Scope:
+
+- Reframed the package title, DESCRIPTION, package Rd, `gllvmTMB()` Rd,
+  citation text, README citation, and touched article wording so the public
+  site and link previews lead with the wide-data user workflow rather than the
+  TMB engine and covariance keyword grid.
+- Replaced remaining "Long data are canonical" wording in public articles with
+  wide-first or article-specific wording.
+- Fixed the hidden animal-model article render path by qualifying the pedigree
+  helper call after confirming `pedigree_to_A()` is exported by the current
+  source namespace.
+- Diagnosed the manual pkgdown workflow failure as a GitHub Pages environment
+  protection rejection for the PR branch, not an R/pkgdown build failure.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,author,url`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `gh run list --workflow pkgdown.yaml --limit 6 --json databaseId,status,conclusion,headBranch,headSha,displayTitle,createdAt,updatedAt,url`
+  -> latest manual pkgdown run `26282665628` on
+  `codex/symbol-syntax-alignment-2026-05-21` failed immediately.
+- `gh api repos/itchyshin/gllvmTMB/check-runs/77362484836/annotations --jq '.'`
+  -> GitHub annotation: branch `codex/symbol-syntax-alignment-2026-05-21` is
+  not allowed to deploy to `github-pages` because of environment protection
+  rules; deployment was rejected before any checkout/R/pkgdown step ran.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB.Rd` and `man/gllvmTMB-package.Rd`.
+- `Rscript --vanilla -e 'devtools::install(quick = TRUE, upgrade = "never", quiet = TRUE)'`
+  -> completed, refreshing the local namespace used by `install = FALSE`.
+- `Rscript --vanilla -e 'cat("pedigree_to_A exported:", "pedigree_to_A" %in% getNamespaceExports("gllvmTMB"), "\n")'`
+  -> `pedigree_to_A exported: TRUE`.
+- `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> completed; the hidden `animal-model` article rendered after the local
+  install refresh.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rg -n "og:title|og:description|twitter:title|twitter:description|Fit Multivariate|wide data frame|Stacked-Trait|standalone Template|4 x 5 covariance keyword grid" pkgdown-site/index.html pkgdown-site/reference/gllvmTMB-package.html pkgdown-site/reference/gllvmTMB.html`
+  -> local HTML metadata uses `Fit Multivariate Models from Wide Response Data`
+  and starts the description with the wide-data user workflow; no old preview
+  title or standalone-template wording appears in these rendered pages.
+- `rg -n "Stacked-Trait GLLVMs with TMB|A standalone Template Model Builder|4 x 5 covariance keyword grid pairs|long-format multivariate generalised linear latent variable|Long data are canonical|long data are canonical|Fit Multivariate Response Models from Wide Trait Tables|Wide Trait Tables|wide response table" DESCRIPTION README.md inst/CITATION R man vignettes _pkgdown.yml pkgdown-site/index.html`
+  -> no hits after the update.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this documentation,
+  metadata, and hidden-article render cleanup. The previous PR head already had
+  passing 3-OS R-CMD-check; this slice added local `document()`, full pkgdown
+  site build, `check_pkgdown()`, whitespace check, and stale-wording scans.
+
+## 2026-05-22 -- Pre-push whitespace hygiene for slice-40 stack
+
+Scope:
+
+- Removed trailing whitespace from the newly added slice reports, audit notes,
+  and the slice-40 while-away report before updating draft PR #233.
+- Added this narrow hygiene record so the pre-push correction is visible in the
+  repository ledger.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt,url`
+  -> only draft PR #233 was open, targeting branch
+  `codex/symbol-syntax-alignment-2026-05-21`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `git diff --check origin/codex/symbol-syntax-alignment-2026-05-21..HEAD`
+  -> found trailing whitespace in new dev-log / after-task / while-away files.
+- `git diff --check origin/codex/symbol-syntax-alignment-2026-05-21..HEAD | sed -n 's/:.*trailing whitespace.*//p' | sort -u | xargs perl -pi -e 's/[ \t]+$//'`
+  -> mechanically removed trailing spaces from the flagged files.
+- `git diff --check`
+  -> clean for the working-tree cleanup.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this dev-log-only whitespace
+  cleanup. The slice-40 report records the broader overnight validation, and
+  the PR branch will receive 3-OS CI after push.
+
+## 2026-05-22 -- Rose preview-banner register citations
+
+Scope:
+
+- Tightened Preview banners in four touched public articles before updating
+  draft PR #233.
+- Replaced generic validation-register references with concrete row IDs in
+  `functional-biogeography.Rmd` and `choose-your-model.Rmd`.
+- Updated stale binary-IRT wording in `lambda-constraint.Rmd` and
+  `psychometrics-irt.Rmd` now that LAM-03 is `covered`.
+
+Evidence:
+
+- Pre-edit lane check had already been rerun in the same pre-push session:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt,url`
+  -> only draft PR #233 was open.
+- `rg -n "latent\\(|unique\\(|phylo_|spatial_|meta_V|FG-|MET-|SP|PHY|LAM-|MIX-|FAM-" docs/design/35-validation-debt-register.md`
+  -> confirmed the relevant row IDs and current statuses.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); for (article in c("articles/functional-biogeography", "articles/choose-your-model", "articles/lambda-constraint", "articles/psychometrics-irt")) pkgdown::build_article(article, quiet = TRUE, new_process = FALSE)'`
+  -> rendered all four articles.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean after edits.
+- Stale preview wording scan:
+  ```sh
+  rg -n 'LAM-03 `partial`|walks to `covered` after|Each individual covariance component.*`covered`|machinery is partly `partial`|R ≥' vignettes/articles/functional-biogeography.Rmd vignettes/articles/choose-your-model.Rmd vignettes/articles/lambda-constraint.Rmd vignettes/articles/psychometrics-irt.Rmd
+  ```
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this prose-only Rose fix. The
+  touched articles rendered, pkgdown checked clean, and the PR branch will
+  receive 3-OS CI after push.
+
+## 2026-05-22 -- Remaining Sigma heatmap labels
+
+Scope:
+
+- Added custom `plot_Sigma_heatmap()` titles/subtitles to the Get Started,
+  behavioural-syndromes, functional-biogeography, and joint-SDM heatmaps that
+  still used generic defaults.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd`
+  -> completed without output.
+- `for article in gllvmTMB articles/behavioural-syndromes articles/functional-biogeography articles/joint-sdm; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> all four pages rendered locally.
+- Visual QA images inspected:
+  `pkgdown-site/articles/cor-matrix-1.png`,
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/inspect-1.png`,
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/inspect-w-1.png`,
+  `pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rb-1.png`,
+  `pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rw-1.png`, and
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-sigma-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'First-model trait correlations|Between-individual syndrome correlations|Within-individual lability correlations|Between-site trait correlations|Within-site trait correlations|Shared and total latent-liability Sigma|title = ' vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/behavioural-syndromes.html pkgdown-site/articles/functional-biogeography.html pkgdown-site/articles/joint-sdm.html`
+  -> edited labels are present in source and rendered HTML.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/gllvmTMB.Rmd vignettes/articles/behavioural-syndromes.Rmd vignettes/articles/functional-biogeography.Rmd vignettes/articles/joint-sdm.Rmd`
+  -> one existing `two-U-phylogeny` article-link slug hit in
+  `functional-biogeography.Rmd`; no stale notation was introduced.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-label
+  polish. Four page renders, visual QA, `pkgdown::check_pkgdown()`,
+  whitespace check, stale-wording scans, and a short no-tests package check
+  were run.
+
+## 2026-05-22 -- Covariance article row-first Sigma section
+
+Scope:
+
+- Updated `vignettes/articles/covariance-correlation.Rmd` so the canonical
+  `Sigma` section teaches `extract_Sigma_table()` rows before raw
+  `extract_Sigma()` matrices.
+- Added a small shared/unique/total diagonal row example and kept the raw matrix
+  output as the algebra backend.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/covariance-correlation.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/covariance-correlation_files/figure-html/sigma-table-plot-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Report-ready Sigma rows|sigma_part_rows_B|sigma-matrix-backend|extract_Sigma_table\\(fit, level = "unit", part = "shared"\\)|extract_Sigma_table\\(fit_B|extract_Sigma\\(fit_B, level = "unit", part = "shared"\\)\\$Sigma' vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html`
+  -> row-first heading, decomposition-row chunk, matrix-backend chunk, and
+  rendered HTML are present.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains|What `extract_Sigma\\(\\)` gives you' vignettes/articles/covariance-correlation.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  teaching-order change. Article render, visual QA, `pkgdown::check_pkgdown()`,
+  whitespace check, stale-wording scans, and a short no-tests package check
+  were run.
+
+## 2026-05-22 -- README Sigma rows
+
+Scope:
+
+- Changed the homepage model-piece table so `Sigma` points to
+  `extract_Sigma_table(fit, level = "unit")`.
+- Added `sigma_rows <- extract_Sigma_table(fit, level = "unit")` to the README
+  smoke example before pairwise correlations.
+- Updated one sentence to say the fitted object reports `Sigma rows`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- README smoke, first attempt:
+  `Rscript --vanilla - <<'EOF' ... library(gllvmTMB) ... EOF`
+  -> failed at `extract_Sigma_table()` because it loaded the installed package
+  rather than this working tree.
+- README smoke, working-tree attempt:
+  `Rscript --vanilla - <<'EOF' ... devtools::load_all(quiet = TRUE) ... EOF`
+  -> fit, `extract_communality()`, `extract_Sigma_table()`,
+  `extract_correlations()`, and `plot_correlations()` all ran.
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = TRUE)'`
+  -> wrote `pkgdown-site/index.html` and `pkgdown-site/404.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|sigma_rows <- extract_Sigma_table|Sigma rows|report-ready row per entry' README.md pkgdown-site/index.html`
+  -> README source and rendered home page contain the row-first Sigma wording.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|extract_Sigma\\(fit, level = "unit"\\) \\| The total covariance' README.md`
+  -> one intentional `gllvmTMB_wide()` hit remains in the soft-deprecation
+  paragraph; the old matrix-first Sigma row is gone.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this README-only
+  homepage cleanup. README smoke, pkgdown home build, `pkgdown::check_pkgdown()`,
+  whitespace check, stale-wording scans, and a short no-tests package check
+  were run.
+
+## 2026-05-22 -- Guide articles row extractors
+
+Scope:
+
+- Updated `vignettes/articles/choose-your-model.Rmd` so the diagnostic
+  checklist points to `extract_Sigma_table()` for implied covariance rows.
+- Updated `vignettes/articles/stacked-trait-gllvm.Rmd` so the biological
+  summaries use `extract_correlations()` rather than `$R` from
+  `extract_Sigma()`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd`
+  -> completed without output.
+- `for article in articles/choose-your-model articles/stacked-trait-gllvm; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> both articles rendered locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|extract_correlations\\(fit, tier = "unit"\\)|extract_correlations\\(fit, tier = "unit_obs"\\)|extract_Sigma\\(fit, level = "unit"\\)\\$R|extract_Sigma\\(fit, level = "unit"\\)' vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd pkgdown-site/articles/choose-your-model.html pkgdown-site/articles/stacked-trait-gllvm.html`
+  -> new row extractor calls are present; old `$R` examples are gone.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/choose-your-model.Rmd vignettes/articles/stacked-trait-gllvm.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this static guide-text
+  cleanup. Two article renders, `pkgdown::check_pkgdown()`, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-22 -- Convergence article Sigma rows
+
+Scope:
+
+- Updated `vignettes/articles/convergence-start-values.Rmd` so its diagnostic
+  table points to `extract_Sigma_table()` for fitted Sigma.
+- Replaced direct bootstrap Sigma-bound matrix examples with
+  `extract_Sigma_table(boot, level = "unit", entries = "upper")`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/convergence-start-values.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/convergence-start-values", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = "unit", part = "total"\\)|extract_Sigma_table\\(boot, level = "unit", entries = "upper"\\)|boot\\$ci_lower\\$Sigma_B|boot\\$ci_upper\\$Sigma_B|extract_Sigma\\(fit, level = "unit", part = "total"\\)\\$Sigma' vignettes/articles/convergence-start-values.Rmd pkgdown-site/articles/convergence-start-values.html`
+  -> row-first fitted and bootstrap Sigma examples are present; old direct
+  bootstrap matrix-bound examples are gone.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/convergence-start-values.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this static article
+  example cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace
+  check, stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-22 -- Mixed-family bootstrap Sigma rows
+
+Scope:
+
+- Replaced raw bootstrap Sigma matrix prints in
+  `vignettes/articles/mixed-family-extractors.Rmd` with
+  `extract_Sigma_table(boot, level = "unit", entries = "upper")`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/mixed-family-extractors.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/mixed-family-extractors", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(boot, level = "unit", entries = "upper"\\)|boot\\$point_est\\$Sigma_unit|boot\\$ci_lower\\$Sigma_unit|boot\\$ci_upper\\$Sigma_unit' vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
+  -> row-first bootstrap Sigma display is present; old raw matrix prints are
+  gone from source.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/mixed-family-extractors.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article display
+  cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-22 -- Lambda-constraint Sigma table wording
+
+Scope:
+
+- Replaced `extract_Sigma(level = "unit")` in the lambda-constraint decision
+  table with `extract_Sigma_table(fit, level = "unit")`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/lambda-constraint.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|extract_Sigma\\(level = "unit"\\)|extract_Sigma\\(fit, level = "unit"\\)' vignettes/articles/lambda-constraint.Rmd pkgdown-site/articles/lambda-constraint.html`
+  -> new row-table helper call is present in source and rendered HTML; the old
+  missing-`fit` snippet is gone.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/lambda-constraint.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this one-line article
+  wording cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace
+  check, stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-22 -- Vocabulary Sigma table render cleanup
+
+Scope:
+
+- Updated `vignettes/articles/gllvm-vocabulary.Rmd` so implied trait covariance
+  names `extract_Sigma_table(fit, level = ...)` as the tidy reporting shape.
+- Replaced legacy TeX `\rm` atoms with `\mathrm{}` to remove Pandoc math
+  warnings exposed by the render.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/gllvm-vocabulary.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/gllvm-vocabulary", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally without the earlier Pandoc `\rm` warnings.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = \\.\\.\\.\\)|extract_Sigma\\(fit, level = \\.\\.\\.\\)|\\\\rm|Report-ready|tidy rows|mathrm\\{unit\\}|mathrm\\{phy\\}|mathrm\\{non\\}' vignettes/articles/gllvm-vocabulary.Rmd pkgdown-site/articles/gllvm-vocabulary.html`
+  -> source and rendered HTML contain the row-table wording and `\mathrm{}`
+  atoms; no `\rm` remains.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/gllvm-vocabulary.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this glossary/render
+  cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-22 -- Sigma heatmap custom labels
+
+Scope:
+
+- Added optional `title`, `subtitle`, and `caption` arguments to
+  `plot_Sigma_heatmap()`.
+- Regenerated `man/plot_Sigma_heatmap.Rd`.
+- Updated mixed-family, psychometrics, animal-model, and phylogenetic articles
+  to use biologically specific heatmap labels.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot_Sigma_heatmap.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 157 passes, 0 failures, 0 warnings, 0 skips.
+- `for article in articles/mixed-family-extractors articles/psychometrics-irt articles/animal-model articles/phylogenetic-gllvm; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> all four articles rendered locally.
+- Visual QA images inspected:
+  `pkgdown-site/articles/mixed-family-extractors_files/figure-html/corr-1.png`,
+  `pkgdown-site/articles/psychometrics-irt_files/figure-html/sigma-exp-corr-1.png`,
+  `pkgdown-site/articles/animal-model_files/figure-html/G3-correlation-1.png`, and
+  `pkgdown-site/articles/phylogenetic-gllvm_files/figure-html/extract-total-correlations-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `tail -5 man/plot_Sigma_heatmap.Rd && grep -c '^\\keyword' man/plot_Sigma_heatmap.Rd`
+  -> tail clean; keyword count `0`.
+- `rg -n 'title = "Mixed-family trait correlations"|title = "Exploratory item correlations"|title = "Genetic trait correlations"|title = "Phylogenetic and non-phylogenetic correlations"|title = NULL|subtitle = NULL|caption = NULL|title,subtitle,caption' R/plot-covariance-tables.R man/plot_Sigma_heatmap.Rd tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd pkgdown-site/articles/mixed-family-extractors.html pkgdown-site/articles/psychometrics-irt.html pkgdown-site/articles/animal-model.html pkgdown-site/articles/phylogenetic-gllvm.html`
+  -> helper signature, Rd usage, roxygen parameter, tests, and four article
+  calls are present.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this plotting-label
+  polish. Focused helper tests, four article renders, visual QA,
+  `pkgdown::check_pkgdown()`, whitespace check, stale-wording scans, and a
+  short no-tests package check were run.
+
+## 2026-05-22 -- Remaining explicit trait article cleanup
+
+Scope:
+
+- Added `trait = "trait"` to remaining inspected long-format public examples in
+  `behavioural-syndromes`, `choose-your-model`, `cross-package-validation`,
+  `lambda-constraint`, `mixed-family-extractors`, `profile-likelihood-ci`, and
+  `simulation-verification`.
+- Updated the long-format shorthand in `choose-your-model` prose so it names
+  the trait column explicitly.
+- Left wide `traits(...)` examples unchanged.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/cross-package-validation.Rmd vignettes/articles/choose-your-model.Rmd vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/lambda-constraint.Rmd vignettes/articles/profile-likelihood-ci.Rmd vignettes/articles/simulation-verification.Rmd vignettes/articles/behavioural-syndromes.Rmd`
+  -> completed without output.
+- `for article in articles/cross-package-validation articles/choose-your-model articles/mixed-family-extractors articles/lambda-constraint articles/profile-likelihood-ci articles/simulation-verification articles/behavioural-syndromes; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> all seven articles rendered locally. The profile-likelihood article emitted
+  an existing Pandoc math warning about `\rm`, unrelated to this slice.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- Structural source scan across `README.md`, `vignettes/gllvmTMB.Rmd`, and
+  `vignettes/articles/*.Rmd` for actual `gllvmTMB(value ~ ...)` calls without
+  `trait =`
+  -> no hits after tightening the scanner to ignore prose-only `gllvmTMB()`
+  mentions.
+- `rg -n "gllvmTMB\\(value ~ \\.\\.\\., data = df_long, unit|gllvmTMB\\(value ~ \\.\\.\\., data = df_long\\)" README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd`
+  -> no stale shorthand hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this documentation
+  convention cleanup. Seven article renders, pkgdown check, whitespace check,
+  stale-wording scans, a structural source scan, and a short no-tests package
+  check were run.
+
+## 2026-05-22 -- Mixed-family Sigma heatmap
+
+Scope:
+
+- Replaced raw `Sigma$Sigma` printing in
+  `vignettes/articles/mixed-family-extractors.Rmd` with
+  `extract_Sigma_table()` rows.
+- Replaced `round(Sigma$R, 3)` with `plot_Sigma_heatmap()` for the
+  mixed-family correlation matrix.
+- Preserved `link_residual = "auto"` so the mixed-family denominator remains
+  family-aware.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/mixed-family-extractors.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/mixed-family-extractors", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/mixed-family-extractors_files/figure-html/corr-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma\\$Sigma|round\\(Sigma\\$R|extract_Sigma_table\\(|plot_Sigma_heatmap\\(|fig.width = 5.8|trait\\s*=\\s*"trait"' vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
+  -> old printed matrix calls are gone; helper-backed source and rendered HTML
+  are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/mixed-family-extractors.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-22 -- Functional-biogeography Sigma rows
+
+Scope:
+
+- Replaced raw `Sigma_B_M1` and `Sigma_W_M1` matrix printing in
+  `vignettes/articles/functional-biogeography.Rmd`.
+- Used `extract_Sigma_table()` to report the core model's between-site and
+  within-site Sigma targets as tidy rows.
+- Left the downstream correlation-shift and heatmap figures unchanged.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/functional-biogeography.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/functional-biogeography", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma_B_M1|Sigma_W_M1|round\\(Sigma_B_M1|round\\(Sigma_W_M1|Sigma_M1_rows|extract_Sigma_table\\(' vignettes/articles/functional-biogeography.Rmd pkgdown-site/articles/functional-biogeography.html`
+  -> old matrix printout is gone; helper-backed source and rendered HTML are
+  present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/functional-biogeography.Rmd`
+  -> only the pre-existing `two-U-phylogeny` link slug was found; no new stale
+  notation was introduced.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, pkgdown check, whitespace check, stale-wording scans,
+  and a short no-tests package check were run.
+
+## 2026-05-22 -- Get Started wide-first flow
+
+Scope:
+
+- Reordered `vignettes/gllvmTMB.Rmd` so the first runnable fit uses the wide
+  `traits(...)` formula and `df_wide`.
+- Moved the long-format `value ~ ...`, `trait =` call into the equivalence
+  check.
+- Kept the missing-response note beside the wide-first path.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/gllvmTMB.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Generated render byproducts removed:
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'wide individual-by-trait|morph\\$formula_wide|fit_long <- gllvmTMB|fit_wide|Same model, long data|trait = morph\\$fit_args\\$trait|Wide trait tables do not need' vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html`
+  -> wide-first source/rendered HTML is present; the old `fit_wide` secondary
+  object is gone.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|long data and wide data|fits the same model from long" vignettes/gllvmTMB.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-flow
+  cleanup. Article render, pkgdown check, whitespace check, stale-wording scans,
+  and a short no-tests package check were run.
+
+## 2026-05-22 -- Profile math render cleanup
+
+Scope:
+
+- Replaced legacy `\rm` TeX in the profile-likelihood article's inline `H^2`
+  equation with `\mathrm{}`.
+- Confirmed the article render no longer emits the earlier Pandoc math warning.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/profile-likelihood-ci.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/profile-likelihood-ci", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally without the earlier Pandoc `\rm` warning.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n '\\\\rm|\\\\mathrm\\{phy\\}|\\\\mathrm\\{non\\}|H\\^2' vignettes/articles/profile-likelihood-ci.Rmd pkgdown-site/articles/profile-likelihood-ci.html`
+  -> no `\rm` remains; `\mathrm{phy}` and `\mathrm{non}` are present in source
+  and rendered HTML.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U" vignettes/articles/profile-likelihood-ci.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this TeX-only cleanup.
+  Article render, pkgdown check, whitespace check, stale-wording scans, and a
+  short no-tests package check were run.
+
+## 2026-05-22 -- Phylogenetic Sigma tables
+
+Scope:
+
+- Replaced raw `Sigma_phy_*` and `Sigma_non_*` matrix extraction/rounding in
+  `vignettes/articles/phylogenetic-gllvm.Rmd`.
+- Used `extract_Sigma_table()` for shared, unique, and total component rows.
+- Added a faceted `plot_Sigma_heatmap()` display for total phylogenetic versus
+  non-phylogenetic correlations.
+- Rewired the phylogenetic communality calculation to use the table rows.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> completed without output.
+- First render failed because the communality chunk still referenced
+  `Sigma_phy_shared`; after rewiring to `Sigma_phy_rows`,
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/phylogenetic-gllvm", quiet = TRUE, new_process = FALSE)'`
+  rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/phylogenetic-gllvm_files/figure-html/extract-total-correlations-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma_phy_shared|Sigma_phy_unique|Sigma_phy_total|Sigma_non_shared|Sigma_non_unique|Sigma_non_total|round\\(Sigma_phy|round\\(Sigma_non|extract_Sigma_table\\(|plot_Sigma_heatmap\\(|extract-total-correlations|phy_shared_diag' vignettes/articles/phylogenetic-gllvm.Rmd pkgdown-site/articles/phylogenetic-gllvm.html`
+  -> removed matrix objects are gone; helper-backed source/rendered HTML and
+  the table-backed communality ratio are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-22 -- Animal-model Sigma tables
+
+Scope:
+
+- Replaced raw `phy$Sigma` / `phy$R` printing in the bivariate animal-model
+  tutorial with `compare_Sigma_table()` against the known simulation truth.
+- Replaced raw `phy3$Sigma` / `phy3$R` printing in the multivariate tutorial
+  with `extract_Sigma_table()` rows and `plot_Sigma_heatmap()`.
+- Added dimnames to `G_true` so comparison rows align by trait name.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/animal-model.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/animal-model", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/animal-model_files/figure-html/G3-correlation-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'phy <-|phy3 <-|phy\\$Sigma|phy\\$R|phy3\\$Sigma|phy3\\$R|round\\(phy|round\\(phy3|compare_Sigma_table\\(|plot_Sigma_heatmap\\(|G3-correlation|dimnames\\(G_true\\)' vignettes/articles/animal-model.Rmd pkgdown-site/articles/animal-model.html`
+  -> old raw Sigma/R objects are gone; helper-backed source and rendered HTML
+  are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/animal-model.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-22 -- Psychometrics Sigma heatmap
+
+Scope:
+
+- Replaced raw `SB_exp$Sigma` and `SB_exp$R` printing in
+  `vignettes/articles/psychometrics-irt.Rmd`.
+- Used `extract_Sigma_table()` for report-ready covariance rows and
+  `plot_Sigma_heatmap()` for the exploratory correlation matrix.
+- Preserved the article's caution that raw loadings require rotation or
+  constraints for direct item-factor interpretation.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/psychometrics-irt.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/psychometrics-irt", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/psychometrics-irt_files/figure-html/sigma-exp-corr-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'SB_exp <-|SB_exp\\$Sigma|SB_exp\\$R|round\\(SB_exp|extract_Sigma_table\\(|plot_Sigma_heatmap\\(|sigma-exp-corr' vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html`
+  -> old printed matrix calls are gone; helper-backed source and rendered HTML
+  are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/psychometrics-irt.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were an inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-21 -- Sigma heatmap helper and functional-biogeography integration
+
+Scope:
+
+- Added exported `plot_Sigma_heatmap()` for trait-by-trait Sigma/R heatmaps
+  from `extract_Sigma_table()` rows.
+- Added plot-helper tests for heatmap geoms, facet order, correlation fill
+  clamping, diagonal/label display options, and validation.
+- Added roxygen/Rd, NAMESPACE, pkgdown reference, NEWS, extractor-contract, and
+  validation-debt register row `EXT-27`.
+- Replaced the functional-biogeography article's manual correlation heatmaps
+  with `extract_Sigma_table()` rows plus `plot_Sigma_heatmap()`.
+- Updated the same article's long-format calls to include `trait = "trait"`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/functional-biogeography.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `plot_Sigma_heatmap.Rd`.
+- `tail -5 man/plot_Sigma_heatmap.Rd`
+  -> final lines were the expected `\seealso{}` block.
+- `grep -c '^\\keyword' man/plot_Sigma_heatmap.Rd`
+  -> `0`.
+- `Rscript --vanilla -e 'tools::Rd2txt("man/plot_Sigma_heatmap.Rd", out = tempfile())'`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 153 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/functional-biogeography", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA images inspected:
+  `pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rb-1.png`
+  and
+  `pkgdown-site/articles/functional-biogeography_files/figure-html/heatmap-rw-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'heatmap_df|geom_tile\\(|geom_text\\(|scale_fill_gradient2\\(|facet_wrap\\(~ model\\)|Sigma_B_adj|Sigma_W_adj|cov2cor\\(' vignettes/articles/functional-biogeography.Rmd`
+  -> no hits.
+- `rg -n 'plot_Sigma_heatmap\\(|EXT-27|sigma_heatmap|not_displayed|entries = "all"' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/functional-biogeography.Rmd NAMESPACE NEWS.md _pkgdown.yml docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md man/plot_Sigma_heatmap.Rd`
+  -> helper export, tests, article integration, docs, pkgdown, and register row
+  are present.
+- `rg -n "gllvmTMB\\(" vignettes/articles/functional-biogeography.Rmd`
+  -> all runnable/static long-format calls now include `trait = "trait"`; the
+  wide `traits(...)` inline example intentionally does not take `trait =`.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|estimate-vs-truth article figures remain future|plotting geometry remains" R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/functional-biogeography.Rmd NEWS.md docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md man/plot_Sigma_heatmap.Rd _pkgdown.yml`
+  -> hits only in existing NEWS / validation-register compatibility rows, not
+  in the new helper or touched article code.
+- `rg -n "in prep|in preparation|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes/articles/functional-biogeography.Rmd R/plot-covariance-tables.R man/plot_Sigma_heatmap.Rd NEWS.md docs/design/06-extractors-contract.md`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this new helper. Focused
+  helper tests, roxygen generation/Rd spot-check, article render, pkgdown
+  check, whitespace check, stale-wording scans, visual QA, and a short no-tests
+  package check were run.
+
+## 2026-05-21 -- Get Started Sigma heatmap
+
+Scope:
+
+- Replaced the Get Started raw `round(cov2cor(extract_Sigma(...)))` matrix
+  print with `extract_Sigma_table()` plus `plot_Sigma_heatmap()`.
+- Kept `plot_correlations()` as the interval-bearing pairwise display and used
+  the heatmap only for the whole-matrix point-estimate view.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/gllvmTMB.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/cor-matrix-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'cov2cor\\(|round\\(cov2cor|extract_Sigma\\(fit, level = "unit"\\)\\$Sigma|plot_Sigma_heatmap\\(|sigma_corr_rows|cor-matrix' vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html`
+  -> the old `cov2cor(extract_Sigma(...))` print is gone; helper-backed source
+  and rendered HTML are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/gllvmTMB.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this vignette-only
+  cleanup. Get Started render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-21 -- Behavioural-syndromes Sigma heatmaps
+
+Scope:
+
+- Replaced printed between- and within-individual correlation matrices in
+  `vignettes/articles/behavioural-syndromes.Rmd`.
+- Used `extract_Sigma_table(..., measure = "correlation", entries = "all")`
+  plus `plot_Sigma_heatmap()` for both displays.
+- Left the existing estimate-vs-truth recovery scatter unchanged.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/behavioural-syndromes.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA images inspected:
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/inspect-1.png`
+  and
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/inspect-w-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'R_B_hat|R_W_hat|round\\(R_B_hat|round\\(R_W_hat|Estimated between-individual trait correlation matrix|Estimated within-individual trait correlation matrix|plot_Sigma_heatmap\\(|R_B_rows|R_W_rows' vignettes/articles/behavioural-syndromes.Rmd pkgdown-site/articles/behavioural-syndromes.html`
+  -> the old printed matrices are gone; helper-backed source and rendered HTML
+  are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/behavioural-syndromes.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-21 -- Explicit trait article cleanup
+
+Scope:
+
+- Added `trait = "trait"` to inspected long-format public examples in
+  `animal-model`, `ordinal-probit`, `phylogenetic-gllvm`,
+  `psychometrics-irt`, and `stacked-trait-gllvm`.
+- Left wide `traits(...)` examples unchanged because the LHS names the response
+  columns and does not take `trait =`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/animal-model.Rmd`
+  -> completed without output.
+- `for article in articles/animal-model articles/ordinal-probit articles/phylogenetic-gllvm articles/psychometrics-irt articles/stacked-trait-gllvm; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> all five articles rendered locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n "gllvmTMB\\(" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
+  -> inspected each call; touched long-format calls now include `trait =
+  "trait"`, while wide `traits(...)` calls intentionally do not.
+- `rg -n "trait\\s*=\\s*\\\"trait\\\"" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
+  -> explicit trait arguments are present at the edited long-format call sites.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd vignettes/articles/ordinal-probit.Rmd vignettes/articles/psychometrics-irt.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this documentation
+  convention cleanup. Five article renders, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-21 -- Joint-SDM Sigma heatmap
+
+Scope:
+
+- Added `trait = "trait"` to the long-format JSDM fit in
+  `vignettes/articles/joint-sdm.Rmd`.
+- Replaced printed `Sigma_shared` / `Sigma_total` matrices with
+  `extract_Sigma_table()` rows and `plot_Sigma_heatmap()`.
+- Kept the prose explaining that total latent-liability covariance adds the
+  fixed logistic link residual on the diagonal.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/joint-sdm.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/joint-sdm", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-sigma-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma_shared <-|Sigma_total\\s*<-|round\\(Sigma_shared|round\\(Sigma_total|list\\(Sigma_shared|plot_Sigma_heatmap\\(|Sigma_shared_rows|Sigma_total_rows|trait\\s*=\\s*"trait"' vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/joint-sdm.html`
+  -> printed matrices are gone; helper-backed source/rendered HTML and explicit
+  `trait = "trait"` are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/joint-sdm.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
+## 2026-05-21 -- Behavioural-syndromes truth comparison
+
+Scope:
+
+- Replaced manual between-individual Sigma_B correlation comparison code in
+  `vignettes/articles/behavioural-syndromes.Rmd`.
+- Used `compare_Sigma_table()` and `plot_Sigma_comparison(style = "scatter")`
+  for the lower-triangle correlation recovery plot.
+- Shortened scatter comparison labels and widened the article chunk so the
+  rendered PNG does not clip title, subtitle, or caption.
+- Added regression expectations for the scatter label contract.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/behavioural-syndromes.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 130 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/behavioural-syndromes", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/behavioural-syndromes_files/figure-html/recovery-sigma-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'Sigma_B_hat|true_corr|hat_corr|df_sigma|Optional: compare Sigma_B|Off-diagonal indices|True.*Sigma|Recovery of between-individual trait correlations' vignettes/articles/behavioural-syndromes.Rmd`
+  -> no hits.
+- `rg -n 'compare_Sigma_table\\(|plot_Sigma_comparison\\(|Correlation estimates vs truth|Segments are errors, not CIs|fig.width = 7.2' vignettes/articles/behavioural-syndromes.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> helper calls and label expectations are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|estimate-vs-truth article figures remain future|plotting geometry remains" vignettes/articles/behavioural-syndromes.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this hidden-article
+  cleanup. Focused helper tests, article render, pkgdown check, whitespace
+  check, stale-wording scans, visual QA, and a short no-tests package check
+  were run.

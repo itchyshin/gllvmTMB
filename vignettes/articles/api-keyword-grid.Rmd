@@ -72,6 +72,16 @@ The most common decomposed model pairs `latent()` and `unique()`:
 Sigma = Lambda Lambda^T + diag(psi)
 ```
 
+The same alignment appears in the worked articles:
+
+| Goal | Long syntax | Wide syntax | Mathematical target |
+|---|---|---|---|
+| shared latent axes | `latent(0 + trait | unit, d = K)` | `latent(1 | unit, d = K)` | $\Lambda \Lambda^\top$ |
+| trait-specific diagonal | `unique(0 + trait | unit)` | `unique(1 | unit)` | $\Psi = \mathrm{diag}(\psi)$ |
+| decomposed covariance | `latent(...) + unique(...)` | `latent(...) + unique(...)` | $\Sigma = \Lambda \Lambda^\top + \Psi$ |
+| marginal-only diagonal | `indep(0 + trait | unit)` | `indep(1 | unit)` | diagonal $\Sigma$ with no cross-trait covariance |
+| saturated covariance | `dep(0 + trait | unit)` | `dep(1 | unit)` | full unstructured $\Sigma$ |
+
 Standalone `latent()` fits the no-residual reduced-rank subset.
 Standalone `unique()` and `indep()` both fit independent per-trait
 variances, but `indep()` tells the next reader that the marginal-only
@@ -111,9 +121,11 @@ uses `spatial_*()` keywords and an SPDE mesh, often created with
 
 ## Long And Wide Syntax
 
-Long data are canonical: one row per `(unit, trait)` observation. Wide
-data frames use `traits(...)` on the formula left-hand side; that lets
-the right-hand side use compact syntax.
+Most readers can start from a wide data frame: one row per unit and one
+column per response. Use `traits(...)` on the formula left-hand side to
+name those response columns and keep the right-hand side compact. If
+your data are already long, use one row per `(unit, trait)` observation
+and pass `trait =`.
 
 ```{r}
 # Long format

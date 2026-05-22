@@ -97,7 +97,8 @@ fit_g <- gllvmTMB(
   value ~ 0 + trait +
           latent(0 + trait | site, d = 2) +
           unique(0 + trait | site),
-  data = df
+  data = df,
+  trait = "trait"
 )
 ll_g <- as.numeric(stats::logLik(fit_g))
 ll_g
@@ -207,7 +208,7 @@ Fit `gllvmTMB` on the long-format data:
 ```{r gllvm-fit-tmb, eval = GLLVM_OK}
 fit_g <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 2),
-  data = df, family = binomial()
+  data = df, trait = "trait", family = binomial()
 )
 ```
 

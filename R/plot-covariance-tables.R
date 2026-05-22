@@ -261,6 +261,10 @@
     ) +
     ggplot2::theme(
       panel.grid.major.y = ggplot2::element_blank(),
+      axis.line.x.bottom = ggplot2::element_line(
+        colour = .gtmb_plot_palette[["grid"]],
+        linewidth = 0.45
+      ),
       legend.position = "none"
     )
   if (!identical(facet, "none") && length(unique(dat$.facet)) > 1L) {
@@ -536,30 +540,6 @@ plot_correlations <- function(
         inherit.aes = FALSE,
         alpha = 0.14,
         colour = NA
-      ) +
-      ggplot2::geom_line(
-        data = confidence_eye,
-        ggplot2::aes(
-          x = .data$.x,
-          y = .data$.ymin,
-          colour = .data$.sign,
-          group = .data$.row_key
-        ),
-        inherit.aes = FALSE,
-        linewidth = 0.45,
-        alpha = 0.45
-      ) +
-      ggplot2::geom_line(
-        data = confidence_eye,
-        ggplot2::aes(
-          x = .data$.x,
-          y = .data$.ymax,
-          colour = .data$.sign,
-          group = .data$.row_key
-        ),
-        inherit.aes = FALSE,
-        linewidth = 0.45,
-        alpha = 0.45
       ) +
       ggplot2::scale_colour_manual(
         values = c(
@@ -1219,30 +1199,6 @@ plot_Sigma_table <- function(
         inherit.aes = FALSE,
         alpha = 0.14,
         colour = NA
-      ) +
-      ggplot2::geom_line(
-        data = confidence_eye,
-        ggplot2::aes(
-          x = .data$.x,
-          y = .data$.ymin,
-          colour = .data$.sign,
-          group = .data$.row_key
-        ),
-        inherit.aes = FALSE,
-        linewidth = 0.45,
-        alpha = 0.45
-      ) +
-      ggplot2::geom_line(
-        data = confidence_eye,
-        ggplot2::aes(
-          x = .data$.x,
-          y = .data$.ymax,
-          colour = .data$.sign,
-          group = .data$.row_key
-        ),
-        inherit.aes = FALSE,
-        linewidth = 0.45,
-        alpha = 0.45
       ) +
       ggplot2::scale_colour_manual(
         values = c(

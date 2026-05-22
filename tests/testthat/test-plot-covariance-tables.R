@@ -25,6 +25,13 @@ gtmb_confidence_eye_point_params <- function(p) {
   p$layers[[point_layers[[1L]]]]$aes_params
 }
 
+gtmb_has_bottom_axis_line <- function(p) {
+  axis_line <- p$theme$axis.line.x.bottom
+  inherits(axis_line, "element_line") &&
+    !is.null(axis_line$colour) &&
+    !identical(axis_line$colour, NA)
+}
+
 make_bootstrap_correlation_plot_object <- function() {
   traits <- c("length", "mass", "wing")
   R_B <- matrix(
@@ -173,6 +180,8 @@ test_that("plot_correlations can render confidence-eye compatibility shapes", {
   expect_gt(nrow(eye), nrow(cors))
   expect_true(all(eye$.x > -1 & eye$.x < 1))
   expect_false("GeomSegment" %in% gtmb_plot_geom_names(p))
+  expect_false("GeomLine" %in% gtmb_plot_geom_names(p))
+  expect_true(gtmb_has_bottom_axis_line(p))
   eye_point <- gtmb_confidence_eye_point_params(p)
   expect_equal(eye_point$shape, 21)
   expect_equal(eye_point$fill, "white")
@@ -375,6 +384,8 @@ test_that("plot_Sigma_table can render confidence eyes from finite table interva
   expect_match(p$labels$caption, "not posterior densities", fixed = TRUE)
   expect_no_match(p$labels$caption, "Open points", fixed = TRUE)
   expect_false("GeomSegment" %in% gtmb_plot_geom_names(p))
+  expect_false("GeomLine" %in% gtmb_plot_geom_names(p))
+  expect_true(gtmb_has_bottom_axis_line(p))
   eye_point <- gtmb_confidence_eye_point_params(p)
   expect_equal(eye_point$shape, 21)
   expect_equal(eye_point$fill, "white")

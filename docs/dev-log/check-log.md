@@ -7386,6 +7386,54 @@ Deliberately not run:
   roxygen-only cleanup. No vignettes/articles were edited or rendered. No
   3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Confidence-eye no-outline refinement
+
+Scope:
+
+- Removed the outer upper/lower line layers from confidence eyes so the
+  compatibility display is a soft filled shape with a hollow estimate marker.
+- Added a quiet bottom x-axis line to the covariance-table plot theme.
+- Added tests that forbid confidence-eye perimeter `GeomLine` layers and check
+  the bottom-axis line.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- Initial formatter attempt:
+  `Rscript --vanilla -e 'air::air_format(c("R/plot-covariance-tables.R", "tests/testthat/test-plot-covariance-tables.R"))'`
+  -> failed because `air` is installed as the shell CLI, not an R package.
+- Correct formatter:
+  `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 180 passes, 0 failures, 0 warnings, 0 skips.
+- Rendered
+  `/tmp/gllvmTMB-confidence-eye-qa/confidence-eye-no-outline.png`.
+  Florence verdict: PASS for the maintainer-requested visual: no eye outline,
+  hollow estimate marker, and bottom x-axis line present.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Layer-contract scan:
+
+  ```sh
+  rg -n 'geom_line\(|GeomLine|axis\.line\.x\.bottom|gtmb_has_bottom_axis_line' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R
+  ```
+
+  -> expected hits in the bottom-axis implementation and tests that forbid
+  confidence-eye `GeomLine` layers.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `devtools::document()`, and
+  `pkgdown::check_pkgdown()` were not rerun for this plot-layer-only slice. No
+  roxygen, Rd, vignette, or article source files changed. No 3-OS CI was
+  available until the branch is pushed.
+
 ## 2026-05-22 -- Ordination label placement
 
 Scope:

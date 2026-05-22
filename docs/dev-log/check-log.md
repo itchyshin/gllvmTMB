@@ -7433,6 +7433,61 @@ Deliberately not run:
   extractor wording and advisory cleanup. No vignettes/articles were edited or
   rendered. No 3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Fit-object reference wording sweep
+
+Scope:
+
+- Cleaned remaining reference/helper surfaces in this sweep that asked users
+  for a `gllvmTMB_multi` object. Public docs and wrong-object errors now say a
+  fit returned by `gllvmTMB()`.
+- Updated matching tests that intentionally check non-fit error paths.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/check-auto-residual.R R/bootstrap-sigma.R R/extract-cutpoints.R R/gllvmTMB-wide.R R/plot-covariance-tables.R R/profile-ci.R R/diagnose.R R/check-consistency.R R/confint-inspect.R R/check-identifiability.R R/profile-targets.R R/coverage-study.R R/extract-two-psi-cross-check.R R/extract-sigma.R`
+  -> completed without output.
+- `air format tests/testthat/test-confint-inspect.R tests/testthat/test-check-consistency.R tests/testthat/test-coverage-study.R tests/testthat/test-gllvmTMB-diagnose.R tests/testthat/test-profile-targets.R tests/testthat/test-check-auto-residual.R tests/testthat/test-check-identifiability.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/check_auto_residual.Rd`, `man/extract_cutpoints.Rd`,
+  `man/gllvmTMB_wide.Rd`, `man/plot_Sigma_comparison.Rd`,
+  `man/tmbprofile_wrapper.Rd`, `man/compare_dep_vs_two_psi.Rd`, and
+  `man/compare_indep_vs_two_psi.Rd`.
+- First focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMB-diagnose|confint-inspect|bootstrap-Sigma|plot-covariance-tables|coverage-study|profile-ci|check-auto-residual|check-identifiability|check-consistency|profile-targets|wide-weights-matrix|gllvmTMB-wide|ordinal-probit", stop_on_failure = TRUE)'`
+  -> 448 passes, 7 failures, 0 warnings. Failures were stale tests still
+  expecting old `gllvmTMB_multi` error text.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "gllvmTMB-diagnose|confint-inspect|bootstrap-Sigma|plot-covariance-tables|coverage-study|profile-ci|check-auto-residual|check-identifiability|check-consistency|profile-targets|wide-weights-matrix|gllvmTMB-wide|ordinal-probit", stop_on_failure = TRUE)'`
+  -> 455 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/check_auto_residual.Rd man/extract_cutpoints.Rd man/gllvmTMB_wide.Rd man/plot_Sigma_comparison.Rd man/tmbprofile_wrapper.Rd man/compare_dep_vs_two_psi.Rd man/compare_indep_vs_two_psi.Rd; grep -Hc '^\\keyword' man/check_auto_residual.Rd man/extract_cutpoints.Rd man/gllvmTMB_wide.Rd man/plot_Sigma_comparison.Rd man/tmbprofile_wrapper.Rd man/compare_dep_vs_two_psi.Rd man/compare_indep_vs_two_psi.Rd`
+  -> normal endings; `gllvmTMB_wide` and `tmbprofile_wrapper` keep expected
+  `internal` keywords.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'A `gllvmTMB_multi` fit|A `gllvmTMB_multi` object|A \\code\{gllvmTMB_multi\} fit|A \\code\{gllvmTMB_multi\} object|gllvmTMB_multi model|fitted gllvmTMB_multi model|requires a gllvmTMB_multi|Provide a \{\.cls gllvmTMB_multi\} fit|Plot a fitted multivariate `gllvmTMB_multi`|Tidy a `gllvmTMB_multi`|Predict from a `gllvmTMB_multi`|Simulate new responses from a fitted `gllvmTMB_multi`|Confidence intervals on fixed effects of a `gllvmTMB_multi`|attached plot data' R man tests/testthat/test-confint-inspect.R tests/testthat/test-check-consistency.R tests/testthat/test-coverage-study.R tests/testthat/test-gllvmTMB-diagnose.R tests/testthat/test-profile-targets.R tests/testthat/test-check-auto-residual.R tests/testthat/test-check-identifiability.R
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  reference/error-text cleanup. No vignettes/articles were edited or rendered.
+  No 3-OS CI was available until the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

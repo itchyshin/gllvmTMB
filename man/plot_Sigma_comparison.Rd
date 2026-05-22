@@ -19,7 +19,7 @@ plot_Sigma_comparison(
 )
 }
 \arguments{
-\item{x}{A \code{gllvmTMB_multi} fit, a data frame returned by
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, a data frame returned by
 \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}, or a data frame already returned by
 \code{\link[=compare_Sigma_table]{compare_Sigma_table()}}.}
 

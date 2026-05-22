@@ -11,25 +11,29 @@
 make_tiny_fit_for_cc <- function(seed = 1L) {
   set.seed(seed)
   sim <- gllvmTMB::simulate_site_trait(
-    n_sites = 40, n_species = 6, n_traits = 3,
+    n_sites = 40,
+    n_species = 6,
+    n_traits = 3,
     mean_species_per_site = 4,
     Lambda_B = matrix(c(0.8, 0.4, -0.3), 3, 1),
-    psi_B    = c(0.3, 0.3, 0.3),
-    seed     = seed
+    psi_B = c(0.3, 0.3, 0.3),
+    seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1) +
-            unique(0 + trait | site),
+    value ~ 0 +
+      trait +
+      latent(0 + trait | site, d = 1) +
+      unique(0 + trait | site),
     data = sim$data
   )))
 }
 
 ## ---- input validation ---------------------------------------------------
 
-test_that("gllvmTMB_check_consistency() errors on non-gllvmTMB_multi", {
+test_that("gllvmTMB_check_consistency() errors on non-fit input", {
   expect_error(
     gllvmTMB::gllvmTMB_check_consistency(list(foo = 1)),
-    "gllvmTMB_multi"
+    "fit returned by `gllvmTMB\\(\\)`"
   )
 })
 
@@ -54,10 +58,21 @@ test_that("gllvmTMB_check_consistency() returns the documented structure", {
     gllvmTMB::gllvmTMB_check_consistency(fit, n_sim = 10L, seed = 1)
   ))
   expect_s3_class(res, "gllvmTMB_check_consistency")
-  expect_named(res, c("marginal_p_value", "marginal_bias",
-                      "joint_p_value", "flagged_parameters",
-                      "n_sim", "threshold", "diagnostics",
-                      "raw", "warnings", "call"))
+  expect_named(
+    res,
+    c(
+      "marginal_p_value",
+      "marginal_bias",
+      "joint_p_value",
+      "flagged_parameters",
+      "n_sim",
+      "threshold",
+      "diagnostics",
+      "raw",
+      "warnings",
+      "call"
+    )
+  )
   ## diagnostics is character of length >= 1.
   expect_true(is.character(res$diagnostics))
   expect_gte(length(res$diagnostics), 1L)
@@ -75,10 +90,13 @@ test_that("diagnostics flags are drawn from the documented set", {
   res <- suppressWarnings(suppressMessages(
     gllvmTMB::gllvmTMB_check_consistency(fit, n_sim = 10L, seed = 1)
   ))
-  documented <- c("centred", "marginal_score_non_centred",
-                  "joint_score_non_centred",
-                  "information_matrix_singular",
-                  "marginal_p_value_unavailable")
+  documented <- c(
+    "centred",
+    "marginal_score_non_centred",
+    "joint_score_non_centred",
+    "information_matrix_singular",
+    "marginal_p_value_unavailable"
+  )
   expect_true(all(res$diagnostics %in% documented))
 })
 
@@ -90,27 +108,31 @@ test_that("tiny fixtures correctly flag the singular-information case", {
   ## TMB's information-matrix-inversion failure.
   set.seed(1)
   sim <- gllvmTMB::simulate_site_trait(
-    n_sites = 15, n_species = 3, n_traits = 3,
+    n_sites = 15,
+    n_species = 3,
+    n_traits = 3,
     mean_species_per_site = 2,
     Lambda_B = matrix(c(0.8, 0.4, -0.3), 3, 1),
-    psi_B    = c(0.3, 0.3, 0.3),
-    seed     = 1
+    psi_B = c(0.3, 0.3, 0.3),
+    seed = 1
   )
   fit_small <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1) +
-            unique(0 + trait | site),
+    value ~ 0 +
+      trait +
+      latent(0 + trait | site, d = 1) +
+      unique(0 + trait | site),
     data = sim$data
   )))
   res <- suppressWarnings(suppressMessages(
-    gllvmTMB::gllvmTMB_check_consistency(fit_small, n_sim = 5L,
-                                         seed = 1)
+    gllvmTMB::gllvmTMB_check_consistency(fit_small, n_sim = 5L, seed = 1)
   ))
   ## On a tiny fixture, the marginal p-value is NA and the
   ## information_matrix_singular flag (or the fallback
   ## marginal_p_value_unavailable flag) fires.
-  expect_true(any(res$diagnostics %in%
-                   c("information_matrix_singular",
-                     "marginal_p_value_unavailable")))
+  expect_true(any(
+    res$diagnostics %in%
+      c("information_matrix_singular", "marginal_p_value_unavailable")
+  ))
 })
 
 ## ---- print method runs --------------------------------------------------

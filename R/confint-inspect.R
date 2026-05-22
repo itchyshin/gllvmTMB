@@ -136,7 +136,7 @@ confint_inspect <- function(
   parm.range = c(-Inf, Inf)
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   if (missing(parm) || !is.character(parm) || length(parm) != 1L) {
     cli::cli_abort(

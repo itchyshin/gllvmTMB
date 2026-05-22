@@ -111,7 +111,7 @@ check_identifiability <- function(
 ) {
   ## ---- validation -----------------------------------------------------
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   sim_reps <- as.integer(sim_reps)
   if (length(sim_reps) != 1L || is.na(sim_reps) || sim_reps < 2L) {

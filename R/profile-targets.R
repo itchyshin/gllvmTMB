@@ -476,7 +476,7 @@
 #' @export
 profile_targets <- function(object, ready_only = FALSE) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
 
   has_tmb_obj <- !is.null(object$tmb_obj)

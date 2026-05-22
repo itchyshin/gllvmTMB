@@ -10,9 +10,7 @@
 
 ## ---- mock-fit constructor -------------------------------------------------
 
-make_mock_fit_for_check <- function(family_id_vec,
-                                    trait_id_vec,
-                                    trait_levels) {
+make_mock_fit_for_check <- function(family_id_vec, trait_id_vec, trait_levels) {
   structure(
     list(
       trait_col = "trait",
@@ -24,7 +22,7 @@ make_mock_fit_for_check <- function(family_id_vec,
       ),
       tmb_data = list(
         family_id_vec = family_id_vec,
-        trait_id      = trait_id_vec
+        trait_id = trait_id_vec
       )
     ),
     class = "gllvmTMB_multi"
@@ -35,9 +33,9 @@ make_mock_fit_for_check <- function(family_id_vec,
 
 test_that("check_auto_residual() is silent on a Gaussian single-family fit", {
   fit <- make_mock_fit_for_check(
-    family_id_vec = rep(0L, 12L),                  # all Gaussian
-    trait_id_vec  = rep(c(0L, 1L, 2L), each = 4L), # 3 traits, 4 rows each
-    trait_levels  = c("y1", "y2", "y3")
+    family_id_vec = rep(0L, 12L), # all Gaussian
+    trait_id_vec = rep(c(0L, 1L, 2L), each = 4L), # 3 traits, 4 rows each
+    trait_levels = c("y1", "y2", "y3")
   )
   expect_no_warning({
     res <- gllvmTMB::check_auto_residual(fit)
@@ -51,8 +49,8 @@ test_that("check_auto_residual() is silent on a multi-trait mixed-family fit wit
   ## No within-trait mixing -> OK.
   fit <- make_mock_fit_for_check(
     family_id_vec = c(rep(1L, 4L), rep(2L, 4L), rep(0L, 4L)),
-    trait_id_vec  = rep(c(0L, 1L, 2L), each = 4L),
-    trait_levels  = c("y1", "y2", "y3")
+    trait_id_vec = rep(c(0L, 1L, 2L), each = 4L),
+    trait_levels = c("y1", "y2", "y3")
   )
   expect_no_warning({
     res <- gllvmTMB::check_auto_residual(fit)
@@ -65,11 +63,18 @@ test_that("check_auto_residual() is silent on a multi-trait mixed-family fit wit
 test_that("check_auto_residual() errors on within-trait family mixing", {
   ## Trait 1 has rows from binomial (1) AND poisson (2) -- incoherent.
   fit <- make_mock_fit_for_check(
-    family_id_vec = c(1L, 1L, 2L, 2L,                # trait 1: mixed
-                      0L, 0L, 0L, 0L),                # trait 2: gaussian
-    trait_id_vec  = c(0L, 0L, 0L, 0L,
-                      1L, 1L, 1L, 1L),
-    trait_levels  = c("y1", "y2")
+    family_id_vec = c(
+      1L,
+      1L,
+      2L,
+      2L, # trait 1: mixed
+      0L,
+      0L,
+      0L,
+      0L
+    ), # trait 2: gaussian
+    trait_id_vec = c(0L, 0L, 0L, 0L, 1L, 1L, 1L, 1L),
+    trait_levels = c("y1", "y2")
   )
   expect_error(
     gllvmTMB::check_auto_residual(fit),
@@ -79,11 +84,9 @@ test_that("check_auto_residual() errors on within-trait family mixing", {
 
 test_that("check_auto_residual() error message names the offending trait(s)", {
   fit <- make_mock_fit_for_check(
-    family_id_vec = c(1L, 1L, 2L, 2L,
-                      0L, 0L, 0L, 0L),
-    trait_id_vec  = c(0L, 0L, 0L, 0L,
-                      1L, 1L, 1L, 1L),
-    trait_levels  = c("bold", "active")
+    family_id_vec = c(1L, 1L, 2L, 2L, 0L, 0L, 0L, 0L),
+    trait_id_vec = c(0L, 0L, 0L, 0L, 1L, 1L, 1L, 1L),
+    trait_levels = c("bold", "active")
   )
   err <- tryCatch(
     gllvmTMB::check_auto_residual(fit),
@@ -96,9 +99,9 @@ test_that("check_auto_residual() error message names the offending trait(s)", {
 
 test_that("check_auto_residual() warns on ordinal-probit single-family trait", {
   fit <- make_mock_fit_for_check(
-    family_id_vec = rep(14L, 8L),                  # all ordinal_probit
-    trait_id_vec  = rep(c(0L, 1L), each = 4L),
-    trait_levels  = c("item_1", "item_2")
+    family_id_vec = rep(14L, 8L), # all ordinal_probit
+    trait_id_vec = rep(c(0L, 1L), each = 4L),
+    trait_levels = c("item_1", "item_2")
   )
   expect_warning(
     res <- gllvmTMB::check_auto_residual(fit),
@@ -111,8 +114,8 @@ test_that("check_auto_residual() warns on ordinal-probit single-family trait", {
 test_that("check_auto_residual() warning lists all ordinal traits", {
   fit <- make_mock_fit_for_check(
     family_id_vec = rep(14L, 12L),
-    trait_id_vec  = rep(c(0L, 1L, 2L), each = 4L),
-    trait_levels  = c("item_1", "item_2", "item_3")
+    trait_id_vec = rep(c(0L, 1L, 2L), each = 4L),
+    trait_levels = c("item_1", "item_2", "item_3")
   )
   w <- tryCatch(
     suppressWarnings(gllvmTMB::check_auto_residual(fit)),
@@ -127,11 +130,18 @@ test_that("check_auto_residual() warning lists all ordinal traits", {
 test_that("check_auto_residual() prioritises mixing-error over ordinal-warn", {
   ## Trait 1 = mixed (binomial + ordinal_probit) -> should ERROR, not just warn.
   fit <- make_mock_fit_for_check(
-    family_id_vec = c(1L, 1L, 14L, 14L,             # trait 1: mixed
-                      14L, 14L, 14L, 14L),           # trait 2: ordinal_probit only
-    trait_id_vec  = c(0L, 0L, 0L, 0L,
-                      1L, 1L, 1L, 1L),
-    trait_levels  = c("y1", "y2")
+    family_id_vec = c(
+      1L,
+      1L,
+      14L,
+      14L, # trait 1: mixed
+      14L,
+      14L,
+      14L,
+      14L
+    ), # trait 2: ordinal_probit only
+    trait_id_vec = c(0L, 0L, 0L, 0L, 1L, 1L, 1L, 1L),
+    trait_levels = c("y1", "y2")
   )
   expect_error(
     gllvmTMB::check_auto_residual(fit),
@@ -139,11 +149,11 @@ test_that("check_auto_residual() prioritises mixing-error over ordinal-warn", {
   )
 })
 
-## ---- not a gllvmTMB_multi fit --------------------------------------------
+## ---- not a fitted gllvmTMB model ------------------------------------------
 
-test_that("check_auto_residual() rejects non-gllvmTMB_multi input", {
+test_that("check_auto_residual() rejects non-fit input", {
   expect_error(
     gllvmTMB::check_auto_residual("not a fit"),
-    "gllvmTMB_multi"
+    "fit returned by `gllvmTMB\\(\\)`"
   )
 })

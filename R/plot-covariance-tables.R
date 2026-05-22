@@ -676,7 +676,7 @@ plot_correlations <- function(
 #' PLANNED, article-specific simulation summaries and richer calibration plots
 #' remain future work.
 #'
-#' @param x A `gllvmTMB_multi` fit, a data frame returned by
+#' @param x A fit returned by [gllvmTMB()], a data frame returned by
 #'   [extract_Sigma_table()], or a data frame already returned by
 #'   [compare_Sigma_table()].
 #' @param truth Square numeric covariance or correlation matrix passed to

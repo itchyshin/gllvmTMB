@@ -1,5 +1,5 @@
-## Unified covariance / correlation extractor for a fitted gllvmTMB_multi
-## model. Implements the decomposition Sigma = Lambda*Lambda^T + Psi
+## Unified covariance / correlation extractor for a fitted gllvmTMB model.
+## Implements the decomposition Sigma = Lambda*Lambda^T + Psi
 ## for any chosen tier of the model
 ## (between-unit "B", within-unit "W", phylogenetic "phy"), and exposes
 ## three "parts": total / shared / unique.
@@ -98,57 +98,70 @@
 ## fires.
 link_residual_per_trait <- function(fit) {
   trait_names <- levels(fit$data[[fit$trait_col]])
-  Tn          <- length(trait_names)
-  fids        <- fit$tmb_data$family_id_vec
-  lids        <- fit$tmb_data$link_id_vec
+  Tn <- length(trait_names)
+  fids <- fit$tmb_data$family_id_vec
+  lids <- fit$tmb_data$link_id_vec
   ## trait_id stored on tmb_data is 0-based.
-  tids_obs    <- fit$tmb_data$trait_id + 1L
-  eta         <- fit$report$eta
+  tids_obs <- fit$tmb_data$trait_id + 1L
+  eta <- fit$report$eta
   ## NOTE: `sigma_eps` on `fit$report` is the Gaussian observation-scale
   ## residual SD. In a mixed-family fit (e.g. Gaussian + Gamma traits),
   ## the Gamma branch below uses `sigma_eps` for its `nu_hat` shape; that
   ## reuse is an approximation valid only for single-family Gamma fits
   ## and is a known limitation flagged for a separate (Phase 1b) PR.
-  sigma_eps   <- as.numeric(fit$report$sigma_eps %||% 1)
-  out         <- numeric(Tn)
-  names(out)  <- trait_names
+  sigma_eps <- as.numeric(fit$report$sigma_eps %||% 1)
+  out <- numeric(Tn)
+  names(out) <- trait_names
   for (t in seq_len(Tn)) {
     rows_t <- which(tids_obs == t)
     if (length(rows_t) == 0L) {
       out[t] <- 0
       next
     }
-    fams_t  <- fids[rows_t]
+    fams_t <- fids[rows_t]
     fids_uniq <- unique(fams_t)
     if (length(fids_uniq) > 1L) {
-      tab     <- tabulate(match(fams_t, fids_uniq))
-      modal   <- fids_uniq[which.max(tab)]
-      warning(sprintf(
-        "Trait '%s' has rows from multiple families (%s); using the modal family for the link-residual.",
-        trait_names[t],
-        paste(fids_uniq, collapse = ", ")), call. = FALSE)
+      tab <- tabulate(match(fams_t, fids_uniq))
+      modal <- fids_uniq[which.max(tab)]
+      warning(
+        sprintf(
+          "Trait '%s' has rows from multiple families (%s); using the modal family for the link-residual.",
+          trait_names[t],
+          paste(fids_uniq, collapse = ", ")
+        ),
+        call. = FALSE
+      )
       fid <- modal
     } else {
       fid <- fids_uniq
     }
-    if (fid == 0L) {                            # gaussian, identity
+    if (fid == 0L) {
+      # gaussian, identity
       out[t] <- 0
-    } else if (fid == 1L) {                     # binomial
+    } else if (fid == 1L) {
+      # binomial
       lid_t <- unique(lids[rows_t])
       if (length(lid_t) > 1L) {
         ## Mixed binomial links inside a single trait -- pick the modal one.
-        tab    <- tabulate(match(lids[rows_t], lid_t))
-        lid_t  <- lid_t[which.max(tab)]
-        warning(sprintf(
-          "Trait '%s' has multiple binomial links; using the modal one.",
-          trait_names[t]), call. = FALSE)
+        tab <- tabulate(match(lids[rows_t], lid_t))
+        lid_t <- lid_t[which.max(tab)]
+        warning(
+          sprintf(
+            "Trait '%s' has multiple binomial links; using the modal one.",
+            trait_names[t]
+          ),
+          call. = FALSE
+        )
       }
-      out[t] <- switch(as.character(lid_t),
-                       "0" = pi^2 / 3,          # logit
-                       "1" = 1,                 # probit
-                       "2" = pi^2 / 6,          # cloglog
-                       NA_real_)
-    } else if (fid == 2L) {                     # poisson, log link
+      out[t] <- switch(
+        as.character(lid_t),
+        "0" = pi^2 / 3, # logit
+        "1" = 1, # probit
+        "2" = pi^2 / 6, # cloglog
+        NA_real_
+      )
+    } else if (fid == 2L) {
+      # poisson, log link
       ## Lognormal-Poisson approximation: sigma2_d = log(1 + 1 / mu_t).
       ## Use exp(eta) averaged across the trait's rows as the per-trait
       ## fitted mean. (Nakagawa & Schielzeth 2010, Table 2.)
@@ -158,42 +171,50 @@ link_residual_per_trait <- function(fit) {
         mu_t <- mean(exp(eta[rows_t]))
         out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else 0
       }
-    } else if (fid == 3L) {                     # lognormal, log link
+    } else if (fid == 3L) {
+      # lognormal, log link
       out[t] <- 0
-    } else if (fid == 4L) {                     # Gamma, log link
+    } else if (fid == 4L) {
+      # Gamma, log link
       ## Nakagawa & Schielzeth 2010, Table 2: log-scale residual for a
       ## Gamma response is trigamma(nu) where nu is the shape. The engine
       ## parametrises Gamma with sigma_eps as the CV, so shape = 1 / CV^2.
       nu_hat <- 1 / max(sigma_eps^2, 1e-12)
       out[t] <- trigamma(nu_hat)
-    } else if (fid == 5L) {                     # nbinom2, log link
+    } else if (fid == 5L) {
+      # nbinom2, log link
       ## Theoretical latent-scale residual variance under NB2 with log link:
       ## sigma2_d = trigamma(phi). Matches Nakagawa & Schielzeth 2010 (Gamma
       ## limit) and Stoklosa et al. 2022 (NB2 in ecology). phi is per-trait.
       phi_vec <- as.numeric(fit$report$phi_nbinom2 %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       out[t] <- trigamma(max(phi_t, 1e-12))
-    } else if (fid == 6L) {                     # tweedie, log link
+    } else if (fid == 6L) {
+      # tweedie, log link
       ## Delta-method approximation for Var(log Y) under Tweedie:
       ## Var(Y) = phi * mu^p, so Var(log Y) ~ Var(Y)/E(Y)^2 = phi * mu^(p-2).
       ## Use log1p() form for stability when phi*mu^(p-2) is large.
       phi_vec <- as.numeric(fit$report$phi_tweedie %||% rep(1, Tn))
-      p_vec   <- as.numeric(fit$report$p_tweedie %||% rep(1.5, Tn))
+      p_vec <- as.numeric(fit$report$p_tweedie %||% rep(1.5, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
-      p_t   <- if (length(p_vec)   >= t) p_vec[t]   else p_vec[1]
+      p_t <- if (length(p_vec) >= t) p_vec[t] else p_vec[1]
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- 0
       } else {
         mu_t <- mean(exp(eta[rows_t]))
-        out[t] <- if (is.finite(mu_t) && mu_t > 0)
-                    log1p(phi_t * mu_t^(p_t - 2)) else 0
+        out[t] <- if (is.finite(mu_t) && mu_t > 0) {
+          log1p(phi_t * mu_t^(p_t - 2))
+        } else {
+          0
+        }
       }
-    } else if (fid == 7L) {                     # Beta, logit link
+    } else if (fid == 7L) {
+      # Beta, logit link
       ## Delta-method residual variance for logit(Y) under a Beta(a, b)
       ## response with a = mu*phi, b = (1-mu)*phi: Var(logit Y) =
       ## trigamma(a) + trigamma(b). Smithson & Verkuilen 2006 Eq. 9.
       phi_vec <- as.numeric(fit$report$phi_beta %||% rep(1, Tn))
-      phi_t   <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- 0
       } else {
@@ -207,17 +228,18 @@ link_residual_per_trait <- function(fit) {
         ## depth for degenerate `phi_t` rather than the primary guard.
         ## Phase 1b mu_t clamp (Gauss persona consult 2026-05-14).
         mu_t <- pmin(pmax(mu_t, 1e-6), 1 - 1e-6)
-        a_t  <- max(mu_t * phi_t, 1e-12)
-        b_t  <- max((1 - mu_t) * phi_t, 1e-12)
+        a_t <- max(mu_t * phi_t, 1e-12)
+        b_t <- max((1 - mu_t) * phi_t, 1e-12)
         out[t] <- trigamma(a_t) + trigamma(b_t)
       }
-    } else if (fid == 8L) {                     # beta-binomial, logit link
+    } else if (fid == 8L) {
+      # beta-binomial, logit link
       ## On the logit-link latent scale, beta-binomial decomposes into the
       ## binomial-logit baseline pi^2 / 3 (Nakagawa & Schielzeth 2010) plus
       ## the Beta(a, b) overdispersion residual trigamma(a) + trigamma(b)
       ## (Smithson & Verkuilen 2006). Sum gives the total logit-residual.
       phi_vec <- as.numeric(fit$report$phi_betabinom %||% rep(1, Tn))
-      phi_t   <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       if (is.null(eta) || length(eta) < max(rows_t)) {
         out[t] <- pi^2 / 3
       } else {
@@ -228,29 +250,37 @@ link_residual_per_trait <- function(fit) {
         ## baseline keeps the result finite without the clamp, but the
         ## Beta-overdispersion contribution still inflates spuriously.
         mu_t <- pmin(pmax(mu_t, 1e-6), 1 - 1e-6)
-        a_t  <- max(mu_t * phi_t, 1e-12)
-        b_t  <- max((1 - mu_t) * phi_t, 1e-12)
+        a_t <- max(mu_t * phi_t, 1e-12)
+        b_t <- max((1 - mu_t) * phi_t, 1e-12)
         out[t] <- pi^2 / 3 + trigamma(a_t) + trigamma(b_t)
       }
-    } else if (fid == 9L) {                     # student-t, identity link
+    } else if (fid == 9L) {
+      # student-t, identity link
       ## Variance of a Student-t with scale sigma and df > 2 is
       ## sigma^2 * df / (df - 2). For df <= 2 the variance is undefined
       ## (Lange et al. 1989 JASA 84:881-896; Pinheiro et al. 2001 CSDA
       ## 38:367-386); fall back to sigma^2 with a warning so downstream
       ## extractors still produce a finite Sigma.
       sigma_vec <- as.numeric(fit$report$sigma_student %||% rep(1, Tn))
-      df_vec    <- as.numeric(fit$report$df_student    %||% rep(Inf, Tn))
+      df_vec <- as.numeric(fit$report$df_student %||% rep(Inf, Tn))
       sigma_t <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
-      df_t    <- if (length(df_vec)    >= t) df_vec[t]    else df_vec[1]
+      df_t <- if (length(df_vec) >= t) df_vec[t] else df_vec[1]
       if (is.finite(df_t) && df_t > 2) {
         out[t] <- sigma_t^2 * df_t / (df_t - 2)
       } else {
-        warning(sprintf(
-          "Student-t df = %.3g for trait '%s' is <= 2; variance is undefined. Using sigma^2 = %.3g as a fallback.",
-          df_t, trait_names[t], sigma_t^2), call. = FALSE)
+        warning(
+          sprintf(
+            "Student-t df = %.3g for trait '%s' is <= 2; variance is undefined. Using sigma^2 = %.3g as a fallback.",
+            df_t,
+            trait_names[t],
+            sigma_t^2
+          ),
+          call. = FALSE
+        )
         out[t] <- sigma_t^2
       }
-    } else if (fid == 10L) {                    # truncated_poisson, log link
+    } else if (fid == 10L) {
+      # truncated_poisson, log link
       ## Untruncated lognormal-Poisson approximation: sigma2_d = log(1 + 1/mu_t).
       ## The truncation correction is small in regimes with mu_t >= 1
       ## (Cameron & Trivedi 2013, Regression Analysis of Count Data, ch. 4).
@@ -260,7 +290,8 @@ link_residual_per_trait <- function(fit) {
         mu_t <- mean(exp(eta[rows_t]))
         out[t] <- if (is.finite(mu_t) && mu_t > 0) log1p(1 / mu_t) else 0
       }
-    } else if (fid == 11L) {                    # truncated_nbinom2, log link
+    } else if (fid == 11L) {
+      # truncated_nbinom2, log link
       ## Same theoretical latent-scale residual variance as NB2 with log
       ## link: sigma2_d = trigamma(phi). Truncation does not change the
       ## leading-order log-scale residual under the Cameron & Trivedi
@@ -268,21 +299,24 @@ link_residual_per_trait <- function(fit) {
       phi_vec <- as.numeric(fit$report$phi_truncnb2 %||% rep(1, Tn))
       phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       out[t] <- trigamma(max(phi_t, 1e-12))
-    } else if (fid == 12L) {                    # delta_lognormal (logit/log)
+    } else if (fid == 12L) {
+      # delta_lognormal (logit/log)
       ## Approximate marginal latent-scale residual via law of total variance:
       ##   Var(eta-residual) ~ Var(log y | y > 0) + Var(presence-on-logit)
       ##                     = sigma_lognormal^2 + pi^2 / 3.
       sigma_vec <- as.numeric(fit$report$sigma_lognormal_delta %||% rep(1, Tn))
-      sigma_t   <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
-      out[t]    <- sigma_t^2 + pi^2 / 3
-    } else if (fid == 13L) {                    # delta_gamma (logit/log)
+      sigma_t <- if (length(sigma_vec) >= t) sigma_vec[t] else sigma_vec[1]
+      out[t] <- sigma_t^2 + pi^2 / 3
+    } else if (fid == 13L) {
+      # delta_gamma (logit/log)
       ## trigamma(1/phi^2) is the log-scale Gamma residual; pi^2/3 the
       ## logit-Bernoulli baseline.
       phi_vec <- as.numeric(fit$report$phi_gamma_delta %||% rep(1, Tn))
-      phi_t   <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
       shape_t <- 1 / max(phi_t^2, 1e-12)
-      out[t]  <- trigamma(shape_t) + pi^2 / 3
-    } else if (fid == 14L) {                    # ordinal_probit
+      out[t] <- trigamma(shape_t) + pi^2 / 3
+    } else if (fid == 14L) {
+      # ordinal_probit
       ## Wright/Falconer/Hadfield threshold model: the latent residual is
       ## standard normal by construction (epsilon ~ N(0, 1)), so
       ## sigma_d^2 = 1 EXACTLY -- no trigamma / delta-method approximation
@@ -473,24 +507,36 @@ link_residual_per_trait <- function(fit) {
 #' extract_Sigma(fit, level = "unit", part = "shared")$Sigma  # rr-only
 #' extract_Sigma(fit, level = "unit", part = "unique")$s      # diag(s_unit)
 #' }
-extract_Sigma <- function(fit,
-                          level = c("unit", "unit_obs", "phy", "spatial",
-                                    "cluster",
-                                    ## legacy aliases (deprecated soft):
-                                    "B", "W", "spde"),
-                          part  = c("total", "shared", "unique"),
-                          link_residual = c("auto", "none"),
-                          .skip_warn = FALSE) {
-  if (!inherits(fit, "gllvmTMB_multi"))
+extract_Sigma <- function(
+  fit,
+  level = c(
+    "unit",
+    "unit_obs",
+    "phy",
+    "spatial",
+    "cluster",
+    ## legacy aliases (deprecated soft):
+    "B",
+    "W",
+    "spde"
+  ),
+  part = c("total", "shared", "unique"),
+  link_residual = c("auto", "none"),
+  .skip_warn = FALSE
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+  }
   ## Boundary translation (Design 02 Stage 2): canonical (unit /
   ## unit_obs / spatial / Omega) or legacy (B / W / spde / total) ->
   ## legacy / internal slot name; soft-deprecate legacy.
   ## `.skip_warn = TRUE` is set by internal callers that have already
   ## performed boundary normalisation (e.g. extract_communality).
-  if (length(level) > 1L) level <- match.arg(level)
+  if (length(level) > 1L) {
+    level <- match.arg(level)
+  }
   level <- .normalise_level(level, arg_name = "level", .skip_warn = .skip_warn)
-  part          <- match.arg(part)
+  part <- match.arg(part)
   link_residual <- match.arg(link_residual)
 
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -503,19 +549,32 @@ extract_Sigma <- function(fit,
   notes <- character(0)
 
   if (identical(level, "B")) {
-    if (isTRUE(fit$use$rr_B))   L <- fit$report$Lambda_B
-    if (isTRUE(fit$use$diag_B)) S <- as.numeric(fit$report$sd_B)^2
+    if (isTRUE(fit$use$rr_B)) {
+      L <- fit$report$Lambda_B
+    }
+    if (isTRUE(fit$use$diag_B)) {
+      S <- as.numeric(fit$report$sd_B)^2
+    }
     if (is.null(L) && is.null(S)) return(NULL)
   } else if (identical(level, "W")) {
-    if (isTRUE(fit$use$rr_W))   L <- fit$report$Lambda_W
-    if (isTRUE(fit$use$diag_W)) S <- as.numeric(fit$report$sd_W)^2
+    if (isTRUE(fit$use$rr_W)) {
+      L <- fit$report$Lambda_W
+    }
+    if (isTRUE(fit$use$diag_W)) {
+      S <- as.numeric(fit$report$sd_W)^2
+    }
     if (is.null(L) && is.null(S)) return(NULL)
   } else if (identical(level, "phy")) {
-    has_phy_rr   <- isTRUE(fit$use$phylo_rr)
+    has_phy_rr <- isTRUE(fit$use$phylo_rr)
     has_phy_diag <- isTRUE(fit$use$phylo_diag)
-    if (!has_phy_rr && !has_phy_diag)
-      cli::cli_abort("Fit has no {.code phylo_latent()} or {.code phylo_unique()} term -- nothing to extract at level {.val phy}.")
-    if (has_phy_rr) L <- fit$report$Lambda_phy
+    if (!has_phy_rr && !has_phy_diag) {
+      cli::cli_abort(
+        "Fit has no {.code phylo_latent()} or {.code phylo_unique()} term -- nothing to extract at level {.val phy}."
+      )
+    }
+    if (has_phy_rr) {
+      L <- fit$report$Lambda_phy
+    }
     ## Two-U PGLLVM: when phylo_diag is fit (phylo_unique co-fit with
     ## phylo_latent), pull the per-trait phylogenetic SDs from the report
     ## and square them to get the diagonal psi_phy variances. When the
@@ -526,28 +585,42 @@ extract_Sigma <- function(fit,
       S <- as.numeric(fit$report$sd_phy_diag)^2
     } else {
       S <- NULL
-      if (!isTRUE(fit$use$phylo_unique))
-        notes <- c(notes, "Phylogenetic tier is currently latent-only (Lambda_phy Lambda_phy^T). To add a unique component, refit with `+ phylo_unique(species)`.")
+      if (!isTRUE(fit$use$phylo_unique)) {
+        notes <- c(
+          notes,
+          "Phylogenetic tier is currently latent-only (Lambda_phy Lambda_phy^T). To add a unique component, refit with `+ phylo_unique(species)`."
+        )
+      }
     }
   } else if (identical(level, "spde")) {
-    if (!isTRUE(fit$use$spatial_latent))
-      cli::cli_abort("Fit has no {.code spatial_latent()} term -- nothing to extract at level {.val spde}.")
+    if (!isTRUE(fit$use$spatial_latent)) {
+      cli::cli_abort(
+        "Fit has no {.code spatial_latent()} term -- nothing to extract at level {.val spde}."
+      )
+    }
     L <- fit$report$Lambda_spde
-    S <- NULL  # spatial_latent has no per-trait residual S component
-    notes <- c(notes, "spatial_latent tier has no unique component (no S_spde in the model).")
+    S <- NULL # spatial_latent has no per-trait residual S component
+    notes <- c(
+      notes,
+      "spatial_latent tier has no unique component (no S_spde in the model)."
+    )
   } else if (identical(level, "cluster")) {
     ## Cluster (third-slot) tier: extracts the diagonal of
     ## `unique(0 + trait | <cluster_col>)` (the engine-internal
     ## per-trait variance vector reported as `sd_q`). No latent (rr)
     ## component at this tier in the current engine, so L stays NULL.
-    if (!isTRUE(fit$use$diag_species))
+    if (!isTRUE(fit$use$diag_species)) {
       cli::cli_abort(c(
         "Fit has no {.code unique(0 + trait | <cluster_col>)} term -- nothing to extract at level {.val cluster}.",
         "i" = "Add a {.code unique(0 + trait | {fit$cluster_col %||% 'species'})} term to the formula to use this tier."
       ))
+    }
     L <- NULL
     S <- as.numeric(fit$report$sd_q)^2
-    notes <- c(notes, "Cluster (third-slot) tier extracts the unique() diagonal at the cluster level.")
+    notes <- c(
+      notes,
+      "Cluster (third-slot) tier extracts the unique() diagonal at the cluster level."
+    )
   } else {
     cli::cli_abort(c(
       "Custom {.arg level = {.val {level}}} is not yet supported.",
@@ -557,29 +630,45 @@ extract_Sigma <- function(fit,
 
   ## ---- Build LL^T (shared) and S (unique) on a T x T canvas -----------
   LLt <- if (!is.null(L)) L %*% t(L) else matrix(0, T, T)
-  Sd  <- if (!is.null(S)) S else rep(0, T)
+  Sd <- if (!is.null(S)) S else rep(0, T)
   rownames(LLt) <- colnames(LLt) <- trait_names
   names(Sd) <- trait_names
 
   ## ---- The "missing diag()" advisory for continuous families ----------
   if (level %in% c("B", "W")) {
-    rr_used   <- if (level == "B") isTRUE(fit$use$rr_B)   else isTRUE(fit$use$rr_W)
-    diag_used <- if (level == "B") isTRUE(fit$use$diag_B) else isTRUE(fit$use$diag_W)
+    rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
+    diag_used <- if (level == "B") {
+      isTRUE(fit$use$diag_B)
+    } else {
+      isTRUE(fit$use$diag_W)
+    }
     fids <- fit$tmb_data$family_id_vec
-    has_continuous <- any(fids %in% c(0L, 3L, 4L))   # gaussian / lognormal / Gamma
+    has_continuous <- any(fids %in% c(0L, 3L, 4L)) # gaussian / lognormal / Gamma
     if (rr_used && !diag_used && has_continuous && part == "total") {
-      diag_call <- sprintf("unique(0 + trait | %s)",
-                           if (level == "B") fit$unit_col
-                           else if (!is.null(fit$unit_obs_col)) fit$unit_obs_col
-                           else "site_species")
-      notes <- c(notes, paste0(
-        "Sigma_", level_label,
-        " is currently latent-only (Lambda Lambda^T) because no `",
-        diag_call, "` term is in the formula. Trait-specific unique variance is not modelled, ",
-        "so correlations from this matrix overstate cross-trait coupling. ",
-        "For the correct decomposition Sigma = Lambda Lambda^T + Psi, refit with `+ ",
-        diag_call, "`."
-      ))
+      diag_call <- sprintf(
+        "unique(0 + trait | %s)",
+        if (level == "B") {
+          fit$unit_col
+        } else if (!is.null(fit$unit_obs_col)) {
+          fit$unit_obs_col
+        } else {
+          "site_species"
+        }
+      )
+      notes <- c(
+        notes,
+        paste0(
+          "Sigma_",
+          level_label,
+          " is currently latent-only (Lambda Lambda^T) because no `",
+          diag_call,
+          "` term is in the formula. Trait-specific unique variance is not modelled, ",
+          "so correlations from this matrix overstate cross-trait coupling. ",
+          "For the correct decomposition Sigma = Lambda Lambda^T + Psi, refit with `+ ",
+          diag_call,
+          "`."
+        )
+      )
     }
   }
 
@@ -596,41 +685,63 @@ extract_Sigma <- function(fit,
     if (any(nonzero)) {
       ## Map family_id back to a label for the report.
       fam_lookup <- function(fid) {
-        switch(as.character(fid),
-               "0" = "gaussian",
-               "1" = "binomial",
-               "2" = "poisson",
-               "3" = "lognormal",
-               "4" = "Gamma",
-               "5" = "nbinom2",
-               "6" = "tweedie",
-               "7" = "Beta",
-               "8" = "betabinomial",
-               "9"  = "student",
-               "10" = "truncated_poisson",
-               "11" = "truncated_nbinom2",
-               "12" = "delta_lognormal",
-               "13" = "delta_gamma",
-               "14" = "ordinal_probit",
-               sprintf("family_id %s", fid))
+        switch(
+          as.character(fid),
+          "0" = "gaussian",
+          "1" = "binomial",
+          "2" = "poisson",
+          "3" = "lognormal",
+          "4" = "Gamma",
+          "5" = "nbinom2",
+          "6" = "tweedie",
+          "7" = "Beta",
+          "8" = "betabinomial",
+          "9" = "student",
+          "10" = "truncated_poisson",
+          "11" = "truncated_nbinom2",
+          "12" = "delta_lognormal",
+          "13" = "delta_gamma",
+          "14" = "ordinal_probit",
+          sprintf("family_id %s", fid)
+        )
       }
       fids_obs <- fit$tmb_data$family_id_vec
       tids_obs <- fit$tmb_data$trait_id + 1L
-      labels <- vapply(seq_len(T), function(t) {
-        rows_t <- which(tids_obs == t)
-        if (length(rows_t) == 0L) return("(no rows)")
-        ufid <- unique(fids_obs[rows_t])
-        if (length(ufid) == 1L) fam_lookup(ufid)
-        else paste0("mixed:", paste(vapply(ufid, fam_lookup, character(1)),
-                                     collapse = "/"))
-      }, character(1))
+      labels <- vapply(
+        seq_len(T),
+        function(t) {
+          rows_t <- which(tids_obs == t)
+          if (length(rows_t) == 0L) {
+            return("(no rows)")
+          }
+          ufid <- unique(fids_obs[rows_t])
+          if (length(ufid) == 1L) {
+            fam_lookup(ufid)
+          } else {
+            paste0(
+              "mixed:",
+              paste(vapply(ufid, fam_lookup, character(1)), collapse = "/")
+            )
+          }
+        },
+        character(1)
+      )
       tbl <- paste0(
-        "  - ", trait_names, " (", labels, "): ",
+        "  - ",
+        trait_names,
+        " (",
+        labels,
+        "): ",
         formatC(link_resid_per_trait, digits = 3, format = "f"),
-        collapse = "\n")
-      notes <- c(notes, paste0(
-        "Added per-trait link-implicit residual variance to diag(Sigma):\n",
-        tbl))
+        collapse = "\n"
+      )
+      notes <- c(
+        notes,
+        paste0(
+          "Added per-trait link-implicit residual variance to diag(Sigma):\n",
+          tbl
+        )
+      )
     }
   }
 
@@ -639,31 +750,40 @@ extract_Sigma <- function(fit,
     ## Lambda Lambda^T only
     out <- list(
       Sigma = LLt,
-      level = level_label, part = part, note = notes
+      level = level_label,
+      part = part,
+      note = notes
     )
   } else if (part == "unique") {
     ## Diagonal of S as a named vector (cleaner than a matrix)
     out <- list(
       s = Sd,
-      level = level_label, part = part, note = notes
+      level = level_label,
+      part = part,
+      note = notes
     )
   } else {
     ## "total": LLt + diag(Psi) + (optional) per-trait link-implicit residual
     Sigma <- LLt + diag(Sd, nrow = T)
-    if (any(link_resid_per_trait != 0))
+    if (any(link_resid_per_trait != 0)) {
       diag(Sigma) <- diag(Sigma) + link_resid_per_trait
+    }
     D <- sqrt(diag(Sigma))
     R <- if (all(D > 0)) Sigma / outer(D, D) else NA * Sigma
     rownames(R) <- colnames(R) <- trait_names
     out <- list(
       Sigma = Sigma,
-      R     = R,
-      level = level_label, part = part, note = notes
+      R = R,
+      level = level_label,
+      part = part,
+      note = notes
     )
   }
 
   ## Surface notes via cli at most once
-  for (msg in notes) cli::cli_inform(msg)
+  for (msg in notes) {
+    cli::cli_inform(msg)
+  }
 
   out
 }

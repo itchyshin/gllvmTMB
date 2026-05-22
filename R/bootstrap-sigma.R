@@ -1,14 +1,14 @@
 ## Parametric-bootstrap CIs for Sigma / R / communality / ICC summaries
-## of a fitted gllvmTMB_multi model. Uses the existing
+## of a fitted gllvmTMB model. Uses the existing
 ## simulate.gllvmTMB_multi method to draw replicate response vectors,
 ## refits the same formula, and accumulates percentile CIs across the
 ## requested levels and summaries.
 
 #' Reconstruct the full formula (fixed + covstructs) from a
-#' `gllvmTMB_multi` fit. Used internally by `bootstrap_Sigma()` so the
+#' fitted gllvmTMB model. Used internally by `bootstrap_Sigma()` so the
 #' caller does not have to pass the original formula manually.
 #'
-#' @param fit A `gllvmTMB_multi` object.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @return A formula object combining `fit$formula` and `fit$covstructs`.
 #' @keywords internal
 #' @noRd
@@ -166,7 +166,7 @@ bootstrap_Sigma <- function(
   link_residual = c("auto", "none")
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   level <- match.arg(level, several.ok = TRUE)
   level <- vapply(level, .normalise_level, character(1L), arg_name = "level")

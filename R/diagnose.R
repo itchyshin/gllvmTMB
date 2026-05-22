@@ -1,4 +1,4 @@
-## One-call user-facing diagnostic for a fitted gllvmTMB_multi model.
+## One-call user-facing diagnostic for a fitted gllvmTMB model.
 ## Wraps sanity_multi(), checks rotation identifiability, reports the
 ## key biological summaries, and prints actionable hints for any WARN
 ## or FAIL signal. Designed to be the first call a user makes after
@@ -6,7 +6,7 @@
 
 .gllvmTMB_build_fit_health <- function(object) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
 
   grad <- tryCatch(object$tmb_obj$gr(object$opt$par), error = function(e) {
@@ -161,7 +161,7 @@
 #' }
 check_gllvmTMB <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   health <- object$fit_health %||% .gllvmTMB_build_fit_health(object)
   rows <- list(
@@ -333,7 +333,7 @@ gllvmTMB_diagnose <- function(
   verbose = TRUE
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
 
   ## ---- Pillar 1: sanity flags --------------------------------------

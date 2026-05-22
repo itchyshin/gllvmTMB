@@ -62,8 +62,8 @@ API (\code{\link[=gllvmTMB]{gllvmTMB()}} with \code{weights = n_trials}) instead
 \item{...}{Passed to \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
-A \code{gllvmTMB_multi} fit. The column dimension of \code{Y} is
-exposed as the "trait" axis of the engine (so
+A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. The column dimension of \code{Y} is
+exposed as the "trait" axis of the model (so
 \code{\link[=extract_ordination]{extract_ordination()}} returns the trait loadings). For the
 site × species special case the columns are species, and the
 loadings are species loadings; the same machinery returns

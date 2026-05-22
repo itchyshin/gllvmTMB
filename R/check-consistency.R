@@ -137,7 +137,7 @@ gllvmTMB_check_consistency <- function(
   estimate = FALSE
 ) {
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
   n_sim <- as.integer(n_sim)
   if (length(n_sim) != 1L || is.na(n_sim) || n_sim < 2L) {

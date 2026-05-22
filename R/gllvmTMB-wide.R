@@ -59,8 +59,8 @@
 #'   API ([gllvmTMB()] with `weights = n_trials`) instead.
 #' @param ... Passed to [gllvmTMB()].
 #'
-#' @return A `gllvmTMB_multi` fit. The column dimension of `Y` is
-#'   exposed as the "trait" axis of the engine (so
+#' @return A fit returned by [gllvmTMB()]. The column dimension of `Y` is
+#'   exposed as the "trait" axis of the model (so
 #'   [extract_ordination()] returns the trait loadings). For the
 #'   site × species special case the columns are species, and the
 #'   loadings are species loadings; the same machinery returns

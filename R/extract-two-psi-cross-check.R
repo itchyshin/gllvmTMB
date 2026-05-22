@@ -55,8 +55,11 @@
 #' @keywords internal
 #' @noRd
 .rmse_arr <- function(A, B) {
-  stopifnot(identical(dim(A), dim(B)) || (length(dim(A)) == 0L &&
-                                          length(A) == length(B)))
+  stopifnot(
+    identical(dim(A), dim(B)) ||
+      (length(dim(A)) == 0L &&
+        length(A) == length(B))
+  )
   sqrt(mean((A - B)^2))
 }
 
@@ -84,7 +87,9 @@
 #' @keywords internal
 #' @noRd
 .is_two_psi_fit <- function(fit) {
-  if (!inherits(fit, "gllvmTMB_multi")) return(FALSE)
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    return(FALSE)
+  }
   has_phy_pair <- isTRUE(fit$use$phylo_rr) && isTRUE(fit$use$phylo_diag)
   ## "Phylo-only two-psi" is allowed: phylo_latent + phylo_unique with no
   ## non-phylo unique() term. The non-phy side may sit at the cluster
@@ -103,34 +108,37 @@
 #' @keywords internal
 #' @noRd
 .refit_inputs <- function(fit_two_psi) {
-  if (!inherits(fit_two_psi, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
-  if (!.is_two_psi_fit(fit_two_psi))
+  if (!inherits(fit_two_psi, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
+  if (!.is_two_psi_fit(fit_two_psi)) {
     cli::cli_abort(c(
       "{.arg fit_two_psi} does not look like a joint two-psi fit.",
       "i" = "Expected both {.code phylo_latent(species, d = K)} and {.code phylo_unique(species)} in the formula.",
       ">" = "Refit with both terms before calling the cross-check."
     ))
+  }
   ## phylo_vcv / phylo_tree are stored on the fit (R/fit-multi.R after
   ## Phase C). Older fits that lack them must be supplied via the
   ## `phylo_vcv` argument of the diagnostic; we surface a clear error.
-  phylo_vcv  <- fit_two_psi$phylo_vcv
+  phylo_vcv <- fit_two_psi$phylo_vcv
   phylo_tree <- fit_two_psi$phylo_tree
-  if (is.null(phylo_vcv) && is.null(phylo_tree))
+  if (is.null(phylo_vcv) && is.null(phylo_tree)) {
     cli::cli_abort(c(
       "Could not find {.code phylo_vcv} or {.code phylo_tree} on the fit object.",
       "i" = "The diagnostic refits the data with {.fn phylo_dep}/{.fn phylo_indep}; that requires the phylogenetic correlation matrix or tree the original fit used.",
       ">" = "Either refit {.arg fit_two_psi} with the current package version (which stores them automatically), or pass {.arg phylo_vcv}/{.arg phylo_tree} to the diagnostic."
     ))
+  }
   list(
-    data        = fit_two_psi$data,
-    family      = fit_two_psi$family,
-    trait       = fit_two_psi$trait_col,
-    unit        = fit_two_psi$unit_col,
-    unit_obs    = fit_two_psi$unit_obs_col,
-    cluster     = fit_two_psi$cluster_col %||% fit_two_psi$species_col,
-    phylo_vcv   = phylo_vcv,
-    phylo_tree  = phylo_tree
+    data = fit_two_psi$data,
+    family = fit_two_psi$family,
+    trait = fit_two_psi$trait_col,
+    unit = fit_two_psi$unit_col,
+    unit_obs = fit_two_psi$unit_obs_col,
+    cluster = fit_two_psi$cluster_col %||% fit_two_psi$species_col,
+    phylo_vcv = phylo_vcv,
+    phylo_tree = phylo_tree
   )
 }
 
@@ -154,11 +162,16 @@
   trait_names <- levels(fit_two_psi$data[[fit_two_psi$trait_col]])
   ## Phylogenetic implied total
   phy_total <- suppressMessages(
-    extract_Sigma(fit_two_psi, level = "phy", part = "total",
-                  link_residual = "none")
+    extract_Sigma(
+      fit_two_psi,
+      level = "phy",
+      part = "total",
+      link_residual = "none"
+    )
   )
-  if (is.null(phy_total$Sigma))
+  if (is.null(phy_total$Sigma)) {
     cli::cli_abort("Internal: cannot extract Sigma_phy from the two-psi fit.")
+  }
   Sigma_phy <- phy_total$Sigma
   ## Non-phylogenetic side. Two-U layouts in the wild:
   ##  * cluster tier (legacy):    `unique(0 + trait | species)`
@@ -168,31 +181,42 @@
   Sigma_non <- NULL
   if (isTRUE(fit_two_psi$use$diag_species)) {
     ## phylo_unique with cluster grouping; pull from level = "cluster"
-    cl <- suppressMessages(extract_Sigma(fit_two_psi, level = "cluster",
-                                           part = "total",
-                                           link_residual = "none"))
+    cl <- suppressMessages(extract_Sigma(
+      fit_two_psi,
+      level = "cluster",
+      part = "total",
+      link_residual = "none"
+    ))
     if (!is.null(cl$Sigma)) Sigma_non <- cl$Sigma
   }
-  if (is.null(Sigma_non) &&
-      (isTRUE(fit_two_psi$use$rr_B) || isTRUE(fit_two_psi$use$diag_B))) {
-    bb <- suppressMessages(extract_Sigma(fit_two_psi, level = "unit",
-                                           part = "total",
-                                           link_residual = "none"))
+  if (
+    is.null(Sigma_non) &&
+      (isTRUE(fit_two_psi$use$rr_B) || isTRUE(fit_two_psi$use$diag_B))
+  ) {
+    bb <- suppressMessages(extract_Sigma(
+      fit_two_psi,
+      level = "unit",
+      part = "total",
+      link_residual = "none"
+    ))
     if (!is.null(bb$Sigma)) Sigma_non <- bb$Sigma
   }
-  if (is.null(Sigma_non) &&
-      (isTRUE(fit_two_psi$use$rr_W) || isTRUE(fit_two_psi$use$diag_W))) {
-    ww <- suppressMessages(extract_Sigma(fit_two_psi, level = "unit_obs",
-                                           part = "total",
-                                           link_residual = "none"))
+  if (
+    is.null(Sigma_non) &&
+      (isTRUE(fit_two_psi$use$rr_W) || isTRUE(fit_two_psi$use$diag_W))
+  ) {
+    ww <- suppressMessages(extract_Sigma(
+      fit_two_psi,
+      level = "unit_obs",
+      part = "total",
+      link_residual = "none"
+    ))
     if (!is.null(ww$Sigma)) Sigma_non <- ww$Sigma
   }
   if (is.null(Sigma_non)) {
-    Sigma_non <- matrix(0, T_n, T_n,
-                        dimnames = list(trait_names, trait_names))
+    Sigma_non <- matrix(0, T_n, T_n, dimnames = list(trait_names, trait_names))
   }
-  list(Sigma_phy = Sigma_phy, Sigma_non = Sigma_non,
-       trait_names = trait_names)
+  list(Sigma_phy = Sigma_phy, Sigma_non = Sigma_non, trait_names = trait_names)
 }
 
 #' Build the formula for the alternative cross-check fit
@@ -206,8 +230,7 @@
 #'
 #' @keywords internal
 #' @noRd
-.alt_formula <- function(fit_two_psi, kind = c("dep", "indep"),
-                          inputs) {
+.alt_formula <- function(fit_two_psi, kind = c("dep", "indep"), inputs) {
   kind <- match.arg(kind)
   ## fit_two_psi$formula is the parsed FIXED-EFFECT-ONLY formula (covstruct
   ## terms have been stripped). We append the alternative covstruct
@@ -218,18 +241,23 @@
   species_sym <- as.name(inputs$cluster)
   if (kind == "dep") {
     phy_term <- substitute(phylo_dep(0 + trait | sp), list(sp = species_sym))
-    non_term <- substitute(dep(0 + trait | sp),       list(sp = species_sym))
+    non_term <- substitute(dep(0 + trait | sp), list(sp = species_sym))
   } else {
     phy_term <- substitute(phylo_indep(0 + trait | sp), list(sp = species_sym))
-    non_term <- substitute(indep(0 + trait | sp),       list(sp = species_sym))
+    non_term <- substitute(indep(0 + trait | sp), list(sp = species_sym))
   }
   ## Replace `trait` symbol in the templated terms with the actual
   ## trait column name (usually "trait" but the user can override).
   trait_sym <- as.name(inputs$trait)
   swap_trait <- function(e) {
-    if (is.name(e) && identical(as.character(e), "trait"))
+    if (is.name(e) && identical(as.character(e), "trait")) {
       return(trait_sym)
-    if (is.call(e)) for (i in seq_along(e)[-1L]) e[[i]] <- swap_trait(e[[i]])
+    }
+    if (is.call(e)) {
+      for (i in seq_along(e)[-1L]) {
+        e[[i]] <- swap_trait(e[[i]])
+      }
+    }
     e
   }
   phy_term <- swap_trait(phy_term)
@@ -249,22 +277,30 @@
 #'
 #' @keywords internal
 #' @noRd
-.refit_alt <- function(fit_two_psi, kind = c("dep", "indep"), inputs,
-                       silent = TRUE) {
+.refit_alt <- function(
+  fit_two_psi,
+  kind = c("dep", "indep"),
+  inputs,
+  silent = TRUE
+) {
   kind <- match.arg(kind)
   alt_form <- .alt_formula(fit_two_psi, kind, inputs)
   call_args <- list(
-    formula    = alt_form,
-    data       = inputs$data,
-    trait      = inputs$trait,
-    unit       = inputs$unit,
-    unit_obs   = inputs$unit_obs %||% "site_species",
-    cluster    = inputs$cluster,
-    family     = inputs$family,
-    silent     = silent
+    formula = alt_form,
+    data = inputs$data,
+    trait = inputs$trait,
+    unit = inputs$unit,
+    unit_obs = inputs$unit_obs %||% "site_species",
+    cluster = inputs$cluster,
+    family = inputs$family,
+    silent = silent
   )
-  if (!is.null(inputs$phylo_vcv))  call_args$phylo_vcv  <- inputs$phylo_vcv
-  if (!is.null(inputs$phylo_tree)) call_args$phylo_tree <- inputs$phylo_tree
+  if (!is.null(inputs$phylo_vcv)) {
+    call_args$phylo_vcv <- inputs$phylo_vcv
+  }
+  if (!is.null(inputs$phylo_tree)) {
+    call_args$phylo_tree <- inputs$phylo_tree
+  }
   tryCatch(do.call(gllvmTMB, call_args), error = function(e) {
     cli::cli_warn(c(
       "Refit under {.code {kind}} covstruct failed: {.val {conditionMessage(e)}}.",
@@ -285,27 +321,39 @@
 #' @keywords internal
 #' @noRd
 .alt_sigmas <- function(fit_alt) {
-  if (is.null(fit_alt))
+  if (is.null(fit_alt)) {
     return(list(Sigma_phy = NULL, Sigma_non = NULL))
-  phy <- suppressMessages(extract_Sigma(fit_alt, level = "phy",
-                                          part = "total",
-                                          link_residual = "none"))
+  }
+  phy <- suppressMessages(extract_Sigma(
+    fit_alt,
+    level = "phy",
+    part = "total",
+    link_residual = "none"
+  ))
   Sigma_phy <- if (!is.null(phy)) phy$Sigma else NULL
   ## Non-phylo: indep/dep terms with `g = species` deposit into the
   ## cluster slot (use$diag_species) for indep, or rr_B / diag_B for
   ## dep with grouping = unit. Try cluster, then B, then W.
   Sigma_non <- NULL
   if (isTRUE(fit_alt$use$diag_species)) {
-    cl <- suppressMessages(extract_Sigma(fit_alt, level = "cluster",
-                                           part = "total",
-                                           link_residual = "none"))
+    cl <- suppressMessages(extract_Sigma(
+      fit_alt,
+      level = "cluster",
+      part = "total",
+      link_residual = "none"
+    ))
     if (!is.null(cl)) Sigma_non <- cl$Sigma
   }
-  if (is.null(Sigma_non) &&
-      (isTRUE(fit_alt$use$rr_B) || isTRUE(fit_alt$use$diag_B))) {
-    bb <- suppressMessages(extract_Sigma(fit_alt, level = "unit",
-                                           part = "total",
-                                           link_residual = "none"))
+  if (
+    is.null(Sigma_non) &&
+      (isTRUE(fit_alt$use$rr_B) || isTRUE(fit_alt$use$diag_B))
+  ) {
+    bb <- suppressMessages(extract_Sigma(
+      fit_alt,
+      level = "unit",
+      part = "total",
+      link_residual = "none"
+    ))
     if (!is.null(bb)) Sigma_non <- bb$Sigma
   }
   list(Sigma_phy = Sigma_phy, Sigma_non = Sigma_non)
@@ -350,8 +398,8 @@
 #' Computational scope: tractable for T <= ~30. For larger T, prefer
 #' [compare_indep_vs_two_psi()].
 #'
-#' @param fit_two_psi A `gllvmTMB_multi` joint two-psi fit, e.g. produced by
-#'   `gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K_phy) +
+#' @param fit_two_psi A joint two-psi fit returned by [gllvmTMB()], e.g.
+#'   one produced by `gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K_phy) +
 #'             phylo_unique(species) + unique(0 + trait | species), ...)`.
 #'   The cross-check refits the same data and family with
 #'   `phylo_dep + dep` and compares.
@@ -432,11 +480,19 @@
 #' diag$flag
 #' diag$agreement
 #' }
-compare_dep_vs_two_psi <- function(fit_two_psi, threshold = 0.10,
-                                  phylo_vcv = NULL, phylo_tree = NULL) {
+compare_dep_vs_two_psi <- function(
+  fit_two_psi,
+  threshold = 0.10,
+  phylo_vcv = NULL,
+  phylo_tree = NULL
+) {
   inputs <- .refit_inputs(fit_two_psi)
-  if (!is.null(phylo_vcv))  inputs$phylo_vcv  <- phylo_vcv
-  if (!is.null(phylo_tree)) inputs$phylo_tree <- phylo_tree
+  if (!is.null(phylo_vcv)) {
+    inputs$phylo_vcv <- phylo_vcv
+  }
+  if (!is.null(phylo_tree)) {
+    inputs$phylo_tree <- phylo_tree
+  }
 
   joint <- .joint_two_psi_sigmas(fit_two_psi)
   fit_alt <- .refit_alt(fit_two_psi, kind = "dep", inputs = inputs)
@@ -445,27 +501,29 @@ compare_dep_vs_two_psi <- function(fit_two_psi, threshold = 0.10,
   ## Per-component Frobenius RMSE and relative disagreement
   if (!is.null(alt$Sigma_phy)) {
     nm <- intersect(rownames(alt$Sigma_phy), rownames(joint$Sigma_phy))
-    A  <- joint$Sigma_phy[nm, nm, drop = FALSE]
-    B  <- alt$Sigma_phy[nm, nm, drop = FALSE]
+    A <- joint$Sigma_phy[nm, nm, drop = FALSE]
+    B <- alt$Sigma_phy[nm, nm, drop = FALSE]
     rmse_phy <- .rmse_arr(A, B)
-    mag_phy  <- .frob_mag(B)
+    mag_phy <- .frob_mag(B)
   } else {
-    rmse_phy <- NA_real_; mag_phy <- NA_real_
+    rmse_phy <- NA_real_
+    mag_phy <- NA_real_
   }
   if (!is.null(alt$Sigma_non)) {
     nm <- intersect(rownames(alt$Sigma_non), rownames(joint$Sigma_non))
-    A  <- joint$Sigma_non[nm, nm, drop = FALSE]
-    B  <- alt$Sigma_non[nm, nm, drop = FALSE]
+    A <- joint$Sigma_non[nm, nm, drop = FALSE]
+    B <- alt$Sigma_non[nm, nm, drop = FALSE]
     rmse_non <- .rmse_arr(A, B)
-    mag_non  <- .frob_mag(B)
+    mag_non <- .frob_mag(B)
   } else {
-    rmse_non <- NA_real_; mag_non <- NA_real_
+    rmse_non <- NA_real_
+    mag_non <- NA_real_
   }
 
   agreement <- data.frame(
-    component        = c("Sigma_phy", "Sigma_non"),
-    rmse             = c(rmse_phy, rmse_non),
-    dep_mag          = c(mag_phy,  mag_non),
+    component = c("Sigma_phy", "Sigma_non"),
+    rmse = c(rmse_phy, rmse_non),
+    dep_mag = c(mag_phy, mag_non),
     rel_disagreement = c(
       if (is.finite(mag_phy) && mag_phy > 0) rmse_phy / mag_phy else NA_real_,
       if (is.finite(mag_non) && mag_non > 0) rmse_non / mag_non else NA_real_
@@ -473,15 +531,15 @@ compare_dep_vs_two_psi <- function(fit_two_psi, threshold = 0.10,
     stringsAsFactors = FALSE
   )
   agreement$flag <- !is.na(agreement$rel_disagreement) &
-                     agreement$rel_disagreement > threshold
+    agreement$rel_disagreement > threshold
 
   list(
-    joint     = joint,
-    dep       = alt,
+    joint = joint,
+    dep = alt,
     agreement = agreement,
-    flag      = any(agreement$flag, na.rm = TRUE),
+    flag = any(agreement$flag, na.rm = TRUE),
     threshold = threshold,
-    alt_fit   = fit_alt
+    alt_fit = fit_alt
   )
 }
 
@@ -540,11 +598,19 @@ compare_dep_vs_two_psi <- function(fit_two_psi, threshold = 0.10,
 #' diag$flag
 #' diag$agreement
 #' }
-compare_indep_vs_two_psi <- function(fit_two_psi, threshold = 0.10,
-                                    phylo_vcv = NULL, phylo_tree = NULL) {
+compare_indep_vs_two_psi <- function(
+  fit_two_psi,
+  threshold = 0.10,
+  phylo_vcv = NULL,
+  phylo_tree = NULL
+) {
   inputs <- .refit_inputs(fit_two_psi)
-  if (!is.null(phylo_vcv))  inputs$phylo_vcv  <- phylo_vcv
-  if (!is.null(phylo_tree)) inputs$phylo_tree <- phylo_tree
+  if (!is.null(phylo_vcv)) {
+    inputs$phylo_vcv <- phylo_vcv
+  }
+  if (!is.null(phylo_tree)) {
+    inputs$phylo_tree <- phylo_tree
+  }
 
   joint_full <- .joint_two_psi_sigmas(fit_two_psi)
   joint_diag_phy <- .diag_named(joint_full$Sigma_phy)
@@ -553,28 +619,38 @@ compare_indep_vs_two_psi <- function(fit_two_psi, threshold = 0.10,
   fit_alt <- .refit_alt(fit_two_psi, kind = "indep", inputs = inputs)
   alt <- .alt_sigmas(fit_alt)
 
-  alt_diag_phy <- if (!is.null(alt$Sigma_phy)) .diag_named(alt$Sigma_phy) else NULL
-  alt_diag_non <- if (!is.null(alt$Sigma_non)) .diag_named(alt$Sigma_non) else NULL
+  alt_diag_phy <- if (!is.null(alt$Sigma_phy)) {
+    .diag_named(alt$Sigma_phy)
+  } else {
+    NULL
+  }
+  alt_diag_non <- if (!is.null(alt$Sigma_non)) {
+    .diag_named(alt$Sigma_non)
+  } else {
+    NULL
+  }
 
   if (!is.null(alt_diag_phy)) {
     nm <- intersect(names(alt_diag_phy), names(joint_diag_phy))
     rmse_phy <- sqrt(mean((joint_diag_phy[nm] - alt_diag_phy[nm])^2))
-    mag_phy  <- sqrt(mean(alt_diag_phy[nm]^2))
+    mag_phy <- sqrt(mean(alt_diag_phy[nm]^2))
   } else {
-    rmse_phy <- NA_real_; mag_phy <- NA_real_
+    rmse_phy <- NA_real_
+    mag_phy <- NA_real_
   }
   if (!is.null(alt_diag_non)) {
     nm <- intersect(names(alt_diag_non), names(joint_diag_non))
     rmse_non <- sqrt(mean((joint_diag_non[nm] - alt_diag_non[nm])^2))
-    mag_non  <- sqrt(mean(alt_diag_non[nm]^2))
+    mag_non <- sqrt(mean(alt_diag_non[nm]^2))
   } else {
-    rmse_non <- NA_real_; mag_non <- NA_real_
+    rmse_non <- NA_real_
+    mag_non <- NA_real_
   }
 
   agreement <- data.frame(
-    component        = c("Sigma_phy_diag", "Sigma_non_diag"),
-    rmse             = c(rmse_phy, rmse_non),
-    indep_mag        = c(mag_phy,  mag_non),
+    component = c("Sigma_phy_diag", "Sigma_non_diag"),
+    rmse = c(rmse_phy, rmse_non),
+    indep_mag = c(mag_phy, mag_non),
     rel_disagreement = c(
       if (is.finite(mag_phy) && mag_phy > 0) rmse_phy / mag_phy else NA_real_,
       if (is.finite(mag_non) && mag_non > 0) rmse_non / mag_non else NA_real_
@@ -582,16 +658,17 @@ compare_indep_vs_two_psi <- function(fit_two_psi, threshold = 0.10,
     stringsAsFactors = FALSE
   )
   agreement$flag <- !is.na(agreement$rel_disagreement) &
-                     agreement$rel_disagreement > threshold
+    agreement$rel_disagreement > threshold
 
   list(
-    joint     = list(Sigma_phy_diag = joint_diag_phy,
-                     Sigma_non_diag = joint_diag_non),
-    indep     = list(Sigma_phy_diag = alt_diag_phy,
-                     Sigma_non_diag = alt_diag_non),
+    joint = list(
+      Sigma_phy_diag = joint_diag_phy,
+      Sigma_non_diag = joint_diag_non
+    ),
+    indep = list(Sigma_phy_diag = alt_diag_phy, Sigma_non_diag = alt_diag_non),
     agreement = agreement,
-    flag      = any(agreement$flag, na.rm = TRUE),
+    flag = any(agreement$flag, na.rm = TRUE),
     threshold = threshold,
-    alt_fit   = fit_alt
+    alt_fit = fit_alt
   )
 }

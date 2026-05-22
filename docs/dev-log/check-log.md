@@ -7345,3 +7345,43 @@ Deliberately not run:
   helpers is clean. `pkgdown::check_pkgdown()` was not rerun because no
   documentation or pkgdown navigation files changed. No 3-OS CI was available
   until the branch is pushed.
+
+## 2026-05-22 -- Unique keyword reference cleanup
+
+Scope:
+
+- Cleaned the `unique()` / `diag_re` reference topic after the reference-page
+  audit found stale `level = "B"` examples and old `U` / `unique-S` notation.
+- Kept this slice documentation-only: no formula parser, likelihood, or test
+  behavior changed.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/diag_re.Rd`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/diag_re.Rd && grep -c '^\\keyword' man/diag_re.Rd`
+  -> normal ending; one expected `internal` keyword.
+- Stale wording scan:
+
+  ```sh
+  rg -n "unique\\(S\\)|s_\\{|S_B|S_W| U\\.|# U|level = \\\"B\\\"|level = \\\"W\\\"|diag\\(\\) term|unique-S|non,shared|Long data are canonical|attached plot data" R/unique-keyword.R man/diag_re.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  roxygen-only cleanup. No vignettes/articles were edited or rendered. No
+  3-OS CI was available until the branch is pushed.

@@ -301,13 +301,13 @@ corr_rows <- extract_correlations(fit, tier = "unit")
 corr_rows
 ```
 
-```{r ci-correlation-raindrop, fig.width = 7, fig.height = 4.3, fig.cap = "Pairwise between-individual trait correlations from a cached morphometrics bootstrap fixture. Raindrops reconstruct frequentist compatibility from percentile intervals; points mark estimates. Use a larger bootstrap run before making a final interval-calibration claim."}
-plot_correlations(morph_boot_R, tier = "unit", style = "raindrop", sort = "trait")
+```{r ci-correlation-eye, fig.width = 7, fig.height = 4.3, fig.cap = "Pairwise between-individual trait correlations from a cached morphometrics bootstrap fixture. Confidence eyes reconstruct frequentist compatibility from percentile intervals; hollow circles mark estimates. Use a larger bootstrap run before making a final interval-calibration claim."}
+plot_correlations(morph_boot_R, tier = "unit", style = "eye", sort = "trait")
 ```
 
 In this teaching fit, all unit-tier trait correlations are positive, so
 the figure mainly ranks their strength along the shared size axis. Tight
-drops near 1 are supplied by the cached bootstrap object
+confidence eyes near 1 are supplied by the cached bootstrap object
 (`n_boot = `r morph_boot_R$n_boot`, failed refits =
 `r morph_boot_R$n_failed`). Treat this as a rendered plotting example;
 final inference should use a bootstrap size chosen for the study rather

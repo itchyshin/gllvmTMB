@@ -7706,6 +7706,49 @@ Deliberately not run:
 - Full `devtools::test()`, `devtools::check()`, and 3-OS CI were not run at
   this baseline checkpoint. No code was changed in the audit slice.
 
+## 2026-05-22 -- Morphometrics confidence-eye example
+
+Scope:
+
+- Switched the visible morphometrics article bootstrap-correlation example from
+  the compatibility alias `style = "raindrop"` to the preferred
+  `style = "eye"`.
+- Updated the figure caption and nearby prose from "raindrops" / "drops" to
+  "confidence eyes".
+- Updated the morphometrics fixture test to exercise the preferred style and
+  primary `gllvmTMB_confidence_eye_data` attribute.
+
+Evidence:
+
+- Lane check before editing shared files was the 12-slice baseline:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json ...` -> no open
+  PRs, and recent commits were all on this branch.
+- `air format tests/testthat/test-example-morphometrics.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics", stop_on_failure = TRUE)'`
+  -> 50 passes, 0 failures, 0 warnings, 0 skips.
+- First article render without `pkgload::load_all()` failed because the running
+  process saw an older namespace where `style = "eye"` was not available:
+  `'arg' should be one of "interval", "raindrop"`.
+- Final article render:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", lazy = FALSE, new_process = FALSE, quiet = TRUE)'`
+  -> wrote `articles/morphometrics.html`.
+- Stale article/test scan:
+
+  ```sh
+  rg -n 'style = "raindrop"|ci-correlation-raindrop|Raindrops|raindrops|Tight drops|style = "eye"|Confidence eyes|ci-correlation-eye' vignettes/articles/morphometrics.Rmd tests/testthat/test-example-morphometrics.R pkgdown-site/articles/morphometrics.html
+  ```
+
+  -> expected `style = "eye"`, `Confidence eyes`, and `ci-correlation-eye`
+  hits; no stale visible `raindrop` hits in the scanned morphometrics sources.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+
+Deliberately not run:
+
+- Full `pkgdown::build_site()`, full `devtools::test()`, `devtools::check()`,
+  and 3-OS CI were not run for this narrow article/example switch.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

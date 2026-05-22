@@ -6053,6 +6053,46 @@ Deliberately not run:
   wording cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace
   check, stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-22 -- Vocabulary Sigma table render cleanup
+
+Scope:
+
+- Updated `vignettes/articles/gllvm-vocabulary.Rmd` so implied trait covariance
+  names `extract_Sigma_table(fit, level = ...)` as the tidy reporting shape.
+- Replaced legacy TeX `\rm` atoms with `\mathrm{}` to remove Pandoc math
+  warnings exposed by the render.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/gllvm-vocabulary.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/gllvm-vocabulary", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally without the earlier Pandoc `\rm` warnings.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = \\.\\.\\.\\)|extract_Sigma\\(fit, level = \\.\\.\\.\\)|\\\\rm|Report-ready|tidy rows|mathrm\\{unit\\}|mathrm\\{phy\\}|mathrm\\{non\\}' vignettes/articles/gllvm-vocabulary.Rmd pkgdown-site/articles/gllvm-vocabulary.html`
+  -> source and rendered HTML contain the row-table wording and `\mathrm{}`
+  atoms; no `\rm` remains.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/gllvm-vocabulary.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this glossary/render
+  cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-22 -- Sigma heatmap custom labels
 
 Scope:

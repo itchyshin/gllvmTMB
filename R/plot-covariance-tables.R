@@ -277,7 +277,7 @@
   p
 }
 
-.gtmb_raindrop_data <- function(
+.gtmb_confidence_eye_data <- function(
   dat,
   transform = c("identity", "correlation"),
   level = 0.95,
@@ -484,7 +484,11 @@ plot_correlations <- function(
   dat$.sign <- .gtmb_plot_sign(dat$.estimate)
   dat <- .gtmb_prepare_pair_plot_rows(dat, sort = sort, facet = facet)
   confidence_eye <- if (identical(style, "eye")) {
-    .gtmb_raindrop_data(dat, transform = "correlation", level = eye_level)
+    .gtmb_confidence_eye_data(
+      dat,
+      transform = "correlation",
+      level = eye_level
+    )
   } else {
     dat[0L, , drop = FALSE]
   }
@@ -1162,7 +1166,7 @@ plot_Sigma_table <- function(
     "Selected Sigma entries"
   }
   confidence_eye <- if (identical(style, "eye")) {
-    .gtmb_raindrop_data(
+    .gtmb_confidence_eye_data(
       dat,
       transform = if (is_correlation) "correlation" else "identity",
       level = eye_level

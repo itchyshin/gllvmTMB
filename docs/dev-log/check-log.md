@@ -7521,6 +7521,46 @@ Deliberately not run:
   narrow reference-doc slice. No articles were edited. No 3-OS CI was available
   until the branch is pushed.
 
+## 2026-05-22 -- Confidence-eye internal helper naming
+
+Scope:
+
+- Renamed the internal confidence-shape constructor from
+  `.gtmb_raindrop_data()` to `.gtmb_confidence_eye_data()`.
+- Kept the backward-compatible `gllvmTMB_raindrop_data` plot attribute while
+  continuing to expose the preferred `gllvmTMB_confidence_eye_data` attribute.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 161 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Internal naming scan:
+
+  ```sh
+  rg -n 'gtmb_raindrop_data|gtmb_confidence_eye_data|gllvmTMB_raindrop_data|gllvmTMB_confidence_eye_data' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R
+  ```
+
+  -> internal helper hits now use `gtmb_confidence_eye_data`; remaining
+  `gllvmTMB_raindrop_data` hits are the compatibility attribute and its alias
+  test.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()`
+  were not rerun for this internal helper-name cleanup. No roxygen, Rd, article,
+  likelihood, or formula grammar files changed. No 3-OS CI was available until
+  the branch is pushed.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

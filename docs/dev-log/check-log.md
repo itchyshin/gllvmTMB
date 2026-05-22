@@ -5848,6 +5848,48 @@ Deliberately not run:
   cleanup. Article render, visual QA, pkgdown check, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-22 -- Animal-model Sigma tables
+
+Scope:
+
+- Replaced raw `phy$Sigma` / `phy$R` printing in the bivariate animal-model
+  tutorial with `compare_Sigma_table()` against the known simulation truth.
+- Replaced raw `phy3$Sigma` / `phy3$R` printing in the multivariate tutorial
+  with `extract_Sigma_table()` rows and `plot_Sigma_heatmap()`.
+- Added dimnames to `G_true` so comparison rows align by trait name.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/animal-model.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/animal-model", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/animal-model_files/figure-html/G3-correlation-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'phy <-|phy3 <-|phy\\$Sigma|phy\\$R|phy3\\$Sigma|phy3\\$R|round\\(phy|round\\(phy3|compare_Sigma_table\\(|plot_Sigma_heatmap\\(|G3-correlation|dimnames\\(G_true\\)' vignettes/articles/animal-model.Rmd pkgdown-site/articles/animal-model.html`
+  -> old raw Sigma/R objects are gone; helper-backed source and rendered HTML
+  are present.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains" vignettes/articles/animal-model.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article-only
+  cleanup. Article render, visual QA, pkgdown check, whitespace check,
+  stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-22 -- Psychometrics Sigma heatmap
 
 Scope:

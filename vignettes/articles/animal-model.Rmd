@@ -217,6 +217,7 @@ U <- matrix(U, n_ind, 2, byrow = FALSE)
 E <- matrix(rnorm(2 * n_ind, sd = sqrt(0.5)), n_ind, 2)
 Y <- U + E
 colnames(Y) <- c("body_size", "wing_length")
+dimnames(G_true) <- list(colnames(Y), colnames(Y))
 
 df2 <- data.frame(
   id    = factor(rep(ped$id, each = 2), levels = ped$id),
@@ -254,17 +255,30 @@ genetic covariance matrix $\boldsymbol G$ is rotation-invariant and
 recovered by combining the shared and diagonal parts:
 
 ```{r G2}
-phy <- extract_Sigma(fit2, level = "phy")
-list(G_true  = G_true,
-     G_hat   = round(phy$Sigma, 3),
-     rG_true = round(0.30 / sqrt(0.50 * 0.45), 3),
-     rG_hat  = round(phy$R[1, 2], 3))
+G2_compare <- compare_Sigma_table(
+  fit2,
+  truth = G_true,
+  level = "phy",
+  measure = "covariance",
+  entries = "unique"
+)
+G2_compare[, c("trait_i", "trait_j", "estimate", "truth", "error")]
+
+R_G_true <- stats::cov2cor(G_true)
+R_G_compare <- compare_Sigma_table(
+  fit2,
+  truth = R_G_true,
+  level = "phy",
+  measure = "correlation",
+  entries = "offdiag"
+)
+R_G_compare[, c("trait_i", "trait_j", "estimate", "truth", "error")]
 ```
 
 The bivariate $\boldsymbol G$ encodes both the per-trait variances
 (diagonals) and the genetic covariance (off-diagonal). The genetic
-correlation $r_{\mathrm G}$ — returned as the `$R` component of
-`extract_Sigma(fit, level = "phy")`, or independently via
+correlation $r_{\mathrm G}$ — returned by `extract_Sigma_table(...,
+measure = "correlation")`, or independently via
 `extract_correlations(fit, tier = "phy")` if you need a CI — is the
 standardised version and is the parameter usually reported in
 evolutionary studies (Wilson *et al.* 2010, Tutorial 2).
@@ -340,11 +354,26 @@ Extract the implied $\boldsymbol G$, the rank-1 loadings, and the
 genetic correlation matrix:
 
 ```{r G3}
-phy3 <- extract_Sigma(fit3, level = "phy")
+G3_rows <- extract_Sigma_table(
+  fit3,
+  level = "phy",
+  measure = "covariance",
+  entries = "unique"
+)
+G3_rows[, c("trait_i", "trait_j", "estimate", "interval_status")]
+
 Lambda_hat <- fit3$report$Lambda_phy  # shared loadings (rotation-ambiguous)
-list(G_hat      = round(phy3$Sigma, 3),
-     R_G_hat    = round(phy3$R, 3),
-     Lambda_hat = round(Lambda_hat, 3))
+round(Lambda_hat, 3)
+```
+
+```{r G3-correlation, fig.width = 5.8, fig.height = 4.8}
+G3_corr_rows <- extract_Sigma_table(
+  fit3,
+  level = "phy",
+  measure = "correlation",
+  entries = "all"
+)
+plot_Sigma_heatmap(G3_corr_rows, label_digits = 2)
 ```
 
 The shared $\boldsymbol\Lambda$ is **rotation-invariant only up to

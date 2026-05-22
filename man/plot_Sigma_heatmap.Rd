@@ -14,7 +14,10 @@ plot_Sigma_heatmap(
   include_diagonal = TRUE,
   facet = c("level", "none"),
   label = TRUE,
-  label_digits = 2
+  label_digits = 2,
+  title = NULL,
+  subtitle = NULL,
+  caption = NULL
 )
 }
 \arguments{
@@ -34,6 +37,9 @@ returned by \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}. Data fram
 \item{label}{Logical. Print numeric estimates inside cells?}
 
 \item{label_digits}{Number of decimal places for cell labels.}
+
+\item{title, subtitle, caption}{Optional scalar character labels. \code{NULL}
+keeps the helper's publication-safe defaults.}
 }
 \value{
 A \code{ggplot2} plot object with \code{gllvmTMB_meta} and \code{gllvmTMB_data}

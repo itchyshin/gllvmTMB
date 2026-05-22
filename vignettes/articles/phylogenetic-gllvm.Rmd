@@ -215,7 +215,12 @@ Sigma_corr_rows <- extract_Sigma_table(
   measure = "correlation",
   entries = "all"
 )
-plot_Sigma_heatmap(Sigma_corr_rows, label_digits = 2)
+plot_Sigma_heatmap(
+  Sigma_corr_rows,
+  label_digits = 2,
+  title = "Phylogenetic and non-phylogenetic correlations",
+  subtitle = "Facets compare total Sigma at the phy and unit tiers."
+)
 ```
 
 For a small tree, do not over-interpret either split (between

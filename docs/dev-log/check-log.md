@@ -5757,6 +5757,59 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- Sigma heatmap custom labels
+
+Scope:
+
+- Added optional `title`, `subtitle`, and `caption` arguments to
+  `plot_Sigma_heatmap()`.
+- Regenerated `man/plot_Sigma_heatmap.Rd`.
+- Updated mixed-family, psychometrics, animal-model, and phylogenetic articles
+  to use biologically specific heatmap labels.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot_Sigma_heatmap.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 157 passes, 0 failures, 0 warnings, 0 skips.
+- `for article in articles/mixed-family-extractors articles/psychometrics-irt articles/animal-model articles/phylogenetic-gllvm; do Rscript --vanilla -e "devtools::load_all(quiet = TRUE); pkgdown::build_article('$article', quiet = TRUE, new_process = FALSE)" || exit 1; done`
+  -> all four articles rendered locally.
+- Visual QA images inspected:
+  `pkgdown-site/articles/mixed-family-extractors_files/figure-html/corr-1.png`,
+  `pkgdown-site/articles/psychometrics-irt_files/figure-html/sigma-exp-corr-1.png`,
+  `pkgdown-site/articles/animal-model_files/figure-html/G3-correlation-1.png`, and
+  `pkgdown-site/articles/phylogenetic-gllvm_files/figure-html/extract-total-correlations-1.png`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `tail -5 man/plot_Sigma_heatmap.Rd && grep -c '^\\keyword' man/plot_Sigma_heatmap.Rd`
+  -> tail clean; keyword count `0`.
+- `rg -n 'title = "Mixed-family trait correlations"|title = "Exploratory item correlations"|title = "Genetic trait correlations"|title = "Phylogenetic and non-phylogenetic correlations"|title = NULL|subtitle = NULL|caption = NULL|title,subtitle,caption' R/plot-covariance-tables.R man/plot_Sigma_heatmap.Rd tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd pkgdown-site/articles/mixed-family-extractors.html pkgdown-site/articles/psychometrics-irt.html pkgdown-site/articles/animal-model.html pkgdown-site/articles/phylogenetic-gllvm.html`
+  -> helper signature, Rd usage, roxygen parameter, tests, and four article
+  calls are present.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R vignettes/articles/mixed-family-extractors.Rmd vignettes/articles/psychometrics-irt.Rmd vignettes/articles/animal-model.Rmd vignettes/articles/phylogenetic-gllvm.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this plotting-label
+  polish. Focused helper tests, four article renders, visual QA,
+  `pkgdown::check_pkgdown()`, whitespace check, stale-wording scans, and a
+  short no-tests package check were run.
+
 ## 2026-05-22 -- Remaining explicit trait article cleanup
 
 Scope:

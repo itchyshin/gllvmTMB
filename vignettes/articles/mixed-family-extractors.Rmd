@@ -115,7 +115,12 @@ R_rows <- extract_Sigma_table(
   entries = "all",
   link_residual = "auto"
 )
-plot_Sigma_heatmap(R_rows, label_digits = 2)
+plot_Sigma_heatmap(
+  R_rows,
+  label_digits = 2,
+  title = "Mixed-family trait correlations",
+  subtitle = "Point estimates include family-specific link residuals."
+)
 ```
 
 By default `link_residual = "auto"` adds the per-family residual to

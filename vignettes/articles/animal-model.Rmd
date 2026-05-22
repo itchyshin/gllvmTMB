@@ -373,7 +373,12 @@ G3_corr_rows <- extract_Sigma_table(
   measure = "correlation",
   entries = "all"
 )
-plot_Sigma_heatmap(G3_corr_rows, label_digits = 2)
+plot_Sigma_heatmap(
+  G3_corr_rows,
+  label_digits = 2,
+  title = "Genetic trait correlations",
+  subtitle = "Point estimates from the animal-level total covariance."
+)
 ```
 
 The shared $\boldsymbol\Lambda$ is **rotation-invariant only up to

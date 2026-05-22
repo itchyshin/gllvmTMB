@@ -423,7 +423,12 @@ test_that("plot_Sigma_heatmap renders Sigma-table rows as matrix cells", {
     stringsAsFactors = FALSE
   )
 
-  p <- plot_Sigma_heatmap(corr_rows)
+  p <- plot_Sigma_heatmap(
+    corr_rows,
+    title = "Core vs adjusted correlations",
+    subtitle = "Point estimates by model.",
+    caption = "No interval bars in this heatmap."
+  )
 
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_cov_plot_meta(
@@ -442,6 +447,9 @@ test_that("plot_Sigma_heatmap renders Sigma-table rows as matrix cells", {
   expect_true("GeomTile" %in% gtmb_plot_geom_names(p))
   expect_true("GeomText" %in% gtmb_plot_geom_names(p))
   expect_true(inherits(p$facet, "FacetWrap"))
+  expect_equal(p$labels$title, "Core vs adjusted correlations")
+  expect_equal(p$labels$subtitle, "Point estimates by model.")
+  expect_equal(p$labels$caption, "No interval bars in this heatmap.")
   expect_silent(ggplot2::ggplot_build(p))
 })
 
@@ -487,6 +495,10 @@ test_that("plot_Sigma_heatmap validates required tidy columns", {
   expect_error(
     plot_Sigma_heatmap(transform(bad, trait_j = "mass"), label_digits = -1),
     regexp = "label_digits"
+  )
+  expect_error(
+    plot_Sigma_heatmap(transform(bad, trait_j = "mass"), title = NA_character_),
+    regexp = "title"
   )
 })
 

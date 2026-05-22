@@ -209,7 +209,12 @@ SB_exp_corr <- extract_Sigma_table(
   measure = "correlation",
   entries = "all"
 )
-plot_Sigma_heatmap(SB_exp_corr, label_digits = 2)
+plot_Sigma_heatmap(
+  SB_exp_corr,
+  label_digits = 2,
+  title = "Exploratory item correlations",
+  subtitle = "Rotation-invariant correlations from the total unit-level Sigma."
+)
 ```
 
 But for *interpreting* which item loads on which factor, the raw

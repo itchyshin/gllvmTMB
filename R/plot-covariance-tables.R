@@ -1314,6 +1314,8 @@ plot_Sigma_table <- function(
 #' @param facet One of `"level"` (default) or `"none"`.
 #' @param label Logical. Print numeric estimates inside cells?
 #' @param label_digits Number of decimal places for cell labels.
+#' @param title,subtitle,caption Optional scalar character labels. `NULL`
+#'   keeps the helper's publication-safe defaults.
 #'
 #' @return A `ggplot2` plot object with `gllvmTMB_meta` and `gllvmTMB_data`
 #'   attributes.
@@ -1344,7 +1346,10 @@ plot_Sigma_heatmap <- function(
   include_diagonal = TRUE,
   facet = c("level", "none"),
   label = TRUE,
-  label_digits = 2
+  label_digits = 2,
+  title = NULL,
+  subtitle = NULL,
+  caption = NULL
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
@@ -1375,6 +1380,19 @@ plot_Sigma_heatmap <- function(
   ) {
     cli::cli_abort("{.arg label_digits} must be a non-negative whole number.")
   }
+  .gtmb_validate_optional_text <- function(x, arg) {
+    if (
+      !is.null(x) &&
+        (!is.character(x) || length(x) != 1L || is.na(x))
+    ) {
+      cli::cli_abort(
+        "{.arg {arg}} must be {.code NULL} or a scalar character string."
+      )
+    }
+  }
+  .gtmb_validate_optional_text(title, "title")
+  .gtmb_validate_optional_text(subtitle, "subtitle")
+  .gtmb_validate_optional_text(caption, "caption")
 
   if (inherits(x, "gllvmTMB_multi") || inherits(x, "bootstrap_Sigma")) {
     dat <- extract_Sigma_table(
@@ -1491,13 +1509,16 @@ plot_Sigma_heatmap <- function(
     ggplot2::labs(
       x = NULL,
       y = NULL,
-      title = if (is_correlation) {
-        "Sigma-derived trait correlations"
-      } else {
-        "Sigma entries by trait"
-      },
-      subtitle = "Cells are point estimates from extract_Sigma_table().",
-      caption = "Heatmaps do not display uncertainty intervals."
+      title = title %||%
+        if (is_correlation) {
+          "Sigma-derived trait correlations"
+        } else {
+          "Sigma entries by trait"
+        },
+      subtitle = subtitle %||%
+        "Cells are point estimates from extract_Sigma_table().",
+      caption = caption %||%
+        "Heatmaps do not display uncertainty intervals."
     ) +
     .gtmb_theme_figure() +
     ggplot2::theme(

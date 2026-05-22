@@ -461,7 +461,7 @@ plot_correlations <- function(
     dat <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a {.cls gllvmTMB_multi} fit, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_correlations}."
+      "{.arg x} must be a fit returned by {.fun gllvmTMB}, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_correlations}."
     )
   }
 
@@ -1104,7 +1104,7 @@ plot_Sigma_table <- function(
     dat <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a {.cls gllvmTMB_multi} fit, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
+      "{.arg x} must be a fit returned by {.fun gllvmTMB}, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
     )
   }
 
@@ -1473,7 +1473,7 @@ plot_Sigma_heatmap <- function(
     dat <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a {.cls gllvmTMB_multi} fit, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
+      "{.arg x} must be a fit returned by {.fun gllvmTMB}, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
     )
   }
 

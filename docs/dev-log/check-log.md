@@ -7561,6 +7561,46 @@ Deliberately not run:
   likelihood, or formula grammar files changed. No 3-OS CI was available until
   the branch is pushed.
 
+## 2026-05-22 -- Wrong-object message cleanup
+
+Scope:
+
+- Cleaned four user-facing wrong-object messages so they point users to a fit
+  returned by `gllvmTMB()` instead of exposing the internal `gllvmTMB_multi`
+  class name.
+- Touched `plot_correlations()`, `plot_Sigma_table()`,
+  `plot_Sigma_heatmap()`, and `suggest_lambda_constraint()`.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-covariance-tables.R R/suggest-lambda-constraint.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|suggest-lambda-constraint", stop_on_failure = TRUE)'`
+  -> 233 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Wrong-object wording scan:
+
+  ```sh
+  rg -n '\{\.cls gllvmTMB_multi\} fit|must be a .*gllvmTMB_multi.*fit|Pass a gllvmTMB_multi|fit returned by \{\.fun gllvmTMB\}' R/plot-covariance-tables.R R/suggest-lambda-constraint.R tests/testthat
+  ```
+
+  -> no stale wrong-object hits remain in the touched files; four replacement
+  `fit returned by {.fun gllvmTMB}` messages are present.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()`
+  were not rerun for this message-only cleanup. No roxygen, Rd, article,
+  likelihood, or formula grammar files changed. No 3-OS CI was available until
+  the branch is pushed.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

@@ -146,7 +146,7 @@ suggest_lambda_constraint <- function(
     n_traits <- length(trait_names)
   } else {
     cli::cli_abort(
-      "{.arg fit_or_formula} must be a {.cls gllvmTMB_multi} fit or a formula."
+      "{.arg fit_or_formula} must be a fit returned by {.fun gllvmTMB} or a formula."
     )
   }
 

@@ -385,6 +385,7 @@ plot_correlations <- function(
   if (nrow(dat) == 0L) {
     cli::cli_abort("No correlation rows to plot.")
   }
+  plot_notes <- attr(dat, "notes") %||% character(0)
 
   dat$.estimate <- dat$correlation
   dat$.lower <- dat$lower
@@ -547,7 +548,8 @@ plot_correlations <- function(
     source = source_label,
     level = unique(dat$.facet),
     interval_status = .gtmb_interval_state(visible_interval),
-    data = dat
+    data = dat,
+    notes = plot_notes
   )
   if (identical(style, "raindrop")) {
     attr(p, "gllvmTMB_raindrop_data") <- raindrop
@@ -689,6 +691,7 @@ plot_Sigma_table <- function(
       "i" = "If you passed only diagonal rows, set {.code include_diagonal = TRUE}."
     ))
   }
+  plot_notes <- attr(dat, "notes") %||% character(0)
 
   dat$.estimate <- dat$estimate
   dat$.lower <- dat$lower
@@ -880,7 +883,8 @@ plot_Sigma_table <- function(
     source = "extract_Sigma_table",
     level = unique(dat$.facet),
     interval_status = .gtmb_interval_state(visible_interval),
-    data = dat
+    data = dat,
+    notes = plot_notes
   )
   if (identical(style, "raindrop")) {
     attr(p, "gllvmTMB_raindrop_data") <- raindrop

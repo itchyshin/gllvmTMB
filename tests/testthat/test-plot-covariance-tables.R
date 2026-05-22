@@ -120,6 +120,7 @@ test_that("plot_correlations accepts bootstrap_Sigma correlation summaries", {
     "extract_Sigma_table"
   )
   expect_equal(meta$interval_status, "provided")
+  expect_match(meta$notes, "n_boot = 25", fixed = TRUE)
   plot_data <- attr(p, "gllvmTMB_data")
   expect_equal(nrow(plot_data), 6L)
   expect_setequal(plot_data$.facet, c("unit", "unit_obs"))
@@ -397,6 +398,7 @@ test_that("plot_Sigma_table accepts bootstrap_Sigma objects", {
     "extract_Sigma_table"
   )
   expect_equal(meta$interval_status, "provided")
+  expect_match(meta$notes, "n_boot = 20", fixed = TRUE)
   plot_data <- attr(p, "gllvmTMB_data")
   expect_equal(nrow(plot_data), 3L)
   expect_equal(unique(plot_data$interval_method), "bootstrap")

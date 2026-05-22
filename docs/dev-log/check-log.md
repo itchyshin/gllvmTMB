@@ -5389,3 +5389,48 @@ Deliberately not run:
 - Full `devtools::check()` with tests was not rerun for this documentation-only
   slice. Get Started render, pkgdown check, whitespace check, stale-wording
   scans, and a short no-tests package check were run.
+
+## 2026-05-21 -- Bootstrap provenance in plot metadata
+
+Scope:
+
+- Updated `plot_correlations()` to preserve extractor notes in
+  `attr(p, "gllvmTMB_meta")$notes`.
+- Updated `plot_Sigma_table()` to preserve extractor notes in the same metadata
+  field.
+- Added tests that bootstrap-derived plot objects expose `n_boot` provenance in
+  metadata notes.
+- Updated `NEWS.md` and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 100 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n 'Bootstrap provenance|gllvmTMB_meta.*notes|n_boot|n_failed|plot_correlations\\(\\)|plot_Sigma_table\\(\\)|EXT-19|EXT-20|EXT-24' NEWS.md R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R docs/design/53-report-ready-extractor-plot-contract.md`
+  -> provenance metadata surface is present in NEWS, code, tests, and the plot
+  contract.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow metadata
+  slice. Focused plot tests, pkgdown check, whitespace check, stale-wording
+  scan, and a short no-tests package check were run.
+- No article render was needed because no vignette changed.

@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Bootstrap provenance in plot metadata (2026-05-21)
+
+* **`plot_correlations()` and `plot_Sigma_table()`** now preserve extractor notes in `attr(p, "gllvmTMB_meta")$notes`, including cached bootstrap provenance such as `n_boot`, failed refits, and confidence level when the input came from `bootstrap_Sigma()` (EXT-19 / EXT-20 / EXT-24). IN: report and article code can audit interval provenance from the plot object. PARTIAL: this records existing extractor notes only; it does not compute new intervals or validate bootstrap calibration. PLANNED: richer article-level provenance summaries remain future reporting work.
+
 ## Cached morphometrics bootstrap plot fixture (2026-05-21)
 
 * **Morphometrics article fixture** now ships a small cached `bootstrap_Sigma(..., what = "R")` object and uses it to render `plot_correlations(boot, style = "raindrop")` plus `plot(type = "correlation_ellipse", boot = boot)` without running bootstrap refits during pkgdown builds (MIS-22 / EXT-23 / EXT-24). IN: the article demonstrates the direct bootstrap plotting path on a reproducible stored object. PARTIAL: the fixture is for teaching and visual QA, not interval-calibration evidence for a scientific claim. PLANNED: fuller bootstrap calibration belongs in simulation-grid or study-specific workflows.

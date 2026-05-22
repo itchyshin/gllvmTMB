@@ -124,7 +124,10 @@ usual next path when bootstrap uncertainty is appropriate. If a
 `plot_correlations(boot)` converts those matrix summaries to pairwise rows
 directly (EXT-24). For Sigma-table rows, call `bootstrap_Sigma()` first and
 then `extract_Sigma_table()` on the bootstrap object to carry percentile bounds
-into the plot helper.
+into the plot helper. Both helpers preserve extractor notes in
+`attr(p, "gllvmTMB_meta")$notes`, including bootstrap provenance such as
+`n_boot`, `n_failed`, and `conf` when those notes are supplied by the
+extractor.
 Raindrops omit interval segments by default so the midpoint and compatibility
 shape carry the display; callers can set `show_intervals = TRUE` when an
 overlaid CI line is genuinely useful. These raindrops are not posterior

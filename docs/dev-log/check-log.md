@@ -5434,3 +5434,34 @@ Deliberately not run:
   slice. Focused plot tests, pkgdown check, whitespace check, stale-wording
   scan, and a short no-tests package check were run.
 - No article render was needed because no vignette changed.
+
+## 2026-05-21 -- Figure surface rescan after bootstrap plot slices
+
+Scope:
+
+- Re-scanned README and article source for covariance/correlation/communality
+  surfaces that still hand-build matrices, heatmaps, or tables.
+- Added
+  `docs/dev-log/audits/2026-05-21-figure-surface-scan-after-bootstrap.md`.
+- Identified the next code target as a reusable estimate-vs-truth table helper
+  for example objects.
+- Identified hidden/technical article targets: functional-biogeography,
+  behavioural-syndromes, mixed-family-extractors, joint-sdm, and
+  phylogenetic-gllvm.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `rg -n "extract_Sigma\\(|extract_Sigma_table\\(|extract_correlations\\(|plot_correlations\\(|plot_Sigma_table\\(|cov2cor\\(|geom_tile\\(|geom_text\\(|extract_communality\\(|extract_repeatability\\(|plot\\(fit.*type = \\\"correlation|type = \\\"communality|type = \\\"integration" vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd README.md`
+  -> source map summarized in the new audit doc.
+- `git diff --check`
+  -> clean after the audit/check-log files were written.
+
+Deliberately not run:
+
+- No R tests, pkgdown render, or package check were run because this slice only
+  added internal audit/check-log Markdown files.

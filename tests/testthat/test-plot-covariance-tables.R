@@ -14,6 +14,17 @@ gtmb_plot_geom_names <- function(p) {
   vapply(p$layers, function(layer) class(layer$geom)[1], character(1L))
 }
 
+gtmb_confidence_eye_point_params <- function(p) {
+  point_layers <- which(gtmb_plot_geom_names(p) == "GeomPoint")
+  point_layers <- point_layers[vapply(
+    p$layers[point_layers],
+    function(layer) identical(layer$aes_params$fill, "white"),
+    logical(1L)
+  )]
+  expect_gt(length(point_layers), 0L)
+  p$layers[[point_layers[[1L]]]]$aes_params
+}
+
 make_bootstrap_correlation_plot_object <- function() {
   traits <- c("length", "mass", "wing")
   R_B <- matrix(
@@ -162,6 +173,12 @@ test_that("plot_correlations can render confidence-eye compatibility shapes", {
   expect_gt(nrow(eye), nrow(cors))
   expect_true(all(eye$.x > -1 & eye$.x < 1))
   expect_false("GeomSegment" %in% gtmb_plot_geom_names(p))
+  eye_point <- gtmb_confidence_eye_point_params(p)
+  expect_equal(eye_point$shape, 21)
+  expect_equal(eye_point$fill, "white")
+  expect_gte(eye_point$size, 3)
+  expect_gte(eye_point$stroke, 1)
+  expect_gt(eye_point$alpha, 0.9)
   expect_silent(ggplot2::ggplot_build(p))
 
   p_with_line <- plot_correlations(
@@ -358,6 +375,12 @@ test_that("plot_Sigma_table can render confidence eyes from finite table interva
   expect_match(p$labels$caption, "not posterior densities", fixed = TRUE)
   expect_no_match(p$labels$caption, "Open points", fixed = TRUE)
   expect_false("GeomSegment" %in% gtmb_plot_geom_names(p))
+  eye_point <- gtmb_confidence_eye_point_params(p)
+  expect_equal(eye_point$shape, 21)
+  expect_equal(eye_point$fill, "white")
+  expect_gte(eye_point$size, 3)
+  expect_gte(eye_point$stroke, 1)
+  expect_gt(eye_point$alpha, 0.9)
   expect_silent(ggplot2::ggplot_build(p))
 
   p_with_line <- plot_Sigma_table(

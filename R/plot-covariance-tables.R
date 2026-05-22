@@ -534,7 +534,7 @@ plot_correlations <- function(
           group = .data$.row_key
         ),
         inherit.aes = FALSE,
-        alpha = 0.16,
+        alpha = 0.14,
         colour = NA
       ) +
       ggplot2::geom_line(
@@ -547,7 +547,7 @@ plot_correlations <- function(
         ),
         inherit.aes = FALSE,
         linewidth = 0.45,
-        alpha = 0.55
+        alpha = 0.45
       ) +
       ggplot2::geom_line(
         data = confidence_eye,
@@ -559,7 +559,7 @@ plot_correlations <- function(
         ),
         inherit.aes = FALSE,
         linewidth = 0.45,
-        alpha = 0.55
+        alpha = 0.45
       ) +
       ggplot2::scale_colour_manual(
         values = c(
@@ -592,9 +592,10 @@ plot_correlations <- function(
           data = dat[dat$.has_uncertainty_display, , drop = FALSE],
           ggplot2::aes(colour = .data$.sign),
           shape = 21,
-          size = 2.8,
-          stroke = 0.9,
-          fill = "white"
+          size = 3,
+          stroke = 1.05,
+          fill = "white",
+          alpha = 0.98
         )
     } else {
       p <- p +
@@ -1216,7 +1217,7 @@ plot_Sigma_table <- function(
           group = .data$.row_key
         ),
         inherit.aes = FALSE,
-        alpha = 0.16,
+        alpha = 0.14,
         colour = NA
       ) +
       ggplot2::geom_line(
@@ -1229,7 +1230,7 @@ plot_Sigma_table <- function(
         ),
         inherit.aes = FALSE,
         linewidth = 0.45,
-        alpha = 0.55
+        alpha = 0.45
       ) +
       ggplot2::geom_line(
         data = confidence_eye,
@@ -1241,7 +1242,7 @@ plot_Sigma_table <- function(
         ),
         inherit.aes = FALSE,
         linewidth = 0.45,
-        alpha = 0.55
+        alpha = 0.45
       ) +
       ggplot2::scale_colour_manual(
         values = c(
@@ -1274,9 +1275,10 @@ plot_Sigma_table <- function(
           data = dat[dat$.has_uncertainty_display, , drop = FALSE],
           ggplot2::aes(colour = .data$.sign),
           shape = 21,
-          size = 2.8,
-          stroke = 0.9,
-          fill = "white"
+          size = 3,
+          stroke = 1.05,
+          fill = "white",
+          alpha = 0.98
         )
     } else {
       p <- p +

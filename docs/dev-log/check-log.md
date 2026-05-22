@@ -7749,6 +7749,41 @@ Deliberately not run:
 - Full `pkgdown::build_site()`, full `devtools::test()`, `devtools::check()`,
   and 3-OS CI were not run for this narrow article/example switch.
 
+## 2026-05-22 -- Confidence-eye marker polish
+
+Scope:
+
+- Made the confidence-eye compatibility envelope paler and the hollow estimate
+  circle stronger/brighter.
+- Added tests that inspect the confidence-eye point layer contract.
+
+Evidence:
+
+- Lane check before editing shared files was the 12-slice baseline:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json ...` -> no open
+  PRs, and recent commits were all on this branch.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|example-morphometrics", stop_on_failure = TRUE)'`
+  -> 226 passes, 0 failures, 0 warnings, 0 skips.
+- Rendered `/tmp/gllvmTMB-confidence-eye-qa/confidence-eye.png`.
+  Florence verdict: PASS for this slice; hollow estimate circles now read
+  clearly against the pale compatibility shapes.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Layer-contract scan:
+
+  ```sh
+  rg -n 'alpha = 0\.14|alpha = 0\.45|alpha = 0\.98|stroke = 1\.05|gtmb_confidence_eye_point_params|gllvmTMB_confidence_eye_data' R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R
+  ```
+
+  -> expected code and test hits.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, full pkgdown site, and 3-OS CI
+  were not run for this narrow visual-polish slice.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

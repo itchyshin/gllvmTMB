@@ -7508,3 +7508,50 @@ Deliberately not run:
 - Full `devtools::test()` and `devtools::check()` were not rerun for this
   small behavior-polish slice. No roxygen or pkgdown files changed. No 3-OS CI
   was available until the branch is pushed.
+
+## 2026-05-22 -- Rotation helper cleanup
+
+Scope:
+
+- Cleaned `rotate_loadings()` wrong-object wording so it points users to
+  `gllvmTMB()` rather than exposing the internal `gllvmTMB_multi` class.
+- Updated rotation-helper tests to use canonical `level = "unit"` where legacy
+  alias behavior is not being tested.
+- Saved the maintainer's rotation-for-figures workflow as a Codex memory note
+  for a later plotting/documentation slice: covariance and communality first;
+  rotate for interpretation; varimax default; rotate levels separately; order
+  axes by shared variance; sign-anchor axes; standardize loadings when scales
+  differ.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/rotate-loadings.R tests/testthat/test-rotate-compare-loadings.R tests/testthat/test-rotation-advisory.R`
+  -> completed without output.
+- First focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|extractors-extra", stop_on_failure = TRUE)'`
+  -> 72 passes, 0 failures, 1 warning before updating
+  `test-rotation-advisory.R`.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|extractors-extra", stop_on_failure = TRUE)'`
+  -> 72 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale rotation-helper scan:
+
+  ```sh
+  rg -n 'Pass a gllvmTMB_multi|regexp = "gllvmTMB_multi"|rotate_loadings\([^\n]*"B"|extract_ordination\([^\n]*"B"|getLoadings\([^\n]*level = "B"' R/rotate-loadings.R tests/testthat/test-rotate-compare-loadings.R tests/testthat/test-rotation-advisory.R
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  small helper cleanup. No roxygen, pkgdown, or article files changed. No 3-OS
+  CI was available until the branch is pushed.

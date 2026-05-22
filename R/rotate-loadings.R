@@ -76,7 +76,7 @@ rotate_loadings <- function(
   level <- .normalise_level(level, arg_name = "level")
   method <- match.arg(method)
   if (!inherits(fit, "gllvmTMB_multi")) {
-    cli::cli_abort("Pass a gllvmTMB_multi fit.")
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
 
   ord <- extract_ordination(fit, level = .canonical_level_name(level))

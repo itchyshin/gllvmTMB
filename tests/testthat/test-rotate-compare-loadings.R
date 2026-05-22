@@ -29,13 +29,13 @@ make_rrB_fit <- function(seed = 1, d = 2, n_traits = 4) {
 # =================== rotate_loadings ====================================
 
 test_that("rotate_loadings(): non-fit input errors", {
-  expect_error(rotate_loadings("not-a-fit"), regexp = "gllvmTMB_multi")
+  expect_error(rotate_loadings("not-a-fit"), regexp = "fit returned by")
 })
 
 test_that("rotate_loadings(): unknown method errors via match.arg", {
   fit <- make_rrB_fit(seed = 1, d = 2)
   expect_error(
-    rotate_loadings(fit, "B", method = "oblimin"),
+    rotate_loadings(fit, "unit", method = "oblimin"),
     regexp = "should be one of"
   )
 })
@@ -55,19 +55,19 @@ test_that("rotate_loadings(): errors when level not in fit", {
 
 test_that("rotate_loadings(method='none'): identity rotation", {
   fit <- make_rrB_fit(seed = 1, d = 2)
-  rt <- rotate_loadings(fit, "B", "none")
+  rt <- rotate_loadings(fit, "unit", "none")
   expect_named(rt, c("Lambda", "scores", "T", "method"))
   expect_equal(rt$method, "none")
   expect_equal(rt$T, diag(2))
   ## Lambda and scores should match the raw extraction
-  ord <- suppressMessages(extract_ordination(fit, "B"))
+  ord <- extract_ordination(fit, "unit")
   expect_equal(rt$Lambda, ord$loadings)
   expect_equal(rt$scores, ord$scores)
 })
 
 test_that("rotate_loadings(method='varimax'): T is orthogonal", {
   fit <- make_rrB_fit(seed = 7, d = 2)
-  rt <- rotate_loadings(fit, "B", "varimax")
+  rt <- rotate_loadings(fit, "unit", "varimax")
   ## T is orthogonal: T %*% t(T) == I
   expect_equal(rt$T %*% t(rt$T), diag(2), tolerance = 1e-8)
   expect_equal(t(rt$T) %*% rt$T, diag(2), tolerance = 1e-8)
@@ -75,16 +75,16 @@ test_that("rotate_loadings(method='varimax'): T is orthogonal", {
 
 test_that("rotate_loadings(method='varimax'): preserves Lambda Lambda' (rotation invariance)", {
   fit <- make_rrB_fit(seed = 11, d = 2)
-  ord <- suppressMessages(extract_ordination(fit, "B"))
+  ord <- extract_ordination(fit, "unit")
   L_raw <- ord$loadings
-  rt <- rotate_loadings(fit, "B", "varimax")
+  rt <- rotate_loadings(fit, "unit", "varimax")
   expect_equal(L_raw %*% t(L_raw), rt$Lambda %*% t(rt$Lambda), tolerance = 1e-8)
 })
 
 test_that("rotate_loadings(method='varimax'): scores rotated by T preserve Lambda %*% z", {
   fit <- make_rrB_fit(seed = 13, d = 2)
-  ord <- suppressMessages(extract_ordination(fit, "B"))
-  rt <- rotate_loadings(fit, "B", "varimax")
+  ord <- extract_ordination(fit, "unit")
+  rt <- rotate_loadings(fit, "unit", "varimax")
   ## Lambda_rot %*% z_rot' should equal Lambda %*% z' for each site
   L_raw <- ord$loadings
   Z_raw <- ord$scores # nrow = n_sites
@@ -95,7 +95,7 @@ test_that("rotate_loadings(method='varimax'): scores rotated by T preserve Lambd
 
 test_that("rotate_loadings(method='promax'): returns matrix Lambda and rotation T", {
   fit <- make_rrB_fit(seed = 17, d = 2)
-  rt <- rotate_loadings(fit, "B", "promax")
+  rt <- rotate_loadings(fit, "unit", "promax")
   expect_equal(rt$method, "promax")
   expect_true(is.matrix(rt$T))
   expect_equal(dim(rt$T), c(2, 2))
@@ -106,8 +106,8 @@ test_that("rotate_loadings(method='promax'): preserves linear predictor (Lambda 
   ## Promax T is oblique, so Z gets the inverse-transpose transform.
   ## Lambda_rot %*% z_rot' should still equal Lambda %*% z'.
   fit <- make_rrB_fit(seed = 19, d = 2)
-  ord <- suppressMessages(extract_ordination(fit, "B"))
-  rt <- rotate_loadings(fit, "B", "promax")
+  ord <- extract_ordination(fit, "unit")
+  rt <- rotate_loadings(fit, "unit", "promax")
   pred_raw <- ord$scores %*% t(ord$loadings)
   pred_rot <- rt$scores %*% t(rt$Lambda)
   expect_equal(pred_raw, pred_rot, tolerance = 1e-8)

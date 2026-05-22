@@ -257,7 +257,7 @@ extract_communality <- function(
   boot <- suppressMessages(bootstrap_Sigma(
     fit,
     n_boot = as.integer(nsim),
-    level = level,
+    level = .canonical_level_name(level),
     what = "communality",
     conf = conf_level,
     link_residual = link_residual,

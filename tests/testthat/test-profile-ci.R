@@ -8,19 +8,20 @@
 make_tiny_BW_fit <- function(seed = 42L) {
   set.seed(seed)
   s <- gllvmTMB::simulate_site_trait(
-    n_sites              = 80L,
-    n_species            = 6L,
-    n_traits             = 3L,
+    n_sites = 80L,
+    n_species = 6L,
+    n_traits = 3L,
     mean_species_per_site = 4L,
-    Lambda_B             = matrix(c(0.9, 0.4, -0.3), 3L, 1L),
-    psi_B                  = c(0.40, 0.30, 0.50),
-    psi_W                  = c(0.30, 0.40, 0.30),
-    beta                 = matrix(0, 3L, 2L),
-    seed                 = seed
+    Lambda_B = matrix(c(0.9, 0.4, -0.3), 3L, 1L),
+    psi_B = c(0.40, 0.30, 0.50),
+    psi_W = c(0.30, 0.40, 0.30),
+    beta = matrix(0, 3L, 2L),
+    seed = seed
   )
   suppressMessages(suppressWarnings(
     gllvmTMB::gllvmTMB(
-      value ~ 0 + trait +
+      value ~ 0 +
+        trait +
         latent(0 + trait | site, d = 1) +
         unique(0 + trait | site) +
         unique(0 + trait | site_species),
@@ -40,8 +41,11 @@ test_that("Direct profile on theta_diag_B agrees with Wald (upper bound) to ~30%
   ## agree on the UPPER bound (lower bound can be NA at the boundary
   ## where variance -> 0; tested separately).
   ci_p <- gllvmTMB::tmbprofile_wrapper(
-    fit, name = "theta_diag_B", which = 3L,
-    level = 0.95, transform = exp
+    fit,
+    name = "theta_diag_B",
+    which = 3L,
+    level = 0.95,
+    transform = exp
   )
   ## Compute Wald CI manually from sd_report
   par_names <- names(fit$opt$par)
@@ -90,11 +94,17 @@ test_that("extract_correlations returns tidy frame with required columns", {
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   ## Use Wald (fastest, most robust for testing)
-  cors <- gllvmTMB::extract_correlations(fit, tier = "B", level = 0.95,
-                                         method = "wald")
+  cors <- gllvmTMB::extract_correlations(
+    fit,
+    tier = "unit",
+    level = 0.95,
+    method = "wald"
+  )
   expect_s3_class(cors, "data.frame")
-  expect_named(cors, c("tier", "trait_i", "trait_j", "correlation",
-                       "lower", "upper", "method"))
+  expect_named(
+    cors,
+    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+  )
   ## 3 traits at B tier -> 3 unique pairs
   expect_equal(nrow(cors), 3L)
   expect_true(all(cors$tier == "B"))
@@ -107,9 +117,12 @@ test_that("extract_correlations returns tidy frame with required columns", {
 test_that("extract_correlations supports `pair` argument", {
   skip_on_cran()
   fit <- make_tiny_BW_fit()
-  one <- gllvmTMB::extract_correlations(fit, tier = "B",
-                                        pair = c("trait_1", "trait_2"),
-                                        method = "wald")
+  one <- gllvmTMB::extract_correlations(
+    fit,
+    tier = "unit",
+    pair = c("trait_1", "trait_2"),
+    method = "wald"
+  )
   expect_equal(nrow(one), 1L)
   expect_equal(one$trait_i[1], "trait_1")
   expect_equal(one$trait_j[1], "trait_2")
@@ -134,17 +147,23 @@ test_that("confint(fit) defaults to method = 'profile'", {
   expect_true(all(rel < 0.05, na.rm = TRUE))
 })
 
-test_that("confint(fit, method='bootstrap') for Sigma_B works", {
+test_that("confint(fit, method='bootstrap') for Sigma_unit works", {
   skip_on_cran()
   fit <- make_tiny_BW_fit()
-  ci_b <- suppressMessages(confint(fit, parm = "Sigma_B",
-                                   level = 0.95, method = "bootstrap",
-                                   nsim = 30L, seed = 1L))
+  ci_b <- suppressMessages(confint(
+    fit,
+    parm = "Sigma_unit",
+    level = 0.95,
+    method = "bootstrap",
+    nsim = 30L,
+    seed = 1L
+  ))
   expect_s3_class(ci_b, "data.frame")
   expect_named(ci_b, c("parameter", "estimate", "lower", "upper", "method"))
   expect_true(all(ci_b$method == "bootstrap"))
-  ## 3-trait Sigma_B has 6 upper-tri entries
+  ## 3-trait Sigma_unit has 6 upper-tri entries
   expect_equal(nrow(ci_b), 6L)
+  expect_true(all(grepl("^Sigma_unit\\[", ci_b$parameter)))
 })
 
 ## ---- 5. Speed: profile is meaningfully faster than bootstrap -------------
@@ -157,12 +176,16 @@ test_that("Profile CI for repeatability is faster than bootstrap", {
   })["elapsed"]
   t_b <- system.time({
     rep_b <- suppressMessages(gllvmTMB::extract_repeatability(
-      fit, method = "bootstrap", nsim = 30L, seed = 1L))
+      fit,
+      method = "bootstrap",
+      nsim = 30L,
+      seed = 1L
+    ))
   })["elapsed"]
   ## Profile should be faster than 30-rep bootstrap (typically 2-5x).
   ## We assert >= 1x to be safe -- the headline win shows up at larger
   ## scales (full T-trait fit with 5 tiers ~ 75 correlations).
-  expect_true(t_p < t_b * 2)  ## generous bound to avoid CI flakiness
+  expect_true(t_p < t_b * 2) ## generous bound to avoid CI flakiness
   expect_s3_class(rep_p, "data.frame")
   expect_s3_class(rep_b, "data.frame")
 })
@@ -176,49 +199,66 @@ test_that("All extractors accept method argument", {
     suppressMessages(gllvmTMB::extract_repeatability(fit, method = "wald"))
   )
   expect_no_error(
-    suppressMessages(gllvmTMB::extract_correlations(fit, tier = "B", method = "wald"))
+    suppressMessages(gllvmTMB::extract_correlations(
+      fit,
+      tier = "unit",
+      method = "wald"
+    ))
   )
   expect_no_error(
-    suppressMessages(gllvmTMB::extract_communality(fit, level = "B", ci = TRUE,
-                                                  method = "bootstrap", nsim = 30L,
-                                                  seed = 1L))
+    suppressMessages(gllvmTMB::extract_communality(
+      fit,
+      level = "unit",
+      ci = TRUE,
+      method = "bootstrap",
+      nsim = 30L,
+      seed = 1L
+    ))
   )
 })
 
 ## ---- 7. Bootstrap fallback for full-Sigma matrices when profile asked ---
 
-test_that("Profile on Sigma_B (rr+diag tier) falls back to bootstrap", {
+test_that("Profile on Sigma_unit (latent+unique tier) falls back to bootstrap", {
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   ## Profile method should fall back to bootstrap with an info message
-  ci <- suppressMessages(confint(fit, parm = "Sigma_B", method = "profile"))
+  ci <- suppressMessages(confint(fit, parm = "Sigma_unit", method = "profile"))
   expect_s3_class(ci, "data.frame")
-  expect_true(all(ci$method == "bootstrap"))  ## fell back automatically
+  expect_true(all(ci$method == "bootstrap")) ## fell back automatically
 })
 
 ## ---- 8. Pure-diag tier (no rr): profile gives clean bounds ---------------
 
-test_that("Profile on Sigma_B (pure-diag tier) gives finite bounds", {
+test_that("Profile on Sigma_unit (pure-diag tier) gives finite bounds", {
   skip_on_cran()
   set.seed(42)
   s <- gllvmTMB::simulate_site_trait(
-    n_sites = 80, n_species = 6, n_traits = 3,
+    n_sites = 80,
+    n_species = 6,
+    n_traits = 3,
     mean_species_per_site = 4,
     Lambda_B = matrix(c(0.9, 0.4, -0.3), 3, 1),
-    psi_B = c(0.4, 0.3, 0.5), psi_W = c(0.3, 0.4, 0.3),
-    beta = matrix(0, 3, 2), seed = 42
+    psi_B = c(0.4, 0.3, 0.5),
+    psi_W = c(0.3, 0.4, 0.3),
+    beta = matrix(0, 3, 2),
+    seed = 42
   )
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait +
+    value ~ 0 +
+      trait +
       unique(0 + trait | site) +
       unique(0 + trait | site_species),
-    data = s$data, silent = TRUE
+    data = s$data,
+    silent = TRUE
   )))
-  ci <- confint(fit, parm = "Sigma_B", method = "profile", level = 0.95)
+  ci <- confint(fit, parm = "Sigma_unit", method = "profile", level = 0.95)
   expect_s3_class(ci, "data.frame")
   ## Diagonal entries should have finite bounds (3 diag rows)
-  diag_rows <- which(grepl("trait_1,trait_1|trait_2,trait_2|trait_3,trait_3",
-                           ci$parameter))
+  diag_rows <- which(grepl(
+    "trait_1,trait_1|trait_2,trait_2|trait_3,trait_3",
+    ci$parameter
+  ))
   expect_equal(length(diag_rows), 3L)
   expect_true(all(is.finite(ci$lower[diag_rows])))
   expect_true(all(is.finite(ci$upper[diag_rows])))

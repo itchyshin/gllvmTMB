@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Canonical `confint()` Sigma names (2026-05-22)
+
+* **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full latent + unique Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.
+
 ## Sigma heatmap plot helper (2026-05-21)
 
 * **`plot_Sigma_heatmap()`** plots `extract_Sigma_table()` rows as trait-by-trait covariance or correlation heatmaps (EXT-27). IN: articles and reports can show matrix block structure without extracting `Sigma`, calling `cov2cor()`, or hand-building `geom_tile()` layers; the first integration replaces the functional-biogeography article's bespoke correlation heatmaps. PARTIAL: heatmaps show point estimates only and do not display uncertainty intervals or truth comparisons. PLANNED: vdiffr snapshots and richer multi-model layout helpers remain future visualization work.
@@ -202,8 +206,9 @@ meta-analysis; `meta_known_V()` is the deprecated alias. Existing
   (`parm = "communality"` etc.) now emit a typed warning that
   points the user at the matching `extract_*(method = "profile")`
   extractor instead. The Sigma-matrix path (parm in
-  `{Sigma_B, Sigma_W, sigma_phy}`) and the fixed-effect Wald /
-  profile paths are unchanged.
+  `{Sigma_unit, Sigma_unit_obs, sigma_phy}`, with legacy aliases
+  `{Sigma_B, Sigma_W}`) and the fixed-effect Wald / profile paths are
+  unchanged.
 
 ## New exports (Phase 1b)
 

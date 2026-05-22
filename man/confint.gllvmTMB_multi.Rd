@@ -25,13 +25,15 @@
 )
 }
 \arguments{
-\item{object}{A \code{gllvmTMB_multi} fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{parm}{One of:
 \itemize{
-\item \code{"Sigma_B"} -- between-unit trait covariance matrix.
-\item \code{"Sigma_W"} -- within-unit trait covariance matrix.
+\item \code{"Sigma_unit"} -- between-unit trait covariance matrix.
+\item \code{"Sigma_unit_obs"} -- within-unit trait covariance matrix.
 \item \code{"sigma_phy"} -- per-trait phylogenetic standard deviations.
+\item Legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"}, retained
+for existing scripts.
 \item An integer index vector or character vector of fixed-effect
 term names (same as the standard \code{confint()} interface).
 \item Missing (default) -- all fixed-effect parameters.
@@ -57,9 +59,11 @@ upper bounds of the Wald CI.
 
 \itemize{
 \item \strong{Sigma path} -- a \code{data.frame} with columns
-\code{parameter} (character, e.g. \code{"Sigma_B[t1,t1]"}),
+\code{parameter} (character, e.g. \code{"Sigma_unit[t1,t1]"}),
 \code{estimate} (point estimate), \code{lower}, \code{upper}, and
-\code{method} (the method used for that row).
+\code{method} (the method used for that row). The parameter prefix
+follows the requested \code{parm}, so legacy calls still return
+legacy \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
 \item \strong{Fixed-effects / variance-component path} -- a numeric
 matrix with rownames = parameter names and two columns named
 \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for
@@ -84,16 +88,28 @@ individual parameters.
 distribution).
 }
 
+Scope boundary: IN, fixed-effect and direct-parameter intervals use the
+requested \code{method} where supported (CI-01, CI-02), and Sigma-matrix
+intervals accept canonical \code{parm = "Sigma_unit"} /
+\code{"Sigma_unit_obs"} names plus legacy \code{"Sigma_B"} /
+\code{"Sigma_W"} aliases (CI-02, CI-03; underlying extraction EXT-01).
+PARTIAL, profile intervals for full latent + unique Sigma entries fall back
+to bootstrap because those entries are nonlinear functions of
+rotation-equivalent loadings; non-Gaussian bootstrap calibration remains
+experimental under EXT-13 / CI-10. PLANNED, richer derived-profile
+intervals and broader calibration evidence remain M3 work.
+
 Two parm-class dispatch paths:
 
 \itemize{
 \item \strong{Sigma matrices} -- when \code{parm} is one of
-\code{"Sigma_B"}, \code{"Sigma_W"}, or \code{"sigma_phy"}, returns a
-tidy \code{data.frame} with columns \code{parameter}, \code{estimate},
-\code{lower}, \code{upper}, \code{method}. Profile is computed
-element-wise via \code{\link[TMB:tmbprofile]{TMB::tmbprofile()}} for the diagonal entries; off-
-diagonals fall back to bootstrap (full Σ sampling) since they
-mix two parameters in a non-linear way.
+\code{"Sigma_unit"}, \code{"Sigma_unit_obs"}, or \code{"sigma_phy"}
+(legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"} still work),
+returns a tidy \code{data.frame} with columns \code{parameter},
+\code{estimate}, \code{lower}, \code{upper}, \code{method}. Profile is
+computed element-wise via \code{\link[TMB:tmbprofile]{TMB::tmbprofile()}} for the diagonal entries;
+off-diagonals fall back to bootstrap (full Σ sampling) since they mix
+two parameters in a non-linear way.
 \item \strong{Fixed effects / variance components} -- when \code{parm}
 is missing, an integer index, or a character vector of fixed-effect
 term names, returns a numeric matrix with rows = parameters and
@@ -136,12 +152,12 @@ fit <- gllvmTMB(
 )
 
 ## Profile-likelihood CIs for the between-site covariance matrix (default)
-ci_B <- confint(fit, parm = "Sigma_B")
-ci_B
+ci_unit <- confint(fit, parm = "Sigma_unit")
+ci_unit
 
 ## Bootstrap CIs (slow, more accurate for non-monotone cases)
-ci_B_boot <- confint(fit, parm = "Sigma_B", method = "bootstrap",
-                     nsim = 200, seed = 42)
+ci_unit_boot <- confint(fit, parm = "Sigma_unit", method = "bootstrap",
+                        nsim = 200, seed = 42)
 
 ## Wald CIs for fixed effects
 confint(fit)

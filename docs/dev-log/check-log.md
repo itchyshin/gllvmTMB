@@ -7143,3 +7143,76 @@ Deliberately not run:
 - Full `devtools::test()` and full `devtools::check()` were not rerun for this
   reference-wording slice. No articles were edited or rendered. No 3-OS CI was
   available until the branch is pushed.
+
+## 2026-05-22 -- `confint()` canonical Sigma parameter names
+
+Scope:
+
+- Added canonical `confint()` Sigma parameter names:
+  `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"`.
+- Preserved legacy `parm = "Sigma_B"` and `parm = "Sigma_W"` as accepted
+  aliases. Output `parameter` labels follow the requested token so existing
+  scripts keep their historical labels.
+- Updated the `confint.gllvmTMB_multi()` reference page, NEWS, profile tests,
+  bootstrap-confint tests, and the M3.3 design note that referenced the old
+  `parm = "Sigma_B"` spelling.
+- Fixed one adjacent canonical-name leak: `extract_communality(level = "unit",
+  ci = TRUE, method = "bootstrap")` now passes canonical `level = "unit"` into
+  `bootstrap_Sigma()` instead of re-emitting the internal `B` alias.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch`
+  -> `codex/reference-function-audit-2026-05-22`, clean, ahead 5.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent local commits were the current reference-audit lane on top of
+  `origin/main` commit `c1dc2e4`.
+- `air format R/z-confint-gllvmTMB.R R/extractors.R tests/testthat/test-confint-bootstrap.R tests/testthat/test-profile-ci.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/confint.gllvmTMB_multi.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "confint-bootstrap|profile-ci|profile-targets|sigma-rename", stop_on_failure = TRUE)'`
+  -> 106 passes, 0 failures, 0 warnings, 1 known skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-communality-bootstrap|m1-5-extract-communality-mixed-family|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 204 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Convention-cascade scan:
+
+  ```sh
+  rg -n 'confint\([^\n]*parm\s*=\s*"Sigma_B"|parm\s*=\s*"Sigma_W"|confint\([^\n]*Sigma_B|confint\([^\n]*Sigma_W|Sigma_B", method|Sigma_W", method' README.md NEWS.md docs/design vignettes R tests/testthat
+  ```
+
+  -> only the NEWS legacy-alias sentence and the dedicated
+  `test-confint-bootstrap.R` legacy-alias regression remained.
+- Stale primary-token scan:
+
+  ```sh
+  rg -n 'gllvmTMB_multi fit|A \\code\{gllvmTMB_multi\} fit|Confidence intervals for a \\code\{gllvmTMB_multi\} fit|\{Sigma_B, Sigma_W, sigma_phy\}|parm = "Sigma_B"' R/z-confint-gllvmTMB.R man/confint.gllvmTMB_multi.Rd NEWS.md docs/design/44-m3-3-inference-replacement.md
+  ```
+
+  -> no hits.
+- Register-row cross-check:
+
+  ```sh
+  rg -n 'CI-02|CI-03|EXT-01|EXT-13|CI-10|Sigma_unit|Sigma_unit_obs|method = c\("profile", "wald", "bootstrap"\)' R/z-confint-gllvmTMB.R man/confint.gllvmTMB_multi.Rd NEWS.md docs/design/35-validation-debt-register.md
+  ```
+
+  -> `confint()` method defaults, canonical Sigma names, and scope-boundary
+  row IDs were present in source/Rd/NEWS and backed by existing register rows.
+- Rd spot-check:
+  `tail -5 man/confint.gllvmTMB_multi.Rd && grep -c '^\\keyword' man/confint.gllvmTMB_multi.Rd`
+  -> normal ending; 0 keyword entries.
+
+Deliberately not run:
+
+- Full `devtools::test()` and full `devtools::check()` were not rerun for this
+  bounded `confint()` naming slice. No vignettes or articles were edited or
+  rendered because the cascade scan found no article examples using the old
+  `confint()` Sigma tokens. No 3-OS CI was available until the branch is
+  pushed.

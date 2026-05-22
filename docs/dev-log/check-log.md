@@ -5660,3 +5660,51 @@ Deliberately not run:
   extension. Focused plot tests, roxygen generation, pkgdown check, whitespace
   check, stale-wording scan, Rd spot-check, and a short no-tests package check
   were run.
+
+## 2026-05-21 -- Covariance/correlation truth-comparison figure
+
+Scope:
+
+- Replaced the hand-built three-panel correlation heatmap in
+  `vignettes/articles/covariance-correlation.Rmd`.
+- Used `compare_Sigma_table()` and
+  `plot_Sigma_comparison(facet = "comparison")` to show correlation errors for
+  the latent-only and latent + unique models.
+- Fixed `plot_Sigma_comparison(sort = "trait", facet = "comparison")` so y
+  positions are contiguous within comparison panels.
+- Added a regression expectation for the facet ordering.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables")'`
+  -> 126 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- Visual QA image inspected:
+  `pkgdown-site/articles/covariance-correlation_files/figure-html/corr-comparison-1.png`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-covariance-edge-cases")'`
+  -> 31 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'make_long|df_corr|geom_tile\\(|geom_text\\(|scale_fill_gradient2\\(|facet_wrap\\(~ panel\\)|compare_Sigma_table\\(|plot_Sigma_comparison\\(|facet = "comparison"' vignettes/articles/covariance-correlation.Rmd R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> old article-local heatmap scaffolding is gone from the touched article;
+  the helper and comparison-facet path are present in article and tests.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this article/helper
+  integration. Focused helper tests, focused example tests, article render,
+  pkgdown check, whitespace check, stale-wording scan, visual QA, and a short
+  no-tests package check were run.

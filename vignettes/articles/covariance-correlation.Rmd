@@ -222,43 +222,37 @@ ext_A$note  # advisory: diag missing
 
 ## The correlations side by side
 
-```{r corr-comparison, fig.width = 8.5, fig.height = 4.5, fig.cap = "True (left) vs. recovered correlations from Model A (latent only) and Model B (latent + unique). Model A's off-diagonals are all systematically larger than truth — that's the inflation unique() prevents."}
-make_long <- function(R, label) {
-  data.frame(
-    trait_i = factor(rep(rownames(R), ncol(R)), levels = rownames(R)),
-    trait_j = factor(rep(colnames(R), each = nrow(R)), levels = colnames(R)),
-    rho     = as.vector(R),
-    panel   = label
-  )
-}
-R_true_named <- cov2cor(Sigma_true)
-rownames(R_true_named) <- colnames(R_true_named) <- trait_names
-df_corr <- rbind(
-  make_long(R_true_named,   "1. Truth"),
-  make_long(ext_A$R,        "2. Model A (latent only)"),
-  make_long(ext_B$R,        "3. Model B (latent + unique)")
+```{r corr-comparison, fig.width = 7.5, fig.height = 5.2, fig.cap = "Trait-pair correlation errors for the latent-only model and the latent + unique model. Positive values mean the fitted correlation is larger than truth; zero means exact recovery for that pair."}
+cmp_A <- compare_Sigma_table(
+  fit_A,
+  truth = Sigma_true,
+  level = "unit",
+  measure = "correlation",
+  entries = "upper"
 )
-df_corr$panel <- factor(df_corr$panel, levels = c(
-  "1. Truth", "2. Model A (latent only)", "3. Model B (latent + unique)"))
+cmp_A$comparison <- "Model A: latent only"
 
-ggplot(df_corr, aes(trait_j, trait_i, fill = rho)) +
-  geom_tile(colour = "white") +
-  geom_text(aes(label = sprintf("%.2f", rho)), size = 3) +
-  scale_fill_gradient2(low = "#3b82c6", mid = "white", high = "#d33",
-                       midpoint = 0, limits = c(-1, 1)) +
-  scale_y_discrete(limits = rev) +
-  facet_wrap(~ panel) +
-  labs(x = NULL, y = NULL, fill = expression(rho)) +
-  theme_minimal(base_size = 10) +
-  theme(panel.grid = element_blank(),
-        strip.text = element_text(face = "bold"),
-        axis.text.x = element_text(angle = 35, hjust = 1))
+cmp_B <- compare_Sigma_table(
+  fit_B,
+  truth = Sigma_true,
+  level = "unit",
+  measure = "correlation",
+  entries = "upper"
+)
+cmp_B$comparison <- "Model B: latent + unique"
+
+corr_comparison <- rbind(cmp_A, cmp_B)
+plot_Sigma_comparison(
+  corr_comparison,
+  measure = "correlation",
+  facet = "comparison",
+  sort = "trait"
+)
 ```
 
-The middle panel (`Model A`) shows correlations that are
-**uniformly larger** than truth (left panel). The right panel
-(`Model B`) recovers the true correlations to within sampling noise.
-The mechanism: Model A's $\hat{\boldsymbol\Sigma}$ has small diagonals
+`Model A` shows correlations that are **uniformly larger** than truth.
+`Model B` pulls those errors back toward zero. The mechanism:
+Model A's $\hat{\boldsymbol\Sigma}$ has small diagonals
 (only $\Lambda \Lambda^{\!\top}$), so when we divide by $\sqrt{D}$ the
 off-diagonals get inflated. Model B's $\hat{\boldsymbol\Sigma}$ has
 the full $\Lambda \Lambda^{\!\top} + \boldsymbol\Psi$ — diagonals at the right scale

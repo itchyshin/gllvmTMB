@@ -140,7 +140,7 @@
   } else if (identical(sort, "level")) {
     order(dat$.facet, dat$.pair_label)
   } else {
-    order(dat$.pair_label, dat$.facet)
+    order(dat$.facet, dat$.pair_label)
   }
 }
 
@@ -179,7 +179,7 @@
   } else if (identical(sort, "level")) {
     order(dat$.facet, dat$.pair_label)
   } else {
-    order(dat$.pair_label, dat$.facet)
+    order(dat$.facet, dat$.pair_label)
   }
 }
 

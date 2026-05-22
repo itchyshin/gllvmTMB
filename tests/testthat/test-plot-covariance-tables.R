@@ -516,12 +516,17 @@ test_that("plot_Sigma_comparison facets named comparisons", {
   p <- plot_Sigma_comparison(
     rows,
     measure = "correlation",
-    facet = "comparison"
+    facet = "comparison",
+    sort = "trait"
   )
 
   expect_s3_class(p, "ggplot")
   plot_data <- attr(p, "gllvmTMB_data")
   expect_setequal(plot_data$.facet, c("Model A", "Model B"))
+  expect_gt(
+    min(plot_data$.y[plot_data$.facet == "Model A"]),
+    max(plot_data$.y[plot_data$.facet == "Model B"])
+  )
   expect_true(inherits(p$facet, "FacetWrap"))
   expect_silent(ggplot2::ggplot_build(p))
 })

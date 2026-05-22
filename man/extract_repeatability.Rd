@@ -13,8 +13,8 @@ extract_repeatability(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit returned by \code{\link{gllvmTMB}}.
-A \code{bootstrap_Sigma} object is also accepted when it contains an
+\item{fit}{A fit returned by \code{\link{gllvmTMB}}. A
+\code{bootstrap_Sigma} object is also accepted when it contains an
 \code{ICC_site} summary; in that case the function reuses the stored
 point estimates and percentile bounds rather than refitting.}
 
@@ -35,7 +35,7 @@ estimate), \code{lower}, \code{upper}, \code{method}.
 \description{
 Returns the per-trait repeatability
 \eqn{R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} + \sigma^2_{W,t})} for a
-fitted gllvmTMB_multi model with both \code{unique(0 + trait | <unit>)}
+fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} with both \code{unique(0 + trait | <unit>)}
 and \code{unique(0 + trait | <obs>)} terms. Also known as the
 intraclass correlation coefficient (ICC) at the unit level.
 }

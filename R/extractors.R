@@ -1,5 +1,5 @@
-## Stage 5/8 helpers: biological summaries from a fitted gllvmTMB_multi
-## object. These compute the manuscript's Sigma_B, Sigma_W, ICCs,
+## Stage 5/8 helpers: biological summaries from fits returned by
+## gllvmTMB(). These compute the manuscript's Sigma_B, Sigma_W, ICCs,
 ## communalities, and ordination scores from $report and $opt$par.
 
 #' Between-site covariance matrix Sigma_B (backward-compat wrapper)
@@ -16,7 +16,7 @@
 #' component, exposes the binomial-link implicit-residual option, and
 #' will be the entry point for 3+ rr tiers when the engine adds them.
 #'
-#' @param fit A `gllvmTMB_multi` object.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @return A list with `Sigma_B` (T x T covariance), `R_B` (correlation),
 #'   or `NULL` if no rr/diag term is present at the between-unit tier.
 #' @seealso [extract_Sigma()] — the canonical unified API; pass
@@ -135,8 +135,8 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
 #' denominator by default; pass `link_residual = "none"` to suppress.
 #'
-#' @param fit A `gllvmTMB_multi` object. A `bootstrap_Sigma` object is also
-#'   accepted when it contains `communality` summaries; in that case the
+#' @param fit A fit returned by [gllvmTMB()]. A [bootstrap_Sigma()] result is
+#'   also accepted when it contains `communality` summaries; in that case the
 #'   function reuses the stored point estimates and percentile bounds rather
 #'   than refitting.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
@@ -203,7 +203,7 @@ extract_communality <- function(
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort(
-      "Provide a {.cls gllvmTMB_multi} fit or a {.cls bootstrap_Sigma} object."
+      "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
     )
   }
   rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)

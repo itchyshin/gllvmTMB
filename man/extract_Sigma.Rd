@@ -13,7 +13,7 @@ extract_Sigma(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{level}{One of \code{"unit"} (between-unit), \code{"unit_obs"} (within-unit),
 \code{"phy"} (phylogenetic), \code{"spatial"}, or \code{"cluster"}. Legacy aliases

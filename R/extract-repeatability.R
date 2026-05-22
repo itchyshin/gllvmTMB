@@ -10,12 +10,12 @@
 #'
 #' Returns the per-trait repeatability
 #' \eqn{R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} + \sigma^2_{W,t})} for a
-#' fitted gllvmTMB_multi model with both \code{unique(0 + trait | <unit>)}
+#' fit returned by [gllvmTMB()] with both \code{unique(0 + trait | <unit>)}
 #' and \code{unique(0 + trait | <obs>)} terms. Also known as the
 #' intraclass correlation coefficient (ICC) at the unit level.
 #'
-#' @param fit A \code{gllvmTMB_multi} fit returned by \code{\link{gllvmTMB}}.
-#'   A \code{bootstrap_Sigma} object is also accepted when it contains an
+#' @param fit A fit returned by \code{\link{gllvmTMB}}. A
+#'   \code{bootstrap_Sigma} object is also accepted when it contains an
 #'   \code{ICC_site} summary; in that case the function reuses the stored
 #'   point estimates and percentile bounds rather than refitting.
 #' @param level Confidence level. Default 0.95.
@@ -76,7 +76,7 @@ extract_repeatability <- function(
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort(
-      "Provide a {.cls gllvmTMB_multi} fit or a {.cls bootstrap_Sigma} object."
+      "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
     )
   }
   method <- match.arg(method)

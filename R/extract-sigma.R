@@ -416,7 +416,7 @@ link_residual_per_trait <- function(fit) {
 #' corresponding tier without API change. For now, custom strings error
 #' with a clear roadmap message.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
 #'   `"phy"` (phylogenetic), `"spatial"`, or `"cluster"`. Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
@@ -482,7 +482,7 @@ extract_Sigma <- function(fit,
                           link_residual = c("auto", "none"),
                           .skip_warn = FALSE) {
   if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   ## Boundary translation (Design 02 Stage 2): canonical (unit /
   ## unit_obs / spatial / Omega) or legacy (B / W / spde / total) ->
   ## legacy / internal slot name; soft-deprecate legacy.

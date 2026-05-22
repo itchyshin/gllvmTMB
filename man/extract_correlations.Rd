@@ -17,11 +17,12 @@ extract_correlations(
 )
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit returned by \code{\link{gllvmTMB}}.}
+\item{fit}{A fit returned by \code{\link{gllvmTMB}}.}
 
-\item{tier}{Character vector. Subset of
-\code{c("B", "W", "phy", "spde")}. Use \code{"all"} (the default) to
-request every tier present in the fit.}
+\item{tier}{Character vector. Use \code{"all"} (the default) to request
+every level present in the fit. Canonical inputs are \code{"unit"},
+\code{"unit_obs"}, \code{"phy"}, and \code{"spatial"}; legacy aliases
+\code{"B"}, \code{"W"}, and \code{"spde"} are accepted.}
 
 \item{pair}{Optional length-2 character or integer vector specifying
 one trait pair (\code{c("trait_1", "trait_2")} or \code{c(1, 2)}).
@@ -82,8 +83,10 @@ to suppress the warning and lock the new behaviour, or
 \value{
 A data frame (tibble-like) with columns:
 \describe{
-\item{\code{tier}}{Character: \code{"B"}, \code{"W"}, \code{"phy"},
-or \code{"spde"}.}
+\item{\code{tier}}{Character level label. The current output stores
+internal labels \code{"B"}, \code{"W"}, \code{"phy"}, and
+\code{"spde"}; use \code{"unit"} and \code{"unit_obs"} as input
+names in new calls.}
 \item{\code{trait_i}, \code{trait_j}}{Trait names with i < j.}
 \item{\code{correlation}}{Point estimate.}
 \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
@@ -91,10 +94,12 @@ or \code{"spde"}.}
 }
 }
 \description{
-Returns the implied cross-trait correlations from a fitted
-gllvmTMB_multi model at one or more tiers (between-unit \code{B},
-within-unit \code{W}, phylogenetic \code{phy}, spatial \code{spde}),
-with 95\% (or other-level) confidence intervals. Four method names are
+Returns the implied cross-trait correlations from a fit returned by
+\code{\link[=gllvmTMB]{gllvmTMB()}} at one or more covariance levels. Use the canonical input
+names \code{"unit"}, \code{"unit_obs"}, \code{"phy"}, and
+\code{"spatial"}; legacy aliases \code{"B"}, \code{"W"}, and
+\code{"spde"} still work. The helper returns 95\% (or other-level)
+confidence intervals. Four method names are
 supported via the \code{method} argument:
 }
 \details{
@@ -116,13 +121,14 @@ the canonical name. Kept for scripts that filter on
 \code{method == "wald"}.
 \item \code{"bootstrap"}: parametric bootstrap via
 \code{\link{bootstrap_Sigma}}. Slowest (full sampling
-distribution); use when you need full uncertainty propagation
-to multiple downstream quantities.
+distribution); use when a fitted model gives useful point estimates
+but Hessian- or profile-based intervals are not the right uncertainty
+summary.
 }
 
 For T traits at one tier, there are T(T-1)/2 unique correlations.
-A multi-trait fit at 5 tiers (B, W, phy, non, spde) with T = 6 has
-up to 75 cross-trait correlations to report.
+A fit with T = 6 and four covariance levels present has up to 60
+cross-trait correlations to report.
 }
 \section{Caveats}{
 
@@ -132,12 +138,11 @@ profile path can be unstable due to rotation indeterminacy of the
 factor model (the implied Σ is identifiable but the split into
 \code{Lambda Lambda^T} and \code{S} is not). Fall back to
 \code{method = "bootstrap"} when the profile fails.
-\item Bootstrap uses \code{\link{bootstrap_Sigma}} which conditions on
-the fitted random effects (parametric simulation), so the
-bootstrap CIs reflect residual-level uncertainty rather than full
-posterior uncertainty in the variance components. For full
-posterior CIs use a Bayesian fit (e.g. \code{rstanarm} /
-\code{brms}).
+\item Bootstrap uses \code{\link{bootstrap_Sigma}} refits and is the
+practical fallback when point estimates are useful but Hessian- or
+profile-based intervals are unavailable. Inspect bootstrap warnings,
+failed replicates, and interval width before treating the intervals
+as final.
 }
 }
 

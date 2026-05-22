@@ -7,7 +7,7 @@
 extract_Sigma_W(fit)
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} object.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }
 \value{
 A list with \code{Sigma_W} and \code{R_W}, or \code{NULL}.

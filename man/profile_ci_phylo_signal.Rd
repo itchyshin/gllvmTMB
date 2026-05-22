@@ -7,7 +7,7 @@
 profile_ci_phylo_signal(fit, trait_idx = NULL, level = 0.95)
 }
 \arguments{
-\item{fit}{A \code{gllvmTMB_multi} fit.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 
 \item{trait_idx}{Integer index of the trait, or \code{NULL} for all.}
 

@@ -75,7 +75,7 @@
 #' [TMB::tmbprofile()] and back-transforms the bounds via
 #' \eqn{\mathrm{plogis}}. Fast and accurate for that specific quantity.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param trait_idx Integer index of the trait (1-based). `NULL` (the
 #'   default) returns CIs for all traits.
 #' @param level Confidence level. Default 0.95.
@@ -94,7 +94,7 @@
 #' @export
 profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   ix_B <- .par_indices(fit, "theta_diag_B")
   ix_W <- .par_indices(fit, "theta_diag_W")
   if (length(ix_B) == 0L || length(ix_W) == 0L)
@@ -152,7 +152,7 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' note; full profile would require fix-and-refit on the multi-component
 #' constraint and is logged as a future enhancement.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param trait_idx Integer index of the trait, or `NULL` for all.
 #' @param level Confidence level. Default 0.95.
 #' @return A data frame with columns `trait`, `H2`, `lower`, `upper`,
@@ -162,7 +162,7 @@ profile_ci_repeatability <- function(fit, trait_idx = NULL, level = 0.95) {
 #' @export
 profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   has_phy <- isTRUE(fit$use$phylo_rr) || isTRUE(fit$use$phylo_diag)
   if (!has_phy)
     cli::cli_abort(c(
@@ -412,9 +412,10 @@ profile_ci_phylo_signal <- function(fit, trait_idx = NULL, level = 0.95) {
 #' This mirrors the McCune/Nakagawa `coxme_icc_ci()` pattern but
 #' warm-starts the inner optim from the joint MLE in TMB's C++.
 #'
-#' @param fit A `gllvmTMB_multi` fit.
+#' @param fit A fit returned by [gllvmTMB()].
 #' @param level Confidence level. Default 0.95.
-#' @param tier `"B"` or `"W"`. Default `"B"`.
+#' @param tier `"unit"` or `"unit_obs"`. Legacy aliases `"B"` and `"W"` are
+#'   accepted.
 #' @param trait_idx Integer index of trait, or `NULL` for all.
 #' @return A data frame with columns `trait`, `tier`, `c2`, `lower`,
 #'   `upper`, `method`.
@@ -425,7 +426,7 @@ profile_ci_communality <- function(fit,
                                    tier = c("unit", "unit_obs", "B", "W"),
                                    trait_idx = NULL, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
   rr_used <- if (tier == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
@@ -517,15 +518,16 @@ profile_ci_communality <- function(fit,
 
 #' Profile-likelihood CI for one cross-trait correlation
 #'
-#' For a fitted gllvmTMB_multi model, computes the profile-likelihood
+#' For a fit returned by [gllvmTMB()], computes the profile-likelihood
 #' confidence interval for one cross-trait correlation
 #' \eqn{\rho_{ij} = \Sigma_{ij} / \sqrt{\Sigma_{ii}\Sigma_{jj}}} at one
-#' tier. Cross-trait correlations are first-class outputs of the
+#' covariance level. Cross-trait correlations are first-class outputs of the
 #' factor-analytic decomposition and need accurate CIs at scale (a 6-trait
-#' fit has 75 of them across 5 tiers).
+#' fit has 60 of them across four covariance levels).
 #'
-#' @param fit A `gllvmTMB_multi` fit.
-#' @param tier `"B"`, `"W"`, `"phy"`, or `"spde"`.
+#' @param fit A fit returned by [gllvmTMB()].
+#' @param tier `"unit"`, `"unit_obs"`, `"phy"`, or `"spatial"`.
+#'   Legacy aliases `"B"`, `"W"`, and `"spde"` are accepted.
 #' @param i,j Trait indices (1-based, `i < j`).
 #' @param level Confidence level. Default 0.95.
 #' @return Length-3 numeric vector (`estimate`, `lower`, `upper`).
@@ -537,14 +539,20 @@ profile_ci_correlation <- function(fit,
                                             "spatial", "B", "W", "spde"),
                                    i, j, level = 0.95) {
   if (!inherits(fit, "gllvmTMB_multi"))
-    cli::cli_abort("Provide a {.cls gllvmTMB_multi} fit.")
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   tier <- match.arg(tier)
   tier <- .normalise_level(tier, arg_name = "tier")
   if (i >= j)
     cli::cli_abort("Provide {.arg i} < {.arg j}.")
 
   Sigma_pt <- suppressMessages(
-    extract_Sigma(fit, level = tier, part = "total", link_residual = "none")
+    extract_Sigma(
+      fit,
+      level = tier,
+      part = "total",
+      link_residual = "none",
+      .skip_warn = TRUE
+    )
   )
   if (is.null(Sigma_pt))
     cli::cli_abort("Could not extract Sigma at tier {.val {tier}}.")

@@ -7089,3 +7089,57 @@ Deliberately not run:
   cleanup. Focused helper tests, article render, pkgdown check, whitespace
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
+
+## 2026-05-22 -- Extractor reference wording cleanup
+
+Scope:
+
+- Cleaned extractor and profile-helper reference wording so users see "fit
+  returned by `gllvmTMB()`" instead of internal `gllvmTMB_multi` class-first
+  language.
+- Updated `extract_correlations()` help to lead with canonical covariance
+  levels (`unit`, `unit_obs`, `phy`, `spatial`) while honestly noting that the
+  current output `tier` column still stores internal labels (`B`, `W`, `phy`,
+  `spde`).
+- Tightened bootstrap interval wording for correlations so useful point
+  estimates with unsafe Hessian/profile intervals are framed as a bootstrap
+  uncertainty workflow, not as model failure.
+- Fixed one public-to-internal boundary leak: `extract_correlations(tier =
+  "unit", method = "profile")` no longer emits legacy `B` deprecation warnings
+  from `profile_ci_correlation()`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch`
+  -> `codex/reference-function-audit-2026-05-22`, clean, ahead 4.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent local commits were the current reference-audit lane on top of
+  `origin/main` commit `c1dc2e4`.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated the affected extractor/profile Rd files.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|sigma-rename|extract-correlations|extract-communality|extract-repeatability|plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 376 passes, 0 failures, 0 warnings, 1 known skip.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma|sigma-rename|extract-correlations|extract-communality|extract-repeatability|plot-covariance-tables|profile-ci", stop_on_failure = TRUE)'`
+  -> 417 passes, 0 failures, 2 warnings, 1 known skip. The warnings came from
+  existing `test-profile-ci.R` calls using legacy `tier = "B"` and
+  `parm = "Sigma_B"`; those belong to a later `confint()` naming sweep.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'gllvmTMB_multi model|A `gllvmTMB_multi` fit|A `gllvmTMB_multi` object|A \\code\\{gllvmTMB_multi\\} fit|fitted gllvmTMB_multi model|posterior uncertainty|5 tiers|non, spde|c\\("B", "W", "phy", "spde"\\)' R/extract-sigma.R R/extract-sigma-table.R R/extract-correlations.R R/extractors.R R/extract-repeatability.R R/profile-derived.R man/extract_Sigma.Rd man/extract_Sigma_table.Rd man/compare_Sigma_table.Rd man/extract_correlations.Rd man/extract_Sigma_B.Rd man/extract_Sigma_W.Rd man/extract_ICC_site.Rd man/extract_communality.Rd man/extract_repeatability.Rd man/profile_ci_correlation.Rd man/profile_ci_repeatability.Rd man/profile_ci_phylo_signal.Rd man/profile_ci_communality.Rd
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and full `devtools::check()` were not rerun for this
+  reference-wording slice. No articles were edited or rendered. No 3-OS CI was
+  available until the branch is pushed.

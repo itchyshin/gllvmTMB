@@ -4,7 +4,14 @@
 \alias{rotate_loadings}
 \title{Rotate the loadings of a fitted multivariate model}
 \usage{
-rotate_loadings(fit, level = "unit", method = c("varimax", "promax", "none"))
+rotate_loadings(
+  fit,
+  level = "unit",
+  method = c("varimax", "promax", "none"),
+  order_axes = TRUE,
+  sign_anchor = c("auto", "none"),
+  anchor_traits = NULL
+)
 }
 \arguments{
 \item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
@@ -13,12 +20,26 @@ rotate_loadings(fit, level = "unit", method = c("varimax", "promax", "none"))
 Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
 \item{method}{One of \code{"varimax"}, \code{"promax"}, or \code{"none"}.}
+
+\item{order_axes}{Logical. When \code{TRUE} (default for rotated output),
+reorder rotated axes by decreasing shared variance
+\code{colSums(Lambda^2)}. Ignored when \code{method = "none"}.}
+
+\item{sign_anchor}{One of \code{"auto"} or \code{"none"}. \code{"auto"} (default for
+rotated output) flips each rotated axis so its anchor trait has a
+positive loading. Ignored when \code{method = "none"}.}
+
+\item{anchor_traits}{Optional character vector of trait names used for
+sign anchoring. Supply one trait per axis after ordering. Axes without a
+supplied anchor use the trait with the largest absolute loading.}
 }
 \value{
 A list with rotated \code{Lambda} (n_traits × d), rotated
 \code{scores} (with rows = units or within-unit observations, columns = factors),
 and the rotation matrix \code{T} such that
-\eqn{\Lambda_{\text{rotated}} = \Lambda T}.
+\eqn{\Lambda_{\text{rotated}} = \Lambda T}. The list also includes
+\code{axis_variance}, \code{axis_order}, \code{axis_sign}, and \code{anchor_traits}
+metadata after any ordering and sign anchoring.
 }
 \description{
 Applies a varimax or promax rotation to the loading matrix \eqn{\Lambda}

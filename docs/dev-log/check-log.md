@@ -7615,6 +7615,55 @@ Deliberately not run:
   narrow plot/profile wording cleanup. No vignettes/articles were edited or
   rendered. No 3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Rotation axis ordering and sign anchoring
+
+Scope:
+
+- Extended `rotate_loadings()` so rotated outputs can be made plot-ready by
+  ordering axes by shared variance and sign-anchoring axes automatically or
+  with supplied anchor traits.
+- `method = "none"` remains the raw computational parameterisation.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/rotate-loadings.R tests/testthat/test-rotate-compare-loadings.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/rotate_loadings.Rd`.
+- First focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|output-methods|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 225 passes, 2 failures, 0 warnings. Failures were test assertions
+  comparing named and unnamed integer positions.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|rotation-advisory|output-methods|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 227 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Rd spot-check:
+  `tail -5 man/rotate_loadings.Rd; grep -Hc '^\\keyword' man/rotate_loadings.Rd`
+  -> normal ending; no `\keyword{}` entries.
+- Feature-presence scan:
+
+  ```sh
+  rg -n 'order_axes|sign_anchor|anchor_traits|axis_variance|axis_order|axis_sign' R/rotate-loadings.R man/rotate_loadings.Rd tests/testthat/test-rotate-compare-loadings.R
+  ```
+
+  -> expected hits in implementation, generated Rd, and focused tests.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  helper API slice. No vignettes/articles were edited or rendered. No 3-OS CI
+  was available until the branch is pushed.
+
 ## 2026-05-22 -- Wide traits reference wording
 
 Scope:

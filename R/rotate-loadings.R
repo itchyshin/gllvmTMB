@@ -29,11 +29,22 @@
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @param method One of `"varimax"`, `"promax"`, or `"none"`.
+#' @param order_axes Logical. When `TRUE` (default for rotated output),
+#'   reorder rotated axes by decreasing shared variance
+#'   `colSums(Lambda^2)`. Ignored when `method = "none"`.
+#' @param sign_anchor One of `"auto"` or `"none"`. `"auto"` (default for
+#'   rotated output) flips each rotated axis so its anchor trait has a
+#'   positive loading. Ignored when `method = "none"`.
+#' @param anchor_traits Optional character vector of trait names used for
+#'   sign anchoring. Supply one trait per axis after ordering. Axes without a
+#'   supplied anchor use the trait with the largest absolute loading.
 #'
 #' @return A list with rotated `Lambda` (n_traits × d), rotated
 #'   `scores` (with rows = units or within-unit observations, columns = factors),
 #'   and the rotation matrix `T` such that
-#'   \eqn{\Lambda_{\text{rotated}} = \Lambda T}.
+#'   \eqn{\Lambda_{\text{rotated}} = \Lambda T}. The list also includes
+#'   `axis_variance`, `axis_order`, `axis_sign`, and `anchor_traits`
+#'   metadata after any ordering and sign anchoring.
 #'
 #' @details
 #' The rotation is applied to \eqn{\Lambda} on the *left* and to the
@@ -70,11 +81,15 @@
 rotate_loadings <- function(
   fit,
   level = "unit",
-  method = c("varimax", "promax", "none")
+  method = c("varimax", "promax", "none"),
+  order_axes = TRUE,
+  sign_anchor = c("auto", "none"),
+  anchor_traits = NULL
 ) {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   method <- match.arg(method)
+  sign_anchor <- match.arg(sign_anchor)
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
@@ -87,13 +102,36 @@ rotate_loadings <- function(
   }
   Lambda <- ord$loadings
   Z <- ord$scores
+  d <- ncol(Lambda)
+
+  if (!is.null(anchor_traits)) {
+    if (!is.character(anchor_traits)) {
+      cli::cli_abort("{.arg anchor_traits} must be a character vector.")
+    }
+    if (length(anchor_traits) > d) {
+      cli::cli_abort(
+        "{.arg anchor_traits} must have at most one trait name per axis."
+      )
+    }
+    bad_anchor <- setdiff(stats::na.omit(anchor_traits), rownames(Lambda))
+    if (length(bad_anchor) > 0L) {
+      cli::cli_abort(c(
+        "{.arg anchor_traits} must be trait names in the loading matrix.",
+        "x" = "Unknown trait{?s}: {.val {bad_anchor}}."
+      ))
+    }
+  }
 
   if (method == "none") {
     return(list(
       Lambda = Lambda,
       scores = Z,
-      T = diag(ncol(Lambda)),
-      method = "none"
+      T = diag(d),
+      method = "none",
+      axis_variance = colSums(Lambda^2),
+      axis_order = seq_len(d),
+      axis_sign = rep(1, d),
+      anchor_traits = rep(NA_character_, d)
     ))
   }
   if (method == "varimax") {
@@ -107,11 +145,55 @@ rotate_loadings <- function(
     Lambda_rot <- Lambda %*% T
     Z_rot <- Z %*% solve(t(T)) # complementary transform
   }
+
+  axis_order <- seq_len(d)
+  axis_sign <- rep(1, d)
+  anchors_used <- rep(NA_character_, d)
+  post_T <- diag(d)
+
+  if (isTRUE(order_axes)) {
+    axis_variance_pre <- colSums(Lambda_rot^2)
+    axis_order <- order(axis_variance_pre, decreasing = TRUE)
+    P_order <- diag(d)[, axis_order, drop = FALSE]
+    Lambda_rot <- Lambda_rot %*% P_order
+    Z_rot <- Z_rot %*% P_order
+    post_T <- post_T %*% P_order
+  }
+
+  if (identical(sign_anchor, "auto")) {
+    for (k in seq_len(d)) {
+      anchor <- if (!is.null(anchor_traits) && length(anchor_traits) >= k) {
+        anchor_traits[[k]]
+      } else {
+        NA_character_
+      }
+      if (is.na(anchor) || !nzchar(anchor)) {
+        anchor_i <- which.max(abs(Lambda_rot[, k]))
+        anchor <- rownames(Lambda_rot)[[anchor_i]]
+      } else {
+        anchor_i <- match(anchor, rownames(Lambda_rot))
+      }
+      anchors_used[[k]] <- anchor
+      if (Lambda_rot[anchor_i, k] < 0) {
+        axis_sign[[k]] <- -1
+      }
+    }
+    P_sign <- diag(axis_sign, d)
+    Lambda_rot <- Lambda_rot %*% P_sign
+    Z_rot <- Z_rot %*% P_sign
+    post_T <- post_T %*% P_sign
+  }
+  T <- T %*% post_T
+
   list(
     Lambda = Lambda_rot,
     scores = Z_rot,
     T = T,
-    method = method
+    method = method,
+    axis_variance = colSums(Lambda_rot^2),
+    axis_order = axis_order,
+    axis_sign = axis_sign,
+    anchor_traits = anchors_used
   )
 }
 

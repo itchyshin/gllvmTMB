@@ -56,9 +56,24 @@ test_that("rotate_loadings(): errors when level not in fit", {
 test_that("rotate_loadings(method='none'): identity rotation", {
   fit <- make_rrB_fit(seed = 1, d = 2)
   rt <- rotate_loadings(fit, "unit", "none")
-  expect_named(rt, c("Lambda", "scores", "T", "method"))
+  expect_named(
+    rt,
+    c(
+      "Lambda",
+      "scores",
+      "T",
+      "method",
+      "axis_variance",
+      "axis_order",
+      "axis_sign",
+      "anchor_traits"
+    )
+  )
   expect_equal(rt$method, "none")
   expect_equal(rt$T, diag(2))
+  expect_equal(rt$axis_order, 1:2)
+  expect_equal(rt$axis_sign, c(1, 1))
+  expect_true(all(is.na(rt$anchor_traits)))
   ## Lambda and scores should match the raw extraction
   ord <- extract_ordination(fit, "unit")
   expect_equal(rt$Lambda, ord$loadings)
@@ -71,6 +86,50 @@ test_that("rotate_loadings(method='varimax'): T is orthogonal", {
   ## T is orthogonal: T %*% t(T) == I
   expect_equal(rt$T %*% t(rt$T), diag(2), tolerance = 1e-8)
   expect_equal(t(rt$T) %*% rt$T, diag(2), tolerance = 1e-8)
+})
+
+test_that("rotate_loadings(method='varimax'): orders axes by shared variance", {
+  fit <- make_rrB_fit(seed = 8, d = 2)
+  rt <- rotate_loadings(fit, "unit", "varimax")
+  expect_equal(rt$axis_variance, colSums(rt$Lambda^2))
+  expect_true(all(diff(rt$axis_variance) <= 1e-8))
+  expect_setequal(rt$axis_order, seq_len(ncol(rt$Lambda)))
+})
+
+test_that("rotate_loadings(method='varimax'): auto sign anchor is positive", {
+  fit <- make_rrB_fit(seed = 9, d = 2)
+  rt <- rotate_loadings(fit, "unit", "varimax")
+  for (k in seq_len(ncol(rt$Lambda))) {
+    anchor_i <- match(rt$anchor_traits[[k]], rownames(rt$Lambda))
+    expect_gte(rt$Lambda[anchor_i, k], 0)
+    expect_equal(
+      anchor_i,
+      unname(which.max(abs(rt$Lambda[, k])))
+    )
+  }
+})
+
+test_that("rotate_loadings(): explicit anchor traits control signs", {
+  fit <- make_rrB_fit(seed = 10, d = 2)
+  anchors <- rownames(extract_ordination(fit, "unit")$loadings)[1:2]
+  rt <- rotate_loadings(
+    fit,
+    "unit",
+    "varimax",
+    order_axes = FALSE,
+    anchor_traits = anchors
+  )
+  expect_equal(rt$axis_order, 1:2)
+  expect_equal(rt$anchor_traits, anchors)
+  expect_true(all(diag(rt$Lambda[anchors, , drop = FALSE]) >= 0))
+})
+
+test_that("rotate_loadings(): invalid anchor traits error", {
+  fit <- make_rrB_fit(seed = 10, d = 2)
+  expect_error(
+    rotate_loadings(fit, "unit", "varimax", anchor_traits = "not_a_trait"),
+    regexp = "Unknown trait"
+  )
 })
 
 test_that("rotate_loadings(method='varimax'): preserves Lambda Lambda' (rotation invariance)", {

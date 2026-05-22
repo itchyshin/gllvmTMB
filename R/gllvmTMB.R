@@ -1,13 +1,14 @@
-#' Fit a stacked-trait, multivariate GLLVM
+#' Fit multivariate response models from wide or long data
 #'
-#' Top-level entry point for stacked-trait, long-format multivariate
-#' GLLVMs, including the functional-biogeography, behavioural-syndromes,
-#' phylogenetic, and systematic-mapping reduced-rank examples in the
-#' package vignettes. Long-format input with one row per (unit, trait)
-#' observation; glmmTMB-style formula syntax for fixed effects, plus
-#' a 4 x 5 grid of covariance-structure keywords organised by
-#' \emph{correlation source} (none / animal / phylo / spatial) and \emph{mode}
-#' (scalar / unique / indep / dep / latent):
+#' Top-level entry point for models with several responses per site,
+#' individual, species, or study. Start from a wide data frame with
+#' [traits()] on the formula left-hand side, or from already-stacked long
+#' data with one row per `(unit, trait)` observation. Both routes estimate
+#' the same trait covariance, pairwise correlations, shared latent axes,
+#' and trait-specific variance. The formula syntax also supports fixed
+#' effects plus covariance-structure keywords organised by
+#' \emph{correlation source} (none / animal / phylo / spatial) and
+#' \emph{mode} (scalar / unique / indep / dep / latent):
 #'
 #' \tabular{llllll}{
 #'   \strong{source \\ mode} \tab \strong{scalar} \tab \strong{unique} \tab \strong{indep} \tab \strong{dep} \tab \strong{latent} \cr
@@ -41,13 +42,14 @@
 #'   `value ~ 0 + trait + (0 + trait):env_temp + (0 + trait):env_precip`.
 #'   Fixed effects and any of the 4 x 5 keyword-grid covstructs above are
 #'   supported (plus [phylo_slope()], [animal_slope()], and [meta_V()]).
-#' @param data A long-format data frame with one row per (unit, trait)
-#'   observation. Must include the response (LHS of `formula`),
-#'   the columns named in `unit`, `unit_obs`, `cluster`, `trait`, and any
-#'   predictors referenced in the formula. Missing response values are
-#'   allowed and are dropped row-wise before fitting, so other observed
-#'   traits for the same unit remain in the likelihood; missing predictor
-#'   or design-matrix values still error.
+#' @param data A data frame. With an ordinary response LHS such as
+#'   `value ~ ...`, `data` is long: one row per `(unit, trait)`
+#'   observation, with the trait column named by `trait`. With a
+#'   [traits()] LHS, `data` is wide: one row per unit and one column per
+#'   response named inside `traits(...)`. Missing response values are
+#'   allowed and are dropped before fitting, so other observed traits for
+#'   the same unit remain in the likelihood; missing predictor or
+#'   design-matrix values still error.
 #' @param trait Name of the column holding the trait factor (the
 #'   "trait" dimension of the unit × trait response matrix). Default
 #'   `"trait"`.
@@ -193,11 +195,12 @@
 #'   `extract_communality()`) are available for multi-trait fits.
 #'
 #' @details
-#' `gllvmTMB()` parses the glmmTMB-style formula, checks the long-format
-#' data, and dispatches to the underlying TMB template (built on sdmTMB's
-#' SPDE machinery). Covariance-structure terms (`latent()`, `unique()`,
-#' `propto()`, `equalto()`, `spatial()`) are processed by extending the
-#' formula parser and the TMB template.
+#' `gllvmTMB()` parses the glmmTMB-style formula, converts wide
+#' [traits()] input to the same internal stacked-trait representation as
+#' explicit long data, and dispatches to the underlying TMB template.
+#' Covariance-structure terms (`latent()`, `unique()`, `propto()`,
+#' `equalto()`, `spatial()`) are processed by extending the formula parser
+#' and the TMB template.
 #'
 #' Per the manuscript, when stacking traits one should set
 #' `dispformula = ~ 0` so that no implicit residual variance competes

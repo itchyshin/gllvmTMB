@@ -129,7 +129,7 @@ formula. Founders are assumed unrelated and non-inbred
 ($A_{\mathrm{founder},\mathrm{founder}} = 1$).
 
 ```{r A}
-A <- pedigree_to_A(ped)
+A <- gllvmTMB::pedigree_to_A(ped)
 round(A[1:6, 1:6], 3)
 ```
 

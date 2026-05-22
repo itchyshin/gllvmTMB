@@ -5757,6 +5757,63 @@ Deliberately not run:
   check, stale-wording scans, visual QA, and a short no-tests package check
   were run.
 
+## 2026-05-22 -- User-facing site preview and pkgdown deploy diagnosis
+
+Scope:
+
+- Reframed the package title, DESCRIPTION, package Rd, `gllvmTMB()` Rd,
+  citation text, README citation, and touched article wording so the public
+  site and link previews lead with the wide-data user workflow rather than the
+  TMB engine and covariance keyword grid.
+- Replaced remaining "Long data are canonical" wording in public articles with
+  wide-first or article-specific wording.
+- Fixed the hidden animal-model article render path by qualifying the pedigree
+  helper call after confirming `pedigree_to_A()` is exported by the current
+  source namespace.
+- Diagnosed the manual pkgdown workflow failure as a GitHub Pages environment
+  protection rejection for the PR branch, not an R/pkgdown build failure.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,author,url`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `gh run list --workflow pkgdown.yaml --limit 6 --json databaseId,status,conclusion,headBranch,headSha,displayTitle,createdAt,updatedAt,url`
+  -> latest manual pkgdown run `26282665628` on
+  `codex/symbol-syntax-alignment-2026-05-21` failed immediately.
+- `gh api repos/itchyshin/gllvmTMB/check-runs/77362484836/annotations --jq '.'`
+  -> GitHub annotation: branch `codex/symbol-syntax-alignment-2026-05-21` is
+  not allowed to deploy to `github-pages` because of environment protection
+  rules; deployment was rejected before any checkout/R/pkgdown step ran.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB.Rd` and `man/gllvmTMB-package.Rd`.
+- `Rscript --vanilla -e 'devtools::install(quick = TRUE, upgrade = "never", quiet = TRUE)'`
+  -> completed, refreshing the local namespace used by `install = FALSE`.
+- `Rscript --vanilla -e 'cat("pedigree_to_A exported:", "pedigree_to_A" %in% getNamespaceExports("gllvmTMB"), "\n")'`
+  -> `pedigree_to_A exported: TRUE`.
+- `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> completed; the hidden `animal-model` article rendered after the local
+  install refresh.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+- `rg -n "og:title|og:description|twitter:title|twitter:description|Fit Multivariate|wide data frame|Stacked-Trait|standalone Template|4 x 5 covariance keyword grid" pkgdown-site/index.html pkgdown-site/reference/gllvmTMB-package.html pkgdown-site/reference/gllvmTMB.html`
+  -> local HTML metadata uses `Fit Multivariate Models from Wide Response Data`
+  and starts the description with the wide-data user workflow; no old preview
+  title or standalone-template wording appears in these rendered pages.
+- `rg -n "Stacked-Trait GLLVMs with TMB|A standalone Template Model Builder|4 x 5 covariance keyword grid pairs|long-format multivariate generalised linear latent variable|Long data are canonical|long data are canonical|Fit Multivariate Response Models from Wide Trait Tables|Wide Trait Tables|wide response table" DESCRIPTION README.md inst/CITATION R man vignettes _pkgdown.yml pkgdown-site/index.html`
+  -> no hits after the update.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this documentation,
+  metadata, and hidden-article render cleanup. The previous PR head already had
+  passing 3-OS R-CMD-check; this slice added local `document()`, full pkgdown
+  site build, `check_pkgdown()`, whitespace check, and stale-wording scans.
+
 ## 2026-05-22 -- Pre-push whitespace hygiene for slice-40 stack
 
 Scope:

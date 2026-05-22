@@ -121,9 +121,11 @@ uses `spatial_*()` keywords and an SPDE mesh, often created with
 
 ## Long And Wide Syntax
 
-Long data are canonical: one row per `(unit, trait)` observation. Wide
-data frames use `traits(...)` on the formula left-hand side; that lets
-the right-hand side use compact syntax.
+Most readers can start from a wide data frame: one row per unit and one
+column per response. Use `traits(...)` on the formula left-hand side to
+name those response columns and keep the right-hand side compact. If
+your data are already long, use one row per `(unit, trait)` observation
+and pass `trait =`.
 
 ```{r}
 # Long format

@@ -54,8 +54,9 @@ before comparing variance components to a continuous Gaussian trait.
 
 ## Fit The Family
 
-Long data are canonical. The response should be integer-coded
-`1, ..., K` within each ordinal trait.
+The ordinal examples below use long data because each response is
+already stored as one row per `(unit, trait)` observation. The response
+should be integer-coded `1, ..., K` within each ordinal trait.
 
 ```{r}
 fit_long <- gllvmTMB(

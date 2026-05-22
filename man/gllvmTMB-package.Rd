@@ -3,11 +3,11 @@
 \docType{package}
 \name{gllvmTMB-package}
 \alias{gllvmTMB-package}
-\title{gllvmTMB: Stacked-Trait GLLVMs with TMB}
+\title{gllvmTMB: Fit Multivariate Models from Wide Response Data}
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-A standalone Template Model Builder (TMB) package for stacked-trait, long-format multivariate generalised linear latent variable models (GLLVMs). The 4 x 5 covariance keyword grid pairs correlation source (none / animal / phylogenetic / spatial) with covariance mode (scalar / unique / indep / dep / latent). A reduced-rank latent decomposition (Lambda Lambda^T + Psi, with Psi = diag(psi^2)) is the canonical multivariate option; full unstructured and marginal modes are also supported. Phylogenetic models use a sparse A^-1 representation (Hadfield & Nakagawa 2010), the engine is built on Template Model Builder (Kristensen et al. 2016), and spatial models use the SPDE / GMRF approximation with R-side helpers inherited from 'sdmTMB' (Anderson et al. 2025). See Kristensen et al. (2016) \doi{10.18637/jss.v070.i05}, Anderson et al. (2025) \doi{10.18637/jss.v115.i02}, and Hadfield & Nakagawa (2010) \doi{10.1111/j.1420-9101.2009.01915.x}. Upstream copyright holders of inherited code are listed in 'inst/COPYRIGHTS'.
+Fits multivariate models for data where each site, individual, species, or study has several responses. Start from a wide data frame with the 'traits()' formula interface, or from already-stacked long data, and estimate trait covariance, pairwise correlations, shared latent axes, and trait-specific variance. Optional animal, phylogenetic, spatial, and known-sampling-variance components use the same formula grammar. Model fitting uses Template Model Builder (Kristensen et al. 2016 \doi{10.18637/jss.v070.i05}); spatial helpers inherit from 'sdmTMB' (Anderson et al. 2025 \doi{10.18637/jss.v115.i02}), and phylogenetic relatedness follows Hadfield & Nakagawa (2010) \doi{10.1111/j.1420-9101.2009.01915.x}. Upstream copyright holders of inherited code are listed in 'inst/COPYRIGHTS'.
 }
 \seealso{
 Useful links:

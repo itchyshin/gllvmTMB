@@ -634,6 +634,6 @@ hidden inside residual within-individual phenotypic variation.
 *Biological Reviews* **90**, 729–743.
 <https://doi.org/10.1111/brv.12131>
 
-Nakagawa, S. (2026) *gllvmTMB: stacked-trait, long-format multivariate
-generalised linear latent variable models with TMB.* R package version
-0.2.0. <https://itchyshin.github.io/gllvmTMB/>
+Nakagawa, S. (2026) *gllvmTMB: Fit Multivariate Models from Wide
+Response Data.* R package version 0.2.0.
+<https://itchyshin.github.io/gllvmTMB/>

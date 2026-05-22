@@ -7481,6 +7481,60 @@ Deliberately not run:
   reference-doc and caption slice. No vignette/article source files changed.
   No 3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Reference/plot readiness ledger
+
+Scope:
+
+- Refreshed the visual-debt ledger after the 12-slice reference/plot block.
+- Updated `docs/design/46-visualization-grammar.md` so it no longer says
+  Phase 1c-viz is 0/7.
+- Updated `docs/design/53-report-ready-extractor-plot-contract.md` with
+  explicit visual-QA debt before stable figure-surface claims.
+- Updated `docs/design/35-validation-debt-register.md` and
+  `docs/design/06-extractors-contract.md` to remove stale `quartimax` wording
+  and classify `raindrop` only as a compatibility alias.
+- Added
+  `docs/dev-log/audits/2026-05-22-reference-plot-readiness.md`.
+
+Evidence:
+
+- Lane check before editing shared design/dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'`
+  -> 2547 passes, 13 skips, 1 warning, 0 failures in 631.7 seconds.
+- Full-test warning:
+  `test-spatial-latent-recovery.R:140` still warns that
+  `level = "spde"` is deprecated and `level = "spatial"` should be used.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale wording scan:
+
+  ```sh
+  rg -n 'Phase 1c-viz at 0/7|quartimax|Confidence-I|confidence-I|randrop|raindrop shows|Tight drops|ci-correlation-raindrop' docs/design NEWS.md README.md vignettes R man tests _pkgdown.yml
+  ```
+
+  -> no hits.
+- Raindrop compatibility scan:
+
+  ```sh
+  rg -n 'style = "raindrop"|raindrop|Raindrop|raindrop_level' R man tests NEWS.md docs/design vignettes README.md _pkgdown.yml
+  ```
+
+  -> expected hits only where `raindrop` is documented or tested as a
+  compatibility alias.
+
+Deliberately not run:
+
+- `devtools::check(args = "--no-manual")` was not rerun after this final
+  design-ledger slice. No 3-OS CI was available until the branch is pushed.
+  No `vdiffr` snapshots exist yet.
+
 ## 2026-05-22 -- Ordination label placement
 
 Scope:

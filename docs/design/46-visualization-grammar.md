@@ -4,7 +4,8 @@
 **Active reviewers**: Pat (applied-user UX), Fisher (uncertainty
 fidelity), Darwin (biological framing), Grace (CI / pkgdown
 build), Rose (pre-publish + scope honesty).
-**Status**: Active — Florence recruitment slice 2026-05-18.
+**Status**: Active — Florence recruitment slice 2026-05-18; current helper
+surface refreshed 2026-05-22.
 **Mirrors**: drmTMB Design 39 + Florence figure gate (sister-
 project pattern, adopted with gllvmTMB-specific adaptations).
 **Backed by**: AGENTS.md Standing Review Roles entry for Florence
@@ -139,6 +140,11 @@ The current helper baseline is deliberately modest:
 - integration plots carry row-level interval status;
 - correlation plots preserve extractor notes so latent-only correlation
   warnings are not hidden behind polished heatmaps.
+- covariance/correlation table helpers can draw forest plots and confidence
+  eyes; confidence eyes are soft filled compatibility shapes with hollow
+  estimate markers, no outer eye outline, optional CI lines via
+  `show_intervals = TRUE`, and `style = "raindrop"` retained as a compatibility
+  alias.
 
 This is a **safety and accessibility upgrade**, not a publication-ready
 stamp. A public article figure still needs rendered HTML review by Florence
@@ -155,11 +161,11 @@ outputs, not one monolithic plot:
 |---|---|---|
 | Ordination biplot: scores plus trait loading arrows | `plot(type = "ordination")` | Implemented as dimension-aware static output: 1D score strip, 2D biplot, 3D pair-grid; d > 3 uses selected axes. |
 | Loading matrix table | Extractor/table helper, not a plot | Planned; should be a report table because the reader needs exact signs and magnitudes. |
-| Correlation ellipse matrix | `plot(type = "correlation_ellipse")` | Implemented for point-estimate correlations from `extract_Sigma()`. Black-border/star support is future-compatible but waits for interval-aware tidy correlation tables. |
-| Communality / uniqueness bars | `plot(type = "communality")` | Implemented for point-estimate `extract_communality()` output. Interval overlays wait for bootstrap/profile table plumbing. |
+| Correlation ellipse matrix | `plot(type = "correlation_ellipse")` | Implemented for point-estimate correlations and optional `bootstrap_Sigma(..., what = "R")` intervals; borders/stars mark supplied intervals that exclude zero. Still needs rendered-figure QA beyond the current morphometrics fixture. |
+| Communality / uniqueness bars | `plot(type = "communality")` | Implemented for point estimates and optional `bootstrap_Sigma(..., what = "communality")` intervals on the `c^2` boundary. Still needs rendered-figure QA and broader interval-calibration examples. |
 | Dominant-axis loading forest with bootstrap CIs | Future `plot(type = "dominant_loadings")` or a table-driven helper | Planned; requires bootstrap-aligned loading/axis summaries and rotation/sign convention checks. |
 | Score histograms / density panels | Future score-distribution helper | Planned; should consume `extract_ordination()` score tables and avoid over-interpreting latent axes as mechanisms. |
-| Integration-index forest with repeatability and communality CIs | `plot(type = "integration")` | Implemented for point estimates and optional user-supplied bootstrap intervals; still needs first-class bootstrap object contract. |
+| Integration-index forest with repeatability and communality CIs | `plot(type = "integration")` | Implemented for point estimates and optional bootstrap-object intervals for repeatability and communality. Still needs rendered-figure QA and fuller tutorial use. |
 
 Panel composition for articles should happen at the article/gallery layer. The
 S3 plot method should keep returning ordinary ggplot objects with audit
@@ -182,32 +188,21 @@ Public plot helpers in `R/plot-gllvmTMB.R` and any new helpers:
 - Prefer direct labels for small T; legends only when T > 5 or
   when the plot is overdetermined.
 
-## 6. Phase 1c-viz scope (existing roadmap slice; Florence inherits)
+## 6. Current visualization debt ledger
 
-ROADMAP currently has Phase 1c-viz at 0/7. Florence inherits this
-scope:
+The older Phase 1c-viz checklist is no longer 0/7. The current ledger is:
 
-1. Extend dispatcher with missing static types. `communality` and
-   `correlation_ellipse` are now present; `phylo_signal` and
-   `residual_split` remain planned.
-2. Add `repeatability_forest` plot type (ICC headline).
-3. Dimension-aware `ordination`: d=1 strip / d=2 biplot /
-   d=3 pair-grid / d>3 user-selected axes. Implemented as a static ggplot
-   path; true interactive 3D remains planned.
-4. First-class interactive option via plotly (`type =
-   "ordination", interactive = TRUE`).
-5. Polish: rotation-disclaimer captions; shared/unique/total
-   correlation-plot guard (Pat's pet peeve); error-bar overlays.
-6. `vdiffr` snapshot tests per static plot type.
-7. New article `visualizing-gllvmTMB.Rmd` (Concepts tier) —
-   gallery + interactive demo + rotation caveats.
-
-Plus a new item Florence will own (added 2026-05-18):
-
-8. M3 figure cascade — Florence adds figures to
-   `simulation-recovery-validated.Rmd` (per-cell coverage forest
-   plot), `animal-model.Rmd` (G-matrix heatmap + h² forest),
-   and any other M3.x articles that currently ship as tables only.
+| Target | Current status | Remaining debt |
+|---|---|---|
+| Missing static dispatcher types | Partial: `correlation_ellipse`, `communality`, `variance`, and dimension-aware `ordination` are implemented. | `phylo_signal`, `residual_split`, and any future dominant-axis helpers remain planned. |
+| Repeatability / integration forest | Partial: `plot(type = "integration")` draws repeatability and communality summaries with optional bootstrap-object intervals. | Needs rendered QA, article use, and clearer boundary/failure glyphs. |
+| Dimension-aware ordination | Partial: 1D strip, 2D biplot, 3D pair grid, d > 3 selected axes, varimax default, axis ordering, sign anchoring, and standardized loading arrows are implemented. | Interactive 3D remains planned; rotation/sign conventions need continued tutorial guidance. |
+| Confidence-eye covariance/correlation plots | Partial: `plot_correlations()` and `plot_Sigma_table()` draw interval forests and confidence eyes from finite bounds. | No `vdiffr` snapshots; no calibration claim; interval-bearing input remains the user's responsibility. |
+| Estimate-vs-truth visuals | Partial: `compare_Sigma_table()` and `plot_Sigma_comparison()` cover row-first table and visual comparison helpers. | Needs simulation/example article integrations beyond object tests. |
+| Matrix heatmaps | Partial: `plot_Sigma_heatmap()` covers point-estimate Sigma/R heatmaps. | No uncertainty display and no multi-model layout helper yet. |
+| Plot polish | Partial: captions now cover interval provenance, missing intervals, and rotation honesty; confidence eyes omit CI lines by default. | Full rendered HTML review and visual snapshots remain open. |
+| Gallery article | Planned. | `visualizing-gllvmTMB.Rmd` should wait until the helper surface is stable enough to teach without churn. |
+| M3 figure cascade | Planned / dev-only. | M3 diagnostic report helpers remain development artefacts until surface-admission evidence is ready. |
 
 ## 7. What's out of scope for this design note
 

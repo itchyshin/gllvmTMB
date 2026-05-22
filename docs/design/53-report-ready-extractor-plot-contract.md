@@ -225,6 +225,25 @@ A figure-heavy article should not become public unless:
 - No `vdiffr` snapshot tests have been added yet; current tests inspect object
   class, data shape, and metadata only.
 
+## Current Visual QA Debt
+
+The 2026-05-22 reference/plot branch improved the object-tested helper surface:
+wide-first article examples call the public plotting helpers, confidence eyes
+are the visible covariance/correlation interval display in morphometrics, and
+the rendered no-outline confidence-eye PNG passed Florence's local visual
+review. That evidence is useful but not a publication-grade visual test
+suite.
+
+Before a PR advertises the figure surface as stable, Grace and Florence still
+need at least:
+
+1. focused rendered QA for the public article figures that use these helpers;
+2. one `vdiffr` or equivalent visual snapshot strategy for stable helper
+   shapes;
+3. 3-OS CI evidence after any plot or reference-doc changes land in a PR;
+4. a Rose scan that confirms old `raindrop` wording remains only as the
+   compatibility alias and not as the primary public name.
+
 ## Next Implementation Targets
 
 1. Wire the estimate-vs-truth table and plot helpers into simulation/example

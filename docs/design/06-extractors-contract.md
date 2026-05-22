@@ -66,8 +66,8 @@ verification pending), `r` reserved (planned for M1/M2),
 | `extract_cutpoints(fit)` | r | r | cl | r | ordinal-probit thresholds only (single-family ordinal) |
 | `extract_ICC_site(fit)` | c | cl | cl | cl | legacy ICC; superseded by `extract_repeatability()` |
 | `bootstrap_Sigma(fit, n_boot, level, what, link_residual)` | c | cl | cl | cl | parametric-bootstrap path |
-| `getLoadings(fit, rotation)` | c | cl | cl | cl | raw $\Lambda$ matrix |
-| `rotate_loadings(fit, rotation)` | c | cl | cl | cl | varimax / quartimax post-fit rotation |
+| `getLoadings(fit, level, rotate)` | c | cl | cl | cl | raw or rotated $\Lambda$ matrix |
+| `rotate_loadings(fit, level, method)` | c | cl | cl | cl | none / varimax / promax post-fit rotation |
 | `getLV(fit)` | c | cl | cl | cl | legacy ordination alias |
 | `getResidualCor(fit)` | c | cl | cl | cl | glmmTMB-style residual correlation matrix |
 | `getResidualCov(fit)` | c | cl | cl | cl | glmmTMB-style residual covariance matrix |
@@ -203,8 +203,9 @@ inherits the relevant `extract_Sigma()` / `bootstrap_Sigma()` rows
 (`EXT-01`, `EXT-13`, and `MIX-03` for mixed-family fits).
 
 Plot helpers consume the same row schema rather than indexing matrices
-directly. `plot_Sigma_table()` draws row-first interval or raindrop
-views for selected entries (`EXT-19`). `plot_Sigma_heatmap()` draws
+directly. `plot_Sigma_table()` draws row-first interval or confidence-eye
+views for selected entries (`EXT-19`); `style = "raindrop"` is only a
+compatibility alias. `plot_Sigma_heatmap()` draws
 matrix-style point-estimate heatmaps from `entries = "all"` rows and
 does not display uncertainty intervals (`EXT-27`). Known-truth displays
 use `compare_Sigma_table()` plus `plot_Sigma_comparison()` (`EXT-25` /
@@ -383,21 +384,22 @@ loadings or ordinations carries a rotation-disclaimer
 caption (`getLoadings()` and `rotate_loadings()` already
 warn explicitly).
 
-#### `getLoadings(fit, rotation = c("none", "varimax", "quartimax"))`
+#### `getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))`
 
 **Return**: a `T x d` matrix of loadings ($\Lambda$). Row
 names = trait labels; column names = `"LV1", ..., "LVd"`.
 
-`rotation = "varimax"` and `"quartimax"` apply a post-fit
-orthogonal rotation; the rotated $\Lambda$ satisfies
+`rotate = "varimax"` applies a post-fit orthogonal rotation, ordered by shared
+variance and sign-anchored for interpretation; the rotated $\Lambda$ satisfies
 $\Lambda_{\text{rotated}}\Lambda_{\text{rotated}}^\top =
-\Lambda\Lambda^\top$.
+\Lambda\Lambda^\top$. `rotate = "promax"` applies an oblique rotation for users
+who deliberately want correlated latent axes.
 
-#### `rotate_loadings(fit, rotation, tol)`
+#### `rotate_loadings(fit, level, method)`
 
 **Return**: a `list` with elements `Lambda` (rotated
-loadings), `rotation_matrix` (the orthogonal $Q$), and
-`criterion` (rotation criterion value).
+loadings), `scores` (rotated latent scores), `T` (rotation matrix),
+`axis_variance`, `axis_order`, `axis_sign`, and `anchor_traits`.
 
 #### `getLV(fit)`
 
@@ -571,7 +573,7 @@ does NOT do. From this contract:
   hurdle**: the two-scales problem makes this undefined; see
   vision item 5 boundary statement.
 - **No rotation-pinning**: `rotate_loadings()` provides
-  post-fit varimax / quartimax for users who want a fixed
+  post-fit varimax / promax for users who want a fixed
   rotation, but the engine does not pin $\Lambda$ during
   fitting; the rotation chosen at fit time is identifiability-
   algorithm-dependent.

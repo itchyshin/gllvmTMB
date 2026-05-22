@@ -254,59 +254,21 @@ cat("Frobenius |Sigma_hat - Sigma_true| / |Sigma_true| =",
     round(norm(Sigma_hat - Sigma_true, "F") / norm(Sigma_true, "F"), 3), "\n")
 ```
 
-A side-by-side correlation heatmap shows whether the recovered
-trait correlations agree with truth at the entry level. The fitted
-panel uses `extract_Sigma_table()` so the article works from the same
-report-ready table that plotting helpers consume:
+A row-level comparison shows whether the recovered trait correlations
+agree with truth. Zero means the fitted correlation equals the known
+simulation truth for that trait pair:
 
-```{r corr-heatmap, fig.width = 7.5, fig.height = 3.5, fig.cap = "True (left) vs fitted (right) trait-pair correlations from the total between-unit covariance Sigma_B = Lambda Lambda^T + Psi. The diagonal is muted because self-correlation is fixed at 1; the off-diagonal agreement is the visual recovery check."}
-suppressPackageStartupMessages(library(ggplot2))
-make_corr_long <- function(M, label) {
-  R <- cov2cor(M)
-  data.frame(
-    trait_i = factor(rep(rownames(R), ncol(R)), levels = rownames(R)),
-    trait_j = factor(rep(colnames(R), each = nrow(R)), levels = colnames(R)),
-    rho     = as.vector(R),
-    panel   = label
-  )
-}
+```{r corr-comparison, fig.width = 7, fig.height = 4.8, fig.cap = "Trait-pair correlation errors from the total between-unit covariance Sigma_B = Lambda Lambda^T + Psi. Points show fitted minus true correlation; zero means exact recovery for that pair."}
 rownames(Sigma_true) <- colnames(Sigma_true) <- trait_names
 rownames(Sigma_hat)  <- colnames(Sigma_hat)  <- trait_names
-fit_corr <- extract_Sigma_table(
+corr_compare <- compare_Sigma_table(
   fit,
+  truth = Sigma_true,
   level = "unit",
   measure = "correlation",
-  entries = "all"
+  entries = "upper"
 )
-fit_corr <- data.frame(
-  trait_i = factor(fit_corr$trait_i, levels = trait_names),
-  trait_j = factor(fit_corr$trait_j, levels = trait_names),
-  rho     = fit_corr$estimate,
-  panel   = "Fitted"
-)
-df_corr <- rbind(make_corr_long(Sigma_true, "True"), fit_corr)
-df_corr$panel <- factor(df_corr$panel, levels = c("True", "Fitted"))
-df_corr$display_rho <- ifelse(df_corr$trait_i == df_corr$trait_j,
-                              NA_real_, df_corr$rho)
-df_corr$label <- ifelse(df_corr$trait_i == df_corr$trait_j,
-                        "", sprintf("%.2f", df_corr$rho))
-df_corr$label_colour <- ifelse(abs(df_corr$display_rho) >= 0.65,
-                               "white", "#2B2B2B")
-df_corr$label_colour[is.na(df_corr$label_colour)] <- "#2B2B2B"
-
-ggplot(df_corr, aes(trait_j, trait_i, fill = display_rho)) +
-  geom_tile(colour = "white", linewidth = 0.6) +
-  geom_text(aes(label = label), colour = df_corr$label_colour, size = 3.2) +
-  scale_fill_gradient2(low = "#0072B2", mid = "#F7F7F7", high = "#D55E00",
-                       midpoint = 0, limits = c(-1, 1),
-                       na.value = "#F4F4F4") +
-  facet_wrap(~ panel) +
-  scale_y_discrete(limits = rev) +
-  coord_equal() +
-  labs(x = NULL, y = NULL, fill = expression(rho)) +
-  theme_minimal(base_size = 11) +
-  theme(panel.grid = element_blank(),
-        strip.text = element_text(face = "bold"))
+plot_Sigma_comparison(corr_compare, measure = "correlation")
 ```
 
 > **What `extract_Sigma(level = "unit")$Sigma` returns.** The *total*

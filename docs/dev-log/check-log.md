@@ -5574,3 +5574,47 @@ Deliberately not run:
   stale-wording scan, Rd spot-check, visual QA renders, issue scan, and a short
   no-tests package check were run.
 - No article render was needed because no vignette changed.
+
+## 2026-05-21 -- Morphometrics truth-comparison helper integration
+
+Scope:
+
+- Replaced the hand-built true-vs-fitted correlation heatmap scaffold in
+  `vignettes/articles/morphometrics.Rmd`.
+- Used `compare_Sigma_table()` and `plot_Sigma_comparison()` for the
+  row-level between-unit correlation recovery figure.
+- Kept the figure focused on fitted minus true correlation, with text stating
+  that zero means exact recovery for the trait pair.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> wrote `pkgdown-site/articles/morphometrics.html`.
+- Visual QA image inspected:
+  `pkgdown-site/articles/morphometrics_files/figure-html/corr-comparison-1.png`.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics")'`
+  -> 49 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'corr-heatmap|make_corr_long|df_corr|geom_tile\\(|geom_text\\(|scale_fill_gradient2\\(|compare_Sigma_table\\(|plot_Sigma_comparison\\(' vignettes/articles/morphometrics.Rmd`
+  -> only `compare_Sigma_table()` and `plot_Sigma_comparison()` remain in the
+  changed section; the article-local heatmap scaffolding is gone.
+- `rg -n "gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains|estimate-vs-truth article figures remain future" vignettes/articles/morphometrics.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this single-article
+  integration. The article render, focused morphometrics test, pkgdown check,
+  whitespace check, stale-wording scans, visual QA, and a short no-tests
+  package check were run.

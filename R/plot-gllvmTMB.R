@@ -81,6 +81,16 @@
 #'   Use `"none"` to show the raw computational orientation. Rotation
 #'   makes the biplot easier to label; use `Sigma`, correlations,
 #'   communality, and uniqueness as the primary quantitative summaries.
+#' @param order_axes Logical. For rotated `"ordination"` plots, reorder
+#'   latent axes by decreasing shared variance after rotation. Default
+#'   `TRUE`. Ignored when `rotation = "none"`.
+#' @param sign_anchor One of `"auto"` or `"none"`. For rotated
+#'   `"ordination"` plots, `"auto"` flips each axis so its anchor trait has
+#'   a positive loading. Default `"auto"`. Ignored when `rotation = "none"`.
+#' @param anchor_traits Optional character vector of trait names used for
+#'   sign anchoring in rotated `"ordination"` plots. Supply one trait per
+#'   axis after any `order_axes` step. Missing axes fall back to the trait
+#'   with the largest absolute loading. Ignored when `rotation = "none"`.
 #' @param standardize_loadings Logical. For `"ordination"` plots, divide
 #'   each trait loading by the square root of that trait's model-implied total
 #'   variance before drawing arrows. This puts arrows on a correlation-like
@@ -110,6 +120,9 @@ plot.gllvmTMB_multi <- function(
   boot = NULL,
   axes = c(1L, 2L),
   rotation = c("varimax", "none", "promax"),
+  order_axes = TRUE,
+  sign_anchor = c("auto", "none"),
+  anchor_traits = NULL,
   standardize_loadings = FALSE,
   ...
 ) {
@@ -118,6 +131,7 @@ plot.gllvmTMB_multi <- function(
   }
   type <- match.arg(type)
   rotation <- match.arg(rotation)
+  sign_anchor <- match.arg(sign_anchor)
   level_missing <- missing(level)
   ## level intentionally not match.arg'd up-front: each helper decides
   ## whether to require a single value or accept "both/NULL".
@@ -147,6 +161,9 @@ plot.gllvmTMB_multi <- function(
       if (level_missing) "B" else level,
       axes = axes,
       rotation = rotation,
+      order_axes = order_axes,
+      sign_anchor = sign_anchor,
+      anchor_traits = anchor_traits,
       standardize_loadings = standardize_loadings
     )
   )
@@ -314,6 +331,85 @@ plot.gllvmTMB_multi <- function(
     }
   }
   dat
+}
+
+.gtmb_ordination_rotation_status <- function(
+  rotation,
+  order_axes,
+  sign_anchor
+) {
+  if (identical(rotation, "none")) {
+    return("rotation_ambiguous_loadings")
+  }
+  paste0(
+    rotation,
+    if (isTRUE(order_axes)) "_ordered" else "_raw_order",
+    if (identical(sign_anchor, "auto")) "_sign_anchored" else "_unanchored"
+  )
+}
+
+.gtmb_ordination_rotation_caption <- function(
+  rotation,
+  order_axes,
+  sign_anchor,
+  anchor_traits,
+  rotation_info
+) {
+  invariant_note <- "Use Sigma and correlation summaries for rotation-invariant interpretation."
+  if (identical(rotation, "none")) {
+    return(paste(
+      "Axes and signs use the raw fitted orientation.",
+      invariant_note
+    ))
+  }
+
+  order_note <- if (isTRUE(order_axes)) {
+    "ordered by shared variance"
+  } else {
+    "kept in rotated-axis order"
+  }
+
+  sign_note <- if (identical(sign_anchor, "auto")) {
+    anchors_supplied <- !is.null(anchor_traits) &&
+      length(stats::na.omit(anchor_traits)) > 0L
+    if (isTRUE(anchors_supplied)) {
+      anchors <- stats::na.omit(rotation_info$anchor_traits)
+      anchors <- anchors[nzchar(anchors)]
+      anchors <- unique(anchors)
+      paste0(
+        "sign-anchored to supplied trait",
+        if (length(anchors) == 1L) "" else "s",
+        ": ",
+        paste(anchors, collapse = ", ")
+      )
+    } else {
+      "sign-anchored so the largest loading on each axis is positive"
+    }
+  } else {
+    "not sign-anchored, so axis signs remain arbitrary"
+  }
+
+  paste(
+    paste0(
+      "Axes use ",
+      rotation,
+      " rotation, ",
+      order_note,
+      ", and ",
+      sign_note,
+      "."
+    ),
+    invariant_note
+  )
+}
+
+.gtmb_caption_lines <- function(..., width = 86) {
+  parts <- unlist(list(...), use.names = FALSE)
+  parts <- parts[!is.na(parts) & nzchar(parts)]
+  wrapped <- lapply(parts, function(x) {
+    paste(strwrap(x, width = width), collapse = "\n")
+  })
+  paste(unlist(wrapped, use.names = FALSE), collapse = "\n")
 }
 
 .gtmb_tile_label_colour <- function(x, threshold = 0.65, relative = FALSE) {
@@ -1357,9 +1453,13 @@ plot.gllvmTMB_multi <- function(
   level,
   axes = c(1L, 2L),
   rotation = c("varimax", "none", "promax"),
+  order_axes = TRUE,
+  sign_anchor = c("auto", "none"),
+  anchor_traits = NULL,
   standardize_loadings = FALSE
 ) {
   rotation <- match.arg(rotation)
+  sign_anchor <- match.arg(sign_anchor)
   ## The dispatcher supplies "B" when the user omits level; an explicit
   ## ordination request with multiple levels is still ambiguous.
   if (missing(level) || is.null(level) || length(level) != 1L) {
@@ -1392,12 +1492,19 @@ plot.gllvmTMB_multi <- function(
     rotation_info <- suppressMessages(rotate_loadings(
       fit,
       level = level_label,
-      method = rotation
+      method = rotation,
+      order_axes = order_axes,
+      sign_anchor = sign_anchor,
+      anchor_traits = anchor_traits
     ))
     L <- rotation_info$Lambda
     Sc <- rotation_info$scores
     ord_source <- "rotate_loadings"
-    rotation_status <- paste0(rotation, "_ordered_sign_anchored")
+    rotation_status <- .gtmb_ordination_rotation_status(
+      rotation,
+      order_axes = order_axes,
+      sign_anchor = sign_anchor
+    )
   }
   if (is.null(rownames(L))) {
     rownames(L) <- .gtmb_trait_names(fit)
@@ -1426,26 +1533,24 @@ plot.gllvmTMB_multi <- function(
     loading_scale <- "standardized"
   }
   d <- ncol(L)
-  rotation_caption <- if (rotation == "none") {
-    paste(
-      "Axes and signs use the raw fitted orientation.",
-      "Use Sigma and correlation summaries for rotation-invariant interpretation."
-    )
-  } else {
-    paste(
-      paste0(
-        "Axes use ",
-        rotation,
-        " rotation, ordered by shared variance and sign-anchored for interpretation."
-      ),
-      "Use Sigma and correlation summaries for rotation-invariant interpretation."
-    )
-  }
+  rotation_caption <- .gtmb_ordination_rotation_caption(
+    rotation,
+    order_axes = order_axes,
+    sign_anchor = sign_anchor,
+    anchor_traits = anchor_traits,
+    rotation_info = rotation_info
+  )
   rotation_data <- if (is.null(rotation_info)) {
-    list(method = "none")
+    list(
+      method = "none",
+      order_axes = FALSE,
+      sign_anchor = "none"
+    )
   } else {
     list(
       method = rotation_info$method,
+      order_axes = isTRUE(order_axes),
+      sign_anchor = sign_anchor,
       axis_variance = rotation_info$axis_variance,
       axis_order = rotation_info$axis_order,
       axis_sign = rotation_info$axis_sign,
@@ -1516,7 +1621,7 @@ plot.gllvmTMB_multi <- function(
         x = "LV1",
         y = NULL,
         title = paste0("Level ", level_label, ": 1D ordination"),
-        caption = paste(
+        caption = .gtmb_caption_lines(
           if (loading_scale == "standardized") {
             "Trait positions show standardized loadings on LV1."
           } else {
@@ -1644,7 +1749,7 @@ plot.gllvmTMB_multi <- function(
         x = "Latent score / display-scaled loading",
         y = "Latent score / display-scaled loading",
         title = paste0("Level ", level_label, ": 3D ordination pair grid"),
-        caption = paste(
+        caption = .gtmb_caption_lines(
           "Each panel shows one pair of latent axes from the same 3D ordination.",
           "Grey points are latent scores; arrows are display-scaled trait loadings.",
           if (loading_scale == "standardized") {
@@ -1652,8 +1757,7 @@ plot.gllvmTMB_multi <- function(
           } else {
             "Trait arrows use raw loadings."
           },
-          rotation_caption,
-          sep = "\n"
+          rotation_caption
         )
       ) +
       .gtmb_theme_figure()
@@ -1733,15 +1837,14 @@ plot.gllvmTMB_multi <- function(
       x = paste0("LV", a1),
       y = paste0("LV", a2),
       title = paste0("Level ", level_label, ": ordination biplot"),
-      caption = paste(
+      caption = .gtmb_caption_lines(
         "Grey points are latent scores; arrows are display-scaled trait loadings.",
         if (loading_scale == "standardized") {
           "Trait arrows use standardized loadings."
         } else {
           "Trait arrows use raw loadings."
         },
-        rotation_caption,
-        sep = "\n"
+        rotation_caption
       )
     ) +
     .gtmb_theme_figure()

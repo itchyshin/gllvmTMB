@@ -246,7 +246,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-12 | `extract_ICC_site()` legacy | `covered` | `test-extractors.R` | superseded by `extract_repeatability()` |
 | EXT-13 | `bootstrap_Sigma()` | `covered` (Gaussian) / `partial` (non-Gaussian) | `test-bootstrap-Sigma.R` | M3.3b surface admission (Design 50) controls the next non-Gaussian evidence movement. Known-phi point diagnostics are not bootstrap coverage. |
 | EXT-14 | `getLoadings()` raw $\Lambda$ | `covered` | `test-rotate-compare-loadings.R` | rotation-variant; warn |
-| EXT-15 | `rotate_loadings()` varimax / promax | `covered` | `test-rotate-compare-loadings.R`, `test-rotation-advisory.R` | Rotation is for interpretation of loading columns; covariance, correlation, communality, and uniqueness remain the primary rotation-invariant summaries. |
+| EXT-15 | `rotate_loadings()` varimax / promax | `covered` | `test-rotate-compare-loadings.R`, `test-rotation-advisory.R` | Rotation is for interpretation of loading columns; covariance, correlation, communality, and uniqueness remain the primary rotation-invariant summaries. `plot(type = "ordination")` exposes the same order/sign-anchor convention for biplots. |
 | EXT-16 | `getLV()` legacy ordination alias | `covered` | `test-extractors.R` | slated for `deprecate_soft()` 0.3.0 |
 | EXT-17 | `getResidualCor / Cov()` glmmTMB-style | `covered` | `test-extractors.R` | |
 | EXT-18 | `extract_Sigma_table()` report-ready Sigma/Psi/R table | `covered` | `test-extract-sigma-table.R`, `test-plot-gllvmTMB.R` | point-estimate table view over `extract_Sigma()`; interval columns intentionally `none` / `NA` |

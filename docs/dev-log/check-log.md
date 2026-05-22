@@ -6015,6 +6015,44 @@ Deliberately not run:
   cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace check,
   stale-wording scans, and a short no-tests package check were run.
 
+## 2026-05-22 -- Lambda-constraint Sigma table wording
+
+Scope:
+
+- Replaced `extract_Sigma(level = "unit")` in the lambda-constraint decision
+  table with `extract_Sigma_table(fit, level = "unit")`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane.
+- `air format vignettes/articles/lambda-constraint.Rmd`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint", quiet = TRUE, new_process = FALSE)'`
+  -> rendered the article locally.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the after-task report/check-log entry.
+- `rg -n 'extract_Sigma_table\\(fit, level = "unit"\\)|extract_Sigma\\(level = "unit"\\)|extract_Sigma\\(fit, level = "unit"\\)' vignettes/articles/lambda-constraint.Rmd pkgdown-site/articles/lambda-constraint.html`
+  -> new row-table helper call is present in source and rendered HTML; the old
+  missing-`fit` snippet is gone.
+- `rg -n 'gllvmTMB_wide\\(|meta_known_V|diag\\(U\\)|diag\\(S\\)|diag\\(s\\)|\\\\bf S|two-U|plotting geometry remains' vignettes/articles/lambda-constraint.Rmd`
+  -> no hits.
+- `Rscript --vanilla -e 'chk <- devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never"); print(chk)'`
+  -> 0 errors, 1 install warning, 4 notes. Notes were inability to verify
+  current time, existing `air.toml`, legacy NEWS section parsing, and unused
+  `nlme` import.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this one-line article
+  wording cleanup. Article render, `pkgdown::check_pkgdown()`, whitespace
+  check, stale-wording scans, and a short no-tests package check were run.
+
 ## 2026-05-22 -- Sigma heatmap custom labels
 
 Scope:

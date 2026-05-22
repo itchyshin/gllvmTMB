@@ -65,7 +65,7 @@ $\boldsymbol\Lambda$ itself. A short decision tree:
 
 | Your goal | Do you need `lambda_constraint`? |
 |---|---|
-| Estimate $\boldsymbol\Sigma_{\text{unit}}$ (correlations between traits, communalities) | **No.** $\boldsymbol\Sigma_{\text{unit}}$ is rotation-invariant. Just fit and call `extract_Sigma(level = "unit")`. |
+| Estimate $\boldsymbol\Sigma_{\text{unit}}$ (correlations between traits, communalities) | **No.** $\boldsymbol\Sigma_{\text{unit}}$ is rotation-invariant. Just fit and call `extract_Sigma_table(fit, level = "unit")`. |
 | Plot an ordination (`ordiplot()`) | **No.** Axes are rotation-invariant up to reflection / ordering. |
 | Compare loadings across two `gllvmTMB` fits on the same data | **No.** Use `compare_loadings()` (Procrustes alignment) instead. |
 | Compare loadings against another package (`gllvm`, `glmmTMB::rr()`, ...) | **No.** Use Procrustes alignment again -- both packages have their own arbitrary rotation. |

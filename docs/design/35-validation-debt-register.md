@@ -251,7 +251,8 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-17 | `getResidualCor / Cov()` glmmTMB-style | `covered` | `test-extractors.R` | |
 | EXT-18 | `extract_Sigma_table()` report-ready Sigma/Psi/R table | `covered` | `test-extract-sigma-table.R`, `test-plot-gllvmTMB.R` | point-estimate table view over `extract_Sigma()`; interval columns intentionally `none` / `NA` |
 | EXT-19 | `plot_correlations()` / `plot_Sigma_table()` tidy covariance/correlation forest and raindrop plots | `covered` | `test-plot-covariance-tables.R` | Report-ready ggplot helpers over `extract_correlations()` and `extract_Sigma_table()` rows; intervals are displayed when input bounds are finite but not computed by the plotting helpers. Raindrops are frequentist compatibility displays, not posterior densities. |
-| EXT-20 | `extract_Sigma_table()` bootstrap interval rows | `covered` | `test-extract-sigma-table.R`, `test-plot-covariance-tables.R` | Converts `bootstrap_Sigma()` Sigma/R point estimates and percentile bounds to the same report-ready row schema; does not compute new bootstrap intervals or cover communality rows. |
+| EXT-20 | `extract_Sigma_table()` bootstrap interval rows | `covered` | `test-extract-sigma-table.R`, `test-plot-covariance-tables.R` | Converts `bootstrap_Sigma()` Sigma/R point estimates and percentile bounds to the same report-ready row schema; does not compute new bootstrap intervals or itself cover communality rows. |
+| EXT-21 | `extract_communality()` bootstrap object rows and communality plot intervals | `covered` | `test-extract-communality-bootstrap.R`, `test-plot-gllvmTMB.R` | Reuses `bootstrap_Sigma(..., what = "communality")` point estimates and percentile bounds without rerunning refits; `plot(type = "communality", boot = boot)` overlays supplied `c^2` intervals. |
 
 ### Section 9 — Diagnostics
 

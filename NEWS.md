@@ -1,8 +1,12 @@
 # gllvmTMB (development version)
 
+## Communality bootstrap interval rows (2026-05-21)
+
+* **`extract_communality()`** now accepts `bootstrap_Sigma()` objects containing `communality` summaries and returns the stored per-trait point estimates plus percentile `lower` / `upper` columns when `ci = TRUE` (EXT-21). IN: bootstrap communalities already computed by `bootstrap_Sigma(..., what = "communality")` can be reused in reports without rerunning refits, and `plot(type = "communality", boot = boot)` can overlay `c^2` boundary intervals on the stacked communality / uniqueness bars. PARTIAL: this reuses bootstrap-object summaries only; fitted-model calls still compute their own profile or bootstrap intervals through `extract_communality(fit, ci = TRUE, method = ...)`, and the communality plot is still object-shape tested rather than vdiffr snapshot tested. PLANNED: repeatability rows and a broader Figure-3 visual audit remain the next inference-plot steps.
+
 ## Bootstrap Sigma table rows (2026-05-21)
 
-* **`extract_Sigma_table()`** now accepts `bootstrap_Sigma()` objects and returns the same report-ready row schema with bootstrap percentile `lower` / `upper` columns filled in (EXT-20). IN: Sigma and correlation summaries already present in the bootstrap object can be converted to tidy rows and passed directly to `plot_Sigma_table()` for interval forests or raindrop compatibility displays. PARTIAL: this does not compute bootstrap intervals itself, does not add shared/unique component intervals, and does not yet cover communality rows. PLANNED: communality and repeatability interval-row helpers remain the next inference-table step.
+* **`extract_Sigma_table()`** now accepts `bootstrap_Sigma()` objects and returns the same report-ready row schema with bootstrap percentile `lower` / `upper` columns filled in (EXT-20). IN: Sigma and correlation summaries already present in the bootstrap object can be converted to tidy rows and passed directly to `plot_Sigma_table()` for interval forests or raindrop compatibility displays. PARTIAL: this does not compute bootstrap intervals itself and does not add shared/unique component covariance intervals; communality reuse is covered separately by EXT-21. PLANNED: repeatability interval-row helpers remain the next inference-table step.
 
 ## Covariance/correlation plot helpers (2026-05-21)
 

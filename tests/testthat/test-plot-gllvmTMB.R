@@ -225,9 +225,21 @@ test_that("plot(type = 'communality') returns stacked shared/unique bars", {
   expect_s3_class(p, "ggplot")
   meta <- expect_gtmb_plot_meta(p, "communality", "extract_communality")
   expect_equal(meta$level, c("unit", "unit_obs"))
+  expect_equal(meta$interval_status, "none")
   expect_identical(attr(p, "gllvmTMB_data"), p$data)
   expect_true(all(
-    c("trait", "level", "component", "proportion", "communality") %in%
+    c(
+      "trait",
+      "level",
+      "component",
+      "proportion",
+      "communality",
+      "lower",
+      "upper",
+      "has_interval",
+      "interval_method",
+      "interval_status"
+    ) %in%
       names(p$data)
   ))
   expect_setequal(
@@ -240,6 +252,44 @@ test_that("plot(type = 'communality') returns stacked shared/unique bars", {
     FUN = sum
   )
   expect_equal(totals$proportion, rep(1, nrow(totals)), tolerance = 1e-8)
+  expect_silent(print(p))
+})
+
+test_that("plot(type = 'communality') can overlay bootstrap_Sigma intervals", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  traits <- levels(fit$data[[fit$trait_col]])
+  c2_B <- stats::setNames(c(0.62, 0.48, 0.35, 0.72), traits)
+  c2_W <- stats::setNames(c(0.24, 0.30, 0.18, 0.41), traits)
+  boot <- list(
+    point_est = list(communality_B = c2_B, communality_W = c2_W),
+    ci_lower = list(
+      communality_B = pmax(0, c2_B - 0.08),
+      communality_W = pmax(0, c2_W - 0.06)
+    ),
+    ci_upper = list(
+      communality_B = pmin(1, c2_B + 0.09),
+      communality_W = pmin(1, c2_W + 0.07)
+    ),
+    ci_method = "percentile",
+    link_residual = "auto",
+    conf = 0.95,
+    n_boot = 25L,
+    n_failed = 0L,
+    level = c("B", "W"),
+    what = "communality",
+    draws = NULL
+  )
+  class(boot) <- c("bootstrap_Sigma", "list")
+
+  p <- suppressMessages(plot(fit, type = "communality", boot = boot))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "communality", "extract_communality")
+  expect_equal(meta$interval_status, "provided")
+  expect_true(any(p$data$has_interval))
+  expect_true(all(p$data$interval_status == "provided"))
+  expect_true(all(is.finite(p$data$lower)))
+  expect_true(all(is.finite(p$data$upper)))
   expect_silent(print(p))
 })
 

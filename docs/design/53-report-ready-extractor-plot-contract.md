@@ -129,10 +129,15 @@ The current integration plot data includes row-level `has_interval`,
 `interval_status = "partial"` when at least one interval is present and at
 least one requested interval is missing.
 
-The current communality plot data is point-estimate only. It has two rows per
-trait per available latent tier: `Shared latent (c^2)` and
-`Trait-specific uniqueness`, with `proportion` summing to 1 within each
-trait/tier.
+The current communality plot data has two rows per trait per available latent
+tier: `Shared latent (c^2)` and `Trait-specific uniqueness`, with
+`proportion` summing to 1 within each trait/tier. When `boot` is a
+`bootstrap_Sigma()` object containing `communality` summaries, or a compatible
+list with `communality_B` / `communality_W` data frames, the data also carries
+`lower`, `upper`, `has_interval`, `interval_method`, and `interval_status`.
+The plot overlays supplied bootstrap intervals on the `c^2` boundary, not on
+both stacked components separately; uniqueness intervals in the data are the
+complement of the communality interval.
 
 The current ordination data is dimension-aware. One-dimensional fits expose
 score-strip data and loading lollipops. Two-dimensional fits expose one score
@@ -167,6 +172,9 @@ A figure-heavy article should not become public unless:
 - `plot_Sigma_table(style = "raindrop")` can draw raindrops only when supplied
   rows already contain finite interval bounds. It does not run bootstrap
   refits.
+- `plot(type = "communality", boot = boot)` can overlay bootstrap intervals
+  only when `boot` already contains `communality` summaries. It does not run
+  bootstrap refits.
 - Plot metadata and first-pass Florence palette/caption safeguards exist, but
   every new article figure still needs rendered HTML review before it is
   treated as publication-grade.
@@ -178,9 +186,8 @@ A figure-heavy article should not become public unless:
 ## Next Implementation Targets
 
 1. Add figure-ready estimate-vs-truth tables for example objects.
-2. Add interval-aware correlation and communality table contracts so ellipse
-   borders/stars and communality whiskers reflect real uncertainty rather than
-   point estimates.
+2. Add interval-aware correlation table contracts so ellipse borders/stars
+   reflect real uncertainty rather than point estimates.
 3. Add dominant-axis loading and score-distribution helpers for the GLLVM
    overview Figure 3 family of plots.
 4. Continue the Rose/Florence surface scan for hidden or technical articles

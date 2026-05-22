@@ -37,10 +37,12 @@ one of these helpers into your own code, mirror that pattern rather
 than reflexively calling \code{match.arg(level)} (which would silently
 collapse the default to \code{"B"} and drop the W panel).}
 
-\item{boot}{Optional bootstrap object (currently a list with elements
-\code{repeatability}, \code{communality_B}, \code{communality_W}, each a data
-frame with columns \code{trait}, \code{lower}, \code{upper}) used to add whiskers
-to the \code{"integration"} plot. Default \code{NULL} skips whiskers.}
+\item{boot}{Optional bootstrap object. This can be either a
+\code{bootstrap_Sigma()} result or a list with elements \code{repeatability},
+\code{communality_B}, \code{communality_W}, each a data frame with columns
+\code{trait}, \code{lower}, \code{upper}. It adds whiskers to the \code{"integration"}
+plot and \code{c^2} boundary intervals to the \code{"communality"} plot. Default
+\code{NULL} skips whiskers.}
 
 \item{axes}{Length-2 or length-3 integer vector for \code{"ordination"} when
 \code{d >= 2}. Length 2 draws a single biplot. Length 3 draws a static
@@ -83,7 +85,8 @@ sorted by repeatability. Optional whiskers from a \code{boot} object
 (skipped if \code{boot = NULL}).}
 \item{\code{"communality"}}{Figure-3-style stacked bars of per-trait
 communality (\code{c^2}, shared latent proportion) and uniqueness
-(\code{1 - c^2}) for the available latent tiers.}
+(\code{1 - c^2}) for the available latent tiers. Optional \code{boot}
+intervals are drawn on the \code{c^2} boundary when supplied.}
 \item{\code{"variance"}}{Stacked-bar variance partition per trait, using
 \code{extract_proportions(format = "long")}. One bar per trait,
 stacks summing to 1.}

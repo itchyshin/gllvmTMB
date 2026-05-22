@@ -30,7 +30,8 @@
 #'     (skipped if `boot = NULL`).}
 #'   \item{`"communality"`}{Figure-3-style stacked bars of per-trait
 #'     communality (`c^2`, shared latent proportion) and uniqueness
-#'     (`1 - c^2`) for the available latent tiers.}
+#'     (`1 - c^2`) for the available latent tiers. Optional `boot`
+#'     intervals are drawn on the `c^2` boundary when supplied.}
 #'   \item{`"variance"`}{Stacked-bar variance partition per trait, using
 #'     `extract_proportions(format = "long")`. One bar per trait,
 #'     stacks summing to 1.}
@@ -60,10 +61,12 @@
 #'   one of these helpers into your own code, mirror that pattern rather
 #'   than reflexively calling `match.arg(level)` (which would silently
 #'   collapse the default to `"B"` and drop the W panel).
-#' @param boot Optional bootstrap object (currently a list with elements
-#'   `repeatability`, `communality_B`, `communality_W`, each a data
-#'   frame with columns `trait`, `lower`, `upper`) used to add whiskers
-#'   to the `"integration"` plot. Default `NULL` skips whiskers.
+#' @param boot Optional bootstrap object. This can be either a
+#'   `bootstrap_Sigma()` result or a list with elements `repeatability`,
+#'   `communality_B`, `communality_W`, each a data frame with columns
+#'   `trait`, `lower`, `upper`. It adds whiskers to the `"integration"`
+#'   plot and `c^2` boundary intervals to the `"communality"` plot. Default
+#'   `NULL` skips whiskers.
 #' @param axes Length-2 or length-3 integer vector for `"ordination"` when
 #'   `d >= 2`. Length 2 draws a single biplot. Length 3 draws a static
 #'   pair-grid of the three axis pairs. For `d = 3`, the default
@@ -120,7 +123,7 @@ plot.gllvmTMB_multi <- function(
     correlation_ellipse = .plot_correlation_ellipse_gtmb(x),
     loadings = .plot_loadings_gtmb(x, level),
     integration = .plot_integration_gtmb(x, boot = boot),
-    communality = .plot_communality_gtmb(x),
+    communality = .plot_communality_gtmb(x, boot = boot),
     variance = .plot_variance_gtmb(x),
     ordination = .plot_ordination_gtmb(
       x,
@@ -845,16 +848,70 @@ plot.gllvmTMB_multi <- function(
 
 # ---- communality / uniqueness --------------------------------------------
 
-.communality_plot_data_gtmb <- function(fit) {
+.communality_ci_from_boot <- function(boot, level, traits) {
+  empty <- function(status) {
+    data.frame(
+      trait = traits,
+      lower = rep(NA_real_, length(traits)),
+      upper = rep(NA_real_, length(traits)),
+      interval_status = status,
+      stringsAsFactors = FALSE
+    )
+  }
+  if (is.null(boot)) {
+    return(empty("none"))
+  }
+
+  if (inherits(boot, "bootstrap_Sigma")) {
+    ci <- tryCatch(
+      suppressMessages(extract_communality(
+        boot,
+        level = .canonical_level_name(level),
+        ci = TRUE
+      )),
+      error = function(e) NULL
+    )
+  } else {
+    ci <- boot[[paste0("communality_", level)]]
+  }
+  if (is.null(ci)) {
+    return(empty("missing"))
+  }
+  ci <- ci[match(traits, ci$trait), , drop = FALSE]
+  lower <- if ("lower" %in% names(ci)) {
+    ci$lower
+  } else {
+    rep(NA_real_, length(traits))
+  }
+  upper <- if ("upper" %in% names(ci)) {
+    ci$upper
+  } else {
+    rep(NA_real_, length(traits))
+  }
+  has_interval <- is.finite(lower) & is.finite(upper)
+  data.frame(
+    trait = traits,
+    lower = lower,
+    upper = upper,
+    interval_status = ifelse(has_interval, "provided", "missing"),
+    stringsAsFactors = FALSE
+  )
+}
+
+.communality_plot_data_gtmb <- function(fit, boot = NULL) {
   tn <- .gtmb_trait_names(fit)
   rows <- list()
   if (isTRUE(fit$use$rr_B)) {
     c2 <- suppressMessages(extract_communality(fit, level = "unit"))
     if (!is.null(c2)) {
+      ci <- .communality_ci_from_boot(boot, "B", tn)
       rows[[length(rows) + 1L]] <- data.frame(
         trait = tn,
         level = "unit",
         communality = unname(c2[tn]),
+        lower = ci$lower,
+        upper = ci$upper,
+        interval_status = ci$interval_status,
         stringsAsFactors = FALSE
       )
     }
@@ -862,10 +919,14 @@ plot.gllvmTMB_multi <- function(
   if (isTRUE(fit$use$rr_W)) {
     c2 <- suppressMessages(extract_communality(fit, level = "unit_obs"))
     if (!is.null(c2)) {
+      ci <- .communality_ci_from_boot(boot, "W", tn)
       rows[[length(rows) + 1L]] <- data.frame(
         trait = tn,
         level = "unit_obs",
         communality = unname(c2[tn]),
+        lower = ci$lower,
+        upper = ci$upper,
+        interval_status = ci$interval_status,
         stringsAsFactors = FALSE
       )
     }
@@ -876,6 +937,8 @@ plot.gllvmTMB_multi <- function(
 
   dat <- do.call(rbind, rows)
   dat$uniqueness <- pmax(0, 1 - dat$communality)
+  dat$has_interval <- is.finite(dat$lower) & is.finite(dat$upper)
+  dat$interval_method <- ifelse(dat$has_interval, "bootstrap", "none")
   dat$trait <- factor(dat$trait, levels = rev(tn))
   dat$level <- factor(dat$level, levels = c("unit", "unit_obs"))
 
@@ -885,6 +948,11 @@ plot.gllvmTMB_multi <- function(
     component = "Shared latent (c^2)",
     proportion = dat$communality,
     communality = dat$communality,
+    lower = dat$lower,
+    upper = dat$upper,
+    has_interval = dat$has_interval,
+    interval_method = dat$interval_method,
+    interval_status = dat$interval_status,
     stringsAsFactors = FALSE
   )
   unique <- data.frame(
@@ -893,6 +961,11 @@ plot.gllvmTMB_multi <- function(
     component = "Trait-specific uniqueness",
     proportion = dat$uniqueness,
     communality = dat$communality,
+    lower = ifelse(dat$has_interval, pmax(0, 1 - dat$upper), NA_real_),
+    upper = ifelse(dat$has_interval, pmin(1, 1 - dat$lower), NA_real_),
+    has_interval = dat$has_interval,
+    interval_method = dat$interval_method,
+    interval_status = dat$interval_status,
     stringsAsFactors = FALSE
   )
   out <- rbind(shared, unique)
@@ -903,9 +976,11 @@ plot.gllvmTMB_multi <- function(
   out
 }
 
-.plot_communality_gtmb <- function(fit) {
-  dat <- .communality_plot_data_gtmb(fit)
+.plot_communality_gtmb <- function(fit, boot = NULL) {
+  dat <- .communality_plot_data_gtmb(fit, boot = boot)
   levels_available <- as.character(unique(dat$level))
+  ci_dat <- dat[dat$component == "Shared latent (c^2)", , drop = FALSE]
+  ci_dat <- ci_dat[!duplicated(ci_dat[c("trait", "level")]), , drop = FALSE]
 
   pal <- c(
     "Shared latent (c^2)" = .gtmb_plot_palette[["green"]],
@@ -921,7 +996,67 @@ plot.gllvmTMB_multi <- function(
       colour = "white",
       linewidth = 0.25,
       width = 0.72
-    ) +
+    )
+
+  if (any(ci_dat$has_interval)) {
+    p <- p +
+      ggplot2::geom_errorbar(
+        data = ci_dat[ci_dat$has_interval, , drop = FALSE],
+        ggplot2::aes(
+          xmin = .data$lower,
+          xmax = .data$upper,
+          y = .data$trait
+        ),
+        inherit.aes = FALSE,
+        orientation = "y",
+        width = 0.18,
+        linewidth = 0.45,
+        colour = .gtmb_plot_palette[["ink"]]
+      ) +
+      ggplot2::geom_point(
+        data = ci_dat[ci_dat$has_interval, , drop = FALSE],
+        ggplot2::aes(x = .data$communality, y = .data$trait),
+        inherit.aes = FALSE,
+        size = 1.8,
+        colour = .gtmb_plot_palette[["ink"]]
+      )
+  }
+  if (any(ci_dat$interval_status == "missing")) {
+    p <- p +
+      ggplot2::geom_point(
+        data = ci_dat[ci_dat$interval_status == "missing", , drop = FALSE],
+        ggplot2::aes(x = .data$communality, y = .data$trait),
+        inherit.aes = FALSE,
+        shape = 1,
+        size = 2.8,
+        stroke = 0.75,
+        colour = .gtmb_plot_palette[["ink"]]
+      )
+  }
+
+  caption <- if (any(ci_dat$has_interval)) {
+    paste(
+      "Bars partition each trait into c^2 and 1 - c^2.",
+      "Black points and whiskers show supplied bootstrap intervals for c^2.",
+      "Read communality with rank and convergence diagnostics.",
+      sep = "\n"
+    )
+  } else if (any(ci_dat$interval_status == "missing")) {
+    paste(
+      "Bars partition each trait into c^2 and 1 - c^2.",
+      "Open rings mark requested bootstrap intervals that were missing.",
+      "Read communality with rank and convergence diagnostics.",
+      sep = "\n"
+    )
+  } else {
+    paste(
+      "Shared latent bars show c^2; grey bars show 1 - c^2.",
+      "Read communality with rank and convergence diagnostics.",
+      sep = "\n"
+    )
+  }
+
+  p <- p +
     ggplot2::scale_fill_manual(values = pal, name = NULL) +
     ggplot2::scale_x_continuous(
       limits = c(0, 1.001),
@@ -933,19 +1068,17 @@ plot.gllvmTMB_multi <- function(
       x = "Proportion of trait variance",
       y = NULL,
       title = "Communality and uniqueness by trait",
-      caption = paste(
-        "Shared latent bars show c^2; grey bars show 1 - c^2.",
-        "Read communality with rank and convergence diagnostics.",
-        sep = "\n"
-      )
+      caption = caption
     ) +
-    .gtmb_theme_figure()
+    .gtmb_theme_figure() +
+    ggplot2::theme(panel.spacing.x = grid::unit(18, "pt"))
 
   .gtmb_plot_contract(
     p,
     type = "communality",
     source = "extract_communality",
     level = levels_available,
+    interval_status = .gtmb_interval_status(ci_dat$interval_status),
     data = dat
   )
 }

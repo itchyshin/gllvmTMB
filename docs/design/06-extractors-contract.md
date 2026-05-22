@@ -294,20 +294,30 @@ errors with class
 
 #### `extract_communality(fit, level)`
 
-**Return**: a `data.frame` with one row per trait $t$ and
-columns
+**Return**: by default a named numeric vector with one entry per trait,
+containing
 
-- `trait`: trait name
-- `H2`: phylogenetic communality
-  ($\Lambda_{\text{phy}}\Lambda_{\text{phy}}^\top / \Sigma_{tt}$)
-- `C2`: non-phylogenetic shared communality
-  ($\Lambda_{\text{non}}\Lambda_{\text{non}}^\top / \Sigma_{tt}$)
-- `psi2`: unique-variance share ($\Psi_{tt} / \Sigma_{tt}$)
-- `sum`: $H^2_t + C^2_t + \psi^2_t$, which should be 1 to
-  numerical precision (invariant test).
+$$
+c_t^2 =
+\frac{(\Lambda\Lambda^\top)_{tt}}{\Sigma_{tt}},
+$$
 
-For fits without phylogeny, `H2 = 0` and the partition
-reduces to $C^2 + \psi^2 = 1$.
+for the requested `level` (`unit` / internal `B`, or `unit_obs` / internal
+`W`). When `ci = TRUE`, the return is a `data.frame` with columns `trait`,
+`tier`, `c2`, `lower`, `upper`, and `method`.
+
+For fitted `gllvmTMB_multi` objects, `method = "profile"` delegates to
+`profile_ci_communality()`, while `method = "bootstrap"` runs
+`bootstrap_Sigma(..., what = "communality")` and returns the resulting
+percentile bounds. For existing `bootstrap_Sigma()` objects that already
+contain `communality_B` / `communality_W` summaries, `extract_communality()`
+reuses the stored point estimates and percentile bounds without rerunning
+bootstrap refits (EXT-21). This bootstrap-object path is intentionally a
+reporting bridge; it does not compute new intervals.
+
+The companion `plot(type = "communality", boot = boot)` path uses the same
+stored `communality` summaries to overlay `c^2` boundary intervals on the
+stacked communality / uniqueness bars.
 
 #### `extract_repeatability(fit)`
 

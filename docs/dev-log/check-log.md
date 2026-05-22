@@ -4956,3 +4956,74 @@ Deliberately not run:
   inference-table slice. Focused extractor/plot/bootstrap tests, documentation
   regeneration, visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and
   a short no-tests package check were run.
+
+## 2026-05-21 -- Communality bootstrap interval rows
+
+Scope:
+
+- Extended `extract_communality()` so it accepts `bootstrap_Sigma()` objects
+  containing `communality_B` / `communality_W` summaries.
+- Added the bootstrap-object reporting path for `trait`, `tier`, `c2`,
+  `lower`, `upper`, and `method = "bootstrap"` rows without rerunning refits.
+- Extended `plot(type = "communality", boot = boot)` so supplied bootstrap
+  intervals are overlaid on the stacked communality / uniqueness bars at the
+  `c^2` boundary.
+- Added validation-debt row `EXT-21`.
+- Updated `NEWS.md`, `docs/design/06-extractors-contract.md`, and
+  `docs/design/53-report-ready-extractor-plot-contract.md`.
+
+Evidence:
+
+- Recovery after context compaction:
+  `git status --short --branch`, `git diff --stat`, `git diff`,
+  `tail -80 docs/dev-log/check-log.md`, and
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-21-063743-codex-launch-audit-checkpoint.md`
+  were read before continuing.
+- Recovery checkpoint written:
+  `docs/dev-log/recovery-checkpoints/2026-05-21-204819-codex-checkpoint.md`.
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #233 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current covariance/plot lane plus PR #233 base
+  work.
+- `Rscript --vanilla -e 'parse("R/extractors.R"); parse("R/plot-gllvmTMB.R")'`
+  -> parsed successfully.
+- `air format R/extractors.R R/plot-gllvmTMB.R tests/testthat/test-extract-communality-bootstrap.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_communality.Rd` and
+  `man/plot.gllvmTMB_multi.Rd`; `man/extract_ordination.Rd` was checked after a
+  parameter-inheritance correction and no longer carries the bootstrap-object
+  wording.
+- `Rscript --vanilla -e 'devtools::test(filter = "extract-communality-bootstrap|plot-gllvmTMB")'`
+  -> 165 passes, 0 failures, 0 warnings, 0 skips after formatter and
+  documentation regeneration.
+- Synthetic visual QA render:
+  `plot(fit, type = "communality", boot = boot)` wrote
+  `/tmp/gllvmTMB-communality-bootstrap-overlay.png`.
+  Florence review verdict: PASS after adding horizontal facet spacing; bars
+  have consistent row heights, interval points/whiskers are legible, and centre
+  axis labels no longer collide.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before this check-log entry.
+- `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> 0 errors, 1 install warning, 3 notes. Notes were the existing `air.toml`,
+  legacy NEWS section parsing, and unused `nlme` import.
+
+Rose / stale-wording scans:
+
+- `rg -n "EXT-21|communality bootstrap|bootstrap_Sigma\\(.*communality|plot\\(type = \\\"communality\\\"|has_interval|interval_status" NEWS.md R/extractors.R R/plot-gllvmTMB.R man/extract_communality.Rd man/plot.gllvmTMB_multi.Rd tests/testthat/test-extract-communality-bootstrap.R tests/testthat/test-plot-gllvmTMB.R docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/design/53-report-ready-extractor-plot-contract.md`
+  -> new communality interval surface is present in code, tests, Rd, NEWS, and
+  design/validation docs.
+
+Deliberately not run:
+
+- Full `devtools::check()` with tests was not rerun for this narrow
+  reporting/plotting slice. Focused extractor/plot tests, documentation
+  regeneration, visual QA, `pkgdown::check_pkgdown()`, `git diff --check`, and
+  a short no-tests package check were run.
+- No vdiffr snapshot was added; current plot evidence is object-shape tests
+  plus manual rendered PNG review.

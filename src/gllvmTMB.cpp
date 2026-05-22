@@ -90,6 +90,7 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(use_spde);
   DATA_INTEGER(spde_lv_k);         // 0 = per-trait path; >=1 = K-rank loadings path
   DATA_INTEGER(n_mesh);
+  (void)n_mesh;                    // retained in the data contract for mesh sanity checks in R
   DATA_SPARSE_MATRIX(A_proj);      // n_obs x n_mesh
   DATA_SPARSE_MATRIX(spde_M0);     // n_mesh x n_mesh
   DATA_SPARSE_MATRIX(spde_M1);

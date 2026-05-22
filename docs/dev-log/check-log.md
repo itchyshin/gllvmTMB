@@ -7535,6 +7535,60 @@ Deliberately not run:
   design-ledger slice. No 3-OS CI was available until the branch is pushed.
   No `vdiffr` snapshots exist yet.
 
+## 2026-05-22 -- Install warning n_mesh cleanup
+
+Scope:
+
+- Removed the package-side `unused variable 'n_mesh'` compiler warning without
+  changing the TMB data interface or likelihood.
+- Investigated the remaining local install warning from the PR gate.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt,statusCheckRollup`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 3 notes in 11m 28.2s. The warning was in package
+  install; notes were top-level `air.toml`, legacy NEWS headings, and unused
+  `nlme`.
+- Install-log inspection showed the install warning included broken local SDK
+  lookup, Eigen/TMB warnings, an R-header warning, and the package-side
+  `gllvmTMB.cpp:92` unused `n_mesh` warning.
+- Direct SDK check:
+  `xcrun --show-sdk-version; echo exit:$?`
+  -> fails because `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`
+  cannot be located.
+- Clean SDK override:
+  `SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" xcrun --show-sdk-version`
+  -> `26.4`.
+- Install after the `n_mesh` patch:
+  `SDKROOT="$(xcrun --sdk macosx --show-sdk-path)" R CMD INSTALL --preclean --library=/tmp/gllvmTMB-install-test-lib .`
+  -> completed successfully; the package-side unused `n_mesh` warning no
+  longer appeared.
+- Rejected source pragma attempt:
+  `Rscript --vanilla -e 'devtools::check(args = c("--no-manual", "--no-tests"), quiet = TRUE, error_on = "never")'`
+  -> R CMD check warned about non-portable diagnostic pragmas, so the pragma
+  change was removed.
+- Rejected Makevars suppression attempt:
+  package-level warning flags landed before R's default `-Wall`, so they did
+  not suppress the Eigen warnings; the Makevars change was removed.
+- Focused spatial tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "stage4-spde|spatial-mode-dispatch|spatial-orientation", stop_on_failure = TRUE)'`
+  -> 42 passes, 0 failures, 0 warnings, 0 skips.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+
+Deliberately not run:
+
+- Full `devtools::test()` was not rerun after the one-line C++ no-op marker;
+  the full suite had already passed earlier in this sitting. Full
+  `devtools::check(args = "--no-manual")` still needs either a fixed local
+  CommandLineTools SDK or CI evidence.
+
 ## 2026-05-22 -- Ordination label placement
 
 Scope:

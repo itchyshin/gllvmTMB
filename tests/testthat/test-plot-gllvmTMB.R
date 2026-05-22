@@ -451,6 +451,14 @@ test_that("plot(type = 'ordination') returns a ggplot for d = 2 (B level)", {
   expect_equal(plot_data$rotation$method, "none")
   expect_s3_class(plot_data$scores, "data.frame")
   expect_s3_class(plot_data$loadings, "data.frame")
+  expect_true(all(
+    c("label_x", "label_y", "label_hjust", "label_vjust") %in%
+      names(plot_data$loadings)
+  ))
+  expect_true(all(is.finite(plot_data$loadings$label_x)))
+  expect_true(all(is.finite(plot_data$loadings$label_y)))
+  expect_true(all(plot_data$loadings$label_hjust >= 0))
+  expect_true(all(plot_data$loadings$label_hjust <= 1))
   expect_silent(print(p))
   ## ggplot()-with-data-in-layers: top-level p$data is empty waiver().
   ## Verify the layers see scores + loadings instead.
@@ -488,6 +496,10 @@ test_that("plot(type = 'ordination') returns a static 3D pair grid for d = 3", {
   )
   expect_equal(nrow(plot_data$scores), 3L * fit$n_sites)
   expect_equal(nrow(plot_data$loadings), 3L * length(levels(fit$data$trait)))
+  expect_true(all(
+    c("label_x", "label_y", "label_hjust", "label_vjust") %in%
+      names(plot_data$loadings)
+  ))
   expect_silent(print(p))
 })
 

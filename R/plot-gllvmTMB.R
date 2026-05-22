@@ -245,6 +245,74 @@ plot.gllvmTMB_multi <- function(
   c(-lim, lim)
 }
 
+.gtmb_arrow_label_positions <- function(
+  dat,
+  x_col = "x",
+  y_col = "y",
+  group_col = NULL
+) {
+  x <- dat[[x_col]]
+  y <- dat[[y_col]]
+  span <- max(abs(c(x, y)), na.rm = TRUE)
+  span <- if (is.finite(span) && span > 0) span else 1
+  pad <- 0.045 * span
+  radius <- sqrt(x^2 + y^2)
+  ux <- ifelse(is.finite(radius) & radius > 0, x / radius, 0)
+  uy <- ifelse(is.finite(radius) & radius > 0, y / radius, 1)
+  dat$label_x <- x + pad * ux
+  dat$label_y <- y + pad * uy
+  dat$label_hjust <- ifelse(ux > 0.2, 0, ifelse(ux < -0.2, 1, 0.5))
+  dat$label_vjust <- ifelse(uy > 0.2, 0, ifelse(uy < -0.2, 1, 0.5))
+  groups <- if (is.null(group_col)) {
+    rep("all", nrow(dat))
+  } else {
+    as.character(dat[[group_col]])
+  }
+  for (group in unique(groups)) {
+    rows <- which(groups == group)
+    angle_bin <- round(atan2(uy[rows], ux[rows]) / (pi / 8))
+    for (bin in unique(angle_bin)) {
+      idx <- rows[which(angle_bin == bin)]
+      if (length(idx) < 2L) {
+        next
+      }
+      idx <- idx[order(radius[idx], decreasing = TRUE)]
+      offsets <- (seq_along(idx) - mean(seq_along(idx))) * pad * 1.4
+      dat$label_x[idx] <- dat$label_x[idx] + offsets * -uy[idx]
+      dat$label_y[idx] <- dat$label_y[idx] + offsets * ux[idx]
+    }
+    for (pass in seq_len(3L)) {
+      if (length(rows) < 2L) {
+        next
+      }
+      for (i in seq_len(length(rows) - 1L)) {
+        for (j in seq.int(i + 1L, length(rows))) {
+          row_i <- rows[[i]]
+          row_j <- rows[[j]]
+          close_x <- abs(dat$label_x[[row_i]] - dat$label_x[[row_j]]) <
+            0.24 * span
+          close_y <- abs(dat$label_y[[row_i]] - dat$label_y[[row_j]]) <
+            0.16 * span
+          if (!isTRUE(close_x && close_y)) {
+            next
+          }
+          move <- 0.5 *
+            (0.16 * span - abs(dat$label_y[[row_i]] - dat$label_y[[row_j]])) +
+            0.015 * span
+          if (dat$label_y[[row_i]] <= dat$label_y[[row_j]]) {
+            dat$label_y[[row_i]] <- dat$label_y[[row_i]] - move
+            dat$label_y[[row_j]] <- dat$label_y[[row_j]] + move
+          } else {
+            dat$label_y[[row_i]] <- dat$label_y[[row_i]] + move
+            dat$label_y[[row_j]] <- dat$label_y[[row_j]] - move
+          }
+        }
+      }
+    }
+  }
+  dat
+}
+
 .gtmb_tile_label_colour <- function(x, threshold = 0.65, relative = FALSE) {
   out <- rep(.gtmb_plot_palette[["ink"]], length(x))
   finite <- is.finite(x)
@@ -1520,6 +1588,7 @@ plot.gllvmTMB_multi <- function(
     }
     dat_s <- do.call(rbind, score_rows)
     dat_l <- do.call(rbind, loading_rows)
+    dat_l <- .gtmb_arrow_label_positions(dat_l, group_col = "pair")
     dat_s$pair <- factor(dat_s$pair, levels = unique(dat_s$pair))
     dat_l$pair <- factor(dat_l$pair, levels = levels(dat_s$pair))
 
@@ -1550,11 +1619,15 @@ plot.gllvmTMB_multi <- function(
       ) +
       ggplot2::geom_text(
         data = dat_l,
-        ggplot2::aes(x = .data$x, y = .data$y, label = .data$trait),
+        ggplot2::aes(
+          x = .data$label_x,
+          y = .data$label_y,
+          label = .data$trait,
+          hjust = .data$label_hjust,
+          vjust = .data$label_vjust
+        ),
         colour = .gtmb_plot_palette[["vermillion"]],
-        vjust = -0.5,
-        size = 3.2,
-        check_overlap = TRUE
+        size = 3.2
       ) +
       ggplot2::coord_equal() +
       ggplot2::facet_wrap(~pair, nrow = 1L) +
@@ -1608,6 +1681,7 @@ plot.gllvmTMB_multi <- function(
     display_scale = sc,
     stringsAsFactors = FALSE
   )
+  dat_l <- .gtmb_arrow_label_positions(dat_l)
 
   p <- ggplot2::ggplot() +
     ggplot2::geom_hline(
@@ -1635,9 +1709,14 @@ plot.gllvmTMB_multi <- function(
     ) +
     ggplot2::geom_text(
       data = dat_l,
-      ggplot2::aes(x = .data$x, y = .data$y, label = .data$trait),
+      ggplot2::aes(
+        x = .data$label_x,
+        y = .data$label_y,
+        label = .data$trait,
+        hjust = .data$label_hjust,
+        vjust = .data$label_vjust
+      ),
       colour = .gtmb_plot_palette[["vermillion"]],
-      vjust = -0.5,
       size = 3.5
     ) +
     ggplot2::coord_equal() +

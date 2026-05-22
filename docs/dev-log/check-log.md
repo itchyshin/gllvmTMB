@@ -7386,6 +7386,53 @@ Deliberately not run:
   roxygen-only cleanup. No vignettes/articles were edited or rendered. No
   3-OS CI was available until the branch is pushed.
 
+## 2026-05-22 -- Ordination label placement
+
+Scope:
+
+- Improved `plot(type = "ordination")` trait-label placement for 2D biplots
+  and 3D pair-grid biplots.
+- Added deterministic arrow-end label offsets, direction-aware justification,
+  and a small within-panel relaxation pass for near-overlapping same-direction
+  labels.
+- Removed the 3D `check_overlap = TRUE` text-layer behavior so plotted trait
+  labels are not silently dropped.
+
+Evidence:
+
+- Lane check before editing shared dev-log files:
+  `gh pr list --state open`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were all on the current cleanup lane.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- Focused plotting tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 207 passes, 0 failures, 0 warnings, 0 skips.
+- Visual QA render:
+  `/tmp/gllvmTMB-ordination-label-qa/ordination-labels.png`
+  -> inspected manually; labels sit outside arrow tips and same-direction label
+  crowding is reduced without dropping trait labels.
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Feature scan:
+
+  ```sh
+  rg -n 'label_x|label_y|label_hjust|label_vjust|check_overlap|arrow_label_positions' R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> expected hits for label-position metadata and no remaining
+  `check_overlap` use in ordination text layers.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  narrow plot-rendering polish slice. No roxygen, pkgdown, article, likelihood,
+  or formula grammar files changed. No 3-OS CI was available until the branch
+  is pushed.
+
 ## 2026-05-22 -- Omega extractor user-path cleanup
 
 Scope:

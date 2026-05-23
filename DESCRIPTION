@@ -69,6 +69,7 @@ Suggests:
     tibble,
     tidyr,
     vegan,
+    vdiffr,
     withr
 VignetteBuilder:
     knitr

@@ -8673,3 +8673,80 @@ Deliberately not run:
 - Full `devtools::test()` and `devtools::check()` were not rerun for this
   focused plotting API slice. No 3-OS CI is available until the branch is
   pushed.
+
+## 2026-05-22 -- Visual snapshot guards
+
+Scope:
+
+- Added the first `vdiffr` visual regression tests for publication-facing
+  plot helpers.
+- Covered two current high-value figure surfaces: `plot_correlations(style =
+  "eye")` and anchored `plot(fit, type = "ordination")`.
+- Updated the validation-debt register and visualization grammar to record
+  the new snapshot coverage without overclaiming full dispatcher-wide visual
+  QA.
+
+Evidence:
+
+- Post-merge #235 state:
+  `gh pr view 235 --json number,title,isDraft,state,mergeStateStatus,statusCheckRollup,url,headRefName,baseRefName`
+  -> PR #235 was draft, clean, and had successful Ubuntu, macOS, and Windows
+  checks before being marked ready and merged.
+- Merge:
+  `gh pr ready 235`
+  -> marked ready.
+- Merge:
+  `gh pr merge 235 --squash --delete-branch`
+  -> merged #235 to `main` as `143b23a`; local `main` fast-forwarded.
+- Post-merge main CI:
+  `gh run view 26320878258 --json status,conclusion,jobs,url --jq ...`
+  -> R-CMD-check was still `in_progress` on Ubuntu, macOS, and Windows while
+  this local visual snapshot branch was prepared.
+- Lane check before editing shared files:
+  `gh pr list --state open --json number,title,headRefName,author,isDraft,url`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were #235, its source branch commit, and #234.
+- Local visual-test dependency:
+  `Rscript --vanilla -e 'install.packages("vdiffr", repos = "https://cloud.r-project.org")'`
+  -> installed `vdiffr` locally to generate SVG baselines.
+- `air format tests/testthat/test-plot-visual-snapshots.R`
+  -> completed without output.
+- First snapshot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 2 passes, 2 warnings because both SVG baselines were new.
+- Second snapshot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 2 passes, 0 failures, 0 warnings, 0 skips.
+- Focused plot suite:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots|plot-covariance-tables|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 418 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before staging.
+- Stale visual-snapshot wording scan:
+
+  ```sh
+  rg -n 'No `?vdiffr`? snapshots|No vdiffr snapshot|need continued tutorial guidance and visual snapshots' docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-visual-snapshots.R DESCRIPTION
+  ```
+
+  -> no hits.
+- Local SVG rendering helper:
+  `Rscript --vanilla -e 'install.packages("rsvg", repos = "https://cloud.r-project.org")'`
+  -> installed binary package locally for visual inspection only.
+- Snapshot render:
+  `Rscript --vanilla -e 'dir.create("/tmp/gllvmTMB-visual-snapshots", showWarnings = FALSE); magick::image_write(magick::image_read_svg("tests/testthat/_snaps/plot-visual-snapshots/confidence-eye-correlation-plot.svg"), "/tmp/gllvmTMB-visual-snapshots/confidence-eye-correlation-plot.png"); magick::image_write(magick::image_read_svg("tests/testthat/_snaps/plot-visual-snapshots/anchored-rotated-ordination-plot.svg"), "/tmp/gllvmTMB-visual-snapshots/anchored-rotated-ordination-plot.png")'`
+  -> rendered both SVG baselines to PNG for Florence review.
+- Visual inspection rendered the two snapshots to PNG under
+  `/tmp/gllvmTMB-visual-snapshots/`.
+  -> Florence read: Confidence Eye keeps the no-outer-line / hollow-point
+  design and bottom axis; anchored ordination remains readable.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not run for this
+  test-only visual-guard slice.
+- No roxygen documentation was regenerated because no roxygen source changed.
+- No article was rendered because no article changed.

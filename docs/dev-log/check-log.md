@@ -8750,3 +8750,63 @@ Deliberately not run:
   test-only visual-guard slice.
 - No roxygen documentation was regenerated because no roxygen source changed.
 - No article was rendered because no article changed.
+
+## 2026-05-23 -- Sigma-table Confidence Eye snapshot
+
+Scope:
+
+- Added one `vdiffr` visual snapshot for `plot_Sigma_table(style = "eye")`.
+- Updated the validation-debt register and visualization grammar so
+  `plot_Sigma_table()` is no longer listed as lacking a visual snapshot.
+
+Evidence:
+
+- Post-merge #236 state:
+  `gh run view 26321931709 --json status,conclusion,jobs,url --jq ...`
+  -> main R-CMD-check passed on Ubuntu, macOS, and Windows.
+- Main pkgdown state:
+  `gh run list --branch main --limit 6 --json databaseId,workflowName,status,conclusion,createdAt,headSha,displayTitle,url`
+  -> pkgdown run `26322658797` passed for `0d03bd3`.
+- Lane check before editing shared files:
+  `gh pr list --state open --json number,title,headRefName,author,isDraft,url`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits in that local time window; current `main` was
+  `0d03bd3`.
+- `air format tests/testthat/test-plot-visual-snapshots.R`
+  -> completed without output.
+- First snapshot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 3 passes, 1 warning because the Sigma-table SVG baseline was new.
+- Second snapshot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 3 passes, 0 failures, 0 warnings, 0 skips.
+- Focused covariance plot suite:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots|plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 183 passes, 0 failures, 0 warnings, 0 skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before staging.
+- Stale snapshot-ledger wording scan:
+
+  ```sh
+  rg -n 'plot_Sigma_table\(\).*lacks a visual snapshot|plot_Sigma_table\(\) still lacks|No `?vdiffr`? snapshots|No vdiffr snapshot|need continued tutorial guidance and visual snapshots' docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-visual-snapshots.R DESCRIPTION
+  ```
+
+  -> no hits.
+- Snapshot render:
+  `Rscript --vanilla -e 'dir.create("/tmp/gllvmTMB-sigma-eye-snapshot", showWarnings = FALSE); magick::image_write(magick::image_read_svg("tests/testthat/_snaps/plot-visual-snapshots/sigma-table-confidence-eye-plot.svg"), "/tmp/gllvmTMB-sigma-eye-snapshot/sigma-table-confidence-eye-plot.png")'`
+  -> rendered the SVG baseline to PNG for Florence review.
+- Visual inspection:
+  `/tmp/gllvmTMB-sigma-eye-snapshot/sigma-table-confidence-eye-plot.png`
+  -> facets are readable; eye shapes are soft; hollow estimate points remain
+  clear; no outer interval line is drawn; the bottom axis remains visible.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not run for this
+  snapshot-only slice.
+- No roxygen documentation was regenerated because no roxygen source changed.
+- No article was rendered because no article changed.

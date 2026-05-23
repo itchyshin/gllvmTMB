@@ -260,6 +260,7 @@ Row-owner: **Emmy + Fisher** (extractor contract per
 | EXT-26 | `plot_Sigma_comparison()` estimate-vs-truth plot helper | `covered` | `test-plot-covariance-tables.R` | Plots `compare_Sigma_table()` rows as row-labelled error plots or estimate-vs-truth scatter plots, including optional `facet = "comparison"` panels for precomputed model/specification labels; visual comparison helper only, no simulation or calibration claim. |
 | EXT-27 | `plot_Sigma_heatmap()` matrix-style Sigma/R heatmap helper | `covered` | `test-plot-covariance-tables.R` | Plots `extract_Sigma_table()` rows as trait-by-trait heatmaps for covariance or correlation matrices; point-estimate visual helper only, intervals are preserved in plot data but not displayed. |
 | EXT-28 | `extract_rotated_loadings_table()` report-ready rotated loading rows | `covered` | `test-rotate-compare-loadings.R` | Row-first table over `rotate_loadings()` for ordination reports and figures; includes rotation, axis-ordering, sign-anchor, anchor-trait, raw axis-variance/share, and raw/standardized loading scale metadata. Point-estimate helper only; no loading uncertainty intervals. |
+| EXT-29 | `plot_rotated_loadings()` rotated loading matrix helper | `covered` | `test-rotate-compare-loadings.R` | Plots fitted-model or `extract_rotated_loadings_table()` rows as a report-ready loading matrix with rotation/sign/loading-scale metadata preserved in `gllvmTMB_meta` / `gllvmTMB_data`; point-estimate visual helper only, no loading uncertainty intervals. |
 
 ### Section 9 — Diagnostics
 

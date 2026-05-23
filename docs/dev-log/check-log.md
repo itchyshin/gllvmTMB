@@ -8898,3 +8898,95 @@ Deliberately not run:
 - No full site build was run; the touched Morphometrics article was rendered
   directly and `pkgdown::check_pkgdown()` passed.
 - No branch PR CI has run yet because this work is still local.
+
+## 2026-05-23 -- Rotated loading plot helper
+
+Scope:
+
+- Merged the preceding rotated loading table helper PR (#238) and branched from
+  updated `main`.
+- Inspected the maintainer-supplied GLLVM overview PDF and local
+  `GLLVM_overview` source folder. The relevant code is in
+  `/Users/z3437171/Dropbox/Github Local/GLLVM_overview/Rscripts/index.qmd`,
+  where Figure 4-style panels include ordination, loading matrix, correlation
+  heatmap, and communality/uniqueness bars.
+- Added exported `plot_rotated_loadings()` as the first plot helper over
+  `extract_rotated_loadings_table()` rows.
+- Registered validation row `EXT-29`, refreshed `_pkgdown.yml`, NEWS, Rd, and
+  the visualization grammar's Figure 3 plot-suite ledger.
+
+Evidence:
+
+- Pre-merge PR #238 state:
+  `gh pr view 238 --json number,title,state,isDraft,mergeStateStatus,statusCheckRollup,headRefName,baseRefName`
+  -> open, ready, mergeable, all PR checks green.
+- Merge:
+  `gh pr merge 238 --squash --delete-branch`
+  -> main merge commit `b410ad0 feat: add rotated loading table helper (#238)`.
+- Post-merge branch state:
+  `git status --short --branch`
+  -> `## main...origin/main`, then new branch
+  `codex/rotated-loading-plot-2026-05-23`.
+- Shared-file lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,updatedAt,isDraft,statusCheckRollup`
+  -> `[]`.
+- Recent-commit lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent local history was #238 / #237 only.
+- Overview code inspection:
+  `sed -n '900,1248p' Rscripts/index.qmd`
+  in `/Users/z3437171/Dropbox/Github Local/GLLVM_overview`
+  -> read the four-panel figure code, including Panel B's loading-matrix
+  `geom_tile()` helper code and Panel C/D correlation/integration panels.
+- Overview figure inspection:
+  `view_image("/Users/z3437171/Dropbox/Github Local/GLLVM_overview/Plots/fig_between_gllvm_outputs.png")`
+  -> confirmed the Figure 4-style target: ordination, loading matrix,
+  correlation matrix, communality/uniqueness.
+- PDF extraction/render prep:
+  `pdfinfo /Users/z3437171/Downloads/GLLVM_overview-1.pdf`
+  and
+  `pdftoppm -png -f 1 -l 8 -r 140 /Users/z3437171/Downloads/GLLVM_overview-1.pdf /tmp/gllvm-overview-page`
+  -> PDF is 21 pages; first eight pages rendered for reference inspection.
+- Formatting:
+  `air format R/plot-rotated-loadings.R tests/testthat/test-rotate-compare-loadings.R`
+  -> completed without output.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/plot_rotated_loadings.Rd`.
+- Focused tests, pre-document and post-document:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings", stop_on_failure = TRUE)'`
+  -> 84 passes, 0 failures, 0 warnings, 0 skips.
+- Synthetic visual QA render:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); ...; ggplot2::ggsave("/tmp/gllvmtmb-rotated-loadings/rotated-loading-matrix.png", p, width = 7.2, height = 4.8, dpi = 180)'`
+  -> rendered `/tmp/gllvmtmb-rotated-loadings/rotated-loading-matrix.png`;
+  Florence visual inspection passed for a clean loading-matrix panel with
+  readable row spacing, numeric tile labels, axis-share x labels, and
+  rotation-honest caption text.
+- `pkgdown::check_pkgdown()`:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Export/reference parity:
+  `Rscript --vanilla -e 'ns <- readLines("NAMESPACE"); x <- grep("^export(", ns, value = TRUE, fixed = TRUE); exports <- substring(x, 8, nchar(x) - 1); yml <- readLines("_pkgdown.yml"); covered <- sub("^    - ", "", grep("^    - ", yml, value = TRUE)); missing <- setdiff(exports, covered); missing <- missing[!missing %in% c("Beta", "VP", "Families")]; if (length(missing)) { writeLines(missing); quit(status = 1) } else { writeLines("export/pkgdown parity ok") }'`
+  -> `export/pkgdown parity ok`.
+- `git diff --check`
+  -> clean.
+- Stale wording / Rose scan:
+  `rg -n "Confidence-I|confidence-I|randrop|loading-standardisation|standardisation|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary" R/plot-rotated-loadings.R tests/testthat/test-rotate-compare-loadings.R man/plot_rotated_loadings.Rd NEWS.md _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md`
+  -> no hits.
+- Local package check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 3 notes; command exited non-zero because warnings
+  are treated as failure. The warning/notes match the known local bucket:
+  package install warning, top-level `air.toml`, legacy NEWS headings, and
+  unused `nlme` import.
+- Post-merge #238 main CI:
+  `gh run view 26333471616 --json status,conclusion,name,displayTitle,url,headSha,updatedAt,jobs`
+  -> completed successfully after the initial watch; Ubuntu, macOS, and Windows
+  all passed. Windows took 34m5s.
+
+Deliberately not run:
+
+- No article was edited or rendered for this helper slice; the helper surface
+  was added without changing public article workflows.
+- No full site build was run; `pkgdown::check_pkgdown()` passed.
+- No branch PR CI has run yet at this local checkpoint.

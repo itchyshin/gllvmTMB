@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Rotated loading plot helper (2026-05-23)
+
+* **`plot_rotated_loadings()`** draws a report-ready loading matrix from a fitted model or from `extract_rotated_loadings_table()` rows (EXT-29). IN: users can make Figure-3-style loading panels without hand-pivoting `Lambda`, with varimax/promax/none rotation, shared-variance axis ordering, sign anchoring, standardized or raw loadings, visible numeric values for small matrices, and plot metadata in `gllvmTMB_meta` / `gllvmTMB_data`. PARTIAL: the helper displays point-estimate loadings only and does not compute loading uncertainty intervals; rotated axes remain interpretive descriptions, not uniquely identified biological truths. PLANNED: bootstrap- or simulation-aligned loading uncertainty and richer gallery layouts remain later visualization slices.
+
 ## Rotated loading table helper (2026-05-23)
 
 * **`extract_rotated_loadings_table()`** returns report-ready tidy rows from the same rotation workflow used by `rotate_loadings()` and `plot(type = "ordination")` (EXT-28). IN: users can extract one row per trait × latent axis with `loading`, `abs_loading`, raw `axis_variance` / `axis_share`, `rotation`, `order_axes`, `sign_anchor`, `anchor_trait`, and `loading_scale`, including standardized loadings that match ordination-arrow scaling. PARTIAL: this is a point-estimate interpretation table; it does not compute loading uncertainty intervals and does not replace covariance, correlation, communality, or uniqueness as the primary rotation-invariant summaries. PLANNED: bootstrap or simulation-based uncertainty for loadings remains a later inference slice.

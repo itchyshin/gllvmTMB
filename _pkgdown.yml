@@ -188,6 +188,7 @@ reference:
     desc: Extract, rotate, and constrain the loading matrix
     contents:
     - rotate_loadings
+    - plot_rotated_loadings
     - compare_loadings
     - suggest_lambda_constraint
 

@@ -336,6 +336,83 @@ test_that("extract_rotated_loadings_table(method='none'): records raw orientatio
   expect_true(all(is.na(tbl$anchor_trait)))
 })
 
+# =================== plot_rotated_loadings ==============================
+
+test_that("plot_rotated_loadings(): data-frame input returns ggplot with metadata", {
+  skip_if_not_installed("ggplot2")
+  rows <- data.frame(
+    level = "unit",
+    trait = rep(c("trait1", "trait2", "trait3"), times = 2),
+    axis = rep(c("LV1", "LV2"), each = 3),
+    loading = c(0.70, 0.55, -0.10, 0.05, -0.20, 0.65),
+    abs_loading = abs(c(0.70, 0.55, -0.10, 0.05, -0.20, 0.65)),
+    axis_variance = rep(c(0.95, 0.45), each = 3),
+    axis_share = rep(c(0.68, 0.32), each = 3),
+    rotation = "varimax",
+    order_axes = TRUE,
+    sign_anchor = "auto",
+    anchor_trait = rep(c("trait1", "trait3"), each = 3),
+    loading_scale = "standardized"
+  )
+
+  p <- plot_rotated_loadings(rows)
+  expect_s3_class(p, "ggplot")
+  expect_equal(attr(p, "gllvmTMB_meta")$type, "rotated_loadings")
+  expect_equal(attr(p, "gllvmTMB_meta")$source, "data")
+  expect_equal(attr(p, "gllvmTMB_meta")$interval_status, "none")
+  expect_equal(
+    attr(p, "gllvmTMB_meta")$rotation_status,
+    "varimax_ordered_sign_anchored"
+  )
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_s3_class(plot_data, "data.frame")
+  expect_true(all(
+    c(".axis_label", ".trait_label", ".label") %in% names(plot_data)
+  ))
+  expect_true(any(grepl(
+    "%",
+    as.character(plot_data$.axis_label),
+    fixed = TRUE
+  )))
+})
+
+test_that("plot_rotated_loadings(): fitted-model input uses rotated loading table", {
+  skip_if_not_installed("ggplot2")
+  fit <- make_rrB_fit(seed = 27, d = 2)
+  p <- plot_rotated_loadings(fit, level = "unit", loading_scale = "raw")
+  plot_data <- attr(p, "gllvmTMB_data")
+
+  expect_s3_class(p, "ggplot")
+  expect_equal(
+    attr(p, "gllvmTMB_meta")$source,
+    "extract_rotated_loadings_table"
+  )
+  expect_equal(unique(plot_data$loading_scale), "raw")
+  expect_equal(nrow(plot_data), fit$n_traits * fit$d_B)
+})
+
+test_that("plot_rotated_loadings(): validates table columns and arguments", {
+  skip_if_not_installed("ggplot2")
+  rows <- data.frame(
+    level = "unit",
+    trait = "trait1",
+    axis = "LV1",
+    loading = 0.2
+  )
+  expect_error(
+    plot_rotated_loadings(rows),
+    regexp = "missing required column"
+  )
+  expect_error(
+    plot_rotated_loadings(rows, show_values = NA),
+    regexp = "show_values"
+  )
+  expect_error(
+    plot_rotated_loadings(rows, limits = c(1, -1)),
+    regexp = "limits"
+  )
+})
+
 # =================== compare_loadings ===================================
 
 test_that("compare_loadings(): non-matrix input errors", {

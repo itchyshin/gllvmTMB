@@ -460,6 +460,25 @@ rot   <- rotate_loadings(
 round(rot$Lambda, 2)
 ```
 
+The same convention is available as tidy rows when you want a table
+beside the figure:
+
+```{r rotated-loading-table}
+loading_table <- extract_rotated_loadings_table(
+  fit,
+  level = "unit",
+  method = "varimax",
+  anchor_traits = c("mass", "wing"),
+  loading_scale = "standardized"
+)
+
+loading_table <- loading_table[
+  order(loading_table$axis, -loading_table$abs_loading),
+  c("trait", "axis", "loading", "axis_share", "anchor_trait")
+]
+head(loading_table, 8)
+```
+
 ```{r ordi, fig.height = 5}
 ord <- extract_ordination(fit, level = "unit")
 head(ord$scores)

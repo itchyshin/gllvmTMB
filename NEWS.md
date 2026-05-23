@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Rotated loading table helper (2026-05-23)
+
+* **`extract_rotated_loadings_table()`** returns report-ready tidy rows from the same rotation workflow used by `rotate_loadings()` and `plot(type = "ordination")` (EXT-28). IN: users can extract one row per trait × latent axis with `loading`, `abs_loading`, raw `axis_variance` / `axis_share`, `rotation`, `order_axes`, `sign_anchor`, `anchor_trait`, and `loading_scale`, including standardized loadings that match ordination-arrow scaling. PARTIAL: this is a point-estimate interpretation table; it does not compute loading uncertainty intervals and does not replace covariance, correlation, communality, or uniqueness as the primary rotation-invariant summaries. PLANNED: bootstrap or simulation-based uncertainty for loadings remains a later inference slice.
+
 ## Rotated ordination sign anchors (2026-05-22)
 
 * **`plot(type = "ordination")`** now exposes the rotation workflow directly through `order_axes`, `sign_anchor`, and `anchor_traits`, matching `rotate_loadings()` for report-ready biplots (EXT-15 / MIS-09). IN: users can make varimax or promax ordination plots with shared-variance axis ordering and biologically pre-specified sign anchors, e.g. `anchor_traits = c("mass", "wing")`, without hand-rotating scores and loadings. PARTIAL: this is a plotting convention for interpretable axes; covariance, correlation, communality, and uniqueness remain the primary rotation-invariant summaries. PLANNED: visual snapshots and broader article gallery coverage remain future figure QA work.

@@ -145,6 +145,7 @@ reference:
     - extract_phylo_signal
     - extract_proportions
     - extract_ordination
+    - extract_rotated_loadings_table
     - extract_cutpoints
 
   - title: Methods and plots on fitted models

@@ -172,6 +172,170 @@ test_that("rotate_loadings(method='promax'): preserves linear predictor (Lambda 
   expect_equal(pred_raw, pred_rot, tolerance = 1e-8)
 })
 
+# =================== extract_rotated_loadings_table ======================
+
+test_that("extract_rotated_loadings_table(): returns tidy report columns", {
+  fit <- make_rrB_fit(seed = 21, d = 2)
+  tbl <- extract_rotated_loadings_table(fit, level = "unit")
+
+  expect_s3_class(tbl, "data.frame")
+  expect_named(
+    tbl,
+    c(
+      "level",
+      "trait",
+      "axis",
+      "loading",
+      "abs_loading",
+      "axis_variance",
+      "axis_share",
+      "rotation",
+      "order_axes",
+      "sign_anchor",
+      "anchor_trait",
+      "loading_scale"
+    )
+  )
+  expect_equal(nrow(tbl), fit$n_traits * fit$d_B)
+  expect_equal(unique(tbl$level), "unit")
+  expect_equal(unique(tbl$rotation), "varimax")
+  expect_true(all(tbl$order_axes))
+  expect_equal(unique(tbl$sign_anchor), "auto")
+  expect_equal(unique(tbl$loading_scale), "raw")
+  expect_equal(tbl$abs_loading, abs(tbl$loading))
+
+  axis_rows <- tbl[!duplicated(tbl$axis), ]
+  expect_equal(sum(axis_rows$axis_share), 1, tolerance = 1e-8)
+})
+
+test_that("extract_rotated_loadings_table(): agrees with rotate_loadings()", {
+  fit <- make_rrB_fit(seed = 22, d = 2)
+  anchors <- rownames(extract_ordination(fit, "unit")$loadings)[1:2]
+  rt <- rotate_loadings(
+    fit,
+    level = "unit",
+    method = "varimax",
+    order_axes = FALSE,
+    anchor_traits = anchors
+  )
+  tbl <- extract_rotated_loadings_table(
+    fit,
+    level = "unit",
+    method = "varimax",
+    order_axes = FALSE,
+    anchor_traits = anchors
+  )
+  L_tbl <- matrix(
+    tbl$loading,
+    nrow = fit$n_traits,
+    ncol = fit$d_B,
+    dimnames = list(unique(tbl$trait), unique(tbl$axis))
+  )
+
+  expect_equal(L_tbl[rownames(rt$Lambda), colnames(rt$Lambda)], rt$Lambda)
+  expect_equal(
+    unique(tbl$axis_variance),
+    as.numeric(rt$axis_variance),
+    tolerance = 1e-8
+  )
+  expect_equal(unique(tbl$anchor_trait), anchors)
+})
+
+test_that("extract_rotated_loadings_table(): explicit anchors set signs reproducibly", {
+  fit <- make_rrB_fit(seed = 23, d = 2)
+  anchors <- rownames(extract_ordination(fit, "unit")$loadings)[1:2]
+  tbl <- extract_rotated_loadings_table(
+    fit,
+    level = "unit",
+    method = "varimax",
+    order_axes = FALSE,
+    anchor_traits = anchors
+  )
+
+  for (axis in unique(tbl$axis)) {
+    axis_tbl <- tbl[tbl$axis == axis, ]
+    anchor <- unique(axis_tbl$anchor_trait)
+    expect_length(anchor, 1L)
+    expect_gte(axis_tbl$loading[axis_tbl$trait == anchor], 0)
+  }
+})
+
+test_that("extract_rotated_loadings_table(): varimax table preserves covariance under rotation and sign flips", {
+  fit <- make_rrB_fit(seed = 24, d = 2)
+  ord <- extract_ordination(fit, "unit")
+  anchors <- rev(rownames(ord$loadings)[1:2])
+  tbl <- extract_rotated_loadings_table(
+    fit,
+    level = "unit",
+    method = "varimax",
+    order_axes = FALSE,
+    anchor_traits = anchors
+  )
+  L_tbl <- matrix(
+    tbl$loading,
+    nrow = fit$n_traits,
+    ncol = fit$d_B,
+    dimnames = list(unique(tbl$trait), unique(tbl$axis))
+  )
+
+  expect_equal(
+    ord$loadings %*% t(ord$loadings),
+    L_tbl[rownames(ord$loadings), colnames(ord$loadings)] %*%
+      t(L_tbl[rownames(ord$loadings), colnames(ord$loadings)]),
+    tolerance = 1e-8
+  )
+})
+
+test_that("extract_rotated_loadings_table(): standardized loadings match ordination scaling", {
+  fit <- make_rrB_fit(seed = 25, d = 2)
+  tbl_raw <- extract_rotated_loadings_table(
+    fit,
+    level = "unit",
+    method = "varimax",
+    order_axes = FALSE,
+    sign_anchor = "none",
+    loading_scale = "raw"
+  )
+  tbl_std <- extract_rotated_loadings_table(
+    fit,
+    level = "unit",
+    method = "varimax",
+    order_axes = FALSE,
+    sign_anchor = "none",
+    loading_scale = "standardized"
+  )
+  sigma <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    part = "total",
+    link_residual = "auto"
+  ))
+  denom <- sqrt(diag(sigma$Sigma))
+  expected <- unname(
+    tbl_raw$loading / denom[match(tbl_raw$trait, names(denom))]
+  )
+
+  expect_equal(tbl_std$loading, expected, tolerance = 1e-8)
+  expect_equal(tbl_std$axis_variance, tbl_raw$axis_variance)
+  expect_equal(unique(tbl_std$loading_scale), "standardized")
+})
+
+test_that("extract_rotated_loadings_table(method='none'): records raw orientation", {
+  fit <- make_rrB_fit(seed = 26, d = 2)
+  tbl <- extract_rotated_loadings_table(
+    fit,
+    level = "unit",
+    method = "none",
+    order_axes = TRUE,
+    sign_anchor = "auto"
+  )
+
+  expect_equal(unique(tbl$rotation), "none")
+  expect_false(any(tbl$order_axes))
+  expect_equal(unique(tbl$sign_anchor), "none")
+  expect_true(all(is.na(tbl$anchor_trait)))
+})
+
 # =================== compare_loadings ===================================
 
 test_that("compare_loadings(): non-matrix input errors", {

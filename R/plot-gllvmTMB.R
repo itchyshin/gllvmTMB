@@ -1511,25 +1511,11 @@ plot.gllvmTMB_multi <- function(
   }
   loading_scale <- "raw"
   if (isTRUE(standardize_loadings)) {
-    sigma_out <- suppressMessages(extract_Sigma(
+    L <- .standardize_loadings_by_total_variance(
       fit,
-      level = level_label,
-      part = "total",
-      link_residual = "auto",
-      .skip_warn = TRUE
-    ))
-    if (is.null(sigma_out)) {
-      cli::cli_abort(
-        "Cannot standardize loadings because Sigma is unavailable at level {.val {level_label}}."
-      )
-    }
-    denom <- sqrt(diag(sigma_out$Sigma))
-    if (any(!is.finite(denom) | denom <= 0)) {
-      cli::cli_abort(
-        "Cannot standardize loadings because at least one trait has non-positive total variance."
-      )
-    }
-    L <- sweep(L, 1L, denom, "/")
+      Lambda = L,
+      level = level_label
+    )
     loading_scale <- "standardized"
   }
   d <- ncol(L)

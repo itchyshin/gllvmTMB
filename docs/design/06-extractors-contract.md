@@ -68,6 +68,7 @@ verification pending), `r` reserved (planned for M1/M2),
 | `bootstrap_Sigma(fit, n_boot, level, what, link_residual)` | c | cl | cl | cl | parametric-bootstrap path |
 | `getLoadings(fit, level, rotate)` | c | cl | cl | cl | raw or rotated $\Lambda$ matrix |
 | `rotate_loadings(fit, level, method)` | c | cl | cl | cl | none / varimax / promax post-fit rotation |
+| `extract_rotated_loadings_table(fit, level, method, loading_scale)` | c | cl | cl | cl | report-ready tidy rows over `rotate_loadings()` for ordination tables and figures |
 | `getLV(fit)` | c | cl | cl | cl | legacy ordination alias |
 | `getResidualCor(fit)` | c | cl | cl | cl | glmmTMB-style residual correlation matrix |
 | `getResidualCov(fit)` | c | cl | cl | cl | glmmTMB-style residual covariance matrix |
@@ -400,6 +401,31 @@ who deliberately want correlated latent axes.
 **Return**: a `list` with elements `Lambda` (rotated
 loadings), `scores` (rotated latent scores), `T` (rotation matrix),
 `axis_variance`, `axis_order`, `axis_sign`, and `anchor_traits`.
+
+#### `extract_rotated_loadings_table(fit, level, method, loading_scale)`
+
+**Return**: a data frame with one row per trait and latent
+axis. Stable columns are `level`, `trait`, `axis`, `loading`,
+`abs_loading`, `axis_variance`, `axis_share`, `rotation`,
+`order_axes`, `sign_anchor`, `anchor_trait`, and
+`loading_scale`.
+
+The function is a row-first view over `rotate_loadings()`, not
+a second rotation implementation. It uses the same rotation
+method, shared-variance axis ordering, and sign-anchoring
+rules as `plot(type = "ordination")`. `loading_scale = "raw"`
+returns the fitted loading scale; `loading_scale =
+"standardized"` divides each trait's loading by the square root
+of that trait's model-implied total variance, matching
+`plot(type = "ordination", standardize_loadings = TRUE)`.
+`axis_variance` and `axis_share` are computed from the rotated
+raw loading matrix before optional standardization because
+those values define the axis-ordering convention.
+
+Validation-debt row: `EXT-28`. Covered tests rebuild the
+matrix from tidy rows, assert varimax covariance invariance
+under ordering and sign flips, and check explicit anchor-trait
+signs.
 
 #### `getLV(fit)`
 

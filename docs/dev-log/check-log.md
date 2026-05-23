@@ -8810,3 +8810,91 @@ Deliberately not run:
   snapshot-only slice.
 - No roxygen documentation was regenerated because no roxygen source changed.
 - No article was rendered because no article changed.
+
+## 2026-05-23 -- Rotated loading table helper
+
+Scope:
+
+- Added `extract_rotated_loadings_table()` as a report-ready tidy row view
+  over `rotate_loadings()`.
+- Reused the ordination plot's loading-standardization logic through a shared
+  internal helper so table rows and biplot arrows stay aligned.
+- Added a light Morphometrics article table chunk and registered the exported
+  topic in pkgdown.
+
+Evidence:
+
+- Post-merge #237 state:
+  `gh run view 26331220807 --json databaseId,status,conclusion,headBranch,headSha,displayTitle,workflowName,jobs`
+  -> completed successfully on `ubuntu-latest`, `macos-latest`, and
+  `windows-latest`.
+- Lane check before editing shared files:
+  `gh pr list --state open --json number,title,headRefName,author,isDraft,url`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> only recent local history was #237 (`ff9c62a`, plus local pre-merge
+  `e660b7b`).
+- `air format R/rotate-loadings.R R/plot-gllvmTMB.R tests/testthat/test-rotate-compare-loadings.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/extract_rotated_loadings_table.Rd`.
+- Focused rotation/loading tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings", stop_on_failure = TRUE)'`
+  -> 69 passes, 0 failures, 0 warnings, 0 skips.
+- Focused plot test:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 236 passes, 0 failures, 0 warnings, 0 skips.
+- Combined focused test run:
+  `Rscript --vanilla -e 'devtools::test(filter = "rotate-compare-loadings|plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 305 passes, 0 failures, 0 warnings, 0 skips.
+- First article render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> failed before the new chunk because the Rmd attached a stale installed
+  `gllvmTMB` where `plot_correlations(style = )` only accepted
+  `"interval"` / `"raindrop"`.
+- Source/current formals check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); args(plot_correlations); print(formals(plot_correlations)$style)'`
+  -> source accepted `c("interval", "eye", "raindrop")`; failure was stale
+  installed-package state.
+- Installed current branch and rendered the touched article:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> wrote `articles/morphometrics.html`.
+- First pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> failed because `_pkgdown.yml` missed the new exported topic
+  `extract_rotated_loadings_table`; fixed in `_pkgdown.yml`.
+- Second pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Export/reference parity:
+  `Rscript --vanilla -e 'ns <- readLines("NAMESPACE"); x <- grep("^export(", ns, value = TRUE, fixed = TRUE); exports <- substring(x, 8, nchar(x) - 1); yml <- readLines("_pkgdown.yml"); covered <- sub("^    - ", "", grep("^    - ", yml, value = TRUE)); missing <- setdiff(exports, covered); missing <- missing[!missing %in% c("Beta", "VP", "Families")]; if (length(missing)) { writeLines(missing); quit(status = 1) } else { writeLines("export/pkgdown parity ok") }'`
+  -> `export/pkgdown parity ok`.
+- Formals/defaults check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); f <- formals(extract_rotated_loadings_table); stopifnot(identical(eval(f$method), c("varimax", "promax", "none"))); stopifnot(identical(eval(f$loading_scale), c("raw", "standardized"))); stopifnot(identical(eval(f$sign_anchor), c("auto", "none"))); writeLines("extract_rotated_loadings_table formals ok")'`
+  -> `extract_rotated_loadings_table formals ok`.
+- `git diff --check`
+  -> clean.
+- Local package check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 3 notes; command exited non-zero because warnings
+  are treated as failure. The warning/notes match the known local bucket:
+  package install warning, top-level `air.toml`, legacy NEWS headings, and
+  unused `nlme` import.
+- Stale wording / Rose scans:
+
+  ```sh
+  rg -n "loading-standardisation|standardisation|PARTIAL,|PLANNED," R/rotate-loadings.R man/extract_rotated_loadings_table.Rd NEWS.md docs/design/06-extractors-contract.md vignettes/articles/morphometrics.Rmd
+  rg -n "diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b" R/rotate-loadings.R man/extract_rotated_loadings_table.Rd NEWS.md docs/design/06-extractors-contract.md vignettes/articles/morphometrics.Rmd
+  rg -n "gllvmTMB_wide\\(Y|already removed|primary new-user API|meta_known_V|profile-likelihood default|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" NEWS.md vignettes/articles/morphometrics.Rmd R/rotate-loadings.R man/extract_rotated_loadings_table.Rd _pkgdown.yml docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md
+  ```
+
+  -> first two scans had no hits; the third found only pre-existing
+  historical/register compatibility mentions (`meta_known_V`, `gllvmTMB_wide`)
+  outside the new helper/article wording.
+
+Deliberately not run:
+
+- No full site build was run; the touched Morphometrics article was rendered
+  directly and `pkgdown::check_pkgdown()` passed.
+- No branch PR CI has run yet because this work is still local.

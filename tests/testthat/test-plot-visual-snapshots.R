@@ -1,0 +1,98 @@
+## Visual regression tests for publication-facing plot helpers.
+##
+## These snapshots are intentionally sparse. They guard the figures whose
+## appearance carries interpretation: Confidence Eye correlation plots and
+## rotated ordination biplots.
+
+skip_if_no_visual_snapshot <- function() {
+  testthat::skip_if_not_installed("ggplot2")
+  testthat::skip_if_not_installed("vdiffr")
+}
+
+make_snapshot_ordination_fit <- function() {
+  traits <- paste0("T", 1:4)
+  units <- paste0("unit", 1:10)
+  scores <- cbind(
+    LV1 = seq(-1.35, 1.35, length.out = length(units)),
+    LV2 = c(-0.60, -0.35, -0.10, 0.18, 0.45, 0.52, 0.26, -0.05, -0.32, -0.58)
+  )
+  Lambda <- matrix(
+    c(
+      0.76,
+      0.18,
+      0.52,
+      0.34,
+      -0.20,
+      0.70,
+      -0.42,
+      0.48
+    ),
+    nrow = length(traits),
+    byrow = TRUE,
+    dimnames = list(traits, c("LV1", "LV2"))
+  )
+  structure(
+    list(
+      data = data.frame(
+        trait = factor(rep(traits, each = length(units)), levels = traits),
+        unit = factor(rep(units, times = length(traits)), levels = units)
+      ),
+      trait_col = "trait",
+      unit_col = "unit",
+      use = list(rr_B = TRUE, rr_W = FALSE),
+      d_B = 2L,
+      d_W = 0L,
+      n_sites = length(units),
+      report = list(Lambda_B = Lambda),
+      tmb_obj = list(
+        env = list(
+          last.par.best = stats::setNames(
+            as.vector(t(scores)),
+            rep("z_B", length(units) * 2L)
+          )
+        )
+      )
+    ),
+    class = "gllvmTMB_multi"
+  )
+}
+
+test_that("confidence-eye correlation plot has stable visual output", {
+  skip_if_no_visual_snapshot()
+  cors <- data.frame(
+    tier = c("unit", "unit", "unit", "unit"),
+    trait_i = c("length", "length", "mass", "beak"),
+    trait_j = c("mass", "wing", "wing", "wing"),
+    correlation = c(0.42, -0.28, 0.34, 0.58),
+    lower = c(0.12, -0.53, 0.05, 0.31),
+    upper = c(0.66, 0.02, 0.57, 0.76),
+    method = "fisher-z",
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_correlations(cors, style = "eye")
+
+  vdiffr::expect_doppelganger(
+    "confidence-eye-correlation-plot",
+    p
+  )
+})
+
+test_that("anchored rotated ordination has stable visual output", {
+  skip_if_no_visual_snapshot()
+  fit <- make_snapshot_ordination_fit()
+
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    rotation = "varimax",
+    anchor_traits = c("T1", "T3"),
+    standardize_loadings = TRUE
+  ))
+
+  vdiffr::expect_doppelganger(
+    "anchored-rotated-ordination-plot",
+    p
+  )
+})

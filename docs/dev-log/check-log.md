@@ -8612,3 +8612,64 @@ Deliberately not run:
 - Full `devtools::test()` and `devtools::check()` were not rerun for this
   roxygen-only cleanup. No vignettes/articles were edited or rendered. No
   3-OS CI was available until the branch is pushed.
+
+## 2026-05-22 -- Ordination sign-anchor plot workflow
+
+Scope:
+
+- Added `order_axes`, `sign_anchor`, and `anchor_traits` to
+  `plot(fit, type = "ordination")` so users can request the standard
+  fit -> rotate -> order -> sign-anchor -> plot workflow directly from the
+  plotting API.
+- Updated Morphometrics to demonstrate anchored, standardized ordination with
+  `anchor_traits = c("mass", "wing")`.
+- Wrapped ordination captions after Florence visual QA showed the first
+  anchored export clipped a long caption line.
+
+Evidence:
+
+- Lane check before editing shared files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup,url,updatedAt`
+  -> no open PRs.
+- Lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the merged #234 lane.
+- `air format R/plot-gllvmTMB.R tests/testthat/test-plot-gllvmTMB.R`
+  -> completed without output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd`.
+- First focused plot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB", stop_on_failure = TRUE)'`
+  -> 235 passes, 1 failure before loosening a caption-regex assertion after
+  wrapping split "supplied traits" across a line.
+- Final focused run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-gllvmTMB|example-morphometrics", stop_on_failure = TRUE)'`
+  -> 286 passes, 0 failures, 0 warnings, 0 skips.
+- First article render attempt:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/morphometrics", quiet = TRUE)'`
+  -> failed because the new subprocess picked up a stale local installed
+  package where `plot_correlations(style = "eye")` was not yet available.
+- Current-source article render:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = TRUE, new_process = FALSE)'`
+  -> rendered `vignettes/articles/morphometrics.Rmd` cleanly.
+- Florence visual QA:
+  `/tmp/gllvmTMB-ordination-qa/anchored-ordination-wrapped.png`
+  -> caption no longer clips; arrows, labels, and sign-anchor explanation are
+  readable at 7 x 5.4 inches.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean before the check-log / after-task entry.
+- Stale wording scan:
+
+  ```sh
+  rg -n "Confidence-I|confidence-I|randrop|Phase 1c-viz at 0/7|quartimax|profile-likelihood default|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|meta_known_V as primary" NEWS.md R/plot-gllvmTMB.R man/plot.gllvmTMB_multi.Rd vignettes/articles/morphometrics.Rmd docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-gllvmTMB.R
+  ```
+
+  -> no hits.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun for this
+  focused plotting API slice. No 3-OS CI is available until the branch is
+  pushed.

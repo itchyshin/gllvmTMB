@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Rotated ordination sign anchors (2026-05-22)
+
+* **`plot(type = "ordination")`** now exposes the rotation workflow directly through `order_axes`, `sign_anchor`, and `anchor_traits`, matching `rotate_loadings()` for report-ready biplots (EXT-15 / MIS-09). IN: users can make varimax or promax ordination plots with shared-variance axis ordering and biologically pre-specified sign anchors, e.g. `anchor_traits = c("mass", "wing")`, without hand-rotating scores and loadings. PARTIAL: this is a plotting convention for interpretable axes; covariance, correlation, communality, and uniqueness remain the primary rotation-invariant summaries. PLANNED: visual snapshots and broader article gallery coverage remain future figure QA work.
+
 ## Canonical `confint()` Sigma names (2026-05-22)
 
 * **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full latent + unique Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.

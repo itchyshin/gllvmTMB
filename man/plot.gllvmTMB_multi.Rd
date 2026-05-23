@@ -12,6 +12,9 @@
   boot = NULL,
   axes = c(1L, 2L),
   rotation = c("varimax", "none", "promax"),
+  order_axes = TRUE,
+  sign_anchor = c("auto", "none"),
+  anchor_traits = NULL,
   standardize_loadings = FALSE,
   ...
 )
@@ -59,6 +62,19 @@ shared-variance-ordered, sign-anchored axes for interpretation.
 Use \code{"none"} to show the raw computational orientation. Rotation
 makes the biplot easier to label; use \code{Sigma}, correlations,
 communality, and uniqueness as the primary quantitative summaries.}
+
+\item{order_axes}{Logical. For rotated \code{"ordination"} plots, reorder
+latent axes by decreasing shared variance after rotation. Default
+\code{TRUE}. Ignored when \code{rotation = "none"}.}
+
+\item{sign_anchor}{One of \code{"auto"} or \code{"none"}. For rotated
+\code{"ordination"} plots, \code{"auto"} flips each axis so its anchor trait has
+a positive loading. Default \code{"auto"}. Ignored when \code{rotation = "none"}.}
+
+\item{anchor_traits}{Optional character vector of trait names used for
+sign anchoring in rotated \code{"ordination"} plots. Supply one trait per
+axis after any \code{order_axes} step. Missing axes fall back to the trait
+with the largest absolute loading. Ignored when \code{rotation = "none"}.}
 
 \item{standardize_loadings}{Logical. For \code{"ordination"} plots, divide
 each trait loading by the square root of that trait's model-implied total

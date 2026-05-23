@@ -451,20 +451,34 @@ interpretability, or lower-triangular for a unique fit):
 
 ```{r rotate}
 L_hat <- extract_ordination(fit, level = "unit")$loadings
-rot   <- rotate_loadings(fit, level = "unit", method = "varimax")
+rot   <- rotate_loadings(
+  fit,
+  level = "unit",
+  method = "varimax",
+  anchor_traits = c("mass", "wing")
+)
 round(rot$Lambda, 2)
 ```
 
 ```{r ordi, fig.height = 5}
 ord <- extract_ordination(fit, level = "unit")
 head(ord$scores)
-plot(fit, type = "ordination", level = "unit")
+plot(
+  fit,
+  type = "ordination",
+  level = "unit",
+  anchor_traits = c("mass", "wing"),
+  standardize_loadings = TRUE
+)
 ```
 
 The biplot shows the trait loadings on the two latent axes. In a
 real morphometric study, the first axis usually picks up *overall
 size*, with all traits loading positively — the famous "general
-factor" of body size. The second axis picks up shape contrasts.
+factor" of body size. The second axis picks up shape contrasts. The
+sign anchor is a reporting convention: here positive LV1 is anchored to
+`mass` and positive LV2 to `wing`; changing signs would not change the
+fitted covariance.
 
 ## What this article does *not* cover
 

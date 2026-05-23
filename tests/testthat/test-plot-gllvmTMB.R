@@ -599,6 +599,67 @@ test_that("plot(type = 'ordination') can use rotated plot-ready axes", {
   expect_silent(print(p))
 })
 
+test_that("plot(type = 'ordination') exposes biological sign anchors", {
+  skip_if_no_ggplot2()
+  fit <- make_fake_ordination_fit(d = 2L)
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    rotation = "varimax",
+    anchor_traits = c("T1", "T2")
+  ))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "ordination", "rotate_loadings")
+  expect_equal(meta$rotation_status, "varimax_ordered_sign_anchored")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(plot_data$rotation$sign_anchor, "auto")
+  expect_equal(plot_data$rotation$anchor_traits[1:2], c("T1", "T2"))
+  expect_gte(plot_data$loadings$loading_x[plot_data$loadings$trait == "T1"], 0)
+  expect_gte(plot_data$loadings$loading_y[plot_data$loadings$trait == "T2"], 0)
+  expect_match(p$labels$caption, "sign-anchored to supplied\\s+traits")
+  expect_silent(print(p))
+})
+
+test_that("plot(type = 'ordination') can leave rotated axes unordered and unanchored", {
+  skip_if_no_ggplot2()
+  fit <- make_fake_ordination_fit(d = 2L)
+  p <- suppressMessages(plot(
+    fit,
+    type = "ordination",
+    level = "unit",
+    rotation = "varimax",
+    order_axes = FALSE,
+    sign_anchor = "none"
+  ))
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_plot_meta(p, "ordination", "rotate_loadings")
+  expect_equal(meta$rotation_status, "varimax_raw_order_unanchored")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_false(plot_data$rotation$order_axes)
+  expect_equal(plot_data$rotation$sign_anchor, "none")
+  expect_equal(plot_data$rotation$axis_order, seq_len(2L))
+  expect_equal(plot_data$rotation$axis_sign, rep(1, 2L))
+  expect_true(all(is.na(plot_data$rotation$anchor_traits)))
+  expect_match(p$labels$caption, "not sign-anchored")
+  expect_silent(print(p))
+})
+
+test_that("plot(type = 'ordination') validates supplied anchor traits", {
+  skip_if_no_ggplot2()
+  fit <- make_fake_ordination_fit(d = 2L)
+  expect_error(
+    suppressMessages(plot(
+      fit,
+      type = "ordination",
+      level = "unit",
+      rotation = "varimax",
+      anchor_traits = "not_a_trait"
+    )),
+    regexp = "anchor_traits"
+  )
+})
+
 test_that("plot(type = 'ordination') can standardize loading arrows", {
   skip_if_no_ggplot2()
   fit <- make_BW_fit_for_plot()

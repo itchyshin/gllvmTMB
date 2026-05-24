@@ -9175,3 +9175,76 @@ Deliberately not run:
 - No roxygen was regenerated; this test-only/design-led slice changed no
   exported documentation.
 - No pkgdown rebuild was run for this slice because no pkgdown source changed.
+
+## 2026-05-23 -- Correlation matrix branch resume / pre-PR validation
+
+Scope:
+
+- Resumed branch `codex/correlation-matrix-plots-2026-05-23` after the
+  recovery checkpoint left the full-check result unresolved.
+- Rehydrated from the clean working tree, the latest recovery checkpoint, the
+  current after-task reports, open PR census, recent commits, and the latest
+  CI run list.
+- Did not change package API, docs, examples, figures, or tests in this pass;
+  this entry records validation and coordination state before publishing the
+  branch.
+
+Evidence:
+
+- Rehydration:
+  `git status --short --branch`
+  -> `## codex/correlation-matrix-plots-2026-05-23` with no uncommitted files.
+- Latest checkpoint:
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-23-183642-ada-checkpoint.md`
+  -> identified the unfinished local full-check gate and queued Rose/Shannon
+  before push.
+- Open PR census:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> current local branch commits only:
+  `9d1520b`, `5cf4f82`, and `5179468`.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed and left the working tree clean.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Full local package check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 3 notes in 12m 12.9s; command exited non-zero
+  because warnings are treated as failures. The notes were the existing
+  `air.toml`, legacy NEWS headings, and unused `nlme` import notes.
+- Install-warning reproduction:
+  `_R_CHECK_FORCE_SUGGESTS_=false R CMD check --no-manual --no-tests --no-examples --no-vignettes /tmp/gllvmtmb-check-resume/gllvmTMB_0.2.0.tar.gz`
+  -> reproduced the installation warning as
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension'`,
+  matching the known local Apple clang / R-header warning bucket documented in
+  earlier check-log entries. The no-vignette reproduction also produced
+  expected vignette-output warnings and was used only to expose the install
+  warning source, not as package-check evidence.
+- Export/reference parity:
+  `Rscript --vanilla -e 'ns <- readLines("NAMESPACE"); x <- grep("^export(", ns, value = TRUE, fixed = TRUE); exports <- substring(x, 8, nchar(x) - 1); yml <- readLines("_pkgdown.yml"); covered <- sub("^    - ", "", grep("^    - ", yml, value = TRUE)); missing <- setdiff(exports, covered); missing <- missing[!missing %in% c("Beta", "VP", "Families")]; if (length(missing)) { writeLines(missing); quit(status = 1) } else { writeLines("export/pkgdown parity ok") }'`
+  -> `export/pkgdown parity ok`.
+- Formals/defaults check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); f <- formals(plot_correlations); stopifnot(identical(eval(f$style), c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"))); stopifnot(identical(eval(f$label_type), c("auto", "estimate", "ci", "estimate_ci", "none"))); stopifnot(identical(eval(f$matrix_layout), c("by_level", "estimate_ci", "levels"))); writeLines("plot_correlations formals ok")'`
+  -> `plot_correlations formals ok`.
+- Rose stale-wording scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" NEWS.md R/plot-covariance-tables.R man/plot_correlations.Rd _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-covariance-tables.R tests/testthat/test-plot-visual-snapshots.R`
+  -> only historical compatibility/deprecation mentions of `gllvmTMB_wide()` in
+  the validation register and older NEWS; no new primary-API or stale-notation
+  hits in the touched helper/Rd/EXT-30 wording.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Recent CI:
+  `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,updatedAt`
+  -> latest `main` R-CMD-check and pkgdown for commit `3d327e6` both passed.
+
+Deliberately not run:
+
+- No article render was rerun in this resume pass; no article source changed
+  after the committed matrix-layout, site-chrome, and snapshot slices.
+- No browser-visible local pkgdown screenshot was obtained; the earlier
+  site-chrome after-task report records the in-app browser URL-policy block.

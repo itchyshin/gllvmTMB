@@ -51,6 +51,8 @@ conditions pass.
 | 11 | Reference index cleanup | Rose, Grace, Pat | Done: `_pkgdown.yml` separates first-line APIs, helpers, diagnostics, validation utilities, and loadings; compatibility/internal topics are hidden from the visible index where appropriate. |
 | 12 | Symbol-to-syntax alignment blocks | Boole, Noether, Pat | Done: visible conceptual pages pair covariance symbols with R syntax, extractors, and plain-language interpretation. |
 | 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Partial: helper metadata, colour-safe palettes, confidence-eye displays, matrix correlation layouts, and visual snapshots exist; full rendered article-figure review remains open. |
+| 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | In progress: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls`, `convergence-start-values`, `response-families`, and `api-keyword-grid` still need bounded closeout passes. |
+| 15 | Codex / Claude Code work sharing | Ada, Shannon, Rose | In progress: keep one active PR, record handoffs in repo files, and split work by non-overlapping lanes before opening parallel edits. |
 
 Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 have passed the
 public-site launch gate. The six visible pages, Get Started, article index,
@@ -90,7 +92,48 @@ in
 The key boundary is that matrix displays show extractor-supplied rows and
 interval columns; they do not create or calibrate new uncertainty evidence.
 
+Coordination checkpoint, 2026-05-24: Codex and Claude Code can share the
+remaining reset work, but only through explicit lanes. Codex owns the live
+roadmap, check-log, PR pacing, and cross-file consistency gates. Claude Code is
+best used for bounded implementation or prose slices that can be reviewed as a
+single PR: one visible article wording pass, one diagnostic helper, one test
+fixture, or one hidden-article restoration prep at a time. Before either agent
+edits shared coordination files (`ROADMAP.md`, `docs/dev-log/check-log.md`,
+after-task reports, `docs/design/`, `AGENTS.md`, `CLAUDE.md`, or
+`_pkgdown.yml`), run the pre-edit lane check from `AGENTS.md` and leave the
+handoff in a PR comment, check-log entry, or after-task report rather than in
+chat alone.
+
 After these infrastructure slices, resume article restoration one page at a time.
+
+## Next Shared Work Queue
+
+Use this queue when deciding what Codex or Claude Code should pick up next.
+Keep each item to one branch and one pull request.
+
+| Order | Lane | Good owner | Stop condition |
+|---|---|---|---|
+| 1 | `pitfalls` balance pass | Claude Code or Codex + Pat/Rose | The points are general diagnostic checks; any model-specific material is labelled as an example, not the rule. |
+| 2 | `convergence-start-values` wording audit | Codex + Fisher/Rose | `pdHess = FALSE` is framed as an uncertainty/identifiability warning, with bootstrap/profile limits named. |
+| 3 | Technical reference closeout for `response-families` and `api-keyword-grid` | Claude Code + Rose/Boole | Scope labels match validation rows and no hidden worked examples are advertised as ready. |
+| 4 | #248 identifiability diagnostics | Codex or Claude Code + Fisher/Emmy | Programmatic diagnostics are designed before user-facing claims or plots expand. |
+| 5 | #228 predictive diagnostics | Codex + Fisher/Grace | Starts only after diagnostic wording and plot semantics are stable on the public methods pages. |
+
+If two agents are active, prefer one public-documentation lane and one
+implementation/test lane. Do not let both agents edit the roadmap, check-log,
+same article, or same design document in parallel.
+
+## Cross-Agent Rules
+
+- One active PR should touch the public surface at a time unless the
+  branches are demonstrably disjoint.
+- Shared coordination files need the `AGENTS.md` pre-edit lane check before
+  edits and a repo-visible handoff after edits.
+- Claude Code should not infer ownership from chat alone; the current lane
+  should be named in a PR comment, check-log entry, or after-task report.
+- If a branch changes formula grammar, likelihoods, exported APIs, generated
+  Rd, `_pkgdown.yml`, or validation-debt status, stop and widen the reviewer
+  set before continuing.
 
 ## Long Horizon To Finish
 

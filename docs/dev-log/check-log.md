@@ -9125,3 +9125,53 @@ Deliberately not run:
 - No R package tests were run for this CSS/config-only slice.
 - No browser-visible screenshot was possible because the in-app browser blocked
   the local preview URLs.
+
+## 2026-05-23 -- Correlation matrix visual snapshots
+
+Scope:
+
+- Added sparse `vdiffr` visual regression guards for the new
+  `plot_correlations()` matrix layouts.
+- Guarded one `matrix_layout = "estimate_ci"` heatmap and one
+  `matrix_layout = "levels"` ellipse/oval matrix.
+- Updated EXT-30 and Design 46 so the visual-debt wording matches the new
+  snapshot evidence.
+
+Evidence:
+
+- Shared-file lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`.
+- Recent-commit lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent local commits were the two current branch commits, with no open PR
+  overlap.
+- Formatting:
+  `air format tests/testthat/test-plot-visual-snapshots.R`
+  -> completed without output.
+- First snapshot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 5 passes, 2 warnings; warnings were the expected new-snapshot additions.
+- Second snapshot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 5 passes, 0 failures, 0 warnings, 0 skips.
+- Combined focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 237 passes, 0 failures, 0 warnings, 0 skips.
+- Snapshot render inspection:
+  `Rscript --vanilla -e 'dir.create("/tmp/gllvmtmb-matrix-snapshots", showWarnings = FALSE); magick::image_write(magick::image_read_svg("tests/testthat/_snaps/plot-visual-snapshots/correlation-estimate-ci-matrix-plot.svg"), "/tmp/gllvmtmb-matrix-snapshots/correlation-estimate-ci-matrix-plot.png"); magick::image_write(magick::image_read_svg("tests/testthat/_snaps/plot-visual-snapshots/correlation-two-level-ellipse-matrix-plot.svg"), "/tmp/gllvmtmb-matrix-snapshots/correlation-two-level-ellipse-matrix-plot.png")'`
+  -> rendered both PNG previews.
+- Florence visual read of rendered previews:
+  -> PASS for stable triangle meanings, visible significance outlines/stars,
+  legible cell labels, and no overlapping legend/title/caption text at the
+  checked snapshot size.
+- Consistency scan:
+  `rg -n "correlation-estimate-ci-matrix|correlation-two-level-ellipse|EXT-30|matrix-style correlation|Snapshot guards" tests/testthat/test-plot-visual-snapshots.R tests/testthat/_snaps/plot-visual-snapshots docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md docs/dev-log/after-task/2026-05-23-correlation-matrix-snapshots.md`
+  -> snapshot names, EXT-30 evidence, visualization grammar wording, and
+  after-task report point to the same two guarded matrix layouts.
+
+Deliberately not run:
+
+- No roxygen was regenerated; this test-only/design-led slice changed no
+  exported documentation.
+- No pkgdown rebuild was run for this slice because no pkgdown source changed.

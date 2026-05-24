@@ -41,11 +41,11 @@ Status labels during the public-surface reset:
 
 | row | Public status | Validation note |
 |---|---|---|
-| none | covered for the core Gaussian `latent() + unique()` and long/wide grammar | FG-02, FG-03, FG-06, FAM-01 |
-| animal | partial | parser and relatedness plumbing exist; the worked animal-model article is hidden until a stronger fixture and recovery story pass |
-| phylo | partial | paired phylogenetic paths are implemented, but the public article is hidden until the phylo/non-phylo split and validation rows are reviewed |
-| spatial | partial | mesh and dispatch are implemented; figure-heavy spatial examples wait for diagnostics and Florence review |
-| meta_V | partial | exact known-V support exists; proportional mode is planned, so meta-analysis examples stay hidden |
+| none | covered for long/wide grammar and the core Gaussian `latent() + unique()` path; standalone `indep()` and `dep()` are partial outside that core, and the scalar cell has no public no-prefix keyword | FG-01--FG-06 and FAM-01 covered; FG-07--FG-09 partial |
+| animal | covered for the five covariance keywords and A/Ainv helper path; `animal_slope()` and cross-package agreement remain partial | ANI-01--ANI-05, ANI-07, and ANI-08 covered; ANI-06, ANI-09, and ANI-10 partial |
+| phylo | covered for the main paired decomposition and sparse A^-1 route; scalar, marginal-only, saturated, and slope paths are partial at the current validation depth | FG-12 and PHY-01--PHY-03 covered; PHY-04--PHY-06 partial |
+| spatial | covered for mesh construction, mode dispatch, orientation, and legacy-alias deprecation; covariance recovery depth remains partial | SPA-01 and SPA-05--SPA-07 covered; SPA-02--SPA-04 partial |
+| meta_V | partial for exact single-V workflows, covered for block-V construction, blocked for proportional mode | MET-01 partial; MET-02 covered; MET-03 blocked; MET-04 partial |
 
 Use this page as a grammar lookup. For a worked example, start with
 [`morphometrics`](morphometrics.html) for non-phylogenetic
@@ -184,6 +184,32 @@ The scalar no-correlation cell is not a covariance keyword. Ordinary
 random intercepts such as `(1 | batch)` pass through as ordinary random
 intercepts rather than trait covariance terms.
 
+### Animal
+
+```{r}
+# One shared additive-genetic variance
+animal_scalar(id, pedigree = ped)
+
+# Trait-specific additive-genetic diagonal
+animal_unique(id, pedigree = ped)
+
+# Explicit marginal-only animal-model diagonal
+animal_indep(0 + trait | id, pedigree = ped)
+
+# Full unstructured animal-model trait covariance
+animal_dep(0 + trait | id, pedigree = ped)
+
+# Reduced-rank additive-genetic shared covariance
+animal_latent(id, d = 2, pedigree = ped)
+```
+
+The animal row uses the same five covariance modes as the grid, but
+the correlation among individuals comes from a pedigree, a dense
+relatedness matrix `A`, or a sparse inverse `Ainv`. Use
+`animal_latent() + animal_unique()` for a decomposed additive-genetic
+model, `animal_indep()` for a marginal-only diagonal animal model,
+and `animal_dep()` as the saturated small-trait comparator.
+
 ### Phylogenetic
 
 ```{r}
@@ -233,15 +259,24 @@ legacy `spatial()` alias.
 
 ## Helpers Outside The Grid
 
-Two exported helpers are related to the grid but are not grid cells.
+Three exported helpers are related to the grid but are not grid
+cells.
 
 `phylo_slope(x | species)` adds a phylogenetic random slope for a
 covariate `x`. It is an extension hook, not one of the five covariance
 modes.
 
+`animal_slope(x | id)` adds the animal-model analogue: a random slope
+whose groups are related by a pedigree, `A`, or `Ainv`. It is parser
+accepted, but the validation register still marks recovery depth as
+partial (ANI-06).
+
 `meta_V(V = V)` adds known sampling covariance for
 meta-analytic workflows. It uses a user-supplied covariance matrix
-rather than one of the grid's estimated correlation rows.
+rather than one of the grid's estimated correlation rows. Exact
+single-V workflows are partial (MET-01), block-V construction is
+covered (MET-02), and proportional known-V mode is blocked until a
+post-CRAN validation path lands (MET-03).
 
 ## What Not To Combine
 

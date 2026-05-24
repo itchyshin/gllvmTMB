@@ -9470,3 +9470,82 @@ Deliberately not run:
 - No full `devtools::check()` before opening the article PR; local article
   render, `pkgdown::check_pkgdown()`, and PR CI are the relevant gates for
   this bounded documentation slice.
+
+## 2026-05-24 -- Formula keyword grid status boundary
+
+Scope:
+
+- Branch: `codex/api-keyword-grid-status-2026-05-24`.
+- Updated the visible Tier-2 technical reference
+  `vignettes/articles/api-keyword-grid.Rmd` so the status table cites
+  covered, partial, and blocked validation-debt rows precisely.
+- Added the missing `animal_*` per-cell syntax examples because the grid
+  already lists the animal row and ANI-01--ANI-05 are covered.
+- Tightened helper prose for `animal_slope()` and `meta_V()` so readers see
+  ANI-06, MET-01, MET-02, and MET-03 boundaries before treating those helpers
+  as fully validated current workflows.
+- No public R API, likelihood, formula grammar, NAMESPACE, generated Rd,
+  pkgdown navigation, README, or NEWS change.
+
+Evidence:
+
+- Post-merge `main` CI gate for PR #243:
+  `gh run watch 26355011907 --repo itchyshin/gllvmTMB --interval 15 --exit-status`
+  -> passed on Ubuntu in 27m38s, macOS in 28m29s, and Windows in 35m49s.
+- Post-merge pkgdown deploy for PR #243:
+  `gh run watch 26355720491 --repo itchyshin/gllvmTMB --interval 15 --exit-status`
+  -> passed in 7m33s. GitHub emitted a Node.js 20 deprecation annotation for
+  Pages actions; the run itself succeeded.
+- Pre-edit lane check for shared public/dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the merged response-families PR #243, covariance
+  article PR #242, Get Started PR #241, correlation-matrix PR #240, and their
+  source-branch commits; no competing open lane was detected.
+- Working-tree base check:
+  `git status --short --branch`
+  -> `## main...origin/main`.
+- Public article status scan:
+  `rg -n "Scope boundary|validation-debt|FAM-|FG-|COV-|MIX-|covered|partial|blocked" vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd README.md`
+  -> found `api-keyword-grid.Rmd` still compressed whole rows as `partial`
+  rather than citing the current animal, phylo, spatial, and `meta_V` row IDs.
+- Keyword/source signature scan:
+  `rg -n "animal_scalar|animal_unique|animal_indep|animal_dep|animal_latent|animal_slope" R man docs/design/01-formula-grammar.md docs/design/14-known-relatedness-keywords.md`
+  -> confirmed the documented animal examples match exported signatures and
+  the formula-grammar/design tables.
+- Touched article render:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("articles/api-keyword-grid", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `Output created: pkgdown-site/articles/api-keyword-grid.html`.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rendered-source consistency:
+  `rg -n "ANI-|PHY-|SPA-|MET-|FG-|animal_scalar|animal_slope|meta_V\\(|proportional known-V|sparse A\\^-1" vignettes/articles/api-keyword-grid.Rmd pkgdown-site/articles/api-keyword-grid.html`
+  -> source and rendered HTML contain the row IDs, animal syntax examples, and
+  helper caveats.
+- Long/wide call scan:
+  `rg -n "gllvmTMB\\(|traits\\(|trait =" vignettes/articles/api-keyword-grid.Rmd pkgdown-site/articles/api-keyword-grid.html`
+  -> the long-format example passes `trait =`; the wide example uses
+  `traits(...)` and no `trait =`.
+- Rose stale-wording scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/api-keyword-grid.Rmd`
+  -> no matches.
+- Rendered-browser tooling check:
+  `node_repl: await import("playwright")`
+  -> unavailable in this session, so no Playwright screenshot was taken. The
+  rendered HTML was checked via pkgdown render plus source/rendered rg scans.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and generated Rd were not changed.
+- No focused tests or full `devtools::test()`; this is an article-only
+  status-boundary/prose change, and the touched article render exercises the
+  examples.
+- No full `devtools::check()` before opening the article PR; local article
+  render, `pkgdown::check_pkgdown()`, source/rendered consistency, and PR CI
+  are the relevant gates for this bounded documentation slice.

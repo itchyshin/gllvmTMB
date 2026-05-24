@@ -23,19 +23,26 @@ knitr::opts_chunk$set(
 )
 ```
 
-Seven recurring mistakes that look like bugs but aren't, plus the
-one-line fix for each. Each pitfall starts with the symptom, then the
-diagnosis, a short reproducible chunk, and a rule of thumb.
+Seven checks for when a multivariate fit looks wrong. The first step
+is to ask whether the data coding, target summary, formula, or
+covariance structure is mismatched before treating the result as an
+optimizer bug. Each pitfall starts with the symptom, states the
+general diagnostic principle, gives one concrete `gllvmTMB()` example,
+and ends with a rule of thumb.
 
 The pitfalls below use the long-format API
 (`gllvmTMB(value ~ ..., data = df_long, trait = "trait")`). Many
 examples have an equivalent wide-data-frame form via the
 `traits(...)` LHS marker, but this page shows long form so the
-diagnostic target is explicit. See the Get Started vignette for the
-long/wide equivalence check.
+diagnostic target is explicit. The point of each section is not the
+particular example model; it is the more general check that applies
+to the same model written in long or wide form. See the Get Started
+vignette for the long/wide equivalence check.
 
 > **Scope boundary.** This page is a troubleshooting reference for
 > already-advertised workflows, not a new capability announcement.
+> The examples illustrate general diagnostic checks; they are not a
+> claim that these are the only models where the checks matter.
 > IN: explicit long-format calls (`FG-02`), the wide `traits(...)`
 > interface referenced from Get Started (`FG-03`), Gaussian
 > `latent()` / `unique()` covariance examples (`FAM-01`, `FG-04`,
@@ -69,44 +76,50 @@ stopifnot(!is.na(covex_path))
 covex <- readRDS(covex_path)
 ```
 
-## 1. Factor level order on `trait`
+## 1. Keep trait labels and matrix rows in the same order
 
-**Symptom.** Fitted $\hat{\boldsymbol\Sigma}_{\text{unit}}$ rows don't line up
-with the rows of your true `Lambda`.
+**Symptom.** A fitted trait covariance, correlation, or loading matrix
+has the right labels but the rows do not line up with the reference
+matrix you expected.
 
 **Diagnosis.** `factor(rep(traits, n))` defaults to sorting levels
 alphabetically. If your `traits` vector is
 `c("boldness", "exploration", "activity")`, the model sees levels
 `c("activity", "boldness", "exploration")` unless you pin the order.
-The model is correct; the row labels are out of sync with your truth
-matrix.
+The fitted model can be correct while your comparison is wrong: the
+row labels are out of sync with the matrix you are using as a
+reference.
 
 ```{r pitfall-1}
 traits <- covex$truth$trait_names
 
-# WRONG: alphabetical levels (activity, aggression, boldness, ...)
+# MISMATCHED: alphabetical levels (activity, aggression, boldness, ...)
 levels(factor(rep(traits, 3)))[1:3]
 
-# RIGHT: pin levels to your declared order
+# MATCHED: pin levels to your declared order
 levels(factor(rep(traits, 3), levels = traits))[1:3]
 ```
 
-**Rule of thumb.** *If you defined a true `Lambda` with named rows,
-always pass `levels = <your trait vector>` when building the long-format
-factor. Otherwise the recovery comparison is meaningless even when
-the fit is right.*
+**Rule of thumb.** *Whenever you compare model output with a known
+matrix or a manually ordered display, pin the trait factor with
+`levels = <your trait vector>`. Otherwise the comparison can be
+meaningless even when the fit is right.*
 
-## 2. What `extract_Sigma(level = "unit")` actually returns
+## 2. Compare the estimate with the estimand you asked for
 
-**Symptom.** Diagonals of `extract_Sigma(fit, level = "unit")$Sigma`
-look "underestimated" by exactly $\sigma^2_\varepsilon$.
+**Symptom.** A variance or covariance summary looks too small or too
+large by a familiar amount, such as a residual variance or a diagonal
+trait-specific component.
 
-**Diagnosis.** `extract_Sigma(level = "unit")` returns the
+**Diagnosis.** First check what the extractor is designed to return.
+In this example, `extract_Sigma(level = "unit")` returns the
 `latent()`-implied between-unit covariance
 $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$ (plus the optional
-`unique(0 + trait | site)` variance), **not** the marginal observational
-variance $\mathrm{Var}(y_{it}) = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \sigma^2_\varepsilon$.
-The "missing" amount is real residual noise, not bias.
+`unique(0 + trait | site)` variance), **not** the marginal
+observational variance
+$\mathrm{Var}(y_{it}) = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \sigma^2_\varepsilon$.
+The "missing" amount is real residual noise, not bias in the
+between-unit covariance.
 
 ```{r pitfall-2}
 set.seed(1)
@@ -127,20 +140,23 @@ round(rbind(diag_LLt_true  = diag(LLt_true),
             diag_Sigma_hat = diag(S_hat)), 2)
 ```
 
-**Rule of thumb.** *Compare `extract_Sigma(level = "unit")` to
+**Rule of thumb.** *Name the estimand before judging the estimate.
+For this example, compare `extract_Sigma(level = "unit")` to
 $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$. If you want the
 marginal Var(y) including residual noise, add
 `+ unique(0 + trait | site)` to the formula and inspect
-`extract_Sigma(level = "unit", part = "total")$Sigma` — the residual
+`extract_Sigma(level = "unit", part = "total")$Sigma` -- the residual
 `sigma_eps` is reported separately in `fit$report$sigma_eps`.*
 
-## 3. The DGP must match the fitted model
+## 3. Make the data-generating story match the formula
 
-**Symptom.** Simulation recovery shows large positive bias on
-$\hat{\boldsymbol\Sigma}_{\text{unit}}$ diagonals, even with hundreds of sites.
+**Symptom.** A simulation-recovery check or a fitted analysis shows
+extra variance in a component that should have been clean.
 
-**Diagnosis.** `simulate_site_trait()` ships with sensible defaults
-that include random environmental fixed effects
+**Diagnosis.** If the data include a component that the formula does
+not contain, the fit has to put that variation somewhere. In this
+example, `simulate_site_trait()` ships with sensible defaults that
+include random environmental fixed effects
 ($\beta_{tk} \sim \mathcal{N}(0, 0.5^2)$) and a per-trait diagonal
 $psi_B$. If your fitted model has no environmental term and no
 `unique(0 + trait | site)`, that variance has nowhere to go and gets
@@ -160,16 +176,18 @@ sim_clean <- simulate_site_trait(
 )
 ```
 
-**Rule of thumb.** *When simulating to test recovery of a latent()-only
-fit, set `beta = matrix(0, n_traits, n_predictors)` and
-`psi_B = rep(0, n_traits)`. If you want those components in the DGP,
+**Rule of thumb.** *For simulation checks, either remove a component
+from the data-generating process or include the matching term in the
+formula. For this latent-only example, set
+`beta = matrix(0, n_traits, n_predictors)` and
+`psi_B = rep(0, n_traits)`. If you want those components in the data,
 include them in the formula too: `+ (0 + trait):env_1` and/or
 `+ unique(0 + trait | site)`.*
 
-## 4. Lambda is not unique; Sigma is
+## 4. Interpret identifiable summaries, not arbitrary coordinates
 
-**Symptom.** Two `gllvmTMB` fits on identical data return different
-$\hat{\boldsymbol\Lambda}$ matrices.
+**Symptom.** Two fits on identical data return different internal
+coordinates, such as different $\hat{\boldsymbol\Lambda}$ matrices.
 
 **Diagnosis.** Reduced-rank factor models have a rotational
 ambiguity: $\boldsymbol\Lambda$ and $\boldsymbol\Lambda \mathbf{Q}$
@@ -195,7 +213,8 @@ sug <- suggest_lambda_constraint(
 sug$constraint
 ```
 
-**Rule of thumb.** *Use `extract_Sigma(level = "unit")`
+**Rule of thumb.** *Report the summary that is identifiable for the
+question. In this example, use `extract_Sigma(level = "unit")`
 (rotation-invariant) for covariances and correlations. Use
 `rotate_loadings(fit, method = "varimax")` for a unique post-hoc
 rotation. Use `suggest_lambda_constraint()` plus a refit only if you
@@ -203,22 +222,24 @@ need a specific identifiable $\boldsymbol\Lambda$ for confirmatory
 testing. The confirmatory-loading article is under audit during the
 public-surface reset.*
 
-## 5. Phylogenetic decomposition: paired or scalar?
+## 5. Choose the decomposition your design can identify
 
-**Symptom.** Phylogenetic per-trait variances look several times
-smaller than the values you simulated, OR the phylogenetic shared
-axis absorbs trait-specific variance that should sit on the
-diagonal.
+**Symptom.** A structured covariance term captures the broad shared
+pattern, but trait-specific variance lands in the wrong place or is
+not separately recoverable.
 
-**Diagnosis.** A bare `phylo_latent(species, d = K)` is the
-no-residual reduced-rank subset — it captures a shared phylogenetic
-axis but has no diagonal for trait-specific phylogenetic variance.
-A bare `phylo_scalar()` fits a single shared scalar $\lambda$
-multiplying a free trait correlation matrix, so only the product
-$\lambda \cdot \rho_{tt'}$ is identifiable. Neither bare form
-recovers per-trait phylogenetic variances reliably.
+**Diagnosis.** The general issue is identifiability: do not ask the
+data to separate more variance pieces than the design can support.
+The phylogenetic example below is one instance. A bare
+`phylo_latent(species, d = K)` is the no-residual reduced-rank subset
+-- it captures a shared phylogenetic axis but has no diagonal for
+trait-specific phylogenetic variance. A bare `phylo_scalar()` fits a
+single shared scalar $\lambda$ multiplying a free trait correlation
+matrix, so only the product $\lambda \cdot \rho_{tt'}$ is
+identifiable. Neither bare form is a per-trait phylogenetic-variance
+recovery model.
 
-The **canonical paired phylogenetic decomposition** pairs four
+The **fully paired phylogenetic decomposition** pairs four
 components:
 
 $$
@@ -232,7 +253,7 @@ set.seed(1)
 tree <- ape::rcoal(15)
 tree$tip.label <- paste0("sp", seq_len(15))
 
-# Canonical paired phylogenetic decomposition:
+# Fully paired phylogenetic decomposition:
 #   value ~ 0 + trait +
 #     phylo_latent(species, d = K_phy, tree = tree) +
 #     phylo_unique(species, tree = tree) +
@@ -244,17 +265,17 @@ tree$tip.label <- paste0("sp", seq_len(15))
 #   value ~ 0 + trait + phylo_scalar(species, tree = tree)
 ```
 
-**Rule of thumb.** *Use the paired four-component decomposition
-(`phylo_latent + phylo_unique + latent + unique`) whenever **both
-$\boldsymbol{\Psi}$ diagonals are identifiable** -- typically a crossed
-(site × species) design with `n_species` around 100 or more and
-strong phylogenetic signal. Reserve `phylo_scalar()` for the
-simpler case where a single shared phylogenetic variance per trait
-is enough and trait correlations are the inferential target. The
-four-component form is what `extract_phylo_signal()` decomposes
-into $H^2 + C^2_{\text{non}} + \psi^2 = 1$. The worked phylogenetic
-article is under audit until its helper, validation rows, and rendered
-HTML review pass.*
+**Rule of thumb.** *Start from the scientific target and the design.
+Use the paired four-component decomposition
+(`phylo_latent + phylo_unique + latent + unique`) only when **both
+$\boldsymbol{\Psi}$ diagonals are identifiable**, typically with
+crossed replication, enough species, and strong phylogenetic signal.
+Reserve `phylo_scalar()` for the simpler case where a single shared
+phylogenetic variance and trait correlations are the inferential
+target. The four-component form is what `extract_phylo_signal()`
+decomposes into $H^2 + C^2_{\text{non}} + \psi^2 = 1$. The worked
+phylogenetic article is under audit until its helper, validation
+rows, and rendered HTML review pass.*
 
 *When the phylogenetic uniqueness component $\boldsymbol\Psi_{\text{phy}}$ is
 not separately identifiable from $\Lambda_{\text{phy}}
@@ -274,21 +295,21 @@ of every variance component in whichever model you fit (four
 pieces in the paired form above, three pieces here, more if you
 add `spatial_*` or extra latent tiers). The number of pieces
 follows from the keywords in the formula. `gllvmTMB(... +
-phylo_latent + latent + unique, ...)` is the canonical form for
-this three-piece case. The validation evidence for this fallback is
-tracked under `PHY-03`; the future functional-biogeography capstone
-will turn the same $p_{it} + q_{it}$ identifiability case into a
-worked biological example after its component helpers and article
-review pass.*
+phylo_latent + latent + unique, ...)` is a three-piece fallback for
+this case. The validation evidence for this fallback is
+tracked under `PHY-03`; future worked phylogenetic examples should
+present this as one concrete case of the broader identifiability
+check, not as a special rule for one model family.*
 
-## 6. The `unit = "..."` argument
+## 6. Declare the observation-grouping column
 
 **Symptom.** Error: `Column site not found in data`.
 
-**Diagnosis.** `gllvmTMB()` defaults to `unit = "site"`, but in
-morphometric studies the grouping is often `individual`; in
-meta-analyses it might be `study_id`. The engine errors when the
-literal column `site` is not present.
+**Diagnosis.** Every model needs to know which column identifies the
+observational unit for stacked trait rows. `gllvmTMB()` defaults to
+`unit = "site"`, but in morphometric studies the grouping is often
+`individual`; in meta-analyses it might be `study_id`. The engine
+errors when the literal column `site` is not present.
 
 ```{r pitfall-6}
 # Rename to mimic a morphometric dataset
@@ -296,12 +317,12 @@ df <- sim$data
 df$individual <- df$site
 df$site <- NULL
 
-# WRONG (uncomment to see the error):
+# MISMATCHED (uncomment to see the error):
 # gllvmTMB(value ~ 0 + trait + latent(0 + trait | individual, d = 2),
 #          data = df, trait = "trait")
 # #> Error: Column site not found in data
 
-# RIGHT: tell the engine which column groups observations
+# MATCHED: tell the engine which column groups observations
 fit_ind <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | individual, d = 2),
   data = df, trait = "trait", unit = "individual"
@@ -314,12 +335,15 @@ fit_ind$unit_col
 [morphometrics article](morphometrics.html) shows this in the
 canonical individual × trait setup.*
 
-## 7. A vs V: relatedness covariance vs sampling variance
+## 7. Separate relatedness covariance from sampling variance
 
-**Symptom.** You're setting up an animal-model fit, see that
-`meta_V()` accepts a `V =` argument, and try to pass your
-pedigree-derived relatedness matrix as `V =`. The fit either
-errors with a shape mismatch or produces nonsense estimates.
+**Symptom.** A known matrix is available, but it is unclear whether
+the matrix belongs in a relatedness keyword or a measurement-error
+keyword. For example, you are setting up an animal-model fit, see
+that `meta_V()` accepts a `V =` argument, and try to pass your
+pedigree-derived relatedness matrix as `V =`. The fit either errors
+with a shape mismatch or estimates a variance component with an
+unintended interpretation.
 
 **Diagnosis.** **A** and **V** mean different things in gllvmTMB:
 
@@ -331,15 +355,15 @@ errors with a shape mismatch or produces nonsense estimates.
 The math is genuinely distinct: $\mathbf{A}$ is the
 between-individual relatedness matrix from a pedigree or
 phylogeny; $\mathbf{V}$ is the between-study measurement-error
-variance from a meta-analysis. Conflating them produces
-nonsensical fits because the engine expects each at a different
-place in the variance decomposition.
+variance from a meta-analysis. Conflating them produces fits whose
+variance components answer a different question because the engine
+expects each matrix at a different place in the decomposition.
 
 ```r
-# WRONG: passing relatedness matrix as V to meta_V
+# MISMATCHED: passing relatedness matrix as V to meta_V
 fit <- gllvmTMB(value ~ 0 + trait + meta_V(V = A_pedigree),
                 data = df, trait = "trait")
-# RIGHT: relatedness goes to animal_* / phylo_*, sampling variance to meta_V
+# MATCHED: relatedness goes to animal_* / phylo_*, sampling variance to meta_V
 fit <- gllvmTMB(value ~ 0 + trait +
                   animal_scalar(individual, A = A_pedigree) +
                   meta_V(V = sampling_variance),
@@ -347,7 +371,7 @@ fit <- gllvmTMB(value ~ 0 + trait +
 ```
 
 **Rule of thumb.** *Use **A** / **Ainv** for relatedness, use **V**
-for sampling variance. Never blur the two. See
+for sampling variance. Keep the two separate. See
 [Design 14 §3](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
 for the full convention. The public vocabulary glossary is under audit.*
 

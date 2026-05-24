@@ -1,0 +1,76 @@
+/* Match the pkgdown navigation to the dark blue in the gllvmTMB logo. */
+:root {
+  --gllvmtmb-logo-blue: #052b3f;
+  --gllvmtmb-logo-blue-2: #08384d;
+  --gllvmtmb-ice-blue: #d8eef6;
+}
+
+.template-home main,
+.template-home aside {
+  min-width: 0;
+}
+
+.template-home pre,
+.template-home .sourceCode {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.template-home p,
+.template-home li {
+  overflow-wrap: anywhere;
+}
+
+.bg-primary {
+  background-color: var(--gllvmtmb-logo-blue) !important;
+}
+
+.bg-primary .navbar-brand,
+.bg-primary .navbar-brand:hover,
+.bg-primary .navbar-brand:focus,
+.bg-primary .navbar-nav .nav-link {
+  color: #f6fbfd !important;
+}
+
+.bg-primary .navbar-nav .show > .nav-link,
+.bg-primary .navbar-nav .nav-link.active,
+.bg-primary .navbar-nav .nav-link:hover,
+.bg-primary .navbar-nav .nav-link:focus {
+  color: var(--gllvmtmb-ice-blue) !important;
+}
+
+.bg-primary .nav-item.active .nav-link,
+.bg-primary .nav-item .nav-link:hover,
+.bg-primary .nav-item .nav-link:focus {
+  background: rgba(216, 238, 246, 0.14);
+  border-radius: 0.32rem;
+}
+
+.bg-primary .dropdown-menu {
+  --bs-dropdown-bg: #10283d;
+  --bs-dropdown-border-color: rgba(216, 238, 246, 0.22);
+  --bs-dropdown-link-color: #d8eef6;
+  --bs-dropdown-link-hover-bg: rgba(216, 238, 246, 0.14);
+  --bs-dropdown-link-hover-color: #ffffff;
+  --bs-dropdown-link-active-bg: var(--gllvmtmb-logo-blue-2);
+  --bs-dropdown-link-active-color: #ffffff;
+}
+
+.navbar .form-control,
+.navbar .search-input {
+  background-color: #20272d;
+  border-color: rgba(216, 238, 246, 0.35);
+  color: #f6fbfd;
+}
+
+.navbar .form-control::placeholder,
+.navbar .search-input::placeholder {
+  color: rgba(246, 251, 253, 0.75);
+}
+
+@media (max-width: 767.98px) {
+  .template-home .page-header .logo {
+    height: auto;
+    max-width: 72px;
+  }
+}

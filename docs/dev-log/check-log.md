@@ -9073,3 +9073,55 @@ Deliberately not run:
 - No article was edited or rendered; this slice only added the helper API and
   documentation.
 - No branch PR CI has run yet.
+
+## 2026-05-23 -- pkgdown site chrome polish
+
+Scope:
+
+- Continued the first-50 plotting/reference lane on branch
+  `codex/correlation-matrix-plots-2026-05-23`.
+- Added pkgdown site chrome polish only: Flatly Bootstrap 5, logo-blue primary
+  colour overrides, OpenGraph logo metadata, and a small `pkgdown/extra.css`
+  file for navbar/dropdown/search readability.
+- Did not change article visibility, reference grouping, package API,
+  examples, NEWS, validation-debt rows, or modelling claims.
+
+Evidence:
+
+- Issue search:
+  `gh issue list --state open --search "pkgdown theme OR site CSS OR logo OR opengraph" --json number,title,url,labels,updatedAt --limit 20`
+  -> found #230, "Article surface reset and user-first tooling gate"; this
+  slice supports site readability but does not close or materially advance the
+  article tooling checklist.
+- Home build:
+  `Rscript --vanilla -e 'pkgdown::build_home()'`
+  -> completed and wrote `404.html`.
+- Browser attempt:
+  the in-app browser blocked `http://127.0.0.1:8765/`,
+  `http://localhost:8765/`, and the local `file://` preview under its URL
+  policy. No browser screenshot or interactive visual QA is counted as evidence
+  for this slice.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Workflow-matching pkgdown build:
+  `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> completed; this is the command used by `.github/workflows/pkgdown.yaml`.
+- Asset-copy proof:
+  `ls -lh pkgdown-site/extra.css pkgdown/extra.css`
+  -> both files present after the non-lazy build.
+- Asset equality:
+  `cmp -s pkgdown/extra.css pkgdown-site/extra.css; printf '%s\n' $?`
+  -> `0`.
+- Generated HTML / CSS scan:
+  `rg -n "extra\\.css|og:image|gllvmTMB hex logo|bg-primary|navbar|#052b3f" pkgdown-site/index.html pkgdown-site/extra.css _pkgdown.yml pkgdown/extra.css`
+  -> confirmed the generated home page links `extra.css`, includes OpenGraph
+  image/alt metadata, and the copied CSS carries the navbar selectors/colours.
+- `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No R package tests were run for this CSS/config-only slice.
+- No browser-visible screenshot was possible because the in-app browser blocked
+  the local preview URLs.

@@ -9977,3 +9977,99 @@ Deliberately not run:
 - No final closeout for `covariance-correlation`,
   `response-families`, `api-keyword-grid`, `convergence-start-values`,
   or `pitfalls`; those pages retain their current gate statuses.
+
+## 2026-05-24 -- covariance/correlation closeout wave 3
+
+- Branch: `codex/covariance-article-closeout-wave3-2026-05-24`.
+- Scope: final rendered figure/prose closeout for the current public
+  `covariance-correlation` article only. This wave tightens uncertainty
+  provenance around `Sigma_unit` point displays and correlation matrix
+  displays, records a rendered figure/prose review, and updates only the
+  covariance/correlation row in the roadmap and article gate matrix.
+- No R source, likelihood, formula grammar, family, roxygen, generated
+  Rd, NAMESPACE, NEWS, `_pkgdown.yml`, or validation-debt status
+  changed.
+- The branch was edited locally while the Wave 2 post-merge main
+  R-CMD-check run `26371757078` was still active; push/PR was held until
+  that run and downstream pkgdown passed.
+
+Evidence:
+
+- Wave 2 PR gate:
+  `gh run view 26370813615 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> PR R-CMD-check completed successfully on macOS, Ubuntu, and
+  Windows.
+- Wave 2 merge:
+  `gh pr view 251 --repo itchyshin/gllvmTMB --json state,mergedAt,mergeCommit,url`
+  -> merged as `1a5d46ada10e2af46efcaa23c550338d789989f4`.
+- Wave 2 post-merge main gate:
+  `gh run view 26371757078 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> main R-CMD-check completed successfully on macOS, Ubuntu, and
+  Windows.
+- Wave 2 downstream pkgdown gate:
+  `gh run view 26372563977 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> pkgdown build and deploy completed successfully.
+- Local main fast-forward:
+  `git checkout main && git pull --ff-only`
+  -> updated `main` from `d4de976` to `1a5d46a`.
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent Wave 1 / Wave 2 commits only; no open competing PR.
+- Active run check:
+  `gh run list --repo itchyshin/gllvmTMB --limit 6 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,event,url,createdAt`
+  -> Wave 2 post-merge main R-CMD-check run `26371757078` active.
+- Recovery checkpoint:
+  `docs/dev-log/recovery-checkpoints/2026-05-24-142116-ada-checkpoint.md`
+  created before Wave 3 edits.
+- Targeted covariance/correlation render:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `pkgdown-site/articles/covariance-correlation.html`
+  written.
+- Rendered image review:
+  `view_image("pkgdown-site/articles/covariance-correlation_files/figure-html/sigma-table-plot-1.png")`
+  -> point-estimate plot legible; open-point caption still fits.
+- Rendered image review:
+  `view_image("pkgdown-site/articles/covariance-correlation_files/figure-html/communality-correlation-matrix-1.png")`
+  -> matrix plot legible; in-figure caption now uses supplied
+  Fisher-z bounds wording.
+- Roadmap render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/roadmap", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `pkgdown-site/articles/roadmap.html` written.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rendered figure reference check:
+  `rg -o 'covariance-correlation_files/figure-html/[^" ]+\\.png' pkgdown-site/articles/covariance-correlation.html | sort -u`
+  -> current rendered article references only
+  `communality-correlation-matrix-1.png`, `corr-comparison-1.png`,
+  and `sigma-table-plot-1.png`.
+- Status/rendered wording scan:
+  `rg -n "final figure/prose audit pending|final rendered figure/prose audit passed|Covariance/correlation closeout|does not bootstrap|does not add uncertainty|calibration evidence|interval calibration|Fisher-z interval columns|supplied Fisher-z|formatted table" ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-24-covariance-correlation-final-figure-prose-review.md vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html pkgdown-site/articles/roadmap.html`
+  -> covariance/correlation status and rendered uncertainty-provenance
+  wording are present; the remaining calibration-evidence language is
+  in caveats, not overclaims.
+- Stale terminology scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|posterior densit|calibration evidence|interval calibration" vignettes/articles/covariance-correlation.Rmd docs/dev-log/audits/2026-05-24-covariance-correlation-final-figure-prose-review.md ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> only acceptable hit is the existing Morphometrics caveat that a
+  cached bootstrap fixture is not calibration evidence.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "covariance-correlation OR covariance correlation OR article surface reset OR Article surface reset" --json number,title,url,labels,updatedAt --limit 20`
+  -> found #230 and #248; #230 is the relevant article-surface ledger.
+- Generated vignette scratch check:
+  `find vignettes -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) -print`
+  -> no output.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen changed.
+- No package tests or `devtools::check()` before opening the PR; this
+  is a rendered article/prose-status slice.
+- No final closeout for `response-families`, `api-keyword-grid`,
+  `convergence-start-values`, or `pitfalls`; those pages retain their
+  current gate statuses.

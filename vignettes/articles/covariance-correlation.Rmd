@@ -306,7 +306,7 @@ extract_Sigma(fit_B, level = "unit", part = "unique")$s |> round(2)
 extract_Sigma(fit_B, level = "unit", part = "total")$Sigma |> round(2)
 ```
 
-```{r sigma-table-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Upper-triangle off-diagonal entries of Sigma_unit from the latent + unique model. Open points mark point estimates without finite interval bounds; bootstrap-derived rows are the next step for Sigma uncertainty."}
+```{r sigma-table-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Upper-triangle off-diagonal entries of Sigma_unit from the latent + unique model. Open points mark point estimates without finite interval bounds; this figure does not add uncertainty beyond the rows supplied to the plot."}
 plot_Sigma_table(sigma_rows_B, sort = "magnitude")
 ```
 
@@ -359,20 +359,21 @@ corr_B <- extract_correlations(fit_B, tier = "unit")
 corr_B
 ```
 
-```{r communality-correlation-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Pairwise correlations from the latent + unique model. Upper-triangle cells show point estimates; lower-triangle cells show finite 95% Fisher-z interval bounds."}
+```{r communality-correlation-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Pairwise correlations from the latent + unique model. Upper cells show point estimates; lower cells display the Fisher-z interval columns already present in the extractor output."}
 plot_correlations(
   corr_B,
   style = "heatmap",
   matrix_layout = "estimate_ci",
   title = "Latent + unique trait correlations",
-  caption = "Fill shows point estimates; labels show estimates above and intervals below."
+  caption = "Fill shows estimates; lower labels show supplied Fisher-z bounds."
 )
 ```
 
-IN under EXT-30: the matrix view is a display helper for rows returned by
+Read this as a formatted table, not as a new uncertainty calculation. IN
+under EXT-30: the matrix view is a display helper for rows returned by
 `extract_correlations()`. PARTIAL/OUT under EXT-30: the plot does not
-compute or calibrate uncertainty; it shows the interval columns already
-present in `corr_B`.
+bootstrap, profile, or calibrate uncertainty; it only shows the interval
+columns already present in `corr_B`.
 
 ### Site-level / individual-level ICC
 

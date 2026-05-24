@@ -24,7 +24,7 @@ The visible learning path is intentionally small.
 | Group | Article | Purpose | Status |
 |---|---|---|---|
 | Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
-| Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; launch-level HTML review passed; final figure/prose audit pending. |
+| Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; final rendered figure/prose audit passed. |
 | Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible as technical reference. |
 | Concepts | `articles/response-families` | Supported families and validation status. | Visible as technical reference. |
 | Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit pending. |
@@ -82,6 +82,13 @@ Morphometrics article passed the final figure/prose closeout recorded in
 `docs/dev-log/audits/2026-05-24-morphometrics-final-figure-prose-review.md`.
 This closes the Morphometrics page only; the other visible articles still need
 their own final rendered passes.
+
+Covariance/correlation closeout checkpoint, 2026-05-24: the current rendered
+covariance/correlation article passed the final figure/prose closeout recorded
+in
+`docs/dev-log/audits/2026-05-24-covariance-correlation-final-figure-prose-review.md`.
+The key boundary is that matrix displays show extractor-supplied rows and
+interval columns; they do not create or calibrate new uncertainty evidence.
 
 After these infrastructure slices, resume article restoration one page at a time.
 

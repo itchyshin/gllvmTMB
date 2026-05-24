@@ -348,19 +348,31 @@ extract_communality(fit_A, level = "unit")  # latent-only fit: all = 1, useless
 extract_communality(fit_B, level = "unit")  # latent + unique: meaningful
 ```
 
-For the report surface, keep the exact table but compare the rows with
-the correlation plot helper. The plot uses the same Fisher-z intervals as
-`extract_correlations()`, so it shows uncertainty rather than only a
-matrix cell value:
+For the report surface, keep the exact table but display the rows as a
+matrix. `extract_correlations()` supplies the point estimates and
+Fisher-z interval bounds; `plot_correlations()` arranges those supplied
+values for reading, with estimates in the upper triangle and interval
+bounds in the lower triangle:
 
 ```{r communality-correlation-rows}
 corr_B <- extract_correlations(fit_B, tier = "unit")
 corr_B
 ```
 
-```{r communality-correlation-plot, fig.width = 7, fig.height = 3.8, fig.cap = "Pairwise correlations from the latent + unique model. Points are Fisher-z estimates; horizontal segments show finite 95% interval bounds."}
-plot_correlations(corr_B, sort = "magnitude")
+```{r communality-correlation-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Pairwise correlations from the latent + unique model. Upper-triangle cells show point estimates; lower-triangle cells show finite 95% Fisher-z interval bounds."}
+plot_correlations(
+  corr_B,
+  style = "heatmap",
+  matrix_layout = "estimate_ci",
+  title = "Latent + unique trait correlations",
+  caption = "Fill shows point estimates; labels show estimates above and intervals below."
+)
 ```
+
+IN under EXT-30: the matrix view is a display helper for rows returned by
+`extract_correlations()`. PARTIAL/OUT under EXT-30: the plot does not
+compute or calibrate uncertainty; it shows the interval columns already
+present in `corr_B`.
 
 ### Site-level / individual-level ICC
 

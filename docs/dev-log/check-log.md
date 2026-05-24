@@ -9320,3 +9320,80 @@ Deliberately not run:
   code path.
 - No full `devtools::check()`; the post-merge `main` R-CMD-check for PR #240
   was still running while this local slice was validated.
+
+## 2026-05-23 -- Covariance/correlation article matrix QA
+
+Scope:
+
+- Branch: `codex/covariance-correlation-matrix-qa-2026-05-23`.
+- Updated the visible Tier-1 article
+  `vignettes/articles/covariance-correlation.Rmd` so the report-surface
+  correlation example uses
+  `plot_correlations(corr_B, style = "heatmap", matrix_layout = "estimate_ci")`
+  instead of the older pairwise interval plot.
+- Added a local EXT-30 boundary next to the article example: the matrix view
+  displays supplied `extract_correlations()` point estimates and interval
+  columns; it does not compute or calibrate uncertainty.
+- No public R API, likelihood, formula grammar, family, NAMESPACE, generated
+  Rd, pkgdown navigation, README, or NEWS change.
+
+Evidence:
+
+- Post-merge `main` CI gate for PR #241:
+  `gh run watch 26351959053 --repo itchyshin/gllvmTMB --interval 15 --exit-status`
+  -> passed on macOS in 25m03s, Ubuntu in 27m31s, and Windows in 36m51s.
+- Pre-edit lane check for shared public/dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the merged Get Started PR #241, the merged
+  correlation-matrix PR #240, and their source-branch commits; no other open
+  lane was detected.
+- Touched article render, first attempt:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("covariance-correlation", quiet = FALSE, new_process = FALSE)'`
+  -> failed with `Can't find article 'covariance-correlation'`; pkgdown expects
+  the article path for this file.
+- Touched article render, corrected:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("articles/covariance-correlation", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `Output created: pkgdown-site/articles/covariance-correlation.html`.
+- Florence visual QA, first rendered matrix:
+  `view_image("/Users/z3437171/Dropbox/Github Local/gllvmTMB/pkgdown-site/articles/covariance-correlation_files/figure-html/communality-correlation-matrix-1.png")`
+  -> FAIL/WARN because the helper's default multi-line caption clipped at the
+  rendered PNG edge.
+- Florence visual QA, rerender after adding a shorter plot caption:
+  `view_image("/Users/z3437171/Dropbox/Github Local/gllvmTMB/pkgdown-site/articles/covariance-correlation_files/figure-html/communality-correlation-matrix-1.png")`
+  -> PASS for legible 5 x 5 matrix labels, stable upper-estimate/lower-interval
+  triangle meanings, readable legend, and no title/caption/axis overlap.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rose method/default/formals check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pc <- formals(plot_correlations); ec <- formals(extract_correlations); stopifnot(identical(eval(pc$matrix_layout), c("by_level", "estimate_ci", "levels"))); stopifnot(identical(eval(pc$style), c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"))); stopifnot(identical(eval(ec$method), c("fisher-z", "profile", "wald", "bootstrap"))); writeLines("Rose covariance article formals check ok")'`
+  -> `Rose covariance article formals check ok`.
+- Long-format call scan:
+  `rg -n "gllvmTMB\\(" vignettes/articles/covariance-correlation.Rmd`
+  -> long-format examples at lines 34, 39, 167, 176, and 431 pass `trait =`;
+  wide-format examples at lines 52 and 185 use `traits(...)` and no `trait =`.
+- Rendered-source consistency:
+  `rg -n "EXT-30|matrix_layout|estimate_ci|plot does not compute|Latent \\+ unique trait correlations|Upper-triangle cells" vignettes/articles/covariance-correlation.Rmd pkgdown-site/articles/covariance-correlation.html`
+  -> source and rendered HTML contain the EXT-30 boundary, `estimate_ci`
+  layout, title, and upper/lower triangle wording.
+- Rose stale-wording scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/covariance-correlation.Rmd`
+  -> no matches.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "covariance correlation matrix OR plot_correlations matrix OR EXT-30 OR Article surface reset" --json number,title,url,labels,updatedAt --limit 20`
+  -> found #230, `Article surface reset and user-first tooling gate`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and generated Rd were not changed.
+- No focused tests or full `devtools::test()`; this is an article-only
+  teaching-path change and the touched article render exercises the example.
+- No full `devtools::check()` before opening the article PR; local article
+  render, visual QA, `pkgdown::check_pkgdown()`, and PR CI are the relevant
+  gates for this bounded documentation slice.

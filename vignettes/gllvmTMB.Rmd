@@ -213,20 +213,18 @@ correlation matrix:
 plot_correlations(corr_rows, sort = "magnitude")
 ```
 
-The matrix form, if you want to look at the correlation structure as
-a whole rather than per pair:
+The matrix form is IN under EXT-30 as a display over the same rows:
+the upper triangle shows point estimates, and the lower triangle shows
+the finite Fisher-z interval bounds supplied by
+`extract_correlations()`. OUT for EXT-30: the plot does not compute or
+calibrate uncertainty itself.
 
-```{r cor-matrix, fig.width = 6.4, fig.height = 4.8, fig.cap = "Trait correlation matrix from the first fitted model. Cells are point estimates; use the pairwise correlation table above when interval bounds matter."}
-sigma_corr_rows <- extract_Sigma_table(
-  fit,
-  level = "unit",
-  measure = "correlation",
-  entries = "all"
-)
-plot_Sigma_heatmap(
-  sigma_corr_rows,
-  title = "First-model trait correlations",
-  subtitle = "Cells are point estimates; use the pairwise rows above for intervals."
+```{r cor-matrix, fig.width = 7.4, fig.height = 5.1, fig.cap = "Trait correlation matrix from the first fitted model. Upper-triangle cells show Fisher-z point estimates; lower-triangle cells show finite 95% interval bounds."}
+plot_correlations(
+  corr_rows,
+  style = "heatmap",
+  matrix_layout = "estimate_ci",
+  title = "First-model trait correlations"
 )
 ```
 

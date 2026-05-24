@@ -17,9 +17,18 @@ plot_correlations(
   facet = c("level", "none"),
   sort = c("estimate", "magnitude", "trait", "level"),
   show_intervals = NULL,
-  style = c("interval", "eye", "raindrop"),
+  style = c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"),
   eye_level = level,
-  raindrop_level = NULL
+  raindrop_level = NULL,
+  triangle = c("full", "lower", "upper"),
+  include_diagonal = TRUE,
+  label = TRUE,
+  label_type = c("auto", "estimate", "ci", "estimate_ci", "none"),
+  label_digits = 2,
+  matrix_layout = c("by_level", "estimate_ci", "levels"),
+  title = NULL,
+  subtitle = NULL,
+  caption = NULL
 )
 }
 \arguments{
@@ -44,18 +53,50 @@ or \code{"level"}.}
 overlay interval lines on confidence eyes. Rows without finite bounds remain
 visible as points.}
 
-\item{style}{One of \code{"interval"} (default), \code{"eye"}, or \code{"raindrop"}.
+\item{style}{One of \code{"interval"} (default), \code{"eye"}, \code{"raindrop"},
+\code{"heatmap"}, \code{"ellipse"}, or \code{"oval"}.
 \code{"eye"} draws a confidence eye: a pale frequentist compatibility shape
 reconstructed from the estimate and finite interval bounds, plus a hollow,
 sign-coloured estimate circle. Correlation rows use Fisher's z scale. The
-shape is not a posterior density. \code{"raindrop"} is accepted as a
-compatibility alias.}
+shape is not a posterior density. \code{"heatmap"} draws a trait-by-trait matrix
+with colour showing the point estimate. \code{"ellipse"}/\code{"oval"} draws
+correlation ellipses in matrix cells; ellipse tilt and width encode sign
+and strength. \code{"raindrop"} is accepted as a compatibility alias for
+\code{"eye"}, and \code{"oval"} as an alias for \code{"ellipse"}.}
 
 \item{eye_level}{Confidence level represented by the supplied interval
 bounds when \code{style = "eye"}. Defaults to \code{level}, so fitted-object calls
 stay aligned with \code{\link[=extract_correlations]{extract_correlations()}}.}
 
 \item{raindrop_level}{Compatibility alias for \code{eye_level}.}
+
+\item{triangle}{Matrix triangle to show for \code{style = "heatmap"} or
+\code{style = "ellipse"} when \code{matrix_layout = "by_level"}:
+\code{"full"} (default), \code{"lower"}, or \code{"upper"}.}
+
+\item{include_diagonal}{Logical. Include muted diagonal self-correlation
+cells in matrix styles?}
+
+\item{label}{Logical. Print cell labels in matrix styles?}
+
+\item{label_type}{For matrix styles, one of \code{"auto"} (default),
+\code{"estimate"}, \code{"ci"}, \code{"estimate_ci"}, or \code{"none"}. With
+\code{matrix_layout = "estimate_ci"}, \code{"auto"} prints point estimates in the
+upper triangle and interval bounds in the lower triangle. Interval labels
+are printed only where finite \code{lower} and \code{upper} bounds are supplied.}
+
+\item{label_digits}{Non-negative whole number of decimal places for matrix
+cell labels.}
+
+\item{matrix_layout}{Matrix-cell layout for heatmap and ellipse styles.
+\code{"by_level"} facets levels and uses \code{triangle} directly. \code{"estimate_ci"}
+uses the full matrix for each level: upper triangle labels point estimates
+and lower triangle labels supplied interval bounds. \code{"levels"} combines
+exactly two levels into one full matrix: upper triangle shows the first
+level and lower triangle shows the second level.}
+
+\item{title, subtitle, caption}{Optional scalar character labels for matrix
+styles. \code{NULL} keeps publication-safe defaults.}
 }
 \value{
 A \code{ggplot2} plot object with \code{gllvmTMB_meta} and \code{gllvmTMB_data}
@@ -63,9 +104,12 @@ attributes.
 }
 \description{
 \code{plot_correlations()} turns the tidy rows returned by
-\code{\link[=extract_correlations]{extract_correlations()}} into a horizontal forest plot. It keeps point
-estimates visible as open points when interval bounds are missing, and draws
-interval segments only for rows with finite lower and upper bounds.
+\code{\link[=extract_correlations]{extract_correlations()}} into a horizontal forest plot, confidence-eye plot,
+heatmap, or ellipse matrix. Forest and confidence-eye styles keep point
+estimates visible as open points when interval bounds are missing, and draw
+interval information only for rows with finite lower and upper bounds.
+Matrix styles show the same tidy rows without requiring users to reconstruct
+or hand-index a correlation matrix.
 For fitted-object calls, open points can often be investigated by trying
 \code{method = "bootstrap"} or another interval method supported by
 \code{\link[=extract_correlations]{extract_correlations()}}.
@@ -75,10 +119,13 @@ Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
 \code{\link[=extract_correlations]{extract_correlations()}}, extracts those rows from a fit returned by
 \code{\link[=gllvmTMB]{gllvmTMB()}} (EXT-19; built on EXT-04/EXT-18 extractor contracts), or
 converts \code{bootstrap_Sigma()} correlation summaries to the same plotting
-schema (EXT-24). PARTIAL, the plot does not compute new intervals; it
-displays whatever interval method the input rows already contain. PLANNED,
-matrix-style visual comparisons against known truth remain article code
-rather than part of this helper.
+schema (EXT-24). Matrix heatmaps and ellipse/oval displays, including
+upper-estimate/lower-CI and two-level upper/lower layouts, are
+point-estimate summaries with optional numeric interval labels (EXT-30).
+PARTIAL, the plot does not compute new intervals; it displays whatever
+interval method the input rows already contain. PLANNED, matrix-style visual
+comparisons against known truth remain article code rather than part of this
+helper.
 }
 \examples{
 if (requireNamespace("ggplot2", quietly = TRUE)) {
@@ -92,6 +139,7 @@ if (requireNamespace("ggplot2", quietly = TRUE)) {
     method = c("fisher-z", "fisher-z", "none")
   )
   plot_correlations(cors)
+  plot_correlations(cors, style = "heatmap", matrix_layout = "estimate_ci")
 }
 }
 \seealso{

@@ -5,7 +5,7 @@
 fidelity), Darwin (biological framing), Grace (CI / pkgdown
 build), Rose (pre-publish + scope honesty).
 **Status**: Active — Florence recruitment slice 2026-05-18; current helper
-surface refreshed 2026-05-22.
+surface refreshed 2026-05-23.
 **Mirrors**: drmTMB Design 39 + Florence figure gate (sister-
 project pattern, adopted with gllvmTMB-specific adaptations).
 **Backed by**: AGENTS.md Standing Review Roles entry for Florence
@@ -161,7 +161,7 @@ outputs, not one monolithic plot:
 |---|---|---|
 | Ordination biplot: scores plus trait loading arrows | `plot(type = "ordination")` | Implemented as dimension-aware static output: 1D score strip, 2D biplot, 3D pair-grid; d > 3 uses selected axes. |
 | Loading matrix table | `extract_rotated_loadings_table()` + `plot_rotated_loadings()` | Implemented as a point-estimate rotated-loading table plus report-ready heatmap, with standardized/raw loading scale, axis ordering, sign anchoring, numeric tile labels for small matrices, and rotation-honest metadata. Loading uncertainty remains planned. |
-| Correlation ellipse matrix | `plot(type = "correlation_ellipse")` | Implemented for point-estimate correlations and optional `bootstrap_Sigma(..., what = "R")` intervals; borders/stars mark supplied intervals that exclude zero. Still needs rendered-figure QA beyond the current morphometrics fixture. |
+| Correlation matrix / ellipse matrix | `plot(type = "correlation_ellipse")` + `plot_correlations(style = "heatmap" / "ellipse")` | Implemented for point-estimate correlations and optional `bootstrap_Sigma(..., what = "R")` intervals; tidy-row helper now supports heatmap/ellipse/oval matrix styles, full/lower/upper triangles, diagonal control, optional estimate/CI labels, upper-estimate/lower-CI full matrices, and two-level upper/lower matrices such as `unit` over `unit_obs`. Still needs broader rendered-figure QA beyond the current morphometrics fixture. |
 | Communality / uniqueness bars | `plot(type = "communality")` | Implemented for point estimates and optional `bootstrap_Sigma(..., what = "communality")` intervals on the `c^2` boundary. Still needs rendered-figure QA and broader interval-calibration examples. |
 | Dominant-axis loading forest with bootstrap CIs | Future `plot(type = "dominant_loadings")` or a table-driven helper | Planned; requires bootstrap-aligned loading/axis summaries and rotation/sign convention checks. |
 | Score histograms / density panels | Future score-distribution helper | Planned; should consume `extract_ordination()` score tables and avoid over-interpreting latent axes as mechanisms. |
@@ -198,9 +198,9 @@ The older Phase 1c-viz checklist is no longer 0/7. The current ledger is:
 | Repeatability / integration forest | Partial: `plot(type = "integration")` draws repeatability and communality summaries with optional bootstrap-object intervals. | Needs rendered QA, article use, and clearer boundary/failure glyphs. |
 | Dimension-aware ordination | Partial: 1D strip, 2D biplot, 3D pair grid, d > 3 selected axes, varimax default, axis ordering, user-supplied sign anchors, standardized loading arrows, and one anchored rotated ordination `vdiffr` snapshot are implemented. | Interactive 3D remains planned; rotation/sign conventions need continued tutorial guidance and broader visual snapshots. |
 | Rotated loading matrix | Partial: `extract_rotated_loadings_table()` and `plot_rotated_loadings()` cover point-estimate, report-ready rotated loading tables and heatmaps with rotation/sign metadata. | No loading uncertainty display yet; needs rendered QA in a gallery/article context and future uncertainty-aware loading summaries. |
-| Confidence-eye covariance/correlation plots | Partial: `plot_correlations()` and `plot_Sigma_table()` draw interval forests and confidence eyes from finite bounds; `vdiffr` snapshots guard both the correlation Confidence Eye and Sigma-table Confidence Eye designs. | No calibration claim; interval-bearing input remains the user's responsibility; comparison and heatmap helpers still lack visual snapshots. |
+| Confidence-eye covariance/correlation plots | Partial: `plot_correlations()` and `plot_Sigma_table()` draw interval forests and confidence eyes from finite bounds; `vdiffr` snapshots guard both the correlation Confidence Eye and Sigma-table Confidence Eye designs. | No calibration claim; interval-bearing input remains the user's responsibility; broader matrix-style snapshots remain open. |
 | Estimate-vs-truth visuals | Partial: `compare_Sigma_table()` and `plot_Sigma_comparison()` cover row-first table and visual comparison helpers. | Needs simulation/example article integrations beyond object tests. |
-| Matrix heatmaps | Partial: `plot_Sigma_heatmap()` covers point-estimate Sigma/R heatmaps. | No uncertainty display and no multi-model layout helper yet. |
+| Matrix heatmaps | Partial: `plot_Sigma_heatmap()` covers point-estimate Sigma/R heatmaps; `plot_correlations(style = "heatmap")` and `style = "ellipse"` / `"oval"` cover tidy correlation rows with triangle controls, optional estimate/CI labels, upper-estimate/lower-CI full matrices, and two-level upper/lower matrices. | CI labels/markers only display supplied bounds; no calibration claim, multi-model layout helper, or broad visual snapshot set yet. |
 | Plot polish | Partial: captions now cover interval provenance, missing intervals, and rotation honesty; confidence eyes omit CI lines by default; first `vdiffr` snapshots guard the two most polished public plot surfaces. | Full rendered HTML review and broader visual snapshots remain open. |
 | Gallery article | Planned. | `visualizing-gllvmTMB.Rmd` should wait until the helper surface is stable enough to teach without churn. |
 | M3 figure cascade | Planned / dev-only. | M3 diagnostic report helpers remain development artefacts until surface-admission evidence is ready. |

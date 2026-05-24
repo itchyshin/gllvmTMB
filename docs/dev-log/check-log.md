@@ -8990,3 +8990,86 @@ Deliberately not run:
   was added without changing public article workflows.
 - No full site build was run; `pkgdown::check_pkgdown()` passed.
 - No branch PR CI has run yet at this local checkpoint.
+
+## 2026-05-23 -- Correlation matrix full-layout plot options
+
+Scope:
+
+- Continued the tidy covariance/correlation visualization lane on branch
+  `codex/correlation-matrix-plots-2026-05-23`.
+- Extended `plot_correlations()` matrix styles so report figures can use the
+  whole matrix deliberately rather than leaving a triangle blank.
+- Added `matrix_layout = "estimate_ci"` for upper-triangle point estimates and
+  lower-triangle supplied interval bounds.
+- Added `matrix_layout = "levels"` for exactly two covariance levels in one
+  matrix, e.g. upper triangle = `unit`, lower triangle = `unit_obs`.
+- Updated NEWS, Rd, the validation-debt register row EXT-30, and Design 46's
+  visualization ledger.
+
+Evidence:
+
+- Branch/state:
+  `git status --short --branch`
+  -> `## codex/correlation-matrix-plots-2026-05-23` with edits in
+  `NEWS.md`, `R/plot-covariance-tables.R`,
+  `docs/design/35-validation-debt-register.md`,
+  `docs/design/46-visualization-grammar.md`,
+  `man/plot_correlations.Rd`, and
+  `tests/testthat/test-plot-covariance-tables.R`.
+- Shared-file lane check:
+  `gh pr list --state open`
+  -> no open PRs.
+- Recent-commit lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent history was #239 / #238 / #237 only.
+- Formatting:
+  `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/plot_correlations.Rd`.
+- Focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 232 passes, 0 failures, 0 warnings, 0 skips.
+- Formals/defaults check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); f <- formals(plot_correlations); stopifnot(identical(eval(f$style), c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"))); stopifnot(identical(eval(f$label_type), c("auto", "estimate", "ci", "estimate_ci", "none"))); stopifnot(identical(eval(f$matrix_layout), c("by_level", "estimate_ci", "levels"))); writeLines("plot_correlations matrix formals ok")'`
+  -> `plot_correlations matrix formals ok`.
+- Visual QA renders:
+  `Rscript --vanilla -e 'dir.create("/tmp/gllvmtmb-correlation-matrix", showWarnings = FALSE, recursive = TRUE); devtools::load_all(quiet = TRUE); ...; ggplot2::ggsave(...)'`
+  -> rendered
+  `/tmp/gllvmtmb-correlation-matrix/correlation-estimate-ci-layout.png`,
+  `/tmp/gllvmtmb-correlation-matrix/correlation-levels-layout.png`, and
+  `/tmp/gllvmtmb-correlation-matrix/correlation-levels-ovals.png`.
+  Florence inspection passed for legible cell labels, visible uncertainty
+  outlines/stars, stable triangle meanings, and no overlapping title, legend,
+  axis, or caption text at the checked size.
+- `pkgdown::check_pkgdown()`:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Export/reference parity:
+  `Rscript --vanilla -e 'ns <- readLines("NAMESPACE"); x <- grep("^export(", ns, value = TRUE, fixed = TRUE); exports <- substring(x, 8, nchar(x) - 1); yml <- readLines("_pkgdown.yml"); covered <- sub("^    - ", "", grep("^    - ", yml, value = TRUE)); missing <- setdiff(exports, covered); missing <- missing[!missing %in% c("Beta", "VP", "Families")]; if (length(missing)) { writeLines(missing); quit(status = 1) } else { writeLines("export/pkgdown parity ok") }'`
+  -> `export/pkgdown parity ok`.
+- Rd keyword spot-check:
+  `Rscript --vanilla -e 'n <- sum(grepl("^\\\\keyword", readLines("man/plot_correlations.Rd"))); cat(n, "\\n"); stopifnot(n == 0)'`
+  -> `0`.
+- `git diff --check`
+  -> clean.
+- GitHub issue ledger:
+  `gh issue list --state open --search "plot_correlations matrix OR correlation heatmap OR EXT-30 OR covariance matrix" --json number,title,url,labels,updatedAt --limit 20`
+  -> found #230, "Article surface reset and user-first tooling gate"; this
+  slice advances the plotting-helper/tooling gate but does not close the issue.
+- Stale wording / Rose scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary" R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R man/plot_correlations.Rd NEWS.md docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md`
+  -> no hits.
+- Full local package check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> attempted, but the tool session did not return a final result; a follow-up
+  `ps -axo pid,etime,command | rg "Rscript --vanilla -e 'devtools::check|R CMD check|gllvmTMB.Rcheck"`
+  showed no matching Rscript or R CMD check process. Not counted as validation
+  evidence for this slice.
+
+Deliberately not run:
+
+- No article was edited or rendered; this slice only added the helper API and
+  documentation.
+- No branch PR CI has run yet.

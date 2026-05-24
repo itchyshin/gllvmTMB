@@ -479,7 +479,7 @@ loading_table <- loading_table[
 head(loading_table, 8)
 ```
 
-```{r ordi, fig.height = 5}
+```{r ordi, fig.height = 5.6}
 ord <- extract_ordination(fit, level = "unit")
 head(ord$scores)
 plot(
@@ -488,7 +488,15 @@ plot(
   level = "unit",
   anchor_traits = c("mass", "wing"),
   standardize_loadings = TRUE
-)
+) +
+  ggplot2::labs(
+    caption = paste(
+      "Grey points are latent scores; arrows are standardized loadings.",
+      "Axes use varimax rotation with sign anchors on mass and wing.",
+      "Use Sigma and correlation summaries for rotation-invariant interpretation.",
+      sep = "\n"
+    )
+  )
 ```
 
 The biplot shows the trait loadings on the two latent axes. In a

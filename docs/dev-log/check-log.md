@@ -9897,3 +9897,83 @@ Deliberately not run:
   public-surface prose/status and CSS only. CI will still run on the PR.
 - No final article-by-article Florence gate; Wave 2 owns the visible
   article figure/prose closeout.
+
+## 2026-05-24 -- visible article closeout wave 2
+
+- Branch: `codex/visible-article-closeout-wave2-2026-05-24`.
+- Scope: final rendered figure/prose closeout for the current public
+  Morphometrics article only. This wave fixes the clipped ordination
+  biplot caption, records a rendered figure review, and updates the
+  Morphometrics row in the roadmap and article gate matrix.
+- No R source, likelihood, formula grammar, family, roxygen,
+  generated Rd, NAMESPACE, NEWS, `_pkgdown.yml`, or validation-debt
+  status changed.
+
+Evidence:
+
+- Wave 1 post-merge gate:
+  `gh run view 26369528814 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> main R-CMD-check completed successfully on macOS, Ubuntu, and
+  Windows.
+- Wave 1 pkgdown deploy gate:
+  `gh run view 26370333206 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> downstream `pkgdown` workflow completed successfully.
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent merged docs/site commits only; no open competing PR.
+- Active run check:
+  `gh run list --repo itchyshin/gllvmTMB --limit 6 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,event,url,createdAt,updatedAt`
+  -> latest `main` R-CMD-check and downstream `pkgdown` runs for Wave
+  1 completed successfully.
+- Rehydration:
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-24-111418-ada-checkpoint.md`
+  and `tail -n 160 docs/dev-log/check-log.md`
+  -> newest checkpoint/check-log read before editing.
+- Targeted Morphometrics render:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("articles/morphometrics", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `pkgdown-site/articles/morphometrics.html` written.
+- Rendered image review:
+  `view_image("pkgdown-site/articles/morphometrics_files/figure-html/ordi-1.png")`
+  -> ordination biplot caption no longer clips; labels and loading
+  arrows are readable at article size.
+- Roadmap render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/roadmap", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `pkgdown-site/articles/roadmap.html` written.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rendered figure reference check:
+  `rg -o 'morphometrics_files/figure-html/[^" ]+\\.png' pkgdown-site/articles/morphometrics.html | sort -u`
+  -> current rendered article references only
+  `ci-correlation-ellipse-1.png`, `ci-correlation-eye-1.png`,
+  `corr-comparison-1.png`, and `ordi-1.png`.
+- Status/rendered wording scan:
+  `rg -n "final figure/prose audit pending|final rendered figure/prose audit passed|Morphometrics closeout|ordi-1\\.png|Use Sigma and correlation summaries|clipped|interval-calibration|calibration evidence" ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-24-morphometrics-final-figure-prose-review.md vignettes/articles/morphometrics.Rmd pkgdown-site/articles/morphometrics.html pkgdown-site/articles/roadmap.html`
+  -> Morphometrics status and rendered wording are present; the
+  remaining `final figure/prose audit pending` hit belongs to the
+  covariance/correlation page, which is intentionally not closed in
+  this wave. `interval-calibration` and `not calibration evidence`
+  hits are caveats, not overclaims.
+- Stale terminology scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|posterior densit|calibration evidence" vignettes/articles/morphometrics.Rmd docs/dev-log/audits/2026-05-24-morphometrics-final-figure-prose-review.md ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> only acceptable caveat hits: "not posterior density", "not
+  calibration evidence", and existing interval-calibration caution
+  language.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "morphometrics OR article surface reset OR figure prose closeout OR Article surface reset" --json number,title,url,labels,updatedAt --limit 20`
+  -> found #230, `Article surface reset and user-first tooling gate`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen changed.
+- No package tests or `devtools::check()` before opening the PR; this
+  is a rendered article/prose-status slice.
+- No final closeout for `covariance-correlation`,
+  `response-families`, `api-keyword-grid`, `convergence-start-values`,
+  or `pitfalls`; those pages retain their current gate statuses.

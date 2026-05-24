@@ -69,28 +69,28 @@
 }
 
 img.logo {
-  width: 132px;
+  width: 168px;
   margin-left: 2rem;
 }
 
 .template-home img.logo {
-  width: 168px;
+  width: 252px;
 }
 
 @media (min-width: 576px) {
   .page-header {
-    min-height: 116px;
+    min-height: 148px;
   }
 
   .template-home .page-header {
-    min-height: 148px;
+    min-height: 228px;
   }
 }
 
 @media (max-width: 767.98px) {
   .template-home .page-header .logo {
     height: auto;
-    max-width: 112px;
+    max-width: 156px;
   }
 }
 
@@ -98,11 +98,11 @@ img.logo {
   .page-header img.logo {
     display: block;
     float: none;
-    width: 112px;
+    width: 128px;
     margin: 0 auto 1rem;
   }
 
   .template-home .page-header img.logo {
-    width: 132px;
+    width: 156px;
   }
 }

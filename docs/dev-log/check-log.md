@@ -9759,3 +9759,87 @@ Deliberately not run:
   grammar, likelihoods, or generated Rd.
 - No stale statistical wording scan; no prose or advertised capability
   changed.
+
+## 2026-05-24 -- transparent larger pkgdown hex logo
+
+Scope:
+
+- Branch: `codex/pkgdown-logo-alpha-size-2026-05-24`.
+- Replaced the baked-white RGB logo tile with a cropped RGBA
+  `man/figures/logo.png`.
+- Regenerated pkgdown favicons from the corrected logo.
+- Increased rendered logo sizes again: regular page-header logos now
+  use 168 px, the home page uses 252 px, regular mobile pages use
+  128 px, and the mobile home page uses 156 px.
+- No public R API, likelihood, formula grammar, NAMESPACE, roxygen,
+  generated Rd, vignette/article prose, README, NEWS, ROADMAP, or
+  validation-debt status changed.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent local and merged docs commits only; no competing open PR
+  was detected.
+- Active run check:
+  `gh run list --repo itchyshin/gllvmTMB --branch main --limit 6 --json databaseId,workflowName,status,conclusion,headSha,displayTitle,createdAt,updatedAt,url,event`
+  -> the previous `docs: enlarge pkgdown hex logo` main-branch
+  `R-CMD-check` run was still in progress while this local branch was
+  edited; this branch was not pushed during the active run.
+- Source logo metadata:
+  `file man/figures/logo.png && Rscript --vanilla -e 'library(png); x <- readPNG("man/figures/logo.png"); cat(paste(dim(x), collapse="x"), "alpha_zero=", if (dim(x)[3] >= 4) round(mean(x[,,4] == 0), 3) else NA, "\n")'`
+  -> `man/figures/logo.png` is `1166 x 1166` RGBA, with
+  `alpha_zero= 0.413`.
+- Favicon regeneration:
+  `Rscript --vanilla -e 'pkgdown::build_favicons(overwrite = TRUE)'`
+  -> regenerated `apple-touch-icon.png`, `favicon-96x96.png`,
+  `favicon.ico`, `favicon.svg`, `site.webmanifest`,
+  `web-app-manifest-192x192.png`, and
+  `web-app-manifest-512x512.png`.
+- Full pkgdown build after favicon regeneration:
+  `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> completed; sitrep reported `Favicons ok` and copied generated
+  favicon assets.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Generated asset and CSS parity:
+  `cmp -s man/figures/logo.png pkgdown-site/logo.png; printf 'logo cmp=%s\n' $?; cmp -s pkgdown/extra.css pkgdown-site/extra.css; printf 'css cmp=%s\n' $?`
+  -> `logo cmp=0`, `css cmp=0`.
+- CSS selector/source-render scan:
+  `rg -n "img\\.logo|template-home \\.page-header|width: 168px|width: 252px|width: 128px|width: 156px|max-width: 156px|float: none" pkgdown/extra.css pkgdown-site/extra.css`
+  -> source CSS and generated site CSS agree on desktop, home, and
+  mobile logo rules.
+- Generated vignette scratch check:
+  `find vignettes -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) -print`
+  -> no scratch image files remained after removing the build outputs
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`, and
+  `vignettes/ord-1.png`.
+- Headless Chrome visual checks against the local pkgdown server:
+  `python3 -m http.server 8766 --bind 127.0.0.1 --directory pkgdown-site`
+  plus screenshots from `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+  at:
+  - `/tmp/gllvmTMB-logo-home-desktop-alpha.png`
+  - `/tmp/gllvmTMB-logo-pitfalls-alpha.png`
+  - `/tmp/gllvmTMB-logo-home-mobile-alpha.png`
+  -> the visible hex is larger on home, article, and mobile pages;
+  the baked white tile/halo is no longer visible around the logo.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "pkgdown logo OR hex logo OR site chrome OR Article surface reset" --json number,title,url,labels,updatedAt --limit 20`
+  -> found relevant #230, `Article surface reset and user-first
+  tooling gate`.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen changed.
+- No package tests or `devtools::check()` before opening the PR; this
+  is pkgdown image/CSS chrome work and does not touch R code,
+  examples, families, formula grammar, likelihoods, or generated Rd.
+- No stale statistical wording scan; no prose or advertised capability
+  changed.

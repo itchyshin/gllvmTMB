@@ -29,10 +29,25 @@ diagnosis, a short reproducible chunk, and a rule of thumb.
 
 The pitfalls below use the long-format API
 (`gllvmTMB(value ~ ..., data = df_long, trait = "trait")`). Many
-bar-style examples have an equivalent wide-data-frame form via the
+examples have an equivalent wide-data-frame form via the
 `traits(...)` LHS marker, but this page shows long form so the
 diagnostic target is explicit. See the Get Started vignette for the
 long/wide equivalence check.
+
+> **Scope boundary.** This page is a troubleshooting reference for
+> already-advertised workflows, not a new capability announcement.
+> IN: explicit long-format calls (`FG-02`), the wide `traits(...)`
+> interface referenced from Get Started (`FG-03`), Gaussian
+> `latent()` / `unique()` covariance examples (`FAM-01`, `FG-04`,
+> `FG-05`, `FG-06`), `extract_Sigma()` (`EXT-01`), loading rotation
+> and constraint helpers (`EXT-14`, `EXT-15`, `LAM-04`), paired and
+> three-piece phylogenetic decompositions (`PHY-02`, `PHY-03`,
+> `PHY-07`), and the A/Ainv relatedness path for animal-style
+> examples (`ANI-01`, `ANI-07`, `ANI-08`). PARTIAL: `phylo_scalar()`
+> and exact single-V `meta_V(V = V)` are shown as caveats rather than
+> fully validated workflow recommendations (`PHY-04`, `MET-01`).
+> PLANNED/BLOCKED: proportional known-V mode is not presented as a
+> current workflow (`MET-03`).
 
 ```{r setup}
 library(gllvmTMB)
@@ -260,12 +275,11 @@ pieces in the paired form above, three pieces here, more if you
 add `spatial_*` or extra latent tiers). The number of pieces
 follows from the keywords in the formula. `gllvmTMB(... +
 phylo_latent + latent + unique, ...)` is the canonical form for
-this three-piece case. The
-future functional-biogeography capstone will walk through this
-$p_{it} + q_{it}$ identifiability case after its component helpers
-and validation evidence are ready; in the same regime,
-$\sigma^2_Q$ recovers within
-$\sim$10% relative error while $\sigma^2_P$ can be noisier.*
+this three-piece case. The validation evidence for this fallback is
+tracked under `PHY-03`; the future functional-biogeography capstone
+will turn the same $p_{it} + q_{it}$ identifiability case into a
+worked biological example after its component helpers and article
+review pass.*
 
 ## 6. The `unit = "..."` argument
 

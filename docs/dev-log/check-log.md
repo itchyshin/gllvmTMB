@@ -9248,3 +9248,75 @@ Deliberately not run:
   after the committed matrix-layout, site-chrome, and snapshot slices.
 - No browser-visible local pkgdown screenshot was obtained; the earlier
   site-chrome after-task report records the in-app browser URL-policy block.
+
+## 2026-05-23 -- Get Started correlation matrix vignette QA
+
+Scope:
+
+- Branch: `codex/get-started-correlation-matrix-qa-2026-05-23`.
+- Updated `vignettes/gllvmTMB.Rmd` so the Get Started matrix example uses
+  `plot_correlations(corr_rows, style = "heatmap", matrix_layout = "estimate_ci")`
+  instead of hand-indexing `extract_Sigma_table()` rows through
+  `plot_Sigma_heatmap()`.
+- Added an EXT-30 IN/OUT boundary next to the new example: the display shows
+  supplied point estimates and finite Fisher-z interval bounds; it does not
+  compute or calibrate uncertainty.
+- No public R API, likelihood, formula grammar, family, NAMESPACE, generated
+  Rd, pkgdown navigation, README, or NEWS change.
+
+Evidence:
+
+- Pre-edit lane check for shared dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the merged correlation-matrix PR #240 plus its source
+  branch commits; no other open lane was detected.
+- Touched article render:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("gllvmTMB", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `Output created: pkgdown-site/articles/gllvmTMB.html`.
+- Florence visual QA:
+  `view_image("/Users/z3437171/Dropbox/Github Local/gllvmTMB/pkgdown-site/articles/cor-matrix-1.png")`
+  -> PASS for a legible 5 x 5 matrix: upper triangle estimates, lower
+  triangle interval bounds, readable legend, no title/caption/axis overlap.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rose method/default/formals check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pc <- formals(plot_correlations); ec <- formals(extract_correlations); stopifnot(identical(eval(pc$matrix_layout), c("by_level", "estimate_ci", "levels"))); stopifnot(identical(eval(pc$style), c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"))); stopifnot(identical(eval(ec$method), c("fisher-z", "profile", "wald", "bootstrap"))); writeLines("Rose method/default/formals check ok")'`
+  -> `Rose method/default/formals check ok`.
+- Long-format call scan:
+  `rg -n "gllvmTMB\\(" vignettes/gllvmTMB.Rmd`
+  -> wide call at line 113 uses the `traits(...)` formula object and no
+  `trait =`; long call at line 140 passes `trait = morph$fit_args$trait`.
+- Rendered-source consistency:
+  `rg -n "EXT-30|matrix_layout|estimate_ci|calibrate uncertainty|finite Fisher-z interval" vignettes/gllvmTMB.Rmd pkgdown-site/articles/gllvmTMB.html`
+  -> source and rendered HTML both contain the EXT-30 boundary, `estimate_ci`
+  layout, and finite-interval wording.
+- Method/default/source scan:
+  `rg -n "method *=|default|fisher-z|profile|wald|bootstrap|matrix_layout|estimate_ci|plot_correlations|extract_correlations" R/plot-covariance-tables.R vignettes/gllvmTMB.Rmd man/plot_correlations.Rd man/extract_correlations.Rd docs/design/35-validation-debt-register.md`
+  -> claims in the touched vignette align with source formals, generated Rd,
+  and EXT-30 / EXT-04 register rows.
+- Rose stale-wording scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/gllvmTMB.Rmd`
+  -> no matches.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "Get Started correlation matrix OR plot_correlations matrix OR EXT-30 OR Article surface reset" --json number,title,url,labels,updatedAt --limit 20`
+  -> found #230, `Article surface reset and user-first tooling gate`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Generated side-effect cleanup:
+  `git ls-files --others --exclude-standard`
+  -> no untracked files after removing transient vignette PNGs produced by the
+  article render.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and generated Rd were not changed.
+- No focused tests or full `devtools::test()`; this slice only changes a
+  vignette code chunk and prose, and the touched article render exercises the
+  code path.
+- No full `devtools::check()`; the post-merge `main` R-CMD-check for PR #240
+  was still running while this local slice was validated.

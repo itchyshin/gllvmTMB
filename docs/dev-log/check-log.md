@@ -9618,3 +9618,79 @@ Deliberately not run:
 - No full `devtools::check()` before opening the article PR; local article
   render, `pkgdown::check_pkgdown()`, source/rendered consistency, and PR CI
   are the relevant gates for this bounded documentation slice.
+
+## 2026-05-24 -- Pitfalls article balanced framing follow-up
+
+Scope:
+
+- Branch: `codex/pitfalls-general-balance-2026-05-24`.
+- Reframed `vignettes/articles/pitfalls.Rmd` so each pitfall states a
+  general troubleshooting check first, then uses the current
+  long-format model as one concrete example.
+- Softened overly model-specific or binary wording: `WRONG` / `RIGHT`
+  code comments became `MISMATCHED` / `MATCHED`; the phylogenetic
+  section now frames paired and three-piece decompositions as
+  identifiability examples rather than special rules for one model.
+- No public R API, likelihood, formula grammar, NAMESPACE, generated
+  Rd, pkgdown navigation, README, NEWS, or ROADMAP change.
+
+Evidence:
+
+- Previous-lane post-merge R-CMD-check:
+  `gh run watch 26359136575 --repo itchyshin/gllvmTMB --interval 15 --exit-status`
+  -> passed on `macos-latest`, `ubuntu-latest`, and `windows-latest`
+  for main commit `6cee75b`.
+- Previous-lane post-merge pkgdown:
+  `gh run watch 26359874362 --repo itchyshin/gllvmTMB --interval 15 --exit-status`
+  -> passed and deployed for main commit `6cee75b`.
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the merged pitfalls PR #245, keyword-grid
+  PR #244, response-families PR #243, covariance article PR #242, and
+  source-branch commits; no competing open lane was detected.
+- Base sync:
+  `git pull --ff-only`
+  -> `Already up to date.`
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Touched article render:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("articles/pitfalls", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `Output created: pkgdown-site/articles/pitfalls.html`.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- General-framing and removed-over-specific wording scan:
+  `rg -n "general diagnostic|particular example model|not a special rule|fully paired|MISMATCHED|MATCHED|n_species around 100|functional-biogeography|nonsense|WRONG|RIGHT|canonical paired" vignettes/articles/pitfalls.Rmd pkgdown-site/articles/pitfalls.html`
+  -> source and rendered HTML contain the general-framing language and
+  `MISMATCHED` / `MATCHED` comments; removed over-specific terms had
+  no matches.
+- Scope-boundary rendered-source consistency:
+  `rg -n "Scope boundary|FG-02|FG-03|FAM-01|EXT-01|EXT-14|EXT-15|LAM-04|PHY-02|PHY-03|PHY-04|PHY-07|ANI-01|ANI-07|ANI-08|MET-01|MET-03" vignettes/articles/pitfalls.Rmd pkgdown-site/articles/pitfalls.html`
+  -> source and rendered HTML retain the scope boundary and row IDs.
+- Rose stale-wording scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/pitfalls.Rmd`
+  -> no matches.
+- Register row cross-check:
+  `rg -n "FG-02|FG-03|FG-04|FG-05|FG-06|FAM-01|EXT-01|EXT-14|EXT-15|LAM-04|PHY-02|PHY-03|PHY-04|PHY-07|ANI-01|ANI-07|ANI-08|MET-01|MET-03" docs/design/35-validation-debt-register.md`
+  -> all cited row IDs exist with expected covered, partial, or
+  blocked statuses.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "pitfalls OR scope boundary OR article surface reset OR validation-debt" --json number,title,url,labels,updatedAt --limit 20`
+  -> found relevant #230, `Article surface reset and user-first
+  tooling gate`; #228 is diagnostics-related and not touched by this
+  PR.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and generated Rd were not changed.
+- No focused tests or full `devtools::test()`; this is an article-only
+  prose/framing change and the touched article render exercises the
+  existing examples.
+- No full `devtools::check()` before opening the article PR; local
+  article render, `pkgdown::check_pkgdown()`, source/rendered
+  consistency, and PR CI are the relevant gates for this bounded
+  documentation slice.

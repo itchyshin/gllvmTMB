@@ -160,8 +160,9 @@ include random environmental fixed effects
 ($\beta_{tk} \sim \mathcal{N}(0, 0.5^2)$) and a per-trait diagonal
 $psi_B$. If your fitted model has no environmental term and no
 `unique(0 + trait | site)`, that variance has nowhere to go and gets
-absorbed into $\hat{\boldsymbol\Lambda}_B$. This was a real harness
-bug caught during simulation work.
+absorbed into $\hat{\boldsymbol\Lambda}_B$. This is the general
+failure mode: the fitted model can answer a different question from
+the data-generating story even when the optimizer behaved correctly.
 
 ```{r pitfall-3}
 # CLEAN latent()-only DGP: explicitly switch off beta and psi_B
@@ -230,7 +231,11 @@ not separately recoverable.
 
 **Diagnosis.** The general issue is identifiability: do not ask the
 data to separate more variance pieces than the design can support.
-The phylogenetic example below is one instance. A bare
+For any `latent()`, `unique()`, `indep()`, `dep()`, or `*_scalar()`
+choice, first name the covariance tier, decide which diagonal variance
+is separately identifiable, and use scalar shortcuts only when a shared
+variance is the estimand. The phylogenetic example below is one
+instance. A bare
 `phylo_latent(species, d = K)` is the no-residual reduced-rank subset
 -- it captures a shared phylogenetic axis but has no diagonal for
 trait-specific phylogenetic variance. A bare `phylo_scalar()` fits a
@@ -345,7 +350,8 @@ pedigree-derived relatedness matrix as `V =`. The fit either errors
 with a shape mismatch or estimates a variance component with an
 unintended interpretation.
 
-**Diagnosis.** **A** and **V** mean different things in gllvmTMB:
+**Diagnosis.** First name what the matrix indexes and which variance
+term it represents. **A** and **V** mean different things in gllvmTMB:
 
 | Symbol | Meaning | Keyword(s) | Shape |
 |--------|---------|-----------|-------|

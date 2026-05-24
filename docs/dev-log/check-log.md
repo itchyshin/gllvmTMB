@@ -9694,3 +9694,68 @@ Deliberately not run:
   article render, `pkgdown::check_pkgdown()`, source/rendered
   consistency, and PR CI are the relevant gates for this bounded
   documentation slice.
+
+## 2026-05-24 -- pkgdown hex logo size bump
+
+Scope:
+
+- Branch: `codex/pkgdown-logo-size-2026-05-24`.
+- Enlarged the pkgdown page-header hex logo through `pkgdown/extra.css`.
+- Desktop article pages now use `img.logo { width: 132px; }` instead
+  of pkgdown's 100 px default; the home page uses 168 px instead of
+  120 px.
+- Mobile pages center the logo above the title, with 112 px for
+  regular pages and 132 px for the home page, so the hex remains
+  visible on narrow viewports.
+- No public R API, likelihood, formula grammar, NAMESPACE, roxygen,
+  generated Rd, vignette/article prose, README, NEWS, ROADMAP, or
+  validation-debt status changed.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,url,headRefName,updatedAt`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent local and merged docs commits only; no competing open PR
+  was detected.
+- Full pkgdown build:
+  `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> completed and copied `pkgdown/extra.css` to
+  `pkgdown-site/extra.css`.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Generated CSS parity:
+  `cmp -s pkgdown/extra.css pkgdown-site/extra.css; printf '%s\n' $?`
+  -> `0`.
+- CSS selector/source-render scan:
+  `rg -n "img\\.logo|template-home \\.page-header|width: 132px|width: 168px|width: 112px|max-width: 112px|float: none" pkgdown/extra.css pkgdown-site/extra.css`
+  -> source CSS and generated site CSS agree on desktop, home, and
+  mobile logo rules.
+- Headless Chrome visual checks against the local pkgdown server:
+  `python3 -m http.server 8765 --bind 127.0.0.1 --directory pkgdown-site`
+  plus screenshots from `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+  at:
+  - `/tmp/gllvmTMB-logo-home-desktop-v2.png`
+  - `/tmp/gllvmTMB-logo-pitfalls-desktop-v2.png`
+  - `/tmp/gllvmTMB-logo-home-mobile-v2.png`
+  -> desktop home and article logos are visibly larger; mobile home
+  logo is visible and centered above the title.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "pkgdown logo OR site chrome OR hex logo OR Article surface reset" --json number,title,url,labels,updatedAt --limit 20`
+  -> found relevant #230, `Article surface reset and user-first
+  tooling gate`.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen changed.
+- No package tests or `devtools::check()`; this is CSS-only pkgdown
+  chrome work and does not touch R code, examples, families, formula
+  grammar, likelihoods, or generated Rd.
+- No stale statistical wording scan; no prose or advertised capability
+  changed.

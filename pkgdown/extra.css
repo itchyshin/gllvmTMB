@@ -68,9 +68,41 @@
   color: rgba(246, 251, 253, 0.75);
 }
 
+img.logo {
+  width: 132px;
+  margin-left: 2rem;
+}
+
+.template-home img.logo {
+  width: 168px;
+}
+
+@media (min-width: 576px) {
+  .page-header {
+    min-height: 116px;
+  }
+
+  .template-home .page-header {
+    min-height: 148px;
+  }
+}
+
 @media (max-width: 767.98px) {
   .template-home .page-header .logo {
     height: auto;
-    max-width: 72px;
+    max-width: 112px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .page-header img.logo {
+    display: block;
+    float: none;
+    width: 112px;
+    margin: 0 auto 1rem;
+  }
+
+  .template-home .page-header img.logo {
+    width: 132px;
   }
 }

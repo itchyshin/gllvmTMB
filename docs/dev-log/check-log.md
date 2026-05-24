@@ -10073,3 +10073,54 @@ Deliberately not run:
 - No final closeout for `response-families`, `api-keyword-grid`,
   `convergence-start-values`, or `pitfalls`; those pages retain their
   current gate statuses.
+
+## 2026-05-24 -- roadmap Claude coordination update
+
+- Branch: `codex/roadmap-claude-coordination-2026-05-24`.
+- Scope: roadmap-only update requested by the maintainer to make the
+  remaining reset queue and Codex / Claude Code work sharing explicit.
+- No R source, likelihood, formula grammar, family, roxygen, generated
+  Rd, NAMESPACE, NEWS, `_pkgdown.yml`, or validation-debt status
+  changed.
+- This branch was held local-only until #252 post-merge main
+  R-CMD-check run `26373809519` and downstream pkgdown run
+  `26374640029` both passed.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent Wave 1 / Wave 2 / Wave 3 commits only; no competing open PR.
+- Active run check:
+  `gh run list --repo itchyshin/gllvmTMB --limit 6 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,event,url,createdAt`
+  -> #252 post-merge main R-CMD-check run `26373809519` active.
+- #252 post-merge main gate:
+  `gh run view 26373809519 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> main R-CMD-check completed successfully on macOS, Ubuntu, and
+  Windows.
+- #252 downstream pkgdown gate:
+  `gh run view 26374640029 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> pkgdown build and deploy completed successfully.
+- Roadmap render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/roadmap", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `pkgdown-site/articles/roadmap.html` written.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rendered/source coordination scan:
+  `rg -n "Codex / Claude Code|Next Shared Work Queue|Cross-Agent Rules|Claude Code|one active PR|handoff|pitfalls|#248|#228" ROADMAP.md pkgdown-site/articles/roadmap.html`
+  -> source and rendered roadmap contain the coordination checkpoint,
+  shared queue, cross-agent rules, and next issue order.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen changed.
+- No package tests or `devtools::check()`; this is a roadmap-only
+  coordination update.
+- No package tests or `devtools::check()`; CI will still run on the PR.

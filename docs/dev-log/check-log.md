@@ -9843,3 +9843,57 @@ Deliberately not run:
   examples, families, formula grammar, likelihoods, or generated Rd.
 - No stale statistical wording scan; no prose or advertised capability
   changed.
+
+## 2026-05-24 -- autonomous public-surface wave 1
+
+- Branch: `codex/autonomous-surface-wave1-2026-05-24`.
+- Scope: first autonomous slice wave after the maintainer requested the
+  30-slice queue. This wave reconciles the live roadmap and article gate
+  matrix with already-merged helper evidence, adds a rendered-review audit,
+  and fixes narrow homepage table layout in `pkgdown/extra.css`.
+- No R code, likelihood, formula grammar, family, roxygen, generated Rd,
+  NAMESPACE, or validation-debt status changed.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,url,statusCheckRollup`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent merged docs/site commits only; no open competing PR.
+- Active run check:
+  `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,createdAt`
+  -> all recent `main` R-CMD-check and pkgdown runs completed
+  successfully; no active run.
+- Full pkgdown build:
+  `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> completed; sitrep reported URLs, favicons, Open Graph metadata,
+  article metadata, and reference metadata ok.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Generated CSS parity:
+  `cmp -s pkgdown/extra.css pkgdown-site/extra.css; printf 'css cmp=%s\n' $?`
+  -> `css cmp=0`.
+- Stale status scan:
+  `rg -n "first tidy table helper still pending|Visible, under HTML review|Visible, wording review|visible, under HTML review|under wording review|functional but still basic" ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> no matches.
+- Helper evidence scan:
+  `rg -n "extract_Sigma_table\\(\\)|EXT-18|EXT-30|plot_correlations\\(\\)|compare_Sigma_table\\(\\)|plot_Sigma_comparison\\(\\)|rotated-loading|M3\\.3b" ROADMAP.md pkgdown-site/articles/roadmap.html docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> source and rendered roadmap contain the updated helper evidence.
+- Rendered review:
+  `python3 -m http.server 8767 --bind 127.0.0.1 --directory pkgdown-site`
+  plus headless Chrome screenshots recorded in
+  `docs/dev-log/audits/2026-05-24-public-surface-wave1-render-review.md`.
+- Generated vignette scratch check:
+  `find vignettes -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) -print`
+  -> scratch files were removed after full site builds.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen changed.
+- No package tests or `devtools::check()` in this wave; it changed
+  public-surface prose/status and CSS only. CI will still run on the PR.
+- No final article-by-article Florence gate; Wave 2 owns the visible
+  article figure/prose closeout.

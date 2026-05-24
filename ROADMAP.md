@@ -23,12 +23,12 @@ The visible learning path is intentionally small.
 
 | Group | Article | Purpose | Status |
 |---|---|---|---|
-| Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible, under HTML review. |
-| Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible, under HTML review. |
+| Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; launch-level HTML review passed; final figure/prose audit pending. |
+| Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; launch-level HTML review passed; final figure/prose audit pending. |
 | Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible as technical reference. |
 | Concepts | `articles/response-families` | Supported families and validation status. | Visible as technical reference. |
-| Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible, under wording review. |
-| Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible, under HTML review. |
+| Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit pending. |
+| Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible; launch-level HTML review passed; final prose audit pending. |
 
 Hidden pages remain on disk. They must not be routed from the landing
 page or visible articles as recommended next steps until their return
@@ -46,11 +46,11 @@ conditions pass.
 | 6 | Morphometrics HTML review | Pat, Darwin, Florence, Fisher | Rendered HTML is inspected; truth-vs-fit language and figures are acceptable. |
 | 7 | Example-data contract | Emmy, Curie, Noether | Done: `docs/design/52-example-object-contract.md` and `tests/testthat/test-example-morphometrics.R`. |
 | 8 | Morphometrics example object | Curie, Pat, Fisher | Done: `inst/extdata/examples/morphometrics-example.rds`; Get Started and Morphometrics use it; long/wide equivalence is tested. |
-| 9 | Covariance edge-case example object | Curie, Fisher, Pat | Done when `covariance-edge-cases-example.rds` backs the covariance and pitfalls pages, and long/wide equivalence plus `unique()` effect are tested. |
-| 10 | Extraction/plotting contracts | Emmy, Fisher, Florence, Pat | Done when report-ready table columns are specified and plot helpers expose metadata/data for article audits. |
-| 11 | Reference index cleanup | Rose, Grace, Pat | Done when `_pkgdown.yml` separates first-line APIs from advanced diagnostics, hides deprecated aliases where appropriate, and `pkgdown::check_pkgdown()` passes. |
-| 12 | Symbol-to-syntax alignment blocks | Boole, Noether, Pat | Done when public conceptual pages pair each equation with defined symbols, the matching R formula, and a plain-language interpretation. |
-| 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Done when covariance/correlation, ordination, loading, communality, repeatability, and diagnostic plots pass rendered figure review and colour-accessibility checks. |
+| 9 | Covariance edge-case example object | Curie, Fisher, Pat | Done: `inst/extdata/examples/covariance-edge-cases-example.rds` backs the covariance and pitfalls pages; `tests/testthat/test-example-covariance-edge-cases.R` covers the object contract. |
+| 10 | Extraction/plotting contracts | Emmy, Fisher, Florence, Pat | Done: `docs/design/53-report-ready-extractor-plot-contract.md` specifies row-first extractor tables and plot metadata/data attributes. |
+| 11 | Reference index cleanup | Rose, Grace, Pat | Done: `_pkgdown.yml` separates first-line APIs, helpers, diagnostics, validation utilities, and loadings; compatibility/internal topics are hidden from the visible index where appropriate. |
+| 12 | Symbol-to-syntax alignment blocks | Boole, Noether, Pat | Done: visible conceptual pages pair covariance symbols with R syntax, extractors, and plain-language interpretation. |
+| 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Partial: helper metadata, colour-safe palettes, confidence-eye displays, matrix correlation layouts, and visual snapshots exist; full rendered article-figure review remains open. |
 
 Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 have passed the
 public-site launch gate. The six visible pages, Get Started, article index,
@@ -67,6 +67,15 @@ symbol with the R formula/extractor and a plain-language interpretation.
 `morphometrics` already carries paired long/wide formulas and recovery
 equations; `pitfalls` and `response-families` remain wording-review targets
 as their examples are made more systematic.
+
+Surface-reconciliation checkpoint, 2026-05-24: merged helper work now covers
+the first report-ready Sigma/correlation table and plot surface. The validation
+register records `extract_Sigma_table()` (EXT-18), row-first covariance and
+correlation plots (EXT-19), bootstrap-derived table rows and plot overlays
+(EXT-20..EXT-24), estimate-vs-truth table and plot helpers (EXT-25..EXT-26),
+matrix-style Sigma/correlation displays (EXT-27 and EXT-30), and rotated
+loading table/plot helpers (EXT-28..EXT-29). These are infrastructure claims,
+not final publication-grade figure claims.
 
 After these infrastructure slices, resume article restoration one page at a time.
 
@@ -107,8 +116,8 @@ to reverse-engineer it from long setup chunks.
 |---|---|---|
 | Example data | Reproducible prepared objects with long data, wide data, truth, estimands, formulas, fit arguments, story, and alignment table. | `morphometrics-example.rds`; `covariance-edge-cases-example.rds` |
 | Simulation helpers | Internal scenario generators with stable seeds and named estimands. | Morphometrics, covariance edge cases, behavioural syndrome. |
-| Extraction tables | Report-ready covariance, correlation, communality, repeatability, phylogenetic signal, ordination, diagnostics, and uncertainty tables. | Contract in `docs/design/53-report-ready-extractor-plot-contract.md`; first tidy table helper still pending. |
-| Plot helpers | Data-first plots that consume extractor tables and expose audit metadata. | `plot.gllvmTMB_multi()` now attaches `gllvmTMB_meta` and `gllvmTMB_data`; current plot helpers are functional but still basic. Figure-3-style `correlation_ellipse`, `communality`, and dimension-aware 1D/2D/3D `ordination` are the starting grammar. Dominant-axis forests, score distributions, interval-aware ellipse borders, richer uncertainty displays, colour-blind palettes, and rendered Florence review are pending before publication-grade claims. |
+| Extraction tables | Report-ready covariance, correlation, communality, repeatability, phylogenetic signal, ordination, diagnostics, and uncertainty tables. | Contract in `docs/design/53-report-ready-extractor-plot-contract.md`; `extract_Sigma_table()`, `compare_Sigma_table()`, rotated-loading tables, and bootstrap-backed Sigma/correlation/communality/repeatability rows are covered where the validation register says so. Diagnostics tables beyond current fit-health rows remain next work. |
+| Plot helpers | Data-first plots that consume extractor tables and expose audit metadata. | `plot.gllvmTMB_multi()` and exported plot helpers attach `gllvmTMB_meta` and `gllvmTMB_data`; confidence-eye, matrix heatmap/ellipse, Sigma comparison, communality, integration, ordination, and rotated-loading displays have object or snapshot tests. Dominant-axis forests, score distributions, diagnostic plots, and rendered Florence review remain pending before publication-grade claims. |
 | Diagnostics | `check_gllvmTMB()` first; `pdHess = FALSE` treated as an uncertainty warning, not automatic model death. | Public methods pages. |
 | Profile/bootstrap uncertainty | Explicit fallback language and worker-level diagnostics before claims. | Keep `profile-likelihood-ci` hidden. |
 | Validation evidence | Every public claim cites a validation-debt row as `covered`, `partial`, or `blocked`. | Six visible articles. |

@@ -16,6 +16,18 @@
   overflow-x: auto;
 }
 
+.template-home table.table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.template-home table.table th,
+.template-home table.table td,
+.template-home table.table code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .template-home p,
 .template-home li {
   overflow-wrap: anywhere;
@@ -95,6 +107,16 @@ img.logo {
 }
 
 @media (max-width: 575.98px) {
+  .template-home > .row {
+    --bs-gutter-x: 0;
+  }
+
+  .template-home main {
+    width: calc(100vw - 1.5rem);
+    max-width: calc(100vw - 1.5rem);
+    overflow-x: hidden;
+  }
+
   .page-header img.logo {
     display: block;
     float: none;
@@ -104,5 +126,29 @@ img.logo {
 
   .template-home .page-header img.logo {
     width: 156px;
+  }
+
+  .template-home table.table,
+  .template-home table.table thead,
+  .template-home table.table tbody,
+  .template-home table.table tr,
+  .template-home table.table th,
+  .template-home table.table td {
+    display: block;
+    width: 100%;
+  }
+
+  .template-home table.table thead {
+    display: none;
+  }
+
+  .template-home table.table tr {
+    border-top: 1px solid #dee2e6;
+    padding: 0.35rem 0;
+  }
+
+  .template-home table.table td {
+    border: 0;
+    padding: 0.25rem 0;
   }
 }

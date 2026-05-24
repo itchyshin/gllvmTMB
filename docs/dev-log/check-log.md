@@ -9549,3 +9549,72 @@ Deliberately not run:
 - No full `devtools::check()` before opening the article PR; local article
   render, `pkgdown::check_pkgdown()`, source/rendered consistency, and PR CI
   are the relevant gates for this bounded documentation slice.
+
+## 2026-05-24 -- Pitfalls article scope boundary
+
+Scope:
+
+- Branch: `codex/pitfalls-boundary-2026-05-24`.
+- Updated the visible Methods article `vignettes/articles/pitfalls.Rmd`
+  with an explicit validation-debt scope boundary for the already-advertised
+  troubleshooting workflows it mentions.
+- Reworded the long/wide framing sentence and removed the unanchored
+  `~10%` phylogenetic recovery sentence from the public article, replacing it
+  with a `PHY-03` evidence boundary.
+- No public R API, likelihood, formula grammar, NAMESPACE, generated Rd,
+  pkgdown navigation, README, NEWS, or ROADMAP change.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the merged keyword-grid PR #244, response-families
+  PR #243, covariance article PR #242, Get Started PR #241, and their
+  source-branch commits; no competing open lane was detected.
+- Active-actions check:
+  `gh run list --repo itchyshin/gllvmTMB --limit 8 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,event`
+  -> latest `R-CMD-check` and `pkgdown` runs on main commit `4908fc3` were
+  completed successfully.
+- Touched article render:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("articles/pitfalls", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `Output created: pkgdown-site/articles/pitfalls.html`.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rendered-source consistency:
+  `rg -n "Scope boundary|FG-02|FG-03|FAM-01|EXT-01|EXT-14|EXT-15|LAM-04|PHY-02|PHY-03|PHY-04|PHY-07|ANI-01|ANI-07|ANI-08|MET-01|MET-03|proportional known-V|current workflow|functional-biogeography" vignettes/articles/pitfalls.Rmd pkgdown-site/articles/pitfalls.html`
+  -> source and rendered HTML contain the scope boundary, validation row IDs,
+  proportional known-V caveat, and revised functional-biogeography wording.
+- Removed-claim scan:
+  `rg -n "bar-style|sigma\\^2_Q|\\\\sim\\$10|~10|recovers within|functional-biogeography capstone will walk through" vignettes/articles/pitfalls.Rmd pkgdown-site/articles/pitfalls.html`
+  -> no matches.
+- Long/wide call scan:
+  `rg -n "gllvmTMB\\(|traits\\(|trait =" vignettes/articles/pitfalls.Rmd pkgdown-site/articles/pitfalls.html`
+  -> long-format examples pass `trait =`; the article references the wide
+  `traits(...)` path but does not add a wide example.
+- Rose stale-wording scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|\\bscalar\\(" vignettes/articles/pitfalls.Rmd`
+  -> no matches.
+- Register row cross-check:
+  `rg -n "FG-02|FG-03|FG-04|FG-05|FG-06|FAM-01|EXT-01|EXT-14|EXT-15|LAM-04|PHY-02|PHY-03|PHY-04|PHY-07|ANI-01|ANI-07|ANI-08|MET-01|MET-03" docs/design/35-validation-debt-register.md`
+  -> all cited row IDs exist with the expected covered, partial, or blocked
+  statuses.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "pitfalls OR scope boundary OR article surface reset OR validation-debt" --json number,title,url,labels,updatedAt --limit 20`
+  -> found relevant #230, `Article surface reset and user-first tooling gate`;
+  #228 is diagnostics-related and not touched by this PR.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and generated Rd were not changed.
+- No focused tests or full `devtools::test()`; this is an article-only
+  boundary/prose change and the touched article render exercises the examples.
+- No full `devtools::check()` before opening the article PR; local article
+  render, `pkgdown::check_pkgdown()`, source/rendered consistency, and PR CI
+  are the relevant gates for this bounded documentation slice.

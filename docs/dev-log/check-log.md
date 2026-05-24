@@ -9397,3 +9397,76 @@ Deliberately not run:
 - No full `devtools::check()` before opening the article PR; local article
   render, visual QA, `pkgdown::check_pkgdown()`, and PR CI are the relevant
   gates for this bounded documentation slice.
+
+## 2026-05-24 -- Response families article boundary
+
+Scope:
+
+- Branch: `codex/response-families-boundary-2026-05-24`.
+- Updated the visible Tier-2 technical reference
+  `vignettes/articles/response-families.Rmd` with an explicit
+  validation-debt scope boundary for covered, partial, and blocked
+  response-family claims.
+- Tightened the `delta_lognormal()` / `delta_gamma()` rows and the
+  mixed-family section so readers do not treat two-part response-scale
+  correlations or mixed-family delta/hurdle correlations as advertised
+  current capabilities.
+- No public R API, likelihood, formula grammar, family, NAMESPACE,
+  generated Rd, pkgdown navigation, README, or NEWS change.
+
+Evidence:
+
+- Post-merge `main` CI gate for PR #242:
+  `gh run watch 26353374213 --repo itchyshin/gllvmTMB --interval 15 --exit-status`
+  -> passed on Ubuntu in 23m08s, macOS in 27m17s, and Windows in 35m17s.
+- Post-merge pkgdown deploy for PR #242:
+  `gh run watch 26354017845 --repo itchyshin/gllvmTMB --interval 15 --exit-status`
+  -> passed in 7m57s. GitHub emitted a Node.js 20 deprecation annotation
+  for Pages actions; the run itself succeeded.
+- Pre-edit lane check for shared public/dev-log files:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the merged covariance article PR #242, Get Started
+  PR #241, correlation-matrix PR #240, and their source-branch commits; no
+  other open lane was detected.
+- Active-actions check:
+  `gh run list --repo itchyshin/gllvmTMB --branch main --limit 5 --json databaseId,workflowName,status,conclusion,headSha,displayTitle,createdAt,updatedAt,url,event`
+  -> latest `R-CMD-check` and `pkgdown` runs on main commit `6a6cd81` were
+  both completed successfully.
+- Touched article render:
+  `Rscript --vanilla -e 'devtools::install(quick = TRUE, dependencies = FALSE, build_vignettes = FALSE, quiet = TRUE); pkgdown::build_article("articles/response-families", quiet = FALSE, new_process = FALSE)'`
+  -> completed; `Output created: pkgdown-site/articles/response-families.html`.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rendered-source consistency:
+  `rg -n "FAM-|MIX-10|Scope boundary|family_to_id|delta/hurdle|response-scale|model/link-scale" vignettes/articles/response-families.Rmd pkgdown-site/articles/response-families.html`
+  -> source and rendered HTML contain the boundary, row IDs, and
+  delta/hurdle caveats.
+- Long/wide call scan:
+  `rg -n "gllvmTMB\\(|traits\\(" vignettes/articles/response-families.Rmd`
+  -> long-format examples at lines 80 and 126 pass `trait =`; the wide
+  example at lines 96--97 uses `traits(...)` and no `trait =`.
+- Family-list/source/register scan:
+  `rg -n "Currently supported|gaussian\\(\\)|binomial\\(\\)|poisson\\(\\)|lognormal\\(\\)|Gamma\\(\\)|nbinom2\\(\\)|tweedie\\(\\)|Beta\\(\\)|betabinomial\\(\\)|student\\(\\)|truncated_poisson\\(\\)|truncated_nbinom2\\(\\)|delta_lognormal\\(\\)|delta_gamma\\(\\)|ordinal_probit\\(\\)" R/fit-multi.R vignettes/articles/response-families.Rmd docs/design/35-validation-debt-register.md`
+  -> the article quick-lookup rows match the `family_to_id()` currently
+  supported list in `R/fit-multi.R` and cite register rows for the exposed
+  boundary.
+- Rose stale-wording scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/response-families.Rmd`
+  -> no matches.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and generated Rd were not changed.
+- No focused tests or full `devtools::test()`; this is an article-only
+  scope-boundary/prose change, and the touched article render exercises the
+  examples.
+- No full `devtools::check()` before opening the article PR; local article
+  render, `pkgdown::check_pkgdown()`, and PR CI are the relevant gates for
+  this bounded documentation slice.

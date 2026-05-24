@@ -28,7 +28,7 @@ The visible learning path is intentionally small.
 | Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible as technical reference. |
 | Concepts | `articles/response-families` | Supported families and validation status. | Visible as technical reference. |
 | Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit pending. |
-| Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible; launch-level HTML review passed; final prose audit pending. |
+| Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible; final prose audit passed. |
 
 Hidden pages remain on disk. They must not be routed from the landing
 page or visible articles as recommended next steps until their return
@@ -51,7 +51,7 @@ conditions pass.
 | 11 | Reference index cleanup | Rose, Grace, Pat | Done: `_pkgdown.yml` separates first-line APIs, helpers, diagnostics, validation utilities, and loadings; compatibility/internal topics are hidden from the visible index where appropriate. |
 | 12 | Symbol-to-syntax alignment blocks | Boole, Noether, Pat | Done: visible conceptual pages pair covariance symbols with R syntax, extractors, and plain-language interpretation. |
 | 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Partial: helper metadata, colour-safe palettes, confidence-eye displays, matrix correlation layouts, and visual snapshots exist; full rendered article-figure review remains open. |
-| 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | In progress: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls`, `convergence-start-values`, `response-families`, and `api-keyword-grid` still need bounded closeout passes. |
+| 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | In progress: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls` has final prose audit; `convergence-start-values`, `response-families`, and `api-keyword-grid` still need bounded closeout passes. |
 | 15 | Codex / Claude Code work sharing | Ada, Shannon, Rose | In progress: keep one active PR, record handoffs in repo files, and split work by non-overlapping lanes before opening parallel edits. |
 
 Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 have passed the
@@ -67,8 +67,9 @@ alignment blocks to the math-heavy visible pages
 `convergence-start-values`. These blocks pair each displayed covariance
 symbol with the R formula/extractor and a plain-language interpretation.
 `morphometrics` already carries paired long/wide formulas and recovery
-equations; `pitfalls` and `response-families` remain wording-review targets
-as their examples are made more systematic.
+equations; `pitfalls` now has a final prose closeout, while
+`response-families` remains a wording-review target as its examples are
+made more systematic.
 
 Surface-reconciliation checkpoint, 2026-05-24: merged helper work now covers
 the first report-ready Sigma/correlation table and plot surface. The validation
@@ -113,11 +114,10 @@ Keep each item to one branch and one pull request.
 
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
-| 1 | `pitfalls` balance pass | Claude Code or Codex + Pat/Rose | The points are general diagnostic checks; any model-specific material is labelled as an example, not the rule. |
-| 2 | `convergence-start-values` wording audit | Codex + Fisher/Rose | `pdHess = FALSE` is framed as an uncertainty/identifiability warning, with bootstrap/profile limits named. |
-| 3 | Technical reference closeout for `response-families` and `api-keyword-grid` | Claude Code + Rose/Boole | Scope labels match validation rows and no hidden worked examples are advertised as ready. |
-| 4 | #248 identifiability diagnostics | Codex or Claude Code + Fisher/Emmy | Programmatic diagnostics are designed before user-facing claims or plots expand. |
-| 5 | #228 predictive diagnostics | Codex + Fisher/Grace | Starts only after diagnostic wording and plot semantics are stable on the public methods pages. |
+| 1 | `convergence-start-values` wording audit | Codex + Fisher/Rose | `pdHess = FALSE` is framed as an uncertainty/identifiability warning, with bootstrap/profile limits named. |
+| 2 | Technical reference closeout for `response-families` and `api-keyword-grid` | Claude Code + Rose/Boole | Scope labels match validation rows and no hidden worked examples are advertised as ready. |
+| 3 | #248 identifiability diagnostics | Codex or Claude Code + Fisher/Emmy | Programmatic diagnostics are designed before user-facing claims or plots expand. |
+| 4 | #228 predictive diagnostics | Codex + Fisher/Grace | Starts only after diagnostic wording and plot semantics are stable on the public methods pages. |
 
 If two agents are active, prefer one public-documentation lane and one
 implementation/test lane. Do not let both agents edit the roadmap, check-log,

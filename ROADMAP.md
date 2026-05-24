@@ -23,7 +23,7 @@ The visible learning path is intentionally small.
 
 | Group | Article | Purpose | Status |
 |---|---|---|---|
-| Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; launch-level HTML review passed; final figure/prose audit pending. |
+| Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
 | Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; launch-level HTML review passed; final figure/prose audit pending. |
 | Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible as technical reference. |
 | Concepts | `articles/response-families` | Supported families and validation status. | Visible as technical reference. |
@@ -43,7 +43,7 @@ conditions pass.
 | 3 | Landing page cleanup | Pat, Darwin, Rose | First screen routes to the six-article path and does not advertise hidden pages. |
 | 4 | Get Started cleanup | Pat, Boole, Grace | Beginner path shows long and wide fits early without a page-long DGP block. |
 | 5 | Public article safety fixes | Rose, Boole, Fisher | Public articles use `trait = "trait"` in long fits, stable `Psi/psi` notation, and no hidden-page next-step links. |
-| 6 | Morphometrics HTML review | Pat, Darwin, Florence, Fisher | Rendered HTML is inspected; truth-vs-fit language and figures are acceptable. |
+| 6 | Morphometrics HTML review | Pat, Darwin, Florence, Fisher | Done: rendered HTML, truth-vs-fit language, and current figures passed `docs/dev-log/audits/2026-05-24-morphometrics-final-figure-prose-review.md`. |
 | 7 | Example-data contract | Emmy, Curie, Noether | Done: `docs/design/52-example-object-contract.md` and `tests/testthat/test-example-morphometrics.R`. |
 | 8 | Morphometrics example object | Curie, Pat, Fisher | Done: `inst/extdata/examples/morphometrics-example.rds`; Get Started and Morphometrics use it; long/wide equivalence is tested. |
 | 9 | Covariance edge-case example object | Curie, Fisher, Pat | Done: `inst/extdata/examples/covariance-edge-cases-example.rds` backs the covariance and pitfalls pages; `tests/testthat/test-example-covariance-edge-cases.R` covers the object contract. |
@@ -76,6 +76,12 @@ correlation plots (EXT-19), bootstrap-derived table rows and plot overlays
 matrix-style Sigma/correlation displays (EXT-27 and EXT-30), and rotated
 loading table/plot helpers (EXT-28..EXT-29). These are infrastructure claims,
 not final publication-grade figure claims.
+
+Morphometrics closeout checkpoint, 2026-05-24: the current rendered
+Morphometrics article passed the final figure/prose closeout recorded in
+`docs/dev-log/audits/2026-05-24-morphometrics-final-figure-prose-review.md`.
+This closes the Morphometrics page only; the other visible articles still need
+their own final rendered passes.
 
 After these infrastructure slices, resume article restoration one page at a time.
 

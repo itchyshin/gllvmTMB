@@ -254,6 +254,214 @@ test_that("plot_correlations validates required tidy columns", {
   )
 })
 
+test_that("plot_correlations renders tidy rows as a heatmap matrix", {
+  skip_if_no_ggplot2()
+  cors <- data.frame(
+    tier = "unit",
+    trait_i = c("length", "length", "mass"),
+    trait_j = c("mass", "wing", "wing"),
+    correlation = c(0.42, -0.18, 0.33),
+    lower = c(0.12, -0.45, NA_real_),
+    upper = c(0.66, 0.12, NA_real_),
+    method = c("fisher-z", "fisher-z", "none"),
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_correlations(
+    cors,
+    style = "heatmap",
+    triangle = "lower",
+    label_type = "estimate_ci"
+  )
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "correlations_heatmap",
+    "extract_correlations"
+  )
+  expect_equal(meta$interval_status, "partial")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(nrow(plot_data), 6L)
+  expect_true(all(plot_data$.triangle %in% c("lower", "diagonal")))
+  expect_true(all(plot_data$.row_index >= plot_data$.col_index))
+  expect_true(any(grepl("\\[0.12, 0.66\\]", plot_data$.label)))
+  expect_true("GeomTile" %in% gtmb_plot_geom_names(p))
+  expect_true("GeomText" %in% gtmb_plot_geom_names(p))
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_correlations can use the full matrix for estimates and intervals", {
+  skip_if_no_ggplot2()
+  cors <- data.frame(
+    tier = "unit",
+    trait_i = c("length", "length", "mass"),
+    trait_j = c("mass", "wing", "wing"),
+    correlation = c(0.42, -0.18, 0.33),
+    lower = c(0.12, -0.45, 0.05),
+    upper = c(0.66, 0.12, 0.56),
+    method = "fisher-z",
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_correlations(
+    cors,
+    style = "heatmap",
+    triangle = "lower",
+    matrix_layout = "estimate_ci"
+  )
+
+  expect_s3_class(p, "ggplot")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(unique(plot_data$.matrix_layout), "estimate_ci")
+  expect_setequal(plot_data$.triangle, c("upper", "lower", "diagonal"))
+  expect_true(all(
+    plot_data$.label_type[plot_data$.triangle == "upper"] == "estimate"
+  ))
+  expect_true(all(
+    plot_data$.label_type[plot_data$.triangle == "lower"] == "ci"
+  ))
+  expect_true(any(grepl("\\[0.12, 0.66\\]", plot_data$.label)))
+  expect_match(p$labels$subtitle, "Upper triangle: estimates", fixed = TRUE)
+  expect_match(p$labels$caption, "Upper labels show estimates", fixed = TRUE)
+  expect_silent(ggplot2::ggplot_build(p))
+
+  p_no_labels <- plot_correlations(
+    cors,
+    style = "heatmap",
+    matrix_layout = "estimate_ci",
+    label = FALSE
+  )
+  expect_false("GeomText" %in% gtmb_plot_geom_names(p_no_labels))
+  expect_no_match(p_no_labels$labels$caption, "labels show", fixed = TRUE)
+})
+
+test_that("plot_correlations can combine two covariance levels in one matrix", {
+  skip_if_no_ggplot2()
+  cors <- data.frame(
+    tier = rep(c("unit", "unit_obs"), each = 3L),
+    trait_i = rep(c("length", "length", "mass"), 2L),
+    trait_j = rep(c("mass", "wing", "wing"), 2L),
+    correlation = c(0.42, -0.18, 0.33, 0.10, -0.12, 0.28),
+    lower = c(0.12, -0.45, 0.05, -0.15, -0.34, 0.04),
+    upper = c(0.66, 0.12, 0.56, 0.30, 0.12, 0.48),
+    method = "fisher-z",
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_correlations(
+    cors,
+    style = "heatmap",
+    matrix_layout = "levels"
+  )
+
+  expect_s3_class(p, "ggplot")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(unique(plot_data$.matrix_layout), "levels")
+  expect_equal(unique(as.character(plot_data$.facet)), "All rows")
+  expect_setequal(plot_data$.display_level, c("unit", "unit_obs", "diagonal"))
+  expect_true(all(
+    plot_data$.display_level[plot_data$.triangle == "upper"] == "unit"
+  ))
+  expect_true(all(
+    plot_data$.display_level[plot_data$.triangle == "lower"] == "unit_obs"
+  ))
+  expect_false(inherits(p$facet, "FacetWrap"))
+  expect_match(p$labels$subtitle, "Upper triangle: unit", fixed = TRUE)
+  expect_match(p$labels$caption, "lower triangle shows unit_obs", fixed = TRUE)
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("plot_correlations renders ellipse matrix views", {
+  skip_if_no_ggplot2()
+  cors <- data.frame(
+    tier = "unit",
+    trait_i = c("length", "length", "mass"),
+    trait_j = c("mass", "wing", "wing"),
+    correlation = c(0.42, -0.18, 0.33),
+    lower = c(0.12, -0.45, 0.05),
+    upper = c(0.66, 0.12, 0.56),
+    method = "fisher-z",
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_correlations(
+    cors,
+    style = "oval",
+    triangle = "upper",
+    include_diagonal = FALSE,
+    label_type = "ci"
+  )
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "correlations_ellipse",
+    "extract_correlations"
+  )
+  expect_equal(meta$interval_status, "provided")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(nrow(plot_data), 3L)
+  expect_true(all(plot_data$.triangle == "upper"))
+  expect_false(any(plot_data$.diagonal))
+  expect_true(any(plot_data$.significant))
+  expect_s3_class(attr(p, "gllvmTMB_ellipse_data"), "data.frame")
+  expect_true("GeomPolygon" %in% gtmb_plot_geom_names(p))
+  expect_true("GeomText" %in% gtmb_plot_geom_names(p))
+  expect_silent(ggplot2::ggplot_build(p))
+
+  multi <- rbind(
+    cors,
+    transform(cors, tier = "unit_obs", correlation = correlation / 2)
+  )
+  p_faceted <- plot_correlations(
+    multi,
+    style = "ellipse",
+    triangle = "upper",
+    include_diagonal = FALSE,
+    label = FALSE
+  )
+  ellipse_data <- attr(p_faceted, "gllvmTMB_ellipse_data")
+  expect_setequal(as.character(ellipse_data$.facet), c("unit", "unit_obs"))
+  expect_true(inherits(p_faceted$facet, "FacetWrap"))
+  expect_silent(ggplot2::ggplot_build(p_faceted))
+})
+
+test_that("plot_correlations validates matrix-specific options", {
+  skip_if_no_ggplot2()
+  cors <- data.frame(
+    tier = c("unit", "unit_obs"),
+    trait_i = "length",
+    trait_j = "mass",
+    correlation = c(0.42, 0.10),
+    lower = c(0.12, NA_real_),
+    upper = c(0.66, NA_real_),
+    method = c("fisher-z", "none"),
+    stringsAsFactors = FALSE
+  )
+
+  expect_error(
+    plot_correlations(cors, style = "heatmap", facet = "none"),
+    regexp = "multiple levels"
+  )
+  expect_error(
+    plot_correlations(
+      cors[1L, , drop = FALSE],
+      style = "heatmap",
+      label_digits = -1
+    ),
+    regexp = "label_digits"
+  )
+  expect_error(
+    plot_correlations(
+      cors[1L, , drop = FALSE],
+      style = "heatmap",
+      matrix_layout = "levels"
+    ),
+    regexp = "exactly two correlation levels"
+  )
+})
+
 test_that("plot_Sigma_table omits diagonal rows by default", {
   skip_if_no_ggplot2()
   sigma_rows <- data.frame(

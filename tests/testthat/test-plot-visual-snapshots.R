@@ -1,8 +1,9 @@
 ## Visual regression tests for publication-facing plot helpers.
 ##
 ## These snapshots are intentionally sparse. They guard the figures whose
-## appearance carries interpretation: Confidence Eye correlation plots and
-## Sigma-table Confidence Eye plots, plus rotated ordination biplots.
+## appearance carries interpretation: Confidence Eye correlation plots,
+## matrix-style correlation plots, Sigma-table Confidence Eye plots, plus
+## rotated ordination biplots.
 
 skip_if_no_visual_snapshot <- function() {
   testthat::skip_if_not_installed("ggplot2")
@@ -74,6 +75,96 @@ test_that("confidence-eye correlation plot has stable visual output", {
 
   vdiffr::expect_doppelganger(
     "confidence-eye-correlation-plot",
+    p
+  )
+})
+
+test_that("correlation estimate-CI matrix has stable visual output", {
+  skip_if_no_visual_snapshot()
+  cors <- data.frame(
+    tier = "unit",
+    trait_i = c("length", "length", "length", "mass", "mass", "wing"),
+    trait_j = c("mass", "wing", "bill", "wing", "bill", "bill"),
+    correlation = c(0.62, -0.38, 0.18, 0.44, -0.22, 0.31),
+    lower = c(0.32, -0.61, -0.08, 0.18, -0.45, 0.05),
+    upper = c(0.80, -0.10, 0.41, 0.64, 0.03, 0.53),
+    method = "fisher-z",
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_correlations(
+    cors,
+    style = "heatmap",
+    matrix_layout = "estimate_ci"
+  )
+
+  vdiffr::expect_doppelganger(
+    "correlation-estimate-ci-matrix-plot",
+    p
+  )
+})
+
+test_that("two-level correlation ellipse matrix has stable visual output", {
+  skip_if_no_visual_snapshot()
+  cors <- data.frame(
+    tier = rep(c("unit", "unit_obs"), each = 6L),
+    trait_i = rep(c("length", "length", "length", "mass", "mass", "wing"), 2L),
+    trait_j = rep(c("mass", "wing", "bill", "wing", "bill", "bill"), 2L),
+    correlation = c(
+      0.62,
+      -0.38,
+      0.18,
+      0.44,
+      -0.22,
+      0.31,
+      0.22,
+      -0.12,
+      0.07,
+      0.29,
+      -0.08,
+      0.17
+    ),
+    lower = c(
+      0.32,
+      -0.61,
+      -0.08,
+      0.18,
+      -0.45,
+      0.05,
+      -0.04,
+      -0.35,
+      -0.19,
+      0.02,
+      -0.30,
+      -0.07
+    ),
+    upper = c(
+      0.80,
+      -0.10,
+      0.41,
+      0.64,
+      0.03,
+      0.53,
+      0.45,
+      0.11,
+      0.32,
+      0.50,
+      0.16,
+      0.39
+    ),
+    method = "fisher-z",
+    stringsAsFactors = FALSE
+  )
+
+  p <- plot_correlations(
+    cors,
+    style = "oval",
+    matrix_layout = "levels",
+    label_type = "estimate"
+  )
+
+  vdiffr::expect_doppelganger(
+    "correlation-two-level-ellipse-matrix-plot",
     p
   )
 })

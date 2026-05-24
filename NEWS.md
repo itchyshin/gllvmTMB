@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Correlation matrix plot options (2026-05-23)
+
+* **`plot_correlations()`** now draws report-ready matrix views from the same tidy rows used by its forest and confidence-eye displays (EXT-30). IN: users can call `style = "heatmap"` or `style = "ellipse"` / `"oval"` on fitted-model, `bootstrap_Sigma()`, or `extract_correlations()` rows; choose `triangle = "full"`, `"lower"`, or `"upper"`; include or omit diagonal cells; print estimates, interval bounds, or both inside cells; and use `matrix_layout = "estimate_ci"` for upper-triangle estimates plus lower-triangle interval bounds, or `matrix_layout = "levels"` to combine exactly two levels such as `unit` and `unit_obs` in one matrix. PARTIAL: the matrix styles display supplied intervals only as numeric labels and significance outlines/stars when bounds exclude zero; they do not compute new intervals, calibrate bootstrap uncertainty, or compare to known truth. PLANNED: broader visual snapshots and gallery/article layouts remain future visualization QA.
+
 ## Rotated loading plot helper (2026-05-23)
 
 * **`plot_rotated_loadings()`** draws a report-ready loading matrix from a fitted model or from `extract_rotated_loadings_table()` rows (EXT-29). IN: users can make Figure-3-style loading panels without hand-pivoting `Lambda`, with varimax/promax/none rotation, shared-variance axis ordering, sign anchoring, standardized or raw loadings, visible numeric values for small matrices, and plot metadata in `gllvmTMB_meta` / `gllvmTMB_data`. PARTIAL: the helper displays point-estimate loadings only and does not compute loading uncertainty intervals; rotated axes remain interpretive descriptions, not uniquely identified biological truths. PLANNED: bootstrap- or simulation-aligned loading uncertainty and richer gallery layouts remain later visualization slices.

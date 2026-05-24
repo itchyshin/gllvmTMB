@@ -8990,3 +8990,261 @@ Deliberately not run:
   was added without changing public article workflows.
 - No full site build was run; `pkgdown::check_pkgdown()` passed.
 - No branch PR CI has run yet at this local checkpoint.
+
+## 2026-05-23 -- Correlation matrix full-layout plot options
+
+Scope:
+
+- Continued the tidy covariance/correlation visualization lane on branch
+  `codex/correlation-matrix-plots-2026-05-23`.
+- Extended `plot_correlations()` matrix styles so report figures can use the
+  whole matrix deliberately rather than leaving a triangle blank.
+- Added `matrix_layout = "estimate_ci"` for upper-triangle point estimates and
+  lower-triangle supplied interval bounds.
+- Added `matrix_layout = "levels"` for exactly two covariance levels in one
+  matrix, e.g. upper triangle = `unit`, lower triangle = `unit_obs`.
+- Updated NEWS, Rd, the validation-debt register row EXT-30, and Design 46's
+  visualization ledger.
+
+Evidence:
+
+- Branch/state:
+  `git status --short --branch`
+  -> `## codex/correlation-matrix-plots-2026-05-23` with edits in
+  `NEWS.md`, `R/plot-covariance-tables.R`,
+  `docs/design/35-validation-debt-register.md`,
+  `docs/design/46-visualization-grammar.md`,
+  `man/plot_correlations.Rd`, and
+  `tests/testthat/test-plot-covariance-tables.R`.
+- Shared-file lane check:
+  `gh pr list --state open`
+  -> no open PRs.
+- Recent-commit lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent history was #239 / #238 / #237 only.
+- Formatting:
+  `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed without output.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/plot_correlations.Rd`.
+- Focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", stop_on_failure = TRUE)'`
+  -> 232 passes, 0 failures, 0 warnings, 0 skips.
+- Formals/defaults check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); f <- formals(plot_correlations); stopifnot(identical(eval(f$style), c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"))); stopifnot(identical(eval(f$label_type), c("auto", "estimate", "ci", "estimate_ci", "none"))); stopifnot(identical(eval(f$matrix_layout), c("by_level", "estimate_ci", "levels"))); writeLines("plot_correlations matrix formals ok")'`
+  -> `plot_correlations matrix formals ok`.
+- Visual QA renders:
+  `Rscript --vanilla -e 'dir.create("/tmp/gllvmtmb-correlation-matrix", showWarnings = FALSE, recursive = TRUE); devtools::load_all(quiet = TRUE); ...; ggplot2::ggsave(...)'`
+  -> rendered
+  `/tmp/gllvmtmb-correlation-matrix/correlation-estimate-ci-layout.png`,
+  `/tmp/gllvmtmb-correlation-matrix/correlation-levels-layout.png`, and
+  `/tmp/gllvmtmb-correlation-matrix/correlation-levels-ovals.png`.
+  Florence inspection passed for legible cell labels, visible uncertainty
+  outlines/stars, stable triangle meanings, and no overlapping title, legend,
+  axis, or caption text at the checked size.
+- `pkgdown::check_pkgdown()`:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Export/reference parity:
+  `Rscript --vanilla -e 'ns <- readLines("NAMESPACE"); x <- grep("^export(", ns, value = TRUE, fixed = TRUE); exports <- substring(x, 8, nchar(x) - 1); yml <- readLines("_pkgdown.yml"); covered <- sub("^    - ", "", grep("^    - ", yml, value = TRUE)); missing <- setdiff(exports, covered); missing <- missing[!missing %in% c("Beta", "VP", "Families")]; if (length(missing)) { writeLines(missing); quit(status = 1) } else { writeLines("export/pkgdown parity ok") }'`
+  -> `export/pkgdown parity ok`.
+- Rd keyword spot-check:
+  `Rscript --vanilla -e 'n <- sum(grepl("^\\\\keyword", readLines("man/plot_correlations.Rd"))); cat(n, "\\n"); stopifnot(n == 0)'`
+  -> `0`.
+- `git diff --check`
+  -> clean.
+- GitHub issue ledger:
+  `gh issue list --state open --search "plot_correlations matrix OR correlation heatmap OR EXT-30 OR covariance matrix" --json number,title,url,labels,updatedAt --limit 20`
+  -> found #230, "Article surface reset and user-first tooling gate"; this
+  slice advances the plotting-helper/tooling gate but does not close the issue.
+- Stale wording / Rose scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary" R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R man/plot_correlations.Rd NEWS.md docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md`
+  -> no hits.
+- Full local package check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> attempted, but the tool session did not return a final result; a follow-up
+  `ps -axo pid,etime,command | rg "Rscript --vanilla -e 'devtools::check|R CMD check|gllvmTMB.Rcheck"`
+  showed no matching Rscript or R CMD check process. Not counted as validation
+  evidence for this slice.
+
+Deliberately not run:
+
+- No article was edited or rendered; this slice only added the helper API and
+  documentation.
+- No branch PR CI has run yet.
+
+## 2026-05-23 -- pkgdown site chrome polish
+
+Scope:
+
+- Continued the first-50 plotting/reference lane on branch
+  `codex/correlation-matrix-plots-2026-05-23`.
+- Added pkgdown site chrome polish only: Flatly Bootstrap 5, logo-blue primary
+  colour overrides, OpenGraph logo metadata, and a small `pkgdown/extra.css`
+  file for navbar/dropdown/search readability.
+- Did not change article visibility, reference grouping, package API,
+  examples, NEWS, validation-debt rows, or modelling claims.
+
+Evidence:
+
+- Issue search:
+  `gh issue list --state open --search "pkgdown theme OR site CSS OR logo OR opengraph" --json number,title,url,labels,updatedAt --limit 20`
+  -> found #230, "Article surface reset and user-first tooling gate"; this
+  slice supports site readability but does not close or materially advance the
+  article tooling checklist.
+- Home build:
+  `Rscript --vanilla -e 'pkgdown::build_home()'`
+  -> completed and wrote `404.html`.
+- Browser attempt:
+  the in-app browser blocked `http://127.0.0.1:8765/`,
+  `http://localhost:8765/`, and the local `file://` preview under its URL
+  policy. No browser screenshot or interactive visual QA is counted as evidence
+  for this slice.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Workflow-matching pkgdown build:
+  `Rscript --vanilla -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'`
+  -> completed; this is the command used by `.github/workflows/pkgdown.yaml`.
+- Asset-copy proof:
+  `ls -lh pkgdown-site/extra.css pkgdown/extra.css`
+  -> both files present after the non-lazy build.
+- Asset equality:
+  `cmp -s pkgdown/extra.css pkgdown-site/extra.css; printf '%s\n' $?`
+  -> `0`.
+- Generated HTML / CSS scan:
+  `rg -n "extra\\.css|og:image|gllvmTMB hex logo|bg-primary|navbar|#052b3f" pkgdown-site/index.html pkgdown-site/extra.css _pkgdown.yml pkgdown/extra.css`
+  -> confirmed the generated home page links `extra.css`, includes OpenGraph
+  image/alt metadata, and the copied CSS carries the navbar selectors/colours.
+- `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No R package tests were run for this CSS/config-only slice.
+- No browser-visible screenshot was possible because the in-app browser blocked
+  the local preview URLs.
+
+## 2026-05-23 -- Correlation matrix visual snapshots
+
+Scope:
+
+- Added sparse `vdiffr` visual regression guards for the new
+  `plot_correlations()` matrix layouts.
+- Guarded one `matrix_layout = "estimate_ci"` heatmap and one
+  `matrix_layout = "levels"` ellipse/oval matrix.
+- Updated EXT-30 and Design 46 so the visual-debt wording matches the new
+  snapshot evidence.
+
+Evidence:
+
+- Shared-file lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`.
+- Recent-commit lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent local commits were the two current branch commits, with no open PR
+  overlap.
+- Formatting:
+  `air format tests/testthat/test-plot-visual-snapshots.R`
+  -> completed without output.
+- First snapshot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 5 passes, 2 warnings; warnings were the expected new-snapshot additions.
+- Second snapshot run:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 5 passes, 0 failures, 0 warnings, 0 skips.
+- Combined focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables|plot-visual-snapshots", stop_on_failure = TRUE)'`
+  -> 237 passes, 0 failures, 0 warnings, 0 skips.
+- Snapshot render inspection:
+  `Rscript --vanilla -e 'dir.create("/tmp/gllvmtmb-matrix-snapshots", showWarnings = FALSE); magick::image_write(magick::image_read_svg("tests/testthat/_snaps/plot-visual-snapshots/correlation-estimate-ci-matrix-plot.svg"), "/tmp/gllvmtmb-matrix-snapshots/correlation-estimate-ci-matrix-plot.png"); magick::image_write(magick::image_read_svg("tests/testthat/_snaps/plot-visual-snapshots/correlation-two-level-ellipse-matrix-plot.svg"), "/tmp/gllvmtmb-matrix-snapshots/correlation-two-level-ellipse-matrix-plot.png")'`
+  -> rendered both PNG previews.
+- Florence visual read of rendered previews:
+  -> PASS for stable triangle meanings, visible significance outlines/stars,
+  legible cell labels, and no overlapping legend/title/caption text at the
+  checked snapshot size.
+- Consistency scan:
+  `rg -n "correlation-estimate-ci-matrix|correlation-two-level-ellipse|EXT-30|matrix-style correlation|Snapshot guards" tests/testthat/test-plot-visual-snapshots.R tests/testthat/_snaps/plot-visual-snapshots docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md docs/dev-log/after-task/2026-05-23-correlation-matrix-snapshots.md`
+  -> snapshot names, EXT-30 evidence, visualization grammar wording, and
+  after-task report point to the same two guarded matrix layouts.
+
+Deliberately not run:
+
+- No roxygen was regenerated; this test-only/design-led slice changed no
+  exported documentation.
+- No pkgdown rebuild was run for this slice because no pkgdown source changed.
+
+## 2026-05-23 -- Correlation matrix branch resume / pre-PR validation
+
+Scope:
+
+- Resumed branch `codex/correlation-matrix-plots-2026-05-23` after the
+  recovery checkpoint left the full-check result unresolved.
+- Rehydrated from the clean working tree, the latest recovery checkpoint, the
+  current after-task reports, open PR census, recent commits, and the latest
+  CI run list.
+- Did not change package API, docs, examples, figures, or tests in this pass;
+  this entry records validation and coordination state before publishing the
+  branch.
+
+Evidence:
+
+- Rehydration:
+  `git status --short --branch`
+  -> `## codex/correlation-matrix-plots-2026-05-23` with no uncommitted files.
+- Latest checkpoint:
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-23-183642-ada-checkpoint.md`
+  -> identified the unfinished local full-check gate and queued Rose/Shannon
+  before push.
+- Open PR census:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> current local branch commits only:
+  `9d1520b`, `5cf4f82`, and `5179468`.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed and left the working tree clean.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Full local package check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 warning, 3 notes in 12m 12.9s; command exited non-zero
+  because warnings are treated as failures. The notes were the existing
+  `air.toml`, legacy NEWS headings, and unused `nlme` import notes.
+- Install-warning reproduction:
+  `_R_CHECK_FORCE_SUGGESTS_=false R CMD check --no-manual --no-tests --no-examples --no-vignettes /tmp/gllvmtmb-check-resume/gllvmTMB_0.2.0.tar.gz`
+  -> reproduced the installation warning as
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension'`,
+  matching the known local Apple clang / R-header warning bucket documented in
+  earlier check-log entries. The no-vignette reproduction also produced
+  expected vignette-output warnings and was used only to expose the install
+  warning source, not as package-check evidence.
+- Export/reference parity:
+  `Rscript --vanilla -e 'ns <- readLines("NAMESPACE"); x <- grep("^export(", ns, value = TRUE, fixed = TRUE); exports <- substring(x, 8, nchar(x) - 1); yml <- readLines("_pkgdown.yml"); covered <- sub("^    - ", "", grep("^    - ", yml, value = TRUE)); missing <- setdiff(exports, covered); missing <- missing[!missing %in% c("Beta", "VP", "Families")]; if (length(missing)) { writeLines(missing); quit(status = 1) } else { writeLines("export/pkgdown parity ok") }'`
+  -> `export/pkgdown parity ok`.
+- Formals/defaults check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); f <- formals(plot_correlations); stopifnot(identical(eval(f$style), c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"))); stopifnot(identical(eval(f$label_type), c("auto", "estimate", "ci", "estimate_ci", "none"))); stopifnot(identical(eval(f$matrix_layout), c("by_level", "estimate_ci", "levels"))); writeLines("plot_correlations formals ok")'`
+  -> `plot_correlations formals ok`.
+- Rose stale-wording scan:
+  `rg -n "Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|removed in 0\\.2\\.0|profile-likelihood default|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" NEWS.md R/plot-covariance-tables.R man/plot_correlations.Rd _pkgdown.yml docs/design/35-validation-debt-register.md docs/design/46-visualization-grammar.md tests/testthat/test-plot-covariance-tables.R tests/testthat/test-plot-visual-snapshots.R`
+  -> only historical compatibility/deprecation mentions of `gllvmTMB_wide()` in
+  the validation register and older NEWS; no new primary-API or stale-notation
+  hits in the touched helper/Rd/EXT-30 wording.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Recent CI:
+  `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,updatedAt`
+  -> latest `main` R-CMD-check and pkgdown for commit `3d327e6` both passed.
+
+Deliberately not run:
+
+- No article render was rerun in this resume pass; no article source changed
+  after the committed matrix-layout, site-chrome, and snapshot slices.
+- No browser-visible local pkgdown screenshot was obtained; the earlier
+  site-chrome after-task report records the in-app browser URL-policy block.

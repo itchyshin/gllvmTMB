@@ -5,6 +5,15 @@ url: https://itchyshin.github.io/gllvmTMB/
 destination: pkgdown-site
 template:
   bootstrap: 5
+  bootswatch: flatly
+  bslib:
+    primary: "#052b3f"
+    headings-color: "#10283d"
+    link-color: "#0a617d"
+  opengraph:
+    image:
+      src: man/figures/logo.png
+      alt: "gllvmTMB hex logo"
 
 navbar:
   structure:

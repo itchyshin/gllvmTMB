@@ -246,6 +246,619 @@
   ifelse(abs(x) / limit >= 0.55, "light", "dark")
 }
 
+.gtmb_plot_label_colour <- function(x, is_correlation) {
+  key <- .gtmb_heatmap_label_colour(x, is_correlation = is_correlation)
+  ifelse(
+    key == "light",
+    "white",
+    .gtmb_plot_palette[["ink"]]
+  )
+}
+
+.gtmb_validate_plot_labels <- function(label, label_digits) {
+  if (!is.logical(label) || length(label) != 1L || is.na(label)) {
+    cli::cli_abort("{.arg label} must be {.code TRUE} or {.code FALSE}.")
+  }
+  if (
+    !is.numeric(label_digits) ||
+      length(label_digits) != 1L ||
+      is.na(label_digits) ||
+      label_digits < 0 ||
+      label_digits != floor(label_digits)
+  ) {
+    cli::cli_abort("{.arg label_digits} must be a non-negative whole number.")
+  }
+  invisible(TRUE)
+}
+
+.gtmb_validate_optional_text <- function(x, arg) {
+  if (
+    !is.null(x) &&
+      (!is.character(x) || length(x) != 1L || is.na(x))
+  ) {
+    cli::cli_abort(
+      "{.arg {arg}} must be {.code NULL} or a scalar character string."
+    )
+  }
+  invisible(TRUE)
+}
+
+.gtmb_format_correlation_matrix_label <- function(dat, label_type, digits) {
+  allowed <- c("estimate", "ci", "estimate_ci", "none")
+  label_type <- as.character(label_type)
+  if (length(label_type) == 1L) {
+    label_type <- rep(label_type, nrow(dat))
+  }
+  if (length(label_type) != nrow(dat) || any(!label_type %in% allowed)) {
+    cli::cli_abort(
+      "{.arg label_type} must be one of {.val estimate}, {.val ci}, {.val estimate_ci}, or {.val none}."
+    )
+  }
+  estimate <- ifelse(
+    is.finite(dat$.estimate),
+    sprintf(paste0("%.", digits, "f"), dat$.estimate),
+    ""
+  )
+  estimate[dat$.diagonal] <- "1"
+  ci <- ifelse(
+    dat$.has_interval,
+    paste0(
+      "[",
+      sprintf(paste0("%.", digits, "f"), dat$.lower),
+      ", ",
+      sprintf(paste0("%.", digits, "f"), dat$.upper),
+      "]"
+    ),
+    ""
+  )
+  out <- rep("", nrow(dat))
+  out[label_type == "estimate"] <- estimate[label_type == "estimate"]
+  out[label_type == "ci"] <- ci[label_type == "ci"]
+  estimate_ci <- label_type == "estimate_ci"
+  out[estimate_ci] <- ifelse(
+    nzchar(ci[estimate_ci]),
+    paste(estimate[estimate_ci], ci[estimate_ci], sep = "\n"),
+    estimate[estimate_ci]
+  )
+  out
+}
+
+.gtmb_orient_correlation_rows <- function(dat, trait_index, target) {
+  row_trait <- as.character(dat$trait_i)
+  col_trait <- as.character(dat$trait_j)
+  row_index <- unname(trait_index[row_trait])
+  col_index <- unname(trait_index[col_trait])
+  flip <- if (identical(target, "upper")) {
+    row_index > col_index
+  } else {
+    row_index < col_index
+  }
+  tmp <- row_trait[flip]
+  row_trait[flip] <- col_trait[flip]
+  col_trait[flip] <- tmp
+  row_index <- unname(trait_index[row_trait])
+  col_index <- unname(trait_index[col_trait])
+  dat$.row_trait <- row_trait
+  dat$.col_trait <- col_trait
+  dat$.row_index <- row_index
+  dat$.col_index <- col_index
+  dat$.diagonal <- row_index == col_index
+  dat$.triangle <- ifelse(
+    row_index == col_index,
+    "diagonal",
+    ifelse(row_index < col_index, "upper", "lower")
+  )
+  dat
+}
+
+.gtmb_prepare_correlation_matrix_rows <- function(
+  dat,
+  triangle,
+  include_diagonal,
+  facet,
+  label_type,
+  label_digits,
+  matrix_layout
+) {
+  triangle <- match.arg(triangle, c("full", "lower", "upper"))
+  matrix_layout <- match.arg(
+    matrix_layout,
+    c("by_level", "estimate_ci", "levels")
+  )
+  if (
+    !is.logical(include_diagonal) ||
+      length(include_diagonal) != 1L ||
+      is.na(include_diagonal)
+  ) {
+    cli::cli_abort(
+      "{.arg include_diagonal} must be {.code TRUE} or {.code FALSE}."
+    )
+  }
+  label_type <- match.arg(
+    label_type,
+    c("auto", "estimate", "ci", "estimate_ci", "none")
+  )
+
+  dat$tier <- as.character(dat$tier)
+  dat$trait_i <- as.character(dat$trait_i)
+  dat$trait_j <- as.character(dat$trait_j)
+  dat$method <- as.character(dat$method)
+  dat$.estimate <- dat$correlation
+  dat$.lower <- dat$lower
+  dat$.upper <- dat$upper
+  dat$.has_interval <- is.finite(dat$.lower) & is.finite(dat$.upper)
+  dat$.significant <- dat$.has_interval & dat$.lower * dat$.upper > 0
+  dat$.facet <- .gtmb_pretty_levels(dat$tier)
+  facet_levels <- unique(dat$.facet)
+  if (identical(matrix_layout, "levels")) {
+    level_priority <- c("unit", "unit_obs", "phy", "spatial")
+    facet_levels <- unique(c(
+      intersect(level_priority, facet_levels),
+      setdiff(facet_levels, level_priority)
+    ))
+    if (length(facet_levels) != 2L) {
+      cli::cli_abort(c(
+        "{.code matrix_layout = \"levels\"} needs exactly two correlation levels.",
+        "i" = "Use {.code matrix_layout = \"by_level\"} for one level or more than two levels."
+      ))
+    }
+  }
+  if (identical(facet, "none") && !identical(matrix_layout, "levels")) {
+    if (length(facet_levels) > 1L) {
+      cli::cli_abort(c(
+        "{.code facet = \"none\"} is not available for matrix-style correlation plots with multiple levels.",
+        "i" = "Use {.code facet = \"level\"} or filter to one level first."
+      ))
+    }
+    dat$.facet <- "All rows"
+    facet_levels <- "All rows"
+  }
+  dat$.facet <- factor(dat$.facet, levels = facet_levels)
+
+  trait_levels <- unique(c(
+    as.character(dat$trait_i),
+    as.character(dat$trait_j)
+  ))
+  trait_index <- stats::setNames(seq_along(trait_levels), trait_levels)
+  if (identical(matrix_layout, "levels")) {
+    upper_dat <- dat[
+      as.character(dat$.facet) == facet_levels[[1L]],
+      ,
+      drop = FALSE
+    ]
+    lower_dat <- dat[
+      as.character(dat$.facet) == facet_levels[[2L]],
+      ,
+      drop = FALSE
+    ]
+    upper <- .gtmb_orient_correlation_rows(upper_dat, trait_index, "upper")
+    lower <- .gtmb_orient_correlation_rows(lower_dat, trait_index, "lower")
+    upper$.display_level <- facet_levels[[1L]]
+    lower$.display_level <- facet_levels[[2L]]
+    upper$.facet <- lower$.facet <- factor("All rows")
+    cells <- rbind(upper, lower)
+    triangle <- "full"
+  } else {
+    if (identical(matrix_layout, "estimate_ci")) {
+      triangle <- "full"
+    }
+    upper <- .gtmb_orient_correlation_rows(dat, trait_index, "upper")
+    lower <- .gtmb_orient_correlation_rows(dat, trait_index, "lower")
+    upper$.display_level <- as.character(upper$.facet)
+    lower$.display_level <- as.character(lower$.facet)
+    cells <- if (identical(triangle, "full")) {
+      rbind(upper, lower)
+    } else if (identical(triangle, "upper")) {
+      upper
+    } else {
+      lower
+    }
+  }
+
+  if (isTRUE(include_diagonal)) {
+    diag_facets <- if (identical(matrix_layout, "levels")) {
+      "All rows"
+    } else {
+      levels(dat$.facet)
+    }
+    diag_rows <- lapply(diag_facets, function(facet_level) {
+      out <- dat[rep(1L, length(trait_levels)), , drop = FALSE]
+      out[] <- NA
+      out$tier <- facet_level
+      out$trait_i <- trait_levels
+      out$trait_j <- trait_levels
+      out$correlation <- 1
+      out$lower <- NA_real_
+      out$upper <- NA_real_
+      out$method <- "fixed"
+      out$.estimate <- 1
+      out$.lower <- NA_real_
+      out$.upper <- NA_real_
+      out$.has_interval <- FALSE
+      out$.significant <- FALSE
+      out$.facet <- if (identical(matrix_layout, "levels")) {
+        factor("All rows")
+      } else {
+        factor(facet_level, levels = levels(dat$.facet))
+      }
+      out$.display_level <- "diagonal"
+      out$.row_trait <- trait_levels
+      out$.col_trait <- trait_levels
+      out$.row_index <- seq_along(trait_levels)
+      out$.col_index <- seq_along(trait_levels)
+      out$.diagonal <- TRUE
+      out$.triangle <- "diagonal"
+      out
+    })
+    cells <- rbind(cells, do.call(rbind, diag_rows))
+  }
+
+  cells <- cells[
+    !duplicated(paste(
+      cells$.facet,
+      cells$.row_trait,
+      cells$.col_trait,
+      sep = "\r"
+    )),
+    ,
+    drop = FALSE
+  ]
+  if (nrow(cells) == 0L) {
+    cli::cli_abort("No correlation matrix cells to plot.")
+  }
+  cells$.triangle <- factor(
+    cells$.triangle,
+    levels = c("upper", "lower", "diagonal")
+  )
+  cells$.trait_x <- factor(cells$.col_trait, levels = trait_levels)
+  cells$.trait_y <- factor(cells$.row_trait, levels = rev(trait_levels))
+  cells$.x_num <- match(cells$.col_trait, trait_levels)
+  cells$.y_num <- match(cells$.row_trait, rev(trait_levels))
+  cells$.fill_estimate <- ifelse(cells$.diagonal, NA_real_, cells$.estimate)
+  cell_label_type <- if (identical(label_type, "auto")) {
+    if (identical(matrix_layout, "estimate_ci")) {
+      ifelse(cells$.triangle == "lower", "ci", "estimate")
+    } else {
+      "estimate"
+    }
+  } else {
+    label_type
+  }
+  cells$.label <- .gtmb_format_correlation_matrix_label(
+    cells,
+    label_type = cell_label_type,
+    digits = label_digits
+  )
+  cells$.label_colour <- .gtmb_plot_label_colour(
+    cells$.fill_estimate,
+    is_correlation = TRUE
+  )
+  cells$.label_colour[cells$.diagonal] <- .gtmb_plot_palette[["grey"]]
+  cells$.cell_border <- ifelse(
+    cells$.significant,
+    .gtmb_plot_palette[["ink"]],
+    "white"
+  )
+  cells$.cell_id <- seq_len(nrow(cells))
+  cells$.matrix_layout <- matrix_layout
+  cells$.label_type <- cell_label_type
+  attr(cells, "trait_levels") <- trait_levels
+  attr(cells, "matrix_layout") <- matrix_layout
+  attr(cells, "triangle") <- triangle
+  attr(cells, "layout_levels") <- if (identical(matrix_layout, "levels")) {
+    facet_levels
+  } else {
+    NULL
+  }
+  cells
+}
+
+.gtmb_correlation_matrix_caption <- function(
+  dat,
+  style,
+  label,
+  label_type,
+  matrix_layout,
+  caption
+) {
+  if (!is.null(caption)) {
+    return(caption)
+  }
+  labels_shown <- isTRUE(label) && !identical(label_type, "none")
+  label_note <- if (!labels_shown) {
+    ""
+  } else if (identical(matrix_layout, "estimate_ci")) {
+    "Upper labels show estimates; lower labels show supplied interval bounds when finite."
+  } else if (identical(label_type, "ci")) {
+    "Cell labels show supplied interval bounds when finite."
+  } else if (identical(label_type, "estimate_ci")) {
+    "Cell labels show estimates and supplied interval bounds when finite."
+  } else {
+    ""
+  }
+  marker_note <- if (any(dat$.significant)) {
+    if (identical(style, "ellipse")) {
+      "Black cell outlines/stars mark supplied intervals that exclude zero."
+    } else {
+      "Black cell outlines mark supplied intervals that exclude zero."
+    }
+  } else if (any(dat$.has_interval)) {
+    "Supplied intervals are available in gllvmTMB_data; displayed intervals cross zero."
+  } else {
+    "No finite interval bounds were supplied for the plotted correlations."
+  }
+  shape_note <- if (identical(style, "ellipse")) {
+    "Ellipse shape shows the sign and strength of the point estimate."
+  } else {
+    "Cell fill shows the point estimate."
+  }
+  layout_note <- ""
+  if (identical(matrix_layout, "levels")) {
+    levels <- attr(dat, "layout_levels") %||% character(0)
+    if (length(levels) == 2L) {
+      layout_note <- paste0(
+        "Upper triangle shows ",
+        levels[[1L]],
+        "; lower triangle shows ",
+        levels[[2L]],
+        "."
+      )
+    }
+  }
+  .gtmb_caption_lines(
+    shape_note,
+    layout_note,
+    label_note,
+    marker_note,
+    "Matrix-style views are summaries, not posterior density displays."
+  )
+}
+
+.gtmb_correlation_ellipse_polygons <- function(dat, n = 80L) {
+  rows <- dat[!dat$.diagonal & is.finite(dat$.estimate), , drop = FALSE]
+  if (nrow(rows) == 0L) {
+    return(dat[0L, , drop = FALSE])
+  }
+  theta <- seq(0, 2 * pi, length.out = n)
+  pieces <- vector("list", nrow(rows))
+  for (i in seq_len(nrow(rows))) {
+    rho <- max(min(rows$.estimate[i], 1), -1)
+    a <- 0.45 * sqrt(1 + abs(rho))
+    b <- 0.45 * sqrt(1 - abs(rho))
+    phi <- if (rho >= 0) pi / 4 else -pi / 4
+    x0 <- rows$.x_num[i]
+    y0 <- rows$.y_num[i]
+    pieces[[i]] <- data.frame(
+      .cell_id = rows$.cell_id[i],
+      .facet = rows$.facet[i],
+      .x = x0 + a * cos(theta) * cos(phi) - b * sin(theta) * sin(phi),
+      .y = y0 + a * cos(theta) * sin(phi) + b * sin(theta) * cos(phi),
+      .estimate = rows$.estimate[i],
+      .cell_border = rows$.cell_border[i],
+      stringsAsFactors = FALSE
+    )
+  }
+  do.call(rbind, pieces)
+}
+
+.gtmb_plot_correlation_matrix <- function(
+  dat,
+  style,
+  triangle,
+  include_diagonal,
+  facet,
+  label,
+  label_type,
+  label_digits,
+  matrix_layout,
+  title,
+  subtitle,
+  caption,
+  source_label,
+  notes
+) {
+  .gtmb_validate_plot_labels(label, label_digits)
+  .gtmb_validate_optional_text(title, "title")
+  .gtmb_validate_optional_text(subtitle, "subtitle")
+  .gtmb_validate_optional_text(caption, "caption")
+  label_type <- match.arg(
+    label_type,
+    c("auto", "estimate", "ci", "estimate_ci", "none")
+  )
+  matrix_layout <- match.arg(
+    matrix_layout,
+    c("by_level", "estimate_ci", "levels")
+  )
+  dat <- .gtmb_prepare_correlation_matrix_rows(
+    dat,
+    triangle = triangle,
+    include_diagonal = include_diagonal,
+    facet = facet,
+    label_type = label_type,
+    label_digits = label_digits,
+    matrix_layout = matrix_layout
+  )
+  trait_levels <- attr(dat, "trait_levels")
+  triangle <- attr(dat, "triangle") %||% triangle
+  type <- if (identical(style, "ellipse")) {
+    "correlations_ellipse"
+  } else {
+    "correlations_heatmap"
+  }
+  interval_status <- .gtmb_interval_state(dat$.has_interval)
+  caption <- .gtmb_correlation_matrix_caption(
+    dat,
+    style = style,
+    label = label,
+    label_type = label_type,
+    matrix_layout = matrix_layout,
+    caption = caption
+  )
+  subtitle <- subtitle %||%
+    {
+      if (identical(matrix_layout, "levels")) {
+        levels <- attr(dat, "layout_levels") %||% character(0)
+        paste0(
+          "Upper triangle: ",
+          levels[[1L]],
+          "  |  Lower triangle: ",
+          levels[[2L]],
+          "."
+        )
+      } else if (identical(matrix_layout, "estimate_ci")) {
+        "Upper triangle: estimates  |  Lower triangle: interval bounds."
+      } else {
+        paste0(
+          "Showing ",
+          triangle,
+          " triangle",
+          if (isTRUE(include_diagonal)) {
+            " with diagonal."
+          } else {
+            " without diagonal."
+          }
+        )
+      }
+    }
+
+  if (identical(style, "heatmap")) {
+    p <- ggplot2::ggplot(
+      dat,
+      ggplot2::aes(
+        x = .data$.trait_x,
+        y = .data$.trait_y,
+        fill = .data$.fill_estimate
+      )
+    ) +
+      ggplot2::geom_tile(
+        ggplot2::aes(colour = .data$.cell_border),
+        linewidth = 0.55
+      ) +
+      ggplot2::scale_colour_identity(guide = "none") +
+      .gtmb_scale_fill_diverging("Correlation", limits = c(-1, 1)) +
+      ggplot2::coord_equal() +
+      ggplot2::labs(
+        x = NULL,
+        y = NULL,
+        title = title %||% "Trait correlation matrix",
+        subtitle = subtitle,
+        caption = caption
+      ) +
+      .gtmb_theme_figure() +
+      ggplot2::theme(
+        panel.grid = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+        legend.position = "right"
+      )
+    if (isTRUE(label) && !identical(label_type, "none")) {
+      p <- p +
+        ggplot2::geom_text(
+          ggplot2::aes(label = .data$.label, colour = .data$.label_colour),
+          lineheight = 0.92,
+          size = if (identical(label_type, "estimate_ci")) 2.45 else 3.0,
+          show.legend = FALSE
+        )
+    }
+  } else {
+    ell <- .gtmb_correlation_ellipse_polygons(dat)
+    star_dat <- dat[dat$.significant & !dat$.diagonal, , drop = FALSE]
+    p <- ggplot2::ggplot() +
+      ggplot2::geom_tile(
+        data = dat,
+        ggplot2::aes(x = .data$.x_num, y = .data$.y_num),
+        fill = "#FBFBFB",
+        colour = "white",
+        linewidth = 0.55
+      )
+    if (nrow(ell) > 0L) {
+      p <- p +
+        ggplot2::geom_polygon(
+          data = ell,
+          ggplot2::aes(
+            x = .data$.x,
+            y = .data$.y,
+            group = .data$.cell_id,
+            fill = .data$.estimate,
+            colour = .data$.cell_border
+          ),
+          linewidth = 0.55
+        )
+    }
+    if (isTRUE(label) && !identical(label_type, "none")) {
+      p <- p +
+        ggplot2::geom_text(
+          data = dat,
+          ggplot2::aes(
+            x = .data$.x_num,
+            y = .data$.y_num,
+            label = .data$.label,
+            colour = .data$.label_colour
+          ),
+          lineheight = 0.92,
+          size = if (identical(label_type, "estimate_ci")) 2.35 else 2.85,
+          show.legend = FALSE
+        )
+    }
+    if (nrow(star_dat) > 0L) {
+      p <- p +
+        ggplot2::geom_text(
+          data = star_dat,
+          ggplot2::aes(x = .data$.x_num, y = .data$.y_num, label = "*"),
+          inherit.aes = FALSE,
+          fontface = "bold",
+          size = 4.0,
+          nudge_y = 0.30
+        )
+    }
+    p <- p +
+      ggplot2::scale_colour_identity(guide = "none") +
+      .gtmb_scale_fill_diverging("Correlation", limits = c(-1, 1)) +
+      ggplot2::scale_x_continuous(
+        breaks = seq_along(trait_levels),
+        labels = trait_levels,
+        expand = ggplot2::expansion(mult = 0.04)
+      ) +
+      ggplot2::scale_y_continuous(
+        breaks = seq_along(trait_levels),
+        labels = rev(trait_levels),
+        expand = ggplot2::expansion(mult = 0.04)
+      ) +
+      ggplot2::coord_equal() +
+      ggplot2::labs(
+        x = NULL,
+        y = NULL,
+        title = title %||% "Trait correlations (ellipses)",
+        subtitle = subtitle,
+        caption = caption
+      ) +
+      .gtmb_theme_figure() +
+      ggplot2::theme(
+        panel.grid.major = ggplot2::element_line(colour = "#EAEAEA"),
+        panel.grid.minor = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+        legend.position = "right"
+      )
+  }
+
+  if (!identical(facet, "none") && length(unique(dat$.facet)) > 1L) {
+    p <- p + ggplot2::facet_wrap(stats::as.formula("~.facet"))
+  }
+
+  p <- .gtmb_plot_contract(
+    p,
+    type = type,
+    source = source_label,
+    level = unique(as.character(dat$.facet)),
+    interval_status = interval_status,
+    data = dat,
+    notes = notes
+  )
+  if (identical(style, "ellipse")) {
+    attr(p, "gllvmTMB_ellipse_data") <- .gtmb_correlation_ellipse_polygons(dat)
+  }
+  p
+}
+
 .gtmb_add_pair_facets <- function(p, dat, facet) {
   label_lookup <- attr(dat, "row_labels") %||% character(0)
   label_fun <- function(x) {
@@ -356,9 +969,12 @@
 #' Plot pairwise trait correlations with intervals
 #'
 #' `plot_correlations()` turns the tidy rows returned by
-#' [extract_correlations()] into a horizontal forest plot. It keeps point
-#' estimates visible as open points when interval bounds are missing, and draws
-#' interval segments only for rows with finite lower and upper bounds.
+#' [extract_correlations()] into a horizontal forest plot, confidence-eye plot,
+#' heatmap, or ellipse matrix. Forest and confidence-eye styles keep point
+#' estimates visible as open points when interval bounds are missing, and draw
+#' interval information only for rows with finite lower and upper bounds.
+#' Matrix styles show the same tidy rows without requiring users to reconstruct
+#' or hand-index a correlation matrix.
 #' For fitted-object calls, open points can often be investigated by trying
 #' `method = "bootstrap"` or another interval method supported by
 #' [extract_correlations()].
@@ -367,10 +983,13 @@
 #' [extract_correlations()], extracts those rows from a fit returned by
 #' [gllvmTMB()] (EXT-19; built on EXT-04/EXT-18 extractor contracts), or
 #' converts `bootstrap_Sigma()` correlation summaries to the same plotting
-#' schema (EXT-24). PARTIAL, the plot does not compute new intervals; it
-#' displays whatever interval method the input rows already contain. PLANNED,
-#' matrix-style visual comparisons against known truth remain article code
-#' rather than part of this helper.
+#' schema (EXT-24). Matrix heatmaps and ellipse/oval displays, including
+#' upper-estimate/lower-CI and two-level upper/lower layouts, are
+#' point-estimate summaries with optional numeric interval labels (EXT-30).
+#' PARTIAL, the plot does not compute new intervals; it displays whatever
+#' interval method the input rows already contain. PLANNED, matrix-style visual
+#' comparisons against known truth remain article code rather than part of this
+#' helper.
 #'
 #' @param x Either a fit returned by [gllvmTMB()], a `bootstrap_Sigma` object with
 #'   `R_B` / `R_W` summaries, or a data frame returned by
@@ -388,16 +1007,41 @@
 #'   `style = "interval"` and omitted for `style = "eye"`. Set `TRUE` to
 #'   overlay interval lines on confidence eyes. Rows without finite bounds remain
 #'   visible as points.
-#' @param style One of `"interval"` (default), `"eye"`, or `"raindrop"`.
+#' @param style One of `"interval"` (default), `"eye"`, `"raindrop"`,
+#'   `"heatmap"`, `"ellipse"`, or `"oval"`.
 #'   `"eye"` draws a confidence eye: a pale frequentist compatibility shape
 #'   reconstructed from the estimate and finite interval bounds, plus a hollow,
 #'   sign-coloured estimate circle. Correlation rows use Fisher's z scale. The
-#'   shape is not a posterior density. `"raindrop"` is accepted as a
-#'   compatibility alias.
+#'   shape is not a posterior density. `"heatmap"` draws a trait-by-trait matrix
+#'   with colour showing the point estimate. `"ellipse"`/`"oval"` draws
+#'   correlation ellipses in matrix cells; ellipse tilt and width encode sign
+#'   and strength. `"raindrop"` is accepted as a compatibility alias for
+#'   `"eye"`, and `"oval"` as an alias for `"ellipse"`.
 #' @param eye_level Confidence level represented by the supplied interval
 #'   bounds when `style = "eye"`. Defaults to `level`, so fitted-object calls
 #'   stay aligned with [extract_correlations()].
 #' @param raindrop_level Compatibility alias for `eye_level`.
+#' @param triangle Matrix triangle to show for `style = "heatmap"` or
+#'   `style = "ellipse"` when `matrix_layout = "by_level"`:
+#'   `"full"` (default), `"lower"`, or `"upper"`.
+#' @param include_diagonal Logical. Include muted diagonal self-correlation
+#'   cells in matrix styles?
+#' @param label Logical. Print cell labels in matrix styles?
+#' @param label_type For matrix styles, one of `"auto"` (default),
+#'   `"estimate"`, `"ci"`, `"estimate_ci"`, or `"none"`. With
+#'   `matrix_layout = "estimate_ci"`, `"auto"` prints point estimates in the
+#'   upper triangle and interval bounds in the lower triangle. Interval labels
+#'   are printed only where finite `lower` and `upper` bounds are supplied.
+#' @param label_digits Non-negative whole number of decimal places for matrix
+#'   cell labels.
+#' @param matrix_layout Matrix-cell layout for heatmap and ellipse styles.
+#'   `"by_level"` facets levels and uses `triangle` directly. `"estimate_ci"`
+#'   uses the full matrix for each level: upper triangle labels point estimates
+#'   and lower triangle labels supplied interval bounds. `"levels"` combines
+#'   exactly two levels into one full matrix: upper triangle shows the first
+#'   level and lower triangle shows the second level.
+#' @param title,subtitle,caption Optional scalar character labels for matrix
+#'   styles. `NULL` keeps publication-safe defaults.
 #'
 #' @return A `ggplot2` plot object with `gllvmTMB_meta` and `gllvmTMB_data`
 #'   attributes.
@@ -416,6 +1060,7 @@
 #'     method = c("fisher-z", "fisher-z", "none")
 #'   )
 #'   plot_correlations(cors)
+#'   plot_correlations(cors, style = "heatmap", matrix_layout = "estimate_ci")
 #' }
 plot_correlations <- function(
   x,
@@ -430,18 +1075,42 @@ plot_correlations <- function(
   facet = c("level", "none"),
   sort = c("estimate", "magnitude", "trait", "level"),
   show_intervals = NULL,
-  style = c("interval", "eye", "raindrop"),
+  style = c("interval", "eye", "raindrop", "heatmap", "ellipse", "oval"),
   eye_level = level,
-  raindrop_level = NULL
+  raindrop_level = NULL,
+  triangle = c("full", "lower", "upper"),
+  include_diagonal = TRUE,
+  label = TRUE,
+  label_type = c("auto", "estimate", "ci", "estimate_ci", "none"),
+  label_digits = 2,
+  matrix_layout = c("by_level", "estimate_ci", "levels"),
+  title = NULL,
+  subtitle = NULL,
+  caption = NULL
 ) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     cli::cli_abort("Install ggplot2: {.code install.packages(\"ggplot2\")}.")
   }
   facet <- match.arg(facet)
   sort <- match.arg(sort)
-  style <- .gtmb_normalise_uncertainty_style(style)
-  eye_level <- .gtmb_resolve_eye_level(eye_level, raindrop_level)
-  draw_interval_line <- .gtmb_resolve_interval_line(show_intervals, style)
+  style <- match.arg(style)
+  if (identical(style, "raindrop")) {
+    style <- "eye"
+  }
+  if (identical(style, "oval")) {
+    style <- "ellipse"
+  }
+  matrix_style <- style %in% c("heatmap", "ellipse")
+  eye_level <- if (identical(style, "eye")) {
+    .gtmb_resolve_eye_level(eye_level, raindrop_level)
+  } else {
+    NULL
+  }
+  draw_interval_line <- if (isTRUE(matrix_style)) {
+    FALSE
+  } else {
+    .gtmb_resolve_interval_line(show_intervals, style)
+  }
   link_residual <- match.arg(link_residual)
   method <- match.arg(method)
 
@@ -477,6 +1146,25 @@ plot_correlations <- function(
     cli::cli_abort("No correlation rows to plot.")
   }
   plot_notes <- attr(dat, "notes") %||% character(0)
+
+  if (isTRUE(matrix_style)) {
+    return(.gtmb_plot_correlation_matrix(
+      dat,
+      style = style,
+      triangle = triangle,
+      include_diagonal = include_diagonal,
+      facet = facet,
+      label = label,
+      label_type = label_type,
+      label_digits = label_digits,
+      matrix_layout = matrix_layout,
+      title = title,
+      subtitle = subtitle,
+      caption = caption,
+      source_label = source_label,
+      notes = plot_notes
+    ))
+  }
 
   dat$.estimate <- dat$correlation
   dat$.lower <- dat$lower

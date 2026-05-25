@@ -97,9 +97,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| (none) | -- | -- | -- | No active Codex lane after PR #229 merge |
+| Claude | M3 sim lane — workflow + script support target-explicit dispatch (3 new `workflow_dispatch` inputs `targets` / `n_boot` / `seed_base`; `--seed-base` CLI flag on the precompute driver); pre-dispatch audit memo with pre-registered ratio bands (Fisher + Curie + Rose 2026-05-24 lens consults) | PR #258 / `agent/m3-workflow-targets-nboot-seed` | `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R`, `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | Open; Codex review requested. After merge: pilot dispatch at `n_reps=10`, `targets=psi,Sigma_unit_diag`, `n_boot=25`, `seed_base=20260524`, `retention_days=14`. CI-08 / CI-10 stay `partial` (Design 50 §9). |
+| Codex | -- | -- | -- | No active Codex lane after PR #229 merge |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -145,6 +146,9 @@ leave a coordination comment first and wait for acknowledgement.
 | `tests/testthat/*` | no active owner after #226 merged; new `meta_V()` parser and wide-format tests are now on `main` |
 | `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
 | `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | no active owner after PR #229 merged |
+| `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | **Claude** (PR #258 active 2026-05-24). Codex review welcome on the PR; please do not touch these on a parallel branch while #258 is open. |
+| `dev/m3-grid.R` | no active owner; this lane only reads. Codex free to edit. |
+| `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | **Claude** (M3 sim lane audit memo). |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a
@@ -433,6 +437,18 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-24 ~07:30 MT: Claude picked up the M3 sim lane
+  (accuracy + reliability check at n_reps=10, NOT comprehensive
+  coverage — that's a future post-functionality-freeze slice per
+  maintainer 2026-05-24). PR #258 opens with three new
+  `workflow_dispatch` inputs (`targets`, `n_boot`, `seed_base`)
+  on the M3 production grid + a pre-dispatch audit memo with
+  pre-registered estimate/truth-ratio bands. Fisher + Curie + Rose
+  lens consults completed before the plan was finalised. Codex
+  review requested on PR #258. File-ownership rows added for
+  `.github/workflows/m3-production-grid.yaml`,
+  `dev/precompute-m3-grid.R` (CLI surface), and the audit memo
+  (Claude).
 - 2026-05-14 ~21:00 MT: Codex-absent assumption codified
   (maintainer "codex might not come back so you should
   plan to do it"). R/ + tests/testthat/ + src/ ownership

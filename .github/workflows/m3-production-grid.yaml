@@ -14,6 +14,25 @@ on:
         options:
           - single_trait_warmup
           - default
+      targets:
+        description: "Interval targets (Design 50 §3): `psi`, `Sigma_unit_diag`, or `psi,Sigma_unit_diag`. Sigma is primary; psi is diagnostic."
+        required: true
+        default: "psi,Sigma_unit_diag"
+        type: choice
+        options:
+          - psi,Sigma_unit_diag
+          - Sigma_unit_diag
+          - psi
+      n_boot:
+        description: "Bootstrap replicates per Sigma_unit_diag interval (0 = skip bootstrap, psi-only)"
+        required: true
+        default: "25"
+        type: number
+      seed_base:
+        description: "Master seed base. Use a fresh value per dispatch to avoid collision with prior runs (e.g. 20260517 = 2026-05-19 production)."
+        required: true
+        default: "20260524"
+        type: number
       retention_days:
         description: "Artifact retention in days"
         required: true
@@ -71,6 +90,9 @@ jobs:
             --d=${{ matrix.d }} \
             --n-reps=${{ inputs.n_reps }} \
             --init-strategy=${{ inputs.init_strategy }} \
+            --targets=${{ inputs.targets }} \
+            --n-boot=${{ inputs.n_boot }} \
+            --seed-base=${{ inputs.seed_base }} \
             --out-prefix="${OUT_PREFIX}"
 
       - name: Upload M3 cell artifact

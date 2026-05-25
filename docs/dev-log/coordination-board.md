@@ -97,9 +97,10 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| (none) | -- | -- | -- | No active Codex lane after PR #229 merge |
+| Claude | M3 sim lane — post-dispatch results memo + lane close | PR-TBD / `agent/m3-sim-pilot-results` | `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` (§8 results), `docs/dev-log/coordination-board.md` | Awaiting commit + PR. After merge: lane closes. **Scenario A confirmed; broader than nbinom2.** Hand-off to Codex's #257/#228 per pre-registered trigger. |
+| Codex | -- | -- | -- | No active Codex lane after PR #229 merge |
 
-**WIP**: 0.
+**WIP**: 1.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -145,6 +146,9 @@ leave a coordination comment first and wait for acknowledgement.
 | `tests/testthat/*` | no active owner after #226 merged; new `meta_V()` parser and wide-format tests are now on `main` |
 | `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
 | `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | no active owner after PR #229 merged |
+| `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | no active owner after PR #258 merged 2026-05-25. Both teams free to edit. |
+| `dev/m3-grid.R` | no active owner; free to edit. |
+| `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | no active owner after the M3 sim lane closed 2026-05-25 (post-dispatch §8 results landed in PR-TBD `agent/m3-sim-pilot-results`). |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a
@@ -171,6 +175,20 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-25 ~14:30 UTC**: PR #258 (M3 sim lane — workflow + script
+  + pre-dispatch audit memo) merged to `main` at 14:07 UTC.
+  GHA dispatch [run 26404672871](https://github.com/itchyshin/gllvmTMB/actions/runs/26404672871)
+  completed at 15:xx UTC: 15/15 jobs returned `success`; 5 cells
+  flagged `COMPUTE_FAIL` per Design 50 §5 (3 ordinal-probit
+  expected per §6 bootstrap guard; 1 nbinom2 d=2 boot-fail-rate
+  22%; 1 mixed d=3 fit-fail 40%). **Verdict: Scenario A confirmed;
+  broader than nbinom2** — binomial all three d-levels show severe
+  under-estimate of `Sigma_unit[tt]` (median ratios 0.24/0.32/0.42
+  vs band [0.80, 1.15]); nbinom2 d=1 and d=3 also outside their
+  band; Gaussian d=1 just over. Hand-off to Codex's #257/#228 lane
+  per pre-registered trigger. CI-08 and CI-10 stay `partial`
+  (Design 50 §9). See `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md`
+  §8 for full per-cell table.
 - **2026-05-20 ~16:08 MT**: PR #229 (fitted-model predictive /
   simulation-rank diagnostic prototype) merged to `main` as squash
   commit `2479a9d` after PR R-CMD-check run `26190941251` passed on
@@ -433,6 +451,26 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-25 ~15:30 UTC: M3 sim lane closes. PR #258 merged at 14:07
+  UTC; GHA dispatch run 26404672871 completed 15/15 success.
+  **Scenario A confirmed broader than nbinom2** — binomial all
+  three d-levels show severe under-estimate of `Sigma_unit[tt]`.
+  Hand-off to Codex's #257/#228 lane per pre-registered trigger.
+  CI-08 / CI-10 stay `partial` (Design 50 §9). File-ownership rows
+  released. Post-dispatch memo + coord-board update committed to
+  `agent/m3-sim-pilot-results` (PR opens after this commit) (Claude).
+- 2026-05-24 ~07:30 MT: Claude picked up the M3 sim lane
+  (accuracy + reliability check at n_reps=10, NOT comprehensive
+  coverage — that's a future post-functionality-freeze slice per
+  maintainer 2026-05-24). PR #258 opens with three new
+  `workflow_dispatch` inputs (`targets`, `n_boot`, `seed_base`)
+  on the M3 production grid + a pre-dispatch audit memo with
+  pre-registered estimate/truth-ratio bands. Fisher + Curie + Rose
+  lens consults completed before the plan was finalised. Codex
+  review requested on PR #258. File-ownership rows added for
+  `.github/workflows/m3-production-grid.yaml`,
+  `dev/precompute-m3-grid.R` (CLI surface), and the audit memo
+  (Claude).
 - 2026-05-14 ~21:00 MT: Codex-absent assumption codified
   (maintainer "codex might not come back so you should
   plan to do it"). R/ + tests/testthat/ + src/ ownership

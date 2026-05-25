@@ -102,6 +102,14 @@ They remain Tier-2 lookup pages, not worked examples; their status labels map
 to validation-register rows and they do not advertise hidden worked examples
 as ready.
 
+Identifiability diagnostics checkpoint, 2026-05-24: #248 is implemented in the
+existing `check_gllvmTMB()` machine-readable table rather than as a parallel
+diagnostic API. DIA-08 now includes Hessian rank, rotation-convention,
+weak-axis, near-zero `psi`, `sigma_eps` boundary, and cross-loading structure
+rows for fitted latent-variable models. These rows are warnings and routing
+signals; rank confirmation still belongs to `check_identifiability()` and the
+M3 validation grid.
+
 Coordination checkpoint, 2026-05-24: Codex and Claude Code can share the
 remaining reset work, but only through explicit lanes. Codex owns the live
 roadmap, check-log, PR pacing, and cross-file consistency gates. Claude Code is
@@ -123,8 +131,8 @@ Keep each item to one branch and one pull request.
 
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
-| 1 | #248 identifiability diagnostics | Codex or Claude Code + Fisher/Emmy | Programmatic diagnostics are designed before user-facing claims or plots expand. |
-| 2 | #228 predictive diagnostics | Codex + Fisher/Grace | Starts only after diagnostic wording and plot semantics are stable on the public methods pages. |
+| 1 | #228 predictive diagnostics | Codex + Fisher/Grace | Starts after #248 diagnostic wording and plot semantics are stable on the public methods pages. |
+| 2 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, validation rows, figure review, and rendered HTML review. |
 
 If two agents are active, prefer one public-documentation lane and one
 implementation/test lane. Do not let both agents edit the roadmap, check-log,

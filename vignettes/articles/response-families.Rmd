@@ -48,23 +48,23 @@ simulation check say otherwise.
 
 ## Quick Lookup
 
-| Response looks like | Family | Link(s) currently accepted by the multivariate engine | Notes |
-|---|---|---|---|
-| continuous, unbounded | `gaussian()` | identity | Default family. |
-| binary or binomial trials | `binomial()` | logit, probit, cloglog | Use `cbind(success, failure)` or `weights` for multi-trial binomial data. |
-| counts | `poisson()` | log | No dispersion parameter; add an observation-level `unique()` term when that is identifiable. |
-| positive continuous, right-skewed | `lognormal()` | log | Use only when the response is strictly positive. |
-| positive continuous, constant CV | `Gamma(link = "log")` | log | Base R `Gamma()`, with log link in the engine. |
-| overdispersed counts | `nbinom2()` | log | NB2 variance grows quadratically with the mean. |
-| non-negative continuous with zeros | `tweedie()` | log | Compound Poisson-Gamma style mean-variance relationship. |
-| proportions in `(0, 1)` | `Beta()` | logit | Boundary 0 and 1 values need separate handling before fitting. |
-| overdispersed binomial trials | `betabinomial()` | logit | For k-of-n responses with extra-binomial variation. |
-| continuous with heavy tails | `student()` | identity | Degrees of freedom can be estimated or fixed. |
-| positive counts, no zeros | `truncated_poisson()` | log | Requires integer responses `y >= 1`. |
-| overdispersed positive counts, no zeros | `truncated_nbinom2()` | log | Requires integer responses `y >= 1`. |
-| non-negative continuous with exact zeros | `delta_lognormal()` | logit + log | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
-| non-negative continuous with exact zeros | `delta_gamma()` | logit + log | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
-| ordered categories with `K >= 3` | `ordinal_probit()` | probit | Threshold model with latent residual variance fixed at 1; the ordinal worked article is under audit. |
+| Response looks like | Family | Link(s) currently accepted by the multivariate engine | Validation / interpretation status | Notes |
+|---|---|---|---|---|
+| continuous, unbounded | `gaussian()` | identity | covered (FAM-01) | Default family. |
+| binary or binomial trials | `binomial()` | logit, probit, cloglog | covered (FAM-02--FAM-04) | Use `cbind(success, failure)` or `weights` for multi-trial binomial data. |
+| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `unique()` term when that is identifiable. |
+| positive continuous, right-skewed | `lognormal()` | log | partial (FAM-11) | Use only when the response is strictly positive. |
+| positive continuous, constant CV | `Gamma(link = "log")` | log | partial (FAM-09) | Base R `Gamma()`, with log link in the engine. |
+| overdispersed counts | `nbinom2()` | log | covered (FAM-08) | NB2 variance grows quadratically with the mean. |
+| non-negative continuous with zeros | `tweedie()` | log | partial (FAM-13) | Compound Poisson-Gamma style mean-variance relationship. |
+| proportions in `(0, 1)` | `Beta()` | logit | partial (FAM-10) | Boundary 0 and 1 values need separate handling before fitting. |
+| overdispersed binomial trials | `betabinomial()` | logit | partial (FAM-05) | For k-of-n responses with extra-binomial variation. |
+| continuous with heavy tails | `student()` | identity | partial (FAM-12) | Degrees of freedom can be estimated or fixed. |
+| positive counts, no zeros | `truncated_poisson()` | log | partial (FAM-15) | Requires integer responses `y >= 1`. |
+| overdispersed positive counts, no zeros | `truncated_nbinom2()` | log | partial (FAM-15) | Requires integer responses `y >= 1`. |
+| non-negative continuous with exact zeros | `delta_lognormal()` | logit + log | blocked for response-scale and mixed-family interpretation (FAM-17, MIX-10) | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
+| non-negative continuous with exact zeros | `delta_gamma()` | logit + log | blocked for response-scale and mixed-family interpretation (FAM-17, MIX-10) | Standard hurdle form only; report model/link-scale correlations unless a later response-scale estimand is defined. |
+| ordered categories with `K >= 3` | `ordinal_probit()` | probit | partial (FAM-14) | Threshold model with latent residual variance fixed at 1; the ordinal worked article is under audit. |
 
 Use this table as a likelihood lookup. For covariance keywords, see
 [Formula keyword grid](api-keyword-grid.html). Binary species, mixed-family,
@@ -139,9 +139,11 @@ values before matching them, so an explicit factor is safer.
 This page is a family lookup, not the mixed-response worked example.
 The separate mixed-response article can show a runnable Gaussian +
 binomial + Poisson analysis with simulated data and interpretation.
-Delta and hurdle families are deliberately not used in the mixed-family
-example path here because the latent-scale correlation target for
-mixed-family delta/hurdle fits is blocked under MIX-10.
+Use non-delta, one-link families for public mixed-family examples
+until the two-part estimand is defined. Delta and hurdle families are
+deliberately not used in the mixed-family example path here because
+the latent-scale correlation target for mixed-family delta/hurdle fits
+is blocked under MIX-10.
 
 ## Scale And Extraction
 
@@ -186,23 +188,23 @@ fits. Do not present these as supported response families in public
 examples until the engine, tests, and documentation are updated
 together.
 
-| Constructor | Current status in multivariate `gllvmTMB()` |
-|---|---|
-| `nbinom1()` | exported constructor, not mapped in `family_to_id()` |
-| `gengamma()` | exported constructor, not mapped in `family_to_id()` |
-| `gamma_mix()` | exported constructor, not mapped in `family_to_id()` |
-| `lognormal_mix()` | exported constructor, not mapped in `family_to_id()` |
-| `nbinom2_mix()` | exported constructor, not mapped in `family_to_id()` |
-| `truncated_nbinom1()` | exported constructor, not mapped in `family_to_id()` |
-| `censored_poisson()` | exported constructor, not mapped in `family_to_id()` |
-| `delta_beta()` | exported constructor, not mapped in `family_to_id()` |
-| `delta_gengamma()` | exported constructor, not mapped in `family_to_id()` |
-| `delta_gamma_mix()` | exported constructor, not mapped in `family_to_id()` |
-| `delta_lognormal_mix()` | exported constructor, not mapped in `family_to_id()` |
-| `delta_truncated_nbinom1()` | exported constructor, not mapped in `family_to_id()` |
-| `delta_truncated_nbinom2()` | exported constructor, not mapped in `family_to_id()` |
-| `delta_poisson_link_gamma()` | deprecated compatibility helper |
-| `delta_poisson_link_lognormal()` | deprecated compatibility helper |
+| Constructor | Register status | Current status in multivariate `gllvmTMB()` |
+|---|---|---|
+| `nbinom1()` | partial (FAM-07) | exported constructor, not mapped in `family_to_id()` |
+| `gengamma()` | blocked (FAM-19) | exported constructor, not mapped in `family_to_id()` |
+| `gamma_mix()` | blocked (FAM-18) | exported constructor, not mapped in `family_to_id()` |
+| `lognormal_mix()` | blocked (FAM-18) | exported constructor, not mapped in `family_to_id()` |
+| `nbinom2_mix()` | blocked (FAM-18) | exported constructor, not mapped in `family_to_id()` |
+| `truncated_nbinom1()` | partial (FAM-15) | exported constructor, not mapped in `family_to_id()` |
+| `censored_poisson()` | partial (FAM-16) | exported constructor, not mapped in `family_to_id()` |
+| `delta_beta()` | blocked (FAM-17) | exported constructor, not mapped in `family_to_id()` |
+| `delta_gengamma()` | blocked (FAM-17) | exported constructor, not mapped in `family_to_id()` |
+| `delta_gamma_mix()` | blocked (FAM-17, FAM-18) | exported constructor, not mapped in `family_to_id()` |
+| `delta_lognormal_mix()` | blocked (FAM-17, FAM-18) | exported constructor, not mapped in `family_to_id()` |
+| `delta_truncated_nbinom1()` | blocked (FAM-17) | exported constructor, not mapped in `family_to_id()` |
+| `delta_truncated_nbinom2()` | blocked (FAM-17) | exported constructor, not mapped in `family_to_id()` |
+| `delta_poisson_link_gamma()` | blocked compatibility path (FAM-17) | deprecated compatibility helper |
+| `delta_poisson_link_lognormal()` | blocked compatibility path (FAM-17) | deprecated compatibility helper |
 
 The practical rule is simple: if a family is in the quick-lookup table
 above, it is a documented multivariate engine family. If it appears

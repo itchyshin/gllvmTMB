@@ -26,6 +26,19 @@ correlation across units, and the column names the covariance mode
 across traits. The four correlation rows go from finest-grained
 (individual pedigree) to broadest (geography).
 
+> **Scope boundary.** This page is a technical lookup for the formula
+> grammar, not a worked validation article. IN: the long and wide formula
+> grammar, `traits(...)` expansion, the core `latent() + unique()` path,
+> the five `animal_*()` keywords, and the main `phylo_*()` sparse A^-1
+> route have covered rows (FG-01--FG-06, FG-12, ANI-01--ANI-05,
+> ANI-07--ANI-08, PHY-01--PHY-03, PHY-09--PHY-10, MIS-02, MIS-11).
+> PARTIAL: standalone diagonal/full/slope and recovery-depth surfaces
+> remain partial where the register says so (FG-07--FG-09, FG-13--FG-15,
+> PHY-04--PHY-06, SPA-02--SPA-04, MET-01, MET-04, ANI-06, ANI-09--ANI-10).
+> PLANNED or blocked: proportional `meta_V()` is blocked (MET-03), and
+> phylogenetic, spatial, animal, and meta-analysis worked examples stay
+> hidden until their article-specific return conditions pass.
+
 | correlation \ mode | scalar | unique | indep | dep | latent |
 |---|---|---|---|---|---|
 | none | (omit) | `unique()` | `indep()` | `dep()` | `latent()` |

@@ -4,7 +4,15 @@
 \alias{check_gllvmTMB}
 \title{Check convergence, Hessian, gradients, and interval readiness}
 \usage{
-check_gllvmTMB(object, gradient_thresh = 0.01, se_thresh = 100)
+check_gllvmTMB(
+  object,
+  gradient_thresh = 0.01,
+  se_thresh = 100,
+  weak_axis_thresh = 0.05,
+  psi_thresh = 1e-04,
+  sigma_eps_thresh = 1e-04,
+  cross_loading_thresh = 0.6
+)
 }
 \arguments{
 \item{object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
@@ -14,6 +22,19 @@ Default 0.01.}
 
 \item{se_thresh}{Threshold above which a fixed-effect standard error
 is flagged as weakly identified. Default 100.}
+
+\item{weak_axis_thresh}{Minimum acceptable share of shared loading
+energy for a fitted latent axis. Default 0.05.}
+
+\item{psi_thresh}{Threshold below which a fitted per-trait \code{psi}
+standard deviation is flagged as near zero. Default 0.0001.}
+
+\item{sigma_eps_thresh}{Threshold below which an estimated residual
+\code{sigma_eps} is flagged as near boundary. Default 0.0001.}
+
+\item{cross_loading_thresh}{Minimum median trait dominance on a
+single latent axis before a multi-axis loading matrix is treated as
+block-structured enough for direct interpretation. Default 0.6.}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},
@@ -23,18 +44,22 @@ A data frame with columns \code{component}, \code{status}, \code{value},
 \description{
 Run \code{check_gllvmTMB()} right after fitting, before interpreting
 confidence intervals or covariance summaries. It returns a stable
-table of optimiser, gradient, Hessian, \code{sdreport()}, restart, and
-boundary diagnostics. It is the machine-readable companion to
+table of optimiser, gradient, Hessian, \code{sdreport()}, restart,
+boundary, and latent-identifiability diagnostics. It is the
+machine-readable companion to
 \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}: use this in simulations, tests, and reports
 where parsing printed messages would be brittle.
 }
 \details{
 Scope boundary (DIA-08 / DIA-10): IN, optimisation and
-inference-risk signals for fitted models, including the intentional
-\code{gllvmTMBcontrol(se = FALSE)} point-estimate path. PARTIAL, the
-table does not calibrate interval coverage by itself. PLANNED,
-target-explicit M3 simulations decide when broader interval claims
-move beyond diagnostic status.
+inference-risk signals for fitted models, including latent-axis
+rotation, weak-axis, near-zero \code{psi}, and residual-scale boundary
+flags plus the intentional \code{gllvmTMBcontrol(se = FALSE)}
+point-estimate path. PARTIAL, the table does not calibrate interval
+coverage or prove the selected latent rank by itself. PLANNED,
+target-explicit M3 simulations and \code{\link[=check_identifiability]{check_identifiability()}} decide
+when broader interval or rank-selection claims move beyond
+diagnostic status.
 
 A \code{WARN} row, including \code{pdHess = FALSE}, means that Wald standard
 errors or curvature-based inference need more care; it is not by

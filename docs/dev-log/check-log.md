@@ -10199,6 +10199,118 @@ Deliberately not run:
 - No package tests or `devtools::check()` before opening the PR; this
   is an article/roadmap/audit closeout slice.
 
+## 2026-05-24 -- Identifiability diagnostics for #248
+
+- Branch: `codex/identifiability-diagnostics-248-2026-05-24`.
+- Scope: extend the existing exported `check_gllvmTMB()` machine-readable
+  diagnostic table for symbolizer issue #248.
+- Pre-edit Shannon check: clean `main...origin/main`, zero open PRs, recent
+  `main` R-CMD-check and pkgdown green at
+  `f9e92eada4303ddd4a01035d7f49df970aff9ccb`; no active shared-doc PR.
+- Implemented rows:
+  - `hessian_rank`;
+  - `rotation_convention_*`;
+  - `weak_axis_*`;
+  - `near_zero_psi_*`;
+  - `boundary_sigma_eps`;
+  - `cross_loading_structure_*`.
+- Updated `NEWS.md`, `ROADMAP.md`,
+  `docs/design/35-validation-debt-register.md`, generated
+  `man/check_gllvmTMB.Rd`, and added
+  `docs/dev-log/after-task/2026-05-24-identifiability-diagnostics-248.md`.
+
+Evidence so far:
+
+- Issue context:
+  `gh issue view 248 --repo itchyshin/gllvmTMB --json number,title,state,body,comments,url,labels,assignees`
+  -> #248 requests a tidy diagnostic with convergence, Hessian rank,
+  rotation/sign convention, weak axes, near-zero `psi`, residual-boundary,
+  and cross-loading rows.
+- Existing-surface scan:
+  `rg -n "check_gllvmTMB|gllvmTMB_diagnose|check_identifiability|sanity_multi|extract_communality|getLoadings|getResidualCov|fit_health|start_provenance|restart_history|sd_report|pdHess" R NAMESPACE man tests/testthat docs/design vignettes/articles/convergence-start-values.Rmd`
+  -> confirmed `check_gllvmTMB()` is already exported, documented, tested,
+  and named in the convergence article.
+- Source inspection:
+  `sed -n '1,240p' R/diagnose.R`
+  and
+  `sed -n '240,520p' R/diagnose.R`
+  -> implementation lives in the existing diagnostic file.
+- Focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "sanity-multi")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 26`.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> loaded package and wrote `check_gllvmTMB.Rd`.
+- Formatting:
+  `air format .`
+  -> ran, but reformatted many unrelated files; Ada restored all
+  accidental edits outside `R/diagnose.R`,
+  `tests/testthat/test-sanity-multi.R`, and `man/check_gllvmTMB.Rd`.
+- Post-format focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "sanity-multi")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 26`.
+- Restart recovery checkpoint:
+  `docs/dev-log/recovery-checkpoints/2026-05-25-051340-ada-checkpoint.md`
+  -> recorded current branch, status, diff stat, completed gates, and next
+  safe action after a broken-thread restart.
+- Current focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "sanity-multi")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 26`.
+- Rd spot-check:
+  `tail -5 man/check_gllvmTMB.Rd`
+  -> Rd ends after the example block;
+  `grep -c '^\\keyword' man/check_gllvmTMB.Rd`
+  -> `0`.
+- pkgdown:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Export / reference-index parity:
+  `rg -n "check_gllvmTMB|gllvmTMB_diagnose|check_identifiability" _pkgdown.yml NAMESPACE R/diagnose.R man/check_gllvmTMB.Rd`
+  -> `check_gllvmTMB`, `gllvmTMB_diagnose`, and `check_identifiability`
+  remain exported and listed in `_pkgdown.yml`.
+- Signature / default-value scan:
+  `rg -n "gradient_thresh|se_thresh|weak_axis_thresh|psi_thresh|sigma_eps_thresh|cross_loading_thresh" R/diagnose.R man/check_gllvmTMB.Rd`
+  -> roxygen/Rd arguments match the function signature and defaults.
+- Long-format example scan:
+  `rg -n "gllvmTMB\\(.*trait =|trait = \"trait\"|traits\\(" R/diagnose.R man/check_gllvmTMB.Rd NEWS.md ROADMAP.md docs/dev-log/after-task/2026-05-24-identifiability-diagnostics-248.md`
+  -> touched long-format examples use explicit `trait = "trait"`;
+  unrelated historical `traits(...)` mentions remain policy-consistent.
+- Rose capability/scope scan:
+  `rg -n "check_gllvmTMB|check_gllvm\\(|DIA-08|DIA-10|weak_axis_thresh|psi_thresh|sigma_eps_thresh|cross_loading_thresh|hessian_rank|rotation_convention|weak_axis|near_zero_psi|boundary_sigma_eps|cross_loading_structure|rank-selection|rank selection|latent-identifiability" NEWS.md R/diagnose.R man/check_gllvmTMB.Rd ROADMAP.md docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-05-24-identifiability-diagnostics-248.md`
+  -> NEWS, roxygen/Rd, ROADMAP, register row DIA-08, and the after-task
+  report tell the same `check_gllvmTMB()` story; the rejected shorter
+  `check_gllvm()` alias is confined to the after-task decision note.
+- Rose scope-boundary scan:
+  `rg -n "Scope boundary|IN:|PARTIAL:|PLANNED:|DIA-08|DIA-10|covered|partial|blocked" NEWS.md R/diagnose.R man/check_gllvmTMB.Rd ROADMAP.md docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-05-24-identifiability-diagnostics-248.md`
+  -> the new NEWS entry and exported-function description cite DIA-08 /
+  DIA-10 and keep heuristic diagnostics separate from calibration or rank
+  selection.
+- Rose stale-wording scan:
+  `rg -n "profile-likelihood default|trio|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V as primary|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" NEWS.md R/diagnose.R man/check_gllvmTMB.Rd ROADMAP.md docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-05-24-identifiability-diagnostics-248.md`
+  -> expected false positives only: existing soft-deprecation wording for
+  `gllvmTMB_wide()` and source-code use of `gr(` inside a TMB gradient call.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Full local package check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> completed in 13m 42.2s with `0 errors`, `1 warning`, and `4 notes`;
+  nonzero exit because R CMD check treats the install warning as fatal.
+  The tests phase completed; no test failure was reported.
+- Install-warning reproduction:
+  `R CMD INSTALL --preclean --library=/private/tmp/gllvmtmb-install-test-lib .`
+  -> install succeeded. Warnings were toolchain / upstream-header warnings:
+  `xcrun --show-sdk-version` status 1 / `using SDK: NA`, Eigen unused-variable
+  warnings, and `R_ext/Boolean.h` unknown warning group
+  `-Wfixed-enum-extension`.
+
+Residual local-check notes:
+
+- `unable to verify current time`.
+- Non-standard top-level `air.toml`.
+- Existing NEWS heading-version notes for older development headings.
+- Existing unused `nlme` import note.
+
 ## 2026-05-24 -- Technical reference scope closeout
 
 - Branch: `codex/technical-reference-closeout-2026-05-24`.

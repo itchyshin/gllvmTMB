@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Programmatic identifiability diagnostics (#248, 2026-05-24)
+
+* **`check_gllvmTMB()`** now adds symbolizer-facing latent-identifiability rows to its machine-readable fit-health table (DIA-08 / DIA-10). IN: the table reports Hessian rank, loading-rotation convention, weak latent-axis share, near-zero per-trait `psi` standard deviations, near-boundary estimated `sigma_eps`, and broad cross-loading structure alongside the existing optimizer, gradient, `sdreport()`, `pdHess`, fixed-effect SE, restart, and boundary rows. PARTIAL: these rows are heuristic diagnostics for fitted models; they do not calibrate interval coverage or prove that the selected latent rank is scientifically preferred. PLANNED: simulation/refit rank checks remain the job of `check_identifiability()` and the M3 validation grid.
+
 ## Correlation matrix plot options (2026-05-23)
 
 * **`plot_correlations()`** now draws report-ready matrix views from the same tidy rows used by its forest and confidence-eye displays (EXT-30). IN: users can call `style = "heatmap"` or `style = "ellipse"` / `"oval"` on fitted-model, `bootstrap_Sigma()`, or `extract_correlations()` rows; choose `triangle = "full"`, `"lower"`, or `"upper"`; include or omit diagonal cells; print estimates, interval bounds, or both inside cells; and use `matrix_layout = "estimate_ci"` for upper-triangle estimates plus lower-triangle interval bounds, or `matrix_layout = "levels"` to combine exactly two levels such as `unit` and `unit_obs` in one matrix. PARTIAL: the matrix styles display supplied intervals only as numeric labels and significance outlines/stars when bounds exclude zero; they do not compute new intervals, calibrate bootstrap uncertainty, or compare to known truth. PLANNED: broader visual snapshots and gallery/article layouts remain future visualization QA.

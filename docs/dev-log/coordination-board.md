@@ -97,10 +97,18 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | M3 sim lane — post-dispatch results memo + lane close | PR-TBD / `agent/m3-sim-pilot-results` | `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` (§8 results), `docs/dev-log/coordination-board.md` | Awaiting commit + PR. After merge: lane closes. **Scenario A confirmed; broader than nbinom2.** Hand-off to Codex's #257/#228 per pre-registered trigger. |
-| Codex | -- | -- | -- | No active Codex lane after PR #229 merge |
+| Claude | Set C joint-SDM gate matrix + r200 dispatch plan + Jason scout protocol — docs-only prep, no dispatch | PR-TBD / `agent/set-c-r200-prep` (worktree `gllvmTMB-set-c-r200-prep`) | `docs/dev-log/audits/2026-05-25-set-c-joint-sdm-gate-matrix.md` (NEW), `docs/dev-log/audits/2026-05-25-m3-r200-dispatch-plan.md` (NEW), `docs/design/54-cross-package-scout-protocol.md` (NEW), `docs/dev-log/coordination-board.md` | Three read-only / design-doc artefacts. **No joint-sdm.Rmd edit, no R/ edit, no R CMD check change, no r200 dispatch.** No overlap with #261 / #265 file lists (verified). Awaits maintainer authorization for the r200 dispatch (deliberately gated). |
+| Codex | #261 (diagnostic-teaching-reset) + #265 (diagnostic-table helper) | `codex/diagnostic-teaching-reset-2026-05-25`, `codex/diagnostic-table-2026-05-25` | #261: README, ROADMAP, after-task, check-log, convergence-start-values.Rmd, gllvmTMB.Rmd. #265: NAMESPACE, NEWS, R/diagnostic-tables.R, ROADMAP, _pkgdown.yml, design/35, design/51, after-task, check-log, man/, tests/. | Both MERGEABLE / CLEAN against current main, but **#261 must merge first** (#265 will need a small rebase on ROADMAP.md + check-log.md afterwards — both PRs touch those files). Stack rule documented below. |
 
-**WIP**: 1.
+**WIP**: 2 (Claude prep PR, Codex stack #261→#265).
+
+**Stack discipline (Shannon, 2026-05-25):** when two agents have
+PRs that share files, the agents work in separate `git worktree`s
+on separate branches. Codex is on its own `codex/diagnostic-*`
+branches in the codex worktree; Claude works in
+`gllvmTMB-set-c-r200-prep` worktree on `agent/set-c-r200-prep`.
+The shared main worktree is never used for in-flight edits while
+two agents are active.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -148,7 +156,11 @@ leave a coordination comment first and wait for acknowledgement.
 | `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | no active owner after PR #229 merged |
 | `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | no active owner after PR #258 merged 2026-05-25. Both teams free to edit. |
 | `dev/m3-grid.R` | **Claude** (PR #263 active 2026-05-25): targeted binomial-psi patch in `m3_sample_truth` + `m3_simulate_response` per maintainer's 2026-05-25 design ruling ("simulations cannot have psi bit — as psi for binary emerges from binomial error"). Gaussian / nbinom2 / ordinal-probit branches untouched. After PR #263 merges, ownership returns to "no active owner; free to edit". |
-| `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | no active owner after the M3 sim lane closed 2026-05-25 (post-dispatch §8 results landed in PR-TBD `agent/m3-sim-pilot-results`). |
+| `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | no active owner after the M3 sim lane closed 2026-05-25 (post-dispatch §8 results landed in PR #262, post-patch rerun in PR #266). |
+| `docs/dev-log/audits/2026-05-25-set-c-joint-sdm-gate-matrix.md` | **Claude** (PR-TBD `agent/set-c-r200-prep`): NEW read-only gate-matrix audit for joint-sdm restoration. No prose written; verdicts only. |
+| `docs/dev-log/audits/2026-05-25-m3-r200-dispatch-plan.md` | **Claude** (PR-TBD `agent/set-c-r200-prep`): NEW r200 plan for binomial × d=2 and mixed × d=2. **Awaits maintainer authorization to dispatch.** |
+| `docs/design/54-cross-package-scout-protocol.md` | **Claude** (PR-TBD `agent/set-c-r200-prep`): NEW Jason scout-protocol design doc codifying the 2026-05-25 binomial-psi lesson. |
+| **Merge-order rule** (Shannon, 2026-05-25) | `#261` (diagnostic-teaching-reset) merges **before** `#265` (diagnostic-table helper). Both touch `ROADMAP.md` and `docs/dev-log/check-log.md`; #265 will need a small rebase after #261 lands. Claude's `agent/set-c-r200-prep` shares no files with either, so it can merge in either order relative to the Codex stack. |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a
@@ -451,14 +463,28 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-25 ~18:30 UTC: Set C joint-SDM prep + r200 dispatch plan
+  + Jason scout-protocol lane opens on `agent/set-c-r200-prep`
+  (worktree `gllvmTMB-set-c-r200-prep`). Three new docs-only
+  artefacts; **no joint-sdm.Rmd edit, no R/ edit, no r200 dispatch
+  fired.** Merge-order rule recorded: #261 before #265
+  (ROADMAP.md + check-log.md overlap). Claude's prep PR shares no
+  files with the Codex stack. (Claude)
+- 2026-05-25 ~17:00 UTC: M3 post-DGP-patch rerun (PR #266) merged.
+  Under patched DGP at r10, binomial × d=2 and mixed × d=2 hit
+  `PASS_TO_SCALE`; r200 dispatch on those two cells is the next
+  authorized slice, but **maintainer has not yet authorized** —
+  CI-08 / CI-10 remain `partial` per Design 50 §9 (n=10 is below
+  r200 floor). See `audits/2026-05-25-m3-postpatch-rerun.md`. (Claude)
 - 2026-05-25 ~15:30 UTC: M3 sim lane closes. PR #258 merged at 14:07
   UTC; GHA dispatch run 26404672871 completed 15/15 success.
   **Scenario A confirmed broader than nbinom2** — binomial all
   three d-levels show severe under-estimate of `Sigma_unit[tt]`.
-  Hand-off to Codex's #257/#228 lane per pre-registered trigger.
-  CI-08 / CI-10 stay `partial` (Design 50 §9). File-ownership rows
-  released. Post-dispatch memo + coord-board update committed to
-  `agent/m3-sim-pilot-results` (PR opens after this commit) (Claude).
+  Root cause: m3-grid DGP added unidentifiable `psi` for binomial
+  rows (resolved as DGP bug, not engine bug, per maintainer design
+  ruling and PR #263 four-round Jason scout). Hand-off to Codex's
+  #257/#228 explicitly **not implicated**. CI-08 / CI-10 stay
+  `partial` (Design 50 §9). (Claude)
 - 2026-05-24 ~07:30 MT: Claude picked up the M3 sim lane
   (accuracy + reliability check at n_reps=10, NOT comprehensive
   coverage — that's a future post-functionality-freeze slice per

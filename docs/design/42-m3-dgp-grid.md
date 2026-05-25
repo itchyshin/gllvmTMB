@@ -102,6 +102,26 @@ coverage as a diagnostic until a target-explicit rerun computes
 total-variance CIs. See
 `docs/dev-log/audits/2026-05-19-m3-3-target-scale-audit.md`.
 
+**Binomial-`psi` rule, 2026-05-25 (maintainer ruling).** Single-trial
+Bernoulli has **no overdispersion parameter** and the latent-scale
+link-residual is fixed at π²/3 (logit) or 1 (probit) by
+construction. Therefore the DGP **must not** include a free
+`psi` random-effect variance for binomial traits:
+
+- For `family = "binomial"`: `psi_effective[t] = 0` for all `t`.
+- For `family = "mixed"`: `psi_effective[t] = 0` for any trait `t`
+  whose assigned family is `"binomial"` (Gaussian and nbinom2 rows
+  keep their `psi`).
+
+`m3_sample_truth()` enforces this with a `stopifnot()` regression
+guard; future edits that attempt to silently restore a binary `psi`
+will fail loudly. Diagnostic provenance:
+`docs/dev-log/audits/2026-05-25-jason-cross-package-binomial-sigma-scout.md`
+(four-round diagnostic sequence — cross-package, peer-confirm
+galamm, N-sweep, maintainer ruling) and PR #263. The Codex
+diagnostic-API work in #257/#260 is **not** implicated in the
+binomial Scenario A finding; no engine change was needed.
+
 Per-replicate runtime budgets (anchored on the
 `agent/animal-model-article` workstation, Sun May 17 18:34 MDT 2026):
 

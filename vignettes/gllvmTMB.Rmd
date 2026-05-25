@@ -149,6 +149,44 @@ fit_long <- gllvmTMB(
 all.equal(as.numeric(logLik(fit)), as.numeric(logLik(fit_long)))
 ```
 
+## Check the fitted response distribution
+
+Before interpreting `Sigma`, separate two questions. First, ask whether
+the numerical fit looks healthy. Then ask whether the fitted response
+distribution is visibly mismatched to the observed stacked traits.
+
+The public diagnostic scope is deliberately narrow. IN under DIA-08 /
+DIA-10: `check_gllvmTMB()` reports optimizer, gradient, Hessian,
+`sdreport()`, restart, boundary, and latent-identifiability status.
+IN under DIA-11 / DIA-12: `predictive_check()` and `residuals()` give
+fitted-model diagnostic displays with exact randomized-quantile
+residuals for Gaussian, Poisson, and NB2 rows. PARTIAL: these checks
+are diagnostic displays; they do not calibrate intervals, prove latent
+rank, run formal uniformity tests, or draw from a Bayesian posterior.
+PLANNED: exact residuals for delta, hurdle, truncated, ordinal, and
+mixture families remain future validation work.
+
+```{r fit-health}
+health <- check_gllvmTMB(fit)
+health[, c("component", "status", "message", "action")]
+```
+
+For this Gaussian teaching fit, randomized-quantile residuals are exact
+family-CDF residuals. The table keeps every observation row and records
+whether the residual could be computed.
+
+```{r residual-table}
+rq <- residuals(fit, type = "randomized_quantile", seed = 1)
+head(rq[, c("trait", "family", "observed", "residual", "status")], 8)
+```
+
+Use the plot as a quick fitted-response check before turning to
+covariance interpretation:
+
+```{r residual-qq, fig.width = 6.2, fig.height = 4.2, fig.cap = "Randomized-quantile residual Q-Q check for the fitted Gaussian morphometrics model. The plot is a fitted-model diagnostic display, not interval calibration or a posterior predictive check."}
+predictive_check(fit, type = "rq_qq", seed = 1)
+```
+
 The recovered loadings (up to column rotation / sign — only
 $\boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top$ is identifiable from
 the data):

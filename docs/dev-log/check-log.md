@@ -10583,3 +10583,84 @@ Deliberately not run:
   needs ordinary 3-OS CI after #257 is settled.
 - No `pkgdown::build_articles(lazy = FALSE)`; this slice added reference docs
   and did not touch article code chunks or formula parsing.
+
+## 2026-05-25 -- Diagnostic teaching surface and reset queue
+
+- Branch: `codex/diagnostic-teaching-reset-2026-05-25`, stacked on #260.
+- Scope: follow-on slices after the #228 API PR: route users from the first
+  morphometrics fit to fit-health and fitted-response diagnostics, keep
+  bootstrap/profile language as uncertainty routing rather than a diagnostic
+  substitute, and reset the hidden-article queue around fixtures, long + wide
+  calls, diagnostic tables, figure review, and rendered HTML review.
+- Shannon checkpoint: WARN, not FAIL. Open PRs inspected before editing were
+  #257 (green 3-OS CI, base for #260) and #260 (public predictive diagnostics,
+  marked ready for review after draft PR creation). The unrelated M3 lane
+  remains outside this branch.
+- Added README routing and status text for fitted diagnostics.
+- Added a Get Started diagnostic section using `check_gllvmTMB()`,
+  randomized-quantile residuals, and `predictive_check(type = "rq_qq")` on the
+  shipped morphometrics fixture.
+- Added convergence-triage wording so fitted-response diagnostics come before
+  covariance interpretation and before bootstrap/profile uncertainty routing.
+- Tightened ROADMAP slices for diagnostic teaching, hidden article restoration,
+  and profile/bootstrap uncertainty.
+
+Evidence so far:
+
+- Rehydration:
+  `git status --short --branch`
+  `git diff --stat`
+  `git diff --cached --stat`
+  `tail -120 docs/dev-log/check-log.md`
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-25-080241-ada-checkpoint.md`
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url,statusCheckRollup --limit 20`
+  -> #257 and #260 open.
+- Recent-lane check:
+  `git log --all --oneline --decorate --since='6 hours ago'`
+  -> #257 / #260 diagnostics stack and unrelated M3 workflow branch only.
+- PR creation for preceding slice:
+  `git push -u origin codex/public-diagnostics-228-2026-05-25`
+  -> branch pushed.
+  `gh pr create ...`
+  -> #260.
+  `gh pr ready 260 --repo itchyshin/gllvmTMB`
+  -> marked ready for review.
+  `gh workflow run R-CMD-check.yaml --repo itchyshin/gllvmTMB --ref codex/public-diagnostics-228-2026-05-25`
+  -> manual 3-OS run `26406417946` queued because stacked PR #260 targets the
+  #257 branch and the pull-request workflow only auto-runs for PRs targeting
+  `main` / `master`.
+- Diagnostic smoke check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); morph <- readRDS("inst/extdata/examples/morphometrics-example.rds"); fit <- gllvmTMB(morph$formula_wide, data=morph$data_wide, unit=morph$fit_args$unit, family=morph$fit_args$family); print(names(check_gllvmTMB(fit))); rq <- residuals(fit, type="randomized_quantile", seed=1); print(names(rq)); print(head(rq[, c("trait","family","observed","residual","status")], 4)); p <- predictive_check(fit, type="rq_qq", seed=1); print(class(p)); print(names(attr(p, "gllvmTMB_diagnostic")))'`
+  -> fit-health, residual, and plot metadata columns available.
+- Plain installed-package render probe:
+  `Rscript --vanilla -e 'tmp <- tempfile(fileext = ".html"); rmarkdown::render("vignettes/gllvmTMB.Rmd", output_file = tmp, envir = new.env(parent = globalenv()), quiet = FALSE); cat("rendered", tmp, "\n")'`
+  -> failed because the local installed package did not yet export
+  `predictive_check()`. This was an environment-lag failure, not a source
+  article failure.
+- Source-style render setup:
+  `R CMD INSTALL --no-docs --no-help --no-html --no-test-load -l /tmp/gllvmTMB-lib-BD7vYS .`
+  -> installed the current branch to a temporary library.
+- Get Started render:
+  `Rscript --vanilla -e '.libPaths(c("/tmp/gllvmTMB-lib-BD7vYS", .libPaths())); tmp <- tempfile(fileext = ".html"); rmarkdown::render("vignettes/gllvmTMB.Rmd", output_file = tmp, envir = new.env(parent = globalenv()), quiet = FALSE); cat("rendered", tmp, "\n")'`
+  -> rendered successfully.
+- Convergence article render:
+  `Rscript --vanilla -e '.libPaths(c("/tmp/gllvmTMB-lib-BD7vYS", .libPaths())); tmp <- tempfile(fileext = ".html"); rmarkdown::render("vignettes/articles/convergence-start-values.Rmd", output_file = tmp, envir = new.env(parent = globalenv()), quiet = FALSE); cat("rendered", tmp, "\n")'`
+  -> rendered successfully.
+- pkgdown reference/site gate:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rose / scope-boundary scans:
+  `rg -n "gllvmTMB\\(" README.md vignettes/gllvmTMB.Rmd vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/after-task/2026-05-25-diagnostic-teaching-reset.md`
+  -> long-format calls retain `trait =`; wide calls use `traits(...)`.
+  `rg -n "DIA-08|DIA-10|DIA-11|DIA-12|EXT-13|CI-02|CI-03|IN:|PARTIAL|PLANNED|covered|partial|blocked" README.md vignettes/gllvmTMB.Rmd vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/after-task/2026-05-25-diagnostic-teaching-reset.md`
+  -> new claims cite the relevant validation rows and scope labels.
+  `rg -n "posterior predictive|posterior-predictive|posterior draws|Bayesian posterior|pp_check|gllvmTMB_wide\\(Y|already removed|primary new-user API|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|trio" README.md vignettes/gllvmTMB.Rmd vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/after-task/2026-05-25-diagnostic-teaching-reset.md`
+  -> intentional negative posterior-predictive wording and existing
+  `gllvmTMB_wide(Y, ...)` soft-deprecation text only.
+- Generated scratch cleanup:
+  `find vignettes -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.html' -o -name '*.md' \) -print`
+  -> render-generated PNGs appeared in `vignettes/`; removed them.
+- Whitespace:
+  `git diff --check`
+  -> clean.

@@ -179,6 +179,7 @@ reference:
     - check_gllvmTMB
     - gllvmTMB_diagnose
     - predictive_check
+    - diagnostic_table
     - residuals.gllvmTMB_multi
     - bootstrap_Sigma
     - confint_inspect

@@ -201,6 +201,55 @@ test_that("public predictive plots carry auditable metadata", {
   expect_silent(ggplot2::ggplot_build(p_root))
 })
 
+test_that("diagnostic_table exposes plot and residual metadata as tables", {
+  skip_on_cran()
+  testthat::skip_if_not_installed("ggplot2")
+
+  fit <- make_ppc_diag_fit("poisson", seed = 8L)
+
+  res <- stats::residuals(
+    fit,
+    type = "randomized_quantile",
+    seed = 108L
+  )
+  residual_data <- diagnostic_table(res, table = "data")
+  expect_s3_class(residual_data, "data.frame")
+  expect_equal(nrow(residual_data), length(fit$tmb_data$y))
+  expect_true(all(c("trait", "status", "residual") %in% names(residual_data)))
+  expect_null(attr(residual_data, "gllvmTMB_diagnostic"))
+
+  row_status <- diagnostic_table(res, table = "row_status")
+  expect_equal(
+    row_status,
+    data.frame(
+      status = "ok",
+      n = length(fit$tmb_data$y),
+      stringsAsFactors = FALSE
+    )
+  )
+
+  fit_health_status <- diagnostic_table(res, table = "fit_health_status")
+  expect_s3_class(fit_health_status, "data.frame")
+  expect_true(all(c("status", "n") %in% names(fit_health_status)))
+  expect_true(any(fit_health_status$status %in% c("PASS", "WARN", "FAIL")))
+
+  check_rows <- diagnostic_table(res, table = "check_gllvmTMB")
+  expect_s3_class(check_rows, "data.frame")
+  expect_true(all(c("component", "status", "message") %in% names(check_rows)))
+  expect_true("optimizer_convergence" %in% check_rows$component)
+
+  p <- predictive_check(
+    fit,
+    type = "rq_qq",
+    seed = 109L,
+    condition_on_RE = TRUE
+  )
+  plot_data <- diagnostic_table(p, table = "data")
+  expect_s3_class(plot_data, "data.frame")
+  expect_equal(nrow(plot_data), length(fit$tmb_data$y))
+  expect_true(all(c("trait", "status", "residual") %in% names(plot_data)))
+})
+
 test_that("exact residuals retain non-finite and unsupported rows", {
   skip_on_cran()
 

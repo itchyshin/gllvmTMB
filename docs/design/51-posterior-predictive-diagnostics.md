@@ -111,6 +111,16 @@ status summary, `check_gllvmTMB()` output, and the fitted object's
 contract: Florence can inspect the figure, while Rose and Fisher can
 inspect the underlying rows and fit-health state.
 
+Article and report code should use the exported table path rather than
+reading this attribute directly:
+
+```r
+diagnostic_table(plot, table = "data")
+diagnostic_table(plot, table = "row_status")
+diagnostic_table(plot, table = "fit_health_status")
+diagnostic_table(plot, table = "check_gllvmTMB")
+```
+
 ## Randomized-Quantile And Simulation-Rank Residuals
 
 For a fitted observation `i`, exact randomized-quantile residuals use:
@@ -153,6 +163,9 @@ diagnostic data retain all rows.
 - Row-status preservation for non-finite, invalid, or unsupported rows.
 - `check_gllvmTMB()` and `fit$fit_health` metadata on residual and plot
   objects.
+- Exported `diagnostic_table()` for plotted/residual data, row-status
+  counts, fit-health status counts, and attached `check_gllvmTMB()`
+  rows without direct attribute inspection.
 
 ## Out Of Scope Until A Later Slice
 
@@ -177,7 +190,7 @@ Florence's minimum bar for the first public diagnostic plot is:
 5. Count-family figure notes name the family and, for NB2, preserve the
    fitted dispersion context before any diagnostic conclusion is made.
 
-DIA-11 and DIA-12 are covered for the scoped Gaussian, Poisson, and NB2
-public surface tested in `test-predictive-diagnostics.R`. They remain
-partial for unsupported families, formal residual tests, and any
-posterior-predictive claim.
+DIA-11, DIA-12, and DIA-13 are covered for the scoped Gaussian,
+Poisson, and NB2 public surface tested in
+`test-predictive-diagnostics.R`. They remain partial for unsupported
+families, formal residual tests, and any posterior-predictive claim.

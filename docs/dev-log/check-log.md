@@ -10674,3 +10674,87 @@ Evidence so far:
   -> branch pushed.
   `gh pr create --repo itchyshin/gllvmTMB --draft --base codex/public-diagnostics-228-2026-05-25 --head codex/diagnostic-teaching-reset-2026-05-25 ...`
   -> draft PR #261.
+
+## 2026-05-25 -- Set B diagnostic table infrastructure
+
+- Branch: `codex/diagnostic-table-2026-05-25`.
+- Scope: add a small exported table path over the diagnostic metadata
+  introduced by #228 so articles can use report-ready rows without direct
+  `attr(x, "gllvmTMB_diagnostic")` inspection.
+- Added `diagnostic_table()` with `table = "data"`, `"row_status"`,
+  `"fit_health_status"`, and `"check_gllvmTMB"`.
+- Added DIA-13 to the validation-debt register.
+- Updated Design 51, NEWS, `_pkgdown.yml`, ROADMAP, generated Rd, and the
+  focused predictive-diagnostics test.
+- Coordination: #261 already touched `ROADMAP.md` and
+  `docs/dev-log/check-log.md`; posted two coordination comments on #261
+  before editing those files:
+  <https://github.com/itchyshin/gllvmTMB/pull/261#issuecomment-4535956088>
+  and
+  <https://github.com/itchyshin/gllvmTMB/pull/261#issuecomment-4535963725>.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-05-25-diagnostic-table-infrastructure.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url,files --limit 20`
+  -> open PRs showed #264 on M3 files and #261 on diagnostic teaching reset
+  files; #261 overlapped `ROADMAP.md` and `docs/dev-log/check-log.md`.
+- Recent-lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent #257/#260/#263 main merges, #261 branch commits, and #264
+  maintainer binomial-psi guard.
+- Issue scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "diagnostic OR residual OR predictive OR ppcheck OR pp_check" --json number,title,url,labels --limit 20`
+  -> #230 is the relevant article/tooling gate; Set B advances but does
+  not close it.
+- Formatting:
+  `air format R/diagnostic-tables.R tests/testthat/test-predictive-diagnostics.R`
+  -> completed.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> loaded `gllvmTMB`; wrote `NAMESPACE` and `diagnostic_table.Rd`.
+- Focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "predictive-diagnostics")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 117` in 3.1s.
+- pkgdown reference gate:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found` before and after the ROADMAP edit.
+- Full tests:
+  `Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 1 | SKIP 13 | PASS 2748` in 652.4s. The warning is the
+  pre-existing `level = "spde"` deprecation warning in
+  `test-spatial-latent-recovery.R`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Rd spot-check:
+  `tail -5 man/diagnostic_table.Rd && grep -c '^\\keyword' man/diagnostic_table.Rd`
+  -> reference page ends after examples; keyword count `0`.
+- Surface / export scan:
+  `rg -n "diagnostic_table|DIA-13|gllvmTMB_diagnostic" NAMESPACE _pkgdown.yml NEWS.md R/diagnostic-tables.R man/diagnostic_table.Rd docs/design/35-validation-debt-register.md docs/design/51-posterior-predictive-diagnostics.md tests/testthat/test-predictive-diagnostics.R`
+  -> export, pkgdown placement, NEWS, DIA-13, Design 51, Rd, and tests agree.
+- Long-format example scan:
+  `rg -n "gllvmTMB\\(" R/diagnostic-tables.R man/diagnostic_table.Rd NEWS.md docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md`
+  -> the only new long-format example is the `diagnostic_table()` example
+  and it includes `trait = "trait"`.
+- Stale notation scan:
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S" R/diagnostic-tables.R man/diagnostic_table.Rd NEWS.md docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md`
+  -> no output.
+- Deprecated syntax scan:
+  `rg -n "\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|meta_known_V|gllvmTMB_wide" R/diagnostic-tables.R man/diagnostic_table.Rd NEWS.md docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md`
+  -> existing validation-register and NEWS compatibility hits only; no new
+  Set B stale syntax.
+- ROADMAP/DIA-13 scan:
+  `rg -n "diagnostic_table|Diagnostics tables beyond current fit-health rows|DIA-13" ROADMAP.md docs/design/35-validation-debt-register.md docs/design/51-posterior-predictive-diagnostics.md NEWS.md _pkgdown.yml R/diagnostic-tables.R man/diagnostic_table.Rd tests/testthat/test-predictive-diagnostics.R`
+  -> `diagnostic_table()` is visible and the stale ROADMAP phrase has no hit.
+
+Deliberately not run:
+
+- No `devtools::check(args = "--no-manual")`; local full tests and
+  `pkgdown::check_pkgdown()` passed, and the PR should receive ordinary
+  3-OS R-CMD-check.
+- No `pkgdown::build_articles(lazy = FALSE)`; Set B changed reference docs,
+  a design note, and ROADMAP text, but no article code chunks or formula
+  parsing.

@@ -17,6 +17,10 @@
 ##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 \
 ##     --n-units=120 --phi=0.4 --lambda-scale=0.5 --psi-scale=1.5 \
 ##     --targets=Sigma_unit_diag --n-reps=10 --n-boot=10
+##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 \
+##     --n-reps=2 --init-strategy=single_trait_warmup \
+##     --targets=Sigma_unit_diag --n-boot=10 --seed-base=20260524 \
+##     --out-prefix=m3-local-smoke   # 2026-05-24 sim-lane local smoke
 ##   Rscript dev/precompute-m3-grid.R --nb2-stress-map --n-reps=10 \
 ##     --out-prefix=m3-nb2-stress-point
 ##   Rscript dev/precompute-m3-grid.R --nb2-start-probe --n-reps=5 \
@@ -314,7 +318,19 @@ n_start_configs <- if (identical(mode, "nb2-start-probe")) {
 } else {
   1L
 }
-run_seed_base <- if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+## Seed-base resolution. CLI override via `--seed-base=<int>` wins;
+## otherwise mode-specific defaults preserve the 2026-05-17 / 2026-05-20
+## historical seeds. Workflow_dispatch plumbs the input here so a pilot
+## dispatch can stay clear of the failed 2026-05-19 production seed
+## (per Curie 2026-05-24 consult).
+seed_base_arg <- arg_value("--seed-base")
+run_seed_base <- if (!is.null(seed_base_arg) && nzchar(seed_base_arg)) {
+  parsed_seed <- suppressWarnings(as.integer(seed_base_arg))
+  if (is.na(parsed_seed)) {
+    stop("--seed-base must be an integer (got: ", seed_base_arg, ")")
+  }
+  parsed_seed
+} else if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
   20260520L
 } else {
   20260517L

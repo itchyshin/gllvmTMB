@@ -131,8 +131,9 @@ Keep each item to one branch and one pull request.
 
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
-| 1 | #228 predictive diagnostics | Codex + Fisher/Grace | Public API branch active; stop when roxygen/Rd, pkgdown placement, focused tests, Design 51, DIA-11 / DIA-12, check-log, after-task report, and PR stack on #257 agree. |
-| 2 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, validation rows, figure review, and rendered HTML review. |
+| 1 | #228 predictive diagnostics | Codex + Fisher/Grace | PR #260 is open as the public API branch stacked on #257; stop when 3-OS CI is green and #257 / #260 merge order is settled. |
+| 2 | Diagnostic teaching surface and public reset | Codex + Pat/Rose/Fisher/Florence | Get Started and README route users from fit health to fitted-response diagnostics; convergence wording keeps bootstrap/profile as uncertainty routes rather than diagnostic substitutes; check-log and after-task report record the rendered-document checks. |
+| 3 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. |
 
 If two agents are active, prefer one public-documentation lane and one
 implementation/test lane. Do not let both agents edit the roadmap, check-log,
@@ -189,17 +190,17 @@ to reverse-engineer it from long setup chunks.
 | Simulation helpers | Internal scenario generators with stable seeds and named estimands. | Morphometrics, covariance edge cases, behavioural syndrome. |
 | Extraction tables | Report-ready covariance, correlation, communality, repeatability, phylogenetic signal, ordination, diagnostics, and uncertainty tables. | Contract in `docs/design/53-report-ready-extractor-plot-contract.md`; `extract_Sigma_table()`, `compare_Sigma_table()`, rotated-loading tables, and bootstrap-backed Sigma/correlation/communality/repeatability rows are covered where the validation register says so. Diagnostics tables beyond current fit-health rows remain next work. |
 | Plot helpers | Data-first plots that consume extractor tables and expose audit metadata. | `plot.gllvmTMB_multi()` and exported plot helpers attach `gllvmTMB_meta` and `gllvmTMB_data`; confidence-eye, matrix heatmap/ellipse, Sigma comparison, communality, integration, ordination, and rotated-loading displays have object or snapshot tests. Dominant-axis forests, score distributions, diagnostic plots, and rendered Florence review remain pending before publication-grade claims. |
-| Diagnostics | `check_gllvmTMB()` first; `pdHess = FALSE` treated as an uncertainty warning, not automatic model death. | Public methods pages. |
-| Profile/bootstrap uncertainty | Explicit fallback language and worker-level diagnostics before claims. | Keep `profile-likelihood-ci` hidden. |
+| Diagnostics | `check_gllvmTMB()` first; `pdHess = FALSE` treated as an uncertainty warning, not automatic model death; fitted-response checks use `predictive_check()` / `residuals()` within DIA-11 / DIA-12 scope. | Public methods pages and Get Started. |
+| Profile/bootstrap uncertainty | Explicit fallback language and worker-level diagnostics before claims. | Keep `profile-likelihood-ci` hidden until CI-02 / CI-03 / EXT-13 claims are paired with rendered examples and failure-count reporting. |
 | Validation evidence | Every public claim cites a validation-debt row as `covered`, `partial`, or `blocked`. | Six visible articles. |
 
 ## Restoration Queue
 
 | Hidden article | Return condition |
 |---|---|
-| `joint-sdm` | Joint SDM example object; runnable long + wide; binary validation caveats; diagnostic table; figure review. |
-| `profile-likelihood-ci` | Profile/bootstrap status cleaned; fallback/Wald caveats first; no M3 coverage overclaim. |
-| `behavioural-syndromes` | Behavioural example object; between/within covariance; repeatability; truth recovery. |
+| `joint-sdm` | Joint SDM example object; runnable long + wide; binary validation caveats; `check_gllvmTMB()` plus fitted-response diagnostic table; Florence figure review; rendered HTML review before navbar return. |
+| `profile-likelihood-ci` | Profile/bootstrap status cleaned; fallback/Wald caveats first; failure-count reporting visible; no M3 coverage overclaim. |
+| `behavioural-syndromes` | Behavioural example object; runnable long + wide where meaningful; between/within covariance; repeatability; truth recovery; diagnostic table before article prose expansion. |
 | `mixed-family-extractors` | Mixed-family example object; report-ready extractor tables. |
 | `animal-model` | Larger pedigree fixture; A/Ainv truth; genetic covariance recovery. |
 | `phylogenetic-gllvm` | Phylo helper; phylo versus non-phylo split; validation rows. |

@@ -36,6 +36,7 @@ paths reach the same stacked-trait model.
 | interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
 | choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
 | check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
+| check a fitted response distribution | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) and [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) |
 | diagnose hard fits | [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) and [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html) |
 
 This is preview version `0.2.0` and the package is pre-CRAN. Advanced
@@ -203,6 +204,7 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | First worked model | Gaussian `latent() + unique()` is the safest public example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
+| Fitted diagnostics | `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()` and `residuals()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12). These are diagnostic displays, not posterior predictive checks or interval calibration. |
 | Advanced examples | Joint SDM, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI articles are under audit until their example objects, diagnostics, and validation gates pass. |
 
 ## Current boundaries

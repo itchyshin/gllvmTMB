@@ -151,6 +151,15 @@ This separation matters. A fit can have useful point estimates while
 tell the user what is degraded, not flatten every warning into model
 failure.
 
+After the numerical triage, inspect the fitted response distribution
+before leaning on covariance interpretation. `residuals(fit,
+type = "randomized_quantile")` and `predictive_check(fit,
+type = "rq_qq")` are IN for the scoped DIA-11 / DIA-12 Gaussian,
+Poisson, and NB2 diagnostic paths. They are PARTIAL in the same sense
+as the fit-health table: useful for surfacing mismatch, not proof of
+interval calibration, latent-rank adequacy, or Bayesian posterior
+prediction.
+
 ## Choose A Start Strategy
 
 Start values are opt-in tools. The default remains conservative until
@@ -257,16 +266,18 @@ Use this order when a hard model does not give clean inference:
 1. Read `check_gllvmTMB(fit)` and `fit$restart_history`.
 2. Check whether the optimizer, gradient, `pdHess`, or `sdreport`
    component is the first weak link.
-3. Inspect boundary flags for near-zero variance, redundant rank, or
+3. Use `residuals()` or `predictive_check()` to check fitted-response
+   mismatch before interpreting covariance summaries.
+4. Inspect boundary flags for near-zero variance, redundant rank, or
    unstable dispersion.
-4. Try more starts and modest jitter.
-5. Try residual starts for non-Gaussian reduced-rank models.
-6. Try independent or simpler-model starts for Gaussian two-level
+5. Try more starts and modest jitter.
+6. Try residual starts for non-Gaussian reduced-rank models.
+7. Try independent or simpler-model starts for Gaussian two-level
    models.
-7. Try `optim(BFGS)` or a longer `nlminb` budget.
-8. If point estimates are stable but `pdHess` remains false, use
+8. Try `optim(BFGS)` or a longer `nlminb` budget.
+9. If point estimates are stable but `pdHess` remains false, use
    bootstrap or profile uncertainty.
-9. If the target still changes across starts, simplify rank or
+10. If the target still changes across starts, simplify rank or
    covariance structure before making a scientific claim.
 
 ## What Is Next
@@ -278,6 +289,8 @@ Implemented now:
 - restart history and start provenance;
 - protected or skipped `sdreport()` status;
 - `gllvmTMBcontrol(se = FALSE)` for point-estimate-first hard fits;
+- fitted-response diagnostics through `predictive_check()` and
+  `residuals()` for the scoped DIA-11 / DIA-12 family paths;
 - explicit controls for multistart, jitter, residual starts,
   independent starts, manual starts, single-trait warmup, and
   `optim(BFGS)`.

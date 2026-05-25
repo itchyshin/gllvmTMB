@@ -10198,3 +10198,71 @@ Deliberately not run:
 - No `devtools::document()`; no roxygen changed.
 - No package tests or `devtools::check()` before opening the PR; this
   is an article/roadmap/audit closeout slice.
+
+## 2026-05-24 -- Convergence/start-values final wording closeout
+
+- Branch: `codex/convergence-wording-audit-2026-05-24`.
+- Scope: final public-wording closeout for
+  `vignettes/articles/convergence-start-values.Rmd`.
+- The maintainer-facing roadmap condition was that `pdHess = FALSE`
+  stays framed as an uncertainty / identifiability warning, with
+  bootstrap/profile limits named.
+- Updated `ROADMAP.md` and
+  `docs/dev-log/audits/2026-05-20-article-gate-matrix.md` to mark
+  `convergence-start-values` final wording audit as passed and move
+  the shared queue to the technical-reference closeout next.
+- Added
+  `docs/dev-log/audits/2026-05-24-convergence-final-wording-review.md`
+  and
+  `docs/dev-log/after-task/2026-05-24-convergence-final-wording-closeout.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch`
+  -> clean `main...origin/main`.
+- Open PR check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent merged article/roadmap lanes only; no competing open PR.
+- Active run check:
+  `gh run list --repo itchyshin/gllvmTMB --limit 8 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,event,url,createdAt`
+  -> latest #254 main R-CMD-check and pkgdown completed successfully.
+- Touched-page render:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); for (article in c("articles/convergence-start-values", "articles/roadmap")) { message("Building ", article); pkgdown::build_article(article, pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> completed; `pkgdown-site/articles/convergence-start-values.html`
+  and `pkgdown-site/articles/roadmap.html` were written.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Final wording/status scan:
+  `rg -n 'final wording audit passed|2026-05-24-convergence-final-wording-review|bootstrap evidence depends on successful refits|supported scalar targets with stable profiles|report failed refits|not a cure for an unstable fitted surface|not a general substitute for bootstrap|Technical reference closeout' vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-24-convergence-final-wording-review.md pkgdown-site/articles/convergence-start-values.html pkgdown-site/articles/roadmap.html`
+  -> source/rendered pages show final status, profile/bootstrap
+  boundary language, and the updated next queue.
+- Scope-boundary row scan:
+  `rg -n 'Scope boundary|DIA-08|DIA-09|DIA-10|EXT-13|EXT-18|CI-02|CI-03|M3\\.3a|M3\\.4' vignettes/articles/convergence-start-values.Rmd pkgdown-site/articles/convergence-start-values.html docs/dev-log/audits/2026-05-24-convergence-final-wording-review.md docs/design/35-validation-debt-register.md`
+  -> scope boundary and validation row IDs remain present.
+- Stale wording scan:
+  `rg -n 'pdHess = FALSE means model failure|point estimates.*useless|bootstrap.*guarantee|profile.*default|profile-likelihood default|wald.*safe|Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(' vignettes/articles/convergence-start-values.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-24-convergence-final-wording-review.md`
+  -> no output.
+- Hidden-article link scan:
+  `rg -n 'articles/(animal-model|behavioural-syndromes|joint-sdm|phylogenetic-gllvm|functional-biogeography|psychometrics-irt|simulation-recovery-validated|cross-package-validation|choose-your-model|data-shape-flowchart|lambda-constraint|profile-likelihood-ci|mixed-family-extractors|ordinal-probit|troubleshooting-profile|stacked-trait-gllvm|gllvm-vocabulary)\\.html|\\]\\((animal-model|behavioural-syndromes|joint-sdm|phylogenetic-gllvm|functional-biogeography|psychometrics-irt|simulation-recovery-validated|cross-package-validation|choose-your-model|data-shape-flowchart|lambda-constraint|profile-likelihood-ci|mixed-family-extractors|ordinal-probit|troubleshooting-profile|stacked-trait-gllvm|gllvm-vocabulary)\\.html\\)' vignettes/articles/convergence-start-values.Rmd pkgdown-site/articles/convergence-start-values.html ROADMAP.md pkgdown-site/articles/roadmap.html`
+  -> no output.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "convergence OR start-values OR pdHess OR article surface reset OR diagnostic" --json number,title,url,labels,updatedAt --limit 20`
+  -> #230 remains the relevant article-surface ledger; #248 and #228
+  are later diagnostics lanes and were not touched.
+- Generated vignette scratch check:
+  `find vignettes -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) -print`
+  -> no output.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen changed.
+- No package tests or `devtools::check()` before opening the PR; this
+  is an article/roadmap/audit closeout slice.

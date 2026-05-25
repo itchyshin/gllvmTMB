@@ -212,7 +212,7 @@ five entries are free.
 
 ## 2. Diagonal pinned to 1 (GALAMM / IRT convention)
 
-```{r fit-diagonal-pin}
+```{r fit-galamm}
 cnst_diag <- matrix(NA_real_, nrow = n_traits, ncol = d)
 diag(cnst_diag) <- 1
 cnst_diag

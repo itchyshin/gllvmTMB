@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Fitted-model predictive diagnostics (#228, 2026-05-25)
+
+* **`predictive_check()` and `residuals()`** now provide the public fitted-model diagnostic surface promoted from the #222 prototype (DIA-11 / DIA-12). IN: `predictive_check()` returns `ggplot` objects for randomized-quantile Q-Q checks, count rootograms, grouped statistics, and density overlays, with plotted data, `check_gllvmTMB()` rows, and `fit$fit_health` metadata attached in `attr(plot, "gllvmTMB_diagnostic")`; `residuals(fit, type = "randomized_quantile")` computes exact family-CDF residuals for Gaussian, Poisson, and NB2 rows, while `type = "simulation_rank"` remains the fitted-model simulation fallback. PARTIAL: these checks diagnose the fitted response distribution but do not calibrate intervals, prove latent rank, run formal DHARMa-style tests, or draw from a Bayesian posterior. PLANNED: exact residuals for delta, hurdle, truncated, ordinal, and mixture families remain future validation work.
+
 ## Programmatic identifiability diagnostics (#248, 2026-05-24)
 
 * **`check_gllvmTMB()`** now adds symbolizer-facing latent-identifiability rows to its machine-readable fit-health table (DIA-08 / DIA-10). IN: the table reports Hessian rank, loading-rotation convention, weak latent-axis share, near-zero per-trait `psi` standard deviations, near-boundary estimated `sigma_eps`, and broad cross-loading structure alongside the existing optimizer, gradient, `sdreport()`, `pdHess`, fixed-effect SE, restart, and boundary rows. PARTIAL: these rows are heuristic diagnostics for fitted models; they do not calibrate interval coverage or prove that the selected latent rank is scientifically preferred. PLANNED: simulation/refit rank checks remain the job of `check_identifiability()` and the M3 validation grid.

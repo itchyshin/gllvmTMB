@@ -131,7 +131,7 @@ Keep each item to one branch and one pull request.
 
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
-| 1 | #228 predictive diagnostics | Codex + Fisher/Grace | Starts after #248 diagnostic wording and plot semantics are stable on the public methods pages. |
+| 1 | #228 predictive diagnostics | Codex + Fisher/Grace | Public API branch active; stop when roxygen/Rd, pkgdown placement, focused tests, Design 51, DIA-11 / DIA-12, check-log, after-task report, and PR stack on #257 agree. |
 | 2 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, validation rows, figure review, and rendered HTML review. |
 
 If two agents are active, prefer one public-documentation lane and one
@@ -163,7 +163,7 @@ only when a stage becomes active.
 | Infrastructure first | Provide prepared examples, internal scenario generators, extractor tables, and diagnostics so examples are not long setup scripts. | Example objects and report-ready tables are tested. |
 | Symbol and syntax clarity | Reintroduce enough math to teach the model without losing applied users. | Every symbol is defined and paired with R syntax plus interpretation. |
 | Florence plot system | Move from functional plots to publication-quality scientific graphics. | Rendered figures are informative, colour-blind friendly, uncertainty-aware, and reviewed in HTML. |
-| Diagnostics and uncertainty | Stabilise `pdHess`, profile, bootstrap, and simulation-grid language. | #228 resumes only after diagnostic terms and plot semantics are stable. |
+| Diagnostics and uncertainty | Stabilise `pdHess`, profile, bootstrap, fitted-model predictive checks, residual diagnostics, and simulation-grid language. | #228 public diagnostics branch updates the exported diagnostic surface while remaining diagnostic-only, not interval calibration or Bayesian posterior prediction. |
 | Article restoration | Bring hidden articles back one at a time. | Each article has its example object, long/wide status, validation rows, figure review, and maintainer HTML review. |
 | Pre-CRAN | Audit public API, examples, docs, pkgdown, reverse dependencies, and CRAN notes. | Local checks and 3-OS CI are clean; validation-debt register is current. |
 | Publication-quality claims | Support strong methodological claims with target-explicit simulation and external comparators. | M3 inference gates and Phase 5.5 comparator evidence pass. |
@@ -234,8 +234,9 @@ advanced articles only after their gates pass.
 ## Working Rules During Reset
 
 - #230 owns the reset ledger. Child issues are opened only when work starts.
-- #228 stays parked until diagnostic terminology, tables, and plot semantics
-  are stable.
+- #228 is active as the public fitted-model predictive diagnostics branch;
+  keep its public claims diagnostic-only until DIA-11 / DIA-12 and the
+  after-task report record the tested family scope.
 - Every meaningful slice updates `docs/dev-log/check-log.md`, writes an
   after-task report, updates this roadmap when status changes, and comments
   on #230.

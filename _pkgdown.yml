@@ -178,6 +178,8 @@ reference:
     contents:
     - check_gllvmTMB
     - gllvmTMB_diagnose
+    - predictive_check
+    - residuals.gllvmTMB_multi
     - bootstrap_Sigma
     - confint_inspect
 

@@ -104,6 +104,79 @@ If the sister package can't represent the model, that is itself a
 finding — record it and note that this scout cannot falsify the
 engine-bug hypothesis on that feature.
 
+## 3.5. Scope and attribution anti-patterns
+
+Three confusions to avoid when invoking this protocol. Added
+2026-05-25 per Codex review of the initial draft.
+
+### 3.5.1. DGP scout vs. TMB-template / engine scout
+
+Cross-package scouts are the right tool when you do not know
+whether the bug is in your engine, your DGP, your estimand, or
+your comparator code. They are the **wrong** tool when the change
+under investigation is internal to your own TMB template or
+engine R code.
+
+If a PR modifies `src/gllvmTMB.cpp`, an R-side likelihood path,
+or an estimator-gradient routine, the appropriate scout is an
+**internal scout**: TMB-template diff, gradient check via
+`TMB::checkConsistency()`, or parameter-recovery test against
+the engine's previous version. Cross-package agreement at that
+layer would confirm only that the bug is downstream of the C++
+template, not that the template itself is correct.
+
+The 2026-05-25 binomial-`psi` signal was a DGP-scout case
+because the engine code in flight (`#257` / `#260` / `#261`)
+had not changed any path that the simulation harness DGP
+exercised. An internal scout would have produced no signal
+because nothing internal had moved.
+
+### 3.5.2. Family-design rulings vs. diagnostic-API work
+
+A statement like *"binomial has no overdispersion parameter, so
+DGP-side `psi` is unidentifiable"* is a **family-design
+ruling**: it changes the simulation DGP (`dev/m3-grid.R`) and
+the design docs that codify the harness rule
+(`docs/design/42-m3-dgp-grid.md`). It does **not** change the
+diagnostic-API code (`R/diagnose.R`, `R/diagnostic-tables.R`).
+
+Locate the fix at the layer the wrongness lives at:
+
+| Wrongness | Layer | File / doc |
+|---|---|---|
+| Family identifiability / DGP construction | DGP | `dev/m3-grid.R`, `docs/design/42-m3-dgp-grid.md` |
+| Diagnostic output shape / table API | R-API | `R/diagnose.R`, `R/diagnostic-tables.R`, `docs/design/51-posterior-predictive-diagnostics.md` |
+| Estimator gradient / Laplace step | TMB template | `src/gllvmTMB.cpp`, internal scout |
+| Estimand definition (what truth means) | Design contract | `docs/design/50-m3-3b-surface-admission.md` §3 |
+
+Conflating these layers attaches a fix to the wrong PR queue
+and produces false-positive blame on adjacent lanes. The
+2026-05-25 binomial-`psi` rule lived at the DGP layer; it did
+not move the diagnostic-API lanes by a single line.
+
+### 3.5.3. "Not implicated" vs. "not yet checked"
+
+Saying *"engine lane X is not implicated by signal Y"* requires
+**positive evidence**: typically that a fix at a different
+layer (DGP, estimand, comparator, harness) resolves the signal
+at its source while the engine code stays unchanged. The
+2026-05-25 binomial signal cleared this bar — the DGP patch in
+PR #263 + PR #264 shifted post-patch median ratios by +0.55
+across binomial cells (PR #266 §3 evidence) with no engine
+edit. That is *"not implicated."*
+
+*"Not yet checked"* means: no scout has been run that could
+discriminate between engine and non-engine causes for lane X.
+Many lanes will be *"not yet checked"* at any given moment;
+that is the default state when the scout protocol has not been
+exercised against a particular lane. Do not silently promote
+*"not yet checked"* to *"not implicated."*
+
+Scout reports must state which attribution applies and cite
+the evidence path. A scout that concludes *"engine X is not
+implicated"* without an after-fix counterfactual is overstating
+its reach.
+
 ## 4. The 4-round template
 
 The 2026-05-25 case validated this sequence:

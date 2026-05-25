@@ -10474,3 +10474,112 @@ Deliberately not run:
 - No `devtools::document()`; no roxygen changed.
 - No package tests or `devtools::check()` before opening the PR; this
   is an article/roadmap/audit closeout slice.
+
+## 2026-05-25 -- #228 public fitted-model predictive diagnostics
+
+- Branch: `codex/public-diagnostics-228-2026-05-25`.
+- Scope: promote the #222 non-exported fitted-model predictive /
+  simulation-rank diagnostic prototype into a public #228 API stacked on
+  #257.
+- Shannon checkpoint: WARN, not FAIL. Open PRs were #257
+  (`codex/identifiability-diagnostics-248-2026-05-24`, all three
+  R-CMD-check jobs green when inspected) and #258
+  (`agent/m3-workflow-targets-nboot-seed`, unrelated M3 workflow/script
+  files, CI in progress when inspected).
+- Rehydration note: the resumed worktree initially surfaced the #228 files
+  on `main`; switched the dirty tree back to
+  `codex/public-diagnostics-228-2026-05-25` before editing further.
+- Preserved the existing stash
+  `stash@{Mon May 25 07:19:09 2026}: On codex/public-diagnostics-228-2026-05-25: preserve m3 workflow targets nboot seed edits before #228`
+  for unrelated M3 workflow/seed work.
+- Added exported `predictive_check()` with fitted-model Q-Q, rootogram,
+  grouped-statistic, and density-overlay plots.
+- Added `residuals.gllvmTMB_multi()` with exact Gaussian, Poisson, and NB2
+  randomized-quantile residuals plus simulation-rank fallback.
+- Added `check_gllvmTMB()` and `fit$fit_health` metadata to residual and
+  plot objects through `attr(x, "gllvmTMB_diagnostic")`.
+- Retired `inst/prototypes/ppcheck-diagnostics.R` and
+  `tests/testthat/test-ppcheck-diagnostics-prototype.R`.
+- Updated `_pkgdown.yml`, NEWS, ROADMAP, Design 51, and DIA-11 / DIA-12.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-05-25-public-predictive-diagnostics-228.md`.
+- Added recovery checkpoint:
+  `docs/dev-log/recovery-checkpoints/2026-05-25-080241-ada-checkpoint.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> open PRs #257 and #258.
+- Recent-lane check:
+  `git log --all --oneline --decorate --since='6 hours ago'`
+  -> recent #257 identifiability stack and #258 M3 workflow stack only.
+- Issue inspection:
+  `gh issue view 228 --repo itchyshin/gllvmTMB --json number,title,state,labels,url,body`
+  -> #228 is the public promotion issue for the #222 diagnostic prototype.
+- Issue inspection:
+  `gh issue view 222 --repo itchyshin/gllvmTMB --json number,title,state,labels,url,body`
+  -> #222 is closed and described the prototype lane.
+- Issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search 'predictive OR residual OR pp_check OR randomized quantile' --json number,title,url,labels,updatedAt --limit 20`
+  -> #228 is the relevant open feature issue; #248 and #230 surfaced as
+  related diagnostics/article-reset ledgers.
+- Parse check:
+  `Rscript --vanilla -e 'parse("R/predictive-diagnostics.R"); parse("tests/testthat/test-predictive-diagnostics.R")'`
+  -> parsed both files successfully.
+- Formatting:
+  `air format R/predictive-diagnostics.R tests/testthat/test-predictive-diagnostics.R`
+  -> completed; deliberately restricted to touched R/test files.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> loaded `gllvmTMB`; wrote `NAMESPACE`, `predictive_check.Rd`, and
+  `residuals.gllvmTMB_multi.Rd`.
+- Focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "predictive-diagnostics")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 103`.
+- Focused + base-stack tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "predictive-diagnostics|sanity-multi")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 129`.
+- Full tests:
+  `Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 1 | SKIP 13 | PASS 2734` in 696.9s. The one warning is
+  the pre-existing `level = "spde"` deprecation warning in
+  `test-spatial-latent-recovery.R`.
+- pkgdown reference gate:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rd spot-check:
+  `tail -5 man/predictive_check.Rd man/residuals.gllvmTMB_multi.Rd`
+  -> both files end after their example blocks.
+- Rd keyword spot-check:
+  `grep -Hc '^\\keyword' man/predictive_check.Rd man/residuals.gllvmTMB_multi.Rd`
+  -> `0` for both files.
+- Prototype/posterior wording scan:
+  `rg -n 'posterior predictive|posterior-predictive|posterior draws|Bayesian posterior|pp_check|gllvmTMB_pp_check_prototype|inst/prototypes/ppcheck-diagnostics|test-ppcheck-diagnostics-prototype' NEWS.md ROADMAP.md _pkgdown.yml R/predictive-diagnostics.R man/predictive_check.Rd man/residuals.gllvmTMB_multi.Rd docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md tests/testthat/test-predictive-diagnostics.R`
+  -> intentional hits only: Design 51 cites sister-package `pp_check()`
+  patterns and public hits reject Bayesian posterior-predictive claims.
+- Stale prototype/parking scan:
+  `rg -n 'Exact family-CDF randomized-quantile residuals remain future|Non-exported prototype|not a public API promise|Out Of Scope.*Exported|Until this gate passes.*partial|#228 stays parked|Starts after #248' ROADMAP.md NEWS.md docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md _pkgdown.yml R/predictive-diagnostics.R tests/testthat/test-predictive-diagnostics.R man/predictive_check.Rd man/residuals.gllvmTMB_multi.Rd`
+  -> no output.
+- Scope row / metadata scan:
+  `rg -n 'DIA-11|DIA-12|predictive_check|residuals\\.gllvmTMB_multi|gllvmTMB_diagnostic|fit_health|check_gllvmTMB' NEWS.md ROADMAP.md _pkgdown.yml R/predictive-diagnostics.R man/predictive_check.Rd man/residuals.gllvmTMB_multi.Rd docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md tests/testthat/test-predictive-diagnostics.R`
+  -> row IDs, exports, metadata, pkgdown placement, tests, and generated Rd
+  are visible.
+- Stale terminology scan:
+  `rg -n 'Confidence-I|confidence-I|randrop|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|meta_known_V|gllvmTMB_wide\\(Y|already removed|primary new-user API|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(' NEWS.md ROADMAP.md docs/design/51-posterior-predictive-diagnostics.md docs/design/35-validation-debt-register.md R/predictive-diagnostics.R man/predictive_check.Rd man/residuals.gllvmTMB_multi.Rd tests/testthat/test-predictive-diagnostics.R`
+  -> expected existing `meta_known_V()` compatibility and
+  `gllvmTMB_wide(Y, ...)` soft-deprecation hits only; no new #228 drift.
+- Generated vignette scratch check:
+  `find vignettes -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) -print`
+  -> no output.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::check(args = "--no-manual")`; local full tests and
+  `pkgdown::check_pkgdown()` are green, but this stacked API branch still
+  needs ordinary 3-OS CI after #257 is settled.
+- No `pkgdown::build_articles(lazy = FALSE)`; this slice added reference docs
+  and did not touch article code chunks or formula parsing.

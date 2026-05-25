@@ -100,70 +100,57 @@ In `gllvmTMB`:
 `extract_correlations()` uses `part = "total"` by default, so the
 correlations come out on the latent-liability scale.
 
-### Why we drop `unique()` for pure binary
+### Why this example omits `unique()`
 
 For Gaussian fits, the canonical decomposition pairs
 `latent + unique`:
 
 $$\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$$
 
-where $\boldsymbol\Psi = \mathrm{diag}(\psi_{tt})$ is the per-trait unique
-variance — *estimated* from per-row residual variability. For
-**pure binary 1-obs-per-cell** fits, $\psi_{tt}$ carries no information:
-binary data do not constrain observation-level variability beyond
-the link residual. Some Bayesian implementations (e.g. Hadfield's
-MCMCglmm) add a small `σ²_units` term for MCMC mixing reasons, but
-it isn't estimated from data; `gllvmTMB` is frequentist and simply
-omits it.
+where $\boldsymbol\Psi = \mathrm{diag}(\psi_{tt})$ is the per-trait
+unique variance estimated from residual variation. A single-trial
+Bernoulli response is different: the link already supplies the
+latent-scale residual variance ($\pi^2/3$ for logit, 1 for probit).
+There is no separate observation-level $\psi$ term for the data to
+identify.
 
-What happens if you add `unique()` anyway? It runs, but is mostly
-wasted effort:
+That is why the worked example below uses only
+`latent(0 + trait | site, d = 2)`. The `latent + unique` binary path
+is still useful as a diagnostic or development check, but the current
+validation register marks that paired binary regime as RE-09
+`partial`, not `covered`. For a public JSDM example, the honest
+default is therefore:
 
-| Question | Answer |
+| Goal | Recommended term |
 |---|---|
-| Engine accepts `unique()` in a pure binary fit? | ✅ Yes — runs without error |
-| Estimates per-trait `sd_B[t]`? | ✅ Yes — but hits the boundary at ~ 0 (unidentifiable from binary 1-obs-per-cell) |
-| Issues a warning? | ❌ Not yet — a planned follow-up will add a one-shot info message and `map`-suppress those parameters |
-| Affects $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$? | ❌ No — $\boldsymbol\Lambda$ is unchanged |
-| Affects $\boldsymbol\Sigma_{\text{latent}}$? | Marginal — diagonal becomes $\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\hat{sd}_B^2) + (\pi^2/3) \mathbf I$, but $\hat{sd}_B^2 \approx 0$ at the boundary so it's essentially the same as without `unique()` |
-| Affects fit time / Hessian | Slightly: extra $T$ parameters pinned at the boundary, Hessian can be ill-conditioned. `sanity_multi(fit)` may flag it |
+| Model residual species co-occurrence in 0/1 data | `latent(0 + trait | site, d = K)` |
+| Add a per-trait residual variance to Gaussian or other continuous traits | `latent(...) + unique(...)` |
+| Diagnose a boundary or over-parameterised binary fit | try `unique(...)` as a sensitivity check, then report the boundary status |
 
-Bottom line: drop `unique()` for **pure** binary fits.
+Bottom line: for **pure single-trial binary** JSDMs, start with
+`latent()` alone and treat `unique()` as a diagnostic path.
 
-### What about `dep` and `indep` for binary?
+### What about `dep()` and `indep()` for binary?
 
-The other two covstruct modes — `dep` (full unstructured Σ) and
-`indep` (diagonal-only Σ) — also have identifiability issues with
-binary 1-obs-per-cell. Empirical comparison on simulated data
-(`T = 6` species, `n = 150` sites, rank-2 truth):
+The `dep()` and `indep()` keywords are part of the general covariance
+grammar, but this article does not use them as binary-JSDM teaching
+defaults. The validation-debt register currently marks the `dep()`
+and `indep()` rows for the unit tier as FG-08 and FG-07 `partial`
+because their stronger recovery evidence is Gaussian-only.
 
-| Mode | logL | Σ_B diag (estimated) | Off-diag agreement vs truth |
-|---|---|---|---|
-| **`latent(d = 2)`** (recommended) | **−593.65** | 1.07–3.31 | $r = 0.80$ ✓ |
-| `latent(d = T)` (= `dep`) | −593.45 | 1.11–3.41 | $r = 0.79$ ✓ |
-| `dep` (full unstructured) | −593.45 | 1.11–3.41 | $r = 0.79$ ✓ |
-| **`indep`** (diagonal-only) | **−616.85** 🔴 | **0, 0, 0, 0, 0, 0** 🔴 | NA (no off-diagonals) |
+For binary species-occurrence data, choose the term by the biological
+question:
 
-(True diagonal: 1.49–1.85; true off-diagonal range: [−1.77, +1.66].)
+| Question | Term to start with |
+|---|---|
+| Which species share residual co-occurrence after the environment is accounted for? | `latent(0 + trait | site, d = K)` |
+| Do species vary independently, with no residual co-occurrence target? | `indep()` can express that model, but it is not the JSDM focus here |
+| Do I need a saturated covariance for a small species set? | `dep()` is a possible sensitivity fit, but it is not the validated public path for this binary example |
 
-What this confirms:
-
-- **`dep` is mathematically equivalent to `latent(d = T)`** — identical
-  logL, identical Σ.
-- **Reduced-rank `latent(d < T)` matches the saturated logL within
-  0.2 nats** — the *off-diagonals* (the identifiable part) are
-  captured equally well by `latent(d = 2)` as by `dep`. The rank
-  constraint additionally regularises the *diagonals*, which would
-  otherwise be unidentifiable individually for binary, giving
-  estimates ~10–20% closer to truth.
-- **`indep` is catastrophic for binary**: logL is ~23 nats worse,
-  every per-trait variance pinned at exactly zero, no off-diagonals
-  modelled. Avoid `indep` for any binary fit where cross-species
-  / cross-trait correlations matter — which is essentially every
-  realistic JSDM.
-
-Recommended for binary: **`latent(d = K)` with `K < T`**. Skip `dep`
-(no advantage), skip `indep` (broken).
+So the recommendation here is narrow: use `latent(d = K)` for the
+worked binary JSDM and treat `dep()` / `indep()` comparisons as
+sensitivity checks until the binary-specific validation rows move
+from `partial` to `covered`.
 
 ### How `extract_Sigma()` handles non-Gaussian fits
 
@@ -288,6 +275,24 @@ long/wide equivalence check on this JSDM scenario depends on the
 absence-fill convention (sparse `mean_species_per_site` simulation
 vs every-site-sees-every-species filled with zeros) and lives in the
 Phase 1c article-port programme.
+
+### Where loading constraints fit
+
+The loading matrix $\boldsymbol\Lambda$ is usually exploratory in a
+JSDM: its rotation is arbitrary, while
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ is the interpretable
+co-occurrence target. If you have an a-priori hypothesis that a
+species group defines an axis, or that a species should have zero
+loading on an axis, that is a **confirmatory loading** question rather
+than the default species-distribution workflow.
+
+`gllvmTMB` supports that confirmatory path with
+`lambda_constraint = list(B = M)`, where `NA` means "estimate this
+loading" and a number means "pin this loading during fitting." Binary
+IRT-style loading constraints are covered by the LAM-03 and LAM-04
+validation rows, but an ecology-first JSDM article should introduce
+them only as an optional follow-up after the reader understands
+correlations, $\boldsymbol\Sigma$, and ordination.
 
 ## Latent-scale residual species correlations (with 95% CIs)
 

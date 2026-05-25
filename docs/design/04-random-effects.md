@@ -127,13 +127,15 @@ values), the `lambda_constraint = list(B = M)` argument lets
 them pin entries of $\boldsymbol\Lambda$ in the between-tier
 $B$. The pinned entries are not estimated; the remaining
 entries are estimated subject to the constraint. **Status:
-`claimed`** for Gaussian; **`reserved` for binary** (the M2
-slice verifies binary IRT confirmatory loadings).
+`covered`** for Gaussian and binary IRT paths; see validation-debt
+rows LAM-01, LAM-02, and LAM-03.
 
 `suggest_lambda_constraint(fit)` returns a recommended
-constraint matrix given an exploratory fit. **Status: `claimed`**
-for Gaussian; **`reserved` for binary** (M2 verifies at
-$n_\text{items} \in \{10, 20, 50\}$, $d \in \{1, 2, 3\}$).
+constraint matrix given an exploratory fit. **Status: `covered`**
+for Gaussian and binary IRT paths; see LAM-04, including the
+$n_\text{items} \in \{10, 20, 50\}$ and $d \in \{1, 2, 3\}$
+binary reliability regime. Ecological confirmatory-JSDM examples
+remain article work, not a separate engine gap.
 
 ## Trait-diagonal $\boldsymbol\Psi$ (`unique(...)`)
 

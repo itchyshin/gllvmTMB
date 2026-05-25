@@ -318,8 +318,34 @@ m3_sample_truth <- function(
   ## Latent factor scores
   Z <- matrix(stats::rnorm(n_units * d), nrow = n_units, ncol = d)
 
+  ## Per-trait family assignment (mirrors m3_simulate_response).
+  ## Used to apply the 2026-05-25 binomial-psi correction below.
+  row_family <- if (family == "mixed") {
+    c("gaussian", "binomial", "nbinom2")[((seq_len(n_traits) - 1L) %% 3L) + 1L]
+  } else {
+    rep(family, n_traits)
+  }
+
+  ## Patch 2026-05-25 (maintainer ruling): for 1-trial Bernoulli, the
+  ## per-observation latent variance `psi` is not identifiable
+  ## separately from the binomial sampling variance — single-trial
+  ## Bernoulli has no overdispersion parameter and the link-residual
+  ## is fixed at pi^2/3 (logit) or 1 (probit) by construction. The
+  ## DGP must NOT include psi in the truth for binomial traits, and
+  ## `m3_simulate_response` must NOT add `e_unique` for those rows.
+  ## This applies to family == "binomial" (all traits binomial) and
+  ## to binomial rows inside family == "mixed". psi is still drawn
+  ## (for record-keeping in $psi) but the truth Sigma uses
+  ## psi_effective (zeroed for binomial rows).
+  ##
+  ## Cross-ref: docs/dev-log/audits/2026-05-25-jason-cross-package-binomial-sigma-scout.md
+  ## §3.2 + §4 — N-sweep falsified small-n hypothesis; the gap was
+  ## a DGP-vs-fitter scale mismatch from including psi in binary truth.
+  psi_effective <- psi
+  psi_effective[row_family == "binomial"] <- 0
+
   ## Implied Sigma_unit (T x T): the rotation-invariant target
-  Sigma <- tcrossprod(Lambda) + diag(psi, n_traits)
+  Sigma <- tcrossprod(Lambda) + diag(psi_effective, n_traits)
   diag_Sigma <- diag(Sigma)
 
   ## Family-specific nuisance. Mixed-family populates ALL of them since
@@ -341,6 +367,8 @@ m3_sample_truth <- function(
   list(
     Lambda = Lambda,
     psi = psi,
+    psi_effective = psi_effective, # zero for binomial rows; see comment above
+    row_family = row_family,
     Z = Z,
     Sigma = Sigma,
     diag_Sigma = diag_Sigma,
@@ -364,12 +392,19 @@ m3_simulate_response <- function(truth) {
   n_units <- truth$n_units
   n_traits <- truth$n_traits
   Lambda <- truth$Lambda
-  psi <- truth$psi
+  ## Patch 2026-05-25 (maintainer ruling): use psi_effective (zero for
+  ## binomial traits) rather than the originally drawn psi. Single-
+  ## trial Bernoulli can't carry per-observation latent variance on
+  ## top of the link-residual; the simulation must not add e_unique
+  ## for those rows. See `m3_sample_truth` for the rationale +
+  ## cross-ref to the Jason scout audit memo.
+  psi <- truth$psi_effective %||% truth$psi
   Z <- truth$Z
 
   ## Linear predictor on the latent scale (no fixed-effect mean here;
   ## the fit estimates a per-trait intercept which absorbs that).
   ## eta = Z %*% Lambda^T + e_unique with e_unique ~ N(0, diag(psi))
+  ## For binomial traits psi=0 (per patch above) so e_unique = 0.
   e_unique <- matrix(
     stats::rnorm(n_units * n_traits),
     nrow = n_units,

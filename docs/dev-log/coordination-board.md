@@ -147,7 +147,7 @@ leave a coordination comment first and wait for acknowledgement.
 | `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
 | `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | no active owner after PR #229 merged |
 | `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | no active owner after PR #258 merged 2026-05-25. Both teams free to edit. |
-| `dev/m3-grid.R` | no active owner; free to edit. |
+| `dev/m3-grid.R` | **Claude** (PR #263 active 2026-05-25): targeted binomial-psi patch in `m3_sample_truth` + `m3_simulate_response` per maintainer's 2026-05-25 design ruling ("simulations cannot have psi bit — as psi for binary emerges from binomial error"). Gaussian / nbinom2 / ordinal-probit branches untouched. After PR #263 merges, ownership returns to "no active owner; free to edit". |
 | `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | no active owner after the M3 sim lane closed 2026-05-25 (post-dispatch §8 results landed in PR-TBD `agent/m3-sim-pilot-results`). |
 
 If a file's owner needs to change (e.g. Claude needs to touch

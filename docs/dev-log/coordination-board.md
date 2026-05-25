@@ -97,7 +97,7 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | M3 sim lane — workflow + script support target-explicit dispatch (3 new `workflow_dispatch` inputs `targets` / `n_boot` / `seed_base`; `--seed-base` CLI flag on the precompute driver); pre-dispatch audit memo with pre-registered ratio bands (Fisher + Curie + Rose 2026-05-24 lens consults) | PR #258 / `agent/m3-workflow-targets-nboot-seed` | `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R`, `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | Open; Codex review requested. After merge: pilot dispatch at `n_reps=10`, `targets=psi,Sigma_unit_diag`, `n_boot=25`, `seed_base=20260524`, `retention_days=14`. CI-08 / CI-10 stay `partial` (Design 50 §9). |
+| Claude | M3 sim lane — post-dispatch results memo + lane close | PR-TBD / `agent/m3-sim-pilot-results` | `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` (§8 results), `docs/dev-log/coordination-board.md` | Awaiting commit + PR. After merge: lane closes. **Scenario A confirmed; broader than nbinom2.** Hand-off to Codex's #257/#228 per pre-registered trigger. |
 | Codex | -- | -- | -- | No active Codex lane after PR #229 merge |
 
 **WIP**: 1.
@@ -146,9 +146,9 @@ leave a coordination comment first and wait for acknowledgement.
 | `tests/testthat/*` | no active owner after #226 merged; new `meta_V()` parser and wide-format tests are now on `main` |
 | `src/gllvmTMB.cpp` | no owner in this lane; do not edit |
 | `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | no active owner after PR #229 merged |
-| `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | **Claude** (PR #258 active 2026-05-24). Codex review welcome on the PR; please do not touch these on a parallel branch while #258 is open. |
-| `dev/m3-grid.R` | no active owner; this lane only reads. Codex free to edit. |
-| `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | **Claude** (M3 sim lane audit memo). |
+| `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | no active owner after PR #258 merged 2026-05-25. Both teams free to edit. |
+| `dev/m3-grid.R` | no active owner; free to edit. |
+| `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | no active owner after the M3 sim lane closed 2026-05-25 (post-dispatch §8 results landed in PR-TBD `agent/m3-sim-pilot-results`). |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a
@@ -175,6 +175,20 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-25 ~14:30 UTC**: PR #258 (M3 sim lane — workflow + script
+  + pre-dispatch audit memo) merged to `main` at 14:07 UTC.
+  GHA dispatch [run 26404672871](https://github.com/itchyshin/gllvmTMB/actions/runs/26404672871)
+  completed at 15:xx UTC: 15/15 jobs returned `success`; 5 cells
+  flagged `COMPUTE_FAIL` per Design 50 §5 (3 ordinal-probit
+  expected per §6 bootstrap guard; 1 nbinom2 d=2 boot-fail-rate
+  22%; 1 mixed d=3 fit-fail 40%). **Verdict: Scenario A confirmed;
+  broader than nbinom2** — binomial all three d-levels show severe
+  under-estimate of `Sigma_unit[tt]` (median ratios 0.24/0.32/0.42
+  vs band [0.80, 1.15]); nbinom2 d=1 and d=3 also outside their
+  band; Gaussian d=1 just over. Hand-off to Codex's #257/#228 lane
+  per pre-registered trigger. CI-08 and CI-10 stay `partial`
+  (Design 50 §9). See `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md`
+  §8 for full per-cell table.
 - **2026-05-20 ~16:08 MT**: PR #229 (fitted-model predictive /
   simulation-rank diagnostic prototype) merged to `main` as squash
   commit `2479a9d` after PR R-CMD-check run `26190941251` passed on
@@ -437,6 +451,14 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Update history (last 5)
 
+- 2026-05-25 ~15:30 UTC: M3 sim lane closes. PR #258 merged at 14:07
+  UTC; GHA dispatch run 26404672871 completed 15/15 success.
+  **Scenario A confirmed broader than nbinom2** — binomial all
+  three d-levels show severe under-estimate of `Sigma_unit[tt]`.
+  Hand-off to Codex's #257/#228 lane per pre-registered trigger.
+  CI-08 / CI-10 stay `partial` (Design 50 §9). File-ownership rows
+  released. Post-dispatch memo + coord-board update committed to
+  `agent/m3-sim-pilot-results` (PR opens after this commit) (Claude).
 - 2026-05-24 ~07:30 MT: Claude picked up the M3 sim lane
   (accuracy + reliability check at n_reps=10, NOT comprehensive
   coverage — that's a future post-functionality-freeze slice per

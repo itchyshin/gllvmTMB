@@ -35,16 +35,13 @@ source("dev/m3-grid.R")  # m3_sample_truth, m3_simulate_response
 
 N_REPS   <- 10L
 SEED_BASE <- 20260525L  # fresh seed (avoid pilot collision at 20260524)
-N_UNITS  <- 60L
+N_UNITS_GRID <- as.integer(c(60L, 240L, 500L))  # N-sweep to test small-n hypothesis
 N_TRAITS <- 5L
 D        <- 1L
 
-## --- DGP reps ----------------------------------------------------------
-
-rep_results <- vector("list", N_REPS)
-for (r in seq_len(N_REPS)) {
+run_one_rep <- function(N_UNITS, r) {
   rep_seed <- SEED_BASE + 1000L * D + 100000L * 2L + r  # family idx 2 = binomial
-  cat(sprintf("[rep %d/%d, seed %d]\n", r, N_REPS, rep_seed))
+  cat(sprintf("[N=%d rep %d/%d, seed %d]\n", N_UNITS, r, N_REPS, rep_seed))
 
   truth <- m3_sample_truth(
     family = "binomial", d = D, n_traits = N_TRAITS,
@@ -185,7 +182,8 @@ for (r in seq_len(N_REPS)) {
   }
   t_glmmTMB <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
-  rep_results[[r]] <- data.frame(
+  data.frame(
+    n_units = N_UNITS,
     rep = r,
     trait_id = seq_len(N_TRAITS),
     truth_diag = truth_diag,
@@ -200,7 +198,17 @@ for (r in seq_len(N_REPS)) {
   )
 }
 
-results <- do.call(rbind, rep_results)
+## --- N-sweep × reps ---------------------------------------------------
+
+all_rows <- list()
+for (N_UNITS in N_UNITS_GRID) {
+  cat(sprintf("\n========== N_UNITS = %d ==========\n", N_UNITS))
+  for (r in seq_len(N_REPS)) {
+    all_rows[[length(all_rows) + 1L]] <- run_one_rep(N_UNITS, r)
+  }
+}
+
+results <- do.call(rbind, all_rows)
 results$ratio_gTMB       <- results$gTMB_diag       / results$truth_diag
 results$ratio_gllvm_LV   <- results$gllvm_LV_only   / results$truth_diag
 results$ratio_gllvm_link <- results$gllvm_plus_link / results$truth_diag
@@ -209,59 +217,57 @@ results$ratio_glmmTMB    <- results$glmmTMB_diag    / results$truth_diag
 
 ## --- Summary -----------------------------------------------------------
 
-cat("\n=== Per-rep × trait raw ratios (head 10) ===\n")
-print(head(results[, c("rep", "trait_id", "truth_diag", "gTMB_diag",
-                       "gllvm_LV_only", "gllvm_plus_link",
-                       "galamm_diag", "glmmTMB_diag",
-                       "ratio_gTMB", "ratio_gllvm_LV",
-                       "ratio_gllvm_link", "ratio_galamm",
-                       "ratio_glmmTMB")], 10),
-      row.names = FALSE)
+cat("\n=== Per-N median estimate/truth ratio by package ===\n")
+summary_by_N <- do.call(rbind, lapply(N_UNITS_GRID, function(n) {
+  r <- results[results$n_units == n, ]
+  data.frame(
+    n_units = n,
+    gllvmTMB    = median(r$ratio_gTMB,       na.rm = TRUE),
+    gllvm_LV    = median(r$ratio_gllvm_LV,   na.rm = TRUE),
+    gllvm_link  = median(r$ratio_gllvm_link, na.rm = TRUE),
+    galamm      = median(r$ratio_galamm,     na.rm = TRUE),
+    glmmTMB     = median(r$ratio_glmmTMB,    na.rm = TRUE),
+    n_gTMB_conv = sum(!is.na(r$gTMB_diag)),
+    n_galamm_nonzero = sum(!is.na(r$galamm_diag) & r$galamm_diag > 0),
+    stringsAsFactors = FALSE
+  )
+}))
+print(summary_by_N, row.names = FALSE, digits = 3)
 
-cat("\n=== Median estimate/truth ratio by package ===\n")
-summary_pkg <- data.frame(
-  package = c("gllvmTMB (latent+unique)", "gllvm (LV only)",
-              "gllvm (LV + pi^2/3 link)",
-              "galamm (lambda^2 * sigma^2_ability)",
-              "glmmTMB (unstructured)"),
-  median_ratio = c(
-    median(results$ratio_gTMB,       na.rm = TRUE),
-    median(results$ratio_gllvm_LV,   na.rm = TRUE),
-    median(results$ratio_gllvm_link, na.rm = TRUE),
-    median(results$ratio_galamm,     na.rm = TRUE),
-    median(results$ratio_glmmTMB,    na.rm = TRUE)
-  ),
-  iqr_lo = c(
-    quantile(results$ratio_gTMB,       0.25, na.rm = TRUE),
-    quantile(results$ratio_gllvm_LV,   0.25, na.rm = TRUE),
-    quantile(results$ratio_gllvm_link, 0.25, na.rm = TRUE),
-    quantile(results$ratio_galamm,     0.25, na.rm = TRUE),
-    quantile(results$ratio_glmmTMB,    0.25, na.rm = TRUE)
-  ),
-  iqr_hi = c(
-    quantile(results$ratio_gTMB,       0.75, na.rm = TRUE),
-    quantile(results$ratio_gllvm_LV,   0.75, na.rm = TRUE),
-    quantile(results$ratio_gllvm_link, 0.75, na.rm = TRUE),
-    quantile(results$ratio_galamm,     0.75, na.rm = TRUE),
-    quantile(results$ratio_glmmTMB,    0.75, na.rm = TRUE)
-  ),
-  n_converged = c(
-    sum(!is.na(results$gTMB_diag)),
-    sum(!is.na(results$gllvm_LV_only)),
-    sum(!is.na(results$gllvm_plus_link)),
-    sum(!is.na(results$galamm_diag)),
-    sum(!is.na(results$glmmTMB_diag))
-  ),
-  median_runtime_s = c(
-    median(results$t_gTMB,    na.rm = TRUE),
-    median(results$t_gllvm,   na.rm = TRUE),
-    median(results$t_gllvm,   na.rm = TRUE),  # same fit
-    median(results$t_galamm,  na.rm = TRUE),
-    median(results$t_glmmTMB, na.rm = TRUE)
-  ),
-  stringsAsFactors = FALSE
-)
-print(summary_pkg, row.names = FALSE)
+cat("\n=== IQR per package at each N ===\n")
+iqr_by_N <- do.call(rbind, lapply(N_UNITS_GRID, function(n) {
+  r <- results[results$n_units == n, ]
+  one <- function(x) sprintf("%.3f [%.3f, %.3f]",
+                              median(x, na.rm = TRUE),
+                              quantile(x, 0.25, na.rm = TRUE),
+                              quantile(x, 0.75, na.rm = TRUE))
+  data.frame(
+    n_units    = n,
+    gllvmTMB   = one(r$ratio_gTMB),
+    galamm     = one(r$ratio_galamm),
+    glmmTMB    = one(r$ratio_glmmTMB),
+    gllvm_LV   = one(r$ratio_gllvm_LV),
+    stringsAsFactors = FALSE
+  )
+}))
+print(iqr_by_N, row.names = FALSE)
+
+cat("\n=== Per-N runtime budget (median seconds per fit) ===\n")
+rt_by_N <- do.call(rbind, lapply(N_UNITS_GRID, function(n) {
+  r <- results[results$n_units == n, ]
+  data.frame(
+    n_units = n,
+    t_gTMB    = median(r$t_gTMB,    na.rm = TRUE),
+    t_gllvm   = median(r$t_gllvm,   na.rm = TRUE),
+    t_galamm  = median(r$t_galamm,  na.rm = TRUE),
+    t_glmmTMB = median(r$t_glmmTMB, na.rm = TRUE),
+    stringsAsFactors = FALSE
+  )
+}))
+print(rt_by_N, row.names = FALSE, digits = 3)
+
+## Keep summary_pkg variable name for backwards-compatibility / CSV
+summary_pkg <- summary_by_N
 
 write.csv(results,    "/tmp/jason-scout-perrep.csv",  row.names = FALSE)
 write.csv(summary_pkg,"/tmp/jason-scout-summary.csv", row.names = FALSE)

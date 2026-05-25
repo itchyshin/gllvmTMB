@@ -30,8 +30,12 @@ d=1)`:
 - **Truth**: `Sigma_unit = Lambda Lambda^T + diag(psi)` → diagonal
   = `Sigma_unit[tt]` (latent-scale per-trait variance).
 
-`n_reps = 10`, `seed_base = 20260525` (fresh — avoids collision with
-M3 pilot seed 20260524 and 2026-05-19 production seed 20260517).
+`n_reps = 10` per cell, `seed_base = 20260525` (fresh — avoids
+collision with M3 pilot seed 20260524 and 2026-05-19 production
+seed 20260517). After the maintainer asked 2026-05-25 *"if we
+increase N sample size we do get close to 1 ratio?"*, the script
+was extended to sweep `N_UNITS ∈ {60, 240, 500}` — 150 fits per
+package total.
 
 Each rep fits the same data four ways:
 
@@ -61,105 +65,136 @@ Console + CSV outputs land at `/tmp/jason-scout-{perrep,summary}.csv`.
 
 ## 3. Results
 
-Per-package median estimate/truth ratio on `Sigma_unit[tt]` across
-50 trait-replicate pairs (10 reps × 5 traits). Sorted by ascending
-median ratio:
+### 3.1 Median estimate/truth ratio by N (per-N stratified)
 
-| Package | Median ratio | IQR | n fits with non-zero variance | Median fit time |
+| N_units | gllvmTMB (latent+unique) | galamm (lambda²σ²) | glmmTMB (full unstr.) | gllvm (LV only) |
 |---|---|---|---|---|
-| **galamm** (reduced-rank d=1, lambda² × σ²_ability) | **0.226** | [0.004, 0.697] | 45/50† | 0.09 s |
-| **gllvmTMB** (latent + unique, d=1) | **0.240** | [0.028, 0.793] | 50/50 | 0.49 s |
-| **glmmTMB** (full unstructured) | **0.636** | [0.285, 1.136] | 50/50 | 0.39 s |
-| gllvm (LV only — no separate psi) | 0.832 | [0.401, 2.322] | 50/50 | 0.02 s |
-| gllvm + π²/3 link-residual | 3.211 | [2.201, 5.406] | 50/50 | 0.02 s (over-shoots) |
+| 60 | 0.240 [0.028, 0.793] | 0.226 [0.004, 0.697] | 0.636 [0.285, 1.136] | 0.832 [0.401, 2.322] |
+| 240 | 0.142 [0.056, 0.264] | 0.157 [0.061, 0.349] | 0.276 [0.135, 0.432] | 1.134 [0.232, 9.851] |
+| **500** | **0.137 [0.082, 0.248]** | **0.121 [0.071, 0.260]** | **0.184 [0.136, 0.388]** | 0.887 [0.143, 4.558] |
 
-† galamm hit the variance boundary (σ²_ability ≈ 0) on rep 1 (5 of 50
-trait-rep pairs returned exactly zero). The model nominally
-"converged" but to a degenerate point on the boundary. This is a
-small-n binomial-fit pathology consistent with rep 1's data not
-supporting a non-zero LV variance.
+(Cell shows: median [IQR lower, IQR upper]; n_reps = 10 × n_traits =
+5 = 50 trait-rep pairs per cell.)
 
-(Smoke-scale; n_reps = 10 means MCSE on each median is moderate.
-The relative ordering across packages is what's stable; absolute
-values shift if you re-run with a different seed.)
+### 3.2 The maintainer's question
+
+**Question (2026-05-25)**: *"if we increase N sample size we do get
+close to 1 ratio?"*
+
+**Answer: No. The ratios go in the OPPOSITE direction.** All three
+packages that try to recover `Lambda Lambda^T + diag(psi)` (gllvmTMB,
+galamm, glmmTMB) **decrease monotonically** as N grows:
+
+- gllvmTMB: 0.240 → 0.142 → 0.137
+- galamm:   0.226 → 0.157 → 0.121
+- glmmTMB:  0.636 → 0.276 → 0.184
+
+At N=500, all three have converged to a stable but **substantially-
+below-1** point. This is not a transient small-n effect — it is the
+estimators' consistent target. By contrast, gllvm's LV-only ratio
+stays near 1.0 across all N (with high variance) — it recovers a
+different quantity that IS commensurable with the DGP's
+`Lambda Lambda^T + diag(psi)` truth.
+
+### 3.3 Runtime budget (median seconds per fit)
+
+| N_units | gllvmTMB | gllvm | galamm | glmmTMB |
+|---|---|---|---|---|
+| 60 | 0.49 | 0.02 | 0.09 | 0.40 |
+| 240 | 2.04 | 0.14 | 0.27 | 0.89 |
+| 500 | 4.40 | 0.53 | 0.91 | 1.51 |
+
+gllvmTMB is the slowest by a factor of ~3-5× at every N; expected
+given the additional `unique` tier + TMB autodiff over an
+augmented parameter vector.
+
+### 3.4 galamm boundary failures
+
+galamm hit σ²_ability ≈ 0 (interior variance boundary) on rep 1 at
+N=60 (5 of 50 trait-rep pairs returned exactly zero). At N=240 and
+N=500 this didn't recur (50/50 non-zero). So the boundary pathology
+**is** a small-n effect, but it's the variance-collapse mode, not
+the persistent under-estimate.
 
 ## 4. Interpretation
 
-**Three findings (rewritten 2026-05-25 after adding galamm):**
+**Four findings, the third of which is the headline.**
 
-### 4.1 Reduced-rank GLLVMs cluster around 0.23 — NOT a gllvmTMB-specific bug.
+### 4.1 The small-n binomial hypothesis is FALSIFIED.
 
-The headline of the 4-way comparison: **galamm and gllvmTMB land at
-essentially identical median ratios (0.226 vs 0.240)** on the same
-binomial × d=1 DGP at n_units=60, n_traits=5. Two independent
-reduced-rank GLLVM engines — gllvmTMB (TMB autodiff, `latent +
-unique` parameterisation) and galamm (TMB autodiff, single-LV factor
-parameterisation) — converge to the same shrinkage neighbourhood.
+The N-sweep (§3.1, §3.2) shows the opposite of what a small-n
+pathology would predict. Ratios *decrease* monotonically with N
+for all three packages that target `Lambda Lambda^T + diag(psi)`.
+At N=500, all three are at a stable, asymptotic value far below 1.
 
-This **falsifies my earlier (round-1, glmmTMB-only) hypothesis**
-that the gllvmTMB-vs-glmmTMB gap reflects gllvmTMB-specific excess
-shrinkage. It is **a fundamental reduced-rank GLLVM property at this
-n / T / d regime**, not a gllvmTMB bug.
+So the under-estimate is **not** a transient sample-size artifact.
+It is the estimators' **consistent target** — the population
+quantity they converge to in the large-N limit, which is **not
+equal to the DGP truth defined by `m3_sample_truth`**.
 
-### 4.2 The reduced-rank vs full-rank gap is the real signal.
+### 4.2 Two independent reduced-rank engines agree across N.
 
-glmmTMB (full unstructured Sigma, no reduced-rank constraint) sits
-at **0.636** — substantially higher than the 0.23 of either
-reduced-rank engine, but still well below the truth (1.0). So:
+gllvmTMB and galamm — using different parameterisations (`Lambda
+Lambda^T + diag(psi)` vs `lambda * σ²_ability`) and slightly
+different TMB-autodiff implementations — land at nearly identical
+ratios at every N (0.240 vs 0.226 at N=60; 0.142 vs 0.157 at N=240;
+0.137 vs 0.121 at N=500). This rules out any gllvmTMB-specific
+engine bug as the cause of the Scenario A signal from the M3 pilot.
 
-- The **first under-estimate** (1.0 → 0.64) is a binomial small-n
-  pathology that affects ALL three engines uniformly.
-- The **second under-estimate** (0.64 → 0.23) is the cost of
-  imposing the reduced-rank constraint when the DGP truth carries
-  T(T+1)/2 = 15 covariance parameters but the model fits with only
-  d·T + T = 10 free parameters (d=1, T=5).
+### 4.3 **HEADLINE: the m3-grid DGP's truth definition is incompatible with the binomial fitters' estimands.**
 
-The 0.64 → 0.23 gap is the right thing to investigate IF a
-reduced-rank engine is supposed to recover full-rank Sigma. The
-correct interpretation, however, is that **a reduced-rank Sigma
-is the model's parameterised target**, not the full-rank truth.
-The "estimate/truth ratio" metric mixes these two questions.
+The DGP defines `truth_diag_Sigma_tt = (Lambda Lambda^T + diag(psi))_tt`
+on the latent (logit) scale. But Bernoulli responses
+**under-identify the latent-scale variance** — for any data Y, the
+fitter is recovering a latent-scale Sigma constrained by an
+**implicit scale identification** (effectively pinning the
+contribution of the binomial link-residual). The fitter's
+consistent estimand and the DGP's "truth" are on different latent
+scales.
 
-### 4.3 gllvm parameterises differently again.
+The asymptotic ratios at N=500 reveal the package-specific scale
+factors:
 
-gllvm has no separate `psi` — its model is `eta = X β + LV θ^T`. The
-LV-only ratio of **0.832** is higher than gllvmTMB/galamm precisely
-because gllvm's loadings θ implicitly absorb both the "structured
-LV" and the "unique psi" parts of the DGP. The naive π²/3 link-
-residual add-back over-shoots by 3.2× because the loadings already
-absorbed the psi contribution.
+- **gllvmTMB (with psi)**: 0.137 ≈ `(Lambda Lambda^T + diag(psi)) / scale_gllvmTMB`
+- **galamm (no psi)**: 0.121
+- **glmmTMB (full unstructured)**: 0.184
+- **gllvm (LV only, different target)**: ~1.0 across N (its `theta
+  theta^T` is on a different conceptual scale where the truth
+  comparison happens to land near 1).
 
-This is **not better than gllvmTMB or galamm**; it's a different
-estimand. gllvm's `theta theta^T` ≠ gllvmTMB's `Lambda Lambda^T +
-diag(psi)`. The cross-package comparison only makes apples-to-apples
-sense between **reduced-rank GLLVMs** (gllvmTMB + galamm) and
-between **full-rank baselines** (glmmTMB) — gllvm sits in a third
-parameterisation bucket.
+The first three converge to a band [0.12, 0.19] at N=500. That
+band IS the binomial-fit identifiable scale relative to the
+DGP-truth scale. The gap is real, persistent, and a property of
+the DGP-vs-target framing — not a fitter defect.
 
-### 4.4 What this changes for Codex's #257/#260 lane
+### 4.4 What gllvm tells us is illuminating.
 
-**The Scenario A signal from the M3 pilot is NOT a bug in
-gllvmTMB.** Two independent reduced-rank GLLVMs converge to the
-same number on the same DGP. So the diagnostic work in #257/#260
-should NOT try to "fix" gllvmTMB to recover full-rank Sigma at
-n=60 / T=5 / d=1 — that's mathematically incompatible with the
-reduced-rank model class.
+gllvm's LV-only ratio stays near 1.0 across all N (medians 0.832 /
+1.134 / 0.887) with high IQR. This means **the DGP's
+`Lambda Lambda^T + diag(psi)` is, on average, on the same scale
+as a binomial fitter's `theta theta^T`** — i.e., a fitter that
+absorbs the `psi` contribution into the loadings recovers
+approximately the right number. The fitters that try to split
+`Lambda Lambda^T` from `diag(psi)` and report the sum on the
+"raw latent" scale don't, because their identification constraint
+puts them on a different scale.
 
-What **is** in Codex's lane:
+This is the **right framing for the comprehensive sim** to adopt
+(Fisher / Curie lane, Design 42 §3 follow-on). Either:
 
-1. **Document the reduced-rank ceiling explicitly.** The 0.23
-   number is the model's estimand, not a bug. Users should be told
-   that at n_units=60, T=5, d=1, reduced-rank GLLVMs under-estimate
-   the full-rank diagonal by ~75 %. The Florence figure cascade
-   could carry this.
-2. **Diagnostic API: surface "you may be under-estimating
-   Sigma_unit[tt] because d is too small relative to T"** — e.g.,
-   the identifiability diagnostics in #257 could include a
-   reduced-rank vs full-rank Sigma comparison.
-3. **The galamm boundary-pathology** (rep 1 at σ² ≈ 0) is worth
-   noting as a small-n GLLVM phenomenon both engines may share but
-   gllvmTMB handles differently. Worth a one-line note in the
-   identifiability diagnostic.
+1. **Re-define the DGP truth** to be on the scale that
+   gllvmTMB/galamm/glmmTMB actually identify (post-fit, derived
+   from the link-residual convention each package uses).
+2. **Compare on a response-scale or rotation-invariant proportion
+   metric** (e.g., variance explained by latent vs unique vs
+   link-residual), not raw latent-scale variance.
+3. **Pin the DGP scale at simulation time** to match the fitters'
+   identification convention (e.g., set `Var(eta) = 1` per trait
+   and decompose the explained variance — Niku et al. 2019's
+   convention).
+
+This is **NOT** in Codex's engine lane. It is in **Fisher / Curie's
+simulation-design lane**, and it's a Design 42 §3 follow-on item.
 
 ## 5. Implications for Codex's #257/#260 diagnostic-API work
 

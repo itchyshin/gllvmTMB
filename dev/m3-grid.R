@@ -344,6 +344,19 @@ m3_sample_truth <- function(
   psi_effective <- psi
   psi_effective[row_family == "binomial"] <- 0
 
+  ## Regression guard (maintainer 2026-05-25): a future m3-grid edit
+  ## must NOT silently re-introduce a free `psi` component for binary
+  ## traits. Single-trial Bernoulli has no overdispersion parameter
+  ## and the binomial sampling distribution IS the per-observation
+  ## variance; adding `e_unique ~ N(0, psi)` for binary rows
+  ## generates non-identifiable noise that inflates `truth_diag_Sigma`
+  ## while producing data no fitter can recover the `psi` from. The
+  ## stopifnot below fails loudly if that invariant breaks.
+  stopifnot(
+    "m3-grid binomial-psi invariant violated: psi_effective must be 0 for binomial rows. See PR #263 + the maintainer 2026-05-25 design ruling." =
+      all(psi_effective[row_family == "binomial"] == 0)
+  )
+
   ## Implied Sigma_unit (T x T): the rotation-invariant target
   Sigma <- tcrossprod(Lambda) + diag(psi_effective, n_traits)
   diag_Sigma <- diag(Sigma)

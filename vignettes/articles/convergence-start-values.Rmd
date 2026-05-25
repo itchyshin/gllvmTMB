@@ -30,9 +30,13 @@ knitr::opts_chunk$set(
 > `gllvmTMBcontrol(se = FALSE)`. The validation-debt register marks
 > `check_gllvmTMB()` and the `se = FALSE` point-estimate path as
 > covered (DIA-08, DIA-10), while a deterministic in-fit
-> `sdreport()` failure fixture remains partial (DIA-09).
-> Bootstrap and profile uncertainty are the recommended follow-up
-> paths when Wald SEs are unsafe; those claims trace to EXT-13,
+> `sdreport()` failure fixture remains partial (DIA-09). The
+> `extract_Sigma_table()` display used below is covered as a
+> point-estimate table view (EXT-18).
+> Bootstrap and profile uncertainty are follow-up paths when Wald SEs
+> are unsafe, but they have limits: bootstrap evidence depends on
+> successful refits, and profile intervals apply only to supported
+> scalar targets with stable profiles. Those claims trace to EXT-13,
 > CI-02, and CI-03, with non-Gaussian bootstrap still partial.
 > Start-method convergence-rate claims are still M3.3a/M3.4 evidence
 > work, not default-policy claims.
@@ -50,7 +54,8 @@ does not automatically mean the point estimates, fitted values,
 likelihood, or rotation-invariant covariance summaries are useless.
 When the point estimate is scientifically useful but the Hessian is
 weak, fit with `se = FALSE` or keep the degraded `sdreport()` status
-visible, then use bootstrap or profile workflows for uncertainty.
+visible, then route uncertainty to bootstrap or supported profile
+workflows and report failed refits or fallback methods honestly.
 
 ```{r setup}
 library(gllvmTMB)
@@ -194,10 +199,11 @@ the fragile part of the workflow.
 ## Bootstrap With Multiple Cores
 
 Bootstrap is slower than Wald intervals because it refits the model
-many times. It is also the natural uncertainty path when `pdHess` is
-false, when `sdreport()` fails, or when the target is nonlinear.
-Laptops often have enough cores to make bootstrap practical, so
-`bootstrap_Sigma()` exposes `n_cores`.
+many times. It is one practical uncertainty path when `pdHess` is
+false, when `sdreport()` fails, or when the target is nonlinear, but
+it is not a cure for an unstable fitted surface. Laptops often have
+enough cores to make bootstrap practical, so `bootstrap_Sigma()`
+exposes `n_cores`.
 
 The current validation register marks `bootstrap_Sigma()` covered for
 Gaussian fits and partial for non-Gaussian fits (EXT-13). Treat a
@@ -221,14 +227,16 @@ extract_Sigma_table(boot, level = "unit", entries = "upper")
 Use `n_cores = 1` for the first smoke test. Once the model refits
 cleanly, increase `n_cores` and record the failure count. A bootstrap
 CI with many failed refits is a diagnostic result, not just an
-inconvenience.
+inconvenience; report the failure count and simplify the model before
+treating the interval as a stable uncertainty summary.
 
 ## Profile When The Target Is Scalar
 
 Profile likelihood is often faster than bootstrap for scalar targets
 such as repeatability, communality, selected correlations, or a
 single variance share. Use it when the target has a stable profile
-and the model is not bouncing between likelihood basins.
+and the model is not bouncing between likelihood basins. It is not a
+general substitute for bootstrap across every derived table entry.
 
 For full latent+unique models, some derived targets still fall back to
 Wald or bootstrap while constrained-profile machinery is expanded.

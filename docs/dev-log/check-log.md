@@ -10594,7 +10594,8 @@ Deliberately not run:
   calls, diagnostic tables, figure review, and rendered HTML review.
 - Shannon checkpoint: WARN, not FAIL. Open PRs inspected before editing were
   #257 (green 3-OS CI, base for #260) and #260 (public predictive diagnostics,
-  marked ready for review after draft PR creation). The unrelated M3 lane
+  marked ready for review after draft PR creation). After this branch was
+  pushed, #261 was opened as a draft stacked on #260. The unrelated M3 lane
   remains outside this branch.
 - Added README routing and status text for fitted diagnostics.
 - Added a Get Started diagnostic section using `check_gllvmTMB()`,
@@ -10664,3 +10665,8 @@ Evidence so far:
 - Whitespace:
   `git diff --check`
   -> clean.
+- Branch publication:
+  `git push -u origin codex/diagnostic-teaching-reset-2026-05-25`
+  -> branch pushed.
+  `gh pr create --repo itchyshin/gllvmTMB --draft --base codex/public-diagnostics-228-2026-05-25 --head codex/diagnostic-teaching-reset-2026-05-25 ...`
+  -> draft PR #261.

@@ -26,6 +26,7 @@ article queue around infrastructure gates.
 - Recorded the check-log entry for this follow-on branch.
 - Triggered manual R-CMD-check run `26406417946` for #260 because the stacked
   PR base branch does not auto-trigger the pull-request workflow.
+- Opened draft PR #261 stacked on #260.
 
 ## 3. Scope Boundary
 

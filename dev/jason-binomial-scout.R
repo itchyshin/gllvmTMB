@@ -28,6 +28,7 @@ suppressPackageStartupMessages({
   }
   library(gllvm)
   library(glmmTMB)
+  library(galamm)
 })
 
 source("dev/m3-grid.R")  # m3_sample_truth, m3_simulate_response
@@ -116,6 +117,50 @@ for (r in seq_len(N_REPS)) {
   }
   t_gllvm <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
+  ## --- galamm fit -----------------------------------------------------
+  ## galamm: long-format data + factor= + lambda= constraint matrix.
+  ## Parameterisation:
+  ##   eta = X*beta + lambda_t * ability_unit
+  ##   ability_unit ~ N(0, sigma^2_ability)
+  ## Implied Sigma_unit[tt] = lambda_t^2 * sigma^2_ability (no separate psi).
+  ## Same parameterisation family as gllvm — different-target reference,
+  ## not apples-to-apples with gllvmTMB / glmmTMB.
+  t0 <- Sys.time()
+  ## Loading matrix: 5 x 1 with first entry pinned to 1 for identifiability.
+  loading_matrix <- matrix(c(1, NA, NA, NA, NA), ncol = 1L)
+  ## galamm wants integer Y (binary)
+  df_galamm <- df
+  df_galamm$value <- as.integer(df_galamm$value)
+  fit_galamm <- tryCatch(
+    suppressMessages(suppressWarnings(galamm::galamm(
+      formula = value ~ trait + (0 + ability | unit),
+      data = df_galamm,
+      family = stats::binomial(),
+      load_var = "trait",
+      factor = "ability",
+      lambda = loading_matrix
+    ))),
+    error = function(e) NULL
+  )
+  galamm_diag <- rep(NA_real_, N_TRAITS)
+  if (!is.null(fit_galamm)) {
+    lambda_hat <- tryCatch(
+      galamm::factor_loadings(fit_galamm)[, 1L],
+      error = function(e) NULL
+    )
+    sigma_ability_sq <- tryCatch({
+      vc <- as.data.frame(galamm::VarCorr(fit_galamm))
+      ## VarCorr returns variance components in $vcov column; pick the
+      ## ability random effect.
+      v <- vc$vcov[vc$grp == "unit" | grepl("ability", as.character(vc$var1))][1L]
+      v
+    }, error = function(e) NA_real_)
+    if (!is.null(lambda_hat) && !is.na(sigma_ability_sq)) {
+      galamm_diag <- lambda_hat^2 * sigma_ability_sq
+    }
+  }
+  t_galamm <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+
   ## --- glmmTMB fit ----------------------------------------------------
   ## Full unstructured Sigma_unit via (0 + trait | unit). Direct
   ## extraction of the diagonal of the random-effect VCV is the
@@ -147,59 +192,71 @@ for (r in seq_len(N_REPS)) {
     gTMB_diag = gTMB_diag,
     gllvm_LV_only = gllvm_LV_only,
     gllvm_plus_link = gllvm_plus_link,
+    galamm_diag = galamm_diag,
     glmmTMB_diag = glmmTMB_diag,
-    t_gTMB = t_gTMB, t_gllvm = t_gllvm, t_glmmTMB = t_glmmTMB,
+    t_gTMB = t_gTMB, t_gllvm = t_gllvm,
+    t_galamm = t_galamm, t_glmmTMB = t_glmmTMB,
     stringsAsFactors = FALSE
   )
 }
 
 results <- do.call(rbind, rep_results)
-results$ratio_gTMB    <- results$gTMB_diag       / results$truth_diag
-results$ratio_gllvm_LV <- results$gllvm_LV_only  / results$truth_diag
+results$ratio_gTMB       <- results$gTMB_diag       / results$truth_diag
+results$ratio_gllvm_LV   <- results$gllvm_LV_only   / results$truth_diag
 results$ratio_gllvm_link <- results$gllvm_plus_link / results$truth_diag
-results$ratio_glmmTMB <- results$glmmTMB_diag    / results$truth_diag
+results$ratio_galamm     <- results$galamm_diag     / results$truth_diag
+results$ratio_glmmTMB    <- results$glmmTMB_diag    / results$truth_diag
 
 ## --- Summary -----------------------------------------------------------
 
 cat("\n=== Per-rep × trait raw ratios (head 10) ===\n")
 print(head(results[, c("rep", "trait_id", "truth_diag", "gTMB_diag",
-                       "gllvm_LV_only", "gllvm_plus_link", "glmmTMB_diag",
+                       "gllvm_LV_only", "gllvm_plus_link",
+                       "galamm_diag", "glmmTMB_diag",
                        "ratio_gTMB", "ratio_gllvm_LV",
-                       "ratio_gllvm_link", "ratio_glmmTMB")], 10),
+                       "ratio_gllvm_link", "ratio_galamm",
+                       "ratio_glmmTMB")], 10),
       row.names = FALSE)
 
 cat("\n=== Median estimate/truth ratio by package ===\n")
 summary_pkg <- data.frame(
   package = c("gllvmTMB (latent+unique)", "gllvm (LV only)",
-              "gllvm (LV + pi^2/3 link)", "glmmTMB (unstructured)"),
+              "gllvm (LV + pi^2/3 link)",
+              "galamm (lambda^2 * sigma^2_ability)",
+              "glmmTMB (unstructured)"),
   median_ratio = c(
     median(results$ratio_gTMB,       na.rm = TRUE),
     median(results$ratio_gllvm_LV,   na.rm = TRUE),
     median(results$ratio_gllvm_link, na.rm = TRUE),
+    median(results$ratio_galamm,     na.rm = TRUE),
     median(results$ratio_glmmTMB,    na.rm = TRUE)
   ),
   iqr_lo = c(
     quantile(results$ratio_gTMB,       0.25, na.rm = TRUE),
     quantile(results$ratio_gllvm_LV,   0.25, na.rm = TRUE),
     quantile(results$ratio_gllvm_link, 0.25, na.rm = TRUE),
+    quantile(results$ratio_galamm,     0.25, na.rm = TRUE),
     quantile(results$ratio_glmmTMB,    0.25, na.rm = TRUE)
   ),
   iqr_hi = c(
     quantile(results$ratio_gTMB,       0.75, na.rm = TRUE),
     quantile(results$ratio_gllvm_LV,   0.75, na.rm = TRUE),
     quantile(results$ratio_gllvm_link, 0.75, na.rm = TRUE),
+    quantile(results$ratio_galamm,     0.75, na.rm = TRUE),
     quantile(results$ratio_glmmTMB,    0.75, na.rm = TRUE)
   ),
   n_converged = c(
     sum(!is.na(results$gTMB_diag)),
     sum(!is.na(results$gllvm_LV_only)),
     sum(!is.na(results$gllvm_plus_link)),
+    sum(!is.na(results$galamm_diag)),
     sum(!is.na(results$glmmTMB_diag))
   ),
   median_runtime_s = c(
     median(results$t_gTMB,    na.rm = TRUE),
     median(results$t_gllvm,   na.rm = TRUE),
     median(results$t_gllvm,   na.rm = TRUE),  # same fit
+    median(results$t_galamm,  na.rm = TRUE),
     median(results$t_glmmTMB, na.rm = TRUE)
   ),
   stringsAsFactors = FALSE

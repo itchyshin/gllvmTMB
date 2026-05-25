@@ -10631,6 +10631,10 @@ Evidence so far:
   -> manual 3-OS run `26406417946` queued because stacked PR #260 targets the
   #257 branch and the pull-request workflow only auto-runs for PRs targeting
   `main` / `master`.
+  `gh run view 26406417946 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> completed with success on macOS, Ubuntu, and Windows.
+  `gh pr comment 260 --repo itchyshin/gllvmTMB --body ...`
+  -> posted the manual-CI breadcrumb on #260.
 - Diagnostic smoke check:
   `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); morph <- readRDS("inst/extdata/examples/morphometrics-example.rds"); fit <- gllvmTMB(morph$formula_wide, data=morph$data_wide, unit=morph$fit_args$unit, family=morph$fit_args$family); print(names(check_gllvmTMB(fit))); rq <- residuals(fit, type="randomized_quantile", seed=1); print(names(rq)); print(head(rq[, c("trait","family","observed","residual","status")], 4)); p <- predictive_check(fit, type="rq_qq", seed=1); print(class(p)); print(names(attr(p, "gllvmTMB_diagnostic")))'`
   -> fit-health, residual, and plot metadata columns available.

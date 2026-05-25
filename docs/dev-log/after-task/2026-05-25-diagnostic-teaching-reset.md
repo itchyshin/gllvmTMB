@@ -26,6 +26,8 @@ article queue around infrastructure gates.
 - Recorded the check-log entry for this follow-on branch.
 - Triggered manual R-CMD-check run `26406417946` for #260 because the stacked
   PR base branch does not auto-trigger the pull-request workflow.
+- Confirmed run `26406417946` passed on macOS, Ubuntu, and Windows, then
+  posted the run link on #260.
 - Opened draft PR #261 stacked on #260.
 
 ## 3. Scope Boundary
@@ -76,6 +78,8 @@ Completed:
   -> clean.
 - `gh workflow run R-CMD-check.yaml --repo itchyshin/gllvmTMB --ref codex/public-diagnostics-228-2026-05-25`
   -> run `26406417946` queued for #260.
+- `gh run view 26406417946 --repo itchyshin/gllvmTMB --json status,conclusion,jobs`
+  -> success on macOS, Ubuntu, and Windows.
 
 Deliberately not run:
 
@@ -94,7 +98,7 @@ Deliberately not run:
 3. **Documentation.** Public README and Get Started route added; affected
    rendered-document checks passed from a temporary install of the branch.
 4. **Runnable user-facing example.** Uses the shipped morphometrics fixture;
-   render check pending.
+   render checks passed from a temporary install of the branch.
 5. **Check-log entry.** Added in `docs/dev-log/check-log.md`.
 6. **Review pass.** Shannon pre-edit check done; Grace render/pkgdown checks
    passed; Rose stale-wording and scope scans passed with intentional hits

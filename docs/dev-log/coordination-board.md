@@ -97,18 +97,139 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Claude | Set C joint-SDM gate matrix + r200 dispatch plan + Jason scout protocol — docs-only prep, no dispatch | PR-TBD / `agent/set-c-r200-prep` (worktree `gllvmTMB-set-c-r200-prep`) | `docs/dev-log/audits/2026-05-25-set-c-joint-sdm-gate-matrix.md` (NEW), `docs/dev-log/audits/2026-05-25-m3-r200-dispatch-plan.md` (NEW), `docs/design/54-cross-package-scout-protocol.md` (NEW), `docs/dev-log/coordination-board.md` | Three read-only / design-doc artefacts. **No joint-sdm.Rmd edit, no R/ edit, no R CMD check change, no r200 dispatch.** No overlap with #261 / #265 file lists (verified). Awaits maintainer authorization for the r200 dispatch (deliberately gated). |
-| Codex | #261 (diagnostic-teaching-reset) + #265 (diagnostic-table helper) | `codex/diagnostic-teaching-reset-2026-05-25`, `codex/diagnostic-table-2026-05-25` | #261: README, ROADMAP, after-task, check-log, convergence-start-values.Rmd, gllvmTMB.Rmd. #265: NAMESPACE, NEWS, R/diagnostic-tables.R, ROADMAP, _pkgdown.yml, design/35, design/51, after-task, check-log, man/, tests/. | Both MERGEABLE / CLEAN against current main, but **#261 must merge first** (#265 will need a small rebase on ROADMAP.md + check-log.md afterwards — both PRs touch those files). Stack rule documented below. |
+| Claude | Coord-board sync — Validation Factory plan + post-#267 file-ownership refresh | PR-TBD / `agent/coord-validation-factory` (worktree `gllvmTMB-coord-factory`) | `docs/dev-log/coordination-board.md` (this file only) | Docs-only coord sync. **No joint-sdm.Rmd, no R/, no engine, no r200 dispatch, no edits to Codex stack files (`ROADMAP.md`, `check-log.md`, `_pkgdown.yml`, `R/diagnostic-tables.R`, `design/35`, `design/51`, after-task/) or to the maintainer's local rewrite files (`vignettes/articles/joint-sdm.Rmd`, `docs/design/04-random-effects.md`).** |
+| Codex | Stack: #261 (diagnostic-teaching-reset) + #265 (diagnostic-table helper) | `codex/diagnostic-teaching-reset-2026-05-25`, `codex/diagnostic-table-2026-05-25` | #261: README, ROADMAP, after-task, check-log, convergence-start-values.Rmd, gllvmTMB.Rmd. #265: NAMESPACE, NEWS, R/diagnostic-tables.R, ROADMAP, _pkgdown.yml, design/35, design/51, after-task, check-log, man/, tests/. | Both MERGEABLE / CLEAN against current main. **Merge order: #261 first**, then #265 with small rebase on `ROADMAP.md` + `check-log.md`. #265 is currently `draft` per maintainer 2026-05-25 — undraft when #261 has merged and the rebase is clean. |
+| Codex / Ada | Integration-prep PR #268 (draft) — joint-SDM scope rewrite + binary parity test + 4 audit memos + after-task | [#268](https://github.com/itchyshin/gllvmTMB/pull/268) on `codex/joint-sdm-scope-rewrite-2026-05-25` (also Ada's local branch in main worktree) | `vignettes/articles/joint-sdm.Rmd` (modified), `docs/design/04-random-effects.md` (modified), `tests/testthat/test-joint-sdm-binary-long-wide.R` (NEW), `docs/dev-log/audits/2026-05-25-hidden-article-validation-map.md` (NEW), `docs/dev-log/audits/2026-05-25-joint-sdm-rendered-figure-qa.md` (NEW), `docs/dev-log/audits/2026-05-25-r200-readiness-review.md` (NEW), `docs/dev-log/after-task/2026-05-25-joint-sdm-binary-scope-rewrite.md` (NEW) | **Draft** until maintainer decides merge order vs #261 / #265 and decides whether to keep this bundled or split into smaller PRs per the Validation Factory queue. **Neither Claude nor any other agent should edit those files** — they belong to this PR. |
 
-**WIP**: 2 (Claude prep PR, Codex stack #261→#265).
+**WIP**: 2 active (Claude coord-board sync #269, Codex stack #261→#265) + 1 prep-draft (#268).
 
-**Stack discipline (Shannon, 2026-05-25):** when two agents have
-PRs that share files, the agents work in separate `git worktree`s
-on separate branches. Codex is on its own `codex/diagnostic-*`
-branches in the codex worktree; Claude works in
-`gllvmTMB-set-c-r200-prep` worktree on `agent/set-c-r200-prep`.
-The shared main worktree is never used for in-flight edits while
-two agents are active.
+**Stack discipline (Shannon, 2026-05-25):** three live worktrees,
+one branch per worktree, never edit in someone else's worktree.
+
+- `gllvmTMB` (main worktree) — owned by **Ada/maintainer** on
+  `codex/joint-sdm-scope-rewrite-2026-05-25` (same branch as PR
+  #268 on the remote). Holds the joint-SDM scope rewrite and the
+  four Codex background-lane outputs.
+- `gllvmTMB-codex-morphometrics` — Codex's prior morphometrics
+  worktree on `codex/morphometrics-long-wide`.
+- `gllvmTMB-coord-factory` — Claude's worktree for this coord
+  sync only, branch `agent/coord-validation-factory`.
+
+## Validation Factory plan — Hidden Article Restoration + Validation (Ada, 2026-05-25)
+
+Coordinated work allocation: **Codex takes validation-heavy and
+rendered-QA work; Claude/Shannon holds the r200 + coordination
+guardrails.** All five Codex items below are framed as sequential
+PR slices unless a small enough batch makes sense to combine.
+
+### Codex agent outputs bundled into PR #268 (draft)
+
+The four background lanes Codex/Ada dispatched on 2026-05-25
+returned. Codex bundled their outputs + Ada's joint-SDM scope
+rewrite + a after-task report into draft **PR #268** ("Prep
+joint-SDM validation and scope rewrite"). The PR is draft until
+the maintainer decides merge order vs #261 / #265 and whether to
+keep the bundle as one PR or split per the Validation Factory
+queue. The pieces (do not edit from any other branch):
+
+- `tests/testthat/test-joint-sdm-binary-long-wide.R` —
+  Curie's binary JSDM long-vs-wide parity test (Codex queue
+  item 2 content; PR body reports `PASS 11`).
+- `docs/dev-log/audits/2026-05-25-hidden-article-validation-map.md`
+  — Rose + Shannon's Restoration Queue audit (feeds queue
+  item 5 prioritisation).
+- `docs/dev-log/audits/2026-05-25-joint-sdm-rendered-figure-qa.md`
+  — Boole + Grace + Pat's figure QA (feeds queue item 3
+  scope).
+- `docs/dev-log/audits/2026-05-25-r200-readiness-review.md`
+  — Grace + Curie + Fisher's r200 readiness review (feeds
+  queue item 4; identifies the 120-minute timeout as a
+  dispatch blocker and recommends binomial-focused 4-cell
+  scope: binomial d=1/2/3 + mixed d=2).
+- `vignettes/articles/joint-sdm.Rmd` — joint-SDM scope
+  rewrite reframing binary `unique()` / `dep()` / `indep()`
+  prose around current validation row status.
+- `docs/design/04-random-effects.md` — stale status wording
+  refresh for binary `lambda_constraint` /
+  `suggest_lambda_constraint()` paths (now covered by LAM-03
+  / LAM-04).
+- `docs/dev-log/after-task/2026-05-25-joint-sdm-binary-scope-rewrite.md`
+  — after-task report for the slice.
+
+### Codex queue (sequential, by Ada 2026-05-25)
+
+1. **Finish #261, then #265.** Stack discipline above. Undraft
+   #265 after the rebase on ROADMAP.md + check-log.md is clean.
+
+2. **Binary JSDM long/wide validation PR (test-only).** Wraps
+   `tests/testthat/test-joint-sdm-binary-long-wide.R` (already
+   produced by Curie in lane 1). Cleanest next Codex slice
+   because test-only. **Do not** mix with Ada's local
+   joint-sdm rewrite unless a combined restoration branch is
+   chosen later.
+
+3. **Joint-SDM figure repair PR.** Per Boole+Grace+Pat figure
+   QA: page is not Tier-1 ready. Smallest viable repair —
+   replace hand-built biplot with the package ordination
+   helper and add `fig.cap` / `fig.alt`. Larger blockers
+   (extreme Sigma scale, raw covariance heatmap vs latent
+   correlations, rotation caveat) are follow-up if scope grows.
+
+4. **r200 plumbing PR (BEFORE dispatch).** Per
+   Grace+Curie+Fisher r200 readiness review: current 120-
+   minute timeout likely fails key cells. Required before
+   dispatch is either sharding or explicit timeout change.
+   **Statistical scope (recommended): binomial-focused 4-cell
+   — binomial d=1/2/3 + mixed d=2.** No r200 launch from this
+   PR; dispatch still maintainer-gated.
+
+5. **Restoration Queue validation sprint** (Rose's ranked
+   order):
+   1. `behavioural-syndromes` — build fixture + recovery test.
+   2. `animal-model` — larger pedigree fixture + genetic
+      covariance recovery.
+   3. `psychometrics-irt` — reusable IRT fixture + comparator
+      path.
+   4. `mixed-family-extractors` — pkgdown/table review **after
+      #265** (depends on `diagnostic_table()` being on main).
+   5. `lambda-constraint` — small prose cleanup; includes the
+      stale `fit-galamm` chunk-label fix flagged by lane 3.
+
+### Claude/Shannon stance during the Validation Factory
+
+- **No r200 dispatch** until (a) Codex queue item 4 lands the
+  plumbing fix on main, and (b) maintainer authorises the
+  dispatch.
+- **No engine debugging** for the resolved binomial Scenario A
+  signal; the DGP fix in PR #263 + #264 + #266 holds.
+- **No edits to Codex stack files** (#261 / #265 file lists) or
+  to Ada's local rewrite files (joint-sdm.Rmd,
+  04-random-effects.md).
+- **No `diagnostic_table()` cross-link** in joint-sdm.Rmd until
+  #265 lands and a separate posterior-predictive teaching slice
+  is opened with real evidence.
+- Claude/Shannon's role for the factory window: coord-board
+  sync (this PR), monitoring #261 / #265 CI green-bar,
+  surfacing forwardable status notes for Ada when she returns,
+  and standing by for any unblocker request from Codex's queue
+  items 2–5.
+
+### Codex's "unblocker?" answer (2026-05-25, recorded)
+
+Codex's four background lanes returned with: **no Claude
+unblocker required.**
+
+- Lane 1 (binary parity test) is complete; no absence-fill
+  ruling needed because the fixture uses a complete site ×
+  species grid that sidesteps sparse-cell semantics.
+- Lane 2 (Restoration Queue audit) is usable now as a map; row
+  citations against `docs/design/35-validation-debt-register.md`
+  will need a one-line refresh after #265 lands (#265 edits
+  design/35).
+- Lane 3 (figure QA) outputs hold against current main.
+- Lane 4 (r200 readiness) can cite PR #267 on main directly.
+- r200 dispatch is maintainer-gated AND workflow-plumbing-gated;
+  no Claude action would change either gate.
 
 Update protocol: when you start a lane, add a row. When the lane's
 PR opens, fill `PR / branch`. When the PR merges, move the row to
@@ -157,10 +278,17 @@ leave a coordination comment first and wait for acknowledgement.
 | `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | no active owner after PR #258 merged 2026-05-25. Both teams free to edit. |
 | `dev/m3-grid.R` | **Claude** (PR #263 active 2026-05-25): targeted binomial-psi patch in `m3_sample_truth` + `m3_simulate_response` per maintainer's 2026-05-25 design ruling ("simulations cannot have psi bit — as psi for binary emerges from binomial error"). Gaussian / nbinom2 / ordinal-probit branches untouched. After PR #263 merges, ownership returns to "no active owner; free to edit". |
 | `docs/dev-log/audits/2026-05-24-m3-sim-lane-pilot.md` | no active owner after the M3 sim lane closed 2026-05-25 (post-dispatch §8 results landed in PR #262, post-patch rerun in PR #266). |
-| `docs/dev-log/audits/2026-05-25-set-c-joint-sdm-gate-matrix.md` | **Claude** (PR-TBD `agent/set-c-r200-prep`): NEW read-only gate-matrix audit for joint-sdm restoration. No prose written; verdicts only. |
-| `docs/dev-log/audits/2026-05-25-m3-r200-dispatch-plan.md` | **Claude** (PR-TBD `agent/set-c-r200-prep`): NEW r200 plan for binomial × d=2 and mixed × d=2. **Awaits maintainer authorization to dispatch.** |
-| `docs/design/54-cross-package-scout-protocol.md` | **Claude** (PR-TBD `agent/set-c-r200-prep`): NEW Jason scout-protocol design doc codifying the 2026-05-25 binomial-psi lesson. |
-| **Merge-order rule** (Shannon, 2026-05-25) | `#261` (diagnostic-teaching-reset) merges **before** `#265` (diagnostic-table helper). Both touch `ROADMAP.md` and `docs/dev-log/check-log.md`; #265 will need a small rebase after #261 lands. Claude's `agent/set-c-r200-prep` shares no files with either, so it can merge in either order relative to the Codex stack. |
+| `docs/dev-log/audits/2026-05-25-set-c-joint-sdm-gate-matrix.md` | no active owner after PR #267 merged 2026-05-25. |
+| `docs/dev-log/audits/2026-05-25-m3-r200-dispatch-plan.md` | no active owner after PR #267 merged 2026-05-25. **r200 dispatch remains maintainer-gated AND workflow-plumbing-gated** (Codex queue item 4). |
+| `docs/design/54-cross-package-scout-protocol.md` | no active owner after PR #267 merged 2026-05-25 (incl. §3.5 anti-patterns from Codex review). |
+| `vignettes/articles/joint-sdm.Rmd` | **PR #268 (draft)** — modified on `codex/joint-sdm-scope-rewrite-2026-05-25`. Do not edit from any other branch. |
+| `docs/design/04-random-effects.md` | **PR #268 (draft)** — stale-status wording refresh. Do not edit from any other branch. |
+| `tests/testthat/test-joint-sdm-binary-long-wide.R` | **PR #268 (draft)** — Curie's parity test (NEW; `PASS 11` per PR body). Codex queue item 2 content. |
+| `docs/dev-log/audits/2026-05-25-hidden-article-validation-map.md` | **PR #268 (draft)** — Rose+Shannon Restoration Queue audit (NEW). Codex queue 5 prioritises against it. |
+| `docs/dev-log/audits/2026-05-25-joint-sdm-rendered-figure-qa.md` | **PR #268 (draft)** — Boole+Grace+Pat figure QA (NEW). Codex queue 3 scope follows from it. |
+| `docs/dev-log/audits/2026-05-25-r200-readiness-review.md` | **PR #268 (draft)** — Grace+Curie+Fisher r200 readiness review (NEW). Codex queue 4 (plumbing PR) implements its recommendation. |
+| `docs/dev-log/after-task/2026-05-25-joint-sdm-binary-scope-rewrite.md` | **PR #268 (draft)** — after-task report for the bundled slice. |
+| **Merge-order rule** (Shannon, 2026-05-25) | `#261` (diagnostic-teaching-reset) merges **before** `#265` (diagnostic-table helper). Both touch `ROADMAP.md` and `docs/dev-log/check-log.md`; #265 will need a small rebase after #261 lands and should be undrafted from there. The Validation Factory queue (items 2–5) begins after the stack settles. |
 
 If a file's owner needs to change (e.g. Claude needs to touch
 `_pkgdown.yml` for a one-line reason), update the row, leave a

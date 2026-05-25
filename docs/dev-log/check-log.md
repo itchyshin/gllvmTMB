@@ -10199,6 +10199,102 @@ Deliberately not run:
 - No package tests or `devtools::check()` before opening the PR; this
   is an article/roadmap/audit closeout slice.
 
+## 2026-05-24 -- Technical reference scope closeout
+
+- Branch: `codex/technical-reference-closeout-2026-05-24`.
+- Scope: bounded final scope closeout for the visible Tier-2 technical
+  references `vignettes/articles/api-keyword-grid.Rmd` and
+  `vignettes/articles/response-families.Rmd`.
+- Updated `api-keyword-grid` with an explicit IN / PARTIAL /
+  PLANNED-or-blocked scope boundary tied to validation-debt rows.
+- Updated `response-families` so the family lookup table and
+  exported-but-not-engine-mapped table show covered / partial / blocked
+  status directly.
+- Updated `ROADMAP.md` and
+  `docs/dev-log/audits/2026-05-20-article-gate-matrix.md` to mark the
+  technical reference closeout as passed.
+- Added
+  `docs/dev-log/audits/2026-05-24-technical-reference-final-scope-review.md`
+  and
+  `docs/dev-log/after-task/2026-05-24-technical-reference-closeout.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch`
+  -> clean `main...origin/main`.
+- Open PR check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`.
+- Recent lane check:
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent merged article/roadmap lanes only; no competing open PR.
+- Active run check:
+  `gh run list --repo itchyshin/gllvmTMB --limit 8 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,event,url,createdAt,headSha`
+  -> latest `main` R-CMD-check and pkgdown for `f26d70e` completed
+  successfully before this branch started.
+- Source family mapping scan:
+  `rg -n "family_to_id|gaussian|binomial|poisson|nbinom|lognormal|tweedie|Beta|betabinomial|student|truncated|delta_|ordinal|stop\\(" R/fit-multi.R R/families.R`
+  -> `family_to_id()` maps the 15 listed engine entries; exported
+  constructors outside the mapping remain tabled separately.
+- Validation register scans:
+  `sed -n '102,140p' docs/design/35-validation-debt-register.md`
+  -> FAM-01--FAM-19 statuses checked.
+  `rg -n "FG-|PHY-|SPA-|MET-|ANI-|MIX-|MIS-02|MIS-11" docs/design/35-validation-debt-register.md`
+  -> keyword-grid row IDs checked.
+- Touched-page render:
+  `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); for (article in c("articles/api-keyword-grid", "articles/response-families", "articles/roadmap")) { message("Building ", article); pkgdown::build_article(article, pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> completed; `pkgdown-site/articles/api-keyword-grid.html`,
+  `pkgdown-site/articles/response-families.html`, and
+  `pkgdown-site/articles/roadmap.html` were written.
+- pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Response-family scope/status scan:
+  `rg -n "Scope boundary|FAM-01|FAM-17|MIX-10|covered|partial|blocked|family_to_id|not mapped|Validation / interpretation" vignettes/articles/response-families.Rmd`
+  -> scope boundary, row statuses, delta/MIX-10 boundary, and not-mapped
+  table are present.
+- Keyword-grid scope/status scan:
+  `rg -n "Scope boundary|FG-|ANI-|PHY-|SPA-|MET-|MIS-|hidden worked examples|technical reference scope" vignettes/articles/api-keyword-grid.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> scope boundary, row IDs, roadmap status, and gate-matrix status are
+  present.
+- Long-format call scan:
+  `rg -n "gllvmTMB\\(" vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> touched long-format examples retain explicit `trait = "trait"`;
+  wide `traits(...)` examples correctly omit `trait =`.
+- Stale notation scan:
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S" vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> no output.
+- Deprecated keyword alias scan:
+  `rg -n "\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd`
+  -> no output.
+- Broad stale wording scan:
+  `rg -n "meta_known_V|gllvmTMB_wide|profile-likelihood default|trio|full.*rejected|only diagonal|planned.*implemented|deprecated.*0\\.1" vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> expected false positives only from legitimate "marginal-only
+  diagonal" wording in `api-keyword-grid`.
+- Hidden article name scan:
+  `rg -n "joint-sdm|animal-model|phylogenetic-gllvm|mixed-family-extractors|ordinal-probit|profile-likelihood-ci|functional-biogeography|psychometrics-irt|choose-your-model" vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd`
+  -> expected false positives only from ordinary "animal-model" prose,
+  not hidden article routing.
+- Hidden article link scan:
+  `rg -n "(joint-sdm|animal-model|phylogenetic-gllvm|mixed-family-extractors|ordinal-probit|profile-likelihood-ci|functional-biogeography|psychometrics-irt|choose-your-model)\\.html" vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd`
+  -> no output.
+- GitHub issue ledger scan:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --search "technical reference OR response-families OR api-keyword-grid OR article surface reset" --json number,title,url,labels,updatedAt --limit 20`
+  -> #230 remains the relevant article-surface ledger.
+- Generated vignette scratch check:
+  `find vignettes -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) -print`
+  -> no output.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen changed.
+- No package tests or `devtools::check()` before opening the PR; this
+  is an article/roadmap/audit closeout slice.
+
 ## 2026-05-24 -- Convergence/start-values final wording closeout
 
 - Branch: `codex/convergence-wording-audit-2026-05-24`.

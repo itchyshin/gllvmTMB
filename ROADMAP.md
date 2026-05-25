@@ -25,8 +25,8 @@ The visible learning path is intentionally small.
 |---|---|---|---|
 | Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
 | Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; final rendered figure/prose audit passed. |
-| Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible as technical reference. |
-| Concepts | `articles/response-families` | Supported families and validation status. | Visible as technical reference. |
+| Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible; technical reference closeout passed. |
+| Concepts | `articles/response-families` | Supported families and validation status. | Visible; technical reference closeout passed. |
 | Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit passed. |
 | Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible; final prose audit passed. |
 
@@ -51,7 +51,7 @@ conditions pass.
 | 11 | Reference index cleanup | Rose, Grace, Pat | Done: `_pkgdown.yml` separates first-line APIs, helpers, diagnostics, validation utilities, and loadings; compatibility/internal topics are hidden from the visible index where appropriate. |
 | 12 | Symbol-to-syntax alignment blocks | Boole, Noether, Pat | Done: visible conceptual pages pair covariance symbols with R syntax, extractors, and plain-language interpretation. |
 | 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Partial: helper metadata, colour-safe palettes, confidence-eye displays, matrix correlation layouts, and visual snapshots exist; full rendered article-figure review remains open. |
-| 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | In progress: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls` has final prose audit; `convergence-start-values` has final wording audit; `response-families` and `api-keyword-grid` still need bounded closeout passes. |
+| 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | Done for the current public surface: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls` has final prose audit; `convergence-start-values` has final wording audit; `response-families` and `api-keyword-grid` have technical reference scope audits. |
 | 15 | Codex / Claude Code work sharing | Ada, Shannon, Rose | In progress: keep one active PR, record handoffs in repo files, and split work by non-overlapping lanes before opening parallel edits. |
 
 Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 have passed the
@@ -67,9 +67,10 @@ alignment blocks to the math-heavy visible pages
 `convergence-start-values`. These blocks pair each displayed covariance
 symbol with the R formula/extractor and a plain-language interpretation.
 `morphometrics` already carries paired long/wide formulas and recovery
-equations; `pitfalls` now has a final prose closeout, while
-`response-families` remains a wording-review target as its examples are
-made more systematic.
+equations; `pitfalls` now has a final prose closeout; and
+`response-families` / `api-keyword-grid` have technical reference scope
+closeouts, with covered/partial/blocked labels tied to validation-register
+rows.
 
 Surface-reconciliation checkpoint, 2026-05-24: merged helper work now covers
 the first report-ready Sigma/correlation table and plot surface. The validation
@@ -93,6 +94,14 @@ in
 The key boundary is that matrix displays show extractor-supplied rows and
 interval columns; they do not create or calibrate new uncertainty evidence.
 
+Technical reference closeout checkpoint, 2026-05-24: `response-families` and
+`api-keyword-grid` passed the bounded technical reference scope review recorded
+in
+`docs/dev-log/audits/2026-05-24-technical-reference-final-scope-review.md`.
+They remain Tier-2 lookup pages, not worked examples; their status labels map
+to validation-register rows and they do not advertise hidden worked examples
+as ready.
+
 Coordination checkpoint, 2026-05-24: Codex and Claude Code can share the
 remaining reset work, but only through explicit lanes. Codex owns the live
 roadmap, check-log, PR pacing, and cross-file consistency gates. Claude Code is
@@ -114,9 +123,8 @@ Keep each item to one branch and one pull request.
 
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
-| 1 | Technical reference closeout for `response-families` and `api-keyword-grid` | Claude Code + Rose/Boole | Scope labels match validation rows and no hidden worked examples are advertised as ready. |
-| 2 | #248 identifiability diagnostics | Codex or Claude Code + Fisher/Emmy | Programmatic diagnostics are designed before user-facing claims or plots expand. |
-| 3 | #228 predictive diagnostics | Codex + Fisher/Grace | Starts only after diagnostic wording and plot semantics are stable on the public methods pages. |
+| 1 | #248 identifiability diagnostics | Codex or Claude Code + Fisher/Emmy | Programmatic diagnostics are designed before user-facing claims or plots expand. |
+| 2 | #228 predictive diagnostics | Codex + Fisher/Grace | Starts only after diagnostic wording and plot semantics are stable on the public methods pages. |
 
 If two agents are active, prefer one public-documentation lane and one
 implementation/test lane. Do not let both agents edit the roadmap, check-log,

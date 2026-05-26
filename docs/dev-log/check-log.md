@@ -11765,7 +11765,12 @@ Evidence:
 - `gh run list --repo itchyshin/gllvmTMB --limit 8 --json databaseId,workflowName,status,conclusion,createdAt,event,headBranch,headSha,url`
   -> post-#299 main `R-CMD-check` success on run `26479492838` and
   post-#299 pkgdown success on run `26479513474`.
-- `git diff --check` -> clean after writing the handover checkpoint.
+- First PR #300 fast-path CI run `26479998991` failed before any R
+  setup because `git diff --check origin/main...HEAD` caught trailing
+  whitespace in the new Markdown handover header. The follow-up commit
+  removes those trailing spaces.
+- `git diff --check origin/main...HEAD` -> clean after the whitespace
+  cleanup.
 
 Deliberately not run / not done:
 

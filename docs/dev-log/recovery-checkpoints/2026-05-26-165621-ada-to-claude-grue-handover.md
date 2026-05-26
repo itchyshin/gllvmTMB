@@ -1,11 +1,11 @@
 # Handover Checkpoint: Ada/Codex to Claude Grue
 
-**Date:** 2026-05-26 16:56 MDT  
-**Repository:** `/Users/z3437171/Dropbox/Github Local/gllvmTMB`  
-**Current branch:** `main`  
+**Date:** 2026-05-26 16:56 MDT
+**Repository:** `/Users/z3437171/Dropbox/Github Local/gllvmTMB`
+**Current branch:** `main`
 **Local status at handover:** clean; `main` equals `origin/main` at
 `58b6b56` (`Phase 56.4 merge close-out: #298 cross-reference +
-coord-board sync (#299)`).  
+coord-board sync (#299)`).
 **Spawned subagents:** none.
 
 This is a clean handover for Claude Grue to carry the GLM / GLLVM /

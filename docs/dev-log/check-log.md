@@ -11124,3 +11124,93 @@ Deliberately not run:
   R-CMD-check if GitHub attaches checks.
 - No `_pkgdown.yml` change, article-tier promotion, lambda-constraint edit,
   structural-slope parser/TMB work, Design 55 edit, or r200 dispatch.
+
+## 2026-05-26 -- psychometrics IRT preview figure/scope repair
+
+Branch: `codex/psychometrics-irt-figure-scope-2026-05-26`
+
+Files changed:
+
+- `vignettes/articles/psychometrics-irt.Rmd`
+- `docs/dev-log/after-task/2026-05-26-psychometrics-irt-figure-scope.md`
+- `docs/dev-log/check-log.md`
+
+What changed:
+
+- Added a scope boundary beneath the existing Preview banner:
+  FAM-02, MIX-01 / MIX-02, LAM-03, and EXT-27 are in scope; the
+  broader M2.5 teaching surface remains partial; FAM-14 polytomous
+  mixed-family IRT examples and modification-index workflows remain
+  deferred here.
+- Added `fig.cap` / `fig.alt` to the exploratory item-correlation
+  heatmap and suppressed the helper's internal heatmap caption.
+- Kept the M2.5 Preview banner; this is not the full
+  `psychometrics-irt.Rmd` re-authoring slice.
+
+Evidence:
+
+- Scout render:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/psychometrics-irt", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> current article rendered before edits; rendered heatmap had empty
+  `alt=""`.
+- Register / rewrite-prep reads:
+  `rg -n "\\| LAM-|\\| FAM-0[234] |\\| MIX-0[1-9]|\\| MIX-10|\\| DIA-08|\\| EXT-27|\\| EXT-30" docs/design/35-validation-debt-register.md`
+  and
+  `rg -n "Psychometrics|M2.5|LAM-03|mirt|Stay Laplacian|psychometrics-irt" docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md docs/design/41-binary-completeness.md docs/design/35-validation-debt-register.md ROADMAP.md docs/dev-log/decisions.md`
+  -> confirmed LAM-03 covered, FAM-14 partial, EXT-27 covered, and
+  M2.5 rewrite contract still pending.
+- Final article render:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/psychometrics-irt", lazy = FALSE, new_process = FALSE, quiet = TRUE)'`
+  -> wrote `pkgdown-site/articles/psychometrics-irt.html`.
+- Rendered output scan:
+  `rg -n "Scope boundary|FAM-02|MIX-01|MIX-02|LAM-03|EXT-27|FAM-14|Exploratory item correlations|alt=|Heatmaps do not display uncertainty intervals|mirt|Stay Laplacian" vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html`
+  -> confirmed the scope boundary and heatmap caption/alt in source +
+  HTML; no helper caption remained.
+- Heatmap accessibility check:
+  `Rscript --vanilla -e 'library(xml2); html <- read_html("pkgdown-site/articles/psychometrics-irt.html"); imgs <- xml_find_all(html, "//img[contains(@src, \"sigma-exp-corr-1.png\")]"); stopifnot(length(imgs) == 1L); alt <- xml_attr(imgs, "alt"); stopifnot(!is.na(alt), nzchar(alt)); cap <- xml_text(xml_find_first(html, "//img[contains(@src, \"sigma-exp-corr-1.png\")]/following-sibling::p[contains(@class, \"caption\")][1]")); stopifnot(grepl("Exploratory item correlations", cap)); stopifnot(!grepl("Heatmaps do not display uncertainty intervals", readLines("pkgdown-site/articles/psychometrics-irt.html"), fixed = TRUE)); cat("irt heatmap alt chars=", nchar(alt), "\ncaption=", trimws(cap), "\n")'`
+  -> heatmap alt text length 270; caption present; helper caption absent.
+- Stale-wording scans:
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S" vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html`
+  -> no hits.
+- `rg -n "gllvmTMB\\(" vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html`
+  -> long-format source calls include `trait = "trait"`; the wide
+  Gaussian sub-fit uses the `traits(...)` LHS.
+- `rg -n "\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|meta_known_V|gllvmTMB_wide|trio|profile-likelihood default" vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html`
+  -> no hits.
+- `rg -n "FAM-02|FAM-14|MIX-01|MIX-02|LAM-03|EXT-27|M2.5|Scope boundary" vignettes/articles/psychometrics-irt.Rmd pkgdown-site/articles/psychometrics-irt.html docs/design/35-validation-debt-register.md docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md docs/design/41-binary-completeness.md`
+  -> article row IDs and M2.5 deferral language match the register and
+  rewrite-prep contract.
+- Shared-lane pre-edit check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeable,statusCheckRollup,files,url`
+  -> #275 touches `vignettes/articles/lambda-constraint.Rmd`; #277
+  touches `docs/design/55-structural-slope-grammar.md`; no overlap.
+- Recent-lane check:
+  `git log --all --oneline --decorate --since='6 hours ago'`
+  -> current main plus #275/#277 branches; no overlap with this article
+  branch.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Review gates:
+
+- Pat / article-tier: WARN-PASS. The article remains Preview-gated, but
+  the new boundary makes the current validated surface clear to an
+  applied reader.
+- Rose / pre-publish: PASS. New claims cite FAM-02, FAM-14, MIX-01,
+  MIX-02, LAM-03, EXT-27, and the M2.5 rewrite-prep contract.
+- Florence / figure: PASS. Heatmap readable at rendered size with
+  non-empty caption and alt text.
+- Shannon / coordination: PASS. #275 and #277 have no file overlap with
+  this branch.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and Rd files were not changed.
+- No full `devtools::test()`; no package code or tests changed, and the
+  rendered article exercised the touched article path.
+- No `devtools::check(args = "--no-manual")`; the PR should receive ordinary
+  R-CMD-check if GitHub attaches checks.
+- No Preview-banner removal, live `mirt` comparator chunk, full M2.5
+  reauthoring, lambda-constraint edit, Design 55 edit, or r200 dispatch.

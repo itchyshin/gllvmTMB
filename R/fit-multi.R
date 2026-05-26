@@ -1177,6 +1177,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   re_int_id_mat_dat <- if (use_re_int) re_int_id_mat
                         else matrix(0L, nrow = nrow(data), ncol = 1L)
   u_re_int_len <- if (use_re_int) sum(re_int_n_groups) else 1L
+  x_phy_slope_dat <- if (use_phylo_slope) {
+    if (!phylo_slope_xcol %in% names(data))
+      cli::cli_abort(c(
+        "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
+        "i" = "Add the covariate column to the data frame."))
+    as.numeric(data[[phylo_slope_xcol]])
+  } else rep(0.0, n_obs)
+  ## Phase 56.1: dormant augmented-LHS phylogenetic random-regression
+  ## stubs. This is deliberately not user-facing yet; parser activation
+  ## waits for Phases 56.2-56.3. With the flag FALSE, the legacy
+  ## b_phy_slope path remains active and byte-identical.
+  use_phylo_slope_correlated <- FALSE
+  n_lhs_cols <- 1L
+  n_phy_aug_blocks <- 1L
+  Z_phy_aug <- array(0.0, dim = c(n_obs, n_lhs_cols, n_phy_aug_blocks))
+  if (use_phylo_slope) {
+    Z_phy_aug[, 1L, 1L] <- x_phy_slope_dat
+  }
 
   tmb_data <- list(
     y                = as.numeric(y),
@@ -1225,13 +1243,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     use_phylo_diag   = as.integer(use_phylo_diag),
     ## Q6: phylo_slope data
     use_phylo_slope  = as.integer(use_phylo_slope),
-    x_phy_slope      = if (use_phylo_slope) {
-                          if (!phylo_slope_xcol %in% names(data))
-                            cli::cli_abort(c(
-                              "{.arg phylo_slope({phylo_slope_xcol} | {species})} references column {.val {phylo_slope_xcol}}, which is not in {.arg data}.",
-                              "i" = "Add the covariate column to the data frame."))
-                          as.numeric(data[[phylo_slope_xcol]])
-                        } else rep(0.0, n_obs),
+    x_phy_slope      = x_phy_slope_dat,
+    use_phylo_slope_correlated = as.integer(use_phylo_slope_correlated),
+    n_lhs_cols       = as.integer(n_lhs_cols),
+    Z_phy_aug        = Z_phy_aug,
     use_re_int       = as.integer(use_re_int),
     n_re_int_terms   = as.integer(n_re_int_terms),
     re_int_offsets   = re_int_offsets_dat,
@@ -1300,6 +1315,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## Q6: phylo_slope params
     b_phy_slope     = rep(0.0, n_aug_phy),  # one slope per augmented A row
     log_sigma_slope = 0.0,
+    b_phy_aug       = array(0.0, dim = c(n_aug_phy, n_lhs_cols, n_phy_aug_blocks)),
+    log_sd_b        = rep(0.0, n_lhs_cols),
+    atanh_cor_b     = numeric(n_lhs_cols * (n_lhs_cols - 1L) / 2L),
     u_re_int       = rep(0.0, u_re_int_len),
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
     ## NB2 / Tweedie per-trait dispersion. log(phi) starts at 0 (phi = 1);
@@ -1588,9 +1606,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$log_sd_phy_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_phy_diag)))
     tmb_map$g_phy_diag      <- factor(rep(NA_integer_, length(tmb_params$g_phy_diag)))
   }
-  if (!use_phylo_slope) {
+  if (!use_phylo_slope || use_phylo_slope_correlated) {
     tmb_map$b_phy_slope     <- factor(rep(NA_integer_, length(tmb_params$b_phy_slope)))
     tmb_map$log_sigma_slope <- factor(NA_integer_)
+  }
+  if (!use_phylo_slope_correlated) {
+    tmb_map$b_phy_aug <- factor(rep(NA_integer_, length(tmb_params$b_phy_aug)))
+    tmb_map$log_sd_b  <- factor(rep(NA_integer_, length(tmb_params$log_sd_b)))
+    if (length(tmb_params$atanh_cor_b) > 0L) {
+      tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
+    }
   }
   if (!use_re_int) {
     tmb_map$u_re_int         <- factor(rep(NA_integer_, length(tmb_params$u_re_int)))
@@ -1840,7 +1865,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (is_spatial_latent)              random <- c(random, "omega_spde_lv")
   if (use_phylo_rr) random <- c(random, "g_phy")
   if (use_phylo_diag) random <- c(random, "g_phy_diag")
-  if (use_phylo_slope) random <- c(random, "b_phy_slope")
+  if (use_phylo_slope_correlated) {
+    random <- c(random, "b_phy_aug")
+  } else if (use_phylo_slope) {
+    random <- c(random, "b_phy_slope")
+  }
   if (use_re_int)   random <- c(random, "u_re_int")
 
   ## Design 48 §2 Mitigation A (single-trait warmup). Opt-in via

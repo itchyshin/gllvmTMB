@@ -352,53 +352,26 @@ arrows. Axes are residual co-occurrence after `env_1` has been
 accounted for; species loading in the same direction tend to
 co-occur (after accounting for the environment).
 
-```{r jsdm-biplot, fig.width = 6.5, fig.height = 5}
-## Site scores
-ord <- extract_ordination(fit_jsdm, level = "unit")
-scores <- data.frame(
-  LV1 = ord$scores[, 1],
-  LV2 = ord$scores[, 2]
-)
-
-## Species loadings (Lambda_B)
-Lambda_hat <- fit_jsdm$report$Lambda_B
-loadings <- data.frame(
-  trait = paste0("sp", seq_len(nrow(Lambda_hat))),
-  LV1   = Lambda_hat[, 1],
-  LV2   = Lambda_hat[, 2]
-)
-
-## Scale arrows so they're comparable to score cloud
-sc <- 0.7 * max(abs(scores)) / max(abs(loadings[, c("LV1", "LV2")]))
-loadings$LV1 <- loadings$LV1 * sc
-loadings$LV2 <- loadings$LV2 * sc
-
-ggplot() +
-  geom_hline(yintercept = 0, colour = "grey80", linewidth = 0.4) +
-  geom_vline(xintercept = 0, colour = "grey80", linewidth = 0.4) +
-  geom_point(data = scores, aes(LV1, LV2),
-             colour = "steelblue", alpha = 0.45, size = 1.8) +
-  geom_segment(data = loadings,
-               aes(x = 0, y = 0, xend = LV1, yend = LV2),
-               arrow = arrow(length = unit(0.22, "cm")),
-               colour = "tomato", linewidth = 0.5) +
-  geom_text(data = loadings,
-            aes(LV1, LV2, label = trait),
-            colour = "tomato", size = 3.6,
-            nudge_x = 0.15, nudge_y = 0.05) +
-  coord_equal() +
-  labs(x = "Latent variable 1", y = "Latent variable 2") +
-  theme_minimal(base_size = 11) +
-  theme(panel.grid.minor = element_blank())
+```{r jsdm-biplot, fig.width = 6.5, fig.height = 5, fig.cap = "Ordination biplot from the fitted binary JSDM, using varimax-rotated and sign-anchored site scores and species loadings. Loading orientation and sign are not identifiable; the model-implied Sigma and correlations remain the rotation-invariant interpretation target.", fig.alt = "Two-dimensional ordination biplot showing site scores as points and species loading arrows after accounting for the environmental predictor. Species arrows in similar directions indicate similar residual co-occurrence patterns, but loading sign and rotation are arbitrary."}
+plot(
+  fit_jsdm,
+  type = "ordination",
+  level = "unit",
+  rotation = "varimax",
+  sign_anchor = "auto",
+  standardize_loadings = TRUE
+) +
+  ggplot2::labs(caption = NULL)
 ```
 
-The species arrows recover the **four design quadrants**: `sp1, sp2`
-in the lower-left, `sp3, sp4` upper-left, `sp5, sp6` lower-right,
-`sp7, sp8` upper-right (up to a sign flip / rotation of the latent
-axes — only $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ is
-identifiable). Species arrows pointing in the same direction
-co-occur after `env_1` is accounted for; arrows pointing in opposite
-directions tend to mutually exclude.
+The species arrows recover the **four designed association groups**:
+`trait_1` / `trait_2`, `trait_3` / `trait_4`, `trait_5` /
+`trait_6`, and `trait_7` / `trait_8` point in distinct directions on
+the rotated axes. The exact orientation is arbitrary — only
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ is identifiable. Species
+arrows pointing in the same direction co-occur after `env_1` is
+accounted for; arrows pointing in opposite directions tend to
+mutually exclude.
 
 ## See also
 

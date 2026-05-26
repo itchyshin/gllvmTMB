@@ -10758,3 +10758,48 @@ Deliberately not run:
 - No `pkgdown::build_articles(lazy = FALSE)`; Set B changed reference docs,
   a design note, and ROADMAP text, but no article code chunks or formula
   parsing.
+
+## 2026-05-25 -- Joint-SDM biplot repair
+
+- Branch: `codex/joint-sdm-biplot-repair-2026-05-25`.
+- Scope: smallest visual repair after #268; replace the hand-built
+  `jsdm-biplot` chunk with the public ordination helper, add rendered
+  caption / alt text, and keep `joint-sdm` internal.
+- Changed `vignettes/articles/joint-sdm.Rmd` only.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-05-25-joint-sdm-biplot-repair.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,url`
+  -> no open PRs.
+- Recent-lane check:
+  `git log --all --oneline --since='6 hours ago'`
+  -> inspected recent #261 / #265 / #268 / #270 / #271 activity.
+- Article render:
+  `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/joint-sdm.Rmd", output_file="/tmp/gllvmTMB-joint-sdm-biplot-repair.html", quiet=TRUE)'`
+  -> rendered successfully.
+- pkgdown article render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", lazy = FALSE)'`
+  -> wrote `pkgdown-site/articles/joint-sdm.html`.
+- Plot-helper metadata smoke:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); ...; p <- plot(fit_jsdm, type="ordination", level="unit", rotation="varimax", sign_anchor="auto", standardize_loadings=TRUE); print(attr(p,"gllvmTMB_meta")); print(names(attr(p,"gllvmTMB_data"))); print(head(attr(p,"gllvmTMB_data")$loadings));'`
+  -> metadata reported `rotation_status = "varimax_ordered_sign_anchored"`
+  and data carried `scores`, `loadings`, and `rotation`.
+- Rendered HTML scan:
+  `rg -n "Ordination biplot from the fitted binary|Two-dimensional ordination|rotation-invariant|trait_1" pkgdown-site/articles/joint-sdm.html`
+  -> non-empty alt text, figure caption, and updated trait-label prose found.
+- Rendered PNG visual inspection:
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-biplot-1.png`
+  -> helper biplot rendered without clipped caption text; labels readable.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- No full `devtools::test()`; this is an article-only figure chunk repair.
+- No `devtools::check(args = "--no-manual")`; the PR should receive ordinary
+  3-OS R-CMD-check.
+- No `_pkgdown.yml` edit; `joint-sdm` remains internal.

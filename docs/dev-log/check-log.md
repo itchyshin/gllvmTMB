@@ -10869,3 +10869,63 @@ Deliberately not run:
   files are dev workflow / script plumbing and should receive ordinary PR CI.
 - No validation-register, ROADMAP, `_pkgdown.yml`, article, `R/*`, `src/*`, or
   user-facing reference changes.
+
+## 2026-05-26 -- Joint-SDM Sigma heatmap repair
+
+- Branch: `codex/joint-sdm-sigma-heatmap-repair-2026-05-26`.
+- Scope: second joint-SDM visual repair after #272; replace the raw
+  shared/total Sigma heatmap with a latent-liability residual species
+  correlation heatmap. The article stays internal.
+- Changed `vignettes/articles/joint-sdm.Rmd` only.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-05-26-joint-sdm-sigma-heatmap-repair.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,mergeable,isDraft,statusCheckRollup,url`
+  -> no open PRs.
+- Recent-lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits in the 6-hour window at branch start.
+- Working-tree check:
+  `git status --short --branch`
+  -> clean `main` before branch creation.
+- Existing blocker read:
+  `sed -n '1,180p' docs/dev-log/audits/2026-05-25-joint-sdm-rendered-figure-qa.md`
+  -> Sigma heatmap failed because raw shared covariance was extreme and the
+  first visual question should be latent-liability species correlations.
+- Helper contract read:
+  `rg -n "plot_Sigma_heatmap|extract_Sigma_table|matrix = \"R\"|scale = \"correlation\"|correlation" R tests/testthat vignettes/articles docs/design/53-report-ready-extractor-plot-contract.md`
+  -> `plot_correlations()` and `plot_Sigma_heatmap()` both support
+  correlation-matrix displays with `gllvmTMB_meta` / `gllvmTMB_data`.
+- Candidate helper smoke:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); ...; corr_rows <- extract_correlations(fit_jsdm, tier="unit", method="fisher-z", link_residual="auto"); p <- plot_correlations(corr_rows, style="heatmap", matrix_layout="by_level", label_type="estimate", label_digits=2, include_diagonal=TRUE); print(attr(p,"gllvmTMB_meta")); print(range(corr_rows$correlation)); print(all(is.finite(corr_rows$lower), is.finite(corr_rows$upper)))'`
+  -> `type = "correlations_heatmap"`, `source = "extract_correlations"`,
+  `rotation_status = "rotation_invariant"`, correlation range
+  `[-0.9760728, 0.9303660]`, finite Fisher-z bounds.
+- Article render:
+  `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/joint-sdm.Rmd", output_file="/tmp/gllvmTMB-joint-sdm-sigma-repair.html", quiet=TRUE)'`
+  -> rendered successfully.
+- pkgdown article render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", lazy = FALSE)'`
+  -> wrote `pkgdown-site/articles/joint-sdm.html`.
+- Rendered HTML scan:
+  `rg -n "jsdm-sigma|jsdm-correlation-heatmap|Residual species correlations|Heatmap of pairwise|Shared and total latent-liability" pkgdown-site/articles/joint-sdm.html vignettes/articles/joint-sdm.Rmd`
+  -> HTML points to `jsdm-correlation-heatmap-1.png` with non-empty alt text
+  and no remaining rendered `jsdm-sigma` reference.
+- Visual inspection:
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-correlation-heatmap-1.png`
+  -> PASS after suppressing the plot-internal caption; labels, legend, and
+  matrix cells are readable at pkgdown size.
+- pkgdown reference/site gate:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+
+Deliberately not run:
+
+- No full `devtools::test()`; this is an article-only figure repair.
+- No `devtools::check(args = "--no-manual")`; the PR should receive ordinary
+  3-OS R-CMD-check.
+- No `_pkgdown.yml` edit; `joint-sdm` remains internal.
+- No wide-format chunk activation and no r200 dispatch.

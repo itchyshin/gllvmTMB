@@ -294,7 +294,7 @@ validation rows, but an ecology-first JSDM article should introduce
 them only as an optional follow-up after the reader understands
 correlations, $\boldsymbol\Sigma$, and ordination.
 
-## Latent-scale residual species correlations (with 95% CIs)
+## Latent-scale residual species correlations
 
 Pairwise species correlations on the latent-liability scale. The
 default `method = "fisher-z"` gives Fisher-transform Wald CIs that
@@ -307,43 +307,39 @@ a warm-started `TMB::tmbprofile()` (planned) accelerates the path.
 distribution CIs.
 
 ```{r jsdm-cor}
-extract_correlations(fit_jsdm, tier = "unit")
+corr_rows <- extract_correlations(
+  fit_jsdm,
+  tier = "unit",
+  method = "fisher-z",
+  link_residual = "auto"
+)
+corr_rows
 ```
 
-The two $\boldsymbol\Sigma$ matrices side-by-side: the **shared**
-component $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$
-that the GLLVM estimates, and the **total latent-liability**
-covariance $\boldsymbol\Sigma_{\text{latent}} = \boldsymbol\Sigma_B + (\pi^2/3) \mathbf I$
-that adds the fixed link residual on the diagonal:
+The matrix view below shows the same point estimates as a
+species-by-species map. For a binary JSDM, the useful first picture is
+the **latent-liability correlation** pattern after adding the fixed
+logistic link residual to the denominator; raw
+$\boldsymbol\Sigma_B$ entries can be dominated by loading scale and are
+harder to interpret. The Fisher-z interval bounds stay in `corr_rows`
+rather than being printed inside every matrix cell.
 
-```{r jsdm-sigma, fig.width = 8, fig.height = 4.8, fig.cap = "Shared and total latent-liability covariance matrices from the fitted JSDM. The total matrix adds the fixed logistic link residual to the diagonal."}
-Sigma_shared_rows <- extract_Sigma_table(
-  fit_jsdm,
-  level = "unit",
-  part = "shared",
-  entries = "all"
-)
-Sigma_shared_rows$level <- "Shared"
-
-Sigma_total_rows <- extract_Sigma_table(
-  fit_jsdm,
-  level = "unit",
-  part = "total",
-  entries = "all"
-)
-Sigma_total_rows$level <- "Total latent liability"
-
-plot_Sigma_heatmap(
-  rbind(Sigma_shared_rows, Sigma_total_rows),
-  label_digits = 1,
-  title = "Shared and total latent-liability Sigma",
-  subtitle = "Facets separate shared latent covariance from link-residual-adjusted total covariance."
-)
+```{r jsdm-correlation-heatmap, fig.width = 6.8, fig.height = 5.8, fig.cap = "Residual species correlations from the fitted binary JSDM. Cells show Fisher-z point estimates on the latent-liability scale after accounting for env_1 and the fixed logistic link residual; interval bounds are available in the preceding table.", fig.alt = "Heatmap of pairwise residual species correlations for eight traits. Blue cells indicate positive residual co-occurrence, red cells indicate negative residual co-occurrence, and diagonal self-correlations are one."}
+plot_correlations(
+  corr_rows,
+  style = "heatmap",
+  matrix_layout = "by_level",
+  label_type = "estimate",
+  label_digits = 2,
+  include_diagonal = TRUE,
+  title = "Residual species correlations",
+  subtitle = "Latent-liability correlations after accounting for env_1."
+) +
+  ggplot2::labs(caption = NULL)
 ```
 
-Notice the off-diagonals are identical (the link residual is
-diagonal) and the total has $+ \pi^2/3 \approx 3.29$ added to each
-diagonal entry.
+Use these correlations, rather than the signs of individual loadings,
+for the rotation-invariant co-occurrence story.
 
 ## Ordination biplot
 

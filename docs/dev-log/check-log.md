@@ -11524,3 +11524,113 @@ Deliberately not run:
 - No parser activation, public formula syntax change, skeleton-test
   activation, validation-debt row movement, ROADMAP tick, NEWS entry,
   deprecation, or article rewrite.
+
+## 2026-05-26 -- Phase 56.3 phylo_unique augmented-LHS parser bridge
+
+Branch: `codex/phase56-3-parser-2026-05-26`
+
+Files changed:
+
+- `R/brms-sugar.R`
+- `R/parse-multi-formula.R`
+- `R/fit-multi.R`
+- `tests/testthat/test-phase56-3-phylo-unique-parser.R`
+- `docs/design/01-formula-grammar.md`
+- `CLAUDE.md`
+- `docs/dev-log/after-task/2026-05-26-phase56-3-phylo-unique-parser.md`
+- `docs/dev-log/recovery-checkpoints/2026-05-26-130035-ada-checkpoint.md`
+- `docs/dev-log/check-log.md`
+
+What changed:
+
+- Added internal LHS classification for recognised covstruct bar
+  forms:
+  `intercept_only`, `wide_intercept_slope`, and
+  `long_intercept_slope`.
+- Extended `parse_covstruct_call()` to attach `extra$lhs_form` and
+  `extra$slope_col` for recognised forms.
+- Extended `phylo_unique()` rewriting so:
+  - `phylo_unique(0 + trait | species)` remains on the existing
+    legacy `phylo_rr(..., .phylo_unique = TRUE)` path;
+  - `phylo_unique(1 + x | species)` and
+    `phylo_unique(0 + trait + (0 + trait):x | species)` rewrite to
+    the internal augmented `phylo_slope` path with
+    `.phylo_unique_augmented = TRUE`.
+- Wired the marked augmented form in `R/fit-multi.R` to set
+  `use_phylo_slope_correlated = 1L`, `n_lhs_cols = 2L`, and
+  `Z_phy_aug[, , 1] = cbind(1, data[[slope_col]])`.
+- Recorded the new syntax as `claimed` in the canonical formula
+  grammar and in `CLAUDE.md`; Phase 56.4 still owns recovery and
+  validation-debt promotion.
+
+Evidence:
+
+- Recovery / pre-edit:
+  `git status --short --branch` -> clean `main` before branch creation;
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`;
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent #289/#292/#293/#294 sequence on `main`, no open PR
+  overlap.
+- CI pulse before starting:
+  `gh run list --repo itchyshin/gllvmTMB --limit 8 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,createdAt,updatedAt`
+  -> #293 post-merge `R-CMD-check` and `pkgdown` green; #294 closeout
+  `R-CMD-check` and `pkgdown` green.
+- Rehydration reads after compaction:
+  `tail -n 180 docs/dev-log/check-log.md`,
+  `ls -1t docs/dev-log/recovery-checkpoints | head -8`, and
+  `nl -ba docs/dev-log/recovery-checkpoints/2026-05-26-100539-ada-checkpoint.md | sed -n '1,220p'`.
+- Design and source reads:
+  `rg -n "56\\.3|9\\.3|parser|guard|augmented|wide|long|trait|n_traits|structural" docs/design/55-* docs/design/56-*`;
+  `nl -ba R/brms-sugar.R | sed -n '1500,2515p'`;
+  `nl -ba R/parse-multi-formula.R | sed -n '1,230p'`;
+  `nl -ba R/fit-multi.R | sed -n '520,610p;960,1115p;1120,1325p;1585,1630p;1845,1880p;2050,2188p'`.
+- `Rscript --vanilla -e 'devtools::test(filter = "phase56-3-phylo-unique-parser")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 25`.
+- `Rscript --vanilla -e 'devtools::test(filter = "phase56-3-phylo-unique-parser|augmented-lhs-guard|phase56-1-phylo-augmented-stub|phylo-slope|phylo-mode-dispatch|ordinal-probit")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 88`.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::test(filter = "formula-grammar-smoke|phase56-3-phylo-unique-parser|augmented-lhs-guard")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 58`.
+- Stale-overclaim scan:
+  `rg -n 'phylo_unique\\(1 \\+ x \\| species\\).*covered|phylo_unique\\(0 \\+ trait \\+ \\(0 \\+ trait\\):x \\| species\\).*covered|PARAMETER_MATRIX\\(log_sd_b\\)' docs/design/01-formula-grammar.md CLAUDE.md R tests/testthat/test-phase56-3-phylo-unique-parser.R docs/dev-log/after-task/2026-05-26-phase56-3-phylo-unique-parser.md`
+  -> no hits.
+- Broader stale-pattern scan:
+  `rg -n 'phylo_unique\\(1 \\+ x \\| species\\).*covered|phylo_unique\\(0 \\+ trait \\+ \\(0 \\+ trait\\):x \\| species\\).*covered|n_lhs_cols = 2 \\* n_traits|2 \\* n_traits|PARAMETER_MATRIX\\(log_sd_b\\)' R tests/testthat docs/design CLAUDE.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-05-26-phase56-3-phylo-unique-parser.md`
+  -> only intentional historical/check-log and Design 56 explanatory
+  hits remain: older #286 review text, "not in a `2 * n_traits`
+  prior dimension", and the Phase 56.3 "does not promote any
+  `2 * n_traits` prior" line.
+
+Review gates:
+
+- Ada / integration: PASS. One branch, one parser slice, no open PR
+  overlap at start.
+- Boole / parser: PASS. The parser now classifies supported
+  augmented-LHS forms and keeps unsupported shapes fail-loud.
+- Curie / tests: PASS. New focused tests cover parser classification,
+  legacy `phylo_unique(0 + trait | species)`, two-column `Z_phy_aug`
+  for both accepted surfaces, and unsupported multi-covariate rejection.
+- Gauss / TMB likelihood: LIMITED. No TMB template code changed; this
+  slice only activates the already-merged `b_phy_aug` branch through
+  TMB data and map selection.
+- Noether / math: LIMITED. The branch preserves block-local
+  `n_lhs_cols = 2L` and does not promote any `2 * n_traits` prior.
+- Rose / consistency: PASS. Grammar status is `claimed`, not
+  `covered`; no validation-debt, NEWS, article, or A6 promotion is
+  claimed.
+- Shannon / coordination: PASS. #294 is merged, open PR census was
+  empty before edits, and CI was green.
+
+Deliberately not run / not done:
+
+- No `devtools::document()`; no roxygen, NAMESPACE, or generated Rd
+  files changed.
+- No `pkgdown::check_pkgdown()` yet; no pkgdown navigation, README,
+  articles, vignettes, reference topics, or examples changed.
+- No full `devtools::test()`; focused parser, adjacent regressions,
+  and formula-grammar smoke passed.
+- No validation-debt row movement, ROADMAP tick, NEWS entry,
+  deprecation, A6 article rewrite, or Phase 56.4 recovery-test
+  activation.

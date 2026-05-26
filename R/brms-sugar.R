@@ -1511,15 +1511,78 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
 ## per-keyword name (`spatial_unique`, `spatial_scalar`, `spatial_latent`,
 ## `spatial`) so multiple keywords in one formula each get their own
 ## first-time warning.
+.strip_lhs_parens <- function(e) {
+  while (
+    is.call(e) &&
+      identical(e[[1L]], as.name("(")) &&
+      length(e) == 2L
+  ) {
+    e <- e[[2L]]
+  }
+  e
+}
+
+.is_one_lhs <- function(e) {
+  e <- .strip_lhs_parens(e)
+  (is.numeric(e) && length(e) == 1L && e == 1) ||
+    (is.symbol(e) && identical(as.character(e), "1"))
+}
+
 .is_zero_plus_trait <- function(e) {
-  ## TRUE if `e` is the call `0 + <name>`, i.e. `+(0, name)`.
+  ## TRUE if `e` is the call `0 + trait`, i.e. `+(0, trait)`.
+  e <- .strip_lhs_parens(e)
   is.call(e) &&
     identical(e[[1L]], as.name("+")) &&
     length(e) == 3L &&
     is.numeric(e[[2L]]) &&
     length(e[[2L]]) == 1L &&
     e[[2L]] == 0 &&
-    is.name(e[[3L]])
+    is.name(e[[3L]]) &&
+    identical(as.character(e[[3L]]), "trait")
+}
+
+.gllvmTMB_lhs_form <- function(lhs) {
+  lhs <- .strip_lhs_parens(lhs)
+  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs)) {
+    return(list(lhs_form = "intercept_only", slope_col = NULL))
+  }
+  if (
+    is.call(lhs) &&
+      identical(lhs[[1L]], as.name("+")) &&
+      length(lhs) == 3L &&
+      .is_one_lhs(lhs[[2L]])
+  ) {
+    rhs <- .strip_lhs_parens(lhs[[3L]])
+    if (is.name(rhs) && !identical(as.character(rhs), "trait")) {
+      return(list(
+        lhs_form = "wide_intercept_slope",
+        slope_col = as.character(rhs)
+      ))
+    }
+  }
+  if (
+    is.call(lhs) &&
+      identical(lhs[[1L]], as.name("+")) &&
+      length(lhs) == 3L &&
+      .is_zero_plus_trait(lhs[[2L]])
+  ) {
+    slope <- .strip_lhs_parens(lhs[[3L]])
+    if (
+      is.call(slope) &&
+        identical(slope[[1L]], as.name(":")) &&
+        length(slope) == 3L &&
+        .is_zero_plus_trait(slope[[2L]])
+    ) {
+      slope_col <- .strip_lhs_parens(slope[[3L]])
+      if (is.name(slope_col) && !identical(as.character(slope_col), "trait")) {
+        return(list(
+          lhs_form = "long_intercept_slope",
+          slope_col = as.character(slope_col)
+        ))
+      }
+    }
+  }
+  list(lhs_form = "unsupported", slope_col = NULL)
 }
 
 ## Design 07 Stage 2.5 (May 2026): fail-loud guard against augmented LHS
@@ -2316,6 +2379,52 @@ rewrite_canonical_aliases <- function(formula) {
       ## machinery without a new TMB switch.
       if (fn == "phylo_unique") {
         extras <- .pass_through_extras(e, c("tree", "vcv"))
+        if (
+          length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          species_arg <- bar[[3L]]
+          if (!is.name(species_arg)) {
+            cli::cli_abort(c(
+              "{.fn phylo_unique} RHS must be a single column name (the species factor).",
+              "i" = "Got RHS: {.code {deparse(species_arg)}}.",
+              ">" = "Use {.code phylo_unique(1 + x | species)} or {.code phylo_unique(0 + trait + (0 + trait):x | species)}."
+            ))
+          }
+          if (identical(lhs_form$lhs_form, "intercept_only")) {
+            new_call <- as.call(c(
+              list(as.name("phylo_rr"), species_arg),
+              list(.phylo_unique = TRUE),
+              extras
+            ))
+            return(new_call)
+          }
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            new_call <- as.call(c(
+              list(as.name("phylo_slope"), bar),
+              list(
+                .phylo_unique_augmented = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              extras
+            ))
+            return(new_call)
+          }
+          cli::cli_abort(c(
+            "{.fn phylo_unique} augmented LHS form is not supported.",
+            "i" = "You wrote {.code phylo_unique({deparse(bar)})}.",
+            "x" = "Phase 56.3 accepts only {.code 1 + x | species} and {.code 0 + trait + (0 + trait):x | species}.",
+            ">" = "Keep multi-covariate, slope-only, uncorrelated, and richer per-trait slope forms for a later design slice."
+          ))
+        }
         new_call <- as.call(c(
           list(as.name("phylo_rr"), e[[2L]]),
           list(.phylo_unique = TRUE),

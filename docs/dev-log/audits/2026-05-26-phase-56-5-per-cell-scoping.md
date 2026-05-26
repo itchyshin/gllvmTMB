@@ -36,6 +36,35 @@ The choices follow these constraints:
 
 ## 2. Per-cell sample-size + tolerance recommendations
 
+**Status note (Codex 2026-05-26, post-#293 / pre-#295 close).** The
+per-cell numbers in the tables below are the **pre-spec defaults** for
+Phase 56.5. Curie / Codex adjust these *only* inside the activation PR
+for a given cell, and *only* if the first recovery fit surfaces
+identifiability or runtime trouble (e.g. ρ near ±1, σ² collapsed near
+zero, non-PD Hessian with otherwise-finite SEs, or a runtime that
+breaks the §5 budget). Shannon / other audit-side agents do not edit
+these numbers without a fit-evidence trigger from the activation lane.
+
+**Sequencing reminder (Codex 2026-05-26).** Phase 56 is intentionally
+evidence-first, not "open all parser gates first":
+
+1. **Anchor cell** — [PR #295](https://github.com/itchyshin/gllvmTMB/pull/295)
+   wires `phylo_unique(1 + x | species)` as the Phase 56.3 anchor.
+2. **Anchor-cell recovery** — Phase 56.4 activates the
+   `phylo_unique` recovery test (wide/long byte-identity + Gaussian
+   recovery + forced `n_lhs_cols` mismatch negative test) before
+   any fan-out.
+3. **Fan-out grouping** — after anchor-cell green, remaining cells
+   group by **backend / risk**, *not* one PR per cell. Codex's
+   stated grouping: `phylo_unique(..., vcv = A_user)` reuses the
+   `phylo_unique` path; `animal_unique` follows once its bar-form
+   sugar routes to that same path; `spatial_*` waits for SPDE
+   augmented plumbing; `*_latent` / `*_indep` / `*_dep` wait for
+   their distinct Σ_b / map semantics.
+
+The §2 tables remain valid as planning targets regardless of how
+Phase 56.4 / 56.5 group the remaining cells.
+
 For each APPLICABLE cell, recommended fixture size + tolerance + red
 flags. **n_sp / n_id / n_coords**: group count. **T**: trait count.
 **n_rep**: replicates per (group, trait) cell. Total rows = product.
@@ -138,6 +167,18 @@ existing `test-phylo-slope.R` budget pattern.
   (PRs #283 + #284) — 15 cells with `skip_until_stage3()` gates.
 - [Design 14 §5](../../design/14-known-relatedness-keywords.md) —
   `animal_*` byte-equivalence contract.
+- [PR #289](https://github.com/itchyshin/gllvmTMB/pull/289) — Phase 56.1
+  dormant TMB promotion (engine surface).
+- [PR #293](https://github.com/itchyshin/gllvmTMB/pull/293) — Phase 56.2
+  `n_traits` classification audit; confirms legacy paths stay
+  `n_traits` and only the augmented LHS path uses block-local
+  `n_lhs_cols`.
+- [PR #295](https://github.com/itchyshin/gllvmTMB/pull/295) — Phase 56.3
+  anchor parser slice; wires `phylo_unique(1 + x | species)` (wide)
+  and the long-form equivalent into the augmented path. Phase 56.4
+  attaches recovery evidence to this same cell first.
+- Codex's 2026-05-26 sequencing answers (relayed via Ada): anchor
+  cell first → recovery green → fan-out by backend/risk group.
 
 ## 7. What this memo does NOT decide
 

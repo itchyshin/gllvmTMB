@@ -2,7 +2,7 @@ on:
   workflow_dispatch:
     inputs:
       n_reps:
-        description: "Replicates per M3 cell"
+        description: "Replicates per M3 cell (must be >=4; workflow uses four shards)"
         required: true
         default: "200"
         type: number
@@ -36,7 +36,7 @@ on:
       retention_days:
         description: "Artifact retention in days"
         required: true
-        default: "14"
+        default: "30"
         type: number
 
 name: M3 production grid
@@ -55,7 +55,7 @@ jobs:
   m3-cell:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    name: ${{ matrix.family }} d=${{ matrix.d }}
+    name: ${{ matrix.family }} d=${{ matrix.d }} shard=${{ matrix.shard }}/4
 
     strategy:
       fail-fast: false
@@ -63,9 +63,10 @@ jobs:
       matrix:
         family: [gaussian, binomial, nbinom2, ordinal_probit, mixed]
         d: [1, 2, 3]
+        shard: [1, 2, 3, 4]
 
     env:
-      OUT_PREFIX: m3-coverage-${{ matrix.family }}-d${{ matrix.d }}
+      OUT_PREFIX: m3-coverage-${{ matrix.family }}-d${{ matrix.d }}-shard${{ matrix.shard }}
 
     steps:
       - uses: actions/checkout@v5
@@ -84,11 +85,25 @@ jobs:
       - name: Run M3 cell
         shell: bash
         run: |
+          # Artifact convention:
+          # shard: m3-coverage-{family}-d{d}-shard{N}-{grid,summary}.rds
+          # aggregate: m3-coverage-{family}-d{d}-{grid,summary}.rds
+          # Stop conditions copied from PR #267 / PR #270:
+          # 1. Empirical coverage on target Sigma_unit_diag >= 0.94.
+          # 2. CI-missing rate <= 10%.
+          # 3. Fit-failure rate <= 20% (<= 30% for mixed-family cells).
+          # 4. Bootstrap-failure rate <= the same family-specific limit.
+          # 5. No one-sided miss pattern (>= 80% of misses on one side).
+          # 6. pilot_status == "PASS_TO_SCALE" already achieved at r50.
+          # No register row promotes and no r200 conclusion is recorded
+          # until the post-dispatch result memo reviews these gates.
           Rscript dev/precompute-m3-grid.R \
             --full \
             --family=${{ matrix.family }} \
             --d=${{ matrix.d }} \
             --n-reps=${{ inputs.n_reps }} \
+            --shard=${{ matrix.shard }} \
+            --n-shards=4 \
             --init-strategy=${{ inputs.init_strategy }} \
             --targets=${{ inputs.targets }} \
             --n-boot=${{ inputs.n_boot }} \
@@ -96,6 +111,59 @@ jobs:
             --out-prefix="${OUT_PREFIX}"
 
       - name: Upload M3 cell artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUT_PREFIX }}
+          path: |
+            dev/precomputed/${{ env.OUT_PREFIX }}-grid.rds
+            dev/precomputed/${{ env.OUT_PREFIX }}-summary.rds
+          retention-days: ${{ inputs.retention_days }}
+
+  m3-aggregate:
+    needs: m3-cell
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: aggregate ${{ matrix.family }} d=${{ matrix.d }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        family: [gaussian, binomial, nbinom2, ordinal_probit, mixed]
+        d: [1, 2, 3]
+
+    env:
+      OUT_PREFIX: m3-coverage-${{ matrix.family }}-d${{ matrix.d }}
+      SHARD_DIR: dev/precomputed/shards
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Download M3 shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ env.OUT_PREFIX }}-shard*
+          path: ${{ env.SHARD_DIR }}
+          merge-multiple: true
+
+      - name: Aggregate M3 shards
+        shell: bash
+        run: |
+          Rscript dev/aggregate-m3-shards.R \
+            --input-dir="${SHARD_DIR}" \
+            --input-prefix="${OUT_PREFIX}" \
+            --out-dir=dev/precomputed \
+            --out-prefix="${OUT_PREFIX}"
+
+      - name: Upload aggregate M3 cell artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.OUT_PREFIX }}

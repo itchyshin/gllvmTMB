@@ -66,7 +66,9 @@ m3_target_method <- function(target, n_boot = NULL) {
   switch(
     target,
     psi = "profile",
-    Sigma_unit_diag = if (!is.null(n_boot) && identical(as.integer(n_boot), 0L)) {
+    Sigma_unit_diag = if (
+      !is.null(n_boot) && identical(as.integer(n_boot), 0L)
+    ) {
       "none"
     } else {
       "bootstrap"
@@ -77,6 +79,60 @@ m3_target_method <- function(target, n_boot = NULL) {
 
 m3_family_seed_index <- function(family) {
   match(family, M3_SUPPORTED_FAMILIES)
+}
+
+m3_rep_index_range <- function(
+  n_reps,
+  rep_index_start = NULL,
+  rep_index_end = NULL
+) {
+  n_reps <- as.integer(n_reps)
+  if (is.na(n_reps) || n_reps < 1L) {
+    stop("n_reps must be a positive integer")
+  }
+  if (is.null(rep_index_start)) {
+    rep_index_start <- 1L
+  }
+  if (is.null(rep_index_end)) {
+    rep_index_end <- n_reps
+  }
+  rep_index_start <- as.integer(rep_index_start)
+  rep_index_end <- as.integer(rep_index_end)
+  if (
+    is.na(rep_index_start) ||
+      is.na(rep_index_end) ||
+      rep_index_start < 1L ||
+      rep_index_end > n_reps ||
+      rep_index_start > rep_index_end
+  ) {
+    stop(
+      "rep_index_start/rep_index_end must define a non-empty range ",
+      "inside 1:n_reps"
+    )
+  }
+  seq.int(rep_index_start, rep_index_end)
+}
+
+m3_shard_rep_range <- function(n_reps, shard = 1L, n_shards = 1L) {
+  n_reps <- as.integer(n_reps)
+  shard <- as.integer(shard)
+  n_shards <- as.integer(n_shards)
+  if (is.na(n_reps) || n_reps < 1L) {
+    stop("n_reps must be a positive integer")
+  }
+  if (is.na(n_shards) || n_shards < 1L) {
+    stop("n_shards must be a positive integer")
+  }
+  if (is.na(shard) || shard < 1L || shard > n_shards) {
+    stop("shard must be an integer in 1:n_shards")
+  }
+  if (n_shards > n_reps) {
+    stop("n_shards must not exceed n_reps")
+  }
+  c(
+    start = floor((shard - 1L) * n_reps / n_shards) + 1L,
+    end = floor(shard * n_reps / n_shards)
+  )
 }
 
 m3_miss_side <- function(truth, lo, hi, covered, ci_available) {
@@ -353,8 +409,9 @@ m3_sample_truth <- function(
   ## while producing data no fitter can recover the `psi` from. The
   ## stopifnot below fails loudly if that invariant breaks.
   stopifnot(
-    "m3-grid binomial-psi invariant violated: psi_effective must be 0 for binomial rows. See PR #263 + the maintainer 2026-05-25 design ruling." =
-      all(psi_effective[row_family == "binomial"] == 0)
+    "m3-grid binomial-psi invariant violated: psi_effective must be 0 for binomial rows. See PR #263 + the maintainer 2026-05-25 design ruling." = all(
+      psi_effective[row_family == "binomial"] == 0
+    )
   )
 
   ## Implied Sigma_unit (T x T): the rotation-invariant target
@@ -710,6 +767,8 @@ m3_run_cell <- function(
   family,
   d,
   n_reps = 10L,
+  rep_index_start = NULL,
+  rep_index_end = NULL,
   seed_base = 42L,
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
@@ -733,6 +792,11 @@ m3_run_cell <- function(
   verbose = TRUE
 ) {
   stopifnot(family %in% M3_SUPPORTED_FAMILIES, d >= 1L, n_reps >= 1L)
+  rep_indices <- m3_rep_index_range(
+    n_reps,
+    rep_index_start = rep_index_start,
+    rep_index_end = rep_index_end
+  )
   if (
     !is.numeric(lambda_scale) ||
       length(lambda_scale) != 1L ||
@@ -812,16 +876,22 @@ m3_run_cell <- function(
   cell_id <- sprintf("%s-d%d", family, d)
   if (verbose) {
     cat(sprintf(
-      "[m3] cell %s, %d reps; targets = %s\n",
+      "[m3] cell %s, reps %d-%d of %d; targets = %s\n",
       cell_id,
+      min(rep_indices),
+      max(rep_indices),
       n_reps,
       paste(targets, collapse = ",")
     ))
   }
 
-  rows <- vector("list", n_reps)
-  for (r in seq_len(n_reps)) {
-    rep_seed <- seed_base + 1000L * d + 100000L * m3_family_seed_index(family) + r
+  rows <- vector("list", length(rep_indices))
+  for (j in seq_along(rep_indices)) {
+    r <- rep_indices[j]
+    rep_seed <- seed_base +
+      1000L * d +
+      100000L * m3_family_seed_index(family) +
+      r
     t0 <- Sys.time()
 
     truth <- m3_sample_truth(
@@ -947,7 +1017,7 @@ m3_run_cell <- function(
     if (
       !fit_ok || !inherits(fit, "gllvmTMB_multi") || fit$opt$convergence != 0L
     ) {
-      rows[[r]] <- m3_add_fit_health(
+      rows[[j]] <- m3_add_fit_health(
         do.call(
           rbind,
           lapply(targets, function(target) {
@@ -1249,8 +1319,8 @@ m3_run_cell <- function(
     }
 
     rep_runtime <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-    rows[[r]] <- m3_add_fit_health(do.call(rbind, rep_rows), fit_diag)
-    rows[[r]]$runtime_s <- rep_runtime
+    rows[[j]] <- m3_add_fit_health(do.call(rbind, rep_rows), fit_diag)
+    rows[[j]]$runtime_s <- rep_runtime
 
     if (verbose && (r %% 5L == 0L || r == n_reps)) {
       cat(sprintf("  rep %d/%d (%.1fs)\n", r, n_reps, rep_runtime))
@@ -1265,6 +1335,8 @@ m3_run_cell <- function(
 m3_run_grid <- function(
   cells = NULL,
   n_reps = 10L,
+  rep_index_start = NULL,
+  rep_index_end = NULL,
   seed_base = 42L,
   n_units = M3_DEFAULT_N_UNITS,
   n_traits = M3_DEFAULT_N_TRAITS,
@@ -1310,6 +1382,8 @@ m3_run_grid <- function(
           cells$family[i],
           cells$d[i],
           n_reps = n_reps,
+          rep_index_start = rep_index_start,
+          rep_index_end = rep_index_end,
           seed_base = seed_base,
           n_units = n_units,
           n_traits = n_traits,
@@ -1341,6 +1415,8 @@ m3_run_grid <- function(
         cells$family[i],
         cells$d[i],
         n_reps = n_reps,
+        rep_index_start = rep_index_start,
+        rep_index_end = rep_index_end,
         seed_base = seed_base,
         n_units = n_units,
         n_traits = n_traits,
@@ -1457,9 +1533,19 @@ m3_run_surface_register <- function(
   verbose = TRUE
 ) {
   required <- c(
-    "surface_id", "scenario", "family", "d", "n_units", "n_traits",
-    "lambda_scale", "psi_scale", "fit_phi_mode", "target", "n_boot",
-    "n_cores_boot", "run_stage"
+    "surface_id",
+    "scenario",
+    "family",
+    "d",
+    "n_units",
+    "n_traits",
+    "lambda_scale",
+    "psi_scale",
+    "fit_phi_mode",
+    "target",
+    "n_boot",
+    "n_cores_boot",
+    "run_stage"
   )
   missing <- setdiff(required, names(surfaces))
   if (length(missing)) {
@@ -1580,12 +1666,21 @@ m3_run_start_probe <- function(
   verbose = TRUE
 ) {
   required <- c(
-    "probe_id", "probe_label", "init_strategy", "start_method_name",
-    "start_jitter", "optimizer", "n_init", "init_jitter"
+    "probe_id",
+    "probe_label",
+    "init_strategy",
+    "start_method_name",
+    "start_jitter",
+    "optimizer",
+    "n_init",
+    "init_jitter"
   )
   missing <- setdiff(required, names(configs))
   if (length(missing)) {
-    stop("Start-probe config missing columns: ", paste(missing, collapse = ", "))
+    stop(
+      "Start-probe config missing columns: ",
+      paste(missing, collapse = ", ")
+    )
   }
   targets <- m3_normalise_targets(targets)
   n_boot <- as.integer(n_boot)
@@ -2011,9 +2106,15 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
       }
       probe_cols <- intersect(
         c(
-          "probe_id", "probe_label", "probe_stage", "probe_start_method",
-          "probe_start_jitter", "probe_optimizer", "probe_optim_method",
-          "probe_n_init", "probe_init_jitter"
+          "probe_id",
+          "probe_label",
+          "probe_stage",
+          "probe_start_method",
+          "probe_start_jitter",
+          "probe_optimizer",
+          "probe_optim_method",
+          "probe_n_init",
+          "probe_init_jitter"
         ),
         names(sub)
       )
@@ -2072,12 +2173,31 @@ m3_diagnostic_report_data <- function(
 
   header_cols <- intersect(
     c(
-      "surface_id", "scenario", "run_stage", "family", "d", "n_units",
-      "n_traits", "lambda_scale", "psi_scale", "truth_phi", "target",
-      "ci_method", "fit_phi_mode", "declared_link_residual", "n_boot",
-      "n_cores_boot", "seed_base", "probe_id", "probe_label",
-      "probe_stage", "probe_start_method", "probe_start_jitter",
-      "probe_optimizer", "probe_optim_method", "probe_n_init",
+      "surface_id",
+      "scenario",
+      "run_stage",
+      "family",
+      "d",
+      "n_units",
+      "n_traits",
+      "lambda_scale",
+      "psi_scale",
+      "truth_phi",
+      "target",
+      "ci_method",
+      "fit_phi_mode",
+      "declared_link_residual",
+      "n_boot",
+      "n_cores_boot",
+      "seed_base",
+      "probe_id",
+      "probe_label",
+      "probe_stage",
+      "probe_start_method",
+      "probe_start_jitter",
+      "probe_optimizer",
+      "probe_optim_method",
+      "probe_n_init",
       "probe_init_jitter"
     ),
     names(grid_df)
@@ -2094,8 +2214,15 @@ m3_diagnostic_report_data <- function(
     drop = FALSE
   ]
   trait_keys <- c(
-    "probe_id", "surface_id", "scenario", "family", "d", "target",
-    "ci_method", "fit_phi_mode", "trait_id"
+    "probe_id",
+    "surface_id",
+    "scenario",
+    "family",
+    "d",
+    "target",
+    "ci_method",
+    "fit_phi_mode",
+    "trait_id"
   )
   trait_ratios <- m3_split_apply(trait_rows, trait_keys, function(sub) {
     key <- sub[1, intersect(trait_keys, names(sub)), drop = FALSE]
@@ -2121,7 +2248,8 @@ m3_diagnostic_report_data <- function(
         NA_integer_
       },
       coverage = if (
-        "covered" %in% names(sub) &&
+        "covered" %in%
+          names(sub) &&
           "ci_available" %in% names(sub) &&
           any(sub$ci_available %in% TRUE & !is.na(sub$covered))
       ) {
@@ -2147,14 +2275,34 @@ m3_diagnostic_report_data <- function(
 
   failure_cols <- intersect(
     c(
-      "surface_id", "scenario", "fit_phi_mode", "family", "d", "target",
-      "ci_method", "n_reps", "n_completed", "n_failed", "n_trait_rows",
-      "n_ci_missing", "n_boot_failed", "n_boot_attempted",
-      "boot_fail_rate", "pd_hessian_rate", "sdreport_ok_rate",
-      "median_max_gradient", "median_restart_count",
-      "median_objective_spread", "pilot_status", "probe_id",
-      "probe_label", "probe_stage", "probe_start_method",
-      "probe_optimizer", "probe_n_init", "probe_init_jitter"
+      "surface_id",
+      "scenario",
+      "fit_phi_mode",
+      "family",
+      "d",
+      "target",
+      "ci_method",
+      "n_reps",
+      "n_completed",
+      "n_failed",
+      "n_trait_rows",
+      "n_ci_missing",
+      "n_boot_failed",
+      "n_boot_attempted",
+      "boot_fail_rate",
+      "pd_hessian_rate",
+      "sdreport_ok_rate",
+      "median_max_gradient",
+      "median_restart_count",
+      "median_objective_spread",
+      "pilot_status",
+      "probe_id",
+      "probe_label",
+      "probe_stage",
+      "probe_start_method",
+      "probe_optimizer",
+      "probe_n_init",
+      "probe_init_jitter"
     ),
     names(summary)
   )
@@ -2170,8 +2318,14 @@ m3_diagnostic_report_data <- function(
       verdict = unique(summary[
         intersect(
           c(
-            "surface_id", "scenario", "fit_phi_mode", "target",
-            "ci_method", "pilot_status", "probe_id", "probe_label",
+            "surface_id",
+            "scenario",
+            "fit_phi_mode",
+            "target",
+            "ci_method",
+            "pilot_status",
+            "probe_id",
+            "probe_label",
             "probe_stage"
           ),
           names(summary)
@@ -2228,7 +2382,8 @@ m3_source_map_dashboard_data <- function(
     promotion_gate = promotion_gate
   )
   summary <- report$summary
-  include_probe <- "probe_id" %in% names(summary) &&
+  include_probe <- "probe_id" %in%
+    names(summary) &&
     length(unique(stats::na.omit(summary$probe_id))) > 1L
   summary$source_label <- m3_source_map_label(
     summary,
@@ -2265,29 +2420,42 @@ m3_source_map_dashboard_data <- function(
       column = "median_link_residual_truth_ratio"
     )
   )
-  ratio_points <- do.call(rbind, lapply(ratio_specs, function(spec) {
-    if (!nrow(trait) || !spec$column %in% names(trait)) {
-      return(NULL)
-    }
-    value <- trait[[spec$column]]
-    keep <- is.finite(value)
-    if (!any(keep)) {
-      return(NULL)
-    }
-    cols <- intersect(
-      c(
-        "source_label", "surface_id", "scenario", "family", "d",
-        "target", "ci_method", "fit_phi_mode", "trait_id",
-        "probe_id", "probe_label", "n_trait_rows", "n_ci_available"
-      ),
-      names(trait)
-    )
-    out <- trait[keep, cols, drop = FALSE]
-    out$metric <- spec$metric
-    out$value <- value[keep]
-    out$reference <- 1
-    out
-  }))
+  ratio_points <- do.call(
+    rbind,
+    lapply(ratio_specs, function(spec) {
+      if (!nrow(trait) || !spec$column %in% names(trait)) {
+        return(NULL)
+      }
+      value <- trait[[spec$column]]
+      keep <- is.finite(value)
+      if (!any(keep)) {
+        return(NULL)
+      }
+      cols <- intersect(
+        c(
+          "source_label",
+          "surface_id",
+          "scenario",
+          "family",
+          "d",
+          "target",
+          "ci_method",
+          "fit_phi_mode",
+          "trait_id",
+          "probe_id",
+          "probe_label",
+          "n_trait_rows",
+          "n_ci_available"
+        ),
+        names(trait)
+      )
+      out <- trait[keep, cols, drop = FALSE]
+      out$metric <- spec$metric
+      out$value <- value[keep]
+      out$reference <- 1
+      out
+    })
+  )
   if (is.null(ratio_points)) {
     ratio_points <- data.frame()
   } else {
@@ -2345,36 +2513,47 @@ m3_source_map_dashboard_data <- function(
       reference = 1
     )
   )
-  failure_rates <- do.call(rbind, lapply(rate_specs, function(spec) {
-    if (!nrow(ledger) || !spec$numerator %in% names(ledger)) {
-      return(NULL)
-    }
-    cols <- intersect(
-      c(
-        "source_label", "surface_id", "scenario", "family", "d",
-        "target", "ci_method", "fit_phi_mode", "pilot_status",
-        "probe_id", "probe_label"
-      ),
-      names(ledger)
-    )
-    out <- ledger[, cols, drop = FALSE]
-    if (is.na(spec$denominator)) {
-      out$value <- ledger[[spec$numerator]]
-      out$denominator_label <- "rate"
-    } else {
-      denominator <- ledger[[spec$denominator]]
-      numerator <- ledger[[spec$numerator]]
-      out$value <- ifelse(
-        is.finite(denominator) & denominator > 0,
-        numerator / denominator,
-        NA_real_
+  failure_rates <- do.call(
+    rbind,
+    lapply(rate_specs, function(spec) {
+      if (!nrow(ledger) || !spec$numerator %in% names(ledger)) {
+        return(NULL)
+      }
+      cols <- intersect(
+        c(
+          "source_label",
+          "surface_id",
+          "scenario",
+          "family",
+          "d",
+          "target",
+          "ci_method",
+          "fit_phi_mode",
+          "pilot_status",
+          "probe_id",
+          "probe_label"
+        ),
+        names(ledger)
       )
-      out$denominator_label <- paste0(numerator, "/", denominator)
-    }
-    out$metric <- spec$metric
-    out$reference <- spec$reference
-    out
-  }))
+      out <- ledger[, cols, drop = FALSE]
+      if (is.na(spec$denominator)) {
+        out$value <- ledger[[spec$numerator]]
+        out$denominator_label <- "rate"
+      } else {
+        denominator <- ledger[[spec$denominator]]
+        numerator <- ledger[[spec$numerator]]
+        out$value <- ifelse(
+          is.finite(denominator) & denominator > 0,
+          numerator / denominator,
+          NA_real_
+        )
+        out$denominator_label <- paste0(numerator, "/", denominator)
+      }
+      out$metric <- spec$metric
+      out$reference <- spec$reference
+      out
+    })
+  )
   if (is.null(failure_rates)) {
     failure_rates <- data.frame()
   } else {
@@ -2413,20 +2592,35 @@ m3_source_map_dashboard_data <- function(
     failure_rates$metric <- factor(
       failure_rates$metric,
       levels = c(
-        "Fit failed", "CI missing", "Bootstrap failed",
-        "pdHess TRUE", "sdreport OK"
+        "Fit failed",
+        "CI missing",
+        "Bootstrap failed",
+        "pdHess TRUE",
+        "sdreport OK"
       )
     )
   }
 
-  verdict_tiles <- summary[
-    ,
+  verdict_tiles <- summary[,
     intersect(
       c(
-        "source_label", "surface_id", "scenario", "family", "d",
-        "target", "ci_method", "fit_phi_mode", "pilot_status",
-        "profile_gate_status", "coverage", "n_reps", "n_completed",
-        "n_failed", "n_ci_missing", "n_trait_rows", "probe_id",
+        "source_label",
+        "surface_id",
+        "scenario",
+        "family",
+        "d",
+        "target",
+        "ci_method",
+        "fit_phi_mode",
+        "pilot_status",
+        "profile_gate_status",
+        "coverage",
+        "n_reps",
+        "n_completed",
+        "n_failed",
+        "n_ci_missing",
+        "n_trait_rows",
+        "probe_id",
         "probe_label"
       ),
       names(summary)
@@ -2499,10 +2693,8 @@ m3_plot_source_map_ratios <- function(dashboard) {
         ggplot2::theme_void()
     )
   }
-  summary_status <- dashboard$summary[
-    ,
-    intersect(c("source_label", "pilot_status"), names(dashboard$summary))
-    ,
+  summary_status <- dashboard$summary[,
+    intersect(c("source_label", "pilot_status"), names(dashboard$summary)),
     drop = FALSE
   ]
   summary_status <- unique(summary_status)
@@ -2540,7 +2732,7 @@ m3_plot_source_map_ratios <- function(dashboard) {
       alpha = 0.86,
       position = ggplot2::position_jitter(height = 0.08, width = 0)
     ) +
-    ggplot2::facet_wrap(~ metric, scales = "free_x", ncol = 1) +
+    ggplot2::facet_wrap(~metric, scales = "free_x", ncol = 1) +
     ggplot2::scale_colour_manual(
       values = m3_source_map_status_palette(),
       drop = FALSE

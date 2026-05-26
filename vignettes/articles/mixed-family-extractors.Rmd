@@ -31,6 +31,18 @@ response distributions differ. This article walks through fitting a
 mixed-family model and using the extractors to recover the
 trait-covariance structure on a common, comparable latent scale.
 
+Scope boundary: **IN** are long-format mixed-family fits whose
+families have a defined latent residual scale (MIX-01..MIX-09) and
+report-ready extraction from fitted objects (DIA-13). **PARTIAL** are
+profile and bootstrap uncertainty summaries on mixed-family targets
+(CI-10 / EXT-04). **BLOCKED** are delta / hurdle mixed-family
+latent-scale correlations (MIX-10), where the continuous-positive and
+zero-generating pieces live on different scales.
+
+This article is long-format only because the teaching fixture uses
+per-row `family_var` dispatch. A wide-data companion needs a separate
+family-by-trait teaching fixture before it can be shown honestly.
+
 ## The setup
 
 The package ships a small reproducible fixture for testing and
@@ -82,6 +94,22 @@ own family — Gaussian rows use the Gaussian density, binomial rows
 use the Bernoulli, Poisson rows use the Poisson — while sharing a
 single rank-1 latent factor across traits.
 
+Before interpreting the covariance summaries, check that the fit and
+the residual rows are in the expected diagnostic state. The helper
+`diagnostic_table()` exposes diagnostic metadata as plain data frames;
+it does not compute a new test.
+
+```{r diagnostic-status}
+rq_resid <- residuals(fit, type = "randomized_quantile", seed = 1)
+gllvmTMB::diagnostic_table(rq_resid, table = "row_status")
+gllvmTMB::diagnostic_table(rq_resid, table = "fit_health_status")
+```
+
+The `unsupported_family` rows are the Gaussian rows, where randomized
+quantile residuals are not needed because ordinary residuals are
+already continuous. The `fit_health_status` table is the compact
+PASS / WARN / FAIL count from `check_gllvmTMB(fit)`.
+
 ## Sigma on the latent scale
 
 `extract_Sigma()` returns the trait-covariance matrix on the latent
@@ -106,7 +134,7 @@ Sigma_rows[, c("trait_i", "trait_j", "estimate", "interval_status")]
 The corresponding heatmap shows the implied correlation matrix. Cells
 are point estimates on the same link-residual-adjusted scale:
 
-```{r corr, fig.width = 5.8, fig.height = 4.8}
+```{r corr, fig.width = 5.8, fig.height = 4.8, fig.cap = "Mixed-family latent-scale trait correlations. Cells show point estimates from the total unit-level Sigma matrix after adding the family-specific link residual to each diagonal.", fig.alt = "Three by three heatmap of latent-scale correlations among one Gaussian trait, one binomial trait, and one Poisson trait. Trait 1 and trait 2 are moderately positively correlated, trait 1 and trait 3 are moderately negatively correlated, and trait 2 and trait 3 are near zero."}
 R_rows <- extract_Sigma_table(
   fit,
   level = "unit",
@@ -120,7 +148,8 @@ plot_Sigma_heatmap(
   label_digits = 2,
   title = "Mixed-family trait correlations",
   subtitle = "Point estimates include family-specific link residuals."
-)
+) +
+  ggplot2::labs(caption = NULL)
 ```
 
 By default `link_residual = "auto"` adds the per-family residual to
@@ -132,17 +161,17 @@ traits of different families.
 ## Correlations with uncertainty
 
 `extract_correlations()` returns a tidy data frame of pairwise
-correlations + confidence intervals. Three CI methods are
-available:
+correlations + confidence intervals. This article shows the two
+routes that target the total mixed-family $\Sigma$ surface:
 
 ```{r corr-fisher}
 extract_correlations(fit, tier = "unit", method = "fisher-z",
                      link_residual = "auto")
 ```
 
-The default (Fisher-z) is fast + bounded in $[-1, 1]$. For
-variance-component-style boundary cases, profile-likelihood CIs
-are tighter:
+The default Fisher-z interval is fast and bounded in $[-1, 1]$.
+Bootstrap intervals are slower, but they preserve the per-row family
+dispatch in simulated refits:
 
 ```{r corr-bootstrap, results='hide'}
 boot_ci <- extract_correlations(fit, tier = "unit", method = "bootstrap",
@@ -213,6 +242,7 @@ This article uses the M1 validated machinery:
 | `extract_Omega()` cross-tier | covered (MIX-07) |
 | `bootstrap_Sigma()` per-row family preserved | covered (MIX-08) |
 | `simulate.gllvmTMB_multi()` family-aware draws | covered (MIS-05; 6 families) |
+| Delta / hurdle mixed-family latent-scale correlations | blocked (MIX-10; two-scale target is undefined) |
 
 See the
 [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)

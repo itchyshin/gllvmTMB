@@ -10803,3 +10803,69 @@ Deliberately not run:
 - No `devtools::check(args = "--no-manual")`; the PR should receive ordinary
   3-OS R-CMD-check.
 - No `_pkgdown.yml` edit; `joint-sdm` remains internal.
+
+## 2026-05-25 -- M3 r200 shard plumbing
+
+- Branch: `codex/r200-shard-plumbing-2026-05-25`.
+- Scope: plumbing only for future maintainer-authorised r200 runs; no
+  workflow dispatch, no validation-register edit, and no r200 results claim.
+- Changed:
+  - `.github/workflows/m3-production-grid.yaml`
+  - `dev/m3-grid.R`
+  - `dev/precompute-m3-grid.R`
+  - `dev/aggregate-m3-shards.R`
+- Added after-task report:
+  `docs/dev-log/after-task/2026-05-25-m3-r200-shard-plumbing.md`.
+
+Evidence:
+
+- Shannon / pre-edit lane check:
+  `git status --short --branch`
+  -> clean `main` before branch creation.
+- PR census:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> no open PRs.
+- Recent-lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> inspected #261, #265, #268, #270, #271, and #272 activity; no active
+  overlap with the workflow / M3 dev scripts.
+- Active-run check:
+  `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url`
+  -> post-#272 `main` R-CMD-check was running; local work proceeded, push held.
+- Formatting:
+  `air format dev/m3-grid.R dev/precompute-m3-grid.R dev/aggregate-m3-shards.R`
+  -> completed.
+- Shard smoke, shard 1:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=gaussian --d=1 --n-reps=4 --shard=1 --n-shards=2 --targets=Sigma_unit_diag --n-boot=0 --seed-base=20260525 --out-dir=/tmp/gllvmTMB-m3-shard-smoke --out-prefix=m3-coverage-gaussian-d1-shard1`
+  -> global reps 1-2 ran in `real 4.16s`; wrote shard grid + summary.
+- Shard smoke, shard 2:
+  `Rscript --vanilla dev/precompute-m3-grid.R --full --family=gaussian --d=1 --n-reps=4 --shard=2 --n-shards=2 --targets=Sigma_unit_diag --n-boot=0 --seed-base=20260525 --out-dir=/tmp/gllvmTMB-m3-shard-smoke --out-prefix=m3-coverage-gaussian-d1-shard2`
+  -> global reps 3-4 ran in `real 3.28s`; wrote shard grid + summary.
+- Aggregation smoke:
+  `Rscript --vanilla dev/aggregate-m3-shards.R --input-dir=/tmp/gllvmTMB-m3-shard-smoke --input-prefix=m3-coverage-gaussian-d1 --out-dir=/tmp/gllvmTMB-m3-shard-smoke --out-prefix=m3-coverage-gaussian-d1`
+  -> read 2 shard grid artefacts, recombined reps 1-4, and wrote aggregate
+  grid + summary.
+- Aggregate invariant check:
+  `Rscript --vanilla -e 'x <- readRDS("/tmp/gllvmTMB-m3-shard-smoke/m3-coverage-gaussian-d1-grid.rds"); stopifnot(identical(sort(unique(x$grid$rep)), 1:4)); stopifnot(nrow(x$summary) == 1L); ...'`
+  -> aggregate metadata reported `n_shards = 2`, `rep_index_start = 1`,
+  `rep_index_end = 4`, `n_reps = 4`; summary row reported `n_completed = 4`.
+- Shard-range unit smoke:
+  `Rscript --vanilla -e 'source("dev/m3-grid.R"); stopifnot(identical(as.integer(m3_shard_rep_range(200, 1, 4)), c(1L, 50L))); stopifnot(identical(as.integer(m3_shard_rep_range(200, 4, 4)), c(151L, 200L))); cat("shard ranges ok\n")'`
+  -> `shard ranges ok`.
+- Workflow syntax smoke:
+  `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/m3-production-grid.yaml"); puts "workflow yaml ok"'`
+  -> `workflow yaml ok`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Failed optional parser:
+  `python3 - <<'PY' ... yaml.safe_load(...)`
+  -> skipped because local Python lacks `yaml`; Ruby YAML check above passed.
+
+Deliberately not run:
+
+- No `gh workflow run` and no r200 dispatch.
+- No `devtools::test()` or `devtools::check(args = "--no-manual")`; touched
+  files are dev workflow / script plumbing and should receive ordinary PR CI.
+- No validation-register, ROADMAP, `_pkgdown.yml`, article, `R/*`, `src/*`, or
+  user-facing reference changes.

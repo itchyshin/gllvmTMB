@@ -10,6 +10,9 @@
 ##   Rscript dev/precompute-m3-grid.R --full       # full grid (200 reps; ~hours)
 ##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=2 \
 ##     --n-reps=200 --init-strategy=single_trait_warmup
+##   Rscript dev/precompute-m3-grid.R --full --family=binomial --d=2 \
+##     --n-reps=200 --shard=1 --n-shards=4 \
+##     --out-prefix=m3-coverage-binomial-d2-shard1
 ##   Rscript dev/precompute-m3-grid.R --full --family=nbinom2 --d=1 \
 ##     --n-reps=50 --init-strategy=single_trait_warmup \
 ##     --start-method=res --start-jitter=0.2 --n-init=5 \
@@ -183,7 +186,10 @@ n_units <- as.integer(arg_value("--n-units", as.character(M3_DEFAULT_N_UNITS)))
 if (is.na(n_units) || n_units < 1L) {
   stop("--n-units must be a positive integer")
 }
-n_traits <- as.integer(arg_value("--n-traits", as.character(M3_DEFAULT_N_TRAITS)))
+n_traits <- as.integer(arg_value(
+  "--n-traits",
+  as.character(M3_DEFAULT_N_TRAITS)
+))
 if (is.na(n_traits) || n_traits < 2L) {
   stop("--n-traits must be an integer >= 2")
 }
@@ -194,7 +200,10 @@ lambda_scale <- as.numeric(arg_value(
 if (is.na(lambda_scale) || lambda_scale <= 0) {
   stop("--lambda-scale must be a positive number")
 }
-psi_scale <- as.numeric(arg_value("--psi-scale", as.character(M3_DEFAULT_PSI_SCALE)))
+psi_scale <- as.numeric(arg_value(
+  "--psi-scale",
+  as.character(M3_DEFAULT_PSI_SCALE)
+))
 if (is.na(psi_scale) || psi_scale <= 0) {
   stop("--psi-scale must be a positive number")
 }
@@ -203,11 +212,17 @@ phi <- if (is.null(phi_arg)) NULL else as.numeric(phi_arg)
 if (!is.null(phi) && (is.na(phi) || phi <= 0)) {
   stop("--phi must be a positive number")
 }
-phi_shape <- as.numeric(arg_value("--phi-shape", as.character(M3_DEFAULT_PHI_SHAPE)))
+phi_shape <- as.numeric(arg_value(
+  "--phi-shape",
+  as.character(M3_DEFAULT_PHI_SHAPE)
+))
 if (is.na(phi_shape) || phi_shape <= 0) {
   stop("--phi-shape must be a positive number")
 }
-phi_rate <- as.numeric(arg_value("--phi-rate", as.character(M3_DEFAULT_PHI_RATE)))
+phi_rate <- as.numeric(arg_value(
+  "--phi-rate",
+  as.character(M3_DEFAULT_PHI_RATE)
+))
 if (is.na(phi_rate) || phi_rate <= 0) {
   stop("--phi-rate must be a positive number")
 }
@@ -250,7 +265,11 @@ optimizer <- match.arg(
   c("nlminb", "optim")
 )
 optim_method <- arg_value("--optim-method", "BFGS")
-optArgs <- if (identical(optimizer, "optim")) list(method = optim_method) else list()
+optArgs <- if (identical(optimizer, "optim")) {
+  list(method = optim_method)
+} else {
+  list()
+}
 n_init <- as.integer(arg_value(
   "--n-init",
   if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "3" else "1"
@@ -278,7 +297,10 @@ target_default <- if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
 } else {
   "psi"
 }
-targets <- m3_normalise_targets(split_arg(arg_value("--targets", target_default)))
+targets <- m3_normalise_targets(split_arg(arg_value(
+  "--targets",
+  target_default
+)))
 n_boot <- as.integer(arg_value(
   "--n-boot",
   if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "0" else "30"
@@ -290,9 +312,27 @@ n_cores_boot <- as.integer(arg_value("--n-cores-boot", "1"))
 if (is.na(n_cores_boot) || n_cores_boot < 1L) {
   stop("--n-cores-boot must be a positive integer")
 }
-ci_level <- as.numeric(arg_value("--ci-level", as.character(M3_DEFAULT_NOMINAL)))
+ci_level <- as.numeric(arg_value(
+  "--ci-level",
+  as.character(M3_DEFAULT_NOMINAL)
+))
 if (is.na(ci_level) || ci_level <= 0 || ci_level >= 1) {
   stop("--ci-level must be a number in (0, 1)")
+}
+shard <- as.integer(arg_value("--shard", "1"))
+n_shards <- as.integer(arg_value("--n-shards", "1"))
+if (is.na(shard) || is.na(n_shards)) {
+  stop("--shard and --n-shards must be integers")
+}
+rep_range <- m3_shard_rep_range(
+  n_reps = config$n_reps,
+  shard = shard,
+  n_shards = n_shards
+)
+if (n_shards > 1L && mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+  stop(
+    "Sharding is currently supported only for smoke, all-fams, and full modes"
+  )
 }
 
 OUT_DIR <- arg_value("--out-dir", file.path("dev", "precomputed"))
@@ -337,16 +377,42 @@ run_seed_base <- if (!is.null(seed_base_arg) && nzchar(seed_base_arg)) {
 }
 
 cat(sprintf(
-  "[m3] mode = %s (%d cells x %d reps x %d start configs; n_units = %s; n_traits = %s; lambda_scale = %s; psi_scale = %s; phi = %s; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
+  "[m3] mode = %s (%d cells x %d reps x %d start configs; shard = %d/%d, reps %d-%d; n_units = %s; n_traits = %s; lambda_scale = %s; psi_scale = %s; phi = %s; init_strategy = %s; start_method = %s; optimizer = %s; n_init = %d; targets = %s; n_boot = %d; n_cores_boot = %d)\n",
   mode,
   nrow(config$cells),
   config$n_reps,
   n_start_configs,
-  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else as.character(n_units),
-  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else as.character(n_traits),
-  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else sprintf("%.3g", lambda_scale),
-  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else sprintf("%.3g", psi_scale),
-  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) "surface-specific" else if (is.null(phi)) "sampled" else format(phi, scientific = FALSE),
+  shard,
+  n_shards,
+  rep_range[["start"]],
+  rep_range[["end"]],
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+    "surface-specific"
+  } else {
+    as.character(n_units)
+  },
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+    "surface-specific"
+  } else {
+    as.character(n_traits)
+  },
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+    "surface-specific"
+  } else {
+    sprintf("%.3g", lambda_scale)
+  },
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+    "surface-specific"
+  } else {
+    sprintf("%.3g", psi_scale)
+  },
+  if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
+    "surface-specific"
+  } else if (is.null(phi)) {
+    "sampled"
+  } else {
+    format(phi, scientific = FALSE)
+  },
   init_strategy,
   start_method_name,
   optimizer,
@@ -389,6 +455,8 @@ if (identical(mode, "nb2-stress-map")) {
   grid_df <- m3_run_grid(
     cells = config$cells,
     n_reps = config$n_reps,
+    rep_index_start = rep_range[["start"]],
+    rep_index_end = rep_range[["end"]],
     seed_base = run_seed_base,
     n_units = n_units,
     n_traits = n_traits,
@@ -436,7 +504,10 @@ if (
   } else {
     "PNG device is unavailable"
   }
-  warning(paste0(reason, "; skipping M3 source-map dashboard render"), call. = FALSE)
+  warning(
+    paste0(reason, "; skipping M3 source-map dashboard render"),
+    call. = FALSE
+  )
 }
 
 cat(sprintf(
@@ -460,6 +531,11 @@ artefact <- list(
     elapsed_s = t_elapsed,
     seed_base = run_seed_base,
     n_reps = config$n_reps,
+    shard = shard,
+    n_shards = n_shards,
+    rep_index_start = rep_range[["start"]],
+    rep_index_end = rep_range[["end"]],
+    n_reps_this_shard = rep_range[["end"]] - rep_range[["start"]] + 1L,
     n_cells = nrow(config$cells),
     n_start_configs = n_start_configs,
     start_configs = if (identical(mode, "nb2-start-probe")) {

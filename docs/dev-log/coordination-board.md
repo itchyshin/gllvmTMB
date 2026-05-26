@@ -183,17 +183,26 @@ queue. The pieces (do not edit from any other branch):
    — binomial d=1/2/3 + mixed d=2.** No r200 launch from this
    PR; dispatch still maintainer-gated.
 
-5. **Restoration Queue validation sprint** (Rose's ranked
-   order):
-   1. `behavioural-syndromes` — build fixture + recovery test.
-   2. `animal-model` — larger pedigree fixture + genetic
-      covariance recovery.
-   3. `psychometrics-irt` — reusable IRT fixture + comparator
-      path.
-   4. `mixed-family-extractors` — pkgdown/table review **after
-      #265** (depends on `diagnostic_table()` being on main).
-   5. `lambda-constraint` — small prose cleanup; includes the
-      stale `fit-galamm` chunk-label fix flagged by lane 3.
+5. **Article-order correction** (Ada/Rose, 2026-05-26):
+   pause public article expansion before any more local article
+   fixes. No public promotion of `mixed-family-extractors`,
+   `psychometrics-irt`, or `lambda-constraint` until the binary
+   lambda/JSDM article plan lands. Keep mixed-family responses and
+   loading constraints as separate teaching lanes.
+
+6. **Next article lane after the correction PR:** rework
+   `lambda-constraint` as the first binary loading-constraint
+   teaching article, using a binary species/JSDM-style example.
+   Any correlation matrix that displays interval columns should use
+   `plot_correlations(..., style = "heatmap",
+   matrix_layout = "estimate_ci")`, not `plot_Sigma_heatmap()`.
+
+7. **Held internal until later:** `mixed-family-extractors` waits
+   for a comprehensive mixed-response expansion covering Gaussian,
+   binomial, Poisson/NB, beta/proportion, and blocked delta/hurdle
+   cases. `psychometrics-irt` stays Preview/internal until the
+   binary lambda/JSDM article is coherent and the `mirt` comparator
+   path is explicitly designed.
 
 ### Claude/Shannon stance during the Validation Factory
 

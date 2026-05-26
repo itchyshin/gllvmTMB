@@ -122,6 +122,15 @@ after-task reports, `docs/design/`, `AGENTS.md`, `CLAUDE.md`, or
 handoff in a PR comment, check-log entry, or after-task report rather than in
 chat alone.
 
+Article-order correction checkpoint, 2026-05-26: pause public article
+expansion until the binary loading-constraint lane is coherent. The public
+surface remains only `morphometrics`, `covariance-correlation`,
+`api-keyword-grid`, `response-families`, `convergence-start-values`, and
+`pitfalls`. No public promotion of `mixed-family-extractors`,
+`psychometrics-irt`, or `lambda-constraint` until the binary lambda/JSDM
+article plan lands. Keep mixed-family response teaching separate from loading
+constraint teaching.
+
 After these infrastructure slices, resume article restoration one page at a time.
 
 ## Next Shared Work Queue
@@ -133,7 +142,8 @@ Keep each item to one branch and one pull request.
 |---|---|---|---|
 | 1 | #228 predictive diagnostics | Codex + Fisher/Grace | PR #260 is open as the public API branch stacked on #257; stop when 3-OS CI is green and #257 / #260 merge order is settled. |
 | 2 | Diagnostic teaching surface and public reset | Codex + Pat/Rose/Fisher/Florence | Get Started and README route users from fit health to fitted-response diagnostics; convergence wording keeps bootstrap/profile as uncertainty routes rather than diagnostic substitutes; check-log and after-task report record the rendered-document checks. |
-| 3 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. |
+| 3 | Binary lambda/JSDM article plan | Codex or Claude Code + Boole/Fisher/Florence/Rose | Rewrite `lambda-constraint` as the first binary loading-constraint teaching article, using a binary species/JSDM-style example rather than mixed psychometrics. Keep the article internal until the plan, example, figure contract, and rendered HTML review are recorded. |
+| 4 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. Do not combine mixed-family responses with loading constraints in one teaching article. |
 
 If two agents are active, prefer one public-documentation lane and one
 implementation/test lane. Do not let both agents edit the roadmap, check-log,
@@ -165,7 +175,7 @@ only when a stage becomes active.
 | Symbol and syntax clarity | Reintroduce enough math to teach the model without losing applied users. | Every symbol is defined and paired with R syntax plus interpretation. |
 | Florence plot system | Move from functional plots to publication-quality scientific graphics. | Rendered figures are informative, colour-blind friendly, uncertainty-aware, and reviewed in HTML. |
 | Diagnostics and uncertainty | Stabilise `pdHess`, profile, bootstrap, fitted-model predictive checks, residual diagnostics, and simulation-grid language. | #228 public diagnostics branch updates the exported diagnostic surface while remaining diagnostic-only, not interval calibration or Bayesian posterior prediction. |
-| Article restoration | Bring hidden articles back one at a time. | Each article has its example object, long/wide status, validation rows, figure review, and maintainer HTML review. |
+| Article restoration | Bring hidden articles back one at a time. | Binary lambda/JSDM planning comes before mixed-family or psychometrics promotion; each article has its example object, long/wide status, validation rows, figure review, and maintainer HTML review. |
 | Pre-CRAN | Audit public API, examples, docs, pkgdown, reverse dependencies, and CRAN notes. | Local checks and 3-OS CI are clean; validation-debt register is current. |
 | Publication-quality claims | Support strong methodological claims with target-explicit simulation and external comparators. | M3 inference gates and Phase 5.5 comparator evidence pass. |
 
@@ -201,11 +211,11 @@ to reverse-engineer it from long setup chunks.
 | `joint-sdm` | Joint SDM example object; runnable long + wide; binary validation caveats; `check_gllvmTMB()` plus fitted-response diagnostic table; Florence figure review; rendered HTML review before navbar return. |
 | `profile-likelihood-ci` | Profile/bootstrap status cleaned; fallback/Wald caveats first; failure-count reporting visible; no M3 coverage overclaim. |
 | `behavioural-syndromes` | Behavioural example object; runnable long + wide where meaningful; between/within covariance; repeatability; truth recovery; diagnostic table before article prose expansion. |
-| `mixed-family-extractors` | Mixed-family example object; report-ready extractor tables. |
+| `mixed-family-extractors` | Keep internal until the broader mixed-response teaching story covers Gaussian, binomial, Poisson/NB, beta/proportion, and blocked delta/hurdle cases with report-ready extractor tables. This is not the loading-constraint lane. |
 | `animal-model` | Larger pedigree fixture; A/Ainv truth; genetic covariance recovery. |
 | `phylogenetic-gllvm` | Phylo helper; phylo versus non-phylo split; validation rows. |
-| `psychometrics-irt` | Binary/IRT helper; constraint validation; comparator evidence. |
-| `lambda-constraint` | Confirmatory loading helper and reliability checks. |
+| `psychometrics-irt` | Preview/internal until after the binary lambda/JSDM article is coherent and the `mirt` comparator path is explicitly designed. The current page is not the final IRT article. |
+| `lambda-constraint` | First rework target for binary loading constraints: binary species/JSDM-style example, separate from mixed-family response teaching, with interval-aware matrix figures via `plot_correlations(..., style = "heatmap", matrix_layout = "estimate_ci")` whenever CI columns are displayed. |
 | `simulation-recovery-validated` | M3 target-explicit statistical gate passes. |
 | `cross-package-validation` | Phase 5.5 comparator evidence exists. |
 | `functional-biogeography` | Final capstone; component helpers and M3 evidence complete. |
@@ -244,3 +254,9 @@ advanced articles only after their gates pass.
 - Every Tier-1 worked example shows long and wide formulas side by side
   unless the article explicitly records why the wide form is not applicable.
 - Every figure-heavy article gets Florence review on rendered figures.
+- Articles that teach full covariance decomposition, communality, or
+  `Sigma = shared + unique` use `latent + unique`; a latent-only formula must
+  say it is latent-only and must not imply a free unique component.
+- Correlation matrices that display interval columns use
+  `plot_correlations(..., style = "heatmap", matrix_layout = "estimate_ci")`;
+  `plot_Sigma_heatmap()` remains point-estimate-only.

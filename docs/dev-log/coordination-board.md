@@ -97,17 +97,17 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | **Phase 56.3 — Parser changes** (augmented-LHS acceptance per Design 55 §4 + Design 56 §7 fail-loud invariant) | branch TBD (PR not yet open) | `R/brms-sugar.R`, `R/parse-multi-formula.R` (parser surface; possibly `R/fit-multi.R` for wiring) | Cadence (Codex 2026-05-26): **one PR per sub-phase** unless Ada explicitly asks to bundle. Following the same pattern as #289 (dormant TMB promotion) and #293 (n_traits classification): clean, narrow, 3-OS green required before merge. Shannon role when PR opens: Rose pre-publish + coord-board sync + after-task cross-reference. **Hard scope unchanged (Ada 2026-05-26):** the four engine/parser files are Codex-owned through Phase 56.1–56.4. |
-| Claude/Shannon | Standing by post-#293 close-out | — | — | Phase 56.2 close-out PR (this one) lands the #292 → #293 cross-reference, moves the prior 56.2 row to Recently resolved, and records Codex's coordination-question answers (cadence, A6 status, morphometrics paused). After this merges, Shannon holds until Codex's 56.3 PR opens — then Rose pre-publish + coord-board sync + after-task cross-ref (same pattern as #289 / #293). **A6 prep memo (#291) staged; A6 itself blocked behind Phase 56.5 close** per Codex 2026-05-26 confirmation. |
+| Codex | **Phase 56.4 — `phylo_unique` recovery test activation (anchor cell)** | branch TBD (PR not yet open) | `tests/testthat/test-phylo-unique-slope-gaussian.R` (remove `skip_until_stage3()` gate, attach recovery + byte-identity + forced-mismatch tests) | Per Codex 2026-05-26 evidence-first sequencing: activate the `phylo_unique(1 + x \| species)` recovery cell **first** before any fan-out. Expected within hours of #295 merge. Recovery contract: wide ↔ long byte-identity to 1e-6 + Gaussian recovery on σ²_α, σ²_β, ρ within tolerances from `docs/dev-log/audits/2026-05-26-phase-56-5-per-cell-scoping.md` §2.1 + a forced `n_lhs_cols = 1` negative test. **Other 15 skeleton tests remain skip-gated** until their backend lands in the fan-out grouping (`phylo_unique(..., vcv = A_user)` → `animal_unique` → `spatial_*` → `*_latent` / `*_indep` / `*_dep`). Shannon role when PR opens: Rose pre-publish + coord-board sync + after-task cross-reference. |
+| Claude/Shannon | Standing by post-#295 close-out | — | — | Phase 56.3 close-out PR (this one) lands the #294 → #295 cross-reference, moves the prior 56.3 row to Recently resolved, and queues the new Codex Phase 56.4 lane. **Auto-poll cron `0d2e7dec` (every 10 min)** running for hands-free pickup of the next Codex PR. **A6 prep memo (#291) + #287 pre-spec tidy (#296) both staged**; A6 itself blocked behind Phase 56.5 close per Codex 2026-05-26 confirmation. **Hard scope unchanged (Ada 2026-05-26):** the four engine/parser files Codex-owned through Phase 56.1–56.4. |
 
-**WIP**: 1 active (Codex Phase 56.3 parser; PR not yet open).
+**WIP**: 1 active (Codex Phase 56.4 anchor-cell recovery; PR not yet open).
 
-**Stack discipline (Shannon, 2026-05-26):** worktrees current after #292 + #293 merged.
+**Stack discipline (Shannon, 2026-05-26):** worktrees current after #295 + this PR.
 
-- `gllvmTMB` (main worktree) — at `main` tip `72f67de` (#293).
-- `gllvmTMB-codex-morphometrics` — Codex's prior morphometrics worktree on `codex/morphometrics-long-wide` (**paused/unknown per Codex 2026-05-26**; not closeable without Ada's call).
-- `gllvmTMB-56-2-closeout` — Claude's worktree for the present #293 close-out PR only, branch `agent/phase56-2-merge-closeout`.
-- Codex's Phase 56.3 worktree (when started) wherever Codex prefers locally.
+- `gllvmTMB` (main worktree) — at `main` tip `6026710` (#295).
+- `gllvmTMB-codex-morphometrics` — Codex's prior morphometrics worktree on `codex/morphometrics-long-wide` (**paused per Codex 2026-05-26**; no Phase 56 reactivation).
+- `gllvmTMB-56-3-closeout` — Claude's worktree for the present #295 close-out PR only, branch `agent/phase56-3-merge-closeout`.
+- Codex's Phase 56.4 worktree (when started) wherever Codex prefers locally.
 
 ## Validation Factory plan — Hidden Article Restoration + Validation (Ada, 2026-05-25)
 
@@ -276,7 +276,7 @@ leave a coordination comment first and wait for acknowledgement.
 | Tier-1 article rewrites (`choose-your-model`, `phylogenetic-gllvm`, etc.) | paused; revisit after this hygiene stop point |
 | `R/*` (general) | no active engine owner for non-structural-slope files. Recent parser/API edits on `main` are from PR #226 (`meta_V(V = V)`, `type = "exact"`, wide `traits()` marker preservation). Coordinate before further R edits. |
 | `R/fit-multi.R` | **Codex** (Phase 56.1 landed via #289 at `3133863`; Phase 56.2 closed via #293 at `72f67de` with no R-side edit required; future 56.3 may touch for parser wiring). Shannon stays out through Phase 56.4. |
-| `R/brms-sugar.R`, `R/parse-multi-formula.R` | **Codex** (Phase 56.3 — branch TBD): augmented-LHS parser changes per Design 55 §4 and Design 56 §7 fail-loud invariant. Shannon soft-no-touch until Phase 56.3 lands. |
+| `R/brms-sugar.R`, `R/parse-multi-formula.R` | **Codex** (Phase 56.3 landed via #295 at `6026710`; future 56.4 backend-grouped extensions may touch). Augmented-LHS parser per Design 55 §4 + Design 56 §7 fail-loud invariant. Shannon soft-no-touch through Phase 56.4. |
 | `tests/testthat/test-{phylo,animal,spatial,relmat}-{latent,unique,indep,dep}-slope-gaussian.R` (16 files, merged via #282/#283/#284) | **Codex** activates per file during Phase 56.4 by removing `skip_until_stage3()` gates. Until then, gated skeletons stay as-is. |
 | `tests/testthat/*` (general) | no active owner for non-structural-slope tests after #226 merged. New `tests/testthat/test-phase56-1-phylo-augmented-stub.R` on `main` via #289 (Phase 56.1 regression test, PASS 9). |
 | `src/gllvmTMB.cpp` | **Codex** (Phase 56.1 dormant promotion landed via #289 at `3133863`; future 56.2 / 56.3 may touch as needed): augmented-LHS engine block per Design 56 §5.2. Shannon stays out until Phase 56.4 close. |
@@ -321,6 +321,33 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-26 ~14:00 MT**: **PR [#295](https://github.com/itchyshin/gllvmTMB/pull/295)
+  merged at `6026710`** (2026-05-26T19:58:34Z) — Phase 56.3 anchor
+  parser slice. Wires `phylo_unique(1 + x | species)` (wide) and
+  `phylo_unique(0 + trait + (0 + trait):x | species)` (long) into
+  the augmented phylo path with two-column `Z_phy_aug` and
+  `n_lhs_cols = 2L`. Legacy `phylo_unique(0 + trait | species)`
+  preserved. Design 56 §7 fail-loud preserved (double-guard at
+  parser + R-side wiring). Status recorded as **`claimed`** (not
+  `covered`) in `docs/design/01-formula-grammar.md`; CLAUDE.md
+  scope-honesty marker added. Rose pre-publish
+  ([#issuecomment-4547768272](https://github.com/itchyshin/gllvmTMB/pull/295#issuecomment-4547768272))
+  posted before merge: APPROVE. 3-OS green: ubuntu 26m19s, macOS
+  23m28s, windows 30m46s. Next Codex lane: **Phase 56.4 anchor-cell
+  recovery activation** (this same `phylo_unique` cell first, per
+  Codex evidence-first sequencing) before any fan-out. Cross-
+  reference after-task at
+  `docs/dev-log/after-task/2026-05-26-phase-56-3-merge-closeout.md`.
+  (Ada / Codex / Claude)
+- **2026-05-26 ~12:00 MT**: **PR [#296](https://github.com/itchyshin/gllvmTMB/pull/296)
+  merged at `e443b6a`** — #287 audit-only tidy. Adds the §2
+  pre-spec defaults note (Curie / Codex adjusts only in the
+  activation PR if first recovery fit surfaces identifiability /
+  runtime trouble) and the evidence-first sequencing reminder
+  (anchor cell → recovery → backend/risk-grouped fan-out). §6
+  cross-refs gained #289 / #293 / #295 entries. Codex authorized
+  the tidy explicitly; no test-code, register, NEWS, article, or
+  deprecation edits. (Claude)
 - **2026-05-26 ~11:30 MT**: **PR [#293](https://github.com/itchyshin/gllvmTMB/pull/293)
   merged at `72f67de`** — Phase 56.2 classify n_traits audit sites.
   Five-file docs/design/dev-log slice (+404/−21): Design 56 §4

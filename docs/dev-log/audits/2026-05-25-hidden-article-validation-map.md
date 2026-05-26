@@ -11,6 +11,14 @@ check-log, design-doc, or PR-owned file was edited.
 `simulation-recovery-validated`, `cross-package-validation`, and
 `functional-biogeography`.
 
+**Superseding coordination note, 2026-05-26:** use the article-order
+correction in `ROADMAP.md` and
+`docs/dev-log/audits/2026-05-20-article-gate-matrix.md` before using
+the ranked queue below. Public expansion is paused. The next article
+lane is `lambda-constraint` as a binary species/JSDM-style loading
+constraint article; `psychometrics-irt` and `mixed-family-extractors`
+remain internal/deferred.
+
 ## Coordination State
 
 Current local branch at audit time:

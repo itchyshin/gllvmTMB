@@ -11214,3 +11214,110 @@ Deliberately not run:
   R-CMD-check if GitHub attaches checks.
 - No Preview-banner removal, live `mirt` comparator chunk, full M2.5
   reauthoring, lambda-constraint edit, Design 55 edit, or r200 dispatch.
+
+## 2026-05-26 -- article-order correction: binary first, mixed-family later
+
+Branch: `codex/article-binary-lambda-coordination`
+
+Files changed:
+
+- `ROADMAP.md`
+- `docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+- `docs/dev-log/audits/2026-05-25-hidden-article-validation-map.md`
+- `docs/dev-log/coordination-board.md`
+- `vignettes/articles/mixed-family-extractors.Rmd`
+- `vignettes/articles/psychometrics-irt.Rmd`
+- `docs/dev-log/after-task/2026-05-26-article-order-correction.md`
+- `docs/dev-log/check-log.md`
+
+What changed:
+
+- Recorded the maintainer's article ordering correction: keep the public
+  surface to `morphometrics`, `covariance-correlation`, `api-keyword-grid`,
+  `response-families`, `convergence-start-values`, and `pitfalls`.
+- Added the coordination note: no public promotion of
+  `mixed-family-extractors`, `psychometrics-irt`, or `lambda-constraint`
+  until the binary lambda/JSDM article plan lands.
+- Set `lambda-constraint` as the next article planning lane: binary
+  species/JSDM-style loading constraints, separate from mixed-family
+  response teaching.
+- Kept `mixed-family-extractors` internal pending a comprehensive
+  mixed-response expansion across Gaussian, binomial, Poisson/NB,
+  beta/proportion, and blocked delta/hurdle cases.
+- Kept `psychometrics-irt` Preview/internal until the binary lambda/JSDM
+  article is coherent and the `mirt` comparator path is designed.
+- Repaired the psychometrics wording that said both data shapes give the
+  same fit; the wide code is now described as a Gaussian-only Likert sanity
+  check, not the full mixed-family fit.
+- Added the figure/model contract: full covariance decomposition and
+  communality teaching use `latent + unique`; latent-only examples say so;
+  interval-bearing correlation matrices use
+  `plot_correlations(..., style = "heatmap", matrix_layout = "estimate_ci")`;
+  `plot_Sigma_heatmap()` remains point-estimate-only.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`.
+- Recent-lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent history included PRs #274, #275, #276, #277, #278, #279,
+  and #280; this branch does not touch the structural-slope files from
+  #279/#280.
+- PR #279 file check:
+  `gh pr view 279 --repo itchyshin/gllvmTMB --json number,title,headRefName,baseRefName,files,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> PR #279 files were `docs/design/56-augmented-lhs-engine-stage3.md`
+  and `docs/dev-log/audits/2026-05-26-design-55-a1-closeout.md`; not
+  touched here.
+- Article renders after source load:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/psychometrics-irt", lazy = FALSE, new_process = FALSE, quiet = FALSE); pkgdown::build_article("articles/mixed-family-extractors", lazy = FALSE, new_process = FALSE, quiet = FALSE); pkgdown::build_article("articles/roadmap", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> wrote `pkgdown-site/articles/psychometrics-irt.html`,
+  `pkgdown-site/articles/mixed-family-extractors.html`, and
+  `pkgdown-site/articles/roadmap.html`.
+- HTML figure alt/caption check:
+  `Rscript --vanilla -e 'library(xml2); files <- c("pkgdown-site/articles/psychometrics-irt.html", "pkgdown-site/articles/mixed-family-extractors.html", "pkgdown-site/articles/roadmap.html"); for (f in files) { html <- read_html(f); imgs <- xml_find_all(html, "//img[contains(@src, \"figure-html\")]"); if (length(imgs) == 0L) { cat(f, "figures=0\n"); next }; alts <- xml_attr(imgs, "alt"); bad_alt <- which(is.na(alts) | !nzchar(alts)); caps <- vapply(imgs, function(img) trimws(xml_text(xml_find_first(img, "following-sibling::p[contains(@class, \"caption\")][1]"))), character(1)); bad_cap <- which(!nzchar(caps)); cat(f, "figures=", length(imgs), " bad_alt=", length(bad_alt), " bad_cap=", length(bad_cap), "\n", sep=""); if (length(bad_alt) || length(bad_cap)) stop("Missing alt/caption in ", f) }'`
+  -> psychometrics figures=1 bad_alt=0 bad_cap=0; mixed-family figures=1
+  bad_alt=0 bad_cap=0; roadmap figures=0.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Rose / figure scans:
+
+- `rg -n 'Both data shapes give the same fit|same mixed-family fit|full mixed-family CFA.*wide|M2\.5 re-authoring complete|public promotion of|No public promotion|interval-aware correlation matrix|lower triangle carries|point-estimate-only|latent-only|Sigma = shared \+ unique|matrix_layout = "estimate_ci"|plot_Sigma_heatmap\(' ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-25-hidden-article-validation-map.md docs/dev-log/coordination-board.md vignettes/articles/psychometrics-irt.Rmd vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/psychometrics-irt.html pkgdown-site/articles/mixed-family-extractors.html pkgdown-site/articles/roadmap.html`
+  -> expected hits only; stale "both data shapes give the same fit" wording
+  is gone.
+- `rg -n 'upper triangle|lower triangle|interval bounds|interval labels|estimate_ci|plot_correlations\(|plot_Sigma_heatmap\(' vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd README.md ROADMAP.md`
+  -> interval-in-matrix displays in Get Started and covariance/correlation use
+  `matrix_layout = "estimate_ci"`; touched psychometrics now says its heatmap
+  is point-estimate-only and future interval matrices should use
+  `estimate_ci`.
+- `rg -n '\bS_B\b|\bS_W\b|\\bf S|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(|meta_known_V|gllvmTMB_wide|trio|profile-likelihood default' ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md docs/dev-log/audits/2026-05-25-hidden-article-validation-map.md docs/dev-log/coordination-board.md vignettes/articles/psychometrics-irt.Rmd vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/psychometrics-irt.html pkgdown-site/articles/mixed-family-extractors.html pkgdown-site/articles/roadmap.html`
+  -> only historical `gllvmTMB_wide` mentions in older
+  `docs/dev-log/coordination-board.md` timeline lines; no touched public prose
+  uses stale aliases or notation.
+
+Review gates:
+
+- Pat / article-tier: PASS. Public surface remains the six-page set.
+- Fisher: PASS. Mixed-family response, binary loading-constraint, and IRT
+  comparator claims are separated.
+- Florence: PASS. Touched rendered article figures have alt/caption; interval
+  matrix wording points to `plot_correlations(..., matrix_layout =
+  "estimate_ci")`.
+- Rose / pre-publish: PASS. Claims remain internal/Preview-boundary scoped.
+- Shannon / coordination: PASS. Open PR census is empty; no structural-slope
+  or PR #279 files touched.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and Rd files were not changed.
+- No full `devtools::test()`; no package code or tests changed, and rendered
+  article paths exercised the touched articles.
+- No `devtools::check(args = "--no-manual")`; the PR should receive ordinary
+  R-CMD-check if GitHub attaches checks.
+- No lambda article re-authoring, mixed-family expansion, `mirt` comparator
+  work, `_pkgdown.yml` promotion, validation-debt status change, or r200
+  dispatch.

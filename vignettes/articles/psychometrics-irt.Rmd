@@ -41,7 +41,9 @@ the broader M2.5 teaching surface: the live `mirt` comparator chunk,
 the "Stay Laplacian" pedagogy note, and the final binary-IRT rewrite
 remain in the rewrite-prep contract. **DEFERRED** here are
 polytomous mixed-family IRT examples (FAM-14 remains partial) and
-modification-index workflows.
+modification-index workflows. This page is not the final IRT article:
+it stays Preview/internal until the binary lambda/JSDM article is
+coherent and the `mirt` comparator path is explicitly designed.
 
 `gllvmTMB` is mostly developed for ecological data, but the underlying
 GLLVM machinery is the same one used in psychometrics, item-response
@@ -162,7 +164,9 @@ cbind(df_wide["respondent"], round(df_wide[, item_names], 2)) |> head()
 
 First fit without any constraint -- exploratory (rotational) loadings.
 The `family = list(...)` mechanism dispatches per row using the
-`item_family` column. Both data shapes give the same fit:
+`item_family` column. The full mixed-family CFA is long-format only in
+this preview; the wide call below is a Gaussian-only Likert sanity
+check, not the same fit.
 
 ```{r fit-exploratory}
 fam <- list(gaussian(), binomial())
@@ -187,14 +191,15 @@ fit_exp_wide_gaussian <- gllvmTMB(
   data = df_wide,
   unit = "respondent"
 )
-# The wide path fits the same Gaussian sub-model on the Likert items.
+# The wide path fits only the Gaussian sub-model on the Likert items.
 # The full mixed-family CFA uses the long-format `fit_exp_long`.
 fit_exp <- fit_exp_long
 fit_exp
 ```
 
-The exploratory loadings are rotation-invariant; the implied trait
-covariance is what we trust:
+The exploratory loadings are rotation-invariant. This preview uses a
+latent-only formula, so the implied unit-level covariance is the
+shared latent surface, not a full `latent + unique` decomposition:
 
 ```{r sigma-exp}
 SB_exp_rows <- extract_Sigma_table(
@@ -210,7 +215,7 @@ SB_exp_rows[, c("trait_i", "trait_j", "estimate", "interval_status")]
 The same rotation-invariant target is easier to scan as a correlation
 heatmap:
 
-```{r sigma-exp-corr, fig.width = 6.4, fig.height = 5.8, fig.cap = "Exploratory item correlations from the total unit-level Sigma matrix. The attention-item block is strongly positive, mood-item correlations are weakly positive, and off-block correlations are near zero.", fig.alt = "Six by six heatmap of exploratory item correlations. The three attention items form a strong positive block with correlations near one. The three mood items have weak positive correlations around 0.07 to 0.10. Correlations between attention and mood items are near zero."}
+```{r sigma-exp-corr, fig.width = 6.4, fig.height = 5.8, fig.cap = "Point-estimate exploratory item correlations from the latent-only preview fit. The attention-item block is strongly positive, mood-item correlations are weakly positive, and off-block correlations are near zero.", fig.alt = "Six by six heatmap of exploratory item correlations from a latent-only preview fit. The three attention items form a strong positive block with correlations near one. The three mood items have weak positive correlations around 0.07 to 0.10. Correlations between attention and mood items are near zero."}
 SB_exp_corr <- extract_Sigma_table(
   fit_exp,
   level = "unit",
@@ -222,10 +227,16 @@ plot_Sigma_heatmap(
   SB_exp_corr,
   label_digits = 2,
   title = "Exploratory item correlations",
-  subtitle = "Rotation-invariant correlations from the total unit-level Sigma."
+  subtitle = "Point estimates from a latent-only preview fit."
 ) +
   ggplot2::labs(caption = NULL)
 ```
+
+This heatmap is point-estimate-only. If the reworked binary IRT page
+needs an interval-aware correlation matrix, it should replace this
+display with `plot_correlations(..., style = "heatmap",
+matrix_layout = "estimate_ci")` so the lower triangle carries the
+supplied interval labels.
 
 But for *interpreting* which item loads on which factor, the raw
 loadings need to be either pinned (CFA) or rotated (varimax /

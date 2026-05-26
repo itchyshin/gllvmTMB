@@ -33,6 +33,16 @@ knitr::opts_chunk$set(
 > [rewrite-prep handoff](https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-05-16-phase0c-rewrite-prep.md)
 > for the rewrite contract.
 
+Scope boundary: **IN** are long-format Gaussian + binary CFA examples
+using covered binomial-logit machinery (FAM-02), per-row mixed-family
+dispatch (MIX-01 / MIX-02), binary confirmatory loading constraints
+(LAM-03), and point-estimate Sigma heatmaps (EXT-27). **PARTIAL** is
+the broader M2.5 teaching surface: the live `mirt` comparator chunk,
+the "Stay Laplacian" pedagogy note, and the final binary-IRT rewrite
+remain in the rewrite-prep contract. **DEFERRED** here are
+polytomous mixed-family IRT examples (FAM-14 remains partial) and
+modification-index workflows.
+
 `gllvmTMB` is mostly developed for ecological data, but the underlying
 GLLVM machinery is the same one used in psychometrics, item-response
 theory (IRT), and structural equation modelling. This article walks
@@ -200,7 +210,7 @@ SB_exp_rows[, c("trait_i", "trait_j", "estimate", "interval_status")]
 The same rotation-invariant target is easier to scan as a correlation
 heatmap:
 
-```{r sigma-exp-corr, fig.width = 6.4, fig.height = 5.8}
+```{r sigma-exp-corr, fig.width = 6.4, fig.height = 5.8, fig.cap = "Exploratory item correlations from the total unit-level Sigma matrix. The attention-item block is strongly positive, mood-item correlations are weakly positive, and off-block correlations are near zero.", fig.alt = "Six by six heatmap of exploratory item correlations. The three attention items form a strong positive block with correlations near one. The three mood items have weak positive correlations around 0.07 to 0.10. Correlations between attention and mood items are near zero."}
 SB_exp_corr <- extract_Sigma_table(
   fit_exp,
   level = "unit",
@@ -213,7 +223,8 @@ plot_Sigma_heatmap(
   label_digits = 2,
   title = "Exploratory item correlations",
   subtitle = "Rotation-invariant correlations from the total unit-level Sigma."
-)
+) +
+  ggplot2::labs(caption = NULL)
 ```
 
 But for *interpreting* which item loads on which factor, the raw

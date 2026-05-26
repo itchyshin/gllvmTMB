@@ -11730,3 +11730,50 @@ Deliberately not run / not done:
   article, reference topic, or NEWS file changed.
 - No validation-debt row movement, ROADMAP tick, deprecation,
   user-facing example, article update, or 56.5 fan-out.
+
+## 2026-05-26 -- Claude Grue handover checkpoint after Phase 56.4 close-out
+
+Branch: `main` at `58b6b56` before creating the handover branch.
+
+Files changed:
+
+- `docs/dev-log/recovery-checkpoints/2026-05-26-165621-ada-to-claude-grue-handover.md`
+- `docs/dev-log/check-log.md`
+
+What changed:
+
+- Added a repo-visible handover checkpoint for Claude Grue to carry
+  the GLM / GLLVM / TMB-facing `gllvmTMB` work for the next few days.
+- Recorded the current branch / PR / CI state: no open PRs, #298
+  merged, #299 close-out merged, post-#299 main `R-CMD-check` passed,
+  and post-#299 pkgdown passed.
+- Made the next safest lane explicit: Phase 56.5 relmat /
+  user-supplied-A analogue of the green `phylo_unique` anchor,
+  beginning in `tests/testthat/test-relmat-unique-slope-gaussian.R`.
+- Preserved the public-surface boundary: no validation-debt promotion,
+  NEWS, articles, roxygen, README, or deprecation wording until the
+  Phase 56.6 claim gate.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch` -> clean `main`;
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,url`
+  -> `[]`;
+  `git log --all --oneline --since="6 hours ago"` -> expected
+  #298/#299 and adjacent Phase 56 commits only.
+- `gh run list --repo itchyshin/gllvmTMB --limit 8 --json databaseId,workflowName,status,conclusion,createdAt,event,headBranch,headSha,url`
+  -> post-#299 main `R-CMD-check` success on run `26479492838` and
+  post-#299 pkgdown success on run `26479513474`.
+- First PR #300 fast-path CI run `26479998991` failed before any R
+  setup because `git diff --check origin/main...HEAD` caught trailing
+  whitespace in the new Markdown handover header. The follow-up commit
+  removes those trailing spaces.
+- `git diff --check origin/main...HEAD` -> clean after the whitespace
+  cleanup.
+
+Deliberately not run / not done:
+
+- No R tests; this is a process-only handover document.
+- No pkgdown build; no user-facing site source changed.
+- No Phase 56.5 implementation started under the handover branch.

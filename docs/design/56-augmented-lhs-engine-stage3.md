@@ -164,26 +164,29 @@ Per the long-standing audit referenced in
 **nine hardcoded `n_traits` sites in `R/fit-multi.R`** that
 silently truncate when the formula carries an augmented LHS.
 
-Phase 56.2 enumerates and edits each:
+Phase 56.2 re-audits each site after the #289 dormant TMB
+promotion. The table below is the post-#289 classification, not a
+mechanical replacement list:
 
-| Site (approximate line) | Current literal | Phase 56.2 edit |
+| Site | Phase 56.2 classification | Reason |
 |---|---|---|
-| `R/fit-multi.R:~1150` (sizing of `theta_rr_phy`) | `n_traits` | `n_lhs_cols` |
-| `R/fit-multi.R:~1152` (Lambda_phy shape) | `n_traits` | `n_lhs_cols` |
-| `R/fit-multi.R:~1154` (b_phy_rr sizing) | `n_traits` | `n_lhs_cols` |
-| `R/fit-multi.R:~1173` (phylo_diag random-effect block) | `n_traits` | `n_lhs_cols` |
-| `R/fit-multi.R:~1180` (DATA_ARRAY assembly) | `n_traits` | `n_lhs_cols` |
-| `R/fit-multi.R:~1185` (Cphy / Ainv block sizing) | `n_traits` | `n_lhs_cols` (some sites stay `n_traits` if they index trait-specific variance; document per-site) |
-| `R/fit-multi.R:~1187` (Lambda inflation guard) | `n_traits` | `n_lhs_cols` |
-| `R/fit-multi.R:~1227-1234` (b_phy_slope init) | `n_traits` | replaced by `b_phy_aug` init using `n_lhs_cols` |
-| `R/fit-multi.R:~1301` (b_phy_slope dim check) | `n_traits` | replaced by `b_phy_aug` |
+| `theta_rr_phy` sizing (`R/fit-multi.R:1303-1307`; `src/gllvmTMB.cpp:469-477`) | keep `n_traits` | Legacy phylogenetic latent covariance path; augmented structural slopes route through `b_phy_aug`. |
+| `Lambda_phy` shape (`src/gllvmTMB.cpp:469-502`) | keep `n_traits` | Trait-by-rank loading matrix; replacing the row count with block-local `n_lhs_cols` would corrupt the existing `phylo_latent` / `phylo_dep` path. |
+| `b_phy_rr` / `g_phy` sizing (`R/fit-multi.R:1308`) | keep current shape | `g_phy` is `n_aug_phy × d_phy`; it indexes latent phylogenetic factors, not LHS columns. |
+| `phylo_diag` random-effect block (`R/fit-multi.R:1312-1314`; `src/gllvmTMB.cpp:513-528`) | keep `n_traits` | Per-trait phylogenetic random intercepts for the paired decomposition. Future augmented `phylo_unique(1 + x \| sp)` uses `b_phy_aug`, not this block. |
+| `DATA_ARRAY` assembly (`R/fit-multi.R:1191-1197`, `1247-1249`) | already promoted | #289 added `Z_phy_aug` with dimensions `n_obs × n_lhs_cols × n_phy_aug_blocks`. |
+| `Cphy` / `Ainv` block sizing (`R/fit-multi.R:1026-1128`) | keep covariance dimensions | This code indexes tree / relatedness dimensions (`n_species`, `n_aug_phy`), not traits or LHS columns. |
+| Lambda constraint / diagonal guard (`R/fit-multi.R:1537-1553`) | keep `n_traits` | The `lambda_constraint$phy` path belongs to the trait loading matrix; augmented structural slopes do not consume it in Phase 56.2. |
+| `b_phy_slope` init (`R/fit-multi.R:1316-1320`) | legacy kept; augmented init present | `b_phy_slope` remains for byte-identical legacy `phylo_slope()`. #289 added `b_phy_aug`, `log_sd_b`, and `atanh_cor_b` using `n_lhs_cols`. |
+| `b_phy_slope` dim check / random selection (`R/fit-multi.R:1609-1619`, `1866-1871`; `src/gllvmTMB.cpp:560-574`) | already split by flag | The R map/random lists choose legacy `b_phy_slope` versus augmented `b_phy_aug`; the C++ augmented branch has dimensional guards. |
 
-Site-by-site decisions (whether to keep `n_traits` or promote
-to `n_lhs_cols`) must be documented in the Phase 56.2 PR's
-after-task report. Some sites correctly index per-trait
-quantities (e.g. trait-specific variance components) and stay
-as `n_traits`; others index "columns of the random-effect
-design matrix" and become `n_lhs_cols`.
+Site-by-site decisions are recorded in
+`docs/dev-log/audits/2026-05-26-phase56-2-rside-audit.md`.
+The main implementation rule is now: keep legacy trait-indexed
+phylogenetic covariance paths as `n_traits`, and use block-local
+`n_lhs_cols` only for the augmented structural-slope design
+matrix and covariance path (`Z_phy_aug`, `b_phy_aug`, `log_sd_b`,
+`atanh_cor_b`).
 
 ## 5. The 2×2 (intercept, slope) covariance parameterisation
 
@@ -467,9 +470,12 @@ change** (Wilkinson formulas accepted/rejected exactly as before).
 - Edit each to use `n_lhs_cols` where it indexes RE design
   columns; keep `n_traits` where it indexes per-trait
   quantities.
-- Add `n_lhs_cols` to the TMB data list (default = `n_traits`
-  for backward compatibility; set to `2 * n_traits` when
-  augmented LHS is detected).
+- Reconcile the older draft language with the block-local
+  semantics ratified in §5.2: #289 already adds
+  `n_lhs_cols = 1L` as the dormant default. Phase 56.3 parser
+  work sets `n_lhs_cols = 2L` for supported intercept+slope
+  forms; trait stacking lives in `Z_phy_aug` rows and future
+  block replication, not in a `2 * n_traits` prior dimension.
 - **Existing tests pass byte-identically**.
 
 **Lead**: Boole + Gauss. **Reviewers**: Noether + Rose.

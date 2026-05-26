@@ -562,10 +562,30 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the Ainv_phy_rr from phylo_rr; only one tree / VCV needed even when
   ## both terms appear. Initial release: ONE continuous covariate, ONE
   ## shared slope variance, slopes shared across traits.
-  use_phylo_slope  <- any(kinds == "phylo_slope")
+  phylo_slope_idx <- which(kinds == "phylo_slope")
+  use_phylo_slope <- length(phylo_slope_idx) > 0L
+  if (length(phylo_slope_idx) > 1L) {
+    cli::cli_abort("Only one phylogenetic random-regression term is supported per formula.")
+  }
+  phylo_slope_cs <- if (use_phylo_slope) {
+    parsed$covstructs[[phylo_slope_idx[1L]]]
+  } else NULL
+  use_phylo_slope_correlated <- isTRUE(
+    phylo_slope_cs$extra$.phylo_unique_augmented
+  )
+  phylo_slope_lhs_form <- if (use_phylo_slope_correlated) {
+    phylo_slope_cs$extra$lhs_form %||% "unsupported"
+  } else "legacy_slope"
   phylo_slope_xcol <- if (use_phylo_slope) {
-    cs <- parsed$covstructs[[which(kinds == "phylo_slope")[1]]]
-    deparse(cs$lhs)
+    if (use_phylo_slope_correlated) {
+      slope_col <- phylo_slope_cs$extra$slope_col
+      if (is.null(slope_col) || !nzchar(slope_col)) {
+        cli::cli_abort("Internal: augmented phylogenetic random regression is missing {.code slope_col}.")
+      }
+      slope_col
+    } else {
+      deparse(phylo_slope_cs$lhs)
+    }
   } else NA_character_
 
   d_B <- if (use_rr_B) {
@@ -1184,15 +1204,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Add the covariate column to the data frame."))
     as.numeric(data[[phylo_slope_xcol]])
   } else rep(0.0, n_obs)
-  ## Phase 56.1: dormant augmented-LHS phylogenetic random-regression
-  ## stubs. This is deliberately not user-facing yet; parser activation
-  ## waits for Phases 56.2-56.3. With the flag FALSE, the legacy
-  ## b_phy_slope path remains active and byte-identical.
-  use_phylo_slope_correlated <- FALSE
-  n_lhs_cols <- 1L
+  ## Phase 56.3: parser activation for the augmented-LHS phylogenetic
+  ## random-regression path. Legacy phylo_slope(x | species) keeps the
+  ## one-column b_phy_slope path; phylo_unique(1 + x | species) and its
+  ## long-form equivalent route through b_phy_aug with columns
+  ## (intercept, slope).
+  n_lhs_cols <- if (use_phylo_slope_correlated) 2L else 1L
   n_phy_aug_blocks <- 1L
   Z_phy_aug <- array(0.0, dim = c(n_obs, n_lhs_cols, n_phy_aug_blocks))
-  if (use_phylo_slope) {
+  if (use_phylo_slope_correlated) {
+    if (
+      !phylo_slope_lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+    ) {
+      cli::cli_abort(c(
+        "Unsupported augmented phylogenetic random-regression LHS.",
+        "i" = "Got LHS form {.val {phylo_slope_lhs_form}}.",
+        ">" = "Use {.code phylo_unique(1 + x | species)} or {.code phylo_unique(0 + trait + (0 + trait):x | species)}."
+      ))
+    }
+    Z_phy_aug[, 1L, 1L] <- 1.0
+    Z_phy_aug[, 2L, 1L] <- x_phy_slope_dat
+  } else if (use_phylo_slope) {
     Z_phy_aug[, 1L, 1L] <- x_phy_slope_dat
   }
 

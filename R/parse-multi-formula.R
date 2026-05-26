@@ -121,6 +121,7 @@ parse_covstruct_call <- function(e, fn, eval_env = parent.frame()) {
     stop(sprintf("%s() argument must be of the form 'lhs | group'", fn))
   cov_lhs   <- bar[[2L]]
   cov_group <- bar[[3L]]
+  lhs_info <- .gllvmTMB_lhs_form(cov_lhs)
   ## Remaining named args. Evaluate each in `eval_env` (the formula's
   ## environment, i.e. the user's calling frame) so that per-term args
   ## like `tree = my_tree`, `coords = c("lon", "lat")`, `vcv = Cphy`
@@ -139,6 +140,14 @@ parse_covstruct_call <- function(e, fn, eval_env = parent.frame()) {
         else if (fn %in% c("propto", "equalto")) nm <- "vcv"
       }
       extra[[nm]] <- val
+    }
+  }
+  if (!identical(lhs_info$lhs_form, "unsupported")) {
+    if (is.null(extra$lhs_form)) {
+      extra$lhs_form <- lhs_info$lhs_form
+    }
+    if (!is.null(lhs_info$slope_col) && is.null(extra$slope_col)) {
+      extra$slope_col <- lhs_info$slope_col
     }
   }
   list(kind = fn, lhs = cov_lhs, group = cov_group, extra = extra)

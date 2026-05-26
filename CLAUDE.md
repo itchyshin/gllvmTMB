@@ -48,6 +48,10 @@ does NOT do" section), see
   `gllvmTMB()`. The legacy matrix wrapper `gllvmTMB_wide(Y, ...)` is
   soft-deprecated as of 0.2.0 -- new code should use the formula API,
   and removal must not be claimed while the export remains live.
+- Phase 56.3 parser work admits `phylo_unique(1 + x | species)` and
+  `phylo_unique(0 + trait + (0 + trait):x | species)` as **claimed**
+  augmented-LHS syntax only. Do not advertise it as covered until the
+  Phase 56.4 recovery and validation-debt evidence lands.
 
 ## Before Finishing Work
 

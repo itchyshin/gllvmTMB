@@ -54,10 +54,16 @@ This design specifies:
 ## 2. Scope
 
 In scope:
-- **Engine work for `n_lhs_cols ∈ {1, 2}` only**: intercept-only
-  (the current state, `n_lhs_cols = T`) and intercept + slope
-  on a single covariate (the new state, `n_lhs_cols = 2T` per
-  Design 55 §3 wide↔long contract).
+- **Engine work for `n_lhs_cols ∈ {1, 2}` only** — **block-local**
+  semantics per §5.2 (values index random-effect columns at the
+  prior site, *not* trait stacking):
+  - `n_lhs_cols == 1`: the legacy slope-only path (current state).
+  - `n_lhs_cols == 2`: the new intercept + slope on a single
+    covariate.
+  Per-trait expansion happens at the R-side Z-matrix
+  construction, *not* at the engine prior. Both wide and long
+  surfaces share the same `2 × 2` prior, preserving the
+  Design 55 §3 wide↔long byte-identity contract.
 - All four structural families (phylo / animal / spatial /
   user-supplied A) and the keyword subset Design 55 §5 marks
   APPLICABLE (16 cells = 4 keywords × 4 families;
@@ -101,12 +107,17 @@ product:
 eta(o) += b_phy_slope(species_aug_id(o)) * x_phy_slope(o);
 ```
 
-**New shape (Phase 56.1)**:
+**New shape (Phase 56.1)** — scalable names + block-local
+`n_lhs_cols` per §5.2:
 
 ```cpp
-DATA_INTEGER(n_lhs_cols);        // 1 (intercept-only) or 2 (intercept + slope)
-PARAMETER_MATRIX(log_sd_b);      // n_lhs_cols × n_aug_phy_blocks
-PARAMETER_VECTOR(atanh_cor_b);   // length n_aug_phy_blocks (one ρ per block when n_lhs_cols=2)
+DATA_INTEGER(n_lhs_cols);        // block-local: 1 (legacy slope-only) or 2 (intercept + slope)
+PARAMETER_VECTOR(log_sd_b);      // length n_lhs_cols
+                                 // n_lhs_cols=1: [log σ_slope]   (legacy)
+                                 // n_lhs_cols=2: [log σ_α, log σ_β]
+PARAMETER_VECTOR(atanh_cor_b);   // length n_lhs_cols*(n_lhs_cols-1)/2
+                                 // n_lhs_cols=1: length 0 (no off-diagonal)
+                                 // n_lhs_cols=2: length 1 (the single ρ)
 PARAMETER_ARRAY(b_phy_aug);      // n_aug_phy × n_lhs_cols × n_aug_phy_blocks
 DATA_ARRAY(Z_phy_aug);           // n_obs × n_lhs_cols × n_aug_phy_blocks (column 0 = 1's; column 1 = x covariate)
 ```
@@ -135,7 +146,7 @@ that may absorb augmented LHS:
 | Current block | New shape | Sites changed |
 |---|---|---|
 | `b_phy_slope` (vector) | `b_phy_aug` (3D array) | `src/gllvmTMB.cpp:186-195, 526-542, 701-704` |
-| `b_phy_diag` (vector × n_traits) | `b_phy_aug` (3D array, `n_lhs_cols = T × 2` for trait-stacked + slope-stacked) | `src/gllvmTMB.cpp` phylo_diag block |
+| `b_phy_diag` (vector × n_traits) | `b_phy_aug` (3D array; `n_lhs_cols ∈ {1, 2}` is block-local — per-trait stacking lives in the `n_aug_phy_blocks` dimension, not in `n_lhs_cols`) | `src/gllvmTMB.cpp` phylo_diag block |
 | `b_spde_*` for spatial keywords | analogous 3D array | `src/gllvmTMB.cpp` spde block |
 | `b_animal_*` (sugar over phylo) | inherits phylo block automatically | n/a, no engine code (Design 14 §8) |
 | `b_phy_rr` (matrix `n_aug × d`) | unchanged shape; augmented LHS treated as extra `d` columns conceptually but routed through the new `b_phy_aug` path instead | `src/gllvmTMB.cpp:456-494` |
@@ -209,26 +220,70 @@ or user-supplied — Design 14 §5 byte-equivalence).
 
 ### 5.2 Parameterisation in TMB
 
-Three new parameters per applicable block:
+**Scalable block names** (revised 2026-05-26 per Codex/Ada
+clarification): the prior parameters are *vectors* indexed over
+`n_lhs_cols`, not separate scalars. This generalises naturally to
+`s ≥ 2` (RE-03) without renaming, and matches the existing TMB
+house style for multi-column priors (`log_sd_phy_diag[t]`,
+`log_sigma_re_int[term]`).
 
 ```cpp
-PARAMETER(log_sd_b_intercept);  // log σ_α
-PARAMETER(log_sd_b_slope);      // log σ_β
-PARAMETER(atanh_cor_b);          // atanh(ρ); ρ = tanh(atanh_cor_b)
+PARAMETER_VECTOR(log_sd_b);     // length n_lhs_cols
+                                // n_lhs_cols=1: [log σ_slope]   (legacy slope-only)
+                                // n_lhs_cols=2: [log σ_α, log σ_β]
+PARAMETER_VECTOR(atanh_cor_b);  // length n_lhs_cols*(n_lhs_cols-1)/2
+                                // n_lhs_cols=1: length 0 (no off-diagonal)
+                                // n_lhs_cols=2: length 1 (the single ρ)
 ```
+
+**Block-local `n_lhs_cols` semantics** (clarified 2026-05-26):
+`Σ_b` is the prior between the random-effect columns (intercept,
+slope) per group, **shared across traits**. Per-trait expansion
+happens at the Z-matrix construction site (R-side
+`R/fit-multi.R`), not at the engine prior. The Design 55 §3
+wide↔long byte-identity contract depends on this: both surfaces
+share a `2 × 2` prior; the long surface just stacks more Z rows.
+If `Σ_b` were `2T × 2T` at the prior level, wide and long would
+not be byte-identical.
 
 Reconstruction in C++:
 
 ```cpp
-Type sd_int = exp(log_sd_b_intercept);
-Type sd_slp = exp(log_sd_b_slope);
-Type cor    = tanh(atanh_cor_b);
-matrix<Type> Sigma_b(2, 2);
-Sigma_b(0, 0) = sd_int * sd_int;
-Sigma_b(1, 1) = sd_slp * sd_slp;
-Sigma_b(0, 1) = sd_int * sd_slp * cor;
-Sigma_b(1, 0) = Sigma_b(0, 1);
+// Build Σ_b from the scalable parameter vectors.
+matrix<Type> Sigma_b(n_lhs_cols, n_lhs_cols);
+Sigma_b.setZero();
+for (int j = 0; j < n_lhs_cols; j++) {
+  Type sd_j = exp(log_sd_b(j));
+  Sigma_b(j, j) = sd_j * sd_j;
+}
+// Off-diagonal fill from atanh_cor_b (linear index across upper triangle).
+int idx = 0;
+for (int j = 0; j < n_lhs_cols; j++) {
+  for (int k = j + 1; k < n_lhs_cols; k++) {
+    Type cor_jk = tanh(atanh_cor_b(idx));
+    Type cov_jk = exp(log_sd_b(j)) * exp(log_sd_b(k)) * cor_jk;
+    Sigma_b(j, k) = cov_jk;
+    Sigma_b(k, j) = cov_jk;
+    idx++;
+  }
+}
 ```
+
+For `n_lhs_cols == 1` (legacy slope-only): `Σ_b` is `1 × 1` with
+diagonal `exp(log_sd_b(0))^2`; the off-diagonal loop is empty.
+This is byte-identical with the current scalar-slope path.
+For `n_lhs_cols == 2` (intercept + slope): `Σ_b` is `2 × 2` with
+diagonal `[σ²_α, σ²_β]` and off-diagonal
+`σ_α σ_β tanh(atanh_cor_b(0))`.
+
+**Map-list discipline**: when `use_phylo_slope_correlated == 0`
+(default; backward-compat path), inactive entries beyond the
+legacy scalar are `factor(NA)`-mapped on the R side:
+
+- `log_sd_b[2:]` mapped to NA when `n_lhs_cols == 1`.
+- `atanh_cor_b` entirely mapped to NA when `n_lhs_cols == 1`.
+
+The optimizer ignores them; the legacy fit reproduces byte-identically.
 
 The negative-log-density contribution uses TMB's
 `MVNORM_t<Type>` machinery with the Kronecker product:
@@ -253,8 +308,8 @@ prohibitive $O((2n_{\text{sp}})^3)$ matrix inverse.
 | Keyword | Σ_b shape | Σ_b parameters |
 |---|---|---|
 | `latent(LHS, d = K)` | block-diagonal across LHS columns (each column gets its own factor-analytic decomposition Lambda_k Lambda_k^T + diag) | `theta_rr_lhs[k]` per LHS column; `log_psi_lhs[k]` per LHS column |
-| `unique(LHS)` | full 2×2 (intercept-slope correlation estimated) | `log_sd_b_intercept`, `log_sd_b_slope`, `atanh_cor_b` |
-| `indep(LHS)` | diagonal (ρ = 0 fixed; no intercept-slope correlation) | `log_sd_b_intercept`, `log_sd_b_slope` (cor_b mapped to 0) |
+| `unique(LHS)` | full 2×2 (intercept-slope correlation estimated) | `log_sd_b[1:n_lhs_cols]`, `atanh_cor_b[1]` (the single ρ) |
+| `indep(LHS)` | diagonal (ρ = 0 fixed; no intercept-slope correlation) | `log_sd_b[1:n_lhs_cols]` (`atanh_cor_b` mapped to NA) |
 | `dep(LHS)` | full unstructured 2T × 2T per group (the unrestricted form) | Cholesky-decomposed Σ_b parameterisation per Design 55 §7.3 reservation |
 | `scalar(LHS)` | NOT APPLICABLE per Design 55 §5 | n/a |
 
@@ -367,15 +422,41 @@ sequence is sequential (no parallelisation across phases) until
 ### 9.1 Phase 56.1 — TMB template promotion (engine PR)
 
 - Promote `b_phy_slope` → `b_phy_aug` (3D array per §3.1).
-- Add `DATA_INTEGER(n_lhs_cols)` to the template; thread
-  through every block that touches structural random effects.
-- Add the 2×2 covariance parameterisation per §5.2.
+- Add `DATA_INTEGER(n_lhs_cols)` to the template — **block-local**
+  semantics per §5.2 (values in `{1, 2}`, *not* `T` or `2T`).
+- Thread `n_lhs_cols` through every block that touches structural
+  random effects.
+- Add the scalable-name covariance parameterisation per §5.2:
+  `PARAMETER_VECTOR(log_sd_b)`, `PARAMETER_VECTOR(atanh_cor_b)`.
+  Not the earlier-draft scalar names (`log_sd_b_intercept`,
+  `log_sd_b_slope`) — scalable names generalise to `s ≥ 2`
+  (RE-03) without renaming.
 - Add the runtime assertion per §7.2.
 - Behind a `use_phylo_slope_correlated` data-flag default
   `FALSE`; existing fits route through the legacy path when
   `n_lhs_cols == 1`.
-- **No R-side or parser change in this PR**. The template
-  compiles and links; existing tests pass byte-identically.
+
+**R-side scope clarification (2026-05-26, Codex/Ada)**: the
+earlier-draft summary *"no R-side change in 56.1"* was coarse.
+The accurate framing is **"no parser change, no public API
+change, no formula-grammar change"** — minimal `R/fit-multi.R`
+plumbing is required and in scope so that `MakeADFun()` receives
+the new dormant data/parameter stubs:
+
+- Add `n_lhs_cols = 1L` and `use_phylo_slope_correlated = 0L`
+  defaults to the TMB data list construction.
+- Add `log_sd_b = numeric(1)` and `atanh_cor_b = numeric(0)` to
+  the parameter init.
+- Add `log_sd_b` and `atanh_cor_b` entries to the map list with
+  `factor(NA)` for inactive components per §5.2 map-list
+  discipline.
+
+This R-side stub plumbing is **dormant infrastructure** — no
+user-visible behaviour change. Existing tests pass byte-identically.
+**No parser change** (the `.assert_no_augmented_lhs()` guard at
+`R/brms-sugar.R:1543-1576` remains unchanged); **no public API
+change** (the keyword surface unchanged); **no formula-grammar
+change** (Wilkinson formulas accepted/rejected exactly as before).
 
 **Lead**: Gauss + Boole. **Reviewers**: Noether + maintainer.
 **~3-5 days**.

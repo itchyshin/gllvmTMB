@@ -11022,3 +11022,105 @@ Deliberately not run yet:
 - No `_pkgdown.yml` move; `joint-sdm` remains internal.
 - No `diagnostic_table()` cross-link, no loading-constraint article rewrite, and
   no r200 dispatch.
+
+## 2026-05-26 -- mixed-family extractors article refresh
+
+Branch: `codex/mixed-family-extractors-refresh-2026-05-26`
+
+Files changed:
+
+- `vignettes/articles/mixed-family-extractors.Rmd`
+- `docs/dev-log/after-task/2026-05-26-mixed-family-extractors-refresh.md`
+- `docs/dev-log/check-log.md`
+
+What changed:
+
+- Added an explicit scope boundary to the mixed-family extractor article:
+  MIX-01..MIX-09 + DIA-13 are in scope, CI-10 / EXT-04 remain partial,
+  and MIX-10 delta / hurdle mixed-family latent-scale correlations remain
+  blocked.
+- Added a long-format-only note because the article fixture uses per-row
+  `family_var` dispatch; a wide-data companion needs a separate
+  family-by-trait teaching fixture before it can be shown honestly.
+- Added a rendered `diagnostic_table()` chunk for residual row-status and
+  fit-health status before interpreting covariance summaries.
+- Added `fig.cap` / `fig.alt` to the mixed-family correlation heatmap and
+  suppressed the helper's internal heatmap caption in this article.
+- Reworded the uncertainty section so Fisher-z and bootstrap are described
+  as the total-Sigma routes shown here; profile remains a different
+  shared-factor target.
+
+Evidence:
+
+- Rehydration after context compaction:
+  `git status --short --branch && git diff --stat && git diff -- vignettes/articles/mixed-family-extractors.Rmd`
+  -> one modified file, the mixed-family article.
+- Newest recovery checkpoint read:
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-05-25-080241-ada-checkpoint.md`
+  -> older diagnostics branch, no current collision.
+- Pre-edit shared-lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeable,statusCheckRollup,files,url`
+  -> only #275 open; it touches `vignettes/articles/lambda-constraint.Rmd`.
+- Recent-lane check:
+  `git log --all --oneline --decorate --since='6 hours ago'`
+  -> #275 lambda branch and main at #274; no overlap with
+  `mixed-family-extractors.Rmd` or the new after-task file.
+- Source diagnostic smoke:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); fixture <- gllvmTMB:::load_mixed_family_fixture(n_families = 3L); fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 1), data = fixture$data, trait = "trait", family = fixture$family_list); rq_resid <- residuals(fit, type = "randomized_quantile", seed = 1); print(diagnostic_table(rq_resid, table = "row_status")); print(diagnostic_table(rq_resid, table = "fit_health_status"))'`
+  -> row-status `ok = 120`, `unsupported_family = 60`; fit-health
+  `PASS = 11`, `WARN = 1`.
+- Plain article render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/mixed-family-extractors", lazy = FALSE)'`
+  -> failed because the local installed package did not yet export
+  `diagnostic_table()`. Source `NAMESPACE` exports it; source-loaded
+  render below is the valid local check.
+- Source namespace check:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("source namespace has diagnostic_table export:", "diagnostic_table" %in% getNamespaceExports("gllvmTMB"), "\n"); cat("gllvmTMB:: lookup works:\n"); print(gllvmTMB::diagnostic_table)'`
+  -> source namespace export present and `gllvmTMB::diagnostic_table`
+  resolves.
+- Final source-loaded article render:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/mixed-family-extractors", lazy = FALSE, new_process = FALSE, quiet = TRUE)'`
+  -> wrote `pkgdown-site/articles/mixed-family-extractors.html`.
+- Rendered output scan:
+  `rg -n "long-format only|family-by-trait|diagnostic_table|unsupported_family|Mixed-family latent-scale trait correlations|MIX-10|routes that target" pkgdown-site/articles/mixed-family-extractors.html vignettes/articles/mixed-family-extractors.Rmd`
+  -> confirmed the scope note, diagnostic output, figure caption, MIX-10
+  blocked row, and uncertainty wording in source + HTML.
+- Heatmap accessibility check:
+  `Rscript --vanilla -e 'library(xml2); html <- read_html("pkgdown-site/articles/mixed-family-extractors.html"); imgs <- xml_find_all(html, "//img[contains(@src, \"corr-1.png\")]"); stopifnot(length(imgs) == 1L); alt <- xml_attr(imgs, "alt"); stopifnot(!is.na(alt), nzchar(alt)); cap <- xml_text(xml_find_first(html, "//img[contains(@src, \"corr-1.png\")]/following-sibling::p[contains(@class, \"caption\")][1]")); stopifnot(grepl("Mixed-family latent-scale trait correlations", cap)); stopifnot(!grepl("Heatmaps do not display uncertainty intervals", readLines("pkgdown-site/articles/mixed-family-extractors.html"), fixed = TRUE)); cat("corr alt chars=", nchar(alt), "\ncaption=", trimws(cap), "\n")'`
+  -> heatmap alt text length 275; caption present; helper caption absent.
+- Register / stale-wording scans:
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S" vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
+  -> no hits.
+- `rg -n "gllvmTMB\\(" vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
+  -> long-format source call includes `trait = "trait"`.
+- `rg -n "\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(|meta_known_V|gllvmTMB_wide|trio|profile-likelihood default" vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
+  -> no hits.
+- `rg -n "in prep|in preparation" vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html`
+  -> no hits.
+- `rg -n "MIX-10|DIA-13|CI-10|EXT-04|MIX-0[1-9]|MIS-05|Scope boundary" vignettes/articles/mixed-family-extractors.Rmd pkgdown-site/articles/mixed-family-extractors.html docs/design/35-validation-debt-register.md`
+  -> article claims map to the validation-debt register.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Review gates:
+
+- Pat / article-tier: PASS. Tier-1 worked example remains reader-facing;
+  long-format-only boundary is explicit.
+- Rose / pre-publish: PASS. New claims cite MIX-01..MIX-10, DIA-13,
+  EXT-04, CI-10, and MIS-05; no stale aliases found.
+- Florence / figure: PASS. Heatmap readable at rendered size with non-empty
+  caption and alt text.
+- Shannon / coordination: PASS. #275 is the only open PR and has no file
+  overlap; structural-slope A0/A1 files were not touched.
+
+Deliberately not run:
+
+- No `devtools::document()`; roxygen and Rd files were not changed.
+- No full `devtools::test()`; no package code or tests changed, and the
+  diagnostic smoke plus article render exercised the touched article path.
+- No `devtools::check(args = "--no-manual")`; the PR should receive ordinary
+  R-CMD-check if GitHub attaches checks.
+- No `_pkgdown.yml` change, article-tier promotion, lambda-constraint edit,
+  structural-slope parser/TMB work, Design 55 edit, or r200 dispatch.

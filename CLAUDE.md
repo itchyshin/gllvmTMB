@@ -49,9 +49,11 @@ does NOT do" section), see
   soft-deprecated as of 0.2.0 -- new code should use the formula API,
   and removal must not be claimed while the export remains live.
 - Phase 56.3 parser work admits `phylo_unique(1 + x | species)` and
-  `phylo_unique(0 + trait + (0 + trait):x | species)` as **claimed**
-  augmented-LHS syntax only. Do not advertise it as covered until the
-  Phase 56.4 recovery and validation-debt evidence lands.
+  `phylo_unique(0 + trait + (0 + trait):x | species)` as augmented-LHS
+  syntax. Phase 56.4 adds Gaussian recovery, wide/long byte-identity,
+  and forced-`n_lhs_cols` negative-test evidence for the anchor
+  `phylo_unique` cell. Keep user-facing advertising and validation-debt
+  promotion parked until the Phase 56.6 register / NEWS / article slice.
 
 ## Before Finishing Work
 

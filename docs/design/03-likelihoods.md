@@ -183,6 +183,43 @@ passed to TMB as a sparse precision matrix. TMB uses sparse
 Cholesky for the marginal-likelihood Hessian. Status: `claimed`;
 Phase 0B verifies via a phylo-trait simulation-recovery test.
 
+### Dormant phylogenetic random-regression block (Phase 56.1)
+
+`phylo_slope(x | species)` remains the active public random-slope
+path in Phase 56.1:
+
+$$
+\mathbf{b} \sim \mathcal{N}\left(\mathbf{0}, \sigma_\beta^2 A\right),
+\qquad \eta_i \leftarrow \eta_i + b_{\text{species}(i)} x_i
+$$
+
+with $\sigma_\beta = \exp(\texttt{log_sigma_slope})$ and sparse
+$A^{-1}$ shared with the phylogenetic blocks above.
+
+Phase 56.1 also adds a dormant internal path for the future
+augmented-LHS engine. When `use_phylo_slope_correlated = 1`, the
+random-regression matrix
+$B \in \mathbb{R}^{n_\text{aug phy} \times n_\text{lhs cols}}$
+has prior
+
+$$
+\mathrm{vec}(B) \sim
+\mathcal{N}\left(\mathbf{0}, \Sigma_b \otimes A\right).
+$$
+
+For the Phase 56.1 engine stub, `n_lhs_cols` is block-local and
+restricted to 1 or 2. Positive standard deviations use
+`log_sd_b`; the intercept-slope correlation uses
+$\rho = \tanh(\texttt{atanh_cor_b})$. The R wrapper keeps
+`use_phylo_slope_correlated = 0`, maps `b_phy_aug`, `log_sd_b`,
+and `atanh_cor_b` off, and leaves the parser guard unchanged. This
+is therefore **not** a public formula-grammar, parser, or API
+change; it is dormant TMB/R plumbing for Design 56 §9.1. Status:
+`planned / dormant`; coverage is
+`tests/testthat/test-phase56-1-phylo-augmented-stub.R`, which checks
+the default dormant state and finite objective/gradient values for
+both `n_lhs_cols = 1` and `n_lhs_cols = 2` internal probes.
+
 ## SPDE / GMRF spatial integration
 
 When `spatial_*(0 + trait | sites, mesh = mesh)` is in the

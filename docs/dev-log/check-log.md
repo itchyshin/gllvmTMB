@@ -11321,3 +11321,112 @@ Deliberately not run:
 - No lambda article re-authoring, mixed-family expansion, `mirt` comparator
   work, `_pkgdown.yml` promotion, validation-debt status change, or r200
   dispatch.
+
+## 2026-05-26 -- Phase 56.1 dormant TMB promotion
+
+Branch: `codex/phase56-1-tmb-promotion-2026-05-26`
+
+Files changed:
+
+- `src/gllvmTMB.cpp`
+- `R/fit-multi.R`
+- `tests/testthat/test-phase56-1-phylo-augmented-stub.R`
+- `docs/design/03-likelihoods.md`
+- `docs/dev-log/recovery-checkpoints/2026-05-26-081743-ada-checkpoint.md`
+- `docs/dev-log/after-task/2026-05-26-phase56-1-dormant-tmb-promotion.md`
+- `docs/dev-log/check-log.md`
+
+What changed:
+
+- Added dormant Phase 56.1 TMB plumbing for the future augmented-LHS
+  phylogenetic random-regression block:
+  `use_phylo_slope_correlated`, block-local `n_lhs_cols`, `Z_phy_aug`,
+  `b_phy_aug`, `log_sd_b`, and `atanh_cor_b`.
+- Kept the public/default R path dormant:
+  `use_phylo_slope_correlated = 0`, no parser change, no public API change,
+  no formula-grammar change.
+- Preserved the legacy `phylo_slope()` random effect path when the dormant
+  flag is off.
+- Added a regression test that checks the dormant defaults and directly
+  exercises finite objective/gradient values for internal `n_lhs_cols = 1`
+  and `n_lhs_cols = 2` `MakeADFun()` probes.
+- Added the likelihood contract to `docs/design/03-likelihoods.md`.
+
+Evidence:
+
+- Pre-edit / coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url,files`
+  -> initially #281-#286 open; #281 overlapped `check-log.md` /
+  `coordination-board.md`, so closeout edits waited.
+- Design-amendment review:
+  `git show origin/agent/design-56-amend-scalable-names:docs/design/56-augmented-lhs-engine-stage3.md | rg -n "5\\.2|9\\.1|log_sd_b|atanh_cor_b|n_lhs_cols|Phase 56\\.1|R/fit-multi|parser change|public API"`
+  plus `sed -n '1,125p'`, `sed -n '130,260p'`, and
+  `sed -n '500,620p'` on the same file
+  -> flagged three stale #286 drift sites before merge:
+  `T` / `2T` scope wording, `PARAMETER_MATRIX(log_sd_b)` plus per-block
+  `atanh_cor_b`, and `b_phy_diag n_lhs_cols = T x 2`.
+- Rebase after coordination PRs merged:
+  `git fetch origin`; `git log --oneline HEAD..origin/main`
+  -> main included #281, #286, #282, #283, #284, #287, #288, #285.
+  `git stash push -u -m 'phase56-1-local-work-before-origin-main-rebase'`;
+  `git rebase origin/main`; `git stash pop`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 1 | SKIP 13 | PASS 2813`; warning was the pre-existing
+  `level = "spde"` deprecation in `test-spatial-latent-recovery.R`.
+- `Rscript --vanilla -e 'devtools::test(filter = "phase56-1-phylo-augmented-stub")'`
+  -> before Gauss/Noether review: `FAIL 0 | WARN 0 | SKIP 0 | PASS 7`.
+- Gauss/Noether TMB-likelihood review found the bespoke regression only
+  exercised `n_lhs_cols = 1`; test updated to probe the bivariate
+  `n_lhs_cols = 2` covariance/correlation branch.
+- `Rscript --vanilla -e 'devtools::test(filter = "phase56-1-phylo-augmented-stub")'`
+  -> after the review fix and after rebase: `FAIL 0 | WARN 0 | SKIP 0 | PASS 9`.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-slope|phase56-1-phylo-augmented-stub|phylo-hadfield|phylo-mode-dispatch|phylo-q-decomposition")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 54`; `phylo-q-decomposition` took
+  670.9 s.
+- `Rscript --vanilla -e 'devtools::test(filter = "augmented-lhs-guard|phase56-1-phylo-augmented-stub|phylo-slope")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 21`.
+- `git diff --check`
+  -> clean.
+
+Static / stale-pattern scans:
+
+- `rg -n 'use_phylo_slope_correlated|b_phy_aug|log_sd_b|atanh_cor_b|n_lhs_cols|Z_phy_aug|Dormant phylogenetic random-regression block' R/fit-multi.R src/gllvmTMB.cpp tests/testthat/test-phase56-1-phylo-augmented-stub.R docs/design/03-likelihoods.md docs/design/56-augmented-lhs-engine-stage3.md`
+  -> implementation, test, and design-doc contract all expose the same
+  dormant flag, block-local dimension, parameter names, and test coverage.
+- `rg -n 'PARAMETER_MATRIX\\(log_sd_b\\)|n_lhs_cols = T|n_lhs_cols = 2T|T × 2|T x 2|log_sd_b_intercept|log_sd_b_slope' docs/design/03-likelihoods.md docs/design/56-augmented-lhs-engine-stage3.md R/fit-multi.R src/gllvmTMB.cpp tests/testthat/test-phase56-1-phylo-augmented-stub.R`
+  -> only intentional Design 56 explanatory hits remain: "not T or 2T",
+  reserved full `dep` 2T x 2T wording, and the "not earlier-draft scalar
+  names" note.
+- `rg -n 'phylo_slope|b_phy_slope|phylogenetic random slope|random slope|phylo.*prior|Ainv_phy|Sigma_b|b_phy_aug|log_sd_b|atanh_cor_b' docs/design/03-likelihoods.md`
+  -> no hits before the doc edit; now the Phase 56.1 dormant prior contract
+  is recorded there.
+
+Review gates:
+
+- Ada / integration: PASS. Branch rebased on current `origin/main`; open PR
+  list empty before shared dev-log edits.
+- Boole / parser: PASS. `.assert_no_augmented_lhs()` remains unchanged;
+  `augmented-lhs-guard` still passes.
+- Gauss / TMB likelihood: PASS after adding the `n_lhs_cols = 2` finite
+  objective/gradient probe.
+- Noether / math: PASS. The dormant branch implements
+  `vec(B) ~ N(0, Sigma_b \otimes A)` with log-SD and tanh-correlation
+  transforms.
+- Curie / tests: PASS. New regression is prophylactic/dormant but exercises
+  both scalar and bivariate internal branches.
+- Rose / consistency: PASS. Design 56, Design 03, code, and test names align.
+- Shannon / coordination: PASS. #281/#286/#282/#283/#284 landed before this
+  closeout; no open PR overlap remained.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen, NAMESPACE, or generated Rd files
+  changed.
+- No `pkgdown::check_pkgdown()`; no pkgdown navigation, reference topics,
+  README, articles, or vignettes changed.
+- No `devtools::check(args = "--no-manual")`; this should run through the
+  PR's ordinary 3-OS R-CMD-check.
+- No parser activation, public formula syntax change, `n_traits` audit edit,
+  skeleton-test activation, validation-debt row movement, ROADMAP tick, or
+  NEWS entry.

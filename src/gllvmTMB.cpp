@@ -192,6 +192,12 @@ Type objective_function<Type>::operator()()
   // off and x_phy_slope is unused.
   DATA_INTEGER(use_phylo_slope);
   DATA_VECTOR(x_phy_slope);          // length n_obs; covariate values
+  // Phase 56.1 dormant augmented-LHS random-regression path. The default
+  // R-side flag is 0, so the legacy b_phy_slope path above remains active
+  // and byte-identical until the parser/R design-matrix phases land.
+  DATA_INTEGER(use_phylo_slope_correlated);
+  DATA_INTEGER(n_lhs_cols);           // block-local LHS columns: 1 or 2 in Stage 3
+  DATA_ARRAY(Z_phy_aug);              // n_obs x n_lhs_cols x n_phy_aug_blocks
 
   // Generic random intercepts `(1 | group)` (lme4/glmmTMB bar syntax).
   // Each term t adds u_re_int[offset(t) + group_id(o, t)] to eta(o), where
@@ -270,6 +276,9 @@ Type objective_function<Type>::operator()()
   // phylo_slope params (Q6)
   PARAMETER_VECTOR(b_phy_slope);                 // length n_aug_phy; per-species slopes
   PARAMETER(log_sigma_slope);                    // scalar; log slope sd
+  PARAMETER_ARRAY(b_phy_aug);                     // n_aug_phy x n_lhs_cols x n_phy_aug_blocks
+  PARAMETER_VECTOR(log_sd_b);                     // length n_lhs_cols
+  PARAMETER_VECTOR(atanh_cor_b);                  // n_lhs_cols * (n_lhs_cols - 1) / 2
 
   // Generic random intercepts: flat vector across all (1|g) terms.
   PARAMETER_VECTOR(u_re_int);                    // length sum(re_int_n_groups) (or 1 if unused)
@@ -524,12 +533,14 @@ Type objective_function<Type>::operator()()
   }
 
   // -------- Q6: phylo_slope prior --------------------------------------
-  // b_phy_slope ~ N(0, sigma_slope^2 * A_phy), evaluated through the
-  // sparse Ainv. The same Ainv_phy_rr is shared with phylo_rr above.
+  // Legacy path: b_phy_slope ~ N(0, sigma_slope^2 * A_phy), evaluated
+  // through the sparse Ainv. The Phase 56.1 augmented path below is dormant
+  // by default; keeping this branch active preserves current phylo_slope()
+  // fits and parameter names byte-for-byte while Stage 3 plumbing lands.
   // -log p(b) = 0.5 * (n_aug_phy * log(2pi) + 2 n_aug_phy log_sigma_slope
   //                    + log_det_A_phy_rr
   //                    + b' Ainv b / sigma_slope^2)
-  if (use_phylo_slope == 1) {
+  if (use_phylo_slope == 1 && use_phylo_slope_correlated == 0) {
     Type sigma_slope = exp(log_sigma_slope);
     Type sigma_slope2 = sigma_slope * sigma_slope;
     vector<Type> b = b_phy_slope;
@@ -539,6 +550,74 @@ Type objective_function<Type>::operator()()
                   + log_det_A_phy_rr
                   + quad / sigma_slope2);
     REPORT(sigma_slope);
+  }
+  // Phase 56.1 dormant path: vec(B) ~ N(0, Sigma_b \otimes A_phy), where
+  // Sigma_b is block-local across LHS columns (1 = legacy slope-only;
+  // 2 = intercept + slope). Parser activation waits for Phases 56.2-56.3.
+  if (use_phylo_slope_correlated == 1) {
+    if (n_lhs_cols < 1 || n_lhs_cols > 2)
+      error("gllvmTMB_multi: n_lhs_cols must be 1 or 2 in Phase 56.1");
+    if (b_phy_aug.dim.size() != 3 || Z_phy_aug.dim.size() != 3)
+      error("gllvmTMB_multi: b_phy_aug and Z_phy_aug must be 3D arrays");
+    if (b_phy_aug.dim[0] != n_aug_phy)
+      error("gllvmTMB_multi: b_phy_aug first dimension must equal n_aug_phy");
+    if (b_phy_aug.dim[1] != n_lhs_cols || Z_phy_aug.dim[1] != n_lhs_cols)
+      error("gllvmTMB_multi: n_lhs_cols does not match augmented phylo arrays");
+    if (Z_phy_aug.dim[0] != y.size())
+      error("gllvmTMB_multi: Z_phy_aug first dimension must equal n_obs");
+    if (Z_phy_aug.dim[2] != b_phy_aug.dim[2])
+      error("gllvmTMB_multi: Z_phy_aug and b_phy_aug block counts differ");
+    if (log_sd_b.size() != n_lhs_cols)
+      error("gllvmTMB_multi: log_sd_b has wrong length");
+    int n_cor_b = n_lhs_cols * (n_lhs_cols - 1) / 2;
+    if (atanh_cor_b.size() != n_cor_b)
+      error("gllvmTMB_multi: atanh_cor_b has wrong length");
+
+    vector<Type> sd_b(n_lhs_cols);
+    for (int j = 0; j < n_lhs_cols; j++) sd_b(j) = exp(log_sd_b(j));
+    REPORT(sd_b);
+    if (n_lhs_cols == 1) {
+      Type sd0 = sd_b(0);
+      Type inv00 = Type(1) / (sd0 * sd0);
+      Type logdet_Sigma_b = Type(2) * log_sd_b(0);
+      for (int k = 0; k < b_phy_aug.dim[2]; k++) {
+        vector<Type> b0(n_aug_phy);
+        for (int i = 0; i < n_aug_phy; i++) b0(i) = b_phy_aug(i, 0, k);
+        Type quad00 = (b0.matrix().transpose() * Ainv_phy_rr * b0.matrix())(0, 0);
+        nll += Type(0.5) * (Type(n_aug_phy) * log(2.0 * M_PI)
+                            + Type(n_aug_phy) * logdet_Sigma_b
+                            + log_det_A_phy_rr
+                            + inv00 * quad00);
+      }
+    } else {
+      Type rho = tanh(atanh_cor_b(0));
+      Type one_minus_rho2 = Type(1) - rho * rho;
+      Type inv00 = Type(1) / (sd_b(0) * sd_b(0) * one_minus_rho2);
+      Type inv11 = Type(1) / (sd_b(1) * sd_b(1) * one_minus_rho2);
+      Type inv01 = -rho / (sd_b(0) * sd_b(1) * one_minus_rho2);
+      Type logdet_Sigma_b = Type(2) * log_sd_b(0) +
+                             Type(2) * log_sd_b(1) +
+                             log(one_minus_rho2);
+      vector<Type> cor_b(1);
+      cor_b(0) = rho;
+      REPORT(cor_b);
+      for (int k = 0; k < b_phy_aug.dim[2]; k++) {
+        vector<Type> b0(n_aug_phy);
+        vector<Type> b1(n_aug_phy);
+        for (int i = 0; i < n_aug_phy; i++) {
+          b0(i) = b_phy_aug(i, 0, k);
+          b1(i) = b_phy_aug(i, 1, k);
+        }
+        Type quad00 = (b0.matrix().transpose() * Ainv_phy_rr * b0.matrix())(0, 0);
+        Type quad01 = (b0.matrix().transpose() * Ainv_phy_rr * b1.matrix())(0, 0);
+        Type quad11 = (b1.matrix().transpose() * Ainv_phy_rr * b1.matrix())(0, 0);
+        Type quad = inv00 * quad00 + Type(2) * inv01 * quad01 + inv11 * quad11;
+        nll += Type(0.5) * (Type(n_aug_phy * n_lhs_cols) * log(2.0 * M_PI)
+                            + Type(n_aug_phy) * logdet_Sigma_b
+                            + Type(n_lhs_cols) * log_det_A_phy_rr
+                            + quad);
+      }
+    }
   }
 
   // -------- spde: per-trait SPDE GMRF prior on omega columns -----------
@@ -698,7 +777,13 @@ Type objective_function<Type>::operator()()
       // Per-trait phylogenetic random intercept.
       eta(o) += exp(log_sd_phy_diag(t)) * g_phy_diag(species_aug_id(o), t);
     }
-    if (use_phylo_slope == 1) {
+    if (use_phylo_slope_correlated == 1) {
+      Type contrib_aug = 0;
+      for (int k = 0; k < b_phy_aug.dim[2]; k++)
+        for (int j = 0; j < n_lhs_cols; j++)
+          contrib_aug += b_phy_aug(species_aug_id(o), j, k) * Z_phy_aug(o, j, k);
+      eta(o) += contrib_aug;
+    } else if (use_phylo_slope == 1) {
       // Per-species slope on x, shared across traits.
       eta(o) += b_phy_slope(species_aug_id(o)) * x_phy_slope(o);
     }

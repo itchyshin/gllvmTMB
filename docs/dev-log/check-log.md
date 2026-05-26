@@ -10869,3 +10869,156 @@ Deliberately not run:
   files are dev workflow / script plumbing and should receive ordinary PR CI.
 - No validation-register, ROADMAP, `_pkgdown.yml`, article, `R/*`, `src/*`, or
   user-facing reference changes.
+
+## 2026-05-26 -- Joint-SDM Sigma heatmap repair
+
+- Branch: `codex/joint-sdm-sigma-heatmap-repair-2026-05-26`.
+- Scope: second joint-SDM visual repair after #272; replace the raw
+  shared/total Sigma heatmap with a latent-liability residual species
+  correlation heatmap. The article stays internal.
+- Changed `vignettes/articles/joint-sdm.Rmd` only.
+- Added after-task report:
+  `docs/dev-log/after-task/2026-05-26-joint-sdm-sigma-heatmap-repair.md`.
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,mergeable,isDraft,statusCheckRollup,url`
+  -> no open PRs.
+- Recent-lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits in the 6-hour window at branch start.
+- Working-tree check:
+  `git status --short --branch`
+  -> clean `main` before branch creation.
+- Existing blocker read:
+  `sed -n '1,180p' docs/dev-log/audits/2026-05-25-joint-sdm-rendered-figure-qa.md`
+  -> Sigma heatmap failed because raw shared covariance was extreme and the
+  first visual question should be latent-liability species correlations.
+- Helper contract read:
+  `rg -n "plot_Sigma_heatmap|extract_Sigma_table|matrix = \"R\"|scale = \"correlation\"|correlation" R tests/testthat vignettes/articles docs/design/53-report-ready-extractor-plot-contract.md`
+  -> `plot_correlations()` and `plot_Sigma_heatmap()` both support
+  correlation-matrix displays with `gllvmTMB_meta` / `gllvmTMB_data`.
+- Candidate helper smoke:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); ...; corr_rows <- extract_correlations(fit_jsdm, tier="unit", method="fisher-z", link_residual="auto"); p <- plot_correlations(corr_rows, style="heatmap", matrix_layout="by_level", label_type="estimate", label_digits=2, include_diagonal=TRUE); print(attr(p,"gllvmTMB_meta")); print(range(corr_rows$correlation)); print(all(is.finite(corr_rows$lower), is.finite(corr_rows$upper)))'`
+  -> `type = "correlations_heatmap"`, `source = "extract_correlations"`,
+  `rotation_status = "rotation_invariant"`, correlation range
+  `[-0.9760728, 0.9303660]`, finite Fisher-z bounds.
+- Article render:
+  `Rscript --vanilla -e 'rmarkdown::render("vignettes/articles/joint-sdm.Rmd", output_file="/tmp/gllvmTMB-joint-sdm-sigma-repair.html", quiet=TRUE)'`
+  -> rendered successfully.
+- pkgdown article render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", lazy = FALSE)'`
+  -> wrote `pkgdown-site/articles/joint-sdm.html`.
+- Rendered HTML scan:
+  `rg -n "jsdm-sigma|jsdm-correlation-heatmap|Residual species correlations|Heatmap of pairwise|Shared and total latent-liability" pkgdown-site/articles/joint-sdm.html vignettes/articles/joint-sdm.Rmd`
+  -> HTML points to `jsdm-correlation-heatmap-1.png` with non-empty alt text
+  and no remaining rendered `jsdm-sigma` reference.
+- Visual inspection:
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-correlation-heatmap-1.png`
+  -> PASS after suppressing the plot-internal caption; labels, legend, and
+  matrix cells are readable at pkgdown size.
+- pkgdown reference/site gate:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+
+Deliberately not run:
+
+- No full `devtools::test()`; this is an article-only figure repair.
+- No `devtools::check(args = "--no-manual")`; the PR should receive ordinary
+  3-OS R-CMD-check.
+- No `_pkgdown.yml` edit; `joint-sdm` remains internal.
+- No wide-format chunk activation and no r200 dispatch.
+
+## 2026-05-26 -- Joint-SDM example fixture and runnable wide path
+
+- Branch: `codex/joint-sdm-sigma-heatmap-repair-2026-05-26`.
+- Scope: fixture-first follow-up on PR #274. Added a portable complete binary
+  Site x Species teaching fixture, activated the `joint-sdm` wide `traits(...)`
+  chunk, and kept loading constraints / IRT as an optional pointer rather than
+  the main species-distribution path.
+- Changed:
+  - `data-raw/examples/make-joint-sdm-example.R`
+  - `inst/extdata/examples/joint-sdm-example.rds`
+  - `tests/testthat/test-example-joint-sdm.R`
+  - `vignettes/articles/joint-sdm.Rmd`
+  - `docs/design/52-example-object-contract.md`
+  - `docs/dev-log/after-task/2026-05-26-joint-sdm-sigma-heatmap-repair.md`
+
+Evidence:
+
+- Pre-edit PR census:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeable,statusCheckRollup,url`
+  -> only PR #274 open, owned by this branch; no cross-branch file collision.
+- Recent-lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> saw `b2d5acf` lambda-constraint chunk-label work on another branch and
+  this branch's #274 commits; no active owner for the new fixture files.
+- Existing binary parity read:
+  `sed -n '1,260p' tests/testthat/test-joint-sdm-binary-long-wide.R`
+  -> confirmed a complete-grid binary long/wide parity fixture already passes
+  the grammar-level equivalence idea.
+- Binary/IRT scope read:
+  `sed -n '1,280p' docs/design/41-binary-completeness.md`
+  -> confirmed IRT / `lambda_constraint` belongs in M2.3-M2.5 and joint-SDM
+  should mention it only as an optional confirmatory-loading path.
+- Article and audit read:
+  `sed -n '1,520p' vignettes/articles/joint-sdm.Rmd`
+  and
+  `sed -n '1,220p' docs/dev-log/audits/2026-05-25-joint-sdm-rendered-figure-qa.md`
+  -> confirmed the remaining restoration blocker was the dormant wide chunk and
+  fixture/render evidence.
+- Candidate fixture smoke:
+  `Rscript --vanilla - <<'RS' ... custom complete binary Site x Species DGP ... RS`
+  -> selected seed `20260529`; long and wide fits converged, logLik difference
+  `0`, `max(abs(Lambda_B)) = 1.208245`, Fisher-z correlation range stayed
+  inside `[-1, 1]`.
+- Fixture generation:
+  `Rscript --vanilla data-raw/examples/make-joint-sdm-example.R`
+  -> wrote `inst/extdata/examples/joint-sdm-example.rds`.
+- Formatter:
+  `air format data-raw/examples/make-joint-sdm-example.R tests/testthat/test-example-joint-sdm.R`
+  -> completed.
+- Direct test-file attempt:
+  `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-example-joint-sdm.R", reporter = "summary")'`
+  -> failed because `system.file()` is empty when the package is not loaded as a
+  package; this matches the existing example-object tests' local-direct mode.
+- Package test path:
+  `Rscript --vanilla -e 'devtools::test(filter = "example-joint-sdm", reporter = "summary")'`
+  -> PASS after using the package-load test path.
+- Full local test suite:
+  `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> PASS with 13 expected skips and 1 expected deprecation warning
+  (`level = "spde"` alias warning in `test-spatial-latent-recovery.R`).
+- First article render after fixture activation:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", lazy = FALSE)'`
+  -> initially failed because a fresh pkgdown process could not see the new RDS
+  through the installed package path. Added a source-tree fallback to the Rmd.
+- Final article render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", lazy = FALSE)'`
+  -> wrote `pkgdown-site/articles/joint-sdm.html`; rendered wide chunk prints
+  `#> [1] TRUE` for long/wide logLik equality.
+- Rendered source / HTML scan:
+  `rg -n "all.equal|TRUE|jsdm-fit-wide|joint-sdm-example|mean_species_per_site|absence-fill|df_wide|Residual species correlations|Ordination biplot|fig-alt|sp_1|trait_1|jsdm-correlation-heatmap|jsdm-biplot" pkgdown-site/articles/joint-sdm.html vignettes/articles/joint-sdm.Rmd`
+  -> confirmed the fixture path, runnable wide chunk, `#> [1] TRUE`, and new
+  rendered figure alt/caption paths; one stale `trait_1` prose reference was
+  fixed to `sp_1` terminology.
+- Rendered fit smoke:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); jsdm <- readRDS("inst/extdata/examples/joint-sdm-example.rds"); fit <- gllvmTMB(jsdm$formula_long, data=jsdm$data_long, trait=jsdm$fit_args$trait, unit=jsdm$fit_args$unit, family=jsdm$fit_args$family); ...'`
+  -> convergence `0`, `max(abs(Lambda_B)) = 1.208245`, logLik `-615.301`,
+  Fisher-z correlation range `[-0.289, 0.218]`, finite interval bounds.
+- Rendered figure inspection:
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-correlation-heatmap-1.png`
+  and
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-biplot-1.png`
+  -> heatmap and ordination are readable at pkgdown size with no clipped
+  captions.
+
+Deliberately not run yet:
+
+- No full `devtools::test()`; the targeted `example-joint-sdm` file passed.
+- No `devtools::check(args = "--no-manual")`; this branch should receive the
+  ordinary PR R-CMD-check if GitHub attaches checks.
+- No `_pkgdown.yml` move; `joint-sdm` remains internal.
+- No `diagnostic_table()` cross-link, no loading-constraint article rewrite, and
+  no r200 dispatch.

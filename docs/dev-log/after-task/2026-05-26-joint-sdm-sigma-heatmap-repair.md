@@ -1,4 +1,4 @@
-# After-task: joint-SDM Sigma heatmap repair
+# After-task: joint-SDM figure and fixture repair
 
 **Date:** 2026-05-26
 **Branch:** `codex/joint-sdm-sigma-heatmap-repair-2026-05-26`
@@ -6,14 +6,21 @@
 
 ## Task Goal
 
-Repair the remaining joint-SDM matrix figure blocker from the rendered QA:
-replace the raw shared/total covariance heatmap with a latent-liability
-residual species correlation heatmap that answers the first biological
-question: which species show residual co-occurrence after `env_1`?
+Repair the remaining joint-SDM matrix figure blocker from the rendered QA and
+replace the dormant wide-format sketch with a runnable fixture-backed
+equivalence check.
+
+The article now uses a shipped complete binary Site x Species teaching fixture,
+fits the same JSDM through both long and wide `traits(...)` calls, and uses the
+long fit for report-ready residual species correlations and ordination.
 
 ## Files Changed
 
 - `vignettes/articles/joint-sdm.Rmd`
+  - Loads `inst/extdata/examples/joint-sdm-example.rds` instead of building a
+    bespoke simulation inside the article.
+  - Runs both the long and wide formulas from that fixture and prints
+    `all.equal(logLik(fit_jsdm), logLik(fit_jsdm_wide), tolerance = 1e-8)`.
   - Replaced the `jsdm-sigma` raw shared/total Sigma heatmap with a
     `jsdm-correlation-heatmap` chunk.
   - Reuses `corr_rows <- extract_correlations(..., method = "fisher-z",
@@ -24,6 +31,17 @@ question: which species show residual co-occurrence after `env_1`?
   - Adds `fig.cap` and `fig.alt` for the correlation heatmap.
   - Suppresses the plot-internal caption so the rendered PNG does not clip
     caption text; the R Markdown figure caption carries the explanatory text.
+- `data-raw/examples/make-joint-sdm-example.R`
+  - Regenerates a portable complete binary Site x Species teaching fixture.
+- `inst/extdata/examples/joint-sdm-example.rds`
+  - Stores long data, wide data, truth, formulas, fit arguments, story, and the
+    symbol-to-extractor alignment table.
+- `tests/testthat/test-example-joint-sdm.R`
+  - Checks the example-object contract, long/wide likelihood equality, bounded
+    loadings, Fisher-z correlation extraction, and correlation / ordination plot
+    buildability.
+- `docs/design/52-example-object-contract.md`
+  - Adds the joint-SDM fixture and test to the active teaching-fixture contract.
 
 ## Checks Run
 
@@ -53,37 +71,62 @@ question: which species show residual co-occurrence after `env_1`?
   caption remains.
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
   -> `No problems found`.
+- Follow-up fixture generation:
+  `Rscript --vanilla data-raw/examples/make-joint-sdm-example.R`
+  -> wrote `inst/extdata/examples/joint-sdm-example.rds`.
+- Formatter:
+  `air format data-raw/examples/make-joint-sdm-example.R tests/testthat/test-example-joint-sdm.R`
+  -> completed.
+- New fixture test:
+  `Rscript --vanilla -e 'devtools::test(filter = "example-joint-sdm", reporter = "summary")'`
+  -> PASS.
+- Article render after fixture activation:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", lazy = FALSE)'`
+  -> wrote `pkgdown-site/articles/joint-sdm.html`; the rendered wide chunk
+  prints `#> [1] TRUE`.
+- Rendered fit smoke:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); jsdm <- readRDS("inst/extdata/examples/joint-sdm-example.rds"); fit <- gllvmTMB(jsdm$formula_long, data=jsdm$data_long, trait=jsdm$fit_args$trait, unit=jsdm$fit_args$unit, family=jsdm$fit_args$family); ...'`
+  -> convergence `0`, `max(abs(Lambda_B)) = 1.208245`, correlation range
+  `[-0.289, 0.218]`, finite Fisher-z bounds.
+- Visual inspection after fixture activation:
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-correlation-heatmap-1.png`
+  and `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-biplot-1.png`
+  -> heatmap and ordination remained readable at pkgdown size.
 
 ## Florence Gate
 
-**Verdict:** PASS for the matrix-figure repair.
+**Verdict:** PASS for the matrix-figure and fixture-backed wide-path repair.
 
 The new figure uses a bounded correlation scale, names the estimand, keeps the
 interval bounds in the preceding table, carries non-empty alt text, and avoids
 the raw-covariance scale pathology that made the previous heatmap unsuitable
 for teaching.
 
-This pass does **not** promote the full article to public Tier 1. The wide
-format chunk remains dormant until the binary absence-fill fixture exists, and
-the article order / public restoration decision remain separate work.
+This pass does **not** promote the full article to public Tier 1. The core
+figure and long/wide infrastructure blockers are repaired, but the article
+order and public restoration decision remain separate maintainer decisions.
 
 ## Definition of Done
 
-- **Implementation:** one article figure section changed.
-- **Simulation recovery test:** not applicable; no likelihood, family,
-  formula grammar, or estimator changed.
-- **Documentation:** article prose, caption, and alt text updated.
+- **Implementation:** article fit path, article figures, and teaching fixture
+  changed; no package runtime API changed.
+- **Simulation recovery test:** not applicable as a deep recovery claim; the
+  new example-object test checks fixture contract, long/wide likelihood
+  equality, bounded fitted loadings, Fisher-z correlations, and plot
+  buildability.
+- **Documentation:** article prose, caption, alt text, and the example-object
+  contract updated.
 - **Runnable user-facing example:** article renders locally and through
   `pkgdown::build_article("articles/joint-sdm", lazy = FALSE)`.
 - **Check-log entry:** appended in this branch.
-- **Review pass:** Florence visual QA applied to the rendered heatmap.
+- **Review pass:** Florence visual QA applied to the rendered heatmap and
+  ordination after fixture activation.
 
 ## Known Limitations and Next Actions
 
 - `joint-sdm` remains an internal article.
-- The wide-format JSDM chunk remains `eval = FALSE`.
-- Public restoration still needs a maintainer HTML review and a decision on
-  whether to leave the wide chunk dormant or add the binary long-vs-wide
-  absence-fill fixture first.
+- The wide-format JSDM chunk now runs and prints likelihood equality.
+- Public restoration still needs a maintainer HTML review and article-order
+  decision.
 - No `diagnostic_table()` cross-link was added.
 - No r200 dispatch was run.

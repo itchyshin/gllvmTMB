@@ -3,7 +3,8 @@
 **Date:** 2026-05-20
 **Status:** active design contract for public teaching fixtures
 **First fixtures:** `inst/extdata/examples/morphometrics-example.rds`;
-`inst/extdata/examples/covariance-edge-cases-example.rds`
+`inst/extdata/examples/covariance-edge-cases-example.rds`;
+`inst/extdata/examples/joint-sdm-example.rds`
 
 Public articles should not make beginners read long data-generating code before
 the first fit. A teaching example object stores the data, truth, formulas, and
@@ -60,3 +61,4 @@ Current test files:
 
 - `tests/testthat/test-example-morphometrics.R`
 - `tests/testthat/test-example-covariance-edge-cases.R`
+- `tests/testthat/test-example-joint-sdm.R`

@@ -191,41 +191,46 @@ library(gllvmTMB)
 library(ggplot2)
 ```
 
-## Simulate and fit
+## Load and fit
 
-A simulated `Site × Species` occurrence dataset — 100 sites, 8
-species, 2 underlying latent factors, plus an environmental
-covariate `env_1` with species-specific responses. The true loadings
-are designed so each species falls into one of **four niche
-quadrants** of the latent space (e.g. dry-low, dry-high, wet-low,
-wet-high), with two species per quadrant. The biplot below should
-recover those four clusters.
+The article uses a shipped teaching fixture rather than building the
+data inside the vignette. It contains a complete `Site x Species`
+occurrence matrix: 120 sites, 8 species, 2 latent residual
+co-occurrence axes, and an environmental covariate `env_1` with
+species-specific responses. The true loadings put the species into
+four niche quadrants (dry-low, dry-high, wet-low, wet-high), with two
+species per quadrant.
 
-```{r jsdm-sim}
-set.seed(2025)
-T       <- 8           # 8 species
-n_sites <- 100         # 100 sites
-
-## Designed loadings: 8 species in 4 niche quadrants
-##   sp1, sp2  : (- F1, - F2)  — e.g. "dry, lowland"
-##   sp3, sp4  : (- F1, + F2)  — e.g. "dry, highland"
-##   sp5, sp6  : (+ F1, - F2)  — e.g. "wet, lowland"
-##   sp7, sp8  : (+ F1, + F2)  — e.g. "wet, highland"
-Lam_true <- matrix(c(
-  ## Column 1: F1 (e.g. moisture; positive = wet)
-  -1.2, -1.0, -1.1, -0.9,  +1.0, +1.2, +1.1, +0.9,
-  ## Column 2: F2 (e.g. elevation; positive = highland)
-  -1.0, -1.2, +1.1, +0.9,  -1.0, -1.1, +1.0, +1.2
-), nrow = T, ncol = 2)
-
-sim <- simulate_site_trait(
-  n_sites = n_sites, n_species = 6, n_traits = T,
-  mean_species_per_site = 5,
-  Lambda_B = Lam_true, psi_B = rep(0.4, T),
-  sigma2_eps = 0.01, seed = 2025
+```{r jsdm-data}
+jsdm_path <- system.file(
+  "extdata", "examples", "joint-sdm-example.rds",
+  package = "gllvmTMB"
 )
-df <- sim$data
-df$value <- as.integer(df$value > 0)   # binarise
+
+source_candidates <- file.path(
+  c(".", "..", "../.."),
+  "inst", "extdata", "examples", "joint-sdm-example.rds"
+)
+input_file <- knitr::current_input(dir = TRUE)
+if (!is.null(input_file)) {
+  source_candidates <- c(
+    source_candidates,
+    file.path(
+      dirname(dirname(dirname(input_file))),
+      "inst", "extdata", "examples", "joint-sdm-example.rds"
+    )
+  )
+}
+candidate_paths <- c(jsdm_path, source_candidates)
+candidate_paths <- candidate_paths[nzchar(candidate_paths)]
+jsdm_path <- candidate_paths[file.exists(candidate_paths)][1]
+if (is.na(jsdm_path)) {
+  stop("Could not find joint-sdm-example.rds.")
+}
+jsdm <- readRDS(jsdm_path)
+
+df <- jsdm$data_long
+df_wide <- jsdm$data_wide
 ```
 
 The same JSDM fits in both long format and the `traits(...)` wide
@@ -236,45 +241,39 @@ same engine.
 ```{r jsdm-fit}
 # Long format -- one row per (site, species) observation
 fit_jsdm <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):env_1 +
-          latent(0 + trait | site, d = 2),
+  jsdm$formula_long,
   data   = df,
-  trait  = "trait",
-  family = binomial()
+  trait  = jsdm$fit_args$trait,
+  unit   = jsdm$fit_args$unit,
+  family = jsdm$fit_args$family
 )
 fit_jsdm
 ```
 
-```{r jsdm-fit-wide, eval = FALSE}
-# Wide format -- one row per site, one column per species, after
-# pivoting `df` to wide (e.g. with `tidyr::pivot_wider`, treating
-# missing (site, species) cells as absences = 0 for a binomial
-# JSDM). The `traits(...)` LHS names the species columns; the
-# compact RHS shorthand uses `1 + env_1` which expands internally
-# to `0 + trait + (0 + trait):env_1`.
+```{r jsdm-fit-wide}
+# Wide format -- one row per site, one column per species. The
+# `traits(...)` LHS names the species columns; the compact RHS
+# shorthand uses `1 + env_1`, which expands internally to
+# `0 + trait + (0 + trait):env_1`.
 fit_jsdm_wide <- gllvmTMB(
-  traits(trait_1, trait_2, trait_3, trait_4,
-         trait_5, trait_6, trait_7, trait_8) ~
-    1 + env_1 + latent(1 | site, d = 2),
+  jsdm$formula_wide,
   data   = df_wide,
-  unit   = "site",
-  family = binomial()
+  unit   = jsdm$fit_args$unit,
+  family = jsdm$fit_args$family
 )
-all.equal(logLik(fit_jsdm), logLik(fit_jsdm_wide))
+all.equal(logLik(fit_jsdm), logLik(fit_jsdm_wide), tolerance = 1e-8)
 ```
 
 ### Long or wide data shape
 
-JSDM is the package's natural long-format use case because each
-row already carries `(site, species)` and the response factor
-`trait` indexes species. The wide form above is shown for syntactic
-parallelism with the
-[`morphometrics`](morphometrics.html) and
-[Get Started](../gllvmTMB.html) examples; the runnable byte-identical
-long/wide equivalence check on this JSDM scenario depends on the
-absence-fill convention (sparse `mean_species_per_site` simulation
-vs every-site-sees-every-species filled with zeros) and lives in the
-Phase 1c article-port programme.
+JSDM is the package's natural long-format use case because each row
+already carries `(site, species)` and the response factor `trait`
+indexes species. When the data already live as one row per site and
+one binary column per species, the `traits(...)` wide form is the same
+model through the same `gllvmTMB()` entry point. In either shape, true
+absences should be explicit zeros. Missing response cells are not a
+safe shortcut for absences, because missingness can also mean the site
+or species was not surveyed.
 
 ### Where loading constraints fit
 
@@ -324,7 +323,7 @@ $\boldsymbol\Sigma_B$ entries can be dominated by loading scale and are
 harder to interpret. The Fisher-z interval bounds stay in `corr_rows`
 rather than being printed inside every matrix cell.
 
-```{r jsdm-correlation-heatmap, fig.width = 6.8, fig.height = 5.8, fig.cap = "Residual species correlations from the fitted binary JSDM. Cells show Fisher-z point estimates on the latent-liability scale after accounting for env_1 and the fixed logistic link residual; interval bounds are available in the preceding table.", fig.alt = "Heatmap of pairwise residual species correlations for eight traits. Blue cells indicate positive residual co-occurrence, red cells indicate negative residual co-occurrence, and diagonal self-correlations are one."}
+```{r jsdm-correlation-heatmap, fig.width = 6.8, fig.height = 5.8, fig.cap = "Residual species correlations from the fitted binary JSDM. Cells show Fisher-z point estimates on the latent-liability scale after accounting for env_1 and the fixed logistic link residual; interval bounds are available in the preceding table.", fig.alt = "Heatmap of pairwise residual species correlations for eight species. Blue cells indicate positive residual co-occurrence, red cells indicate negative residual co-occurrence, and diagonal self-correlations are one."}
 plot_correlations(
   corr_rows,
   style = "heatmap",
@@ -357,16 +356,20 @@ plot(
   sign_anchor = "auto",
   standardize_loadings = TRUE
 ) +
-  ggplot2::labs(caption = NULL)
+  ggplot2::labs(
+    title = "Residual species ordination",
+    subtitle = "Varimax-rotated site scores and species loading directions.",
+    caption = NULL
+  )
 ```
 
-The species arrows recover the **four designed association groups**:
-`trait_1` / `trait_2`, `trait_3` / `trait_4`, `trait_5` /
-`trait_6`, and `trait_7` / `trait_8` point in distinct directions on
-the rotated axes. The exact orientation is arbitrary — only
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ is identifiable. Species
-arrows pointing in the same direction co-occur after `env_1` is
-accounted for; arrows pointing in opposite directions tend to
+The fixture's truth places the eight species into **four designed
+association groups**: `sp_1` / `sp_2`, `sp_3` / `sp_4`, `sp_5` /
+`sp_6`, and `sp_7` / `sp_8`. The fitted arrows should be read for
+broad grouping, not axis labels. The exact orientation is arbitrary —
+only $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ is identifiable.
+Species arrows pointing in the same direction co-occur after `env_1`
+is accounted for; arrows pointing in opposite directions tend to
 mutually exclude.
 
 ## See also

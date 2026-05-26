@@ -97,17 +97,17 @@ Current operating rule:
 
 | Agent | Lane | PR / branch | Files touched | Status |
 |---|---|---|---|---|
-| Codex | **Phase 56.1 — TMB template promotion** (Design 56 §5.2: `n_lhs_cols ∈ {1, 2}` block-local; `log_sd_b` / `atanh_cor_b` as VECTORs; `b_phy_aug` / `Z_phy_aug` as ARRAYs) | `codex/phase56-1-tmb-promotion-2026-05-26` (PR not yet open) | `src/gllvmTMB.cpp` (augmented LHS engine block), `R/fit-multi.R` (stub plumbing per Design 56 §9.1) | Engine work in progress on Codex's branch. PR validation contract per Design 56 §9.1: (a) 3-OS green, (b) legacy `phylo_slope` recovery still passes on `n_lhs_cols = 1` path, (c) one `n_lhs_cols = 2` smoke fit returns finite logLik, (d) after-task report cross-referencing the Design 56 sections exercised. Shannon role when PR opens: coord-board sync (move this row → Recently resolved), Rose pre-publish, after-task cross-reference. |
-| Claude/Shannon | Holding (Phase A scaffold closed 2026-05-26) | — | — | All Phase A scaffold PRs merged 3-OS green: #277 (Design 55 grammar contract), #279 + #280 + #286 (Design 56 engine-work design + scalable-name amendment), #282 + #283 + #284 (16 skeleton tests covering APPLICABLE matrix per Design 55 §5, all gated by `skip_until_stage3()`), #285 (Phase A scaffold-close after-task report), #287 + #288 (Phase 56.5 per-cell + Phase B0 non-Gaussian audit memos). Holding until Codex 56.1 PR opens. **Hard scope (Ada 2026-05-26):** `src/gllvmTMB.cpp`, `R/fit-multi.R`, `R/brms-sugar.R`, `R/parse-multi-formula.R` are Codex-owned through Phase 56.1–56.4. |
+| Codex | **Phase 56.2 — R-side `n_traits` / `n_lhs_cols` classification slice** | `codex/phase56-2-rside-audit-2026-05-26` (PR not yet open) | `R/fit-multi.R` (narrow R-side discipline edits; per audit memo) | Audit memo already landed on `main` via #289 at `docs/dev-log/audits/2026-05-26-phase56-2-rside-audit.md`. Key correction: the Design 56 §4 nine `n_traits` sites are a **classification checklist**, not a mechanical replacement list — 7 stay `n_traits` (legacy trait-indexed phylo covariance), 1 already promoted in #289 (DATA_ARRAY assembly), 1 split-by-flag. 56.2 implementation will be narrow R-side discipline; parser activation waits for 56.3. Validation target: `phase56-1-phylo-augmented-stub` + `augmented-lhs-guard|phylo-slope` regression preserved. Shannon role when PR opens: Rose pre-publish + coord-board sync + after-task cross-reference (same pattern as #289). |
+| Claude/Shannon | Standing by post-#289 close-out | — | — | Phase 56.1 close-out PR (this one) lands the #285 → #289 cross-reference and moves the prior 56.1 row to Recently resolved. After this merges, Shannon holds until Codex's 56.2 PR opens — then Rose pre-publish + coord-board sync + after-task cross-ref. **Hard scope unchanged (Ada 2026-05-26):** `src/gllvmTMB.cpp`, `R/fit-multi.R`, `R/brms-sugar.R`, `R/parse-multi-formula.R` Codex-owned through Phase 56.1–56.4. A6 prep memo (#291) is staged; A6 itself blocked behind Phase 56.5 close. |
 
-**WIP**: 1 active (Codex Phase 56.1 engine; PR not yet open).
+**WIP**: 1 active (Codex Phase 56.2 audit + R-side discipline; PR not yet open).
 
-**Stack discipline (Shannon, 2026-05-26):** worktrees current as of Phase A close.
+**Stack discipline (Shannon, 2026-05-26):** worktrees current after #289 / #291 merged.
 
-- `gllvmTMB` (main worktree) — at `main` tip `89d0114` (#285).
+- `gllvmTMB` (main worktree) — at `main` tip `3133863` (#289).
 - `gllvmTMB-codex-morphometrics` — Codex's prior morphometrics worktree on `codex/morphometrics-long-wide` (no recent activity).
-- `gllvmTMB-coord-board` — Claude's worktree for the present coord-board sync only, branch `agent/coord-board-phase-56-1-handoff` (this PR).
-- Codex's Phase 56.1 worktree is wherever Codex prefers locally; the remote branch is `codex/phase56-1-tmb-promotion-2026-05-26`.
+- `gllvmTMB-56-1-closeout` — Claude's worktree for the present #289 close-out PR only, branch `agent/phase56-1-merge-closeout`.
+- Codex's Phase 56.2 worktree is wherever Codex prefers locally; the remote branch is `codex/phase56-2-rside-audit-2026-05-26`.
 
 ## Validation Factory plan — Hidden Article Restoration + Validation (Ada, 2026-05-25)
 
@@ -275,11 +275,11 @@ leave a coordination comment first and wait for acknowledgement.
 | `docs/dev-log/*` | each agent owns its own `after-task/*.md` and `shannon-audits/*.md` |
 | Tier-1 article rewrites (`choose-your-model`, `phylogenetic-gllvm`, etc.) | paused; revisit after this hygiene stop point |
 | `R/*` (general) | no active engine owner for non-structural-slope files. Recent parser/API edits on `main` are from PR #226 (`meta_V(V = V)`, `type = "exact"`, wide `traits()` marker preservation). Coordinate before further R edits. |
-| `R/fit-multi.R` | **Codex** (Phase 56.1–56.2, `codex/phase56-1-tmb-promotion-2026-05-26`): stub plumbing for `n_lhs_cols ∈ {1, 2}` per Design 56 §9.1. Shannon stays out through Phase 56.4. |
+| `R/fit-multi.R` | **Codex** (Phase 56.2, `codex/phase56-2-rside-audit-2026-05-26`): narrow R-side discipline edits per the 56.2 audit memo (legacy phylo covariance paths keep `n_traits`; augmented path uses `b_phy_aug` / `Z_phy_aug` / block-local `n_lhs_cols`). Shannon stays out through Phase 56.4. |
 | `R/brms-sugar.R`, `R/parse-multi-formula.R` | **Codex** (Phase 56.3 onward): augmented-LHS parser changes per Design 55 §4 and Design 56 §7 fail-loud invariant. Shannon soft-no-touch until Phase 56.3 lands. |
 | `tests/testthat/test-{phylo,animal,spatial,relmat}-{latent,unique,indep,dep}-slope-gaussian.R` (16 files, merged via #282/#283/#284) | **Codex** activates per file during Phase 56.4 by removing `skip_until_stage3()` gates. Until then, gated skeletons stay as-is. |
-| `tests/testthat/*` (general) | no active owner for non-structural-slope tests after #226 merged. |
-| `src/gllvmTMB.cpp` | **Codex** (Phase 56.1, `codex/phase56-1-tmb-promotion-2026-05-26`): TMB template promotion to `n_lhs_cols ∈ {1, 2}` block-local per Design 56 §5.2. Shannon stays out until Phase 56.4 close. |
+| `tests/testthat/*` (general) | no active owner for non-structural-slope tests after #226 merged. New `tests/testthat/test-phase56-1-phylo-augmented-stub.R` on `main` via #289 (Phase 56.1 regression test, PASS 9). |
+| `src/gllvmTMB.cpp` | **Codex** (Phase 56.1 dormant promotion landed via #289 at `3133863`; future 56.2 / 56.3 may touch as needed): augmented-LHS engine block per Design 56 §5.2. Shannon stays out until Phase 56.4 close. |
 | `inst/prototypes/ppcheck-diagnostics.R`, `docs/design/51-posterior-predictive-diagnostics.md` | no active owner after PR #229 merged |
 | `.github/workflows/m3-production-grid.yaml`, `dev/precompute-m3-grid.R` (CLI surface only) | no active owner after PR #258 merged 2026-05-25. Both teams free to edit. |
 | `dev/m3-grid.R` | **Claude** (PR #263 active 2026-05-25): targeted binomial-psi patch in `m3_sample_truth` + `m3_simulate_response` per maintainer's 2026-05-25 design ruling ("simulations cannot have psi bit — as psi for binary emerges from binomial error"). Gaussian / nbinom2 / ordinal-probit branches untouched. After PR #263 merges, ownership returns to "no active owner; free to edit". |
@@ -321,6 +321,33 @@ Resolved questions move to "Recently resolved" with the answer.
 
 ## Recently resolved (rolling 24-48h)
 
+- **2026-05-26 ~11:00 MT**: **PR [#289](https://github.com/itchyshin/gllvmTMB/pull/289)
+  merged at `3133863`** — Phase 56.1 dormant TMB promotion. Engine surface
+  now carries the augmented-LHS plumbing
+  (`use_phylo_slope_correlated` default 0; block-local
+  `n_lhs_cols ∈ {1, 2}`; `b_phy_aug` / `Z_phy_aug` arrays;
+  `log_sd_b` / `atanh_cor_b` vectors; defensive `error()` guards on
+  every dim/length). Legacy `phylo_slope()` byte-identity preserved
+  by the `use_phylo_slope_correlated == 0` guard. Rose pre-publish
+  ([#issuecomment-4545836209](https://github.com/itchyshin/gllvmTMB/pull/289#issuecomment-4545836209))
+  posted before merge; Design 56 §9.1 validation contract met
+  (3-OS green; legacy recovery preserved; `n_lhs_cols = 2` smoke
+  passes; after-task cross-references Design 56 §5.2 / §7 / §9.1).
+  Phase 56.2 now active on `codex/phase56-2-rside-audit-2026-05-26`;
+  audit memo landed in #289 at
+  `docs/dev-log/audits/2026-05-26-phase56-2-rside-audit.md`.
+  Cross-reference after-task at
+  `docs/dev-log/after-task/2026-05-26-phase-56-1-merge-closeout.md`.
+  (Ada / Codex / Claude)
+- **2026-05-26 ~10:50 MT**: **PR [#291](https://github.com/itchyshin/gllvmTMB/pull/291)
+  merged at `6f413cf`** — Phase A6 prep audit memo. Pre-stages
+  three error-prone bookkeeping pieces of the future A6 slice:
+  articles inventory (9 locations across 6 articles), `NEWS.md`
+  pre-draft, and validation-debt register pre-draft (RE-02 / FG-15 /
+  PHY-06 / ANI-06 walk wording plus new `SPA-slope` row).
+  Audit-only docs/dev-log memo; no engine / parser / R / register /
+  article edits. A6 itself remains blocked behind Phase 56.5 close
+  per Active Plan 2026-05-26. (Claude)
 - **2026-05-26 ~10:30 MT**: **Phase A scaffold close + Phase 56.1 handoff to Codex.**
   Phase A of the Structural-dependence × random-slope plan
   (Design 55 / Design 56) closed Shannon-side. Merged 3-OS green:

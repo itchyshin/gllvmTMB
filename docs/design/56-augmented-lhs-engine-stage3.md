@@ -54,10 +54,16 @@ This design specifies:
 ## 2. Scope
 
 In scope:
-- **Engine work for `n_lhs_cols ∈ {1, 2}` only**: intercept-only
-  (the current state, `n_lhs_cols = T`) and intercept + slope
-  on a single covariate (the new state, `n_lhs_cols = 2T` per
-  Design 55 §3 wide↔long contract).
+- **Engine work for `n_lhs_cols ∈ {1, 2}` only** — **block-local**
+  semantics per §5.2 (values index random-effect columns at the
+  prior site, *not* trait stacking):
+  - `n_lhs_cols == 1`: the legacy slope-only path (current state).
+  - `n_lhs_cols == 2`: the new intercept + slope on a single
+    covariate.
+  Per-trait expansion happens at the R-side Z-matrix
+  construction, *not* at the engine prior. Both wide and long
+  surfaces share the same `2 × 2` prior, preserving the
+  Design 55 §3 wide↔long byte-identity contract.
 - All four structural families (phylo / animal / spatial /
   user-supplied A) and the keyword subset Design 55 §5 marks
   APPLICABLE (16 cells = 4 keywords × 4 families;
@@ -101,12 +107,17 @@ product:
 eta(o) += b_phy_slope(species_aug_id(o)) * x_phy_slope(o);
 ```
 
-**New shape (Phase 56.1)**:
+**New shape (Phase 56.1)** — scalable names + block-local
+`n_lhs_cols` per §5.2:
 
 ```cpp
-DATA_INTEGER(n_lhs_cols);        // 1 (intercept-only) or 2 (intercept + slope)
-PARAMETER_MATRIX(log_sd_b);      // n_lhs_cols × n_aug_phy_blocks
-PARAMETER_VECTOR(atanh_cor_b);   // length n_aug_phy_blocks (one ρ per block when n_lhs_cols=2)
+DATA_INTEGER(n_lhs_cols);        // block-local: 1 (legacy slope-only) or 2 (intercept + slope)
+PARAMETER_VECTOR(log_sd_b);      // length n_lhs_cols
+                                 // n_lhs_cols=1: [log σ_slope]   (legacy)
+                                 // n_lhs_cols=2: [log σ_α, log σ_β]
+PARAMETER_VECTOR(atanh_cor_b);   // length n_lhs_cols*(n_lhs_cols-1)/2
+                                 // n_lhs_cols=1: length 0 (no off-diagonal)
+                                 // n_lhs_cols=2: length 1 (the single ρ)
 PARAMETER_ARRAY(b_phy_aug);      // n_aug_phy × n_lhs_cols × n_aug_phy_blocks
 DATA_ARRAY(Z_phy_aug);           // n_obs × n_lhs_cols × n_aug_phy_blocks (column 0 = 1's; column 1 = x covariate)
 ```
@@ -135,7 +146,7 @@ that may absorb augmented LHS:
 | Current block | New shape | Sites changed |
 |---|---|---|
 | `b_phy_slope` (vector) | `b_phy_aug` (3D array) | `src/gllvmTMB.cpp:186-195, 526-542, 701-704` |
-| `b_phy_diag` (vector × n_traits) | `b_phy_aug` (3D array, `n_lhs_cols = T × 2` for trait-stacked + slope-stacked) | `src/gllvmTMB.cpp` phylo_diag block |
+| `b_phy_diag` (vector × n_traits) | `b_phy_aug` (3D array; `n_lhs_cols ∈ {1, 2}` is block-local — per-trait stacking lives in the `n_aug_phy_blocks` dimension, not in `n_lhs_cols`) | `src/gllvmTMB.cpp` phylo_diag block |
 | `b_spde_*` for spatial keywords | analogous 3D array | `src/gllvmTMB.cpp` spde block |
 | `b_animal_*` (sugar over phylo) | inherits phylo block automatically | n/a, no engine code (Design 14 §8) |
 | `b_phy_rr` (matrix `n_aug × d`) | unchanged shape; augmented LHS treated as extra `d` columns conceptually but routed through the new `b_phy_aug` path instead | `src/gllvmTMB.cpp:456-494` |

@@ -11430,3 +11430,97 @@ Deliberately not run:
 - No parser activation, public formula syntax change, `n_traits` audit edit,
   skeleton-test activation, validation-debt row movement, ROADMAP tick, or
   NEWS entry.
+
+## 2026-05-26 -- Phase 56.2 R-side n_traits / n_lhs_cols audit
+
+Branch: `codex/phase56-2-rside-audit-2026-05-26`
+
+Files changed:
+
+- `docs/design/56-augmented-lhs-engine-stage3.md`
+- `docs/dev-log/audits/2026-05-26-phase56-2-rside-audit.md`
+- `docs/dev-log/after-task/2026-05-26-phase56-2-rside-audit.md`
+- `docs/dev-log/recovery-checkpoints/2026-05-26-100539-ada-checkpoint.md`
+- `docs/dev-log/check-log.md`
+
+What changed:
+
+- Recast Design 56 §4 from a stale "replace all nine `n_traits`
+  sites" table into a post-#289 site-by-site classification.
+- Recorded that `theta_rr_phy`, `Lambda_phy`, `g_phy`,
+  `log_sd_phy_diag`, and `g_phy_diag` remain trait-indexed legacy
+  phylogenetic covariance paths.
+- Recorded that the augmented structural-slope path is already
+  represented by `Z_phy_aug`, `b_phy_aug`, `log_sd_b`,
+  `atanh_cor_b`, and block-local `n_lhs_cols`.
+- Rejected the older draft implication that Phase 56.2 should use
+  `2 * n_traits` as a prior dimension; Phase 56.3 parser work sets
+  `n_lhs_cols = 2L` for supported intercept+slope forms, while trait
+  stacking stays in rows / block replication.
+
+Evidence:
+
+- Pre-edit / coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`.
+- Recent-lane check:
+  `git log --all --oneline --decorate --since='6 hours ago'`
+  -> #289, #290, and #291 are on `main`; no open PR overlap.
+- GitHub Actions watchpoint:
+  `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url`
+  -> #292's `main` R-CMD-check on `e4d67aa` completed successfully;
+  the older #289 `main` run on `3133863` was cancelled by the newer
+  main push; downstream pkgdown for `e4d67aa` was still in progress
+  at closeout.
+- Rebase after Shannon's merge-closeout PR:
+  `git fetch origin --prune --quiet && git rebase origin/main`
+  -> clean rebase onto `e4d67aa` (#292).
+- Current open-PR check after Shannon merged #292:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,isDraft,mergeable,updatedAt,url,files`
+  -> `[]`.
+- Source reads:
+  `nl -ba R/fit-multi.R | sed -n '1178,1324p'`,
+  `nl -ba R/fit-multi.R | sed -n '1518,1620p'`, and
+  `nl -ba src/gllvmTMB.cpp | sed -n '465,620p'`
+  -> classified trait-covariance versus augmented-design sites.
+- `Rscript --vanilla -e 'devtools::test(filter = "phase56-1-phylo-augmented-stub")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 9`.
+- `Rscript --vanilla -e 'devtools::test(filter = "augmented-lhs-guard|phase56-1-phylo-augmented-stub|phylo-slope")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 21`.
+- Stale-pattern scan:
+  `rg -n '2 \* n_traits|2\*n_traits|n_lhs_cols = T|n_lhs_cols = 2T|mechanical replacement|replace.*nine|R/fit-multi.R:~1150|R/fit-multi.R:~1152|R/fit-multi.R:~1154|R/fit-multi.R:~1173|R/fit-multi.R:~1180|R/fit-multi.R:~1185|R/fit-multi.R:~1187|R/fit-multi.R:~1227|R/fit-multi.R:~1301' docs/design/56-augmented-lhs-engine-stage3.md docs/dev-log/audits/2026-05-26-phase56-2-rside-audit.md docs/dev-log/after-task/2026-05-26-phase56-2-rside-audit.md`
+  -> only intentional new wording remains: "not a mechanical
+  replacement list" and "not in a `2 * n_traits` prior dimension".
+- Alignment scan:
+  `rg -n 'theta_rr_phy|Lambda_phy|g_phy|log_sd_phy_diag|g_phy_diag|Z_phy_aug|b_phy_aug|log_sd_b|atanh_cor_b|n_lhs_cols|keep `n_traits`|already promoted|already split' docs/design/56-augmented-lhs-engine-stage3.md docs/dev-log/audits/2026-05-26-phase56-2-rside-audit.md`
+  -> Design 56 and the audit name the same keep/promote decisions.
+- `git diff --check`
+  -> clean.
+
+Review gates:
+
+- Ada / integration: PASS. Phase 56.2 is now a small design/audit
+  correction on post-#289 `main`.
+- Boole / parser: PASS. No parser or formula grammar change;
+  `augmented-lhs-guard` still passes.
+- Gauss / TMB likelihood: PASS. No TMB code changed.
+- Noether / math: PASS. Text preserves block-local `Sigma_b` and
+  trait-indexed phylogenetic covariance separately.
+- Rose / consistency: PASS. Stale replacement wording is removed or
+  explicitly rejected as older draft wording.
+- Shannon / coordination: PASS with watchpoint. #292 is merged into
+  `main`; this branch is rebased on top of it. Open PR census is
+  empty. Downstream pkgdown for #292 was still running at closeout.
+
+Deliberately not run:
+
+- No `devtools::document()`; no roxygen, NAMESPACE, or generated Rd files
+  changed.
+- No `pkgdown::check_pkgdown()`; no pkgdown navigation, README,
+  articles, vignettes, reference topics, or examples changed.
+- No full `devtools::test()`; the branch is docs/dev-log/design only and
+  focused regression checks covered the dormant stub, parser guard, and
+  legacy `phylo_slope` path.
+- No parser activation, public formula syntax change, skeleton-test
+  activation, validation-debt row movement, ROADMAP tick, NEWS entry,
+  deprecation, or article rewrite.

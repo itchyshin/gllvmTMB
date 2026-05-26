@@ -10986,6 +10986,10 @@ Evidence:
 - Package test path:
   `Rscript --vanilla -e 'devtools::test(filter = "example-joint-sdm", reporter = "summary")'`
   -> PASS after using the package-load test path.
+- Full local test suite:
+  `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> PASS with 13 expected skips and 1 expected deprecation warning
+  (`level = "spde"` alias warning in `test-spatial-latent-recovery.R`).
 - First article render after fixture activation:
   `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", lazy = FALSE)'`
   -> initially failed because a fresh pkgdown process could not see the new RDS

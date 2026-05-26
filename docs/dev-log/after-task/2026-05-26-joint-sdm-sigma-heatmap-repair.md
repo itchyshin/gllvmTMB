@@ -80,6 +80,10 @@ long fit for report-ready residual species correlations and ordination.
 - New fixture test:
   `Rscript --vanilla -e 'devtools::test(filter = "example-joint-sdm", reporter = "summary")'`
   -> PASS.
+- Full local test suite:
+  `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> PASS with 13 expected skips and 1 expected deprecation warning
+  (`spde` -> `spatial` alias warning in the spatial-latent test).
 - Article render after fixture activation:
   `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", lazy = FALSE)'`
   -> wrote `pkgdown-site/articles/joint-sdm.html`; the rendered wide chunk

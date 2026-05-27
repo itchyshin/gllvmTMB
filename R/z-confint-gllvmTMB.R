@@ -77,6 +77,254 @@
     parm %in% .sigma_parm_tokens()
 }
 
+## Internal helper (Stage 2 of profile-CI unified framework, 2026-05-27):
+## recognise Lambda-entry parm tokens. Accepts:
+##   * "Lambda"           -> all free Lambda entries
+##   * "Lambda:i,j"       -> single entry
+##   * "Lambda:i,j;k,l"   -> multiple entries (semicolon-separated)
+##
+## Always matches against `Lambda_<unit>` (the unit-level loading matrix).
+## A future stage will extend to `unit_obs` via a "Lambda_unit_obs:..." or
+## a separate `level` argument; out of scope here.
+.is_lambda_parm <- function(parm) {
+  !missing(parm) &&
+    is.character(parm) &&
+    length(parm) == 1L &&
+    (identical(parm, "Lambda") || grepl("^Lambda:", parm))
+}
+
+## Internal helper (Stage 2): parse a "Lambda:i,j;k,l" string into an
+## integer (i, k) matrix suitable for `loading_profile(entries = ...)`.
+## Returns `NULL` for the bare token "Lambda" (meaning "all free entries").
+## Errors clearly on malformed tokens or out-of-range indices.
+.parse_lambda_parm <- function(parm, n_traits, K) {
+  if (identical(parm, "Lambda")) {
+    return(NULL)
+  }
+  spec <- sub("^Lambda:", "", parm)
+  pairs <- strsplit(spec, ";", fixed = TRUE)[[1L]]
+  pairs <- trimws(pairs)
+  pairs <- pairs[nzchar(pairs)]
+  if (length(pairs) == 0L) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code Lambda} parm token.",
+      i = "Expected {.code \"Lambda:i,j\"} or {.code \"Lambda:i,j;k,l\"}."
+    ))
+  }
+  parts_list <- lapply(pairs, function(p) {
+    parts <- strsplit(p, ",", fixed = TRUE)[[1L]]
+    if (length(parts) != 2L) {
+      cli::cli_abort(c(
+        "Could not parse {.val {parm}} as a {.code Lambda} parm token.",
+        i = "Expected {.code \"Lambda:i,j\"} or {.code \"Lambda:i,j;k,l\"}; each pair must have two integers separated by a comma."
+      ))
+    }
+    i <- suppressWarnings(as.integer(trimws(parts[1L])))
+    k <- suppressWarnings(as.integer(trimws(parts[2L])))
+    if (anyNA(c(i, k))) {
+      cli::cli_abort(c(
+        "Could not parse {.val {parm}} as a {.code Lambda} parm token.",
+        i = "Indices must be integers; got {.val {parts[1L]}}, {.val {parts[2L]}}."
+      ))
+    }
+    c(i, k)
+  })
+  m <- do.call(rbind, parts_list)
+  storage.mode(m) <- "integer"
+  out_of_range <- m[, 1L] < 1L | m[, 1L] > n_traits |
+    m[, 2L] < 1L | m[, 2L] > K
+  if (any(out_of_range)) {
+    bad <- which(out_of_range)
+    cli::cli_abort(c(
+      "{cli::qty(length(bad))} Lambda entr{?y/ies} {.val {paste0(m[bad, 1L], ',', m[bad, 2L])}} out of range.",
+      i = "Valid indices: {.code i} in 1:{n_traits}, {.code k} in 1:{K}."
+    ))
+  }
+  m
+}
+
+## Internal helper (Stage 2): build the data.frame return value for
+## `confint(fit, parm = \"Lambda:...\")`. Wald paths route through
+## `loading_ci()` (which already enforces the pdHess gate -> NA + flag);
+## the profile path calls `loading_profile()` directly with the requested
+## entries (cheaper than going through `loading_ci(method = 'profile')`,
+## which always profiles every free entry) and inverts via
+## `.invert_profile_loadings()`.
+##
+## Return shape: data.frame with columns
+##   `parameter` (e.g. "Lambda[trait_1,LV1]"), `estimate`, `lower`,
+##   `upper`, `method`, `pd_hessian`, `ci_status`. Pinned entries are
+##   included when `parm = "Lambda"` (lower == upper == estimate,
+##   ci_status == "pinned") so the row order is stable across methods.
+.confint_lambda <- function(object, parm, level, method, ...) {
+  method <- match.arg(method, c("wald", "wald_asym", "profile"))
+
+  Lambda_mat <- object$report[["Lambda_B"]]
+  if (is.null(Lambda_mat)) {
+    cli::cli_abort(c(
+      "Fit has no {.code Lambda_B} to summarise.",
+      i = "Add a {.fn latent} term at {.code level = \"unit\"} and refit."
+    ))
+  }
+  Lambda_mat <- as.matrix(Lambda_mat)
+  n_traits <- nrow(Lambda_mat)
+  K <- ncol(Lambda_mat)
+
+  entries <- .parse_lambda_parm(parm, n_traits = n_traits, K = K)
+
+  if (method %in% c("wald", "wald_asym")) {
+    ## `loading_ci()` already implements the pdHess gate (NA + status
+    ## columns) and the pinned-entry collapse; we just filter rows
+    ## down to the requested entries and rename to a `parameter`
+    ## column for matrix consistency with the Sigma path.
+    ci <- loading_ci(
+      fit = object,
+      level = "unit",
+      method = method,
+      conf_level = level
+    )
+    trait_lab <- as.character(ci$trait)
+    axis_lab <- as.character(ci$axis)
+    parameter <- sprintf("Lambda[%s,%s]", trait_lab, axis_lab)
+    ## Promote pinned-entry status: `loading_ci()` reports `ci_status =
+    ## "ok"` for pinned entries (their bounds collapse to the point).
+    ## To match the profile-path convention -- and to give callers a
+    ## single way to identify pinned entries from the confint output --
+    ## upgrade those rows to `"pinned"`. Keep "ok" for free entries on
+    ## a PD fit and the non-PD flag untouched.
+    ci$ci_status <- ifelse(
+      ci$pinned & ci$ci_status == "ok",
+      "pinned",
+      ci$ci_status
+    )
+    ## Row layout in `loading_ci()`: column-major over Lambda[i, k]
+    ## (trait repeated `times = d`, axis repeated `each = n_traits`).
+    if (!is.null(entries)) {
+      row_ids <- entries[, 1L] + (entries[, 2L] - 1L) * n_traits
+      ci <- ci[row_ids, , drop = FALSE]
+      parameter <- parameter[row_ids]
+    }
+    return(data.frame(
+      parameter = parameter,
+      estimate = ci$estimate,
+      lower = ci$lower,
+      upper = ci$upper,
+      method = ci$method,
+      pd_hessian = ci$pd_hessian,
+      ci_status = ci$ci_status,
+      stringsAsFactors = FALSE,
+      row.names = NULL
+    ))
+  }
+
+  ## method == "profile": build curve(s) directly for the requested
+  ## entries, then invert. `loading_profile()` skips pinned entries by
+  ## construction; for `parm = "Lambda"` we include them as collapsed
+  ## point rows so the output row count matches the Wald paths.
+  prof <- loading_profile(
+    fit = object,
+    level = "unit",
+    entries = entries,
+    n_grid = 11L,
+    grid_extent = 6,
+    conf_level = level
+  )
+  bounds <- .invert_profile_loadings(prof)
+  ## Map profile bounds back to a per-entry data.frame matching the
+  ## Wald-path layout (so callers can rely on a consistent shape).
+  trait_names <- rownames(Lambda_mat)
+  if (is.null(trait_names)) {
+    trait_names <- rownames(object$lambda_constraint[["B"]])
+  }
+  if (is.null(trait_names) && !is.null(object$trait_col) &&
+      !is.null(object$data) && !is.null(object$data[[object$trait_col]])) {
+    trait_names <- levels(object$data[[object$trait_col]])
+  }
+  if (is.null(trait_names)) {
+    trait_names <- paste0("trait_", seq_len(n_traits))
+  }
+  axis_names <- colnames(Lambda_mat)
+  if (is.null(axis_names)) {
+    axis_names <- paste0("LV", seq_len(K))
+  }
+  pd_ok <- isTRUE(object$sd_report$pdHess)
+
+  if (is.null(entries)) {
+    ## Build the full grid of (i, k) entries; pinned ones (not present
+    ## in `bounds`) collapse to point.
+    M_user <- object$lambda_constraint[["B"]]
+    is_pinned <- if (is.null(M_user)) {
+      matrix(FALSE, n_traits, K)
+    } else {
+      !is.na(M_user)
+    }
+    ## Engine pins the strict-upper-triangle of the first d rows
+    ## (mirror of `loading_profile()` so the displayed pinned set matches).
+    for (i in seq_len(min(n_traits, K))) {
+      for (j in seq_len(K)) {
+        if (j > i) is_pinned[i, j] <- TRUE
+      }
+    }
+    all_entries <- expand.grid(
+      i = seq_len(n_traits),
+      k = seq_len(K),
+      KEEP.OUT.ATTRS = FALSE
+    )
+    parameter <- sprintf(
+      "Lambda[%s,%s]",
+      trait_names[all_entries$i],
+      axis_names[all_entries$k]
+    )
+    estimate <- as.numeric(Lambda_mat)
+    lower <- estimate
+    upper <- estimate
+    ci_status <- ifelse(is_pinned, "pinned", "interval_unavailable")
+    ## Overwrite with profile bounds where available
+    key_all <- paste(all_entries$i, all_entries$k, sep = ":")
+    key_b <- paste(bounds$i, bounds$k, sep = ":")
+    hit <- match(key_b, key_all)
+    lower[hit] <- bounds$lower
+    upper[hit] <- bounds$upper
+    ci_status[hit] <- bounds$ci_status
+    return(data.frame(
+      parameter = parameter,
+      estimate = estimate,
+      lower = lower,
+      upper = upper,
+      method = "profile",
+      pd_hessian = pd_ok,
+      ci_status = ci_status,
+      stringsAsFactors = FALSE,
+      row.names = NULL
+    ))
+  }
+
+  ## Specific entries requested: bounds row order matches `entries`
+  ## (loading_profile preserves the order of `entries`).
+  parameter <- sprintf(
+    "Lambda[%s,%s]",
+    trait_names[entries[, 1L]],
+    axis_names[entries[, 2L]]
+  )
+  ## Align rows: bounds may have a different order if loading_profile
+  ## reorders, but at present it preserves the row order of `entries`.
+  ## Defensive remap by (i, k) key.
+  key_req <- paste(entries[, 1L], entries[, 2L], sep = ":")
+  key_b <- paste(bounds$i, bounds$k, sep = ":")
+  idx <- match(key_req, key_b)
+  data.frame(
+    parameter = parameter,
+    estimate = bounds$estimate[idx],
+    lower = bounds$lower[idx],
+    upper = bounds$upper[idx],
+    method = "profile",
+    pd_hessian = pd_ok,
+    ci_status = bounds$ci_status[idx],
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+}
+
 ## Internal helper (P1a 2026-05-15): recognise parm tokens that match
 ## the `profile_targets()` inventory (e.g. "sigma_eps", "sd_B[1]",
 ## "phi_nbinom2[2]", "Lambda_B_packed[3]"). These are variance,
@@ -288,13 +536,22 @@
 #'     \item \code{"sigma_phy"} -- per-trait phylogenetic standard deviations.
 #'     \item Legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"}, retained
 #'       for existing scripts.
+#'     \item \code{"Lambda"} (all free entries of \code{Lambda_unit}),
+#'       \code{"Lambda:i,j"} (single entry), or \code{"Lambda:i,j;k,l"}
+#'       (multiple entries, semicolon-separated). Routes to
+#'       [loading_ci()] / [loading_profile()] (Stage 2 of the unified
+#'       profile-CI framework). For these tokens the method choices are
+#'       \code{c("wald", "wald_asym", "profile")} with default
+#'       \code{"wald"}.
 #'     \item An integer index vector or character vector of fixed-effect
 #'       term names (same as the standard \code{confint()} interface).
 #'     \item Missing (default) -- all fixed-effect parameters.
 #'   }
 #' @param level Confidence level in \code{(0, 1)}. Default \code{0.95}.
 #' @param method One of \code{"profile"} (default), \code{"wald"},
-#'   \code{"bootstrap"}.
+#'   \code{"bootstrap"}. For \code{parm = "Lambda..."} the accepted
+#'   methods are \code{c("wald", "wald_asym", "profile")} with default
+#'   \code{"wald"} (matching the base R \code{confint()} convention).
 #' @param nsim Number of bootstrap replicates passed to [bootstrap_Sigma()]
 #'   when \code{method = "bootstrap"}. Default \code{500}. Use a small
 #'   value (e.g. \code{50}) during development or testing.
@@ -310,6 +567,13 @@
 #'     \code{method} (the method used for that row). The parameter prefix
 #'     follows the requested \code{parm}, so legacy calls still return
 #'     legacy \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
+#'   \item \strong{Lambda path} -- a \code{data.frame} with columns
+#'     \code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"}),
+#'     \code{estimate}, \code{lower}, \code{upper}, \code{method},
+#'     \code{pd_hessian}, and \code{ci_status} (the last two from the
+#'     Stage 1 convention: when \code{pdHess = FALSE} on a Wald path,
+#'     \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
+#'     flags the reason).
 #'   \item \strong{Fixed-effects / variance-component path} -- a numeric
 #'     matrix with rownames = parameter names and two columns named
 #'     \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for
@@ -318,7 +582,7 @@
 #'
 #' @seealso [bootstrap_Sigma()], [extract_Sigma()], [extract_correlations()],
 #'   [extract_repeatability()], [extract_communality()], [tmbprofile_wrapper()],
-#'   [gllvmTMB()].
+#'   [loading_ci()], [loading_profile()], [gllvmTMB()].
 #'
 #' @section References:
 #' Pawitan, Y. (2001). \emph{In All Likelihood: Statistical Modelling
@@ -375,6 +639,28 @@ confint.gllvmTMB_multi <- function(
   seed = NULL,
   ...
 ) {
+  ## ---- Lambda entry path (Stage 2, 2026-05-27) -----------------------------
+  ## `parm = "Lambda"` (all free entries) or `"Lambda:i,j"` /
+  ## `"Lambda:i,j;k,l"` (specific entries) route to Stage 1 machinery in
+  ## `loading_ci()` / `loading_profile()`. Lambda uses its own method set
+  ## `c("wald", "wald_asym", "profile")` with default `"wald"`, so we
+  ## intercept BEFORE the outer `match.arg(method)` (which would reject
+  ## `"wald_asym"`).
+  if (.is_lambda_parm(parm)) {
+    method_lambda <- if ("method" %in% names(match.call())) {
+      method
+    } else {
+      "wald"
+    }
+    return(.confint_lambda(
+      object,
+      parm = parm,
+      level = level,
+      method = method_lambda,
+      ...
+    ))
+  }
+
   method <- match.arg(method)
 
   ## ---- Sigma matrix path ---------------------------------------------------

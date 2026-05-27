@@ -34,6 +34,13 @@
 \item \code{"sigma_phy"} -- per-trait phylogenetic standard deviations.
 \item Legacy aliases \code{"Sigma_B"} and \code{"Sigma_W"}, retained
 for existing scripts.
+\item \code{"Lambda"} (all free entries of \code{Lambda_unit}),
+\code{"Lambda:i,j"} (single entry), or \code{"Lambda:i,j;k,l"}
+(multiple entries, semicolon-separated). Routes to
+\code{\link[=loading_ci]{loading_ci()}} / \code{\link[=loading_profile]{loading_profile()}} (Stage 2 of the unified
+profile-CI framework). For these tokens the method choices are
+\code{c("wald", "wald_asym", "profile")} with default
+\code{"wald"}.
 \item An integer index vector or character vector of fixed-effect
 term names (same as the standard \code{confint()} interface).
 \item Missing (default) -- all fixed-effect parameters.
@@ -42,7 +49,9 @@ term names (same as the standard \code{confint()} interface).
 \item{level}{Confidence level in \code{(0, 1)}. Default \code{0.95}.}
 
 \item{method}{One of \code{"profile"} (default), \code{"wald"},
-\code{"bootstrap"}.}
+\code{"bootstrap"}. For \code{parm = "Lambda..."} the accepted
+methods are \code{c("wald", "wald_asym", "profile")} with default
+\code{"wald"} (matching the base R \code{confint()} convention).}
 
 \item{nsim}{Number of bootstrap replicates passed to \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}
 when \code{method = "bootstrap"}. Default \code{500}. Use a small
@@ -64,6 +73,13 @@ upper bounds of the Wald CI.
 \code{method} (the method used for that row). The parameter prefix
 follows the requested \code{parm}, so legacy calls still return
 legacy \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
+\item \strong{Lambda path} -- a \code{data.frame} with columns
+\code{parameter} (e.g. \code{"Lambda[trait_1,LV1]"}),
+\code{estimate}, \code{lower}, \code{upper}, \code{method},
+\code{pd_hessian}, and \code{ci_status} (the last two from the
+Stage 1 convention: when \code{pdHess = FALSE} on a Wald path,
+\code{lower}/\code{upper} are \code{NA} and \code{ci_status}
+flags the reason).
 \item \strong{Fixed-effects / variance-component path} -- a numeric
 matrix with rownames = parameter names and two columns named
 \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for
@@ -167,5 +183,5 @@ confint(fit)
 \seealso{
 \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}, \code{\link[=extract_Sigma]{extract_Sigma()}}, \code{\link[=extract_correlations]{extract_correlations()}},
 \code{\link[=extract_repeatability]{extract_repeatability()}}, \code{\link[=extract_communality]{extract_communality()}}, \code{\link[=tmbprofile_wrapper]{tmbprofile_wrapper()}},
-\code{\link[=gllvmTMB]{gllvmTMB()}}.
+\code{\link[=loading_ci]{loading_ci()}}, \code{\link[=loading_profile]{loading_profile()}}, \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }

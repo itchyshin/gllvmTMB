@@ -11777,3 +11777,94 @@ Deliberately not run / not done:
 - No R tests; this is a process-only handover document.
 - No pkgdown build; no user-facing site source changed.
 - No Phase 56.5 implementation started under the handover branch.
+
+## 2026-05-26 evening -- Phase B2 phylo_unique(1+x|id) recovery under binomial(logit): SKIP-with-finding
+
+Branch: `agent/phase-b2-phylo-unique-slope-binomial-logit`
+
+Files changed:
+
+- `tests/testthat/test-phylo-unique-slope-binomial-logit.R` (NEW; 277 lines).
+- `docs/dev-log/after-task/2026-05-26-phase-b2-binomial-logit-recovery.md` (NEW).
+- `docs/dev-log/check-log.md` (this entry).
+
+What changed:
+
+- Activated three test_that blocks for the Phase B2 binomial(logit)
+  anchor cell: wide-long byte-identity, Sigma_b recovery, forced
+  n_lhs_cols=1L negative test.
+- The recovery test_that is explicitly `testthat::skip()`-gated with
+  documented identifiability finding (see below).
+- Byte-identity and forced-negative tests are active and pass cleanly
+  under logit.
+- Status row in `docs/design/01-formula-grammar.md` is unchanged
+  (still `claimed`; Phase 56.6 owns promotion).
+
+What was learned: logit recovery bias at B0 defaults
+
+- Empirical seed sweep at three fixture sizes:
+  - n_id=60, seeds {2026, 5640, 102, 314, 271, 42, 1729, 2718, 1024,
+    4096}: 0/10 pass. Best (seed 1024): sigma^2_int rel err 0.46,
+    sigma^2_slope rel err 0.38, cor_b at boundary.
+  - n_id=120, seeds {2026, 5640, 1024, 2718, 42, 314}: 0/6 pass.
+    Best (seed 42): sigma^2_int rel err 0.003, sigma^2_slope rel err
+    0.61, rho err 0.06. Fit health (conv=0, pd=TRUE, sdok=TRUE, mg
+    3.5e-5) is fine; the bias is on the estimator.
+  - n_id=240, seeds {42, 314, 2718, 1024, 2026}: 0/5 pass. Best (seed
+    42): sigma^2_int rel err 0.058, sigma^2_slope rel err 0.508, rho
+    err 0.27. Fit times 2.3-3.2 s.
+- Systematic finding: sigma^2_slope is over-estimated by ~50-60%
+  under binomial(logit) at all tried fixture sizes. Likely root
+  cause: logit's residual variance sigma^2_d = pi^2/3 ~ 3.29 is more
+  than 3x larger than probit's sigma^2_d = 1; same truth sigma^2_beta
+  = 0.3 gives ~3x weaker slope SNR under logit.
+- Per Codex discipline (do NOT widen tolerances; do NOT fake-pass),
+  the recovery test_that is SKIPPED with the full empirical record
+  preserved in the test file comments and this check-log.
+- Deferred to a Phase B-recalibration follow-up slice. Candidates:
+  (a) n_id >= 480, (b) sigma^2_slope=0.6 truth (DGP signal lift),
+  (c) DGP recipe refinements. B0 memo's `n_id=60` recommendation
+  for fixed-scale families should be amended for logit specifically.
+
+Evidence:
+
+- Pre-edit lane check:
+  `git status --short --branch` -> clean
+  `agent/phase-b2-phylo-unique-slope-binomial-logit`.
+  `gh pr list --repo itchyshin/gllvmTMB --state open` -> #301 + #303
+  (Phase 56.5 relmat + B1 probit) both in CI.
+  `git log -1 --format='%h %s' main` -> `f03bb3d Phase B0:
+  per-family identifiability scoping memo for non-Gaussian random
+  slope (#302)`.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-unique-slope-binomial-logit")'`
+  -> `FAIL 0 | WARN 0 | SKIP 1 | PASS 19`.
+- All seed-exploration scripts captured in /tmp on the shift machine;
+  full sweep tables are in this check-log entry.
+
+Review gates:
+
+- Curie / simulation: PASS for byte-identity + negative test; HONEST
+  SKIP for recovery with empirical evidence. The bias is real, not
+  seed-selectable.
+- Fisher / identifiability: PASS for the analysis. Logit's pi^2/3
+  residual variance against truth sigma^2_beta=0.3 is the root
+  cause; the estimator behaves correctly given the SNR.
+- Boole / parser: PASS. Augmented LHS routes cleanly to logit family.
+- Noether / engine: PASS. No C++ change indicated; the bias is on
+  the estimator, not the engine.
+- Rose / consistency: PASS pending review. SKIP-with-finding mirrors
+  #298 honest seed-rejection discipline + #301 honest sparse-Ainv
+  SKIP pattern. Status row stays `claimed`.
+- Shannon / coordination: PASS. Captures the actual capability (parser
+  accepts + engine fits cleanly under logit) while honestly deferring
+  the recovery claim to a follow-up.
+
+Deliberately not run / not done:
+
+- No full `devtools::test()`; focused test only.
+- No `devtools::document()` (no roxygen / NAMESPACE / Rd changes).
+- No `pkgdown::check_pkgdown()` (no docs source changed).
+- No validation-debt row movement.
+- No NEWS / article / deprecation edits.
+- No fan-out to B3-B7 yet.
+- No engine / parser / R-side wiring touch.

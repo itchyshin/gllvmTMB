@@ -11858,3 +11858,107 @@ Deliberately not run / not done:
   (deferred to Phase 56.5b).
 - No fan-out to `animal_unique` (deferred until sparse divergence is
   resolved or scoped to dense-only).
+## 2026-05-26 -- Phase B1 phylo_unique(1+x|sp) binomial(probit) recovery activation
+
+Branch: `agent/phase-b1-phylo-unique-slope-binomial-probit` cut from
+`main` at `54a16a5`.
+
+Scope: activate the binomial(probit) anchor-adjacent cell for the
+augmented-LHS `phylo_unique(1 + x | sp)` engine. Mirrors PR #298 with
+the family swapped from `gaussian()` to `binomial(link = "probit")`.
+
+Files changed:
+
+- `tests/testthat/test-phylo-unique-slope-binomial-probit.R` (new)
+- `docs/dev-log/after-task/2026-05-26-phase-b1-binomial-probit-recovery.md` (new)
+- `docs/dev-log/check-log.md` (this entry)
+
+What changed:
+
+- Added the binomial(probit) per-family test file, mirroring the
+  `test-phylo-unique-slope-gaussian.R` structure exactly with only
+  the response family + DGP swapped.
+- DGP: `prob <- pnorm(mu_t + alpha_sp + beta_sp * x);
+  y <- rbinom(n, 1, prob)` with probit-scale trait intercepts
+  `mu_t = c(0.0, 0.3, -0.3)` chosen to keep the marginal probability
+  non-saturated.
+- Same fixture dimensions as #298 (`n_sp = 60`, `n_traits = 3`,
+  `n_rep = 4`), same #287 recovery tolerances (sigma^2 +-20%,
+  rho +-0.30), same wide-long byte-identity assertions, same
+  forced-`n_lhs_cols = 1L` no-silent-collapse negative test.
+- Probit `sigma^2_d = 1` exactly per `R/extract-sigma.R:14-72` and
+  `R/families.R:685-759` — selected as the first Phase B fan-out
+  cell because its identifiability story is cleanest.
+
+Evidence:
+
+- Shannon / pre-edit:
+  `git status --short --branch` -> clean `main` at `54a16a5`;
+  `git log --oneline -3` -> `54a16a5` (handover), `58b6b56` (#299),
+  `dd3b2be` (#298).
+- Seed-selection process (5 candidate seeds at `n_sp = 60`,
+  `n_traits = 3`, `n_rep = 4`, byte-identity verified for each):
+  - seed `5640` (the #298 Gaussian anchor seed): convergence `1`,
+    `pd_hessian = FALSE`, `max_gradient = 5.26e+04`,
+    `sd_b = c(0.6551, 0.2803)`, `cor_b = 1` (correlation
+    boundary). Rejected: sigma^2_slope rel err 0.738, rho abs err
+    0.500.
+  - seed `102`: convergence `0`, `pd_hessian = TRUE`,
+    `sd_b = c(0.3346, 0.1936)`, `cor_b = -0.819`. Rejected:
+    sigma^2_int rel err 0.720, sigma^2_slope rel err 0.875, rho
+    abs err 1.319.
+  - seed `2026`: convergence `0`, `max_gradient = 4.12e-04`,
+    `pd_hessian = TRUE`, `sdreport_ok = TRUE`,
+    `sd_b = c(0.6217, 0.5534)`, `cor_b = 0.560`,
+    `mean(y) = 0.324`. **Accepted**: sigma^2_int rel err 0.034,
+    sigma^2_slope rel err 0.021, rho abs err 0.060 — all well
+    within #287/#298 tolerances.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-unique-slope-binomial-probit")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 27`.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-unique-slope-binomial-probit|phylo-unique-slope-gaussian|phase56-3-phylo-unique-parser")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 79`.
+- `git diff --check` -> clean.
+
+Review gates:
+
+- Ada / integration: PASS. One branch, one anchor-adjacent recovery
+  slice with a per-family file. No engine, parser, R-side, or
+  test-template edit.
+- Curie / simulation: PASS. The alignment table, DGP, fit formula,
+  and recovery target all point to the same block-local `Sigma_b`.
+- Fisher / identifiability: PASS for the binomial(probit) anchor-
+  adjacent cell. The #298 anchor seed `5640` was rejected on
+  evidence (boundary `cor_b` + non-PD Hessian under binomial-probit
+  information content), and seed `2026` keeps the specified fixture
+  size and tolerances. Probit `sigma^2_d = 1` exact identifiability
+  story matches the Phase B1 rationale in the active plan.
+- Boole / parser: PASS. Adjacent parser tests still pass
+  (`phase56-3-phylo-unique-parser` suite). Wide and long surfaces
+  are byte-identical.
+- Gauss / likelihood: LIMITED/PASS. No TMB likelihood code changed.
+  The forced-shape negative test directly exercises the existing C++
+  guard.
+- Rose / consistency: PASS pending PR review. The
+  `phylo_unique(1 + x | species)` row in
+  `docs/design/01-formula-grammar.md` remains `claimed`; Phase 56.6
+  still owns validation-debt, NEWS, articles, and public
+  advertising. No `covered` claim added for binomial(probit).
+- Shannon / coordination: PASS at branch start. Branch cut directly
+  from `main` at the recorded handover SHA.
+
+Deliberately not run / not done:
+
+- No full `devtools::test()`; focused anchor + adjacent parser tests
+  passed.
+- No `devtools::document()`; no roxygen, NAMESPACE, or generated Rd
+  files changed.
+- No `pkgdown::check_pkgdown()`; no pkgdown source, README,
+  vignette, article, reference topic, or NEWS file changed.
+- No validation-debt row movement, ROADMAP tick, deprecation, user-
+  facing example, article update, or fan-out to other Phase B
+  families.
+- No 4th SKIP-gated `test_that` block. The sparse-Ainv vs dense-Ainv
+  divergence documented in `test-relmat-unique-slope-gaussian.R`
+  (Phase 56.5 branch) is specific to user-supplied `vcv = A`; the
+  `phylo_tree`-only path used here does not exhibit the divergence,
+  so there is nothing to document under SKIP for this slice.

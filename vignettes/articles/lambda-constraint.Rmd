@@ -937,21 +937,22 @@ disagree.
 
 One plot per refit. The y-axis is clipped to `(-3, 3)` so the
 species-level structure is readable. The two plots have *different
-failure modes* at this fixture, and that itself is the most
-informative comparison:
+identifiability properties* at this fixture, and the choice of CI
+method follows from that:
 
 - **`varimax_threshold`** pins 17 entries — fewer than profile — but
   the *pattern* of pins removes information the model needs for
   identification, so the refit's Hessian is **non-positive-definite**.
-  Per the `glmmTMB` convention, the package returns `NA` for Wald CIs,
-  and the plot renders **hollow points only** (no eyes). The grey
-  filled circles are entries pinned by the suggester; the blue
-  hollow points are free entries for which the CI is unavailable.
+  Per the `glmmTMB` convention, Wald CIs are `NA` in this case. We
+  therefore use `method = "profile"` for this plot: the LRT-inverted
+  profile path uses only log-likelihood values, bypasses the pdHess
+  gate, and yields valid CIs even at a non-PD fit. Eyes appear: green
+  where the CI excludes the null band, red where it overlaps.
 - **`profile_retention`** pins 31 entries — more aggressive in count
   — but pins entries the LRT actually fails to reject, which
-  preserves identifiability. The refit's Hessian is PD, so eyes
-  appear: green where the CI excludes the null band, red where it
-  overlaps.
+  preserves identifiability. The refit's Hessian is PD, so the
+  default Wald (delta-method) path is fine here and eyes appear:
+  green where the CI excludes the null band, red where it overlaps.
 
 The counterintuitive but real lesson: *more pins is not necessarily
 worse*. What matters is **which** entries you pin. Pinning small
@@ -959,9 +960,10 @@ loadings by magnitude (varimax_threshold) can remove entries the
 identification depends on; pinning entries the data don't support
 (profile_retention) is safer.
 
-```{r varimax-confidence-eye, echo = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the varimax_threshold refit. Hollow points are Wald point estimates; coloured eyes (polygons) span the 95 percent CI with width proportional to the Gaussian sampling density. Grey = pinned by the suggester to zero (no eye drawn); green = CI excludes the (-0.1, 0.1) null region; red = CI overlaps it. If the refit's Hessian is non-positive-definite, CIs are NA and the plot renders hollow points only.", fig.alt = "Per-species loadings from the varimax_threshold refit, displayed as eye-shaped polygons centred at the Wald estimate; pinned entries shown as hollow points only."}
+```{r varimax-confidence-eye, echo = FALSE, cache = TRUE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the varimax_threshold refit, using profile-likelihood CIs. Point estimates are the Wald (delta-method) values; coloured eyes (polygons) span the 95 percent profile CI with width proportional to the Gaussian sampling density. Grey = pinned by the suggester to zero (no eye drawn); green = CI excludes the (-0.1, 0.1) null region; red = CI overlaps it. The profile path bypasses the pdHess gate, so CIs are available here even though this refit's Hessian is non-positive-definite.", fig.alt = "Per-species loadings from the varimax_threshold refit, displayed as eye-shaped polygons centred at the point estimate with width proportional to the Gaussian sampling density; the CI bounds are profile-likelihood (LRT-inverted); pinned entries shown as grey filled points without an eye."}
+ci_vmx <- loading_ci(fit_vmx, level = "unit", method = "profile")
 plot_loadings_confidence_eye(
-  fit_vmx, level = "unit",
+  ci_vmx,
   null_region = c(-0.1, 0.1),
   ylim        = c(-3, 3)
 )
@@ -982,15 +984,18 @@ A few things to read off:
   pins by LRT failure to reject zero. The pinned entries (grey) are
   not the same set across the two plots — comparison of which species
   each method retains is itself diagnostic.
-- The **failure modes** differ. `varimax_threshold`'s refit has a
-  non-PD Hessian at this fixture, so its plot is hollow-points-only
-  (no CIs available). `profile_retention`'s refit is identifiable, so
-  its plot shows eye polygons. This is not a generic property of the
-  methods — at other fixtures the situation can reverse — but it is
-  what happens at *this* moderate-signal binary fixture.
-- gllvmTMB's NA-on-non-PD convention (matching `glmmTMB`) is doing
-  visible work here: it prevents the reader from over-interpreting
-  numerical-looking but meaningless CIs from a degenerate refit.
+- The **identifiability properties** differ. `varimax_threshold`'s
+  refit has a non-PD Hessian at this fixture, so Wald CIs are
+  unavailable and the varimax plot uses `method = "profile"` (which
+  bypasses the pdHess gate). `profile_retention`'s refit is
+  identifiable, so the default Wald path works. This is not a generic
+  property of the methods — at other fixtures the situation can
+  reverse — but it is what happens at *this* moderate-signal binary
+  fixture.
+- gllvmTMB's NA-on-non-PD convention for Wald (matching `glmmTMB`) is
+  doing visible work here: it forced the choice of the profile path
+  for the varimax plot, rather than silently emitting CIs from a
+  degenerate refit.
 
 ### Other available conventions
 

@@ -1,7 +1,7 @@
 # Stage 24 — galamm-style confirmatory loadings (`lambda_constraint`).
 #
 # These tests verify that the user-facing claim
-#   "lambda_constraint = list(B = M) pins Lambda_B[i, j] = M[i, j]
+#   "lambda_constraint = list(unit = M) pins Lambda_B[i, j] = M[i, j]
 #    wherever M[i, j] is not NA, leaving NA entries free."
 # is actually enforced by the fit. Without these tests the feature is
 # documented but unverified.
@@ -38,10 +38,10 @@ test_that("diagonal pin to 1 holds exactly after fit (galamm convention)", {
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data,
-    lambda_constraint = list(B = cnst)
+    lambda_constraint = list(unit = cnst)
   )
   expect_equal(fit$opt$convergence, 0L)
-  L <- getLoadings(fit, level = "B")
+  L <- getLoadings(fit, level = "unit")
   expect_equal(L[1, 1], 1, tolerance = 1e-8)
   expect_equal(L[2, 2], 1, tolerance = 1e-8)
 })
@@ -54,10 +54,10 @@ test_that("off-diagonal pin to a non-zero value holds exactly", {
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data,
-    lambda_constraint = list(B = cnst)
+    lambda_constraint = list(unit = cnst)
   )
   expect_equal(fit$opt$convergence, 0L)
-  L <- getLoadings(fit, level = "B")
+  L <- getLoadings(fit, level = "unit")
   expect_equal(L[3, 1], 0.5, tolerance = 1e-8)
   expect_equal(L[1, 1], 1.0, tolerance = 1e-8)
 })
@@ -70,10 +70,10 @@ test_that("off-diagonal pin to zero zeros out the loading", {
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data,
-    lambda_constraint = list(B = cnst)
+    lambda_constraint = list(unit = cnst)
   )
   expect_equal(fit$opt$convergence, 0L)
-  L <- getLoadings(fit, level = "B")
+  L <- getLoadings(fit, level = "unit")
   expect_equal(L[4, 2], 0, tolerance = 1e-8)
 })
 
@@ -89,9 +89,9 @@ test_that("free entries adjacent to pinned ones are still optimised", {
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data,
-    lambda_constraint = list(B = cnst)
+    lambda_constraint = list(unit = cnst)
   )
-  L <- getLoadings(fit, level = "B")
+  L <- getLoadings(fit, level = "unit")
   # Lower-triangle free entries: (2,1), (3,1), (4,1), (3,2), (4,2)
   free_entries <- c(L[2, 1], L[3, 1], L[4, 1], L[3, 2], L[4, 2])
   expect_true(all(abs(free_entries) > 1e-3))   # actually moved
@@ -105,9 +105,9 @@ test_that("upper-triangle pins are silently ignored (always 0 by construction)",
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = sim$data,
-    lambda_constraint = list(B = cnst)
+    lambda_constraint = list(unit = cnst)
   )
-  L <- getLoadings(fit, level = "B")
+  L <- getLoadings(fit, level = "unit")
   expect_equal(L[1, 2], 0, tolerance = 1e-12)   # NOT 0.99
 })
 
@@ -118,7 +118,7 @@ test_that("dimension-mismatched constraint matrix errors with cli message", {
     gllvmTMB(
       value ~ 0 + trait + latent(0 + trait | site, d = 2),
       data = sim$data,
-      lambda_constraint = list(B = bad)
+      lambda_constraint = list(unit = bad)
     ),
     "lambda_constraint matrix has wrong dimensions"
   )
@@ -133,10 +133,10 @@ test_that("W-level constraint pins Lambda_W diagonals", {
             latent(0 + trait | site,         d = 2) +
             latent(0 + trait | site_species, d = 1),
     data = sim$data,
-    lambda_constraint = list(W = cnst_W)
+    lambda_constraint = list(unit_obs = cnst_W)
   )
   expect_equal(fit$opt$convergence, 0L)
-  L_W <- getLoadings(fit, level = "W")
+  L_W <- getLoadings(fit, level = "unit_obs")
   expect_equal(L_W[1, 1], 1, tolerance = 1e-8)
 })
 
@@ -149,11 +149,11 @@ test_that("simultaneous B and W constraints both pin", {
             latent(0 + trait | site,         d = 2) +
             latent(0 + trait | site_species, d = 1),
     data = sim$data,
-    lambda_constraint = list(B = cnst_B, W = cnst_W)
+    lambda_constraint = list(unit = cnst_B, unit_obs = cnst_W)
   )
   expect_equal(fit$opt$convergence, 0L)
-  L_B <- getLoadings(fit, level = "B")
-  L_W <- getLoadings(fit, level = "W")
+  L_B <- getLoadings(fit, level = "unit")
+  L_W <- getLoadings(fit, level = "unit_obs")
   expect_equal(L_B[1, 1], 1, tolerance = 1e-8)
   expect_equal(L_B[2, 2], 1, tolerance = 1e-8)
   expect_equal(L_W[1, 1], 1, tolerance = 1e-8)

@@ -96,9 +96,9 @@ test_that("extract_Sigma() with mixed families uses per-trait link residuals", {
   expect_equal(fit$opt$convergence, 0L)
 
   out_none <- suppressMessages(extract_Sigma(
-    fit, level = "B", part = "total", link_residual = "none"))
+    fit, level = "unit", part = "total", link_residual = "none"))
   out_auto <- suppressMessages(extract_Sigma(
-    fit, level = "B", part = "total", link_residual = "auto"))
+    fit, level = "unit", part = "total", link_residual = "auto"))
   v <- gllvmTMB:::link_residual_per_trait(fit)
 
   ## Diagonals differ per-trait by exactly v
@@ -171,9 +171,9 @@ test_that("single-family (binomial logit) fits give identical Sigma to before", 
     value ~ 0 + trait + latent(0 + trait | individual, d = 2),
     data = df, site = "individual", family = binomial()
   )))
-  out_none <- suppressMessages(extract_Sigma(fit, level = "B", part = "total",
+  out_none <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
                                               link_residual = "none"))
-  out_auto <- suppressMessages(extract_Sigma(fit, level = "B", part = "total",
+  out_auto <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total",
                                               link_residual = "auto"))
   ## Single binomial-logit fit: every trait gets pi^2/3 added.
   expect_equal(unname(diag(out_auto$Sigma) - diag(out_none$Sigma)),

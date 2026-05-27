@@ -273,7 +273,7 @@ fit_cfa <- gllvmTMB(
   trait             = "trait",
   unit              = "respondent",
   family            = fam,
-  lambda_constraint = list(B = cnst_cfa)
+  lambda_constraint = list(unit = cnst_cfa)
 )
 
 L_cfa <- fit_cfa$report$Lambda_B

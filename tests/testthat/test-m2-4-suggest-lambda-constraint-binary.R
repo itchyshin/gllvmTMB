@@ -110,7 +110,7 @@ test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=1 (
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 1L),
     data = fx$data, family = stats::binomial(),
-    lambda_constraint = list(B = res$constraint)
+    lambda_constraint = list(unit = res$constraint)
   )))
   expect_equal(fit$opt$convergence, 0L,
                info = "fit with suggester's d=1 constraint did not converge")
@@ -119,7 +119,7 @@ test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=1 (
   ## is meaningful (engine's positive-diagonal pin gives item-1
   ## a positive loading, matching truth = 1).
   L_hat <- suppressMessages(suppressWarnings(
-    gllvmTMB::getLoadings(fit, level = "B")[, 1L]
+    gllvmTMB::getLoadings(fit, level = "unit")[, 1L]
   ))
   expect_true(L_hat[1L] > 0,
               info = "engine positive-diagonal pin should keep item-1 loading positive")
@@ -142,13 +142,13 @@ test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=2 (
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2L),
     data = fx$data, family = stats::binomial(),
-    lambda_constraint = list(B = res$constraint)
+    lambda_constraint = list(unit = res$constraint)
   )))
   expect_equal(fit$opt$convergence, 0L,
                info = "fit with suggester's d=2 constraint did not converge")
 
   L_hat <- suppressMessages(suppressWarnings(
-    gllvmTMB::getLoadings(fit, level = "B")
+    gllvmTMB::getLoadings(fit, level = "unit")
   ))
   ## Upper-triangle zero pin holds exactly.
   expect_equal(L_hat[1L, 2L], 0, tolerance = 1e-8,
@@ -196,7 +196,7 @@ test_that("suggest_lambda_constraint() at d=3 boundary (n_items=10) returns sens
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       value ~ 0 + trait + latent(0 + trait | site, d = 3L),
       data = fx$data, family = stats::binomial(),
-      lambda_constraint = list(B = res$constraint)
+      lambda_constraint = list(unit = res$constraint)
     ))),
     error = function(e) e
   )

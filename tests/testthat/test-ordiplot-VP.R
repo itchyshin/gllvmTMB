@@ -26,7 +26,7 @@ test_that("ordiplot(): runs and returns scores+loadings invisibly", {
   fit <- make_rrB_fit(seed = 5, d = 2)
   pdf(NULL)   # capture plot output
   on.exit(dev.off(), add = TRUE)
-  out <- suppressMessages(ordiplot(fit, level = "B"))
+  out <- suppressMessages(ordiplot(fit, level = "unit"))
   expect_named(out, c("scores", "loadings"))
   expect_equal(ncol(out$scores), 2L)
   expect_equal(ncol(out$loadings), 2L)
@@ -36,14 +36,14 @@ test_that("ordiplot(): biplot = FALSE still runs", {
   fit <- make_rrB_fit(seed = 7, d = 2)
   pdf(NULL); on.exit(dev.off(), add = TRUE)
   expect_no_error(
-    suppressMessages(ordiplot(fit, level = "B", biplot = FALSE))
+    suppressMessages(ordiplot(fit, level = "unit", biplot = FALSE))
   )
 })
 
 test_that("ordiplot(): axes wrong length errors", {
   fit <- make_rrB_fit(seed = 11, d = 2)
   pdf(NULL); on.exit(dev.off(), add = TRUE)
-  expect_error(suppressMessages(ordiplot(fit, level = "B", axes = c(1, 2, 3))),
+  expect_error(suppressMessages(ordiplot(fit, level = "unit", axes = c(1, 2, 3))),
                regexp = "length 2")
 })
 
@@ -51,7 +51,7 @@ test_that("ordiplot(): axes index out of range errors", {
   fit <- make_rrB_fit(seed = 13, d = 2)
   pdf(NULL); on.exit(dev.off(), add = TRUE)
   expect_error(
-    suppressMessages(ordiplot(fit, level = "B", axes = c(1, 5))),
+    suppressMessages(ordiplot(fit, level = "unit", axes = c(1, 5))),
     regexp = "Not enough latent axes"
   )
 })
@@ -60,7 +60,7 @@ test_that("ordiplot(): unknown rotate via match.arg errors", {
   fit <- make_rrB_fit(seed = 17, d = 2)
   pdf(NULL); on.exit(dev.off(), add = TRUE)
   expect_error(
-    suppressMessages(ordiplot(fit, level = "B", rotate = "oblimin")),
+    suppressMessages(ordiplot(fit, level = "unit", rotate = "oblimin")),
     regexp = "should be one of"
   )
 })
@@ -68,7 +68,7 @@ test_that("ordiplot(): unknown rotate via match.arg errors", {
 test_that("ordiplot(): rotate = 'varimax' returns rotated scores", {
   fit <- make_rrB_fit(seed = 19, d = 2)
   pdf(NULL); on.exit(dev.off(), add = TRUE)
-  out <- ordiplot(fit, level = "B", rotate = "varimax")
+  out <- ordiplot(fit, level = "unit", rotate = "varimax")
   ## Should match getLV / getLoadings under varimax
   expect_equal(out$scores, getLV(fit, "B", "varimax"))
   expect_equal(out$loadings, getLoadings(fit, "B", "varimax"))

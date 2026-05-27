@@ -60,7 +60,7 @@ make_bootstrap_sigma_table_object <- function() {
     conf = 0.95,
     n_boot = 20L,
     n_failed = 1L,
-    level = "B",
+    level = "unit",
     what = c("Sigma", "R"),
     draws = NULL
   )

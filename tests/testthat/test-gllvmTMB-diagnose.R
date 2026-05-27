@@ -70,7 +70,7 @@ test_that("rotation hint is silenced when lambda_constraint is supplied", {
     value ~ 0 + trait + latent(0 + trait | individual, d = 2),
     data = df,
     site = "individual",
-    lambda_constraint = list(B = cnst)
+    lambda_constraint = list(unit = cnst)
   )))
   res <- suppressMessages(gllvmTMB_diagnose(fit, verbose = FALSE))
   expect_false(isTRUE(res$rotation$B))

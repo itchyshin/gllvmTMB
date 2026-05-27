@@ -8,9 +8,13 @@ suggest_lambda_constraint(
   fit_or_formula,
   data = NULL,
   level = "unit",
-  convention = c("lower_triangular", "pin_top_one", "none"),
+  convention = c("lower_triangular", "pin_top_one", "none", "varimax_threshold",
+    "wald_retention", "profile_retention"),
   trait = "trait",
   unit = "site",
+  threshold = 0.3,
+  retention_prob = 0.9,
+  sigma_d2 = 1,
   site = NULL
 )
 }
@@ -76,7 +80,7 @@ fit <- gllvmTMB(
   data              = my_data,
   trait             = "trait",
   unit              = "site",
-  lambda_constraint = list(B = sug$constraint)
+  lambda_constraint = list(unit = sug$constraint)
 )
 }
 }

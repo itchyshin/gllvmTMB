@@ -835,20 +835,34 @@ ggplot() +
 
 How to read this:
 
-- All `shared_unit` lower bounds are **strictly positive**: every
-  shown species' latent contribution is reliably non-zero. If a
-  species' loadings were noise around zero, the lower bound would
-  drift to zero and the bar would degenerate to the residual floor.
+- Two species (`B_drought_1`, `C_free_1`) have **two-sided CIs** —
+  the profile likelihood crosses the $\chi^2$ cutoff on both sides
+  of the point estimate. These are the cleanest summaries.
+- Four species have **one-sided CIs** — the profile crosses the
+  cutoff on one side but not the other within the grid extent. The
+  unreached side is reported as `NA` (the profile didn't bracket the
+  cutoff at all) or as the proportion boundary `0`/`1` (the profile
+  ran into the natural support boundary first). This is the profile's
+  honest answer when the data don't constrain that side of the bound
+  sharply: profile_ci_proportions() refuses to extrapolate. Symmetric
+  Wald on the raw proportion would have invented a number instead.
 - Group C species (signed on both LV1 and LV2) tend to have smaller
-  `shared_unit` proportions than groups A and B, because splitting
-  variance across two axes leaves smaller per-axis magnitudes; the
-  total latent share is correspondingly lower.
-- CI **widths** are wider for species with `shared_unit` near 0.5 and
-  narrower at the extremes — the standard bounded-proportion pattern.
-  The asymmetry (wider lower reach when the point is high, wider
-  upper reach when the point is low) is what symmetric Wald on
-  the raw proportion would miss and what the profile CI captures
-  honestly.
+  `shared_unit` proportions because splitting variance across two
+  axes leaves smaller per-axis magnitudes; the total latent share is
+  correspondingly lower.
+- Where they're available, CI **widths** are wider for species with
+  `shared_unit` near 0.5 and narrower at the extremes — the standard
+  bounded-proportion pattern. The asymmetry (wider reach toward the
+  far boundary) is what profile likelihood captures and symmetric
+  Wald on the raw proportion would miss.
+
+For species with one-sided CIs, the companion `profile_proportions()`
+function (same fit, same components) returns the LR curve itself —
+you can inspect where the profile crosses the $\chi^2$ cutoff and
+decide whether the available bound is informative for your purpose.
+The bracket-and-bisect inversion in `profile_ci_proportions()` keeps
+its answer honest by reporting `NA` rather than extrapolating beyond
+where the data constrain.
 
 The same machinery extends to multi-tier fits (with `unique()` or
 `phylo_unique()` terms) where the partition has three or more

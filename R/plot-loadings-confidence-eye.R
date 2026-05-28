@@ -94,14 +94,21 @@ plot_loadings_confidence_eye <- function(fit,
   if (!is.null(null_region) && is.null(df$unreliable))
     df <- flag_unreliable_loadings(df, null_region = null_region)
 
-  ## ---- pd_hessian gate: refuse to draw CI eyes for a non-PD fit ----
-  ## `loading_ci()` returns NA bounds + a `pd_hessian` column when the
-  ## fit's Hessian is non-PD. Plot must NOT pretend the eyes are
-  ## meaningful: render hollow points only and put a visible note.
-  ## (Same convention as `glmmTMB::summary.glmmTMB`, which returns NA
-  ## SEs when pdHess fails.)
-  pd_failure <- "pd_hessian" %in% names(df) &&
-                isTRUE(df$pd_hessian[1L] == FALSE)
+  ## ---- CI-availability gate: refuse to draw eyes when no bounds ----
+  ## The fallback ("Hessian non-PD; CIs unavailable. Hollow points only.")
+  ## must trigger ONLY when no usable CI is in the input — not whenever
+  ## the underlying fit was non-PD. The profile path (`loading_ci(method
+  ## = "profile")`) bypasses the pdHess gate and produces valid CIs even
+  ## on a non-PD fit, but still labels them `pd_hessian = FALSE` to
+  ## reflect the fit's status faithfully. Gating on `pd_hessian` alone
+  ## therefore mis-classifies profile CIs as unavailable. Drive the
+  ## decision from the data instead: if any non-pinned row has a finite
+  ## (lower, upper) pair, draw eyes.
+  free_rows <- !df$pinned
+  has_any_ci <- any(
+    is.finite(df$lower[free_rows]) & is.finite(df$upper[free_rows])
+  )
+  pd_failure <- !has_any_ci
 
   ## Sorting per facet
   if (sort_by == "magnitude") {

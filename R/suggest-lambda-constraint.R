@@ -32,6 +32,28 @@
 #' @param trait,unit Name of the trait and unit (site) columns. Forwarded when
 #'   `fit_or_formula` is a formula and the data does not already use
 #'   defaults.
+#' @param threshold Salience threshold on the standardised loading
+#'   \eqn{\rho = \Lambda / \sqrt{\Lambda^2 + \sigma_d^2}}. Used by
+#'   `"varimax_threshold"` and `"wald_retention"`. Comrey-Lee 1992
+#'   convention: 0.30 = "fair" salience (default). Raise to 0.40 for
+#'   "good" / 0.50 for "very good".
+#' @param retention_prob Retention probability for `"wald_retention"`
+#'   and `"profile_retention"`:
+#'   \itemize{
+#'     \item{`"wald_retention"`: pin entry if
+#'       `Pr(|Lambda| > threshold) < retention_prob`.}
+#'     \item{`"profile_retention"`: pin entry if a profile LRT fails to
+#'       reject `H0: Lambda = 0` at significance level
+#'       `1 - retention_prob`.}
+#'   }
+#'   Default 0.90 follows the applied-EFA bootstrap convention; the
+#'   stricter BSEM 0.95 often over-prunes at moderate sample sizes and
+#'   produces non-PD refits.
+#' @param sigma_d2 Link-implicit residual variance on the link scale,
+#'   used by `"wald_retention"` to compute `Pr(|Lambda| > threshold)`
+#'   from the standardised \eqn{\rho}. Defaults to `1` (probit /
+#'   ordinal_probit). Use \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
+#'   cloglog, or the fitted residual variance for Gaussian.
 #' @param site Deprecated alias for `unit`. Emits a one-shot warning and maps
 #'   to `unit`.
 #'

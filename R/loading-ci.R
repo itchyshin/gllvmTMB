@@ -48,10 +48,11 @@
 #'   \describe{
 #'     \item{`"wald"` (default)}{Symmetric Wald via delta method.}
 #'     \item{`"wald_asym"`}{Asymmetric Wald via the Fisher-z transformation
-#'       on the standardised loading $\rho = \Lambda / \sqrt{\Lambda^2 + \sigma_d^2}$.
+#'       on the standardised loading
+#'       \eqn{\rho = \Lambda / \sqrt{\Lambda^2 + \sigma_d^2}}.
 #'       Same cost as `"wald"` (no refit) but captures the bounded-support
-#'       asymmetry that symmetric Wald on $\Lambda$ ignores. CIs are
-#'       wider toward large $|\Lambda|$ and narrower toward 0 — the
+#'       asymmetry that symmetric Wald on \eqn{\Lambda} ignores. CIs are
+#'       wider toward large \eqn{|\Lambda|} and narrower toward 0 — the
 #'       qualitatively correct shape, matching profile and bootstrap up
 #'       to higher-order log-likelihood-curvature corrections.}
 #'   }
@@ -59,9 +60,9 @@
 #' @param sigma_d2 link-implicit residual variance on the link scale.
 #'   Only used when `method = "wald_asym"`. Defaults to `1` (binomial
 #'   probit and ordinal_probit; the cleanest non-Gaussian case). For
-#'   logit use $\pi^2/3$; for cloglog use $\pi^2/6$. Set to the fitted
-#'   unique variance for Gaussian. A future version will auto-detect
-#'   per-trait from the family.
+#'   logit use \eqn{\pi^2/3}; for cloglog use \eqn{\pi^2/6}. Set to the
+#'   fitted unique variance for Gaussian. A future version will
+#'   auto-detect per-trait from the family.
 #' @param conf_level Confidence level. Defaults to 0.95.
 #'
 #' @return A data frame (one row per Lambda entry) with columns

@@ -94,6 +94,63 @@
   )
 }
 
+## ---- tmbprofile-based curve worker --------------------------------------
+## For derived quantities expressible as a SINGLE linear combination of
+## opt$par (repeatability, phylo_signal), the corresponding
+## profile_ci_*() endpoint uses TMB::tmbprofile() via tmbprofile_wrapper()
+## -- evaluating the profile in TMB's C++ inner optim along the lincomb
+## direction. The Lagrange fix-and-refit driver used by .profile_curve_grid()
+## is a fundamentally different mechanism: it allows ALL nuisance
+## parameters to drift under a soft penalty and can converge to different
+## local optima at adjacent grid points (the curve becomes spike-y).
+## Using tmbprofile() here keeps the curve and the bracket-bisect CI on
+## the *same* profile-likelihood surface, so the curve's inverted bounds
+## match profile_ci_*()'s bounds within numerical tol.
+##
+## `transform` maps from the user-facing scale (e.g. R in (0, 1)) back to
+## the lincomb scale (e.g. qlogis(R)). Interpolation is linear in lincomb
+## space, which is also what .profile_bounds() uses for tmbprofile_wrapper()
+## itself -- so the curve and the CI bracket agree.
+##
+## Returns a numeric vector of constrained -log-likelihood values of
+## length `length(grid)`, or NA at points where tmbprofile() did not
+## return a finite value (e.g. outside the profile range).
+
+#' @keywords internal
+#' @noRd
+.tmbprofile_curve_grid <- function(
+  fit,
+  lincomb,
+  grid,
+  transform = identity,
+  ystep = 0.5,
+  ytol = 2
+) {
+  prof <- tryCatch(
+    TMB::tmbprofile(
+      fit$tmb_obj,
+      lincomb = lincomb,
+      ystep = ystep,
+      ytol = ytol,
+      parm.range = c(-Inf, Inf),
+      trace = FALSE
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(prof) || nrow(prof) < 2L) {
+    return(rep(NA_real_, length(grid)))
+  }
+  prof <- prof[order(prof[[1L]]), , drop = FALSE]
+  prof <- prof[!duplicated(prof[[1L]]), , drop = FALSE]
+  lc_grid <- transform(grid)
+  stats::approx(
+    x = prof[[1L]],
+    y = prof[[2L]],
+    xout = lc_grid,
+    rule = 2L
+  )$y
+}
+
 ## ---- Grid builder for proportion-like quantities -------------------------
 ## p_hat \in [floor, ceiling]; build a symmetric grid around p_hat clamped
 ## to (floor, ceiling). grid_extent (the user-facing argument) is total
@@ -114,9 +171,13 @@
   floor = 1e-3,
   ceiling = 1 - 1e-3
 ) {
-  ## Robust scale: half-distance to the nearer boundary, plus a small
-  ## floor so the grid still spans some range for p_hat close to 0.5.
-  sc <- min(p_hat - floor, ceiling - p_hat) / 2 + 0.05
+  ## Robust scale: half-distance to the nearer boundary, plus a floor so
+  ## the grid still spans a useful range for p_hat near a boundary. The
+  ## floor 0.15 ensures that grid_extent = 4 (the default) brackets at
+  ## least ±0.3 around p_hat, matching the default search range used by
+  ## .profile_ci_via_refit() so the curve covers the same chi-square
+  ## crossing region the bracket-bisect reference is hunting in.
+  sc <- max(min(p_hat - floor, ceiling - p_hat) / 2 + 0.05, 0.15)
   lo <- max(p_hat - grid_extent / 2 * sc, floor)
   hi <- min(p_hat + grid_extent / 2 * sc, ceiling)
   seq(lo, hi, length.out = n_grid)
@@ -136,7 +197,36 @@
   }
   conf_level <- attr(x, "conf_level") %||% unique(x$conf_level)
   cutoff <- stats::qchisq(conf_level, df = 1L)
+  ## Fast-path: when the producer stored bracket-bisect refit bounds
+  ## (e.g. profile_communality() pre-computes via .profile_ci_via_refit()
+  ## to side-step the non-determinism of the noisy Lagrange refit on a
+  ## fixed grid), use those instead of inverting the curve. The grid is
+  ## still useful for plotting the LR-curve shape; the bounds drawn on
+  ## the plot and returned here come directly from uniroot.
+  refit_bounds <- attr(x, "refit_bounds")
+  if (!is.null(refit_bounds)) {
+    estimates <- unique(x[, c("target", "estimate"), drop = FALSE])
+    merged <- merge(estimates, refit_bounds, by = "target", sort = FALSE)
+    out <- data.frame(
+      target = merged$target,
+      estimate = merged$estimate,
+      lower = merged$lower,
+      upper = merged$upper,
+      stringsAsFactors = FALSE
+    )
+    rownames(out) <- out$target
+    return(out)
+  }
   splits <- split(x, x$target)
+  ## For each curve, find the chi-square crossing on each side of the
+  ## grid's MLE point. If the side's deviance is monotone (the well-behaved
+  ## case for tmbprofile()-driven curves and most Lagrange-refit curves),
+  ## use linear-interpolation root-finding via approxfun() + uniroot(). If
+  ## the side is non-monotone -- the boundary-case signature of a noisy
+  ## Lagrange refit at a near-degenerate ridge (communality with c^2_hat
+  ## near 1, for example) -- a smoothing spline averages out the
+  ## near-MLE alternation noise so the chi-square root matches the one
+  ## .profile_ci_via_refit()'s uniroot navigates in profile_ci_*().
   out <- lapply(splits, function(d) {
     d <- d[order(d$profile_value), ]
     est <- d$estimate[1L]
@@ -153,49 +243,53 @@
       ))
     }
     profile_mle <- pv[min_idx]
-    left <- which(pv < profile_mle & dv > cutoff)
-    right <- which(pv > profile_mle & dv > cutoff)
-    lower <- if (length(left) > 0L) {
-      lo <- max(left)
-      if (lo + 1L > length(pv)) {
-        NA_real_
+    bound <- function(side = c("lower", "upper")) {
+      side <- match.arg(side)
+      ## Include the MLE point so a chi-square crossing between the last
+      ## non-MLE grid point and the MLE itself is found by the linear
+      ## interp path -- otherwise close-to-the-MLE bounds would extrapolate
+      ## off the grid edge.
+      idx <- if (side == "lower") {
+        which(pv <= profile_mle)
       } else {
-        x0 <- pv[lo]
-        x1 <- pv[lo + 1L]
-        y0 <- dv[lo]
-        y1 <- dv[lo + 1L]
-        if (!is.finite(y0) || !is.finite(y1) || y1 - y0 == 0) {
-          NA_real_
-        } else {
-          x0 + (cutoff - y0) * (x1 - x0) / (y1 - y0)
-        }
+        which(pv >= profile_mle)
       }
-    } else {
-      NA_real_
-    }
-    upper <- if (length(right) > 0L) {
-      hi <- min(right)
-      if (hi - 1L < 1L) {
-        NA_real_
+      if (length(idx) < 2L) return(NA_real_)
+      sub_pv <- pv[idx]
+      sub_dv <- dv[idx]
+      if (any(!is.finite(sub_dv))) return(NA_real_)
+      d_dv <- diff(sub_dv)
+      monotone <- all(d_dv <= 1e-10) || all(d_dv >= -1e-10)
+      val_fn <- if (monotone) {
+        af <- stats::approxfun(sub_pv, sub_dv, rule = 2L)
+        function(p) af(p)
       } else {
-        x0 <- pv[hi - 1L]
-        x1 <- pv[hi]
-        y0 <- dv[hi - 1L]
-        y1 <- dv[hi]
-        if (!is.finite(y0) || !is.finite(y1) || y1 - y0 == 0) {
-          NA_real_
-        } else {
-          x0 + (cutoff - y0) * (x1 - x0) / (y1 - y0)
-        }
+        sp <- tryCatch(
+          stats::smooth.spline(sub_pv, sub_dv, spar = 0.6),
+          error = function(e) NULL
+        )
+        if (is.null(sp)) return(NA_real_)
+        function(p) stats::predict(sp, p)$y
       }
-    } else {
-      NA_real_
+      e_lo <- val_fn(min(sub_pv)) - cutoff
+      e_hi <- val_fn(max(sub_pv)) - cutoff
+      if (!is.finite(e_lo) || !is.finite(e_hi)) return(NA_real_)
+      if (sign(e_lo) == sign(e_hi)) return(NA_real_)
+      res <- tryCatch(
+        stats::uniroot(
+          function(p) val_fn(p) - cutoff,
+          interval = range(sub_pv),
+          tol = 1e-5
+        ),
+        error = function(e) NULL
+      )
+      if (is.null(res)) NA_real_ else res$root
     }
     data.frame(
       target = d$target[1L],
       estimate = est,
-      lower = lower,
-      upper = upper,
+      lower = bound("lower"),
+      upper = bound("upper"),
       stringsAsFactors = FALSE
     )
   })
@@ -271,29 +365,26 @@ profile_repeatability <- function(
   out_list <- vector("list", length(trait_idx))
   for (k in seq_along(trait_idx)) {
     t <- trait_idx[k]
-    local_t <- t
-    target_fn <- function(par, fit) {
-      v_B <- exp(2 * par[ix_B][local_t])
-      v_W <- exp(2 * par[ix_W][local_t])
-      tot <- v_B + v_W
-      if (!is.finite(tot) || tot <= 0) {
-        return(NA_real_)
-      }
-      v_B / tot
-    }
-    R_hat <- as.numeric(target_fn(fit$opt$par, fit))
+    R_hat <- stats::plogis(2 * (fit$opt$par[ix_B[t]] - fit$opt$par[ix_W[t]]))
     grid <- .proportion_grid(
       p_hat = R_hat,
       n_grid = n_grid,
       grid_extent = grid_extent
     )
-    obj <- .profile_curve_grid(fit, target_fn, grid)
+    ## Use tmbprofile() on the lincomb 2 * theta_diag_B[t] - 2 * theta_diag_W[t]
+    ## so the curve agrees point-by-point with profile_ci_repeatability()'s
+    ## tmbprofile_wrapper() path. We then interpolate the tmbprofile output
+    ## from lincomb space onto our R-scale grid via qlogis().
+    lc <- .zero_lincomb(fit)
+    lc[ix_B[t]] <- 2
+    lc[ix_W[t]] <- -2
+    obj <- .tmbprofile_curve_grid(fit, lincomb = lc, grid = grid, transform = stats::qlogis)
     target_lab <- paste0("repeatability:", trait_names[t])
     out_list[[k]] <- data.frame(
       target = target_lab,
       profile_value = grid,
       objective = obj,
-      delta_deviance = 2 * (obj - min(obj, na.rm = TRUE)),
+      delta_deviance = 2 * (obj - mle_nll),
       estimate = R_hat,
       conf_level = conf_level,
       stringsAsFactors = FALSE,
@@ -379,32 +470,28 @@ profile_phylo_signal <- function(
     cli::cli_abort("{.arg trait_idx} must be integers in 1:{T}.")
   }
 
+  mle_nll <- as.numeric(fit$opt$objective)
   out_list <- vector("list", length(trait_idx))
   for (k in seq_along(trait_idx)) {
     t <- trait_idx[k]
-    local_t <- t
-    target_fn <- function(par, fit) {
-      v_phy <- exp(2 * par[ix_phy][local_t])
-      v_non <- exp(2 * par[ix_non][local_t])
-      tot <- v_phy + v_non
-      if (!is.finite(tot) || tot <= 0) {
-        return(NA_real_)
-      }
-      v_phy / tot
-    }
-    H2_hat <- as.numeric(target_fn(fit$opt$par, fit))
+    H2_hat <- stats::plogis(2 * (fit$opt$par[ix_phy[t]] - fit$opt$par[ix_non[t]]))
     grid <- .proportion_grid(
       p_hat = H2_hat,
       n_grid = n_grid,
       grid_extent = grid_extent
     )
-    obj <- .profile_curve_grid(fit, target_fn, grid)
+    ## Use tmbprofile() on the 2-component lincomb so the curve agrees
+    ## point-by-point with profile_ci_phylo_signal()'s tmbprofile_wrapper().
+    lc <- .zero_lincomb(fit)
+    lc[ix_phy[t]] <- 2
+    lc[ix_non[t]] <- -2
+    obj <- .tmbprofile_curve_grid(fit, lincomb = lc, grid = grid, transform = stats::qlogis)
     target_lab <- paste0("phylo_signal:", trait_names[t])
     out_list[[k]] <- data.frame(
       target = target_lab,
       profile_value = grid,
       objective = obj,
-      delta_deviance = 2 * (obj - min(obj, na.rm = TRUE)),
+      delta_deviance = 2 * (obj - mle_nll),
       estimate = H2_hat,
       conf_level = conf_level,
       stringsAsFactors = FALSE,
@@ -489,6 +576,7 @@ profile_communality <- function(
   c2_pt <- extract_communality(fit, level = tier)
 
   out_list <- vector("list", length(trait_idx))
+  bounds_list <- vector("list", length(trait_idx))
   for (k in seq_along(trait_idx)) {
     t <- trait_idx[k]
     local_t <- t
@@ -523,12 +611,43 @@ profile_communality <- function(
       stringsAsFactors = FALSE,
       row.names = NULL
     )
+    ## Compute the bounds via the same uniroot-on-.fix_and_refit_nll path
+    ## that profile_ci_communality() uses, on the SAME TMB state. Storing
+    ## them as an attribute keeps the curve's inverted bounds in lock-step
+    ## with the bracket-bisect endpoint: the grid still provides the LR
+    ## curve for plotting, but the bounds shown on the plot and returned
+    ## by .invert_profile_derived() match profile_ci_communality()
+    ## exactly. This is necessary because the inner Lagrange refit is
+    ## non-deterministic across TMB state (every obj$fn(par) call inside
+    ## nlminb mutates last.par.best), so the discrete grid and the
+    ## continuous uniroot search would otherwise probe at different
+    ## parameter histories and disagree.
+    refit_bounds <- tryCatch(
+      .profile_ci_via_refit(
+        fit,
+        target_fn,
+        q_hat = c2_hat,
+        level = conf_level,
+        q_lo_hint = max(c2_hat - 0.3, 0.001),
+        q_hi_hint = min(c2_hat + 0.3, 0.999),
+        q_lo_floor = 0.001,
+        q_hi_ceiling = 0.999
+      ),
+      error = function(e) list(lower = NA_real_, upper = NA_real_)
+    )
+    bounds_list[[k]] <- data.frame(
+      target = target_lab,
+      lower = refit_bounds$lower,
+      upper = refit_bounds$upper,
+      stringsAsFactors = FALSE
+    )
   }
   out <- do.call(rbind, out_list)
   attr(out, "n_grid") <- n_grid
   attr(out, "conf_level") <- conf_level
   attr(out, "quantity") <- "c^2 (communality)"
   attr(out, "tier") <- tier
+  attr(out, "refit_bounds") <- do.call(rbind, bounds_list)
   class(out) <- c("profile_communality", "profile_derived", class(out))
   out
 }
@@ -665,7 +784,10 @@ profile_correlation <- function(
 
   ## Correlation grid: clamp to (-0.999, 0.999) and scale by distance to
   ## the boundary, like .proportion_grid() but symmetric around (-1, 1).
-  sc <- min(rho_hat - (-0.999), 0.999 - rho_hat) / 2 + 0.05
+  ## Floor sc at 0.15 to match the search range used by
+  ## .profile_ci_via_refit() (±0.3 from rho_hat) so the curve brackets the
+  ## same chi-square crossing region the bracket-bisect reference uses.
+  sc <- max(min(rho_hat - (-0.999), 0.999 - rho_hat) / 2 + 0.05, 0.15)
   lo <- max(rho_hat - grid_extent / 2 * sc, -0.999)
   hi <- min(rho_hat + grid_extent / 2 * sc, 0.999)
   grid <- seq(lo, hi, length.out = n_grid)

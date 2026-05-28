@@ -206,15 +206,19 @@
     est <- df$estimate[i]; se <- df$se[i]
     lo  <- df$lower[i];    hi <- df$upper[i]
     xp  <- x_pos[i]
-    ## Skip pinned (se = 0) or degenerate entries; their hollow point is
-    ## handled by geom_point.
-    if (is.na(lo) || is.na(hi) || is.na(se) || se <= 0 ||
+    ## Skip pinned or degenerate entries; their hollow point is handled
+    ## by geom_point. We don't require `se` to be available -- the profile
+    ## path doesn't compute a delta-method SE but still produces a usable
+    ## CI -- so we derive an effective SE from the CI width when `se` is
+    ## missing (Gaussian back-of-the-envelope: 95% half-width / 1.96).
+    if (is.na(lo) || is.na(hi) ||
         (hi - lo) < .Machine$double.eps * 10)
       next
+    se_eff <- if (is.na(se) || se <= 0) (hi - lo) / (2 * 1.96) else se
     y_seq <- seq(lo, hi, length.out = n)
     ## Gaussian density width (truncated to the CI). Peak = width_max at
     ## y = est; ~14.6% of peak at the 95% CI bound; sharp lens taper.
-    w_at <- width_max * exp(-((y_seq - est)^2) / (2 * se^2))
+    w_at <- width_max * exp(-((y_seq - est)^2) / (2 * se_eff^2))
     out_list[[i]] <- data.frame(
       .id = i,
       x   = c(xp - w_at / 2, xp + rev(w_at) / 2),

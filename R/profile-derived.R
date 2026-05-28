@@ -744,3 +744,346 @@ profile_ci_correlation <- function(
   )
   c(estimate = rho_hat, lower = bounds$lower, upper = bounds$upper)
 }
+
+## ---- Variance proportions: fix-and-refit profile -------------------------
+## extract_proportions(fit) returns per-trait variance partitions across all
+## components (shared_unit, unique_unit, shared_unit_obs, unique_unit_obs,
+## shared_phy, unique_phy, link_residual). profile_ci_proportions() supplies
+## profile-likelihood CIs for each (trait, component) by Lagrange-style
+## fix-and-refit on the proportion itself (not the raw numerator).
+##
+## The constraint is on `p_c,t(theta) = component_c,t(theta) / sum_c' component_c',t(theta)`,
+## with the denominator floated across all tiers and the link-residual
+## term (constant in family-aware terms for the families we currently
+## support) added when present in the point-estimate decomposition.
+
+## Internal: build a single per-(trait, component) target function that
+## returns the proportion `p_c,t(theta)`. The denominator floats across
+## all parameter blocks present in the fit (i.e. variance from all tiers
+## the user has fitted, plus link_residual when non-zero).
+##
+## Returns NULL if the requested component is not present in the fit
+## (caller should skip / omit, not error).
+#' @keywords internal
+#' @noRd
+.proportion_target_fn <- function(fit, component, trait_idx) {
+  par_names <- names(fit$opt$par)
+  T <- fit$n_traits %||% length(levels(fit$data[[fit$trait_col]]))
+
+  ## Per-tier index blocks (NULL if tier absent).
+  ix_rr_B    <- which(par_names == "theta_rr_B")
+  ix_diag_B  <- which(par_names == "theta_diag_B")
+  ix_rr_W    <- which(par_names == "theta_rr_W")
+  ix_diag_W  <- which(par_names == "theta_diag_W")
+  ix_rr_phy  <- which(par_names == "theta_rr_phy")
+  ix_diag_phy <- which(par_names == "log_sd_phy_diag")
+
+  d_B   <- fit$d_B %||% 0L
+  d_W   <- fit$d_W %||% 0L
+  d_phy <- fit$d_phy %||% 0L
+
+  use_rr_B   <- isTRUE(fit$use$rr_B)
+  use_diag_B <- isTRUE(fit$use$diag_B)
+  use_rr_W   <- isTRUE(fit$use$rr_W)
+  use_diag_W <- isTRUE(fit$use$diag_W)
+  use_rr_phy <- isTRUE(fit$use$phylo_rr)
+  use_diag_phy <- isTRUE(fit$use$phylo_diag)
+
+  ## Per-trait link-residual is constant w.r.t. fitted parameters for the
+  ## families this stage supports (Gaussian -> 0, binomial -> pi^2/3,
+  ## cloglog -> pi^2/6, probit -> 1). It enters the denominator as a
+  ## fixed offset; for mean-dependent families (Poisson, Gamma, etc.)
+  ## extract_proportions() uses the point-estimate fitted mean -- we
+  ## reuse the same point-estimate offset here so the denominator
+  ## representation matches the extractor at theta = theta_hat.
+  link_resid_vec <- tryCatch(
+    as.numeric(link_residual_per_trait(fit)),
+    error = function(e) rep(0, T)
+  )
+  if (length(link_resid_vec) != T) link_resid_vec <- rep(0, T)
+
+  ## Local Lambda builder (mirror of the engine packing, copy of the
+  ## ones inside profile_ci_communality / profile_ci_correlation).
+  build_Lambda <- function(theta_rr, p, rank) {
+    L <- matrix(0, p, rank)
+    if (length(theta_rr) == 0L || rank == 0L) {
+      return(L)
+    }
+    lam_diag <- theta_rr[seq_len(rank)]
+    lam_lower <- theta_rr[-seq_len(rank)]
+    for (j in seq_len(rank)) {
+      L[j, j] <- lam_diag[j]
+    }
+    idx <- 1L
+    for (j in seq_len(rank)) {
+      if (j < p) {
+        for (i in (j + 1L):p) {
+          if (idx <= length(lam_lower)) {
+            L[i, j] <- lam_lower[idx]
+          }
+          idx <- idx + 1L
+        }
+      }
+    }
+    L
+  }
+
+  ## Per-component numerator builder (function of par). NULL when the
+  ## component is structurally absent.
+  num_fn <- switch(
+    component,
+    shared_unit = if (use_rr_B && length(ix_rr_B) > 0L) {
+      function(par) {
+        L <- build_Lambda(par[ix_rr_B], p = T, rank = d_B)
+        diag(L %*% t(L))[trait_idx]
+      }
+    } else NULL,
+    unique_unit = if (use_diag_B && length(ix_diag_B) > 0L) {
+      function(par) exp(2 * par[ix_diag_B][trait_idx])
+    } else NULL,
+    shared_unit_obs = if (use_rr_W && length(ix_rr_W) > 0L) {
+      function(par) {
+        L <- build_Lambda(par[ix_rr_W], p = T, rank = d_W)
+        diag(L %*% t(L))[trait_idx]
+      }
+    } else NULL,
+    unique_unit_obs = if (use_diag_W && length(ix_diag_W) > 0L) {
+      function(par) exp(2 * par[ix_diag_W][trait_idx])
+    } else NULL,
+    shared_phy = if (use_rr_phy && length(ix_rr_phy) > 0L) {
+      function(par) {
+        L <- build_Lambda(par[ix_rr_phy], p = T, rank = d_phy)
+        diag(L %*% t(L))[trait_idx]
+      }
+    } else NULL,
+    unique_phy = if (use_diag_phy && length(ix_diag_phy) > 0L) {
+      function(par) exp(2 * par[ix_diag_phy][trait_idx])
+    } else NULL,
+    link_residual = NULL,
+    NULL
+  )
+  if (is.null(num_fn)) {
+    return(NULL)
+  }
+
+  ## Full denominator: sum of all component variances at trait t,
+  ## across whatever tiers the fit uses, plus the link-residual offset.
+  total_fn <- function(par) {
+    s <- rep(0, length(trait_idx))
+    if (use_rr_B && length(ix_rr_B) > 0L) {
+      L <- build_Lambda(par[ix_rr_B], p = T, rank = d_B)
+      s <- s + diag(L %*% t(L))[trait_idx]
+    }
+    if (use_diag_B && length(ix_diag_B) > 0L) {
+      s <- s + exp(2 * par[ix_diag_B][trait_idx])
+    }
+    if (use_rr_W && length(ix_rr_W) > 0L) {
+      L <- build_Lambda(par[ix_rr_W], p = T, rank = d_W)
+      s <- s + diag(L %*% t(L))[trait_idx]
+    }
+    if (use_diag_W && length(ix_diag_W) > 0L) {
+      s <- s + exp(2 * par[ix_diag_W][trait_idx])
+    }
+    if (use_rr_phy && length(ix_rr_phy) > 0L) {
+      L <- build_Lambda(par[ix_rr_phy], p = T, rank = d_phy)
+      s <- s + diag(L %*% t(L))[trait_idx]
+    }
+    if (use_diag_phy && length(ix_diag_phy) > 0L) {
+      s <- s + exp(2 * par[ix_diag_phy][trait_idx])
+    }
+    s + link_resid_vec[trait_idx]
+  }
+
+  function(par, fit) {
+    num <- num_fn(par)
+    den <- total_fn(par)
+    if (any(!is.finite(num)) || any(!is.finite(den)) || any(den <= 0)) {
+      return(NA_real_)
+    }
+    as.numeric(num / den)
+  }
+}
+
+#' Profile-likelihood CIs for per-trait variance proportions
+#'
+#' For each `(trait, component)` returned by [extract_proportions()],
+#' computes a profile-likelihood CI for the proportion of total trait
+#' variance attributable to that component. The constraint is applied
+#' to the proportion itself (Lagrange-style fix-and-refit), so the
+#' denominator floats across all parameter blocks during the
+#' constrained refit (i.e. the CI on `p_c,t = sigma2_c,t / sum_{c'}
+#' sigma2_c',t` correctly accounts for the fact that fixing the
+#' numerator shifts the denominator as nuisance parameters re-optimise).
+#'
+#' @param fit A fit returned by [gllvmTMB()].
+#' @param components Character vector of component names to include
+#'   (e.g. `c("shared_unit", "unique_unit")`). `NULL` (default) uses all
+#'   components present in `extract_proportions(fit)`.
+#' @param trait_idx Integer vector of 1-based trait indices, or `NULL`
+#'   (default) for all traits.
+#' @param level Confidence level. Default `0.95`.
+#' @return A data frame with one row per `(trait, component)`:
+#'   * `trait`: trait name (character).
+#'   * `component`: component name (character).
+#'   * `proportion`: point estimate (matches [extract_proportions()]).
+#'   * `lower`, `upper`: profile-likelihood bounds.
+#'   * `method`: `"profile"` for successful inversions; `"(unavailable)"`
+#'     when the component is structurally pinned (e.g. `link_residual`
+#'     for fixed-scale families like Gaussian / binomial; the bounds
+#'     collapse to the point estimate); `NA` when uniroot could not
+#'     bracket.
+#'
+#' @section Implementation notes:
+#' `shared_*` and `unique_*` components are profiled via the shared
+#' [profile_ci_communality()] driver `.profile_ci_via_refit()` applied
+#' to a custom target function that returns the (trait, component)
+#' proportion as a function of all model parameters. For
+#' `link_residual`, fixed-scale families (Gaussian, binomial with any
+#' standard link, probit) give a constant-in-theta numerator and a
+#' point-estimate denominator: bounds collapse to the point with
+#' `method = "(unavailable)"`. Mean-dependent residuals (Poisson,
+#' Gamma, Tweedie, ...) are not yet profiled and return `NA` bounds
+#' with `method = "(unavailable)"`.
+#'
+#' @seealso [extract_proportions()], [profile_ci_communality()],
+#'   [profile_ci_correlation()].
+#'
+#' @keywords internal
+#' @export
+profile_ci_proportions <- function(
+  fit,
+  components = NULL,
+  trait_idx  = NULL,
+  level      = 0.95
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
+  pt <- suppressMessages(extract_proportions(fit, format = "long"))
+  ## Sanity: extract_proportions() may add link_residual conditionally.
+  comps_present <- as.character(unique(pt$component))
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  T <- length(trait_names)
+
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_len(T)
+  }
+  if (!is.numeric(trait_idx) || any(trait_idx < 1L) || any(trait_idx > T)) {
+    cli::cli_abort(
+      "{.arg trait_idx} must be integers in 1:{T}; got {.val {trait_idx}}."
+    )
+  }
+  trait_idx <- as.integer(trait_idx)
+
+  ## Component filter.
+  if (is.null(components)) {
+    components <- comps_present
+  } else {
+    components <- as.character(components)
+    bad <- setdiff(components, comps_present)
+    if (length(bad) > 0L) {
+      cli::cli_abort(c(
+        "{cli::qty(length(bad))} component name{?s} not present in this fit: {.val {bad}}.",
+        i = "Available components: {.val {comps_present}}."
+      ))
+    }
+  }
+
+  ## Build a (trait x component) matrix of point-estimate PROPORTIONS
+  ## from the long-format extractor (the wide format returns absolute
+  ## variances, not proportions).
+  pt_mat <- matrix(
+    NA_real_,
+    nrow = T,
+    ncol = length(comps_present),
+    dimnames = list(trait_names, comps_present)
+  )
+  for (cc in comps_present) {
+    rows_c <- pt[as.character(pt$component) == cc, , drop = FALSE]
+    row_idx <- match(as.character(rows_c$trait), trait_names)
+    pt_mat[row_idx, cc] <- rows_c$proportion
+  }
+
+  ## Helper: which families is `link_residual` constant in theta for?
+  ## Gaussian / binomial(any standard link) / Bernoulli-like all give a
+  ## numerator that does not depend on the fitted theta. Mean-dependent
+  ## families (Poisson, Gamma, Tweedie, ...) DO depend on theta via the
+  ## fitted mu_t -- those are reported as method="(unavailable)" with NA
+  ## bounds until a dedicated profile path lands.
+  is_link_resid_fixed <- function() {
+    fids <- fit$tmb_data$family_id_vec
+    if (is.null(fids)) return(TRUE)
+    fid_set <- unique(fids)
+    ## family ids: 0 = gaussian, 1 = binomial. Anything else may be
+    ## mean-dependent; mark as not-fixed to flag the issue.
+    all(fid_set %in% c(0L, 1L))
+  }
+
+  out_rows <- list()
+  for (comp in components) {
+    for (t in trait_idx) {
+      p_hat <- pt_mat[t, comp]
+      base_row <- data.frame(
+        trait = trait_names[t],
+        component = comp,
+        proportion = p_hat,
+        lower = NA_real_,
+        upper = NA_real_,
+        method = NA_character_,
+        stringsAsFactors = FALSE,
+        row.names = NULL
+      )
+
+      if (identical(comp, "link_residual")) {
+        ## Structurally fixed numerator for the families currently
+        ## supported. Collapse bounds to the point with method =
+        ## "(unavailable)" rather than producing a noisy NA.
+        if (is_link_resid_fixed()) {
+          base_row$lower <- p_hat
+          base_row$upper <- p_hat
+          base_row$method <- "(unavailable)"
+        } else {
+          base_row$method <- "(unavailable)"
+        }
+        out_rows[[length(out_rows) + 1L]] <- base_row
+        next
+      }
+
+      target_fn <- .proportion_target_fn(fit, component = comp, trait_idx = t)
+      if (is.null(target_fn)) {
+        ## Component absent at the model-state level (shouldn't happen
+        ## here because we filtered against extract_proportions() which
+        ## also gates on fit$use$*, but defensive).
+        base_row$method <- "(unavailable)"
+        out_rows[[length(out_rows) + 1L]] <- base_row
+        next
+      }
+
+      ## Adapt the search floor / ceiling to p_hat: if the point
+      ## estimate is itself near 0 or 1, the default safety floor (0.001)
+      ## would sit ABOVE p_hat and the lower-bound search would report
+      ## the floor as the bound, breaking lower <= p_hat. Set the floor
+      ## strictly below p_hat in those cases.
+      q_floor <- min(0.001, max(p_hat / 10, .Machine$double.eps))
+      q_ceil <- max(0.999, min(1 - (1 - p_hat) / 10, 1 - .Machine$double.eps))
+      bounds <- tryCatch(
+        .profile_ci_via_refit(
+          fit,
+          target_fn,
+          q_hat = p_hat,
+          level = level,
+          q_lo_hint = max(p_hat - 0.3, q_floor),
+          q_hi_hint = min(p_hat + 0.3, q_ceil),
+          q_lo_floor = q_floor,
+          q_hi_ceiling = q_ceil
+        ),
+        error = function(e) list(lower = NA_real_, upper = NA_real_)
+      )
+      base_row$lower <- bounds$lower
+      base_row$upper <- bounds$upper
+      base_row$method <- "profile"
+      out_rows[[length(out_rows) + 1L]] <- base_row
+    }
+  }
+  do.call(rbind, out_rows)
+}

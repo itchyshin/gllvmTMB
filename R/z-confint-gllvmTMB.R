@@ -738,6 +738,123 @@
   out
 }
 
+## ---- Stage 3b (2026-05-27): proportion parm tokens -----------------------
+## Routes `parm = "proportion[:component[:trait]]"` and variants through
+## `profile_ci_proportions()`. Grammar:
+##   * "proportion"                                -> all components, all traits
+##   * "proportion:<component>"                    -> one component, all traits
+##   * "proportion:<component>:<trait>"            -> one (component, trait)
+##   * "proportion:<component>:<t1>;<t2>"          -> one component, multiple traits
+##   * "proportion:<component>:[1,3]"              -> one component, bracketed indices
+##   * "proportion:<c1>;<c2>"                      -> multiple components, all traits
+
+## Known component vocabulary (matches extract_proportions() outputs).
+.proportion_components <- function() {
+  c(
+    "shared_unit",
+    "unique_unit",
+    "shared_unit_obs",
+    "unique_unit_obs",
+    "shared_phy",
+    "unique_phy",
+    "link_residual"
+  )
+}
+
+## Recognise `proportion` parm tokens.
+.is_proportion_parm <- function(parm) {
+  !missing(parm) &&
+    is.character(parm) &&
+    length(parm) == 1L &&
+    (identical(parm, "proportion") || grepl("^proportion:", parm))
+}
+
+## Parse a `proportion:<comp[s]>[:<trait[s]>]` token.
+## Returns list(components = <chr-or-NULL>, trait_idx = <int-vec-or-NULL>).
+## - `components = NULL` means "all components present in the fit".
+## - `trait_idx  = NULL` means "all traits".
+.parse_proportion_parm <- function(parm, trait_names) {
+  if (identical(parm, "proportion")) {
+    return(list(components = NULL, trait_idx = NULL))
+  }
+  spec <- sub("^proportion:", "", parm)
+  ## Split on the FIRST ":" only -- the trait portion may contain
+  ## commas (bracketed indices) and semicolons (multi-trait lists)
+  ## but never a colon.
+  ix_colon <- regexpr(":", spec, fixed = TRUE)
+  if (ix_colon == -1L) {
+    comp_part <- spec
+    trait_part <- NULL
+  } else {
+    comp_part <- substr(spec, 1L, ix_colon - 1L)
+    trait_part <- substr(spec, ix_colon + 1L, nchar(spec))
+  }
+  comp_part <- trimws(comp_part)
+  if (!nzchar(comp_part)) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code proportion} parm token.",
+      i = "Expected {.code \"proportion\"}, {.code \"proportion:<component>\"}, or {.code \"proportion:<component>:<trait>\"}."
+    ))
+  }
+  comps <- strsplit(comp_part, ";", fixed = TRUE)[[1L]]
+  comps <- trimws(comps)
+  comps <- comps[nzchar(comps)]
+  if (length(comps) == 0L) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code proportion} parm token.",
+      i = "Empty component list."
+    ))
+  }
+  known <- .proportion_components()
+  bad <- setdiff(comps, known)
+  if (length(bad) > 0L) {
+    cli::cli_abort(c(
+      "{cli::qty(length(bad))} unknown proportion component{?s}: {.val {bad}}.",
+      i = "Available components: {.val {known}}."
+    ))
+  }
+
+  trait_idx <- NULL
+  if (!is.null(trait_part) && nzchar(trimws(trait_part))) {
+    ## Reuse `.parse_pertrait_parm` for the trait portion: build a
+    ## synthetic token "proportion:<trait_part>" so the index / name
+    ## grammar is identical to icc / phylo_signal / communality.
+    fake_parm <- paste0("proportion:", trait_part)
+    trait_idx <- .parse_pertrait_parm(fake_parm, "proportion", trait_names)
+  }
+  list(components = comps, trait_idx = trait_idx)
+}
+
+## Dispatch `confint(fit, parm = "proportion[:...]")`.
+## Routes to profile_ci_proportions() for method = "profile";
+## wald / bootstrap error with a pointer to extract_proportions().
+.confint_proportion <- function(object, parm, level, method, ...) {
+  trait_names <- levels(object$data[[object$trait_col]])
+  parsed <- .parse_proportion_parm(parm, trait_names)
+  if (method != "profile") {
+    cli::cli_abort(c(
+      "Method {.val {method}} not implemented for {.code proportion}.",
+      i = "Only {.val profile} is currently available via {.fn profile_ci_proportions}.",
+      ">" = "For point estimates of the proportion decomposition see {.fn extract_proportions}."
+    ))
+  }
+  tbl <- profile_ci_proportions(
+    fit = object,
+    components = parsed$components,
+    trait_idx = parsed$trait_idx,
+    level = level
+  )
+  out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
+  rownames(out) <- paste0(
+    "proportion:",
+    as.character(tbl$component),
+    ":",
+    as.character(tbl$trait)
+  )
+  colnames(out) <- .confint_colnames(level)
+  out
+}
+
 ## Internal helper (P1a 2026-05-15): recognise parm tokens that match
 ## the `profile_targets()` inventory (e.g. "sigma_eps", "sd_B[1]",
 ## "phi_nbinom2[2]", "Lambda_B_packed[3]"). These are variance,
@@ -978,6 +1095,18 @@
 #'       Routes to [profile_ci_correlation()] (profile) or
 #'       [extract_correlations()] (\code{"fisher-z"} / \code{"wald"} /
 #'       \code{"bootstrap"}).
+#'     \item \code{"proportion"} (all components, all traits),
+#'       \code{"proportion:<component>"} (one component, all traits),
+#'       \code{"proportion:<component>:<trait>"} (one (component, trait)),
+#'       \code{"proportion:<component>:<t1>;<t2>"} (one component,
+#'       multiple traits), or \code{"proportion:<c1>;<c2>"} (multiple
+#'       components). Components are by name (\code{"shared_unit"},
+#'       \code{"unique_unit"}, \code{"shared_unit_obs"},
+#'       \code{"unique_unit_obs"}, \code{"shared_phy"},
+#'       \code{"unique_phy"}, \code{"link_residual"}). Routes to
+#'       [profile_ci_proportions()]. Profile-only;
+#'       \code{"wald"} / \code{"bootstrap"} error with a pointer to
+#'       [extract_proportions()].
 #'     \item An integer index vector or character vector of fixed-effect
 #'       term names (same as the standard \code{confint()} interface).
 #'     \item Missing (default) -- all fixed-effect parameters.
@@ -1156,6 +1285,16 @@ confint.gllvmTMB_multi <- function(
       method = method_rho,
       nsim = nsim,
       seed = seed,
+      ...
+    ))
+  }
+  if (.is_proportion_parm(parm)) {
+    method_prop <- if ("method" %in% names(match.call())) method else "profile"
+    return(.confint_proportion(
+      object,
+      parm = parm,
+      level = level,
+      method = method_prop,
       ...
     ))
   }

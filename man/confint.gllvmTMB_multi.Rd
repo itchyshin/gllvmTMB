@@ -63,6 +63,18 @@ Profile-only.
 Routes to \code{\link[=profile_ci_correlation]{profile_ci_correlation()}} (profile) or
 \code{\link[=extract_correlations]{extract_correlations()}} (\code{"fisher-z"} / \code{"wald"} /
 \code{"bootstrap"}).
+\item \code{"proportion"} (all components, all traits),
+\code{"proportion:<component>"} (one component, all traits),
+\code{"proportion:<component>:<trait>"} (one (component, trait)),
+\code{"proportion:<component>:<t1>;<t2>"} (one component,
+multiple traits), or \code{"proportion:<c1>;<c2>"} (multiple
+components). Components are by name (\code{"shared_unit"},
+\code{"unique_unit"}, \code{"shared_unit_obs"},
+\code{"unique_unit_obs"}, \code{"shared_phy"},
+\code{"unique_phy"}, \code{"link_residual"}). Routes to
+\code{\link[=profile_ci_proportions]{profile_ci_proportions()}}. Profile-only;
+\code{"wald"} / \code{"bootstrap"} error with a pointer to
+\code{\link[=extract_proportions]{extract_proportions()}}.
 \item An integer index vector or character vector of fixed-effect
 term names (same as the standard \code{confint()} interface).
 \item Missing (default) -- all fixed-effect parameters.

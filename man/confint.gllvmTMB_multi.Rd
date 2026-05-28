@@ -41,6 +41,28 @@ for existing scripts.
 profile-CI framework). For these tokens the method choices are
 \code{c("wald", "wald_asym", "profile")} with default
 \code{"wald"}.
+\item \code{"icc"} (all traits), \code{"icc:<trait_name>"} (one
+trait by name), \code{"icc:<t1>;<t2>"} (multiple by name), or
+\code{"icc:[1,3]"} (1-based trait indices). Routes to
+\code{\link[=profile_ci_repeatability]{profile_ci_repeatability()}} (for \code{method = "profile"}) or
+\code{\link[=extract_repeatability]{extract_repeatability()}} (\code{"wald"} / \code{"bootstrap"}).
+Stage 3a of the unified profile-CI framework.
+\item \code{"phylo_signal"} / \code{"phylo_signal:<trait>"} etc.
+-- same grammar as \code{"icc"}. Routes to
+\code{\link[=profile_ci_phylo_signal]{profile_ci_phylo_signal()}}. Profile-only; \code{"wald"} /
+\code{"bootstrap"} error with a clear message.
+\item \code{"communality:<tier>"} (one tier, all traits) or
+\code{"communality:<tier>:<trait>"} (one tier, one trait).
+Tier is one of \code{"unit"} / \code{"unit_obs"} (legacy
+\code{"B"} / \code{"W"}). Routes to \code{\link[=profile_ci_communality]{profile_ci_communality()}}.
+Profile-only.
+\item \code{"rho:<tier>:i,j"} (one pair) or
+\code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
+\code{"unit"} / \code{"unit_obs"} / \code{"phy"} /
+\code{"spatial"} (legacy \code{"B"} / \code{"W"} / \code{"spde"}).
+Routes to \code{\link[=profile_ci_correlation]{profile_ci_correlation()}} (profile) or
+\code{\link[=extract_correlations]{extract_correlations()}} (\code{"fisher-z"} / \code{"wald"} /
+\code{"bootstrap"}).
 \item An integer index vector or character vector of fixed-effect
 term names (same as the standard \code{confint()} interface).
 \item Missing (default) -- all fixed-effect parameters.
@@ -80,6 +102,12 @@ legacy \code{"Sigma_B[...]"} or \code{"Sigma_W[...]"} labels.
 Stage 1 convention: when \code{pdHess = FALSE} on a Wald path,
 \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 flags the reason).
+\item \strong{Derived-quantity path} (\code{"icc"} /
+\code{"phylo_signal"} / \code{"communality"} / \code{"rho"}) --
+a numeric matrix with two columns named after the requested
+\code{level} (e.g. \code{"2.5 \%"} / \code{"97.5 \%"}) and
+rownames identifying the entry, e.g. \code{"icc:trait_1"},
+\code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}.
 \item \strong{Fixed-effects / variance-component path} -- a numeric
 matrix with rownames = parameter names and two columns named
 \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for

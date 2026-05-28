@@ -325,6 +325,419 @@
   )
 }
 
+## ---- Stage 3a: derived-quantity parm tokens (2026-05-27) -----------------
+## Routes `parm = "icc[:...]"`, `"phylo_signal[:...]"`,
+## `"communality:tier[:trait]"`, and `"rho:tier:i,j[;k,l]"` through the
+## existing derived-quantity helpers (extract_repeatability /
+## profile_ci_repeatability, profile_ci_phylo_signal,
+## profile_ci_communality, extract_correlations / profile_ci_correlation).
+## Mirrors the Stage 2 Lambda template: strict regex anchors on the
+## recognizers, parser helpers that return the args to forward, dispatcher
+## helpers that build a numeric matrix with `<lo>%` / `<hi>%` colnames.
+
+## Internal helper: parse a per-trait token of the form
+##   "<prefix>"                      -> NULL (all traits)
+##   "<prefix>:<name1>;<name2>"      -> integer trait indices (by name)
+##   "<prefix>:[1,3]"                -> integer trait indices (by 1-based index)
+## Returns a sorted integer vector or `NULL` (all traits). Errors with a
+## clear message on out-of-range or unknown names.
+.parse_pertrait_parm <- function(parm, prefix, trait_names) {
+  if (identical(parm, prefix)) {
+    return(NULL)
+  }
+  spec <- sub(paste0("^", prefix, ":"), "", parm)
+  spec <- trimws(spec)
+  if (!nzchar(spec)) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code {prefix}} parm token.",
+      i = "Expected {.code \"{prefix}\"}, {.code \"{prefix}:<trait_name>\"}, {.code \"{prefix}:[k]\"}, or {.code \"{prefix}:[i,j]\"}."
+    ))
+  }
+  ## Bracketed index form: "[1]" or "[1,3]"
+  if (grepl("^\\[.*\\]$", spec)) {
+    body <- sub("^\\[(.*)\\]$", "\\1", spec)
+    parts <- strsplit(body, ",", fixed = TRUE)[[1L]]
+    parts <- trimws(parts)
+    parts <- parts[nzchar(parts)]
+    if (length(parts) == 0L) {
+      cli::cli_abort(c(
+        "Could not parse {.val {parm}} as a {.code {prefix}} parm token.",
+        i = "Bracketed index list is empty."
+      ))
+    }
+    ix <- suppressWarnings(as.integer(parts))
+    if (anyNA(ix)) {
+      cli::cli_abort(c(
+        "Could not parse {.val {parm}} as a {.code {prefix}} parm token.",
+        i = "Bracketed indices must be integers; got {.val {parts}}."
+      ))
+    }
+    out_of_range <- ix < 1L | ix > length(trait_names)
+    if (any(out_of_range)) {
+      bad <- ix[out_of_range]
+      cli::cli_abort(c(
+        "{cli::qty(length(bad))} trait ind{?ex/ices} {.val {bad}} out of range.",
+        i = "Valid indices: 1:{length(trait_names)}."
+      ))
+    }
+    return(sort(unique(ix)))
+  }
+  ## Name list: "<n1>" or "<n1>;<n2>"
+  parts <- strsplit(spec, ";", fixed = TRUE)[[1L]]
+  parts <- trimws(parts)
+  parts <- parts[nzchar(parts)]
+  if (length(parts) == 0L) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code {prefix}} parm token.",
+      i = "Empty trait list."
+    ))
+  }
+  ix <- match(parts, trait_names)
+  if (anyNA(ix)) {
+    bad <- parts[is.na(ix)]
+    cli::cli_abort(c(
+      "{cli::qty(length(bad))} trait name{?s} {.val {bad}} not found.",
+      i = "Available trait names: {.val {trait_names}}."
+    ))
+  }
+  sort(unique(ix))
+}
+
+## Internal helper: recognise `icc` parm tokens.
+.is_icc_parm <- function(parm) {
+  !missing(parm) &&
+    is.character(parm) &&
+    length(parm) == 1L &&
+    (identical(parm, "icc") || grepl("^icc:", parm))
+}
+
+## Internal helper: recognise `phylo_signal` parm tokens.
+.is_phylo_signal_parm <- function(parm) {
+  !missing(parm) &&
+    is.character(parm) &&
+    length(parm) == 1L &&
+    (identical(parm, "phylo_signal") || grepl("^phylo_signal:", parm))
+}
+
+## Internal helper: recognise `communality:tier[:trait]` parm tokens.
+## Strict: must start with "communality:" followed by at least a tier
+## token; bare "communality" without a tier is rejected (tier is
+## mandatory because there is no sensible default).
+.is_communality_parm <- function(parm) {
+  !missing(parm) &&
+    is.character(parm) &&
+    length(parm) == 1L &&
+    grepl("^communality:", parm)
+}
+
+## Internal helper: parse a communality token "communality:<tier>" or
+## "communality:<tier>:<trait>". Returns list(tier = <tier>, trait_idx
+## = <int-vec-or-NULL>).
+.parse_communality_parm <- function(parm, trait_names) {
+  spec <- sub("^communality:", "", parm)
+  ## Split on the FIRST ":" only — the trait portion may itself
+  ## contain commas (bracketed indices) but not colons.
+  ix_colon <- regexpr(":", spec, fixed = TRUE)
+  if (ix_colon == -1L) {
+    tier <- spec
+    trait_part <- NULL
+  } else {
+    tier <- substr(spec, 1L, ix_colon - 1L)
+    trait_part <- substr(spec, ix_colon + 1L, nchar(spec))
+  }
+  tier <- trimws(tier)
+  if (!nzchar(tier)) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code communality} parm token.",
+      i = "Expected {.code \"communality:<tier>\"} or {.code \"communality:<tier>:<trait>\"}; tier is mandatory."
+    ))
+  }
+  if (!tier %in% c("unit", "unit_obs", "B", "W")) {
+    cli::cli_abort(c(
+      "Invalid tier {.val {tier}} in {.val {parm}}.",
+      i = "Communality tiers: {.val unit} or {.val unit_obs} (legacy aliases {.val B} / {.val W} also accepted)."
+    ))
+  }
+  trait_idx <- NULL
+  if (!is.null(trait_part) && nzchar(trimws(trait_part))) {
+    ## Build a synthetic per-trait token and reuse `.parse_pertrait_parm`
+    ## so the index / name grammar is identical to icc / phylo_signal.
+    fake_parm <- paste0("communality:", trait_part)
+    trait_idx <- .parse_pertrait_parm(fake_parm, "communality", trait_names)
+  }
+  list(tier = tier, trait_idx = trait_idx)
+}
+
+## Internal helper: recognise `rho:tier:i,j[;k,l]` parm tokens.
+.is_rho_parm <- function(parm) {
+  !missing(parm) &&
+    is.character(parm) &&
+    length(parm) == 1L &&
+    grepl("^rho:", parm)
+}
+
+## Internal helper: parse "rho:<tier>:i,j[;k,l]" into list(tier, pairs)
+## where pairs is an integer matrix with columns (i, j) and i < j.
+.parse_rho_parm <- function(parm, trait_names) {
+  spec <- sub("^rho:", "", parm)
+  ix_colon <- regexpr(":", spec, fixed = TRUE)
+  if (ix_colon == -1L) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code rho} parm token.",
+      i = "Expected {.code \"rho:<tier>:i,j\"} or {.code \"rho:<tier>:i,j;k,l\"}; tier and pair are mandatory."
+    ))
+  }
+  tier <- trimws(substr(spec, 1L, ix_colon - 1L))
+  pair_spec <- substr(spec, ix_colon + 1L, nchar(spec))
+  if (!nzchar(tier)) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code rho} parm token.",
+      i = "Tier is mandatory."
+    ))
+  }
+  if (!tier %in% c("unit", "unit_obs", "phy", "spatial", "B", "W", "spde")) {
+    cli::cli_abort(c(
+      "Invalid tier {.val {tier}} in {.val {parm}}.",
+      i = "Correlation tiers: {.val unit}, {.val unit_obs}, {.val phy}, or {.val spatial} (legacy aliases {.val B} / {.val W} / {.val spde} also accepted)."
+    ))
+  }
+  pairs <- strsplit(pair_spec, ";", fixed = TRUE)[[1L]]
+  pairs <- trimws(pairs)
+  pairs <- pairs[nzchar(pairs)]
+  if (length(pairs) == 0L) {
+    cli::cli_abort(c(
+      "Could not parse {.val {parm}} as a {.code rho} parm token.",
+      i = "Expected at least one pair {.code i,j}."
+    ))
+  }
+  T <- length(trait_names)
+  parts_list <- lapply(pairs, function(p) {
+    bits <- strsplit(p, ",", fixed = TRUE)[[1L]]
+    bits <- trimws(bits)
+    if (length(bits) != 2L) {
+      cli::cli_abort(c(
+        "Could not parse {.val {parm}} as a {.code rho} parm token.",
+        i = "Each pair must have two integers separated by a comma; got {.val {p}}."
+      ))
+    }
+    i <- suppressWarnings(as.integer(bits[1L]))
+    j <- suppressWarnings(as.integer(bits[2L]))
+    if (anyNA(c(i, j))) {
+      cli::cli_abort(c(
+        "Could not parse {.val {parm}} as a {.code rho} parm token.",
+        i = "Pair indices must be integers; got {.val {bits[1L]}}, {.val {bits[2L]}}."
+      ))
+    }
+    if (i < 1L || j < 1L || i > T || j > T) {
+      cli::cli_abort(c(
+        "Pair {.val {paste0(i, ',', j)}} out of range.",
+        i = "Valid indices: 1:{T}."
+      ))
+    }
+    if (i == j) {
+      cli::cli_abort(c(
+        "Pair {.val {paste0(i, ',', j)}} must have distinct traits.",
+        i = "Cross-trait correlations require {.code i != j}."
+      ))
+    }
+    if (i > j) {
+      ## Canonicalise to i < j; the underlying profile_ci_correlation
+      ## requires i < j.
+      c(j, i)
+    } else {
+      c(i, j)
+    }
+  })
+  m <- do.call(rbind, parts_list)
+  storage.mode(m) <- "integer"
+  list(tier = tier, pairs = m)
+}
+
+## Internal helper: turn a confint-style level into the two column
+## names `<lo>%` and `<hi>%` (matches the matrix shape used elsewhere).
+.confint_colnames <- function(level) {
+  c(
+    sprintf("%.1f %%", 100 * (1 - level) / 2),
+    sprintf("%.1f %%", 100 * (1 + level) / 2)
+  )
+}
+
+## Internal helper: dispatch `confint(fit, parm = "icc[:...]")`.
+## Routes to extract_repeatability() for wald / bootstrap and to
+## profile_ci_repeatability() for profile (the latter is the cheaper
+## per-trait path that bypasses extract_repeatability()'s honest-fallback
+## Wald demotion). Returns a numeric matrix with rownames `icc:<trait>`.
+.confint_icc <- function(object, parm, level, method, nsim, seed, ...) {
+  trait_names <- levels(object$data[[object$trait_col]])
+  trait_idx <- .parse_pertrait_parm(parm, "icc", trait_names)
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_along(trait_names)
+  }
+
+  if (method == "profile") {
+    tbl <- profile_ci_repeatability(
+      fit = object,
+      trait_idx = trait_idx,
+      level = level
+    )
+  } else if (method %in% c("wald", "bootstrap")) {
+    tbl <- suppressMessages(extract_repeatability(
+      fit = object,
+      level = level,
+      method = method,
+      nsim = nsim,
+      seed = seed
+    ))
+    ## extract_repeatability() always returns all traits; filter.
+    tbl <- tbl[trait_idx, , drop = FALSE]
+  } else {
+    cli::cli_abort(c(
+      "Method {.val {method}} not supported for {.code icc}.",
+      i = "Available: {.val profile}, {.val wald}, {.val bootstrap}."
+    ))
+  }
+  out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
+  rownames(out) <- paste0("icc:", as.character(tbl$trait))
+  colnames(out) <- .confint_colnames(level)
+  out
+}
+
+## Internal helper: dispatch `confint(fit, parm = "phylo_signal[:...]")`.
+## Currently profile-only; wald / bootstrap error with a clear message.
+.confint_phylo_signal <- function(object, parm, level, method, ...) {
+  trait_names <- levels(object$data[[object$trait_col]])
+  trait_idx <- .parse_pertrait_parm(parm, "phylo_signal", trait_names)
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_along(trait_names)
+  }
+  if (method != "profile") {
+    cli::cli_abort(c(
+      "Method {.val {method}} not implemented for {.code phylo_signal}.",
+      i = "Only {.val profile} is currently available via {.fn profile_ci_phylo_signal}."
+    ))
+  }
+  tbl <- profile_ci_phylo_signal(
+    fit = object,
+    trait_idx = trait_idx,
+    level = level
+  )
+  out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
+  rownames(out) <- paste0("phylo_signal:", as.character(tbl$trait))
+  colnames(out) <- .confint_colnames(level)
+  out
+}
+
+## Internal helper: dispatch `confint(fit, parm = "communality:tier[:trait]")`.
+## Currently profile-only; wald / bootstrap error with a pointer to
+## `extract_communality()` (which has its own wald-demote-to-bootstrap
+## logic and bootstrap path, but only for the per-tier table — not the
+## per-trait token we expose here).
+.confint_communality <- function(object, parm, level, method, ...) {
+  trait_names <- levels(object$data[[object$trait_col]])
+  parsed <- .parse_communality_parm(parm, trait_names)
+  tier <- parsed$tier
+  trait_idx <- parsed$trait_idx
+  if (is.null(trait_idx)) {
+    trait_idx <- seq_along(trait_names)
+  }
+  if (method != "profile") {
+    cli::cli_abort(c(
+      "Method {.val {method}} not implemented for {.code communality}.",
+      i = "Only {.val profile} is currently available via {.fn profile_ci_communality}.",
+      ">" = "For bootstrap CIs see {.fn extract_communality} with {.code ci = TRUE, method = \"bootstrap\"}."
+    ))
+  }
+  ## Suppress profile_ci_communality()'s downstream `.normalise_level()`
+  ## deprecation warnings on legacy aliases — the user already typed the
+  ## token deliberately and the warning is noise at this layer.
+  tbl <- suppressWarnings(profile_ci_communality(
+    fit = object,
+    tier = tier,
+    trait_idx = trait_idx,
+    level = level
+  ))
+  ## Preserve the user-supplied tier in the row labels (the underlying
+  ## table reports the internal slot, e.g. "B"; we report what the user
+  ## typed, e.g. "unit").
+  out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
+  rownames(out) <- paste0(
+    "communality:",
+    tier,
+    ":",
+    as.character(tbl$trait)
+  )
+  colnames(out) <- .confint_colnames(level)
+  out
+}
+
+## Internal helper: dispatch `confint(fit, parm = "rho:tier:i,j[;k,l]")`.
+## Routes to extract_correlations() for fisher-z / wald / bootstrap, and
+## profile_ci_correlation() for profile (the latter is cheaper than
+## going through extract_correlations(method = "profile") when only
+## specific pairs are requested).
+.confint_rho <- function(object, parm, level, method, nsim, seed, ...) {
+  trait_names <- levels(object$data[[object$trait_col]])
+  parsed <- .parse_rho_parm(parm, trait_names)
+  tier <- parsed$tier
+  pairs <- parsed$pairs
+
+  n_pairs <- nrow(pairs)
+  lo <- numeric(n_pairs)
+  hi <- numeric(n_pairs)
+  rn <- character(n_pairs)
+
+  if (method == "profile") {
+    for (m in seq_len(n_pairs)) {
+      i <- pairs[m, 1L]
+      j <- pairs[m, 2L]
+      ci <- profile_ci_correlation(
+        fit = object,
+        tier = tier,
+        i = i,
+        j = j,
+        level = level
+      )
+      lo[m] <- unname(ci["lower"])
+      hi[m] <- unname(ci["upper"])
+      rn[m] <- sprintf("rho:%s:%d,%d", tier, i, j)
+    }
+  } else if (method %in% c("fisher-z", "wald", "bootstrap")) {
+    ## extract_correlations() returns all pairs at the tier; loop per
+    ## requested pair and match the row.
+    for (m in seq_len(n_pairs)) {
+      i <- pairs[m, 1L]
+      j <- pairs[m, 2L]
+      df <- suppressMessages(extract_correlations(
+        fit = object,
+        tier = tier,
+        pair = c(i, j),
+        level = level,
+        method = method,
+        nsim = nsim,
+        seed = seed
+      ))
+      if (nrow(df) != 1L) {
+        cli::cli_abort(c(
+          "Unexpected return from {.fn extract_correlations} for pair {.val {paste0(i, ',', j)}}.",
+          i = "Expected one row, got {nrow(df)}."
+        ))
+      }
+      lo[m] <- as.numeric(df$lower[1L])
+      hi[m] <- as.numeric(df$upper[1L])
+      rn[m] <- sprintf("rho:%s:%d,%d", tier, i, j)
+    }
+  } else {
+    cli::cli_abort(c(
+      "Method {.val {method}} not supported for {.code rho}.",
+      i = "Available: {.val profile}, {.val fisher-z}, {.val wald}, {.val bootstrap}."
+    ))
+  }
+  out <- cbind(lo, hi)
+  rownames(out) <- rn
+  colnames(out) <- .confint_colnames(level)
+  out
+}
+
 ## Internal helper (P1a 2026-05-15): recognise parm tokens that match
 ## the `profile_targets()` inventory (e.g. "sigma_eps", "sd_B[1]",
 ## "phi_nbinom2[2]", "Lambda_B_packed[3]"). These are variance,
@@ -543,6 +956,28 @@
 #'       profile-CI framework). For these tokens the method choices are
 #'       \code{c("wald", "wald_asym", "profile")} with default
 #'       \code{"wald"}.
+#'     \item \code{"icc"} (all traits), \code{"icc:<trait_name>"} (one
+#'       trait by name), \code{"icc:<t1>;<t2>"} (multiple by name), or
+#'       \code{"icc:[1,3]"} (1-based trait indices). Routes to
+#'       [profile_ci_repeatability()] (for \code{method = "profile"}) or
+#'       [extract_repeatability()] (\code{"wald"} / \code{"bootstrap"}).
+#'       Stage 3a of the unified profile-CI framework.
+#'     \item \code{"phylo_signal"} / \code{"phylo_signal:<trait>"} etc.
+#'       -- same grammar as \code{"icc"}. Routes to
+#'       [profile_ci_phylo_signal()]. Profile-only; \code{"wald"} /
+#'       \code{"bootstrap"} error with a clear message.
+#'     \item \code{"communality:<tier>"} (one tier, all traits) or
+#'       \code{"communality:<tier>:<trait>"} (one tier, one trait).
+#'       Tier is one of \code{"unit"} / \code{"unit_obs"} (legacy
+#'       \code{"B"} / \code{"W"}). Routes to [profile_ci_communality()].
+#'       Profile-only.
+#'     \item \code{"rho:<tier>:i,j"} (one pair) or
+#'       \code{"rho:<tier>:i,j;k,l"} (multiple pairs). Tier is one of
+#'       \code{"unit"} / \code{"unit_obs"} / \code{"phy"} /
+#'       \code{"spatial"} (legacy \code{"B"} / \code{"W"} / \code{"spde"}).
+#'       Routes to [profile_ci_correlation()] (profile) or
+#'       [extract_correlations()] (\code{"fisher-z"} / \code{"wald"} /
+#'       \code{"bootstrap"}).
 #'     \item An integer index vector or character vector of fixed-effect
 #'       term names (same as the standard \code{confint()} interface).
 #'     \item Missing (default) -- all fixed-effect parameters.
@@ -574,6 +1009,12 @@
 #'     Stage 1 convention: when \code{pdHess = FALSE} on a Wald path,
 #'     \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 #'     flags the reason).
+#'   \item \strong{Derived-quantity path} (\code{"icc"} /
+#'     \code{"phylo_signal"} / \code{"communality"} / \code{"rho"}) --
+#'     a numeric matrix with two columns named after the requested
+#'     \code{level} (e.g. \code{"2.5 \%"} / \code{"97.5 \%"}) and
+#'     rownames identifying the entry, e.g. \code{"icc:trait_1"},
+#'     \code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}.
 #'   \item \strong{Fixed-effects / variance-component path} -- a numeric
 #'     matrix with rownames = parameter names and two columns named
 #'     \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for
@@ -657,6 +1098,64 @@ confint.gllvmTMB_multi <- function(
       parm = parm,
       level = level,
       method = method_lambda,
+      ...
+    ))
+  }
+
+  ## ---- Stage 3a: derived-quantity tokens (2026-05-27) ----------------------
+  ## `parm = "icc[:...]"`, `"phylo_signal[:...]"`,
+  ## `"communality:tier[:trait]"`, and `"rho:tier:i,j[;k,l]"` route to
+  ## profile_ci_repeatability / extract_repeatability,
+  ## profile_ci_phylo_signal, profile_ci_communality, and
+  ## profile_ci_correlation / extract_correlations respectively.
+  ## Default method for these tokens is `"profile"` (the base default),
+  ## so we keep the outer `method` argument as-is and let each helper
+  ## error if a non-supported method is requested. We intercept the
+  ## icc / rho branches BEFORE the outer `match.arg(method)` so that
+  ## `extract_correlations()`'s `"fisher-z"` method (which is not in
+  ## the base set) is forwardable. The `match.arg()` below validates
+  ## the base set for all later branches.
+  if (.is_icc_parm(parm)) {
+    method_icc <- if ("method" %in% names(match.call())) method else "profile"
+    return(.confint_icc(
+      object,
+      parm = parm,
+      level = level,
+      method = method_icc,
+      nsim = nsim,
+      seed = seed,
+      ...
+    ))
+  }
+  if (.is_phylo_signal_parm(parm)) {
+    method_ps <- if ("method" %in% names(match.call())) method else "profile"
+    return(.confint_phylo_signal(
+      object,
+      parm = parm,
+      level = level,
+      method = method_ps,
+      ...
+    ))
+  }
+  if (.is_communality_parm(parm)) {
+    method_co <- if ("method" %in% names(match.call())) method else "profile"
+    return(.confint_communality(
+      object,
+      parm = parm,
+      level = level,
+      method = method_co,
+      ...
+    ))
+  }
+  if (.is_rho_parm(parm)) {
+    method_rho <- if ("method" %in% names(match.call())) method else "profile"
+    return(.confint_rho(
+      object,
+      parm = parm,
+      level = level,
+      method = method_rho,
+      nsim = nsim,
+      seed = seed,
       ...
     ))
   }

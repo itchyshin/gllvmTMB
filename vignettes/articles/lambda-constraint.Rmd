@@ -714,6 +714,149 @@ ggplot(df_comm, aes(x = species, y = share, fill = axis)) +
        title = "Per-axis latent-variance share (constrained fit)")
 ```
 
+## Variance partition with confidence intervals
+
+The communality plot above gives the per-axis split of the *latent*
+variance. The complementary view is the per-species variance
+*decomposition*: how much of each species' total liability variance
+comes from the shared latent factors versus the link-implicit residual?
+For the probit fit this partition has two components:
+
+- **`shared_unit`** —
+  $(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt} / \boldsymbol\Sigma_{tt}$,
+  the share of species $t$'s liability variance attributable to the
+  shared latent factors at the unit (site) tier. Identical numerator
+  to the total communality above, but expressed as a proportion of
+  the **total** liability variance.
+- **`link_residual`** —
+  $\sigma^2_d / \boldsymbol\Sigma_{tt}$, the probit noise floor.
+  Fixed at $\sigma^2_d = 1$ for probit, so it equals
+  $1 - \texttt{shared\_unit}$ by construction.
+
+`extract_proportions()` returns the point estimates:
+
+```{r vp-point}
+vp_point <- extract_proportions(fit_con, format = "wide")
+# Round only the numeric proportion columns; keep the trait label intact.
+num_cols <- vapply(vp_point, is.numeric, logical(1))
+vp_point[, num_cols] <- lapply(vp_point[, num_cols, drop = FALSE],
+                               round, digits = 2)
+vp_point
+```
+
+Profile-likelihood CIs on `shared_unit` come from
+`profile_ci_proportions()`, or equivalently via the unified
+`confint()` surface. We restrict to six representative species (two
+from each functional group) so the demo renders in a few minutes
+rather than half an hour:
+
+```{r vp-profile, cache = TRUE}
+demo_idx <- c(1, 3,    # Group A: shade specialists
+              6, 8,    # Group B: drought specialists
+              11, 15)  # Group C: free
+demo_species <- species_names[demo_idx]
+
+vp_ci <- profile_ci_proportions(fit_con,
+                                components = "shared_unit",
+                                trait_idx  = demo_idx,
+                                level      = 0.95)
+vp_show <- vp_ci[, c("trait", "proportion", "lower", "upper")]
+vp_show[, c("proportion", "lower", "upper")] <-
+  lapply(vp_show[, c("proportion", "lower", "upper")], round, digits = 2)
+vp_show
+
+# Same answer through the unified confint() surface
+ci_alt <- confint(fit_con,
+                  parm   = paste0("proportion:shared_unit:",
+                                  paste(demo_species, collapse = ";")),
+                  method = "profile")
+round(ci_alt, 2)
+```
+
+The two routes return the same numbers — `confint()` is the
+recommended user-facing entry point, since it places variance
+partitions on the same `parm`/`method` API as Lambda entries,
+correlations, ICC, communality, and fixed effects. (See
+`?confint.gllvmTMB_multi` for the full grammar.)
+
+Two implementation notes worth flagging:
+
+- `profile_ci_proportions()` is a constrained Lagrange refit, like
+  `profile_ci_communality()`. The difference is that the denominator
+  $\boldsymbol\Sigma_{tt}$ floats across **all** variance components
+  present in the fit, so the CI is on the proportion of the *total*
+  liability variance, not the proportion of the tier-internal
+  variance. For this single-tier fit the two collapse to the same
+  number; on a multi-tier fit (e.g. with `unique()` or
+  `phylo_unique()` terms) they would diverge.
+- `link_residual` is flagged as `method = "(unavailable)"` here — for
+  probit it is a known constant ($\sigma^2_d = 1$), so there is no
+  profile to invert and the bounds collapse to the point estimate.
+
+A stacked bar with the profile CI overlaid on the boundary between
+the two components makes the partition immediate:
+
+```{r vp-plot, fig.width = 7.5, fig.height = 4, fig.cap = "Variance partition for six representative species from the constrained probit fit. The orange segment is the shared-latent contribution `shared_unit`; the grey segment is the probit link residual. The vertical error bars at the boundary between the segments are the 95 percent profile-likelihood CI on `shared_unit`; their asymmetry is the bounded-ratio property profile likelihood captures and symmetric Wald would miss.", fig.alt = "Stacked bar chart, one bar per species, normalised to 1. Lower (orange) segment is the shared-latent proportion; upper (grey) segment is the link-residual proportion. A short vertical error bar sits at the boundary between segments, asymmetric, never crossing 0 or 1."}
+vp_long <- data.frame(
+  species   = factor(vp_ci$trait, levels = demo_species),
+  component = "shared_unit",
+  prop      = vp_ci$proportion,
+  lower     = vp_ci$lower,
+  upper     = vp_ci$upper
+)
+vp_res <- vp_long
+vp_res$component <- "link_residual"
+vp_res$prop      <- 1 - vp_long$prop
+vp_res$lower     <- NA_real_
+vp_res$upper     <- NA_real_
+
+vp_stack <- rbind(vp_long, vp_res)
+vp_stack$component <- factor(vp_stack$component,
+                             levels = c("link_residual", "shared_unit"))
+
+ggplot() +
+  geom_col(data = vp_stack,
+           aes(x = species, y = prop, fill = component)) +
+  geom_errorbar(data = vp_long,
+                aes(x = species, ymin = lower, ymax = upper),
+                width = 0.30, colour = "grey20") +
+  scale_fill_manual(
+    values = c(shared_unit   = "#e08214",
+               link_residual = "grey85"),
+    labels = c(shared_unit   = "shared_unit (latent)",
+               link_residual = "link_residual (probit floor)")
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  labs(x = NULL, y = "Proportion of liability variance",
+       fill = NULL,
+       title = "Variance partition with 95% profile CI on shared_unit")
+```
+
+How to read this:
+
+- All `shared_unit` lower bounds are **strictly positive**: every
+  shown species' latent contribution is reliably non-zero. If a
+  species' loadings were noise around zero, the lower bound would
+  drift to zero and the bar would degenerate to the residual floor.
+- Group C species (signed on both LV1 and LV2) tend to have smaller
+  `shared_unit` proportions than groups A and B, because splitting
+  variance across two axes leaves smaller per-axis magnitudes; the
+  total latent share is correspondingly lower.
+- CI **widths** are wider for species with `shared_unit` near 0.5 and
+  narrower at the extremes — the standard bounded-proportion pattern.
+  The asymmetry (wider lower reach when the point is high, wider
+  upper reach when the point is low) is what symmetric Wald on
+  the raw proportion would miss and what the profile CI captures
+  honestly.
+
+The same machinery extends to multi-tier fits (with `unique()` or
+`phylo_unique()` terms) where the partition has three or more
+components and `link_residual` is the smallest piece rather than half
+the bar. The `parm` token grammar is uniform —
+`"proportion:<component>[:trait]"` — so the demo above generalises
+without learning new function names.
+
 ## Reliability regime: what we know empirically
 
 `lambda_constraint` on binary fits is validated in

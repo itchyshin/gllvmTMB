@@ -174,13 +174,16 @@ test_that("confint(fit, parm = 'phylo_signal') errors when no phylo component", 
   )
 })
 
-test_that("confint(fit, parm = 'phylo_signal', method = 'wald') errors as not-implemented", {
+test_that("confint(fit, parm = 'phylo_signal', method = 'wald') errors when fit has no phylo component", {
+  ## Phase B-INF Lane 1 A3 wired wald for phylo_signal; the error now
+  ## comes from the per-trait absence-of-phylo check, not a
+  ## not-implemented message.
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
   expect_error(
     suppressMessages(confint(fx$fit, parm = "phylo_signal", method = "wald")),
-    "not implemented|profile"
+    "phylogenetic|phylo"
   )
 })
 
@@ -272,26 +275,36 @@ test_that("confint(fit, parm = 'communality') without tier falls through to fixe
   expect_true(is.matrix(res))
 })
 
-test_that("confint(fit, parm = 'communality:unit', method = 'wald') errors as not-implemented", {
+test_that("confint(fit, parm = 'communality:unit', method = 'wald') returns finite bounds", {
+  ## Phase B-INF Lane 1 A1 wired wald for communality via delta method
+  ## on logit-c^2; bounds must be inside [0, 1].
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
-  expect_error(
-    suppressMessages(confint(fx$fit, parm = "communality:unit", method = "wald")),
-    "not implemented|profile"
-  )
+  res <- suppressMessages(suppressWarnings(
+    confint(fx$fit, parm = "communality:unit", method = "wald")
+  ))
+  expect_true(is.matrix(res))
+  expect_equal(ncol(res), 2L)
+  expect_true(all(is.finite(res)))
+  expect_true(all(res >= 0 & res <= 1))
 })
 
-test_that("confint(fit, parm = 'communality:unit', method = 'bootstrap') errors as not-implemented", {
+test_that("confint(fit, parm = 'communality:unit', method = 'bootstrap') returns finite bounds", {
+  ## Phase B-INF Lane 1 A1 wired bootstrap (default nsim).
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
-  expect_error(
-    suppressMessages(confint(
-      fx$fit, parm = "communality:unit", method = "bootstrap"
-    )),
-    "not implemented|profile"
-  )
+  res <- suppressMessages(suppressWarnings(
+    confint(
+      fx$fit, parm = "communality:unit", method = "bootstrap",
+      nsim = 30L, seed = 42L
+    )
+  ))
+  expect_true(is.matrix(res))
+  expect_equal(ncol(res), 2L)
+  expect_true(all(is.finite(res)))
+  expect_true(all(res >= 0 & res <= 1))
 })
 
 test_that("confint(fit, parm = 'communality:unit') bounds are within [0, 1]", {

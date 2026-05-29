@@ -168,7 +168,7 @@ Row-owner: **Boole + Gauss** (SPDE inheritance from sdmTMB).
 |----|------------|--------|---------------|-------|
 | SPA-01 | SPDE mesh construction via `make_mesh()` | `covered` | `test-mesh.R` | inherited from sdmTMB |
 | SPA-02 | `spatial_latent` + `spatial_unique` paired | `partial` | `test-spatial-latent-recovery.R` | recovery test exists; full Phase 0B verification |
-| SPA-03 | `spatial_scalar` | `partial` | `test-stage4-spde.R` | smoke only |
+| SPA-03 | `spatial_scalar` | `covered` | `test-stage4-spde.R`, `test-spatial-scalar-binary.R` | Phase B-INF Lane 2 / B4 (Design 58): binary probit recovery + CI smoke (`confint(parm = "tau_spde", method = "profile")`) + tied-tau contract verified (`log_tau_spde` entries collapse to a single value via TMB `map`). |
 | SPA-04 | `spatial_indep / spatial_dep` | `partial` | `test-stage4-spde.R` | smoke only |
 | SPA-05 | Spatial mode dispatch | `covered` | `test-spatial-mode-dispatch.R` | |
 | SPA-06 | Spatial orientation handling (X/Y) | `covered` | `test-spatial-orientation.R`, `test-utm-conversions.R` | |

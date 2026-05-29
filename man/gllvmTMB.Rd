@@ -169,13 +169,19 @@ path} at any \code{n_species}; the speedup grows to ~24× at
 \code{V_t}. Used by the \code{equalto()} two-stage workflow when sampling-error
 matrices are available from a prior stage of estimation.}
 
-\item{lambda_constraint}{Optional list with elements \code{B} and / or \code{W},
-each an \verb{n_traits × d} matrix of confirmatory loading constraints
+\item{lambda_constraint}{Optional list with elements \code{unit} and / or
+\code{unit_obs} (plus \code{phy}, \code{spde} for structural levels), each an
+\verb{n_traits × d} matrix of confirmatory loading constraints
 (galamm-style). \code{NA} entries are estimated; numerical entries are
 pinned. Upper-triangle entries are silently ignored — the engine's
 lower-triangular parameterisation already fixes those at zero.
 Default \code{NULL} uses the engine's exploratory lower-triangular
-convention.}
+convention. See \code{\link[=confirmatory_lambda]{confirmatory_lambda()}} to build the matrix from
+functional-group membership, or \code{\link[=suggest_lambda_constraint]{suggest_lambda_constraint()}} for a
+minimum statistical identification scaffold when you have no
+biological hypothesis. Deprecated legacy element names \code{B} and \code{W}
+are still accepted (with a one-shot soft deprecation message) and
+map to \code{unit} and \code{unit_obs} respectively.}
 
 \item{control}{Output of \code{gllvmTMBcontrol()}.}
 

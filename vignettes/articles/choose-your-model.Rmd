@@ -241,7 +241,7 @@ covariance* (every pair gets its own parameter).
 |---|---|---|
 | You expect a small number of latent dimensions (size, shape, life-history pace) to explain most of the cross-trait covariance. T traits, K << T factors. | <code>+ latent(0 + trait &#124; site, d = K)</code> | The default GLLVM choice. K = 1–3 is typical. |
 | You want full unstructured between-unit covariance with no rank reduction. | <code>+ unique(0 + trait &#124; site)</code> (specific variance) plus a separate term for off-diagonal structure as needed | Reasonable when T is small (T ≤ 5) and you have many units. |
-| Confirmatory: you know which traits load on which factor and want to pin those entries of $\boldsymbol\Lambda$. | <code>+ latent(0 + trait &#124; site, d = K)</code> plus `lambda_constraint = list(B = M)` | M is a `T × K` matrix with `NA` for free entries and numeric values for fixed ones. See [Lambda constraint](lambda-constraint.html); `?suggest_lambda_constraint` proposes a sensible matrix from a fitted unconstrained model. |
+| Confirmatory: you know which traits load on which factor and want to pin those entries of $\boldsymbol\Lambda$. | <code>+ latent(0 + trait &#124; site, d = K)</code> plus `lambda_constraint = list(unit = M)` | M is a `T × K` matrix with `NA` for free entries and numeric values for fixed ones. See [Lambda constraint](lambda-constraint.html); `?suggest_lambda_constraint` proposes a sensible matrix from a fitted unconstrained model. |
 
 For two-level models you typically include both `latent()` and `unique()`
 at each level, so the full between-unit piece is

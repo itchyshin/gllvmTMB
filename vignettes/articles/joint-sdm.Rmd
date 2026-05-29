@@ -286,7 +286,7 @@ loading on an axis, that is a **confirmatory loading** question rather
 than the default species-distribution workflow.
 
 `gllvmTMB` supports that confirmatory path with
-`lambda_constraint = list(B = M)`, where `NA` means "estimate this
+`lambda_constraint = list(unit = M)`, where `NA` means "estimate this
 loading" and a number means "pin this loading during fitting." Binary
 IRT-style loading constraints are covered by the LAM-03 and LAM-04
 validation rows, but an ecology-first JSDM article should introduce

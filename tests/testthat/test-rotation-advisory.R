@@ -42,7 +42,7 @@ test_that("rr B fit with lambda_constraint clears the advisory flag", {
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = s$data,
-    lambda_constraint = list(B = cnst)
+    lambda_constraint = list(unit = cnst)
   )
   expect_false(isTRUE(fit$needs_rotation_advice$B))
 })

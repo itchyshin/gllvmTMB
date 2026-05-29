@@ -153,7 +153,7 @@ Row-owner: **Noether + Boole** (phylo-specific math + parser).
 | PHY-02 | `phylo_latent + phylo_unique` paired | `covered` | `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` | M0 baseline |
 | PHY-03 | Three-piece phylo fallback | `covered` | `test-phylo-q-decomposition.R` | |
 | PHY-04 | `phylo_scalar(0 + trait \| sp)` | `partial` | `test-stage35-phylo-rr.R` | per the design doc |
-| PHY-05 | `phylo_indep / phylo_dep` | `partial` | `test-stage35-phylo-rr.R` | smoke only; full Phase 0B |
+| PHY-05 | `phylo_indep / phylo_dep` | `covered` | `test-stage35-phylo-rr.R`, `test-phylodepindep-binary.R` | Phase B-INF Lane 2 / B2 (Design 58): binary probit recovery + CI smoke (`confint(parm = "rho:phy:1,2", method = "profile")`) + `extract_correlations(tier="phy")` non-degenerate on both keywords. |
 | PHY-06 | Phylo-slope keyword `phylo_slope()` | `partial` | `test-phylo-slope.R` | M1 scope |
 | PHY-07 | `extract_phylo_signal()` Adams (2014) | `covered` | `test-extract-omega.R`, `test-extractors-extra.R` | |
 | PHY-08 | `extract_communality()` $H^2 + C^2 + \psi^2 = 1$ partition | `covered` | `test-extractors.R`, `test-extractors-extra.R` | |

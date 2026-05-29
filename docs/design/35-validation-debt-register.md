@@ -152,7 +152,7 @@ Row-owner: **Noether + Boole** (phylo-specific math + parser).
 | PHY-01 | Hadfield & Nakagawa sparse A⁻¹ | `covered` | `test-phylo-hadfield.R` | M0 baseline |
 | PHY-02 | `phylo_latent + phylo_unique` paired | `covered` | `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` | M0 baseline |
 | PHY-03 | Three-piece phylo fallback | `covered` | `test-phylo-q-decomposition.R` | |
-| PHY-04 | `phylo_scalar(0 + trait \| sp)` | `partial` | `test-stage35-phylo-rr.R` | per the design doc |
+| PHY-04 | `phylo_scalar(0 + trait \| sp)` | `covered` | `test-stage35-phylo-rr.R`, `test-phyloscalar-binary.R` | Phase B-INF Lane 2 / B1 (Design 58): binary probit recovery on shared `sigma^2_phy_scalar` (3x band, n_sp = 40, 4 binary replicates per cell) + CI smoke (`confint(parm = "lambda_phy", method = "profile")` finite). Note: `phylo_signal` parm does not apply -- the propto path sets `use$propto`, not `use$phylo_rr` / `use$phylo_diag`. |
 | PHY-05 | `phylo_indep / phylo_dep` | `covered` | `test-stage35-phylo-rr.R`, `test-phylodepindep-binary.R` | Phase B-INF Lane 2 / B2 (Design 58): binary probit recovery + CI smoke (`confint(parm = "rho:phy:1,2", method = "profile")`) + `extract_correlations(tier="phy")` non-degenerate on both keywords. |
 | PHY-06 | Phylo-slope keyword `phylo_slope()` | `partial` | `test-phylo-slope.R` | M1 scope |
 | PHY-07 | `extract_phylo_signal()` Adams (2014) | `covered` | `test-extract-omega.R`, `test-extractors-extra.R` | |
@@ -167,7 +167,7 @@ Row-owner: **Boole + Gauss** (SPDE inheritance from sdmTMB).
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
 | SPA-01 | SPDE mesh construction via `make_mesh()` | `covered` | `test-mesh.R` | inherited from sdmTMB |
-| SPA-02 | `spatial_latent` + `spatial_unique` paired | `partial` | `test-spatial-latent-recovery.R` | recovery test exists; full Phase 0B verification |
+| SPA-02 | `spatial_latent` + `spatial_unique` paired | `covered` | `test-spatial-latent-recovery.R`, `test-spatial-pair-binary.R` | Phase B-INF Lane 2 / B3 (Design 58): binary probit paired fit on n_sites = 120, n_traits = 3, K = 1 fixture with SPDE Matern (range = 0.3) — `pd_hessian == TRUE`, both engine slots (`use$spde`, `use$spatial_latent`) toggled, and `confint(parm = "rho:spatial:i,j", method = "profile")` returns a finite bound on at least one upper-tri pair. |
 | SPA-03 | `spatial_scalar` | `covered` | `test-stage4-spde.R`, `test-spatial-scalar-binary.R` | Phase B-INF Lane 2 / B4 (Design 58): binary probit recovery + CI smoke (`confint(parm = "tau_spde", method = "profile")`) + tied-tau contract verified (`log_tau_spde` entries collapse to a single value via TMB `map`). |
 | SPA-04 | `spatial_indep / spatial_dep` | `partial` | `test-stage4-spde.R` | smoke only |
 | SPA-05 | Spatial mode dispatch | `covered` | `test-spatial-mode-dispatch.R` | |

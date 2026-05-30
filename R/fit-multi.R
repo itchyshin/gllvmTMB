@@ -1280,6 +1280,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     use_phylo_slope_correlated = as.integer(use_phylo_slope_correlated),
     n_lhs_cols       = as.integer(n_lhs_cols),
     Z_phy_aug        = Z_phy_aug,
+    ## phylo_dep slope (Stage 3, Design 56 sec.9.5c). Dormant by default;
+    ## the parser does not yet route phylo_dep(1 + x | sp) here. When set,
+    ## n_lhs_cols = 2 * n_traits and Sigma_b is the full unstructured
+    ## C x C built from theta_dep_chol in the TMB template.
+    use_phylo_dep_slope = 0L,
     use_re_int       = as.integer(use_re_int),
     n_re_int_terms   = as.integer(n_re_int_terms),
     re_int_offsets   = re_int_offsets_dat,
@@ -1351,6 +1356,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     b_phy_aug       = array(0.0, dim = c(n_aug_phy, n_lhs_cols, n_phy_aug_blocks)),
     log_sd_b        = rep(0.0, n_lhs_cols),
     atanh_cor_b     = numeric(n_lhs_cols * (n_lhs_cols - 1L) / 2L),
+    ## phylo_dep slope unstructured-covariance Cholesky packing; length
+    ## C(C+1)/2 only on the dep path, else empty (mapped off below).
+    theta_dep_chol  = numeric(0L),
     u_re_int       = rep(0.0, u_re_int_len),
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
     ## NB2 / Tweedie per-trait dispersion. log(phi) starts at 0 (phi = 1);

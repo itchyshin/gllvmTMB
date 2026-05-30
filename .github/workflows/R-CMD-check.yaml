@@ -18,12 +18,18 @@ concurrency:
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
-    # Full package checks currently need 45 minutes because Windows
-    # takes ~35-40 min on this package's 1800+ assertion surface.
-    # Ignored-source/process PRs skip the expensive dependency/check
-    # steps below while preserving this OS-named check for branch-
-    # protection compatibility.
-    timeout-minutes: 45
+    # The full test suite has outgrown the previous 45-minute ceiling: the
+    # Phase B "matrix completion" wave added ~30 test-matrix-*.R files (~180
+    # real TMB fits), pushing Windows from ~26 min at #309 to >45 min, where
+    # it was being killed by this timeout (runs 26656376351, 26682886014).
+    # 75 minutes restores headroom on the slowest runner (Windows). This does
+    # not raise per-run billing — Actions bills actual minutes used, so a job
+    # that finishes early costs the same regardless of the ceiling; the
+    # ceiling only prevents a premature kill of a run that is still healthy.
+    # Ignored-source/process PRs still skip the expensive dependency/check
+    # steps below while preserving this OS-named check for branch-protection
+    # compatibility.
+    timeout-minutes: 75
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 

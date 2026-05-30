@@ -208,6 +208,9 @@ jobs:
         if: steps.scope.outputs.full_required == 'true'
         with:
           upload-snapshots: true
+          # Routine PRs: fail only on real errors; cosmetic CRAN warnings
+          # (non-ASCII, NEWS format) are caught by the nightly full-check.yaml.
+          error-on: '"error"'
 
       - name: Fast pass for ignored-source/process change
         if: steps.scope.outputs.full_required != 'true'

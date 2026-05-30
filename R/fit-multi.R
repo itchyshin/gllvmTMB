@@ -573,6 +573,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   use_phylo_slope_correlated <- isTRUE(
     phylo_slope_cs$extra$.phylo_unique_augmented
   )
+  ## phylo_dep(1 + x | species): the full unstructured 2T x 2T covariance
+  ## Sigma_b across the trait-stacked (intercept, slope) random-effect
+  ## columns (Design 56 §9.5c). The C++ dep branch is nested under
+  ## use_phylo_slope_correlated == 1 (it shares the b_phy_aug random block
+  ## and Z_phy_aug design array), so we force the correlated flag on. The
+  ## dep-specific overrides below expand n_lhs_cols to 2T, build the
+  ## interleaved Z, free theta_dep_chol, and map off log_sd_b / atanh_cor_b
+  ## (the unstructured Sigma_b replaces the closed-form 2x2 parameters).
+  use_phylo_dep_slope <- isTRUE(phylo_slope_cs$extra$.phylo_dep_augmented)
+  use_phylo_slope_correlated <- use_phylo_slope_correlated ||
+    use_phylo_dep_slope
   ## phylo_indep(1 + x | species): same augmented b_phy_aug engine as
   ## phylo_unique() but the intercept-slope correlation is fixed at 0. The
   ## `.indep` marker (set by the phylo_indep parser handler) triggers pinning
@@ -591,6 +602,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
       "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()} only in this spike.",
       ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for non-Gaussian augmented phylogenetic random regression, or {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
+    ))
+  }
+  ## phylo_dep(1 + x | species) augmented-slope scope (Design 56 §9.5c):
+  ## the full unstructured 2T x 2T Sigma_b path is validated for the
+  ## Gaussian anchor cell only in this slice (non-Gaussian dep slope is
+  ## deferred). Family is unknown at parse time, so the reservation is
+  ## enforced here where family_id_vec exists. Fail loud rather than
+  ## silently truncate (Design 56 §7).
+  if (use_phylo_dep_slope && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
+      "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()} only in this slice.",
+      ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit (family-general), or wait for the non-Gaussian dep-slope slice."
     ))
   }
   phylo_slope_lhs_form <- if (use_phylo_slope_correlated) {
@@ -1229,10 +1253,37 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## one-column b_phy_slope path; phylo_unique(1 + x | species) and its
   ## long-form equivalent route through b_phy_aug with columns
   ## (intercept, slope).
-  n_lhs_cols <- if (use_phylo_slope_correlated) 2L else 1L
+  ##
+  ## phylo_dep(1 + x | species) (Design 56 §9.5c) lifts the block-local
+  ## {1,2} n_lhs_cols invariant: it stacks the per-trait (intercept, slope)
+  ## columns into a single C = 2T-wide block carrying the full unstructured
+  ## Sigma_b. The column ordering is INTERLEAVED -- (alpha_t0, beta_t0,
+  ## alpha_t1, beta_t1, ...) -- matching the validated dep core; Z routes
+  ## each row's intercept and slope into its own trait's pair of columns.
+  n_lhs_cols <- if (use_phylo_dep_slope) {
+    2L * n_traits
+  } else if (use_phylo_slope_correlated) {
+    2L
+  } else 1L
   n_phy_aug_blocks <- 1L
   Z_phy_aug <- array(0.0, dim = c(n_obs, n_lhs_cols, n_phy_aug_blocks))
-  if (use_phylo_slope_correlated) {
+  if (use_phylo_dep_slope) {
+    if (
+      !phylo_slope_lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+    ) {
+      cli::cli_abort(c(
+        "Unsupported augmented phylogenetic random-regression LHS.",
+        "i" = "Got LHS form {.val {phylo_slope_lhs_form}}.",
+        ">" = "Use {.code phylo_dep(1 + x | species)} or {.code phylo_dep(0 + trait + (0 + trait):x | species)}."
+      ))
+    }
+    for (o in seq_len(n_obs)) {
+      t0 <- trait_id[o]                          # 0-based trait index
+      Z_phy_aug[o, 2L * t0 + 1L, 1L] <- 1.0      # intercept col for trait t0
+      Z_phy_aug[o, 2L * t0 + 2L, 1L] <- x_phy_slope_dat[o]  # slope col
+    }
+  } else if (use_phylo_slope_correlated) {
     if (
       !phylo_slope_lhs_form %in%
         c("wide_intercept_slope", "long_intercept_slope")
@@ -1300,11 +1351,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     use_phylo_slope_correlated = as.integer(use_phylo_slope_correlated),
     n_lhs_cols       = as.integer(n_lhs_cols),
     Z_phy_aug        = Z_phy_aug,
-    ## phylo_dep slope (Stage 3, Design 56 sec.9.5c). Dormant by default;
-    ## the parser does not yet route phylo_dep(1 + x | sp) here. When set,
-    ## n_lhs_cols = 2 * n_traits and Sigma_b is the full unstructured
-    ## C x C built from theta_dep_chol in the TMB template.
-    use_phylo_dep_slope = 0L,
+    ## phylo_dep slope (Stage 3, Design 56 sec.9.5c). Activated by the
+    ## phylo_dep(1 + x | sp) parser route. When 1, n_lhs_cols = 2 * n_traits
+    ## and Sigma_b is the full unstructured C x C built from theta_dep_chol
+    ## in the TMB template; else 0 keeps the legacy / unique / indep paths
+    ## byte-identical.
+    use_phylo_dep_slope = as.integer(use_phylo_dep_slope),
     use_re_int       = as.integer(use_re_int),
     n_re_int_terms   = as.integer(n_re_int_terms),
     re_int_offsets   = re_int_offsets_dat,
@@ -1377,8 +1429,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sd_b        = rep(0.0, n_lhs_cols),
     atanh_cor_b     = numeric(n_lhs_cols * (n_lhs_cols - 1L) / 2L),
     ## phylo_dep slope unstructured-covariance Cholesky packing; length
-    ## C(C+1)/2 only on the dep path, else empty (mapped off below).
-    theta_dep_chol  = numeric(0L),
+    ## C(C+1)/2 (C = n_lhs_cols = 2T) only on the dep path, else empty. The
+    ## first C entries are the log-diagonal of the lower-triangular L (the
+    ## C++ exp-transforms them); the remaining C(C-1)/2 strictly-lower
+    ## entries follow column-major. Diagonal initialised at log(0.5) so the
+    ## starting L has diag 0.5 (a sane positive start); off-diagonals 0.
+    theta_dep_chol  = if (use_phylo_dep_slope) {
+                        n_chol <- n_lhs_cols * (n_lhs_cols + 1L) / 2L
+                        td <- numeric(n_chol)
+                        td[seq_len(n_lhs_cols)] <- log(0.5)
+                        td
+                      } else numeric(0L),
     u_re_int       = rep(0.0, u_re_int_len),
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
     ## NB2 / Tweedie per-trait dispersion. log(phi) starts at 0 (phi = 1);
@@ -1677,11 +1738,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (length(tmb_params$atanh_cor_b) > 0L) {
       tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
     }
+  } else if (use_phylo_dep_slope) {
+    ## phylo_dep: the full unstructured 2T x 2T Sigma_b is parameterised by
+    ## the FREE theta_dep_chol; the closed-form 2x2 parameters log_sd_b and
+    ## atanh_cor_b do NOT enter the dep prior, so they are mapped off (the
+    ## dep covariance replaces them). b_phy_aug stays free (it is a random
+    ## effect joined to `random` below).
+    tmb_map$log_sd_b <- factor(rep(NA_integer_, length(tmb_params$log_sd_b)))
+    if (length(tmb_params$atanh_cor_b) > 0L) {
+      tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
+    }
   } else if (use_phylo_slope_indep && length(tmb_params$atanh_cor_b) > 0L) {
     ## phylo_indep: hold the intercept-slope correlation at its init (0) so the
     ## C++ prior reduces to block-diagonal Sigma_b (rho = tanh(0) = 0).
     tmb_params$atanh_cor_b[] <- 0
     tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
+  }
+  ## theta_dep_chol is FREE only on the dep path; mapped off (length 0
+  ## no-op) everywhere else so the legacy / unique / indep fits stay
+  ## byte-identical and TMB never tries to optimise a stray parameter.
+  if (!use_phylo_dep_slope) {
+    tmb_map$theta_dep_chol <-
+      factor(rep(NA_integer_, length(tmb_params$theta_dep_chol)))
   }
   if (!use_re_int) {
     tmb_map$u_re_int         <- factor(rep(NA_integer_, length(tmb_params$u_re_int)))
@@ -2228,6 +2306,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           dep_cluster    = isTRUE(is_dep_cluster),
                           phylo_dep      = isTRUE(is_phylo_dep),
                           spatial_dep    = isTRUE(is_spatial_dep),
+                          ## DISTINCT from `phylo_dep` (= the intercept-only
+                          ## phylo_dep(0 + trait | sp) RR path). This flag
+                          ## marks the augmented phylo_dep(1 + x | sp)
+                          ## slope path (full unstructured 2T x 2T Sigma_b
+                          ## via theta_dep_chol). extract_Sigma() keys on
+                          ## it to surface the reported Sigma_b_dep.
+                          phylo_dep_slope = isTRUE(use_phylo_dep_slope),
                           re_int = use_re_int),
       re_int       = if (use_re_int) list(
                        groups   = re_int_groups,

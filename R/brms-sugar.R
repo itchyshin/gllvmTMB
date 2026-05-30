@@ -2265,14 +2265,14 @@ rewrite_canonical_aliases <- function(formula) {
         if (identical(fn, "latent")) {
           .assert_no_augmented_lhs(fn, e)
         }
-        ## Design 56 §7 fail-loud-invariant fix: `phylo_latent` renamed
+        ## Design 56 Sec. 7 fail-loud-invariant fix: `phylo_latent` renamed
         ## straight to `phylo_rr` here, which reads ONLY the RHS species
         ## factor -- so an augmented intercept+slope bar
         ## (`1 + x | sp` or the long form
         ## `0 + trait + (0 + trait):x | sp`) had its slope column SILENTLY
         ## DROPPED, yielding a fit byte-identical to intercept-only
         ## `phylo_latent(species, d = K)`. The reduced-rank phylo_latent
-        ## random-slope engine is Design 56 §9.5a (not yet landed), so we
+        ## random-slope engine is Design 56 Sec. 9.5a (not yet landed), so we
         ## abort here rather than silently fit. Mirrors the phylo_indep /
         ## phylo_dep "LHS richer than `0 + trait`" guards.
         if (
@@ -2291,7 +2291,7 @@ rewrite_canonical_aliases <- function(formula) {
             cli::cli_abort(c(
               "{.fn phylo_latent} random slopes are not yet supported.",
               "i" = "You wrote {.code phylo_latent({deparse(bar)})}.",
-              "x" = "Augmented intercept+slope LHS (e.g. {.code 1 + x | species}) requires the reduced-rank phylo_latent random-slope engine ({.strong Design 56 §9.5a}), which has not yet landed.",
+              "x" = "Augmented intercept+slope LHS (e.g. {.code 1 + x | species}) requires the reduced-rank phylo_latent random-slope engine ({.strong Design 56 Sec. 9.5a}), which has not yet landed.",
               ">" = "For now use {.code phylo_unique(1 + x | species)} (the validated augmented intercept+slope path) for a per-species random slope on the phylogeny."
             ))
           }

@@ -115,6 +115,8 @@ Type objective_function<Type>::operator()()
   //  14 = ordinal_probit  (Wright/Falconer/Hadfield threshold model;
   //                        K-category ordinal data with K >= 3, K-2 free
   //                        cutpoints per trait beyond the fixed tau_1 = 0)
+  //  15 = NB1 negative binomial type-1 (log link; Var = mu*(1+phi), linear
+  //                        in the mean; per-trait phi via log_phi_nbinom1)
   // For single-family fits the vector is filled with the same value.
   // sigma_eps is mapped off when no row has family_id_vec(o) in {0, 3, 4}.
   // Delta families share ONE linear predictor for both components: p =
@@ -284,12 +286,16 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(u_re_int);                    // length sum(re_int_n_groups) (or 1 if unused)
   PARAMETER_VECTOR(log_sigma_re_int);            // length n_re_int_terms (or 1 if unused)
 
-  // NB2 / Tweedie dispersion parameters (per trait). Mapped off when the
+  // NB2 / NB1 / Tweedie dispersion parameters (per trait). Mapped off when the
   // corresponding family is not in family_id_vec; otherwise one log-phi
-  // (NB2) and one log-phi + logit-p (Tweedie) per trait is estimated.
+  // (NB2 / NB1) and one log-phi + logit-p (Tweedie) per trait is estimated.
   // NB2 variance: var = mu + mu^2 / phi (so phi -> infinity recovers Poisson).
+  // NB1 variance: var = mu * (1 + phi) = mu + phi * mu (linear in the mean;
+  //               phi -> 0 recovers Poisson). Reference: Hilbe (2011) Negative
+  //               Binomial Regression, 2nd ed.
   // Tweedie:      var = phi * mu^p with 1 < p < 2 (compound Poisson-Gamma).
   PARAMETER_VECTOR(log_phi_nbinom2);             // length n_traits (or 1 if unused)
+  PARAMETER_VECTOR(log_phi_nbinom1);             // length n_traits (or 1 if unused)
   PARAMETER_VECTOR(log_phi_tweedie);             // length n_traits (or 1 if unused)
   PARAMETER_VECTOR(logit_p_tweedie);             // length n_traits (or 1 if unused); p = 1 + plogis(.)
 
@@ -993,6 +999,18 @@ Type objective_function<Type>::operator()()
       Type tiny_p = Type(1e-12);
       p_k = (p_k < tiny_p) ? tiny_p : p_k;
       nll -= log(p_k);
+    } else if (fid == 15) {
+      // NB1 (negative binomial, type 1), log link.
+      // Var(y) = mu * (1 + phi) = mu + phi * mu, with one log_phi per trait
+      // (linear mean-variance; phi -> 0 recovers Poisson). Hilbe (2011).
+      // Use dnbinom_robust (numerically stable; takes log_mu and log(var-mu)).
+      // Contrast NB2 (fid 5), where var - mu = mu^2 / phi so the second
+      // argument is 2*log(mu) - log(phi); here var - mu = phi * mu so it is
+      // log(phi) + log(mu) = log_mu + log_phi_nbinom1(t).
+      int t = trait_id(o);
+      Type log_mu = eta(o);                       // log link
+      Type log_v_minus_mu = log_mu + log_phi_nbinom1(t);
+      nll -= dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
     } else {
       error("gllvmTMB_multi: unknown family_id");
     }
@@ -1010,6 +1028,7 @@ Type objective_function<Type>::operator()()
   // unconditionally; the R side only reads them when the corresponding
   // family is in use (and TMB's `map` zeroes their gradient otherwise).
   vector<Type> phi_nbinom2 = exp(log_phi_nbinom2);
+  vector<Type> phi_nbinom1 = exp(log_phi_nbinom1);
   vector<Type> phi_tweedie = exp(log_phi_tweedie);
   vector<Type> p_tweedie(logit_p_tweedie.size());
   for (int i = 0; i < logit_p_tweedie.size(); i++) {
@@ -1018,6 +1037,7 @@ Type objective_function<Type>::operator()()
   vector<Type> phi_beta = exp(log_phi_beta);
   vector<Type> phi_betabinom = exp(log_phi_betabinom);
   REPORT(phi_nbinom2);
+  REPORT(phi_nbinom1);
   REPORT(phi_tweedie);
   REPORT(p_tweedie);
   REPORT(phi_beta);

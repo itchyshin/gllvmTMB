@@ -47,8 +47,9 @@
 #' @param n_traits Integer number of traits.
 #' @param verbose Logical; print one line per trait warmup.
 #' @return Named list of per-trait phi seeds:
-#'   `log_phi_nbinom2`, `log_phi_tweedie`, `log_phi_beta`,
-#'   `log_phi_betabinom`, `log_phi_truncnb2`, `log_phi_gamma_delta`
+#'   `log_phi_nbinom2`, `log_phi_nbinom1`, `log_phi_tweedie`,
+#'   `log_phi_beta`, `log_phi_betabinom`, `log_phi_truncnb2`,
+#'   `log_phi_gamma_delta`
 #'   — each a length-`n_traits` numeric vector. Entries are the
 #'   default (0.0 or 1.0 per `tmb_params` defaults) for traits whose
 #'   family doesn't carry that phi parameter; entries are the
@@ -62,6 +63,7 @@
   ## the entries we can warm-start for.
   out <- list(
     log_phi_nbinom2     = rep(0.0, n_traits),
+    log_phi_nbinom1     = rep(0.0, n_traits),
     log_phi_tweedie     = rep(0.0, n_traits),
     log_phi_beta        = rep(1.0, n_traits),
     log_phi_betabinom   = rep(1.0, n_traits),
@@ -92,7 +94,7 @@
     slot <- switch(
       fam_nm,
       "nbinom2"            = "log_phi_nbinom2",
-      "nbinom1"            = "log_phi_nbinom2",   # nbinom1 reuses nbinom2 slot
+      "nbinom1"            = "log_phi_nbinom1",   # nbinom1 has its own phi slot
       "tweedie"            = "log_phi_tweedie",
       "beta"               = "log_phi_beta",
       "betabinomial"       = "log_phi_betabinom",
@@ -108,6 +110,7 @@
   ## if the trait is near-Poisson or has near-zero variance.
   clamp <- function(x) pmax(pmin(x, log(100.0)), log(0.01))
   out$log_phi_nbinom2     <- clamp(out$log_phi_nbinom2)
+  out$log_phi_nbinom1     <- clamp(out$log_phi_nbinom1)
   out$log_phi_tweedie     <- clamp(out$log_phi_tweedie)
   out$log_phi_beta        <- clamp(out$log_phi_beta)
   out$log_phi_betabinom   <- clamp(out$log_phi_betabinom)
@@ -124,13 +127,27 @@
   ## NB2: MASS::glm.nb is the standard. gllvmTMB's nbinom2
   ## parameterisation Var = mu + mu^2/phi matches glm.nb's
   ## Var = mu + mu^2/theta exactly (phi_gllvmTMB == theta_glm).
-  if (family_name %in% c("nbinom2", "nbinom1")) {
+  if (family_name == "nbinom2") {
     if (!requireNamespace("MASS", quietly = TRUE)) return(NULL)
     ## suppressWarnings: near-Poisson y can push theta.ml past its
     ## iteration limit; the clamp downstream still pins phi to
     ## [0.01, 100] so the warm-start is well-defined either way.
     fit <- suppressWarnings(MASS::glm.nb(y ~ 1))
     return(list(log_phi = log(fit$theta)))
+  }
+  ## NB1: gllvmTMB's nbinom1 parameterisation is Var = mu * (1 + phi)
+  ## (linear in the mean), which is NOT what MASS::glm.nb fits (that is
+  ## NB2's Var = mu + mu^2/theta). For an intercept-only seed use the
+  ## moment estimator phi = Var/mu - 1 (since E[Var] = mu*(1+phi) gives
+  ## Var/mu - 1 = phi). The clamp downstream pins phi to [0.01, 100], so
+  ## a near-Poisson trait (Var ~ mu, phi ~ 0) lands at the lower bound.
+  if (family_name == "nbinom1") {
+    mu <- mean(y)
+    vv <- stats::var(y)
+    if (!is.finite(mu) || mu <= 0 || !is.finite(vv)) return(NULL)
+    phi <- vv / mu - 1
+    if (!is.finite(phi) || phi <= 0) return(NULL)
+    return(list(log_phi = log(phi)))
   }
   ## Truncated NB2 — same parameterisation as NB2; use glm.nb on
   ## y_pos as a proxy seed (won't be exact but lands the optimiser

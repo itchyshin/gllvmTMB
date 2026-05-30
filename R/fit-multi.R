@@ -34,7 +34,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##             12 = delta_lognormal, 13 = delta_gamma (hurdle:
   ##              Bernoulli{y>0} x Lognormal/Gamma{y|y>0}; one shared eta),
   ##             14 = ordinal_probit (Wright/Falconer/Hadfield threshold
-  ##              model; K-category ordinal y with K >= 3 categories).
+  ##              model; K-category ordinal y with K >= 3 categories),
+  ##             15 = nbinom1 (negative binomial type-1; linear mean-variance
+  ##              Var = mu*(1+phi); per-trait phi via log_phi_nbinom1).
   ##   link_id:   0 = logit / identity / log (the canonical link for that family)
   ##              1 = probit (binomial only)
   ##              2 = cloglog (binomial only)
@@ -94,9 +96,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       delta_lognormal   = 12L,
       delta_gamma       = 13L,
       ordinal_probit    = 14L,
+      nbinom1           = 15L,
       cli::cli_abort(c(
         "Unsupported family: {.val {f$family}}.",
-        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}."
+        "i" = "Currently supported: {.code gaussian()}, {.code binomial()}, {.code poisson()}, {.code lognormal()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code tweedie()}, {.code Beta()}, {.code betabinomial()}, {.code student()}, {.code truncated_poisson()}, {.code truncated_nbinom2()}, {.code delta_lognormal()}, {.code delta_gamma()}, {.code ordinal_probit()}."
       ))
     )
     lid <- 0L
@@ -134,6 +137,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort("truncated_nbinom2: only the log link is currently supported.")
     if (fid == 14L && !identical(f$link, "probit"))
       cli::cli_abort("ordinal_probit: only the probit link is supported.")
+    if (fid == 15L && !identical(f$link, "log"))
+      cli::cli_abort("nbinom1: only the log link is currently supported.")
     c(fid, lid)
   }
   ## Per-row family list (length = nrow(data)). Used downstream to read
@@ -952,7 +957,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Includes delta families (12/13) which use a log link on the positive
   ## component (and zeros are well-handled by log(0 + 0.5)) and the
   ## truncated count families (10/11) which use a log link.
-  log_link_only <- all(family_id_vec %in% c(2L, 3L, 4L, 5L, 6L, 10L, 11L, 12L, 13L))
+  log_link_only <- all(family_id_vec %in% c(2L, 3L, 4L, 5L, 6L, 10L, 11L, 12L, 13L, 15L))
   ## Beta family init: empirical-logit on y in (0, 1) gives a much better
   ## starting b_fix than raw y on the (0,1) scale (the latter can leave the
   ## inner Newton stuck when mu = invlogit(eta) is far from y).
@@ -1353,10 +1358,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     atanh_cor_b     = numeric(n_lhs_cols * (n_lhs_cols - 1L) / 2L),
     u_re_int       = rep(0.0, u_re_int_len),
     log_sigma_re_int = if (use_re_int) rep(0.0, n_re_int_terms) else 0.0,
-    ## NB2 / Tweedie per-trait dispersion. log(phi) starts at 0 (phi = 1);
+    ## NB2 / NB1 / Tweedie per-trait dispersion. log(phi) starts at 0 (phi = 1);
     ## logit(p) starts at 0 (p = 1.5, mid of the compound-Poisson regime).
     ## Design 48 phi-clamp ([0.01, 100]) applied below.
     log_phi_nbinom2  = .clamp_log_phi(rep(0.0, n_traits)),
+    log_phi_nbinom1  = .clamp_log_phi(rep(0.0, n_traits)),
     log_phi_tweedie  = .clamp_log_phi(rep(0.0, n_traits)),
     logit_p_tweedie  = rep(0.0, n_traits),
     ## Beta / beta-binomial per-trait precision. log(phi) starts at 1.0 so
@@ -1660,6 +1666,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the data not invoking the unused ones; mapping off only happens when the
   ## family is entirely absent.
   any_nbinom2 <- any(family_id_vec == 5L)
+  any_nbinom1 <- any(family_id_vec == 15L)
   any_tweedie <- any(family_id_vec == 6L)
   any_beta    <- any(family_id_vec == 7L)
   any_betabinom <- any(family_id_vec == 8L)
@@ -1667,6 +1674,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   any_delta_gamma     <- any(family_id_vec == 13L)
   if (!any_nbinom2)
     tmb_map$log_phi_nbinom2 <- factor(rep(NA_integer_, n_traits))
+  if (!any_nbinom1)
+    tmb_map$log_phi_nbinom1 <- factor(rep(NA_integer_, n_traits))
   if (!any_tweedie) {
     tmb_map$log_phi_tweedie <- factor(rep(NA_integer_, n_traits))
     tmb_map$logit_p_tweedie <- factor(rep(NA_integer_, n_traits))

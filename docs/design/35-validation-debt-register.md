@@ -96,7 +96,7 @@ Row-owner: **Boole** (formula-grammar parser).
 | FG-12 | `phylo_*` family (5 keywords) | `covered` | `test-stage35-phylo-rr.R`, `test-phylo-hadfield.R`, `test-phylo-mode-dispatch.R`, `test-phylo-q-decomposition.R`, `test-phylo-vcv-optional.R` | M0 baseline |
 | FG-13 | `spatial_*` family (6 keywords) | `partial` | `test-stage4-spde.R`, `test-spatial-latent-recovery.R`, `test-spatial-mode-dispatch.R`, `test-spatial-orientation.R` | smoke + mode-dispatch; full coverage Phase 0B |
 | FG-14 | `meta_V(V = V)` | `partial` | `test-formula-grammar-smoke.R`, `test-traits-keyword.R`, `test-block-V.R` | V-only named and positional parser forms verified; wide `traits(...)` marker preservation verified; block-V helper verified; single-V inference validation remains partial |
-| FG-15 | `phylo_slope()` random-slope keyword | `partial` | `test-phylo-slope.R` | smoke only; full M1 |
+| FG-15 | `phylo_slope()` random-slope keyword | `covered` | `test-phylo-slope.R`, `test-matrix-slope-*.R` | Augmented random-regression slope validated across families (local measurement 2026-05-30, 0 fail); `phylo_indep(1+x)` independent variant added this cycle. |
 | FG-16 | `gllvmTMB_wide(Y, ...)` legacy constructor | `partial` | `test-gllvmTMB-wide.R`, `test-wide-weights-matrix.R` | soft-deprecated in 0.2.0; new examples use `traits(...)`; removal is a later API-change decision while export remains live |
 | FG-17 | Slash form `(1 \| g1/g2)` nesting | `blocked` | `test-augmented-lhs-guard.R` | parser rejects with snapshot-pinned error |
 
@@ -110,19 +110,19 @@ Row-owner: **Gauss** (TMB likelihood per family).
 | FAM-02 | binomial (logit) | `covered` | `test-m2-2a-binary-recovery.R`, `test-m2-2b-binary-cis-extractors.R`, `test-m2-2b-glmmTMB-cross-check.R`, `test-multi-trial-binomial.R`, `test-stage33-non-gaussian.R` | M2.2-A: Σ recovery at d = 1. M2.2-B: CIs (Wald + Fisher-z + bootstrap) + 4 ratio extractors + glmmTMB cross-package agreement |
 | FAM-03 | binomial (probit) | `covered` | `test-m2-2a-binary-recovery.R`, `test-stage33-non-gaussian.R` | M2.2-A walks; Σ recovery + identification (σ²_d = 1 by construction) |
 | FAM-04 | binomial (cloglog) | `covered` | `test-m2-2a-binary-recovery.R`, `test-stage33-non-gaussian.R` | M2.2-A walks; Σ recovery + σ²_d = π²/6 verified |
-| FAM-05 | betabinomial | `partial` | `test-betabinomial-recovery.R` | recovery test exists; full M2 |
+| FAM-05 | betabinomial | `covered` | `test-betabinomial-recovery.R`, `test-matrix-betabinomial.R` | Recovery green (local measurement 2026-05-30: 8 + 31 assertions, 0 fail). |
 | FAM-06 | poisson (log) | `covered` | `test-stage33-non-gaussian.R` | |
-| FAM-07 | nbinom1 | `partial` | `test-nb2-recovery.R` | nbinom2 verified; nbinom1 smoke only |
+| FAM-07 | nbinom1 | `blocked` (exported but **NOT engine-wired**) | `test-matrix-nbinom1.R` (construct-fail skip) | **Overclaim confirmed** (spike 2026-05-30): `gllvmTMB(family=nbinom1())` aborts at construction — `family_to_id()` (`R/fit-multi.R`) has no nbinom1 case and `src/gllvmTMB.cpp` has no NB1 (Var = μ·(1+φ)) likelihood branch; `R/enum.R` + `R/init-warmstart.R` name it but are unreachable. `truncated_nbinom1()` is similarly unwired. ACTION (queued, Track B): gate/deprecate the export, or wire it (add `family_to_id` case + `PARAMETER_VECTOR(log_phi_nbinom1)` + NB1 likelihood branch + warm-start slot). |
 | FAM-08 | nbinom2 | `covered` | `test-nb2-recovery.R` | recovery test |
-| FAM-09 | gamma (log) | `partial` | `test-family-gamma.R` | smoke only |
-| FAM-10 | beta (logit) | `partial` | `test-beta-recovery.R` | recovery test |
-| FAM-11 | lognormal | `partial` | `test-family-lognormal.R` | smoke only |
-| FAM-12 | student-t | `partial` | `test-student-recovery.R` | recovery test |
-| FAM-13 | tweedie | `partial` | `test-tweedie-recovery.R` | recovery test |
-| FAM-14 | ordinal_probit | `partial` | `test-ordinal-probit.R` | smoke only; full M2 work |
+| FAM-09 | gamma (log) | `covered` | `test-family-gamma.R`, `test-matrix-gamma-unit.R`, `test-matrix-slope-gamma.R`, `test-tiers-gamma.R` | Recovery + slope + tiers green (local measurement 2026-05-30: 15 + 32, 0 fail). Prior "smoke only" under-claimed. |
+| FAM-10 | beta (logit) | `covered` | `test-beta-recovery.R`, `test-matrix-beta-unit.R`, `test-matrix-slope-beta.R`, `test-tiers-beta.R` | Recovery + slope + tiers green (local measurement 2026-05-30: 15 + 36, 0 fail). |
+| FAM-11 | lognormal | `covered` | `test-family-lognormal.R`, `test-matrix-lognormal.R` | Recovery green (local measurement 2026-05-30: 6 + 37, 0 fail). Prior "smoke only" under-claimed. |
+| FAM-12 | student-t | `covered` | `test-student-recovery.R`, `test-matrix-student.R` | Recovery green (local measurement 2026-05-30: 13 + 49, 0 fail). |
+| FAM-13 | tweedie | `covered` | `test-tweedie-recovery.R`, `test-matrix-tweedie.R` | Recovery green (local measurement 2026-05-30: 13 + 37, 0 fail). |
+| FAM-14 | ordinal_probit | `covered` | `test-ordinal-probit.R`, `test-matrix-ordinal-unit.R`, `test-matrix-slope-ordinal.R`, `test-tiers-ordinal.R` | Recovery (cutpoints + intercepts, K=2/3/4) + slope + tiers green (local measurement 2026-05-30: 21 + 30, 0 fail). Prior "smoke only" inaccurate. Cross-package mirt `graded` check still outstanding. |
 | FAM-15 | truncated_poisson / truncated_nbinom* | `partial` | `test-truncated-recovery.R` | recovery tests |
 | FAM-16 | censored_poisson | `partial` | (not located) | smoke only |
-| FAM-17 | delta_* families (10 variants) | `blocked` | `test-delta-gamma-recovery.R`, `test-delta-lognormal-recovery.R` | engine works for single-family delta; mixed-family delta + latent-scale correlation undefined (two-scales problem); deferred to post-CRAN per `02-family-registry.md` |
+| FAM-17 | delta_* families (10 variants) | `covered` (fixed/latent recovery); random structure **N/A by design** | `test-delta-gamma-recovery.R`, `test-delta-lognormal-recovery.R` | Single-family delta recovery green (local measurement 2026-05-30: 13 + 13 assertions, 0 fail). Per **Design 62**: two-part families are fixed-effect response distributions only — no latent/random/slope/tier structure (two link scales → species correlation undefined). Mixed-family delta latent-scale correlation remains the genuinely-blocked research item (Design 61 §B11). |
 | FAM-18 | gamma_mix / lognormal_mix / nbinom2_mix | `blocked` | n/a | mixture families exported but not validated |
 | FAM-19 | gengamma | `blocked` | n/a | exported but not validated |
 
@@ -133,14 +133,14 @@ Row-owner: **Boole + Fisher** (random-effects design lead).
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
 | RE-01 | Random intercepts only (`s = 0`) | `covered` | `test-multi-random-intercepts.R` | M0 baseline |
-| RE-02 | One random slope (`s = 1`) | `partial` | `test-phylo-slope.R` | M1 scope per `04-random-effects.md` |
+| RE-02 | One random slope (`s = 1`) | `covered` | `test-phylo-slope.R`, `test-matrix-slope-{poisson,nbinom2,gamma,beta,ordinal,binomial-logit,binomial-probit}.R` | Augmented random-regression slope recovers across all core families (local measurement 2026-05-30: 7 files, 0 fail) + Gaussian + animal (ANI-06) + `phylo_indep(1+x)` independent variant (this cycle). |
 | RE-03 | Two or more random slopes (`s ≥ 2`) | `blocked` | n/a | M1 caps at s = 1 (validation evidence required for s = 2, 3 promotion) |
 | RE-04 | Nested `unit / unit_obs` | `covered` | `test-multi-random-intercepts.R`, `test-olre-separation.R` | M0 baseline |
 | RE-05 | Crossed (e.g. site × year) | `partial` | `test-stage1-stacked-fixed-effects.R` | smoke only |
 | RE-06 | OLRE (observation-level random effect) | `covered` | `test-olre-separation.R`, `test-extract-omega.R`, `test-extractors-extra.R` | |
 | RE-07 | `sigma_eps` auto-suppression for OLRE | `covered` | `test-sigma-eps-autosuppress.R` | |
 | RE-08 | Cluster-level random effect (`cluster` argument) | `covered` | `test-cluster-rename.R` | |
-| RE-09 | `latent + unique` paired in within-unit tier | `partial` | `test-mixed-response-unique-nongaussian.R` | smoke; M1 expand |
+| RE-09 | `latent + unique` paired in within-unit tier | `covered` | `test-mixed-response-unique-nongaussian.R`, `test-tiers-{poisson,nbinom2,gamma,beta,ordinal}.R` | unit_obs tier (latent+unique) recovers across core families (local measurement 2026-05-30: tiers files green, 0 fail). |
 | RE-10 | Augmented LHS guard (engine-internal variable name clashes) | `covered` | `test-augmented-lhs-guard.R` | |
 
 ### Section 4 — Phylogenetic GLLVM
@@ -154,7 +154,7 @@ Row-owner: **Noether + Boole** (phylo-specific math + parser).
 | PHY-03 | Three-piece phylo fallback | `covered` | `test-phylo-q-decomposition.R` | |
 | PHY-04 | `phylo_scalar(0 + trait \| sp)` | `covered` | `test-stage35-phylo-rr.R`, `test-phyloscalar-binary.R` | Phase B-INF Lane 2 / B1 (Design 58): binary probit recovery on shared `sigma^2_phy_scalar` (3x band, n_sp = 40, 4 binary replicates per cell) + CI smoke (`confint(parm = "lambda_phy", method = "profile")` finite). Note: `phylo_signal` parm does not apply -- the propto path sets `use$propto`, not `use$phylo_rr` / `use$phylo_diag`. |
 | PHY-05 | `phylo_indep / phylo_dep` | `covered` | `test-stage35-phylo-rr.R`, `test-phylodepindep-binary.R` | Phase B-INF Lane 2 / B2 (Design 58): binary probit recovery + CI smoke (`confint(parm = "rho:phy:1,2", method = "profile")`) + `extract_correlations(tier="phy")` non-degenerate on both keywords. |
-| PHY-06 | Phylo-slope keyword `phylo_slope()` | `partial` | `test-phylo-slope.R` | M1 scope |
+| PHY-06 | Phylo-slope keyword `phylo_slope()` | `covered` | `test-phylo-slope.R`, `test-matrix-slope-*.R`, `test-phylo-indep-slope-spike.R` | Gaussian + cross-family augmented slope recovery green; `phylo_indep(1+x)` cheap-route (cor pinned, no C++) validated this cycle (19/19). |
 | PHY-07 | `extract_phylo_signal()` Adams (2014) | `covered` | `test-extract-omega.R`, `test-extractors-extra.R` | |
 | PHY-08 | `extract_communality()` $H^2 + C^2 + \psi^2 = 1$ partition | `covered` | `test-extractors.R`, `test-extractors-extra.R` | |
 | PHY-09 | Phylogenetic mode dispatch (paired vs three-piece) | `covered` | `test-phylo-mode-dispatch.R` | |
@@ -201,7 +201,7 @@ the test contract.
 | ANI-03 | `animal_indep(0 + trait \| id, ...)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_indep(vcv = A)` |
 | ANI-04 | `animal_dep(0 + trait \| id, ...)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_dep(vcv = A)` |
 | ANI-05 | `animal_latent(id, d = K, ...)` | `covered` | `test-animal-keyword.R` | byte-equiv with `phylo_latent(vcv = A)` |
-| ANI-06 | `animal_slope(x \| id)` | `partial` | `test-animal-keyword.R` (smoke) | parser-accepted; recovery study deferred |
+| ANI-06 | `animal_slope(x \| id)` | `covered` | `test-animal-slope-recovery.R` (PR #313) | Recovery validated: byte-equivalent to `phylo_slope(vcv = A)` to 1e-5; 32 assertions, full suite 3302/0. `animal_unique(1+x|id)` slope-drop now fail-loud (guard). |
 | ANI-07 | `pedigree_to_A()` Henderson formula | `covered` | `test-animal-keyword.R` | `nadiv::makeAinv()` cross-check available when nadiv installed |
 | ANI-08 | Sparse `Ainv = ` direct engine path | `covered` (helper shipped PR #179 2026-05-18; engine auto-routing shipped 2026-05-18) | `tests/testthat/test-pedigree-sparse-ainv.R`, `tests/testthat/test-pedigree-sparse-ainv-engine.R` | Design 47 §10. `animal_*(pedigree = ped)` now auto-routes through `pedigree_to_Ainv_sparse()` and the sparse-Ainv engine path in `R/fit-multi.R` (mirrors the `phylo_tree → MCMCglmm::inverseA` route). Engine path identified via `inherits(fit$phylo_vcv, 'sparseMatrix')`. 8 byte-equivalence tests (scalar + unique, sparse vs dense) at `1e-6`. **Pre-CRAN per maintainer 2026-05-18.** |
 | ANI-09 | Multi-matrix animal models (G + permanent-environment + maternal) | `partial` | n/a | Achievable today by combining `animal_*` with sibling `(1 \| id)`; idiomatic article example v0.3.0 |

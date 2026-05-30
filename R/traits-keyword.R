@@ -176,6 +176,7 @@ is_traits_lhs <- function(formula) {
   "diag",
   "phylo_indep",
   "phylo_dep",
+  "animal_indep",
   "spatial",
   "spatial_unique",
   "spatial_scalar",

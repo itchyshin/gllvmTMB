@@ -2165,6 +2165,30 @@ rewrite_canonical_aliases <- function(formula) {
             ))
           }
           species_arg <- bar[[3L]]
+          ## Augmented intercept+slope LHS (`1 + x | id` or the long form
+          ## `0 + trait + (0 + trait):x | id`). animal_indep means the
+          ## intercept-slope correlation is FIXED at 0, i.e. the SAME
+          ## augmented b_phy_aug engine as phylo_indep() / phylo_unique()
+          ## but with the structural matrix A (pedigree/A/Ainv) supplied
+          ## via vcv, and atanh_cor_b pinned to 0 via the TMB map
+          ## (fit-multi.R reads the `.indep` marker). No new C++.
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            new_call <- as.call(c(
+              list(as.name("phylo_slope"), bar),
+              list(
+                .phylo_unique_augmented = TRUE,
+                .indep = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              list(vcv = vcv_expr)
+            ))
+            return(new_call)
+          }
           new_call <- as.call(c(
             list(as.name("phylo_rr"), species_arg),
             list(.phylo_unique = TRUE, .indep = TRUE),

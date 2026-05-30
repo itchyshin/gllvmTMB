@@ -2128,6 +2128,31 @@ rewrite_canonical_aliases <- function(formula) {
         }
         ## animal_unique(id, ...) -> phylo_rr(id, .phylo_unique = TRUE, vcv = A)
         if (fn == "animal_unique") {
+          ## Fail-loud against the augmented-slope bar `animal_unique(1 + x | id)`.
+          ## `animal_unique` is intercept-only by contract (bare `id` column;
+          ## see ?animal_unique). Previously a slope-bearing bar was passed
+          ## verbatim to `phylo_rr`, which silently dropped the slope and fit
+          ## an intercept-only model (byte-identical to `animal_unique(id)`).
+          ## The dedicated slope entry point is `animal_slope(x | id)`.
+          arg <- e[[2L]]
+          arg_is_bar <- is.call(arg) &&
+            identical(arg[[1L]], as.name("|")) &&
+            length(arg) == 3L
+          if (arg_is_bar) {
+            lhs_info <- .gllvmTMB_lhs_form(arg[[2L]])
+          }
+          if (
+            arg_is_bar &&
+              lhs_info$lhs_form %in%
+                c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            slope_col <- lhs_info$slope_col
+            cli::cli_abort(c(
+              "{.fn animal_unique} does not take a random slope.",
+              "i" = "You wrote {.code animal_unique({deparse(arg)})}; {.fn animal_unique} fits per-trait additive-genetic random {.emph intercepts} only (a bare {.code id} column).",
+              ">" = "For an additive-genetic random {.emph slope} on {.var {slope_col}}, use {.code animal_slope({slope_col} | {deparse(arg[[3L]])})}."
+            ))
+          }
           new_call <- as.call(c(
             list(as.name("phylo_rr"), e[[2L]]),
             list(.phylo_unique = TRUE),

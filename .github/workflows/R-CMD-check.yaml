@@ -5,6 +5,11 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: "Also run macOS + Windows (pre-release / CRAN check)"
+        type: boolean
+        default: false
 
 name: R-CMD-check
 
@@ -13,7 +18,9 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel main integration runs — pkgdown deploys on their success.
+  # Only supersede in-progress runs on PR / feature branches.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   R-CMD-check:
@@ -35,11 +42,13 @@ jobs:
 
     strategy:
       fail-fast: false
+      # Routine runs (push / PR) are ubuntu-only: the full suite (~180 TMB
+      # fits) exceeds the Windows runner time ceiling, and macOS/Windows bill
+      # 10x / 2x. Run all three OSes only before a release via
+      # workflow_dispatch -> full_matrix = true. (main is not branch-protected,
+      # so there are no required OS-named checks to preserve.)
       matrix:
-        config:
-          - {os: ubuntu-latest,  r: 'release'}
-          - {os: macos-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release'}
+        config: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.full_matrix) && '[{"os":"ubuntu-latest","r":"release"},{"os":"macos-latest","r":"release"},{"os":"windows-latest","r":"release"}]' || '[{"os":"ubuntu-latest","r":"release"}]') }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}

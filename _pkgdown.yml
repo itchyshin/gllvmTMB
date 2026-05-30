@@ -162,6 +162,7 @@ reference:
     desc: Standard summaries, predictions, simulations, confidence intervals, and current plotting entry point
     contents:
     - print.gllvmTMB_multi
+    - print.gllvmTMB_Sigma_phy_slope
     - summary.gllvmTMB_multi
     - logLik.gllvmTMB_multi
     - confint.gllvmTMB_multi

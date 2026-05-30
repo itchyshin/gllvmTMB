@@ -1673,6 +1673,28 @@ normalise_spatial_orientation <- function(e) {
     ## Already canonical (`0 + trait | coords`). Nothing to flip.
     return(e)
   }
+  ## Design 60 §2.3 / §3.4: BASE augmented SPDE random-slope LHS.
+  ## `spatial_unique(1 + x | coords)` (wide) and its long-form equivalent
+  ## `spatial_unique(0 + trait + (0 + trait):x | coords)` -- and the same two
+  ## forms for `spatial_indep` -- carry an intercept + slope LHS that the
+  ## now-integrated base SPDE slope engine (use_spde_slope) consumes via a
+  ## SECOND SPDE field on the covariate. The bar is already canonically
+  ## oriented (RHS = the coords name); pass it through UNCHANGED so the
+  ## per-keyword rename branch (`fn == "spatial_unique"` / `"spatial_indep"`)
+  ## can classify the LHS and route it to `spde(..., .spatial_*_augmented =
+  ## TRUE)`. The C++ dimension asserts (src/gllvmTMB.cpp:925-938) are the
+  ## fail-loud backstop (Design 56 §7.1). Only `spatial_unique` and
+  ## `spatial_indep` are wired in this slice; `spatial_latent` / `spatial_dep`
+  ## augmented LHS need additional new C++ (Design 60 §3.5) and are NOT lifted
+  ## here -- they fall through to the abort below.
+  if (
+    is.name(rhs) &&
+      fn %in% c("spatial_unique", "spatial_indep") &&
+      .gllvmTMB_lhs_form(lhs)$lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+  ) {
+    return(e)
+  }
   ## `spatial_indep` is born post-flip: it never accepted the legacy
   ## `coords | trait` orientation, so reject anything other than the
   ## canonical form with a clean error rather than a deprecation warn.
@@ -2308,6 +2330,44 @@ rewrite_canonical_aliases <- function(formula) {
             return(new_call)
           }
         }
+        ## Design 60 §3.4: augmented spatial_unique(1 + x | coords) random
+        ## regression. `spatial_unique` normally renames straight to `spde`,
+        ## which reads ONLY the coords RHS -- so an augmented intercept+slope
+        ## bar (`1 + x | coords` or `0 + trait + (0 + trait):x | coords`) would
+        ## have its slope column SILENTLY DROPPED. Instead route it to an `spde`
+        ## covstruct carrying the `.spatial_unique_augmented` marker, which
+        ## fit-multi.R drives through the now-integrated base SPDE slope engine
+        ## (use_spde_slope): a SECOND SPDE field on the covariate sharing a 2x2
+        ## cross-field covariance Sigma_field with the intercept field. The C++
+        ## dimension asserts (src/gllvmTMB.cpp:925-938) are the fail-loud
+        ## backstop. Both wide and long surfaces build the same 2-column
+        ## Z_spde_aug (Design 55 §3 byte-identity).
+        if (
+          identical(fn, "spatial_unique") &&
+            length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            extras <- .pass_through_extras(e, c("coords", "mesh"))
+            new_call <- as.call(c(
+              list(as.name("spde"), bar),
+              list(
+                .spatial_unique_augmented = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              extras
+            ))
+            return(new_call)
+          }
+        }
         target <- switch(
           fn,
           latent = "rr",
@@ -2640,6 +2700,37 @@ rewrite_canonical_aliases <- function(formula) {
       ## over-parameterisation guard.
       if (fn == "spatial_indep") {
         extras <- .pass_through_extras(e, c("coords", "mesh"))
+        ## Design 60 §3.5: augmented spatial_indep(1 + x | coords) is the
+        ## DIAGONAL special case of the base SPDE slope engine -- the
+        ## intercept-slope cross-field correlation rho is FIXED at 0. It uses
+        ## the SAME use_spde_slope engine as spatial_unique() but with
+        ## atanh_cor_spde_b pinned to 0 via the TMB map (fit-multi.R reads the
+        ## `.spatial_indep_augmented` marker). No new C++ likelihood block.
+        if (
+          length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            new_call <- as.call(c(
+              list(as.name("spde"), bar),
+              list(
+                .spatial_unique_augmented = TRUE,
+                .spatial_indep_augmented = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              extras
+            ))
+            return(new_call)
+          }
+        }
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
           list(.spatial_indep = TRUE),

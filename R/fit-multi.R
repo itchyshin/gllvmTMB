@@ -615,7 +615,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                               else factor(data[[trait]]))
       as.integer(n_traits_tmp)
     } else {
-      as.integer(cs$extra$d %||% 1L)
+      d_req <- as.integer(cs$extra$d %||% 1L)
+      n_traits <- .n_traits_for_dep
+      if (d_req > n_traits) {
+        cli::cli_abort(
+          "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
+        )
+      }
+      d_req
     }
   } else 1L
   ## Phylogenetic random slope (Q6): phylo_slope(x | species). Reuses
@@ -710,7 +717,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ))
   }
   d_phy_slope <- if (use_phylo_latent_slope) {
-    as.integer(phylo_latent_slope_cs$extra$d %||% 1L)
+    d_req <- as.integer(phylo_latent_slope_cs$extra$d %||% 1L)
+    n_traits <- .n_traits_for_dep
+    if (d_req > n_traits) {
+      cli::cli_abort(
+        "phylo_latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
+      )
+    }
+    d_req
   } else 1L
   phylo_latent_slope_lhs_form <- if (use_phylo_latent_slope) {
     phylo_latent_slope_cs$extra$lhs_form %||% "unsupported"
@@ -726,11 +740,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   d_B <- if (use_rr_B) {
     cs <- parsed$covstructs[[which(kinds == "rr" & groupings == site)[1]]]
-    as.integer(cs$extra$d %||% 1L)
+    d_req <- as.integer(cs$extra$d %||% 1L)
+    n_traits <- .n_traits_for_dep
+    if (d_req > n_traits) {
+      cli::cli_abort(
+        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
+      )
+    }
+    d_req
   } else 1L
   d_W <- if (use_rr_W) {
     cs <- parsed$covstructs[[which(kinds == "rr" & groupings == ss_name)[1]]]
-    as.integer(cs$extra$d %||% 1L)
+    d_req <- as.integer(cs$extra$d %||% 1L)
+    n_traits <- .n_traits_for_dep
+    if (d_req > n_traits) {
+      cli::cli_abort(
+        "latent(d = {d_req}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
+      )
+    }
+    d_req
   } else 1L
 
   unrecognised <- !(kinds %in% c("rr", "diag", "propto", "equalto", "spde",

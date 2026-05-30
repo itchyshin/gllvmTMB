@@ -37,6 +37,7 @@
       "12" = "log", # delta_lognormal
       "13" = "log", # delta_gamma
       "14" = "probit", # ordinal_probit
+      "15" = "log", # nbinom1
       NA_character_
     )
   }
@@ -849,11 +850,12 @@ simulate.gllvmTMB_multi <- function(
   }
   sigma_eps <- sigma_eps[1L]
   phi_nbinom2 <- fit$report$phi_nbinom2 # length n_traits
+  phi_nbinom1 <- fit$report$phi_nbinom1 # length n_traits
 
   ## Pre-flag any unsupported families with a one-shot warning so users
   ## know fall-back-to-Gaussian-on-link-scale is in play.
   uniq_fids <- unique(fids)
-  supported <- c(0L, 1L, 2L, 3L, 4L, 5L)
+  supported <- c(0L, 1L, 2L, 3L, 4L, 5L, 15L)
   unsupp <- setdiff(uniq_fids, supported)
   if (length(unsupp) > 0L) {
     cache_key <- "gllvmTMB.warned_simulate_unsupported_family"
@@ -862,7 +864,7 @@ simulate.gllvmTMB_multi <- function(
         c(
           "Family-aware {.fn simulate} not yet implemented for family_id values: {.val {unsupp}}.",
           "i" = "Affected rows fall back to Gaussian-on-link-scale draws (pre-M1.8 behaviour). This is M2/M3 family-completeness work.",
-          ">" = "Supported in M1.8: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5)."
+          ">" = "Supported in M1.8: gaussian (0), binomial (1), poisson (2), lognormal (3), Gamma (4), nbinom2 (5), nbinom1 (15)."
         ),
         class = "gllvmTMB_simulate_unsupported_family"
       )
@@ -909,6 +911,21 @@ simulate.gllvmTMB_multi <- function(
       mu <- exp(eta_i)
       size <- if (is.null(phi_nbinom2)) 1 else phi_nbinom2[tid_1]
       y[i] <- stats::rnbinom(1L, mu = mu, size = size)
+    } else if (fid == 15L) {
+      ## nbinom1, log link. LINEAR mean-variance Var = mu * (1 + phi),
+      ## so the dispersion enters the size as size = mu / phi (NOT size =
+      ## phi as for NB2): then Var = mu + mu^2/size = mu + mu*phi =
+      ## mu*(1 + phi). phi -> 0 gives size -> Inf, recovering Poisson.
+      mu <- exp(eta_i)
+      phi <- if (is.null(phi_nbinom1)) 1 else phi_nbinom1[tid_1]
+      if (mu > 0 && phi > 0) {
+        y[i] <- stats::rnbinom(1L, mu = mu, size = mu / phi)
+      } else {
+        ## Degenerate mu (0) or phi (0, Poisson limit): fall back to a
+        ## Poisson draw, which is the phi -> 0 limit of NB1 and handles
+        ## mu = 0 (deterministic 0) without an invalid size argument.
+        y[i] <- stats::rpois(1L, lambda = mu)
+      }
     } else {
       ## Unsupported family — Gaussian-on-link-scale fallback (warned above)
       y[i] <- eta_i + stats::rnorm(1L, sd = sigma_eps)

@@ -326,6 +326,33 @@ link_residual_per_trait <- function(fit) {
       ## continuous trait (Hadfield 2015 MEE 6:706-714; Felsenstein 2005,
       ## 2012; Dempster & Lerner 1950; Falconer & Mackay 1996).
       out[t] <- 1
+    } else if (fid == 15L) {
+      # nbinom1, log link
+      ## NB1 has a LINEAR mean-variance, Var(Y) = mu * (1 + phi), so its
+      ## log-scale residual is mu-DEPENDENT and the NB2 trigamma(phi)
+      ## identity does NOT carry over. (NB2's gamma-frailty log-variance
+      ## trigamma(phi) is mu-free because NB2 mixes Poisson over a
+      ## Gamma(shape = phi) frailty; NB1's Poisson-Gamma representation has
+      ## shape = mu/phi, which depends on mu, so no constant-trigamma form
+      ## exists.) Use the delta-method / lognormal approximation instead --
+      ## the same machinery used for the Poisson (fid 2) and Tweedie (fid 6)
+      ## branches above: Var(log Y) ~ Var(Y) / E(Y)^2 = mu*(1+phi)/mu^2 =
+      ## (1 + phi) / mu, in the stable log1p form. As phi -> 0 this reduces
+      ## to the Poisson branch log1p(1 / mu_t). Per-trait phi via
+      ## log_phi_nbinom1; mu_t = mean(exp(eta)) across the trait's rows.
+      ## (Nakagawa & Schielzeth 2010 delta method; Hilbe 2011 NB1 variance.)
+      phi_vec <- as.numeric(fit$report$phi_nbinom1 %||% rep(1, Tn))
+      phi_t <- if (length(phi_vec) >= t) phi_vec[t] else phi_vec[1]
+      if (is.null(eta) || length(eta) < max(rows_t)) {
+        out[t] <- 0
+      } else {
+        mu_t <- mean(exp(eta[rows_t]))
+        out[t] <- if (is.finite(mu_t) && mu_t > 0) {
+          log1p((1 + phi_t) / mu_t)
+        } else {
+          0
+        }
+      }
     } else {
       out[t] <- 0
     }
@@ -702,6 +729,7 @@ extract_Sigma <- function(
           "12" = "delta_lognormal",
           "13" = "delta_gamma",
           "14" = "ordinal_probit",
+          "15" = "nbinom1",
           sprintf("family_id %s", fid)
         )
       }

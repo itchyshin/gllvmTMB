@@ -153,6 +153,12 @@
     transformation = "exp"
   ),
   list(
+    tmb_parameter = "log_phi_nbinom1",
+    label_prefix = "phi_nbinom1",
+    target_class = "dispersion",
+    transformation = "exp"
+  ),
+  list(
     tmb_parameter = "log_phi_tweedie",
     label_prefix = "phi_tweedie",
     target_class = "dispersion",

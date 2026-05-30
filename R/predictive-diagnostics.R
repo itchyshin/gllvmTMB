@@ -342,6 +342,7 @@ residuals.gllvmTMB_multi <- function(
 
   sigma_eps <- .gllvmTMB_sigma_eps(object)
   phi_nbinom2 <- object$report$phi_nbinom2
+  phi_nbinom1 <- object$report$phi_nbinom1
 
   for (i in seq_len(n)) {
     y_i <- observed[i]
@@ -377,6 +378,28 @@ residuals.gllvmTMB_multi <- function(
         next
       }
       mu <- exp(eta[i])
+      lower[i] <- if (y_i <= 0) {
+        0
+      } else {
+        stats::pnbinom(y_i - 1, size = size, mu = mu)
+      }
+      upper[i] <- stats::pnbinom(y_i, size = size, mu = mu)
+      u[i] <- stats::runif(1L, min = lower[i], max = upper[i])
+    } else if (fid == 15L) {
+      if (y_i < 0 || y_i != floor(y_i)) {
+        status[i] <- "invalid_observed"
+        next
+      }
+      phi <- phi_nbinom1[tid]
+      if (!is.finite(phi) || phi <= 0) {
+        status[i] <- "missing_phi"
+        next
+      }
+      ## NB1 linear mean-variance Var = mu*(1 + phi): the NB size argument
+      ## is mu / phi (NOT phi as for NB2), so Var = mu + mu^2/(mu/phi) =
+      ## mu*(1 + phi).
+      mu <- exp(eta[i])
+      size <- mu / phi
       lower[i] <- if (y_i <= 0) {
         0
       } else {

@@ -12,6 +12,7 @@
 ## ecological survey biomass).
 
 test_that("tweedie family converges and recovers trait intercepts + phi + p", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("mgcv")
   set.seed(2025)
@@ -63,6 +64,7 @@ test_that("tweedie family converges and recovers trait intercepts + phi + p", {
 })
 
 test_that("tweedie logLik agrees with glmmTMB::tweedie() at the obs-likelihood level", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("glmmTMB")
   skip_if_not_installed("mgcv")
@@ -101,6 +103,7 @@ test_that("tweedie logLik agrees with glmmTMB::tweedie() at the obs-likelihood l
 })
 
 test_that("tweedie rejects non-log link", {
+  skip_if_not_heavy()
   expect_error(
     suppressMessages(gllvmTMB(
       data.frame(individual = 1:10, trait = "a", value = c(rep(0, 3), runif(7, 0.1, 5))) |>

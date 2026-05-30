@@ -109,6 +109,7 @@ expect_binary_phyloscalar_fit_health <- function(fit) {
 ## phylo_scalar(species) on binary probit: fit health + recovery + CI smoke
 ## ---------------------------------------------------------------
 test_that("phylo_scalar(species) fits on binary probit; sigma^2_phy_scalar recovers; lambda_phy profile CI is finite", {
+  skip_if_not_heavy()
   skip_if_not_phyloscalar_binary_deps()
   fx <- make_phyloscalar_binary_fixture()
 

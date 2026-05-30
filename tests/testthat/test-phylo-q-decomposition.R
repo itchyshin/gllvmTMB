@@ -82,6 +82,7 @@ simulate_phylo_q_dgp <- function(n_species   = 100,
 ##  - After relaxation: should fit cleanly.
 ## ----------------------------------------------------------------------
 test_that("phylo_unique + unique(0+trait|species) at unit != species fits without error", {
+  skip_if_not_heavy()
   skip_unless_ape()
   skip_on_cran()
   s <- simulate_phylo_q_dgp(n_species = 100, n_sites = 60, n_traits = 5,
@@ -112,6 +113,7 @@ test_that("phylo_unique + unique(0+trait|species) at unit != species fits withou
 ## difficulty.
 ## ----------------------------------------------------------------------
 test_that("phylo q decomposition: sigma2_P recovered (per-trait mean) at n_species = 100", {
+  skip_if_not_heavy()
   skip_unless_ape()
   skip_on_cran()
   s <- simulate_phylo_q_dgp(n_species = 100, n_sites = 60, n_traits = 5,
@@ -149,6 +151,7 @@ test_that("phylo q decomposition: sigma2_P recovered (per-trait mean) at n_speci
 ## Test 3: Recovery of sigma2_Q (non-phylo species variance).
 ## ----------------------------------------------------------------------
 test_that("phylo q decomposition: sigma2_Q recovered within 50% relative error", {
+  skip_if_not_heavy()
   skip_unless_ape()
   skip_on_cran()
   s <- simulate_phylo_q_dgp(n_species = 100, n_sites = 60, n_traits = 5,
@@ -185,6 +188,7 @@ test_that("phylo q decomposition: sigma2_Q recovered within 50% relative error",
 ## doesn't break the established case.
 ## ----------------------------------------------------------------------
 test_that("two-U pattern (phylo_latent + phylo_unique at unit = species) still fits", {
+  skip_if_not_heavy()
   skip_unless_ape()
   skip_on_cran()
   set.seed(401)
@@ -252,6 +256,7 @@ test_that("two-U pattern (phylo_latent + phylo_unique at unit = species) still f
 ## established two-U-without-latent pattern and must fit cleanly.
 ## ----------------------------------------------------------------------
 test_that("phylo_unique + unique(species) at unit = species fits (established two-U-style pairing)", {
+  skip_if_not_heavy()
   skip_unless_ape()
   skip_on_cran()
   set.seed(501)

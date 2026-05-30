@@ -32,6 +32,7 @@ skip_if_no_pedigree_helpers <- function() {
 
 test_that(
   "animal_unique(1 + x | id, pedigree = ped) recovers G + cov on Gaussian", {
+  skip_if_not_heavy()
   skip_if_no_pedigree_helpers()
   skip_until_stage3()
 
@@ -43,6 +44,7 @@ test_that(
 
 test_that(
   "animal_unique(1 + x | id, pedigree = ped) ≡ phylo_unique(1 + x | id, vcv = A) (Design 14 §5)", {
+  skip_if_not_heavy()
   skip_if_no_pedigree_helpers()
   skip_until_stage3()
 

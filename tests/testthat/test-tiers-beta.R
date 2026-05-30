@@ -27,6 +27,7 @@
 ## ----------------------------------------------------------------------
 
 test_that("Beta x unit_obs tier: two diag tiers converge, pd_hessian, and separate", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   set.seed(2025)
@@ -127,6 +128,7 @@ test_that("Beta x unit_obs tier: two diag tiers converge, pd_hessian, and separa
 ## ----------------------------------------------------------------------
 
 test_that("Beta x cluster tier: 3-level fit converges, pd_hessian, recovers cluster variance", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   set.seed(2025)

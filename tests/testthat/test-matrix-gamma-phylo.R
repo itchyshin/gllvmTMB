@@ -153,6 +153,7 @@ phy_profile_ci_any_finite <- function(fit, n_traits) {
 ## Cell 1: phylo_latent + phylo_unique paired (two-U pattern)
 ## ---------------------------------------------------------------
 test_that("phylo_latent + phylo_unique paired fits on Gamma(log); pd_hessian TRUE; phy correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_gamma_phylo_deps()
   fx <- make_gamma_phylo_fixture()
 
@@ -192,6 +193,7 @@ test_that("phylo_latent + phylo_unique paired fits on Gamma(log); pd_hessian TRU
 ## Cell 2: phylo_scalar (single shared phylogenetic variance)
 ## ---------------------------------------------------------------
 test_that("phylo_scalar fits on Gamma(log); sigma^2_phy recovers within 3x band; lambda_phy profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_gamma_phylo_deps()
   fx <- make_gamma_phylo_fixture()
 
@@ -267,6 +269,7 @@ test_that("phylo_scalar fits on Gamma(log); sigma^2_phy recovers within 3x band;
 ## Cell 3: phylo_indep (diagonal Sigma_b on the phy tier)
 ## ---------------------------------------------------------------
 test_that("phylo_indep(0 + trait | species) fits on Gamma(log); pd_hessian TRUE; phy correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_gamma_phylo_deps()
   fx <- make_gamma_phylo_fixture()
 
@@ -303,6 +306,7 @@ test_that("phylo_indep(0 + trait | species) fits on Gamma(log); pd_hessian TRUE;
 ## Cell 4: phylo_dep (unstructured Sigma_b) + CI smoke
 ## ---------------------------------------------------------------
 test_that("phylo_dep(0 + trait | species) fits on Gamma(log); CI smoke + phy correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_gamma_phylo_deps()
   fx <- make_gamma_phylo_fixture()
 

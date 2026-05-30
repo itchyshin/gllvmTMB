@@ -68,6 +68,7 @@ make_binary_irt_dgp <- function(n_items, d, n_resp, seed,
 # ---- (1) LAM-03 recovery at d = 1, n_items = 20 --------------------
 
 test_that("lambda_constraint binary IRT recovery at d=1, n_items=20 (LAM-03 / M2.3)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- make_binary_irt_dgp(n_items = 20L, d = 1L, n_resp = 400L,
                             seed = 20260601L, link = "probit")
@@ -97,6 +98,7 @@ test_that("lambda_constraint binary IRT recovery at d=1, n_items=20 (LAM-03 / M2
 # ---- (2) LAM-03 recovery at d = 2, n_items = 20 --------------------
 
 test_that("lambda_constraint binary IRT recovery at d=2, n_items=20 (LAM-03 / M2.3)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- make_binary_irt_dgp(n_items = 20L, d = 2L, n_resp = 500L,
                             seed = 20260602L, link = "probit")
@@ -129,6 +131,7 @@ test_that("lambda_constraint binary IRT recovery at d=2, n_items=20 (LAM-03 / M2
 # ---- (3) LAM-03 recovery at d = 1, n_items = 50 --------------------
 
 test_that("lambda_constraint binary IRT recovery at d=1, n_items=50 (LAM-03 / M2.3)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- make_binary_irt_dgp(n_items = 50L, d = 1L, n_resp = 500L,
                             seed = 20260603L, link = "probit")

@@ -33,6 +33,7 @@ skip_until_stage3 <- function() {
 
 test_that(
   "spatial_unique(1 + x | coords) recovers σ² + cov on Gaussian + SPDE precision", {
+  skip_if_not_heavy()
   skip_if_not_spatial()
   skip_until_stage3()
 
@@ -44,6 +45,7 @@ test_that(
 
 test_that(
   "spatial_unique wide ≡ long byte-identical (Design 55 §3)", {
+  skip_if_not_heavy()
   skip_if_not_spatial()
   skip_until_stage3()
   expect_true(TRUE)  # placeholder; Phase 56.5e fills in
@@ -51,6 +53,7 @@ test_that(
 
 test_that(
   "spatial_unique slope LHS composes with SPDE precision (mesh-density invariance check)", {
+  skip_if_not_heavy()
   skip_if_not_spatial()
   skip_until_stage3()
 

@@ -279,6 +279,7 @@ run_slope_spatial_dep_cell <- function(fx, family, family_label,
 ## ---------------------------------------------------------------------------
 
 test_that("binomial(probit): spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_dep_deps()
   fx <- make_slope_spatial_fixture(
     family_tail = function(eta) {
@@ -292,6 +293,7 @@ test_that("binomial(probit): spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI
 })
 
 test_that("binomial(logit): spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_dep_deps()
   fx <- make_slope_spatial_fixture(
     family_tail = function(eta) {
@@ -306,6 +308,7 @@ test_that("binomial(logit): spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI 
 })
 
 test_that("ordinal_probit: spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_dep_deps()
   ## K = 4 ordinal: latent y* = eta + N(0,1) cut at 3 thresholds.
   taus <- c(0, 0.7, 1.4)
@@ -323,6 +326,7 @@ test_that("ordinal_probit: spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI s
 })
 
 test_that("poisson(log): spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_dep_deps()
   fx <- make_slope_spatial_fixture(
     family_tail = function(eta) {
@@ -336,6 +340,7 @@ test_that("poisson(log): spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smo
 })
 
 test_that("nbinom2: spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_dep_deps()
   phi <- 3                                  # nbinom2 dispersion (size)
   fx <- make_slope_spatial_fixture(
@@ -350,6 +355,7 @@ test_that("nbinom2: spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", 
 })
 
 test_that("Gamma(log): spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_dep_deps()
   phi <- 2                                  # gamma shape => CV = 1/sqrt(phi)
   fx <- make_slope_spatial_fixture(
@@ -365,6 +371,7 @@ test_that("Gamma(log): spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke
 })
 
 test_that("beta: spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_dep_deps()
   phi <- 5                                  # beta precision
   fx <- make_slope_spatial_fixture(

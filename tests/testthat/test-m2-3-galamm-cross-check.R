@@ -74,6 +74,7 @@ make_binary_irt_dgp <- function(n_items, d, n_resp, seed,
 # ---- (1) gllvmTMB and galamm agree on 2PL IRT (sign + rank order) ---
 
 test_that("gllvmTMB and galamm agree on 2PL IRT loadings — sign + rank order (M2.3 / cross-package galamm)", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_galamm_missing()
 

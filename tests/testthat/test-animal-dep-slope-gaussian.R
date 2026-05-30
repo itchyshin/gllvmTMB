@@ -20,6 +20,7 @@ skip_until_stage3 <- function() {
 
 test_that(
   "animal_dep(1 + x | id) recovery: Σ_b per Design 56 §5.3 — full 2T × 2T unstructured (Cholesky / UNSTRUCTURED_CORR)", {
+  skip_if_not_heavy()
   skip_helper()
   skip_until_stage3()
 
@@ -31,6 +32,7 @@ test_that(
 
 test_that(
   "animal_dep wide ≡ long byte-identical (Design 55 §3)", {
+  skip_if_not_heavy()
   skip_helper()
   skip_until_stage3()
   expect_true(TRUE)  # placeholder; Phase 56.5d-dep

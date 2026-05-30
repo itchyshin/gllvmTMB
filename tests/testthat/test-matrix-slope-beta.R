@@ -192,6 +192,7 @@ slope_beta_ci_any_finite <- function(fit) {
 ## Gaussian B0 band). Honest skip if the augmented fit does not converge with
 ## a PD Hessian at this seed / fixture size.
 test_that("Beta: phylo_unique(1 + x | sp) augmented fit converges, PD Hessian, recovers Sigma_b within the mean-dependent band", {
+  skip_if_not_heavy()
   skip_if_not_slope_beta_deps()
   fx <- make_slope_beta_fixture()
 
@@ -238,6 +239,7 @@ test_that("Beta: phylo_unique(1 + x | sp) augmented fit converges, PD Hessian, r
 ## augmented LHS, exercised for honesty) OR the slope-variance profile via
 ## TMB::tmbprofile(). If neither is finite, skip honestly rather than relax.
 test_that("Beta: phylo_unique(1 + x | sp) augmented fit yields a finite slope-variance profile CI", {
+  skip_if_not_heavy()
   skip_if_not_slope_beta_deps()
   fx <- make_slope_beta_fixture()
 

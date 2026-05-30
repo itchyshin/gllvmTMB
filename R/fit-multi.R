@@ -578,6 +578,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   use_phylo_slope_correlated <- isTRUE(
     phylo_slope_cs$extra$.phylo_unique_augmented
   )
+  ## phylo_indep(1 + x | species): same augmented b_phy_aug engine as
+  ## phylo_unique() but the intercept-slope correlation is fixed at 0. The
+  ## `.indep` marker (set by the phylo_indep parser handler) triggers pinning
+  ## atanh_cor_b to 0 via the TMB map below. No new C++ likelihood block.
+  use_phylo_slope_indep <- use_phylo_slope_correlated &&
+    isTRUE(phylo_slope_cs$extra$.indep)
+  ## Track B spike scope: the augmented phylo_indep(1 + x | sp) path is
+  ## validated only for the Gaussian anchor cell. phylo_unique() augmented is
+  ## family-general, but phylo_indep() stays Gaussian-only until the non-
+  ## Gaussian cells are validated (test-matrix-slope-phylo-indep.R reserves
+  ## them fail-loud). Family is unknown at parse time, so the reservation is
+  ## enforced here where family_id_vec exists. The message keeps the parser's
+  ## "LHS richer than" phrasing so the reserved-family contract is unchanged.
+  if (use_phylo_slope_indep && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
+      "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()} only in this spike.",
+      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for non-Gaussian augmented phylogenetic random regression, or {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
+    ))
+  }
   phylo_slope_lhs_form <- if (use_phylo_slope_correlated) {
     phylo_slope_cs$extra$lhs_form %||% "unsupported"
   } else "legacy_slope"
@@ -1655,6 +1675,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (length(tmb_params$atanh_cor_b) > 0L) {
       tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
     }
+  } else if (use_phylo_slope_indep && length(tmb_params$atanh_cor_b) > 0L) {
+    ## phylo_indep: hold the intercept-slope correlation at its init (0) so the
+    ## C++ prior reduces to block-diagonal Sigma_b (rho = tanh(0) = 0).
+    tmb_params$atanh_cor_b[] <- 0
+    tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
   }
   if (!use_re_int) {
     tmb_map$u_re_int         <- factor(rep(NA_integer_, length(tmb_params$u_re_int)))

@@ -19,6 +19,7 @@ skip_until_stage3 <- function() {
 
 test_that(
   "spatial_indep(1 + x | id) recovery: Σ_b per Design 56 §5.3 — diagonal (cor pinned to 0) × SPDE precision", {
+  skip_if_not_heavy()
   skip_helper()
   skip_until_stage3()
 
@@ -30,6 +31,7 @@ test_that(
 
 test_that(
   "spatial_indep wide ≡ long byte-identical (Design 55 §3)", {
+  skip_if_not_heavy()
   skip_helper()
   skip_until_stage3()
   expect_true(TRUE)  # placeholder; Phase 56.5e-indep

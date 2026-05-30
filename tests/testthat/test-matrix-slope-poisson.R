@@ -168,6 +168,7 @@ expect_slope_poisson_fit_health <- function(fit) {
 }
 
 test_that("phylo_unique(1 + x | sp) x poisson: converges + PD Hessian; recovers sigma2_a, sigma2_b, rho in Phase-B0 mean-dependent band", {
+  skip_if_not_heavy()
   skip_if_not_slope_poisson_deps()
   fx <- make_slope_poisson_fixture()
 
@@ -231,6 +232,7 @@ test_that("phylo_unique(1 + x | sp) x poisson: converges + PD Hessian; recovers 
 })
 
 test_that("phylo_unique(1 + x | sp) x poisson: augmented recovery is seed-stable (byte-identical refit)", {
+  skip_if_not_heavy()
   skip_if_not_slope_poisson_deps()
   fx <- make_slope_poisson_fixture()
 
@@ -251,6 +253,7 @@ test_that("phylo_unique(1 + x | sp) x poisson: augmented recovery is seed-stable
 })
 
 test_that("phylo_unique(1 + x | sp) x poisson: CI smoke -- a finite bound on the augmented slope variance or correlation", {
+  skip_if_not_heavy()
   skip_if_not_slope_poisson_deps()
   fx <- make_slope_poisson_fixture()
 

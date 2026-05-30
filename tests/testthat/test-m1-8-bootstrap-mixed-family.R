@@ -31,6 +31,7 @@ skip_on_cran_or_load <- function(n_families) {
 # ---- (1) MIS-05: simulate per-row family-aware draws -----------------
 
 test_that("simulate() returns family-correct values on 3-family fixture (M1.8 / MIS-05)", {
+  skip_if_not_heavy()
   fit <- skip_on_cran_or_load(3L)
   fx <- gllvmTMB:::load_mixed_family_fixture(n_families = 3L)
   y_sim <- simulate(fit, nsim = 1L)
@@ -56,6 +57,7 @@ test_that("simulate() returns family-correct values on 3-family fixture (M1.8 / 
 })
 
 test_that("simulate() returns family-correct values on 5-family fixture (M1.8 / MIS-05)", {
+  skip_if_not_heavy()
   fit <- skip_on_cran_or_load(5L)
   fx <- gllvmTMB:::load_mixed_family_fixture(n_families = 5L)
   y_sim <- simulate(fit, nsim = 1L)
@@ -84,6 +86,7 @@ test_that("simulate() returns family-correct values on 5-family fixture (M1.8 / 
 # ---- (2) MIX-08: bootstrap_Sigma preserves per-row family in refits --
 
 test_that("bootstrap_Sigma() converges on mixed-family fit (M1.8 / MIX-08)", {
+  skip_if_not_heavy()
   fit <- skip_on_cran_or_load(3L)
   boot <- suppressMessages(bootstrap_Sigma(
     fit,
@@ -109,6 +112,7 @@ test_that("bootstrap_Sigma() converges on mixed-family fit (M1.8 / MIX-08)", {
 })
 
 test_that("bootstrap_Sigma() propagates link_residual into point estimates", {
+  skip_if_not_heavy()
   fit <- skip_on_cran_or_load(3L)
   boot_auto <- suppressMessages(bootstrap_Sigma(
     fit,
@@ -155,6 +159,7 @@ test_that("bootstrap_Sigma() propagates link_residual into point estimates", {
 # ---- (3) M1.4 fix verification: bootstrap correlations are no longer ±1 -
 
 test_that("extract_correlations(bootstrap) on mixed-family no longer returns degenerate ±1 (M1.8 / M1.4 follow-up)", {
+  skip_if_not_heavy()
   fit <- skip_on_cran_or_load(3L)
   df <- suppressMessages(extract_correlations(
     fit,
@@ -190,6 +195,7 @@ test_that("extract_correlations(bootstrap) on mixed-family no longer returns deg
 # ---- (4) Backward-compat: Gaussian-only simulate still works -----------
 
 test_that("simulate() on pure Gaussian fit is unchanged after M1.8 (backward-compat)", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(20260517L)
   sim_in <- gllvmTMB::simulate_site_trait(
@@ -217,6 +223,7 @@ test_that("simulate() on pure Gaussian fit is unchanged after M1.8 (backward-com
 # ---- (5) family_input preservation on the fit object ------------------
 
 test_that("fit$family_input preserves the original family list for mixed-family fits (M1.8)", {
+  skip_if_not_heavy()
   fit <- skip_on_cran_or_load(3L)
   expect_true(!is.null(fit$family_input))
   expect_true(is.list(fit$family_input))

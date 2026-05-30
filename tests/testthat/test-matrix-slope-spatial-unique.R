@@ -226,6 +226,7 @@ run_slope_spatial_family <- function(family, expected_family_id, emit,
 ## binomial-probit  (family_id 1, link probit)
 ## ---------------------------------------------------------------
 test_that("spatial_unique(1 + x | site) x binomial(probit): converges + PD + CI smoke (else honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_deps()
   run_slope_spatial_family(
     family             = stats::binomial(link = "probit"),
@@ -238,6 +239,7 @@ test_that("spatial_unique(1 + x | site) x binomial(probit): converges + PD + CI 
 ## binomial-logit  (family_id 1, link logit)
 ## ---------------------------------------------------------------
 test_that("spatial_unique(1 + x | site) x binomial(logit): converges + PD + CI smoke (else honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_deps()
   run_slope_spatial_family(
     family             = stats::binomial(link = "logit"),
@@ -250,6 +252,7 @@ test_that("spatial_unique(1 + x | site) x binomial(logit): converges + PD + CI s
 ## ordinal_probit  (family_id 14, K = 4 categories)
 ## ---------------------------------------------------------------
 test_that("spatial_unique(1 + x | site) x ordinal_probit: converges + PD + CI smoke (else honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_deps()
   taus <- c(0, 0.7, 1.4)              # K = 4 ordinal thresholds (3 cutpoints)
   run_slope_spatial_family(
@@ -266,6 +269,7 @@ test_that("spatial_unique(1 + x | site) x ordinal_probit: converges + PD + CI sm
 ## poisson  (family_id 2, log link)
 ## ---------------------------------------------------------------
 test_that("spatial_unique(1 + x | site) x poisson: converges + PD + CI smoke (else honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_deps()
   run_slope_spatial_family(
     family             = stats::poisson(),
@@ -278,6 +282,7 @@ test_that("spatial_unique(1 + x | site) x poisson: converges + PD + CI smoke (el
 ## nbinom2  (family_id 5, log link, overdispersion phi = 4)
 ## ---------------------------------------------------------------
 test_that("spatial_unique(1 + x | site) x nbinom2: converges + PD + CI smoke (else honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_deps()
   phi <- 4
   run_slope_spatial_family(
@@ -294,6 +299,7 @@ test_that("spatial_unique(1 + x | site) x nbinom2: converges + PD + CI smoke (el
 ## gamma  (family_id 4, log link, shape phi = 2 => CV ~ 0.707)
 ## ---------------------------------------------------------------
 test_that("spatial_unique(1 + x | site) x Gamma(log): converges + PD + CI smoke (else honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_deps()
   phi <- 2
   run_slope_spatial_family(
@@ -310,6 +316,7 @@ test_that("spatial_unique(1 + x | site) x Gamma(log): converges + PD + CI smoke 
 ## beta  (family_id 7, logit link, precision phi = 5)
 ## ---------------------------------------------------------------
 test_that("spatial_unique(1 + x | site) x Beta(logit): converges + PD + CI smoke (else honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_deps()
   phi <- 5
   run_slope_spatial_family(

@@ -18,6 +18,7 @@
 # ---- shape + load ---------------------------------------------------
 
 test_that("3-family fixture loads from cache with expected shape (M1.2; T=3 d=1)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- gllvmTMB:::load_mixed_family_fixture(n_families = 3L)
   expect_named(fx, c("data", "truth", "family_list", "family_var"),
@@ -34,6 +35,7 @@ test_that("3-family fixture loads from cache with expected shape (M1.2; T=3 d=1)
 })
 
 test_that("5-family fixture loads from cache with expected shape (M1.2; T=8 d=2)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- gllvmTMB:::load_mixed_family_fixture(n_families = 5L)
   expect_equal(fx$family_var, "family")
@@ -51,6 +53,7 @@ test_that("5-family fixture loads from cache with expected shape (M1.2; T=8 d=2)
 # ---- cache vs in-process builder are bit-identical ------------------
 
 test_that("cached fixture matches the in-process builder on load-bearing columns (M1.2)", {
+  skip_if_not_heavy()
   skip_on_cran()
   ## We check the columns the M1 extractor tests actually consume:
   ## site, trait, family, value. The `site_species` factor's level
@@ -77,6 +80,7 @@ test_that("cached fixture matches the in-process builder on load-bearing columns
 # ---- fit converges on both fixtures ---------------------------------
 
 test_that("fit_mixed_family_fixture(3) converges (M1.2)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
   expect_s3_class(fit, "gllvmTMB_multi")
@@ -85,6 +89,7 @@ test_that("fit_mixed_family_fixture(3) converges (M1.2)", {
 })
 
 test_that("fit_mixed_family_fixture(5) converges (M1.2)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 5L)
   expect_s3_class(fit, "gllvmTMB_multi")
@@ -95,6 +100,7 @@ test_that("fit_mixed_family_fixture(5) converges (M1.2)", {
 # ---- value distribution sanity (rule 3 — feature combination) -------
 
 test_that("each fixture family has a non-degenerate value distribution (M1.2)", {
+  skip_if_not_heavy()
   skip_on_cran()
   for (k in c(3L, 5L)) {
     fx <- gllvmTMB:::load_mixed_family_fixture(n_families = k)

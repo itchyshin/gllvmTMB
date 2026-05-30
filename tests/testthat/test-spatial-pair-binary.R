@@ -117,6 +117,7 @@ make_spatial_binary_fixture <- function(n_sites = 120L, n_traits = 3L,
 ## spatial_latent + spatial_unique paired on binary probit
 ## ---------------------------------------------------------------
 test_that("spatial_latent + spatial_unique paired fit on binary probit; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_spatial_binary_deps()
 
   fx <- make_spatial_binary_fixture()

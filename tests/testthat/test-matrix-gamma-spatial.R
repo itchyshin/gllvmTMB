@@ -206,6 +206,7 @@ make_gamma_spatial_fixture <- function(n_sites = 100L, n_traits = 3L,
 ## a fair chance of escaping the local optima a mean-dependent likelihood
 ## with absorbed tau induces (mirrors the binary-probit paired test).
 test_that("Gamma: spatial_latent(d=1) + spatial_unique paired fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_gamma_spatial_deps()
   fx <- make_gamma_spatial_paired_fixture()
 
@@ -259,6 +260,7 @@ test_that("Gamma: spatial_latent(d=1) + spatial_unique paired fits; pd_hessian T
 ## and use$spde are both set. CI smoke is on the single shared `tau_spde`
 ## (under the map the parm token is the bare "tau_spde", block_length == 1L).
 test_that("Gamma: spatial_scalar(0 + trait | site) fits; tau tied; tau_spde profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_gamma_spatial_deps()
   fx   <- make_gamma_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.1)
@@ -334,6 +336,7 @@ test_that("Gamma: spatial_scalar(0 + trait | site) fits; tau tied; tau_spde prof
 ## both finite. No cross-trait correlation surface to extract here. Per the
 ## B0 memo this is the easiest mean-dependent spatial case after `unique`.
 test_that("Gamma: spatial_indep(0 + trait | site) fits; pd_hessian TRUE", {
+  skip_if_not_heavy()
   skip_if_not_gamma_spatial_deps()
   fx   <- make_gamma_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.12)
@@ -384,6 +387,7 @@ test_that("Gamma: spatial_indep(0 + trait | site) fits; pd_hessian TRUE", {
 ## bound on one rho:spatial pair OR a non-degenerate
 ## extract_correlations(tier = "spatial").
 test_that("Gamma: spatial_dep(0 + trait | site) fits; pd_hessian TRUE; CI smoke OR correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_gamma_spatial_deps()
   fx   <- make_gamma_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.12)

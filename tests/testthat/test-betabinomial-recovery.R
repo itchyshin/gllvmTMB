@@ -13,6 +13,7 @@
 ## modern beta-binomial GLMM use cases.
 
 test_that("betabinomial family converges and recovers trait intercepts + phi", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(2025)
   n_ind <- 200
@@ -61,6 +62,7 @@ test_that("betabinomial family converges and recovers trait intercepts + phi", {
 })
 
 test_that("betabinomial logLik agrees with glmmTMB::betabinomial() at the obs-likelihood level", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("glmmTMB")
   set.seed(123)
@@ -104,6 +106,7 @@ test_that("betabinomial logLik agrees with glmmTMB::betabinomial() at the obs-li
 })
 
 test_that("betabinomial rejects non-logit link", {
+  skip_if_not_heavy()
   expect_error(
     suppressMessages(gllvmTMB(
       data.frame(individual = 1:10, trait = "a",

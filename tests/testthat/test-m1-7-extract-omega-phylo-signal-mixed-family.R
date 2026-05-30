@@ -70,6 +70,7 @@ make_phylo_mixed_family_fit <- function(seed = 20260517L) {
 # ---- M1.7 / MIX-07: extract_Omega cross-tier on mixed-family ---------
 
 test_that("extract_Omega() returns coherent T x T cross-tier matrix on phylo+mixed-family fit (M1.7 / MIX-07)", {
+  skip_if_not_heavy()
   skip_unless_ape()
   setup <- make_phylo_mixed_family_fit()
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -101,6 +102,7 @@ test_that("extract_Omega() returns coherent T x T cross-tier matrix on phylo+mix
 # ---- M1.7: cross-tier identity check (Omega = sum of tier-Sigmas + link_resid) -
 
 test_that("extract_Omega() = sum(tier Sigmas with link_residual=none) + link_residual_per_trait on the diagonal (M1.7 / MIX-07)", {
+  skip_if_not_heavy()
   skip_unless_ape()
   setup <- make_phylo_mixed_family_fit()
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -130,6 +132,7 @@ test_that("extract_Omega() = sum(tier Sigmas with link_residual=none) + link_res
 # ---- M1.7 / EXT-07: extract_phylo_signal on phylo+mixed-family --------
 
 test_that("extract_phylo_signal returns valid H^2 + C^2 + Psi partition on phylo+mixed-family fit (M1.7 / EXT-07)", {
+  skip_if_not_heavy()
   skip_unless_ape()
   setup <- make_phylo_mixed_family_fit()
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

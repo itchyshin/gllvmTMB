@@ -14,6 +14,7 @@ source_m3_grid <- function() {
 }
 
 test_that("M3 grid summary counts failed replicates before coverage filtering", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   grid_df <- data.frame(
@@ -37,6 +38,7 @@ test_that("M3 grid summary counts failed replicates before coverage filtering", 
 })
 
 test_that("M3 grid summary handles cells with no converged coverage rows", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   grid_df <- data.frame(
@@ -60,6 +62,7 @@ test_that("M3 grid summary handles cells with no converged coverage rows", {
 })
 
 test_that("M3 helper tags fitted NB2 phi only on NB2 traits", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   fit <- structure(
@@ -81,6 +84,7 @@ test_that("M3 helper tags fitted NB2 phi only on NB2 traits", {
 })
 
 test_that("M3 grid summary preserves fitted phi and link-residual diagnostics", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   grid_df <- data.frame(
@@ -120,6 +124,7 @@ test_that("M3 grid summary preserves fitted phi and link-residual diagnostics", 
 })
 
 test_that("M3 grid summary separates estimated and known phi modes", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   grid_df <- data.frame(
@@ -155,6 +160,7 @@ test_that("M3 grid summary separates estimated and known phi modes", {
 })
 
 test_that("M3 NB2 stress surface register expands fit-phi modes", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   surfaces <- m3_nb2_stress_surfaces()
@@ -169,6 +175,7 @@ test_that("M3 NB2 stress surface register expands fit-phi modes", {
 })
 
 test_that("M3 stress register can include Gaussian and Poisson controls", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   surfaces <- m3_nb2_stress_surfaces(include_controls = TRUE)
@@ -187,6 +194,7 @@ test_that("M3 stress register can include Gaussian and Poisson controls", {
 })
 
 test_that("M3 NB2 start probe configs are bounded and labelled", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   configs <- m3_nb2_start_probe_configs(include_optimizer_probe = FALSE)
@@ -201,6 +209,7 @@ test_that("M3 NB2 start probe configs are bounded and labelled", {
 })
 
 test_that("M3 point-only Sigma diagnostics are not coverage evidence", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   grid_df <- data.frame(
@@ -248,6 +257,7 @@ test_that("M3 point-only Sigma diagnostics are not coverage evidence", {
 })
 
 test_that("M3 summaries keep start-probe rows separated", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   base <- data.frame(
@@ -303,6 +313,7 @@ test_that("M3 summaries keep start-probe rows separated", {
 })
 
 test_that("M3 diagnostic report data keeps trait ratios and failure ledger", {
+  skip_if_not_heavy()
   source_m3_grid()
 
   grid_df <- data.frame(
@@ -351,6 +362,7 @@ test_that("M3 diagnostic report data keeps trait ratios and failure ledger", {
 })
 
 test_that("M3 source-map dashboard keeps point-only rows visually explicit", {
+  skip_if_not_heavy()
   source_m3_grid()
   skip_if_not_installed("ggplot2")
 

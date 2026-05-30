@@ -18,16 +18,19 @@
 # ---- (1) `init_strategy` arg is accepted -----------------------------
 
 test_that("gllvmTMBcontrol(init_strategy = 'single_trait_warmup') is accepted", {
+  skip_if_not_heavy()
   ctl <- gllvmTMB::gllvmTMBcontrol(init_strategy = "single_trait_warmup")
   expect_equal(ctl$init_strategy, "single_trait_warmup")
 })
 
 test_that("gllvmTMBcontrol(init_strategy = 'default') is the documented default", {
+  skip_if_not_heavy()
   ctl <- gllvmTMB::gllvmTMBcontrol()
   expect_equal(ctl$init_strategy, "default")
 })
 
 test_that("gllvmTMBcontrol(init_strategy = 'bogus') errors loudly", {
+  skip_if_not_heavy()
   expect_error(gllvmTMB::gllvmTMBcontrol(init_strategy = "bogus"))
 })
 
@@ -50,6 +53,7 @@ make_gaussian_fixture <- function(n_sites = 30L, n_traits = 2L, seed = 7L) {
 }
 
 test_that("warmup does not change Gaussian convergence (no-op for non-phi families)", {
+  skip_if_not_heavy()
   skip_on_cran()
   df <- make_gaussian_fixture()
   fit_default <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -99,6 +103,7 @@ make_nbinom2_fixture <- function(n_sites = 30L, n_traits = 2L,
 }
 
 test_that("warmup on nbinom2 produces finite non-default initial log_phi", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("MASS")
   df <- make_nbinom2_fixture()
@@ -118,6 +123,7 @@ test_that("warmup on nbinom2 produces finite non-default initial log_phi", {
 # ---- (4) Phi-clamp: warmup with extreme y still produces clamped phi --
 
 test_that("phi clamp [0.01, 100] is applied to warmup output", {
+  skip_if_not_heavy()
   ## Construct a y that would push glm.nb's theta to extreme values
   ## (very low overdispersion → high theta → high phi).
   set.seed(1L)
@@ -141,6 +147,7 @@ test_that("phi clamp [0.01, 100] is applied to warmup output", {
 # ---- (5) Internal helper: univariate phi computation ------------------
 
 test_that(".gllvm_univariate_phi handles unsupported families gracefully", {
+  skip_if_not_heavy()
   ## Gaussian family doesn't carry phi → returns NULL.
   res <- gllvmTMB:::.gllvm_univariate_phi(
     y = stats::rnorm(20), family_name = "gaussian"
@@ -149,6 +156,7 @@ test_that(".gllvm_univariate_phi handles unsupported families gracefully", {
 })
 
 test_that(".gllvm_univariate_phi computes a sensible phi for beta", {
+  skip_if_not_heavy()
   set.seed(3L)
   ## Simulate from Beta(2, 8) — mu = 0.2, phi = 10.
   y_beta <- stats::rbeta(100L, shape1 = 2, shape2 = 8)

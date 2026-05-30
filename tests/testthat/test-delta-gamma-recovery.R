@@ -21,6 +21,7 @@
 ## component) or too close to 0 (no positives to estimate Gamma).
 
 test_that("delta_gamma converges and recovers trait intercepts + per-trait phi", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(2025)
   n_ind <- 400
@@ -80,6 +81,7 @@ test_that("delta_gamma converges and recovers trait intercepts + per-trait phi",
 })
 
 test_that("delta_gamma rejects negative response", {
+  skip_if_not_heavy()
   df <- data.frame(
     individual = factor(rep(1:5, each = 2)),
     trait      = factor(rep(c("a", "b"), 5), levels = c("a", "b")),
@@ -95,6 +97,7 @@ test_that("delta_gamma rejects negative response", {
 })
 
 test_that("delta_gamma accepts string entry family = 'delta_gamma'", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(7)
   n_ind <- 80
@@ -123,6 +126,7 @@ test_that("delta_gamma accepts string entry family = 'delta_gamma'", {
 })
 
 test_that("delta_gamma poisson-link parameterisation is rejected", {
+  skip_if_not_heavy()
   expect_error(
     suppressMessages(gllvmTMB(
       data.frame(individual = factor(1:10),

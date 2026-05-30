@@ -1198,6 +1198,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     spde_M2  <- mesh$spde$g2
   }
 
+  ## ---- BASE augmented SPDE slope (dormant) ------------------------------
+  ## Second SPDE field on a covariate with a 2x2 cross-field covariance,
+  ## prior vec(Omega) ~ N(0, Sigma_field (x) Q^-1) on the same mesh / Q_base.
+  ## No parser activation yet: use_spde_slope is always FALSE here, so this
+  ## is dormant infrastructure that keeps the MakeADFun() contract consistent.
+  ## When activated (future parser slice), n_lhs_cols_spde becomes 2L and
+  ## Z_spde_aug[, 1] = 1, Z_spde_aug[, 2] = covariate.
+  use_spde_slope  <- FALSE
+  n_lhs_cols_spde <- if (use_spde_slope) 2L else 1L
+  Z_spde_aug      <- array(0.0, dim = c(n_obs, n_lhs_cols_spde))
+
   ## ---- equalto (known V) preparation ------------------------------------
   V_inv     <- matrix(0, nrow = 1, ncol = 1)
   log_det_V <- 0
@@ -1286,6 +1297,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     spde_M0          = spde_M0,
     spde_M1          = spde_M1,
     spde_M2          = spde_M2,
+    ## BASE augmented SPDE slope (dormant infrastructure; parser activation
+    ## not yet wired). use_spde_slope == 0 routes nothing; the stubs exist so
+    ## MakeADFun() has a consistent data/parameter contract.
+    use_spde_slope   = as.integer(use_spde_slope),
+    n_lhs_cols_spde  = as.integer(n_lhs_cols_spde),
+    Z_spde_aug       = Z_spde_aug,
     family_id_vec    = as.integer(family_id_vec),
     link_id_vec      = as.integer(link_id_vec),
     n_ordinal_cuts_per_trait = as.integer(n_ordinal_cuts_per_trait),
@@ -1358,6 +1375,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                         } else 0.0,
     omega_spde_lv = matrix(0, nrow = n_mesh,
                            ncol = if (is_spatial_latent) d_spde_lv else 1L),
+    ## BASE augmented SPDE slope params (dormant; mapped off when inactive).
+    omega_spde_aug   = array(0.0, dim = c(n_mesh, n_lhs_cols_spde)),
+    log_sd_spde_b    = rep(0.0, n_lhs_cols_spde),
+    atanh_cor_spde_b = numeric(n_lhs_cols_spde * (n_lhs_cols_spde - 1L) / 2L),
     theta_rr_phy = if (use_phylo_rr) {
                      init_rr_theta_pkg <- function(p, rank)
                        c(rep(0.5, rank), rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
@@ -1681,6 +1702,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_params$atanh_cor_b[] <- 0
     tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
   }
+  ## BASE augmented SPDE slope: map all params off while dormant.
+  if (!use_spde_slope) {
+    tmb_map$omega_spde_aug   <- factor(rep(NA_integer_, length(tmb_params$omega_spde_aug)))
+    tmb_map$log_sd_spde_b    <- factor(rep(NA_integer_, length(tmb_params$log_sd_spde_b)))
+    if (length(tmb_params$atanh_cor_spde_b) > 0L) {
+      tmb_map$atanh_cor_spde_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_spde_b)))
+    }
+  }
   if (!use_re_int) {
     tmb_map$u_re_int         <- factor(rep(NA_integer_, length(tmb_params$u_re_int)))
     tmb_map$log_sigma_re_int <- factor(rep(NA_integer_, length(tmb_params$log_sigma_re_int)))
@@ -1930,6 +1959,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_equalto) random <- c(random, "e_eq")
   if (use_spde && !is_spatial_latent) random <- c(random, "omega_spde")
   if (is_spatial_latent)              random <- c(random, "omega_spde_lv")
+  if (use_spde_slope)                 random <- c(random, "omega_spde_aug")
   if (use_phylo_rr) random <- c(random, "g_phy")
   if (use_phylo_diag) random <- c(random, "g_phy_diag")
   if (use_phylo_slope_correlated) {

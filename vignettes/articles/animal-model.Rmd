@@ -92,6 +92,16 @@ parameterisation $\boldsymbol G \approx \boldsymbol\Lambda
 \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
 (`animal_latent()` paired with `animal_unique()`).
 
+Because the `animal_*()` keywords are pure syntactic sugar over the
+`phylo_*()` engine path (only the relatedness-matrix input differs),
+these intercept structures are **family-general**: the per-trait
+`animal_unique()` / `animal_scalar()` decomposition recovers not only
+under the Gaussian model used in the tutorials below, but also under
+the count, proportion, ordinal, and binomial response families the
+engine supports. The worked examples here are Gaussian for clarity;
+switch `family =` to fit the same genetic structures on a
+non-Gaussian trait.
+
 ## Setup
 
 ```{r setup}
@@ -389,6 +399,173 @@ rotation-invariant and are the right summaries to report. See
 [lambda-constraint](lambda-constraint.html) for confirmatory loadings
 when interpretation of $\boldsymbol\Lambda$ entries is required.
 
+## Tutorial 4: Heritable reaction norms (random regression)
+
+The tutorials above partition variance in a trait's **level**. Many
+quantitative-genetic questions instead concern the **slope** of a
+phenotype on an environmental gradient $x$ — the reaction norm — and
+whether that slope is itself heritable (Meyer & Hill 1997; Nussey,
+Wilson & Brommer 2007). The random-regression animal model gives each
+individual its own slope $\beta_{\mathrm a}(i)$ drawn from a
+genetic distribution:
+
+$$
+\eta_{io} = \mu_{t(o)} + \beta_{\mathrm a}(i)\, x_{io},
+\qquad
+\boldsymbol\beta_{\mathrm a} \sim
+\mathrm{MVN}\!\bigl(\boldsymbol 0,\, \sigma^2_{\mathrm{slope}}\,\boldsymbol A\bigr),
+$$
+
+so that $\sigma^2_{\mathrm{slope}}$ is the additive genetic variance
+in the slope and the $\boldsymbol A$ structure makes related
+individuals have correlated reaction norms. In `gllvmTMB` this is the
+`animal_slope(x | id)` keyword. It carries **one** shared slope
+variance (slopes are shared across traits, in the same sense that
+`animal_scalar()` shares one intercept variance); the relatedness
+matrix is taken from a sibling `animal_*()` term in the same formula.
+
+A 20-individual pedigree is far too small to estimate a slope
+variance, so this tutorial builds a larger multi-generation pedigree
+(96 individuals over three generations). We keep sires and dams in
+disjoint sets so no individual is both.
+
+```{r rr-ped}
+make_rr_pedigree <- function(n_sire = 6L, n_dam = 6L, n_gen = 3L,
+                             n_off_per_gen = 28L, seed = 11L) {
+  set.seed(seed)
+  sires0 <- paste0("s", seq_len(n_sire))
+  dams0  <- paste0("d", seq_len(n_dam))
+  ids  <- c(sires0, dams0)
+  sire <- rep(NA_character_, length(ids))
+  dam  <- rep(NA_character_, length(ids))
+  sire_pool <- sires0
+  dam_pool  <- dams0
+  k <- 0L
+  for (g in seq_len(n_gen)) {
+    born <- character(0)
+    for (j in seq_len(n_off_per_gen)) {
+      k <- k + 1L
+      new_id <- paste0("o", k)
+      ids  <- c(ids, new_id)
+      sire <- c(sire, sample(sire_pool, 1L))
+      dam  <- c(dam,  sample(dam_pool, 1L))
+      born <- c(born, new_id)
+    }
+    half <- length(born) %/% 2L
+    sire_pool <- c(sire_pool, born[seq_len(half)])
+    dam_pool  <- c(dam_pool,  born[(half + 1L):length(born)])
+  }
+  data.frame(id = ids, sire = sire, dam = dam, stringsAsFactors = FALSE)
+}
+
+ped_rr <- make_rr_pedigree()
+A_rr   <- gllvmTMB::pedigree_to_A(ped_rr)
+n_rr   <- nrow(A_rr)
+ids_rr <- rownames(A_rr)
+```
+
+Simulate per-individual breeding values for the slope from
+$\mathcal N(\boldsymbol 0, \sigma^2_{\mathrm{slope}}\,\boldsymbol A)$
+with true $\sigma^2_{\mathrm{slope}} = 0.4$, three traits sharing the
+slope, and five replicate measurements per individual so $x$ varies
+within individual:
+
+```{r rr-sim}
+V_slope_true <- 0.4
+L_rr <- t(chol(A_rr + diag(1e-8, n_rr)))
+beta_rr <- as.numeric(L_rr %*% rnorm(n_rr, sd = sqrt(V_slope_true)))
+names(beta_rr) <- ids_rr
+
+T_rr    <- 3L
+nrep_rr <- 5L
+df_rr <- expand.grid(
+  id    = factor(ids_rr, levels = ids_rr),
+  trait = factor(paste0("t", seq_len(T_rr)), levels = paste0("t", seq_len(T_rr))),
+  rep   = seq_len(nrep_rr)
+)
+df_rr$x <- rnorm(nrow(df_rr))
+df_rr$value <- c(2, 1.5, 1)[as.integer(df_rr$trait)] +
+  beta_rr[as.character(df_rr$id)] * df_rr$x +
+  rnorm(nrow(df_rr), sd = 0.5)
+```
+
+Fit the random-regression animal model. `animal_slope(x | id)`
+supplies the heritable slope; the sibling `animal_scalar(id, pedigree
+= ped_rr)` both fits a genetic intercept and provides the relatedness
+matrix that `animal_slope()` reuses. (Calling `animal_slope(x | id)`
+on its own — with no sibling `animal_*()` term and no relatedness
+input — errors, because the engine has no $\boldsymbol A$ to attach
+the slopes to.)
+
+```{r rr-fit}
+fit_rr <- gllvmTMB(
+  value ~ 0 + trait +
+    animal_scalar(id, pedigree = ped_rr) +
+    animal_slope(x | id),
+  data = df_rr,
+  trait = "trait",
+  unit = "id",
+  cluster = "id"
+)
+fit_rr$opt$convergence
+```
+
+The slope variance is reported as `fit$report$sigma_slope` (an SD;
+square it for $V_{\mathrm{slope}}$). The per-individual slope
+predictions (genetic BLUPs) live in the augmented random-effect block
+`b_phy_slope`, indexed by the rows of `Ainv_phy_rr`:
+
+```{r rr-recovery}
+V_slope_hat <- as.numeric(fit_rr$report$sigma_slope)^2
+
+b_full  <- fit_rr$tmb_obj$env$last.par.best
+blup    <- as.numeric(b_full[names(b_full) == "b_phy_slope"])
+aug_id  <- rownames(fit_rr$tmb_data$Ainv_phy_rr)
+blup_id <- blup[match(ids_rr, aug_id)]
+
+data.frame(
+  quantity = c("V_slope (genetic slope variance)",
+               "cor(BLUP slope, true slope)"),
+  true     = c(V_slope_true, NA),
+  estimate = c(signif(V_slope_hat, 3),
+               round(cor(blup_id, beta_rr), 3))
+)
+```
+
+The genetic slope variance is recovered to within sampling noise and
+the predicted per-individual slopes correlate strongly with the
+simulated truth. As with the level-heritability example, the point
+estimate is noisy at this sample size — reaction-norm variances need
+many individuals with repeated measures across the gradient.
+
+**Relationship to `phylo_slope()`.** `animal_slope(x | id)` is exact
+syntactic sugar for `phylo_slope(x | id)` with the relatedness matrix
+supplied as `vcv = A`: the parser rewrites the former to the latter.
+Supplying the *same* $\boldsymbol A$ to both routings gives a
+byte-identical fit (here the optimised parameter vectors match to
+machine precision):
+
+```{r rr-equiv}
+fit_animal <- gllvmTMB(
+  value ~ 0 + trait + animal_scalar(id, A = A_rr) + animal_slope(x | id),
+  data = df_rr, trait = "trait", unit = "id", cluster = "id"
+)
+fit_phylo <- gllvmTMB(
+  value ~ 0 + trait + phylo_scalar(id, vcv = A_rr) +
+    phylo_slope(x | id, vcv = A_rr),
+  data = df_rr, trait = "trait", unit = "id", cluster = "id"
+)
+max(abs(as.numeric(fit_animal$opt$par) - as.numeric(fit_phylo$opt$par)))
+```
+
+This single-shared-variance slope is the only heritable-slope form
+currently validated. The richer **augmented** reaction-norm models —
+a full $2 \times 2$ (intercept, slope) genetic covariance, or
+trait-specific / reduced-rank slope structures via `animal_indep()`,
+`animal_dep()`, `animal_latent()` on an augmented `(0 + trait + trait:x | id)`
+left-hand side — are not yet wired through the `animal_*()` keywords
+(see [What's not yet supported](#whats-not-yet-supported)).
+
 ## Adding non-genetic random effects
 
 Wild quantitative-genetic models often need additional random effects
@@ -418,7 +595,7 @@ gllvmTMB(
 
 (not fit here for space).
 
-## What's not yet supported
+## What's not yet supported {#whats-not-yet-supported}
 
 `animal_*()` in `gllvmTMB` v0.2.0 covers the **single-A-matrix**
 animal model — one pedigree-derived relatedness matrix, applied to
@@ -434,11 +611,18 @@ this:
   Nakagawa 2010). v0.2.0 densifies $\boldsymbol A^{-1}$ internally;
   large pedigrees ($n \gtrsim 500$) will be substantially faster
   when the direct sparse path lands. Tracked as **ANI-08**.
-- **Random-regression / heritable slopes**
-  (`animal_slope(x | id)`): per-individual slope on a covariate
-  with a $\boldsymbol G$-matrix covariance — the canonical
-  quantitative-genetic reaction-norm model (Meyer & Hill 1997).
-  Parser support is staged; engine support is v0.3.0.
+- **Augmented (structured) reaction norms.** The
+  single-shared-variance heritable slope `animal_slope(x | id)` is
+  supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression)).
+  What is *not* yet wired through the `animal_*()` keywords is the
+  richer augmented form: a full $2 \times 2$ (intercept, slope)
+  genetic covariance, or trait-specific / reduced-rank slope
+  structures, written as `animal_indep()` / `animal_dep()` /
+  `animal_latent()` on an augmented `(0 + trait + trait:x | id)`
+  left-hand side (Meyer & Hill 1997). The underlying augmented
+  engine path exists for the phylogenetic family
+  (`phylo_unique(1 + x | id)`); routing it through `animal_*()` is a
+  v0.3.0 follow-up (register row **ANI-06**).
 
 For these post-v0.2.0 needs the workhorse alternatives are
 [`MCMCglmm`](https://cran.r-project.org/package=MCMCglmm) (Hadfield
@@ -465,6 +649,12 @@ For these post-v0.2.0 needs the workhorse alternatives are
   behind `animal_latent()`).
 - **Kirkpatrick & Meyer (2004)** *Heredity* 93:512 — reduced-rank
   $\boldsymbol G$ matrices in animal-breeding context.
+- **Meyer & Hill (1997)** *Livest. Prod. Sci.* 47:185 —
+  random-regression / covariance-function models for heritable
+  reaction norms; the parameterisation behind `animal_slope()`.
+- **Nussey, Wilson & Brommer (2007)** *J. Evol. Biol.* 20:831 —
+  the evolutionary-ecology framing of heritable phenotypic plasticity
+  (reaction norms) estimated by random-regression animal models.
 - **Runcie & Mukherjee (2013)** *Genetics* 194:753 — Bayesian Sparse
   Factor analysis of $\boldsymbol G$ matrices (BSFG); the canonical
   high-dimensional factor-analytic genetic model. `animal_latent()`

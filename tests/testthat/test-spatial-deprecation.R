@@ -15,7 +15,47 @@
 
 skip_on_cran()
 
+## Empty lifecycle's per-session "already signalled" deprecation cache and
+## restore it on test exit. lifecycle stores signalled ids in the internal
+## environment `lifecycle:::deprecation_env`; wiping it forces deprecate_warn()
+## to treat the next call as fresh so the warning re-emits. Guarded so it
+## degrades to a no-op if that internal ever disappears.
+local_reset_lifecycle_cache <- function(env = parent.frame()) {
+  dep_env <- tryCatch(
+    get("deprecation_env", envir = asNamespace("lifecycle")),
+    error = function(e) NULL
+  )
+  if (is.null(dep_env) || !is.environment(dep_env)) {
+    return(invisible(NULL))
+  }
+  saved <- as.list(dep_env, all.names = TRUE)
+  withr::defer(
+    {
+      rlang::env_unbind(dep_env, rlang::env_names(dep_env))
+      rlang::env_bind(dep_env, !!!saved)
+    },
+    envir = env
+  )
+  rlang::env_unbind(dep_env, rlang::env_names(dep_env))
+  invisible(NULL)
+}
+
 test_that("spatial() emits a lifecycle deprecation warning", {
+  ## lifecycle::deprecate_warn() fires each deprecation only ONCE PER SESSION
+  ## by default: it records signalled ids in lifecycle's internal
+  ## `deprecation_env` and returns early on subsequent hits. Re-running this
+  ## file in one persistent R session (full devtools::test(), repeated
+  ## test_file()) therefore suppresses the warning on the 2nd+ run and fails
+  ## expect_warning(). The documented lifecycle_verbosity = "warning" knob
+  ## only bypasses the cache for *direct* calls (is_direct(user_env) TRUE);
+  ## here the deprecation is signalled deep inside gllvmTMB()'s formula
+  ## parser, so it stays cached regardless. To make the assertion
+  ## deterministic we (a) force hard warnings via lifecycle_verbosity and
+  ## (b) clear lifecycle's signalled-deprecation cache for the duration of
+  ## this test so the warning re-emits on every run.
+  withr::local_options(lifecycle_verbosity = "warning")
+  local_reset_lifecycle_cache()
+
   set.seed(1)
   sim <- gllvmTMB::simulate_site_trait(
     n_sites = 30, n_species = 1, n_traits = 2,

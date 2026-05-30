@@ -75,6 +75,7 @@ articles:
     - articles/phylogenetic-gllvm
     - articles/profile-likelihood-ci
     - articles/psychometrics-irt
+    - articles/random-regression-reaction-norms
     - articles/simulation-recovery-validated
     - articles/simulation-verification
     - articles/stacked-trait-gllvm

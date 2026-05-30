@@ -331,6 +331,276 @@ extract_phylo_signal(fit)
 (wide), as this article does, is what makes `C^2_non` a genuine
 non-phylogenetic shared-axis component rather than a placeholder.
 
+## Reaction norms: a phylogenetic random slope
+
+The covariance terms above all act on trait *intercepts* -- the
+species-level mean of each trait. A different comparative question is
+whether species differ in how a trait *responds to an environmental
+gradient*, and whether that response is itself phylogenetically
+structured. This is a phylogenetic **reaction norm**: a per-species
+slope on a continuous covariate, with the slopes drawn from a
+phylogenetically correlated distribution
+
+$$
+\beta_{\mathrm{slope}} \sim
+\mathrm{N}\!\left(0,\; \sigma^2_{\mathrm{slope}}\, A\right),
+$$
+
+so closely related species tend to have similar environmental
+sensitivities. The keyword is `phylo_slope(x | species)`, where `x` is
+the continuous covariate (the environmental gradient).
+
+This is the **one** random-slope mode that is validated for recovery in
+this package, and only on a Gaussian response. The honest scope is
+spelled out in the caveat below; here we show the worked Gaussian case.
+
+We simulate per-species slopes on a single environmental gradient
+`env`, shared across the three traits, then recover the slope variance
+and the per-species slopes. As elsewhere in this article, this is a
+syntax-and-recovery demonstration on one data set, not a full
+simulation study.
+
+```{r reaction-norm-sim}
+set.seed(2026)
+n_sp_rn <- 60
+rn_traits <- paste0("trait_", seq_len(3))
+
+tree_rn <- ape::rcoal(n_sp_rn)
+tree_rn$tip.label <- paste0("sp", seq_len(n_sp_rn))
+Lphy_rn <- t(chol(ape::vcv(tree_rn, corr = TRUE) + 1e-8 * diag(n_sp_rn)))
+
+sigma_slope_true <- 0.6
+slope_sp <- as.numeric(Lphy_rn %*% rnorm(n_sp_rn, sd = sigma_slope_true))
+names(slope_sp) <- tree_rn$tip.label
+
+rn <- expand.grid(
+  species = factor(tree_rn$tip.label, levels = tree_rn$tip.label),
+  trait   = factor(rn_traits, levels = rn_traits),
+  rep     = seq_len(5)
+)
+rn$env <- rnorm(nrow(rn))
+mu_trait_rn <- c(2.0, 1.0, 0.0)[as.integer(rn$trait)]
+rn$value <- mu_trait_rn +
+  slope_sp[as.character(rn$species)] * rn$env +
+  rnorm(nrow(rn), sd = 0.5)
+head(rn)
+```
+
+The slope keyword goes on the right-hand side alongside the fixed
+trait means. Pass the tree *inside* the keyword (`tree = tree_rn`);
+this is the recommended form and keeps the species index aligned with
+the tree.
+
+```{r reaction-norm-fit}
+fit_rn <- gllvmTMB(
+  value ~ 0 + trait + phylo_slope(env | species, tree = tree_rn),
+  data = rn,
+  unit = "species"
+)
+fit_rn$opt$convergence
+```
+
+`phylo_slope` estimates a single shared slope variance
+`sigma_slope^2` (the slopes are shared across traits in this initial
+release). It is reported on the standard-deviation scale as
+`log_sigma_slope`:
+
+```{r reaction-norm-sigma}
+sigma_slope_hat <- exp(
+  fit_rn$opt$par[grepl("log_sigma_slope", names(fit_rn$opt$par))]
+)
+c(true = sigma_slope_true, estimate = unname(round(sigma_slope_hat, 3)))
+```
+
+The per-species slopes themselves are the random effects
+`b_phy_slope`, indexed against the augmented `A` rows. Aligning them
+to the tip labels recovers the simulated slopes closely:
+
+```{r reaction-norm-slopes}
+b_all     <- fit_rn$tmb_obj$env$last.par.best
+b_slope   <- as.numeric(b_all[names(b_all) == "b_phy_slope"])
+aug_names <- rownames(fit_rn$tmb_data$Ainv_phy_rr)
+tip_slope <- b_slope[match(tree_rn$tip.label, aug_names)]
+
+round(cor(tip_slope, slope_sp), 2)   # fitted vs simulated per-species slopes
+```
+
+The slope term composes with the intercept-covariance terms from the
+rest of this article. For example, a reduced-rank phylogenetic axis on
+the intercepts and a phylogenetic reaction-norm slope can be fit
+together:
+
+```{r reaction-norm-combined}
+fit_rn_latent <- gllvmTMB(
+  value ~ 0 + trait +
+    phylo_latent(species, d = 1, tree = tree_rn) +
+    phylo_slope(env | species, tree = tree_rn),
+  data = rn,
+  unit = "species"
+)
+fit_rn_latent$opt$convergence
+```
+
+### Scope of the slope machinery (read before extending)
+
+`phylo_slope` is deliberately narrow, and the package is honest about
+what is *not* yet available. The validated capability is exactly:
+
+- **`phylo_slope(x | species)` on a Gaussian response**: a single
+  shared slope variance on one continuous covariate, slopes shared
+  across traits. Recovery of `sigma_slope` and the per-species slopes
+  is validated on a Gaussian data-generating process. The parallel
+  pedigree keyword `animal_slope(x | id)` uses the same machinery on a
+  relatedness matrix `A`.
+
+What is **not** implemented (the fit will stop, or the richer
+structure is simply unavailable -- it is not silently approximated):
+
+- **Trait-specific / structured phylogenetic slopes.** The richer
+  augmented spellings `phylo_indep(0 + trait + trait:x | species)`,
+  `phylo_dep(... | species)`, and `phylo_latent(...)`-slope are
+  **reserved for a future release**. `phylo_indep` and `phylo_dep`
+  **fail loud** on a slope left-hand side (the parser reports that an
+  "LHS richer than `0 + trait` is not yet supported"), so you cannot
+  accidentally get an unvalidated fit. Only the single-variance
+  `phylo_slope` path exists today.
+- **Calibrated intervals on the slope variance.** The point estimate
+  of `sigma_slope` is what this section demonstrates; calibrated
+  confidence-interval coverage for slope variances has not been
+  established and should not be reported as such.
+- **Non-Gaussian slope recovery.** Slope recovery is validated on the
+  Gaussian DGP shown here. Treat other response families with the
+  slope keyword as untested for recovery.
+
+If your question genuinely needs a correlated (intercept, slope)
+covariance or trait-specific reaction norms, that is engine work in
+progress rather than a feature to reach for now.
+
+## Trait covariance across nested tiers
+
+The phylogenetic and non-phylogenetic split above is one example of a
+more general pattern: the same `latent() + unique()` covariance
+decomposition can be placed at **several nested grouping tiers** at
+once. The three grouping slots are named by the `unit`, `unit_obs`,
+and `cluster` arguments:
+
+- `unit` -- the primary between-group level whose covariance you most
+  want to read (here, the individual);
+- `unit_obs` -- the within-`unit` replication level (here, the
+  repeated measurement session), which carries the residual;
+- `cluster` -- a third grouping slot (here, the population the
+  individual belongs to).
+
+This is the layout behind a repeated-measures "behavioural syndrome"
+design: traits measured several times per individual, individuals
+nested in populations. We decompose the among-individual trait
+covariance into a shared axis plus a trait-specific diagonal, and add
+a separate population-level diagonal.
+
+```{r tiers-sim}
+set.seed(2026)
+n_pop     <- 6
+n_ind_per <- 10
+n_sess    <- 4
+behav     <- paste0("behav_", seq_len(3))
+
+pop  <- factor(rep(seq_len(n_pop), each = n_ind_per * n_sess))
+ind  <- factor(rep(seq_len(n_pop * n_ind_per), each = n_sess))
+sess <- factor(seq_along(ind))
+
+tiers <- data.frame(
+  population = rep(pop,  3),
+  individual = rep(ind,  3),
+  session_id = rep(sess, 3),
+  trait      = factor(rep(behav, each = length(sess)), levels = behav)
+)
+
+# Truth: a shared among-individual axis + trait-specific diagonals at
+# the individual and population tiers, plus residual session noise.
+n_ind_tot  <- nlevels(ind)
+Lambda_ind <- matrix(c(0.9, 0.6, 0.3), 3, 1)
+psi_ind    <- c(0.20, 0.25, 0.30)
+psi_pop    <- c(0.40, 0.30, 0.35)
+psi_resid  <- c(0.15, 0.15, 0.15)
+
+f_ind      <- rnorm(n_ind_tot)
+ind_shared <- f_ind %o% as.numeric(Lambda_ind)
+ind_uniq   <- sapply(psi_ind, function(s) rnorm(n_ind_tot, sd = sqrt(s)))
+pop_uniq   <- sapply(psi_pop, function(s) rnorm(n_pop,     sd = sqrt(s)))
+
+mu_behav <- c(0.5, 0.0, -0.5)
+ti <- as.integer(tiers$trait)
+ii <- as.integer(tiers$individual)
+pp <- as.integer(tiers$population)
+tiers$value <- mu_behav[ti] +
+  ind_shared[cbind(ii, ti)] + ind_uniq[cbind(ii, ti)] +
+  pop_uniq[cbind(pp, ti)] +
+  rnorm(nrow(tiers), sd = sqrt(psi_resid[ti]))
+```
+
+The formula places a `latent() + unique()` pair at the individual
+tier and a `unique()` diagonal at the population tier. The three
+grouping columns are routed by the `unit` / `unit_obs` / `cluster`
+arguments:
+
+```{r tiers-fit}
+fit_tier <- gllvmTMB(
+  value ~ 0 + trait +
+    latent(0 + trait | individual, d = 1) +
+    unique(0 + trait | individual) +
+    unique(0 + trait | population),
+  data     = tiers,
+  unit     = "individual",
+  unit_obs = "session_id",
+  cluster  = "population"
+)
+fit_tier$opt$convergence
+```
+
+`extract_Sigma()` reads the covariance at whichever tier you name.
+The `unit` (individual) tier returns the full trait covariance and its
+correlation; the `cluster` (population) tier returns the `unique()`
+diagonal it carries:
+
+```{r tiers-extract}
+# Among-individual total trait covariance (the syndrome of interest).
+Sigma_ind <- extract_Sigma(fit_tier, level = "unit", part = "total")
+round(Sigma_ind$R, 2)   # correlation among individual-level trait values
+
+# Population-tier trait-specific variances (a diagonal at the cluster slot).
+Sigma_pop <- extract_Sigma(fit_tier, level = "cluster", part = "unique")
+round(Sigma_pop$s, 3)
+```
+
+The table extractor gives the same content per tier in long form, with
+an `interval_status` column so you can see which entries carry an
+interval:
+
+```{r tiers-table}
+ind_total <- extract_Sigma_table(
+  fit_tier, level = "unit", part = "total",
+  measure = "correlation", entries = "all"
+)
+ind_total[, c("component", "trait_i", "trait_j",
+              "estimate", "interval_status")]
+```
+
+Because the individual tier has both a `latent()` and a `unique()`
+term, communality is defined there -- the fraction of each trait's
+among-individual variance explained by the shared syndrome axis:
+
+```{r tiers-communality}
+round(extract_communality(fit_tier, level = "unit"), 2)
+```
+
+A practical caveat: the **cluster** tier here has only `r n_pop`
+populations, so its diagonal (`Sigma_pop$s` above) is estimated from
+few groups and should be read as indicative, not precise -- the same
+small-group caution that applies to small trees applies to a
+small number of clusters. The among-individual covariance, estimated
+from `r n_ind_tot` individuals, is the better-determined target in
+this design.
+
 ## Compare against simpler and saturated baselines
 
 Three nested covariance intents bracket the four-component model:

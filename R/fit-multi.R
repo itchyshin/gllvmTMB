@@ -352,17 +352,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## (Hadfield & Nakagawa 2010; Meyer & Kirkpatrick 2008; Halliwell et al.
   ## 2025).
   phy_idx        <- which(kinds == "phylo_rr")
-  phy_is_unique  <- vapply(phy_idx, function(i)
+  ## Design 56 Sec. 9.5a: augmented phylo_latent(1 + x | sp, d = K) routes to a
+  ## phylo_rr covstruct carrying the `.latent_slope` marker. It drives the
+  ## dedicated block-diagonal reduced-rank latent-slope C++ block
+  ## (use_phylo_latent_slope), NOT the intercept-only phylo_rr block, so it is
+  ## excluded from both phylo_rr_idx and phylo_diag_idx below.
+  phy_is_latent_slope <- vapply(phy_idx, function(i)
+                           isTRUE(parsed$covstructs[[i]]$extra$.latent_slope),
+                           logical(1L))
+  phy_idx_main   <- phy_idx[!phy_is_latent_slope]
+  phylo_latent_slope_idx <- phy_idx[phy_is_latent_slope]
+  phy_is_unique  <- vapply(phy_idx_main, function(i)
                            isTRUE(parsed$covstructs[[i]]$extra$.phylo_unique),
                            logical(1L))
-  phy_is_indep   <- vapply(phy_idx, function(i)
+  phy_is_indep   <- vapply(phy_idx_main, function(i)
                            isTRUE(parsed$covstructs[[i]]$extra$.indep),
                            logical(1L))
-  phy_is_dep     <- vapply(phy_idx, function(i)
+  phy_is_dep     <- vapply(phy_idx_main, function(i)
                            isTRUE(parsed$covstructs[[i]]$extra$.dep),
                            logical(1L))
-  phylo_rr_idx   <- phy_idx[!phy_is_unique]   # phylo_latent + phylo_dep terms
-  phylo_diag_idx <- phy_idx[ phy_is_unique]   # phylo_unique terms (incl. phylo_indep)
+  phylo_rr_idx   <- phy_idx_main[!phy_is_unique]   # phylo_latent + phylo_dep terms
+  phylo_diag_idx <- phy_idx_main[ phy_is_unique]   # phylo_unique terms (incl. phylo_indep)
+  if (length(phylo_latent_slope_idx) > 1L)
+    cli::cli_abort("Only one augmented {.fn phylo_latent} (random-slope) term is supported per formula.")
   ## ---- phylo_dep over-parameterisation guards --------------------------
   ## `phylo_dep(0+trait|species)` rewrites to `phylo_rr(species, d = n_traits,
   ## .dep = TRUE)`. Same engine path as `phylo_latent(species, d = n_traits)`
@@ -635,6 +647,38 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     } else {
       deparse(phylo_slope_cs$lhs)
     }
+  } else NA_character_
+
+  ## Design 56 Sec. 5.3 / 9.5a: augmented phylo_latent(1 + x | sp, d = K).
+  ## Block-diagonal reduced-rank random regression -- each LHS column gets its
+  ## own factor-analytic Lambda_k Lambda_k^T (rank d_phy_slope), no intercept-
+  ## slope correlation. Drives the dedicated use_phylo_latent_slope C++ block.
+  use_phylo_latent_slope <- length(phylo_latent_slope_idx) > 0L
+  phylo_latent_slope_cs <- if (use_phylo_latent_slope) {
+    parsed$covstructs[[phylo_latent_slope_idx[1L]]]
+  } else NULL
+  ## Gaussian anchor only in this slice (family unknown at parse time; the
+  ## non-Gaussian latent-slope cells are deferred per Design 56 Sec. 2).
+  if (use_phylo_latent_slope && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "{.fn phylo_latent} random slopes are validated for {.code gaussian()} only in this release.",
+      "i" = "The augmented {.code phylo_latent(1 + x | species, d = K)} non-Gaussian cells are deferred (Design 56 Sec. 9.5a, Gaussian anchor first).",
+      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for non-Gaussian augmented phylogenetic random regression."
+    ))
+  }
+  d_phy_slope <- if (use_phylo_latent_slope) {
+    as.integer(phylo_latent_slope_cs$extra$d %||% 1L)
+  } else 1L
+  phylo_latent_slope_lhs_form <- if (use_phylo_latent_slope) {
+    phylo_latent_slope_cs$extra$lhs_form %||% "unsupported"
+  } else "none"
+  n_lhs_cols_lat <- if (use_phylo_latent_slope) 2L else 1L
+  phylo_latent_slope_xcol <- if (use_phylo_latent_slope) {
+    sc <- phylo_latent_slope_cs$extra$slope_col
+    if (is.null(sc) || !nzchar(sc)) {
+      cli::cli_abort("Internal: augmented phylo_latent random regression is missing {.code slope_col}.")
+    }
+    sc
   } else NA_character_
 
   d_B <- if (use_rr_B) {
@@ -1098,10 +1142,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   log_det_A_phy_rr <- 0
   n_aug_phy        <- n_species
   species_aug_id   <- species_id        # default: tip-only path uses species_id directly
-  ## Build the sparse A^-1 machinery whenever either phylo_latent OR
-  ## phylo_slope is requested. The two terms share Ainv_phy_rr,
-  ## n_aug_phy, log_det_A_phy_rr, and species_aug_id.
-  use_any_phy_term <- use_phylo_rr || use_phylo_diag || use_phylo_slope
+  ## Build the sparse A^-1 machinery whenever any phylogenetic term
+  ## (phylo_latent, phylo_unique, phylo_slope, or the augmented latent-slope)
+  ## is requested. They share Ainv_phy_rr, n_aug_phy, log_det_A_phy_rr, and
+  ## species_aug_id.
+  use_any_phy_term <- use_phylo_rr || use_phylo_diag || use_phylo_slope ||
+    use_phylo_latent_slope
   if (use_any_phy_term) {
     if (!is.null(phylo_tree)) {
       ## --- Stage 40: TRUE Hadfield sparse-A^-1 trick ----------------------
@@ -1305,6 +1351,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Z_phy_aug[, 1L, 1L] <- x_phy_slope_dat
   }
 
+  ## Design 56 Sec. 9.5a: augmented phylo_latent design matrix Z_phy_lat
+  ## (n_obs x n_lhs_cols_lat). Column 0 = intercept (1's), column 1 = the
+  ## slope covariate. Independent of Z_phy_aug (the dep/unique path).
+  Z_phy_lat <- matrix(0.0, nrow = n_obs, ncol = n_lhs_cols_lat)
+  if (use_phylo_latent_slope) {
+    if (
+      !phylo_latent_slope_lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+    ) {
+      cli::cli_abort(c(
+        "Unsupported augmented phylo_latent random-regression LHS.",
+        "i" = "Got LHS form {.val {phylo_latent_slope_lhs_form}}.",
+        ">" = "Use {.code phylo_latent(1 + x | species, d = K)} or {.code phylo_latent(0 + trait + (0 + trait):x | species, d = K)}."
+      ))
+    }
+    if (!phylo_latent_slope_xcol %in% names(data)) {
+      cli::cli_abort(c(
+        "{.code phylo_latent(1 + {phylo_latent_slope_xcol} | {species})} references column {.val {phylo_latent_slope_xcol}}, which is not in {.arg data}.",
+        "i" = "Add the covariate column to the data frame."
+      ))
+    }
+    Z_phy_lat[, 1L] <- 1.0
+    Z_phy_lat[, 2L] <- as.numeric(data[[phylo_latent_slope_xcol]])
+  }
+
   tmb_data <- list(
     y                = as.numeric(y),
     n_trials         = as.numeric(n_trials),
@@ -1356,6 +1427,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     use_phylo_slope_correlated = as.integer(use_phylo_slope_correlated),
     n_lhs_cols       = as.integer(n_lhs_cols),
     Z_phy_aug        = Z_phy_aug,
+    ## Design 56 Sec. 9.5a: augmented phylo_latent (block-diagonal RR slope)
+    use_phylo_latent_slope = as.integer(use_phylo_latent_slope),
+    d_phy_slope      = as.integer(d_phy_slope),
+    n_lhs_cols_lat   = as.integer(n_lhs_cols_lat),
+    Z_phy_lat        = Z_phy_lat,
     ## phylo_dep slope (Stage 3, Design 56 sec.9.5c). Activated by the
     ## phylo_dep(1 + x | sp) parser route. When 1, n_lhs_cols = 2 * n_traits
     ## and Sigma_b is the full unstructured C x C built from theta_dep_chol
@@ -1433,6 +1509,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     b_phy_aug       = array(0.0, dim = c(n_aug_phy, n_lhs_cols, n_phy_aug_blocks)),
     log_sd_b        = rep(0.0, n_lhs_cols),
     atanh_cor_b     = numeric(n_lhs_cols * (n_lhs_cols - 1L) / 2L),
+    ## Design 56 Sec. 9.5a: augmented phylo_latent (block-diagonal RR slope).
+    ## theta_rr_phy_slope packs n_lhs_cols_lat lower-triangular Lambda_k blocks
+    ## (each with the rr() identity-diagonal start); g_phy_slope holds the
+    ## per-column N(0, A) factor scores. Mapped off when not in use.
+    theta_rr_phy_slope = if (use_phylo_latent_slope) {
+      rep(init_rr_theta(n_traits, d_phy_slope), n_lhs_cols_lat)
+    } else {
+      rep(0.0, n_lhs_cols_lat *
+            (n_traits * d_phy_slope - d_phy_slope * (d_phy_slope - 1L) / 2L))
+    },
+    g_phy_slope     = array(0.0, dim = c(n_aug_phy, d_phy_slope, n_lhs_cols_lat)),
     ## phylo_dep slope unstructured-covariance Cholesky packing; length
     ## C(C+1)/2 (C = n_lhs_cols = 2T) only on the dep path, else empty. The
     ## first C entries are the log-diagonal of the lower-triangular L (the
@@ -1760,6 +1847,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_params$atanh_cor_b[] <- 0
     tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
   }
+  if (!use_phylo_latent_slope) {
+    tmb_map$theta_rr_phy_slope <-
+      factor(rep(NA_integer_, length(tmb_params$theta_rr_phy_slope)))
+    tmb_map$g_phy_slope <-
+      factor(rep(NA_integer_, length(tmb_params$g_phy_slope)))
+  }
   ## theta_dep_chol is FREE only on the dep path; mapped off (length 0
   ## no-op) everywhere else so the legacy / unique / indep fits stay
   ## byte-identical and TMB never tries to optimise a stray parameter.
@@ -2023,6 +2116,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else if (use_phylo_slope) {
     random <- c(random, "b_phy_slope")
   }
+  if (use_phylo_latent_slope) random <- c(random, "g_phy_slope")
   if (use_re_int)   random <- c(random, "u_re_int")
 
   ## Design 48 §2 Mitigation A (single-trait warmup). Opt-in via
@@ -2269,6 +2363,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           propto = use_propto, diag_species = use_diag_species,
                           equalto = use_equalto, spde = use_spde,
                           phylo_rr = use_phylo_rr,
+                          ## Design 56 Sec. 9.5a: augmented phylo_latent
+                          ## (block-diagonal reduced-rank random slope). Its
+                          ## own dedicated engine block, distinct from the
+                          ## intercept-only phylo_rr.
+                          phylo_latent_slope = use_phylo_latent_slope,
                           ## Paired phylogenetic PGLLVM: phylo_diag is the new dedicated
                           ## engine slot for per-trait phylogenetic random
                           ## intercepts. Co-fits with phylo_rr to give the

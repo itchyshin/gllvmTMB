@@ -207,6 +207,33 @@ Type objective_function<Type>::operator()()
   // Default 0 keeps the unique/indep/legacy paths byte-identical.
   DATA_INTEGER(use_phylo_dep_slope);
 
+  // phylo_latent random slope (Design 56 Sec. 5.3 latent row; Sec. 9.5a):
+  //   phylo_latent(1 + x | sp, d = K) -- reduced-rank, BLOCK-DIAGONAL across
+  //   the LHS columns. Each LHS column k in {0 = intercept, 1 = slope} gets
+  //   its OWN factor-analytic decomposition Sigma_k = Lambda_k Lambda_k^T
+  //   (n_traits x n_traits, rank d_phy_slope), with K latent factor-score
+  //   columns g_phy_slope[ , f, k] ~ N(0, A_phy) i.i.d. across f and k. There
+  //   is NO intercept-slope correlation (block-diagonal == cross-column
+  //   covariance blocks are zero), which is the Sec. 5.3 latent semantics, in
+  //   contrast to the full 2x2 / unstructured b_phy_aug (dep/unique) path.
+  //
+  //   eta(o) += sum_{k} Z_phy_lat(o, k)
+  //               * sum_{f} Lambda_phy_slope(t(o), f, k) * g_phy_slope(sp(o), f, k)
+  //
+  //   This is the existing phylo_rr eta term replicated per LHS column, with
+  //   an independent loading matrix per column and the column design value
+  //   Z_phy_lat (column 0 = 1's; column 1 = x covariate). Reuses
+  //   Ainv_phy_rr / n_aug_phy / log_det_A_phy_rr / species_aug_id from the
+  //   phylo_rr machinery (same tree / VCV). When use_phylo_latent_slope == 0
+  //   the parameters below are mapped off on the R side and this block is
+  //   inert. References: Hadfield & Nakagawa (2010) JEB 23:494-508 (the A
+  //   prior); the random-regression / reaction-norm decomposition (Design 56
+  //   Sec. 5.1) restricted to the block-diagonal (uncorrelated) case.
+  DATA_INTEGER(use_phylo_latent_slope);
+  DATA_INTEGER(d_phy_slope);          // rank K of each per-column FA decomposition
+  DATA_INTEGER(n_lhs_cols_lat);       // LHS columns for the latent-slope block (1 or 2)
+  DATA_MATRIX(Z_phy_lat);             // n_obs x n_lhs_cols_lat (col 0 = 1's; col 1 = x)
+
   // Generic random intercepts `(1 | group)` (lme4/glmmTMB bar syntax).
   // Each term t adds u_re_int[offset(t) + group_id(o, t)] to eta(o), where
   // u_re_int[range_t] ~ N(0, sigma_re_int(t)^2) i.i.d. across levels.
@@ -287,6 +314,13 @@ Type objective_function<Type>::operator()()
   PARAMETER_ARRAY(b_phy_aug);                     // n_aug_phy x n_lhs_cols x n_phy_aug_blocks
   PARAMETER_VECTOR(log_sd_b);                     // length n_lhs_cols
   PARAMETER_VECTOR(atanh_cor_b);                  // n_lhs_cols * (n_lhs_cols - 1) / 2
+  // phylo_latent slope (Design 56 Sec. 5.3 / 9.5a). theta_rr_phy_slope packs
+  // n_lhs_cols_lat lower-triangular Lambda_k blocks back-to-back, each of
+  // length n_traits*d_phy_slope - d_phy_slope*(d_phy_slope-1)/2 (same packed
+  // layout as theta_rr_phy). g_phy_slope holds the per-column latent factor
+  // scores. Mapped off on the R side when use_phylo_latent_slope == 0.
+  PARAMETER_VECTOR(theta_rr_phy_slope);           // n_lhs_cols_lat packed Lambda_k blocks
+  PARAMETER_ARRAY(g_phy_slope);                   // n_aug_phy x d_phy_slope x n_lhs_cols_lat
   // phylo_dep slope (Stage 3, Design 56 sec.9.5c): full unstructured
   // C x C covariance Sigma_b = L L^T over the C = 2T trait-stacked
   // (intercept, slope) random-effect columns. theta_dep_chol packs the
@@ -712,6 +746,82 @@ Type objective_function<Type>::operator()()
     }  // end closed-form (use_phylo_dep_slope == 0) branch
   }
 
+  // -------- phylo_latent slope (Design 56 Sec. 5.3 / 9.5a) -------------
+  // Block-diagonal reduced-rank random regression on the phylogeny. For each
+  // LHS column k, build an independent loading matrix Lambda_k (n_traits x
+  // d_phy_slope, lower-triangular rr() convention) and place an independent
+  // N(0, A) prior on each of the d_phy_slope factor-score columns
+  // g_phy_slope[ , f, k]. The negative log prior is the standard MVN constant
+  // 0.5*(n_aug*log2pi + log|A|) plus 0.5*g' Ainv g, summed over the
+  // n_lhs_cols_lat * d_phy_slope independent latent columns -- the existing
+  // phylo_rr prior loop replicated across an extra LHS-column axis. There is
+  // no cross-column (intercept-slope) term: the cross-column covariance
+  // blocks are exactly zero (the Sec. 5.3 "block-diagonal across LHS columns"
+  // semantics). Lambda_phy_slope is REPORTed per column for extraction.
+  array<Type> Lambda_phy_slope(n_traits, std::max(d_phy_slope, 1),
+                               std::max(n_lhs_cols_lat, 1));
+  Lambda_phy_slope.setZero();
+  if (use_phylo_latent_slope == 1) {
+    if (n_lhs_cols_lat < 1 || n_lhs_cols_lat > 2)
+      error("gllvmTMB_multi: n_lhs_cols_lat must be 1 or 2");
+    if (g_phy_slope.dim.size() != 3)
+      error("gllvmTMB_multi: g_phy_slope must be a 3D array");
+    if (g_phy_slope.dim[0] != n_aug_phy)
+      error("gllvmTMB_multi: g_phy_slope first dimension must equal n_aug_phy");
+    if (g_phy_slope.dim[1] != d_phy_slope)
+      error("gllvmTMB_multi: g_phy_slope second dimension must equal d_phy_slope");
+    if (g_phy_slope.dim[2] != n_lhs_cols_lat)
+      error("gllvmTMB_multi: g_phy_slope third dimension must equal n_lhs_cols_lat");
+    if (Z_phy_lat.rows() != y.size() || Z_phy_lat.cols() != n_lhs_cols_lat)
+      error("gllvmTMB_multi: Z_phy_lat must be n_obs x n_lhs_cols_lat");
+    int p = n_traits;
+    int rank = d_phy_slope;
+    int len_per_col = p * rank - rank * (rank - 1) / 2;
+    if (theta_rr_phy_slope.size() != n_lhs_cols_lat * len_per_col)
+      error("gllvmTMB_multi: theta_rr_phy_slope has wrong length");
+    // Build each per-column Lambda_k from its packed lower-triangular slice.
+    for (int kcol = 0; kcol < n_lhs_cols_lat; kcol++) {
+      vector<Type> theta_k =
+        theta_rr_phy_slope.segment(kcol * len_per_col, len_per_col);
+      vector<Type> lam_diag = theta_k.head(rank);
+      vector<Type> lam_lower = theta_k.tail(len_per_col - rank);
+      for (int j = 0; j < rank; j++) {
+        for (int i = 0; i < p; i++) {
+          if (j > i)
+            Lambda_phy_slope(i, j, kcol) = 0;
+          else if (i == j)
+            Lambda_phy_slope(i, j, kcol) = lam_diag(j);
+          else
+            Lambda_phy_slope(i, j, kcol) =
+              lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
+        }
+      }
+    }
+    // Independent N(0, A) prior on every factor-score column.
+    for (int kcol = 0; kcol < n_lhs_cols_lat; kcol++) {
+      for (int f = 0; f < d_phy_slope; f++) {
+        vector<Type> g_kf(n_aug_phy);
+        for (int i = 0; i < n_aug_phy; i++) g_kf(i) = g_phy_slope(i, f, kcol);
+        Type quad = (g_kf.matrix().transpose() * Ainv_phy_rr * g_kf.matrix())(0, 0);
+        nll += Type(0.5) * (Type(n_aug_phy) * log(2.0 * M_PI)
+                            + log_det_A_phy_rr + quad);
+      }
+    }
+    REPORT(Lambda_phy_slope);
+    // Per-column Sigma_k = Lambda_k Lambda_k^T for extraction / recovery.
+    matrix<Type> L0(n_traits, std::max(d_phy_slope, 1));
+    matrix<Type> L1(n_traits, std::max(d_phy_slope, 1));
+    for (int j = 0; j < std::max(d_phy_slope, 1); j++)
+      for (int i = 0; i < n_traits; i++) {
+        L0(i, j) = Lambda_phy_slope(i, j, 0);
+        L1(i, j) = (n_lhs_cols_lat > 1) ? Lambda_phy_slope(i, j, 1) : Type(0);
+      }
+    matrix<Type> Sigma_phy_slope_intercept = L0 * L0.transpose();
+    matrix<Type> Sigma_phy_slope_slope = L1 * L1.transpose();
+    REPORT(Sigma_phy_slope_intercept);
+    REPORT(Sigma_phy_slope_slope);
+  }
+
   // -------- spde: per-trait SPDE GMRF prior on omega columns -----------
   // Marriage step: glmmTMB-style covstruct dispatch + sdmTMB-style sparse Q.
   // Two paths share the same Q_base = kappa^4 M0 + 2 kappa^2 M1 + M2:
@@ -878,6 +988,20 @@ Type objective_function<Type>::operator()()
     } else if (use_phylo_slope == 1) {
       // Per-species slope on x, shared across traits.
       eta(o) += b_phy_slope(species_aug_id(o)) * x_phy_slope(o);
+    }
+    if (use_phylo_latent_slope == 1) {
+      // Block-diagonal reduced-rank random regression: per LHS column k,
+      // the reduced-rank phylo factor structure (independent Lambda_k and
+      // scores), weighted by the column design value Z_phy_lat(o, k).
+      Type contrib_lat = 0;
+      for (int kcol = 0; kcol < n_lhs_cols_lat; kcol++) {
+        Type u_kt = 0;
+        for (int f = 0; f < d_phy_slope; f++)
+          u_kt += Lambda_phy_slope(t, f, kcol)
+                  * g_phy_slope(species_aug_id(o), f, kcol);
+        contrib_lat += Z_phy_lat(o, kcol) * u_kt;
+      }
+      eta(o) += contrib_lat;
     }
     if (use_re_int == 1) {
       for (int term = 0; term < n_re_int_terms; term++) {

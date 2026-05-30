@@ -551,6 +551,7 @@ extract_Sigma <- function(
     "unit",
     "unit_obs",
     "phy",
+    "phy_slope",
     "spatial",
     "cluster",
     ## legacy aliases (deprecated soft):
@@ -676,6 +677,46 @@ extract_Sigma <- function(
         )
       }
     }
+  } else if (identical(level, "phy_slope")) {
+    ## Design 56 Sec. 9.5a: augmented phylo_latent(1 + x | sp, d = K) -- the
+    ## block-diagonal reduced-rank random regression. Each LHS column has its
+    ## OWN cross-trait covariance Sigma_k = Lambda_k Lambda_k^T; there is no
+    ## intercept-slope correlation (the cross-column blocks are zero by the
+    ## Sec. 5.3 latent semantics). Because there are TWO T x T matrices (one
+    ## per LHS column), this level returns a structured list rather than the
+    ## single-Sigma assembly the other levels use. Returned early.
+    if (!isTRUE(fit$use$phylo_latent_slope)) {
+      cli::cli_abort(c(
+        "Fit has no augmented {.code phylo_latent(1 + x | species, d = K)} term -- nothing to extract at level {.val phy_slope}.",
+        "i" = "Use {.code level = \"phy\"} for an intercept-only {.fn phylo_latent} fit."
+      ))
+    }
+    Sigma_int <- fit$report$Sigma_phy_slope_intercept
+    Sigma_slope <- fit$report$Sigma_phy_slope_slope
+    Lam_arr <- fit$report$Lambda_phy_slope   # T x K x n_lhs_cols
+    rownames(Sigma_int) <- colnames(Sigma_int) <- trait_names
+    rownames(Sigma_slope) <- colnames(Sigma_slope) <- trait_names
+    return(structure(
+      list(
+        intercept = Sigma_int,
+        slope = Sigma_slope,
+        Lambda_intercept = Lam_arr[, , 1L, drop = TRUE],
+        Lambda_slope = if (dim(Lam_arr)[3L] > 1L) {
+          Lam_arr[, , 2L, drop = TRUE]
+        } else {
+          NULL
+        },
+        level = "phy_slope",
+        part = part,
+        notes = c(
+          "phylo_latent random slope: block-diagonal across LHS columns.",
+          "Sigma$intercept and Sigma$slope are the per-column cross-trait",
+          "covariances (Lambda_k Lambda_k^T). No intercept-slope correlation",
+          "is modelled (Design 56 Sec. 5.3 latent semantics)."
+        )
+      ),
+      class = "gllvmTMB_Sigma_phy_slope"
+    ))
   } else if (identical(level, "spde")) {
     if (!isTRUE(fit$use$spatial_latent)) {
       cli::cli_abort(
@@ -871,4 +912,27 @@ extract_Sigma <- function(
   }
 
   out
+}
+
+#' Print an augmented phylo_latent slope Sigma extraction
+#'
+#' @param x A `gllvmTMB_Sigma_phy_slope` object from
+#'   [extract_Sigma()] with `level = "phy_slope"`.
+#' @param digits Number of significant digits.
+#' @param ... Ignored.
+#' @return `x`, invisibly.
+#' @export
+print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
+  cat("phylo_latent random slope -- per-LHS-column cross-trait Sigma\n")
+  cat("(block-diagonal across LHS columns; no intercept-slope correlation)\n\n")
+  cat("Sigma (intercept column):\n")
+  print(round(x$intercept, digits))
+  cat("\nSigma (slope column):\n")
+  print(round(x$slope, digits))
+  if (length(x$notes)) {
+    cat("\n")
+    for (n in x$notes) cat(strwrap(n, prefix = "  "), sep = "\n")
+    cat("\n")
+  }
+  invisible(x)
 }

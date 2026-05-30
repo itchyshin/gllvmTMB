@@ -2682,20 +2682,48 @@ rewrite_canonical_aliases <- function(formula) {
             ">" = "Use {.code phylo_dep(0 + trait | species)}."
           ))
         }
-        if (!.is_zero_plus_trait(lhs_bar)) {
-          cli::cli_abort(c(
-            "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported.",
-            "i" = "Got LHS: {.code {deparse(lhs_bar)}}.",
-            ">" = "Use {.code phylo_dep(0 + trait | species)} for the full unstructured cross-trait phylogenetic covariance fit."
+        ## Stage 3 (Design 56 §9.5c): the augmented intercept+slope LHS
+        ## (`1 + x | species` wide, or `0 + trait + (0 + trait):x | species`
+        ## long) routes through the b_phy_aug engine with the full
+        ## unstructured 2T x 2T covariance Sigma_b built from theta_dep_chol.
+        ## The `.phylo_dep_augmented` marker (distinct from the phylo_unique
+        ## `.phylo_unique_augmented` marker) tells fit-multi.R to expand
+        ## n_lhs_cols to 2T and free theta_dep_chol. No new C++ block.
+        lhs_form <- .gllvmTMB_lhs_form(lhs_bar)
+        if (
+          lhs_form$lhs_form %in%
+            c("wide_intercept_slope", "long_intercept_slope")
+        ) {
+          extras <- .pass_through_extras(e, c("tree", "vcv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_slope"), bar),
+            list(
+              .phylo_dep_augmented = TRUE,
+              lhs_form = lhs_form$lhs_form,
+              slope_col = lhs_form$slope_col
+            ),
+            extras
           ))
+          return(new_call)
         }
-        extras <- .pass_through_extras(e, c("tree", "vcv"))
-        new_call <- as.call(c(
-          list(as.name("phylo_rr"), species_arg),
-          list(d = as.name(".deferred_n_traits"), .dep = TRUE),
-          extras
+        ## Intercept-only `phylo_dep(0 + trait | species)`: the full
+        ## unstructured cross-trait phylogenetic intercept covariance via the
+        ## phylo_rr full-rank path (UNCHANGED).
+        if (identical(lhs_form$lhs_form, "intercept_only")) {
+          extras <- .pass_through_extras(e, c("tree", "vcv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_rr"), species_arg),
+            list(d = as.name(".deferred_n_traits"), .dep = TRUE),
+            extras
+          ))
+          return(new_call)
+        }
+        cli::cli_abort(c(
+          "{.fn phylo_dep} augmented LHS form is not supported.",
+          "i" = "You wrote {.code phylo_dep({deparse(bar)})}.",
+          "x" = "Stage 3 accepts {.code 0 + trait | species} (intercept-only), {.code 1 + x | species}, and {.code 0 + trait + (0 + trait):x | species}.",
+          ">" = "Keep multi-covariate and richer per-trait slope forms for a later design slice."
         ))
-        return(new_call)
       }
       ## `spatial_dep(0 + trait | coords)` -> `spde(form, .spatial_latent = TRUE,
       ##                                            d = .deferred_n_traits, .dep = TRUE)`

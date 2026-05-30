@@ -505,6 +505,17 @@ link_residual_per_trait <- function(fit) {
 #'
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
+#'
+#'   For a `phylo_dep(1 + x | species)` fit (Design 56 §9.5c), call with
+#'   `level = "phy"`: the result is the single full unstructured
+#'   `2T x 2T` covariance over the trait-stacked (intercept, slope)
+#'   random-effect columns -- a list with `Sigma` and `R` carrying
+#'   INTERLEAVED dimnames
+#'   (`intercept.<t1>`, `slope.<t1>`, `intercept.<t2>`, `slope.<t2>`, ...),
+#'   `level = "phy_dep"`, `part = "dep"`, and a `note`. The `part` and
+#'   `link_residual` arguments do not apply to this single unstructured
+#'   block and are ignored. (The unit / unit_obs tiers return `NULL` for a
+#'   dep-only fit, as it carries no between/within-unit covariance term.)
 #' @references
 #' Nakagawa, S. & Schielzeth, H. (2010). Repeatability for Gaussian and
 #'   non-Gaussian data: a practical guide for biologists. *Biological
@@ -568,6 +579,52 @@ extract_Sigma <- function(
 
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
+
+  ## ---- phylo_dep augmented-slope block (Design 56 §9.5c) ---------------
+  ## phylo_dep(1 + x | species) fits a single FULL UNSTRUCTURED 2T x 2T
+  ## covariance Sigma_b over the trait-stacked (intercept, slope)
+  ## random-effect columns. It is a PHYLOGENETIC random effect, so it is
+  ## surfaced under `level = "phy"` (the phylogenetic tier). It is one
+  ## unstructured block, not a shared/unique latent decomposition, so the
+  ## `part` / `link_residual` arguments do not apply: we return the
+  ## reported Sigma_b_dep directly with INTERLEAVED dimnames matching the
+  ## engine column ordering (intercept.t1, slope.t1, intercept.t2,
+  ## slope.t2, ...).
+  ##
+  ## The branch is keyed on `level == "phy"` (NOT fired for the unit /
+  ## unit_obs tiers) so the backward-compat extract_Sigma_B() /
+  ## extract_Sigma_W() wrappers -- and the print()/summary() path that
+  ## calls them -- correctly see NO between/within-unit term for a
+  ## dep-only fit (they return NULL) rather than this phylogenetic block.
+  if (isTRUE(fit$use$phylo_dep_slope) && identical(level, "phy")) {
+    Sigma <- fit$report$Sigma_b_dep
+    if (is.null(Sigma)) {
+      cli::cli_abort(
+        "phylo_dep slope fit has no reported {.code Sigma_b_dep}."
+      )
+    }
+    Sigma <- as.matrix(Sigma)
+    dep_names <- as.vector(rbind(
+      paste0("intercept.", trait_names),
+      paste0("slope.", trait_names)
+    ))
+    rownames(Sigma) <- colnames(Sigma) <- dep_names
+    D <- sqrt(diag(Sigma))
+    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    rownames(R) <- colnames(R) <- dep_names
+    return(list(
+      Sigma = Sigma,
+      R = R,
+      level = "phy_dep",
+      part = "dep",
+      note = paste0(
+        "phylo_dep(1 + x | species): full unstructured 2T x 2T covariance ",
+        "over trait-stacked (intercept, slope) columns (interleaved). The ",
+        "part / link_residual arguments do not apply to this single ",
+        "unstructured block."
+      )
+    ))
+  }
 
   ## ---- Pull Lambda and S for the requested level -----------------------
   L <- NULL

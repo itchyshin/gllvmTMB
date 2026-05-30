@@ -75,14 +75,14 @@ test_that("lambda_constraint binary IRT recovery at d=1, n_items=20 (LAM-03 / M2
     value ~ 0 + trait + latent(0 + trait | site, d = 1L),
     data = fx$data,
     family = stats::binomial(link = "probit"),
-    lambda_constraint = list(B = fx$constraint)
+    lambda_constraint = list(unit = fx$constraint)
   )))
   expect_equal(fit$opt$convergence, 0L,
                info = "binary IRT d=1 fit did not converge")
 
   ## Recover Lambda. Diagonal is pinned at 1; free entries are
   ## Lam[2:n_items, 1].
-  L_hat <- gllvmTMB::getLoadings(fit, level = "B")
+  L_hat <- gllvmTMB::getLoadings(fit, level = "unit")
   expect_equal(L_hat[1L, 1L], 1, tolerance = 1e-8,
                label = "diagonal pin Lambda[1,1] == 1")
 
@@ -104,12 +104,12 @@ test_that("lambda_constraint binary IRT recovery at d=2, n_items=20 (LAM-03 / M2
     value ~ 0 + trait + latent(0 + trait | site, d = 2L),
     data = fx$data,
     family = stats::binomial(link = "probit"),
-    lambda_constraint = list(B = fx$constraint)
+    lambda_constraint = list(unit = fx$constraint)
   )))
   expect_equal(fit$opt$convergence, 0L,
                info = "binary IRT d=2 fit did not converge")
 
-  L_hat <- gllvmTMB::getLoadings(fit, level = "B")
+  L_hat <- gllvmTMB::getLoadings(fit, level = "unit")
 
   ## Diagonal pins hold exactly.
   expect_equal(L_hat[1L, 1L], 1, tolerance = 1e-8)
@@ -136,11 +136,11 @@ test_that("lambda_constraint binary IRT recovery at d=1, n_items=50 (LAM-03 / M2
     value ~ 0 + trait + latent(0 + trait | site, d = 1L),
     data = fx$data,
     family = stats::binomial(link = "probit"),
-    lambda_constraint = list(B = fx$constraint)
+    lambda_constraint = list(unit = fx$constraint)
   )))
   expect_equal(fit$opt$convergence, 0L)
 
-  L_hat <- gllvmTMB::getLoadings(fit, level = "B")
+  L_hat <- gllvmTMB::getLoadings(fit, level = "unit")
   expect_equal(L_hat[1L, 1L], 1, tolerance = 1e-8)
 
   free_idx <- seq(2L, fx$n_items)

@@ -637,7 +637,7 @@ test_that("plot_Sigma_table accepts bootstrap_Sigma objects", {
     conf = 0.95,
     n_boot = 20L,
     n_failed = 0L,
-    level = "B",
+    level = "unit",
     what = "Sigma",
     draws = NULL
   )

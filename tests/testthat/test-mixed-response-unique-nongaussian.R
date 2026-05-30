@@ -78,7 +78,7 @@ test_that("recovery: pure Poisson + unique(0+trait|obs) recovers per-trait OLRE 
   ## Pull recovered per-trait sigma2_e from psi_W diagonal.
   ## extract_Sigma returns a named vector; use unname() so expect_equal
   ## compares values only (not names vs unnamed expected vector).
-  res <- suppressMessages(extract_Sigma(fit, level = "W", part = "unique"))
+  res <- suppressMessages(extract_Sigma(fit, level = "unit_obs", part = "unique"))
   expect_false(is.null(res), label = "extract_Sigma returns non-NULL for W-tier unique")
   sigma2_e_hat <- unname(res$s)
   expect_length(sigma2_e_hat, n_traits)
@@ -140,7 +140,7 @@ test_that("single-trial binomial OLRE: per-family-aware skip pins sd_W at ~0", {
   ## Documented behaviour: sd_W ≈ 0 (unidentifiable with single-trial binary data).
   ## The engine pins sd_W at ~1e-6 via the per-family-aware skip; the
   ## reported variance is therefore essentially zero (~1e-12).
-  res <- suppressMessages(extract_Sigma(fit, level = "W", part = "unique"))
+  res <- suppressMessages(extract_Sigma(fit, level = "unit_obs", part = "unique"))
   expect_false(is.null(res))
   sigma2_e_hat <- unname(res$s)
   expect_length(sigma2_e_hat, n_traits)
@@ -222,7 +222,7 @@ test_that("recovery: mixed-family (gaussian+binomial+poisson) + unique(0+trait|o
                label = "Poisson rows count matches n_units")
 
   ## Pull per-trait OLRE variances
-  res <- suppressMessages(extract_Sigma(fit, level = "W", part = "unique"))
+  res <- suppressMessages(extract_Sigma(fit, level = "unit_obs", part = "unique"))
   expect_false(is.null(res))
   sigma2_e_hat <- res$s
   expect_length(sigma2_e_hat, 3L)

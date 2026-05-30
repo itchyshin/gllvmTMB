@@ -236,6 +236,8 @@ test_that("plot(type = 'loadings') returns a faceted ggplot with both levels", {
       names(p$data)
   ))
   ## Single-level call works and shows just one level
+  ## Deliberately use the legacy `level = "B"` alias here so the test
+  ## asserts the deprecation-warning behaviour. Do NOT migrate to "unit".
   withr::local_options(gllvmTMB.warned_level_B = NULL)
   p_B <- NULL
   expect_warning(
@@ -558,6 +560,8 @@ test_that("plot(type = 'ordination', level = 'W') gives 1D lollipop when d_W = 1
   fit <- make_BW_fit_for_plot()
   ## d_W = 1 in this fit
   expect_equal(fit$d_W, 1L)
+  ## Deliberately use the legacy `level = "W"` alias here so the test
+  ## asserts the deprecation-warning behaviour. Do NOT migrate to "unit_obs".
   withr::local_options(gllvmTMB.warned_level_W = NULL)
   p <- NULL
   expect_warning(

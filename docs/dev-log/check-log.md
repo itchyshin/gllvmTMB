@@ -11778,93 +11778,83 @@ Deliberately not run / not done:
 - No pkgdown build; no user-facing site source changed.
 - No Phase 56.5 implementation started under the handover branch.
 
-## 2026-05-26 evening -- Phase B2 phylo_unique(1+x|id) recovery under binomial(logit): SKIP-with-finding
+## 2026-05-26 -- Phase 56.5 relmat anchor (`phylo_unique(..., vcv = A_user)`) Gaussian recovery activation
 
-Branch: `agent/phase-b2-phylo-unique-slope-binomial-logit`
+Branch: `agent/phase56-5-relmat-unique-slope-2026-05-26`
 
 Files changed:
 
-- `tests/testthat/test-phylo-unique-slope-binomial-logit.R` (NEW; 277 lines).
-- `docs/dev-log/after-task/2026-05-26-phase-b2-binomial-logit-recovery.md` (NEW).
+- `tests/testthat/test-relmat-unique-slope-gaussian.R` (skeleton -> activated; 247 lines).
+- `docs/dev-log/after-task/2026-05-26-phase56-5-relmat-unique-recovery.md` (NEW).
 - `docs/dev-log/check-log.md` (this entry).
 
 What changed:
 
-- Activated three test_that blocks for the Phase B2 binomial(logit)
-  anchor cell: wide-long byte-identity, Sigma_b recovery, forced
-  n_lhs_cols=1L negative test.
-- The recovery test_that is explicitly `testthat::skip()`-gated with
-  documented identifiability finding (see below).
-- Byte-identity and forced-negative tests are active and pass cleanly
-  under logit.
+- Activated the relmat anchor-adjacent recovery test as the first Phase 56.5
+  fan-out slice. Fixture mirrors #298 (`make_phylo_unique_slope_fixture`)
+  exactly; only the routing differs (build A from coalescent tree then
+  supply it via `vcv = A` instead of via `phylo_tree =`).
+- Four `test_that` blocks total: 3 active (dense byte-identity,
+  dense recovery, forced n_lhs_cols=1 negative test), 1 explicitly
+  skipped with documented failure mode (sparse Ainv divergence).
 - Status row in `docs/design/01-formula-grammar.md` is unchanged
   (still `claimed`; Phase 56.6 owns promotion).
 
-What was learned: logit recovery bias at B0 defaults
+What was learned: sparse Ainv path divergence
 
-- Empirical seed sweep at three fixture sizes:
-  - n_id=60, seeds {2026, 5640, 102, 314, 271, 42, 1729, 2718, 1024,
-    4096}: 0/10 pass. Best (seed 1024): sigma^2_int rel err 0.46,
-    sigma^2_slope rel err 0.38, cor_b at boundary.
-  - n_id=120, seeds {2026, 5640, 1024, 2718, 42, 314}: 0/6 pass.
-    Best (seed 42): sigma^2_int rel err 0.003, sigma^2_slope rel err
-    0.61, rho err 0.06. Fit health (conv=0, pd=TRUE, sdok=TRUE, mg
-    3.5e-5) is fine; the bias is on the estimator.
-  - n_id=240, seeds {42, 314, 2718, 1024, 2026}: 0/5 pass. Best (seed
-    42): sigma^2_int rel err 0.058, sigma^2_slope rel err 0.508, rho
-    err 0.27. Fit times 2.3-3.2 s.
-- Systematic finding: sigma^2_slope is over-estimated by ~50-60%
-  under binomial(logit) at all tried fixture sizes. Likely root
-  cause: logit's residual variance sigma^2_d = pi^2/3 ~ 3.29 is more
-  than 3x larger than probit's sigma^2_d = 1; same truth sigma^2_beta
-  = 0.3 gives ~3x weaker slope SNR under logit.
-- Per Codex discipline (do NOT widen tolerances; do NOT fake-pass),
-  the recovery test_that is SKIPPED with the full empirical record
-  preserved in the test file comments and this check-log.
-- Deferred to a Phase B-recalibration follow-up slice. Candidates:
-  (a) n_id >= 480, (b) sigma^2_slope=0.6 truth (DGP signal lift),
-  (c) DGP recipe refinements. B0 memo's `n_id=60` recommendation
-  for fixed-scale families should be amended for logit specifically.
+- First full sparse-vs-dense test run produced strongly divergent fits:
+  logLik dense -205.1 vs sparse -528.0; sd_b dense (0.62, 0.59) vs
+  sparse (2.22, 1.71); cor_b dense 0.45 vs sparse 1.00 (boundary).
+- C++ kernel is sparse-only (`Eigen::SparseMatrix<Type> Ainv_phy_rr`,
+  `src/gllvmTMB.cpp:780-785`); divergence must originate in R-side
+  wiring in `R/fit-multi.R` building `Ainv_phy_rr` and related data
+  differently for dense vs `dgCMatrix` `A` under the augmented LHS path.
+- Deferred to a Phase 56.5b follow-up slice. Likely affects
+  `animal_unique` (`pedigree_to_Ainv_sparse()` internal use); the
+  Phase 56.5 fan-out should NOT activate animal slope tests against
+  sparse Ainv until 56.5b lands.
 
 Evidence:
 
 - Pre-edit lane check:
   `git status --short --branch` -> clean
-  `agent/phase-b2-phylo-unique-slope-binomial-logit`.
-  `gh pr list --repo itchyshin/gllvmTMB --state open` -> #301 + #303
-  (Phase 56.5 relmat + B1 probit) both in CI.
-  `git log -1 --format='%h %s' main` -> `f03bb3d Phase B0:
-  per-family identifiability scoping memo for non-Gaussian random
-  slope (#302)`.
-- `Rscript --vanilla -e 'devtools::test(filter = "phylo-unique-slope-binomial-logit")'`
-  -> `FAIL 0 | WARN 0 | SKIP 1 | PASS 19`.
-- All seed-exploration scripts captured in /tmp on the shift machine;
-  full sweep tables are in this check-log entry.
+  `agent/phase56-5-relmat-unique-slope-2026-05-26`.
+  `gh pr list --repo itchyshin/gllvmTMB --state open` -> `[]`.
+  `git log -1 --format='%h %s' main` -> `54a16a5 Record Claude Grue
+  handover checkpoint (#300)`.
+- `Rscript --vanilla -e 'devtools::test(filter = "relmat-unique-slope-gaussian")'`
+  -> `FAIL 0 | WARN 0 | SKIP 1 | PASS 27` (sparse divergence skipped).
+- `Rscript --vanilla -e 'devtools::test(filter = "relmat-unique-slope-gaussian|phylo-unique-slope-gaussian|phase56-3-phylo-unique-parser|phase56-1-phylo-augmented-stub|phylo-slope")'`
+  -> `FAIL 0 | WARN 0 | SKIP 1 | PASS 94`.
+- Dense fit health on the seed-5640 fixture:
+  convergence 0, max gradient < 1e-2, pd_hessian TRUE, sdreport_ok TRUE,
+  sd_b ~ (0.62, 0.59) vs truth sqrt(0.4, 0.3) ~ (0.63, 0.55),
+  cor_b ~ 0.45 vs truth 0.5.
 
 Review gates:
 
-- Curie / simulation: PASS for byte-identity + negative test; HONEST
-  SKIP for recovery with empirical evidence. The bias is real, not
-  seed-selectable.
-- Fisher / identifiability: PASS for the analysis. Logit's pi^2/3
-  residual variance against truth sigma^2_beta=0.3 is the root
-  cause; the estimator behaves correctly given the SNR.
-- Boole / parser: PASS. Augmented LHS routes cleanly to logit family.
-- Noether / engine: PASS. No C++ change indicated; the bias is on
-  the estimator, not the engine.
-- Rose / consistency: PASS pending review. SKIP-with-finding mirrors
-  #298 honest seed-rejection discipline + #301 honest sparse-Ainv
-  SKIP pattern. Status row stays `claimed`.
-- Shannon / coordination: PASS. Captures the actual capability (parser
-  accepts + engine fits cleanly under logit) while honestly deferring
-  the recovery claim to a follow-up.
+- Curie / simulation: PASS. Dense recovery is within #287 tolerances;
+  no new seed selection needed; #298 seed reused.
+- Fisher / identifiability: PASS for dense path. Sparse path is a
+  separate R-side wiring issue, not an identifiability issue.
+- Boole / parser: PASS. No parser change needed (`vcv = A` already
+  passes through `.pass_through_extras(e, c("tree", "vcv"))`).
+- Noether / engine: PASS. Engine is single-sparse-branch and routes
+  identically for both dense and sparse inputs.
+- Gauss / likelihood: PASS. No TMB code changed; forced negative
+  test exercises the existing C++ guard.
+- Rose / consistency: PASS pending PR review. Status stays `claimed`.
+  Sparse divergence honestly documented.
+- Shannon / coordination: PASS. First Phase 56.5 slice; pattern proven.
 
 Deliberately not run / not done:
 
-- No full `devtools::test()`; focused test only.
+- No full `devtools::test()`; focused regression suite passed.
 - No `devtools::document()` (no roxygen / NAMESPACE / Rd changes).
 - No `pkgdown::check_pkgdown()` (no docs source changed).
-- No validation-debt row movement.
+- No validation-debt row movement (Phase 56.6 gate).
 - No NEWS / article / deprecation edits.
-- No fan-out to B3-B7 yet.
-- No engine / parser / R-side wiring touch.
+- No `R/fit-multi.R` / `src/gllvmTMB.cpp` engine investigation
+  (deferred to Phase 56.5b).
+- No fan-out to `animal_unique` (deferred until sparse divergence is
+  resolved or scoped to dense-only).

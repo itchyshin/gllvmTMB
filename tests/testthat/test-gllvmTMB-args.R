@@ -271,7 +271,7 @@ test_that("gllvmTMB(): lambda_constraint must be matrices", {
     gllvmTMB(
       value ~ 0 + trait + latent(0 + trait | site, d = 1),
       data = sim$data,
-      lambda_constraint = list(B = "not-a-matrix")
+      lambda_constraint = list(unit = "not-a-matrix")
     ),
     regexp = "matrices"
   )

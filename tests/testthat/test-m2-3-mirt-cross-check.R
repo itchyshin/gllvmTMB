@@ -7,7 +7,7 @@
 ##
 ## Shared fixture: binary 2PL IRT, n_items = 20, d = 1, n_resp = 500.
 ##   gllvmTMB: stacked-long data + `latent(0+trait|site, d=1)` +
-##             `lambda_constraint = list(B = diag-pin matrix)`
+##             `lambda_constraint = list(unit = diag-pin matrix)`
 ##   mirt:     wide-data matrix + `itemtype = "2PL"` (logit link)
 ##
 ## Comparison: discrimination (slope) loadings after scale-aligning
@@ -80,12 +80,12 @@ test_that("gllvmTMB and mirt agree on 2PL IRT loadings (M2.3 / cross-package mir
     value ~ 0 + trait + latent(0 + trait | site, d = 1L),
     data = fx$data,
     family = stats::binomial(),
-    lambda_constraint = list(B = fx$constraint)
+    lambda_constraint = list(unit = fx$constraint)
   )))
   expect_equal(fit_g$opt$convergence, 0L,
                info = "gllvmTMB 2PL IRT fit did not converge")
   L_g <- suppressMessages(suppressWarnings(
-    as.numeric(gllvmTMB::getLoadings(fit_g, level = "B")[, 1L])
+    as.numeric(gllvmTMB::getLoadings(fit_g, level = "unit")[, 1L])
   ))
 
   ## mirt fit on the wide y matrix.

@@ -5,7 +5,7 @@
 ##
 ## API translation:
 ##   gllvmTMB: stacked-long + `latent(0+trait|site, d=1)` +
-##             `lambda_constraint = list(B = item-1-pin matrix)`.
+##             `lambda_constraint = list(unit = item-1-pin matrix)`.
 ##             Latent factor z ~ N(0, 1) is **fixed** in the
 ##             parameterisation; loadings are on the original scale.
 ##   galamm:   stacked-long + `(0 + ability | person)` +
@@ -93,12 +93,12 @@ test_that("gllvmTMB and galamm agree on 2PL IRT loadings — sign + rank order (
     value ~ 0 + trait + latent(0 + trait | site, d = 1L),
     data = fx$data,
     family = stats::binomial(),
-    lambda_constraint = list(B = fx$constraint)
+    lambda_constraint = list(unit = fx$constraint)
   )))
   expect_equal(fit_g$opt$convergence, 0L,
                info = "gllvmTMB 2PL IRT fit did not converge")
   L_g <- suppressMessages(suppressWarnings(
-    as.numeric(gllvmTMB::getLoadings(fit_g, level = "B")[, 1L])
+    as.numeric(gllvmTMB::getLoadings(fit_g, level = "unit")[, 1L])
   ))
 
   ## galamm fit (latent variance estimated).

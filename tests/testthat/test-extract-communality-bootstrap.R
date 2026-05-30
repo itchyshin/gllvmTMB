@@ -9,7 +9,7 @@ make_bootstrap_communality_object <- function() {
     conf = 0.95,
     n_boot = 30L,
     n_failed = 2L,
-    level = "B",
+    level = "unit",
     what = "communality",
     draws = NULL
   )

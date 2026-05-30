@@ -175,13 +175,19 @@
 #' @param known_V Optional list of block-diagonal sampling-error matrices
 #'   `V_t`. Used by the `equalto()` two-stage workflow when sampling-error
 #'   matrices are available from a prior stage of estimation.
-#' @param lambda_constraint Optional list with elements `B` and / or `W`,
-#'   each an `n_traits × d` matrix of confirmatory loading constraints
+#' @param lambda_constraint Optional list with elements `unit` and / or
+#'   `unit_obs` (plus `phy`, `spde` for structural levels), each an
+#'   `n_traits × d` matrix of confirmatory loading constraints
 #'   (galamm-style). `NA` entries are estimated; numerical entries are
 #'   pinned. Upper-triangle entries are silently ignored — the engine's
 #'   lower-triangular parameterisation already fixes those at zero.
 #'   Default `NULL` uses the engine's exploratory lower-triangular
-#'   convention.
+#'   convention. See [confirmatory_lambda()] to build the matrix from
+#'   functional-group membership, or [suggest_lambda_constraint()] for a
+#'   minimum statistical identification scaffold when you have no
+#'   biological hypothesis. Deprecated legacy element names `B` and `W`
+#'   are still accepted (with a one-shot soft deprecation message) and
+#'   map to `unit` and `unit_obs` respectively.
 #' @param control Output of `gllvmTMBcontrol()`.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #'
@@ -371,6 +377,12 @@ gllvmTMB <- function(
   species = NULL
 ) {
   # deprecated alias for `cluster`
+
+  ## ---- Normalise lambda_constraint element names (B -> unit, W -> unit_obs).
+  ## User-facing names match `level` argument naming; legacy `B`/`W` still
+  ## accepted with a one-shot soft deprecation message. See
+  ## R/normalise-lambda-constraint.R.
+  lambda_constraint <- .normalise_lambda_constraint_names(lambda_constraint)
 
   ## ---- Design 08 Stage 2: traits(...) wide-format pre-pass --------------
   ## When the formula LHS is a `traits(...)` call expression, the user is

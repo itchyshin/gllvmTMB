@@ -23,7 +23,7 @@ test_that("lower_triangular for T = 5, K = 2 pins the upper triangle to 0", {
   expect_equal(res$d, 2L)
   expect_equal(rownames(M), paste0("t", 1:5))
   expect_equal(colnames(M), c("f1", "f2"))
-  expect_match(res$usage_hint, "lambda_constraint = list\\(B =")
+  expect_match(res$usage_hint, "lambda_constraint = list\\(unit =")
 })
 
 test_that("lower_triangular for T = 4, K = 3 pins K(K-1)/2 = 3 entries", {

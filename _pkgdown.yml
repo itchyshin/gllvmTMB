@@ -183,6 +183,12 @@ reference:
     - residuals.gllvmTMB_multi
     - bootstrap_Sigma
     - confint_inspect
+    - profile_repeatability
+    - profile_phylo_signal
+    - profile_communality
+    - profile_correlation
+    - profile_proportions
+    - plot.profile_derived
 
   - title: Advanced validation utilities
     desc: Slower or developer-facing checks; use when a model or interval claim needs stronger evidence
@@ -203,6 +209,12 @@ reference:
     - plot_rotated_loadings
     - compare_loadings
     - suggest_lambda_constraint
+    - confirmatory_lambda
+    - loading_ci
+    - loading_profile
+    - flag_unreliable_loadings
+    - plot_loadings_confidence_eye
+    - plot.profile_loadings
 
 ## news.releases intentionally omitted pre-CRAN: the v0.2.0 git tag /
 ## GitHub release does not exist yet (we are mid Phase 1b on the path

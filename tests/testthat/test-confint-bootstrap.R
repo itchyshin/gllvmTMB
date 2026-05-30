@@ -28,6 +28,7 @@ make_tiny_B_fit <- function(seed = 42L) {
 ## ---- Tests ------------------------------------------------------------------
 
 test_that("confint(fit, parm='Sigma_unit') returns a well-formed data.frame", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   fit <- make_tiny_B_fit()
@@ -69,6 +70,7 @@ test_that("confint(fit, parm='Sigma_unit') returns a well-formed data.frame", {
 })
 
 test_that("confint(fit, parm='Sigma_unit') diagonal entries are non-negative", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   fit <- make_tiny_B_fit()
@@ -90,6 +92,7 @@ test_that("confint(fit, parm='Sigma_unit') diagonal entries are non-negative", {
 })
 
 test_that("confint() keeps Sigma_B as a legacy alias", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   fit <- make_tiny_B_fit()
@@ -123,6 +126,7 @@ test_that("confint() keeps Sigma_B as a legacy alias", {
 })
 
 test_that("confint(fit) without parm returns a matrix (Wald, fixed effects)", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   fit <- make_tiny_B_fit()
@@ -137,6 +141,7 @@ test_that("confint(fit) without parm returns a matrix (Wald, fixed effects)", {
 })
 
 test_that("confint(fit, parm='Sigma_unit') errors when unit tier is absent", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   ## Fit with only a within-site (W) covariance structure — no B tier.

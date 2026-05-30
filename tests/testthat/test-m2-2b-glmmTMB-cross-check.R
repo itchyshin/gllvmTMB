@@ -51,6 +51,7 @@ build_two_trait_logit_data <- function(n_sites = 200L,
 # ---- (1) Fixed-effect intercepts agree across packages --------------
 
 test_that("gllvmTMB and glmmTMB agree on per-trait intercepts for binomial(logit) + (1|site) fit (M2.2-B / cross-package)", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_glmmTMB_missing()
 
@@ -89,6 +90,7 @@ test_that("gllvmTMB and glmmTMB agree on per-trait intercepts for binomial(logit
 # ---- (2) Shared random-intercept SD agrees within tolerance ---------
 
 test_that("gllvmTMB and glmmTMB agree on shared random-intercept SD (M2.2-B / cross-package)", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_glmmTMB_missing()
 

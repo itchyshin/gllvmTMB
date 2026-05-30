@@ -53,6 +53,7 @@ build_derived_fixture <- function(seed = 42L) {
 ## ============================================================================
 
 test_that("confint(fit, parm = 'icc') returns one row per trait (matrix shape)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -65,6 +66,7 @@ test_that("confint(fit, parm = 'icc') returns one row per trait (matrix shape)",
 })
 
 test_that("confint(fit, parm = 'icc:trait_1') returns exactly one row", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -75,6 +77,7 @@ test_that("confint(fit, parm = 'icc:trait_1') returns exactly one row", {
 })
 
 test_that("confint(fit, parm = 'icc:[1]') accepts 1-based index", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -84,6 +87,7 @@ test_that("confint(fit, parm = 'icc:[1]') accepts 1-based index", {
 })
 
 test_that("confint(fit, parm = 'icc:[1,3]') returns two rows", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -93,6 +97,7 @@ test_that("confint(fit, parm = 'icc:[1,3]') returns two rows", {
 })
 
 test_that("confint(fit, parm = 'icc:trait_1;trait_3') returns two rows by name", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -104,6 +109,7 @@ test_that("confint(fit, parm = 'icc:trait_1;trait_3') returns two rows by name",
 })
 
 test_that("confint(fit, parm = 'icc:bogus') errors clearly on unknown trait", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -114,6 +120,7 @@ test_that("confint(fit, parm = 'icc:bogus') errors clearly on unknown trait", {
 })
 
 test_that("confint(fit, parm = 'icc:[99]') errors on out-of-range index", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -124,6 +131,7 @@ test_that("confint(fit, parm = 'icc:[99]') errors on out-of-range index", {
 })
 
 test_that("confint(fit, parm = 'icc') with method = 'profile' returns finite bounds", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -137,6 +145,7 @@ test_that("confint(fit, parm = 'icc') with method = 'profile' returns finite bou
 })
 
 test_that("confint(fit, parm = 'icc') bounds are within [0, 1]", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -148,6 +157,7 @@ test_that("confint(fit, parm = 'icc') bounds are within [0, 1]", {
 })
 
 test_that("confint(fit, parm = 'icc') with method = 'bootstrap' returns matrix", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -164,6 +174,7 @@ test_that("confint(fit, parm = 'icc') with method = 'bootstrap' returns matrix",
 ## ============================================================================
 
 test_that("confint(fit, parm = 'phylo_signal') errors when no phylo component", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -175,6 +186,7 @@ test_that("confint(fit, parm = 'phylo_signal') errors when no phylo component", 
 })
 
 test_that("confint(fit, parm = 'phylo_signal', method = 'wald') errors when fit has no phylo component", {
+  skip_if_not_heavy()
   ## Phase B-INF Lane 1 A3 wired wald for phylo_signal; the error now
   ## comes from the per-trait absence-of-phylo check, not a
   ## not-implemented message.
@@ -188,6 +200,7 @@ test_that("confint(fit, parm = 'phylo_signal', method = 'wald') errors when fit 
 })
 
 test_that("confint(fit, parm = 'phylo_signal:trait_1') parses one trait", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -200,6 +213,7 @@ test_that("confint(fit, parm = 'phylo_signal:trait_1') parses one trait", {
 })
 
 test_that("confint(fit, parm = 'phylo_signal:bogus') errors on unknown trait", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -216,6 +230,7 @@ test_that("confint(fit, parm = 'phylo_signal:bogus') errors on unknown trait", {
 ## ============================================================================
 
 test_that("confint(fit, parm = 'communality:unit') returns one row per trait", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -227,6 +242,7 @@ test_that("confint(fit, parm = 'communality:unit') returns one row per trait", {
 })
 
 test_that("confint(fit, parm = 'communality:unit:trait_1') returns one row", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -238,6 +254,7 @@ test_that("confint(fit, parm = 'communality:unit:trait_1') returns one row", {
 })
 
 test_that("confint(fit, parm = 'communality:unit:[2]') accepts bracketed index", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -249,6 +266,7 @@ test_that("confint(fit, parm = 'communality:unit:[2]') accepts bracketed index",
 })
 
 test_that("confint(fit, parm = 'communality:bogus') errors on bad tier", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -259,6 +277,7 @@ test_that("confint(fit, parm = 'communality:bogus') errors on bad tier", {
 })
 
 test_that("confint(fit, parm = 'communality') without tier falls through to fixef path", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -276,6 +295,7 @@ test_that("confint(fit, parm = 'communality') without tier falls through to fixe
 })
 
 test_that("confint(fit, parm = 'communality:unit', method = 'wald') returns finite bounds", {
+  skip_if_not_heavy()
   ## Phase B-INF Lane 1 A1 wired wald for communality via delta method
   ## on logit-c^2; bounds must be inside [0, 1].
   skip_if_not_installed("TMB")
@@ -291,6 +311,7 @@ test_that("confint(fit, parm = 'communality:unit', method = 'wald') returns fini
 })
 
 test_that("confint(fit, parm = 'communality:unit', method = 'bootstrap') returns finite bounds", {
+  skip_if_not_heavy()
   ## Phase B-INF Lane 1 A1 wired bootstrap (default nsim).
   skip_if_not_installed("TMB")
   skip_on_cran()
@@ -308,6 +329,7 @@ test_that("confint(fit, parm = 'communality:unit', method = 'bootstrap') returns
 })
 
 test_that("confint(fit, parm = 'communality:unit') bounds are within [0, 1]", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -322,6 +344,7 @@ test_that("confint(fit, parm = 'communality:unit') bounds are within [0, 1]", {
 ## ============================================================================
 
 test_that("confint(fit, parm = 'rho:unit:1,2') returns exactly one row", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -335,6 +358,7 @@ test_that("confint(fit, parm = 'rho:unit:1,2') returns exactly one row", {
 })
 
 test_that("confint(fit, parm = 'rho:unit:1,2;1,3') returns two rows", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -346,6 +370,7 @@ test_that("confint(fit, parm = 'rho:unit:1,2;1,3') returns two rows", {
 })
 
 test_that("confint(fit, parm = 'rho:unit:9,9') errors on out-of-range pair", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -356,6 +381,7 @@ test_that("confint(fit, parm = 'rho:unit:9,9') errors on out-of-range pair", {
 })
 
 test_that("confint(fit, parm = 'rho:unit:1,1') errors on self-pair", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -366,6 +392,7 @@ test_that("confint(fit, parm = 'rho:unit:1,1') errors on self-pair", {
 })
 
 test_that("confint(fit, parm = 'rho:unit:2,1') canonicalises to i<j", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -379,6 +406,7 @@ test_that("confint(fit, parm = 'rho:unit:2,1') canonicalises to i<j", {
 })
 
 test_that("confint(fit, parm = 'rho:bogus:1,2') errors on bad tier", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -389,6 +417,7 @@ test_that("confint(fit, parm = 'rho:bogus:1,2') errors on bad tier", {
 })
 
 test_that("confint(fit, parm = 'rho:unit:1,2', method = 'fisher-z') gives bounds in [-1, 1]", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -401,6 +430,7 @@ test_that("confint(fit, parm = 'rho:unit:1,2', method = 'fisher-z') gives bounds
 })
 
 test_that("confint(fit, parm = 'rho:unit:1,2', method = 'wald') aliases fisher-z", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -419,6 +449,7 @@ test_that("confint(fit, parm = 'rho:unit:1,2', method = 'wald') aliases fisher-z
 ## ============================================================================
 
 test_that("All derived-quantity tokens return numeric matrices with 2 columns", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -432,6 +463,7 @@ test_that("All derived-quantity tokens return numeric matrices with 2 columns", 
 })
 
 test_that("Column names follow '<lo>%' / '<hi>%' convention with custom level", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()
@@ -443,6 +475,7 @@ test_that("Column names follow '<lo>%' / '<hi>%' convention with custom level", 
 })
 
 test_that("Tier alias 'B' is accepted for communality and rho", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_derived_fixture()

@@ -1,0 +1,70 @@
+# Full (heavy) test suite across all 3 OSes.
+#
+# R-CMD-check.yaml is the FAST check: it leaves GLLVMTMB_HEAVY_TESTS unset, so
+# the slow recovery/matrix/profile/bootstrap tests skip (see
+# tests/testthat/setup.R::skip_if_not_heavy) and routine PRs stay ~12 min.
+#
+# This workflow sets GLLVMTMB_HEAVY_TESTS=1 so the heavy tests RUN, exercising
+# the complete ~190-fit suite on ubuntu + macOS + windows. It runs nightly,
+# on demand (workflow_dispatch), and on every release tag.
+on:
+  schedule:
+    # Nightly at 06:00 UTC.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+name: full-check
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # R CMD check already sets NOT_CRAN=true; set it explicitly so non-check test
+  # runs behave the same. GLLVMTMB_HEAVY_TESTS=1 un-gates the heavy tests.
+  NOT_CRAN: "true"
+  GLLVMTMB_HEAVY_TESTS: "1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  full-check:
+    runs-on: ${{ matrix.config.os }}
+    # The heavy suite (~190 TMB fits) is slow; give the slowest runner headroom.
+    timeout-minutes: 120
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest, r: release}
+          - {os: macos-latest, r: release}
+          - {os: windows-latest, r: release}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true

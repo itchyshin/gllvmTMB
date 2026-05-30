@@ -140,6 +140,7 @@ expect_phylo_nb2_intercepts <- function(fit, alpha) {
 ## phylo_latent + phylo_unique (paired) on nbinom2
 ## ---------------------------------------------------------------
 test_that("phylo_latent + phylo_unique (paired) fits on nbinom2; Sigma_phy PD; intercepts recover", {
+  skip_if_not_heavy()
   skip_if_not_phylo_nb2_deps()
   fx <- make_phylo_nb2_fixture()
 
@@ -191,6 +192,7 @@ test_that("phylo_latent + phylo_unique (paired) fits on nbinom2; Sigma_phy PD; i
 ## phylo_scalar(species) on nbinom2
 ## ---------------------------------------------------------------
 test_that("phylo_scalar(species) fits on nbinom2; propto flag set; lambda_phy profile CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_phylo_nb2_deps()
   fx <- make_phylo_nb2_fixture()
 
@@ -244,6 +246,7 @@ test_that("phylo_scalar(species) fits on nbinom2; propto flag set; lambda_phy pr
 ## phylo_indep(0 + trait | species) on nbinom2
 ## ---------------------------------------------------------------
 test_that("phylo_indep(0 + trait | species) fits on nbinom2; extract_correlations(tier='phy') non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_phylo_nb2_deps()
   fx <- make_phylo_nb2_fixture()
 
@@ -295,6 +298,7 @@ test_that("phylo_indep(0 + trait | species) fits on nbinom2; extract_correlation
 ## phylo_dep(0 + trait | species) on nbinom2 (BORDERLINE per B0 memo)
 ## ---------------------------------------------------------------
 test_that("phylo_dep(0 + trait | species) fits on nbinom2; CI smoke + extract_correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_phylo_nb2_deps()
   fx <- make_phylo_nb2_fixture()
 

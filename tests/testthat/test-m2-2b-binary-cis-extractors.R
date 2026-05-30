@@ -57,6 +57,7 @@ build_logit_fit <- function(seed = 20260601L) {
 # ---- (1) Wald CI via tidy() on a binomial fit -----------------------
 
 test_that("Wald CIs (tidy + conf.int) on binomial fit return sensible bounds (CI-01 / M2.2-B)", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- build_logit_fit(seed = 20260601L)
   expect_equal(obj$fit$opt$convergence, 0L)
@@ -75,6 +76,7 @@ test_that("Wald CIs (tidy + conf.int) on binomial fit return sensible bounds (CI
 # ---- (2) Fisher-z correlations on binomial fit ---------------------
 
 test_that("extract_correlations(method = 'fisher-z') on binomial fit (CI-09 / M2.2-B)", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- build_logit_fit(seed = 20260602L)
   df <- suppressMessages(gllvmTMB::extract_correlations(
@@ -94,6 +96,7 @@ test_that("extract_correlations(method = 'fisher-z') on binomial fit (CI-09 / M2
 # ---- (3) Wald alias for Fisher-z ----------------------------------
 
 test_that("extract_correlations(method = 'wald') aliases 'fisher-z' (M2.2-B)", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- build_logit_fit(seed = 20260603L)
   df_wald <- suppressMessages(gllvmTMB::extract_correlations(
@@ -113,6 +116,7 @@ test_that("extract_correlations(method = 'wald') aliases 'fisher-z' (M2.2-B)", {
 # ---- (4) extract_communality on binomial fit ----------------------
 
 test_that("extract_communality() on binomial fit returns H^2 in [0,1] (MIX-05 link-residual cascade / M2.2-B)", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- build_logit_fit(seed = 20260604L)
 
@@ -139,6 +143,7 @@ test_that("extract_communality() on binomial fit returns H^2 in [0,1] (MIX-05 li
 # ---- (5) extract_repeatability on binomial fit (M1.6 cascade) ----
 
 test_that("extract_repeatability() on binomial fit includes pi^2/3 in vW (MIX-06 cascade / M2.2-B)", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- build_logit_fit(seed = 20260605L)
 
@@ -158,6 +163,7 @@ test_that("extract_repeatability() on binomial fit includes pi^2/3 in vW (MIX-06
 # ---- (6) bootstrap_Sigma on binomial fit (M1.8 cascade) -----------
 
 test_that("bootstrap_Sigma() converges on binomial fit (CI-03 cascade / M2.2-B)", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- build_logit_fit(seed = 20260606L)
 

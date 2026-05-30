@@ -83,6 +83,7 @@ expect_binary_spatial_scalar_fit_health <- function(fit) {
 ## spatial_scalar(0 + trait | site) on binary probit
 ## ---------------------------------------------------------------
 test_that("spatial_scalar(0 + trait | site) fits on binary probit; tau tied; tau_spde profile CI is finite", {
+  skip_if_not_heavy()
   skip_if_not_spatial_scalar_binary_deps()
   fx <- make_spatial_scalar_binary_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.1)

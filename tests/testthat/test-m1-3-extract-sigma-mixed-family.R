@@ -33,6 +33,7 @@ skip_on_cran_or_load <- function(n_families) {
 # ---- (1)-(2): shape + PSD on both fixtures ---------------------------
 
 test_that("extract_Sigma() shape + PSD on 3-family fixture (M1.3 / MIX-03)", {
+  skip_if_not_heavy()
   fit <- skip_on_cran_or_load(3L)
   fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = 3L)
   T   <- fx$truth$n_traits
@@ -49,6 +50,7 @@ test_that("extract_Sigma() shape + PSD on 3-family fixture (M1.3 / MIX-03)", {
 })
 
 test_that("extract_Sigma() shape + PSD on 5-family fixture (M1.3 / MIX-03)", {
+  skip_if_not_heavy()
   fit <- skip_on_cran_or_load(5L)
   fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = 5L)
   T   <- fx$truth$n_traits
@@ -67,6 +69,7 @@ test_that("extract_Sigma() shape + PSD on 5-family fixture (M1.3 / MIX-03)", {
 # ---- (3): part = "shared" rank ≤ d ----------------------------------
 
 test_that("part = 'shared' Lambda Lambda^T has rank ≤ d on both fixtures (M1.3)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
@@ -88,6 +91,7 @@ test_that("part = 'shared' Lambda Lambda^T has rank ≤ d on both fixtures (M1.3
 # ---- (4)-(6): link_residual = "auto" vs "none" + identity ------------
 
 test_that("link_residual = 'auto' adds per-family residual to diagonal (M1.3 / MIX-03)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
@@ -130,6 +134,7 @@ test_that("link_residual = 'auto' adds per-family residual to diagonal (M1.3 / M
 # ---- (7): correlation R is valid ------------------------------------
 
 test_that("R = cov2cor(Sigma) is valid (symmetric, diag=1, off-diag in [-1, 1]) (M1.3)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     out <- suppressMessages(extract_Sigma(fit, level = "unit",
@@ -148,6 +153,7 @@ test_that("R = cov2cor(Sigma) is valid (symmetric, diag=1, off-diag in [-1, 1]) 
 # ---- (8): backward-compat on a pure Gaussian fit --------------------
 
 test_that("backward-compat: pure Gaussian fit gives equal Sigma for auto vs none (M1.3)", {
+  skip_if_not_heavy()
   skip_on_cran()
   ## Construct a small pure-Gaussian fit directly. The 3-family fixture's
   ## DGP simulator generates the same Gaussian latent values; we just

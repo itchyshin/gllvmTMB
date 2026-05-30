@@ -162,6 +162,7 @@ expect_unit_sigma_recovery <- function(fit, fx, sigma_tol = 0.30,
 ## (1) indep(0 + trait | unit) -- diagonal Sigma_b (FG-07)
 ## ---------------------------------------------------------------
 test_that("binomial(logit) indep(0+trait|unit) recovers diagonal Sigma; pd_hessian TRUE", {
+  skip_if_not_heavy()
   skip_if_not_logit_unit_deps()
   fx  <- make_logit_unit_fx(struct = "indep", seed = 20260529L)
   fit <- fit_logit_unit(fx, "indep(0 + trait | unit)")
@@ -191,6 +192,7 @@ test_that("binomial(logit) indep(0+trait|unit) recovers diagonal Sigma; pd_hessi
 ## (2) dep(0 + trait | unit) -- full unstructured Sigma_b + CI smoke (FG-08)
 ## ---------------------------------------------------------------
 test_that("binomial(logit) dep(0+trait|unit) recovers unstructured Sigma; rho profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_logit_unit_deps()
   fx  <- make_logit_unit_fx(struct = "dep", seed = 20260530L)
   fit <- fit_logit_unit(fx, "dep(0 + trait | unit)")
@@ -237,6 +239,7 @@ test_that("binomial(logit) dep(0+trait|unit) recovers unstructured Sigma; rho pr
 ## (3) scalar structure via unique(common = TRUE) -- shared variance (FG-09)
 ## ---------------------------------------------------------------
 test_that("binomial(logit) unit scalar (unique common=TRUE) recovers shared variance; pd_hessian TRUE", {
+  skip_if_not_heavy()
   skip_if_not_logit_unit_deps()
   fx  <- make_logit_unit_fx(struct = "scalar", seed = 20260531L)
   ## Unit-tier "scalar" = one variance tied across all traits. The
@@ -265,6 +268,7 @@ test_that("binomial(logit) unit scalar (unique common=TRUE) recovers shared vari
 ## (4) latent(d=1) + unique paired block -- multi-trial regression anchor
 ## ---------------------------------------------------------------
 test_that("binomial(logit) latent+unique paired block recovers Sigma (regression anchor)", {
+  skip_if_not_heavy()
   skip_if_not_logit_unit_deps()
   fx  <- make_logit_unit_fx(struct = "lu", T = 4L, seed = 20260601L)
   fit <- fit_logit_unit(

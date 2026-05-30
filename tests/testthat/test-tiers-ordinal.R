@@ -46,6 +46,7 @@
 ## ---- Tier 1: unit_obs (W) -- B recovers; W is the sigma2_d=1 floor --------
 
 test_that("ordinal_probit x unit_obs tier: converges + pd_hessian; unit (B) variance recovers, unit_obs (W) OLRE is the sigma2_d=1 floor", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   set.seed(303)
@@ -140,6 +141,7 @@ test_that("ordinal_probit x unit_obs tier: converges + pd_hessian; unit (B) vari
 ## ---- Tier 2: cluster (third slot) -- clean recovery -----------------------
 
 test_that("ordinal_probit x cluster tier: 3-level fixture converges + pd_hessian; cluster variance recovers", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   set.seed(404)

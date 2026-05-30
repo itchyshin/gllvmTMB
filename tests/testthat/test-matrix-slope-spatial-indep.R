@@ -188,6 +188,7 @@ run_slope_spatial_indep_family <- function(fixture_family, fit_family,
 ## binomial-probit
 ## ---------------------------------------------------------------
 test_that("binomial(probit): spatial_indep(1 + x | site) random slope converges + pd_hessian; rho errors by contract; per-field variance finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_indep_deps()
   run_slope_spatial_indep_family(
     fixture_family = "binary",
@@ -201,6 +202,7 @@ test_that("binomial(probit): spatial_indep(1 + x | site) random slope converges 
 ## binomial-logit
 ## ---------------------------------------------------------------
 test_that("binomial(logit): spatial_indep(1 + x | site) random slope converges + pd_hessian; rho errors by contract; per-field variance finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_indep_deps()
   run_slope_spatial_indep_family(
     fixture_family = "binary",
@@ -214,6 +216,7 @@ test_that("binomial(logit): spatial_indep(1 + x | site) random slope converges +
 ## ordinal_probit
 ## ---------------------------------------------------------------
 test_that("ordinal_probit: spatial_indep(1 + x | site) random slope converges + pd_hessian; rho errors by contract; per-field variance finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_indep_deps()
   run_slope_spatial_indep_family(
     fixture_family = "ordinal",
@@ -227,6 +230,7 @@ test_that("ordinal_probit: spatial_indep(1 + x | site) random slope converges + 
 ## poisson
 ## ---------------------------------------------------------------
 test_that("poisson(log): spatial_indep(1 + x | site) random slope converges + pd_hessian; rho errors by contract; per-field variance finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_indep_deps()
   run_slope_spatial_indep_family(
     fixture_family = "count",
@@ -240,6 +244,7 @@ test_that("poisson(log): spatial_indep(1 + x | site) random slope converges + pd
 ## nbinom2
 ## ---------------------------------------------------------------
 test_that("nbinom2: spatial_indep(1 + x | site) random slope converges + pd_hessian; rho errors by contract; per-field variance finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_indep_deps()
   run_slope_spatial_indep_family(
     fixture_family = "count",
@@ -253,6 +258,7 @@ test_that("nbinom2: spatial_indep(1 + x | site) random slope converges + pd_hess
 ## gamma
 ## ---------------------------------------------------------------
 test_that("Gamma(log): spatial_indep(1 + x | site) random slope converges + pd_hessian; rho errors by contract; per-field variance finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_indep_deps()
   run_slope_spatial_indep_family(
     fixture_family = "gamma",
@@ -266,6 +272,7 @@ test_that("Gamma(log): spatial_indep(1 + x | site) random slope converges + pd_h
 ## beta
 ## ---------------------------------------------------------------
 test_that("Beta: spatial_indep(1 + x | site) random slope converges + pd_hessian; rho errors by contract; per-field variance finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_indep_deps()
   run_slope_spatial_indep_family(
     fixture_family = "beta",

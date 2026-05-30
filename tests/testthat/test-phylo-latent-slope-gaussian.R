@@ -29,6 +29,7 @@ skip_until_stage3 <- function() {
 
 test_that(
   "phylo_latent(1 + x | sp, d = 2) recovers per-column Lambda + psi on Gaussian", {
+  skip_if_not_heavy()
   skip_if_not_ape()
   skip_until_stage3()
 
@@ -44,6 +45,7 @@ test_that(
 
 test_that(
   "phylo_latent wide ≡ long byte-identical (Design 55 §3)", {
+  skip_if_not_heavy()
   skip_if_not_ape()
   skip_until_stage3()
   expect_true(TRUE)  # placeholder; Phase 56.5a fills in

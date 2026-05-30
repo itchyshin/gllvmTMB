@@ -233,6 +233,7 @@ make_ordinal_spatial_fixture <- function(n_sites = 100L, n_traits = 3L,
 ## a fair chance of escaping local optima (mirrors the beta-spatial paired
 ## test).
 test_that("ordinal_probit: spatial_latent(d=1) + spatial_unique paired fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_spatial_deps()
   fx <- make_ordinal_spatial_paired_fixture()
 
@@ -288,6 +289,7 @@ test_that("ordinal_probit: spatial_latent(d=1) + spatial_unique paired fits; pd_
 ## and use$spde are both set. CI smoke is on the single shared `tau_spde`
 ## (under the map the parm token is the bare "tau_spde", block_length == 1L).
 test_that("ordinal_probit: spatial_scalar(0 + trait | site) fits; tau tied; tau_spde profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_spatial_deps()
   fx   <- make_ordinal_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.1)
@@ -380,6 +382,7 @@ test_that("ordinal_probit: spatial_scalar(0 + trait | site) fits; tau tied; tau_
 ## both finite. No cross-trait correlation surface to extract here. Per the
 ## B0 memo this is the easiest ordinal spatial case after `unique`.
 test_that("ordinal_probit: spatial_indep(0 + trait | site) fits; pd_hessian TRUE", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_spatial_deps()
   fx   <- make_ordinal_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.12)
@@ -431,6 +434,7 @@ test_that("ordinal_probit: spatial_indep(0 + trait | site) fits; pd_hessian TRUE
 ## extract_correlations(tier = "spatial"). PROFILE only (no bootstrap for
 ## ordinal_probit per Design 50 family-ID 14 guard).
 test_that("ordinal_probit: spatial_dep(0 + trait | site) fits; pd_hessian TRUE; CI smoke OR correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_spatial_deps()
   fx   <- make_ordinal_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.12)

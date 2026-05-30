@@ -108,6 +108,7 @@ make_poisson_phylo_paired_fixture <- function(n_sp = 50L, n_traits = 3L,
 }
 
 test_that("phylo_latent + phylo_unique (paired) on Poisson: fit converges; total phylo variance recovers", {
+  skip_if_not_heavy()
   skip_if_not_poisson_phylo_deps()
   fx <- make_poisson_phylo_paired_fixture()
 
@@ -227,6 +228,7 @@ make_poisson_phylo_scalar_fixture <- function(n_sp = 50L, n_traits = 3L,
 }
 
 test_that("phylo_scalar(species) on Poisson: fit converges; sigma^2_phy_scalar recovers; lambda_phy profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_poisson_phylo_deps()
   fx <- make_poisson_phylo_scalar_fixture()
 
@@ -349,6 +351,7 @@ make_poisson_phylo_depindep_fixture <- function(n_sp = 50L, n_traits = 3L,
 }
 
 test_that("phylo_indep(0 + trait | species) on Poisson: fit converges; extract_correlations(tier='phy') non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_poisson_phylo_deps()
   fx <- make_poisson_phylo_depindep_fixture()
 
@@ -401,6 +404,7 @@ test_that("phylo_indep(0 + trait | species) on Poisson: fit converges; extract_c
 })
 
 test_that("phylo_dep(0 + trait | species) on Poisson: fit converges; rho:phy profile CI smoke + extract_correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_poisson_phylo_deps()
   fx <- make_poisson_phylo_depindep_fixture()
 

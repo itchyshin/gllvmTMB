@@ -73,6 +73,7 @@ expect_binary_spatial_fit_health <- function(fit) {
 ## spatial_indep(0 + trait | site) on binary probit
 ## ---------------------------------------------------------------
 test_that("spatial_indep(0 + trait | site) fits on binary probit; pd_hessian TRUE", {
+  skip_if_not_heavy()
   skip_if_not_spatial_binary_deps()
   fx <- make_spatial_binary_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.12)
@@ -119,6 +120,7 @@ test_that("spatial_indep(0 + trait | site) fits on binary probit; pd_hessian TRU
 ## spatial_dep(0 + trait | site) on the same fixture
 ## ---------------------------------------------------------------
 test_that("spatial_dep(0 + trait | site) fits on binary probit; CI smoke + extract_correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_spatial_binary_deps()
   fx <- make_spatial_binary_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.12)

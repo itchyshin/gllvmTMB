@@ -38,6 +38,7 @@
 ## unit_obs (OLRE) tier: unique(0+trait|site) + unique(0+trait|site_species)
 ## ------------------------------------------------------------------
 test_that("nbinom2 x unit_obs: unit + OLRE tiers fit, phi finite, tiers separate", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   n_units  <- 200L
@@ -127,6 +128,7 @@ test_that("nbinom2 x unit_obs: unit + OLRE tiers fit, phi finite, tiers separate
 ## cluster (third-slot) tier: 3-level fixture, cluster = "population"
 ## ------------------------------------------------------------------
 test_that("nbinom2 x cluster: 3-level fit, phi finite, cluster variance recovers", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   n_pop      <- 30L

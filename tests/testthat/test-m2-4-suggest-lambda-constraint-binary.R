@@ -53,6 +53,7 @@ make_binary_irt_dgp <- function(n_items, d, n_resp, seed,
 # ---- (1) Suggester output structure on binary DGP ------------------
 
 test_that("suggest_lambda_constraint() on binary IRT data returns correct shape (LAM-04 / M2.4)", {
+  skip_if_not_heavy()
   skip_on_cran()
   ## Use a small d=2 fixture for shape inspection (don't need to fit).
   fx <- make_binary_irt_dgp(n_items = 8L, d = 2L, n_resp = 100L,
@@ -91,6 +92,7 @@ test_that("suggest_lambda_constraint() on binary IRT data returns correct shape 
 # ---- (2) suggester → fit recovery cycle at d = 1 -------------------
 
 test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=1 (LAM-04 / M2.4)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- make_binary_irt_dgp(n_items = 20L, d = 1L, n_resp = 400L,
                             seed = 20260606L, link = "logit")
@@ -128,6 +130,7 @@ test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=1 (
 # ---- (3) suggester → fit recovery cycle at d = 2 -------------------
 
 test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=2 (LAM-04 / M2.4)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- make_binary_irt_dgp(n_items = 20L, d = 2L, n_resp = 500L,
                             seed = 20260607L, link = "logit")
@@ -163,6 +166,7 @@ test_that("suggest_lambda_constraint() → gllvmTMB fit recovers Lambda at d=2 (
 # ---- (4) Reliability boundary: d=3 with sparse data ----------------
 
 test_that("suggest_lambda_constraint() at d=3 boundary (n_items=10) returns sensible constraint or fails gracefully (LAM-04 reliability / M2.4)", {
+  skip_if_not_heavy()
   skip_on_cran()
   ## Boundary regime: d = 3 with only n_items = 10 is on the
   ## parameter-counting edge. Suggester should at minimum return

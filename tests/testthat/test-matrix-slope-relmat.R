@@ -203,6 +203,7 @@ relmat_pair_ready_or_skip <- function(pair, row_label) {
 ## Mean-dependent count family at a healthy intercept mean ~ exp(2) ~ 7.4.
 ## ---------------------------------------------------------------
 test_that("relmat slope x poisson: phylo_unique(1+x|id, vcv=A) byte-equivalent (sd_b, cor_b, par) to phylo_tree routing; converges, PD (RE-02 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_slope_relmat_deps()
   fx <- make_slope_relmat_fixture(
     seed = 5640L, n_sp = 50L, n_traits = 3L, n_rep = 4L,
@@ -231,6 +232,7 @@ test_that("relmat slope x poisson: phylo_unique(1+x|id, vcv=A) byte-equivalent (
 ## (n_rep = 8) and K = 4 ordinal categories so both routings converge PD.
 ## ---------------------------------------------------------------
 test_that("relmat slope x ordinal_probit: phylo_unique(1+x|id, vcv=A) byte-equivalent (sd_b, cor_b, par) to phylo_tree routing; converges, PD (RE-02 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_slope_relmat_deps()
   taus <- c(0, 0.8, 1.6)  # K = 4 categories
   fx <- make_slope_relmat_fixture(
@@ -260,6 +262,7 @@ test_that("relmat slope x ordinal_probit: phylo_unique(1+x|id, vcv=A) byte-equiv
 ## overdispersion parameter (size = 5) in addition to Sigma_b.
 ## ---------------------------------------------------------------
 test_that("relmat slope x nbinom2: phylo_unique(1+x|id, vcv=A) byte-equivalent (sd_b, cor_b, par) to phylo_tree routing; converges, PD (RE-02 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_slope_relmat_deps()
   fx <- make_slope_relmat_fixture(
     seed = 5640L, n_sp = 50L, n_traits = 3L, n_rep = 4L,
@@ -293,6 +296,7 @@ test_that("relmat slope x nbinom2: phylo_unique(1+x|id, vcv=A) byte-equivalent (
 ## the augmented-LHS slope is wired through the animal keyword.
 ## ---------------------------------------------------------------
 test_that("animal_unique(1+x|id) augmented slope is NOT yet wired to the phylo_unique augmented path (ANI-06 stays partial -- honest, not fake-passed)", {
+  skip_if_not_heavy()
   skip_if_not_slope_relmat_deps()
   fx <- make_slope_relmat_fixture(
     seed = 5640L, n_sp = 50L, n_traits = 3L, n_rep = 4L,

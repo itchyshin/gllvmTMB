@@ -99,6 +99,7 @@ expect_converged_pd <- function(fit) {
 ## latent(0 + trait | unit, d = 1)
 ## --------------------------------------------------------------------------
 test_that("Gamma(log) x latent(d=1) unit-tier: converges, PD, recovers shape", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   df  <- sim_gamma_unit(seed = 4101L)
@@ -135,6 +136,7 @@ test_that("Gamma(log) x latent(d=1) unit-tier: converges, PD, recovers shape", {
 ## unique(0 + trait | unit)
 ## --------------------------------------------------------------------------
 test_that("Gamma(log) x unique unit-tier: converges, PD, recovers shape", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   df  <- sim_gamma_unit(seed = 4102L)
@@ -165,6 +167,7 @@ test_that("Gamma(log) x unique unit-tier: converges, PD, recovers shape", {
 ## latent(d=1) + unique  (paired)
 ## --------------------------------------------------------------------------
 test_that("Gamma(log) x latent+unique unit-tier: converges, PD, shape + rho CI", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   df  <- sim_gamma_unit(seed = 4103L)
@@ -203,6 +206,7 @@ test_that("Gamma(log) x latent+unique unit-tier: converges, PD, shape + rho CI",
 ## indep(0 + trait | unit)
 ## --------------------------------------------------------------------------
 test_that("Gamma(log) x indep unit-tier: converges, PD, recovers shape", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   df  <- sim_gamma_unit(seed = 4104L)
@@ -230,6 +234,7 @@ test_that("Gamma(log) x indep unit-tier: converges, PD, recovers shape", {
 ## dep(0 + trait | unit)
 ## --------------------------------------------------------------------------
 test_that("Gamma(log) x dep unit-tier: converges, PD, shape + rho CI", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   df  <- sim_gamma_unit(seed = 4105L)
@@ -264,6 +269,7 @@ test_that("Gamma(log) x dep unit-tier: converges, PD, shape + rho CI", {
 ## scalar : single shared per-unit variance via the (1 | unit) bar term.
 ## --------------------------------------------------------------------------
 test_that("Gamma(log) x scalar unit-tier: converges, PD, recovers shape (wide)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   df  <- sim_gamma_unit(seed = 4106L)

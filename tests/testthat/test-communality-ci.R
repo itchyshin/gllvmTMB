@@ -49,6 +49,7 @@ make_communality_binary_fit <- function(seed = 2026002L) {
 ## ---- Wald CI: finite, brackets the point estimate -----------------
 
 test_that(".communality_wald_ci() returns finite (lower, upper) bracketing c2_hat", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- make_communality_binary_fit()
   expect_equal(obj$fit$opt$convergence, 0L)
@@ -70,6 +71,7 @@ test_that(".communality_wald_ci() returns finite (lower, upper) bracketing c2_ha
 ## ---- Bootstrap CI: finite, brackets the point estimate ------------
 
 test_that(".communality_bootstrap_ci() with nsim = 50 returns finite (lower, upper)", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- make_communality_binary_fit()
 
@@ -89,6 +91,7 @@ test_that(".communality_bootstrap_ci() with nsim = 50 returns finite (lower, upp
 ## ---- Wald vs Bootstrap rough agreement on the well-identified trait
 
 test_that("Wald and Bootstrap CIs roughly agree on the well-identified trait", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- make_communality_binary_fit()
 
@@ -113,6 +116,7 @@ test_that("Wald and Bootstrap CIs roughly agree on the well-identified trait", {
 ## ---- Bad inputs error clearly -------------------------------------
 
 test_that(".communality_wald_ci() errors clearly on bad inputs", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- make_communality_binary_fit()
 
@@ -139,6 +143,7 @@ test_that(".communality_wald_ci() errors clearly on bad inputs", {
 
 
 test_that(".communality_bootstrap_ci() errors clearly on bad inputs", {
+  skip_if_not_heavy()
   skip_on_cran()
   obj <- make_communality_binary_fit()
 

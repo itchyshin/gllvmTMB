@@ -178,6 +178,7 @@ expect_rho_unit_ci_smoke <- function(fit) {
 ## latent(0 + trait | unit, d = 1) -- reduced-rank, one shared factor
 ## ---------------------------------------------------------------
 test_that("lognormal x latent(0 + trait | unit, d = 1): converges, PD Hessian, sigma_eps + latent var recover, rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_lognormal_unit_deps()
   fx  <- make_lognormal_unit_fixture()
   fit <- fit_lognormal_unit(
@@ -197,6 +198,7 @@ test_that("lognormal x latent(0 + trait | unit, d = 1): converges, PD Hessian, s
 ## unique(0 + trait | unit) -- per-trait diagonal; cleanest sigma_eps recovery
 ## ---------------------------------------------------------------
 test_that("lognormal x unique(0 + trait | unit): converges, PD Hessian, sigma_eps recovers", {
+  skip_if_not_heavy()
   skip_if_not_lognormal_unit_deps()
   fx  <- make_lognormal_unit_fixture()
   fit <- fit_lognormal_unit(
@@ -223,6 +225,7 @@ test_that("lognormal x unique(0 + trait | unit): converges, PD Hessian, sigma_ep
 ## latent + unique paired (reduced-rank + diagonal on the same grouping)
 ## ---------------------------------------------------------------
 test_that("lognormal x latent + unique paired (unit): converges, PD Hessian, sigma_eps + latent var recover, rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_lognormal_unit_deps()
   fx  <- make_lognormal_unit_fixture()
   fit <- fit_lognormal_unit(

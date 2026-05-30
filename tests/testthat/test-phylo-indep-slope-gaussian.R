@@ -27,6 +27,7 @@ skip_until_stage3 <- function() {
 
 test_that(
   "phylo_indep(1 + x | sp) recovers σ²_int, σ²_slope on Gaussian; cov pinned to 0", {
+  skip_if_not_heavy()
   skip_if_not_ape()
   skip_until_stage3()
 
@@ -43,6 +44,7 @@ test_that(
 
 test_that(
   "phylo_indep wide ≡ long byte-identical (Design 55 §3)", {
+  skip_if_not_heavy()
   skip_if_not_ape()
   skip_until_stage3()
   expect_true(TRUE)  # placeholder

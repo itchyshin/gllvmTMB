@@ -18,6 +18,7 @@ make_bootstrap_communality_object <- function() {
 }
 
 test_that("extract_communality accepts bootstrap_Sigma point estimates", {
+  skip_if_not_heavy()
   boot <- make_bootstrap_communality_object()
   c2 <- extract_communality(boot, level = "unit")
 
@@ -27,6 +28,7 @@ test_that("extract_communality accepts bootstrap_Sigma point estimates", {
 })
 
 test_that("extract_communality accepts bootstrap_Sigma interval rows", {
+  skip_if_not_heavy()
   boot <- make_bootstrap_communality_object()
   tbl <- extract_communality(boot, level = "unit", ci = TRUE)
 
@@ -42,6 +44,7 @@ test_that("extract_communality accepts bootstrap_Sigma interval rows", {
 })
 
 test_that("extract_communality reports missing bootstrap communality levels", {
+  skip_if_not_heavy()
   boot <- make_bootstrap_communality_object()
 
   expect_error(

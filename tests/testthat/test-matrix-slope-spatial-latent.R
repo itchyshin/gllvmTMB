@@ -249,6 +249,7 @@ run_slope_spatial_latent_cell <- function(family_obj, family_id, response_fun,
 ## ---------------------------------------------------------------------------
 
 test_that("binomial-probit: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_latent_deps()
   run_slope_spatial_latent_cell(
     family_obj   = stats::binomial(link = "probit"),
@@ -259,6 +260,7 @@ test_that("binomial-probit: spatial_latent(1 + x | site, d = 1) augmented-LHS fi
 })
 
 test_that("binomial-logit: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_latent_deps()
   run_slope_spatial_latent_cell(
     family_obj   = stats::binomial(link = "logit"),
@@ -269,6 +271,7 @@ test_that("binomial-logit: spatial_latent(1 + x | site, d = 1) augmented-LHS fit
 })
 
 test_that("ordinal_probit: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_latent_deps()
   ## K = 4 ordinal: y* = eta + N(0, 1) cut at 3 thresholds.
   taus <- c(0, 0.7, 1.4)
@@ -285,6 +288,7 @@ test_that("ordinal_probit: spatial_latent(1 + x | site, d = 1) augmented-LHS fit
 })
 
 test_that("poisson: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_latent_deps()
   run_slope_spatial_latent_cell(
     family_obj   = stats::poisson(link = "log"),
@@ -295,6 +299,7 @@ test_that("poisson: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_h
 })
 
 test_that("nbinom2: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_latent_deps()
   ## nbinom2 with a moderate size (low overdispersion => near-Poisson,
   ## cleanest count case per the B0 memo sec. 3.2).
@@ -308,6 +313,7 @@ test_that("nbinom2: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_h
 })
 
 test_that("gamma: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_latent_deps()
   ## Gamma(log): shape = phi (CV = 1/sqrt(phi)); E(y) = exp(eta); scale = mu/phi.
   phi_g <- 2
@@ -323,6 +329,7 @@ test_that("gamma: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_hes
 })
 
 test_that("beta: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_spatial_latent_deps()
   ## Beta (logit): mu = plogis(eta); precision phi; y ~ Beta(mu*phi, (1-mu)*phi).
   phi_b <- 5

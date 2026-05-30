@@ -144,6 +144,7 @@ phase56_5_Sigma_b <- function(fit) {
 }
 
 test_that("phylo_unique(1+x|id, vcv=A_dense) wide and long fits are byte-identical", {
+  skip_if_not_heavy()
   skip_if_not_relmat_unique_slope_deps()
 
   fx <- make_relmat_unique_slope_fixture()
@@ -169,6 +170,7 @@ test_that("phylo_unique(1+x|id, vcv=A_dense) wide and long fits are byte-identic
 })
 
 test_that("phylo_unique(1+x|id, vcv=A_dense) recovers Sigma_b", {
+  skip_if_not_heavy()
   skip_if_not_relmat_unique_slope_deps()
 
   fx <- make_relmat_unique_slope_fixture()
@@ -191,6 +193,7 @@ test_that("phylo_unique(1+x|id, vcv=A_dense) recovers Sigma_b", {
 })
 
 test_that("phylo_unique(1+x|id, vcv=A_sparse) agrees with dense fit and recovers Sigma_b", {
+  skip_if_not_heavy()
   skip_if_not_relmat_unique_slope_deps()
 
   ## Phase 56.5 finding (2026-05-26): sparse Ainv path under augmented LHS
@@ -256,6 +259,7 @@ test_that("phylo_unique(1+x|id, vcv=A_sparse) agrees with dense fit and recovers
 })
 
 test_that("phylo_unique(1+x|id, vcv=A) aborts when n_lhs_cols is forced to 1", {
+  skip_if_not_heavy()
   skip_if_not_relmat_unique_slope_deps()
 
   fx <- make_relmat_unique_slope_fixture(n_id = 10L, n_rep = 2L)

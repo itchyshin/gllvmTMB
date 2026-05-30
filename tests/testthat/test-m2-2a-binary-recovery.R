@@ -63,6 +63,7 @@ true_Sigma <- function(Lam, psi, sigma2_d) {
 # ---- (1) FAM-02 binomial(logit) recovery at d = 1 --------------------
 
 test_that("binomial(logit) recovers Sigma at d=1 (FAM-02 / M2.2-A)", {
+  skip_if_not_heavy()
   skip_on_cran()
   T   <- 3L
   Lam <- matrix(c(0.8, 0.6, -0.4), nrow = T, ncol = 1L)
@@ -98,6 +99,7 @@ test_that("binomial(logit) recovers Sigma at d=1 (FAM-02 / M2.2-A)", {
 # ---- (2) FAM-03 binomial(probit) recovery at d = 1 -------------------
 
 test_that("binomial(probit) recovers Sigma at d=1 (FAM-03 / M2.2-A)", {
+  skip_if_not_heavy()
   skip_on_cran()
   T   <- 3L
   Lam <- matrix(c(0.8, 0.6, -0.4), nrow = T, ncol = 1L)
@@ -131,6 +133,7 @@ test_that("binomial(probit) recovers Sigma at d=1 (FAM-03 / M2.2-A)", {
 # ---- (3) FAM-04 binomial(cloglog) recovery at d = 1 ------------------
 
 test_that("binomial(cloglog) recovers Sigma at d=1 (FAM-04 / M2.2-A)", {
+  skip_if_not_heavy()
   skip_on_cran()
   T   <- 3L
   ## Cloglog is asymmetric; centre Lam closer to 0 so the linear
@@ -162,6 +165,7 @@ test_that("binomial(cloglog) recovers Sigma at d=1 (FAM-04 / M2.2-A)", {
 # ---- (4) Link-residual values per binomial link (M2.2-A) ------------
 
 test_that("link_residual_per_trait() returns expected values per binomial link (M2.2-A)", {
+  skip_if_not_heavy()
   skip_on_cran()
   T   <- 2L
   Lam <- matrix(c(0.6, 0.4), nrow = T, ncol = 1L)
@@ -193,6 +197,7 @@ test_that("link_residual_per_trait() returns expected values per binomial link (
 # ---- (5) FAM-14 ordinal_probit link-residual = 1 invariant -----------
 
 test_that("link_residual_per_trait() returns 1 for ordinal_probit fits (FAM-14 / M2.2-A)", {
+  skip_if_not_heavy()
   skip_on_cran()
   ## Construct a minimal ordinal-probit fit reusing the existing
   ## test-ordinal-probit.R DGP convention (Wright/Hadfield threshold

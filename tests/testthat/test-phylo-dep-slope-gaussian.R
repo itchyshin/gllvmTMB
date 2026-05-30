@@ -26,6 +26,7 @@ skip_until_stage3 <- function() {
 
 test_that(
   "phylo_dep(1 + x | sp) recovers 2T × 2T unstructured Σ_b on Gaussian", {
+  skip_if_not_heavy()
   skip_if_not_ape()
   skip_until_stage3()
 
@@ -41,6 +42,7 @@ test_that(
 
 test_that(
   "phylo_dep wide ≡ long byte-identical (Design 55 §3)", {
+  skip_if_not_heavy()
   skip_if_not_ape()
   skip_until_stage3()
   expect_true(TRUE)  # placeholder

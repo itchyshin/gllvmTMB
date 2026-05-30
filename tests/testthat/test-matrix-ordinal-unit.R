@@ -168,6 +168,7 @@ expect_ordinal_unit_health <- function(fit) {
 ## CELL 1: latent(0 + trait | unit, d = 1)
 ## ---------------------------------------------------------------
 test_that("ordinal_probit x latent(0 + trait | unit, d = 1): recovery + rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   fx <- make_shared_factor_fixture()
   testthat::expect_true(all(fx$varx > 0.5))   # Phase B0 var(x) >= 0.5 bar
@@ -225,6 +226,7 @@ test_that("ordinal_probit x latent(0 + trait | unit, d = 1): recovery + rho:unit
 ## CELL 2: unique(0 + trait | unit)  (diagonal-only)
 ## ---------------------------------------------------------------
 test_that("ordinal_probit x unique(0 + trait | unit): per-trait variance recovery; rho:unit has no target", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   fx <- make_diagonal_fixture()
   testthat::expect_true(all(fx$varx > 0.5))
@@ -274,6 +276,7 @@ test_that("ordinal_probit x unique(0 + trait | unit): per-trait variance recover
 ## CELL 3: latent(0 + trait | unit, d = 1) + unique(0 + trait | unit)  (paired)
 ## ---------------------------------------------------------------
 test_that("ordinal_probit x latent + unique (paired): both slots; recovery + rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   ## Shared factor PLUS per-trait unique variance so BOTH halves of the
   ## decomposition Sigma = Lambda Lambda^T + Psi are identified.
@@ -333,6 +336,7 @@ test_that("ordinal_probit x latent + unique (paired): both slots; recovery + rho
 ## CELL 4: indep(0 + trait | unit)  (diagonal-only, marginal mode)
 ## ---------------------------------------------------------------
 test_that("ordinal_probit x indep(0 + trait | unit): indep_B marker + variance recovery; rho:unit has no target", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   fx <- make_diagonal_fixture()
   testthat::expect_true(all(fx$varx > 0.5))
@@ -376,6 +380,7 @@ test_that("ordinal_probit x indep(0 + trait | unit): indep_B marker + variance r
 ## CELL 5: dep(0 + trait | unit)  (full unstructured)
 ## ---------------------------------------------------------------
 test_that("ordinal_probit x dep(0 + trait | unit): full-unstructured slot + rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   fx <- make_shared_factor_fixture()
   testthat::expect_true(all(fx$varx > 0.5))
@@ -434,6 +439,7 @@ test_that("ordinal_probit x dep(0 + trait | unit): full-unstructured slot + rho:
 ## `unique(..., common = TRUE)`, the byte-equivalent of the tie-across-traits
 ## contract that `phylo_scalar` / `spatial_scalar` enforce via TMB's map.
 test_that("ordinal_probit x scalar (unique common = TRUE): single shared variance tied across traits", {
+  skip_if_not_heavy()
   skip_if_not_ordinal_unit_deps()
   ## Equal true SDs across traits so a single shared variance is the right
   ## model and recovery is meaningful.

@@ -135,6 +135,7 @@ fit_matrix_slope_probit <- function(fx) {
 ## recovery + slope-variance profile CI smoke.
 ## ---------------------------------------------------------------------
 test_that("phylo_unique(1 + x | sp) x binomial-probit recovers Sigma_b and a slope-variance profile CI is finite", {
+  skip_if_not_heavy()
   skip_if_not_matrix_slope_probit_deps()
 
   fx <- make_matrix_slope_probit_fixture()
@@ -238,6 +239,7 @@ test_that("phylo_unique(1 + x | sp) x binomial-probit recovers Sigma_b and a slo
 ## is what carries the binomial-probit fit.
 ## ---------------------------------------------------------------------
 test_that("phylo_unique(1 + x | sp) x binomial-probit aborts when n_lhs_cols is forced to 1", {
+  skip_if_not_heavy()
   skip_if_not_matrix_slope_probit_deps()
 
   fx <- make_matrix_slope_probit_fixture(n_sp = 12L, n_rep = 3L)

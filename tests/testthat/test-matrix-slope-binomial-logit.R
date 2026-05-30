@@ -145,6 +145,7 @@ slope_logit_fit_healthy <- function(fit) {
 }
 
 test_that("binomial(logit) phylo_unique(1+x|sp): augmented Sigma_b recovers; pd_hessian TRUE; slope-variance profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_logit_deps()
   fx <- make_slope_logit_fixture()
   fit <- fit_slope_logit(fx)

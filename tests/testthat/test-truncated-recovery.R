@@ -30,6 +30,7 @@ rztpois <- function(n, lambda) {
 }
 
 test_that("truncated_poisson() converges and recovers trait intercepts", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(42)
   n_ind <- 250
@@ -64,6 +65,7 @@ test_that("truncated_poisson() converges and recovers trait intercepts", {
 })
 
 test_that("truncated_poisson rejects rows with y < 1", {
+  skip_if_not_heavy()
   set.seed(1)
   df_long <- data.frame(
     individual = factor(rep(1:10, each = 2)),
@@ -96,6 +98,7 @@ rztnbinom2 <- function(n, mu, phi) {
 }
 
 test_that("truncated_nbinom2() converges and recovers trait intercepts + phi", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(99)
   n_ind <- 300
@@ -140,6 +143,7 @@ test_that("truncated_nbinom2() converges and recovers trait intercepts + phi", {
 })
 
 test_that("truncated_nbinom2 logLik agrees with glmmTMB::truncated_nbinom2()", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("glmmTMB")
   set.seed(13)
@@ -181,6 +185,7 @@ test_that("truncated_nbinom2 logLik agrees with glmmTMB::truncated_nbinom2()", {
 })
 
 test_that("truncated_nbinom2 rejects rows with y < 1", {
+  skip_if_not_heavy()
   set.seed(1)
   df_long <- data.frame(
     individual = factor(rep(1:10, each = 2)),

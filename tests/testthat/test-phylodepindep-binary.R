@@ -87,6 +87,7 @@ expect_binary_phylo_fit_health <- function(fit) {
 ## phylo_indep(0 + trait | species) on binary probit
 ## ---------------------------------------------------------------
 test_that("phylo_indep(0 + trait | species) fits on binary probit; pd_hessian TRUE", {
+  skip_if_not_heavy()
   skip_if_not_phylo_binary_deps()
   fx <- make_phylo_binary_fixture()
 
@@ -137,6 +138,7 @@ test_that("phylo_indep(0 + trait | species) fits on binary probit; pd_hessian TR
 ## phylo_dep(0 + trait | species) on the same fixture
 ## ---------------------------------------------------------------
 test_that("phylo_dep(0 + trait | species) fits on binary probit; CI smoke + extract_correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_phylo_binary_deps()
   fx <- make_phylo_binary_fixture()
 

@@ -216,6 +216,7 @@ expect_rho_unit_ci_smoke <- function(fit, n_traits) {
 ## latent(0 + trait | unit, d = 1) -- reduced-rank, one shared factor
 ## ---------------------------------------------------------------
 test_that("truncated_poisson x latent(0 + trait | unit, d = 1): converges, PD Hessian, recovers intercepts, Lambda_B 3x1", {
+  skip_if_not_heavy()
   skip_if_not_truncpois_unit_deps()
   fx  <- make_ztpois_unit_fixture("shared")
   fit <- fit_ztpois_unit(
@@ -233,6 +234,7 @@ test_that("truncated_poisson x latent(0 + trait | unit, d = 1): converges, PD He
 ## Split out so the degenerate profile -> honest skip does not mask the passing
 ## structural recovery above.
 test_that("truncated_poisson x latent(d = 1): rho:unit profile-CI smoke (honest skip if degenerate)", {
+  skip_if_not_heavy()
   skip_if_not_truncpois_unit_deps()
   fx  <- make_ztpois_unit_fixture("shared")
   fit <- fit_ztpois_unit(
@@ -246,6 +248,7 @@ test_that("truncated_poisson x latent(d = 1): rho:unit profile-CI smoke (honest 
 ## unique(0 + trait | unit) -- per-trait diagonal; non-collapsing SDs
 ## ---------------------------------------------------------------
 test_that("truncated_poisson x unique(0 + trait | unit): converges, PD Hessian, diagonal SDs do not collapse", {
+  skip_if_not_heavy()
   skip_if_not_truncpois_unit_deps()
   fx  <- make_ztpois_unit_fixture("diag")
   fit <- fit_ztpois_unit(
@@ -274,6 +277,7 @@ test_that("truncated_poisson x unique(0 + trait | unit): converges, PD Hessian, 
 ## latent + unique paired (reduced-rank + diagonal on the same grouping)
 ## ---------------------------------------------------------------
 test_that("truncated_poisson x latent + unique paired (unit): converges, PD Hessian, both terms active, recovers intercepts", {
+  skip_if_not_heavy()
   skip_if_not_truncpois_unit_deps()
   fx  <- make_ztpois_unit_fixture("both")
   fit <- fit_ztpois_unit(
@@ -293,6 +297,7 @@ test_that("truncated_poisson x latent + unique paired (unit): converges, PD Hess
 ## rho:unit profile-CI smoke for the paired cell (off-diagonal structure present).
 ## Split out for the same reason as the latent cell.
 test_that("truncated_poisson x latent + unique paired (unit): rho:unit profile-CI smoke (honest skip if degenerate)", {
+  skip_if_not_heavy()
   skip_if_not_truncpois_unit_deps()
   fx  <- make_ztpois_unit_fixture("both")
   fit <- fit_ztpois_unit(

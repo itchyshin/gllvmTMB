@@ -18,6 +18,7 @@ make_bootstrap_repeatability_object <- function() {
 }
 
 test_that("extract_repeatability accepts bootstrap_Sigma interval rows", {
+  skip_if_not_heavy()
   boot <- make_bootstrap_repeatability_object()
   tbl <- extract_repeatability(boot)
 
@@ -32,6 +33,7 @@ test_that("extract_repeatability accepts bootstrap_Sigma interval rows", {
 })
 
 test_that("extract_repeatability reports missing bootstrap ICC summaries", {
+  skip_if_not_heavy()
   boot <- make_bootstrap_repeatability_object()
   boot$point_est$ICC_site <- NULL
 

@@ -44,6 +44,7 @@ build_fit_for_confint <- function(n_sites = 60L, seed = 20260527L) {
 ## ---- parm = "Lambda" returns all entries ----------------------------
 
 test_that("confint(fit, parm = 'Lambda') returns one row per entry", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   ci <- confint(bf$fit, parm = "Lambda")
@@ -62,6 +63,7 @@ test_that("confint(fit, parm = 'Lambda') returns one row per entry", {
 ## ---- parm = "Lambda:i,j" returns a single entry --------------------
 
 test_that("confint(fit, parm = 'Lambda:1,1') returns exactly one row", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   ci <- confint(bf$fit, parm = "Lambda:1,1")
@@ -74,6 +76,7 @@ test_that("confint(fit, parm = 'Lambda:1,1') returns exactly one row", {
 ## ---- parm = "Lambda:i,j;k,l" returns multiple entries --------------
 
 test_that("confint(fit, parm = 'Lambda:1,1;2,1') returns two rows", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   ci <- confint(bf$fit, parm = "Lambda:1,1;2,1")
@@ -87,6 +90,7 @@ test_that("confint(fit, parm = 'Lambda:1,1;2,1') returns two rows", {
 ## ---- Each of the three methods returns sensible bounds ---------------
 
 test_that("method = 'wald' returns finite lower < estimate < upper for free entries", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   ci <- confint(bf$fit, parm = "Lambda", method = "wald")
@@ -103,6 +107,7 @@ test_that("method = 'wald' returns finite lower < estimate < upper for free entr
 })
 
 test_that("method = 'wald_asym' returns finite asymmetric bounds for free entries", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   ci <- confint(bf$fit, parm = "Lambda", method = "wald_asym")
@@ -116,6 +121,7 @@ test_that("method = 'wald_asym' returns finite asymmetric bounds for free entrie
 })
 
 test_that("method = 'profile' returns finite bounds on at least one free entry", {
+  skip_if_not_heavy()
   ## Profile is expensive (refit per grid point per entry), so we use
   ## a small parm spec (one entry) to keep runtime modest.
   skip_if_not_installed("TMB")
@@ -135,6 +141,7 @@ test_that("method = 'profile' returns finite bounds on at least one free entry",
 ## ---- Malformed parm strings error clearly --------------------------
 
 test_that("confint(fit, parm = 'Lambda:foo') errors with a clear message", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   expect_error(
@@ -144,6 +151,7 @@ test_that("confint(fit, parm = 'Lambda:foo') errors with a clear message", {
 })
 
 test_that("confint(fit, parm = 'Lambda:9,9') errors when indices out of range", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   ## n_traits = 10, K = 2; so (9, 9) is out of range in the K dimension.
@@ -154,6 +162,7 @@ test_that("confint(fit, parm = 'Lambda:9,9') errors when indices out of range", 
 })
 
 test_that("confint(fit, parm = 'Lambda:1') errors (single index, expected 2)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   expect_error(
@@ -165,6 +174,7 @@ test_that("confint(fit, parm = 'Lambda:1') errors (single index, expected 2)", {
 ## ---- pdHess = FALSE behaviour --------------------------------------
 
 test_that("pdHess = FALSE: Wald paths return NA + pd_hessian = FALSE", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit_for_confint()
   bf$fit$sd_report$pdHess <- FALSE
@@ -184,6 +194,7 @@ test_that("pdHess = FALSE: Wald paths return NA + pd_hessian = FALSE", {
 })
 
 test_that("pdHess = FALSE: profile path produces finite bounds (bypasses gate)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   bf <- build_fit_for_confint()

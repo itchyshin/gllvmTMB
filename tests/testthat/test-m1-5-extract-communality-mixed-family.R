@@ -23,6 +23,7 @@ skip_on_cran_or_load <- function(n_families) {
 # ---- (1) + (2): shape + range ---------------------------------------
 
 test_that("extract_communality() shape + range on both fixtures (M1.5 / MIX-05)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
@@ -42,6 +43,7 @@ test_that("extract_communality() shape + range on both fixtures (M1.5 / MIX-05)"
 # ---- (3): auto shrinks H^2 vs none on non-Gaussian traits ----------
 
 test_that("link_residual = 'auto' shrinks H^2 on non-Gaussian traits (M1.5 / MIX-05)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
@@ -81,6 +83,7 @@ test_that("link_residual = 'auto' shrinks H^2 on non-Gaussian traits (M1.5 / MIX
 # ---- (4): partition identity (sanity) -------------------------------
 
 test_that("communality is consistent with extract_Sigma decomposition (M1.5)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     H2 <- suppressMessages(extract_communality(

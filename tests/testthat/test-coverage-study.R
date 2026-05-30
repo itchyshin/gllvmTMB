@@ -31,6 +31,7 @@ make_tiny_fit_for_cov <- function(seed = 1L) {
 ## ---- input validation ---------------------------------------------------
 
 test_that("coverage_study() errors on non-fit input", {
+  skip_if_not_heavy()
   expect_error(
     gllvmTMB::coverage_study(list(foo = 1), n_reps = 5L),
     "fit returned by `gllvmTMB\\(\\)`"
@@ -38,6 +39,7 @@ test_that("coverage_study() errors on non-fit input", {
 })
 
 test_that("coverage_study() rejects n_reps < 2", {
+  skip_if_not_heavy()
   fit <- structure(list(tmb_obj = NULL), class = "gllvmTMB_multi")
   expect_error(
     gllvmTMB::coverage_study(fit, n_reps = 1L),
@@ -46,6 +48,7 @@ test_that("coverage_study() rejects n_reps < 2", {
 })
 
 test_that("coverage_study() rejects unknown parm labels", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   expect_error(
@@ -61,6 +64,7 @@ test_that("coverage_study() rejects unknown parm labels", {
 ## ---- structure of the returned object -----------------------------------
 
 test_that("coverage_study() returns the documented structure", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   res <- suppressMessages(suppressWarnings(
@@ -111,6 +115,7 @@ test_that("coverage_study() returns the documented structure", {
 ## ---- well-behaved fit hits the >= 94% gate on a small sample ----------
 
 test_that("Wald CI on sigma_eps passes the 94% gate on a tiny well-identified fit", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   res <- suppressMessages(suppressWarnings(
@@ -134,6 +139,7 @@ test_that("Wald CI on sigma_eps passes the 94% gate on a tiny well-identified fi
 ## ---- coverage_study() default parm omits lambda_packed targets --------
 
 test_that("coverage_study() default parm omits lambda_packed (rotation-ambiguous)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   res <- suppressMessages(suppressWarnings(
@@ -154,6 +160,7 @@ test_that("coverage_study() default parm omits lambda_packed (rotation-ambiguous
 ## ---- print method runs --------------------------------------------------
 
 test_that("print.gllvmTMB_coverage_study runs without error", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   res <- suppressMessages(suppressWarnings(
@@ -172,6 +179,7 @@ test_that("print.gllvmTMB_coverage_study runs without error", {
 ## ---- bonus: extended Wald confint routing for non-fixed-effect parm ---
 
 test_that("confint(method = 'wald') routes through profile_targets() for non-fixed-effect parm", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_cov()
   ci <- suppressMessages(suppressWarnings(

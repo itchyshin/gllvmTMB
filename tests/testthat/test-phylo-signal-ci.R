@@ -79,6 +79,7 @@ fit_phylo_signal_binary <- function(fx) {
 ## ============================================================================
 
 test_that(".phylo_signal_wald_ci errors clearly on a fit with no phylo component", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("TMB")
   set.seed(11L)
@@ -109,6 +110,7 @@ test_that(".phylo_signal_wald_ci errors clearly on a fit with no phylo component
 })
 
 test_that(".phylo_signal_bootstrap_ci errors clearly on a fit with no phylo component", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("TMB")
   set.seed(11L)
@@ -143,6 +145,7 @@ test_that(".phylo_signal_bootstrap_ci errors clearly on a fit with no phylo comp
 ## ============================================================================
 
 test_that(".phylo_signal_wald_ci returns finite bounds with lower < H2_hat < upper", {
+  skip_if_not_heavy()
   skip_unless_ape()
   skip_on_cran()
   skip_if_not_installed("TMB")
@@ -179,6 +182,7 @@ test_that(".phylo_signal_wald_ci returns finite bounds with lower < H2_hat < upp
 ## ============================================================================
 
 test_that(".phylo_signal_bootstrap_ci returns finite bounds with rough Wald agreement", {
+  skip_if_not_heavy()
   skip_unless_ape()
   skip_on_cran()
   skip_if_not_installed("TMB")

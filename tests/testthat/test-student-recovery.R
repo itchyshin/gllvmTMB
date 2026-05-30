@@ -10,6 +10,7 @@
 ## Student-t random-effects models).
 
 test_that("student() family converges and recovers trait intercepts + sigma + df", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(2026)
   n_ind <- 250
@@ -57,6 +58,7 @@ test_that("student() family converges and recovers trait intercepts + sigma + df
 })
 
 test_that("student(df = 3) pins df via the TMB map", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(11)
   n_ind <- 200
@@ -80,6 +82,7 @@ test_that("student(df = 3) pins df via the TMB map", {
 })
 
 test_that("student logLik agrees with glmmTMB::t_family() at the obs-likelihood level", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("glmmTMB")
   ## glmmTMB exposes Student-t via family = glmmTMB::t_family() (added in
@@ -126,6 +129,7 @@ test_that("student logLik agrees with glmmTMB::t_family() at the obs-likelihood 
 })
 
 test_that("student rejects non-identity link", {
+  skip_if_not_heavy()
   expect_error(
     suppressMessages(gllvmTMB(
       data.frame(individual = factor(1:10), trait = factor("a"), value = rnorm(10)),

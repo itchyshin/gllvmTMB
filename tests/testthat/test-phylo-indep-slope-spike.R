@@ -117,6 +117,7 @@ fit_phylo_indep_slope_wide <- function(fx) {
 }
 
 test_that("phylo_indep augmented routes to b_phy_aug with atanh_cor_b pinned (no C++)", {
+  skip_if_not_heavy()
   skip_if_not_phylo_indep_slope_deps()
 
   fx <- make_phylo_indep_slope_fixture()
@@ -143,6 +144,7 @@ test_that("phylo_indep augmented routes to b_phy_aug with atanh_cor_b pinned (no
 })
 
 test_that("phylo_indep augmented Gaussian recovers both SDs with correlation pinned at 0", {
+  skip_if_not_heavy()
   skip_if_not_phylo_indep_slope_deps()
 
   fx <- make_phylo_indep_slope_fixture()
@@ -168,6 +170,7 @@ test_that("phylo_indep augmented Gaussian recovers both SDs with correlation pin
 })
 
 test_that("phylo_indep wide and long augmented surfaces are byte-identical", {
+  skip_if_not_heavy()
   skip_if_not_phylo_indep_slope_deps()
 
   fx <- make_phylo_indep_slope_fixture()

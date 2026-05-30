@@ -30,6 +30,7 @@ make_tiny_fit_for_pt <- function(seed = 1L) {
 ## ---- inventory shape -----------------------------------------------------
 
 test_that("profile_targets() returns the documented columns", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   pt <- gllvmTMB::profile_targets(fit)
@@ -51,6 +52,7 @@ test_that("profile_targets() returns the documented columns", {
 })
 
 test_that("profile_targets() rows split into direct and derived", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   pt <- gllvmTMB::profile_targets(fit)
@@ -61,6 +63,7 @@ test_that("profile_targets() rows split into direct and derived", {
 })
 
 test_that("profile_targets() direct rows for this fixture include b_fix, sigma_eps, sd_B, Lambda_B_packed", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   pt <- gllvmTMB::profile_targets(fit)
@@ -72,6 +75,7 @@ test_that("profile_targets() direct rows for this fixture include b_fix, sigma_e
 })
 
 test_that("profile_targets() derived rows include the four canonical extractors", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   pt <- gllvmTMB::profile_targets(fit)
@@ -83,6 +87,7 @@ test_that("profile_targets() derived rows include the four canonical extractors"
 })
 
 test_that("profile_targets(ready_only = TRUE) filters out non-ready rows", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   pt_all <- gllvmTMB::profile_targets(fit, ready_only = FALSE)
@@ -92,6 +97,7 @@ test_that("profile_targets(ready_only = TRUE) filters out non-ready rows", {
 })
 
 test_that("profile_targets() controlled vocabularies are respected (no internal validation errors)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   ## profile_targets() raises a typed abort if its own output violates
@@ -129,6 +135,7 @@ test_that("profile_targets() controlled vocabularies are respected (no internal 
 ## ---- input validation ----------------------------------------------------
 
 test_that("profile_targets() errors on non-fit input", {
+  skip_if_not_heavy()
   expect_error(
     gllvmTMB::profile_targets(list(foo = 1)),
     "fit returned by `gllvmTMB\\(\\)`"
@@ -138,6 +145,7 @@ test_that("profile_targets() errors on non-fit input", {
 ## ---- confint(method = "profile") routes through profile_targets() -------
 
 test_that("confint(method = 'profile') accepts profile_targets() labels for direct non-fixed-effect targets", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   ci <- suppressMessages(suppressWarnings(stats::confint(
@@ -155,6 +163,7 @@ test_that("confint(method = 'profile') accepts profile_targets() labels for dire
 })
 
 test_that("confint() on a derived target emits a warning and returns empty", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   expect_warning(
@@ -167,6 +176,7 @@ test_that("confint() on a derived target emits a warning and returns empty", {
 ## ---- confint(method = "wald") for fixed effects is unchanged ------------
 
 test_that("confint(method = 'wald') for fixed effects still returns the legacy shape", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit_for_pt()
   ci_w <- suppressMessages(stats::confint(fit, method = "wald"))

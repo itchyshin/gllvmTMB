@@ -36,6 +36,7 @@ make_tiny_fit <- function(seed = 1) {
 }
 
 test_that("bootstrap_Sigma returns the expected list structure (smoke test)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit()
   boot <- suppressMessages(bootstrap_Sigma(
@@ -79,6 +80,7 @@ test_that("bootstrap_Sigma returns the expected list structure (smoke test)", {
 })
 
 test_that("Point estimates match extract_Sigma() on the original fit", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit()
   boot <- suppressMessages(bootstrap_Sigma(
@@ -95,6 +97,7 @@ test_that("Point estimates match extract_Sigma() on the original fit", {
 })
 
 test_that("CI bounds are tighter at lower confidence levels", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit()
   boot95 <- suppressMessages(bootstrap_Sigma(
@@ -124,6 +127,7 @@ test_that("CI bounds are tighter at lower confidence levels", {
 })
 
 test_that("seed is reproducible: two calls with same seed give identical output", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit()
   b1 <- suppressMessages(bootstrap_Sigma(
@@ -148,6 +152,7 @@ test_that("seed is reproducible: two calls with same seed give identical output"
 })
 
 test_that("new link_residual argument preserves legacy positional seed calls", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit()
   named <- suppressMessages(bootstrap_Sigma(
@@ -174,6 +179,7 @@ test_that("new link_residual argument preserves legacy positional seed calls", {
 })
 
 test_that("n_cores = 2 returns CIs of the same shape and roughly the same magnitude as n_cores = 1", {
+  skip_if_not_heavy()
   skip_on_cran()
   skip_if_not_installed("future")
   skip_if_not_installed("future.apply")
@@ -206,6 +212,7 @@ test_that("n_cores = 2 returns CIs of the same shape and roughly the same magnit
 })
 
 test_that("Failed refits are tallied in n_failed, not in CIs", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_fit()
   ## Force a failure by inserting a poison replicate: monkey-patch the

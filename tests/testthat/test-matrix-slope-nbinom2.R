@@ -140,6 +140,7 @@ slope_nb2_Sigma_b <- function(fit) {
 }
 
 test_that("phylo_unique(1 + x | species) x nbinom2 recovers Sigma_b + phi; slope-var profile CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_nb2_deps()
   fx <- make_slope_nb2_fixture()
 

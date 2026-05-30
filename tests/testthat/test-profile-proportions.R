@@ -72,6 +72,7 @@ get_full_prop_tbl <- function() {
 ## ============================================================================
 
 test_that("profile_ci_proportions() default has the right shape and column names", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   tbl <- get_full_prop_tbl()
@@ -91,6 +92,7 @@ test_that("profile_ci_proportions() default has the right shape and column names
 })
 
 test_that("profile_ci_proportions(): proportion column matches extract_proportions()", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -114,6 +116,7 @@ test_that("profile_ci_proportions(): proportion column matches extract_proportio
 })
 
 test_that("profile_ci_proportions(): bounds monotonic for all profiled rows (lower <= proportion <= upper)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   tbl <- get_full_prop_tbl()
@@ -127,6 +130,7 @@ test_that("profile_ci_proportions(): bounds monotonic for all profiled rows (low
 })
 
 test_that("profile_ci_proportions(): bounds in [0, 1] for all profiled rows", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   tbl <- get_full_prop_tbl()
@@ -136,6 +140,7 @@ test_that("profile_ci_proportions(): bounds in [0, 1] for all profiled rows", {
 })
 
 test_that("profile_ci_proportions(): no phylo components in the no-phylo fixture", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   tbl <- get_full_prop_tbl()
@@ -149,6 +154,7 @@ test_that("profile_ci_proportions(): no phylo components in the no-phylo fixture
 ## ============================================================================
 
 test_that("profile_ci_proportions(components = 'shared_unit', trait_idx = 1) filters", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -167,6 +173,7 @@ test_that("profile_ci_proportions(components = 'shared_unit', trait_idx = 1) fil
 ## ============================================================================
 
 test_that("profile_ci_proportions(): unknown component errors with available list", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -184,6 +191,7 @@ test_that("profile_ci_proportions(): unknown component errors with available lis
 })
 
 test_that("profile_ci_proportions(trait_idx = 99) errors with a range message", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -200,6 +208,7 @@ test_that("profile_ci_proportions(trait_idx = 99) errors with a range message", 
 ## ============================================================================
 
 test_that("confint(fit, parm = 'proportion:shared_unit:trait_1') returns one row with the right shape", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -216,6 +225,7 @@ test_that("confint(fit, parm = 'proportion:shared_unit:trait_1') returns one row
 })
 
 test_that("confint(fit, parm = 'proportion'): bare token is recognised and routes (parse-only check)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -232,6 +242,7 @@ test_that("confint(fit, parm = 'proportion'): bare token is recognised and route
 })
 
 test_that(".parse_proportion_parm splits multi-component tokens", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -245,6 +256,7 @@ test_that(".parse_proportion_parm splits multi-component tokens", {
 })
 
 test_that(".parse_proportion_parm splits (component, trait) tokens", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -258,6 +270,7 @@ test_that(".parse_proportion_parm splits (component, trait) tokens", {
 })
 
 test_that(".parse_proportion_parm accepts bracketed indices on the trait portion", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -275,6 +288,7 @@ test_that(".parse_proportion_parm accepts bracketed indices on the trait portion
 ## ============================================================================
 
 test_that("confint(fit, parm = 'proportion:shared_unit', method = 'wald') returns finite bounds", {
+  skip_if_not_heavy()
   ## Phase B-INF Lane 1 A2 wired wald (delta method on logit-p).
   skip_if_not_installed("TMB")
   skip_on_cran()
@@ -289,6 +303,7 @@ test_that("confint(fit, parm = 'proportion:shared_unit', method = 'wald') return
 })
 
 test_that("confint(fit, parm = 'proportion:shared_unit', method = 'bootstrap') returns finite bounds", {
+  skip_if_not_heavy()
   ## Phase B-INF Lane 1 A2 wired bootstrap (parametric simulate-refit).
   skip_if_not_installed("TMB")
   skip_on_cran()
@@ -310,6 +325,7 @@ test_that("confint(fit, parm = 'proportion:shared_unit', method = 'bootstrap') r
 ## ============================================================================
 
 test_that("confint(fit, parm = 'proportion:bogus') errors on unknown component name", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
@@ -322,6 +338,7 @@ test_that("confint(fit, parm = 'proportion:bogus') errors on unknown component n
 })
 
 test_that("confint(fit, parm = 'proportion:shared_unit:bogus') errors on unknown trait name", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()

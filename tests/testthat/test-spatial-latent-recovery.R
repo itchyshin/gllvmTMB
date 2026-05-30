@@ -35,6 +35,7 @@
 skip_on_cran()
 
 test_that("spatial_latent recovers Lambda shape and Sigma_spde correlation pattern", {
+  skip_if_not_heavy()
   skip_if_not_installed("vegan")
   set.seed(7)
   n_sites    <- 200
@@ -143,6 +144,7 @@ test_that("spatial_latent recovers Lambda shape and Sigma_spde correlation patte
 })
 
 test_that("spatial_latent uses fewer parameters than per-trait spatial_unique", {
+  skip_if_not_heavy()
   ## A K << T spatial_latent fit should have fewer free parameters
   ## than spatial_unique, because the per-trait log_tau_spde and
   ## per-trait omega columns are mapped off (Lambda_spde [T x K]

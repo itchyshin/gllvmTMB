@@ -156,8 +156,8 @@
 ##   `upper`, `method`, `pd_hessian`, `ci_status`. Pinned entries are
 ##   included when `parm = "Lambda"` (lower == upper == estimate,
 ##   ci_status == "pinned") so the row order is stable across methods.
-.confint_lambda <- function(object, parm, level, method, ...) {
-  method <- match.arg(method, c("wald", "wald_asym", "profile"))
+.confint_lambda <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
+  method <- match.arg(method, c("wald", "wald_asym", "profile", "bootstrap"))
 
   Lambda_mat <- object$report[["Lambda_B"]]
   if (is.null(Lambda_mat)) {
@@ -204,6 +204,32 @@
       ci <- ci[row_ids, , drop = FALSE]
       parameter <- parameter[row_ids]
     }
+    return(data.frame(
+      parameter = parameter,
+      estimate = ci$estimate,
+      lower = ci$lower,
+      upper = ci$upper,
+      method = ci$method,
+      pd_hessian = ci$pd_hessian,
+      ci_status = ci$ci_status,
+      stringsAsFactors = FALSE,
+      row.names = NULL
+    ))
+  }
+
+  ## ---- Phase B-INF Lane 1 A4 (2026-05-28): bootstrap path -------------------
+  if (method == "bootstrap") {
+    ci <- .loading_ci_bootstrap(
+      fit = object,
+      level = "unit",
+      entries = entries,
+      conf_level = level,
+      nsim = nsim,
+      seed = seed
+    )
+    trait_lab <- as.character(ci$trait)
+    axis_lab <- as.character(ci$axis)
+    parameter <- sprintf("Lambda[%s,%s]", trait_lab, axis_lab)
     return(data.frame(
       parameter = parameter,
       estimate = ci$estimate,
@@ -604,22 +630,29 @@
 
 ## Internal helper: dispatch `confint(fit, parm = "phylo_signal[:...]")`.
 ## Currently profile-only; wald / bootstrap error with a clear message.
-.confint_phylo_signal <- function(object, parm, level, method, ...) {
+.confint_phylo_signal <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
   trait_names <- levels(object$data[[object$trait_col]])
   trait_idx <- .parse_pertrait_parm(parm, "phylo_signal", trait_names)
   if (is.null(trait_idx)) {
     trait_idx <- seq_along(trait_names)
   }
-  if (method != "profile") {
+  ## Phase B-INF Lane 1 A3 (2026-05-28): wald + bootstrap routes added.
+  tbl <- switch(
+    method,
+    profile = profile_ci_phylo_signal(
+      fit = object, trait_idx = trait_idx, level = level
+    ),
+    wald = .phylo_signal_wald_ci(
+      fit = object, trait_idx = trait_idx, level = level
+    ),
+    bootstrap = .phylo_signal_bootstrap_ci(
+      fit = object, trait_idx = trait_idx,
+      level = level, nsim = nsim, seed = seed
+    ),
     cli::cli_abort(c(
       "Method {.val {method}} not implemented for {.code phylo_signal}.",
-      i = "Only {.val profile} is currently available via {.fn profile_ci_phylo_signal}."
+      i = "Available: {.val profile}, {.val wald}, {.val bootstrap}."
     ))
-  }
-  tbl <- profile_ci_phylo_signal(
-    fit = object,
-    trait_idx = trait_idx,
-    level = level
   )
   out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
   rownames(out) <- paste0("phylo_signal:", as.character(tbl$trait))
@@ -632,7 +665,7 @@
 ## `extract_communality()` (which has its own wald-demote-to-bootstrap
 ## logic and bootstrap path, but only for the per-tier table — not the
 ## per-trait token we expose here).
-.confint_communality <- function(object, parm, level, method, ...) {
+.confint_communality <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
   trait_names <- levels(object$data[[object$trait_col]])
   parsed <- .parse_communality_parm(parm, trait_names)
   tier <- parsed$tier
@@ -640,22 +673,51 @@
   if (is.null(trait_idx)) {
     trait_idx <- seq_along(trait_names)
   }
-  if (method != "profile") {
+  ## Phase B-INF Lane 1 A1 (2026-05-28): wald + bootstrap routes added.
+  ## A1's `.communality_wald_ci()` / `.communality_bootstrap_ci()` are
+  ## scalar-trait functions (one trait per call); we loop here so the
+  ## dispatcher exposes the same vector trait_idx semantics as the
+  ## profile path.
+  tbl <- switch(
+    method,
+    profile = suppressWarnings(profile_ci_communality(
+      fit = object, tier = tier, trait_idx = trait_idx, level = level
+    )),
+    wald = do.call(rbind, lapply(trait_idx, function(t) {
+      v <- .communality_wald_ci(
+        fit = object, tier = tier, trait_idx = t, level = level
+      )
+      ## A1 returns a named numeric vector; wrap in a 1-row data frame
+      ## matching the profile path's column layout so downstream
+      ## indexing (`tbl$lower`, `tbl$upper`, `tbl$trait`) just works.
+      data.frame(
+        trait = trait_names[t],
+        c2 = unname(v["estimate"]),
+        lower = unname(v["lower"]),
+        upper = unname(v["upper"]),
+        method = "wald",
+        stringsAsFactors = FALSE
+      )
+    })),
+    bootstrap = do.call(rbind, lapply(trait_idx, function(t) {
+      v <- .communality_bootstrap_ci(
+        fit = object, tier = tier, trait_idx = t,
+        level = level, nsim = nsim, seed = seed
+      )
+      data.frame(
+        trait = trait_names[t],
+        c2 = unname(v["estimate"]),
+        lower = unname(v["lower"]),
+        upper = unname(v["upper"]),
+        method = "bootstrap",
+        stringsAsFactors = FALSE
+      )
+    })),
     cli::cli_abort(c(
       "Method {.val {method}} not implemented for {.code communality}.",
-      i = "Only {.val profile} is currently available via {.fn profile_ci_communality}.",
-      ">" = "For bootstrap CIs see {.fn extract_communality} with {.code ci = TRUE, method = \"bootstrap\"}."
+      i = "Available: {.val profile}, {.val wald}, {.val bootstrap}."
     ))
-  }
-  ## Suppress profile_ci_communality()'s downstream `.normalise_level()`
-  ## deprecation warnings on legacy aliases — the user already typed the
-  ## token deliberately and the warning is noise at this layer.
-  tbl <- suppressWarnings(profile_ci_communality(
-    fit = object,
-    tier = tier,
-    trait_idx = trait_idx,
-    level = level
-  ))
+  )
   ## Preserve the user-supplied tier in the row labels (the underlying
   ## table reports the internal slot, e.g. "B"; we report what the user
   ## typed, e.g. "unit").
@@ -828,21 +890,35 @@
 ## Dispatch `confint(fit, parm = "proportion[:...]")`.
 ## Routes to profile_ci_proportions() for method = "profile";
 ## wald / bootstrap error with a pointer to extract_proportions().
-.confint_proportion <- function(object, parm, level, method, ...) {
+.confint_proportion <- function(object, parm, level, method, nsim = 500L, seed = NULL, ...) {
   trait_names <- levels(object$data[[object$trait_col]])
   parsed <- .parse_proportion_parm(parm, trait_names)
-  if (method != "profile") {
+  ## Phase B-INF Lane 1 A2 (2026-05-28): wald + bootstrap routes added.
+  tbl <- switch(
+    method,
+    profile = profile_ci_proportions(
+      fit = object,
+      components = parsed$components,
+      trait_idx = parsed$trait_idx,
+      level = level
+    ),
+    wald = .proportions_wald_ci(
+      fit = object,
+      components = parsed$components,
+      trait_idx = parsed$trait_idx,
+      level = level
+    ),
+    bootstrap = .proportions_bootstrap_ci(
+      fit = object,
+      components = parsed$components,
+      trait_idx = parsed$trait_idx,
+      level = level, nsim = nsim, seed = seed
+    ),
     cli::cli_abort(c(
       "Method {.val {method}} not implemented for {.code proportion}.",
-      i = "Only {.val profile} is currently available via {.fn profile_ci_proportions}.",
+      i = "Available: {.val profile}, {.val wald}, {.val bootstrap}.",
       ">" = "For point estimates of the proportion decomposition see {.fn extract_proportions}."
     ))
-  }
-  tbl <- profile_ci_proportions(
-    fit = object,
-    components = parsed$components,
-    trait_idx = parsed$trait_idx,
-    level = level
   )
   out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
   rownames(out) <- paste0(
@@ -1227,6 +1303,8 @@ confint.gllvmTMB_multi <- function(
       parm = parm,
       level = level,
       method = method_lambda,
+      nsim = nsim,
+      seed = seed,
       ...
     ))
   }
@@ -1263,6 +1341,8 @@ confint.gllvmTMB_multi <- function(
       parm = parm,
       level = level,
       method = method_ps,
+      nsim = nsim,
+      seed = seed,
       ...
     ))
   }
@@ -1273,6 +1353,8 @@ confint.gllvmTMB_multi <- function(
       parm = parm,
       level = level,
       method = method_co,
+      nsim = nsim,
+      seed = seed,
       ...
     ))
   }
@@ -1295,6 +1377,8 @@ confint.gllvmTMB_multi <- function(
       parm = parm,
       level = level,
       method = method_prop,
+      nsim = nsim,
+      seed = seed,
       ...
     ))
   }

@@ -274,28 +274,35 @@ test_that(".parse_proportion_parm accepts bracketed indices on the trait portion
 ##  Method handling: wald / bootstrap error early (no refit)
 ## ============================================================================
 
-test_that("confint(fit, parm = 'proportion:shared_unit', method = 'wald') errors as not-implemented", {
+test_that("confint(fit, parm = 'proportion:shared_unit', method = 'wald') returns finite bounds", {
+  ## Phase B-INF Lane 1 A2 wired wald (delta method on logit-p).
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
-  expect_error(
-    suppressMessages(suppressWarnings(
-      confint(fx$fit, parm = "proportion:shared_unit", method = "wald")
-    )),
-    "not implemented|profile|extract_proportions"
-  )
+  res <- suppressMessages(suppressWarnings(
+    confint(fx$fit, parm = "proportion:shared_unit", method = "wald")
+  ))
+  expect_true(is.matrix(res))
+  expect_equal(ncol(res), 2L)
+  expect_true(all(is.finite(res)))
+  expect_true(all(res >= 0 & res <= 1))
 })
 
-test_that("confint(fit, parm = 'proportion:shared_unit', method = 'bootstrap') errors as not-implemented", {
+test_that("confint(fit, parm = 'proportion:shared_unit', method = 'bootstrap') returns finite bounds", {
+  ## Phase B-INF Lane 1 A2 wired bootstrap (parametric simulate-refit).
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_prop_fixture()
-  expect_error(
-    suppressMessages(suppressWarnings(
-      confint(fx$fit, parm = "proportion:shared_unit", method = "bootstrap")
-    )),
-    "not implemented|profile|extract_proportions"
-  )
+  res <- suppressMessages(suppressWarnings(
+    confint(
+      fx$fit, parm = "proportion:shared_unit", method = "bootstrap",
+      nsim = 30L, seed = 42L
+    )
+  ))
+  expect_true(is.matrix(res))
+  expect_equal(ncol(res), 2L)
+  expect_true(all(is.finite(res)))
+  expect_true(all(res >= 0 & res <= 1))
 })
 
 ## ============================================================================

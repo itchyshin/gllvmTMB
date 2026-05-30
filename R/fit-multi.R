@@ -278,7 +278,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     if (any(family_id_vec != 0L)) {
       cli::cli_abort(c(
         "{.fn spatial_unique} / {.fn spatial_indep} random slopes are validated for {.code gaussian()} only in this release.",
-        "i" = "The augmented {.code spatial_unique(1 + x | coords)} non-Gaussian cells are deferred (Design 60 §3.4-§3.5).",
+        "i" = "The augmented {.code spatial_unique(1 + x | coords)} non-Gaussian cells are deferred (Design 60 sections 3.4-3.5).",
         ">" = "Use a Gaussian family for the base SPDE augmented random-regression fit."
       ))
     }
@@ -1514,9 +1514,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     spde_M0          = spde_M0,
     spde_M1          = spde_M1,
     spde_M2          = spde_M2,
-    ## BASE augmented SPDE slope (dormant infrastructure; parser activation
-    ## not yet wired). use_spde_slope == 0 routes nothing; the stubs exist so
-    ## MakeADFun() has a consistent data/parameter contract.
+    ## BASE augmented SPDE slope. Parser-activated for spatial_unique / spatial_indep
+    ## x Gaussian via the .spatial_unique_augmented / .spatial_indep_augmented markers;
+    ## use_spde_slope is driven live by those markers. When 0, the stubs keep
+    ## MakeADFun()'s data/parameter contract consistent (no slope field added).
     use_spde_slope   = as.integer(use_spde_slope),
     n_lhs_cols_spde  = as.integer(n_lhs_cols_spde),
     Z_spde_aug       = Z_spde_aug,

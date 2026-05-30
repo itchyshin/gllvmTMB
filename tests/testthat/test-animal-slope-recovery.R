@@ -61,6 +61,21 @@ make_animal_slope_fixture <- function(seed = 202L) {
        sigma2_slope = sigma2_slope, beta = beta)
 }
 
+# Robust "reached a genuine optimum" gate. `nlminb`'s integer convergence
+# code is platform-sensitive on this flat slope-only likelihood (it returns
+# code 0 / "relative convergence (4)" under the macOS arm64 BLAS but code 1
+# / "false convergence (8)" under the CI Linux/Windows BLAS, even though the
+# fit lands on the same optimum to TMB tolerance — recovery and the
+# phylo_slope byte-equivalence below still hold). So we assert the
+# build-independent optimum-quality signals (finite objective + a
+# positive-definite Hessian + a successful sdreport) rather than the literal
+# code, matching the gate used in test-relmat-unique-slope-gaussian.R.
+expect_reached_optimum <- function(fit) {
+  testthat::expect_true(is.finite(fit$opt$objective))
+  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
+  testthat::expect_true(isTRUE(fit$fit_health$sdreport_ok))
+}
+
 # ---- (1) Recovery: sigma_slope (dense A= path; base R only) -----------
 
 test_that("animal_slope(x | id, A = A) recovers sigma_slope (ANI-06)", {
@@ -70,7 +85,7 @@ test_that("animal_slope(x | id, A = A) recovers sigma_slope (ANI-06)", {
     value ~ 0 + trait + animal_slope(x | species, A = fx$A),
     data = fx$data, unit = "species", cluster = "species"
   )))
-  expect_equal(fit$opt$convergence, 0L)
+  expect_reached_optimum(fit)
 
   ## Slope-only engine path: exactly one log_sigma_slope, no intercept
   ## variance / correlation parameters (would be log_sd_b / atanh_cor_b).
@@ -100,8 +115,8 @@ test_that(
     value ~ 0 + trait + phylo_slope(x | species, vcv = fx$A),
     data = fx$data, unit = "species", cluster = "species"
   )))
-  expect_equal(fit_a$opt$convergence, 0L)
-  expect_equal(fit_p$opt$convergence, 0L)
+  expect_reached_optimum(fit_a)
+  expect_reached_optimum(fit_p)
 
   ## Same parameter vector and same logLik: animal_slope is a pure
   ## rewrite layer onto phylo_slope(vcv = A), no new TMB likelihood.
@@ -126,7 +141,7 @@ test_that("animal_slope(x | id, pedigree = ped) recovers sigma_slope via sparse 
     value ~ 0 + trait + animal_slope(x | species, pedigree = fx$ped),
     data = fx$data, unit = "species", cluster = "species"
   )))
-  expect_equal(fit$opt$convergence, 0L)
+  expect_reached_optimum(fit)
   sigma_slope_hat <- exp(
     fit$opt$par[grepl("log_sigma_slope", names(fit$opt$par))])
   expect_equal(unname(sigma_slope_hat), sqrt(fx$sigma2_slope),

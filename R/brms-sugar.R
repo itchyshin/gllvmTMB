@@ -2258,13 +2258,43 @@ rewrite_canonical_aliases <- function(formula) {
       ## latent / unique / phylo_latent / spatial_unique: just rename the head
       if (fn %in% c("latent", "phylo_latent", "spatial_unique", "spatial")) {
         ## Stage 2.5 (May 2026): fail-loud against augmented LHS for the
-        ## BARE `latent()` keyword. `phylo_latent` / `spatial_unique` /
-        ## `spatial` already fail loud through their own dedicated guards
-        ## (phylo_indep/phylo_dep at line ~1672/1738, spatial via
-        ## normalise_spatial_orientation at line ~1198), so we only need
-        ## to gate the non-phylo non-spatial `latent` here.
+        ## BARE `latent()` keyword. `spatial_unique` / `spatial` already
+        ## fail loud via normalise_spatial_orientation (line ~2062), which
+        ## rejects any bar LHS other than `0 + trait` before reaching this
+        ## rename. `latent` is gated here.
         if (identical(fn, "latent")) {
           .assert_no_augmented_lhs(fn, e)
+        }
+        ## Design 56 §7 fail-loud-invariant fix: `phylo_latent` renamed
+        ## straight to `phylo_rr` here, which reads ONLY the RHS species
+        ## factor -- so an augmented intercept+slope bar
+        ## (`1 + x | sp` or the long form
+        ## `0 + trait + (0 + trait):x | sp`) had its slope column SILENTLY
+        ## DROPPED, yielding a fit byte-identical to intercept-only
+        ## `phylo_latent(species, d = K)`. The reduced-rank phylo_latent
+        ## random-slope engine is Design 56 §9.5a (not yet landed), so we
+        ## abort here rather than silently fit. Mirrors the phylo_indep /
+        ## phylo_dep "LHS richer than `0 + trait`" guards.
+        if (
+          identical(fn, "phylo_latent") &&
+            length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            cli::cli_abort(c(
+              "{.fn phylo_latent} random slopes are not yet supported.",
+              "i" = "You wrote {.code phylo_latent({deparse(bar)})}.",
+              "x" = "Augmented intercept+slope LHS (e.g. {.code 1 + x | species}) requires the reduced-rank phylo_latent random-slope engine ({.strong Design 56 §9.5a}), which has not yet landed.",
+              ">" = "For now use {.code phylo_unique(1 + x | species)} (the validated augmented intercept+slope path) for a per-species random slope on the phylogeny."
+            ))
+          }
         }
         target <- switch(
           fn,

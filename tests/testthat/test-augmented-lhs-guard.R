@@ -123,3 +123,82 @@ test_that("unique(1 | g) (intercept-only) does NOT error -- engine path handles 
   )))
   expect_equal(fit$opt$convergence, 0L)
 })
+
+## ---- 7-9. phylo_latent() augmented-LHS guard (Design 56 §7 / §9.5a) ------
+##
+## Companion to the bare-keyword guard above. On `main`, the combined
+## rename branch in `R/brms-sugar.R` (`fn %in% c("latent", "phylo_latent",
+## "spatial_unique", "spatial")`) renamed `phylo_latent(...)` straight to
+## `phylo_rr(...)` WITHOUT inspecting the bar LHS. The `phylo_rr` engine
+## reads only the RHS species factor, so the slope covariate in
+## `phylo_latent(1 + x | sp, d = K)` (and the long form
+## `phylo_latent(0 + trait + (0 + trait):x | sp, d = K)`) was SILENTLY
+## DROPPED: the fit was byte-identical to intercept-only
+## `phylo_latent(species, d = K)` (same logLik, same param count, identical
+## Sigma_phy). A fail-loud-invariant violation (Design 56 §7).
+##
+## The reduced-rank phylo_latent random-slope engine is Design 56 §9.5a
+## (not yet landed). Until it lands the parser must ABORT, not silently
+## fit. Tests 7-8 are RED before the guard, GREEN after. Test 9 is the
+## no-regression control (intercept-only must still parse + fit).
+
+skip_if_not_ape <- function() {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("ape")
+}
+
+## Tiny phylo fixture: small `ape::rcoal` tree, Gaussian, 2 traits.
+## The augmented-LHS abort fires at PARSE time (before the optimiser), so
+## the fit never reaches TMB -- the tree only needs to be well-formed.
+make_phylo_lhs_fixture <- function(seed = 99L, n_sp = 6L, n_traits = 2L,
+                                   n_rep = 4L) {
+  set.seed(seed)
+  tree <- ape::rcoal(n_sp)
+  tree$tip.label <- paste0("sp", seq_len(n_sp))
+  trait_levels <- paste0("t", seq_len(n_traits))
+  df <- expand.grid(
+    species = factor(tree$tip.label, levels = tree$tip.label),
+    rep     = seq_len(n_rep),
+    trait   = factor(trait_levels, levels = trait_levels)
+  )
+  df$x <- stats::rnorm(nrow(df))
+  df$value <- stats::rnorm(nrow(df))
+  list(df = df, tree = tree)
+}
+
+test_that("phylo_latent(1 + x | sp, d = 2) errors (Design 56 §9.5a not landed)", {
+  skip_if_not_ape()
+  fx <- make_phylo_lhs_fixture()
+  expect_error(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait + phylo_latent(1 + x | species, d = 2),
+      data = fx$df, phylo_tree = fx$tree, unit = "species"
+    ))),
+    regexp = "augmented LHS|random slope|Design 56|9\\.5a|phylo_unique"
+  )
+})
+
+test_that("phylo_latent(0 + trait + (0 + trait):x | sp, d = 2) errors (long form)", {
+  skip_if_not_ape()
+  fx <- make_phylo_lhs_fixture()
+  expect_error(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait +
+              phylo_latent(0 + trait + (0 + trait):x | species, d = 2),
+      data = fx$df, phylo_tree = fx$tree, unit = "species"
+    ))),
+    regexp = "augmented LHS|random slope|Design 56|9\\.5a|phylo_unique"
+  )
+})
+
+test_that("phylo_latent(species, d = 1) (intercept-only) still parses + fits", {
+  skip_if_not_ape()
+  fx <- make_phylo_lhs_fixture()
+  ## No-regression: the intercept-only reduced-rank phylo factor must NOT
+  ## be caught by the augmented-LHS guard.
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + phylo_latent(species, d = 1),
+    data = fx$df, phylo_tree = fx$tree, unit = "species"
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+})

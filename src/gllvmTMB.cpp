@@ -198,8 +198,14 @@ Type objective_function<Type>::operator()()
   // R-side flag is 0, so the legacy b_phy_slope path above remains active
   // and byte-identical until the parser/R design-matrix phases land.
   DATA_INTEGER(use_phylo_slope_correlated);
-  DATA_INTEGER(n_lhs_cols);           // block-local LHS columns: 1 or 2 in Stage 3
+  DATA_INTEGER(n_lhs_cols);           // block-local LHS columns: 1 or 2 (unique/indep);
+                                      // C = 2*n_traits for the phylo_dep slope path
   DATA_ARRAY(Z_phy_aug);              // n_obs x n_lhs_cols x n_phy_aug_blocks
+  // phylo_dep slope flag (Stage 3, Design 56 sec.9.5c). When 1, the
+  // augmented prior below uses the full unstructured C x C Sigma_b built
+  // from theta_dep_chol instead of the closed-form 1x1 / 2x2 covariance.
+  // Default 0 keeps the unique/indep/legacy paths byte-identical.
+  DATA_INTEGER(use_phylo_dep_slope);
 
   // phylo_latent random slope (Design 56 Sec. 5.3 latent row; Sec. 9.5a):
   //   phylo_latent(1 + x | sp, d = K) -- reduced-rank, BLOCK-DIAGONAL across
@@ -315,6 +321,14 @@ Type objective_function<Type>::operator()()
   // scores. Mapped off on the R side when use_phylo_latent_slope == 0.
   PARAMETER_VECTOR(theta_rr_phy_slope);           // n_lhs_cols_lat packed Lambda_k blocks
   PARAMETER_ARRAY(g_phy_slope);                   // n_aug_phy x d_phy_slope x n_lhs_cols_lat
+  // phylo_dep slope (Stage 3, Design 56 sec.9.5c): full unstructured
+  // C x C covariance Sigma_b = L L^T over the C = 2T trait-stacked
+  // (intercept, slope) random-effect columns. theta_dep_chol packs the
+  // free lower-triangular Cholesky factor L column-major below the
+  // diagonal plus the C log-diagonal entries; length C(C+1)/2. Empty
+  // (and mapped off) for the legacy / unique / indep paths (C in {1,2}),
+  // so those fits are byte-identical. See Sigma_b construction below.
+  PARAMETER_VECTOR(theta_dep_chol);               // length C(C+1)/2 when use_phylo_dep_slope; else 0
 
   // Generic random intercepts: flat vector across all (1|g) terms.
   PARAMETER_VECTOR(u_re_int);                    // length sum(re_int_n_groups) (or 1 if unused)
@@ -595,8 +609,14 @@ Type objective_function<Type>::operator()()
   // Sigma_b is block-local across LHS columns (1 = legacy slope-only;
   // 2 = intercept + slope). Parser activation waits for Phases 56.2-56.3.
   if (use_phylo_slope_correlated == 1) {
-    if (n_lhs_cols < 1 || n_lhs_cols > 2)
-      error("gllvmTMB_multi: n_lhs_cols must be 1 or 2 in Phase 56.1");
+    // Closed-form covariance paths (unique / indep / legacy) require
+    // n_lhs_cols in {1, 2}. The phylo_dep slope path (use_phylo_dep_slope
+    // == 1) lifts this cap: there C = 2*n_traits and Sigma_b is the full
+    // unstructured C x C built from theta_dep_chol.
+    if (use_phylo_dep_slope == 0 && (n_lhs_cols < 1 || n_lhs_cols > 2))
+      error("gllvmTMB_multi: n_lhs_cols must be 1 or 2 in the closed-form augmented path");
+    if (use_phylo_dep_slope == 1 && n_lhs_cols < 1)
+      error("gllvmTMB_multi: n_lhs_cols must be >= 1 in the phylo_dep slope path");
     if (b_phy_aug.dim.size() != 3 || Z_phy_aug.dim.size() != 3)
       error("gllvmTMB_multi: b_phy_aug and Z_phy_aug must be 3D arrays");
     if (b_phy_aug.dim[0] != n_aug_phy)
@@ -607,6 +627,71 @@ Type objective_function<Type>::operator()()
       error("gllvmTMB_multi: Z_phy_aug first dimension must equal n_obs");
     if (Z_phy_aug.dim[2] != b_phy_aug.dim[2])
       error("gllvmTMB_multi: Z_phy_aug and b_phy_aug block counts differ");
+
+    if (use_phylo_dep_slope == 1) {
+      // ---- phylo_dep slope: full unstructured C x C Sigma_b = L L^T -----
+      // theta_dep_chol packs L (C x C lower-triangular) as: the C diagonal
+      // entries are exp(theta_dep_chol[j]) (strictly positive, identified);
+      // the strictly-lower entries follow in column-major order. Hence
+      // Sigma_b = L L^T is symmetric positive-definite by construction --
+      // the natural unrestricted parameterisation of an unstructured
+      // covariance (Pinheiro & Bates 1996). Length C(C+1)/2.
+      int C = n_lhs_cols;
+      int n_chol = C * (C + 1) / 2;
+      if (theta_dep_chol.size() != n_chol)
+        error("gllvmTMB_multi: theta_dep_chol has wrong length for phylo_dep slope");
+      matrix<Type> Lb(C, C);
+      Lb.setZero();
+      {
+        int idx = 0;
+        // Diagonal first (exp-transformed for positivity / identifiability).
+        for (int j = 0; j < C; j++) {
+          Lb(j, j) = exp(theta_dep_chol(idx));
+          idx++;
+        }
+        // Strictly-lower entries, column-major (j = col, i = row > j).
+        for (int j = 0; j < C; j++) {
+          for (int i = j + 1; i < C; i++) {
+            Lb(i, j) = theta_dep_chol(idx);
+            idx++;
+          }
+        }
+      }
+      matrix<Type> Sigma_b_dep = Lb * Lb.transpose();
+      matrix<Type> Sigma_b_inv = atomic::matinv(Sigma_b_dep);
+      // log det Sigma_b = 2 * sum_j log L_jj.
+      Type logdet_Sigma_b = Type(0);
+      for (int j = 0; j < C; j++) logdet_Sigma_b += Type(2) * log(Lb(j, j));
+      // Report the recovered SDs and correlation matrix for extractors/tests.
+      vector<Type> sd_b(C);
+      for (int j = 0; j < C; j++) sd_b(j) = sqrt(Sigma_b_dep(j, j));
+      REPORT(sd_b);
+      matrix<Type> cor_b_mat(C, C);
+      for (int a = 0; a < C; a++)
+        for (int bcol = 0; bcol < C; bcol++)
+          cor_b_mat(a, bcol) = Sigma_b_dep(a, bcol) / (sd_b(a) * sd_b(bcol));
+      REPORT(cor_b_mat);
+      REPORT(Sigma_b_dep);
+      // -log p(vec(B)) = 0.5 [ n*C*log(2pi) + n*logdet(Sigma_b)
+      //                        + C*logdet(A) + tr(Sigma_b^{-1} B' A^{-1} B) ].
+      for (int k = 0; k < b_phy_aug.dim[2]; k++) {
+        // Q(j,l) = b_j' A^{-1} b_l, C x C.
+        matrix<Type> Bmat(n_aug_phy, C);
+        for (int j = 0; j < C; j++)
+          for (int i = 0; i < n_aug_phy; i++) Bmat(i, j) = b_phy_aug(i, j, k);
+        matrix<Type> AinvB = Ainv_phy_rr * Bmat;        // n_aug_phy x C
+        matrix<Type> Q = Bmat.transpose() * AinvB;      // C x C
+        // tr(Sigma_b^{-1} Q) = sum_{j,l} Sigma_b_inv(j,l) * Q(l,j).
+        Type quad = Type(0);
+        for (int j = 0; j < C; j++)
+          for (int l = 0; l < C; l++)
+            quad += Sigma_b_inv(j, l) * Q(l, j);
+        nll += Type(0.5) * (Type(n_aug_phy * C) * log(2.0 * M_PI)
+                            + Type(n_aug_phy) * logdet_Sigma_b
+                            + Type(C) * log_det_A_phy_rr
+                            + quad);
+      }
+    } else {
     if (log_sd_b.size() != n_lhs_cols)
       error("gllvmTMB_multi: log_sd_b has wrong length");
     int n_cor_b = n_lhs_cols * (n_lhs_cols - 1) / 2;
@@ -658,6 +743,7 @@ Type objective_function<Type>::operator()()
                             + quad);
       }
     }
+    }  // end closed-form (use_phylo_dep_slope == 0) branch
   }
 
   // -------- phylo_latent slope (Design 56 Sec. 5.3 / 9.5a) -------------

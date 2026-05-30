@@ -138,6 +138,21 @@ for (int o = 0; o < n_obs; o++) {
 }
 ```
 
+**`phylo_dep` overload (landed 2026-05-30, Stage 3).** The
+`n_lhs_cols ∈ {1, 2}` block-local invariant above holds for the
+legacy / `unique` / `indep` paths. The `phylo_dep(1 + x | sp)`
+augmented-slope path is the documented **exception**: it stacks
+the per-trait `(intercept, slope)` columns into a single block of
+width `n_lhs_cols = C = 2T` carrying the full unstructured `Σ_b`
+(see §5.2). The column ordering is **interleaved** —
+`(α_{t0}, β_{t0}, α_{t1}, β_{t1}, …)`, intercept then slope per
+trait — matching the validated dep core in
+`src/gllvmTMB.cpp:591-653`. The R side
+(`R/fit-multi.R`) builds the interleaved `Z_phy_aug` so each row
+activates only its own trait's `(intercept, slope)` pair; the
+engine's dimensional guard still enforces
+`n_lhs_cols == Z_phy_aug.cols()` (fail-loud, §7).
+
 ### 3.2 Analogous promotions
 
 The same matrix promotion applies to every structural block
@@ -248,6 +263,26 @@ wide↔long byte-identity contract depends on this: both surfaces
 share a `2 × 2` prior; the long surface just stacks more Z rows.
 If `Σ_b` were `2T × 2T` at the prior level, wide and long would
 not be byte-identical.
+
+**`phylo_dep` exemption (landed 2026-05-30).** The block-local
+`{1, 2}` invariant in this subsection governs the
+`unique` / `indep` / legacy paths, where `Σ_b` is *shared across
+traits* and per-trait expansion happens at the Z-matrix. The
+`dep` keyword (§5.3) is the deliberate exception: its prior IS a
+single `2T × 2T` unstructured block, so `n_lhs_cols = 2T` at the
+prior level. Wide↔long byte-identity is still preserved for `dep`
+because both surfaces build the *same* interleaved `2T`-wide
+`Z_phy_aug` and the *same* `theta_dep_chol` parameterisation —
+the long surface simply stacks more Z rows into the identical
+per-trait `(intercept, slope)` columns. Concretely the dep core
+uses a free lower-triangular Cholesky factor `L` (length
+`C(C+1)/2`, `C = 2T`) packed as the `C` log-diagonal entries
+followed by the strictly-lower entries column-major, with
+`Σ_b = L Lᵀ` (`src/gllvmTMB.cpp:591-653`); `log_sd_b` and
+`atanh_cor_b` are mapped off on this path (the unstructured
+`Σ_b` replaces them). The column ordering is **interleaved**
+`(α_{t0}, β_{t0}, α_{t1}, β_{t1}, …)`, NOT
+(all intercepts ‖ all slopes).
 
 Reconstruction in C++:
 
@@ -529,7 +564,14 @@ keyword at a time:
 
 - 56.5a: `phylo_latent(1 + x | sp, d = K)` recovery + byte-identity
 - 56.5b: `phylo_indep(1 + x | sp)` recovery (diagonal Σ_b; no cov term)
-- 56.5c: `phylo_dep(1 + x | sp)` recovery (full 2T × 2T)
+- 56.5c: `phylo_dep(1 + x | sp)` recovery (full 2T × 2T) —
+  **LANDED 2026-05-30** (Gaussian only; non-Gaussian deferred).
+  Engine core (unstructured `2T × 2T` prior, REPORTs
+  `Sigma_b_dep` / `sd_b` / `cor_b_mat`) validated to 1.46e-11;
+  public R surface (parser route, interleaved `Z`, `theta_dep_chol`
+  map-swap, `extract_Sigma` C2 extractor) wired in
+  `R/brms-sugar.R`, `R/fit-multi.R`, `R/extract-sigma.R`. See
+  `docs/design/63-cpp-slope-campaign.md`.
 - 56.5d: animal_* family (mostly tests; byte-equiv via Design 14 §5)
 - 56.5e: spatial_* family (verify SPDE precision composes)
 - 56.5f: user-supplied A (relmat) family

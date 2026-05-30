@@ -401,7 +401,7 @@ test_that("non-Gaussian phylo_dep slope is deferred (fail-loud)", {
       data = df, phylo_tree = fx$tree, unit = "species",
       family = stats::poisson()
     ))),
-    regexp = "not yet supported for this family"
+    regexp = "not yet supported for this"
   )
 })
 

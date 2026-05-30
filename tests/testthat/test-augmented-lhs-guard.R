@@ -166,28 +166,50 @@ make_phylo_lhs_fixture <- function(seed = 99L, n_sp = 6L, n_traits = 2L,
   list(df = df, tree = tree)
 }
 
-test_that("phylo_latent(1 + x | sp, d = 2) errors (Design 56 §9.5a not landed)", {
+test_that("phylo_latent(1 + x | sp, d = 1) Gaussian routes to the latent-slope engine (Design 56 Sec. 9.5a)", {
   skip_if_not_ape()
   fx <- make_phylo_lhs_fixture()
-  expect_error(
-    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait + phylo_latent(1 + x | species, d = 2),
-      data = fx$df, phylo_tree = fx$tree, unit = "species"
-    ))),
-    regexp = "augmented LHS|random slope|Design 56|9\\.5a|phylo_unique"
-  )
+  ## The Design 56 Sec. 9.5a augmented phylo_latent engine is now live for the
+  ## Gaussian anchor: the call must PARSE + FIT and drive the dedicated
+  ## block-diagonal reduced-rank latent-slope block, NOT the intercept-only
+  ## phylo_rr block and NOT the b_phy_aug (dep/unique) block.
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + phylo_latent(1 + x | species, d = 1),
+    data = fx$df, phylo_tree = fx$tree, unit = "species"
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$use$phylo_latent_slope))
+  expect_false(isTRUE(fit$use$phylo_rr))
+  expect_equal(as.integer(fit$tmb_data$n_lhs_cols_lat), 2L)
+  ## Per-column Sigma matrices are reported (intercept + slope blocks).
+  expect_false(is.null(fit$report$Sigma_phy_slope_intercept))
+  expect_false(is.null(fit$report$Sigma_phy_slope_slope))
 })
 
-test_that("phylo_latent(0 + trait + (0 + trait):x | sp, d = 2) errors (long form)", {
+test_that("phylo_latent(0 + trait + (0 + trait):x | sp, d = 1) long form routes to the latent-slope engine", {
   skip_if_not_ape()
   fx <- make_phylo_lhs_fixture()
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+            phylo_latent(0 + trait + (0 + trait):x | species, d = 1),
+    data = fx$df, phylo_tree = fx$tree, unit = "species"
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$use$phylo_latent_slope))
+  expect_equal(as.integer(fit$tmb_data$n_lhs_cols_lat), 2L)
+})
+
+test_that("phylo_latent(1 + x | sp, d = 1) non-Gaussian fails loud (Gaussian anchor only)", {
+  skip_if_not_ape()
+  fx <- make_phylo_lhs_fixture()
+  fx$df$value <- rpois(nrow(fx$df), lambda = 2)
   expect_error(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait +
-              phylo_latent(0 + trait + (0 + trait):x | species, d = 2),
-      data = fx$df, phylo_tree = fx$tree, unit = "species"
+      value ~ 0 + trait + phylo_latent(1 + x | species, d = 1),
+      data = fx$df, phylo_tree = fx$tree, unit = "species",
+      family = poisson()
     ))),
-    regexp = "augmented LHS|random slope|Design 56|9\\.5a|phylo_unique"
+    regexp = "gaussian|Gaussian anchor|deferred"
   )
 })
 

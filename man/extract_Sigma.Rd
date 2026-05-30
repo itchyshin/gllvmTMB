@@ -6,7 +6,8 @@
 \usage{
 extract_Sigma(
   fit,
-  level = c("unit", "unit_obs", "phy", "spatial", "cluster", "B", "W", "spde"),
+  level = c("unit", "unit_obs", "phy", "phy_slope", "spatial", "cluster", "B", "W",
+    "spde"),
   part = c("total", "shared", "unique"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
@@ -47,6 +48,17 @@ advisory messages, e.g. about a missing \code{unique()} term).
 
 For \code{part = "unique"}: a list with \code{s} (length-T named numeric
 vector of unique variances), \code{level}, \code{part}, \code{note}.
+
+For a \code{phylo_dep(1 + x | species)} fit (Design 56 §9.5c), call with
+\code{level = "phy"}: the result is the single full unstructured
+\verb{2T x 2T} covariance over the trait-stacked (intercept, slope)
+random-effect columns -- a list with \code{Sigma} and \code{R} carrying
+INTERLEAVED dimnames
+(\verb{intercept.<t1>}, \verb{slope.<t1>}, \verb{intercept.<t2>}, \verb{slope.<t2>}, ...),
+\code{level = "phy_dep"}, \code{part = "dep"}, and a \code{note}. The \code{part} and
+\code{link_residual} arguments do not apply to this single unstructured
+block and are ignored. (The unit / unit_obs tiers return \code{NULL} for a
+dep-only fit, as it carries no between/within-unit covariance term.)
 }
 \description{
 Implements the decomposition

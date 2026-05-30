@@ -505,6 +505,17 @@ link_residual_per_trait <- function(fit) {
 #'
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
+#'
+#'   For a `phylo_dep(1 + x | species)` fit (Design 56 §9.5c), call with
+#'   `level = "phy"`: the result is the single full unstructured
+#'   `2T x 2T` covariance over the trait-stacked (intercept, slope)
+#'   random-effect columns -- a list with `Sigma` and `R` carrying
+#'   INTERLEAVED dimnames
+#'   (`intercept.<t1>`, `slope.<t1>`, `intercept.<t2>`, `slope.<t2>`, ...),
+#'   `level = "phy_dep"`, `part = "dep"`, and a `note`. The `part` and
+#'   `link_residual` arguments do not apply to this single unstructured
+#'   block and are ignored. (The unit / unit_obs tiers return `NULL` for a
+#'   dep-only fit, as it carries no between/within-unit covariance term.)
 #' @references
 #' Nakagawa, S. & Schielzeth, H. (2010). Repeatability for Gaussian and
 #'   non-Gaussian data: a practical guide for biologists. *Biological
@@ -540,6 +551,7 @@ extract_Sigma <- function(
     "unit",
     "unit_obs",
     "phy",
+    "phy_slope",
     "spatial",
     "cluster",
     ## legacy aliases (deprecated soft):
@@ -568,6 +580,52 @@ extract_Sigma <- function(
 
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
+
+  ## ---- phylo_dep augmented-slope block (Design 56 §9.5c) ---------------
+  ## phylo_dep(1 + x | species) fits a single FULL UNSTRUCTURED 2T x 2T
+  ## covariance Sigma_b over the trait-stacked (intercept, slope)
+  ## random-effect columns. It is a PHYLOGENETIC random effect, so it is
+  ## surfaced under `level = "phy"` (the phylogenetic tier). It is one
+  ## unstructured block, not a shared/unique latent decomposition, so the
+  ## `part` / `link_residual` arguments do not apply: we return the
+  ## reported Sigma_b_dep directly with INTERLEAVED dimnames matching the
+  ## engine column ordering (intercept.t1, slope.t1, intercept.t2,
+  ## slope.t2, ...).
+  ##
+  ## The branch is keyed on `level == "phy"` (NOT fired for the unit /
+  ## unit_obs tiers) so the backward-compat extract_Sigma_B() /
+  ## extract_Sigma_W() wrappers -- and the print()/summary() path that
+  ## calls them -- correctly see NO between/within-unit term for a
+  ## dep-only fit (they return NULL) rather than this phylogenetic block.
+  if (isTRUE(fit$use$phylo_dep_slope) && identical(level, "phy")) {
+    Sigma <- fit$report$Sigma_b_dep
+    if (is.null(Sigma)) {
+      cli::cli_abort(
+        "phylo_dep slope fit has no reported {.code Sigma_b_dep}."
+      )
+    }
+    Sigma <- as.matrix(Sigma)
+    dep_names <- as.vector(rbind(
+      paste0("intercept.", trait_names),
+      paste0("slope.", trait_names)
+    ))
+    rownames(Sigma) <- colnames(Sigma) <- dep_names
+    D <- sqrt(diag(Sigma))
+    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    rownames(R) <- colnames(R) <- dep_names
+    return(list(
+      Sigma = Sigma,
+      R = R,
+      level = "phy_dep",
+      part = "dep",
+      note = paste0(
+        "phylo_dep(1 + x | species): full unstructured 2T x 2T covariance ",
+        "over trait-stacked (intercept, slope) columns (interleaved). The ",
+        "part / link_residual arguments do not apply to this single ",
+        "unstructured block."
+      )
+    ))
+  }
 
   ## ---- Pull Lambda and S for the requested level -----------------------
   L <- NULL
@@ -619,6 +677,46 @@ extract_Sigma <- function(
         )
       }
     }
+  } else if (identical(level, "phy_slope")) {
+    ## Design 56 Sec. 9.5a: augmented phylo_latent(1 + x | sp, d = K) -- the
+    ## block-diagonal reduced-rank random regression. Each LHS column has its
+    ## OWN cross-trait covariance Sigma_k = Lambda_k Lambda_k^T; there is no
+    ## intercept-slope correlation (the cross-column blocks are zero by the
+    ## Sec. 5.3 latent semantics). Because there are TWO T x T matrices (one
+    ## per LHS column), this level returns a structured list rather than the
+    ## single-Sigma assembly the other levels use. Returned early.
+    if (!isTRUE(fit$use$phylo_latent_slope)) {
+      cli::cli_abort(c(
+        "Fit has no augmented {.code phylo_latent(1 + x | species, d = K)} term -- nothing to extract at level {.val phy_slope}.",
+        "i" = "Use {.code level = \"phy\"} for an intercept-only {.fn phylo_latent} fit."
+      ))
+    }
+    Sigma_int <- fit$report$Sigma_phy_slope_intercept
+    Sigma_slope <- fit$report$Sigma_phy_slope_slope
+    Lam_arr <- fit$report$Lambda_phy_slope   # T x K x n_lhs_cols
+    rownames(Sigma_int) <- colnames(Sigma_int) <- trait_names
+    rownames(Sigma_slope) <- colnames(Sigma_slope) <- trait_names
+    return(structure(
+      list(
+        intercept = Sigma_int,
+        slope = Sigma_slope,
+        Lambda_intercept = Lam_arr[, , 1L, drop = TRUE],
+        Lambda_slope = if (dim(Lam_arr)[3L] > 1L) {
+          Lam_arr[, , 2L, drop = TRUE]
+        } else {
+          NULL
+        },
+        level = "phy_slope",
+        part = part,
+        notes = c(
+          "phylo_latent random slope: block-diagonal across LHS columns.",
+          "Sigma$intercept and Sigma$slope are the per-column cross-trait",
+          "covariances (Lambda_k Lambda_k^T). No intercept-slope correlation",
+          "is modelled (Design 56 Sec. 5.3 latent semantics)."
+        )
+      ),
+      class = "gllvmTMB_Sigma_phy_slope"
+    ))
   } else if (identical(level, "spde")) {
     if (!isTRUE(fit$use$spatial_latent)) {
       cli::cli_abort(
@@ -814,4 +912,27 @@ extract_Sigma <- function(
   }
 
   out
+}
+
+#' Print an augmented phylo_latent slope Sigma extraction
+#'
+#' @param x A `gllvmTMB_Sigma_phy_slope` object from
+#'   [extract_Sigma()] with `level = "phy_slope"`.
+#' @param digits Number of significant digits.
+#' @param ... Ignored.
+#' @return `x`, invisibly.
+#' @export
+print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
+  cat("phylo_latent random slope -- per-LHS-column cross-trait Sigma\n")
+  cat("(block-diagonal across LHS columns; no intercept-slope correlation)\n\n")
+  cat("Sigma (intercept column):\n")
+  print(round(x$intercept, digits))
+  cat("\nSigma (slope column):\n")
+  print(round(x$slope, digits))
+  if (length(x$notes)) {
+    cat("\n")
+    for (n in x$notes) cat(strwrap(n, prefix = "  "), sep = "\n")
+    cat("\n")
+  }
+  invisible(x)
 }

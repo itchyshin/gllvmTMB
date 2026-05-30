@@ -2265,16 +2265,16 @@ rewrite_canonical_aliases <- function(formula) {
         if (identical(fn, "latent")) {
           .assert_no_augmented_lhs(fn, e)
         }
-        ## Design 56 Sec. 7 fail-loud-invariant fix: `phylo_latent` renamed
-        ## straight to `phylo_rr` here, which reads ONLY the RHS species
-        ## factor -- so an augmented intercept+slope bar
-        ## (`1 + x | sp` or the long form
-        ## `0 + trait + (0 + trait):x | sp`) had its slope column SILENTLY
-        ## DROPPED, yielding a fit byte-identical to intercept-only
-        ## `phylo_latent(species, d = K)`. The reduced-rank phylo_latent
-        ## random-slope engine is Design 56 Sec. 9.5a (not yet landed), so we
-        ## abort here rather than silently fit. Mirrors the phylo_indep /
-        ## phylo_dep "LHS richer than `0 + trait`" guards.
+        ## Design 56 Sec. 9.5a: augmented phylo_latent random regression.
+        ## `phylo_latent` normally renames straight to `phylo_rr`, which reads
+        ## ONLY the RHS species factor -- so an augmented intercept+slope bar
+        ## (`1 + x | sp` or the long form `0 + trait + (0 + trait):x | sp`)
+        ## would have its slope column SILENTLY DROPPED (the Sokal 2026-05-09
+        ## anti-pattern). Instead we route it to a phylo_rr covstruct carrying
+        ## the `.latent_slope` marker, which fit-multi.R drives through the
+        ## dedicated block-diagonal reduced-rank latent-slope engine
+        ## (use_phylo_latent_slope). Each LHS column gets its own
+        ## Lambda_k Lambda_k^T (rank d); no intercept-slope correlation.
         if (
           identical(fn, "phylo_latent") &&
             length(e) >= 2L &&
@@ -2288,12 +2288,24 @@ rewrite_canonical_aliases <- function(formula) {
             lhs_form$lhs_form %in%
               c("wide_intercept_slope", "long_intercept_slope")
           ) {
-            cli::cli_abort(c(
-              "{.fn phylo_latent} random slopes are not yet supported.",
-              "i" = "You wrote {.code phylo_latent({deparse(bar)})}.",
-              "x" = "Augmented intercept+slope LHS (e.g. {.code 1 + x | species}) requires the reduced-rank phylo_latent random-slope engine ({.strong Design 56 Sec. 9.5a}), which has not yet landed.",
-              ">" = "For now use {.code phylo_unique(1 + x | species)} (the validated augmented intercept+slope path) for a per-species random slope on the phylogeny."
+            species_arg <- bar[[3L]]
+            d_arg <- e[["d"]]
+            if (is.null(d_arg)) d_arg <- 1L
+            extra_args <- list(
+              .latent_slope = TRUE,
+              lhs_form = lhs_form$lhs_form,
+              slope_col = lhs_form$slope_col
+            )
+            ## Preserve a user-supplied tree / vcv / A / Ainv on the rewrite.
+            for (a in c("tree", "vcv", "A", "Ainv")) {
+              if (!is.null(e[[a]])) extra_args[[a]] <- e[[a]]
+            }
+            new_call <- as.call(c(
+              list(as.name("phylo_rr"), species_arg),
+              list(d = d_arg),
+              extra_args
             ))
+            return(new_call)
           }
         }
         target <- switch(
@@ -2682,20 +2694,48 @@ rewrite_canonical_aliases <- function(formula) {
             ">" = "Use {.code phylo_dep(0 + trait | species)}."
           ))
         }
-        if (!.is_zero_plus_trait(lhs_bar)) {
-          cli::cli_abort(c(
-            "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported.",
-            "i" = "Got LHS: {.code {deparse(lhs_bar)}}.",
-            ">" = "Use {.code phylo_dep(0 + trait | species)} for the full unstructured cross-trait phylogenetic covariance fit."
+        ## Stage 3 (Design 56 §9.5c): the augmented intercept+slope LHS
+        ## (`1 + x | species` wide, or `0 + trait + (0 + trait):x | species`
+        ## long) routes through the b_phy_aug engine with the full
+        ## unstructured 2T x 2T covariance Sigma_b built from theta_dep_chol.
+        ## The `.phylo_dep_augmented` marker (distinct from the phylo_unique
+        ## `.phylo_unique_augmented` marker) tells fit-multi.R to expand
+        ## n_lhs_cols to 2T and free theta_dep_chol. No new C++ block.
+        lhs_form <- .gllvmTMB_lhs_form(lhs_bar)
+        if (
+          lhs_form$lhs_form %in%
+            c("wide_intercept_slope", "long_intercept_slope")
+        ) {
+          extras <- .pass_through_extras(e, c("tree", "vcv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_slope"), bar),
+            list(
+              .phylo_dep_augmented = TRUE,
+              lhs_form = lhs_form$lhs_form,
+              slope_col = lhs_form$slope_col
+            ),
+            extras
           ))
+          return(new_call)
         }
-        extras <- .pass_through_extras(e, c("tree", "vcv"))
-        new_call <- as.call(c(
-          list(as.name("phylo_rr"), species_arg),
-          list(d = as.name(".deferred_n_traits"), .dep = TRUE),
-          extras
+        ## Intercept-only `phylo_dep(0 + trait | species)`: the full
+        ## unstructured cross-trait phylogenetic intercept covariance via the
+        ## phylo_rr full-rank path (UNCHANGED).
+        if (identical(lhs_form$lhs_form, "intercept_only")) {
+          extras <- .pass_through_extras(e, c("tree", "vcv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_rr"), species_arg),
+            list(d = as.name(".deferred_n_traits"), .dep = TRUE),
+            extras
+          ))
+          return(new_call)
+        }
+        cli::cli_abort(c(
+          "{.fn phylo_dep} augmented LHS form is not supported.",
+          "i" = "You wrote {.code phylo_dep({deparse(bar)})}.",
+          "x" = "Stage 3 accepts {.code 0 + trait | species} (intercept-only), {.code 1 + x | species}, and {.code 0 + trait + (0 + trait):x | species}.",
+          ">" = "Keep multi-covariate and richer per-trait slope forms for a later design slice."
         ))
-        return(new_call)
       }
       ## `spatial_dep(0 + trait | coords)` -> `spde(form, .spatial_latent = TRUE,
       ##                                            d = .deferred_n_traits, .dep = TRUE)`

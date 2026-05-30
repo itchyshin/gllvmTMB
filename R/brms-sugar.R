@@ -2500,6 +2500,30 @@ rewrite_canonical_aliases <- function(formula) {
             ">" = "Use {.code phylo_indep(0 + trait | species)}."
           ))
         }
+        ## Augmented intercept+slope LHS (`1 + x | species` or the long form
+        ## `0 + trait + (0 + trait):x | species`). phylo_indep means the
+        ## intercept-slope correlation is FIXED at 0, i.e. the same augmented
+        ## b_phy_aug engine as phylo_unique() but with atanh_cor_b pinned to 0
+        ## via the TMB map (fit-multi.R reads the `.indep` marker on the
+        ## phylo_slope covstruct). No new C++ likelihood block.
+        lhs_form <- .gllvmTMB_lhs_form(lhs_bar)
+        if (
+          lhs_form$lhs_form %in%
+            c("wide_intercept_slope", "long_intercept_slope")
+        ) {
+          extras <- .pass_through_extras(e, c("tree", "vcv"))
+          new_call <- as.call(c(
+            list(as.name("phylo_slope"), bar),
+            list(
+              .phylo_unique_augmented = TRUE,
+              .indep = TRUE,
+              lhs_form = lhs_form$lhs_form,
+              slope_col = lhs_form$slope_col
+            ),
+            extras
+          ))
+          return(new_call)
+        }
         ## Future extensibility hook: `phylo_indep(0 + trait + trait:x | species)`
         ## is reserved for trait-specific phylogenetic random slopes. Recognise
         ## the syntax but error gracefully for now.

@@ -220,6 +220,7 @@ make_beta_phylo_paired_fixture <- function(n_sp = 50L,
 ## latent-on-mean-dependent case, so an honest skip is expected if the
 ## fixture does not identify it.
 test_that("Beta: phylo_latent(d=1) + phylo_unique paired fits; pd_hessian TRUE; phy correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_beta_phylo_deps()
   fx <- make_beta_phylo_paired_fixture()
 
@@ -264,6 +265,7 @@ test_that("Beta: phylo_latent(d=1) + phylo_unique paired fits; pd_hessian TRUE; 
 ## apply -- see profile_ci_phylo_signal() precondition, mirrored from the
 ## phylo_scalar binary test).
 test_that("Beta: phylo_scalar(species) fits; pd_hessian TRUE; lambda_phy profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_beta_phylo_deps()
   fx <- make_beta_phylo_fixture()
 
@@ -325,6 +327,7 @@ test_that("Beta: phylo_scalar(species) fits; pd_hessian TRUE; lambda_phy profile
 ## `unique`. extract_correlations(tier = "phy") returns structural-zero
 ## correlations but the frame must be non-degenerate.
 test_that("Beta: phylo_indep(0 + trait | species) fits; pd_hessian TRUE; phy correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_beta_phylo_deps()
   fx <- make_beta_phylo_fixture()
 
@@ -364,6 +367,7 @@ test_that("Beta: phylo_indep(0 + trait | species) fits; pd_hessian TRUE; phy cor
 ## honest-SKIP. CI smoke: at least one finite profile bound on one rho:phy
 ## pair; plus a non-degenerate extract_correlations(tier = "phy").
 test_that("Beta: phylo_dep(0 + trait | species) fits; pd_hessian TRUE; rho:phy CI smoke + phy correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_beta_phylo_deps()
   fx <- make_beta_phylo_fixture()
 

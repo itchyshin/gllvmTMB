@@ -239,6 +239,7 @@ skip_if_not_slope_phylo_dep_deps <- function() {
 ## Single-trial binary; n_sp = 80, n_rep = 6, var(x) = 1; tight band.
 ## =====================================================================
 test_that("phylo_dep(1 + x | sp) x binomial-probit recovers Sigma_b + CI smoke (or honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_dep_deps()
   truth <- list(sigma2_int = 0.4, sigma2_slope = 0.3, rho = 0.5)
   dr <- .draw_phylo_aug(
@@ -264,6 +265,7 @@ test_that("phylo_dep(1 + x | sp) x binomial-probit recovers Sigma_b + CI smoke (
 ## Multi-trial cbind(succ, fail), size = 12; n_sp = 80, n_rep = 5.
 ## =====================================================================
 test_that("phylo_dep(1 + x | sp) x binomial-logit recovers Sigma_b + CI smoke (or honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_dep_deps()
   truth <- list(sigma2_int = 0.4, sigma2_slope = 0.3, rho = 0.5)
   dr <- .draw_phylo_aug(
@@ -293,6 +295,7 @@ test_that("phylo_dep(1 + x | sp) x binomial-logit recovers Sigma_b + CI smoke (o
 ## near +0.55 so all categories fill; tighter 2.5x band.
 ## =====================================================================
 test_that("phylo_dep(1 + x | sp) x ordinal_probit recovers Sigma_b + CI smoke (or honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_dep_deps()
   truth <- list(sigma2_int = 0.6, sigma2_slope = 0.5, rho = 0.5)
   dr <- .draw_phylo_aug(
@@ -320,6 +323,7 @@ test_that("phylo_dep(1 + x | sp) x ordinal_probit recovers Sigma_b + CI smoke (o
 ## log-link, intercept mean ~ 2 (=> count mean ~ 7.4); wider 4x band.
 ## =====================================================================
 test_that("phylo_dep(1 + x | sp) x poisson recovers Sigma_b + CI smoke (or honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_dep_deps()
   truth <- list(sigma2_int = 0.4, sigma2_slope = 0.3, rho = 0.5)
   dr <- .draw_phylo_aug(
@@ -343,6 +347,7 @@ test_that("phylo_dep(1 + x | sp) x poisson recovers Sigma_b + CI smoke (or hones
 ## log-link intercept ~ 0.7 (mean ~ 2), phi = 2; wider 4x band.
 ## =====================================================================
 test_that("phylo_dep(1 + x | sp) x nbinom2 recovers Sigma_b + CI smoke (or honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_dep_deps()
   truth <- list(sigma2_int = 0.4, sigma2_slope = 0.3, rho = 0.5)
   dr <- .draw_phylo_aug(
@@ -365,6 +370,7 @@ test_that("phylo_dep(1 + x | sp) x nbinom2 recovers Sigma_b + CI smoke (or hones
 ## log-link; replicates per (species, trait) cell; wider 3x band.
 ## =====================================================================
 test_that("phylo_dep(1 + x | sp) x gamma recovers Sigma_b + CI smoke (or honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_dep_deps()
   truth <- list(sigma2_int = 0.4, sigma2_slope = 0.3, rho = 0.5)
   dr <- .draw_phylo_aug(
@@ -390,6 +396,7 @@ test_that("phylo_dep(1 + x | sp) x gamma recovers Sigma_b + CI smoke (or honest 
 ## logit-link mu mid-range; many replicates (n_rep = 12); wider 3x band.
 ## =====================================================================
 test_that("phylo_dep(1 + x | sp) x beta recovers Sigma_b + CI smoke (or honest skip)", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_dep_deps()
   truth <- list(sigma2_int = 0.4, sigma2_slope = 0.3, rho = 0.5)
   dr <- .draw_phylo_aug(

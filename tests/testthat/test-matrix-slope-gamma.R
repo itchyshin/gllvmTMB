@@ -159,6 +159,7 @@ slope_gamma_Sigma_b <- function(fit) {
 ## Recovery: sigma2_alpha, sigma2_beta, rho within Phase-B0 band
 ## ---------------------------------------------------------------
 test_that("phylo_unique(1 + x | species) x Gamma(log) converges, pd_hessian TRUE, recovers Sigma_b within mean-dependent band", {
+  skip_if_not_heavy()
   skip_if_not_slope_gamma_deps()
   fx <- make_slope_gamma_fixture()
 
@@ -226,6 +227,7 @@ test_that("phylo_unique(1 + x | species) x Gamma(log) converges, pd_hessian TRUE
 ## profile CI must return a finite bound.
 ## ---------------------------------------------------------------
 test_that("phylo_unique(1 + x | species) x Gamma(log) CI smoke: slope-variance profile CI is finite", {
+  skip_if_not_heavy()
   skip_if_not_slope_gamma_deps()
   fx <- make_slope_gamma_fixture()
 

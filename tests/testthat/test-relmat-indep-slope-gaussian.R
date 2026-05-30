@@ -120,6 +120,7 @@ fit_relmat_indep_slope_wide <- function(fx) {
 }
 
 test_that("relmat_indep (= phylo_indep with user A) routes to b_phy_aug with atanh_cor_b pinned (no C++)", {
+  skip_if_not_heavy()
   skip_if_not_relmat_indep_slope_deps()
 
   fx <- make_relmat_indep_slope_fixture()
@@ -145,6 +146,7 @@ test_that("relmat_indep (= phylo_indep with user A) routes to b_phy_aug with ata
 })
 
 test_that("relmat_indep augmented Gaussian recovers both SDs with correlation pinned at 0", {
+  skip_if_not_heavy()
   skip_if_not_relmat_indep_slope_deps()
 
   fx <- make_relmat_indep_slope_fixture()
@@ -169,6 +171,7 @@ test_that("relmat_indep augmented Gaussian recovers both SDs with correlation pi
 })
 
 test_that("relmat_indep wide and long augmented surfaces are byte-identical", {
+  skip_if_not_heavy()
   skip_if_not_relmat_indep_slope_deps()
 
   fx <- make_relmat_indep_slope_fixture()

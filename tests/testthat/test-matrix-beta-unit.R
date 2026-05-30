@@ -126,6 +126,7 @@ expect_rho_unit_profile_finite <- function(fit) {
 ## latent(0 + trait | unit, d = 1) — rank-1 reduced-rank covariance
 ## ---------------------------------------------------------------
 test_that("beta x latent(0 + trait | unit, d = 1): converges, pd_hessian, phi recovered, rho:unit profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_beta_unit_deps()
   fx  <- make_beta_unit_fixture()
   fit <- fit_beta_unit(
@@ -149,6 +150,7 @@ test_that("beta x latent(0 + trait | unit, d = 1): converges, pd_hessian, phi re
 ## unique(0 + trait | unit) — per-trait diagonal variances
 ## ---------------------------------------------------------------
 test_that("beta x unique(0 + trait | unit): converges, pd_hessian, phi recovered", {
+  skip_if_not_heavy()
   skip_if_not_beta_unit_deps()
   fx  <- make_beta_unit_fixture()
   fit <- fit_beta_unit(
@@ -171,6 +173,7 @@ test_that("beta x unique(0 + trait | unit): converges, pd_hessian, phi recovered
 ## latent + unique paired — reduced-rank + diagonal nugget
 ## ---------------------------------------------------------------
 test_that("beta x latent + unique (paired): converges, pd_hessian, phi recovered, rho:unit profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_beta_unit_deps()
   fx  <- make_beta_unit_fixture()
   fit <- fit_beta_unit(
@@ -197,6 +200,7 @@ test_that("beta x latent + unique (paired): converges, pd_hessian, phi recovered
 ## indep(0 + trait | unit) — marginal-only diagonal canonical
 ## ---------------------------------------------------------------
 test_that("beta x indep(0 + trait | unit): converges, pd_hessian, phi recovered", {
+  skip_if_not_heavy()
   skip_if_not_beta_unit_deps()
   fx  <- make_beta_unit_fixture()
   fit <- fit_beta_unit(
@@ -220,6 +224,7 @@ test_that("beta x indep(0 + trait | unit): converges, pd_hessian, phi recovered"
 ## (= latent(d = n_traits) standalone)
 ## ---------------------------------------------------------------
 test_that("beta x dep(0 + trait | unit): converges, pd_hessian, phi recovered, rho:unit profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_beta_unit_deps()
   fx  <- make_beta_unit_fixture()
   fit <- fit_beta_unit(
@@ -244,6 +249,7 @@ test_that("beta x dep(0 + trait | unit): converges, pd_hessian, phi recovered, r
 ## (the unit-tier "scalar" mode; routes via diag(1 | unit))
 ## ---------------------------------------------------------------
 test_that("beta x scalar unique(1 | unit): converges, pd_hessian, phi recovered", {
+  skip_if_not_heavy()
   skip_if_not_beta_unit_deps()
   fx  <- make_beta_unit_fixture()
   fit <- fit_beta_unit(

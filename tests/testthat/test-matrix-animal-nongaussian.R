@@ -138,6 +138,7 @@ make_animal_unique_count_fixture <- function(n_ind = 40L, n_traits = 2L,
 }
 
 test_that("animal_unique x poisson: byte-equivalent with phylo_unique(vcv = A) (logLik + phy Sigma); converges, PD (ANI-02 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_animal_ng_deps()
   fx <- make_animal_unique_count_fixture()
 
@@ -229,6 +230,7 @@ make_animal_unique_gamma_fixture <- function(n_ind = 45L, n_traits = 3L,
 }
 
 test_that("animal_unique x Gamma(log): byte-equivalent with phylo_unique(vcv = A); converges, PD (ANI-02 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_animal_ng_deps()
   fx <- make_animal_unique_gamma_fixture()
 
@@ -309,6 +311,7 @@ make_animal_latent_gamma_fixture <- function(n_ind = 45L, n_traits = 3L,
 }
 
 test_that("animal_latent(d=1) x Gamma(log): byte-equivalent with phylo_latent(d=1, vcv = A); phy correlations non-degenerate (ANI-05 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_animal_ng_deps()
   fx <- make_animal_latent_gamma_fixture()
 
@@ -396,6 +399,7 @@ make_animal_latent_count_fixture <- function(n_ind = 45L, n_traits = 3L,
 }
 
 test_that("animal_latent(d=1) x poisson: byte-equivalent with phylo_latent(d=1, vcv = A); phy correlations non-degenerate (ANI-05 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_animal_ng_deps()
   fx <- make_animal_latent_count_fixture()
 
@@ -495,6 +499,7 @@ make_animal_dep_ordinal_fixture <- function(n_ind = 50L, n_traits = 2L,
 }
 
 test_that("animal_dep x ordinal_probit: byte-equivalent with phylo_dep(vcv = A); rho:phy profile CI finite + phy correlations non-degenerate (ANI-04 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_animal_ng_deps()
   fx <- make_animal_dep_ordinal_fixture()
 
@@ -589,6 +594,7 @@ make_animal_dep_count_fixture <- function(n_ind = 50L, n_traits = 3L,
 }
 
 test_that("animal_dep x poisson: byte-equivalent with phylo_dep(vcv = A); rho:phy profile CI finite (ANI-04 non-Gaussian)", {
+  skip_if_not_heavy()
   skip_if_not_animal_ng_deps()
   fx <- make_animal_dep_count_fixture()
 

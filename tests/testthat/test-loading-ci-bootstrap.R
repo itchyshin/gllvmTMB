@@ -52,6 +52,7 @@ build_bootstrap_fit <- function(n_sites = 80L, seed = 20260528L) {
 ## ---- Bootstrap CI returns the expected shape ---------------------
 
 test_that(".loading_ci_bootstrap() returns the expected columns + dimensions", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   bf <- build_bootstrap_fit()
@@ -75,6 +76,7 @@ test_that(".loading_ci_bootstrap() returns the expected columns + dimensions", {
 ## ---- Bounds are finite and ordered for free entries --------------
 
 test_that(".loading_ci_bootstrap() bounds are finite + ordered for free entries", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   bf <- build_bootstrap_fit()
@@ -95,6 +97,7 @@ test_that(".loading_ci_bootstrap() bounds are finite + ordered for free entries"
 ## ---- Pinned entries: bounds == estimate --------------------------
 
 test_that(".loading_ci_bootstrap() collapses pinned entries to the estimate", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   bf <- build_bootstrap_fit()
@@ -117,6 +120,7 @@ test_that(".loading_ci_bootstrap() collapses pinned entries to the estimate", {
 ## ---- Procrustes alignment is essential ---------------------------
 
 test_that(".procrustes_align_lambda() recovers the rotation that minimises Frobenius distance", {
+  skip_if_not_heavy()
   ## Direct algebra check: build L_ref, apply a known orthogonal Q, then
   ## the aligner should undo the rotation (up to a sign flip / column
   ## permutation absorbed into Q).
@@ -134,6 +138,7 @@ test_that(".procrustes_align_lambda() recovers the rotation that minimises Frobe
 ## ---- Rough agreement with Wald-asym on well-identified entries ----
 
 test_that(".loading_ci_bootstrap() roughly agrees with Wald-asym on well-identified entries", {
+  skip_if_not_heavy()
   ## Phase B-INF A4 spec called for "max abs diff < 0.15" on the bounds.
   ## Empirically that threshold is too tight at nsim = 40 on a binary
   ## probit fixture: the 2.5% / 97.5% percentile sampling MCSE at n = 40

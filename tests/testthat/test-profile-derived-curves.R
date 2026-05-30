@@ -127,6 +127,7 @@ get_prop_curve <- function() {
 ## ============================================================================
 
 test_that("profile_repeatability(): shape, class, columns, n_grid rows", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   out <- get_rep_curve()
@@ -145,6 +146,7 @@ test_that("profile_repeatability(): shape, class, columns, n_grid rows", {
 })
 
 test_that("profile_communality(): shape, class, columns, n_grid rows", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   out <- get_com_curve()
@@ -155,6 +157,7 @@ test_that("profile_communality(): shape, class, columns, n_grid rows", {
 })
 
 test_that("profile_correlation(): shape, class, columns, n_grid rows", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   out <- get_rho_curve()
@@ -165,6 +168,7 @@ test_that("profile_correlation(): shape, class, columns, n_grid rows", {
 })
 
 test_that("profile_proportions(): shape, class, columns, n_grid rows", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   out <- get_prop_curve()
@@ -179,6 +183,7 @@ test_that("profile_proportions(): shape, class, columns, n_grid rows", {
 ## ============================================================================
 
 test_that("profile_repeatability(): grid lies in (0, 1) and is sorted", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   out <- get_rep_curve()
@@ -187,6 +192,7 @@ test_that("profile_repeatability(): grid lies in (0, 1) and is sorted", {
 })
 
 test_that("profile_communality(): grid lies in (0, 1) and is sorted", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   out <- get_com_curve()
@@ -195,6 +201,7 @@ test_that("profile_communality(): grid lies in (0, 1) and is sorted", {
 })
 
 test_that("profile_correlation(): grid lies in (-1, 1) and is sorted", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   out <- get_rho_curve()
@@ -203,6 +210,7 @@ test_that("profile_correlation(): grid lies in (-1, 1) and is sorted", {
 })
 
 test_that("profile_proportions(): grid lies in (0, 1) and is sorted", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   out <- get_prop_curve()
@@ -216,6 +224,7 @@ test_that("profile_proportions(): grid lies in (0, 1) and is sorted", {
 ## ============================================================================
 
 test_that("profile_repeatability(): delta_deviance >= 0 and estimate matches extract_repeatability()", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()
@@ -232,6 +241,7 @@ test_that("profile_repeatability(): delta_deviance >= 0 and estimate matches ext
 })
 
 test_that("profile_communality(): delta_deviance >= 0 and estimate matches extract_communality()", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()
@@ -243,6 +253,7 @@ test_that("profile_communality(): delta_deviance >= 0 and estimate matches extra
 })
 
 test_that("profile_correlation(): delta_deviance >= 0 and estimate matches extract_Sigma() rho", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()
@@ -256,6 +267,7 @@ test_that("profile_correlation(): delta_deviance >= 0 and estimate matches extra
 })
 
 test_that("profile_proportions(): delta_deviance >= 0 and estimate matches extract_proportions()", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()
@@ -282,6 +294,7 @@ invert_curve <- function(x) {
 }
 
 test_that("profile_repeatability(): grid-inverted bounds agree with profile_ci_repeatability() to 1e-2", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   ## CROSS-PATH AGREEMENT CHECK -- local-only.
@@ -319,6 +332,7 @@ test_that("profile_repeatability(): grid-inverted bounds agree with profile_ci_r
 })
 
 test_that("profile_communality(): grid-inverted bounds agree with profile_ci_communality() to 1e-2", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   ## Cross-path agreement check -- local-only (see profile_repeatability
@@ -340,6 +354,7 @@ test_that("profile_communality(): grid-inverted bounds agree with profile_ci_com
 })
 
 test_that("profile_correlation(): grid-inverted bounds agree with profile_ci_correlation() to 1e-2", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   ## Cross-path agreement check -- local-only (see profile_repeatability
@@ -362,6 +377,7 @@ test_that("profile_correlation(): grid-inverted bounds agree with profile_ci_cor
 })
 
 test_that("profile_proportions(): grid-inverted bounds agree with profile_ci_proportions() to 1e-2", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   ## Cross-path agreement check -- local-only (see profile_repeatability
@@ -388,6 +404,7 @@ test_that("profile_proportions(): grid-inverted bounds agree with profile_ci_pro
 ## ============================================================================
 
 test_that("plot(profile_repeatability) returns a gg object", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_if_not_installed("ggplot2")
   skip_on_cran()
@@ -399,6 +416,7 @@ test_that("plot(profile_repeatability) returns a gg object", {
 })
 
 test_that("plot(profile_communality) returns a gg object", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_if_not_installed("ggplot2")
   skip_on_cran()
@@ -410,6 +428,7 @@ test_that("plot(profile_communality) returns a gg object", {
 })
 
 test_that("plot(profile_correlation) returns a gg object", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_if_not_installed("ggplot2")
   skip_on_cran()
@@ -421,6 +440,7 @@ test_that("plot(profile_correlation) returns a gg object", {
 })
 
 test_that("plot(profile_proportions) returns a gg object", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_if_not_installed("ggplot2")
   skip_on_cran()
@@ -436,6 +456,7 @@ test_that("plot(profile_proportions) returns a gg object", {
 ## ============================================================================
 
 test_that("profile_repeatability(): errors when fit has no theta_diag_W", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   set.seed(42L)
@@ -463,6 +484,7 @@ test_that("profile_repeatability(): errors when fit has no theta_diag_W", {
 })
 
 test_that("profile_phylo_signal(): errors when fit has no phylo component", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()
@@ -475,6 +497,7 @@ test_that("profile_phylo_signal(): errors when fit has no phylo component", {
 })
 
 test_that("profile_correlation(): errors when i == j", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()
@@ -489,6 +512,7 @@ test_that("profile_correlation(): errors when i == j", {
 })
 
 test_that("profile_correlation(): canonicalises i > j to i < j", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()
@@ -505,6 +529,7 @@ test_that("profile_correlation(): canonicalises i > j to i < j", {
 })
 
 test_that("profile_proportions(): link_residual in components errors", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()
@@ -519,6 +544,7 @@ test_that("profile_proportions(): link_residual in components errors", {
 })
 
 test_that("profile_proportions(): unknown component errors", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fx <- build_curve_fixture()

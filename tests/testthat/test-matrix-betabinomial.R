@@ -162,6 +162,7 @@ expect_rho_unit_ci_smoke <- function(fit) {
 ## latent(0 + trait | unit, d = 1) -- reduced-rank, one shared factor
 ## ---------------------------------------------------------------
 test_that("betabinomial x latent(0 + trait | unit, d = 1): converges, PD Hessian, phi finite, rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_betabinom_unit_deps()
   fx  <- make_betabinom_unit_fixture()
   fit <- fit_betabinom_unit(
@@ -180,6 +181,7 @@ test_that("betabinomial x latent(0 + trait | unit, d = 1): converges, PD Hessian
 ## unique(0 + trait | unit) -- per-trait diagonal; cleanest phi recovery
 ## ---------------------------------------------------------------
 test_that("betabinomial x unique(0 + trait | unit): converges, PD Hessian, phi finite", {
+  skip_if_not_heavy()
   skip_if_not_betabinom_unit_deps()
   fx  <- make_betabinom_unit_fixture()
   fit <- fit_betabinom_unit(
@@ -198,6 +200,7 @@ test_that("betabinomial x unique(0 + trait | unit): converges, PD Hessian, phi f
 ## latent + unique paired (reduced-rank + diagonal on the same grouping)
 ## ---------------------------------------------------------------
 test_that("betabinomial x latent + unique paired (unit): converges, PD Hessian, phi finite, rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_betabinom_unit_deps()
   fx  <- make_betabinom_unit_fixture()
   fit <- fit_betabinom_unit(

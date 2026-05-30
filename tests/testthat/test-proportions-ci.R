@@ -58,6 +58,7 @@ build_binary_probit_proportions_fit <- function(seed = 20260528L) {
 
 
 test_that(".proportions_wald_ci() on shared_unit returns finite bounds with lower < p_hat < upper (binary probit)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fit <- build_binary_probit_proportions_fit()
@@ -90,6 +91,7 @@ test_that(".proportions_wald_ci() on shared_unit returns finite bounds with lowe
 
 
 test_that(".proportions_bootstrap_ci(nsim = 50) returns finite bounds and roughly matches Wald (binary probit)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fit <- build_binary_probit_proportions_fit()
@@ -143,6 +145,7 @@ test_that(".proportions_bootstrap_ci(nsim = 50) returns finite bounds and roughl
 
 
 test_that(".proportions_wald_ci() and .proportions_bootstrap_ci() on link_residual: bounds collapse for probit (fixed scale)", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fit <- build_binary_probit_proportions_fit()
@@ -183,6 +186,7 @@ test_that(".proportions_wald_ci() and .proportions_bootstrap_ci() on link_residu
 
 
 test_that(".proportions_wald_ci() and .proportions_bootstrap_ci() error on unknown component name", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   fit <- build_binary_probit_proportions_fit()

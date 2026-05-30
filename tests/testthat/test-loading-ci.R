@@ -43,6 +43,7 @@ build_fit <- function(n_sites = 60L, seed = 20260527L) {
 ## ---- Basic shape + content checks ---------------------------------
 
 test_that("loading_ci() returns the expected shape and columns", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ci <- loading_ci(bf$fit, level = "unit")
@@ -58,6 +59,7 @@ test_that("loading_ci() returns the expected shape and columns", {
 })
 
 test_that("loading_ci() pins SE = 0 on entries fixed by lambda_constraint", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ci <- loading_ci(bf$fit, level = "unit")
@@ -70,6 +72,7 @@ test_that("loading_ci() pins SE = 0 on entries fixed by lambda_constraint", {
 })
 
 test_that("loading_ci() returns positive SEs for free entries", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ci <- loading_ci(bf$fit, level = "unit")
@@ -80,6 +83,7 @@ test_that("loading_ci() returns positive SEs for free entries", {
 })
 
 test_that("loading_ci() CI bounds follow estimate +/- z * se", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ci <- loading_ci(bf$fit, level = "unit", conf_level = 0.95)
@@ -89,6 +93,7 @@ test_that("loading_ci() CI bounds follow estimate +/- z * se", {
 })
 
 test_that("loading_ci() honours custom conf_level", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ci80 <- loading_ci(bf$fit, level = "unit", conf_level = 0.80)
@@ -104,6 +109,7 @@ test_that("loading_ci() honours custom conf_level", {
 ## ---- Identifiability gate ----------------------------------------
 
 test_that("loading_ci() returns NA CIs + status columns when pdHess = FALSE", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ## Mutate the sd_report to simulate a non-PD Hessian.
@@ -134,6 +140,7 @@ test_that("loading_ci() returns NA CIs + status columns when pdHess = FALSE", {
 })
 
 test_that("loading_ci() warns when pdHess = FALSE", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   bf$fit$sd_report$pdHess <- FALSE
@@ -143,6 +150,7 @@ test_that("loading_ci() warns when pdHess = FALSE", {
 })
 
 test_that("loading_ci() returns ci_status = 'ok' + pd_hessian = TRUE on a PD fit", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ci <- loading_ci(bf$fit, level = "unit")
@@ -153,6 +161,7 @@ test_that("loading_ci() returns ci_status = 'ok' + pd_hessian = TRUE on a PD fit
 })
 
 test_that("loading_ci() errors on an unconstrained fit", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ## Refit without lambda_constraint = the exploratory case.
@@ -169,6 +178,7 @@ test_that("loading_ci() errors on an unconstrained fit", {
 })
 
 test_that("loading_ci() errors clearly on a non-multi fit", {
+  skip_if_not_heavy()
   expect_error(
     loading_ci(list()),
     "multi-trait"
@@ -176,6 +186,7 @@ test_that("loading_ci() errors clearly on a non-multi fit", {
 })
 
 test_that("loading_ci() rejects out-of-range conf_level", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   expect_error(loading_ci(bf$fit, conf_level = 0),    "conf_level")
@@ -186,6 +197,7 @@ test_that("loading_ci() rejects out-of-range conf_level", {
 ## ---- flag_unreliable_loadings() ----------------------------------
 
 test_that("flag_unreliable_loadings() classifies entries sensibly", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   fl <- flag_unreliable_loadings(bf$fit, null_region = c(-0.1, 0.1))
@@ -201,6 +213,7 @@ test_that("flag_unreliable_loadings() classifies entries sensibly", {
 })
 
 test_that("flag_unreliable_loadings() accepts a loading_ci() data frame directly", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ci <- loading_ci(bf$fit, level = "unit")
@@ -209,6 +222,7 @@ test_that("flag_unreliable_loadings() accepts a loading_ci() data frame directly
 })
 
 test_that("flag_unreliable_loadings() rejects malformed null_region", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   expect_error(flag_unreliable_loadings(bf$fit, null_region = c(0.1)),
@@ -220,6 +234,7 @@ test_that("flag_unreliable_loadings() rejects malformed null_region", {
 ## ---- Confidence Eye plot -----------------------------------------
 
 test_that("plot_loadings_confidence_eye() returns a ggplot", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_if_not_installed("ggplot2")
   bf <- build_fit()
@@ -229,6 +244,7 @@ test_that("plot_loadings_confidence_eye() returns a ggplot", {
 })
 
 test_that("plot_loadings_confidence_eye() also accepts a data frame", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_if_not_installed("ggplot2")
   bf <- build_fit()
@@ -238,6 +254,7 @@ test_that("plot_loadings_confidence_eye() also accepts a data frame", {
 })
 
 test_that("plot_loadings_confidence_eye() colour-encodes reliability classes correctly", {
+  skip_if_not_heavy()
   ## Regression test for the scalar-vs-vector gotcha: an earlier draft
   ## used `isTRUE(df$unreliable)` inside `ifelse()`, which on a vector
   ## always returned FALSE, so every non-pinned entry rendered the same
@@ -268,6 +285,7 @@ test_that("plot_loadings_confidence_eye() colour-encodes reliability classes cor
 })
 
 test_that("loading_profile() returns curve data and loading_ci(method = 'profile') inverts it", {
+  skip_if_not_heavy()
   ## Stage 1 of the unified profile-CI framework. Smoke test: profile
   ## returns the LR curve, CI inversion finds at least some finite
   ## bounds, lower < estimate (where defined). Slow (~minutes) so
@@ -305,6 +323,7 @@ test_that("loading_profile() returns curve data and loading_ci(method = 'profile
 })
 
 test_that("loading_ci(method = 'profile') bypasses the pdHess gate", {
+  skip_if_not_heavy()
   ## Profile doesn't use the Hessian, so a non-PD pdHess must NOT
   ## abort the path (unlike wald / wald_asym which return NA bounds).
   skip_if_not_installed("TMB")
@@ -320,6 +339,7 @@ test_that("loading_ci(method = 'profile') bypasses the pdHess gate", {
 })
 
 test_that("method = 'wald_asym' returns asymmetric CIs on Λ via Fisher-z", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   ci_sym  <- loading_ci(bf$fit, level = "unit", method = "wald")
@@ -346,6 +366,7 @@ test_that("method = 'wald_asym' returns asymmetric CIs on Λ via Fisher-z", {
 })
 
 test_that("suggest_lambda_constraint(convention = 'varimax_threshold') pins below threshold", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   sug <- suggest_lambda_constraint(bf$fit, convention = "varimax_threshold",
@@ -358,6 +379,7 @@ test_that("suggest_lambda_constraint(convention = 'varimax_threshold') pins belo
 })
 
 test_that("suggest_lambda_constraint(convention = 'profile_retention') uses LRT against zero", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
   bf <- build_fit()
@@ -371,6 +393,7 @@ test_that("suggest_lambda_constraint(convention = 'profile_retention') uses LRT 
 })
 
 test_that("suggest_lambda_constraint(convention = 'wald_retention') uses asymmetric Wald + retention", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   bf <- build_fit()
   sug <- suggest_lambda_constraint(bf$fit, convention = "wald_retention",
@@ -384,6 +407,7 @@ test_that("suggest_lambda_constraint(convention = 'wald_retention') uses asymmet
 })
 
 test_that("wald_retention errors on formula input (needs a fit for the SE)", {
+  skip_if_not_heavy()
   expect_error(
     suggest_lambda_constraint(
       value ~ 0 + trait + latent(0 + trait | site, d = 2L),
@@ -395,6 +419,7 @@ test_that("wald_retention errors on formula input (needs a fit for the SE)", {
 })
 
 test_that("wald_retention is at least as conservative as varimax_threshold", {
+  skip_if_not_heavy()
   ## β should pin AT LEAST as many entries as α at the same threshold,
   ## because β layers a retention-probability bar on top of the
   ## point-estimate threshold.
@@ -408,6 +433,7 @@ test_that("wald_retention is at least as conservative as varimax_threshold", {
 })
 
 test_that("plot_loadings_confidence_eye() falls back to 'estimated' when no null_region supplied", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_if_not_installed("ggplot2")
   bf <- build_fit()
@@ -430,6 +456,7 @@ test_that("plot_loadings_confidence_eye() falls back to 'estimated' when no null
 ## tight enough to detect blatant miscalibration.
 
 test_that("Wald CIs cover the true Lambda at approximately nominal rate", {
+  skip_if_not_heavy()
   skip_if_not_installed("TMB")
   skip_on_cran()
 

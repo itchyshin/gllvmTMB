@@ -300,6 +300,7 @@ run_slope_phylo_latent_cell <- function(emit, family, var_band, rho_abs,
 ## binomial-probit (fixed residual scale = 1; tighter band)
 ## ---------------------------------------------------------------------
 test_that("phylo_latent(1 + x | sp, d = 1) x binomial-probit: converges + PD; recovers latent slope structure; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_latent_deps()
   run_slope_phylo_latent_cell(
     emit      = function(eta) stats::rbinom(length(eta), size = 1L, prob = stats::pnorm(eta)),
@@ -316,6 +317,7 @@ test_that("phylo_latent(1 + x | sp, d = 1) x binomial-probit: converges + PD; re
 ## binomial-logit (fixed residual scale = pi^2/3; tighter band)
 ## ---------------------------------------------------------------------
 test_that("phylo_latent(1 + x | sp, d = 1) x binomial-logit: converges + PD; recovers latent slope structure; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_latent_deps()
   run_slope_phylo_latent_cell(
     emit      = function(eta) stats::rbinom(length(eta), size = 1L, prob = stats::plogis(eta)),
@@ -334,6 +336,7 @@ test_that("phylo_latent(1 + x | sp, d = 1) x binomial-logit: converges + PD; rec
 ## all categories fill (mirrors the SLOPE-ord sibling).
 ## ---------------------------------------------------------------------
 test_that("phylo_latent(1 + x | sp, d = 1) x ordinal_probit: converges + PD; recovers latent slope structure; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_latent_deps()
   testthat::skip_if_not_installed("MCMCglmm")
   ordinal_cut <- function(eta) {
@@ -356,6 +359,7 @@ test_that("phylo_latent(1 + x | sp, d = 1) x ordinal_probit: converges + PD; rec
 ## poisson (mean-dependent; wider band). Healthy count mean exp(2) ~ 7.4.
 ## ---------------------------------------------------------------------
 test_that("phylo_latent(1 + x | sp, d = 1) x poisson: converges + PD; recovers latent slope structure; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_latent_deps()
   run_slope_phylo_latent_cell(
     emit      = function(eta) as.integer(stats::rpois(length(eta), lambda = exp(eta))),
@@ -372,6 +376,7 @@ test_that("phylo_latent(1 + x | sp, d = 1) x poisson: converges + PD; recovers l
 ## nbinom2 (mean-dependent + overdispersion; wider band). phi = 2.
 ## ---------------------------------------------------------------------
 test_that("phylo_latent(1 + x | sp, d = 1) x nbinom2: converges + PD; recovers latent slope structure; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_latent_deps()
   run_slope_phylo_latent_cell(
     emit      = function(eta) as.integer(stats::rnbinom(length(eta), mu = exp(eta), size = 2)),
@@ -388,6 +393,7 @@ test_that("phylo_latent(1 + x | sp, d = 1) x nbinom2: converges + PD; recovers l
 ## gamma (mean-dependent; wider band). log link, shape phi = 2, E(y) ~ 1.
 ## ---------------------------------------------------------------------
 test_that("phylo_latent(1 + x | sp, d = 1) x gamma(log): converges + PD; recovers latent slope structure; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_latent_deps()
   gamma_emit <- function(eta) {
     mu <- exp(eta)
@@ -409,6 +415,7 @@ test_that("phylo_latent(1 + x | sp, d = 1) x gamma(log): converges + PD; recover
 ## responses strictly in (0, 1).
 ## ---------------------------------------------------------------------
 test_that("phylo_latent(1 + x | sp, d = 1) x beta: converges + PD; recovers latent slope structure; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_latent_deps()
   beta_emit <- function(eta) {
     mu <- stats::plogis(eta)

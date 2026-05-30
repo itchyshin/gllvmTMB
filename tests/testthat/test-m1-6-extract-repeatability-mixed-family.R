@@ -75,6 +75,7 @@ make_tiny_BW_mixed_fit <- function(seed = 20260517L) {
 # ---- (1) backward-compat on pure Gaussian fit ------------------------
 
 test_that("extract_repeatability on Gaussian fit is unchanged after M1.6 fix", {
+  skip_if_not_heavy()
   skip_on_cran()
   ## Pure Gaussian fit; sigma2_d = 0 → fix is a no-op.
   set.seed(20260517L)
@@ -107,6 +108,7 @@ test_that("extract_repeatability on Gaussian fit is unchanged after M1.6 fix", {
 # ---- (2) post-fix mixed-family: non-Gaussian traits get smaller R ---
 
 test_that("extract_repeatability on mixed-family fit shrinks R on non-Gaussian (M1.6 / MIX-06)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_mixed_fit()
   R_extract <- suppressMessages(extract_repeatability(
@@ -135,6 +137,7 @@ test_that("extract_repeatability on mixed-family fit shrinks R on non-Gaussian (
 # ---- (3) sanity: bracket + R-extract method labels ------------------
 
 test_that("extract_repeatability output shape + bracket on mixed-family (M1.6)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_mixed_fit()
   R <- suppressMessages(extract_repeatability(

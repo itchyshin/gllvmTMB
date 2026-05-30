@@ -124,6 +124,7 @@ skip_on_cran()
 ## ===========================================================================
 
 test_that("poisson x latent(unit, d=1): converges, PD, recovers rank-1 loading sign + finite rho CI", {
+  skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
     value ~ 0 + trait + latent(0 + trait | site, d = 1), d$data
@@ -156,6 +157,7 @@ test_that("poisson x latent(unit, d=1): converges, PD, recovers rank-1 loading s
 ## ===========================================================================
 
 test_that("poisson x unique(unit): converges, PD, recovers positive diag w/ correct dominant trait + finite rho CI", {
+  skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
     value ~ 0 + trait + unique(0 + trait | site), d$data
@@ -185,6 +187,7 @@ test_that("poisson x unique(unit): converges, PD, recovers positive diag w/ corr
 ## ===========================================================================
 
 test_that("poisson x latent(unit, d=1) + unique(unit): converges, PD, recovers both blocks + finite rho CI", {
+  skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
     value ~ 0 + trait +
@@ -217,6 +220,7 @@ test_that("poisson x latent(unit, d=1) + unique(unit): converges, PD, recovers b
 ## ===========================================================================
 
 test_that("poisson x indep(unit): converges, PD, sets indep marker, recovers positive diag + finite rho CI", {
+  skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
     value ~ 0 + trait + indep(0 + trait | site), d$data
@@ -243,6 +247,7 @@ test_that("poisson x indep(unit): converges, PD, sets indep marker, recovers pos
 ## ===========================================================================
 
 test_that("poisson x dep(unit): converges, PD, recovers off-diagonal correlations + finite rho CI", {
+  skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
     value ~ 0 + trait + dep(0 + trait | site), d$data
@@ -272,6 +277,7 @@ test_that("poisson x dep(unit): converges, PD, recovers off-diagonal correlation
 ## ===========================================================================
 
 test_that("poisson x scalar/unique(common=TRUE) (unit): converges, PD, ties one shared variance + finite rho CI", {
+  skip_if_not_heavy()
   d <- .matrix_pois_unit_dgp()
   fit <- .fit_pois_unit(
     value ~ 0 + trait + unique(0 + trait | site, common = TRUE), d$data

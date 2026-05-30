@@ -31,6 +31,7 @@
 # are honest count-family bands, not widened Gaussian tolerances.
 
 test_that("unit_obs tier (poisson OLRE): recovers sigma2_unit + sigma2_unit_obs and they separate", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   set.seed(202)
@@ -116,6 +117,7 @@ test_that("unit_obs tier (poisson OLRE): recovers sigma2_unit + sigma2_unit_obs 
 })
 
 test_that("cluster tier (poisson): `cluster =` argument recovers cluster-level variance", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   set.seed(33)

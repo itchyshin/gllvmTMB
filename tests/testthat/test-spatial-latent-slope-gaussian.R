@@ -19,6 +19,7 @@ skip_until_stage3 <- function() {
 
 test_that(
   "spatial_latent(1 + x | id) recovery: Σ_b per Design 56 §5.3 — block-diagonal per LHS column (per-column Lambda factor-analytic) × SPDE precision", {
+  skip_if_not_heavy()
   skip_helper()
   skip_until_stage3()
 
@@ -30,6 +31,7 @@ test_that(
 
 test_that(
   "spatial_latent wide ≡ long byte-identical (Design 55 §3)", {
+  skip_if_not_heavy()
   skip_helper()
   skip_until_stage3()
   expect_true(TRUE)  # placeholder; Phase 56.5e-latent

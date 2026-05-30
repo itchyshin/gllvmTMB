@@ -34,6 +34,7 @@ make_tiny_BW_fit <- function(seed = 42L) {
 ## ---- 1. Direct variance component: profile == Wald on well-identified -----
 
 test_that("Direct profile on theta_diag_B agrees with Wald (upper bound) to ~30%", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   ## Pick the most strongly identified trait (largest |theta| with
@@ -64,6 +65,7 @@ test_that("Direct profile on theta_diag_B agrees with Wald (upper bound) to ~30%
 ## ---- 2. Repeatability profile gives reasonable bounds --------------------
 
 test_that("extract_repeatability(method='profile') returns sane bounds", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   rep_ci <- suppressMessages(
@@ -91,6 +93,7 @@ test_that("extract_repeatability(method='profile') returns sane bounds", {
 ## ---- 3. extract_correlations returns the expected shape ------------------
 
 test_that("extract_correlations returns tidy frame with required columns", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   ## Use Wald (fastest, most robust for testing)
@@ -115,6 +118,7 @@ test_that("extract_correlations returns tidy frame with required columns", {
 })
 
 test_that("extract_correlations supports `pair` argument", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   one <- gllvmTMB::extract_correlations(
@@ -131,6 +135,7 @@ test_that("extract_correlations supports `pair` argument", {
 ## ---- 4. confint() default is method = "profile" --------------------------
 
 test_that("confint(fit) defaults to method = 'profile'", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   ## Default: returns matrix shape with profile-CI rows
@@ -148,6 +153,7 @@ test_that("confint(fit) defaults to method = 'profile'", {
 })
 
 test_that("confint(fit, method='bootstrap') for Sigma_unit works", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   ci_b <- suppressMessages(confint(
@@ -169,6 +175,7 @@ test_that("confint(fit, method='bootstrap') for Sigma_unit works", {
 ## ---- 5. Speed: profile is meaningfully faster than bootstrap -------------
 
 test_that("Profile CI for repeatability is faster than bootstrap", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   t_p <- system.time({
@@ -193,6 +200,7 @@ test_that("Profile CI for repeatability is faster than bootstrap", {
 ## ---- 6. Method argument is dispatchable on each extractor ----------------
 
 test_that("All extractors accept method argument", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   expect_no_error(
@@ -220,6 +228,7 @@ test_that("All extractors accept method argument", {
 ## ---- 7. Bootstrap fallback for full-Sigma matrices when profile asked ---
 
 test_that("Profile on Sigma_unit (latent+unique tier) falls back to bootstrap", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- make_tiny_BW_fit()
   ## Profile method should fall back to bootstrap with an info message
@@ -231,6 +240,7 @@ test_that("Profile on Sigma_unit (latent+unique tier) falls back to bootstrap", 
 ## ---- 8. Pure-diag tier (no rr): profile gives clean bounds ---------------
 
 test_that("Profile on Sigma_unit (pure-diag tier) gives finite bounds", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(42)
   s <- gllvmTMB::simulate_site_trait(

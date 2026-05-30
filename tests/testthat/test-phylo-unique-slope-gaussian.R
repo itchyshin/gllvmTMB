@@ -132,6 +132,7 @@ phase56_4_Sigma_b <- function(fit) {
 }
 
 test_that("phylo_unique augmented wide and long fits are byte-identical", {
+  skip_if_not_heavy()
   skip_if_not_phylo_unique_slope_deps()
 
   fx <- make_phylo_unique_slope_fixture()
@@ -157,6 +158,7 @@ test_that("phylo_unique augmented wide and long fits are byte-identical", {
 })
 
 test_that("phylo_unique augmented Gaussian fit recovers Sigma_b", {
+  skip_if_not_heavy()
   skip_if_not_phylo_unique_slope_deps()
 
   fx <- make_phylo_unique_slope_fixture()
@@ -179,6 +181,7 @@ test_that("phylo_unique augmented Gaussian fit recovers Sigma_b", {
 })
 
 test_that("phylo_unique augmented fit aborts when n_lhs_cols is forced to 1", {
+  skip_if_not_heavy()
   skip_if_not_phylo_unique_slope_deps()
 
   fx <- make_phylo_unique_slope_fixture(n_sp = 10L, n_rep = 2L)

@@ -219,6 +219,7 @@ make_nb2_spatial_fixture <- function(n_sites = 100L, n_traits = 3L,
 ## has a fair chance of escaping the local optima a mean-dependent likelihood
 ## with absorbed tau induces (mirrors the Beta spatial paired test).
 test_that("nbinom2: spatial_latent(d=1) + spatial_unique paired fits; pd_hessian TRUE; CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_nb2_spatial_deps()
   fx <- make_nb2_spatial_paired_fixture()
 
@@ -274,6 +275,7 @@ test_that("nbinom2: spatial_latent(d=1) + spatial_unique paired fits; pd_hessian
 ## and use$spde are both set. CI smoke is on the single shared `tau_spde`
 ## (under the map the parm token is the bare "tau_spde", block_length == 1L).
 test_that("nbinom2: spatial_scalar(0 + trait | site) fits; tau tied; tau_spde profile CI finite", {
+  skip_if_not_heavy()
   skip_if_not_nb2_spatial_deps()
   fx   <- make_nb2_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.1)
@@ -350,6 +352,7 @@ test_that("nbinom2: spatial_scalar(0 + trait | site) fits; tau tied; tau_spde pr
 ## B0 memo (sec. 3.2) this is an OK mean-dependent spatial case (diagonal +
 ## overdispersion is the safest count case).
 test_that("nbinom2: spatial_indep(0 + trait | site) fits; pd_hessian TRUE", {
+  skip_if_not_heavy()
   skip_if_not_nb2_spatial_deps()
   fx   <- make_nb2_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.12)
@@ -402,6 +405,7 @@ test_that("nbinom2: spatial_indep(0 + trait | site) fits; pd_hessian TRUE", {
 ## at least one finite profile bound on one rho:spatial pair OR a non-degenerate
 ## extract_correlations(tier = "spatial").
 test_that("nbinom2: spatial_dep(0 + trait | site) fits; pd_hessian TRUE; CI smoke OR correlations non-degenerate", {
+  skip_if_not_heavy()
   skip_if_not_nb2_spatial_deps()
   fx   <- make_nb2_spatial_fixture()
   mesh <- gllvmTMB::make_mesh(fx$data, c("lon", "lat"), cutoff = 0.12)

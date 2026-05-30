@@ -47,6 +47,13 @@ jobs:
       # 10x / 2x. Run all three OSes only before a release via
       # workflow_dispatch -> full_matrix = true. (main is not branch-protected,
       # so there are no required OS-named checks to preserve.)
+      #
+      # This is the FAST check. The slow recovery/matrix/profile/bootstrap
+      # tests are gated behind the GLLVMTMB_HEAVY_TESTS env flag (see
+      # tests/testthat/setup.R::skip_if_not_heavy). It is intentionally NOT set
+      # here, so those tests skip and routine PR CI stays fast (~12 min). The
+      # full heavy suite runs nightly + pre-release across all 3 OSes via
+      # .github/workflows/full-check.yaml (which sets GLLVMTMB_HEAVY_TESTS=1).
       matrix:
         config: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.full_matrix) && '[{"os":"ubuntu-latest","r":"release"},{"os":"macos-latest","r":"release"},{"os":"windows-latest","r":"release"}]' || '[{"os":"ubuntu-latest","r":"release"}]') }}
 

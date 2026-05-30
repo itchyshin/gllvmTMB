@@ -159,6 +159,7 @@ expect_rho_unit_ci_smoke <- function(fit, n_traits) {
 ## latent(0 + trait | unit, d = 1) -- reduced-rank, one shared factor
 ## ---------------------------------------------------------------
 test_that("nbinom2 x latent(0 + trait | unit, d = 1): converges, PD Hessian, rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_nb2_unit_deps()
   fx  <- make_nb2_unit_fixture()
   fit <- fit_nb2_unit(
@@ -177,6 +178,7 @@ test_that("nbinom2 x latent(0 + trait | unit, d = 1): converges, PD Hessian, rho
 ## unique(0 + trait | unit) -- per-trait diagonal; cleanest phi recovery
 ## ---------------------------------------------------------------
 test_that("nbinom2 x unique(0 + trait | unit): converges, PD Hessian, recovers phi", {
+  skip_if_not_heavy()
   skip_if_not_nb2_unit_deps()
   fx  <- make_nb2_unit_fixture()
   fit <- fit_nb2_unit(
@@ -203,6 +205,7 @@ test_that("nbinom2 x unique(0 + trait | unit): converges, PD Hessian, recovers p
 ## latent + unique paired (reduced-rank + diagonal on the same grouping)
 ## ---------------------------------------------------------------
 test_that("nbinom2 x latent + unique paired (unit): converges, PD Hessian, rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_nb2_unit_deps()
   fx  <- make_nb2_unit_fixture()
   fit <- fit_nb2_unit(
@@ -224,6 +227,7 @@ test_that("nbinom2 x latent + unique paired (unit): converges, PD Hessian, rho:u
 ## indep(0 + trait | unit) -- diagonal "clean trio" alias of unique
 ## ---------------------------------------------------------------
 test_that("nbinom2 x indep(0 + trait | unit): converges, PD Hessian, indep_B flag set", {
+  skip_if_not_heavy()
   skip_if_not_nb2_unit_deps()
   fx  <- make_nb2_unit_fixture()
   fit <- fit_nb2_unit(
@@ -242,6 +246,7 @@ test_that("nbinom2 x indep(0 + trait | unit): converges, PD Hessian, indep_B fla
 ## dep(0 + trait | unit) -- full unstructured (= latent at d = n_traits)
 ## ---------------------------------------------------------------
 test_that("nbinom2 x dep(0 + trait | unit): converges, PD Hessian, rho:unit CI smoke", {
+  skip_if_not_heavy()
   skip_if_not_nb2_unit_deps()
   fx  <- make_nb2_unit_fixture()
   fit <- fit_nb2_unit(
@@ -261,6 +266,7 @@ test_that("nbinom2 x dep(0 + trait | unit): converges, PD Hessian, rho:unit CI s
 ## scalar -- ONE shared variance across traits == unique(common = TRUE)
 ## ---------------------------------------------------------------
 test_that("nbinom2 x scalar (unique common = TRUE, unit): converges, PD Hessian, ties trait variances", {
+  skip_if_not_heavy()
   skip_if_not_nb2_unit_deps()
   fx  <- make_nb2_unit_fixture()
   fit <- fit_nb2_unit(

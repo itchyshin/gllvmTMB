@@ -203,6 +203,7 @@ slope_var_wald_ci <- function(fit, level = 0.95) {
 ## Recovery: phylo_unique(1 + x | species) x ordinal_probit
 ## ---------------------------------------------------------------
 test_that("phylo_unique(1 + x | sp) x ordinal_probit recovers Sigma_b within 2.5x band; pd_hessian TRUE", {
+  skip_if_not_heavy()
   skip_if_not_slope_ordinal_deps()
   fx <- make_slope_ordinal_fixture()
 
@@ -264,6 +265,7 @@ test_that("phylo_unique(1 + x | sp) x ordinal_probit recovers Sigma_b within 2.5
 ## CI smoke: PROFILE-first, finite slope-variance fallback
 ## ---------------------------------------------------------------
 test_that("phylo_unique(1 + x | sp) x ordinal_probit CI smoke: rho:phy profile OR finite slope-variance CI", {
+  skip_if_not_heavy()
   skip_if_not_slope_ordinal_deps()
   fx <- make_slope_ordinal_fixture()
 

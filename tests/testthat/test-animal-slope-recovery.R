@@ -79,6 +79,7 @@ expect_reached_optimum <- function(fit) {
 # ---- (1) Recovery: sigma_slope (dense A= path; base R only) -----------
 
 test_that("animal_slope(x | id, A = A) recovers sigma_slope (ANI-06)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- make_animal_slope_fixture()
   fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -105,6 +106,7 @@ test_that("animal_slope(x | id, A = A) recovers sigma_slope (ANI-06)", {
 
 test_that(
   "animal_slope(x | id, A = A) is byte-equivalent with phylo_slope(x | id, vcv = A) (ANI-06 / Design 14 §5)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fx <- make_animal_slope_fixture()
   fit_a <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -132,6 +134,7 @@ test_that(
 # ---- (3) Sparse Ainv route: animal_slope(pedigree = ) recovers -------
 
 test_that("animal_slope(x | id, pedigree = ped) recovers sigma_slope via sparse Ainv (ANI-06 / ANI-08)", {
+  skip_if_not_heavy()
   skip_on_cran()
   ## animal_slope(pedigree=) auto-routes through pedigree_to_Ainv_sparse(),
   ## which wraps MCMCglmm::inverseA() (Design 47 §10).
@@ -163,6 +166,7 @@ test_that("animal_slope(x | id, pedigree = ped) recovers sigma_slope via sparse 
 # silently collapse.
 
 test_that("animal_unique(1 + x | id) fails loud and points to animal_slope (UX trap guard)", {
+  skip_if_not_heavy()
   fx_A <- diag(4)
   rownames(fx_A) <- colnames(fx_A) <- paste0("i", 1:4)
   df <- data.frame(

@@ -38,6 +38,7 @@ expect_valid_correlations_df <- function(df, expected_rows) {
 # ---- Fisher-z (default): both fixtures ------------------------------
 
 test_that("extract_correlations() method = 'fisher-z' on both fixtures (M1.4 / MIX-04)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
@@ -56,6 +57,7 @@ test_that("extract_correlations() method = 'fisher-z' on both fixtures (M1.4 / M
 # ---- Wald: both fixtures --------------------------------------------
 
 test_that("extract_correlations() method = 'wald' on both fixtures (M1.4 / MIX-04)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
@@ -74,6 +76,7 @@ test_that("extract_correlations() method = 'wald' on both fixtures (M1.4 / MIX-0
 # ---- Profile: 3-family only (slow) ----------------------------------
 
 test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 / MIX-04)", {
+  skip_if_not_heavy()
   skip_on_cran()
   ## Profile is slower than Fisher-z / Wald (~repeated refit per pair).
   ## 3-family has T = 3 → 3 pairs; budget ~30-60 s.
@@ -100,6 +103,7 @@ test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 /
 # form methods. The fix is M1.8 scope (bootstrap_Sigma mixed-family).
 
 test_that("extract_correlations() method = 'bootstrap' on 5-family fixture (M1.4 / MIX-04)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 5L)
   df <- suppressMessages(extract_correlations(
@@ -131,6 +135,7 @@ test_that("extract_correlations() method = 'bootstrap' on 5-family fixture (M1.4
 # not MIX-04 scope.
 
 test_that("fisher-z and wald agree on the correlation point estimate (M1.4)", {
+  skip_if_not_heavy()
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
   fz <- suppressMessages(extract_correlations(
@@ -146,6 +151,7 @@ test_that("fisher-z and wald agree on the correlation point estimate (M1.4)", {
 # ---- link_residual = "auto" vs "none" diverge on mixed-family ------
 
 test_that("link_residual = 'auto' shrinks correlations on mixed-family (M1.4)", {
+  skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     auto <- suppressMessages(extract_correlations(

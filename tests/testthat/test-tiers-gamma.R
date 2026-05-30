@@ -31,6 +31,7 @@
 ## ---- 1. unit_obs tier: between-unit (sd_B) + within-unit OLRE (sd_W) -------
 
 test_that("Gamma x unit_obs: two-tier unique() converges (PD) and separates sd_B / sd_W", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   ## Two crossed unique() tiers on a unit / unit_obs hierarchy:
@@ -138,6 +139,7 @@ test_that("Gamma x unit_obs: two-tier unique() converges (PD) and separates sd_B
 ## ---- 2. cluster tier: third-slot unique() variance (sd_q) -----------------
 
 test_that("Gamma x cluster: third-slot unique() converges (PD) and recovers sd_q", {
+  skip_if_not_heavy()
   skip_on_cran()
 
   ## Strictly-nested 3-level fixture: cluster > unit > unit_obs, one

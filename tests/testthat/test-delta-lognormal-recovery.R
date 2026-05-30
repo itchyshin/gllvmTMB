@@ -30,6 +30,7 @@
 ## the recovery tolerance of 0.20.
 
 test_that("delta_lognormal converges and recovers trait intercepts + per-trait sigma", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(2025)
   n_ind <- 800
@@ -95,6 +96,7 @@ test_that("delta_lognormal converges and recovers trait intercepts + per-trait s
 })
 
 test_that("delta_lognormal rejects negative response", {
+  skip_if_not_heavy()
   set.seed(1)
   df <- data.frame(
     individual = factor(rep(1:5, each = 2)),
@@ -111,6 +113,7 @@ test_that("delta_lognormal rejects negative response", {
 })
 
 test_that("delta_lognormal accepts string entry family = 'delta_lognormal'", {
+  skip_if_not_heavy()
   skip_on_cran()
   set.seed(7)
   n_ind <- 80
@@ -138,6 +141,7 @@ test_that("delta_lognormal accepts string entry family = 'delta_lognormal'", {
 })
 
 test_that("delta_lognormal poisson-link parameterisation is rejected", {
+  skip_if_not_heavy()
   expect_error(
     suppressMessages(gllvmTMB(
       data.frame(individual = factor(1:10),

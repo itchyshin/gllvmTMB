@@ -128,6 +128,7 @@ fit_animal_indep_slope_wide <- function(fx) {
 }
 
 test_that("animal_indep augmented routes to b_phy_aug with atanh_cor_b pinned (no C++)", {
+  skip_if_not_heavy()
   skip_if_not_animal_indep_slope_deps()
 
   fx <- make_animal_indep_slope_fixture()
@@ -154,6 +155,7 @@ test_that("animal_indep augmented routes to b_phy_aug with atanh_cor_b pinned (n
 })
 
 test_that("animal_indep augmented Gaussian recovers both SDs with correlation pinned at 0", {
+  skip_if_not_heavy()
   skip_if_not_animal_indep_slope_deps()
 
   fx <- make_animal_indep_slope_fixture()
@@ -179,6 +181,7 @@ test_that("animal_indep augmented Gaussian recovers both SDs with correlation pi
 })
 
 test_that("animal_indep is byte-identical to phylo_indep(vcv = A) and wide == long", {
+  skip_if_not_heavy()
   skip_if_not_animal_indep_slope_deps()
 
   fx <- make_animal_indep_slope_fixture()

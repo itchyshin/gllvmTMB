@@ -113,6 +113,7 @@ expect_phylo_indep_slope_reserved <- function(formula, data, tree, family) {
 ## binomial(probit): augmented phylo_indep slope reserved by contract
 ## ---------------------------------------------------------------
 test_that("binomial(probit) phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
   expect_phylo_indep_slope_reserved(
@@ -126,6 +127,7 @@ test_that("binomial(probit) phylo_indep(1 + x | sp): augmented slope LHS reserve
 ## binomial(logit): augmented phylo_indep slope reserved by contract
 ## ---------------------------------------------------------------
 test_that("binomial(logit) phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
   expect_phylo_indep_slope_reserved(
@@ -139,6 +141,7 @@ test_that("binomial(logit) phylo_indep(1 + x | sp): augmented slope LHS reserved
 ## ordinal_probit: augmented phylo_indep slope reserved by contract
 ## ---------------------------------------------------------------
 test_that("ordinal_probit phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
   expect_phylo_indep_slope_reserved(
@@ -152,6 +155,7 @@ test_that("ordinal_probit phylo_indep(1 + x | sp): augmented slope LHS reserved 
 ## poisson(log): augmented phylo_indep slope reserved by contract
 ## ---------------------------------------------------------------
 test_that("poisson(log) phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
   expect_phylo_indep_slope_reserved(
@@ -165,6 +169,7 @@ test_that("poisson(log) phylo_indep(1 + x | sp): augmented slope LHS reserved --
 ## nbinom2: augmented phylo_indep slope reserved by contract
 ## ---------------------------------------------------------------
 test_that("nbinom2 phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
   expect_phylo_indep_slope_reserved(
@@ -178,6 +183,7 @@ test_that("nbinom2 phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail
 ## Gamma(log): augmented phylo_indep slope reserved by contract
 ## ---------------------------------------------------------------
 test_that("Gamma(log) phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
   expect_phylo_indep_slope_reserved(
@@ -191,6 +197,7 @@ test_that("Gamma(log) phylo_indep(1 + x | sp): augmented slope LHS reserved -- f
 ## Beta(): augmented phylo_indep slope reserved by contract
 ## ---------------------------------------------------------------
 test_that("Beta() phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+  skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
   expect_phylo_indep_slope_reserved(

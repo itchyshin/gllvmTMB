@@ -1,5 +1,9 @@
 # gllvmTMB (development version)
 
+## Cross-lineage kernel prototype (#361, 2026-05-31)
+
+* **`make_cross_kernel()`** builds a PSD cross-lineage block relatedness matrix from host relatedness, partner relatedness, and an association matrix (KER-01 / COE-01). IN: the helper returns a correlation-scale `K_star` that can be passed through the existing dense `phylo_latent(..., vcv = K_star) + phylo_unique(..., vcv = K_star)` prototype path, with heavy-test evidence for planted host-partner `Gamma` recovery on block-missing `traits(...)` data. PARTIAL: this is a C0 helper and prototype only; it does not add the generic `kernel_*()` parser, a new TMB engine, `extract_Gamma()`, null-vs-cross likelihood separation, or association-richness sensitivity evidence. PLANNED: the generic `kernel_*()` formula family (KER-02) and validated coevolution engine (COE-02) remain later Design 65 slices.
+
 ## Fitted-model predictive diagnostics (#228, 2026-05-25)
 
 * **`diagnostic_table()`** extracts report-ready tables from `predictive_check()` plots and diagnostic `residuals()` outputs without making articles inspect `attr(x, "gllvmTMB_diagnostic")` directly (DIA-13). IN: users can request plotted/residual `"data"`, `"row_status"` counts, `"fit_health_status"` counts, or the attached `"check_gllvmTMB"` table. PARTIAL: this is a table-extraction helper over existing metadata; it does not compute new residuals, run formal tests, refit models, or calibrate uncertainty. PLANNED: Tier-1 diagnostic articles can now build stable examples on this table path after Florence/Fisher review.

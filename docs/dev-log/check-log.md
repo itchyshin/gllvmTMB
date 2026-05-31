@@ -11962,3 +11962,135 @@ Deliberately not run / not done:
   (Phase 56.5 branch) is specific to user-supplied `vcv = A`; the
   `phylo_tree`-only path used here does not exhibit the divergence,
   so there is nothing to document under SKIP for this slice.
+
+## 2026-05-31 -- C0 cross-lineage coevolution kernel helper + phylo-path prototype
+
+Branch: `codex/kernel-c0-coevolution`.
+
+Scope: Design 65 C0 only. Added `make_cross_kernel(A_H, A_P, W, rho)`
+and a heavy recovery prototype that fits the resulting `K_star` through
+the existing `phylo_latent(..., vcv = K_star) + phylo_unique(..., vcv =
+K_star)` path on a block-missing `traits(...)` response. No parser,
+engine, C++, `kernel_*()`, `extract_Gamma()`, or `relmat` deprecation
+change.
+
+Files changed:
+
+- `R/kernel-helpers.R` (new exported helper)
+- `man/make_cross_kernel.Rd` (generated)
+- `NAMESPACE`
+- `NEWS.md`
+- `_pkgdown.yml`
+- `tests/testthat/test-coevolution-prototype.R`
+- `dev/coevolution-prototype.R`
+- `docs/design/35-validation-debt-register.md` (C0 rows, rebased after
+  PR #363 merged)
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-05-31-kernel-c0-coevolution-prototype.md`
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,files`
+  -> open PR #363 also touches
+  `docs/design/35-validation-debt-register.md`; coordination comment
+  posted at
+  `https://github.com/itchyshin/gllvmTMB/pull/363#issuecomment-4587393394`.
+  Open PRs #362, #364, and #366 do not touch this slice's files. A
+  later recheck found open PR #367 touching the C1 parser/extractor
+  surfaces (`R/brms-sugar.R`, `R/fit-multi.R`, `R/extract-sigma.R`);
+  C1 engine edits are paused, with a coordination comment posted at
+  `https://github.com/itchyshin/gllvmTMB/pull/367#issuecomment-4587437653`.
+- PR #363 merged at `5261672`; the branch was fast-forwarded to
+  `origin/main` and the C0 changes were reapplied cleanly before
+  commit.
+- `git log --all --oneline --since="6 hours ago"` confirmed Design 65
+  is on main via `4a6ba6c` and showed active parallel branches.
+- Restored `docs/design/65-cross-lineage-coevolution-kernel.md` to
+  `HEAD` after discovering the worktree had an older condensed local
+  draft. `git diff -- docs/design/65-cross-lineage-coevolution-kernel.md`
+  -> empty after restore.
+- Heavy fixture probe before patching the test: tree-based fixture with
+  seed `2`, `n_H = 36`, `n_P = 72`, `n_rep = 5`, `rho = 0.65`,
+  `resid_sd = 0.10` gave convergence `0`, `pd_hessian = TRUE`,
+  `max_abs_gradient = 2.889927e-05`, and
+  `abs(cor(vec(Gamma_hat), vec(Gamma_true))) = 0.946358`.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed, loading `gllvmTMB`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-prototype")'`
+  -> `FAIL 0 | WARN 0 | SKIP 1 | PASS 9`; heavy recovery skipped by
+  default. Re-run after the #363 fast-forward + NEWS addition gave the
+  same result.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-prototype")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 16`. Re-run after the #363
+  fast-forward + NEWS addition gave the same result in `11.2s`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.` Re-run after the #363 fast-forward + NEWS
+  addition also returned `No problems found.`
+- `git diff --check` -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `1 warning`, `4 notes`; not a green check. The warning
+  was the package-install warning reported by R CMD check with quiet
+  output; notes were the existing top-level `air.toml`, NEWS heading
+  parsing, unused `nlme` import, and visible-binding / missing
+  `stats::residuals` diagnostics. Re-run after the #363 fast-forward +
+  NEWS addition gave the same `0 errors`, `1 warning`, `4 notes`; the
+  new `Cross-lineage kernel prototype (#361, 2026-05-31)` heading was
+  not listed among the NEWS heading parse notes.
+- `tail -5 man/make_cross_kernel.Rd` -> examples close normally.
+- `grep -c '^\\keyword' man/make_cross_kernel.Rd` -> `0`.
+- Rose pre-publish audit for `NEWS.md`, `_pkgdown.yml`, roxygen, and
+  generated Rd touched by this PR: PASS. The `make_cross_kernel()`
+  NEWS and help text cite KER-01/COE-01/KER-02, export is present in
+  `NAMESPACE`, and `_pkgdown.yml` includes the new reference topic.
+
+Consistency scans:
+
+- `rg -n "make_cross_kernel|KER-01|COE-01|KER-02|COE-02" R/kernel-helpers.R man/make_cross_kernel.Rd docs/design/35-validation-debt-register.md _pkgdown.yml tests/testthat/test-coevolution-prototype.R dev/coevolution-prototype.R`
+  -> helper, generated help, tests, dev prototype, pkgdown nav, and
+  register rows agree on C0 helper/prototype scope.
+- `rg -n "kernel_latent\\(|kernel_unique\\(|extract_Gamma\\(|relmat.*deprecat|deprecat.*relmat" README.md NEWS.md vignettes docs/design R man`
+  -> only Design 65 planned-gate text and the local Design 35 blocked /
+  partial rows; no README, NEWS, vignette, R implementation, or man page
+  advertises the generic engine as shipped.
+- `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S" R/kernel-helpers.R man/make_cross_kernel.Rd dev/coevolution-prototype.R tests/testthat/test-coevolution-prototype.R docs/design/35-validation-debt-register.md _pkgdown.yml`
+  -> no legacy S/U notation in touched files.
+- `rg -n "gllvmTMB\\(" R/kernel-helpers.R man/make_cross_kernel.Rd dev/coevolution-prototype.R tests/testthat/test-coevolution-prototype.R docs/design/35-validation-debt-register.md _pkgdown.yml`
+  -> only wide `traits(...)` prototype/test calls plus unrelated
+  existing register mentions; no long-format call missing `trait =`.
+
+Review gates:
+
+- Ada / integration: PASS for C0 local evidence; HOLD for commit/PR
+  cleared after PR #363 merged and this branch fast-forwarded.
+- Boole / formula surface: PASS. No formula grammar change; public text
+  says `kernel_*()` remains planned.
+- Curie / simulation: PASS. The heavy test uses host and partner trees,
+  planted `Gamma_true`, deterministic seed, PD Hessian, convergence
+  check, block-NA accounting, and a >0.9 recovery threshold.
+- Fisher / inference: PASS for the C0 prototype only. C2 still owns
+  null-vs-cross logLik separation, loading-constraint verification,
+  and single-`W` sensitivity.
+- Rose / consistency: PASS with one coordination warning. Scope rows
+  exist locally and now apply cleanly on top of merged PR #363.
+- Grace / package surface: LIMITED. `pkgdown::check_pkgdown()` is clean;
+  full `devtools::check()` is not green because of one install warning
+  plus four notes.
+- Shannon / coordination: WARN. PR #363 is merged, so C0 can proceed.
+  Open PR #367 still owns the C1 parser/extractor files, so engine
+  edits should wait for #367 to merge or be rebased away.
+
+Deliberately not run / not done:
+
+- No `pkgdown::build_articles(lazy = FALSE)`; no article or formula
+  parser change.
+- No full `devtools::test()` beyond the targeted C0 suite.
+- No engine work (`R/brms-sugar.R`, `R/parse-multi-formula.R`,
+  `R/fit-multi.R`, `R/extract-sigma.R`, `src/gllvmTMB.cpp`) and no C1
+  equivalence test yet.
+- No `extract_Gamma()`, null-vs-cross likelihood separation,
+  loading-constraint verification, or single-`W` sensitivity. These are
+  C2 gates.
+- No article created yet. Advertising coevolution waits until C2.
+- No C1 engine PR yet because PR #367 overlaps the parser/extractor
+  surfaces.

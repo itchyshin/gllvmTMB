@@ -132,6 +132,7 @@ reference:
     contents:
     - pedigree_to_A
     - pedigree_to_Ainv_sparse
+    - make_cross_kernel
     - make_mesh
     - add_utm_columns
     - plot_anisotropy

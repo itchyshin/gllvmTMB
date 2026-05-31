@@ -195,9 +195,9 @@ directly. The recommended workflow is a **two-stage analysis**:
   using `meta_V(V = V)` so the stage-1 sampling
   uncertainty propagates into the stage-2 covariance estimates.
 
-Both stages use direct `gllvmTMB()` calls. See
-[the corvidae-two-stage worked example](corvidae-two-stage.html) for
-the complete pipeline.
+Both stages use direct `gllvmTMB()` calls, with the stage-1
+per-trait estimates and their sampling variances feeding the
+stage-2 `meta_V(V = V)` fit.
 
 ## 5. Cross-validation against `glmmTMB`
 

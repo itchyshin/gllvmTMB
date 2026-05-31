@@ -1,8 +1,8 @@
 # 61 — Capability Status and Dependency-Ordered Work-List (gllvmTMB)
 
-**Status date:** 2026-05-30
-**Sources:** 4 read-only domain audits (ARTICLES, ENGINE-slopes, REGISTER, VALIDATION).
-**Scope:** Synthesis only. Line/PR references below are quoted from the input audits against the `gllvmTMB` source tree (`R/brms-sugar.R`, `src/gllvmTMB.cpp`); they were **not** re-verified in this pass.
+**Status date:** 2026-05-31 (§1c + §B8 refreshed; original audits 2026-05-30)
+**Sources:** 4 read-only domain audits (ARTICLES, ENGINE-slopes, REGISTER, VALIDATION); §1c/§B8 re-verified via Bash against `origin/main` tree 2026-05-31.
+**Scope:** Synthesis only. Line/PR references below are quoted from the input audits against the `gllvmTMB` source tree (`R/brms-sugar.R`, `src/gllvmTMB.cpp`); original §1c stale entries re-verified this pass.
 
 This document is a status snapshot plus a two-track work-list. The central, load-bearing finding is in §2 and §4: **every richer-LHS random-slope keyword in the phylo/spatial family is `not-implemented` at the engine level, and only `phylo_indep`'s parser guard — not its math — is cheap. None of the structured slope modes can be delivered by mass agent fan-out.**
 
@@ -52,10 +52,10 @@ The `slope` column refers specifically to the richer **`(0 + trait + trait:x | g
 | binomial / probit | C | C (vs mirt 2PL) | (M2.3 mirt cross-check) |
 | poisson | C | **N** (no glmmTMB sister fixture) | FAM-06 (recovery C; cross-pkg N) |
 | nbinom2 | C | **N** (no glmmTMB cross-check) | FAM-08 (recovery C; cross-pkg N) |
-| nbinom1 | **P — smoke only** | N | FAM-07 (P) |
-| gamma (log) | P→ (recovery exists; see §3) | P (no cross-pkg) | FAM-09 (P) |
+| nbinom1 | **B on main; fix-ready on `agent/trackd-nbinom1-wiring`** | N | FAM-07 (blocked on main; promote to `covered` on merge) |
+| gamma (log) | C (recovery: intercepts + CV; `test-family-gamma.R`) | P (no cross-pkg comparator) | FAM-09 (C recovery; cross-pkg remains P) |
 | beta (logit) | C (recovery) | P (no clean comparator) | FAM-10 (P) |
-| ordinal_probit | P→ (recovery exists; see §3) | P (no mirt `graded` cross-check) | FAM-14 (P) |
+| ordinal_probit | C (recovery: cutpoints + intercepts K=2/3/4; `test-ordinal-probit.R`) | P (no mirt `graded` cross-check) | FAM-14 (C recovery; cross-pkg remains P) |
 | delta / hurdle | **B** | B | FAM-17, MIX-10 (blocked) |
 
 ### 1d. CI-method tier (profile / Wald / bootstrap)
@@ -101,9 +101,9 @@ Articles (`animal-model.Rmd`, `phylogenetic-gllvm.Rmd`, vocabulary/grid/flowchar
 **Overclaim 3 — Mixed-family CIs are framed as near-ready M3 polish; coverage actually collapses.**
 `joint-sdm.Rmd` and `mixed-family-extractors.Rmd` frame mixed-family communality/repeatability/correlation CIs as imminent M3 milestone work (CI-10 "partial"). The M3.3 production run **failed the gate badly** on mixed-family cells: d=1 coverage **0.820**, d=2 **0.685**, d=3 **0.550** against a ≥0.94 target. This is an `engine-C++` problem (target-explicit `Sigma_unit[tt]` rather than `psi`, plus a diagnostic report), not a documentation gap. **Honest posture:** "mixed-family CI coverage is a known engine deficiency (0.55–0.82 observed), not a near-complete feature."
 
-**Not overclaims — register under-claims to fix in consolidation (Track A):**
-- **FAM-09 (gamma, log):** register says "smoke only" but `test-family-gamma.R` performs recovery (trait-intercept + CV). Status is too conservative; candidate `partial → covered` after a tolerance-depth review.
-- **FAM-14 (ordinal_probit):** register says "smoke only; full M2 work" but `test-ordinal-probit.R` recovers cutpoints + intercepts across K=2/3/4 and shows binomial-probit byte-identity at K=2. Status text is inaccurate; recovery exists. (Cross-package mirt `graded` check still missing, so it stays `partial` overall — but for the cross-package reason, not "smoke only".)
+**Not overclaims — register under-claims resolved in this pass (2026-05-31):**
+- **FAM-09 (gamma, log):** Register (Design 35) already reads `covered` (`test-family-gamma.R` + `test-matrix-gamma-unit.R` + `test-matrix-slope-gamma.R` + `test-tiers-gamma.R`; 15 + 32 assertions, 0 fail). §1c updated to `C` for recovery / `P` for cross-package. Cross-package comparator (gllvm Procrustes or glmmTMB LL) still outstanding.
+- **FAM-14 (ordinal_probit):** Register (Design 35) already reads `covered` (`test-ordinal-probit.R` + `test-matrix-ordinal-unit.R` + `test-matrix-slope-ordinal.R` + `test-tiers-ordinal.R`; 21 + 30 assertions, 0 fail). §1c updated to `C` for recovery / `P` for cross-package. Cross-package mirt `graded` fixture still outstanding.
 
 ---
 
@@ -115,7 +115,7 @@ These items are documentation, register hygiene, a single cheap parser change, a
 
 | # | Item | What it delivers | Effort | Parallel-agent today? | Depends on |
 |---|---|---|---|---|---|
-| A1 | **Register consolidation** (FAM-09, FAM-14 status text; confirm ANI-06/PHY-06/RE-02/FG-15 all read "partial"; CI-08 "needs-update", CI-10 "partial") | Single source of truth for status; fixes two under-claims | S | **Yes** (one owner; serialize writes to register) | — |
+| A1 | **Register consolidation** (FAM-09, FAM-14 §1c done in this pass 2026-05-31; FAM-07 §1c + §B8 done in this pass; confirm ANI-06/PHY-06/RE-02/FG-15 all read "partial"; CI-08 "needs-update", CI-10 "partial") | Single source of truth for status; two §1c under-claims resolved; FAM-07 stale test-file citation fixed | S | **Yes** (one owner; serialize writes to register) | — |
 | A2 | **Capability matrix freeze** (this doc §1–§2 ratified as the status reference) | Shared status table every article links to | S | **Yes** | A1 |
 | A3 | **`api-keyword-grid.Rmd`** — confirm "partial" mapping for animal/phylo rows (audit: already current) | No-op verification; guards against drift | S | **Yes** (read-mostly) | A1 |
 | A4 | **`choose-your-model.Rmd`** decision-tree rewrite: extend ladder past spatial to `animal_slope`/`phylo_slope`; add non-Gaussian-slope and CI-method (Wald vs profile vs bootstrap) guidance; cite PHY-06, ANI-06, CI-10 as partial | Honest complexity ladder | L | **Yes** | A1, A2 |
@@ -146,7 +146,7 @@ Every item below requires new TMB parameter blocks, prior-likelihood derivation,
 | B5 | **`spatial_latent` slope engine** — `theta_rr_spde_lv_slope (T × K_S × n_lhs_cols)`, Z slope indicators (gllvmTMB.cpp:260-265/764-768) | Reduced-rank spatial loadings extended; shares packing with B6 | engine-C++ | recovery on shared-field slope loadings |
 | B6 | **`spatial_dep` slope engine** — `theta_rr_spde_lv` → T×T×n_lhs_cols full Cholesky, `omega_spde_lv_slope` (gllvmTMB.cpp:260-269/664-670) | Full-rank (d=T) block expansion; **heaviest** item | engine-C++ (L) | full-unstructured (intercept,slope) recovery |
 | B7 | **`animal_slope(x\|id)` recovery study** (ANI-06) — activate the `skip_until_stage3()` skeletons with real DGPs | Not new engine code, but a **validation** study that gates promotion; expert-run, not fan-out | L | Gaussian slope recovery + per-id slope cor, then non-Gaussian |
-| B8 | **nbinom1 recovery + cross-package** (FAM-07) — currently smoke-only; `test-nb2-recovery.R:115` notes "nbinom1 smoke only" | Family-specific recovery + glmmTMB cross-check; estimand/DGP care needed | M | recovery + glmmTMB agreement |
+| B8 | **nbinom1 recovery + cross-package** (FAM-07) — engine wired (fid 15, `log_phi_nbinom1`) on `agent/trackd-nbinom1-wiring`; recovery bodies in `test-matrix-nbinom1.R` (31 assertions; 3 skips self-heal on merge); glmmTMB NB1 LL-agreement fixture still missing | Recovery gate: merge review branch; cross-package gate: add glmmTMB `rr()` NB1 LL-agreement fixture | M | recovery on merge; glmmTMB agreement separately |
 | B9 | **Gaussian coverage gate** (CI-08) — drive 13/15 failing cells to ≥94%; resolve 236/3000 fit failures | Engine + estimand work behind Design 50 surface-admission gate | engine-C++ | ≥94% across the cell grid + diagnostic report |
 | B10 | **Mixed-family CI coverage** (CI-10) — target-explicit `Sigma_unit[tt]` not `psi`; lift d=1/2/3 from 0.55–0.82 | Estimand redefinition + engine; precedes any mixed-family CI article promotion | engine-C++ | ≥0.94 mixed-family coverage + diagnostic report |
 | B11 | **Delta/hurdle latent-scale correlation formula** (FAM-17, MIX-10) | **Blocked** — two scales (occurrence + continuous); single latent-residual formula undefined. Needs mathematical derivation **before** any code | engine-C++ (blocked) | derivation first, then mixed-family delta/hurdle fits |

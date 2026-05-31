@@ -135,7 +135,7 @@ is sometimes more appropriate. The output of `extract_phylo_signal()`
 reports the partition $H^2 + C^2_{\rm non} + \Psi = 1$.
 
 **Mixed-family rows in one fit**
-([mixed-response](mixed-response.html)) &mdash; Use when one trait is
+([mixed-family](mixed-family-extractors.html)) &mdash; Use when one trait is
 continuous, another is binary, another is a count, and you want them
 to share latent structure. Pass `family = list(gaussian(),
 binomial(), poisson())` with a `family_var` column.
@@ -185,7 +185,7 @@ Real data often fits more than one branch. Some examples:
   term plus a `spatial_*()` term. The keyword grid composes; each
   tier gets its own paired decomposition.
 - **Mixed-family + CFA structure**: combine the
-  [mixed-response](mixed-response.html) recipe (per-row `family =
+  [mixed-family](mixed-family-extractors.html) recipe (per-row `family =
   list(...)`) with the
   [lambda-constraint](lambda-constraint.html) recipe (pinned
   off-pattern entries). Both arguments accept their pieces

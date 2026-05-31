@@ -114,8 +114,7 @@ model either way. Most worked examples show both.
 **Family (response distribution, distribution family)** &mdash; The
 likelihood used for one trait (or one row, in mixed-family fits):
 Gaussian, binomial, Poisson, Gamma, Beta, ordinal-probit, etc. 15
-families are supported (see [Mixed-response
-families](mixed-response.html)).
+families are supported (see [Mixed-family fits](mixed-family-extractors.html)).
 
 **Link function** &mdash; The transformation that maps the latent
 linear predictor $\eta$ to the natural scale of the response.

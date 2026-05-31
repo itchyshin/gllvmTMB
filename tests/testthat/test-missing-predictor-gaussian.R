@@ -1178,3 +1178,148 @@ test_that("a unit-level mi(x) with no mi_group() is still the Phase 2a path", {
   )
   expect_identical(fit$missing_data$predictors$x$model_row, d$missing_site)
 })
+
+# ---- BUG-1: interior (non-final) unused factor level in the latent level ----
+#
+# The Phase-2a/2b latent-level resolver MUST re-factor the unit level so it is
+# contiguous 0..K-1 (exactly as the Phase-2c branch does for mi_group()). A
+# `site` factor with an UNUSED MIDDLE level (e.g. all rows of a middle site
+# dropped under the default response = "drop", leaving an interior gap in the
+# integer codes) used to take the level straight from `unit_id` with
+# `n_latent = max(unit_id) + 1`. That left `first_row[gap] == 0`, silently
+# dropped a `x_unit` entry (so `length(x_unit) < n_units`), yet `mi_unit_id`
+# still referenced the higher index -- an unchecked C++ OOB read
+# `mi_x_full(mi_unit_id(o))` (src/gllvmTMB.cpp). After the fix the resolver
+# re-factors: the unit count drops to the number of PRESENT levels and the fit
+# is sound.
+
+# Build a unit-level mi(x) dataset, then drop every row of one MIDDLE site while
+# KEEPING that level in the `site` factor -- an interior gap in `as.integer()`.
+.make_mi_interior_gap <- function(seed = 202, gap_site = 20L) {
+  d <- .make_mi_uni(seed = seed)
+  inj <- .inject_missing_x(d)
+  dat <- inj$data
+  ## Drop the gap site's rows but RETAIN the (now unused) middle factor level.
+  keep <- as.integer(dat$site) != gap_site
+  dat <- dat[keep, , drop = FALSE]
+  ## site stays a factor with the full level set; the dropped middle level has
+  ## zero rows, so as.integer(site) - 1L has an interior gap.
+  present <- sort(unique(as.integer(dat$site)))
+  list(
+    data = dat,
+    gap_site = gap_site,
+    missing_site_orig = d$missing_site,
+    ## The missing sites' positions AFTER re-factoring to present levels only.
+    missing_site_refactored = match(d$missing_site, present)
+  )
+}
+
+test_that("interior unused factor level in the unit level re-factors (BUG-1)", {
+  skip_if_not_heavy()
+  g <- .make_mi_interior_gap()
+  dat <- g$data
+  ## Sanity: the latent level (site) carries an interior gap before the fit.
+  expect_true(g$gap_site %in% levels(dat$site))
+  expect_false(g$gap_site %in% as.integer(dat$site))
+  n_present <- length(unique(as.integer(dat$site)))
+
+  ## BEFORE the fix this OOBs / crashes inside the TMB engine; AFTER it fits.
+  fit <- .fit_mi_uni(dat, se = TRUE)
+
+  ## (1) Correct unit count: the latent level is re-factored to PRESENT levels
+  ## only (the dropped middle level is gone), NOT max(code) + 1.
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  expect_identical(stats::nobs(fit), nrow(dat))
+  ## One x_mis per missing UNIT (the 4 missing sites survive the gap drop).
+  expect_length(par$x_mis, length(g$missing_site_orig))
+  ## (2) Finite estimates everywhere (no OOB-poisoned values).
+  expect_true(all(is.finite(par$b_fix)))
+  expect_true(all(is.finite(par$beta_mi)))
+  expect_true(is.finite(par$log_sigma_mi[[1]]))
+  expect_lt(max(abs(fit$tmb_obj$gr(fit$opt$par))), 1e-2)
+  ## (3) The registry model_row maps the missing units to their RE-FACTORED
+  ## positions (contiguous 0..K-1 after dropping the interior gap), and the
+  ## imputed() frame agrees.
+  reg <- fit$missing_data$predictors$x
+  expect_identical(reg$model_row, g$missing_site_refactored)
+  expect_identical(reg$counts$missing, length(g$missing_site_orig))
+  out <- imputed(fit)
+  expect_identical(out$model_row, g$missing_site_refactored)
+  expect_true(all(is.finite(out$estimate)))
+  expect_true(all(is.finite(out$std_error)))
+})
+
+# ---- GAP-1: reject the unsafe (1|group) + mi_group() composition -----------
+#
+# A grouped covariate random intercept (1 | group) combined with an explicit
+# mi_group() level mis-broadcasts the RE group when `group` cross-cuts the
+# mi_group() level. v1 rejects this combination loudly (nesting-validation is a
+# later slice). This is a pure-validation gate (errors before any TMB fit).
+
+test_that("a grouped (1|group) covariate RE plus mi_group() is rejected (GAP-1)", {
+  d <- .make_mi_group()
+  dat <- .inject_missing_group(d)
+  ## region is the group-level marker; add a cross-cutting (1 | site) covariate
+  ## random intercept. The 2b+2c composition is unsupported in v1.
+  expect_error(
+    .fit_mi_group(
+      dat,
+      impute = list(x = x ~ z + (1 | site) + mi_group(region))
+    ),
+    "not supported"
+  )
+})
+
+# ---- GAP-3: imputed() SE alignment under a rich random vector --------------
+#
+# With a reduced-rank latent block (latent(0 + trait | site, d = 2) -> the
+# `z_B` random matrix) PLUS mi(x), the TMB `random` vector carries MULTIPLE
+# blocks (`x_mis` AND `z_B`): `x_mis` is only a SLICE of par.random, not the
+# whole thing. imputed() SEs must equal the diag.cov.random entries at exactly
+# the `x_mis` positions (located by name), regardless of where the block sits
+# in par.random. This pins the slice alignment before Phase 3 adds phylo blocks
+# (yet more random members alongside x_mis).
+
+# Fit the two-trait Gaussian mi(x) model WITH a reduced-rank latent block on
+# site (d = 2). The latent block adds a `z_B` matrix to par.random alongside
+# `x_mis`, so the x_mis SE slice must be located by name, not assumed whole.
+.fit_mi_uni_rr <- function(data, se = TRUE) {
+  suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):z + mi(x) + latent(0 + trait | site, d = 2),
+    data    = data,
+    family  = gaussian(),
+    impute  = list(x = x ~ z + w),
+    missing = miss_control(predictor = "model"),
+    control = gllvmTMBcontrol(se = se)
+  )))
+}
+
+test_that("imputed() SEs slice x_mis correctly under a reduced-rank vector (GAP-3)", {
+  skip_if_not_heavy()
+  d <- .make_mi_uni()
+  inj <- .inject_missing_x(d)
+  dat <- inj$data
+
+  fit <- .fit_mi_uni_rr(dat, se = TRUE)
+
+  ## The reduced-rank latent block is active: par.random carries BOTH a `z_B`
+  ## block and the `x_mis` block, so x_mis is a proper SLICE (not the whole
+  ## vector). The x_mis positions are located by NAME.
+  sdr <- fit$sd_report
+  expect_false(is.null(sdr))
+  random_names <- names(sdr$par.random)
+  expect_true("z_B" %in% random_names)
+  positions <- which(random_names == "x_mis")
+  expect_length(positions, length(d$missing_site))
+  ## par.random is strictly larger than the x_mis slice (the z_B block adds many
+  ## more random entries) -- this is the multi-block alignment GAP-3 pins.
+  expect_gt(length(random_names), length(positions))
+
+  ## imputed() SEs MUST equal the manual sqrt(diag.cov.random[x_mis positions]).
+  out <- imputed(fit)
+  expect_length(out$std_error, length(d$missing_site))
+  manual_se <- sqrt(as.numeric(sdr$diag.cov.random[positions]))
+  expect_equal(out$std_error, manual_se, tolerance = 1e-10)
+  expect_true(all(is.finite(out$std_error)))
+  expect_true(all(out$std_error > 0))
+})

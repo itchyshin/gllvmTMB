@@ -6,6 +6,7 @@
 \alias{summary.gllvmTMB_multi}
 \alias{print.summary.gllvmTMB_multi}
 \alias{logLik.gllvmTMB_multi}
+\alias{nobs.gllvmTMB_multi}
 \title{Methods on a fitted gllvmTMB model}
 \usage{
 \method{print}{gllvmTMB_multi}(x, ...)
@@ -15,6 +16,8 @@
 \method{print}{summary.gllvmTMB_multi}(x, digits = 3, ...)
 
 \method{logLik}{gllvmTMB_multi}(object, ...)
+
+\method{nobs}{gllvmTMB_multi}(object, ...)
 }
 \arguments{
 \item{x, object}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
@@ -42,4 +45,12 @@ and global / local communalities.
 \code{df = length(opt$par)} and \code{nobs = length(y)}, so \code{AIC()} and
 \code{BIC()} all work directly.
 }
+
+\code{nobs()} returns the number of \strong{likelihood-contributing} observations --
+the observed-response cells. This equals
+\code{fit$missing_data$counts$likelihood_rows} and the \code{nobs} attribute of
+\code{\link[=logLik]{logLik()}}. Under the default \code{miss_control(response = "drop")} every fitted
+row is observed, so it equals \code{length(fit$tmb_data$y)}; under
+\code{response = "include"} the masked rows are excluded (design 59 sec.4b: the
+original-row counts live in \code{fit$missing_data}, never in \code{nobs()}).
 }

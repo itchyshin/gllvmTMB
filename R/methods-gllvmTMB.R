@@ -385,6 +385,25 @@ summary.gllvmTMB_multi <- function(object, ...) {
   out$ICC_site <- extract_ICC_site(object)
   out$communality_B <- extract_communality(object, "unit")
   out$communality_W <- extract_communality(object, "unit_obs")
+
+  ## Missing-response accounting (design 59 sec.4b). Surface the original-row +
+  ## response-pattern counts from fit$missing_data, but only when there is
+  ## actually missing-response structure to report -- a complete-data fit (no
+  ## dropped or masked responses) gets no $missing block, so the default
+  ## summary is unchanged for non-missing fits.
+  md <- object$missing_data
+  if (!is.null(md) && !is.null(md$counts)) {
+    n_missing <- md$counts$n_missing_response %||% 0L
+    n_dropped <- md$counts$n_dropped %||% 0L
+    if (n_missing > 0L || n_dropped > 0L) {
+      out$missing <- list(
+        response = md$response,
+        counts = md$counts,
+        slice = md$slice
+      )
+    }
+  }
+
   class(out) <- "summary.gllvmTMB_multi"
   out
 }
@@ -468,6 +487,23 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
     print(df)
   }
 
+  ## Missing-response accounting (design 59 sec.4b), shown only when the fit
+  ## carries missing-response structure.
+  if (!is.null(x$missing)) {
+    cn <- x$missing$counts
+    cat("\nMissing responses:\n")
+    cat(sprintf(
+      "  response = \"%s\"   total cells = %d   observed = %d   missing = %d\n",
+      x$missing$response,
+      cn$n_total,
+      cn$n_observed,
+      cn$n_missing_response
+    ))
+    if (isTRUE(cn$n_dropped > 0L)) {
+      cat(sprintf("  dropped rows = %d (response = \"drop\")\n", cn$n_dropped))
+    }
+  }
+
   cat(
     "\nFor more, see: extract_Sigma(), extract_communality(),
   extract_phylo_signal(), extract_proportions(), getLoadings(),
@@ -494,6 +530,33 @@ logLik.gllvmTMB_multi <- function(object, ...) {
   }
   class(ll) <- "logLik"
   ll
+}
+
+#' @rdname gllvmTMB_multi-methods
+#' @details
+#' `nobs()` returns the number of **likelihood-contributing** observations --
+#' the observed-response cells. This equals
+#' `fit$missing_data$counts$likelihood_rows` and the `nobs` attribute of
+#' [logLik()]. Under the default `miss_control(response = "drop")` every fitted
+#' row is observed, so it equals `length(fit$tmb_data$y)`; under
+#' `response = "include"` the masked rows are excluded (design 59 sec.4b: the
+#' original-row counts live in `fit$missing_data`, never in `nobs()`).
+#' @exportS3Method stats::nobs
+nobs.gllvmTMB_multi <- function(object, ...) {
+  ## Prefer the shared-contract count (drmTMB-aligned likelihood_rows) when the
+  ## missing-data slot is present; fall back to the is_y_observed mask, then to
+  ## length(y). All three agree by construction -- this just keeps nobs() and
+  ## logLik()'s nobs attribute consistent.
+  lr <- object$missing_data$counts$likelihood_rows
+  if (!is.null(lr)) {
+    return(as.integer(lr))
+  }
+  iyo <- object$tmb_data$is_y_observed
+  if (is.null(iyo)) {
+    length(object$tmb_data$y)
+  } else {
+    sum(iyo == 1L)
+  }
 }
 
 #' Fixed-effect confidence intervals for a fitted gllvmTMB model
@@ -1307,5 +1370,98 @@ predict.gllvmTMB_multi <- function(
   if (type == "response" && !is.null(object$family$linkinv)) {
     out$est <- object$family$linkinv(out$est)
   }
+  out
+}
+
+#' Predict the masked (missing) response cells of a gllvmTMB fit
+#'
+#' For a model fitted with `missing = miss_control(response = "include")`
+#' (see [miss_control()]), [gllvmTMB()] keeps the rows / cells whose response
+#' was missing, masks them out of the likelihood, and predicts them from the
+#' fitted model. `predict_missing()` returns those masked response cells with
+#' their model-based predictions and the original-row / cell accounting from
+#' `fit$missing_data`.
+#'
+#' This is the **responses** extractor of the missing-data layer (design 59
+#' sec.4): missing responses are *predicted / reconstructed* (a fitted value),
+#' not latent covariates. The separate `imputed()` family (reserved for a
+#' later phase) returns missing **predictors** as conditional modes / EBLUPs.
+#' The point predictions here are the fitted linear predictor (`type = "link"`)
+#' or its inverse-link response (`type = "response"`); standard errors of the
+#' reconstruction are deferred to a later slice.
+#'
+#' @param object A fit returned by [gllvmTMB()].
+#' @param type One of `"link"` (default; the linear predictor) or
+#'   `"response"` (the inverse-link conditional mean).
+#' @param ... Unused.
+#'
+#' @return A data frame with one row per masked response cell, with columns:
+#'   `original_row` (the pre-mask row index in the original data),
+#'   `model_row` (the row index into the fitted long-format data / response),
+#'   the unit / cluster / trait identifier columns, and `est` (the prediction
+#'   on the requested scale). A complete-data fit (no masked cells) returns a
+#'   zero-row data frame with the same columns.
+#'
+#' @seealso [gllvmTMB()], [miss_control()], [predict.gllvmTMB_multi()].
+#' @export
+predict_missing <- function(object, type = c("link", "response"), ...) {
+  if (!inherits(object, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
+  }
+  type <- match.arg(type)
+
+  md <- object$missing_data
+  iyo <- object$tmb_data$is_y_observed
+  ## Full per-model-row prediction (eta or response), aligned with the long
+  ## stacked data the fit was built on.
+  preds <- predict(object, type = type)
+  est <- preds$est
+  n_model <- length(est)
+
+  ## Identify the masked rows. is_y_observed is the authoritative per-row
+  ## mask; fit$missing_data carries the original-row map. Under response="drop"
+  ## (or a complete-data include fit) there are no masked rows -> zero rows.
+  masked <- if (is.null(iyo)) {
+    integer(0L)
+  } else {
+    which(iyo == 0L)
+  }
+
+  ## Original-row / model-row accounting from the shared-contract slot.
+  original_row <- if (!is.null(md) && !is.null(md$original_row)) {
+    as.integer(md$original_row)
+  } else {
+    seq_len(n_model)
+  }
+  if (length(original_row) != n_model) {
+    original_row <- seq_len(n_model)
+  }
+
+  ## Cell identifiers: reuse the user's column names where available.
+  unit_lbl <- object$unit_col %||% "site"
+  trait_lbl <- object$trait_col %||% "trait"
+  cluster_lbl <- object$cluster_col %||% object$species_col
+
+  base <- data.frame(
+    original_row = original_row,
+    model_row = seq_len(n_model),
+    stringsAsFactors = FALSE
+  )
+  if (!is.null(unit_lbl) && unit_lbl %in% names(object$data)) {
+    base[[unit_lbl]] <- object$data[[unit_lbl]]
+  }
+  if (
+    !is.null(cluster_lbl) && cluster_lbl %in% names(object$data) &&
+      !identical(cluster_lbl, unit_lbl)
+  ) {
+    base[[cluster_lbl]] <- object$data[[cluster_lbl]]
+  }
+  if (!is.null(trait_lbl) && trait_lbl %in% names(object$data)) {
+    base[[trait_lbl]] <- object$data[[trait_lbl]]
+  }
+  base$est <- est
+
+  out <- base[masked, , drop = FALSE]
+  rownames(out) <- NULL
   out
 }

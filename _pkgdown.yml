@@ -169,6 +169,7 @@ reference:
     - tidy.gllvmTMB_multi
     - simulate.gllvmTMB_multi
     - predict.gllvmTMB_multi
+    - predict_missing
     - plot.gllvmTMB_multi
     - plot_correlations
     - plot_Sigma_table

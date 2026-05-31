@@ -72,8 +72,12 @@
 #' `traits(matches("^y[0-9]+$"))`, `traits(any_of(c("a", "b")))`, and
 #' bare names all work.
 #'
-#' Cells with `NA` responses are dropped via
-#' `pivot_longer(values_drop_na = TRUE)` — the canonical default. Users
+#' Cells with `NA` responses are, by default, dropped via
+#' `pivot_longer(values_drop_na = TRUE)` -- the canonical complete-case
+#' behaviour. Passing `missing = miss_control(response = "include")` to
+#' [gllvmTMB()] instead **keeps** every `(unit, trait)` cell and masks the
+#' `NA` cells out of the likelihood (the observed-response mask), preserving
+#' per-cell identity and original-row accounting in `fit$missing_data`. Users
 #' who want strict listwise drop should pre-filter the wide data before
 #' calling.
 #'
@@ -289,7 +293,8 @@ rewrite_traits_lhs <- function(
   formula,
   data,
   weights = NULL,
-  eval_env = environment(formula)
+  eval_env = environment(formula),
+  missing = miss_control()
 ) {
   if (!requireNamespace("tidyr", quietly = TRUE)) {
     cli::cli_abort(c(
@@ -348,19 +353,47 @@ rewrite_traits_lhs <- function(
     ))
   }
 
-  ## Rows kept in pivot output: nrow(data) * length(trait_cols) − n_NA.
+  ## Number of NA (trait, row) cells in the wide response block.
   n_NA_in_traits <- sum(vapply(
     trait_cols,
     function(cn) sum(is.na(data[[cn]])),
     integer(1L)
   ))
+
+  ## ---- Phase 1 sub-slice 2: wide cell-identity mask (design 59 sec.4b) ----
+  ## The audit's critical risk (Phase 0 audit sec.1): the historical pivot
+  ## uses `values_drop_na = TRUE`, which silently discards the (unit, trait)
+  ## identity of every NA cell. That is correct for response = "drop"
+  ## (complete-case), but for response = "include" the cells must SURVIVE the
+  ## pivot so sub-slice 1's long-format `is_y_observed` machinery can mask them
+  ## out of the likelihood instead. We therefore gate `values_drop_na` on the
+  ## response mode: include -> keep every cell (NA `.y_wide_` flows into
+  ## drop_missing_response_rows(missing = "include"), which builds the mask
+  ## from the NA pattern); drop -> the exact historical behaviour.
+  drop_na_cells <- !identical(missing$response, "include")
+
+  ## Weights are a length-n_units vector (per-cell matrices route through
+  ## gllvmTMB_wide()). Under "drop" the NA cells are removed, so the weight
+  ## vector is replicated and then subset by the NA mask to length n_obs.
+  ## Under "include" every cell is kept, so the long stack has the FULL
+  ## nrow * ntraits rows and the weight vector is replicated with no NA drop;
+  ## the masked rows are gated out of the likelihood (the weight value at a
+  ## masked row is irrelevant -- its NLL contribution is already zero).
   weights_long <- normalise_weights(
     weights = weights,
     response_shape = "wide_df",
-    n_obs = nrow(data) * length(trait_cols) - n_NA_in_traits,
+    n_obs = if (drop_na_cells) {
+      nrow(data) * length(trait_cols) - n_NA_in_traits
+    } else {
+      nrow(data) * length(trait_cols)
+    },
     n_units = nrow(data),
     n_traits = length(trait_cols),
-    na_mask = is.na(as.matrix(data[trait_cols]))
+    na_mask = if (drop_na_cells) {
+      is.na(as.matrix(data[trait_cols]))
+    } else {
+      NULL
+    }
   )
 
   data_long <- tidyr::pivot_longer(
@@ -368,7 +401,7 @@ rewrite_traits_lhs <- function(
     cols = tidyselect::all_of(trait_cols),
     names_to = "trait",
     values_to = ".y_wide_",
-    values_drop_na = TRUE
+    values_drop_na = drop_na_cells
   )
   ## Preserve the user-supplied trait column order as factor levels —
   ## avoids the alphabetic-sort gotcha called out in the maintainer's
@@ -380,9 +413,15 @@ rewrite_traits_lhs <- function(
   data_long <- as.data.frame(data_long, stringsAsFactors = FALSE)
 
   if (n_NA_in_traits > 0L) {
-    cli::cli_inform(c(
-      "i" = "{.fn traits}: dropped {n_NA_in_traits} (trait, row) cell{?s} with {.code NA} response."
-    ))
+    if (drop_na_cells) {
+      cli::cli_inform(c(
+        "i" = "{.fn traits}: dropped {n_NA_in_traits} (trait, row) cell{?s} with {.code NA} response."
+      ))
+    } else {
+      cli::cli_inform(c(
+        "i" = "{.fn traits}: kept {n_NA_in_traits} (trait, row) cell{?s} with {.code NA} response (masked out of the likelihood; {.code response = \"include\"})."
+      ))
+    }
   }
 
   ## ---- Rewrite formula: traits(...) -> .y_wide_, compact RHS -> long ----
@@ -403,6 +442,8 @@ rewrite_traits_lhs <- function(
     data_long = data_long,
     weights_long = weights_long,
     trait_cols = trait_cols,
-    n_dropped = n_NA_in_traits
+    ## Under response = "include" no cell is dropped (NA cells are kept and
+    ## masked); n_dropped reflects the cells actually removed from the stack.
+    n_dropped = if (drop_na_cells) n_NA_in_traits else 0L
   )
 }

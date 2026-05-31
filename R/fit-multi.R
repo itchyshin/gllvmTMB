@@ -2870,6 +2870,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## n_missing_response == sum(is_y_observed == 0L). n_dropped distinguishes
   ## the two.
   n_dropped <- max(0L, n_total - n_model)
+  n_likelihood <- sum(is_y_observed == 1L)
 
   list(
     original_row = as.integer(original_row),
@@ -2878,14 +2879,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     response = response,
     predictor = predictor,
     engine = engine,
+    ## counts carries BOTH the gllvmTMB-native field names and the
+    ## drmTMB-aligned names (design 59 sec.4b shared contract). drmTMB ships
+    ## retained_rows / observed_response / missing_response / likelihood_rows;
+    ## we mirror those so summary()$missing and cross-package tooling line up,
+    ## while keeping the descriptive n_* names already in use.
     counts = list(
       n_total = as.integer(n_total),
       n_model_rows = as.integer(n_model),
       n_observed = as.integer(n_observed),
       n_missing_response = as.integer(n_missing_response),
-      n_dropped = as.integer(n_dropped)
+      n_dropped = as.integer(n_dropped),
+      ## drmTMB-aligned field names (shared MD contract):
+      retained_rows = as.integer(n_model),
+      observed_response = as.integer(n_observed),
+      missing_response = as.integer(n_missing_response),
+      likelihood_rows = as.integer(n_likelihood)
     ),
-    slice = "Phase1-s1",
+    slice = "Phase1-s2",
     contract_version = "59-v1"
   )
 }

@@ -98,7 +98,7 @@ test_that("response='include' equals complete-case fit on the observed rows", {
   expect_identical(cnt$n_total, nrow(dat))
   expect_identical(cnt$n_observed, nrow(dat_cc))
   expect_identical(cnt$n_missing_response, length(miss_idx))
-  expect_identical(fit_inc$missing_data$slice, "Phase1-s1")
+  expect_identical(fit_inc$missing_data$slice, "Phase1-s2")
 })
 
 # ---- Gate 3: sentinel-invariance (THE gate) -------------------------------
@@ -156,4 +156,119 @@ test_that("missing-y sentinel value (0 vs 1e6) does not change logLik/coef/gradi
   expect_identical(gr0, gr1)                      # byte-identical gradient
   # And the inner conditional mode is itself byte-identical.
   expect_identical(obj0$env$last.par, obj1$env$last.par)
+})
+
+# ---- Sub-slice 2 extractors on the long path ------------------------------
+
+test_that("predict_missing() returns the masked long-format rows with predictions", {
+  skip_if_not_heavy()
+  dat <- .make_uni_gaussian()
+  miss_idx <- c(3L, 11L, 26L, 38L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit_inc <- .fit_uni(dat_na, missing = miss_control(response = "include"))
+
+  pm <- predict_missing(fit_inc)
+  expect_s3_class(pm, "data.frame")
+  expect_identical(nrow(pm), length(miss_idx))
+  expect_true("est" %in% names(pm))
+  expect_true(all(is.finite(pm$est)))
+  # model_row points at the masked rows; original_row == model_row here because
+  # response="include" keeps every long row (1:N).
+  expect_setequal(pm$model_row, miss_idx)
+  expect_setequal(pm$original_row, miss_idx)
+})
+
+test_that("residuals() is NA exactly at the masked long-format rows", {
+  skip_if_not_heavy()
+  dat <- .make_uni_gaussian()
+  miss_idx <- c(3L, 11L, 26L, 38L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit_inc <- .fit_uni(dat_na, missing = miss_control(response = "include"))
+
+  res <- residuals(fit_inc, type = "randomized_quantile", seed = 1)
+  expect_true(all(is.na(res$residual[miss_idx])))
+  expect_true(all(!is.na(res$residual[-miss_idx])))
+})
+
+test_that("summary()$missing counts match the long-format NA pattern", {
+  skip_if_not_heavy()
+  dat <- .make_uni_gaussian()
+  miss_idx <- c(3L, 11L, 26L, 38L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+
+  fit_inc <- .fit_uni(dat_na, missing = miss_control(response = "include"))
+
+  s <- summary(fit_inc)
+  expect_true(!is.null(s$missing))
+  expect_identical(s$missing$counts$n_total, nrow(dat))
+  expect_identical(s$missing$counts$n_missing_response, length(miss_idx))
+  expect_identical(s$missing$counts$n_observed, nrow(dat) - length(miss_idx))
+})
+
+test_that("summary()$missing is NULL for a complete-data drop fit", {
+  skip_if_not_heavy()
+  dat <- .make_uni_gaussian()
+  fit <- .fit_uni(dat, missing = miss_control(response = "drop"))
+  s <- summary(fit)
+  # No missing responses under the default drop path -> no $missing block.
+  expect_null(s$missing)
+})
+
+# ---- nobs() S3 method + drmTMB-aligned counts -----------------------------
+
+test_that("nobs() returns the likelihood-contributing count (complete + masked)", {
+  skip_if_not_heavy()
+  dat <- .make_uni_gaussian()
+
+  # Complete-data fit: nobs == all rows == logLik's nobs attribute.
+  fit_full <- .fit_uni(dat, missing = miss_control(response = "include"))
+  expect_identical(stats::nobs(fit_full), nrow(dat))
+  expect_identical(
+    stats::nobs(fit_full),
+    as.integer(attr(stats::logLik(fit_full), "nobs"))
+  )
+
+  # Masked fit: nobs == observed rows only.
+  miss_idx <- c(3L, 11L, 26L, 38L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+  fit_inc <- .fit_uni(dat_na, missing = miss_control(response = "include"))
+  expect_identical(stats::nobs(fit_inc), nrow(dat) - length(miss_idx))
+  expect_identical(
+    stats::nobs(fit_inc),
+    as.integer(attr(stats::logLik(fit_inc), "nobs"))
+  )
+  # nobs() reads the drmTMB-aligned likelihood_rows count.
+  expect_identical(
+    stats::nobs(fit_inc),
+    as.integer(fit_inc$missing_data$counts$likelihood_rows)
+  )
+})
+
+test_that("fit$missing_data$counts carries drmTMB-aligned field names", {
+  skip_if_not_heavy()
+  dat <- .make_uni_gaussian()
+  miss_idx <- c(3L, 11L, 26L, 38L)
+  dat_na <- dat
+  dat_na$value[miss_idx] <- NA_real_
+  fit_inc <- .fit_uni(dat_na, missing = miss_control(response = "include"))
+
+  cn <- fit_inc$missing_data$counts
+  # The four shared-contract names drmTMB also ships.
+  expect_true(all(c(
+    "retained_rows", "observed_response", "missing_response", "likelihood_rows"
+  ) %in% names(cn)))
+  expect_identical(cn$retained_rows, nrow(dat))            # all rows kept (masked)
+  expect_identical(cn$observed_response, nrow(dat) - length(miss_idx))
+  expect_identical(cn$missing_response, length(miss_idx))
+  expect_identical(cn$likelihood_rows, nrow(dat) - length(miss_idx))
+  # Aligned names agree with the native n_* names.
+  expect_identical(cn$observed_response, cn$n_observed)
+  expect_identical(cn$missing_response, cn$n_missing_response)
+  expect_identical(cn$likelihood_rows, sum(fit_inc$tmb_data$is_y_observed == 1L))
 })

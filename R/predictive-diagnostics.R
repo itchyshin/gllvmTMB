@@ -329,8 +329,14 @@ residuals.gllvmTMB_multi <- function(
   row_meta <- .gllvmTMB_diagnostic_row_metadata(object)
   keep <- .gllvmTMB_trait_keep(row_meta, trait)
 
+  ## Phase 1 response mask (design 59 sec.4b): a masked row carries the
+  ## sentinel y = 0, which is finite and would otherwise yield a meaningless
+  ## residual. Skip it -> the residual is NA at every missing-response cell.
+  observed_mask <- .gllvmTMB_is_y_observed(object)
+
   observed <- observed[keep]
   eta <- eta[keep]
+  observed_mask <- observed_mask[keep]
   row_meta <- row_meta[keep, , drop = FALSE]
   n <- length(observed)
 
@@ -348,6 +354,11 @@ residuals.gllvmTMB_multi <- function(
     y_i <- observed[i]
     fid <- row_meta$family_id[i]
     tid <- row_meta$trait_id[i]
+
+    if (observed_mask[i] == 0L) {
+      status[i] <- "missing_response"
+      next
+    }
 
     if (!is.finite(y_i)) {
       status[i] <- "nonfinite_observed"
@@ -471,9 +482,24 @@ residuals.gllvmTMB_multi <- function(
   n <- length(observed)
   nsim <- ncol(simulations)
 
+  ## Phase 1 response mask (design 59 sec.4b): masked cells carry the sentinel
+  ## y = 0 and must yield a NA residual, not a meaningless rank. The .row
+  ## column of draws$row_data maps each kept row back to its model-row index.
+  full_mask <- .gllvmTMB_is_y_observed(object)
+  row_index <- draws$row_data$.row
+  observed_mask <- if (
+    !is.null(row_index) && all(row_index >= 1L) &&
+      all(row_index <= length(full_mask))
+  ) {
+    full_mask[row_index]
+  } else {
+    rep(1L, n)
+  }
+  missing_response <- observed_mask == 0L
+
   nonfinite_observed <- !is.finite(observed)
   nonfinite_simulation <- !is.finite(rowSums(simulations))
-  ok <- !(nonfinite_observed | nonfinite_simulation)
+  ok <- !(nonfinite_observed | nonfinite_simulation | missing_response)
 
   u <- rep(NA_real_, n)
   residual <- rep(NA_real_, n)
@@ -492,8 +518,10 @@ residuals.gllvmTMB_multi <- function(
   }
 
   status <- rep("ok", n)
-  status[nonfinite_observed] <- "nonfinite_observed"
-  status[!nonfinite_observed & nonfinite_simulation] <- "nonfinite_simulation"
+  status[missing_response] <- "missing_response"
+  status[!missing_response & nonfinite_observed] <- "nonfinite_observed"
+  status[!missing_response & !nonfinite_observed & nonfinite_simulation] <-
+    "nonfinite_simulation"
   status[!is.finite(residual) & status == "ok"] <- "nonfinite_residual"
 
   out <- cbind(
@@ -515,6 +543,19 @@ residuals.gllvmTMB_multi <- function(
   )
   rownames(out) <- NULL
   out
+}
+
+## Per-model-row observed-response indicator (1 = observed, 0 = masked),
+## length length(y). NULL on the fit (response="drop" / pre-mask fits) means
+## every row is observed -> all-ones (design 59 sec.4b).
+.gllvmTMB_is_y_observed <- function(object) {
+  iyo <- object$tmb_data$is_y_observed
+  n <- length(object$tmb_data$y)
+  if (is.null(iyo)) {
+    rep(1L, n)
+  } else {
+    as.integer(iyo)
+  }
 }
 
 .gllvmTMB_diagnostic_row_metadata <- function(object) {

@@ -75,8 +75,12 @@ arguments to \code{tidyr::pivot_longer(cols = ...)}:
 \code{traits(matches("^y[0-9]+$"))}, \code{traits(any_of(c("a", "b")))}, and
 bare names all work.
 
-Cells with \code{NA} responses are dropped via
-\code{pivot_longer(values_drop_na = TRUE)} — the canonical default. Users
+Cells with \code{NA} responses are, by default, dropped via
+\code{pivot_longer(values_drop_na = TRUE)} -- the canonical complete-case
+behaviour. Passing \code{missing = miss_control(response = "include")} to
+\code{\link[=gllvmTMB]{gllvmTMB()}} instead \strong{keeps} every \verb{(unit, trait)} cell and masks the
+\code{NA} cells out of the likelihood (the observed-response mask), preserving
+per-cell identity and original-row accounting in \code{fit$missing_data}. Users
 who want strict listwise drop should pre-filter the wide data before
 calling.
 

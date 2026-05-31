@@ -405,7 +405,8 @@ gllvmTMB <- function(
       formula = formula,
       data = data,
       weights = weights,
-      eval_env = environment(formula)
+      eval_env = environment(formula),
+      missing = missing
     )
     fit <- gllvmTMB(
       formula = rewrite$formula_long,

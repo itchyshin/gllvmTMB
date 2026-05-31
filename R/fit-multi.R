@@ -742,18 +742,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## atanh_cor_b to 0 via the TMB map below. No new C++ likelihood block.
   use_phylo_slope_indep <- use_phylo_slope_correlated &&
     isTRUE(phylo_slope_cs$extra$.indep)
-  ## Track B spike scope: the augmented phylo_indep(1 + x | sp) path is
-  ## validated only for the Gaussian anchor cell. phylo_unique() augmented is
-  ## family-general, but phylo_indep() stays Gaussian-only until the non-
-  ## Gaussian cells are validated (test-matrix-slope-phylo-indep.R reserves
-  ## them fail-loud). Family is unknown at parse time, so the reservation is
-  ## enforced here where family_id_vec exists. The message keeps the parser's
-  ## "LHS richer than" phrasing so the reserved-family contract is unchanged.
-  if (use_phylo_slope_indep && any(family_id_vec != 0L)) {
+  ## Track B scope (issue #341): the augmented phylo_indep(1 + x | sp) path
+  ## is validated for the Gaussian anchor cell AND the binomial family
+  ## (probit + logit). The augmented-slope engine is family-agnostic --
+  ## eta += b_phy_aug . Z_phy_aug is accumulated BEFORE the C++ family
+  ## dispatch (src/gllvmTMB.cpp), and phylo_indep only differs from the
+  ## family-general phylo_unique() path by pinning atanh_cor_b to 0 via the
+  ## TMB map below -- so binomial needs ZERO new C++. The remaining
+  ## non-Gaussian families (poisson / nbinom2 / Gamma / Beta / ordinal) stay
+  ## reserved fail-loud until their B-slice cells are validated
+  ## (test-matrix-slope-phylo-indep.R locks them). Family is unknown at parse
+  ## time, so the reservation is enforced here where family_id_vec exists.
+  ## The message keeps the parser's "LHS richer than" phrasing so the
+  ## reserved-family contract is unchanged.
+  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L))) {
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
-      "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()} only in this spike.",
-      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for non-Gaussian augmented phylogenetic random regression, or {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
+      "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()} and {.code binomial()} (probit / logit) in this release.",
+      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for other non-Gaussian augmented phylogenetic random regression, or {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
     ))
   }
   ## phylo_dep(1 + x | species) augmented-slope scope (Design 56 §9.5c):

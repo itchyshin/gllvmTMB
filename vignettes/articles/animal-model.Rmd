@@ -558,13 +558,23 @@ fit_phylo <- gllvmTMB(
 max(abs(as.numeric(fit_animal$opt$par) - as.numeric(fit_phylo$opt$par)))
 ```
 
-This single-shared-variance slope is the only heritable-slope form
-currently validated. The richer **augmented** reaction-norm models —
-a full $2 \times 2$ (intercept, slope) genetic covariance, or
-trait-specific / reduced-rank slope structures via `animal_indep()`,
-`animal_dep()`, `animal_latent()` on an augmented `(0 + trait + trait:x | id)`
-left-hand side — are not yet wired through the `animal_*()` keywords
-(see [What's not yet supported](#whats-not-yet-supported)).
+This single-shared-variance slope is the validated heritable-slope
+form. The richer **augmented** reaction-norm models also fit: the
+parser now routes an augmented `1 + x | id` left-hand side through the
+`animal_*()` keywords, with `animal_unique(1 + x | id)` driving the
+correlated $2 \times 2$ (intercept, slope) genetic engine (the
+intercept-slope correlation estimated) and `animal_indep(1 + x | id)`
+the diagonal variant (correlation pinned to 0). Both are
+byte-equivalent to the corresponding `phylo_unique` / `phylo_indep`
+augmented fit with the relatedness matrix supplied as `vcv = A`. What
+is *not* yet surfaced is the **read-out**: `extract_Sigma()` does not
+return the assembled $2 \times 2$ (intercept, slope) genetic covariance
+for the correlated `animal_unique(1 + x | id)` fit, so treat it as a
+fitting demonstration rather than a covariance-recovery workflow. The
+trait-specific and reduced-rank slope structures
+(`animal_dep()` / `animal_latent()` and the trait-augmented
+`(0 + trait + trait:x | id)` left-hand side) remain a follow-up (see
+[What's not yet supported](#whats-not-yet-supported)).
 
 ## Adding non-genetic random effects
 
@@ -609,16 +619,20 @@ this:
   fit. Tracked as register row **ANI-09**.
 - **Augmented (structured) reaction norms.** The
   single-shared-variance heritable slope `animal_slope(x | id)` is
-  supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression)).
-  What is *not* yet wired through the `animal_*()` keywords is the
-  richer augmented form: a full $2 \times 2$ (intercept, slope)
-  genetic covariance, or trait-specific / reduced-rank slope
-  structures, written as `animal_indep()` / `animal_dep()` /
-  `animal_latent()` on an augmented `(0 + trait + trait:x | id)`
-  left-hand side (Meyer & Hill 1997). The underlying augmented
-  engine path exists for the phylogenetic family
-  (`phylo_unique(1 + x | id)`); routing it through `animal_*()` is a
-  v0.3.0 follow-up (register row **ANI-06**).
+  supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression),
+  register row **ANI-06**). The augmented intercept+slope forms also
+  now route through the `animal_*()` keywords and **fit**:
+  `animal_unique(1 + x | id)` drives the correlated $2 \times 2$
+  (intercept, slope) genetic engine and `animal_indep(1 + x | id)` the
+  diagonal variant, both byte-equivalent to the corresponding
+  `phylo_unique` / `phylo_indep` augmented fit with `vcv = A`. What is
+  *not* yet delivered is, first, the **read-out** -- `extract_Sigma()`
+  does not surface the assembled $2 \times 2$ genetic covariance for
+  the correlated `animal_unique(1 + x | id)` fit -- and, second, the
+  trait-specific and reduced-rank slope structures (`animal_dep()` /
+  `animal_latent()` and the trait-augmented
+  `(0 + trait + trait:x | id)` left-hand side; Meyer & Hill 1997),
+  whose dedicated engine paths remain a v0.3.0 follow-up.
 
 For these post-v0.2.0 needs the workhorse alternatives are
 [`MCMCglmm`](https://cran.r-project.org/package=MCMCglmm) (Hadfield

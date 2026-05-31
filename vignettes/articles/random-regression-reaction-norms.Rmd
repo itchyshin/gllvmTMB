@@ -51,16 +51,17 @@ package also *accepts and fits* a richer **correlated intercept + slope**
 form, [`phylo_unique(1 + x | species)`](../reference/phylo_unique.html),
 which is shown in the final section as a fitting demonstration.
 
-Several related forms are **not yet available** and are flagged where
-they would naturally appear, so the scope is explicit rather than
-implied:
+Several related forms sit at different stages of support and are
+flagged where they would naturally appear, so the scope is explicit
+rather than implied:
 
 | Form | Status in v0.2.0 |
 |---|---|
 | `phylo_slope` / `animal_slope` (single shared slope variance) | **Validated** (this article) |
 | `phylo_unique(1 + x \| sp)` correlated intercept+slope | Fits; 2x2 (intercept, slope) covariance **reporting** is not surfaced in this build |
-| `phylo_indep(1 + x \| sp)` independent (diagonal) intercept+slope | **Forthcoming** -- parser does not yet accept the richer LHS |
-| Structured `*_dep` / `*_latent` slopes (phylo or spatial) | **Forthcoming** -- engine in progress |
+| `phylo_indep(1 + x \| sp)` independent (diagonal) intercept+slope | Fits (correlation pinned to 0); shares the augmented engine, recovery-tested |
+| `spatial_unique` / `spatial_indep(1 + x \| coords)` base slopes | Fit; 2x2 cross-field covariance reported via `extract_Sigma(level = "spatial")` |
+| Structured `phylo_dep` / `phylo_latent` and `spatial_dep` / `spatial_latent` slopes | **Forthcoming** -- engine in progress |
 | Calibrated confidence intervals on slope variances | **Not established** -- point estimates only (see the CI note) |
 
 ## The model
@@ -414,15 +415,24 @@ is **not surfaced in this build**; the single-variance
 read-out. Treat the augmented form here as a fitting demonstration, not
 as a covariance-recovery workflow.
 
-```{r augmented-indep, eval = FALSE}
-# not yet: phylo_indep(1 + x | sp) (independent / diagonal intercept+slope,
-# correlation pinned to 0) is parser-rejected in v0.2.0 -- the richer LHS is
-# "not yet supported". Use the correlated phylo_unique(1 + x | sp) above, or
-# the single-variance phylo_slope(x | sp), until the diagonal variant lands.
+The **independent** (diagonal) counterpart `phylo_indep(1 + x | sp)`
+also fits. It is the same augmented engine as the correlated form, with
+the intercept-slope correlation $\rho$ **pinned to 0**, so it estimates
+the two variances $\sigma^2_{\text{int}}$ and $\sigma^2_{\text{slope}}$
+under the assumption that the random intercept and slope are
+uncorrelated:
+
+```{r augmented-indep, eval = requireNamespace("tidyr", quietly = TRUE)}
+# phylo_indep(1 + x | sp): independent / diagonal intercept+slope, the
+# correlation pinned to 0. Same augmented engine as phylo_unique(1 + x | sp)
+# above; the 2x2 covariance read-out is still not surfaced (rho is 0 here by
+# construction), so treat this too as a fitting demonstration.
 fit_indep <- gllvmTMB(
   traits(t1, t2, t3) ~ 1 + phylo_indep(1 + x | species, tree = tree3),
   data = dw, unit = "species"
 )
+c(convergence = fit_indep$opt$convergence,
+  pd_hessian  = isTRUE(fit_indep$fit_health$pd_hessian))
 ```
 
 ## A note on confidence intervals
@@ -441,23 +451,25 @@ the interval tools currently do and do not guarantee.
 
 ## What is forthcoming
 
-The random-slope surface is deliberately narrow in v0.2.0. The
-following are recognised but **not yet delivered**, and are named here
-so the boundary is explicit:
+The random-slope surface is deliberately narrow in v0.2.0. Beyond the
+single-variance `phylo_slope` / `animal_slope` mode (validated above),
+the augmented intercept+slope forms that now fit are the correlated
+`phylo_unique(1 + x | species)`, the diagonal
+`phylo_indep(1 + x | species)`, and the base SPDE slopes
+`spatial_unique` / `spatial_indep(1 + x | coords)`. The following are
+recognised but **not yet delivered**, and are named here so the
+boundary is explicit:
 
-- **Independent (diagonal) intercept + slope**,
-  `phylo_indep(1 + x | species)` -- the variance-only counterpart of
-  the correlated `phylo_unique(1 + x | species)`, with the
-  intercept-slope correlation pinned to zero. The parser does not yet
-  accept the richer LHS.
-- **Structured slopes** -- `phylo_dep` / `phylo_latent` and the
-  `spatial_*` slope modes (`spatial_indep`, `spatial_dep`,
-  `spatial_latent`). These need new engine machinery and are in
-  progress; only the single-variance and (fit-only) correlated phylo
-  forms exist today.
+- **Structured (dependent and reduced-rank) slopes** --
+  `phylo_dep` / `phylo_latent` and the `spatial_dep` / `spatial_latent`
+  slope modes. These drive dedicated engine paths that are still in
+  progress; only the base (single-variance, correlated, and diagonal)
+  slope forms above are exercised today.
 - **Multi-covariate, per-trait, and reduced-rank** phylogenetic slopes
   -- the initial release fixes one covariate, one slope variance,
-  slopes shared across traits.
+  slopes shared across traits. The trait-specific augmented left-hand
+  side `phylo_indep(0 + trait + trait:x | species)` is recognised by
+  the parser but reserved for a future release.
 
 For these, the established external tools for random-regression /
 reaction-norm models are

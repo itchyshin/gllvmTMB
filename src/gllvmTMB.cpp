@@ -330,6 +330,15 @@ Type objective_function<Type>::operator()()
   // LATENT level. has_mi_group == 0 -> the group block is an exact no-op.
   DATA_INTEGER(has_mi_group);      // 1 = the covariate model has (1 | group)
   DATA_IVECTOR(mi_group_index);    // length n_units; level -> RE group (0-idx)
+  // Phase 3 (design 69): a PHYLOGENETIC structured intercept on the covariate
+  // model. The covariate latent level is SPECIES, so the field g_x ~ N(0, A)
+  // is evaluated through the SAME sparse precision Ainv_phy_rr / log_det_A_phy_rr
+  // / n_aug_phy the response phylo block uses (no new precision). mi_species_
+  // node_id maps each latent species (the covariate-model rows, length n_units)
+  // to its augmented-A node row in g_x. has_mi_phylo == 0 -> the g_x block is an
+  // exact no-op and Ainv_phy_rr is referenced but unused by this block.
+  DATA_INTEGER(has_mi_phylo);          // 1 = the covariate model has phylo(1|species)
+  DATA_IVECTOR(mi_species_node_id);    // length n_units; species -> aug node (0-idx)
 
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)
@@ -344,6 +353,13 @@ Type objective_function<Type>::operator()()
   // effects u_mi_group ~ N(0, 1) (joins `random`) scaled by sd_mi_group.
   PARAMETER_VECTOR(u_mi_group);                  // length n_group; N(0,1)
   PARAMETER_VECTOR(log_sd_mi_group);             // length 1; log group SD
+  // Phase 3 phylogenetic covariate field (design 69): STANDARDIZED unit-variance
+  // field g_x ~ N(0, A) over the augmented A nodes (joins `random`), scaled by
+  // sd_x when it enters the covariate mean. log_sd_x is its log phylogenetic SD.
+  // Parallels g_phy_diag / log_sd_phy_diag (the response per-trait phylo
+  // intercept). Mapped off (length 1) when no phylo() covariate term is present.
+  PARAMETER_VECTOR(g_x);                         // length n_aug_phy (or 1 if unused)
+  PARAMETER_VECTOR(log_sd_x);                    // length 1; log phylo SD of x
 
   // Between-site rr: Lambda_B (n_traits x d_B) packed as theta_rr_B
   // length = d_B + (n_traits - d_B) * d_B = n_traits*d_B - d_B*(d_B-1)/2
@@ -538,6 +554,31 @@ Type objective_function<Type>::operator()()
         nll -= dnorm(u_mi_group(g), Type(0.0), Type(1.0), true);
       }
     }
+    // Phase 3 (design 69): the PHYLOGENETIC structured intercept on the
+    // covariate mean. STANDARDIZED-field convention (Q1), mirroring the
+    // response phylo_diag block (:771-776): the field g_x ~ N(0, A) is drawn
+    // with a UNIT-variance GMRF penalty through the SAME sparse Ainv_phy_rr
+    // (no new precision), then scaled by sd_x = exp(log_sd_x) as it enters the
+    // per-species covariate mean:
+    //   eta_x(u) += sd_x * g_x(mi_species_node_id(u))
+    //   -log p(g_x) = 0.5 * (n_aug_phy*log(2pi) + log_det_A_phy_rr + g_x' Ainv g_x)
+    // This is equivalent to a per-species phylogenetic intercept u_x ~ N(0,
+    // sd_x^2 A). It is the covariate's OWN field (its OWN sd_x), SEPARATE from
+    // any response phylo field -- they may reuse Ainv_phy_rr but are distinct
+    // latents (Level-1 independent; the joint field is deferred to Phase 4).
+    // The residual sigma_mi (sigma_x) stays -- the Pagel partition (Q2): as
+    // sd_x -> 0 the field flattens and the covariate model degrades to the
+    // independent Phase-2c model with no separate code path.
+    Type sd_x = Type(0.0);
+    if (has_mi_phylo == 1) {
+      sd_x = exp(log_sd_x(0));
+      for (int u = 0; u < n_units; ++u) {
+        mi_eta_x(u) += sd_x * g_x(mi_species_node_id(u));
+      }
+      Type quad_x = (g_x.matrix().transpose() * Ainv_phy_rr * g_x.matrix())(0, 0);
+      nll += 0.5 * (Type(n_aug_phy) * log(2.0 * M_PI)
+                    + log_det_A_phy_rr + quad_x);
+    }
     // Reconstruct x_full(u): observed value, else the latent x_mis entry.
     vector<Type> mi_x_full(n_units);
     for (int u = 0; u < n_units; ++u) mi_x_full(u) = mi_x_unit(u);
@@ -565,6 +606,14 @@ Type objective_function<Type>::operator()()
       REPORT(sd_mi_group);
       ADREPORT(log_sd_mi_group);
       ADREPORT(sd_mi_group);
+    }
+    // Phase 3: EBLUP field + the phylogenetic SD of the covariate.
+    if (has_mi_phylo == 1) {
+      REPORT(g_x);
+      REPORT(log_sd_x);
+      REPORT(sd_x);
+      ADREPORT(log_sd_x);
+      ADREPORT(sd_x);
     }
     ADREPORT(beta_mi);
     ADREPORT(log_sigma_mi);

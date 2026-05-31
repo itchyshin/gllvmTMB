@@ -1168,6 +1168,47 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   use_mi_predictor <- isTRUE(mi_model$enabled)
 
+  ## ---- Phase 3 phylogenetic covariate model (design 69) -----------------
+  ## When the impute RHS carried phylo(1 | species, tree =), the covariate field
+  ## g_x ~ N(0, A) reuses the EXISTING sparse Ainv_phy_rr (no new precision).
+  ## Two requirements (design 69 sec.2.2 / 5.4):
+  ##   (a) the phylo grouping column must be the `species` (cluster) grouping --
+  ##       Ainv_phy_rr is keyed to levels(data[[species]]); a different column
+  ##       cannot reuse it.
+  ##   (b) one tree per fit (Q3): inject the covariate tree as `phylo_tree` so
+  ##       the existing Stage-40 builder constructs Ainv_phy_rr from it. When a
+  ##       response phylo term also supplies a tree, they must AGREE (topology);
+  ##       a differing covariate tree is a Phase-4 multi-tree concern -> error.
+  use_mi_phylo <- use_mi_predictor && isTRUE(mi_model$phylo$enabled)
+  if (use_mi_phylo) {
+    if (!identical(mi_model$phylo$group, species)) {
+      cli::cli_abort(c(
+        "The {.fn phylo} covariate grouping must be the species (cluster) grouping {.val {species}}.",
+        "x" = "Found {.code phylo(1 | {mi_model$phylo$group})}, but the fit's species grouping is {.val {species}}.",
+        "i" = "The covariate phylogenetic field reuses the species tree; group it by {.val {species}}."
+      ))
+    }
+    cov_tree <- mi_model$phylo$tree
+    if (is.null(cov_tree) && is.null(phylo_tree)) {
+      cli::cli_abort(c(
+        "The {.fn phylo} covariate model needs a tree.",
+        "i" = "Pass it on the token: {.code phylo(1 | {species}, tree = tree)}, or supply {.arg phylo_tree} to {.fn gllvmTMB}."
+      ))
+    }
+    if (!is.null(cov_tree)) {
+      if (!inherits(cov_tree, "phylo"))
+        cli::cli_abort("The {.fn phylo} covariate {.code tree =} must be an {.cls ape::phylo} tree.")
+      if (is.null(phylo_tree)) {
+        phylo_tree <- cov_tree
+      } else if (!identical(phylo_tree$tip.label, cov_tree$tip.label)) {
+        cli::cli_abort(c(
+          "The {.fn phylo} covariate tree differs from the response phylogenetic tree.",
+          "i" = "One tree per fit in this version; the covariate and response phylo terms must share a tree (multi-tree is a later phase)."
+        ))
+      }
+    }
+  }
+
   if (any(is.na(y[!masked_response]))) {
     cli::cli_abort(c(
       "NA in an observed response reached the fitting engine.",
@@ -1479,8 +1520,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## (phylo_latent, phylo_unique, phylo_slope, or the augmented latent-slope)
   ## is requested. They share Ainv_phy_rr, n_aug_phy, log_det_A_phy_rr, and
   ## species_aug_id.
+  ## Phase 3: the phylogenetic covariate model also needs Ainv_phy_rr (built
+  ## from the same species tree). Including use_mi_phylo here makes the existing
+  ## Stage-40 builder construct the sparse precision even when the RESPONSE side
+  ## has no phylo term (design 69 sec.2.2).
   use_any_phy_term <- use_phylo_rr || use_phylo_diag || use_phylo_slope ||
-    use_phylo_latent_slope
+    use_phylo_latent_slope || use_mi_phylo
   if (use_any_phy_term) {
     if (!is.null(phylo_tree)) {
       ## --- Stage 40: TRUE Hadfield sparse-A^-1 trick ----------------------
@@ -1546,6 +1591,32 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       n_aug_phy        <- n_species
       species_aug_id   <- species_id    # tip-only path: identity
     }
+  }
+
+  ## Phase 3: build the species-latent -> augmented-A-node map for the covariate
+  ## field g_x (design 69 sec.3.3). The covariate model is per-species (the
+  ## latent level), so eta_x(u) reads g_x at the augmented node of latent species
+  ## u. `species_aug_id` (length n_obs, 0-indexed) maps each long row's species
+  ## to its node; `mi_model$unit_id` (0-indexed) maps each long row to its latent
+  ## species. Deriving the per-latent-species node from a representative long row
+  ## works for ALL Ainv paths (sparse tree, sparse Ainv, dense). The covariate
+  ## tree was injected as `phylo_tree` above, so the latent species order
+  ## (= levels(data[[species]])) aligns with species_aug_id by construction.
+  if (use_mi_phylo) {
+    n_units_mi <- as.integer(mi_model$n_units)
+    node_map <- rep(NA_integer_, n_units_mi)
+    uid <- mi_model$unit_id            # 0-indexed long-row -> latent species
+    for (o in seq_len(n_obs)) {
+      u1 <- uid[o] + 1L
+      if (is.na(node_map[u1])) node_map[u1] <- species_aug_id[o]
+    }
+    if (anyNA(node_map))
+      cli::cli_abort(c(
+        "Internal error: the {.fn phylo} covariate species -> node map is incomplete.",
+        "i" = "A latent species had no long row to read its augmented-tree node from."
+      ))
+    mi_model$phylo_node_id <- as.integer(node_map)   # 0-indexed
+    mi_model$phylo_n_aug   <- as.integer(n_aug_phy)
   }
   if (use_propto) {
     if (is.null(phylo_vcv))
@@ -2057,6 +2128,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_params$u_mi_group      <- 0.0
     tmb_params$log_sd_mi_group <- 0.0
   }
+  ## Phase 3 (design 69): the phylogenetic covariate field g_x ~ N(0, A)
+  ## (STANDARDIZED form, Q1) over the augmented A nodes, plus its log-SD log_sd_x.
+  ## g_x joins `random`; eta_x(s) += sd_x * g_x(node(s)) in the engine. Stub
+  ## length 1 / mapped off when no phylo() covariate term is present.
+  if (use_mi_phylo) {
+    tmb_params$g_x      <- rep(0.0, mi_model$phylo_n_aug)
+    tmb_params$log_sd_x <- mi_model$log_sd_x_start
+  } else {
+    tmb_params$g_x      <- 0.0
+    tmb_params$log_sd_x <- 0.0
+  }
 
   ## McGillycuddy / glmmTMB-style residual starts for factor-analytic
   ## random effects. The fixed-effects pseudo-fit above gives
@@ -2200,6 +2282,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_mi_group) {
     tmb_map$u_mi_group      <- factor(rep(NA_integer_, length(tmb_params$u_mi_group)))
     tmb_map$log_sd_mi_group <- factor(rep(NA_integer_, length(tmb_params$log_sd_mi_group)))
+  }
+  ## Phase 3 phylo covariate field: map g_x / log_sd_x off (and keep g_x out of
+  ## `random`) when no phylo() covariate term is present (the no-op pattern).
+  if (!use_mi_phylo) {
+    tmb_map$g_x      <- factor(rep(NA_integer_, length(tmb_params$g_x)))
+    tmb_map$log_sd_x <- factor(rep(NA_integer_, length(tmb_params$log_sd_x)))
   }
   if (!use_rr_B) {
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
@@ -2678,6 +2766,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Phase 2b: the unit-level grouped covariate intercepts u_mi_group ~ N(0,1)
   ## also join the Laplace-integrated `random` set.
   if (use_mi_group) random <- c(random, "u_mi_group")
+  ## Phase 3: the phylogenetic covariate field g_x ~ N(0, A) is a SEPARATE
+  ## Laplace-integrated latent block (its OWN field, NOT shared with any
+  ## response phylo field -- design 69 sec.5). Independent-only in Phase 3.
+  if (use_mi_phylo) random <- c(random, "g_x")
 
   ## Design 48 §2 Mitigation A (single-trait warmup). Opt-in via
   ## `control$init_strategy = "single_trait_warmup"`. Fits an

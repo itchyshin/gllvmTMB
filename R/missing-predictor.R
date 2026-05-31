@@ -173,7 +173,8 @@ gll_prepare_mi_setup <- function(rhs, impute, missing) {
     raw_formula = impute_spec$raw_formula,
     family = impute_spec$family,
     random = impute_spec$random,
-    group_level = impute_spec$group_level
+    group_level = impute_spec$group_level,
+    phylo = impute_spec$phylo
   )
 }
 
@@ -186,7 +187,8 @@ gll_empty_mi_setup <- function() {
     raw_formula = NULL,
     family = "none",
     random = NULL,
-    group_level = NULL
+    group_level = NULL,
+    phylo = NULL
   )
 }
 
@@ -354,6 +356,115 @@ gll_extract_impute_group_level <- function(formula) {
   )
 }
 
+## Extract at most ONE phylogenetic structured-intercept marker
+## `phylo(1 | species, tree = tree)` from the covariate-model RHS (Phase 3,
+## design 69 sec.1 / 7.1). The token declares (a) the SPECIES level the missing
+## predictor x lives at -- reused as the Phase-2c group key for the broadcast --
+## AND (b) a phylo-structured INTERCEPT on the covariate mean (a GMRF field
+## g_x ~ N(0, A) evaluated through the existing sparse Ainv_phy_rr). Mirrors
+## gllvmTMB's own `phylo()` grammar (the scalar `phylo(1 | species)` form);
+## ADAPT of drmTMB drm_extract_impute_structured_intercept. Returns the formula
+## with the marker removed from its FIXED RHS plus a `phylo` descriptor
+## (species grouping column + the tree, resolved against `env`).
+##
+## Phase-3 boundary guards (loud, design 69 sec.0 / 7.1):
+##   * intercept-only -- a structured SLOPE phylo(1 + z | species) is rejected;
+##   * one structured term -- >1 phylo() marker is rejected;
+##   * phylo only -- spatial()/animal()/relmat() markers are NOT handled here
+##     (they hit the structured-marker reject in the validator: phylo on x is
+##     this slice, the other kernels are a later generalization);
+##   * the joint response-covariate field -- `correlate_with = "response"` (the
+##     deferred Phase-4 eigenvector-orthogonalized field) is rejected;
+##   * a bare species column -- the grouping must be a bare column name.
+gll_extract_impute_phylo_intercept <- function(formula, env = parent.frame()) {
+  rhs_terms <- gll_split_additive_rhs(formula[[3L]])
+  is_phylo <- vapply(
+    rhs_terms,
+    function(term) {
+      term <- gll_unwrap_parentheses(term)
+      is.call(term) && identical(as.character(term[[1L]]), "phylo")
+    },
+    logical(1)
+  )
+  if (!any(is_phylo)) {
+    return(list(fixed_formula = formula, phylo = NULL))
+  }
+  if (sum(is_phylo) != 1L) {
+    cli::cli_abort(c(
+      "The phylogenetic {.arg impute} slice supports only one {.fn phylo} term.",
+      "x" = "Found {sum(is_phylo)} {.fn phylo} marker{?s}.",
+      "i" = "Use a single {.code phylo(1 | species, tree = tree)}; the covariate model carries one structured field."
+    ))
+  }
+  phylo_term <- gll_unwrap_parentheses(rhs_terms[[which(is_phylo)]])
+  ## Positional arg 1 is the `lhs | group` bar; named args follow (tree =,
+  ## correlate_with =, ...). Resolve named args against the calling frame so
+  ## `tree = my_tree` picks up the user's object.
+  args <- as.list(phylo_term)[-1L]
+  arg_names <- names(args)
+  if (is.null(arg_names)) arg_names <- rep("", length(args))
+  ## The bar is the first UNNAMED arg (or a `formula =`-named arg).
+  bar_pos <- which(arg_names == "" | arg_names == "formula")[1L]
+  if (is.na(bar_pos)) {
+    cli::cli_abort(c(
+      "The phylogenetic {.arg impute} term needs a {.code 1 | species} grouping.",
+      "i" = "Use {.code phylo(1 | species, tree = tree)}."
+    ))
+  }
+  bar <- args[[bar_pos]]
+  if (!is.call(bar) || !identical(as.character(bar[[1L]]), "|")) {
+    cli::cli_abort(c(
+      "The phylogenetic {.arg impute} term must be of the form {.code phylo(1 | species, tree = tree)}.",
+      "x" = "Its first argument is not a {.code lhs | group} formula."
+    ))
+  }
+  ## Intercept-only guard: the LHS must be the literal 1. A structured SLOPE
+  ## (phylo(1 + z | species), phylo(0 + trait | species)) is OUT of Phase 3.
+  lhs_expr <- gll_unwrap_parentheses(bar[[2L]])
+  if (!gll_is_one_expr(lhs_expr)) {
+    cli::cli_abort(c(
+      "The phylogenetic {.arg impute} covariate model supports only a structured INTERCEPT.",
+      "x" = "Found {.code phylo({deparse(bar[[2L]])} | {deparse(bar[[3L]])})}; use {.code phylo(1 | species, tree = tree)}.",
+      "i" = "Structured covariate slopes arrive in a later phase."
+    ))
+  }
+  group_expr <- bar[[3L]]
+  if (!is.symbol(group_expr)) {
+    cli::cli_abort(c(
+      "The phylogenetic {.arg impute} grouping variable must be a bare column name.",
+      "x" = "Use {.code phylo(1 | species, tree = tree)}, not a transformed grouping."
+    ))
+  }
+  ## Reject the deferred Phase-4 joint / correlated field loudly.
+  if ("correlate_with" %in% arg_names) {
+    cli::cli_abort(c(
+      "A joint response-covariate phylogenetic field ({.code correlate_with}) is not supported.",
+      "i" = "Phase 3 ships the independent covariate field only; the joint (eigenvector-orthogonalized) field is deferred to Phase 4.",
+      "i" = "Remove {.code correlate_with} to use the independent {.code phylo(1 | species, tree = tree)} covariate model."
+    ))
+  }
+  ## Resolve the tree (named arg `tree =`) against the calling frame. NULL when
+  ## absent -- the builder errors loudly later if no tree is available globally.
+  tree <- NULL
+  tree_pos <- which(arg_names == "tree")
+  if (length(tree_pos) == 1L) {
+    tree <- tryCatch(eval(args[[tree_pos]], envir = env), error = function(e) NULL)
+  }
+  fixed_terms <- rhs_terms[!is_phylo]
+  fixed_rhs <- gll_rebuild_additive_rhs(fixed_terms)
+  fixed_formula <- formula
+  fixed_formula[[3L]] <- fixed_rhs
+  list(
+    fixed_formula = fixed_formula,
+    phylo = list(
+      enabled = TRUE,
+      group = as.character(group_expr),
+      tree = tree,
+      tree_supplied = length(tree_pos) == 1L
+    )
+  )
+}
+
 ## Validate the one-element impute list against the mi() variable (drmTMB
 ## drm_validate_single_impute_formula). Phase 2a/2b: Gaussian covariate model
 ## with fixed effects + at most ONE grouped random intercept (1|group); no
@@ -404,16 +515,45 @@ gll_validate_single_impute_formula <- function(impute, variable) {
       "Nested {.fn mi} terms inside {.arg impute} formulas are not implemented."
     )
   }
-  ## Phase 2c: pull at most ONE group-level marker `mi_group(g)` off the RHS
-  ## FIRST -- it declares the level x lives at (coarser than the wide-row unit).
-  ## Removing it before the structured / random-intercept checks keeps those
-  ## checks reasoning over the genuine covariate-model RHS. `raw_formula` keeps
-  ## the user's original RHS (mi_group() intact) for the registry formula text.
+  ## Phase 3: pull at most ONE phylogenetic structured-intercept marker
+  ## `phylo(1 | species, tree =)` off the RHS FIRST. It declares the SPECIES
+  ## level x lives at (reused as the Phase-2c group key for the broadcast) AND a
+  ## phylo-structured intercept on the covariate mean. Resolve the tree against
+  ## the impute formula's environment. Removing it before the mi_group /
+  ## structured / random-intercept checks keeps those reasoning over the genuine
+  ## covariate-model RHS. `raw_formula` keeps the user's original RHS intact for
+  ## the registry formula text.
   raw_formula <- formula
+  phylo_extracted <- gll_extract_impute_phylo_intercept(
+    formula, env = environment(formula) %||% parent.frame()
+  )
+  formula <- phylo_extracted$fixed_formula
+  ## Phase 2c: pull at most ONE group-level marker `mi_group(g)` off the RHS.
+  ## Removing it before the structured / random-intercept checks keeps those
+  ## reasoning over the genuine covariate-model RHS.
   group_extracted <- gll_extract_impute_group_level(formula)
   formula <- group_extracted$fixed_formula
-  ## Reject structured covariate markers (Phase 3) BEFORE the random-intercept
-  ## extraction: a structured marker such as phylo(1 | species) also contains a
+  ## A phylo(1 | species) term IS the species-level group key: reuse the
+  ## Phase-2c broadcast machinery, keyed to the phylo grouping column. Reject
+  ## combining it with an explicit mi_group() (two competing level keys).
+  phylo_enabled <- isTRUE(phylo_extracted$phylo$enabled)
+  if (phylo_enabled && isTRUE(group_extracted$group_level$enabled)) {
+    cli::cli_abort(c(
+      "A {.fn phylo} covariate model combined with an explicit {.fn mi_group} level is not supported.",
+      "x" = "Found both {.code phylo(1 | {phylo_extracted$phylo$group})} and {.code mi_group({group_extracted$group_level$group})}.",
+      "i" = "The {.fn phylo} term already declares the species level; drop the {.fn mi_group} marker."
+    ))
+  }
+  if (phylo_enabled) {
+    group_extracted$group_level <- list(
+      enabled = TRUE,
+      group = phylo_extracted$phylo$group
+    )
+  }
+  ## Reject the remaining structured covariate markers (Phase 4+) BEFORE the
+  ## random-intercept extraction: spatial()/animal()/relmat() on x and the other
+  ## phylo_* variants are a later generalization (phylo(1 | species) is THIS
+  ## slice). A structured marker such as spatial(0 | coords) also contains a
   ## `|`, so it must be caught here rather than mis-parsed as an ordinary group.
   rhs_funs <- all.names(formula[[3L]], functions = TRUE, unique = TRUE)
   rhs_funs <- setdiff(rhs_funs, all.vars(formula[[3L]]))
@@ -427,7 +567,7 @@ gll_validate_single_impute_formula <- function(impute, variable) {
     cli::cli_abort(c(
       "Structured {.arg impute} covariate models are not yet supported.",
       "x" = "Found structured marker{?s}: {.val {structured_markers}}.",
-      "i" = "The Gaussian {.fn mi} slice fits fixed effects plus one grouped intercept; phylogenetic / spatial covariate models arrive in a later phase."
+      "i" = "The {.fn mi} slice fits fixed effects, one grouped intercept, or a {.fn phylo} intercept; spatial / animal / relmat covariate models arrive in a later phase."
     ))
   }
   ## Phase 2b: pull at most ONE grouped random intercept (1|group) off the RHS.
@@ -447,10 +587,15 @@ gll_validate_single_impute_formula <- function(impute, variable) {
   ## validation is a later slice, so reject the combination loudly for now.
   if (isTRUE(extracted$random$enabled) &&
         isTRUE(group_extracted$group_level$enabled)) {
+    combo_with <- if (phylo_enabled) {
+      paste0("phylo(1 | ", phylo_extracted$phylo$group, ")")
+    } else {
+      paste0("mi_group(", group_extracted$group_level$group, ")")
+    }
     cli::cli_abort(c(
-      "A grouped covariate random intercept combined with an explicit {.fn mi_group} level is not supported.",
-      "x" = "Found both {.code (1 | {extracted$random$group})} and {.code mi_group({group_extracted$group_level$group})} in the {.arg impute} formula.",
-      "i" = "Use either a grouped random intercept (Phase 2b) OR a {.fn mi_group} level (Phase 2c), not both, in this version."
+      "A grouped covariate random intercept combined with an explicit level key is not supported.",
+      "x" = "Found both {.code (1 | {extracted$random$group})} and {.code {combo_with}} in the {.arg impute} formula.",
+      "i" = "Use either a grouped random intercept (Phase 2b) OR a level key ({.fn mi_group} / {.fn phylo}), not both, in this version."
     ))
   }
   list(
@@ -458,7 +603,10 @@ gll_validate_single_impute_formula <- function(impute, variable) {
     raw_formula = raw_formula,
     family = family,
     random = extracted$random,
-    group_level = group_extracted$group_level
+    group_level = group_extracted$group_level,
+    ## Phase 3: the phylogenetic structured-intercept descriptor (species
+    ## grouping + tree). NULL when no phylo() term is present.
+    phylo = phylo_extracted$phylo
   )
 }
 
@@ -736,6 +884,20 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
     0
   }
 
+  ## Phase 3: the phylogenetic structured-intercept descriptor. When the impute
+  ## RHS carried phylo(1 | species, tree =), the species level was already set
+  ## as the latent (group) level above (so the broadcast / x_mis are species-
+  ## level); here we attach the phylo field metadata -- the species level labels
+  ## (in latent-factor order, for the tree-tip -> augmented-node map built in
+  ## fit-multi.R) and a log_sd_x start. The covariate field g_x ~ N(0, A) reuses
+  ## the EXISTING sparse Ainv_phy_rr; this descriptor does NOT build a precision.
+  phylo <- gll_build_gaussian_mi_phylo_intercept(setup, latent)
+  log_sd_x_start <- if (isTRUE(phylo$enabled)) {
+    log(max(1e-4, 0.5 * x_scale))
+  } else {
+    0
+  }
+
   list(
     enabled = TRUE,
     variable = setup$variable,
@@ -765,7 +927,44 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
     ## Phase 2c: the latent-bearing level. When group_level$enabled, the latent
     ## bears at this group (coarser than the wide-row unit) and `unit_id` above
     ## is the long-row -> group map.
-    group_level = latent$group_level
+    group_level = latent$group_level,
+    ## Phase 3: the phylogenetic structured-intercept descriptor (species level
+    ## labels + tree). When enabled, the species level IS the latent level above.
+    phylo = phylo,
+    log_sd_x_start = log_sd_x_start
+  )
+}
+
+## Build the Phase-3 phylogenetic structured-intercept descriptor for the
+## Gaussian covariate model (ADAPT drmTMB drm_build_gaussian_mi_structured_
+## intercept). Unlike drmTMB, this does NOT build a new precision: it records
+## the species grouping + tree so fit-multi.R can POINT the covariate field at
+## the EXISTING sparse Ainv_phy_rr (design 69 sec.2.2, 7.2). The species level
+## was already resolved as the latent (group) level by `gll_resolve_mi_latent_
+## level`, so `latent$group_level$levels` are the species labels in latent
+## order; we carry them for the tree-tip -> augmented-node map. Returns a
+## disabled descriptor when the setup carries no phylo() term.
+gll_build_gaussian_mi_phylo_intercept <- function(setup, latent) {
+  phylo <- setup$phylo
+  if (!is.list(phylo) || !isTRUE(phylo$enabled)) {
+    return(list(enabled = FALSE, group = character(0),
+                levels = character(0), tree = NULL))
+  }
+  ## The phylo grouping MUST be the resolved latent level (it set the species
+  ## group key); the resolver carries its factor levels in latent order.
+  if (!isTRUE(latent$group_level$enabled) ||
+        !identical(latent$group_level$group, phylo$group)) {
+    cli::cli_abort(c(
+      "Internal error: the {.fn phylo} covariate level was not resolved to the species level.",
+      "i" = "Expected the latent level keyed to {.val {phylo$group}}."
+    ))
+  }
+  list(
+    enabled = TRUE,
+    group = phylo$group,
+    levels = latent$group_level$levels,
+    tree = phylo$tree,
+    tree_supplied = isTRUE(phylo$tree_supplied)
   )
 }
 
@@ -804,7 +1003,10 @@ gll_empty_mi_model <- function() {
       group = character(0),
       levels = character(0),
       n_group = 0L
-    )
+    ),
+    phylo = list(enabled = FALSE, group = character(0),
+                 levels = character(0), tree = NULL),
+    log_sd_x_start = 0
   )
 }
 
@@ -815,6 +1017,12 @@ gll_empty_mi_model <- function() {
 gll_tmb_mi_data <- function(model, n_obs) {
   if (isTRUE(model$enabled)) {
     has_group <- isTRUE(model$random$enabled)
+    ## Phase 3: the phylogenetic structured intercept. `phylo_node_id` (the
+    ## species-latent -> augmented-A-node 0-indexed map) is computed in
+    ## fit-multi.R (which holds the Ainv_phy_rr / species_aug_id machinery) and
+    ## stashed onto the model. has_mi_phylo == 0 -> the g_x block is gated off
+    ## and the existing Ainv_phy_rr slot is referenced but unused by this block.
+    has_phylo <- isTRUE(model$phylo$enabled)
     return(list(
       has_mi = 1L,
       mi_family = switch(model$family, gaussian = 0L, 0L),
@@ -831,6 +1039,15 @@ gll_tmb_mi_data <- function(model, n_obs) {
         as.integer(model$random$group_index - 1L)
       } else {
         0L
+      },
+      ## Phase 3 phylo structured intercept. The covariate field reuses the
+      ## EXISTING Ainv_phy_rr / log_det_A_phy_rr / n_aug_phy slots (no new
+      ## precision); only the flag + the species -> node index are new.
+      has_mi_phylo = as.integer(has_phylo),
+      mi_species_node_id = if (has_phylo) {
+        as.integer(model$phylo_node_id)
+      } else {
+        rep(0L, length(model$x_unit))
       }
     ))
   }
@@ -844,7 +1061,9 @@ gll_tmb_mi_data <- function(model, n_obs) {
     mi_unit_id = rep(0L, max(1L, n_obs)),
     X_mi = matrix(0, nrow = 1L, ncol = 1L),
     has_mi_group = 0L,
-    mi_group_index = 0L
+    mi_group_index = 0L,
+    has_mi_phylo = 0L,
+    mi_species_node_id = 0L
   )
 }
 
@@ -861,6 +1080,7 @@ gll_mi_metadata <- function(model) {
   missing_units <- as.integer(model$missing_index)
   has_group <- isTRUE(model$random$enabled)
   has_level <- isTRUE(model$group_level$enabled)
+  has_phylo <- isTRUE(model$phylo$enabled)
   out <- list(
     variable = model$variable,
     family = model$family,
@@ -892,10 +1112,21 @@ gll_mi_metadata <- function(model) {
       levels = if (has_level) model$group_level$levels else character(0),
       n_group = if (has_level) as.integer(model$group_level$n_group) else 0L
     ),
+    ## Phase 3 structured covariate descriptor (design 69 sec.7.2, drmTMB MD4
+    ## `structured` metadata). type = "phylo", group = the species level, n_re =
+    ## the augmented-A node count (the g_x field length); levels = species tips.
+    structured = list(
+      enabled = has_phylo,
+      type = if (has_phylo) "phylo" else character(0),
+      group = if (has_phylo) model$phylo$group else character(0),
+      levels = if (has_phylo) model$phylo$levels else character(0),
+      n_re = if (has_phylo) as.integer(model$phylo_n_aug %||% 0L) else 0L
+    ),
     conditional_mode = NULL,    # filled post-fit by gll_finalize_mi()
     ## Fixed-effect-only covariate model is the phase2a path; one grouped
-    ## random intercept is phase2b; a coarser mi_group() level is phase2c.
-    version = if (has_level) "phase2c" else if (has_group) "phase2b" else "phase2a"
+    ## random intercept is phase2b; a coarser mi_group() level is phase2c; a
+    ## phylo(1 | species) structured covariate model is phase3.
+    version = if (has_phylo) "phase3" else if (has_level) "phase2c" else if (has_group) "phase2b" else "phase2a"
   )
   stats::setNames(list(out), model$variable)
 }
@@ -1089,4 +1320,102 @@ gll_standard_error_status <- function(object) {
     return("sdreport_error")
   }
   "ok"
+}
+
+# ---- Phase 3 phylo-signal diagnostic (design 69 sec.6.3) ------------------
+
+#' Phylogenetic-signal diagnostic for a modelled missing predictor
+#'
+#' For a [gllvmTMB()] fit with a phylogenetic missing-predictor covariate model
+#' (`mi(x)` with `impute = list(x = x ~ ... + phylo(1 | species, tree = tree))`),
+#' `phylo_signal_mi()` reports an effective phylogenetic-signal statistic for the
+#' covariate model and flags the weak-signal case. Phylogenetic imputation helps
+#' when the signal in `x` is strong and degrades toward the independent
+#' (no-borrowing) model when it is weak; forcing a phylogenetic prior on a
+#' phylogenetically-unstructured trait adds noise rather than information
+#' (Penone et al. 2014 *Methods Ecol. Evol.* 5:961-970; Molina-Venegas 2024
+#' *Methods Ecol. Evol.*; Goolsby, Bruggeman & Ane 2017 *Methods Ecol. Evol.*
+#' 8:22-27, `Rphylopars`).
+#'
+#' The statistic is an effective Pagel's lambda for the covariate,
+#' `lambda = sd_x^2 / (sd_x^2 + sigma_x^2)`, the fraction of species-level
+#' variance in `x` explained by the phylogenetic field (`sd_x`) relative to the
+#' i.i.d. residual (`sigma_x`) -- the Pagel partition of the covariate model.
+#' `lambda` near 1 = strong signal (informative borrowing); `lambda` near 0 =
+#' weak signal (the covariate model is approximately equivalent to an
+#' independent model). This is a verification / interpretation aid, not part of
+#' the fit; it does not change estimates.
+#'
+#' @param object A `gllvmTMB` fit with a phylogenetic missing-predictor model.
+#' @param variable Optional missing-predictor name; defaults to the only
+#'   modelled missing predictor.
+#' @param threshold Effective-lambda threshold below which the signal is flagged
+#'   as weak (default `0.1`).
+#' @param warn Logical; when `TRUE`, emit an EBLUP-language warning for the weak
+#'   case. Default `FALSE` (the function returns the statistic silently).
+#'
+#' @return A list with `variable`, `lambda` (effective Pagel lambda), `sd_x`,
+#'   `sigma_x`, `weak` (logical), and `threshold`.
+#' @seealso [imputed()] for the EBLUPs; [gllvmTMB()] for the `impute =` phylo
+#'   covariate model.
+#' @export
+phylo_signal_mi <- function(object, variable = NULL, threshold = 0.1,
+                            warn = FALSE) {
+  predictors <- object$missing_data$predictors
+  if (!is.list(predictors) || length(predictors) == 0L) {
+    cli::cli_abort(c(
+      "This fit has no modelled missing predictors.",
+      "i" = "{.fn phylo_signal_mi} needs a fitted phylogenetic {.fn mi} covariate model."
+    ))
+  }
+  predictor_names <- names(predictors)
+  if (is.null(variable)) {
+    if (length(predictor_names) != 1L) {
+      cli::cli_abort(
+        "{.arg variable} is required when a fit contains more than one modelled missing predictor."
+      )
+    }
+    variable <- predictor_names[[1L]]
+  }
+  if (!variable %in% predictor_names) {
+    cli::cli_abort(c(
+      "Unknown modelled missing predictor {.val {variable}}.",
+      "i" = "Available modelled missing predictor{?s}: {.val {predictor_names}}."
+    ))
+  }
+  structured <- predictors[[variable]]$structured
+  if (!is.list(structured) || !isTRUE(structured$enabled) ||
+        !identical(structured$type, "phylo")) {
+    cli::cli_abort(c(
+      "{.val {variable}} does not have a phylogenetic covariate model.",
+      "i" = "{.fn phylo_signal_mi} applies to {.code phylo(1 | species, tree =)} covariate models only."
+    ))
+  }
+  rep <- object$report
+  if (!is.list(rep) || is.null(rep$sd_x) || is.null(rep$sigma_mi)) {
+    cli::cli_abort(c(
+      "Phylogenetic-signal statistics are unavailable for {.val {variable}}.",
+      "i" = "Refit with the current {.pkg gllvmTMB} phylogenetic missing-predictor implementation."
+    ))
+  }
+  sd_x <- as.numeric(rep$sd_x)[[1L]]
+  sigma_x <- as.numeric(rep$sigma_mi)[[1L]]
+  denom <- sd_x^2 + sigma_x^2
+  lambda <- if (is.finite(denom) && denom > 0) sd_x^2 / denom else NA_real_
+  weak <- is.finite(lambda) && lambda < threshold
+  if (isTRUE(warn) && isTRUE(weak)) {
+    cli::cli_warn(c(
+      "!" = "Phylogenetic signal in {.val {variable}} is weak (effective lambda ~ {round(lambda, 3)}).",
+      "i" = "The phylogenetic covariate model is approximately equivalent to an independent model; the borrowed imputation should not be over-interpreted.",
+      "i" = "Do not feed a weak-signal imputed value into a downstream phylogenetic analysis as if it were observed."
+    ))
+  }
+  list(
+    variable = variable,
+    lambda = lambda,
+    sd_x = sd_x,
+    sigma_x = sigma_x,
+    weak = weak,
+    threshold = threshold
+  )
 }

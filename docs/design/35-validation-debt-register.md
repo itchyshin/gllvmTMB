@@ -160,6 +160,7 @@ Row-owner: **Noether + Boole** (phylo-specific math + parser).
 | PHY-08 | `extract_communality()` $H^2 + C^2 + \psi^2 = 1$ partition | `covered` | `test-extractors.R`, `test-extractors-extra.R` | |
 | PHY-09 | Phylogenetic mode dispatch (paired vs three-piece) | `covered` | `test-phylo-mode-dispatch.R` | |
 | PHY-10 | Optional `phyloVCV` argument | `covered` | `test-phylo-vcv-optional.R` | |
+| PHY-11 | `phylo_indep(1 + x \| sp)` augmented slope under **binomial** (probit + logit) | `covered` | `test-binomial-slope-recovery.R` | Issue #341 Track B. Activated by relaxing the Gaussian-only family guard in `R/fit-multi.R` to admit `family_id in {gaussian, binomial}`; **ZERO new C++** -- the augmented-slope engine is family-agnostic (`eta += b_phy_aug . Z_phy_aug` accumulated BEFORE the C++ family dispatch), and `phylo_indep` only pins `atanh_cor_b` to 0 via the TMB map. Diagonal-Sigma_b recovery on a 6-seed grid (truth `sigma^2_int = 0.4`, `sigma^2_slope = 0.3`, `rho = 0`): every seed conv == 0 + PD Hessian + `cor_b` held EXACTLY at 0; seed-averaged recovery within a 0.25 relative band -- probit mean (`sigma^2_int = 0.364` rel 0.09, `sigma^2_slope = 0.291` rel 0.03), logit mean (`sigma^2_int = 0.354` rel 0.12, `sigma^2_slope = 0.328` rel 0.09) (local measurement 2026-05-31: 15/15 expectations pass, 0 fail). Other non-Gaussian families (poisson / nbinom2 / Gamma / Beta / ordinal) stay reserved fail-loud (`test-matrix-slope-phylo-indep.R`). |
 
 ### Section 5 — Spatial GLLVM
 

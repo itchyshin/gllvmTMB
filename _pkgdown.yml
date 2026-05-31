@@ -176,6 +176,7 @@ reference:
     - predict.gllvmTMB_multi
     - predict_missing
     - imputed
+    - phylo_signal_mi
     - plot.gllvmTMB_multi
     - plot_correlations
     - plot_Sigma_table

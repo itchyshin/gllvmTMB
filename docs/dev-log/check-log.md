@@ -12369,3 +12369,45 @@ Current status:
   from the C1 reference-topic addition.
 - Still not done: no C2 code, no `extract_Gamma()`, no coevolution
   recovery claim, and no public coevolution article.
+
+## 2026-05-31 -- pkgdown reference-index hotfix for `phylo_signal_mi()`
+
+Scope:
+
+- repaired the main-branch pkgdown failure after #402 by adding the
+  exported `phylo_signal_mi()` topic to `_pkgdown.yml`;
+- kept the fix to the reference index only; no missing-data article,
+  roxygen, Rd, or runtime code changed in this hotfix.
+
+Coordination checks:
+
+- `gh pr list --state open --limit 20`
+  -> open PRs were #403, #390, #374, and #369.
+- `git log --all --oneline --since="6 hours ago"`
+  -> main contained merged #401 and #402 plus unrelated open-lane
+  commits; no newer main fix for this pkgdown topic.
+- `gh pr view 403 --json files --jq '.files[].path'`;
+  `gh pr view 390 --json files --jq '.files[].path'`;
+  `gh pr view 374 --json files --jq '.files[].path'`;
+  `gh pr view 369 --json files --jq '.files[].path'`
+  -> only draft #374 also touches `_pkgdown.yml`, adding the
+  `articles/missing-data` draft article entry at the article-nav hunk;
+  this hotfix edits the reference-topic hunk.
+- `gh pr diff 374 --patch | sed -n '/diff --git a\\/_pkgdown.yml/,/diff --git/p'`
+  -> confirmed #374's `_pkgdown.yml` change is line-independent.
+
+Checks:
+
+- `rg -n "phylo_signal_mi|imputed|extract_phylo_signal" R man _pkgdown.yml NAMESPACE`
+  -> `phylo_signal_mi()` is exported, has `man/phylo_signal_mi.Rd`,
+  and was missing only from `_pkgdown.yml`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check`
+  -> clean.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not rerun because
+  the hotfix only changes pkgdown navigation and directly targets the
+  failing deploy gate.

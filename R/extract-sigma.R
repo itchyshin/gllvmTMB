@@ -629,6 +629,64 @@ extract_Sigma <- function(
     ))
   }
 
+  ## ---- phylo_unique / phylo_indep augmented-slope 2x2 block (#373) ------
+  ## phylo_unique(1 + x | species) (and the correlation-pinned
+  ## phylo_indep(1 + x | species)) fit a single 2x2 (intercept, slope)
+  ## covariance over the augmented random-effect columns via the closed-form
+  ## scalar parameters log_sd_b (-> report$sd_b, length 2) and atanh_cor_b
+  ## (-> report$cor_b, length 1). This is the phylogenetic analogue of the
+  ## spatial_unique/indep base-slope 2x2 block below, with A_phy as the
+  ## column-covariance kernel. It is a PHYLOGENETIC random effect, so it is
+  ## surfaced under `level = "phy"`, mirroring the phylo_dep block above; the
+  ## 2x2 is NOT trait-stacked (no interleaving) because the closed-form path
+  ## shares ONE 2x2 across all traits. Single unstructured block: the
+  ## `part` / `link_residual` arguments do not apply.
+  ##
+  ## Discriminator: the closed-form augmented path is the ONLY one that
+  ## REPORTs the scalar `cor_b` (the phylo_dep path REPORTs the matrix
+  ## `cor_b_mat` + `Sigma_b_dep` instead; the n_lhs_cols == 1 intercept-only
+  ## augmented path REPORTs no `cor_b`). Guarded by `!phylo_dep_slope` so the
+  ## dep case is handled by its own block above. Honest scope (#373): this
+  ## surfaces the FREE-correlation `unique` 2x2; for `phylo_indep` the cor is
+  ## pinned to 0 by the engine, so the off-diagonal returns ~0.
+  if (identical(level, "phy") &&
+        !isTRUE(fit$use$phylo_dep_slope) &&
+        !is.null(fit$report$cor_b)) {
+    sd_b  <- as.numeric(fit$report$sd_b)
+    rho_v <- as.numeric(fit$report$cor_b)
+    if (length(sd_b) != 2L) {
+      cli::cli_abort(paste0(
+        "phylo_unique/indep augmented-slope fit has no reported {.code sd_b} ",
+        "of length 2 (the 1 + x | species correlated intercept+slope path)."
+      ))
+    }
+    rho <- if (length(rho_v) >= 1L) rho_v[1L] else 0
+    Sigma <- matrix(
+      c(sd_b[1L]^2,                  rho * sd_b[1L] * sd_b[2L],
+        rho * sd_b[1L] * sd_b[2L],   sd_b[2L]^2),
+      nrow = 2L, ncol = 2L
+    )
+    slope_names <- c("intercept", "slope")
+    rownames(Sigma) <- colnames(Sigma) <- slope_names
+    D <- sqrt(diag(Sigma))
+    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    rownames(R) <- colnames(R) <- slope_names
+    return(list(
+      Sigma = Sigma,
+      R = R,
+      level = "phy_unique_slope",
+      part = "slope",
+      note = paste0(
+        "phylo_unique/indep(1 + x | species): 2x2 (intercept, slope) ",
+        "covariance shared across traits, assembled from the closed-form ",
+        "report$sd_b (D = diag(sd_b)) and report$cor_b ",
+        "(R = [[1, cor_b], [cor_b, 1]]) as Sigma = D R D. The ",
+        "part / link_residual arguments do not apply to this single ",
+        "unstructured block."
+      )
+    ))
+  }
+
   ## ---- spatial_unique / spatial_indep base slope block (Design 60 sec.3.4)
   ## spatial_unique(1 + x | coords) or spatial_indep(1 + x | coords) activates
   ## the base SPDE slope engine (use_spde_slope) with n_lhs_cols_spde == 2.

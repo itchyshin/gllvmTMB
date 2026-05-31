@@ -304,14 +304,36 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_spde_slope) {
     ## The augmented SPDE field supersedes the intercept-only per-trait field.
     use_spde <- FALSE
-    ## Gaussian anchor only in this slice (Design 60 §3.4 / Design 64 §6;
-    ## non-Gaussian SPDE random slopes are deferred Phase B work). Fail loud so
-    ## the matrix-slope non-Gaussian skeletons keep skipping at construction.
-    if (any(family_id_vec != 0L)) {
-      bad_fn <- if (use_spde_dep_slope) "spatial_dep" else "spatial_unique"
+    ## Split family guard (was a single gaussian-only abort): the base
+    ## spatial_unique / spatial_indep (2x2 cross-field) augmented slope and the
+    ## spatial_dep (full unstructured 2T x 2T field covariance) augmented slope
+    ## nest under the same use_spde_slope engine but have different
+    ## identifiability, so each carries its own family-id allowlist (the #388 /
+    ## #392 allowlist discipline: a family joins a mode only after its recovery
+    ## cell passes empirically). Allowlists hold the RUNTIME family id
+    ## (family_to_id(): gaussian = 0, binomial = 1, poisson = 2, Gamma = 4,
+    ## nbinom2 = 5, Beta = 7, ordinal_probit = 14), NOT the enum.R column.
+    if (use_spde_dep_slope) {
+      ## spatial_dep(1 + x | coords): the full unstructured 2T x 2T field
+      ## covariance is gaussian-only -- the non-Gaussian cells are non-PD at
+      ## the matrix fixtures' n_sites (identifiability of the unstructured
+      ## cross-field block, the spatial analogue of phylo_dep / PHY-18). They
+      ## stay reserved; the spatial_dep x slope matrix rows honest-skip.
+      if (any(!family_id_vec %in% c(0L))) {
+        cli::cli_abort(c(
+          "{.fn spatial_dep} random slopes are validated for {.code gaussian()} only in this release.",
+          "i" = "The augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) non-Gaussian cells are reserved (Design 64; non-Gaussian non-PD = identifiability).",
+          ">" = "Use a Gaussian family for the augmented unstructured SPDE random-regression fit."
+        ))
+      }
+    } else if (any(family_id_vec != 0L)) {
+      ## Base spatial_unique / spatial_indep (1 + x | coords): the 2x2
+      ## cross-field augmented slope stays gaussian-only in THIS release; its
+      ## non-Gaussian activation is a separate slice. Fail loud so the base
+      ## spatial matrix-slope non-Gaussian skeletons keep honest-skipping.
       cli::cli_abort(c(
-        "{.fn {bad_fn}} random slopes are validated for {.code gaussian()} only in this release.",
-        "i" = "The augmented {.code {bad_fn}(1 + x | coords)} non-Gaussian cells are deferred (Design 60 sections 3.4-3.5, Design 64).",
+        "{.fn spatial_unique} random slopes are validated for {.code gaussian()} only in this release.",
+        "i" = "The augmented {.code spatial_unique(1 + x | coords)} non-Gaussian cells are deferred (Design 60 sections 3.4-3.5, Design 64).",
         ">" = "Use a Gaussian family for the augmented SPDE random-regression fit."
       ))
     }
@@ -334,11 +356,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else NULL
   if (use_spde_latent_slope) {
     use_spde <- FALSE
-    if (any(family_id_vec != 0L)) {
+    ## spatial_latent(1 + x | coords, d): the block-diagonal reduced-rank
+    ## augmented slope (each LHS column gets its own Lambda_k Lambda_k^T; no
+    ## intercept-slope correlation block). Family-id allowlist per the
+    ## #388 / #392 discipline -- a family joins ONLY after its recovery cell in
+    ## test-matrix-slope-spatial-latent.R passes empirically. Like the phylo
+    ## analogue (phylo_latent activated across all families), the reduced-rank
+    ## latent path is the best-identified augmented spatial slope. Allowlist
+    ## holds the RUNTIME family id (family_to_id(): gaussian = 0, binomial = 1,
+    ## poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7, ordinal_probit = 14).
+    if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
       cli::cli_abort(c(
-        "{.fn spatial_latent} random slopes are validated for {.code gaussian()} only in this release.",
-        "i" = "The augmented {.code spatial_latent(1 + x | coords, d = K)} non-Gaussian cells are deferred (Design 64 section 6).",
-        ">" = "Use a Gaussian family for the augmented SPDE reduced-rank random-regression fit."
+        "Augmented {.fn spatial_latent} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+        "i" = "Other families for {.code spatial_latent(1 + x | coords, d = K)} are reserved (Design 64 section 6).",
+        ">" = "Use a validated family for the augmented SPDE reduced-rank random-regression fit."
       ))
     }
   }

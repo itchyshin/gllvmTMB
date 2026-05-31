@@ -249,12 +249,16 @@ test_that("spatial_latent guards fire (d > n_traits, non-Gaussian, malformed)", 
       data = df, mesh = sc$mesh, silent = TRUE))),
     "exceeds the number of traits"
   )
-  ## Non-Gaussian family aborts (gaussian only this release).
+  ## A RESERVED family (not on the augmented spatial_latent allowlist
+  ## gaussian/binomial/poisson/nbinom2/Gamma/Beta/ordinal_probit) still aborts.
+  ## tweedie (runtime id 6) is outside the allowlist; poisson et al. are now
+  ## validated, so the guard is checked with a genuinely-reserved family.
+  df$pos <- stats::rgamma(nrow(df), shape = 2, scale = 1)
   expect_error(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      count ~ 0 + trait + spatial_latent(1 + x | coords, d = 1),
-      data = df, mesh = sc$mesh, family = poisson(), silent = TRUE))),
-    "gaussian"
+      pos ~ 0 + trait + spatial_latent(1 + x | coords, d = 1),
+      data = df, mesh = sc$mesh, family = tweedie(), silent = TRUE))),
+    "validated for"
   )
   ## Malformed augmented LHS aborts (handled in normalise_spatial_orientation).
   expect_error(

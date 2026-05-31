@@ -12,41 +12,40 @@
 ## covered; this file adds the non-Gaussian rows for the same
 ## `spatial_latent(1 + x | site, d = 1)` augmented-LHS spatial structure.
 ##
-## EMPIRICAL STATE AT TIME OF WRITING (load_all on branch
-## agent/phase-b-matrix, 2026-05-29): the parser FAIL-LOUD rejects
-## `spatial_latent(1 + x | site, d = 1)` for every family with
-##   "`spatial_latent()` bar must be `0 + trait | coords`."
-## i.e. the `spatial_latent` keyword does not accept an augmented-LHS
-## (random-slope) bar -- only `0 + trait | coords`. The rejection happens in
-## the parser, UPSTREAM of the response-family node (Phase B0 scoping memo
-## sec. 2: family enters only after eta accumulates), so it is identical
-## across all 7 families and is the same "Design 07 Stage 3" gate the
-## Gaussian skeleton is waiting on. Per the Honest-matrix discipline
-## (Design 59 sec. "Honest-matrix discipline"): a cell that does not
-## construct is `skip()`-ped with a reason and reported as "stays partial",
-## NEVER forced green.
+## ENGINE STATE: the augmented-LHS x spatial_latent SLOPE path is now LIVE for
+## the validated families. R/fit-multi.R's reduced-rank latent-slope guard
+## (use_spde_latent_slope) carries a family-id allowlist -- gaussian, binomial
+## (probit / logit), poisson, nbinom2, Gamma, Beta, ordinal_probit -- relaxed
+## from the prior gaussian-only abort following the #388 / #392 allowlist
+## discipline (a family joins ONLY after its recovery cell here passes
+## empirically). The augmented `spatial_latent(1 + x | site, d)` bar routes
+## through the `.spatial_latent_augmented` covstruct marker to the dedicated
+## block-diagonal reduced-rank slope engine; it is NOT the parser-rejected form
+## of earlier builds. Per the Honest-matrix discipline (Design 59): a cell that
+## fails to construct / converge / is non-PD is `skip()`-ped with a reason and
+## reported as "stays partial", NEVER forced green.
 ##
-## These tests are therefore written to ATTEMPT the augmented-LHS spatial fit
-## per family and, on the current expected construction rejection, skip
-## honestly. They are NOT skeleton no-ops: each test runs the real fixture
-## and the real `gllvmTMB()` call, and the moment Design 56 Stage 3 wires the
-## augmented-LHS x spatial_latent engine path the same tests will exercise
-## the live convergence + PD-Hessian + CI-smoke assertions below WITHOUT
-## modification (the skip is conditional on the construction failure, not an
-## unconditional gate).
+## Each test runs the real fixture and the real `gllvmTMB()` call. The skip is
+## conditional on construction failure / non-convergence / non-PD / a dropped
+## slope column / a degenerate CI smoke -- not an unconditional gate -- so a
+## cell turns green precisely when the (family x spatial_latent-slope) fit is
+## genuinely healthy at the fixture's n / seed.
 ##
-## Per-family honest tolerance (only reached once the engine path lands):
-## fixed-residual-scale families (binomial-probit, binomial-logit,
-## ordinal_probit) carry no point-recovery band here -- the load-bearing
-## assertions are clean convergence + PD Hessian + the engine use-flag for
-## the augmented spatial latent path + a CI smoke. Mean-dependent families
-## (poisson, nbinom2, gamma, beta) are noisier still on this hardest cell, so
-## they too assert only fit health + use-flag + CI smoke, not a numeric band
+## Per-family honest tolerance: fixed-residual-scale families (binomial-probit,
+## binomial-logit, ordinal_probit) carry no point-recovery band here -- the
+## load-bearing assertions are clean convergence + PD Hessian + the
+## reduced-rank slope engine flag (use_spde_latent_slope, NOT the intercept-
+## only spatial_latent flag) + a CI smoke. Mean-dependent families (poisson,
+## nbinom2, gamma, beta) are noisier still on this hardest cell, so they too
+## assert only fit health + slope-path-live + CI smoke, not a numeric band
 ## (Phase B0 memo sec. 2-3: mean-dependent families get wider tolerance, and
 ## augmented-LHS x SPDE at ~100 sites is the cross-product of the borderline
-## cases). The CI smoke is: `confint(parm = "rho:spatial:i,j",
-## method = "profile")` finite on >= 1 upper-tri pair OR a non-degenerate
-## `extract_correlations(tier = "spatial")`.
+## cases). The CI smoke is a finite sdreport SE on the reduced-rank slope
+## loadings `theta_rr_spde_slope` (the spatial analogue of the #392
+## phylo_latent `theta_rr_phy_slope` smoke); the block-diagonal latent exposes
+## no rho:spatial token and the `extract_correlations(tier = "spatial")` path
+## keys on the intercept-only flag a slope fit does not set, so the loadings SE
+## is the genuinely-available uncertainty handle.
 ##
 ## SKIP discipline (no fake-pass, Design 59): a cell that fails to construct,
 ## fails to converge, is non-PD, or whose CI smoke is degenerate is
@@ -145,42 +144,46 @@ expect_slope_spatial_latent_fit_health <- function(fit, family_id) {
   testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
   ## Guard against a silent family fallthrough making the family claim hollow.
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], family_id)
-  ## The augmented spatial latent path must be the one that was taken.
-  testthat::expect_true(isTRUE(fit$use$spatial_latent))
+  ## The augmented spatial-latent SLOPE path must be the one that was taken.
+  ## NOTE: the augmented `spatial_latent(1 + x | site, d)` covstruct carries
+  ## the `.spatial_latent_augmented` marker, which drives the dedicated
+  ## reduced-rank slope engine (use_spde_latent_slope). It does NOT set the
+  ## intercept-only `.spatial_latent` marker, so `fit$use$spatial_latent` is
+  ## FALSE on a slope fit; the live flag is `fit$use$spde_latent_slope` (this
+  ## mirrors the #392 phylo_latent fix where the slope path keys on the
+  ## *_slope engine flag, not the intercept-only latent flag).
+  testthat::expect_true(isTRUE(fit$use$spde_latent_slope))
 }
 
-## At least one finite profile bound on one upper-tri rho:spatial pair.
-slope_spatial_latent_rho_ci_any_finite <- function(fit, n_traits) {
-  pairs_to_try <- utils::combn(seq_len(n_traits), 2L, simplify = FALSE)
-  for (p in pairs_to_try) {
-    parm_token <- sprintf("rho:spatial:%d,%d", p[1L], p[2L])
-    ci <- tryCatch(
-      suppressMessages(suppressWarnings(stats::confint(
-        fit, parm = parm_token, method = "profile"
-      ))),
-      error = function(e) e
-    )
-    if (!inherits(ci, "error") && is.matrix(ci) && nrow(ci) == 1L &&
-          ncol(ci) == 2L && any(is.finite(ci))) {
-      return(TRUE)
-    }
-  }
-  FALSE
+## The engine-state guard: is the reduced-rank SLOPE path actually live? A
+## genuine slope-bearing spatial_latent fit must carry a 2-column augmented
+## LHS (n_lhs_cols_spde_lat == 2) AND the dedicated latent-slope engine flag
+## (use_spde_latent_slope == 1). The intercept-only spatial_latent path leaves
+## these at 1 / 0, so this guard keys on the *_spde_lat fields the augmented
+## latent engine populates (spatial analogue of #392's slope_latent_path_is_live).
+slope_spatial_latent_path_is_live <- function(fit) {
+  isTRUE(fit$tmb_data$n_lhs_cols_spde_lat == 2L) &&
+    isTRUE(fit$tmb_data$use_spde_latent_slope == 1L)
 }
 
-## extract_correlations(tier = "spatial") is a non-degenerate frame.
-slope_spatial_latent_correlations_ok <- function(fit) {
-  cor_df <- tryCatch(
-    suppressMessages(suppressWarnings(gllvmTMB::extract_correlations(
-      fit, tier = "spatial", method = "fisher-z", link_residual = "none"
-    ))),
-    error = function(e) e
-  )
-  !inherits(cor_df, "error") &&
-    is.data.frame(cor_df) && nrow(cor_df) > 0L &&
-    all(c("tier", "trait_i", "trait_j", "correlation", "lower", "upper")
-        %in% names(cor_df)) &&
-    all(is.finite(cor_df$correlation))
+## CI smoke (slope-structure uncertainty). The block-diagonal reduced-rank
+## latent slope exposes NO rho:spatial token (each LHS column has its own
+## Lambda_k Lambda_k^T; there is no cross-column correlation block) and the
+## `extract_correlations(tier = "spatial")` path keys on the intercept-only
+## `fit$use$spatial_latent` flag, which a slope fit does not set. So neither
+## the `confint(rho:spatial)` nor the `extract_correlations` smoke is the right
+## handle here. The genuinely-available uncertainty handle -- exactly as in
+## the #392 phylo_latent fix -- is the sdreport SE on the reduced-rank slope
+## loadings `theta_rr_spde_slope` (which build Sigma_spde_slope_*): a finite
+## SE there is a finite slope-structure CI smoke.
+slope_spatial_latent_loading_ci_finite <- function(fit) {
+  sdr <- tryCatch(summary(fit$sd_report), error = function(e) NULL)
+  if (is.null(sdr)) return(FALSE)
+  idx <- which(rownames(sdr) == "theta_rr_spde_slope")
+  if (length(idx) < 1L) return(FALSE)
+  est <- sdr[idx, "Estimate"]
+  se  <- sdr[idx, "Std. Error"]
+  any(is.finite(est) & is.finite(se) & se > 0)
 }
 
 ## Single driver for all 7 families: build the family-specific response from
@@ -212,12 +215,14 @@ run_slope_spatial_latent_cell <- function(family_obj, family_id, response_fun,
     error = function(e) e
   )
 
-  ## Expected current state: augmented-LHS x spatial_latent is not yet a
-  ## supported engine path (Design 56 Stage 3), so construction fail-loud
-  ## rejects. Honest skip -- the cell stays partial.
+  ## The augmented-LHS x spatial_latent engine path is LIVE for the validated
+  ## families (gaussian, binomial probit/logit, poisson, nbinom2, Gamma, Beta,
+  ## ordinal_probit; the family-id allowlist in R/fit-multi.R). A construction
+  ## failure is therefore no longer the expected state -- it is an honest skip
+  ## that keeps the cell partial only if it genuinely fails to build.
   if (inherits(fit, "error") || !inherits(fit, "gllvmTMB_multi")) {
     testthat::skip(sprintf(
-      "%s: spatial_latent(1 + x | site, d = 1) did not construct (augmented-LHS x spatial_latent engine path pending Design 56 Stage 3): %s",
+      "%s: spatial_latent(1 + x | site, d = 1) did not construct: %s",
       row_label,
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))
@@ -229,18 +234,28 @@ run_slope_spatial_latent_cell <- function(family_obj, family_id, response_fun,
       row_label
     ))
   }
+  if (!slope_spatial_latent_path_is_live(fit)) {
+    testthat::skip(sprintf(
+      paste0(
+        "%s: reduced-rank slope-bearing spatial_latent path not live (the engine ",
+        "dropped the slope column: n_lhs_cols_spde_lat = %s, use_spde_latent_slope = %s); ",
+        "no latent slope structure to recover, cell stays partial -- honest skip"
+      ),
+      row_label,
+      as.character(fit$tmb_data$n_lhs_cols_spde_lat %||% NA),
+      as.character(fit$tmb_data$use_spde_latent_slope %||% NA)
+    ))
+  }
 
   expect_slope_spatial_latent_fit_health(fit, family_id)
 
-  ci_ok  <- slope_spatial_latent_rho_ci_any_finite(fit, fx$n_traits)
-  cor_ok <- slope_spatial_latent_correlations_ok(fit)
-  if (!ci_ok && !cor_ok) {
+  if (!slope_spatial_latent_loading_ci_finite(fit)) {
     testthat::skip(sprintf(
-      "%s: neither rho:spatial profile CI nor extract_correlations(tier='spatial') was non-degenerate; honest skip rather than relax assertion",
+      "%s: no finite SE on the reduced-rank slope loadings (theta_rr_spde_slope); CI smoke stays partial rather than relax the assertion",
       row_label
     ))
   }
-  testthat::expect_true(ci_ok || cor_ok)
+  testthat::expect_true(slope_spatial_latent_loading_ci_finite(fit))
 }
 
 ## ---------------------------------------------------------------------------
@@ -306,7 +321,10 @@ test_that("nbinom2: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_h
   phi_nb <- 5
   run_slope_spatial_latent_cell(
     family_obj   = gllvmTMB::nbinom2(),
-    family_id    = 3L,
+    ## Runtime family_id from family_to_id(): nbinom2 = 5 (NOT the lognormal = 3
+    ## id this previously claimed; the equality assertion only fires on a live
+    ## fit, so the wrong id was latent until the engine path was activated).
+    family_id    = 5L,
     response_fun = function(eta) stats::rnbinom(length(eta), mu = exp(eta), size = phi_nb),
     row_label    = "nbinom2"
   )

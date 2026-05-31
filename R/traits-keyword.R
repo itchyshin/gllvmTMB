@@ -177,6 +177,8 @@ is_traits_lhs <- function(formula) {
   "phylo_indep",
   "phylo_dep",
   "animal_indep",
+  "animal_dep",
+  "animal_latent",
   "spatial",
   "spatial_unique",
   "spatial_scalar",

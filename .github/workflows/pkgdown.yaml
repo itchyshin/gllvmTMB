@@ -17,7 +17,12 @@ permissions:
 
 concurrency:
   group: pkgdown
-  cancel-in-progress: true
+  # Never cancel an in-flight deploy. The deploy job is short and idempotent
+  # (it re-publishes the rendered site). Cancelling it buys nothing, but when
+  # several merges land in quick succession it was killing good-tree deploys
+  # mid-publish while letting a stale-tree deploy run to a failed completion.
+  # Let every deploy finish; the last one to run wins.
+  cancel-in-progress: false
 
 jobs:
   pkgdown:
@@ -32,7 +37,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Build the current tip of the branch the check ran on, NOT the
+          # triggering run's pinned head_sha. R-CMD-check does not cancel main
+          # runs, so several can run concurrently for different commits; when an
+          # older run finishes late it fires this deploy with its stale head_sha
+          # and rebuilds a superseded tree. That is exactly how a deploy of
+          # commit a4310885 (before #394 indexed impute_model / imputed) failed
+          # with "2 topics missing from index" even though main was already
+          # fixed. Checking out the branch ref deploys whatever is currently on
+          # main; workflow_dispatch falls back to the dispatched ref.
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
       - uses: actions/configure-pages@v5
 

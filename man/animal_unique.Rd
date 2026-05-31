@@ -30,6 +30,21 @@ trait gets its own variance \eqn{\sigma^{2}_{\text{a},t}}; traits
 share the same per-individual draws (rows of A act on each trait
 independently). Mathematical parallel to \code{\link[=phylo_unique]{phylo_unique()}}.
 }
+\section{Correlated intercept + slope reaction norm}{
+
+Used with an intercept+slope bar,
+\code{animal_unique(1 + x | id, pedigree = ped)} fits a \strong{correlated}
+additive-genetic random-regression (reaction norm)
+\eqn{\mathrm{vec}(\mathbf B) \sim N(0, \Sigma_b \otimes \mathbf A)},
+where \eqn{\Sigma_b} is a \eqn{2 \times 2} (intercept, slope)
+covariance with a \strong{free} intercept-slope correlation. This routes
+through the same augmented engine as \code{\link[=phylo_unique]{phylo_unique()}} with a
+\code{1 + x | sp} bar; no separate likelihood. For the diagonal
+(\eqn{\rho = 0}) special case use \code{\link[=animal_indep]{animal_indep()}} with the same
+\code{1 + x | id} bar. Recover \eqn{\Sigma_b} with
+\code{extract_Sigma(fit, level = "phy")}.
+}
+
 \seealso{
 \code{\link[=animal_scalar]{animal_scalar()}}, \code{\link[=animal_indep]{animal_indep()}}, \code{\link[=animal_latent]{animal_latent()}},
 \code{\link[=animal_dep]{animal_dep()}}, \code{\link[=phylo_unique]{phylo_unique()}}.

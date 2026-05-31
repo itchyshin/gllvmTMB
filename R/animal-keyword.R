@@ -70,6 +70,19 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' share the same per-individual draws (rows of A act on each trait
 #' independently). Mathematical parallel to [phylo_unique()].
 #'
+#' @section Correlated intercept + slope reaction norm:
+#' Used with an intercept+slope bar,
+#' `animal_unique(1 + x | id, pedigree = ped)` fits a **correlated**
+#' additive-genetic random-regression (reaction norm)
+#' \eqn{\mathrm{vec}(\mathbf B) \sim N(0, \Sigma_b \otimes \mathbf A)},
+#' where \eqn{\Sigma_b} is a \eqn{2 \times 2} (intercept, slope)
+#' covariance with a **free** intercept-slope correlation. This routes
+#' through the same augmented engine as [phylo_unique()] with a
+#' `1 + x | sp` bar; no separate likelihood. For the diagonal
+#' (\eqn{\rho = 0}) special case use [animal_indep()] with the same
+#' `1 + x | id` bar. Recover \eqn{\Sigma_b} with
+#' `extract_Sigma(fit, level = "phy")`.
+#'
 #' @inheritParams animal_scalar
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_indep()], [animal_latent()],

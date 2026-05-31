@@ -1,8 +1,11 @@
-## Design 55 A3 + Design 56 9.5d -- animal_unique(1 + x | id) Gaussian.
+## Design 55 A3 + Design 56 9.5d + issue #354 part (b) --
+## animal_unique(1 + x | id) Gaussian.
 ##
-## `animal_unique` is intercept-only (per Design 14 sec. 5); the augmented
-## correlated intercept+slope reaction-norm form for pedigree data is:
-##   phylo_unique(1 + x | id, vcv = pedigree_to_A(ped))
+## animal_unique(1 + x | id, pedigree = ped) is the CORRELATED intercept+slope
+## additive-genetic reaction norm; it routes through the phylo_unique augmented
+## engine. The equivalent explicit forms for pedigree data are:
+##   phylo_unique(1 + x | id, vcv = pedigree_to_A(ped))          (dense A)
+##   phylo_unique(1 + x | id, vcv = pedigree_to_Ainv_sparse(ped)) (sparse Ainv)
 ##
 ## This cell tests:
 ##   - Gaussian recovery on a pedigree-derived A: sigma2_alpha (additive
@@ -11,8 +14,8 @@
 ##   - Byte-equivalence between phylo_unique(1+x|id, vcv = pedigree_to_A(ped))
 ##     and phylo_unique(1+x|id, vcv = A_dense) per Design 14 sec. 5
 ##     (same point estimates, same logLik to 1e-6).
-##   - animal_unique(1 + x | id, pedigree = ped) aborts loud and directs to
-##     the augmented VCV path (fail-loud guard per Design 56 sec. 7).
+##   - animal_unique(1 + x | id, pedigree = ped) routes to the phylo_unique
+##     augmented engine, byte-identical to the explicit phylo_unique call.
 
 skip_if_no_pedigree_helpers <- function() {
   testthat::skip_on_cran()
@@ -170,19 +173,39 @@ test_that("phylo_unique(vcv = pedigree_to_A(ped)) == phylo_unique(vcv = A_dense)
 })
 
 ## ======================================================================
-## 3. Fail-loud: animal_unique(1 + x | id) aborts and directs to vcv path
+## 3. Routing (issue #354 part b): animal_unique(1 + x | id, pedigree = ped)
+##    now ROUTES to the phylo_unique augmented engine (correlated intercept +
+##    slope reaction norm) instead of aborting. It is byte-identical to the
+##    equivalent phylo_unique sparse-Ainv pedigree call.
 ## ======================================================================
-test_that("animal_unique(1 + x | id) aborts loud (slope not allowed; use phylo_unique vcv=)", {
+test_that("animal_unique(1 + x | id) routes to the phylo_unique augmented engine", {
+  skip_if_not_heavy()
   skip_if_no_pedigree_helpers()
 
-  fx <- make_animal_unique_slope_fixture(n_id = 10L, n_rep = 2L)
-  expect_error(
-    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait +
-        animal_unique(0 + trait + (0 + trait):x | species, pedigree = fx$ped),
-      data = fx$df_long, unit = "species",
-      control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
-    ))),
-    regexp = "animal_unique.*slope|animal_slope|random slope"
-  )
+  fx  <- make_animal_unique_slope_fixture()
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+
+  ## Long-form augmented bar; the wide form 1 + x | id is the byte-identical
+  ## equivalent (Design 55 sec.3 wide<->long contract).
+  fit_au <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+      animal_unique(0 + trait + (0 + trait):x | species, pedigree = fx$ped),
+    data = fx$df_long, unit = "species", control = ctl
+  )))
+  Ainv_ped <- gllvmTMB::pedigree_to_Ainv_sparse(fx$ped)
+  fit_pu <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+      phylo_unique(0 + trait + (0 + trait):x | species, vcv = Ainv_ped),
+    data = fx$df_long, unit = "species", control = ctl
+  )))
+
+  expect_equal(fit_au$opt$convergence, 0L)
+  ## Correlated augmented engine (free intercept-slope correlation), NOT dep.
+  expect_identical(fit_au$tmb_data$use_phylo_slope_correlated, 1L)
+  expect_false(isTRUE(fit_au$use$phylo_dep_slope))
+  ## Byte-identical to the explicit phylo_unique sparse-Ainv call.
+  expect_equal(as.numeric(logLik(fit_au)), as.numeric(logLik(fit_pu)),
+               tolerance = 1e-6)
+  expect_equal(fit_au$report$sd_b,  fit_pu$report$sd_b,  tolerance = 1e-6)
+  expect_equal(fit_au$report$cor_b, fit_pu$report$cor_b, tolerance = 1e-6)
 })

@@ -628,6 +628,75 @@ extract_Sigma <- function(
     ))
   }
 
+  ## ---- spatial_unique / spatial_indep base slope block (Design 60 sec.3.4)
+  ## spatial_unique(1 + x | coords) or spatial_indep(1 + x | coords) activates
+  ## the base SPDE slope engine (use_spde_slope) with n_lhs_cols_spde == 2.
+  ## Unlike the dep block below (full unstructured 2T x 2T over traits), the
+  ## base path fits a single 2x2 cross-field covariance Sigma_field over the
+  ## (intercept, slope) fields, reported via the closed-form sd_spde_b
+  ## (length 2) and cor_spde_b (length 1, = 0 for the indep diagonal case).
+  ## kappa_s is the shared SPDE range parameter. Surfaced under
+  ## `level = "spatial"` (internal "spde"), the spatial analogue of phylo_dep
+  ## but a 2x2 block (no trait stacking). Single unstructured block: `part` /
+  ## `link_residual` do not apply.
+  ##
+  ## Guarded by `!isTRUE(fit$use$spde_dep_slope)`: the dep path nests under
+  ## use_spde_slope (BOTH flags are TRUE for spatial_dep), so this guard hands
+  ## the dep case off to the dep block below. Placed BEFORE the dep block.
+  ##
+  ## Scale note: Sigma_field is on the SPDE parameterisation scale (tau
+  ## absorbed; NOT a per-site marginal). To convert to the marginal field SD:
+  ## sigma_marg = sd_spde_b / (sqrt(4*pi) * kappa_s).
+  if (isTRUE(fit$use$spde_slope) && !isTRUE(fit$use$spde_dep_slope) &&
+        !isTRUE(fit$use$spde_latent_slope) && identical(level, "spde")) {
+    sd_b  <- as.numeric(fit$report$sd_spde_b)
+    rho_v <- as.numeric(fit$report$cor_spde_b)
+    kappa_s <- as.numeric(fit$report$kappa_s)
+    if (length(sd_b) != 2L) {
+      cli::cli_abort(paste0(
+        "spatial_unique/indep slope fit has no reported {.code sd_spde_b} ",
+        "of length 2 (the 1 + x | coords correlated intercept+slope path)."
+      ))
+    }
+    rho <- if (length(rho_v) >= 1L) rho_v[1L] else 0
+    Sigma <- matrix(
+      c(sd_b[1L]^2,                  rho * sd_b[1L] * sd_b[2L],
+        rho * sd_b[1L] * sd_b[2L],   sd_b[2L]^2),
+      nrow = 2L, ncol = 2L
+    )
+    field_names <- c("intercept", "slope")
+    rownames(Sigma) <- colnames(Sigma) <- field_names
+    D <- sqrt(diag(Sigma))
+    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    rownames(R) <- colnames(R) <- field_names
+    kappa_note <- if (length(kappa_s) >= 1L && is.finite(kappa_s[1L])) {
+      sprintf(
+        paste0("kappa_s = %.4g; marginal field SD = sd_spde_b / ",
+               "(sqrt(4*pi) * kappa_s): intercept %.4g, slope %.4g."),
+        kappa_s[1L],
+        sd_b[1L] / (sqrt(4 * pi) * kappa_s[1L]),
+        sd_b[2L] / (sqrt(4 * pi) * kappa_s[1L])
+      )
+    } else {
+      "kappa_s not available; cannot compute marginal field SD."
+    }
+    return(list(
+      Sigma = Sigma,
+      R = R,
+      kappa_s = if (length(kappa_s) >= 1L) kappa_s[1L] else NA_real_,
+      level = "spde_base_slope",
+      part = "slope",
+      note = paste0(
+        "spatial_unique/indep(1 + x | coords): 2x2 cross-field covariance ",
+        "Sigma_field over the (intercept, slope) SPDE fields, on the SPDE ",
+        "parameterisation scale (tau absorbed, NOT per-site marginal). ",
+        kappa_note, " ",
+        "The part / link_residual arguments do not apply to this single ",
+        "unstructured block."
+      )
+    ))
+  }
+
   ## ---- spatial_dep augmented-slope block (Design 64 sec.2) -------------
   ## spatial_dep(1 + x | coords) fits a single FULL UNSTRUCTURED 2T x 2T field
   ## covariance Sigma_field over the trait-stacked (intercept, slope) spatial

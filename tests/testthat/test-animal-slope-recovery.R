@@ -152,20 +152,18 @@ test_that("animal_slope(x | id, pedigree = ped) recovers sigma_slope via sparse 
                label = "animal_slope(pedigree=) sigma_slope recovery")
 })
 
-# ---- (4) UX guard: animal_unique(1 + x | id) fails loud --------------
+# ---- (4) Routing (issue #354 part b): animal_unique(1 + x | id) -------
 #
-# `animal_unique` fits per-trait additive-genetic random INTERCEPTS only
-# (a bare `id` column; see ?animal_unique). Before the R/brms-sugar.R
-# guard, `animal_unique(1 + x | id)` passed the slope-bearing bar verbatim
-# to phylo_rr, which SILENTLY DROPPED the slope and fit an intercept-only
-# model (byte-identical to `animal_unique(id)`). The slope entry point is
-# `animal_slope(x | id)`. The augmented intercept+slope random regression
-# (sigma2_alpha, sigma2_beta, rho) via `animal_unique(1 + x | id)` is
-# deferred to Design 56 Stage 3 (see test-animal-unique-slope-gaussian.R,
-# gated skip_until_stage3()); until then this form must fail loud, not
-# silently collapse.
+# `animal_unique(1 + x | id)` is a CORRELATED intercept + slope additive-
+# genetic reaction norm. It now ROUTES through the phylo_unique augmented
+# engine (free intercept-slope correlation), instead of the old fail-loud
+# abort that misdirected users to the scalar `animal_slope`. Both the wide
+# (1 + x | id) and long (0 + trait + (0 + trait):x | id) augmented bars
+# activate use_phylo_slope_correlated with n_lhs_cols = 2. (Recovery of
+# sigma2_alpha / sigma2_beta / rho is checked in
+# test-animal-unique-slope-gaussian.R and test-animal-unique-routing.R.)
 
-test_that("animal_unique(1 + x | id) fails loud and points to animal_slope (UX trap guard)", {
+test_that("animal_unique(1 + x | id) routes to the phylo_unique augmented engine (wide + long)", {
   skip_if_not_heavy()
   fx_A <- diag(4)
   rownames(fx_A) <- colnames(fx_A) <- paste0("i", 1:4)
@@ -175,20 +173,22 @@ test_that("animal_unique(1 + x | id) fails loud and points to animal_slope (UX t
     x = rnorm(8L),
     value = rnorm(8L)
   )
-  expect_error(
-    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait + animal_unique(1 + x | species, A = fx_A),
-      data = df, unit = "species", cluster = "species"
-    ))),
-    regexp = "does not take a random slope|animal_slope",
-    info = "Augmented-slope bar in animal_unique() must fail loud, not silently drop the slope."
-  )
-  ## Long-form augmented LHS is guarded too.
-  expect_error(
-    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait + animal_unique(0 + trait + (0 + trait):x | species, A = fx_A),
-      data = df, unit = "species", cluster = "species"
-    ))),
-    regexp = "does not take a random slope|animal_slope"
-  )
+  ## Wide form. optimize = FALSE: this 4-id diag(4) fixture is degenerate;
+  ## we assert the ROUTING (engine flags), not recovery.
+  fit_w <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + animal_unique(1 + x | species, A = fx_A),
+    data = df, unit = "species", cluster = "species",
+    control = list(optimize = FALSE)
+  )))
+  expect_identical(fit_w$tmb_data$use_phylo_slope_correlated, 1L)
+  expect_identical(fit_w$tmb_data$n_lhs_cols, 2L)
+  expect_false(isTRUE(fit_w$use$phylo_dep_slope))
+  ## Long-form augmented LHS routes identically.
+  fit_l <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + animal_unique(0 + trait + (0 + trait):x | species, A = fx_A),
+    data = df, unit = "species", cluster = "species",
+    control = list(optimize = FALSE)
+  )))
+  expect_identical(fit_l$tmb_data$use_phylo_slope_correlated, 1L)
+  expect_identical(fit_l$tmb_data$n_lhs_cols, 2L)
 })

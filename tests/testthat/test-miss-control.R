@@ -1,8 +1,9 @@
 # Tests for miss_control() -- the missing-data control-list factory.
-# Phase 1, sub-slice 1 (issue #334). v1 accepts only predictor = "fail" and
-# engine = "laplace"; "em"/"profile" are reserved names, not yet supported;
-# there is NO estimator argument. response = "drop" is the default and equals
-# today's complete-case behaviour.
+# Phase 1, sub-slice 1 (issue #334), updated for Phase 2a (design 67):
+# predictor = "fail" (default) and predictor = "model" (the mi() Gaussian
+# missing-predictor surface) are both accepted; engine = "laplace" only with
+# "em"/"profile" reserved names; there is NO estimator argument. response =
+# "drop" is the default and equals today's complete-case behaviour.
 
 # ---- defaults -------------------------------------------------------------
 
@@ -27,14 +28,14 @@ test_that("miss_control(): unknown response errors via match.arg", {
   expect_error(miss_control(response = "impute"), regexp = "should be one of")
 })
 
-test_that("miss_control(): predictor='model' is a reserved-but-not-yet value -> clear error", {
-  # Sub-slice 1 only implements predictor = "fail". "model" is the Phase 2
-  # surface; until then it must error clearly rather than silently no-op.
-  expect_error(
-    miss_control(predictor = "model"),
-    regexp = "(?i)not yet supported|reserved",
-    perl = TRUE
-  )
+test_that("miss_control(): predictor='model' is accepted (Phase 2a mi() surface)", {
+  # Phase 2a (design 67) implements predictor = "model": the mi() latent-
+  # covariate grammar for one continuous Gaussian missing predictor. It is now
+  # a valid value (was reserved-but-not-yet in Phase 1 sub-slice 1).
+  mc <- miss_control(predictor = "model")
+  expect_identical(mc$predictor, "model")
+  expect_identical(mc$response, "drop")
+  expect_identical(mc$engine, "laplace")
 })
 
 test_that("miss_control(): unknown predictor errors via match.arg", {

@@ -394,6 +394,7 @@ gllvmTMB <- function(
   lambda_constraint = NULL,
   control = gllvmTMBcontrol(),
   missing = miss_control(),
+  impute = NULL,
   silent = TRUE,
   site = NULL, # deprecated alias for `unit`
   species = NULL
@@ -440,6 +441,7 @@ gllvmTMB <- function(
       lambda_constraint = lambda_constraint,
       control = control,
       missing = missing,
+      impute = impute,
       silent = silent,
       site = site,
       species = species
@@ -629,6 +631,14 @@ gllvmTMB <- function(
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
   parsed <- parse_multi_formula(formula)
+  ## ---- Phase 2a: validate mi() BEFORE any model.frame on parsed$fixed ----
+  ## drop_missing_response_rows() (below) builds a model.frame on parsed$fixed.
+  ## For an invalid mi() term (e.g. mi(log(x)), mi(x):z) the parser leaves the
+  ## expression verbatim in parsed$fixed, so model.frame would fail with an
+  ## opaque "could not find function mi" before the missing-predictor guards
+  ## run. gll_prepare_mi_setup is data-free; running it here fires the precise
+  ## loud guards first. The result is recomputed (cheaply) inside the fit.
+  invisible(gll_prepare_mi_setup(parsed$mi_rhs, impute, missing))
   ## Snapshot the pre-drop data so the fit can report original-row accounting
   ## (fit$data_original) regardless of the response mode.
   data_original <- data
@@ -662,6 +672,8 @@ gllvmTMB <- function(
     control = control,
     silent = silent,
     unit_obs = unit_obs,
+    impute = impute,
+    missing = missing,
     is_y_observed = observed_response$is_y_observed,
     missing_meta = list(
       response = missing$response,
@@ -924,12 +936,13 @@ gllvmTMBcontrol <- function(
 #'   frequentist observed-data likelihood. The fit is identical to the
 #'   complete-case fit on the observed rows, but the original-row accounting is
 #'   preserved (see `fit$missing_data`).
-#' @param predictor How to treat missing **predictors** (covariates). v1
-#'   accepts only `"fail"` (the default): a missing value in the fixed-effect
-#'   design matrix is an error, exactly as today. `"model"` -- treating a
-#'   missing predictor as a latent variable integrated out by the Laplace
-#'   approximation (the `mi()` grammar) -- is the Phase 2 surface and is **not
-#'   yet supported**.
+#' @param predictor How to treat missing **predictors** (covariates).
+#'   `"fail"` (the default): a missing value in the fixed-effect design matrix
+#'   is an error, exactly as today. `"model"` treats a missing predictor
+#'   declared with `mi(x)` as a latent variable integrated out by the Laplace
+#'   approximation, with its covariate model supplied via the `impute =`
+#'   argument of [gllvmTMB()]. The first fitted route is one continuous,
+#'   unit-level Gaussian predictor with a fixed-effect covariate model.
 #' @param engine The estimation engine. v1 ships `"laplace"` only (TMB Laplace
 #'   approximation). `"em"` (the Gaussian-only EM special case) and `"profile"`
 #'   are **reserved names, not yet supported**.
@@ -975,15 +988,10 @@ miss_control <- function(
   response <- match.arg(response)
   predictor <- match.arg(predictor)
 
-  ## v1 predictor surface is "fail" only. "model" (the mi() latent-covariate
-  ## grammar) is the Phase 2 surface.
-  if (identical(predictor, "model")) {
-    cli::cli_abort(c(
-      "{.code predictor = \"model\"} is reserved and not yet supported.",
-      "i" = "Modelling missing predictors as latent variables (the {.code mi()} grammar) arrives in a later phase.",
-      "i" = "Use {.code predictor = \"fail\"} (the default): missing predictors error until then."
-    ))
-  }
+  ## predictor = "model" engages the mi() latent-covariate grammar (Phase 2a:
+  ## one continuous Gaussian missing predictor with a fixed-effect covariate
+  ## model). predictor = "fail" (default) keeps the historical hard stop on
+  ## missing predictors.
 
   ## v1 engine surface is "laplace" only. "em"/"profile" are reserved names.
   if (!identical(engine, "laplace")) {

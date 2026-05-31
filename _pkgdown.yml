@@ -89,6 +89,7 @@ reference:
     - traits
     - gllvmTMBcontrol
     - miss_control
+    - impute_model
     - simulate_site_trait
 
   - title: Core covariance keywords
@@ -171,6 +172,7 @@ reference:
     - simulate.gllvmTMB_multi
     - predict.gllvmTMB_multi
     - predict_missing
+    - imputed
     - plot.gllvmTMB_multi
     - plot_correlations
     - plot_Sigma_table

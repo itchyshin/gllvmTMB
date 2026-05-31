@@ -14,9 +14,9 @@ vignette: >
 # All chunks are eval=FALSE on purpose: knitting the TMB fits in this article
 # is heavy (it has OOM'd pkgdown before), so the chunks show the exact shipped
 # syntax without being run at build time. The article documents the shipped
-# Phase 1 (response mask), Phase 2a (Gaussian fixed-covariate mi()), and
-# Phase 2b (grouped-covariate mi()) surface;
-# do not flip these to eval=TRUE in the pkgdown build.
+# Phase 1 (response mask), Phase 2a (Gaussian fixed-covariate mi()),
+# Phase 2b (grouped-covariate mi()), and Phase 3 (phylogenetic species-level
+# mi()) surface; do not flip these to eval=TRUE in the pkgdown build.
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
@@ -97,10 +97,34 @@ Read the status tags literally:
   covariate-model random intercept (one unit-level value per group), kept
   independent of the response-model random effects; everything else matches
   Phase 2a.
-- **PLANNED.** Species- or group-level broadcast of an imputed value
-  (Phase 2c); a phylogenetic / spatial / relatedness covariate model for `mi()`
-  (Phase 3); and non-Gaussian or categorical missing predictors (Phase 5).
-  These routes are sketched below with their phase tags.
+- **SHIPPED (Phase 3, phylogenetic species-level missing predictor).** A
+  species-level Gaussian missing predictor whose covariate model carries a
+  phylogenetic intercept, `impute = list(x = x ~ phylo(1 | species, tree =
+  tree))`. The `phylo(1 | species, tree =)` token both keys the species-level
+  broadcast (the Phase 2c machinery: one latent per missing species, broadcast
+  to its observation rows) and adds a phylo-structured intercept on the
+  covariate mean. The field borrows strength across related species and
+  degrades gracefully toward the independent (Phase 2c) model when phylogenetic
+  signal is weak; `phylo_signal_mi()` reports the effective signal and flags the
+  weak case (Section 5c). Intercept-only covariate model; the Level-2 joint
+  field (`correlate_with = "response"`) remains Phase 4.
+- **PLANNED.** Spatial / relatedness / animal covariate models for `mi()` and
+  the Level-2 joint field (Phase 4); and non-Gaussian or categorical missing
+  predictors (Phase 5). These routes are sketched below with their phase tags.
+
+**Two co-equal input shapes.** Every route below accepts the model in either of
+two equivalent shapes. A **wide** call uses the `traits(...)` LHS on a data
+frame with one row per unit and one column per trait
+(`traits(t1, t2) ~ mi(x)`, `data = df_wide`). A **long** call uses an explicit
+stacked response on a data frame with one row per `(unit, trait)` observation
+(`value ~ 0 + trait + mi(x)`, `data = df_long`, `unit = "id"`). These are not
+two engines: `traits(...)` simply pivots the wide frame to the long stacked form
+internally and dispatches to the **same** stacked-long likelihood that the long
+call reaches directly. Missing-data handling is therefore identical in both --
+the response mask, the `mi()` latent predictor, and every diagnostic behave the
+same way regardless of which shape you pass. The examples below mostly use the
+wide `traits(...)` form for compactness; Sections 2 and 5 also give the long-
+format equivalent so the co-equal long path is explicit.
 
 Code chunks for fitted models are kept `eval = FALSE`: they show the exact
 syntax of the shipped surface, but knitting the TMB fits is intentionally
@@ -125,14 +149,15 @@ without a matching `mi()` term it errors rather than silently doing nothing.
 
 The table below maps each missing-data case to its route and the boundary that
 route stops at. The phase tag in the final column gives its status: Phase 1,
-Phase 2a, and Phase 2b are shipped; Phase 2c onward is planned.
+Phase 2a, Phase 2b, and Phase 3 are shipped; Phase 4 onward is planned.
 
 | Missing-data case | Route | Boundary / phase |
 | --- | --- | --- |
 | Missing trait cell (any family) | `missing = miss_control(response = "include")` | All predictors, grouping variables, offsets, weights, and structured-effect inputs must be complete for that row (Phase 1, shipped). |
 | One missing continuous predictor, fixed covariate model | `traits(y1, y2) ~ mi(body_mass) + z` with `impute = list(body_mass = body_mass ~ z)` | The `mi()` variable must be numeric; one Gaussian covariate model; no multiple missing predictors yet (Phase 2a, shipped). |
 | One missing continuous predictor, grouped covariate model | As above with `impute = list(body_mass = body_mass ~ z + (1 | site))` | One grouped random intercept in the predictor model; independent of response random effects (Phase 2b, shipped). |
-| Species-level missing trait (broadcast to obs) | `impute = list(body_mass = body_mass ~ 1 + phylo(1 | species, tree = tree))` | Species-level value broadcast to observation rows; phylogenetic covariate model (Phase 2c / Phase 3, planned). |
+| Species-level missing predictor, phylogenetic covariate model | `impute = list(body_mass = body_mass ~ phylo(1 | species, tree = tree))` | Species-level value broadcast to observation rows; intercept-only phylo covariate model; degrades gracefully when signal is weak (Phase 3, shipped). |
+| Spatial / relatedness / animal covariate model; Level-2 joint field | `impute = list(... = ... ~ spatial(...))`, `relmat()`, `animal()`, or `correlate_with = "response"` | Non-phylo structured covariate models and the joint response-covariate field (Phase 4, planned). |
 | Non-Gaussian / categorical missing predictor | `impute_model(family = )` with a non-Gaussian family | Lognormal, Gamma, beta, Poisson, ordinal, factor -- later work (Phase 5, planned). |
 
 The `gllvmTMB` response matrix is **multivariate**: a single fit can have many
@@ -192,6 +217,37 @@ The analogy with `drmTMB` partial bivariate pairs (where one of `y1`/`y2` can
 be observed) generalises here: an observed cell informs its own trait
 mean/loadings, but cross-trait species correlation is identified only from
 rows where both cells are co-observed.
+
+### Same mask in long format
+
+The `traits(...)` call above is the wide entry point; the response mask is
+defined on the stacked-long form it pivots to, so the identical fit can be
+written directly in long format. Here the data frame has one row per
+`(unit, trait)` observation, the response is the single stacked `value` column,
+the trait intercepts are `0 + trait`, and `unit =` names the between-unit
+grouping column. Setting `value` to `NA` on individual rows masks exactly those
+cells (kept `eval = FALSE`):
+
+```{r missing-response-long}
+# long_df: one row per (id, trait). Columns: id, trait (factor), x, value.
+# A few `value` cells set to NA are the masked response cells.
+# long_df$value[c(5, 17, 42)] <- NA
+#
+# fit_resp_long <- gllvmTMB(
+#   value ~ 0 + trait + (0 + trait):x,
+#   data    = long_df,
+#   unit    = "id",                 # between-unit grouping column
+#   family  = gaussian(),
+#   missing = miss_control(response = "include")
+# )
+```
+
+This long call and the wide `traits(...)` call are **co-equal inputs**: the
+wide form pivots to exactly this stacked-long layout before the likelihood is
+built, so `fit$missing_data`, `nobs()`, and `predict_missing()` behave
+identically whichever shape you pass. Use whichever matches how your data are
+already stored -- wide when you have a unit x trait matrix, long when the
+observations are already stacked.
 
 ## 3. Inspecting `fit$missing_data` and `nobs()`
 
@@ -298,9 +354,10 @@ the two cases are handled differently:
   with the joint mode plus a Gaussian curvature term, exactly as for any other
   random effect. The reported value is its conditional mode (EBLUP). This is
   the continuous path; its shipped instances are the Gaussian fixed-covariate
-  model of Phase 2a (Section 5a) and the grouped-covariate model of Phase 2b
-  (Section 5b), with structured (phylogenetic / spatial) covariate models
-  planned in Phases 3-4.
+  model of Phase 2a (Section 5a), the grouped-covariate model of Phase 2b
+  (Section 5b), and the phylogenetic species-level model of Phase 3
+  (Section 5c), with spatial / relatedness covariate models and the Level-2
+  joint field planned in Phase 4.
 - **Discrete predictors (exact finite-state summation) -- planned, Phase 5.**
   *When implemented*, a missing factor or ordinal covariate would be handled by
   finite summation rather than a Gaussian approximation: because such a
@@ -366,6 +423,39 @@ units carry their observed predictor value with `NA` standard error), and the
 same conditional modes are stored at
 `fit_pred$missing_data$predictors$body_mass$conditional_mode`.
 
+#### Same `mi()` model in long format
+
+As with the response mask, the `mi()` predictor route is defined on the
+stacked-long form, so the same model can be written directly in long format. The
+data frame has one row per `(unit, trait)`, the response is the stacked `value`
+column, `mi(x)` declares the missing predictor (a unit-level quantity, broadcast
+across that unit's trait rows), and `impute` supplies its covariate model. Set
+`x` to `NA` for every row of a missing unit (kept `eval = FALSE`):
+
+```{r missing-predictor-long}
+# long_df: one row per (id, trait). Columns: id, trait (factor), value, x, z.
+# x is a unit-level predictor; set it NA on ALL rows of each missing unit.
+# long_df$x[long_df$id %in% c("u3", "u11")] <- NA
+#
+# fit_pred_long <- gllvmTMB(
+#   value ~ 0 + trait + mi(x),
+#   data    = long_df,
+#   unit    = "id",
+#   family  = gaussian(),
+#   impute  = list(x = x ~ z),                     # bare = Gaussian sugar
+#   missing = miss_control(predictor = "model"),
+#   control = gllvmTMBcontrol(se = TRUE)
+# )
+#
+# imputed(fit_pred_long)   # one EBLUP conditional mode + SE per missing unit
+```
+
+The wide `traits(...)` form and this long `value ~ 0 + trait + ...` form are
+**co-equal inputs to the same stacked-long engine** -- the wide call pivots to
+this layout internally -- so `imputed()`, the predictor registry at
+`fit$missing_data$predictors`, and the conditional modes are identical whichever
+shape you pass.
+
 ### 5b. Predictor with grouped covariate model (Phase 2b, shipped)
 
 This route is **shipped**. It extends the Phase 2a Gaussian predictor model with
@@ -395,37 +485,64 @@ It is kept independent of the response random effects by default (Level-1
 independent default; Level-2 joint field is opt-in via
 `correlate_with = "response"`, deferred to Phase 4).
 The boundary holds at one grouped intercept: random slopes, more than one
-covariate random-effect term, a missing or single-level grouping variable, and
-structured (phylogenetic / spatial) covariate models all still error.
+covariate random-effect term, and a missing or single-level grouping variable
+all still error. Phylogenetic structured covariate models are their own shipped
+route (Section 5c); spatial, relatedness, and animal-model structures remain
+Phase 4.
 
-### 5c. Species-level predictor with phylogenetic covariate model (Phase 3, planned)
+### 5c. Species-level predictor with phylogenetic covariate model (Phase 3, shipped)
 
-This is the flagship case for ecology and is **planned, not yet shipped**: a
-missing species-level trait used as a predictor, with its imputation model
-inheriting phylogenetic structure (structured covariate models are rejected
-today). It also requires the species-level broadcast (Phase 2c). Before
-reaching for it, read the honesty caveat below: phylogenetic imputation helps
-only when phylogenetic signal is strong.
+This is the flagship case for ecology and is now **shipped**: a missing
+species-level predictor whose covariate model inherits phylogenetic structure.
+The `phylo(1 | species, tree = tree)` token in the `impute` formula does two
+things at once -- it keys the **species-level broadcast** (one latent value per
+missing species, broadcast to that species' observation rows; the Phase 2c
+machinery) and adds a **phylo-structured intercept** on the covariate mean, so a
+missing species' predictor borrows strength from its phylogenetic neighbours
+rather than only from the global mean. The covariate model is intercept-only on
+the phylo side; an ordinary observed covariate may still be added
+(`x ~ z + phylo(1 | species, tree = tree)`). Before reaching for it, read the
+honesty caveat below: phylogenetic imputation helps only when phylogenetic
+signal is strong.
 
 ```{r missing-predictor-phylo}
-# FILL: Phase 3 -- enable once phylo covariate model is wired.
-# Tiny fixture: n_species = 12, a minimal Brownian-motion tree, 3 missing
-# body_mass values at species level broadcast to observation rows.
+# Tiny fixture: a species-level body_mass trait, a Brownian-motion tree whose
+# tip labels match the `species` column, a few species entirely missing on
+# body_mass. The species factor keys the phylo field to the tree.
+# dat2$body_mass[dat2$species %in% c("sp3", "sp11")] <- NA
 #
 # fit_phy <- gllvmTMB(
 #   traits(trait1, trait2) ~ mi(body_mass) + moisture,
 #   family  = gaussian(),
 #   data    = cbind(dat2, Y2),
-#   impute  = list(
-#     body_mass = impute_model(
-#       body_mass ~ 1 + phylo(1 | species, tree = tiny_tree),
-#       family = gaussian()
-#     )
-#   ),
-#   missing = miss_control(predictor = "model")
+#   impute  = list(body_mass = body_mass ~ phylo(1 | species, tree = tree)),
+#   missing = miss_control(predictor = "model"),
+#   control = gllvmTMBcontrol(se = TRUE)
 # )
 #
-# imputed(fit_phy)
+# imputed(fit_phy)        # one EBLUP conditional mode + SE per missing species
+```
+
+The long-format equivalent is the same model with the stacked response, written
+`value ~ 0 + trait + (0 + trait):z + mi(body_mass)` with `unit = "id"`; the wide
+`traits(...)` and long forms are co-equal inputs to the same stacked-long engine
+(Section 5a), and the phylo broadcast keys to the `species` column either way.
+
+**Diagnosing the signal with `phylo_signal_mi()`.** Phylogenetic borrowing is
+trustworthy only when the predictor actually carries phylogenetic signal.
+`phylo_signal_mi(fit_phy)` reports an effective Pagel's lambda for the covariate
+model -- the fraction of species-level variance in the predictor explained by
+the phylo field relative to the i.i.d. residual -- and flags the weak case. It
+is a verification / interpretation aid, not part of the fit: it does not change
+estimates (kept `eval = FALSE`):
+
+```{r phylo-signal-mi}
+# diag <- phylo_signal_mi(fit_phy)
+# diag$lambda   # effective Pagel lambda: near 1 = strong signal, near 0 = weak
+# diag$weak     # TRUE when lambda is below `threshold` (default 0.1)
+#
+# # Emit an EBLUP-language warning for the weak case:
+# phylo_signal_mi(fit_phy, warn = TRUE)
 ```
 
 The honest starting point: phylogenetic imputation is **signal-dependent and
@@ -437,14 +554,15 @@ than -- or worse than -- simply analysing the complete cases
 Even the most accurate method tested by Johnson et al. (2021) gave inaccurate
 estimates under strong missingness bias, and a "significant" signal test is not
 the same as *strong* signal (Molina-Venegas 2024).
-This is exactly why a phylo-signal gate is planned as a Phase 3 verification
-check: it will warn when the estimated signal is too weak to trust the imputed
-values, and the design's intended behaviour is to degrade gracefully toward an
-independent (non-phylogenetic) covariate model when signal is weak.
+The implementation is built to respect this. As the phylo standard deviation
+goes to zero the covariate model **degrades gracefully** toward the independent
+(non-phylogenetic) Phase 2c model -- with no separate code path -- and
+`phylo_signal_mi()` flags the weak case so a too-weak signal does not pass
+silently.
 Trait databases are also typically MNAR (missing not at random): rare species
 with few measurements are systematically under-represented (Penone et al. 2014).
 The current implementation does not correct for MNAR; a delta-adjustment
-sensitivity analysis is a Phase 3+ gate, not a v1 argument.
+sensitivity analysis is a Phase 4+ gate, not a v1 argument.
 
 ### 5d. Multi-source and spatial covariate models (Phase 4, planned)
 
@@ -574,8 +692,8 @@ each completed dataset, pool) is the bridge when both are wanted.
 
 ## 7. Current boundaries
 
-The design deliberately keeps several features out of scope for the planned
-Phase 1 through Phase 3, independent of which phases have shipped:
+The design deliberately keeps several features out of scope for the shipped
+Phase 1 through Phase 3 layer, independent of which phases have shipped:
 
 - EM, profile, and REML missing-data engines are not implemented.
   `engine = "laplace"` is the only v1 option; `"em"` and `"profile"` are
@@ -596,8 +714,10 @@ Phase 1 through Phase 3, independent of which phases have shipped:
   are not implemented in this layer; see `pigauto` for the MI sister path.
 - Dense known sampling-covariance matrices with partial multivariate response
   rows are not implemented.
-- MNAR sensitivity, bootstrap-SE cross-checks, and phylo-signal reliability
-  diagnostics are Phase 3+ verification gates, not v1 API arguments.
+- MNAR sensitivity and bootstrap-SE cross-checks are Phase 4+ verification
+  gates, not v1 API arguments. (The phylo-signal reliability diagnostic shipped
+  with Phase 3 as `phylo_signal_mi()`, Section 5c -- a post-fit interpretation
+  aid, not a fit argument.)
 
 When you encounter one of these boundaries, treat the error as a design limit
 rather than a failed fit.

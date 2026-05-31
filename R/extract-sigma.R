@@ -576,7 +576,12 @@ extract_Sigma <- function(
   if (length(level) > 1L) {
     level <- match.arg(level)
   }
-  level <- .normalise_level(level, arg_name = "level", .skip_warn = .skip_warn)
+  kernel_level <- .kernel_level_alias(fit, level)
+  if (!is.null(kernel_level)) {
+    level <- kernel_level$internal_level
+  } else {
+    level <- .normalise_level(level, arg_name = "level", .skip_warn = .skip_warn)
+  }
   part <- match.arg(part)
   link_residual <- match.arg(link_residual)
 
@@ -799,8 +804,21 @@ extract_Sigma <- function(
   ## ---- Pull Lambda and S for the requested level -----------------------
   L <- NULL
   S <- NULL
-  level_label <- .canonical_level_name(level)
+  level_label <- if (!is.null(kernel_level)) {
+    kernel_level$name
+  } else {
+    .canonical_level_name(level)
+  }
   notes <- character(0)
+  if (!is.null(kernel_level)) {
+    notes <- c(
+      notes,
+      sprintf(
+        "Kernel tier '%s' uses the dense phylo-equivalent engine path (Design 65 C1).",
+        kernel_level$name
+      )
+    )
+  }
 
   if (identical(level, "B")) {
     if (isTRUE(fit$use$rr_B)) {
@@ -1139,6 +1157,21 @@ extract_Sigma <- function(
   }
 
   out
+}
+
+.kernel_level_alias <- function(fit, level) {
+  if (!is.character(level) || length(level) != 1L) {
+    return(NULL)
+  }
+  kernel_levels <- fit$kernel_levels
+  if (is.null(kernel_levels)) {
+    return(NULL)
+  }
+  name <- kernel_levels$name
+  if (!is.character(name) || length(name) != 1L || !identical(level, name)) {
+    return(NULL)
+  }
+  list(name = name, internal_level = kernel_levels$internal_level %||% "phy")
 }
 
 #' Print an augmented latent-slope Sigma extraction

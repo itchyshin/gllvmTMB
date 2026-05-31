@@ -18,6 +18,11 @@ Model Builder.
 | phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
 | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
+- Design 65 adds the generic dense-kernel quartet
+  `kernel_unique()`, `kernel_indep()`, `kernel_dep()`, and
+  `kernel_latent()` outside the source-specific 4 x 5 grid. In C1 it
+  must remain phylo-equivalent for dense `K` inputs to less than
+  `1e-6` before any C2 coevolution advertising.
 - The decomposition mode is `latent + unique` paired:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi, lowercase psi for the per-trait scalar entries; see
@@ -49,10 +54,11 @@ Model Builder.
    and a runnable example. The return-value contract for every
    exported `extract_*()` is recorded in
    `docs/design/06-extractors-contract.md`.
-3. Do not change formula grammar (the 4 x 5 keyword grid +
-   `traits()` LHS) without updating `docs/design/01-formula-grammar.md`
-   (the canonical grammar contract), the 4 x 5 grid table in this
-   file, and the parallel table in `CLAUDE.md`.
+3. Do not change formula grammar (the 4 x 5 keyword grid, the generic
+   `kernel_*()` tier, or `traits()` LHS) without updating
+   `docs/design/01-formula-grammar.md` (the canonical grammar
+   contract), the grid / kernel note in this file, and the parallel
+   table in `CLAUDE.md`.
 4. Do not change likelihood parameterisation in `src/gllvmTMB.cpp`
    without applying the `tmb-likelihood-review` skill and updating
    `docs/design/03-likelihoods.md`.

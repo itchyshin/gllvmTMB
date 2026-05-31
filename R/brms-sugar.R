@@ -2367,6 +2367,63 @@ rewrite_canonical_aliases <- function(formula) {
           return(new_call)
         }
       }
+      ## Generic dense-kernel keyword family (Design 65 C1).
+      ##
+      ## C1 deliberately reuses the phylo_rr dense relatedness path:
+      ## `kernel_latent(unit, K = A, d = q)` must be byte-equivalent to
+      ## `phylo_latent(unit, vcv = A, d = q)`. The `.kernel_*` markers are
+      ## metadata only; fit-multi.R uses them to expose `level = name` in
+      ## extract_Sigma() while the TMB data and parameters remain the proven
+      ## phylo-equivalent path.
+      if (
+        fn %in%
+          c("kernel_latent", "kernel_unique", "kernel_indep", "kernel_dep")
+      ) {
+        nm <- names(e)
+        if (is.null(nm) || !"K" %in% nm) {
+          cli::cli_abort(c(
+            "{.fn {fn}} requires a named {.arg K} matrix.",
+            ">" = "Use {.code {fn}(unit, K = K_matrix)}."
+          ))
+        }
+        K_expr <- e[[which(nm == "K")]]
+        name_expr <- if ("name" %in% nm) e[[which(nm == "name")]] else "kernel"
+        unit_arg <- e[[2L]]
+        kernel_meta <- list(
+          vcv = K_expr,
+          .kernel_name = name_expr,
+          .kernel_mode = sub("^kernel_", "", fn)
+        )
+        if (fn == "kernel_latent") {
+          d_val <- if ("d" %in% nm) e[[which(nm == "d")]] else 1L
+          return(as.call(c(
+            list(as.name("phylo_rr"), unit_arg),
+            list(d = d_val),
+            kernel_meta
+          )))
+        }
+        if (fn == "kernel_unique") {
+          return(as.call(c(
+            list(as.name("phylo_rr"), unit_arg),
+            list(.phylo_unique = TRUE),
+            kernel_meta
+          )))
+        }
+        if (fn == "kernel_indep") {
+          return(as.call(c(
+            list(as.name("phylo_rr"), unit_arg),
+            list(.phylo_unique = TRUE, .indep = TRUE),
+            kernel_meta
+          )))
+        }
+        if (fn == "kernel_dep") {
+          return(as.call(c(
+            list(as.name("phylo_rr"), unit_arg),
+            list(d = as.name(".deferred_n_traits"), .dep = TRUE),
+            kernel_meta
+          )))
+        }
+      }
       ## latent / unique / phylo_latent / spatial_unique: just rename the head
       if (fn %in% c("latent", "phylo_latent", "spatial_unique", "spatial")) {
         ## Stage 2.5 (May 2026): fail-loud against augmented LHS for the

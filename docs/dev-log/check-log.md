@@ -12094,3 +12094,278 @@ Deliberately not run / not done:
 - No article created yet. Advertising coevolution waits until C2.
 - No C1 engine PR yet because PR #367 overlaps the parser/extractor
   surfaces.
+
+## 2026-05-31 -- C1 dense kernel_* equivalence WIP
+
+Branch: `codex/kernel-c1-equivalence`.
+
+Scope: Design 65 C1 only. Started after C0 merged via #368
+(`6a467bf`) and after #367 merged the parser/extractor work that had
+previously blocked C1. Implemented a dense `kernel_*()` formula surface
+that deliberately routes through the existing phylo-equivalent
+dense/sparse relatedness path:
+
+- `kernel_latent(unit, K = A, d = q, name = "known")`
+- `kernel_unique(unit, K = A, name = "known")`
+- `kernel_indep(unit, K = A, name = "known")`
+- `kernel_dep(unit, K = A, name = "known")`
+
+Files currently changed in WIP:
+
+- `R/kernel-keywords.R` (new exported marker functions)
+- `R/brms-sugar.R` (rewrite `kernel_*()` to `phylo_rr(..., vcv = K)`
+  with `.kernel_*` metadata)
+- `R/fit-multi.R` (stores the named kernel level and refuses mixed
+  kernel/phylo terms in the same dense slot)
+- `R/extract-sigma.R` (`extract_Sigma(level = "<kernel name>")`
+  aliases to the phylo-equivalent tier while returning the kernel name)
+- `R/traits-keyword.R` (preserves kernel calls under wide
+  `traits(...)`)
+- `tests/testthat/test-kernel-equivalence.R`
+- `R/kernel-keywords.R` roxygen output: `man/kernel_latent.Rd`,
+  `NAMESPACE`, `_pkgdown.yml`
+- grammar cascade: `AGENTS.md`, `CLAUDE.md`,
+  `docs/design/01-formula-grammar.md`, `NEWS.md`
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,files,updatedAt,statusCheckRollup`
+  -> open PR #370 touches `docs/design/35-validation-debt-register.md`
+  and `tests/testthat/test-matrix-nbinom1.R`; open PR #369 touches only
+  Design 66 docs. No open PR touches the C1 code surfaces, AGENTS,
+  CLAUDE, Design 01, NEWS, or pkgdown.
+- Coordination comment posted on #370 because C1 must update the same
+  validation register after #370 clears:
+  `https://github.com/itchyshin/gllvmTMB/pull/370#issuecomment-4587527672`.
+- `gh pr view 370 --repo itchyshin/gllvmTMB --json ...` showed #370
+  CI green and mergeable, but its PR body explicitly says
+  `Do not merge -- review-gated`; C1 therefore holds the register edit
+  instead of merging #370.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed; wrote `NAMESPACE` and `kernel_latent.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel-equivalence")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 20`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check` -> clean.
+
+Update after #370 merged:
+
+- `gh pr list --state open` and
+  `git log --all --oneline --since="6 hours ago"` -> #370 is merged
+  into `origin/main`; new open PRs #371, #372, #373, and #369 remain.
+  #371 touches `R/brms-sugar.R`; #372 touches `R/fit-multi.R`,
+  `R/extract-sigma.R`, and
+  `docs/design/35-validation-debt-register.md`; #373 touches only
+  articles; #369 touches Design 66.
+- Shannon coordination audit: WARN. C1 local testing may continue, but
+  C1 should not open or edit the validation register while #372 owns the
+  same register/engine files unless the maintainer sets an explicit
+  merge order.
+- Coordination comments posted:
+  `https://github.com/itchyshin/gllvmTMB/pull/372#issuecomment-4587544301`
+  and
+  `https://github.com/itchyshin/gllvmTMB/pull/371#issuecomment-4587544754`.
+- `git stash push --include-untracked -m "codex c1 wip before rebase onto main"`
+  -> saved C1 WIP.
+- `git rebase origin/main` -> successfully rebased
+  `codex/kernel-c1-equivalence` onto merged #370.
+- `git stash pop` -> restored C1 WIP without conflicts.
+- `air --version` -> `air 0.9.0`.
+- `air format R/kernel-keywords.R R/brms-sugar.R R/extract-sigma.R R/fit-multi.R R/traits-keyword.R tests/testthat/test-kernel-equivalence.R`
+  -> completed; over-formatted tracked legacy files, so the formatting
+  churn was trimmed back.
+- `git restore R/fit-multi.R` and `git restore R/extract-sigma.R`
+  -> removed unrelated formatter churn; C1 edits were reapplied with
+  scoped patches.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed after the #370 rebase.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel-equivalence")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 20`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check` -> clean.
+- Added an explicit bare-latent C1 gate because the maintainer handoff
+  named `kernel_latent(K = A) == phylo_latent(vcv = A)` separately
+  from the paired `kernel_latent + kernel_unique` route.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel-equivalence")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 26`.
+- `git diff --check` -> clean.
+- Added full companion-mode fit equivalence checks for
+  `kernel_unique()`, `kernel_indep()`, and `kernel_dep()` against the
+  corresponding dense `phylo_*()` `vcv = A` paths. This replaces the
+  earlier parser-only evidence for the companion modes.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel-equivalence")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 38`.
+- Prose-style pass (Pat/Rose lens) on the touched NEWS and Design 01
+  C1 wording: updated both to say the companion modes now have direct
+  fit-equivalence evidence, not only parser metadata.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check` -> clean.
+- Added non-public article planning note:
+  `docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md`. It
+  records that the eventual phylogenetic/coevolution article must wait
+  for C2, include paired long-format and wide `traits(...)` examples,
+  show `extract_Gamma()` and null-vs-cross evidence, and pass rendered
+  figure/prose gates before publication.
+- Added draft C1 after-task report:
+  `docs/dev-log/after-task/2026-05-31-kernel-c1-equivalence.md`.
+  It is explicitly marked pre-PR because the validation-register update
+  and Rose closeout remain held until the #371/#372 overlap clears.
+- Posted C1 readiness / hold-status handoff to issue #361:
+  `https://github.com/itchyshin/gllvmTMB/issues/361#issuecomment-4587590538`.
+  The comment records the 38-pass equivalence evidence, the #371/#372
+  overlap, and the next action after the merge order clears.
+- Rose pre-publish audit scans:
+  `rg -n "kernel_latent|kernel_unique|kernel_indep|kernel_dep|make_cross_kernel|extract_Gamma|KER-02|COE-02|IN:|PARTIAL:|PLANNED:" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md _pkgdown.yml`
+  -> expected C1 keyword and scope-boundary hits; `extract_Gamma()`
+  appears only as C2/planned in touched public surfaces.
+- Rose scan:
+  `rg -n "gllvmTMB_wide|relmat.*deprecat|deprecat.*relmat|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md`
+  -> C1-specific hits are only the article-plan warning not to use
+  `gllvmTMB_wide()` as the main route and the later relmat
+  deprecation boundary. Other hits are existing meta / wide API text in
+  Design 01 and NEWS.
+- Rose scan:
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(S\\)|diag\\(U\\)|diag\\(s\\)" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md tests/testthat/test-kernel-equivalence.R`
+  -> no matches.
+- Rose scan:
+  `rg -n "gllvmTMB\\(" R/kernel-keywords.R man/kernel_latent.Rd tests/testthat/test-kernel-equivalence.R NEWS.md docs/design/01-formula-grammar.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md`
+  -> new C1 examples are wide `traits(...)` examples; no new
+  long-format public example omits `trait =`.
+- Rose export / pkgdown parity scan:
+  `rg -n "^#' @export|kernel_latent|kernel_unique|kernel_indep|kernel_dep|make_cross_kernel" R/kernel-keywords.R R/kernel-helpers.R _pkgdown.yml NAMESPACE`
+  -> `kernel_latent` topic covers all four C1 aliases in `_pkgdown.yml`
+  and all four are exported in `NAMESPACE`; existing `make_cross_kernel`
+  remains exported and indexed.
+- Rose validation-register cross-check:
+  `rg -n "^\\| (KER-02|COE-02)" docs/design/35-validation-debt-register.md`
+  -> KER-02 and COE-02 are still `blocked` in the current worktree.
+  Result: Rose pre-publish status is FAIL / HOLD until #372 clears and
+  C1 updates Design 35 (`KER-02` covered, `COE-02` still gated for C2).
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `1 warning`, `4 notes`, exit code 1 because warnings
+  are treated as failure by `devtools::check()`. Same known package-level
+  shape as C0: install-stage warning under quiet output, top-level
+  `air.toml` note, NEWS heading version-info note, unused `nlme` import
+  note, and visible binding / `stats::residuals` note. No C1-specific
+  test failure surfaced.
+- Integration preflight in a throwaway worktree:
+  `git fetch origin pull/371/head:refs/tmp/c1-preflight-pr371 pull/372/head:refs/tmp/c1-preflight-pr372`
+  then `git merge --no-edit refs/tmp/c1-preflight-pr371 refs/tmp/c1-preflight-pr372`
+  -> temporary octopus merge of #371 + #372 succeeded.
+- `git apply --check /tmp/gll-c1-patch.XXXXXX.patch` on that
+  temporary merged tree -> clean.
+- After applying the tracked C1 patch and copying the new C1 files into
+  the temporary merged tree,
+  `Rscript --vanilla -e 'devtools::test(filter = "kernel-equivalence")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 26`.
+
+Current hold:
+
+- Do not commit or open the C1 PR until the overlap with #371/#372 is
+  resolved or the maintainer sets a merge order. Required register
+  movement remains: KER-02 from blocked to covered with
+  `test-kernel-equivalence.R` evidence; COE-02 remains blocked/partial
+  until C2 known-`Gamma` recovery, null-vs-cross logLik separation,
+  loading-constraint verification, and single-`W` sensitivity.
+
+Deliberately not run / not done:
+
+- No full `devtools::test()` or `devtools::check()` for C1 yet.
+- No C2 code, no `extract_Gamma()`, no article, and no public
+  coevolution recovery claim.
+- No validation-register edit while #370 is review-gated on the same
+  file.
+
+Update after team-state sweep and rebases through #398:
+
+- User checkpoint: "do check what gllvmTMB team did - they might be
+  ahead of you - do not reinvent the wheel."
+- `git fetch --all --prune && git log --all --oneline --decorate --since="12 hours ago" --grep="kernel\\|coevol\\|Design 65\\|Gamma\\|extract_Gamma" -i`
+  -> remote `origin/agent/design-65-coevolution-kernel` and
+  `origin/codex/kernel-c0-coevolution` were deleted after merge; current
+  main has Design 65 (#360) and C0 (#368), but no C1/C2 implementation.
+- `git branch -r | rg -i "kernel|coevol|cross|gamma|design-65|c1|c2|phylo"`
+  -> after prune, no live remote C1/C2 kernel branch remains.
+- `gh pr list --state all --search "kernel OR coevolution OR \"Design 65\" OR extract_Gamma OR Gamma" --json number,title,state,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,isDraft,updatedAt,closedAt,mergedAt,url --limit 50`
+  -> kernel hits are merged #360 (Design 65), merged #368 (C0), and
+  unrelated slope/family work; no open C1/C2 kernel PR.
+- `gh issue view 361 --comments --json number,title,state,updatedAt,body,comments,url`
+  -> latest kernel comment was the earlier C1 hold note from this
+  branch; no team comment superseded the C1 plan.
+- `git grep -n -E "kernel_latent|kernel_unique|kernel_indep|kernel_dep|extract_Gamma|make_cross_kernel" origin/main -- R tests docs/design man NAMESPACE _pkgdown.yml NEWS.md`
+  -> `origin/main` contains `make_cross_kernel` / C0 and Design 65
+  planned text only; `kernel_latent` quartet and `extract_Gamma()` are
+  not implemented on main.
+- Open-PR overlap check:
+  `gh pr view 395 --json files --jq '.files[].path'`;
+  `gh pr view 396 --json files --jq '.files[].path'`;
+  `gh pr view 397 --json files --jq '.files[].path'`
+  -> #395 touched `_pkgdown.yml` article navigation, #396 touched
+  `docs/design/35-validation-debt-register.md` FG/FAM rows, and #397
+  touched articles. C1's `_pkgdown.yml` reference-topic addition is
+  line-independent from #395; #396 overlapped Design 35 as a file.
+- Coordination comment posted on #396:
+  `gh pr comment 396 --body "..."`
+  -> `https://github.com/itchyshin/gllvmTMB/pull/396#issuecomment-4588032528`.
+- Rebased C1 through #394:
+  `git stash push -u -m "codex kernel c1 wip before second main rebase" && git fetch origin && git rebase origin/main && git stash pop`
+  -> clean.
+- Rebased C1 through #396 and #398:
+  `git stash push -u -m "codex kernel c1 wip before third main rebase" && git fetch origin && git rebase origin/main && git stash pop`
+  -> clean; Design 35 auto-merged with #396.
+- Current main after rebase:
+  `git log --oneline --decorate -8`
+  -> `0792aa0 Merge pull request #398 from itchyshin/missing-data-bugfix`
+  at `origin/main`.
+- `rg -n "^\\| (FG-07|FG-08|FG-09|FAM-07|KER-02|COE-02)" docs/design/35-validation-debt-register.md`
+  -> #396 FG/FAM updates are present; C1 KER-02 is `covered`;
+  COE-02 remains `blocked`.
+- C1 dense-only scope correction:
+  `rg -n "dense/sparse|sparse precision" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-05-31-kernel-c1-equivalence.md docs/dev-log/check-log.md R/brms-sugar.R`
+  -> found overbroad new C1 wording; patched public C1 text to dense
+  PSD `K` / dense `vcv` path. Existing non-C1 phylo sparse precision
+  text in NEWS remains unchanged.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed after dense-only wording correction; rewrote
+  `man/kernel_latent.Rd`.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel-equivalence")'`
+  -> latest run `FAIL 0 | WARN 0 | SKIP 0 | PASS 38`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `git diff --check` -> clean.
+- `tail -5 man/kernel_latent.Rd && grep -c '^\\keyword' man/kernel_latent.Rd || true`
+  -> final lines close the example block cleanly; keyword count `0`.
+- Rose / pre-publish scans:
+  `rg -n "kernel_latent|kernel_unique|kernel_indep|kernel_dep|make_cross_kernel|extract_Gamma|KER-02|COE-02|IN:|PARTIAL:|PLANNED:" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md _pkgdown.yml`
+  -> expected C1 and scope-boundary hits; `extract_Gamma()` remains C2.
+- Rose / stale alias scan:
+  `rg -n "gllvmTMB_wide|relmat.*deprecat|deprecat.*relmat|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md`
+  -> expected legacy/migration references only; C1 does not ship relmat
+  deprecation.
+- Rose / notation scan:
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|diag\\(S\\)|diag\\(U\\)|diag\\(s\\)" R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/dev-log/spikes/2026-05-31-coevolution-article-plan.md tests/testthat/test-kernel-equivalence.R`
+  -> no matches.
+- Rose / validation rows:
+  `rg -n "^\\| (KER-02|COE-02)" docs/design/35-validation-debt-register.md`
+  -> `KER-02` covered; `COE-02` blocked.
+- Full local check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `3 warnings`, `4 notes`, exit code 1. Warnings are
+  outside C1: `impute_model.Rd` missing `mi` anchor,
+  `gllvmTMB.Rd` undocumented `impute`, and install-stage warning. Notes:
+  top-level `air.toml`, NEWS heading version extraction, unused `nlme`,
+  and existing predictive-diagnostic visible bindings /
+  `stats::residuals`. Not patched in the kernel lane.
+
+Current status:
+
+- C1 implementation is locally PR-ready after rebasing through #398.
+- Open PRs #395, #397, #390, #374, and #369 are not kernel C1/C2 work;
+  #395's `_pkgdown.yml` article-navigation edit is line-independent
+  from the C1 reference-topic addition.
+- Still not done: no C2 code, no `extract_Gamma()`, no coevolution
+  recovery claim, and no public coevolution article.

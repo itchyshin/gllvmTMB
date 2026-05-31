@@ -496,6 +496,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phy_is_dep     <- vapply(phy_idx_main, function(i)
                            isTRUE(parsed$covstructs[[i]]$extra$.dep),
                            logical(1L))
+  phy_kernel_name <- vapply(phy_idx_main, function(i) {
+    val <- parsed$covstructs[[i]]$extra$.kernel_name
+    if (is.null(val)) NA_character_ else as.character(val)
+  }, character(1L))
+  has_kernel_term <- any(!is.na(phy_kernel_name))
+  kernel_name <- NULL
+  if (has_kernel_term) {
+    if (any(is.na(phy_kernel_name))) {
+      cli::cli_abort(c(
+        "{.fn kernel_*} terms cannot be mixed with {.fn phylo_*} terms in C1.",
+        "i" = "The dense kernel path reuses the phylo-equivalent engine slot; use either all {.fn kernel_*} terms or all {.fn phylo_*} terms for that tier."
+      ))
+    }
+    if (any(!nzchar(phy_kernel_name))) {
+      cli::cli_abort(
+        "{.arg name} in {.fn kernel_*} terms must be a non-empty string."
+      )
+    }
+    unique_kernel_names <- unique(phy_kernel_name)
+    if (length(unique_kernel_names) != 1L) {
+      cli::cli_abort(c(
+        "{.fn kernel_*} terms in the same formula must use one {.arg name}.",
+        "i" = "Got names: {.val {unique_kernel_names}}."
+      ))
+    }
+    kernel_name <- unique_kernel_names
+  }
   phylo_rr_idx   <- phy_idx_main[!phy_is_unique]   # phylo_latent + phylo_dep terms
   phylo_diag_idx <- phy_idx_main[ phy_is_unique]   # phylo_unique terms (incl. phylo_indep)
   if (length(phylo_latent_slope_idx) > 1L)
@@ -2967,6 +2994,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## via theta_dep_chol). extract_Sigma() keys on
                           ## it to surface the reported Sigma_b_dep.
                           phylo_dep_slope = isTRUE(use_phylo_dep_slope),
+                          kernel = isTRUE(has_kernel_term),
                           ## Augmented SPDE random slopes (Design 64). DISTINCT
                           ## from the intercept-only spatial_dep / spatial_latent
                           ## flags above. spde_slope marks the base
@@ -2983,6 +3011,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           spde_dep_slope = isTRUE(use_spde_dep_slope),
                           spde_latent_slope = isTRUE(use_spde_latent_slope),
                           re_int = use_re_int),
+      kernel_levels = if (has_kernel_term) {
+                        list(name = kernel_name, internal_level = "phy")
+                      } else NULL,
       re_int       = if (use_re_int) list(
                        groups   = re_int_groups,
                        n_groups = re_int_n_groups,

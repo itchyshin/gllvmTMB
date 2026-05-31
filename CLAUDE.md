@@ -29,6 +29,10 @@ does NOT do" section), see
 - Use the canonical 4 x 5 keyword grid (correlation x mode):
   `latent`, `unique`, `indep`, `dep`, `scalar`, with `phylo_*` and
   `spatial_*` variants plus the `animal_*` known-pedigree row.
+- Design 65 adds the generic dense-kernel quartet outside that
+  source-specific grid: `kernel_unique()`, `kernel_indep()`,
+  `kernel_dep()`, and `kernel_latent()`. C1 must stay
+  phylo-equivalent for dense `K` inputs to less than `1e-6`.
 - The decomposition mode is the `latent + unique` pair:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi; see `decisions.md` 2026-05-14 notation reversal).

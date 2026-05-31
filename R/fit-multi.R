@@ -240,6 +240,49 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   use_propto <- any(kinds == "propto")
   use_equalto <- any(kinds == "equalto")
   use_spde   <- any(kinds == "spde")
+  ## ---- BASE augmented SPDE random-slope detection (Design 60 §3.4) -------
+  ## spatial_unique(1 + x | coords) / spatial_indep(1 + x | coords) route to
+  ## an `spde` covstruct carrying the `.spatial_unique_augmented` marker (and,
+  ## for the indep diagonal special case, `.spatial_indep_augmented`). When
+  ## present we drive the now-integrated base SPDE slope engine
+  ## (use_spde_slope): a SECOND SPDE field on the covariate with a 2x2
+  ## cross-field covariance. The augmented field REPLACES the intercept-only
+  ## per-trait field, so use_spde is turned off on this path (the augmented
+  ## block reuses the same mesh / Q_base / log_kappa_spde).
+  spde_aug_idx <- which(vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    identical(cs$kind, "spde") && isTRUE(cs$extra$.spatial_unique_augmented)
+  }, logical(1L)))
+  use_spde_slope <- length(spde_aug_idx) > 0L
+  if (length(spde_aug_idx) > 1L) {
+    cli::cli_abort("Only one augmented spatial random-regression term is supported per formula.")
+  }
+  spde_slope_cs <- if (use_spde_slope) parsed$covstructs[[spde_aug_idx[1L]]] else NULL
+  use_spde_slope_indep <- isTRUE(spde_slope_cs$extra$.spatial_indep_augmented)
+  spde_slope_lhs_form <- if (use_spde_slope) {
+    spde_slope_cs$extra$lhs_form %||% "unsupported"
+  } else "none"
+  spde_slope_xcol <- if (use_spde_slope) {
+    sc <- spde_slope_cs$extra$slope_col
+    if (is.null(sc) || !nzchar(sc)) {
+      cli::cli_abort("Internal: augmented spatial random regression is missing {.code slope_col}.")
+    }
+    sc
+  } else NA_character_
+  if (use_spde_slope) {
+    ## The augmented SPDE field supersedes the intercept-only per-trait field.
+    use_spde <- FALSE
+    ## Gaussian anchor only in this slice (Design 60 §3.4; non-Gaussian SPDE
+    ## random slopes are deferred Phase B work). Fail loud so the matrix-slope
+    ## non-Gaussian skeletons keep skipping at construction (no silent path).
+    if (any(family_id_vec != 0L)) {
+      cli::cli_abort(c(
+        "{.fn spatial_unique} / {.fn spatial_indep} random slopes are validated for {.code gaussian()} only in this release.",
+        "i" = "The augmented {.code spatial_unique(1 + x | coords)} non-Gaussian cells are deferred (Design 60 sections 3.4-3.5).",
+        ">" = "Use a Gaussian family for the base SPDE augmented random-regression fit."
+      ))
+    }
+  }
   ## ---- "indep" keyword over-parameterisation guards --------------------
   ## The clean quartet is documented in `R/brms-sugar.R`:
   ##   * `latent + unique` is the decomposition mode (paired).
@@ -1278,7 +1321,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   spde_M0 <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)
   spde_M1 <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)
   spde_M2 <- Matrix::Matrix(0, nrow = 1, ncol = 1, sparse = TRUE)
-  if (use_spde) {
+  ## The base SPDE slope engine (use_spde_slope) reuses the same mesh / Q_base
+  ## machinery (A_proj, spde_M0/M1/M2, n_mesh), so build it on that path too.
+  if (use_spde || use_spde_slope) {
     if (is.null(mesh))
       cli::cli_abort("{.fn spatial_unique}/{.fn spatial_scalar}/{.fn spatial_latent} found in formula but {.arg mesh} is NULL.")
     if (!inherits(mesh, "sdmTMBmesh"))
@@ -1294,6 +1339,39 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     spde_M0  <- mesh$spde$c0
     spde_M1  <- mesh$spde$g1
     spde_M2  <- mesh$spde$g2
+  }
+
+  ## ---- BASE augmented SPDE slope (Design 60 §3.4) -----------------------
+  ## Second SPDE field on a covariate with a 2x2 cross-field covariance,
+  ## prior vec(Omega) ~ N(0, Sigma_field (x) Q^-1) on the same mesh / Q_base.
+  ## Activated by spatial_unique(1 + x | coords) / spatial_indep(1 + x | coords)
+  ## via the `.spatial_unique_augmented` marker (use_spde_slope, set above).
+  ## n_lhs_cols_spde = 2: column 0 = intercept ones, column 1 = the covariate.
+  ## Both wide (`1 + x`) and long (`0 + trait + (0 + trait):x`) surfaces build
+  ## the SAME 2-column Z_spde_aug, preserving the Design 55 §3 wide<->long
+  ## byte-identity contract. The C++ dimension asserts (src/gllvmTMB.cpp:925-938)
+  ## are the fail-loud backstop -- they are NOT bypassed here.
+  n_lhs_cols_spde <- if (use_spde_slope) 2L else 1L
+  Z_spde_aug      <- array(0.0, dim = c(n_obs, n_lhs_cols_spde))
+  if (use_spde_slope) {
+    if (
+      !spde_slope_lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+    ) {
+      cli::cli_abort(c(
+        "Unsupported augmented spatial random-regression LHS.",
+        "i" = "Got LHS form {.val {spde_slope_lhs_form}}.",
+        ">" = "Use {.code spatial_unique(1 + x | coords)} or {.code spatial_unique(0 + trait + (0 + trait):x | coords)}."
+      ))
+    }
+    if (!spde_slope_xcol %in% names(data)) {
+      cli::cli_abort(c(
+        "{.code spatial_unique(1 + {spde_slope_xcol} | coords)} references column {.val {spde_slope_xcol}}, which is not in {.arg data}.",
+        "i" = "Add the covariate column to the data frame."
+      ))
+    }
+    Z_spde_aug[, 1L] <- 1.0
+    Z_spde_aug[, 2L] <- as.numeric(data[[spde_slope_xcol]])
   }
 
   ## ---- equalto (known V) preparation ------------------------------------
@@ -1436,6 +1514,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     spde_M0          = spde_M0,
     spde_M1          = spde_M1,
     spde_M2          = spde_M2,
+    ## BASE augmented SPDE slope. Parser-activated for spatial_unique / spatial_indep
+    ## x Gaussian via the .spatial_unique_augmented / .spatial_indep_augmented markers;
+    ## use_spde_slope is driven live by those markers. When 0, the stubs keep
+    ## MakeADFun()'s data/parameter contract consistent (no slope field added).
+    use_spde_slope   = as.integer(use_spde_slope),
+    n_lhs_cols_spde  = as.integer(n_lhs_cols_spde),
+    Z_spde_aug       = Z_spde_aug,
     family_id_vec    = as.integer(family_id_vec),
     link_id_vec      = as.integer(link_id_vec),
     n_ordinal_cuts_per_trait = as.integer(n_ordinal_cuts_per_trait),
@@ -1519,6 +1604,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                         } else 0.0,
     omega_spde_lv = matrix(0, nrow = n_mesh,
                            ncol = if (is_spatial_latent) d_spde_lv else 1L),
+    ## BASE augmented SPDE slope params (dormant; mapped off when inactive).
+    omega_spde_aug   = array(0.0, dim = c(n_mesh, n_lhs_cols_spde)),
+    log_sd_spde_b    = rep(0.0, n_lhs_cols_spde),
+    atanh_cor_spde_b = numeric(n_lhs_cols_spde * (n_lhs_cols_spde - 1L) / 2L),
     theta_rr_phy = if (use_phylo_rr) {
                      init_rr_theta_pkg <- function(p, rank)
                        c(rep(0.5, rank), rep(0.0, p * rank - rank * (rank - 1L) / 2L - rank))
@@ -1834,7 +1923,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   if (!use_spde) {
     tmb_map$log_tau_spde   <- factor(rep(NA_integer_, length(tmb_params$log_tau_spde)))
-    tmb_map$log_kappa_spde <- factor(NA_integer_)
+    ## The base SPDE slope engine (use_spde_slope) builds Q_base from
+    ## log_kappa_spde, so keep kappa FREE on that path even though the
+    ## intercept-only per-trait fields (log_tau_spde, omega_spde) are off.
+    if (!use_spde_slope) {
+      tmb_map$log_kappa_spde <- factor(NA_integer_)
+    }
     tmb_map$omega_spde     <- factor(rep(NA_integer_, length(tmb_params$omega_spde)))
   }
   if (!is_spatial_latent) {
@@ -1874,6 +1968,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## C++ prior reduces to block-diagonal Sigma_b (rho = tanh(0) = 0).
     tmb_params$atanh_cor_b[] <- 0
     tmb_map$atanh_cor_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_b)))
+  }
+  ## BASE augmented SPDE slope: map all params off while dormant.
+  if (!use_spde_slope) {
+    tmb_map$omega_spde_aug   <- factor(rep(NA_integer_, length(tmb_params$omega_spde_aug)))
+    tmb_map$log_sd_spde_b    <- factor(rep(NA_integer_, length(tmb_params$log_sd_spde_b)))
+    if (length(tmb_params$atanh_cor_spde_b) > 0L) {
+      tmb_map$atanh_cor_spde_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_spde_b)))
+    }
+  } else if (use_spde_slope_indep && length(tmb_params$atanh_cor_spde_b) > 0L) {
+    ## spatial_indep: hold the intercept-slope cross-field correlation at its
+    ## init (0) so the C++ prior reduces to a DIAGONAL Sigma_field
+    ## (rho = tanh(0) = 0). Same engine as spatial_unique; only the rho map
+    ## differs (Design 60 §3.5). Mirrors the phylo_indep atanh_cor_b NA-pin.
+    tmb_params$atanh_cor_spde_b[] <- 0
+    tmb_map$atanh_cor_spde_b <- factor(rep(NA_integer_, length(tmb_params$atanh_cor_spde_b)))
   }
   if (!use_phylo_latent_slope) {
     tmb_map$theta_rr_phy_slope <-
@@ -2137,6 +2246,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_equalto) random <- c(random, "e_eq")
   if (use_spde && !is_spatial_latent) random <- c(random, "omega_spde")
   if (is_spatial_latent)              random <- c(random, "omega_spde_lv")
+  if (use_spde_slope)                 random <- c(random, "omega_spde_aug")
   if (use_phylo_rr) random <- c(random, "g_phy")
   if (use_phylo_diag) random <- c(random, "g_phy_diag")
   if (use_phylo_slope_correlated) {

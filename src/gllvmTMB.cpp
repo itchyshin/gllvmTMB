@@ -96,6 +96,21 @@ Type objective_function<Type>::operator()()
   DATA_SPARSE_MATRIX(spde_M1);
   DATA_SPARSE_MATRIX(spde_M2);
 
+  // BASE augmented SPDE slope (spatial_unique 1 + x | coords).
+  // Dormant unless use_spde_slope == 1. A SECOND SPDE field on the
+  // covariate x is added on the SAME mesh / SAME Q_base (same kappa)
+  // as the intercept field; the two node-level fields
+  // (omega_alpha, omega_beta) share a 2x2 cross-field covariance
+  // Sigma_field, giving the matrix-normal prior
+  //   vec(Omega) ~ N(0, Sigma_field (x) Q^{-1}),   Omega = [omega_a | omega_b].
+  // eta(o) += (A_proj omega_a)(o) + x(o) * (A_proj omega_b)(o)
+  //         = sum_j (A_proj omega_j)(o) * Z_spde_aug(o, j).
+  // Sigma_field absorbs the field marginal variances (no separate tau),
+  // mirroring how spde_lv absorbs scale into Lambda_spde.
+  DATA_INTEGER(use_spde_slope);    // 0 = dormant (default); 1 = base augmented SPDE slope
+  DATA_INTEGER(n_lhs_cols_spde);   // block-local LHS columns: 1 (slope-only) or 2 (intercept + slope)
+  DATA_ARRAY(Z_spde_aug);          // n_obs x n_lhs_cols_spde (col 0 = 1's; col 1 = x covariate)
+
   // Stage-33 + 37: response family. family_id_vec is length n_obs;
   // each entry picks the family for that observation:
   //   0 = Gaussian (identity link)
@@ -298,6 +313,14 @@ Type objective_function<Type>::operator()()
   // absorbed into Lambda_spde so omega_spde_lv has prior N(0, Q_base^{-1}).
   PARAMETER_VECTOR(theta_rr_spde_lv);            // packed Lambda_spde (n_traits x spde_lv_k)
   PARAMETER_MATRIX(omega_spde_lv);               // n_mesh x spde_lv_k
+
+  // BASE augmented SPDE slope: the (intercept, slope) spatial field and its
+  // 2x2 cross-field covariance Sigma_field. Dormant unless use_spde_slope==1.
+  // Same scalable-name scheme as the phylo augmented block (log_sd_b /
+  // atanh_cor_b): Sigma_field is built from log_sd_spde_b + atanh_cor_spde_b.
+  PARAMETER_ARRAY(omega_spde_aug);               // n_mesh x n_lhs_cols_spde (col 0 = alpha; col 1 = beta)
+  PARAMETER_VECTOR(log_sd_spde_b);               // length n_lhs_cols_spde
+  PARAMETER_VECTOR(atanh_cor_spde_b);            // length n_lhs_cols_spde*(n_lhs_cols_spde-1)/2
 
   // Stage-35 PGLLVM: phylogenetic reduced-rank loadings + species factors.
   PARAMETER_VECTOR(theta_rr_phy);                // packed lower-triangular Lambda_phy
@@ -884,6 +907,87 @@ Type objective_function<Type>::operator()()
     REPORT(kappa);
   }
 
+  // -------- BASE augmented SPDE slope: vec(Omega) ~ N(0, Sigma_field (x) Q^-1)
+  // Omega = [omega_alpha | omega_beta] is n_mesh x n_lhs_cols_spde, drawn on
+  // the SAME mesh / Q_base (same kappa) as the intercept field. Sigma_field is
+  // the 2x2 cross-field covariance, shared across traits (BASE unique case).
+  //
+  // The negative-log-density is computed by REUSING density::GMRF(Q_base):
+  //   GMRF(Q)(x) = 0.5*( n log(2pi) - logdet(Q) + x' Q x )   [TMB convention]
+  // For the 2-column matrix-normal prior with precision Sigma_field^-1 (x) Q,
+  //   nll = GMRF(Q)(om0) + GMRF(Q)(om1)               // gives 2n log2pi - 2 logdetQ + q00 + q11
+  //       + 0.5 * n_mesh * logdet(Sigma_field)
+  //       + 0.5 * [ (Sinv00 - 1) q00 + (Sinv11 - 1) q11 + 2 Sinv01 q01 ]
+  // where qij = om_i' Q om_j (sparse Q via GMRF::Quadform / Q*x). This uses
+  // ONLY the sparse SPDE machinery already exercised by the per-trait path
+  // above; no new atomic / sparse-solve op is introduced. Validated against a
+  // dense Sigma_field (x) Q^-1 MVN density to < 1e-9 (see tests).
+  if (use_spde_slope == 1) {
+    if (n_lhs_cols_spde < 1 || n_lhs_cols_spde > 2)
+      error("gllvmTMB_multi: n_lhs_cols_spde must be 1 or 2 in the base SPDE slope");
+    if (omega_spde_aug.dim.size() != 2)
+      error("gllvmTMB_multi: omega_spde_aug must be a 2D array");
+    if (omega_spde_aug.dim[1] != n_lhs_cols_spde || Z_spde_aug.dim[1] != n_lhs_cols_spde)
+      error("gllvmTMB_multi: n_lhs_cols_spde does not match augmented SPDE arrays");
+    if (Z_spde_aug.dim[0] != y.size())
+      error("gllvmTMB_multi: Z_spde_aug first dimension must equal n_obs");
+    if (log_sd_spde_b.size() != n_lhs_cols_spde)
+      error("gllvmTMB_multi: log_sd_spde_b has wrong length");
+    int n_cor_spde = n_lhs_cols_spde * (n_lhs_cols_spde - 1) / 2;
+    if (atanh_cor_spde_b.size() != n_cor_spde)
+      error("gllvmTMB_multi: atanh_cor_spde_b has wrong length");
+
+    Type kappa_s  = exp(log_kappa_spde);
+    Type kappa_s2 = kappa_s * kappa_s;
+    Type kappa_s4 = kappa_s2 * kappa_s2;
+    Eigen::SparseMatrix<Type> Q_slope =
+      kappa_s4 * spde_M0 + Type(2.0) * kappa_s2 * spde_M1 + spde_M2;
+    density::GMRF_t<Type> gmrf_slope(Q_slope);
+
+    vector<Type> sd_spde_b(n_lhs_cols_spde);
+    for (int j = 0; j < n_lhs_cols_spde; j++) sd_spde_b(j) = exp(log_sd_spde_b(j));
+    REPORT(sd_spde_b);
+
+    if (n_lhs_cols_spde == 1) {
+      // Slope-only: omega_beta ~ N(0, sd^2 Q^-1) == SCALE(GMRF(Q), sd).
+      vector<Type> om0(omega_spde_aug.dim[0]);
+      for (int i = 0; i < omega_spde_aug.dim[0]; i++) om0(i) = omega_spde_aug(i, 0);
+      nll += SCALE(gmrf_slope, sd_spde_b(0))(om0);
+    } else {
+      Type rho = tanh(atanh_cor_spde_b(0));
+      Type one_minus_rho2 = Type(1) - rho * rho;
+      Type Sinv00 =  Type(1) / (sd_spde_b(0) * sd_spde_b(0) * one_minus_rho2);
+      Type Sinv11 =  Type(1) / (sd_spde_b(1) * sd_spde_b(1) * one_minus_rho2);
+      Type Sinv01 = -rho / (sd_spde_b(0) * sd_spde_b(1) * one_minus_rho2);
+      Type logdet_Sigma_field = Type(2) * log_sd_spde_b(0)
+                              + Type(2) * log_sd_spde_b(1)
+                              + log(one_minus_rho2);
+      vector<Type> cor_spde_b(1);
+      cor_spde_b(0) = rho;
+      REPORT(cor_spde_b);
+
+      int n_node = omega_spde_aug.dim[0];
+      vector<Type> om0(n_node), om1(n_node);
+      for (int i = 0; i < n_node; i++) {
+        om0(i) = omega_spde_aug(i, 0);
+        om1(i) = omega_spde_aug(i, 1);
+      }
+      Type q00 = gmrf_slope.Quadform(om0);                 // om0' Q om0
+      Type q11 = gmrf_slope.Quadform(om1);                 // om1' Q om1
+      Type q01 = (om0 * (Q_slope * om1.matrix()).array()).sum();  // om0' Q om1
+
+      // Two single-field GMRF calls supply 2n log2pi - 2 logdetQ + q00 + q11.
+      nll += gmrf_slope(om0);
+      nll += gmrf_slope(om1);
+      // Sigma_field log-determinant + the off-diagonal / rescaled quadratic.
+      nll += Type(0.5) * Type(n_node) * logdet_Sigma_field
+           + Type(0.5) * ((Sinv00 - Type(1)) * q00
+                          + (Sinv11 - Type(1)) * q11
+                          + Type(2) * Sinv01 * q01);
+    }
+    REPORT(kappa_s);
+  }
+
   // -------- generic (1 | group) random intercepts -----------------------
   // For each term t, the slice u_re_int[offset(t) .. offset(t)+n_groups(t))
   // is i.i.d. N(0, sigma_re_int(t)^2). Sum independent normal log-densities.
@@ -934,6 +1038,20 @@ Type objective_function<Type>::operator()()
     }
   }
 
+  // Augmented SPDE slope: project each field column (alpha, beta) once.
+  //   A_omega_aug(o, j) = (A_proj * omega_spde_aug.col(j))(o).
+  // eta gets sum_j A_omega_aug(o, j) * Z_spde_aug(o, j) in the loop below.
+  matrix<Type> A_omega_aug(y.size(), std::max(n_lhs_cols_spde, 1));
+  A_omega_aug.setZero();
+  if (use_spde_slope == 1) {
+    for (int j = 0; j < n_lhs_cols_spde; j++) {
+      vector<Type> omega_j(omega_spde_aug.dim[0]);
+      for (int i = 0; i < omega_spde_aug.dim[0]; i++) omega_j(i) = omega_spde_aug(i, j);
+      vector<Type> Ao_j = A_proj * omega_j;
+      for (int o = 0; o < y.size(); o++) A_omega_aug(o, j) = Ao_j(o);
+    }
+  }
+
   // -------- Add RE contributions to eta ---------------------------------
   for (int o = 0; o < y.size(); o++) {
     int t  = trait_id(o);
@@ -968,6 +1086,13 @@ Type objective_function<Type>::operator()()
           contrib_spde += Lambda_spde(t, k) * A_omega_lv(o, k);
         eta(o) += contrib_spde;
       }
+    }
+    if (use_spde_slope == 1) {
+      // eta(o) += (A_proj omega_alpha)(o) + x(o) * (A_proj omega_beta)(o).
+      Type contrib_spde_aug = 0;
+      for (int j = 0; j < n_lhs_cols_spde; j++)
+        contrib_spde_aug += A_omega_aug(o, j) * Z_spde_aug(o, j);
+      eta(o) += contrib_spde_aug;
     }
     if (use_phylo_rr == 1) {
       Type contrib = 0;

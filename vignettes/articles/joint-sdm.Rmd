@@ -396,7 +396,7 @@ cor_fisher <- extract_correlations(
 )
 cor_boot <- extract_correlations(
   fit_jsdm, tier = "unit", pair = pair_ij,
-  method = "bootstrap", nsim = 50, seed = 1, link_residual = "auto"
+  method = "bootstrap", nsim = 20, seed = 1, link_residual = "auto"
 )
 rbind(cor_fisher, cor_boot)[, c("trait_i", "trait_j",
                                 "correlation", "lower", "upper", "method")]
@@ -471,7 +471,7 @@ A parametric bootstrap puts an interval on each species' ICC:
 ```{r jsdm-icc-boot}
 icc_boot <- extract_communality(
   fit_jsdm, level = "unit", link_residual = "auto",
-  ci = TRUE, method = "bootstrap", nsim = 50, seed = 1
+  ci = TRUE, method = "bootstrap", nsim = 20, seed = 1
 )
 icc_boot[, c("trait", "c2", "lower", "upper", "method")]
 ```

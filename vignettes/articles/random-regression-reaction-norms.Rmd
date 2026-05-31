@@ -109,7 +109,7 @@ full simulation study.
 
 ```{r sim}
 set.seed(2026)
-n_sp <- 80
+n_sp <- 30
 n_traits <- 4
 tree <- ape::rcoal(n_sp)
 tree$tip.label <- paste0("sp", seq_len(n_sp))
@@ -220,7 +220,7 @@ numerical precision. (When $\mathbf{A}$ is supplied directly via `A =`
 
 ```{r animal-twin}
 set.seed(11)
-n_id <- 60
+n_id <- 25
 tree_id <- ape::rcoal(n_id)
 tree_id$tip.label <- paste0("i", seq_len(n_id))
 A <- ape::vcv(tree_id, corr = TRUE)   # stand-in relatedness matrix, rownames = id
@@ -281,7 +281,7 @@ log-link:
 
 ```{r poisson-slope}
 set.seed(5640)
-n_sp2 <- 50
+n_sp2 <- 25
 tree2 <- ape::rcoal(n_sp2)
 tree2$tip.label <- paste0("sp", seq_len(n_sp2))
 C2 <- ape::vcv(tree2, corr = TRUE)
@@ -356,7 +356,7 @@ spellings:
 ```{r augmented, eval = requireNamespace("tidyr", quietly = TRUE)}
 library(tidyr)
 set.seed(5640)
-n_sp3 <- 60
+n_sp3 <- 25
 tree3 <- ape::rcoal(n_sp3)
 tree3$tip.label <- paste0("sp", seq_len(n_sp3))
 C3 <- ape::vcv(tree3, corr = TRUE)

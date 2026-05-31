@@ -139,8 +139,8 @@ includes:
 
 ```{r sim}
 set.seed(42)
-n_sites   <- 60
-n_species <- 30
+n_sites   <- 40
+n_species <- 18
 n_traits  <- 6
 
 tree <- ape::rcoal(n_species)

@@ -89,7 +89,7 @@ set.seed(20260527)
 
 ## A 20-species forest understory community
 
-We simulate a community of 20 forest understory plants at 80 sites
+We simulate a community of 20 forest understory plants at 40 sites
 (the moderate-$n$ regime is on purpose — at very large $n$ the
 exploratory fit's leakage on the structural-zero entries becomes
 invisible, and the article would have nothing visual to compare).
@@ -118,7 +118,7 @@ identifiability story (see the `response-families` vignette).
 
 ```{r dgp-truth}
 n_species <- 20L
-n_sites   <- 80L
+n_sites   <- 40L
 d         <- 2L
 
 species_names <- c(
@@ -178,14 +178,14 @@ colnames(y_wide) <- species_names
   `tidyr::pivot_longer()`.
 
 ```{r data-shapes}
-# Wide: 80 sites x 20 species, plus a site identifier.
+# Wide: 40 sites x 20 species, plus a site identifier.
 df_wide <- as.data.frame(y_wide)
 df_wide$site <- factor(seq_len(n_sites))
 
 dim(df_wide)
 df_wide[1:3, c("site", "A_shade_1", "B_drought_1", "C_free_1")]
 
-# Long: 100 * 20 = 2000 rows.
+# Long: 40 * 20 = 800 rows.
 df_long <- data.frame(
   site  = factor(rep(seq_len(n_sites), times = n_species)),
   trait = factor(rep(species_names, each = n_sites),
@@ -746,14 +746,14 @@ vp_point
 
 Profile-likelihood CIs on `shared_unit` come from
 `profile_ci_proportions()`, or equivalently via the unified
-`confint()` surface. We restrict to six representative species (two
-from each functional group) so the demo renders in a few minutes
-rather than half an hour:
+`confint()` surface. We restrict to three representative species (one
+from each functional group) so the demo renders in well under a minute
+rather than half an hour; widen `demo_idx` to profile more species:
 
 ```{r vp-profile, cache = TRUE}
-demo_idx <- c(1, 3,    # Group A: shade specialists
-              6, 8,    # Group B: drought specialists
-              11, 15)  # Group C: free
+demo_idx <- c(1,    # Group A: shade specialist
+              6,    # Group B: drought specialist
+              11)   # Group C: free
 demo_species <- species_names[demo_idx]
 
 vp_ci <- profile_ci_proportions(fit_con,
@@ -796,7 +796,7 @@ Two implementation notes worth flagging:
 A stacked bar with the profile CI overlaid on the boundary between
 the two components makes the partition immediate:
 
-```{r vp-plot, fig.width = 7.5, fig.height = 4, fig.cap = "Variance partition for six representative species from the constrained probit fit. The orange segment is the shared-latent contribution `shared_unit`; the grey segment is the probit link residual. The vertical error bars at the boundary between the segments are the 95 percent profile-likelihood CI on `shared_unit`; their asymmetry is the bounded-ratio property profile likelihood captures and symmetric Wald would miss.", fig.alt = "Stacked bar chart, one bar per species, normalised to 1. Lower (orange) segment is the shared-latent proportion; upper (grey) segment is the link-residual proportion. A short vertical error bar sits at the boundary between segments, asymmetric, never crossing 0 or 1."}
+```{r vp-plot, fig.width = 7.5, fig.height = 4, fig.cap = "Variance partition for three representative species from the constrained probit fit. The orange segment is the shared-latent contribution `shared_unit`; the grey segment is the probit link residual. The vertical error bars at the boundary between the segments are the 95 percent profile-likelihood CI on `shared_unit`; their asymmetry is the bounded-ratio property profile likelihood captures and symmetric Wald would miss.", fig.alt = "Stacked bar chart, one bar per species, normalised to 1. Lower (orange) segment is the shared-latent proportion; upper (grey) segment is the link-residual proportion. A short vertical error bar sits at the boundary between segments, asymmetric, never crossing 0 or 1."}
 vp_long <- data.frame(
   species   = factor(vp_ci$trait, levels = demo_species),
   component = "shared_unit",
@@ -892,7 +892,7 @@ The validation-debt rows `LAM-01`, `LAM-03`, `LAM-04` are at
 - Recovery is reliable at `n_items` $\ge 20$, $d \in \{1, 2\}$.
 - $d = 3$ at `n_items = 10` is the documented boundary — the
   suggester may not always stabilise; check `fit_health$pd_hessian`.
-- This article's fixture (`n_species = 20`, `d = 2`, `n_sites = 80`)
+- This article's fixture (`n_species = 20`, `d = 2`, `n_sites = 40`)
   is inside the validated regime.
 
 ## When *not* to use `lambda_constraint`

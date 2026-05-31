@@ -322,6 +322,10 @@ Type objective_function<Type>::operator()()
   DATA_IVECTOR(mi_missing_index);  // 0-indexed positions of missing units
   DATA_IVECTOR(mi_unit_id);        // length n_obs; long-row -> unit (0-indexed)
   DATA_MATRIX(X_mi);               // unit-level covariate design (n_units x p_x)
+  // Phase 2b: ONE grouped random intercept on the covariate model, at the UNIT
+  // level. has_mi_group == 0 -> the group block is an exact no-op.
+  DATA_INTEGER(has_mi_group);      // 1 = the covariate model has (1 | group)
+  DATA_IVECTOR(mi_group_index);    // length n_units; unit -> group (0-indexed)
 
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)
@@ -332,6 +336,10 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(beta_mi);                     // covariate-model coefs (p_x)
   PARAMETER_VECTOR(log_sigma_mi);                // length 1; log sigma_x
   PARAMETER_VECTOR(x_mis);                       // latent missing UNIT x values
+  // Phase 2b grouped covariate random intercept: standardized unit-level group
+  // effects u_mi_group ~ N(0, 1) (joins `random`) scaled by sd_mi_group.
+  PARAMETER_VECTOR(u_mi_group);                  // length n_group; N(0,1)
+  PARAMETER_VECTOR(log_sd_mi_group);             // length 1; log group SD
 
   // Between-site rr: Lambda_B (n_traits x d_B) packed as theta_rr_B
   // length = d_B + (n_traits - d_B) * d_B = n_traits*d_B - d_B*(d_B-1)/2
@@ -513,6 +521,19 @@ Type objective_function<Type>::operator()()
     // Per-unit covariate mean eta_x = X_mi * beta_mi.
     vector<Type> mi_eta_x = X_mi * beta_mi;
     Type sigma_mi = exp(log_sigma_mi(0));
+    // Phase 2b: add the UNIT-level grouped random intercept to eta_x. Direct
+    // analogue of drmTMB src/drmTMB.cpp has_mi_group (mi_eta(i) += sd *
+    // u(group(i))), evaluated at the unit level here. u_mi_group ~ N(0, 1).
+    Type sd_mi_group = Type(0.0);
+    if (has_mi_group == 1) {
+      sd_mi_group = exp(log_sd_mi_group(0));
+      for (int u = 0; u < n_units; ++u) {
+        mi_eta_x(u) += sd_mi_group * u_mi_group(mi_group_index(u));
+      }
+      for (int g = 0; g < u_mi_group.size(); ++g) {
+        nll -= dnorm(u_mi_group(g), Type(0.0), Type(1.0), true);
+      }
+    }
     // Reconstruct x_full(u): observed value, else the latent x_mis entry.
     vector<Type> mi_x_full(n_units);
     for (int u = 0; u < n_units; ++u) mi_x_full(u) = mi_x_unit(u);
@@ -534,6 +555,13 @@ Type objective_function<Type>::operator()()
     REPORT(log_sigma_mi);
     REPORT(sigma_mi);
     REPORT(x_mis);
+    if (has_mi_group == 1) {
+      REPORT(u_mi_group);
+      REPORT(log_sd_mi_group);
+      REPORT(sd_mi_group);
+      ADREPORT(log_sd_mi_group);
+      ADREPORT(sd_mi_group);
+    }
     ADREPORT(beta_mi);
     ADREPORT(log_sigma_mi);
     ADREPORT(sigma_mi);

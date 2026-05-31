@@ -171,7 +171,8 @@ gll_prepare_mi_setup <- function(rhs, impute, missing) {
     label = mi_label,
     formula = impute_spec$formula,
     raw_formula = impute_spec$raw_formula,
-    family = impute_spec$family
+    family = impute_spec$family,
+    random = impute_spec$random
   )
 }
 
@@ -182,14 +183,129 @@ gll_empty_mi_setup <- function() {
     label = character(0),
     formula = NULL,
     raw_formula = NULL,
-    family = "none"
+    family = "none",
+    random = NULL
+  )
+}
+
+## Recursively test whether a parsed expression contains a call to `name`
+## (ported from drmTMB formula_contains_call). Used to detect (1|group) terms.
+gll_formula_contains_call <- function(expr, name) {
+  expr <- gll_unwrap_parentheses(expr)
+  if (!is.call(expr)) {
+    return(FALSE)
+  }
+  identical(expr[[1L]], as.name(name)) ||
+    any(vapply(
+      as.list(expr)[-1L],
+      function(part) gll_formula_contains_call(part, name),
+      logical(1)
+    ))
+}
+
+## Split an additive RHS expression into its `+`-separated terms (drmTMB
+## drm_split_additive_rhs).
+gll_split_additive_rhs <- function(expr) {
+  if (is.call(expr) && identical(as.character(expr[[1L]]), "+")) {
+    return(c(
+      gll_split_additive_rhs(expr[[2L]]),
+      gll_split_additive_rhs(expr[[3L]])
+    ))
+  }
+  list(expr)
+}
+
+## Rebuild an additive RHS from a list of terms (drmTMB drm_rebuild_additive_rhs).
+gll_rebuild_additive_rhs <- function(terms) {
+  if (length(terms) == 0L) {
+    return(quote(1))
+  }
+  out <- terms[[1L]]
+  if (length(terms) == 1L) {
+    return(out)
+  }
+  for (i in seq.int(2L, length(terms))) {
+    out <- call("+", out, terms[[i]])
+  }
+  out
+}
+
+## Strip wrapping parentheses from an expression (drmTMB drm_unwrap_parentheses).
+gll_unwrap_parentheses <- function(expr) {
+  while (is.call(expr) && identical(as.character(expr[[1L]]), "(")) {
+    expr <- expr[[2L]]
+  }
+  expr
+}
+
+## TRUE when the expression is the literal `1` (drmTMB drm_is_one_expr).
+gll_is_one_expr <- function(expr) {
+  is.numeric(expr) && length(expr) == 1L && identical(as.numeric(expr), 1)
+}
+
+## Extract at most ONE grouped random-intercept term `(1 | group)` from a
+## predictor-model formula (ADAPT drmTMB drm_extract_impute_random_intercept).
+## Returns the formula with the RE term removed from its fixed RHS plus a
+## `random` descriptor. Phase 2b: exactly one random INTERCEPT with a bare
+## grouping column; random slopes and >1 RE term are rejected loudly here.
+gll_extract_impute_random_intercept <- function(formula) {
+  rhs_terms <- gll_split_additive_rhs(formula[[3L]])
+  is_bar <- vapply(
+    rhs_terms,
+    function(term) gll_formula_contains_call(term, "|"),
+    logical(1)
+  )
+  if (!any(is_bar)) {
+    return(list(fixed_formula = formula, random = NULL))
+  }
+  if (sum(is_bar) != 1L) {
+    cli::cli_abort(c(
+      "The grouped {.arg impute} slice supports only one random-intercept term.",
+      "x" = "Found {sum(is_bar)} random-effect term{?s}.",
+      "i" = "Use a single {.code (1 | group)}; multiple covariate random effects arrive in a later phase."
+    ))
+  }
+  random_term <- gll_unwrap_parentheses(rhs_terms[[which(is_bar)]])
+  if (
+    !is.call(random_term) || !identical(as.character(random_term[[1L]]), "|")
+  ) {
+    cli::cli_abort(c(
+      "The grouped {.arg impute} random-effect term must be additive and simple.",
+      "i" = "Use syntax such as {.code x ~ z + (1 | group)}."
+    ))
+  }
+  if (length(random_term) != 3L || !gll_is_one_expr(random_term[[2L]])) {
+    cli::cli_abort(c(
+      "The grouped {.arg impute} route supports only random intercepts.",
+      "x" = "Use {.code (1 | group)}, not random slopes or correlated covariate blocks."
+    ))
+  }
+  group_expr <- random_term[[3L]]
+  if (!is.symbol(group_expr)) {
+    cli::cli_abort(c(
+      "The grouped {.arg impute} grouping variable must be a bare column name.",
+      "x" = "Use syntax such as {.code (1 | group)}."
+    ))
+  }
+  fixed_terms <- rhs_terms[!is_bar]
+  fixed_rhs <- gll_rebuild_additive_rhs(fixed_terms)
+  fixed_formula <- formula
+  fixed_formula[[3L]] <- fixed_rhs
+  list(
+    fixed_formula = fixed_formula,
+    random = list(
+      enabled = TRUE,
+      group = as.character(group_expr),
+      term = random_term
+    )
   )
 }
 
 ## Validate the one-element impute list against the mi() variable (drmTMB
-## drm_validate_single_impute_formula). Phase 2a: Gaussian fixed-effect only;
-## no grouped or structured covariate RE; LHS and (optional) list name must
-## equal the mi() variable; no nested mi(); no `.`; no response variables.
+## drm_validate_single_impute_formula). Phase 2a/2b: Gaussian covariate model
+## with fixed effects + at most ONE grouped random intercept (1|group); no
+## random slopes, no >1 RE term, no structured RE; LHS and (optional) list name
+## must equal the mi() variable; no nested mi(); no `.`; no response variables.
 gll_validate_single_impute_formula <- function(impute, variable) {
   if (is.null(impute)) {
     cli::cli_abort(c(
@@ -233,13 +349,9 @@ gll_validate_single_impute_formula <- function(impute, variable) {
       "Nested {.fn mi} terms inside {.arg impute} formulas are not implemented."
     )
   }
-  if ("." %in% all.names(formula[[3L]], functions = FALSE, unique = TRUE)) {
-    cli::cli_abort(
-      "The first {.arg impute} slice requires explicit predictor names; {.code .} is not supported."
-    )
-  }
-  ## Reject grouped covariate random intercepts (Phase 2b) and any structured
-  ## covariate markers (Phase 3): the first slice is fixed-effect only.
+  ## Reject structured covariate markers (Phase 3) BEFORE the random-intercept
+  ## extraction: a structured marker such as phylo(1 | species) also contains a
+  ## `|`, so it must be caught here rather than mis-parsed as an ordinary group.
   rhs_funs <- all.names(formula[[3L]], functions = TRUE, unique = TRUE)
   rhs_funs <- setdiff(rhs_funs, all.vars(formula[[3L]]))
   structured_markers <- intersect(
@@ -252,25 +364,77 @@ gll_validate_single_impute_formula <- function(impute, variable) {
     cli::cli_abort(c(
       "Structured {.arg impute} covariate models are not yet supported.",
       "x" = "Found structured marker{?s}: {.val {structured_markers}}.",
-      "i" = "The first Gaussian {.fn mi} slice fits fixed effects only; phylogenetic / spatial covariate models arrive in a later phase."
+      "i" = "The Gaussian {.fn mi} slice fits fixed effects plus one grouped intercept; phylogenetic / spatial covariate models arrive in a later phase."
     ))
   }
-  if ("|" %in% rhs_funs) {
-    cli::cli_abort(c(
-      "Grouped covariate random effects in the {.arg impute} formula are not yet supported.",
-      "i" = "The first Gaussian {.fn mi} slice fits fixed effects only; {.code x ~ z + (1 | group)} arrives in a later phase."
-    ))
+  ## Phase 2b: pull at most ONE grouped random intercept (1|group) off the RHS.
+  ## This rejects random slopes and >1 RE term loudly; the remaining FIXED RHS
+  ## is validated for `.` below.
+  extracted <- gll_extract_impute_random_intercept(formula)
+  fixed_formula <- extracted$fixed_formula
+  if ("." %in% all.names(fixed_formula[[3L]], functions = FALSE, unique = TRUE)) {
+    cli::cli_abort(
+      "The {.arg impute} slice requires explicit predictor names; {.code .} is not supported."
+    )
   }
   list(
-    formula = formula,
+    formula = fixed_formula,
     raw_formula = formula,
-    family = family
+    family = family,
+    random = extracted$random
+  )
+}
+
+# ---- Unit-level grouped random intercept (ADAPT drm_build_gaussian_mi_random_intercept) -
+
+## Build the UNIT-level grouped random-intercept descriptor for the Phase 2b
+## covariate model (ADAPT drmTMB drm_build_gaussian_mi_random_intercept). The
+## grouping is a UNIT-level quantity (one group id per unit), so it is read
+## from the unit's representative long rows (`first_row`). The group must be
+## complete (no NA) and have at least two levels. Returns a disabled descriptor
+## when the setup carries no random term.
+gll_build_gaussian_mi_random_intercept <- function(setup, data_long, first_row) {
+  random <- setup$random
+  if (!is.list(random) || !isTRUE(random$enabled)) {
+    return(list(
+      enabled = FALSE,
+      group = character(0),
+      levels = character(0),
+      n_group = 0L,
+      group_index = integer(0)
+    ))
+  }
+  group <- random$group
+  if (!group %in% names(data_long)) {
+    cli::cli_abort(
+      "The grouped {.arg impute} grouping variable {.val {group}} was not found in {.arg data}."
+    )
+  }
+  ## Unit-level group values (one per unit), read from the representative rows.
+  values <- data_long[[group]][first_row]
+  if (anyNA(values)) {
+    cli::cli_abort(
+      "The grouped {.arg impute} grouping variable {.val {group}} must be complete."
+    )
+  }
+  group_factor <- factor(values)
+  if (nlevels(group_factor) < 2L) {
+    cli::cli_abort(
+      "The grouped {.arg impute} random-intercept model needs at least two group levels."
+    )
+  }
+  list(
+    enabled = TRUE,
+    group = group,
+    levels = levels(group_factor),
+    n_group = nlevels(group_factor),
+    group_index = as.integer(group_factor)
   )
 }
 
 # ---- Unit-level Gaussian covariate-model build (ADAPT drm_build_gaussian_*) -
 
-## Build the Phase-2a Gaussian missing-predictor model at the UNIT level.
+## Build the Phase-2a/2b Gaussian missing-predictor model at the UNIT level.
 ##
 ## `data_long` is the long-format model data (one row per (unit, trait) cell);
 ## `unit_id` is a 0-indexed integer vector (length n_obs) mapping each long row
@@ -405,6 +569,16 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
   x_unit_full <- x_unit
   x_unit_full[!observed] <- eta[!observed]
 
+  ## Phase 2b: build the unit-level grouped random-intercept descriptor (if the
+  ## covariate model carries a (1|group) term). The group SD start is a fraction
+  ## of the predictor scale, mirroring drmTMB's log_sd_group_start.
+  random <- gll_build_gaussian_mi_random_intercept(setup, data_long, first_row)
+  log_sd_group_start <- if (isTRUE(random$enabled)) {
+    log(max(1e-4, 0.25 * x_scale))
+  } else {
+    0
+  }
+
   list(
     enabled = TRUE,
     variable = setup$variable,
@@ -426,7 +600,11 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
     x_mis_start = x_unit_full[!observed],
     coef_names = colnames(X_x),
     predictor_names = rhs_vars,
-    summary = "conditional_mode"
+    summary = "conditional_mode",
+    ## Phase 2b grouped covariate random intercept
+    random = random,
+    u_group_start = if (isTRUE(random$enabled)) rep(0, random$n_group) else 0,
+    log_sd_group_start = log_sd_group_start
   )
 }
 
@@ -450,7 +628,16 @@ gll_empty_mi_model <- function() {
     x_mis_start = numeric(0),
     coef_names = character(0),
     predictor_names = character(0),
-    summary = "none"
+    summary = "none",
+    random = list(
+      enabled = FALSE,
+      group = character(0),
+      levels = character(0),
+      n_group = 0L,
+      group_index = integer(0)
+    ),
+    u_group_start = 0,
+    log_sd_group_start = 0
   )
 }
 
@@ -460,6 +647,7 @@ gll_empty_mi_model <- function() {
 ## no-op stub with has_mi = 0 (every block is gated off in the engine).
 gll_tmb_mi_data <- function(model, n_obs) {
   if (isTRUE(model$enabled)) {
+    has_group <- isTRUE(model$random$enabled)
     return(list(
       has_mi = 1L,
       mi_family = switch(model$family, gaussian = 0L, 0L),
@@ -468,7 +656,15 @@ gll_tmb_mi_data <- function(model, n_obs) {
       mi_observed_unit = as.integer(model$observed),
       mi_missing_index = as.integer(model$missing_index - 1L),
       mi_unit_id = as.integer(model$unit_id),
-      X_mi = model$X_x
+      X_mi = model$X_x,
+      ## Phase 2b grouped covariate random intercept (0-indexed unit-level
+      ## group ids). has_mi_group == 0 -> the group block is gated off.
+      has_mi_group = as.integer(has_group),
+      mi_group_index = if (has_group) {
+        as.integer(model$random$group_index - 1L)
+      } else {
+        0L
+      }
     ))
   }
   list(
@@ -479,7 +675,9 @@ gll_tmb_mi_data <- function(model, n_obs) {
     mi_observed_unit = rep(1L, 1L),
     mi_missing_index = 0L,
     mi_unit_id = rep(0L, max(1L, n_obs)),
-    X_mi = matrix(0, nrow = 1L, ncol = 1L)
+    X_mi = matrix(0, nrow = 1L, ncol = 1L),
+    has_mi_group = 0L,
+    mi_group_index = 0L
   )
 }
 
@@ -494,6 +692,7 @@ gll_mi_metadata <- function(model) {
     return(list())
   }
   missing_units <- as.integer(model$missing_index)
+  has_group <- isTRUE(model$random$enabled)
   out <- list(
     variable = model$variable,
     family = model$family,
@@ -509,8 +708,17 @@ gll_mi_metadata <- function(model) {
     coef_names = model$coef_names,
     predictor_names = model$predictor_names,
     summary = model$summary,
+    ## Phase 2b grouped covariate random intercept descriptor (drmTMB-aligned).
+    random = list(
+      enabled = has_group,
+      group = if (has_group) model$random$group else character(0),
+      levels = if (has_group) model$random$levels else character(0),
+      n_group = if (has_group) as.integer(model$random$n_group) else 0L
+    ),
     conditional_mode = NULL,    # filled post-fit by gll_finalize_mi()
-    version = "phase2a"
+    ## Fixed-effect-only covariate model is the phase2a path; one grouped
+    ## random intercept is phase2b.
+    version = if (has_group) "phase2b" else "phase2a"
   )
   stats::setNames(list(out), model$variable)
 }

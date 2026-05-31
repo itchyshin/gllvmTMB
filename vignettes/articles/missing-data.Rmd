@@ -29,7 +29,21 @@ A **predictor** can be missing: a covariate needed by the response model was
 not observed for some rows.
 The current implementation treats those two cases differently, and both differ
 from the third case--measurement error--which is explicitly out of scope for
-this layer (see Section 7).
+this layer (see Section 8).
+
+The starting point is what *not* to do.
+Listwise deletion discards every row with any gap, which in a multivariate
+trait matrix can mean throwing away most of the data and biasing estimates
+whenever missingness is not completely at random.
+Mean-fill and single imputation invent values and then treat them as if they
+were observed, understating uncertainty and distorting the covariance
+structure that an ordination or a phylogenetic model is trying to estimate.
+For structured ecological data--shared species means, phylogenetic covariance,
+spatial fields, latent axes--these ad-hoc fixes are particularly damaging
+because they sever exactly the correlations the model exists to exploit.
+`gllvmTMB` instead keeps the missingness *inside* the likelihood: nothing is
+deleted and nothing is invented, and the uncertainty that missingness creates
+propagates through the same joint Hessian as every other parameter.
 
 For missing response cells, `gllvmTMB` can retain the original rows and
 evaluate the observed-cell likelihood by masking the unobserved entries.
@@ -46,30 +60,57 @@ It is not Bayesian posterior imputation, not multiple imputation, and not an
 EM interface.
 For cases where those approaches are preferred--rich GNN phylogenetic
 imputation, mixed trait types, tree uncertainty--the `pigauto` package
-provides the complementary preprocessing path.
+provides the complementary preprocessing path (Section 6).
+
+### Status: what is shipped versus planned
+
+This article documents the missing-data layer ahead of its implementation, so
+the reader can see the intended design as a whole.
+Read the status tags literally:
+
+- **SHIPPED today.** Only the conservative default: rows with a missing
+  *response* cell are dropped before the likelihood is built, and a missing
+  *predictor* is an error. This is ordinary complete-case fitting.
+- **PLANNED (Phase 1, the response mask).** `miss_control(response =
+  "include")`, the `is_y_observed` mask, original-row accounting in
+  `fit$missing_data`, and `predict_missing()` for reconstructed response cells.
+  This is the design's "easy win" but is **not yet in the package**.
+- **PLANNED (Phase 2 onward, missing predictors).** The `mi()` formula token,
+  the `impute = list(...)` covariate-model list, `impute_model(family = )`,
+  `imputed()`, and the continuous/discrete latent-predictor machinery.
+
+Every code chunk below is therefore illustrative (`eval = FALSE`): it shows the
+intended syntax, not output from a current fit. Each section labels the phase
+its API belongs to.
 
 ## 1. What is fitted now
 
-The default is still conservative complete-case fitting:
+The default--and, today, the only behaviour--is conservative complete-case
+fitting: a missing response cell drops its row, and a missing predictor is an
+error. The arguments below describe the planned routes out of that default.
 
 ```{r what-is-fitted-default}
 # FILL: Phase 1 -- run miss_control() and show its defaults once the API lands
 # miss_control()
 ```
 
-Use `missing = miss_control(response = "include")` to retain rows that have at
-least one observed response cell.
-Use `missing = miss_control(predictor = "model")` only when the response
-formula contains at least one supported `mi()` term and `impute` supplies the
+Once shipped, `missing = miss_control(response = "include")` will retain rows
+that have at least one observed response cell, and `missing =
+miss_control(predictor = "model")` will be used only when the response formula
+contains at least one supported `mi()` term and `impute` supplies the
 corresponding predictor model.
 
-| Missing-data case | Current route | Main boundary |
+The table below maps each missing-data case to its intended route and the
+boundary that route stops at. The phase tag in the final column says when that
+route is expected to land.
+
+| Missing-data case | Intended route | Boundary / phase |
 | --- | --- | --- |
-| Missing trait cell (any family) | `missing = miss_control(response = "include")` | All predictors, grouping variables, offsets, weights, and structured-effect inputs must be complete for that row. |
-| One missing continuous predictor, fixed covariate model | `traits(y1 + y2 ~ mi(body_mass) + z)` with `impute = list(body_mass = body_mass ~ z)` | The `mi()` variable must be numeric; one Gaussian covariate model; no multiple missing predictors yet. |
-| One missing continuous predictor, grouped covariate model | As above with `impute = list(body_mass = body_mass ~ z + (1 | site))` | One grouped random intercept in the predictor model; independent of response random effects. |
-| Species-level missing trait (broadcast to obs) | `impute = list(body_mass = body_mass ~ 1 + phylo(1 | species, tree = tree))` | Species-level value broadcast to observation rows; phylogenetic covariate model (Phase 3+). |
-| Non-Gaussian / categorical missing predictor | FILL: Phase 5+ | Lognormal, Gamma, beta, Poisson, ordinal, factor -- later work. |
+| Missing trait cell (any family) | `missing = miss_control(response = "include")` | All predictors, grouping variables, offsets, weights, and structured-effect inputs must be complete for that row (Phase 1). |
+| One missing continuous predictor, fixed covariate model | `traits(y1 + y2 ~ mi(body_mass) + z)` with `impute = list(body_mass = body_mass ~ z)` | The `mi()` variable must be numeric; one Gaussian covariate model; no multiple missing predictors yet (Phase 2a). |
+| One missing continuous predictor, grouped covariate model | As above with `impute = list(body_mass = body_mass ~ z + (1 | site))` | One grouped random intercept in the predictor model; independent of response random effects (Phase 2b). |
+| Species-level missing trait (broadcast to obs) | `impute = list(body_mass = body_mass ~ 1 + phylo(1 | species, tree = tree))` | Species-level value broadcast to observation rows; phylogenetic covariate model (Phase 3). |
+| Non-Gaussian / categorical missing predictor | `impute_model(family = )` with a non-Gaussian family | Lognormal, Gamma, beta, Poisson, ordinal, factor -- later work (Phase 5). |
 
 The `gllvmTMB` response matrix is **multivariate**: a single fit can have many
 trait columns and many species.
@@ -159,10 +200,9 @@ For ordinary user work, prefer `nobs()`, `fitted()`, `residuals()`, and
 `predict_missing()` over hand-parsing the slot.
 The slot exists so row accounting stays auditable after fitting.
 
-A co-observed cell count diagnostic is available when the response family is
-multivariate Gaussian: if very few rows have both traits observed, the
-cross-trait residual correlation is weakly identified and `gllvmTMB` will
-warn.
+A co-observed cell count diagnostic is planned for the multivariate Gaussian
+case: if very few rows have both traits observed, the cross-trait residual
+correlation is weakly identified and `gllvmTMB` will warn.
 
 ## 4. `predict_missing()` for response cells
 
@@ -213,6 +253,21 @@ In `gllvmTMB`, `x_mis` is declared in the TMB `random` set and integrated out
 by the Laplace approximation together with all other random effects.
 `sdreport` then returns the conditional mode (EBLUP) and its standard error
 from the inverse joint Hessian.
+
+How the integral is taken depends on the type of the missing predictor, and
+the two cases are handled differently:
+
+- **Continuous predictors (Laplace).** A missing continuous covariate is a
+  real-valued latent quantity. The Laplace approximation replaces its integral
+  with the joint mode plus a Gaussian curvature term, exactly as for any other
+  random effect. The reported value is its conditional mode (EBLUP). This is
+  the Phase 2-4 path and the one all the worked sketches below use.
+- **Discrete predictors (exact finite-state summation).** A missing factor or
+  ordinal covariate has finitely many possible values, so the "integral" is a
+  finite sum: the likelihood is evaluated at each admissible level and weighted
+  by the covariate model's category probabilities. No Gaussian approximation is
+  used for the discrete dimension. This is planned for Phase 5 and is the
+  reason categorical predictors are scheduled last.
 
 ### 5a. Continuous predictor, fixed covariate model (Phase 2a)
 
@@ -329,10 +384,96 @@ against structured confounding; Dupont, Marques and Kneib 2023).
 # Mirrors drmTMB MD5 non-Gaussian extension.
 ```
 
-## 6. Current boundaries
+## 6. FIML versus multiple imputation
 
-The current implementation deliberately keeps several features out of scope
-for Phase 1 through Phase 3:
+The missing-data layer described above is a frequentist **full-information
+maximum-likelihood (FIML)** approach: one joint model, fitted once, with the
+missingness handled inside the likelihood. It is deliberately an
+**alternative** to multiple imputation (MI), not a wrapper around it. The two
+strategies answer the same question by different routes.
+
+Multiple imputation runs in three steps. An imputation model **draws** several
+plausible completed datasets; the **analysis** model is fitted to each; and the
+results are **pooled** by Rubin's rules, which combine the within- and
+between-imputation variance into a single standard error. The completed
+datasets are an explicit ensemble, and the between-imputation spread is how MI
+represents the uncertainty that missingness adds.
+
+FIML never forms that ensemble. The missing values are estimated jointly with
+every other parameter in a single fit: missing responses are masked and
+reconstructed afterward, and missing predictors are latent quantities
+integrated out by the Laplace approximation. The uncertainty that MI recovers
+from between-imputation spread is recovered here from the curvature of the same
+joint likelihood--the inverse Hessian that `sdreport` already returns. Under a
+correctly specified model and data missing at random, FIML and proper MI are
+asymptotically equivalent (Schafer and Graham 2002; Schenker and Taylor 1996);
+FIML simply reaches the answer without a completed-dataset ensemble and without
+a pooling step.
+
+| | Multiple imputation (incl. `pigauto`) | FIML (this layer) |
+| --- | --- | --- |
+| Workflow | draw -> analyse -> pool (Rubin's rules) | one joint model, fitted once |
+| Completed datasets | an explicit ensemble (e.g. `m = 50`) | none; nothing is filled in |
+| Uncertainty | within- + between-imputation variance | inverse joint Hessian (`sdreport`) |
+| Missing predictors | requires covariates complete before imputing | latent, integrated out inside the fit |
+| Imputation model | separate from the analysis model | *is* the analysis model's structure |
+
+### Congeniality is automatic here
+
+A recurring difficulty in MI is **congeniality** (Meng 1994): the imputation
+model and the analysis model are specified separately, and if the imputation
+model omits structure the analysis model relies on--an interaction, a
+nonlinearity, a phylogenetic covariance--the pooled inference is biased even
+when each step is internally correct. In the FIML layer this mismatch cannot
+arise by construction: there is only one model. The "imputation model" for a
+missing predictor is the covariate model declared in `impute`, and it lives in
+the same likelihood as the response model, sharing its parameters and its
+structured fields. The imputation and analysis models are congenial because
+they are the same model.
+
+This is also why the covariate model is **level-aware** rather than a generic
+default. A missing species-level trait is imputed with a phylogenetic
+covariate model (`phylo()`); a missing site-level covariate is imputed with a
+spatial one (`spatial()`); an animal-model or relatedness structure
+(`animal()`, `relmat()`) or the shared latent axes can play the same role. The
+imputation model inherits the biological covariance of the analysis it serves--
+but it is declared explicitly per predictor, not silently copied from the
+response model, so the inheritance is visible and auditable.
+
+### The `pigauto` sister path
+
+Multiple imputation remains available, and for some problems it is the better
+tool. `pigauto`
+([itchyshin.github.io/pigauto](https://itchyshin.github.io/pigauto/index.html))
+is the standalone MI path: a phylogenetic trait-imputation engine--a
+Brownian-motion baseline blended with a graph-neural-network component--that
+produces completed datasets and propagates uncertainty by multiple imputation
+and Rubin's rules (`impute()` -> `multi_impute()` -> `with_imputations()` ->
+`pool_mi()`), with conformal intervals and tree-uncertainty support. It imputes
+missing **traits** but requires the covariates to be fully observed, and it is
+agnostic to the downstream model.
+
+The two packages are complementary rather than competing:
+
+- Prefer **`pigauto` (MI)** when you want rich GNN-based phylogenetic
+  imputation, a mix of trait types in one imputation step, explicit
+  tree-uncertainty propagation, or a completed dataset you can hand to any
+  downstream model.
+- Prefer **`gllvmTMB` (FIML)** when you want a single transparent joint model
+  with no preprocessing step, when the missingness is in **predictors** (which
+  `pigauto` does not handle), or when you want the missing-data uncertainty to
+  propagate through the very same likelihood as the rest of the fit.
+
+The interfaces are kept separate on purpose: there is no `engine = "mi"` inside
+`miss_control()`, because `mi()` means a latent missing predictor *inside* the
+model while MI means multiple imputation *outside* it. A documented
+`pigauto`-then-`gllvmTMB` workflow (impute with `pigauto`, fit `gllvmTMB` on
+each completed dataset, pool) is the bridge when both are wanted.
+
+## 7. Current boundaries
+
+The design deliberately keeps several features out of scope for the planned
+Phase 1 through Phase 3, independent of which phases have shipped:
 
 - EM, profile, and REML missing-data engines are not implemented.
   `engine = "laplace"` is the only v1 option; `"em"` and `"profile"` are
@@ -362,7 +503,7 @@ For now, use the supported likelihood-based route, fall back to complete-case
 fitting, or handle the unsupported missingness outside `gllvmTMB` with a
 method whose assumptions you can state explicitly.
 
-## 7. Non-goal: measurement error
+## 8. Non-goal: measurement error
 
 Missing predictors in this layer treat the **observed** values of `x` as
 exact.
@@ -384,6 +525,10 @@ Core references for the statistical foundations:
 - Rubin (1976) *Biometrika* 63:581--592. MAR validity.
 - Schafer & Graham (2002) *Psychological Methods* 7:147--177. FIML as
   alternative to MI.
+- Schenker & Taylor (1996) *Computational Statistics & Data Analysis*
+  22:425--446. Asymptotic equivalence of FIML and proper MI.
+- Meng (1994) *Statistical Science* 9:538--558. Congeniality of the imputation
+  and analysis models.
 - Ibrahim, Chen, Lipsitz & Herring (2005) *JASA* 100:332--346. Missing
   covariates in GLMs.
 - Kristensen et al. (2016) *JSS* 70(5). TMB Laplace + automatic

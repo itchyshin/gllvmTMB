@@ -12,32 +12,31 @@
 ##   * `test-matrix-{gamma,ordinal}-spatial.R` (spatial `spatial_dep`, but
 ##     intercept-only cross-trait `spatial_dep(0 + trait | site)`).
 ##
-## Honest-matrix status (Design 59 §"Honest-matrix discipline"): the
-## augmented-LHS engine path for the spatial keywords is GATED on Design 07
-## Stage 3 work (extending the TMB template's `n_traits` to `n_lhs_cols`).
-## The Gaussian sibling `test-spatial-dep-slope-gaussian.R` is a skeleton
-## skipped behind `skip_until_stage3()` for exactly this reason. Empirically,
-## on the current engine `gllvmTMB(value ~ 0 + trait + spatial_dep(1 + x |
-## site), ...)` ABORTS at parse time with
-##   "`spatial_dep()` augmented LHS is not yet supported. ... Augmented LHS
-##    forms (intercept + slope, per-trait slopes, uncorrelated `||`) require
-##    Design 07 Stage 3 engine work ..."
-## and the abort is raised BEFORE the family ever enters (it is a structural
-## parse guard, identical across all 7 families). So today every family
-## honest-SKIPs at construction. This is the expected outcome the task brief
-## anticipates ("Hardest combination -- honest skips expected"); the engine /
-## parser is frozen for this campaign, so we do NOT relax the formula to make
-## a fit go through, and we NEVER fake-pass.
+## Honest-matrix status (Design 59 §"Honest-matrix discipline"): the augmented
+## SPDE slope engine path is LIVE (it constructs and fits the augmented
+## `spatial_dep(1 + x | site)` covstruct through the unstructured 2T x 2T field
+## covariance Sigma_field). The Gaussian sibling
+## `test-spatial-dep-slope-gaussian.R` validates that engine + its density
+## self-check. For NON-GAUSSIAN responses, however, this cell is RESERVED
+## gaussian-only in R/fit-multi.R: the use_spde_dep_slope family-id allowlist is
+## c(0L). Empirically the full unstructured cross-field block is non-PD for all
+## seven non-Gaussian families at this fixture's n_sites (the spatial analogue
+## of phylo_dep / PHY-18 -- an identifiability limit, not a wiring gap), so each
+## non-Gaussian family constructs straight into the gaussian-only fail-loud:
+##   "`spatial_dep` random slopes are validated for `gaussian()` only ..."
+## and honest-SKIPs at construction. We do NOT relax the formula or widen any
+## band to force a fit, and we NEVER fake-pass.
 ##
 ## Why keep the file then? It is a LIVE TRIPWIRE on the matrix cell. Each
 ## `test_that` attempts the exact target construction
 ## `value ~ 0 + trait + spatial_dep(1 + x | site)` for its family against a
-## genuine random-slope spatial DGP. The moment the Stage 3 engine work lands
-## and the construction succeeds, the skip falls through and the real
-## convergence + PD-Hessian + CI-smoke assertions execute -- without any test
-## edit. Until then each family reports an honest skip with the engine's own
-## reason, and the register row for the (spatial_dep x slope x family) cell
-## stays `partial`.
+## genuine random-slope spatial DGP. The moment the unstructured dep slope
+## becomes identifiable for a non-Gaussian family (bigger n / a future
+## reparameterisation) and that family joins the allowlist, the skip falls
+## through and the real convergence + PD-Hessian + CI-smoke assertions execute
+## -- without any test edit. Until then each non-Gaussian family reports an
+## honest skip and the register row for the (spatial_dep x slope x family) cell
+## stays `reserved`.
 ##
 ## DGP (shared across families): seed-controlled, 3 traits, ~100 sites with
 ## random 2D coordinates in the unit square, one row per (site, trait) (so
@@ -226,16 +225,22 @@ slope_spatial_ci_smoke_ok <- function(fit, n_traits) {
 }
 
 ## One shared body per family: attempt the exact target construction, honest-
-## skip on construction failure (today's expected path: augmented-LHS spatial
-## engine gated on Design 07 Stage 3), then on a real fit assert convergence +
-## PD Hessian and run the CI smoke. `expected_family_id` guards against a
-## silent family fallthrough making the family claim hollow once fits run.
+## skip on construction failure, then on a real fit assert convergence + PD
+## Hessian and run the CI smoke. `expected_family_id` guards against a silent
+## family fallthrough making the family claim hollow once fits run.
+##
+## CURRENT EXPECTED PATH FOR NON-GAUSSIAN: the full unstructured 2T x 2T
+## field-covariance dep slope is RESERVED gaussian-only in R/fit-multi.R (the
+## use_spde_dep_slope family-id allowlist is c(0L)). The non-Gaussian families
+## are non-PD at this fixture's n_sites -- the spatial analogue of phylo_dep /
+## PHY-18 -- so each constructs straight into the gaussian-only fail-loud and
+## honest-skips here. The cell stays partial; it is NEVER forced green.
 run_slope_spatial_dep_cell <- function(fx, family, family_label,
                                        expected_family_id) {
   fit <- tryCatch(fit_slope_spatial_dep(fx, family), error = function(e) e)
   if (inherits(fit, "error") || !inherits(fit, "gllvmTMB_multi")) {
     testthat::skip(sprintf(
-      "%s spatial_dep(1 + x | site) fit failed to construct (augmented-LHS spatial engine is gated on Design 07 Stage 3): %s",
+      "%s spatial_dep(1 + x | site) fit failed to construct (non-Gaussian augmented unstructured-field dep slope reserved gaussian-only; non-PD identifiability): %s",
       family_label,
       if (inherits(fit, "error")) {
         gsub("[\r\n]+", " ", conditionMessage(fit))
@@ -253,10 +258,13 @@ run_slope_spatial_dep_cell <- function(fx, family, family_label,
   }
 
   expect_slope_spatial_fit_health(fit)
-  ## Engine routing: spatial_dep rewrites to a spatial_latent path, so the
-  ## latent flag must be set alongside the dep flag once fits run.
-  testthat::expect_true(isTRUE(fit$use$spatial_dep))
-  testthat::expect_true(isTRUE(fit$use$spatial_latent))
+  ## Engine routing: the augmented spatial_dep slope nests under the base SPDE
+  ## slope engine (use_spde_slope) with the dep sub-flag (use_spde_dep_slope);
+  ## both live flags must be set once a fit runs. NOTE these are the augmented-
+  ## slope engine flags -- the augmented covstruct carries `.spatial_dep_augmented`
+  ## and does NOT set the intercept-only `spatial_dep` / `spatial_latent` flags.
+  testthat::expect_true(isTRUE(fit$use$spde_dep_slope))
+  testthat::expect_true(isTRUE(fit$use$spde_slope))
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], expected_family_id)
 
   if (!slope_spatial_ci_smoke_ok(fit, fx$n_traits)) {
@@ -350,7 +358,8 @@ test_that("nbinom2: spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", 
   )
   run_slope_spatial_dep_cell(
     fx, gllvmTMB::nbinom2(), "nbinom2",
-    expected_family_id = 3L
+    ## Runtime family_to_id(): nbinom2 = 5 (was mislabelled 3 = lognormal).
+    expected_family_id = 5L
   )
 })
 
@@ -382,6 +391,7 @@ test_that("beta: spatial_dep(1 + x | site) fits; pd_hessian TRUE; CI smoke", {
   )
   run_slope_spatial_dep_cell(
     fx, gllvmTMB::Beta(), "beta",
-    expected_family_id = 5L
+    ## Runtime family_to_id(): Beta = 7 (was mislabelled 5 = nbinom2).
+    expected_family_id = 7L
   )
 })

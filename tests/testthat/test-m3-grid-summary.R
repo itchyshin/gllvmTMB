@@ -61,6 +61,96 @@ test_that("M3 grid summary handles cells with no converged coverage rows", {
   expect_equal(summary_df$mean_runtime_s, 4)
 })
 
+test_that("M3 gate keys on Sigma_unit_diag bootstrap, not the psi proxy", {
+  ## Regression guard for the 2026-05-19 target-scale confound
+  ## (register rows CI-08/CI-10; Design 44 6): the promotion gate must
+  ## be evaluated on the rotation-invariant `Sigma_unit_diag` bootstrap
+  ## target, with `psi` (profile) demoted to a diagnostic. A psi proxy
+  ## that passes must NOT make the primary gate pass.
+  skip_if_not_heavy()
+  source_m3_grid()
+
+  common <- list(
+    cell = "gaussian-d1",
+    family = "gaussian",
+    d = 1L,
+    fit_converged = TRUE,
+    converged = TRUE,
+    ci_available = TRUE,
+    n_units = 60L,
+    n_traits = 5L,
+    lambda_scale = 1,
+    psi_scale = 1,
+    seed_base = 20260531L,
+    runtime_s = 1
+  )
+
+  ## psi diagnostic rows: all four trait-reps covered -> proxy "passes".
+  psi_rows <- data.frame(
+    c(common,
+      list(
+        target = "psi",
+        ci_method = "profile",
+        rep = c(1L, 1L, 2L, 2L),
+        trait_id = c(1L, 2L, 1L, 2L),
+        truth = c(0.5, 0.5, 0.5, 0.5),
+        estimate = c(0.5, 0.5, 0.5, 0.5),
+        covered = c(TRUE, TRUE, TRUE, TRUE),
+        covered_prof = c(TRUE, TRUE, TRUE, TRUE),
+        miss_side = "covered",
+        n_boot = 0L,
+        n_boot_failed = 0L
+      )),
+    stringsAsFactors = FALSE
+  )
+
+  ## Primary Sigma_unit_diag bootstrap rows: only 1/4 covered -> FAILS.
+  sigma_rows <- data.frame(
+    c(common,
+      list(
+        target = "Sigma_unit_diag",
+        ci_method = "bootstrap",
+        rep = c(1L, 1L, 2L, 2L),
+        trait_id = c(1L, 2L, 1L, 2L),
+        truth = c(2, 4, 2, 4),
+        estimate = c(2, 4, 2, 4),
+        covered = c(TRUE, FALSE, FALSE, FALSE),
+        covered_prof = NA,
+        miss_side = c(
+          "covered",
+          "truth_above_upper",
+          "truth_above_upper",
+          "truth_above_upper"
+        ),
+        n_boot = 5L,
+        n_boot_failed = 0L
+      )),
+    stringsAsFactors = FALSE
+  )
+
+  summary_df <- m3_summarise(rbind(psi_rows, sigma_rows))
+  primary <- summary_df[summary_df$target == "Sigma_unit_diag", ]
+  diag_psi <- summary_df[summary_df$target == "psi", ]
+
+  ## Primary gate is evaluated on the Sigma_unit_diag bootstrap row.
+  expect_equal(primary$ci_method, "bootstrap")
+  expect_equal(primary$coverage_primary, 0.25)
+  expect_false(primary$passes_94pct_primary)
+  expect_equal(primary$primary_gate_status, "FAIL")
+
+  ## The psi proxy passes but is diagnostic-only: it must NOT populate
+  ## the primary gate, and the primary gate must be NOT_EVALUATED on it.
+  expect_equal(diag_psi$coverage_prof, 1)
+  expect_true(diag_psi$passes_94pct_prof)
+  expect_equal(diag_psi$profile_gate_status, "PASS")
+  expect_true(is.na(diag_psi$coverage_primary))
+  expect_equal(diag_psi$primary_gate_status, "NOT_EVALUATED")
+
+  ## And the Sigma_unit_diag row carries no psi-diagnostic coverage.
+  expect_true(is.na(primary$coverage_prof))
+  expect_equal(primary$profile_gate_status, "NOT_EVALUATED")
+})
+
 test_that("M3 helper tags fitted NB2 phi only on NB2 traits", {
   skip_if_not_heavy()
   source_m3_grid()

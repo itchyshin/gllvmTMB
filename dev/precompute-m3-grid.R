@@ -292,10 +292,15 @@ if (!se %in% c("true", "false")) {
   stop("--se must be true or false")
 }
 se <- identical(se, "true")
+## Primary coverage target is `Sigma_unit_diag` (bootstrap CI); `psi`
+## (profile CI) is retained as a diagnostic proxy only. The 94% gate is
+## evaluated on `Sigma_unit_diag`, per the 2026-05-19 target-scale audit
+## (Design 44 6, register rows CI-08/CI-10). The stress/start-probe modes
+## stay point-only on `Sigma_unit_diag` (n_boot defaults to 0 there).
 target_default <- if (mode %in% c("nb2-stress-map", "nb2-start-probe")) {
   "Sigma_unit_diag"
 } else {
-  "psi"
+  "psi,Sigma_unit_diag"
 }
 targets <- m3_normalise_targets(split_arg(arg_value(
   "--targets",

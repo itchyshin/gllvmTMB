@@ -785,7 +785,10 @@ m3_run_cell <- function(
   init_jitter = 0.3,
   se = TRUE,
   fit_phi_mode = c("estimated", "known"),
-  targets = "psi",
+  ## Primary target is `Sigma_unit_diag` (bootstrap); `psi` (profile) is
+  ## a diagnostic proxy only. See the 2026-05-19 target-scale audit
+  ## (Design 44 6, CI-08/CI-10) -- the gate is on `Sigma_unit_diag`.
+  targets = c("psi", "Sigma_unit_diag"),
   n_boot = 30L,
   n_cores_boot = 1L,
   ci_level = M3_DEFAULT_NOMINAL,
@@ -1353,7 +1356,10 @@ m3_run_grid <- function(
   init_jitter = 0.3,
   se = TRUE,
   fit_phi_mode = c("estimated", "known"),
-  targets = "psi",
+  ## Primary target is `Sigma_unit_diag` (bootstrap); `psi` (profile) is
+  ## a diagnostic proxy only. See the 2026-05-19 target-scale audit
+  ## (Design 44 6, CI-08/CI-10) -- the gate is on `Sigma_unit_diag`.
+  targets = c("psi", "Sigma_unit_diag"),
   n_boot = 30L,
   n_cores_boot = 1L,
   ci_level = M3_DEFAULT_NOMINAL,
@@ -2027,6 +2033,12 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
       if (identical(sub$ci_method[1], "none")) {
         pilot_status <- "POINT_ONLY"
       }
+      ## Diagnostic gate columns: profile CI on `psi` (`theta_diag_B`).
+      ## After the 2026-05-19 target-scale audit (Design 44 6) `psi` is a
+      ## DIAGNOSTIC target only -- it is a rotation-variant proxy, not the
+      ## estimand the coverage claim is about. These columns are retained
+      ## for the binomial-psi=0 regression diagnostic and for back-compat,
+      ## but they no longer drive promotion; see *_primary below.
       coverage_prof <- if (
         identical(sub$target[1], "psi") &&
           identical(sub$ci_method[1], "profile")
@@ -2046,6 +2058,32 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         NA
       } else {
         coverage_prof >= gate
+      }
+      ## Primary gate columns: bootstrap CI on total `Sigma_unit_diag`.
+      ## This is the rotation-invariant estimand the coverage claim is
+      ## about (Design 44 6, Design 50 3); the M3 94% promotion gate is
+      ## evaluated HERE, not on the `psi` proxy above. This is the
+      ## correction to the 2026-05-19 production-run confound (CI-08/CI-10):
+      ## the run profiled `psi` while the claim is about `Sigma_unit[tt]`.
+      coverage_primary <- if (
+        identical(sub$target[1], "Sigma_unit_diag") &&
+          identical(sub$ci_method[1], "bootstrap")
+      ) {
+        coverage
+      } else {
+        NA_real_
+      }
+      primary_gate_status <- if (is.na(coverage_primary)) {
+        "NOT_EVALUATED"
+      } else if (coverage_primary >= gate) {
+        "PASS"
+      } else {
+        "FAIL"
+      }
+      passes_94pct_primary <- if (is.na(coverage_primary)) {
+        NA
+      } else {
+        coverage_primary >= gate
       }
       row <- data.frame(
         cell = sub$cell[1],
@@ -2075,6 +2113,9 @@ m3_summarise <- function(grid_df, gate = M3_PASS_GATE) {
         median_link_residual_truth_ratio = median_link_residual_truth_ratio,
         mean_runtime_s = mean(rep_runtime, na.rm = TRUE),
         pilot_status = pilot_status,
+        coverage_primary = coverage_primary,
+        passes_94pct_primary = passes_94pct_primary,
+        primary_gate_status = primary_gate_status,
         coverage_prof = coverage_prof,
         passes_94pct_prof = passes_94pct_prof,
         profile_gate_status = profile_gate_status,

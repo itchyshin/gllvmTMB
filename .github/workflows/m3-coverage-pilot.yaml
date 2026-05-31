@@ -1,0 +1,109 @@
+on:
+  workflow_dispatch:
+    inputs:
+      n_reps:
+        description: "Replicates per pilot cell (r50 pilot; NOT a full r200)"
+        required: true
+        default: "50"
+        type: number
+      targets:
+        description: "Interval targets. Sigma_unit_diag is the primary (bootstrap) coverage target; psi is diagnostic."
+        required: true
+        default: "psi,Sigma_unit_diag"
+        type: choice
+        options:
+          - psi,Sigma_unit_diag
+          - Sigma_unit_diag
+      n_boot:
+        description: "Bootstrap replicates per Sigma_unit_diag interval"
+        required: true
+        default: "25"
+        type: number
+      seed_base:
+        description: "Master seed base (fresh value to avoid the 2026-05-19 production seed 20260517)."
+        required: true
+        default: "20260531"
+        type: number
+      retention_days:
+        description: "Artifact retention in days"
+        required: true
+        default: "14"
+        type: number
+
+name: M3 coverage pilot (r50, corrected target)
+
+# Small r50 pilot for PR #364 (#346 / #349): confirms the coverage gate
+# now clears (or sensibly approaches) the 94% gate on the corrected
+# rotation-invariant target `Sigma_unit_diag` (bootstrap), after the
+# psi-target-scale confound fix. NOT a production run -- 2 representative
+# cells (gaussian d=1, poisson d=1), single shard, r50.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m3-coverage-pilot-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  m3-pilot-cell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    name: ${{ matrix.family }} d=${{ matrix.d }} (r50 pilot)
+
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - family: gaussian
+            d: 1
+          - family: poisson
+            d: 1
+
+    env:
+      OUT_PREFIX: m3-pilot-${{ matrix.family }}-d${{ matrix.d }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Run M3 pilot cell (corrected target)
+        shell: bash
+        run: |
+          # r50 pilot, single shard, primary target Sigma_unit_diag (bootstrap).
+          # Gate read (Design 50 §5): coverage on Sigma_unit_diag >= 0.94
+          # (>= 0.90 pilot), CI-missing <= 10%, fit-failure <= 20%,
+          # pilot_status == "PASS_TO_SCALE".
+          Rscript dev/precompute-m3-grid.R \
+            --full \
+            --family=${{ matrix.family }} \
+            --d=${{ matrix.d }} \
+            --n-reps=${{ inputs.n_reps }} \
+            --init-strategy=single_trait_warmup \
+            --targets=${{ inputs.targets }} \
+            --n-boot=${{ inputs.n_boot }} \
+            --seed-base=${{ inputs.seed_base }} \
+            --out-prefix="${OUT_PREFIX}"
+
+      - name: Upload M3 pilot cell artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUT_PREFIX }}
+          path: |
+            dev/precomputed/${{ env.OUT_PREFIX }}-grid.rds
+            dev/precomputed/${{ env.OUT_PREFIX }}-summary.rds
+          retention-days: ${{ inputs.retention_days }}

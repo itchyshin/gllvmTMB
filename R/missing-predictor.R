@@ -440,6 +440,19 @@ gll_validate_single_impute_formula <- function(impute, variable) {
       "The {.arg impute} slice requires explicit predictor names; {.code .} is not supported."
     )
   }
+  ## GAP-1: a grouped covariate random intercept (1 | group) combined with an
+  ## explicit mi_group() level is not supported in v1. When `group` cross-cuts
+  ## the mi_group() level the RE group would mis-broadcast (the latent bears at
+  ## the mi_group() level, but the RE indexes a different level); nesting-
+  ## validation is a later slice, so reject the combination loudly for now.
+  if (isTRUE(extracted$random$enabled) &&
+        isTRUE(group_extracted$group_level$enabled)) {
+    cli::cli_abort(c(
+      "A grouped covariate random intercept combined with an explicit {.fn mi_group} level is not supported.",
+      "x" = "Found both {.code (1 | {extracted$random$group})} and {.code mi_group({group_extracted$group_level$group})} in the {.arg impute} formula.",
+      "i" = "Use either a grouped random intercept (Phase 2b) OR a {.fn mi_group} level (Phase 2c), not both, in this version."
+    ))
+  }
   list(
     formula = fixed_formula,
     raw_formula = raw_formula,
@@ -510,9 +523,18 @@ gll_build_gaussian_mi_random_intercept <- function(setup, data_long, first_row) 
 gll_resolve_mi_latent_level <- function(setup, data_long, unit_id) {
   group_level <- setup$group_level
   if (!is.list(group_level) || !isTRUE(group_level$enabled)) {
+    ## Phase 2a/2b: the latent bears at the wide-row unit. Re-factor the unit
+    ## codes so they are contiguous 0..K-1 with n_latent = nlevels (EXACTLY as
+    ## the Phase-2c mi_group() branch below). Taking n_latent = max(unit_id) + 1
+    ## directly is unsafe when a NON-FINAL unit level is absent (e.g. all rows of
+    ## a middle `site` dropped under response = "drop"): that interior gap leaves
+    ## `first_row[gap] == 0`, silently drops an `x_unit` entry, yet `mi_unit_id`
+    ## still references the higher index -- an unchecked C++ OOB read
+    ## `mi_x_full(mi_unit_id(o))`. Re-factoring collapses the gap so lengths match.
+    unit_factor <- factor(unit_id)
     return(list(
-      latent_id = as.integer(unit_id),
-      n_latent = max(unit_id) + 1L,
+      latent_id = as.integer(unit_factor) - 1L,
+      n_latent = nlevels(unit_factor),
       group_level = list(enabled = FALSE, group = character(0),
                          levels = character(0), n_group = 0L),
       level_name = "unit"

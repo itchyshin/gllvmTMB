@@ -118,6 +118,7 @@ reference:
     - spatial_indep
     - spatial_dep
     - spatial_latent
+    - kernel_latent
     - meta_V
     - block_V
 

@@ -223,16 +223,18 @@ the test contract.
 
 Row-owner: **Boole + Fisher + Curie** (generic kernel grammar,
 identifiability, and simulation recovery). Added Design 65
-(2026-05-31). C0 is deliberately helper/prototype-only: it validates
-the biological kernel and the existing dense `phylo_latent(vcv=K)`
-route before any `kernel_*()` parser or C++ engine work.
+(2026-05-31). C0 validates the biological kernel and the existing
+dense `phylo_latent(vcv=K)` route before any new engine work. C1 adds
+the generic dense `kernel_*()` formula surface by reusing that
+phylo-equivalent path; C2 is still required before advertising
+cross-lineage coevolution as a fitted biological model.
 
 | ID | Capability | Status | Test evidence | Notes |
 |----|------------|--------|---------------|-------|
 | KER-01 | `make_cross_kernel(A_H, A_P, W, rho)` builds a PSD cross-lineage block kernel | `covered` | `test-coevolution-prototype.R` | C0 helper only. Validates symmetry, supplied diagonal blocks, unit diagonal, PSD, and fail-loud guards for invalid bridge strength / matrix scale. No parser or TMB engine change. |
 | COE-01 | Cross-lineage coevolution prototype via existing `phylo_latent(..., vcv = K_star) + phylo_unique(..., vcv = K_star)` | `partial` | `test-coevolution-prototype.R` (heavy) | C0 prototype checks planted host-partner `Gamma` recovery through the existing dense phylo path on block-missing `traits(...)` data. Still partial until C2 adds generic `kernel_*()`, `extract_Gamma()`, null-vs-cross logLik separation, loading-constraint verification, and single-`W` sensitivity. |
-| KER-02 | Generic `kernel_scalar()` / `kernel_unique()` / `kernel_indep()` / `kernel_dep()` / `kernel_latent()` formula family | `blocked` | n/a | Planned C1. Must pass `kernel_latent(K=A) + kernel_unique(K=A)` equivalent to `phylo_latent(vcv=A) + phylo_unique(vcv=A)` to less than `1e-6` before C2 begins. |
-| COE-02 | Validated cross-lineage coevolution engine with `extract_Gamma()` | `blocked` | n/a | Planned C2. Known-`Gamma` recovery, null-vs-cross likelihood separation, loading constraints, and association-richness sensitivity are mandatory before user-facing coevolution advertising. |
+| KER-02 | Generic dense `kernel_latent()` / `kernel_unique()` / `kernel_indep()` / `kernel_dep()` formula family | `covered` | `test-kernel-equivalence.R` | Design 65 C1. Single named dense kernel tier reuses the phylo-equivalent dense `vcv` path. Equivalence tests cover bare latent, latent + unique, unique, indep, and dep against dense `phylo_*()` `vcv = A` paths to less than `1e-6` for log likelihood and extracted Sigma. No `kernel_scalar()` surface in C1. |
+| COE-02 | Validated cross-lineage coevolution engine with `extract_Gamma()` | `blocked` | n/a | Planned C2. C1 supplies the generic single-kernel surface, but coevolution remains unadvertised until known-`Gamma` recovery, null-vs-cross likelihood separation, loading constraints, single-`W` sensitivity, and `extract_Gamma()` pass. |
 
 ### Section 7 — Mixed-family fits
 

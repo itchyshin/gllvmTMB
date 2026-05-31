@@ -4,10 +4,13 @@
 **Reviewers:** Noether (math-vs-implementation alignment) and Rose
 (public-consistency audit).
 
-The formula grammar is the heart of `gllvmTMB`. The 4 × 5 covariance
-keyword grid is the public-API contract; everything in the engine
-serves it. Per **AGENTS.md Design Rule #3**, no change to this grammar
-ships without updating this document first.
+The formula grammar is the heart of `gllvmTMB`. The 4 x 5
+source-specific covariance keyword grid is the core public-API
+contract; the generic `kernel_*()` tier added by Design 65 sits beside
+that grid for user-supplied dense relatedness/covariance matrices.
+Everything in the engine serves those surfaces. Per **AGENTS.md Design
+Rule #3**, no change to this grammar ships without updating this
+document first.
 
 The package should learn from `glmmTMB`, `gllvm`, and `galamm` without
 copying their grammars wholesale. The public grammar is built around
@@ -82,6 +85,8 @@ support from end-to-end verification:
 | `phylo_scalar(species, vcv = Cphy)` | **covered** | Single trait-scalar phylogenetic random effect; the simplest phylogenetic mixed-model form. Test evidence: `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (dense-vcv path) (validation-debt register PHY-04; Phase 0B.2 promotion 2026-05-16). |
 | `phylo_indep` / `phylo_dep` | **covered** | Marginal-only phylogenetic trait covariance (`phylo_indep`, equivalent to `phylo_unique`) and full-rank phylogenetic latent covariance (`phylo_dep`, equivalent to `phylo_latent(..., d = n_traits)`). Test evidence: `test-canonical-keywords.R`, `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
 | `spatial_latent(0 + trait \| sites, mesh = mesh)` or `spatial_latent(0 + trait \| sites, coords = c("lon", "lat"))` and siblings | **covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). See "Spatial axis convention" below. Test evidence: `test-spatial-latent-recovery.R` (spatial_latent), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). |
+| `kernel_latent(unit, K = A, d = q) + kernel_unique(unit, K = A, name = "known")` | **covered** | Generic dense-kernel decomposition for a user-supplied between-unit matrix `K`. C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Test evidence: `test-kernel-equivalence.R` checks log-likelihood and extracted-Sigma equivalence to the dense `phylo_latent(..., vcv = A) + phylo_unique(..., vcv = A)` path to less than `1e-6` (validation-debt register KER-02; Design 65 C1). |
+| `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
 | `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 4 × 5 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
@@ -183,10 +188,10 @@ Removal is a later API-change decision and must not be claimed while
 the export remains live (validation-debt register rows FG-16 and
 MIS-03).
 
-## The 4 × 5 covariance keyword grid
+## The 4 x 5 covariance keyword grid
 
-The grid is the user-facing public-API contract. Rows are
-correlation sources; columns are covariance modes:
+The grid is the source-specific user-facing public-API contract. Rows
+are correlation sources; columns are covariance modes:
 
 | correlation \ mode | scalar | unique | indep | dep | latent |
 |---|---|---|---|---|---|
@@ -201,6 +206,21 @@ keywords `phylo_slope(x | species)` and `animal_slope(x | id)` for
 per-group random regression slopes — see
 [`14-known-relatedness-keywords.md`](14-known-relatedness-keywords.md)
 for the team-ratified convention.
+
+Design 65 C1 adds a generic dense-kernel quartet beside, not inside,
+the source-specific grid:
+
+| generic kernel mode | Syntax | C1 route |
+|---|---|---|
+| unique | `kernel_unique(unit, K = A, name = "known")` | phylo-equivalent dense `vcv` path |
+| indep | `kernel_indep(unit, K = A, name = "known")` | same route, marginal-only label |
+| dep | `kernel_dep(unit, K = A, name = "known")` | full-rank latent route (`d = n_traits`) |
+| latent | `kernel_latent(unit, K = A, d = q, name = "known")` | reduced-rank latent route |
+
+There is no C1 `kernel_scalar()` surface. Scalar single-variance
+kernel models remain a later unification/deprecation question because
+the C1 gate is the dense `kernel_latent + kernel_unique` equivalence
+path required before cross-lineage coevolution C2.
 
 **The A vs V naming boundary** (per Design 14 §3): `animal_*` and
 `phylo_*` keywords accept **A** / **Ainv** for *relatedness*

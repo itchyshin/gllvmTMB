@@ -747,23 +747,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   use_phylo_slope_indep <- use_phylo_slope_correlated &&
     isTRUE(phylo_slope_cs$extra$.indep)
   ## Track B scope (issue #341): the augmented phylo_indep(1 + x | sp) path
-  ## is validated for the Gaussian anchor cell AND the binomial family
-  ## (probit + logit). The augmented-slope engine is family-agnostic --
-  ## eta += b_phy_aug . Z_phy_aug is accumulated BEFORE the C++ family
+  ## is validated for the Gaussian anchor cell, the binomial family
+  ## (probit + logit, #381) AND -- this slice -- poisson, nbinom2, Gamma,
+  ## Beta, and ordinal_probit. The augmented-slope engine is family-agnostic
+  ## -- eta += b_phy_aug . Z_phy_aug is accumulated BEFORE the C++ family
   ## dispatch (src/gllvmTMB.cpp), and phylo_indep only differs from the
   ## family-general phylo_unique() path by pinning atanh_cor_b to 0 via the
-  ## TMB map below -- so binomial needs ZERO new C++. The remaining
-  ## non-Gaussian families (poisson / nbinom2 / Gamma / Beta / ordinal) stay
-  ## reserved fail-loud until their B-slice cells are validated
-  ## (test-matrix-slope-phylo-indep.R locks them). Family is unknown at parse
-  ## time, so the reservation is enforced here where family_id_vec exists.
-  ## The message keeps the parser's "LHS richer than" phrasing so the
-  ## reserved-family contract is unchanged.
-  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L))) {
+  ## TMB map below -- so each family needs ZERO new C++; activation is just
+  ## this family-id allowlist relax once a per-family diagonal-Sigma_b
+  ## recovery cell passes (test-phylo-indep-slope-nongaussian.R; the binomial
+  ## anchor is test-binomial-slope-recovery.R). The allowlist holds the
+  ## runtime family ids (family_to_id(), NOT the .valid_family enum):
+  ## 0 gaussian, 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta,
+  ## 14 ordinal_probit. Families NOT on this list (e.g. tweedie, student,
+  ## the delta / truncated / mixture families) stay reserved fail-loud until
+  ## their own recovery cells land. Family is unknown at parse time, so the
+  ## reservation is enforced here where family_id_vec exists. The message
+  ## keeps the parser's "LHS richer than" phrasing so the contract substring
+  ## is unchanged.
+  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
-      "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()} and {.code binomial()} (probit / logit) in this release.",
-      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for other non-Gaussian augmented phylogenetic random regression, or {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
+      "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for any other non-Gaussian augmented phylogenetic random regression, or {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
     ))
   }
   ## phylo_dep(1 + x | species) augmented-slope scope (Design 56 §9.5c):

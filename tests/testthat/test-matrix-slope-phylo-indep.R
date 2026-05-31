@@ -1,62 +1,40 @@
 ## Phase B-matrix agent SLOPE-phylo-indep (Design 59): the random-slope
-## anchor LHS `phylo_indep(1 + x | species)` x the STILL-RESERVED
-## non-Gaussian families -- documented-contract assertion (NOT a recovery
-## cell).
+## anchor LHS `phylo_indep(1 + x | species)` x the non-Gaussian families --
+## allowlist-boundary contract assertion (NOT a recovery cell).
 ##
-## SCOPE UPDATE (issue #341): the binomial cells (probit / logit) have been
-## ACTIVATED -- they now fit and are exercised as a diagonal-Sigma_b
-## recovery in test-binomial-slope-recovery.R, so they are no longer locked
-## here. The families below (ordinal, poisson, nbinom2, Gamma, Beta) remain
-## reserved fail-loud until their own B-slice cells are validated.
+## SCOPE UPDATE (issue #341):
+##   * #381 ACTIVATED the binomial cells (probit / logit) -- diagonal-Sigma_b
+##     recovery in test-binomial-slope-recovery.R.
+##   * THIS slice ACTIVATES poisson, nbinom2, Gamma, Beta, and
+##     ordinal_probit -- diagonal-Sigma_b recovery in
+##     test-phylo-indep-slope-nongaussian.R (each passed a per-family
+##     recovery cell before earning the R/fit-multi.R allowlist).
 ##
-## ----------------------------------------------------------------------
-## Why this file asserts a contract instead of recovering a covariance
-##
-## The sibling SLOPE files (test-matrix-slope-{poisson,nbinom2,gamma,beta,
-## ordinal,binomial-logit,binomial-probit}.R) carry the *correlated*
-## augmented anchor `phylo_unique(1 + x | species)`, whose 2x2 Sigma_b
-## (intercept var, slope var, their correlation) is wired through the
-## engine path `use_phylo_slope_correlated == 1` and reported as
-## `report$sd_b` / `report$cor_b`.
-##
-## `phylo_indep(1 + x | species)` is the DIAGONAL analogue the Gaussian
-## skeleton `test-phylo-indep-slope-gaussian.R` recovers (cov pinned to 0).
-## The parser (R/brms-sugar.R, the `phylo_indep` branch) DOES accept the
-## augmented intercept+slope LHS -- both the wide `1 + x | species` and the
-## long `0 + trait + (0 + trait):x | species` spelling -- and rewrites it to
-## the `phylo_slope(..., .indep = TRUE)` engine path. The family-scope
-## reservation for the STILL-RESERVED families is then enforced downstream
-## in R/fit-multi.R (where `family_id_vec` exists), which fail-loud-aborts a
-## reserved family with the stable substring
-##
-##   "`phylo_indep()` LHS richer than `0 + trait` is not yet supported."
-##
-## This is a DELIBERATE, DOCUMENTED design boundary for the reserved
-## families (their non-Gaussian diagonal-slope cells are deferred), not a
-## transient non-convergence. The abort is family-DEPENDENT: gaussian and
-## binomial pass the guard; the families below are rejected.
+## So none of the five families this file used to LOCK as reserved are
+## reserved any more. The file's remaining job is to lock the OTHER side of
+## the boundary: (a) a positive smoke that each newly-activated family now
+## constructs a fit on the augmented phylo_indep slope path (the guard no
+## longer aborts it), and (b) the negative lock that a family OFF the
+## allowlist (e.g. tweedie) still fail-loud-aborts with the stable
+## "LHS richer than" substring -- so the allowlist boundary stays a tested,
+## reproducible contract rather than an accident.
 ##
 ## ----------------------------------------------------------------------
-## Honest-matrix discipline (Design 59)
+## Why the activated-family smoke is a construct-check, not a recovery
 ##
-## The discipline forbids fake-passing a cell that cannot be fit, and it
-## distinguishes two honest outcomes: (a) `skip()` for a cell that COULD
-## pass with bigger n / a different seed, and (b) a genuine passing
-## assertion of the engine's documented behaviour. This cell is case (b):
-## the augmented `phylo_indep` slope is reserved by contract, so the honest,
-## reproducible test is to LOCK that fail-loud contract per family -- a
-## `skip()` would falsely imply "could pass later", which is not true while
-## those cells are reserved. We therefore `expect_error()` the SPECIFIC
-## augmented-LHS abort (matched on the stable substring "LHS richer than",
-## not a generic data / family error) for each of the STILL-RESERVED
-## families below. Those cells stay reserved by contract this phase.
+## The numeric recovery (conv == 0, PD Hessian, rho pinned 0, variances in
+## the inherited per-family band) is owned by the dedicated recovery cells
+## (test-phylo-indep-slope-nongaussian.R / test-binomial-slope-recovery.R).
+## Re-asserting it here would duplicate those cells on a tiny fixture. The
+## honest, non-redundant assertion here is simply that the family guard now
+## ADMITS each activated family -- i.e. the call no longer raises the
+## reserved "LHS richer than" abort. We assert that the call does not raise
+## that specific abort (it returns a gllvmTMB fit on this small fixture).
 ##
-## Register implication: the `phylo_indep(1 + x | sp)` x {ordinal, poisson,
-## nbinom2, Gamma, Beta} cells of the random-slope column stay
-## "not-applicable / reserved by contract" (they do NOT move to `covered`,
-## and they are NOT an open `partial` recovery debt). The binomial cells
-## have moved to `covered` (see test-binomial-slope-recovery.R). This file
-## documents and guards the remaining reserved boundary.
+## Register implication: the `phylo_indep(1 + x | sp)` x {binomial, poisson,
+## nbinom2, Gamma, Beta, ordinal} cells of the random-slope column are now
+## `covered` (PHY-11..PHY-16). Families OFF the allowlist stay
+## "not-applicable / reserved by contract" and are NOT an open recovery debt.
 
 skip_if_not_slope_phylo_indep_deps <- function() {
   testthat::skip_on_cran()
@@ -64,12 +42,12 @@ skip_if_not_slope_phylo_indep_deps <- function() {
   testthat::skip_if_not_installed("TMB")
 }
 
-## Minimal seed-controlled phylo fixture. No recovery is performed (the fit
-## aborts at the R/fit-multi.R family guard for the reserved families), so
-## this only needs to be a well-formed phylo data frame with a continuous
-## `x` and a 2-trait augmented LHS to exercise. The per-family `value`
-## columns are all constructed so the ONLY thing that can abort the call is
-## the reserved-family augmented-LHS contract.
+## Minimal seed-controlled phylo fixture. The activated-family smokes only
+## need the call to clear the family guard (they do not assert recovery), and
+## the reserved boundary family aborts at the guard -- so a small well-formed
+## phylo data frame with a continuous `x` and a 2-trait augmented LHS
+## suffices. The per-family `value` columns are all constructed so the ONLY
+## family-scope thing that can fire is the allowlist boundary contract.
 make_slope_phylo_indep_fixture <- function(seed = 20260529L,
                                            n_sp = 25L, n_rep = 3L) {
   set.seed(seed)
@@ -81,7 +59,7 @@ make_slope_phylo_indep_fixture <- function(seed = 20260529L,
     rep     = seq_len(n_rep)
   )
   df$x <- stats::rnorm(nrow(df))
-  ## Generic well-formed responses for every reserved-family branch.
+  ## Generic well-formed responses for every family branch.
   df$count <- stats::rpois(nrow(df), lambda = 5)
   df$nb    <- stats::rnbinom(nrow(df), mu = 5, size = 2)
   df$pos   <- stats::rgamma(nrow(df), shape = 2, rate = 1)
@@ -91,15 +69,43 @@ make_slope_phylo_indep_fixture <- function(seed = 20260529L,
 }
 
 ## The documented augmented-LHS abort, matched on a stable substring of the
-## cli message. This is the SPECIFIC contract under test (reserved augmented
-## phylo_indep slope), not a generic construction failure -- matching the
-## exact phrase guards against a false-positive abort from some unrelated
-## data / family problem.
+## cli message. This is the SPECIFIC contract under test (a family OFF the
+## allowlist), not a generic construction failure.
 .phylo_indep_augmented_regexp <- "LHS richer than"
 
-## Assert that `phylo_indep(1 + x | species)` fail-loud-rejects the
-## augmented LHS for the given response `formula` + `family`. Returns
-## invisibly; raises a testthat failure if the wrong (or no) error fires.
+## Assert that `phylo_indep(1 + x | species)` ADMITS the augmented LHS for an
+## activated family: the call must NOT raise the reserved "LHS richer than"
+## abort (it returns a gllvmTMB fit on this small fixture). Recovery is
+## checked elsewhere; this only locks that the guard lets the family through.
+expect_phylo_indep_slope_activated <- function(formula, data, tree, family) {
+  fit <- tryCatch(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      formula,
+      data      = data,
+      phylo_tree = tree,
+      unit      = "species",
+      family    = family
+    ))),
+    error = function(e) e
+  )
+  if (inherits(fit, "error")) {
+    ## A failure is allowed to be SOME other (small-fixture) condition, but
+    ## it must NOT be the reserved-family allowlist abort.
+    testthat::expect_false(
+      grepl(.phylo_indep_augmented_regexp, conditionMessage(fit)),
+      label = sprintf(
+        "activated family must clear the allowlist guard (got reserved abort: %s)",
+        conditionMessage(fit)
+      )
+    )
+  } else {
+    testthat::expect_s3_class(fit, "gllvmTMB_multi")
+  }
+  invisible(NULL)
+}
+
+## Assert that a family OFF the allowlist still fail-loud-aborts the
+## augmented LHS with the stable reserved substring.
 expect_phylo_indep_slope_reserved <- function(formula, data, tree, family) {
   testthat::expect_error(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -114,82 +120,76 @@ expect_phylo_indep_slope_reserved <- function(formula, data, tree, family) {
 }
 
 ## ---------------------------------------------------------------
-## binomial(probit / logit): NO LONGER reserved -- ACTIVATED (issue #341).
-## The augmented phylo_indep slope now fits for the binomial family; its
-## diagonal-Sigma_b recovery (rho pinned to 0) lives in
-## test-binomial-slope-recovery.R. The remaining non-Gaussian families
-## below stay reserved fail-loud (their B-slice cells are not yet
-## validated). The abort fires at the R/fit-multi.R family guard (which now
-## admits family_id in {gaussian, binomial}), matched on the same stable
-## "LHS richer than" substring.
+## Activated families: the augmented phylo_indep slope guard ADMITS them
+## (recovery owned by the dedicated cells). One smoke per family.
 ## ---------------------------------------------------------------
-
-## ---------------------------------------------------------------
-## ordinal_probit: augmented phylo_indep slope reserved by contract
-## ---------------------------------------------------------------
-test_that("ordinal_probit phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+test_that("poisson(log) phylo_indep(1 + x | sp): augmented slope LHS now admitted (activated)", {
   skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
-  expect_phylo_indep_slope_reserved(
-    ord ~ 0 + trait + phylo_indep(1 + x | species),
-    data = fx$df, tree = fx$tree,
-    family = ordinal_probit()
-  )
-})
-
-## ---------------------------------------------------------------
-## poisson(log): augmented phylo_indep slope reserved by contract
-## ---------------------------------------------------------------
-test_that("poisson(log) phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
-  skip_if_not_heavy()
-  skip_if_not_slope_phylo_indep_deps()
-  fx <- make_slope_phylo_indep_fixture()
-  expect_phylo_indep_slope_reserved(
+  expect_phylo_indep_slope_activated(
     count ~ 0 + trait + phylo_indep(1 + x | species),
     data = fx$df, tree = fx$tree,
     family = stats::poisson(link = "log")
   )
 })
 
-## ---------------------------------------------------------------
-## nbinom2: augmented phylo_indep slope reserved by contract
-## ---------------------------------------------------------------
-test_that("nbinom2 phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+test_that("nbinom2 phylo_indep(1 + x | sp): augmented slope LHS now admitted (activated)", {
   skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
-  expect_phylo_indep_slope_reserved(
+  expect_phylo_indep_slope_activated(
     nb ~ 0 + trait + phylo_indep(1 + x | species),
     data = fx$df, tree = fx$tree,
     family = gllvmTMB::nbinom2()
   )
 })
 
-## ---------------------------------------------------------------
-## Gamma(log): augmented phylo_indep slope reserved by contract
-## ---------------------------------------------------------------
-test_that("Gamma(log) phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+test_that("Gamma(log) phylo_indep(1 + x | sp): augmented slope LHS now admitted (activated)", {
   skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
-  expect_phylo_indep_slope_reserved(
+  expect_phylo_indep_slope_activated(
     pos ~ 0 + trait + phylo_indep(1 + x | species),
     data = fx$df, tree = fx$tree,
     family = stats::Gamma(link = "log")
   )
 })
 
+test_that("Beta() phylo_indep(1 + x | sp): augmented slope LHS now admitted (activated)", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_indep_deps()
+  fx <- make_slope_phylo_indep_fixture()
+  expect_phylo_indep_slope_activated(
+    prop ~ 0 + trait + phylo_indep(1 + x | species),
+    data = fx$df, tree = fx$tree,
+    family = gllvmTMB::Beta()
+  )
+})
+
+test_that("ordinal_probit phylo_indep(1 + x | sp): augmented slope LHS now admitted (activated)", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_indep_deps()
+  fx <- make_slope_phylo_indep_fixture()
+  expect_phylo_indep_slope_activated(
+    ord ~ 0 + trait + phylo_indep(1 + x | species),
+    data = fx$df, tree = fx$tree,
+    family = gllvmTMB::ordinal_probit()
+  )
+})
+
 ## ---------------------------------------------------------------
-## Beta(): augmented phylo_indep slope reserved by contract
+## Allowlist boundary: a family OFF the allowlist (tweedie) still
+## fail-loud-aborts the augmented phylo_indep slope LHS. This locks that the
+## activation is an explicit allowlist, not a blanket relax.
 ## ---------------------------------------------------------------
-test_that("Beta() phylo_indep(1 + x | sp): augmented slope LHS reserved -- fail-loud abort", {
+test_that("tweedie phylo_indep(1 + x | sp): augmented slope LHS still reserved -- fail-loud abort (allowlist boundary)", {
   skip_if_not_heavy()
   skip_if_not_slope_phylo_indep_deps()
   fx <- make_slope_phylo_indep_fixture()
   expect_phylo_indep_slope_reserved(
-    prop ~ 0 + trait + phylo_indep(1 + x | species),
+    pos ~ 0 + trait + phylo_indep(1 + x | species),
     data = fx$df, tree = fx$tree,
-    family = gllvmTMB::Beta()
+    family = gllvmTMB::tweedie()
   )
 })

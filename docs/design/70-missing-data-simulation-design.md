@@ -433,7 +433,7 @@ evidence-first/no-overselling rules:
    check reproduces an indicative remedy, not an established one.
 3. **FIML ~ MI only in the congenial case, and only asymptotically.** A4
    equivalence holds when the MI imputation model matches the FIML covariate
-   model (Schafer & Graham 2002; Schenker & Taylor 1996). The study documents
+   model (Schafer & Graham 2002). The study documents
    divergence under misspecification; it does NOT claim FIML dominates MI. They
    are complementary paths (Design 59 Sections 1b, 2).
 4. **Coverage claims are conditional on a correctly specified joint model.**

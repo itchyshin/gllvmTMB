@@ -511,7 +511,7 @@ precise pages -- reference the claim, not yet a page number):
 - **Goolsby, Bruggeman & Ane (2017)** *Methods Ecol. Evol.* 8:22-27
   (`Rphylopars`) -- phylogenetic-covariance-based trait imputation; the
   reference implementation whose behaviour the strong-signal case should
-  approach. (Also Johnson, Fitzpatrick, Pearse & Revell 2021, *Glob. Ecol.
+  approach. (Also Johnson, Isaac, Paviolo & González-Suárez 2021, *Glob. Ecol.
   Biogeogr.* 30:51-62, on the same signal-dependence.)
 
 The frequentist mechanism is transparent in our model: `sd_x` (the phylogenetic
@@ -609,7 +609,7 @@ stack.
 | response delta correction `mu(i) += beta(mi_col)*(mi_x_full(i)-X_mu(i,mi_col))` (`:806`) | `eta(o) += b_fix(mi_col)*(x_full(mi_species_id(o)) - X_fix(o,mi_col))` | ADAPT | broadcast through `mi_species_id` to long rows (section 4); the existing `X_fix %*% b_fix` term stands. |
 | REPORT/ADREPORT `u_mi_struct`, `log_sd_mi_struct`, `sd_mi_struct` (`:820-825`) | REPORT/ADREPORT `g_x`, `log_sd_x`, `sd_x` | PORT | EBLUP outputs + the phylogenetic SD of the covariate. |
 
-Note: the discrete-row response gate (drmTMB `:1059-1066`; Design 67 section 2.2)
+Note: the discrete-row response gate (drmTMB `:1163-1170`; Design 67 section 2.2)
 is NOT relevant to Phase 3 -- it is a Phase 5 (discrete SUM) concern. Phase 3 is
 Gaussian-Laplace and adds its covariate density without gating off the response
 term.

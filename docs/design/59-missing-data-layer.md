@@ -150,7 +150,7 @@ In TMB: declare `b`, `b_x`, `x_mis` in the `random` set; Laplace replaces the in
 
 ## 11. Evidence base (curated; anchors in **bold**)
 
-**Frequentist foundations** — Rubin (1976) *Biometrika* 63:581–592; Little & Rubin (2019) 3rd ed., Wiley; **Schafer & Graham (2002)** *Psych. Methods* 7:147–177; Enders (2010/2022) Guilford; Allison (2003) *J. Abnorm. Psychol.* 112:545–557; Dempster, Laird & Rubin (1977) *JRSS-B* 39:1–38.
+**Frequentist foundations** — Rubin (1976) *Biometrika* 63:581–592; Little & Rubin (2019) 3rd ed., Wiley; **Schafer & Graham (2002)** *Psych. Methods* 7:147–177; von Hippel (2009) *Sociol. Methodol.* 39:265–291; Enders (2010/2022) Guilford; Allison (2003) *J. Abnorm. Psychol.* 112:545–557; Dempster, Laird & Rubin (1977) *JRSS-B* 39:1–38.
 **Missing covariates in GLMs** — Ibrahim (1990) *JASA* 85:765–769; Ibrahim, Chen & Lipsitz (1999) *Biometrics* 55:591–596; **Ibrahim, Chen, Lipsitz & Herring (2005)** *JASA* 100:332–346.
 **Latent-field / measurement-error** — Gómez-Rubio, Cameletti & Blangiardo (2019) arXiv:1912.10981; Carroll, Ruppert, Stefanski & Crainiceanu (2006) CRC; Bürkner brms missing-values vignette.
 **TMB / Laplace / EBLUP** — **Kristensen, Nielsen, Berg, Skaug & Bell (2016)** *JSS* 70(5); Skaug & Fournier (2006) *CSDA* 51:699–709; Brooks et al. (2017) *R Journal* 9(2):378–400; Anderson, Ward, English, Barnett & Thorson (2025) *JSS* 115(2); **Robinson (1991)** *Statist. Sci.* 6:15–32; Harville (1976) *JASA* 71:320–330; ASReml (Gilmour et al.).

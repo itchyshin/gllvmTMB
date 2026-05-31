@@ -199,8 +199,8 @@ test_that("CROSSED RECOVERY: two independent diagonal groupings recover", {
 
   expect_equal(fit$opt$convergence, 0L)
   ## PD Hessian (when sdreport succeeded).
-  if (!is.null(fit$sdreport) && !is.null(fit$sdreport$pdHess)) {
-    expect_true(isTRUE(fit$sdreport$pdHess))
+  if (!is.null(fit$sd_report) && !is.null(fit$sd_report$pdHess)) {
+    expect_true(isTRUE(fit$sd_report$pdHess))
   }
   ## Recover both variance components (mean across traits) within band.
   sd_site_hat <- mean(as.numeric(fit$report$sd_q))

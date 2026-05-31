@@ -362,7 +362,7 @@ simulation study.
 
 ```{r reaction-norm-sim}
 set.seed(2026)
-n_sp_rn <- 60
+n_sp_rn <- 25
 rn_traits <- paste0("trait_", seq_len(3))
 
 tree_rn <- ape::rcoal(n_sp_rn)

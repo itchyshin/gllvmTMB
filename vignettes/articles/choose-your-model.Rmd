@@ -463,7 +463,7 @@ that the fit recovers both the slope SD and the per-species slopes.
 
 ```{r ex-slope, results = "hide"}
 set.seed(6)
-n_sp  <- 60L
+n_sp  <- 25L
 n_trt <- 3L
 n_rep <- 4L
 tree  <- ape::rcoal(n_sp)
@@ -542,7 +542,7 @@ variance; the cluster tier's is reported as `fit$report$sd_q`.
 
 ```{r ex-cluster, results = "hide"}
 set.seed(11)
-n_cluster  <- 60L
+n_cluster  <- 25L
 n_unit_per <- 4L
 n_obs_per  <- 3L
 trait_lv   <- c("a", "b", "c")
@@ -643,7 +643,7 @@ fit_ci <- gllvmTMB(
 ```{r ci-methods}
 rep_wald <- extract_repeatability(fit_ci, level = 0.95, method = "wald")
 rep_boot <- extract_repeatability(fit_ci, level = 0.95, method = "bootstrap",
-                                  nsim = 50, seed = 1)
+                                  nsim = 20, seed = 1)
 rep_wald
 rep_boot
 ```

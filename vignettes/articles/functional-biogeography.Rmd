@@ -29,8 +29,9 @@ knitr::opts_chunk$set(
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md):
 > latent/unique covariance is `covered` (FG-04..FG-06), `phylo_*` is
 > `covered` for the main decomposition rows (FG-12 / PHY-01..PHY-03),
-> while `spatial_*` and `meta_V` remain `partial` in the current
-> validation depth (FG-13 / SPA-02..SPA-04 and FG-14 / MET-01).
+> while the `spatial_*` family rollup and `meta_V` remain `partial` in the
+> current validation depth (FG-13 and FG-14 / MET-01); the spatial
+> inference rows SPA-02..SPA-04 are now `covered`.
 > The full six-piece kitchen-sink composite's identifiability and
 > interpretability on real data is **M3** milestone work
 > (R >= 200 empirical-coverage gate). Treat this as a method demo
@@ -548,8 +549,8 @@ fit_M4 <- gllvmTMB(
 ```
 
 The two-piece phylogenetic fit is the focus of the
-[`phylogenetic-gllvm`](phylogenetic-gllvm.html) article and its
-diagnostic counterpart [`two-U-phylogeny`](two-U-phylogeny.html).
+[`phylogenetic-gllvm`](phylogenetic-gllvm.html) article, which also
+covers the two-piece diagnostic decomposition.
 That article also covers the identifiability conditions: $K_P$
 ($d$ in `phylo_latent`) is identifiable up to rotation, and the
 two-piece split between $\boldsymbol{\Lambda}_P\boldsymbol{\Lambda}_P^{\!\top}$

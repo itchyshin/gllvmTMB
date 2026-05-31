@@ -1,11 +1,11 @@
 ---
-title: "Confirmatory loadings for binary species distributions: pinning $\\boldsymbol{\\Lambda}$ with `lambda_constraint`"
+title: "Confirmatory loadings for binary species distributions: pinning Lambda with lambda_constraint"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Confirmatory loadings for binary species distributions: pinning $\boldsymbol{\Lambda}$ with `lambda_constraint`}
+  %\VignetteIndexEntry{Confirmatory loadings for binary species distributions: pinning Lambda with lambda_constraint}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -34,7 +34,7 @@ how strongly.
 
 But $\boldsymbol{\Lambda}$ is **identified only up to rotation**.
 Exploratory fits give a $\boldsymbol{\Lambda}$ that is mathematically
-correct but visually arbitrary — two different optimisation starts can
+correct but visually arbitrary -- two different optimisation starts can
 return rotated versions of the same fit, and the orientation of the
 axes is not the orientation suggested by your biology (Niku *et al.*
 2019; Tobler *et al.* 2019).
@@ -60,7 +60,7 @@ hypotheses to test).
 
 Reach for `lambda_constraint` when **any** of the following is true:
 
-- You have a categorical hypothesis about a species — "shade-tolerant
+- You have a categorical hypothesis about a species -- "shade-tolerant
   species should not respond to the light gradient" (a structural zero).
 - You have **functional-group** classifications and want each group to
   load on a specific axis.
@@ -71,11 +71,11 @@ Reach for `lambda_constraint` when **any** of the following is true:
 
 You probably don't need `lambda_constraint` when:
 
-- You have rich continuous trait data — use HMSC's $T r$ matrix instead
+- You have rich continuous trait data -- use HMSC's $T r$ matrix instead
   (Ovaskainen *et al.* 2017; Tikhonov *et al.* 2019).
-- You have only one latent dimension ($d = 1$) — rotation
+- You have only one latent dimension ($d = 1$) -- rotation
   indeterminacy doesn't exist, and the identification pin is automatic.
-- Your goal is purely predictive, not interpretive — the exploratory
+- Your goal is purely predictive, not interpretive -- the exploratory
   fit gives the same likelihood as any rotated equivalent.
 
 ## Setup
@@ -90,28 +90,28 @@ set.seed(20260527)
 ## A 20-species forest understory community
 
 We simulate a community of 20 forest understory plants at 40 sites
-(the moderate-$n$ regime is on purpose — at very large $n$ the
+(the moderate-$n$ regime is on purpose -- at very large $n$ the
 exploratory fit's leakage on the structural-zero entries becomes
 invisible, and the article would have nothing visual to compare).
 The community has **three functional groups**:
 
-- **Group A — shade specialists** (5 species): respond positively to
+- **Group A -- shade specialists** (5 species): respond positively to
   the shade-tolerance axis (LV1); do **not** respond to the
   drought-tolerance axis (LV2).
-- **Group B — drought specialists** (5 species): respond positively
+- **Group B -- drought specialists** (5 species): respond positively
   to LV2; do **not** respond to LV1.
-- **Group C — no prior hypothesis** (10 species): loadings are free
+- **Group C -- no prior hypothesis** (10 species): loadings are free
   on both axes. These are species the ecologist has not pre-classified
   or chooses not to constrain.
 
 Group C is a single category, not two. (An earlier draft separated
-"generalists" from "unknown" species — the distinction was cosmetic
+"generalists" from "unknown" species -- the distinction was cosmetic
 because both classes carry `NA` in the constraint matrix, so we
 collapse them into one C group.)
 
 We use a **binary probit link** because (i) presence/absence is the
 canonical JSDM response type, and (ii) probit's latent residual
-variance is $\sigma^2_d = 1$ exactly — the cleanest non-Gaussian
+variance is $\sigma^2_d = 1$ exactly -- the cleanest non-Gaussian
 identifiability story (see the `response-families` vignette).
 
 ### True loadings
@@ -172,9 +172,9 @@ colnames(y_wide) <- species_names
 `gllvmTMB()` accepts the **same fit** in two equivalent shapes
 (see the `gllvm-vocabulary` vignette for full details):
 
-- **wide** — one row per site, one column per species. Natural shape
+- **wide** -- one row per site, one column per species. Natural shape
   for a site-by-species table from a vegetation survey.
-- **long** — one row per (site, species) pair. Natural shape after a
+- **long** -- one row per (site, species) pair. Natural shape after a
   `tidyr::pivot_longer()`.
 
 ```{r data-shapes}
@@ -200,7 +200,7 @@ head(df_long, 3)
 ### Prevalence diagnostic
 
 Before fitting, sanity-check that the simulated data are not saturated
-at 0 or 1 — that would make the fit ill-conditioned regardless of
+at 0 or 1 -- that would make the fit ill-conditioned regardless of
 constraint structure.
 
 ```{r prevalence, fig.width = 6, fig.height = 3, fig.cap = "Per-species prevalences (proportion of sites at which each species is present) for all 20 simulated species, coloured by functional group. The community is well-conditioned: no species is at 0% or 100% prevalence, so each species contributes information to the latent-axis estimation.", fig.alt = "Bar chart of 20 species prevalences ranging roughly between 0.15 and 0.85. Bars are coloured by functional group: A_shade (orange), B_drought (teal), C_free (grey)."}
@@ -234,19 +234,10 @@ $\Lambda_{i, j} = 0$ for $j > i$ when $i \le d$, and the diagonal is
 constrained to be positive. This is documented in
 `?lambda_constraint`.
 
-We fit it in **wide** form first, then re-fit in **long** form to
-confirm the two interfaces produce the same likelihood:
-
-```{r fit-exploratory-wide}
-fit_exp_wide <- gllvmTMB(
-  traits(all_of(species_names)) ~ 0 + trait + latent(0 + trait | site, d = 2L),
-  data   = df_wide,
-  family = stats::binomial(link = "probit")
-)
-
-cat("Wide exploratory  -- conv:", fit_exp_wide$opt$convergence,
-    "  logLik:", round(as.numeric(logLik(fit_exp_wide)), 2), "\n")
-```
+We fit it in **long** form. (The wide interface gives the identical
+likelihood from the same data in `traits(all_of(species_names)) ~ ...`
+form; the `gllvm-vocabulary` vignette demonstrates the long/wide
+equivalence in detail, so we don't repeat the duplicate fit here.)
 
 ```{r fit-exploratory-long}
 fit_exp_long <- gllvmTMB(
@@ -257,11 +248,6 @@ fit_exp_long <- gllvmTMB(
 
 cat("Long exploratory  -- conv:", fit_exp_long$opt$convergence,
     "  logLik:", round(as.numeric(logLik(fit_exp_long)), 2), "\n")
-
-# Same fit?
-all.equal(as.numeric(logLik(fit_exp_wide)),
-          as.numeric(logLik(fit_exp_long)),
-          tolerance = 1e-4)
 ```
 
 ## The biological constraint matrix
@@ -297,7 +283,7 @@ bookkeeping for you:
 
 Counting pins:
 
-- **2 anchor pins** — $\Lambda_{1,1} = 1$ and $\Lambda_{6,2} = 1$.
+- **2 anchor pins** -- $\Lambda_{1,1} = 1$ and $\Lambda_{6,2} = 1$.
 - **5 group-A structural zeros** at $\Lambda_{1{:}5,\, 2} = 0$.
 - **5 group-B structural zeros** at $\Lambda_{6{:}10,\, 1} = 0$.
 
@@ -307,9 +293,9 @@ one upper-triangular pin internally), the constrained model adds
 **11 net pins**, so the LRT below uses df = 11.
 
 If your hypothesis doesn't map cleanly onto "this group loads on that
-axis" — for example a free-form CFA pattern, idiosyncratic
+axis" -- for example a free-form CFA pattern, idiosyncratic
 species-by-species pins, or a confirmatory design from outside
-ecology — build the matrix by hand using `NA` for free entries and
+ecology -- build the matrix by hand using `NA` for free entries and
 numeric values for pinned entries. If you have **no** prior
 hypothesis at all, see the *fallback* section at the end of this
 article that introduces `suggest_lambda_constraint()`.
@@ -345,20 +331,8 @@ ggplot(df_pin, aes(x = axis, y = species, fill = kind)) +
 
 ## Fitting the constrained model
 
-We fit the constrained model in both wide and long form, and confirm
-the two paths give the same likelihood:
-
-```{r fit-con-wide}
-fit_con_wide <- gllvmTMB(
-  traits(all_of(species_names)) ~ 0 + trait + latent(0 + trait | site, d = 2L),
-  data              = df_wide,
-  family            = stats::binomial(link = "probit"),
-  lambda_constraint = list(unit = M_bio)
-)
-
-cat("Wide constrained -- conv:", fit_con_wide$opt$convergence,
-    "  logLik:", round(as.numeric(logLik(fit_con_wide)), 2), "\n")
-```
+We fit the constrained model in long form (the wide interface gives
+the identical likelihood, exactly as for the exploratory fit above):
 
 ```{r fit-con-long}
 fit_con_long <- gllvmTMB(
@@ -370,16 +344,11 @@ fit_con_long <- gllvmTMB(
 
 cat("Long constrained -- conv:", fit_con_long$opt$convergence,
     "  logLik:", round(as.numeric(logLik(fit_con_long)), 2), "\n")
-
-# Wide and long produce the same fit:
-all.equal(as.numeric(logLik(fit_con_wide)),
-          as.numeric(logLik(fit_con_long)),
-          tolerance = 1e-4)
 ```
 
-For the rest of the article we use the long-form fit (`fit_con_long`,
-which we'll abbreviate `fit_con`) because the diagnostic helpers below
-expect the long shape.
+For the rest of the article we abbreviate the long-form fits as
+`fit_con` and `fit_exp`, since the diagnostic helpers below expect the
+long shape.
 
 ```{r fit-con-alias}
 fit_con <- fit_con_long
@@ -390,12 +359,12 @@ fit_exp <- fit_exp_long
 
 There are three things to check, and they tell complementary stories:
 
-1. **LRT** — Is the constraint *inconsistent* with the data?
+1. **LRT** -- Is the constraint *inconsistent* with the data?
    (A small $p$ would say yes; large $p$ means the constraint is
    compatible.)
-2. **AIC** — Does the constraint *improve* expected predictive
+2. **AIC** -- Does the constraint *improve* expected predictive
    accuracy after paying the parameter-parsimony price?
-3. **BIC** — Does the constraint *improve* with a stronger penalty
+3. **BIC** -- Does the constraint *improve* with a stronger penalty
    for parameters?
 
 The constrained model is **nested inside** the exploratory model
@@ -437,24 +406,24 @@ data.frame(
 
 Reading these together:
 
-- **LRT** — the constrained likelihood is only slightly below the
+- **LRT** -- the constrained likelihood is only slightly below the
   exploratory likelihood, and the difference is well within what
   $\chi^2_{11}$ expects under the null. A large $p$ means we fail to
-  reject the structural hypothesis — the constraint is *compatible*
+  reject the structural hypothesis -- the constraint is *compatible*
   with the data. (Failing to reject is not the same as proving the
   hypothesis true; it is the standard inferential reading.)
-- **AIC** — negative $\Delta \text{AIC}_{\text{con}-\text{exp}}$ means
+- **AIC** -- negative $\Delta \text{AIC}_{\text{con}-\text{exp}}$ means
   the constrained model is preferred after the 11-parameter parsimony
   penalty. The biology buys us a more efficient description of the
   same data.
-- **BIC** — BIC penalises parameters more aggressively than AIC, so
+- **BIC** -- BIC penalises parameters more aggressively than AIC, so
   $\Delta \text{BIC}$ favours the constrained model by an even larger
   margin. By BIC the structural hypothesis is **strongly preferred**.
 
 Because the truth here was simulated with the structural zeros in
 place, all three diagnostics point the same way. If you supplied an
 incorrect constraint, the LRT $p$ would be small and $\Delta \text{AIC}$
-would be positive — both would push you back to the exploratory model.
+would be positive -- both would push you back to the exploratory model.
 
 ## Inspecting the constrained loadings
 
@@ -476,7 +445,7 @@ colnames(Lambda_exp) <- colnames(Lambda_con) <-
 If the biology says "Group A does not respond to drought (LV2)" and
 the truth is consistent with that hypothesis, the constrained fit
 forces those entries to zero by construction. The exploratory fit
-does not — sampling noise leaks into the entries that *should* be
+does not -- sampling noise leaks into the entries that *should* be
 zero. We can put a single number on the leakage:
 
 ```{r leakage}
@@ -500,12 +469,12 @@ The exploratory mean-absolute leakage is a real, sampling-driven
 number that *should* be zero under the biological hypothesis; the
 constrained value is exactly zero by construction. The model-comparison
 table above showed that paying for those structural zeros buys
-$\Delta \text{AIC} < 0$ and $\Delta \text{BIC} \ll 0$ — i.e., the
+$\Delta \text{AIC} < 0$ and $\Delta \text{BIC} \ll 0$ -- i.e., the
 constraint is not a cosmetic improvement, it is a measurable one.
 
-### Exploratory vs constrained — side by side
+### Exploratory vs constrained -- side by side
 
-```{r loadings-compare, fig.width = 8, fig.height = 5, fig.cap = "Estimated loadings from the exploratory fit (top row) and the constrained fit (bottom row), separated by latent axis (LV1 left, LV2 right). In the constrained fit, group A is exactly zero on LV2 and group B is exactly zero on LV1 — the imposed biological pins. In the exploratory fit, those same entries show sampling-noise leakage (small but visible bars) because the rotation convention does not know about the biology.", fig.alt = "Four-panel bar chart, 2 by 2 grid. Rows are model (exploratory, constrained); columns are axis (LV1, LV2). Group A bars are non-zero on both panels in the exploratory row but exactly zero on LV2 in the constrained row. Group B bars are non-zero on both panels in the exploratory row but exactly zero on LV1 in the constrained row. Group C bars are scattered in sign and magnitude in all four panels."}
+```{r loadings-compare, fig.width = 8, fig.height = 5, fig.cap = "Estimated loadings from the exploratory fit (top row) and the constrained fit (bottom row), separated by latent axis (LV1 left, LV2 right). In the constrained fit, group A is exactly zero on LV2 and group B is exactly zero on LV1 -- the imposed biological pins. In the exploratory fit, those same entries show sampling-noise leakage (small but visible bars) because the rotation convention does not know about the biology.", fig.alt = "Four-panel bar chart, 2 by 2 grid. Rows are model (exploratory, constrained); columns are axis (LV1, LV2). Group A bars are non-zero on both panels in the exploratory row but exactly zero on LV2 in the constrained row. Group B bars are non-zero on both panels in the exploratory row but exactly zero on LV1 in the constrained row. Group C bars are scattered in sign and magnitude in all four panels."}
 make_df <- function(Lambda, label) {
   data.frame(
     species = factor(rep(species_names, times = d), levels = species_names),
@@ -551,8 +520,8 @@ the few cases where the JSDM/GLLVM literature lags the psychometric
 literature, where Wald, profile, and bootstrap CIs on loadings have
 been routine for decades (Cudeck & O'Dell 1994; Zhang *et al.* 2010).
 On the ecology side it is essentially absent from the ML/TMB JSDM
-toolchain — `gllvm`, `sjSDM`, `ecoCopula` all return point estimates
-of $\Lambda$ without per-entry CIs in their default summaries — and
+toolchain -- `gllvm`, `sjSDM`, `ecoCopula` all return point estimates
+of $\Lambda$ without per-entry CIs in their default summaries -- and
 the only published ecology-side warning that GLLVM Wald SEs can
 *overstate* confidence is ter Braak & van der Veen (2025).
 
@@ -564,7 +533,7 @@ The package gives us three helpers for the confirmatory case.
 a numerical Jacobian of $\Lambda$ with respect to the packed
 reduced-rank parameters. It is **gated to confirmatory fits**
 because per-entry CIs are not well-defined under rotation
-indeterminacy (Mansolf & Reise 2016) — the helper errors on an
+indeterminacy (Mansolf & Reise 2016) -- the helper errors on an
 exploratory fit and points you at `confirmatory_lambda()` or at the
 rotation-invariant alternatives (`extract_communality(ci = TRUE)`,
 `extract_Sigma()`).
@@ -574,7 +543,7 @@ ci <- loading_ci(fit_con, level = "unit")
 head(ci, 10)
 ```
 
-Pinned entries have `se = 0` exactly (they're not random variables —
+Pinned entries have `se = 0` exactly (they're not random variables --
 the constraint nailed them down). Free entries inherit the SE from
 TMB's `sdreport` covariance restricted to the loading parameters.
 
@@ -637,7 +606,7 @@ cmp[free_big, ][order(-abs(cmp$estimate[free_big])), ][1:6, ]
 
 For loadings near zero, symmetric and asymmetric agree. For loadings
 where $|\hat\Lambda|$ is large, asymmetric Wald widens the
-upper bound and tightens the lower bound — the qualitatively right
+upper bound and tightens the lower bound -- the qualitatively right
 shape, matching what profile likelihood and parametric bootstrap
 would give up to higher-order corrections (see the discussion of
 Mansolf & Reise 2016 and ter Braak & van der Veen 2025 in the
@@ -722,13 +691,13 @@ variance. The complementary view is the per-species variance
 comes from the shared latent factors versus the link-implicit residual?
 For the probit fit this partition has two components:
 
-- **`shared_unit`** —
+- **`shared_unit`** --
   $(\boldsymbol\Lambda\boldsymbol\Lambda^\top)_{tt} / \boldsymbol\Sigma_{tt}$,
   the share of species $t$'s liability variance attributable to the
   shared latent factors at the unit (site) tier. Identical numerator
   to the total communality above, but expressed as a proportion of
   the **total** liability variance.
-- **`link_residual`** —
+- **`link_residual`** --
   $\sigma^2_d / \boldsymbol\Sigma_{tt}$, the probit noise floor.
   Fixed at $\sigma^2_d = 1$ for probit, so it equals
   $1 - \texttt{shared\_unit}$ by construction.
@@ -764,20 +733,14 @@ vp_show <- vp_ci[, c("trait", "proportion", "lower", "upper")]
 vp_show[, c("proportion", "lower", "upper")] <-
   lapply(vp_show[, c("proportion", "lower", "upper")], round, digits = 2)
 vp_show
-
-# Same answer through the unified confint() surface
-ci_alt <- confint(fit_con,
-                  parm   = paste0("proportion:shared_unit:",
-                                  paste(demo_species, collapse = ";")),
-                  method = "profile")
-round(ci_alt, 2)
 ```
 
-The two routes return the same numbers — `confint()` is the
-recommended user-facing entry point, since it places variance
+The same numbers are reachable through the unified `confint()` surface
+(`confint(fit_con, parm = "proportion:shared_unit:<trait>", method = "profile")`),
+which is the recommended user-facing entry point: it places variance
 partitions on the same `parm`/`method` API as Lambda entries,
-correlations, ICC, communality, and fixed effects. (See
-`?confint.gllvmTMB_multi` for the full grammar.)
+correlations, ICC, communality, and fixed effects. See
+`?confint.gllvmTMB_multi` for the full grammar.
 
 Two implementation notes worth flagging:
 
@@ -789,7 +752,7 @@ Two implementation notes worth flagging:
   variance. For this single-tier fit the two collapse to the same
   number; on a multi-tier fit (e.g. with `unique()` or
   `phylo_unique()` terms) they would diverge.
-- `link_residual` is flagged as `method = "(unavailable)"` here — for
+- `link_residual` is flagged as `method = "(unavailable)"` here -- for
   probit it is a known constant ($\sigma^2_d = 1$), so there is no
   profile to invert and the bounds collapse to the point estimate.
 
@@ -835,10 +798,10 @@ ggplot() +
 
 How to read this:
 
-- Two species (`B_drought_1`, `C_free_1`) have **two-sided CIs** —
+- Two species (`B_drought_1`, `C_free_1`) have **two-sided CIs** --
   the profile likelihood crosses the $\chi^2$ cutoff on both sides
   of the point estimate. These are the cleanest summaries.
-- Four species have **one-sided CIs** — the profile crosses the
+- Four species have **one-sided CIs** -- the profile crosses the
   cutoff on one side but not the other within the grid extent. The
   unreached side is reported as `NA` (the profile didn't bracket the
   cutoff at all) or as the proportion boundary `0`/`1` (the profile
@@ -851,13 +814,13 @@ How to read this:
   axes leaves smaller per-axis magnitudes; the total latent share is
   correspondingly lower.
 - Where they're available, CI **widths** are wider for species with
-  `shared_unit` near 0.5 and narrower at the extremes — the standard
+  `shared_unit` near 0.5 and narrower at the extremes -- the standard
   bounded-proportion pattern. The asymmetry (wider reach toward the
   far boundary) is what profile likelihood captures and symmetric
   Wald on the raw proportion would miss.
 
 For species with one-sided CIs, the companion `profile_proportions()`
-function (same fit, same components) returns the LR curve itself —
+function (same fit, same components) returns the LR curve itself --
 you can inspect where the profile crosses the $\chi^2$ cutoff and
 decide whether the available bound is informative for your purpose.
 The bracket-and-bisect inversion in `profile_ci_proportions()` keeps
@@ -867,8 +830,8 @@ where the data constrain.
 The same machinery extends to multi-tier fits (with `unique()` or
 `phylo_unique()` terms) where the partition has three or more
 components and `link_residual` is the smallest piece rather than half
-the bar. The `parm` token grammar is uniform —
-`"proportion:<component>[:trait]"` — so the demo above generalises
+the bar. The `parm` token grammar is uniform --
+`"proportion:<component>[:trait]"` -- so the demo above generalises
 without learning new function names.
 
 ## Reliability regime: what we know empirically
@@ -890,7 +853,7 @@ The validation-debt rows `LAM-01`, `LAM-03`, `LAM-04` are at
 **Practical regime**:
 
 - Recovery is reliable at `n_items` $\ge 20$, $d \in \{1, 2\}$.
-- $d = 3$ at `n_items = 10` is the documented boundary — the
+- $d = 3$ at `n_items = 10` is the documented boundary -- the
   suggester may not always stabilise; check `fit_health$pd_hessian`.
 - This article's fixture (`n_species = 20`, `d = 2`, `n_sites = 40`)
   is inside the validated regime.
@@ -913,300 +876,42 @@ Three honest caveats:
    with extra steps. Run exploratory first; bring `lambda_constraint`
    when you have a hypothesis to test.
 
-## Fallback: `suggest_lambda_constraint()` when you have no hypothesis
+## Fallback: no hypothesis? Use `suggest_lambda_constraint()`
 
-`confirmatory_lambda()` is the right tool when you can write down
-"this group loads on that axis." If you can't — for example, you're
-exploring a new community for the first time, you have no
-trait-driven grouping, or the literature points in conflicting
-directions — there is still a smaller, purely *statistical* problem
-worth solving: pick the minimum set of pins that make $\Lambda$
-identified, even without any biology. That is what
-`suggest_lambda_constraint()` does:
-
-```{r suggest-fallback}
-suggested <- suggest_lambda_constraint(fit_exp_long,
-                                       convention = "pin_top_one")
-suggested$convention
-suggested$n_pins
-suggested$note
-suggested$constraint
-```
-
-`pin_top_one` is one of six conventions the suggester ships
-(`?suggest_lambda_constraint`). The first three —
-`lower_triangular`, `pin_top_one`, `none` — just resolve rotational
-ambiguity and don't look at the data. The remaining three **do** look
-at the data and propose pins where the exploratory fit shows entries
-are small or unreliable. We walk through two of them below — the
-textbook simple version (`varimax_threshold`) and the principled
-uncertainty-aware version (`profile_retention`) — and mention the
-third (`wald_retention`, plus a queued bootstrap variant) at the end
-of the section.
-
-### Data-driven retention: `convention = "varimax_threshold"` (simple)
-
-The textbook psychometric path. Rotate the exploratory $\hat\Lambda$
-to varimax (the sparsifying rotation that maximises within-column
-variance of squared loadings), then pin every entry whose magnitude
-falls below a `threshold` value. Default 0.30 is the Comrey-Lee 1992
-convention on the standardised-loading scale; some authors use 0.40
-(Stevens 2012). Hard threshold, **no uncertainty involved**.
-
-This is the workhorse of applied CFA practice — it's what an analyst
-does when they say "I'll just drop the cross-loadings that look
-small." It works but doesn't filter on noise: a loading with
-$|\hat\Lambda| = 0.32$ and a huge SE survives, while one with
-$|\hat\Lambda| = 0.28$ and a tiny SE gets pinned.
-
-```{r suggest-varimax-threshold}
-sug_vmx <- suggest_lambda_constraint(
-  fit_exp_long,
-  convention = "varimax_threshold",
-  threshold  = 0.30
-)
-sug_vmx$n_pins
-cat(sug_vmx$note, "\n")
-```
-
-### Data-driven retention: `convention = "profile_retention"` (principled)
-
-For each entry of the exploratory $\hat\Lambda$, refit with that one
-entry pinned to zero and compare the log-likelihood to the
-unconstrained baseline. If the likelihood-ratio statistic rejects
-$H_0: \Lambda_{i,k} = 0$ at significance level
-$1 - \texttt{retention\_prob}$, keep the entry free; otherwise pin
-to zero.
-
-`retention_prob` is the unified retention argument across data-driven
-conventions (also used by `wald_retention` and, when v2 ships, by
-`bootstrap_retention`). Higher values are stricter — they raise the
-bar for retention. **The function default is 0.90** (LRT rejection at
-level 0.10), following the applied-EFA bootstrap convention. The
-more conservative 0.95 (LRT at 0.05, the BSEM convention) is also
-common; at moderate sample sizes 0.95 frequently over-prunes and
-yields refits with non-positive-definite Hessians, so the package
-defaults to 0.90.
-
-Why profile rather than Wald or bootstrap:
-
-- **Robust to non-PD Hessians.** The LRT uses only log-likelihood
-  values, not the Hessian-based covariance. Profile retention is
-  reliable in exactly the case where Wald retention can fail: when
-  an aggressive constraint pattern leaves the baseline fit's Hessian
-  non-positive-definite.
-- **Captures higher-order likelihood curvature** that Wald's
-  asymptotic-Normal approximation flattens.
-- **Conservative on failed test refits.** When a per-entry refit
-  doesn't converge or returns a non-PD Hessian itself, profile
-  retention treats it as "I couldn't test this entry" and leaves it
-  free — no constraint imposition based on unstable refits.
-- **Tractable cost.** One full refit per testable entry, roughly
-  `n_traits × d - d(d-1)/2` refits per call. ~40 refits at our
-  20-species fixture, ~2-3 minutes total. Slower than Wald's
-  microseconds; faster than bootstrap's order-of-magnitude-larger
-  refit count.
-
-```{r suggest-profile-retention, cache = TRUE}
-sug_pr <- suggest_lambda_constraint(
-  fit_exp_long,
-  convention     = "profile_retention",
-  retention_prob = 0.90    # the function default; see paragraph above
-)
-sug_pr$n_pins
-cat(sug_pr$note, "\n")
-```
-
-### Refit and model comparison
-
-Refit with the suggested constraint, then compare on LRT / AIC / BIC
-against the exploratory baseline, the biology-driven fit, and a
-one-factor (d = 1) sanity check.
-
-```{r fit-data-driven, cache = TRUE}
-fit_vmx <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2L),
-  data              = df_long,
-  family            = stats::binomial(link = "probit"),
-  lambda_constraint = list(unit = sug_vmx$constraint)
-)
-fit_pr <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 2L),
-  data              = df_long,
-  family            = stats::binomial(link = "probit"),
-  lambda_constraint = list(unit = sug_pr$constraint)
-)
-
-fit_d1 <- gllvmTMB(
-  value ~ 0 + trait + latent(0 + trait | site, d = 1L),
-  data   = df_long,
-  family = stats::binomial(link = "probit")
-)
-```
-
-```{r model-comparison}
-mc <- function(fit, label) {
-  data.frame(
-    model       = label,
-    free_params = attr(logLik(fit), "df"),
-    logLik      = round(as.numeric(logLik(fit)), 2),
-    AIC         = round(AIC(fit), 1),
-    BIC         = round(BIC(fit), 1),
-    converged   = fit$opt$convergence == 0L
-  )
-}
-
-mc_table <- rbind(
-  mc(fit_d1,  "d = 1 (one-factor sanity check)"),
-  mc(fit_exp, "exploratory d = 2 (baseline)"),
-  mc(fit_con, "biology d = 2 (confirmatory_lambda)"),
-  mc(fit_vmx, "data-driven d = 2 (varimax_threshold)"),
-  mc(fit_pr,  "data-driven d = 2 (profile_retention)")
-)
-mc_table$delta_AIC_vs_best <- mc_table$AIC - min(mc_table$AIC)
-mc_table$delta_BIC_vs_best <- mc_table$BIC - min(mc_table$BIC)
-mc_table
-```
-
-Reading the table:
-
-- **d = 1** is decisively worse than the d = 2 fits — the data carry
-  two-factor structure.
-- **Biology** is usually best on AIC (we paid 11 pins; the model
-  recovers most of the structure on those pins).
-- **varimax_threshold** pins entries by point-estimate magnitude only.
-  It tends to *under-prune* relative to biology, leaving cross-loadings
-  free that biology would close. AIC penalises that mildly; BIC more
-  strongly.
-- **profile_retention** is usually best on BIC — its LRT-based pinning
-  is more aggressive than both varimax_threshold and biology, and
-  BIC's stronger parameter penalty rewards the extra parsimony when
-  the data don't strongly support every retained loading.
-
-The honest comparison: the **simple** varimax_threshold and the
-**principled** profile_retention give *different* constraint patterns
-because they ask different questions ("is the point estimate big?"
-vs "does the data significantly reject zero?"). For most loadings
-they agree; the diagnostic interest is in entries where they
-disagree.
-
-### Confidence Eye for the two data-driven refits
-
-One plot per refit. The y-axis is clipped to `(-3, 3)` so the
-species-level structure is readable. The two plots have *different
-identifiability properties* at this fixture, and the choice of CI
-method follows from that:
-
-- **`varimax_threshold`** pins 17 entries — fewer than profile — but
-  the *pattern* of pins removes information the model needs for
-  identification, so the refit's Hessian is **non-positive-definite**.
-  Per the `glmmTMB` convention, Wald CIs are `NA` in this case. We
-  therefore use `method = "profile"` for this plot: the LRT-inverted
-  profile path uses only log-likelihood values, bypasses the pdHess
-  gate, and yields valid CIs even at a non-PD fit. Eyes appear: green
-  where the CI excludes the null band, red where it overlaps.
-- **`profile_retention`** pins 31 entries — more aggressive in count
-  — but pins entries the LRT actually fails to reject, which
-  preserves identifiability. The refit's Hessian is PD, so the
-  default Wald (delta-method) path is fine here and eyes appear:
-  green where the CI excludes the null band, red where it overlaps.
-
-The counterintuitive but real lesson: *more pins is not necessarily
-worse*. What matters is **which** entries you pin. Pinning small
-loadings by magnitude (varimax_threshold) can remove entries the
-identification depends on; pinning entries the data don't support
-(profile_retention) is safer.
-
-```{r varimax-confidence-eye, echo = FALSE, cache = TRUE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the varimax_threshold refit, using profile-likelihood CIs. Point estimates are the Wald (delta-method) values; coloured eyes (polygons) span the 95 percent profile CI with width proportional to the Gaussian sampling density. Grey = pinned by the suggester to zero (no eye drawn); green = CI excludes the (-0.1, 0.1) null region; red = CI overlaps it. The profile path bypasses the pdHess gate, so CIs are available here even though this refit's Hessian is non-positive-definite.", fig.alt = "Per-species loadings from the varimax_threshold refit, displayed as eye-shaped polygons centred at the point estimate with width proportional to the Gaussian sampling density; the CI bounds are profile-likelihood (LRT-inverted); pinned entries shown as grey filled points without an eye."}
-ci_vmx <- loading_ci(fit_vmx, level = "unit", method = "profile")
-plot_loadings_confidence_eye(
-  ci_vmx,
-  null_region = c(-0.1, 0.1),
-  ylim        = c(-3, 3)
-)
-```
-
-```{r profile-confidence-eye, echo = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the profile_retention refit. Same encoding as the varimax_threshold plot above. Profile retention pins more aggressively than varimax_threshold, so more entries are grey (pinned by the suggester to zero, no eye drawn).", fig.alt = "Per-species loadings from the profile_retention refit, displayed as eye-shaped polygons centred at the Wald estimate; pinned entries shown as hollow points only."}
-plot_loadings_confidence_eye(
-  fit_pr, level = "unit",
-  null_region = c(-0.1, 0.1),
-  ylim        = c(-3, 3)
-)
-```
-
-A few things to read off:
-
-- The two plots show **different pin patterns**. `varimax_threshold`
-  pins by point-estimate magnitude after rotation; `profile_retention`
-  pins by LRT failure to reject zero. The pinned entries (grey) are
-  not the same set across the two plots — comparison of which species
-  each method retains is itself diagnostic.
-- The **identifiability properties** differ. `varimax_threshold`'s
-  refit has a non-PD Hessian at this fixture, so Wald CIs are
-  unavailable and the varimax plot uses `method = "profile"` (which
-  bypasses the pdHess gate). `profile_retention`'s refit is
-  identifiable, so the default Wald path works. This is not a generic
-  property of the methods — at other fixtures the situation can
-  reverse — but it is what happens at *this* moderate-signal binary
-  fixture.
-- gllvmTMB's NA-on-non-PD convention for Wald (matching `glmmTMB`) is
-  doing visible work here: it forced the choice of the profile path
-  for the varimax plot, rather than silently emitting CIs from a
-  degenerate refit.
-
-### Other available conventions
-
-`varimax_threshold` and `profile_retention` are demonstrated above.
-Two further data-driven options:
-
-- **`wald_retention`** — Same retention contract as
-  `profile_retention` but uses asymmetric Wald CIs (Fisher-z on the
-  standardised loading) instead of the LRT. Microsecond cost
-  (no refits), but **vulnerable to non-PD Hessians in the baseline
-  fit** (a problem `profile_retention` is robust to). Use only when
-  you have confirmed the baseline fit's Hessian is PD. Default
-  `retention_prob = 0.90`; call:
-  `suggest_lambda_constraint(fit_exp, convention = "wald_retention")`.
-
-- **`bootstrap_retention`** — Procrustes-aligned parametric bootstrap
-  in the spirit of Zientek & Thompson 2007. **Queued for v2**. The
-  package's existing `bootstrap_Sigma()` machinery + the rotation
-  alignment in `check_identifiability.R` provide the scaffolding;
-  the suggester convention itself is not yet wired up.
-
-### Which to pick
-
-| Situation | Suggest |
-|---|---|
-| You have biology — functional groups, trait-axis hypotheses, prior knowledge | `confirmatory_lambda()` — explicit, ecologist-readable |
-| No biology, want a quick textbook starting point | `convention = "varimax_threshold"` — the Comrey-Lee path |
-| No biology, want honest pin decisions that account for noise | `convention = "profile_retention"` — LRT-based, robust to non-PD Hessians |
-| Same as above but you can't afford ~40 refits | `convention = "wald_retention"` — Wald approximation; use only when baseline Hessian is PD |
-| You only need rotational identification, not data-driven sparsity | `convention = "lower_triangular"` or `"pin_top_one"` |
-| You'll rotate post-hoc and don't want any pins | `convention = "none"` |
-
-Whatever you choose, the result is a matrix you pass to a confirmatory
-refit via `lambda_constraint = list(unit = sug$constraint)`. After
-that, `loading_ci()` and the Confidence Eye plot apply as in the
-earlier section, now on the data-driven constraint pattern.
+When you have no biological hypothesis to encode, the package can still
+propose a minimal, purely *statistical* set of pins that make
+$\boldsymbol{\Lambda}$ identified -- via `suggest_lambda_constraint()`,
+including data-driven conventions (`varimax_threshold`,
+`profile_retention`) that read the exploratory fit and pin entries the
+data leave small or unreliable. That fallback path -- the suggester
+conventions, the data-driven refits, their model comparison, and the
+non-positive-definite vs positive-definite identifiability lesson -- is
+covered in its own companion article,
+[`vignette("lambda-constraint-suggest")`](lambda-constraint-suggest.html),
+so this confirmatory walkthrough stays focused on the hypothesis-driven
+case.
 
 ## See also
 
-- [`vignette("joint-sdm")`](joint-sdm.html) — exploratory binary JSDM
+- [`vignette("joint-sdm")`](joint-sdm.html) -- exploratory binary JSDM
   without constraint; this article's companion.
-- [`vignette("psychometrics-irt")`](psychometrics-irt.html) — mixed
+- [`vignette("lambda-constraint-suggest")`](lambda-constraint-suggest.html)
+  -- the `suggest_lambda_constraint()` fallback when you have no
+  hypothesis: data-driven retention conventions and the non-PD vs PD
+  identifiability lesson.
+- [`vignette("psychometrics-irt")`](psychometrics-irt.html) -- mixed
   Likert + binary confirmatory factor analysis using the same
   `lambda_constraint` mechanism.
-- [`vignette("response-families")`](response-families.html) — the
+- [`vignette("response-families")`](response-families.html) -- the
   full per-family table including $\sigma^2_d$.
-- `?confirmatory_lambda` — biology-aware constraint builder used in
+- `?confirmatory_lambda` -- biology-aware constraint builder used in
   this article.
 - `?loading_ci`, `?flag_unreliable_loadings`,
-  `?plot_loadings_confidence_eye` — error-aware loading interpretation.
-- `?lambda_constraint` and `?suggest_lambda_constraint` — argument
+  `?plot_loadings_confidence_eye` -- error-aware loading interpretation.
+- `?lambda_constraint` and `?suggest_lambda_constraint` -- argument
   reference for the underlying mechanism and the statistical-scaffold
   fallback.
-- `?extract_communality` (with `ci = TRUE`) and `?extract_Sigma` —
+- `?extract_communality` (with `ci = TRUE`) and `?extract_Sigma` --
   rotation-invariant alternatives when the fit is exploratory rather
   than confirmatory.
 
@@ -1255,7 +960,7 @@ and is verified by
   predictive performance of 33 species distribution models at
   species and community levels. *Ecological Monographs* **89**(3),
   e01370. <https://doi.org/10.1002/ecm.1370>
-- McGillycuddy, M., Warton, D.I., Popović, G., & Bolker, B.M. (2025).
+- McGillycuddy, M., Warton, D.I., Popovic, G., & Bolker, B.M. (2025).
   Parsimoniously fitting large multivariate random effects in
   `glmmTMB`. *Journal of Statistical Software* **112**(1), 1--19.
   <https://doi.org/10.18637/jss.v112.i01>
@@ -1278,12 +983,12 @@ and is verified by
   latent variable models can overstate trait--environment
   confidence. *Environmental and Ecological Statistics* (in press).
   <https://doi.org/10.1007/s10651-025-00696-0>
-- Tikhonov, G., Opedal, Ø.H., Abrego, N., Lehikoinen, A., de Jonge,
+- Tikhonov, G., Opedal, O.H., Abrego, N., Lehikoinen, A., de Jonge,
   M.M.J., Oksanen, J., & Ovaskainen, O. (2019). Joint species
   distribution modelling with the R package `Hmsc`. *Methods in
   Ecology and Evolution* **11**, 442--447.
   <https://doi.org/10.1111/2041-210X.13345>
-- Tobler, M.W., Kéry, M., Hui, F.K.C., Guillera-Arroita, G.,
+- Tobler, M.W., Kery, M., Hui, F.K.C., Guillera-Arroita, G.,
   Knaus, P., & Sattler, T. (2019). Joint species distribution
   models with species correlations and imperfect detection.
   *Ecology* **100**(8), e02754.

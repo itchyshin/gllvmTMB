@@ -21,6 +21,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                lambda_constraint = NULL,
                                control, silent,
                                unit_obs = "site_species",
+                               impute = NULL,
+                               missing = miss_control(),
                                is_y_observed = NULL,
                                missing_meta = NULL) {
   ## Family arg can be:
@@ -969,6 +971,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   n_sites         <- nlevels(data[[site]])
   n_site_species  <- nlevels(data[[ss_name]])
 
+  ## ---- Phase 2a: validate mi() BEFORE the design matrix -----------------
+  ## gll_prepare_mi_setup is data-free; running it here fires the loud mi()
+  ## guards (exactly one, bare predictor, additive, impute LHS/name, no nested
+  ## mi, fixed-effect-only covariate model) before model.matrix tries to
+  ## evaluate any stripped-but-invalid mi() expression (e.g. mi(log(x))).
+  mi_setup <- gll_prepare_mi_setup(parsed$mi_rhs, impute, missing)
+
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
@@ -1062,6 +1071,44 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   site_id         <- as.integer(data[[site]]) - 1L
   site_species_id <- as.integer(data[[ss_name]]) - 1L
 
+  ## ---- Phase 2a missing-PREDICTOR layer (design 67) ---------------------
+  ## Detect + validate mi(x), build the UNIT-level Gaussian covariate model,
+  ## and locate the broadcast mi() column in X_fix. The missing x is unit-level
+  ## (one value per `site`), so the latent x_mis has one entry per missing unit
+  ## and `mi_unit_id` (= site_id) broadcasts x_full(u) to every long row. When
+  ## no mi() term is present, this is an exact no-op (empty model, has_mi = 0).
+  ## `mi_setup` was validated earlier (before the design matrix); reuse it.
+  if (isTRUE(mi_setup$enabled)) {
+    mi_colname <- mi_setup$variable
+    mi_col <- match(mi_colname, colnames(X_fix))
+    if (is.na(mi_col)) {
+      cli::cli_abort(c(
+        "Internal error: the {.fn mi} predictor {.val {mi_colname}} is not a column of the fixed-effects design matrix.",
+        "i" = "Expected a single broadcast column named {.val {mi_colname}}."
+      ))
+    }
+    mi_model <- gll_build_gaussian_mi_model(
+      setup = mi_setup,
+      data_long = data,
+      unit_id = site_id,
+      mi_col = mi_col,
+      env = environment(parsed$fixed)
+    )
+    ## PORT-INVARIANT (single-source): the mi() design column X_fix[, mi_col]
+    ## MUST be the SAME unit-level imputed vector (mi_x_unit) that is fed to the
+    ## latent covariate density in the engine. We overwrite the whole column
+    ## from mi_x_unit broadcast by unit, so the delta-correction
+    ##   eta(o) += b_fix(mi_col) * (x_full(unit) - X_fix(o, mi_col))
+    ## cancels EXACTLY at observed rows (x_full == X_fix == observed x) and only
+    ## swaps the placeholder for x_mis at missing rows. Filling the design
+    ## column from a different placeholder than mi_x_unit would bias eta and
+    ## "finite + converged" would not catch it (coordinator audit point 1).
+    X_fix[, mi_col] <- mi_model$x_unit[site_id + 1L]
+  } else {
+    mi_model <- gll_empty_mi_model()
+  }
+  use_mi_predictor <- isTRUE(mi_model$enabled)
+
   if (any(is.na(y[!masked_response]))) {
     cli::cli_abort(c(
       "NA in an observed response reached the fitting engine.",
@@ -1071,7 +1118,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (any(is.na(X_fix))) {
     cli::cli_abort(c(
       "NA in the fixed-effect design matrix.",
-      "i" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting."
+      "i" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
     ))
   }
   ## The family-specific response-range checks below validate the *observed*
@@ -1774,6 +1821,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     weights_i        = as.numeric(weights_i)
   )
 
+  ## Phase 2a missing-predictor DATA slots (has_mi = 0 no-op when disabled).
+  tmb_data <- c(tmb_data, gll_tmb_mi_data(mi_model, n_obs))
+
   init_rr_theta <- function(p, rank) {
     ## Lambda_B/W ~ I_rank diagonal start (so initial Sigma is the identity
     ## scaled by 0). Concretely: lam_diag = 0.5 (sd 1.65), lam_lower = 0.
@@ -1925,6 +1975,20 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                ordinal_init_log_incs else 0.0
   )
 
+  ## Phase 2a missing-predictor PARAMETERS. beta_mi / log_sigma_mi are the
+  ## Gaussian covariate-model coefficients + log residual SD; x_mis is the
+  ## latent vector of missing UNIT-level x values (joins `random`). Stub
+  ## lengths (1 / empty) when no mi() term is present -- mapped off below.
+  if (use_mi_predictor) {
+    tmb_params$beta_mi      <- unname(mi_model$beta_start)
+    tmb_params$log_sigma_mi <- mi_model$log_sigma_start
+    tmb_params$x_mis        <- unname(mi_model$x_mis_start)
+  } else {
+    tmb_params$beta_mi      <- 0.0
+    tmb_params$log_sigma_mi <- 0.0
+    tmb_params$x_mis        <- numeric(0)
+  }
+
   ## McGillycuddy / glmmTMB-style residual starts for factor-analytic
   ## random effects. The fixed-effects pseudo-fit above gives
   ## `resid_init`; here we reshape those residuals to group x trait matrices
@@ -2055,6 +2119,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   ## ---- Map: zero-out unused parameters ---------------------------------
   tmb_map <- list()
+  ## Missing-predictor params are stubs when no mi() term is present: map both
+  ## scalars off so TMB does not estimate them (x_mis is length 0 and simply
+  ## stays out of the `random` set).
+  if (!use_mi_predictor) {
+    tmb_map$beta_mi      <- factor(rep(NA_integer_, length(tmb_params$beta_mi)))
+    tmb_map$log_sigma_mi <- factor(rep(NA_integer_, length(tmb_params$log_sigma_mi)))
+  }
   if (!use_rr_B) {
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
     tmb_map$z_B        <- factor(rep(NA_integer_, length(tmb_params$z_B)))
@@ -2527,6 +2598,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   if (use_phylo_latent_slope) random <- c(random, "g_phy_slope")
   if (use_re_int)   random <- c(random, "u_re_int")
+  ## Phase 2a: the latent missing UNIT-level x values are integrated by Laplace.
+  if (use_mi_predictor) random <- c(random, "x_mis")
 
   ## Design 48 §2 Mitigation A (single-trait warmup). Opt-in via
   ## `control$init_strategy = "single_trait_warmup"`. Fits an
@@ -2758,7 +2831,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## data so original-row accounting is recoverable. `random` records the
       ## TMB random-effect block names (needed to rebuild MakeADFun, e.g. the
       ## sentinel-invariance check).
-      missing_data = .gllvmTMB_build_missing_data(missing_meta, is_y_observed),
+      missing_data = .gllvmTMB_build_missing_data(missing_meta, is_y_observed, mi_model),
       data_original = if (!is.null(missing_meta)) missing_meta$data_original else data,
       random       = random,
       trait_col    = trait,
@@ -2884,6 +2957,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ),
     class = c("gllvmTMB_multi", "gllvmTMB")
   )
+  ## Phase 2a: fill the missing-predictor conditional mode (x_mis EBLUP) from
+  ## the fitted parameter list into the registry (+ the full unit-level x).
+  if (use_mi_predictor) {
+    par_list <- obj$env$parList(opt$par)
+    fit$missing_data <- gll_finalize_mi(
+      fit$missing_data, par_list, mi_model, sdr = sd_rep
+    )
+  }
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
   fit
 }
@@ -2907,7 +2988,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 ## gllvmTMB() entry (e.g. direct gllvmTMB_multi_fit() in older tests); in that
 ## case the slot is built from is_y_observed alone (treated as response="drop"
 ## complete-case when all-ones).
-.gllvmTMB_build_missing_data <- function(missing_meta, is_y_observed) {
+.gllvmTMB_build_missing_data <- function(missing_meta, is_y_observed,
+                                         mi_model = NULL) {
   is_y_observed <- as.integer(is_y_observed)
   n_model <- length(is_y_observed)
   model_row <- seq_len(n_model)
@@ -2942,13 +3024,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   n_dropped <- max(0L, n_total - n_model)
   n_likelihood <- sum(is_y_observed == 1L)
 
+  ## Missing-PREDICTOR registry (design 67 / shared contract sec.4b). Empty
+  ## list when no mi() term is present; populated (conditional_mode filled
+  ## post-fit by gll_finalize_mi) for a fitted Gaussian mi() predictor.
+  predictors <- if (!is.null(mi_model) && isTRUE(mi_model$enabled)) {
+    gll_mi_metadata(mi_model)
+  } else {
+    list()
+  }
+
   list(
     original_row = as.integer(original_row),
     model_row = as.integer(model_row),
     observed_y = is_y_observed,
     response = response,
     predictor = predictor,
+    ## drmTMB-aligned policy aliases (shared MD contract): response_policy /
+    ## predictor_policy mirror response / predictor.
+    response_policy = response,
+    predictor_policy = predictor,
     engine = engine,
+    predictors = predictors,
     ## counts carries BOTH the gllvmTMB-native field names and the
     ## drmTMB-aligned names (design 59 sec.4b shared contract). drmTMB ships
     ## retained_rows / observed_response / missing_response / likelihood_rows;

@@ -20,12 +20,13 @@ frequentist observed-data likelihood. The fit is identical to the
 complete-case fit on the observed rows, but the original-row accounting is
 preserved (see \code{fit$missing_data}).}
 
-\item{predictor}{How to treat missing \strong{predictors} (covariates). v1
-accepts only \code{"fail"} (the default): a missing value in the fixed-effect
-design matrix is an error, exactly as today. \code{"model"} -- treating a
-missing predictor as a latent variable integrated out by the Laplace
-approximation (the \code{mi()} grammar) -- is the Phase 2 surface and is \strong{not
-yet supported}.}
+\item{predictor}{How to treat missing \strong{predictors} (covariates).
+\code{"fail"} (the default): a missing value in the fixed-effect design matrix
+is an error, exactly as today. \code{"model"} treats a missing predictor
+declared with \code{mi(x)} as a latent variable integrated out by the Laplace
+approximation, with its covariate model supplied via the \verb{impute =}
+argument of \code{\link[=gllvmTMB]{gllvmTMB()}}. The first fitted route is one continuous,
+unit-level Gaussian predictor with a fixed-effect covariate model.}
 
 \item{engine}{The estimation engine. v1 ships \code{"laplace"} only (TMB Laplace
 approximation). \code{"em"} (the Gaussian-only EM special case) and \code{"profile"}

@@ -21,6 +21,7 @@ gllvmTMB(
   lambda_constraint = NULL,
   control = gllvmTMBcontrol(),
   missing = miss_control(),
+  impute = NULL,
   silent = TRUE,
   site = NULL,
   species = NULL

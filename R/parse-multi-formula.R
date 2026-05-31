@@ -35,6 +35,13 @@ parse_multi_formula <- function(formula) {
 
   covstructs <- list()
   fixed_terms <- list()
+  ## Missing-predictor mi() terms (design 67). We strip the mi() wrapper so the
+  ## bare predictor enters the fixed design as an ordinary broadcast column; the
+  ## variable name is recorded for the missing-predictor layer. The full mi()
+  ## call expressions are also captured so the fit can validate them (exactly
+  ## one, bare predictor, additive) downstream.
+  mi_vars <- character(0)
+  mi_calls <- list()
 
   walk <- function(e, sign = 1L) {
     if (is.call(e)) {
@@ -69,6 +76,34 @@ parse_multi_formula <- function(formula) {
         covstructs[[length(covstructs) + 1L]] <<- cs
         return(invisible())
       }
+      ## Missing-predictor token mi(var): a top-level mi() term marks `var` as
+      ## a UNIT-level missing predictor. Strip the wrapper so the bare `var`
+      ## enters the fixed design as a single broadcast column (one shared
+      ## slope across traits, NOT a trait interaction). The variable + the call
+      ## are recorded for the missing-predictor layer's validation. A mi() that
+      ## is NOT a bare top-level additive term (e.g. mi(x):z, mi(log(x))) does
+      ## not reach here as a recognised term -- it stays inside `e`, the call
+      ## is still recorded for the loud "additive"/"bare predictor" guards, and
+      ## the term passes through to fixed_terms (where the guards fire).
+      if (fn == "mi") {
+        mi_calls[[length(mi_calls) + 1L]] <<- e
+        if (length(e) == 2L && is.symbol(e[[2L]])) {
+          mi_vars <<- c(mi_vars, as.character(e[[2L]]))
+          fixed_terms[[length(fixed_terms) + 1L]] <<-
+            list(expr = e[[2L]], sign = sign)
+          return(invisible())
+        }
+        ## Non-bare mi(): keep the term verbatim so the downstream guard sees
+        ## the offending expression and errors with a precise message.
+        fixed_terms[[length(fixed_terms) + 1L]] <<- list(expr = e, sign = sign)
+        return(invisible())
+      }
+    }
+    ## Record any nested mi() calls (e.g. mi(x):z) so the validator can count
+    ## and reject them, even when the term itself is an interaction.
+    nested_mi <- gll_find_mi_calls(e)
+    if (length(nested_mi) > 0L) {
+      mi_calls[[length(mi_calls) + 1L]] <<- nested_mi[[1L]]
     }
     fixed_terms[[length(fixed_terms) + 1L]] <<- list(expr = e, sign = sign)
   }
@@ -93,8 +128,17 @@ parse_multi_formula <- function(formula) {
     fmla <- call("~", lhs, fixed_rhs)
     eval(call("as.formula", deparse(fmla)))
   }
+  ## The raw RHS (mi() wrapper intact) is needed by the missing-predictor layer
+  ## to verify that mi() appears only as a simple additive term.
+  mi_rhs <- rhs
 
-  list(fixed = fixed, covstructs = covstructs)
+  list(
+    fixed = fixed,
+    covstructs = covstructs,
+    mi_vars = mi_vars,
+    mi_calls = mi_calls,
+    mi_rhs = mi_rhs
+  )
 }
 
 #' Parse a single covstruct call expression

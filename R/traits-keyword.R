@@ -265,6 +265,12 @@ is_traits_lhs <- function(formula) {
     if (.traits_is_re_int_term(expr)) {
       return(expr)
     }
+    ## Missing-predictor token mi(x): a unit-level missing predictor is a single
+    ## broadcast column (one shared slope across traits), so it must NOT be
+    ## trait-interacted. Pass it through verbatim (design 67 sec.2.0).
+    if (identical(fn, "mi")) {
+      return(expr)
+    }
   }
   if (.traits_contains_symbol(expr, "trait")) {
     return(expr)

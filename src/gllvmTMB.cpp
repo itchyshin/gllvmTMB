@@ -108,8 +108,32 @@ Type objective_function<Type>::operator()()
   // Sigma_field absorbs the field marginal variances (no separate tau),
   // mirroring how spde_lv absorbs scale into Lambda_spde.
   DATA_INTEGER(use_spde_slope);    // 0 = dormant (default); 1 = base augmented SPDE slope
-  DATA_INTEGER(n_lhs_cols_spde);   // block-local LHS columns: 1 (slope-only) or 2 (intercept + slope)
-  DATA_ARRAY(Z_spde_aug);          // n_obs x n_lhs_cols_spde (col 0 = 1's; col 1 = x covariate)
+  DATA_INTEGER(n_lhs_cols_spde);   // block-local LHS columns: 1 (slope-only) or 2 (intercept + slope);
+                                   // C = 2*n_traits on the spatial_dep slope path
+  DATA_ARRAY(Z_spde_aug);          // n_obs x n_lhs_cols_spde (col 0 = 1's; col 1 = x covariate);
+                                   // INTERLEAVED (alpha_t0, beta_t0, alpha_t1, ...) on the dep path
+
+  // spatial_dep slope flag (Design 64 sec.2). When 1, the augmented SPDE prior
+  // uses the full unstructured C x C Sigma_field = L L^T (C = 2*n_traits) built
+  // from theta_spde_dep_chol, replacing the closed-form 1x1 / 2x2 Sigma_field of
+  // the base. This is the spatial analogue of use_phylo_dep_slope with A_phy
+  // swapped for the SPDE field covariance Q_base^{-1}. Default 0 keeps the
+  // base unique/indep SPDE-slope paths byte-identical.
+  DATA_INTEGER(use_spde_dep_slope);
+
+  // spatial_latent slope (Design 64 sec.3): spatial_latent(1 + x | coords, d).
+  // Block-diagonal reduced-rank random regression on the SPDE field. For each
+  // LHS column k in {0 = intercept, 1 = slope} an INDEPENDENT rank-d_spde_slope
+  // factor structure Sigma_k = Lambda_k Lambda_k^T (n_traits x n_traits), with
+  // d_spde_slope shared spatial fields g_spde_slope[ , f, k] ~ N(0, Q_base^{-1})
+  // i.i.d. across f and k. No intercept-slope correlation (block-diagonal). This
+  // is the spatial analogue of use_phylo_latent_slope with the species-indexed
+  // score g_phy_slope replaced by the A_proj-projected mesh field. When
+  // use_spde_latent_slope == 0 the parameters below are mapped off on the R side.
+  DATA_INTEGER(use_spde_latent_slope);
+  DATA_INTEGER(d_spde_slope);      // rank K of each per-column FA decomposition
+  DATA_INTEGER(n_lhs_cols_spde_lat);  // LHS columns for the latent-slope block (1 or 2)
+  DATA_MATRIX(Z_spde_lat);         // n_obs x n_lhs_cols_spde_lat (col 0 = 1's; col 1 = x)
 
   // Stage-33 + 37: response family. family_id_vec is length n_obs;
   // each entry picks the family for that observation:
@@ -318,9 +342,26 @@ Type objective_function<Type>::operator()()
   // 2x2 cross-field covariance Sigma_field. Dormant unless use_spde_slope==1.
   // Same scalable-name scheme as the phylo augmented block (log_sd_b /
   // atanh_cor_b): Sigma_field is built from log_sd_spde_b + atanh_cor_spde_b.
-  PARAMETER_ARRAY(omega_spde_aug);               // n_mesh x n_lhs_cols_spde (col 0 = alpha; col 1 = beta)
-  PARAMETER_VECTOR(log_sd_spde_b);               // length n_lhs_cols_spde
-  PARAMETER_VECTOR(atanh_cor_spde_b);            // length n_lhs_cols_spde*(n_lhs_cols_spde-1)/2
+  PARAMETER_ARRAY(omega_spde_aug);               // n_mesh x n_lhs_cols_spde (col 0 = alpha; col 1 = beta;
+                                                 // C = 2T interleaved fields on the dep path)
+  PARAMETER_VECTOR(log_sd_spde_b);               // length n_lhs_cols_spde (mapped off on the dep path)
+  PARAMETER_VECTOR(atanh_cor_spde_b);            // length n_lhs_cols_spde*(n_lhs_cols_spde-1)/2 (off on dep)
+  // spatial_dep slope (Design 64 sec.2): full unstructured C x C field
+  // covariance Sigma_field = L L^T over the C = 2T interleaved (intercept,
+  // slope) spatial fields. theta_spde_dep_chol packs the free lower-triangular
+  // Cholesky factor L as the C log-diagonal entries (C++ exp-transforms them)
+  // followed by the strictly-lower entries column-major; length C(C+1)/2. Empty
+  // (and mapped off) for the base unique / indep SPDE-slope paths (C in {1,2}),
+  // so those fits are byte-identical. Same packing as theta_dep_chol.
+  PARAMETER_VECTOR(theta_spde_dep_chol);         // length C(C+1)/2 when use_spde_dep_slope; else 0
+  // spatial_latent slope (Design 64 sec.3): per-column reduced-rank loadings +
+  // shared spatial fields. theta_rr_spde_slope packs n_lhs_cols_spde_lat
+  // lower-triangular Lambda_k blocks back-to-back (each length
+  // n_traits*d_spde_slope - d_spde_slope*(d_spde_slope-1)/2, same rr() layout as
+  // theta_rr_phy_slope). g_spde_slope holds the shared spatial field scores on
+  // the mesh. Mapped off on the R side when use_spde_latent_slope == 0.
+  PARAMETER_VECTOR(theta_rr_spde_slope);         // n_lhs_cols_spde_lat packed Lambda_k blocks
+  PARAMETER_ARRAY(g_spde_slope);                 // n_mesh x d_spde_slope x n_lhs_cols_spde_lat
 
   // Stage-35 PGLLVM: phylogenetic reduced-rank loadings + species factors.
   PARAMETER_VECTOR(theta_rr_phy);                // packed lower-triangular Lambda_phy
@@ -511,7 +552,7 @@ Type objective_function<Type>::operator()()
 
   // -------- propto phylogenetic random effect (per trait) ---------------
   // For each trait t, p_phy.col(t) ~ MVN(0, exp(loglambda_phy) * Cphy)
-  // -log p = 0.5 * (n_species*log(2π) + n_species*loglambda_phy + log_det_Cphy
+  // -log p = 0.5 * (n_species*log(2*pi) + n_species*loglambda_phy + log_det_Cphy
   //                + exp(-loglambda_phy) * p_t' Cphy_inv p_t)
   if (use_propto == 1) {
     Type lam_phy = exp(loglambda_phy);
@@ -923,19 +964,20 @@ Type objective_function<Type>::operator()()
   // above; no new atomic / sparse-solve op is introduced. Validated against a
   // dense Sigma_field (x) Q^-1 MVN density to < 1e-9 (see tests).
   if (use_spde_slope == 1) {
-    if (n_lhs_cols_spde < 1 || n_lhs_cols_spde > 2)
+    // Closed-form Sigma_field paths (base unique / indep) require
+    // n_lhs_cols_spde in {1, 2}. The spatial_dep slope path
+    // (use_spde_dep_slope == 1) lifts this cap: there C = 2*n_traits and
+    // Sigma_field is the full unstructured C x C built from theta_spde_dep_chol.
+    if (use_spde_dep_slope == 0 && (n_lhs_cols_spde < 1 || n_lhs_cols_spde > 2))
       error("gllvmTMB_multi: n_lhs_cols_spde must be 1 or 2 in the base SPDE slope");
+    if (use_spde_dep_slope == 1 && n_lhs_cols_spde < 1)
+      error("gllvmTMB_multi: n_lhs_cols_spde must be >= 1 in the spatial_dep slope path");
     if (omega_spde_aug.dim.size() != 2)
       error("gllvmTMB_multi: omega_spde_aug must be a 2D array");
     if (omega_spde_aug.dim[1] != n_lhs_cols_spde || Z_spde_aug.dim[1] != n_lhs_cols_spde)
       error("gllvmTMB_multi: n_lhs_cols_spde does not match augmented SPDE arrays");
     if (Z_spde_aug.dim[0] != y.size())
       error("gllvmTMB_multi: Z_spde_aug first dimension must equal n_obs");
-    if (log_sd_spde_b.size() != n_lhs_cols_spde)
-      error("gllvmTMB_multi: log_sd_spde_b has wrong length");
-    int n_cor_spde = n_lhs_cols_spde * (n_lhs_cols_spde - 1) / 2;
-    if (atanh_cor_spde_b.size() != n_cor_spde)
-      error("gllvmTMB_multi: atanh_cor_spde_b has wrong length");
 
     Type kappa_s  = exp(log_kappa_spde);
     Type kappa_s2 = kappa_s * kappa_s;
@@ -943,6 +985,75 @@ Type objective_function<Type>::operator()()
     Eigen::SparseMatrix<Type> Q_slope =
       kappa_s4 * spde_M0 + Type(2.0) * kappa_s2 * spde_M1 + spde_M2;
     density::GMRF_t<Type> gmrf_slope(Q_slope);
+
+    if (use_spde_dep_slope == 1) {
+      // ---- spatial_dep slope: full unstructured C x C Sigma_field = L L^T ----
+      // Design 64 sec.2.2/2.3, eq (**). Build L (C x C lower-triangular) from
+      // theta_spde_dep_chol: C log-diagonal entries (exp-transformed, >0 and
+      // identified) then the strictly-lower entries column-major. Then the
+      // matrix-normal nll vec(Omega) ~ N(0, Sigma_field (x) Q_base^{-1}) is
+      //   nll = sum_j GMRF(Q_base)(omega_j)               // n*C log2pi - C logdetQ + tr(Q)
+      //       + 0.5 * n_node * logdet(Sigma_field)
+      //       + 0.5 * ( tr(Sinv*Q) - tr(Q) ),    Q(j,l) = omega_j' Q_base omega_l.
+      // This is the phylo_dep formula (src/gllvmTMB.cpp dep block) with
+      // A_phy^{-1} -> Q_base and n_aug_phy -> n_node. No new atomic / sparse op.
+      int C = n_lhs_cols_spde;
+      int n_chol = C * (C + 1) / 2;
+      if (theta_spde_dep_chol.size() != n_chol)
+        error("gllvmTMB_multi: theta_spde_dep_chol has wrong length for spatial_dep slope");
+      int n_node = omega_spde_aug.dim[0];
+      matrix<Type> Lf(C, C);
+      Lf.setZero();
+      {
+        int idx = 0;
+        for (int j = 0; j < C; j++) { Lf(j, j) = exp(theta_spde_dep_chol(idx)); idx++; }
+        for (int j = 0; j < C; j++)
+          for (int i = j + 1; i < C; i++) { Lf(i, j) = theta_spde_dep_chol(idx); idx++; }
+      }
+      matrix<Type> Sigma_field = Lf * Lf.transpose();
+      matrix<Type> Sigma_field_inv = atomic::matinv(Sigma_field);
+      Type logdet_Sigma_field = Type(0);
+      for (int j = 0; j < C; j++) logdet_Sigma_field += Type(2) * log(Lf(j, j));
+      // Report recovered per-field SDs (covariance scale) + correlation matrix.
+      vector<Type> sd_spde_b(C);
+      for (int j = 0; j < C; j++) sd_spde_b(j) = sqrt(Sigma_field(j, j));
+      REPORT(sd_spde_b);
+      matrix<Type> cor_spde_field(C, C);
+      for (int a = 0; a < C; a++)
+        for (int bcol = 0; bcol < C; bcol++)
+          cor_spde_field(a, bcol) = Sigma_field(a, bcol) / (sd_spde_b(a) * sd_spde_b(bcol));
+      REPORT(cor_spde_field);
+      REPORT(Sigma_field);
+      // Pull the C field columns; Q(j,l) = omega_j' Q_base omega_l via sparse
+      // mat-vec, and accumulate sum_j GMRF(Q_base)(omega_j).
+      matrix<Type> Qmat(C, C);
+      for (int j = 0; j < C; j++) {
+        vector<Type> omj(n_node);
+        for (int i = 0; i < n_node; i++) omj(i) = omega_spde_aug(i, j);
+        nll += gmrf_slope(omj);                          // single-field GMRF
+        for (int l = 0; l <= j; l++) {
+          vector<Type> oml(n_node);
+          for (int i = 0; i < n_node; i++) oml(i) = omega_spde_aug(i, l);
+          Type qjl = (omj * (Q_slope * oml.matrix()).array()).sum();
+          Qmat(j, l) = qjl;
+          Qmat(l, j) = qjl;
+        }
+      }
+      Type trQ = Type(0);
+      for (int j = 0; j < C; j++) trQ += Qmat(j, j);
+      Type tr_SinvQ = Type(0);
+      for (int j = 0; j < C; j++)
+        for (int l = 0; l < C; l++)
+          tr_SinvQ += Sigma_field_inv(j, l) * Qmat(l, j);
+      nll += Type(0.5) * Type(n_node) * logdet_Sigma_field
+           + Type(0.5) * (tr_SinvQ - trQ);
+      REPORT(kappa_s);
+    } else {
+    if (log_sd_spde_b.size() != n_lhs_cols_spde)
+      error("gllvmTMB_multi: log_sd_spde_b has wrong length");
+    int n_cor_spde = n_lhs_cols_spde * (n_lhs_cols_spde - 1) / 2;
+    if (atanh_cor_spde_b.size() != n_cor_spde)
+      error("gllvmTMB_multi: atanh_cor_spde_b has wrong length");
 
     vector<Type> sd_spde_b(n_lhs_cols_spde);
     for (int j = 0; j < n_lhs_cols_spde; j++) sd_spde_b(j) = exp(log_sd_spde_b(j));
@@ -986,6 +1097,87 @@ Type objective_function<Type>::operator()()
                           + Type(2) * Sinv01 * q01);
     }
     REPORT(kappa_s);
+    }  // end closed-form (use_spde_dep_slope == 0) branch
+  }
+
+  // -------- spatial_latent slope (Design 64 sec.3) ----------------------
+  // Block-diagonal reduced-rank random regression on the SPDE field. For each
+  // LHS column k, build an independent loading matrix Lambda_k (n_traits x
+  // d_spde_slope, lower-triangular rr() convention) and place an independent
+  // N(0, Q_base^{-1}) prior on each of the d_spde_slope shared field columns
+  // g_spde_slope[ , f, k] (a single GMRF(Q_base) call each; scale absorbed into
+  // Lambda_k). The negative log prior is sum over the n_lhs_cols_spde_lat *
+  // d_spde_slope independent fields of GMRF(Q_base)(.) -- the existing
+  // spatial_latent (intercept-only) prior loop replicated across an extra
+  // LHS-column axis. No cross-column (intercept-slope) term. This is the
+  // phylo_latent slope block with the species-indexed score replaced by the
+  // shared mesh field, and Ainv_phy_rr replaced by GMRF(Q_base).
+  array<Type> Lambda_spde_slope(n_traits, std::max(d_spde_slope, 1),
+                                std::max(n_lhs_cols_spde_lat, 1));
+  Lambda_spde_slope.setZero();
+  if (use_spde_latent_slope == 1) {
+    if (n_lhs_cols_spde_lat < 1 || n_lhs_cols_spde_lat > 2)
+      error("gllvmTMB_multi: n_lhs_cols_spde_lat must be 1 or 2");
+    if (g_spde_slope.dim.size() != 3)
+      error("gllvmTMB_multi: g_spde_slope must be a 3D array");
+    if (g_spde_slope.dim[1] != d_spde_slope)
+      error("gllvmTMB_multi: g_spde_slope second dimension must equal d_spde_slope");
+    if (g_spde_slope.dim[2] != n_lhs_cols_spde_lat)
+      error("gllvmTMB_multi: g_spde_slope third dimension must equal n_lhs_cols_spde_lat");
+    if (Z_spde_lat.rows() != y.size() || Z_spde_lat.cols() != n_lhs_cols_spde_lat)
+      error("gllvmTMB_multi: Z_spde_lat must be n_obs x n_lhs_cols_spde_lat");
+    int n_node = g_spde_slope.dim[0];
+    Type kappa_l  = exp(log_kappa_spde);
+    Type kappa_l2 = kappa_l * kappa_l;
+    Type kappa_l4 = kappa_l2 * kappa_l2;
+    Eigen::SparseMatrix<Type> Q_lat =
+      kappa_l4 * spde_M0 + Type(2.0) * kappa_l2 * spde_M1 + spde_M2;
+    density::GMRF_t<Type> gmrf_lat(Q_lat);
+    int p = n_traits;
+    int rank = d_spde_slope;
+    int len_per_col = p * rank - rank * (rank - 1) / 2;
+    if (theta_rr_spde_slope.size() != n_lhs_cols_spde_lat * len_per_col)
+      error("gllvmTMB_multi: theta_rr_spde_slope has wrong length");
+    // Build each per-column Lambda_k from its packed lower-triangular slice
+    // (identical packing to theta_rr_phy_slope / theta_rr_spde_lv).
+    for (int kcol = 0; kcol < n_lhs_cols_spde_lat; kcol++) {
+      vector<Type> theta_k =
+        theta_rr_spde_slope.segment(kcol * len_per_col, len_per_col);
+      vector<Type> lam_diag = theta_k.head(rank);
+      vector<Type> lam_lower = theta_k.tail(len_per_col - rank);
+      for (int j = 0; j < rank; j++) {
+        for (int i = 0; i < p; i++) {
+          if (j > i)
+            Lambda_spde_slope(i, j, kcol) = 0;
+          else if (i == j)
+            Lambda_spde_slope(i, j, kcol) = lam_diag(j);
+          else
+            Lambda_spde_slope(i, j, kcol) =
+              lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
+        }
+      }
+    }
+    // Independent N(0, Q_base^{-1}) prior on every shared field column.
+    for (int kcol = 0; kcol < n_lhs_cols_spde_lat; kcol++) {
+      for (int f = 0; f < d_spde_slope; f++) {
+        vector<Type> g_kf(n_node);
+        for (int i = 0; i < n_node; i++) g_kf(i) = g_spde_slope(i, f, kcol);
+        nll += gmrf_lat(g_kf);
+      }
+    }
+    REPORT(Lambda_spde_slope);
+    // Per-column Sigma_k = Lambda_k Lambda_k^T for extraction / recovery.
+    matrix<Type> Ls0(n_traits, std::max(d_spde_slope, 1));
+    matrix<Type> Ls1(n_traits, std::max(d_spde_slope, 1));
+    for (int j = 0; j < std::max(d_spde_slope, 1); j++)
+      for (int i = 0; i < n_traits; i++) {
+        Ls0(i, j) = Lambda_spde_slope(i, j, 0);
+        Ls1(i, j) = (n_lhs_cols_spde_lat > 1) ? Lambda_spde_slope(i, j, 1) : Type(0);
+      }
+    matrix<Type> Sigma_spde_slope_intercept = Ls0 * Ls0.transpose();
+    matrix<Type> Sigma_spde_slope_slope = Ls1 * Ls1.transpose();
+    REPORT(Sigma_spde_slope_intercept);
+    REPORT(Sigma_spde_slope_slope);
   }
 
   // -------- generic (1 | group) random intercepts -----------------------
@@ -1052,6 +1244,23 @@ Type objective_function<Type>::operator()()
     }
   }
 
+  // spatial_latent slope: project each shared field column g_spde_slope[ ,f,k]
+  // once. A_g_spde_slope(o, f, k) = (A_proj * g_spde_slope.col(f, k))(o). eta
+  // gets sum_k Z_spde_lat(o,k) * sum_f Lambda_k(t(o),f) * A_g_spde_slope(o,f,k).
+  array<Type> A_g_spde_slope(y.size(), std::max(d_spde_slope, 1),
+                             std::max(n_lhs_cols_spde_lat, 1));
+  A_g_spde_slope.setZero();
+  if (use_spde_latent_slope == 1) {
+    for (int kcol = 0; kcol < n_lhs_cols_spde_lat; kcol++) {
+      for (int f = 0; f < d_spde_slope; f++) {
+        vector<Type> g_kf(g_spde_slope.dim[0]);
+        for (int i = 0; i < g_spde_slope.dim[0]; i++) g_kf(i) = g_spde_slope(i, f, kcol);
+        vector<Type> Ag = A_proj * g_kf;
+        for (int o = 0; o < y.size(); o++) A_g_spde_slope(o, f, kcol) = Ag(o);
+      }
+    }
+  }
+
   // -------- Add RE contributions to eta ---------------------------------
   for (int o = 0; o < y.size(); o++) {
     int t  = trait_id(o);
@@ -1089,10 +1298,25 @@ Type objective_function<Type>::operator()()
     }
     if (use_spde_slope == 1) {
       // eta(o) += (A_proj omega_alpha)(o) + x(o) * (A_proj omega_beta)(o).
+      // On the spatial_dep path the loop runs over all C = 2T interleaved
+      // fields, Z_spde_aug selecting this row's trait pair.
       Type contrib_spde_aug = 0;
       for (int j = 0; j < n_lhs_cols_spde; j++)
         contrib_spde_aug += A_omega_aug(o, j) * Z_spde_aug(o, j);
       eta(o) += contrib_spde_aug;
+    }
+    if (use_spde_latent_slope == 1) {
+      // Block-diagonal reduced-rank random regression on the SPDE field: per
+      // LHS column k, the reduced-rank field structure (independent Lambda_k
+      // and shared field scores), weighted by the column design Z_spde_lat(o,k).
+      Type contrib_spde_lat = 0;
+      for (int kcol = 0; kcol < n_lhs_cols_spde_lat; kcol++) {
+        Type u_kt = 0;
+        for (int f = 0; f < d_spde_slope; f++)
+          u_kt += Lambda_spde_slope(t, f, kcol) * A_g_spde_slope(o, f, kcol);
+        contrib_spde_lat += Z_spde_lat(o, kcol) * u_kt;
+      }
+      eta(o) += contrib_spde_lat;
     }
     if (use_phylo_rr == 1) {
       Type contrib = 0;

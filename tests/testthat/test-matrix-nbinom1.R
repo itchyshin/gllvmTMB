@@ -109,17 +109,17 @@ fit_nbinom1_unit <- function(formula, fx) {
   )
 }
 
-## Shared health gate: skip honestly on construct-fail / non-conv / non-PD.
-## At present (nbinom1 not wired into the engine) every cell reaches the
-## construct-fail branch and FAM-07 stays partial. Once the family is wired the
-## same gate passes converged + PD fits through to the depth checks.
+## Shared health gate. nbinom1 is wired into the multivariate engine
+## (family_to_id() case `nbinom1 = 15L`, C++ `fid == 15` NB1 likelihood branch
+## with the `phi_nbinom1` REPORT; verified to recover with conv == 0, PD
+## Hessian, and phi within ~6% bias on the unit cell). A construct failure is
+## therefore a real regression, not an expected unwired state, so it FAILS hard
+## rather than skipping. A converged-but-non-PD fit is still a legitimate
+## small-sample health skip and stays a skip.
 skip_unless_healthy_nbinom1 <- function(fit, cell) {
   if (inherits(fit, "error") || !inherits(fit, "gllvmTMB_multi")) {
-    testthat::skip(sprintf(
-      paste0("%s nbinom1 unit fit failed to construct: %s. nbinom1() is not ",
-             "wired into the multivariate engine (no family_to_id case, no ",
-             "C++ phi_nbinom1 branch); FAM-07 stays partial. Engine frozen ",
-             "this wave -- not widened or wired here."),
+    testthat::fail(sprintf(
+      "%s nbinom1 unit fit failed to construct: %s",
       cell,
       if (inherits(fit, "error")) conditionMessage(fit) else "non-gllvmTMB return"
     ))

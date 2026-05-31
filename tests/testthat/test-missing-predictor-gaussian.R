@@ -895,3 +895,286 @@ test_that("grouped recovery: mi slope, covariate coefs, sigma_x, group SD recove
   group_re_hat <- sd_group_hat * par$u_mi_group
   expect_gt(stats::cor(group_re_hat, d$group_shift), 0.6)
 })
+
+# ===========================================================================
+# Phase 2c (issue #332 / design 67 sec.2.1 Phase-2c bullet): a GROUP-level
+# Gaussian missing predictor -- x lives at a level COARSER than the wide-row
+# unit (one x value per GROUP, broadcast to every unit of that group). This is
+# the gllvmTMB analogue of drmTMB MD4's level-mismatch (the non-structured
+# half). It is the precursor Design 69 sec.4.1 reuses for Phase 3: swap the
+# bare mi_group(g) key for phylo(1 | species, tree =) and the broadcast is the
+# same.
+#
+# Phase 2a/2b hardwire the latent-bearing level to the wide-row `unit` (site)
+# and validate x constant-within-unit. Phase 2c DECOUPLES the latent level
+# from `unit`: x is declared group-level with `impute = list(x = x ~ z +
+# mi_group(g))`, the latent x_mis is one per missing GROUP, and a long-row ->
+# group map `mi_group_level_id` broadcasts x_full(group) to every long row
+# (across both the units of a group AND their trait rows). The Gaussian
+# covariate density is summed over GROUPS (one per group, no pseudo-
+# replication). One observed value per group is validated.
+#
+# Gate map (design 59 sec.9 Phase-2c row + design 67 sec.6):
+#   * level-mismatch boundary -- mi_group() of a missing column / unknown
+#                                column / single-level group errors; a group
+#                                whose x is NOT constant within the group
+#                                (two different observed x in one group)
+#                                errors ("one observed value per group").
+#   * supports group level     -- version "phase2c"; one latent per missing
+#                                group (NOT per unit, NOT per long row); the
+#                                registry tracks missing GROUPS; gradient ~ 0.
+#   * broadcast correctness    -- the imputed x is a single per-group value
+#                                feeding every unit (and trait row) of that
+#                                group; mi_group_level_id maps every long row
+#                                to the right group.
+#   * recovery sim (group)     -- a genuine stochastic DGP at the group level:
+#                                recover b_fix (mi slope), beta_x, sigma_x, AND
+#                                the per-group missing-x modes vs truth.
+#   * 2a no-op preserved        -- a unit-level mi(x) with NO mi_group() is
+#                                byte-identical to the Phase 2a fit (version
+#                                "phase2a"; same logLik / slope / modes).
+#
+# Fit-heavy blocks are gated behind skip_if_not_heavy(); the pure-validation
+# boundary blocks run unconditionally.
+
+# ---- Group-level fixture --------------------------------------------------
+
+# Units are sites; x is a REGION-level covariate (one value per region,
+# n_per_region sites per region, so region is COARSER than site). The covariate
+# model is at the REGION level: x[r] ~ N(beta0 + beta_z z[r] + beta_w w[r],
+# sigma_x^2). z, w are region-level too (the covariate-model predictors live at
+# the group level). The response slope on x is b_x_true, shared across traits;
+# every site of a region sees the same x, and every trait row of a site sees
+# the same x -- a two-level broadcast (region -> site -> trait row).
+.make_mi_group <- function(seed = 404, n_region = 30L, n_per_region = 3L,
+                           b_x_true = 1.2, sigma_x = 0.45,
+                           miss_region = c(2L, 9L, 17L, 24L)) {
+  set.seed(seed)
+  zr <- stats::rnorm(n_region)               # region-level covariate
+  wr <- stats::rnorm(n_region)               # region-level covariate
+  ## Region-level Gaussian covariate model.
+  xr <- 0.3 + 0.7 * zr - 0.4 * wr + stats::rnorm(n_region, sd = sigma_x)
+  rows <- list()
+  site_counter <- 0L
+  for (r in seq_len(n_region)) {
+    for (k in seq_len(n_per_region)) {
+      site_counter <- site_counter + 1L
+      ## site-level response noise around the shared region-level eta.
+      eta1 <- 0.6 + b_x_true * xr[r] - 0.25 * zr[r]
+      eta2 <- -0.3 + b_x_true * xr[r] + 0.45 * zr[r]
+      rows[[site_counter]] <- data.frame(
+        site   = site_counter,
+        region = r,
+        trait  = c("t1", "t2"),
+        value  = c(eta1, eta2) + stats::rnorm(2, sd = 0.4),
+        x      = xr[r],
+        z      = zr[r],
+        w      = wr[r],
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  dat <- do.call(rbind, rows)
+  n_sites <- site_counter
+  dat$site   <- factor(dat$site, levels = seq_len(n_sites))
+  dat$region <- factor(dat$region, levels = seq_len(n_region))
+  dat$trait  <- factor(dat$trait, levels = c("t1", "t2"))
+  dat$species <- factor(rep(1L, nrow(dat)))
+  dat$site_species <- factor(paste(dat$site, dat$species, sep = "_"))
+  list(
+    data = dat, x_true = xr, missing_region = miss_region,
+    b_x_true = b_x_true, sigma_x = sigma_x, n_region = n_region,
+    n_per_region = n_per_region, n_sites = n_sites
+  )
+}
+
+# Inject NA x for every long row of the given missing REGIONS (all sites, all
+# trait rows of those regions).
+.inject_missing_group <- function(d) {
+  dat <- d$data
+  miss_rows <- which(as.integer(dat$region) %in% d$missing_region)
+  dat$x[miss_rows] <- NA_real_
+  dat
+}
+
+# Fit the two-trait group-level Gaussian mi(x) model. x lives at `region`.
+.fit_mi_group <- function(data,
+                          impute = list(x = x ~ z + w + mi_group(region)),
+                          missing = miss_control(predictor = "model"),
+                          se = FALSE) {
+  suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):z + mi(x),
+    data    = data,
+    family  = gaussian(),
+    impute  = impute,
+    missing = missing,
+    control = gllvmTMBcontrol(se = se)
+  )))
+}
+
+# ---- Level-mismatch boundary rejection (no fit) ---------------------------
+
+test_that("group-level mi() covariate model validates the Phase 2c boundary", {
+  d <- .make_mi_group()
+  dat <- .inject_missing_group(d)
+
+  ## mi_group() naming an unknown column errors.
+  expect_error(
+    .fit_mi_group(dat, impute = list(x = x ~ z + mi_group(nope))),
+    "not found"
+  )
+  ## A single-level group key is rejected (needs at least two groups).
+  dat_one <- dat
+  dat_one$region <- factor(rep(1L, nrow(dat_one)))
+  expect_error(
+    .fit_mi_group(dat_one),
+    "two"
+  )
+  ## More than one mi_group() marker is rejected loudly.
+  expect_error(
+    .fit_mi_group(dat, impute = list(x = x ~ z + mi_group(region) + mi_group(site))),
+    "one"
+  )
+  ## x NOT constant within the group (two different OBSERVED x in one region)
+  ## is rejected: one observed value per group is the level-mismatch contract.
+  dat_bad <- dat
+  ## region 1 is observed; perturb x on ONE of its sites so the region carries
+  ## two different observed x values.
+  r1_rows <- which(as.integer(dat_bad$region) == 1L)
+  dat_bad$x[r1_rows[1:2]] <- dat_bad$x[r1_rows[1:2]] + 5
+  expect_error(
+    .fit_mi_group(dat_bad),
+    "constant within|one observed value per group"
+  )
+})
+
+# ---- Supports the group level (NEW Phase 2c degree of freedom) ------------
+
+test_that("group-level mi() fits one latent per missing group, not per unit", {
+  skip_if_not_heavy()
+  d <- .make_mi_group()
+  dat <- .inject_missing_group(d)
+
+  fit <- .fit_mi_group(dat)
+
+  expect_identical(fit$missing_data$predictors$x$version, "phase2c")
+  expect_identical(stats::nobs(fit), nrow(dat))
+  ## The registry tracks missing GROUPS (regions), one EBLUP each -- NOT one
+  ## per missing unit (site) and NOT one per long row.
+  expect_identical(fit$missing_data$predictors$x$model_row, d$missing_region)
+  expect_identical(
+    fit$missing_data$predictors$x$counts$missing,
+    length(d$missing_region)
+  )
+  ## The group descriptor is recorded.
+  grp <- fit$missing_data$predictors$x$group_level
+  expect_true(isTRUE(grp$enabled))
+  expect_identical(grp$group, "region")
+  expect_identical(grp$n_group, d$n_region)
+  ## ONE latent x_mis per missing GROUP (4 regions), even though each missing
+  ## region spans n_per_region sites x 2 traits = 6 long rows.
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  expect_length(par$x_mis, length(d$missing_region))
+  expect_true(all(is.finite(par$b_fix)))
+  expect_true(all(is.finite(par$beta_mi)))
+  expect_true(is.finite(par$log_sigma_mi[[1]]))
+  ## Stationary point.
+  expect_lt(max(abs(fit$tmb_obj$gr(fit$opt$par))), 1e-2)
+})
+
+# ---- Broadcast correctness (the level-mismatch heart) ---------------------
+
+test_that("group-level mi(): the imputed x is one per-group value broadcast to every unit", {
+  skip_if_not_heavy()
+  d <- .make_mi_group()
+  dat <- .inject_missing_group(d)
+
+  fit <- .fit_mi_group(fit_data <- dat, se = TRUE)
+
+  ## imputed(rows = "all") returns one row per GROUP (the covariate-model rows
+  ## are groups), with observed regions labelled observed.
+  out <- imputed(fit, rows = "all")
+  expect_identical(nrow(out), d$n_region)
+  observed_region <- !(seq_len(d$n_region) %in% d$missing_region)
+  expect_identical(out$observed, observed_region)
+  ## Observed regions return the (constant) region-level x exactly.
+  expect_equal(out$estimate[observed_region], d$x_true[observed_region],
+               tolerance = 1e-10)
+
+  ## The single-source broadcast: the full group-level x (observed + EBLUP)
+  ## that the engine fed BOTH the covariate density and X_fix[, mi_col] is
+  ## exposed as predictors$x$value; it must have one entry per group and match
+  ## imputed(rows = "all").
+  val <- fit$missing_data$predictors$x$value
+  expect_length(val, d$n_region)
+  expect_equal(val, out$estimate, tolerance = 1e-10)
+})
+
+# ---- Group recovery gate (genuine stochastic DGP, per-group modes) --------
+
+test_that("group recovery: mi slope, covariate coefs, sigma_x, per-group modes recover", {
+  skip_if_not_heavy()
+  ## A genuine stochastic DGP at the GROUP level with MCAR missing regions.
+  ## With enough regions, the response mi() slope, the covariate coefficients,
+  ## sigma_x, AND the per-group missing-x modes should recover.
+  d <- .make_mi_group(
+    seed = 2025, n_region = 90L, n_per_region = 3L,
+    b_x_true = 1.2, sigma_x = 0.45,
+    miss_region = sort(sample.int(90L, 18L))
+  )
+  dat <- .inject_missing_group(d)
+  x_true_missing <- d$x_true[d$missing_region]
+
+  fit <- .fit_mi_group(dat, se = TRUE)
+
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+
+  ## (1) Response mi() slope b_x recovers (truth 1.2).
+  mu_col <- fit$missing_data$predictors$x$mu_col
+  b_x_hat <- par$b_fix[mu_col]
+  expect_equal(b_x_hat, d$b_x_true, tolerance = 0.25)
+
+  ## (2) Covariate-model coefficients recover (intercept 0.3, z 0.7, w -0.4).
+  beta_x <- unname(par$beta_mi)
+  expect_equal(beta_x[1], 0.30, tolerance = 0.3)
+  expect_equal(beta_x[2], 0.70, tolerance = 0.3)
+  expect_equal(beta_x[3], -0.40, tolerance = 0.3)
+
+  ## (3) sigma_x recovers (truth 0.45) -- the GROUP-level residual SD.
+  sigma_x_hat <- exp(par$log_sigma_mi[[1]])
+  expect_equal(sigma_x_hat, d$sigma_x, tolerance = 0.2)
+
+  ## (4) The per-group missing-x conditional modes recover the truth -- this is
+  ## the level-mismatch recovery target (one mode per missing GROUP).
+  modes <- fit$missing_data$predictors$x$conditional_mode
+  expect_length(modes, length(d$missing_region))
+  expect_gt(stats::cor(modes, x_true_missing), 0.7)
+  rmse <- sqrt(mean((modes - x_true_missing)^2))
+  expect_lt(rmse, 0.6)
+})
+
+# ---- 2a no-op preserved (the unit-level path is unchanged) ----------------
+
+test_that("a unit-level mi(x) with no mi_group() is still the Phase 2a path", {
+  skip_if_not_heavy()
+  ## Without mi_group(), x is unit-level and the fit is byte-identical to the
+  ## Phase 2a path: version "phase2a", one latent per missing UNIT, the group
+  ## descriptor disabled. This guards that Phase 2c is a strict superset and the
+  ## 2a no-op holds.
+  d <- .make_mi_uni()
+  inj <- .inject_missing_x(d)
+  dat <- inj$data
+
+  fit <- .fit_mi_uni(dat, se = FALSE)
+
+  expect_identical(fit$missing_data$predictors$x$version, "phase2a")
+  ## The group-level descriptor is present but disabled (no mi_group()).
+  grp <- fit$missing_data$predictors$x$group_level
+  expect_false(isTRUE(grp$enabled))
+  ## One latent per missing UNIT (site), as in Phase 2a.
+  expect_length(
+    fit$tmb_obj$env$parList(fit$opt$par)$x_mis,
+    length(d$missing_site)
+  )
+  expect_identical(fit$missing_data$predictors$x$model_row, d$missing_site)
+})

@@ -1096,13 +1096,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   site_id         <- as.integer(data[[site]]) - 1L
   site_species_id <- as.integer(data[[ss_name]]) - 1L
 
-  ## ---- Phase 2a missing-PREDICTOR layer (design 67) ---------------------
-  ## Detect + validate mi(x), build the UNIT-level Gaussian covariate model,
-  ## and locate the broadcast mi() column in X_fix. The missing x is unit-level
-  ## (one value per `site`), so the latent x_mis has one entry per missing unit
-  ## and `mi_unit_id` (= site_id) broadcasts x_full(u) to every long row. When
-  ## no mi() term is present, this is an exact no-op (empty model, has_mi = 0).
-  ## `mi_setup` was validated earlier (before the design matrix); reuse it.
+  ## ---- Phase 2a/2b/2c missing-PREDICTOR layer (design 67) ---------------
+  ## Detect + validate mi(x), build the latent-level Gaussian covariate model,
+  ## and locate the broadcast mi() column in X_fix. The latent-bearing level is
+  ## the wide-row unit (Phase 2a/2b, one x per `site`) OR -- when the covariate
+  ## model carries a `mi_group(g)` marker (Phase 2c, design 67 sec.2.1 / 69
+  ## sec.4.1) -- a coarser group `g`, so the latent x_mis has one entry per
+  ## missing LEVEL and `mi_unit_id` (= the resolved long-row -> level map)
+  ## broadcasts x_full(level) to every long row. When no mi() term is present
+  ## this is an exact no-op (empty model, has_mi = 0). `mi_setup` was validated
+  ## earlier (before the design matrix); reuse it.
   if (isTRUE(mi_setup$enabled)) {
     mi_colname <- mi_setup$variable
     mi_col <- match(mi_colname, colnames(X_fix))
@@ -1120,15 +1123,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       env = environment(parsed$fixed)
     )
     ## PORT-INVARIANT (single-source): the mi() design column X_fix[, mi_col]
-    ## MUST be the SAME unit-level imputed vector (mi_x_unit) that is fed to the
-    ## latent covariate density in the engine. We overwrite the whole column
-    ## from mi_x_unit broadcast by unit, so the delta-correction
-    ##   eta(o) += b_fix(mi_col) * (x_full(unit) - X_fix(o, mi_col))
+    ## MUST be the SAME level-broadcast imputed vector (mi_x_unit) that is fed
+    ## to the latent covariate density in the engine. We overwrite the whole
+    ## column from mi_x_unit broadcast by the SAME long-row -> level map
+    ## (`mi_model$unit_id`, = site_id at unit level, = the mi_group() level map
+    ## at Phase 2c), so the delta-correction
+    ##   eta(o) += b_fix(mi_col) * (x_full(level) - X_fix(o, mi_col))
     ## cancels EXACTLY at observed rows (x_full == X_fix == observed x) and only
-    ## swaps the placeholder for x_mis at missing rows. Filling the design
-    ## column from a different placeholder than mi_x_unit would bias eta and
-    ## "finite + converged" would not catch it (coordinator audit point 1).
-    X_fix[, mi_col] <- mi_model$x_unit[site_id + 1L]
+    ## swaps the placeholder for x_mis at missing rows. Using `mi_model$unit_id`
+    ## (NOT site_id) keeps the design column and the C++ `mi_unit_id` sourced
+    ## from ONE map at any level -- a Phase-2c group whose broadcast differed
+    ## from the density's would bias eta and "finite + converged" would not
+    ## catch it (coordinator audit point 1).
+    X_fix[, mi_col] <- mi_model$x_unit[mi_model$unit_id + 1L]
   } else {
     mi_model <- gll_empty_mi_model()
   }

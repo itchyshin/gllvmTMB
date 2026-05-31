@@ -172,7 +172,8 @@ gll_prepare_mi_setup <- function(rhs, impute, missing) {
     formula = impute_spec$formula,
     raw_formula = impute_spec$raw_formula,
     family = impute_spec$family,
-    random = impute_spec$random
+    random = impute_spec$random,
+    group_level = impute_spec$group_level
   )
 }
 
@@ -184,7 +185,8 @@ gll_empty_mi_setup <- function() {
     formula = NULL,
     raw_formula = NULL,
     family = "none",
-    random = NULL
+    random = NULL,
+    group_level = NULL
   )
 }
 
@@ -301,11 +303,64 @@ gll_extract_impute_random_intercept <- function(formula) {
   )
 }
 
+## Extract at most ONE group-level marker `mi_group(g)` from the covariate-model
+## RHS (Phase 2c, design 67 sec.2.1 / 69 sec.4.1). `mi_group(g)` declares that
+## the missing predictor `x` lives at the level of factor `g` -- a level
+## COARSER than (or cross-cutting) the wide-row unit -- so the latent x_mis is
+## one per missing GROUP and a long-row -> group map broadcasts it. Returns the
+## formula with the marker removed from the RHS plus a `group_level` descriptor.
+## Rejects >1 mi_group(), a non-bare grouping expression, and (defensively) a
+## mi_group() that is not an additive term. This is the non-structured analogue
+## of the Phase-3 `phylo(1 | species, tree =)` group key; Phase 3 swaps one for
+## the other and reuses the same broadcast.
+gll_extract_impute_group_level <- function(formula) {
+  rhs_terms <- gll_split_additive_rhs(formula[[3L]])
+  is_group <- vapply(
+    rhs_terms,
+    function(term) {
+      term <- gll_unwrap_parentheses(term)
+      is.call(term) && identical(as.character(term[[1L]]), "mi_group")
+    },
+    logical(1)
+  )
+  if (!any(is_group)) {
+    return(list(fixed_formula = formula, group_level = NULL))
+  }
+  if (sum(is_group) != 1L) {
+    cli::cli_abort(c(
+      "The group-level {.arg impute} slice supports only one {.fn mi_group} marker.",
+      "x" = "Found {sum(is_group)} {.fn mi_group} marker{?s}.",
+      "i" = "Use a single {.code mi_group(group)}; the missing predictor lives at one level."
+    ))
+  }
+  group_term <- gll_unwrap_parentheses(rhs_terms[[which(is_group)]])
+  if (length(group_term) != 2L || !is.symbol(group_term[[2L]])) {
+    cli::cli_abort(c(
+      "The {.fn mi_group} grouping variable must be a bare column name.",
+      "x" = "Use syntax such as {.code mi_group(region)}, not a transformed or interacted grouping."
+    ))
+  }
+  group_expr <- group_term[[2L]]
+  fixed_terms <- rhs_terms[!is_group]
+  fixed_rhs <- gll_rebuild_additive_rhs(fixed_terms)
+  fixed_formula <- formula
+  fixed_formula[[3L]] <- fixed_rhs
+  list(
+    fixed_formula = fixed_formula,
+    group_level = list(
+      enabled = TRUE,
+      group = as.character(group_expr)
+    )
+  )
+}
+
 ## Validate the one-element impute list against the mi() variable (drmTMB
 ## drm_validate_single_impute_formula). Phase 2a/2b: Gaussian covariate model
 ## with fixed effects + at most ONE grouped random intercept (1|group); no
 ## random slopes, no >1 RE term, no structured RE; LHS and (optional) list name
 ## must equal the mi() variable; no nested mi(); no `.`; no response variables.
+## Phase 2c: at most ONE `mi_group(g)` marker declaring `x` is group-level
+## (coarser than the wide-row unit); the latent then bears at the `g` level.
 gll_validate_single_impute_formula <- function(impute, variable) {
   if (is.null(impute)) {
     cli::cli_abort(c(
@@ -349,6 +404,14 @@ gll_validate_single_impute_formula <- function(impute, variable) {
       "Nested {.fn mi} terms inside {.arg impute} formulas are not implemented."
     )
   }
+  ## Phase 2c: pull at most ONE group-level marker `mi_group(g)` off the RHS
+  ## FIRST -- it declares the level x lives at (coarser than the wide-row unit).
+  ## Removing it before the structured / random-intercept checks keeps those
+  ## checks reasoning over the genuine covariate-model RHS. `raw_formula` keeps
+  ## the user's original RHS (mi_group() intact) for the registry formula text.
+  raw_formula <- formula
+  group_extracted <- gll_extract_impute_group_level(formula)
+  formula <- group_extracted$fixed_formula
   ## Reject structured covariate markers (Phase 3) BEFORE the random-intercept
   ## extraction: a structured marker such as phylo(1 | species) also contains a
   ## `|`, so it must be caught here rather than mis-parsed as an ordinary group.
@@ -379,9 +442,10 @@ gll_validate_single_impute_formula <- function(impute, variable) {
   }
   list(
     formula = fixed_formula,
-    raw_formula = formula,
+    raw_formula = raw_formula,
     family = family,
-    random = extracted$random
+    random = extracted$random,
+    group_level = group_extracted$group_level
   )
 }
 
@@ -432,16 +496,73 @@ gll_build_gaussian_mi_random_intercept <- function(setup, data_long, first_row) 
   )
 }
 
-# ---- Unit-level Gaussian covariate-model build (ADAPT drm_build_gaussian_*) -
+# ---- Latent-level resolution (Phase 2c: decouple the latent level from unit) -
 
-## Build the Phase-2a/2b Gaussian missing-predictor model at the UNIT level.
+## Resolve the latent-BEARING level for the missing predictor (the level at
+## which x lives, x_mis is one-per-missing, and the covariate density is
+## summed). Phase 2a/2b: the wide-row `unit` (the passed `unit_id`). Phase 2c
+## (design 67 sec.2.1 / 69 sec.4.1): when the covariate model carries a
+## `mi_group(g)` marker, x lives at the `g` level -- COARSER than (or
+## cross-cutting) the unit -- so the latent bears at `g` and a long-row -> `g`
+## map broadcasts x_full(g) to every long row. Returns a 0-indexed `latent_id`
+## (length n_obs), `n_latent`, the group descriptor, and the resolved name.
+## Validates the grouping column exists, is complete, and has >= 2 levels.
+gll_resolve_mi_latent_level <- function(setup, data_long, unit_id) {
+  group_level <- setup$group_level
+  if (!is.list(group_level) || !isTRUE(group_level$enabled)) {
+    return(list(
+      latent_id = as.integer(unit_id),
+      n_latent = max(unit_id) + 1L,
+      group_level = list(enabled = FALSE, group = character(0),
+                         levels = character(0), n_group = 0L),
+      level_name = "unit"
+    ))
+  }
+  group <- group_level$group
+  if (!group %in% names(data_long)) {
+    cli::cli_abort(
+      "The {.fn mi_group} grouping variable {.val {group}} was not found in {.arg data}."
+    )
+  }
+  values <- data_long[[group]]
+  if (anyNA(values)) {
+    cli::cli_abort(
+      "The {.fn mi_group} grouping variable {.val {group}} must be complete."
+    )
+  }
+  group_factor <- factor(values)
+  if (nlevels(group_factor) < 2L) {
+    cli::cli_abort(
+      "The {.fn mi_group} level needs at least two groups."
+    )
+  }
+  list(
+    latent_id = as.integer(group_factor) - 1L,
+    n_latent = nlevels(group_factor),
+    group_level = list(
+      enabled = TRUE,
+      group = group,
+      levels = levels(group_factor),
+      n_group = nlevels(group_factor)
+    ),
+    level_name = "group"
+  )
+}
+
+# ---- Latent-level Gaussian covariate-model build (ADAPT drm_build_gaussian_*) -
+
+## Build the Phase-2a/2b/2c Gaussian missing-predictor model at the LATENT
+## level (the level x lives at).
 ##
 ## `data_long` is the long-format model data (one row per (unit, trait) cell);
 ## `unit_id` is a 0-indexed integer vector (length n_obs) mapping each long row
-## to its unit; `mi_col` is the 1-indexed column of X_fix holding the broadcast
-## mi() predictor. We collapse to UNIT level: one x value and one row of the
-## covariate design X_x per unit. The latent x_mis has one entry per missing
-## unit; the delta-correction and covariate density use the unit broadcast.
+## to its wide-row unit; `mi_col` is the 1-indexed column of X_fix holding the
+## broadcast mi() predictor. The latent-bearing level is the unit (Phase
+## 2a/2b) OR a coarser `mi_group(g)` level (Phase 2c); `gll_resolve_mi_latent_
+## level` collapses everything to that level. We then build one x value and one
+## covariate-design row per LATENT level; the latent x_mis has one entry per
+## missing level; the delta-correction and covariate density use the level
+## broadcast (`latent_id`).
 ##
 ## Returns the enabled model list consumed by gll_tmb_mi_data() and
 ## gll_mi_metadata(), or the empty model when mi is disabled.
@@ -451,7 +572,11 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
     return(gll_empty_mi_model())
   }
   n_obs <- nrow(data_long)
-  n_units <- max(unit_id) + 1L
+  ## Phase 2c: resolve the latent-bearing level (unit, or a coarser mi_group()
+  ## level). `unit_id` is replaced by `latent_id` for the rest of the build.
+  latent <- gll_resolve_mi_latent_level(setup, data_long, unit_id)
+  unit_id <- latent$latent_id
+  n_units <- latent$n_latent
   ## First long row of each unit -- the representative row from which the
   ## unit-level x value and covariate predictors are read.
   first_row <- integer(n_units)
@@ -482,13 +607,16 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
   }
   x_raw_long <- as.numeric(x_raw_long)
 
-  ## --- Unit-level reduction + validation -------------------------------
-  ## x must be constant within a unit (it is a unit-level quantity). The
-  ## observed/missing status is taken per unit; a unit is missing iff its x is
-  ## NA on its representative row (and must be NA on all its rows).
+  ## --- Latent-level reduction + validation -----------------------------
+  ## x must be constant within the latent level (it is a unit- or group-level
+  ## quantity). The observed/missing status is taken per level; a level is
+  ## missing iff its x is NA on its representative row (and NA on all its rows).
+  ## With a coarser mi_group() level this is exactly the "one observed value
+  ## per group" level-mismatch contract (design 67 sec.2.1 / 69 sec.4.2).
+  is_group <- isTRUE(latent$group_level$enabled)
   x_unit <- x_raw_long[first_row]
   observed <- !is.na(x_unit)
-  ## Guard: x must agree across all long rows of a unit (broadcast invariant).
+  ## Guard: x must agree across all long rows of a level (broadcast invariant).
   for (o in seq_len(n_obs)) {
     u <- unit_id[o] + 1L
     here <- x_raw_long[o]
@@ -496,6 +624,13 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
     consistent <- (is.na(here) && is.na(there)) ||
       (!is.na(here) && !is.na(there) && isTRUE(all.equal(here, there)))
     if (!consistent) {
+      if (is_group) {
+        cli::cli_abort(c(
+          "{.fn mi} predictor {.val {setup$variable}} must have one observed value per group {.val {latent$group_level$group}}.",
+          "x" = "It is not constant within at least one {.val {latent$group_level$group}} level.",
+          "i" = "A group-level missing predictor carries one value per group, broadcast to every unit (and trait row) of that group."
+        ))
+      }
       cli::cli_abort(c(
         "{.fn mi} predictor {.val {setup$variable}} must be constant within a unit.",
         "x" = "It varies across the trait rows of at least one unit.",
@@ -604,7 +739,11 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
     ## Phase 2b grouped covariate random intercept
     random = random,
     u_group_start = if (isTRUE(random$enabled)) rep(0, random$n_group) else 0,
-    log_sd_group_start = log_sd_group_start
+    log_sd_group_start = log_sd_group_start,
+    ## Phase 2c: the latent-bearing level. When group_level$enabled, the latent
+    ## bears at this group (coarser than the wide-row unit) and `unit_id` above
+    ## is the long-row -> group map.
+    group_level = latent$group_level
   )
 }
 
@@ -637,7 +776,13 @@ gll_empty_mi_model <- function() {
       group_index = integer(0)
     ),
     u_group_start = 0,
-    log_sd_group_start = 0
+    log_sd_group_start = 0,
+    group_level = list(
+      enabled = FALSE,
+      group = character(0),
+      levels = character(0),
+      n_group = 0L
+    )
   )
 }
 
@@ -693,6 +838,7 @@ gll_mi_metadata <- function(model) {
   }
   missing_units <- as.integer(model$missing_index)
   has_group <- isTRUE(model$random$enabled)
+  has_level <- isTRUE(model$group_level$enabled)
   out <- list(
     variable = model$variable,
     family = model$family,
@@ -715,10 +861,19 @@ gll_mi_metadata <- function(model) {
       levels = if (has_group) model$random$levels else character(0),
       n_group = if (has_group) as.integer(model$random$n_group) else 0L
     ),
+    ## Phase 2c group-level (level-mismatch) descriptor. When enabled, x lives
+    ## at this group (coarser than the wide-row unit), one latent per missing
+    ## group, broadcast to every unit/trait row of the group.
+    group_level = list(
+      enabled = has_level,
+      group = if (has_level) model$group_level$group else character(0),
+      levels = if (has_level) model$group_level$levels else character(0),
+      n_group = if (has_level) as.integer(model$group_level$n_group) else 0L
+    ),
     conditional_mode = NULL,    # filled post-fit by gll_finalize_mi()
     ## Fixed-effect-only covariate model is the phase2a path; one grouped
-    ## random intercept is phase2b.
-    version = if (has_group) "phase2b" else "phase2a"
+    ## random intercept is phase2b; a coarser mi_group() level is phase2c.
+    version = if (has_level) "phase2c" else if (has_group) "phase2b" else "phase2a"
   )
   stats::setNames(list(out), model$variable)
 }

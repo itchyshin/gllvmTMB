@@ -306,26 +306,30 @@ Type objective_function<Type>::operator()()
   // unweighted behaviour exactly. Mirrors src/gllvmTMB.cpp:162.
   DATA_VECTOR(weights_i);
 
-  // -------- Missing-PREDICTOR layer (Phase 2a, design 67) ---------------
-  // One continuous UNIT-level Gaussian missing predictor declared with mi(x).
-  // The missing x is unit-level (broadcast across the unit's trait rows), so
-  // the latent x_mis has ONE entry per missing UNIT value (not per long row),
-  // and the Gaussian covariate density is evaluated at the UNIT level. The
-  // long-row -> unit map `mi_unit_id` broadcasts x_full(u) to every long row.
-  // has_mi == 0 -> every block below is gated off (exact no-op).
+  // -------- Missing-PREDICTOR layer (Phase 2a/2b/2c, design 67) ----------
+  // One continuous Gaussian missing predictor declared with mi(x). The missing
+  // x lives at a LATENT level -- the wide-row unit (Phase 2a/2b) or, when the
+  // covariate model carries a mi_group(g) marker, a coarser/cross-cutting group
+  // g (Phase 2c, design 67 sec.2.1 / 69 sec.4.1). x is broadcast across that
+  // level's long rows, so the latent x_mis has ONE entry per missing LEVEL
+  // value (not per long row), and the Gaussian covariate density is evaluated
+  // at the LATENT level. The long-row -> level map `mi_unit_id` broadcasts
+  // x_full(u) to every long row. The block is level-agnostic: n_units below is
+  // the number of latent-level values (units or groups). has_mi == 0 -> every
+  // block below is gated off (exact no-op).
   DATA_INTEGER(has_mi);            // 1 = a Gaussian mi() predictor is present
   DATA_INTEGER(mi_family);         // 0 = Gaussian (only family in Phase 2a)
   DATA_INTEGER(mi_col);            // 0-indexed column of X_fix for the mi() x
-  DATA_VECTOR(mi_x_unit);          // length n_units; observed x, sentinel where
-                                   // missing (x_mis overrides those entries)
-  DATA_IVECTOR(mi_observed_unit);  // length n_units; 1 = x observed for unit
-  DATA_IVECTOR(mi_missing_index);  // 0-indexed positions of missing units
-  DATA_IVECTOR(mi_unit_id);        // length n_obs; long-row -> unit (0-indexed)
-  DATA_MATRIX(X_mi);               // unit-level covariate design (n_units x p_x)
-  // Phase 2b: ONE grouped random intercept on the covariate model, at the UNIT
-  // level. has_mi_group == 0 -> the group block is an exact no-op.
+  DATA_VECTOR(mi_x_unit);          // length n_units (latent levels); observed x,
+                                   // sentinel where missing (x_mis overrides)
+  DATA_IVECTOR(mi_observed_unit);  // length n_units; 1 = x observed for a level
+  DATA_IVECTOR(mi_missing_index);  // 0-indexed positions of missing levels
+  DATA_IVECTOR(mi_unit_id);        // length n_obs; long-row -> level (0-indexed)
+  DATA_MATRIX(X_mi);               // level covariate design (n_units x p_x)
+  // Phase 2b: ONE grouped random intercept on the covariate model, at the
+  // LATENT level. has_mi_group == 0 -> the group block is an exact no-op.
   DATA_INTEGER(has_mi_group);      // 1 = the covariate model has (1 | group)
-  DATA_IVECTOR(mi_group_index);    // length n_units; unit -> group (0-indexed)
+  DATA_IVECTOR(mi_group_index);    // length n_units; level -> RE group (0-idx)
 
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)

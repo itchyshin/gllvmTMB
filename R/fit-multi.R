@@ -1981,10 +1981,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                ordinal_init_log_incs else 0.0
   )
 
-  ## Phase 2a missing-predictor PARAMETERS. beta_mi / log_sigma_mi are the
+  ## Phase 2a/2b missing-predictor PARAMETERS. beta_mi / log_sigma_mi are the
   ## Gaussian covariate-model coefficients + log residual SD; x_mis is the
-  ## latent vector of missing UNIT-level x values (joins `random`). Stub
-  ## lengths (1 / empty) when no mi() term is present -- mapped off below.
+  ## latent vector of missing UNIT-level x values (joins `random`). Phase 2b
+  ## adds u_mi_group (N(0,1) unit-level group effects, joins `random`) and
+  ## log_sd_mi_group. Stub lengths (1 / empty) when no mi() term / no group is
+  ## present -- mapped off below.
+  use_mi_group <- use_mi_predictor && isTRUE(mi_model$random$enabled)
   if (use_mi_predictor) {
     tmb_params$beta_mi      <- unname(mi_model$beta_start)
     tmb_params$log_sigma_mi <- mi_model$log_sigma_start
@@ -1993,6 +1996,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_params$beta_mi      <- 0.0
     tmb_params$log_sigma_mi <- 0.0
     tmb_params$x_mis        <- numeric(0)
+  }
+  if (use_mi_group) {
+    tmb_params$u_mi_group      <- unname(mi_model$u_group_start)
+    tmb_params$log_sd_mi_group <- mi_model$log_sd_group_start
+  } else {
+    tmb_params$u_mi_group      <- 0.0
+    tmb_params$log_sd_mi_group <- 0.0
   }
 
   ## McGillycuddy / glmmTMB-style residual starts for factor-analytic
@@ -2131,6 +2141,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (!use_mi_predictor) {
     tmb_map$beta_mi      <- factor(rep(NA_integer_, length(tmb_params$beta_mi)))
     tmb_map$log_sigma_mi <- factor(rep(NA_integer_, length(tmb_params$log_sigma_mi)))
+  }
+  ## Phase 2b grouped covariate RE: map the group params off (and keep
+  ## u_mi_group out of `random`) when no (1|group) term is present.
+  if (!use_mi_group) {
+    tmb_map$u_mi_group      <- factor(rep(NA_integer_, length(tmb_params$u_mi_group)))
+    tmb_map$log_sd_mi_group <- factor(rep(NA_integer_, length(tmb_params$log_sd_mi_group)))
   }
   if (!use_rr_B) {
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
@@ -2606,6 +2622,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_re_int)   random <- c(random, "u_re_int")
   ## Phase 2a: the latent missing UNIT-level x values are integrated by Laplace.
   if (use_mi_predictor) random <- c(random, "x_mis")
+  ## Phase 2b: the unit-level grouped covariate intercepts u_mi_group ~ N(0,1)
+  ## also join the Laplace-integrated `random` set.
+  if (use_mi_group) random <- c(random, "u_mi_group")
 
   ## Design 48 §2 Mitigation A (single-trait warmup). Opt-in via
   ## `control$init_strategy = "single_trait_warmup"`. Fits an

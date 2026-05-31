@@ -672,7 +672,7 @@ test_that("wide traits() mi(x) matches the hand-built long-format fit", {
 # covariate mean gets a group shift drawn N(0, group_sd^2). x is still
 # unit-level (constant within a site). The covariate model is
 #   x[u] ~ N(beta0 + beta_z z[u] + beta_w w[u] + group_shift[group[u]], sigma_x^2).
-.make_mi_grouped <- function(seed = 303, n_sites = 64, n_group = 8,
+.make_mi_grouped <- function(seed = 303, n_sites = 64, n_group = 8L,
                              b_x_true = 1.25, group_sd = 0.6, sigma_x = 0.4,
                              miss_idx = c(5L, 17L, 28L, 39L, 52L)) {
   set.seed(seed)
@@ -852,7 +852,7 @@ test_that("grouped recovery: mi slope, covariate coefs, sigma_x, group SD recove
   ## coefficients, sigma_x, AND the group SD should all land in a band, and the
   ## missing-x conditional modes should correlate with (and track) the truth.
   d <- .make_mi_grouped(
-    seed = 2024, n_sites = 200, n_group = 20,
+    seed = 2024, n_sites = 200, n_group = 20L,
     b_x_true = 1.25, group_sd = 0.6, sigma_x = 0.4,
     miss_idx = sort(sample.int(200L, 40L))
   )

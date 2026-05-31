@@ -247,9 +247,9 @@ Type objective_function<Type>::operator()()
   // off and x_phy_slope is unused.
   DATA_INTEGER(use_phylo_slope);
   DATA_VECTOR(x_phy_slope);          // length n_obs; covariate values
-  // Phase 56.1 dormant augmented-LHS random-regression path. The default
-  // R-side flag is 0, so the legacy b_phy_slope path above remains active
-  // and byte-identical until the parser/R design-matrix phases land.
+  // Augmented-LHS random-regression path (live). The default R-side flag is
+  // 0, so the legacy b_phy_slope path above remains active and byte-identical
+  // for non-augmented fits; the parser/R design-matrix routes set it to 1.
   DATA_INTEGER(use_phylo_slope_correlated);
   DATA_INTEGER(n_lhs_cols);           // block-local LHS columns: 1 or 2 (unique/indep);
                                       // C = 2*n_traits for the phylo_dep slope path
@@ -774,9 +774,9 @@ Type objective_function<Type>::operator()()
 
   // -------- Q6: phylo_slope prior --------------------------------------
   // Legacy path: b_phy_slope ~ N(0, sigma_slope^2 * A_phy), evaluated
-  // through the sparse Ainv. The Phase 56.1 augmented path below is dormant
-  // by default; keeping this branch active preserves current phylo_slope()
-  // fits and parameter names byte-for-byte while Stage 3 plumbing lands.
+  // through the sparse Ainv. The augmented path below is live (parser
+  // activation has landed); keeping this branch active preserves current
+  // phylo_slope() fits and parameter names byte-for-byte.
   // -log p(b) = 0.5 * (n_aug_phy * log(2pi) + 2 n_aug_phy log_sigma_slope
   //                    + log_det_A_phy_rr
   //                    + b' Ainv b / sigma_slope^2)
@@ -791,9 +791,10 @@ Type objective_function<Type>::operator()()
                   + quad / sigma_slope2);
     REPORT(sigma_slope);
   }
-  // Phase 56.1 dormant path: vec(B) ~ N(0, Sigma_b \otimes A_phy), where
+  // Augmented path (live): vec(B) ~ N(0, Sigma_b \otimes A_phy), where
   // Sigma_b is block-local across LHS columns (1 = legacy slope-only;
-  // 2 = intercept + slope). Parser activation waits for Phases 56.2-56.3.
+  // 2 = intercept + slope). Driven by the phylo_unique / phylo_indep /
+  // phylo_dep parser routes.
   if (use_phylo_slope_correlated == 1) {
     // Closed-form covariance paths (unique / indep / legacy) require
     // n_lhs_cols in {1, 2}. The phylo_dep slope path (use_phylo_dep_slope

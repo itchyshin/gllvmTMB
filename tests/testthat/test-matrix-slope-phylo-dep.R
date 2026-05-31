@@ -9,29 +9,27 @@
 ## (random-slope recovery) / PHY-05 / PHY-06 of
 ## `docs/design/35-validation-debt-register.md`.
 ##
-## ENGINE STATUS (verified empirically 2026-05-29, this worktree, frozen
-## engine): the augmented-LHS `dep` path is NOT yet implemented. The desugar
-## guard in `R/brms-sugar.R` (`.is_zero_plus_trait`, the `fn == "phylo_dep"`
-## branch ~line 2582) aborts any `phylo_dep` LHS richer than `0 + trait`:
+## ENGINE STATUS: the augmented-LHS `dep` path IS implemented and Gaussian-
+## validated (test-phylo-dep-slope-gaussian.R, all green). Construction now
+## succeeds for the wired families. HOWEVER, the Gaussian-only family guard in
+## `R/fit-multi.R` is retained (allowlist == gaussian id 0): unlike the
+## diagonal phylo_indep / block-diagonal phylo_latent paths, the FULL
+## unstructured C x C (C = 2*n_traits) covariance is not yet identifiable for
+## the non-Gaussian families at the validation fixtures. Verified empirically
+## (n_sp up to 100, n_rep up to 10): every non-Gaussian dep fit returns
+## convergence != 0 / non-PD Hessian, so each cell below honest-skips at the
+## converge/PD guard. Per the #388 discipline a family joins the allowlist
+## ONLY after its recovery cell passes -- non-Gaussian dep stays reserved.
 ##
-##   "`phylo_dep()` LHS richer than `0 + trait` is not yet supported."
-##
-## so BOTH the wide form `phylo_dep(1 + x | species)` and the long form
-## `phylo_dep(0 + trait + (0 + trait):x | species)` fail to construct. This
-## is exactly the not-yet-landed Stage-3 work the matching Gaussian skeleton
-## gates behind `skip_until_stage3()` (`test-phylo-dep-slope-gaussian.R`,
-## `test-animal-dep-slope-gaussian.R`). The frozen-engine rules of Design 59
-## forbid touching the parser, so every family here currently takes an
-## HONEST construction skip carrying the real abort message.
-##
-## Each `test_that` is written so that WHEN the augmented-LHS `dep` engine
-## work lands, the construction skip falls away and the recovery + CI-smoke
-## assertions below it run unchanged: build a faithful family-appropriate
-## DGP (matching the committed `phylo_unique` slope sibling for that family),
-## fit `value ~ 0 + trait + phylo_dep(1 + x | species)`, assert converged +
-## pd_hessian, recover the augmented 2x2 intercept/slope variance structure
-## within the Phase-B0 per-family band, and a CI smoke (rho:phy:1,2 profile
-## OR a finite slope-variance CI from the sdreport `log_sd_b` row).
+## Each `test_that` is written so that WHEN the non-Gaussian dep cells become
+## identifiable (bigger n / a reparameterised covariance), the convergence
+## skip falls away and the recovery + CI-smoke assertions below it run: build
+## a faithful family-appropriate DGP (matching the committed `phylo_unique`
+## slope sibling for that family), fit `value ~ 0 + trait +
+## phylo_dep(1 + x | species)`, assert converged + pd_hessian, recover the
+## augmented 2x2 intercept/slope variance structure within the Phase-B0
+## per-family band, and a CI smoke (rho:phy:1,2 profile OR a finite
+## slope-variance CI from the sdreport `log_sd_b` row).
 ##
 ## Per-family Phase-B0 tolerance (docs/dev-log/audits/2026-05-26-phase-b0-
 ## nongaussian-scoping.md + the committed siblings): fixed-residual-scale
@@ -196,7 +194,7 @@ skip_if_not_slope_phylo_dep_deps <- function() {
   fit <- .fit_slope_phylo_dep(df, tree, family, response_lhs = response_lhs)
   if (inherits(fit, "error") || !inherits(fit, "gllvmTMB_multi")) {
     testthat::skip(sprintf(
-      "phylo_dep(1 + x | sp) fit failed to construct: %s -- the augmented-LHS `dep` engine path is not yet implemented (engine frozen, Design 59); %s stays partial",
+      "phylo_dep(1 + x | sp) fit failed to construct: %s -- non-Gaussian `dep` slopes are reserved fail-loud (the full unstructured C x C covariance is not yet identifiable for this family; PHY-18); %s stays partial",
       if (inherits(fit, "error")) conditionMessage(fit) else "wrong class",
       row_id
     ))

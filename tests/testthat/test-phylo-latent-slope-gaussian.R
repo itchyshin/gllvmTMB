@@ -228,7 +228,7 @@ test_that("extract_Sigma(level = 'phy_slope') returns the per-column Sigma matri
   )
 })
 
-test_that("phylo_latent slope fails loud on missing covariate and on non-Gaussian", {
+test_that("phylo_latent slope fails loud on missing covariate and on a reserved family", {
   skip_if_not_ape()
   fx <- make_platent_slope_fixture(seed = 11L, ntip = 8L, reps = 3L)
 
@@ -240,15 +240,18 @@ test_that("phylo_latent slope fails loud on missing covariate and on non-Gaussia
     regexp = "not in|references column|x"
   )
 
-  ## Non-Gaussian deferred (Gaussian anchor only).
-  cnt <- fx$df
-  cnt$value <- stats::rpois(nrow(cnt), lambda = 2)
+  ## A family OUTSIDE the activated allowlist (gaussian, binomial, poisson,
+  ## nbinom2, Gamma, Beta, ordinal_probit) is still reserved fail-loud. tweedie
+  ## (family id 6) is not on the list; the guard fires on the family id at
+  ## construction.
+  pos <- fx$df
+  pos$value <- abs(pos$value) + 0.1
   testthat::expect_error(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       value ~ 0 + trait + phylo_latent(1 + x | species, d = 1),
-      data = cnt, phylo_tree = fx$tree, unit = "species",
-      family = poisson()
+      data = pos, phylo_tree = fx$tree, unit = "species",
+      family = gllvmTMB::tweedie()
     ))),
-    regexp = "gaussian|Gaussian anchor|deferred"
+    regexp = "not yet supported for this family"
   )
 })

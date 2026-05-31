@@ -773,16 +773,26 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ))
   }
   ## phylo_dep(1 + x | species) augmented-slope scope (Design 56 §9.5c):
-  ## the full unstructured 2T x 2T Sigma_b path is validated for the
-  ## Gaussian anchor cell only in this slice (non-Gaussian dep slope is
-  ## deferred). Family is unknown at parse time, so the reservation is
-  ## enforced here where family_id_vec exists. Fail loud rather than
-  ## silently truncate (Design 56 §7).
-  if (use_phylo_dep_slope && any(family_id_vec != 0L)) {
+  ## the full unstructured 2T x 2T Sigma_b path is validated for the Gaussian
+  ## anchor cell only in this release. The engine is family-agnostic (eta +=
+  ## b_phy_aug . Z_phy_aug is accumulated before the C++ family dispatch), so
+  ## construction succeeds for the wired families -- BUT, unlike the diagonal
+  ## phylo_indep / block-diagonal phylo_latent paths, the FULL unstructured
+  ## C x C (C = 2*n_traits) covariance is not yet identifiable for the
+  ## non-Gaussian families at the validation fixtures: every non-Gaussian dep
+  ## recovery cell honest-skips at the converge/PD-Hessian guard
+  ## (test-matrix-slope-phylo-dep.R; verified empirically across n_sp up to
+  ## 100). Per the #388 discipline a family joins this allowlist ONLY after its
+  ## recovery cell passes, so non-Gaussian dep stays reserved fail-loud. The
+  ## allowlist holds the runtime family id (family_to_id(), NOT the
+  ## .valid_family enum): 0 gaussian. Family is unknown at parse time, so the
+  ## reservation is enforced here where family_id_vec exists. Fail loud rather
+  ## than silently truncate (Design 56 §7).
+  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L))) {
     cli::cli_abort(c(
       "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
-      "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()} only in this slice.",
-      ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit (family-general), or wait for the non-Gaussian dep-slope slice."
+      "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()} only in this release.",
+      ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit (family-general), or wait for the non-Gaussian dep-slope cells."
     ))
   }
   phylo_slope_lhs_form <- if (use_phylo_slope_correlated) {
@@ -808,13 +818,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   phylo_latent_slope_cs <- if (use_phylo_latent_slope) {
     parsed$covstructs[[phylo_latent_slope_idx[1L]]]
   } else NULL
-  ## Gaussian anchor only in this slice (family unknown at parse time; the
-  ## non-Gaussian latent-slope cells are deferred per Design 56 Sec. 2).
-  if (use_phylo_latent_slope && any(family_id_vec != 0L)) {
+  ## Gaussian anchor PLUS the wired non-Gaussian families in this slice. The
+  ## block-diagonal reduced-rank latent slope is family-agnostic exactly like
+  ## the phylo_indep sweep (#388): the eta contribution is accumulated before
+  ## the C++ family dispatch, so each family needs ZERO new C++ and activation
+  ## is just this family-id allowlist relax once its per-family recovery cell
+  ## passes (test-matrix-slope-phylo-latent.R). The allowlist holds the runtime
+  ## family ids (family_to_id(), NOT the .valid_family enum): 0 gaussian,
+  ## 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta, 14 ordinal_probit.
+  ## Families NOT on this list stay reserved fail-loud until their own recovery
+  ## cells land. Family is unknown at parse time, so the reservation is
+  ## enforced here where family_id_vec exists.
+  if (use_phylo_latent_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
     cli::cli_abort(c(
-      "{.fn phylo_latent} random slopes are validated for {.code gaussian()} only in this release.",
-      "i" = "The augmented {.code phylo_latent(1 + x | species, d = K)} non-Gaussian cells are deferred (Design 56 Sec. 9.5a, Gaussian anchor first).",
-      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for non-Gaussian augmented phylogenetic random regression."
+      "{.fn phylo_latent} random slopes are not yet supported for this family.",
+      "i" = "Augmented {.code phylo_latent(1 + x | species, d = K)} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+      ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for any other non-Gaussian augmented phylogenetic random regression."
     ))
   }
   d_phy_slope <- if (use_phylo_latent_slope) {

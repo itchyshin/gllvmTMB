@@ -20,7 +20,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                mesh = NULL,
                                lambda_constraint = NULL,
                                control, silent,
-                               unit_obs = "site_species") {
+                               unit_obs = "site_species",
+                               is_y_observed = NULL,
+                               missing_meta = NULL) {
   ## Family arg can be:
   ##   * a single family object (as before): same family for all rows.
   ##   * a list of family objects + a `family_var` column in `data` whose
@@ -1001,6 +1003,30 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
   n_obs <- length(y)
+
+  ## ---- Phase 1 response mask (design 59 sec.4b / sec.9) ------------------
+  ## `is_y_observed` is the long-format observed-response indicator (1/0),
+  ## length n_obs, aligned with `y`. When NULL (the response="drop" default,
+  ## or any internal caller) every row is observed -> all-ones, an exact
+  ## no-op. For response="include", masked rows carry an NA `y`; replace it
+  ## with a safe sentinel (0) so the value never reaches a family density --
+  ## the C++ `if (is_y_observed(o))` gate guarantees the sentinel does not
+  ## enter the likelihood (sentinel-invariance, sec.9).
+  if (is.null(is_y_observed)) {
+    is_y_observed <- rep(1L, n_obs)
+  } else {
+    is_y_observed <- as.integer(is_y_observed)
+    if (length(is_y_observed) != n_obs)
+      cli::cli_abort(c(
+        "Internal error: {.code is_y_observed} length mismatch.",
+        "i" = "Got length {length(is_y_observed)}; expected {n_obs}."
+      ))
+  }
+  masked_response <- is_y_observed == 0L
+  if (any(masked_response)) {
+    y[masked_response] <- 0   # sentinel; gated out by is_y_observed in TMB
+  }
+
   ## ---- lme4 / glmmTMB-style observation weights -------------------------
   ## For each row, dispatch on family:
   ##   * binomial (fid 1): weights_i = 1 (the user-supplied `weights` is
@@ -1030,10 +1056,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   site_id         <- as.integer(data[[site]]) - 1L
   site_species_id <- as.integer(data[[ss_name]]) - 1L
 
-  if (any(is.na(y))) {
+  if (any(is.na(y[!masked_response]))) {
     cli::cli_abort(c(
-      "NA in response reached the fitting engine.",
-      "i" = "Public {.fn gllvmTMB} calls drop missing response rows before fitting; please report this internal preprocessing failure."
+      "NA in an observed response reached the fitting engine.",
+      "i" = "Public {.fn gllvmTMB} drops (response = \"drop\") or masks (response = \"include\") missing response rows before fitting; please report this internal preprocessing failure."
     ))
   }
   if (any(is.na(X_fix))) {
@@ -1042,8 +1068,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       "i" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting."
     ))
   }
-  ## Sanity check: y must be in [0, n_trials] for binomial rows.
-  bin_rows <- family_id_vec == 1L
+  ## The family-specific response-range checks below validate the *observed*
+  ## response only. Masked rows (response = "include") carry the sentinel y = 0
+  ## which is gated out of the likelihood; it must not trip a range check.
+  ## When nothing is masked this is identical to checking every row.
+  bin_rows <- (family_id_vec == 1L) & !masked_response
   if (any(bin_rows)) {
     if (any(y[bin_rows] < 0) || any(y[bin_rows] > n_trials[bin_rows]))
       cli::cli_abort(c(
@@ -1055,7 +1084,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## clips y away from the boundaries internally for numerical safety, but
   ## a y of exactly 0 or 1 is a hint that the user wants a zero/one-inflated
   ## Beta or a different family (Smithson & Verkuilen 2006).
-  beta_rows <- family_id_vec == 7L
+  beta_rows <- (family_id_vec == 7L) & !masked_response
   if (any(beta_rows)) {
     if (any(y[beta_rows] <= 0) || any(y[beta_rows] >= 1))
       cli::cli_abort(c(
@@ -1064,7 +1093,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
   }
   ## Beta-binomial rows: y must be in [0, n_trials], same as binomial.
-  bb_rows <- family_id_vec == 8L
+  bb_rows <- (family_id_vec == 8L) & !masked_response
   if (any(bb_rows)) {
     if (any(y[bb_rows] < 0) || any(y[bb_rows] > n_trials[bb_rows]))
       cli::cli_abort(c(
@@ -1073,7 +1102,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ))
   }
   ## Sanity check: y >= 1 for zero-truncated count families.
-  trunc_rows <- which(family_id_vec %in% c(10L, 11L))
+  trunc_rows <- which((family_id_vec %in% c(10L, 11L)) & !masked_response)
   if (length(trunc_rows) > 0L) {
     bad <- trunc_rows[y[trunc_rows] < 1 | y[trunc_rows] != round(y[trunc_rows])]
     if (length(bad) > 0L) {
@@ -1089,7 +1118,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Delta (hurdle) families: y must be non-negative (zeros = absence,
   ## positives = presence + abundance). The log y term inside the TMB
   ## switch is gated on y > 0, so negative y would silently propagate.
-  delta_rows <- family_id_vec %in% c(12L, 13L)
+  delta_rows <- (family_id_vec %in% c(12L, 13L)) & !masked_response
   if (any(delta_rows)) {
     if (any(y[delta_rows] < 0))
       cli::cli_abort(c(
@@ -1112,15 +1141,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ordinal_init_log_incs     <- numeric(0)
   if (any_ordinal_probit) {
     ordinal_rows <- family_id_vec == 14L
-    if (any(y[ordinal_rows] != round(y[ordinal_rows])))
+    ## Validate the observed ordinal responses only; masked rows carry the
+    ## sentinel y = 0 (gated out of the likelihood) and must not trip these.
+    ordinal_obs_rows <- ordinal_rows & !masked_response
+    if (any(y[ordinal_obs_rows] != round(y[ordinal_obs_rows])))
       cli::cli_abort(c(
         "ordinal_probit: response must be integer-valued (categories 1..K).",
         "i" = "Coerce {.var y} via {.code as.integer(factor(y))} or pass an ordered factor."
       ))
-    if (any(y[ordinal_rows] < 1))
+    if (any(y[ordinal_obs_rows] < 1))
       cli::cli_abort(c(
         "ordinal_probit: response must be in {.val 1..K} (1-indexed).",
-        "i" = "Smallest observed category was {min(y[ordinal_rows])}; categories must start at 1."
+        "i" = "Smallest observed category was {min(y[ordinal_obs_rows])}; categories must start at 1."
       ))
     cum_offset <- 0L
     for (t in seq_len(n_traits)) {
@@ -1646,6 +1678,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   tmb_data <- list(
     y                = as.numeric(y),
+    is_y_observed    = as.integer(is_y_observed),
     n_trials         = as.numeric(n_trials),
     X_fix            = X_fix,
     trait_id         = trait_id,
@@ -2714,6 +2747,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## For single-family fits, `family_input == family`.
       family_input = family_input,
       data         = data,
+      ## Phase 1 missing-data layer (design 59 sec.4b). `missing_data` is the
+      ## shared-contract fit slot; `data_original` is the pre-drop / pre-mask
+      ## data so original-row accounting is recoverable. `random` records the
+      ## TMB random-effect block names (needed to rebuild MakeADFun, e.g. the
+      ## sentinel-invariance check).
+      missing_data = .gllvmTMB_build_missing_data(missing_meta, is_y_observed),
+      data_original = if (!is.null(missing_meta)) missing_meta$data_original else data,
+      random       = random,
       trait_col    = trait,
       unit_col     = site,
       unit_obs_col = unit_obs,
@@ -2839,6 +2880,89 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   )
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)
   fit
+}
+
+## Build the shared-contract `fit$missing_data` slot (design 59 sec.4b).
+##
+## Fields:
+##   original_row -- pre-drop / pre-mask row index for each *model* (engine)
+##                   row. response="include" keeps all rows so this is 1:N;
+##                   response="drop" maps surviving model rows back to their
+##                   original positions.
+##   model_row    -- 1..(n model rows), the index into the fitted data / y.
+##   observed_y   -- is_y_observed over the model rows (1 = contributes to the
+##                   likelihood). All-ones under response="drop".
+##   counts       -- n_total (original rows), n_observed, n_missing_response,
+##                   n_model_rows, n_dropped.
+##   slice        -- the implementation slice tag.
+##   contract_version -- the shared-contract version this slot conforms to.
+##
+## `missing_meta` is NULL for internal callers that bypass the public
+## gllvmTMB() entry (e.g. direct gllvmTMB_multi_fit() in older tests); in that
+## case the slot is built from is_y_observed alone (treated as response="drop"
+## complete-case when all-ones).
+.gllvmTMB_build_missing_data <- function(missing_meta, is_y_observed) {
+  is_y_observed <- as.integer(is_y_observed)
+  n_model <- length(is_y_observed)
+  model_row <- seq_len(n_model)
+
+  if (is.null(missing_meta)) {
+    n_total <- n_model
+    original_row <- model_row
+    response <- "drop"
+    predictor <- "fail"
+    engine <- "laplace"
+    n_missing_response <- sum(is_y_observed == 0L)
+  } else {
+    response <- missing_meta$response
+    predictor <- missing_meta$predictor
+    engine <- missing_meta$engine
+    original_row <- missing_meta$original_row
+    if (is.null(original_row)) original_row <- model_row
+    n_missing_response <- missing_meta$n_missing_response %||% 0L
+    n_total <- if (!is.null(missing_meta$data_original)) {
+      nrow(missing_meta$data_original)
+    } else {
+      n_model
+    }
+  }
+
+  n_observed <- sum(is_y_observed == 1L)
+  ## Under response="drop" the dropped rows are absent from the model; the
+  ## n_missing_response count comes from missing_meta (pre-drop). Under
+  ## response="include" the missing rows are present-but-masked, so
+  ## n_missing_response == sum(is_y_observed == 0L). n_dropped distinguishes
+  ## the two.
+  n_dropped <- max(0L, n_total - n_model)
+  n_likelihood <- sum(is_y_observed == 1L)
+
+  list(
+    original_row = as.integer(original_row),
+    model_row = as.integer(model_row),
+    observed_y = is_y_observed,
+    response = response,
+    predictor = predictor,
+    engine = engine,
+    ## counts carries BOTH the gllvmTMB-native field names and the
+    ## drmTMB-aligned names (design 59 sec.4b shared contract). drmTMB ships
+    ## retained_rows / observed_response / missing_response / likelihood_rows;
+    ## we mirror those so summary()$missing and cross-package tooling line up,
+    ## while keeping the descriptive n_* names already in use.
+    counts = list(
+      n_total = as.integer(n_total),
+      n_model_rows = as.integer(n_model),
+      n_observed = as.integer(n_observed),
+      n_missing_response = as.integer(n_missing_response),
+      n_dropped = as.integer(n_dropped),
+      ## drmTMB-aligned field names (shared MD contract):
+      retained_rows = as.integer(n_model),
+      observed_response = as.integer(n_observed),
+      missing_response = as.integer(n_missing_response),
+      likelihood_rows = as.integer(n_likelihood)
+    ),
+    slice = "Phase1-s2",
+    contract_version = "59-v1"
+  )
 }
 
 `%||%` <- function(a, b) if (is.null(a)) b else a

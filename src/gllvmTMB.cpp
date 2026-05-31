@@ -34,6 +34,12 @@ Type objective_function<Type>::operator()()
 
   // -------- DATA --------------------------------------------------------
   DATA_VECTOR(y);                  // long-format response (n_obs)
+  DATA_IVECTOR(is_y_observed);     // 1 = response observed, 0 = missing (n_obs).
+                                   // Phase 1 response mask: rows with 0 add
+                                   // nothing to the likelihood and their y entry
+                                   // is a safe sentinel (filled on the R side).
+                                   // All-ones under miss_control(response="drop")
+                                   // -> an exact no-op.
   DATA_VECTOR(n_trials);           // length n_obs; size argument for binomial.
                                    // For non-binomial rows the entry is unused
                                    // (set to 1.0 by R). For Bernoulli rows it
@@ -1397,6 +1403,12 @@ Type objective_function<Type>::operator()()
     // its weight after the family-dispatch block. Mirrors the
     // `tmp_ll *= weights_i(i)` pattern in src/gllvmTMB.cpp around line 1136.
     Type nll_before_row = nll;
+    // Phase 1 response mask: a row with is_y_observed(o) == 0 contributes
+    // nothing to the likelihood. Its y(o) is a safe sentinel, so we must NOT
+    // evaluate any family density on it (that is the sentinel-invariance
+    // guarantee, design 59 sec.9). When all rows are observed (response="drop")
+    // this guard is always true -> an exact no-op.
+    if (is_y_observed(o)) {
     if (fid == 0) {
       // Gaussian, identity link
       nll -= dnorm(y(o), eta(o), sigma_eps, true);
@@ -1601,9 +1613,11 @@ Type objective_function<Type>::operator()()
     } else {
       error("gllvmTMB_multi: unknown family_id");
     }
+    }  // end if (is_y_observed(o))
     // Apply the per-row weight: scale this row's NLL contribution by
     // weights_i(o). Unit weight is a no-op; weight 0 zeroes the row's
-    // contribution (cross-validation hold-out semantics).
+    // contribution (cross-validation hold-out semantics). For a masked row the
+    // family block above added nothing, so row_nll == 0 and this is a no-op too.
     Type row_nll = nll - nll_before_row;
     nll = nll_before_row + row_nll * weights_i(o);
   }

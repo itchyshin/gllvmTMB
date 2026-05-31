@@ -203,6 +203,12 @@
 #'   are still accepted (with a one-shot soft deprecation message) and
 #'   map to `unit` and `unit_obs` respectively.
 #' @param control Output of `gllvmTMBcontrol()`.
+#' @param missing Output of [miss_control()] configuring missing-data
+#'   handling. The default `miss_control()` (`response = "drop"`,
+#'   `predictor = "fail"`) is the historical complete-case behaviour.
+#'   `miss_control(response = "include")` keeps rows with a missing response
+#'   and masks them out of the likelihood, preserving original-row accounting
+#'   in `fit$missing_data`.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #'
 #' @return A `gllvmTMB` object. With no covariance-structure terms in
@@ -387,6 +393,7 @@ gllvmTMB <- function(
   known_V = NULL,
   lambda_constraint = NULL,
   control = gllvmTMBcontrol(),
+  missing = miss_control(),
   silent = TRUE,
   site = NULL, # deprecated alias for `unit`
   species = NULL
@@ -413,7 +420,8 @@ gllvmTMB <- function(
       formula = formula,
       data = data,
       weights = weights,
-      eval_env = environment(formula)
+      eval_env = environment(formula),
+      missing = missing
     )
     fit <- gllvmTMB(
       formula = rewrite$formula_long,
@@ -431,6 +439,7 @@ gllvmTMB <- function(
       known_V = known_V,
       lambda_constraint = lambda_constraint,
       control = control,
+      missing = missing,
       silent = silent,
       site = site,
       species = species
@@ -620,10 +629,14 @@ gllvmTMB <- function(
   ## spatial = "off"; that path is removed in 0.2.0 because the
   ## single-response sdmTMB() engine is no longer bundled.
   parsed <- parse_multi_formula(formula)
+  ## Snapshot the pre-drop data so the fit can report original-row accounting
+  ## (fit$data_original) regardless of the response mode.
+  data_original <- data
   observed_response <- drop_missing_response_rows(
     fixed_formula = parsed$fixed,
     data = data,
-    weights = weights
+    weights = weights,
+    missing = missing
   )
   data <- observed_response$data
   weights <- observed_response$weights
@@ -648,19 +661,34 @@ gllvmTMB <- function(
     lambda_constraint = lambda_constraint,
     control = control,
     silent = silent,
-    unit_obs = unit_obs
+    unit_obs = unit_obs,
+    is_y_observed = observed_response$is_y_observed,
+    missing_meta = list(
+      response = missing$response,
+      predictor = missing$predictor,
+      engine = missing$engine,
+      original_row = observed_response$original_row,
+      n_missing_response = observed_response$n_missing_response,
+      data_original = data_original
+    )
   )
 }
 
-drop_missing_response_rows <- function(fixed_formula, data, weights = NULL) {
+drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
+                                       missing = miss_control()) {
   mf <- stats::model.frame(
     fixed_formula,
     data = data,
     na.action = stats::na.pass
   )
   y_raw <- stats::model.response(mf)
+  n_row <- nrow(data)
   if (is.null(y_raw)) {
-    return(list(data = data, weights = weights, n_dropped = 0L))
+    return(list(
+      data = data, weights = weights, n_dropped = 0L,
+      is_y_observed = NULL, original_row = seq_len(n_row),
+      n_missing_response = 0L, response = missing$response
+    ))
   }
 
   response_missing <- if (is.matrix(y_raw) || is.data.frame(y_raw)) {
@@ -670,10 +698,38 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL) {
   }
   response_missing <- as.logical(response_missing)
   response_missing[is.na(response_missing)] <- TRUE
+  n_missing_response <- sum(response_missing)
 
-  n_dropped <- sum(response_missing)
+  ## ---- response = "include": keep every row, build the observed mask ------
+  ## The masked rows stay in `data` (original-row identity preserved); the
+  ## NA response is replaced with a safe sentinel downstream and the C++
+  ## likelihood is gated by is_y_observed so the row contributes nothing.
+  if (identical(missing$response, "include")) {
+    if (!any(!response_missing)) {
+      cli::cli_abort(c(
+        "All response rows are missing.",
+        "i" = "At least one observed response value is required to fit a model."
+      ))
+    }
+    return(list(
+      data = data,
+      weights = weights,
+      n_dropped = 0L,
+      is_y_observed = as.integer(!response_missing),
+      original_row = seq_len(n_row),
+      n_missing_response = n_missing_response,
+      response = "include"
+    ))
+  }
+
+  ## ---- response = "drop" (default): historical complete-case behaviour ----
+  n_dropped <- n_missing_response
   if (n_dropped == 0L) {
-    return(list(data = data, weights = weights, n_dropped = 0L))
+    return(list(
+      data = data, weights = weights, n_dropped = 0L,
+      is_y_observed = NULL, original_row = seq_len(n_row),
+      n_missing_response = 0L, response = "drop"
+    ))
   }
 
   keep <- !response_missing
@@ -708,12 +764,21 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL) {
     weights <- as.numeric(weights)[keep]
   }
 
+  original_row <- which(keep)
   data <- data[keep, , drop = FALSE]
   cli::cli_inform(c(
     "i" = "{.fn gllvmTMB}: dropped {n_dropped} row{?s} with {.code NA} response."
   ))
 
-  list(data = data, weights = weights, n_dropped = n_dropped)
+  list(
+    data = data,
+    weights = weights,
+    n_dropped = n_dropped,
+    is_y_observed = NULL,
+    original_row = original_row,
+    n_missing_response = n_missing_response,
+    response = "drop"
+  )
 }
 
 
@@ -841,6 +906,103 @@ gllvmTMBcontrol <- function(
     start_from = start_from,
     se = se,
     verbose = verbose
+  )
+}
+
+#' Missing-data control for [gllvmTMB()]
+#'
+#' Configures how [gllvmTMB()] treats missing **responses** and missing
+#' **predictors**. This is the v1 surface of the model-based missing-data
+#' layer (design 59). Pass the result to the `missing =` argument of
+#' [gllvmTMB()].
+#'
+#' @param response How to treat rows whose response value is `NA`.
+#'   `"drop"` (default) is the historical complete-case behaviour: rows with
+#'   a missing response are removed before the likelihood is built. `"include"`
+#'   keeps those rows, builds an observed-response mask (`is_y_observed`), and
+#'   contributes nothing to the likelihood for the masked rows -- the
+#'   frequentist observed-data likelihood. The fit is identical to the
+#'   complete-case fit on the observed rows, but the original-row accounting is
+#'   preserved (see `fit$missing_data`).
+#' @param predictor How to treat missing **predictors** (covariates). v1
+#'   accepts only `"fail"` (the default): a missing value in the fixed-effect
+#'   design matrix is an error, exactly as today. `"model"` -- treating a
+#'   missing predictor as a latent variable integrated out by the Laplace
+#'   approximation (the `mi()` grammar) -- is the Phase 2 surface and is **not
+#'   yet supported**.
+#' @param engine The estimation engine. v1 ships `"laplace"` only (TMB Laplace
+#'   approximation). `"em"` (the Gaussian-only EM special case) and `"profile"`
+#'   are **reserved names, not yet supported**.
+#'
+#' @details
+#' There is deliberately **no** `estimator` argument: maximum likelihood (ML)
+#' is the internal default, and a public `estimator =` argument (and REML) is
+#' deferred until REML's likelihood/extractor boundary is proven (design 59
+#' sec.4 / sec.10). There is **no** MI ("multiple imputation") engine here;
+#' multiple imputation is the separate `pigauto` workflow (design 59 sec.1b).
+#'
+#' Under the default `miss_control(response = "drop", predictor = "fail",
+#' engine = "laplace")` the missing-data layer is an exact no-op: a complete-
+#' data fit is byte-identical to a fit built before this layer existed.
+#'
+#' @return A named list with elements `response`, `predictor`, and `engine`.
+#'
+#' @seealso [gllvmTMB()] for the `missing =` argument; [gllvmTMBcontrol()] for
+#'   optimiser / initialisation control.
+#'
+#' @export
+#' @examples
+#' miss_control()                          # defaults: drop / fail / laplace
+#' miss_control(response = "include")      # keep missing-response rows (masked)
+miss_control <- function(
+  response = c("drop", "include"),
+  predictor = c("fail", "model"),
+  engine = "laplace"
+) {
+  ## `estimator` is NOT a public v1 argument (design 59 sec.4 / sec.10). Catch
+  ## it explicitly via a named check so a user passing it gets a clear error
+  ## instead of a silent no-op (the formals above do not include it, but a
+  ## caller could still write miss_control(estimator = "REML")).
+  call_args <- names(match.call())[-1L]
+  if ("estimator" %in% call_args) {
+    cli::cli_abort(c(
+      "{.arg estimator} is not a {.fn miss_control} argument.",
+      "i" = "Maximum likelihood is the internal default; a public {.arg estimator} argument (and REML) is deferred to a later version.",
+      "i" = "Remove {.arg estimator} from the {.fn miss_control} call."
+    ))
+  }
+
+  response <- match.arg(response)
+  predictor <- match.arg(predictor)
+
+  ## v1 predictor surface is "fail" only. "model" (the mi() latent-covariate
+  ## grammar) is the Phase 2 surface.
+  if (identical(predictor, "model")) {
+    cli::cli_abort(c(
+      "{.code predictor = \"model\"} is reserved and not yet supported.",
+      "i" = "Modelling missing predictors as latent variables (the {.code mi()} grammar) arrives in a later phase.",
+      "i" = "Use {.code predictor = \"fail\"} (the default): missing predictors error until then."
+    ))
+  }
+
+  ## v1 engine surface is "laplace" only. "em"/"profile" are reserved names.
+  if (!identical(engine, "laplace")) {
+    if (engine %in% c("em", "profile")) {
+      cli::cli_abort(c(
+        "{.code engine = {.val {engine}}} is a reserved name, not yet supported.",
+        "i" = "v1 supports {.code engine = \"laplace\"} only."
+      ))
+    }
+    cli::cli_abort(c(
+      "Unknown {.arg engine}: {.val {engine}}.",
+      "i" = "v1 supports {.code engine = \"laplace\"} only ({.val em} / {.val profile} are reserved names)."
+    ))
+  }
+
+  list(
+    response = response,
+    predictor = predictor,
+    engine = engine
   )
 }
 

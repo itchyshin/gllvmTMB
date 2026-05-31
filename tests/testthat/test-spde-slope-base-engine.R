@@ -127,17 +127,36 @@ test_that("augmented SPDE prior matches analytic Sigma_field (x) Q^-1 density (<
   set.seed(404)
   omega <- matrix(stats::rnorm(n_mesh * 2L), n_mesh, 2L)
 
-  ## Analytic dense Kronecker MVN.
-  Q  <- .Q_base_dense(sc$mesh, kappa)
-  A  <- solve(Q)
+  ## Analytic N(0, Sigma_field (x) Q^-1) via the SPARSE precision
+  ## Sigma_field^-1 (x) Q. A dense reference (solve(Q) + kronecker(Sf, A) +
+  ## determinant(BigCov) + solve(BigCov, .)) is floating-point-accumulation-
+  ## limited near 1e-9: on some CI BLAS/LAPACK its own round-off exceeds the
+  ## <1e-9 assertion even though the engine is correct. The sparse-Q path below
+  ## -- logdet via a sparse Cholesky of forceSymmetric(Q), quadratic via sparse
+  ## matvecs Q %*% omega_j (NEVER densifying Q^-1) -- reproduces the engine
+  ## density to ~1e-11 (the #326/#327 verification panels reached 2.9e-11).
+  C  <- 2L
+  M0 <- sc$mesh$spde$c0; M1 <- sc$mesh$spde$g1; M2 <- sc$mesh$spde$g2
+  Q  <- Matrix::forceSymmetric(kappa^4 * M0 + 2 * kappa^2 * M1 + M2)
+  chQ <- Matrix::Cholesky(Q, LDL = FALSE, perm = TRUE)
+  ## determinant(<CHMfactor>, sqrt = FALSE) returns logdet(Q) directly (the LL'
+  ## determinant), so no factor of 2.
+  logdet_Q <- as.numeric(
+    Matrix::determinant(chQ, logarithm = TRUE, sqrt = FALSE)$modulus)
   Sf <- matrix(c(sd_a^2, rho * sd_a * sd_b,
                  rho * sd_a * sd_b, sd_b^2), 2, 2)
-  BigCov <- kronecker(Sf, A)
-  vecO   <- c(omega[, 1], omega[, 2])
-  const  <- 0.5 * (2 * n_mesh * log(2 * pi) +
-                     as.numeric(determinant(BigCov, logarithm = TRUE)$modulus))
-  analytic_prior <- const +
-    0.5 * as.numeric(t(vecO) %*% solve(BigCov, vecO))
+  logdet_Sf <- as.numeric(determinant(Sf, logarithm = TRUE)$modulus)
+  Sinv <- solve(Sf)
+  ## Sparse matvecs only: q_jl = omega_j' Q omega_l.
+  Qom <- as.matrix(Q %*% omega)
+  q00 <- sum(omega[, 1] * Qom[, 1])
+  q11 <- sum(omega[, 2] * Qom[, 2])
+  q01 <- sum(omega[, 1] * Qom[, 2])
+  quad <- Sinv[1, 1] * q00 + Sinv[2, 2] * q11 + 2 * Sinv[1, 2] * q01
+  ## logdet(Sigma_field (x) Q^-1) = n_mesh*logdet(Sf) - C*logdet(Q).
+  const <- 0.5 * (2 * n_mesh * log(2 * pi) +
+                    n_mesh * logdet_Sf - C * logdet_Q)
+  analytic_prior <- const + 0.5 * quad
 
   ## Engine absolute prior = (fn(omega) - fn(0)) + analytic normalizing const.
   engine_prior <- (fn_at(omega) - fn_at(matrix(0, n_mesh, 2L))) + const

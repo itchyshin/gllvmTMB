@@ -555,6 +555,7 @@ extract_Sigma <- function(
     "spatial",
     "spde_slope",
     "cluster",
+    "cluster2",
     ## legacy aliases (deprecated soft):
     "B",
     "W",
@@ -897,10 +898,27 @@ extract_Sigma <- function(
       notes,
       "Cluster (third-slot) tier extracts the unique() diagonal at the cluster level."
     )
+  } else if (identical(level, "cluster2")) {
+    ## cluster2 (second independent diagonal grouping) tier: extracts the
+    ## diagonal of `unique(0 + trait | <cluster2_col>)` (the engine-
+    ## internal per-trait variance vector reported as `sd_c2`). Diagonal-
+    ## only at this tier (no latent / rr component), so L stays NULL.
+    if (!isTRUE(fit$use$diag_cluster2)) {
+      cli::cli_abort(c(
+        "Fit has no {.code unique(0 + trait | <cluster2_col>)} term -- nothing to extract at level {.val cluster2}.",
+        "i" = "Pass {.code cluster2 = \"<col>\"} to {.fn gllvmTMB} and add a {.code unique(0 + trait | {fit$cluster2_col %||% '<col>'})} term to use this tier."
+      ))
+    }
+    L <- NULL
+    S <- as.numeric(fit$report$sd_c2)^2
+    notes <- c(
+      notes,
+      "cluster2 (second diagonal grouping) tier extracts the unique() diagonal at the cluster2 level."
+    )
   } else {
     cli::cli_abort(c(
       "Custom {.arg level = {.val {level}}} is not yet supported.",
-      "i" = "The engine supports three {.code latent()/unique()} tiers ({.val B}, {.val W}, {.val cluster}) plus {.val phy} and {.val spde} for keyword-driven covariance terms."
+      "i" = "The engine supports three {.code latent()/unique()} tiers ({.val B}, {.val W}, {.val cluster}) plus {.val cluster2}, {.val phy} and {.val spde} for keyword-driven covariance terms."
     ))
   }
 

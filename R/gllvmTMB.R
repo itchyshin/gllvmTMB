@@ -92,6 +92,20 @@
 #'           "individual"`, `unit_obs = "session_id"`,
 #'           `cluster = "population"`.
 #'   }
+#' @param cluster2 Optional name of the column holding a **second
+#'   independent grouping** factor (the "cluster2" slot), for fitting two
+#'   crossed (or nested) plain diagonal per-trait variance components at
+#'   once. Default `NULL` (slot inactive). It is a plain crossed/nested
+#'   diagonal grouping only -- it carries no phylogenetic or spatial
+#'   correlation (those stay bound to `cluster` / `coords`). A
+#'   `unique(0 + trait | <cluster2 col>)` term then fits a per-trait
+#'   variance at this second grouping, exactly as `cluster` does at the
+#'   third slot. Example: `cluster = "site"`, `cluster2 = "year"` to fit
+#'   a site variance and a year variance simultaneously. As with the
+#'   other slots, nesting is not enforced (crossed and nested both fit).
+#'   The cluster2 column must be disjoint from the `unit` / `unit_obs` /
+#'   `cluster` columns (a `unique()` term routes to whichever slot its
+#'   grouping column matches).
 #' @param species (deprecated) alias for `cluster`. Kept for
 #'   backward compatibility. Use `cluster = ...` in new code.
 #' @param family A `family` object. The multivariate engine
@@ -364,6 +378,7 @@ gllvmTMB <- function(
   unit = "site",
   unit_obs = "site_species",
   cluster = "species",
+  cluster2 = NULL,
   family = gaussian(),
   weights = NULL,
   mesh = NULL,
@@ -407,6 +422,7 @@ gllvmTMB <- function(
       unit = unit,
       unit_obs = unit_obs,
       cluster = cluster,
+      cluster2 = cluster2,
       family = family,
       weights = rewrite$weights_long,
       mesh = mesh,
@@ -622,6 +638,7 @@ gllvmTMB <- function(
     trait = trait,
     site = site,
     species = species,
+    cluster2 = cluster2,
     family = family,
     weights = weights,
     phylo_vcv = phylo_vcv,

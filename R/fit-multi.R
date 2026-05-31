@@ -13,6 +13,7 @@
 #' @keywords internal
 #' @noRd
 gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
+                               cluster2 = NULL,
                                family, weights,
                                phylo_vcv = NULL, phylo_tree = NULL,
                                known_V = NULL,
@@ -237,6 +238,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     length(idx) > 0L && isTRUE(parsed$covstructs[[idx[1L]]]$extra$common)
   })
   use_diag_species <- any(kinds == "diag" & groupings == species)
+  ## ---- cluster2: a SECOND independent diagonal grouping slot ------------
+  ## A renamed copy of the `cluster` (diag_species / q_sp) tier on a
+  ## distinct grouping column, so a user can fit two crossed/nested plain
+  ## diagonal per-trait variance components at once (e.g.
+  ## `cluster = "site"` + `cluster2 = "year"`). Family-agnostic: the
+  ## contribution is added to eta before family dispatch (no per-family
+  ## C++ branching), exactly like diag_species. See issue #342.
+  cluster2_col <- if (is.null(cluster2)) NULL else as.character(cluster2)[1]
+  use_diag_cluster2 <- !is.null(cluster2_col) &&
+    any(kinds == "diag" & groupings == cluster2_col)
   use_propto <- any(kinds == "propto")
   use_equalto <- any(kinds == "equalto")
   use_spde   <- any(kinds == "spde")
@@ -881,10 +892,28 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
          .frequency_id = "gllvmTMB-phylo-q-decomposition-inform")
     }
   }
+  ## cluster2 foot-gun guard: the engine has no reduced-rank (rr / latent)
+  ## slot at the cluster2 tier -- it is diagonal-only (a renamed copy of
+  ## the diag_species block). Mirror the cluster-tier `rr | species`
+  ## redirect: a `latent(... | cluster2)` / `dep(... | cluster2)` term
+  ## aborts pointing the user at `unit = <col>` rather than silently
+  ## collapsing (the Sokal silent-collapse lesson). See issue #342.
+  if (!is.null(cluster2_col)) {
+    rr_cluster2 <- which(kinds == "rr" & groupings == cluster2_col)
+    if (length(rr_cluster2) > 0) {
+      cli::cli_abort(c(
+        "The {.code cluster2} tier is diagonal-only: {.fn latent}/{.fn rr}/{.fn dep} on {.val {cluster2_col}} is not supported.",
+        "i" = "Use {.code unique(0 + trait | {cluster2_col})} for the per-trait diagonal variance at the cluster2 slot.",
+        ">" = "For a reduced-rank latent structure on {.val {cluster2_col}}, pass {.code unit = {.val {cluster2_col}}} (or {.code unit_obs = {.val {cluster2_col}}}) to {.fn gllvmTMB} instead."
+      ))
+    }
+  }
   ## Diagnostic: error if a rr()/diag() targets an unexpected grouping
-  ## that doesn't map to one of the engine's known tiers.
+  ## that doesn't map to one of the engine's known tiers. cluster2_col
+  ## (when set) is an accepted diag grouping.
+  allowed_groups <- c(site, ss_name, species, cluster2_col)
   bad_groups <- which(kinds %in% c("rr","diag")
-                      & !(groupings %in% c(site, ss_name, species)))
+                      & !(groupings %in% allowed_groups))
   if (length(bad_groups) > 0) {
     cli::cli_abort(c(
       "Unsupported grouping {.val {groupings[bad_groups]}} for {.fn rr}/{.fn diag}.",
@@ -1278,6 +1307,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## ---- cluster2 grouping id (0-indexed for C++) ------------------------
+  ## Mirrors species_id. When the cluster2 slot is inactive (no diag term
+  ## on the cluster2 column, or cluster2 = NULL) we still pass a length-1
+  ## grouping so the (mapped-off) r_c2 parameter has a valid shape.
+  if (use_diag_cluster2) {
+    if (!is.factor(data[[cluster2_col]])) {
+      data[[cluster2_col]] <- factor(data[[cluster2_col]])
+    }
+    n_cluster2  <- nlevels(data[[cluster2_col]])
+    cluster2_id <- as.integer(data[[cluster2_col]]) - 1L
+  } else {
+    n_cluster2  <- 1L
+    cluster2_id <- integer(nrow(data))
+  }
+
   ## ---- Phylogenetic VCV preparation (propto + phylo_latent) -----------------
   n_species <- nlevels(data[[species]])
   species_id <- as.integer(data[[species]]) - 1L
@@ -1622,6 +1666,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Cphy_inv         = Cphy_inv,
     log_det_Cphy     = log_det_Cphy,
     use_diag_species = as.integer(use_diag_species),
+    cluster2_id       = cluster2_id,
+    n_cluster2        = as.integer(n_cluster2),
+    use_diag_cluster2 = as.integer(use_diag_cluster2),
     use_equalto      = as.integer(use_equalto),
     V_inv            = V_inv,
     log_det_V        = log_det_V,
@@ -1718,6 +1765,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     p_phy        = matrix(0, nrow = n_species, ncol = n_traits),
     theta_diag_species = rep(0.0, n_traits),
     q_sp         = matrix(0, nrow = n_traits, ncol = n_species),
+    theta_diag_cluster2 = rep(0.0, n_traits),
+    r_c2         = matrix(0, nrow = n_traits, ncol = n_cluster2),
     e_eq         = if (use_equalto) rep(0.0, n_obs) else 0.0,
     log_tau_spde = if (use_spde) rep(0.0, n_traits) else 0.0,
     log_kappa_spde = 0.0,
@@ -2070,6 +2119,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$theta_diag_species <- factor(rep(NA_integer_, n_traits))
     tmb_map$q_sp               <- factor(rep(NA_integer_, length(tmb_params$q_sp)))
   }
+  if (!use_diag_cluster2) {
+    tmb_map$theta_diag_cluster2 <- factor(rep(NA_integer_, n_traits))
+    tmb_map$r_c2                <- factor(rep(NA_integer_, length(tmb_params$r_c2)))
+  }
   if (!use_equalto) {
     tmb_map$e_eq <- factor(rep(NA_integer_, length(tmb_params$e_eq)))
   }
@@ -2420,6 +2473,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_diag_W) random <- c(random, "s_W")
   if (use_propto) random <- c(random, "p_phy")
   if (use_diag_species) random <- c(random, "q_sp")
+  if (use_diag_cluster2) random <- c(random, "r_c2")
   if (use_equalto) random <- c(random, "e_eq")
   if (use_spde && !is_spatial_latent) random <- c(random, "omega_spde")
   if (is_spatial_latent)              random <- c(random, "omega_spde_lv")
@@ -2668,6 +2722,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## `cluster = ...` argument); `species_col` is preserved as a
       ## back-compat alias and is identical in value.
       cluster_col  = species,
+      ## Second independent diagonal grouping (cluster2 slot). NULL when
+      ## the slot is unused (assigning NULL drops the list element, so
+      ## `fit$cluster2_col` returns NULL).
+      cluster2_col = cluster2_col,
       n_traits     = n_traits,
       n_sites      = n_sites,
       n_species    = n_species,
@@ -2677,6 +2735,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       use          = list(rr_B = use_rr_B, diag_B = use_diag_B,
                           rr_W = use_rr_W, diag_W = use_diag_W,
                           propto = use_propto, diag_species = use_diag_species,
+                          diag_cluster2 = use_diag_cluster2,
                           equalto = use_equalto, spde = use_spde,
                           phylo_rr = use_phylo_rr,
                           ## Design 56 Sec. 9.5a: augmented phylo_latent

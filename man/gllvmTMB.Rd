@@ -19,6 +19,7 @@ gllvmTMB(
   known_V = NULL,
   lambda_constraint = NULL,
   control = gllvmTMBcontrol(),
+  missing = miss_control(),
   silent = TRUE,
   site = NULL,
   species = NULL
@@ -184,6 +185,13 @@ are still accepted (with a one-shot soft deprecation message) and
 map to \code{unit} and \code{unit_obs} respectively.}
 
 \item{control}{Output of \code{gllvmTMBcontrol()}.}
+
+\item{missing}{Output of \code{\link[=miss_control]{miss_control()}} configuring missing-data
+handling. The default \code{miss_control()} (\code{response = "drop"},
+\code{predictor = "fail"}) is the historical complete-case behaviour.
+\code{miss_control(response = "include")} keeps rows with a missing response
+and masks them out of the likelihood, preserving original-row accounting
+in \code{fit$missing_data}.}
 
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
 

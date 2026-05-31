@@ -481,7 +481,17 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
 logLik.gllvmTMB_multi <- function(object, ...) {
   ll <- -object$opt$objective
   attr(ll, "df") <- length(object$opt$par)
-  attr(ll, "nobs") <- length(object$tmb_data$y)
+  ## nobs = likelihood-contributing rows. Under the default response="drop"
+  ## every fitted row is observed, so this equals length(y) (unchanged). Under
+  ## response="include" the masked rows carry a sentinel y gated out of the
+  ## likelihood and must not be counted (design 59 sec.4b: nobs stays
+  ## likelihood-contributing; original-row counts live in fit$missing_data).
+  iyo <- object$tmb_data$is_y_observed
+  attr(ll, "nobs") <- if (is.null(iyo)) {
+    length(object$tmb_data$y)
+  } else {
+    sum(iyo == 1L)
+  }
   class(ll) <- "logLik"
   ll
 }

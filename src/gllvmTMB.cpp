@@ -67,6 +67,14 @@ Type objective_function<Type>::operator()()
   // but on the species grouping rather than site / site_species.
   DATA_INTEGER(use_diag_species);
 
+  // cluster2: a SECOND independent diagonal grouping (a renamed copy of
+  // the diag_species block). Lets a user fit two crossed/nested plain
+  // diagonal per-trait variance components at once. Family-agnostic: the
+  // contribution is added to eta before family dispatch.
+  DATA_IVECTOR(cluster2_id);       // 0-indexed cluster2 grouping per row
+  DATA_INTEGER(n_cluster2);
+  DATA_INTEGER(use_diag_cluster2);
+
   // Stage-3 known-V (equalto): a single length-n_obs draw with prior
   // MVN(0, V), V fixed. Used by Stage 6's two-stage meta-regression.
   DATA_INTEGER(use_equalto);
@@ -323,6 +331,11 @@ Type objective_function<Type>::operator()()
   PARAMETER_VECTOR(theta_diag_species);          // length n_traits
   PARAMETER_MATRIX(q_sp);                        // n_traits x n_species
 
+  // cluster2 diagonal term: diag(0 + trait | cluster2) -- renamed copy of
+  // the diag_species block on a second independent grouping.
+  PARAMETER_VECTOR(theta_diag_cluster2);         // length n_traits
+  PARAMETER_MATRIX(r_c2);                        // n_traits x n_cluster2
+
   // Stage-3 equalto: known-V random effect e_eq, length n_obs, prior MVN(0, V)
   PARAMETER_VECTOR(e_eq);                        // length n_obs (or 1 if unused)
 
@@ -577,6 +590,19 @@ Type objective_function<Type>::operator()()
     for (int i = 0; i < n_species; i++) {
       for (int t = 0; t < n_traits; t++)
         nll -= dnorm(q_sp(t, i), Type(0), sd_q(t), true);
+    }
+  }
+
+  // -------- diag(0 + trait | cluster2) -- 2nd-grouping per-trait var ----
+  // Renamed copy of the diag_species block on the cluster2 grouping.
+  if (use_diag_cluster2 == 1) {
+    if (theta_diag_cluster2.size() != n_traits)
+      error("gllvmTMB_multi: theta_diag_cluster2 has wrong length");
+    vector<Type> sd_c2 = exp(theta_diag_cluster2);
+    REPORT(sd_c2);
+    for (int i = 0; i < n_cluster2; i++) {
+      for (int t = 0; t < n_traits; t++)
+        nll -= dnorm(r_c2(t, i), Type(0), sd_c2(t), true);
     }
   }
 
@@ -1284,6 +1310,8 @@ Type objective_function<Type>::operator()()
       eta(o) += p_phy(species_id(o), t);
     if (use_diag_species == 1)
       eta(o) += q_sp(t, species_id(o));
+    if (use_diag_cluster2 == 1)
+      eta(o) += r_c2(t, cluster2_id(o));
     if (use_equalto == 1)
       eta(o) += e_eq(o);
     if (use_spde == 1) {

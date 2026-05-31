@@ -142,6 +142,7 @@ Row-owner: **Boole + Fisher** (random-effects design lead).
 | RE-08 | Cluster-level random effect (`cluster` argument) | `covered` | `test-cluster-rename.R` | |
 | RE-09 | `latent + unique` paired in within-unit tier | `covered` | `test-mixed-response-unique-nongaussian.R`, `test-tiers-{poisson,nbinom2,gamma,beta,ordinal}.R` | unit_obs tier (latent+unique) recovers across core families (local measurement 2026-05-30: tiers files green, 0 fail). |
 | RE-10 | Augmented LHS guard (engine-internal variable name clashes) | `covered` | `test-augmented-lhs-guard.R` | |
+| RE-11 | Second independent diagonal grouping (`cluster2` argument) | `covered` | `test-cluster2-rename.R` | Issue #342 (sub-issues #355, #356). cluster2 is a renamed copy of the `cluster` (`diag_species` / `q_sp`) diagonal tier on a disjoint grouping column, so two crossed/nested plain diagonal per-trait variance components fit at once (e.g. `cluster = "site"` + `cluster2 = "year"`). Family-agnostic (contribution added to `eta` before family dispatch; no per-family C++ branch). Equivalence gate: a `cluster2`-routed `unique(0+trait\|G)` fit is byte-identical (objective + `extract_Sigma` delta = 0) to the `cluster`-routed fit on the same G (local measurement 2026-05-31: 24 pass / 0 fail, heavy crossed-recovery cell included; Gaussian site+year variances recovered within 0.30 band). Diagonal-only: `latent`/`rr`/`dep` on the cluster2 column aborts with a `unit =` redirect. |
 
 ### Section 4 — Phylogenetic GLLVM
 

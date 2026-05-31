@@ -7,7 +7,7 @@
 extract_Sigma(
   fit,
   level = c("unit", "unit_obs", "phy", "phy_slope", "spatial", "spde_slope", "cluster",
-    "B", "W", "spde"),
+    "cluster2", "B", "W", "spde"),
   part = c("total", "shared", "unique"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE

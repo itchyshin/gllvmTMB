@@ -42,7 +42,7 @@
     return(level)  # vector / non-character — let downstream handle
 
   ## Canonical names that ARE the legacy/internal already
-  if (level %in% c("phy", "cluster")) return(level)
+  if (level %in% c("phy", "cluster", "cluster2")) return(level)
 
   ## Legacy aliases -> emit one-shot soft deprecation message and
   ## return legacy as-is so the function body stays unchanged.

@@ -11,6 +11,7 @@ gllvmTMB(
   unit = "site",
   unit_obs = "site_species",
   cluster = "species",
+  cluster2 = NULL,
   family = gaussian(),
   weights = NULL,
   mesh = NULL,
@@ -81,6 +82,21 @@ intersection cell.
 \item 3-level personality (strictly nested): \code{unit = "individual"}, \code{unit_obs = "session_id"},
 \code{cluster = "population"}.
 }}
+
+\item{cluster2}{Optional name of the column holding a \strong{second
+independent grouping} factor (the "cluster2" slot), for fitting two
+crossed (or nested) plain diagonal per-trait variance components at
+once. Default \code{NULL} (slot inactive). It is a plain crossed/nested
+diagonal grouping only -- it carries no phylogenetic or spatial
+correlation (those stay bound to \code{cluster} / \code{coords}). A
+\verb{unique(0 + trait | <cluster2 col>)} term then fits a per-trait
+variance at this second grouping, exactly as \code{cluster} does at the
+third slot. Example: \code{cluster = "site"}, \code{cluster2 = "year"} to fit
+a site variance and a year variance simultaneously. As with the
+other slots, nesting is not enforced (crossed and nested both fit).
+The cluster2 column must be disjoint from the \code{unit} / \code{unit_obs} /
+\code{cluster} columns (a \code{unique()} term routes to whichever slot its
+grouping column matches).}
 
 \item{family}{A \code{family} object. The multivariate engine
 (formulas with \code{latent()}, \code{unique()}, etc.) supports \code{gaussian()},

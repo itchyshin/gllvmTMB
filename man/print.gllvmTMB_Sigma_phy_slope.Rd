@@ -2,13 +2,13 @@
 % Please edit documentation in R/extract-sigma.R
 \name{print.gllvmTMB_Sigma_phy_slope}
 \alias{print.gllvmTMB_Sigma_phy_slope}
-\title{Print an augmented phylo_latent slope Sigma extraction}
+\title{Print an augmented latent-slope Sigma extraction}
 \usage{
 \method{print}{gllvmTMB_Sigma_phy_slope}(x, digits = 3, ...)
 }
 \arguments{
 \item{x}{A \code{gllvmTMB_Sigma_phy_slope} object from
-\code{\link[=extract_Sigma]{extract_Sigma()}} with \code{level = "phy_slope"}.}
+\code{\link[=extract_Sigma]{extract_Sigma()}} with \code{level = "phy_slope"} or \code{level = "spde_slope"}.}
 
 \item{digits}{Number of significant digits.}
 
@@ -18,5 +18,8 @@
 \code{x}, invisibly.
 }
 \description{
-Print an augmented phylo_latent slope Sigma extraction
+Shared by the augmented \code{phylo_latent} (\code{level = "phy_slope"}) and
+augmented \code{spatial_latent} (\code{level = "spde_slope"}) per-LHS-column
+cross-trait Sigma extractions; the object's \code{header} field selects the
+printed keyword.
 }

@@ -553,6 +553,7 @@ extract_Sigma <- function(
     "phy",
     "phy_slope",
     "spatial",
+    "spde_slope",
     "cluster",
     ## legacy aliases (deprecated soft):
     "B",
@@ -622,6 +623,46 @@ extract_Sigma <- function(
         "phylo_dep(1 + x | species): full unstructured 2T x 2T covariance ",
         "over trait-stacked (intercept, slope) columns (interleaved). The ",
         "part / link_residual arguments do not apply to this single ",
+        "unstructured block."
+      )
+    ))
+  }
+
+  ## ---- spatial_dep augmented-slope block (Design 64 sec.2) -------------
+  ## spatial_dep(1 + x | coords) fits a single FULL UNSTRUCTURED 2T x 2T field
+  ## covariance Sigma_field over the trait-stacked (intercept, slope) spatial
+  ## fields. It is a SPATIAL random effect, surfaced under `level = "spatial"`
+  ## (internal "spde"), the spatial analogue of the phylo_dep block above with
+  ## A_phy replaced by the SPDE field covariance. Single unstructured block:
+  ## `part` / `link_residual` do not apply; returns the reported Sigma_field
+  ## with INTERLEAVED dimnames. Plain list (no special print class, like phy_dep).
+  if (isTRUE(fit$use$spde_dep_slope) && identical(level, "spde")) {
+    Sigma <- fit$report$Sigma_field
+    if (is.null(Sigma)) {
+      cli::cli_abort(
+        "spatial_dep slope fit has no reported {.code Sigma_field}."
+      )
+    }
+    Sigma <- as.matrix(Sigma)
+    dep_names <- as.vector(rbind(
+      paste0("intercept.", trait_names),
+      paste0("slope.", trait_names)
+    ))
+    rownames(Sigma) <- colnames(Sigma) <- dep_names
+    D <- sqrt(diag(Sigma))
+    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    rownames(R) <- colnames(R) <- dep_names
+    return(list(
+      Sigma = Sigma,
+      R = R,
+      level = "spde_dep",
+      part = "dep",
+      note = paste0(
+        "spatial_dep(1 + x | coords): full unstructured 2T x 2T field ",
+        "covariance over trait-stacked (intercept, slope) SPDE fields ",
+        "(interleaved). Sigma is on the SPDE field-covariance scale (the L L^T ",
+        "Cholesky factor); per-field marginal variances divide by 4*pi*kappa^2. ",
+        "The part / link_residual arguments do not apply to this single ",
         "unstructured block."
       )
     ))
@@ -708,11 +749,52 @@ extract_Sigma <- function(
         },
         level = "phy_slope",
         part = part,
+        header = "phylo_latent",
         notes = c(
           "phylo_latent random slope: block-diagonal across LHS columns.",
           "Sigma$intercept and Sigma$slope are the per-column cross-trait",
           "covariances (Lambda_k Lambda_k^T). No intercept-slope correlation",
           "is modelled (Design 56 Sec. 5.3 latent semantics)."
+        )
+      ),
+      class = "gllvmTMB_Sigma_phy_slope"
+    ))
+  } else if (identical(level, "spde_slope")) {
+    ## Design 64 sec.3: augmented spatial_latent(1 + x | coords, d = K) -- the
+    ## block-diagonal reduced-rank random regression on the SPDE field. Each LHS
+    ## column has its OWN cross-trait covariance Sigma_k = Lambda_k Lambda_k^T;
+    ## no intercept-slope correlation (cross-column blocks are zero, Design 64
+    ## sec.3.1). Returns a per-column list (mirrors phy_slope). Returned early.
+    if (!isTRUE(fit$use$spde_latent_slope)) {
+      cli::cli_abort(c(
+        "Fit has no augmented {.code spatial_latent(1 + x | coords, d = K)} term -- nothing to extract at level {.val spde_slope}.",
+        "i" = "Use {.code level = \"spatial\"} for an intercept-only {.fn spatial_latent} fit."
+      ))
+    }
+    Sigma_int <- fit$report$Sigma_spde_slope_intercept
+    Sigma_slope <- fit$report$Sigma_spde_slope_slope
+    Lam_arr <- fit$report$Lambda_spde_slope   # T x K x n_lhs_cols
+    rownames(Sigma_int) <- colnames(Sigma_int) <- trait_names
+    rownames(Sigma_slope) <- colnames(Sigma_slope) <- trait_names
+    return(structure(
+      list(
+        intercept = Sigma_int,
+        slope = Sigma_slope,
+        Lambda_intercept = Lam_arr[, , 1L, drop = TRUE],
+        Lambda_slope = if (dim(Lam_arr)[3L] > 1L) {
+          Lam_arr[, , 2L, drop = TRUE]
+        } else {
+          NULL
+        },
+        level = "spde_slope",
+        part = part,
+        header = "spatial_latent",
+        notes = c(
+          "spatial_latent random slope: block-diagonal across LHS columns.",
+          "Sigma$intercept and Sigma$slope are the per-column cross-trait",
+          "covariances (Lambda_k Lambda_k^T) on the SPDE field-covariance scale.",
+          "No intercept-slope correlation is modelled (Design 64 sec.3 latent",
+          "semantics)."
         )
       ),
       class = "gllvmTMB_Sigma_phy_slope"
@@ -914,16 +996,22 @@ extract_Sigma <- function(
   out
 }
 
-#' Print an augmented phylo_latent slope Sigma extraction
+#' Print an augmented latent-slope Sigma extraction
+#'
+#' Shared by the augmented `phylo_latent` (`level = "phy_slope"`) and
+#' augmented `spatial_latent` (`level = "spde_slope"`) per-LHS-column
+#' cross-trait Sigma extractions; the object's `header` field selects the
+#' printed keyword.
 #'
 #' @param x A `gllvmTMB_Sigma_phy_slope` object from
-#'   [extract_Sigma()] with `level = "phy_slope"`.
+#'   [extract_Sigma()] with `level = "phy_slope"` or `level = "spde_slope"`.
 #' @param digits Number of significant digits.
 #' @param ... Ignored.
 #' @return `x`, invisibly.
 #' @export
 print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
-  cat("phylo_latent random slope -- per-LHS-column cross-trait Sigma\n")
+  hdr <- x$header %||% "phylo_latent"
+  cat(sprintf("%s random slope -- per-LHS-column cross-trait Sigma\n", hdr))
   cat("(block-diagonal across LHS columns; no intercept-slope correlation)\n\n")
   cat("Sigma (intercept column):\n")
   print(round(x$intercept, digits))

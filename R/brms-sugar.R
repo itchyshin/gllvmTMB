@@ -1695,6 +1695,23 @@ normalise_spatial_orientation <- function(e) {
   ) {
     return(e)
   }
+  ## Design 64 §3: augmented spatial_latent(1 + x | coords) (wide) and its long
+  ## form carry an intercept + slope LHS that the spatial_latent slope engine
+  ## (use_spde_latent_slope) consumes via a per-column reduced-rank field
+  ## structure. The bar is already canonically oriented (RHS = coords name);
+  ## pass it through UNCHANGED so the per-keyword `fn == "spatial_latent"`
+  ## branch can classify the LHS and route it to
+  ## `spde(..., .spatial_latent_augmented = TRUE)`. (spatial_dep is NOT in this
+  ## orientation list, so it bypasses normalisation and is handled directly in
+  ## the `fn == "spatial_dep"` rename branch.)
+  if (
+    is.name(rhs) &&
+      identical(fn, "spatial_latent") &&
+      .gllvmTMB_lhs_form(lhs)$lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+  ) {
+    return(e)
+  }
   ## `spatial_indep` is born post-flip: it never accepted the legacy
   ## `coords | trait` orientation, so reject anything other than the
   ## canonical form with a clean error rather than a deprecation warn.
@@ -2602,6 +2619,40 @@ rewrite_canonical_aliases <- function(formula) {
         nm <- names(e)
         d_val <- if (!is.null(nm) && "d" %in% nm) e[[which(nm == "d")]] else 1L
         extras <- .pass_through_extras(e, c("coords", "mesh"))
+        ## Design 64 §3: augmented spatial_latent(1 + x | coords, d) random
+        ## regression. `spatial_latent` normally renames to `spde` reading ONLY
+        ## the coords RHS -- so an augmented intercept+slope bar would have its
+        ## slope column SILENTLY DROPPED (the Sokal anti-pattern). Instead route
+        ## it to an `spde` covstruct carrying the `.spatial_latent_augmented`
+        ## marker, which fit-multi.R drives through the dedicated block-diagonal
+        ## reduced-rank latent-slope engine (use_spde_latent_slope). Each LHS
+        ## column gets its own Lambda_k Lambda_k^T (rank d); no intercept-slope
+        ## correlation. Distinct from the intercept-only `.spatial_latent`.
+        if (
+          length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            new_call <- as.call(c(
+              list(as.name("spde"), bar),
+              list(
+                .spatial_latent_augmented = TRUE,
+                d = d_val,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              extras
+            ))
+            return(new_call)
+          }
+        }
         new_call <- as.call(c(
           list(as.name("spde"), e[[2L]]),
           list(.spatial_latent = TRUE, d = d_val),
@@ -2835,10 +2886,43 @@ rewrite_canonical_aliases <- function(formula) {
       ## packed-triangular Lambda_spde at full rank acting as the Cholesky
       ## factor of unstructured Sigma_spatial.
       if (fn == "spatial_dep") {
-        ## Stage 2.5: fail-loud against augmented LHS. (Sister spatial
-        ## keywords -- spatial_unique / spatial_indep / spatial_scalar /
-        ## spatial_latent -- already fail loud via
-        ## normalise_spatial_orientation at line ~1198.)
+        ## Design 64 §2: augmented spatial_dep(1 + x | coords) random regression.
+        ## The augmented intercept+slope LHS (`1 + x | coords` wide or
+        ## `0 + trait + (0 + trait):x | coords` long) routes through the
+        ## use_spde_slope engine with the full unstructured 2T x 2T field
+        ## covariance Sigma_field built from theta_spde_dep_chol. The
+        ## `.spatial_dep_augmented` marker (distinct from the intercept-only
+        ## `.spatial_latent` + `.dep` route below) tells fit-multi.R to expand
+        ## n_lhs_cols_spde to 2T and free theta_spde_dep_chol. No new C++ block
+        ## beyond the spatial_dep prior (it reuses omega_spde_aug + A_proj).
+        if (
+          length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            extras <- .pass_through_extras(e, c("coords", "mesh"))
+            new_call <- as.call(c(
+              list(as.name("spde"), bar),
+              list(
+                .spatial_dep_augmented = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              extras
+            ))
+            return(new_call)
+          }
+        }
+        ## Stage 2.5: fail-loud against any OTHER augmented LHS (multi-covariate
+        ## or richer per-trait slope forms). Intercept-only `0 + trait | coords`
+        ## passes through to the spatial_latent(d = T) engine path below.
         .assert_no_augmented_lhs(fn, e)
         extras <- .pass_through_extras(e, c("coords", "mesh"))
         new_call <- as.call(c(

@@ -1,0 +1,526 @@
+---
+title: "No hypothesis? Suggesting a Lambda constraint with suggest_lambda_constraint"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{No hypothesis? Suggesting a Lambda constraint with suggest_lambda_constraint}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6, fig.height = 4,
+  fig.align = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+## Why this article exists
+
+This is the companion to
+[`vignette("lambda-constraint")`](lambda-constraint.html). That article
+covers the **confirmatory** case: you have a biological hypothesis
+(functional-group membership, structural zeros) and you encode it with
+`confirmatory_lambda()`. Read it first for the full narrative on
+rotation indeterminacy, the constraint matrix, error-aware loading
+interpretation, and variance partitioning.
+
+This article covers the **fallback** case: you have *no* hypothesis to
+encode, but you still want a $\boldsymbol{\Lambda}$ that is identified.
+`suggest_lambda_constraint()` solves that smaller, purely statistical
+problem -- pick the minimum set of pins that resolve rotational
+ambiguity, optionally letting the data decide which entries to pin. We
+walk through the data-driven conventions, refit and compare them, and
+draw out the identifiability lesson (non-positive-definite vs
+positive-definite Hessians) that determines which confidence-interval
+method you can use.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+
+set.seed(20260527)
+```
+
+## Recap: the same simulated community
+
+We use the **identical** 20-species forest-understory fixture as the
+confirmatory article -- same `set.seed(20260527)`, same
+data-generating process -- so the two articles are directly
+comparable and the pin counts quoted below are reproducible. The DGP
+is reproduced here verbatim; see
+[`vignette("lambda-constraint")`](lambda-constraint.html) for the full
+explanation of each step (three functional groups, binary probit link,
+the moderate-$n$ rationale).
+
+```{r dgp-truth}
+n_species <- 20L
+n_sites   <- 40L
+d         <- 2L
+
+species_names <- c(
+  paste0("A_shade_",   1:5),
+  paste0("B_drought_", 1:5),
+  paste0("C_free_",    1:10)
+)
+
+# True loadings: structural zeros encode the functional-group hypothesis.
+Lambda_true <- matrix(0, nrow = n_species, ncol = d)
+rownames(Lambda_true) <- species_names
+colnames(Lambda_true) <- c("LV1_shade", "LV2_drought")
+
+# Group A (rows 1-5):  load on LV1 only.
+Lambda_true[1:5,   1] <- stats::runif(5, 0.5, 1.0)
+Lambda_true[1:5,   2] <- 0
+# Group B (rows 6-10): load on LV2 only.
+Lambda_true[6:10,  1] <- 0
+Lambda_true[6:10,  2] <- stats::runif(5, 0.5, 1.0)
+# Group C (rows 11-20): no prior, signed on both axes.
+Lambda_true[11:20, 1] <- stats::runif(10, -1.0, 1.0)
+Lambda_true[11:20, 2] <- stats::runif(10, -1.0, 1.0)
+```
+
+```{r dgp-fit-data}
+# Latent factors: one row per site.
+U <- matrix(stats::rnorm(n_sites * d), nrow = n_sites, ncol = d)
+
+# Species intercepts (modest variation; binary probit calibrated near 0.5).
+alpha_true <- stats::rnorm(n_species, mean = 0, sd = 0.3)
+
+# Linear predictor (probit scale): n_sites x n_species.
+eta <- matrix(alpha_true, nrow = n_sites, ncol = n_species, byrow = TRUE) +
+       U %*% t(Lambda_true)
+
+# Binary presence/absence.
+prob   <- stats::pnorm(eta)
+y_wide <- matrix(stats::rbinom(length(prob), 1L, prob),
+                 nrow = n_sites, ncol = n_species)
+colnames(y_wide) <- species_names
+
+# Long form: 40 * 20 = 800 rows (the shape the diagnostic helpers expect).
+df_long <- data.frame(
+  site  = factor(rep(seq_len(n_sites), times = n_species)),
+  trait = factor(rep(species_names, each = n_sites),
+                 levels = species_names),
+  value = as.integer(c(y_wide))
+)
+```
+
+We need three fits from that article as reference points: the
+exploratory baseline (`fit_exp_long`, the suggester's input), and the
+biology-driven confirmatory fit (`fit_con`, via `confirmatory_lambda()`)
+used as a comparison row in the model table.
+
+```{r recap-fits}
+# Exploratory baseline -- the suggester reads its rotated loadings.
+fit_exp_long <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2L),
+  data   = df_long,
+  family = stats::binomial(link = "probit")
+)
+
+# Biology-driven constraint (full explanation in the confirmatory article).
+M_bio <- confirmatory_lambda(
+  species  = species_names,
+  group    = c(rep("A_shade",   5),
+               rep("B_drought", 5),
+               rep("C_free",   10)),
+  d        = 2L,
+  loads_on = list(A_shade = 1L, B_drought = 2L),
+  axis_labels = c("LV1_shade", "LV2_drought")
+)
+fit_con <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2L),
+  data              = df_long,
+  family            = stats::binomial(link = "probit"),
+  lambda_constraint = list(unit = M_bio)
+)
+fit_exp <- fit_exp_long
+
+cat("exploratory conv:", fit_exp_long$opt$convergence,
+    "  biology conv:", fit_con$opt$convergence, "\n")
+```
+
+## Fallback: `suggest_lambda_constraint()` when you have no hypothesis
+
+`confirmatory_lambda()` is the right tool when you can write down
+"this group loads on that axis." If you can't -- for example, you're
+exploring a new community for the first time, you have no
+trait-driven grouping, or the literature points in conflicting
+directions -- there is still a smaller, purely *statistical* problem
+worth solving: pick the minimum set of pins that make $\Lambda$
+identified, even without any biology. That is what
+`suggest_lambda_constraint()` does:
+
+```{r suggest-fallback}
+suggested <- suggest_lambda_constraint(fit_exp_long,
+                                       convention = "pin_top_one")
+suggested$convention
+suggested$n_pins
+suggested$note
+suggested$constraint
+```
+
+`pin_top_one` is one of six conventions the suggester ships
+(`?suggest_lambda_constraint`). The first three --
+`lower_triangular`, `pin_top_one`, `none` -- just resolve rotational
+ambiguity and don't look at the data. The remaining three **do** look
+at the data and propose pins where the exploratory fit shows entries
+are small or unreliable. We walk through two of them below -- the
+textbook simple version (`varimax_threshold`) and the principled
+uncertainty-aware version (`profile_retention`) -- and mention the
+third (`wald_retention`, plus a queued bootstrap variant) at the end
+of the section.
+
+### Data-driven retention: `convention = "varimax_threshold"` (simple)
+
+The textbook psychometric path. Rotate the exploratory $\hat\Lambda$
+to varimax (the sparsifying rotation that maximises within-column
+variance of squared loadings), then pin every entry whose magnitude
+falls below a `threshold` value. Default 0.30 is the Comrey-Lee 1992
+convention on the standardised-loading scale; some authors use 0.40
+(Stevens 2012). Hard threshold, **no uncertainty involved**.
+
+This is the workhorse of applied CFA practice -- it's what an analyst
+does when they say "I'll just drop the cross-loadings that look
+small." It works but doesn't filter on noise: a loading with
+$|\hat\Lambda| = 0.32$ and a huge SE survives, while one with
+$|\hat\Lambda| = 0.28$ and a tiny SE gets pinned.
+
+```{r suggest-varimax-threshold}
+sug_vmx <- suggest_lambda_constraint(
+  fit_exp_long,
+  convention = "varimax_threshold",
+  threshold  = 0.30
+)
+n_pins_vmx <- sug_vmx$n_pins
+n_pins_vmx
+cat(sug_vmx$note, "\n")
+```
+
+### Data-driven retention: `convention = "profile_retention"` (principled)
+
+For each entry of the exploratory $\hat\Lambda$, refit with that one
+entry pinned to zero and compare the log-likelihood to the
+unconstrained baseline. If the likelihood-ratio statistic rejects
+$H_0: \Lambda_{i,k} = 0$ at significance level
+$1 - \texttt{retention\_prob}$, keep the entry free; otherwise pin
+to zero.
+
+`retention_prob` is the unified retention argument across data-driven
+conventions (also used by `wald_retention` and, when v2 ships, by
+`bootstrap_retention`). Higher values are stricter -- they raise the
+bar for retention. **The function default is 0.90** (LRT rejection at
+level 0.10), following the applied-EFA bootstrap convention. The
+more conservative 0.95 (LRT at 0.05, the BSEM convention) is also
+common; at moderate sample sizes 0.95 frequently over-prunes and
+yields refits with non-positive-definite Hessians, so the package
+defaults to 0.90.
+
+Why profile rather than Wald or bootstrap:
+
+- **Robust to non-PD Hessians.** The LRT uses only log-likelihood
+  values, not the Hessian-based covariance. Profile retention is
+  reliable in exactly the case where Wald retention can fail: when
+  an aggressive constraint pattern leaves the baseline fit's Hessian
+  non-positive-definite.
+- **Captures higher-order likelihood curvature** that Wald's
+  asymptotic-Normal approximation flattens.
+- **Conservative on failed test refits.** When a per-entry refit
+  doesn't converge or returns a non-PD Hessian itself, profile
+  retention treats it as "I couldn't test this entry" and leaves it
+  free -- no constraint imposition based on unstable refits.
+- **Tractable cost.** One full refit per testable entry, roughly
+  `n_traits x d - d(d-1)/2` refits per call. ~40 refits at our
+  20-species fixture, a few minutes total. Slower than Wald's
+  microseconds; faster than bootstrap's order-of-magnitude-larger
+  refit count.
+
+The `profile_retention` call is the single most expensive step in this
+article (one full model refit per testable loading entry). We run it
+once with `cache = TRUE`; on a cold cache expect a few minutes.
+
+```{r suggest-profile-retention, cache = TRUE}
+sug_pr <- suggest_lambda_constraint(
+  fit_exp_long,
+  convention     = "profile_retention",
+  retention_prob = 0.90    # the function default; see paragraph above
+)
+n_pins_pr <- sug_pr$n_pins
+n_pins_pr
+cat(sug_pr$note, "\n")
+```
+
+### Refit and model comparison
+
+Refit with the suggested constraint, then compare on LRT / AIC / BIC
+against the exploratory baseline, the biology-driven fit, and a
+one-factor (d = 1) sanity check.
+
+```{r fit-data-driven, cache = TRUE}
+fit_vmx <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2L),
+  data              = df_long,
+  family            = stats::binomial(link = "probit"),
+  lambda_constraint = list(unit = sug_vmx$constraint)
+)
+fit_pr <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2L),
+  data              = df_long,
+  family            = stats::binomial(link = "probit"),
+  lambda_constraint = list(unit = sug_pr$constraint)
+)
+
+fit_d1 <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 1L),
+  data   = df_long,
+  family = stats::binomial(link = "probit")
+)
+```
+
+```{r model-comparison}
+mc <- function(fit, label) {
+  data.frame(
+    model       = label,
+    free_params = attr(logLik(fit), "df"),
+    logLik      = round(as.numeric(logLik(fit)), 2),
+    AIC         = round(AIC(fit), 1),
+    BIC         = round(BIC(fit), 1),
+    converged   = fit$opt$convergence == 0L
+  )
+}
+
+mc_table <- rbind(
+  mc(fit_d1,  "d = 1 (one-factor sanity check)"),
+  mc(fit_exp, "exploratory d = 2 (baseline)"),
+  mc(fit_con, "biology d = 2 (confirmatory_lambda)"),
+  mc(fit_vmx, "data-driven d = 2 (varimax_threshold)"),
+  mc(fit_pr,  "data-driven d = 2 (profile_retention)")
+)
+mc_table$delta_AIC_vs_best <- mc_table$AIC - min(mc_table$AIC)
+mc_table$delta_BIC_vs_best <- mc_table$BIC - min(mc_table$BIC)
+mc_table
+```
+
+Reading the table:
+
+- **d = 1** is decisively worse than the d = 2 fits -- the data carry
+  two-factor structure.
+- **Biology** is usually best on AIC (we paid 11 pins; the model
+  recovers most of the structure on those pins).
+- **varimax_threshold** pins entries by point-estimate magnitude only.
+  It tends to *under-prune* relative to biology, leaving cross-loadings
+  free that biology would close. AIC penalises that mildly; BIC more
+  strongly.
+- **profile_retention** is usually best on BIC -- its LRT-based pinning
+  is more aggressive than both varimax_threshold and biology, and
+  BIC's stronger parameter penalty rewards the extra parsimony when
+  the data don't strongly support every retained loading.
+
+The honest comparison: the **simple** varimax_threshold and the
+**principled** profile_retention give *different* constraint patterns
+because they ask different questions ("is the point estimate big?"
+vs "does the data significantly reject zero?"). For most loadings
+they agree; the diagnostic interest is in entries where they
+disagree.
+
+### Confidence Eye for the two data-driven refits
+
+One plot per refit. The y-axis is clipped to `(-3, 3)` so the
+species-level structure is readable. The two refits have *different
+identifiability properties* at this fixture, and the choice of CI
+method follows from that:
+
+- **`varimax_threshold`** pins fewer entries than profile (here
+  `r n_pins_vmx`), but the *pattern* of pins removes information the
+  model needs for identification, so the refit's Hessian is
+  **non-positive-definite**. Per the `glmmTMB` convention, Wald CIs
+  are `NA` in this case. We therefore use the **profile** path for
+  this plot: the LRT-inverted profile uses only log-likelihood values,
+  bypasses the pdHess gate, and yields valid CIs even at a non-PD fit.
+- **`profile_retention`** pins more entries (here `r n_pins_pr`) -- more
+  aggressive in count -- but pins entries the LRT actually fails to
+  reject, which preserves identifiability. The refit's Hessian is PD,
+  so the default Wald (delta-method) path is fine here.
+
+The counterintuitive but real lesson: *more pins is not necessarily
+worse*. What matters is **which** entries you pin. Pinning small
+loadings by magnitude (varimax_threshold) can remove entries the
+identification depends on; pinning entries the data don't support
+(profile_retention) is safer.
+
+A note on cost. The full profile path
+(`loading_ci(fit_vmx, method = "profile")`) would profile **every**
+free entry of `fit_vmx` at an 11-point grid -- on the order of 250
+partial refits, which is exactly the chunk that used to dominate this
+article's build. For the plot we only need eyes on a few
+representative entries, so we profile a **restricted set of four free
+entries at a coarse 5-point grid** (20 refits) via `loading_profile()`
+and invert the curve to CI bounds inline. The pinned (grey) entries
+and the point estimates are taken from the non-PD `loading_ci()`
+skeleton (Wald bounds are `NA` there, as expected); the four profiled
+entries get genuine LRT-inverted bounds. This preserves the teaching
+point -- a real non-PD fit, rescued by the profile path -- at a
+fraction of the cost.
+
+```{r varimax-confidence-eye, echo = FALSE, cache = TRUE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the varimax_threshold refit, using profile-likelihood CIs on a restricted set of representative free entries. Point estimates come from the (non-PD) Wald skeleton; the four profiled entries carry eyes (polygons) spanning the 95 percent profile CI with width proportional to the Gaussian sampling density. Grey = pinned by the suggester to zero (no eye drawn); green = CI excludes the (-0.1, 0.1) null region; red = CI overlaps it; remaining free entries without a profiled CI are shown as hollow points. The profile path bypasses the pdHess gate, so CIs are available even though this refit's Hessian is non-positive-definite.", fig.alt = "Per-species loadings from the varimax_threshold refit. A few representative free entries are drawn as eye-shaped polygons whose CI bounds are profile-likelihood (LRT-inverted); pinned entries are grey points; the rest are hollow points. Demonstrates that the profile path yields CIs at a non-positive-definite fit."}
+# Skeleton: correct trait/axis/estimate/pinned for ALL entries.
+# fit_vmx is non-PD, so the Wald path returns NA bounds (expected) but a
+# complete, plot-ready frame. (warning = FALSE suppresses the non-PD note.)
+ci_vmx <- loading_ci(fit_vmx, level = "unit", method = "wald")
+
+# Pick four representative FREE entries (largest |estimate|) to profile.
+M_vmx  <- fit_vmx$lambda_constraint$B
+Lam_vmx <- as.matrix(fit_vmx$report$Lambda_B)
+nT <- nrow(M_vmx); K <- ncol(M_vmx)
+is_pinned <- !is.na(M_vmx)
+for (i in seq_len(min(nT, K))) for (j in seq_len(K)) if (j > i) is_pinned[i, j] <- TRUE
+free <- which(!is_pinned, arr.ind = TRUE)
+free <- free[order(-abs(Lam_vmx[free])), , drop = FALSE]
+sel  <- head(free, 4L)
+
+# Restricted profile: 4 entries x 5 grid points = 20 partial refits.
+prof <- loading_profile(fit_vmx, level = "unit", entries = sel,
+                        n_grid = 5L, grid_extent = 6, conf_level = 0.95)
+
+# Invert each entry's LR curve to (lower, upper) at the chi^2_1 cutoff.
+cutoff <- stats::qchisq(0.95, df = 1)
+bnds <- do.call(rbind, lapply(split(prof, paste(prof$i, prof$k)), function(dd) {
+  dd  <- dd[order(dd$profile_value), ]
+  pm  <- dd$profile_value[which.min(dd$objective)]
+  pv  <- dd$profile_value; dv <- dd$delta_deviance
+  crossed <- function(side) {
+    idx <- if (side == "lo") which(pv < pm & dv > cutoff) else which(pv > pm & dv > cutoff)
+    if (length(idx) == 0L) return(NA_real_)
+    if (side == "lo") {
+      a <- max(idx); if (a + 1L > length(pv)) return(NA_real_); j0 <- a; j1 <- a + 1L
+    } else {
+      a <- min(idx); if (a - 1L < 1L) return(NA_real_); j0 <- a - 1L; j1 <- a
+    }
+    if (dv[j1] == dv[j0]) return(NA_real_)
+    pv[j0] + (cutoff - dv[j0]) * (pv[j1] - pv[j0]) / (dv[j1] - dv[j0])
+  }
+  data.frame(trait = as.character(dd$trait[1]), axis = as.character(dd$axis[1]),
+             lower = crossed("lo"), upper = crossed("hi"),
+             stringsAsFactors = FALSE)
+}))
+
+# Merge the profiled bounds into the skeleton by (trait, axis).
+key_ci <- paste(as.character(ci_vmx$trait), as.character(ci_vmx$axis))
+key_bn <- paste(bnds$trait, bnds$axis)
+hit <- match(key_ci, key_bn)
+ci_vmx$lower[!is.na(hit)] <- bnds$lower[hit[!is.na(hit)]]
+ci_vmx$upper[!is.na(hit)] <- bnds$upper[hit[!is.na(hit)]]
+
+plot_loadings_confidence_eye(
+  ci_vmx,
+  null_region = c(-0.1, 0.1),
+  ylim        = c(-3, 3)
+)
+```
+
+```{r profile-confidence-eye, echo = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the profile_retention refit. Same encoding as the varimax_threshold plot above, but with the default Wald (delta-method) path: this refit is positive-definite. Profile retention pins more aggressively than varimax_threshold, so more entries are grey (pinned by the suggester to zero, no eye drawn).", fig.alt = "Per-species loadings from the profile_retention refit, displayed as eye-shaped polygons centred at the Wald estimate; pinned entries shown as grey points without an eye."}
+plot_loadings_confidence_eye(
+  fit_pr, level = "unit",
+  null_region = c(-0.1, 0.1),
+  ylim        = c(-3, 3)
+)
+```
+
+A few things to read off:
+
+- The two plots show **different pin patterns**. `varimax_threshold`
+  pins by point-estimate magnitude after rotation; `profile_retention`
+  pins by LRT failure to reject zero. The pinned entries (grey) are
+  not the same set across the two plots -- comparison of which species
+  each method retains is itself diagnostic.
+- The **identifiability properties** differ. `varimax_threshold`'s
+  refit has a non-PD Hessian at this fixture, so Wald CIs are
+  unavailable and the varimax plot uses the profile path (which
+  bypasses the pdHess gate). `profile_retention`'s refit is
+  identifiable, so the default Wald path works. This is not a generic
+  property of the methods -- at other fixtures the situation can
+  reverse -- but it is what happens at *this* moderate-signal binary
+  fixture.
+- gllvmTMB's NA-on-non-PD convention for Wald (matching `glmmTMB`) is
+  doing visible work here: it forced the choice of the profile path
+  for the varimax plot, rather than silently emitting CIs from a
+  degenerate refit.
+
+### Other available conventions
+
+`varimax_threshold` and `profile_retention` are demonstrated above.
+Two further data-driven options:
+
+- **`wald_retention`** -- Same retention contract as
+  `profile_retention` but uses asymmetric Wald CIs (Fisher-z on the
+  standardised loading) instead of the LRT. Microsecond cost
+  (no refits), but **vulnerable to non-PD Hessians in the baseline
+  fit** (a problem `profile_retention` is robust to). Use only when
+  you have confirmed the baseline fit's Hessian is PD. Default
+  `retention_prob = 0.90`; call:
+  `suggest_lambda_constraint(fit_exp, convention = "wald_retention")`.
+
+- **`bootstrap_retention`** -- Procrustes-aligned parametric bootstrap
+  in the spirit of Zientek & Thompson 2007. **Queued for v2**. The
+  package's existing `bootstrap_Sigma()` machinery + the rotation
+  alignment in `check_identifiability.R` provide the scaffolding;
+  the suggester convention itself is not yet wired up.
+
+### Which to pick
+
+| Situation | Suggest |
+|---|---|
+| You have biology -- functional groups, trait-axis hypotheses, prior knowledge | `confirmatory_lambda()` -- explicit, ecologist-readable |
+| No biology, want a quick textbook starting point | `convention = "varimax_threshold"` -- the Comrey-Lee path |
+| No biology, want honest pin decisions that account for noise | `convention = "profile_retention"` -- LRT-based, robust to non-PD Hessians |
+| Same as above but you can't afford ~40 refits | `convention = "wald_retention"` -- Wald approximation; use only when baseline Hessian is PD |
+| You only need rotational identification, not data-driven sparsity | `convention = "lower_triangular"` or `"pin_top_one"` |
+| You'll rotate post-hoc and don't want any pins | `convention = "none"` |
+
+Whatever you choose, the result is a matrix you pass to a confirmatory
+refit via `lambda_constraint = list(unit = sug$constraint)`. After
+that, `loading_ci()` and the Confidence Eye plot apply just as in the
+confirmatory article, now on the data-driven constraint pattern.
+
+## See also
+
+- [`vignette("lambda-constraint")`](lambda-constraint.html) -- the
+  confirmatory companion: hypothesis-driven pins, error-aware loading
+  interpretation, communality, and variance partitioning. **Read this
+  first.**
+- [`vignette("joint-sdm")`](joint-sdm.html) -- exploratory binary JSDM
+  without constraint.
+- `?suggest_lambda_constraint` -- the six conventions and their
+  arguments (`threshold`, `retention_prob`).
+- `?loading_ci`, `?loading_profile`,
+  `?plot_loadings_confidence_eye` -- error-aware loading interpretation
+  and the profile path used for the non-PD varimax refit.
+
+## References
+
+- Comrey, A.L., & Lee, H.B. (1992). *A First Course in Factor
+  Analysis* (2nd ed.). Hillsdale, NJ: Lawrence Erlbaum. (Source of
+  the 0.30 / 0.40 / 0.50 standardised-loading retention thresholds
+  used by `convention = "varimax_threshold"`.)
+- Stevens, J.P. (2012). *Applied Multivariate Statistics for the
+  Social Sciences* (5th ed.). New York: Routledge. (The 0.40
+  loading-retention threshold.)
+- ter Braak, C.J.F., & van der Veen, B. (2025). Generalized linear
+  latent variable models can overstate trait--environment
+  confidence. *Environmental and Ecological Statistics* (in press).
+  <https://doi.org/10.1007/s10651-025-00696-0>
+- Zientek, L.R., & Thompson, B. (2007). Applying the bootstrap to the
+  multivariate case: bootstrap component / factor analysis. *Behavior
+  Research Methods* **39**, 318--325.
+  <https://doi.org/10.3758/BF03193163>

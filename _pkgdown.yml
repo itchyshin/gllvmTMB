@@ -74,6 +74,8 @@ articles:
     - articles/data-shape-flowchart
     - articles/functional-biogeography
     - articles/gllvm-vocabulary
+    - articles/lambda-constraint
+    - articles/lambda-constraint-suggest
     - articles/phylogenetic-gllvm
     - articles/psychometrics-irt
     - articles/simulation-recovery-validated

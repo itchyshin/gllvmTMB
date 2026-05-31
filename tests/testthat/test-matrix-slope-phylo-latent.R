@@ -17,46 +17,34 @@
 ## `tests/testthat/test-phylo-latent-slope-gaussian.R`.
 ##
 ## ----------------------------------------------------------------------
-## HONEST-MATRIX DISCIPLINE (Design 59): why every family currently SKIPS
+## ENGINE STATUS: the reduced-rank slope-bearing `phylo_latent` path is LIVE.
 ##
-## As of this branch the reduced-rank slope-bearing `phylo_latent` engine
-## path is NOT wired up (the Gaussian template above is still gated behind
-## `skip_until_stage3()`; Design 56 Stage 3). Empirically, on this branch:
+## `phylo_latent(1 + x | species, d = 1)` builds the 2-column augmented LHS
+## (tmb_data$n_lhs_cols_lat == 2, tmb_data$use_phylo_latent_slope == 1) and
+## fits the block-diagonal reduced-rank slope structure. The Gaussian-only
+## family guard in `R/fit-multi.R` has been converted to an allowlist (mirror
+## of the phylo_indep family sweep, #388) covering the wired families
+## (gaussian, binomial probit/logit, poisson, nbinom2, Gamma, Beta,
+## ordinal_probit), so construction now succeeds for each and the recovery +
+## CI-smoke contract below runs.
 ##
-##   * `phylo_latent(1 + x | species, d = 1)` PARSES and CONVERGES, but
-##     the engine SILENTLY DROPS the slope column: `tmb_data$n_lhs_cols`
-##     is 1 (not 2), `tmb_data$use_phylo_slope` is 0, `tmb_data$x_phy_slope`
-##     is all-zero, and the fit is byte-identical (same objective) to the
-##     intercept-only `phylo_latent(species, d = 1)` -- even under a strong
-##     slope signal, and even in the explicit long form
-##     `(0 + trait + (0 + trait):x | species)`.
-##   * The positive control `phylo_unique(1 + x | species)` DOES build the
-##     2-column augmented structure (n_lhs_cols == 2, finite report$sd_b),
-##     so the augmented-slope machinery exists -- just not for the LATENT
-##     reduced-rank keyword.
-##
-## Therefore there is NO latent SLOPE structure to recover here yet: the
-## load-bearing slope variance / intercept-slope correlation the recovery
-## assertion targets is not estimated. Per the Honest-matrix discipline
-## ("No fake-pass"; engine/parser frozen, no touches), each family test
-## detects this gap with a guard and `skip()`s honestly with a precise
-## reason rather than asserting recovery of a structure the engine does
-## not fit. We do NOT fall back to asserting the intercept-only rank-1
-## loading (that would be a fake-pass: it would NOT exercise the slope
-## cell the register row is about).
-##
-## The test bodies below the guard are real: they encode the recovery +
-## CI-smoke contract that becomes live the moment the engine wires up the
-## reduced-rank slope path (n_lhs_cols flips to 2 / use_phylo_slope flips
-## on). Until then they are unreachable and the cell stays `partial`.
+## RECOVERY CHANNEL: the latent path is BLOCK-DIAGONAL across the LHS columns
+## (Design 56 Sec.5.3, latent row) -- each column gets its own factor-analytic
+## Sigma_k = Lambda_k Lambda_k^T and there is NO intercept-slope correlation
+## block. So the recovery target is the per-column covariance surfaced by
+## report$Sigma_phy_slope_slope / report$Sigma_phy_slope_intercept (the same
+## channel the Gaussian template validates), NOT the full 2x2 report$sd_b /
+## report$cor_b channel the phylo_unique / phylo_dep paths emit (which the
+## latent engine does not populate). The slope block is the well-identified
+## cell. The drawn intercept-slope correlation in the DGP is structurally
+## unrecoverable by the block-diagonal model and is therefore not asserted.
 ##
 ## ----------------------------------------------------------------------
-## Register rows this file informs (all stay `partial` until the engine
-## path lands): RE-02 (random-slope recovery) and the phylo-latent arm of
-## PHY-06 (phylo augmented intercept+slope), per non-Gaussian family.
+## Register rows this file informs: RE-02 (random-slope recovery) and the
+## phylo-latent arm of PHY-06 (phylo augmented intercept+slope), per family.
 ##
 ## SKIP discipline (no fake-pass, Design 59): non-construction /
-## non-convergence / non-PD Hessian / engine-drops-slope => honest
+## non-convergence / non-PD Hessian / out-of-band recovery => honest
 ## `skip("<reason>")`; the register row stays `partial`. Tolerances are
 ## NEVER widened to force green. Each star/rcoal fit is well under the
 ## campaign-wide 15-min-per-fit time-box (~1 s locally).
@@ -164,13 +152,14 @@ fit_slope_phylo_latent <- function(fx, family) {
 }
 
 ## The engine-state guard: is the reduced-rank SLOPE path actually live?
-## A genuine slope-bearing phylo_latent fit must carry a 2-column
-## augmented LHS (n_lhs_cols == 2) AND the phylo-slope engine flag. If
-## either is missing the slope column was dropped and the fit is merely
-## the intercept-only rank-1 latent -- nothing slope-related to recover.
+## A genuine slope-bearing phylo_latent fit must carry a 2-column augmented
+## LHS (n_lhs_cols_lat == 2) AND the dedicated latent-slope engine flag
+## (use_phylo_latent_slope == 1). NOTE: the latent path does NOT set the
+## unique/dep flags use_phylo_slope / n_lhs_cols (those stay 0 / 1 on a latent
+## fit), so this guard keys on the *_lat fields the latent engine populates.
 slope_latent_path_is_live <- function(fit) {
-  isTRUE(fit$tmb_data$n_lhs_cols == 2L) &&
-    isTRUE(fit$tmb_data$use_phylo_slope == 1L)
+  isTRUE(fit$tmb_data$n_lhs_cols_lat == 2L) &&
+    isTRUE(fit$tmb_data$use_phylo_latent_slope == 1L)
 }
 
 ## Recovery + CI-smoke contract, shared across families. Reached only when
@@ -184,75 +173,72 @@ expect_slope_latent_recovery_and_ci <- function(fit, fx, var_band, rho_abs,
   testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
 
   ## ---- Latent slope structure recovery --------------------------------
-  ## The slope-bearing reduced-rank latent surfaces the augmented
-  ## intercept / slope SDs and their correlation through the same
-  ## report$sd_b (2-vector) / report$cor_b channel the augmented
-  ## phylo_unique path uses (Design 56 Sec.5.3 block-diagonal Sigma_b).
-  sd_b  <- as.numeric(fit$report$sd_b)
-  cor_b <- as.numeric(fit$report$cor_b)[1L]
-  testthat::expect_length(sd_b, 2L)
-  testthat::expect_true(all(is.finite(sd_b)))
-  testthat::expect_true(is.finite(cor_b))
+  ## The reduced-rank latent slope is BLOCK-DIAGONAL across the LHS columns
+  ## (Design 56 Sec.5.3, latent row): each column k in {intercept, slope} gets
+  ## its OWN factor-analytic Sigma_k = Lambda_k Lambda_k^T, and there is NO
+  ## intercept-slope correlation block (cf. the full 2x2 sd_b / cor_b channel
+  ## the phylo_unique / phylo_dep paths use, which the latent engine does NOT
+  ## populate). The recovery target is therefore the per-column Sigma surfaced
+  ## by report$Sigma_phy_slope_slope / report$Sigma_phy_slope_intercept -- the
+  ## same channel the Gaussian template (test-phylo-latent-slope-gaussian.R)
+  ## validates. The well-identified slope block is the binding cell; its mean
+  ## diagonal variance must land within the family band of sigma2_slope_true.
+  ## The drawn intercept-slope correlation (rho_true) is structurally
+  ## unrecoverable by the block-diagonal model (rho is pinned to 0), so it is
+  ## NOT asserted here -- asserting it would test a quantity the estimator
+  ## cannot represent. `rho_abs` is retained in the signature for parity with
+  ## the dep sibling but is unused on the block-diagonal latent path.
+  Sig_slope <- fit$report$Sigma_phy_slope_slope
+  Sig_int   <- fit$report$Sigma_phy_slope_intercept
+  testthat::expect_true(is.matrix(Sig_slope) && all(is.finite(Sig_slope)))
+  testthat::expect_true(is.matrix(Sig_int)   && all(is.finite(Sig_int)))
 
-  sigma2_int_hat   <- sd_b[1L]^2
-  sigma2_slope_hat <- sd_b[2L]^2
+  sigma2_slope_hat <- mean(diag(Sig_slope))
+  sigma2_int_hat   <- mean(diag(Sig_int))
 
-  int_ratio   <- sigma2_int_hat / fx$sigma2_int_true
   slope_ratio <- sigma2_slope_hat / fx$sigma2_slope_true
-  rho_err     <- abs(cor_b - fx$rho_true)
+  int_ratio   <- sigma2_int_hat / fx$sigma2_int_true
 
-  if (!is.finite(int_ratio)   || int_ratio   < 1 / var_band || int_ratio   > var_band ||
-        !is.finite(slope_ratio) || slope_ratio < 1 / var_band || slope_ratio > var_band ||
-        rho_err > rho_abs) {
+  ## Intercept block is weakly pinned at fixed n (one tree draw -- the Sec.5.3
+  ## / Sec.11 caveat), so it gets a generous 2x var_band slack; the slope block
+  ## is the well-identified cell held to the family band.
+  if (!is.finite(slope_ratio) || slope_ratio < 1 / var_band || slope_ratio > var_band ||
+        !is.finite(int_ratio) || int_ratio < 1 / (2 * var_band) || int_ratio > 2 * var_band) {
     testthat::skip(sprintf(
       paste0(
-        "Latent slope recovery outside Phase-B0 band (sigma2_int = %.3g [truth %.2g], ",
-        "sigma2_slope = %.3g [truth %.2g], rho = %.3g [truth %.2g]); %s stays partial pending bigger n"
+        "Latent slope-block recovery outside Phase-B0 band (mean slope var = %.3g ",
+        "[truth %.2g], mean intercept var = %.3g [truth %.2g]); %s stays partial pending bigger n"
       ),
-      sigma2_int_hat, fx$sigma2_int_true,
       sigma2_slope_hat, fx$sigma2_slope_true,
-      cor_b, fx$rho_true, row_tag
+      sigma2_int_hat, fx$sigma2_int_true, row_tag
     ))
   }
   testthat::expect_gt(sigma2_slope_hat, fx$sigma2_slope_true / var_band)
   testthat::expect_lt(sigma2_slope_hat, fx$sigma2_slope_true * var_band)
-  testthat::expect_lte(rho_err, rho_abs)
 
   ## ---- CI smoke -------------------------------------------------------
-  ## Per the Design 59 contract: confint(parm = "rho:phy:1,2",
-  ## method = "profile") finite OR a finite slope-variance CI. We try the
-  ## profile token first, then fall back to a transformed-Wald interval on
-  ## the augmented slope SD (=> slope variance) from the sdreport.
-  ci_rho <- tryCatch(
-    suppressMessages(suppressWarnings(stats::confint(
-      fit, parm = "rho:phy:1,2", method = "profile"
-    ))),
-    error = function(e) e
-  )
-  rho_finite <- !inherits(ci_rho, "error") && is.matrix(ci_rho) &&
-    nrow(ci_rho) == 1L && ncol(ci_rho) == 2L && any(is.finite(ci_rho))
-
-  slope_var_finite <- FALSE
+  ## The block-diagonal latent exposes no rho:phy token (no cross-column
+  ## correlation) and no log_sd_b row (that is the phylo_unique 2x2 channel).
+  ## The genuinely-available uncertainty handle is the sdreport SE on the
+  ## reduced-rank slope loadings theta_rr_phy_slope (which build Sigma_slope):
+  ## a finite SE there is a finite slope-structure CI smoke.
+  slope_loading_ci_finite <- FALSE
   sdr <- tryCatch(summary(fit$sd_report), error = function(e) NULL)
   if (!is.null(sdr)) {
-    idx <- which(rownames(sdr) == "log_sd_b")
-    if (length(idx) >= 2L) {
-      est <- sdr[idx[2L], "Estimate"]; se <- sdr[idx[2L], "Std. Error"]
-      if (is.finite(est) && is.finite(se)) {
-        z  <- stats::qnorm(0.975)
-        ci_var <- exp(2 * c(est - z * se, est + z * se))
-        slope_var_finite <- all(is.finite(ci_var)) && ci_var[1L] < ci_var[2L]
-      }
+    idx <- which(rownames(sdr) == "theta_rr_phy_slope")
+    if (length(idx) >= 1L) {
+      est <- sdr[idx, "Estimate"]; se <- sdr[idx, "Std. Error"]
+      slope_loading_ci_finite <- any(is.finite(est) & is.finite(se) & se > 0)
     }
   }
 
-  if (!rho_finite && !slope_var_finite) {
+  if (!slope_loading_ci_finite) {
     testthat::skip(sprintf(
-      "Neither rho:phy:1,2 profile CI nor a finite slope-variance CI was available; %s CI smoke stays partial rather than relax the assertion",
+      "No finite SE on the reduced-rank slope loadings (theta_rr_phy_slope); %s CI smoke stays partial rather than relax the assertion",
       row_tag
     ))
   }
-  testthat::expect_true(rho_finite || slope_var_finite)
+  testthat::expect_true(slope_loading_ci_finite)
 }
 
 ## Driver shared by all seven family test_that blocks: build the fixture,
@@ -280,15 +266,14 @@ run_slope_phylo_latent_cell <- function(emit, family, var_band, rho_abs,
   if (!slope_latent_path_is_live(fit)) {
     testthat::skip(sprintf(
       paste0(
-        "Reduced-rank slope-bearing phylo_latent path not implemented for %s: the engine ",
-        "silently drops the slope column (n_lhs_cols = %d, use_phylo_slope = %d; ",
-        "fit is the intercept-only rank-1 latent). No latent slope structure to recover ",
-        "(Design 56 Stage 3 engine work pending); %s stays partial. Honest skip -- NOT a ",
-        "fake-pass on the intercept-only loading."
+        "Reduced-rank slope-bearing phylo_latent path not live for %s: the engine ",
+        "dropped the slope column (n_lhs_cols_lat = %d, use_phylo_latent_slope = %d; ",
+        "fit is the intercept-only rank-1 latent). No latent slope structure to recover; ",
+        "%s stays partial. Honest skip -- NOT a fake-pass on the intercept-only loading."
       ),
       fam_label,
-      as.integer(fit$tmb_data$n_lhs_cols %||% NA),
-      as.integer(fit$tmb_data$use_phylo_slope %||% NA),
+      as.integer(fit$tmb_data$n_lhs_cols_lat %||% NA),
+      as.integer(fit$tmb_data$use_phylo_latent_slope %||% NA),
       row_tag
     ))
   }

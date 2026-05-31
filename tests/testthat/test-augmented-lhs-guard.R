@@ -199,17 +199,21 @@ test_that("phylo_latent(0 + trait + (0 + trait):x | sp, d = 1) long form routes 
   expect_equal(as.integer(fit$tmb_data$n_lhs_cols_lat), 2L)
 })
 
-test_that("phylo_latent(1 + x | sp, d = 1) non-Gaussian fails loud (Gaussian anchor only)", {
+test_that("phylo_latent(1 + x | sp, d = 1) reserved family fails loud (off the allowlist)", {
   skip_if_not_ape()
+  ## The augmented phylo_latent slope is activated for the wired families
+  ## (gaussian, binomial, poisson, nbinom2, Gamma, Beta, ordinal_probit); a
+  ## family OFF that allowlist (here tweedie, id 6) still fails loud at the
+  ## family-id guard in R/fit-multi.R.
   fx <- make_phylo_lhs_fixture()
-  fx$df$value <- rpois(nrow(fx$df), lambda = 2)
+  fx$df$value <- abs(fx$df$value) + 0.1
   expect_error(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       value ~ 0 + trait + phylo_latent(1 + x | species, d = 1),
       data = fx$df, phylo_tree = fx$tree, unit = "species",
-      family = poisson()
+      family = gllvmTMB::tweedie()
     ))),
-    regexp = "gaussian|Gaussian anchor|deferred"
+    regexp = "not yet supported for this family"
   )
 })
 

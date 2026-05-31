@@ -607,10 +607,6 @@ this:
   variance. Estimating $V_{\mathrm A}$, $V_{\mathrm C}$, and their
   covariance requires *two* simultaneous A-matrix terms in the same
   fit. Tracked as register row **ANI-09**.
-- **Sparse $\boldsymbol A^{-1}$ direct engine path** (Hadfield &
-  Nakagawa 2010). v0.2.0 densifies $\boldsymbol A^{-1}$ internally;
-  large pedigrees ($n \gtrsim 500$) will be substantially faster
-  when the direct sparse path lands. Tracked as **ANI-08**.
 - **Augmented (structured) reaction norms.** The
   single-shared-variance heritable slope `animal_slope(x | id)` is
   supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression)).

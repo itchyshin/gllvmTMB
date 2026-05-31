@@ -257,7 +257,7 @@ fit_3piece <- gllvmTMB(
     phylo_latent(species, d = 1, tree = tree) +    # Lambda_phy
     latent(0 + trait | species, d = 1) +           # Lambda_non
     unique(0 + trait | species),                   # single Psi
-  data = df_long,
+  data = df,
   trait = "trait", unit = "species"
 )
 ```

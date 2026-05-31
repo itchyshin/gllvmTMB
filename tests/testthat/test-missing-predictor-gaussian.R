@@ -181,18 +181,30 @@ test_that("mi() Gaussian predictor model validates the Phase 2a boundary", {
     )),
     "explicit predictor names"
   )
-  ## Grouped covariate RE (Phase 2b) is rejected loudly in Phase 2a.
+  ## Random SLOPES in the covariate model (Phase 2b OUT) are rejected loudly.
   dat_g <- dat
-  dat_g$grp <- factor(rep(letters[1:8], length.out = nrow(dat_g)))
+  dat_g$grp <- factor(as.integer(dat_g$site) %% 8L)
   expect_error(
     suppressMessages(gllvmTMB(
       value ~ 0 + trait + mi(x),
       data = dat_g, family = gaussian(),
-      impute = list(x = x ~ z + (1 | grp)),
+      impute = list(x = x ~ z + (0 + z | grp)),
       missing = miss_control(predictor = "model"),
       control = gllvmTMBcontrol(se = FALSE)
     )),
-    "fixed"
+    "random intercept"
+  )
+  ## More than one covariate RE term (Phase 2b OUT) is rejected loudly.
+  dat_g$grp2 <- factor(as.integer(dat_g$site) %% 5L)
+  expect_error(
+    suppressMessages(gllvmTMB(
+      value ~ 0 + trait + mi(x),
+      data = dat_g, family = gaussian(),
+      impute = list(x = x ~ z + (1 | grp) + (1 | grp2)),
+      missing = miss_control(predictor = "model"),
+      control = gllvmTMBcontrol(se = FALSE)
+    )),
+    "only one"
   )
   ## Structured covariate model (phylo/relmat; Phase 3) is rejected.
   expect_error(
@@ -622,4 +634,264 @@ test_that("wide traits() mi(x) matches the hand-built long-format fit", {
     fit_long$missing_data$predictors$x$conditional_mode,
     tolerance = 1e-3
   )
+})
+
+# ===========================================================================
+# Phase 2b (issue #332 / design 67): ONE grouped random-intercept covariate
+# model -- impute = list(x = x ~ z + (1 | group)) (the gllvmTMB analogue of
+# drmTMB MD3b, src/drmTMB.cpp has_mi_group inside mi_family == 0). Ported from
+# drmTMB tests/testthat/test-missing-predictor-gaussian.R grouped blocks.
+#
+# gllvmTMB structural adaptation (consistent with Phase 2a): the covariate
+# model is at the UNIT level, eta_x(u) = X_x(u,.) beta_x + sd_x_group *
+# u_x_group(group(u)); u_x_group ~ N(0,1) joins the TMB `random` set; the
+# Gaussian density x_full(u) ~ N(eta_x(u), sigma_x^2) is summed over UNITS.
+# `group` is a UNIT-level grouping (one group id per unit, no missing values).
+# `mi_group_index` is built at unit level, parallel to `mi_unit_id`.
+#
+# Gate map:
+#   * grouped boundary        -- random slopes / >1 RE term / missing group
+#                                still error (in the Phase 2a boundary block
+#                                + the grouped-specific block below).
+#   * supports grouped int.   -- version "phase2b", random$enabled/group/n_group,
+#                                finite estimates + group SD, gradient ~ 0.
+#   * combines with masks     -- grouped mi(x) + response = "include".
+#   * imputed() grouped       -- the EBLUP frame + SE for the grouped fit.
+#   * grouped recovery        -- a stochastic DGP with a known group SD: recover
+#                                b_fix (mi slope), beta_x, sigma_x, AND the group
+#                                SD within a band, and the missing-x modes
+#                                correlate with truth.
+#
+# Fit-heavy blocks are gated behind skip_if_not_heavy(); the pure-validation
+# boundary blocks run unconditionally.
+
+# ---- Grouped fixture (unit-level group) -----------------------------------
+
+# Like .make_mi_uni but the covariate model carries a UNIT-level random
+# intercept: each site is assigned to one of `n_group` groups, and the
+# covariate mean gets a group shift drawn N(0, group_sd^2). x is still
+# unit-level (constant within a site). The covariate model is
+#   x[u] ~ N(beta0 + beta_z z[u] + beta_w w[u] + group_shift[group[u]], sigma_x^2).
+.make_mi_grouped <- function(seed = 303, n_sites = 64, n_group = 8,
+                             b_x_true = 1.25, group_sd = 0.6, sigma_x = 0.4,
+                             miss_idx = c(5L, 17L, 28L, 39L, 52L)) {
+  set.seed(seed)
+  z <- stats::rnorm(n_sites)
+  w <- stats::rnorm(n_sites)
+  grp <- rep(seq_len(n_group), length.out = n_sites)
+  group_shift <- stats::rnorm(n_group, sd = group_sd)
+  ## Covariate model with a unit-level group random intercept.
+  x <- 0.2 + 0.7 * z - 0.3 * w + group_shift[grp] +
+    stats::rnorm(n_sites, sd = sigma_x)
+  rows <- list()
+  for (s in seq_len(n_sites)) {
+    eta1 <- 0.6 + b_x_true * x[s] - 0.25 * z[s]
+    eta2 <- -0.3 + b_x_true * x[s] + 0.45 * z[s]
+    rows[[s]] <- data.frame(
+      site    = s,
+      trait   = c("t1", "t2"),
+      value   = c(eta1, eta2) + stats::rnorm(2, sd = 0.4),
+      x       = x[s],
+      z       = z[s],
+      w       = w[s],
+      grp     = grp[s],
+      stringsAsFactors = FALSE
+    )
+  }
+  dat <- do.call(rbind, rows)
+  dat$site    <- factor(dat$site, levels = seq_len(n_sites))
+  dat$trait   <- factor(dat$trait, levels = c("t1", "t2"))
+  dat$grp     <- factor(dat$grp, levels = seq_len(n_group))
+  dat$species <- factor(rep(1L, nrow(dat)))
+  dat$site_species <- factor(paste(dat$site, dat$species, sep = "_"))
+  list(
+    data = dat, x_true = x, missing_site = miss_idx, b_x_true = b_x_true,
+    group_sd = group_sd, sigma_x = sigma_x, n_group = n_group,
+    group_shift = group_shift, grp = grp
+  )
+}
+
+# Inject NA x for all long rows of the given missing sites.
+.inject_missing_grouped <- function(d) {
+  dat <- d$data
+  miss_rows <- which(as.integer(dat$site) %in% d$missing_site)
+  dat$x[miss_rows] <- NA_real_
+  dat
+}
+
+# Fit the two-trait grouped Gaussian mi(x) model: x ~ z + w + (1 | grp).
+.fit_mi_grouped <- function(data,
+                            impute = list(x = x ~ z + w + (1 | grp)),
+                            missing = miss_control(predictor = "model"),
+                            se = FALSE) {
+  suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):z + mi(x),
+    data    = data,
+    family  = gaussian(),
+    impute  = impute,
+    missing = missing,
+    control = gllvmTMBcontrol(se = se)
+  )))
+}
+
+# ---- Grouped boundary rejection (no fit) ----------------------------------
+
+test_that("grouped mi() covariate model validates the Phase 2b boundary", {
+  d <- .make_mi_grouped()
+  dat <- .inject_missing_grouped(d)
+
+  ## A missing grouping value is rejected loudly (the group must be complete).
+  dat_missing_group <- dat
+  dat_missing_group$grp[1] <- NA
+  expect_error(
+    .fit_mi_grouped(dat_missing_group),
+    "complete"
+  )
+  ## Random SLOPES are rejected.
+  expect_error(
+    .fit_mi_grouped(dat, impute = list(x = x ~ z + (0 + z | grp))),
+    "random intercept"
+  )
+  ## More than one covariate RE term is rejected.
+  expect_error(
+    .fit_mi_grouped(
+      dat,
+      impute = list(x = x ~ z + (1 | grp) + (1 | site))
+    ),
+    "only one"
+  )
+  ## A single-level group is rejected (needs at least two levels).
+  dat_one <- dat
+  dat_one$grp <- factor(rep(1L, nrow(dat_one)))
+  expect_error(
+    .fit_mi_grouped(dat_one),
+    "two group levels"
+  )
+})
+
+# ---- Supports one grouped covariate intercept (PORT MD3b) -----------------
+
+test_that("Gaussian mi() predictor model supports one grouped covariate intercept", {
+  skip_if_not_heavy()
+  d <- .make_mi_grouped()
+  dat <- .inject_missing_grouped(d)
+
+  fit <- .fit_mi_grouped(dat)
+
+  expect_identical(fit$missing_data$predictors$x$version, "phase2b")
+  expect_identical(stats::nobs(fit), nrow(dat))
+  expect_identical(fit$missing_data$predictors$x$model_row, d$missing_site)
+  ## The grouped covariate RE is recorded in the registry.
+  rnd <- fit$missing_data$predictors$x$random
+  expect_true(isTRUE(rnd$enabled))
+  expect_identical(rnd$group, "grp")
+  expect_identical(rnd$n_group, d$n_group)
+  ## Fixed effects + covariate-model coefs + group SD are finite.
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+  expect_true(all(is.finite(par$b_fix)))
+  expect_true(all(is.finite(par$beta_mi)))
+  expect_true(is.finite(par$log_sigma_mi[[1]]))
+  expect_true(is.finite(par$log_sd_mi_group[[1]]))
+  ## The group random intercepts are length n_group and finite.
+  expect_length(par$u_mi_group, d$n_group)
+  expect_true(all(is.finite(par$u_mi_group)))
+  ## Stationary point.
+  expect_lt(max(abs(fit$tmb_obj$gr(fit$opt$par))), 1e-2)
+})
+
+test_that("Gaussian grouped mi() predictor model can combine with response masks", {
+  skip_if_not_heavy()
+  d <- .make_mi_grouped()
+  dat <- .inject_missing_grouped(d)
+  y_miss <- c(9L, 25L)
+  dat$value[y_miss] <- NA_real_
+  observed_y <- !is.na(dat$value)
+
+  fit <- .fit_mi_grouped(
+    dat,
+    missing = miss_control(response = "include", predictor = "model")
+  )
+
+  expect_identical(fit$missing_data$predictors$x$version, "phase2b")
+  expect_identical(stats::nobs(fit), sum(observed_y))
+  expect_identical(as.logical(fit$missing_data$observed_y), observed_y)
+  expect_identical(fit$missing_data$predictors$x$model_row, d$missing_site)
+  expect_true(isTRUE(fit$missing_data$predictors$x$random$enabled))
+  ## The x conditional mode is defined for every missing unit.
+  expect_length(
+    fit$missing_data$predictors$x$conditional_mode,
+    length(d$missing_site)
+  )
+})
+
+# ---- imputed() grouped EBLUP frame (PORT MD3b) ----------------------------
+
+test_that("imputed() supports grouped Phase 2b missing-predictor fits", {
+  skip_if_not_heavy()
+  d <- .make_mi_grouped()
+  dat <- .inject_missing_grouped(d)
+
+  fit <- .fit_mi_grouped(dat, se = TRUE)
+  out <- imputed(fit, variable = "x")
+  modes <- fit$tmb_obj$env$parList(fit$opt$par)$x_mis
+
+  expect_identical(fit$missing_data$predictors$x$version, "phase2b")
+  expect_identical(out$original_row, d$missing_site)
+  expect_equal(out$source, rep("conditional_mode", length(d$missing_site)))
+  expect_equal(out$estimate, as.numeric(modes), tolerance = 1e-8)
+  expect_true(all(is.finite(out$std_error)))
+  expect_true(all(out$std_error > 0))
+})
+
+# ---- Grouped recovery gate (genuine stochastic DGP) -----------------------
+
+test_that("grouped recovery: mi slope, covariate coefs, sigma_x, group SD recover", {
+  skip_if_not_heavy()
+  ## A genuine stochastic DGP with a KNOWN group SD. With enough sites/groups
+  ## and MCAR missing x, the response mi() slope, the covariate-model
+  ## coefficients, sigma_x, AND the group SD should all land in a band, and the
+  ## missing-x conditional modes should correlate with (and track) the truth.
+  d <- .make_mi_grouped(
+    seed = 2024, n_sites = 200, n_group = 20,
+    b_x_true = 1.25, group_sd = 0.6, sigma_x = 0.4,
+    miss_idx = sort(sample.int(200L, 40L))
+  )
+  dat <- .inject_missing_grouped(d)
+  x_true_missing <- d$x_true[d$missing_site]
+
+  fit <- .fit_mi_grouped(dat, se = TRUE)
+
+  par <- fit$tmb_obj$env$parList(fit$opt$par)
+
+  ## (1) Response mi() slope b_x recovers (truth 1.25).
+  mu_col <- fit$missing_data$predictors$x$mu_col
+  b_x_hat <- par$b_fix[mu_col]
+  expect_equal(b_x_hat, d$b_x_true, tolerance = 0.25)
+
+  ## (2) Covariate-model coefficients recover (intercept 0.2, z 0.7, w -0.3).
+  beta_x <- unname(par$beta_mi)
+  expect_equal(beta_x[1], 0.20, tolerance = 0.3)
+  expect_equal(beta_x[2], 0.70, tolerance = 0.3)
+  expect_equal(beta_x[3], -0.30, tolerance = 0.3)
+
+  ## (3) sigma_x recovers (truth 0.4).
+  sigma_x_hat <- exp(par$log_sigma_mi[[1]])
+  expect_equal(sigma_x_hat, d$sigma_x, tolerance = 0.2)
+
+  ## (4) The covariate group SD recovers (truth 0.6). This is the new Phase 2b
+  ## degree of freedom -- a fixed-only covariate model could not separate it.
+  sd_group_hat <- exp(par$log_sd_mi_group[[1]])
+  expect_equal(sd_group_hat, d$group_sd, tolerance = 0.3)
+
+  ## (5) The missing-x conditional modes correlate with and track the truth.
+  modes <- fit$missing_data$predictors$x$conditional_mode
+  expect_length(modes, length(d$missing_site))
+  expect_gt(stats::cor(modes, x_true_missing), 0.7)
+  rmse <- sqrt(mean((modes - x_true_missing)^2))
+  expect_lt(rmse, 0.6)
+
+  ## (6) The estimated group random intercepts (sd_group * u) correlate with the
+  ## true group shifts -- the grouped structure is genuinely being used.
+  group_re_hat <- sd_group_hat * par$u_mi_group
+  expect_gt(stats::cor(group_re_hat, d$group_shift), 0.6)
 })

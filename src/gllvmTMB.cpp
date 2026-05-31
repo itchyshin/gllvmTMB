@@ -306,9 +306,32 @@ Type objective_function<Type>::operator()()
   // unweighted behaviour exactly. Mirrors src/gllvmTMB.cpp:162.
   DATA_VECTOR(weights_i);
 
+  // -------- Missing-PREDICTOR layer (Phase 2a, design 67) ---------------
+  // One continuous UNIT-level Gaussian missing predictor declared with mi(x).
+  // The missing x is unit-level (broadcast across the unit's trait rows), so
+  // the latent x_mis has ONE entry per missing UNIT value (not per long row),
+  // and the Gaussian covariate density is evaluated at the UNIT level. The
+  // long-row -> unit map `mi_unit_id` broadcasts x_full(u) to every long row.
+  // has_mi == 0 -> every block below is gated off (exact no-op).
+  DATA_INTEGER(has_mi);            // 1 = a Gaussian mi() predictor is present
+  DATA_INTEGER(mi_family);         // 0 = Gaussian (only family in Phase 2a)
+  DATA_INTEGER(mi_col);            // 0-indexed column of X_fix for the mi() x
+  DATA_VECTOR(mi_x_unit);          // length n_units; observed x, sentinel where
+                                   // missing (x_mis overrides those entries)
+  DATA_IVECTOR(mi_observed_unit);  // length n_units; 1 = x observed for unit
+  DATA_IVECTOR(mi_missing_index);  // 0-indexed positions of missing units
+  DATA_IVECTOR(mi_unit_id);        // length n_obs; long-row -> unit (0-indexed)
+  DATA_MATRIX(X_mi);               // unit-level covariate design (n_units x p_x)
+
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)
   PARAMETER(log_sigma_eps);                      // residual log-SD
+
+  // Missing-predictor (Phase 2a): Gaussian covariate-model coefficients,
+  // log residual SD, and the latent missing UNIT-level x values (random).
+  PARAMETER_VECTOR(beta_mi);                     // covariate-model coefs (p_x)
+  PARAMETER_VECTOR(log_sigma_mi);                // length 1; log sigma_x
+  PARAMETER_VECTOR(x_mis);                       // latent missing UNIT x values
 
   // Between-site rr: Lambda_B (n_traits x d_B) packed as theta_rr_B
   // length = d_B + (n_traits - d_B) * d_B = n_traits*d_B - d_B*(d_B-1)/2
@@ -476,6 +499,45 @@ Type objective_function<Type>::operator()()
   vector<Type> eta_fix = X_fix * b_fix;
   vector<Type> eta(y.size());
   for (int o = 0; o < y.size(); o++) eta(o) = eta_fix(o);
+
+  // -------- Missing-PREDICTOR block (Phase 2a, mi_family == 0) ----------
+  // Direct analogue of drmTMB src/drmTMB.cpp mi_family == 0, with the design
+  // 67 sec.2.0-2.1 unit broadcast: reconstruct x_full per UNIT (observed x, or
+  // the latent x_mis for missing units); add the unit-level Gaussian covariate
+  // density; delta-correct each long row's eta by swapping the broadcast mi()
+  // column's contribution for the reconstructed value. For a singleton-unit
+  // model `mi_unit_id` is the identity and this collapses to the per-row
+  // drmTMB form -- the cross-package contract.
+  if (has_mi == 1 && mi_family == 0) {
+    int n_units = mi_x_unit.size();
+    // Per-unit covariate mean eta_x = X_mi * beta_mi.
+    vector<Type> mi_eta_x = X_mi * beta_mi;
+    Type sigma_mi = exp(log_sigma_mi(0));
+    // Reconstruct x_full(u): observed value, else the latent x_mis entry.
+    vector<Type> mi_x_full(n_units);
+    for (int u = 0; u < n_units; ++u) mi_x_full(u) = mi_x_unit(u);
+    for (int j = 0; j < mi_missing_index.size(); ++j) {
+      mi_x_full(mi_missing_index(j)) = x_mis(j);
+    }
+    // Covariate density, summed over UNITS (NOT long rows).
+    for (int u = 0; u < n_units; ++u) {
+      nll -= dnorm(mi_x_full(u), mi_eta_x(u), sigma_mi, true);
+    }
+    // Delta-correct each long row: replace the broadcast mi() column's
+    // contribution X_fix(o, mi_col) * b_fix(mi_col) with the reconstructed
+    // x_full(mi_unit_id(o)) * b_fix(mi_col).
+    for (int o = 0; o < y.size(); ++o) {
+      eta(o) += b_fix(mi_col) * (mi_x_full(mi_unit_id(o)) - X_fix(o, mi_col));
+    }
+    REPORT(mi_x_full);
+    REPORT(beta_mi);
+    REPORT(log_sigma_mi);
+    REPORT(sigma_mi);
+    REPORT(x_mis);
+    ADREPORT(beta_mi);
+    ADREPORT(log_sigma_mi);
+    ADREPORT(sigma_mi);
+  }
 
   // -------- Construct Lambda_B (n_traits x d_B), lower-triangular -------
   // Ported from glmmTMB src/glmmTMB.cpp case rr_covstruct (Brooks et al.,

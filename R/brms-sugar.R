@@ -3063,24 +3063,32 @@ scan_for_deprecated <- function(rhs) {
   )
   walk <- function(e) {
     if (is.call(e)) {
-      fn <- as.character(e[[1L]])
-      ## `spatial()` -> `spatial_unique()` is a fresh rename in 0.1.2;
-      ## use lifecycle's deprecate_warn so it integrates with the
-      ## standard tidyverse deprecation tooling and the `lifecycle`
-      ## verbosity option.
-      if (fn == "spatial") {
-        lifecycle::deprecate_warn(
-          when = "0.1.2",
-          what = "spatial()",
-          with = "spatial_unique()",
-          details = c(
-            "i" = "spatial(coords | trait) is now an alias for spatial_unique(0 + trait | coords), the unique cell of the 4 x 5 keyword grid.",
-            ">" = "Update existing code to spatial_unique() to keep the rank explicit."
+      ## Only a bare-symbol head (e.g. `spatial`) names a keyword. For a
+      ## namespace-qualified head such as `pkg::fn` the head `e[[1L]]` is
+      ## itself a call, so `as.character()` would return a length-3 vector
+      ## (`c("::", "pkg", "fn")`) and the `if (fn == ...)` checks below
+      ## would error with "the condition has length > 1". Skip keyword
+      ## matching for non-symbol heads; still recurse into the arguments.
+      if (is.name(e[[1L]])) {
+        fn <- as.character(e[[1L]])
+        ## `spatial()` -> `spatial_unique()` is a fresh rename in 0.1.2;
+        ## use lifecycle's deprecate_warn so it integrates with the
+        ## standard tidyverse deprecation tooling and the `lifecycle`
+        ## verbosity option.
+        if (fn == "spatial") {
+          lifecycle::deprecate_warn(
+            when = "0.1.2",
+            what = "spatial()",
+            with = "spatial_unique()",
+            details = c(
+              "i" = "spatial(coords | trait) is now an alias for spatial_unique(0 + trait | coords), the unique cell of the 4 x 5 keyword grid.",
+              ">" = "Update existing code to spatial_unique() to keep the rank explicit."
+            )
           )
-        )
-      } else if (fn %in% names(deprecated_map)) {
-        d <- deprecated_map[[fn]]
-        .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args)
+        } else if (fn %in% names(deprecated_map)) {
+          d <- deprecated_map[[fn]]
+          .gllvmTMB_warn_keyword_deprecated(fn, d$new, d$args)
+        }
       }
       for (i in seq_along(e)[-1L]) {
         walk(e[[i]])
@@ -3112,7 +3120,12 @@ desugar_brms_sugar <- function(
 
   walk <- function(e) {
     if (is.call(e)) {
-      fn <- as.character(e[[1L]])
+      ## Only a bare-symbol head names a keyword. A namespace-qualified head
+      ## such as `pkg::fn` is itself a call, so `as.character(e[[1L]])` would
+      ## yield a length-3 vector and the `if (fn == ...)` checks below would
+      ## error with "the condition has length > 1". Match keywords only for a
+      ## symbol head; non-symbol heads fall through to the argument recursion.
+      fn <- if (is.name(e[[1L]])) as.character(e[[1L]]) else ""
       if (fn == "phylo" || fn == "gr") {
         # phylo(species)             -> propto(0 + species | trait)        [recommended]
         # phylo(species, vcv = Cphy) -> propto(0 + species | trait, Cphy)  [backward-compat]

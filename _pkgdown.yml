@@ -55,11 +55,15 @@ articles:
     - articles/mixed-family-extractors
     - articles/joint-sdm
     - articles/ordinal-probit
+    - articles/stacked-trait-gllvm
+    - articles/random-regression-reaction-norms
 
   - title: Methods
     contents:
     - articles/convergence-start-values
     - articles/pitfalls
+    - articles/profile-likelihood-ci
+    - articles/cross-package-validation
 
   - title: internal
     desc: Draft, technical, or validation-dependent articles hidden from the public dropdown until their evidence and reader path are ready
@@ -67,17 +71,13 @@ articles:
     - articles/animal-model
     - articles/behavioural-syndromes
     - articles/choose-your-model
-    - articles/cross-package-validation
     - articles/data-shape-flowchart
     - articles/functional-biogeography
     - articles/gllvm-vocabulary
     - articles/phylogenetic-gllvm
-    - articles/profile-likelihood-ci
     - articles/psychometrics-irt
-    - articles/random-regression-reaction-norms
     - articles/simulation-recovery-validated
     - articles/simulation-verification
-    - articles/stacked-trait-gllvm
     - articles/troubleshooting-profile
     - articles/roadmap
 

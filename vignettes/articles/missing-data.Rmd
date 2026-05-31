@@ -1,0 +1,399 @@
+---
+title: "Handling missing data"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Handling missing data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+# SKELETON STAGE: all chunks are eval=FALSE so the article renders instantly.
+# As each implementation phase ships, chunks are re-enabled one section at a
+# time and driven by tiny toy fixtures (n <= 40, no latent variables) to keep
+# pkgdown build time under 30 s.
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE
+)
+```
+
+Missing data in `gllvmTMB` has two meanings.
+A **response cell** can be missing: an individual was measured but one trait
+was not recorded, leaving a gap in the multivariate trait matrix.
+A **predictor** can be missing: a covariate needed by the response model was
+not observed for some rows.
+The current implementation treats those two cases differently, and both differ
+from the third case--measurement error--which is explicitly out of scope for
+this layer (see Section 7).
+
+For missing response cells, `gllvmTMB` can retain the original rows and
+evaluate the observed-cell likelihood by masking the unobserved entries.
+Missing cells contribute no direct response likelihood, but the fitted object
+still knows where those cells were.
+For missing predictors, `gllvmTMB` requires an explicit predictor model
+declared through `mi()` in the response formula and `impute = list(...)` in
+the fit call.
+A missing predictor is a latent random effect integrated out by TMB's Laplace
+approximation; this is frequentist FIML, not multiple imputation.
+
+This is likelihood-based missing-data handling.
+It is not Bayesian posterior imputation, not multiple imputation, and not an
+EM interface.
+For cases where those approaches are preferred--rich GNN phylogenetic
+imputation, mixed trait types, tree uncertainty--the `pigauto` package
+provides the complementary preprocessing path.
+
+## 1. What is fitted now
+
+The default is still conservative complete-case fitting:
+
+```{r what-is-fitted-default}
+# FILL: Phase 1 -- run miss_control() and show its defaults once the API lands
+# miss_control()
+```
+
+Use `missing = miss_control(response = "include")` to retain rows that have at
+least one observed response cell.
+Use `missing = miss_control(predictor = "model")` only when the response
+formula contains at least one supported `mi()` term and `impute` supplies the
+corresponding predictor model.
+
+| Missing-data case | Current route | Main boundary |
+| --- | --- | --- |
+| Missing trait cell (any family) | `missing = miss_control(response = "include")` | All predictors, grouping variables, offsets, weights, and structured-effect inputs must be complete for that row. |
+| One missing continuous predictor, fixed covariate model | `traits(y1 + y2 ~ mi(body_mass) + z)` with `impute = list(body_mass = body_mass ~ z)` | The `mi()` variable must be numeric; one Gaussian covariate model; no multiple missing predictors yet. |
+| One missing continuous predictor, grouped covariate model | As above with `impute = list(body_mass = body_mass ~ z + (1 | site))` | One grouped random intercept in the predictor model; independent of response random effects. |
+| Species-level missing trait (broadcast to obs) | `impute = list(body_mass = body_mass ~ 1 + phylo(1 | species, tree = tree))` | Species-level value broadcast to observation rows; phylogenetic covariate model (Phase 3+). |
+| Non-Gaussian / categorical missing predictor | FILL: Phase 5+ | Lognormal, Gamma, beta, Poisson, ordinal, factor -- later work. |
+
+The `gllvmTMB` response matrix is **multivariate**: a single fit can have many
+trait columns and many species.
+Missing cells are indexed at the (row, trait) level, not at the response-row
+level as in a univariate model.
+
+## 2. Missing response cells in `traits()`
+
+For a multivariate response model, each (row, trait) cell is either observed or
+missing.
+The observed-cell likelihood for row `i` and trait `j` is:
+
+```
+is_y_observed[i, j] = 1  -->  full log p(y_{ij} | eta_{ij})
+is_y_observed[i, j] = 0  -->  0  (cell masked; row kept for random-effect
+                                   borrowing across traits and species)
+```
+
+A row with at least one observed trait cell is retained.
+A row where every trait is missing is also retained for row accounting but
+contributes zero direct response likelihood.
+
+This example creates a tiny trait matrix with deliberate missing cells:
+
+```{r missing-response-example}
+# FILL: Phase 1 -- enable with tiny toy fixture once miss_control(response="include")
+# lands (no model fit needed here -- show data setup + formula syntax only).
+#
+# set.seed(1)
+# n <- 20; p <- 3
+# dat <- data.frame(
+#   species = rep(paste0("sp", 1:n), 1),
+#   x       = rnorm(n)
+# )
+# Y <- matrix(rnorm(n * p), n, p,
+#             dimnames = list(NULL, c("trait1", "trait2", "trait3")))
+# Y[3, 1] <- NA; Y[7, 2] <- NA; Y[12, 1] <- NA; Y[12, 3] <- NA  # deliberate gaps
+#
+# fit_resp <- gllvmTMB(
+#   traits(trait1 + trait2 + trait3 ~ x),
+#   family  = gaussian(),
+#   data    = cbind(dat, Y),
+#   missing = miss_control(response = "include")
+# )
+```
+
+Cross-trait borrowing still operates on the retained rows because the latent
+structure is shared across all cells in a row.
+A row where trait 1 is missing but traits 2 and 3 are observed still
+contributes to the species means and latent axes for all traits.
+
+The analogy with `drmTMB` partial bivariate pairs (where one of `y1`/`y2` can
+be observed) generalises here: an observed cell informs its own trait
+mean/loadings, but cross-trait species correlation is identified only from
+rows where both cells are co-observed.
+
+## 3. Inspecting `fit$missing_data` and `nobs()`
+
+Every fitted object that used `miss_control(response = "include")` or
+`miss_control(predictor = "model")` carries a `fit$missing_data` slot with
+row-accounting and diagnostics.
+
+```{r inspect-metadata}
+# FILL: Phase 1 -- enable once fit_resp above works.
+#
+# nobs(fit_resp)                     # likelihood-contributing cells
+# fit_resp$missing_data$counts       # retained rows / observed cells / missing cells
+# fit_resp$missing_data$version      # implementation slice, e.g. "MD1"
+# head(fit_resp$missing_data$original_row)
+# fit_resp$missing_data$observed_y   # n x p logical mask
+```
+
+The most useful fields are:
+
+| Field | Meaning |
+| --- | --- |
+| `version` | Implementation slice tag, e.g. `"MD1"`, `"MD2"`, `"MD3a"`. |
+| `response_policy` | Whether response rows/cells were dropped or masked. |
+| `predictor_policy` | Whether missing predictors fail or are modelled. |
+| `original_row` | Row indices in the user's original data frame. |
+| `model_row` | Row indices in the retained model frame. |
+| `observed_y` | Logical matrix mask (n x p) for multivariate fits. |
+| `counts` | Named integer vector: retained rows, observed cells, missing cells, likelihood-contributing cells. |
+| `predictors` | Metadata and fitted values for explicitly modelled `mi()` predictors. |
+
+For ordinary user work, prefer `nobs()`, `fitted()`, `residuals()`, and
+`predict_missing()` over hand-parsing the slot.
+The slot exists so row accounting stays auditable after fitting.
+
+A co-observed cell count diagnostic is available when the response family is
+multivariate Gaussian: if very few rows have both traits observed, the
+cross-trait residual correlation is weakly identified and `gllvmTMB` will
+warn.
+
+## 4. `predict_missing()` for response cells
+
+Missing response cells have predicted values from the fitted model because
+their predictors and random effects are known (or estimated).
+Use `predict_missing()` to retrieve those reconstructed values alongside their
+standard errors.
+
+```{r predict-missing}
+# FILL: Phase 1 -- enable once predict_missing() is exported.
+#
+# pm <- predict_missing(fit_resp)
+# head(pm)
+# # Columns: original_row, trait, fitted, std_error
+# # std_error comes from the joint Hessian (sdreport block), not a
+# # posterior interval and not a multiple-imputation draw.
+```
+
+`predict_missing()` is for **response** cells only.
+It is distinct from `imputed()`, which is reserved for missing **predictors**
+(Section 5).
+The terminology follows the shared contract with `drmTMB`: predicted/
+reconstructed responses vs EBLUP conditional modes for latent predictors.
+
+Residuals for missing cells are `NA`; fitted values are not.
+This is deliberate: a residual requires an observed value to compute, but a
+fitted value does not.
+
+## 5. Missing predictors: `mi()` and `impute_model(family=)`
+
+Missing predictors are not handled by row deletion or sentinel imputation.
+The response model needs the predictor value, so `gllvmTMB` asks for an
+explicit model for that predictor.
+The missing values become latent random effects integrated out by the Laplace
+approximation, jointly with the response-model random effects.
+
+The joint likelihood factorises as:
+
+```
+L(theta) = integral
+  p(y_obs | x_obs, x_mis, b, theta_y)
+  * p(x_obs, x_mis | b_x, theta_x)
+  * p(b, b_x | theta_b)
+  d x_mis db db_x
+```
+
+In `gllvmTMB`, `x_mis` is declared in the TMB `random` set and integrated out
+by the Laplace approximation together with all other random effects.
+`sdreport` then returns the conditional mode (EBLUP) and its standard error
+from the inverse joint Hessian.
+
+### 5a. Continuous predictor, fixed covariate model (Phase 2a)
+
+```{r missing-predictor-fixed}
+# FILL: Phase 2a -- enable once mi() + impute list + x_mis latent are wired.
+# Tiny fixture: n = 24, p = 2 traits, 4 missing body_mass values.
+#
+# set.seed(2)
+# n <- 24
+# dat2 <- data.frame(
+#   moisture   = rnorm(n),
+#   body_mass  = rnorm(n),
+#   species    = paste0("sp", 1:n)
+# )
+# Y2 <- cbind(
+#   trait1 = 0.5 + 0.8 * dat2$body_mass + rnorm(n, sd = 0.2),
+#   trait2 = -0.2 - 0.4 * dat2$moisture + rnorm(n, sd = 0.25)
+# )
+# dat2$body_mass[c(3, 11, 18)] <- NA  # three missing predictor values
+#
+# fit_pred <- gllvmTMB(
+#   traits(trait1 + trait2 ~ mi(body_mass) + moisture),
+#   family  = gaussian(),
+#   data    = cbind(dat2, Y2),
+#   impute  = list(body_mass = body_mass ~ moisture),
+#   missing = miss_control(predictor = "model")
+# )
+#
+# imputed(fit_pred)   # EBLUP conditional modes + SEs for x_mis
+```
+
+Read `imputed(fit_pred)` as a fitted missing-predictor summary.
+The `estimate` column is the conditional mode (EBLUP) used in the fitted
+likelihood.
+The `std_error` column is the likelihood-based conditional standard error from
+the joint Hessian.
+It is not a posterior interval and is not a set of multiple-imputation draws.
+
+### 5b. Predictor with grouped covariate model (Phase 2b)
+
+The same `mi()` route can include one grouped random intercept in the predictor
+model when missingness is tied to a grouping level:
+
+```{r missing-predictor-grouped}
+# FILL: Phase 2b
+#
+# fit_grp <- gllvmTMB(
+#   traits(trait1 + trait2 ~ mi(body_mass) + moisture),
+#   family  = gaussian(),
+#   data    = cbind(dat2, Y2),
+#   impute  = list(body_mass = body_mass ~ moisture + (1 | site)),
+#   missing = miss_control(predictor = "model")
+# )
+```
+
+The grouped effect is a covariate-model random intercept, not a response-model
+random effect.
+It is kept independent of the response random effects by default (Level-1
+independent default; Level-2 joint field is opt-in via
+`correlate_with = "response"`, deferred to Phase 4).
+
+### 5c. Species-level predictor with phylogenetic covariate model (Phase 3)
+
+The flagship case for ecology: a missing species-level trait used as a
+predictor, with its imputation model inheriting phylogenetic structure:
+
+```{r missing-predictor-phylo}
+# FILL: Phase 3 -- enable once phylo covariate model is wired.
+# Tiny fixture: n_species = 12, a minimal Brownian-motion tree, 3 missing
+# body_mass values at species level broadcast to observation rows.
+#
+# fit_phy <- gllvmTMB(
+#   traits(trait1 + trait2 ~ mi(body_mass) + moisture),
+#   family  = gaussian(),
+#   data    = cbind(dat2, Y2),
+#   impute  = list(
+#     body_mass = impute_model(
+#       body_mass ~ 1 + phylo(1 | species, tree = tiny_tree),
+#       family = gaussian()
+#     )
+#   ),
+#   missing = miss_control(predictor = "model")
+# )
+#
+# imputed(fit_phy)
+```
+
+Phylogenetic imputation adds noise when phylogenetic signal is weak
+(Penone et al. 2014; Molina-Venegas 2024).
+A phylo-signal gate is planned as a Phase 3 verification check; it will warn
+when the estimated signal is too weak to trust the imputed values.
+Trait databases are typically MNAR (missing not at random): rare species with
+few measurements are systematically under-represented.
+The current implementation does not correct for MNAR; a delta-adjustment
+sensitivity analysis is a Phase 3+ gate, not a v1 argument.
+
+### 5d. Multi-source and spatial covariate models (Phase 4)
+
+Phase 4 adds spatial (`spatial()`), relatedness-matrix (`relmat()`), and
+animal-model (`animal()`) covariate structures, and enables the Level-2 joint
+field where the predictor model explicitly shares a structured field with the
+response model (with eigenvector-fixed-effect orthogonalisation to guard
+against structured confounding; Dupont, Marques and Kneib 2023).
+
+```{r missing-predictor-phase4}
+# FILL: Phase 4 -- spatial, relmat, animal, multi-source, Level-2 joint field.
+```
+
+### 5e. Non-Gaussian and categorical predictors (Phase 5)
+
+```{r missing-predictor-nongaussian}
+# FILL: Phase 5 -- lognormal/Gamma, beta/logit-normal, Poisson/NB,
+# ordinal cumulative-logit, unordered categorical (factor).
+# Mirrors drmTMB MD5 non-Gaussian extension.
+```
+
+## 6. Current boundaries
+
+The current implementation deliberately keeps several features out of scope
+for Phase 1 through Phase 3:
+
+- EM, profile, and REML missing-data engines are not implemented.
+  `engine = "laplace"` is the only v1 option; `"em"` and `"profile"` are
+  reserved names that are not yet accepted.
+- Multiple missing predictors (`mi(x1)` and `mi(x2)` in the same formula) are
+  not implemented.
+- Non-Gaussian, bounded, or categorical missing predictors (lognormal, Gamma,
+  beta, Poisson, NB, ordinal, factor) are Phase 5+ work.
+- Structured covariate models for non-Gaussian predictors (grouped or phylo
+  binary/ordinal) are not implemented.
+- Interactions inside `mi()`, splines inside `mi()`, and predictor-model
+  random slopes are not implemented.
+- `imputed()` does not summarize missing **responses**; use `predict_missing()`
+  for that.
+- `simulate_imputed()` is deferred to Phase 5: if shipped, it will mean
+  Gaussian-approximation or parametric-bootstrap draws, not posterior draws.
+- Simulated imputations, credible intervals, and multiple-imputation pooling
+  are not implemented in this layer; see `pigauto` for the MI sister path.
+- Dense known sampling-covariance matrices with partial multivariate response
+  rows are not implemented.
+- MNAR sensitivity, bootstrap-SE cross-checks, and phylo-signal reliability
+  diagnostics are Phase 3+ verification gates, not v1 API arguments.
+
+When you encounter one of these boundaries, treat the error as a design limit
+rather than a failed fit.
+For now, use the supported likelihood-based route, fall back to complete-case
+fitting, or handle the unsupported missingness outside `gllvmTMB` with a
+method whose assumptions you can state explicitly.
+
+## 7. Non-goal: measurement error
+
+Missing predictors in this layer treat the **observed** values of `x` as
+exact.
+Only `x_mis` (the unobserved values) is latent.
+
+**Measurement error** -- where the true `x` is latent even when nominally
+observed, requiring an observation model `x_obs | x_true` with known standard
+errors, replicates, or a validation subsample -- is **out of scope** for
+Phase 1 through Phase 3.
+The missing-predictor registry and `fit$missing_data` slot are designed so a
+later measurement-error lane can reuse the latent-covariate machinery (a
+possible future `me(x, se = se_x)` argument); but v1 exposes only `mi(x)` for
+missing predictors and the two interfaces will remain distinct.
+
+## References
+
+Core references for the statistical foundations:
+
+- Rubin (1976) *Biometrika* 63:581--592. MAR validity.
+- Schafer & Graham (2002) *Psychological Methods* 7:147--177. FIML as
+  alternative to MI.
+- Ibrahim, Chen, Lipsitz & Herring (2005) *JASA* 100:332--346. Missing
+  covariates in GLMs.
+- Kristensen et al. (2016) *JSS* 70(5). TMB Laplace + automatic
+  differentiation.
+- Robinson (1991) *Statistical Science* 6:15--32. EBLUP and best prediction.
+- Penone et al. (2014) *Methods Ecol. Evol.* 5:961--970. Phylogenetic
+  imputation adds noise when signal is weak.
+- Molina-Venegas (2024) *Methods Ecol. Evol.* Limits of phylogenetic
+  imputation.
+- Dupont, Marques & Kneib (2023) arXiv:2309.16861. Structured confounding in
+  spatial models.
+- Wang, Edge, Schraiber & Pennell (2025 preprint, PMC -- not peer-reviewed).
+  Phylogenetic analogue of structured confounding.

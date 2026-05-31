@@ -2167,12 +2167,17 @@ rewrite_canonical_aliases <- function(formula) {
         }
         ## animal_unique(id, ...) -> phylo_rr(id, .phylo_unique = TRUE, vcv = A)
         if (fn == "animal_unique") {
-          ## Fail-loud against the augmented-slope bar `animal_unique(1 + x | id)`.
-          ## `animal_unique` is intercept-only by contract (bare `id` column;
-          ## see ?animal_unique). Previously a slope-bearing bar was passed
-          ## verbatim to `phylo_rr`, which silently dropped the slope and fit
-          ## an intercept-only model (byte-identical to `animal_unique(id)`).
-          ## The dedicated slope entry point is `animal_slope(x | id)`.
+          ## animal_unique(1 + x | id, pedigree = ped) is a CORRELATED
+          ## intercept + slope additive-genetic reaction norm:
+          ## vec(B) ~ N(0, Sigma_b (x) A), Sigma_b a 2x2 (intercept, slope)
+          ## covariance with a FREE cross-correlation. Route it through the
+          ## phylo_unique augmented engine -- byte-identical to the
+          ## phylo_unique(1 + x | sp) branch and to animal_indep's augmented
+          ## branch, but WITHOUT `.indep = TRUE`, so atanh_cor_b stays free
+          ## (the intercept-slope correlation is estimated, not pinned to 0).
+          ## No new C++; routes through the same b_phy_aug / log_sd_b /
+          ## atanh_cor_b path as phylo_unique(1 + x | sp). Design 60 sec.3.6.
+          ## For the diagonal (rho = 0) special case use animal_indep(1 + x | id).
           arg <- e[[2L]]
           arg_is_bar <- is.call(arg) &&
             identical(arg[[1L]], as.name("|")) &&
@@ -2185,11 +2190,27 @@ rewrite_canonical_aliases <- function(formula) {
               lhs_info$lhs_form %in%
                 c("wide_intercept_slope", "long_intercept_slope")
           ) {
-            slope_col <- lhs_info$slope_col
+            new_call <- as.call(c(
+              list(as.name("phylo_slope"), arg),
+              list(
+                .phylo_unique_augmented = TRUE,
+                lhs_form = lhs_info$lhs_form,
+                slope_col = lhs_info$slope_col
+              ),
+              list(vcv = vcv_expr)
+            ))
+            return(new_call)
+          }
+          ## A bar whose LHS is neither intercept-only nor a recognised
+          ## intercept+slope form (e.g. a slope-only or multi-covariate LHS)
+          ## is genuinely unsupported here: fail loud rather than silently
+          ## drop structure in the phylo_rr fall-through below.
+          if (arg_is_bar && identical(lhs_info$lhs_form, "unsupported")) {
             cli::cli_abort(c(
-              "{.fn animal_unique} does not take a random slope.",
-              "i" = "You wrote {.code animal_unique({deparse(arg)})}; {.fn animal_unique} fits per-trait additive-genetic random {.emph intercepts} only (a bare {.code id} column).",
-              ">" = "For an additive-genetic random {.emph slope} on {.var {slope_col}}, use {.code animal_slope({slope_col} | {deparse(arg[[3L]])})}."
+              "{.fn animal_unique} augmented LHS form is not supported.",
+              "i" = "You wrote {.code animal_unique({deparse(arg)})}.",
+              "x" = "Only {.code 1 + x | id} (correlated intercept + slope) and the bare intercept-only {.code id} / {.code 0 + trait | id} forms are accepted.",
+              ">" = "For a correlated intercept+slope reaction norm use {.code animal_unique(1 + x | id, pedigree = ped)}; for the diagonal case use {.code animal_indep(1 + x | id, pedigree = ped)}."
             ))
           }
           new_call <- as.call(c(

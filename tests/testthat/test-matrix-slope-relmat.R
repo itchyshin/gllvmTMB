@@ -284,18 +284,18 @@ test_that("relmat slope x nbinom2: phylo_unique(1+x|id, vcv=A) byte-equivalent (
 })
 
 ## ---------------------------------------------------------------
-## ANI-06: animal augmented slope -- documented honest partial.
+## ANI-06: animal augmented slope -- now WIRED (issue #354 part b).
 ##
-## `animal_unique(1 + x | id, ...)` does NOT desugar to the augmented 2x2
-## phylo_unique(1+x|id) path: it routes to phylo_rr((1+x|id), .phylo_unique =
-## TRUE, vcv = A), which treats the first argument as the id and fits an
-## intercept-only model. So it is NOT byte-equivalent to
-## phylo_unique(1 + x | id, vcv = A) -- the two are different models. We verify
-## that the structures genuinely differ (rather than fake-passing an
-## equivalence), then skip: ANI-06 (animal augmented slope) stays partial until
-## the augmented-LHS slope is wired through the animal keyword.
+## `animal_unique(1 + x | id, ...)` now routes to the phylo_unique augmented
+## engine (correlated intercept + slope, free cross-correlation), so it is
+## byte-equivalent to `phylo_unique(1 + x | id, vcv = A)` on the SAME dense A.
+## Previously it dropped the slope and fit an intercept-only model; this cell
+## was an honest partial that documented the gap. Promoted to a real byte-
+## equivalence check. phylo_unique() augmented is family-general (the
+## non-Gaussian guard fires only for phylo_indep / phylo_dep), so the Poisson
+## anchor exercises the family-general path.
 ## ---------------------------------------------------------------
-test_that("animal_unique(1+x|id) augmented slope is NOT yet wired to the phylo_unique augmented path (ANI-06 stays partial -- honest, not fake-passed)", {
+test_that("animal_unique(1+x|id) augmented slope == phylo_unique(1+x|id, vcv=A) byte-identical (ANI-06 wired)", {
   skip_if_not_heavy()
   skip_if_not_slope_relmat_deps()
   fx <- make_slope_relmat_fixture(
@@ -321,22 +321,19 @@ test_that("animal_unique(1+x|id) augmented slope is NOT yet wired to the phylo_u
   ))), error = function(e) e)
 
   if (inherits(fit_relmat, "error") || inherits(fit_animal, "error")) {
-    skip("relmat / animal poisson fit failed to construct; ANI-06 augmented-slope status undetermined this run -- stays partial")
+    skip("relmat / animal poisson fit failed to construct this run; ANI-06 byte-equivalence undetermined")
   }
 
-  ## The augmented 2x2 reports exist for the phylo_unique path but the animal
-  ## path produces a different (intercept-only) structure, so its sd_b is
-  ## absent / its logLik differs materially. This is the evidence that ANI-06
-  ## (animal augmented slope) is unwired -- documented, not papered over.
-  has_aug_relmat <- length(as.numeric(fit_relmat$report$sd_b)) == 2L
-  has_aug_animal <- length(as.numeric(fit_animal$report$sd_b)) == 2L
-  expect_true(has_aug_relmat)
-  ## If the animal path ever DOES gain the augmented structure with a matching
-  ## fit, this expectation flips and we should promote ANI-06 + write a real
-  ## byte-equiv cell. Until then it must differ.
-  ll_match <- has_aug_animal &&
-    isTRUE(abs(as.numeric(stats::logLik(fit_relmat)) -
-                 as.numeric(stats::logLik(fit_animal))) < 1e-4)
-  expect_false(ll_match)
-  skip("animal_unique(1+x|id) does not route to the augmented phylo_unique slope path (fits a different model); ANI-06 (animal augmented slope) stays partial -- honest skip, not fake-pass")
+  ## Both paths now produce the augmented 2x2 (intercept, slope) structure.
+  expect_identical(fit_animal$tmb_data$use_phylo_slope_correlated, 1L)
+  expect_equal(length(as.numeric(fit_relmat$report$sd_b)), 2L)
+  expect_equal(length(as.numeric(fit_animal$report$sd_b)), 2L)
+  ## animal_unique(A = ) and phylo_unique(vcv = A) take the SAME dense path,
+  ## so the fits are byte-identical.
+  expect_equal(as.numeric(stats::logLik(fit_animal)),
+               as.numeric(stats::logLik(fit_relmat)), tolerance = 1e-6)
+  expect_equal(as.numeric(fit_animal$report$sd_b),
+               as.numeric(fit_relmat$report$sd_b), tolerance = 1e-6)
+  expect_equal(as.numeric(fit_animal$report$cor_b),
+               as.numeric(fit_relmat$report$cor_b), tolerance = 1e-6)
 })

@@ -2739,12 +2739,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           phylo_dep_slope = isTRUE(use_phylo_dep_slope),
                           ## Augmented SPDE random slopes (Design 64). DISTINCT
                           ## from the intercept-only spatial_dep / spatial_latent
-                          ## flags above. spde_dep_slope marks the
+                          ## flags above. spde_slope marks the base
+                          ## spatial_unique / spatial_indep (1 + x | coords)
+                          ## augmented path (2x2 cross-field Sigma_field via
+                          ## sd_spde_b / cor_spde_b; extract_Sigma keys on it).
+                          ## spde_dep_slope marks the
                           ## spatial_dep(1 + x | coords) full unstructured 2T x 2T
                           ## field-covariance path (extract_Sigma keys on it to
                           ## surface the reported Sigma_field); spde_latent_slope
                           ## marks the spatial_latent(1 + x | coords, d) block-
                           ## diagonal reduced-rank path.
+                          spde_slope     = isTRUE(use_spde_slope),
                           spde_dep_slope = isTRUE(use_spde_dep_slope),
                           spde_latent_slope = isTRUE(use_spde_latent_slope),
                           re_int = use_re_int),

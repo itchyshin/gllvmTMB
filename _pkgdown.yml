@@ -52,6 +52,9 @@ articles:
     - articles/covariance-correlation
     - articles/api-keyword-grid
     - articles/response-families
+    - articles/mixed-family-extractors
+    - articles/joint-sdm
+    - articles/ordinal-probit
 
   - title: Methods
     contents:
@@ -68,9 +71,6 @@ articles:
     - articles/data-shape-flowchart
     - articles/functional-biogeography
     - articles/gllvm-vocabulary
-    - articles/joint-sdm
-    - articles/mixed-family-extractors
-    - articles/ordinal-probit
     - articles/phylogenetic-gllvm
     - articles/profile-likelihood-ci
     - articles/psychometrics-irt

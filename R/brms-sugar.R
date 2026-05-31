@@ -2200,11 +2200,41 @@ rewrite_canonical_aliases <- function(formula) {
           return(new_call)
         }
         ## animal_latent(id, d = K, ...) -> phylo_rr(id, d = K, vcv = A)
+        ## For an augmented intercept+slope bar (`1 + x | id` or the long form
+        ## `0 + trait + (0 + trait):x | id`) the route mirrors `phylo_latent`
+        ## (Design 56 Sec. 9.5a): the `.latent_slope` marker tells fit-multi.R
+        ## to drive the block-diagonal reduced-rank latent-slope engine
+        ## (use_phylo_latent_slope). No new C++; the vcv = A is forwarded.
         if (fn == "animal_latent") {
           d_val <- if (!is.null(nm) && "d" %in% nm) {
             e[[which(nm == "d")]]
           } else {
             1L
+          }
+          ## Detect augmented bar.
+          arg <- e[[2L]]
+          arg_is_bar <- is.call(arg) &&
+            identical(arg[[1L]], as.name("|")) &&
+            length(arg) == 3L
+          if (arg_is_bar) {
+            lhs_form <- .gllvmTMB_lhs_form(arg[[2L]])
+            if (
+              lhs_form$lhs_form %in%
+                c("wide_intercept_slope", "long_intercept_slope")
+            ) {
+              species_arg <- arg[[3L]]
+              new_call <- as.call(c(
+                list(as.name("phylo_rr"), species_arg),
+                list(d = d_val),
+                list(
+                  .latent_slope = TRUE,
+                  lhs_form = lhs_form$lhs_form,
+                  slope_col = lhs_form$slope_col
+                ),
+                list(vcv = vcv_expr)
+              ))
+              return(new_call)
+            }
           }
           new_call <- as.call(c(
             list(as.name("phylo_rr"), e[[2L]]),
@@ -2260,8 +2290,12 @@ rewrite_canonical_aliases <- function(formula) {
           ))
           return(new_call)
         }
-        ## animal_dep(0 + trait | id, ...) -> phylo_rr(id, d = .deferred_n_traits,
-        ##                                             .dep = TRUE, vcv = A)
+        ## animal_dep(bar, ...) -> for intercept-only bar: phylo_rr(id, .dep, vcv=A)
+        ##                         for augmented bar (1 + x | id or long form):
+        ##                           phylo_slope(bar, .phylo_dep_augmented, vcv=A)
+        ## Mirrors `phylo_dep` (Design 56 Sec. 9.5c): the `.phylo_dep_augmented`
+        ## marker tells fit-multi.R to expand n_lhs_cols to 2T and free
+        ## theta_dep_chol for the full 2T x 2T unstructured Sigma_b. No new C++.
         if (fn == "animal_dep") {
           bar <- e[[2L]]
           if (
@@ -2276,6 +2310,24 @@ rewrite_canonical_aliases <- function(formula) {
             ))
           }
           species_arg <- bar[[3L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          ## Augmented intercept+slope LHS: route via the dep-slope engine.
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            new_call <- as.call(c(
+              list(as.name("phylo_slope"), bar),
+              list(
+                .phylo_dep_augmented = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              ),
+              list(vcv = vcv_expr)
+            ))
+            return(new_call)
+          }
+          ## Intercept-only bar: the original non-augmented dep path.
           new_call <- as.call(c(
             list(as.name("phylo_rr"), species_arg),
             list(d = as.name(".deferred_n_traits"), .dep = TRUE),

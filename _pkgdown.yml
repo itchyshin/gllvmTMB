@@ -63,6 +63,7 @@ articles:
     - articles/convergence-start-values
     - articles/pitfalls
     - articles/profile-likelihood-ci
+    - articles/troubleshooting-profile
     - articles/cross-package-validation
 
   - title: internal
@@ -78,7 +79,6 @@ articles:
     - articles/psychometrics-irt
     - articles/simulation-recovery-validated
     - articles/simulation-verification
-    - articles/troubleshooting-profile
     - articles/roadmap
 
 reference:

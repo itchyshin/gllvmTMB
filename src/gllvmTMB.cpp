@@ -1541,21 +1541,20 @@ Type objective_function<Type>::operator()()
   // -------- Observation likelihood --------------------------------------
   Type sigma_eps = exp(log_sigma_eps);
   REPORT(sigma_eps);
-  for (int o = 0; o < y.size(); o++) {
+  // Per-row response log-density log p(y(o) | eta_o), factored out of the
+  // family-dispatch loop so the SAME kernels can be evaluated at a STATE-
+  // SUBSTITUTED eta for the discrete missing-predictor SUM (design 68
+  // sec.1.0 / sec.3.3: "the SUM introduces NO new RESPONSE family"). The
+  // ordinary loop calls obs_loglik(o, eta(o)); the binary mi() block (below)
+  // calls obs_loglik(o, eta_state) for each hypothetical predictor state and
+  // accumulates the per-unit product. The body is the verbatim fid dispatch
+  // with each `nll -= <density>` rewritten as `ll += <density>; return ll`.
+  auto obs_loglik = [&](int o, Type eta_o) -> Type {
     int fid = family_id_vec(o);
-    // Capture the running NLL so we can scale this row's contribution by
-    // its weight after the family-dispatch block. Mirrors the
-    // `tmp_ll *= weights_i(i)` pattern in src/gllvmTMB.cpp around line 1136.
-    Type nll_before_row = nll;
-    // Phase 1 response mask: a row with is_y_observed(o) == 0 contributes
-    // nothing to the likelihood. Its y(o) is a safe sentinel, so we must NOT
-    // evaluate any family density on it (that is the sentinel-invariance
-    // guarantee, design 59 sec.9). When all rows are observed (response="drop")
-    // this guard is always true -> an exact no-op.
-    if (is_y_observed(o)) {
+    Type ll = Type(0.0);
     if (fid == 0) {
       // Gaussian, identity link
-      nll -= dnorm(y(o), eta(o), sigma_eps, true);
+      ll += dnorm(y(o), eta_o, sigma_eps, true);
     } else if (fid == 1) {
       // Bernoulli / binomial(k-of-n). Link depends on link_id_vec(o):
       //   0 = logit:    p = 1 / (1 + exp(-eta))
@@ -1568,11 +1567,11 @@ Type objective_function<Type>::operator()()
       int lid = link_id_vec(o);
       Type p;
       if (lid == 0) {
-        p = Type(1.0) / (Type(1.0) + exp(-eta(o)));
+        p = Type(1.0) / (Type(1.0) + exp(-eta_o));
       } else if (lid == 1) {
-        p = pnorm(eta(o));
+        p = pnorm(eta_o);
       } else if (lid == 2) {
-        p = Type(1.0) - exp(-exp(eta(o)));
+        p = Type(1.0) - exp(-exp(eta_o));
       } else {
         error("gllvmTMB_multi: unknown link_id for binomial family");
       }
@@ -1580,41 +1579,41 @@ Type objective_function<Type>::operator()()
       Type tiny = Type(1e-12);
       p = (p < tiny)            ? tiny           : p;
       p = (p > Type(1.0) - tiny) ? Type(1.0) - tiny : p;
-      nll -= dbinom(y(o), n_trials(o), p, true);
+      ll += dbinom(y(o), n_trials(o), p, true);
     } else if (fid == 2) {
       // Poisson, log link
-      nll -= dpois(y(o), exp(eta(o)), true);
+      ll += dpois(y(o), exp(eta_o), true);
     } else if (fid == 3) {
       // Lognormal, log link
       // y > 0 strictly. log(y) ~ Normal(eta, sigma_eps); add Jacobian -log(y).
-      nll -= dnorm(log(y(o)), eta(o), sigma_eps, true) - log(y(o));
+      ll += dnorm(log(y(o)), eta_o, sigma_eps, true) - log(y(o));
     } else if (fid == 4) {
       // Gamma, log link, mu + CV parametrization
       // mu = exp(eta); sigma_eps interpreted as the coefficient of variation.
       // shape = 1 / sigma_eps^2 ; scale = mu / shape so E(y) = mu, CV(y) = sigma_eps.
-      Type mu_g    = exp(eta(o));
+      Type mu_g    = exp(eta_o);
       Type shape_g = Type(1.0) / (sigma_eps * sigma_eps);
       Type scale_g = mu_g / shape_g;
-      nll -= dgamma(y(o), shape_g, scale_g, true);
+      ll += dgamma(y(o), shape_g, scale_g, true);
     } else if (fid == 5) {
       // NB2 (negative binomial, type 2), log link.
       // Var(y) = mu + mu^2 / phi, with one log_phi per trait.
       // Use dnbinom_robust (numerically stable; takes log_mu and log(var-mu)).
       // log(var - mu) = log(mu^2 / phi) = 2*log(mu) - log(phi).
       int t = trait_id(o);
-      Type log_mu = eta(o);                       // log link
+      Type log_mu = eta_o;                         // log link
       Type log_v_minus_mu = Type(2.0) * log_mu - log_phi_nbinom2(t);
-      nll -= dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
     } else if (fid == 6) {
       // Tweedie compound Poisson-Gamma, log link.
       // y >= 0 (point mass at zero plus continuous positive part).
       // Per-trait dispersion phi = exp(log_phi_tweedie(t));
       // power p in (1, 2), parameterised as p = 1 + plogis(logit_p_tweedie(t)).
       int t = trait_id(o);
-      Type mu_t  = exp(eta(o));
+      Type mu_t  = exp(eta_o);
       Type phi_t = exp(log_phi_tweedie(t));
       Type p_t   = Type(1.0) + invlogit(logit_p_tweedie(t));
-      nll -= dtweedie(y(o), mu_t, phi_t, p_t, true);
+      ll += dtweedie(y(o), mu_t, phi_t, p_t, true);
     } else if (fid == 7) {
       // Beta family, logit link, mean-precision parameterisation.
       // y in (0, 1); mu = invlogit(eta); a = mu*phi, b = (1-mu)*phi.
@@ -1622,7 +1621,7 @@ Type objective_function<Type>::operator()()
       //           + (a - 1) log(y) + (b - 1) log(1 - y)
       // (Smithson & Verkuilen 2006 Psychol. Methods 11:54-71.)
       int t = trait_id(o);
-      Type mu_b  = invlogit(eta(o));
+      Type mu_b  = invlogit(eta_o);
       Type phi_b = exp(log_phi_beta(t));
       Type a_b   = mu_b * phi_b;
       Type b_b   = (Type(1.0) - mu_b) * phi_b;
@@ -1633,11 +1632,11 @@ Type objective_function<Type>::operator()()
       Type ld = lgamma(phi_b) - lgamma(a_b) - lgamma(b_b)
               + (a_b - Type(1.0)) * log(y_safe)
               + (b_b - Type(1.0)) * log(Type(1.0) - y_safe);
-      nll -= ld;
+      ll += ld;
     } else if (fid == 8) {
       // Beta-binomial family (Hilbe 2014; Bolker 2008).
       int t = trait_id(o);
-      Type mu_bb  = invlogit(eta(o));
+      Type mu_bb  = invlogit(eta_o);
       Type phi_bb = exp(log_phi_betabinom(t));
       Type a_bb   = mu_bb * phi_bb;
       Type b_bb   = (Type(1.0) - mu_bb) * phi_bb;
@@ -1652,29 +1651,29 @@ Type objective_function<Type>::operator()()
               - lgamma(a_bb)
               - lgamma(b_bb)
               - lgamma(N + a_bb + b_bb);
-      nll -= ld;
+      ll += ld;
     } else if (fid == 9) {
       // Student-t, identity link.
       int t = trait_id(o);
-      Type mu_t    = eta(o);
+      Type mu_t    = eta_o;
       Type sigma_t = exp(log_sigma_student(t));
       Type df_t    = Type(1.0) + exp(log_df_student(t));
       Type z_t     = (y(o) - mu_t) / sigma_t;
-      nll -= dt(z_t, df_t, true) - log(sigma_t);
+      ll += dt(z_t, df_t, true) - log(sigma_t);
     } else if (fid == 10) {
       // Zero-truncated Poisson, log link.
-      Type lambda_t = exp(eta(o));
-      nll -= dpois(y(o), lambda_t, true)
+      Type lambda_t = exp(eta_o);
+      ll += dpois(y(o), lambda_t, true)
              - logspace_sub(Type(0.0), -lambda_t);
     } else if (fid == 11) {
       // Zero-truncated NB2, log link.
       int t = trait_id(o);
-      Type log_mu = eta(o);
+      Type log_mu = eta_o;
       Type mu_t   = exp(log_mu);
       Type phi_t  = exp(log_phi_truncnb2(t));
       Type log_v_minus_mu = Type(2.0) * log_mu - log_phi_truncnb2(t);
       Type log_p0 = phi_t * (log_phi_truncnb2(t) - log(mu_t + phi_t));
-      nll -= dnbinom_robust(y(o), log_mu, log_v_minus_mu, true)
+      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true)
              - logspace_sub(Type(0.0), log_p0);
     } else if (fid == 12) {
       // delta_lognormal (hurdle): one shared eta drives both components.
@@ -1684,12 +1683,12 @@ Type objective_function<Type>::operator()()
       // so we hand eta directly to dbinom_robust for numerical stability.
       int t = trait_id(o);
       Type x_pres = (y(o) > Type(0)) ? Type(1.0) : Type(0.0);
-      nll -= dbinom_robust(x_pres, Type(1.0), eta(o), true);
+      ll += dbinom_robust(x_pres, Type(1.0), eta_o, true);
       if (y(o) > Type(0)) {
         Type sigma_t = exp(log_sigma_lognormal_delta(t));
         // log y ~ Normal(eta, sigma_t); add Jacobian -log y so the density
         // is for Y rather than log Y.
-        nll -= dnorm(log(y(o)), eta(o), sigma_t, true) - log(y(o));
+        ll += dnorm(log(y(o)), eta_o, sigma_t, true) - log(y(o));
       }
     } else if (fid == 13) {
       // delta_gamma (hurdle): same shared-eta logic.
@@ -1697,13 +1696,13 @@ Type objective_function<Type>::operator()()
       //     so E(y) = mu = exp(eta), CV(y) = phi.
       int t = trait_id(o);
       Type x_pres = (y(o) > Type(0)) ? Type(1.0) : Type(0.0);
-      nll -= dbinom_robust(x_pres, Type(1.0), eta(o), true);
+      ll += dbinom_robust(x_pres, Type(1.0), eta_o, true);
       if (y(o) > Type(0)) {
         Type phi_t   = exp(log_phi_gamma_delta(t));
-        Type mu_g    = exp(eta(o));
+        Type mu_g    = exp(eta_o);
         Type shape_g = Type(1.0) / (phi_t * phi_t);
         Type scale_g = mu_g / shape_g;
-        nll -= dgamma(y(o), shape_g, scale_g, true);
+        ll += dgamma(y(o), shape_g, scale_g, true);
       }
     } else if (fid == 14) {
       // ordinal_probit (Wright/Falconer/Hadfield threshold model).
@@ -1731,17 +1730,17 @@ Type objective_function<Type>::operator()()
       if (yk >= K) {
         upper_p = Type(1.0);
       } else {
-        upper_p = pnorm(cuts(yk - 1) - eta(o));
+        upper_p = pnorm(cuts(yk - 1) - eta_o);
       }
       if (yk <= 1) {
         lower_p = Type(0.0);
       } else {
-        lower_p = pnorm(cuts(yk - 2) - eta(o));
+        lower_p = pnorm(cuts(yk - 2) - eta_o);
       }
       Type p_k = upper_p - lower_p;
       Type tiny_p = Type(1e-12);
       p_k = (p_k < tiny_p) ? tiny_p : p_k;
-      nll -= log(p_k);
+      ll += log(p_k);
     } else if (fid == 15) {
       // NB1 (negative binomial, type 1), log link.
       // Var(y) = mu * (1 + phi) = mu + phi * mu, with one log_phi per trait
@@ -1751,19 +1750,125 @@ Type objective_function<Type>::operator()()
       // argument is 2*log(mu) - log(phi); here var - mu = phi * mu so it is
       // log(phi) + log(mu) = log_mu + log_phi_nbinom1(t).
       int t = trait_id(o);
-      Type log_mu = eta(o);                       // log link
+      Type log_mu = eta_o;                         // log link
       Type log_v_minus_mu = log_mu + log_phi_nbinom1(t);
-      nll -= dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
+      ll += dnbinom_robust(y(o), log_mu, log_v_minus_mu, true);
     } else {
       error("gllvmTMB_multi: unknown family_id");
     }
-    }  // end if (is_y_observed(o))
+    return ll;
+  };
+
+  // -------- Discrete missing-PREDICTOR SUM: binary (mi_family == 1) -------
+  // Design 68 sec.1.1 / sec.3 (drmTMB MD6a analogue with the multivariate
+  // per-UNIT product). The binary missing x is marginalised EXACTLY by a
+  // 2-state SUM evaluated here, with NO latent x. For a missing-x unit u the
+  // observed-data contribution is
+  //   nll -= logspace_add( log_p1(u) + log_y1(u),  log_p0(u) + log_y0(u) )
+  // where log_y_k(u) = sum_t obs_loglik(o, eta_state(o, k)) is the PRODUCT
+  // over u's trait rows (sec.3.2: the SUM is OUTSIDE the trait product, so the
+  // prior is counted ONCE per unit and a SINGLE state k feeds all traits -- a
+  // per-row SUM would double-count the prior). The state-substituted eta uses
+  // the delta-swap (sec.3.4): eta_state(o,k) = eta(o) - b_fix(mi_col)*X_fix(o,
+  // mi_col) + b_fix(mi_col)*k, exact for the single-column binary predictor.
+  // The accumulator acc(u, k) (M x 2) is filled by the gated rows in the loop
+  // below, initialised here to the per-unit log-priors. has_mi != 1 -> the
+  // whole block is an exact no-op (acc / mi_acc_* unused).
+  int mi_n_units = (has_mi == 1 && mi_family == 1) ? mi_x_unit.size() : 0;
+  matrix<Type> mi_acc(std::max(mi_n_units, 1), 2);
+  mi_acc.setZero();
+  vector<Type> mi_logp1(std::max(mi_n_units, 1));
+  vector<Type> mi_logp0(std::max(mi_n_units, 1));
+  mi_logp1.setZero();
+  mi_logp0.setZero();
+  if (has_mi == 1 && mi_family == 1) {
+    // Per-unit Bernoulli-logit predictor prior (verbatim drmTMB MD6a:
+    // log_p1 = -logspace_add(0, -eta_x), log_p0 = -logspace_add(0, eta_x)).
+    vector<Type> mi_eta_x = X_mi * beta_mi;
+    for (int u = 0; u < mi_n_units; ++u) {
+      mi_logp1(u) = -logspace_add(Type(0.0), -mi_eta_x(u));
+      mi_logp0(u) = -logspace_add(Type(0.0),  mi_eta_x(u));
+      // Initialise the per-state accumulator with the state log-prior; the
+      // response product (sec.3.3 step 2) is added per trait row below.
+      mi_acc(u, 0) = mi_logp0(u);
+      mi_acc(u, 1) = mi_logp1(u);
+    }
+  }
+
+  for (int o = 0; o < y.size(); o++) {
+    // Capture the running NLL so we can scale this row's contribution by
+    // its weight after the family-dispatch block. Mirrors the
+    // `tmp_ll *= weights_i(i)` pattern in src/gllvmTMB.cpp around line 1136.
+    Type nll_before_row = nll;
+    // The discrete-row GATE (design 68 sec.2 / drmTMB src/drmTMB.cpp:1897-1898).
+    // For a row whose unit has a MISSING binary predictor (mi_family == 1,
+    // mi_observed_unit(unit) == 0), the per-state response density is folded
+    // into the per-unit SUM (mi_acc below), so the ordinary family term must
+    // NOT also fire -- otherwise y is double-counted. The gate consults the
+    // per-UNIT observed flag via the long-row -> unit map mi_unit_id (the
+    // multivariate adaptation: drmTMB's mi_observed is per response row).
+    bool mi_missing_row = (has_mi == 1 && mi_family == 1 &&
+                           mi_observed_unit(mi_unit_id(o)) == 0);
+    // Phase 1 response mask: a row with is_y_observed(o) == 0 contributes
+    // nothing to the likelihood. Its y(o) is a safe sentinel, so we must NOT
+    // evaluate any family density on it (that is the sentinel-invariance
+    // guarantee, design 59 sec.9). When all rows are observed (response="drop")
+    // this guard is always true -> an exact no-op.
+    if (is_y_observed(o) && !mi_missing_row) {
+      // Ordinary path: observed-y row whose predictor value is NOT a missing
+      // binary x (observed-x units take this path with the true x in eta(o)).
+      nll -= obs_loglik(o, eta(o));
+    } else if (is_y_observed(o) && mi_missing_row) {
+      // Discrete-SUM path (sec.3.3 steps 1-2): accumulate the per-state
+      // response log-density into the unit's 2-state accumulator. Weights
+      // enter HERE per trait row (the outer weight scaling at the foot of the
+      // loop is bypassed for gated rows since row_nll == 0). The delta-swap
+      // removes the mi() column's placeholder contribution and inserts the
+      // hypothetical state value k in {0, 1}.
+      int u = mi_unit_id(o);
+      Type eta_base = eta(o) - b_fix(mi_col) * X_fix(o, mi_col);
+      mi_acc(u, 0) += weights_i(o) *
+        obs_loglik(o, eta_base + b_fix(mi_col) * Type(0.0));
+      mi_acc(u, 1) += weights_i(o) *
+        obs_loglik(o, eta_base + b_fix(mi_col) * Type(1.0));
+    }
     // Apply the per-row weight: scale this row's NLL contribution by
     // weights_i(o). Unit weight is a no-op; weight 0 zeroes the row's
-    // contribution (cross-validation hold-out semantics). For a masked row the
-    // family block above added nothing, so row_nll == 0 and this is a no-op too.
+    // contribution (cross-validation hold-out semantics). For a masked or
+    // gated row the family block above added nothing, so row_nll == 0 and this
+    // is a no-op too.
     Type row_nll = nll - nll_before_row;
     nll = nll_before_row + row_nll * weights_i(o);
+  }
+
+  // -------- Discrete missing-PREDICTOR SUM: collapse + report ------------
+  // Second pass over the M missing units (design 68 sec.3.3 steps 4 + 6):
+  // log-sum-exp the 2-state accumulator into nll ONCE per unit, and report the
+  // per-unit posterior P(x = 1 | y_u) = exp(acc(u,1) - logspace_add(...)) (the
+  // conditional probability, sec.4.4 -- NOT a latent mode). For OBSERVED-x
+  // units the ordinary path already fired above; we add only the single
+  // matching state's log-prior here (drmTMB MD6a `mi_x * log_p1 + (1-mi_x) *
+  // log_p0`, src/drmTMB.cpp:847). mi_probability holds P(x=1|y) at missing
+  // units and the observed x value at observed units (drmTMB mi_x_full shape).
+  if (has_mi == 1 && mi_family == 1) {
+    vector<Type> mi_probability(mi_n_units);
+    for (int u = 0; u < mi_n_units; ++u) {
+      if (mi_observed_unit(u) == 1) {
+        // Observed-x unit: add the matching state's log-prior. mi_x_unit(u) is
+        // the observed binary value (0 or 1).
+        nll -= mi_x_unit(u) * mi_logp1(u)
+             + (Type(1.0) - mi_x_unit(u)) * mi_logp0(u);
+        mi_probability(u) = mi_x_unit(u);
+      } else {
+        // Missing-x unit: collapse the 2-state mixture-of-products ONCE.
+        Type log_norm = logspace_add(mi_acc(u, 0), mi_acc(u, 1));
+        nll -= log_norm;
+        mi_probability(u) = exp(mi_acc(u, 1) - log_norm);
+      }
+    }
+    REPORT(mi_probability);
+    REPORT(beta_mi);
+    ADREPORT(beta_mi);
   }
 
   ADREPORT(b_fix);

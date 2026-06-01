@@ -30,14 +30,21 @@ A data frame with \code{variable}, \code{original_row}, \code{model_row},
 }
 \description{
 For a \code{\link[=gllvmTMB]{gllvmTMB()}} fit with a modelled missing predictor (\code{mi(x)} plus
-\code{missing = miss_control(predictor = "model")}), \code{imputed()} returns the
-conditional modes (EBLUPs) of the missing predictor values together with
-their conditional standard errors from the joint Hessian.
+\code{missing = miss_control(predictor = "model")}), \code{imputed()} returns a fitted
+summary of each missing predictor value. For a \strong{continuous Gaussian}
+predictor (\code{impute_model(x ~ z)}), the \code{estimate} is the conditional mode
+(EBLUP) with a conditional standard error from the joint Hessian. For a
+\strong{binary} predictor (\code{impute_model(x ~ z, family = binomial())}), the
+\code{estimate} is the conditional probability \code{P(x = 1 | y, z)} from the exact
+two-state marginalisation, \code{std_error} is \code{NA} (the discrete route reports a
+fitted distribution, not a single mode with a Hessian SE), and
+\code{uncertainty_status} is \code{"discrete_no_se"}.
 }
 \details{
 The missing predictor is a unit-level quantity, so \code{imputed()} returns one
-row per missing \strong{unit} value (not one per long-format model row). These
-are empirical best linear unbiased predictions, not posterior summaries.
+row per missing \strong{unit} value (not one per long-format model row). The
+Gaussian estimates are empirical best linear unbiased predictions, not
+posterior summaries.
 
 \strong{Row identifiers.} The \code{original_row} and \code{model_row} columns are
 \strong{latent-level ordinals} (the 1-based index of the missing unit / group in

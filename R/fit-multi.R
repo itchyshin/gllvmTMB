@@ -1109,6 +1109,29 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## Phase 5a (design 68): a BINARY mi() predictor must enter the fixed design
+  ## as a SINGLE numeric 0/1 column literally named `var` (so the delta-swap
+  ## targets one column). A 2-level factor / logical / character predictor
+  ## would otherwise expand to a contrast column named `varTRUE` / `var1`, and
+  ## the single-broadcast-column contract (the mu_col match below) would fail.
+  ## Code it to numeric 0/1 here -- BEFORE model.matrix -- capturing the
+  ## original level labels for the registry; the bare-formula model.matrix and
+  ## the impute model.frame then both see the numeric column. Mirrors drmTMB,
+  ## which codes the binary predictor to numeric before building the design.
+  mi_binary_levels <- character(0)
+  if (isTRUE(mi_setup$enabled) && identical(mi_setup$family, "bernoulli")) {
+    mi_var <- mi_setup$variable
+    if (!mi_var %in% names(data)) {
+      cli::cli_abort(c(
+        "Internal error: the binary {.fn mi} predictor {.val {mi_var}} is not a data column.",
+        "i" = "Expected {.val {mi_var}} in the model data."
+      ))
+    }
+    coded <- gll_binary_mi_response(data[[mi_var]], mi_var)
+    data[[mi_var]] <- coded$value
+    mi_binary_levels <- coded$levels
+  }
+
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
@@ -1221,13 +1244,31 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "i" = "Expected a single broadcast column named {.val {mi_colname}}."
       ))
     }
-    mi_model <- gll_build_gaussian_mi_model(
-      setup = mi_setup,
-      data_long = data,
-      unit_id = site_id,
-      mi_col = mi_col,
-      env = environment(parsed$fixed)
-    )
+    ## Phase 5a: dispatch the predictor-model builder by family. The Gaussian
+    ## continuous path (mi_family == 0) is integrated by a Laplace latent x_mis;
+    ## the binary discrete path (mi_family == 1, design 68) has NO latent and is
+    ## summed out exactly in the engine.
+    mi_model <- if (identical(mi_setup$family, "bernoulli")) {
+      m <- gll_build_binary_mi_model(
+        setup = mi_setup,
+        data_long = data,
+        unit_id = site_id,
+        mi_col = mi_col,
+        env = environment(parsed$fixed)
+      )
+      ## Restore the ORIGINAL level labels captured before the data was coded to
+      ## numeric 0/1 (the build re-read the now-numeric column as c("0","1")).
+      if (length(mi_binary_levels) == 2L) m$levels <- mi_binary_levels
+      m
+    } else {
+      gll_build_gaussian_mi_model(
+        setup = mi_setup,
+        data_long = data,
+        unit_id = site_id,
+        mi_col = mi_col,
+        env = environment(parsed$fixed)
+      )
+    }
     ## PORT-INVARIANT (single-source): the mi() design column X_fix[, mi_col]
     ## MUST be the SAME level-broadcast imputed vector (mi_x_unit) that is fed
     ## to the latent covariate density in the engine. We overwrite the whole
@@ -2240,6 +2281,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## log_sd_mi_group. Stub lengths (1 / empty) when no mi() term / no group is
   ## present -- mapped off below.
   use_mi_group <- use_mi_predictor && isTRUE(mi_model$random$enabled)
+  ## Phase 5a: the DISCRETE (binary) route has NO latent x and NO residual
+  ## sigma -- the missing x is summed out exactly in the engine (design 68
+  ## sec.1.1). x_mis stays length 0 (out of `random`) and log_sigma_mi is
+  ## mapped off; only beta_mi (the Bernoulli-logit coefficients) is estimated.
+  use_mi_discrete <- use_mi_predictor && identical(mi_model$family, "bernoulli")
   if (use_mi_predictor) {
     tmb_params$beta_mi      <- unname(mi_model$beta_start)
     tmb_params$log_sigma_mi <- mi_model$log_sigma_start
@@ -2403,6 +2449,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## stays out of the `random` set).
   if (!use_mi_predictor) {
     tmb_map$beta_mi      <- factor(rep(NA_integer_, length(tmb_params$beta_mi)))
+    tmb_map$log_sigma_mi <- factor(rep(NA_integer_, length(tmb_params$log_sigma_mi)))
+  } else if (use_mi_discrete) {
+    ## Phase 5a: the binary route estimates beta_mi but has no residual sigma.
+    ## Map log_sigma_mi off (the discrete SUM never reads it); x_mis is length 0
+    ## and simply stays out of the `random` set.
     tmb_map$log_sigma_mi <- factor(rep(NA_integer_, length(tmb_params$log_sigma_mi)))
   }
   ## Phase 2b grouped covariate RE: map the group params off (and keep
@@ -2890,7 +2941,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_phylo_latent_slope) random <- c(random, "g_phy_slope")
   if (use_re_int)   random <- c(random, "u_re_int")
   ## Phase 2a: the latent missing UNIT-level x values are integrated by Laplace.
-  if (use_mi_predictor) random <- c(random, "x_mis")
+  ## Phase 5a: the DISCRETE (binary) route has NO latent x (it is summed out
+  ## exactly), so x_mis stays out of `random` -- only the continuous Gaussian
+  ## route adds it.
+  if (use_mi_predictor && !use_mi_discrete) random <- c(random, "x_mis")
   ## Phase 2b: the unit-level grouped covariate intercepts u_mi_group ~ N(0,1)
   ## also join the Laplace-integrated `random` set.
   if (use_mi_group) random <- c(random, "u_mi_group")
@@ -3270,8 +3324,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the fitted parameter list into the registry (+ the full unit-level x).
   if (use_mi_predictor) {
     par_list <- obj$env$parList(opt$par)
+    ## Phase 5a: the binary route reads the per-unit conditional probability
+    ## from the engine REPORT(mi_probability); pass the report to gll_finalize_mi.
+    mi_report <- tryCatch(obj$report(opt$par), error = function(e) NULL)
     fit$missing_data <- gll_finalize_mi(
-      fit$missing_data, par_list, mi_model, sdr = sd_rep
+      fit$missing_data, par_list, mi_model, sdr = sd_rep, report = mi_report
     )
   }
   fit$fit_health <- .gllvmTMB_build_fit_health(fit)

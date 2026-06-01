@@ -85,3 +85,12 @@ dev/m3-pilot-results/
 dev/m3-pilot-figures/
 dev/m3-pilot-summary.md
 dev/m3-pilot-summary.rds
+
+# Local power-pilot engine (dev/m3-pilot-local-loop.R) runtime artefacts.
+# The local accumulate store, run log, PID, and stop flag are machine-local
+# and must NEVER commit to main (the durable GHA store lives on its own
+# orphan branch, not here). dev/ is already in .Rbuildignore (never shipped).
+dev/m3-pilot-results-local/
+dev/m3-pilot-local.log
+dev/m3-pilot-local.pid
+dev/STOP-LOCAL-PILOT

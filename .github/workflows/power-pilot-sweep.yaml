@@ -5,7 +5,8 @@ name: Power pilot sweep
 # Every ~2h GitHub's scheduler fires this workflow (no human needed). Each
 # run adds `n_sim_step` fresh replicates to every pilot cell still below
 # `n_sim_cap`, accumulating reps across runs until all 48 cells reach the
-# cap (Design 66 sec. 8 target n_sim = 2000). The accumulated per-cell
+# cap (n_sim = 10000; runs the full week alongside the local engine). The
+# accumulated per-cell
 # results live on a dedicated orphan branch (`power-pilot-results`), so
 # progress is durable + resumable across runs and NEVER touches `main`.
 #
@@ -37,7 +38,7 @@ on:
       n_sim_cap:
         description: "Target accumulated replicates per cell (campaign stops once every cell reaches this)."
         required: false
-        default: "2000"
+        default: "10000"
         type: string
       dry_run:
         description: "true = cheap smoke (1 cell/shard, tiny step) to confirm the pipeline on GHA."
@@ -96,7 +97,11 @@ jobs:
         shell: bash
         run: |
           STEP="${{ github.event.inputs.n_sim_step }}"; STEP="${STEP:-200}"
-          CAP="${{ github.event.inputs.n_sim_cap }}";  CAP="${CAP:-2000}"
+          # SCHEDULED (cron) runs have NO inputs, so this :- fallback is the
+          # cap the cron uses. Raised 2000 -> 10000 so the cron accumulates
+          # toward the same high cap as the local engine and runs the full
+          # week (the auto-stop guard fires only once every cell hits 10000).
+          CAP="${{ github.event.inputs.n_sim_cap }}";  CAP="${CAP:-10000}"
           DRY="${{ github.event.inputs.dry_run }}";    DRY="${DRY:-false}"
           {
             echo "n_sim_step=$STEP"

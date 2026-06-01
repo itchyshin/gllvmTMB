@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.gllvmtmb.power-pilot-local.plist.template
+  =============================================
+  macOS LaunchAgent for the SECOND (local) power-pilot engine
+  (dev/m3-pilot-local-loop.R). This is the MORE DURABLE launch option:
+
+    * KeepAlive=true   -> launchd restarts the loop if it crashes/exits
+                          (the loop only exits cleanly at the cap or via
+                          the stop flag; otherwise launchd revives it).
+    * RunAtLoad=true   -> starts immediately on load and at every login.
+
+  It survives the Claude session and terminal closing, and resumes from
+  the local store after a crash/reboot (the loop is resumable). For a
+  lighter, no-auto-restart option use dev/launch-local-pilot.sh instead.
+
+  ---------------------------------------------------------------------
+  BEFORE LOADING -- substitute the two placeholders below:
+    __REPO_ROOT__  -> the absolute repo path, e.g.
+                      /Users/z3437171/Dropbox/Github Local/gllvmTMB
+                      (spaces are fine inside <string>...</string>)
+    __RSCRIPT__    -> the absolute Rscript path, e.g.
+                      /usr/local/bin/Rscript
+                      (find yours with:  command -v Rscript )
+
+  Optionally tune the loop via the EnvironmentVariables dict below
+  (LOCAL_CORES caps the cores; default in the R script is 10).
+
+  ---------------------------------------------------------------------
+  INSTALL / LOAD (per-user LaunchAgent; no sudo):
+    1. Fill in the placeholders and save a COPY (drop ".template") to:
+         ~/Library/LaunchAgents/com.gllvmtmb.power-pilot-local.plist
+       e.g.:
+         sed -e 's#__REPO_ROOT__#/Users/z3437171/Dropbox/Github Local/gllvmTMB#g' \
+             -e 's#__RSCRIPT__#/usr/local/bin/Rscript#g' \
+             "dev/com.gllvmtmb.power-pilot-local.plist.template" \
+             > ~/Library/LaunchAgents/com.gllvmtmb.power-pilot-local.plist
+    2. Validate it:
+         plutil -lint ~/Library/LaunchAgents/com.gllvmtmb.power-pilot-local.plist
+    3. Load + start (modern launchctl):
+         launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.gllvmtmb.power-pilot-local.plist
+       (legacy equivalent:  launchctl load -w ~/Library/LaunchAgents/com.gllvmtmb.power-pilot-local.plist )
+
+  CHECK STATUS:
+    launchctl print gui/$(id -u)/com.gllvmtmb.power-pilot-local | head -n 40
+    launchctl list | grep power-pilot-local
+    tail -f "__REPO_ROOT__/dev/m3-pilot-local.log"
+
+  STOP CLEANLY (let the current batch finish, then it exits; KeepAlive
+  will try to restart it, so ALSO unload to keep it down):
+    touch "__REPO_ROOT__/dev/STOP-LOCAL-PILOT"
+    launchctl bootout gui/$(id -u)/com.gllvmtmb.power-pilot-local
+    (legacy:  launchctl unload -w ~/Library/LaunchAgents/com.gllvmtmb.power-pilot-local.plist )
+    # remove the stop flag before the next load so it can start again:
+    rm -f "__REPO_ROOT__/dev/STOP-LOCAL-PILOT"
+
+  NOTE: KeepAlive restarts the loop whenever it exits. To STOP for good,
+  ALWAYS pair the stop flag with `bootout`/`unload`. The stop flag alone
+  makes the loop exit, but launchd would relaunch it.
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.gllvmtmb.power-pilot-local</string>
+
+    <!-- Run the continuous local loop. ProgramArguments = argv. -->
+    <key>ProgramArguments</key>
+    <array>
+      <string>__RSCRIPT__</string>
+      <string>dev/m3-pilot-local-loop.R</string>
+    </array>
+
+    <!-- Run from the repo root so the script's relative source() paths
+         (dev/m3-grid.R, dev/m3-pilot-launch.R) and the local store
+         resolve correctly. -->
+    <key>WorkingDirectory</key>
+    <string>__REPO_ROOT__</string>
+
+    <!-- Restart on crash/exit; start at load + login. -->
+    <key>KeepAlive</key>
+    <true/>
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Append stdout + stderr to the same run log the loop writes. -->
+    <key>StandardOutPath</key>
+    <string>__REPO_ROOT__/dev/m3-pilot-local.log</string>
+    <key>StandardErrorPath</key>
+    <string>__REPO_ROOT__/dev/m3-pilot-local.log</string>
+
+    <!-- Optional loop tuning. LOCAL_CORES caps the worker pool (<= cores).
+         Defaults live in dev/m3-pilot-local-loop.R; uncomment to override. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>LOCAL_CORES</key>
+      <string>10</string>
+      <key>LOCAL_N_SIM_CAP</key>
+      <string>10000</string>
+      <key>LOCAL_N_SIM_STEP</key>
+      <string>150</string>
+    </dict>
+
+    <!-- Be a good citizen: run below normal priority so interactive work
+         keeps the CPU. (Nice value; 10 = noticeably lower priority.) -->
+    <key>Nice</key>
+    <integer>10</integer>
+
+    <!-- Throttle launchd restarts so a fast-failing loop does not spin. -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+  </dict>
+</plist>

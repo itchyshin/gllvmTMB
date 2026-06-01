@@ -750,8 +750,19 @@ run_accumulate_pilot_batch <- function(
   results_dir = PILOT_RESULTS_DIR_DEFAULT,
   n_boot = PILOT_N_BOOT_DEFAULT,
   ci_level = PILOT_CI_LEVEL,
+  seed_fn = pilot_accum_batch_seed,
   verbose = FALSE
 ) {
+  ## `seed_fn(run_seed_base, cell_seed_base) -> integer` maps the run-level
+  ## seed_base + the cell's stable seed_base to this batch's seed base.
+  ## DEFAULT is the GHA scheme (pilot_accum_batch_seed): the GHA runner
+  ## (dev/power-pilot-run.R) calls this function by name and never passes
+  ## seed_fn, so the cron path is byte-identical to before this argument
+  ## existed. A SECOND engine (the local continuous loop in
+  ## dev/m3-pilot-local-loop.R) injects a DISJOINT seed_fn so its reps can
+  ## never share an RNG draw with the GHA cron's reps -- see that file's
+  ## local_accum_batch_seed() and the disjointness proof in its header.
+  stopifnot(is.function(seed_fn))
   n_sim_step <- as.integer(n_sim_step)
   n_sim_cap <- as.integer(n_sim_cap)
   stopifnot(n_sim_step >= 1L, n_sim_cap >= 1L)
@@ -832,8 +843,9 @@ run_accumulate_pilot_batch <- function(
     step <- min(n_sim_step, n_sim_cap - n_before)
 
     ## Deterministic per-batch seed block, disjoint across run numbers
-    ## (overflow-safe; derived ONLY from the passed seed_base).
-    batch_seed_base <- pilot_accum_batch_seed(seed_base, cell$seed_base)
+    ## (overflow-safe; derived ONLY from the passed seed_base via seed_fn,
+    ## which defaults to the GHA scheme pilot_accum_batch_seed).
+    batch_seed_base <- seed_fn(seed_base, cell$seed_base)
 
     cat(sprintf(
       paste0(

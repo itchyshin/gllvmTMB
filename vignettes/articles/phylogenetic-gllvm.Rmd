@@ -458,35 +458,41 @@ structure is simply unavailable -- it is not silently approximated):
 
 - **Trait-specific / structured phylogenetic slopes.** Beyond the
   single-variance `phylo_slope` path, the augmented diagonal slope
-  `phylo_indep(1 + x | species)` now fits (validated for `gaussian()`
-  and `binomial()` -- probit and logit -- recovery). The richer
+  `phylo_indep(1 + x | species)` now fits and recovers across the core
+  families (Gaussian; binomial probit/logit; Poisson; negative
+  binomial; Gamma; Beta; ordinal -- register `PHY-06`, `PHY-11`..`PHY-16`).
+  The reduced-rank `phylo_latent(1 + x | species)` slope is likewise
+  validated across that family set (`PHY-17`). The richer
   *trait-specific* spelling `phylo_indep(0 + trait + trait:x | species)`
   is recognised by the parser but **reserved for a future release**: it
   **fails loud** (the parser reports that an "LHS richer than
   `0 + trait` is not yet supported"), so you cannot accidentally get an
-  unvalidated fit. The structured `phylo_dep(1 + x | species)` and
-  `phylo_latent(1 + x | species)` augmented slopes are validated for
-  `gaussian()` only in this release; on a non-Gaussian family they fail
-  loud rather than silently approximate. For family-general augmented
-  phylogenetic random regression, use the correlated
-  `phylo_unique(1 + x | species)`.
+  unvalidated fit. The full-unstructured `phylo_dep(1 + x | species)`
+  augmented slope is validated for `gaussian()` only in this release;
+  on a non-Gaussian family it fails loud rather than silently
+  approximate (`PHY-18` -- the unstructured cross-(intercept,slope)
+  covariance is not yet identifiable off Gaussian). For a correlated
+  (intercept, slope) augmented phylogenetic random regression, the
+  closed-form `phylo_unique(1 + x | species)` additionally surfaces its
+  2x2 via `extract_Sigma(level = "phy")`.
 - **Calibrated intervals on the slope variance.** The point estimate
   of `sigma_slope` is what this section demonstrates; calibrated
   confidence-interval coverage for slope variances has not been
   established and should not be reported as such.
-- **Non-Gaussian slope recovery beyond the activated cells.** Augmented
-  slope recovery is validated for `gaussian()` (shown here) and, on the
-  `phylo_indep` path, for `binomial()` (probit / logit). Other families
-  on the `phylo_indep` slope -- Poisson, negative binomial, Gamma, Beta,
-  ordinal -- are reserved by the family allowlist pending the family
-  sweep, and the `phylo_dep` / `phylo_latent` augmented slopes are
-  Gaussian-only for now. Treat those combinations as not yet delivered.
+- **Non-Gaussian slope recovery on the full-unstructured `phylo_dep`
+  path.** The diagonal `phylo_indep` and reduced-rank `phylo_latent`
+  augmented slopes now recover across the core families (above); the
+  remaining reserve is the full-unstructured `phylo_dep(1 + x |
+  species)` slope, which is Gaussian-only and fails loud off Gaussian
+  (`PHY-18`). Treat non-Gaussian `phylo_dep` slopes as not yet
+  delivered.
 
 If you need a correlated (intercept, slope) covariance, reach for
-`phylo_unique(1 + x | species)`, which fits family-generally. If your
-question genuinely needs trait-specific reaction norms or the
-non-Gaussian structured (`phylo_dep` / `phylo_latent`) slopes above,
-that is engine work in progress rather than a feature to reach for now.
+`phylo_unique(1 + x | species)`, which fits family-generally and
+surfaces the 2x2 via `extract_Sigma(level = "phy")`. If your question
+genuinely needs trait-specific reaction-norm LHS spellings or a
+non-Gaussian full-unstructured `phylo_dep` slope, those remain
+reserved (fail-loud) rather than features to reach for now.
 
 ## Trait covariance across nested tiers
 

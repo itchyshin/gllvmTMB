@@ -210,6 +210,12 @@ handling. The default \code{miss_control()} (\code{response = "drop"},
 and masks them out of the likelihood, preserving original-row accounting
 in \code{fit$missing_data}.}
 
+\item{impute}{Optional specification of the covariate model for a predictor
+declared missing with \code{mi(x)} in \code{formula}, used only when
+\code{missing = miss_control(predictor = "model")}. Either a one-sided
+formula for the predictor model or an \code{\link[=impute_model]{impute_model()}} object; the
+default \code{NULL} is appropriate when no \code{mi()} term is present.}
+
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
 
 \item{site}{(deprecated) alias for \code{unit}. Kept for backward

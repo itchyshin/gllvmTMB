@@ -8,7 +8,7 @@
 
 #' @importFrom cli cli_abort cli_warn cli_inform
 #' @importFrom assertthat assert_that
-#' @importFrom stats predict model.frame gaussian as.formula
+#' @importFrom stats predict model.frame gaussian as.formula residuals
 #' @importFrom methods as
 #' @keywords internal
 NULL

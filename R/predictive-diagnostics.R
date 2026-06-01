@@ -1098,3 +1098,10 @@ residuals.gllvmTMB_multi <- function(
     "."
   )
 }
+
+## Column names referenced bare inside ggplot2::aes() above; declared here to
+## avoid R CMD check "no visible binding for global variable" NOTEs.
+utils::globalVariables(c(
+  "value", "count_label", "root_diff", "residual",
+  "sim_low", "sim_high", "sim_median"
+))

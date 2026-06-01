@@ -13,6 +13,7 @@
 ^README\.html$
 ^cran-comments\.md$
 ^codecov\.yml$
+^air\.toml$
 ^docs$
 ^pkgdown$
 ^data-raw$

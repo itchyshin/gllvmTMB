@@ -209,6 +209,11 @@
 #'   `miss_control(response = "include")` keeps rows with a missing response
 #'   and masks them out of the likelihood, preserving original-row accounting
 #'   in `fit$missing_data`.
+#' @param impute Optional specification of the covariate model for a predictor
+#'   declared missing with `mi(x)` in `formula`, used only when
+#'   `missing = miss_control(predictor = "model")`. Either a one-sided
+#'   formula for the predictor model or an [impute_model()] object; the
+#'   default `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #'
 #' @return A `gllvmTMB` object. With no covariance-structure terms in

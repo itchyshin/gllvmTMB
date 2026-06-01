@@ -35,7 +35,6 @@ Imports:
     lifecycle,
     Matrix,
     methods,
-    nlme,
     reformulas,
     rlang,
     stats,

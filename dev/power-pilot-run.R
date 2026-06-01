@@ -38,6 +38,7 @@ suppressWarnings(suppressMessages({
   library(gllvmTMB)
   source("dev/m3-grid.R")
   source("dev/m3-pilot-launch.R")
+  source("dev/m3-pilot-report.R")
 }))
 
 ## ---- Argument parsing (mirrors dev/precompute-m3-grid.R) --------------
@@ -168,6 +169,21 @@ if (identical(mode, "status")) {
   emit_output("cells_complete", as.character(st$counts[["complete"]]))
   emit_output("cells_total", as.character(st$counts[["total"]]))
 
+  ## ---- Issue + result recording (Design 66 report layer) ----
+  ## Fold the accumulated per-cell stores into the tidy report table and
+  ## derive a one-line ISSUES string (per-cell fit/non-PD/convergence
+  ## failure rates) for the #340 board. Fail-soft: a report error must
+  ## never break the summary job, so default to "none" on any error.
+  report_df <- tryCatch(
+    pilot_collect(results_dirs = results_dir),
+    error = function(e) NULL
+  )
+  top_issues <- tryCatch(
+    if (is.null(report_df)) "none" else pilot_issue_oneline(report_df),
+    error = function(e) "none"
+  )
+  emit_output("top_issues", top_issues)
+
   ## Optional human-readable status file (markdown table) for the issue
   ## summary job to post.
   status_out <- arg_value("--status-out", NULL)
@@ -190,6 +206,15 @@ if (identical(mode, "status")) {
         fmt_lgl(cells$passes_94[i]),
         fmt_lgl(cells$passes_95[i])
       ))
+    }
+    ## Append the ISSUES block (flagged cells with failure / non-PD /
+    ## convergence rates) so the board carries issues beside coverage/power.
+    if (!is.null(report_df)) {
+      issue_block <- tryCatch(
+        pilot_issue_lines(report_df),
+        error = function(e) c("## ISSUES", "", "(issue summary unavailable)")
+      )
+      lines <- c(lines, "", issue_block)
     }
     writeLines(lines, status_out)
     cat(sprintf("[power-pilot] wrote status table to %s\n", status_out))

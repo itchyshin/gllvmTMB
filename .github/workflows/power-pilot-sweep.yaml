@@ -467,6 +467,10 @@ jobs:
             const allComplete = '${{ steps.board.outputs.all_complete }}' === 'true';
             const failRate = '${{ needs.persist.outputs.fail_rate }}' || '0';
             const failAlert = parseFloat(failRate) > parseFloat(process.env.FAIL_RATE_ALERT || '0.30');
+            // Per-cell issue digest (fit / non-PD / convergence failure rates),
+            // produced by pilot_collect() / pilot_issue_oneline() in the report
+            // layer and emitted by the status step. "none" when nothing tripped.
+            const topIssues = '${{ steps.board.outputs.top_issues }}' || 'none';
             const body = [
               marker,
               `## Power pilot sweep -- live status board`,
@@ -477,6 +481,9 @@ jobs:
               `- Replicates accumulated: **${repsTotal} / ${repsTarget}**`,
               `- Campaign complete: **${allComplete ? 'YES -- cron will auto-stop' : 'no (in progress)'}**`,
               `- Last run failure rate: **${failRate}**${failAlert ? ' :warning: ABOVE ALERT THRESHOLD' : ''}`,
+              `- Issues (flagged cells): **${topIssues}**`,
+              ``,
+              `Coverage/power figures are produced on demand by \`pilot_plot()\` (\`dev/m3-pilot-report.R\`); the per-cell board below also carries an ISSUES section.`,
               ``,
               `<details><summary>Per-cell board</summary>`,
               ``,

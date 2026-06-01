@@ -14,9 +14,8 @@ and Design 59 (`docs/design/59-missing-data-layer.md`, the authoritative
 contract text -- NOT edited here; refinements proposed in section 7 below for
 the maintainer to apply).
 
-> **Doc-number note.** Design 59 section 7 references a future "Design 66" only
-> informally; the gllvmTMB `docs/design/66-*` slot is already taken by the
-> open DRAFT capstone power-study PR (#369). This missing-predictor design
+> **Doc-number note.** The gllvmTMB `docs/design/66-*` slot is already taken by
+> the open DRAFT capstone power-study PR (#369). This missing-predictor design
 > therefore takes the next free number, **67**, to avoid colliding with an
 > in-flight PR. The number is cosmetic; the contract anchor remains Design 59.
 
@@ -258,7 +257,7 @@ missing-predictor row is REPLACED, not added to.** In drmTMB the ordinary
 Gaussian response term is gated OFF for discrete-missing rows:
 
 ```cpp
-// src/drmTMB.cpp:1059-1066
+// src/drmTMB.cpp:1163-1170
 if (observed_y(i) == 1 &&
     !(has_mi == 1 && mi_family != 0 && mi_observed(i) == 0)) {
   nll -= weights(i) * dnorm(y(i), mu(i), obs_sigma(i), true);
@@ -405,7 +404,7 @@ rework for stacked-long/multivariate; **NEW** = no drmTMB precedent.
 | `mi_family==1` binary 2-state SUM (`:830-862`) | gllvmTMB binary SUM | ADAPT | per-UNIT mixture over trait rows (section 2.3), not per-row |
 | `mi_family==2` ordered K-state SUM (`:864-964`) | gllvmTMB ordered SUM | ADAPT | per-UNIT; reuse fid-14 cutpoint reconstruction |
 | `mi_family==3` unordered K-state SUM (`:966-1042`) | gllvmTMB softmax SUM | ADAPT | per-UNIT; baseline category |
-| ordinary-response gate for discrete-missing rows (`:1059-1066`) | replicate in long loop | ADAPT (CRITICAL) | gate each family-dispatch block (`:1394-1588`) so discrete-missing rows don't double-count `y` |
+| ordinary-response gate for discrete-missing rows (`:1163-1170`) | replicate in long loop | ADAPT (CRITICAL) | gate each family-dispatch block (`:1394-1588`) so discrete-missing rows don't double-count `y` |
 | `mi_x_full`/`mi_state_probability`/`expected_score` REPORT | port REPORT/ADREPORT | PORT | EBLUP outputs + state posteriors |
 
 ### 3.4 Extractors / output
@@ -447,7 +446,7 @@ fully-observed sibling dataset.
    EXACTLY inside the integrand; only continuous quantities are Laplace-
    approximated.
 3. **The discrete SUM REPLACES the ordinary per-row response term** for
-   missing-predictor rows (drmTMB gate `src/drmTMB.cpp:1059-1066`); gllvmTMB
+   missing-predictor rows (drmTMB gate `src/drmTMB.cpp:1163-1170`); gllvmTMB
    must replicate this gate in its stacked-long family loop or it double-counts
    `y`.
 4. **Multivariate twist (NEW vs drmTMB):** the per-unit discrete mixture must
@@ -555,7 +554,7 @@ surface). Proposed edits to keep the shared contract in sync:
   > "For discrete missing predictors, the per-family blocks
   > (`src/gllvmTMB.cpp:1394-1588`) must be gated so a discrete-missing row does
   > NOT add its ordinary `nll` term (the per-state density is folded into the
-  > mixture sum) -- mirror drmTMB `src/drmTMB.cpp:1059-1066`."
+  > mixture sum) -- mirror drmTMB `src/drmTMB.cpp:1163-1170`."
 
 ### 7.2 Draft #332 ledger comment (DO NOT POST -- for maintainer review)
 
@@ -581,7 +580,7 @@ Engine alignment:
 - Continuous predictors -> latent x_mis + Laplace. Discrete predictors -> EXACT
   finite-state SUM (no latent); a finite mixture in the response likelihood
   that REPLACES the ordinary per-row response term for missing-predictor rows
-  (drmTMB gate src/drmTMB.cpp:1059-1066). gllvmTMB replicates this in its
+  (drmTMB gate src/drmTMB.cpp:1163-1170). gllvmTMB replicates this in its
   stacked-long family loop.
 - gllvmTMB multivariate twist: the per-unit discrete SUM is over the PRODUCT of
   the unit's per-trait densities (grouped by a mi_unit_id index), not per-row.

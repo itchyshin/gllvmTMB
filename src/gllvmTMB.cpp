@@ -1824,29 +1824,38 @@ Type objective_function<Type>::operator()()
     return ll;
   };
 
-  // -------- Discrete missing-PREDICTOR SUM: binary + ordered -------------
-  // Design 68 sec.1.1 / sec.1.2 / sec.3 (drmTMB MD6a/MD6b analogue with the
-  // multivariate per-UNIT product). A discrete missing predictor is
-  // marginalised EXACTLY by a finite-state SUM evaluated here, with NO latent
-  // x. For a missing-x unit u the observed-data contribution is
+  // -------- Discrete missing-PREDICTOR SUM: binary + ordered + unordered -
+  // Design 68 sec.1.1 / sec.1.2 / sec.1.3 / sec.3 (drmTMB MD6a/MD6b/MD6c
+  // analogue with the multivariate per-UNIT product). A discrete missing
+  // predictor is marginalised EXACTLY by a finite-state SUM evaluated here, with
+  // NO latent x. For a missing-x unit u the observed-data contribution is
   //   nll -= logspace_add_over_k( log p(x=k|z_u) + log_y_k(u) )
   // where log_y_k(u) = sum_t obs_loglik(o, eta_state(o, k)) is the PRODUCT
   // over u's trait rows (sec.3.2: the SUM is OUTSIDE the trait product, so the
   // prior is counted ONCE per unit and a SINGLE state k feeds all traits -- a
   // per-row SUM would double-count the prior). The per-unit, per-state
   // accumulator mi_acc(u, k) is M x K (K = 2 for binary, K = mi_n_state for
-  // ordered -- the generalisation of Phase 5a's M x 2); it is filled by the
-  // gated rows in the loop below, initialised here to the per-unit log-priors.
-  //   * binary  (mi_family == 1): K = 2; Bernoulli-logit prior; the state-eta
+  // ordered / unordered -- the generalisation of Phase 5a's M x 2); it is filled
+  // by the gated rows in the loop below, initialised here to the per-unit
+  // log-priors.
+  //   * binary    (mi_family == 1): K = 2; Bernoulli-logit prior; the state-eta
   //     uses the single-column DELTA-SWAP (sec.3.4), value k in {0, 1}.
-  //   * ordered (mi_family == 2): K states; cumulative-logit prior with K-1
+  //   * ordered   (mi_family == 2): K states; cumulative-logit prior with K-1
   //     free cutpoints reconstructed from theta_ord (sec.1.2); the state-eta
-  //     uses the FULL-SWAP via X_fix_state (an ordered factor expands to K-1
-  //     contrast columns, so a single-column delta is insufficient).
-  // has_mi != 1, or mi_family not in {1, 2} -> the whole block is an exact
-  // no-op (mi_acc / mi_logp* / mi_cutpoints unused).
-  bool mi_is_discrete = (has_mi == 1 && (mi_family == 1 || mi_family == 2));
-  int mi_K = (has_mi == 1 && mi_family == 2) ? mi_n_state : 2;
+  //     uses the FULL-SWAP via X_fix_state (a factor expands to K-1 contrast
+  //     columns, so a single-column delta is insufficient).
+  //   * unordered (mi_family == 3): K states; baseline-category SOFTMAX prior
+  //     (sec.1.3) -- the ONE family with a genuinely NEW predictor-model block;
+  //     beta_mi is packed as (K-1) blocks of n_coef, eta_state(0) = 0 baseline,
+  //     log_denom via the explicit max-subtraction guard. Same FULL-SWAP eta and
+  //     same per-unit product / M x K accumulator as ordered (sec.1.3: the SUM
+  //     identity + response-side reuse are identical to MD6a/MD6b).
+  // has_mi != 1, or mi_family not in {1, 2, 3} -> the whole block is an exact
+  // no-op (mi_acc / mi_logp* / mi_cutpoints / mi_log_prior unused).
+  bool mi_is_discrete = (has_mi == 1 &&
+                         (mi_family == 1 || mi_family == 2 || mi_family == 3));
+  int mi_K = (has_mi == 1 && (mi_family == 2 || mi_family == 3))
+    ? mi_n_state : 2;
   int mi_n_units = mi_is_discrete ? mi_x_unit.size() : 0;
   matrix<Type> mi_acc(std::max(mi_n_units, 1), std::max(mi_K, 1));
   mi_acc.setZero();
@@ -1903,6 +1912,46 @@ Type objective_function<Type>::operator()()
           Type lower = mi_cutpoints(k - 1) - mi_eta_x(u);
           log_prob = gll_log_inv_logit_diff(upper, lower);
         }
+        mi_log_prior(u, k) = log_prob;
+        // Initialise the accumulator with the state log-prior (sec.3.3 step 3);
+        // the response product is added per trait row below.
+        mi_acc(u, k) = log_prob;
+      }
+    }
+  } else if (has_mi == 1 && mi_family == 3) {
+    // Baseline-category SOFTMAX predictor prior (drmTMB MD6c, design 68 sec.1.3).
+    // beta_mi is packed as (K-1) blocks of n_coef: block (k-1) is the linear
+    // predictor for state k. eta_state(0) = 0 (baseline = first level);
+    // eta_state(k) = X_mi(u,.) . beta_mi[block (k-1)], k = 1..K-1; the log
+    // normaliser uses the EXPLICIT max-subtraction guard (NOT a library
+    // logsumexp), matching drmTMB src/drmTMB.cpp:987-995; log P(x=k+1|z) =
+    // eta_state(k) - log_denom. This is the one family with a genuinely NEW
+    // predictor-model block; the SUM identity + response-side reuse are
+    // otherwise identical to MD6a/MD6b.
+    int n_coef = X_mi.cols();
+    for (int u = 0; u < mi_n_units; ++u) {
+      vector<Type> eta_state(mi_K);
+      eta_state(0) = Type(0.0);
+      for (int k = 1; k < mi_K; ++k) {
+        Type eta = Type(0.0);
+        int offset = (k - 1) * n_coef;
+        for (int col = 0; col < n_coef; ++col) {
+          eta += X_mi(u, col) * beta_mi(offset + col);
+        }
+        eta_state(k) = eta;
+      }
+      // Explicit max-subtraction guard for the softmax normaliser (sec.1.3).
+      Type max_eta = eta_state(0);
+      for (int k = 1; k < mi_K; ++k) {
+        max_eta = CppAD::CondExpGt(eta_state(k), max_eta, eta_state(k), max_eta);
+      }
+      Type denom = Type(0.0);
+      for (int k = 0; k < mi_K; ++k) {
+        denom += exp(eta_state(k) - max_eta);
+      }
+      Type log_denom = max_eta + log(denom);
+      for (int k = 0; k < mi_K; ++k) {
+        Type log_prob = eta_state(k) - log_denom;
         mi_log_prior(u, k) = log_prob;
         // Initialise the accumulator with the state log-prior (sec.3.3 step 3);
         // the response product is added per trait row below.
@@ -2052,6 +2101,38 @@ Type objective_function<Type>::operator()()
     REPORT(beta_mi);
     ADREPORT(beta_mi);
     ADREPORT(mi_cutpoints);
+  } else if (has_mi == 1 && mi_family == 3) {
+    // Unordered (drmTMB MD6c): collapse the K-state softmax mixture-of-products
+    // ONCE per missing unit (sec.3.3 step 4) and report (step 6) the per-unit
+    // posterior state weights w(u,k) (M x K). The conditional MODAL CATEGORY
+    // argmax_k w(u,k) is derived R-side from mi_state_probability (the levels are
+    // unordered, so there is NO expected score). For OBSERVED-x units the
+    // ordinary response path already fired above; add only the single matching
+    // state's softmax log-prior (drmTMB MD6c src/drmTMB.cpp:1002-1006).
+    // mi_state_probability holds w(u,.) (a one-hot at observed units).
+    matrix<Type> mi_state_probability(mi_n_units, mi_K);
+    mi_state_probability.setZero();
+    for (int u = 0; u < mi_n_units; ++u) {
+      if (mi_observed_unit(u) == 1) {
+        // Observed-x unit: mi_x_unit(u) is the observed integer category 1..K.
+        int state = CppAD::Integer(mi_x_unit(u)) - 1;  // 0-indexed
+        nll -= mi_log_prior(u, state);
+        mi_state_probability(u, state) = Type(1.0);
+      } else {
+        // Missing-x unit: log-sum-exp the K-state accumulator ONCE.
+        Type log_norm = mi_acc(u, 0);
+        for (int k = 1; k < mi_K; ++k) {
+          log_norm = logspace_add(log_norm, mi_acc(u, k));
+        }
+        nll -= log_norm;
+        for (int k = 0; k < mi_K; ++k) {
+          mi_state_probability(u, k) = exp(mi_acc(u, k) - log_norm);
+        }
+      }
+    }
+    REPORT(mi_state_probability);
+    REPORT(beta_mi);
+    ADREPORT(beta_mi);
   }
 
   ADREPORT(b_fix);

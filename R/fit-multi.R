@@ -1132,6 +1132,37 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     mi_binary_levels <- coded$levels
   }
 
+  ## Phase 5b (design 68 sec.1.2 / sec.4): an ORDERED mi() predictor enters the
+  ## fixed design as an ORDERED FACTOR (expanding to K-1 contrast columns; the
+  ## FULL-SWAP via X_fix_state forces those columns to each state). model.matrix
+  ## with na.pass would leak NA into those columns and trip the NA guard below,
+  ## so we PLACEHOLDER-FILL the missing rows with level 1 (immaterial: the engine
+  ## gates missing rows off the ordinary term and reads X_fix_state for them).
+  ## The NA-preserving raw 1..K scores + the validated levels are captured on the
+  ## setup so the ordered builder can derive observed/missing from them (the
+  ## filled column has no NA). The >=3-level / unordered / empty-category guards
+  ## fire HERE via gll_ordered_mi_response (before any TMB fit).
+  if (isTRUE(mi_setup$enabled) && identical(mi_setup$family, "ordinal")) {
+    mi_var <- mi_setup$variable
+    if (!mi_var %in% names(data)) {
+      cli::cli_abort(c(
+        "Internal error: the ordered {.fn mi} predictor {.val {mi_var}} is not a data column.",
+        "i" = "Expected {.val {mi_var}} in the model data."
+      ))
+    }
+    coded <- gll_ordered_mi_response(data[[mi_var]], mi_var)
+    mi_setup$ordered_value_long <- coded$value        # 1..K, NA preserved
+    mi_setup$ordered_levels <- coded$levels
+    ## Placeholder-fill missing rows with level 1, keep as an ordered factor so
+    ## model.matrix produces the same K-1 contrast columns as the state design.
+    filled <- coded$value
+    filled[is.na(filled)] <- 1L
+    data[[mi_var]] <- ordered(
+      coded$levels[filled],
+      levels = coded$levels
+    )
+  }
+
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
@@ -1237,17 +1268,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## earlier (before the design matrix); reuse it.
   if (isTRUE(mi_setup$enabled)) {
     mi_colname <- mi_setup$variable
-    mi_col <- match(mi_colname, colnames(X_fix))
-    if (is.na(mi_col)) {
+    ## Phase 5b: the ORDERED predictor enters X_fix as an ordered factor (K-1
+    ## contrast columns), so there is NO single broadcast column named `var`;
+    ## the full-swap reads X_fix_state instead. Only binary / Gaussian (single
+    ## broadcast column) require the mi_col match.
+    is_ordered_setup <- identical(mi_setup$family, "ordinal")
+    mi_col <- if (is_ordered_setup) NA_integer_ else match(mi_colname,
+                                                           colnames(X_fix))
+    if (!is_ordered_setup && is.na(mi_col)) {
       cli::cli_abort(c(
         "Internal error: the {.fn mi} predictor {.val {mi_colname}} is not a column of the fixed-effects design matrix.",
         "i" = "Expected a single broadcast column named {.val {mi_colname}}."
       ))
     }
-    ## Phase 5a: dispatch the predictor-model builder by family. The Gaussian
+    ## Phase 5a/5b: dispatch the predictor-model builder by family. The Gaussian
     ## continuous path (mi_family == 0) is integrated by a Laplace latent x_mis;
-    ## the binary discrete path (mi_family == 1, design 68) has NO latent and is
-    ## summed out exactly in the engine.
+    ## the binary (mi_family == 1) and ordered (mi_family == 2) discrete paths
+    ## have NO latent and are summed out exactly in the engine.
     mi_model <- if (identical(mi_setup$family, "bernoulli")) {
       m <- gll_build_binary_mi_model(
         setup = mi_setup,
@@ -1260,6 +1297,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## numeric 0/1 (the build re-read the now-numeric column as c("0","1")).
       if (length(mi_binary_levels) == 2L) m$levels <- mi_binary_levels
       m
+    } else if (is_ordered_setup) {
+      gll_build_ordered_mi_model(
+        setup = mi_setup,
+        data_long = data,
+        unit_id = site_id,
+        mi_col = mi_col,
+        env = environment(parsed$fixed)
+      )
     } else {
       gll_build_gaussian_mi_model(
         setup = mi_setup,
@@ -1269,20 +1314,40 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         env = environment(parsed$fixed)
       )
     }
-    ## PORT-INVARIANT (single-source): the mi() design column X_fix[, mi_col]
-    ## MUST be the SAME level-broadcast imputed vector (mi_x_unit) that is fed
-    ## to the latent covariate density in the engine. We overwrite the whole
-    ## column from mi_x_unit broadcast by the SAME long-row -> level map
-    ## (`mi_model$unit_id`, = site_id at unit level, = the mi_group() level map
-    ## at Phase 2c), so the delta-correction
-    ##   eta(o) += b_fix(mi_col) * (x_full(level) - X_fix(o, mi_col))
-    ## cancels EXACTLY at observed rows (x_full == X_fix == observed x) and only
-    ## swaps the placeholder for x_mis at missing rows. Using `mi_model$unit_id`
-    ## (NOT site_id) keeps the design column and the C++ `mi_unit_id` sourced
-    ## from ONE map at any level -- a Phase-2c group whose broadcast differed
-    ## from the density's would bias eta and "finite + converged" would not
-    ## catch it (coordinator audit point 1).
-    X_fix[, mi_col] <- mi_model$x_unit[mi_model$unit_id + 1L]
+    if (is_ordered_setup) {
+      ## Phase 5b: build the FILTERED long-and-stacked state design X_fix_state
+      ## (the full-swap reads it for missing-unit rows) + the mi_state_row map.
+      ## Uses the SAME long fixed formula / model frame / design as X_fix, so the
+      ## state matrices are column-compatible (a guard asserts this). The ordered
+      ## `var` column in `mf` is the placeholder-filled ordered factor; the state
+      ## builder forces it to each level k = 1..K.
+      state <- gll_mi_state_design(
+        fixed_formula = parsed$fixed,
+        mf = mf,
+        X_fix = X_fix,
+        mi_col_name = mi_colname,
+        levels = mi_model$levels,
+        missing_unit = !mi_model$observed,
+        unit_id = mi_model$unit_id
+      )
+      mi_model$X_fix_state <- state$X_fix_state
+      mi_model$mi_state_row <- state$mi_state_row
+    } else {
+      ## PORT-INVARIANT (single-source): the mi() design column X_fix[, mi_col]
+      ## MUST be the SAME level-broadcast imputed vector (mi_x_unit) that is fed
+      ## to the latent covariate density in the engine. We overwrite the whole
+      ## column from mi_x_unit broadcast by the SAME long-row -> level map
+      ## (`mi_model$unit_id`, = site_id at unit level, = the mi_group() level map
+      ## at Phase 2c), so the delta-correction
+      ##   eta(o) += b_fix(mi_col) * (x_full(level) - X_fix(o, mi_col))
+      ## cancels EXACTLY at observed rows (x_full == X_fix == observed x) and only
+      ## swaps the placeholder for x_mis at missing rows. Using `mi_model$unit_id`
+      ## (NOT site_id) keeps the design column and the C++ `mi_unit_id` sourced
+      ## from ONE map at any level -- a Phase-2c group whose broadcast differed
+      ## from the density's would bias eta and "finite + converged" would not
+      ## catch it (coordinator audit point 1).
+      X_fix[, mi_col] <- mi_model$x_unit[mi_model$unit_id + 1L]
+    }
   } else {
     mi_model <- gll_empty_mi_model()
   }
@@ -2281,11 +2346,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## log_sd_mi_group. Stub lengths (1 / empty) when no mi() term / no group is
   ## present -- mapped off below.
   use_mi_group <- use_mi_predictor && isTRUE(mi_model$random$enabled)
-  ## Phase 5a: the DISCRETE (binary) route has NO latent x and NO residual
-  ## sigma -- the missing x is summed out exactly in the engine (design 68
-  ## sec.1.1). x_mis stays length 0 (out of `random`) and log_sigma_mi is
-  ## mapped off; only beta_mi (the Bernoulli-logit coefficients) is estimated.
-  use_mi_discrete <- use_mi_predictor && identical(mi_model$family, "bernoulli")
+  ## Phase 5a/5b: the DISCRETE (binary, ordered) routes have NO latent x and NO
+  ## residual sigma -- the missing x is summed out exactly in the engine
+  ## (design 68 sec.1.1 / sec.1.2). x_mis stays length 0 (out of `random`) and
+  ## log_sigma_mi is mapped off; beta_mi (the covariate coefficients) is
+  ## estimated, plus theta_ord (the K-1 free ordered cutpoints) for the ordered
+  ## route. theta_ord stays length 0 (mapped off) for binary / Gaussian.
+  use_mi_discrete <- use_mi_predictor &&
+    (identical(mi_model$family, "bernoulli") ||
+       identical(mi_model$family, "ordinal"))
+  use_mi_ordered <- use_mi_predictor && identical(mi_model$family, "ordinal")
   if (use_mi_predictor) {
     tmb_params$beta_mi      <- unname(mi_model$beta_start)
     tmb_params$log_sigma_mi <- mi_model$log_sigma_start
@@ -2294,6 +2364,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_params$beta_mi      <- 0.0
     tmb_params$log_sigma_mi <- 0.0
     tmb_params$x_mis        <- numeric(0)
+  }
+  ## Phase 5b: the K-1 free ordered cutpoints (theta_ord = free base + log-
+  ## increments, design 68 sec.1.2). Length 0 (mapped off) unless ordered.
+  if (use_mi_ordered) {
+    tmb_params$theta_ord <- unname(mi_model$theta_start)
+  } else {
+    tmb_params$theta_ord <- numeric(0)
   }
   if (use_mi_group) {
     tmb_params$u_mi_group      <- unname(mi_model$u_group_start)

@@ -42,11 +42,13 @@
 #'
 #' @return A `gllvmTMB_impute_model` object for the `impute` argument of
 #'   [gllvmTMB()].
-#' @seealso [gllvmTMB()] for the `impute =` argument and [miss_control()] for
-#'   the `predictor = "model"` switch.
+#' @seealso [gllvmTMB()] for the `impute =` argument, [cumulative_logit()] for
+#'   an ordered categorical predictor model, and [miss_control()] for the
+#'   `predictor = "model"` switch.
 #' @export
 #' @examples
 #' impute_model(x ~ z)
+#' impute_model(score ~ z, family = cumulative_logit())
 impute_model <- function(formula, family = stats::gaussian()) {
   if (!inherits(formula, "formula") || length(formula) != 3L) {
     cli::cli_abort(
@@ -61,6 +63,45 @@ impute_model <- function(formula, family = stats::gaussian()) {
       family_type = family_type
     ),
     class = "gllvmTMB_impute_model"
+  )
+}
+
+#' Cumulative-logit ordered categorical missing-predictor family
+#'
+#' `cumulative_logit()` declares the predictor-model family for an **ordered
+#' categorical** missing predictor used inside [mi()] with
+#' `impute_model(family = cumulative_logit())` (Phase 5b, the gllvmTMB analogue
+#' of the drmTMB MD6b path). The missing ordered predictor is marginalised
+#' EXACTLY by a finite-state cumulative-logit sum over its `K` categories
+#' (`K >= 3`); there is no latent variable. The predictor link is cumulative
+#' **logit**, with `K - 1` free cutpoints `c_1 < ... < c_{K-1}` and a cell
+#' probability `Pr(x = k | z) = F(c_k - eta_x) - F(c_{k-1} - eta_x)`, where
+#' `eta_x = X_x beta_x` (no separate predictor intercept; the cutpoints carry
+#' the location). The missing predictor must be an **ordered factor** (or
+#' integer category scores) with at least three levels; a two-level predictor
+#' uses [binomial()] (the binary route).
+#'
+#' This is a predictor-model family tag consumed by `impute_model(family = )`,
+#' NOT a response family for [gllvmTMB()]. It is named and shaped to align with
+#' the drmTMB `cumulative_logit()` constructor (the shared missing-data
+#' contract). The predictor cumulative-logit link is DISTINCT from the
+#' [ordinal_probit()] RESPONSE family (a probit threshold model).
+#'
+#' @return A `gllvmTMB_impute_family` object for the `family` argument of
+#'   [impute_model()].
+#' @seealso [impute_model()], [mi()], [binomial()] for a binary missing
+#'   predictor, and [ordinal_probit()] for the ordinal RESPONSE family.
+#' @export
+#' @examples
+#' impute_model(score ~ z, family = cumulative_logit())
+cumulative_logit <- function() {
+  structure(
+    list(
+      name = "cumulative_logit",
+      family = "cumulative_logit",
+      link = "cumulative_logit"
+    ),
+    class = "gllvmTMB_impute_family"
   )
 }
 
@@ -84,15 +125,24 @@ gll_impute_family_type <- function(family) {
     }
     return("bernoulli")
   }
+  ## Phase 5b (design 68 sec.1.2 / sec.5, drmTMB MD6b): an ORDERED categorical
+  ## predictor via cumulative_logit(). The ordered SUM (sec.1.2) is written for
+  ## the cumulative-logit prior with K-1 free cutpoints.
+  if (inherits(family, "gllvmTMB_impute_family") &&
+        identical(family$family, "cumulative_logit")) {
+    return("ordinal")
+  }
   label <- if (inherits(family, "family")) {
+    family$family
+  } else if (inherits(family, "gllvmTMB_impute_family")) {
     family$family
   } else {
     class(family)[[1L]]
   }
   cli::cli_abort(c(
     "Unsupported missing-predictor family {.val {label}}.",
-    "i" = "This version fits the Gaussian ({.code gaussian()} or a bare {.code x ~ z} formula) and binary ({.code binomial(link = \"logit\")}) fixed-effect predictor models.",
-    "i" = "Ordered and unordered (categorical) predictor families, and continuous non-Gaussian families, arrive in later slices."
+    "i" = "This version fits the Gaussian ({.code gaussian()} or a bare {.code x ~ z} formula), binary ({.code binomial(link = \"logit\")}), and ordered ({.fn cumulative_logit}) fixed-effect predictor models.",
+    "i" = "Unordered (categorical) predictor families, count families, and continuous non-Gaussian families arrive in later slices."
   ))
 }
 
@@ -611,19 +661,20 @@ gll_validate_single_impute_formula <- function(impute, variable) {
       "i" = "Use either a grouped random intercept (Phase 2b) OR a level key ({.fn mi_group} / {.fn phylo}), not both, in this version."
     ))
   }
-  ## Phase 5a (design 68 sec.7.3, drmTMB "fixed effects only" guard): the
-  ## DISCRETE (binary) predictor model is FIXED-EFFECT ONLY in v1. A grouped
-  ## random intercept, an explicit mi_group() level, or a phylo() structured
-  ## intercept on a binary predictor is a later slice; reject loudly here
-  ## (the Gaussian path supports them via Phases 2b/2c/3).
-  if (identical(family, "bernoulli")) {
+  ## Phase 5a/5b (design 68 sec.7.3, drmTMB "fixed effects only" guard): the
+  ## DISCRETE (binary, ordered) predictor models are FIXED-EFFECT ONLY in v1. A
+  ## grouped random intercept, an explicit mi_group() level, or a phylo()
+  ## structured intercept on a discrete predictor is a later slice; reject
+  ## loudly here (the Gaussian path supports them via Phases 2b/2c/3).
+  if (identical(family, "bernoulli") || identical(family, "ordinal")) {
     if (isTRUE(extracted$random$enabled) ||
           isTRUE(group_extracted$group_level$enabled) ||
           isTRUE(phylo_extracted$phylo$enabled)) {
+      fam_label <- if (identical(family, "ordinal")) "ordered" else "binary"
       cli::cli_abort(c(
-        "The binary {.fn mi} predictor model is fixed-effect only in this version.",
-        "x" = "A grouped, level-keyed ({.fn mi_group}), or structured ({.fn phylo}) covariate model is not supported for a binary missing predictor.",
-        "i" = "Use a fixed-effect covariate model such as {.code impute_model({variable} ~ z, family = binomial())}; grouped / structured binary predictor models arrive in a later slice."
+        "The {fam_label} {.fn mi} predictor model is fixed-effect only in this version.",
+        "x" = "A grouped, level-keyed ({.fn mi_group}), or structured ({.fn phylo}) covariate model is not supported for a discrete missing predictor.",
+        "i" = "Use a fixed-effect covariate model; grouped / structured discrete predictor models arrive in a later slice."
       ))
     }
   }
@@ -1086,6 +1137,411 @@ gll_binary_mi_response <- function(x, variable) {
   ))
 }
 
+# ---- Ordered missing predictor (Phase 5b, PORT drm_ordinal_*) --------------
+
+## Code a raw predictor vector to ordered integer scores 1..K for the ordered
+## mi() slice (PORT of drmTMB drm_ordinal_missing_predictor_response). Accepts
+## an ORDERED factor or finite integer category scores >= 1; rejects unordered
+## factors (-> categorical, a later slice) and non-integer numerics. Returns the
+## 1..K value vector (NA preserved) and the level labels for the registry, after
+## the >=3-level + every-observed-category-populated guard.
+gll_ordered_mi_response <- function(x, variable) {
+  observed <- !is.na(x)
+  if (!any(observed)) {
+    return(list(value = rep(NA_real_, length(x)), levels = character(0)))
+  }
+  if (is.ordered(x)) {
+    levels <- levels(x)
+    value <- as.integer(x)
+    value[!observed] <- NA_integer_
+    return(gll_validate_ordered_mi(value, levels = levels, variable = variable))
+  }
+  if (is.factor(x)) {
+    cli::cli_abort(c(
+      "Ordered missing-predictor models require an ordered predictor.",
+      "x" = "Predictor {.val {variable}} is an unordered factor.",
+      "i" = "Use {.code ordered({variable})} for {.fn cumulative_logit} predictor models, or use {.fn categorical} for unordered predictor models (a later slice)."
+    ))
+  }
+  if (!is.numeric(x) && !is.integer(x)) {
+    cli::cli_abort(c(
+      "Ordered missing-predictor models require an ordered factor or integer category scores.",
+      "x" = "Predictor {.val {variable}} has class {.val {class(x)}}."
+    ))
+  }
+  tolerance <- sqrt(.Machine$double.eps)
+  if (
+    any(!is.finite(x[observed])) ||
+      any(x[observed] < 1) ||
+      any(abs(x[observed] - round(x[observed])) > tolerance)
+  ) {
+    cli::cli_abort(c(
+      "Numeric ordered missing predictors must be finite integer category scores starting at 1.",
+      "x" = "Predictor {.val {variable}} contains non-integer, non-finite, or less-than-one observed values."
+    ))
+  }
+  value <- as.integer(round(x))
+  value[!observed] <- NA_integer_
+  gll_validate_ordered_mi(
+    value,
+    levels = as.character(seq_len(max(value[observed]))),
+    variable = variable
+  )
+}
+
+## Validate the ordered missing predictor (PORT drmTMB drm_validate_ordinal_
+## missing_predictor): >= 3 categories (gate 7.3; 2-level -> binary) and every
+## observed category populated (no empty observed level).
+gll_validate_ordered_mi <- function(value, levels, variable) {
+  n_category <- length(levels)
+  if (n_category < 3L) {
+    cli::cli_abort(c(
+      "{.fn cumulative_logit} missing-predictor models need at least three ordered categories.",
+      "x" = "Predictor {.val {variable}} has {n_category} categor{?y/ies}.",
+      "i" = "Use {.fn binomial} (the binary route) for a two-level predictor."
+    ))
+  }
+  observed <- !is.na(value)
+  if (!all(value[observed] %in% seq_len(n_category))) {
+    cli::cli_abort(
+      "Internal ordered missing-predictor coding is outside 1, ..., K."
+    )
+  }
+  counts <- tabulate(value[observed], nbins = n_category)
+  if (any(counts == 0L)) {
+    empty <- levels[counts == 0L]
+    cli::cli_abort(c(
+      "Every ordered predictor category must appear at least once among observed values.",
+      "x" = "Predictor {.val {variable}} has empty observed categor{?y/ies}: {.val {empty}}.",
+      "i" = "Drop unused ordered-factor levels or combine sparse categories before fitting the ordered {.fn mi} slice."
+    ))
+  }
+  list(value = as.numeric(value), levels = levels)
+}
+
+## Reconstruct ordered cutpoints c_1 < ... < c_{K-1} from the K-1 FREE raw
+## vector theta_ord = (c_1, log-increments...) (design 68 sec.1.2; PORT of
+## drmTMB ordinal_cutpoints_from_raw). The INVERSE warm-start is gll_ordinal_
+## raw_from_cutpoints below.
+gll_ordinal_cutpoints_from_raw <- function(theta_ord) {
+  if (length(theta_ord) == 0L) {
+    return(numeric())
+  }
+  out <- numeric(length(theta_ord))
+  out[[1L]] <- theta_ord[[1L]]
+  if (length(theta_ord) > 1L) {
+    for (j in 2:length(theta_ord)) {
+      out[[j]] <- out[[j - 1L]] + exp(theta_ord[[j]])
+    }
+  }
+  out
+}
+
+## Warm-start raw vector from empirical cutpoints (PORT drmTMB ordinal_raw_from_
+## cutpoints): theta_ord = (c_1, log(diff(cutpoints))) -- K-1 free entries.
+gll_ordinal_raw_from_cutpoints <- function(cutpoints) {
+  if (length(cutpoints) == 0L) {
+    return(numeric())
+  }
+  spacings <- diff(cutpoints)
+  if (
+    any(!is.finite(cutpoints)) ||
+      any(!is.finite(spacings)) ||
+      any(spacings <= 0)
+  ) {
+    cli::cli_abort(
+      "Internal ordered cutpoint starts must be finite and strictly increasing."
+    )
+  }
+  c(cutpoints[[1L]], log(spacings))
+}
+
+## Cumulative-logit cell probability matrix (PORT drmTMB drm_ordinal_probability_
+## matrix): rows = units, cols = K categories, given eta_x and cutpoints.
+gll_ordered_probability_matrix <- function(eta, cutpoints) {
+  n_category <- length(cutpoints) + 1L
+  out <- matrix(NA_real_, nrow = length(eta), ncol = n_category)
+  out[, 1L] <- stats::plogis(cutpoints[[1L]] - eta)
+  if (n_category > 2L) {
+    for (k in 2:(n_category - 1L)) {
+      upper <- stats::plogis(cutpoints[[k]] - eta)
+      lower <- stats::plogis(cutpoints[[k - 1L]] - eta)
+      out[, k] <- upper - lower
+    }
+  }
+  out[, n_category] <- stats::plogis(
+    cutpoints[[n_category - 1L]] - eta,
+    lower.tail = FALSE
+  )
+  pmax(out, .Machine$double.eps)
+}
+
+## Build the ORDERED missing-predictor model (Phase 5b, ADAPT drmTMB
+## drm_build_ordinal_missing_predictor_model). Like the binary builder it does
+## the UNIT-level reduction + broadcast-constancy guards, but: the response is
+## coded to ordered scores 1..K; the warm-start is empirical cumulative logits
+## -> K-1 free cutpoints (theta_start) + an intercept-free covariate beta; the
+## per-state eta uses the FULL-SWAP via a stacked X_fix_state (built later in
+## fit-multi.R by gll_mi_state_design). There is NO latent x and NO residual
+## sigma (the discrete x is summed out exactly). Fixed-effect only (sec.7.3).
+##
+## `data_long` carries the ordered `score` column already PLACEHOLDER-FILLED at
+## missing units (the broadcast for X_fix), plus `setup$ordered_value_long` (the
+## raw 1..K scores with NA preserved) and `setup$ordered_levels`, captured in
+## fit-multi.R before X_fix was built. The PREDICTOR design X_x is intercept-free
+## (mirroring drmTMB ordinal_mu_model_matrix), so all K-1 cutpoints stay free.
+gll_build_ordered_mi_model <- function(setup, data_long, unit_id, mi_col,
+                                       env = parent.frame()) {
+  if (!isTRUE(setup$enabled)) {
+    return(gll_empty_mi_model())
+  }
+  n_obs <- nrow(data_long)
+  n_units <- length(unique(unit_id))
+  first_row <- integer(n_units)
+  seen <- logical(n_units)
+  for (o in seq_len(n_obs)) {
+    u <- unit_id[o] + 1L
+    if (!seen[u]) {
+      first_row[u] <- o
+      seen[u] <- TRUE
+    }
+  }
+
+  impute_formula <- setup$formula
+  environment(impute_formula) <- env
+  mf <- stats::model.frame(
+    impute_formula,
+    data = data_long,
+    na.action = stats::na.pass
+  )
+  ## The raw NA-preserving ordered scores 1..K + levels were captured in
+  ## fit-multi.R (gll_ordered_mi_response, which fired the >=3-level / unordered
+  ## / empty-category rejections) BEFORE the X_fix column was placeholder-filled,
+  ## so we read them off the setup rather than the now-filled model response.
+  if (!is.null(setup$ordered_value_long)) {
+    x_raw_long <- as.numeric(setup$ordered_value_long)
+    levels <- setup$ordered_levels
+  } else {
+    coded <- gll_ordered_mi_response(stats::model.response(mf), setup$variable)
+    x_raw_long <- coded$value
+    levels <- coded$levels
+  }
+  n_state <- length(levels)
+
+  ## Unit-level reduction + broadcast-constancy guard (the ordered score is a
+  ## unit-level quantity; it must agree across the unit's trait rows).
+  x_unit <- x_raw_long[first_row]
+  observed <- !is.na(x_unit)
+  for (o in seq_len(n_obs)) {
+    u <- unit_id[o] + 1L
+    here <- x_raw_long[o]
+    there <- x_unit[u]
+    consistent <- (is.na(here) && is.na(there)) ||
+      (!is.na(here) && !is.na(there) && isTRUE(all.equal(here, there)))
+    if (!consistent) {
+      cli::cli_abort(c(
+        "{.fn mi} predictor {.val {setup$variable}} must be constant within a unit.",
+        "x" = "It varies across the trait rows of at least one unit.",
+        "i" = "A missing predictor is treated as a unit-level quantity broadcast across the unit's trait rows."
+      ))
+    }
+  }
+  if (!any(!observed)) {
+    cli::cli_abort(c(
+      "{.code miss_control(predictor = \"model\")} requires at least one missing {.fn mi} predictor value.",
+      "i" = "Use ordinary predictor syntax when {.code {setup$variable}} is complete."
+    ))
+  }
+  if (!any(observed)) {
+    cli::cli_abort(
+      "At least one observed ordered {.fn mi} predictor value is required for the predictor model."
+    )
+  }
+
+  terms_x <- stats::delete.response(stats::terms(mf))
+  rhs_vars <- all.vars(terms_x)
+  if (length(rhs_vars) > 0L) {
+    rhs_complete <- stats::complete.cases(mf[first_row, rhs_vars, drop = FALSE])
+    if (any(!rhs_complete)) {
+      cli::cli_abort(c(
+        "Missing values inside the {.arg impute} formula predictors are not implemented.",
+        "x" = "{sum(!rhs_complete)} unit{?s} {?has/have} a missing imputation-model predictor value (outside explicit {.fn mi})."
+      ))
+    }
+    for (v in rhs_vars) {
+      if (!v %in% names(data_long)) next
+      zcol <- data_long[[v]]
+      if (!is.numeric(zcol) && !is.factor(zcol) && !is.character(zcol) &&
+            !is.logical(zcol)) {
+        next
+      }
+      zrep <- zcol[first_row]
+      for (o in seq_len(n_obs)) {
+        u <- unit_id[o] + 1L
+        here <- zcol[o]
+        there <- zrep[u]
+        consistent <- (is.na(here) && is.na(there)) ||
+          (!is.na(here) && !is.na(there) && isTRUE(all.equal(here, there)))
+        if (!consistent) {
+          cli::cli_abort(c(
+            "The {.arg impute} covariate {.val {v}} must be constant within each unit.",
+            "x" = "It varies within at least one unit.",
+            "i" = "The covariate model is fit at the unit level (one value per unit)."
+          ))
+        }
+      }
+    }
+  }
+  ## The PREDICTOR design is INTERCEPT-FREE (PORT drmTMB ordinal_mu_model_matrix):
+  ## the cumulative-logit cutpoints carry the location, so a free intercept would
+  ## confound c_1 -- dropping it keeps all K-1 cutpoints free (sec.1.2).
+  X_x <- stats::model.matrix(terms_x, mf)[first_row, , drop = FALSE]
+  if ("(Intercept)" %in% colnames(X_x)) {
+    X_x <- X_x[, colnames(X_x) != "(Intercept)", drop = FALSE]
+  }
+  ## Weak-identifiability guard (PORT drmTMB R/missing-data.R:1360): need more
+  ## observed values than covariate coefficients + (K-1) cutpoints.
+  n_parameter <- ncol(X_x) + n_state - 1L
+  if (sum(observed) <= n_parameter) {
+    cli::cli_abort(c(
+      "The ordered {.arg impute} model is weakly identified for the ordered {.fn mi} slice.",
+      "x" = "It has {sum(observed)} observed {.code {setup$variable}} value{?s} and {n_parameter} predictor-model parameter{?s}.",
+      "i" = "Use a simpler predictor model, combine sparse categories, or supply more observed ordered predictor values."
+    ))
+  }
+  if (ncol(X_x) > 0L) {
+    X_x_obs <- X_x[observed, , drop = FALSE]
+    x_rank <- qr(X_x_obs)$rank
+    if (x_rank < ncol(X_x_obs)) {
+      cli::cli_abort(c(
+        "The ordered {.arg impute} model design is rank-deficient for the ordered {.fn mi} slice.",
+        "x" = "The observed-unit covariate design has rank {x_rank} but {ncol(X_x_obs)} column{?s}.",
+        "i" = "Drop the collinear or redundant predictors from the {.arg impute} formula."
+      ))
+    }
+  }
+
+  ## Warm-start (PORT drmTMB R/missing-data.R:1367-1373): intercept-free beta = 0,
+  ## cutpoints from empirical cumulative logits of the observed scores.
+  beta <- rep(0, ncol(X_x))
+  names(beta) <- colnames(X_x)
+  cumulative <- cumsum(tabulate(x_unit[observed], nbins = n_state)) / sum(observed)
+  cutpoints <- stats::qlogis(cumulative[-n_state])
+  theta_start <- gll_ordinal_raw_from_cutpoints(cutpoints)
+  names(theta_start) <- gll_ordinal_cutpoint_names(levels)
+
+  ## x_unit_full: observed scores 1..K; missing entries set to a SAFE finite
+  ## placeholder (1). The engine GATES missing rows off the ordinary term and
+  ## uses the full-swap via X_fix_state, so the placeholder is immaterial to the
+  ## likelihood (it must only be a valid finite integer for mi_x_unit).
+  x_unit_full <- x_unit
+  x_unit_full[!observed] <- 1
+
+  list(
+    enabled = TRUE,
+    variable = setup$variable,
+    label = setup$label,
+    mu_col = NA_integer_,             # ordered: no single mi column (full-swap)
+    family = "ordinal",
+    x_unit = x_unit_full,
+    observed = observed,
+    missing_index = which(!observed),
+    n_units = as.integer(n_units),
+    unit_id = as.integer(unit_id),
+    X_x = X_x,
+    formula = impute_formula,
+    raw_formula = setup$raw_formula,
+    beta_start = beta,
+    log_sigma_start = 0,
+    x_mis_start = numeric(0),         # NO latent x for the discrete route
+    theta_start = theta_start,
+    coef_names = colnames(X_x),
+    predictor_names = rhs_vars,
+    levels = levels,
+    n_state = as.integer(n_state),
+    ## The model column + terms/contrasts for the stacked state design, built in
+    ## fit-multi.R (gll_mi_state_design) once X_fix exists.
+    model_column = setup$variable,
+    summary = "conditional_expected_score",
+    ## Fixed-effect only: no grouped / level / phylo covariate model (sec.7.3).
+    random = list(enabled = FALSE, group = character(0), levels = character(0),
+                  n_group = 0L, group_index = integer(0)),
+    u_group_start = 0,
+    log_sd_group_start = 0,
+    group_level = list(enabled = FALSE, group = character(0),
+                       levels = character(0), n_group = 0L),
+    phylo = list(enabled = FALSE, group = character(0),
+                 levels = character(0), tree = NULL),
+    log_sd_x_start = 0
+  )
+}
+
+## Cutpoint parameter names (PORT drmTMB ordinal_cutpoint_names): "lvl1|lvl2".
+gll_ordinal_cutpoint_names <- function(levels) {
+  paste0(levels[-length(levels)], "|", levels[-1L])
+}
+
+## Build the long-and-stacked state-design matrix X_fix_state (Phase 5b, the BIG
+## structural ADAPT of drmTMB drm_missing_predictor_state_design). For each
+## MISSING-unit long row o it materialises K stacked rows -- the FULL gllvmTMB
+## fixed-effect design of row o with the ordered mi() predictor forced to
+## category k (k = 1..K), STATE as the FAST index (row local_base + (k-1)),
+## matching drmTMB's `o * K + k` layout. FILTERED to missing-unit rows
+## (design 68 sec.4.2 mitigation a): n_obs_long is units x traits, so
+## materialising all rows would be O(n_obs_long * K * p) -- we bound memory by
+## the AMOUNT of missingness. Returns the matrix + the 0-indexed mi_state_row(o)
+## map (local_base for missing-unit rows, -1 otherwise).
+##
+## `fixed_formula` / `mf` / `X_fix` are the long fixed-effect formula, model
+## frame, and design (built in fit-multi.R). `mi_col_name` is the ordered factor
+## column in `mf`; `levels` are its ordered levels (K). A column-stability guard
+## (PORT drmTMB R/missing-data.R:3568) asserts the state design columns match
+## X_fix exactly, so the contrast coding is stable.
+gll_mi_state_design <- function(fixed_formula, mf, X_fix, mi_col_name, levels,
+                                missing_unit, unit_id) {
+  K <- length(levels)
+  n_obs <- nrow(mf)
+  p <- ncol(X_fix)
+  ## missing_unit: logical, length n_units. unit_id: 0-indexed long-row -> unit.
+  is_missing_row <- missing_unit[unit_id + 1L]
+  missing_rows <- which(is_missing_row)
+  n_missing_rows <- length(missing_rows)
+  ## mi_state_row(o): 0-indexed base of o's K-block in X_fix_state, or -1.
+  mi_state_row <- rep(-1L, n_obs)
+  if (n_missing_rows == 0L) {
+    return(list(
+      X_fix_state = matrix(0, nrow = 1L, ncol = max(p, 1L)),
+      mi_state_row = mi_state_row
+    ))
+  }
+  mi_state_row[missing_rows] <- (seq_len(n_missing_rows) - 1L) * K
+  X_fix_state <- matrix(
+    NA_real_, nrow = n_missing_rows * K, ncol = p,
+    dimnames = list(NULL, colnames(X_fix))
+  )
+  if (!mi_col_name %in% names(mf)) {
+    cli::cli_abort(
+      "Internal finite-state {.fn mi} state-design error: the ordered predictor column was not retained in the model frame."
+    )
+  }
+  for (state in seq_len(K)) {
+    mf_state <- mf[missing_rows, , drop = FALSE]
+    mf_state[[mi_col_name]] <- ordered(
+      rep(levels[[state]], n_missing_rows),
+      levels = levels
+    )
+    X_state <- stats::model.matrix(fixed_formula, mf_state)
+    if (!identical(colnames(X_state), colnames(X_fix))) {
+      cli::cli_abort(
+        "Internal finite-state {.fn mi} state-design error: the state model-matrix columns changed."
+      )
+    }
+    ## State as the FAST index: rows state, state + K, state + 2K, ...
+    X_fix_state[seq.int(state, by = K, length.out = n_missing_rows), ] <- X_state
+  }
+  list(X_fix_state = X_fix_state, mi_state_row = mi_state_row)
+}
+
 ## Build the BINARY missing-predictor model (Phase 5a, ADAPT drmTMB
 ## drm_build_bernoulli_missing_predictor_model). Mirrors the Gaussian builder's
 ## UNIT-level reduction + broadcast-constancy guards (the missing x is a unit-
@@ -1314,8 +1770,11 @@ gll_empty_mi_model <- function() {
     beta_start = 0,
     log_sigma_start = 0,
     x_mis_start = numeric(0),
+    theta_start = numeric(0),
     coef_names = character(0),
     predictor_names = character(0),
+    levels = character(0),
+    n_state = 0L,
     summary = "none",
     random = list(
       enabled = FALSE,
@@ -1351,10 +1810,19 @@ gll_tmb_mi_data <- function(model, n_obs) {
     ## stashed onto the model. has_mi_phylo == 0 -> the g_x block is gated off
     ## and the existing Ainv_phy_rr slot is referenced but unused by this block.
     has_phylo <- isTRUE(model$phylo$enabled)
+    ## Ordered (mi_family == 2): the FILTERED state design + the 0-indexed
+    ## mi_state_row map are built in fit-multi.R (they need the long fixed
+    ## design) and stashed onto the model by gll_mi_state_design. Binary /
+    ## Gaussian carry 1x1 / length-n stubs (the full-swap block is gated off).
+    is_ordered <- identical(model$family, "ordinal")
+    ## mi_col is NA for the ordered route (no single mi column; the full-swap
+    ## reads X_fix_state). Guard to a safe 0 so TMB receives a finite integer.
+    mi_col0 <- if (is.na(model$mu_col)) 0L else as.integer(model$mu_col - 1L)
     return(list(
       has_mi = 1L,
-      mi_family = switch(model$family, gaussian = 0L, bernoulli = 1L, 0L),
-      mi_col = as.integer(model$mu_col - 1L),
+      mi_family = switch(model$family,
+                         gaussian = 0L, bernoulli = 1L, ordinal = 2L, 0L),
+      mi_col = mi_col0,
       mi_x_unit = as.numeric(model$x_unit),
       mi_observed_unit = as.integer(model$observed),
       mi_missing_index = as.integer(model$missing_index - 1L),
@@ -1376,6 +1844,18 @@ gll_tmb_mi_data <- function(model, n_obs) {
         as.integer(model$phylo_node_id)
       } else {
         rep(0L, length(model$x_unit))
+      },
+      ## Phase 5b ordered finite-state slots (design 68 sec.1.2 / sec.4).
+      mi_n_state = if (is_ordered) as.integer(model$n_state) else 2L,
+      X_fix_state = if (is_ordered) {
+        model$X_fix_state
+      } else {
+        matrix(0, nrow = 1L, ncol = 1L)
+      },
+      mi_state_row = if (is_ordered) {
+        as.integer(model$mi_state_row)
+      } else {
+        rep(-1L, max(1L, n_obs))
       }
     ))
   }
@@ -1391,7 +1871,10 @@ gll_tmb_mi_data <- function(model, n_obs) {
     has_mi_group = 0L,
     mi_group_index = 0L,
     has_mi_phylo = 0L,
-    mi_species_node_id = 0L
+    mi_species_node_id = 0L,
+    mi_n_state = 2L,
+    X_fix_state = matrix(0, nrow = 1L, ncol = 1L),
+    mi_state_row = rep(-1L, max(1L, n_obs))
   )
 }
 
@@ -1424,9 +1907,12 @@ gll_mi_metadata <- function(model) {
     coef_names = model$coef_names,
     predictor_names = model$predictor_names,
     summary = model$summary,
-    ## Phase 5a: the predictor levels for a discrete (binary) family (drmTMB
-    ## MD6a `levels`); character(0) for the Gaussian continuous path.
+    ## Phase 5a/5b: the predictor levels for a discrete family (drmTMB MD6a/MD6b
+    ## `levels`); character(0) for the Gaussian continuous path.
     levels = if (!is.null(model$levels)) model$levels else character(0),
+    ## Phase 5b: the number of ordered categories K (drmTMB MD6b `n_state`); 0
+    ## for non-ordered families.
+    n_state = if (!is.null(model$n_state)) as.integer(model$n_state) else 0L,
     ## Phase 2b grouped covariate random intercept descriptor (drmTMB-aligned).
     random = list(
       enabled = has_group,
@@ -1457,9 +1943,12 @@ gll_mi_metadata <- function(model) {
     ## Fixed-effect-only Gaussian covariate model is the phase2a path; one
     ## grouped random intercept is phase2b; a coarser mi_group() level is
     ## phase2c; a phylo(1 | species) structured covariate model is phase3; a
-    ## binary (Bernoulli-logit) fixed-effect predictor is phase5a (the drmTMB
-    ## MD6a analogue, the first finite-state exact-summation slice).
-    version = if (identical(model$family, "bernoulli")) {
+    ## binary (Bernoulli-logit) fixed-effect predictor is phase5a (drmTMB MD6a);
+    ## an ordered (cumulative-logit) fixed-effect predictor is phase5b (the
+    ## drmTMB MD6b analogue, the ordered finite-state exact-summation slice).
+    version = if (identical(model$family, "ordinal")) {
+      "phase5b"
+    } else if (identical(model$family, "bernoulli")) {
       "phase5a"
     } else if (has_phylo) {
       "phase3"
@@ -1512,6 +2001,50 @@ gll_finalize_mi <- function(missing_data, par_list, model, sdr = NULL,
       ## No report available (e.g. SE-only path failure): fall back to NA.
       pred$value <- as.numeric(model$x_unit)
       pred$conditional_probability <- rep(NA_real_, length(model$missing_index))
+    }
+    missing_data$predictors[[model$variable]] <- pred
+    return(missing_data)
+  }
+  ## Phase 5b (design 68 sec.3.3 step 6 / sec.4.4): the ordered discrete route
+  ## reports the per-unit conditional EXPECTED CATEGORY SCORE sum_k (k+1) w(u,k)
+  ## from REPORT(mi_expected_score), and the per-MISSING-unit category
+  ## probabilities w(u,.) from REPORT(mi_state_probability) -- NOT a latent
+  ## mode. `value` carries the full unit-level expected-score vector (observed
+  ## integer category at observed units, expected score at missing units);
+  ## `conditional_probabilities` carries the per-MISSING-unit K-column matrix;
+  ## `cutpoints` carries the fitted ordered cutpoints.
+  if (identical(model$family, "ordinal")) {
+    pred <- missing_data$predictors[[model$variable]]
+    K <- model$n_state
+    n_missing <- length(model$missing_index)
+    score <- if (!is.null(report) && !is.null(report$mi_expected_score)) {
+      as.numeric(report$mi_expected_score)
+    } else {
+      NULL
+    }
+    state_prob <- if (!is.null(report) &&
+                        !is.null(report$mi_state_probability)) {
+      matrix(as.numeric(report$mi_state_probability),
+             nrow = length(model$observed), ncol = K)
+    } else {
+      NULL
+    }
+    if (!is.null(score) && length(score) == length(model$observed)) {
+      pred$value <- score
+      pred$conditional_probabilities <- if (!is.null(state_prob)) {
+        state_prob[model$missing_index, , drop = FALSE]
+      } else {
+        matrix(NA_real_, nrow = n_missing, ncol = K)
+      }
+    } else {
+      pred$value <- as.numeric(model$x_unit)
+      pred$conditional_probabilities <- matrix(NA_real_, nrow = n_missing,
+                                               ncol = K)
+    }
+    pred$cutpoints <- if (!is.null(report) && !is.null(report$mi_cutpoints)) {
+      as.numeric(report$mi_cutpoints)
+    } else {
+      rep(NA_real_, max(0L, K - 1L))
     }
     missing_data$predictors[[model$variable]] <- pred
     return(missing_data)
@@ -1650,7 +2183,8 @@ imputed.gllvmTMB <- function(
   ## drmTMB's drm_imputed_missing_predictor_se returns NA for discrete
   ## (R/missing-data.R:4662). The continuous Gaussian route keeps the x_mis
   ## sdreport SE + the standard status.
-  is_discrete <- identical(predictor$family, "bernoulli")
+  is_discrete <- identical(predictor$family, "bernoulli") ||
+    identical(predictor$family, "ordinal")
   if (is_discrete) {
     se_full <- rep(NA_real_, length(observed))
     status <- rep("discrete_no_se", length(unit_index))

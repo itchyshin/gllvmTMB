@@ -27,6 +27,49 @@
 #define TMB_LIB_INIT R_init_gllvmTMB
 #include <TMB.hpp>
 
+// Stable log helpers for the cumulative-logit ordered missing-PREDICTOR prior
+// (Phase 5b, design 68 sec.1.2). Ported verbatim from drmTMB src/drm_numeric.h
+// (drm_log_inv_logit / drm_log1m_inv_logit / drm_log1mexp / drm_log_inv_logit_
+// diff) so the finite-state SUM math is byte-identical across packages (the
+// cross-package contract, design 68 sec.7.5). gllvmTMB already has logspace_add
+// but lacks the named log_inv_logit helpers.
+template <class Type>
+Type gll_log_inv_logit(Type eta)
+{
+  // log F(eta) = log( 1 / (1 + exp(-eta)) ) = -log(1 + exp(-eta)).
+  return -logspace_add(Type(0.0), -eta);
+}
+
+template <class Type>
+Type gll_log1m_inv_logit(Type eta)
+{
+  // log(1 - F(eta)) = -log(1 + exp(eta)).
+  return -logspace_add(Type(0.0), eta);
+}
+
+template <class Type>
+Type gll_log1mexp(Type log_p)
+{
+  // log(1 - exp(log_p)) for log_p <= 0, with a small-argument series guard
+  // (drm_log1mexp). u = -log_p >= 0; for tiny u use the Taylor series.
+  Type u = -log_p;
+  Type series_arg = u - u * u / Type(2.0) + u * u * u / Type(6.0);
+  Type series = log(series_arg);
+  Type direct = log(Type(1.0) - exp(log_p));
+  return CppAD::CondExpLt(u, Type(1e-6), series, direct);
+}
+
+template <class Type>
+Type gll_log_inv_logit_diff(Type upper, Type lower)
+{
+  // log( F(upper) - F(lower) ) for upper > lower, stable form (drm_log_inv_
+  // logit_diff): the log of the cumulative-logit cell probability of a middle
+  // ordered category.
+  return upper + gll_log1mexp(lower - upper) -
+    logspace_add(Type(0.0), upper) -
+    logspace_add(Type(0.0), lower);
+}
+
 template <class Type>
 Type objective_function<Type>::operator()()
 {
@@ -339,6 +382,20 @@ Type objective_function<Type>::operator()()
   // exact no-op and Ainv_phy_rr is referenced but unused by this block.
   DATA_INTEGER(has_mi_phylo);          // 1 = the covariate model has phylo(1|species)
   DATA_IVECTOR(mi_species_node_id);    // length n_units; species -> aug node (0-idx)
+  // Phase 5b (design 68 sec.1.2 / sec.4): ORDERED discrete predictor via the
+  // cumulative-logit K-state SUM (mi_family == 2). mi_n_state = K (number of
+  // ordered categories). X_fix_state is the long-and-stacked state-design
+  // matrix (the gllvmTMB analogue of drmTMB X_mi_state_mu) FILTERED to the long
+  // rows of missing units: for a missing-unit long row o it holds K stacked
+  // rows -- the FULL fixed-effect design of row o with the mi() ordered
+  // predictor forced to category k (k = 0..K-1), state as the FAST index. The
+  // base row of o's K-block is mi_state_row(o); state k is row mi_state_row(o)
+  // + k. mi_state_row(o) = -1 for observed-unit rows (no state block). When
+  // mi_family != 2 these are 1x1 / length-1 stubs and the whole block is an
+  // exact no-op.
+  DATA_INTEGER(mi_n_state);            // K = number of ordered categories
+  DATA_MATRIX(X_fix_state);            // (sum_{missing u} |rows(u)| * K) x p
+  DATA_IVECTOR(mi_state_row);          // length n_obs; 0-idx K-block base or -1
 
   // -------- PARAMETERS --------------------------------------------------
   PARAMETER_VECTOR(b_fix);                       // fixed-effects coefficients (p)
@@ -360,6 +417,14 @@ Type objective_function<Type>::operator()()
   // intercept). Mapped off (length 1) when no phylo() covariate term is present.
   PARAMETER_VECTOR(g_x);                         // length n_aug_phy (or 1 if unused)
   PARAMETER_VECTOR(log_sd_x);                    // length 1; log phylo SD of x
+  // Phase 5b (design 68 sec.1.2): the ORDERED predictor cutpoints, K-1 FREE,
+  // parametrised as theta_ord = (free base c_1, log-increments...). The cutpoint
+  // reconstruction is c_1 = theta_ord(0); c_j = c_{j-1} + exp(theta_ord(j)) for
+  // j = 1..K-2. This MIRRORS drmTMB (K-1 free) and is DISTINCT from gllvmTMB's
+  // fid-14 ordinal_probit RESPONSE convention (tau_1 = 0, K-2 free): the
+  // cumulative-logit PREDICTOR has no separate response intercept, so the first
+  // cutpoint stays free. Length 0 (mapped off) when mi_family != 2.
+  PARAMETER_VECTOR(theta_ord);                   // length K-1 (ordered) or 0
 
   // Between-site rr: Lambda_B (n_traits x d_B) packed as theta_rr_B
   // length = d_B + (n_traits - d_B) * d_B = n_traits*d_B - d_B*(d_B-1)/2
@@ -1759,28 +1824,46 @@ Type objective_function<Type>::operator()()
     return ll;
   };
 
-  // -------- Discrete missing-PREDICTOR SUM: binary (mi_family == 1) -------
-  // Design 68 sec.1.1 / sec.3 (drmTMB MD6a analogue with the multivariate
-  // per-UNIT product). The binary missing x is marginalised EXACTLY by a
-  // 2-state SUM evaluated here, with NO latent x. For a missing-x unit u the
-  // observed-data contribution is
-  //   nll -= logspace_add( log_p1(u) + log_y1(u),  log_p0(u) + log_y0(u) )
+  // -------- Discrete missing-PREDICTOR SUM: binary + ordered -------------
+  // Design 68 sec.1.1 / sec.1.2 / sec.3 (drmTMB MD6a/MD6b analogue with the
+  // multivariate per-UNIT product). A discrete missing predictor is
+  // marginalised EXACTLY by a finite-state SUM evaluated here, with NO latent
+  // x. For a missing-x unit u the observed-data contribution is
+  //   nll -= logspace_add_over_k( log p(x=k|z_u) + log_y_k(u) )
   // where log_y_k(u) = sum_t obs_loglik(o, eta_state(o, k)) is the PRODUCT
   // over u's trait rows (sec.3.2: the SUM is OUTSIDE the trait product, so the
   // prior is counted ONCE per unit and a SINGLE state k feeds all traits -- a
-  // per-row SUM would double-count the prior). The state-substituted eta uses
-  // the delta-swap (sec.3.4): eta_state(o,k) = eta(o) - b_fix(mi_col)*X_fix(o,
-  // mi_col) + b_fix(mi_col)*k, exact for the single-column binary predictor.
-  // The accumulator acc(u, k) (M x 2) is filled by the gated rows in the loop
-  // below, initialised here to the per-unit log-priors. has_mi != 1 -> the
-  // whole block is an exact no-op (acc / mi_acc_* unused).
-  int mi_n_units = (has_mi == 1 && mi_family == 1) ? mi_x_unit.size() : 0;
-  matrix<Type> mi_acc(std::max(mi_n_units, 1), 2);
+  // per-row SUM would double-count the prior). The per-unit, per-state
+  // accumulator mi_acc(u, k) is M x K (K = 2 for binary, K = mi_n_state for
+  // ordered -- the generalisation of Phase 5a's M x 2); it is filled by the
+  // gated rows in the loop below, initialised here to the per-unit log-priors.
+  //   * binary  (mi_family == 1): K = 2; Bernoulli-logit prior; the state-eta
+  //     uses the single-column DELTA-SWAP (sec.3.4), value k in {0, 1}.
+  //   * ordered (mi_family == 2): K states; cumulative-logit prior with K-1
+  //     free cutpoints reconstructed from theta_ord (sec.1.2); the state-eta
+  //     uses the FULL-SWAP via X_fix_state (an ordered factor expands to K-1
+  //     contrast columns, so a single-column delta is insufficient).
+  // has_mi != 1, or mi_family not in {1, 2} -> the whole block is an exact
+  // no-op (mi_acc / mi_logp* / mi_cutpoints unused).
+  bool mi_is_discrete = (has_mi == 1 && (mi_family == 1 || mi_family == 2));
+  int mi_K = (has_mi == 1 && mi_family == 2) ? mi_n_state : 2;
+  int mi_n_units = mi_is_discrete ? mi_x_unit.size() : 0;
+  matrix<Type> mi_acc(std::max(mi_n_units, 1), std::max(mi_K, 1));
   mi_acc.setZero();
+  // Binary prior caches (used only for mi_family == 1; the observed-unit term
+  // and the posterior probability read them in the collapse pass).
   vector<Type> mi_logp1(std::max(mi_n_units, 1));
   vector<Type> mi_logp0(std::max(mi_n_units, 1));
   mi_logp1.setZero();
   mi_logp0.setZero();
+  // Ordered per-unit per-state log-prior cache (used only for mi_family == 2).
+  matrix<Type> mi_log_prior(std::max(mi_n_units, 1), std::max(mi_K, 1));
+  mi_log_prior.setZero();
+  // Ordered cutpoints c_1 < ... < c_{K-1} reconstructed from the K-1 FREE raw
+  // vector theta_ord (sec.1.2): c_1 = theta_ord(0) free base, c_j = c_{j-1} +
+  // exp(theta_ord(j)). MIRRORS drmTMB (K-1 free); NOT the fid-14 tau_1 = 0
+  // RESPONSE convention. Length 0 unless mi_family == 2.
+  vector<Type> mi_cutpoints(theta_ord.size());
   if (has_mi == 1 && mi_family == 1) {
     // Per-unit Bernoulli-logit predictor prior (verbatim drmTMB MD6a:
     // log_p1 = -logspace_add(0, -eta_x), log_p0 = -logspace_add(0, eta_x)).
@@ -1793,6 +1876,39 @@ Type objective_function<Type>::operator()()
       mi_acc(u, 0) = mi_logp0(u);
       mi_acc(u, 1) = mi_logp1(u);
     }
+  } else if (has_mi == 1 && mi_family == 2) {
+    // Reconstruct the K-1 free cutpoints (sec.1.2). The increment loop body is
+    // byte-identical to drmTMB MD6b src/drmTMB.cpp:872-875 and to gllvmTMB's
+    // fid-14 reconstruction (sec.5) -- but entry 0 stays a FREE base here.
+    if (theta_ord.size() > 0) {
+      mi_cutpoints(0) = theta_ord(0);
+      for (int j = 1; j < theta_ord.size(); ++j) {
+        mi_cutpoints(j) = mi_cutpoints(j - 1) + exp(theta_ord(j));
+      }
+    }
+    // Per-unit cumulative-logit state log-prior (drmTMB MD6b sec.1.2 form):
+    //   state 0    : log F(c_1 - eta_x)
+    //   state K-1  : log(1 - F(c_{K-1} - eta_x))
+    //   state k    : log[ F(c_k - eta_x) - F(c_{k-1} - eta_x) ]
+    vector<Type> mi_eta_x = X_mi * beta_mi;
+    for (int u = 0; u < mi_n_units; ++u) {
+      for (int k = 0; k < mi_K; ++k) {
+        Type log_prob;
+        if (k == 0) {
+          log_prob = gll_log_inv_logit(mi_cutpoints(0) - mi_eta_x(u));
+        } else if (k == mi_K - 1) {
+          log_prob = gll_log1m_inv_logit(mi_cutpoints(mi_K - 2) - mi_eta_x(u));
+        } else {
+          Type upper = mi_cutpoints(k) - mi_eta_x(u);
+          Type lower = mi_cutpoints(k - 1) - mi_eta_x(u);
+          log_prob = gll_log_inv_logit_diff(upper, lower);
+        }
+        mi_log_prior(u, k) = log_prob;
+        // Initialise the accumulator with the state log-prior (sec.3.3 step 3);
+        // the response product is added per trait row below.
+        mi_acc(u, k) = log_prob;
+      }
+    }
   }
 
   for (int o = 0; o < y.size(); o++) {
@@ -1800,14 +1916,16 @@ Type objective_function<Type>::operator()()
     // its weight after the family-dispatch block. Mirrors the
     // `tmp_ll *= weights_i(i)` pattern in src/gllvmTMB.cpp around line 1136.
     Type nll_before_row = nll;
-    // The discrete-row GATE (design 68 sec.2 / drmTMB src/drmTMB.cpp:1897-1898).
-    // For a row whose unit has a MISSING binary predictor (mi_family == 1,
-    // mi_observed_unit(unit) == 0), the per-state response density is folded
-    // into the per-unit SUM (mi_acc below), so the ordinary family term must
-    // NOT also fire -- otherwise y is double-counted. The gate consults the
+    // The discrete-row GATE (design 68 sec.2 / drmTMB src/drmTMB.cpp:1163-1170).
+    // For a row whose unit has a MISSING discrete predictor (mi_family in
+    // {1, 2}, mi_observed_unit(unit) == 0), the per-state response density is
+    // folded into the per-unit SUM (mi_acc below), so the ordinary family term
+    // must NOT also fire -- otherwise y is double-counted. The gate consults the
     // per-UNIT observed flag via the long-row -> unit map mi_unit_id (the
-    // multivariate adaptation: drmTMB's mi_observed is per response row).
-    bool mi_missing_row = (has_mi == 1 && mi_family == 1 &&
+    // multivariate adaptation: drmTMB's mi_observed is per response row). The
+    // condition is identical for binary and ordered; only the accumulation
+    // branch differs (delta-swap vs full-swap).
+    bool mi_missing_row = (mi_is_discrete &&
                            mi_observed_unit(mi_unit_id(o)) == 0);
     // Phase 1 response mask: a row with is_y_observed(o) == 0 contributes
     // nothing to the likelihood. Its y(o) is a safe sentinel, so we must NOT
@@ -1816,21 +1934,45 @@ Type objective_function<Type>::operator()()
     // this guard is always true -> an exact no-op.
     if (is_y_observed(o) && !mi_missing_row) {
       // Ordinary path: observed-y row whose predictor value is NOT a missing
-      // binary x (observed-x units take this path with the true x in eta(o)).
+      // discrete x (observed-x units take this path with the true x in eta(o)).
       nll -= obs_loglik(o, eta(o));
     } else if (is_y_observed(o) && mi_missing_row) {
       // Discrete-SUM path (sec.3.3 steps 1-2): accumulate the per-state
-      // response log-density into the unit's 2-state accumulator. Weights
-      // enter HERE per trait row (the outer weight scaling at the foot of the
-      // loop is bypassed for gated rows since row_nll == 0). The delta-swap
-      // removes the mi() column's placeholder contribution and inserts the
-      // hypothetical state value k in {0, 1}.
+      // response log-density into the unit's K-state accumulator. Weights enter
+      // HERE per trait row (the outer weight scaling at the foot of the loop is
+      // bypassed for gated rows since row_nll == 0).
       int u = mi_unit_id(o);
-      Type eta_base = eta(o) - b_fix(mi_col) * X_fix(o, mi_col);
-      mi_acc(u, 0) += weights_i(o) *
-        obs_loglik(o, eta_base + b_fix(mi_col) * Type(0.0));
-      mi_acc(u, 1) += weights_i(o) *
-        obs_loglik(o, eta_base + b_fix(mi_col) * Type(1.0));
+      if (mi_family == 1) {
+        // Binary: the single-column DELTA-SWAP removes the mi() column's
+        // placeholder contribution and inserts the hypothetical state value k
+        // in {0, 1}.
+        Type eta_base = eta(o) - b_fix(mi_col) * X_fix(o, mi_col);
+        mi_acc(u, 0) += weights_i(o) *
+          obs_loglik(o, eta_base + b_fix(mi_col) * Type(0.0));
+        mi_acc(u, 1) += weights_i(o) *
+          obs_loglik(o, eta_base + b_fix(mi_col) * Type(1.0));
+      } else {
+        // Ordered: the FULL-SWAP (sec.3.4) swaps the ENTIRE fixed-effect linear
+        // predictor for its state-k version, leaving every random-effect
+        // contribution untouched (those do not depend on x):
+        //   eta_state(o,k) = eta(o) - X_fix(o,.).b_fix + X_fix_state(base+k,.).b_fix
+        // X_fix_state is filtered to missing-unit rows; mi_state_row(o) is o's
+        // 0-indexed K-block base (state fast). Compute the base fixed-effect
+        // contribution X_fix(o,.).b_fix once, then add each state's.
+        Type eta_minus_fix = eta(o);
+        for (int col = 0; col < X_fix.cols(); ++col) {
+          eta_minus_fix -= X_fix(o, col) * b_fix(col);
+        }
+        int base = mi_state_row(o);
+        for (int k = 0; k < mi_K; ++k) {
+          Type state_fix = Type(0.0);
+          for (int col = 0; col < X_fix_state.cols(); ++col) {
+            state_fix += X_fix_state(base + k, col) * b_fix(col);
+          }
+          mi_acc(u, k) += weights_i(o) *
+            obs_loglik(o, eta_minus_fix + state_fix);
+        }
+      }
     }
     // Apply the per-row weight: scale this row's NLL contribution by
     // weights_i(o). Unit weight is a no-op; weight 0 zeroes the row's
@@ -1869,6 +2011,47 @@ Type objective_function<Type>::operator()()
     REPORT(mi_probability);
     REPORT(beta_mi);
     ADREPORT(beta_mi);
+  } else if (has_mi == 1 && mi_family == 2) {
+    // Ordered (drmTMB MD6b): collapse the K-state mixture-of-products ONCE per
+    // missing unit (sec.3.3 step 4) and report (step 6) the per-unit posterior
+    // state weights w(u,k) (M x K) and the conditional EXPECTED CATEGORY SCORE
+    // sum_k (k+1) w(u,k) (sec.4.4). For OBSERVED-x units the ordinary response
+    // path already fired above; add only the single matching state's log-prior
+    // (drmTMB MD6b src/drmTMB.cpp:899-913). mi_expected_score holds the expected
+    // score at missing units and the observed integer category at observed
+    // units; mi_state_probability holds w(u,.) (a one-hot at observed units).
+    matrix<Type> mi_state_probability(mi_n_units, mi_K);
+    mi_state_probability.setZero();
+    vector<Type> mi_expected_score(mi_n_units);
+    for (int u = 0; u < mi_n_units; ++u) {
+      if (mi_observed_unit(u) == 1) {
+        // Observed-x unit: mi_x_unit(u) is the observed integer category 1..K.
+        int state = CppAD::Integer(mi_x_unit(u)) - 1;  // 0-indexed
+        nll -= mi_log_prior(u, state);
+        mi_state_probability(u, state) = Type(1.0);
+        mi_expected_score(u) = mi_x_unit(u);
+      } else {
+        // Missing-x unit: log-sum-exp the K-state accumulator ONCE.
+        Type log_norm = mi_acc(u, 0);
+        for (int k = 1; k < mi_K; ++k) {
+          log_norm = logspace_add(log_norm, mi_acc(u, k));
+        }
+        nll -= log_norm;
+        Type score = Type(0.0);
+        for (int k = 0; k < mi_K; ++k) {
+          Type posterior = exp(mi_acc(u, k) - log_norm);
+          mi_state_probability(u, k) = posterior;
+          score += Type(k + 1) * posterior;
+        }
+        mi_expected_score(u) = score;
+      }
+    }
+    REPORT(mi_expected_score);
+    REPORT(mi_state_probability);
+    REPORT(mi_cutpoints);
+    REPORT(beta_mi);
+    ADREPORT(beta_mi);
+    ADREPORT(mi_cutpoints);
   }
 
   ADREPORT(b_fix);

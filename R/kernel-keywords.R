@@ -8,8 +8,11 @@
 #' must match `phylo_latent(unit, vcv = A, d = q)` plus
 #' `phylo_unique(unit, vcv = A)` to less than `1e-6` for log likelihood
 #' and extracted `Sigma`. The PARTIAL scope (`COE-02`) is coevolution:
-#' users can pass a `K_star` from [make_cross_kernel()], but validated
-#' coevolution recovery and `extract_Gamma()` remain planned C2 work.
+#' users can pass a `K_star` from [make_cross_kernel()] and extract the
+#' host-partner shared covariance block with [extract_Gamma()]. C2 recovery
+#' evidence covers known-`Gamma` recovery, a zero-`Gamma` block-diagonal null,
+#' and a sparse-versus-dense association sensitivity case; uncertainty and
+#' `rho` profiling remain later example / workflow layers.
 #'
 #' @param unit Unquoted grouping column whose levels align with `rownames(K)`.
 #' @param K Numeric dense positive-semidefinite covariance/correlation matrix.

@@ -145,12 +145,15 @@ reference:
   - title: Response families
     contents:
     - Families
+    - categorical
+    - cumulative_logit
     - ordinal_probit
 
   - title: Report-ready extractors
     desc: Recover covariance, correlation, ordination, repeatability, communality, phylogenetic signal, and variance proportions
     contents:
     - extract_Sigma
+    - extract_Gamma
     - extract_Sigma_table
     - compare_Sigma_table
     - extract_Omega

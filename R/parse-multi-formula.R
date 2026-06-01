@@ -193,6 +193,9 @@ parse_covstruct_call <- function(e, fn, eval_env = parent.frame()) {
     if (!is.null(lhs_info$slope_col) && is.null(extra$slope_col)) {
       extra$slope_col <- lhs_info$slope_col
     }
+    if (!is.null(lhs_info$slope_cols) && is.null(extra$slope_cols)) {
+      extra$slope_cols <- lhs_info$slope_cols
+    }
   }
   list(kind = fn, lhs = cov_lhs, group = cov_group, extra = extra)
 }

@@ -49,13 +49,13 @@ advisory messages, e.g. about a missing \code{unique()} term).
 For \code{part = "unique"}: a list with \code{s} (length-T named numeric
 vector of unique variances), \code{level}, \code{part}, \code{note}.
 
-For a \code{phylo_dep(1 + x | species)} fit (Design 56 §9.5c), call with
-\code{level = "phy"}: the result is the single full unstructured
-\verb{2T x 2T} covariance over the trait-stacked (intercept, slope)
-random-effect columns -- a list with \code{Sigma} and \code{R} carrying
-INTERLEAVED dimnames
-(\verb{intercept.<t1>}, \verb{slope.<t1>}, \verb{intercept.<t2>}, \verb{slope.<t2>}, ...),
-\code{level = "phy_dep"}, \code{part = "dep"}, and a \code{note}. The \code{part} and
+For a \code{phylo_dep(1 + x1 + ... + xs | species)} fit (Design 56 Sec. 9.5c,
+s >= 1), call with \code{level = "phy"}: the result is the single full
+unstructured \verb{(1+s)T x (1+s)T} covariance over the trait-stacked
+(intercept, slope_1, ..., slope_s) random-effect columns -- a list with
+\code{Sigma} and \code{R} carrying INTERLEAVED dimnames (per trait:
+\verb{intercept.<t>}, then \verb{slope.<t>} for s == 1 or \verb{slope.<x_j>.<t>} for
+s >= 2), \code{level = "phy_dep"}, \code{part = "dep"}, and a \code{note}. The \code{part} and
 \code{link_residual} arguments do not apply to this single unstructured
 block and are ignored. (The unit / unit_obs tiers return \code{NULL} for a
 dep-only fit, as it carries no between/within-unit covariance term.)

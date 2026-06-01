@@ -173,6 +173,12 @@ after-task report lands.
   channel, incompatible with the engine's `Sigma_b_dep` — must repoint
   before any non-Gaussian cell can pass. Close gate: ≥1 non-Gaussian
   recovery cell PD + within band, then relax the `c(0L)` allowlist.
+  *In progress:* the N-sweep test harness exists at
+  `docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  (no engine change; MakeADFun override over all reserved cores) and runs
+  via the `dep-slope-identifiability-sweep` Actions dispatch workflow.
+  Awaiting the first sweep run to answer the identifiability-vs-power
+  question.
 - [ ] **GAP-B2 · `spatial_dep` slope, non-Gaussian** (SPA-10). Spatial
   analogue of B1; engine built + Gaussian-validated to 1e-9 prior nll.
   Same identifiability blocker. Close gate: ≥1 non-Gaussian field-cov

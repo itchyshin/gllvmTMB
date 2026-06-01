@@ -15,8 +15,9 @@ vignette: >
 # is heavy (it has OOM'd pkgdown before), so the chunks show the exact shipped
 # syntax without being run at build time. The article documents the shipped
 # Phase 1 (response mask), Phase 2a (Gaussian fixed-covariate mi()),
-# Phase 2b (grouped-covariate mi()), and Phase 3 (phylogenetic species-level
-# mi()) surface; do not flip these to eval=TRUE in the pkgdown build.
+# Phase 2b (grouped-covariate mi()), Phase 3 (phylogenetic species-level
+# mi()), and Phase 5a (binary mi() via exact 2-state summation) surface; do
+# not flip these to eval=TRUE in the pkgdown build.
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
@@ -53,11 +54,13 @@ Masked cells contribute no direct response likelihood, but the fitted object
 still knows where those cells were.
 For a missing predictor, `gllvmTMB` requires an explicit predictor model
 declared through `mi()` in the response formula and `impute = list(...)` in
-the fit call; the first shipped route is one continuous Gaussian predictor with
-a fixed-effect covariate model.
-A missing predictor is a latent quantity integrated out by TMB's Laplace
-approximation; this is frequentist full-information maximum likelihood (FIML),
-not multiple imputation.
+the fit call; the shipped routes are continuous Gaussian predictors (fixed,
+grouped, or phylogenetic covariate models) and one binary predictor with a
+fixed-effect covariate model.
+A continuous missing predictor is a latent quantity integrated out by TMB's
+Laplace approximation; a binary one has no latent variable -- its two states are
+summed out exactly inside the likelihood (Section 5). Either way this is
+frequentist full-information maximum likelihood (FIML), not multiple imputation.
 
 This is likelihood-based missing-data handling.
 It is not Bayesian posterior imputation, not multiple imputation, and not an
@@ -108,9 +111,21 @@ Read the status tags literally:
   signal is weak; `phylo_signal_mi()` reports the effective signal and flags the
   weak case (Section 5c). Intercept-only covariate model; the Level-2 joint
   field (`correlate_with = "response"`) remains Phase 4.
+- **SHIPPED (Phase 5a, one binary missing predictor).** A single two-level
+  (binary) missing predictor declared with `mi(x)` and a fixed-effect
+  Bernoulli-logit covariate model supplied through
+  `impute = list(x = impute_model(x ~ z, family = binomial()))`. This is the
+  first *discrete* predictor and the first instance of the exact finite-state
+  route: there is **no latent `x_mis`**, the two states `{0, 1}` are summed
+  exactly inside the likelihood, and `imputed()` returns the conditional
+  probability `P(x = 1 | y, z)` (not a Laplace mode). The binary covariate model
+  is fixed-effect only in v1: a grouped, level-keyed, or phylogenetic binary
+  predictor model errors.
 - **PLANNED.** Spatial / relatedness / animal covariate models for `mi()` and
-  the Level-2 joint field (Phase 4); and non-Gaussian or categorical missing
-  predictors (Phase 5). These routes are sketched below with their phase tags.
+  the Level-2 joint field (Phase 4); and the remaining non-Gaussian or
+  categorical missing predictors -- ordered (Phase 5b), unordered (Phase 5c),
+  and bounded/continuous non-Gaussian such as beta. These routes are sketched
+  below with their phase tags.
 
 **Two co-equal input shapes.** Every route below accepts the model in either of
 two equivalent shapes. A **wide** call uses the `traits(...)` LHS on a data
@@ -158,7 +173,8 @@ Phase 2a, Phase 2b, and Phase 3 are shipped; Phase 4 onward is planned.
 | One missing continuous predictor, grouped covariate model | As above with `impute = list(body_mass = body_mass ~ z + (1 | site))` | One grouped random intercept in the predictor model; independent of response random effects (Phase 2b, shipped). |
 | Species-level missing predictor, phylogenetic covariate model | `impute = list(body_mass = body_mass ~ phylo(1 | species, tree = tree))` | Species-level value broadcast to observation rows; intercept-only phylo covariate model; degrades gracefully when signal is weak (Phase 3, shipped). |
 | Spatial / relatedness / animal covariate model; Level-2 joint field | `impute = list(... = ... ~ spatial(...))`, `relmat()`, `animal()`, or `correlate_with = "response"` | Non-phylo structured covariate models and the joint response-covariate field (Phase 4, planned). |
-| Non-Gaussian / categorical missing predictor | `impute_model(family = )` with a non-Gaussian family | Lognormal, Gamma, beta, Poisson, ordinal, factor -- later work (Phase 5, planned). |
+| One missing binary predictor, fixed covariate model | `traits(y1, y2) ~ z + mi(x)` with `impute = list(x = impute_model(x ~ z, family = binomial()))` | Exact two-state summation, no latent `x_mis`; `imputed()` returns `P(x = 1 | y, z)`; fixed-effect covariate model only (Phase 5a, shipped). |
+| Other non-Gaussian / categorical missing predictor | `impute_model(family = )` with a non-binary non-Gaussian family | Ordered (`cumulative_logit`), unordered (`categorical`), beta / bounded, Poisson / NB -- later work (Phase 5b/5c+, planned). |
 
 The `gllvmTMB` response matrix is **multivariate**: a single fit can have many
 trait columns and many species.
@@ -315,7 +331,9 @@ fitted values, not posterior intervals and not multiple-imputation draws.
 `predict_missing()` is for **response** cells only.
 It is distinct from `imputed()`, which summarizes missing **predictors**
 (Section 5): `predict_missing()` returns point predictions only, whereas
-`imputed()` carries a conditional standard error for the latent predictor.
+`imputed()` carries a conditional standard error for a continuous (latent)
+predictor (a binary predictor instead returns a conditional probability with no
+SE; Section 5d).
 The terminology follows the shared contract with `drmTMB`: predicted /
 reconstructed responses versus EBLUP conditional modes for latent predictors.
 
@@ -328,10 +346,13 @@ fitted value does not.
 Missing predictors are not handled by row deletion or sentinel imputation.
 The response model needs the predictor value, so `gllvmTMB` asks for an
 explicit model for that predictor.
-The missing values become latent random effects integrated out by the Laplace
-approximation, jointly with the response-model random effects.
+For a **continuous** predictor the missing values become latent random effects
+integrated out by the Laplace approximation, jointly with the response-model
+random effects; for a **discrete** predictor (the shipped binary case) there is
+no latent variable and the finitely many states are summed out exactly instead.
+The two routes are spelled out in the bullets below.
 
-The joint likelihood factorises as:
+For the continuous case the joint likelihood factorises as:
 
 ```
 L(theta) = integral
@@ -358,13 +379,58 @@ the two cases are handled differently:
   (Section 5b), and the phylogenetic species-level model of Phase 3
   (Section 5c), with spatial / relatedness covariate models and the Level-2
   joint field planned in Phase 4.
-- **Discrete predictors (exact finite-state summation) -- planned, Phase 5.**
-  *When implemented*, a missing factor or ordinal covariate would be handled by
-  finite summation rather than a Gaussian approximation: because such a
-  covariate has finitely many possible values, the likelihood *would be*
+- **Discrete predictors (exact finite-state summation).** A missing factor or
+  ordinal covariate has finitely many possible values, so it is handled by exact
+  finite summation rather than a Gaussian approximation: the likelihood is
   evaluated at each admissible level and weighted by the covariate model's
-  category probabilities, with no Gaussian approximation used for the discrete
-  dimension. Categorical predictors are scheduled last for this reason.
+  category probabilities, with **no latent variable and no Gaussian
+  approximation** used for the discrete dimension. The response term is replaced
+  by the finite mixture over the predictor's states. The first shipped instance
+  is the **binary** predictor of Phase 5a (Section 5d), whose two states `{0, 1}`
+  are summed exactly; ordered (`cumulative_logit`, Phase 5b) and unordered
+  (`categorical`, Phase 5c) predictors extend the same K-state machinery and are
+  landing next. A bounded continuous family (beta) would instead use quadrature
+  on `(0, 1)` and remains planned.
+
+Both routes are a single frequentist likelihood -- the continuous case
+integrates the latent predictor out by Laplace, the discrete case sums the
+finite states out exactly -- with no Bayesian prior, no posterior, and no
+multiple-imputation ensemble in either. And because `traits(...)` simply pivots
+the wide frame to the stacked-long form that the long call reaches directly
+(Section 2), **every family below works in both the wide `traits(...)` shape and
+the long `value ~ 0 + trait` shape**; the family lives in the `impute` model, not
+in the input shape.
+
+### Missing-predictor families at a glance
+
+The table below is the master map of predictor families against the two input
+shapes. Each shipped family has a runnable-looking (`eval = FALSE`) example in
+**both** shapes in the cited subsection; the not-yet-shipped families show their
+*intended* call so the design is legible, tagged so they are not mistaken for
+working code. `cumulative_logit`, `categorical`, and `beta` are illustrative
+family names for the planned slices and are **not callable on `main` today**.
+
+| Family | `impute` covariate model | Integration | `imputed()` output | Status | Section |
+| --- | --- | --- | --- | --- | --- |
+| Gaussian (continuous) | `x ~ z` (bare = Gaussian) or `impute_model(x ~ z)` | latent + Laplace | conditional mode (EBLUP) + SE | **shipped (2a)** | 5a |
+| Gaussian + grouped intercept | `x ~ z + (1 \| group)` | latent + Laplace | EBLUP + SE | **shipped (2b)** | 5b |
+| Gaussian + phylogenetic | `x ~ phylo(1 \| species, tree =)` | latent + Laplace + GMRF (`Ainv`) | EBLUP + SE; `phylo_signal_mi()` | **shipped (3)** | 5c |
+| Binary | `impute_model(x ~ z, family = binomial())` | exact 2-state sum (no latent) | conditional prob `P(x = 1 \| y, z)` | **shipped (5a)** | 5d |
+| Ordered | `impute_model(x ~ z, family = cumulative_logit())` | exact K-state sum | expected category score | landing next (5b) | 5f |
+| Unordered | `impute_model(x ~ z, family = categorical())` | exact K-state sum | modal category / level probs | landing next (5c) | 5f |
+| Beta / proportion | `impute_model(x ~ z, family = beta())` | quadrature (bounded) | conditional mean | planned | 5f |
+
+The three Gaussian rows share the **continuous** route (a latent `x_mis`
+integrated out by Laplace; `imputed()` reports an EBLUP conditional mode with a
+Hessian SE). The binary row is the **discrete** route (no latent; the states are
+summed exactly; `imputed()` reports a conditional probability with `std_error =
+NA`). Ordered and unordered extend the same exact-summation idea to K states;
+beta is the one bounded-continuous case that would use quadrature rather than
+either a latent mode or a finite sum.
+
+The shipped families are spelled out next; each gives the wide `traits(...)` and
+long `value ~ 0 + trait` forms explicitly. The binary family (newly shipped) is
+in Section 5d; the ordered / unordered / beta sketches are in Section 5f.
 
 ### 5a. Continuous predictor, fixed covariate model (Phase 2a, shipped)
 
@@ -564,7 +630,96 @@ with few measurements are systematically under-represented (Penone et al. 2014).
 The current implementation does not correct for MNAR; a delta-adjustment
 sensitivity analysis is a Phase 4+ gate, not a v1 argument.
 
-### 5d. Multi-source and spatial covariate models (Phase 4, planned)
+### 5d. Binary predictor, exact two-state summation (Phase 5a, shipped)
+
+This is the first **discrete** missing predictor and now **shipped**. A
+two-level (binary) covariate is declared with `mi(x)` in the response formula,
+and its Bernoulli-logit covariate model is supplied through `impute` with the
+family made explicit: `impute_model(x ~ z, family = binomial())`. The link must
+be the default logit (`binomial("probit")` errors). Unlike the Gaussian route,
+there is **no latent `x_mis`**: because the predictor has only two admissible
+states, the likelihood is evaluated at `x = 0` and at `x = 1` and the two are
+summed exactly, weighted by the covariate model's probabilities. The state is a
+unit-level quantity, so the per-unit response factor is the product over that
+unit's trait rows before the two states are combined. The binary covariate model
+is **fixed-effect only** in this version -- a grouped `(1 | group)`, a level key
+(`mi_group()`), or a structured `phylo()` term on a binary predictor all error,
+and only one `mi()` term is allowed.
+
+The accepted predictor type is a two-level factor, a logical, or a 0/1 numeric;
+a factor with more than two levels is redirected to `categorical()` (Section 5f)
+and an ordered factor to `cumulative_logit()` (Section 5f).
+
+```{r missing-predictor-binary-wide}
+# WIDE form: one row per unit (site), two trait columns, a binary x with a few
+# units missing. The covariate model is logistic on z and w.
+# set.seed(13)
+# n <- 70
+# z <- rnorm(n); w <- rnorm(n)
+# x <- rbinom(n, 1, plogis(0.1 + 0.9 * z - 0.5 * w))   # 0/1 predictor
+# wide <- data.frame(
+#   site = factor(seq_len(n)),
+#   t1   = 0.5 + 1.1 * x - 0.2 * z + rnorm(n, sd = 0.35),
+#   t2   = -0.3 + 1.1 * x + 0.4 * z + rnorm(n, sd = 0.45),
+#   x = x, z = z, w = w
+# )
+# wide$x[c(3, 14, 28, 41, 55)] <- NA          # five missing binary units
+#
+# fit_bin <- gllvmTMB(
+#   traits(t1, t2) ~ z + mi(x),
+#   data    = wide,
+#   unit    = "site",
+#   family  = gaussian(),                      # RESPONSE family
+#   impute  = list(x = impute_model(x ~ z + w, family = binomial())),  # PREDICTOR family
+#   missing = miss_control(predictor = "model"),
+#   control = gllvmTMBcontrol(se = TRUE)
+# )
+#
+# imputed(fit_bin)   # one row per missing unit; `estimate` is P(x = 1 | y, z)
+```
+
+The same model in **long** form has one row per `(unit, trait)`, the stacked
+`value` response, and `unit =` naming the between-unit column. The binary `x` is
+set `NA` on every row of each missing unit:
+
+```{r missing-predictor-binary-long}
+# LONG form: one row per (site, trait). Columns: site, trait (factor),
+# value, x (0/1, unit-level), z, w. Set x = NA on ALL rows of each missing site.
+# long_df$x[long_df$site %in% c("3", "14", "28", "41", "55")] <- NA
+#
+# fit_bin_long <- gllvmTMB(
+#   value ~ 0 + trait + (0 + trait):z + mi(x),
+#   data    = long_df,
+#   unit    = "site",
+#   family  = gaussian(),
+#   impute  = list(x = impute_model(x ~ z + w, family = binomial())),
+#   missing = miss_control(predictor = "model"),
+#   control = gllvmTMBcontrol(se = TRUE)
+# )
+#
+# imputed(fit_bin_long)   # identical contract: P(x = 1 | y, z) per missing unit
+```
+
+The wide `traits(...)` and long `value ~ 0 + trait` forms are **co-equal inputs
+to the same stacked-long engine** (Section 5a), so the binary registry and
+`imputed()` output are identical whichever shape you pass.
+
+For the binary family `imputed()` returns one row per missing unit, but its
+columns mean something different from the Gaussian route. The `estimate` is the
+**conditional probability** `P(x = 1 | y, z)` from the exact two-state
+marginalisation -- a fitted probability in `[0, 1]`, not a latent mode. Because
+the discrete route reports a fitted distribution rather than a single mode with a
+curvature, `std_error` is `NA` for every unit and `uncertainty_status` is
+`"discrete_no_se"`; the `source` column reads `"conditional_probability"`. The
+same per-unit probabilities are stored at
+`fit_bin$missing_data$predictors$x$conditional_probability`, and the registry
+records `family = "bernoulli"` with `levels = c("0", "1")`.
+
+This is still one frequentist likelihood: the conditional probability is a
+maximum-likelihood quantity from the same joint fit, not a posterior probability
+and not a multiple-imputation draw.
+
+### 5e. Multi-source and spatial covariate models (Phase 4, planned)
 
 Planned, not yet shipped. Phase 4 adds spatial (`spatial()`),
 relatedness-matrix (`relmat()`), and
@@ -577,15 +732,53 @@ against structured confounding; Dupont, Marques and Kneib 2023).
 # FILL: Phase 4 -- spatial, relmat, animal, multi-source, Level-2 joint field.
 ```
 
-### 5e. Non-Gaussian and categorical predictors (Phase 5, planned)
+### 5f. Ordered, unordered, and beta predictors (Phase 5b/5c+, planned)
 
-Planned, not yet shipped. Passing a non-Gaussian family to `impute_model()`
-errors today (only `gaussian()` and the bare-formula sugar are accepted).
+Planned, not yet shipped -- shown here so the discrete-summation design is
+legible end to end. The family names below (`cumulative_logit`, `categorical`,
+`beta`) are **illustrative tokens for the planned slices and are not callable on
+`main` today**: passing any family other than `gaussian()`/the bare-formula
+sugar or `binomial(link = "logit")` to `impute_model()` errors now.
 
-```{r missing-predictor-nongaussian}
-# FILL: Phase 5 -- lognormal/Gamma, beta/logit-normal, Poisson/NB,
-# ordinal cumulative-logit, unordered categorical (factor).
-# Mirrors drmTMB MD5 non-Gaussian extension.
+Ordered (Phase 5b) and unordered (Phase 5c) predictors extend the binary
+exact-summation route from two states to K: the likelihood is evaluated at each
+of the K admissible levels and summed, weighted by the covariate model's
+category probabilities, with no latent variable. For an **ordered** predictor the
+covariate model is a cumulative-logit GLM and `imputed()` would report an
+expected category score; for an **unordered** predictor it is a baseline-category
+(multinomial) GLM and `imputed()` would report the modal category and the
+per-level probabilities. A **beta** (or other bounded-continuous) predictor is
+the one case that is neither a finite sum nor a plain Laplace mode: its latent
+value lives on `(0, 1)`, so it would be integrated by quadrature and `imputed()`
+would report a conditional mean.
+
+```{r missing-predictor-ordered}
+# PLANNED (Phase 5b) -- NOT callable on main today. Intended call shape only:
+# fit_ord <- gllvmTMB(
+#   traits(t1, t2) ~ z + mi(x),                                    # wide
+#   data    = wide, unit = "site", family = gaussian(),
+#   impute  = list(x = impute_model(x ~ z, family = cumulative_logit())),
+#   missing = miss_control(predictor = "model")
+# )
+# Long equivalent: value ~ 0 + trait + (0 + trait):z + mi(x), unit = "site".
+# imputed(fit_ord)   # would report an expected category score (exact K-state sum)
+```
+
+```{r missing-predictor-unordered}
+# PLANNED (Phase 5c) -- NOT callable on main today. Intended call shape only:
+# fit_cat <- gllvmTMB(
+#   traits(t1, t2) ~ z + mi(x),                                    # wide
+#   data    = wide, unit = "site", family = gaussian(),
+#   impute  = list(x = impute_model(x ~ z, family = categorical())),
+#   missing = miss_control(predictor = "model")
+# )
+# imputed(fit_cat)   # would report the modal category + per-level probabilities
+```
+
+```{r missing-predictor-beta}
+# PLANNED -- NOT callable on main today. Intended call shape only:
+# impute = list(x = impute_model(x ~ z, family = beta()))   # bounded (0, 1);
+#   integrated by quadrature, NOT exact summation; imputed() -> conditional mean.
 ```
 
 ## 6. FIML versus multiple imputation
@@ -693,17 +886,21 @@ each completed dataset, pool) is the bridge when both are wanted.
 ## 7. Current boundaries
 
 The design deliberately keeps several features out of scope for the shipped
-Phase 1 through Phase 3 layer, independent of which phases have shipped:
+Phase 1 through Phase 3 plus Phase 5a layer, independent of which phases have
+shipped:
 
 - EM, profile, and REML missing-data engines are not implemented.
   `engine = "laplace"` is the only v1 option; `"em"` and `"profile"` are
   reserved names that are not yet accepted.
 - Multiple missing predictors (`mi(x1)` and `mi(x2)` in the same formula) are
   not implemented.
-- Non-Gaussian, bounded, or categorical missing predictors (lognormal, Gamma,
-  beta, Poisson, NB, ordinal, factor) are Phase 5+ work.
+- The shipped non-Gaussian missing predictor is the **binary** fixed-effect
+  case (Phase 5a, Section 5d). The remaining non-Gaussian, bounded, or
+  categorical missing predictors (lognormal, Gamma, beta, Poisson, NB, ordered,
+  unordered factor) are Phase 5b/5c+ work.
 - Structured covariate models for non-Gaussian predictors (grouped or phylo
-  binary/ordinal) are not implemented.
+  binary / ordered / unordered) are not implemented; the binary predictor model
+  is fixed-effect only.
 - Interactions inside `mi()`, splines inside `mi()`, and predictor-model
   random slopes are not implemented.
 - `imputed()` does not summarize missing **responses**; use `predict_missing()`

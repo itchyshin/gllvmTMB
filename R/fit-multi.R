@@ -1163,6 +1163,36 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     )
   }
 
+  ## Phase 5c (design 68 sec.1.3 / sec.4): an UNORDERED categorical mi()
+  ## predictor enters the fixed design as an UNORDERED FACTOR (expanding to K-1
+  ## contrast columns; the FULL-SWAP via X_fix_state forces those columns to each
+  ## state). Same placeholder-fill as the ordered route (level 1 at missing rows;
+  ## immaterial -- the engine gates missing rows off the ordinary term and reads
+  ## X_fix_state). The NA-preserving raw 1..K codes + validated levels are
+  ## captured on the setup so the unordered builder derives observed/missing from
+  ## them. The >=3-level / ordered / empty-category guards fire HERE via
+  ## gll_unordered_mi_response (before any TMB fit).
+  if (isTRUE(mi_setup$enabled) && identical(mi_setup$family, "categorical")) {
+    mi_var <- mi_setup$variable
+    if (!mi_var %in% names(data)) {
+      cli::cli_abort(c(
+        "Internal error: the unordered {.fn mi} predictor {.val {mi_var}} is not a data column.",
+        "i" = "Expected {.val {mi_var}} in the model data."
+      ))
+    }
+    coded <- gll_unordered_mi_response(data[[mi_var]], mi_var)
+    mi_setup$categorical_value_long <- coded$value     # 1..K, NA preserved
+    mi_setup$categorical_levels <- coded$levels
+    ## Placeholder-fill missing rows with level 1, keep as an UNORDERED factor so
+    ## model.matrix produces the same K-1 contrast columns as the state design.
+    filled <- coded$value
+    filled[is.na(filled)] <- 1L
+    data[[mi_var]] <- factor(
+      coded$levels[filled],
+      levels = coded$levels
+    )
+  }
+
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
@@ -1273,18 +1303,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## the full-swap reads X_fix_state instead. Only binary / Gaussian (single
     ## broadcast column) require the mi_col match.
     is_ordered_setup <- identical(mi_setup$family, "ordinal")
-    mi_col <- if (is_ordered_setup) NA_integer_ else match(mi_colname,
-                                                           colnames(X_fix))
-    if (!is_ordered_setup && is.na(mi_col)) {
+    is_categorical_setup <- identical(mi_setup$family, "categorical")
+    ## Phase 5b/5c: the ordered / unordered predictors enter X_fix as a factor
+    ## (K-1 contrast columns), so there is NO single broadcast column named
+    ## `var`; the full-swap reads X_fix_state instead. Only binary / Gaussian
+    ## (single broadcast column) require the mi_col match.
+    is_state_design_setup <- is_ordered_setup || is_categorical_setup
+    mi_col <- if (is_state_design_setup) {
+      NA_integer_
+    } else {
+      match(mi_colname, colnames(X_fix))
+    }
+    if (!is_state_design_setup && is.na(mi_col)) {
       cli::cli_abort(c(
         "Internal error: the {.fn mi} predictor {.val {mi_colname}} is not a column of the fixed-effects design matrix.",
         "i" = "Expected a single broadcast column named {.val {mi_colname}}."
       ))
     }
-    ## Phase 5a/5b: dispatch the predictor-model builder by family. The Gaussian
-    ## continuous path (mi_family == 0) is integrated by a Laplace latent x_mis;
-    ## the binary (mi_family == 1) and ordered (mi_family == 2) discrete paths
-    ## have NO latent and are summed out exactly in the engine.
+    ## Phase 5a/5b/5c: dispatch the predictor-model builder by family. The
+    ## Gaussian continuous path (mi_family == 0) is integrated by a Laplace latent
+    ## x_mis; the binary (1), ordered (2), and unordered (3) discrete paths have
+    ## NO latent and are summed out exactly in the engine.
     mi_model <- if (identical(mi_setup$family, "bernoulli")) {
       m <- gll_build_binary_mi_model(
         setup = mi_setup,
@@ -1305,6 +1344,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         mi_col = mi_col,
         env = environment(parsed$fixed)
       )
+    } else if (is_categorical_setup) {
+      gll_build_unordered_mi_model(
+        setup = mi_setup,
+        data_long = data,
+        unit_id = site_id,
+        mi_col = mi_col,
+        env = environment(parsed$fixed)
+      )
     } else {
       gll_build_gaussian_mi_model(
         setup = mi_setup,
@@ -1314,13 +1361,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         env = environment(parsed$fixed)
       )
     }
-    if (is_ordered_setup) {
-      ## Phase 5b: build the FILTERED long-and-stacked state design X_fix_state
+    if (is_state_design_setup) {
+      ## Phase 5b/5c: build the FILTERED long-and-stacked state design X_fix_state
       ## (the full-swap reads it for missing-unit rows) + the mi_state_row map.
       ## Uses the SAME long fixed formula / model frame / design as X_fix, so the
-      ## state matrices are column-compatible (a guard asserts this). The ordered
-      ## `var` column in `mf` is the placeholder-filled ordered factor; the state
-      ## builder forces it to each level k = 1..K.
+      ## state matrices are column-compatible (a guard asserts this). The `var`
+      ## column in `mf` is the placeholder-filled factor; the state builder forces
+      ## it to each level k = 1..K. The factor type matches the family: ordered
+      ## for cumulative_logit, unordered for categorical.
       state <- gll_mi_state_design(
         fixed_formula = parsed$fixed,
         mf = mf,
@@ -1328,7 +1376,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         mi_col_name = mi_colname,
         levels = mi_model$levels,
         missing_unit = !mi_model$observed,
-        unit_id = mi_model$unit_id
+        unit_id = mi_model$unit_id,
+        ordered = is_ordered_setup
       )
       mi_model$X_fix_state <- state$X_fix_state
       mi_model$mi_state_row <- state$mi_state_row
@@ -2346,15 +2395,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## log_sd_mi_group. Stub lengths (1 / empty) when no mi() term / no group is
   ## present -- mapped off below.
   use_mi_group <- use_mi_predictor && isTRUE(mi_model$random$enabled)
-  ## Phase 5a/5b: the DISCRETE (binary, ordered) routes have NO latent x and NO
-  ## residual sigma -- the missing x is summed out exactly in the engine
-  ## (design 68 sec.1.1 / sec.1.2). x_mis stays length 0 (out of `random`) and
-  ## log_sigma_mi is mapped off; beta_mi (the covariate coefficients) is
-  ## estimated, plus theta_ord (the K-1 free ordered cutpoints) for the ordered
-  ## route. theta_ord stays length 0 (mapped off) for binary / Gaussian.
+  ## Phase 5a/5b/5c: the DISCRETE (binary, ordered, unordered) routes have NO
+  ## latent x and NO residual sigma -- the missing x is summed out exactly in the
+  ## engine (design 68 sec.1.1 / sec.1.2 / sec.1.3). x_mis stays length 0 (out of
+  ## `random`) and log_sigma_mi is mapped off; beta_mi (the covariate
+  ## coefficients) is estimated, plus theta_ord (the K-1 free ordered cutpoints)
+  ## for the ordered route only. theta_ord stays length 0 (mapped off) for
+  ## binary / unordered / Gaussian.
   use_mi_discrete <- use_mi_predictor &&
     (identical(mi_model$family, "bernoulli") ||
-       identical(mi_model$family, "ordinal"))
+       identical(mi_model$family, "ordinal") ||
+       identical(mi_model$family, "categorical"))
   use_mi_ordered <- use_mi_predictor && identical(mi_model$family, "ordinal")
   if (use_mi_predictor) {
     tmb_params$beta_mi      <- unname(mi_model$beta_start)

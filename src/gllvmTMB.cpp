@@ -360,8 +360,8 @@ Type objective_function<Type>::operator()()
   // x_full(u) to every long row. The block is level-agnostic: n_units below is
   // the number of latent-level values (units or groups). has_mi == 0 -> every
   // block below is gated off (exact no-op).
-  DATA_INTEGER(has_mi);            // 1 = a Gaussian mi() predictor is present
-  DATA_INTEGER(mi_family);         // 0 = Gaussian (only family in Phase 2a)
+  DATA_INTEGER(has_mi);            // 1 = an mi() predictor is present
+  DATA_INTEGER(mi_family);         // 0 = Gaussian, 1 = binary, 2 = ordered, 3 = unordered
   DATA_INTEGER(mi_col);            // 0-indexed column of X_fix for the mi() x
   DATA_VECTOR(mi_x_unit);          // length n_units (latent levels); observed x,
                                    // sentinel where missing (x_mis overrides)
@@ -382,18 +382,19 @@ Type objective_function<Type>::operator()()
   // exact no-op and Ainv_phy_rr is referenced but unused by this block.
   DATA_INTEGER(has_mi_phylo);          // 1 = the covariate model has phylo(1|species)
   DATA_IVECTOR(mi_species_node_id);    // length n_units; species -> aug node (0-idx)
-  // Phase 5b (design 68 sec.1.2 / sec.4): ORDERED discrete predictor via the
-  // cumulative-logit K-state SUM (mi_family == 2). mi_n_state = K (number of
-  // ordered categories). X_fix_state is the long-and-stacked state-design
+  // Phase 5b/5c (design 68 sec.1.2 / sec.1.3 / sec.4): the ORDERED (cumulative-
+  // logit, mi_family == 2) and UNORDERED (baseline-softmax, mi_family == 3)
+  // discrete predictors share the K-state full-swap machinery. mi_n_state = K
+  // (number of categories). X_fix_state is the long-and-stacked state-design
   // matrix (the gllvmTMB analogue of drmTMB X_mi_state_mu) FILTERED to the long
   // rows of missing units: for a missing-unit long row o it holds K stacked
-  // rows -- the FULL fixed-effect design of row o with the mi() ordered
-  // predictor forced to category k (k = 0..K-1), state as the FAST index. The
-  // base row of o's K-block is mi_state_row(o); state k is row mi_state_row(o)
-  // + k. mi_state_row(o) = -1 for observed-unit rows (no state block). When
-  // mi_family != 2 these are 1x1 / length-1 stubs and the whole block is an
-  // exact no-op.
-  DATA_INTEGER(mi_n_state);            // K = number of ordered categories
+  // rows -- the FULL fixed-effect design of row o with the mi() factor predictor
+  // forced to category k (k = 0..K-1), state as the FAST index. The base row of
+  // o's K-block is mi_state_row(o); state k is row mi_state_row(o) + k.
+  // mi_state_row(o) = -1 for observed-unit rows (no state block). When mi_family
+  // not in {2, 3} these are 1x1 / length-1 stubs and the whole block is an exact
+  // no-op.
+  DATA_INTEGER(mi_n_state);            // K = number of categories (ordered/unordered)
   DATA_MATRIX(X_fix_state);            // (sum_{missing u} |rows(u)| * K) x p
   DATA_IVECTOR(mi_state_row);          // length n_obs; 0-idx K-block base or -1
 

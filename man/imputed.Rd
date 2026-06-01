@@ -38,4 +38,15 @@ their conditional standard errors from the joint Hessian.
 The missing predictor is a unit-level quantity, so \code{imputed()} returns one
 row per missing \strong{unit} value (not one per long-format model row). These
 are empirical best linear unbiased predictions, not posterior summaries.
+
+\strong{Row identifiers.} The \code{original_row} and \code{model_row} columns are
+\strong{latent-level ordinals} (the 1-based index of the missing unit / group in
+the covariate model's latent level), \emph{not} indices into the rows of the data
+frame you passed to \code{\link[=gllvmTMB]{gllvmTMB()}}. They coincide with original data rows only
+in the narrow wide-\code{traits()} case where each unit is a single row; off the
+wide path (long data, or a coarser \code{mi_group()} level) they index the latent
+level, not the data. This differs from \code{\link[=predict_missing]{predict_missing()}}, whose
+\code{original_row} is the pre-mask row index in the original data. Join \code{imputed()}
+output back to your data on the unit / group identifier, not on these
+ordinals.
 }

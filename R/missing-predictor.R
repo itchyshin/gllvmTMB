@@ -836,6 +836,44 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
         "x" = "{sum(!rhs_complete)} unit{?s} {?has/have} a missing imputation-model predictor value (outside explicit {.fn mi})."
       ))
     }
+    ## Guard (BUG-3 / issue #399): the covariate model is fit at the LATENT
+    ## level (one representative row per level via `first_row`), so each impute
+    ## RHS predictor `z` must be constant within every latent level. When the
+    ## latent level is COARSER than the unit (Phase 2c mi_group), a `z` that
+    ## varies within the level has no single level value; the old code silently
+    ## read the level's first row (row-order-dependent sufficient statistics).
+    ## Mirror the `x` constancy guard above and abort instead.
+    for (v in rhs_vars) {
+      if (!v %in% names(data_long)) {
+        next
+      }
+      zcol <- data_long[[v]]
+      if (!is.numeric(zcol) && !is.factor(zcol) && !is.character(zcol) &&
+            !is.logical(zcol)) {
+        next
+      }
+      zrep <- zcol[first_row]
+      for (o in seq_len(n_obs)) {
+        u <- unit_id[o] + 1L
+        here <- zcol[o]
+        there <- zrep[u]
+        consistent <- (is.na(here) && is.na(there)) ||
+          (!is.na(here) && !is.na(there) &&
+             isTRUE(all.equal(here, there)))
+        if (!consistent) {
+          level_label <- if (is_group) {
+            latent$group_level$group
+          } else {
+            "unit"
+          }
+          cli::cli_abort(c(
+            "The {.arg impute} covariate {.val {v}} must be constant within each {.val {level_label}} level.",
+            "x" = "It varies within at least one {.val {level_label}} level.",
+            "i" = "The covariate model is fit at the latent level (one value per level); a predictor that changes within a level is unsupported. Aggregate it to the level, or fit at the level where it is constant."
+          ))
+        }
+      }
+    }
   }
   ## Unit-level covariate design X_x (n_units x p_x).
   X_full <- stats::model.matrix(terms_x, mf)
@@ -845,6 +883,22 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
       "The Gaussian {.arg impute} model is weakly identified for the first {.fn mi} slice.",
       "x" = "It has {sum(observed)} observed {.code {setup$variable}} unit value{?s} and {ncol(X_x)} fixed-effect coefficient{?s}.",
       "i" = "Use a simpler predictor model or supply more observed predictor values."
+    ))
+  }
+  ## Rank guard: a COUNT check (above) does not catch a rank-deficient design.
+  ## Collinear / redundant impute covariates (e.g. impute = x ~ z + I(2 * z))
+  ## leave X_x rank-deficient on the observed units, so the OLS / Laplace fit
+  ## is non-identified and the fixed-effect SE block is silently NaN (lm.fit
+  ## NA-zeroes the redundant coefficient and convergence still reports 0). Abort
+  ## on the observed-unit design rank rather than ship NaN standard errors.
+  X_x_obs <- X_x[observed, , drop = FALSE]
+  x_rank <- qr(X_x_obs)$rank
+  n_xcol <- ncol(X_x_obs)
+  if (x_rank < n_xcol) {
+    cli::cli_abort(c(
+      "The Gaussian {.arg impute} model design is rank-deficient for the first {.fn mi} slice.",
+      "x" = "The observed-unit covariate design has rank {x_rank} but {n_xcol} column{?s} (collinear or redundant {.arg impute} covariates).",
+      "i" = "Drop the collinear or redundant predictors from the {.arg impute} formula."
     ))
   }
 
@@ -1181,6 +1235,17 @@ gll_finalize_mi <- function(missing_data, par_list, model, sdr = NULL) {
 #' row per missing **unit** value (not one per long-format model row). These
 #' are empirical best linear unbiased predictions, not posterior summaries.
 #'
+#' **Row identifiers.** The `original_row` and `model_row` columns are
+#' **latent-level ordinals** (the 1-based index of the missing unit / group in
+#' the covariate model's latent level), *not* indices into the rows of the data
+#' frame you passed to [gllvmTMB()]. They coincide with original data rows only
+#' in the narrow wide-`traits()` case where each unit is a single row; off the
+#' wide path (long data, or a coarser `mi_group()` level) they index the latent
+#' level, not the data. This differs from [predict_missing()], whose
+#' `original_row` is the pre-mask row index in the original data. Join `imputed()`
+#' output back to your data on the unit / group identifier, not on these
+#' ordinals.
+#'
 #' @param object A `gllvmTMB` fit.
 #' @param variable Optional missing-predictor name. The default uses the only
 #'   modelled missing predictor in the fit.
@@ -1307,17 +1372,33 @@ gll_imputed_missing_predictor_se <- function(object, n_missing, se) {
     return(rep(NA_real_, n_missing))
   }
   variance <- as.numeric(sdr$diag.cov.random[positions])
-  sqrt(pmax(variance, 0))
+  ## Map a non-finite (NaN / Inf) conditional variance to NA rather than passing
+  ## NaN through sqrt(): a rank-deficient / non-positive-definite Hessian yields
+  ## NaN variances, which must surface as a missing SE (NA), not a silent NaN.
+  se <- sqrt(pmax(variance, 0))
+  se[!is.finite(variance)] <- NA_real_
+  se
 }
 
-## Uncertainty-status label: "ok" when an sdreport is present, otherwise
-## "sdreport_skipped" (the SE column is NA).
+## Uncertainty-status label: "ok" when an sdreport is present and the
+## fixed-effect SE block is finite; "sdreport_skipped" when no sdreport,
+## "sdreport_error" when sdreport raised, and "sdreport_nonfinite" when the
+## sdreport succeeded but the fixed-effect standard errors are NaN / Inf (the
+## rank-deficient / non-PD-Hessian case -- BUG-1: the SE column is NA and the
+## status must NOT be "ok").
 gll_standard_error_status <- function(object) {
   if (is.null(object$sd_report)) {
     return("sdreport_skipped")
   }
   if (!is.null(object$sdreport_error) && !is.na(object$sdreport_error)) {
     return("sdreport_error")
+  }
+  fixed_se <- tryCatch(
+    suppressWarnings(summary(object$sd_report, "fixed"))[, "Std. Error"],
+    error = function(e) NA_real_
+  )
+  if (length(fixed_se) > 0L && any(!is.finite(fixed_se))) {
+    return("sdreport_nonfinite")
   }
   "ok"
 }

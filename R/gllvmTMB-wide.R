@@ -141,13 +141,31 @@ gllvmTMB_wide <- function(
   n_sites <- nrow(Y)
   n_species <- ncol(Y)
 
+  ## Response mode (issue #399 GAP-7). Under response = "include" the NA cells
+  ## must SURVIVE the pivot so gllvmTMB()'s is_y_observed machinery can mask
+  ## them out of the likelihood (and predict_missing() can return them);
+  ## stripping them unconditionally silently defeated response = "include".
+  ## Gate both the weight replication and the NA-cell strip on the mode,
+  ## mirroring the traits() LHS path (R/traits-keyword.R).
+  dots <- list(...)
+  miss_mode <- if (!is.null(dots$missing) && is.list(dots$missing)) {
+    dots$missing$response
+  } else {
+    NULL
+  }
+  drop_na_cells <- !identical(miss_mode, "include")
+
   w_long <- normalise_weights(
     weights = weights,
     response_shape = "wide_matrix",
-    n_obs = sum(!is.na(Y)),
+    n_obs = if (drop_na_cells) {
+      sum(!is.na(Y))
+    } else {
+      n_sites * n_species
+    },
     n_units = n_sites,
     n_traits = n_species,
-    na_mask = is.na(Y)
+    na_mask = if (drop_na_cells) is.na(Y) else NULL
   )
 
   long_df <- data.frame(
@@ -176,11 +194,12 @@ gllvmTMB_wide <- function(
     }
   }
 
-  ## NA-cell filtering. The stacked response cannot contain NA rows, so
-  ## drop NA-Y rows here. normalise_weights() has already applied the same
-  ## mask to w_long. This is structurally consistent with the "NA Y -> no
-  ## observation" contract and only kicks in when Y has NAs.
-  if (anyNA(long_df$value)) {
+  ## NA-cell filtering. Under the default response = "drop" the stacked
+  ## response cannot contain NA rows, so drop NA-Y rows here (normalise_weights()
+  ## above applied the same mask to w_long). Under response = "include" the NA
+  ## cells are kept (drop_na_cells = FALSE, computed above) so gllvmTMB() masks
+  ## them out of the likelihood instead of dropping them (issue #399 GAP-7).
+  if (drop_na_cells && anyNA(long_df$value)) {
     keep <- !is.na(long_df$value)
     long_df <- long_df[keep, , drop = FALSE]
   }

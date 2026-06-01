@@ -76,6 +76,17 @@ parse_multi_formula <- function(formula) {
         covstructs[[length(covstructs) + 1L]] <<- cs
         return(invisible())
       }
+      ## A non-bar parenthesized term, e.g. `(mi(x))` or `(a + b)`. Strip one
+      ## paren level and re-walk the content with the same sign (issue #399
+      ## GAP-5). Without this the parens survived into fixed_terms, leaving the
+      ## `mi()` wrapper intact so model.matrix raised the opaque "could not find
+      ## function 'mi'". Parentheses are semantically transparent in an additive
+      ## RHS, so unwrapping is safe (a bare `(mi(x))` then hits the mi() branch
+      ## below and is stripped to its bare predictor).
+      if (fn == "(" && length(e) == 2L) {
+        walk(e[[2L]], sign)
+        return(invisible())
+      }
       ## Missing-predictor token mi(var): a top-level mi() term marks `var` as
       ## a UNIT-level missing predictor. Strip the wrapper so the bare `var`
       ## enters the fixed design as a single broadcast column (one shared

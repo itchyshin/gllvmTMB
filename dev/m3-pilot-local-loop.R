@@ -233,7 +233,13 @@ local_pending_cells <- function(results_dir = LOCAL_RESULTS_DIR,
                                 n_sim_cap = LOCAL_N_SIM_CAP) {
   st <- pilot_accum_status(results_dir = results_dir, n_sim_cap = n_sim_cap)
   cells <- st$cells
-  pending <- cells$cell_id[!cells$complete]
+  ## Least-filled FIRST: spread local reps evenly across all still-incomplete
+  ## cells (complementing the even-but-slow GHA cron) instead of front-loading
+  ## the lowest-id cells to the cap one batch at a time. Ties broken by cell_id
+  ## for deterministic, resumable ordering.
+  inc <- !cells$complete
+  ord <- order(cells$n_sim[inc], cells$cell_id[inc])
+  pending <- (cells$cell_id[inc])[ord]
   list(
     pending = pending,
     n_complete = sum(cells$complete),

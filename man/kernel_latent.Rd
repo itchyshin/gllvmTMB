@@ -38,8 +38,11 @@ with a user-supplied between-unit covariance matrix \code{K}. The IN scope
 must match \code{phylo_latent(unit, vcv = A, d = q)} plus
 \code{phylo_unique(unit, vcv = A)} to less than \code{1e-6} for log likelihood
 and extracted \code{Sigma}. The PARTIAL scope (\code{COE-02}) is coevolution:
-users can pass a \code{K_star} from \code{\link[=make_cross_kernel]{make_cross_kernel()}}, but validated
-coevolution recovery and \code{extract_Gamma()} remain planned C2 work.
+users can pass a \code{K_star} from \code{\link[=make_cross_kernel]{make_cross_kernel()}} and extract the
+host-partner shared covariance block with \code{\link[=extract_Gamma]{extract_Gamma()}}. C2 recovery
+evidence covers known-\code{Gamma} recovery, a zero-\code{Gamma} block-diagonal null,
+and a sparse-versus-dense association sensitivity case; uncertainty and
+\code{rho} profiling remain later example / workflow layers.
 }
 \examples{
 \dontrun{

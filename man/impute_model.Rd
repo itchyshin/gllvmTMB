@@ -8,7 +8,7 @@ impute_model(formula, family = stats::gaussian())
 }
 \arguments{
 \item{formula}{Two-sided predictor-model formula. The left-hand side must be
-the same variable used inside \code{\link[=mi]{mi()}}.}
+the same variable used inside \code{mi()}.}
 
 \item{family}{Predictor-model family. Only \code{gaussian()} is supported in this
 version; other families are reserved for later phases and error.}
@@ -19,7 +19,7 @@ A \code{gllvmTMB_impute_model} object for the \code{impute} argument of
 }
 \description{
 \code{impute_model()} wraps the model for a covariate declared missing with
-\code{\link[=mi]{mi()}} in a \code{\link[=gllvmTMB]{gllvmTMB()}} formula. A bare two-sided formula in the \code{impute}
+\code{mi()} in a \code{\link[=gllvmTMB]{gllvmTMB()}} formula. A bare two-sided formula in the \code{impute}
 argument -- for example \code{impute = list(x = x ~ z)} -- is sugar for a Gaussian
 predictor model; use \code{impute_model()} when an explicit predictor family is
 wanted.

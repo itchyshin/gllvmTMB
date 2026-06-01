@@ -1176,6 +1176,121 @@ extract_Sigma <- function(
   out
 }
 
+#' Extract a cross-lineage Gamma block
+#'
+#' @description
+#' `extract_Gamma()` slices the shared covariance matrix returned by
+#' [extract_Sigma()] to give the row-lineage by column-lineage block
+#' `Gamma = Lambda_row Lambda_col^T`. In the Design 65 coevolution path,
+#' `level` is the named `kernel_*()` tier, `row_traits` are the host
+#' traits, and `col_traits` are the partner traits. IN (`COE-02`): this
+#' is a point-estimate extractor for the shared covariance block of a
+#' fitted dense-kernel model. PARTIAL: uncertainty for `Gamma` is not yet
+#' reported by this helper; use bootstrap workflows when interval
+#' estimates are required. PLANNED: richer `rho` profiling and association
+#' richness guidance live in the C2/C3 coevolution examples rather than in
+#' this low-level extractor.
+#'
+#' @details
+#' `rho` is part of the supplied `K` matrix, not a fitted parameter in the
+#' current engine. To profile it, rebuild `K_star` over a small `rho` grid,
+#' refit the same formula, and compare `logLik()` values. Treat `Gamma` from
+#' a single association matrix `W` as data-condition sensitive: the C2
+#' recovery test includes a sparse-versus-dense `W` check, and sparse or
+#' poorly replicated host-partner links should be reported as weaker
+#' evidence rather than as a precise coevolution estimate.
+#'
+#' @param fit A fitted `gllvmTMB_multi` object.
+#' @param level Character scalar naming the covariance tier. For
+#'   `kernel_*()` fits this is the `name` argument supplied in the formula.
+#' @param row_traits,col_traits Character vectors of trait names defining
+#'   the rows and columns of the returned block.
+#'
+#' @return A numeric matrix with rows `row_traits` and columns `col_traits`.
+#'
+#' @examples
+#' \dontrun{
+#' Gamma_HP <- extract_Gamma(
+#'   fit,
+#'   level = "cross",
+#'   row_traits = c("host_size", "host_defence"),
+#'   col_traits = c("partner_size", "partner_attack")
+#' )
+#' }
+#'
+#' @export
+extract_Gamma <- function(fit, level, row_traits, col_traits) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+  }
+  if (missing(level) ||
+        !is.character(level) ||
+        length(level) != 1L ||
+        !nzchar(level) ||
+        is.na(level)) {
+    cli::cli_abort("{.arg level} must be one non-empty character string.")
+  }
+  row_traits <- .gamma_trait_arg(row_traits, "row_traits")
+  col_traits <- .gamma_trait_arg(col_traits, "col_traits")
+
+  shared <- suppressMessages(extract_Sigma(
+    fit,
+    level = level,
+    part = "shared",
+    link_residual = "none"
+  ))
+  Sigma <- shared$Sigma
+  if (!is.matrix(Sigma)) {
+    cli::cli_abort(c(
+      "The requested level has no shared covariance matrix.",
+      "i" = "Refit with a {.fn latent}, {.fn phylo_latent}, {.fn spatial_latent}, or {.fn kernel_latent} term before calling {.fn extract_Gamma}."
+    ))
+  }
+
+  sigma_rows <- rownames(Sigma)
+  sigma_cols <- colnames(Sigma)
+  missing_rows <- setdiff(row_traits, sigma_rows)
+  missing_cols <- setdiff(col_traits, sigma_cols)
+  if (length(missing_rows) || length(missing_cols)) {
+    bullets <- c("Trait block is not present in the shared covariance matrix.")
+    if (length(missing_rows)) {
+      bullets <- c(
+        bullets,
+        "x" = "{.arg row_traits} not found: {.val {missing_rows}}."
+      )
+    }
+    if (length(missing_cols)) {
+      bullets <- c(
+        bullets,
+        "x" = "{.arg col_traits} not found: {.val {missing_cols}}."
+      )
+    }
+    bullets <- c(
+      bullets,
+      "i" = "Available traits are: {.val {sigma_rows}}."
+    )
+    cli::cli_abort(bullets)
+  }
+
+  Sigma[row_traits, col_traits, drop = FALSE]
+}
+
+.gamma_trait_arg <- function(x, arg) {
+  if (missing(x) || is.null(x)) {
+    cli::cli_abort("{.arg {arg}} must be a non-empty character vector.")
+  }
+  if (is.factor(x)) {
+    x <- as.character(x)
+  }
+  if (!is.character(x) || length(x) == 0L || anyNA(x) || any(!nzchar(x))) {
+    cli::cli_abort("{.arg {arg}} must be a non-empty character vector.")
+  }
+  if (anyDuplicated(x)) {
+    cli::cli_abort("{.arg {arg}} must not contain duplicate trait names.")
+  }
+  x
+}
+
 .kernel_level_alias <- function(fit, level) {
   if (!is.character(level) || length(level) != 1L) {
     return(NULL)

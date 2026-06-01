@@ -218,9 +218,11 @@ the source-specific grid:
 | latent | `kernel_latent(unit, K = A, d = q, name = "known")` | reduced-rank latent route |
 
 There is no C1 `kernel_scalar()` surface. Scalar single-variance
-kernel models remain a later unification/deprecation question because
-the C1 gate is the dense `kernel_latent + kernel_unique` equivalence
-path required before cross-lineage coevolution C2.
+kernel models remain a later unification/deprecation question. Design
+65 C2 uses the same dense `kernel_latent + kernel_unique` grammar with
+a cross-lineage `K_star = make_cross_kernel(...)` and recovers the
+host-trait x partner-trait block through `extract_Gamma()`; it does not
+add another formula keyword.
 
 **The A vs V naming boundary** (per Design 14 §3): `animal_*` and
 `phylo_*` keywords accept **A** / **Ainv** for *relatedness*

@@ -24,7 +24,7 @@
 #' Predictor model for a missing covariate used inside `mi()`
 #'
 #' `impute_model()` wraps the model for a covariate declared missing with
-#' [mi()] in a [gllvmTMB()] formula. A bare two-sided formula in the `impute`
+#' `mi()` in a [gllvmTMB()] formula. A bare two-sided formula in the `impute`
 #' argument -- for example `impute = list(x = x ~ z)` -- is sugar for a Gaussian
 #' predictor model; use `impute_model()` when an explicit predictor family is
 #' wanted.
@@ -36,7 +36,7 @@
 #' and structured / grouped covariate models arrive in later phases.
 #'
 #' @param formula Two-sided predictor-model formula. The left-hand side must be
-#'   the same variable used inside [mi()].
+#'   the same variable used inside `mi()`.
 #' @param family Predictor-model family. Only `gaussian()` is supported in this
 #'   version; other families are reserved for later phases and error.
 #'
@@ -69,7 +69,7 @@ impute_model <- function(formula, family = stats::gaussian()) {
 #' Cumulative-logit ordered categorical missing-predictor family
 #'
 #' `cumulative_logit()` declares the predictor-model family for an **ordered
-#' categorical** missing predictor used inside [mi()] with
+#' categorical** missing predictor used inside `mi()` with
 #' `impute_model(family = cumulative_logit())` (Phase 5b, the gllvmTMB analogue
 #' of the drmTMB MD6b path). The missing ordered predictor is marginalised
 #' EXACTLY by a finite-state cumulative-logit sum over its `K` categories
@@ -89,8 +89,8 @@ impute_model <- function(formula, family = stats::gaussian()) {
 #'
 #' @return A `gllvmTMB_impute_family` object for the `family` argument of
 #'   [impute_model()].
-#' @seealso [impute_model()], [mi()], [binomial()] for a binary missing
-#'   predictor, and [ordinal_probit()] for the ordinal RESPONSE family.
+#' @seealso [impute_model()], [binomial()] for a binary missing predictor,
+#'   and [ordinal_probit()] for the ordinal RESPONSE family.
 #' @export
 #' @examples
 #' impute_model(score ~ z, family = cumulative_logit())
@@ -108,7 +108,7 @@ cumulative_logit <- function() {
 #' Baseline-category softmax unordered categorical missing-predictor family
 #'
 #' `categorical()` declares the predictor-model family for an **unordered
-#' categorical** missing predictor used inside [mi()] with
+#' categorical** missing predictor used inside `mi()` with
 #' `impute_model(family = categorical())` (Phase 5c, the gllvmTMB analogue of
 #' the drmTMB MD6c path). The missing unordered predictor is marginalised
 #' EXACTLY by a finite-state baseline-category softmax sum over its `K`
@@ -130,8 +130,8 @@ cumulative_logit <- function() {
 #'
 #' @return A `gllvmTMB_impute_family` object for the `family` argument of
 #'   [impute_model()].
-#' @seealso [impute_model()], [mi()], [cumulative_logit()] for an ordered
-#'   missing predictor, and [binomial()] for a binary missing predictor.
+#' @seealso [impute_model()], [cumulative_logit()] for an ordered missing
+#'   predictor, and [binomial()] for a binary missing predictor.
 #' @export
 #' @examples
 #' impute_model(habitat ~ z, family = categorical())

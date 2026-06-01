@@ -1,0 +1,501 @@
+name: Power pilot sweep
+
+# Design 66 power-study CAMPAIGN engine -- a SELF-SCHEDULING sweep.
+#
+# Every ~2h GitHub's scheduler fires this workflow (no human needed). Each
+# run adds `n_sim_step` fresh replicates to every pilot cell still below
+# `n_sim_cap`, accumulating reps across runs until all 48 cells reach the
+# cap (Design 66 sec. 8 target n_sim = 2000). The accumulated per-cell
+# results live on a dedicated orphan branch (`power-pilot-results`), so
+# progress is durable + resumable across runs and NEVER touches `main`.
+#
+# Job graph (per run):
+#   guard   -- read the store, decide if the campaign is already complete
+#              (auto-stop) and publish the store as the shard seed.
+#   sweep   -- 8-shard matrix; each shard accumulates its cells' batch.
+#   persist -- single writer: merge shard slices, commit+push the store.
+#   summary -- post/update the coverage+power board on issue #340; raise
+#              a failure-rate alert if a run went badly.
+#
+# The repo is PUBLIC, so ubuntu-latest minutes are free + unlimited.
+#
+# POST-MERGE: the cron goes live on merge to main. Before trusting the
+# schedule, dispatch one `dry_run=true` cycle (Actions tab -> Run workflow)
+# to confirm the full run->persist->summary pipeline on GHA.
+
+on:
+  schedule:
+    # Every 2 hours, on the hour (UTC). ~12 runs/day.
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      n_sim_step:
+        description: "Replicates to ADD per cell this run (accumulates toward the cap)."
+        required: false
+        default: "200"
+        type: string
+      n_sim_cap:
+        description: "Target accumulated replicates per cell (campaign stops once every cell reaches this)."
+        required: false
+        default: "2000"
+        type: string
+      dry_run:
+        description: "true = cheap smoke (1 cell/shard, tiny step) to confirm the pipeline on GHA."
+        required: false
+        default: "false"
+        type: string
+
+# Never overlap two sweeps and never kill a run mid-flight (a running
+# accumulate batch must finish so its reps are persisted). Queued runs
+# wait; they do not cancel the in-flight one.
+concurrency:
+  group: power-pilot
+  cancel-in-progress: false
+
+# Repo default workflow permission is `read`; grant the minimum each job
+# needs at the job level below. (contents:write only for the persist job;
+# issues:write only for the summary job.)
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  RESULTS_BRANCH: power-pilot-results
+  RESULTS_DIR: dev/m3-pilot-results
+  # 48 cells, sharded 1-cell-per-shard so a single shard's per-run batch
+  # (1 cell x n_sim_step reps) finishes well inside the job timeout even
+  # for the slowest cell (~2 h at step=200, n_boot=25). See the PR body's
+  # runtime projection. max-parallel below caps concurrency to the free
+  # tier (<=20).
+  N_SHARDS: "48"
+  # n_boot for the primary Sigma_unit_diag bootstrap CI (pilot default).
+  N_BOOT: "25"
+  # Aggregate failure-rate threshold: above this, the summary job raises
+  # an alert on the tracking issue.
+  FAIL_RATE_ALERT: "0.30"
+
+jobs:
+  # --------------------------------------------------------------------
+  # guard: read the accumulated store, decide auto-stop, seed the shards.
+  # --------------------------------------------------------------------
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      all_complete: ${{ steps.status.outputs.all_complete }}
+      n_sim_step: ${{ steps.cfg.outputs.n_sim_step }}
+      n_sim_cap: ${{ steps.cfg.outputs.n_sim_cap }}
+      dry_run: ${{ steps.cfg.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve run config (dispatch inputs or schedule defaults)
+        id: cfg
+        shell: bash
+        run: |
+          STEP="${{ github.event.inputs.n_sim_step }}"; STEP="${STEP:-200}"
+          CAP="${{ github.event.inputs.n_sim_cap }}";  CAP="${CAP:-2000}"
+          DRY="${{ github.event.inputs.dry_run }}";    DRY="${DRY:-false}"
+          {
+            echo "n_sim_step=$STEP"
+            echo "n_sim_cap=$CAP"
+            echo "dry_run=$DRY"
+          } >> "$GITHUB_OUTPUT"
+          echo "config: step=$STEP cap=$CAP dry_run=$DRY"
+
+      - name: Fetch accumulated store from the results branch
+        shell: bash
+        run: |
+          mkdir -p "$RESULTS_DIR"
+          if git ls-remote --exit-code --heads origin "$RESULTS_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$RESULTS_BRANCH" --depth=1
+            # The store lives at $RESULTS_DIR (= dev/m3-pilot-results) on
+            # the branch; archiving that path and extracting at repo root
+            # lands files back at exactly $RESULTS_DIR (no strip needed).
+            if git archive FETCH_HEAD "$RESULTS_DIR" 2>/dev/null | tar -x; then
+              echo "store extracted from $RESULTS_BRANCH."
+            else
+              echo "results branch has no store dir yet; starting empty."
+            fi
+          else
+            echo "results branch '$RESULTS_BRANCH' does not exist yet; starting empty."
+          fi
+          ls -la "$RESULTS_DIR" || true
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Campaign status / auto-stop decision
+        id: status
+        shell: bash
+        run: |
+          Rscript dev/power-pilot-run.R \
+            --mode=status \
+            --n-sim-cap=${{ steps.cfg.outputs.n_sim_cap }} \
+            --results-dir="$RESULTS_DIR"
+          if [ "$(cat "$GITHUB_OUTPUT" | grep '^all_complete=' | tail -1 | cut -d= -f2)" = "true" ]; then
+            echo "::notice title=Power pilot::campaign complete -- all cells at the cap; sweep will skip."
+          fi
+
+      - name: Publish store as shard seed
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-pilot-store-seed
+          path: ${{ env.RESULTS_DIR }}/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------
+  # sweep: 8-shard matrix; each shard accumulates its cells' batch.
+  # Skipped entirely when the campaign is already complete (auto-stop).
+  # --------------------------------------------------------------------
+  sweep:
+    needs: guard
+    if: needs.guard.outputs.all_complete != 'true'
+    runs-on: ubuntu-latest
+    # One cell per shard: a shard does 1 cell x n_sim_step reps per run
+    # (~2 h worst case at step=200, n_boot=25). 200 min leaves headroom.
+    timeout-minutes: 200
+    permissions:
+      contents: read
+    name: shard ${{ matrix.shard }}/48
+    strategy:
+      fail-fast: false
+      # Cap concurrent shards to the free-tier limit (<=20). With 48
+      # shards this runs in ~3 waves; the whole run exceeds the 2 h cron
+      # cadence, so the concurrency lock queues the next fire (runs
+      # serialize -> compute-bound ~1.5-2.6 days to the cap). Lowering
+      # n_sim_step (dispatch input) makes a run fit the 2 h window if
+      # cadence-paced accumulation is preferred.
+      max-parallel: 20
+      matrix:
+        shard:
+          [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+            17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+            31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
+            45, 46, 47, 48,
+          ]
+    outputs:
+      # Surfaced for visibility; the authoritative aggregate is computed
+      # in persist from the per-shard artifacts.
+      fail_rate: ${{ steps.run.outputs.fail_rate }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Seed store from guard artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: power-pilot-store-seed
+          path: ${{ env.RESULTS_DIR }}
+        continue-on-error: true
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Accumulate this shard's cells
+        id: run
+        shell: bash
+        run: |
+          mkdir -p "$RESULTS_DIR"
+          Rscript dev/power-pilot-run.R \
+            --mode=shard \
+            --shard=${{ matrix.shard }} \
+            --n-shards=${{ env.N_SHARDS }} \
+            --n-sim-step=${{ needs.guard.outputs.n_sim_step }} \
+            --n-sim-cap=${{ needs.guard.outputs.n_sim_cap }} \
+            --seed-base=${{ github.run_number }} \
+            --results-dir="$RESULTS_DIR" \
+            --n-boot=${{ env.N_BOOT }} \
+            --dry-run=${{ needs.guard.outputs.dry_run }}
+
+      - name: Upload this shard's store slice
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-pilot-store-shard-${{ matrix.shard }}
+          path: ${{ env.RESULTS_DIR }}/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------
+  # persist: SINGLE writer. Merge every shard's slice and commit+push the
+  # accumulated store to the orphan results branch (resumable next run).
+  # Also uploads a backup artifact so no data is lost if the push fails.
+  # --------------------------------------------------------------------
+  persist:
+    needs: [guard, sweep]
+    if: needs.guard.outputs.all_complete != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    outputs:
+      fail_rate: ${{ steps.merge.outputs.fail_rate }}
+      n_attempted: ${{ steps.merge.outputs.n_attempted }}
+      n_errored: ${{ steps.merge.outputs.n_errored }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Download all shard slices
+        uses: actions/download-artifact@v4
+        with:
+          pattern: power-pilot-store-shard-*
+          path: _shards
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Merge shard slices (per-cell .rds are disjoint; runstats sum)
+        id: merge
+        shell: bash
+        run: |
+          mkdir -p "$RESULTS_DIR/_runstats"
+          # Each shard seeded from the SAME base store and accumulated only
+          # ITS one cell. The per-cell <cell-id>.rds files are disjoint
+          # across shards, so copying every slice in yields their union
+          # (each shard's fresh cell overwrites the stale base copy; no
+          # two shards touch the same cell -> no conflict).
+          #
+          # IMPORTANT: pilot-index.rds is a SHARED file each shard rewrote
+          # with only its own cell, so no single shard's copy is complete.
+          # We therefore DROP it here and rebuild it from the merged
+          # per-cell files in the next step (the driver supports
+          # rebuild-from-disk). The per-cell .rds files are the source of
+          # truth; the index is a derived cache.
+          shopt -s nullglob
+          for d in _shards/power-pilot-store-shard-*; do
+            [ -d "$d" ] || continue
+            # cell results + per-shard runstats; skip the partial index.
+            for f in "$d"/*.rds; do
+              [ "$(basename "$f")" = "pilot-index.rds" ] && continue
+              cp -a "$f" "$RESULTS_DIR"/ 2>/dev/null || true
+            done
+            if [ -d "$d/_runstats" ]; then
+              cp -a "$d/_runstats/." "$RESULTS_DIR/_runstats/" 2>/dev/null || true
+            fi
+          done
+          rm -f "$RESULTS_DIR/pilot-index.rds"
+          ls -la "$RESULTS_DIR" || true
+
+          # Aggregate THIS run's failure rate across shards from the
+          # per-shard runstats ("<attempted> <errored>" lines).
+          att=0; err=0
+          for s in "$RESULTS_DIR/_runstats"/shard-*.txt; do
+            [ -f "$s" ] || continue
+            read -r a e < "$s"
+            att=$((att + ${a:-0}))
+            err=$((err + ${e:-0}))
+          done
+          if [ "$att" -gt 0 ]; then
+            rate=$(awk -v e="$err" -v a="$att" 'BEGIN{printf "%.4f", e/a}')
+          else
+            rate="0"
+          fi
+          echo "run this sweep: attempted=$att errored=$err fail_rate=$rate"
+          {
+            echo "fail_rate=$rate"
+            echo "n_attempted=$att"
+            echo "n_errored=$err"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild pilot-index.rds from the merged per-cell files
+        shell: bash
+        run: |
+          # The shards' partial indices were dropped in merge; rebuild the
+          # single authoritative index from the union of per-cell .rds
+          # files (pilot_load_index rebuilds from disk when the index is
+          # absent). This is the only writer of pilot-index.rds.
+          Rscript -e '
+            suppressWarnings(suppressMessages({
+              library(gllvmTMB); source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R")
+            }))
+            rd <- Sys.getenv("RESULTS_DIR")
+            idx <- pilot_load_index(rd)      # rebuilds from per-cell .rds
+            pilot_save_index(idx, rd)
+            cat(sprintf("rebuilt index: %d cell rows\n", nrow(idx)))
+          '
+
+      - name: Commit + push store to the results branch (single writer)
+        shell: bash
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -e
+          if [ -z "$(ls -A "$RESULTS_DIR" 2>/dev/null)" ]; then
+            echo "store is empty; nothing to persist."
+            exit 0
+          fi
+          # Work in a clean checkout of (or a fresh) orphan results branch.
+          WORK="$(mktemp -d)"
+          git clone --no-checkout --depth=1 \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            "$WORK" || git clone --no-checkout \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "$WORK"
+          cd "$WORK"
+          if git ls-remote --exit-code --heads origin "$RESULTS_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$RESULTS_BRANCH" --depth=1
+            git checkout -B "$RESULTS_BRANCH" FETCH_HEAD
+          else
+            git checkout --orphan "$RESULTS_BRANCH"
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+          mkdir -p "$RESULTS_DIR"
+          cp -a "$GITHUB_WORKSPACE/$RESULTS_DIR/." "$RESULTS_DIR/"
+          # The durable branch holds only the per-cell .rds + the rebuilt
+          # index; _runstats/ and any _status.md are per-run ephemera.
+          rm -rf "$RESULTS_DIR/_runstats" "$RESULTS_DIR"/_status.md
+          git add -A "$RESULTS_DIR"
+          if git diff --cached --quiet; then
+            echo "no store changes to commit."
+            exit 0
+          fi
+          git commit -m "power-pilot: accumulate reps (run ${{ github.run_number }})"
+          # Push with a small retry in case a (rare) overlapping run raced.
+          for i in 1 2 3; do
+            if git push origin "$RESULTS_BRANCH"; then
+              echo "pushed store to $RESULTS_BRANCH"; break
+            fi
+            echo "push attempt $i failed; refetch + retry."
+            git fetch origin "$RESULTS_BRANCH" --depth=1 && git merge -X ours --no-edit FETCH_HEAD || true
+            [ "$i" = "3" ] && echo "::warning title=Power pilot::push failed after retries; store is preserved as backup artifact."
+          done
+
+      - name: Upload accumulated store backup
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: power-pilot-store-accumulated
+          path: ${{ env.RESULTS_DIR }}/
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------
+  # summary: post/update the coverage+power board on issue #340, and raise
+  # a failure-rate alert if this run errored too many cells. Runs on a
+  # REAL run only (skipped on dry_run) and once per run (not per shard).
+  # --------------------------------------------------------------------
+  summary:
+    needs: [guard, persist]
+    # Run even when sweep was skipped (campaign complete) so the final
+    # board is posted, but skip on dry-run smokes.
+    if: always() && needs.guard.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fetch accumulated store from the results branch
+        shell: bash
+        run: |
+          mkdir -p "$RESULTS_DIR"
+          if git ls-remote --exit-code --heads origin "$RESULTS_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$RESULTS_BRANCH" --depth=1
+            git archive FETCH_HEAD "$RESULTS_DIR" 2>/dev/null | tar -x \
+              || echo "no store dir on results branch yet."
+          fi
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: local::.
+          needs: check
+
+      - name: Build status board
+        id: board
+        shell: bash
+        run: |
+          Rscript dev/power-pilot-run.R \
+            --mode=status \
+            --n-sim-cap=${{ needs.guard.outputs.n_sim_cap }} \
+            --results-dir="$RESULTS_DIR" \
+            --status-out="$RESULTS_DIR/_status.md"
+          echo "have_board=$([ -f "$RESULTS_DIR/_status.md" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Post / update coverage+power board on issue #340
+        if: steps.board.outputs.have_board == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = `${process.env.RESULTS_DIR}/_status.md`;
+            const table = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '(no status table)';
+            const marker = '<!-- power-pilot-sweep-board -->';
+            const repsTotal = '${{ steps.board.outputs.reps_total }}' || 'NA';
+            const repsTarget = '${{ steps.board.outputs.reps_target }}' || 'NA';
+            const cellsDone = '${{ steps.board.outputs.cells_complete }}' || 'NA';
+            const cellsTotal = '${{ steps.board.outputs.cells_total }}' || 'NA';
+            const allComplete = '${{ steps.board.outputs.all_complete }}' === 'true';
+            const failRate = '${{ needs.persist.outputs.fail_rate }}' || '0';
+            const failAlert = parseFloat(failRate) > parseFloat(process.env.FAIL_RATE_ALERT || '0.30');
+            const body = [
+              marker,
+              `## Power pilot sweep -- live status board`,
+              ``,
+              `Updated by run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) at ${new Date().toISOString()}.`,
+              ``,
+              `- Cells complete (>= cap): **${cellsDone} / ${cellsTotal}**`,
+              `- Replicates accumulated: **${repsTotal} / ${repsTarget}**`,
+              `- Campaign complete: **${allComplete ? 'YES -- cron will auto-stop' : 'no (in progress)'}**`,
+              `- Last run failure rate: **${failRate}**${failAlert ? ' :warning: ABOVE ALERT THRESHOLD' : ''}`,
+              ``,
+              `<details><summary>Per-cell board</summary>`,
+              ``,
+              table,
+              ``,
+              `</details>`,
+            ].join('\n');
+            const issue_number = 340;
+            const { owner, repo } = context.repo;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              core.info(`updated board comment ${existing.id}`);
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+              core.info('created board comment');
+            }
+            if (failAlert) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number,
+                body: `:rotating_light: Power pilot run [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) had failure rate **${failRate}** (> ${process.env.FAIL_RATE_ALERT}). Investigate before the next scheduled run.`,
+              });
+              core.warning(`failure rate ${failRate} exceeded alert threshold`);
+            }

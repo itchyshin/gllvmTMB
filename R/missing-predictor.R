@@ -1235,6 +1235,17 @@ gll_finalize_mi <- function(missing_data, par_list, model, sdr = NULL) {
 #' row per missing **unit** value (not one per long-format model row). These
 #' are empirical best linear unbiased predictions, not posterior summaries.
 #'
+#' **Row identifiers.** The `original_row` and `model_row` columns are
+#' **latent-level ordinals** (the 1-based index of the missing unit / group in
+#' the covariate model's latent level), *not* indices into the rows of the data
+#' frame you passed to [gllvmTMB()]. They coincide with original data rows only
+#' in the narrow wide-`traits()` case where each unit is a single row; off the
+#' wide path (long data, or a coarser `mi_group()` level) they index the latent
+#' level, not the data. This differs from [predict_missing()], whose
+#' `original_row` is the pre-mask row index in the original data. Join `imputed()`
+#' output back to your data on the unit / group identifier, not on these
+#' ordinals.
+#'
 #' @param object A `gllvmTMB` fit.
 #' @param variable Optional missing-predictor name. The default uses the only
 #'   modelled missing predictor in the fit.

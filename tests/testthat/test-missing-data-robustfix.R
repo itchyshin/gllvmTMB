@@ -249,26 +249,42 @@ test_that("BUG-4 mi(x) + phylo_slope(x | species) on the same var is rejected", 
 # ===========================================================================
 
 test_that("GAP-5 parenthesized mi() is unwrapped (no 'could not find function mi')", {
-  dat <- .rf_inject_missing_x(.rf_make_mi_uni())
-  ## The old RHS walk left the mi() wrapper inside the parens, so model.matrix
-  ## tried to evaluate mi(x) -> "could not find function 'mi'". After the fix
-  ## the parens are stripped and the bare-mi() path is taken. We only assert the
-  ## parse no longer raises the opaque function-not-found error; the (validation
-  ## -only, no-fit) build still runs to the validated setup.
-  err <- tryCatch(
-    suppressMessages(suppressWarnings(gllvmTMB(
-      value ~ 0 + trait + (0 + trait):z + (mi(x)),
-      data    = dat,
-      family  = gaussian(),
-      impute  = list(x = x ~ z + w),
-      missing = miss_control(predictor = "model"),
-      control = gllvmTMBcontrol(se = FALSE)
-    ))),
-    error = function(e) conditionMessage(e)
+  ## The old RHS walk left the mi() wrapper inside the parens, so the bare `x`
+  ## was never stripped and model.matrix raised "could not find function 'mi'".
+  ## The parser is a pure function; assert that the parenthesized form is
+  ## unwrapped to the SAME parse as the unparenthesized form: mi_vars = "x" and
+  ## the fixed RHS carries the bare `x` term (not a literal mi(x) call).
+  p_paren <- gllvmTMB:::parse_multi_formula(value ~ 0 + trait + (mi(x)))
+  p_plain <- gllvmTMB:::parse_multi_formula(value ~ 0 + trait + mi(x))
+  expect_equal(p_paren$mi_vars, "x")
+  ## The fixed RHS term labels must include the bare `x` and NOT a mi() call.
+  paren_terms <- attr(stats::terms(p_paren$fixed), "term.labels")
+  expect_true("x" %in% paren_terms)
+  expect_false(any(grepl("mi(", paren_terms, fixed = TRUE)))
+  ## Parenthesized parse matches the unparenthesized parse (mi metadata).
+  expect_equal(p_paren$mi_vars, p_plain$mi_vars)
+  expect_equal(
+    attr(stats::terms(p_paren$fixed), "term.labels"),
+    attr(stats::terms(p_plain$fixed), "term.labels")
   )
-  if (!is.null(err)) {
-    expect_false(grepl("could not find function", err, fixed = TRUE))
-  }
+})
+
+test_that("GAP-5 parenthesized mi() fits like the unparenthesized form", {
+  skip_if_not_heavy()
+  dat <- .rf_inject_missing_x(.rf_make_mi_uni())
+  ## End-to-end: the parenthesized mi() must NOT raise the opaque
+  ## function-not-found error and must reach a fit (parity with bare mi()).
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + (0 + trait):z + (mi(x)),
+    data    = dat,
+    family  = gaussian(),
+    impute  = list(x = x ~ z + w),
+    missing = miss_control(predictor = "model"),
+    control = gllvmTMBcontrol(se = FALSE)
+  )))
+  expect_s3_class(fit, "gllvmTMB_multi")
+  expect_true(is.list(fit$missing_data$predictors))
+  expect_true("x" %in% names(fit$missing_data$predictors))
 })
 
 # ===========================================================================

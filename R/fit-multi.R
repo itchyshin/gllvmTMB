@@ -1061,6 +1061,35 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## evaluate any stripped-but-invalid mi() expression (e.g. mi(log(x))).
   mi_setup <- gll_prepare_mi_setup(parsed$mi_rhs, impute, missing)
 
+  ## Guard (GAP-6 / issue #399): the bare mi() variable reused in a transformed
+  ## or interacted term (e.g. y ~ mi(x) + I(x^2), or mi(x) + x:z). mi() imputes
+  ## ONLY the bare broadcast column; a transform / interaction of the same raw
+  ## variable still carries NA, which would otherwise trip the generic "NA in
+  ## the fixed-effect design matrix" abort below and MISATTRIBUTE the cause.
+  ## Detect the reuse up front and name it precisely. The mi() variable is the
+  ## bare term itself; any OTHER fixed term whose variables include it is a
+  ## reuse (the parser already rejects mi(x) inside transforms / interactions,
+  ## so the offending term here is an un-wrapped raw reuse).
+  if (isTRUE(mi_setup$enabled)) {
+    mi_var <- mi_setup$variable
+    fixed_term_labels <- attr(
+      stats::terms(parsed$fixed), "term.labels"
+    )
+    reuse_terms <- Filter(
+      function(lbl) {
+        !identical(lbl, mi_var) && (mi_var %in% all.vars(stats::reformulate(lbl)))
+      },
+      fixed_term_labels
+    )
+    if (length(reuse_terms) > 0L) {
+      cli::cli_abort(c(
+        "The {.fn mi} variable {.val {mi_var}} cannot also appear in a transformed or interacted term.",
+        "x" = "Found {.code {reuse_terms}} alongside {.code mi({mi_var})}.",
+        "i" = "{.fn mi} imputes only the bare broadcast column; a transform or interaction of {.val {mi_var}} would still carry the raw {.code NA}s. Use a single bare {.code mi({mi_var})}."
+      ))
+    }
+  }
+
   ## ---- Build fixed-effects design matrix --------------------------------
   ## We use the full data env so that 0 + trait + (0+trait):env etc. parses.
   mf <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)

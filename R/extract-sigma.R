@@ -506,13 +506,13 @@ link_residual_per_trait <- function(fit) {
 #'   For `part = "unique"`: a list with `s` (length-T named numeric
 #'   vector of unique variances), `level`, `part`, `note`.
 #'
-#'   For a `phylo_dep(1 + x | species)` fit (Design 56 §9.5c), call with
-#'   `level = "phy"`: the result is the single full unstructured
-#'   `2T x 2T` covariance over the trait-stacked (intercept, slope)
-#'   random-effect columns -- a list with `Sigma` and `R` carrying
-#'   INTERLEAVED dimnames
-#'   (`intercept.<t1>`, `slope.<t1>`, `intercept.<t2>`, `slope.<t2>`, ...),
-#'   `level = "phy_dep"`, `part = "dep"`, and a `note`. The `part` and
+#'   For a `phylo_dep(1 + x1 + ... + xs | species)` fit (Design 56 Sec. 9.5c,
+#'   s >= 1), call with `level = "phy"`: the result is the single full
+#'   unstructured `(1+s)T x (1+s)T` covariance over the trait-stacked
+#'   (intercept, slope_1, ..., slope_s) random-effect columns -- a list with
+#'   `Sigma` and `R` carrying INTERLEAVED dimnames (per trait:
+#'   `intercept.<t>`, then `slope.<t>` for s == 1 or `slope.<x_j>.<t>` for
+#'   s >= 2), `level = "phy_dep"`, `part = "dep"`, and a `note`. The `part` and
 #'   `link_residual` arguments do not apply to this single unstructured
 #'   block and are ignored. (The unit / unit_obs tiers return `NULL` for a
 #'   dep-only fit, as it carries no between/within-unit covariance term.)
@@ -588,16 +588,16 @@ extract_Sigma <- function(
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
 
-  ## ---- phylo_dep augmented-slope block (Design 56 §9.5c) ---------------
-  ## phylo_dep(1 + x | species) fits a single FULL UNSTRUCTURED 2T x 2T
-  ## covariance Sigma_b over the trait-stacked (intercept, slope)
-  ## random-effect columns. It is a PHYLOGENETIC random effect, so it is
-  ## surfaced under `level = "phy"` (the phylogenetic tier). It is one
-  ## unstructured block, not a shared/unique latent decomposition, so the
-  ## `part` / `link_residual` arguments do not apply: we return the
-  ## reported Sigma_b_dep directly with INTERLEAVED dimnames matching the
-  ## engine column ordering (intercept.t1, slope.t1, intercept.t2,
-  ## slope.t2, ...).
+  ## ---- phylo_dep augmented-slope block (Design 56 Sec. 9.5c + RE-03) ---
+  ## phylo_dep(1 + x1 + ... + xs | species) fits a single FULL UNSTRUCTURED
+  ## (1+s)T x (1+s)T covariance Sigma_b over the trait-stacked
+  ## (intercept, slope_1, ..., slope_s) random-effect columns (s >= 1). It is
+  ## a PHYLOGENETIC random effect, so it is surfaced under `level = "phy"` (the
+  ## phylogenetic tier). It is one unstructured block, not a shared/unique
+  ## latent decomposition, so the `part` / `link_residual` arguments do not
+  ## apply: we return the reported Sigma_b_dep directly with INTERLEAVED
+  ## dimnames matching the engine column ordering (per trait:
+  ## intercept.t, slope*.t, ...).
   ##
   ## The branch is keyed on `level == "phy"` (NOT fired for the unit /
   ## unit_obs tiers) so the backward-compat extract_Sigma_B() /
@@ -612,10 +612,26 @@ extract_Sigma <- function(
       )
     }
     Sigma <- as.matrix(Sigma)
-    dep_names <- as.vector(rbind(
+    ## RE-03 multi-slope: Sigma_b_dep is (1+s)T x (1+s)T with INTERLEAVED
+    ## per-trait runs [intercept, slope_1, ..., slope_s]. Recover s from the
+    ## dimension (== T*(1+s)), label the slope rows by the stored covariate
+    ## names when present. For s == 1 the slope row keeps the bare `slope.<t>`
+    ## name (back-compat with the Gaussian s == 1 extractor contract); for
+    ## s >= 2 each slope is disambiguated as `slope.<x_j>.<t>`.
+    s <- nrow(Sigma) / T - 1L
+    slope_cols <- fit$use$phylo_dep_slope_cols
+    slope_labels <- if (s == 1L) {
+      "slope"
+    } else if (!is.null(slope_cols) && length(slope_cols) == s) {
+      paste0("slope.", slope_cols)
+    } else {
+      paste0("slope", seq_len(s))
+    }
+    row_block <- rbind(
       paste0("intercept.", trait_names),
-      paste0("slope.", trait_names)
-    ))
+      outer(slope_labels, trait_names, function(l, t) paste0(l, ".", t))
+    )
+    dep_names <- as.vector(row_block)
     rownames(Sigma) <- colnames(Sigma) <- dep_names
     D <- sqrt(diag(Sigma))
     R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
@@ -626,9 +642,10 @@ extract_Sigma <- function(
       level = "phy_dep",
       part = "dep",
       note = paste0(
-        "phylo_dep(1 + x | species): full unstructured 2T x 2T covariance ",
-        "over trait-stacked (intercept, slope) columns (interleaved). The ",
-        "part / link_residual arguments do not apply to this single ",
+        "phylo_dep(1 + x1 + ... + xs | species): full unstructured ",
+        "(1+s)T x (1+s)T covariance over trait-stacked ",
+        "(intercept, slope_1, ..., slope_s) columns (interleaved per trait). ",
+        "The part / link_residual arguments do not apply to this single ",
         "unstructured block."
       )
     ))

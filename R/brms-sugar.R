@@ -1541,48 +1541,125 @@ spatial_dep <- function(formula, coords = NULL, mesh = NULL) {
     identical(as.character(e[[3L]]), "trait")
 }
 
-.gllvmTMB_lhs_form <- function(lhs) {
-  lhs <- .strip_lhs_parens(lhs)
-  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs)) {
-    return(list(lhs_form = "intercept_only", slope_col = NULL))
+## Flatten a left-nested `a + b + c` LHS expression into the ordered list of
+## its additive terms `list(a, b, c)`, stripping enclosing parens at every
+## level. `1 + x1 + x2` parses as `+(+(1, x1), x2)`, so a single descent down
+## the left `+` spine recovers `list(1, x1, x2)` in source order. A bare
+## (non-`+`) expression returns a length-1 list. Used to generalise the
+## augmented intercept+slope LHS from one covariate (s = 1) to s >= 1.
+.flatten_lhs_plus <- function(e) {
+  e <- .strip_lhs_parens(e)
+  ## `0 + trait` is itself a `+` call but is an ATOMIC per-trait-intercept
+  ## term (the leading term of the long form), never a `0`/`trait` pair to
+  ## split. Treat it as a leaf so `0 + trait + (0+trait):x1 + ...` flattens to
+  ## list(`0 + trait`, (0+trait):x1, ...) rather than splitting the head.
+  if (.is_zero_plus_trait(e)) {
+    return(list(e))
   }
   if (
-    is.call(lhs) &&
-      identical(lhs[[1L]], as.name("+")) &&
-      length(lhs) == 3L &&
-      .is_one_lhs(lhs[[2L]])
+    is.call(e) &&
+      identical(e[[1L]], as.name("+")) &&
+      length(e) == 3L
   ) {
-    rhs <- .strip_lhs_parens(lhs[[3L]])
-    if (is.name(rhs) && !identical(as.character(rhs), "trait")) {
-      return(list(
-        lhs_form = "wide_intercept_slope",
-        slope_col = as.character(rhs)
-      ))
+    return(c(.flatten_lhs_plus(e[[2L]]), list(.strip_lhs_parens(e[[3L]]))))
+  }
+  list(e)
+}
+
+## Recognise the WIDE multi-slope LHS `1 + x1 + x2 + ...` (s >= 1 plain
+## covariate names after the leading intercept `1`). Returns the ordered
+## character vector of slope columns, or NULL when the shape does not match.
+.match_wide_intercept_slopes <- function(lhs) {
+  terms <- .flatten_lhs_plus(lhs)
+  if (length(terms) < 2L || !.is_one_lhs(terms[[1L]])) {
+    return(NULL)
+  }
+  cols <- character(0L)
+  for (term in terms[-1L]) {
+    if (!is.name(term) || identical(as.character(term), "trait")) {
+      return(NULL)
     }
+    cols <- c(cols, as.character(term))
   }
-  if (
-    is.call(lhs) &&
-      identical(lhs[[1L]], as.name("+")) &&
-      length(lhs) == 3L &&
-      .is_zero_plus_trait(lhs[[2L]])
-  ) {
-    slope <- .strip_lhs_parens(lhs[[3L]])
+  cols
+}
+
+## Recognise the LONG multi-slope LHS
+## `0 + trait + (0 + trait):x1 + (0 + trait):x2 + ...` (s >= 1 interactions
+## after the leading `0 + trait`). Returns the ordered character vector of
+## slope columns, or NULL when the shape does not match.
+.match_long_intercept_slopes <- function(lhs) {
+  terms <- .flatten_lhs_plus(lhs)
+  if (length(terms) < 2L || !.is_zero_plus_trait(terms[[1L]])) {
+    return(NULL)
+  }
+  cols <- character(0L)
+  for (term in terms[-1L]) {
+    slope <- .strip_lhs_parens(term)
     if (
-      is.call(slope) &&
+      !(is.call(slope) &&
         identical(slope[[1L]], as.name(":")) &&
         length(slope) == 3L &&
-        .is_zero_plus_trait(slope[[2L]])
+        .is_zero_plus_trait(slope[[2L]]))
     ) {
-      slope_col <- .strip_lhs_parens(slope[[3L]])
-      if (is.name(slope_col) && !identical(as.character(slope_col), "trait")) {
-        return(list(
-          lhs_form = "long_intercept_slope",
-          slope_col = as.character(slope_col)
-        ))
-      }
+      return(NULL)
     }
+    sc <- .strip_lhs_parens(slope[[3L]])
+    if (!is.name(sc) || identical(as.character(sc), "trait")) {
+      return(NULL)
+    }
+    cols <- c(cols, as.character(sc))
   }
-  list(lhs_form = "unsupported", slope_col = NULL)
+  cols
+}
+
+## Single-slope (s == 1) LHS classifier -- the back-compatible contract shared
+## by EVERY augmented covstruct keyword (phylo_unique/indep/latent,
+## spatial_unique/indep/latent/dep, relmat_*, animal_*) and the predicate
+## helpers below. It recognises ONLY the single-covariate augmented forms
+## (`1 + x | g` wide, `0 + trait + (0 + trait):x | g` long); the leading
+## intercept-only forms; everything else -- including the MULTI-slope
+## `1 + x1 + x2 | g` -- stays `"unsupported"` exactly as before. Multi-slope is
+## activated for the phylo_dep path ONLY, via `.gllvmTMB_lhs_form_multi()`.
+.gllvmTMB_lhs_form <- function(lhs) {
+  info <- .gllvmTMB_lhs_form_multi(lhs)
+  if (
+    info$lhs_form %in% c("wide_intercept_slope", "long_intercept_slope") &&
+      length(info$slope_cols) != 1L
+  ) {
+    return(list(lhs_form = "unsupported", slope_col = NULL, slope_cols = NULL))
+  }
+  info
+}
+
+## Multi-slope (s >= 1) LHS classifier for the phylo_dep augmented path
+## (RE-03). Identical to `.gllvmTMB_lhs_form()` for the single-covariate and
+## intercept-only forms, but ADDITIONALLY accepts `1 + x1 + x2 + ... | g`
+## (wide) and `0 + trait + (0 + trait):x1 + (0 + trait):x2 + ... | g` (long)
+## with s >= 2 distinct slope covariates, returning the full ordered
+## `slope_cols` vector (`slope_col` keeps the first for back-compat consumers).
+.gllvmTMB_lhs_form_multi <- function(lhs) {
+  lhs <- .strip_lhs_parens(lhs)
+  if (.is_one_lhs(lhs) || .is_zero_plus_trait(lhs)) {
+    return(list(lhs_form = "intercept_only", slope_col = NULL, slope_cols = NULL))
+  }
+  wide_cols <- .match_wide_intercept_slopes(lhs)
+  if (!is.null(wide_cols)) {
+    return(list(
+      lhs_form = "wide_intercept_slope",
+      slope_col = wide_cols[[1L]],
+      slope_cols = wide_cols
+    ))
+  }
+  long_cols <- .match_long_intercept_slopes(lhs)
+  if (!is.null(long_cols)) {
+    return(list(
+      lhs_form = "long_intercept_slope",
+      slope_col = long_cols[[1L]],
+      slope_cols = long_cols
+    ))
+  }
+  list(lhs_form = "unsupported", slope_col = NULL, slope_cols = NULL)
 }
 
 ## Design 07 Stage 2.5 (May 2026): fail-loud guard against augmented LHS
@@ -2966,14 +3043,18 @@ rewrite_canonical_aliases <- function(formula) {
             ">" = "Use {.code phylo_dep(0 + trait | species)}."
           ))
         }
-        ## Stage 3 (Design 56 §9.5c): the augmented intercept+slope LHS
-        ## (`1 + x | species` wide, or `0 + trait + (0 + trait):x | species`
-        ## long) routes through the b_phy_aug engine with the full
-        ## unstructured 2T x 2T covariance Sigma_b built from theta_dep_chol.
-        ## The `.phylo_dep_augmented` marker (distinct from the phylo_unique
+        ## Stage 3 (Design 56 Sec. 9.5c) + RE-03 multi-slope: the augmented
+        ## intercept+slope LHS (`1 + x1 + ... + xs | species` wide, or
+        ## `0 + trait + (0 + trait):x1 + ... | species` long, s >= 1) routes
+        ## through the b_phy_aug engine with the full unstructured
+        ## (1+s)T x (1+s)T covariance Sigma_b built from theta_dep_chol. The
+        ## `.phylo_dep_augmented` marker (distinct from the phylo_unique
         ## `.phylo_unique_augmented` marker) tells fit-multi.R to expand
-        ## n_lhs_cols to 2T and free theta_dep_chol. No new C++ block.
-        lhs_form <- .gllvmTMB_lhs_form(lhs_bar)
+        ## n_lhs_cols to (1+s)T and free theta_dep_chol. No new C++ block (the
+        ## C++ dep path is already dimension-general in `C = n_lhs_cols`). Uses
+        ## the MULTI-slope classifier so s >= 2 is recognised on this path only;
+        ## every other keyword keeps the single-slope `.gllvmTMB_lhs_form()`.
+        lhs_form <- .gllvmTMB_lhs_form_multi(lhs_bar)
         if (
           lhs_form$lhs_form %in%
             c("wide_intercept_slope", "long_intercept_slope")
@@ -2984,7 +3065,8 @@ rewrite_canonical_aliases <- function(formula) {
             list(
               .phylo_dep_augmented = TRUE,
               lhs_form = lhs_form$lhs_form,
-              slope_col = lhs_form$slope_col
+              slope_col = lhs_form$slope_col,
+              slope_cols = lhs_form$slope_cols
             ),
             extras
           ))
@@ -3005,8 +3087,8 @@ rewrite_canonical_aliases <- function(formula) {
         cli::cli_abort(c(
           "{.fn phylo_dep} augmented LHS form is not supported.",
           "i" = "You wrote {.code phylo_dep({deparse(bar)})}.",
-          "x" = "Stage 3 accepts {.code 0 + trait | species} (intercept-only), {.code 1 + x | species}, and {.code 0 + trait + (0 + trait):x | species}.",
-          ">" = "Keep multi-covariate and richer per-trait slope forms for a later design slice."
+          "x" = "phylo_dep accepts {.code 0 + trait | species} (intercept-only), {.code 1 + x1 + ... + xs | species} (wide, s >= 1), and {.code 0 + trait + (0 + trait):x1 + ... | species} (long).",
+          ">" = "Each slope term must be a plain covariate name; keep richer per-trait slope forms for a later design slice."
         ))
       }
       ## `spatial_dep(0 + trait | coords)` -> `spde(form, .spatial_latent = TRUE,

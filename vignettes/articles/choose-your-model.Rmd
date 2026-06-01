@@ -31,14 +31,18 @@ knitr::opts_chunk$set(
 > bounded by the
 > [capability status](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/61-capability-status.md):
 >
-> - **Random-regression slopes.** Section 4a showcases the *one*
->   slope mode with recovery evidence — phylogenetic random slopes
->   (`phylo_slope`, Gaussian and core families). The richer
->   structured slope modes (`phylo_indep/dep/latent` and their
->   spatial analogues) are **not yet implemented**, and the pedigree
->   `animal_slope` parallel is parser-accepted but its recovery study
->   is deferred (register `ANI-06`). Those are flagged inline, not
->   shown as available.
+> - **Random-regression slopes.** Section 7e showcases phylogenetic
+>   random slopes (`phylo_slope`, Gaussian and core families) with
+>   recovery evidence; the pedigree parallel `animal_slope` is now
+>   recovery-validated too (register `ANI-06`, byte-equivalent to
+>   `phylo_slope(vcv = A)` to 1e-5). The structured slope modes
+>   (`phylo_indep/dep/latent` and their spatial analogues) all ship
+>   with built engines and Gaussian recovery; the diagonal
+>   (`phylo_indep`) and reduced-rank (`phylo_latent`, `spatial_latent`)
+>   modes additionally cover core non-Gaussian families, while the
+>   full-unstructured `_dep` modes stay **Gaussian-only** with
+>   non-Gaussian reserved (fail-loud) pending identifiability work.
+>   Section 5 gives the per-mode status.
 > - **Confidence intervals.** Section 8 explains the Wald / profile /
 >   bootstrap choice. The *machinery* runs for all three, but
 >   **calibrated coverage is an open gate** outside Gaussian
@@ -278,24 +282,32 @@ worked recovery is in §7e below. `animal_slope(x | id)` is the
 pedigree parallel (same engine, relatedness matrix $\mathbf A$ from
 the pedigree instead of the tree).
 
-> **Scope (honest bounds).** Three things are deliberately *not*
-> shown here as ready, per the
-> [capability status](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/61-capability-status.md):
+> **Scope (per-mode status).** The slope engine has filled in since
+> earlier drafts; the honest bounds now sit at non-Gaussian coverage
+> for the saturated modes, not at "implemented vs not". Per the
+> [capability status](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/61-capability-status.md)
+> and validation-debt register:
 >
 > - **Correlated intercept–slope reaction norms.** The richer
->   `phylo_unique(0 + trait + (0 + trait):x | species)` form, which
->   estimates a 2×2 intercept/slope covariance (slope variance *and*
->   the intercept–slope correlation), is engine work in progress — it
->   parses but does not surface the augmented `sd_b` / `cor_b`
->   summaries in this release. Use the single-variance
->   `phylo_slope(x | species)` above until it lands. (§7e shows the
->   parsing-only form, not run.)
+>   `phylo_unique(1 + x | species)` form, which estimates a 2×2
+>   intercept/slope covariance (slope variance *and* the
+>   intercept–slope correlation), now routes, fits, and surfaces that
+>   2×2 via `extract_Sigma(fit, level = "phy")` (register `ANI-11`,
+>   Gaussian). The pedigree twin `animal_unique(1 + x | id)` is the
+>   same engine. (§7e shows it run.)
 > - **Structured slope modes** `phylo_indep` / `phylo_dep` /
->   `phylo_latent` (and their `spatial_*` analogues) are
->   **not yet implemented** as slopes.
-> - **`animal_slope` recovery** is parser-accepted but its formal
->   recovery study is deferred (register `ANI-06`); treat its point
->   estimates as provisional until that study completes.
+>   `phylo_latent` (and their `spatial_*` analogues) all ship with
+>   built engines and Gaussian recovery. The diagonal `phylo_indep`
+>   slope is covered across the core families; the reduced-rank
+>   `phylo_latent` and `spatial_latent` slopes cover Gaussian plus
+>   several non-Gaussian families. The full-unstructured `phylo_dep` /
+>   `spatial_dep` slopes are **Gaussian-only**, with non-Gaussian
+>   reserved (fail-loud) until the unstructured cross-(intercept,slope)
+>   covariance is shown identifiable (`PHY-18`, `SPA-10`).
+> - **`animal_slope` recovery** is **validated** (register `ANI-06`):
+>   byte-equivalent to `phylo_slope(vcv = A)` to 1e-5 over the recovery
+>   grid. Treat its Gaussian point estimates as covered, not
+>   provisional.
 >
 > Two-part (delta / hurdle) response families — `delta_gamma()`,
 > `delta_lognormal()` — take **no** random slopes (or any latent /
@@ -517,20 +529,23 @@ The recovered slope SD sits close to the simulated $\sqrt{0.4}
 \approx 0.63$, and the fitted per-species slopes correlate strongly
 with the truth. For a **pedigree** instead of a tree, swap in
 `animal_slope(x | id)` and pass the relatedness matrix as
-`phylo_vcv = A` (recovery study deferred — see §5 scope note).
+`phylo_vcv = A`; that pedigree path is recovery-validated (register
+`ANI-06`, byte-equivalent to `phylo_slope(vcv = A)` to 1e-5).
 
-The richer correlated intercept–slope form parses but does not yet
-surface its 2×2 covariance summaries in this release, so it is shown
-here **not run**:
+The richer correlated intercept–slope form fits and surfaces its 2×2
+(intercept, slope) covariance through `extract_Sigma(fit, level =
+"phy")` (register `ANI-11`, Gaussian). It is shown here **not run**
+only to keep this page to a single worked fit:
 
 ```{r ex-slope-aug, eval = FALSE}
-# not yet: phylo_unique(... + (... ):x | species) parses but the
-# augmented intercept-slope summaries (report$sd_b / report$cor_b)
-# are engine work in progress in this build; use phylo_slope() above.
+# phylo_unique(1 + x | species) fits a 2x2 (intercept, slope) phylo
+# covariance with a free intercept-slope correlation; read it back via
+# extract_Sigma(level = "phy"). animal_unique(1 + x | id) is the twin.
 fit_rr_aug <- gllvmTMB(
   value ~ 0 + trait + phylo_unique(0 + trait + (0 + trait):x | species),
   data = df_rr, phylo_tree = tree, unit = "species"
 )
+extract_Sigma(fit_rr_aug, level = "phy")   # 2x2 (intercept, slope)
 ```
 
 ### 7f. Three-level cluster tier

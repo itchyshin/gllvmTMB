@@ -1199,6 +1199,30 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   use_mi_predictor <- isTRUE(mi_model$enabled)
 
+  ## Guard (BUG-4 / issue #399): an mi() variable used ALSO as a structured
+  ## random-slope covariate is rejected. mi() imputes only the broadcast FIXED
+  ## column (X_fix[, mi_col]); the structured-slope covariate columns
+  ## (phylo_slope / spatial / phylo_latent / spatial_latent) live in the Z
+  ## design and read RAW data[[var]] -- which still carries NA -- so they escape
+  ## the X_fix NA guard and leak NA -> NaN eta -> opaque non-convergence. Fail
+  ## loud BEFORE MakeADFun rather than ship a NaN objective.
+  if (use_mi_predictor) {
+    mi_var <- mi_setup$variable
+    structured_slope_cols <- c(
+      if (use_spde_slope) spde_slope_xcol,
+      if (use_spde_latent_slope) spde_latent_slope_xcol,
+      if (use_phylo_slope) phylo_slope_xcol,
+      if (use_phylo_latent_slope) phylo_latent_slope_xcol
+    )
+    if (mi_var %in% structured_slope_cols) {
+      cli::cli_abort(c(
+        "The {.fn mi} variable {.val {mi_var}} is also used as a structured random-slope covariate.",
+        "x" = "{.fn mi} imputes only the broadcast fixed column; a structured slope (e.g. {.code phylo_slope({mi_var} | ...)}, {.code spatial(1 + {mi_var} | ...)}, {.code phylo_latent(1 + {mi_var} | ...)}) reads the raw {.val {mi_var}} with its {.code NA}s.",
+        "i" = "Use {.fn mi} on {.val {mi_var}} OR a structured slope on it, not both."
+      ))
+    }
+  }
+
   ## ---- Phase 3 phylogenetic covariate model (design 69) -----------------
   ## When the impute RHS carried phylo(1 | species, tree =), the covariate field
   ## g_x ~ N(0, A) reuses the EXISTING sparse Ainv_phy_rr (no new precision).

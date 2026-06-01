@@ -119,6 +119,49 @@
   out
 }
 
+## Apply the PER-ROW inverse link to a linear-predictor vector, dispatching on
+## `(family_id, link_id)` exactly as the per-family draw helper does for the
+## conditional mean. A mixed-family fit carries one (family_id, link_id) per
+## long row in `family_id_vec` / `link_id_vec`; using `object$family$linkinv`
+## (the first trait's link only, via family[[1]] in fit-multi.R) would apply the
+## WRONG inverse link to every non-first-family cell (BUG-1 / issue #399). The
+## conditional-mean inverse link per link_id: identity (0) -> eta; logit (0 for
+## binomial fid) -> plogis; probit (1) -> pnorm; cloglog (2) -> 1 - exp(-exp);
+## log (the default for fid 2/3/4/5/6/10-13/15) -> exp. fids whose mean is on
+## the link scale (none here) pass through. Length(eta) MUST equal
+## length(family_id) == length(link_id).
+.apply_linkinv_per_row <- function(eta, family_id, link_id) {
+  n <- length(eta)
+  out <- eta
+  for (i in seq_len(n)) {
+    fid <- family_id[i]
+    lid <- link_id[i]
+    e <- eta[i]
+    if (fid == 0L || fid == 9L) {
+      ## gaussian / student: identity link.
+      out[i] <- e
+    } else if (fid == 1L || fid == 7L || fid == 8L) {
+      ## binomial / Beta / betabinomial: dispatch on link_id.
+      out[i] <- if (lid == 1L) {
+        stats::pnorm(e)            # probit
+      } else if (lid == 2L) {
+        1 - exp(-exp(e))           # cloglog
+      } else {
+        stats::plogis(e)           # logit (default)
+      }
+    } else if (fid == 14L) {
+      ## ordinal_probit carries no single-row response mean; keep the latent
+      ## (probit) scale rather than fabricate one.
+      out[i] <- stats::pnorm(e)
+    } else {
+      ## log-link families (poisson, lognormal, Gamma, nbinom1/2, tweedie,
+      ## truncated, delta): the conditional mean is exp(eta).
+      out[i] <- exp(e)
+    }
+  }
+  out
+}
+
 ## Map internal flag names to user-facing printed labels.
 ##
 ## NOTE: phylo_unique (LEGACY-alone path), spatial_scalar, and spatial_latent
@@ -1367,8 +1410,51 @@ predict.gllvmTMB_multi <- function(
     }
     out <- data.frame(nd, est = eta, stringsAsFactors = FALSE)
   }
-  if (type == "response" && !is.null(object$family$linkinv)) {
-    out$est <- object$family$linkinv(out$est)
+  if (type == "response") {
+    ## Per-row inverse link (BUG-1 / issue #399). On a mixed-family fit each
+    ## row's link differs; `object$family$linkinv` is only the FIRST trait's
+    ## link (family[[1]]), so it would mis-transform every non-first-family
+    ## cell. Dispatch on the per-row (family_id, link_id).
+    fid_vec <- object$tmb_data$family_id_vec
+    lid_vec <- object$tmb_data$link_id_vec
+    if (is.null(newdata)) {
+      ## Training-row prediction: eta is row-aligned with family_id_vec /
+      ## link_id_vec (both length n_obs).
+      if (!is.null(fid_vec) && length(fid_vec) == nrow(out)) {
+        out$est <- .apply_linkinv_per_row(out$est, fid_vec, lid_vec)
+      } else if (!is.null(object$family$linkinv)) {
+        out$est <- object$family$linkinv(out$est)
+      }
+    } else {
+      ## newdata rows: map each row's trait to that trait's (modal) family /
+      ## link id from the training vectors, then dispatch per row.
+      tids_train <- object$tmb_data$trait_id
+      if (!is.null(fid_vec) && !is.null(tids_train) &&
+            object$trait_col %in% names(out)) {
+        n_tr <- nlevels(object$data[[object$trait_col]])
+        fid_by_trait <- integer(n_tr)
+        lid_by_trait <- integer(n_tr)
+        for (t in seq_len(n_tr)) {
+          rows_t <- which((tids_train + 1L) == t)
+          if (length(rows_t) == 0L) {
+            fid_by_trait[t] <- fid_vec[1L]
+            lid_by_trait[t] <- lid_vec[1L]
+          } else {
+            fid_by_trait[t] <- as.integer(stats::median(fid_vec[rows_t]))
+            lid_by_trait[t] <- as.integer(stats::median(lid_vec[rows_t]))
+          }
+        }
+        tr_out <- as.integer(out[[object$trait_col]])
+        ## Rows whose trait is unknown to the training factor fall back to the
+        ## first trait's link (NA trait index).
+        tr_out[is.na(tr_out)] <- 1L
+        out$est <- .apply_linkinv_per_row(
+          out$est, fid_by_trait[tr_out], lid_by_trait[tr_out]
+        )
+      } else if (!is.null(object$family$linkinv)) {
+        out$est <- object$family$linkinv(out$est)
+      }
+    }
   }
   out
 }

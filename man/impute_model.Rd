@@ -33,8 +33,10 @@ and structured / grouped covariate models arrive in later phases.
 }
 \examples{
 impute_model(x ~ z)
+impute_model(score ~ z, family = cumulative_logit())
 }
 \seealso{
-\code{\link[=gllvmTMB]{gllvmTMB()}} for the \verb{impute =} argument and \code{\link[=miss_control]{miss_control()}} for
-the \code{predictor = "model"} switch.
+\code{\link[=gllvmTMB]{gllvmTMB()}} for the \verb{impute =} argument, \code{\link[=cumulative_logit]{cumulative_logit()}} for
+an ordered categorical predictor model, and \code{\link[=miss_control]{miss_control()}} for the
+\code{predictor = "model"} switch.
 }

@@ -10,12 +10,19 @@ name: dep-slope-identifiability-sweep
 # family guard via the same MakeADFun override the validated Gaussian
 # recovery harness uses).
 #
-# Manual only (workflow_dispatch). Uploads the per-cell results CSV + the
+# Nightly schedule + workflow_dispatch. Uploads the per-cell results CSV + the
 # full run log as artifacts. The repo is public, so ubuntu-latest minutes
-# are free. Start with a cheap smoke (small N grid / one seed) to confirm
-# the harness runs on GHA before launching the full grid.
+# are free. For a manual run, start with a cheap smoke (small N grid / one
+# seed); the nightly schedule runs the full default grid.
 
 on:
+  schedule:
+    # Nightly at 03:00 UTC -- runs the full default grid through the week as a
+    # standing identifiability / regression watch. Scheduled runs pass no
+    # inputs, so the harness falls back to its env defaults (the full
+    # families x N x seeds grid). Staggered off full-check (06:00) and the
+    # power-pilot (every 2h) to avoid runner contention.
+    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
       families:

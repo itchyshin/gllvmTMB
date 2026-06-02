@@ -1,0 +1,114 @@
+name: spatial-dep-identifiability-sweep
+
+# SPA-10 spatial_dep(1 + x | coords) identifiability spike.
+#
+# Sweeps n_sites for the RESERVED non-Gaussian spatial_dep augmented slope
+# (full unstructured 2T x 2T field covariance Sigma_field) to test whether
+# the conv!=0 / non-PD result at small n is genuine non-identifiability or
+# finite-sample power -- the spatial analogue of the phylo_dep sweep
+# (dep-slope-identifiability-sweep.yaml / GAP-B1 / PHY-18). Drives
+#   docs/dev-log/spikes/2026-06-02-spatial-dep-slope-identifiability-N-sweep.R
+# which calls the REAL gllvmTMB() API; it depends on the THROWAWAY
+# GLLVMTMB_SPDE_DEP_SWEEP=1 guard relaxation in R/fit-multi.R (NOT a release
+# relaxation -- by default the guard stays gaussian-only).
+#
+# Triggered on BOTH pull_request (so it runs automatically on the SPA-10 PR --
+# pull_request events are not subject to the default-branch limit that
+# workflow_dispatch has) AND workflow_dispatch (manual re-run with a custom
+# grid). The repo is public, so ubuntu-latest minutes are free. Uploads the
+# per-cell results CSV + the full run log as artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      families:
+        description: "Comma list of families (default: reserved cores + gaussian control)."
+        required: false
+        default: "gaussian,poisson,nbinom2,Gamma,Beta,binomial,ordinal_probit"
+        type: string
+      n_grid:
+        description: "Comma list of n_sites to sweep."
+        required: false
+        default: "100,200,400,800"
+        type: string
+      seeds:
+        description: "Comma list of replicate seeds per cell."
+        required: false
+        default: "101,202,303"
+        type: string
+      cutoff:
+        description: "SPDE mesh cutoff."
+        required: false
+        default: "0.05"
+        type: string
+  pull_request:
+
+concurrency:
+  group: spatial-dep-identifiability-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GLLVMTMB_SPDE_DEP_SWEEP: "1"
+      GLLVMTMB_SWEEP_FAMILIES: ${{ github.event.inputs.families }}
+      GLLVMTMB_SWEEP_NGRID: ${{ github.event.inputs.n_grid }}
+      GLLVMTMB_SWEEP_SEEDS: ${{ github.event.inputs.seeds }}
+      GLLVMTMB_SWEEP_CUTOFF: ${{ github.event.inputs.cutoff }}
+      GLLVMTMB_SWEEP_OUT: spatial-dep-identifiability-sweep-results.csv
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # local::. brings the package's own deps; devtools::load_all in the
+          # spike compiles src/ against them.
+          extra-packages: |
+            local::.
+            any::devtools
+          needs: check
+
+      - name: Run the spatial_dep identifiability sweep
+        shell: bash
+        run: |
+          set -o pipefail
+          Rscript docs/dev-log/spikes/2026-06-02-spatial-dep-slope-identifiability-N-sweep.R \
+            2>&1 | tee spatial-dep-identifiability-sweep.log
+
+      - name: Upload results CSV + log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spatial-dep-identifiability-results
+          path: |
+            spatial-dep-identifiability-sweep-results.csv
+            spatial-dep-identifiability-sweep.log
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## spatial_dep identifiability sweep (SPA-10)"
+            echo ""
+            if [ -f spatial-dep-identifiability-sweep-results.csv ]; then
+              echo "### Results (conv==0 & pdHess is the identifiability signal)"
+              echo ""
+              echo '```'
+              cat spatial-dep-identifiability-sweep-results.csv
+              echo '```'
+            else
+              echo ":warning: No results CSV produced -- see the run log artifact."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

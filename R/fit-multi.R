@@ -319,7 +319,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## the matrix fixtures' n_sites (identifiability of the unstructured
       ## cross-field block, the spatial analogue of phylo_dep / PHY-18). They
       ## stay reserved; the spatial_dep x slope matrix rows honest-skip.
-      if (any(!family_id_vec %in% c(0L))) {
+      ##
+      ## THROWAWAY (SPA-10 identifiability sweep, 2026-06-02): when
+      ## GLLVMTMB_SPDE_DEP_SWEEP=1 the allowlist is widened to the swept cores
+      ## so the sweep harness (docs/dev-log/spikes/
+      ## 2026-06-02-spatial-dep-slope-identifiability-N-sweep.R) can call the
+      ## REAL API across n_sites/families to measure the PD-fraction-vs-N
+      ## curve. This env-gated branch is NOT a release relaxation: by default
+      ## the guard stays gaussian-only c(0L). Promote specific families to the
+      ## unconditional allowlist ONLY after their recovery cell passes.
+      spde_dep_allow <- if (identical(Sys.getenv("GLLVMTMB_SPDE_DEP_SWEEP"), "1")) {
+        c(0L, 1L, 2L, 4L, 5L, 7L, 14L)
+      } else {
+        c(0L)
+      }
+      if (any(!family_id_vec %in% spde_dep_allow)) {
         cli::cli_abort(c(
           "{.fn spatial_dep} random slopes are validated for {.code gaussian()} only in this release.",
           "i" = "The augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) non-Gaussian cells are reserved (Design 64; non-Gaussian non-PD = identifiability).",

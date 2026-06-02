@@ -12558,3 +12558,97 @@ Not run:
 - `devtools::test()` and `devtools::check()` were not rerun because
   the hotfix only changes pkgdown navigation and directly targets the
   failing deploy gate.
+
+## 2026-06-02 -- coevolution article closeout
+
+Scope:
+
+- Finish the public `cross-lineage-coevolution` article for the already
+  merged Design 65 C2 engine slice. No TMB likelihood, formula grammar,
+  or exported function surface changed in this closeout.
+- Added a portable example fixture under `inst/extdata/examples/`, its
+  generator under `data-raw/examples/`, and a light test that checks the
+  article's long-format and wide `traits(...)` calls agree.
+
+Coordination / lane checks:
+
+- `gh pr view 420 --repo itchyshin/gllvmTMB --json files,headRefName,title,url`
+  -> PR #420 touches `docs/design/35-validation-debt-register.md`,
+  `docs/dev-log/check-log.md`, and unrelated Track A test/audit files.
+- `gh pr view 421 --repo itchyshin/gllvmTMB --json files,headRefName,title,url`
+  -> PR #421 touches `docs/design/35-validation-debt-register.md` and
+  unrelated slope-status/audit files.
+- `gh pr view docs/coev-kernel-article --repo itchyshin/gllvmTMB ...`
+  -> no PR exists yet for the current branch.
+- Overlap note: this slice touches the `COE-02` row in the validation
+  register. PRs #420/#421 touch other register rows, so the overlap is
+  file-level and should be called out in the PR body.
+
+Commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "example-coevolution-kernel")'`
+  -> PASS 33 / FAIL 0 / WARN 0 / SKIP 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution|kernel-equivalence")'`
+  -> PASS 86 / FAIL 0 / WARN 0 / SKIP 3. The 3 skips are the expected
+  heavy recovery/matrix tests gated by `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.` Rerun after article polish with the same result.
+- `Rscript --vanilla -e 'out <- "/tmp/gllvmTMB-coev-render"; ...; rmarkdown::render("vignettes/articles/cross-lineage-coevolution.Rmd", output_dir = out, quiet = TRUE)'`
+  -> targeted article render PASS; final rendered output written under
+  `/tmp/gllvmTMB-coev-render`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> failed at `vignettes/articles/cross-lineage-coevolution.Rmd` because
+  the pkgdown subprocess loaded an installed package namespace that did
+  not contain `make_cross_kernel()`. This is the known local subprocess
+  mismatch, not a touched-article source failure.
+- `Rscript --vanilla -e 'lib <- tempfile(...); devtools::install(...); Sys.setenv(R_LIBS = ...); pkgdown::build_articles(lazy = FALSE)'`
+  -> after temporary install, the sweep rendered
+  `articles/cross-lineage-coevolution.html` successfully. The sweep was
+  then stopped after more than five minutes on unrelated
+  `joint-sdm.Rmd`; whole-site article build is therefore not claimed as
+  passed.
+- `git diff --check`
+  -> clean.
+
+Stale-wording / pre-publish scans:
+
+- `rg -n "gllvmTMB_wide|meta_known_V|diag\\(U\\)|diag\\(S\\)|\\bS_B\\b|\\bS_W\\b|PLANNED.*article|no public coevolution article|rho.*estimated|estimated.*rho|calibrated intervals" NEWS.md docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md vignettes/articles/cross-lineage-coevolution.Rmd vignettes/articles/phylogenetic-gllvm.Rmd tests/testthat/test-example-coevolution-kernel.R data-raw/examples/make-coevolution-kernel-example.R`
+  -> expected C2.3 "rho not estimated yet" boundary, the updated NEWS
+  point-estimate boundary, and existing `gllvmTMB_wide` / `meta_known_V`
+  registry or older NEWS mentions only; no new stale primary syntax or
+  unsupported coevolution claim in the touched article.
+- Rendered figure extracted from `/tmp/gllvmTMB-coev-render`; figure gate
+  PASS. The Gamma heatmap has legible labels, stable truth/fitted/null
+  ordering, a signed diverging covariance scale, and an explicit null
+  zero panel.
+
+Review gates:
+
+- Pat / article-tier: PASS after adding the early model-shape block and
+  first-use glosses for `kernel_latent()`, `kernel_unique()`, `Lambda`,
+  and `psi`.
+- Rose / pre-publish: PASS for the touched coevolution slice. The article,
+  NEWS, pkgdown nav, validation-register row, and Design 65 note all map
+  the public claim to `COE-02` / `KER-02` and preserve IN / PARTIAL /
+  PLANNED boundaries.
+- Florence / figure quality: PASS for the Gamma comparison heatmap.
+- Grace / pkgdown: PASS for `pkgdown::check_pkgdown()` and targeted
+  coevolution article render; WARN that a complete
+  `pkgdown::build_articles(lazy = FALSE)` pass was not obtained because
+  the whole sweep was stopped on unrelated `joint-sdm.Rmd` after the
+  touched article had rendered successfully through a temporary install.
+- Shannon / coordination: WARN. Open PRs at handoff are #420 (clean,
+  CI success), #421 (CI in progress, file-level overlap on the
+  validation register), #422 (CI in progress, no coevol file overlap),
+  and #369 (draft/dirty). This PR should note the register/check-log
+  file-level overlap with #420/#421 and rebase if either merges first.
+
+Deliberately not run / not done:
+
+- No `devtools::check()` in this closeout; this is an article / example
+  fixture slice with no compiled-code or exported-function changes.
+- No `GLLVMTMB_HEAVY_TESTS=1` recovery rerun; the C2 heavy recovery gate
+  is already the merged engine evidence, and the fast coevolution/kernel
+  suite was rerun here.
+- Not a final feature-Done claim until the article PR is merged and CI
+  passes on `main`.

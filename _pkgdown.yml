@@ -55,6 +55,7 @@ articles:
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
     - articles/phylogenetic-gllvm
+    - articles/cross-lineage-coevolution
     - articles/api-keyword-grid
     - articles/response-families
     - articles/mixed-family-extractors

@@ -1,0 +1,357 @@
+---
+title: "Cross-lineage coevolution kernels"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Cross-lineage coevolution kernels}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 7.2, fig.height = 4.4,
+  fig.align = "center",
+  cache    = FALSE,
+  eval     = TRUE,
+  message  = FALSE,
+  warning  = FALSE
+)
+```
+
+This article is for a comparative-methods reader with two interacting
+lineages: for example hosts and parasites, plants and pollinators, or
+mutualists. The working question is: after accounting for the host
+phylogeny, the partner phylogeny, and the observed association matrix
+`W`, can we estimate the host-trait by partner-trait covariance block?
+
+Scope boundary: **IN** (`COE-02`, `KER-02`), this article fits one
+named dense kernel tier with `kernel_latent()` plus `kernel_unique()`
+and extracts the cross-lineage shared block with `extract_Gamma()`.
+**PARTIAL**, `rho` is supplied when `K_star` is built, and
+`extract_Gamma()` returns point estimates without calibrated
+intervals. **PLANNED**, multiple simultaneous kernel tiers and
+in-engine `rho` estimation remain later Design 65 work.
+
+The core fit is a `traits(...)` wide-data formula. The article also
+fits the same model with the canonical long `value ~ ...` formula
+after loading the example fixture.
+
+```{r model-shape, eval = FALSE}
+fit_cross <- gllvmTMB(
+  traits(h_size, h_defence, p_size, p_attack) ~ 1 +
+    kernel_latent(species, K = K_star, d = 2, name = "cross") +
+    kernel_unique(species, K = K_star, name = "cross"),
+  data = coev$data_wide,
+  unit = "row_id",
+  cluster = "species",
+  family = gaussian()
+)
+```
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+```
+
+```{r load-example, eval = FALSE}
+coev <- readRDS(system.file(
+  "extdata", "examples", "coevolution-kernel-example.rds",
+  package = "gllvmTMB"
+))
+```
+
+```{r load-example-hidden, include = FALSE}
+example_path <- system.file(
+  "extdata", "examples", "coevolution-kernel-example.rds",
+  package = "gllvmTMB"
+)
+example_path <- c(
+  example_path,
+  file.path("inst", "extdata", "examples", "coevolution-kernel-example.rds"),
+  file.path("..", "inst", "extdata", "examples", "coevolution-kernel-example.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "coevolution-kernel-example.rds")
+)
+example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
+stopifnot(!is.na(example_path))
+coev <- readRDS(example_path)
+```
+
+```{r example-preview}
+coev$story$question
+head(coev$data_wide, 6)
+```
+
+The wide table has one row per sampled lineage individual. Host rows
+carry host traits and `NA` partner traits; partner rows carry partner
+traits and `NA` host traits. The long table makes those block-missing
+cells explicit as one row per `(row_id, trait)` pair:
+
+```{r long-preview}
+head(coev$data_long, 8)
+```
+
+## Build the cross-lineage kernel
+
+`make_cross_kernel()` combines the host relatedness matrix `A_H`, the
+partner relatedness matrix `A_P`, and the association matrix `W` into
+one positive semidefinite kernel:
+
+$$
+K^* =
+\begin{bmatrix}
+A_H & K_{HP} \\
+K_{HP}^{T} & A_P
+\end{bmatrix}.
+$$
+
+The off-diagonal block `K_HP` is where the observed host-partner
+associations enter. In this first workflow, `rho` is a user-supplied
+coupling strength rather than an estimated parameter.
+
+```{r build-kernel}
+K_star <- make_cross_kernel(
+  coev$A_H,
+  coev$A_P,
+  coev$W,
+  rho = coev$truth$rho
+)
+
+range(eigen(K_star, symmetric = TRUE, only.values = TRUE)$values)
+max(abs(K_star - coev$K_star))
+```
+
+The null model keeps the two lineage phylogenies but removes the
+cross-lineage block. That block-diagonal kernel asks whether the same
+within-lineage structure is enough without host-partner covariance.
+
+```{r null-kernel}
+K_null <- coev$K_null
+max(abs(K_null[rownames(coev$A_H), rownames(coev$A_P)]))
+```
+
+## Fit the cross-kernel model
+
+The wide data-frame formula is compact because `traits(...)` names the
+four response columns on the left-hand side. The named kernel tier
+`"cross"` is the level that `extract_Sigma()` and `extract_Gamma()`
+will read later. `kernel_latent()` estimates the shared reduced-rank
+`Lambda Lambda^T` covariance attached to `K_star`; `kernel_unique()`
+adds trait-specific diagonal `psi` variation at the same tier.
+
+```{r fit-wide}
+ctrl <- gllvmTMBcontrol(se = FALSE)
+
+fit_cross <- suppressMessages(gllvmTMB(
+  traits(h_size, h_defence, p_size, p_attack) ~ 1 +
+    kernel_latent(species, K = K_star, d = 2, name = "cross") +
+    kernel_unique(species, K = K_star, name = "cross"),
+  data = coev$data_wide,
+  unit = "row_id",
+  cluster = "species",
+  family = gaussian(),
+  control = ctrl
+))
+
+fit_cross$opt$convergence
+```
+
+The long formula is the same model written with the canonical
+long-format response column. It is useful when the data already arrive
+as one `(unit, trait)` row per observation.
+
+```{r fit-long}
+fit_cross_long <- suppressMessages(gllvmTMB(
+  value ~ 0 + trait +
+    kernel_latent(species, K = K_star, d = 2, name = "cross") +
+    kernel_unique(species, K = K_star, name = "cross"),
+  data = coev$data_long,
+  trait = "trait",
+  unit = "row_id",
+  cluster = "species",
+  family = gaussian(),
+  control = ctrl
+))
+
+cat("Long/wide logLik difference:",
+    signif(abs(as.numeric(logLik(fit_cross)) -
+               as.numeric(logLik(fit_cross_long))), 3), "\n")
+```
+
+Now fit the block-diagonal null on the same data. It uses the same
+formula and rank, but the kernel has no host-partner bridge.
+
+```{r fit-null}
+fit_null <- suppressMessages(gllvmTMB(
+  traits(h_size, h_defence, p_size, p_attack) ~ 1 +
+    kernel_latent(species, K = K_null, d = 2, name = "cross") +
+    kernel_unique(species, K = K_null, name = "cross"),
+  data = coev$data_wide,
+  unit = "row_id",
+  cluster = "species",
+  family = gaussian(),
+  control = ctrl
+))
+
+c(
+  cross = as.numeric(logLik(fit_cross)),
+  null = as.numeric(logLik(fit_null)),
+  improvement = as.numeric(logLik(fit_cross)) - as.numeric(logLik(fit_null))
+)
+```
+
+## Extract Gamma
+
+`extract_Gamma()` slices the shared part of the fitted kernel-tier
+`Sigma`. For this article, the rows are host traits and the columns
+are partner traits:
+
+$$
+\Gamma_{HP} = \Lambda_H \Lambda_P^T.
+$$
+
+Here, `Lambda` is the trait-by-latent-axis loading matrix for the
+shared kernel tier.
+
+Because this target is a covariance block, its sign and scale matter:
+positive cells mean the host and partner traits rise together along
+the cross-kernel latent axes; negative cells mean they move in opposite
+directions.
+
+```{r extract-gamma}
+Gamma_hat <- extract_Gamma(
+  fit_cross,
+  level = "cross",
+  row_traits = coev$truth$host_traits,
+  col_traits = coev$truth$partner_traits
+)
+
+Gamma_null <- extract_Gamma(
+  fit_null,
+  level = "cross",
+  row_traits = coev$truth$host_traits,
+  col_traits = coev$truth$partner_traits
+)
+
+round(coev$truth$Gamma, 2)
+round(Gamma_hat, 2)
+round(Gamma_null, 4)
+
+abs(cor(as.vector(Gamma_hat), as.vector(coev$truth$Gamma)))
+```
+
+The null fit has an approximately zero `Gamma` block because its
+kernel has no cross-lineage covariance. The cross-kernel fit recovers
+the planted sign pattern and improves the likelihood on these data.
+
+```{r gamma-plot, fig.cap = "Cross-lineage shared covariance. The fitted cross-kernel model recovers the planted host-trait by partner-trait Gamma block, while the block-diagonal null leaves that block at zero.", fig.alt = "Three heatmap facets compare the true Gamma block, the fitted cross-kernel Gamma block, and the block-diagonal null. The cross-kernel panel reproduces the planted sign pattern, while the null panel contains zero-valued cells."}
+gamma_frame <- function(M, source) {
+  out <- as.data.frame(as.table(M), stringsAsFactors = FALSE)
+  names(out) <- c("host_trait", "partner_trait", "estimate")
+  out$source <- source
+  out
+}
+
+gamma_plot_data <- rbind(
+  gamma_frame(coev$truth$Gamma, "Truth"),
+  gamma_frame(Gamma_hat, "Cross kernel"),
+  gamma_frame(Gamma_null, "Block-diagonal null")
+)
+gamma_plot_data$source <- factor(
+  gamma_plot_data$source,
+  levels = c("Truth", "Cross kernel", "Block-diagonal null")
+)
+gamma_plot_data$host_trait <- factor(
+  gamma_plot_data$host_trait,
+  levels = rev(coev$truth$host_traits)
+)
+gamma_plot_data$partner_trait <- factor(
+  gamma_plot_data$partner_trait,
+  levels = coev$truth$partner_traits
+)
+limit <- max(abs(gamma_plot_data$estimate))
+
+ggplot(gamma_plot_data,
+       aes(x = partner_trait, y = host_trait, fill = estimate)) +
+  geom_tile(color = "#d9d9d9", linewidth = 0.7) +
+  geom_text(
+    aes(label = sprintf("%.2f", estimate),
+        color = abs(estimate) > 0.55 * limit),
+    size = 3.6
+  ) +
+  facet_wrap(~ source, nrow = 1) +
+  scale_fill_gradient2(
+    low = "#2166ac", mid = "white", high = "#b2182b",
+    midpoint = 0, limits = c(-limit, limit),
+    name = "Shared\ncovariance"
+  ) +
+  scale_color_manual(values = c("FALSE" = "black", "TRUE" = "white"),
+                     guide = "none") +
+  scale_x_discrete(labels = function(x) gsub("_", " ", x, fixed = TRUE)) +
+  scale_y_discrete(labels = function(x) gsub("_", " ", x, fixed = TRUE)) +
+  labs(x = "Partner trait", y = "Host trait") +
+  coord_equal() +
+  theme_minimal(base_size = 11) +
+  theme(
+    panel.grid = element_blank(),
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 25, hjust = 1),
+    legend.position = "right"
+  )
+```
+
+## Read the result cautiously
+
+The model learns cross-lineage covariance from one realised
+association matrix `W`. That makes the workflow useful, but it also
+means sparse or weakly structured `W` can support much less information
+than a dense simulation suggests. The C2 validation test therefore
+includes a single-`W` sensitivity check: thinning the same association
+surface reduces `Gamma` recovery relative to the dense case.
+
+For an applied analysis, treat `rho` as part of the sensitivity
+workflow. Rebuild `K_star` over a grid of plausible `rho` values, refit
+the model, and compare `logLik`, `Gamma`, and fit diagnostics:
+
+```{r rho-grid, eval = FALSE}
+rho_grid <- seq(0, 0.8, by = 0.2)
+rho_results <- lapply(rho_grid, function(rho) {
+  K_rho <- make_cross_kernel(coev$A_H, coev$A_P, coev$W, rho = rho)
+  fit_rho <- gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~ 1 +
+      kernel_latent(species, K = K_rho, d = 2, name = "cross") +
+      kernel_unique(species, K = K_rho, name = "cross"),
+    data = coev$data_wide,
+    unit = "row_id",
+    cluster = "species",
+    family = gaussian(),
+    control = gllvmTMBcontrol(se = FALSE)
+  )
+  list(rho = rho, logLik = logLik(fit_rho),
+       Gamma = extract_Gamma(fit_rho, level = "cross",
+                             row_traits = coev$truth$host_traits,
+                             col_traits = coev$truth$partner_traits))
+})
+```
+
+Report the cross-kernel result only when the biological interpretation
+is stable across the `rho` values you would defend for `W`, and when
+the block-diagonal null is not competitive.
+
+## What to read next
+
+- [`make_cross_kernel()`](../reference/make_cross_kernel.html) documents
+  how `A_H`, `A_P`, `W`, and `rho` are scaled into `K_star`.
+- [`kernel_latent()`](../reference/kernel_latent.html) documents the
+  generic dense-kernel formula keywords.
+- [`extract_Gamma()`](../reference/extract_Gamma.html) documents the
+  cross-lineage covariance extractor and its point-estimate scope.
+- [`phylogenetic-gllvm`](phylogenetic-gllvm.html) is the ordinary
+  single-lineage phylogenetic trait-covariance example; start there
+  when all traits live on one tree.

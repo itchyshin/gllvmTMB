@@ -108,9 +108,13 @@ BINOM_TRIALS <- as.integer(Sys.getenv("GLLVMTMB_BINOM_TRIALS", "12"))
   n_mesh <- ncol(mesh$A_st)
   M0 <- as.matrix(mesh$spde$c0); M1 <- as.matrix(mesh$spde$g1); M2 <- as.matrix(mesh$spde$g2)
   Q <- kappa_true^4 * M0 + 2 * kappa_true^2 * M1 + M2
-  A <- solve(Q)
-  chA <- t(chol(A + 1e-9 * diag(n_mesh)))
-  Omega <- chA %*% matrix(stats::rnorm(n_mesh * C), n_mesh, C) %*% chol(Sf)
+  ## Draw the GMRF field directly from the precision via its Cholesky:
+  ## Omega ~ N(0, Q^{-1}) per column as backsolve(R, z) where R = chol(Q)
+  ## (upper, R^T R = Q) so cov(R^{-1} z) = (R^T R)^{-1} = Q^{-1}. This avoids
+  ## densely inverting the ill-conditioned SPDE precision -- solve(Q) hit
+  ## rcond ~1e-17 at fine meshes (every cell errored / produced all-NA eta).
+  Rq <- chol(Q + 1e-6 * diag(n_mesh))
+  Omega <- backsolve(Rq, matrix(stats::rnorm(n_mesh * C), n_mesh, C)) %*% chol(Sf)
   A_full <- as.matrix(mesh$A_st)
   proj <- A_full %*% Omega                          # n_obs x C
   eta <- numeric(nrow(df))
@@ -192,7 +196,7 @@ families <- .env_list("GLLVMTMB_SWEEP_FAMILIES",
                       c("gaussian", "poisson", "nbinom2", "Gamma", "Beta", "binomial", "ordinal_probit"))
 n_grid   <- as.integer(.env_list("GLLVMTMB_SWEEP_NGRID", c("100", "200", "400", "800")))
 seeds    <- as.integer(.env_list("GLLVMTMB_SWEEP_SEEDS", c("101", "202", "303")))
-cutoff   <- as.numeric(Sys.getenv("GLLVMTMB_SWEEP_CUTOFF", "0.05"))
+cutoff   <- as.numeric(Sys.getenv("GLLVMTMB_SWEEP_CUTOFF", "0.1"))
 out_csv  <- Sys.getenv("GLLVMTMB_SWEEP_OUT", "spatial-dep-identifiability-sweep-results.csv")
 
 ## gaussian is the CONTROL: it should pass (conv 0 + pdHess) at every N. A
@@ -218,9 +222,13 @@ write.csv(results, out_csv, row.names = FALSE)
 cat(sprintf("\nWrote %s\n", out_csv))
 
 ## Per-(family, N) verdict: fraction of seeds that converged PD.
-agg <- aggregate(pd ~ family + n_sites,
-                 data = transform(results, pd = as.integer(conv == 0 & pdHess == TRUE)),
-                 FUN = function(z) mean(z, na.rm = TRUE))
-cat("\n===== FRACTION conv==0 & pdHess across seeds =====\n")
-print(agg[order(agg$family, agg$n_sites), ], row.names = FALSE)
+res2 <- transform(results, pd = as.integer(conv == 0 & pdHess == TRUE))
+if (any(!is.na(res2$pd))) {
+  agg <- aggregate(pd ~ family + n_sites, data = res2,
+                   FUN = function(z) mean(z, na.rm = TRUE), na.action = stats::na.pass)
+  cat("\n===== FRACTION conv==0 & pdHess across seeds =====\n")
+  print(agg[order(agg$family, agg$n_sites), ], row.names = FALSE)
+} else {
+  cat("\nNo cell produced a finite conv/pdHess result -- see the `note` column above for per-cell failure reasons.\n")
+}
 cat("\nSPATIAL_DEP_IDENTIFIABILITY_SWEEP_DONE\n")

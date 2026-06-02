@@ -94,3 +94,6 @@ dev/m3-pilot-results-local/
 dev/m3-pilot-local.log
 dev/m3-pilot-local.pid
 dev/STOP-LOCAL-PILOT
+
+# Claude Code background-agent worktrees (ephemeral; auto-removed)
+.claude/worktrees/

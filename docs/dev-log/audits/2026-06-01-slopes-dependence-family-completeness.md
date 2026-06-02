@@ -167,22 +167,28 @@ after-task report lands.
 ### Track B — maintainer-sequenced (engine / family guard / estimand)
 
 - [ ] **GAP-B1 · `phylo_dep` slope, non-Gaussian** (PHY-18). Engine
-  built + Gaussian-validated. Blockers: (i) full unstructured `C×C`
-  covariance non-identifiable for non-Gaussian at n≤100 (needs larger n
-  or reparam); (ii) the matrix-dep harness reads the 2-vector `sd_b`
-  channel, incompatible with the engine's `Sigma_b_dep` — must repoint
-  before any non-Gaussian cell can pass. Close gate: ≥1 non-Gaussian
-  recovery cell PD + within band, then relax the `c(0L)` allowlist.
-  *In progress:* the N-sweep test harness exists at
-  `docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
-  (no engine change; MakeADFun override over all reserved cores) and runs
-  via the `dep-slope-identifiability-sweep` Actions dispatch workflow.
-  Awaiting the first sweep run to answer the identifiability-vs-power
-  question.
+  built + Gaussian-validated. **Identifiability question RESOLVED (sweep
+  evidence, 2026-06-02): the non-Gaussian dep covariance IS identifiable
+  given adequate data — finite-sample power, not non-identifiability.**
+  The N-sweep (`docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`,
+  Actions runs #26808484707/#26812586011; see after-task
+  `2026-06-02-dep-slope-identifiability-sweep.md`) shows `conv==0 &
+  pdHess` reliably reached: poisson at every N (incl. n_sp=80);
+  Gamma/Beta/nbinom2/ordinal_probit by N=300; Bernoulli binomial by
+  N=1200; gaussian control PD throughout. The prior "non-PD at n≤100"
+  rationale reflected small-n / low-`n_rep` matrix-test fixtures.
+  Remaining blocker (ii): the matrix-dep harness reads the 2-vector `sd_b`
+  channel, incompatible with the engine's `Sigma_b_dep` — production cells
+  must read `report$Sigma_b_dep`. Close gate: per-family recovery cell PD +
+  within band (at the N this sweep flags), then relax the `c(0L)` allowlist
+  one family at a time, mirroring PHY-11..17. **Now an engine task (Track
+  B), not a research question** — needs maintainer sequencing.
 - [ ] **GAP-B2 · `spatial_dep` slope, non-Gaussian** (SPA-10). Spatial
-  analogue of B1; engine built + Gaussian-validated to 1e-9 prior nll.
-  Same identifiability blocker. Close gate: ≥1 non-Gaussian field-cov
-  recovery cell.
+  analogue of B1; engine built + Gaussian-validated to 1e-9 prior nll. The
+  B1 sweep finding (identifiable at adequate N) is expected to transfer;
+  worth confirming with an analogous `use_spde_dep_slope` sweep before the
+  guard relaxation. Close gate: ≥1 non-Gaussian field-cov recovery cell,
+  then relax the `c(0L)` SPDE-dep allowlist.
 - [ ] **GAP-B3 · `spatial_indep` slope, non-Gaussian** (SPA-08 / B4).
   Engine built (`use_spde_slope`), Gaussian-only guard at
   `R/fit-multi.R:308`. Close gate: non-Gaussian diagonal SPDE-slope

@@ -50,8 +50,32 @@ matrix-test fixtures' small n_sp and low `n_rep`, not impossibility.
 
 Smoke-run recovery (seed 101, poisson) was good: slope-variance ratios
 1.26/1.14 at N=80 improving to 0.92/0.93 at N=300; `max|Sigma_hat - Sigma|`
-0.30 -> 0.069. Full recovery-quality numbers from run #3 (N=300/600, 5
-seeds, multi-trial binomial) are appended when that run completes.
+0.30 -> 0.069.
+
+### Recovery quality (run #3: N=300/600, 5 seeds, multi-trial binomial ×12)
+
+Fraction of 5 seeds with `conv==0 & pdHess==TRUE`:
+
+| family | N=300 | N=600 |
+|---|---|---|
+| gaussian (control) | 1.0 | 1.0 |
+| poisson | 1.0 | 1.0 |
+| Gamma | 1.0 | 1.0 |
+| Beta | 1.0 | 1.0 |
+| binomial (multi-trial ×12) | 1.0 | 1.0 |
+| nbinom2 | 0.8 | 0.8 |
+| ordinal_probit | 0.8 | 0.6 |
+
+Slope-variance recovery ratios cluster ~0.7-1.5 (within the inherited
+2x bands) when fits converge. Two refinements vs the full grid:
+**multi-trial binomial converges at N=300** (Bernoulli had needed
+N=1200 -- low information per row was the issue, not the family), and
+**nbinom2 / ordinal_probit are seed-sensitive** (~60-80% PD across
+seeds at N=300/600) -- their production recovery cells need a robust
+seed or larger N, and may legitimately honest-skip on an unlucky draw
+(the phi<->slope-variance confound for nbinom2; ordinal borderline per
+the Phase B0 memo). poisson/Gamma/Beta/binomial are 100% PD across
+seeds -> clean validation targets.
 
 ## Caveats (honest bounds)
 
@@ -102,12 +126,17 @@ Documentation + a research-only spike (no engine code touched). The sweeps
 ran green on GitHub Actions (gaussian control PD at every N confirms the
 harness). No package behaviour changed.
 
-## Follow-up
+## Follow-up — engine work now IN PROGRESS (maintainer authorized 2026-06-02)
 
-- Append run #3 recovery-quality + multi-trial-binomial numbers.
-- Maintainer decision on the engine path above (per-family recovery cells
-  + staged guard relaxation for `phylo_dep` then `spatial_dep`).
-- Reconcile Design 35 PHY-18 / SPA-10 notes (done in this PR: rationale
-  reframed from "non-identifiable" to "finite-sample power; identifiable at
-  adequate N", status held at `partial` pending the recovery cells).
-</content>
+- Run #3 recovery-quality numbers appended above. Done.
+- **poisson `phylo_dep(1+x)` shipped:** PR #422 merged to main — guard
+  relaxed to `c(0L, 2L)` behind a real-API recovery cell reading
+  `Sigma_b_dep` (validated via the `dep-slope-poisson-recovery` CI gate).
+- **Remaining 5 families in flight:** a follow-up PR extends the allowlist
+  to the families whose recovery cells pass (poisson/Gamma/Beta/binomial
+  are 100% PD across seeds; nbinom2/ordinal seed-sensitive, included only
+  if their cells pass) — same PHY-11..17 pattern.
+- **spatial_dep (SPA-10) in flight:** an analogous SPDE-dep identifiability
+  sweep + validation (or a findings doc if internals prove uncertain).
+- Reconcile Design 35 PHY-18 / SPA-10 notes (this PR reframed the
+  rationale; PHY-18 sub-rows flip to `covered` per family as each lands).

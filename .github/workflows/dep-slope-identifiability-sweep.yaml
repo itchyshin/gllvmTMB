@@ -1,0 +1,112 @@
+name: dep-slope-identifiability-sweep
+
+# GAP-B1 (PHY-18) identifiability spike, run on demand.
+#
+# Sweeps n_sp for the RESERVED non-Gaussian phylo_dep(1 + x | sp) augmented
+# slope to test whether the conv!=0 / non-PD result at small N is genuine
+# non-identifiability or finite-sample power. Drives
+#   docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R
+# (a research harness; NO engine change -- it bypasses the gaussian-only
+# family guard via the same MakeADFun override the validated Gaussian
+# recovery harness uses).
+#
+# Manual only (workflow_dispatch). Uploads the per-cell results CSV + the
+# full run log as artifacts. The repo is public, so ubuntu-latest minutes
+# are free. Start with a cheap smoke (small N grid / one seed) to confirm
+# the harness runs on GHA before launching the full grid.
+
+on:
+  workflow_dispatch:
+    inputs:
+      families:
+        description: "Comma list of families (default: all reserved cores + gaussian control)."
+        required: false
+        default: "gaussian,poisson,nbinom2,Gamma,Beta,binomial,ordinal_probit"
+        type: string
+      n_grid:
+        description: "Comma list of n_sp to sweep."
+        required: false
+        default: "80,150,300,600,1200"
+        type: string
+      seeds:
+        description: "Comma list of replicate seeds per cell."
+        required: false
+        default: "101,202,303"
+        type: string
+      n_rep:
+        description: "Rows per (species, trait) cell."
+        required: false
+        default: "10"
+        type: string
+
+concurrency:
+  group: dep-slope-identifiability
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GLLVMTMB_SWEEP_FAMILIES: ${{ github.event.inputs.families }}
+      GLLVMTMB_SWEEP_NGRID: ${{ github.event.inputs.n_grid }}
+      GLLVMTMB_SWEEP_SEEDS: ${{ github.event.inputs.seeds }}
+      GLLVMTMB_SWEEP_NREP: ${{ github.event.inputs.n_rep }}
+      GLLVMTMB_SWEEP_OUT: dep-identifiability-sweep-results.csv
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # local::. brings the package's own deps; devtools::load_all in the
+          # spike compiles src/ against them.
+          extra-packages: |
+            local::.
+            any::devtools
+          needs: check
+
+      - name: Run the identifiability sweep
+        shell: bash
+        run: |
+          set -o pipefail
+          Rscript docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R \
+            2>&1 | tee dep-identifiability-sweep.log
+
+      - name: Upload results CSV + log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dep-slope-identifiability-results
+          path: |
+            dep-identifiability-sweep-results.csv
+            dep-identifiability-sweep.log
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## dep-slope identifiability sweep"
+            echo ""
+            echo "Families: \`${GLLVMTMB_SWEEP_FAMILIES}\`"
+            echo "N grid: \`${GLLVMTMB_SWEEP_NGRID}\` | seeds: \`${GLLVMTMB_SWEEP_SEEDS}\` | n_rep: \`${GLLVMTMB_SWEEP_NREP}\`"
+            echo ""
+            if [ -f dep-identifiability-sweep-results.csv ]; then
+              echo "### Results (conv==0 & pdHess is the identifiability signal)"
+              echo ""
+              echo '```'
+              cat dep-identifiability-sweep-results.csv
+              echo '```'
+            else
+              echo ":warning: No results CSV produced -- see the run log artifact."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

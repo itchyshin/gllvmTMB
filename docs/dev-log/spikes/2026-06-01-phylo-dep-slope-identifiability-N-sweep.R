@@ -58,6 +58,11 @@ C <- 2L * T_tr
 Sigma_b_true <- .dep_Ltrue() %*% t(.dep_Ltrue())
 slope_var_idx <- c(2L, 4L)          # diagonal positions of the per-trait slope variances
 
+## Binomial trials per row. Default 12 (multi-trial, matching test-matrix-
+## slope-binomial-logit.R) routed through the `weights = n_trials` engine API;
+## set GLLVMTMB_BINOM_TRIALS=1 for the low-information Bernoulli case.
+BINOM_TRIALS <- as.integer(Sys.getenv("GLLVMTMB_BINOM_TRIALS", "12"))
+
 ## Per-family link-scale intercepts (modest so non-Gaussian means stay in the
 ## family's stable range), the family object, and dispersion truth. Borrowed
 ## from the validated per-family slope tests (test-matrix-slope-*.R).
@@ -97,20 +102,27 @@ slope_var_idx <- c(2L, 4L)          # diagonal positions of the per-trait slope 
   si <- match(as.character(df$species), tree$tip.label)
   eta <- sp$mu[ti] + B[cbind(si, 2L * (ti - 1L) + 1L)] + B[cbind(si, 2L * (ti - 1L) + 2L)] * df$x
 
+  wts <- NULL
   df$value <- switch(fam,
     gaussian = eta + rnorm(nrow(df), sd = 0.3),
     poisson  = rpois(nrow(df), exp(eta)),
     nbinom2  = rnbinom(nrow(df), mu = exp(eta), size = sp$disp),
     Gamma    = rgamma(nrow(df), shape = sp$disp, scale = exp(eta) / sp$disp),
-    Beta     = { mu <- plogis(eta); rbeta(nrow(df), mu * sp$disp, (1 - mu) * sp$disp) },
-    binomial = rbinom(nrow(df), size = 1, prob = plogis(eta)),                 # Bernoulli
+    Beta     = {                                                              # clamp exact 0/1 (Beta support is open)
+      mu <- plogis(eta)
+      pmin(pmax(rbeta(nrow(df), mu * sp$disp, (1 - mu) * sp$disp), 1e-6), 1 - 1e-6)
+    },
+    binomial = {                                                             # multi-trial via weights = n_trials API
+      wts <- rep(BINOM_TRIALS, nrow(df))
+      rbinom(nrow(df), size = BINOM_TRIALS, prob = plogis(eta))
+    },
     ordinal_probit = {
       z <- eta + rnorm(nrow(df))                                              # latent, residual sd = 1
       ordered(findInterval(z, sp$taus) + 1L, levels = seq_len(length(sp$taus) + 1L))
     },
     stop("add DGP for family ", fam)
   )
-  list(df = df, tree = tree, fam_obj = sp$obj)
+  list(df = df, tree = tree, fam_obj = sp$obj, weights = wts)
 }
 
 .fail_row <- function(fam, n_sp, seed, note) {
@@ -131,7 +143,7 @@ run_cell <- function(fam, n_sp, n_rep = 10L, seed = 1L) {
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       value ~ 0 + trait + phylo_unique(1 + x | species),
       data = fx$df, phylo_tree = fx$tree, unit = "species",
-      family = fx$fam_obj, control = ctl))),
+      family = fx$fam_obj, weights = fx$weights, control = ctl))),
     error = function(e) e)
   if (inherits(base, "error")) return(.fail_row(fam, n_sp, seed, paste("scaffold:", conditionMessage(base))))
 

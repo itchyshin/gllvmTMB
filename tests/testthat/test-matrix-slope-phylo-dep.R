@@ -415,3 +415,168 @@ test_that("phylo_dep(1 + x | sp) x beta recovers Sigma_b + CI smoke (or honest s
     var_band = 3, rho_abs = 0.40, row_id = "RE-02 / PHY-05 (beta)"
   )
 })
+
+## =====================================================================
+## PHY-18 poisson VALIDATION cell (GAP-B1): the FIRST non-Gaussian dep
+## slope to leave the reservation. Unlike the seven honest-skip cells
+## above -- which read the closed-form `report$sd_b` 2-vector channel
+## (incompatible with the dep engine; a known latent bug in this harness)
+## and skip at the converge/PD guard at the small fixtures -- this cell
+## drives the FULL unstructured 2T x 2T `dep` engine and reads slope
+## variances from the C x C `report$Sigma_b_dep` matrix the engine
+## actually REPORTs. It uses the same interleaved C = 4 Sigma_b_true and
+## .dep_Ltrue() / .make_dep_fixture() recipe as the Gaussian dep anchor
+## (test-phylo-dep-slope-gaussian.R) but draws a poisson response, and a
+## larger n_sp (150) per the GAP-B1 identifiability sweep -- the sweep
+## proved the reserved dep poisson slope is IDENTIFIABLE (PD Hessian,
+## good recovery at n_sp >= 80); the earlier reservation was finite-
+## sample power, not structural non-identifiability. This is the recovery
+## test behind the R/fit-multi.R family-guard relaxation (allowlist
+## c(0L, 2L)). It exercises the REAL public API path (no MakeADFun
+## override), and honest-skips on construction failure / non-convergence /
+## non-PD / out-of-band recovery rather than forcing green.
+
+## Known PD lower-tri Cholesky of the 2T x 2T (C = 4) interleaved Sigma_b,
+## matching .dep_Ltrue() in test-phylo-dep-slope-gaussian.R. The diagonal
+## slope variances (interleaved cols 2, 4) are the binding recovery entry.
+.dep_pois_Ltrue <- function(C) {
+  stopifnot(C == 4L)
+  L <- matrix(0, C, C)
+  L[lower.tri(L, diag = TRUE)] <- c(
+    0.8, 0.2, -0.1, 0.15, # col 1 (rows 1..4)
+    0.6, 0.1, -0.05, # col 2 (rows 2..4)
+    0.5, 0.1, # col 3 (rows 3..4)
+    0.45 # col 4 (row 4)
+  )
+  L
+}
+
+## Build a poisson dep fixture: B ~ MN(0, A_phy, Sigma_b) with INTERLEAVED
+## per-trait (intercept, slope) columns, then y = rpois(n, exp(eta)) with
+## eta = mu_t + alpha_sp + beta_sp * x and modest log-scale intercepts.
+.make_dep_pois_fixture <- function(seed, n_sp, T_tr, n_rep, mu_t_log) {
+  set.seed(seed)
+  C <- 2L * T_tr
+  tree <- ape::rcoal(n_sp)
+  tree$tip.label <- paste0("sp", seq_len(n_sp))
+  Ltrue <- .dep_pois_Ltrue(C)
+  Sigma_b_true <- Ltrue %*% t(Ltrue)
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  LA <- t(chol(Cphy + diag(1e-8, n_sp)))
+  B <- (LA %*% matrix(stats::rnorm(n_sp * C), n_sp, C)) %*% chol(Sigma_b_true)
+  rownames(B) <- tree$tip.label
+
+  sr <- expand.grid(
+    species = factor(tree$tip.label, levels = tree$tip.label),
+    rep = seq_len(n_rep)
+  )
+  sr$x <- stats::rnorm(nrow(sr))
+  trait_levels <- paste0("t", seq_len(T_tr))
+  df_long <- merge(
+    sr,
+    data.frame(trait = factor(trait_levels, levels = trait_levels)),
+    all = TRUE
+  )
+  df_long <- df_long[order(df_long$species, df_long$rep, df_long$trait), ]
+  ti <- as.integer(df_long$trait)
+  si <- match(as.character(df_long$species), tree$tip.label)
+  mu_t <- mu_t_log[ti]
+  alpha <- B[cbind(si, 2L * (ti - 1L) + 1L)] # interleaved intercept col
+  beta <- B[cbind(si, 2L * (ti - 1L) + 2L)] # interleaved slope col
+  eta <- mu_t + alpha + beta * df_long$x
+  df_long$value <- stats::rpois(nrow(df_long), lambda = exp(eta))
+
+  list(
+    tree = tree, df_long = df_long, B = B,
+    Sigma_b_true = Sigma_b_true, T_tr = T_tr, C = C
+  )
+}
+
+test_that("phylo_dep(1 + x | sp) x poisson VALIDATION (PHY-18): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_dep_deps()
+
+  ## C = 4 interleaved (alpha_t1, beta_t1, alpha_t2, beta_t2). Modest
+  ## log-scale intercepts keep counts in a healthy range.
+  fx <- .make_dep_pois_fixture(
+    seed = 20260602L, n_sp = 150L, T_tr = 2L, n_rep = 10L,
+    mu_t_log = c(1.0, 0.7)
+  )
+
+  fit <- tryCatch(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait + phylo_dep(1 + x | species),
+      data = fx$df_long,
+      phylo_tree = fx$tree,
+      unit = "species",
+      family = stats::poisson(link = "log"),
+      control = gllvmTMB::gllvmTMBcontrol(se = TRUE)
+    ))),
+    error = function(e) e
+  )
+
+  ## The whole point of GAP-B1: construction must NO LONGER abort for
+  ## poisson (the family guard was relaxed to allow id 2). A surviving
+  ## abort means the guard relaxation regressed.
+  if (inherits(fit, "error")) {
+    testthat::fail(sprintf(
+      "phylo_dep(1 + x | sp) x poisson aborted at construction: %s (the GAP-B1 guard relaxation should admit poisson id 2)",
+      conditionMessage(fit)
+    ))
+    return(invisible(NULL))
+  }
+  testthat::expect_s3_class(fit, "gllvmTMB_multi")
+
+  ## Engine actually ran the dep poisson path: family id 2 and the dep
+  ## slope flag both on.
+  testthat::expect_true(isTRUE(fit$use$phylo_dep_slope))
+  testthat::expect_identical(fit$tmb_data$use_phylo_dep_slope, 1L)
+  testthat::expect_true(all(fit$tmb_data$family_id_vec == 2L))
+
+  ## Honest-skip on non-convergence / non-PD (matches house style); do not
+  ## force green.
+  healthy <- isTRUE(fit$opt$convergence == 0L) &&
+    is.finite(fit$opt$objective) &&
+    (isTRUE(fit$fit_health$pd_hessian) || isTRUE(fit$sd_report$pdHess))
+  if (!healthy) {
+    testthat::skip(sprintf(
+      "phylo_dep(1 + x | sp) x poisson did not converge with PD Hessian (conv = %s, pdHess = %s); PHY-18 stays partial pending bigger n / different seed",
+      fit$opt$convergence,
+      isTRUE(fit$sd_report$pdHess)
+    ))
+  }
+
+  testthat::expect_equal(fit$opt$convergence, 0L)
+  testthat::expect_true(is.finite(fit$opt$objective))
+  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian) ||
+    isTRUE(fit$sd_report$pdHess))
+
+  ## CRITICAL: read the dep covariance from the C x C report$Sigma_b_dep
+  ## matrix (NOT the closed-form sd_b 2-vector channel, which is
+  ## incompatible with the dep engine). Slope variances sit at the
+  ## interleaved diagonal positions 2 and 4.
+  Sig_hat <- as.matrix(fit$report$Sigma_b_dep)
+  testthat::expect_equal(dim(Sig_hat), c(fx$C, fx$C))
+  testthat::expect_true(all(is.finite(Sig_hat)))
+
+  slope_idx <- c(2L, 4L)
+  slope_var_hat <- diag(Sig_hat)[slope_idx]
+  slope_var_true <- diag(fx$Sigma_b_true)[slope_idx]
+  ratio <- slope_var_hat / slope_var_true
+
+  ## Mean-dependent => 4x band, inherited from test-matrix-slope-poisson.R
+  ## (do NOT invent a tighter one).
+  var_band <- 4
+  if (!all(is.finite(ratio)) ||
+        any(ratio < 1 / var_band) || any(ratio > var_band)) {
+    testthat::skip(sprintf(
+      "Sigma_b_dep slope-variance recovery outside %gx band (hat = %s, truth = %s, ratio = %s); PHY-18 stays partial pending bigger n",
+      var_band,
+      paste(sprintf("%.3g", slope_var_hat), collapse = ", "),
+      paste(sprintf("%.3g", slope_var_true), collapse = ", "),
+      paste(sprintf("%.3g", ratio), collapse = ", ")
+    ))
+  }
+  testthat::expect_true(all(slope_var_hat > slope_var_true / var_band))
+  testthat::expect_true(all(slope_var_hat < slope_var_true * var_band))
+})

@@ -1,119 +1,191 @@
 name: dep-slope-identifiability-sweep
 
-# GAP-B1 (PHY-18) identifiability spike, run on demand.
+# Accumulating dep-slope identifiability / recovery CAMPAIGN (GAP-B1 / PHY-18).
 #
-# Sweeps n_sp for the RESERVED non-Gaussian phylo_dep(1 + x | sp) augmented
-# slope to test whether the conv!=0 / non-PD result at small N is genuine
-# non-identifiability or finite-sample power. Drives
-#   docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R
-# (a research harness; NO engine change -- it bypasses the gaussian-only
-# family guard via the same MakeADFun override the validated Gaussian
-# recovery harness uses).
+# Drives docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R
+# (a research harness; NO engine change). Instead of re-running the same grid,
+# each run ADDS a fresh batch of replicate seeds (derived from the run number,
+# so seeds never collide) to a durable per-cell store on the orphan branch
+# `dep-slope-sweep-results`. The cumulative PD-fraction + recovery statistics
+# therefore TIGHTEN over the week -- especially the seed-sensitive nbinom2 /
+# ordinal_probit cells. Auto-stops after the campaign end date (default Sunday
+# 2026-06-08). The repo is public, so ubuntu-latest minutes are free.
 #
-# Nightly schedule + workflow_dispatch. Uploads the per-cell results CSV + the
-# full run log as artifacts. The repo is public, so ubuntu-latest minutes
-# are free. For a manual run, start with a cheap smoke (small N grid / one
-# seed); the nightly schedule runs the full default grid.
+# POST-MERGE: the cron goes live on merge to main (schedules only fire from the
+# default branch). Dispatch one manual run first to confirm the
+# accumulate -> commit -> store cycle on GHA.
 
 on:
   schedule:
-    # Nightly at 03:00 UTC -- runs the full default grid through the week as a
-    # standing identifiability / regression watch. Scheduled runs pass no
-    # inputs, so the harness falls back to its env defaults (the full
-    # families x N x seeds grid). Staggered off full-check (06:00) and the
-    # power-pilot (every 2h) to avoid runner contention.
-    - cron: "0 3 * * *"
+    # Every 3 hours through the week -- accumulate a fresh seed batch per run.
+    - cron: "0 */3 * * *"
   workflow_dispatch:
     inputs:
       families:
-        description: "Comma list of families (default: all reserved cores + gaussian control)."
+        description: "Comma list of families."
         required: false
         default: "gaussian,poisson,nbinom2,Gamma,Beta,binomial,ordinal_probit"
         type: string
       n_grid:
-        description: "Comma list of n_sp to sweep."
+        description: "Comma list of n_sp (campaign default is the decision N, 300/600)."
         required: false
-        default: "80,150,300,600,1200"
+        default: "300,600"
         type: string
-      seeds:
-        description: "Comma list of replicate seeds per cell."
+      seeds_per_run:
+        description: "How many FRESH seeds to add this run."
         required: false
-        default: "101,202,303"
+        default: "3"
         type: string
       n_rep:
         description: "Rows per (species, trait) cell."
         required: false
         default: "10"
         type: string
+      end_date:
+        description: "Campaign auto-stops after this UTC date (YYYY-MM-DD)."
+        required: false
+        default: "2026-06-08"
+        type: string
 
+# Never overlap two accumulate runs (the store is a single CSV; a running
+# batch must finish + persist before the next starts). Queue, do not cancel.
 concurrency:
-  group: dep-slope-identifiability
+  group: dep-slope-sweep-campaign
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
+
+env:
+  RESULTS_BRANCH: dep-slope-sweep-results
+  STORE: dep-slope-sweep-accumulated.csv
 
 jobs:
-  sweep:
+  accumulate:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
-    env:
-      GLLVMTMB_SWEEP_FAMILIES: ${{ github.event.inputs.families }}
-      GLLVMTMB_SWEEP_NGRID: ${{ github.event.inputs.n_grid }}
-      GLLVMTMB_SWEEP_SEEDS: ${{ github.event.inputs.seeds }}
-      GLLVMTMB_SWEEP_NREP: ${{ github.event.inputs.n_rep }}
-      GLLVMTMB_SWEEP_OUT: dep-identifiability-sweep-results.csv
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
 
+      - name: Campaign date guard (auto-stop after end_date)
+        id: guard
+        shell: bash
+        run: |
+          END="${{ github.event.inputs.end_date }}"; END="${END:-2026-06-08}"
+          TODAY="$(date -u +%Y-%m-%d)"
+          if [[ "$TODAY" > "$END" ]]; then
+            echo "stop=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=dep-slope campaign::ended -- today $TODAY is past end_date $END; skipping."
+          else
+            echo "stop=false" >> "$GITHUB_OUTPUT"
+            echo "campaign active: today $TODAY <= end_date $END"
+          fi
+
       - uses: r-lib/actions/setup-pandoc@v2
+        if: steps.guard.outputs.stop != 'true'
       - uses: r-lib/actions/setup-r@v2
+        if: steps.guard.outputs.stop != 'true'
         with:
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
+        if: steps.guard.outputs.stop != 'true'
         with:
-          # local::. brings the package's own deps; devtools::load_all in the
-          # spike compiles src/ against them.
           extra-packages: |
             local::.
             any::devtools
           needs: check
 
-      - name: Run the identifiability sweep
+      - name: Restore accumulated store from the results branch
+        if: steps.guard.outputs.stop != 'true'
         shell: bash
         run: |
-          set -o pipefail
-          Rscript docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R \
-            2>&1 | tee dep-identifiability-sweep.log
+          if git ls-remote --exit-code --heads origin "$RESULTS_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$RESULTS_BRANCH" --depth=1
+            git archive FETCH_HEAD "$STORE" 2>/dev/null | tar -x \
+              && echo "restored $STORE ($(wc -l < "$STORE") lines)" \
+              || echo "results branch has no store yet; starting empty."
+          else
+            echo "results branch '$RESULTS_BRANCH' does not exist yet; starting empty."
+          fi
 
-      - name: Upload results CSV + log
-        if: always()
+      - name: Accumulate a fresh seed batch
+        if: steps.guard.outputs.stop != 'true'
+        shell: bash
+        env:
+          GLLVMTMB_SWEEP_FAMILIES: ${{ github.event.inputs.families }}
+          GLLVMTMB_SWEEP_NGRID: ${{ github.event.inputs.n_grid }}
+          GLLVMTMB_SWEEP_NREP: ${{ github.event.inputs.n_rep }}
+          GLLVMTMB_SWEEP_STORE: ${{ env.STORE }}
+          GLLVMTMB_SWEEP_OUT: ${{ env.STORE }}
+        run: |
+          set -o pipefail
+          STEP="${{ github.event.inputs.seeds_per_run }}"; STEP="${STEP:-3}"
+          # Fresh, non-colliding seeds keyed off the unique run number.
+          BASE=$(( ${{ github.run_number }} * 100 ))
+          SEEDS="$(seq -s, $((BASE + 1)) $((BASE + STEP)))"
+          echo "adding fresh seeds: $SEEDS"
+          GLLVMTMB_SWEEP_SEEDS="$SEEDS" \
+            Rscript docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R \
+            2>&1 | tee dep-slope-campaign.log
+
+      - name: Commit accumulated store to the results branch (single writer)
+        if: steps.guard.outputs.stop != 'true'
+        shell: bash
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -e
+          [ -f "$STORE" ] || { echo "no store produced; nothing to persist."; exit 0; }
+          WORK="$(mktemp -d)"
+          git clone --no-checkout --depth=1 \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "$WORK"
+          cd "$WORK"
+          if git ls-remote --exit-code --heads origin "$RESULTS_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$RESULTS_BRANCH" --depth=1
+            git checkout -B "$RESULTS_BRANCH" FETCH_HEAD
+          else
+            git checkout --orphan "$RESULTS_BRANCH"
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+          cp -f "$GITHUB_WORKSPACE/$STORE" "$STORE"
+          git add -A "$STORE"
+          if git diff --cached --quiet; then echo "no store change."; exit 0; fi
+          git commit -m "dep-slope campaign: accumulate seeds (run ${{ github.run_number }})"
+          for i in 1 2 3; do
+            git push origin "$RESULTS_BRANCH" && { echo "pushed store."; break; }
+            echo "push attempt $i failed; refetch + retry."
+            git fetch origin "$RESULTS_BRANCH" --depth=1 && git merge -X ours --no-edit FETCH_HEAD || true
+          done
+
+      - name: Upload this run's log + accumulated store (backup)
+        if: always() && steps.guard.outputs.stop != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: dep-slope-identifiability-results
+          name: dep-slope-campaign-run-${{ github.run_number }}
           path: |
-            dep-identifiability-sweep-results.csv
-            dep-identifiability-sweep.log
+            ${{ env.STORE }}
+            dep-slope-campaign.log
           retention-days: 30
           if-no-files-found: warn
 
-      - name: Job summary
-        if: always()
+      - name: Job summary (cumulative PD-fraction + accumulated seed count)
+        if: always() && steps.guard.outputs.stop != 'true'
         shell: bash
         run: |
           {
-            echo "## dep-slope identifiability sweep"
+            echo "## dep-slope identifiability campaign -- run ${{ github.run_number }}"
             echo ""
-            echo "Families: \`${GLLVMTMB_SWEEP_FAMILIES}\`"
-            echo "N grid: \`${GLLVMTMB_SWEEP_NGRID}\` | seeds: \`${GLLVMTMB_SWEEP_SEEDS}\` | n_rep: \`${GLLVMTMB_SWEEP_NREP}\`"
+            echo "Store branch: \`${RESULTS_BRANCH}\` | end_date guard: \`${{ github.event.inputs.end_date }}\`"
             echo ""
-            if [ -f dep-identifiability-sweep-results.csv ]; then
-              echo "### Results (conv==0 & pdHess is the identifiability signal)"
-              echo ""
+            if [ -f dep-slope-campaign.log ]; then
+              echo "### Cumulative table (PD-fraction + accumulated seeds per cell)"
               echo '```'
-              cat dep-identifiability-sweep-results.csv
+              sed -n '/CUMULATIVE FRACTION/,/IDENTIFIABILITY_SWEEP_DONE/p' dep-slope-campaign.log
               echo '```'
             else
-              echo ":warning: No results CSV produced -- see the run log artifact."
+              echo ":warning: no campaign log produced -- see the run log."
             fi
           } >> "$GITHUB_STEP_SUMMARY"

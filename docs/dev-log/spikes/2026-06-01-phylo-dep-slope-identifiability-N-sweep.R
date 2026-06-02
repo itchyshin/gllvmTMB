@@ -221,15 +221,34 @@ results <- do.call(rbind, Map(function(f, n, s) {
   r
 }, grid$family, grid$n_sp, grid$seed))
 
-cat("\n===== IDENTIFIABILITY SWEEP RESULTS =====\n")
+cat("\n===== IDENTIFIABILITY SWEEP RESULTS (this run's fresh seeds) =====\n")
 print(results, row.names = FALSE)
-write.csv(results, out_csv, row.names = FALSE)
-cat(sprintf("\nWrote %s\n", out_csv))
 
-## Per-(family, N) verdict: fraction of seeds that converged PD.
-agg <- aggregate(pd ~ family + n_sp,
-                 data = transform(results, pd = as.integer(conv == 0 & pdHess == TRUE)),
-                 FUN = function(z) mean(z, na.rm = TRUE))
-cat("\n===== FRACTION conv==0 & pdHess across seeds =====\n")
+## Accumulation: when a durable store is supplied (GLLVMTMB_SWEEP_STORE), prepend
+## the prior rows so the written CSV + aggregate are CUMULATIVE across the
+## campaign's runs. The workflow derives FRESH seeds from the run number each
+## run, so rows never collide and the per-cell seed count grows through the week
+## -- tightening the seed-sensitive cells (nbinom2 / ordinal_probit).
+store <- Sys.getenv("GLLVMTMB_SWEEP_STORE", "")
+if (nzchar(store) && file.exists(store)) {
+  prev <- tryCatch(utils::read.csv(store, stringsAsFactors = FALSE), error = function(e) NULL)
+  if (!is.null(prev) && nrow(prev) > 0L) {
+    results <- rbind(prev[, names(results), drop = FALSE], results)
+    cat(sprintf("Accumulated with %d prior rows from %s -> %d total rows.\n",
+                nrow(prev), store, nrow(results)))
+  }
+}
+write.csv(results, out_csv, row.names = FALSE)
+cat(sprintf("\nWrote %s (%d rows)\n", out_csv, nrow(results)))
+
+## Per-(family, N) verdict over ALL accumulated seeds: PD-fraction + seed count.
+res2 <- transform(results, pd = as.integer(conv == 0 & pdHess == TRUE))
+agg_f <- aggregate(pd ~ family + n_sp, res2,
+                   FUN = function(z) round(mean(z, na.rm = TRUE), 3), na.action = stats::na.pass)
+agg_n <- aggregate(pd ~ family + n_sp, res2,
+                   FUN = function(z) sum(!is.na(z)), na.action = stats::na.pass)
+agg <- merge(agg_f, agg_n, by = c("family", "n_sp"))
+names(agg)[3:4] <- c("pd_frac", "n_seeds")
+cat("\n===== CUMULATIVE FRACTION conv==0 & pdHess (accumulated seed count) =====\n")
 print(agg[order(agg$family, agg$n_sp), ], row.names = FALSE)
 cat("\nIDENTIFIABILITY_SWEEP_DONE\n")

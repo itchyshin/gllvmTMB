@@ -129,6 +129,59 @@ test_that("diagnostics degrade gracefully when sdreport is unavailable", {
   )
 })
 
+test_that("gllvmTMB records an in-fit TMB::sdreport failure", {
+  set.seed(2029)
+  sim <- simulate_site_trait(
+    n_sites = 16,
+    n_species = 5,
+    n_traits = 2,
+    mean_species_per_site = 3,
+    Lambda_B = matrix(c(0.7, 0.4), nrow = 2, ncol = 1),
+    psi_B = c(0.3, 0.3),
+    seed = 2029
+  )
+  fit <- testthat::with_mocked_bindings(
+    sdreport = function(...) {
+      stop("forced TMB::sdreport failure from test fixture")
+    },
+    {
+      gllvmTMB(
+        value ~ 0 +
+          trait +
+          latent(0 + trait | site, d = 1) +
+          unique(0 + trait | site),
+        data = sim$data
+      )
+    },
+    .package = "TMB"
+  )
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_null(fit$sd_report)
+  expect_match(
+    fit$sdreport_error,
+    "forced TMB::sdreport failure from test fixture",
+    fixed = TRUE
+  )
+  expect_false(fit$fit_health$sdreport_ok)
+
+  flags <- capture.output(out <- sanity_multi(fit))
+  expect_false(out$sdreport_ok)
+  expect_match(
+    out$sdreport_error,
+    "forced TMB::sdreport failure from test fixture",
+    fixed = TRUE
+  )
+
+  chk <- check_gllvmTMB(fit)
+  expect_equal(chk$status[chk$component == "sdreport"], "WARN")
+  expect_match(
+    chk$message[chk$component == "sdreport"],
+    "forced TMB::sdreport failure from test fixture",
+    fixed = TRUE
+  )
+})
+
 test_that("se = FALSE keeps point estimates and records skipped sdreport status", {
   set.seed(2027)
   sim <- simulate_site_trait(

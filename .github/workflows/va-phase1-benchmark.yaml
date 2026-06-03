@@ -1,0 +1,73 @@
+name: va-phase1-benchmark
+
+# Phase-1 variational-approximation (VA) proof-of-mechanism benchmark
+# (Design 72). This is an EXPERIMENT REPORT, not a pass/fail recovery gate:
+# it compiles the two standalone experimental TMB templates in inst/tmb/
+# (the mean-field-diagonal VA ELBO and a minimal Laplace comparator), runs
+# BOTH fits on the SAME small-n Poisson random-slope fixtures that drive the
+# Laplace inner-Hessian non-PD skip (PHY-18 / SPA-10), and prints a
+# VA-vs-LA-vs-truth comparison table to the step log + uploads it as a CSV
+# artifact.
+#
+# The job MUST compile and run (it fails on a hard compile/runtime error so a
+# broken prototype is visible), but it does NOT assert variance recovery -- the
+# maintainer reads the table and decides the GO / NO-GO gate. It never touches
+# src/gllvmTMB.cpp or the package DLL; the templates are compiled standalone.
+#
+# Triggered on pull_request (free public-repo minutes, not subject to the
+# default-branch workflow_dispatch limit) and on manual dispatch, paths-filtered
+# to the VA prototype files only.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "inst/tmb/gllvmTMB_va.cpp"
+      - "inst/tmb/gllvmTMB_la_min.cpp"
+      - "R/va-proto.R"
+      - "tests/va-benchmark/run-va-benchmark.R"
+      - ".github/workflows/va-phase1-benchmark.yaml"
+
+concurrency:
+  group: va-phase1-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # local::. brings the package deps (incl. TMB); devtools loads the
+          # package so the proto helpers + simulator resolve.
+          extra-packages: |
+            local::.
+            any::devtools
+          needs: check
+
+      - name: Run the VA proof-of-mechanism benchmark
+        shell: bash
+        run: |
+          set -o pipefail
+          Rscript tests/va-benchmark/run-va-benchmark.R 2>&1 | tee va-phase1-benchmark.log
+
+      - name: Upload benchmark log + table
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: va-phase1-benchmark
+          path: |
+            va-phase1-benchmark.log
+            tests/va-benchmark/va-benchmark-table.csv
+          retention-days: 30
+          if-no-files-found: warn

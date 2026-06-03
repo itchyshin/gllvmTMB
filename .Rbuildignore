@@ -24,6 +24,12 @@
 ^\.Rproj\.user$
 ^src/.*\.(o|so|dll|dylib)$
 ^inst/tmb/.*\.(o|so|dll|dylib)$
+# Phase-1 VA proof-of-mechanism (Design 72) -- experimental, standalone,
+# kept out of the built package so R CMD check ignores the prototype sources.
+^inst/tmb/gllvmTMB_va\.cpp$
+^inst/tmb/gllvmTMB_la_min\.cpp$
+^tests/va-benchmark$
+^R/va-proto\.R$
 ^vignettes/articles$
 ^revdep$
 ^LICENSE$

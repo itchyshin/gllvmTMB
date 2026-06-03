@@ -329,12 +329,15 @@ test_that("spatial_dep guards fire (non-Gaussian, malformed RHS)", {
   df <- sc$df
   df$count <- stats::rpois(nrow(df), 2)
 
-  ## Non-Gaussian family aborts (gaussian only this release).
+  ## A RESERVED non-Gaussian family aborts fail-loud. SPA-10 admitted poisson,
+  ## Gamma, Beta, binomial, nbinom2, ordinal_probit to the use_spde_dep_slope
+  ## allowlist via test-spatial-dep-slope-nongaussian.R recovery cells; tweedie
+  ## (runtime family id 6) stays reserved, so it is the guard probe here.
   expect_error(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       count ~ 0 + trait + spatial_dep(1 + x | coords),
-      data = df, mesh = sc$mesh, family = poisson(), silent = TRUE))),
-    "gaussian"
+      data = df, mesh = sc$mesh, family = gllvmTMB::tweedie(), silent = TRUE))),
+    "spatial_dep"
   )
   ## Malformed augmented LHS (not 1 + x / long form) aborts.
   expect_error(

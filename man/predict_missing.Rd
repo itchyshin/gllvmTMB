@@ -33,8 +33,8 @@ their model-based predictions and the original-row / cell accounting from
 \details{
 This is the \strong{responses} extractor of the missing-data layer (design 59
 sec.4): missing responses are \emph{predicted / reconstructed} (a fitted value),
-not latent covariates. The separate \code{imputed()} family (reserved for a
-later phase) returns missing \strong{predictors} as conditional modes / EBLUPs.
+not latent covariates. The separate \code{\link[=imputed]{imputed()}} extractor returns modelled
+missing \strong{predictors} from supported \code{mi()} fits.
 The point predictions here are the fitted linear predictor (\code{type = "link"})
 or its inverse-link response (\code{type = "response"}); standard errors of the
 reconstruction are deferred to a later slice.

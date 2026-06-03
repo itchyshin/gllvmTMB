@@ -10,8 +10,10 @@ impute_model(formula, family = stats::gaussian())
 \item{formula}{Two-sided predictor-model formula. The left-hand side must be
 the same variable used inside \code{mi()}.}
 
-\item{family}{Predictor-model family. Only \code{gaussian()} is supported in this
-version; other families are reserved for later phases and error.}
+\item{family}{Predictor-model family. Supported values are \code{gaussian()},
+\code{binomial(link = "logit")}, \code{\link[=cumulative_logit]{cumulative_logit()}}, and \code{\link[=categorical]{categorical()}}.
+Gaussian predictors support fixed, grouped-intercept, and phylogenetic-
+intercept covariate models; discrete predictors are fixed-effect only.}
 }
 \value{
 A \code{gllvmTMB_impute_model} object for the \code{impute} argument of
@@ -25,11 +27,14 @@ predictor model; use \code{impute_model()} when an explicit predictor family is
 wanted.
 }
 \details{
-The first fitted route (Phase 2a) is a fixed-effect Gaussian model for one
-continuous, unit-level missing predictor. The missing value is treated as a
-latent variable integrated out by the Laplace approximation, exactly as a
-random effect. Non-Gaussian predictor families (binary, ordered, unordered)
-and structured / grouped covariate models arrive in later phases.
+Supported v1 predictor models are one modelled missing predictor at a time.
+A Gaussian predictor (\code{gaussian()}, or a bare formula) is treated as a latent
+quantity integrated out by the Laplace approximation and may use fixed
+covariates, one grouped random intercept, or one phylogenetic structured
+intercept. Discrete predictors are fixed-effect only: \code{binomial(link = "logit")} uses exact two-state summation, \code{\link[=cumulative_logit]{cumulative_logit()}} uses exact
+ordered K-state summation, and \code{\link[=categorical]{categorical()}} uses exact unordered K-state
+softmax summation. Other predictor families are rejected until their
+likelihood and recovery gates ship.
 }
 \examples{
 impute_model(x ~ z)

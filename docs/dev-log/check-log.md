@@ -12890,3 +12890,121 @@ Deliberately not run / not done:
 - No `devtools::test()` or `devtools::check()`; this was a
   documentation-only citation addition with no code, examples,
   likelihood, formula grammar, or generated namespace change.
+
+## 2026-06-03 -- missing-data docs/API split branch (Codex)
+
+Branch: `codex/missing-data-docs-api`.
+
+Rebase note: on 2026-06-03 this branch was rebased onto `origin/main` at
+`ebf4ff0` after #420 and #434 landed. Conflicts in `_pkgdown.yml` and this
+append-only check-log were resolved by preserving main's public Data handling
+navigation, VA / Track A / binary-citation evidence entries, and this
+missing-data docs/API entry.
+
+Purpose: split the missing-data public documentation and roxygen/API-surface
+alignment out of the dirty coevolution article worktree, without carrying the
+binary-JSDM citation slice or slope-grid status edits.
+
+Files intentionally touched:
+
+- `R/gllvmTMB.R`, `R/methods-gllvmTMB.R`, `R/missing-predictor.R`
+- `README.md`, `NEWS.md`, `_pkgdown.yml`
+- `man/gllvmTMB.Rd`, `man/impute_model.Rd`, `man/miss_control.Rd`,
+  `man/predict_missing.Rd`
+- `vignettes/gllvmTMB.Rmd`, `vignettes/articles/missing-data.Rmd`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/after-task/2026-06-03-missing-data-docs-api-split.md`
+
+Commands already run on this split branch:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed; regenerated the touched Rd files. Unrelated generated Rd
+  churn in `man/add_utm_columns.Rd`, `man/extract_correlations.Rd`,
+  `man/make_mesh.Rd`, `man/reexports.Rd`, and `man/gllvmTMB-package.Rd`
+  was restored out of this branch.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'devtools::test(filter = "missing")'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 80 | PASS 69 ]` in 4.6s; the 80 skips are
+  heavy recovery / matrix tests gated by `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", lazy = FALSE, quiet = FALSE)'`
+  -> completed; wrote `pkgdown-site/articles/gllvmTMB.html`.
+- `Rscript --vanilla -e 'pkgdown::build_article("missing-data", lazy = FALSE, quiet = FALSE)'`
+  -> failed with `Can't find article 'missing-data'`; this was a wrong
+  pkgdown article key, not a render failure in the article.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/missing-data", lazy = FALSE, quiet = FALSE)'`
+  -> completed; wrote `pkgdown-site/articles/missing-data.html`.
+- `git diff --check`
+  -> clean after the closeout report and check-log entry were staged.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> final rerun after the closeout report was added: `No problems found.`
+- `git rebase origin/main` on 2026-06-03 after #420 / #434
+  -> conflicts in `_pkgdown.yml` and this append-only check-log; resolved by
+  preserving main's public Data handling article placement, preserving VA /
+  Track A / binary-citation evidence entries, and keeping this missing-data
+  docs/API entry.
+- `git diff --check` after the post-rebase whitespace cleanup
+  -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` after rebase onto
+  `ebf4ff0`
+  -> `No problems found.`
+- `Rscript --vanilla -e 'devtools::test(filter = "missing")'` after rebase
+  onto `ebf4ff0`
+  -> `[ FAIL 0 | WARN 0 | SKIP 80 | PASS 69 ]` in 4.6s; the 80 skips are
+  heavy recovery / matrix tests gated by `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/missing-data", lazy = FALSE, quiet = FALSE)'` after rebase onto `ebf4ff0`
+  -> completed; wrote `pkgdown-site/articles/missing-data.html`.
+- `Rscript --vanilla -e 'pkgdown::build_article("gllvmTMB", lazy = FALSE, quiet = FALSE)'` after rebase onto `ebf4ff0`
+  -> completed; wrote `pkgdown-site/articles/gllvmTMB.html`.
+- `gh run list --repo itchyshin/gllvmTMB --branch main --limit 8 --json ...`
+  after waiting on #434
+  -> #434 `R-CMD-check` run `26879590698` succeeded, and #434 `pkgdown`
+  run `26880113798` completed successfully at `2026-06-03T11:23:02Z`.
+- `git push -u origin codex/missing-data-docs-api`
+  -> uploaded branch `codex/missing-data-docs-api`; this did not trigger
+  R-CMD-check because the workflow runs on `pull_request` and pushes to
+  `main` / `master`, not plain feature-branch pushes.
+
+Rendered-Rd spot checks:
+
+- `for f in man/gllvmTMB.Rd man/impute_model.Rd man/miss_control.Rd man/predict_missing.Rd; do printf '%s ' "$f"; grep -c '^\\keyword' "$f"; done`
+  -> all four changed Rd files reported `0` keyword lines; no keyword-spill
+  regression.
+- `for f in man/gllvmTMB.Rd man/impute_model.Rd man/miss_control.Rd man/predict_missing.Rd; do printf '\n== %s ==\n' "$f"; tail -5 "$f"; done`
+  -> tails end in normal `\seealso{}` / details blocks; no malformed Rd tail.
+
+Stale-wording / pre-publish scans:
+
+- `rg -n "gllvmTMB\\(" R vignettes README.md NEWS.md docs/design`
+  -> broad enumeration only. Manually inspected the touched README and
+  `vignettes/gllvmTMB.Rmd` examples: touched long-format calls include
+  `trait =`, while touched wide `traits(...)` calls correctly omit it.
+- `rg -n "gllvmTMB_wide|meta_known_V|\\bphylo_rr\\b|block_V\\(|\\bS_B\\b|\\bS_W\\b|\\\\bf S|in prep|in preparation" README.md NEWS.md R man vignettes docs/design/35-validation-debt-register.md`
+  -> expected legacy alias hits in existing alias docs, compatibility prose,
+  and engine-internal comments. No new missing-data prose uses deprecated
+  aliases as primary syntax.
+- `rg -n "MIS-21|MIS-23|MIS-24|MIS-25|MIS-26|MIS-27|MIS-28|MIS-29|MIS-30|MIS-31|MIS-32" README.md NEWS.md R/gllvmTMB.R R/methods-gllvmTMB.R R/missing-predictor.R man/gllvmTMB.Rd man/impute_model.Rd man/miss_control.Rd man/predict_missing.Rd vignettes/articles/missing-data.Rmd vignettes/gllvmTMB.Rmd docs/design/35-validation-debt-register.md`
+  -> touched public claims map to MIS-21 / MIS-23..MIS-32.
+
+Review gates:
+
+- Pat / article-tier: PASS. `vignettes/articles/missing-data.Rmd` remains a
+  Tier-1 worked article: it names the shipped/default, response-mask,
+  Gaussian predictor, grouped predictor, phylogenetic predictor, and discrete
+  predictor routes before the examples, and points unsupported routes to
+  MIS-32.
+- Rose / pre-publish: PASS with expected legacy alias hits only; user-facing
+  missing-data claims now cite validation-register row IDs.
+- Grace / pkgdown: PASS for `pkgdown::check_pkgdown()` and targeted
+  `gllvmTMB` plus `articles/missing-data` renders. The earlier
+  `missing-data` render failure was a command-key mistake.
+
+Deliberately not run / not done:
+
+- No full `devtools::check()` on this split branch yet; this is a
+  prose/roxygen/pkgdown alignment branch with no TMB or parser change.
+- No `GLLVMTMB_HEAVY_TESTS=1` missing-data recovery rerun; the branch points
+  existing public claims to existing test evidence and does not add a new
+  likelihood route.
+- Not a final Definition-of-Done claim until the branch is pushed, PR CI
+  passes, and any resulting main pkgdown deployment succeeds.

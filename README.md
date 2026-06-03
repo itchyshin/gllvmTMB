@@ -131,12 +131,18 @@ one response per row.
 Predictors go into the formula in either form. Both paths reach
 the same stacked-trait model and produce byte-identical fits.
 
-Missing response cells are allowed. IN (MIS-21): in a wide `traits(...)`
-data frame, an `NA` trait value is treated as an unobserved unit-trait
-cell; in long data, an `NA` in the response column is treated the same
-way. The other observed traits for that unit stay in the likelihood.
-OUT: missing predictors, grouping variables, or design-matrix values
-still error because the model cannot build that row.
+Missing response cells are allowed. IN (MIS-21 / MIS-24): in a wide
+`traits(...)` data frame, an `NA` trait value can be treated as an
+unobserved unit-trait cell; in long data, an `NA` in the response column
+is treated the same way. The other observed traits for that unit stay in
+the likelihood, and `predict_missing()` reconstructs masked response
+cells when `missing = miss_control(response = "include")` is used.
+Missing predictors default to fail-loud, but one explicitly modelled
+`mi()` predictor is supported through `missing =
+miss_control(predictor = "model")` and `impute = list(...)` for the
+covered v1 slices (MIS-25..MIS-31). Ordinary missing grouping variables,
+offsets, weights, or design-matrix values still error because the model
+cannot build that row.
 
 ## Tiny example
 
@@ -200,7 +206,8 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Surface | Current message |
 |---|---|
 | Long and wide data | Both are supported through `gllvmTMB()`: long data use `value ~ ...` with `trait = "trait"`; wide data use `traits(...) ~ ...`. |
-| Missing response cells | Covered for long response rows and wide `traits(...)` cells: `NA` responses are dropped as unobserved unit-trait cells, while predictor/design missingness still errors (MIS-21). |
+| Missing response cells | Covered for long response rows and wide `traits(...)` cells: `NA` responses can be treated as unobserved unit-trait cells, with `predict_missing()` for the masked-response route (MIS-21 / MIS-24). |
+| Missing predictors | Covered for one explicitly modelled `mi()` predictor in the shipped v1 slices: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models remain planned (MIS-25..MIS-32). |
 | First worked model | Gaussian `latent() + unique()` is the safest public example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |

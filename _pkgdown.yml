@@ -33,11 +33,18 @@ navbar:
         href: articles/api-keyword-grid.html
       - text: Response families
         href: articles/response-families.html
+      - text: Joint species distribution model
+        href: articles/joint-sdm.html
+      - text: Cross-lineage coevolution kernels
+        href: articles/cross-lineage-coevolution.html
       - text: Methods
       - text: Convergence and start values
         href: articles/convergence-start-values.html
       - text: Common pitfalls
         href: articles/pitfalls.html
+      - text: Data handling
+      - text: Handling missing data
+        href: articles/missing-data.html
     roadmap:
       text: Roadmap
       href: articles/roadmap.html
@@ -73,6 +80,10 @@ articles:
     - articles/troubleshooting-profile
     - articles/cross-package-validation
 
+  - title: Data handling
+    contents:
+    - articles/missing-data
+
   - title: internal
     desc: Draft, technical, or validation-dependent articles hidden from the public dropdown until their evidence and reader path are ready
     contents:
@@ -83,7 +94,6 @@ articles:
     - articles/simulation-recovery-validated
     - articles/simulation-verification
     - articles/roadmap
-    - articles/missing-data  # DRAFT skeleton -- fill as phases ship; part of #365
 
 reference:
   - title: Start here

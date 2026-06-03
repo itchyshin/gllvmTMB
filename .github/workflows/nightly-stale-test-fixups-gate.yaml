@@ -1,0 +1,118 @@
+name: nightly-stale-test-fixups-gate
+
+# Nightly-run4 stale-test fixup gate (#343 CI health / #341).
+#
+# The 2026-06-03 scheduled full-check.yaml run went RED on heavy
+# (skip_if_not_heavy() / fmesher-gated) cells that the standard PR
+# R-CMD-check skips, so the failures were invisible to per-PR CI. The
+# failures were stale TEST expectations -- fallout from this week's
+# non-Gaussian dep / spatial random-slope guard relaxations (#422/#424
+# phylo_dep, #427 spatial_indep, #429 spatial_dep) -- not engine bugs.
+#
+# This gate runs the affected heavy test files through the REAL public API
+# with GLLVMTMB_HEAVY_TESTS=1 (and fmesher for the spatial cells) so the
+# fixups are exercised NON-SKIPPED in CI:
+#   * test-phylo-dep-slope-gaussian.R     (poisson -> tweedie fail-loud probe)
+#   * test-relmat-dep-slope-gaussian.R    (poisson -> tweedie fail-loud probe)
+#   * test-animal-dep-slope-gaussian.R    (poisson -> tweedie fail-loud probe)
+#   * test-matrix-slope-spatial-unique.R  (n_lhs_cols/sd_b -> *_spde_b slots)
+#   * test-matrix-slope-spatial-indep.R   (use$spatial_indep/log_tau_spde slots)
+#
+# The run FAILS if any cell fails an expectation or errors. Skips do NOT fail
+# (honest-skip on non-convergence is the no-fake-pass rule). Triggered on
+# pull_request (paths-filtered to the touched tests + this workflow) and
+# workflow_dispatch.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "tests/testthat/test-phylo-dep-slope-gaussian.R"
+      - "tests/testthat/test-relmat-dep-slope-gaussian.R"
+      - "tests/testthat/test-animal-dep-slope-gaussian.R"
+      - "tests/testthat/test-matrix-slope-spatial-unique.R"
+      - "tests/testthat/test-matrix-slope-spatial-indep.R"
+      - ".github/workflows/nightly-stale-test-fixups-gate.yaml"
+
+concurrency:
+  group: nightly-stale-test-fixups-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fixups:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # local::. brings the package's own deps; devtools::load_all
+          # compiles src/ against them. fmesher is required by the spatial
+          # cells (skip_if_not_installed("fmesher")); ape / nlme back the
+          # phylo / relmat / animal dep fixtures.
+          extra-packages: |
+            local::.
+            any::devtools
+            any::fmesher
+            any::ape
+          needs: check
+
+      - name: Run the affected heavy stale-test-fixup cells
+        shell: bash
+        run: |
+          set -o pipefail
+          GLLVMTMB_HEAVY_TESTS=1 Rscript -e '
+            devtools::load_all(".")
+            files <- c(
+              "tests/testthat/test-phylo-dep-slope-gaussian.R",
+              "tests/testthat/test-relmat-dep-slope-gaussian.R",
+              "tests/testthat/test-animal-dep-slope-gaussian.R",
+              "tests/testthat/test-matrix-slope-spatial-unique.R",
+              "tests/testthat/test-matrix-slope-spatial-indep.R"
+            )
+            n_fail_total <- 0L
+            for (f in files) {
+              cat(sprintf("\n==== %s ====\n", f))
+              res <- testthat::test_file(
+                f, reporter = "summary", stop_on_failure = FALSE
+              )
+              df <- as.data.frame(res)
+              n_fail <- sum(df$failed) + sum(as.integer(df$error))
+              n_fail_total <- n_fail_total + n_fail
+              cat(sprintf(
+                "  %s: %d failed, %d errored, %d skipped across %d tests\n",
+                basename(f), sum(df$failed), sum(as.integer(df$error)),
+                sum(df$skipped), nrow(df)
+              ))
+              skipped <- df[df$skipped > 0L, , drop = FALSE]
+              if (nrow(skipped) > 0L) {
+                cat("  Skipped cells:\n")
+                for (i in seq_len(nrow(skipped))) {
+                  cat(sprintf("    - %s\n", skipped$test[i]))
+                }
+              }
+            }
+            if (n_fail_total > 0L) {
+              stop(sprintf(
+                "stale-test-fixup gate had %d failed expectation(s)/error(s) -- failing the CI gate",
+                n_fail_total
+              ))
+            }
+          ' 2>&1 | tee nightly-stale-test-fixups-gate.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-stale-test-fixups-gate-log
+          path: nightly-stale-test-fixups-gate.log
+          retention-days: 30
+          if-no-files-found: warn

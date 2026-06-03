@@ -388,10 +388,17 @@ test_that("phylo_dep aborts on a 2T-vs-1 design-array dimension mismatch", {
   )
 })
 
-test_that("non-Gaussian phylo_dep slope is deferred (fail-loud)", {
+test_that("reserved-family phylo_dep slope is deferred (fail-loud)", {
   skip_if_not_heavy()
   skip_if_not_dep_slope_deps()
 
+  ## PHY-18 (#422 / #424) admitted poisson, Gamma, Beta, binomial, nbinom2,
+  ## and ordinal_probit to the phylo_dep augmented-slope allowlist
+  ## (R/fit-multi.R c(0L, 1L, 2L, 4L, 5L, 7L, 14L)), so poisson now CONSTRUCTS
+  ## rather than aborting. The guard still fires for a genuinely RESERVED
+  ## family: tweedie (runtime family id 6) is NOT on the allowlist, so it is
+  ## the fail-loud probe here (mirrors the test-spatial-dep-slope-gaussian.R
+  ## poisson -> tweedie switch in #429).
   fx <- .make_dep_fixture(seed = 11L, n_sp = 20L, T_tr = 2L, n_rep = 3L)
   df <- fx$df_long
   df$count <- stats::rpois(nrow(df), lambda = exp(1 + 0.2 * df$x))
@@ -399,7 +406,7 @@ test_that("non-Gaussian phylo_dep slope is deferred (fail-loud)", {
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       count ~ 0 + trait + phylo_dep(1 + x | species),
       data = df, phylo_tree = fx$tree, unit = "species",
-      family = stats::poisson()
+      family = gllvmTMB::tweedie()
     ))),
     regexp = "not yet supported for this"
   )

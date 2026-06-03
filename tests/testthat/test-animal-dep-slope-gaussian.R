@@ -178,12 +178,18 @@ test_that("animal_dep Gaussian fit recovers the 2T x 2T Sigma_b", {
 })
 
 ## ======================================================================
-## 3. Negative test: non-Gaussian animal_dep slope is deferred fail-loud
+## 3. Negative test: reserved-family animal_dep slope is deferred fail-loud
 ## ======================================================================
-test_that("non-Gaussian animal_dep slope aborts with a clear error", {
+test_that("reserved-family animal_dep slope aborts with a clear error", {
   skip_if_not_heavy()
   skip_if_not_animal_dep_slope_deps()
 
+  ## animal_dep (the known-pedigree dep slope) shares the phylo_dep augmented-
+  ## slope guard (use_phylo_dep_slope, R/fit-multi.R), so PHY-18 (#422 / #424)
+  ## admitting poisson, Gamma, Beta, binomial, nbinom2, and ordinal_probit
+  ## means poisson now CONSTRUCTS here too. The fail-loud probe must use a
+  ## still-RESERVED family: tweedie (runtime family id 6) is NOT on the
+  ## allowlist c(0L, 1L, 2L, 4L, 5L, 7L, 14L), so the guard still fires.
   fx <- .make_animal_dep_fixture(seed = 11L, n_id = 20L, n_rep = 3L)
   df <- fx$df_long
   df$count <- stats::rpois(nrow(df), lambda = exp(1 + 0.2 * df$x))
@@ -192,7 +198,7 @@ test_that("non-Gaussian animal_dep slope aborts with a clear error", {
       count ~ 0 + trait +
         animal_dep(1 + x | species, pedigree = fx$ped),
       data = df, unit = "species",
-      family = stats::poisson()
+      family = gllvmTMB::tweedie()
     ))),
     regexp = "not yet supported for this"
   )

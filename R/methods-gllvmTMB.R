@@ -1470,8 +1470,8 @@ predict.gllvmTMB_multi <- function(
 #'
 #' This is the **responses** extractor of the missing-data layer (design 59
 #' sec.4): missing responses are *predicted / reconstructed* (a fitted value),
-#' not latent covariates. The separate `imputed()` family (reserved for a
-#' later phase) returns missing **predictors** as conditional modes / EBLUPs.
+#' not latent covariates. The separate [imputed()] extractor returns modelled
+#' missing **predictors** from supported `mi()` fits.
 #' The point predictions here are the fitted linear predictor (`type = "link"`)
 #' or its inverse-link response (`type = "response"`); standard errors of the
 #' reconstruction are deferred to a later slice.

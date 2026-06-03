@@ -25,8 +25,10 @@ preserved (see \code{fit$missing_data}).}
 is an error, exactly as today. \code{"model"} treats a missing predictor
 declared with \code{mi(x)} as a latent variable integrated out by the Laplace
 approximation, with its covariate model supplied via the \verb{impute =}
-argument of \code{\link[=gllvmTMB]{gllvmTMB()}}. The first fitted route is one continuous,
-unit-level Gaussian predictor with a fixed-effect covariate model.}
+argument of \code{\link[=gllvmTMB]{gllvmTMB()}}. The v1 shipped routes are one modelled predictor
+at a time: Gaussian fixed-effect, grouped-intercept, or phylogenetic-
+intercept covariate models, plus fixed-effect binary, ordered, and
+unordered discrete predictors.}
 
 \item{engine}{The estimation engine. v1 ships \code{"laplace"} only (TMB Laplace
 approximation). \code{"em"} (the Gaussian-only EM special case) and \code{"profile"}

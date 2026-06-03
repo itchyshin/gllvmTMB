@@ -120,12 +120,16 @@ fit
 ```
 
 Wide trait tables do not need to be perfectly rectangular. IN under
-MIS-21: if an individual is missing one trait measurement, leave that
-response cell as `NA`; `gllvmTMB()` drops only the unobserved unit-trait
-cell and keeps the other observed traits for that individual. The same
-rule applies to long data with `NA` in the response column. OUT: missing
-predictors, unit labels, or design-matrix values still error because the
-model cannot construct that row.
+MIS-21 / MIS-24: if an individual is missing one trait measurement, leave
+that response cell as `NA`; `gllvmTMB()` can treat only the unobserved
+unit-trait cell as missing and keep the other observed traits for that
+individual. The same rule applies to long data with `NA` in the response
+column. Missing predictors default to fail-loud, but one explicitly
+modelled `mi()` predictor is supported through `missing =
+miss_control(predictor = "model")` and `impute = list(...)` for the
+covered v1 slices (MIS-25..MIS-31). Missing unit labels, grouping
+variables, offsets, weights, and ordinary design-matrix values still
+error because the model cannot construct that row.
 
 ### Same model, long data
 

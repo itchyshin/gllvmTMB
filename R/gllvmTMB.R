@@ -47,9 +47,12 @@
 #'   observation, with the trait column named by `trait`. With a
 #'   [traits()] LHS, `data` is wide: one row per unit and one column per
 #'   response named inside `traits(...)`. Missing response values are
-#'   allowed and are dropped before fitting, so other observed traits for
-#'   the same unit remain in the likelihood; missing predictor or
-#'   design-matrix values still error.
+#'   allowed: by default they are dropped before fitting, while
+#'   `missing = miss_control(response = "include")` masks them out of the
+#'   likelihood and keeps original-row accounting for [predict_missing()].
+#'   Ordinary missing predictors, grouping variables, and design-matrix values
+#'   still error; explicitly modelled missing predictors use `mi(x)` with
+#'   `missing = miss_control(predictor = "model")` and `impute = list(...)`.
 #' @param trait Name of the column holding the trait factor (the
 #'   "trait" dimension of the unit × trait response matrix). Default
 #'   `"trait"`.
@@ -211,9 +214,10 @@
 #'   in `fit$missing_data`.
 #' @param impute Optional specification of the covariate model for a predictor
 #'   declared missing with `mi(x)` in `formula`, used only when
-#'   `missing = miss_control(predictor = "model")`. Either a one-sided
-#'   formula for the predictor model or an [impute_model()] object; the
-#'   default `NULL` is appropriate when no `mi()` term is present.
+#'   `missing = miss_control(predictor = "model")`. Supply a two-sided
+#'   predictor-model formula (for Gaussian sugar, e.g. `x ~ z`) or an
+#'   [impute_model()] object for an explicit predictor family. The default
+#'   `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #'
 #' @return A `gllvmTMB` object. With no covariance-structure terms in
@@ -251,16 +255,20 @@
 #' `weights` and use a 0/1 response; the engine sets `n_trials = 1` and
 #' the likelihood is identical to the previous Bernoulli-only behaviour.
 #'
-#' **Missing responses.** `NA` response cells are treated as unobserved
-#' unit-trait cells and are dropped before the TMB likelihood is built.
-#' This applies to both explicit long-format data and wide
-#' `traits(...)` formulas. For `cbind(successes, failures)` binomial
-#' responses, a row is dropped when either response component is missing.
-#' Observation weights, when supplied, are subset to the retained
-#' response rows before validation. This is response-missingness support
-#' only: missing predictors, grouping variables, or fixed-effect design
-#' values still error because the model cannot construct a design row.
-#' This contract is covered by validation-debt register row MIS-21.
+#' **Missing responses and predictors.** `NA` response cells are treated as
+#' unobserved unit-trait cells. Under the default
+#' `miss_control(response = "drop")`, they are dropped before the TMB likelihood
+#' is built; with `miss_control(response = "include")`, they are kept in the
+#' model data, masked out of the likelihood, and available through
+#' [predict_missing()]. For `cbind(successes, failures)` binomial responses, a
+#' row is treated as missing when either response component is missing.
+#' Observation weights, when supplied, are subset to retained likelihood rows
+#' before validation. Ordinary missing predictors, grouping variables, or
+#' fixed-effect design values still error because the model cannot construct a
+#' design row; explicitly modelled missing predictors use `mi(x)`,
+#' `miss_control(predictor = "model")`, and `impute = list(...)`.
+#' These contracts are covered by MIS-21 / MIS-24 for responses and
+#' MIS-25..MIS-32 for predictors.
 #'
 #' **Delta (hurdle) families.** `delta_lognormal()` and `delta_gamma()`
 #' use a *single* linear predictor for both components: presence is
@@ -946,8 +954,10 @@ gllvmTMBcontrol <- function(
 #'   is an error, exactly as today. `"model"` treats a missing predictor
 #'   declared with `mi(x)` as a latent variable integrated out by the Laplace
 #'   approximation, with its covariate model supplied via the `impute =`
-#'   argument of [gllvmTMB()]. The first fitted route is one continuous,
-#'   unit-level Gaussian predictor with a fixed-effect covariate model.
+#'   argument of [gllvmTMB()]. The v1 shipped routes are one modelled predictor
+#'   at a time: Gaussian fixed-effect, grouped-intercept, or phylogenetic-
+#'   intercept covariate models, plus fixed-effect binary, ordered, and
+#'   unordered discrete predictors.
 #' @param engine The estimation engine. v1 ships `"laplace"` only (TMB Laplace
 #'   approximation). `"em"` (the Gaussian-only EM special case) and `"profile"`
 #'   are **reserved names, not yet supported**.

@@ -38,9 +38,12 @@ supported (plus \code{\link[=phylo_slope]{phylo_slope()}}, \code{\link[=animal_s
 observation, with the trait column named by \code{trait}. With a
 \code{\link[=traits]{traits()}} LHS, \code{data} is wide: one row per unit and one column per
 response named inside \code{traits(...)}. Missing response values are
-allowed and are dropped before fitting, so other observed traits for
-the same unit remain in the likelihood; missing predictor or
-design-matrix values still error.}
+allowed: by default they are dropped before fitting, while
+\code{missing = miss_control(response = "include")} masks them out of the
+likelihood and keeps original-row accounting for \code{\link[=predict_missing]{predict_missing()}}.
+Ordinary missing predictors, grouping variables, and design-matrix values
+still error; explicitly modelled missing predictors use \code{mi(x)} with
+\code{missing = miss_control(predictor = "model")} and \code{impute = list(...)}.}
 
 \item{trait}{Name of the column holding the trait factor (the
 "trait" dimension of the unit × trait response matrix). Default
@@ -212,9 +215,10 @@ in \code{fit$missing_data}.}
 
 \item{impute}{Optional specification of the covariate model for a predictor
 declared missing with \code{mi(x)} in \code{formula}, used only when
-\code{missing = miss_control(predictor = "model")}. Either a one-sided
-formula for the predictor model or an \code{\link[=impute_model]{impute_model()}} object; the
-default \code{NULL} is appropriate when no \code{mi()} term is present.}
+\code{missing = miss_control(predictor = "model")}. Supply a two-sided
+predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
+\code{\link[=impute_model]{impute_model()}} object for an explicit predictor family. The default
+\code{NULL} is appropriate when no \code{mi()} term is present.}
 
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
 
@@ -300,16 +304,20 @@ Both interfaces produce identical fits. For Bernoulli data, omit
 \code{weights} and use a 0/1 response; the engine sets \code{n_trials = 1} and
 the likelihood is identical to the previous Bernoulli-only behaviour.
 
-\strong{Missing responses.} \code{NA} response cells are treated as unobserved
-unit-trait cells and are dropped before the TMB likelihood is built.
-This applies to both explicit long-format data and wide
-\code{traits(...)} formulas. For \code{cbind(successes, failures)} binomial
-responses, a row is dropped when either response component is missing.
-Observation weights, when supplied, are subset to the retained
-response rows before validation. This is response-missingness support
-only: missing predictors, grouping variables, or fixed-effect design
-values still error because the model cannot construct a design row.
-This contract is covered by validation-debt register row MIS-21.
+\strong{Missing responses and predictors.} \code{NA} response cells are treated as
+unobserved unit-trait cells. Under the default
+\code{miss_control(response = "drop")}, they are dropped before the TMB likelihood
+is built; with \code{miss_control(response = "include")}, they are kept in the
+model data, masked out of the likelihood, and available through
+\code{\link[=predict_missing]{predict_missing()}}. For \code{cbind(successes, failures)} binomial responses, a
+row is treated as missing when either response component is missing.
+Observation weights, when supplied, are subset to retained likelihood rows
+before validation. Ordinary missing predictors, grouping variables, or
+fixed-effect design values still error because the model cannot construct a
+design row; explicitly modelled missing predictors use \code{mi(x)},
+\code{miss_control(predictor = "model")}, and \code{impute = list(...)}.
+These contracts are covered by MIS-21 / MIS-24 for responses and
+MIS-25..MIS-32 for predictors.
 
 \strong{Delta (hurdle) families.} \code{delta_lognormal()} and \code{delta_gamma()}
 use a \emph{single} linear predictor for both components: presence is

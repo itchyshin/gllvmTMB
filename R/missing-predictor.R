@@ -1,9 +1,10 @@
-## Missing-PREDICTOR layer for gllvmTMB -- Phase 2a (design 67, issue #332).
+## Missing-PREDICTOR layer for gllvmTMB -- Designs 67-69, issue #332.
 ##
-## Phase 2a scope: ONE continuous OBSERVATION/UNIT-level Gaussian missing
-## predictor declared with mi(x) and a FIXED-effect covariate model
-## (impute = list(x = x ~ z) bare sugar, or impute_model(x ~ z)). This is the
-## gllvmTMB analogue of drmTMB MD3a (src/drmTMB.cpp mi_family == 0).
+## Shipped v1 scope: ONE modelled missing predictor declared with mi(x) and
+## missing = miss_control(predictor = "model"). Supported slices are:
+## Phase 2a fixed-effect Gaussian, Phase 2b grouped Gaussian random intercept,
+## Phase 3 phylogenetic Gaussian structured intercept, and Phase 5a/5b/5c
+## fixed-effect binary / ordered / unordered discrete predictors.
 ##
 ## The ONE structural adaptation vs drmTMB (design 67 sec.2.0-2.1): the missing
 ## x is a UNIT-level quantity broadcast across ALL trait rows of a unit, so the
@@ -13,11 +14,12 @@
 ## for a model whose units are singletons it collapses to the per-row drmTMB
 ## form, the cross-package contract.
 ##
-## OUT of Phase 2a (rejected loudly here): grouped (1|group) covariate RE
-## (Phase 2b); structured phylo/spatial/animal/relmat covariate models
-## (Phase 3); non-Gaussian / discrete predictor families (Phase 5); multiple
-## mi(); transformed / interacted mi(); missing values inside the impute
-## predictors.
+## OUT of v1 (rejected loudly here): multiple mi() predictors; transformations
+## or interactions inside mi(); missing values inside impute predictors; spatial
+## / animal / relatedness covariate models; the joint response-covariate field;
+## random slopes in the predictor model; grouped or structured discrete
+## predictor models; and non-Gaussian bounded / count / lognormal / Gamma
+## missing-predictor families.
 
 # ---- impute_model() surface (ported from drmTMB, package-agnostic) --------
 
@@ -29,16 +31,22 @@
 #' predictor model; use `impute_model()` when an explicit predictor family is
 #' wanted.
 #'
-#' The first fitted route (Phase 2a) is a fixed-effect Gaussian model for one
-#' continuous, unit-level missing predictor. The missing value is treated as a
-#' latent variable integrated out by the Laplace approximation, exactly as a
-#' random effect. Non-Gaussian predictor families (binary, ordered, unordered)
-#' and structured / grouped covariate models arrive in later phases.
+#' Supported v1 predictor models are one modelled missing predictor at a time.
+#' A Gaussian predictor (`gaussian()`, or a bare formula) is treated as a latent
+#' quantity integrated out by the Laplace approximation and may use fixed
+#' covariates, one grouped random intercept, or one phylogenetic structured
+#' intercept. Discrete predictors are fixed-effect only: `binomial(link =
+#' "logit")` uses exact two-state summation, [cumulative_logit()] uses exact
+#' ordered K-state summation, and [categorical()] uses exact unordered K-state
+#' softmax summation. Other predictor families are rejected until their
+#' likelihood and recovery gates ship.
 #'
 #' @param formula Two-sided predictor-model formula. The left-hand side must be
 #'   the same variable used inside `mi()`.
-#' @param family Predictor-model family. Only `gaussian()` is supported in this
-#'   version; other families are reserved for later phases and error.
+#' @param family Predictor-model family. Supported values are `gaussian()`,
+#'   `binomial(link = "logit")`, [cumulative_logit()], and [categorical()].
+#'   Gaussian predictors support fixed, grouped-intercept, and phylogenetic-
+#'   intercept covariate models; discrete predictors are fixed-effect only.
 #'
 #' @return A `gllvmTMB_impute_model` object for the `impute` argument of
 #'   [gllvmTMB()].
@@ -146,9 +154,9 @@ categorical <- function() {
   )
 }
 
-## Allow-list of supported predictor-model families. Phase 2a is Gaussian-only;
-## the loud-failure message mirrors drmTMB so an unsupported family is rejected
-## explicitly (not silently treated as Gaussian).
+## Allow-list of supported predictor-model families. The loud-failure message
+## mirrors drmTMB so an unsupported family is rejected explicitly (not silently
+## treated as Gaussian).
 gll_impute_family_type <- function(family) {
   if (inherits(family, "family") && identical(family$family, "gaussian")) {
     return("gaussian")
@@ -249,14 +257,14 @@ gll_prepare_mi_setup <- function(rhs, impute, missing) {
   }
   if (length(mi_calls) != 1L) {
     cli::cli_abort(c(
-      "The first missing-predictor slice requires exactly one {.fn mi} term in the location formula.",
+      "The v1 missing-predictor layer requires exactly one {.fn mi} term in the location formula.",
       "x" = "Found {length(mi_calls)} {.fn mi} term{?s}."
     ))
   }
   mi_call <- mi_calls[[1L]]
   if (length(mi_call) != 2L || !is.symbol(mi_call[[2L]])) {
     cli::cli_abort(c(
-      "The first {.fn mi} slice supports only a bare predictor, such as {.code mi(x)}.",
+      "The v1 {.fn mi} layer supports only a bare predictor, such as {.code mi(x)}.",
       "x" = "Transformations, interactions inside {.fn mi}, and multiple missing predictors are planned later."
     ))
   }
@@ -271,7 +279,7 @@ gll_prepare_mi_setup <- function(rhs, impute, missing) {
   ]
   if (!identical(mi_term_labels, mi_label)) {
     cli::cli_abort(c(
-      "The first {.fn mi} slice supports {.fn mi} only as a simple additive location term.",
+      "The v1 {.fn mi} layer supports {.fn mi} only as a simple additive location term.",
       "x" = "Use syntax like {.code y ~ z + mi(x)}, not interactions or transformed {.fn mi} terms."
     ))
   }
@@ -592,7 +600,7 @@ gll_validate_single_impute_formula <- function(impute, variable) {
   }
   if (!is.list(impute) || length(impute) != 1L) {
     cli::cli_abort(
-      "{.arg impute} must be a one-element named list for the first missing-predictor slice."
+      "{.arg impute} must be a one-element named list for the v1 missing-predictor layer."
     )
   }
   name <- names(impute)
@@ -907,7 +915,7 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
   x_raw_long <- stats::model.response(mf)
   if (!is.numeric(x_raw_long) && !is.integer(x_raw_long)) {
     cli::cli_abort(c(
-      "The first {.fn mi} slice supports numeric missing predictors only.",
+      "The Gaussian {.fn mi} route supports numeric missing predictors only.",
       "x" = "Predictor {.val {setup$variable}} has class {.val {class(x_raw_long)}}."
     ))
   }
@@ -1016,7 +1024,7 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
   X_x <- X_full[first_row, , drop = FALSE]
   if (sum(observed) <= ncol(X_x)) {
     cli::cli_abort(c(
-      "The Gaussian {.arg impute} model is weakly identified for the first {.fn mi} slice.",
+      "The Gaussian {.arg impute} model is weakly identified for the v1 {.fn mi} layer.",
       "x" = "It has {sum(observed)} observed {.code {setup$variable}} unit value{?s} and {ncol(X_x)} fixed-effect coefficient{?s}.",
       "i" = "Use a simpler predictor model or supply more observed predictor values."
     ))
@@ -1032,7 +1040,7 @@ gll_build_gaussian_mi_model <- function(setup, data_long, unit_id, mi_col,
   n_xcol <- ncol(X_x_obs)
   if (x_rank < n_xcol) {
     cli::cli_abort(c(
-      "The Gaussian {.arg impute} model design is rank-deficient for the first {.fn mi} slice.",
+      "The Gaussian {.arg impute} model design is rank-deficient for the v1 {.fn mi} layer.",
       "x" = "The observed-unit covariate design has rank {x_rank} but {n_xcol} column{?s} (collinear or redundant {.arg impute} covariates).",
       "i" = "Drop the collinear or redundant predictors from the {.arg impute} formula."
     ))

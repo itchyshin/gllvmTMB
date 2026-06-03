@@ -195,12 +195,24 @@ test_that("augmented SPDE prior log-determinant tracks kappa + Sigma_field (<1e-
                    DLL = "gllvmTMB", silent = TRUE)$fn()
   }
   ana_const <- function(kappa, sd_a, sd_b, rho) {
-    Q  <- .Q_base_dense(sc$mesh, kappa)
-    A  <- solve(Q)
+    ## logdet(Sigma_field (x) Q^-1) = n_mesh*logdet(Sf) - C*logdet(Q), computed
+    ## against the SPARSE precision Q. A dense reference (solve(Q) +
+    ## kronecker(Sf, A) + determinant(.)) is floating-point-accumulation-limited
+    ## near 1e-9: on some CI BLAS/LAPACK its own round-off exceeds the <1e-9
+    ## assertion even though the engine is correct (#357). The sparse logdet via a
+    ## Cholesky of forceSymmetric(Q) -- NEVER densifying Q^-1 -- reaches ~1e-11,
+    ## matching the converted density self-check above (test at line ~95).
+    C  <- 2L
+    Q  <- Matrix::forceSymmetric(.Q_base_dense(sc$mesh, kappa))
+    chQ <- Matrix::Cholesky(Q, LDL = FALSE, perm = TRUE)
+    ## determinant(<CHMfactor>, sqrt = FALSE) returns logdet(Q) directly.
+    logdet_Q <- as.numeric(
+      Matrix::determinant(chQ, logarithm = TRUE, sqrt = FALSE)$modulus)
     Sf <- matrix(c(sd_a^2, rho * sd_a * sd_b,
                    rho * sd_a * sd_b, sd_b^2), 2, 2)
+    logdet_Sf <- as.numeric(determinant(Sf, logarithm = TRUE)$modulus)
     0.5 * (2 * n_mesh * log(2 * pi) +
-             as.numeric(determinant(kronecker(Sf, A), logarithm = TRUE)$modulus))
+             n_mesh * logdet_Sf - C * logdet_Q)
   }
   p1 <- list(2.5, 0.7, 1.2, -0.3)
   p2 <- list(4.0, 1.1, 0.6,  0.5)
@@ -241,12 +253,24 @@ test_that("slope-only (n_lhs_cols_spde == 1) collapses to a scaled GMRF prior", 
   set.seed(11)
   om0 <- stats::rnorm(n_mesh)
 
-  ## omega ~ N(0, sd^2 Q^{-1}).
-  Q <- .Q_base_dense(sc$mesh, kappa)
-  A <- sd^2 * solve(Q)
-  const <- 0.5 * (n_mesh * log(2 * pi) +
-                    as.numeric(determinant(A, logarithm = TRUE)$modulus))
-  analytic <- const + 0.5 * as.numeric(t(om0) %*% solve(A, om0))
+  ## omega ~ N(0, sd^2 Q^{-1}), evaluated against the SPARSE precision Q.
+  ## Covariance A = sd^2 Q^-1, so A^-1 = Q / sd^2 and
+  ##   logdet(A) = n_mesh*log(sd^2) - logdet(Q),
+  ##   om0' A^-1 om0 = (1/sd^2) * om0' Q om0.
+  ## A dense reference (solve(Q) + determinant(A) + solve(A, om0)) is
+  ## floating-point-accumulation-limited near 1e-9 on some CI BLAS/LAPACK even
+  ## though the engine is correct (#357). The sparse path -- logdet via a
+  ## Cholesky of forceSymmetric(Q), quadratic via the sparse matvec Q %*% om0
+  ## (NEVER densifying Q^-1) -- reaches ~1e-11, matching the converted density
+  ## self-check above (test at line ~95).
+  Q   <- Matrix::forceSymmetric(.Q_base_dense(sc$mesh, kappa))
+  chQ <- Matrix::Cholesky(Q, LDL = FALSE, perm = TRUE)
+  logdet_Q <- as.numeric(
+    Matrix::determinant(chQ, logarithm = TRUE, sqrt = FALSE)$modulus)
+  logdet_A <- n_mesh * log(sd^2) - logdet_Q
+  const <- 0.5 * (n_mesh * log(2 * pi) + logdet_A)
+  quad  <- sum(om0 * as.numeric(Q %*% om0)) / sd^2
+  analytic <- const + 0.5 * quad
   engine   <- (fn_at(om0) - fn_at(rep(0, n_mesh))) + const
 
   expect_lt(abs(engine - analytic), 1e-9)

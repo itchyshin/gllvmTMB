@@ -90,7 +90,9 @@ Everything else is either covered or a fixture-power fill.
 **Read:** the source-specific grids (`phylo_/spatial_/animal_`) are full
 for intercepts. The only soft spots are the plain `indep/dep/scalar`
 **known-V** non-Gaussian variants (the harder phylo-dep identifiability
-item) and crossed random effects (FG-11/RE-05, smoke only).
+item). Ordinary crossed `(1 | group)` random intercepts are now covered
+by FG-11/RE-05; trait-specific crossed diagonal grouping is tracked
+separately under RE-11 / `cluster2`.
 
 ---
 
@@ -101,9 +103,9 @@ item) and crossed random effects (FG-11/RE-05, smoke only).
 | gaussian | C | C (glmmTMB `rr()`) | FAM-01 |
 | binomial logit/probit/cloglog | C | C (mirt 2PL) | FAM-02..04 |
 | betabinomial | C | — | FAM-05 |
-| poisson | C | **N** (no fixture) | FAM-06 |
-| nbinom1 | C (wired 2026-05-30/31) | **N** | FAM-07 |
-| nbinom2 | C | **N** | FAM-08 |
+| poisson | C | C (glmmTMB) | FAM-06 |
+| nbinom1 | C (wired 2026-05-30/31) | C (glmmTMB light fixture) | FAM-07 |
+| nbinom2 | C | C (glmmTMB) | FAM-08 |
 | gamma (log) | C | **P** (no comparator) | FAM-09 |
 | beta (logit) | C | **P** | FAM-10 |
 | lognormal | C | — | FAM-11 |
@@ -143,23 +145,34 @@ after-task report lands.
 
 ### Track A — parallelizable now
 
-- [ ] **GAP-A1 · poisson cross-package fixture** (FAM-06). Add a
-  `test-crosspkg-poisson-glmmTMB.R` mirroring the nbinom2/nbinom1
-  fixtures. Close gate: per-trait intercept + RE-SD agreement to inherited
-  bands. *Design 61 A9.*
-- [ ] **GAP-A2 · nbinom2 cross-package fixture** (FAM-08). Same shape.
-  Close gate: agreement vs glmmTMB on the M3.3 grid family. *Design 61 A10.*
+- [x] **GAP-A1 · poisson cross-package fixture** (FAM-06). Close gate
+  already met on main by `test-crosspkg-poisson-glmmTMB.R` (commit
+  `41d80e3`): per-trait intercept + random-intercept SD agreement vs
+  glmmTMB on the shared two-trait `(1 | site)` Poisson(log) fixture.
+  This branch syncs the stale audit/register status.
+- [x] **GAP-A2 · nbinom2 cross-package fixture** (FAM-08). Close gate
+  already met on main by `test-crosspkg-nbinom2-glmmTMB.R` (commit
+  `41d80e3`): per-trait intercept, random-intercept SD, and per-trait
+  NB2 dispersion agreement vs glmmTMB with `dispformula = ~ 0 + trait`.
+  This branch syncs the stale audit/register status.
 - [ ] **GAP-A3 · gamma / beta cross-package comparators** (FAM-09, FAM-10).
   Close gate: a clean comparator (gllvm Procrustes or glmmTMB LL) lands;
   §1c moves cross-pkg P→C. Lower priority (no obvious clean comparator).
 - [ ] **GAP-A4 · ordinal vs mirt `graded`** (FAM-14). Close gate: a
   cross-check fixture vs `mirt::mirt(..., itemtype="graded")`.
-- [ ] **GAP-A5 · crossed random effects recovery** (FG-11 / RE-05,
-  currently smoke). Close gate: a recovery cell for `(0+trait|site) +
-  (0+trait|year)` beyond the smoke test.
-- [ ] **GAP-A6 · DIA-09 sdreport-failure fixture**. Close gate: a
-  deterministic in-fit `TMB::sdreport()` failure fixture (currently only a
-  forced degraded object is tested).
+- [x] **GAP-A5 · crossed random effects recovery** (FG-11 / RE-05).
+  Close gate met 2026-06-02 for ordinary scalar `(1 | site) +
+  (1 | year)` crossing by `test-multi-random-intercepts.R`: balanced
+  Gaussian recovery cell, convergence 0, both SDs within 0.20 of
+  empirical truth, and packed BLUP slices correlate with truth > 0.95.
+  Trait-specific crossed diagonal grouping remains the separate covered
+  RE-11 / `cluster2` slot; ordinary random slopes remain unsupported.
+- [x] **GAP-A6 · DIA-09 sdreport-failure fixture**. Close gate met
+  2026-06-02 by `test-sanity-multi.R`: `testthat::with_mocked_bindings()`
+  forces the namespaced `TMB::sdreport()` call to fail during `gllvmTMB()`
+  construction, then asserts the returned fit keeps point estimates,
+  records `fit$sdreport_error`, sets `fit_health$sdreport_ok = FALSE`, and
+  surfaces a WARN `sdreport` row in `check_gllvmTMB()`.
 - [ ] **GAP-A7 · register/capability freeze**. Keep Design 35 the single
   source of truth; ratify Design 61 §1–§2 as the status reference and link
   this audit from it. Serialize writes to the register. *Design 61 A1/A2.*
@@ -245,7 +258,9 @@ The closure loop, per `CLAUDE.md` / `AGENTS.md`:
    engine change with a Track-A doc change.
 2. **Track A items can run in parallel** as long as they touch disjoint
    files; serialize writes to Design 35 (the register is the chokepoint).
-   GAP-A1 and GAP-A2 are fully independent and can launch immediately.
+   GAP-A1 and GAP-A2 are already closed by existing cross-package fixtures;
+   future Track A writes should prioritize DIA-09-style diagnostics and
+   register freeze work.
 3. **Track B items are maintainer-sequenced.** They mutate shared engine
    data contracts (`b_phy_*`, `g_phy` / `Z_phy_aug`, the SPDE field
    arrays) and the linear-predictor loops, so parallel edits collide in
@@ -266,14 +281,14 @@ The closure loop, per `CLAUDE.md` / `AGENTS.md`:
 
 ### Suggested ordering
 
-1. **GAP-A1 + GAP-A2** (cross-package fixtures) — immediate, independent.
-2. **GAP-A7** (register/capability freeze) — make this view the reference.
-3. **Maintainer decision on the identifiability cluster** (B1/B2/B3/B5/B6):
+1. **GAP-A7** (register/capability freeze) — make this view the reference
+   after the current validation-hardening branch lands.
+2. **Maintainer decision on the identifiability cluster** (B1/B2/B3/B5/B6):
    invest in bigger-n studies, or formally reserve the unstructured
    non-Gaussian slope modes. This is the single biggest "are we done?"
    lever and needs your call before anyone writes engine code.
-4. **GAP-B7/B8** (CI gates) — sequenced engine/estimand work.
-5. Remaining family/coverage items (B10–B14) as the roadmap re-ranks them.
+3. **GAP-B7/B8** (CI gates) — sequenced engine/estimand work.
+4. Remaining family/coverage items (B10–B14) as the roadmap re-ranks them.
 
 ---
 
@@ -285,8 +300,8 @@ diagonal and block-diagonal modes with zero new C++. The remaining "not
 done" is concentrated, not scattered: (a) **non-Gaussian unstructured-`dep`
 slopes** (one identifiability question, GAP-B1/B2/B3/B5/B6), (b) **two
 failing CI coverage gates** (GAP-B7/B8), and (c) a **short tail of
-blocked/partial families** (GAP-B11/B12/B13). Track A closes the
-cross-package and hygiene gaps in parallel today; Track B needs your
-sequencing decision on the identifiability cluster first.
+blocked/partial families** (GAP-B11/B12/B13). The cheap Track A
+cross-package rows are now closed or synced; Track B needs your sequencing
+decision on the identifiability cluster first.
 </content>
 </invoke>

@@ -12708,3 +12708,108 @@ benchmarked against the `gllvm` package).
   `docs/dev-log/after-task/2026-06-03-va-phase1-proof.md`.
 - #431 closed as parked (prototype + benchmark retained on its branch for
   revival); not merged (experimental prototype code, kept off the package).
+
+## 2026-06-02 -- Track A validation hardening (GAP-A1/A2/A5/A6)
+
+Branch / coordination:
+
+- Work was done in side worktree `/private/tmp/gllvmtmb-crossed-re` on
+  `codex/crossed-recovery-fg11`, based on `origin/main` at `5e2925c`.
+- Original checkout `/Users/z3437171/Dropbox/Github Local/gllvmTMB` stayed on
+  dirty branch `docs/coev-kernel-article`; no files were edited there.
+- Pre-edit lane checks from the original checkout:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  showed only PR #369 open; `git log --all --oneline --since="6 hours ago"`
+  showed recent main/audit activity but no collision with this test slice.
+- Rebased 2026-06-03 onto `origin/main` at `6d08513` after #428 and #430
+  landed. The only conflict was in this check-log file; both the merged
+  coevolution / slope-grid entries and this Track A entry were preserved.
+- Rebased again 2026-06-03 onto `origin/main` at `fa883fa` after #432 landed.
+  The only conflict was again this check-log file; the main VA parked entry
+  and this Track A entry were both preserved.
+
+Implemented:
+
+- Added a balanced Gaussian recovery test for ordinary scalar
+  `(1 | site) + (1 | year)` random intercepts in
+  `tests/testthat/test-multi-random-intercepts.R`.
+- Updated validation-debt rows `FG-11` and `RE-05` from `partial` to
+  `covered` for this ordinary crossed random-intercept slice.
+- Synced stale `FAM-06` / `FAM-08` register and audit rows to the existing
+  cross-package fixtures `test-crosspkg-poisson-glmmTMB.R` and
+  `test-crosspkg-nbinom2-glmmTMB.R` (both already present on main via commit
+  `41d80e3`).
+- Added a deterministic in-fit `TMB::sdreport()` failure fixture to
+  `tests/testthat/test-sanity-multi.R`, using
+  `testthat::with_mocked_bindings()` to fail the namespaced
+  `TMB::sdreport()` call during `gllvmTMB()` construction.
+- Updated validation-debt row `DIA-09` from `partial` to `covered`.
+- Checked off `GAP-A5` in
+  `docs/dev-log/audits/2026-06-01-slopes-dependence-family-completeness.md`,
+  with explicit separation from unsupported ordinary random slopes and the
+  separately covered `cluster2` / `RE-11` diagonal tier; also checked off
+  `GAP-A1`, `GAP-A2`, and `GAP-A6`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-02-track-a-validation-hardening.md`.
+
+Commands and outcomes:
+
+- `air format tests/testthat/test-multi-random-intercepts.R`
+  -> exited 0; unrelated formatter churn in the touched file was manually
+  trimmed back.
+- `air format tests/testthat/test-sanity-multi.R`
+  -> exited 0.
+- Exploratory fixture calibration with
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); ...'`
+  -> balanced crossed-RE fixtures converged; kept the smaller
+  `20 site x 16 year x 3 trait x 2 rep` version.
+- Exploratory in-fit `sdreport()` failure check with
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); library(testthat); ... with_mocked_bindings(..., .package = "TMB") ...'`
+  -> fit convergence 0, `sd_report` NULL, `sdreport_error` recorded, and
+  `check_gllvmTMB()` returned WARN for `sdreport`.
+- `Rscript --vanilla -e 'devtools::test(filter = "multi-random-intercepts")'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 35 ]` in 5.0 seconds.
+- `Rscript --vanilla -e 'devtools::test(filter = "multi-random-intercepts|sanity-multi|crosspkg-poisson-glmmTMB|crosspkg-nbinom2-glmmTMB")'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 84 ]` in 11.7 seconds.
+- `git diff --check`
+  -> clean.
+- `git rebase origin/main` on 2026-06-03 after #428/#430
+  -> conflict only in `docs/dev-log/check-log.md`; resolved by preserving
+  both the merged closeout entries and this Track A entry.
+- `Rscript --vanilla -e 'devtools::test(filter = "multi-random-intercepts|sanity-multi|crosspkg-poisson-glmmTMB|crosspkg-nbinom2-glmmTMB")'`
+  after the 2026-06-03 rebase
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 84 ]` in 11.6 seconds.
+- `git diff --check origin/main...HEAD` after the 2026-06-03 rebase
+  -> clean.
+- `git rebase origin/main` on 2026-06-03 after #432
+  -> conflict only in `docs/dev-log/check-log.md`; resolved by preserving the
+  merged VA parked entry and this Track A entry.
+- `Rscript --vanilla -e 'devtools::test(filter = "multi-random-intercepts|sanity-multi|crosspkg-poisson-glmmTMB|crosspkg-nbinom2-glmmTMB")'`
+  after the 2026-06-03 rebase onto `fa883fa`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 84 ]` in 11.4 seconds.
+- `git diff --check origin/main...HEAD` after the 2026-06-03 rebase onto
+  `fa883fa`
+  -> clean.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "crossed random effects" --limit 20 --json number,title,url`
+  -> `[]`.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "FG-11 RE-05" --limit 20 --json number,title,url`
+  -> issue #340, "Capability matrix -- live status board".
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,url,body,updatedAt`
+  -> #340 is the open capability status board; no comment posted because this
+  branch is local and unmerged.
+- `rg -n "FAM-06|FAM-08|DIA-09|FG-11|RE-05|GAP-A1|GAP-A2|GAP-A5|GAP-A6|crosspkg|sdreport\\(\\).*failure|random slopes remain|cluster2" docs/design/35-validation-debt-register.md docs/dev-log/audits/2026-06-01-slopes-dependence-family-completeness.md tests/testthat/test-multi-random-intercepts.R tests/testthat/test-sanity-multi.R tests/testthat/test-crosspkg-poisson-glmmTMB.R tests/testthat/test-crosspkg-nbinom2-glmmTMB.R`
+  -> expected updated register, audit, cross-package fixture, diagnostic
+  fixture, `cluster2`, and test hits.
+- `rg -n "FAM-06.*\\*\\*N\\*\\*|FAM-08.*\\*\\*N\\*\\*|DIA-09.*partial|FG-11.*partial|RE-05.*partial|GAP-A1.*\\[ \\]|GAP-A2.*\\[ \\]|GAP-A5.*\\[ \\]|GAP-A6.*\\[ \\]|crossed random effects.*smoke only|currently smoke|\\(0\\+trait\\|site\\).*\\(0\\+trait\\|year\\)" docs/design/35-validation-debt-register.md docs/dev-log/audits/2026-06-01-slopes-dependence-family-completeness.md`
+  -> no matches.
+
+Deliberately not run / not done:
+
+- No `devtools::test()` full suite, `devtools::check()`, or
+  `pkgdown::check_pkgdown()`; this branch changes two test fixtures plus
+  internal validation/development docs, with no roxygen, Rd, NEWS, README,
+  vignette, parser, or TMB source changes.
+- No ordinary random-slope implementation. Existing fail-loud tests for
+  `(0 + trait | study)` and `(1 + env_1 | study)` remain the contract.
+- No `cluster2` change. Trait-specific crossed diagonal grouping remains
+  covered separately by `RE-11`.

@@ -66,6 +66,53 @@ test_that("(1 | group): two random-intercept terms recover both variances", {
   expect_equal(sigmas[2], stats::sd(RE2), tolerance = 0.25)
 })
 
+test_that("(1 | site) + (1 | year): balanced crossed random intercepts recover", {
+  set.seed(20260602)
+  n_sites <- 20L
+  n_years <- 16L
+  n_traits <- 3L
+  n_rep <- 2L
+  trait_levels <- paste0("t", seq_len(n_traits))
+  df <- expand.grid(
+    site = factor(seq_len(n_sites)),
+    year = factor(seq_len(n_years)),
+    rep = seq_len(n_rep),
+    trait = factor(trait_levels, levels = trait_levels)
+  )
+  sigma_site <- 0.65
+  sigma_year <- 0.40
+  sigma_eps <- 0.25
+  alpha <- stats::setNames(c(0.3, -0.15, 0.1), trait_levels)
+  u_site <- stats::rnorm(n_sites, 0, sigma_site)
+  u_year <- stats::rnorm(n_years, 0, sigma_year)
+  df$value <- alpha[as.character(df$trait)] +
+    u_site[as.integer(df$site)] +
+    u_year[as.integer(df$year)] +
+    stats::rnorm(nrow(df), 0, sigma_eps)
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + (1 | site) + (1 | year),
+    data = df,
+    control = gllvmTMBcontrol(se = FALSE)
+  )
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(fit$use$re_int)
+  expect_equal(fit$re_int$groups, c("site", "year"))
+  expect_equal(fit$re_int$n_groups, c(n_sites, n_years))
+  expect_equal(fit$re_int$offsets, c(0L, n_sites))
+
+  sigmas <- exp(fit$report$log_sigma_re_int)
+  expect_length(sigmas, 2L)
+  expect_equal(sigmas[1], stats::sd(u_site), tolerance = 0.20)
+  expect_equal(sigmas[2], stats::sd(u_year), tolerance = 0.20)
+
+  u <- fit$tmb_obj$env$parList()$u_re_int
+  expect_length(u, n_sites + n_years)
+  expect_gt(stats::cor(u[seq_len(n_sites)], u_site), 0.95)
+  expect_gt(stats::cor(u[n_sites + seq_len(n_years)], u_year), 0.95)
+})
+
 test_that("(1 | group) combined with rr() works and both recover", {
   set.seed(2026)
   Lambda_B <- matrix(c(0.8, 0.5, -0.2, 0.3,

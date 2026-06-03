@@ -336,7 +336,12 @@ test_that("spatial_dep(1 + x | coords) x Beta VALIDATION (SPA-10): real-API fit 
     response = function(df, fa, fb) {
       phi <- 5
       mu <- stats::plogis(c(-0.2, 0.0)[df$trait_id] + fa + df$x * fb)
-      list(value = stats::rbeta(nrow(df), mu * phi, (1 - mu) * phi))
+      ## Clamp off the open-interval boundary: under the strong dep cross-field
+      ## correlation rbeta() can round to exact 0/1, which the Beta family
+      ## rejects at construction (0 < y < 1). This is a DGP-boundary guard, not
+      ## a recovery shortcut -- the (eps, 1 - eps) nudge is far below marg_tol.
+      y <- stats::rbeta(nrow(df), mu * phi, (1 - mu) * phi)
+      list(value = pmin(pmax(y, 1e-6), 1 - 1e-6))
     })
   .run_ngdep_spatial_family(
     builder, gllvmTMB::Beta(), fid_expected = 7L,
@@ -374,7 +379,7 @@ test_that("spatial_dep(1 + x | coords) x nbinom2 VALIDATION (SPA-10): real-API f
   skip_if_not_heavy()
   skip_if_not_spatial_dep_ng()
   builder <- function() .make_ngdep_spatial_fixture(
-    seed = 20260607L, n_sites = 400L,
+    seed = 20260607L, n_sites = 1000L,
     response = function(df, fa, fb) {
       eta <- c(1.0, 0.9)[df$trait_id] + fa + df$x * fb
       list(value = stats::rnbinom(nrow(df), mu = exp(eta), size = 2.0))
@@ -392,7 +397,7 @@ test_that("spatial_dep(1 + x | coords) x ordinal_probit VALIDATION (SPA-10): rea
   skip_if_not_heavy()
   skip_if_not_spatial_dep_ng()
   builder <- function() .make_ngdep_spatial_fixture(
-    seed = 20260608L, n_sites = 400L,
+    seed = 20260608L, n_sites = 1000L,
     response = function(df, fa, fb) {
       ystar <- c(0.7, 0.5)[df$trait_id] + fa + df$x * fb +
         stats::rnorm(nrow(df), 0, 1)

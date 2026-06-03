@@ -185,14 +185,17 @@ fit_la <- function(data, family = c("gaussian", "poisson"),
                    dll_base = "gllvmTMB_la_min", verbose = FALSE) {
   family <- match.arg(family)
 
+  # Stage 1: build + optimise. These must succeed for ANY estimate to exist.
+  # sdreport is DELIBERATELY excluded here: on a non-PD inner Hessian sdreport
+  # raises / returns SE=NA, but the optimiser still returns a valid MODE. We
+  # want the LA POINT estimates of (sd0, sd1, rho) at that mode regardless.
   res <- tryCatch({
     obj <- .la_make_adfun(data, family = family, dll_base = dll_base)
     opt <- stats::nlminb(obj$par, obj$fn, obj$gr,
                          control = list(eval.max = 2000, iter.max = 2000))
-    sdr <- TMB::sdreport(obj)
-    list(obj = obj, opt = opt, sdr = sdr, err = NA_character_)
+    list(obj = obj, opt = opt, err = NA_character_)
   }, error = function(e) {
-    list(obj = NULL, opt = NULL, sdr = NULL, err = conditionMessage(e))
+    list(obj = NULL, opt = NULL, err = conditionMessage(e))
   })
 
   if (!is.na(res$err)) {
@@ -204,15 +207,42 @@ fit_la <- function(data, family = c("gaussian", "poisson"),
     ))
   }
 
+  obj <- res$obj
   opt <- res$opt
-  sdr <- res$sdr
-  pd_hess <- isTRUE(sdr$pdHess)
   converged <- isTRUE(opt$convergence == 0L) && is.finite(opt$objective)
 
-  rep <- tryCatch(res$obj$report(opt$par), error = function(e) NULL)
+  # Stage 2: extract the LA POINT ESTIMATES the SAME way VA does -- from
+  # obj$report() at the optimised mode. For a Laplace object the random u live
+  # in obj$env$last.par.best; report() needs the FULL parameter vector, not the
+  # fixed-only opt$par. We re-evaluate the joint NLL at the optimum first so
+  # last.par.best is the converged mode, then report() off it.
+  invisible(tryCatch(obj$fn(opt$par), error = function(e) NULL))
+  full_par <- tryCatch(obj$env$last.par.best, error = function(e) NULL)
+  rep <- NULL
+  if (!is.null(full_par)) {
+    rep <- tryCatch(obj$report(full_par), error = function(e) NULL)
+  }
+  if (is.null(rep)) {
+    # Last resort: report() with the fixed-effect par vector.
+    rep <- tryCatch(obj$report(opt$par), error = function(e) NULL)
+  }
   beta_hat <- as.numeric(opt$par[names(opt$par) == "beta"])
-  sd_prior <- if (!is.null(rep)) as.numeric(rep$sd_prior) else c(NA, NA)
-  corr01 <- if (!is.null(rep) && !is.null(rep$corr01)) as.numeric(rep$corr01) else NA_real_
+  sd_prior <- if (!is.null(rep) && !is.null(rep$sd_prior)) {
+    as.numeric(rep$sd_prior)
+  } else {
+    c(NA_real_, NA_real_)
+  }
+  corr01 <- if (!is.null(rep) && !is.null(rep$corr01)) {
+    as.numeric(rep$corr01)
+  } else {
+    NA_real_
+  }
+
+  # Stage 3: sdreport, guarded. Its ONLY job here is the pdHess flag (the
+  # decisive LA failure signal). A non-PD Hessian must NOT wipe the point
+  # estimates extracted above. SEs may be NA; we do not use them.
+  sdr <- tryCatch(TMB::sdreport(obj), error = function(e) NULL)
+  pd_hess <- isTRUE(!is.null(sdr) && isTRUE(sdr$pdHess))
 
   list(
     method = "LA", family = family,
@@ -222,7 +252,7 @@ fit_la <- function(data, family = c("gaussian", "poisson"),
     nll = opt$objective,
     beta = beta_hat,
     sd_intercept = sd_prior[1], sd_slope = sd_prior[2], corr = corr01,
-    obj = if (verbose) res$obj else NULL,
+    obj = if (verbose) obj else NULL,
     opt = if (verbose) opt else NULL,
     sdr = if (verbose) sdr else NULL
   )

@@ -51,13 +51,24 @@ fmt <- function(x, digits = 3) {
 # ---- Benchmark grid -------------------------------------------------------
 # Cell 1: gaussian SANITY -- VA ELBO must agree with the analytic/LA answer
 #         (this validates the ELBO before we trust the Poisson result).
-# Cells 2-4: poisson, shrinking n_group -- the LA non-PD skip regime.
+# Tiny-n Poisson cells: the LA non-PD skip regime, where VA's variance
+#         components were observed to COLLAPSE toward 0 (NO-GO signal).
+# Moderate-n Poisson cells (Option 1): widen the sweep to locate the n at which
+#         VA stops collapsing and starts tracking truth, and to see where LA
+#         regains a PD Hessian. Same truth (sd0=sd1=0.8, rho=0.3), balanced
+#         group sizes. Rows are ordered by n in the printed table below.
 grid <- list(
   list(label = "gaussian-sanity",   family = "gaussian", n_group = 20L, n_per = 8L, seed = 11L),
-  list(label = "poisson-n40",       family = "poisson",  n_group = 10L, n_per = 4L, seed = 21L),
-  list(label = "poisson-n24",       family = "poisson",  n_group = 6L,  n_per = 4L, seed = 22L),
+  # tiny-n collapse regime (kept from the first run)
+  list(label = "poisson-n12-tiny",  family = "poisson",  n_group = 4L,  n_per = 3L, seed = 24L),
   list(label = "poisson-n18-tiny",  family = "poisson",  n_group = 6L,  n_per = 3L, seed = 23L),
-  list(label = "poisson-n12-tiny",  family = "poisson",  n_group = 4L,  n_per = 3L, seed = 24L)
+  list(label = "poisson-n24",       family = "poisson",  n_group = 6L,  n_per = 4L, seed = 22L),
+  # moderate-n transition sweep (Option 1)
+  list(label = "poisson-n30",       family = "poisson",  n_group = 8L,  n_per = 4L, seed = 25L),
+  list(label = "poisson-n40",       family = "poisson",  n_group = 10L, n_per = 4L, seed = 21L),
+  list(label = "poisson-n60",       family = "poisson",  n_group = 15L, n_per = 4L, seed = 26L),
+  list(label = "poisson-n100",      family = "poisson",  n_group = 25L, n_per = 4L, seed = 27L),
+  list(label = "poisson-n200",      family = "poisson",  n_group = 40L, n_per = 5L, seed = 28L)
 )
 
 rows <- list()
@@ -118,6 +129,9 @@ for (cell in grid) {
 }
 
 tbl <- do.call(rbind, rows)
+# Order by n so the collapse -> recovery transition reads top-to-bottom.
+# (gaussian sanity is largest-n so it lands at/near the bottom; that is fine.)
+tbl <- tbl[order(tbl$n), , drop = FALSE]
 
 cat("\n\n================ VA vs LA vs TRUTH BENCHMARK TABLE ================\n")
 print(tbl, row.names = FALSE, digits = 3)
@@ -133,6 +147,16 @@ not_collapsed <- with(tbl,
   is.finite(VA_sd0) & is.finite(VA_sd1) &
   VA_sd0 > floor_frac * truth_sd0 & VA_sd1 > floor_frac * truth_sd1)
 
+# "In band" = VA recovers BOTH variances within [0.25x, 4x] of truth. This is
+# the transition criterion for the moderate-n sweep: where does VA stop
+# collapsing/over-shrinking and start tracking truth on BOTH components?
+band_lo <- 0.25
+band_hi <- 4.0
+in_band <- with(tbl,
+  is.finite(VA_sd0) & is.finite(VA_sd1) &
+  VA_sd0 > band_lo * truth_sd0 & VA_sd0 < band_hi * truth_sd0 &
+  VA_sd1 > band_lo * truth_sd1 & VA_sd1 < band_hi * truth_sd1)
+
 cat("\n---- GO / NO-GO summary ----\n")
 cat(sprintf("Cells where LA failed (non-PD or non-converged): %s\n",
             paste(tbl$cell[la_failed], collapse = ", ")))
@@ -140,6 +164,25 @@ cat(sprintf("Of those, VA converged: %s\n",
             paste(tbl$cell[rescued], collapse = ", ")))
 cat(sprintf("Of the rescued cells, VA variances NOT collapsed (>%.0f%% of truth): %s\n",
             100 * floor_frac, paste(tbl$cell[rescued & not_collapsed], collapse = ", ")))
+
+# Smallest n at which VA recovers BOTH variances within band, restricted to the
+# Poisson sweep (the gaussian sanity cell is a control, not part of the sweep).
+pois <- tbl$family == "poisson"
+pois_in_band <- in_band & pois & tbl$VA_conv
+if (any(pois_in_band)) {
+  k <- which(pois_in_band)[which.min(tbl$n[pois_in_band])]
+  cat(sprintf(
+    "Smallest Poisson n with VA BOTH variances in-band [%.2fx, %.1fx]: n=%d (cell %s); LA PD there = %s\n",
+    band_lo, band_hi, tbl$n[k], tbl$cell[k], tbl$LA_PD[k]))
+  recover_n <- tbl$n[k]
+  recover_cell <- tbl$cell[k]
+  recover_la_pd <- tbl$LA_PD[k]
+} else {
+  cat("Smallest Poisson n with VA BOTH variances in-band: NONE in this sweep\n")
+  recover_n <- NA_integer_
+  recover_cell <- NA_character_
+  recover_la_pd <- NA
+}
 
 n_rescued <- sum(rescued)
 n_rescued_good <- sum(rescued & not_collapsed)
@@ -153,6 +196,15 @@ verdict <- if (n_rescued == 0L) {
   "MIXED: VA rescues some LA-failing cells with intact variances, collapses others."
 }
 cat(sprintf("\nVERDICT (reported, maintainer decides the gate): %s\n", verdict))
+if (!is.na(recover_n)) {
+  cat(sprintf(
+    "TRANSITION: VA first tracks BOTH variances at Poisson n=%d (cell %s). LA Hessian PD there: %s.\n",
+    recover_n, recover_cell, recover_la_pd))
+  cat("Read: if LA is also non-PD at/below that n while VA tracks truth, the tiny-n collapse is\n")
+  cat("      genuine small-n under-identification rather than a VA-specific mean-field artifact.\n")
+} else {
+  cat("TRANSITION: VA did not bring BOTH variances in-band anywhere in this Poisson sweep.\n")
+}
 
 # ---- Write artifact -------------------------------------------------------
 out_dir <- "tests/va-benchmark"

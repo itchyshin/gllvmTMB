@@ -56,6 +56,50 @@ precision, `A = Q^{-1}` the corresponding covariance, `tr()` the trace,
 
 ---
 
+## 0b. Phase-1 outcome (2026-06-03) — PARKED
+
+Phase 1 was built and run (PR #431, branch `claude/va-phase1-proof`; prototype
++ benchmark retained there, not merged to the package). Separate VA DLL
+(`inst/tmb/gllvmTMB_va.cpp`), mean-field diagonal, closed-form Gaussian +
+Poisson ELBO, a minimal Laplace comparator on byte-identical data, and a
+VA-vs-LA-vs-truth benchmark over a shrinking/widening `n` sweep. Full table and
+findings: `docs/dev-log/after-task/2026-06-03-va-phase1-proof.md`.
+
+**Result — the ELBO is correct, but the hypothesis was not confirmed on this
+benchmark, for an instructive reason.** VA converged on *every* cell, including
+all the ones where the Laplace inner Hessian went non-PD. But the cells where
+VA's variance components *collapsed* (n = 12–24, 4–6 groups) are exactly the
+cells where Laplace is *also* degenerate (non-PD Hessian, ρ pinned to ±1, a
+variance → 0). Both methods hit the same rank-deficient likelihood: a dense
+2×2 covariance is not identifiable from 4–6 groups. Wherever the model *is*
+identifiable (n ≥ 30, where Laplace regains a PD Hessian) **VA matches the
+Laplace point estimates to ~2 significant figures**, and the Gaussian sanity
+cell confirms the ELBO. So this directly confirms TL;DR point 2's caveat —
+**VA does not manufacture information the data lack** — and shows that the
+tiny-`n` collapse is *under-identification*, not a mean-field-`q` artifact.
+
+**Consequences for the plan:**
+- A richer / structured variational covariance to "cure the collapse" is **NOT
+  motivated** — the collapse is a property of the likelihood, not of the
+  diagonal `q`. (This rules out one tempting but wrong reading of Phase 2.)
+- VA *is* sound and **crash-proof**: it converged where Laplace failed and
+  tracked Laplace where Laplace worked. That makes `method = "VA"` a viable
+  **convergence-robust fallback option** — a reasonable fast-follow IF Laplace
+  non-PD instability bites users in practice. Not pursued now.
+- The genuine "better than gllvm" thesis (sec 3) — **structured VA over the
+  exact sparse `A^{-1}` / SPDE `Q` priors, where the Laplace Hessian goes
+  non-PD for *structural* reasons at adequate `n`** rather than raw small-`n`
+  under-identification — was **not tested** by this toy GLMM benchmark and
+  remains the real Phase 2. It is a substantial research build, deferred
+  pending an explicit decision to fund it.
+
+**Decision (maintainer, 2026-06-03): PARKED.** Phase 1 delivered a clean,
+honest answer; no Phase 2 now. Revisit `method = "VA"` as a stability fallback
+if/when Laplace non-PD recurs structurally; the prototype and benchmark on
+`claude/va-phase1-proof` are the revival point.
+
+---
+
 ## 1. What gllvm does (evidence + TO-VERIFY)
 
 ### 1.1 The three methods

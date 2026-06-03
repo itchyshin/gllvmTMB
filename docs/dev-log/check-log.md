@@ -12687,3 +12687,24 @@ superseded by #429 and is being closed. A VA (variational approximation)
 feasibility design memo is in progress on `claude/va-feasibility-audit`
 (read-only; evaluating VA as a stability option vs the current Laplace path,
 benchmarked against the `gllvm` package).
+
+## 2026-06-03 -- VA feasibility resolved: Phase-1 run, PARKED (Claude)
+
+- Design 72 (VA feasibility memo) merged to `main` (#430).
+- Phase-1 proof built + benchmarked (#431, branch `claude/va-phase1-proof`):
+  separate VA DLL (mean-field diagonal, closed-form gaussian + poisson ELBO),
+  minimal Laplace comparator, VA-vs-LA-vs-truth sweep. CI green; benchmark ran
+  first try. `src/gllvmTMB.cpp` untouched.
+- Finding: the VA ELBO is correct (gaussian sanity + matches LA to ~2 sig figs
+  wherever LA is PD, n >= 30). VA converged on every cell, but the tiny-n cells
+  where VA variances collapsed are exactly where LA is *also* degenerate
+  (non-PD, rho pinned +/-1) -- genuine under-identification of a dense 2x2 from
+  4-6 groups, NOT a mean-field-q artifact. VA does not manufacture information.
+- Decision (maintainer): **PARKED.** No Phase 2 now. A richer variational
+  covariance is not motivated (collapse is data, not q). `method = "VA"` as a
+  crash-proof fallback is a fast-follow only if Laplace non-PD bites users
+  structurally; the real structured-VA-over-sparse-priors thesis is deferred.
+  Outcome recorded in Design 72 sec 0b + after-task
+  `docs/dev-log/after-task/2026-06-03-va-phase1-proof.md`.
+- #431 closed as parked (prototype + benchmark retained on its branch for
+  revival); not merged (experimental prototype code, kept off the package).

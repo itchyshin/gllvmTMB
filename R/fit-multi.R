@@ -315,15 +315,36 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## nbinom2 = 5, Beta = 7, ordinal_probit = 14), NOT the enum.R column.
     if (use_spde_dep_slope) {
       ## spatial_dep(1 + x | coords): the full unstructured 2T x 2T field
-      ## covariance is gaussian-only -- the non-Gaussian cells are non-PD at
-      ## the matrix fixtures' n_sites (identifiability of the unstructured
-      ## cross-field block, the spatial analogue of phylo_dep / PHY-18). They
-      ## stay reserved; the spatial_dep x slope matrix rows honest-skip.
-      if (any(!family_id_vec %in% c(0L))) {
+      ## covariance. SPA-10 relaxes this guard from the old gaussian-only abort
+      ## to a per-family allowlist, the spatial analogue of phylo_dep / PHY-18
+      ## (#422 / #424) and the unstructured generalisation of SPA-08
+      ## (spatial_indep, #427). The #388 / #392 discipline holds: a family joins
+      ## ONLY after its real-API recovery cell passes NON-SKIPPED in CI
+      ## (test-spatial-dep-slope-nongaussian.R, gated by
+      ## .github/workflows/spatial-dep-slope-nongaussian-recovery.yaml). The
+      ## retired #425 spike (hand-built precision Q) is NOT the basis for this
+      ## allowlist -- the cells fit the package's own validated Gaussian spatial
+      ## DGP. Allowlist holds the RUNTIME family id (family_to_id(): gaussian = 0,
+      ## binomial = 1, poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7,
+      ## ordinal_probit = 14), NOT the enum.R column. Families that still skip
+      ## after escalation stay reserved fail-loud. This is the SPLIT dep branch;
+      ## the base spatial_unique / spatial_indep `else if` below (SPA-08, #427)
+      ## is untouched.
+      ##
+      ## Recovery-gate history (2026-06-03): at n_sites = 400 gaussian / binomial
+      ## / poisson / Gamma passed non-skipped; nbinom2 / ordinal_probit recovered
+      ## just out-of-band (nbinom2 field-b BLUP cor 0.703 < 0.80 floor;
+      ## ordinal_probit marg_b 0.808 vs 0.50, just over the 0.30 tol) and Beta hit
+      ## a 0/1 response boundary at construction (DGP artifact). This round
+      ## escalates the three: Beta clamps its response off 0/1, nbinom2 /
+      ## ordinal_probit go to n_sites = 1000 to tighten BLUP / marginal recovery.
+      ## The allowlist admits all seven so each cell fits; the CI gate confirms
+      ## the final set and any family still skipping is trimmed back.
+      if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
         cli::cli_abort(c(
-          "{.fn spatial_dep} random slopes are validated for {.code gaussian()} only in this release.",
-          "i" = "The augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) non-Gaussian cells are reserved (Design 64; non-Gaussian non-PD = identifiability).",
-          ">" = "Use a Gaussian family for the augmented unstructured SPDE random-regression fit."
+          "{.fn spatial_dep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+          "i" = "Other families for the augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) slope are reserved (Design 64; SPA-10).",
+          ">" = "Use a validated family for the augmented unstructured SPDE random-regression fit."
         ))
       }
     } else if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {

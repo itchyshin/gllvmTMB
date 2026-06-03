@@ -12652,3 +12652,38 @@ Deliberately not run / not done:
   suite was rerun here.
 - Not a final feature-Done claim until the article PR is merged and CI
   passes on `main`.
+
+## 2026-06-03 -- dependent / spatial random-slope grid completed (Claude)
+
+All landed on `main`, each via a real-API recovery cell gated by a heavy
+`pull_request` recovery workflow (fails on any failed/errored expectation;
+skips do not fail), per the #388 / #392 allowlist discipline:
+
+- **#422 + #424 -- `phylo_dep(1 + x | sp)` non-Gaussian, all families.** Closes
+  PHY-18. The phylo slope grid (scalar / indep / latent / dep × all families)
+  is complete.
+- **#427 -- `spatial_indep(1 + x | coords)` non-Gaussian, all 6 families.**
+  SPA-08. Base `spatial_unique`/`spatial_indep` guard only; `spatial_dep`
+  untouched.
+- **#429 -- `spatial_dep(1 + x | coords)` non-Gaussian, all families.** SPA-10,
+  the full unstructured 2T×2T cell -- the hardest in the grid. Final gate
+  `0 failed, 0 errored, 0 skipped across 6 tests`. Took three rounds: poisson /
+  Gamma / binomial at n_sites = 400; nbinom2 / ordinal_probit needed n = 1000;
+  Beta needed a 0/1 response clamp + n = 1000. Allowlist
+  `c(0L,1L,2L,4L,5L,7L,14L)`. With this, **the entire spatial slope grid is
+  complete** alongside phylo.
+- **#426 -- accumulating dep-slope identifiability campaign.** Cron sweep to
+  Sunday accumulating seeds to the `dep-slope-sweep-results` store branch
+  (validated: 42 rows / 7 families / 4 commits).
+
+Doc-hygiene note: #429 merged carrying my *trim-round* docs (the after-task
+table + SPA-10 register row said only `c(0,1,2,4)` validated, three families
+reserved) because the escalation rounds that landed nbinom2 / ordinal_probit /
+Beta did not re-touch the docs before merge. This docs PR corrects both to the
+final all-seven result and adds the NEWS entries for #422/#424, #427, #429.
+
+Housekeeping: #425 (the retired spatial_dep identifiability spike) is
+superseded by #429 and is being closed. A VA (variational approximation)
+feasibility design memo is in progress on `claude/va-feasibility-audit`
+(read-only; evaluating VA as a stability option vs the current Laplace path,
+benchmarked against the `gllvm` package).

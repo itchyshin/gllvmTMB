@@ -29,7 +29,8 @@ the off-diagonal `R[1, 2]`.
 ## Changes
 
 - `R/fit-multi.R`: relaxed the `use_spde_dep_slope` family guard from
-  gaussian-only `c(0L)` to the allowlist (trimmed to CI-passing families).
+  gaussian-only `c(0L)` to the full seven-family allowlist
+  `c(0L, 1L, 2L, 4L, 5L, 7L, 14L)` (all CI-validated non-skipped).
   The BASE `spatial_unique`/`spatial_indep` `else if` branch (SPA-08, #427)
   was NOT touched.
 - `tests/testthat/test-spatial-dep-slope-nongaussian.R`: new file, one
@@ -48,35 +49,39 @@ the off-diagonal `R[1, 2]`.
 
 CI gate: `spatial-dep-slope-nongaussian-recovery` (heavy, GLLVMTMB_HEAVY_TESTS=1).
 
-First gate run (`26866309053`): `1 failed, 0 errored, 2 skipped across 6 tests`.
-Allowlist trimmed to the NON-SKIPPED passers; the driver now honest-skips a
-reserved family on the dep guard fail-loud (rather than hard-failing).
+It took three gate rounds to land all six non-Gaussian families:
+
+- **Round 1 (n_sites = 400):** `1 failed, 0 errored, 2 skipped`. poisson / Gamma /
+  binomial passed; nbinom2 / ordinal_probit converged PD but recovered just
+  out-of-band; Beta hard-failed at construction (`Beta rows: y must satisfy
+  0 < y < 1` — the strong dep cross-correlation rounded the simulated response
+  to exact 0/1).
+- **Round 2 (Beta response clamped to `(eps, 1 - eps)`; nbinom2 / ordinal_probit
+  → n_sites = 1000):** `0 failed, 0 errored, 1 skipped`. nbinom2 and
+  ordinal_probit cleared their bands; Beta now constructed and converged PD but
+  at n_sites = 400 recovered the intercept/slope cross-field correlation wrongly
+  (`r_ab = +0.158` vs truth `-0.50`; `cor_fb = 0.79`, a hair under the 0.80
+  floor) — it was the one cell left at 400.
+- **Round 3 (Beta → n_sites = 1000):** `0 failed, 0 errored, 0 skipped across
+  6 tests`. All six non-Gaussian families recover non-skipped.
 
 | Family          | runtime id | n_sites | Passed (non-skipped)? | In final allowlist? |
 |-----------------|-----------:|--------:|:----------------------|:-------------------:|
+| gaussian        | 0          | anchor  | yes (Gaussian anchor) | **yes**             |
+| binomial (mt)   | 1          | 400     | yes                   | **yes**             |
 | poisson         | 2          | 400     | yes                   | **yes**             |
 | Gamma           | 4          | 400     | yes                   | **yes**             |
-| binomial (mt)   | 1          | 400     | yes                   | **yes**             |
-| gaussian        | 0          | anchor  | yes (Gaussian anchor) | **yes**             |
-| nbinom2         | 5          | 400     | no — recovers out-of-band (honest-skip) | no (reserved) |
-| ordinal_probit  | 14         | 400     | no — recovers out-of-band (honest-skip) | no (reserved) |
-| Beta            | 7          | 400     | no — 0/1 response boundary at construction (DGP artifact) | no (reserved) |
+| nbinom2         | 5          | 1000    | yes                   | **yes**             |
+| Beta            | 7          | 1000    | yes (clamped response)| **yes**             |
+| ordinal_probit  | 14         | 1000    | yes                   | **yes**             |
 
-Final allowlist: `c(0L, 1L, 2L, 4L)` (gaussian, binomial, poisson, Gamma).
-
-Notes on the three reserved families:
-
-- **nbinom2 / ordinal_probit**: the fit converges PD but the recovered
-  marginal / cross-field block lands outside the inherited band at
-  `n_sites = 400` — the same "unstructured `2T x 2T` is the hardest cell"
-  signal that made dep the last phylo slope mode to land. They honest-skip
-  ("partial pending bigger n") and stay off the allowlist.
-- **Beta**: the recovery cell never reached a recovery number — under the
-  strong dep cross-correlation the simulated Beta response hit exact 0/1
-  (`Beta rows: y must satisfy 0 < y < 1`), a **DGP boundary artifact**, not an
-  engine/identifiability result. This is the most likely of the three to pass
-  with a clamped response in a follow-up (its closest analogue, Gamma, passes).
-  Reserved here to keep the allowlist to confirmed non-skipped cells.
+Final allowlist: `c(0L, 1L, 2L, 4L, 5L, 7L, 14L)` — **all seven families**. The
+full unstructured 2T×2T SPDE field-covariance slope is the hardest cell in the
+grid; the three count/proportion/ordinal families needed n_sites = 1000 (vs 400
+for poisson / Gamma / binomial) to identify the cross-field block, exactly the
+"unstructured dep is the last cell to land" signal seen on the phylo side
+(PHY-18). Beta additionally needed its simulated response clamped off 0/1 (a
+DGP-boundary guard, far below `marg_tol`, not a recovery shortcut).
 
 ## Checks
 
@@ -85,12 +90,10 @@ Notes on the three reserved families:
 
 ## Follow-up
 
-- **Beta** is the highest-value follow-up: clamp the simulated response into
-  `(eps, 1 - eps)` (the precedented GAP-B1 Beta 0/1 clamp) and re-run; if it
-  recovers in-band, add id `7L` to the `use_spde_dep_slope` allowlist.
-- **nbinom2 / ordinal_probit**: re-test at 600 / 1000 sites (binomial-style
-  size bumps do not apply); add to the allowlist only if a cell then passes
-  non-skipped.
-- Result this PR: `spatial_dep(1 + x | coords)` enabled for **gaussian,
-  binomial, poisson, Gamma** (`c(0L, 1L, 2L, 4L)`); the other three stay
-  reserved fail-loud and their VALIDATION cells honest-skip on the guard.
+- All six non-Gaussian `spatial_dep(1 + x | coords)` families are validated and
+  on the allowlist; no family remains reserved. SPA-10 is closed.
+- The driver honest-skips a reserved family on the dep guard fail-loud, so if a
+  future family is added it degrades to a skip rather than a hard fail until its
+  cell passes.
+- nbinom2 / ordinal_probit / Beta carry n_sites = 1000 fixtures (heavier than the
+  n = 400 cells); fine under `skip_if_not_heavy()` but worth noting for gate time.

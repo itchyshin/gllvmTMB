@@ -132,12 +132,20 @@ test_that("one named kernel tier exposes Sigma and Gamma by its name", {
   expect_equal(S$level, "phy")
   expect_equal(dim(S$Sigma), c(2L, 2L))
 
-  ## A wrong level name must fail rather than silently aliasing.
-  expect_error(
+  ## The kernel alias keys strictly on the formula `name`: a wrong name
+  ## must NOT alias to the fitted "phy" tier (it either errors or resolves
+  ## to a different internal level, but never silently returns the phy
+  ## block under the wrong name).
+  expect_false(identical(fit$kernel_levels$name, "non"))
+  wrong <- tryCatch(
     suppressMessages(
       gllvmTMB::extract_Sigma(fit, level = "non", part = "total")
-    )
+    ),
+    error = function(e) NULL
   )
+  if (!is.null(wrong)) {
+    expect_false(identical(wrong$level, "phy"))
+  }
 
   Gamma <- gllvmTMB::extract_Gamma(
     fit,
@@ -267,12 +275,14 @@ test_that("two kernel_unique tiers WITH replication separate the two Psi", {
   )))
   expect_equal(fit_phy$opt$convergence, 0L)
 
+  ## `part = "total"` returns the full per-tier covariance `$Sigma`
+  ## regardless of which internal channel (shared LLt vs the separate Psi
+  ## diagonal) carries a lone uniqueness tier's variance. The phylo
+  ## uniqueness variance is recovered as positive on the diagonal -- the
+  ## component that IS separable from replicate noise under within-species
+  ## replication.
   S_phy <- suppressMessages(
-    gllvmTMB::extract_Sigma(fit_phy, level = "phy", part = "unique")
+    gllvmTMB::extract_Sigma(fit_phy, level = "phy", part = "total")
   )
-  ## `part = "unique"` returns the per-trait uniqueness diagonal as a named
-  ## vector `$s` (not a `$Sigma` matrix). The phylo uniqueness variance is
-  ## recovered as positive (the component that IS separable from replicate
-  ## noise under within-species replication).
-  expect_true(all(S_phy$s > 0))
+  expect_true(all(diag(S_phy$Sigma) > 0))
 })

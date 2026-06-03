@@ -118,19 +118,30 @@ fit_slope_spatial_indep <- function(fx, family) {
 }
 
 ## Shared health + diagonal-contract assertions, run only on the
-## forward-compatible branch (a converged, PD fit). For the diagonal
-## `spatial_indep` block: (a) the cross-trait `rho:spatial` correlation
-## token is EXPECTED to error (no off-diagonal in an independent block) --
-## we assert the error rather than a finite CI; (b) the per-field variance
-## machinery (`log_tau_spde`, one entry per field) is finite. `expected_id`
-## guards against a silent family fallthrough.
+## forward-compatible branch (a converged, PD fit). For the augmented
+## diagonal `spatial_indep(1 + x | site)` block: (a) the AUGMENTED SPDE slope
+## engine is active (`fit$use$spde_slope`); (b) the cross-trait `rho:spatial`
+## correlation token is EXPECTED to error (no off-diagonal in an independent
+## block) -- we assert the error rather than a finite CI; (c) the per-field
+## SPDE slope variances (`report$sd_spde_b`, one entry per LHS column) are
+## finite. `expected_id` guards against a silent family fallthrough.
+##
+## NOTE on the slot fix: the augmented `spatial_indep(1 + x | coords)`
+## rewrites to an spde covstruct carrying `.spatial_unique_augmented` +
+## `.spatial_indep_augmented` (NOT `.spatial_indep`), so it routes through the
+## use_spde_slope engine (omega_spde_aug / log_sd_spde_b / sd_spde_b) with the
+## intercept-only per-trait field (use_spde / log_tau_spde) turned OFF. Hence
+## `fit$use$spatial_indep` is FALSE and `report$log_tau_spde` is empty BY
+## DESIGN on this path. The earlier draft asserted those intercept-only slots;
+## that only escaped notice because every non-Gaussian cell honest-skipped at
+## the gaussian-only guard until SPA-08 (#427) admitted these families.
 expect_slope_spatial_indep_health_and_diag <- function(fit, n_traits,
                                                        expected_id) {
   testthat::expect_equal(fit$opt$convergence, 0L)
   testthat::expect_true(is.finite(fit$opt$objective))
   testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], expected_id)
-  testthat::expect_true(isTRUE(fit$use$spatial_indep))
+  testthat::expect_true(isTRUE(fit$use$spde_slope))
 
   ## Diagonal-by-construction: a cross-trait rho token must NOT yield a
   ## finite correlation CI (the indep block has no off-diagonal). Per the
@@ -148,10 +159,12 @@ expect_slope_spatial_indep_health_and_diag <- function(fit, n_traits,
     info = "spatial_indep is diagonal: rho:spatial must error or be non-finite by contract"
   )
 
-  ## Per-field variance finiteness (the diagonal pieces that DO identify).
-  log_tau <- as.numeric(fit$report$log_tau_spde)
-  testthat::expect_gt(length(log_tau), 0L)
-  testthat::expect_true(all(is.finite(log_tau)))
+  ## Per-field variance finiteness (the diagonal pieces that DO identify):
+  ## the augmented SPDE slope field reports sd_spde_b, one entry per LHS
+  ## column (intercept + slope = 2 for the `1 + x` augmented field).
+  sd_spde_b <- as.numeric(fit$report$sd_spde_b)
+  testthat::expect_gt(length(sd_spde_b), 0L)
+  testthat::expect_true(all(is.finite(sd_spde_b)))
 }
 
 ## One reusable body per family: attempt the literal random-slope fit,
@@ -169,7 +182,7 @@ run_slope_spatial_indep_family <- function(fixture_family, fit_family,
       "non-gllvmTMB return"
     }
     testthat::skip(sprintf(
-      "%s: spatial_indep(1 + x | site) random-slope rejected by engine contract (augmented intercept+slope LHS is phylo-only); SLOPE-spatial-indep(%s) stays partial. Engine: %s",
+      "%s: spatial_indep(1 + x | site) random-slope did not construct; SLOPE-spatial-indep(%s) stays partial. Engine: %s",
       label, label, gsub("\n", " ", msg)
     ))
   }

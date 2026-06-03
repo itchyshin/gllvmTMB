@@ -177,12 +177,18 @@ test_that("relmat_dep (phylo_dep, vcv=A) Gaussian fit recovers the 2T x 2T Sigma
 })
 
 ## ======================================================================
-## 3. Negative test: non-Gaussian relmat_dep slope aborts loud
+## 3. Negative test: reserved-family relmat_dep slope aborts loud
 ## ======================================================================
-test_that("non-Gaussian relmat_dep slope aborts loud", {
+test_that("reserved-family relmat_dep slope aborts loud", {
   skip_if_not_heavy()
   skip_if_not_relmat_dep_slope_deps()
 
+  ## relmat_dep (the dense-vcv known-relatedness dep slope) shares the
+  ## phylo_dep augmented-slope guard (use_phylo_dep_slope, R/fit-multi.R), so
+  ## PHY-18 (#422 / #424) admitting poisson, Gamma, Beta, binomial, nbinom2,
+  ## and ordinal_probit means poisson now CONSTRUCTS here too. The fail-loud
+  ## probe must use a still-RESERVED family: tweedie (runtime family id 6) is
+  ## NOT on the allowlist c(0L, 1L, 2L, 4L, 5L, 7L, 14L), so the guard fires.
   fx <- make_relmat_dep_slope_fixture(seed = 11L, n_id = 20L, n_rep = 3L)
   df <- fx$df_long
   df$count <- stats::rpois(nrow(df), lambda = exp(1 + 0.2 * df$x))
@@ -191,7 +197,7 @@ test_that("non-Gaussian relmat_dep slope aborts loud", {
       count ~ 0 + trait +
         phylo_dep(1 + x | species, vcv = fx$A),
       data = df, unit = "species",
-      family = stats::poisson()
+      family = gllvmTMB::tweedie()
     ))),
     regexp = "not yet supported for this"
   )

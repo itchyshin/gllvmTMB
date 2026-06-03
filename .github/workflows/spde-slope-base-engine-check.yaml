@@ -1,0 +1,104 @@
+name: spde-slope-base-engine-check
+
+# Issue #357 (part of #343) regression guard for the augmented SPDE-slope
+# engine density / log-determinant cross-checks.
+#
+# The three analytic cross-checks in test-spde-slope-base-engine.R are
+# skip_if_not_heavy() + skip_if_not_spatial(), so the standard R-CMD-check
+# SKIPS them and only the nightly full-check exercises them. The strict
+# < 1e-9 density / log-det assertions were tripping on the CI BLAS because the
+# in-test reference built a DENSE Q^-1 whose own float accumulation exceeded
+# 1e-9 even though the engine is correct (verified to ~2.9e-11 via the
+# independent sparse-Q path). The fix converts all three reference blocks to
+# the sparse-Q method (logdet via a Cholesky of forceSymmetric(Q),
+# quadratic forms via sparse matvecs Q %*% omega, never densifying Q^-1).
+#
+# This gate runs that heavy test file with GLLVMTMB_HEAVY_TESTS=1 so the
+# < 1e-9 assertions execute NON-SKIPPED on a real fmesher mesh and the run
+# FAILS on any failure/error. It is paths-filtered to the test + this
+# workflow. No engine code (src/gllvmTMB.cpp, R fitting) is exercised for
+# correctness here beyond what the test drives. The repo is public, so
+# ubuntu-latest minutes are free.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "tests/testthat/test-spde-slope-base-engine.R"
+      - ".github/workflows/spde-slope-base-engine-check.yaml"
+
+concurrency:
+  group: spde-slope-base-engine-check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  spde-slope-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # local::. brings the package's own deps; devtools::load_all
+          # compiles src/ against them. fmesher is required by
+          # skip_if_not_spatial() so the heavy cells do NOT skip.
+          extra-packages: |
+            local::.
+            any::devtools
+            any::fmesher
+          needs: check
+
+      - name: Run the heavy SPDE-slope base-engine cross-checks
+        shell: bash
+        run: |
+          set -o pipefail
+          GLLVMTMB_HEAVY_TESTS=1 Rscript -e '
+            devtools::load_all(".")
+            stopifnot(requireNamespace("fmesher", quietly = TRUE))
+            res <- testthat::test_file(
+              "tests/testthat/test-spde-slope-base-engine.R",
+              reporter = "summary",
+              stop_on_failure = FALSE
+            )
+            df <- as.data.frame(res)
+            n_fail <- sum(df$failed) + sum(as.integer(df$error))
+            cat(sprintf(
+              "\nSPDE-slope base-engine suite: %d failed, %d errored, %d skipped across %d tests\n",
+              sum(df$failed), sum(as.integer(df$error)),
+              sum(df$skipped), nrow(df)
+            ))
+            skipped <- df[df$skipped > 0L, , drop = FALSE]
+            if (nrow(skipped) > 0L) {
+              cat("Skipped cells:\n")
+              for (i in seq_len(nrow(skipped))) {
+                cat(sprintf("  - %s\n", skipped$test[i]))
+              }
+            }
+            ## The three < 1e-9 cross-checks MUST run non-skipped here.
+            if (sum(df$skipped) == nrow(df)) {
+              stop("All SPDE-slope cells skipped -- fmesher / heavy gate not active; failing.")
+            }
+            if (n_fail > 0L) {
+              stop(sprintf(
+                "SPDE-slope base-engine suite had %d failed expectation(s)/error(s) -- failing the CI gate",
+                n_fail
+              ))
+            }
+          ' 2>&1 | tee spde-slope-base-engine-check.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spde-slope-base-engine-check-log
+          path: spde-slope-base-engine-check.log
+          retention-days: 30
+          if-no-files-found: warn

@@ -326,15 +326,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           ">" = "Use a Gaussian family for the augmented unstructured SPDE random-regression fit."
         ))
       }
-    } else if (any(family_id_vec != 0L)) {
+    } else if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
       ## Base spatial_unique / spatial_indep (1 + x | coords): the 2x2
-      ## cross-field augmented slope stays gaussian-only in THIS release; its
-      ## non-Gaussian activation is a separate slice. Fail loud so the base
-      ## spatial matrix-slope non-Gaussian skeletons keep honest-skipping.
+      ## cross-field augmented slope. SPA-08 relaxes this guard from the old
+      ## gaussian-only abort to a per-family allowlist, mirroring the
+      ## phylo_indep activation (#388 / #392 discipline: a family joins ONLY
+      ## after its real-API recovery cell passes NON-SKIPPED in CI). The
+      ## diagonal `spatial_indep` cells (rho pinned to 0) are validated by
+      ## test-spatial-indep-slope-nongaussian.R; the relaxation also admits
+      ## the shared base path generally (the free-correlation
+      ## spatial_unique(1 + x) read-out is a follow-up). Allowlist holds the
+      ## RUNTIME family id (family_to_id(): gaussian = 0, binomial = 1,
+      ## poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7, ordinal_probit = 14),
+      ## NOT the enum.R column. Other families stay reserved fail-loud.
       cli::cli_abort(c(
-        "{.fn spatial_unique} random slopes are validated for {.code gaussian()} only in this release.",
-        "i" = "The augmented {.code spatial_unique(1 + x | coords)} non-Gaussian cells are deferred (Design 60 sections 3.4-3.5, Design 64).",
-        ">" = "Use a Gaussian family for the augmented SPDE random-regression fit."
+        "Augmented {.fn spatial_unique} / {.fn spatial_indep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+        "i" = "Other families for the augmented {.code spatial_unique(1 + x | coords)} / {.code spatial_indep(1 + x | coords)} 2x2 cross-field slope are reserved (Design 60 sections 3.4-3.5, Design 64; SPA-08).",
+        ">" = "Use a validated family for the augmented SPDE random-regression fit."
       ))
     }
   }

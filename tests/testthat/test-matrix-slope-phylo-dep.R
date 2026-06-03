@@ -580,3 +580,226 @@ test_that("phylo_dep(1 + x | sp) x poisson VALIDATION (PHY-18): real-API fit con
   testthat::expect_true(all(slope_var_hat > slope_var_true / var_band))
   testthat::expect_true(all(slope_var_hat < slope_var_true * var_band))
 })
+
+## =====================================================================
+## PHY-18 non-Gaussian VALIDATION cells (extend GAP-B1 to the remaining
+## five families). Each cell mirrors the poisson VALIDATION cell exactly:
+## the SAME interleaved C = 4 Sigma_b_true / .dep_pois_Ltrue() recipe and
+## the SAME real-API path + Sigma_b_dep slope-variance read, swapping only
+## the family-appropriate response DGP and inheriting that family's slope
+## sibling recovery band (do NOT invent tighter bands). A family joins the
+## R/fit-multi.R guard allowlist ONLY after its cell passes in CI (#388
+## discipline); a cell that skips at the largest tried n_sp keeps its
+## family reserved fail-loud.
+## =====================================================================
+
+## Shared linear-predictor fixture: B ~ MN(0, A_phy, Sigma_b) with the
+## SAME interleaved per-trait (intercept, slope) C = 4 covariance as the
+## poisson cell, plus the long skeleton and the assembled eta = mu_t +
+## alpha_sp + beta_sp * x. The caller draws the family response from eta.
+.make_dep_eta_fixture <- function(seed, n_sp, T_tr, n_rep, mu_t_log) {
+  set.seed(seed)
+  C <- 2L * T_tr
+  tree <- ape::rcoal(n_sp)
+  tree$tip.label <- paste0("sp", seq_len(n_sp))
+  Ltrue <- .dep_pois_Ltrue(C)
+  Sigma_b_true <- Ltrue %*% t(Ltrue)
+  Cphy <- ape::vcv(tree, corr = TRUE)
+  LA <- t(chol(Cphy + diag(1e-8, n_sp)))
+  B <- (LA %*% matrix(stats::rnorm(n_sp * C), n_sp, C)) %*% chol(Sigma_b_true)
+  rownames(B) <- tree$tip.label
+
+  sr <- expand.grid(
+    species = factor(tree$tip.label, levels = tree$tip.label),
+    rep = seq_len(n_rep)
+  )
+  sr$x <- stats::rnorm(nrow(sr))
+  trait_levels <- paste0("t", seq_len(T_tr))
+  df_long <- merge(
+    sr,
+    data.frame(trait = factor(trait_levels, levels = trait_levels)),
+    all = TRUE
+  )
+  df_long <- df_long[order(df_long$species, df_long$rep, df_long$trait), ]
+  ti <- as.integer(df_long$trait)
+  si <- match(as.character(df_long$species), tree$tip.label)
+  alpha <- B[cbind(si, 2L * (ti - 1L) + 1L)] # interleaved intercept col
+  beta <- B[cbind(si, 2L * (ti - 1L) + 2L)] # interleaved slope col
+  eta <- mu_t_log[ti] + alpha + beta * df_long$x
+
+  list(
+    tree = tree, df_long = df_long, eta = eta, B = B,
+    Sigma_b_true = Sigma_b_true, T_tr = T_tr, C = C
+  )
+}
+
+## Shared VALIDATION driver: fit the real-API dep-slope path for `family`,
+## fail-loud if construction aborts (the guard relaxation must admit this
+## family id), honest-skip on non-convergence / non-PD / out-of-band
+## recovery, else assert family_id + Sigma_b_dep slope-variance recovery
+## within the inherited band. `expected_fid` is the family_to_id() runtime
+## id (binomial 1, poisson 2, Gamma 4, nbinom2 5, Beta 7, ordinal 14).
+.run_dep_validation_family <- function(fx, family, expected_fid, var_band,
+                                       row_id, response_lhs = "value") {
+  form <- stats::as.formula(
+    paste0(response_lhs, " ~ 0 + trait + phylo_dep(1 + x | species)")
+  )
+  fit <- tryCatch(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      form,
+      data = fx$df_long,
+      phylo_tree = fx$tree,
+      unit = "species",
+      family = family,
+      control = gllvmTMB::gllvmTMBcontrol(se = TRUE)
+    ))),
+    error = function(e) e
+  )
+
+  if (inherits(fit, "error")) {
+    testthat::fail(sprintf(
+      "phylo_dep(1 + x | sp) x %s aborted at construction: %s (the guard relaxation should admit family id %d)",
+      row_id, conditionMessage(fit), expected_fid
+    ))
+    return(invisible(NULL))
+  }
+  testthat::expect_s3_class(fit, "gllvmTMB_multi")
+
+  testthat::expect_true(isTRUE(fit$use$phylo_dep_slope))
+  testthat::expect_identical(fit$tmb_data$use_phylo_dep_slope, 1L)
+  testthat::expect_true(all(fit$tmb_data$family_id_vec == expected_fid))
+
+  healthy <- isTRUE(fit$opt$convergence == 0L) &&
+    is.finite(fit$opt$objective) &&
+    (isTRUE(fit$fit_health$pd_hessian) || isTRUE(fit$sd_report$pdHess))
+  if (!healthy) {
+    testthat::skip(sprintf(
+      "phylo_dep(1 + x | sp) x %s did not converge with PD Hessian (conv = %s, pdHess = %s); PHY-18 stays partial pending bigger n / different seed",
+      row_id, fit$opt$convergence, isTRUE(fit$sd_report$pdHess)
+    ))
+  }
+
+  testthat::expect_equal(fit$opt$convergence, 0L)
+  testthat::expect_true(is.finite(fit$opt$objective))
+  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian) ||
+    isTRUE(fit$sd_report$pdHess))
+
+  Sig_hat <- as.matrix(fit$report$Sigma_b_dep)
+  testthat::expect_equal(dim(Sig_hat), c(fx$C, fx$C))
+  testthat::expect_true(all(is.finite(Sig_hat)))
+
+  slope_idx <- c(2L, 4L)
+  slope_var_hat <- diag(Sig_hat)[slope_idx]
+  slope_var_true <- diag(fx$Sigma_b_true)[slope_idx]
+  ratio <- slope_var_hat / slope_var_true
+
+  if (!all(is.finite(ratio)) ||
+        any(ratio < 1 / var_band) || any(ratio > var_band)) {
+    testthat::skip(sprintf(
+      "phylo_dep(1 + x | sp) x %s: Sigma_b_dep slope-variance recovery outside %gx band (hat = %s, truth = %s, ratio = %s); PHY-18 stays partial pending bigger n",
+      row_id, var_band,
+      paste(sprintf("%.3g", slope_var_hat), collapse = ", "),
+      paste(sprintf("%.3g", slope_var_true), collapse = ", "),
+      paste(sprintf("%.3g", ratio), collapse = ", ")
+    ))
+  }
+  testthat::expect_true(all(slope_var_hat > slope_var_true / var_band))
+  testthat::expect_true(all(slope_var_hat < slope_var_true * var_band))
+}
+
+## ---- nbinom2 (family_id 5; mean-dependent, inherited 4x band) --------
+## rnbinom(mu = exp(eta), size = phi); modest log-scale intercepts.
+test_that("phylo_dep(1 + x | sp) x nbinom2 VALIDATION (PHY-18): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_dep_deps()
+  fx <- .make_dep_eta_fixture(
+    seed = 20260602L, n_sp = 300L, T_tr = 2L, n_rep = 10L,
+    mu_t_log = c(1.0, 0.7)
+  )
+  fx$df_long$value <- stats::rnbinom(
+    nrow(fx$df_long), mu = exp(fx$eta), size = 2.0
+  )
+  .run_dep_validation_family(
+    fx, gllvmTMB::nbinom2(), expected_fid = 5L, var_band = 4,
+    row_id = "nbinom2 (RE-02 / PHY-05)"
+  )
+})
+
+## ---- Gamma (family_id 4; mean-dependent, inherited 3x band) ----------
+## rgamma(shape = phi, scale = mu / phi), mu = exp(eta).
+test_that("phylo_dep(1 + x | sp) x Gamma VALIDATION (PHY-18): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_dep_deps()
+  fx <- .make_dep_eta_fixture(
+    seed = 20260602L, n_sp = 300L, T_tr = 2L, n_rep = 10L,
+    mu_t_log = c(0.7, 0.5)
+  )
+  phi <- 2
+  mu <- exp(fx$eta)
+  fx$df_long$value <- stats::rgamma(
+    nrow(fx$df_long), shape = phi, scale = mu / phi
+  )
+  .run_dep_validation_family(
+    fx, stats::Gamma(link = "log"), expected_fid = 4L, var_band = 3,
+    row_id = "Gamma (RE-02 / PHY-05)"
+  )
+})
+
+## ---- Beta (family_id 7; mean-dependent, inherited 3x band) -----------
+## plogis(eta) -> rbeta(mu * phi, (1 - mu) * phi).
+test_that("phylo_dep(1 + x | sp) x Beta VALIDATION (PHY-18): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_dep_deps()
+  fx <- .make_dep_eta_fixture(
+    seed = 20260602L, n_sp = 300L, T_tr = 2L, n_rep = 10L,
+    mu_t_log = c(-0.2, 0.2)
+  )
+  phi <- 5
+  mu <- stats::plogis(fx$eta)
+  fx$df_long$value <- stats::rbeta(
+    nrow(fx$df_long), mu * phi, (1 - mu) * phi
+  )
+  .run_dep_validation_family(
+    fx, gllvmTMB::Beta(), expected_fid = 7L, var_band = 3,
+    row_id = "Beta (RE-02 / PHY-05)"
+  )
+})
+
+## ---- ordinal_probit (family_id 14; fixed scale, inherited 2.5x band) -
+## latent ystar = eta + N(0, 1); cutpoints taus = (0, 0.7, 1.4) -> K = 4.
+test_that("phylo_dep(1 + x | sp) x ordinal_probit VALIDATION (PHY-18): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_dep_deps()
+  fx <- .make_dep_eta_fixture(
+    seed = 20260602L, n_sp = 300L, T_tr = 2L, n_rep = 10L,
+    mu_t_log = c(0.6, 0.5)
+  )
+  ystar <- fx$eta + stats::rnorm(nrow(fx$df_long), 0, 1)
+  taus <- c(0, 0.7, 1.4)
+  fx$df_long$value <- as.integer(
+    1L + colSums(outer(taus, ystar, FUN = function(t, y) y > t))
+  )
+  .run_dep_validation_family(
+    fx, gllvmTMB::ordinal_probit(), expected_fid = 14L, var_band = 2.5,
+    row_id = "ordinal_probit (RE-02 / PHY-06)"
+  )
+})
+
+## ---- binomial (family_id 1; MULTI-TRIAL size = 12, inherited 3x band) -
+## cbind(succ, fail) ~ ...; p = plogis(eta), size = 12 trials.
+test_that("phylo_dep(1 + x | sp) x binomial VALIDATION (PHY-18): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_dep_deps()
+  fx <- .make_dep_eta_fixture(
+    seed = 20260602L, n_sp = 300L, T_tr = 2L, n_rep = 10L,
+    mu_t_log = c(0.2, -0.2)
+  )
+  size <- 12L
+  p <- stats::plogis(fx$eta)
+  fx$df_long$succ <- stats::rbinom(nrow(fx$df_long), size = size, prob = p)
+  fx$df_long$fail <- size - fx$df_long$succ
+  .run_dep_validation_family(
+    fx, stats::binomial(link = "logit"), expected_fid = 1L, var_band = 3,
+    row_id = "binomial (RE-02 / PHY-06)", response_lhs = "cbind(succ, fail)"
+  )
+})

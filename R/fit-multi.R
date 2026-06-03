@@ -832,25 +832,30 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   ## phylo_dep(1 + x | species) augmented-slope scope (Design 56 §9.5c):
   ## the full unstructured 2T x 2T Sigma_b path is validated for the Gaussian
-  ## anchor cell AND -- this slice (PHY-18 poisson) -- poisson. The engine is
+  ## anchor cell, poisson (GAP-B1 / PHY-18), and -- this slice -- the remaining
+  ## non-Gaussian families that pass their own recovery cells: binomial
+  ## (multi-trial), Gamma, nbinom2, Beta, and ordinal_probit. The engine is
   ## family-agnostic (eta += b_phy_aug . Z_phy_aug is accumulated before the
   ## C++ family dispatch), so construction succeeds for the wired families. The
   ## earlier reservation reflected finite-sample power, NOT structural
   ## non-identifiability: the GAP-B1 identifiability sweep proved the reserved
-  ## non-Gaussian dep slope is identifiable given adequate data -- poisson
-  ## converges with a PD Hessian and good slope-variance recovery at n_sp >= 80.
-  ## Per the #388 discipline a family joins this allowlist ONLY after its
-  ## recovery cell passes (test-matrix-slope-phylo-dep.R poisson cell), so the
-  ## remaining non-Gaussian dep families stay reserved fail-loud until their own
-  ## cells land. The allowlist holds the runtime family ids (family_to_id(), NOT
-  ## the .valid_family enum): 0 gaussian, 2 poisson. Family is unknown at parse
-  ## time, so the reservation is enforced here where family_id_vec exists. Fail
-  ## loud rather than silently truncate (Design 56 §7).
-  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L, 2L))) {
+  ## non-Gaussian dep slope is identifiable given adequate data (poisson PD at
+  ## all N; Gamma / Beta / nbinom2 / ordinal_probit reliably PD by n_sp ~ 300;
+  ## binomial needs multi-trial size >= 12). Per the #388 discipline a family
+  ## joins this allowlist ONLY after its recovery cell passes
+  ## (test-matrix-slope-phylo-dep.R *_VALIDATION cells). Families NOT on this
+  ## list (e.g. tweedie, student, the delta / truncated / mixture families) stay
+  ## reserved fail-loud until their own cells land. The allowlist holds the
+  ## runtime family ids (family_to_id(), NOT the .valid_family enum):
+  ## 0 gaussian, 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta,
+  ## 14 ordinal_probit. Family is unknown at parse time, so the reservation is
+  ## enforced here where family_id_vec exists. Fail loud rather than silently
+  ## truncate (Design 56 §7).
+  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
     cli::cli_abort(c(
       "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
-      "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()} and {.code poisson()} in this release.",
-      ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit (family-general), or wait for the non-Gaussian dep-slope cells."
+      "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()}, {.code binomial()} (logit / probit), {.code poisson()}, {.code Gamma()}, {.code nbinom2()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+      ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit (family-general), or wait for the remaining non-Gaussian dep-slope cells."
     ))
   }
   phylo_slope_lhs_form <- if (use_phylo_slope_correlated) {

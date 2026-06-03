@@ -20,6 +20,11 @@ name: dep-slope-poisson-recovery
 on:
   workflow_dispatch:
   pull_request:
+    paths:
+      - "R/fit-multi.R"
+      - "src/gllvmTMB.cpp"
+      - "tests/testthat/test-matrix-slope-phylo-dep.R"
+      - ".github/workflows/dep-slope-poisson-recovery.yaml"
 
 concurrency:
   group: dep-slope-poisson-recovery-${{ github.ref }}
@@ -66,6 +71,15 @@ jobs:
               sum(df$failed), sum(as.integer(df$error)),
               sum(df$skipped), nrow(df)
             ))
+            skipped <- df[df$skipped > 0L, , drop = FALSE]
+            if (nrow(skipped) > 0L) {
+              cat("Skipped cells:\n")
+              for (i in seq_len(nrow(skipped))) {
+                cat(sprintf("  - %s\n", skipped$test[i]))
+              }
+            } else {
+              cat("Skipped cells: none\n")
+            }
             if (n_fail > 0L) {
               stop(sprintf(
                 "phylo_dep recovery suite had %d failed expectation(s)/error(s) -- failing the CI gate",

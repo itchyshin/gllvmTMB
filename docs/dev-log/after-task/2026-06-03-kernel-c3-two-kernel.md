@@ -39,6 +39,22 @@ already DONE on main.
   -- vcv harvest, `phylo_diag`, `extract_Sigma` -- see a single tier, and it
   precedes the single-`name` validation so two differently-named tiers
   ("phy" + "non") collapse rather than abort.
+- **C3.2 replication-count fix (gate red -> green).** The first cut of the
+  guardrail counted replication with `table(data[[species]])` (raw long-format
+  rows). By the time the fit runs, a wide `traits(y1, y2)` call has already
+  been pivoted to stacked-trait long format, so every species appears in
+  `n_traits` rows even with ONE community realisation. The raw-row count
+  therefore reported `max == n_traits > 1` (false "replication"), the prune
+  did NOT fire, and the two differently-named tiers reached the single-`name`
+  validation and **aborted** at `R/fit-multi.R:627` -- the C3 gate's `1
+  errored` cell ("two `kernel_unique` tiers without replication warn and
+  collapse to one"). Fix: count DISTINCT observation units per species via the
+  `unit_obs` factor (`tapply(data[[unit_obs]], data[[species]], n_distinct)`),
+  which collapses the trait-stacking and reports the honest 1-unit-per-species
+  count, so the prune fires, warns, and the model fits with one tier. The
+  heavy single-tier recovery cell never reaches the prune (`sum < 2`) and was
+  not the culprit; the brief's C3.1 skip-reserve (#1) did not apply because
+  that cell was already reworked to a single feasible tier.
 
 ## 3. Files Changed
 
@@ -101,9 +117,11 @@ already DONE on main.
 
 - `rg "kernel_.*tiers.*one .arg name"` -> single-`name` validation present;
   C3.2 prune runs before it (verified by line order in `R/fit-multi.R`).
-- `rg "data\[\[species\]\]"` -> `species` is the cluster column-name string;
-  `table(data[[species]])` at the prune site is valid (factorization happens
-  later at line ~1149, but `table()` works on character too).
+- `rg "data\[\[species\]\]"` -> `species` is the cluster column-name string.
+  CORRECTION (gate fix): a raw `table(data[[species]])` count at the prune site
+  is NOT a valid replication metric, because `data` is the stacked-trait long
+  frame (each species spans `n_traits` rows). Replication is now measured in
+  distinct `unit_obs` values per species, which is invariant to trait-stacking.
 
 ## 7. Roadmap Tick
 

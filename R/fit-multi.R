@@ -224,9 +224,27 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       as.character(mode) %in% c("unique", "indep")
   }, logical(1L))
   if (sum(is_kernel_unique) >= 2L) {
-    cluster_counts <- table(data[[species]])
-    has_replication <- length(cluster_counts) > 0L &&
-      max(cluster_counts) > 1L
+    ## Replication is measured in DISTINCT observation UNITS per species, NOT
+    ## raw long-format rows. By the time the fit runs, a wide `traits(y1, y2)`
+    ## call has been pivoted to stacked-trait long format, so every species
+    ## already appears in `n_traits` rows even with one community realisation.
+    ## Counting raw rows would mistake trait-stacking for replication and skip
+    ## the guardrail (then abort at the single-`name` validation below). The
+    ## within-unit observation factor (`unit_obs`, default "site_species")
+    ## identifies the original observation row, so distinct `unit_obs` values
+    ## per species is the honest replication count. Fall back conservatively
+    ## (treat as unreplicated) when that column is absent.
+    has_replication <- FALSE
+    if (!is.null(unit_obs) && unit_obs %in% names(data) &&
+        species %in% names(data)) {
+      units_per_species <- tapply(
+        as.character(data[[unit_obs]]),
+        data[[species]],
+        function(u) length(unique(u))
+      )
+      has_replication <- length(units_per_species) > 0L &&
+        max(units_per_species, na.rm = TRUE) > 1L
+    }
     if (!has_replication) {
       ## Keep the FIRST kernel uniqueness tier; drop the rest.
       drop_idx <- which(is_kernel_unique)[-1L]

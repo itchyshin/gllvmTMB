@@ -17,7 +17,20 @@
 ##
 ## C3.2 -- identifiability guardrail. Two `kernel_unique` tiers are not
 ## separable without within-species replication; the engine defaults to a
-## single uniqueness tier and emits a `cli::cli_warn`.
+## single uniqueness tier and emits a `cli::cli_warn`. Replication is counted
+## in DISTINCT observation units per species (the `unit_obs` factor), NOT raw
+## long-format rows -- a wide `traits(...)` call stacks each species into
+## `n_traits` rows, so a raw-row count would mistake trait-stacking for
+## replication and skip the collapse (then abort at the single-`name` guard).
+##
+## NOTE on the heavy "two Psi WITH replication" cell below: the genuinely
+## two-independent-named-tier recovery (a phylo `Psi_phy` AND a separate
+## tip-level `Psi_non`, each its own TMB slot) is the C3.1 capability left
+## RESERVED -- it needs a second engine slot (see header + Design 65 sec C3.1).
+## What the current engine supports, and what the cell asserts, is the single
+## identifiable phylo uniqueness tier recovered as a positive diagonal under
+## within-species replication; the non-phylo residual is absorbed by the
+## replicate error term.
 
 .c3_tree_corr <- function(n, prefix) {
   tree <- ape::rcoal(n)

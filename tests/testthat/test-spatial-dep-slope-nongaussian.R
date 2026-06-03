@@ -332,7 +332,7 @@ test_that("spatial_dep(1 + x | coords) x Beta VALIDATION (SPA-10): real-API fit 
   skip_if_not_heavy()
   skip_if_not_spatial_dep_ng()
   builder <- function() .make_ngdep_spatial_fixture(
-    seed = 20260605L, n_sites = 400L,
+    seed = 20260605L, n_sites = 1000L,
     response = function(df, fa, fb) {
       phi <- 5
       mu <- stats::plogis(c(-0.2, 0.0)[df$trait_id] + fa + df$x * fb)

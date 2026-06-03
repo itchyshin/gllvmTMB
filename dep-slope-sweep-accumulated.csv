@@ -1,43 +1,148 @@
 "family","n_sp","seed","conv","pdHess","max_sigma_diff","slope_var_ratio_1","slope_var_ratio_2","note"
-"gaussian",300,401,0,TRUE,0.1649,1.278,1.129,""
-"poisson",300,401,0,TRUE,0.2022,0.96,1.248,""
-"nbinom2",300,401,0,TRUE,0.2021,0.739,0.759,""
-"Gamma",300,401,0,TRUE,0.1301,1.325,0.721,""
-"Beta",300,401,0,TRUE,0.141,0.768,0.577,""
-"binomial",300,401,0,TRUE,0.1889,0.868,0.91,""
-"ordinal_probit",300,401,1,FALSE,0.1299,0.881,0.955,""
-"gaussian",600,401,0,TRUE,0.1174,0.916,1.223,""
-"poisson",600,401,0,TRUE,0.1409,1.164,0.592,""
-"nbinom2",600,401,0,TRUE,0.109,1.161,0.673,""
-"Gamma",600,401,0,TRUE,0.2219,0.745,0.881,""
-"Beta",600,401,0,TRUE,0.1357,0.905,0.942,""
-"binomial",600,401,0,TRUE,0.1397,1.221,0.858,""
-"ordinal_probit",600,401,0,TRUE,0.1854,1.139,0.752,""
-"gaussian",300,402,0,TRUE,0.1071,1.109,0.911,""
-"poisson",300,402,0,TRUE,0.3485,1.039,1.431,""
-"nbinom2",300,402,0,TRUE,0.4578,1.283,1.542,""
-"Gamma",300,402,0,TRUE,0.3388,1.249,0.789,""
-"Beta",300,402,1,FALSE,0.4122,1.653,0.714,""
-"binomial",300,402,0,TRUE,0.1125,1.09,0.82,""
-"ordinal_probit",300,402,1,FALSE,0.2387,1.107,0.874,""
-"gaussian",600,402,0,TRUE,0.0568,0.897,0.923,""
-"poisson",600,402,0,TRUE,0.1356,0.814,0.966,""
-"nbinom2",600,402,0,TRUE,0.0995,0.847,1.036,""
-"Gamma",600,402,0,TRUE,0.1294,0.933,0.97,""
-"Beta",600,402,0,TRUE,0.102,1.036,1.416,""
-"binomial",600,402,0,TRUE,0.109,0.865,1.012,""
-"ordinal_probit",600,402,0,TRUE,0.1797,0.772,0.879,""
-"gaussian",300,403,0,TRUE,0.0788,0.912,0.937,""
-"poisson",300,403,0,TRUE,0.1154,0.711,1.246,""
-"nbinom2",300,403,0,TRUE,0.2252,0.687,1.758,""
-"Gamma",300,403,0,TRUE,0.1078,0.73,0.953,""
-"Beta",300,403,0,TRUE,0.1561,1.39,0.967,""
-"binomial",300,403,0,TRUE,0.1953,1.488,1.166,""
-"ordinal_probit",300,403,0,TRUE,0.2258,0.436,1.412,""
-"gaussian",600,403,0,TRUE,0.0608,0.875,1.111,""
-"poisson",600,403,0,TRUE,0.2569,0.628,0.988,""
-"nbinom2",600,403,0,TRUE,0.1886,0.927,0.615,""
-"Gamma",600,403,0,TRUE,0.2327,0.662,0.99,""
-"Beta",600,403,0,TRUE,0.1683,0.902,1.101,""
-"binomial",600,403,0,TRUE,0.172,0.671,1.483,""
-"ordinal_probit",600,403,0,TRUE,0.2537,0.734,0.527,""
+"gaussian",300,401,0,TRUE,0.1649,1.278,1.129,NA
+"poisson",300,401,0,TRUE,0.2022,0.96,1.248,NA
+"nbinom2",300,401,0,TRUE,0.2021,0.739,0.759,NA
+"Gamma",300,401,0,TRUE,0.1301,1.325,0.721,NA
+"Beta",300,401,0,TRUE,0.141,0.768,0.577,NA
+"binomial",300,401,0,TRUE,0.1889,0.868,0.91,NA
+"ordinal_probit",300,401,1,FALSE,0.1299,0.881,0.955,NA
+"gaussian",600,401,0,TRUE,0.1174,0.916,1.223,NA
+"poisson",600,401,0,TRUE,0.1409,1.164,0.592,NA
+"nbinom2",600,401,0,TRUE,0.109,1.161,0.673,NA
+"Gamma",600,401,0,TRUE,0.2219,0.745,0.881,NA
+"Beta",600,401,0,TRUE,0.1357,0.905,0.942,NA
+"binomial",600,401,0,TRUE,0.1397,1.221,0.858,NA
+"ordinal_probit",600,401,0,TRUE,0.1854,1.139,0.752,NA
+"gaussian",300,402,0,TRUE,0.1071,1.109,0.911,NA
+"poisson",300,402,0,TRUE,0.3485,1.039,1.431,NA
+"nbinom2",300,402,0,TRUE,0.4578,1.283,1.542,NA
+"Gamma",300,402,0,TRUE,0.3388,1.249,0.789,NA
+"Beta",300,402,1,FALSE,0.4122,1.653,0.714,NA
+"binomial",300,402,0,TRUE,0.1125,1.09,0.82,NA
+"ordinal_probit",300,402,1,FALSE,0.2387,1.107,0.874,NA
+"gaussian",600,402,0,TRUE,0.0568,0.897,0.923,NA
+"poisson",600,402,0,TRUE,0.1356,0.814,0.966,NA
+"nbinom2",600,402,0,TRUE,0.0995,0.847,1.036,NA
+"Gamma",600,402,0,TRUE,0.1294,0.933,0.97,NA
+"Beta",600,402,0,TRUE,0.102,1.036,1.416,NA
+"binomial",600,402,0,TRUE,0.109,0.865,1.012,NA
+"ordinal_probit",600,402,0,TRUE,0.1797,0.772,0.879,NA
+"gaussian",300,403,0,TRUE,0.0788,0.912,0.937,NA
+"poisson",300,403,0,TRUE,0.1154,0.711,1.246,NA
+"nbinom2",300,403,0,TRUE,0.2252,0.687,1.758,NA
+"Gamma",300,403,0,TRUE,0.1078,0.73,0.953,NA
+"Beta",300,403,0,TRUE,0.1561,1.39,0.967,NA
+"binomial",300,403,0,TRUE,0.1953,1.488,1.166,NA
+"ordinal_probit",300,403,0,TRUE,0.2258,0.436,1.412,NA
+"gaussian",600,403,0,TRUE,0.0608,0.875,1.111,NA
+"poisson",600,403,0,TRUE,0.2569,0.628,0.988,NA
+"nbinom2",600,403,0,TRUE,0.1886,0.927,0.615,NA
+"Gamma",600,403,0,TRUE,0.2327,0.662,0.99,NA
+"Beta",600,403,0,TRUE,0.1683,0.902,1.101,NA
+"binomial",600,403,0,TRUE,0.172,0.671,1.483,NA
+"ordinal_probit",600,403,0,TRUE,0.2537,0.734,0.527,NA
+"gaussian",80,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",80,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",80,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",80,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",80,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",80,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",80,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",150,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",150,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",150,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",150,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",150,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",150,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",150,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",300,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",300,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",300,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",300,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",300,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",300,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",300,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",600,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",600,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",600,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",600,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",600,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",600,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",600,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",1200,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",1200,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",1200,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",1200,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",1200,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",1200,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",1200,501,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",80,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",80,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",80,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",80,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",80,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",80,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",80,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",150,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",150,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",150,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",150,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",150,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",150,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",150,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",300,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",300,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",300,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",300,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",300,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",300,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",300,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",600,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",600,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",600,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",600,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",600,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",600,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",600,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",1200,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",1200,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",1200,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",1200,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",1200,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",1200,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",1200,502,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",80,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",80,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",80,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",80,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",80,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",80,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",80,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",150,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",150,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",150,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",150,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",150,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",150,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",150,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",300,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",300,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",300,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",300,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",300,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",300,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",300,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",600,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",600,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",600,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",600,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",600,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",600,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",600,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"gaussian",1200,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"poisson",1200,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"nbinom2",1200,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Gamma",1200,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"Beta",1200,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"binomial",1200,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"
+"ordinal_probit",1200,503,NA,NA,NA,NA,NA,"fixture: argument must be coercible to non-negative integer"

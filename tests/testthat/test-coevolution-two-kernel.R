@@ -270,7 +270,9 @@ test_that("two kernel_unique tiers WITH replication separate the two Psi", {
   S_phy <- suppressMessages(
     gllvmTMB::extract_Sigma(fit_phy, level = "phy", part = "unique")
   )
-  ## The phylo uniqueness diagonal is recovered as positive (the component
-  ## that IS separable from replicate noise under replication).
-  expect_true(all(diag(S_phy$Sigma) > 0))
+  ## `part = "unique"` returns the per-trait uniqueness diagonal as a named
+  ## vector `$s` (not a `$Sigma` matrix). The phylo uniqueness variance is
+  ## recovered as positive (the component that IS separable from replicate
+  ## noise under within-species replication).
+  expect_true(all(S_phy$s > 0))
 })

@@ -1,8 +1,22 @@
 # gllvmTMB (development version)
 
+## Cross-lineage coevolution worked example (#361, 2026-06-01)
+
+* The new `cross-lineage-coevolution` article turns the Design 65 C2
+  recovery gate into a public worked example. IN: the article builds
+  `K_star` with `make_cross_kernel()`, fits paired long-format and
+  wide `traits(...)` calls through `kernel_latent()` plus
+  `kernel_unique()`, compares a block-diagonal null, extracts
+  `Gamma` with `extract_Gamma()`, and visualises truth vs fitted vs
+  null covariance blocks (`COE-02`, `KER-02`). PARTIAL: the article
+  reports point estimates only and treats `rho` as a grid-profile
+  workflow parameter, not an in-engine estimate. PLANNED: calibrated
+  intervals, multiple simultaneous kernel tiers, and in-engine `rho`
+  estimation remain later Design 65 work.
+
 ## Cross-lineage coevolution Gamma extraction (#361, 2026-05-31)
 
-* **`extract_Gamma()`** adds the Design 65 C2 extractor for cross-lineage coevolution fits (COE-02). IN: after fitting a named dense-kernel tier such as `kernel_latent(species, K = K_star, d = 2, name = "cross") + kernel_unique(species, K = K_star, name = "cross")`, users can call `extract_Gamma(fit, level = "cross", row_traits = host_traits, col_traits = partner_traits)` to slice the host-trait x partner-trait shared covariance block from `extract_Sigma(part = "shared")`. Heavy-test evidence covers planted known-`Gamma` recovery on block-missing host/partner data, a block-diagonal zero-`Gamma` null with lower log likelihood, loading-orientation checks on the fitted recovery fixture, and a sparse-versus-dense single-`W` sensitivity case (`test-coevolution-recovery.R`). PARTIAL: `rho` is still supplied through `K_star` rather than estimated inside TMB, and `extract_Gamma()` returns point estimates without intervals. PLANNED: the coevolution article will show the `rho` grid-profile workflow, null comparison, and data-condition warnings before making this a first-line public workflow.
+* **`extract_Gamma()`** adds the Design 65 C2 extractor for cross-lineage coevolution fits (COE-02). IN: after fitting a named dense-kernel tier such as `kernel_latent(species, K = K_star, d = 2, name = "cross") + kernel_unique(species, K = K_star, name = "cross")`, users can call `extract_Gamma(fit, level = "cross", row_traits = host_traits, col_traits = partner_traits)` to slice the host-trait x partner-trait shared covariance block from `extract_Sigma(part = "shared")`. Heavy-test evidence covers planted known-`Gamma` recovery on block-missing host/partner data, a block-diagonal zero-`Gamma` null with lower log likelihood, loading-orientation checks on the fitted recovery fixture, and a sparse-versus-dense single-`W` sensitivity case (`test-coevolution-recovery.R`). PARTIAL: `rho` is still supplied through `K_star` rather than estimated inside TMB, and `extract_Gamma()` returns point estimates without intervals. The `cross-lineage-coevolution` article now shows the `rho` grid-profile workflow, null comparison, and data-condition warnings as the public C2 workflow.
 
 ## Multi-slope (s >= 2) augmented phylo_dep random regression, Gaussian (#341, 2026-05-31)
 

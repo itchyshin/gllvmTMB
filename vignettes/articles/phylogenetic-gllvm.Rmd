@@ -207,7 +207,7 @@ Sigma_non_rows[, c("component", "trait_i", "trait_j",
 On the correlation scale, compare the two total covariance targets side
 by side:
 
-```{r extract-total-correlations, fig.width = 7.4, fig.height = 4.6}
+```{r extract-total-correlations, fig.width = 7.4, fig.height = 4.6, fig.cap = "Phylogenetic and non-phylogenetic trait correlations estimated from the two-tier model.", fig.alt = "Two heatmap facets compare total trait correlations at the phylogenetic and non-phylogenetic unit tiers. Cell labels show estimated correlations for the three simulated traits."}
 Sigma_corr_rows <- extract_Sigma_table(
   fit,
   level = c("phy", "unit"),
@@ -693,6 +693,9 @@ diagnostics flag.
 - [`functional-biogeography`](functional-biogeography.html) shows how
   phylogenetic terms behave as controls in a larger site--species--trait
   model.
+- [`cross-lineage-coevolution`](cross-lineage-coevolution.html) extends
+  the same dense-relatedness idea to two interacting lineages linked by
+  an association matrix `W`.
 - [`morphometrics`](morphometrics.html) is the simplest non-phylogenetic
   `latent() + unique()` worked example.
 - **Animal models with individual pedigrees.** If your rows are

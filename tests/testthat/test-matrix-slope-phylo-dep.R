@@ -638,7 +638,8 @@ test_that("phylo_dep(1 + x | sp) x poisson VALIDATION (PHY-18): real-API fit con
 ## family id), honest-skip on non-convergence / non-PD / out-of-band
 ## recovery, else assert family_id + Sigma_b_dep slope-variance recovery
 ## within the inherited band. `expected_fid` is the family_to_id() runtime
-## id (binomial 1, poisson 2, Gamma 4, nbinom2 5, Beta 7, ordinal 14).
+## id (binomial 1, poisson 2, Gamma 4, nbinom2 5, Beta 7, ordinal 14,
+## nbinom1 15).
 .run_dep_validation_family <- function(fx, family, expected_fid, var_band,
                                        row_id, response_lhs = "value") {
   form <- stats::as.formula(
@@ -801,5 +802,48 @@ test_that("phylo_dep(1 + x | sp) x binomial VALIDATION (PHY-18): real-API fit co
   .run_dep_validation_family(
     fx, stats::binomial(link = "logit"), expected_fid = 1L, var_band = 3,
     row_id = "binomial (RE-02 / PHY-06)", response_lhs = "cbind(succ, fail)"
+  )
+})
+
+## ---- nbinom1 (family_id 15; mean-dependent, inherited 4x band) -------
+## THE LAST MISSING FAMILY in the structured non-Gaussian slope grid (#350).
+## nbinom1 (linear NB variance, Var = mu * (1 + phi); Hilbe 2011) is wired
+## into the multivariate engine (family_to_id() case nbinom1 = 15L; the C++
+## `fid == 15` likelihood branch with the per-trait `phi_nbinom1` REPORT) and
+## recovers at the INTERCEPT-ONLY unit / phylo / spatial tiers (FAM-07,
+## test-matrix-nbinom1.R / test-tiers-nbinom1.R). Its AUGMENTED-slope
+## identifiability is genuinely uncertain, though: #350 flags nbinom1 as only
+## `P (smoke)`-validated even intercept-only (board #340), and the phi <->
+## latent-variance confound documented in FAM-07 can pull per-trait phi toward
+## the boundary. So this cell is EVIDENCE-BASED scoping per #350: it drives the
+## REAL public-API dep path and lets CI decide. If it recovers NON-SKIPPED,
+## nbinom1 (id 15) stays on the R/fit-multi.R slope guard allowlists; if it
+## skips (non-PD / out-of-band even after the n escalation), nbinom1 is REMOVED
+## from the allowlists and stays reserved fail-loud with an honest note. NO
+## force-pass.
+##
+## Band: nbinom1 has no intercept-only AUGMENTED-slope sibling to inherit from,
+## so the band is inherited from nbinom2 -- the closest mean-dependent count
+## family (Var = mu + mu^2/phi vs nbinom1's Var = mu * (1 + phi)) -- which uses
+## the wider 4x variance band. This also matches nbinom1's OWN intercept-only
+## Phase-B0 band (the widest mean-dependent tier, |b_hat - mu_int| < 0.40 in
+## test-matrix-nbinom1.R). Draw via rnbinom(mu = exp(eta), size = mu / phi) so
+## the realised overdispersion is NB1 (Var = mu * (1 + phi)), NOT NB2.
+test_that("phylo_dep(1 + x | sp) x nbinom1 VALIDATION (PHY-18 / FAM-07): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_dep_deps()
+  fx <- .make_dep_eta_fixture(
+    seed = 20260603L, n_sp = 300L, T_tr = 2L, n_rep = 10L,
+    mu_t_log = c(1.0, 0.7)
+  )
+  phi_nb1 <- 2.0
+  mu <- exp(fx$eta)
+  ## NB1 draw: size = mu / phi  =>  Var = mu + mu^2 / (mu / phi) = mu * (1 + phi).
+  fx$df_long$value <- stats::rnbinom(
+    nrow(fx$df_long), mu = mu, size = mu / phi_nb1
+  )
+  .run_dep_validation_family(
+    fx, gllvmTMB::nbinom1(), expected_fid = 15L, var_band = 4,
+    row_id = "nbinom1 (RE-02 / PHY-05 / FAM-07)"
   )
 })

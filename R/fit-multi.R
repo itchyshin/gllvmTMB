@@ -330,10 +330,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## after escalation stay reserved fail-loud. This is the SPLIT dep branch;
       ## the base spatial_unique / spatial_indep `else if` below (SPA-08, #427)
       ## is untouched.
-      if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
+      ##
+      ## CI-trimmed allowlist (recovery gate, 2026-06-03): gaussian / binomial /
+      ## poisson / Gamma pass NON-SKIPPED at the n_sites = 400 fixtures. nbinom2
+      ## and ordinal_probit recover out-of-band (honest-skip, partial pending
+      ## bigger n) and Beta hits a 0/1 response boundary under the strong dep
+      ## cross-correlation; all three stay reserved until their cell passes
+      ## non-skipped.
+      if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L))) {
         cli::cli_abort(c(
-          "{.fn spatial_dep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
-          "i" = "Other families for the augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) slope are reserved (Design 64; SPA-10).",
+          "{.fn spatial_dep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, and {.code Gamma()} in this release.",
+          "i" = "Other families for the augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) slope are reserved (Design 64; SPA-10): {.code nbinom2()} / {.code ordinal_probit()} recover out-of-band pending bigger n, and {.code Beta()} hits a 0/1 response boundary under the strong dep cross-correlation.",
           ">" = "Use a validated family for the augmented unstructured SPDE random-regression fit."
         ))
       }

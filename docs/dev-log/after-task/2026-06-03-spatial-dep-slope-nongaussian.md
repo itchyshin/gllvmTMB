@@ -48,17 +48,35 @@ the off-diagonal `R[1, 2]`.
 
 CI gate: `spatial-dep-slope-nongaussian-recovery` (heavy, GLLVMTMB_HEAVY_TESTS=1).
 
-| Family          | runtime id | n_sites used | Passed (non-skipped)? | In final allowlist? |
-|-----------------|-----------:|-------------:|:---------------------:|:-------------------:|
-| poisson         | 2          | _TBD_        | _TBD_                 | _TBD_               |
-| Gamma           | 4          | _TBD_        | _TBD_                 | _TBD_               |
-| Beta            | 7          | _TBD_        | _TBD_                 | _TBD_               |
-| binomial (mt)   | 1          | _TBD_        | _TBD_                 | _TBD_               |
-| nbinom2         | 5          | _TBD_        | _TBD_                 | _TBD_               |
-| ordinal_probit  | 14         | _TBD_        | _TBD_                 | _TBD_               |
+First gate run (`26866309053`): `1 failed, 0 errored, 2 skipped across 6 tests`.
+Allowlist trimmed to the NON-SKIPPED passers; the driver now honest-skips a
+reserved family on the dep guard fail-loud (rather than hard-failing).
 
-(Filled in from the recovery job log: the `N failed, N errored, N skipped`
-summary line. Allowlist trimmed to exactly the NON-SKIPPED families.)
+| Family          | runtime id | n_sites | Passed (non-skipped)? | In final allowlist? |
+|-----------------|-----------:|--------:|:----------------------|:-------------------:|
+| poisson         | 2          | 400     | yes                   | **yes**             |
+| Gamma           | 4          | 400     | yes                   | **yes**             |
+| binomial (mt)   | 1          | 400     | yes                   | **yes**             |
+| gaussian        | 0          | anchor  | yes (Gaussian anchor) | **yes**             |
+| nbinom2         | 5          | 400     | no — recovers out-of-band (honest-skip) | no (reserved) |
+| ordinal_probit  | 14         | 400     | no — recovers out-of-band (honest-skip) | no (reserved) |
+| Beta            | 7          | 400     | no — 0/1 response boundary at construction (DGP artifact) | no (reserved) |
+
+Final allowlist: `c(0L, 1L, 2L, 4L)` (gaussian, binomial, poisson, Gamma).
+
+Notes on the three reserved families:
+
+- **nbinom2 / ordinal_probit**: the fit converges PD but the recovered
+  marginal / cross-field block lands outside the inherited band at
+  `n_sites = 400` — the same "unstructured `2T x 2T` is the hardest cell"
+  signal that made dep the last phylo slope mode to land. They honest-skip
+  ("partial pending bigger n") and stay off the allowlist.
+- **Beta**: the recovery cell never reached a recovery number — under the
+  strong dep cross-correlation the simulated Beta response hit exact 0/1
+  (`Beta rows: y must satisfy 0 < y < 1`), a **DGP boundary artifact**, not an
+  engine/identifiability result. This is the most likely of the three to pass
+  with a clamped response in a follow-up (its closest analogue, Gamma, passes).
+  Reserved here to keep the allowlist to confirmed non-skipped cells.
 
 ## Checks
 
@@ -67,6 +85,12 @@ summary line. Allowlist trimmed to exactly the NON-SKIPPED families.)
 
 ## Follow-up
 
-- Any family still skipping after escalation (600 / 1000 sites; binomial
-  size 12 → 20) stays reserved (honest-skip); its allowlist entry is removed.
-- PR opened as DRAFT (high-risk family-guard change); do NOT merge.
+- **Beta** is the highest-value follow-up: clamp the simulated response into
+  `(eps, 1 - eps)` (the precedented GAP-B1 Beta 0/1 clamp) and re-run; if it
+  recovers in-band, add id `7L` to the `use_spde_dep_slope` allowlist.
+- **nbinom2 / ordinal_probit**: re-test at 600 / 1000 sites (binomial-style
+  size bumps do not apply); add to the allowlist only if a cell then passes
+  non-skipped.
+- Result this PR: `spatial_dep(1 + x | coords)` enabled for **gaussian,
+  binomial, poisson, Gamma** (`c(0L, 1L, 2L, 4L)`); the other three stay
+  reserved fail-loud and their VALIDATION cells honest-skip on the guard.

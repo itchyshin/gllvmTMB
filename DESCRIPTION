@@ -11,6 +11,10 @@ Description: Fits multivariate models for data where each site,
     wide data frame with the 'traits()' formula interface, or from
     already-stacked long data, and estimate trait covariance, pairwise
     correlations, shared latent axes, and trait-specific variance.
+    Binary presence-absence applications include binomial-family joint
+    species distribution models that decompose environmental and residual
+    co-occurrence in multispecies SDMs (Pollock et al. 2014
+    <doi:10.1111/2041-210X.12180>).
     Optional animal, phylogenetic, spatial, and known-sampling-variance
     components use the same formula grammar. Model fitting uses
     Template Model Builder (Kristensen et al. 2016

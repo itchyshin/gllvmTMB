@@ -7,7 +7,7 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Fits multivariate models for data where each site, individual, species, or study has several responses. Start from a wide data frame with the 'traits()' formula interface, or from already-stacked long data, and estimate trait covariance, pairwise correlations, shared latent axes, and trait-specific variance. Optional animal, phylogenetic, spatial, and known-sampling-variance components use the same formula grammar. Model fitting uses Template Model Builder (Kristensen et al. 2016 \doi{10.18637/jss.v070.i05}); spatial helpers inherit from 'sdmTMB' (Anderson et al. 2025 \doi{10.18637/jss.v115.i02}), and phylogenetic relatedness follows Hadfield & Nakagawa (2010) \doi{10.1111/j.1420-9101.2009.01915.x}. Upstream copyright holders of inherited code are listed in 'inst/COPYRIGHTS'.
+Fits multivariate models for data where each site, individual, species, or study has several responses. Start from a wide data frame with the 'traits()' formula interface, or from already-stacked long data, and estimate trait covariance, pairwise correlations, shared latent axes, and trait-specific variance. Binary presence-absence applications include binomial-family joint species distribution models that decompose environmental and residual co-occurrence in multispecies SDMs (Pollock et al. 2014 \doi{10.1111/2041-210X.12180}). Optional animal, phylogenetic, spatial, and known-sampling-variance components use the same formula grammar. Model fitting uses Template Model Builder (Kristensen et al. 2016 \doi{10.18637/jss.v070.i05}); spatial helpers inherit from 'sdmTMB' (Anderson et al. 2025 \doi{10.18637/jss.v115.i02}), and phylogenetic relatedness follows Hadfield & Nakagawa (2010) \doi{10.1111/j.1420-9101.2009.01915.x}. Upstream copyright holders of inherited code are listed in 'inst/COPYRIGHTS'.
 }
 \seealso{
 Useful links:
@@ -20,11 +20,6 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Shinichi Nakagawa \email{itchyshin@gmail.com} (\href{https://orcid.org/0000-0002-7765-5182}{ORCID}) [copyright holder]
-
-Authors:
-\itemize{
-  \item Shinichi Nakagawa \email{itchyshin@gmail.com} (\href{https://orcid.org/0000-0002-7765-5182}{ORCID}) [copyright holder]
-}
 
 }
 \keyword{internal}

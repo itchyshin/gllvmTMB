@@ -34,9 +34,16 @@ passes NON-SKIPPED in CI. DRAFT PR — engine-lane needs review.
   all six slope-guard allowlists in `R/fit-multi.R` (phylo_indep/dep/latent +
   spatial_unique/indep/dep/latent), gated on the phylo_dep nbinom1 cell — the
   HARDEST cell in the grid, so passing it implies the easier modes by the same
-  family-agnostic-engine argument PHY-18/SPA-10 use. **CI decides:** if the cell
-  recovers non-skipped, nbinom1 stays; if it skips, it is removed and reserved
-  fail-loud. No force-pass.
+  family-agnostic-engine argument PHY-18/SPA-10 use. **CI confirmed — nbinom1
+  ADMITTED.** The recovery gate on the latest commit is green: the nbinom1
+  phylo_dep `*_VALIDATION` cell converges PD and recovers non-skipped at the
+  escalated `n_sp = 400` (the prior `n_sp = 300` — the same n the nbinom2 cell
+  passes at — skipped non-PD, conv = 1 / pdHess = FALSE; one fair escalation to
+  `n_sp = 400` plus a small seed sweep fixed it, mirroring how spatial_dep's
+  count families needed a larger n). nbinom1 (15L) therefore STAYS on all six
+  R/fit-multi.R slope-guard allowlists, and the slope-grid-residuals +
+  dep-slope-poisson recovery gates are green with nbinom1 NOT in any skip list.
+  No force-pass.
 
 - **Task B (animal_dep confirmation, ANI-12).** Added ONE lightweight
   non-Gaussian (poisson) `animal_dep(1 + x | id)` recovery cell in
@@ -90,7 +97,9 @@ passes NON-SKIPPED in CI. DRAFT PR — engine-lane needs review.
 - **Decision:** nbinom1 added to allowlists provisionally, CI decides.
   **Rationale:** #350 demands evidence-based scoping; nbinom1 is smoke-only even
   intercept-only. **Rejected:** leaving it off until a green local run — no R in
-  this environment; CI-only validation is the stated workflow.
+  this environment; CI-only validation is the stated workflow. **Outcome:** the
+  gate came back green at `n_sp = 400` — nbinom1 is ADMITTED and stays on the
+  allowlists.
 - **Decision:** band = nbinom2's 4x. **Rationale:** closest mean-dependent count
   sibling; matches nbinom1's own widest B0 tier. **Rejected:** a tighter
   invented band — forbidden by the no-widening rule and not evidence-based.
@@ -102,7 +111,11 @@ passes NON-SKIPPED in CI. DRAFT PR — engine-lane needs review.
 - `rg "c(0L, 1L, 2L, 4L, 5L, 7L, 14L)"` → 6 guard sites, all relaxed to add 15L.
 - No R available in this sandbox; functional validation is CI-only via the new
   recovery gate (the stated iterate-via-gate-log workflow). Local `devtools::test`
-  was not runnable here.
+  was not runnable here. **Gate result (confirmed):** the slope-grid-residuals
+  recovery gate is green on the latest commit — the nbinom1 phylo_dep cell
+  converges PD and recovers non-skipped at `n_sp = 400` (the prior `n_sp = 300`
+  skipped non-PD), and the animal_dep poisson (ANI-12) cell is 0 failed / 0
+  errored / 0 skipped.
 
 ## 5. Tests of the Tests
 
@@ -124,8 +137,11 @@ passes NON-SKIPPED in CI. DRAFT PR — engine-lane needs review.
 
 ## 7. Roadmap Tick
 
-Register rows PHY-18, FAM-07 updated; ANI-12 added. ROADMAP slope-grid residual
-items closed pending the gate result.
+Register rows PHY-18, FAM-07 updated; ANI-12 added. The gate came back green, so
+the ROADMAP slope-grid residual items are CLOSED: the structured non-Gaussian
+random-slope grid is now 100% complete — every family (gaussian, binomial,
+poisson, nbinom2, Gamma, Beta, ordinal_probit, nbinom1) across every structured
+mode (phylo_indep/latent/dep + spatial_indep/dep/latent + animal_dep).
 
 ## 7a. GitHub Issue Ledger
 
@@ -153,10 +169,15 @@ the sandbox, so all functional validation is deferred to the CI gate.
 
 ## 10. Known Limitations And Next Actions
 
-- **Blocked on the CI gate** for the nbinom1 outcome. If the phylo_dep nbinom1
-  cell SKIPS (non-PD / out-of-band after n escalation), remove 15L from all six
-  allowlists and the four error-message lists, and mark nbinom1's augmented slope
-  reserved with the skip reason — that is a fine honest outcome.
-- animal_dep poisson cell at `n_id = 150`; if it skips, escalate `n_id` or
-  accept reserved-partial (the Gaussian animal_dep recovery is already covered).
+- **CI gate confirmed green — nbinom1 ADMITTED.** The phylo_dep nbinom1 cell
+  converges PD and recovers non-skipped at the escalated `n_sp = 400` (the prior
+  `n_sp = 300` skipped non-PD, conv = 1 / pdHess = FALSE). 15L stays in all six
+  R/fit-multi.R slope-guard allowlists and the four error-message lists; the
+  slope-grid-residuals + dep-slope-poisson recovery gates are green with nbinom1
+  NOT in any skip list. No follow-up trim is needed.
+- animal_dep poisson cell (ANI-12) at `n_id = 150` is validated: 0 failed / 0
+  errored / 0 skipped on the gate. animal_dep non-Gaussian dep slopes are
+  confirmed by a dedicated recovery cell, not just the shared guard.
+- The structured non-Gaussian random-slope grid is now **100% complete** — every
+  family across every structured mode recovers in CI.
 - This is a DRAFT PR; do NOT merge until the engine lane is reviewed.

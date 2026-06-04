@@ -114,12 +114,12 @@ Row-owner: **Gauss** (TMB likelihood per family).
 | FAM-06 | poisson (log) | `covered` | `test-stage33-non-gaussian.R`, `test-crosspkg-poisson-glmmTMB.R` | Cross-package light sanity check present on main (commit `41d80e3`): two-trait stacked Poisson(log) `value ~ 0 + trait + (1 \| site)` fixture agrees with glmmTMB on per-trait intercepts and shared random-intercept SD within 0.05 absolute bands; no replicates or grid, per cross-package policy. |
 | FAM-07 | nbinom1 | `covered` | `test-matrix-nbinom1.R` (31 assertions, heavy-gated), `test-tiers-nbinom1.R` (38 assertions, heavy-gated) | Was exported-but-unwired (overclaim caught, spike 2026-05-30). **Wired 2026-05-30** on review-gated branch `agent/trackd-nbinom1-wiring` (`09d4f58`): `nbinom1` = fid 15, full R↔C++ lockstep, correct NB1 linear variance (Var = μ·(1+φ), verified flat-in-μ); φ recovers to −0.9% bias when identifiable (φ-vs-latent-variance confound documented honestly); `test-matrix-nbinom1.R` self-heals 3 skips -> 31 pass; all regression families green. **Un-skipped 2026-05-31** (`agent/nbinom1-unskip`): the stale "not wired" construct-fail skip in `skip_unless_healthy_nbinom1()` is removed (a construct failure now FAILS hard; the non-convergence/non-PD health skip is kept; the `skip_if_not_heavy()` env gate is kept). Re-verified on main wiring: conv == 0, PD Hessian, phi (true 2.0) recovers to mean ~1.87 (about -6% bias) on the unit cell, intercepts within 0.19 (tol 0.40); `devtools::test(filter = "nbinom1")` under `GLLVMTMB_HEAVY_TESTS=1` is 31 pass / 0 fail / 0 skip, and skips cleanly (3 skips) when the heavy gate is off. **Tier coverage extended 2026-05-31** (`agent/nbinom1-tier-coverage`, gap G3): `test-tiers-nbinom1.R` adds a representative structured-tier parity set mirroring the nbinom2 / poisson tier tests, one structural cell per `test_that`, all heavy-gated and honest-skip-guarded on construct-fail / non-convergence / non-PD Hessian: (a) UNIT `indep(0 + trait | unit)` -- the diagonal "clean trio" cell `test-matrix-nbinom1.R` does not already walk (it covers latent / unique / latent+unique); asserts conv == 0, PD Hessian (`sd_report$pdHess`), `indep_B` flag, per-trait phi finite-positive with mean in the [phi/3, 3*phi] band, intercepts within 0.40; (b) PHYLO `phylo_unique(species)` (star tree, n_sp = 50, seed 101 -- the sibling's seed 2025 lands non-PD under the genuine NB1 draw `size = mu / phi`, a {101, 7, 42, 303, 404, 11} sweep fixed 101); asserts conv == 0, PD Hessian, `phylo_rr` flag, phi FINITE only (the phi<->phylo-variance confound legitimately pulls some per-trait phi to 0, matching the nbinom2-phylo mean-dependent convention), total phylo variance recovers via `extract_Sigma(level = "phy", part = "total")` inside the 4x trace band of `test-matrix-poisson-phylo.R`, intercept-mean within 0.6 (log); (c) SPATIAL `spatial_unique(0 + trait | site)` (per-trait independent SPDE, 100 sites, seed 20260529); asserts conv == 0, PD Hessian, `spde` flag, phi finite, kappa finite-positive, per-trait `log_tau_spde` finite, intercept-mean within 0.6 (log). All bands INHERITED from the nbinom2 / poisson / gamma sibling tier tests (no per-cell widening). `devtools::test(filter = "nbinom1")` under `GLLVMTMB_HEAVY_TESTS=1` is now 69 pass / 0 fail / 0 skip (31 matrix + 38 tiers); the 3 new tier cells skip cleanly when the heavy gate is off. Downstream extractor/simulate/profile NB1 wiring is a flagged follow-up. `truncated_nbinom1()` remains unwired. **Note (maintenance, do not fix until merge):** `R/enum.R` (single-response sdmTMB-style enum) lists `nbinom1 = 10`; the multi-trait engine uses `fit-multi.R` switch `nbinom1 = 15L`. The two constants are independent (different dispatch paths) and do not conflict today, but a maintainer wiring against `enum.R` for the multi engine would use the wrong constant. **Cross-package check added 2026-05-31** (`agent/distribution-validation-fills`): `test-crosspkg-nbinom1-glmmTMB.R` adds the NB1-vs-glmmTMB equivalence cell (the standalone fixture the poisson / nbinom2 cross-package tests had but nbinom1 lacked), mirroring `test-crosspkg-nbinom2-glmmTMB.R` exactly. On a shared 2-trait `value ~ 0 + trait + (1|site)` NB1 fixture (n = 300, glmmTMB given `dispformula = ~ 0 + trait` to match per-trait phi), gllvmTMB and glmmTMB agree to <1e-3 on per-trait intercepts and the shared random-intercept SD (0.05 absolute bands, inherited) and to ~1e-5 on per-trait dispersion phi (25% relative band, inherited). gllvmTMB's NB1 (Var = mu*(1+phi)) shares glmmTMB's nbinom1 parameterisation directly -- `exp(fixef$disp) == report$phi_nbinom1`, no NB2-style reciprocal. Honest-skip on glmmTMB-absent / non-convergence / weakly-identified phi (phi -> 0 or -> Inf in either engine). 3 cells, heavy not required (skip_on_cran-gated like its siblings); local measurement 2026-05-31 under `NOT_CRAN=true`: 3 pass / 0 fail. **Augmented slopes ADMITTED 2026-06-03** (`claude/slope-grid-residuals`, #350): nbinom1 was the LAST missing family in the structured non-Gaussian random-slope grid. A new nbinom1 `*_VALIDATION` cell on the hardest (full-unstructured `phylo_dep`) path (`test-matrix-slope-phylo-dep.R`) drives the real API; the recovery gate decided it. nbinom1's augmented-slope identifiability was genuinely uncertain (smoke-only even intercept-only, board #340), so the outcome is evidence-based — and the gate came back green: the cell converges PD and recovers non-skipped at the escalated `n_sp = 400` (the prior `n_sp = 300` skipped non-PD). nbinom1 (id 15) is therefore ADMITTED and stays on all six slope-guard allowlists; see PHY-18 for the gate detail. The structured non-Gaussian random-slope grid is now complete for every family. |
 | FAM-08 | nbinom2 | `covered` | `test-nb2-recovery.R`, `test-crosspkg-nbinom2-glmmTMB.R` | Recovery plus cross-package light sanity check present on main (commit `41d80e3`): two-trait stacked NB2 `value ~ 0 + trait + (1 \| site)` fixture with glmmTMB `dispformula = ~ 0 + trait` agrees on per-trait intercepts, shared random-intercept SD, and per-trait NB2 dispersion phi within inherited bands. |
-| FAM-09 | gamma (log) | `covered` | `test-family-gamma.R`, `test-matrix-gamma-unit.R`, `test-matrix-slope-gamma.R`, `test-tiers-gamma.R` | Recovery + slope + tiers green (local measurement 2026-05-30: 15 + 32, 0 fail). Prior "smoke only" under-claimed. |
+| FAM-09 | gamma (log) | `covered` | `test-family-gamma.R`, `test-matrix-gamma-unit.R`, `test-matrix-slope-gamma.R`, `test-tiers-gamma.R`, `test-gamma-recovery-depth.R` | Recovery + slope + tiers green (local measurement 2026-05-30: 15 + 32, 0 fail). Recovery-DEPTH cell added (#443 / #348): joint trait fixed effects + CV + full between-unit `Sigma_B` (variances + off-diagonal correlation) recover non-skipped in CI at n_unit = 120. Prior "smoke only" under-claimed. |
 | FAM-10 | beta (logit) | `covered` | `test-beta-recovery.R`, `test-matrix-beta-unit.R`, `test-matrix-slope-beta.R`, `test-tiers-beta.R` | Recovery + slope + tiers green (local measurement 2026-05-30: 15 + 36, 0 fail). |
 | FAM-11 | lognormal | `covered` | `test-family-lognormal.R`, `test-matrix-lognormal.R` | Recovery green (local measurement 2026-05-30: 6 + 37, 0 fail). Prior "smoke only" under-claimed. |
 | FAM-12 | student-t | `covered` | `test-student-recovery.R`, `test-matrix-student.R` | Recovery green (local measurement 2026-05-30: 13 + 49, 0 fail). |
 | FAM-13 | tweedie | `covered` | `test-tweedie-recovery.R`, `test-matrix-tweedie.R` | Recovery green (local measurement 2026-05-30: 13 + 37, 0 fail). |
-| FAM-14 | ordinal_probit | `covered` | `test-ordinal-probit.R`, `test-matrix-ordinal-unit.R`, `test-matrix-slope-ordinal.R`, `test-tiers-ordinal.R` | Recovery (cutpoints + intercepts, K=2/3/4) + slope + tiers green (local measurement 2026-05-30: 21 + 30, 0 fail). Prior "smoke only" inaccurate. Cross-package mirt `graded` check still outstanding. |
+| FAM-14 | ordinal_probit | `covered` | `test-ordinal-probit.R`, `test-matrix-ordinal-unit.R`, `test-matrix-slope-ordinal.R`, `test-tiers-ordinal.R`, `test-ordinal-recovery-depth.R` | Recovery (cutpoints + intercepts, K=2/3/4) + slope + tiers green (local measurement 2026-05-30: 21 + 30, 0 fail). Recovery-DEPTH cell added (#443 / #348): joint cutpoints + intercepts + full between-unit `Sigma_B` recover non-skipped in CI at n_unit = 150. Prior "smoke only" inaccurate. Cross-package mirt `graded` check still outstanding. |
 | FAM-15 | truncated_poisson / truncated_nbinom* | `partial` | `test-truncated-recovery.R` | recovery tests |
 | FAM-16 | censored_poisson | `partial` | (not located) | smoke only |
 | FAM-17 | delta_* families (10 variants) | `covered` (fixed/latent recovery); random structure **N/A by design** | `test-delta-gamma-recovery.R`, `test-delta-lognormal-recovery.R` | Single-family delta recovery green (local measurement 2026-05-30: 13 + 13 assertions, 0 fail). Per **Design 62**: two-part families are fixed-effect response distributions only — no latent/random/slope/tier structure (two link scales → species correlation undefined). Mixed-family delta latent-scale correlation remains the genuinely-blocked research item (Design 61 §B11). |
@@ -386,6 +386,48 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 
 ## Honest scope statement
 
+**Current tally (v0.2.0 tag-prep, 2026-06-03) — recounted from
+the actual per-row status column:**
+
+- **193 capability rows** (the register grew from 102 rows at
+  Phase 0A close as the kernel/coevolution, augmented-slope,
+  cluster2, missing-data, plot/extractor, and diagnostic
+  sections were added).
+- **166 `covered`** (86 %): test evidence exists at the depth
+  advertised.
+- **20 `partial`** (10 %): tests exist but coverage is
+  shallower than advertised — every remaining `partial` row
+  is an honest, deliberate deferral (known-V non-Gaussian
+  variants FG-07/08/09, spatial-family depth FG-13, single-V
+  `meta_V` inference MET-01/14, soft-deprecated
+  `gllvmTMB_wide()` FG-16/MIS-03, truncated/censored recovery
+  FAM-15/16, non-Gaussian s ≥ 2 slopes RE-03, multi-matrix /
+  cross-package animal models ANI-09/10, coverage-study gate
+  CI-08/CI-10, ordinal cutpoint smoke EXT-10, Gaussian
+  `lambda_constraint` smoke LAM-02, predict / plot dispatchers
+  MIS-07/09, meta-analytic two-stage article MET-04). None is
+  a v0.2.0 *correctness* blocker.
+- **0 `opt-in`**: the `link_residual = "auto"` default
+  (PR #101) eliminated this category and it has stayed empty.
+- **7 `blocked`** (4 %): advertised-but-undefined or
+  deliberately-deferred surfaces, all post-CRAN by design —
+  slash-form nesting FG-17, mixture families FAM-18, gengamma
+  FAM-19, proportional `meta_V` MET-03, delta/hurdle
+  latent-scale correlation MIX-10, delta-family
+  `extract_proportions()` EXT-11, and the missing-data v2
+  extensions MIS-32. Each carries a fail-loud / typed-error
+  safeguard on the public surface.
+
+The headline therefore moved **40/48/0/14 over 102 rows
+(Phase 0A) → 166/20/0/7 over 193 rows (v0.2.0)**. No
+`partial` or `blocked` row is a v0.2.0 correctness blocker;
+they are honestly-marked deferrals (power-study coverage,
+mixture / gengamma families, proportional meta-V,
+delta-correlation, missing-data v2). The historical Phase 0A
+snapshot below is preserved verbatim for provenance.
+
+### Historical snapshot — Phase 0A close (2026-05-16)
+
 This register's honest tally as of Phase 0A close (2026-05-16):
 
 - **102 capability rows.**
@@ -417,6 +459,31 @@ EXT-07 stayed `covered` with extended test-file evidence
 `gllvmTMB_auto_residual_delta_undefined` is the honest
 answer). Per
 [`docs/dev-log/after-phase/2026-05-17-m1-close.md`](../dev-log/after-phase/2026-05-17-m1-close.md).
+
+### Update — v0.2.0 tag-prep recount (2026-06-03)
+
+The stale Phase 0A headline (40 / 48 / 0 / 14 over 102 rows)
+was recounted directly from the per-row status column for the
+v0.2.0 editorial tag-prep. The register now holds **193 rows
+at 166 `covered` / 20 `partial` / 0 `opt-in` / 7 `blocked`**;
+the corrected headline lives in the "Current tally" block at
+the top of this section. The growth from 102 to 193 rows is
+the kernel/coevolution (KER / COE), augmented non-Gaussian
+slope (PHY-11..18, SPA-08..10), `cluster2` (RE-11),
+missing-data (MIS-21..32), plot/extractor (EXT-19..30), and
+diagnostic (DIA-08..13) sections that landed after the Phase
+0A snapshot. The non-Gaussian structured-slope grid in
+particular walked the phylo and spatial slope cells to
+`covered` across every family (#388 / #392 / #422 / #424 /
+#427 / #429). No `partial` / `blocked` row is a v0.2.0
+correctness blocker — all are honest deferrals.
+
+**Rows held by in-flight branches (NOT recounted / not edited
+here; they land via their own PRs):** PHY-18, FAM-07, and the
+`nbinom1` / `animal_dep` line land via **PR #441**, and the
+kernel C3 row (COE-03) lands via **PR #439**. The counts
+above reflect the register state on `main` at tag-prep; those
+PRs will append / settle their own rows on merge.
 
 ## What this register does NOT do
 

@@ -30,6 +30,8 @@ navbar:
         href: articles/joint-sdm.html
       - text: Cross-lineage coevolution kernels
         href: articles/cross-lineage-coevolution.html
+      - text: Structured random slopes (non-Gaussian)
+        href: articles/random-slopes-nongaussian.html
       - text: Concepts
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
@@ -60,6 +62,7 @@ articles:
     - articles/cross-lineage-coevolution
     - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms
+    - articles/random-slopes-nongaussian
 
   - title: Concepts
     contents:

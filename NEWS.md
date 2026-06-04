@@ -2,11 +2,6 @@
 
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
-* New `simulate_unit_trait()` — a generic `(unit, observation, trait)`
-  stacked-trait simulator, the sibling of `simulate_site_trait()` without
-  the phylogenetic / spatial machinery; returns long-format `data` +
-  `truth` for recovery checks (#306, via #444). Merged ahead of the v0.2.0
-  tag — fold into the 0.2.0 notes above if the tag includes it.
 
 # gllvmTMB 0.2.0 (first CRAN release)
 
@@ -35,13 +30,18 @@ section further down.
   `phylo_dep` path (#341). The non-Gaussian dependent cells
   (`phylo_dep`, `spatial_dep`) are the hardest in the grid and each
   family joined the allowlist only after a non-skipped CI recovery
-  cell.
+  cell. `nbinom1` — the last remaining family — was admitted on the
+  hardest `phylo_dep` cell (at `n_sp = 400`), completing the structured
+  slope grid across every supported family (#350).
 * **Generic dense-kernel covariance and cross-lineage coevolution.**
   The Design 65 dense-kernel quartet `kernel_unique()` /
   `kernel_indep()` / `kernel_dep()` / `kernel_latent()`,
   `make_cross_kernel()`, and `extract_Gamma()` add a phylo-equivalent
   dense-`K` surface and a validated cross-lineage coevolution
   workflow, with a public `cross-lineage-coevolution` article (#361).
+  An identifiability guardrail now drops a redundant uniqueness tier
+  with a warning — rather than aborting — when two `kernel_unique`
+  tiers lack within-species replication (Design 65 C3.2; #361).
 * **Animal-model keyword family.** The `animal_*` keyword row
   (`animal_scalar/unique/indep/dep/latent/slope`), `pedigree_to_A()`,
   and the `phylo_*` `A =` / `Ainv =` aliases complete the 4 x 5
@@ -68,6 +68,11 @@ section further down.
   `profile_targets()` validation surface, `check_identifiability()`,
   `gllvmTMB_check_consistency()`, multi-start / residual-start
   provenance, and the `link_residual = "auto"` default.
+* **Stacked-trait simulators.** `simulate_site_trait()` and
+  `simulate_unit_trait()` generate long-format data with a paired
+  `truth` object for recovery checks; `simulate_unit_trait()` is the
+  generic `(unit, observation, trait)` sibling without the phylogenetic
+  / spatial machinery (#306).
 
 ## User-facing API
 

@@ -71,27 +71,40 @@ change. No engine bug was found.
 ## Outcome / checks
 
 CI-only validation (no local R in this environment). The
-`gamma-ordinal-recovery-depth` workflow is the evidence of record; see the
-PR for the job log.
+`gamma-ordinal-recovery-depth` workflow is the evidence of record (run
+26921782160, job 79423568227, `conclusion: success`):
 
-- **gamma:** <CI RESULT — fill from job log: covered if the cell passes
-  non-skipped at n_unit = 120 / 5 reps; partial if it honest-skips>.
-- **ordinal_probit:** <CI RESULT — covered if passes non-skipped at
-  n_unit = 150 / 5 reps; partial if it honest-skips>.
+```
+tests/testthat/test-gamma-recovery-depth.R:   0 failed, 0 errored, 0 skipped across 1 tests
+tests/testthat/test-ordinal-recovery-depth.R: 0 failed, 0 errored, 0 skipped across 1 tests
+```
+
+- **gamma → COVERED on recovery depth.** The joint cell passed
+  NON-SKIPPED (10 assertions) at the FIRST n tried: n_unit = 120, 5 reps
+  per cell. Intercepts, gamma CV, and the full between-unit `Sigma_B`
+  (diagonal variances + planted rho = 0.5 cross-trait correlation) all
+  recovered inside the inherited bands. No widening, no skip.
+- **ordinal_probit → COVERED on recovery depth.** The joint cell passed
+  NON-SKIPPED (12 assertions) at the FIRST n tried: n_unit = 150, 5 reps
+  per cell. Intercepts, K = 4 cutpoints, sigma_d == 1, and the full
+  between-unit `Sigma_B` (diagonal + planted rho = 0.5) all recovered
+  inside the inherited bands. No widening, no skip.
+- **No engine bug found.** Both fits converged PD on the first attempt;
+  no engine change was needed or made.
 
 ## Register implication (for the concurrent Design 35 refresh to reconcile)
 
-- **FAM-09 (gamma):** if the gamma depth cell passes non-skipped in CI, the
+- **FAM-09 (gamma):** the gamma depth cell PASSED non-skipped in CI, so the
   recovery-DEPTH axis (board #340 / Design 61 §1c) moves `partial` →
-  `covered`, with `test-gamma-recovery-depth.R` cited as the joint
+  **`covered`**, with `test-gamma-recovery-depth.R` cited as the joint
   intercepts + CV + full between-unit Sigma (off-diagonal correlation)
-  evidence. The cross-package comparator axis stays `partial` (unchanged).
-  If the cell only honest-skips, gamma stays `partial` on depth (document
-  the n it needed).
-- **FAM-14 (ordinal_probit):** same — pass → recovery-DEPTH `partial` →
-  `covered` with `test-ordinal-recovery-depth.R` cited (joint cutpoints +
-  intercepts + full between-unit Sigma); cross-package mirt `graded` axis
-  stays `partial`. Skip → stays `partial` on depth.
+  evidence (n_unit = 120, 5 reps). The cross-package comparator axis stays
+  `partial` (unchanged — gllvm Procrustes / glmmTMB LL still outstanding).
+- **FAM-14 (ordinal_probit):** the ordinal depth cell PASSED non-skipped in
+  CI, so recovery-DEPTH moves `partial` → **`covered`** with
+  `test-ordinal-recovery-depth.R` cited (joint cutpoints + intercepts +
+  full between-unit Sigma, n_unit = 150, 5 reps); the cross-package mirt
+  `graded` axis stays `partial` (unchanged).
 
 ## Follow-up
 

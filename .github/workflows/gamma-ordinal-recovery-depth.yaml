@@ -1,0 +1,111 @@
+name: gamma-ordinal-recovery-depth
+
+# Recovery-DEPTH gate for the gamma + ordinal_probit FAMily rows
+# (issue #348 / board #340 / Design 61 §1c). The standard R-CMD-check skips
+# the heavy joint-recovery cells (skip_if_not_heavy()), so this workflow
+# runs the two new depth files --
+#   tests/testthat/test-gamma-recovery-depth.R
+#   tests/testthat/test-ordinal-recovery-depth.R
+# -- through the REAL public gllvmTMB() API with GLLVMTMB_HEAVY_TESTS=1.
+# Each file fits one intercept-only cell with a planted full between-unit
+# Sigma (off-diagonal cross-trait correlation) and asserts joint recovery
+# of fixed effects, dispersion/cutpoints, and the Sigma diagonal +
+# off-diagonal correlation, all within INHERITED sibling bands.
+#
+# The run FAILS if any cell fails an expectation or errors. SKIPS do NOT
+# fail: an honest skip on non-convergence / non-PD / out-of-band recovery
+# is the no-fake-pass rule, and it leaves the corresponding board #340 cell
+# `partial` rather than forcing a green. Whether each family earns
+# `covered` or stays `partial` is read off this job log (which cells passed
+# vs skipped).
+#
+# Triggered on pull_request (pull_request events are not subject to the
+# default-branch limit that workflow_dispatch has) AND workflow_dispatch
+# (manual re-run). A paths: filter keeps it off PRs that do not touch the
+# engine, the depth tests, or this workflow. The repo is public, so
+# ubuntu-latest minutes are free. Uploads the test log as an artifact.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "R/fit-multi.R"
+      - "src/gllvmTMB.cpp"
+      - "tests/testthat/test-gamma-recovery-depth.R"
+      - "tests/testthat/test-ordinal-recovery-depth.R"
+      - ".github/workflows/gamma-ordinal-recovery-depth.yaml"
+
+concurrency:
+  group: gamma-ordinal-recovery-depth-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-depth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # local::. brings the package's own deps; devtools::load_all
+          # compiles src/ against them.
+          extra-packages: |
+            local::.
+            any::devtools
+          needs: check
+
+      - name: Run the heavy gamma + ordinal recovery-depth cells
+        shell: bash
+        run: |
+          set -o pipefail
+          GLLVMTMB_HEAVY_TESTS=1 Rscript -e '
+            devtools::load_all(".")
+            files <- c(
+              "tests/testthat/test-gamma-recovery-depth.R",
+              "tests/testthat/test-ordinal-recovery-depth.R"
+            )
+            total_fail <- 0L
+            for (f in files) {
+              res <- testthat::test_file(
+                f, reporter = "summary", stop_on_failure = FALSE
+              )
+              df <- as.data.frame(res)
+              n_fail <- sum(df$failed) + sum(as.integer(df$error))
+              total_fail <- total_fail + n_fail
+              cat(sprintf(
+                "\n%s: %d failed, %d errored, %d skipped across %d tests\n",
+                f, sum(df$failed), sum(as.integer(df$error)),
+                sum(df$skipped), nrow(df)
+              ))
+              skipped <- df[df$skipped > 0L, , drop = FALSE]
+              if (nrow(skipped) > 0L) {
+                cat("Skipped cells (family stays partial on board #340):\n")
+                for (i in seq_len(nrow(skipped))) {
+                  cat(sprintf("  - %s\n", skipped$test[i]))
+                }
+              }
+            }
+            if (total_fail > 0L) {
+              stop(sprintf(
+                "gamma/ordinal recovery-depth suite had %d failed expectation(s)/error(s) -- failing the CI gate",
+                total_fail
+              ))
+            }
+          ' 2>&1 | tee gamma-ordinal-recovery-depth.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamma-ordinal-recovery-depth-log
+          path: gamma-ordinal-recovery-depth.log
+          retention-days: 30
+          if-no-files-found: warn

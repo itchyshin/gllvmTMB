@@ -30,8 +30,6 @@ navbar:
         href: articles/joint-sdm.html
       - text: Cross-lineage coevolution kernels
         href: articles/cross-lineage-coevolution.html
-      - text: Structured random slopes (non-Gaussian)
-        href: articles/random-slopes-nongaussian.html
       - text: Concepts
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
@@ -53,39 +51,39 @@ navbar:
 articles:
   - title: Model guide
     contents:
-    - articles/data-shape-flowchart
-    - articles/choose-your-model
     - articles/morphometrics
-    - articles/animal-model
-    - articles/phylogenetic-gllvm
     - articles/joint-sdm
     - articles/cross-lineage-coevolution
-    - articles/behavioural-syndromes
-    - articles/random-regression-reaction-norms
-    - articles/random-slopes-nongaussian
 
   - title: Concepts
     contents:
-    - articles/gllvm-vocabulary
     - articles/covariance-correlation
     - articles/api-keyword-grid
     - articles/response-families
-    - articles/mixed-family-extractors
-    - articles/ordinal-probit
-    - articles/stacked-trait-gllvm
 
   - title: Methods
     contents:
     - articles/convergence-start-values
     - articles/pitfalls
-    - articles/profile-likelihood-ci
-    - articles/troubleshooting-profile
-    - articles/cross-package-validation
     - articles/missing-data
 
   - title: internal
-    desc: Draft, technical, or validation-dependent articles hidden from the public dropdown until their evidence and reader path are ready
+    desc: Draft, technical, or validation-dependent articles hidden from the public dropdown until their evidence and reader path are ready (kept buildable, just not listed in the public index/navbar)
     contents:
+    - articles/data-shape-flowchart
+    - articles/choose-your-model
+    - articles/animal-model
+    - articles/phylogenetic-gllvm
+    - articles/behavioural-syndromes
+    - articles/random-regression-reaction-norms
+    - articles/random-slopes-nongaussian
+    - articles/gllvm-vocabulary
+    - articles/mixed-family-extractors
+    - articles/ordinal-probit
+    - articles/stacked-trait-gllvm
+    - articles/profile-likelihood-ci
+    - articles/troubleshooting-profile
+    - articles/cross-package-validation
     - articles/functional-biogeography
     - articles/lambda-constraint
     - articles/lambda-constraint-suggest

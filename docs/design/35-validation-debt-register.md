@@ -385,6 +385,48 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 
 ## Honest scope statement
 
+**Current tally (v0.2.0 tag-prep, 2026-06-03) — recounted from
+the actual per-row status column:**
+
+- **193 capability rows** (the register grew from 102 rows at
+  Phase 0A close as the kernel/coevolution, augmented-slope,
+  cluster2, missing-data, plot/extractor, and diagnostic
+  sections were added).
+- **166 `covered`** (86 %): test evidence exists at the depth
+  advertised.
+- **20 `partial`** (10 %): tests exist but coverage is
+  shallower than advertised — every remaining `partial` row
+  is an honest, deliberate deferral (known-V non-Gaussian
+  variants FG-07/08/09, spatial-family depth FG-13, single-V
+  `meta_V` inference MET-01/14, soft-deprecated
+  `gllvmTMB_wide()` FG-16/MIS-03, truncated/censored recovery
+  FAM-15/16, non-Gaussian s ≥ 2 slopes RE-03, multi-matrix /
+  cross-package animal models ANI-09/10, coverage-study gate
+  CI-08/CI-10, ordinal cutpoint smoke EXT-10, Gaussian
+  `lambda_constraint` smoke LAM-02, predict / plot dispatchers
+  MIS-07/09, meta-analytic two-stage article MET-04). None is
+  a v0.2.0 *correctness* blocker.
+- **0 `opt-in`**: the `link_residual = "auto"` default
+  (PR #101) eliminated this category and it has stayed empty.
+- **7 `blocked`** (4 %): advertised-but-undefined or
+  deliberately-deferred surfaces, all post-CRAN by design —
+  slash-form nesting FG-17, mixture families FAM-18, gengamma
+  FAM-19, proportional `meta_V` MET-03, delta/hurdle
+  latent-scale correlation MIX-10, delta-family
+  `extract_proportions()` EXT-11, and the missing-data v2
+  extensions MIS-32. Each carries a fail-loud / typed-error
+  safeguard on the public surface.
+
+The headline therefore moved **40/48/0/14 over 102 rows
+(Phase 0A) → 166/20/0/7 over 193 rows (v0.2.0)**. No
+`partial` or `blocked` row is a v0.2.0 correctness blocker;
+they are honestly-marked deferrals (power-study coverage,
+mixture / gengamma families, proportional meta-V,
+delta-correlation, missing-data v2). The historical Phase 0A
+snapshot below is preserved verbatim for provenance.
+
+### Historical snapshot — Phase 0A close (2026-05-16)
+
 This register's honest tally as of Phase 0A close (2026-05-16):
 
 - **102 capability rows.**
@@ -416,6 +458,31 @@ EXT-07 stayed `covered` with extended test-file evidence
 `gllvmTMB_auto_residual_delta_undefined` is the honest
 answer). Per
 [`docs/dev-log/after-phase/2026-05-17-m1-close.md`](../dev-log/after-phase/2026-05-17-m1-close.md).
+
+### Update — v0.2.0 tag-prep recount (2026-06-03)
+
+The stale Phase 0A headline (40 / 48 / 0 / 14 over 102 rows)
+was recounted directly from the per-row status column for the
+v0.2.0 editorial tag-prep. The register now holds **193 rows
+at 166 `covered` / 20 `partial` / 0 `opt-in` / 7 `blocked`**;
+the corrected headline lives in the "Current tally" block at
+the top of this section. The growth from 102 to 193 rows is
+the kernel/coevolution (KER / COE), augmented non-Gaussian
+slope (PHY-11..18, SPA-08..10), `cluster2` (RE-11),
+missing-data (MIS-21..32), plot/extractor (EXT-19..30), and
+diagnostic (DIA-08..13) sections that landed after the Phase
+0A snapshot. The non-Gaussian structured-slope grid in
+particular walked the phylo and spatial slope cells to
+`covered` across every family (#388 / #392 / #422 / #424 /
+#427 / #429). No `partial` / `blocked` row is a v0.2.0
+correctness blocker — all are honest deferrals.
+
+**Rows held by in-flight branches (NOT recounted / not edited
+here; they land via their own PRs):** PHY-18, FAM-07, and the
+`nbinom1` / `animal_dep` line land via **PR #441**, and the
+kernel C3 row (COE-03) lands via **PR #439**. The counts
+above reflect the register state on `main` at tag-prep; those
+PRs will append / settle their own rows on merge.
 
 ## What this register does NOT do
 

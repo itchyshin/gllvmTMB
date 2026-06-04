@@ -1,355 +1,7 @@
 # gllvmTMB (development version)
 
-## Non-Gaussian augmented spatial_dep random slopes: all families (#429, 2026-06-03)
-
-* **`spatial_dep(1 + x | coords)`** augmented random slopes -- the FULL unstructured 2T×2T SPDE field-covariance cell, the hardest mode in the whole grid -- now fit under every supported family: **gaussian, binomial, poisson, Gamma, nbinom2, Beta, and ordinal_probit** (SPA-10). This closes the spatial slope grid (scalar / indep / latent / dep × all families) and is the spatial analogue of PHY-18 (`phylo_dep`). IN: the full unstructured intercept/slope field covariance is recovered with its free cross-field correlation; identifiability was established by a real-API `*_VALIDATION` recovery cell per family (`test-spatial-dep-slope-nongaussian.R`) gated by a heavy `pull_request` recovery workflow (final gate `0 failed, 0 errored, 0 skipped across 6 tests`). The count / proportion / ordinal families (nbinom2, Beta, ordinal_probit) need `n_sites = 1000` to identify the cross-field block (vs 400 for poisson / Gamma / binomial), and Beta's simulated response is clamped off the 0/1 boundary; poisson / Gamma / binomial pass at `n_sites = 400`. This needed **no new C++**: the augmented dep field enters the linear predictor before the family dispatch, so activation was a per-family relax of the `R/fit-multi.R` `use_spde_dep_slope` guard to `c(gaussian, binomial, poisson, Gamma, nbinom2, Beta, ordinal_probit)`. DISCIPLINE: a family joined the allowlist ONLY after its recovery cell passed NON-SKIPPED in CI. Supersedes the retired #425 identifiability spike (a hand-built SPDE-precision draw that produced no usable cells); the validation instead uses the package's own validated Gaussian spatial DGP. The base `spatial_unique` / `spatial_indep` guard (SPA-08, #427) is untouched.
-
-## Non-Gaussian augmented spatial_indep random slopes (#427, 2026-06-02)
-
-* **`spatial_indep(1 + x | coords)`** augmented SPDE random slopes now fit under **poisson** (log), **Gamma** (log), **Beta**, **binomial** (multi-trial), **nbinom2**, and **ordinal_probit**, extending the diagonal cross-field cell beyond the Gaussian anchor (SPA-08) -- the spatial mirror of `phylo_indep`. IN: the intercept/slope field variances are recovered with the intercept-slope correlation pinned to 0 by the model contract; each family's recovery cell fits a real `gllvmTMB(value ~ 0 + trait + spatial_indep(1 + x | coords))`, draws the SPDE field via a stable GMRF route (`backsolve(chol(Q), z)`), and reads marginal SDs from `extract_Sigma(level = "spatial")` plus field BLUPs from `omega_spde_aug` (`test-spatial-indep-slope-nongaussian.R`). All six family cells pass NON-SKIPPED in the heavy `pull_request` recovery gate (`0 failed, 0 errored, 0 skipped across 6 tests`). This needed **no new C++**: activation was a per-family relax of the BASE `spatial_unique` / `spatial_indep` guard in `R/fit-multi.R`. DISCIPLINE: a family joined the allowlist ONLY after its recovery cell passed non-skipped; the split `spatial_dep` guard was untouched (its non-Gaussian activation followed in #429).
-
-## Non-Gaussian augmented phylo_dep random slopes: all families (#422, #424, 2026-06-02)
-
-* **`phylo_dep(1 + x | sp)`** augmented random slopes now fit under every supported family -- **poisson** (log, #422), then **Gamma** (log), **Beta**, **binomial** (probit/logit), **nbinom2**, and **ordinal_probit** (#424) -- closing the previously Gaussian-only full-unstructured dependent cell (PHY-18) and completing the phylo slope grid (scalar / indep / latent / dep × all families). IN: the full unstructured `2T x 2T` intercept/slope covariance `Sigma_b` is recovered with its free cross-correlation; each family converges on a positive-definite Hessian and recovers `Sigma_b` within the band inherited from that family's `test-matrix-slope-*.R` sibling, established by a real-API `*_VALIDATION` recovery cell (`test-matrix-slope-phylo-dep.R`) gated by a heavy `pull_request` recovery workflow. This needed **no new C++**: the C++ dep likelihood is already dimension-general in `C = n_lhs_cols`, so activation was a per-family relax of the `R/fit-multi.R` dep-slope family guard. DISCIPLINE: a family joined the allowlist ONLY after its recovery cell passed NON-SKIPPED in CI. This supersedes the earlier "`phylo_dep` non-Gaussian stays reserved (PHY-18)" PARTIAL notes in the entries below. PLANNED: non-Gaussian `phylo_dep` multi-slope (s >= 2) awaits its own identifiability gate.
-
-## Cross-lineage coevolution worked example (#361, 2026-06-01)
-
-* The new `cross-lineage-coevolution` article turns the Design 65 C2
-  recovery gate into a public worked example. IN: the article builds
-  `K_star` with `make_cross_kernel()`, fits paired long-format and
-  wide `traits(...)` calls through `kernel_latent()` plus
-  `kernel_unique()`, compares a block-diagonal null, extracts
-  `Gamma` with `extract_Gamma()`, and visualises truth vs fitted vs
-  null covariance blocks (`COE-02`, `KER-02`). PARTIAL: the article
-  reports point estimates only and treats `rho` as a grid-profile
-  workflow parameter, not an in-engine estimate. PLANNED: calibrated
-  intervals, multiple simultaneous kernel tiers, and in-engine `rho`
-  estimation remain later Design 65 work.
-
-## Cross-lineage coevolution Gamma extraction (#361, 2026-05-31)
-
-* **`extract_Gamma()`** adds the Design 65 C2 extractor for cross-lineage coevolution fits (COE-02). IN: after fitting a named dense-kernel tier such as `kernel_latent(species, K = K_star, d = 2, name = "cross") + kernel_unique(species, K = K_star, name = "cross")`, users can call `extract_Gamma(fit, level = "cross", row_traits = host_traits, col_traits = partner_traits)` to slice the host-trait x partner-trait shared covariance block from `extract_Sigma(part = "shared")`. Heavy-test evidence covers planted known-`Gamma` recovery on block-missing host/partner data, a block-diagonal zero-`Gamma` null with lower log likelihood, loading-orientation checks on the fitted recovery fixture, and a sparse-versus-dense single-`W` sensitivity case (`test-coevolution-recovery.R`). PARTIAL: `rho` is still supplied through `K_star` rather than estimated inside TMB, and `extract_Gamma()` returns point estimates without intervals. The `cross-lineage-coevolution` article now shows the `rho` grid-profile workflow, null comparison, and data-condition warnings as the public C2 workflow.
-
-## Multi-slope (s >= 2) augmented phylo_dep random regression, Gaussian (#341, 2026-05-31)
-
-* **`phylo_dep(1 + x1 + x2 + ... | sp)`** now fits two or more random slopes per species under the **Gaussian** family, lifting the previous s = 1 cap on the full-unstructured dependent path (RE-03). IN: the dep path generalises its column count from `2T` to `(1+s)T` and stacks each trait's `(intercept, slope_1, ..., slope_s)` columns into one INTERLEAVED block carrying the full unstructured `(1+s)T x (1+s)T` covariance `Sigma_b`; at s = 2 (two distinct within-species covariates `x1`, `x2`) the fit converges on a positive-definite Hessian and recovers the full `Sigma_b` within the bands inherited from the s = 1 dep cell (`test-phylo-dep-slope-s2-gaussian.R`, 986 expectations / 0 fail; slope-variance hat `{0.515, 0.293, 0.415, 0.373}` vs truth `{0.325, 0.266, 0.322, 0.260}`). The wide `1 + x1 + x2` and long `0 + trait + (0 + trait):x1 + (0 + trait):x2` surfaces are byte-identical, and `extract_Sigma(fit, level = "phy")` labels the rows `intercept.<t>`, `slope.<x_j>.<t>` (the s = 1 extractor keeps its bare `slope.<t>` name unchanged). This needed **no new C++**: the C++ dep likelihood is already dimension-general in `C = n_lhs_cols`, so activation was a purely R-side generalisation of the parser (`R/brms-sugar.R`, a dedicated multi-slope LHS classifier used only on the `phylo_dep` path), the Z fill + column count (`R/fit-multi.R`), and the extractor dimnames (`R/extract-sigma.R`). DISCIPLINE: multi-slope recognition is scoped to `phylo_dep` ONLY; every other augmented keyword (phylo_unique / indep / latent, spatial_*, relmat_*, animal_*) keeps the single-slope classifier and rejects `1 + x1 + x2` exactly as before -- all s = 1 slope tests pass unchanged. RESERVED: non-Gaussian s >= 2 stays fail-loud (the Gaussian-only `phylo_dep` family guard is unchanged -- the full unstructured covariance is not yet identifiable for non-Gaussian families, PHY-18). PLANNED: s >= 3 is mechanically supported (the code is general in `(1+s)`) but not yet gating-tested, and non-Gaussian multi-slope awaits a more identifiable parameterisation.
-
-## Non-Gaussian augmented spatial_latent random slopes (#341, 2026-05-31)
-
-* **`spatial_latent(1 + x | site, d = K)`** augmented block-diagonal reduced-rank SPDE random slopes now fit under **binomial** (probit and logit), **poisson** (log), **nbinom2**, **Gamma** (log), **Beta**, and **ordinal_probit**, extending the structured spatial latent-slope cell beyond the Gaussian anchor (SPA-09). IN: each family constructs and converges through the dedicated `use_spde_latent_slope` engine (live flag `use_spde_latent_slope == 1`, `n_lhs_cols_spde_lat == 2`); at the matrix fixture (n = 100, seed 20260529) four families (binomial-probit, poisson, Gamma, Beta) are positive-definite and pass the full health + slope-loading CI smoke, and three (binomial-logit, ordinal_probit, nbinom2) are non-PD at that one seed but PD at alternate seeds (202 / 303) and at n = 150 -- a power/seed artifact, not non-identifiability, so they stay allowlisted and honest-skip at the default fixture (`test-matrix-slope-spatial-latent.R`, 24 pass / 3 honest-skip / 0 fail). This needed **no new C++**: activation was the same family-allowlist relax as the phylo sweep (the `R/fit-multi.R` `use_spde_latent_slope` guard now admits runtime `family_id in {gaussian, binomial, poisson, Gamma, nbinom2, Beta, ordinal_probit}`). Three pre-existing speculative-test bugs were fixed, mirroring the #392 phylo_latent PR: the engine-liveness assertion was mis-keyed on the intercept-only `fit$use$spatial_latent` flag (which an augmented SLOPE fit does not set -- the augmented covstruct carries `.spatial_latent_augmented`, distinct from the intercept-only `.spatial_latent` marker), now repointed to `fit$use$spde_latent_slope` plus a path-live guard on `use_spde_latent_slope` / `n_lhs_cols_spde_lat`; the CI smoke read `extract_correlations(tier = "spatial")` / `confint("rho:spatial")`, which the block-diagonal latent path cannot surface (it exposes no `rho:spatial` token and `extract_correlations` keys on the intercept-only flag), now a finite sdreport SE on the reduced-rank slope loadings `theta_rr_spde_slope` (the spatial analogue of the #392 `theta_rr_phy_slope` smoke); and the nbinom2 expected `family_id` was corrected 3 -> 5. DISCIPLINE: a family was added to the allowlist only after its recovery cell passed; families OFF the allowlist (e.g. tweedie) still fail-loud-abort. PARTIAL: the **`spatial_dep(1 + x | site)`** full-unstructured mode stays Gaussian-only (SPA-10) -- the 2T x 2T (`C = 2*n_traits`) field covariance is not identifiable for non-Gaussian families at the validation fixtures (every fit returns conv != 0 / non-PD up to n = 100), the spatial analogue of `phylo_dep` (PHY-18), so those cells honest-skip (`test-matrix-slope-spatial-dep.R`, 7/7 skip, 0 fail) and the guard reserves them fail-loud. PLANNED: non-Gaussian `spatial_dep` slopes await a more identifiable parameterisation / larger n.
-
-## Non-Gaussian augmented phylo_latent random slopes (#341, 2026-05-31)
-
-* **`phylo_latent(1 + x | sp, d = K)`** augmented reduced-rank random slopes now fit under **binomial** (probit and logit), **poisson** (log), **nbinom2**, **Gamma** (log), **Beta**, and **ordinal_probit**, extending the block-diagonal latent-slope cell beyond the Gaussian anchor (PHY-17). IN: each family converges on a positive-definite Hessian with the live latent-slope engine flag (`use_phylo_latent_slope == 1`, `n_lhs_cols_lat == 2`) and recovers the per-column slope-block variance (`report$Sigma_phy_slope_slope`) within the band inherited from that family's `test-matrix-slope-*.R` sibling (`test-matrix-slope-phylo-latent.R`, 56/56 expectations pass, 0 fail). The latent path is BLOCK-DIAGONAL across the (intercept, slope) LHS columns, so it estimates each column's Sigma_k separately with NO intercept-slope correlation; recovery is checked on the well-identified slope block (the `Sigma_phy_slope_*` report channel the Gaussian template uses), not the unstructured `sd_b` / `cor_b` channel. This needed **no new C++**: activation was the same one-line family-allowlist relax as the `phylo_indep` sweep (the guard now admits runtime `family_id in {gaussian, binomial, poisson, Gamma, nbinom2, Beta, ordinal_probit}`). Two pre-existing speculative-test bugs were also fixed: the engine-liveness guard was mis-keyed on the unique/dep flags (`use_phylo_slope` / `n_lhs_cols`, which are 0 / 1 on a latent fit) and the recovery harness read the absent `sd_b` / `cor_b` channel -- both repointed to the latent engine's actual flags and `Sigma_phy_slope_*` report. DISCIPLINE: a family was added to the allowlist only after its recovery cell passed; families OFF the allowlist (e.g. tweedie) still fail-loud-abort. PARTIAL: the **`phylo_dep(1 + x | sp)`** full-unstructured mode stays Gaussian-only -- the C x C (`C = 2*n_traits`) covariance is not yet identifiable for non-Gaussian families at the validation fixtures (every fit returns conv != 0 / non-PD Hessian up to `n_sp = 100`), so those cells honest-skip and the guard reserves them fail-loud (PHY-18). PLANNED: non-Gaussian `phylo_dep` slopes await a more identifiable parameterisation / larger n.
-
-## Non-Gaussian augmented phylo random slopes: poisson / nbinom2 / Gamma / Beta / ordinal (#341, 2026-05-31)
-
-* **`phylo_indep(1 + x | sp)`** augmented random slopes now fit under **poisson** (log), **nbinom2**, **Gamma** (log), **Beta**, and **ordinal_probit**, extending the diagonal-Sigma_b cell beyond the Gaussian anchor and binomial (#381). IN: each family recovers the diagonal intercept/slope variances with the intercept-slope correlation pinned to 0 by the model contract; a 6-seed grid recovers `sigma^2_int` / `sigma^2_slope` for every family with every fit converging on a positive-definite Hessian, the correct runtime `family_id`, and `cor_b` held EXACTLY at 0 (`test-phylo-indep-slope-nongaussian.R`). Each family's recovery band is **inherited** from that family's existing correlated-slope cell (`test-matrix-slope-*.R`), not widened: poisson 4x, nbinom2 0.30 relative, Gamma 3x, Beta 0.40 relative, ordinal_probit 2.5x. The Gaussian anchor cell (`test-phylo-indep-slope-gaussian.R`) is also filled this cycle with a real recovery plus a wide `(1 + x)` vs long `(0 + trait + (0 + trait):x)` byte-identity check (replacing its Stage-3 skeleton skip). This needed **no new C++**: the augmented-slope contribution enters the linear predictor before the family dispatch (the engine is family-agnostic), so activation was a single one-line family-allowlist relax in the fitting code (the guard now admits runtime `family_id in {gaussian, binomial, poisson, Gamma, nbinom2, Beta, ordinal_probit}`). DISCIPLINE: a family was added to the allowlist only after its recovery cell passed; families OFF the allowlist (e.g. tweedie) still fail-loud-abort the augmented `phylo_indep` slope (locked in `test-matrix-slope-phylo-indep.R`). PLANNED: the dependent / latent augmented-slope modes (`phylo_dep` / `phylo_latent` LHS richer than `0 + trait`) for non-Gaussian families remain later B-slices.
-
-## Binomial augmented phylo random slopes (#341, 2026-05-31)
-
-* **`phylo_indep(1 + x | sp)`** augmented random slopes now fit under the **binomial** family (probit and logit links), extending the previously Gaussian-only diagonal-Sigma_b cell (PHY-11). IN: the intercept-slope (co)variance is recovered with the intercept-slope correlation pinned to 0 by the model contract; a 6-seed grid recovers `sigma^2_int` / `sigma^2_slope` within a 0.25 relative band with every fit converging on a positive-definite Hessian (`test-binomial-slope-recovery.R`). This needed **no new C++**: the augmented-slope contribution enters the linear predictor before the family dispatch (the engine is family-agnostic), so activation was a single relaxed family guard in the fitting code. PARTIAL: the other non-Gaussian families (poisson / nbinom2 / Gamma / Beta / ordinal) on the `phylo_indep` augmented-slope path stay reserved fail-loud pending their own validation; the family-general `phylo_unique(1 + x | sp)` path already covers them where supported. PLANNED: the remaining `phylo_indep` non-Gaussian slope cells and the dependent / latent augmented-slope modes remain later B-slices.
-
-## Generic dense-kernel covariance keywords (#361, 2026-05-31)
-
-* **`kernel_latent()` and `kernel_unique()`** add the Design 65 C1 dense-kernel formula surface, with `kernel_indep()` and `kernel_dep()` as the marginal-only and full-rank companion modes (KER-02 / COE-02). IN: users can pass a named dense relatedness/covariance matrix `K` directly through `kernel_latent(unit, K = A, d = q, name = "known") + kernel_unique(unit, K = A, name = "known")`, and `extract_Sigma(fit, level = "known")` returns the named kernel-tier Sigma; the equivalence gate checks log likelihood and extracted Sigma against the existing dense `phylo_latent(..., vcv = A) + phylo_unique(..., vcv = A)` path to less than `1e-6`, with direct companion-mode checks against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`. PARTIAL: this C1 slice reuses the phylo-equivalent dense relatedness engine slot and supports one named kernel tier. Cross-lineage `Gamma` extraction and the known-`Gamma` recovery gate are covered by the later C2 entry above; two-kernel models and in-engine `rho` estimation remain planned.
-
-## Cross-lineage kernel prototype (#361, 2026-05-31)
-
-* **`make_cross_kernel()`** builds a PSD cross-lineage block relatedness matrix from host relatedness, partner relatedness, and an association matrix (KER-01 / COE-01). IN: the helper returns a correlation-scale `K_star` that can be passed through the existing dense `phylo_latent(..., vcv = K_star) + phylo_unique(..., vcv = K_star)` prototype path, with heavy-test evidence for planted host-partner `Gamma` recovery on block-missing `traits(...)` data. PARTIAL: this is a C0 helper and prototype only; the generic `kernel_*()` formula family (KER-02) and validated `extract_Gamma()` coevolution gate (COE-02) are covered by the later C1/C2 entries above. PLANNED: two-kernel coevolution models and in-engine `rho` estimation remain later Design 65 slices.
-
-## Model-based missing predictors (#332 / #365, 2026-05-31)
-
-* **`miss_control(predictor = "model")`, `impute_model()`, and `imputed()`** now expose the shipped model-based missing-predictor layer. IN: one explicitly modelled `mi()` predictor is covered for Gaussian fixed-effect, grouped-intercept, and phylogenetic-intercept covariate models, plus fixed-effect binary, ordered, and unordered discrete predictor models (MIS-25..MIS-31); `imputed()` reports conditional modes and Hessian SEs for continuous Gaussian predictors and fitted conditional probabilities / expected scores / modal categories for the exact finite-state discrete routes. PARTIAL: the response-mask extractor remains separate as `predict_missing()` (MIS-24), and phylogenetic borrowing should be checked with `phylo_signal_mi()` before interpreting weak-signal EBLUPs (MIS-28). PLANNED: multiple `mi()` terms, EM/profile/REML engines, simulated imputations, MI pooling, structured discrete predictor models, bounded/count/lognormal/Gamma predictor families, and MNAR sensitivity are not implemented (MIS-32).
-
-## Fitted-model predictive diagnostics (#228, 2026-05-25)
-
-* **`diagnostic_table()`** extracts report-ready tables from `predictive_check()` plots and diagnostic `residuals()` outputs without making articles inspect `attr(x, "gllvmTMB_diagnostic")` directly (DIA-13). IN: users can request plotted/residual `"data"`, `"row_status"` counts, `"fit_health_status"` counts, or the attached `"check_gllvmTMB"` table. PARTIAL: this is a table-extraction helper over existing metadata; it does not compute new residuals, run formal tests, refit models, or calibrate uncertainty. PLANNED: Tier-1 diagnostic articles can now build stable examples on this table path after Florence/Fisher review.
-* **`predictive_check()` and `residuals()`** now provide the public fitted-model diagnostic surface promoted from the #222 prototype (DIA-11 / DIA-12). IN: `predictive_check()` returns `ggplot` objects for randomized-quantile Q-Q checks, count rootograms, grouped statistics, and density overlays, with plotted data, `check_gllvmTMB()` rows, and `fit$fit_health` metadata attached in `attr(plot, "gllvmTMB_diagnostic")`; `residuals(fit, type = "randomized_quantile")` computes exact family-CDF residuals for Gaussian, Poisson, and NB2 rows, while `type = "simulation_rank"` remains the fitted-model simulation fallback. PARTIAL: these checks diagnose the fitted response distribution but do not calibrate intervals, prove latent rank, run formal DHARMa-style tests, or draw from a Bayesian posterior. PLANNED: exact residuals for delta, hurdle, truncated, ordinal, and mixture families remain future validation work.
-
-## Programmatic identifiability diagnostics (#248, 2026-05-24)
-
-* **`check_gllvmTMB()`** now adds symbolizer-facing latent-identifiability rows to its machine-readable fit-health table (DIA-08 / DIA-10). IN: the table reports Hessian rank, loading-rotation convention, weak latent-axis share, near-zero per-trait `psi` standard deviations, near-boundary estimated `sigma_eps`, and broad cross-loading structure alongside the existing optimizer, gradient, `sdreport()`, `pdHess`, fixed-effect SE, restart, and boundary rows. PARTIAL: these rows are heuristic diagnostics for fitted models; they do not calibrate interval coverage or prove that the selected latent rank is scientifically preferred. PLANNED: simulation/refit rank checks remain the job of `check_identifiability()` and the M3 validation grid.
-
-## Correlation matrix plot options (2026-05-23)
-
-* **`plot_correlations()`** now draws report-ready matrix views from the same tidy rows used by its forest and confidence-eye displays (EXT-30). IN: users can call `style = "heatmap"` or `style = "ellipse"` / `"oval"` on fitted-model, `bootstrap_Sigma()`, or `extract_correlations()` rows; choose `triangle = "full"`, `"lower"`, or `"upper"`; include or omit diagonal cells; print estimates, interval bounds, or both inside cells; and use `matrix_layout = "estimate_ci"` for upper-triangle estimates plus lower-triangle interval bounds, or `matrix_layout = "levels"` to combine exactly two levels such as `unit` and `unit_obs` in one matrix. PARTIAL: the matrix styles display supplied intervals only as numeric labels and significance outlines/stars when bounds exclude zero; they do not compute new intervals, calibrate bootstrap uncertainty, or compare to known truth. PLANNED: broader visual snapshots and gallery/article layouts remain future visualization QA.
-
-## Rotated loading plot helper (2026-05-23)
-
-* **`plot_rotated_loadings()`** draws a report-ready loading matrix from a fitted model or from `extract_rotated_loadings_table()` rows (EXT-29). IN: users can make Figure-3-style loading panels without hand-pivoting `Lambda`, with varimax/promax/none rotation, shared-variance axis ordering, sign anchoring, standardized or raw loadings, visible numeric values for small matrices, and plot metadata in `gllvmTMB_meta` / `gllvmTMB_data`. PARTIAL: the helper displays point-estimate loadings only and does not compute loading uncertainty intervals; rotated axes remain interpretive descriptions, not uniquely identified biological truths. PLANNED: bootstrap- or simulation-aligned loading uncertainty and richer gallery layouts remain later visualization slices.
-
-## Rotated loading table helper (2026-05-23)
-
-* **`extract_rotated_loadings_table()`** returns report-ready tidy rows from the same rotation workflow used by `rotate_loadings()` and `plot(type = "ordination")` (EXT-28). IN: users can extract one row per trait × latent axis with `loading`, `abs_loading`, raw `axis_variance` / `axis_share`, `rotation`, `order_axes`, `sign_anchor`, `anchor_trait`, and `loading_scale`, including standardized loadings that match ordination-arrow scaling. PARTIAL: this is a point-estimate interpretation table; it does not compute loading uncertainty intervals and does not replace covariance, correlation, communality, or uniqueness as the primary rotation-invariant summaries. PLANNED: bootstrap or simulation-based uncertainty for loadings remains a later inference slice.
-
-## Rotated ordination sign anchors (2026-05-22)
-
-* **`plot(type = "ordination")`** now exposes the rotation workflow directly through `order_axes`, `sign_anchor`, and `anchor_traits`, matching `rotate_loadings()` for report-ready biplots (EXT-15 / MIS-09). IN: users can make varimax or promax ordination plots with shared-variance axis ordering and biologically pre-specified sign anchors, e.g. `anchor_traits = c("mass", "wing")`, without hand-rotating scores and loadings. PARTIAL: this is a plotting convention for interpretable axes; covariance, correlation, communality, and uniqueness remain the primary rotation-invariant summaries. PLANNED: visual snapshots and broader article gallery coverage remain future figure QA work.
-
-## Canonical `confint()` Sigma names (2026-05-22)
-
-* **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full latent + unique Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.
-
-## Sigma heatmap plot helper (2026-05-21)
-
-* **`plot_Sigma_heatmap()`** plots `extract_Sigma_table()` rows as trait-by-trait covariance or correlation heatmaps (EXT-27). IN: articles and reports can show matrix block structure without extracting `Sigma`, calling `cov2cor()`, or hand-building `geom_tile()` layers; the first integration replaces the functional-biogeography article's bespoke correlation heatmaps. PARTIAL: heatmaps show point estimates only and do not display uncertainty intervals or truth comparisons. PLANNED: vdiffr snapshots and richer multi-model layout helpers remain future visualization work.
-
-## Sigma estimate-vs-truth plot helper (2026-05-21)
-
-* **`plot_Sigma_comparison()`** plots `compare_Sigma_table()` rows as row-labelled error plots or estimate-vs-truth scatter plots for simulation and teaching figures (EXT-26). IN: example articles can show `estimate - truth` without hand-building ggplot scaffolding, including `facet = "comparison"` panels for precomputed rows from several model specifications. PARTIAL: this is a visual comparison helper only; it does not run simulations, compute intervals, or validate calibration. PLANNED: article-specific calibration summaries remain future visualization work.
-
-## Sigma estimate-vs-truth table helper (2026-05-21)
-
-* **`compare_Sigma_table()`** joins report-ready `extract_Sigma_table()` rows to a supplied covariance or correlation truth matrix for simulation and teaching figures (EXT-25). IN: example articles can build estimate-vs-truth tables without hand-indexing matrices. PARTIAL: this is a table helper only; use `plot_Sigma_comparison()` for the current visual layer, and keep richer calibration summaries as future visualization work.
-
-## Bootstrap provenance in plot metadata (2026-05-21)
-
-* **`plot_correlations()` and `plot_Sigma_table()`** now preserve extractor notes in `attr(p, "gllvmTMB_meta")$notes`, including cached bootstrap provenance such as `n_boot`, failed refits, and confidence level when the input came from `bootstrap_Sigma()` (EXT-19 / EXT-20 / EXT-24). IN: report and article code can audit interval provenance from the plot object. PARTIAL: this records existing extractor notes only; it does not compute new intervals or validate bootstrap calibration. PLANNED: richer article-level provenance summaries remain future reporting work.
-
-## Cached morphometrics bootstrap plot fixture (2026-05-21)
-
-* **Morphometrics article fixture** now ships a small cached `bootstrap_Sigma(..., what = "R")` object and uses it to render the confidence-eye correlation display plus `plot(type = "correlation_ellipse", boot = boot)` without running bootstrap refits during pkgdown builds (MIS-22 / EXT-23 / EXT-24). IN: the article demonstrates the direct bootstrap plotting path on a reproducible stored object. PARTIAL: the fixture is for teaching and visual QA, not interval-calibration evidence for a scientific claim. PLANNED: fuller bootstrap calibration belongs in simulation-grid or study-specific workflows.
-
-## Direct bootstrap correlation plots (2026-05-21)
-
-* **`plot_correlations()`** now accepts `bootstrap_Sigma()` objects containing `R_B` / `R_W` summaries and converts them to the same row-first correlation plotting schema used by `extract_correlations()` rows (EXT-24). IN: users can call `plot_correlations(boot, style = "eye")` after `bootstrap_Sigma(..., what = "R")` without hand-building pairwise rows; `style = "raindrop"` remains a compatibility alias. PARTIAL: this is a display bridge only; it does not run bootstrap refits, and matrix-style truth overlays remain article code. PLANNED: rendered article examples using stored bootstrap fixtures remain future Figure-3 QA work.
-
-## Correlation ellipse bootstrap intervals (2026-05-21)
-
-* **`plot(type = "correlation")` and `plot(type = "correlation_ellipse")`** now accept a `bootstrap_Sigma()` object through `boot` and merge stored `R_B` / `R_W` percentile bounds into the plotted correlation data (EXT-23). IN: heatmap and ellipse plot metadata now report interval availability, and the ellipse plot marks supplied intervals that do not cross zero with black borders and stars. PARTIAL: the plot does not run bootstrap refits and only uses correlation summaries already present in the bootstrap object. PLANNED: vdiffr snapshots and broader hidden/technical Figure-3 QA remain future work.
-
-## Repeatability bootstrap interval rows (2026-05-21)
-
-* **`extract_repeatability()`** now accepts `bootstrap_Sigma()` objects containing `ICC_site` summaries and returns the stored per-trait repeatability estimates plus percentile `lower` / `upper` columns (EXT-22). IN: bootstrap repeatability already computed by `bootstrap_Sigma(..., what = "ICC", level = c("unit", "unit_obs"))` can be reused without rerunning refits, and `plot(type = "integration", boot = boot)` now accepts a raw `bootstrap_Sigma()` object for repeatability and communality whiskers. PARTIAL: this reuses bootstrap-object summaries only; fitted-model calls still compute their own profile, Wald, or bootstrap intervals through `extract_repeatability(fit, method = ...)`, and the integration plot remains object-shape tested rather than vdiffr snapshot tested. PLANNED: a broader Figure-3 visual audit remains the next inference-plot step.
-
-## Communality bootstrap interval rows (2026-05-21)
-
-* **`extract_communality()`** now accepts `bootstrap_Sigma()` objects containing `communality` summaries and returns the stored per-trait point estimates plus percentile `lower` / `upper` columns when `ci = TRUE` (EXT-21). IN: bootstrap communalities already computed by `bootstrap_Sigma(..., what = "communality")` can be reused in reports without rerunning refits, and `plot(type = "communality", boot = boot)` can overlay `c^2` boundary intervals on the stacked communality / uniqueness bars. PARTIAL: this reuses bootstrap-object summaries only; fitted-model calls still compute their own profile or bootstrap intervals through `extract_communality(fit, ci = TRUE, method = ...)`, and the communality plot is still object-shape tested rather than vdiffr snapshot tested. PLANNED: a broader Figure-3 visual audit remains the next inference-plot step.
-
-## Bootstrap Sigma table rows (2026-05-21)
-
-* **`extract_Sigma_table()`** now accepts `bootstrap_Sigma()` objects and returns the same report-ready row schema with bootstrap percentile `lower` / `upper` columns filled in (EXT-20). IN: Sigma and correlation summaries already present in the bootstrap object can be converted to tidy rows and passed directly to `plot_Sigma_table()` for interval forests or confidence-eye displays. PARTIAL: this does not compute bootstrap intervals itself and does not add shared/unique component covariance intervals; communality and repeatability reuse are covered separately by EXT-21 and EXT-22. PLANNED: broader Figure-3 visual QA remains future work.
-
-## Covariance/correlation plot helpers (2026-05-21)
-
-* **`plot_correlations()` and `plot_Sigma_table()`** are new ggplot helpers for report-ready covariance and correlation rows. IN: tidy rows from `extract_correlations()` and `extract_Sigma_table()` can be drawn as forest plots or confidence-eye compatibility displays with metadata attached to `gllvmTMB_meta` / `gllvmTMB_data` (EXT-19). The first public integrations are in the README example, Get Started, Morphometrics, and Covariance/correlation articles. PARTIAL: these helpers display supplied finite interval bounds but do not compute new intervals; rows without finite interval bounds are shown as open points, and `plot_Sigma_table(style = "eye")` needs interval-bearing input rows. For fitted correlations, open points can often be investigated with `extract_correlations(..., method = "bootstrap")`; Sigma-table confidence eyes need bootstrap-derived or otherwise interval-bearing rows. Confidence eyes show frequentist compatibility, not posterior density, and omit CI lines by default so the hollow estimate circle and pale compatibility shape carry the display. Set `show_intervals = TRUE` to overlay interval lines when needed. `style = "raindrop"` remains a compatibility alias. PLANNED: hidden/technical article integration and vdiffr snapshots remain future figure work.
-
-## Missing response cells (2026-05-21)
-
-* **Response `NA`s are now accepted in both long-format and wide `traits(...)` data.** IN: missing unit-trait response cells can be treated as unobserved cells while preserving other observed traits for the same unit; for `cbind(successes, failures)` responses, a row is treated as response-missing when either component is missing; weights are subset to retained likelihood rows before validation, and `predict_missing()` reports fitted values for the masked-response route (MIS-21 / MIS-24). PARTIAL: this is response-missingness support only. Ordinary missing predictors, grouping variables, design-matrix entries, offsets, weights, or all-missing traits still require user-side cleaning unless the predictor is one of the explicitly modelled `mi()` slices covered in MIS-25..MIS-31.
-
-## Report-ready Sigma tables (#233 follow-up, 2026-05-21)
-
-* **`extract_Sigma_table()`** is a new report-ready table view over `extract_Sigma()` for covariance and correlation entries, with stable columns for `estimand`, trait pair, level, component, estimate, interval status, scale, validation row, and matrix position. IN: point-estimate Sigma/Psi/R tables for levels already handled by `extract_Sigma()` are covered by EXT-18, with underlying mixed-family Sigma evidence in MIX-03. PARTIAL: fitted-model interval columns are intentionally `NA` / `none`; use `extract_correlations()` or `bootstrap_Sigma()` for interval estimates, and `compare_Sigma_table()` / `plot_Sigma_comparison()` for known-truth comparisons. PLANNED: richer article-specific calibration summaries remain future work.
-
-## `meta_V()` formula-marker syntax (#227, 2026-05-20)
-
-* **`meta_V()`** now uses `meta_V(V = V)` or `meta_V(V, type = "exact")` as the canonical known-sampling-covariance formula marker. IN: exact additive known-V workflows remain the implemented surface (MET-01 / MET-02), and wide `traits(...)` formulas now preserve `meta_V()` as a covariance marker. PARTIAL: single-V statistical validation is still smoke-level under MET-01. PLANNED: `type = "proportional"` remains blocked under MET-03 and now errors explicitly rather than being silently treated as exact. The older parser spelling `meta_V(value, V = V)` and deprecated alias `meta_known_V(V = V)` remain accepted for compatibility.
-
-## Bootstrap covariance scale control (M3.3a, 2026-05-19)
-
-* **`bootstrap_Sigma()`** gains `link_residual = c("auto", "none")`, matching `extract_Sigma()` so bootstrap point estimates and refit summaries can either include family/link implicit residuals (`"auto"`, the existing default) or report the fitted latent + unique covariance only (`"none"`). IN: mixed-family bootstrap refits still preserve per-row family dispatch (MIX-08) and the default link-residual formulas remain covered (MIX-09). PARTIAL: non-Gaussian bootstrap inference remains experimental under EXT-13 / CI-08 / CI-10 until the M3 target-explicit grid is rerun with the corrected `Sigma_unit_diag` convention.
-
-## Robust modelling diagnostics and start provenance (M3.4, 2026-05-19)
-
-* **`check_gllvmTMB()`** is a new machine-readable fit-health table for `gllvmTMB_multi` fits. It reports optimizer convergence, maximum gradient, `sdreport()` availability, `pdHess`, maximum fixed-effect SE, restart-history availability, selected restart, and simple boundary flags. `gllvmTMBcontrol(se = FALSE)` now intentionally skips `TMB::sdreport()` and keeps the point-estimate fit for bootstrap/profile uncertainty workflows. `pdHess = FALSE` is reported as an inference / identifiability warning, not automatic proof that point estimates or rotation-invariant covariance summaries are unusable. Fits now also retain `restart_history`, `start_provenance`, `fit_health`, and `sdreport_error` fields so multi-start, residual-start, simpler-start, and optimizer-fallback workflows can be audited before they are promoted by M3 target-explicit simulation evidence.
-
-## phylo_* `A =` / `Ainv =` aliases (M2.8b, 2026-05-17)
-
-* The 5 `phylo_*` grid keywords (`phylo_scalar`, `phylo_unique`,
-  `phylo_indep`, `phylo_dep`, `phylo_latent`) now accept **`A =`**
-  and **`Ainv =`** as byte-equivalent aliases for **`vcv =`**.
-  Aligns phylo_* with the M2.8 `animal_*` family's A-vs-V naming
-  convention (A for relatedness, V for sampling variance —
-  reserved for `meta_V()`, with `meta_known_V()` retained as a
-  deprecated alias). The legacy `vcv =` continues to
-  work unchanged through v0.3.0. Supplying both `vcv` and `A`
-  (or both `vcv` and `Ainv`) errors with a typed message.
-
-## New exports (M2.8 animal-model keyword family, 2026-05-17)
-
-* **`animal_scalar()`, `animal_unique()`, `animal_indep()`,
-  `animal_dep()`, `animal_latent()`, `animal_slope()`** — the
-  `animal_*` keyword family for animal-model GLLVMs with
-  pedigree-derived additive-genetic relatedness. Each keyword
-  parallels its `phylo_*` sibling exactly; the three input forms
-  `pedigree =` (3-column id/sire/dam), `A =` (dense relatedness
-  matrix), and `Ainv =` (sparse precision; densified internally
-  for v0.2.0) are all accepted. The keyword family expands the
-  covariance keyword grid from **3 × 5 to 4 × 5**, with rows now
-  going from finest-grained (individual pedigree) to broadest
-  (geographic). Per
-  [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md).
-
-* **`pedigree_to_A()`** — exported helper that computes the
-  dense numerator-relationship matrix A from a 3-column pedigree
-  via Henderson's (1976) recursive formula.
-
-**A vs V naming boundary.** The new `animal_*` family uses **A**
-/ **Ainv** / **pedigree** for relatedness inputs. The separate
-`meta_V()` keyword uses **V** for *sampling variance* in
-meta-analysis; `meta_known_V()` is the deprecated alias. Existing
-`phylo_*(vcv = ...)` keeps working through v0.3.0; `A =` /
-`Ainv =` aliases shipped 2026-05-17 (M2.8b).
-
-## New exports (Phase 1b validation milestone)
-
-* **`gllvmTMB_check_consistency(fit, n_sim = 100L, seed = NULL,
-  estimate = FALSE)`** -- thin wrapper around
-  `TMB::checkConsistency()` that tests whether the approximate
-  marginal score is centred at zero. A non-centred score is a
-  sign that the Laplace approximation is **unreliable** for the
-  fit -- the random-effects posterior is far from Gaussian or
-  the data don't constrain the random effects well. Complementary
-  to `sanity_multi()` (structural / convergence checks) and
-  `check_identifiability()` (Procrustes-aligned loadings recovery
-  across simulate-refit replicates); slower than both but the
-  only diagnostic that targets the **Laplace approximation itself**
-  rather than the optimisation outcome or the parameter
-  identification. Returns an object of class
-  `gllvmTMB_check_consistency` with `$marginal_p_value`,
-  `$marginal_bias` (per-parameter), `$joint_p_value`
-  (when `estimate = TRUE`), `$flagged_parameters`,
-  `$diagnostics`, `$raw` (the full TMB::checkConsistency()
-  return). Diagnostic vocabulary: `"centred"` (well-behaved),
-  `"marginal_score_non_centred"`, `"joint_score_non_centred"`,
-  `"information_matrix_singular"`, `"marginal_p_value_unavailable"`.
-  Audit + TMB-report recommendation 2026-05-15.
-* **`confint_inspect(fit, parm)`** -- visual-verification companion
-  to `confint(method = "profile")`. Returns the full profile-
-  likelihood curve, the deviance bounds, a Wald-vs-profile
-  comparison, and (when `ggplot2` is available) a ggplot showing
-  the curve with MLE + chi-squared threshold + both profile and
-  Wald bounds. Diagnostic flags catalogue the four canonical
-  failure modes documented in the troubleshooting-profile vignette
-  (PR #115):
-  `"quadratic"` (well-behaved), `"asymmetric"` (Wald-profile
-  disagree), `"flat_at_mle"` (weak identifiability),
-  `"hits_lower_bound"` / `"hits_upper_bound"` (boundary parameter),
-  `"no_lower_crossing"` / `"no_upper_crossing"` (profile didn't
-  converge), `"profile_failed"`. Accepts any direct profile-target
-  label from `profile_targets()` (e.g. `"sigma_eps"`, `"sd_B[1]"`,
-  `"phi_nbinom2[2]"`, `"b_fix[1]"`); derived targets emit a typed
-  error pointing at the matching `extract_*(method = "profile")`
-  extractor. Audit + TMB-report recommendation 2026-05-15.
-* **`coverage_study(fit, parm, n_reps, methods, level, seed)`** --
-  empirical coverage-rate estimator. For each of `n_reps`
-  parametric-bootstrap replicates, simulates from the fit, refits,
-  computes confidence intervals via the requested methods, and
-  counts the fraction of CIs that contain the original fit's
-  estimate. Returns an object of class `gllvmTMB_coverage_study`
-  with `$coverage` (rate per `parm x method`, plus a
-  `passes_94pct` flag for the audit's empirical-coverage exit
-  gate), `$intervals` (long-format per-rep table for
-  re-aggregation), `$n_failed_refits`. Audit recommendation
-  2026-05-15: the >= 94% gate is the Phase 1b validation
-  milestone's empirical exit criterion. Defaults to all
-  profile-ready direct targets except packed Lambda entries
-  (rotation-ambiguous; coverage would be misleading).
-
-## Behaviour changes (Phase 1b validation milestone)
-
-* **`confint(fit, parm = "sigma_eps", method = "wald")` now
-  works on non-fixed-effect direct parm labels.** Previously
-  only `method = "profile"` consulted `profile_targets()`; the
-  Wald path went through `tidy(fit, "fixed")$term` and returned
-  NA for variance / dispersion / scaling parameters. New helper
-  `.confint_wald_targets()` computes Wald CIs from
-  `fit$sd_report$cov.fixed` directly and applies the registered
-  natural-scale transformation. This closes the symmetric API
-  gap left by PR #119 and unblocks `coverage_study()` on Wald
-  CIs.
-
-## New exports (P1a audit response)
-
-* **`profile_targets(fit, ready_only = FALSE)`** -- profile-likelihood
-  target inventory. Returns a tidy data frame with one row per
-  direct or derived profile target, with columns `parm`,
-  `target_class`, `tmb_parameter`, `index`, `estimate`,
-  `link_estimate`, `scale`, `transformation`, `target_type`,
-  `profile_ready`, `profile_note`. Direct targets correspond to
-  individual TMB parameter elements (e.g. `b_fix[1]`, `sigma_eps`,
-  `sd_B[2]`, `phi_nbinom2[1]`); derived targets (communality,
-  repeatability, phylogenetic signal, trait correlations) point
-  the user at the matching `extract_*(method = "profile")`
-  extractor via the `profile_note` column. Controlled vocabularies
-  on `target_type`, `profile_note`, and `transformation` mirror
-  drmTMB's `profile_targets()` (per the 2026-05-15 cross-team
-  scan in PR #109) so the broader TMB-package family stays
-  consistent.
-
-## Behaviour changes (P1a audit response)
-
-* **`confint.gllvmTMB_multi(method = "profile")` now routes
-  non-Sigma, non-fixed-effect `parm` labels through
-  `profile_targets()`**. Previously, `confint(fit, parm =
-  "sigma_eps", method = "profile")` would fall through to the
-  fixed-effect Wald path and return `NA` bounds (the parm wasn't
-  matched against `tidy(fit, "fixed")$term`). Now it consults
-  `profile_targets(fit, ready_only = TRUE)`, looks up the matching
-  TMB parameter and index, and calls `tmbprofile_wrapper()` with
-  the right transformation. Derived-target requests
-  (`parm = "communality"` etc.) now emit a typed warning that
-  points the user at the matching `extract_*(method = "profile")`
-  extractor instead. The Sigma-matrix path (parm in
-  `{Sigma_unit, Sigma_unit_obs, sigma_phy}`, with legacy aliases
-  `{Sigma_B, Sigma_W}`) and the fixed-effect Wald / profile paths are
-  unchanged.
-
-## New exports (Phase 1b)
-
-* **`check_auto_residual(fit)`** -- safeguard for the
-  `link_residual = "auto"` path in the multi-trait extractors. Inspects
-  the fit's per-row family vector and flags two configurations that
-  make the auto path incoherent: (a) **within-trait family mixing**
-  (a single trait carries rows from more than one family) -- errors
-  with `class = "gllvmTMB_auto_residual_incoherent"`; (b) **ordinal-probit
-  traits** -- warns with `class = "gllvmTMB_auto_residual_ordinal_probit_overcount"`
-  because the probit link's latent residual is already 1 by
-  construction and the auto path over-counts. Silent on well-formed
-  fits. Phase 1b item 3 (Emmy persona consult 2026-05-14).
-* **`check_identifiability(fit, sim_reps = 100L)`** -- identifiability
-  diagnostic for a `gllvmTMB_multi` fit. Simulates `sim_reps` datasets
-  from the fitted model, refits each replica under the same formula,
-  applies Procrustes alignment to the per-tier loading matrices, and
-  aggregates per-parameter recovery statistics plus Hessian-eigenvalue
-  rank checks. The canonical case this catches that no other
-  diagnostic does is a **spurious extra factor masquerading as
-  identified**: when `d_B` is mis-specified (e.g. fit `d = 2` when
-  truth is `d = 1`), `pdHess` may be `TRUE`, `sanity_multi()` may
-  pass, and profile CIs on derived quantities may look tight -- but
-  the second factor is noise. Procrustes alignment across replicates
-  exposes the spurious column as a near-zero residual magnitude.
-  Returns an object of class `gllvmTMB_identifiability` with
-  components `$recovery`, `$loadings`, `$hessian`, and `$flags`. V1
-  scope: Gaussian fits only (non-Gaussian / mixed-family support is
-  queued for the Phase 1b validation milestone). Phase 1b item 4
-  (Fisher persona consult 2026-05-14).
-
-## Behaviour changes (Phase 1b)
-
-* **`extract_correlations()` `link_residual` default change.** The
-  default of the new `link_residual` parameter is `"auto"`. Previously
-  the function hardcoded the equivalent of `link_residual = "none"`.
-  For non-Gaussian fits this means correlations are now reported on
-  the latent-liability scale (with the family-specific link residual
-  -- e.g. \eqn{\pi^2/3} for binomial-logit, \eqn{1} for probit,
-  trigamma terms for Gamma / NB2 / Beta / etc. -- added to the
-  diagonal of the implied `Sigma`). Gaussian fits are unaffected (the
-  link residual is zero). A one-shot warning fires the first time a
-  non-Gaussian fit is processed without an explicit `link_residual`
-  argument; pass `link_residual = "auto"` to lock the new behaviour
-  and suppress the warning, or `link_residual = "none"` to restore
-  the previous behaviour.
-* **`extract-sigma.R` Beta / beta-binomial saturation fix.** The
-  `mu_t` clamp at `[1e-6, 1 - 1e-6]` (per Gauss's correctness flag)
-  now applies before forming the trigamma arguments. Previously a
-  saturated Beta / beta-binomial fit (`eta -> +/-Inf`) collapsed one
-  of `(a_t, b_t)` to the `1e-12` floor and `trigamma(1e-12) ~ 1e24`
-  crushed any reported correlation to ~0. The new clamp keeps the
-  fit's degeneracy numerically visible (a large but finite trigamma
-  value) rather than silently producing meaningless correlations.
+* (Post-0.2.0 development. New user-facing changes are recorded here;
+  the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
 # gllvmTMB 0.2.0 (first CRAN release)
 
@@ -360,6 +12,57 @@ observational units carry several responses -- traits, species,
 items, behaviours, outcomes -- and the scientific question concerns
 their shared latent covariance, ordination, communality,
 phylogenetic signal, or spatial structure.
+
+## 0.2.0 release summary
+
+The headline capabilities below were validated across the 0.2.0
+development cycle; the full dated entries are grouped by theme in
+the **Capability landings during the 0.2.0 development cycle**
+section further down.
+
+* **Random-effect slopes under every family and structured mode.**
+  Augmented random regression slopes (`(1 + x | ...)`) now fit
+  across the full structured-covariance grid for every supported
+  family — phylogenetic (`phylo_indep` / `phylo_latent` /
+  `phylo_dep`; #341 / #381 / #388 / #392 / #422 / #424) and spatial
+  (`spatial_indep` / `spatial_latent` / `spatial_dep`; #427 / #429),
+  plus Gaussian multi-slope (s >= 2) on the full-unstructured
+  `phylo_dep` path (#341). The non-Gaussian dependent cells
+  (`phylo_dep`, `spatial_dep`) are the hardest in the grid and each
+  family joined the allowlist only after a non-skipped CI recovery
+  cell.
+* **Generic dense-kernel covariance and cross-lineage coevolution.**
+  The Design 65 dense-kernel quartet `kernel_unique()` /
+  `kernel_indep()` / `kernel_dep()` / `kernel_latent()`,
+  `make_cross_kernel()`, and `extract_Gamma()` add a phylo-equivalent
+  dense-`K` surface and a validated cross-lineage coevolution
+  workflow, with a public `cross-lineage-coevolution` article (#361).
+* **Animal-model keyword family.** The `animal_*` keyword row
+  (`animal_scalar/unique/indep/dep/latent/slope`), `pedigree_to_A()`,
+  and the `phylo_*` `A =` / `Ainv =` aliases complete the 4 x 5
+  correlation-by-mode grid (M2.8 / M2.8b).
+* **Missing data.** Response `NA` cells are accepted in long and wide
+  data with `predict_missing()`, and one explicitly modelled `mi()`
+  predictor is supported via `miss_control(predictor = "model")`,
+  `impute_model()`, and `imputed()` for Gaussian, grouped,
+  phylogenetic, binary, ordered, and unordered covariate models
+  (#332 / #365).
+* **Meta-analysis.** `meta_V(V = V)` is the canonical known-sampling-
+  covariance marker, with `block_V()` and explicit fail-loud handling
+  of the still-blocked `type = "proportional"` path (#227).
+* **Diagnostics, extractors, and reporting.** `check_gllvmTMB()`,
+  `predictive_check()`, `residuals()`, and `diagnostic_table()`
+  (#228 / #248) plus a report-ready covariance/correlation surface:
+  `extract_Sigma_table()`, `compare_Sigma_table()`,
+  `plot_correlations()`, `plot_Sigma_table()`,
+  `plot_Sigma_heatmap()`, `plot_Sigma_comparison()`,
+  rotated-loading helpers, bootstrap-interval reuse across the
+  extractors, and canonical `confint()` Sigma names (#233 follow-up).
+* **Inference and fitting robustness.** Profile / Wald / bootstrap /
+  Fisher-z intervals, the `coverage_study()` / `confint_inspect()` /
+  `profile_targets()` validation surface, `check_identifiability()`,
+  `gllvmTMB_check_consistency()`, multi-start / residual-start
+  provenance, and the `link_residual = "auto"` default.
 
 ## User-facing API
 
@@ -482,3 +185,374 @@ surface from `sdmTMB` and exposed single-response paths; the
 0.2.0 release does neither. Users who want single-response models
 should install `sdmTMB` or `glmmTMB` directly, which install
 side-by-side with `gllvmTMB` without conflict.
+
+## Capability landings during the 0.2.0 development cycle
+
+These are the full dated development-cycle entries, grouped by
+theme, preserved verbatim from the pre-release development log so
+every PR reference and validation note remains available.
+
+### Random-effect slopes across structured covariance modes
+
+### Binomial augmented phylo random slopes (#341, 2026-05-31)
+
+* **`phylo_indep(1 + x | sp)`** augmented random slopes now fit under the **binomial** family (probit and logit links), extending the previously Gaussian-only diagonal-Sigma_b cell (PHY-11). IN: the intercept-slope (co)variance is recovered with the intercept-slope correlation pinned to 0 by the model contract; a 6-seed grid recovers `sigma^2_int` / `sigma^2_slope` within a 0.25 relative band with every fit converging on a positive-definite Hessian (`test-binomial-slope-recovery.R`). This needed **no new C++**: the augmented-slope contribution enters the linear predictor before the family dispatch (the engine is family-agnostic), so activation was a single relaxed family guard in the fitting code. PARTIAL: the other non-Gaussian families (poisson / nbinom2 / Gamma / Beta / ordinal) on the `phylo_indep` augmented-slope path stay reserved fail-loud pending their own validation; the family-general `phylo_unique(1 + x | sp)` path already covers them where supported. PLANNED: the remaining `phylo_indep` non-Gaussian slope cells and the dependent / latent augmented-slope modes remain later B-slices.
+
+### Non-Gaussian augmented phylo random slopes: poisson / nbinom2 / Gamma / Beta / ordinal (#341, 2026-05-31)
+
+* **`phylo_indep(1 + x | sp)`** augmented random slopes now fit under **poisson** (log), **nbinom2**, **Gamma** (log), **Beta**, and **ordinal_probit**, extending the diagonal-Sigma_b cell beyond the Gaussian anchor and binomial (#381). IN: each family recovers the diagonal intercept/slope variances with the intercept-slope correlation pinned to 0 by the model contract; a 6-seed grid recovers `sigma^2_int` / `sigma^2_slope` for every family with every fit converging on a positive-definite Hessian, the correct runtime `family_id`, and `cor_b` held EXACTLY at 0 (`test-phylo-indep-slope-nongaussian.R`). Each family's recovery band is **inherited** from that family's existing correlated-slope cell (`test-matrix-slope-*.R`), not widened: poisson 4x, nbinom2 0.30 relative, Gamma 3x, Beta 0.40 relative, ordinal_probit 2.5x. The Gaussian anchor cell (`test-phylo-indep-slope-gaussian.R`) is also filled this cycle with a real recovery plus a wide `(1 + x)` vs long `(0 + trait + (0 + trait):x)` byte-identity check (replacing its Stage-3 skeleton skip). This needed **no new C++**: the augmented-slope contribution enters the linear predictor before the family dispatch (the engine is family-agnostic), so activation was a single one-line family-allowlist relax in the fitting code (the guard now admits runtime `family_id in {gaussian, binomial, poisson, Gamma, nbinom2, Beta, ordinal_probit}`). DISCIPLINE: a family was added to the allowlist only after its recovery cell passed; families OFF the allowlist (e.g. tweedie) still fail-loud-abort the augmented `phylo_indep` slope (locked in `test-matrix-slope-phylo-indep.R`). PLANNED: the dependent / latent augmented-slope modes (`phylo_dep` / `phylo_latent` LHS richer than `0 + trait`) for non-Gaussian families remain later B-slices.
+
+### Non-Gaussian augmented phylo_latent random slopes (#341, 2026-05-31)
+
+* **`phylo_latent(1 + x | sp, d = K)`** augmented reduced-rank random slopes now fit under **binomial** (probit and logit), **poisson** (log), **nbinom2**, **Gamma** (log), **Beta**, and **ordinal_probit**, extending the block-diagonal latent-slope cell beyond the Gaussian anchor (PHY-17). IN: each family converges on a positive-definite Hessian with the live latent-slope engine flag (`use_phylo_latent_slope == 1`, `n_lhs_cols_lat == 2`) and recovers the per-column slope-block variance (`report$Sigma_phy_slope_slope`) within the band inherited from that family's `test-matrix-slope-*.R` sibling (`test-matrix-slope-phylo-latent.R`, 56/56 expectations pass, 0 fail). The latent path is BLOCK-DIAGONAL across the (intercept, slope) LHS columns, so it estimates each column's Sigma_k separately with NO intercept-slope correlation; recovery is checked on the well-identified slope block (the `Sigma_phy_slope_*` report channel the Gaussian template uses), not the unstructured `sd_b` / `cor_b` channel. This needed **no new C++**: activation was the same one-line family-allowlist relax as the `phylo_indep` sweep (the guard now admits runtime `family_id in {gaussian, binomial, poisson, Gamma, nbinom2, Beta, ordinal_probit}`). Two pre-existing speculative-test bugs were also fixed: the engine-liveness guard was mis-keyed on the unique/dep flags (`use_phylo_slope` / `n_lhs_cols`, which are 0 / 1 on a latent fit) and the recovery harness read the absent `sd_b` / `cor_b` channel -- both repointed to the latent engine's actual flags and `Sigma_phy_slope_*` report. DISCIPLINE: a family was added to the allowlist only after its recovery cell passed; families OFF the allowlist (e.g. tweedie) still fail-loud-abort. PARTIAL: the **`phylo_dep(1 + x | sp)`** full-unstructured mode stays Gaussian-only -- the C x C (`C = 2*n_traits`) covariance is not yet identifiable for non-Gaussian families at the validation fixtures (every fit returns conv != 0 / non-PD Hessian up to `n_sp = 100`), so those cells honest-skip and the guard reserves them fail-loud (PHY-18). PLANNED: non-Gaussian `phylo_dep` slopes await a more identifiable parameterisation / larger n.
+
+### Non-Gaussian augmented spatial_latent random slopes (#341, 2026-05-31)
+
+* **`spatial_latent(1 + x | site, d = K)`** augmented block-diagonal reduced-rank SPDE random slopes now fit under **binomial** (probit and logit), **poisson** (log), **nbinom2**, **Gamma** (log), **Beta**, and **ordinal_probit**, extending the structured spatial latent-slope cell beyond the Gaussian anchor (SPA-09). IN: each family constructs and converges through the dedicated `use_spde_latent_slope` engine (live flag `use_spde_latent_slope == 1`, `n_lhs_cols_spde_lat == 2`); at the matrix fixture (n = 100, seed 20260529) four families (binomial-probit, poisson, Gamma, Beta) are positive-definite and pass the full health + slope-loading CI smoke, and three (binomial-logit, ordinal_probit, nbinom2) are non-PD at that one seed but PD at alternate seeds (202 / 303) and at n = 150 -- a power/seed artifact, not non-identifiability, so they stay allowlisted and honest-skip at the default fixture (`test-matrix-slope-spatial-latent.R`, 24 pass / 3 honest-skip / 0 fail). This needed **no new C++**: activation was the same family-allowlist relax as the phylo sweep (the `R/fit-multi.R` `use_spde_latent_slope` guard now admits runtime `family_id in {gaussian, binomial, poisson, Gamma, nbinom2, Beta, ordinal_probit}`). Three pre-existing speculative-test bugs were fixed, mirroring the #392 phylo_latent PR: the engine-liveness assertion was mis-keyed on the intercept-only `fit$use$spatial_latent` flag (which an augmented SLOPE fit does not set -- the augmented covstruct carries `.spatial_latent_augmented`, distinct from the intercept-only `.spatial_latent` marker), now repointed to `fit$use$spde_latent_slope` plus a path-live guard on `use_spde_latent_slope` / `n_lhs_cols_spde_lat`; the CI smoke read `extract_correlations(tier = "spatial")` / `confint("rho:spatial")`, which the block-diagonal latent path cannot surface (it exposes no `rho:spatial` token and `extract_correlations` keys on the intercept-only flag), now a finite sdreport SE on the reduced-rank slope loadings `theta_rr_spde_slope` (the spatial analogue of the #392 `theta_rr_phy_slope` smoke); and the nbinom2 expected `family_id` was corrected 3 -> 5. DISCIPLINE: a family was added to the allowlist only after its recovery cell passed; families OFF the allowlist (e.g. tweedie) still fail-loud-abort. PARTIAL: the **`spatial_dep(1 + x | site)`** full-unstructured mode stays Gaussian-only (SPA-10) -- the 2T x 2T (`C = 2*n_traits`) field covariance is not identifiable for non-Gaussian families at the validation fixtures (every fit returns conv != 0 / non-PD up to n = 100), the spatial analogue of `phylo_dep` (PHY-18), so those cells honest-skip (`test-matrix-slope-spatial-dep.R`, 7/7 skip, 0 fail) and the guard reserves them fail-loud. PLANNED: non-Gaussian `spatial_dep` slopes await a more identifiable parameterisation / larger n.
+
+### Multi-slope (s >= 2) augmented phylo_dep random regression, Gaussian (#341, 2026-05-31)
+
+* **`phylo_dep(1 + x1 + x2 + ... | sp)`** now fits two or more random slopes per species under the **Gaussian** family, lifting the previous s = 1 cap on the full-unstructured dependent path (RE-03). IN: the dep path generalises its column count from `2T` to `(1+s)T` and stacks each trait's `(intercept, slope_1, ..., slope_s)` columns into one INTERLEAVED block carrying the full unstructured `(1+s)T x (1+s)T` covariance `Sigma_b`; at s = 2 (two distinct within-species covariates `x1`, `x2`) the fit converges on a positive-definite Hessian and recovers the full `Sigma_b` within the bands inherited from the s = 1 dep cell (`test-phylo-dep-slope-s2-gaussian.R`, 986 expectations / 0 fail; slope-variance hat `{0.515, 0.293, 0.415, 0.373}` vs truth `{0.325, 0.266, 0.322, 0.260}`). The wide `1 + x1 + x2` and long `0 + trait + (0 + trait):x1 + (0 + trait):x2` surfaces are byte-identical, and `extract_Sigma(fit, level = "phy")` labels the rows `intercept.<t>`, `slope.<x_j>.<t>` (the s = 1 extractor keeps its bare `slope.<t>` name unchanged). This needed **no new C++**: the C++ dep likelihood is already dimension-general in `C = n_lhs_cols`, so activation was a purely R-side generalisation of the parser (`R/brms-sugar.R`, a dedicated multi-slope LHS classifier used only on the `phylo_dep` path), the Z fill + column count (`R/fit-multi.R`), and the extractor dimnames (`R/extract-sigma.R`). DISCIPLINE: multi-slope recognition is scoped to `phylo_dep` ONLY; every other augmented keyword (phylo_unique / indep / latent, spatial_*, relmat_*, animal_*) keeps the single-slope classifier and rejects `1 + x1 + x2` exactly as before -- all s = 1 slope tests pass unchanged. RESERVED: non-Gaussian s >= 2 stays fail-loud (the Gaussian-only `phylo_dep` family guard is unchanged -- the full unstructured covariance is not yet identifiable for non-Gaussian families, PHY-18). PLANNED: s >= 3 is mechanically supported (the code is general in `(1+s)`) but not yet gating-tested, and non-Gaussian multi-slope awaits a more identifiable parameterisation.
+
+### Non-Gaussian augmented phylo_dep random slopes: all families (#422, #424, 2026-06-02)
+
+* **`phylo_dep(1 + x | sp)`** augmented random slopes now fit under every supported family -- **poisson** (log, #422), then **Gamma** (log), **Beta**, **binomial** (probit/logit), **nbinom2**, and **ordinal_probit** (#424) -- closing the previously Gaussian-only full-unstructured dependent cell (PHY-18) and completing the phylo slope grid (scalar / indep / latent / dep × all families). IN: the full unstructured `2T x 2T` intercept/slope covariance `Sigma_b` is recovered with its free cross-correlation; each family converges on a positive-definite Hessian and recovers `Sigma_b` within the band inherited from that family's `test-matrix-slope-*.R` sibling, established by a real-API `*_VALIDATION` recovery cell (`test-matrix-slope-phylo-dep.R`) gated by a heavy `pull_request` recovery workflow. This needed **no new C++**: the C++ dep likelihood is already dimension-general in `C = n_lhs_cols`, so activation was a per-family relax of the `R/fit-multi.R` dep-slope family guard. DISCIPLINE: a family joined the allowlist ONLY after its recovery cell passed NON-SKIPPED in CI. This supersedes the earlier "`phylo_dep` non-Gaussian stays reserved (PHY-18)" PARTIAL notes in the entries below. PLANNED: non-Gaussian `phylo_dep` multi-slope (s >= 2) awaits its own identifiability gate.
+
+### Non-Gaussian augmented spatial_indep random slopes (#427, 2026-06-02)
+
+* **`spatial_indep(1 + x | coords)`** augmented SPDE random slopes now fit under **poisson** (log), **Gamma** (log), **Beta**, **binomial** (multi-trial), **nbinom2**, and **ordinal_probit**, extending the diagonal cross-field cell beyond the Gaussian anchor (SPA-08) -- the spatial mirror of `phylo_indep`. IN: the intercept/slope field variances are recovered with the intercept-slope correlation pinned to 0 by the model contract; each family's recovery cell fits a real `gllvmTMB(value ~ 0 + trait + spatial_indep(1 + x | coords))`, draws the SPDE field via a stable GMRF route (`backsolve(chol(Q), z)`), and reads marginal SDs from `extract_Sigma(level = "spatial")` plus field BLUPs from `omega_spde_aug` (`test-spatial-indep-slope-nongaussian.R`). All six family cells pass NON-SKIPPED in the heavy `pull_request` recovery gate (`0 failed, 0 errored, 0 skipped across 6 tests`). This needed **no new C++**: activation was a per-family relax of the BASE `spatial_unique` / `spatial_indep` guard in `R/fit-multi.R`. DISCIPLINE: a family joined the allowlist ONLY after its recovery cell passed non-skipped; the split `spatial_dep` guard was untouched (its non-Gaussian activation followed in #429).
+
+### Non-Gaussian augmented spatial_dep random slopes: all families (#429, 2026-06-03)
+
+* **`spatial_dep(1 + x | coords)`** augmented random slopes -- the FULL unstructured 2T×2T SPDE field-covariance cell, the hardest mode in the whole grid -- now fit under every supported family: **gaussian, binomial, poisson, Gamma, nbinom2, Beta, and ordinal_probit** (SPA-10). This closes the spatial slope grid (scalar / indep / latent / dep × all families) and is the spatial analogue of PHY-18 (`phylo_dep`). IN: the full unstructured intercept/slope field covariance is recovered with its free cross-field correlation; identifiability was established by a real-API `*_VALIDATION` recovery cell per family (`test-spatial-dep-slope-nongaussian.R`) gated by a heavy `pull_request` recovery workflow (final gate `0 failed, 0 errored, 0 skipped across 6 tests`). The count / proportion / ordinal families (nbinom2, Beta, ordinal_probit) need `n_sites = 1000` to identify the cross-field block (vs 400 for poisson / Gamma / binomial), and Beta's simulated response is clamped off the 0/1 boundary; poisson / Gamma / binomial pass at `n_sites = 400`. This needed **no new C++**: the augmented dep field enters the linear predictor before the family dispatch, so activation was a per-family relax of the `R/fit-multi.R` `use_spde_dep_slope` guard to `c(gaussian, binomial, poisson, Gamma, nbinom2, Beta, ordinal_probit)`. DISCIPLINE: a family joined the allowlist ONLY after its recovery cell passed NON-SKIPPED in CI. Supersedes the retired #425 identifiability spike (a hand-built SPDE-precision draw that produced no usable cells); the validation instead uses the package's own validated Gaussian spatial DGP. The base `spatial_unique` / `spatial_indep` guard (SPA-08, #427) is untouched.
+
+### Generic dense kernels and cross-lineage coevolution
+
+### Cross-lineage kernel prototype (#361, 2026-05-31)
+
+* **`make_cross_kernel()`** builds a PSD cross-lineage block relatedness matrix from host relatedness, partner relatedness, and an association matrix (KER-01 / COE-01). IN: the helper returns a correlation-scale `K_star` that can be passed through the existing dense `phylo_latent(..., vcv = K_star) + phylo_unique(..., vcv = K_star)` prototype path, with heavy-test evidence for planted host-partner `Gamma` recovery on block-missing `traits(...)` data. PARTIAL: this is a C0 helper and prototype only; the generic `kernel_*()` formula family (KER-02) and validated `extract_Gamma()` coevolution gate (COE-02) are covered by the later C1/C2 entries above. PLANNED: two-kernel coevolution models and in-engine `rho` estimation remain later Design 65 slices.
+
+### Generic dense-kernel covariance keywords (#361, 2026-05-31)
+
+* **`kernel_latent()` and `kernel_unique()`** add the Design 65 C1 dense-kernel formula surface, with `kernel_indep()` and `kernel_dep()` as the marginal-only and full-rank companion modes (KER-02 / COE-02). IN: users can pass a named dense relatedness/covariance matrix `K` directly through `kernel_latent(unit, K = A, d = q, name = "known") + kernel_unique(unit, K = A, name = "known")`, and `extract_Sigma(fit, level = "known")` returns the named kernel-tier Sigma; the equivalence gate checks log likelihood and extracted Sigma against the existing dense `phylo_latent(..., vcv = A) + phylo_unique(..., vcv = A)` path to less than `1e-6`, with direct companion-mode checks against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`. PARTIAL: this C1 slice reuses the phylo-equivalent dense relatedness engine slot and supports one named kernel tier. Cross-lineage `Gamma` extraction and the known-`Gamma` recovery gate are covered by the later C2 entry above; two-kernel models and in-engine `rho` estimation remain planned.
+
+### Cross-lineage coevolution Gamma extraction (#361, 2026-05-31)
+
+* **`extract_Gamma()`** adds the Design 65 C2 extractor for cross-lineage coevolution fits (COE-02). IN: after fitting a named dense-kernel tier such as `kernel_latent(species, K = K_star, d = 2, name = "cross") + kernel_unique(species, K = K_star, name = "cross")`, users can call `extract_Gamma(fit, level = "cross", row_traits = host_traits, col_traits = partner_traits)` to slice the host-trait x partner-trait shared covariance block from `extract_Sigma(part = "shared")`. Heavy-test evidence covers planted known-`Gamma` recovery on block-missing host/partner data, a block-diagonal zero-`Gamma` null with lower log likelihood, loading-orientation checks on the fitted recovery fixture, and a sparse-versus-dense single-`W` sensitivity case (`test-coevolution-recovery.R`). PARTIAL: `rho` is still supplied through `K_star` rather than estimated inside TMB, and `extract_Gamma()` returns point estimates without intervals. The `cross-lineage-coevolution` article now shows the `rho` grid-profile workflow, null comparison, and data-condition warnings as the public C2 workflow.
+
+### Cross-lineage coevolution worked example (#361, 2026-06-01)
+
+* The new `cross-lineage-coevolution` article turns the Design 65 C2
+  recovery gate into a public worked example. IN: the article builds
+  `K_star` with `make_cross_kernel()`, fits paired long-format and
+  wide `traits(...)` calls through `kernel_latent()` plus
+  `kernel_unique()`, compares a block-diagonal null, extracts
+  `Gamma` with `extract_Gamma()`, and visualises truth vs fitted vs
+  null covariance blocks (`COE-02`, `KER-02`). PARTIAL: the article
+  reports point estimates only and treats `rho` as a grid-profile
+  workflow parameter, not an in-engine estimate. PLANNED: calibrated
+  intervals, multiple simultaneous kernel tiers, and in-engine `rho`
+  estimation remain later Design 65 work.
+
+### Animal-model keyword family and phylo aliases
+
+### New exports (M2.8 animal-model keyword family, 2026-05-17)
+
+* **`animal_scalar()`, `animal_unique()`, `animal_indep()`,
+  `animal_dep()`, `animal_latent()`, `animal_slope()`** — the
+  `animal_*` keyword family for animal-model GLLVMs with
+  pedigree-derived additive-genetic relatedness. Each keyword
+  parallels its `phylo_*` sibling exactly; the three input forms
+  `pedigree =` (3-column id/sire/dam), `A =` (dense relatedness
+  matrix), and `Ainv =` (sparse precision; densified internally
+  for v0.2.0) are all accepted. The keyword family expands the
+  covariance keyword grid from **3 × 5 to 4 × 5**, with rows now
+  going from finest-grained (individual pedigree) to broadest
+  (geographic). Per
+  [Design 14](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md).
+
+* **`pedigree_to_A()`** — exported helper that computes the
+  dense numerator-relationship matrix A from a 3-column pedigree
+  via Henderson's (1976) recursive formula.
+
+**A vs V naming boundary.** The new `animal_*` family uses **A**
+/ **Ainv** / **pedigree** for relatedness inputs. The separate
+`meta_V()` keyword uses **V** for *sampling variance* in
+meta-analysis; `meta_known_V()` is the deprecated alias. Existing
+`phylo_*(vcv = ...)` keeps working through v0.3.0; `A =` /
+`Ainv =` aliases shipped 2026-05-17 (M2.8b).
+
+### phylo_* `A =` / `Ainv =` aliases (M2.8b, 2026-05-17)
+
+* The 5 `phylo_*` grid keywords (`phylo_scalar`, `phylo_unique`,
+  `phylo_indep`, `phylo_dep`, `phylo_latent`) now accept **`A =`**
+  and **`Ainv =`** as byte-equivalent aliases for **`vcv =`**.
+  Aligns phylo_* with the M2.8 `animal_*` family's A-vs-V naming
+  convention (A for relatedness, V for sampling variance —
+  reserved for `meta_V()`, with `meta_known_V()` retained as a
+  deprecated alias). The legacy `vcv =` continues to
+  work unchanged through v0.3.0. Supplying both `vcv` and `A`
+  (or both `vcv` and `Ainv`) errors with a typed message.
+
+### Missing data
+
+### Model-based missing predictors (#332 / #365, 2026-05-31)
+
+* **`miss_control(predictor = "model")`, `impute_model()`, and `imputed()`** now expose the shipped model-based missing-predictor layer. IN: one explicitly modelled `mi()` predictor is covered for Gaussian fixed-effect, grouped-intercept, and phylogenetic-intercept covariate models, plus fixed-effect binary, ordered, and unordered discrete predictor models (MIS-25..MIS-31); `imputed()` reports conditional modes and Hessian SEs for continuous Gaussian predictors and fitted conditional probabilities / expected scores / modal categories for the exact finite-state discrete routes. PARTIAL: the response-mask extractor remains separate as `predict_missing()` (MIS-24), and phylogenetic borrowing should be checked with `phylo_signal_mi()` before interpreting weak-signal EBLUPs (MIS-28). PLANNED: multiple `mi()` terms, EM/profile/REML engines, simulated imputations, MI pooling, structured discrete predictor models, bounded/count/lognormal/Gamma predictor families, and MNAR sensitivity are not implemented (MIS-32).
+
+### Missing response cells (2026-05-21)
+
+* **Response `NA`s are now accepted in both long-format and wide `traits(...)` data.** IN: missing unit-trait response cells can be treated as unobserved cells while preserving other observed traits for the same unit; for `cbind(successes, failures)` responses, a row is treated as response-missing when either component is missing; weights are subset to retained likelihood rows before validation, and `predict_missing()` reports fitted values for the masked-response route (MIS-21 / MIS-24). PARTIAL: this is response-missingness support only. Ordinary missing predictors, grouping variables, design-matrix entries, offsets, weights, or all-missing traits still require user-side cleaning unless the predictor is one of the explicitly modelled `mi()` slices covered in MIS-25..MIS-31.
+
+### Meta-analysis
+
+### `meta_V()` formula-marker syntax (#227, 2026-05-20)
+
+* **`meta_V()`** now uses `meta_V(V = V)` or `meta_V(V, type = "exact")` as the canonical known-sampling-covariance formula marker. IN: exact additive known-V workflows remain the implemented surface (MET-01 / MET-02), and wide `traits(...)` formulas now preserve `meta_V()` as a covariance marker. PARTIAL: single-V statistical validation is still smoke-level under MET-01. PLANNED: `type = "proportional"` remains blocked under MET-03 and now errors explicitly rather than being silently treated as exact. The older parser spelling `meta_V(value, V = V)` and deprecated alias `meta_known_V(V = V)` remain accepted for compatibility.
+
+### Diagnostics, extractors, and reporting helpers
+
+### Programmatic identifiability diagnostics (#248, 2026-05-24)
+
+* **`check_gllvmTMB()`** now adds symbolizer-facing latent-identifiability rows to its machine-readable fit-health table (DIA-08 / DIA-10). IN: the table reports Hessian rank, loading-rotation convention, weak latent-axis share, near-zero per-trait `psi` standard deviations, near-boundary estimated `sigma_eps`, and broad cross-loading structure alongside the existing optimizer, gradient, `sdreport()`, `pdHess`, fixed-effect SE, restart, and boundary rows. PARTIAL: these rows are heuristic diagnostics for fitted models; they do not calibrate interval coverage or prove that the selected latent rank is scientifically preferred. PLANNED: simulation/refit rank checks remain the job of `check_identifiability()` and the M3 validation grid.
+
+### Fitted-model predictive diagnostics (#228, 2026-05-25)
+
+* **`diagnostic_table()`** extracts report-ready tables from `predictive_check()` plots and diagnostic `residuals()` outputs without making articles inspect `attr(x, "gllvmTMB_diagnostic")` directly (DIA-13). IN: users can request plotted/residual `"data"`, `"row_status"` counts, `"fit_health_status"` counts, or the attached `"check_gllvmTMB"` table. PARTIAL: this is a table-extraction helper over existing metadata; it does not compute new residuals, run formal tests, refit models, or calibrate uncertainty. PLANNED: Tier-1 diagnostic articles can now build stable examples on this table path after Florence/Fisher review.
+* **`predictive_check()` and `residuals()`** now provide the public fitted-model diagnostic surface promoted from the #222 prototype (DIA-11 / DIA-12). IN: `predictive_check()` returns `ggplot` objects for randomized-quantile Q-Q checks, count rootograms, grouped statistics, and density overlays, with plotted data, `check_gllvmTMB()` rows, and `fit$fit_health` metadata attached in `attr(plot, "gllvmTMB_diagnostic")`; `residuals(fit, type = "randomized_quantile")` computes exact family-CDF residuals for Gaussian, Poisson, and NB2 rows, while `type = "simulation_rank"` remains the fitted-model simulation fallback. PARTIAL: these checks diagnose the fitted response distribution but do not calibrate intervals, prove latent rank, run formal DHARMa-style tests, or draw from a Bayesian posterior. PLANNED: exact residuals for delta, hurdle, truncated, ordinal, and mixture families remain future validation work.
+
+### Report-ready Sigma tables (#233 follow-up, 2026-05-21)
+
+* **`extract_Sigma_table()`** is a new report-ready table view over `extract_Sigma()` for covariance and correlation entries, with stable columns for `estimand`, trait pair, level, component, estimate, interval status, scale, validation row, and matrix position. IN: point-estimate Sigma/Psi/R tables for levels already handled by `extract_Sigma()` are covered by EXT-18, with underlying mixed-family Sigma evidence in MIX-03. PARTIAL: fitted-model interval columns are intentionally `NA` / `none`; use `extract_correlations()` or `bootstrap_Sigma()` for interval estimates, and `compare_Sigma_table()` / `plot_Sigma_comparison()` for known-truth comparisons. PLANNED: richer article-specific calibration summaries remain future work.
+
+### Covariance/correlation plot helpers (2026-05-21)
+
+* **`plot_correlations()` and `plot_Sigma_table()`** are new ggplot helpers for report-ready covariance and correlation rows. IN: tidy rows from `extract_correlations()` and `extract_Sigma_table()` can be drawn as forest plots or confidence-eye compatibility displays with metadata attached to `gllvmTMB_meta` / `gllvmTMB_data` (EXT-19). The first public integrations are in the README example, Get Started, Morphometrics, and Covariance/correlation articles. PARTIAL: these helpers display supplied finite interval bounds but do not compute new intervals; rows without finite interval bounds are shown as open points, and `plot_Sigma_table(style = "eye")` needs interval-bearing input rows. For fitted correlations, open points can often be investigated with `extract_correlations(..., method = "bootstrap")`; Sigma-table confidence eyes need bootstrap-derived or otherwise interval-bearing rows. Confidence eyes show frequentist compatibility, not posterior density, and omit CI lines by default so the hollow estimate circle and pale compatibility shape carry the display. Set `show_intervals = TRUE` to overlay interval lines when needed. `style = "raindrop"` remains a compatibility alias. PLANNED: hidden/technical article integration and vdiffr snapshots remain future figure work.
+
+### Bootstrap Sigma table rows (2026-05-21)
+
+* **`extract_Sigma_table()`** now accepts `bootstrap_Sigma()` objects and returns the same report-ready row schema with bootstrap percentile `lower` / `upper` columns filled in (EXT-20). IN: Sigma and correlation summaries already present in the bootstrap object can be converted to tidy rows and passed directly to `plot_Sigma_table()` for interval forests or confidence-eye displays. PARTIAL: this does not compute bootstrap intervals itself and does not add shared/unique component covariance intervals; communality and repeatability reuse are covered separately by EXT-21 and EXT-22. PLANNED: broader Figure-3 visual QA remains future work.
+
+### Communality bootstrap interval rows (2026-05-21)
+
+* **`extract_communality()`** now accepts `bootstrap_Sigma()` objects containing `communality` summaries and returns the stored per-trait point estimates plus percentile `lower` / `upper` columns when `ci = TRUE` (EXT-21). IN: bootstrap communalities already computed by `bootstrap_Sigma(..., what = "communality")` can be reused in reports without rerunning refits, and `plot(type = "communality", boot = boot)` can overlay `c^2` boundary intervals on the stacked communality / uniqueness bars. PARTIAL: this reuses bootstrap-object summaries only; fitted-model calls still compute their own profile or bootstrap intervals through `extract_communality(fit, ci = TRUE, method = ...)`, and the communality plot is still object-shape tested rather than vdiffr snapshot tested. PLANNED: a broader Figure-3 visual audit remains the next inference-plot step.
+
+### Repeatability bootstrap interval rows (2026-05-21)
+
+* **`extract_repeatability()`** now accepts `bootstrap_Sigma()` objects containing `ICC_site` summaries and returns the stored per-trait repeatability estimates plus percentile `lower` / `upper` columns (EXT-22). IN: bootstrap repeatability already computed by `bootstrap_Sigma(..., what = "ICC", level = c("unit", "unit_obs"))` can be reused without rerunning refits, and `plot(type = "integration", boot = boot)` now accepts a raw `bootstrap_Sigma()` object for repeatability and communality whiskers. PARTIAL: this reuses bootstrap-object summaries only; fitted-model calls still compute their own profile, Wald, or bootstrap intervals through `extract_repeatability(fit, method = ...)`, and the integration plot remains object-shape tested rather than vdiffr snapshot tested. PLANNED: a broader Figure-3 visual audit remains the next inference-plot step.
+
+### Correlation ellipse bootstrap intervals (2026-05-21)
+
+* **`plot(type = "correlation")` and `plot(type = "correlation_ellipse")`** now accept a `bootstrap_Sigma()` object through `boot` and merge stored `R_B` / `R_W` percentile bounds into the plotted correlation data (EXT-23). IN: heatmap and ellipse plot metadata now report interval availability, and the ellipse plot marks supplied intervals that do not cross zero with black borders and stars. PARTIAL: the plot does not run bootstrap refits and only uses correlation summaries already present in the bootstrap object. PLANNED: vdiffr snapshots and broader hidden/technical Figure-3 QA remain future work.
+
+### Direct bootstrap correlation plots (2026-05-21)
+
+* **`plot_correlations()`** now accepts `bootstrap_Sigma()` objects containing `R_B` / `R_W` summaries and converts them to the same row-first correlation plotting schema used by `extract_correlations()` rows (EXT-24). IN: users can call `plot_correlations(boot, style = "eye")` after `bootstrap_Sigma(..., what = "R")` without hand-building pairwise rows; `style = "raindrop"` remains a compatibility alias. PARTIAL: this is a display bridge only; it does not run bootstrap refits, and matrix-style truth overlays remain article code. PLANNED: rendered article examples using stored bootstrap fixtures remain future Figure-3 QA work.
+
+### Cached morphometrics bootstrap plot fixture (2026-05-21)
+
+* **Morphometrics article fixture** now ships a small cached `bootstrap_Sigma(..., what = "R")` object and uses it to render the confidence-eye correlation display plus `plot(type = "correlation_ellipse", boot = boot)` without running bootstrap refits during pkgdown builds (MIS-22 / EXT-23 / EXT-24). IN: the article demonstrates the direct bootstrap plotting path on a reproducible stored object. PARTIAL: the fixture is for teaching and visual QA, not interval-calibration evidence for a scientific claim. PLANNED: fuller bootstrap calibration belongs in simulation-grid or study-specific workflows.
+
+### Bootstrap provenance in plot metadata (2026-05-21)
+
+* **`plot_correlations()` and `plot_Sigma_table()`** now preserve extractor notes in `attr(p, "gllvmTMB_meta")$notes`, including cached bootstrap provenance such as `n_boot`, failed refits, and confidence level when the input came from `bootstrap_Sigma()` (EXT-19 / EXT-20 / EXT-24). IN: report and article code can audit interval provenance from the plot object. PARTIAL: this records existing extractor notes only; it does not compute new intervals or validate bootstrap calibration. PLANNED: richer article-level provenance summaries remain future reporting work.
+
+### Sigma estimate-vs-truth table helper (2026-05-21)
+
+* **`compare_Sigma_table()`** joins report-ready `extract_Sigma_table()` rows to a supplied covariance or correlation truth matrix for simulation and teaching figures (EXT-25). IN: example articles can build estimate-vs-truth tables without hand-indexing matrices. PARTIAL: this is a table helper only; use `plot_Sigma_comparison()` for the current visual layer, and keep richer calibration summaries as future visualization work.
+
+### Sigma estimate-vs-truth plot helper (2026-05-21)
+
+* **`plot_Sigma_comparison()`** plots `compare_Sigma_table()` rows as row-labelled error plots or estimate-vs-truth scatter plots for simulation and teaching figures (EXT-26). IN: example articles can show `estimate - truth` without hand-building ggplot scaffolding, including `facet = "comparison"` panels for precomputed rows from several model specifications. PARTIAL: this is a visual comparison helper only; it does not run simulations, compute intervals, or validate calibration. PLANNED: article-specific calibration summaries remain future visualization work.
+
+### Sigma heatmap plot helper (2026-05-21)
+
+* **`plot_Sigma_heatmap()`** plots `extract_Sigma_table()` rows as trait-by-trait covariance or correlation heatmaps (EXT-27). IN: articles and reports can show matrix block structure without extracting `Sigma`, calling `cov2cor()`, or hand-building `geom_tile()` layers; the first integration replaces the functional-biogeography article's bespoke correlation heatmaps. PARTIAL: heatmaps show point estimates only and do not display uncertainty intervals or truth comparisons. PLANNED: vdiffr snapshots and richer multi-model layout helpers remain future visualization work.
+
+### Rotated loading plot helper (2026-05-23)
+
+* **`plot_rotated_loadings()`** draws a report-ready loading matrix from a fitted model or from `extract_rotated_loadings_table()` rows (EXT-29). IN: users can make Figure-3-style loading panels without hand-pivoting `Lambda`, with varimax/promax/none rotation, shared-variance axis ordering, sign anchoring, standardized or raw loadings, visible numeric values for small matrices, and plot metadata in `gllvmTMB_meta` / `gllvmTMB_data`. PARTIAL: the helper displays point-estimate loadings only and does not compute loading uncertainty intervals; rotated axes remain interpretive descriptions, not uniquely identified biological truths. PLANNED: bootstrap- or simulation-aligned loading uncertainty and richer gallery layouts remain later visualization slices.
+
+### Rotated loading table helper (2026-05-23)
+
+* **`extract_rotated_loadings_table()`** returns report-ready tidy rows from the same rotation workflow used by `rotate_loadings()` and `plot(type = "ordination")` (EXT-28). IN: users can extract one row per trait × latent axis with `loading`, `abs_loading`, raw `axis_variance` / `axis_share`, `rotation`, `order_axes`, `sign_anchor`, `anchor_trait`, and `loading_scale`, including standardized loadings that match ordination-arrow scaling. PARTIAL: this is a point-estimate interpretation table; it does not compute loading uncertainty intervals and does not replace covariance, correlation, communality, or uniqueness as the primary rotation-invariant summaries. PLANNED: bootstrap or simulation-based uncertainty for loadings remains a later inference slice.
+
+### Rotated ordination sign anchors (2026-05-22)
+
+* **`plot(type = "ordination")`** now exposes the rotation workflow directly through `order_axes`, `sign_anchor`, and `anchor_traits`, matching `rotate_loadings()` for report-ready biplots (EXT-15 / MIS-09). IN: users can make varimax or promax ordination plots with shared-variance axis ordering and biologically pre-specified sign anchors, e.g. `anchor_traits = c("mass", "wing")`, without hand-rotating scores and loadings. PARTIAL: this is a plotting convention for interpretable axes; covariance, correlation, communality, and uniqueness remain the primary rotation-invariant summaries. PLANNED: visual snapshots and broader article gallery coverage remain future figure QA work.
+
+### Correlation matrix plot options (2026-05-23)
+
+* **`plot_correlations()`** now draws report-ready matrix views from the same tidy rows used by its forest and confidence-eye displays (EXT-30). IN: users can call `style = "heatmap"` or `style = "ellipse"` / `"oval"` on fitted-model, `bootstrap_Sigma()`, or `extract_correlations()` rows; choose `triangle = "full"`, `"lower"`, or `"upper"`; include or omit diagonal cells; print estimates, interval bounds, or both inside cells; and use `matrix_layout = "estimate_ci"` for upper-triangle estimates plus lower-triangle interval bounds, or `matrix_layout = "levels"` to combine exactly two levels such as `unit` and `unit_obs` in one matrix. PARTIAL: the matrix styles display supplied intervals only as numeric labels and significance outlines/stars when bounds exclude zero; they do not compute new intervals, calibrate bootstrap uncertainty, or compare to known truth. PLANNED: broader visual snapshots and gallery/article layouts remain future visualization QA.
+
+### Canonical `confint()` Sigma names (2026-05-22)
+
+* **`confint()`** now accepts canonical Sigma parameter names `parm = "Sigma_unit"` and `parm = "Sigma_unit_obs"` alongside the legacy aliases `"Sigma_B"` and `"Sigma_W"` (CI-02 / CI-03; underlying extraction EXT-01). IN: users can request unit- and unit-observation covariance intervals with the same naming used by `extract_Sigma(level = "unit")` and `extract_Sigma(level = "unit_obs")`; returned `parameter` labels follow the requested `parm` so existing scripts keep their legacy labels. PARTIAL: profile intervals for full latent + unique Sigma entries still fall back to bootstrap, and non-Gaussian bootstrap calibration remains experimental under EXT-13 / CI-10. PLANNED: richer derived-profile intervals and broader calibration evidence remain M3 work.
+
+### Inference, fitting robustness, and the validation milestone surface
+
+### Robust modelling diagnostics and start provenance (M3.4, 2026-05-19)
+
+* **`check_gllvmTMB()`** is a new machine-readable fit-health table for `gllvmTMB_multi` fits. It reports optimizer convergence, maximum gradient, `sdreport()` availability, `pdHess`, maximum fixed-effect SE, restart-history availability, selected restart, and simple boundary flags. `gllvmTMBcontrol(se = FALSE)` now intentionally skips `TMB::sdreport()` and keeps the point-estimate fit for bootstrap/profile uncertainty workflows. `pdHess = FALSE` is reported as an inference / identifiability warning, not automatic proof that point estimates or rotation-invariant covariance summaries are unusable. Fits now also retain `restart_history`, `start_provenance`, `fit_health`, and `sdreport_error` fields so multi-start, residual-start, simpler-start, and optimizer-fallback workflows can be audited before they are promoted by M3 target-explicit simulation evidence.
+
+### Bootstrap covariance scale control (M3.3a, 2026-05-19)
+
+* **`bootstrap_Sigma()`** gains `link_residual = c("auto", "none")`, matching `extract_Sigma()` so bootstrap point estimates and refit summaries can either include family/link implicit residuals (`"auto"`, the existing default) or report the fitted latent + unique covariance only (`"none"`). IN: mixed-family bootstrap refits still preserve per-row family dispatch (MIX-08) and the default link-residual formulas remain covered (MIX-09). PARTIAL: non-Gaussian bootstrap inference remains experimental under EXT-13 / CI-08 / CI-10 until the M3 target-explicit grid is rerun with the corrected `Sigma_unit_diag` convention.
+
+### New exports (Phase 1b validation milestone)
+
+* **`gllvmTMB_check_consistency(fit, n_sim = 100L, seed = NULL,
+  estimate = FALSE)`** -- thin wrapper around
+  `TMB::checkConsistency()` that tests whether the approximate
+  marginal score is centred at zero. A non-centred score is a
+  sign that the Laplace approximation is **unreliable** for the
+  fit -- the random-effects posterior is far from Gaussian or
+  the data don't constrain the random effects well. Complementary
+  to `sanity_multi()` (structural / convergence checks) and
+  `check_identifiability()` (Procrustes-aligned loadings recovery
+  across simulate-refit replicates); slower than both but the
+  only diagnostic that targets the **Laplace approximation itself**
+  rather than the optimisation outcome or the parameter
+  identification. Returns an object of class
+  `gllvmTMB_check_consistency` with `$marginal_p_value`,
+  `$marginal_bias` (per-parameter), `$joint_p_value`
+  (when `estimate = TRUE`), `$flagged_parameters`,
+  `$diagnostics`, `$raw` (the full TMB::checkConsistency()
+  return). Diagnostic vocabulary: `"centred"` (well-behaved),
+  `"marginal_score_non_centred"`, `"joint_score_non_centred"`,
+  `"information_matrix_singular"`, `"marginal_p_value_unavailable"`.
+  Audit + TMB-report recommendation 2026-05-15.
+* **`confint_inspect(fit, parm)`** -- visual-verification companion
+  to `confint(method = "profile")`. Returns the full profile-
+  likelihood curve, the deviance bounds, a Wald-vs-profile
+  comparison, and (when `ggplot2` is available) a ggplot showing
+  the curve with MLE + chi-squared threshold + both profile and
+  Wald bounds. Diagnostic flags catalogue the four canonical
+  failure modes documented in the troubleshooting-profile vignette
+  (PR #115):
+  `"quadratic"` (well-behaved), `"asymmetric"` (Wald-profile
+  disagree), `"flat_at_mle"` (weak identifiability),
+  `"hits_lower_bound"` / `"hits_upper_bound"` (boundary parameter),
+  `"no_lower_crossing"` / `"no_upper_crossing"` (profile didn't
+  converge), `"profile_failed"`. Accepts any direct profile-target
+  label from `profile_targets()` (e.g. `"sigma_eps"`, `"sd_B[1]"`,
+  `"phi_nbinom2[2]"`, `"b_fix[1]"`); derived targets emit a typed
+  error pointing at the matching `extract_*(method = "profile")`
+  extractor. Audit + TMB-report recommendation 2026-05-15.
+* **`coverage_study(fit, parm, n_reps, methods, level, seed)`** --
+  empirical coverage-rate estimator. For each of `n_reps`
+  parametric-bootstrap replicates, simulates from the fit, refits,
+  computes confidence intervals via the requested methods, and
+  counts the fraction of CIs that contain the original fit's
+  estimate. Returns an object of class `gllvmTMB_coverage_study`
+  with `$coverage` (rate per `parm x method`, plus a
+  `passes_94pct` flag for the audit's empirical-coverage exit
+  gate), `$intervals` (long-format per-rep table for
+  re-aggregation), `$n_failed_refits`. Audit recommendation
+  2026-05-15: the >= 94% gate is the Phase 1b validation
+  milestone's empirical exit criterion. Defaults to all
+  profile-ready direct targets except packed Lambda entries
+  (rotation-ambiguous; coverage would be misleading).
+
+### Behaviour changes (Phase 1b validation milestone)
+
+* **`confint(fit, parm = "sigma_eps", method = "wald")` now
+  works on non-fixed-effect direct parm labels.** Previously
+  only `method = "profile"` consulted `profile_targets()`; the
+  Wald path went through `tidy(fit, "fixed")$term` and returned
+  NA for variance / dispersion / scaling parameters. New helper
+  `.confint_wald_targets()` computes Wald CIs from
+  `fit$sd_report$cov.fixed` directly and applies the registered
+  natural-scale transformation. This closes the symmetric API
+  gap left by PR #119 and unblocks `coverage_study()` on Wald
+  CIs.
+
+### New exports (P1a audit response)
+
+* **`profile_targets(fit, ready_only = FALSE)`** -- profile-likelihood
+  target inventory. Returns a tidy data frame with one row per
+  direct or derived profile target, with columns `parm`,
+  `target_class`, `tmb_parameter`, `index`, `estimate`,
+  `link_estimate`, `scale`, `transformation`, `target_type`,
+  `profile_ready`, `profile_note`. Direct targets correspond to
+  individual TMB parameter elements (e.g. `b_fix[1]`, `sigma_eps`,
+  `sd_B[2]`, `phi_nbinom2[1]`); derived targets (communality,
+  repeatability, phylogenetic signal, trait correlations) point
+  the user at the matching `extract_*(method = "profile")`
+  extractor via the `profile_note` column. Controlled vocabularies
+  on `target_type`, `profile_note`, and `transformation` mirror
+  drmTMB's `profile_targets()` (per the 2026-05-15 cross-team
+  scan in PR #109) so the broader TMB-package family stays
+  consistent.
+
+### Behaviour changes (P1a audit response)
+
+* **`confint.gllvmTMB_multi(method = "profile")` now routes
+  non-Sigma, non-fixed-effect `parm` labels through
+  `profile_targets()`**. Previously, `confint(fit, parm =
+  "sigma_eps", method = "profile")` would fall through to the
+  fixed-effect Wald path and return `NA` bounds (the parm wasn't
+  matched against `tidy(fit, "fixed")$term`). Now it consults
+  `profile_targets(fit, ready_only = TRUE)`, looks up the matching
+  TMB parameter and index, and calls `tmbprofile_wrapper()` with
+  the right transformation. Derived-target requests
+  (`parm = "communality"` etc.) now emit a typed warning that
+  points the user at the matching `extract_*(method = "profile")`
+  extractor instead. The Sigma-matrix path (parm in
+  `{Sigma_unit, Sigma_unit_obs, sigma_phy}`, with legacy aliases
+  `{Sigma_B, Sigma_W}`) and the fixed-effect Wald / profile paths are
+  unchanged.
+
+### New exports (Phase 1b)
+
+* **`check_auto_residual(fit)`** -- safeguard for the
+  `link_residual = "auto"` path in the multi-trait extractors. Inspects
+  the fit's per-row family vector and flags two configurations that
+  make the auto path incoherent: (a) **within-trait family mixing**
+  (a single trait carries rows from more than one family) -- errors
+  with `class = "gllvmTMB_auto_residual_incoherent"`; (b) **ordinal-probit
+  traits** -- warns with `class = "gllvmTMB_auto_residual_ordinal_probit_overcount"`
+  because the probit link's latent residual is already 1 by
+  construction and the auto path over-counts. Silent on well-formed
+  fits. Phase 1b item 3 (Emmy persona consult 2026-05-14).
+* **`check_identifiability(fit, sim_reps = 100L)`** -- identifiability
+  diagnostic for a `gllvmTMB_multi` fit. Simulates `sim_reps` datasets
+  from the fitted model, refits each replica under the same formula,
+  applies Procrustes alignment to the per-tier loading matrices, and
+  aggregates per-parameter recovery statistics plus Hessian-eigenvalue
+  rank checks. The canonical case this catches that no other
+  diagnostic does is a **spurious extra factor masquerading as
+  identified**: when `d_B` is mis-specified (e.g. fit `d = 2` when
+  truth is `d = 1`), `pdHess` may be `TRUE`, `sanity_multi()` may
+  pass, and profile CIs on derived quantities may look tight -- but
+  the second factor is noise. Procrustes alignment across replicates
+  exposes the spurious column as a near-zero residual magnitude.
+  Returns an object of class `gllvmTMB_identifiability` with
+  components `$recovery`, `$loadings`, `$hessian`, and `$flags`. V1
+  scope: Gaussian fits only (non-Gaussian / mixed-family support is
+  queued for the Phase 1b validation milestone). Phase 1b item 4
+  (Fisher persona consult 2026-05-14).
+
+### Behaviour changes (Phase 1b)
+
+* **`extract_correlations()` `link_residual` default change.** The
+  default of the new `link_residual` parameter is `"auto"`. Previously
+  the function hardcoded the equivalent of `link_residual = "none"`.
+  For non-Gaussian fits this means correlations are now reported on
+  the latent-liability scale (with the family-specific link residual
+  -- e.g. \eqn{\pi^2/3} for binomial-logit, \eqn{1} for probit,
+  trigamma terms for Gamma / NB2 / Beta / etc. -- added to the
+  diagonal of the implied `Sigma`). Gaussian fits are unaffected (the
+  link residual is zero). A one-shot warning fires the first time a
+  non-Gaussian fit is processed without an explicit `link_residual`
+  argument; pass `link_residual = "auto"` to lock the new behaviour
+  and suppress the warning, or `link_residual = "none"` to restore
+  the previous behaviour.
+* **`extract-sigma.R` Beta / beta-binomial saturation fix.** The
+  `mu_t` clamp at `[1e-6, 1 - 1e-6]` (per Gauss's correctness flag)
+  now applies before forming the trigamma arguments. Previously a
+  saturated Beta / beta-binomial fit (`eta -> +/-Inf`) collapsed one
+  of `(a_t, b_t)` to the `1e-12` floor and `trigamma(1e-12) ~ 1e24`
+  crushed any reported correlation to ~0. The new clamp keeps the
+  fit's degeneracy numerically visible (a large but finite trigamma
+  value) rather than silently producing meaningless correlations.

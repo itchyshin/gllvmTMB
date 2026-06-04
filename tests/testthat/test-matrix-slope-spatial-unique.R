@@ -12,26 +12,24 @@
 ##     covariance implied by the SPDE precision (Design 55 sec.A4, Design 56
 ##     sec.9.5e). Sigma_b is the 2x2 (intercept, slope) covariance.
 ##   * Recovery: sigma^2_intercept, sigma^2_slope, cov(intercept, slope) at the
-##     site level (the augmented `report$sd_b` / `report$cor_b` block, same
-##     shape contract as the phylo-slope sibling test-matrix-slope-*.R), plus
-##     the SPDE Matern (kappa / range) parameters.
-##   * CI smoke: a finite profile bound on the slope variance (the augmented
-##     log_sd_b[2] direct parameter) OR a non-degenerate
+##     site level (the augmented SPDE field block `report$sd_spde_b` /
+##     `report$cor_spde_field`), plus the SPDE Matern (kappa / range)
+##     parameters.
+##   * CI smoke: a finite profile bound on the slope-field variance (the
+##     augmented `log_sd_spde_b[2]` direct parameter) OR a non-degenerate
 ##     extract_correlations(tier = "spatial").
 ##
-## ENGINE STATUS (empirically verified on this worktree, 2026-05-29):
-## the augmented random-slope engine path (`use_phylo_slope_correlated`,
-## `b_phy_aug` / `Z_phy_aug` / `log_sd_b` / `atanh_cor_b` in
-## src/gllvmTMB.cpp:198-281) exists ONLY for the phylo / animal / relmat tier.
-## There is NO SPDE augmented-slope path: `spatial_unique()` requires a bar of
-## shape `0 + trait | coords` and fail-loud aborts on a `(1 + x | site)` or
-## `(1 + x | coords)` random-slope LHS at CONSTRUCTION time
-## (R/brms-sugar.R `.assert_no_augmented_lhs`; the spatial mode-dispatch
-## wrapper rejects it before any family-specific code runs). This is exactly
-## the Design 55 sec.A4 / Design 56 sec.9.5e Stage-3 work the Gaussian
-## skeleton test-spatial-unique-slope-gaussian.R is gated on
-## (`skip_until_stage3()`). So at the present build EVERY family below skips
-## at construction; that is the honest matrix state for this cell.
+## ENGINE STATUS (updated 2026-06-03): the SPDE augmented-slope engine
+## (`use_spde_slope`, driven by the `.spatial_unique_augmented` parser marker)
+## IS live -- `spatial_unique(1 + x | coords)` builds a 2-column SPDE field
+## (`tmb_data$n_lhs_cols_spde == 2`) with the 2x2 cross-field block reported as
+## `log_sd_spde_b` / `sd_spde_b` / `cor_spde_field` (src/gllvmTMB.cpp). This is
+## a DIFFERENT slot family from the phylo-tier augmented slope (`b_phy_aug` /
+## `log_sd_b` / `n_lhs_cols`, default 1 on a pure spatial fit); the smoke bar
+## below reads the SPDE `*_spde_b` slots. SPA-08 (#427) relaxed the
+## gaussian-only family guard to the per-family allowlist
+## c(0L, 1L, 2L, 4L, 5L, 7L, 14L), so the non-Gaussian families below now
+## CONSTRUCT and reach the smoke bar instead of honest-skipping at the guard.
 ##
 ## DISCIPLINE (Design 59 Honest-matrix, hard): each family attempts the REAL
 ## fit through `gllvmTMB::gllvmTMB(value ~ 0 + trait + spatial_unique(1 + x |
@@ -164,19 +162,27 @@ expect_slope_spatial_smoke <- function(fit, expected_family_id) {
   testthat::expect_true(isTRUE(fit$fit_health$pd_hessian))
   testthat::expect_equal(fit$tmb_data$family_id_vec[1L], expected_family_id)
 
-  ## Augmented correlated-slope path active with 2 LHS columns (intercept +
-  ## slope). The engine reports the 2x2 block as report$sd_b + report$cor_b.
-  testthat::expect_equal(fit$tmb_data$n_lhs_cols, 2L)
-  sd_b <- as.numeric(fit$report$sd_b)
-  testthat::expect_equal(length(sd_b), 2L)
-  testthat::expect_true(all(is.finite(sd_b)))
+  ## Augmented SPDE correlated-slope path active with 2 LHS columns (intercept
+  ## + slope). The augmented SPDE field reports the 2x2 block as
+  ## report$sd_spde_b + report$cor_spde_field and counts its columns in
+  ## tmb_data$n_lhs_cols_spde (set to 2L for the base spatial_unique /
+  ## spatial_indep slope at R/fit-multi.R). NOTE: n_lhs_cols / report$sd_b /
+  ## log_sd_b are the SEPARATE phylo_dep correlated-slope slots (default 1 on a
+  ## pure spatial fit); the SPDE slope SDs live in the *_spde_b slots. The
+  ## earlier draft of this smoke bar referenced the phylo_dep slots, which only
+  ## escaped notice because every non-Gaussian cell honest-skipped at the
+  ## gaussian-only guard until SPA-08 (#427) admitted these families.
+  testthat::expect_equal(fit$tmb_data$n_lhs_cols_spde, 2L)
+  sd_spde_b <- as.numeric(fit$report$sd_spde_b)
+  testthat::expect_equal(length(sd_spde_b), 2L)
+  testthat::expect_true(all(is.finite(sd_spde_b)))
 
-  ## CI smoke -- Branch 1: profile the augmented slope log-SD (log_sd_b[2])
-  ## and transform to the SD scale (the genuine direct-parameter profile for
-  ## the slope variance of this cell).
+  ## CI smoke -- Branch 1: profile the augmented SPDE slope log-SD
+  ## (log_sd_spde_b[2]) and transform to the SD scale (the genuine direct-
+  ## parameter profile for the slope field variance of this cell).
   slope_ci <- tryCatch(
     gllvmTMB:::tmbprofile_wrapper(
-      fit, name = "log_sd_b", which = 2L, transform = exp
+      fit, name = "log_sd_spde_b", which = 2L, transform = exp
     ),
     error = function(e) e
   )

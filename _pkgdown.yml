@@ -26,6 +26,10 @@ navbar:
       - text: Model guide
       - text: Morphometrics
         href: articles/morphometrics.html
+      - text: Joint species distribution model
+        href: articles/joint-sdm.html
+      - text: Cross-lineage coevolution kernels
+        href: articles/cross-lineage-coevolution.html
       - text: Concepts
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
@@ -33,16 +37,11 @@ navbar:
         href: articles/api-keyword-grid.html
       - text: Response families
         href: articles/response-families.html
-      - text: Joint species distribution model
-        href: articles/joint-sdm.html
-      - text: Cross-lineage coevolution kernels
-        href: articles/cross-lineage-coevolution.html
       - text: Methods
       - text: Convergence and start values
         href: articles/convergence-start-values.html
       - text: Common pitfalls
         href: articles/pitfalls.html
-      - text: Data handling
       - text: Handling missing data
         href: articles/missing-data.html
     roadmap:
@@ -56,21 +55,21 @@ articles:
     - articles/choose-your-model
     - articles/morphometrics
     - articles/animal-model
+    - articles/phylogenetic-gllvm
+    - articles/joint-sdm
+    - articles/cross-lineage-coevolution
+    - articles/behavioural-syndromes
+    - articles/random-regression-reaction-norms
 
   - title: Concepts
     contents:
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
-    - articles/phylogenetic-gllvm
-    - articles/cross-lineage-coevolution
     - articles/api-keyword-grid
     - articles/response-families
     - articles/mixed-family-extractors
-    - articles/joint-sdm
-    - articles/behavioural-syndromes
     - articles/ordinal-probit
     - articles/stacked-trait-gllvm
-    - articles/random-regression-reaction-norms
 
   - title: Methods
     contents:
@@ -79,9 +78,6 @@ articles:
     - articles/profile-likelihood-ci
     - articles/troubleshooting-profile
     - articles/cross-package-validation
-
-  - title: Data handling
-    contents:
     - articles/missing-data
 
   - title: internal
@@ -105,6 +101,7 @@ reference:
     - miss_control
     - impute_model
     - simulate_site_trait
+    - simulate_unit_trait
 
   - title: Core covariance keywords
     desc: First-line formula keywords for the 4 x 5 grid (correlation source x mode)

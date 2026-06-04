@@ -197,6 +197,72 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   groupings <- vapply(parsed$covstructs, function(cs) deparse(cs$group), character(1))
   kinds     <- vapply(parsed$covstructs, function(cs) cs$kind, character(1))
 
+  ## ---- Design 65 C3.2 two-Psi identifiability guardrail -----------------
+  ## A two-kernel model carries two uniqueness tiers (e.g. a phylo cross-
+  ## kernel `Psi_phy` plus a tip-level non-phylo `Psi_non`). The split of
+  ## per-trait uniqueness variance into `Psi_phy + Psi_non` is NOT separable
+  ## from a single observation per species/trait: with one community
+  ## realisation the two diagonal variance components are confounded
+  ## (Boettiger et al. 2012 -- a single shared association is only ONE
+  ## replicate of the signal; Design 65 sec. C3.2). Replication -- repeated
+  ## communities, or species means + SE -- is what identifies the two Psi.
+  ##
+  ## Detection is conservative: it fires ONLY when TWO OR MORE `kernel_unique`
+  ## (uniqueness) tiers are present AND there is no within-cluster replication
+  ## (every species level appears in at most one observation row). In that
+  ## case we DROP the extra uniqueness covstruct(s) from `parsed$covstructs`
+  ## (defaulting to a single, identifiable uniqueness tier) and emit a
+  ## `cli::cli_warn` -- a warn, not a hard abort, so the model still fits. We
+  ## prune here, before the per-keyword index vectors are built, so every
+  ## downstream slot (vcv harvest, phylo_diag, extract_Sigma) sees one tier.
+  is_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    if (!identical(cs$kind, "phylo_rr")) return(FALSE)
+    mode <- cs$extra[[".kernel_mode"]]
+    isTRUE(cs$extra[[".phylo_unique"]]) &&
+      !is.null(mode) &&
+      as.character(mode) %in% c("unique", "indep")
+  }, logical(1L))
+  if (sum(is_kernel_unique) >= 2L) {
+    ## Replication is measured in DISTINCT observation UNITS per species, NOT
+    ## raw long-format rows. By the time the fit runs, a wide `traits(y1, y2)`
+    ## call has been pivoted to stacked-trait long format, so every species
+    ## already appears in `n_traits` rows even with one community realisation.
+    ## Counting raw rows would mistake trait-stacking for replication and skip
+    ## the guardrail (then abort at the single-`name` validation below). The
+    ## within-unit observation factor (`unit_obs`, default "site_species")
+    ## identifies the original observation row, so distinct `unit_obs` values
+    ## per species is the honest replication count. Fall back conservatively
+    ## (treat as unreplicated) when that column is absent.
+    has_replication <- FALSE
+    if (!is.null(unit_obs) && unit_obs %in% names(data) &&
+        species %in% names(data)) {
+      units_per_species <- tapply(
+        as.character(data[[unit_obs]]),
+        data[[species]],
+        function(u) length(unique(u))
+      )
+      has_replication <- length(units_per_species) > 0L &&
+        max(units_per_species, na.rm = TRUE) > 1L
+    }
+    if (!has_replication) {
+      ## Keep the FIRST kernel uniqueness tier; drop the rest.
+      drop_idx <- which(is_kernel_unique)[-1L]
+      parsed$covstructs <- parsed$covstructs[-drop_idx]
+      groupings <- vapply(
+        parsed$covstructs, function(cs) deparse(cs$group), character(1)
+      )
+      kinds <- vapply(
+        parsed$covstructs, function(cs) cs$kind, character(1)
+      )
+      cli::cli_warn(c(
+        "Two {.fn kernel_unique} tiers are not separable without replication.",
+        "i" = "The two-{.field Psi} split ({.code Psi_phy + Psi_non}) is confounded with a single observation per species/trait: one community realisation is only one replicate of the uniqueness signal (Boettiger et al. 2012; Design 65 C3.2).",
+        ">" = "Defaulting to a single uniqueness tier. To estimate both {.field Psi}, supply within-species replication (repeated communities, or species means + SE)."
+      ))
+    }
+  }
+
   ## ---- `dep` quartet: resolve `.deferred_n_traits` placeholder to T --------
   ## The parser-side rewrite for `dep` / `phylo_dep` / `spatial_dep` writes a
   ## symbolic `d = .deferred_n_traits` because it doesn't have access to

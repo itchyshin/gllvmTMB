@@ -105,6 +105,7 @@ reference:
     - miss_control
     - impute_model
     - simulate_site_trait
+    - simulate_unit_trait
 
   - title: Core covariance keywords
     desc: First-line formula keywords for the 4 x 5 grid (correlation source x mode)

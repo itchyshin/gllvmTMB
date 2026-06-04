@@ -97,9 +97,9 @@ This simulator is domain-specific: it produces a \verb{(site, species, trait)} c
 layout. The package as a whole works for any \verb{(unit, trait)}
 stacked-trait GLLVM (\code{unit} may be site, individual, species,
 paper, ...); this particular simulator targets the site × species
-× trait special case used in the methods paper. For simpler
-simulations from a generic \verb{(unit, trait)} design, build the data
-inline as in the morphometrics article.
+× trait special case used in the methods paper. For simulations
+from a generic \verb{(unit, observation, trait)} design without
+phylogenetic or spatial structure, use \code{\link[=simulate_unit_trait]{simulate_unit_trait()}}.
 
 Each component can be turned on or off via the corresponding variance /
 loading argument. The default settings produce a fixed-effects-only dataset
@@ -111,4 +111,9 @@ sim <- simulate_site_trait(n_sites = 30, n_species = 8, n_traits = 3,
                            mean_species_per_site = 4)
 head(sim$data)
 sim$truth$alpha
+}
+\seealso{
+\code{\link[=simulate_unit_trait]{simulate_unit_trait()}} for the generic
+\verb{(unit, observation, trait)} simulator without phylogenetic or
+spatial machinery.
 }

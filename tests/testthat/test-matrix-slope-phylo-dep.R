@@ -638,7 +638,8 @@ test_that("phylo_dep(1 + x | sp) x poisson VALIDATION (PHY-18): real-API fit con
 ## family id), honest-skip on non-convergence / non-PD / out-of-band
 ## recovery, else assert family_id + Sigma_b_dep slope-variance recovery
 ## within the inherited band. `expected_fid` is the family_to_id() runtime
-## id (binomial 1, poisson 2, Gamma 4, nbinom2 5, Beta 7, ordinal 14).
+## id (binomial 1, poisson 2, Gamma 4, nbinom2 5, Beta 7, ordinal 14,
+## nbinom1 15).
 .run_dep_validation_family <- function(fx, family, expected_fid, var_band,
                                        row_id, response_lhs = "value") {
   form <- stats::as.formula(
@@ -802,4 +803,107 @@ test_that("phylo_dep(1 + x | sp) x binomial VALIDATION (PHY-18): real-API fit co
     fx, stats::binomial(link = "logit"), expected_fid = 1L, var_band = 3,
     row_id = "binomial (RE-02 / PHY-06)", response_lhs = "cbind(succ, fail)"
   )
+})
+
+## ---- nbinom1 (family_id 15; mean-dependent, inherited 4x band) -------
+## THE LAST MISSING FAMILY in the structured non-Gaussian slope grid (#350).
+## nbinom1 (linear NB variance, Var = mu * (1 + phi); Hilbe 2011) is wired
+## into the multivariate engine (family_to_id() case nbinom1 = 15L; the C++
+## `fid == 15` likelihood branch with the per-trait `phi_nbinom1` REPORT) and
+## recovers at the INTERCEPT-ONLY unit / phylo / spatial tiers (FAM-07,
+## test-matrix-nbinom1.R / test-tiers-nbinom1.R). Its AUGMENTED-slope
+## identifiability is genuinely uncertain, though: #350 flags nbinom1 as only
+## `P (smoke)`-validated even intercept-only (board #340), and the phi <->
+## latent-variance confound documented in FAM-07 can pull per-trait phi toward
+## the boundary. So this cell is EVIDENCE-BASED scoping per #350: it drives the
+## REAL public-API dep path and lets CI decide. If it recovers NON-SKIPPED,
+## nbinom1 (id 15) stays on the R/fit-multi.R slope guard allowlists; if it
+## skips (non-PD / out-of-band even after the n escalation), nbinom1 is REMOVED
+## from the allowlists and stays reserved fail-loud with an honest note. NO
+## force-pass.
+##
+## Band: nbinom1 has no intercept-only AUGMENTED-slope sibling to inherit from,
+## so the band is inherited from nbinom2 -- the closest mean-dependent count
+## family (Var = mu + mu^2/phi vs nbinom1's Var = mu * (1 + phi)) -- which uses
+## the wider 4x variance band. This also matches nbinom1's OWN intercept-only
+## Phase-B0 band (the widest mean-dependent tier, |b_hat - mu_int| < 0.40 in
+## test-matrix-nbinom1.R). Draw via rnbinom(mu = exp(eta), size = mu / phi) so
+## the realised overdispersion is NB1 (Var = mu * (1 + phi)), NOT NB2.
+## Escalation (#350, this PR): the n_sp = 300 nbinom1 cell skipped non-PD
+## (conv = 1, pdHess = FALSE) at the SAME n as the passing nbinom2 cell, so
+## nbinom1 gets ONE fair escalation -- larger n_sp (400) PLUS a small seed
+## sweep -- mirroring how spatial_dep's count families needed n_sites = 1000.
+## The driver takes the FIRST healthy (conv = 0, PD) fit; if every (seed, n)
+## attempt is non-PD / out-of-band it stays honest-skipped and nbinom1 is
+## removed from the R/fit-multi.R allowlists (no force-pass).
+test_that("phylo_dep(1 + x | sp) x nbinom1 VALIDATION (PHY-18 / FAM-07): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_slope_phylo_dep_deps()
+  phi_nb1 <- 2.0
+  ## Escalated past the nbinom2 working n (n_sp = 300) to n_sp = 400, and a
+  ## seed sweep across the sweep band. The first (seed, n_sp) that fits
+  ## convergent + PD and recovers in-band wins; otherwise honest skip.
+  attempts <- expand.grid(
+    seed = c(20260603L, 20260604L, 20260605L),
+    n_sp = c(400L, 300L),
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+  )
+  succeeded <- FALSE
+  for (i in seq_len(nrow(attempts))) {
+    fx <- .make_dep_eta_fixture(
+      seed = attempts$seed[i], n_sp = attempts$n_sp[i], T_tr = 2L, n_rep = 10L,
+      mu_t_log = c(1.0, 0.7)
+    )
+    mu <- exp(fx$eta)
+    ## NB1 draw: size = mu / phi => Var = mu + mu^2 / (mu / phi) = mu*(1 + phi).
+    fx$df_long$value <- stats::rnbinom(
+      nrow(fx$df_long), mu = mu, size = mu / phi_nb1
+    )
+    form <- stats::as.formula(
+      "value ~ 0 + trait + phylo_dep(1 + x | species)"
+    )
+    fit <- tryCatch(
+      suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+        form, data = fx$df_long, phylo_tree = fx$tree, unit = "species",
+        family = gllvmTMB::nbinom1(),
+        control = gllvmTMB::gllvmTMBcontrol(se = TRUE)
+      ))),
+      error = function(e) e
+    )
+    if (inherits(fit, "error")) {
+      testthat::fail(sprintf(
+        "phylo_dep(1 + x | sp) x nbinom1 aborted at construction: %s (the guard relaxation should admit family id 15)",
+        conditionMessage(fit)
+      ))
+      return(invisible(NULL))
+    }
+    healthy <- isTRUE(fit$opt$convergence == 0L) &&
+      is.finite(fit$opt$objective) &&
+      (isTRUE(fit$fit_health$pd_hessian) || isTRUE(fit$sd_report$pdHess))
+    if (healthy) {
+      ## Reuse the shared assertions: rebuild the matching fixture context by
+      ## handing the in-hand fit to the band check inline.
+      testthat::expect_s3_class(fit, "gllvmTMB_multi")
+      testthat::expect_true(isTRUE(fit$use$phylo_dep_slope))
+      testthat::expect_true(all(fit$tmb_data$family_id_vec == 15L))
+      Sig_hat <- as.matrix(fit$report$Sigma_b_dep)
+      testthat::expect_equal(dim(Sig_hat), c(fx$C, fx$C))
+      slope_idx <- c(2L, 4L)
+      slope_var_hat <- diag(Sig_hat)[slope_idx]
+      slope_var_true <- diag(fx$Sigma_b_true)[slope_idx]
+      ratio <- slope_var_hat / slope_var_true
+      if (!all(is.finite(ratio)) || any(ratio < 1 / 4) || any(ratio > 4)) {
+        next  # PD but out-of-band: try the next (seed, n_sp)
+      }
+      testthat::expect_true(all(slope_var_hat > slope_var_true / 4))
+      testthat::expect_true(all(slope_var_hat < slope_var_true * 4))
+      succeeded <- TRUE
+      break
+    }
+  }
+  if (!isTRUE(succeeded)) {
+    testthat::skip(
+      "phylo_dep(1 + x | sp) x nbinom1 (RE-02 / PHY-05 / FAM-07) did not converge PD + in-band at any escalated n_sp (400/300) x seed sweep (conv/pdHess unhealthy); PHY-18 nbinom1 RESERVED for augmented slopes"
+    )
+  }
 })

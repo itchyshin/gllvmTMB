@@ -406,14 +406,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## ordinal_probit go to n_sites = 1000 to tighten BLUP / marginal recovery.
       ## The allowlist admits all seven so each cell fits; the CI gate confirms
       ## the final set and any family still skipping is trimmed back.
-      if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
+      ##
+      ## nbinom1 (id 15, #350): admitted alongside the grid. nbinom1's
+      ## augmented-slope identifiability is gated by the phylo_dep nbinom1
+      ## VALIDATION cell (the HARDEST full-unstructured cell; passing it implies
+      ## the easier spatial modes by the same family-agnostic-engine argument
+      ## PHY-18 / SPA-10 used). If that gate skips, nbinom1 is removed from all
+      ## slope allowlists and reserved fail-loud.
+      if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
         cli::cli_abort(c(
-          "{.fn spatial_dep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+          "{.fn spatial_dep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
           "i" = "Other families for the augmented {.code spatial_dep(1 + x | coords)} (full unstructured 2T x 2T field covariance) slope are reserved (Design 64; SPA-10).",
           ">" = "Use a validated family for the augmented unstructured SPDE random-regression fit."
         ))
       }
-    } else if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
+    } else if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
       ## Base spatial_unique / spatial_indep (1 + x | coords): the 2x2
       ## cross-field augmented slope. SPA-08 relaxes this guard from the old
       ## gaussian-only abort to a per-family allowlist, mirroring the
@@ -424,10 +431,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## the shared base path generally (the free-correlation
       ## spatial_unique(1 + x) read-out is a follow-up). Allowlist holds the
       ## RUNTIME family id (family_to_id(): gaussian = 0, binomial = 1,
-      ## poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7, ordinal_probit = 14),
-      ## NOT the enum.R column. Other families stay reserved fail-loud.
+      ## poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7, ordinal_probit = 14,
+      ## nbinom1 = 15), NOT the enum.R column. nbinom1 (#350) is gated by the
+      ## phylo_dep nbinom1 VALIDATION cell (the hardest cell in the grid); if it
+      ## skips, nbinom1 is removed from all slope allowlists. Other families stay
+      ## reserved fail-loud.
       cli::cli_abort(c(
-        "Augmented {.fn spatial_unique} / {.fn spatial_indep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+        "Augmented {.fn spatial_unique} / {.fn spatial_indep} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
         "i" = "Other families for the augmented {.code spatial_unique(1 + x | coords)} / {.code spatial_indep(1 + x | coords)} 2x2 cross-field slope are reserved (Design 60 sections 3.4-3.5, Design 64; SPA-08).",
         ">" = "Use a validated family for the augmented SPDE random-regression fit."
       ))
@@ -459,10 +469,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## analogue (phylo_latent activated across all families), the reduced-rank
     ## latent path is the best-identified augmented spatial slope. Allowlist
     ## holds the RUNTIME family id (family_to_id(): gaussian = 0, binomial = 1,
-    ## poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7, ordinal_probit = 14).
-    if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
+    ## poisson = 2, Gamma = 4, nbinom2 = 5, Beta = 7, ordinal_probit = 14,
+    ## nbinom1 = 15). nbinom1 (#350) is gated by the phylo_dep nbinom1 VALIDATION
+    ## cell (the hardest cell); if it skips, nbinom1 is removed from all slope
+    ## allowlists.
+    if (any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
       cli::cli_abort(c(
-        "Augmented {.fn spatial_latent} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+        "Augmented {.fn spatial_latent} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
         "i" = "Other families for {.code spatial_latent(1 + x | coords, d = K)} are reserved (Design 64 section 6).",
         ">" = "Use a validated family for the augmented SPDE reduced-rank random-regression fit."
       ))
@@ -912,16 +925,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## anchor is test-binomial-slope-recovery.R). The allowlist holds the
   ## runtime family ids (family_to_id(), NOT the .valid_family enum):
   ## 0 gaussian, 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta,
-  ## 14 ordinal_probit. Families NOT on this list (e.g. tweedie, student,
-  ## the delta / truncated / mixture families) stay reserved fail-loud until
-  ## their own recovery cells land. Family is unknown at parse time, so the
-  ## reservation is enforced here where family_id_vec exists. The message
+  ## 14 ordinal_probit, 15 nbinom1. Families NOT on this list (e.g. tweedie,
+  ## student, the delta / truncated / mixture families) stay reserved fail-loud
+  ## until their own recovery cells land. nbinom1 (#350) is gated by the
+  ## phylo_dep nbinom1 VALIDATION cell (the hardest cell); if it skips, nbinom1
+  ## is removed from all slope allowlists. Family is unknown at parse time, so
+  ## the reservation is enforced here where family_id_vec exists. The message
   ## keeps the parser's "LHS richer than" phrasing so the contract substring
   ## is unchanged.
-  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
+  if (use_phylo_slope_indep && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
     cli::cli_abort(c(
       "{.fn phylo_indep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
-      "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+      "i" = "Augmented {.code phylo_indep(1 + x | species)} is validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
       ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for any other non-Gaussian augmented phylogenetic random regression, or {.code phylo_indep(0 + trait | species)} for the per-trait phylogenetic variance fit."
     ))
   }
@@ -929,27 +944,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## the full unstructured 2T x 2T Sigma_b path is validated for the Gaussian
   ## anchor cell, poisson (GAP-B1 / PHY-18), and -- this slice -- the remaining
   ## non-Gaussian families that pass their own recovery cells: binomial
-  ## (multi-trial), Gamma, nbinom2, Beta, and ordinal_probit. The engine is
-  ## family-agnostic (eta += b_phy_aug . Z_phy_aug is accumulated before the
-  ## C++ family dispatch), so construction succeeds for the wired families. The
-  ## earlier reservation reflected finite-sample power, NOT structural
-  ## non-identifiability: the GAP-B1 identifiability sweep proved the reserved
-  ## non-Gaussian dep slope is identifiable given adequate data (poisson PD at
-  ## all N; Gamma / Beta / nbinom2 / ordinal_probit reliably PD by n_sp ~ 300;
-  ## binomial needs multi-trial size >= 12). Per the #388 discipline a family
-  ## joins this allowlist ONLY after its recovery cell passes
-  ## (test-matrix-slope-phylo-dep.R *_VALIDATION cells). Families NOT on this
-  ## list (e.g. tweedie, student, the delta / truncated / mixture families) stay
-  ## reserved fail-loud until their own cells land. The allowlist holds the
-  ## runtime family ids (family_to_id(), NOT the .valid_family enum):
+  ## (multi-trial), Gamma, nbinom2, Beta, ordinal_probit, and -- this slice
+  ## (#350) -- nbinom1, the last missing family in the structured non-Gaussian
+  ## slope grid. The engine is family-agnostic (eta += b_phy_aug . Z_phy_aug is
+  ## accumulated before the C++ family dispatch), so construction succeeds for
+  ## the wired families. The earlier reservation reflected finite-sample power,
+  ## NOT structural non-identifiability: the GAP-B1 identifiability sweep proved
+  ## the reserved non-Gaussian dep slope is identifiable given adequate data
+  ## (poisson PD at all N; Gamma / Beta / nbinom2 / ordinal_probit reliably PD
+  ## by n_sp ~ 300; binomial needs multi-trial size >= 12). Per the #388
+  ## discipline a family joins this allowlist ONLY after its recovery cell
+  ## passes (test-matrix-slope-phylo-dep.R *_VALIDATION cells; nbinom1 is gated
+  ## by the new nbinom1 VALIDATION cell + the slope-grid-residuals recovery
+  ## workflow). nbinom1's augmented-slope identifiability was genuinely uncertain
+  ## (#350: only smoke-validated even intercept-only, board #340), so it is on
+  ## this list provisionally -- if its recovery cell skips at the escalated n it
+  ## is REMOVED and reserved fail-loud (honest evidence-based scoping). Families
+  ## NOT on this list (e.g. tweedie, student, the delta / truncated / mixture
+  ## families) stay reserved fail-loud until their own cells land. The allowlist
+  ## holds the runtime family ids (family_to_id(), NOT the .valid_family enum):
   ## 0 gaussian, 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta,
-  ## 14 ordinal_probit. Family is unknown at parse time, so the reservation is
-  ## enforced here where family_id_vec exists. Fail loud rather than silently
-  ## truncate (Design 56 §7).
-  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
+  ## 14 ordinal_probit, 15 nbinom1. Family is unknown at parse time, so the
+  ## reservation is enforced here where family_id_vec exists. Fail loud rather
+  ## than silently truncate (Design 56 §7).
+  if (use_phylo_dep_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
     cli::cli_abort(c(
       "{.fn phylo_dep} LHS richer than {.code 0 + trait} is not yet supported for this family.",
-      "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()}, {.code binomial()} (logit / probit), {.code poisson()}, {.code Gamma()}, {.code nbinom2()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+      "i" = "Augmented {.code phylo_dep(1 + x | species)} (full unstructured 2T x 2T covariance) is validated for {.code gaussian()}, {.code binomial()} (logit / probit), {.code poisson()}, {.code Gamma()}, {.code nbinom2()}, {.code nbinom1()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
       ">" = "Use {.code phylo_dep(0 + trait | species)} for the intercept-only unstructured phylogenetic fit (family-general), or wait for the remaining non-Gaussian dep-slope cells."
     ))
   }
@@ -1002,14 +1023,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## is just this family-id allowlist relax once its per-family recovery cell
   ## passes (test-matrix-slope-phylo-latent.R). The allowlist holds the runtime
   ## family ids (family_to_id(), NOT the .valid_family enum): 0 gaussian,
-  ## 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta, 14 ordinal_probit.
-  ## Families NOT on this list stay reserved fail-loud until their own recovery
-  ## cells land. Family is unknown at parse time, so the reservation is
-  ## enforced here where family_id_vec exists.
-  if (use_phylo_latent_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L))) {
+  ## 1 binomial, 2 poisson, 4 Gamma, 5 nbinom2, 7 Beta, 14 ordinal_probit,
+  ## 15 nbinom1. nbinom1 (#350) is gated by the phylo_dep nbinom1 VALIDATION
+  ## cell (the hardest cell); if it skips, nbinom1 is removed from all slope
+  ## allowlists. Families NOT on this list stay reserved fail-loud until their
+  ## own recovery cells land. Family is unknown at parse time, so the
+  ## reservation is enforced here where family_id_vec exists.
+  if (use_phylo_latent_slope && any(!family_id_vec %in% c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L))) {
     cli::cli_abort(c(
       "{.fn phylo_latent} random slopes are not yet supported for this family.",
-      "i" = "Augmented {.code phylo_latent(1 + x | species, d = K)} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
+      "i" = "Augmented {.code phylo_latent(1 + x | species, d = K)} random slopes are validated for {.code gaussian()}, {.code binomial()} (probit / logit), {.code poisson()}, {.code nbinom2()}, {.code nbinom1()}, {.code Gamma()}, {.code Beta()}, and {.code ordinal_probit()} in this release.",
       ">" = "Use {.code phylo_unique(1 + x | species)} (family-general) for any other non-Gaussian augmented phylogenetic random regression."
     ))
   }

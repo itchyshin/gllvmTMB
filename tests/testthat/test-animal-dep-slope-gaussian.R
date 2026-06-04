@@ -203,3 +203,147 @@ test_that("reserved-family animal_dep slope aborts with a clear error", {
     regexp = "not yet supported for this"
   )
 })
+
+## ======================================================================
+## 4. animal_dep(1 + x | id) x poisson VALIDATION (ANI-12): real-API
+##    recovery cell for the known-pedigree non-Gaussian dep slope.
+## ======================================================================
+## animal_dep non-Gaussian dep slopes are ALREADY ADMITTED via the shared
+## `use_phylo_dep_slope` guard (R/fit-multi.R allowlist now
+## c(0L, 1L, 2L, 4L, 5L, 7L, 14L, 15L)), but -- unlike phylo_dep (PHY-18,
+## #422 / #424) -- they had NO dedicated recovery cell. animal_* stays
+## first-class (NOT deprecated, unlike relmat). This cell is the confirmation
+## the maintainer's relmat/animal decision asked for: ONE lightweight
+## non-Gaussian (poisson) animal_dep slope that builds A from a pedigree via
+## pedigree_to_A() and fits the REAL animal_dep path, asserting slope-variance
+## recovery from the engine's `report$Sigma_b_dep` matrix within the inherited
+## poisson band.
+##
+## The math is IDENTICAL to the phylo_dep poisson VALIDATION cell
+## (test-matrix-slope-phylo-dep.R) -- only the source of the relatedness
+## matrix A differs (a pedigree here vs an ape tree there). Same interleaved
+## C = 4 Sigma_b (.dep_L_animal), same Sigma_b_dep read at interleaved slope
+## positions 2 and 4, same inherited 4x poisson band (do NOT invent a tighter
+## one). Honest-skip on non-convergence / non-PD / out-of-band recovery at the
+## modest fixture; NO force-pass. NO relmat_dep cell is added (relmat is heading
+## for kernel soft-deprecation per Design 65 C4).
+
+## Poisson animal_dep fixture: B ~ MN(0, A_ped, Sigma_b) with INTERLEAVED
+## per-trait (intercept, slope) columns, then y = rpois(n, exp(eta)) with
+## eta = mu_t + alpha_id + beta_id * x and modest log-scale intercepts.
+.make_animal_dep_pois_fixture <- function(seed, n_id = 150L, T_tr = 2L,
+                                          n_rep = 10L, mu_t_log = c(1.0, 0.7)) {
+  set.seed(seed)
+  ped <- .make_animal_dep_ped(n_id)
+  A <- gllvmTMB::pedigree_to_A(ped)
+  id_labels <- rownames(A)
+
+  C <- 2L * T_tr
+  Ltrue <- .dep_L_animal(C)
+  Sigma_b_true <- Ltrue %*% t(Ltrue)
+  LA <- t(chol(A + diag(1e-8, n_id)))
+  B <- (LA %*% matrix(stats::rnorm(n_id * C), n_id, C)) %*% chol(Sigma_b_true)
+  rownames(B) <- id_labels
+
+  sr <- expand.grid(
+    species = factor(id_labels, levels = id_labels),
+    rep = seq_len(n_rep)
+  )
+  sr$x <- stats::rnorm(nrow(sr))
+  trait_levels <- paste0("t", seq_len(T_tr))
+  df_long <- merge(
+    sr,
+    data.frame(trait = factor(trait_levels, levels = trait_levels)),
+    all = TRUE
+  )
+  df_long <- df_long[order(df_long$species, df_long$rep, df_long$trait), ]
+  ti <- as.integer(df_long$trait)
+  si <- match(as.character(df_long$species), id_labels)
+  alpha <- B[cbind(si, 2L * (ti - 1L) + 1L)]
+  beta  <- B[cbind(si, 2L * (ti - 1L) + 2L)]
+  eta <- mu_t_log[ti] + alpha + beta * df_long$x
+  df_long$value <- stats::rpois(nrow(df_long), lambda = exp(eta))
+
+  list(
+    ped = ped, A = A, df_long = df_long, B = B,
+    Sigma_b_true = Sigma_b_true, T_tr = T_tr, C = C
+  )
+}
+
+test_that("animal_dep(1 + x | id) x poisson VALIDATION (ANI-12): real-API fit converges PD and recovers slope variances from Sigma_b_dep", {
+  skip_if_not_heavy()
+  skip_if_not_animal_dep_slope_deps()
+
+  fx <- .make_animal_dep_pois_fixture(
+    seed = 20260603L, n_id = 150L, T_tr = 2L, n_rep = 10L,
+    mu_t_log = c(1.0, 0.7)
+  )
+
+  fit <- tryCatch(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait + animal_dep(1 + x | species, pedigree = fx$ped),
+      data = fx$df_long, unit = "species",
+      family = stats::poisson(link = "log"),
+      control = gllvmTMB::gllvmTMBcontrol(se = TRUE)
+    ))),
+    error = function(e) e
+  )
+
+  ## animal_dep poisson is ADMITTED (shared use_phylo_dep_slope guard, id 2 on
+  ## the allowlist). A surviving construction abort is a guard regression.
+  if (inherits(fit, "error")) {
+    testthat::fail(sprintf(
+      "animal_dep(1 + x | id) x poisson aborted at construction: %s (the shared phylo_dep guard admits poisson id 2)",
+      conditionMessage(fit)
+    ))
+    return(invisible(NULL))
+  }
+  testthat::expect_s3_class(fit, "gllvmTMB_multi")
+
+  ## Engine ran the dep poisson path through the animal_dep route.
+  testthat::expect_true(isTRUE(fit$use$phylo_dep_slope))
+  testthat::expect_identical(fit$tmb_data$use_phylo_dep_slope, 1L)
+  testthat::expect_true(all(fit$tmb_data$family_id_vec == 2L))
+
+  ## Honest-skip on non-convergence / non-PD; do not force green.
+  healthy <- isTRUE(fit$opt$convergence == 0L) &&
+    is.finite(fit$opt$objective) &&
+    (isTRUE(fit$fit_health$pd_hessian) || isTRUE(fit$sd_report$pdHess))
+  if (!healthy) {
+    testthat::skip(sprintf(
+      "animal_dep(1 + x | id) x poisson did not converge with PD Hessian (conv = %s, pdHess = %s); ANI-12 stays partial pending bigger n / different seed",
+      fit$opt$convergence, isTRUE(fit$sd_report$pdHess)
+    ))
+  }
+
+  testthat::expect_equal(fit$opt$convergence, 0L)
+  testthat::expect_true(is.finite(fit$opt$objective))
+  testthat::expect_true(isTRUE(fit$fit_health$pd_hessian) ||
+    isTRUE(fit$sd_report$pdHess))
+
+  ## Read slope variances from the C x C report$Sigma_b_dep matrix at the
+  ## interleaved diagonal positions 2 and 4 (same as the phylo_dep cell).
+  Sig_hat <- as.matrix(fit$report$Sigma_b_dep)
+  testthat::expect_equal(dim(Sig_hat), c(fx$C, fx$C))
+  testthat::expect_true(all(is.finite(Sig_hat)))
+
+  slope_idx <- c(2L, 4L)
+  slope_var_hat <- diag(Sig_hat)[slope_idx]
+  slope_var_true <- diag(fx$Sigma_b_true)[slope_idx]
+  ratio <- slope_var_hat / slope_var_true
+
+  ## Inherited 4x poisson band (matches the phylo_dep poisson VALIDATION cell).
+  var_band <- 4
+  if (!all(is.finite(ratio)) ||
+        any(ratio < 1 / var_band) || any(ratio > var_band)) {
+    testthat::skip(sprintf(
+      "animal_dep Sigma_b_dep slope-variance recovery outside %gx band (hat = %s, truth = %s, ratio = %s); ANI-12 stays partial pending bigger n",
+      var_band,
+      paste(sprintf("%.3g", slope_var_hat), collapse = ", "),
+      paste(sprintf("%.3g", slope_var_true), collapse = ", "),
+      paste(sprintf("%.3g", ratio), collapse = ", ")
+    ))
+  }
+  testthat::expect_true(all(slope_var_hat > slope_var_true / var_band))
+  testthat::expect_true(all(slope_var_hat < slope_var_true * var_band))
+})

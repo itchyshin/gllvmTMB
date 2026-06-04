@@ -8,6 +8,19 @@
 to the seven freeze-blocking questions in Design 66 sec.12 with rationale;
 the **maintainer makes the actual calls**.
 
+> **ARCHIVED / SUPERSEDED (2026-06-04).** The maintainer resolved
+> Q-a..Q-g and froze Design 66 as an **APPROVED build contract** on `main`
+> in commit `003e856` ("feat(power-sim): finalize Design 66 + resumable
+> Phase-1 pilot launcher"). The authority is now Design 66 section 12, the
+> **LOCKED PLAN** (L-a..L-g); this memo is retained only as the historical
+> decision-prep record. The locked decisions broadly track the
+> recommendations below but **refined several** -- compute is phased (a
+> local pilot at n_sim ~= 200, then an HPC core at n_sim = 2000) rather
+> than "HPC for production / GHA for pilot," and the signal levels are
+> 0 / 0.2 / 0.5 rather than 0 / 0.25 / 0.50. Read the recommendations below
+> as the inputs to that decision, not as the final plan. PR #369 (the
+> open-questions draft) is closed as superseded by `003e856`.
+
 ## 0. Purpose and what changed since the draft
 
 PR #369 froze a draft of Design 66 on 2026-05-31 with seven open questions

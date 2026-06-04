@@ -55,21 +55,21 @@ articles:
     - articles/choose-your-model
     - articles/morphometrics
     - articles/animal-model
+    - articles/phylogenetic-gllvm
     - articles/joint-sdm
     - articles/cross-lineage-coevolution
+    - articles/behavioural-syndromes
+    - articles/random-regression-reaction-norms
 
   - title: Concepts
     contents:
     - articles/gllvm-vocabulary
     - articles/covariance-correlation
-    - articles/phylogenetic-gllvm
     - articles/api-keyword-grid
     - articles/response-families
     - articles/mixed-family-extractors
-    - articles/behavioural-syndromes
     - articles/ordinal-probit
     - articles/stacked-trait-gllvm
-    - articles/random-regression-reaction-norms
 
   - title: Methods
     contents:

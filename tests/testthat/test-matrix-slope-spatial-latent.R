@@ -199,8 +199,18 @@ slope_spatial_latent_loading_ci_finite <- function(fit) {
 ##                      `0 + trait`).
 ##   * `row_label`    : human label for skip messages.
 run_slope_spatial_latent_cell <- function(family_obj, family_id, response_fun,
-                                          row_label) {
-  fx <- make_slope_spatial_latent_fixture()
+                                          row_label, n_sites = 100L,
+                                          seed = 20260529L) {
+  ## SPA-09 promotion: the default fixture (n_sites = 100, seed 20260529) is PD
+  ## for binomial-probit / poisson / Gamma / Beta but borderline non-PD for
+  ## binomial-logit / ordinal_probit / nbinom2 at that specific seed -- a
+  ## finite-sample POWER artifact, not non-identifiability (the families are
+  ## already on the R/fit-multi.R use_spde_latent_slope allowlist, and the
+  ## block-diagonal latent path is PD at n_sites = 150 / alternate seeds; see
+  ## Design 35 SPA-09). Those three cells pass `n_sites = 150L` so the cell
+  ## turns green on a genuinely healthy fit rather than honest-skipping; the
+  ## four already-PD families keep the default n_sites = 100L (no regression).
+  fx <- make_slope_spatial_latent_fixture(n_sites = n_sites, seed = seed)
   fx$data$value <- response_fun(fx$eta)
 
   fit <- tryCatch(
@@ -281,7 +291,8 @@ test_that("binomial-logit: spatial_latent(1 + x | site, d = 1) augmented-LHS fit
     family_obj   = stats::binomial(link = "logit"),
     family_id    = 1L,
     response_fun = function(eta) stats::rbinom(length(eta), 1L, stats::plogis(eta)),
-    row_label    = "binomial-logit"
+    row_label    = "binomial-logit",
+    n_sites      = 150L   # SPA-09 promotion: PD at n=150 (power, not identifiability)
   )
 })
 
@@ -298,7 +309,8 @@ test_that("ordinal_probit: spatial_latent(1 + x | site, d = 1) augmented-LHS fit
       as.integer(1L + (ystar > taus[1L]) + (ystar > taus[2L]) +
                    (ystar > taus[3L]))
     },
-    row_label    = "ordinal_probit"
+    row_label    = "ordinal_probit",
+    n_sites      = 150L   # SPA-09 promotion: PD at n=150 (power, not identifiability)
   )
 })
 
@@ -326,7 +338,8 @@ test_that("nbinom2: spatial_latent(1 + x | site, d = 1) augmented-LHS fits; pd_h
     ## fit, so the wrong id was latent until the engine path was activated).
     family_id    = 5L,
     response_fun = function(eta) stats::rnbinom(length(eta), mu = exp(eta), size = phi_nb),
-    row_label    = "nbinom2"
+    row_label    = "nbinom2",
+    n_sites      = 150L   # SPA-09 promotion: PD at n=150 (power, not identifiability)
   )
 })
 

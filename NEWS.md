@@ -2,6 +2,11 @@
 
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
+* New `simulate_unit_trait()` — a generic `(unit, observation, trait)`
+  stacked-trait simulator, the sibling of `simulate_site_trait()` without
+  the phylogenetic / spatial machinery; returns long-format `data` +
+  `truth` for recovery checks (#306, via #444). Merged ahead of the v0.2.0
+  tag — fold into the 0.2.0 notes above if the tag includes it.
 
 # gllvmTMB 0.2.0 (first CRAN release)
 

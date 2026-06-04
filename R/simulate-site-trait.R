@@ -9,9 +9,9 @@
 #' layout. The package as a whole works for any `(unit, trait)`
 #' stacked-trait GLLVM (`unit` may be site, individual, species,
 #' paper, ...); this particular simulator targets the site × species
-#' × trait special case used in the methods paper. For simpler
-#' simulations from a generic `(unit, trait)` design, build the data
-#' inline as in the morphometrics article.
+#' × trait special case used in the methods paper. For simulations
+#' from a generic `(unit, observation, trait)` design without
+#' phylogenetic or spatial structure, use [simulate_unit_trait()].
 #'
 #' Each component can be turned on or off via the corresponding variance /
 #' loading argument. The default settings produce a fixed-effects-only dataset
@@ -61,6 +61,10 @@
 #'   \item{`Cphy`}{The phylogenetic correlation matrix used (or `NULL`).}
 #'   \item{`coords`}{Site coordinates used (or `NULL`).}
 #' }
+#'
+#' @seealso [simulate_unit_trait()] for the generic
+#'   `(unit, observation, trait)` simulator without phylogenetic or
+#'   spatial machinery.
 #'
 #' @export
 #' @examples

@@ -1,0 +1,108 @@
+name: spatial-latent-slope-nongaussian-recovery
+
+# SPA-09 spatial_latent(1 + x | site, d = 1) non-Gaussian slope RECOVERY gate.
+#
+# The standard R-CMD-check skips the heavy spatial-latent slope recovery
+# cells (skip_if_not_heavy()), so this workflow runs the heavy
+# test-matrix-slope-spatial-latent.R suite -- the per-family cells
+# (binomial-probit/logit, poisson, nbinom2, Gamma, Beta, ordinal_probit) --
+# through the REAL public API with GLLVMTMB_HEAVY_TESTS=1.
+#
+# Purpose of THIS run: the SPA-09 promotion. binomial-probit / poisson /
+# Gamma / Beta already pass at the default fixture (n_sites = 100); the
+# remaining three (binomial-logit, ordinal_probit, nbinom2) honest-skipped
+# there as a finite-sample POWER artifact -- the families are already on the
+# R/fit-multi.R use_spde_latent_slope allowlist and the block-diagonal latent
+# path is PD at n_sites = 150 (Design 35 SPA-09). The test now runs those
+# three at n_sites = 150L; this gate confirms they converge PD + slope-path-
+# live + finite CI smoke (i.e. turn green, NOT skip). No engine code changes.
+#
+# Gate semantics mirror the sibling spatial_indep / spatial_dep workflows:
+# the run FAILS if any cell aborts at construction, fails an expectation, or
+# errors. Skips do NOT fail (honest-skip is the no-fake-pass rule) -- but the
+# promotion is only real if the summary reports 0 skipped among the three
+# target families, which the log lists explicitly.
+#
+# Triggered on pull_request (paths filter) so it runs automatically on the
+# SPA-09 PR, and on workflow_dispatch for manual re-runs. The repo is public,
+# so ubuntu-latest minutes are free. Uploads the test log as an artifact.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "R/fit-multi.R"
+      - "src/gllvmTMB.cpp"
+      - "tests/testthat/test-matrix-slope-spatial-latent.R"
+      - ".github/workflows/spatial-latent-slope-nongaussian-recovery.yaml"
+
+concurrency:
+  group: spatial-latent-slope-nongaussian-recovery-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # local::. brings the package's own deps; devtools::load_all
+          # compiles src/ against them.
+          extra-packages: |
+            local::.
+            any::devtools
+          needs: check
+
+      - name: Run the heavy spatial_latent non-Gaussian recovery cells
+        shell: bash
+        run: |
+          set -o pipefail
+          GLLVMTMB_HEAVY_TESTS=1 Rscript -e '
+            devtools::load_all(".")
+            res <- testthat::test_file(
+              "tests/testthat/test-matrix-slope-spatial-latent.R",
+              reporter = "summary",
+              stop_on_failure = FALSE
+            )
+            df <- as.data.frame(res)
+            n_fail <- sum(df$failed) + sum(as.integer(df$error))
+            cat(sprintf(
+              "\nspatial_latent non-Gaussian suite: %d failed, %d errored, %d skipped across %d tests\n",
+              sum(df$failed), sum(as.integer(df$error)),
+              sum(df$skipped), nrow(df)
+            ))
+            skipped <- df[df$skipped > 0L, , drop = FALSE]
+            if (nrow(skipped) > 0L) {
+              cat("Skipped cells (stay partial):\n")
+              for (i in seq_len(nrow(skipped))) {
+                cat(sprintf("  - %s\n", skipped$test[i]))
+              }
+            } else {
+              cat("No skipped cells -- all seven families non-skipped (SPA-09 candidate covered).\n")
+            }
+            if (n_fail > 0L) {
+              stop(sprintf(
+                "spatial_latent non-Gaussian recovery suite had %d failed expectation(s)/error(s) -- failing the CI gate",
+                n_fail
+              ))
+            }
+          ' 2>&1 | tee spatial-latent-slope-nongaussian-recovery.log
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spatial-latent-slope-nongaussian-recovery-log
+          path: spatial-latent-slope-nongaussian-recovery.log
+          retention-days: 30
+          if-no-files-found: warn

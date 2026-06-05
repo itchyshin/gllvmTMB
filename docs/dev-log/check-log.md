@@ -13008,3 +13008,139 @@ Deliberately not run / not done:
   likelihood route.
 - Not a final Definition-of-Done claim until the branch is pushed, PR CI
   passes, and any resulting main pkgdown deployment succeeds.
+
+## 2026-06-04 -- power-pilot scoring audit helper (Codex)
+
+Branch: started on `main`; protected on
+`codex/power-pilot-scoring-audit-2026-06-05`.
+
+Purpose: add a narrow diagnostic path for issue #340 so the Design 66 power
+pilot can audit target-scale alignment before interpreting the current
+CI-excludes-zero panel as power or Type-I evidence.
+
+Files touched:
+
+- `dev/m3-pilot-report.R`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-04-power-pilot-scoring-audit.md`
+
+Commands run:
+
+- `pwd && git status --short --branch`
+  -> `/Users/z3437171/Dropbox/Github Local/gllvmTMB`; clean `main`
+  worktree at startup.
+- `rg -n "power pilot|pilot_collect|coverage_primary|Sigma_unit_diag|Type-I|target mismatch|M3|CI-08|CI-10" /Users/z3437171/.codex/memories/MEMORY.md`
+  -> memory pass confirmed the relevant prior risk: CI-08 / CI-10 interval
+  calibration remains the main overclaim boundary.
+- `sed -n '1,220p' /Users/z3437171/.agents/skills/r-package-development/SKILL.md`
+  and
+  `sed -n '1,220p' /Users/z3437171/.agents/skills/simulation-check/SKILL.md`
+  -> used package workflow and simulation-audit criteria.
+- `gh pr list --state open --limit 20 --json number,title,headRefName,baseRefName,updatedAt,url`
+  -> `[]`; no open PR collision.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only `db033cf power-pilot: accumulate reps (run 20)` on the
+  `power-pilot-results` branch; no same-file package-code collision.
+- `tail -n 80 docs/dev-log/check-log.md`
+  and
+  `find docs/dev-log/after-task -type f -maxdepth 1 -print | sort | tail -n 8`
+  -> newest local closeout remained the 2026-06-03 missing-data split /
+  VA reports.
+- `Rscript --vanilla -e 'f <- "/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/gaussian-d1-n150-sig0p0.rds"; x <- readRDS(f); print(dim(x)); print(names(x)); print(utils::head(x, 3)); str(x[1:min(nrow(x), 5), ], max.level = 1)'`
+  -> confirmed the pilot RDS already records `target`, `truth`, `estimate`,
+  `ci_lo`, `ci_hi`, `covered`, `miss_side`, `rep_seed`, fit health, and
+  bootstrap-failure fields.
+- `air format dev/m3-pilot-report.R`
+  -> completed.
+- `Rscript --vanilla dev/m3-pilot-report.R --scoring-audit --results-dir=/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local --audit-out=/tmp/gllvmtmb-pilot-scoring-audit.md --audit-rds=/tmp/gllvmtmb-pilot-scoring-audit.rds`
+  -> after one table-format fix, completed and wrote the scoring audit to
+  `/tmp/gllvmtmb-pilot-scoring-audit.md` and
+  `/tmp/gllvmtmb-pilot-scoring-audit.rds`.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-report.R"); dirs <- c("/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results", "/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local"); df <- pilot_collect(results_dirs = dirs); stopifnot(nrow(df) == 48L, sum(df$n_sim, na.rm = TRUE) >= 45992L); cat("collect ok: ", nrow(df), " cells, reps=", sum(df$n_sim, na.rm = TRUE), "\n", sep = "")'`
+  -> `collect ok: 48 cells, reps=45992`.
+- `Rscript --vanilla dev/m3-pilot-report.R --emit-issues --results-dir=/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local`
+  -> existing board-summary path still works; reported 28 flagged cells.
+- `git diff --check`
+  -> clean.
+- `gh issue comment 340 --body-file <tmpfile>`
+  -> posted
+  <https://github.com/itchyshin/gllvmTMB/issues/340#issuecomment-4626708344>.
+
+Main audit findings:
+
+- `gaussian-d1-n150-sig0p0`: n = 904, coverage 0.394, zero-reject 1.000,
+  median truth 0.859, median estimate 1.098, median estimate/truth 1.299,
+  60% of usable rows missed below the lower CI bound. Signal-zero still has
+  a positive `Sigma_unit_diag` target, so CI-excludes-zero is not Type-I error.
+- `nbinom2-d2-n50-sig0p0`: n = 904, coverage 0.893, zero-reject 1.000,
+  non-PD 76%; target scoring and fit-health failure are separate diagnoses.
+- `binomial_probit-d1-n50-sig0p2`: n = 904, coverage 0.958, zero-reject
+  1.000, non-PD 33%, median CI-width/truth ratio 5297.664 because the target
+  truth is small; this stays diagnostic, not promotional.
+
+Stale-wording / consistency scans:
+
+- `rg -n "power pilot|pilot_collect|coverage_primary|Sigma_unit_diag|Type-I|target mismatch|M3|CI-08|CI-10" /Users/z3437171/.codex/memories/MEMORY.md`
+  -> used only to locate relevant prior context; no package stale wording
+  was inferred from memory.
+- `rg -n "nbinom1.*slope|phylo_.*slope.*nbinom1|spatial_.*slope.*nbinom1|augmented.*nbinom1|nbinom1.*augmented|PHY-18|SPA-10|spatial_dep.*nbinom1|phylo_dep.*nbinom1" tests/testthat R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md`
+  -> the branch made no #350 code change. Current `origin/main` records
+  nbinom1 augmented slopes as admitted in PR #441; issue #350 remains open
+  and appears stale relative to the register.
+
+Closeout rerun / branch protection on 2026-06-05:
+
+- `git status --short --branch && git diff --stat && git diff --name-only`
+  -> local `main` was behind `origin/main` by 18 commits with dirty #340 files.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,updatedAt,url`
+  -> `[]`; no open PR collision.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only #453 / #454 on `origin/main`; no same-file collision with this
+  branch.
+- `git switch -c codex/power-pilot-scoring-audit-2026-06-05`
+  -> moved the dirty #340 work off local `main`.
+- `test -d /tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results && echo tmp-store=yes || echo tmp-store=no; test -d /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local && echo local-store=yes || echo local-store=no`
+  -> both pilot result stores still existed.
+- `Rscript --vanilla dev/m3-pilot-report.R --scoring-audit --results-dir=/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local --audit-out=/tmp/gllvmtmb-pilot-scoring-audit-rerun.md --audit-rds=/tmp/gllvmtmb-pilot-scoring-audit-rerun.rds`
+  -> completed and wrote fresh temp audit artifacts.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-report.R"); dirs <- c("/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results", "/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local"); df <- pilot_collect(results_dirs = dirs); stopifnot(nrow(df) == 48L, sum(df$n_sim, na.rm = TRUE) >= 45992L); cat("collect ok: ", nrow(df), " cells, reps=", sum(df$n_sim, na.rm = TRUE), "\n", sep = "")'`
+  -> `collect ok: 48 cells, reps=50492`.
+- `Rscript --vanilla dev/m3-pilot-report.R --emit-issues --results-dir=/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local`
+  -> existing board-summary path still works; reported 28 flagged cells.
+
+Post-rebase verification on `origin/main` (`bda8190`):
+
+- `git rebase origin/main`
+  -> completed cleanly; branch head became `30727ae` before the final
+  Markdown-table separator polish.
+- `git diff --check origin/main...HEAD`
+  -> clean.
+- `Rscript --vanilla dev/m3-pilot-report.R --scoring-audit --results-dir=/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local --audit-out=/tmp/gllvmtmb-pilot-scoring-audit-rebased.md --audit-rds=/tmp/gllvmtmb-pilot-scoring-audit-rebased.rds`
+  -> completed and wrote fresh temp audit artifacts on the rebased branch.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-report.R"); dirs <- c("/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results", "/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local"); df <- pilot_collect(results_dirs = dirs); stopifnot(nrow(df) == 48L, sum(df$n_sim, na.rm = TRUE) >= 50492L); cat("collect ok: ", nrow(df), " cells, reps=", sum(df$n_sim, na.rm = TRUE), "\n", sep = "")'`
+  -> `collect ok: 48 cells, reps=50492`.
+- `Rscript --vanilla dev/m3-pilot-report.R --emit-issues --results-dir=/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local`
+  -> existing board-summary path still works; reported 28 flagged cells.
+- `sed -n '1,80p' /tmp/gllvmtmb-pilot-scoring-audit-rebased.md`
+  -> confirmed the three-cell audit table rendered with the updated live
+  combined-store counts.
+- Final Markdown-table separator polish changed `paste()` to `paste0()` in the
+  audit writer. Rechecked with:
+  `git diff --check origin/main...HEAD && git diff --check`;
+  `Rscript --vanilla dev/m3-pilot-report.R --scoring-audit --results-dir=/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local --audit-out=/tmp/gllvmtmb-pilot-scoring-audit-final.md --audit-rds=/tmp/gllvmtmb-pilot-scoring-audit-final.rds`;
+  `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-report.R"); dirs <- c("/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results", "/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local"); df <- pilot_collect(results_dirs = dirs); stopifnot(nrow(df) == 48L, sum(df$n_sim, na.rm = TRUE) >= 50492L); cat("collect ok: ", nrow(df), " cells, reps=", sum(df$n_sim, na.rm = TRUE), "\n", sep = "")'`;
+  and
+  `Rscript --vanilla dev/m3-pilot-report.R --emit-issues --results-dir=/tmp/gllvmtmb-pilot-results.Goztld/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local`
+  -> all completed; final collect output was `collect ok: 48 cells,
+  reps=50492`, and `--emit-issues` still reported 28 flagged cells.
+
+Deliberately not run / not done:
+
+- No `devtools::test()` or `devtools::check()`; this is a build-ignored
+  `dev/` reporting helper and does not touch package exports, likelihood,
+  formula grammar, roxygen, Rd, or vignettes.
+- No power-pilot engine changes and no result-store mutation.
+- No validation-register movement; CI-08 and CI-10 remain partial.
+- No #350 nbinom1 allowlist or recovery-cell work; current `origin/main`
+  records that lane as admitted in PR #441, so the still-open issue should be
+  reconciled before any further work there.

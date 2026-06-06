@@ -1008,6 +1008,18 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else character(0L)
   n_phy_slope <- length(phylo_slope_xcols)
 
+  ## RE-03 scope guard: the non-Gaussian allowlist above is evidence-backed for
+  ## the s == 1 full-unstructured dep slope only. Gaussian s >= 2 is covered by
+  ## test-phylo-dep-slope-s2-gaussian.R; non-Gaussian s >= 2 needs the separate
+  ## RE-03 feasibility sweep before public admission.
+  if (use_phylo_dep_slope && n_phy_slope >= 2L && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "{.fn phylo_dep} with two or more random slopes is not yet validated for non-Gaussian families.",
+      "i" = "Gaussian {.code phylo_dep(1 + x1 + x2 | species)} is covered under RE-03; non-Gaussian {.code s >= 2} remains reserved pending the RE-03 identifiability sweep.",
+      ">" = "Use {.code phylo_dep(1 + x | species)} for the validated non-Gaussian single-slope path, or fit the multi-slope path under {.code gaussian()} until the RE-03 gate clears."
+    ))
+  }
+
   ## Design 56 Sec. 5.3 / 9.5a: augmented phylo_latent(1 + x | sp, d = K).
   ## Block-diagonal reduced-rank random regression -- each LHS column gets its
   ## own factor-analytic Lambda_k Lambda_k^T (rank d_phy_slope), no intercept-

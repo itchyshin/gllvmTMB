@@ -1,0 +1,157 @@
+# After Task: RE-03 non-Gaussian s=2 sweep retry prep
+
+**Branch**: `codex/re03-nongaussian-s2-sweep-2026-06-05`
+**Date**: `2026-06-05`
+**Roles (engaged)**: Ada, Boole, Fisher, Curie, Rose, Grace
+
+## 1. Goal
+
+Prepare the next RE-03 evidence run without advertising a new capability.
+Gaussian `phylo_dep(1 + x1 + x2 | species)` is already covered, but
+non-Gaussian `s >= 2` full-unstructured dependent slopes still need an
+identifiability sweep before any allowlist relaxation. This branch adds a
+dedicated runtime guard and gives the existing dep-slope sweep a real `s = 2`
+path so GitHub Actions can collect that evidence.
+
+## 2. Implemented
+
+- `R/fit-multi.R` now aborts non-Gaussian `phylo_dep` fits with two or more
+  random slopes. The single-slope non-Gaussian `phylo_dep(1 + x | species)`
+  path remains admitted by the existing PHY-18 evidence.
+- `tests/testthat/test-phylo-dep-slope-s2-gaussian.R` adds a boundary test that
+  checks the new fail-loud message for a Poisson `s = 2` fit.
+- `.github/workflows/dep-slope-identifiability-sweep.yaml` adds workflow input
+  `s_grid` and forwards it to the sweep script as `GLLVMTMB_SWEEP_SGRID`.
+- `docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  now supports `s = 1` and `s = 2`, carries `n_slope` in the result schema,
+  computes all slope-variance ratios for `(1+s)T`, and reports both PD and
+  recovery fractions in the cumulative table.
+- `NEWS.md` and `docs/design/35-validation-debt-register.md` now describe the
+  non-Gaussian RE-03 boundary as a dedicated runtime guard rather than the
+  older wording that implied the old Gaussian-only dep-slope guard was still
+  the mechanism.
+
+## 3. Mathematical Contract
+
+No TMB likelihood, C++ parameterisation, or formula grammar changed. The model
+boundary is:
+
+`Sigma_b` for `phylo_dep(1 + x1 + ... + xs | species)` has dimension
+`(1+s)T x (1+s)T`, with per-trait intercept and slope columns stored in the
+same interleaved order as the Gaussian RE-03 test. This branch does not claim
+non-Gaussian identifiability for that full unstructured covariance. The sweep
+harness deliberately bypasses the public guard only to test whether the same
+family-agnostic dep contribution can recover under non-Gaussian likelihoods.
+
+## 4. Files Changed
+
+- `.github/workflows/dep-slope-identifiability-sweep.yaml`
+- `R/fit-multi.R`
+- `tests/testthat/test-phylo-dep-slope-s2-gaussian.R`
+- `tests/testthat/test-matrix-slope-phylo-dep.R`
+- `docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+- `docs/design/35-validation-debt-register.md`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-05-re03-nongaussian-s2-sweep.md`
+
+## 5. Checks Run
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`; no open PR collision.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no output; no recent same-file collision.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-dep-slope-s2-gaussian")'`
+  -> `FAIL 0 | WARN 0 | SKIP 4 | PASS 1`.
+- `Rscript --vanilla -e 'devtools::test(filter = "matrix-slope-phylo-dep")'`
+  -> `FAIL 0 | WARN 0 | SKIP 14 | PASS 0`.
+- `git diff --check`
+  -> clean.
+- `GLLVMTMB_SWEEP_FAMILIES=gaussian GLLVMTMB_SWEEP_SGRID=2 GLLVMTMB_SWEEP_NGRID=6 GLLVMTMB_SWEEP_SEEDS=101 GLLVMTMB_SWEEP_NREP=2 GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-s2-tiny.csv Rscript --vanilla docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> completed with `IDENTIFIABILITY_SWEEP_DONE`; the tiny underpowered
+  Gaussian control cell reported `conv = 1`, `pdHess = FALSE`, which is not a
+  recovery claim. It only verifies the new `s = 2` script path.
+- After adding this report and the check-log entry, the same smoke was rerun
+  with `GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-s2-tiny-after-log.csv`
+  -> same expected underpowered-cell outcome and `IDENTIFIABILITY_SWEEP_DONE`.
+
+## 6. Tests of the Tests
+
+The new test is a boundary/prophylactic guard test: it asserts that a
+non-Gaussian `phylo_dep` fit with two slopes aborts with RE-03 language rather
+than silently entering an unvalidated full unstructured covariance path. The
+heavy Gaussian recovery tests in the same file are unchanged and remain gated
+behind `GLLVMTMB_HEAVY_TESTS=1`.
+
+The sweep smoke is a harness test, not a recovery test. It verifies that the
+new `n_slope` result schema and aggregation can process an `s = 2` cell.
+
+## 7. Consistency Audit
+
+- `rg -n "RE-03|PHY-18|s >= 2|s ≥ 2|phylo_dep\\(1 \\+ x1|non-Gaussian s" README.md ROADMAP.md NEWS.md docs vignettes R tests/testthat`
+  -> expected RE-03 reservation language and new guard/sweep text found. Older
+  capability-status prose outside this RE-03 lane was not broadened into this
+  PR.
+- `rg -n "GLLVMTMB_SWEEP_SGRID|s_grid|n_slope|slope_var_ratio_min|recovery_frac" .github/workflows/dep-slope-identifiability-sweep.yaml docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> workflow input and script schema are aligned.
+- `rg -n "Gaussian-only family guard|gaussian-only|non-Gaussian s >= 2|non-Gaussian s ≥ 2|RE-03 runtime guard|two or more random slopes" NEWS.md docs/design/35-validation-debt-register.md R/fit-multi.R tests/testthat/test-phylo-dep-slope-s2-gaussian.R tests/testthat/test-matrix-slope-phylo-dep.R docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> the stale RE-03 mechanism wording was replaced in the touched files;
+  unrelated guard comments stayed out of scope.
+
+## 8. Roadmap Tick
+
+N/A. RE-03 remains `partial`: Gaussian `s = 2` is covered; non-Gaussian
+`s >= 2` remains reserved pending sweep evidence.
+
+## 9. GitHub Issue Ledger
+
+- #340 (`Capability matrix -- live status board`) inspected. Its board already
+  records non-Gaussian `s >= 2` multi-slope as reserved.
+- #341 (`[roadmap] Random-slope completion`) inspected. Its latest roll-up
+  records the structured non-Gaussian single-slope grid as complete but leaves
+  multi-slope `s >= 2` outside the completed evidence.
+- No issue closed. No new issue created; this branch is the direct next action
+  for the RE-03 residual item already named on #340/#341.
+
+## 10. What Did Not Go Smoothly
+
+The prior wording around "Gaussian-only family guard unchanged" became stale
+after PHY-18 admitted non-Gaussian single-slope `phylo_dep`. The fix is not to
+re-reserve single slopes, but to add the correct narrower guard: non-Gaussian
+`s >= 2` only.
+
+The local `s = 2` smoke used a deliberately tiny Gaussian cell and therefore
+did not recover. That result should not be read as evidence for or against
+RE-03; it only proves the harness runs.
+
+## 11. Team Learning
+
+Ada: The right next step is evidence collection, not capability promotion. This
+branch keeps the public surface conservative while making the remote sweep
+possible.
+
+Boole: Formula grammar did not change. The guard sits after parser
+classification and only narrows the runtime admissibility boundary for
+non-Gaussian multi-slope `phylo_dep`.
+
+Fisher: The sweep now reports recovery fractions in addition to PD fractions,
+so a future "covered" decision cannot rest on convergence alone.
+
+Curie: The guard test is cheap and always-on; the recovery evidence remains in
+heavy / dispatched workflows where the sample sizes are realistic.
+
+Rose: The stale wording was the main consistency risk. The register, NEWS, test
+comments, and spike comments now use the same RE-03 boundary.
+
+Grace: The workflow default remains `s_grid = 1` for scheduled runs, so the
+existing campaign behavior is preserved. Manual dispatch can opt into `s_grid =
+2` for the RE-03 feasibility sweep.
+
+## 12. Known Limitations And Next Actions
+
+- Push this branch and manually dispatch `dep-slope-identifiability-sweep.yaml`
+  with `s_grid = 2`.
+- Inspect the accumulated store on `dep-slope-sweep-results` after the run.
+- Do not relax the non-Gaussian `s >= 2` guard unless at least one family has a
+  non-skipped recovery cell with the same discipline used for PHY-18 and
+  SPA-10.

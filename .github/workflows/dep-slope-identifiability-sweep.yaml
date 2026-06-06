@@ -26,6 +26,11 @@ on:
         required: false
         default: "gaussian,poisson,nbinom2,Gamma,Beta,binomial,ordinal_probit"
         type: string
+      s_grid:
+        description: "Comma list of random-slope counts s. Use 2 for the RE-03 multi-slope feasibility sweep."
+        required: false
+        default: "1"
+        type: string
       n_grid:
         description: "Comma list of n_sp (campaign default is the decision N, 300/600)."
         required: false
@@ -113,6 +118,7 @@ jobs:
         shell: bash
         env:
           GLLVMTMB_SWEEP_FAMILIES: ${{ github.event.inputs.families }}
+          GLLVMTMB_SWEEP_SGRID: ${{ github.event.inputs.s_grid }}
           GLLVMTMB_SWEEP_NGRID: ${{ github.event.inputs.n_grid }}
           GLLVMTMB_SWEEP_NREP: ${{ github.event.inputs.n_rep }}
           GLLVMTMB_SWEEP_STORE: ${{ env.STORE }}

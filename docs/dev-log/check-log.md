@@ -13144,3 +13144,92 @@ Deliberately not run / not done:
 - No #350 nbinom1 allowlist or recovery-cell work; current `origin/main`
   records that lane as admitted in PR #441, so the still-open issue should be
   reconciled before any further work there.
+
+## 2026-06-05 -- RE-03 non-Gaussian s=2 guard and sweep retry prep
+
+Branch: `codex/re03-nongaussian-s2-sweep-2026-06-05`
+
+Goal:
+
+- Keep non-Gaussian `phylo_dep(1 + x1 + x2 | species)` fail-loud while RE-03
+  remains only Gaussian-covered.
+- Extend the existing dep-slope identifiability sweep so it can run `s = 2`
+  cells through `GLLVMTMB_SWEEP_SGRID` / workflow input `s_grid`.
+- Smoke-test the retry path locally before pushing and dispatching the real
+  GitHub Actions sweep.
+
+Commands run:
+
+- `git status --short --branch && git diff --stat`
+  -> branch had seven dirty files in the RE-03 lane:
+  `.github/workflows/dep-slope-identifiability-sweep.yaml`, `NEWS.md`,
+  `R/fit-multi.R`, `docs/design/35-validation-debt-register.md`,
+  `docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`,
+  `tests/testthat/test-matrix-slope-phylo-dep.R`, and
+  `tests/testthat/test-phylo-dep-slope-s2-gaussian.R`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`; no open PR collision before editing shared dev-log/design files.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no output; no recent same-file collision detected.
+- `sed -n '1,220p' docs/design/10-after-task-protocol.md`
+  and
+  `sed -n '1,220p' docs/dev-log/after-task/_TEMPLATE.md`
+  -> re-read the after-task contract before adding the task report.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "RE-03 OR s>=2 OR \"s >= 2\" OR phylo_dep" --limit 20 --json number,title,state,updatedAt,url,labels`
+  -> #340 (capability matrix) and #341 (random-slope completion) are the
+  relevant open ledgers.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "non-Gaussian slope random slope" --limit 20 --json number,title,state,updatedAt,url,labels`
+  -> #341 and #340 again; no separate RE-03-only issue found.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,url,body,labels,comments`
+  and
+  `gh issue view 341 --repo itchyshin/gllvmTMB --json number,title,state,url,body,labels,comments`
+  -> confirmed both boards already name non-Gaussian `s >= 2` as the residual
+  reserved random-slope item.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-dep-slope-s2-gaussian")'`
+  -> passed the new guard test: `FAIL 0 | WARN 0 | SKIP 4 | PASS 1`.
+  The four skipped cells are the expected heavy Gaussian recovery cells
+  gated by `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'devtools::test(filter = "matrix-slope-phylo-dep")'`
+  -> file loaded cleanly: `FAIL 0 | WARN 0 | SKIP 14 | PASS 0`. All fourteen
+  tests are heavy recovery cells and skipped as expected without
+  `GLLVMTMB_HEAVY_TESTS=1`.
+- `git diff --check`
+  -> clean.
+- `GLLVMTMB_SWEEP_FAMILIES=gaussian GLLVMTMB_SWEEP_SGRID=2 GLLVMTMB_SWEEP_NGRID=6 GLLVMTMB_SWEEP_SEEDS=101 GLLVMTMB_SWEEP_NREP=2 GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-s2-tiny.csv Rscript --vanilla docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> completed and printed `IDENTIFIABILITY_SWEEP_DONE`. The deliberately tiny
+  underpowered control cell did not converge PD (`conv = 1`, `pdHess = FALSE`),
+  but it proved the new `s = 2` sweep plumbing, CSV schema, aggregation, and
+  completion path run end-to-end.
+- After adding the check-log / after-task report, reran the same smoke with
+  `GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-s2-tiny-after-log.csv`
+  -> same expected underpowered-cell outcome and `IDENTIFIABILITY_SWEEP_DONE`.
+
+Consistency scans:
+
+- `rg -n "RE-03|PHY-18|s >= 2|s ≥ 2|phylo_dep\\(1 \\+ x1|non-Gaussian s" README.md ROADMAP.md NEWS.md docs vignettes R tests/testthat`
+  -> found the expected RE-03 reservation language, the new guard/test/spike
+  text, and some older capability-status prose predating later slope-grid
+  merges. This branch keeps the scope to RE-03 s=2 and does not broaden the
+  older status-document cleanup.
+- `rg -n "GLLVMTMB_SWEEP_SGRID|s_grid|n_slope|slope_var_ratio_min|recovery_frac" .github/workflows/dep-slope-identifiability-sweep.yaml docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> confirmed the workflow input is wired into the script and the script now
+  records `n_slope`, slope-ratio ranges, and recovery fractions in the
+  accumulated summary.
+- `rg -n "Gaussian-only family guard|gaussian-only|non-Gaussian s >= 2|non-Gaussian s ≥ 2|RE-03 runtime guard|two or more random slopes" NEWS.md docs/design/35-validation-debt-register.md R/fit-multi.R tests/testthat/test-phylo-dep-slope-s2-gaussian.R tests/testthat/test-matrix-slope-phylo-dep.R docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> found the intended replacement of the stale "Gaussian-only family guard
+  unchanged" wording with the dedicated RE-03 runtime guard; older generic
+  "gaussian-only" comments in unrelated guards were left untouched.
+
+Deliberately not run / not done:
+
+- No `devtools::check()` or full `devtools::test()`; this branch changes one
+  R-side runtime guard, one targeted test, a build-ignored research spike, and
+  workflow dispatch plumbing.
+- No `devtools::document()`; no roxygen, NAMESPACE, generated Rd, or exported
+  function documentation changed.
+- No pkgdown run; this is not a user-facing article/reference navigation
+  change.
+- No non-Gaussian `s >= 2` capability admission. RE-03 remains `partial`, with
+  Gaussian `s = 2` covered and non-Gaussian `s >= 2` reserved pending the
+  dispatched sweep evidence.
+- Remote workflow dispatch still needs the branch commit pushed first.

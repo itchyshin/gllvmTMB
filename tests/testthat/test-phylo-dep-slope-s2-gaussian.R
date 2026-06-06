@@ -5,8 +5,8 @@
 ## (test-phylo-dep-slope-gaussian.R) from 2T to (1+s)T columns. This cell is
 ## the bounded, low-risk Gaussian DEMONSTRATION that the generalisation
 ## recovers a (1+s)T x (1+s)T unstructured Sigma_b. Non-Gaussian s >= 2 stays
-## RESERVED (the Gaussian-only family guard in R/fit-multi.R is unchanged;
-## identifiability cost, PHY-18), and s == 1 back-compat is owned by the
+## RESERVED behind the dedicated RE-03 runtime guard until a separate
+## identifiability sweep clears it, and s == 1 back-compat is owned by the
 ## existing test-phylo-dep-slope-gaussian.R suite.
 ##
 ## Column ordering is INTERLEAVED per trait --
@@ -95,6 +95,25 @@ skip_if_not_dep_s2_deps <- function() {
     Sigma_b_true = Sigma_b_true, T_tr = T_tr, C = C, s = s
   )
 }
+
+test_that("phylo_dep s=2 rejects non-Gaussian families until the RE-03 sweep clears", {
+  skip_if_not_dep_s2_deps()
+
+  fx <- .make_dep_s2_fixture(seed = 1202L, n_sp = 6L, T_tr = 2L, n_rep = 2L)
+  fx$df_long$value <- stats::rpois(nrow(fx$df_long), lambda = 3)
+
+  expect_error(
+    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      value ~ 0 + trait + phylo_dep(1 + x1 + x2 | species),
+      data = fx$df_long,
+      phylo_tree = fx$tree,
+      unit = "species",
+      family = stats::poisson(link = "log"),
+      control = gllvmTMB::gllvmTMBcontrol(se = FALSE)
+    ))),
+    regexp = "two or more random slopes|RE-03|s >= 2"
+  )
+})
 
 ## ======================================================================
 ## 1. Interleaved (1+s)T-wide Z structure (per-trait intercept + 2 slopes).

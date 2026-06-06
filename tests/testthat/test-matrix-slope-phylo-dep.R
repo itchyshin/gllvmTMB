@@ -9,17 +9,13 @@
 ## (random-slope recovery) / PHY-05 / PHY-06 of
 ## `docs/design/35-validation-debt-register.md`.
 ##
-## ENGINE STATUS: the augmented-LHS `dep` path IS implemented and Gaussian-
-## validated (test-phylo-dep-slope-gaussian.R, all green). Construction now
-## succeeds for the wired families. HOWEVER, the Gaussian-only family guard in
-## `R/fit-multi.R` is retained (allowlist == gaussian id 0): unlike the
-## diagonal phylo_indep / block-diagonal phylo_latent paths, the FULL
-## unstructured C x C (C = 2*n_traits) covariance is not yet identifiable for
-## the non-Gaussian families at the validation fixtures. Verified empirically
-## (n_sp up to 100, n_rep up to 10): every non-Gaussian dep fit returns
-## convergence != 0 / non-PD Hessian, so each cell below honest-skips at the
-## converge/PD guard. Per the #388 discipline a family joins the allowlist
-## ONLY after its recovery cell passes -- non-Gaussian dep stays reserved.
+## ENGINE STATUS: the augmented-LHS `dep` path IS implemented, Gaussian-
+## validated (test-phylo-dep-slope-gaussian.R, all green), and now validated
+## for the supported non-Gaussian single-slope families through the *_VALIDATION
+## cells later in this file (PHY-18). Early honest-skip cells are retained as
+## historical scaffolding, but the real-API Sigma_b_dep validation cells are
+## the authoritative evidence. Non-Gaussian multi-slope s >= 2 is a separate
+## RE-03 question and remains fail-loud guarded until its own sweep clears.
 ##
 ## Each `test_that` is written so that WHEN the non-Gaussian dep cells become
 ## identifiable (bigger n / a reparameterised covariance), the convergence

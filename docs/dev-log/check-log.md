@@ -13144,3 +13144,287 @@ Deliberately not run / not done:
 - No #350 nbinom1 allowlist or recovery-cell work; current `origin/main`
   records that lane as admitted in PR #441, so the still-open issue should be
   reconciled before any further work there.
+
+## 2026-06-05 -- RE-03 non-Gaussian s=2 guard and sweep retry prep
+
+Branch: `codex/re03-nongaussian-s2-sweep-2026-06-05`
+
+Goal:
+
+- Keep non-Gaussian `phylo_dep(1 + x1 + x2 | species)` fail-loud while RE-03
+  remains only Gaussian-covered.
+- Extend the existing dep-slope identifiability sweep so it can run `s = 2`
+  cells through `GLLVMTMB_SWEEP_SGRID` / workflow input `s_grid`.
+- Smoke-test the retry path locally before pushing and dispatching the real
+  GitHub Actions sweep.
+
+Commands run:
+
+- `git status --short --branch && git diff --stat`
+  -> branch had seven dirty files in the RE-03 lane:
+  `.github/workflows/dep-slope-identifiability-sweep.yaml`, `NEWS.md`,
+  `R/fit-multi.R`, `docs/design/35-validation-debt-register.md`,
+  `docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`,
+  `tests/testthat/test-matrix-slope-phylo-dep.R`, and
+  `tests/testthat/test-phylo-dep-slope-s2-gaussian.R`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`; no open PR collision before editing shared dev-log/design files.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no output; no recent same-file collision detected.
+- `sed -n '1,220p' docs/design/10-after-task-protocol.md`
+  and
+  `sed -n '1,220p' docs/dev-log/after-task/_TEMPLATE.md`
+  -> re-read the after-task contract before adding the task report.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "RE-03 OR s>=2 OR \"s >= 2\" OR phylo_dep" --limit 20 --json number,title,state,updatedAt,url,labels`
+  -> #340 (capability matrix) and #341 (random-slope completion) are the
+  relevant open ledgers.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "non-Gaussian slope random slope" --limit 20 --json number,title,state,updatedAt,url,labels`
+  -> #341 and #340 again; no separate RE-03-only issue found.
+- `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,url,body,labels,comments`
+  and
+  `gh issue view 341 --repo itchyshin/gllvmTMB --json number,title,state,url,body,labels,comments`
+  -> confirmed both boards already name non-Gaussian `s >= 2` as the residual
+  reserved random-slope item.
+- `Rscript --vanilla -e 'devtools::test(filter = "phylo-dep-slope-s2-gaussian")'`
+  -> passed the new guard test: `FAIL 0 | WARN 0 | SKIP 4 | PASS 1`.
+  The four skipped cells are the expected heavy Gaussian recovery cells
+  gated by `GLLVMTMB_HEAVY_TESTS=1`.
+- `Rscript --vanilla -e 'devtools::test(filter = "matrix-slope-phylo-dep")'`
+  -> file loaded cleanly: `FAIL 0 | WARN 0 | SKIP 14 | PASS 0`. All fourteen
+  tests are heavy recovery cells and skipped as expected without
+  `GLLVMTMB_HEAVY_TESTS=1`.
+- `git diff --check`
+  -> clean.
+- `GLLVMTMB_SWEEP_FAMILIES=gaussian GLLVMTMB_SWEEP_SGRID=2 GLLVMTMB_SWEEP_NGRID=6 GLLVMTMB_SWEEP_SEEDS=101 GLLVMTMB_SWEEP_NREP=2 GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-s2-tiny.csv Rscript --vanilla docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> completed and printed `IDENTIFIABILITY_SWEEP_DONE`. The deliberately tiny
+  underpowered control cell did not converge PD (`conv = 1`, `pdHess = FALSE`),
+  but it proved the new `s = 2` sweep plumbing, CSV schema, aggregation, and
+  completion path run end-to-end.
+- After adding the check-log / after-task report, reran the same smoke with
+  `GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-s2-tiny-after-log.csv`
+  -> same expected underpowered-cell outcome and `IDENTIFIABILITY_SWEEP_DONE`.
+
+Consistency scans:
+
+- `rg -n "RE-03|PHY-18|s >= 2|s ≥ 2|phylo_dep\\(1 \\+ x1|non-Gaussian s" README.md ROADMAP.md NEWS.md docs vignettes R tests/testthat`
+  -> found the expected RE-03 reservation language, the new guard/test/spike
+  text, and some older capability-status prose predating later slope-grid
+  merges. This branch keeps the scope to RE-03 s=2 and does not broaden the
+  older status-document cleanup.
+- `rg -n "GLLVMTMB_SWEEP_SGRID|s_grid|n_slope|slope_var_ratio_min|recovery_frac" .github/workflows/dep-slope-identifiability-sweep.yaml docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> confirmed the workflow input is wired into the script and the script now
+  records `n_slope`, slope-ratio ranges, and recovery fractions in the
+  accumulated summary.
+- `rg -n "Gaussian-only family guard|gaussian-only|non-Gaussian s >= 2|non-Gaussian s ≥ 2|RE-03 runtime guard|two or more random slopes" NEWS.md docs/design/35-validation-debt-register.md R/fit-multi.R tests/testthat/test-phylo-dep-slope-s2-gaussian.R tests/testthat/test-matrix-slope-phylo-dep.R docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> found the intended replacement of the stale "Gaussian-only family guard
+  unchanged" wording with the dedicated RE-03 runtime guard; older generic
+  "gaussian-only" comments in unrelated guards were left untouched.
+
+Deliberately not run / not done:
+
+- No `devtools::check()` or full `devtools::test()`; this branch changes one
+  R-side runtime guard, one targeted test, a build-ignored research spike, and
+  workflow dispatch plumbing.
+- No `devtools::document()`; no roxygen, NAMESPACE, generated Rd, or exported
+  function documentation changed.
+- No pkgdown run; this is not a user-facing article/reference navigation
+  change.
+- No non-Gaussian `s >= 2` capability admission. RE-03 remains `partial`, with
+  Gaussian `s = 2` covered and non-Gaussian `s >= 2` reserved pending the
+  dispatched sweep evidence.
+- The first remote workflow dispatch still needed the branch commit pushed
+  first.
+
+Post-push / remote dispatch:
+
+- `git commit -m "test(re03): guard non-gaussian dep multi-slope"`
+  -> committed as `bb5f8e7`.
+- `git push -u origin codex/re03-nongaussian-s2-sweep-2026-06-05`
+  -> created the remote branch and set upstream tracking.
+- `gh workflow run dep-slope-identifiability-sweep.yaml --repo itchyshin/gllvmTMB --ref codex/re03-nongaussian-s2-sweep-2026-06-05 -f families=gaussian,poisson,nbinom2,Gamma,Beta,binomial,ordinal_probit -f s_grid=2 -f n_grid=300,600 -f seeds_per_run=3 -f n_rep=10 -f end_date=2026-06-08`
+  -> dispatched <https://github.com/itchyshin/gllvmTMB/actions/runs/27050546985>.
+- `gh run watch 27050546985 --repo itchyshin/gllvmTMB --exit-status --interval 30`
+  -> run succeeded in 55m31s; job `accumulate` green.
+- `gh run view 27050546985 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headBranch,headSha,event,displayTitle,createdAt,updatedAt,url,jobs`
+  -> conclusion `success`, head branch
+  `codex/re03-nongaussian-s2-sweep-2026-06-05`, head SHA
+  `bb5f8e79090060612127fe01cfb5021cea57c4aa`.
+- `gh run view 27050546985 --repo itchyshin/gllvmTMB --job 79845093634 --log > /tmp/gllvmtmb-re03-run-27050546985.log && wc -l /tmp/gllvmtmb-re03-run-27050546985.log && rg -n "Running |True slope|\\[.*s=2|IDENTIFIABILITY|CUMULATIVE|pushed store|dep-slope campaign|Wrote|recovery_frac|pd_frac" /tmp/gllvmtmb-re03-run-27050546985.log`
+  -> log had 10,629 lines; confirmed 42 `s = 2` cells, seeds
+  `2001,2002,2003`, `IDENTIFIABILITY_SWEEP_DONE`, and a pushed store.
+- `gh run download 27050546985 --repo itchyshin/gllvmTMB --name dep-slope-campaign-run-20 --dir /tmp/gllvmtmb-re03-run-27050546985-artifact`
+  -> downloaded `dep-slope-campaign.log` (275 lines) and
+  `dep-slope-sweep-accumulated.csv` (1,660 lines including header).
+- `git fetch origin dep-slope-sweep-results:refs/remotes/origin/dep-slope-sweep-results && git log --oneline -3 origin/dep-slope-sweep-results`
+  -> local results ref updated to `643f7a9 dep-slope campaign: accumulate seeds (run 20)`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-re03-run-27050546985-artifact/dep-slope-sweep-accumulated.csv"); x$n_slope[is.na(x$n_slope)] <- 1L; x$pd <- with(x, conv == 0 & pdHess == TRUE); x$recovered <- with(x, pd & slope_var_ratio_min >= 0.5 & slope_var_ratio_max <= 2); y <- subset(x, n_slope == 2 & n_sp %in% c(300,600)); agg <- aggregate(cbind(pd, recovered) ~ family + n_slope + n_sp, y, function(z) c(sum=sum(z, na.rm=TRUE), n=sum(!is.na(z)))); out <- data.frame(family=agg$family, n_slope=agg$n_slope, n_sp=agg$n_sp, pd=sprintf("%d/%d", agg$pd[,"sum"], agg$pd[,"n"]), recovered=sprintf("%d/%d", agg$recovered[,"sum"], agg$recovered[,"n"])); print(out[order(out$n_sp, out$family), ], row.names=FALSE); cat("\nNew run rows only (seed >= 2001):\n"); z <- subset(y, seed >= 2001 & seed <= 2003); print(z[order(z$n_sp,z$family,z$seed), c("family","n_slope","n_sp","seed","conv","pdHess","slope_var_ratio_min","slope_var_ratio_max","slope_var_ratios")], row.names=FALSE)'`
+  -> compact `s = 2` summary:
+  - `n_sp = 300`: gaussian 3/3 recovered; poisson 2/3; binomial 2/3;
+    Beta 1/3; Gamma 1/3; nbinom2 1/3 recovered and 2/3 PD; ordinal_probit
+    0/3 recovered and 1/3 PD.
+  - `n_sp = 600`: gaussian, poisson, Gamma, Beta, and binomial 3/3
+    recovered; nbinom2 and ordinal_probit both 2/3 recovered with 3/3 PD.
+- `gh issue comment 341 --repo itchyshin/gllvmTMB --body <summary>`
+  -> posted <https://github.com/itchyshin/gllvmTMB/issues/341#issuecomment-4637270995>.
+
+Post-dispatch interpretation:
+
+- The run is a successful feasibility sweep and store-persistence test.
+- The evidence argues against a structural no-go for non-Gaussian `s >= 2`,
+  especially at `n_sp = 600`.
+- It is not enough to relax the public RE-03 guard: `nbinom2` and
+  `ordinal_probit` still need more high-N seeds, and likely an `n_sp = 1200`
+  check, before any admission decision.
+
+## 2026-06-05 -- RE-03 s=2 remote retry + store hardening follow-up
+
+Goal:
+
+- Continue the requested RE-03 `s = 2` remote retry after run 20 passed but
+  left `nbinom2` and `ordinal_probit` short of a no-fake-pass recovery signal.
+- Diagnose why the accumulated results branch no longer carried the run-20
+  `s = 2` rows after the next default campaign run.
+- Harden the workflow so non-default `s_grid` runs use an s-specific store and
+  cannot be overwritten by scheduled/default single-slope runs.
+
+Commands run:
+
+- `gh run watch 27051802506 --repo itchyshin/gllvmTMB --exit-status --interval 30`
+  -> run 22 succeeded in 42m50s; job `accumulate` green.
+- `gh run view 27051802506 --repo itchyshin/gllvmTMB --json databaseId,headSha,status,conclusion,createdAt,updatedAt,url,workflowName,event,displayTitle,jobs`
+  -> conclusion `success`; head SHA
+  `c99b5dad222ccdf07973a3598efedc6ee64d62d8`; run URL
+  <https://github.com/itchyshin/gllvmTMB/actions/runs/27051802506>.
+- `gh run download 27051802506 --repo itchyshin/gllvmTMB --dir /tmp/gllvmtmb-re03-run-27051802506-artifact`
+  -> downloaded artifact `dep-slope-campaign-run-22` with
+  `dep-slope-campaign.log` and `dep-slope-sweep-accumulated.csv`.
+- `wc -l /tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-sweep-accumulated.csv`
+  -> 1,786 lines including header.
+- `tail -n 90 /tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-campaign.log`
+  -> confirmed `IDENTIFIABILITY_SWEEP_DONE`, 1,785 data rows, and run-22
+  cumulative table.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-sweep-accumulated.csv"); y <- x[x$n_slope == 2, ]; print(aggregate(seed ~ family + n_slope + n_sp, y, function(z) paste(sort(unique(z)), collapse=","))); z <- aggregate(cbind(pd = y$conv == 0 & y$pdHess, rec = y$conv == 0 & y$pdHess & y$slope_var_ratio_min >= 0.5 & y$slope_var_ratio_max <= 2) ~ family + n_slope + n_sp, y, function(v) sprintf("%d/%d", sum(v), length(v))); print(z); print(y[order(y$family, y$seed), c("family", "n_slope", "n_sp", "seed", "conv", "pdHess", "max_sigma_diff", "slope_var_ratio_min", "slope_var_ratio_max")], row.names = FALSE)'`
+  -> run 22 added `s = 2`, `n_sp = 600` seeds `2201,2202,2203`: Beta
+  3/3 PD and 2/3 recovered; binomial 3/3 and 3/3; Gamma 3/3 and 3/3;
+  gaussian 3/3 and 3/3; nbinom2 3/3 and 2/3; ordinal_probit 2/3 and 2/3;
+  poisson 3/3 and 3/3. Recovery here means `conv == 0`, `pdHess == TRUE`,
+  and all slope-variance ratios in `[0.5, 2]`; it does not require
+  `max_sigma_diff < 0.25`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-re03-run-27050546985-artifact/dep-slope-sweep-accumulated.csv"); x$n_slope[is.na(x$n_slope)] <- 1L; x$pd <- with(x, conv == 0 & pdHess == TRUE); x$recovered <- with(x, pd & slope_var_ratio_min >= 0.5 & slope_var_ratio_max <= 2); y <- subset(x, n_slope == 2); print(with(y, table(n_sp, seed))); agg <- aggregate(cbind(pd, recovered) ~ family + n_slope + n_sp, y, function(z) c(sum=sum(z, na.rm=TRUE), n=sum(!is.na(z)))); out <- data.frame(family=agg$family, n_sp=agg$n_sp, pd=sprintf("%d/%d", agg$pd[,"sum"], agg$pd[,"n"]), recovered=sprintf("%d/%d", agg$recovered[,"sum"], agg$recovered[,"n"])); print(out[order(out$n_sp,out$family), ], row.names=FALSE)'`
+  -> run-20 artifact retained `s = 2` seeds `2001,2002,2003` for both
+  `n_sp = 300` and `600`.
+- `git fetch origin dep-slope-sweep-results`
+  -> updated local results-branch ref to `c4c1325`.
+- `git log --oneline --decorate --max-count=8 origin/dep-slope-sweep-results`
+  -> recent result-store commits were run 20 (`643f7a9`), run 21
+  (`227cb9a`), and run 22 (`c4c1325`).
+- `git show 643f7a9:dep-slope-sweep-accumulated.csv > /tmp/gllvmtmb-re03-store-run20.csv`
+  plus analogous `git show` commands for `227cb9a` and `c4c1325`, followed by
+  `Rscript --vanilla -e 'for (p in c("/tmp/gllvmtmb-re03-store-run20.csv","/tmp/gllvmtmb-re03-store-run21.csv","/tmp/gllvmtmb-re03-store-run22.csv")) { x <- read.csv(p); if (!"n_slope" %in% names(x)) x$n_slope <- 1L; x$n_slope[is.na(x$n_slope)] <- 1L; cat("\n", basename(p), nrow(x), "rows\n", sep=""); print(with(x, table(n_slope, n_sp, useNA="ifany"))); if (any(x$n_slope == 2)) { print(aggregate(seed ~ family + n_slope + n_sp, subset(x, n_slope == 2), function(z) paste(sort(unique(z)), collapse=","))) } }'`
+  -> run 20 store had the expected `s = 2` rows; run 21 rewrote the store with
+  only `s = 1`; run 22 then added only the fresh `s = 2`, `n_sp = 600` rows.
+  The run-20 and run-22 artifacts remain the reliable evidence sources until
+  the s-specific store is seeded.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,author,updatedAt`
+  -> `[]`; no open PR collision before editing shared dev-log files.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only this RE-03 branch and the results-branch workflow commits appeared;
+  no competing shared-file edit detected.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/dep-slope-identifiability-sweep.yaml"); puts "yaml-ok"'`
+  -> `yaml-ok` after adding the s-specific store selector.
+- `rg -n "dep-slope-sweep-accumulated|dep-slope-sweep-s|GLLVMTMB_SWEEP_STORE|GLLVMTMB_SWEEP_OUT|RESULTS_BRANCH|STORE" .github/workflows/dep-slope-identifiability-sweep.yaml docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-05-re03-nongaussian-s2-sweep.md docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> found the intended default store, new s-specific store route, spike
+  environment variables, and the follow-up log/report text; no stale
+  alternative store path found.
+- `Rscript --vanilla -e 'a <- read.csv("/tmp/gllvmtmb-re03-run-27050546985-artifact/dep-slope-sweep-accumulated.csv"); b <- read.csv("/tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-sweep-accumulated.csv"); for (nm in setdiff(names(a), names(b))) b[[nm]] <- NA; for (nm in setdiff(names(b), names(a))) a[[nm]] <- NA; x <- rbind(a[, names(b)], b); x$n_slope[is.na(x$n_slope)] <- 1L; y <- subset(x, n_slope == 2); y <- y[!duplicated(y[c("family", "n_slope", "n_sp", "seed")]), ]; y$pd <- with(y, conv == 0 & pdHess == TRUE); y$recovered <- with(y, pd & slope_var_ratio_min >= 0.5 & slope_var_ratio_max <= 2); agg <- aggregate(cbind(pd, recovered) ~ family + n_slope + n_sp, y, function(z) c(sum=sum(z, na.rm=TRUE), n=sum(!is.na(z)))); out <- data.frame(family=agg$family, n_sp=agg$n_sp, pd=sprintf("%d/%d", agg$pd[,"sum"], agg$pd[,"n"]), recovered=sprintf("%d/%d", agg$recovered[,"sum"], agg$recovered[,"n"])); print(out[order(out$n_sp,out$family), ], row.names=FALSE); cat("\nS2 seed IDs by N:\n"); print(aggregate(seed ~ n_sp, y, function(z) paste(sort(unique(z)), collapse=",")), row.names=FALSE)'`
+  -> combined artifact evidence: at `n_sp = 600`, gaussian, poisson, Gamma,
+  binomial all 6/6 recovered; Beta 5/6 recovered; nbinom2 4/6 recovered;
+  ordinal_probit 4/6 recovered with 5/6 PD. At `n_sp = 300`, only gaussian
+  reached 3/3 recovery.
+
+Files changed in this follow-up:
+
+- `.github/workflows/dep-slope-identifiability-sweep.yaml` now routes
+  non-default `s_grid` runs to `dep-slope-sweep-s<grid>-accumulated.csv`
+  while keeping the scheduled/default single-slope campaign on
+  `dep-slope-sweep-accumulated.csv`.
+- `docs/dev-log/check-log.md` and
+  `docs/dev-log/after-task/2026-06-05-re03-nongaussian-s2-sweep.md` updated
+  with run-22 evidence and the store-history caveat.
+
+Interpretation:
+
+- Run 22 was useful evidence, but not a capability admission.
+- The combined artifact evidence strengthens the case that non-Gaussian
+  `s = 2` is numerically feasible at `n_sp = 600`, but `nbinom2` and
+  `ordinal_probit` remain too seed-sensitive to relax the public guard.
+- The results branch needed an s-specific store before any further manual
+  `s = 2` dispatch; otherwise scheduled/default single-slope runs can erase the
+  multi-slope rows from the single global CSV.
+
+## 2026-06-05 -- RE-03 s=2 store seed and high-N weak-family run
+
+Goal:
+
+- Seed the new dedicated `dep-slope-sweep-s2-accumulated.csv` store from the
+  run-20 and run-22 artifacts.
+- Dispatch one narrower high-N `s = 2` batch for the weak families
+  (`Beta`, `nbinom2`, `ordinal_probit`) at `n_sp = 600,1200`.
+- Keep the public non-Gaussian `s >= 2` guard in place unless the evidence
+  clearly supports relaxing it.
+
+Commands run:
+
+- `Rscript --vanilla -e 'a <- read.csv("/tmp/gllvmtmb-re03-run-27050546985-artifact/dep-slope-sweep-accumulated.csv", stringsAsFactors=FALSE); b <- read.csv("/tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-sweep-accumulated.csv", stringsAsFactors=FALSE); for (nm in setdiff(names(a), names(b))) b[[nm]] <- NA; for (nm in setdiff(names(b), names(a))) a[[nm]] <- NA; x <- rbind(a[, names(b)], b); x$n_slope[is.na(x$n_slope)] <- 1L; y <- x[x$n_slope == 2, , drop=FALSE]; y <- y[!duplicated(y[c("family", "n_slope", "n_sp", "seed")]), , drop=FALSE]; y <- y[order(y$family, y$n_sp, y$seed), , drop=FALSE]; write.csv(y, "/tmp/dep-slope-sweep-s2-accumulated.csv", row.names=FALSE); cat(nrow(y), "data rows\n"); print(with(y, table(n_sp, seed)))'`
+  -> wrote 63 s2 data rows: run-20 seeds `2001:2003` for `n_sp = 300,600`
+  plus run-22 seeds `2201:2203` for `n_sp = 600`.
+- `git clone --branch dep-slope-sweep-results --single-branch https://github.com/itchyshin/gllvmTMB.git /tmp/gllvmtmb-re03-results-work`
+  followed by
+  `cp /tmp/dep-slope-sweep-s2-accumulated.csv /tmp/gllvmtmb-re03-results-work/dep-slope-sweep-s2-accumulated.csv`
+  -> prepared a temp results-branch worktree with only the new s2 store file
+  added.
+- `git add dep-slope-sweep-s2-accumulated.csv && git commit -m "dep-slope campaign: seed s2 store"`
+  in `/tmp/gllvmtmb-re03-results-work`
+  -> committed `d8814be dep-slope campaign: seed s2 store`.
+- `git push origin dep-slope-sweep-results`
+  in `/tmp/gllvmtmb-re03-results-work`
+  -> pushed `d8814be` to the results branch.
+- `gh workflow run dep-slope-identifiability-sweep.yaml --repo itchyshin/gllvmTMB --ref codex/re03-nongaussian-s2-sweep-2026-06-05 -f families=Beta,nbinom2,ordinal_probit -f s_grid=2 -f n_grid=600,1200 -f seeds_per_run=3 -f n_rep=10 -f end_date=2026-06-08`
+  -> dispatched <https://github.com/itchyshin/gllvmTMB/actions/runs/27052868265>.
+- `gh run watch 27052868265 --repo itchyshin/gllvmTMB --exit-status --interval 30`
+  -> run succeeded in 1h15m58s.
+- `gh run view 27052868265 --repo itchyshin/gllvmTMB --json databaseId,headSha,status,conclusion,createdAt,updatedAt,url,workflowName,event,displayTitle,jobs`
+  -> conclusion `success`, head SHA
+  `74cdf17dbc66000acd8dacab07d5870bf0fcbab5`, run URL
+  <https://github.com/itchyshin/gllvmTMB/actions/runs/27052868265>.
+- `gh run download 27052868265 --repo itchyshin/gllvmTMB --dir /tmp/gllvmtmb-re03-run-27052868265-artifact`
+  -> downloaded artifact `dep-slope-campaign-run-23` with
+  `dep-slope-campaign.log` and `dep-slope-sweep-s2-accumulated.csv`.
+- `tail -n 80 /tmp/gllvmtmb-re03-run-27052868265-artifact/dep-slope-campaign-run-23/dep-slope-campaign.log`
+  -> confirmed `Accumulated with 63 prior rows`, wrote 81 data rows,
+  printed `IDENTIFIABILITY_SWEEP_DONE`, and used
+  `dep-slope-sweep-s2-accumulated.csv`.
+- `Rscript --vanilla -e 'path <- "/tmp/gllvmtmb-re03-run-27052868265-artifact/dep-slope-campaign-run-23/dep-slope-sweep-s2-accumulated.csv"; x <- read.csv(path); x$pd <- with(x, conv == 0 & pdHess == TRUE); x$recovered <- with(x, pd & slope_var_ratio_min >= 0.5 & slope_var_ratio_max <= 2); fmt <- function(dat) { agg <- aggregate(cbind(pd, recovered) ~ family + n_slope + n_sp, dat, function(z) c(sum=sum(z, na.rm=TRUE), n=sum(!is.na(z)))); out <- data.frame(family=agg$family, n_sp=agg$n_sp, pd=sprintf("%d/%d", agg$pd[,"sum"], agg$pd[,"n"]), recovered=sprintf("%d/%d", agg$recovered[,"sum"], agg$recovered[,"n"])); out[order(out$n_sp, out$family), ] }; cat("CUMULATIVE\n"); print(fmt(x), row.names=FALSE); cat("\nFRESH SEEDS 2301:2303\n"); print(fmt(subset(x, seed >= 2301 & seed <= 2303)), row.names=FALSE); cat("\nFRESH ROWS\n"); print(subset(x, seed >= 2301 & seed <= 2303)[order(subset(x, seed >= 2301 & seed <= 2303)$n_sp, subset(x, seed >= 2301 & seed <= 2303)$family, subset(x, seed >= 2301 & seed <= 2303)$seed), c("family","n_sp","seed","conv","pdHess","max_sigma_diff","slope_var_ratio_min","slope_var_ratio_max","slope_var_ratios")], row.names=FALSE)'`
+  -> cumulative s2 evidence after run 23: at `n_sp = 600`, Beta 9/9 PD and
+  8/9 recovered; nbinom2 9/9 and 7/9; ordinal_probit 8/9 and 6/9. At
+  `n_sp = 1200`, Beta, nbinom2, and ordinal_probit were each 3/3 PD and 2/3
+  recovered. Fresh run-23 `n_sp = 600` cells were Beta 3/3 recovered,
+  nbinom2 3/3 recovered, and ordinal_probit 2/3 recovered.
+- `git fetch origin dep-slope-sweep-results`
+  -> updated the local results ref through run 23.
+- `git log --oneline --max-count=5 origin/dep-slope-sweep-results`
+  -> current top commits are `2c4f5df dep-slope campaign: accumulate seeds
+  (run 23)`, `d8814be dep-slope campaign: seed s2 store`, and `c4c1325 dep-slope
+  campaign: accumulate seeds (run 22)`.
+- `gh issue comment 341 --repo itchyshin/gllvmTMB --body-file - <<'EOF' ... EOF`
+  -> posted <https://github.com/itchyshin/gllvmTMB/issues/341#issuecomment-4637607671>.
+
+Interpretation:
+
+- The workflow hardening worked: run 23 restored, wrote, uploaded, and
+  persisted `dep-slope-sweep-s2-accumulated.csv`.
+- The new evidence is stronger at `n_sp = 600`; all fresh weak-family cells
+  were PD, and Beta/nbinom2 were 3/3 recovered in run 23.
+- The guard should still stay in place. `ordinal_probit` is 6/9 recovered at
+  `n_sp = 600`, and all three weak-family `n_sp = 1200` cells are only 2/3
+  recovered. RE-03 remains `partial`, not advertised.

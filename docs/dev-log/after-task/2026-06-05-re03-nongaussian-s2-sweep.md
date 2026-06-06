@@ -74,6 +74,32 @@ family-agnostic dep contribution can recover under non-Gaussian likelihoods.
 - After adding this report and the check-log entry, the same smoke was rerun
   with `GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-s2-tiny-after-log.csv`
   -> same expected underpowered-cell outcome and `IDENTIFIABILITY_SWEEP_DONE`.
+- `gh workflow run dep-slope-identifiability-sweep.yaml --repo itchyshin/gllvmTMB --ref codex/re03-nongaussian-s2-sweep-2026-06-05 -f families=gaussian,poisson,nbinom2,Gamma,Beta,binomial,ordinal_probit -f s_grid=2 -f n_grid=300,600 -f seeds_per_run=3 -f n_rep=10 -f end_date=2026-06-08`
+  -> dispatched <https://github.com/itchyshin/gllvmTMB/actions/runs/27050546985>.
+- `gh run watch 27050546985 --repo itchyshin/gllvmTMB --exit-status --interval 30`
+  -> run succeeded in 55m31s.
+- `gh run download 27050546985 --repo itchyshin/gllvmTMB --name dep-slope-campaign-run-20 --dir /tmp/gllvmtmb-re03-run-27050546985-artifact`
+  -> downloaded `dep-slope-campaign.log` and `dep-slope-sweep-accumulated.csv`.
+- `Rscript --vanilla -e ...` summariser over
+  `/tmp/gllvmtmb-re03-run-27050546985-artifact/dep-slope-sweep-accumulated.csv`
+  (exact one-line command recorded in `docs/dev-log/check-log.md`)
+  -> see outcome table below.
+
+Remote `s = 2` outcome from run 20:
+
+| family | n_sp=300 PD | n_sp=300 recovery | n_sp=600 PD | n_sp=600 recovery |
+|---|---:|---:|---:|---:|
+| gaussian | 3/3 | 3/3 | 3/3 | 3/3 |
+| poisson | 3/3 | 2/3 | 3/3 | 3/3 |
+| Gamma | 3/3 | 1/3 | 3/3 | 3/3 |
+| Beta | 3/3 | 1/3 | 3/3 | 3/3 |
+| binomial | 3/3 | 2/3 | 3/3 | 3/3 |
+| nbinom2 | 2/3 | 1/3 | 3/3 | 2/3 |
+| ordinal_probit | 1/3 | 0/3 | 3/3 | 2/3 |
+
+The result store was committed to `dep-slope-sweep-results` at `643f7a9`
+(`dep-slope campaign: accumulate seeds (run 20)`), and the accumulated CSV now
+has 1,659 data rows.
 
 ## 6. Tests of the Tests
 
@@ -110,6 +136,8 @@ N/A. RE-03 remains `partial`: Gaussian `s = 2` is covered; non-Gaussian
 - #341 (`[roadmap] Random-slope completion`) inspected. Its latest roll-up
   records the structured non-Gaussian single-slope grid as complete but leaves
   multi-slope `s >= 2` outside the completed evidence.
+- #341 commented with the successful dispatch result and recovery table:
+  <https://github.com/itchyshin/gllvmTMB/issues/341#issuecomment-4637270995>.
 - No issue closed. No new issue created; this branch is the direct next action
   for the RE-03 residual item already named on #340/#341.
 
@@ -149,9 +177,9 @@ existing campaign behavior is preserved. Manual dispatch can opt into `s_grid =
 
 ## 12. Known Limitations And Next Actions
 
-- Push this branch and manually dispatch `dep-slope-identifiability-sweep.yaml`
-  with `s_grid = 2`.
-- Inspect the accumulated store on `dep-slope-sweep-results` after the run.
+- Add more high-N `s = 2` seeds at `n_sp = 600` for `nbinom2` and
+  `ordinal_probit`, or dispatch an `n_sp = 1200` check if the 600-seed
+  recovery rate stays below the no-fake-pass threshold.
 - Do not relax the non-Gaussian `s >= 2` guard unless at least one family has a
   non-skipped recovery cell with the same discipline used for PHY-18 and
   SPA-10.

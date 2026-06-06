@@ -13232,4 +13232,46 @@ Deliberately not run / not done:
 - No non-Gaussian `s >= 2` capability admission. RE-03 remains `partial`, with
   Gaussian `s = 2` covered and non-Gaussian `s >= 2` reserved pending the
   dispatched sweep evidence.
-- Remote workflow dispatch still needs the branch commit pushed first.
+- The first remote workflow dispatch still needed the branch commit pushed
+  first.
+
+Post-push / remote dispatch:
+
+- `git commit -m "test(re03): guard non-gaussian dep multi-slope"`
+  -> committed as `bb5f8e7`.
+- `git push -u origin codex/re03-nongaussian-s2-sweep-2026-06-05`
+  -> created the remote branch and set upstream tracking.
+- `gh workflow run dep-slope-identifiability-sweep.yaml --repo itchyshin/gllvmTMB --ref codex/re03-nongaussian-s2-sweep-2026-06-05 -f families=gaussian,poisson,nbinom2,Gamma,Beta,binomial,ordinal_probit -f s_grid=2 -f n_grid=300,600 -f seeds_per_run=3 -f n_rep=10 -f end_date=2026-06-08`
+  -> dispatched <https://github.com/itchyshin/gllvmTMB/actions/runs/27050546985>.
+- `gh run watch 27050546985 --repo itchyshin/gllvmTMB --exit-status --interval 30`
+  -> run succeeded in 55m31s; job `accumulate` green.
+- `gh run view 27050546985 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headBranch,headSha,event,displayTitle,createdAt,updatedAt,url,jobs`
+  -> conclusion `success`, head branch
+  `codex/re03-nongaussian-s2-sweep-2026-06-05`, head SHA
+  `bb5f8e79090060612127fe01cfb5021cea57c4aa`.
+- `gh run view 27050546985 --repo itchyshin/gllvmTMB --job 79845093634 --log > /tmp/gllvmtmb-re03-run-27050546985.log && wc -l /tmp/gllvmtmb-re03-run-27050546985.log && rg -n "Running |True slope|\\[.*s=2|IDENTIFIABILITY|CUMULATIVE|pushed store|dep-slope campaign|Wrote|recovery_frac|pd_frac" /tmp/gllvmtmb-re03-run-27050546985.log`
+  -> log had 10,629 lines; confirmed 42 `s = 2` cells, seeds
+  `2001,2002,2003`, `IDENTIFIABILITY_SWEEP_DONE`, and a pushed store.
+- `gh run download 27050546985 --repo itchyshin/gllvmTMB --name dep-slope-campaign-run-20 --dir /tmp/gllvmtmb-re03-run-27050546985-artifact`
+  -> downloaded `dep-slope-campaign.log` (275 lines) and
+  `dep-slope-sweep-accumulated.csv` (1,660 lines including header).
+- `git fetch origin dep-slope-sweep-results:refs/remotes/origin/dep-slope-sweep-results && git log --oneline -3 origin/dep-slope-sweep-results`
+  -> local results ref updated to `643f7a9 dep-slope campaign: accumulate seeds (run 20)`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-re03-run-27050546985-artifact/dep-slope-sweep-accumulated.csv"); x$n_slope[is.na(x$n_slope)] <- 1L; x$pd <- with(x, conv == 0 & pdHess == TRUE); x$recovered <- with(x, pd & slope_var_ratio_min >= 0.5 & slope_var_ratio_max <= 2); y <- subset(x, n_slope == 2 & n_sp %in% c(300,600)); agg <- aggregate(cbind(pd, recovered) ~ family + n_slope + n_sp, y, function(z) c(sum=sum(z, na.rm=TRUE), n=sum(!is.na(z)))); out <- data.frame(family=agg$family, n_slope=agg$n_slope, n_sp=agg$n_sp, pd=sprintf("%d/%d", agg$pd[,"sum"], agg$pd[,"n"]), recovered=sprintf("%d/%d", agg$recovered[,"sum"], agg$recovered[,"n"])); print(out[order(out$n_sp, out$family), ], row.names=FALSE); cat("\nNew run rows only (seed >= 2001):\n"); z <- subset(y, seed >= 2001 & seed <= 2003); print(z[order(z$n_sp,z$family,z$seed), c("family","n_slope","n_sp","seed","conv","pdHess","slope_var_ratio_min","slope_var_ratio_max","slope_var_ratios")], row.names=FALSE)'`
+  -> compact `s = 2` summary:
+  - `n_sp = 300`: gaussian 3/3 recovered; poisson 2/3; binomial 2/3;
+    Beta 1/3; Gamma 1/3; nbinom2 1/3 recovered and 2/3 PD; ordinal_probit
+    0/3 recovered and 1/3 PD.
+  - `n_sp = 600`: gaussian, poisson, Gamma, Beta, and binomial 3/3
+    recovered; nbinom2 and ordinal_probit both 2/3 recovered with 3/3 PD.
+- `gh issue comment 341 --repo itchyshin/gllvmTMB --body <summary>`
+  -> posted <https://github.com/itchyshin/gllvmTMB/issues/341#issuecomment-4637270995>.
+
+Post-dispatch interpretation:
+
+- The run is a successful feasibility sweep and store-persistence test.
+- The evidence argues against a structural no-go for non-Gaussian `s >= 2`,
+  especially at `n_sp = 600`.
+- It is not enough to relax the public RE-03 guard: `nbinom2` and
+  `ordinal_probit` still need more high-N seeds, and likely an `n_sp = 1200`
+  check, before any admission decision.

@@ -251,3 +251,50 @@ Additional checks for this follow-up:
 Next safe action: seed the new `dep-slope-sweep-s2-accumulated.csv` store from
 the run-20/run-22 artifacts, then dispatch a narrow high-N `s = 2` batch for
 the weak families before considering any guard relaxation.
+
+## 14. Dedicated s2 Store And High-N Weak-Family Run
+
+The dedicated s2 store was seeded from the run-20 and run-22 artifacts:
+
+- Store file: `dep-slope-sweep-s2-accumulated.csv`
+- Seed-store commit on `dep-slope-sweep-results`:
+  `d8814be dep-slope campaign: seed s2 store`
+- Seeded rows: 63 `s = 2` data rows, deduplicated by
+  `family, n_slope, n_sp, seed`
+
+A follow-up run used the hardened workflow and the dedicated s2 store:
+
+- Run: <https://github.com/itchyshin/gllvmTMB/actions/runs/27052868265>
+- Head SHA: `74cdf17dbc66000acd8dacab07d5870bf0fcbab5`
+- Result: success in 1h15m58s
+- Artifact:
+  `/tmp/gllvmtmb-re03-run-27052868265-artifact/dep-slope-campaign-run-23/`
+- Result-store commit:
+  `2c4f5df dep-slope campaign: accumulate seeds (run 23)`
+- Issue update:
+  <https://github.com/itchyshin/gllvmTMB/issues/341#issuecomment-4637607671>
+
+Run 23 verified the store hardening: it restored, wrote, uploaded, and
+persisted `dep-slope-sweep-s2-accumulated.csv`, not the default
+single-slope CSV.
+
+Cumulative `s = 2` evidence after run 23:
+
+| family | n_sp=300 PD | n_sp=300 recovery | n_sp=600 PD | n_sp=600 recovery | n_sp=1200 PD | n_sp=1200 recovery |
+|---|---:|---:|---:|---:|---:|---:|
+| gaussian | 3/3 | 3/3 | 6/6 | 6/6 | - | - |
+| poisson | 3/3 | 2/3 | 6/6 | 6/6 | - | - |
+| Gamma | 3/3 | 1/3 | 6/6 | 6/6 | - | - |
+| Beta | 3/3 | 1/3 | 9/9 | 8/9 | 3/3 | 2/3 |
+| binomial | 3/3 | 2/3 | 6/6 | 6/6 | - | - |
+| nbinom2 | 2/3 | 1/3 | 9/9 | 7/9 | 3/3 | 2/3 |
+| ordinal_probit | 1/3 | 0/3 | 8/9 | 6/9 | 3/3 | 2/3 |
+
+Fresh run-23 cells were all PD. At `n_sp = 600`, Beta and nbinom2 were 3/3
+recovered and ordinal_probit was 2/3 recovered. At `n_sp = 1200`, Beta,
+nbinom2, and ordinal_probit were each 2/3 recovered.
+
+Final interpretation for this phase: the evidence argues strongly against a
+structural no-go for non-Gaussian `phylo_dep` with `s = 2`, but it still does
+not justify relaxing the public guard. RE-03 remains `partial`; non-Gaussian
+`s >= 2` stays reserved pending stronger family-specific recovery evidence.

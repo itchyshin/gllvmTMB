@@ -6,10 +6,13 @@ name: dep-slope-identifiability-sweep
 # (a research harness; NO engine change). Instead of re-running the same grid,
 # each run ADDS a fresh batch of replicate seeds (derived from the run number,
 # so seeds never collide) to a durable per-cell store on the orphan branch
-# `dep-slope-sweep-results`. The cumulative PD-fraction + recovery statistics
-# therefore TIGHTEN over the week -- especially the seed-sensitive nbinom2 /
-# ordinal_probit cells. Auto-stops after the campaign end date (default Sunday
-# 2026-06-08). The repo is public, so ubuntu-latest minutes are free.
+# `dep-slope-sweep-results`. Non-default `s_grid` values write to an
+# s-specific store so the scheduled single-slope campaign cannot overwrite a
+# manual multi-slope feasibility sweep. The cumulative PD-fraction + recovery
+# statistics therefore TIGHTEN over the week -- especially the seed-sensitive
+# nbinom2 / ordinal_probit cells. Auto-stops after the campaign end date
+# (default Sunday 2026-06-08). The repo is public, so ubuntu-latest minutes are
+# free.
 #
 # POST-MERGE: the cron goes live on merge to main (schedules only fire from the
 # default branch). Dispatch one manual run first to confirm the
@@ -63,7 +66,7 @@ permissions:
 
 env:
   RESULTS_BRANCH: dep-slope-sweep-results
-  STORE: dep-slope-sweep-accumulated.csv
+  DEFAULT_STORE: dep-slope-sweep-accumulated.csv
 
 jobs:
   accumulate:
@@ -85,6 +88,22 @@ jobs:
             echo "stop=false" >> "$GITHUB_OUTPUT"
             echo "campaign active: today $TODAY <= end_date $END"
           fi
+
+      - name: Select accumulated store
+        id: store
+        if: steps.guard.outputs.stop != 'true'
+        shell: bash
+        run: |
+          SGRID="${{ github.event.inputs.s_grid }}"; SGRID="${SGRID:-1}"
+          if [[ "$SGRID" == "1" ]]; then
+            STORE="$DEFAULT_STORE"
+          else
+            SAFE_SGRID="$(printf '%s' "$SGRID" | tr -c 'A-Za-z0-9._-' '-')"
+            STORE="dep-slope-sweep-s${SAFE_SGRID}-accumulated.csv"
+          fi
+          echo "STORE=$STORE" >> "$GITHUB_ENV"
+          echo "store=$STORE" >> "$GITHUB_OUTPUT"
+          echo "using accumulated store: $STORE"
 
       - uses: r-lib/actions/setup-pandoc@v2
         if: steps.guard.outputs.stop != 'true'
@@ -121,8 +140,8 @@ jobs:
           GLLVMTMB_SWEEP_SGRID: ${{ github.event.inputs.s_grid }}
           GLLVMTMB_SWEEP_NGRID: ${{ github.event.inputs.n_grid }}
           GLLVMTMB_SWEEP_NREP: ${{ github.event.inputs.n_rep }}
-          GLLVMTMB_SWEEP_STORE: ${{ env.STORE }}
-          GLLVMTMB_SWEEP_OUT: ${{ env.STORE }}
+          GLLVMTMB_SWEEP_STORE: ${{ steps.store.outputs.store }}
+          GLLVMTMB_SWEEP_OUT: ${{ steps.store.outputs.store }}
         run: |
           set -o pipefail
           STEP="${{ github.event.inputs.seeds_per_run }}"; STEP="${STEP:-3}"
@@ -172,7 +191,7 @@ jobs:
         with:
           name: dep-slope-campaign-run-${{ github.run_number }}
           path: |
-            ${{ env.STORE }}
+            ${{ steps.store.outputs.store }}
             dep-slope-campaign.log
           retention-days: 30
           if-no-files-found: warn

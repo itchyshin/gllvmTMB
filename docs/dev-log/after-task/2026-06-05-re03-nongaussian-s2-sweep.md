@@ -183,3 +183,71 @@ existing campaign behavior is preserved. Manual dispatch can opt into `s_grid =
 - Do not relax the non-Gaussian `s >= 2` guard unless at least one family has a
   non-skipped recovery cell with the same discipline used for PHY-18 and
   SPA-10.
+
+## 13. Follow-Up Retry And Store Hardening
+
+After the first remote dispatch, a narrower `n_sp = 600`, `s = 2` retry was
+run on the same branch:
+
+- Run: <https://github.com/itchyshin/gllvmTMB/actions/runs/27051802506>
+- Head SHA: `c99b5dad222ccdf07973a3598efedc6ee64d62d8`
+- Result: success in 42m50s
+- Artifact: `/tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/`
+- Result-store commit: `c4c1325 dep-slope campaign: accumulate seeds (run 22)`
+
+Run 22 added seeds `2201,2202,2203` for `s = 2`, `n_sp = 600`. Its fresh
+seed evidence was:
+
+| family | n_sp=600 PD | n_sp=600 recovery |
+|---|---:|---:|
+| gaussian | 3/3 | 3/3 |
+| poisson | 3/3 | 3/3 |
+| Gamma | 3/3 | 3/3 |
+| Beta | 3/3 | 2/3 |
+| binomial | 3/3 | 3/3 |
+| nbinom2 | 3/3 | 2/3 |
+| ordinal_probit | 2/3 | 2/3 |
+
+Combining the run-20 and run-22 artifacts, deduplicated by
+`family, n_slope, n_sp, seed`, gives this `s = 2` evidence table:
+
+| family | n_sp=300 PD | n_sp=300 recovery | n_sp=600 PD | n_sp=600 recovery |
+|---|---:|---:|---:|---:|
+| gaussian | 3/3 | 3/3 | 6/6 | 6/6 |
+| poisson | 3/3 | 2/3 | 6/6 | 6/6 |
+| Gamma | 3/3 | 1/3 | 6/6 | 6/6 |
+| Beta | 3/3 | 1/3 | 6/6 | 5/6 |
+| binomial | 3/3 | 2/3 | 6/6 | 6/6 |
+| nbinom2 | 2/3 | 1/3 | 6/6 | 4/6 |
+| ordinal_probit | 1/3 | 0/3 | 5/6 | 4/6 |
+
+The combined artifact evidence strengthens the feasibility signal at
+`n_sp = 600`, but it still does not justify relaxing the public non-Gaussian
+`s >= 2` guard. The weak cells remain `nbinom2` and `ordinal_probit`, with
+Beta also below the full recovery threshold in the fresh retry.
+
+One process issue was found: run 21 was a default single-slope campaign run
+and rewrote the single global results CSV without the run-20 `s = 2` rows. The
+artifacts from runs 20 and 22 remain intact, but the results branch cannot be
+treated as a complete `s = 2` cumulative source until an s-specific store is
+used. The workflow now keeps the default/scheduled single-slope store at
+`dep-slope-sweep-accumulated.csv` and routes non-default `s_grid` runs to
+`dep-slope-sweep-s<grid>-accumulated.csv`.
+
+Additional checks for this follow-up:
+
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/dep-slope-identifiability-sweep.yaml"); puts "yaml-ok"'`
+  -> `yaml-ok`.
+- `rg -n "dep-slope-sweep-accumulated|dep-slope-sweep-s|GLLVMTMB_SWEEP_STORE|GLLVMTMB_SWEEP_OUT|RESULTS_BRANCH|STORE" .github/workflows/dep-slope-identifiability-sweep.yaml docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-05-re03-nongaussian-s2-sweep.md docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> found the intended default store, new s-specific store route, spike
+  environment variables, and the follow-up log/report text; no stale
+  alternative store path found.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,author,updatedAt`
+  -> `[]`; no open PR collision.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only this RE-03 branch and results-branch workflow commits appeared; no
+  competing shared-file edit detected.
+
+Next safe action: seed the new `dep-slope-sweep-s2-accumulated.csv` store from
+the run-20/run-22 artifacts, then dispatch a narrow high-N `s = 2` batch for
+the weak families before considering any guard relaxation.

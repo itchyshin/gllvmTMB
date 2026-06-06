@@ -13275,3 +13275,89 @@ Post-dispatch interpretation:
 - It is not enough to relax the public RE-03 guard: `nbinom2` and
   `ordinal_probit` still need more high-N seeds, and likely an `n_sp = 1200`
   check, before any admission decision.
+
+## 2026-06-05 -- RE-03 s=2 remote retry + store hardening follow-up
+
+Goal:
+
+- Continue the requested RE-03 `s = 2` remote retry after run 20 passed but
+  left `nbinom2` and `ordinal_probit` short of a no-fake-pass recovery signal.
+- Diagnose why the accumulated results branch no longer carried the run-20
+  `s = 2` rows after the next default campaign run.
+- Harden the workflow so non-default `s_grid` runs use an s-specific store and
+  cannot be overwritten by scheduled/default single-slope runs.
+
+Commands run:
+
+- `gh run watch 27051802506 --repo itchyshin/gllvmTMB --exit-status --interval 30`
+  -> run 22 succeeded in 42m50s; job `accumulate` green.
+- `gh run view 27051802506 --repo itchyshin/gllvmTMB --json databaseId,headSha,status,conclusion,createdAt,updatedAt,url,workflowName,event,displayTitle,jobs`
+  -> conclusion `success`; head SHA
+  `c99b5dad222ccdf07973a3598efedc6ee64d62d8`; run URL
+  <https://github.com/itchyshin/gllvmTMB/actions/runs/27051802506>.
+- `gh run download 27051802506 --repo itchyshin/gllvmTMB --dir /tmp/gllvmtmb-re03-run-27051802506-artifact`
+  -> downloaded artifact `dep-slope-campaign-run-22` with
+  `dep-slope-campaign.log` and `dep-slope-sweep-accumulated.csv`.
+- `wc -l /tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-sweep-accumulated.csv`
+  -> 1,786 lines including header.
+- `tail -n 90 /tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-campaign.log`
+  -> confirmed `IDENTIFIABILITY_SWEEP_DONE`, 1,785 data rows, and run-22
+  cumulative table.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-sweep-accumulated.csv"); y <- x[x$n_slope == 2, ]; print(aggregate(seed ~ family + n_slope + n_sp, y, function(z) paste(sort(unique(z)), collapse=","))); z <- aggregate(cbind(pd = y$conv == 0 & y$pdHess, rec = y$conv == 0 & y$pdHess & y$slope_var_ratio_min >= 0.5 & y$slope_var_ratio_max <= 2) ~ family + n_slope + n_sp, y, function(v) sprintf("%d/%d", sum(v), length(v))); print(z); print(y[order(y$family, y$seed), c("family", "n_slope", "n_sp", "seed", "conv", "pdHess", "max_sigma_diff", "slope_var_ratio_min", "slope_var_ratio_max")], row.names = FALSE)'`
+  -> run 22 added `s = 2`, `n_sp = 600` seeds `2201,2202,2203`: Beta
+  3/3 PD and 2/3 recovered; binomial 3/3 and 3/3; Gamma 3/3 and 3/3;
+  gaussian 3/3 and 3/3; nbinom2 3/3 and 2/3; ordinal_probit 2/3 and 2/3;
+  poisson 3/3 and 3/3. Recovery here means `conv == 0`, `pdHess == TRUE`,
+  and all slope-variance ratios in `[0.5, 2]`; it does not require
+  `max_sigma_diff < 0.25`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-re03-run-27050546985-artifact/dep-slope-sweep-accumulated.csv"); x$n_slope[is.na(x$n_slope)] <- 1L; x$pd <- with(x, conv == 0 & pdHess == TRUE); x$recovered <- with(x, pd & slope_var_ratio_min >= 0.5 & slope_var_ratio_max <= 2); y <- subset(x, n_slope == 2); print(with(y, table(n_sp, seed))); agg <- aggregate(cbind(pd, recovered) ~ family + n_slope + n_sp, y, function(z) c(sum=sum(z, na.rm=TRUE), n=sum(!is.na(z)))); out <- data.frame(family=agg$family, n_sp=agg$n_sp, pd=sprintf("%d/%d", agg$pd[,"sum"], agg$pd[,"n"]), recovered=sprintf("%d/%d", agg$recovered[,"sum"], agg$recovered[,"n"])); print(out[order(out$n_sp,out$family), ], row.names=FALSE)'`
+  -> run-20 artifact retained `s = 2` seeds `2001,2002,2003` for both
+  `n_sp = 300` and `600`.
+- `git fetch origin dep-slope-sweep-results`
+  -> updated local results-branch ref to `c4c1325`.
+- `git log --oneline --decorate --max-count=8 origin/dep-slope-sweep-results`
+  -> recent result-store commits were run 20 (`643f7a9`), run 21
+  (`227cb9a`), and run 22 (`c4c1325`).
+- `git show 643f7a9:dep-slope-sweep-accumulated.csv > /tmp/gllvmtmb-re03-store-run20.csv`
+  plus analogous `git show` commands for `227cb9a` and `c4c1325`, followed by
+  `Rscript --vanilla -e 'for (p in c("/tmp/gllvmtmb-re03-store-run20.csv","/tmp/gllvmtmb-re03-store-run21.csv","/tmp/gllvmtmb-re03-store-run22.csv")) { x <- read.csv(p); if (!"n_slope" %in% names(x)) x$n_slope <- 1L; x$n_slope[is.na(x$n_slope)] <- 1L; cat("\n", basename(p), nrow(x), "rows\n", sep=""); print(with(x, table(n_slope, n_sp, useNA="ifany"))); if (any(x$n_slope == 2)) { print(aggregate(seed ~ family + n_slope + n_sp, subset(x, n_slope == 2), function(z) paste(sort(unique(z)), collapse=","))) } }'`
+  -> run 20 store had the expected `s = 2` rows; run 21 rewrote the store with
+  only `s = 1`; run 22 then added only the fresh `s = 2`, `n_sp = 600` rows.
+  The run-20 and run-22 artifacts remain the reliable evidence sources until
+  the s-specific store is seeded.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,author,updatedAt`
+  -> `[]`; no open PR collision before editing shared dev-log files.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only this RE-03 branch and the results-branch workflow commits appeared;
+  no competing shared-file edit detected.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/dep-slope-identifiability-sweep.yaml"); puts "yaml-ok"'`
+  -> `yaml-ok` after adding the s-specific store selector.
+- `rg -n "dep-slope-sweep-accumulated|dep-slope-sweep-s|GLLVMTMB_SWEEP_STORE|GLLVMTMB_SWEEP_OUT|RESULTS_BRANCH|STORE" .github/workflows/dep-slope-identifiability-sweep.yaml docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-05-re03-nongaussian-s2-sweep.md docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> found the intended default store, new s-specific store route, spike
+  environment variables, and the follow-up log/report text; no stale
+  alternative store path found.
+- `Rscript --vanilla -e 'a <- read.csv("/tmp/gllvmtmb-re03-run-27050546985-artifact/dep-slope-sweep-accumulated.csv"); b <- read.csv("/tmp/gllvmtmb-re03-run-27051802506-artifact/dep-slope-campaign-run-22/dep-slope-sweep-accumulated.csv"); for (nm in setdiff(names(a), names(b))) b[[nm]] <- NA; for (nm in setdiff(names(b), names(a))) a[[nm]] <- NA; x <- rbind(a[, names(b)], b); x$n_slope[is.na(x$n_slope)] <- 1L; y <- subset(x, n_slope == 2); y <- y[!duplicated(y[c("family", "n_slope", "n_sp", "seed")]), ]; y$pd <- with(y, conv == 0 & pdHess == TRUE); y$recovered <- with(y, pd & slope_var_ratio_min >= 0.5 & slope_var_ratio_max <= 2); agg <- aggregate(cbind(pd, recovered) ~ family + n_slope + n_sp, y, function(z) c(sum=sum(z, na.rm=TRUE), n=sum(!is.na(z)))); out <- data.frame(family=agg$family, n_sp=agg$n_sp, pd=sprintf("%d/%d", agg$pd[,"sum"], agg$pd[,"n"]), recovered=sprintf("%d/%d", agg$recovered[,"sum"], agg$recovered[,"n"])); print(out[order(out$n_sp,out$family), ], row.names=FALSE); cat("\nS2 seed IDs by N:\n"); print(aggregate(seed ~ n_sp, y, function(z) paste(sort(unique(z)), collapse=",")), row.names=FALSE)'`
+  -> combined artifact evidence: at `n_sp = 600`, gaussian, poisson, Gamma,
+  binomial all 6/6 recovered; Beta 5/6 recovered; nbinom2 4/6 recovered;
+  ordinal_probit 4/6 recovered with 5/6 PD. At `n_sp = 300`, only gaussian
+  reached 3/3 recovery.
+
+Files changed in this follow-up:
+
+- `.github/workflows/dep-slope-identifiability-sweep.yaml` now routes
+  non-default `s_grid` runs to `dep-slope-sweep-s<grid>-accumulated.csv`
+  while keeping the scheduled/default single-slope campaign on
+  `dep-slope-sweep-accumulated.csv`.
+- `docs/dev-log/check-log.md` and
+  `docs/dev-log/after-task/2026-06-05-re03-nongaussian-s2-sweep.md` updated
+  with run-22 evidence and the store-history caveat.
+
+Interpretation:
+
+- Run 22 was useful evidence, but not a capability admission.
+- The combined artifact evidence strengthens the case that non-Gaussian
+  `s = 2` is numerically feasible at `n_sp = 600`, but `nbinom2` and
+  `ordinal_probit` remain too seed-sensitive to relax the public guard.
+- The results branch needed an s-specific store before any further manual
+  `s = 2` dispatch; otherwise scheduled/default single-slope runs can erase the
+  multi-slope rows from the single global CSV.

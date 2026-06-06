@@ -13428,3 +13428,71 @@ Interpretation:
 - The guard should still stay in place. `ordinal_probit` is 6/9 recovered at
   `n_sp = 600`, and all three weak-family `n_sp = 1200` cells are only 2/3
   recovered. RE-03 remains `partial`, not advertised.
+
+## 2026-06-06 -- RE-03 s=2 diagnostic scout infrastructure
+
+Goal:
+
+- Move the RE-03 non-Gaussian `s = 2` lane from blind seed accumulation to a
+  diagnostic scout that can separate fit health, strict recovery, loose
+  recovery, DGP boundary behaviour, and likely sample-size / covariate-signal
+  effects.
+- Keep the public non-Gaussian `phylo_dep(..., s >= 2)` guard unchanged.
+
+Commands run:
+
+- `git status --short --branch`
+  -> clean `main...origin/main`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`; no open PR collision.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only result-store commits appeared (`power-pilot` and `dep-slope`
+  campaign), no shared-file implementation collision.
+- `git switch -c codex/re03-s2-diagnostic-scout-2026-06-06`
+  -> created and switched to the diagnostic branch.
+- `Rscript --vanilla -e 'parse(file = "docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R"); cat("r-parse-ok\n")'`
+  -> parsed successfully.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/dep-slope-identifiability-sweep.yaml"); puts "yaml-ok"'`
+  -> `yaml-ok`.
+- `GLLVMTMB_SWEEP_FAMILIES=gaussian GLLVMTMB_SWEEP_SGRID=2 GLLVMTMB_SWEEP_NGRID=8 GLLVMTMB_SWEEP_SEEDS=999 GLLVMTMB_SWEEP_NREP=2 GLLVMTMB_SWEEP_X_SD_GRID=1 GLLVMTMB_SWEEP_SLOPE_SCALE_GRID=1 GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-diagnostic-smoke.csv Rscript --vanilla docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> full script path ran one intentionally tiny Gaussian `s = 2` cell,
+  wrote `/tmp/gllvmtmb-re03-diagnostic-smoke.csv`, printed
+  `IDENTIFIABILITY_SWEEP_DONE`; the cell was non-PD as expected for
+  `n_sp = 8`, but exercised the failure-reason and aggregation paths.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-re03-diagnostic-smoke.csv"); cat(ncol(x), "columns\n"); print(names(x)); stopifnot(all(c("n_rep","x_sd","slope_scale","slope_var_ratio_4","sigma_condition","eta_min","response_boundary_frac","failure_reason","loose_recovered") %in% names(x))); cat("schema-ok\n")'`
+  -> 38-column diagnostic schema present; `schema-ok`.
+- `git show origin/dep-slope-sweep-results:dep-slope-sweep-s2-accumulated.csv | sed -n '1,2p' > /tmp/gllvmtmb-old-s2-store-subset.csv && GLLVMTMB_SWEEP_FAMILIES=gaussian GLLVMTMB_SWEEP_SGRID=2 GLLVMTMB_SWEEP_NGRID=8 GLLVMTMB_SWEEP_SEEDS=1000 GLLVMTMB_SWEEP_NREP=2 GLLVMTMB_SWEEP_X_SD_GRID=1 GLLVMTMB_SWEEP_SLOPE_SCALE_GRID=1 GLLVMTMB_SWEEP_STORE=/tmp/gllvmtmb-old-s2-store-subset.csv GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-diagnostic-compat.csv Rscript --vanilla docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> accumulated one old-schema store row with one new smoke row, wrote
+  `/tmp/gllvmtmb-re03-diagnostic-compat.csv`, and printed
+  `IDENTIFIABILITY_SWEEP_DONE`.
+- `Rscript --vanilla -e 'x <- read.csv("/tmp/gllvmtmb-re03-diagnostic-compat.csv"); stopifnot(nrow(x) == 2L, all(c("n_rep","x_sd","slope_scale","failure_reason","strict_recovered","loose_recovered") %in% names(x))); print(x[, c("family","n_rep","x_sd","slope_scale","strict_recovered","loose_recovered","failure_reason")], row.names=FALSE); cat("compat-schema-ok\n")'`
+  -> old rows defaulted to `n_rep = 10`, `x_sd = 1`, `slope_scale = 1`; old
+  Beta row classified as `low_ratio` / loose-recovered; `compat-schema-ok`.
+- `rg -n "GLLVMTMB_SWEEP_X_SD_GRID|GLLVMTMB_SWEEP_SLOPE_SCALE_GRID|x_sd_grid|slope_scale_grid|loose_recovered|failure_reason" .github/workflows/dep-slope-identifiability-sweep.yaml docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> found the intended workflow inputs/env vars, script env parsing, result
+  flags, and old-store migration logic.
+- `rg -n "s >= 2|s ≥ 2|two or more random slopes|RE-03|non-Gaussian" R/fit-multi.R docs/design/35-validation-debt-register.md NEWS.md tests/testthat/test-phylo-dep-slope-s2-gaussian.R docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> confirmed the RE-03 fail-loud guard and public `partial` / reserved
+  wording remain in place; no capability admission was added.
+- `rg -n "strict_recovered|loose_recovered|failure_reason|sigma_condition|response_boundary_frac|x_abs_cor_max" docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> found the new diagnostic columns and aggregation inputs in the spike
+  script only.
+- `Rscript --vanilla -e 'invisible(parse(file = "docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R")); cat("r-parse-ok\n")'`
+  -> `r-parse-ok`.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/dep-slope-identifiability-sweep.yaml"); puts "yaml-ok"'`
+  -> `yaml-ok`.
+- `git diff --check`
+  -> clean.
+
+Interpretation:
+
+- The RE-03 sweep can now run targeted diagnostic grids over `n_rep`, `x_sd`,
+  and `slope_scale`, while preserving the old default campaign behaviour.
+- New rows record strict and loose recovery, failure reason, full `s = 2`
+  slope-variance ratios, Sigma conditioning, eta ranges, response boundary
+  rates, and basic fit diagnostics.
+- Existing `dep-slope-sweep-s2-accumulated.csv` rows remain readable and are
+  upgraded in memory with default diagnostic axes.
+- No family was admitted. RE-03 remains `partial`; the next evidence run should
+  target `Beta`, `nbinom2`, and `ordinal_probit` under a small factorial DGP
+  sensitivity grid before changing the public guard.

@@ -45,9 +45,19 @@ on:
         default: "3"
         type: string
       n_rep:
-        description: "Rows per (species, trait) cell."
+        description: "Comma list of rows per (species, trait) cell."
         required: false
         default: "10"
+        type: string
+      x_sd_grid:
+        description: "Comma list of slope-covariate SDs for diagnostic DGP sensitivity."
+        required: false
+        default: "1"
+        type: string
+      slope_scale_grid:
+        description: "Comma list of slope-Sigma multipliers for diagnostic DGP sensitivity."
+        required: false
+        default: "1"
         type: string
       end_date:
         description: "Campaign auto-stops after this UTC date (YYYY-MM-DD)."
@@ -140,6 +150,8 @@ jobs:
           GLLVMTMB_SWEEP_SGRID: ${{ github.event.inputs.s_grid }}
           GLLVMTMB_SWEEP_NGRID: ${{ github.event.inputs.n_grid }}
           GLLVMTMB_SWEEP_NREP: ${{ github.event.inputs.n_rep }}
+          GLLVMTMB_SWEEP_X_SD_GRID: ${{ github.event.inputs.x_sd_grid }}
+          GLLVMTMB_SWEEP_SLOPE_SCALE_GRID: ${{ github.event.inputs.slope_scale_grid }}
           GLLVMTMB_SWEEP_STORE: ${{ steps.store.outputs.store }}
           GLLVMTMB_SWEEP_OUT: ${{ steps.store.outputs.store }}
         run: |

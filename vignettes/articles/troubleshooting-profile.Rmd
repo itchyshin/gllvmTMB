@@ -1,5 +1,6 @@
 ---
 title: "Troubleshooting profile-likelihood CIs: four failure modes"
+tier: 2 # troubleshooting reference for profile-likelihood CI failure modes
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -17,6 +18,17 @@ knitr::opts_chunk$set(
   eval     = FALSE
 )
 ```
+
+> **Scope boundary.** This page is a troubleshooting reference for
+> already-fitted profile-likelihood CI workflows. IN: Gaussian
+> profile-CI routing for direct and derived targets, plus the
+> diagnostic helpers named below, are covered by CI-02, CI-03,
+> DIA-01, DIA-03, and DIA-05 in the
+> [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md).
+> PARTIAL: non-Gaussian and mixed-family profile/bootstrap calibration
+> remains M3 work (CI-08, CI-10, EXT-13). PLANNED: this page does not
+> add a new interval method or move validation rows; it tells readers
+> what to try when the existing profile path is fragile.
 
 [Profile-likelihood confidence intervals](profile-likelihood-ci.html)
 are the package's default for variance components, repeatabilities,

@@ -13616,3 +13616,83 @@ Interpretation:
   article keeps the Preview boundary, no stale syntax / notation hit was found,
   `tmbprofile_wrapper()` is exported and now appears in the Reference index,
   and `pkgdown::check_pkgdown()` passed.
+
+## 2026-06-06 -- Troubleshooting profile companion promotion
+
+Goal:
+
+- Complete the second half of the #347 profile pair by promoting
+  `troubleshooting-profile` as a public Methods companion page rather
+  than merging it into `profile-likelihood-ci`.
+- Keep the slice navigation/scoping-only: no CI machinery, validation
+  row, formula grammar, likelihood, or TMB change.
+
+Commands run:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`; no open PR collision before editing `_pkgdown.yml` or dev-log
+  files.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent entries were the profile article promotion merge/branch commit,
+  the Power-pilot scoring merge/branch commit, and the RE-03 scout
+  merge/branch commit; no competing `troubleshooting-profile` or
+  `_pkgdown.yml` edit collision.
+- `gh issue comment 347 --repo itchyshin/gllvmTMB --body-file -`
+  -> recorded the governance decision to keep `troubleshooting-profile`
+  split and promote it as a companion Methods page:
+  <https://github.com/itchyshin/gllvmTMB/issues/347#issuecomment-4641402342>.
+- `gh run view 27081757193 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,workflowName,url,jobs`
+  -> the post-merge R-CMD-check for PR #459 completed successfully on
+  `47d2bcfa6f686b8dc826759395185b2766637a38`.
+- `gh run view 27081961811 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,workflowName,url,jobs`
+  -> the follow-on pkgdown deploy for the same merge SHA completed
+  successfully; Pages deploy step passed.
+- `curl -L --max-time 30 https://itchyshin.github.io/gllvmTMB/articles/profile-likelihood-ci.html | rg -n "Profile-likelihood confidence intervals|tmbprofile_wrapper|Gaussian validated|mixed-family extension|Profile-likelihood CIs"`
+  -> the live page shows the promoted profile article, Preview banner,
+  and `tmbprofile_wrapper()` reference links.
+- `curl -L --max-time 30 https://itchyshin.github.io/gllvmTMB/articles/index.html | rg -n "Profile-likelihood confidence intervals|profile-likelihood-ci.html|Troubleshooting profile"`
+  -> the live article index shows `profile-likelihood-ci`; `troubleshooting-profile`
+  is not public yet, as expected before this branch.
+
+- `ruby -e 'require "yaml"; YAML.load_file("_pkgdown.yml"); puts "yaml-ok"'`
+  -> `yaml-ok`.
+- `git diff --check`
+  -> clean.
+- `rg -n "profile-likelihood default|extract_correlations\\([^\\n]*method *= *\\\"profile\\\"|gllvmTMB_wide\\(Y|meta_known_V|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/troubleshooting-profile.Rmd _pkgdown.yml`
+  -> no hits; no stale public syntax / notation, deprecated API, or
+  correlation-default drift in the touched slice.
+- `rg -n "^CI-0?2|^CI-0?3|^CI-08|^CI-10|^EXT-13|^DIA-01|^DIA-03|^DIA-05|CI-02|CI-03|CI-08|CI-10|EXT-13|DIA-01|DIA-03|DIA-05" docs/design/35-validation-debt-register.md vignettes/articles/troubleshooting-profile.Rmd`
+  -> confirmed the new scope boundary maps to covered `CI-02`, `CI-03`,
+  `DIA-01`, `DIA-03`, and `DIA-05`; partial `CI-08`, `CI-10`, and
+  `EXT-13` remain M3 work.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/troubleshooting-profile", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/troubleshooting-profile.html`.
+- `rg -n "Troubleshooting profile CIs|Troubleshooting profile-likelihood CIs|troubleshooting-profile.html|Profile-likelihood confidence intervals|profile-likelihood-ci.html" pkgdown-site/articles/troubleshooting-profile.html pkgdown-site/articles/index.html`
+  -> rendered HTML shows the companion page in the public navbar and
+  article index; backlink to `profile-likelihood-ci.html` resolves in
+  the rendered article.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `✔ No problems found.`
+- `Rscript --vanilla -e 'ns <- readLines("NAMESPACE"); ref <- readLines("_pkgdown.yml"); f <- c("check_identifiability", "sanity_multi", "gllvmTMB_diagnose"); stopifnot(all(paste0("export(", f, ")") %in% ns)); stopifnot(all(paste0("    - ", f) %in% ref)); cat("troubleshooting-reference-links-ok\n")'`
+  -> `troubleshooting-reference-links-ok`.
+
+Rose pre-publish audit result: PASS for this narrow slice. The public
+scope boundary cites covered, partial, and planned register rows; no
+stale syntax / notation / deprecated API scan hit was found; and the
+linked helper functions are exported and indexed in `_pkgdown.yml`.
+
+Article-tier result: Tier 2. The page is a defensive troubleshooting
+reference for readers already using profile-likelihood CIs, not a
+Tier-1 worked example. The runnable worked path remains
+`profile-likelihood-ci`.
+
+Interpretation:
+
+- `profile-likelihood-ci` is now fully deployed, so its companion page
+  can be promoted without creating a hidden-article link.
+- `troubleshooting-profile` is Tier 2: a defensive troubleshooting
+  reference for readers who already know they need profile-likelihood
+  CIs. It is not a Tier-1 worked example and does not need new runnable
+  code because the worked path lives in `profile-likelihood-ci`.
+- No validation-debt row moves. The scope boundary added here keeps
+  CI-08, CI-10, and EXT-13 partial and tied to M3 work.

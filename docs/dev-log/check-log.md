@@ -13555,3 +13555,64 @@ Interpretation:
   Type-I or power claim for `Sigma_unit_diag`.
 - No validation-debt register row moved. CI-08 and CI-10 remain partial until
   a target-aligned coverage / bias / RMSE / miss-side / fit-health gate passes.
+
+## 2026-06-06 -- Profile-likelihood CI article promotion slice
+
+Goal:
+
+- Start the #347 Wave-1 article promotion lane with the smallest ready page:
+  `profile-likelihood-ci`.
+- Keep `troubleshooting-profile` internal for a separate split-vs-merge
+  governance decision.
+- Close the article audit's `tmbprofile_wrapper()` discoverability gap by
+  adding the exported helper to the pkgdown Reference index.
+
+Commands run:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`; no open PR collision before editing `_pkgdown.yml` or dev-log files.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent entries were the Power-pilot scoring merge, its branch commit, the
+  RE-03 scout merge / branch commit, and result-store commits; no competing
+  article / `_pkgdown.yml` edit collision.
+- `git switch -c codex/profile-ci-article-promotion-2026-06-06`
+  -> created the narrow article-promotion branch from `main`.
+- `ruby -e 'require "yaml"; YAML.load_file("_pkgdown.yml"); puts "yaml-ok"'`
+  -> `yaml-ok`.
+- `rg -n "profile-likelihood-ci|tmbprofile_wrapper|troubleshooting-profile" _pkgdown.yml vignettes/articles/profile-likelihood-ci.Rmd vignettes/articles/troubleshooting-profile.Rmd`
+  -> `profile-likelihood-ci` appears in the public Methods article group and
+  navbar; `troubleshooting-profile` remains internal; `tmbprofile_wrapper`
+  appears in the Reference index and in article prose.
+- `rg -n "profile-likelihood default|extract_correlations\\([^\\n]*method *= *\\\"profile\\\"|gllvmTMB_wide\\(Y|meta_known_V|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|phylo_rr\\(" vignettes/articles/profile-likelihood-ci.Rmd _pkgdown.yml`
+  -> no hits; no stale public syntax / notation or correlation-default drift
+  in the promoted article/config slice.
+- `rg -n "CI-0[1-9]|CI-10|EXT-13|M3|covered|partial|Preview" vignettes/articles/profile-likelihood-ci.Rmd docs/design/35-validation-debt-register.md`
+  -> confirmed the article Preview banner cites `CI-02..CI-07` as covered and
+  names the `M3` non-Gaussian / mixed-family extension boundary; register rows
+  still mark `CI-08` and `CI-10` partial.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/profile-likelihood-ci", lazy = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/profile-likelihood-ci.html`.
+- `rg -n "Profile-likelihood confidence intervals|profile-likelihood-ci.html|tmbprofile_wrapper.html|Profile-likelihood CIs" pkgdown-site/articles/profile-likelihood-ci.html pkgdown-site/articles/index.html pkgdown-site/reference/index.html`
+  -> rendered HTML shows the article in the article index/navbar and
+  `tmbprofile_wrapper()` links to `reference/tmbprofile_wrapper.html`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `✔ No problems found.`
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'ns <- readLines("NAMESPACE"); ref <- readLines("_pkgdown.yml"); stopifnot(any(ns == "export(tmbprofile_wrapper)")); stopifnot(any(trimws(ref) == "- tmbprofile_wrapper")); cat("export-reference-ok\n")'`
+  -> `export-reference-ok`.
+
+Interpretation:
+
+- `profile-likelihood-ci` is now promoted from the hidden/internal article
+  bucket into the public Methods group.
+- `troubleshooting-profile` stays hidden/internal. The #347 audit's
+  split-vs-merge question is deferred to a separate companion-page slice
+  rather than being bundled into this one.
+- No capability row moved. The article's Preview banner remains the scope
+  guard: Gaussian CI rows are covered; non-Gaussian / mixed-family coverage
+  remains M3 work.
+- Rose pre-publish audit result: PASS for this narrow slice. The promoted
+  article keeps the Preview boundary, no stale syntax / notation hit was found,
+  `tmbprofile_wrapper()` is exported and now appears in the Reference index,
+  and `pkgdown::check_pkgdown()` passed.

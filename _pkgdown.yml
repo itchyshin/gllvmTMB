@@ -40,6 +40,8 @@ navbar:
       - text: Methods
       - text: Convergence and start values
         href: articles/convergence-start-values.html
+      - text: Profile-likelihood confidence intervals
+        href: articles/profile-likelihood-ci.html
       - text: Common pitfalls
         href: articles/pitfalls.html
       - text: Handling missing data
@@ -64,6 +66,7 @@ articles:
   - title: Methods
     contents:
     - articles/convergence-start-values
+    - articles/profile-likelihood-ci
     - articles/pitfalls
     - articles/missing-data
 
@@ -81,7 +84,6 @@ articles:
     - articles/mixed-family-extractors
     - articles/ordinal-probit
     - articles/stacked-trait-gllvm
-    - articles/profile-likelihood-ci
     - articles/troubleshooting-profile
     - articles/cross-package-validation
     - articles/functional-biogeography
@@ -223,6 +225,7 @@ reference:
     - compare_dep_vs_two_psi
     - compare_indep_vs_two_psi
     - profile_targets
+    - tmbprofile_wrapper
     - coverage_study
 
   - title: Loadings (Lambda) and confirmatory factor analysis

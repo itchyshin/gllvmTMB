@@ -13696,3 +13696,87 @@ Interpretation:
   code because the worked path lives in `profile-likelihood-ci`.
 - No validation-debt row moves. The scope boundary added here keeps
   CI-08, CI-10, and EXT-13 partial and tied to M3 work.
+
+## 2026-06-07 -- dep-slope campaign run 32 artifact triage
+
+Goal:
+
+- Harvest successful dep-slope run 32 after the profile-page merges.
+- Decide whether the artifact changes RE-03 evidence or only adds
+  scheduled/default single-slope campaign evidence.
+- Report the boundary on #341 without moving validation rows.
+
+Commands run:
+
+- `git status --short --branch`
+  -> clean `main`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`; no open PR collision before editing `docs/dev-log/check-log.md`
+  or adding this after-task report.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent commits were the profile article pair, Power-pilot result-store
+  commits, and Power-pilot scoring correction; no competing dep-slope triage
+  branch was visible.
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,createdAt,updatedAt`
+  -> run `27082159407` (`dep-slope-identifiability-sweep`) completed
+  successfully; Power-pilot run `27082083668` was still in progress.
+- `gh run view 27082159407 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,workflowName,url,jobs`
+  -> run `27082159407` succeeded on head
+  `47d2bcfa6f686b8dc826759395185b2766637a38`; job `accumulate`
+  completed after restoring the accumulated store, adding a fresh seed
+  batch, committing the store, and uploading artifacts.
+- `gh run download 27082159407 --repo itchyshin/gllvmTMB --dir /tmp/gllvmtmb-run27082159407`
+  -> downloaded:
+  - `/tmp/gllvmtmb-run27082159407/dep-slope-campaign-run-32/dep-slope-campaign.log`
+  - `/tmp/gllvmtmb-run27082159407/dep-slope-campaign-run-32/dep-slope-sweep-accumulated.csv`
+- `wc -l /tmp/gllvmtmb-run27082159407/dep-slope-campaign-run-32/dep-slope-campaign.log /tmp/gllvmtmb-run27082159407/dep-slope-campaign-run-32/dep-slope-sweep-accumulated.csv`
+  -> 1,038 log lines and 2,521 CSV lines including header.
+- `sed -n '1,120p' /tmp/gllvmtmb-run27082159407/dep-slope-campaign-run-32/dep-slope-campaign.log`
+  -> run 32 states it is running 105 cells: 7 families x one `s` grid x
+  5 `n_sp` values x `n_rep = 10` x 3 seeds x `x_sd = 1` x
+  `slope_scale = 1`.
+- `head -5 /tmp/gllvmtmb-run27082159407/dep-slope-campaign-run-32/dep-slope-sweep-accumulated.csv && tail -5 /tmp/gllvmtmb-run27082159407/dep-slope-campaign-run-32/dep-slope-sweep-accumulated.csv`
+  -> schema includes `n_slope`, `n_rep`, `x_sd`, `slope_scale`,
+  `strict_recovered`, `loose_recovered`, and `failure_reason`; this store is
+  `dep-slope-sweep-accumulated.csv`, not the `s = 2` store.
+- `Rscript --vanilla - <<'RS' ...`
+  -> summary:
+  - accumulated CSV has 2,520 rows and 38 columns;
+  - families: Beta, binomial, Gamma, gaussian, nbinom2, ordinal_probit,
+    poisson;
+  - all rows have `n_slope = 1`;
+  - fresh run rows are seeds `3201:3203`, 105 cells;
+  - fresh failure reasons: 73 `pass`, 18 `nonPD/nonconv`, 14 `low_ratio`;
+  - fresh PD/strict/loose by family:
+    - gaussian 15/15 PD, 15/15 strict, 15/15 loose;
+    - poisson 12/15 PD, 12/15 strict, 12/15 loose;
+    - binomial 14/15 PD, 13/15 strict, 14/15 loose;
+    - Gamma 14/15 PD, 10/15 strict, 14/15 loose;
+    - Beta 13/15 PD, 10/15 strict, 12/15 loose;
+    - nbinom2 10/15 PD, 6/15 strict, 8/15 loose;
+    - ordinal_probit 9/15 PD, 7/15 strict, 9/15 loose;
+  - by sample size, strict recovery improved from 11/21 at `n_sp = 80`
+    to 20/21 at `n_sp = 1200`.
+- `git fetch origin dep-slope-sweep-results:refs/remotes/origin/dep-slope-sweep-results && git log --oneline --max-count=8 origin/dep-slope-sweep-results`
+  -> updated result branch to
+  `9754065 dep-slope campaign: accumulate seeds (run 32)`.
+- `gh issue view 341 --repo itchyshin/gllvmTMB --comments`
+  -> current #341 history already distinguishes non-Gaussian single-slope
+  completion from the still-partial `s >= 2` RE-03 guard.
+- `gh issue comment 341 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted run-32 triage:
+  <https://github.com/itchyshin/gllvmTMB/issues/341#issuecomment-4641683938>.
+- `git diff --check`
+  -> clean.
+
+Interpretation:
+
+- Run 32 is useful scheduled/default single-slope campaign progress.
+- It is not RE-03 `s = 2` admission evidence because all rows have
+  `n_slope = 1`.
+- No validation-debt row moves. The non-Gaussian
+  `phylo_dep(..., s >= 2)` public guard remains in place and RE-03 remains
+  `partial`.
+- The next RE-03 action should be a targeted `s = 2` weak-family
+  diagnostic/admission design, especially around `nbinom2` and
+  `ordinal_probit`, not more blind single-slope accumulation.

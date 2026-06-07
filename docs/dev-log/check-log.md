@@ -13496,3 +13496,62 @@ Interpretation:
 - No family was admitted. RE-03 remains `partial`; the next evidence run should
   target `Beta`, `nbinom2`, and `ordinal_probit` under a small factorial DGP
   sensitivity grid before changing the public guard.
+
+## 2026-06-06 -- Power pilot zero-exclusion scoring correction
+
+Goal:
+
+- Stop treating the Design 66 Phase-1 pilot CI-excludes-zero panel as a power
+  or Type-I-error claim for `Sigma_unit_diag`.
+- Keep the accumulated result stores readable while giving new summaries and
+  the #340 board a target-aligned `zero_exclusion_rate` label.
+
+Commands run:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,author,updatedAt,url`
+  -> `[]`; no open PR collision before editing shared dev-log files.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the merged RE-03 scout and result-store commits only;
+  no competing shared-file implementation collision.
+- `git switch -c codex/power-pilot-scoring-ledger-2026-06-06`
+  -> created the follow-up branch from `main` after #457 was merged.
+- `git fetch origin power-pilot-results --depth=1` plus
+  `git archive origin/power-pilot-results dev/m3-pilot-results | tar -x -C /tmp/gllvmtmb-pilot-results.8xrBCf`
+  -> extracted the remote Power pilot result store at branch tip `ecb020f`.
+- `Rscript --vanilla dev/m3-pilot-report.R --scoring-audit --results-dir=/tmp/gllvmtmb-pilot-results.8xrBCf/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local --audit-out=/tmp/gllvmtmb-pilot-scoring-audit-2026-06-06.md --audit-rds=/tmp/gllvmtmb-pilot-scoring-audit-2026-06-06.rds`
+  -> wrote the scoring audit. Representative rows: `gaussian-d1-n150-sig0p0`
+  coverage 0.389 / zero-exclusion 1.000 / median estimate-truth ratio 1.305;
+  `nbinom2-d2-n50-sig0p0` coverage 0.900 / zero-exclusion 1.000 / non-PD
+  0.751; `binomial_probit-d1-n50-sig0p2` coverage 0.959 / zero-exclusion
+  1.000 / non-PD 0.328 / median CI width-truth ratio 5362.942.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-report.R"); x <- pilot_collect(results_dirs = c("/tmp/gllvmtmb-pilot-results.8xrBCf/dev/m3-pilot-results", "/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local")); cat("cells", nrow(x), "\n"); cat("reps", sum(x$n_sim, na.rm=TRUE), "\n"); cat("complete", sum(x$complete %in% TRUE, na.rm=TRUE), "\n"); cat("flagged", sum(x$flag %in% TRUE, na.rm=TRUE), "\n"); print(x[order(-x$nonpd_rate, -x$fit_failure_rate), c("cell_id","n_sim","coverage_primary","passes_94","passes_95","fit_failure_rate","nonpd_rate","conv_failure_rate","boot_fail_rate","flag")], row.names=FALSE)'`
+  -> 48 cells, 74092 accumulated reps, 0 cells complete at cap. The
+  `sum(x$flag %in% TRUE)` line is an old Boolean-style mistake for the
+  character `flag` column; the printed `flag` column still showed the expected
+  high-failure cells.
+- `gh issue comment 340 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted <https://github.com/itchyshin/gllvmTMB/issues/340#issuecomment-4640838745>.
+- `gh issue comment 349 --repo itchyshin/gllvmTMB --body-file -`
+  -> posted <https://github.com/itchyshin/gllvmTMB/issues/349#issuecomment-4640839299>.
+- `air format dev/m3-pilot-report.R`
+  -> formatted the touched R report script.
+- `Rscript --vanilla -e 'invisible(parse(file = "dev/m3-pilot-report.R")); cat("r-parse-ok\n")'`
+  -> `r-parse-ok`.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/power-pilot-sweep.yaml"); puts "yaml-ok"'`
+  -> `yaml-ok`.
+- `Rscript --vanilla -e 'source("dev/m3-grid.R"); source("dev/m3-pilot-report.R"); x <- pilot_collect(results_dirs = c("/tmp/gllvmtmb-pilot-results.8xrBCf/dev/m3-pilot-results", "/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local")); stopifnot("zero_exclusion_rate" %in% names(x)); stopifnot(identical(x$zero_exclusion_rate, x$power)); p <- pilot_plot(x, save = FALSE); stopifnot(all(c("coverage", "zero_exclusion") %in% names(p))); cat("pilot-report-api-ok\n")'`
+  -> `pilot-report-api-ok`.
+
+Interpretation:
+
+- `zero_exclusion_rate` is now the explicit report-column name for the
+  CI-excludes-zero diagnostic. The old `power` column remains as a
+  compatibility alias for existing result stores and downstream readers.
+- `pilot_plot()` now returns `coverage` and `zero_exclusion` plots and writes
+  `pilot-zero-exclusion-diagnostic.png`; `pilot_plot_power()` remains as a
+  compatibility wrapper.
+- The GitHub Actions board language now says coverage and zero-exclusion
+  diagnostic figures, and explicitly says the zero-exclusion panel is not a
+  Type-I or power claim for `Sigma_unit_diag`.
+- No validation-debt register row moved. CI-08 and CI-10 remain partial until
+  a target-aligned coverage / bias / RMSE / miss-side / fit-health gate passes.

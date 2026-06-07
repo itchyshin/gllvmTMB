@@ -450,7 +450,7 @@ jobs:
             --status-out="$RESULTS_DIR/_status.md"
           echo "have_board=$([ -f "$RESULTS_DIR/_status.md" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - name: Post / update coverage+power board on issue #340
+      - name: Post / update coverage+diagnostics board on issue #340
         if: steps.board.outputs.have_board == 'true'
         uses: actions/github-script@v7
         with:
@@ -483,7 +483,7 @@ jobs:
               `- Last run failure rate: **${failRate}**${failAlert ? ' :warning: ABOVE ALERT THRESHOLD' : ''}`,
               `- Issues (flagged cells): **${topIssues}**`,
               ``,
-              `Coverage/power figures are produced on demand by \`pilot_plot()\` (\`dev/m3-pilot-report.R\`); the per-cell board below also carries an ISSUES section.`,
+              `Coverage and zero-exclusion diagnostic figures are produced on demand by \`pilot_plot()\` (\`dev/m3-pilot-report.R\`); the per-cell board below also carries an ISSUES section. The zero-exclusion panel is not a Type-I or power claim for \`Sigma_unit_diag\`.`,
               ``,
               `<details><summary>Per-cell board</summary>`,
               ``,

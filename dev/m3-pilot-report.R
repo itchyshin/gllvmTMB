@@ -7,10 +7,11 @@
 ## accumulate engine) and dev/power-pilot-run.R (the CLI sweep wrapper).
 ## It reads the ACCUMULATED per-cell results (the GHA `power-pilot-results`
 ## orphan-branch store + any local store), folds them into one tidy
-## per-cell table that carries BOTH the coverage/power numbers AND the
-## issue columns (failed fits, non-PD Hessian, convergence failure rates,
-## a flag), draws the drmTMB-style coverage-vs-nominal forest + per-family
-## power curves, and writes a durable markdown + RDS record with an
+## per-cell table that carries BOTH the coverage / zero-exclusion diagnostics
+## AND the issue columns (failed fits, non-PD Hessian, convergence failure
+## rates, a flag), draws the drmTMB-style coverage-vs-nominal forest +
+## per-family zero-exclusion diagnostic curves, and writes a durable markdown
+## + RDS record with an
 ## explicit ISSUES section.
 ##
 ## drmTMB reuse note: drmTMB exposes no EXPORTED coverage/power simulation
@@ -97,9 +98,10 @@ PILOT_FLAG_CONV_FAIL_RATE <- 0.10
 ##   - accumulated reps: n_sim (distinct draws kept after dedup)
 ##   - coverage: coverage_primary (from m3_summarise), and the both-gate
 ##     pass flags passes_94 / passes_95 + primary_gate_status
-##   - power: power (CI-excludes-zero rejection rate on the primary
-##     Sigma_unit_diag target -- a Type-I proxy at signal == 0, a power
-##     proxy at signal > 0; see note below)
+##   - zero_exclusion_rate: fraction of primary Sigma_unit_diag CIs excluding
+##     zero. This is diagnostic only for the Phase-1 pilot because
+##     signal == 0 still has a positive variance target; it is not a valid
+##     Type-I or power estimand.
 ##   - ISSUES: n_failed_fits, fit_failure_rate, n_nonPD, nonpd_rate,
 ##     n_conv_fail, conv_failure_rate, n_boot_failed, boot_fail_rate, flag
 ##
@@ -315,14 +317,15 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
     if (is.finite(nb)) n_boot_failed <- as.integer(nb)
   }
 
-  ## --- power / rejection rate on the primary target ---
-  ## Power here is the rejection rate of H0: Sigma_unit_diag = 0, i.e. the
-  ## fraction of (converged, CI-available) draws whose primary CI EXCLUDES
-  ## zero. At signal == 0 (the null cell) this is the empirical Type-I
-  ## error proxy; at signal > 0 it is the empirical power. (Design 66
-  ## sec. 9 defers a full reject-rate rule to Phase 2; this is the natural
-  ## CI-based proxy computable from the stored intervals.)
-  power <- pilot_rejection_rate(prim_rows)
+  ## --- zero-exclusion diagnostic on the primary target ---
+  ## This is the fraction of (converged, CI-available) draws whose primary
+  ## Sigma_unit_diag CI excludes zero. It is NOT a valid Type-I / power
+  ## estimand for the current Phase-1 pilot because signal == 0 still leaves
+  ## a positive variance target. Keep the legacy `power` alias so existing
+  ## result stores / summaries remain readable while new text uses the
+  ## target-aligned name.
+  zero_exclusion_rate <- pilot_rejection_rate(prim_rows)
+  power <- zero_exclusion_rate
 
   ## --- flag ---
   flag <- pilot_make_flag(
@@ -371,6 +374,7 @@ pilot_collect_cell <- function(g, cid, meta, gate_94, gate_95) {
     passes_94 = if (is.na(cov_p)) NA else cov_p >= gate_94,
     passes_95 = if (is.na(cov_p)) NA else cov_p >= gate_95,
     primary_gate_status = gate_status,
+    zero_exclusion_rate = zero_exclusion_rate,
     power = power,
     n_failed_fits = as.integer(n_failed_fits),
     fit_failure_rate = fit_failure_rate,
@@ -455,6 +459,7 @@ pilot_collect_empty <- function() {
     passes_94 = logical(0),
     passes_95 = logical(0),
     primary_gate_status = character(0),
+    zero_exclusion_rate = numeric(0),
     power = numeric(0),
     n_failed_fits = integer(0),
     fit_failure_rate = numeric(0),
@@ -893,7 +898,7 @@ pilot_scoring_audit_empty <- function() {
 }
 
 ## =====================================================================
-## pilot_plot(): the drmTMB-style coverage/power figures
+## pilot_plot(): the drmTMB-style coverage + diagnostic figures
 ## =====================================================================
 
 ## Okabe-Ito colour-blind-safe palette by family, mirroring drmTMB's
@@ -927,9 +932,9 @@ pilot_theme_grammar <- function() {
 ##   1. coverage-vs-nominal forest: per cell, coverage_primary point with a
 ##      95% binomial MCSE bar, faceted by family, with dotted reference
 ##      lines at the 94% and 95% gates (the drmTMB coverage grammar).
-##   2. power curve: rejection rate vs signal {0, 0.2, 0.5}, one line per
-##      family, faceted by (n_units x d), with the signal == 0 point being
-##      the Type-I proxy.
+##   2. zero-exclusion curve: CI-excludes-zero rate vs signal {0, 0.2, 0.5}.
+##      This is diagnostic only for the Phase-1 pilot and should not be read
+##      as Type-I error / power for Sigma_unit_diag.
 ## Returns a named list of ggplot objects (invisibly when saving).
 pilot_plot <- function(
   df,
@@ -947,7 +952,7 @@ pilot_plot <- function(
   }
   plots <- list(
     coverage = pilot_plot_coverage(df),
-    power = pilot_plot_power(df)
+    zero_exclusion = pilot_plot_zero_exclusion(df)
   )
   if (isTRUE(save)) {
     if (!dir.exists(figure_dir)) {
@@ -955,7 +960,10 @@ pilot_plot <- function(
     }
     paths <- c(
       coverage = file.path(figure_dir, "pilot-coverage-vs-nominal.png"),
-      power = file.path(figure_dir, "pilot-power-curve.png")
+      zero_exclusion = file.path(
+        figure_dir,
+        "pilot-zero-exclusion-diagnostic.png"
+      )
     )
     ggplot2::ggsave(
       paths[["coverage"]],
@@ -965,8 +973,8 @@ pilot_plot <- function(
       dpi = dpi
     )
     ggplot2::ggsave(
-      paths[["power"]],
-      plots$power,
+      paths[["zero_exclusion"]],
+      plots$zero_exclusion,
       width = width,
       height = height,
       dpi = dpi
@@ -1052,11 +1060,19 @@ pilot_plot_coverage <- function(df) {
     pilot_theme_grammar()
 }
 
-## Power curve vs signal, one line per family, faceted by (n_units, d).
-pilot_plot_power <- function(df) {
-  d <- df[!is.na(df$power) & !is.na(df$signal), , drop = FALSE]
+## Zero-exclusion diagnostic vs signal, one line per family, faceted by
+## (n_units, d). Keep pilot_plot_power() as a compatibility wrapper below.
+pilot_plot_zero_exclusion <- function(df) {
+  if (!"zero_exclusion_rate" %in% names(df)) {
+    df$zero_exclusion_rate <- df$power
+  }
+  d <- df[
+    !is.na(df$zero_exclusion_rate) & !is.na(df$signal),
+    ,
+    drop = FALSE
+  ]
   if (!nrow(d)) {
-    return(pilot_empty_plot("No power / rejection-rate values yet"))
+    return(pilot_empty_plot("No zero-exclusion diagnostic values yet"))
   }
   d$family <- factor(d$family, levels = names(PILOT_FAMILY_PALETTE))
   d$panel <- sprintf("n_units %d, d %d", d$n_units, d$d)
@@ -1065,12 +1081,13 @@ pilot_plot_power <- function(df) {
     d,
     ggplot2::aes(
       x = .data$signal,
-      y = .data$power,
+      y = .data$zero_exclusion_rate,
       colour = .data$family,
       group = .data$family
     )
   ) +
-    ## A faint marker at signal == 0 (the Type-I proxy reference).
+    ## A faint marker at signal == 0. This is not a Type-I reference for
+    ## Sigma_unit_diag because the variance target remains positive.
     ggplot2::geom_vline(
       xintercept = 0,
       linetype = "dotted",
@@ -1083,16 +1100,20 @@ pilot_plot_power <- function(df) {
     ggplot2::scale_x_continuous(breaks = c(0, 0.2, 0.5)) +
     ggplot2::coord_cartesian(ylim = c(0, 1)) +
     ggplot2::labs(
-      title = "Rejection rate vs signal (power curve; signal 0 = Type-I proxy)",
+      title = "CI zero-exclusion rate vs signal is diagnostic, not power",
       subtitle = paste(
-        "Fraction of primary CIs excluding zero.",
-        "At signal = 0 this is the empirical Type-I error."
+        "Fraction of primary Sigma_unit_diag CIs excluding zero.",
+        "Signal 0 still has positive variance, so this is not Type-I error."
       ),
       x = "Signal (between-unit variance share)",
-      y = "Rejection rate",
+      y = "CI excludes zero",
       colour = "Family"
     ) +
     pilot_theme_grammar()
+}
+
+pilot_plot_power <- function(df) {
+  pilot_plot_zero_exclusion(df)
 }
 
 pilot_empty_plot <- function(label) {
@@ -1183,7 +1204,7 @@ pilot_record_lines <- function(
     "",
     paste(
       "| cell | family | d | n | signal | n_sim | coverage |",
-      ">=94% | >=95% | power | fit-fail | nonPD | conv-fail |"
+      ">=94% | >=95% | zero-excl | fit-fail | nonPD | conv-fail |"
     ),
     paste(
       "|------|--------|--:|--:|-------:|------:|---------:|",
@@ -1204,7 +1225,13 @@ pilot_record_lines <- function(
         fmt(df$coverage_primary[i]),
         ylab(df$passes_94[i]),
         ylab(df$passes_95[i]),
-        fmt(df$power[i]),
+        fmt(
+          if ("zero_exclusion_rate" %in% names(df)) {
+            df$zero_exclusion_rate[i]
+          } else {
+            df$power[i]
+          }
+        ),
         pct(df$fit_failure_rate[i]),
         pct(df$nonpd_rate[i]),
         pct(df$conv_failure_rate[i])

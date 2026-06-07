@@ -1,27 +1,19 @@
 name: dep-slope-identifiability-sweep
 
-# Accumulating dep-slope identifiability / recovery CAMPAIGN (GAP-B1 / PHY-18).
+# Manual dep-slope identifiability / recovery campaign (GAP-B1 / PHY-18).
 #
 # Drives docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R
-# (a research harness; NO engine change). Instead of re-running the same grid,
-# each run ADDS a fresh batch of replicate seeds (derived from the run number,
-# so seeds never collide) to a durable per-cell store on the orphan branch
-# `dep-slope-sweep-results`. Non-default `s_grid` values write to an
-# s-specific store so the scheduled single-slope campaign cannot overwrite a
-# manual multi-slope feasibility sweep. The cumulative PD-fraction + recovery
-# statistics therefore TIGHTEN over the week -- especially the seed-sensitive
-# nbinom2 / ordinal_probit cells. Auto-stops after the campaign end date
-# (default Sunday 2026-06-08). The repo is public, so ubuntu-latest minutes are
-# free.
+# (a research harness; NO engine change). Each manual run ADDS a fresh batch of
+# replicate seeds (derived from the run number, so seeds never collide) to a
+# durable per-cell store on the orphan branch `dep-slope-sweep-results`.
+# Non-default `s_grid` values write to an s-specific store so multi-slope RE-03
+# feasibility rows stay separate from the historical single-slope campaign. The
+# broad scheduled single-slope campaign ended after run 33; future evidence
+# collection should use targeted manual dispatches.
 #
-# POST-MERGE: the cron goes live on merge to main (schedules only fire from the
-# default branch). Dispatch one manual run first to confirm the
-# accumulate -> commit -> store cycle on GHA.
+# Dispatch manually to confirm the accumulate -> commit -> store cycle on GHA.
 
 on:
-  schedule:
-    # Every 3 hours through the week -- accumulate a fresh seed batch per run.
-    - cron: "0 */3 * * *"
   workflow_dispatch:
     inputs:
       families:

@@ -13950,3 +13950,82 @@ Interpretation:
   `slope_scale_grid=1,1.25`, `end_date=2026-06-08`.
 - No validation-debt row moves. RE-03 remains `partial` and the public
   non-Gaussian `phylo_dep(..., s >= 2)` guard remains in place.
+
+## 2026-06-07 -- RE-03 run 38 targeted s=2 diagnostic readout
+
+Goal:
+
+- Harvest the manual targeted `s = 2` dep-slope diagnostic dispatched after
+  the broad schedule was stopped.
+- Decide whether the new evidence supports a validation-row move or a runtime
+  guard change for non-Gaussian `phylo_dep(..., s >= 2)`.
+- Post the evidence back to the random-slope roadmap issue.
+
+Commands run:
+
+- `gh run view 27106800868 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,workflowName,headBranch,headSha,event,url,jobs`
+  -> manual `dep-slope-identifiability-sweep` run `27106800868` completed
+  successfully on `main` at `f575c4eecbba125170b03c5338dbc175e2ecdb88`;
+  job `accumulate` completed in 54m38s.
+- `gh run download 27106800868 --repo itchyshin/gllvmTMB --dir /tmp/gllvmtmb-depslope-run27106800868`
+  -> downloaded:
+  - `/tmp/gllvmtmb-depslope-run27106800868/dep-slope-campaign-run-38/dep-slope-campaign.log`
+  - `/tmp/gllvmtmb-depslope-run27106800868/dep-slope-campaign-run-38/dep-slope-sweep-s2-accumulated.csv`
+- `git fetch origin dep-slope-sweep-results:refs/remotes/origin/dep-slope-sweep-results`
+  -> updated result-store ref `65db25e..a067f04`.
+- `git log --oneline --max-count=8 origin/dep-slope-sweep-results`
+  -> top commit is
+  `a067f04 dep-slope campaign: accumulate seeds (run 38)`.
+- `git ls-tree --name-only origin/dep-slope-sweep-results`
+  -> result branch contains `dep-slope-sweep-accumulated.csv` and
+  `dep-slope-sweep-s2-accumulated.csv`.
+- `find /tmp/gllvmtmb-depslope-run27106800868 -maxdepth 4 -type f -print | sort`
+  -> confirmed the run-38 log and `s2` accumulated store artifact.
+- `Rscript --vanilla - <<'RS' ... read dep-slope-sweep-s2-accumulated.csv; inspect columns, appended rows 100:115, strict/loose recovery, max_sigma_diff ... RS`
+  -> the `s2` store has 115 rows. Run 38 appended 16 rows for seed `3801`:
+  8 valid `slope_scale = 1.0` fits and 8 `slope_scale = 1.25` fixture
+  failures.
+- `grep -n "not_fit\|ERROR\|WARN\|Accumulated\|IDENTIFIABILITY_SWEEP_DONE" /tmp/gllvmtmb-depslope-run27106800868/dep-slope-campaign-run-38/dep-slope-campaign.log | tail -n 80`
+  -> all `slope_scale = 1.25` rows report
+  `fixture: the leading minor of order 3 is not positive`; the run still
+  accumulated 99 prior rows -> 115 total rows and ended with
+  `IDENTIFIABILITY_SWEEP_DONE`.
+- `rg -n "^\| RE-03\||RE-03" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md ROADMAP.md`
+  -> confirmed the live register row still marks RE-03 `partial` and keeps
+  non-Gaussian `s >= 2` reserved behind the runtime guard.
+- `gh pr list --state open --json number,title,headRefName,baseRefName,author,url`
+  -> `[]`; no open PR collision before editing the readout files.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were result-store commits, the merged RE-03 schedule
+  change, and the Power-pilot result-store commit; no competing shared-file
+  branch appeared.
+- `gh issue comment 341 --repo itchyshin/gllvmTMB --body-file /tmp/gllvmtmb-re03-run38-issue.*.md`
+  -> posted run-38 readout:
+  <https://github.com/itchyshin/gllvmTMB/issues/341#issuecomment-4644432504>.
+
+Fresh run-38 evidence:
+
+| family | n_sp | x_sd | slope_scale | PD | strict | loose | max_sigma_diff |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| nbinom2 | 600 | 1.0 | 1.0 | 1/1 | 1/1 | 1/1 | 0.1730 |
+| ordinal_probit | 600 | 1.0 | 1.0 | 1/1 | 1/1 | 1/1 | 0.3071 |
+| nbinom2 | 1200 | 1.0 | 1.0 | 1/1 | 1/1 | 1/1 | 0.1537 |
+| ordinal_probit | 1200 | 1.0 | 1.0 | 1/1 | 1/1 | 1/1 | 0.1868 |
+| nbinom2 | 600 | 1.5 | 1.0 | 1/1 | 1/1 | 1/1 | 0.2307 |
+| ordinal_probit | 600 | 1.5 | 1.0 | 1/1 | 1/1 | 1/1 | 0.3594 |
+| nbinom2 | 1200 | 1.5 | 1.0 | 1/1 | 1/1 | 1/1 | 0.1346 |
+| ordinal_probit | 1200 | 1.5 | 1.0 | 1/1 | 1/1 | 1/1 | 0.1598 |
+
+Interpretation:
+
+- The valid `slope_scale = 1.0` cells strengthened the case that `nbinom2`
+  and `ordinal_probit` can recover under the better-separated
+  `n_rep = 20` design, including `x_sd = 1.5`.
+- The requested `slope_scale = 1.25` cells did not produce fitted evidence.
+  The fixture covariance was not positive definite, so those rows diagnose
+  the DGP design, not the model engine.
+- No validation-debt row moves. RE-03 remains `partial`, and the public
+  non-Gaussian `phylo_dep(..., s >= 2)` runtime guard remains in place.
+- The next useful work is to redesign the stronger-slope fixture so it is
+  positive definite, then rerun a small multi-seed diagnostic before any
+  family-specific admission PR.

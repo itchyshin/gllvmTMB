@@ -13886,3 +13886,67 @@ Interpretation:
   largest fit-health / non-PD burden.
 - No validation-debt row moves. CI-08 and CI-10 remain `partial` until a
   target-explicit, adequately replicated capstone gate passes.
+
+## 2026-06-07 -- RE-03 s=2 targeted diagnostic setup
+
+Goal:
+
+- Inspect the newly completed dep-slope run 33 artifact.
+- Confirm whether run 33 added genuine RE-03 `s = 2` evidence or only default
+  single-slope campaign rows.
+- Stop the broad scheduled dep-slope campaign before adding more evidence that
+  does not inform RE-03.
+- Prepare the next manual `s = 2` diagnostic dispatch for the weak families.
+
+Commands run:
+
+- `git status --short --branch && git rev-parse --short HEAD`
+  -> clean `main...origin/main` at `11bab7f`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`; no open PR collision before editing the workflow / dev-log files.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the run-39 Power pilot readout, the latest
+  Power-pilot result-store commits, and dep-slope run-33 / run-32 result-store
+  commits; no competing shared-file branch appeared.
+- `gh run view 27087974761 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,workflowName,url,jobs`
+  -> dep-slope run `27087974761` completed successfully; job `accumulate`
+  restored the default store, accumulated fresh seeds, persisted the result
+  store, and uploaded the backup artifact.
+- `gh run download 27087974761 --repo itchyshin/gllvmTMB --dir /tmp/gllvmtmb-depslope-run27087974761`
+  -> downloaded:
+  - `/tmp/gllvmtmb-depslope-run27087974761/dep-slope-campaign-run-33/dep-slope-campaign.log`
+  - `/tmp/gllvmtmb-depslope-run27087974761/dep-slope-campaign-run-33/dep-slope-sweep-accumulated.csv`
+- `git fetch origin dep-slope-sweep-results:refs/remotes/origin/dep-slope-sweep-results && git log --oneline --max-count=8 origin/dep-slope-sweep-results && git ls-tree --name-only origin/dep-slope-sweep-results`
+  -> updated the result-store ref to
+  `a3183af dep-slope campaign: accumulate seeds (run 33)`; both
+  `dep-slope-sweep-accumulated.csv` and
+  `dep-slope-sweep-s2-accumulated.csv` are present.
+- `Rscript --vanilla - <<'RS' ... read run-33 artifact; default missing n_slope to 1; table n_slope and seeds ... RS`
+  -> run 33 artifact has 2,625 rows and every row is `n_slope = 1`.
+  It is scheduled/default single-slope evidence, not RE-03 evidence.
+- `Rscript --vanilla - <<'RS' ... read dep-slope-sweep-s2-accumulated.csv; default old columns; compute PD, strict, loose recovery ... RS`
+  -> dedicated `s2` store has 99 rows. Baseline weak-family summary:
+  at `n_sp = 600`, Beta 11/12 PD and 9/12 strict, nbinom2 11/12 PD and
+  9/12 strict, ordinal_probit 9/12 PD and 7/12 strict; at `n_sp = 1200`,
+  Beta 6/6 PD and 4/6 strict, nbinom2 5/6 PD and 3/6 strict,
+  ordinal_probit 5/6 PD and 4/6 strict.
+- `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/dep-slope-identifiability-sweep.yaml"); puts "yaml-ok"'`
+  -> `yaml-ok` after removing the cron schedule and keeping manual dispatch.
+- `rg -n "schedule:|cron:|broad scheduled|workflow_dispatch|s_grid|dep-slope-sweep-s2|GLLVMTMB_SWEEP_X_SD_GRID|GLLVMTMB_SWEEP_SLOPE_SCALE_GRID" .github/workflows/dep-slope-identifiability-sweep.yaml docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> no `schedule:` / `cron:` entries remain; manual dispatch inputs and the
+  diagnostic `s = 2` grid knobs remain wired.
+- `git diff --check`
+  -> clean.
+
+Interpretation:
+
+- Run 33 does not change RE-03. It adds only broad `s = 1` rows.
+- The broad scheduled dep-slope campaign is no longer the right evidence lane.
+  The workflow is now manual-dispatch only, so future runs must name the
+  diagnostic grid explicitly.
+- The next manual dispatch should target the weak RE-03 cells:
+  `families=nbinom2,ordinal_probit`, `s_grid=2`, `n_grid=600,1200`,
+  `seeds_per_run=1`, `n_rep=20`, `x_sd_grid=1,1.5`,
+  `slope_scale_grid=1,1.25`, `end_date=2026-06-08`.
+- No validation-debt row moves. RE-03 remains `partial` and the public
+  non-Gaussian `phylo_dep(..., s >= 2)` guard remains in place.

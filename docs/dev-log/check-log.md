@@ -13780,3 +13780,109 @@ Interpretation:
 - The next RE-03 action should be a targeted `s = 2` weak-family
   diagnostic/admission design, especially around `nbinom2` and
   `ordinal_probit`, not more blind single-slope accumulation.
+
+## 2026-06-07 -- Power pilot run 39 combined readout
+
+Goal:
+
+- Harvest the latest completed Power pilot GitHub run after the zero-exclusion
+  scoring correction landed on `main`.
+- Combine the remote `power-pilot-results` store with the local LaunchAgent
+  store and record the current target-scale interpretation.
+- Keep CI-08 and CI-10 unchanged unless the evidence actually clears the
+  capstone gates.
+
+Commands run:
+
+- `git status --short --branch`
+  -> clean `main`.
+- `git branch --all --list '*power*' '*scoring*' '*pilot*'`
+  -> confirmed the historical scoring branches exist, including
+  `codex/power-pilot-scoring-ledger-2026-06-06`; `main` already contains the
+  zero-exclusion correction.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`; no open PR collision before editing this dev-log / after-task
+  slice.
+- `gh run list --repo itchyshin/gllvmTMB --workflow "Power pilot sweep" --limit 8 --json databaseId,displayTitle,status,conclusion,headBranch,headSha,url,createdAt,updatedAt,event`
+  -> identified run `27082083668` as the latest Power pilot run.
+- `git fetch origin power-pilot-results:refs/remotes/origin/power-pilot-results && git log --oneline --max-count=8 origin/power-pilot-results`
+  -> updated result branch to
+  `b598007 power-pilot: accumulate reps (run 39)`.
+- `gh run view 27082083668 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,workflowName,url,jobs`
+  -> run `27082083668` completed successfully; `persist` merged shard slices,
+  rebuilt `pilot-index.rds`, pushed the result branch, uploaded the backup, and
+  `summary` updated the issue board.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent commits included run-39 result-store commit `b598007`, the
+  dep-slope run-32 triage merge, and profile article merges; no competing
+  Power pilot readout branch was visible.
+- `test -d /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local && echo local-store=yes || echo local-store=no; launchctl print gui/$(id -u)/com.gllvmtmb.power-pilot-local 2>/dev/null | sed -n '1,80p'`
+  -> local store exists; LaunchAgent `com.gllvmtmb.power-pilot-local` is still
+  running with PID `48465`, `LOCAL_CORES = 10`, and `LOCAL_N_SIM_CAP = 10000`.
+- `git archive origin/power-pilot-results dev/m3-pilot-results | tar -x -C /tmp/gllvmtmb-power-run39.OogZOr`
+  -> archived the remote accumulated store; 49 files were present under
+  `/tmp/gllvmtmb-power-run39.OogZOr/dev/m3-pilot-results` (48 cell files plus
+  index).
+- `Rscript --vanilla - <<'RS' ... pilot_collect(...); pilot_record(...); pilot_scoring_audit(...); pilot_scoring_audit_record(...) ...`
+  -> wrote:
+  - `/tmp/gllvmtmb-power-run39-summary.md`
+  - `/tmp/gllvmtmb-power-run39-summary.rds`
+  - `/tmp/gllvmtmb-power-run39-scoring-audit.md`
+  - `/tmp/gllvmtmb-power-run39-scoring-audit.rds`
+  The first run also caught a local caller mistake: `pilot_plot()` takes
+  `figure_dir =`, not `out_dir =`. The summary and scoring-audit outputs were
+  already written before that plot-call error.
+- `Rscript --vanilla - <<'RS' ... stopifnot("zero_exclusion_rate" %in% names(df)); stopifnot(identical(df$zero_exclusion_rate, df$power)); pilot_plot(df, figure_dir = "/tmp/gllvmtmb-power-run39-figures", save = TRUE) ...`
+  -> `pilot-report-api-ok`; wrote:
+  - `/tmp/gllvmtmb-power-run39-figures/pilot-coverage-vs-nominal.png`
+  - `/tmp/gllvmtmb-power-run39-figures/pilot-zero-exclusion-diagnostic.png`
+- Visual inspection of both PNGs
+  -> coverage figure rendered and showed most cells below the 94/95% gates;
+  zero-exclusion figure rendered and was saturated at 1.0, matching the
+  diagnostic-only interpretation.
+- `Rscript --vanilla dev/m3-pilot-report.R --emit-issues --results-dir="/tmp/gllvmtmb-power-run39.OogZOr/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local"`
+  -> `28 cells flagged`, led by binomial-probit non-PD cells and nbinom2
+  fit-health / non-PD cells.
+- `gh issue comment 349 --repo itchyshin/gllvmTMB --body-file /tmp/gllvmtmb-power-run39-issue-comment.md`
+  -> posted the capstone readout:
+  <https://github.com/itchyshin/gllvmTMB/issues/349#issuecomment-4642061792>.
+- `gh issue comment 340 --repo itchyshin/gllvmTMB --body-file /tmp/gllvmtmb-power-run39-issue-comment.md`
+  -> posted the capability-board readout:
+  <https://github.com/itchyshin/gllvmTMB/issues/340#issuecomment-4642061860>.
+- `rg -n "CI-08|CI-10|zero_exclusion_rate|zero-exclusion|run 39|Power pilot" docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-07-power-pilot-run39-readout.md`
+  -> confirmed the new report points to the run-39 evidence and the
+  validation-debt register still marks CI-08 and CI-10 `partial`.
+- `git diff --check`
+  -> clean.
+
+Combined-store readout:
+
+- Cells with stored data: 48 / 48.
+- Accumulated replicates: 76,192 / 480,000.
+- Complete cells at cap: 0 / 48.
+- Signal cells with coverage rows: 24.
+- Mean signal-cell `coverage_primary`: 0.754.
+- Cells at or above the 94% gate: 3 / 24.
+- Cells at or above the 95% gate: 2 / 24.
+- Flagged cells: 28.
+
+Representative target-scale audit rows:
+
+- `gaussian-d1-n150-sig0p0`: n = 1504, coverage 0.389,
+  zero-exclusion 1.000, median estimate/truth 1.305, non-PD 0%.
+- `nbinom2-d2-n50-sig0p0`: n = 1354, coverage 0.900,
+  zero-exclusion 1.000, median estimate/truth 0.757, non-PD 75.1%.
+- `binomial_probit-d1-n50-sig0p2`: n = 1504, coverage 0.959,
+  zero-exclusion 1.000, median estimate/truth 2.191, non-PD 32.8%.
+
+Interpretation:
+
+- Run 39 completed and persisted successfully, but the capstone campaign is
+  not complete.
+- The zero-exclusion diagnostic is correctly demoted: it is saturated at 1.0
+  and is not a Type-I or power measure for `Sigma_unit_diag`, including
+  `signal = 0` cells where the variance target remains positive.
+- Coverage remains below the target for most cells; nbinom2 also carries the
+  largest fit-health / non-PD burden.
+- No validation-debt row moves. CI-08 and CI-10 remain `partial` until a
+  target-explicit, adequately replicated capstone gate passes.

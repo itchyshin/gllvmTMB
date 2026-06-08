@@ -33,7 +33,8 @@
 ##   GLLVMTMB_SWEEP_NREP      comma list of reps per (species,trait) cell (default 10)
 ##   GLLVMTMB_SWEEP_X_SD_GRID comma list of slope-covariate SDs (default 1)
 ##   GLLVMTMB_SWEEP_SLOPE_SCALE_GRID
-##                            comma list of multiplicative slope-Sigma scales
+##                            comma list of multiplicative slope-coordinate
+##                            standard-deviation scales
 ##                            (default 1; RE-03 diagnostic sensitivity only)
 ##   GLLVMTMB_SWEEP_OUT       CSV output path (default dep-identifiability-sweep-results.csv)
 ##
@@ -83,8 +84,12 @@ T_tr <- 2L
     stop("slope_scale must be finite and positive")
   }
   if (!identical(slope_scale, 1)) {
-    D <- diag(nrow(Sigma))
-    D[.slope_var_idx(n_slope), .slope_var_idx(n_slope)] <- slope_scale
+    ## Scale only the slope coordinates. Matrix subassignment with
+    ## `D[idx, idx] <- value` fills the whole slope-by-slope block and makes
+    ## the scaling matrix singular; use paired diagonal indices instead.
+    D <- diag(1, nrow(Sigma))
+    idx <- .slope_var_idx(n_slope)
+    D[cbind(idx, idx)] <- slope_scale
     Sigma <- D %*% Sigma %*% D
   }
   Sigma
@@ -440,9 +445,19 @@ cat(sprintf("Running %d cells (%d families x %d s-grid x %d N x %d n_rep x %d se
             length(n_rep_grid), length(seeds), length(x_sd_grid),
             length(slope_scale_grid)))
 for (s in s_grid) {
-  truth <- .Sigma_b_true(s, slope_scale = 1)
-  cat(sprintf("True slope variances (s=%d, slope_scale=1): %s\n", s,
+  for (sc in slope_scale_grid) {
+    truth <- .Sigma_b_true(s, slope_scale = sc)
+    chol_ok <- tryCatch({
+      chol(truth)
+      TRUE
+    }, error = function(e) FALSE)
+    if (!isTRUE(chol_ok)) {
+      stop("Non-positive-definite truth covariance for s = ", s,
+           ", slope_scale = ", sc, ".")
+    }
+    cat(sprintf("True slope variances (s=%d, slope_scale=%g): %s\n", s, sc,
               paste(round(diag(truth)[.slope_var_idx(s)], 3), collapse = ", ")))
+  }
 }
 cat("\n")
 

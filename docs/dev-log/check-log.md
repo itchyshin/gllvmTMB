@@ -14029,3 +14029,61 @@ Interpretation:
 - The next useful work is to redesign the stronger-slope fixture so it is
   positive definite, then rerun a small multi-seed diagnostic before any
   family-specific admission PR.
+
+## 2026-06-08 -- RE-03 stronger-slope fixture repair
+
+Goal:
+
+- Continue the RE-03 `s = 2` admission lane after run 38 showed that every
+  requested `slope_scale = 1.25` row failed before fitting.
+- Repair the diagnostic harness so `slope_scale > 1` scales only the intended
+  slope coordinates and cannot silently create a singular truth covariance.
+- Leave the public non-Gaussian `phylo_dep(..., s >= 2)` guard unchanged until
+  a corrected multi-seed run clears.
+
+Commands run:
+
+- `git status --short --branch`
+  -> clean `main...origin/main` before branching.
+- `gh pr list --state open --json number,title,headRefName,baseRefName,author,url`
+  -> `[]`; no open PR collision before editing shared dev-log files.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the merged RE-03 readout, run-38 result-store commit,
+  Power-pilot result-store commit, and the RE-03 schedule-stop merge; no
+  competing shared-file branch appeared.
+- `Rscript --vanilla - <<'RS' ... recreate .Sigma_b_true() with the old D[idx, idx] <- slope_scale assignment ... RS`
+  -> reproduced the run-38 fixture failure: for `s = 2`,
+  `slope_scale = 1.25` made the scaling matrix singular and `chol()` failed.
+  The root cause was matrix subassignment: `D[idx, idx] <- value` fills the
+  whole slope-by-slope block, not just its diagonal.
+- `Rscript --vanilla - <<'RS' ... use D[cbind(idx, idx)] <- slope_scale and check slope_scale in {1, 1.25, 1.5} ... RS`
+  -> corrected covariance has positive eigenvalues and successful Cholesky:
+  `slope_scale = 1` min eigen `0.20455731506`,
+  `slope_scale = 1.25` min eigen `0.313996920361`,
+  `slope_scale = 1.5` min eigen `0.392925264353`.
+- `Rscript --vanilla -e 'invisible(parse(file = "docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R")); cat("r-parse-ok\n")'`
+  -> `r-parse-ok`.
+- `GLLVMTMB_SWEEP_FAMILIES=gaussian GLLVMTMB_SWEEP_SGRID=2 GLLVMTMB_SWEEP_NGRID=8 GLLVMTMB_SWEEP_SEEDS=9901 GLLVMTMB_SWEEP_NREP=2 GLLVMTMB_SWEEP_X_SD_GRID=1 GLLVMTMB_SWEEP_SLOPE_SCALE_GRID=1.25 GLLVMTMB_SWEEP_OUT=/tmp/gllvmtmb-re03-slope-scale-smoke.csv Rscript --vanilla docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  -> one tiny underpowered Gaussian smoke cell ran through fixture
+  construction and fitting. It returned `conv = 1`, `pdHess = FALSE`,
+  `failure_reason = nonPD/nonconv`, not `not_fit`; the truth slope variances
+  printed as `{0.508, 0.416, 0.503, 0.407}`.
+
+Implementation:
+
+- `docs/dev-log/spikes/2026-06-01-phylo-dep-slope-identifiability-N-sweep.R`
+  now uses paired diagonal indices:
+  `D[cbind(idx, idx)] <- slope_scale`.
+- The script now checks every requested `(s, slope_scale)` truth covariance
+  with `chol()` before launching fit cells and prints the slope variances for
+  each requested scale.
+
+Interpretation:
+
+- Run 38's `slope_scale = 1.25` `not_fit` rows were a harness DGP bug, not
+  evidence against the model engine.
+- This repair makes the stronger-slope diagnostic runnable. The next action is
+  to merge this fix and rerun the targeted weak-family `s = 2` diagnostic for
+  `nbinom2` and `ordinal_probit`.
+- No validation-debt row moves. RE-03 remains `partial`, and the public
+  non-Gaussian `phylo_dep(..., s >= 2)` runtime guard remains in place.

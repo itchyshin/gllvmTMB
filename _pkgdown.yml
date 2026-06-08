@@ -28,12 +28,8 @@ navbar:
         href: articles/morphometrics.html
       - text: Behavioural reaction norms
         href: articles/random-regression-reaction-norms.html
-      - text: Structured random slopes
-        href: articles/random-slopes-nongaussian.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
-      - text: Cross-lineage coevolution kernels
-        href: articles/cross-lineage-coevolution.html
       - text: Concepts
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
@@ -61,9 +57,7 @@ articles:
     contents:
     - articles/morphometrics
     - articles/random-regression-reaction-norms
-    - articles/random-slopes-nongaussian
     - articles/joint-sdm
-    - articles/cross-lineage-coevolution
 
   - title: Concepts
     contents:
@@ -86,6 +80,8 @@ articles:
     - articles/choose-your-model
     - articles/animal-model
     - articles/phylogenetic-gllvm
+    - articles/random-slopes-nongaussian
+    - articles/cross-lineage-coevolution
     - articles/behavioural-syndromes
     - articles/gllvm-vocabulary
     - articles/mixed-family-extractors

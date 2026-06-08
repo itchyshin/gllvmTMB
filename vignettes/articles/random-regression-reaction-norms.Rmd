@@ -32,13 +32,16 @@ centred/scaled `temperature`. The model asks whether individuals differ
 in both average behaviour and temperature responsiveness, and whether
 those reaction-norm coefficients covary across behaviours.
 
-Scope boundary: IN under RE-12, Gaussian keyworded `latent() + unique()`
-ordinary random-slope models are implemented for long and wide data and can
-extract the augmented `unit_slope` covariance. PARTIAL, non-Gaussian ordinary
-`latent()` random slopes have smoke evidence only. PLANNED, non-Gaussian
-augmented `unique()` random slopes. REJECTED here, delta / hurdle random-slope
-extensions and phylogenetic or spatial slope fields are different model classes
-and are not used as substitutes for individual reaction norms.
+The `latent()` term estimates shared axes of between-individual covariance;
+the `unique()` term estimates the trait-specific diagonal left after those
+shared axes. Scope boundary: IN under RE-12, Gaussian keyworded
+`latent() + unique()` ordinary random-slope models are implemented for long
+and wide data and can extract the augmented `unit_slope` covariance. PARTIAL,
+non-Gaussian ordinary `latent()` random slopes have smoke evidence only.
+PLANNED, non-Gaussian augmented `unique()` random slopes. REJECTED here,
+delta / hurdle random-slope extensions and phylogenetic or spatial slope
+fields are different model classes and are not used as substitutes for
+individual reaction norms.
 
 ## Setup
 
@@ -146,7 +149,10 @@ ctl <- gllvmTMBcontrol(
 )
 
 fit_long <- gllvmTMB(
-  rr$formula_long,
+  value ~ 0 + trait + (0 + trait):temperature +
+    latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
+    unique(0 + trait + (0 + trait):temperature | individual) +
+    latent(0 + trait | session_id, d = 1),
   data = df,
   trait = rr$fit_args$trait,
   unit = rr$fit_args$unit,
@@ -156,7 +162,10 @@ fit_long <- gllvmTMB(
 )
 
 fit_wide <- gllvmTMB(
-  rr$formula_wide,
+  traits(boldness, exploration, activity) ~ 1 + temperature +
+    latent(1 + temperature | individual, d = 1) +
+    unique(1 + temperature | individual) +
+    latent(1 | session_id, d = 1),
   data = df_wide,
   unit = rr$fit_args$unit,
   unit_obs = rr$fit_args$unit_obs,
@@ -295,7 +304,9 @@ The three blocks answer different biological questions:
   whether high-average individuals also respond more strongly or weakly
   to temperature.
 
-The shared and unique pieces compose the total augmented covariance:
+The shared and unique pieces compose the total augmented covariance.
+`Sigma_unique$s` is the fitted diagonal contribution from `unique()`,
+ordered to match the rows and columns of `Sigma_total$Sigma`:
 
 ```{r composition}
 max(abs(
@@ -519,8 +530,9 @@ For this model, the primary reportable pieces are:
   repeatability.
 
 This article is a worked example for the Gaussian RE-12 capability. It
-does not establish calibrated confidence intervals for slope variances
-or non-Gaussian augmented `unique()` support.
+does not establish calibrated confidence intervals for slope variances,
+slope correlations, intercept-slope correlations, repeatability curves, or
+non-Gaussian augmented `unique()` support.
 
 ## References
 

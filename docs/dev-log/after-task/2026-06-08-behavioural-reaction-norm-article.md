@@ -195,3 +195,45 @@ truth recovery, so the article object is not just prose.
   lane.
 - The next capability slice, if wanted, is a separate admission grid for
   non-Gaussian ordinary augmented `unique()` random slopes.
+
+## 11. Public-Surface Review Addendum
+
+After maintainer HTML review, Pat, Rose, and Fisher re-read the article lane.
+The outcome was conservative:
+
+- keep `random-regression-reaction-norms` public;
+- hide `random-slopes-nongaussian` and `cross-lineage-coevolution` from the
+  public Model guide for now;
+- keep both hidden articles buildable as internal workflows, because the engine
+  evidence remains real but the reader path is premature.
+
+Edits made in this addendum:
+
+- `_pkgdown.yml` now lists only `morphometrics`,
+  `random-regression-reaction-norms`, and `joint-sdm` under the public Model
+  guide; the structured-slope and cross-lineage articles moved to the internal
+  bucket.
+- The reaction-norm article now spells the long and wide formulas directly in
+  the `gllvmTMB()` calls, glosses `latent()` / `unique()` before the scope
+  boundary, explains `Sigma_unique$s`, and states that slope variances,
+  slope correlations, intercept-slope correlations, and repeatability curves
+  are point-estimate/recovery summaries, not calibrated intervals.
+- The structured random-slope article no longer says the reaction-norm article
+  is still internal.
+- The cross-lineage article now frames the null comparison and fixed-`rho`
+  grid as diagnostic/sensitivity workflow, not a calibrated test or profile
+  likelihood.
+- README, NEWS, capability status, validation-debt register, Design 65, and the
+  article-gate matrix were synced to describe those two articles as internal
+  workflows.
+
+Additional checks:
+
+- `test-example-behavioural-reaction-norm.R`: `FAIL 0`, `WARN 0`, `SKIP 0`,
+  `PASS 40`.
+- Rebuilt `random-regression-reaction-norms`,
+  `random-slopes-nongaussian`, and `cross-lineage-coevolution` articles.
+- `pkgdown::check_pkgdown()` returned `No problems found`.
+- Rebuilt `pkgdown-site/articles/index.html`.
+- Rendered HTML scan confirmed the public article navbar / index no longer
+  lists structured random slopes or cross-lineage coevolution.

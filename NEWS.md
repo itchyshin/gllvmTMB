@@ -37,21 +37,21 @@
   hurdle families and phylogenetic or spatial slope fields for this
   individual-level reaction-norm article lane.
 
-## Structured random-slope article restored to the public model guide (#341, 2026-06-08)
+## Structured random-slope article kept internal pending the phylogenetic reader path (#341, 2026-06-08)
 
-* The `random-slopes-nongaussian` article now reflects the live structured
-  random-slope boundary. The ordinary reaction-norm article is now a separate
-  public behavioural-syndrome example and does not use the legacy
-  single-variance slope keywords. IN: one structured random slope (`s = 1`) is
-  documented as a point-estimate /
-  recovery workflow across the covered phylogenetic and spatial grid
-  (PHY-11..PHY-18, SPA-08..SPA-10), and Gaussian
-  `phylo_dep(1 + x1 + x2 | species)` remains covered under RE-03. PARTIAL:
-  non-Gaussian `phylo_dep(..., s >= 2)` stays fail-loud guarded while the RE-03
-  diagnostics continue. REJECTED for this article lane: delta, hurdle, and
-  two-stage zero-inflated families, whose latent-scale covariance is blocked
-  by FAM-17 / MIX-10. The article makes no calibrated-interval claim; CI-08 and
-  CI-10 remain separate coverage gates.
+* The `random-slopes-nongaussian` article still records the live structured
+  random-slope boundary, but it is kept out of the public model guide while the
+  phylogenetic GLLVM and structured-dependence reader path matures. The
+  ordinary reaction-norm article is now the public behavioural-syndrome example
+  and does not use the legacy single-variance slope keywords. IN: one
+  structured random slope (`s = 1`) remains a point-estimate / recovery workflow
+  across the covered phylogenetic and spatial grid (PHY-11..PHY-18,
+  SPA-08..SPA-10), and Gaussian `phylo_dep(1 + x1 + x2 | species)` remains
+  covered under RE-03. PARTIAL: non-Gaussian `phylo_dep(..., s >= 2)` stays
+  fail-loud guarded while the RE-03 diagnostics continue. REJECTED for this
+  article lane: delta, hurdle, and two-stage zero-inflated families, whose
+  latent-scale covariance is blocked by FAM-17 / MIX-10. The article makes no
+  calibrated-interval claim; CI-08 and CI-10 remain separate coverage gates.
 
 ## Spatial random slopes: full non-Gaussian family coverage (#453, 2026-06-05)
 
@@ -92,7 +92,8 @@ section further down.
   `kernel_indep()` / `kernel_dep()` / `kernel_latent()`,
   `make_cross_kernel()`, and `extract_Gamma()` add a phylo-equivalent
   dense-`K` surface and a validated cross-lineage coevolution
-  workflow, with a public `cross-lineage-coevolution` article (#361).
+  workflow, with a buildable internal `cross-lineage-coevolution` article
+  (#361).
   An identifiability guardrail now drops a redundant uniqueness tier
   with a warning — rather than aborting — when two `kernel_unique`
   tiers lack within-species replication (Design 65 C3.2; #361).
@@ -302,19 +303,19 @@ every PR reference and validation note remains available.
 
 ### Cross-lineage coevolution Gamma extraction (#361, 2026-05-31)
 
-* **`extract_Gamma()`** adds the Design 65 C2 extractor for cross-lineage coevolution fits (COE-02). IN: after fitting a named dense-kernel tier such as `kernel_latent(species, K = K_star, d = 2, name = "cross") + kernel_unique(species, K = K_star, name = "cross")`, users can call `extract_Gamma(fit, level = "cross", row_traits = host_traits, col_traits = partner_traits)` to slice the host-trait x partner-trait shared covariance block from `extract_Sigma(part = "shared")`. Heavy-test evidence covers planted known-`Gamma` recovery on block-missing host/partner data, a block-diagonal zero-`Gamma` null with lower log likelihood, loading-orientation checks on the fitted recovery fixture, and a sparse-versus-dense single-`W` sensitivity case (`test-coevolution-recovery.R`). PARTIAL: `rho` is still supplied through `K_star` rather than estimated inside TMB, and `extract_Gamma()` returns point estimates without intervals. The `cross-lineage-coevolution` article now shows the `rho` grid-profile workflow, null comparison, and data-condition warnings as the public C2 workflow.
+* **`extract_Gamma()`** adds the Design 65 C2 extractor for cross-lineage coevolution fits (COE-02). IN: after fitting a named dense-kernel tier such as `kernel_latent(species, K = K_star, d = 2, name = "cross") + kernel_unique(species, K = K_star, name = "cross")`, users can call `extract_Gamma(fit, level = "cross", row_traits = host_traits, col_traits = partner_traits)` to slice the host-trait x partner-trait shared covariance block from `extract_Sigma(part = "shared")`. Heavy-test evidence covers planted known-`Gamma` recovery on block-missing host/partner data, a block-diagonal zero-`Gamma` null with lower log likelihood, loading-orientation checks on the fitted recovery fixture, and a sparse-versus-dense single-`W` sensitivity case (`test-coevolution-recovery.R`). PARTIAL: `rho` is still supplied through `K_star` rather than estimated inside TMB, and `extract_Gamma()` returns point estimates without intervals. The `cross-lineage-coevolution` article shows the fixed-`rho` sensitivity-grid workflow, null comparison, and data-condition warnings as a buildable internal C2 workflow until the phylogenetic GLLVM reader path is public.
 
 ### Cross-lineage coevolution worked example (#361, 2026-06-01)
 
-* The new `cross-lineage-coevolution` article turns the Design 65 C2
-  recovery gate into a public worked example. IN: the article builds
+* The new internal `cross-lineage-coevolution` article turns the Design 65 C2
+  recovery gate into a buildable internal C2 workflow. IN: the article builds
   `K_star` with `make_cross_kernel()`, fits paired long-format and
   wide `traits(...)` calls through `kernel_latent()` plus
   `kernel_unique()`, compares a block-diagonal null, extracts
   `Gamma` with `extract_Gamma()`, and visualises truth vs fitted vs
   null covariance blocks (`COE-02`, `KER-02`). PARTIAL: the article
-  reports point estimates only and treats `rho` as a grid-profile
-  workflow parameter, not an in-engine estimate. PLANNED: calibrated
+  reports point estimates only and treats `rho` as a fixed-kernel sensitivity
+  parameter, not an in-engine estimate. PLANNED: calibrated
   intervals, multiple simultaneous kernel tiers, and in-engine `rho`
   estimation remain later Design 65 work.
 

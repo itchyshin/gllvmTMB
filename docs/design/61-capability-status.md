@@ -30,12 +30,11 @@ covered capability:
   reaction-norm article is now public as a Gaussian point-estimate/recovery
   worked example; non-Gaussian augmented `unique()` remains guarded.
 
-The practical consequence is simple: the public article lane can teach
-structured random slopes for `s = 1`, show Gaussian `s = 2` as a scoped
-extension, and keep non-Gaussian `s >= 2` as planned evidence work rather than
-a public fit path. The ordinary behavioural reaction-norm article now provides
-the Gaussian individual-level worked example and keeps the remaining
-non-Gaussian boundary clearly framed.
+The practical consequence is simple: the public article lane now teaches the
+ordinary Gaussian individual-level reaction-norm example first. Structured
+random slopes for `s = 1`, Gaussian structured `s = 2`, and non-Gaussian
+structured `s >= 2` stay in the internal structured-dependence lane until the
+phylogenetic GLLVM reader path is ready.
 
 ## Random-Slope Capability Table
 
@@ -75,7 +74,8 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Article | Status after this sync | Return / keep-public condition |
 |---|---|---|
 | `random-regression-reaction-norms` | public Gaussian behavioural reaction-norm article | Uses `unit = "individual"` and `unit_obs = "session_id"` with a shipped long/wide example object, diagnostics, augmented covariance recovery, repeatability curves, and an explicit non-Gaussian augmented-`unique()` guard. |
-| `random-slopes-nongaussian` | public structured-grid continuation | Must cite PHY-11..PHY-18, SPA-08..SPA-10, ANI-11..ANI-12, RE-03, FAM-17, and MIX-10; heavy cells may stay `eval = FALSE`. Keep it separate from the ordinary individual reaction-norm article. |
+| `random-slopes-nongaussian` | internal structured-grid continuation | Return after the phylogenetic GLLVM and structured-dependence reader path is public. Must cite PHY-11..PHY-18, SPA-08..SPA-10, ANI-11..ANI-12, RE-03, FAM-17, and MIX-10; heavy cells may stay `eval = FALSE`. Keep it separate from the ordinary individual reaction-norm article. |
+| `cross-lineage-coevolution` | internal Design 65 C2 workflow | Return after `phylogenetic-gllvm` is public and the article can read as a biological worked example rather than the first explanation of dense kernels, `Gamma`, and supplied `rho`. |
 | `phylogenetic-gllvm` | still internal | Can later link to the random-regression article after its own phylo/non-phylo split and helper example pass. |
 | `animal-model` | still internal | Needs the larger pedigree fixture and A/Ainv truth recovery before public restoration. |
 | `mixed-family-extractors` | still internal | Must keep delta/hurdle blocked cases explicit and avoid CI calibration overclaims. |

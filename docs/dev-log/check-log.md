@@ -14609,3 +14609,72 @@ Interpretation:
   truth, and plot-build readiness.
 - This did not expand the engine. Non-Gaussian augmented `unique()` is still
   the next capability slice if the maintainer wants broader support.
+
+## 2026-06-08 16:35 MDT — reaction-norm public-surface audit follow-up
+
+Context:
+
+- Maintainer reviewed the rendered reaction-norm HTML and asked for Pat / Rose /
+  Fisher review of the article surface.
+- Review outcome: keep `random-regression-reaction-norms` public; hide
+  `random-slopes-nongaussian` and `cross-lineage-coevolution` from the
+  first-click public Model guide for now. Both remain buildable internal
+  workflows, not deleted capability evidence.
+
+Files touched:
+
+- `_pkgdown.yml`
+- `README.md`
+- `NEWS.md`
+- `docs/design/35-validation-debt-register.md`
+- `docs/design/61-capability-status.md`
+- `docs/design/65-cross-lineage-coevolution-kernel.md`
+- `docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+- `vignettes/articles/random-regression-reaction-norms.Rmd`
+- `vignettes/articles/random-slopes-nongaussian.Rmd`
+- `vignettes/articles/cross-lineage-coevolution.Rmd`
+
+Commands and outcomes:
+
+- `gh pr list --state open --json number,title,headRefName,author,updatedAt --jq ...`
+  -> only open PR was #466 on
+  `codex/status-random-regression-article-2026-06-08`.
+- `git log --all --oneline --since='6 hours ago'`
+  -> current branch commits plus unrelated `c6b738e power-pilot: accumulate reps (run 50)`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-example-behavioural-reaction-norm.R")'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 40`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE); pkgdown::build_article("articles/random-slopes-nongaussian", quiet = FALSE, new_process = FALSE); pkgdown::build_article("articles/cross-lineage-coevolution", quiet = FALSE, new_process = FALSE)'`
+  -> all three touched articles rendered successfully.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'pkgdown::build_articles_index(pkg = pkgdown::as_pkgdown("."))'`
+  -> regenerated `pkgdown-site/articles/index.html`.
+- `git diff --check`
+  -> clean.
+
+Stale-wording / rendered-output scans:
+
+- `rg -n "grid-profile|grid profile|coarse profile likelihood|direct test|inferential heart|public workflow|public C2 workflow|Gamma standard errors inflate|Visible after 2026-06-08|Keep public as a point-estimate|still internal because|Structured random slopes are now public|cross-lineage-coevolution.*public worked" README.md NEWS.md docs/design docs/dev-log/audits vignettes/articles/random-slopes-nongaussian.Rmd vignettes/articles/cross-lineage-coevolution.Rmd`
+  -> one unrelated hit in `docs/design/72-variational-approximation-feasibility.md`
+  for "most direct test"; no stale hits in this article lane.
+- `rg -n "Structured random slopes|Cross-lineage coevolution|random-slopes-nongaussian|cross-lineage-coevolution|Behavioural reaction norms|Joint species distribution" pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/index.html pkgdown-site/index.html`
+  -> rendered public navbar and article index list `Behavioural reaction norms`
+  and `Joint species distribution`; no structured random-slope or
+  cross-lineage entries.
+- `rg -n 'value ~ 0 \\+ trait|traits\\(boldness, exploration, activity\\)|Sigma_unique\\$s|slope correlations|fixed-kernel sensitivity|direct test|inferential heart|coarse profile likelihood|Gamma standard errors inflate' pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/cross-lineage-coevolution.html pkgdown-site/articles/random-slopes-nongaussian.html`
+  -> expected hits for copyable reaction-norm formulas,
+  `Sigma_unique$s` gloss, slope-correlation caveat, and fixed-kernel
+  sensitivity wording; no Fisher-flagged stale inference phrases.
+
+Interpretation:
+
+- Pat: reaction-norm article remains Tier 1 but needed copyable formula calls
+  and first-use glosses.
+- Rose: support ledger backs structured slopes / cross-lineage as capabilities;
+  visibility tiering, not evidence status, is the issue.
+- Fisher: cross-lineage wording must stay diagnostic/sensitivity framed, not
+  calibrated-test framed; reaction-norm interval caveat must include slope
+  correlations and repeatability curves.
+- Next article priority from Pat: a compact diagnostics / trust-this-fit article
+  around `check_gllvmTMB()` and diagnostic attributes before restoring broader
+  JSDM / phylogenetic / cross-lineage public paths.

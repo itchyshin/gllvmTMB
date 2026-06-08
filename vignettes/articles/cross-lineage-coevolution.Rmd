@@ -270,14 +270,14 @@ abs(as.numeric(logLik(fit_cross)) -
 #> ~ 1e-9
 ```
 
-## The null comparison: is the cross block doing real work?
+## The null comparison: is the cross block improving fit?
 
-The inferential heart of the workflow is the comparison between the
-cross-kernel fit and the block-diagonal null. Both fits use the *same*
-formula, the *same* rank `d = 2`, and the *same* data; the only difference is
-whether the kernel has a host-partner bridge. Because the null is nested
-inside the cross model (it is `K*` with `rho = 0`), the likelihood difference
-is a direct test of the off-diagonal block.
+The central diagnostic comparison is between the cross-kernel fit and the
+block-diagonal null. Both fits use the *same* formula, the *same* rank `d = 2`,
+and the *same* data; the only difference is whether the kernel has a
+host-partner bridge. Because `rho` is supplied through `K*` rather than
+estimated in TMB, treat the likelihood difference as a fixed-kernel
+model-comparison diagnostic, not as a calibrated likelihood-ratio test.
 
 ```{r fit-null, eval = FALSE}
 fit_null <- gllvmTMB(
@@ -301,14 +301,14 @@ c(
 #> (the cross fit clears the null by several logLik units on K*-structured data)
 ```
 
-Two facts make this a credible test rather than a tautology. First, the null
-fit cannot express any host-partner covariance, so its `Gamma` block collapses
-to zero (the recovery test asserts `max(abs(Gamma_null)) < 1e-8`). Second, on
-data generated *with* a cross block, the cross-kernel fit improves the
-likelihood by a margin the test gates at more than one logLik unit. If your
-real data showed no improvement, that would be the honest signal that the
-association matrix carries little trait coevolution -- the workflow is built to
-let the null win when it should.
+Two facts make this a useful diagnostic rather than a tautology. First, the
+null fit cannot express any host-partner covariance, so its `Gamma` block
+collapses to zero (the recovery test asserts `max(abs(Gamma_null)) < 1e-8`).
+Second, on data generated *with* a cross block, the cross-kernel fit improves
+the likelihood by a margin the test gates at more than one logLik unit. If
+your real data showed no improvement, that would be the honest signal that the
+association matrix carries little trait coevolution -- the workflow is built
+to let the null win when it should.
 
 ## Extract and read Gamma
 
@@ -432,9 +432,9 @@ ggplot(gamma_plot_data,
 ## Profiling rho: a sensitivity grid, not a fitted parameter
 
 `rho` lives inside `K*`, not in the TMB parameter vector, so it is **not**
-estimated by the fit. The honest workflow is to profile it: rebuild `K*` over
-a grid of plausible `rho` values, refit the same model at each, and read the
-likelihood and `Gamma` as a function of `rho`.
+estimated by the fit. The honest workflow is a fixed-kernel sensitivity grid:
+rebuild `K*` over plausible `rho` values, refit the same model at each, and
+read the likelihood and `Gamma` as a function of `rho`.
 
 ```{r rho-grid, eval = FALSE}
 rho_grid <- seq(0, 0.8, by = 0.2)
@@ -479,15 +479,16 @@ null):
   0.8  -1098.8     TRUE       0.95
 ```
 
-Read the profile two ways. The `logLik` column peaks near the data-generating
-`rho`, so the grid behaves like a coarse profile likelihood for the coupling
-strength. The `gamma_cor` column shows that the *interpretation* of `Gamma`
+Read the grid two ways. The `logLik` column peaks near the data-generating
+`rho`, so the fixed-kernel sensitivity curve points to the best-supported
+coupling strength in this fixture. The `gamma_cor` column shows that the
+*interpretation* of `Gamma`
 stabilises across the upper half of the grid: the sign pattern is the same
 whether you pick `rho = 0.4` or `rho = 0.6`. Report the coevolution result
 only when the biology is stable across the `rho` values you would defend for
 your `W`, and quote the `rho` range you used. In-engine estimation of `rho`
-is planned later Design 65 work; until then the grid profile is the supported
-route.
+is planned later Design 65 work; until then the sensitivity grid is the
+supported route.
 
 ## Single-W sensitivity: one association matrix is one replicate
 
@@ -520,7 +521,8 @@ fit_sparse <- gllvmTMB( ... K = K_sparse ... )
 # Recovery is strictly worse under the thinned W:
 #   abs(cor(Gamma_dense,  truth))  ~ 0.97   (many realised links)
 #   abs(cor(Gamma_sparse, truth))  ~ 0.74   (few realised links)
-# and the Gamma standard errors inflate in the sparse case.
+# In the sparse case, assess uncertainty with bootstrap or a documented
+# sensitivity workflow before making interval-scale claims.
 ```
 
 The practical reading: a `Gamma` estimate is only as trustworthy as the

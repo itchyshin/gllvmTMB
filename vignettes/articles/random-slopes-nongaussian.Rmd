@@ -35,15 +35,13 @@ knitr::opts_chunk$set(
 
 A reaction norm is a slope: how a trait responds to an environmental
 gradient. The ordinary individual-level behavioural reaction-norm article is
-still internal because it needs a polished behavioural-syndrome example,
-rendered long and wide workflows, diagnostics, figures, and explicit
-non-Gaussian boundary wording. Its ordinary Gaussian
-`latent(1 + x | individual, d = K) + unique(1 + x | individual)` engine is
-implemented under RE-12, but plain non-structured bare-bar
-`(1 + x | individual)` random slopes remain reserved. This article covers a
-different public surface: **structured** random slopes, where the slope varies
-across species along a phylogeny or across sites in space. Those are random
-regressions with an explicit dependence structure.
+now the public Gaussian RE-12 worked example for
+`latent(1 + x | individual, d = K) + unique(1 + x | individual)`, while plain
+non-structured bare-bar `(1 + x | individual)` random slopes remain reserved.
+This article covers a different, internal technical surface: **structured**
+random slopes, where the slope varies across species along a phylogeny or
+across sites in space. Those are random regressions with an explicit dependence
+structure.
 
 This article covers two directions that matter for ecological and evolutionary
 data:

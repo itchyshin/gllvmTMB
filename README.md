@@ -36,6 +36,7 @@ paths reach the same stacked-trait model.
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
 | see the full worked example | [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html) |
 | interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
+| fit behavioural reaction norms | [Behavioural reaction norms](https://itchyshin.github.io/gllvmTMB/articles/random-regression-reaction-norms.html) |
 | choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
 | check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
 | check structured random-slope scope | [Structured random slopes](https://itchyshin.github.io/gllvmTMB/articles/random-slopes-nongaussian.html) |
@@ -48,10 +49,9 @@ data or exact syntax chunks, diagnostics, validation evidence, and
 rendered HTML review pass. Structured random slopes are now public as a
 point-estimate/recovery workflow for the scoped `s = 1` phylogenetic and
 spatial grid, with Gaussian `phylo_dep(..., s = 2)` covered and
-non-Gaussian `s >= 2` still guarded. Ordinary non-structured
-bare-bar `(1 + x | g)` slopes remain reserved, while the keyworded
-`latent(1 + x | unit, d = K)` reaction-norm component is now partial
-under RE-12.
+non-Gaussian `s >= 2` still guarded. Ordinary individual-level Gaussian
+reaction norms now have a public behavioural-syndrome worked example under
+RE-12. Bare-bar `(1 + x | g)` slopes remain reserved.
 
 ## What "stacked-trait" Means
 
@@ -219,7 +219,7 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
 | Fitted diagnostics | `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()` and `residuals()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12). These are diagnostic displays, not posterior predictive checks or interval calibration. |
-| Advanced examples | Structured random slopes are public for the scoped `s = 1` phylogenetic/spatial grid plus Gaussian `s = 2`. Ordinary individual-level Gaussian reaction norms now have `latent(1 + x \| unit, d = K) + unique(1 + x \| unit)` implemented and recovery-tested under RE-12; the article remains internal until the worked example is polished for public use. Joint SDM, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries. |
+| Advanced examples | Structured random slopes are public for the scoped `s = 1` phylogenetic/spatial grid plus Gaussian `s = 2`. Ordinary individual-level Gaussian reaction norms now have a public behavioural-syndrome article with long and wide examples, diagnostics, and recovery figures under RE-12; non-Gaussian augmented `unique()` remains guarded. Joint SDM, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries. |
 
 ## Current boundaries
 

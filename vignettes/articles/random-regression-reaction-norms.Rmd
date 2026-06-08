@@ -1,12 +1,12 @@
 ---
-title: "Random regression and reaction-norm slopes"
-tier: 3 # internal implementation article; public behavioural example still pending
+title: "Behavioural reaction norms with random slopes"
+tier: 1
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Random regression and reaction-norm slopes}
+  %\VignetteIndexEntry{Behavioural reaction norms with random slopes}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -15,267 +15,522 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
-  fig.width = 6, fig.height = 4,
+  fig.width = 6.5,
+  fig.height = 4.4,
   fig.align = "center",
   cache    = FALSE,
+  eval     = TRUE,
   message  = FALSE,
   warning  = FALSE
 )
 ```
 
-This is the internal article for **ordinary individual-level random
-regression**. For Gaussian responses, the augmented
-`latent(1 + x | individual, d = K) + unique(1 + x | individual)` path now fits
-the behavioural reaction-norm target at the ID tier and extracts the full
-`Lambda_aug Lambda_aug^T + Psi_B,aug` decomposition.
+This article fits an individual-level random-regression GLLVM for a
+behavioural-syndrome question. The unit is the **individual**, the
+repeated occasion is `session_id`, and the continuous context is
+centred/scaled `temperature`. The model asks whether individuals differ
+in both average behaviour and temperature responsiveness, and whether
+those reaction-norm coefficients covary across behaviours.
 
-The article should become public only when the worked example can show the
-behavioural-syndrome data story, rendered long and wide examples, diagnostics,
-figures, and the non-Gaussian boundary without using deprecated
-single-variance slope keywords or structured phylogenetic/spatial dependence
-as a substitute.
+Scope boundary: IN under RE-12, Gaussian keyworded `latent() + unique()`
+ordinary random-slope models are implemented for long and wide data and can
+extract the augmented `unit_slope` covariance. PARTIAL, non-Gaussian ordinary
+`latent()` random slopes have smoke evidence only. PLANNED, non-Gaussian
+augmented `unique()` random slopes. REJECTED here, delta / hurdle random-slope
+extensions and phylogenetic or spatial slope fields are different model classes
+and are not used as substitutes for individual reaction norms.
 
-## The biological question
+## Setup
 
-In behavioural-syndrome data, the unit is the **individual**. Individuals are
-measured repeatedly across occasions, and each occasion may carry a continuous
-context such as temperature, food availability, social density, or perceived
-risk. A random-regression model asks:
-
-> Do individuals differ not only in their average behaviour, but also in how
-> their behaviour changes along the context gradient?
-
-Following the behavioural-syndrome appendix, among-individual differences in
-average trait expression are **personality**. Among-individual differences in
-responsiveness to the context gradient are **plasticity**. The random slope is
-therefore an ID-level effect: it belongs at `unit = "individual"`, not at the
-within-individual occasion tier.
-
-## Data shape
-
-The long data need one row per `(individual, session_id, trait)` observation:
-
-```{r data-shape, eval = FALSE}
-head(behaviour_long)
-#>   individual session_id temperature       trait value
-#> 1          1        1_1       -1.25    boldness  ...
-#> 2          1        1_1       -1.25 exploration  ...
-#> 3          1        1_1       -1.25     activity  ...
-#> 4          1        1_2        0.10    boldness  ...
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+library(dplyr)
 ```
 
-Use `unit = "individual"` for the between-individual tier and
-`unit_obs = "session_id"` for the within-individual occasion tier. The
-`session_id` column has one level per individual-occasion combination, so all
-traits measured on the same individual at the same occasion share the same
-within-individual random effect.
+## Example data
 
-## Current Gaussian random-regression model
+We use a prepared example object so the article starts with the data,
+truth, formulas, and biological question rather than a long simulation
+script. The generator is shipped in the repository as
+`data-raw/examples/make-behavioural-reaction-norm-example.R`.
 
-For trait `t`, individual `i`, and occasion `j`, with centred/scaled
-temperature `temperature_ij`, the target model is
+```{r example-data, eval = FALSE}
+rr <- readRDS(system.file(
+  "extdata", "examples", "behavioural-reaction-norm-example.rds",
+  package = "gllvmTMB"
+))
+df <- rr$data_long
+df_wide <- rr$data_wide
+truth <- rr$truth
+```
+
+```{r example-data-load, include = FALSE}
+example_path <- system.file(
+  "extdata",
+  "examples",
+  "behavioural-reaction-norm-example.rds",
+  package = "gllvmTMB"
+)
+example_path <- c(
+  example_path,
+  file.path(
+    "inst",
+    "extdata",
+    "examples",
+    "behavioural-reaction-norm-example.rds"
+  ),
+  file.path(
+    "..",
+    "inst",
+    "extdata",
+    "examples",
+    "behavioural-reaction-norm-example.rds"
+  ),
+  file.path(
+    "..",
+    "..",
+    "inst",
+    "extdata",
+    "examples",
+    "behavioural-reaction-norm-example.rds"
+  )
+)
+example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
+stopifnot(!is.na(example_path))
+
+rr <- readRDS(example_path)
+df <- rr$data_long
+df_wide <- rr$data_wide
+truth <- rr$truth
+trait_names <- truth$trait_names
+intercept_names <- paste0("intercept.", trait_names)
+slope_names <- paste0("slope.temperature.", trait_names)
+```
+
+```{r preview}
+rr$story$question
+head(df, 9)
+```
+
+The long data have one row per `(individual, session_id, trait)`
+observation. The matching wide data have one row per session, one column
+per response trait, and the same `individual`, `session_id`, and
+`temperature` columns:
+
+```{r wide-preview}
+head(df_wide, 4)
+```
+
+Here the three response traits are `boldness`, `exploration`, and
+`activity`. The example is deliberately small but not single-level:
+`individual` indexes stable among-individual differences, while
+`session_id` indexes occasion-level deviations shared by the traits
+within the same repeated measurement.
+
+## Fit the model
+
+The same model can be fitted from long or wide data. The long form is
+canonical because it makes the `(individual, session_id, trait)` rows
+explicit. The wide `traits(...)` form is the compact equivalent for
+readers whose data already have one row per repeated session.
+
+```{r fit}
+rr$formula_long
+rr$formula_wide
+
+ctl <- gllvmTMBcontrol(
+  se = FALSE,
+  optimizer = "optim",
+  optArgs = list(method = "BFGS")
+)
+
+fit_long <- gllvmTMB(
+  rr$formula_long,
+  data = df,
+  trait = rr$fit_args$trait,
+  unit = rr$fit_args$unit,
+  unit_obs = rr$fit_args$unit_obs,
+  family = rr$fit_args$family,
+  control = ctl
+)
+
+fit_wide <- gllvmTMB(
+  rr$formula_wide,
+  data = df_wide,
+  unit = rr$fit_args$unit,
+  unit_obs = rr$fit_args$unit_obs,
+  family = rr$fit_args$family,
+  control = ctl
+)
+
+fit <- fit_long
+
+cat(
+  "Long/wide logLik difference:",
+  signif(abs(as.numeric(logLik(fit_long)) - as.numeric(logLik(fit_wide))), 3),
+  "\n"
+)
+```
+
+The `unit = "individual"` argument defines the between-individual tier.
+The `unit_obs = "session_id"` argument defines the occasion tier. The
+augmented random slope lives at the individual tier, not the session
+tier:
+
+```{r formula-pieces, eval = FALSE}
+# Long format
+latent(0 + trait + (0 + trait):temperature | individual, d = 1)
+unique(0 + trait + (0 + trait):temperature | individual)
+
+# Wide data-frame shorthand
+latent(1 + temperature | individual, d = 1)
+unique(1 + temperature | individual)
+```
+
+The article uses `se = FALSE` so the vignette renders quickly. That
+means the diagnostic table below is a point-estimate fit check, not a
+curvature-based interval claim.
+
+```{r diagnostics}
+diag_tbl <- check_gllvmTMB(fit)
+diag_tbl[
+  diag_tbl$component %in% c(
+    "optimizer_convergence",
+    "max_gradient",
+    "boundary_flags",
+    "boundary_sigma_eps",
+    "sdreport",
+    "pd_hessian"
+  ),
+  c("component", "status", "value", "message")
+]
+```
+
+## What model did we fit?
+
+For trait `t`, individual `i`, and session `j`,
 
 $$
 y_{ijt} =
-\mu_t + \beta_{t,\mathrm{temp}}\,\mathrm{temperature}_{ij}
-+ u_{it} + b_{it}\,\mathrm{temperature}_{ij} + e_{ijt}.
+\mu_t + \beta_t\,\mathrm{temperature}_{ij}
++ u_{it} + b_{it}\,\mathrm{temperature}_{ij}
++ e_{ijt} + \varepsilon_{ijt}.
 $$
 
-Here `u_it` is the individual-specific random intercept for trait `t`
-(personality), `b_it` is the individual-specific random slope for trait `t`
-(plasticity), and `e_ijt` is the within-individual occasion-level deviation.
-The within-individual component is still a random-intercept/covariance tier
-across traits; the random slope lives only at the ID tier.
+The random intercept `u_it` is the individual's average deviation for
+trait `t` at the reference temperature. In animal-personality language,
+that is the personality component. The random slope `b_it` is the
+individual's deviation in temperature responsiveness. That is the
+reaction-norm or plasticity component.
 
-The implemented long-form syntax pairs the shared `latent()` component with
-the augmented diagonal `unique()` component:
-
-```{r target-long-gaussian, eval = FALSE}
-fit_rr_gaussian <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):temperature +
-    latent(0 + trait + (0 + trait):temperature | individual, d = d_B) +
-    unique(0 + trait + (0 + trait):temperature | individual) +
-    latent(0 + trait | session_id, d = d_W) +
-    unique(0 + trait | session_id),
-  data     = behaviour_long,
-  trait    = "trait",
-  unit     = "individual",
-  unit_obs = "session_id"
-)
-```
-
-The matching wide-data formula is:
-
-```{r target-wide-gaussian, eval = FALSE}
-fit_rr_gaussian_wide <- gllvmTMB(
-  traits(boldness, exploration, activity) ~ 1 + temperature +
-    latent(1 + temperature | individual, d = d_B) +
-    unique(1 + temperature | individual) +
-    latent(1 | session_id, d = d_W) +
-    unique(1 | session_id),
-  data     = behaviour_wide,
-  unit     = "individual",
-  unit_obs = "session_id"
-)
-```
-
-The augmented between-individual covariance is extracted as shared, unique, or
-total:
-
-```{r extract-unit-slope, eval = FALSE}
-Sigma_shared <- extract_Sigma(fit_rr_gaussian, level = "unit_slope",
-                              part = "shared")
-Sigma_unique <- extract_Sigma(fit_rr_gaussian, level = "unit_slope",
-                              part = "unique")
-Sigma_total  <- extract_Sigma(fit_rr_gaussian, level = "unit_slope",
-                              part = "total")
-Sigma_total$Sigma
-```
-
-This returns the `2T x 2T` covariance with rows labelled
-`intercept.<trait>` and `slope.temperature.<trait>`. `part = "shared"` gives
-`Lambda_aug Lambda_aug^T`, `part = "unique"` gives the augmented diagonal
-`Psi_B,aug`, and `part = "total"` gives their sum.
-
-## What the covariance means
-
-The between-individual component stacks all trait intercepts and slopes for
-individual `i`:
+gllvmTMB stacks all trait-specific intercepts and slopes into one
+augmented between-individual vector:
 
 $$
 \mathbf{b}_{B,i} =
 \begin{pmatrix}
-\mathbf{u}_i \\
-\mathbf{b}_i
-\end{pmatrix}
-\in \mathbb{R}^{2T}.
-$$
-
-The paired decomposition is
-
-$$
-\mathbf{b}_{B,i}
-= \Lambda_{B,\mathrm{aug}} \mathbf{z}_{B,i} + \boldsymbol\epsilon_{B,i},
-\qquad
-\mathbf{z}_{B,i} \sim \mathcal{N}(\mathbf{0}, I_{d_B}),
-\qquad
-\boldsymbol\epsilon_{B,i} \sim \mathcal{N}(\mathbf{0}, \Psi_{B,\mathrm{aug}}),
-$$
-
-so that
-
-$$
-\Sigma_B^{(\mathrm{aug})}
-= \Lambda_{B,\mathrm{aug}}\Lambda_{B,\mathrm{aug}}^\top
-+ \Psi_{B,\mathrm{aug}}.
-$$
-
-The current Gaussian implementation covers both the low-rank shared component
-`Lambda_B,aug Lambda_B,aug^T` and the diagonal augmented `Psi_B,aug`
-component. Non-Gaussian augmented `unique()` random slopes remain guarded
-until they have their own validation evidence.
-
-Partitioning the augmented covariance into `T x T` blocks gives:
-
-$$
-\Sigma_B^{(\mathrm{aug})}
-=
-\begin{pmatrix}
-\Sigma_B^{(u)} & \Sigma_B^{(u,b)} \\
-\Sigma_B^{(b,u)} & \Sigma_B^{(b)}
+u_{i,\mathrm{boldness}} \\
+b_{i,\mathrm{boldness}} \\
+u_{i,\mathrm{exploration}} \\
+b_{i,\mathrm{exploration}} \\
+u_{i,\mathrm{activity}} \\
+b_{i,\mathrm{activity}}
 \end{pmatrix}.
 $$
 
-These blocks answer different biological questions:
-
-- `Sigma_B^(u)` gives intercept-intercept correlations: personality or
-  behavioural-syndrome correlations at the reference context.
-- `Sigma_B^(b)` gives slope-slope correlations: plasticity-syndrome
-  correlations, asking whether individuals responsive in one trait are also
-  responsive in another.
-- `Sigma_B^(u,b)` gives intercept-slope correlations: personality-plasticity
-  associations, asking whether high-average individuals also respond more or
-  less strongly to the context.
-
-Centre the context variable at a meaningful reference point. The intercept is
-the expected trait value when `temperature = 0`, so the intercept-intercept and
-intercept-slope blocks depend on that choice.
-
-## Repeatability along the gradient
-
-With random slopes, between-individual variance is context-dependent. For a
-single trait,
+The fitted decomposition is
 
 $$
-\mathrm{Var}(u_{it} + b_{it} x)
+\mathbf{b}_{B,i}
+= \Lambda_{B,\mathrm{aug}} \mathbf{z}_{B,i}
++ \mathbf{q}_{B,i},
+\qquad
+\mathbf{q}_{B,i} \sim
+\mathcal{N}(\mathbf{0}, \mathrm{diag}(\psi_{B,\mathrm{aug}})).
+$$
+
+Therefore the augmented reaction-norm covariance is
+
+$$
+\Sigma_{B,\mathrm{aug}}
+= \Lambda_{B,\mathrm{aug}}\Lambda_{B,\mathrm{aug}}^\top
++ \mathrm{diag}(\psi_{B,\mathrm{aug}}).
+$$
+
+This `2T x 2T` covariance is the main estimand in the article.
+
+## Extract the augmented covariance
+
+```{r extract-sigma}
+Sigma_shared <- extract_Sigma(
+  fit,
+  level = "unit_slope",
+  part = "shared"
+)
+Sigma_unique <- extract_Sigma(
+  fit,
+  level = "unit_slope",
+  part = "unique"
+)
+Sigma_total <- extract_Sigma(
+  fit,
+  level = "unit_slope",
+  part = "total"
+)
+
+round(Sigma_total$Sigma[intercept_names, intercept_names], 2)
+round(Sigma_total$Sigma[slope_names, slope_names], 3)
+round(Sigma_total$Sigma[intercept_names, slope_names], 3)
+```
+
+The three blocks answer different biological questions:
+
+- The intercept-intercept block is the personality or behavioural
+  syndrome covariance at `temperature = 0`.
+- The slope-slope block is the plasticity-syndrome covariance: whether
+  individuals that are temperature-responsive in one behaviour are also
+  responsive in another.
+- The intercept-slope block is the personality-plasticity association:
+  whether high-average individuals also respond more strongly or weakly
+  to temperature.
+
+The shared and unique pieces compose the total augmented covariance:
+
+```{r composition}
+max(abs(
+  Sigma_total$Sigma -
+    (Sigma_shared$Sigma + diag(Sigma_unique$s, nrow = length(Sigma_unique$s)))
+))
+```
+
+## Recovery check
+
+Because this is a generated teaching example, we can compare fitted and
+true augmented covariance entries. The plot is a diagnostic for this
+single fixture, not a calibrated simulation study.
+
+```{r recovery-data}
+unit_slope_comparison <- function(estimate, truth) {
+  idx <- which(lower.tri(truth, diag = TRUE), arr.ind = TRUE)
+  row_name <- rownames(truth)[idx[, "row"]]
+  col_name <- colnames(truth)[idx[, "col"]]
+  row_is_slope <- grepl("^slope\\.", row_name)
+  col_is_slope <- grepl("^slope\\.", col_name)
+
+  data.frame(
+    row = row_name,
+    column = col_name,
+    estimate = estimate[idx],
+    truth = truth[idx],
+    block = ifelse(
+      row_is_slope & col_is_slope,
+      "slope-slope",
+      ifelse(
+        !row_is_slope & !col_is_slope,
+        "intercept-intercept",
+        "intercept-slope"
+      )
+    )
+  )
+}
+
+cov_compare <- unit_slope_comparison(
+  estimate = Sigma_total$Sigma,
+  truth = truth$Sigma_unit_slope
+)
+
+cat(
+  "Relative Frobenius error:",
+  round(
+    norm(Sigma_total$Sigma - truth$Sigma_unit_slope, "F") /
+      norm(truth$Sigma_unit_slope, "F"),
+    3
+  ),
+  "\n"
+)
+```
+
+```{r recovery-plot, fig.width = 6.5, fig.height = 4.8, fig.cap = "Estimated versus true augmented individual-level covariance entries for the behavioural reaction-norm fixture. The dashed line is perfect recovery; colours identify intercept-intercept, slope-slope, and intercept-slope blocks."}
+ggplot(cov_compare, aes(truth, estimate, colour = block)) +
+  geom_abline(slope = 1, intercept = 0, linetype = 2, colour = "grey45") +
+  geom_point(size = 2.6, alpha = 0.88) +
+  coord_equal() +
+  scale_colour_manual(
+    values = c(
+      "intercept-intercept" = "#1b9e77",
+      "intercept-slope" = "#7570b3",
+      "slope-slope" = "#d95f02"
+    ),
+    name = "Block"
+  ) +
+  labs(
+    x = "Known simulation truth",
+    y = "Fitted estimate",
+    title = "Recovery of the reaction-norm covariance",
+    subtitle = "Point estimates from Sigma_B,aug"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+```
+
+## Repeatability along the temperature gradient
+
+With random slopes, among-individual variance is not constant. For one
+trait at a focal temperature value `x`,
+
+$$
+\mathrm{Var}(u_{it} + b_{it}x)
 = \mathrm{Var}(u_{it})
 + 2x\,\mathrm{Cov}(u_{it}, b_{it})
 + x^2\,\mathrm{Var}(b_{it}).
 $$
 
-The temperature-specific repeatability is therefore
+The temperature-specific repeatability is this among-individual
+variance divided by among-individual plus occasion-level and Gaussian
+residual variance.
 
-$$
-R_t(x) =
-\frac{\mathrm{Var}(u_{it} + b_{it} x)}
-{\mathrm{Var}(u_{it} + b_{it} x) + (\Sigma_W)_{tt}}.
-$$
+```{r repeatability-data}
+Sigma_W_hat <- extract_Sigma(fit, level = "unit_obs")$Sigma
+sigma_eps2_hat <- as.numeric(fit$report$sigma_eps[1])^2
 
-This is the main reason the article should be about individual reaction norms,
-not phylogenetic or spatial slope fields. The applied reader wants to know how
-repeatability and behavioural integration change along an observed
-within-individual context gradient.
+reaction_repeatability <- function(Sigma_aug, Sigma_W, sigma_eps2,
+                                   traits, source) {
+  x_grid <- seq(-1.5, 1.5, length.out = 80)
+  out <- vector("list", length(traits))
+  for (k in seq_along(traits)) {
+    trait <- traits[k]
+    intercept <- paste0("intercept.", trait)
+    slope <- paste0("slope.temperature.", trait)
+    between <- Sigma_aug[intercept, intercept] +
+      2 * x_grid * Sigma_aug[intercept, slope] +
+      x_grid^2 * Sigma_aug[slope, slope]
+    total <- between + Sigma_W[trait, trait] + sigma_eps2
+    out[[k]] <- data.frame(
+      trait = trait,
+      temperature = x_grid,
+      repeatability = between / total,
+      source = source
+    )
+  }
+  do.call(rbind, out)
+}
 
-## Current fallback without individual slopes
-
-If the scientific question needs the established full `latent + unique`
-decomposition rather than individual-specific slopes, use the two-level
-behavioural-syndrome model with average trait-specific context effects:
-
-```{r current-fallback, eval = FALSE}
-fit_fixed_context <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):temperature +
-    latent(0 + trait | individual, d = d_B) +
-    unique(0 + trait | individual) +
-    latent(0 + trait | session_id, d = d_W) +
-    unique(0 + trait | session_id),
-  data     = behaviour_long,
-  trait    = "trait",
-  unit     = "individual",
-  unit_obs = "session_id"
+repeatability_rows <- rbind(
+  reaction_repeatability(
+    Sigma_total$Sigma,
+    Sigma_W_hat,
+    sigma_eps2_hat,
+    trait_names,
+    "estimate"
+  ),
+  reaction_repeatability(
+    truth$Sigma_unit_slope,
+    truth$Sigma_unit_obs,
+    truth$sigma_eps^2,
+    trait_names,
+    "truth"
+  )
 )
 ```
 
-This fallback estimates the population-average reaction norm for each trait
-and the usual between- and within-individual covariance matrices. It does
-**not** estimate individual-specific random slopes, plasticity syndromes, or
-temperature-specific repeatability.
+```{r repeatability-plot, fig.width = 7.0, fig.height = 4.8, fig.cap = "Trait-specific repeatability across the temperature gradient. Solid lines are fitted point estimates; dashed lines are the known simulation truth."}
+ggplot(
+  repeatability_rows,
+  aes(temperature, repeatability, colour = trait, linetype = source)
+) +
+  geom_line(linewidth = 0.8) +
+  scale_colour_manual(
+    values = c(
+      boldness = "#1b9e77",
+      exploration = "#d95f02",
+      activity = "#7570b3"
+    ),
+    name = "Trait"
+  ) +
+  scale_linetype_manual(
+    values = c(estimate = "solid", truth = "22"),
+    name = NULL
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    breaks = seq(0, 1, by = 0.25)
+  ) +
+  labs(
+    x = "Temperature (centred and scaled)",
+    y = "Repeatability",
+    title = "Repeatability changes along the reaction norm",
+    subtitle = "Random slopes make among-individual variance context-dependent"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+```
 
-## Implementation gate
+The repeatability curves are often the most useful biological summary.
+They translate the augmented covariance into the familiar question:
+how much of the observed trait variation is due to stable individual
+differences at each temperature value?
 
-This article returns to the public Model guide only when the implemented
-ordinary unit-tier random-regression path is complete enough for a worked
-example:
+## Current non-Gaussian boundary
 
-- `latent(0 + trait + (0 + trait):x | individual, d = d_B)` is implemented
-  and covered by the focused Gaussian / Poisson tests in
-  `test-ordinary-latent-random-regression.R`;
-- `unique(0 + trait + (0 + trait):x | individual)` is implemented for
-  Gaussian responses and supplies the diagonal `Psi_B,aug` component;
-- the equivalent `traits(...)` wide shorthand is implemented for the paired
-  `latent + unique` path;
-- `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`
-  returns the augmented covariance pieces with labelled intercept and slope
-  blocks;
-- focused deterministic Gaussian recovery covers the intercept-intercept,
-  slope-slope, and intercept-slope blocks; and
-- a reader-facing behavioural example with `unit = "individual"`,
-  `unit_obs = "session_id"`, diagnostics, and figures still needs to be
-  built before public restoration.
+The paired augmented `latent() + unique()` random-regression path in
+this article is Gaussian. The low-rank augmented `latent()` path can
+currently fit ordinary non-Gaussian random slopes in a smoke-test
+regime, but adding the augmented diagonal `unique()` component is still
+guarded for non-Gaussian families.
 
-Until then, public docs should route users to the current
-[Behavioural syndromes](behavioural-syndromes.html) two-level article for
-between/within covariance, and to
-[Structured random slopes for non-Gaussian traits](random-slopes-nongaussian.html)
-only when the scientific model genuinely involves phylogenetic or spatial
-dependence.
+```{r nongaussian-boundary, eval = FALSE}
+# This intentionally errors today.
+gllvmTMB(
+  value ~ 0 + trait + (0 + trait):temperature +
+    latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
+    unique(0 + trait + (0 + trait):temperature | individual),
+  data = count_data_long,
+  trait = "trait",
+  unit = "individual",
+  unit_obs = "session_id",
+  family = poisson()
+)
+#> Error: Augmented ordinary `unique()` random-regression slopes are currently
+#> implemented for Gaussian responses only.
+```
+
+For a non-Gaussian reaction-norm analysis today, either fit the
+augmented `latent()` part without `unique()` and treat it as early
+evidence, or stay with the established non-slope `latent + unique`
+between/within model. Do not switch to `phylo_*()` or `spatial_*()`
+syntax unless the scientific model genuinely contains phylogenetic or
+spatial dependence.
+
+## What to report
+
+For this model, the primary reportable pieces are:
+
+- the fixed trait intercepts and temperature slopes, which describe
+  the population-average reaction norms;
+- `extract_Sigma(level = "unit_slope", part = "total")`, which gives
+  the full covariance among individual intercepts and slopes;
+- the intercept-intercept, slope-slope, and intercept-slope blocks,
+  interpreted as personality syndromes, plasticity syndromes, and
+  personality-plasticity associations;
+- repeatability curves across a biologically meaningful temperature
+  range; and
+- diagnostics from `check_gllvmTMB()` before interpreting covariance or
+  repeatability.
+
+This article is a worked example for the Gaussian RE-12 capability. It
+does not establish calibrated confidence intervals for slope variances
+or non-Gaussian augmented `unique()` support.
+
+## References
+
+O'Dea, R. E., Noble, D. W. A., and Nakagawa, S. (2022). Unifying
+individual differences in personality, predictability and plasticity: a
+practical guide. *Methods in Ecology and Evolution* 13, 278-293.
+
+Stamps, J. A. (2016). Individual differences in behavioural
+plasticities. *Biological Reviews* 91, 534-567.
+
+Dingemanse, N. J. and Dochtermann, N. A. (2013). Quantifying individual
+variation in behaviour: mixed-effect modelling approaches. *Journal of
+Animal Ecology* 82, 39-54.

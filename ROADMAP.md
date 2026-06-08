@@ -217,7 +217,7 @@ to reverse-engineer it from long setup chunks.
 
 | Hidden article | Return condition |
 |---|---|
-| `random-regression-reaction-norms` | Keep internal after 2026-06-08 rendered preview. Ordinary Gaussian `latent(1 + x | unit, d = K) + unique(1 + x | unit)` is implemented and focused-recovery tested under RE-12, but public return still needs a polished behavioural-syndrome example object, rendered long + wide examples, diagnostic/figure review, and explicit non-Gaussian boundary wording. Do not use deprecated single-variance slope keywords or structured dependence as a stand-in. |
+| `random-regression-reaction-norms` | Promoted to the public Model guide after #466. The article now uses a shipped behavioural-syndrome example object with `individual` as unit and `session_id` as repeated occasion, long and wide formulas, diagnostics, augmented-covariance recovery, repeatability curves, and explicit non-Gaussian augmented-`unique()` guard wording. |
 | `random-slopes-nongaussian` | Restored to the public Model guide in the 2026-06-08 status-sync slice; keep public as a point-estimate/recovery article, not an interval-calibration article. |
 | `joint-sdm` | Joint SDM example object; runnable long + wide; binary validation caveats; `check_gllvmTMB()` plus fitted-response diagnostic table; Florence figure review; rendered HTML review before navbar return. |
 | `profile-likelihood-ci` | Profile/bootstrap status cleaned; fallback/Wald caveats first; failure-count reporting visible; no M3 coverage overclaim. |

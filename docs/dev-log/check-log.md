@@ -14507,3 +14507,105 @@ Interpretation:
 - The row remains `partial` under RE-12 because non-Gaussian augmented
   `unique()` is guarded, non-Gaussian ordinary `latent()` has smoke evidence
   only, and broad coverage calibration is not established.
+
+## 2026-06-08 -- behavioural reaction-norm article public-ready slice
+
+Branch: `codex/status-random-regression-article-2026-06-08`
+
+Scope:
+
+- Promoted `random-regression-reaction-norms` from internal scaffold to public
+  Tier-1 behavioural-syndrome worked example.
+- Added a shipped Gaussian reaction-norm example object with
+  `individual` as `unit`, `session_id` as `unit_obs`, long and wide formulas,
+  augmented `unit_slope` covariance truth, and point-estimate recovery targets.
+- Kept the capability boundary explicit: Gaussian augmented
+  `latent + unique` is the public article path; non-Gaussian augmented
+  `unique()` remains guarded; delta / hurdle families stay out of scope.
+
+Files touched:
+
+- `data-raw/examples/make-behavioural-reaction-norm-example.R`
+- `inst/extdata/examples/behavioural-reaction-norm-example.rds`
+- `tests/testthat/test-example-behavioural-reaction-norm.R`
+- `vignettes/articles/random-regression-reaction-norms.Rmd`
+- `_pkgdown.yml`
+- `README.md`
+- `NEWS.md`
+- `ROADMAP.md`
+- `docs/design/52-example-object-contract.md`
+- `docs/design/61-capability-status.md`
+- `docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-08-behavioural-reaction-norm-article.md`
+
+Commands and outcomes:
+
+- `gh pr list --state open --json number,title,headRefName,author,updatedAt,isDraft,url`
+  -> only open PR was #466,
+  `codex/status-random-regression-article-2026-06-08`, draft.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent overlap was the current branch commit plus unrelated
+  `c6b738e power-pilot: accumulate reps (run 50)`.
+- `Rscript data-raw/examples/make-behavioural-reaction-norm-example.R`
+  -> saved `inst/extdata/examples/behavioural-reaction-norm-example.rds`
+  (`30499` bytes).
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-example-behavioural-reaction-norm.R")'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 40`.
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R")'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 60`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-regression-reaction-norms.html`
+  twice, before and after the repeatability-axis figure patch.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 704`, `PASS 2652`, duration `334.7s`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `1 warning`, `1 note`, exit status `1` because
+  `R CMD check` treats warnings as failure. The warning was package-install
+  related; the note was the existing `NEWS.md` section-title parsing note.
+- `git diff --check`
+  -> clean.
+
+Rendered-output / figure checks:
+
+- `rg -n "recovery-plot|repeatability-plot|data:image|img src|Behavioural reaction norms|Current non-Gaussian boundary|Long/wide logLik difference" pkgdown-site/articles/random-regression-reaction-norms.html`
+  -> expected article title, navbar entry, log-likelihood equivalence output,
+  non-Gaussian boundary section, and two figure `<img>` references.
+- Viewed
+  `pkgdown-site/articles/random-regression-reaction-norms_files/figure-html/recovery-plot-1.png`
+  and
+  `pkgdown-site/articles/random-regression-reaction-norms_files/figure-html/repeatability-plot-1.png`.
+  Recovery plot was legible and not blank. Repeatability plot was first
+  auto-zoomed on the y-axis; patched to show the full `0..1` repeatability
+  scale and rerendered.
+- Browser-controller tool was not available through `tool_search` in this
+  session; verification used rendered HTML scans and direct PNG inspection.
+
+Stale-wording / consistency scans:
+
+- `rg -n -F 'x \\|' vignettes/articles/random-regression-reaction-norms.Rmd pkgdown-site/articles/random-regression-reaction-norms.html README.md NEWS.md ROADMAP.md docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> no hits.
+- `rg -n -F ' \\|' vignettes/articles/random-regression-reaction-norms.Rmd pkgdown-site/articles/random-regression-reaction-norms.html README.md NEWS.md ROADMAP.md docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> no hits.
+- `rg -n "kept internal|keep internal|public return still needs|public runnable example object still pending|public biological example/diagnostics/figures still pending|still needs a polished reader-facing|structured dependence as a stand-in|Polish the Gaussian worked example" README.md NEWS.md ROADMAP.md docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md vignettes/articles/random-regression-reaction-norms.Rmd`
+  -> one unrelated hit: `mixed-family-extractors` still intentionally internal.
+- `rg -n "fire|fire animal|phylo_slope\\(|animal_slope\\(" README.md NEWS.md ROADMAP.md _pkgdown.yml docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md vignettes/articles/random-regression-reaction-norms.Rmd pkgdown-site/articles/random-regression-reaction-norms.html`
+  -> expected legacy/reference hits only in `_pkgdown.yml`, `NEWS.md`, and
+  `docs/design/61-capability-status.md`; no hits in the new article or rendered
+  article HTML.
+- Rose pre-publish audit: PASS for the reaction-norm slice after patching the
+  stale `docs/design/61-capability-status.md` intro and remaining-work row.
+
+Interpretation:
+
+- The public article now demonstrates the ordinary individual-level Gaussian
+  reaction-norm model directly, using individual/session behavioural-syndrome
+  terminology rather than structured phylogenetic/spatial slope syntax.
+- The new shipped example object is guarded by a test that checks object fields,
+  repeated-measures shape, long/wide likelihood equivalence, optimizer/max
+  gradient health, augmented covariance composition, recovery against known
+  truth, and plot-build readiness.
+- This did not expand the engine. Non-Gaussian augmented `unique()` is still
+  the next capability slice if the maintainer wants broader support.

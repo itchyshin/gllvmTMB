@@ -26,6 +26,8 @@ navbar:
       - text: Model guide
       - text: Morphometrics
         href: articles/morphometrics.html
+      - text: Behavioural reaction norms
+        href: articles/random-regression-reaction-norms.html
       - text: Structured random slopes
         href: articles/random-slopes-nongaussian.html
       - text: Joint species distribution model
@@ -58,6 +60,7 @@ articles:
   - title: Model guide
     contents:
     - articles/morphometrics
+    - articles/random-regression-reaction-norms
     - articles/random-slopes-nongaussian
     - articles/joint-sdm
     - articles/cross-lineage-coevolution
@@ -79,7 +82,6 @@ articles:
   - title: internal
     desc: Draft, technical, or validation-dependent articles hidden from the public dropdown until their evidence and reader path are ready (kept buildable, just not listed in the public index/navbar)
     contents:
-    - articles/random-regression-reaction-norms
     - articles/data-shape-flowchart
     - articles/choose-your-model
     - articles/animal-model

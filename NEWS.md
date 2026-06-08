@@ -24,15 +24,26 @@
   evidence. OUT: bare `(1 + x | g)` random slopes remain reserved, and delta /
   hurdle families stay outside this slope-covariance lane (FAM-17 / MIX-10).
 
+## Behavioural reaction-norm article promoted to the public model guide (#466, 2026-06-08)
+
+* The `random-regression-reaction-norms` article is now a Tier-1 worked
+  behavioural-syndrome example. It ships a reproducible example object with
+  `individual` as the unit, `session_id` as the repeated occasion, long and
+  wide `gllvmTMB()` formulas, diagnostics from `check_gllvmTMB()`, an
+  augmented-covariance recovery figure, and temperature-specific repeatability
+  curves. IN: Gaussian ordinary `latent + unique` random slopes under RE-12.
+  PARTIAL: non-Gaussian ordinary `latent()` random slopes remain smoke evidence
+  only. PLANNED: non-Gaussian augmented `unique()` random slopes. OUT: delta /
+  hurdle families and phylogenetic or spatial slope fields for this
+  individual-level reaction-norm article lane.
+
 ## Structured random-slope article restored to the public model guide (#341, 2026-06-08)
 
 * The `random-slopes-nongaussian` article now reflects the live structured
-  random-slope boundary. The ordinary reaction-norm article
-  (`random-regression-reaction-norms`) is kept internal because the new
-  ordinary Gaussian `latent + unique` component is implemented but still needs a
-  polished reader-facing worked example before public promotion; the legacy
-  single-variance slope keywords are not used in new public examples. IN: one
-  structured random slope (`s = 1`) is documented as a point-estimate /
+  random-slope boundary. The ordinary reaction-norm article is now a separate
+  public behavioural-syndrome example and does not use the legacy
+  single-variance slope keywords. IN: one structured random slope (`s = 1`) is
+  documented as a point-estimate /
   recovery workflow across the covered phylogenetic and spatial grid
   (PHY-11..PHY-18, SPA-08..SPA-10), and Gaussian
   `phylo_dep(1 + x1 + x2 | species)` remains covered under RE-03. PARTIAL:

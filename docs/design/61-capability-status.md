@@ -27,15 +27,15 @@ covered capability:
   `latent(1 + x | unit, d = K) + unique(1 + x | unit)` / long-form augmented
   decomposition now fits and extracts `Lambda_aug Lambda_aug^T`,
   `Psi_B,aug`, and their total covariance under RE-12. The behavioural
-  reaction-norm article stays internal until the worked example is polished;
-  non-Gaussian augmented `unique()` remains guarded.
+  reaction-norm article is now public as a Gaussian point-estimate/recovery
+  worked example; non-Gaussian augmented `unique()` remains guarded.
 
 The practical consequence is simple: the public article lane can teach
 structured random slopes for `s = 1`, show Gaussian `s = 2` as a scoped
 extension, and keep non-Gaussian `s >= 2` as planned evidence work rather than
-a public fit path. The ordinary behavioural reaction-norm article stays
-internal until the new Gaussian `latent + unique` path has a polished worked
-example and the remaining non-Gaussian boundary is clearly framed.
+a public fit path. The ordinary behavioural reaction-norm article now provides
+the Gaussian individual-level worked example and keeps the remaining
+non-Gaussian boundary clearly framed.
 
 ## Random-Slope Capability Table
 
@@ -53,7 +53,7 @@ depth; **blocked** = needs a mathematical derivation or different scope.
 | `phylo_dep(1 + x | species)` | covered | PHY-18 | Full unstructured 2T x 2T intercept+slope covariance across traits. |
 | `phylo_dep(1 + x1 + x2 | species)` under Gaussian | covered | RE-03 | Gaussian full-unstructured multi-slope path; `s = 2` validated. |
 | `phylo_dep(..., s >= 2)` under non-Gaussian families | partial | RE-03 | Runtime guard remains; feasibility sweeps continue but this is not admitted. |
-| `latent(1 + x | unit, d = K) + unique(1 + x | unit)` ordinary unit-tier Gaussian reaction norm | partial | RE-12 | Gaussian `latent + unique` decomposition implemented with `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")` and deterministic recovery evidence; non-Gaussian augmented `unique()` remains guarded. |
+| `latent(1 + x | unit, d = K) + unique(1 + x | unit)` ordinary unit-tier Gaussian reaction norm | partial | RE-12 | Gaussian `latent + unique` decomposition implemented with `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`, deterministic recovery evidence, and a public behavioural-syndrome worked example; non-Gaussian augmented `unique()` remains guarded. |
 | `spatial_unique(1 + x | coords)` / `spatial_indep(1 + x | coords)` | covered | SPA-08 | Two-field spatial intercept+slope path; `indep` pins cross-field correlation to zero. |
 | `spatial_latent(1 + x | coords, d = 1)` | covered | SPA-09 | Block-diagonal reduced-rank spatial slope across the core families. |
 | `spatial_dep(1 + x | coords)` | covered | SPA-10 | Full unstructured 2T x 2T SPDE field covariance; hard cells require large validation fixtures. |
@@ -74,8 +74,8 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 
 | Article | Status after this sync | Return / keep-public condition |
 |---|---|---|
-| `random-regression-reaction-norms` | internal implementation article | One good behavioural random-regression article should use `unit = "individual"` and `unit_obs = "session_id"`. The Gaussian augmented `latent + unique` component is implemented (RE-12); keep internal until the worked example is polished and the non-Gaussian boundary is explicit. |
-| `random-slopes-nongaussian` | public structured-grid continuation | Must cite PHY-11..PHY-18, SPA-08..SPA-10, ANI-11..ANI-12, RE-03, FAM-17, and MIX-10; heavy cells may stay `eval = FALSE`. Do not route to the internal ordinary reaction-norm article as a public foundation. |
+| `random-regression-reaction-norms` | public Gaussian behavioural reaction-norm article | Uses `unit = "individual"` and `unit_obs = "session_id"` with a shipped long/wide example object, diagnostics, augmented covariance recovery, repeatability curves, and an explicit non-Gaussian augmented-`unique()` guard. |
+| `random-slopes-nongaussian` | public structured-grid continuation | Must cite PHY-11..PHY-18, SPA-08..SPA-10, ANI-11..ANI-12, RE-03, FAM-17, and MIX-10; heavy cells may stay `eval = FALSE`. Keep it separate from the ordinary individual reaction-norm article. |
 | `phylogenetic-gllvm` | still internal | Can later link to the random-regression article after its own phylo/non-phylo split and helper example pass. |
 | `animal-model` | still internal | Needs the larger pedigree fixture and A/Ainv truth recovery before public restoration. |
 | `mixed-family-extractors` | still internal | Must keep delta/hurdle blocked cases explicit and avoid CI calibration overclaims. |
@@ -88,7 +88,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 | Rank-depth validation (`d = 3`, `d = 4`, `d = 6`) | Public examples mostly live at `d = 1/2`; high-rank non-Gaussian structured claims need their own grid. | Design a separate rank-depth recovery table, not bundled with random-slope article restoration. |
 | Interval coverage | CI-08 / CI-10 remain separate from point recovery and must not be implied by slope examples. | Keep slope articles point-estimate/recovery framed until coverage gates pass. |
 | Delta / hurdle covariance | Two response scales make a single latent residual or slope covariance undefined. | Derivation first; no article or runtime admission in this slice. |
-| Ordinary behavioural random regression | The target Appendix-B model needs augmented `latent()` / `unique()` LHS at the ordinary unit tier, not structured dependence. | Polish the Gaussian worked example and decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
+| Ordinary behavioural random regression | The Gaussian Appendix-B-style target is now public as the individual-level article; broader non-Gaussian augmented `unique()` support remains guarded. | Decide whether non-Gaussian augmented `unique()` should stay guarded or get a separate admission grid. |
 
 ## Status-Scan Handles
 

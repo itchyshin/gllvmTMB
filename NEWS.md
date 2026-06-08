@@ -3,6 +3,45 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Ordinary Gaussian reaction-norm component (#341, 2026-06-08)
+
+* **`latent(1 + x | unit, d = K) + unique(1 + x | unit)`** and the long-form
+  **`latent(0 + trait + (0 + trait):x | unit, d = K) +
+  unique(0 + trait + (0 + trait):x | unit)`** now fit the ordinary
+  individual-level Gaussian random-regression decomposition. IN: the parser
+  routes the augmented LHS to dedicated B-tier TMB blocks with `Lambda_aug` and
+  `Psi_B,aug` over the `2T` `(intercept, slope) x trait` coefficient vector,
+  and `extract_Sigma(level = "unit_slope", part = "shared" / "unique" /
+  "total")` returns `Lambda_aug Lambda_aug^T`, the augmented diagonal, or their
+  sum (RE-12). Evidence: `test-ordinary-latent-random-regression.R` now covers
+  parser classification, long and `traits(...)` wide fits, Gaussian paired
+  `latent + unique` composition, a deterministic Gaussian recovery fixture for
+  the intercept-intercept, slope-slope, and intercept-slope covariance blocks,
+  the unique-only diagonal path, a Poisson latent-only smoke fit, the rank
+  guard, `unit_obs` rejection, mismatched-slope rejection, and the Gaussian-only
+  augmented-`unique()` guard. PARTIAL: non-Gaussian augmented `unique()` remains
+  guarded while non-Gaussian ordinary latent slopes remain latent-only smoke
+  evidence. OUT: bare `(1 + x | g)` random slopes remain reserved, and delta /
+  hurdle families stay outside this slope-covariance lane (FAM-17 / MIX-10).
+
+## Structured random-slope article restored to the public model guide (#341, 2026-06-08)
+
+* The `random-slopes-nongaussian` article now reflects the live structured
+  random-slope boundary. The ordinary reaction-norm article
+  (`random-regression-reaction-norms`) is kept internal because the new
+  ordinary Gaussian `latent + unique` component is implemented but still needs a
+  polished reader-facing worked example before public promotion; the legacy
+  single-variance slope keywords are not used in new public examples. IN: one
+  structured random slope (`s = 1`) is documented as a point-estimate /
+  recovery workflow across the covered phylogenetic and spatial grid
+  (PHY-11..PHY-18, SPA-08..SPA-10), and Gaussian
+  `phylo_dep(1 + x1 + x2 | species)` remains covered under RE-03. PARTIAL:
+  non-Gaussian `phylo_dep(..., s >= 2)` stays fail-loud guarded while the RE-03
+  diagnostics continue. REJECTED for this article lane: delta, hurdle, and
+  two-stage zero-inflated families, whose latent-scale covariance is blocked
+  by FAM-17 / MIX-10. The article makes no calibrated-interval claim; CI-08 and
+  CI-10 remain separate coverage gates.
+
 ## Spatial random slopes: full non-Gaussian family coverage (#453, 2026-06-05)
 
 * **`spatial_latent(1 + x | site, d)`** augmented reduced-rank random slopes (SPA-09) now recover non-skipped under **all seven** supported families -- gaussian, binomial (probit/logit), poisson, nbinom2, Gamma, Beta, and ordinal_probit -- completing the block-diagonal spatial-latent slope cell alongside the already-complete `spatial_indep` (SPA-08) and `spatial_dep` (SPA-10) modes. The three count/probit/ordinal families that previously honest-skipped at the default fixture were a finite-sample **power** artifact, not non-identifiability: they identify cleanly at `n_sites = 150`, confirmed by the new `spatial-latent-slope-nongaussian-recovery` CI gate (`0 failed, 0 errored, 0 skipped across 7 tests`). No engine change -- the families were already on the `use_spde_latent_slope` allowlist; only the heavy test fixture's site count was raised.

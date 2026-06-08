@@ -15,8 +15,8 @@ file with concrete assertions.
 
 **Status discipline**: 4-state vocabulary (`covered / claimed /
 reserved / planned`). This doc lays out the testing **design**;
-the validation-debt register (forthcoming, Phase 0A step 7)
-links specific test files to specific advertised claims.
+the validation-debt register links specific test files to specific
+advertised claims.
 
 ## Test layers
 
@@ -124,6 +124,22 @@ keyword:
   alignment via `compare_loadings()`.
 - **Failure path**: malformed inputs are rejected before TMB
   evaluation.
+
+RE-12 ordinary Gaussian random regression now has focused
+`latent + unique` evidence, not broad coverage evidence. Its minimum
+focused test contract is: parser classification for long and
+`traits(...)` wide forms; a Gaussian paired fit that reaches the
+dedicated B-tier `Z_B_lat` / `Lambda_B_slope` / `Sigma_B_slope` and
+`Z_B_diag` / `sd_B_slope` / `s_B_slope` blocks; `extract_Sigma(level =
+"unit_slope", part = "shared" / "unique" / "total")` composition;
+deterministic Gaussian recovery for the intercept-intercept,
+slope-slope, and intercept-slope blocks; unique-only diagonal
+extraction; at least one non-Gaussian latent-only smoke fit; rank guard;
+rejection of augmented `latent()` / `unique()` at the `unit_obs` tier;
+and the Gaussian-only guard for augmented `unique()` under non-Gaussian
+families. Promotion from `partial` to `covered` requires a broader
+coverage or recovery grid and either validation or a deliberate design
+rejection for non-Gaussian augmented `unique()`.
 
 ### Phase 0B per-keyword smoke-test plan
 
@@ -378,13 +394,12 @@ names.
   matched against an independent calculation (the
   comparator-test discipline).
 - `docs/design/04-random-effects.md` — every keyword in the
-  4 × 5 grid gets a recovery test; M1.5 coverage study at
-  $s \in \{0, 1\}$.
-- `docs/design/06-extractors-contract.md` (forthcoming) — every
+  4 × 5 grid gets a recovery test; random-slope recovery moves by
+  validation-debt row.
+- `docs/design/06-extractors-contract.md` — every
   `extract_*()` gets a per-family + per-keyword test.
-- `docs/design/35-validation-debt-register.md` (forthcoming,
-  Phase 0A step 7) — every advertised capability links to its
-  test file.
+- `docs/design/35-validation-debt-register.md` — every advertised
+  capability links to its test file.
 - `.agents/skills/add-family/SKILL.md` — checklist for adding a
   new family (includes simulation tests).
 - `.agents/skills/add-simulation-test/SKILL.md` — checklist for

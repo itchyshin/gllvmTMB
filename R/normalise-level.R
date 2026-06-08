@@ -10,6 +10,7 @@
 ##   user types          canonical            legacy / internal slot
 ##   ------------------  -------------------  -----------------------
 ##   "unit"              "unit"               "B"
+##   "unit_slope"        "unit_slope"         "B_slope"
 ##   "unit_obs"          "unit_obs"           "W"
 ##   "spatial"           "spatial"            "spde"
 ##   "Omega"             "Omega"              "Omega"
@@ -27,8 +28,9 @@
 #' [lifecycle::deprecate_soft()] when a legacy alias is supplied.
 #'
 #' @param level Single character; either canonical (`"unit"`,
-#'   `"unit_obs"`, `"phy"`, `"spatial"`, `"cluster"`, `"Omega"`) or a
-#'   legacy alias (`"B"`, `"W"`, `"spde"`, `"total"`).
+#'   `"unit_slope"`, `"unit_obs"`, `"phy"`, `"spatial"`, `"cluster"`,
+#'   `"Omega"`) or a legacy alias (`"B"`, `"B_slope"`, `"W"`, `"spde"`,
+#'   `"total"`).
 #' @param arg_name Name of the calling function's argument
 #'   (`"level"` or `"tier"`); used in the deprecation message.
 #'
@@ -42,7 +44,7 @@
     return(level)  # vector / non-character — let downstream handle
 
   ## Canonical names that ARE the legacy/internal already
-  if (level %in% c("phy", "cluster", "cluster2")) return(level)
+  if (level %in% c("phy", "cluster", "cluster2", "B_slope")) return(level)
 
   ## Legacy aliases -> emit one-shot soft deprecation message and
   ## return legacy as-is so the function body stays unchanged.
@@ -76,7 +78,7 @@
   }
 
   ## Canonical names that need translation -> internal slot
-  canonical_to_internal <- c(unit = "B", unit_obs = "W",
+  canonical_to_internal <- c(unit = "B", unit_slope = "B_slope", unit_obs = "W",
                              spatial = "spde", Omega = "Omega")
   if (level %in% names(canonical_to_internal)) {
     return(unname(canonical_to_internal[[level]]))
@@ -89,7 +91,7 @@
 
 .canonical_level_name <- function(level) {
   if (!is.character(level) || length(level) != 1L) return(level)
-  internal_to_canonical <- c(B = "unit", W = "unit_obs",
+  internal_to_canonical <- c(B = "unit", B_slope = "unit_slope", W = "unit_obs",
                              spde = "spatial", total = "Omega")
   if (level %in% names(internal_to_canonical)) {
     return(unname(internal_to_canonical[[level]]))

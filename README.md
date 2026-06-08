@@ -8,9 +8,11 @@ The main question is simple:
 > Which responses vary together, and how much of that variation is shared
 > versus response-specific?
 
-The first public examples focus on the safest path: Gaussian
+The first public examples start from the safest path: Gaussian
 stacked-trait models that split the trait covariance matrix into
-shared and trait-specific parts:
+shared and trait-specific parts. Restored worked examples then add
+bounded capabilities such as random-regression slopes and dense-kernel
+coevolution, with the validation boundary stated in each article:
 
 | Model piece | R syntax | What the reader should see |
 |---|---|---|
@@ -36,15 +38,20 @@ paths reach the same stacked-trait model.
 | interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
 | choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
 | check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
+| check structured random-slope scope | [Structured random slopes](https://itchyshin.github.io/gllvmTMB/articles/random-slopes-nongaussian.html) |
 | check a fitted response distribution | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) and [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) |
 | diagnose hard fits | [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) and [Common pitfalls](https://itchyshin.github.io/gllvmTMB/articles/pitfalls.html) |
 
 This is preview version `0.2.0` and the package is pre-CRAN. Advanced
-worked examples -- joint SDMs, profile-likelihood intervals, animal
-models, phylogenetic GLLVMs, spatial models, mixed-family examples, and
-meta-analysis -- are under audit. They will return to the public navbar
-only after their example data, diagnostics, validation evidence, and
-rendered HTML review pass.
+worked examples return to the public navbar only after their example
+data or exact syntax chunks, diagnostics, validation evidence, and
+rendered HTML review pass. Structured random slopes are now public as a
+point-estimate/recovery workflow for the scoped `s = 1` phylogenetic and
+spatial grid, with Gaussian `phylo_dep(..., s = 2)` covered and
+non-Gaussian `s >= 2` still guarded. Ordinary non-structured
+bare-bar `(1 + x | g)` slopes remain reserved, while the keyworded
+`latent(1 + x | unit, d = K)` reaction-norm component is now partial
+under RE-12.
 
 ## What "stacked-trait" Means
 
@@ -212,7 +219,7 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
 | Fitted diagnostics | `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()` and `residuals()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12). These are diagnostic displays, not posterior predictive checks or interval calibration. |
-| Advanced examples | Joint SDM, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI articles are under audit until their example objects, diagnostics, and validation gates pass. |
+| Advanced examples | Structured random slopes are public for the scoped `s = 1` phylogenetic/spatial grid plus Gaussian `s = 2`. Ordinary individual-level Gaussian reaction norms now have `latent(1 + x \| unit, d = K) + unique(1 + x \| unit)` implemented and recovery-tested under RE-12; the article remains internal until the worked example is polished for public use. Joint SDM, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries. |
 
 ## Current boundaries
 
@@ -229,9 +236,8 @@ belongs in `drmTMB`.
   articles should use `traits(...)`; removal is a later API-change
   decision while the export remains live.
 
-**Deferred to post-CRAN** (advertised in the roadmap, currently
-not validated; named here so user-facing prose does not
-overpromise):
+**Current boundaries and deferred work** (named here so user-facing
+prose does not overpromise):
 
 - **Mixed-family latent-scale correlations with delta / hurdle
   families.** The two-stage structure of `delta_lognormal`,
@@ -240,9 +246,19 @@ overpromise):
   rows is a delta family. `check_auto_residual()` errors with
   class `gllvmTMB_auto_residual_delta_undefined` to prevent
   silent overpromise (MIX-10).
-- **Random slopes through `(1 + x | g)` syntax**, capped at one
-  slope for M1, with 2- and 3-slope support conditional on
-  validation evidence (RE-02..RE-03).
+- **Ordinary random slopes through `(1 + x | g)` syntax.** Plain,
+  non-structured bare-bar random slopes remain reserved. The keyworded
+  ordinary Gaussian reaction-norm decomposition
+  `latent(1 + x | unit, d = K) + unique(1 + x | unit)` / long-form equivalent
+  is implemented under RE-12 and extracts with
+  `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`.
+  Non-Gaussian augmented `unique()` remains guarded while the non-Gaussian
+  ordinary latent path has smoke evidence only. One structured random slope
+  (`s = 1`) is covered
+  across the phylogenetic and spatial grid for the core families. Gaussian
+  `phylo_dep(1 + x1 + x2 | g)` is covered under RE-03. Non-Gaussian
+  `phylo_dep(..., s >= 2)` remains fail-loud guarded pending the RE-03
+  diagnostic gate.
 - **`meta_V(type = "proportional")`** — Nakagawa (2022) unifying
   weighted-regression / meta-analysis
   mode; the current implemented mode is additive `type = "exact"`

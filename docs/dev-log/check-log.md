@@ -14087,3 +14087,423 @@ Interpretation:
   `nbinom2` and `ordinal_probit`.
 - No validation-debt row moves. RE-03 remains `partial`, and the public
   non-Gaussian `phylo_dep(..., s >= 2)` runtime guard remains in place.
+
+## 2026-06-08 -- random-slope article status-sync and public restoration
+
+Goal:
+
+- Keep the Julia bridge work out of this branch and focus on the main
+  documentation lane requested by the maintainer: status-sync plus the
+  random-slope / random-regression article pair.
+- Promote the covered `s = 1` structured random-regression grid to the public
+  Model guide while keeping Gaussian `s = 2`, non-Gaussian `s >= 2`, delta /
+  hurdle, and interval-coverage boundaries explicit.
+
+Pre-edit lane check:
+
+- `git status --short --branch`
+  -> clean `codex/re03-nongaussian-s2-admission-2026-06-08` worktree.
+- `gh pr list --state open --json number,title,headRefName,baseRefName,author,updatedAt --limit 20`
+  -> `[]`; no open PR collision.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no same-window shared-file commits returned.
+- Switched to `main` and created
+  `codex/status-random-regression-article-2026-06-08`.
+
+Files edited:
+
+- `_pkgdown.yml` -- moved `random-slopes-nongaussian` from the internal bucket
+  into the Model guide navbar/index; kept `random-regression-reaction-norms`
+  internal after rendered preview.
+- `vignettes/articles/random-regression-reaction-norms.Rmd` -- reworked as the
+  internal target article for ordinary behavioural random regression:
+  `unit = "individual"`, `unit_obs = "session_id"`, context varying within
+  individuals, and augmented unit-tier intercept/slope covariance blocks.
+  Removed `phylo_slope()` / `animal_slope()` as public teaching substitutes.
+- `vignettes/articles/random-slopes-nongaussian.Rmd` -- added a scope table
+  separating covered `s = 1`, Gaussian `s = 2`, partial non-Gaussian
+  `s >= 2`, blocked delta/hurdle families, and non-calibrated intervals.
+- `docs/design/61-capability-status.md` -- replaced the stale 2026-05-31
+  slope snapshot with a compact 2026-06-08 status layer tied to Design 35.
+- `docs/dev-log/audits/2026-05-20-article-gate-matrix.md` -- kept
+  `random-slopes-nongaussian` as the public structured-slope row and recorded
+  `random-regression-reaction-norms` as a hidden target article until ordinary
+  unit-tier random slopes are implemented.
+- `ROADMAP.md` -- changed the public-surface wording from a frozen six-page
+  reset to a curated restored surface and recorded the random-slope exception.
+- `README.md` -- routed readers only to the public structured-slope article and
+  named ordinary non-structured `(1 + x | g)` reaction-norm slopes as reserved.
+- `NEWS.md` -- added a development entry with IN / PARTIAL / REJECTED scope.
+
+Checks run:
+
+- `git diff --check`
+  -> clean.
+- `ruby -e 'require "yaml"; YAML.load_file("_pkgdown.yml"); puts "pkgdown-yaml-ok"'`
+  -> `pkgdown-yaml-ok`.
+- `Rscript --vanilla -e 'invisible(parse(file = "R/extract-sigma.R")); invisible(parse(file = "R/fit-multi.R")); cat("r-parse-ok\n")'`
+  -> `r-parse-ok`.
+- `Rscript --vanilla -e 'pkgdown::build_article("random-regression-reaction-norms", quiet = FALSE)'`
+  -> failed because `pkgdown::build_article()` expects the article path, not
+  the basename.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE)'`
+  -> failed while using the installed user-library `gllvmTMB` namespace rather
+  than the source checkout; the installed namespace did not expose the current
+  augmented-slope extractor route.
+- `Rscript --vanilla -e 'library(gllvmTMB); print(packageVersion("gllvmTMB")); print(system.file(package="gllvmTMB")); print(getNamespaceInfo("gllvmTMB", "path")); cat("has note:", any(grepl("phylo_unique/indep", readLines("R/extract-sigma.R"), fixed=TRUE)), "\n")'`
+  -> confirmed plain `library(gllvmTMB)` loaded
+  `/Users/z3437171/Library/R/arm64/4.5/library/gllvmTMB`, not the checkout.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); print(packageVersion("gllvmTMB")); cat("loaded-source-ok\n"); print(grepl("phylo_unique", paste(body(extract_Sigma), collapse = "\n")))'`
+  -> `loaded-source-ok`; source namespace contains the extractor branch.
+- `Rscript --vanilla -e 'args(pkgdown::build_article); print(packageVersion("pkgdown"))'`
+  -> `pkgdown` 2.1.3; `build_article()` supports `new_process`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-regression-reaction-norms.html`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-slopes-nongaussian", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-slopes-nongaussian.html`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Stale-wording scans:
+
+- `rg -n "Forthcoming|engine in progress|random slopes through|non-Gaussian .*RESERVED|RESERVED gaussian-only|six-article|six visible pages|public surface remains only|under audit" README.md ROADMAP.md NEWS.md docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd _pkgdown.yml`
+  -> only expected historical/scope-scan hits remain: Design 61 describes the
+  move away from "engine in progress"; ROADMAP mentions the original six-page
+  launch checkpoint.
+- `rg -n "RE-03|s >= 2|s = 2|FAM-17|MIX-10|CI-08|CI-10|PHY-11|PHY-18|SPA-08|SPA-10|ANI-11|ANI-12" README.md ROADMAP.md NEWS.md docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd`
+  -> public article/status files carry the required row handles and the
+  guarded non-Gaussian `s >= 2` boundary.
+- `rg -n "random-regression-reaction-norms|random-slopes-nongaussian" _pkgdown.yml README.md ROADMAP.md NEWS.md docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd`
+  -> both articles appear in the public route and status files.
+
+Interpretation:
+
+- The public slope surface is now the structured-slope article only. The
+  ordinary random-regression article remains internal because the correct
+  individual-level unit-tier augmented LHS is not implemented.
+- The maintainer's rendered-preview pass caught the core scope error:
+  `phylo_slope()` is a deprecated/legacy structured route and should not be
+  used to teach the ordinary behavioural reaction-norm article.
+- No runtime guard moved and no validation-debt status moved. RE-03 remains
+  partial for non-Gaussian `s >= 2`; delta/hurdle slope covariance remains
+  blocked.
+- Remaining status debt outside this slice: the older article-gate matrix still
+  has non-random-slope rows from the May reset that should be reconciled in a
+  separate public-surface audit.
+
+Preview-driven rewrite addendum:
+
+- `Rscript --vanilla - <<'RS' ...`
+  -> scratch-verified that the simplified Gaussian behavioural example fits
+  through both long and `traits(...)` wide calls with identical log likelihoods.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE)'`
+  -> first rerender failed on `round(correlation = ...)`; patched to
+  `round(c(correlation = ...), 3)`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE)'`
+  -> rerendered `pkgdown-site/articles/random-regression-reaction-norms.html`
+  after the simplified behavioural reaction-norm rewrite.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `rg -n "\\\\\\||animal_|animal-model|phylogenetic-gllvm|gllvm-vocabulary|profile-likelihood-ci|pedigree|A =|vcv =" vignettes/articles/random-regression-reaction-norms.Rmd pkgdown-site/articles/random-regression-reaction-norms.html`
+  -> no escaped-pipe hit in the source or rendered article body; no
+  `animal_*()` call remains. The rendered global navbar still contains
+  site-level routes owned by `_pkgdown.yml`.
+
+Maintainer correction addendum:
+
+- `pdftotext -layout /Users/z3437171/Downloads/GLLVMs_for_studying_behavioural_syndromes.pdf /tmp/gllvmtmb-pdf/behavioural-syndromes.txt`
+  and `rg -n "Appendix|random|slope|reaction|individual|temperature|plasticity" /tmp/gllvmtmb-pdf/behavioural-syndromes.txt`
+  -> Appendix B defines the correct random-regression target: random slopes at
+  the between-individual ID level, within-individual occasion covariance as a
+  random-intercept/covariance tier, and interpretation of intercept-intercept,
+  slope-slope, and intercept-slope covariance blocks.
+- `Rscript --vanilla - <<'RS' ...`
+  -> scratch-checked the Appendix-B target formula using
+  `latent(0 + trait + (0 + trait):temp | individual, d = 2)` plus matching
+  `unique()`; source checkout aborts expectedly with "`latent()` augmented LHS
+  is not yet supported." This confirms the article should be internal until
+  unit-tier augmented random slopes are implemented.
+- `_pkgdown.yml` now lists `random-regression-reaction-norms` under `internal`
+  and leaves only `random-slopes-nongaussian` in the public Model guide.
+- `vignettes/articles/random-slopes-nongaussian.Rmd` no longer routes to the
+  internal reaction-norm article or presents `phylo_slope()` / `animal_slope()`
+  as the public foundation.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE)'`
+  -> rendered the internal target article.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-slopes-nongaussian", quiet = FALSE, new_process = FALSE)'`
+  -> rendered the public structured-slope article after removing remaining
+  escaped-pipe table rows.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `ruby -e 'require "yaml"; YAML.load_file("_pkgdown.yml"); puts "pkgdown-yaml-ok"'`
+  -> `pkgdown-yaml-ok`.
+- `rg -n 'random-regression-reaction-norms\\.html|phylo_slope\\(|animal_slope\\(|`phylo_slope`|`animal_slope`|single-variance `phylo_slope|reaction-norm article is public|Random-regression articles restored|random-slope article pair|fit reaction-norm' README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-slopes-nongaussian.html docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> only expected historical/status hits remain: legacy capability rows in
+  Design 61, the hidden target gate row, and old NEWS entries.
+- `rg -n '\\\\\\|' vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html`
+  -> no hits; the rendered escaped-pipe issue is cleared.
+
+## 2026-06-08 -- ordinary latent reaction-norm implementation (RE-12)
+
+Goal:
+
+- Prioritise the ordinary individual-level `latent()` random-regression
+  component after maintainer correction that the behavioural reaction-norm
+  article should not use deprecated `phylo_slope()` / structured-dependence
+  substitutes.
+- Implement the latent/shared half of the Appendix-B target:
+  `latent(1 + x | unit, d = K)` and the long-form
+  `latent(0 + trait + (0 + trait):x | unit, d = K)`.
+- Keep the full claim partial until augmented `unique()` and admission-grade
+  recovery are added.
+
+Pre-edit / recovery:
+
+- `docs/dev-log/recovery-checkpoints/2026-06-08-131130-codex-latent-slope-checkpoint.md`
+  -> recorded branch, diff stat, commands already run, remaining commands, and
+  next action before touching parser / TMB code after context compaction.
+- `gh pr list --state open --json number,title,headRefName,baseRefName,author,updatedAt --limit 20`
+  -> `[]`; no open PR collision before shared design/status edits.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no same-window shared-file commits returned.
+
+Implementation:
+
+- `R/brms-sugar.R` now routes ordinary augmented `latent()` forms to a marked
+  `rr()` term carrying `.latent_augmented`, `lhs_form`, and `slope_col`.
+- `R/fit-multi.R` now builds a dedicated B-tier augmented latent block:
+  `Z_B_lat`, `theta_rr_B_slope`, `z_B_slope`, `d_B_slope`, and
+  `n_lhs_cols_B_lat = 2 * n_traits`; it rejects unit_obs-tier augmented
+  ordinary latent slopes, delta/hurdle families, excessive `d`, and
+  `lambda_constraint$B` on this augmented path.
+- `src/gllvmTMB.cpp` now estimates `Lambda_B_slope`, integrates
+  `z_B_slope`, adds the `Z_B_lat * Lambda_B_slope * z_B_slope` contribution
+  to `eta`, and reports `Sigma_B_slope`.
+- `extract_Sigma(level = "unit_slope")` now returns the augmented
+  `2T x 2T` low-rank covariance with labelled intercept / slope rows; `part =
+  "unique"` errors because augmented `unique()` is not implemented.
+- `tests/testthat/test-ordinary-latent-random-regression.R` covers parser
+  classification, long and wide fits, Gaussian and Poisson smoke paths,
+  extractor labels, the rank guard, the unit_obs rejection, and the same-tier
+  double-latent guard.
+- `tests/testthat/test-augmented-lhs-guard.R` was updated so ordinary
+  augmented `latent()` is an acceptance path while augmented `unique()` and
+  `indep()` remain fail-loud.
+
+Checks run:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all_ok\n")'`
+  -> `load_all_ok`.
+- Scratch Gaussian long fit of
+  `latent(0 + trait + (0 + trait):temperature | individual, d = 2)`
+  -> convergence `0`, `use_rr_B_slope = 1`, `Z_B_lat` dimension `240 x 6`,
+  `Lambda_B_slope` dimension `6 x 2`, `Sigma_B_slope` dimension `6 x 6`.
+- Scratch `traits(...)` wide fit of
+  `latent(1 + temperature | individual, d = 2)`
+  -> convergence `0`, `use_rr_B_slope = 1`, `Z_B_lat` dimension `108 x 6`,
+  `fit$use$rr_B_slope_col = "temperature"`.
+- Scratch extractor check:
+  `extract_Sigma(fit, level = "unit_slope")$Sigma`
+  -> `6 x 6` with rows `intercept.t1`, `slope.temperature.t1`, ...
+- Scratch Poisson fit of the same ordinary augmented latent syntax
+  -> convergence `0`, objective `382.6182`, extractor dimension `6 x 6`.
+- `Rscript --vanilla -e 'invisible(parse(file="R/brms-sugar.R")); invisible(parse(file="R/fit-multi.R")); invisible(parse(file="R/extract-sigma.R")); invisible(parse(file="R/normalise-level.R")); cat("parse_ok\n")'`
+  -> `parse_ok`.
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-augmented-lhs-guard.R")'`
+  -> `22 passed, 0 failed, 0 skipped`.
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R")'`
+  -> `29 passed, 0 failed, 0 skipped`.
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 704`, `PASS 2576` in `290.7s`.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document_ok\n")'`
+  -> `document_ok`; intended feature Rd change is `man/extract_Sigma.Rd`.
+  The later `devtools::check()` documentation pass also regenerated current-R
+  link formatting in `man/add_utm_columns.Rd`, `man/extract_correlations.Rd`,
+  `man/make_mesh.Rd`, and `man/reexports.Rd`.
+- Rendered-Rd spot check:
+  `tail -12 man/extract_Sigma.Rd` and
+  `grep -c '^\\keyword' man/extract_Sigma.Rd`
+  -> seealso block is intact; keyword count `0`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-regression-reaction-norms.html`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-slopes-nongaussian", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-slopes-nongaussian.html`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `ruby -e 'require "yaml"; YAML.load_file("_pkgdown.yml"); puts "pkgdown-yaml-ok"'`
+  -> `pkgdown-yaml-ok`.
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `1 warning`, `2 notes`, exit status `1` because
+  `R CMD check` treats warnings as failure. The install warning is the local
+  macOS/R toolchain warning
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension'`; `00install.out`
+  also showed existing Eigen warnings and the existing unused `n_mesh` warning.
+  Notes were future timestamp verification and existing `NEWS.md` section-title
+  parsing. No latent random-regression test or example failure was reported.
+
+Stale-wording scans:
+
+- `rg -n "not yet implemented|not yet supported|ordinary non-structured|unit-level augmented random-slope engine is not yet|augmented LHS forms are not yet supported|random-regression-reaction-norms.*no runnable|plain non-structured \\(1 \\+ x \\| g\\) slopes remain reserved" README.md NEWS.md ROADMAP.md docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd`
+  -> only unrelated REML note in `NEWS.md`.
+- `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S" vignettes/articles/random-regression-reaction-norms.Rmd README.md NEWS.md docs/design/61-capability-status.md docs/design/01-formula-grammar.md`
+  -> no hits.
+- `rg -n "\\\\\\|" vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html`
+  -> no hits; rendered escaped-pipe issue remains cleared.
+- `rg -n "latent\\(1 \\+ x \\| unit|latent\\(0 \\+ trait \\+ \\(0 \\+ trait\\):x \\| unit|unit_slope|RE-12|unique\\(1 \\+ x \\| unit|Psi_B,aug" README.md NEWS.md ROADMAP.md docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md vignettes/articles/random-regression-reaction-norms.Rmd R tests/testthat`
+  -> expected RE-12 implementation and partial-scope hits.
+- `rg -n "gllvmTMB\\(" README.md NEWS.md docs/design vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd`
+  -> manually checked the touched article calls; long-format article calls now
+  carry `trait = "trait"` explicitly.
+- `rg -n 'phylo_slope\\(|animal_slope\\(|`phylo_slope`|`animal_slope`|random-regression-reaction-norms\\.html|reaction-norm article is public' README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> expected legacy/status hits only: Design 61 legacy rows, old NEWS entry,
+  and the hidden article-gate row that explicitly says not to use
+  `phylo_slope()` as a substitute.
+- `rg -n -F 'x \\|' vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html`
+  -> no hits.
+- `rg -n -F ' \\|' vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html`
+  -> no hits.
+
+Design / status updates:
+
+- `docs/design/01-formula-grammar.md` adds RE-12 partial syntax status.
+- `docs/design/03-likelihoods.md` documents the augmented
+  `Lambda_aug` / `Z_B_lat` / `Sigma_B_slope` likelihood block.
+- `docs/design/04-random-effects.md` replaces stale "ordinary random slopes
+  unsupported" wording with the RE-12 partial contract.
+- `docs/design/05-testing-strategy.md` records the focused RE-12 smoke /
+  routing test contract and the promotion requirement.
+- `docs/design/35-validation-debt-register.md` adds RE-12 as `partial`.
+- `docs/design/61-capability-status.md`, README, ROADMAP, NEWS, and the
+  article gate matrix now advertise the latent component as implemented but
+  keep the full behavioural reaction-norm article internal.
+
+Interpretation:
+
+- The latent/shared component is working and tested for Gaussian plus a
+  Poisson non-Gaussian smoke path.
+- The full Appendix-B behavioural random-regression decomposition is still
+  partial: augmented `unique()` for `Psi_B,aug` and recovery for
+  intercept-intercept, slope-slope, and intercept-slope blocks remain next.
+- Delta / hurdle families remain out of this lane.
+- `devtools::check(args = "--no-manual")` was run after the local gates and is
+  not clean: `0 errors`, `1 warning`, `2 notes` as recorded above. The working
+  latent claim therefore rests on focused tests, full `devtools::test()`,
+  scratch Gaussian/Poisson fits, roxygen, article renders,
+  `pkgdown::check_pkgdown()`, YAML parse, parser parse, and diff/stale scans;
+  package-level CRAN-clean status remains separate.
+
+## 2026-06-08 - Ordinary Gaussian reaction-norm `latent + unique` follow-on
+
+Scope:
+
+- Implemented ordinary Gaussian individual-level random-regression
+  decomposition with paired
+  `latent(1 + x | unit, d = K) + unique(1 + x | unit)` and long-form
+  `latent(0 + trait + (0 + trait):x | unit, d = K) +
+  unique(0 + trait + (0 + trait):x | unit)`.
+- Kept non-Gaussian augmented ordinary `unique()` guarded; retained
+  non-Gaussian ordinary `latent()` as smoke-only evidence.
+- Updated the internal reaction-norm article and the public structured
+  random-slope article so ordinary Gaussian `unique()` is no longer described
+  as missing.
+
+Checks run:
+
+- `git status --short --branch`
+  -> branch `codex/status-random-regression-article-2026-06-08`; dirty tree
+  with RE-12 implementation/docs/test changes and untracked recovery /
+  after-task files.
+- `git diff --stat`
+  -> 25 changed files before the post-compaction checkpoint; current diff
+  remains the same RE-12/documentation slice plus this log/report.
+- `gh pr list --state open --json number,title,headRefName,updatedAt`
+  -> `[]`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> no output.
+- `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-06-08-140711-codex-ordinary-unique-slope-checkpoint.md`
+  -> read before editing after compaction.
+- `tail -80 docs/dev-log/check-log.md`
+  -> read before editing after compaction.
+- `Rscript --vanilla -e 'parse("R/brms-sugar.R"); parse("R/fit-multi.R"); parse("R/extract-sigma.R"); cat("R-parse-ok\n")'`
+  -> `R-parse-ok` (noisy because `parse()` prints expressions).
+- `Rscript --vanilla -e 'parse("tests/testthat/test-ordinary-latent-random-regression.R"); parse("tests/testthat/test-augmented-lhs-guard.R"); cat("test-parse-ok\n")'`
+  -> `test-parse-ok` (noisy because `parse()` prints expressions).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); cat("load_all_ok\n")'`
+  -> `load_all_ok`.
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-ordinary-latent-random-regression.R")'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 60`.
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-augmented-lhs-guard.R")'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 27`.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE); cat("document_ok\n")'`
+  -> `document_ok`; wrote `man/extract_Sigma.Rd`.
+- `tail -12 man/extract_Sigma.Rd`
+  -> `\seealso{...}` block intact.
+- `grep -c '^\\keyword' man/extract_Sigma.Rd`
+  -> `0`.
+- `rg -n "unit_slope|latent\\(1 \\+ x|unique\\(1 \\+ x|2T x 2T" man/extract_Sigma.Rd`
+  -> expected `unit_slope` usage/documentation hits.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-regression-reaction-norms.html`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-slopes-nongaussian", quiet = FALSE, new_process = FALSE)'`
+  -> rendered `pkgdown-site/articles/random-slopes-nongaussian.html`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::check_pkgdown()'`
+  -> `No problems found` before and after the final public-article intro
+  wording patch.
+- Browser check attempt via the Codex in-app browser:
+  attempted to reload
+  `file:///Users/z3437171/Dropbox/Github%20Local/gllvmTMB/pkgdown-site/articles/random-regression-reaction-norms.html`
+  -> blocked by the browser URL policy for local `file://`; no workaround
+  attempted.
+- `env NOT_CRAN=true Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 704`, `PASS 2612` in `301.2s`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `1 warning`, `2 notes`, exit status `1` because
+  `R CMD check` treats warnings as failure. Summary reported install warning,
+  future timestamp note, and existing `NEWS.md` section-title parsing note.
+- `git diff --check`
+  -> clean.
+
+Stale-wording scans:
+
+- `rg -n 'unique.*pending|pending.*unique|augmented unique\\(\\) pending|Psi_aug|fit_rr_latent|latent component now runnable|augmented unique/recovery still pending|full Appendix-B.*not yet|unique\\(\\).*missing|Psi_B,aug.*missing' README.md NEWS.md ROADMAP.md docs/design/04-random-effects.md docs/design/05-testing-strategy.md docs/design/35-validation-debt-register.md docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html`
+  -> expected hits only: the article gate row says broader coverage remains
+  pending; older unrelated NEWS/design rows retain their own pending wording.
+- `rg -n '\\bS_B\\b|\\bS_W\\b|\\\\bf S' vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd README.md NEWS.md docs/design/61-capability-status.md docs/design/01-formula-grammar.md docs/design/04-random-effects.md`
+  -> no hits in the touched public/random-slope surface.
+- `rg -n 'gllvmTMB\\(' vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd README.md NEWS.md docs/design/04-random-effects.md docs/design/05-testing-strategy.md`
+  -> manually checked touched article calls; long-form calls carry
+  `trait = "trait"` and wide `traits(...)` calls do not.
+- `rg -n -F 'x \\|' vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html`
+  -> no hits.
+- `rg -n -F ' \\|' vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html`
+  -> no hits.
+- `rg -n 'phylo_slope\\(|animal_slope\\(|`phylo_slope`|`animal_slope`|random-regression-reaction-norms\\.html|reaction-norm article is public' README.md NEWS.md ROADMAP.md _pkgdown.yml vignettes/articles/random-regression-reaction-norms.Rmd vignettes/articles/random-slopes-nongaussian.Rmd pkgdown-site/articles/random-regression-reaction-norms.html pkgdown-site/articles/random-slopes-nongaussian.html docs/design/61-capability-status.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> expected legacy/status hits only: Design 61 legacy rows, an old NEWS
+  entry, and the hidden article-gate row that explicitly rejects
+  `phylo_slope()` as a substitute.
+
+Issue/PR ledger:
+
+- `gh issue list --state open --search "RE-12 random regression reaction norm unique" --json number,title,state,updatedAt --limit 20`
+  -> issue #340, `Capability matrix — live status board`.
+- `gh issue list --state open --search "ordinary random regression unit_slope" --json number,title,state,updatedAt --limit 20`
+  -> `[]`.
+- `gh issue list --state open --search "random-regression-reaction-norms" --json number,title,state,updatedAt --limit 20`
+  -> issues #347, `[roadmap] Article completion (public learning path)`, and
+  #340.
+- No issue comments posted from this local branch; #340 and #347 remain the
+  relevant tracking handles.
+
+Interpretation:
+
+- The ordinary Gaussian individual-level random-regression engine now supports
+  the paired `latent + unique` decomposition and recovers the augmented
+  covariance in a deterministic focused test.
+- `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`
+  now distinguishes `Lambda_aug Lambda_aug^T`, `Psi_B,aug`, and their sum.
+- The row remains `partial` under RE-12 because non-Gaussian augmented
+  `unique()` is guarded, non-Gaussian ordinary `latent()` has smoke evidence
+  only, and broad coverage calibration is not established.

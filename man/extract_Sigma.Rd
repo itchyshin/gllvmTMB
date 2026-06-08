@@ -6,8 +6,8 @@
 \usage{
 extract_Sigma(
   fit,
-  level = c("unit", "unit_obs", "phy", "phy_slope", "spatial", "spde_slope", "cluster",
-    "cluster2", "B", "W", "spde"),
+  level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "spatial",
+    "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
   part = c("total", "shared", "unique"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
@@ -59,6 +59,15 @@ s >= 2), \code{level = "phy_dep"}, \code{part = "dep"}, and a \code{note}. The \
 \code{link_residual} arguments do not apply to this single unstructured
 block and are ignored. (The unit / unit_obs tiers return \code{NULL} for a
 dep-only fit, as it carries no between/within-unit covariance term.)
+
+For an ordinary individual-level random-regression fit with
+\code{latent(1 + x | unit, d = K)}, \code{unique(1 + x | unit)}, or their long-form
+equivalents, call with \code{level = "unit_slope"}: the result is the augmented
+\verb{2T x 2T} covariance over trait-specific intercept and slope coefficients,
+with row names \verb{intercept.<trait>} and \verb{slope.<x>.<trait>}. As for
+\code{level = "unit"}, \code{part = "shared"} returns \verb{Lambda_aug Lambda_aug^T},
+\code{part = "unique"} returns the augmented diagonal, and \code{part = "total"}
+returns their sum.
 }
 \description{
 Implements the decomposition

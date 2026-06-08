@@ -138,6 +138,28 @@ The random-effects block decomposes as:
   $\ell$. The trait-by-row contribution is $\eta_{it} = \mu_{it}
   + \boldsymbol\lambda_t^\top \mathbf{u}_{g(i)}$ on the link scale.
 
+- **Ordinary augmented Gaussian random regression** from
+  `latent(0 + trait + (0 + trait):x | unit, d = K) +
+  unique(0 + trait + (0 + trait):x | unit)` or the equivalent
+  `traits(...)` shorthand `latent(1 + x | unit, d = K) +
+  unique(1 + x | unit)` (RE-12): the coefficient vector has
+  $C = 2T$ rows ordered as `(intercept, slope) x trait`. The
+  shared component uses
+  $\Lambda_{\text{aug}} \in \mathbb{R}^{C \times K}$ and unit
+  scores $\mathbf{z}_i \sim \mathcal{N}(0, I_K)$. The unique
+  component uses independent unit-level coefficients
+  $\mathbf{q}_i \sim \mathcal{N}(0, \Psi_{B,\text{aug}})$, where
+  $\Psi_{B,\text{aug}}$ is diagonal with entries
+  $\psi_{B,\text{aug},c}^2$. Row-level designs `Z_B_lat` and
+  `Z_B_diag` select the trait intercept row with coefficient 1 and
+  the matching trait slope row with coefficient $x_i$. The TMB
+  template reports `Sigma_B_slope = Lambda_aug Lambda_aug^T`,
+  `sd_B_slope`, and `Sigma_B_unique_slope`; the extractor composes
+  `part = "total"` as
+  $\Lambda_{\text{aug}}\Lambda_{\text{aug}}^\top +
+  \Psi_{B,\text{aug}}$. Non-Gaussian augmented `unique()` remains
+  guarded in this slice.
+
 - **Trait-unique diagonal** from `unique(0 + trait | g)`:
   $\boldsymbol\Psi = \text{diag}(\psi_1^2, \ldots, \psi_T^2)$
   per-trait variance terms; trait-specific per-level deviations
@@ -164,7 +186,7 @@ binary** data (rare-species detections, very few items per
 person at extreme difficulty). `gllvmTMB_check_consistency()`
 (PR #121) tests whether the marginal score is centred at zero;
 non-centred score flags Laplace unreliability. See
-`docs/design/05-testing-strategy.md` (forthcoming) for the
+`docs/design/05-testing-strategy.md` for the
 Phase 0B per-family Laplace-accuracy verification plan.
 
 ## Phylogenetic A⁻¹ sparse integration
@@ -185,8 +207,8 @@ Phase 0B verifies via a phylo-trait simulation-recovery test.
 
 ### Dormant phylogenetic random-regression block (Phase 56.1)
 
-`phylo_slope(x | species)` remains the active public random-slope
-path in Phase 56.1:
+`phylo_slope(x | species)` remains a legacy structured random-slope
+path retained for compatibility:
 
 $$
 \mathbf{b} \sim \mathcal{N}\left(\mathbf{0}, \sigma_\beta^2 A\right),
@@ -497,16 +519,15 @@ the multi-trait case):
   family argument forms.
 - `docs/design/02-family-registry.md` — per-family registry
   with link-residual contract.
-- `docs/design/04-random-effects.md` (forthcoming) — Laplace
+- `docs/design/04-random-effects.md` — Laplace
   integration + reduced-rank reparameterisation details.
-- `docs/design/05-testing-strategy.md` (forthcoming) — two-tier
+- `docs/design/05-testing-strategy.md` — two-tier
   validation (comparator + simulation recovery); per-family
   required edge cases.
-- `docs/design/06-extractors-contract.md` (forthcoming) — what
+- `docs/design/06-extractors-contract.md` — what
   `extract_*()` returns per family.
-- `docs/design/35-validation-debt-register.md` (forthcoming,
-  Phase 0A step 7) — evidence ledger; every `claimed` row in
-  this doc gets a register row.
+- `docs/design/35-validation-debt-register.md` — evidence ledger;
+  every `claimed` row in this doc gets a register row.
 - `src/gllvmTMB.cpp` — the actual TMB template.
 - `R/fit-multi.R` — R wrapper; per-row family routing;
   `family_var` column logic.

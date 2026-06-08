@@ -74,6 +74,7 @@ support from end-to-end verification:
 | `gllvmTMB_wide(Y, ...)` | **partial / soft-deprecated in 0.2.0** | Legacy matrix-in wrapper. It remains exported for migration and matrix-first workflows, but new examples use `gllvmTMB(traits(...) ~ ..., data = df_wide)` instead. |
 | `0 + trait` and `(0 + trait):x` | **covered** | Long-form trait-stacked fixed-effect grammar. Test evidence: `test-stage1-stacked-fixed-effects.R`, `test-canonical-keywords.R` (via validation-debt register FG-02; Phase 0B promotion 2026-05-16). |
 | `latent(0 + trait \| g, d = K)` | **covered** | Reduced-rank loadings for $T$ traits across grouping factor `g`, rank $K \le T$. Test evidence: `test-stage2-rr-diag.R`, `test-keyword-grid.R` (validation-debt register FG-04; Phase 0B promotion 2026-05-16). |
+| `latent(1 + x \| unit, d = K) + unique(1 + x \| unit)` / long-form equivalents | **partial / Gaussian covered** | Ordinary individual-level Gaussian random-regression decomposition over the augmented `(intercept, slope) x trait` coefficient vector. The engine reports `Lambda_aug Lambda_aug^T`, the augmented diagonal `Psi_B,aug`, and their total through `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`. Test evidence: `test-ordinary-latent-random-regression.R` (parser, long fit, `traits(...)` wide fit, Gaussian composition and recovery, unique-only fit, Poisson latent-only smoke, rank / unit_obs / mismatched-slope / Gaussian-only guards). Non-Gaussian augmented `unique()` remains guarded. |
 | `unique(0 + trait \| g)` | **covered** | Trait-diagonal $\boldsymbol\Psi$ on grouping factor `g`. Test evidence: `test-stage2-rr-diag.R`, `test-cross-sectional-unique.R` (validation-debt register FG-05; Phase 0B promotion 2026-05-16). |
 | `latent + unique` paired | **covered** | The decomposition $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$. Test evidence: `test-stage2-rr-diag.R`, `test-mixed-response-sigma.R` (validation-debt register FG-06; Phase 0B promotion 2026-05-16). |
 | `indep(0 + trait \| g)` | **covered** | Explicit marginal / independent mode; same diagonal covariance as standalone `unique()` and always used alone. Test evidence: `test-canonical-keywords.R` (standalone equivalence with `unique()`), `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (binomial) (validation-debt register FG-07; Phase 0B.2 promotion 2026-05-16). |
@@ -90,7 +91,7 @@ support from end-to-end verification:
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
 | `(1 \| group)` ordinary random intercept | **covered** | Pass-through to `glmmTMB`-style random intercept; orthogonal to the 4 × 5 keyword grid. Test evidence: `test-multi-random-intercepts.R` (validation-debt register RE-01; Phase 0B promotion 2026-05-16). |
-| `(1 + x \| g)` ordinary random slope outside a structural keyword | **reserved** | Bare-bar random slopes remain rejected by `parse_re_int_call()`. The only parser-claimed augmented-LHS structural form is the Phase 56.3 `phylo_unique(1 + x \| species)` bridge above. |
+| `(1 + x \| g)` ordinary random slope outside a structural keyword | **reserved** | Bare-bar random slopes remain rejected by `parse_re_int_call()`. Ordinary random regression is keyworded through `latent(1 + x \| unit, d = K)`; structured sources keep their own `phylo_*()` / `spatial_*()` forms. |
 | `(1 \| g1/g2)` slash-form nested random effects | **rejected** | Not parsed. Use globally unique level names instead (see "Crossed-vs-nested" below). |
 | `latent(0 + trait \| g) + lambda_constraint = list(B = M)` | **covered (Gaussian)** | Confirmatory factor analysis on the latent loadings; pins specific entries of $\boldsymbol\Lambda$. Test evidence: `test-lambda-constraint.R` asserts pinned-entry values within `1e-8` tolerance for diagonal-pin, off-diagonal-pin-to-zero, off-diagonal-pin-to-non-zero, W-level, and simultaneous B+W pin cases (validation-debt register LAM-01, LAM-02; Phase 0B.3 promotion 2026-05-16). Phase M2 verifies on binary (LAM-03 stays partial until M2.3). |
 | `suggest_lambda_constraint(fit)` | **covered (Gaussian)** | Helper that recommends constraint matrices. Test evidence: `test-suggest-lambda-constraint.R` asserts the helper returns well-typed `T x d` matrices with correct upper-triangle pinning, dimension, row/column names, and `usage_hint` for `lower_triangular` and `pin_top_one` conventions across `K = 1, 2, 3` (validation-debt register LAM-04 Gaussian regime; Phase 0B.3 promotion 2026-05-16). Phase M2 verifies on binary at $n_\text{items} \in \{10, 20, 50\}$, $d \in \{1, 2, 3\}$ (LAM-04 binary stays partial until M2.4). |
@@ -158,6 +159,8 @@ The compact RHS shorthand is:
 | `env` | `(0 + trait):env` |
 | `latent(1 \| g, d = K)` | `latent(0 + trait \| g, d = K)` |
 | `unique(1 \| g)` | `unique(0 + trait \| g)` |
+| `latent(1 + env \| g, d = K)` | `latent(0 + trait + (0 + trait):env \| g, d = K)` |
+| `unique(1 + env \| g)` | `unique(0 + trait + (0 + trait):env \| g)` |
 | `indep(1 \| g)` | `indep(0 + trait \| g)` |
 | `dep(1 \| g)` | `dep(0 + trait \| g)` |
 | `phylo_*` and `spatial_*` keywords | Pass through unchanged. |
@@ -561,12 +564,12 @@ Currently:
 - **Random intercepts** `(1 | group)`: covered alongside the 4 × 5
   keywords as the default random-intercept on the grouping
   factor.
-- **Random slopes** `(0 + x | g)` or `(1 + x | g)`: **reserved**.
-  Not currently parsed inside the 4 × 5 keywords. The M1 Gaussian
-  completeness milestone (per ROADMAP) adds random-slope support
-  for the `latent + unique` paired keywords as the first
-  random-slope path. Other 4 × 5 cells get random-slope support
-  one keyword at a time after M1 closes.
+- **Bare-bar random slopes** `(0 + x | g)` or `(1 + x | g)`: **reserved**.
+  The ordinary unit-tier keyworded Gaussian path
+  `latent(1 + x | unit, d = K) + unique(1 + x | unit)` is now implemented
+  under RE-12; it estimates `Lambda_aug Lambda_aug^T + Psi_B,aug`.
+  Non-Gaussian augmented `unique()` remains guarded, and other 4 × 5 cells
+  keep their own source-specific random-slope validation boundaries.
 
 Random-slope design and parser details will live in
 `docs/design/42-random-slopes-grammar.md` when written as part of

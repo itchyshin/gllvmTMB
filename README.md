@@ -10,10 +10,9 @@ The main question is simple:
 
 The first public examples start from the safest path: Gaussian
 stacked-trait models that split the trait covariance matrix into
-shared and trait-specific parts. Restored worked examples then add
-bounded capabilities such as ordinary behavioural reaction norms, with
-more specialised structured-slope and cross-lineage kernel articles
-kept internal until their prerequisite reader paths are ready:
+shared and trait-specific parts. Draft worked examples for behavioural
+reaction norms, structured slopes, and cross-lineage kernels stay internal
+until their reader paths are ready:
 
 | Model piece | R syntax | What the reader should see |
 |---|---|---|
@@ -37,7 +36,6 @@ paths reach the same stacked-trait model.
 | fit your first model | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) |
 | see the full worked example | [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html) |
 | interpret `Sigma`, correlations, `Lambda`, `psi`, and communality | [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) |
-| fit behavioural reaction norms | [Behavioural reaction norms](https://itchyshin.github.io/gllvmTMB/articles/random-regression-reaction-norms.html) |
 | choose formula keywords | [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html) |
 | check response-family status | [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html) |
 | check a fitted response distribution | [Get started with gllvmTMB](https://itchyshin.github.io/gllvmTMB/articles/gllvmTMB.html) and [Convergence and start values](https://itchyshin.github.io/gllvmTMB/articles/convergence-start-values.html) |
@@ -46,10 +44,9 @@ paths reach the same stacked-trait model.
 This is preview version `0.2.0` and the package is pre-CRAN. Advanced
 worked examples return to the public navbar only after their example data
 or exact syntax chunks, diagnostics, validation evidence, and rendered HTML
-review pass. Ordinary individual-level Gaussian reaction norms now have a
-public behavioural-syndrome worked example under RE-12. Structured random
-slopes and cross-lineage coevolution remain buildable internal workflows
-until the phylogenetic and structured-dependence reader path is ready.
+review pass. Ordinary individual-level Gaussian reaction norms, structured
+random slopes, and cross-lineage coevolution remain buildable internal
+workflows until their plain-language reader paths are ready.
 Bare-bar `(1 + x | g)` slopes remain reserved.
 
 ## What "stacked-trait" Means
@@ -218,7 +215,7 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
 | Fitted diagnostics | `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()` and `residuals()` provide fitted-model response diagnostics for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12). These are diagnostic displays, not posterior predictive checks or interval calibration. |
-| Advanced examples | Ordinary individual-level Gaussian reaction norms now have a public behavioural-syndrome article with long and wide examples, diagnostics, and recovery figures under RE-12; non-Gaussian augmented `unique()` remains guarded. Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are ready. |
+| Advanced examples | Ordinary individual-level Gaussian reaction norms now have a buildable internal behavioural-syndrome draft with long and wide examples, diagnostics, and recovery figures; non-Gaussian augmented `unique()` remains guarded. Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are ready. |
 
 ## Current boundaries
 

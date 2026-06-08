@@ -1,6 +1,6 @@
 ---
 title: "Behavioural reaction norms with random slopes"
-tier: 1
+tier: 3 # internal draft until the reader path is plain-language and fully reviewed
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -25,23 +25,23 @@ knitr::opts_chunk$set(
 )
 ```
 
-This article fits an individual-level random-regression GLLVM for a
-behavioural-syndrome question. The unit is the **individual**, the
-repeated occasion is `session_id`, and the continuous context is
-centred/scaled `temperature`. The model asks whether individuals differ
-in both average behaviour and temperature responsiveness, and whether
-those reaction-norm coefficients covary across behaviours.
+> **Internal draft.** This page is not yet in the public article menu. It is a
+> working behavioural-syndrome example for Gaussian individual-level reaction
+> norms, and still needs a plain-language reader pass before promotion.
 
-The `latent()` term estimates shared axes of between-individual covariance;
-the `unique()` term estimates the trait-specific diagonal left after those
-shared axes. Scope boundary: IN under RE-12, Gaussian keyworded
-`latent() + unique()` ordinary random-slope models are implemented for long
-and wide data and can extract the augmented `unit_slope` covariance. PARTIAL,
-non-Gaussian ordinary `latent()` random slopes have smoke evidence only.
-PLANNED, non-Gaussian augmented `unique()` random slopes. REJECTED here,
-delta / hurdle random-slope extensions and phylogenetic or spatial slope
-fields are different model classes and are not used as substitutes for
-individual reaction norms.
+This draft fits an individual-level random-regression GLLVM for a behavioural
+syndrome question. The unit is the **individual**, the repeated occasion is
+`session_id`, and the continuous context is centred/scaled `temperature`. The
+model asks whether individuals differ in both average behaviour and
+temperature responsiveness, and whether those reaction-norm coefficients
+covary across behaviours.
+
+Here `latent()` estimates shared axes of between-individual covariance, and
+`unique()` estimates trait-specific variation left after those shared axes.
+The current draft covers the Gaussian version only. It does not yet teach
+non-Gaussian reaction norms, calibrated intervals for slope summaries, or the
+broader model-choice path for deciding when this random-regression model is
+appropriate.
 
 ## Setup
 
@@ -529,9 +529,9 @@ For this model, the primary reportable pieces are:
 - diagnostics from `check_gllvmTMB()` before interpreting covariance or
   repeatability.
 
-This article is a worked example for the Gaussian RE-12 capability. It
-does not establish calibrated confidence intervals for slope variances,
-slope correlations, intercept-slope correlations, repeatability curves, or
+This draft demonstrates the Gaussian random-regression model only. It does not
+establish calibrated confidence intervals for slope variances, slope
+correlations, intercept-slope correlations, repeatability curves, or
 non-Gaussian augmented `unique()` support.
 
 ## References

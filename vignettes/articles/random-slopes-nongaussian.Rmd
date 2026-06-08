@@ -35,7 +35,7 @@ knitr::opts_chunk$set(
 
 A reaction norm is a slope: how a trait responds to an environmental
 gradient. The ordinary individual-level behavioural reaction-norm article is
-now the public Gaussian RE-12 worked example for
+now an internal Gaussian draft for
 `latent(1 + x | individual, d = K) + unique(1 + x | individual)`, while plain
 non-structured bare-bar `(1 + x | individual)` random slopes remain reserved.
 This article covers a different, internal technical surface: **structured**

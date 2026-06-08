@@ -14678,3 +14678,55 @@ Interpretation:
 - Next article priority from Pat: a compact diagnostics / trust-this-fit article
   around `check_gllvmTMB()` and diagnostic attributes before restoring broader
   JSDM / phylogenetic / cross-lineage public paths.
+
+## 2026-06-08 16:45 MDT — rendered-reader rejection of reaction-norm public surface
+
+Context:
+
+- Maintainer reviewed the rendered
+  `pkgdown-site/articles/random-regression-reaction-norms.html` page and rejected
+  the public surface: the opening paragraph still used validation-ledger language
+  (`RE-12`, `IN`, `PARTIAL`, `PLANNED`, `REJECTED`) that makes no sense to a
+  first-time article reader.
+- Final decision for this PR: keep `random-regression-reaction-norms`,
+  `random-slopes-nongaussian`, and `cross-lineage-coevolution` buildable but
+  internal. Do not advertise any of the three in the public Model guide yet.
+
+Files touched in the correction:
+
+- `_pkgdown.yml`
+- `README.md`
+- `NEWS.md`
+- `ROADMAP.md`
+- `docs/design/61-capability-status.md`
+- `docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-08-behavioural-reaction-norm-article.md`
+- `vignettes/articles/random-regression-reaction-norms.Rmd`
+
+Correction made:
+
+- Moved `random-regression-reaction-norms` from public Model guide to the
+  internal article bucket in `_pkgdown.yml`.
+- Changed the article YAML to `tier: 3` and added an internal-draft note.
+- Replaced the rendered opening's validation-ledger paragraph with plain prose:
+  Gaussian only; non-Gaussian reaction norms, calibrated intervals, and
+  model-choice framing are not ready yet.
+- Synced README, NEWS, ROADMAP, capability status, and article gate matrix to
+  describe the article as a buildable internal draft.
+
+Commands and outcomes after this correction:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE); pkgdown::build_article("articles/random-slopes-nongaussian", quiet = FALSE, new_process = FALSE); pkgdown::build_articles_index(pkg = pkgdown::as_pkgdown("."))'`
+  -> rebuilt the reaction-norm page, structured-slope page, and article index.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/random-regression-reaction-norms", quiet = FALSE, new_process = FALSE)'`
+  -> rerendered the final one-line prose fix.
+- `rg -n "RE-12|PARTIAL|PLANNED|REJECTED|Scope boundary" pkgdown-site/articles/random-regression-reaction-norms.html vignettes/articles/random-regression-reaction-norms.Rmd`
+  -> no hits.
+- `rg -n "Behavioural reaction norms|Structured random slopes|Cross-lineage coevolution|random-regression-reaction-norms|random-slopes-nongaussian|cross-lineage-coevolution" pkgdown-site/articles/index.html pkgdown-site/index.html pkgdown-site/articles/morphometrics.html`
+  -> no hits; the rendered public navbar / article index no longer links any of
+  the three advanced internal drafts.
+- `git diff --check`
+  -> clean.

@@ -6,10 +6,12 @@
 
 ## 1. Goal
 
-Make the random-regression / reaction-norm article public-ready after the
-Gaussian ordinary `latent + unique` random-slope engine landed. The article
-needed a normal behavioural-syndrome example, not deprecated `phylo_slope()` /
-`animal_slope()` syntax or structured dependence as a substitute.
+Make the random-regression / reaction-norm article buildable and reviewable
+after the Gaussian ordinary `latent + unique` random-slope engine landed. The
+article needed a normal behavioural-syndrome example, not deprecated
+`phylo_slope()` / `animal_slope()` syntax or structured dependence as a
+substitute. The rendered reader review later kept it internal because the
+opening still used validation-ledger language.
 
 ## 2. Implemented
 
@@ -20,7 +22,7 @@ needed a normal behavioural-syndrome example, not deprecated `phylo_slope()` /
 - Added a fixture gate:
   `tests/testthat/test-example-behavioural-reaction-norm.R`.
 - Rewrote `vignettes/articles/random-regression-reaction-norms.Rmd` as a
-  Tier-1 public worked example with:
+  buildable internal worked-example draft with:
   - `individual` as the unit;
   - `session_id` as the repeated occasion / `unit_obs`;
   - long and wide `gllvmTMB()` paths;
@@ -29,10 +31,10 @@ needed a normal behavioural-syndrome example, not deprecated `phylo_slope()` /
   - fitted-vs-truth recovery figure;
   - repeatability curves across temperature;
   - explicit non-Gaussian augmented-`unique()` guard wording.
-- Promoted the article into `_pkgdown.yml` Model guide navigation.
+- Kept the article buildable but internal after rendered-reader review.
 - Updated README, NEWS, ROADMAP, capability status, article gate matrix, and
-  the example-object contract so the public surface no longer says this
-  article is internal.
+  the example-object contract so the public surface does not advertise this
+  article before the prose gate passes.
 
 ## 3. Files Changed
 
@@ -76,7 +78,7 @@ adding augmented session-level slopes.
 
 Rationale: the scientific target is individual intercept/slope covariance; the
 occasion tier supplies repeated-session structure without overloading the first
-public article.
+worked-example draft.
 
 Decision: use article-local plotting data for `unit_slope` recovery.
 
@@ -136,8 +138,8 @@ guarded outside this slice and already covered by
 
 ## 7. Roadmap Tick
 
-`ROADMAP.md` now marks `random-regression-reaction-norms` as promoted to the
-public Model guide after #466, with the Gaussian article complete and
+`ROADMAP.md` now marks `random-regression-reaction-norms` as a buildable
+internal draft after #466, with the Gaussian example object in place and
 non-Gaussian augmented `unique()` remaining guarded.
 
 ## 7a. GitHub Issue Ledger
@@ -199,32 +201,34 @@ truth recovery, so the article object is not just prose.
 ## 11. Public-Surface Review Addendum
 
 After maintainer HTML review, Pat, Rose, and Fisher re-read the article lane.
-The outcome was conservative:
+The first addendum hid the structured-slope and cross-lineage articles but left
+the reaction-norm article public. A second rendered-reader review rejected that
+surface because the opening still read like a validation ledger. The final
+outcome is more conservative:
 
-- keep `random-regression-reaction-norms` public;
+- keep `random-regression-reaction-norms` buildable but internal;
 - hide `random-slopes-nongaussian` and `cross-lineage-coevolution` from the
   public Model guide for now;
-- keep both hidden articles buildable as internal workflows, because the engine
-  evidence remains real but the reader path is premature.
+- keep all three hidden articles buildable as internal workflows, because the
+  engine evidence remains real but the reader path is premature.
 
 Edits made in this addendum:
 
-- `_pkgdown.yml` now lists only `morphometrics`,
-  `random-regression-reaction-norms`, and `joint-sdm` under the public Model
-  guide; the structured-slope and cross-lineage articles moved to the internal
-  bucket.
+- `_pkgdown.yml` now lists only `morphometrics` and `joint-sdm` under the
+  public Model guide; reaction norms, structured slopes, and cross-lineage moved
+  to the internal bucket.
 - The reaction-norm article now spells the long and wide formulas directly in
   the `gllvmTMB()` calls, glosses `latent()` / `unique()` before the scope
   boundary, explains `Sigma_unique$s`, and states that slope variances,
   slope correlations, intercept-slope correlations, and repeatability curves
   are point-estimate/recovery summaries, not calibrated intervals.
-- The structured random-slope article no longer says the reaction-norm article
-  is still internal.
+- The structured random-slope article now says the reaction-norm article is an
+  internal Gaussian draft, not a public worked example.
 - The cross-lineage article now frames the null comparison and fixed-`rho`
   grid as diagnostic/sensitivity workflow, not a calibrated test or profile
   likelihood.
 - README, NEWS, capability status, validation-debt register, Design 65, and the
-  article-gate matrix were synced to describe those two articles as internal
+  article-gate matrix were synced to describe the three articles as internal
   workflows.
 
 Additional checks:
@@ -236,4 +240,5 @@ Additional checks:
 - `pkgdown::check_pkgdown()` returned `No problems found`.
 - Rebuilt `pkgdown-site/articles/index.html`.
 - Rendered HTML scan confirmed the public article navbar / index no longer
-  lists structured random slopes or cross-lineage coevolution.
+  lists behavioural reaction norms, structured random slopes, or cross-lineage
+  coevolution.

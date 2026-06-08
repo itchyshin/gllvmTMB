@@ -24,26 +24,25 @@
   evidence. OUT: bare `(1 + x | g)` random slopes remain reserved, and delta /
   hurdle families stay outside this slope-covariance lane (FAM-17 / MIX-10).
 
-## Behavioural reaction-norm article promoted to the public model guide (#466, 2026-06-08)
+## Behavioural reaction-norm article kept internal pending reader review (#466, 2026-06-08)
 
-* The `random-regression-reaction-norms` article is now a Tier-1 worked
-  behavioural-syndrome example. It ships a reproducible example object with
-  `individual` as the unit, `session_id` as the repeated occasion, long and
-  wide `gllvmTMB()` formulas, diagnostics from `check_gllvmTMB()`, an
-  augmented-covariance recovery figure, and temperature-specific repeatability
-  curves. IN: Gaussian ordinary `latent + unique` random slopes under RE-12.
-  PARTIAL: non-Gaussian ordinary `latent()` random slopes remain smoke evidence
-  only. PLANNED: non-Gaussian augmented `unique()` random slopes. OUT: delta /
-  hurdle families and phylogenetic or spatial slope fields for this
-  individual-level reaction-norm article lane.
+* The `random-regression-reaction-norms` article is a buildable internal
+  behavioural-syndrome draft, not a public Model guide article yet. It ships a
+  reproducible example object with `individual` as the unit, `session_id` as
+  the repeated occasion, long and wide `gllvmTMB()` formulas, diagnostics from
+  `check_gllvmTMB()`, an augmented-covariance recovery figure, and
+  temperature-specific repeatability curves. The current draft covers Gaussian
+  ordinary `latent + unique` random slopes; non-Gaussian augmented `unique()`,
+  calibrated intervals for slope summaries, and the plain-language reader path
+  remain open before promotion.
 
 ## Structured random-slope article kept internal pending the phylogenetic reader path (#341, 2026-06-08)
 
 * The `random-slopes-nongaussian` article still records the live structured
   random-slope boundary, but it is kept out of the public model guide while the
   phylogenetic GLLVM and structured-dependence reader path matures. The
-  ordinary reaction-norm article is now the public behavioural-syndrome example
-  and does not use the legacy single-variance slope keywords. IN: one
+  ordinary reaction-norm article is now a separate internal behavioural-syndrome
+  draft and does not use the legacy single-variance slope keywords. IN: one
   structured random slope (`s = 1`) remains a point-estimate / recovery workflow
   across the covered phylogenetic and spatial grid (PHY-11..PHY-18,
   SPA-08..SPA-10), and Gaussian `phylo_dep(1 + x1 + x2 | species)` remains

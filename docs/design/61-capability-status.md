@@ -27,14 +27,14 @@ covered capability:
   `latent(1 + x | unit, d = K) + unique(1 + x | unit)` / long-form augmented
   decomposition now fits and extracts `Lambda_aug Lambda_aug^T`,
   `Psi_B,aug`, and their total covariance under RE-12. The behavioural
-  reaction-norm article is now public as a Gaussian point-estimate/recovery
-  worked example; non-Gaussian augmented `unique()` remains guarded.
+  reaction-norm article is buildable but internal while its plain-language
+  reader path is under review; non-Gaussian augmented `unique()` remains
+  guarded.
 
-The practical consequence is simple: the public article lane now teaches the
-ordinary Gaussian individual-level reaction-norm example first. Structured
-random slopes for `s = 1`, Gaussian structured `s = 2`, and non-Gaussian
-structured `s >= 2` stay in the internal structured-dependence lane until the
-phylogenetic GLLVM reader path is ready.
+The practical consequence is simple: the public article lane stays narrow.
+Ordinary Gaussian individual-level reaction norms, structured random slopes for
+`s = 1`, Gaussian structured `s = 2`, and non-Gaussian structured `s >= 2` stay
+internal until their reader paths are ready.
 
 ## Random-Slope Capability Table
 
@@ -52,7 +52,7 @@ depth; **blocked** = needs a mathematical derivation or different scope.
 | `phylo_dep(1 + x | species)` | covered | PHY-18 | Full unstructured 2T x 2T intercept+slope covariance across traits. |
 | `phylo_dep(1 + x1 + x2 | species)` under Gaussian | covered | RE-03 | Gaussian full-unstructured multi-slope path; `s = 2` validated. |
 | `phylo_dep(..., s >= 2)` under non-Gaussian families | partial | RE-03 | Runtime guard remains; feasibility sweeps continue but this is not admitted. |
-| `latent(1 + x | unit, d = K) + unique(1 + x | unit)` ordinary unit-tier Gaussian reaction norm | partial | RE-12 | Gaussian `latent + unique` decomposition implemented with `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`, deterministic recovery evidence, and a public behavioural-syndrome worked example; non-Gaussian augmented `unique()` remains guarded. |
+| `latent(1 + x | unit, d = K) + unique(1 + x | unit)` ordinary unit-tier Gaussian reaction norm | partial | RE-12 | Gaussian `latent + unique` decomposition implemented with `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`, deterministic recovery evidence, and a buildable internal behavioural-syndrome draft; non-Gaussian augmented `unique()` remains guarded. |
 | `spatial_unique(1 + x | coords)` / `spatial_indep(1 + x | coords)` | covered | SPA-08 | Two-field spatial intercept+slope path; `indep` pins cross-field correlation to zero. |
 | `spatial_latent(1 + x | coords, d = 1)` | covered | SPA-09 | Block-diagonal reduced-rank spatial slope across the core families. |
 | `spatial_dep(1 + x | coords)` | covered | SPA-10 | Full unstructured 2T x 2T SPDE field covariance; hard cells require large validation fixtures. |
@@ -73,7 +73,7 @@ n_traits` is valid and tested, while `d > n_traits` aborts.
 
 | Article | Status after this sync | Return / keep-public condition |
 |---|---|---|
-| `random-regression-reaction-norms` | public Gaussian behavioural reaction-norm article | Uses `unit = "individual"` and `unit_obs = "session_id"` with a shipped long/wide example object, diagnostics, augmented covariance recovery, repeatability curves, and an explicit non-Gaussian augmented-`unique()` guard. |
+| `random-regression-reaction-norms` | internal Gaussian behavioural reaction-norm draft | Uses `unit = "individual"` and `unit_obs = "session_id"` with a shipped long/wide example object, diagnostics, augmented covariance recovery, and repeatability curves. Return after the opening prose, model-choice framing, and uncertainty caveats pass a plain-language Pat/Rose/Fisher review. |
 | `random-slopes-nongaussian` | internal structured-grid continuation | Return after the phylogenetic GLLVM and structured-dependence reader path is public. Must cite PHY-11..PHY-18, SPA-08..SPA-10, ANI-11..ANI-12, RE-03, FAM-17, and MIX-10; heavy cells may stay `eval = FALSE`. Keep it separate from the ordinary individual reaction-norm article. |
 | `cross-lineage-coevolution` | internal Design 65 C2 workflow | Return after `phylogenetic-gllvm` is public and the article can read as a biological worked example rather than the first explanation of dense kernels, `Gamma`, and supplied `rho`. |
 | `phylogenetic-gllvm` | still internal | Can later link to the random-regression article after its own phylo/non-phylo split and helper example pass. |

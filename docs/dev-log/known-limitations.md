@@ -48,7 +48,8 @@ delta_gamma, ordinal_probit. Mixed-family fits are accepted via
 
 ### Inference
 
-- ML / REML point estimates with Laplace approximation under TMB.
+- ML point estimates by default, plus the guarded Gaussian-only
+  `gllvmTMB(REML = TRUE)` pilot, with Laplace approximation under TMB.
 - Profile-likelihood confidence intervals for derived quantities
   (repeatability, communality, phylogenetic signal, pairwise
   correlations).

@@ -102,9 +102,10 @@ Highest-impact first, given our M3+ trajectory:
 
 - **#6 — Sparse Cholesky reordering.** CHOLMOD's default is
   probably already fine; confirm before optimising.
-- **#1 — AI-REML.** Wait for REML to land first; the gain depends
-  on the outer-loop Newton step's dominance of runtime, which TMB
-  may already obviate via autodiff.
+- **#1 — AI-REML.** Revisit only after the narrow Gaussian REML pilot
+  has enough target-explicit runtime evidence; the gain depends on the
+  outer-loop Newton step's dominance of runtime, which TMB may already
+  obviate via autodiff.
 
 **Tier C — defer.**
 

@@ -119,6 +119,70 @@
   out
 }
 
+.gllvmTMB_b_fix_values <- function(fit) {
+  n <- length(fit$X_fix_names %||% character(0))
+  if (n == 0L) return(numeric(0))
+  fixed <- fit$opt$par[names(fit$opt$par) == "b_fix"]
+  if (length(fixed) >= n) {
+    return(unname(as.numeric(fixed[seq_len(n)])))
+  }
+  par_list <- tryCatch(
+    fit$tmb_obj$env$parList(fit$opt$par),
+    error = function(e) NULL
+  )
+  if (!is.null(par_list$b_fix) && length(par_list$b_fix) >= n) {
+    return(unname(as.numeric(par_list$b_fix[seq_len(n)])))
+  }
+  random <- fit$sd_report$par.random
+  idx <- which(names(random) == "b_fix")
+  if (length(idx) >= n) {
+    return(unname(as.numeric(random[idx[seq_len(n)]])))
+  }
+  rep(NA_real_, n)
+}
+
+.gllvmTMB_b_fix_se <- function(fit) {
+  n <- length(fit$X_fix_names %||% character(0))
+  if (n == 0L) return(numeric(0))
+  if (is.null(fit$sd_report)) return(rep(NA_real_, n))
+  fixed_sum <- tryCatch(
+    suppressWarnings(summary(fit$sd_report, "fixed")),
+    error = function(e) NULL
+  )
+  if (!is.null(fixed_sum)) {
+    rows <- grepl("^b_fix$", rownames(fixed_sum))
+    if (sum(rows) >= n) {
+      return(unname(as.numeric(fixed_sum[rows, "Std. Error"][seq_len(n)])))
+    }
+  }
+  random <- fit$sd_report$par.random
+  diag_random <- fit$sd_report$diag.cov.random
+  idx <- which(names(random) == "b_fix")
+  if (length(idx) >= n && length(diag_random) >= max(idx)) {
+    return(sqrt(unname(as.numeric(diag_random[idx[seq_len(n)]]))))
+  }
+  rep(NA_real_, n)
+}
+
+.gllvmTMB_b_fix_table <- function(fit) {
+  n <- length(fit$X_fix_names %||% character(0))
+  if (n == 0L) {
+    return(data.frame(
+      term = character(0),
+      Estimate = numeric(0),
+      Std.Err = numeric(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+  data.frame(
+    term = fit$X_fix_names,
+    Estimate = .gllvmTMB_b_fix_values(fit),
+    Std.Err = .gllvmTMB_b_fix_se(fit),
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+}
+
 ## Apply the PER-ROW inverse link to a linear-predictor vector, dispatching on
 ## `(family_id, link_id)` exactly as the per-family draw helper does for the
 ## conditional mean. A mixed-family fit carries one (family_id, link_id) per
@@ -341,8 +405,10 @@ print.gllvmTMB_multi <- function(x, ...) {
     print(link_show, row.names = FALSE)
   }
   if (!is.null(x$opt)) {
+    estimator <- x$estimator %||% if (isTRUE(x$REML)) "REML" else "ML"
     cat(sprintf(
-      "  log L = %.3f   convergence = %d\n",
+      "  %s log L = %.3f   convergence = %d\n",
+      estimator,
       -x$opt$objective,
       x$opt$convergence
     ))
@@ -390,39 +456,22 @@ summary.gllvmTMB_multi <- function(object, ...) {
     unit_col = object$unit_col,
     unit_obs_col = object$unit_obs_col,
     cluster_col = object$cluster_col %||% object$species_col,
+    estimator = object$estimator %||% if (isTRUE(object$REML)) "REML" else "ML",
     logLik = -object$opt$objective,
     convergence = object$opt$convergence
   )
 
   ## Fixed effects with SE
-  if (!is.null(object$sd_report)) {
-    pf <- summary(object$sd_report, "fixed")
-    bfix_rows <- grepl("^b_fix$", rownames(pf))
-    if (any(bfix_rows)) {
-      bfix <- pf[bfix_rows, , drop = FALSE]
-      ## In case of duplicate row names (multiple parameter blocks), reduce
-      ## to the unique fixed-effect entries by aligning to X_fix_names.
-      bfix <- bfix[
-        seq_len(min(nrow(bfix), length(object$X_fix_names))),
-        ,
-        drop = FALSE
-      ]
-      df <- data.frame(
-        term = object$X_fix_names[seq_len(nrow(bfix))],
-        Estimate = bfix[, "Estimate"],
-        Std.Err = bfix[, "Std. Error"],
-        stringsAsFactors = FALSE,
-        row.names = NULL
-      )
-      ## Mixed-family fits get a `link` column so each row's scale is
-      ## explicit (probit / log / identity / logit / ...). Single-family
-      ## fits suppress the column to avoid clutter.
-      fids_obj <- object$tmb_data$family_id_vec
-      if (!is.null(fids_obj) && length(unique(fids_obj)) > 1L) {
-        df$link <- .per_fixef_link(object)[seq_len(nrow(df))]
-      }
-      out$fixef <- df
+  df <- .gllvmTMB_b_fix_table(object)
+  if (nrow(df) > 0L) {
+    ## Mixed-family fits get a `link` column so each row's scale is
+    ## explicit (probit / log / identity / logit / ...). Single-family
+    ## fits suppress the column to avoid clutter.
+    fids_obj <- object$tmb_data$family_id_vec
+    if (!is.null(fids_obj) && length(unique(fids_obj)) > 1L) {
+      df$link <- .per_fixef_link(object)[seq_len(nrow(df))]
     }
+    out$fixef <- df
   }
   out$Sigma_B <- extract_Sigma_B(object)
   out$Sigma_W <- extract_Sigma_W(object)
@@ -473,7 +522,12 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
     if (length(used_labels)) {
       cat("  Covstructs:", paste(used_labels, collapse = ", "), "\n")
     }
-    cat(sprintf("  log L = %.3f   convergence = %d\n", logLik, convergence))
+    cat(sprintf(
+      "  %s log L = %.3f   convergence = %d\n",
+      estimator,
+      logLik,
+      convergence
+    ))
   })
 
   ## Fixed-effects table — one row per term, named. For mixed-family
@@ -560,7 +614,11 @@ print.summary.gllvmTMB_multi <- function(x, digits = 3, ...) {
 #' @export
 logLik.gllvmTMB_multi <- function(object, ...) {
   ll <- -object$opt$objective
-  attr(ll, "df") <- length(object$opt$par)
+  attr(ll, "df") <- length(object$opt$par) +
+    if (isTRUE(object$REML)) length(object$X_fix_names %||% character(0)) else 0L
+  attr(ll, "estimator") <- object$estimator %||%
+    if (isTRUE(object$REML)) "REML" else "ML"
+  attr(ll, "REML") <- isTRUE(object$REML)
   ## nobs = likelihood-contributing rows. Under the default response="drop"
   ## every fitted row is observed, so this equals length(y) (unchanged). Under
   ## response="include" the masked rows carry a sentinel y gated out of the
@@ -664,21 +722,11 @@ tidy.gllvmTMB_multi <- function(
 ) {
   effects <- match.arg(effects)
   if (effects == "fixed") {
-    if (is.null(x$sd_report)) {
-      cli::cli_abort("Fit object has no sdreport; cannot tidy fixed effects.")
-    }
-    pf <- summary(x$sd_report, "fixed")
-    rows <- grepl("^b_fix$", rownames(pf))
-    bfix <- pf[rows, , drop = FALSE]
-    bfix <- bfix[
-      seq_len(min(nrow(bfix), length(x$X_fix_names))),
-      ,
-      drop = FALSE
-    ]
+    bfix <- .gllvmTMB_b_fix_table(x)
     out <- data.frame(
-      term = x$X_fix_names[seq_len(nrow(bfix))],
-      estimate = bfix[, "Estimate"],
-      std.error = bfix[, "Std. Error"],
+      term = bfix$term,
+      estimate = bfix$Estimate,
+      std.error = bfix$Std.Err,
       stringsAsFactors = FALSE,
       row.names = NULL
     )
@@ -1068,7 +1116,7 @@ simulate.gllvmTMB_multi <- function(
 .simulate_eta_unconditional <- function(fit) {
   ## Fixed-effects part: eta_fix = X b_fix
   X <- fit$tmb_data$X_fix
-  b_fix <- fit$opt$par[names(fit$opt$par) == "b_fix"]
+  b_fix <- .gllvmTMB_b_fix_values(fit)
   eta <- as.numeric(X %*% b_fix)
 
   trait_id <- fit$tmb_data$trait_id + 1L # 1-indexed
@@ -1212,7 +1260,7 @@ sanity_multi <- function(object, gradient_thresh = 1e-2, se_thresh = 100) {
   ## 4. Largest fixed-effect SE
   se <- if (sdreport_ok) {
     tryCatch(
-      suppressWarnings(summary(object$sd_report, "fixed"))[, "Std. Error"],
+      .gllvmTMB_b_fix_se(object),
       error = function(e) NA_real_
     )
   } else {
@@ -1345,7 +1393,7 @@ predict.gllvmTMB_multi <- function(
     }
 
     X_new <- stats::model.matrix(object$formula, nd)
-    bfix <- object$opt$par[grepl("^b_fix", names(object$opt$par))]
+    bfix <- .gllvmTMB_b_fix_values(object)
     eta <- as.numeric(X_new %*% bfix[seq_len(ncol(X_new))])
 
     ## Random-effect contributions for KNOWN sites / species ----------------

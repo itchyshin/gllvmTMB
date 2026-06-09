@@ -12,6 +12,7 @@ gllvmTMB_wide(
   phylo_vcv = NULL,
   formula_extra = NULL,
   weights = NULL,
+  REML = FALSE,
   ...
 )
 }
@@ -58,6 +59,10 @@ per-cell. Values must be non-negative and finite (NA-aligned cells
 excepted). For binomial trial-count semantics use an explicit long-data
 \code{\link[=gllvmTMB]{gllvmTMB()}} call with \code{weights = n_trials} instead.
 }}
+
+\item{REML}{Logical; passed to \code{\link[=gllvmTMB]{gllvmTMB()}}. The current REML pilot is
+Gaussian-only and does not support observation weights, so
+\code{gllvmTMB_wide(..., REML = TRUE, weights = ...)} fails loudly.}
 
 \item{...}{Passed to \code{\link[=gllvmTMB]{gllvmTMB()}}.}
 }

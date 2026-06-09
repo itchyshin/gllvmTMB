@@ -385,17 +385,18 @@ Row-owner: **Emmy** (S3 surface) / **Curie** (test integration).
 | MIS-30 | One ordered missing predictor via exact K-state summation | `covered` | `test-missing-predictor-ordered.R`, `test-missing-predictor-categorical.R` | Phase 5b / Design 68. Supports one ordered factor or integer-score predictor with fixed-effect cumulative-logit `impute_model(..., family = cumulative_logit())`; reports conditional expected score and per-level probabilities. Grouped / structured ordered predictor models fail loudly. |
 | MIS-31 | One unordered categorical missing predictor via exact K-state softmax summation | `covered` | `test-missing-predictor-categorical.R` | Phase 5c / Design 68. Supports one unordered factor / character / integer-score predictor with fixed-effect baseline-softmax `impute_model(..., family = categorical())`; reports modal category and per-level probabilities; likelihood is invariant to baseline-level choice. |
 | MIS-32 | Deferred missing-data extensions beyond the shipped v1 layer | `blocked` | n/a | Multiple simultaneous `mi()` terms; EM/profile/REML missing-data engines; simulated imputations; MI pooling; structured discrete predictor models; spatial / animal / relatedness covariate models; joint response-covariate fields; bounded / count / lognormal / Gamma missing-predictor families; dense known sampling-covariance matrices with partial multivariate response rows; MNAR sensitivity and bootstrap-SE cross-checks. |
+| MIS-33 | Gaussian-only REML pilot via `gllvmTMB(REML = TRUE)` | `covered` | `test-gaussian-reml.R` | Gaussian ordinary random-intercept and Gaussian `latent() + unique()` fits integrate `b_fix` through TMB's Laplace random block and match `glmmTMB(..., REML = TRUE)` log-likelihoods and df metadata. Guarded / deferred: non-Gaussian REML, observation weights, retained missing responses, `mi()` predictor models, and fixed-effect profile CIs under REML. |
 
 ## Honest scope statement
 
-**Current tally (v0.2.0 tag-prep, 2026-06-03) — recounted from
+**Current tally (Gaussian REML pilot, 2026-06-09) — recounted from
 the actual per-row status column:**
 
-- **193 capability rows** (the register grew from 102 rows at
+- **194 capability rows** (the register grew from 102 rows at
   Phase 0A close as the kernel/coevolution, augmented-slope,
   cluster2, missing-data, plot/extractor, and diagnostic
   sections were added).
-- **166 `covered`** (86 %): test evidence exists at the depth
+- **167 `covered`** (86 %): test evidence exists at the depth
   advertised.
 - **20 `partial`** (10 %): tests exist but coverage is
   shallower than advertised — every remaining `partial` row
@@ -421,7 +422,7 @@ the actual per-row status column:**
   safeguard on the public surface.
 
 The headline therefore moved **40/48/0/14 over 102 rows
-(Phase 0A) → 166/20/0/7 over 193 rows (v0.2.0)**. No
+(Phase 0A) → 167/20/0/7 over 194 rows (Gaussian REML pilot)**. No
 `partial` or `blocked` row is a v0.2.0 correctness blocker;
 they are honestly-marked deferrals (power-study coverage,
 mixture / gengamma families, proportional meta-V,

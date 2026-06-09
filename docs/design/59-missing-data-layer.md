@@ -49,8 +49,8 @@ This missing-data layer is the deliberate **alternative path**: **in-model, freq
 
 ## 4. Locked design decisions — v1 surface is boring & sharp (Codex)
 
-- **Estimator ⟂ engine — but v1 ships only the clean defaults.** **`estimator` is NOT a public v1 argument** — `ML` is the internal default; the public `estimator=` arg (and REML) is **deferred** until REML's likelihood/extractor boundary is proven (avoids a one-legal-value public argument — Codex review #6; open decision §10). V1 **engine is `laplace` only**; `"em"` (Gaussian special case) and `"profile"` are **reserved names, not yet accepted**. **No MI engine in `miss_control()`** (pigauto is the separate §1b path).
-- **Surface (the whole v1 API):** `missing = miss_control(response = "drop"|"include", predictor = "fail"|"model", engine = "laplace")` (`response="drop"` = current complete-case; `"include"` = observed-response mask), plus the **`mi(x)`** formula token and `impute = list(x = x ~ covariate-model)`. (No public `estimator=` arg in v1 — ML is the internal default.)
+- **Estimator ⟂ missing-data engine — but v1 ships only the clean defaults.** **`estimator` is NOT a `miss_control()` argument** — estimator choice belongs to `gllvmTMB()` itself. `ML` is the default; the current `gllvmTMB(REML = TRUE)` pilot is Gaussian-only and deliberately rejects retained missing responses and `mi()` predictor models (MIS-33). V1 missing-data **engine is `laplace` only**; `"em"` (Gaussian special case) and `"profile"` are **reserved names, not yet accepted**. **No MI engine in `miss_control()`** (pigauto is the separate §1b path).
+- **Surface (the whole v1 API):** `missing = miss_control(response = "drop"|"include", predictor = "fail"|"model", engine = "laplace")` (`response="drop"` = current complete-case; `"include"` = observed-response mask), plus the **`mi(x)`** formula token and `impute = list(x = x ~ covariate-model)`. (No public `estimator=` arg in `miss_control()`.)
 - **Output — responses and predictors are different objects (Codex):** missing **responses** are *predicted/reconstructed*, not latent covariates → **`predict_missing()`** / fitted-row reconstruction; **`imputed()`** is reserved for missing **predictors** (conditional modes/EBLUP + SE). `simulate_imputed()` is **deferred to MD5 / Phase 5** and, if shipped, means **Gaussian-approximation or parametric-bootstrap draws** (never posterior-like). gllvmTMB adds `imputed_traits()`, `imputed_predictors()`. EBLUP/empirical-best-prediction language, never "posterior".
 - **Missing responses:** `is_y_observed` **mask** + full response index (not deletion); likelihood gated `if (is_y_observed[i])`.
 - **Missing predictors:** `PARAMETER_VECTOR(x_mis)` → `x_full` (observed + latent) in `eta`; covariate-model likelihood added; `x_mis` joins the TMB `random` set, integrated out.
@@ -145,7 +145,7 @@ In TMB: declare `b`, `b_x`, `x_mis` in the `random` set; Laplace replaces the in
 ## 10. Open decisions (to confirm at approval)
 
 1. **Shared-layer hosting** — shared **design + vocabulary + tests now**; **duplicated helper code through Phase 2**; **extract a shared package only after Phase 2** proves the surface. (Codex-endorsed.)
-2. **REML scope** — **deferred from the v1 public surface**; ML is the clean default. Revisit only after Phase 0 proves the exact Gaussian-only boundary where REML's likelihood + extractors are well-defined.
+2. **REML scope** — `gllvmTMB(REML = TRUE)` is now limited to the proven Gaussian-only boundary: unweighted, default response dropping, no `mi()` predictor model, with fixed effects integrated as a TMB random block (MIS-33). REML missing-data engines remain deferred.
 3. **Ambitious joint field** — ship the eigenvector-orthogonalized form from Phase 4, or defer the joint field until the independent default is proven?
 
 ## 11. Evidence base (curated; anchors in **bold**)

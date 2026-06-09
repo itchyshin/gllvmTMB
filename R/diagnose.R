@@ -14,7 +14,7 @@
   })
   se <- if (!is.null(object$sd_report)) {
     tryCatch(
-      suppressWarnings(summary(object$sd_report, "fixed"))[, "Std. Error"],
+      .gllvmTMB_b_fix_se(object),
       error = function(e) NA_real_
     )
   } else {

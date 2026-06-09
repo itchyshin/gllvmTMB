@@ -1,5 +1,6 @@
 ---
 title: "Joint species distribution model (binary GLLVM)"
+tier: 3 # internal direct-link page until the binary-JSDM reader path has a light public fixture
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -17,11 +18,18 @@ knitr::opts_chunk$set(
   fig.width = 6, fig.height = 4,
   fig.align = "center",
   cache    = FALSE,
-  eval     = TRUE,
+  eval     = FALSE,
   message  = FALSE,
   warning  = FALSE
 )
 ```
+
+> **Internal direct-link note.** This page records the current binary-JSDM
+> syntax and interpretation path, but it is not part of the public article
+> dropdown while the first-stop ecology example is being simplified. Start with
+> [Morphometrics](morphometrics.html), [Choosing latent rank](model-selection-latent-rank.html),
+> [Response families](response-families.html), and [Can I trust this fit?](fit-diagnostics.html)
+> for the reader-ready public path.
 
 A reduced-rank binary GLLVM compresses a many-column 0/1 occurrence
 matrix into a few latent factors. The classic ecology version is a

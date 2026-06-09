@@ -15014,3 +15014,98 @@ Deliberately not run:
 - No pkgdown article build: no public article was changed in this slice.
 - No C++ template edit was made; the likelihood/plumbing change is R-side
   `MakeADFun(random = ...)` dispatch only.
+
+## 2026-06-09 10:53 MDT — Public article navigation and Gaussian REML article note
+
+Scope:
+
+- Merged PR #469, `feat: add Gaussian REML pilot`, into `main`.
+- Created branch `codex/public-article-nav-reml-2026-06-09` from updated
+  `main` for the documentation/navigation slice.
+- Narrowed the public Articles dropdown to the reader-ready path:
+  Morphometrics, Choosing latent rank, Covariance and correlation, Formula
+  keyword grid, Response families, Can I trust this fit?, Convergence and
+  start values, Common pitfalls, and Handling missing data.
+- Kept JSDM, profile-CI, troubleshooting-profile, cross-lineage,
+  random-regression, random-slopes, and other draft / technical pages buildable
+  under an explicitly labelled `Internal drafts and technical notes` article
+  index section, but removed them from the dropdown.
+- Added a Gaussian-only `REML = TRUE` refit section to
+  `model-selection-latent-rank.Rmd`, tied to validation row MIS-33.
+- Marked `joint-sdm.Rmd` as Tier 3 / internal direct-link and made it a
+  light-build page (`eval = FALSE`) so hidden article code no longer blocks a
+  full pkgdown rebuild.
+
+Files touched:
+
+- `_pkgdown.yml`
+- `vignettes/articles/model-selection-latent-rank.Rmd`
+- `vignettes/articles/joint-sdm.Rmd`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-09-public-article-nav-reml.md`
+
+Evidence:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --state open --repo itchyshin/gllvmTMB --limit 30`
+  -> no open PRs after #469 was merged.
+  `git log --all --oneline --since="6 hours ago"`
+  -> `a29c4a4 feat: add Gaussian REML pilot (#469)`, the local pre-merge
+  `561cc9f`, power-pilot background commits, and
+  `87bfc28 docs: add latent-rank model selection article`.
+- Merge:
+  `/opt/homebrew/bin/gh pr merge 469 --repo itchyshin/gllvmTMB --squash --delete-branch`
+  -> success.
+  `/opt/homebrew/bin/gh pr view 469 --repo itchyshin/gllvmTMB --json state,mergedAt,mergeCommit,url`
+  -> `state = MERGED`, `mergeCommit = a29c4a4`, merged at
+  `2026-06-09T16:14:53Z`.
+  `git fetch origin main && git pull --ff-only`
+  -> fast-forwarded `main` to `a29c4a4`.
+- Branch:
+  `git checkout -b codex/public-article-nav-reml-2026-06-09`
+  -> success.
+- Rendered touched article:
+  `PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::load_all(".", quiet = TRUE); pkgdown::build_article("articles/model-selection-latent-rank", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> wrote `pkgdown-site/articles/model-selection-latent-rank.html`.
+  Earlier attempts documented the environment constraints:
+  `Rscript` was not on PATH, and pkgdown could not see Pandoc until
+  `/opt/homebrew/bin` was prepended.
+- Full pkgdown rebuild:
+  `PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::build_site(preview = FALSE, lazy = FALSE, install = TRUE, new_process = TRUE)'`
+  -> completed successfully after the JSDM internal page was made light-build.
+- pkgdown check:
+  `PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Rendered nav checks:
+  `rg -n "Joint species distribution model|Profile-likelihood confidence intervals|Troubleshooting profile CIs|Cross-lineage coevolution|Internal drafts|Choosing latent rank|Refit The Selected Gaussian Model With REML|REML = TRUE" pkgdown-site/articles/index.html pkgdown-site/articles/model-selection-latent-rank.html pkgdown-site/articles/cross-lineage-coevolution.html pkgdown-site/articles/joint-sdm.html`
+  -> public dropdown contains `Choosing latent rank`; article index contains
+  `Internal drafts and technical notes`; REML section appears in the latent-rank
+  article.
+  A Python navbar scan on `model-selection-latent-rank.html`,
+  `cross-lineage-coevolution.html`, and `joint-sdm.html` found no dropdown
+  links to `joint-sdm.html`, `profile-likelihood-ci.html`,
+  `troubleshooting-profile.html`, `cross-lineage-coevolution.html`, or
+  `random-regression-reaction-norms.html`; kept public links included
+  `model-selection-latent-rank.html`, `fit-diagnostics.html`, and
+  `missing-data.html`.
+- Local server check:
+  `curl -sS http://127.0.0.1:8123/articles/model-selection-latent-rank.html | rg -n "Refit The Selected Gaussian Model With REML|joint-sdm.html|profile-likelihood-ci.html|cross-lineage-coevolution.html|Internal drafts"`
+  -> REML heading found; hidden slugs absent from the dropdown HTML.
+  `curl -sS http://127.0.0.1:8123/articles/index.html | rg -n "Internal drafts and technical notes|Joint species distribution model|Cross-lineage coevolution|Choosing latent rank|Profile-likelihood confidence intervals"`
+  -> public dropdown / article index reflect the new grouping.
+- Rose / Pat / article-tier checks:
+  `rg -n "REML|MIS-33|non-Gaussian REML|weighted|retained missing|mi\\(\\)" vignettes/articles/model-selection-latent-rank.Rmd README.md NEWS.md docs/design/35-validation-debt-register.md`
+  -> touched REML claims point to MIS-33 and state guarded regimes.
+  `rg -n "joint-sdm.html|profile-likelihood-ci.html|troubleshooting-profile.html|cross-lineage-coevolution.html|random-regression-reaction-norms.html|random-slopes-nongaussian.html" <public rendered article set>`
+  -> no surviving public article links to hidden/draft slugs.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- `devtools::test()` was not rerun; this slice changes pkgdown navigation and
+  article prose/chunk policy only. The full pkgdown build executed the new REML
+  article chunk through a temp-installed current checkout.
+- `devtools::check()` was not rerun; `pkgdown::build_site()` and
+  `pkgdown::check_pkgdown()` are the relevant gates for this public-docs slice.

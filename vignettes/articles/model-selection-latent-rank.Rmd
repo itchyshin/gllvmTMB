@@ -189,6 +189,9 @@ rank_table_display <- rank_table[
 rank_table_display[, c("logLik", "AIC", "BIC", "delta_AIC", "delta_BIC")] <-
   round(rank_table_display[, c("logLik", "AIC", "BIC", "delta_AIC", "delta_BIC")], 1)
 rank_table_display
+
+selected_d <- rank_table$d[which.min(rank_table$BIC)]
+fit_selected <- fits[[paste0("d", selected_d)]]
 ```
 
 Here both criteria support `d = 2`, the planted rank. The `d = 3`
@@ -220,6 +223,67 @@ signif(
 
 That number should be close to zero. The long and wide calls describe
 the same stacked-trait likelihood; only the data shape differs.
+
+## Refit The Selected Gaussian Model With REML
+
+The rank comparison above uses maximum likelihood (ML), which is the
+estimator used by `gllvmTMB()` unless `REML = TRUE` is supplied. After
+choosing a Gaussian model to report, a restricted maximum-likelihood
+(REML) refit is often the better variance-component summary because it
+integrates over the fixed-effect coefficients before estimating the
+covariance parameters.
+
+```{r reml-selected}
+fit_reml_long <- gllvmTMB(
+  candidate_formula(selected_d),
+  data = df,
+  trait = "trait",
+  unit = "individual",
+  family = gaussian(),
+  REML = TRUE,
+  control = rank_control
+)
+
+fit_reml_wide <- gllvmTMB(
+  rank_ex$formula_wide,
+  data = df_wide,
+  unit = rank_ex$fit_args$unit,
+  family = rank_ex$fit_args$family,
+  REML = TRUE,
+  control = rank_control
+)
+
+data.frame(
+  estimator = c("ML", "REML"),
+  logLik = round(c(
+    as.numeric(logLik(fit_selected)),
+    as.numeric(logLik(fit_reml_long))
+  ), 2),
+  df = c(
+    attr(logLik(fit_selected), "df"),
+    attr(logLik(fit_reml_long), "df")
+  ),
+  nobs = c(
+    attr(logLik(fit_selected), "nobs"),
+    attr(logLik(fit_reml_long), "nobs")
+  )
+)
+
+signif(
+  abs(as.numeric(logLik(fit_reml_long)) -
+        as.numeric(logLik(fit_reml_wide))),
+  3
+)
+```
+
+The ML and REML log-likelihoods answer different questions, so do not
+mix them in the AIC/BIC table. Use one estimator consistently for a
+candidate set, and report which estimator produced the final
+covariance summaries. In the current release, `REML = TRUE` is guarded
+to Gaussian fits without observation weights, retained missing response
+cells, or `mi()` predictor models. Fixed-effect profile confidence
+intervals are also ML-only; use Wald intervals or refit with
+`REML = FALSE` before profiling fixed effects.
 
 ## Read AIC And BIC Beside Diagnostics
 
@@ -298,9 +362,6 @@ are rotated. Raw loading columns are useful for exploratory labels, but
 with `d > 1` their signs and rotations need care.
 
 ```{r sigma-recovery}
-selected_d <- rank_table$d[which.min(rank_table$BIC)]
-fit_selected <- fits[[paste0("d", selected_d)]]
-
 Sigma_hat <- extract_Sigma(fit_selected, level = "unit", part = "total")$Sigma
 Sigma_true <- truth$Sigma
 
@@ -357,6 +418,7 @@ Report the candidate set and the checks that constrained it.
 |---|---|
 | Candidate ranks and formulas | AIC/BIC only compare the models you fit. |
 | `logLik`, `df`, `nobs`, AIC, BIC, and deltas | Readers can see the likelihood gain and the penalty. |
+| Estimator (`ML` or `REML`) | Gaussian covariance summaries depend on whether fixed effects were estimated jointly or integrated out. |
 | `check_gllvmTMB()` rows | A low criterion value is not enough when Hessian, gradient, or weak-axis rows warn. |
 | Rotation-invariant summaries | `Sigma`, correlations, and communalities are safer than raw loading labels. |
 | Biological interpretation | A rank is useful only if the resulting summaries answer the study question. |
@@ -364,11 +426,12 @@ Report the candidate set and the checks that constrained it.
 This article covers a model-selection workflow for Gaussian
 `latent() + unique()` candidate ranks using base `AIC()` / `BIC()`,
 `logLik()`, and `check_gllvmTMB()` (FG-04, FG-06, DIA-03, DIA-08,
-DIA-10).
+DIA-10), then shows a Gaussian-only `REML = TRUE` refit for the chosen
+rank (MIS-33).
 It does not validate AIC/BIC as universally correct latent-rank
 selectors, calibrate confidence intervals, compare likelihoods from
-different fitting approximations, or advertise high-rank non-Gaussian
-structured models.
+different fitting approximations, or advertise REML for non-Gaussian,
+weighted, retained-missing-response, or `mi()` predictor fits.
 For deeper Gaussian simulate-refit rank checks, use
 `check_identifiability()`; for fitted response diagnostics, start with
 [Can I trust this fit?](fit-diagnostics.html).

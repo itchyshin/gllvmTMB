@@ -167,6 +167,12 @@
 #'   through [gllvmTMB_wide()] and wide data-frame calls through
 #'   [traits()] normalise their accepted weight shapes to this same
 #'   stacked response vector before fitting.
+#' @param REML Logical; use restricted maximum likelihood for Gaussian-only
+#'   fits. The current REML pilot is deliberately narrow: all response rows
+#'   must be Gaussian, observation weights are not supported, missing
+#'   responses must use the default `miss_control(response = "drop")`, and
+#'   `mi()` predictor models are not supported. The default `FALSE` keeps the
+#'   historical ML fit.
 #' @param mesh Optional mesh object from `make_mesh()`. Required when the
 #'   formula includes a `spatial()` term; ignored otherwise.
 #' @param phylo_tree (legacy global) Optional `ape::phylo` tree. The
@@ -400,6 +406,7 @@ gllvmTMB <- function(
   cluster2 = NULL,
   family = gaussian(),
   weights = NULL,
+  REML = FALSE,
   mesh = NULL,
   phylo_vcv = NULL,
   phylo_tree = NULL,
@@ -413,6 +420,10 @@ gllvmTMB <- function(
   species = NULL
 ) {
   # deprecated alias for `cluster`
+
+  if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
+    cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
+  }
 
   ## ---- Normalise lambda_constraint element names (B -> unit, W -> unit_obs).
   ## User-facing names match `level` argument naming; legacy `B`/`W` still
@@ -447,6 +458,7 @@ gllvmTMB <- function(
       cluster2 = cluster2,
       family = family,
       weights = rewrite$weights_long,
+      REML = REML,
       mesh = mesh,
       phylo_vcv = phylo_vcv,
       phylo_tree = phylo_tree,
@@ -677,6 +689,7 @@ gllvmTMB <- function(
     cluster2 = cluster2,
     family = family,
     weights = weights,
+    REML = REML,
     phylo_vcv = phylo_vcv,
     phylo_tree = phylo_tree,
     known_V = known_V,
@@ -963,11 +976,12 @@ gllvmTMBcontrol <- function(
 #'   are **reserved names, not yet supported**.
 #'
 #' @details
-#' There is deliberately **no** `estimator` argument: maximum likelihood (ML)
-#' is the internal default, and a public `estimator =` argument (and REML) is
-#' deferred until REML's likelihood/extractor boundary is proven (design 59
-#' sec.4 / sec.10). There is **no** MI ("multiple imputation") engine here;
-#' multiple imputation is the separate `pigauto` workflow (design 59 sec.1b).
+#' There is deliberately **no** `estimator` argument in `miss_control()`:
+#' estimator choice belongs to [gllvmTMB()]. The default `gllvmTMB()` fit uses
+#' ML; `gllvmTMB(REML = TRUE)` is a Gaussian-only pilot and does not yet combine
+#' with `miss_control(response = "include")` or `mi()` predictor models. There
+#' is **no** MI ("multiple imputation") engine here; multiple imputation is the
+#' separate `pigauto` workflow (design 59 sec.1b).
 #'
 #' Under the default `miss_control(response = "drop", predictor = "fail",
 #' engine = "laplace")` the missing-data layer is an exact no-op: a complete-
@@ -995,7 +1009,7 @@ miss_control <- function(
   if ("estimator" %in% call_args) {
     cli::cli_abort(c(
       "{.arg estimator} is not a {.fn miss_control} argument.",
-      "i" = "Maximum likelihood is the internal default; a public {.arg estimator} argument (and REML) is deferred to a later version.",
+      "i" = "Use {.code gllvmTMB(REML = TRUE)} for the narrow Gaussian-only REML pilot.",
       "i" = "Remove {.arg estimator} from the {.fn miss_control} call."
     ))
   }

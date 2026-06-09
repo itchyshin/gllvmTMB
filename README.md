@@ -261,7 +261,9 @@ prose does not overpromise):
   weighted-regression / meta-analysis
   mode; the current implemented mode is additive `type = "exact"`
   known-V (MET-03).
-- **SPDE barrier meshes, REML estimation, storage controls.**
+- **SPDE barrier meshes, broader REML estimation, storage controls.**
+  A narrow Gaussian-only `REML = TRUE` pilot is implemented; non-Gaussian,
+  weighted, and missing-data REML remain later work.
 - **Zero-inflated / hurdle / two-stage delta families with
   latent-scale correlations.** Two-sub-model families have two
   latent scales (the zero-inflation logit + the count log; or

@@ -44,11 +44,12 @@ layer (design 59). Pass the result to the \verb{missing =} argument of
 \code{\link[=gllvmTMB]{gllvmTMB()}}.
 }
 \details{
-There is deliberately \strong{no} \code{estimator} argument: maximum likelihood (ML)
-is the internal default, and a public \verb{estimator =} argument (and REML) is
-deferred until REML's likelihood/extractor boundary is proven (design 59
-sec.4 / sec.10). There is \strong{no} MI ("multiple imputation") engine here;
-multiple imputation is the separate \code{pigauto} workflow (design 59 sec.1b).
+There is deliberately \strong{no} \code{estimator} argument in \code{miss_control()}:
+estimator choice belongs to \code{\link[=gllvmTMB]{gllvmTMB()}}. The default \code{gllvmTMB()} fit uses
+ML; \code{gllvmTMB(REML = TRUE)} is a Gaussian-only pilot and does not yet combine
+with \code{miss_control(response = "include")} or \code{mi()} predictor models. There
+is \strong{no} MI ("multiple imputation") engine here; multiple imputation is the
+separate \code{pigauto} workflow (design 59 sec.1b).
 
 Under the default \code{miss_control(response = "drop", predictor = "fail", engine = "laplace")} the missing-data layer is an exact no-op: a complete-
 data fit is byte-identical to a fit built before this layer existed.

@@ -34,7 +34,7 @@ recommended package.
 | Multi-trait data with phylogenetic correlation across traits | multivariate phylogenetic | **`gllvmTMB`** | Phylogenetic GLLVM (`phylo_latent + phylo_unique`) is canonical. |
 | Multi-trait data with spatial correlation across units | multivariate spatial | **`gllvmTMB`** | Spatial GLLVM (`spatial_latent + spatial_unique`) is canonical. |
 | Meta-analytic data with a known sampling covariance | univariate or multivariate meta | `gllvmTMB` (with `meta_V`) or `metafor` | `meta_V(V = V)` is the gllvmTMB keyword; `meta_known_V()` is a deprecated alias. `metafor` is the dedicated meta-analysis package. |
-| Bayesian multi-response with phylogeny + posterior samples | multivariate Bayesian | `MCMCglmm` or `brms` | gllvmTMB returns ML / REML estimates with Laplace marginal likelihood; Bayesian inference is out of scope. |
+| Bayesian multi-response with phylogeny + posterior samples | multivariate Bayesian | `MCMCglmm` or `brms` | gllvmTMB returns ML estimates by default and a narrow Gaussian-only REML pilot via `REML = TRUE`; Bayesian inference is out of scope. |
 | Bayesian multi-response without phylogeny | multivariate Bayesian | `brms` (with `mvbind()`) | brms's HMC sampler and prior flexibility are the Bayesian counterpart. |
 
 ## Why pick `gllvmTMB` specifically

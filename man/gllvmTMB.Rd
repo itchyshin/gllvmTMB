@@ -14,6 +14,7 @@ gllvmTMB(
   cluster2 = NULL,
   family = gaussian(),
   weights = NULL,
+  REML = FALSE,
   mesh = NULL,
   phylo_vcv = NULL,
   phylo_tree = NULL,
@@ -162,6 +163,13 @@ through \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} and wide data-frame calls 
 \code{\link[=traits]{traits()}} normalise their accepted weight shapes to this same
 stacked response vector before fitting.
 }}
+
+\item{REML}{Logical; use restricted maximum likelihood for Gaussian-only
+fits. The current REML pilot is deliberately narrow: all response rows
+must be Gaussian, observation weights are not supported, missing
+responses must use the default \code{miss_control(response = "drop")}, and
+\code{mi()} predictor models are not supported. The default \code{FALSE} keeps the
+historical ML fit.}
 
 \item{mesh}{Optional mesh object from \code{make_mesh()}. Required when the
 formula includes a \code{spatial()} term; ignored otherwise.}

@@ -223,11 +223,8 @@ section further down.
 
 ## Inference
 
-* Maximum-likelihood point estimates via TMB's Laplace
-  approximation. REML is not yet implemented; planned for a
-  post-0.2.0 release as a Gaussian-only feature (matching the
-  `glmmTMB` / `lme4` convention). See
-  `docs/dev-log/decisions.md` 2026-05-14 REML scope note.
+* `gllvmTMB(REML = TRUE)` adds a narrow Gaussian-only restricted maximum-likelihood pilot. IN: ordinary Gaussian random-intercept fits and Gaussian `latent() + unique()` covariance fits match `glmmTMB(..., REML = TRUE)` log-likelihoods and AIC degrees of freedom in `test-gaussian-reml.R` (MIS-33). PARTIAL: fixed-effect profile CIs are not available for REML fits; use Wald CIs or refit with `REML = FALSE` for ML profiling. PLANNED: non-Gaussian REML, observation weights, `miss_control(response = "include")`, and `mi()` predictor models remain guarded / deferred (MIS-32, MIS-33).
+* Maximum-likelihood point estimates via TMB's Laplace approximation remain the default estimator.
 * Profile-likelihood confidence intervals for derived quantities
   (repeatability, communality, phylogenetic signal, pairwise
   correlations) through the `profile_ci_*()` family.

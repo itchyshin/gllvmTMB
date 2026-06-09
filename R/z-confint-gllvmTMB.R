@@ -1755,6 +1755,12 @@ confint.gllvmTMB_multi <- function(
 #' @keywords internal
 #' @noRd
 .confint_fixef_profile <- function(object, level) {
+  if (isTRUE(object$REML)) {
+    cli::cli_abort(c(
+      "Profile confidence intervals for fixed effects are not available for REML fits.",
+      "i" = "Use {.code method = \"wald\"} for REML fixed effects, or refit with {.code REML = FALSE} for ML profiling."
+    ))
+  }
   ## Loop over b_fix entries via tmbprofile, label as the fixed-effect
   ## term names from $X_fix_names.
   ix <- which(names(object$opt$par) == "b_fix")

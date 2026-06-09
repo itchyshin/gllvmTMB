@@ -14938,3 +14938,79 @@ Evidence:
 - Whitespace:
   `git diff --check`
   -> clean.
+
+## 2026-06-09 09:36 MDT — Gaussian-only REML pilot
+
+Scope:
+
+- Added `gllvmTMB(REML = TRUE)` as a narrow Gaussian-only restricted
+  maximum-likelihood pilot.
+- Implementation route: when `REML = TRUE`, `b_fix` joins the TMB
+  `random` vector so the Gaussian fixed-effect block is integrated through
+  TMB's Laplace machinery. For Gaussian linear mixed models this Laplace
+  integration is exact; unsupported regimes fail before `MakeADFun()`.
+- Guards: non-Gaussian / mixed-family rows, observation weights, retained
+  missing responses (`miss_control(response = "include")` with masked rows),
+  `mi()` predictor models, and rank-deficient observed fixed-effect designs.
+- Updated `logLik()` metadata to report `estimator = "REML"`,
+  `REML = TRUE`, and df including the integrated fixed effects, matching
+  `glmmTMB` convention.
+
+Files touched:
+
+- API / engine: `R/gllvmTMB.R`, `R/gllvmTMB-wide.R`, `R/fit-multi.R`,
+  `R/methods-gllvmTMB.R`, `R/diagnose.R`,
+  `R/missing-predictor.R`, `R/z-confint-gllvmTMB.R`.
+- Tests: `tests/testthat/test-gaussian-reml.R`.
+- Docs / status: `NEWS.md`, `README.md`,
+  `docs/design/01-formula-grammar.md`,
+  `docs/design/04-sister-package-scope.md`,
+  `docs/design/35-validation-debt-register.md`,
+  `docs/design/43-asreml-speed-techniques.md`,
+  `docs/design/59-missing-data-layer.md`,
+  `docs/dev-log/known-limitations.md`, generated `man/*.Rd`.
+
+Evidence:
+
+- Pre-edit lane check:
+  GitHub connector `_search_prs(repository_full_name = "itchyshin/gllvmTMB",
+  state = "open")` -> no open PRs.
+  `git log --all --oneline --since="6 hours ago"` -> only
+  `87bfc28 docs: add latent-rank model selection article`.
+  Shell `gh` was not available on PATH.
+- Branch:
+  `git status --short --branch`
+  -> `## codex/gaussian-reml-pilot-2026-06-09`.
+- Smoke comparison:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); set.seed(1); df<-expand.grid(study=factor(seq_len(12)), trait=factor(paste0("t",1:2)), rep=1:4); u<-rnorm(12,0,.7); beta<-c(t1=.2,t2=-.3); df$value<-beta[as.character(df$trait)]+u[as.integer(df$study)]+rnorm(nrow(df),0,.4); fit<-gllvmTMB(value ~ 0 + trait + (1|study), data=df, unit="study", REML=TRUE); fit_tmb<-glmmTMB::glmmTMB(value ~ 0 + trait + (1|study), data=df, REML=TRUE); print(c(gllvmTMB=as.numeric(logLik(fit)), glmmTMB=as.numeric(logLik(fit_tmb)))); print(c(gllvmTMB_df=attr(logLik(fit),"df"), glmmTMB_df=attr(logLik(fit_tmb),"df")))'`
+  -> logLik `-56.75482` for both engines; df `4` for both engines.
+- Focused tests:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::test(filter = "gaussian-reml")'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 18`.
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::test(filter = "tidy-predict")'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 28`.
+- Full tests:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 704`, `PASS 2702`.
+- pkgdown reference check:
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Roxygen:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/gllvmTMB.Rd`, `man/gllvmTMB_wide.Rd`,
+  `man/miss_control.Rd`.
+- Stale wording scan:
+  `rg -n "REML is not yet implemented|REML estimation — planned|REML's likelihood|public \`estimator=\` arg \\(and REML\\)|ML / REML|ML-only currently|REML post-0.2.0|Wait for REML|REML to land" R README.md NEWS.md docs/design docs/dev-log vignettes man | head -n 200`
+  -> live source hits fixed; remaining hits are generated Rd before
+  roxygen or historical dev-log/audit records.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- `devtools::check()` was not rerun in this slice; full tests and
+  `pkgdown::check_pkgdown()` are green.
+- No pkgdown article build: no public article was changed in this slice.
+- No C++ template edit was made; the likelihood/plumbing change is R-side
+  `MakeADFun(random = ...)` dispatch only.

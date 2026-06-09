@@ -15,6 +15,7 @@
 gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                cluster2 = NULL,
                                family, weights,
+                               REML = FALSE,
                                phylo_vcv = NULL, phylo_tree = NULL,
                                known_V = NULL,
                                mesh = NULL,
@@ -25,6 +26,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                                missing = miss_control(),
                                is_y_observed = NULL,
                                missing_meta = NULL) {
+  if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
+    cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
+  }
+
   ## Family arg can be:
   ##   * a single family object (as before): same family for all rows.
   ##   * a list of family objects + a `family_var` column in `data` whose
@@ -1739,6 +1744,41 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       "i" = "Missing response rows are allowed and dropped before fitting; missing predictors still need to be removed or imputed before fitting (or declared with {.code mi()} under {.code missing = miss_control(predictor = \"model\")})."
     ))
   }
+  if (isTRUE(REML)) {
+    if (any(family_id_vec != 0L)) {
+      cli::cli_abort(c(
+        "{.arg REML = TRUE} is currently implemented for Gaussian-only fits.",
+        "x" = "At least one response row uses a non-Gaussian family.",
+        "i" = "Use the default {.code REML = FALSE} for non-Gaussian and mixed-family GLLVMs."
+      ))
+    }
+    if (!is.null(weights)) {
+      cli::cli_abort(c(
+        "{.arg REML = TRUE} does not yet support observation weights.",
+        "i" = "Use {.code REML = FALSE}, or fit an unweighted Gaussian model for the REML pilot."
+      ))
+    }
+    if (any(masked_response)) {
+      cli::cli_abort(c(
+        "{.arg REML = TRUE} currently requires {.code miss_control(response = \"drop\")}.",
+        "i" = "Use the default missing-response policy, or use {.code REML = FALSE} with {.code response = \"include\"}."
+      ))
+    }
+    if (isTRUE(use_mi_predictor)) {
+      cli::cli_abort(c(
+        "{.arg REML = TRUE} does not yet support {.fn mi} predictor models.",
+        "i" = "Use {.code REML = FALSE} with {.code missing = miss_control(predictor = \"model\")}."
+      ))
+    }
+    X_reml <- X_fix[!masked_response, , drop = FALSE]
+    if (ncol(X_reml) > 0L && qr(X_reml)$rank < ncol(X_reml)) {
+      cli::cli_abort(c(
+        "{.arg REML = TRUE} requires a full-rank fixed-effect design matrix.",
+        "x" = "The observed-row fixed-effect design has rank {qr(X_reml)$rank}, but {ncol(X_reml)} column{?s}.",
+        "i" = "Remove redundant fixed-effect columns or use {.code REML = FALSE}."
+      ))
+    }
+  }
   ## The family-specific response-range checks below validate the *observed*
   ## response only. Masked rows (response = "include") carry the sentinel y = 0
   ## which is gated out of the likelihood; it must not trip a range check.
@@ -2567,7 +2607,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     re_int_offsets   = re_int_offsets_dat,
     re_int_n_groups  = re_int_n_groups_dat,
     re_int_group_id  = re_int_id_mat_dat,
-    weights_i        = as.numeric(weights_i)
+    weights_i        = as.numeric(weights_i),
+    REML             = as.integer(REML)
   )
 
   ## Phase 2a missing-predictor DATA slots (has_mi = 0 no-op when disabled).
@@ -2826,6 +2867,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           species = species,
           family = family_input,
           weights = weights,
+          REML = REML,
           phylo_vcv = phylo_vcv,
           phylo_tree = phylo_tree,
           known_V = known_V,
@@ -3410,6 +3452,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   ## ---- random vector --------------------------------------------------
   random <- character(0)
+  ## Gaussian REML is implemented by integrating the fixed-effect coefficient
+  ## block through TMB's Laplace machinery. For Gaussian linear mixed models
+  ## the Laplace step is exact, giving the restricted likelihood after the
+  ## guards above have ruled out unsupported extensions.
+  if (isTRUE(REML)) random <- c(random, "b_fix")
   if (use_rr_B)   random <- c(random, "z_B")
   if (use_rr_B_slope) random <- c(random, "z_B_slope")
   if (use_diag_B) random <- c(random, "s_B")
@@ -3659,6 +3706,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       tmb_data     = tmb_data,
       tmb_params   = tmb_params,
       tmb_map      = tmb_map,
+      REML         = REML,
+      estimator    = if (isTRUE(REML)) "REML" else "ML",
       opt          = opt,
       sd_report    = sd_rep,
       report       = rep,

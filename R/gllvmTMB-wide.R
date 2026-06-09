@@ -57,6 +57,9 @@
 #'   per-cell. Values must be non-negative and finite (NA-aligned cells
 #'   excepted). For binomial trial-count semantics use an explicit long-data
 #'   [gllvmTMB()] call with `weights = n_trials` instead.
+#' @param REML Logical; passed to [gllvmTMB()]. The current REML pilot is
+#'   Gaussian-only and does not support observation weights, so
+#'   `gllvmTMB_wide(..., REML = TRUE, weights = ...)` fails loudly.
 #' @param ... Passed to [gllvmTMB()].
 #'
 #' @return A fit returned by [gllvmTMB()]. The column dimension of `Y` is
@@ -113,6 +116,7 @@ gllvmTMB_wide <- function(
   phylo_vcv = NULL,
   formula_extra = NULL,
   weights = NULL,
+  REML = FALSE,
   ...
 ) {
   lifecycle::deprecate_soft(
@@ -236,6 +240,7 @@ gllvmTMB_wide <- function(
     family = family,
     phylo_vcv = phylo_vcv,
     weights = w_long,
+    REML = REML,
     ...
   )
 }

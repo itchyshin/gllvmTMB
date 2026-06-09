@@ -2704,7 +2704,7 @@ gll_standard_error_status <- function(object) {
     return("sdreport_error")
   }
   fixed_se <- tryCatch(
-    suppressWarnings(summary(object$sd_report, "fixed"))[, "Std. Error"],
+    .gllvmTMB_b_fix_se(object),
     error = function(e) NA_real_
   )
   if (length(fixed_se) > 0L && any(!is.finite(fixed_se))) {

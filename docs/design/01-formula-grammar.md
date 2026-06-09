@@ -603,9 +603,11 @@ not enter later releases:
 - Bayesian fits — gllvmTMB is maximum-likelihood / Laplace-
   approximation. Bayesian alternatives are `Hmsc`, `MCMCglmm`, and
   `brms`.
-- REML estimation — planned post-0.2.0 as a Gaussian-only feature
-  matching the `glmmTMB` / `lme4` convention (`docs/dev-log/decisions.md`
-  2026-05-14 REML scope entry).
+- Broad REML estimation — the current implementation has only the narrow
+  Gaussian pilot exposed as `gllvmTMB(REML = TRUE)`: Gaussian-only,
+  unweighted, no retained missing responses, and no `mi()` predictor models
+  (MIS-33). Non-Gaussian REML and missing-data REML engines remain out of
+  scope for the MVP (MIS-32).
 - Adaptive Gauss-Hermite quadrature (AGHQ) or variational
   approximation (VA) integrators — Laplace-only at 0.2.0
   (`docs/dev-log/audits/2026-05-15-external-audit-2-response.md`

@@ -19,19 +19,18 @@ reader-path, and validation-row review.
 
 ## Current Public Surface
 
-The visible learning path is intentionally curated. The reset started with
-six pages; restored pages return only when their examples, validation rows,
-and scope boundaries are synchronized with the live package.
+The visible learning path is intentionally curated. Restored pages return only
+when their examples, validation rows, and scope boundaries are synchronized
+with the live package.
 
 | Group | Article | Purpose | Status |
 |---|---|---|---|
 | Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
-| Model guide | `articles/random-slopes-nongaussian` | Structured single-slope random-regression grid across phylogenetic and spatial sources. | Visible after 2026-06-08 status sync; covers `s = 1`, keeps non-Gaussian `s >= 2` guarded. |
 | Model guide | `articles/joint-sdm` | Binary JSDM worked example. | Visible; binary caveats and diagnostics remain under active audit. |
-| Model guide | `articles/cross-lineage-coevolution` | Dense-kernel / cross-lineage coevolution worked example. | Visible; point-estimate workflow only, no interval or in-engine rho claim. |
 | Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; final rendered figure/prose audit passed. |
 | Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible; technical reference closeout passed. |
 | Concepts | `articles/response-families` | Supported families and validation status. | Visible; technical reference closeout passed. |
+| Methods | `articles/fit-diagnostics` | First post-fit triage before interpreting fitted models. | Visible after 2026-06-09 diagnostics-article slice; diagnostic-only claims tied to DIA-08 / DIA-10 / DIA-11 / DIA-12 / DIA-13. |
 | Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit passed. |
 | Methods | `articles/profile-likelihood-ci` | Profile / bootstrap / Wald interval mechanics and caveats. | Visible; must continue to distinguish API coverage from calibrated coverage. |
 | Methods | `articles/troubleshooting-profile` | Profile-interval failure modes and remedies. | Visible companion method page. |
@@ -149,10 +148,9 @@ Keep each item to one branch and one pull request.
 
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
-| 1 | #228 predictive diagnostics | Codex + Fisher/Grace | PR #260 is open as the public API branch stacked on #257; stop when 3-OS CI is green and #257 / #260 merge order is settled. |
-| 2 | Diagnostic teaching surface and public reset | Codex + Pat/Rose/Fisher/Florence | Get Started and README route users from fit health to fitted-response diagnostics; convergence wording keeps bootstrap/profile as uncertainty routes rather than diagnostic substitutes; check-log and after-task report record the rendered-document checks. |
-| 3 | Binary lambda/JSDM article plan | Codex or Claude Code + Boole/Fisher/Florence/Rose | Rewrite `lambda-constraint` as the first binary loading-constraint teaching article, using a binary species/JSDM-style example rather than mixed psychometrics. Keep the article internal until the plan, example, figure contract, and rendered HTML review are recorded. |
-| 4 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. Do not combine mixed-family responses with loading constraints in one teaching article. |
+| 1 | Fit-diagnostics article | Codex + Pat/Rose/Fisher/Florence/Grace | `fit-diagnostics` is public, uses long and wide calls, renders its diagnostic tables and figures, and records the rendered checks. |
+| 2 | Binary lambda/JSDM article plan | Codex or Claude Code + Boole/Fisher/Florence/Rose | Rewrite `lambda-constraint` as the first binary loading-constraint teaching article, using a binary species/JSDM-style example rather than mixed psychometrics. Keep the article internal until the plan, example, figure contract, and rendered HTML review are recorded. |
+| 3 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. Do not combine mixed-family responses with loading constraints in one teaching article. |
 
 If two agents are active, prefer one public-documentation lane and one
 implementation/test lane. Do not let both agents edit the roadmap, check-log,
@@ -183,7 +181,7 @@ only when a stage becomes active.
 | Infrastructure first | Provide prepared examples, internal scenario generators, extractor tables, and diagnostics so examples are not long setup scripts. | Example objects and report-ready tables are tested. |
 | Symbol and syntax clarity | Reintroduce enough math to teach the model without losing applied users. | Every symbol is defined and paired with R syntax plus interpretation. |
 | Florence plot system | Move from functional plots to publication-quality scientific graphics. | Rendered figures are informative, colour-blind friendly, uncertainty-aware, and reviewed in HTML. |
-| Diagnostics and uncertainty | Stabilise `pdHess`, profile, bootstrap, fitted-model predictive checks, residual diagnostics, and simulation-grid language. | #228 public diagnostics branch updates the exported diagnostic surface while remaining diagnostic-only, not interval calibration or Bayesian posterior prediction. |
+| Diagnostics and uncertainty | Stabilise `pdHess`, profile, bootstrap, fitted-model predictive checks, residual diagnostics, and simulation-grid language. | `fit-diagnostics` teaches the exported diagnostic surface while keeping claims diagnostic-only, not interval calibration or Bayesian posterior prediction. |
 | Article restoration | Bring hidden articles back one at a time. | Each restored article has examples or exact syntax chunks, long/wide status where meaningful, validation rows, figure/prose review, and rendered checks. Binary lambda/JSDM planning still comes before mixed-family or psychometrics promotion. |
 | Pre-CRAN | Audit public API, examples, docs, pkgdown, reverse dependencies, and CRAN notes. | Local checks and 3-OS CI are clean; validation-debt register is current. |
 | Publication-quality claims | Support strong methodological claims with target-explicit simulation and external comparators. | M3 inference gates and Phase 5.5 comparator evidence pass. |
@@ -209,7 +207,7 @@ to reverse-engineer it from long setup chunks.
 | Simulation helpers | Internal scenario generators with stable seeds and named estimands. | Morphometrics, covariance edge cases, behavioural syndrome. |
 | Extraction tables | Report-ready covariance, correlation, communality, repeatability, phylogenetic signal, ordination, diagnostics, and uncertainty tables. | Contract in `docs/design/53-report-ready-extractor-plot-contract.md`; `extract_Sigma_table()`, `compare_Sigma_table()`, rotated-loading tables, `diagnostic_table()`, and bootstrap-backed Sigma/correlation/communality/repeatability rows are covered where the validation register says so. |
 | Plot helpers | Data-first plots that consume extractor tables and expose audit metadata. | `plot.gllvmTMB_multi()` and exported plot helpers attach `gllvmTMB_meta` and `gllvmTMB_data`; confidence-eye, matrix heatmap/ellipse, Sigma comparison, communality, integration, ordination, and rotated-loading displays have object or snapshot tests. Dominant-axis forests, score distributions, diagnostic plots, and rendered Florence review remain pending before publication-grade claims. |
-| Diagnostics | `check_gllvmTMB()` first; `pdHess = FALSE` treated as an uncertainty warning, not automatic model death; fitted-response checks use `predictive_check()` / `residuals()` within DIA-11 / DIA-12 scope. | Public methods pages and Get Started. |
+| Diagnostics | `check_gllvmTMB()` first; `pdHess = FALSE` treated as an uncertainty warning, not automatic model death; fitted-response checks use `predictive_check()` / `residuals()` within DIA-11 / DIA-12 scope and `diagnostic_table()` within DIA-13 scope. | `fit-diagnostics`, public methods pages, and Get Started. |
 | Profile/bootstrap uncertainty | Explicit fallback language and worker-level diagnostics before claims. | Keep `profile-likelihood-ci` hidden until CI-02 / CI-03 / EXT-13 claims are paired with rendered examples and failure-count reporting. |
 | Validation evidence | Every public claim cites a validation-debt row as `covered`, `partial`, or `blocked`. | Six visible articles. |
 
@@ -256,9 +254,9 @@ advanced articles only after their gates pass.
 ## Working Rules During Reset
 
 - #230 owns the reset ledger. Child issues are opened only when work starts.
-- #228 is active as the public fitted-model predictive diagnostics branch;
-  keep its public claims diagnostic-only until DIA-11 / DIA-12 and the
-  after-task report record the tested family scope.
+- DIA-11 / DIA-12 / DIA-13 diagnostics are exported; keep public prose
+  diagnostic-only and do not describe these displays as interval calibration,
+  formal residual tests, latent-rank proof, or Bayesian posterior prediction.
 - Every meaningful slice updates `docs/dev-log/check-log.md`, writes an
   after-task report, updates this roadmap when status changes, and comments
   on #230.

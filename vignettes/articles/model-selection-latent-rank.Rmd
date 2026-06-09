@@ -36,6 +36,12 @@ information criteria, check numerical health, and interpret the chosen
 model as a rank-conditional summary rather than proof that nature has
 exactly two hidden axes.
 
+A safe reporting order is: first check numerical and response
+diagnostics; next compare one ML candidate set with AIC/BIC; then
+interpret rotation-invariant summaries for the chosen rank; finally,
+for Gaussian fits only, refit that chosen model with REML for covariance
+summaries. The REML log-likelihood is not part of the ML AIC/BIC table.
+
 ## Setup
 
 ```{r setup}
@@ -224,67 +230,6 @@ signif(
 That number should be close to zero. The long and wide calls describe
 the same stacked-trait likelihood; only the data shape differs.
 
-## Refit The Selected Gaussian Model With REML
-
-The rank comparison above uses maximum likelihood (ML), which is the
-estimator used by `gllvmTMB()` unless `REML = TRUE` is supplied. After
-choosing a Gaussian model to report, a restricted maximum-likelihood
-(REML) refit is often the better variance-component summary because it
-integrates over the fixed-effect coefficients before estimating the
-covariance parameters.
-
-```{r reml-selected}
-fit_reml_long <- gllvmTMB(
-  candidate_formula(selected_d),
-  data = df,
-  trait = "trait",
-  unit = "individual",
-  family = gaussian(),
-  REML = TRUE,
-  control = rank_control
-)
-
-fit_reml_wide <- gllvmTMB(
-  rank_ex$formula_wide,
-  data = df_wide,
-  unit = rank_ex$fit_args$unit,
-  family = rank_ex$fit_args$family,
-  REML = TRUE,
-  control = rank_control
-)
-
-data.frame(
-  estimator = c("ML", "REML"),
-  logLik = round(c(
-    as.numeric(logLik(fit_selected)),
-    as.numeric(logLik(fit_reml_long))
-  ), 2),
-  df = c(
-    attr(logLik(fit_selected), "df"),
-    attr(logLik(fit_reml_long), "df")
-  ),
-  nobs = c(
-    attr(logLik(fit_selected), "nobs"),
-    attr(logLik(fit_reml_long), "nobs")
-  )
-)
-
-signif(
-  abs(as.numeric(logLik(fit_reml_long)) -
-        as.numeric(logLik(fit_reml_wide))),
-  3
-)
-```
-
-The ML and REML log-likelihoods answer different questions, so do not
-mix them in the AIC/BIC table. Use one estimator consistently for a
-candidate set, and report which estimator produced the final
-covariance summaries. In the current release, `REML = TRUE` is guarded
-to Gaussian fits without observation weights, retained missing response
-cells, or `mi()` predictor models. Fixed-effect profile confidence
-intervals are also ML-only; use Wald intervals or refit with
-`REML = FALSE` before profiling fixed effects.
-
 ## Read AIC And BIC Beside Diagnostics
 
 `AIC()` and `BIC()` work through `logLik.gllvmTMB_multi()`. The
@@ -352,7 +297,9 @@ If AIC and BIC disagree, treat the disagreement as a prompt to inspect
 the fitted covariance, weak-axis rows, biological plausibility, and
 prediction/residual diagnostics. Do not promote a higher rank only
 because it shaves a small number of AIC units off a numerically weaker
-fit.
+fit. Once those checks point to a defensible Gaussian model, use a REML
+refit only for the final covariance summary, not for the ML candidate
+table.
 
 ## Interpret The Selected Model
 
@@ -410,6 +357,67 @@ fixture. That statement is narrower than "AIC/BIC proved the true
 rank." It means the selected fitted model is a useful summary of this
 candidate set and this simulated data-generating mechanism.
 
+## Refit The Selected Gaussian Model With REML
+
+The rank comparison above uses maximum likelihood (ML), which is the
+estimator used by `gllvmTMB()` unless `REML = TRUE` is supplied. After
+choosing a Gaussian model to report, a restricted maximum-likelihood
+(REML) refit is often the better variance-component summary because it
+integrates over the fixed-effect coefficients before estimating the
+covariance parameters.
+
+```{r reml-selected}
+fit_reml_long <- gllvmTMB(
+  candidate_formula(selected_d),
+  data = df,
+  trait = "trait",
+  unit = "individual",
+  family = gaussian(),
+  REML = TRUE,
+  control = rank_control
+)
+
+fit_reml_wide <- gllvmTMB(
+  rank_ex$formula_wide,
+  data = df_wide,
+  unit = rank_ex$fit_args$unit,
+  family = rank_ex$fit_args$family,
+  REML = TRUE,
+  control = rank_control
+)
+
+data.frame(
+  estimator = c("ML", "REML"),
+  logLik = round(c(
+    as.numeric(logLik(fit_selected)),
+    as.numeric(logLik(fit_reml_long))
+  ), 2),
+  df = c(
+    attr(logLik(fit_selected), "df"),
+    attr(logLik(fit_reml_long), "df")
+  ),
+  nobs = c(
+    attr(logLik(fit_selected), "nobs"),
+    attr(logLik(fit_reml_long), "nobs")
+  )
+)
+
+signif(
+  abs(as.numeric(logLik(fit_reml_long)) -
+        as.numeric(logLik(fit_reml_wide))),
+  3
+)
+```
+
+The ML and REML log-likelihoods answer different questions, so do not
+mix them in the AIC/BIC table. Use one estimator consistently for a
+candidate set, and report which estimator produced the final
+covariance summaries. In the current release, `REML = TRUE` is guarded
+to Gaussian fits without observation weights, retained missing response
+cells, or `mi()` predictor models. Fixed-effect profile confidence
+intervals are also ML-only; use Wald intervals or refit with
+`REML = FALSE` before profiling fixed effects.
+
 ## What To Report
 
 Report the candidate set and the checks that constrained it.
@@ -418,7 +426,7 @@ Report the candidate set and the checks that constrained it.
 |---|---|
 | Candidate ranks and formulas | AIC/BIC only compare the models you fit. |
 | `logLik`, `df`, `nobs`, AIC, BIC, and deltas | Readers can see the likelihood gain and the penalty. |
-| Estimator (`ML` or `REML`) | Gaussian covariance summaries depend on whether fixed effects were estimated jointly or integrated out. |
+| Estimator for candidate comparison and final covariance summaries | Use one ML candidate table; use REML only for the chosen Gaussian covariance summary. |
 | `check_gllvmTMB()` rows | A low criterion value is not enough when Hessian, gradient, or weak-axis rows warn. |
 | Rotation-invariant summaries | `Sigma`, correlations, and communalities are safer than raw loading labels. |
 | Biological interpretation | A rank is useful only if the resulting summaries answer the study question. |

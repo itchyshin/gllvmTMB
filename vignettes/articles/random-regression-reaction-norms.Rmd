@@ -1,11 +1,12 @@
 ---
-title: "Random regression and reaction-norm slopes"
+title: "Behavioural reaction norms with random slopes"
+tier: 3 # internal draft until the reader path is plain-language and fully reviewed
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Random regression and reaction-norm slopes}
+  %\VignetteIndexEntry{Behavioural reaction norms with random slopes}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -14,491 +15,534 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>",
-  fig.width = 6, fig.height = 4,
+  fig.width = 6.5,
+  fig.height = 4.4,
   fig.align = "center",
   cache    = FALSE,
-  eval     = requireNamespace("ape", quietly = TRUE),
+  eval     = TRUE,
   message  = FALSE,
   warning  = FALSE
 )
 ```
 
-This article is for a reader who wants the **slope** of a response on a
-continuous covariate to vary across the units of a structured group --
-species along a phylogeny, or individuals in a pedigree -- with the
-unit-level slopes correlated by a known relatedness matrix
-$\mathbf{A}$. In quantitative genetics this is the **random-regression
-/ reaction-norm** model (Meyer & Hill 1997; Nussey *et al.* 2007): a
-per-unit slope on an environmental gradient, with the slopes treated as
-a heritable (or phylogenetically conserved) trait.
+> **Internal draft.** This page is not yet in the public article menu. It is a
+> working behavioural-syndrome example for Gaussian individual-level reaction
+> norms, and still needs a plain-language reader pass before promotion.
 
-## What this article covers, and what it does not
+This draft fits an individual-level random-regression GLLVM for a behavioural
+syndrome question. The unit is the **individual**, the repeated occasion is
+`session_id`, and the continuous context is centred/scaled `temperature`. The
+model asks whether individuals differ in both average behaviour and
+temperature responsiveness, and whether those reaction-norm coefficients
+covary across behaviours.
 
-`gllvmTMB` v0.2.0 ships **one** validated random-slope mode: a single
-shared slope variance whose unit-level slopes are correlated by
-$\mathbf{A}$. It is reached two ways:
-
-- [`phylo_slope(x | species)`](../reference/phylo_slope.html) -- slopes
-  correlated by a phylogeny (supply the tree).
-- [`animal_slope(x | id)`](../reference/animal_slope.html) -- slopes
-  correlated by a pedigree-derived additive-genetic matrix
-  $\mathbf{A}$. This is the same engine path:
-  `animal_slope(x | id)` desugars to `phylo_slope(x | id, vcv = A)`,
-  and the two recover **byte-identically** (shown below).
-
-This single-variance mode is the worked tutorial here. Beyond it, the
-package also *accepts and fits* a richer **correlated intercept + slope**
-form, [`phylo_unique(1 + x | species)`](../reference/phylo_unique.html),
-which is shown in the final section as a fitting demonstration.
-
-Several related forms sit at different stages of support and are
-flagged where they would naturally appear, so the scope is explicit
-rather than implied:
-
-| Form | Status in v0.2.0 |
-|---|---|
-| `phylo_slope` / `animal_slope` (single shared slope variance) | **Validated** (this article) |
-| `phylo_unique(1 + x \| sp)` correlated intercept+slope | Fits; 2x2 (intercept, slope) covariance **reporting** is not surfaced in this build |
-| `phylo_indep(1 + x \| sp)` independent (diagonal) intercept+slope | Fits (correlation pinned to 0); shares the augmented engine, recovery-tested |
-| `spatial_unique` / `spatial_indep(1 + x \| coords)` base slopes | Fit; 2x2 cross-field covariance reported via `extract_Sigma(level = "spatial")` |
-| Structured `phylo_dep` / `phylo_latent` and `spatial_dep` / `spatial_latent` slopes | **Forthcoming** -- engine in progress |
-| Calibrated confidence intervals on slope variances | **Not established** -- point estimates only (see the CI note) |
-
-## The model
-
-For a single continuous covariate $x$, the slope is allowed to vary by
-unit $i$ (species or individual). Writing $\eta_{it}$ for the linear
-predictor of trait $t$ on unit $i$ at covariate value $x_{io}$,
-
-$$
-\eta_{it} \;\mathrel{{+}{=}}\; \beta(i)\, x_{io},
-\qquad
-\boldsymbol\beta \sim
-\mathcal{N}\!\bigl(\mathbf{0},\; \sigma^2_{\text{slope}}\,\mathbf{A}\bigr).
-$$
-
-The slope vector $\boldsymbol\beta$ has one entry per unit
-($n_{\text{species}}$ or $n_{\text{individuals}}$). It is **shared
-across traits** -- the same $\beta(i)$ multiplies $x_{io}$ for every
-trait of unit $i$ -- and **one shared variance**
-$\sigma^2_{\text{slope}}$ governs how far slopes spread, while
-$\mathbf{A}$ (the phylogenetic correlation matrix, or the pedigree
-additive-genetic matrix) sets how the slopes covary between related
-units. This is the initial-release scope documented on
-[`phylo_slope()`](../reference/phylo_slope.html): one covariate, one
-slope variance, slopes shared across traits.
-
-The estimand is $\sigma^2_{\text{slope}}$ (how much heritable /
-phylogenetic variation there is in the slope), together with the
-per-unit slopes $\beta(i)$ themselves.
+Here `latent()` estimates shared axes of between-individual covariance, and
+`unique()` estimates trait-specific variation left after those shared axes.
+The current draft covers the Gaussian version only. It does not yet teach
+non-Gaussian reaction norms, calibrated intervals for slope summaries, or the
+broader model-choice path for deciding when this random-regression model is
+appropriate.
 
 ## Setup
 
 ```{r setup}
 library(gllvmTMB)
-library(ape)
+library(ggplot2)
+library(dplyr)
 ```
 
-## Simulate a phylogenetic reaction norm
+## Example data
 
-We simulate per-species slopes drawn from
-$\mathcal{N}(\mathbf 0,\, \sigma^2_{\text{slope}}\,\mathbf{C}_{\text{phy}})$,
-with true $\sigma^2_{\text{slope}} = 0.4$, then build a long data frame
-with several traits and repeated observations per species at varying
-$x$. This is a syntax-and-recovery illustration on one data set, not a
-full simulation study.
+We use a prepared example object so the article starts with the data,
+truth, formulas, and biological question rather than a long simulation
+script. The generator is shipped in the repository as
+`data-raw/examples/make-behavioural-reaction-norm-example.R`.
 
-```{r sim}
-set.seed(2026)
-n_sp <- 30
-n_traits <- 4
-tree <- ape::rcoal(n_sp)
-tree$tip.label <- paste0("sp", seq_len(n_sp))
-Cphy <- ape::vcv(tree, corr = TRUE)
-
-sigma2_slope_true <- 0.4
-Lphy <- t(chol(Cphy + diag(1e-8, n_sp)))
-beta_slope_true <- as.numeric(
-  Lphy %*% rnorm(n_sp, sd = sqrt(sigma2_slope_true))
-)
-names(beta_slope_true) <- tree$tip.label
-
-n_rep <- 5
-trait_lvls <- paste0("t", seq_len(n_traits))
-df <- expand.grid(
-  species = factor(tree$tip.label, levels = tree$tip.label),
-  trait   = factor(trait_lvls, levels = trait_lvls),
-  rep     = seq_len(n_rep)
-)
-df$x <- rnorm(nrow(df))
-mu_t  <- c(2, 1.5, 1, 0.5)[as.integer(df$trait)]
-df$value <- mu_t +
-  beta_slope_true[as.character(df$species)] * df$x +
-  rnorm(nrow(df), sd = 0.5)
-head(df)
+```{r example-data, eval = FALSE}
+rr <- readRDS(system.file(
+  "extdata", "examples", "behavioural-reaction-norm-example.rds",
+  package = "gllvmTMB"
+))
+df <- rr$data_long
+df_wide <- rr$data_wide
+truth <- rr$truth
 ```
 
-## Fit the phylogenetic random slope
+```{r example-data-load, include = FALSE}
+example_path <- system.file(
+  "extdata",
+  "examples",
+  "behavioural-reaction-norm-example.rds",
+  package = "gllvmTMB"
+)
+example_path <- c(
+  example_path,
+  file.path(
+    "inst",
+    "extdata",
+    "examples",
+    "behavioural-reaction-norm-example.rds"
+  ),
+  file.path(
+    "..",
+    "inst",
+    "extdata",
+    "examples",
+    "behavioural-reaction-norm-example.rds"
+  ),
+  file.path(
+    "..",
+    "..",
+    "inst",
+    "extdata",
+    "examples",
+    "behavioural-reaction-norm-example.rds"
+  )
+)
+example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
+stopifnot(!is.na(example_path))
 
-The slope term is `phylo_slope(x | species)`; pass the tree inside the
-keyword with `tree =`. The fixed part `0 + trait + (0 + trait):x` gives
-each trait its own intercept and its own *mean* slope on $x$; the random
-`phylo_slope` term adds the per-species deviation around that mean.
+rr <- readRDS(example_path)
+df <- rr$data_long
+df_wide <- rr$data_wide
+truth <- rr$truth
+trait_names <- truth$trait_names
+intercept_names <- paste0("intercept.", trait_names)
+slope_names <- paste0("slope.temperature.", trait_names)
+```
+
+```{r preview}
+rr$story$question
+head(df, 9)
+```
+
+The long data have one row per `(individual, session_id, trait)`
+observation. The matching wide data have one row per session, one column
+per response trait, and the same `individual`, `session_id`, and
+`temperature` columns:
+
+```{r wide-preview}
+head(df_wide, 4)
+```
+
+Here the three response traits are `boldness`, `exploration`, and
+`activity`. The example is deliberately small but not single-level:
+`individual` indexes stable among-individual differences, while
+`session_id` indexes occasion-level deviations shared by the traits
+within the same repeated measurement.
+
+## Fit the model
+
+The same model can be fitted from long or wide data. The long form is
+canonical because it makes the `(individual, session_id, trait)` rows
+explicit. The wide `traits(...)` form is the compact equivalent for
+readers whose data already have one row per repeated session.
 
 ```{r fit}
-fit <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):x + phylo_slope(x | species, tree = tree),
-  data  = df,
-  trait = "trait",
-  unit  = "species"
-)
-fit$opt$convergence
-```
+rr$formula_long
+rr$formula_wide
 
-### Recover the slope variance
-
-The single shared slope standard deviation is reported on the log scale
-as `log_sigma_slope` in the optimised parameter vector. Exponentiate to
-get $\sigma_{\text{slope}}$:
-
-```{r sigma-slope}
-sigma_slope_hat <- exp(
-  fit$opt$par[grepl("log_sigma_slope", names(fit$opt$par))]
-)
-data.frame(
-  param = "sigma_slope",
-  true  = sqrt(sigma2_slope_true),
-  est   = signif(unname(sigma_slope_hat), 3)
-)
-```
-
-### Recover the per-species slopes
-
-The fitted per-species slopes are the `b_phy_slope` random effects.
-They live on the tree-augmented index, so align them to the tip labels
-through the rownames of the augmented precision matrix:
-
-```{r per-species-slopes, fig.width = 5.4, fig.height = 5.4}
-b_full <- fit$tmb_obj$env$last.par.best
-b_slope <- as.numeric(b_full[names(b_full) == "b_phy_slope"])
-
-aug_names <- rownames(fit$tmb_data$Ainv_phy_rr)
-tip_idx   <- match(tree$tip.label, aug_names)
-b_tips    <- b_slope[tip_idx]
-
-cor_fitted_true <- cor(b_tips, beta_slope_true)
-round(cor_fitted_true, 3)
-
-plot(beta_slope_true, b_tips,
-     xlab = "True per-species slope",
-     ylab = "Fitted per-species slope (BLUP)",
-     pch = 19, col = "#3366aa",
-     main = "Reaction-norm slopes recover their truth")
-abline(0, 1, lty = 2)
-```
-
-The shared variance is recovered close to its true value, and the
-per-species slopes track the simulated truth with a high correlation.
-For a single small data set these are point estimates only -- see the
-note on confidence intervals below.
-
-## The pedigree twin: `animal_slope`
-
-When the rows are *individuals* with a known pedigree rather than
-*species* with a phylogeny, the identical model is written with
-[`animal_slope(x | id)`](../reference/animal_slope.html). The only
-change is the source of $\mathbf{A}$: a pedigree additive-genetic matrix
-instead of a tree correlation matrix. This is the canonical
-quantitative-genetic random-regression model -- **heritable variation
-in a reaction-norm slope** (Meyer & Hill 1997; Nussey *et al.* 2007).
-
-To show the equivalence concretely, we treat the same relatedness
-matrix two ways on the same data: once through `animal_slope(x | id,
-A = A)`, and once through `phylo_slope(x | id, vcv = A)`. Because
-`animal_slope` desugars to exactly the latter, the two fits agree to
-numerical precision. (When $\mathbf{A}$ is supplied directly via `A =`
-/ `vcv =`, give the relatedness key as `cluster =`.)
-
-```{r animal-twin}
-set.seed(11)
-n_id <- 25
-tree_id <- ape::rcoal(n_id)
-tree_id$tip.label <- paste0("i", seq_len(n_id))
-A <- ape::vcv(tree_id, corr = TRUE)   # stand-in relatedness matrix, rownames = id
-
-s2 <- 0.4
-LA <- t(chol(A + diag(1e-8, n_id)))
-beta_id_true <- as.numeric(LA %*% rnorm(n_id, sd = sqrt(s2)))
-names(beta_id_true) <- tree_id$tip.label
-
-dat <- expand.grid(
-  id    = factor(tree_id$tip.label, levels = tree_id$tip.label),
-  trait = factor(c("t1", "t2"), levels = c("t1", "t2")),
-  rep   = seq_len(5)
-)
-dat$x <- rnorm(nrow(dat))
-dat$value <- c(1, 0.5)[as.integer(dat$trait)] +
-  beta_id_true[as.character(dat$id)] * dat$x +
-  rnorm(nrow(dat), sd = 0.5)
-
-fit_animal <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):x + animal_slope(x | id, A = A),
-  data = dat, trait = "trait", unit = "id", cluster = "id"
-)
-fit_phylo <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):x + phylo_slope(x | id, vcv = A),
-  data = dat, trait = "trait", unit = "id", cluster = "id"
+ctl <- gllvmTMBcontrol(
+  se = FALSE,
+  optimizer = "optim",
+  optArgs = list(method = "BFGS")
 )
 
-ss_animal <- exp(fit_animal$opt$par[grepl("log_sigma_slope",
-                                          names(fit_animal$opt$par))])
-ss_phylo  <- exp(fit_phylo$opt$par[grepl("log_sigma_slope",
-                                         names(fit_phylo$opt$par))])
-data.frame(
-  routing      = c("animal_slope(x | id, A = A)", "phylo_slope(x | id, vcv = A)"),
-  sigma_slope  = signif(c(unname(ss_animal), unname(ss_phylo)), 6)
+fit_long <- gllvmTMB(
+  value ~ 0 + trait + (0 + trait):temperature +
+    latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
+    unique(0 + trait + (0 + trait):temperature | individual) +
+    latent(0 + trait | session_id, d = 1),
+  data = df,
+  trait = rr$fit_args$trait,
+  unit = rr$fit_args$unit,
+  unit_obs = rr$fit_args$unit_obs,
+  family = rr$fit_args$family,
+  control = ctl
 )
 
-# Byte-equivalence of the full optimised parameter vector
-cat("max |opt$par difference| :",
-    signif(max(abs(as.numeric(fit_animal$opt$par) -
-                   as.numeric(fit_phylo$opt$par))), 3), "\n")
-```
-
-The two routings produce the same $\sigma_{\text{slope}}$ and the same
-optimised parameter vector. `animal_slope(x | id)` is therefore the
-pedigree-facing name for the same random-regression machinery; use it
-when your relatedness comes from a pedigree (build $\mathbf{A}$ with
-[`pedigree_to_A()`](../reference/pedigree_to_A.html); see the
-[animal-model](animal-model.html) article for the pedigree workflow).
-
-## Non-Gaussian families
-
-The random-slope term is not restricted to Gaussian responses -- it
-rides on the same GLLVM machinery as the rest of the package, so it
-composes with the count, proportion, and ordinal families. As a quick
-demonstration, the same phylogenetic reaction norm under a Poisson
-log-link:
-
-```{r poisson-slope}
-set.seed(5640)
-n_sp2 <- 25
-tree2 <- ape::rcoal(n_sp2)
-tree2$tip.label <- paste0("sp", seq_len(n_sp2))
-C2 <- ape::vcv(tree2, corr = TRUE)
-L2 <- t(chol(C2 + diag(1e-8, n_sp2)))
-beta2_true <- as.numeric(L2 %*% rnorm(n_sp2, sd = sqrt(0.3)))
-names(beta2_true) <- tree2$tip.label
-
-dfp <- expand.grid(
-  species = factor(tree2$tip.label, levels = tree2$tip.label),
-  trait   = factor(paste0("t", 1:3), levels = paste0("t", 1:3)),
-  rep     = seq_len(5)
+fit_wide <- gllvmTMB(
+  traits(boldness, exploration, activity) ~ 1 + temperature +
+    latent(1 + temperature | individual, d = 1) +
+    unique(1 + temperature | individual) +
+    latent(1 | session_id, d = 1),
+  data = df_wide,
+  unit = rr$fit_args$unit,
+  unit_obs = rr$fit_args$unit_obs,
+  family = rr$fit_args$family,
+  control = ctl
 )
-dfp$x <- rnorm(nrow(dfp))
-eta <- c(2, 2.1, 1.9)[as.integer(dfp$trait)] +
-  beta2_true[as.character(dfp$species)] * dfp$x
-dfp$value <- rpois(nrow(dfp), exp(eta))
 
-fit_pois <- gllvmTMB(
-  value ~ 0 + trait + (0 + trait):x + phylo_slope(x | species, tree = tree2),
-  data   = dfp,
-  trait  = "trait",
-  unit   = "species",
-  family = poisson(link = "log")
-)
-data.frame(
-  param = "sigma_slope (poisson)",
-  true  = signif(sqrt(0.3), 3),
-  est   = signif(unname(exp(fit_pois$opt$par[
-    grepl("log_sigma_slope", names(fit_pois$opt$par))])), 3)
+fit <- fit_long
+
+cat(
+  "Long/wide logLik difference:",
+  signif(abs(as.numeric(logLik(fit_long)) - as.numeric(logLik(fit_wide))), 3),
+  "\n"
 )
 ```
 
-The slope variance recovers under the count family as it does under
-Gaussian. The same pattern holds for the other core response families
-(negative binomial, gamma, beta, ordinal, binomial) -- swap the
-`family =` argument and keep the formula. See
-[response-families](response-families.html) for the family catalogue.
+The `unit = "individual"` argument defines the between-individual tier.
+The `unit_obs = "session_id"` argument defines the occasion tier. The
+augmented random slope lives at the individual tier, not the session
+tier:
 
-## Correlated intercept and slope
+```{r formula-pieces, eval = FALSE}
+# Long format
+latent(0 + trait + (0 + trait):temperature | individual, d = 1)
+unique(0 + trait + (0 + trait):temperature | individual)
 
-The single-variance model above varies only the slope. A fuller
-random-regression model lets each unit have **both** a random intercept
-and a random slope, with the two correlated -- the standard
-$2 \times 2$ $(\text{intercept}, \text{slope})$ covariance of
-quantitative-genetic reaction norms. In `gllvmTMB` this is the
-augmented form of
-[`phylo_unique()`](../reference/phylo_unique.html), written
-`phylo_unique(1 + x | species)` on a wide
-[`traits()`](../reference/traits.html) surface, or equivalently
-`phylo_unique(0 + trait + (0 + trait):x | species)` in long form. Both
-spellings dispatch to the same engine.
+# Wide data-frame shorthand
+latent(1 + temperature | individual, d = 1)
+unique(1 + temperature | individual)
+```
 
-The model places the per-species intercept and slope under a joint
-prior,
+The article uses `se = FALSE` so the vignette renders quickly. That
+means the diagnostic table below is a point-estimate fit check, not a
+curvature-based interval claim.
+
+```{r diagnostics}
+diag_tbl <- check_gllvmTMB(fit)
+diag_tbl[
+  diag_tbl$component %in% c(
+    "optimizer_convergence",
+    "max_gradient",
+    "boundary_flags",
+    "boundary_sigma_eps",
+    "sdreport",
+    "pd_hessian"
+  ),
+  c("component", "status", "value", "message")
+]
+```
+
+## What model did we fit?
+
+For trait `t`, individual `i`, and session `j`,
 
 $$
-\begin{pmatrix} \alpha_i \\ \beta_i \end{pmatrix}
-\sim
-\mathcal{N}\!\left(\mathbf{0},\;
-\boldsymbol\Sigma_{b} \otimes \mathbf{A}\right),
-\qquad
-\boldsymbol\Sigma_{b} =
+y_{ijt} =
+\mu_t + \beta_t\,\mathrm{temperature}_{ij}
++ u_{it} + b_{it}\,\mathrm{temperature}_{ij}
++ e_{ijt} + \varepsilon_{ijt}.
+$$
+
+The random intercept `u_it` is the individual's average deviation for
+trait `t` at the reference temperature. In animal-personality language,
+that is the personality component. The random slope `b_it` is the
+individual's deviation in temperature responsiveness. That is the
+reaction-norm or plasticity component.
+
+gllvmTMB stacks all trait-specific intercepts and slopes into one
+augmented between-individual vector:
+
+$$
+\mathbf{b}_{B,i} =
 \begin{pmatrix}
-\sigma^2_{\text{int}} & \rho\,\sigma_{\text{int}}\sigma_{\text{slope}} \\
-\rho\,\sigma_{\text{int}}\sigma_{\text{slope}} & \sigma^2_{\text{slope}}
+u_{i,\mathrm{boldness}} \\
+b_{i,\mathrm{boldness}} \\
+u_{i,\mathrm{exploration}} \\
+b_{i,\mathrm{exploration}} \\
+u_{i,\mathrm{activity}} \\
+b_{i,\mathrm{activity}}
 \end{pmatrix}.
 $$
 
-The fit below converges and is byte-identical between the long and wide
-spellings:
+The fitted decomposition is
 
-```{r augmented, eval = requireNamespace("tidyr", quietly = TRUE)}
-library(tidyr)
-set.seed(5640)
-n_sp3 <- 25
-tree3 <- ape::rcoal(n_sp3)
-tree3$tip.label <- paste0("sp", seq_len(n_sp3))
-C3 <- ape::vcv(tree3, corr = TRUE)
-L3 <- t(chol(C3 + diag(1e-8, n_sp3)))
+$$
+\mathbf{b}_{B,i}
+= \Lambda_{B,\mathrm{aug}} \mathbf{z}_{B,i}
++ \mathbf{q}_{B,i},
+\qquad
+\mathbf{q}_{B,i} \sim
+\mathcal{N}(\mathbf{0}, \mathrm{diag}(\psi_{B,\mathrm{aug}})).
+$$
 
-s2_int <- 0.4; s2_slp <- 0.3; rho <- 0.5
-cov_ab <- rho * sqrt(s2_int * s2_slp)
-Sigma_b <- matrix(c(s2_int, cov_ab, cov_ab, s2_slp), 2, 2)
-ab <- (L3 %*% matrix(rnorm(n_sp3 * 2), n_sp3, 2)) %*% chol(Sigma_b)
-colnames(ab) <- c("alpha", "beta")
-rownames(ab) <- tree3$tip.label
+Therefore the augmented reaction-norm covariance is
 
-sr <- expand.grid(
-  species = factor(tree3$tip.label, levels = tree3$tip.label),
-  rep = seq_len(4)
+$$
+\Sigma_{B,\mathrm{aug}}
+= \Lambda_{B,\mathrm{aug}}\Lambda_{B,\mathrm{aug}}^\top
++ \mathrm{diag}(\psi_{B,\mathrm{aug}}).
+$$
+
+This `2T x 2T` covariance is the main estimand in the article.
+
+## Extract the augmented covariance
+
+```{r extract-sigma}
+Sigma_shared <- extract_Sigma(
+  fit,
+  level = "unit_slope",
+  part = "shared"
 )
-sr$x <- rnorm(nrow(sr))
-tl3 <- paste0("t", 1:3)
-dl <- merge(sr, data.frame(trait = factor(tl3, levels = tl3)), all = TRUE)
-dl <- dl[order(dl$species, dl$rep, dl$trait), ]
-dl$value <- c(2, 1, 0.5)[as.integer(dl$trait)] +
-  ab[as.character(dl$species), "alpha"] +
-  ab[as.character(dl$species), "beta"] * dl$x +
-  rnorm(nrow(dl), sd = 0.3)
+Sigma_unique <- extract_Sigma(
+  fit,
+  level = "unit_slope",
+  part = "unique"
+)
+Sigma_total <- extract_Sigma(
+  fit,
+  level = "unit_slope",
+  part = "total"
+)
 
-dw <- as.data.frame(tidyr::pivot_wider(
-  dl, id_cols = c(species, rep, x),
-  names_from = trait, values_from = value
+round(Sigma_total$Sigma[intercept_names, intercept_names], 2)
+round(Sigma_total$Sigma[slope_names, slope_names], 3)
+round(Sigma_total$Sigma[intercept_names, slope_names], 3)
+```
+
+The three blocks answer different biological questions:
+
+- The intercept-intercept block is the personality or behavioural
+  syndrome covariance at `temperature = 0`.
+- The slope-slope block is the plasticity-syndrome covariance: whether
+  individuals that are temperature-responsive in one behaviour are also
+  responsive in another.
+- The intercept-slope block is the personality-plasticity association:
+  whether high-average individuals also respond more strongly or weakly
+  to temperature.
+
+The shared and unique pieces compose the total augmented covariance.
+`Sigma_unique$s` is the fitted diagonal contribution from `unique()`,
+ordered to match the rows and columns of `Sigma_total$Sigma`:
+
+```{r composition}
+max(abs(
+  Sigma_total$Sigma -
+    (Sigma_shared$Sigma + diag(Sigma_unique$s, nrow = length(Sigma_unique$s)))
 ))
-
-fit_long <- gllvmTMB(
-  value ~ 0 + trait + phylo_unique(0 + trait + (0 + trait):x | species,
-                                   tree = tree3),
-  data = dl, trait = "trait", unit = "species"
-)
-fit_wide <- gllvmTMB(
-  traits(t1, t2, t3) ~ 1 + phylo_unique(1 + x | species, tree = tree3),
-  data = dw, unit = "species"
-)
-
-c(convergence = fit_long$opt$convergence,
-  pd_hessian  = isTRUE(fit_long$fit_health$pd_hessian))
-cat("long vs wide logLik difference:",
-    signif(abs(as.numeric(logLik(fit_long)) -
-               as.numeric(logLik(fit_wide))), 3), "\n")
 ```
 
-The correlated form **fits** and the two surfaces are the same
-likelihood problem. Reading the $2 \times 2$
-$(\text{intercept}, \text{slope})$ covariance back out -- the separate
-$\sigma^2_{\text{int}}$, $\sigma^2_{\text{slope}}$, and their
-correlation $\rho$ -- is the natural next extractor, but that reporting
-is **not surfaced in this build**; the single-variance
-`phylo_slope` route above is the one with a documented variance
-read-out. Treat the augmented form here as a fitting demonstration, not
-as a covariance-recovery workflow.
+## Recovery check
 
-The **independent** (diagonal) counterpart `phylo_indep(1 + x | sp)`
-also fits. It is the same augmented engine as the correlated form, with
-the intercept-slope correlation $\rho$ **pinned to 0**, so it estimates
-the two variances $\sigma^2_{\text{int}}$ and $\sigma^2_{\text{slope}}$
-under the assumption that the random intercept and slope are
-uncorrelated:
+Because this is a generated teaching example, we can compare fitted and
+true augmented covariance entries. The plot is a diagnostic for this
+single fixture, not a calibrated simulation study.
 
-```{r augmented-indep, eval = requireNamespace("tidyr", quietly = TRUE)}
-# phylo_indep(1 + x | sp): independent / diagonal intercept+slope, the
-# correlation pinned to 0. Same augmented engine as phylo_unique(1 + x | sp)
-# above; the 2x2 covariance read-out is still not surfaced (rho is 0 here by
-# construction), so treat this too as a fitting demonstration.
-fit_indep <- gllvmTMB(
-  traits(t1, t2, t3) ~ 1 + phylo_indep(1 + x | species, tree = tree3),
-  data = dw, unit = "species"
+```{r recovery-data}
+unit_slope_comparison <- function(estimate, truth) {
+  idx <- which(lower.tri(truth, diag = TRUE), arr.ind = TRUE)
+  row_name <- rownames(truth)[idx[, "row"]]
+  col_name <- colnames(truth)[idx[, "col"]]
+  row_is_slope <- grepl("^slope\\.", row_name)
+  col_is_slope <- grepl("^slope\\.", col_name)
+
+  data.frame(
+    row = row_name,
+    column = col_name,
+    estimate = estimate[idx],
+    truth = truth[idx],
+    block = ifelse(
+      row_is_slope & col_is_slope,
+      "slope-slope",
+      ifelse(
+        !row_is_slope & !col_is_slope,
+        "intercept-intercept",
+        "intercept-slope"
+      )
+    )
+  )
+}
+
+cov_compare <- unit_slope_comparison(
+  estimate = Sigma_total$Sigma,
+  truth = truth$Sigma_unit_slope
 )
-c(convergence = fit_indep$opt$convergence,
-  pd_hessian  = isTRUE(fit_indep$fit_health$pd_hessian))
+
+cat(
+  "Relative Frobenius error:",
+  round(
+    norm(Sigma_total$Sigma - truth$Sigma_unit_slope, "F") /
+      norm(truth$Sigma_unit_slope, "F"),
+    3
+  ),
+  "\n"
+)
 ```
 
-## A note on confidence intervals
+```{r recovery-plot, fig.width = 6.5, fig.height = 4.8, fig.cap = "Estimated versus true augmented individual-level covariance entries for the behavioural reaction-norm fixture. The dashed line is perfect recovery; colours identify intercept-intercept, slope-slope, and intercept-slope blocks."}
+ggplot(cov_compare, aes(truth, estimate, colour = block)) +
+  geom_abline(slope = 1, intercept = 0, linetype = 2, colour = "grey45") +
+  geom_point(size = 2.6, alpha = 0.88) +
+  coord_equal() +
+  scale_colour_manual(
+    values = c(
+      "intercept-intercept" = "#1b9e77",
+      "intercept-slope" = "#7570b3",
+      "slope-slope" = "#d95f02"
+    ),
+    name = "Block"
+  ) +
+  labs(
+    x = "Known simulation truth",
+    y = "Fitted estimate",
+    title = "Recovery of the reaction-norm covariance",
+    subtitle = "Point estimates from Sigma_B,aug"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+```
 
-Everything above reports **point** estimates. Calibrated confidence
-intervals on slope variances are **not** established in v0.2.0. The
-package's interval machinery (profile / Wald / bootstrap) is validated
-for *point* behaviour, but the coverage study clears the nominal gate
-only for narrow Gaussian cases and fails elsewhere, including for
-mixed-family targets. Do not read the point estimates here as if they
-came with calibrated intervals; for inference on a slope variance,
-treat interval width with caution and prefer external validation (e.g.
-a Bayesian refit in `MCMCglmm` / `brms`) until the coverage gate is
-met. See [profile-likelihood-ci](profile-likelihood-ci.html) for what
-the interval tools currently do and do not guarantee.
+## Repeatability along the temperature gradient
 
-## What is forthcoming
+With random slopes, among-individual variance is not constant. For one
+trait at a focal temperature value `x`,
 
-The random-slope surface is deliberately narrow in v0.2.0. Beyond the
-single-variance `phylo_slope` / `animal_slope` mode (validated above),
-the augmented intercept+slope forms that now fit are the correlated
-`phylo_unique(1 + x | species)`, the diagonal
-`phylo_indep(1 + x | species)`, and the base SPDE slopes
-`spatial_unique` / `spatial_indep(1 + x | coords)`. The following are
-recognised but **not yet delivered**, and are named here so the
-boundary is explicit:
+$$
+\mathrm{Var}(u_{it} + b_{it}x)
+= \mathrm{Var}(u_{it})
++ 2x\,\mathrm{Cov}(u_{it}, b_{it})
++ x^2\,\mathrm{Var}(b_{it}).
+$$
 
-- **Structured (dependent and reduced-rank) slopes** --
-  `phylo_dep` / `phylo_latent` and the `spatial_dep` / `spatial_latent`
-  slope modes. These drive dedicated engine paths that are still in
-  progress; only the base (single-variance, correlated, and diagonal)
-  slope forms above are exercised today.
-- **Multi-covariate, per-trait, and reduced-rank** phylogenetic slopes
-  -- the initial release fixes one covariate, one slope variance,
-  slopes shared across traits. The trait-specific augmented left-hand
-  side `phylo_indep(0 + trait + trait:x | species)` is recognised by
-  the parser but reserved for a future release.
+The temperature-specific repeatability is this among-individual
+variance divided by among-individual plus occasion-level and Gaussian
+residual variance.
 
-For these, the established external tools for random-regression /
-reaction-norm models are
-[`MCMCglmm`](https://cran.r-project.org/package=MCMCglmm) (Hadfield
-2010, Bayesian), [ASReml-R](https://www.vsni.co.uk/software/asreml-r)
-(REML), and [`brms`](https://cran.r-project.org/package=brms).
+```{r repeatability-data}
+Sigma_W_hat <- extract_Sigma(fit, level = "unit_obs")$Sigma
+sigma_eps2_hat <- as.numeric(fit$report$sigma_eps[1])^2
 
-## References and further reading
+reaction_repeatability <- function(Sigma_aug, Sigma_W, sigma_eps2,
+                                   traits, source) {
+  x_grid <- seq(-1.5, 1.5, length.out = 80)
+  out <- vector("list", length(traits))
+  for (k in seq_along(traits)) {
+    trait <- traits[k]
+    intercept <- paste0("intercept.", trait)
+    slope <- paste0("slope.temperature.", trait)
+    between <- Sigma_aug[intercept, intercept] +
+      2 * x_grid * Sigma_aug[intercept, slope] +
+      x_grid^2 * Sigma_aug[slope, slope]
+    total <- between + Sigma_W[trait, trait] + sigma_eps2
+    out[[k]] <- data.frame(
+      trait = trait,
+      temperature = x_grid,
+      repeatability = between / total,
+      source = source
+    )
+  }
+  do.call(rbind, out)
+}
 
-- **Meyer & Hill (1997)** *Livest. Prod. Sci.* 47:185 -- estimating
-  covariance functions for random-regression (reaction-norm) models.
-- **Nussey, Wilson & Brommer (2007)** *J. Evol. Biol.* 20:831 -- the
-  evolutionary-ecology framing of reaction norms as random regressions.
-- **Hadfield & Nakagawa (2010)** *J. Evol. Biol.* 23:494 -- the sparse
-  $\mathbf{A}^{-1}$ representation shared by the `phylo_*` / `animal_*`
-  engine path.
-- **Kruuk (2004)** *Phil. Trans. R. Soc. B* 359:873 -- the animal model
-  in natural populations.
+repeatability_rows <- rbind(
+  reaction_repeatability(
+    Sigma_total$Sigma,
+    Sigma_W_hat,
+    sigma_eps2_hat,
+    trait_names,
+    "estimate"
+  ),
+  reaction_repeatability(
+    truth$Sigma_unit_slope,
+    truth$Sigma_unit_obs,
+    truth$sigma_eps^2,
+    trait_names,
+    "truth"
+  )
+)
+```
 
-## See also
+```{r repeatability-plot, fig.width = 7.0, fig.height = 4.8, fig.cap = "Trait-specific repeatability across the temperature gradient. Solid lines are fitted point estimates; dashed lines are the known simulation truth."}
+ggplot(
+  repeatability_rows,
+  aes(temperature, repeatability, colour = trait, linetype = source)
+) +
+  geom_line(linewidth = 0.8) +
+  scale_colour_manual(
+    values = c(
+      boldness = "#1b9e77",
+      exploration = "#d95f02",
+      activity = "#7570b3"
+    ),
+    name = "Trait"
+  ) +
+  scale_linetype_manual(
+    values = c(estimate = "solid", truth = "22"),
+    name = NULL
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    breaks = seq(0, 1, by = 0.25)
+  ) +
+  labs(
+    x = "Temperature (centred and scaled)",
+    y = "Repeatability",
+    title = "Repeatability changes along the reaction norm",
+    subtitle = "Random slopes make among-individual variance context-dependent"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+```
 
-- [The animal model](animal-model.html) -- pedigree workflow,
-  heritability, and the genetic covariance matrix $\mathbf{G}$.
-- [Phylogenetic trait covariance](phylogenetic-gllvm.html) -- the
-  intercept-level phylogenetic decomposition that `phylo_slope`
-  extends.
-- [Choose your model](choose-your-model.html) -- the decision tree
-  across the covariance-keyword grid.
-- [Response families](response-families.html) -- the family catalogue
-  the slope term composes with.
-- [GLLVM vocabulary](gllvm-vocabulary.html) -- definitions of
-  $\mathbf{A}$, $\boldsymbol\Sigma$, and the rotation conventions.
+The repeatability curves are often the most useful biological summary.
+They translate the augmented covariance into the familiar question:
+how much of the observed trait variation is due to stable individual
+differences at each temperature value?
+
+## Current non-Gaussian boundary
+
+The paired augmented `latent() + unique()` random-regression path in
+this article is Gaussian. The low-rank augmented `latent()` path can
+currently fit ordinary non-Gaussian random slopes in a smoke-test
+regime, but adding the augmented diagonal `unique()` component is still
+guarded for non-Gaussian families.
+
+```{r nongaussian-boundary, eval = FALSE}
+# This intentionally errors today.
+gllvmTMB(
+  value ~ 0 + trait + (0 + trait):temperature +
+    latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
+    unique(0 + trait + (0 + trait):temperature | individual),
+  data = count_data_long,
+  trait = "trait",
+  unit = "individual",
+  unit_obs = "session_id",
+  family = poisson()
+)
+#> Error: Augmented ordinary `unique()` random-regression slopes are currently
+#> implemented for Gaussian responses only.
+```
+
+For a non-Gaussian reaction-norm analysis today, either fit the
+augmented `latent()` part without `unique()` and treat it as early
+evidence, or stay with the established non-slope `latent + unique`
+between/within model. Do not switch to `phylo_*()` or `spatial_*()`
+syntax unless the scientific model genuinely contains phylogenetic or
+spatial dependence.
+
+## What to report
+
+For this model, the primary reportable pieces are:
+
+- the fixed trait intercepts and temperature slopes, which describe
+  the population-average reaction norms;
+- `extract_Sigma(level = "unit_slope", part = "total")`, which gives
+  the full covariance among individual intercepts and slopes;
+- the intercept-intercept, slope-slope, and intercept-slope blocks,
+  interpreted as personality syndromes, plasticity syndromes, and
+  personality-plasticity associations;
+- repeatability curves across a biologically meaningful temperature
+  range; and
+- diagnostics from `check_gllvmTMB()` before interpreting covariance or
+  repeatability.
+
+This draft demonstrates the Gaussian random-regression model only. It does not
+establish calibrated confidence intervals for slope variances, slope
+correlations, intercept-slope correlations, repeatability curves, or
+non-Gaussian augmented `unique()` support.
+
+## References
+
+O'Dea, R. E., Noble, D. W. A., and Nakagawa, S. (2022). Unifying
+individual differences in personality, predictability and plasticity: a
+practical guide. *Methods in Ecology and Evolution* 13, 278-293.
+
+Stamps, J. A. (2016). Individual differences in behavioural
+plasticities. *Biological Reviews* 91, 534-567.
+
+Dingemanse, N. J. and Dochtermann, N. A. (2013). Quantifying individual
+variation in behaviour: mixed-effect modelling approaches. *Journal of
+Animal Ecology* 82, 39-54.

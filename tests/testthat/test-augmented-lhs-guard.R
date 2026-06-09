@@ -1,7 +1,9 @@
-## Design 07 Stage 2.5 follow-up: fail-loud parser guard against augmented
-## LHS in the BARE covstruct keywords (`latent`, `unique`, `indep`, `dep`).
+## Design 07 Stage 2.5 follow-up plus RE-12 update: fail-loud parser guard
+## against unsupported augmented LHS in the BARE covstruct keywords
+## (`indep`, `dep`), while the ordinary augmented `latent()` / `unique()` paths
+## now route to the B-tier random-regression engine.
 ##
-## Today (pre-fix) writing
+## Historically, writing
 ##
 ##     latent(0 + trait + (0 + trait):temp | g, d = 1)
 ##
@@ -14,12 +16,14 @@
 ## objectives (677.4103) and identical T x d_B Lambda_hat instead of
 ## 2T x d_B.
 ##
-## The `phylo()` and `spatial()` mode-dispatch wrappers (df76c705 /
-## 8b1ddc92) already abort fail-loud on augmented LHS with a Stage 3
-## redirect. This test file covers the same guard for the bare keywords.
+## silently fit with only T columns. RE-12 changes that contract: augmented
+## ordinary `latent()` and Gaussian ordinary `unique()` are now accepted and
+## tested as partial random-regression components, while unsupported augmented
+## `indep()` terms still abort rather than silently dropping the slope columns.
 ##
-## TDD discipline: tests 1-3 are RED before the fix, GREEN after.
-## Tests 4-6 are GREEN before AND after (no-regression).
+## TDD discipline: `indep()` remains a fail-loud guard; the supported
+## `latent()` / Gaussian `unique()` augmented forms are no-regression
+## acceptance checks.
 
 ## Tiny fixture for fast non-phylo, non-spatial fits.
 make_lhs_fixture <- function(seed = 42) {
@@ -35,35 +39,40 @@ make_lhs_fixture <- function(seed = 42) {
   df
 }
 
-## ---- 1. latent() augmented LHS errors with Stage-3 redirect -------------
+## ---- 1. latent() augmented LHS routes to RE-12 engine -------------------
 
-test_that("latent(0 + trait + (0 + trait):temp | g, d = 1) errors with Stage 3 redirect", {
+test_that("latent(0 + trait + (0 + trait):temp | g, d = 1) routes to ordinary random-regression engine", {
   skip_on_cran()
   df <- make_lhs_fixture()
-  expect_error(
-    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait +
-              latent(0 + trait + (0 + trait):temp | site, d = 1),
-      data = df, unit = "site"
-    ))),
-    regexp = "augmented LHS|Stage 3|n_lhs_cols|reaction.norm"
-  )
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+            latent(0 + trait + (0 + trait):temp | site, d = 1),
+    data = df, unit = "site"
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$use$rr_B_slope))
+  expect_false(isTRUE(fit$use$rr_B))
+  expect_equal(fit$use$rr_B_slope_col, "temp")
+  expect_equal(as.integer(fit$tmb_data$n_lhs_cols_B_lat), 6L)
+  expect_equal(dim(fit$report$Sigma_B_slope), c(6L, 6L))
 })
 
-## ---- 2. unique() augmented LHS errors with Stage-3 redirect -------------
+## ---- 2. unique() augmented LHS routes to RE-12 engine -------------------
 
-test_that("unique(0 + trait + (0 + trait):temp | g) errors with Stage 3 redirect", {
+test_that("unique(0 + trait + (0 + trait):temp | g) routes to ordinary augmented unique engine", {
   skip_on_cran()
   df <- make_lhs_fixture()
-  expect_error(
-    suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      value ~ 0 + trait +
-              latent(0 + trait | site, d = 1) +
-              unique(0 + trait + (0 + trait):temp | site),
-      data = df, unit = "site"
-    ))),
-    regexp = "augmented LHS|Stage 3|n_lhs_cols|reaction.norm"
-  )
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait +
+            unique(0 + trait + (0 + trait):temp | site),
+    data = df, unit = "site"
+  )))
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$use$diag_B_slope))
+  expect_false(isTRUE(fit$use$diag_B))
+  expect_equal(fit$use$diag_B_slope_col, "temp")
+  expect_equal(as.integer(fit$tmb_data$n_lhs_cols_B_diag), 6L)
+  expect_equal(length(as.numeric(fit$report$sd_B_slope)), 6L)
 })
 
 ## ---- 3. indep() augmented LHS errors with Stage-3 redirect --------------

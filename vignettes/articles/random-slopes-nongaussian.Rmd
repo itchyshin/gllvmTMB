@@ -34,13 +34,17 @@ knitr::opts_chunk$set(
 ```
 
 A reaction norm is a slope: how a trait responds to an environmental
-gradient. When that slope **varies across the units of a structured
-group** -- species along a phylogeny, sites across space -- the model is
-a *random regression*. The companion article
-[Random regression and reaction-norm slopes](random-regression-reaction-norms.html)
-develops this for Gaussian traits and the single-variance
-`phylo_slope` / `animal_slope` mode. This article extends the story in
-two directions that matter for real ecological and evolutionary data:
+gradient. The ordinary individual-level behavioural reaction-norm article is
+now an internal Gaussian draft for
+`latent(1 + x | individual, d = K) + unique(1 + x | individual)`, while plain
+non-structured bare-bar `(1 + x | individual)` random slopes remain reserved.
+This article covers a different, internal technical surface: **structured**
+random slopes, where the slope varies across species along a phylogeny or
+across sites in space. Those are random regressions with an explicit dependence
+structure.
+
+This article covers two directions that matter for ecological and evolutionary
+data:
 
 1. **Non-Gaussian responses.** Counts, proportions, bounded scores, and
    ordinal categories are the rule, not the exception, in trait data. The
@@ -64,6 +68,16 @@ phylogenetic and spatial sources, across the `indep`, `latent`, and
 added in [#441](https://github.com/itchyshin/gllvmTMB/issues/441)). This
 article is the worked tour of that grid.
 
+The scope is deliberately single-slope:
+
+| Claim | Status |
+|---|---|
+| Structured random regression with one covariate, `1 + x` (`s = 1`) | **Covered** for the core phylogenetic and spatial grid (PHY-11..PHY-18, SPA-08..SPA-10, ANI-11..ANI-12) |
+| Gaussian `phylo_dep(1 + x1 + x2 | species)` (`s = 2`) | **Covered** under RE-03 for the structured phylogenetic dependent path |
+| Non-Gaussian `phylo_dep(..., s >= 2)` | **Partial**; fail-loud guarded while RE-03 diagnostics continue |
+| Delta, hurdle, and two-stage zero-inflated families | **Blocked / out of scope** for latent-scale slope covariance (FAM-17, MIX-10) |
+| Confidence intervals on slope variances | **Not calibrated here**; this article reports point estimates and recovery bands, not coverage guarantees |
+
 ## The augmented-slope grammar
 
 The random-slope term sits inside the RHS of the formula and follows the
@@ -72,12 +86,11 @@ package.
 
 | Spelling | Meaning |
 |---|---|
-| `(1 + x \| group)` | Ordinary correlated random intercept + slope by `group` (no extra structure). |
-| `phylo_indep(1 + x \| species)` | Per-species intercept and slope, each correlated by the phylogeny $\mathbf{A}$, **diagonal** between intercept and slope ($\rho$ pinned to 0). |
-| `phylo_latent(1 + x \| species)` | Reduced-rank block over the augmented (intercept, slope) columns. |
-| `phylo_dep(1 + x \| species)` | **Full unstructured** $2T \times 2T$ covariance over the per-trait (intercept, slope) columns. |
-| `spatial_indep(1 + x \| coords)` | Two independent SPDE fields: one for the intercept surface, one for the slope surface. |
-| `spatial_dep(1 + x \| coords)` | Full cross-field covariance between the intercept and slope fields. |
+| <code>phylo_indep(1 + x | species)</code> | Per-species intercept and slope, each correlated by the phylogeny $\mathbf{A}$, **diagonal** between intercept and slope ($\rho$ pinned to 0). |
+| <code>phylo_latent(1 + x | species)</code> | Reduced-rank block over the augmented (intercept, slope) columns. |
+| <code>phylo_dep(1 + x | species)</code> | **Full unstructured** $2T \times 2T$ covariance over the per-trait (intercept, slope) columns. |
+| <code>spatial_indep(1 + x | coords)</code> | Two independent SPDE fields: one for the intercept surface, one for the slope surface. |
+| <code>spatial_dep(1 + x | coords)</code> | Full cross-field covariance between the intercept and slope fields. |
 
 In **long format**, the wide shorthand `(1 + x | species)` expands to
 the explicit stacked-trait form `0 + trait + (0 + trait):x | species`;
@@ -144,7 +157,7 @@ an intercept variance and a slope variance.
 ```{r fit-small-long}
 fit_long <- gllvmTMB(
   value ~ 0 + trait + phylo_indep(1 + x | species),
-  data = long, phylo_tree = tree, unit = "species"
+  data = long, trait = "trait", phylo_tree = tree, unit = "species"
 )
 ```
 
@@ -252,7 +265,7 @@ dfp$value <- rpois(nrow(dfp), exp(eta))
 
 fit_pois <- gllvmTMB(
   value ~ 0 + trait + phylo_indep(1 + x | species),
-  data = dfp, phylo_tree = tree2, unit = "species",
+  data = dfp, trait = "trait", phylo_tree = tree2, unit = "species",
   family = poisson(link = "log")
 )
 
@@ -293,7 +306,7 @@ validation tests, not from a build-time fit.
 # Long format: explicit stacked-trait grammar
 fit_dep_long <- gllvmTMB(
   value ~ 0 + trait + phylo_dep(1 + x | species),
-  data = long_counts, phylo_tree = tree, unit = "species",
+  data = long_counts, trait = "trait", phylo_tree = tree, unit = "species",
   family = poisson(link = "log")
 )
 
@@ -356,7 +369,7 @@ mesh <- make_mesh(sites, c("lon", "lat"), cutoff = 0.1)
 # Long format
 fit_sp_long <- gllvmTMB(
   value ~ 0 + trait + spatial_indep(1 + x | coords),
-  data = sites_long, mesh = mesh,
+  data = sites_long, trait = "trait", mesh = mesh,
   family = poisson(link = "log")
 )
 
@@ -406,15 +419,18 @@ full unstructured covariance.
 
 | Source | `indep` | `latent` | `dep` |
 |---|---|---|---|
-| `phylo_*(1 + x \| species)` | validated | validated | validated |
-| `spatial_*(1 + x \| coords)` | validated | validated | validated |
+| <code>phylo_*(1 + x | species)</code> | validated | validated | validated |
+| <code>spatial_*(1 + x | coords)</code> | validated | validated | validated |
 
 Families covered for each cell: `gaussian`, `poisson`, `nbinom1`,
 `nbinom2`, `Gamma`, `Beta`, `binomial` (incl. multi-trial), and
-`ordinal_probit`. The single-variance `phylo_slope` / `animal_slope`
-mode (one shared slope variance, no separate intercept variance) is the
-subject of the companion
-[reaction-norms article](random-regression-reaction-norms.html).
+`ordinal_probit`. The deprecated single-variance slope keywords are not used
+in new public examples.
+
+This table covers one random-slope covariate. Gaussian
+`phylo_dep(1 + x1 + x2 | species)` has its own RE-03 evidence, but the
+non-Gaussian `s >= 2` path remains guarded until that separate gate
+clears.
 
 ## A note on confidence intervals
 
@@ -432,16 +448,11 @@ tools currently do and do not guarantee.
 
 ## See also
 
-- [Random regression and reaction-norm slopes](random-regression-reaction-norms.html)
-  -- the Gaussian, single-variance `phylo_slope` / `animal_slope`
-  foundation this article extends.
-- [The animal model](animal-model.html) -- pedigree-based
-  `animal_slope`, heritability, and the genetic covariance $\mathbf{G}$.
-- [Phylogenetic trait covariance](phylogenetic-gllvm.html) -- the
-  intercept-level phylogenetic decomposition the slope forms extend.
-- [Functional biogeography](functional-biogeography.html) -- the spatial
-  SPDE machinery behind the `spatial_*` slope cells.
+- [Formula keyword grid](api-keyword-grid.html) -- the covariance keyword
+  grammar and current scope labels.
 - [Response families](response-families.html) -- the family catalogue the
   slope term composes with.
+- [Convergence and starting values](convergence-start-values.html) -- fit
+  diagnostics before interpreting random-slope covariance.
 - [Formula keyword grid](api-keyword-grid.html) -- the full syntax map
   across the covariance-keyword grid.

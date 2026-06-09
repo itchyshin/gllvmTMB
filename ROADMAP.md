@@ -19,16 +19,24 @@ reader-path, and validation-row review.
 
 ## Current Public Surface
 
-The visible learning path is intentionally small.
+The visible learning path is intentionally curated. The reset started with
+six pages; restored pages return only when their examples, validation rows,
+and scope boundaries are synchronized with the live package.
 
 | Group | Article | Purpose | Status |
 |---|---|---|---|
 | Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
+| Model guide | `articles/random-slopes-nongaussian` | Structured single-slope random-regression grid across phylogenetic and spatial sources. | Visible after 2026-06-08 status sync; covers `s = 1`, keeps non-Gaussian `s >= 2` guarded. |
+| Model guide | `articles/joint-sdm` | Binary JSDM worked example. | Visible; binary caveats and diagnostics remain under active audit. |
+| Model guide | `articles/cross-lineage-coevolution` | Dense-kernel / cross-lineage coevolution worked example. | Visible; point-estimate workflow only, no interval or in-engine rho claim. |
 | Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; final rendered figure/prose audit passed. |
 | Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible; technical reference closeout passed. |
 | Concepts | `articles/response-families` | Supported families and validation status. | Visible; technical reference closeout passed. |
 | Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit passed. |
+| Methods | `articles/profile-likelihood-ci` | Profile / bootstrap / Wald interval mechanics and caveats. | Visible; must continue to distinguish API coverage from calibrated coverage. |
+| Methods | `articles/troubleshooting-profile` | Profile-interval failure modes and remedies. | Visible companion method page. |
 | Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible; final prose audit passed. |
+| Methods | `articles/missing-data` | Missing response and scoped missing-predictor workflows. | Visible; engine naming and predictor scope stay bounded by MIS rows. |
 
 Hidden pages remain on disk. They must not be routed from the landing
 page or visible articles as recommended next steps until their return
@@ -39,8 +47,8 @@ conditions pass.
 | Slice | Work | Owner lenses | Done when |
 |---|---|---|---|
 | 1 | Roadmap archive and new dashboard | Ada, Rose, Grace | Old roadmap archived; this dashboard renders through `articles/roadmap`. |
-| 2 | Six-article pkgdown nav | Ada, Grace, Rose | `_pkgdown.yml` shows Model guide / Concepts / Methods only; Roadmap stays top-nav only. |
-| 3 | Landing page cleanup | Pat, Darwin, Rose | First screen routes to the six-article path and does not advertise hidden pages. |
+| 2 | Curated pkgdown nav | Ada, Grace, Rose | `_pkgdown.yml` shows Model guide / Concepts / Methods only; Roadmap stays top-nav only; restored articles move out of the internal bucket only after status sync. |
+| 3 | Landing page cleanup | Pat, Darwin, Rose | First screen routes to the curated public path and does not advertise hidden pages as ready. |
 | 4 | Get Started cleanup | Pat, Boole, Grace | Beginner path shows long and wide fits early without a page-long DGP block. |
 | 5 | Public article safety fixes | Rose, Boole, Fisher | Public articles use `trait = "trait"` in long fits, stable `Psi/psi` notation, and no hidden-page next-step links. |
 | 6 | Morphometrics HTML review | Pat, Darwin, Florence, Fisher | Done: rendered HTML, truth-vs-fit language, and current figures passed `docs/dev-log/audits/2026-05-24-morphometrics-final-figure-prose-review.md`. |
@@ -51,13 +59,13 @@ conditions pass.
 | 11 | Reference index cleanup | Rose, Grace, Pat | Done: `_pkgdown.yml` separates first-line APIs, helpers, diagnostics, validation utilities, and loadings; compatibility/internal topics are hidden from the visible index where appropriate. |
 | 12 | Symbol-to-syntax alignment blocks | Boole, Noether, Pat | Done: visible conceptual pages pair covariance symbols with R syntax, extractors, and plain-language interpretation. |
 | 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Partial: helper metadata, colour-safe palettes, confidence-eye displays, matrix correlation layouts, and visual snapshots exist; full rendered article-figure review remains open. |
-| 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | Done for the current public surface: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls` has final prose audit; `convergence-start-values` has final wording audit; `response-families` and `api-keyword-grid` have technical reference scope audits. |
+| 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | Done for the original reset surface: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls` has final prose audit; `convergence-start-values` has final wording audit; `response-families` and `api-keyword-grid` have technical reference scope audits. Restored pages need their own status-sync and rendered checks. |
 | 15 | Codex / Claude Code work sharing | Ada, Shannon, Rose | In progress: keep one active PR, record handoffs in repo files, and split work by non-overlapping lanes before opening parallel edits. |
 
-Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 have passed the
-public-site launch gate. The six visible pages, Get Started, article index,
-and Roadmap render locally; no visible page inspected in the browser links to
-hidden immature articles. Slice 6 has passed launch-level HTML review, but
+Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 passed the
+initial public-site launch gate. The original six visible pages, Get Started,
+article index, and Roadmap rendered locally; no visible page inspected in the
+browser linked to hidden immature articles. Slice 6 passed launch-level HTML review, but
 publication-grade figure interpretation still needs Florence review as each
 model guide becomes final.
 
@@ -122,14 +130,15 @@ after-task reports, `docs/design/`, `AGENTS.md`, `CLAUDE.md`, or
 handoff in a PR comment, check-log entry, or after-task report rather than in
 chat alone.
 
-Article-order correction checkpoint, 2026-05-26: pause public article
-expansion until the binary loading-constraint lane is coherent. The public
-surface remains only `morphometrics`, `covariance-correlation`,
-`api-keyword-grid`, `response-families`, `convergence-start-values`, and
-`pitfalls`. No public promotion of `mixed-family-extractors`,
-`psychometrics-irt`, or `lambda-constraint` until the binary lambda/JSDM
-article plan lands. Keep mixed-family response teaching separate from loading
-constraint teaching.
+Article-order correction checkpoint, 2026-05-26: broad public article
+expansion paused until the binary loading-constraint lane is coherent. The
+exception is evidence-led restoration where the capability grid is already
+covered and the public wording is synchronized. The 2026-06-08 random-slope
+restoration follows that exception: it promotes the covered `s = 1`
+random-regression grid and keeps non-Gaussian `s >= 2` guarded. No public
+promotion of `mixed-family-extractors`, `psychometrics-irt`, or
+`lambda-constraint` until the binary lambda/JSDM article plan lands. Keep
+mixed-family response teaching separate from loading-constraint teaching.
 
 After these infrastructure slices, resume article restoration one page at a time.
 
@@ -175,7 +184,7 @@ only when a stage becomes active.
 | Symbol and syntax clarity | Reintroduce enough math to teach the model without losing applied users. | Every symbol is defined and paired with R syntax plus interpretation. |
 | Florence plot system | Move from functional plots to publication-quality scientific graphics. | Rendered figures are informative, colour-blind friendly, uncertainty-aware, and reviewed in HTML. |
 | Diagnostics and uncertainty | Stabilise `pdHess`, profile, bootstrap, fitted-model predictive checks, residual diagnostics, and simulation-grid language. | #228 public diagnostics branch updates the exported diagnostic surface while remaining diagnostic-only, not interval calibration or Bayesian posterior prediction. |
-| Article restoration | Bring hidden articles back one at a time. | Binary lambda/JSDM planning comes before mixed-family or psychometrics promotion; each article has its example object, long/wide status, validation rows, figure review, and maintainer HTML review. |
+| Article restoration | Bring hidden articles back one at a time. | Each restored article has examples or exact syntax chunks, long/wide status where meaningful, validation rows, figure/prose review, and rendered checks. Binary lambda/JSDM planning still comes before mixed-family or psychometrics promotion. |
 | Pre-CRAN | Audit public API, examples, docs, pkgdown, reverse dependencies, and CRAN notes. | Local checks and 3-OS CI are clean; validation-debt register is current. |
 | Publication-quality claims | Support strong methodological claims with target-explicit simulation and external comparators. | M3 inference gates and Phase 5.5 comparator evidence pass. |
 
@@ -208,6 +217,8 @@ to reverse-engineer it from long setup chunks.
 
 | Hidden article | Return condition |
 |---|---|
+| `random-regression-reaction-norms` | Buildable internal draft after #466. The article now uses a shipped behavioural-syndrome example object with `individual` as unit and `session_id` as repeated occasion, long and wide formulas, diagnostics, augmented-covariance recovery, and repeatability curves, but it stays hidden until the reader path is plain-language and fully reviewed. |
+| `random-slopes-nongaussian` | Buildable internal structured-slope workflow. Keep hidden until the phylogenetic GLLVM / structured-dependence reader path is ready; do not present it as an interval-calibration article. |
 | `joint-sdm` | Joint SDM example object; runnable long + wide; binary validation caveats; `check_gllvmTMB()` plus fitted-response diagnostic table; Florence figure review; rendered HTML review before navbar return. |
 | `profile-likelihood-ci` | Profile/bootstrap status cleaned; fallback/Wald caveats first; failure-count reporting visible; no M3 coverage overclaim. |
 | `behavioural-syndromes` | Behavioural example object; runnable long + wide where meaningful; between/within covariance; repeatability; truth recovery; diagnostic table before article prose expansion. |
@@ -229,7 +240,7 @@ only as clearly labelled technical notes after HTML review.
 Phase 1 can close only when:
 
 - the landing page and Get Started are coherent;
-- the six visible articles pass rendered HTML review;
+- the public article set passes rendered HTML review;
 - no visible page routes to hidden immature pages;
 - the first example object infrastructure exists;
 - public claims map to validation-debt rows;

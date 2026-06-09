@@ -285,8 +285,45 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   ## We need at most: rr|site, diag|site, rr|site_species, diag|site_species,
   ## diag|species, propto|trait, equalto|<obs-grouping>.
-  use_rr_B   <- any(kinds == "rr"   & groupings == site)
-  use_diag_B <- any(kinds == "diag" & groupings == site)
+  ## Augmented ordinary latent random-regression terms are marked by the
+  ## parser as rr(..., .latent_augmented = TRUE). They have a dedicated B-tier
+  ## engine block because the loading matrix is over the augmented
+  ## (intercept, slope) x trait coefficient vector, not the legacy n_traits
+  ## intercept-only Lambda_B.
+  rr_is_latent_augmented <- vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    identical(cs$kind, "rr") && isTRUE(cs$extra$.latent_augmented)
+  }, logical(1L))
+  diag_is_unique_augmented <- vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    identical(cs$kind, "diag") && isTRUE(cs$extra$.unique_augmented)
+  }, logical(1L))
+  rr_B_slope_idx <- which(rr_is_latent_augmented & groupings == site)
+  if (length(rr_B_slope_idx) > 1L) {
+    cli::cli_abort("Only one augmented ordinary {.fn latent} random-regression term is supported at the {.arg unit} tier.")
+  }
+  diag_B_slope_idx <- which(diag_is_unique_augmented & groupings == site)
+  if (length(diag_B_slope_idx) > 1L) {
+    cli::cli_abort("Only one augmented ordinary {.fn unique} random-regression term is supported at the {.arg unit} tier.")
+  }
+  use_rr_B_slope <- length(rr_B_slope_idx) > 0L
+  use_diag_B_slope <- length(diag_B_slope_idx) > 0L
+  use_rr_B   <- any(kinds == "rr"   & groupings == site & !rr_is_latent_augmented)
+  if (use_rr_B_slope && use_rr_B) {
+    cli::cli_abort(c(
+      "Do not combine augmented ordinary {.fn latent} random-regression slopes with an intercept-only {.fn latent} term at the same {.arg unit} tier.",
+      "i" = "The augmented term already includes trait-specific intercept rows.",
+      ">" = "Use one {.code latent(1 + x | unit, d = K)} term for the unit-tier reaction norm, or move the intercept-only {.fn latent} term to another grouping tier such as {.arg unit_obs}."
+    ))
+  }
+  use_diag_B <- any(kinds == "diag" & groupings == site & !diag_is_unique_augmented)
+  if (use_diag_B_slope && use_diag_B) {
+    cli::cli_abort(c(
+      "Do not combine augmented ordinary {.fn unique} random-regression slopes with an intercept-only {.fn unique} term at the same {.arg unit} tier.",
+      "i" = "The augmented term already includes trait-specific intercept and slope rows.",
+      ">" = "Use one {.code unique(1 + x | unit)} term for the unit-tier reaction norm."
+    ))
+  }
   ## `common = TRUE` parsimony mode: when the user passes
   ## `unique(0 + trait | g, common = TRUE)`, fit a single shared
   ## sigma_S across all traits at that tier instead of T separate ones.
@@ -294,17 +331,33 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## via `tmb_map` (same factor level), so TMB treats them as one
   ## parameter. No C++ change required.
   diag_B_common <- isTRUE({
-    idx <- which(kinds == "diag" & groupings == site)
+    idx <- which(kinds == "diag" & groupings == site & !diag_is_unique_augmented)
     length(idx) > 0L && isTRUE(parsed$covstructs[[idx[1L]]]$extra$common)
   })
   ## Within-unit grouping name. Defaults to "site_species" (legacy);
   ## users can override via `unit_obs = ...` to gllvmTMB() so the
   ## formula can use any column name (e.g. `obs`, `individual_obs`).
   ss_name    <- unit_obs
-  use_rr_W   <- any(kinds == "rr"   & groupings == ss_name)
-  use_diag_W <- any(kinds == "diag" & groupings == ss_name)
+  rr_W_slope_idx <- which(rr_is_latent_augmented & groupings == ss_name)
+  if (length(rr_W_slope_idx) > 0L) {
+    cli::cli_abort(c(
+      "Augmented ordinary {.fn latent} random-regression slopes are currently implemented at the {.arg unit} tier only.",
+      "i" = "You wrote an augmented {.fn latent} term on {.val {ss_name}}.",
+      ">" = "Use {.code latent(1 + x | {site}, d = K)} for the individual-level random-regression slope, and keep the {.arg unit_obs} tier intercept-only for now."
+    ))
+  }
+  diag_W_slope_idx <- which(diag_is_unique_augmented & groupings == ss_name)
+  if (length(diag_W_slope_idx) > 0L) {
+    cli::cli_abort(c(
+      "Augmented ordinary {.fn unique} random-regression slopes are currently implemented at the {.arg unit} tier only.",
+      "i" = "You wrote an augmented {.fn unique} term on {.val {ss_name}}.",
+      ">" = "Use {.code unique(1 + x | {site})} for the individual-level random-regression slope, and keep the {.arg unit_obs} tier intercept-only for now."
+    ))
+  }
+  use_rr_W   <- any(kinds == "rr"   & groupings == ss_name & !rr_is_latent_augmented)
+  use_diag_W <- any(kinds == "diag" & groupings == ss_name & !diag_is_unique_augmented)
   diag_W_common <- isTRUE({
-    idx <- which(kinds == "diag" & groupings == ss_name)
+    idx <- which(kinds == "diag" & groupings == ss_name & !diag_is_unique_augmented)
     length(idx) > 0L && isTRUE(parsed$covstructs[[idx[1L]]]$extra$common)
   })
   use_diag_species <- any(kinds == "diag" & groupings == species)
@@ -1070,8 +1123,80 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     sc
   } else NA_character_
 
+  rr_B_slope_cs <- if (use_rr_B_slope) {
+    parsed$covstructs[[rr_B_slope_idx[1L]]]
+  } else NULL
+  if (use_rr_B_slope && any(family_id_vec %in% c(12L, 13L))) {
+    cli::cli_abort(c(
+      "Augmented ordinary {.fn latent} random-regression slopes are not implemented for delta / hurdle families.",
+      "i" = "The current B-tier latent-slope block is for single-stage response families.",
+      ">" = "Use a non-delta family for {.code latent(1 + x | unit, d = K)}, or fit the delta / hurdle model without individual random slopes."
+    ))
+  }
+  rr_B_slope_lhs_form <- if (use_rr_B_slope) {
+    rr_B_slope_cs$extra$lhs_form %||% "unsupported"
+  } else "none"
+  rr_B_slope_xcol <- if (use_rr_B_slope) {
+    sc <- rr_B_slope_cs$extra$slope_col
+    if (is.null(sc) || !nzchar(sc)) {
+      cli::cli_abort("Internal: augmented ordinary latent random regression is missing {.code slope_col}.")
+    }
+    sc
+  } else NA_character_
+  n_lhs_cols_B_lat <- if (use_rr_B_slope) 2L * .n_traits_for_dep else 1L
+  d_B_slope <- if (use_rr_B_slope) {
+    d_req <- as.integer(rr_B_slope_cs$extra$d %||% 1L)
+    if (d_req > n_lhs_cols_B_lat) {
+      cli::cli_abort(
+        "latent(d = {d_req}) exceeds the augmented random-regression coefficient dimension ({n_lhs_cols_B_lat}); the latent rank must satisfy d <= 2 * n_traits for a single-slope augmented B-tier fit."
+      )
+    }
+    d_req
+  } else 1L
+
+  diag_B_slope_cs <- if (use_diag_B_slope) {
+    parsed$covstructs[[diag_B_slope_idx[1L]]]
+  } else NULL
+  if (use_diag_B_slope && any(family_id_vec != 0L)) {
+    cli::cli_abort(c(
+      "Augmented ordinary {.fn unique} random-regression slopes are currently implemented for Gaussian responses only.",
+      "i" = "This slice targets Gaussian behavioural reaction-norm models.",
+      ">" = "Use {.code unique(1 + x | unit)} with {.fn gaussian} data, or omit the augmented {.fn unique} term for non-Gaussian fits."
+    ))
+  }
+  if (use_diag_B_slope && isTRUE(diag_B_slope_cs$extra$common)) {
+    cli::cli_abort(c(
+      "{.code common = TRUE} is not implemented for augmented ordinary {.fn unique} random-regression slopes.",
+      "i" = "The augmented diagonal has separate intercept and slope entries for each trait.",
+      ">" = "Use {.code unique(1 + x | unit)} without {.code common = TRUE}."
+    ))
+  }
+  diag_B_slope_lhs_form <- if (use_diag_B_slope) {
+    diag_B_slope_cs$extra$lhs_form %||% "unsupported"
+  } else "none"
+  diag_B_slope_xcol <- if (use_diag_B_slope) {
+    sc <- diag_B_slope_cs$extra$slope_col
+    if (is.null(sc) || !nzchar(sc)) {
+      cli::cli_abort("Internal: augmented ordinary unique random regression is missing {.code slope_col}.")
+    }
+    sc
+  } else NA_character_
+  if (
+    use_rr_B_slope && use_diag_B_slope &&
+      !identical(rr_B_slope_xcol, diag_B_slope_xcol)
+  ) {
+    cli::cli_abort(c(
+      "Paired augmented ordinary {.fn latent} and {.fn unique} random-regression terms must use the same slope covariate.",
+      "i" = "The {.fn latent} term uses {.val {rr_B_slope_xcol}}; the {.fn unique} term uses {.val {diag_B_slope_xcol}}.",
+      ">" = "Use matching calls such as {.code latent(1 + x | unit, d = K) + unique(1 + x | unit)}."
+    ))
+  }
+  n_lhs_cols_B_diag <- if (use_diag_B_slope) 2L * .n_traits_for_dep else 1L
+
   d_B <- if (use_rr_B) {
-    cs <- parsed$covstructs[[which(kinds == "rr" & groupings == site)[1]]]
+    cs <- parsed$covstructs[[which(
+      kinds == "rr" & groupings == site & !rr_is_latent_augmented
+    )[1]]]
     d_req <- as.integer(cs$extra$d %||% 1L)
     n_traits <- .n_traits_for_dep
     if (d_req > n_traits) {
@@ -1776,6 +1901,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- Theta lengths ----------------------------------------------------
   rr_theta_len <- function(p, rank) p * rank - rank * (rank - 1L) / 2L
   theta_rr_B_len <- if (use_rr_B) rr_theta_len(n_traits, d_B) else 1L
+  theta_rr_B_slope_len <- if (use_rr_B_slope) {
+    rr_theta_len(n_lhs_cols_B_lat, d_B_slope)
+  } else 1L
   theta_rr_W_len <- if (use_rr_W) rr_theta_len(n_traits, d_W) else 1L
 
   ## ---- Initial values via PCA of residuals ------------------------------
@@ -2277,6 +2405,72 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Z_phy_lat[, 2L] <- as.numeric(data[[phylo_latent_slope_xcol]])
   }
 
+  ## Ordinary B-tier augmented latent random regression:
+  ## Z_B_lat is n_obs x (2T) for the single-slope path. For row o and trait t,
+  ## it selects that trait's intercept coefficient and slope coefficient. The
+  ## reduced-rank loading matrix is over all 2T coefficient rows, so the fitted
+  ## covariance can encode intercept-intercept, slope-slope, and
+  ## intercept-slope association blocks.
+  Z_B_lat <- matrix(0.0, nrow = n_obs, ncol = n_lhs_cols_B_lat)
+  if (use_rr_B_slope) {
+    if (
+      !rr_B_slope_lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+    ) {
+      cli::cli_abort(c(
+        "Unsupported augmented ordinary latent random-regression LHS.",
+        "i" = "Got LHS form {.val {rr_B_slope_lhs_form}}.",
+        ">" = "Use {.code latent(1 + x | unit, d = K)} or {.code latent(0 + trait + (0 + trait):x | unit, d = K)}."
+      ))
+    }
+    if (!rr_B_slope_xcol %in% names(data)) {
+      cli::cli_abort(c(
+        "{.code latent(1 + {rr_B_slope_xcol} | {site}, d = K)} references column {.val {rr_B_slope_xcol}}, which is not in {.arg data}.",
+        "i" = "Add the covariate column to the data frame."
+      ))
+    }
+    x_B_slope <- as.numeric(data[[rr_B_slope_xcol]])
+    stride <- 2L
+    for (o in seq_len(n_obs)) {
+      t0 <- trait_id[o]
+      base <- stride * t0
+      Z_B_lat[o, base + 1L] <- 1.0
+      Z_B_lat[o, base + 2L] <- x_B_slope[o]
+    }
+  }
+
+  ## Ordinary B-tier augmented unique random regression:
+  ## Z_B_diag uses the same 2T interleaved coefficient ordering as Z_B_lat,
+  ## but the coefficients are independent Gaussian random effects with
+  ## per-row SDs exp(theta_diag_B_slope) rather than Lambda z loadings.
+  Z_B_diag <- matrix(0.0, nrow = n_obs, ncol = n_lhs_cols_B_diag)
+  if (use_diag_B_slope) {
+    if (
+      !diag_B_slope_lhs_form %in%
+        c("wide_intercept_slope", "long_intercept_slope")
+    ) {
+      cli::cli_abort(c(
+        "Unsupported augmented ordinary unique random-regression LHS.",
+        "i" = "Got LHS form {.val {diag_B_slope_lhs_form}}.",
+        ">" = "Use {.code unique(1 + x | unit)} or {.code unique(0 + trait + (0 + trait):x | unit)}."
+      ))
+    }
+    if (!diag_B_slope_xcol %in% names(data)) {
+      cli::cli_abort(c(
+        "{.code unique(1 + {diag_B_slope_xcol} | {site})} references column {.val {diag_B_slope_xcol}}, which is not in {.arg data}.",
+        "i" = "Add the covariate column to the data frame."
+      ))
+    }
+    x_B_diag <- as.numeric(data[[diag_B_slope_xcol]])
+    stride <- 2L
+    for (o in seq_len(n_obs)) {
+      t0 <- trait_id[o]
+      base <- stride * t0
+      Z_B_diag[o, base + 1L] <- 1.0
+      Z_B_diag[o, base + 2L] <- x_B_diag[o]
+    }
+  }
+
   tmb_data <- list(
     y                = as.numeric(y),
     is_y_observed    = as.integer(is_y_observed),
@@ -2294,6 +2488,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     use_diag_B       = as.integer(use_diag_B),
     use_rr_W         = as.integer(use_rr_W),
     use_diag_W       = as.integer(use_diag_W),
+    use_rr_B_slope   = as.integer(use_rr_B_slope),
+    use_diag_B_slope = as.integer(use_diag_B_slope),
+    d_B_slope        = as.integer(d_B_slope),
+    n_lhs_cols_B_lat = as.integer(n_lhs_cols_B_lat),
+    Z_B_lat          = Z_B_lat,
+    n_lhs_cols_B_diag = as.integer(n_lhs_cols_B_diag),
+    Z_B_diag         = Z_B_diag,
     use_propto       = as.integer(use_propto),
     species_id       = species_id,
     n_species        = as.integer(n_species),
@@ -2392,8 +2593,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sigma_eps = log_sigma_eps_init,
     theta_rr_B   = if (use_rr_B) init_rr_theta(n_traits, d_B) else rep(0.0, theta_rr_B_len),
     z_B          = matrix(0, nrow = max(d_B, 1L), ncol = n_sites),
+    theta_rr_B_slope = if (use_rr_B_slope) {
+                         init_rr_theta(n_lhs_cols_B_lat, d_B_slope)
+                       } else {
+                         rep(0.0, theta_rr_B_slope_len)
+                       },
+    z_B_slope    = matrix(0, nrow = max(d_B_slope, 1L), ncol = n_sites),
     theta_diag_B = rep(0.0, n_traits),
     s_B          = matrix(0, nrow = n_traits, ncol = n_sites),
+    theta_diag_B_slope = rep(0.0, n_lhs_cols_B_diag),
+    s_B_slope    = matrix(0, nrow = n_lhs_cols_B_diag, ncol = n_sites),
     theta_rr_W   = if (use_rr_W) init_rr_theta(n_traits, d_W) else rep(0.0, theta_rr_W_len),
     z_W          = matrix(0, nrow = max(d_W, 1L), ncol = n_site_species),
     theta_diag_W = rep(0.0, n_traits),
@@ -2735,6 +2944,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$theta_rr_B <- factor(rep(NA_integer_, length(tmb_params$theta_rr_B)))
     tmb_map$z_B        <- factor(rep(NA_integer_, length(tmb_params$z_B)))
   }
+  if (!use_rr_B_slope) {
+    tmb_map$theta_rr_B_slope <-
+      factor(rep(NA_integer_, length(tmb_params$theta_rr_B_slope)))
+    tmb_map$z_B_slope <-
+      factor(rep(NA_integer_, length(tmb_params$z_B_slope)))
+  }
   if (!use_diag_B) {
     tmb_map$theta_diag_B <- factor(rep(NA_integer_, n_traits))
     tmb_map$s_B          <- factor(rep(NA_integer_, length(tmb_params$s_B)))
@@ -2744,6 +2959,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## has length n_traits (so the C++ template works unchanged), but
     ## TMB's `map` mechanism collapses it to a single estimable value.
     tmb_map$theta_diag_B <- factor(rep(1L, n_traits))
+  }
+  if (!use_diag_B_slope) {
+    tmb_map$theta_diag_B_slope <-
+      factor(rep(NA_integer_, length(tmb_params$theta_diag_B_slope)))
+    tmb_map$s_B_slope <-
+      factor(rep(NA_integer_, length(tmb_params$s_B_slope)))
   }
   if (!use_rr_W) {
     tmb_map$theta_rr_W <- factor(rep(NA_integer_, length(tmb_params$theta_rr_W)))
@@ -2760,6 +2981,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## that respect the engine's lower-triangular structure: diagonal and
   ## strict-lower-triangle of an n_traits x rank Lambda. Upper-triangle
   ## constraints are silently ignored (those entries are already 0).
+  if (use_rr_B_slope && !is.null(lambda_constraint$B)) {
+    cli::cli_abort(c(
+      "{.code lambda_constraint$B} is not yet implemented for augmented ordinary {.fn latent} random-regression slopes.",
+      "i" = "The augmented loading matrix has {.code 2 * n_traits} rows: intercept and slope coefficients for each trait.",
+      ">" = "Fit {.code latent(1 + x | unit, d = K)} without a B-tier loading constraint, or use the intercept-only {.code latent(0 + trait | unit, d = K)} path."
+    ))
+  }
   if (use_rr_B && !is.null(lambda_constraint$B)) {
     cm <- lambda_packed_map(lambda_constraint$B, n_traits, d_B,
                             tmb_params$theta_rr_B)
@@ -3183,7 +3411,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## ---- random vector --------------------------------------------------
   random <- character(0)
   if (use_rr_B)   random <- c(random, "z_B")
+  if (use_rr_B_slope) random <- c(random, "z_B_slope")
   if (use_diag_B) random <- c(random, "s_B")
+  if (use_diag_B_slope) random <- c(random, "s_B_slope")
   if (use_rr_W)   random <- c(random, "z_W")
   if (use_diag_W) random <- c(random, "s_W")
   if (use_propto) random <- c(random, "p_phy")
@@ -3417,6 +3647,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## structurally rotation-free.
   needs_rotation_advice <- list(
     B    = isTRUE(use_rr_B)         && is.null(lambda_constraint$B)    && isTRUE(d_B   > 1L),
+    B_slope = isTRUE(use_rr_B_slope) && isTRUE(d_B_slope > 1L),
     W    = isTRUE(use_rr_W)         && is.null(lambda_constraint$W)    && isTRUE(d_W   > 1L),
     phy  = isTRUE(use_phylo_rr)     && is.null(lambda_constraint$phy)  && isTRUE(d_phy > 1L),
     spde = isTRUE(is_spatial_latent) && is.null(lambda_constraint$spde) && isTRUE(d_spde_lv > 1L)
@@ -3472,6 +3703,17 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           propto = use_propto, diag_species = use_diag_species,
                           diag_cluster2 = use_diag_cluster2,
                           equalto = use_equalto, spde = use_spde,
+                          ## Ordinary individual-level random regression:
+                          ## augmented B-tier latent covariance over the
+                          ## (intercept, slope) x trait coefficient vector.
+                          rr_B_slope = isTRUE(use_rr_B_slope),
+                          rr_B_slope_col =
+                            if (use_rr_B_slope) rr_B_slope_xcol else NULL,
+                          ## Augmented B-tier unique diagonal over the same
+                          ## (intercept, slope) x trait coefficient vector.
+                          diag_B_slope = isTRUE(use_diag_B_slope),
+                          diag_B_slope_col =
+                            if (use_diag_B_slope) diag_B_slope_xcol else NULL,
                           phylo_rr = use_phylo_rr,
                           ## Design 56 Sec. 9.5a: augmented phylo_latent
                           ## (block-diagonal reduced-rank random slope). Its
@@ -3564,6 +3806,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                        offsets  = re_int_offsets
                      ) else NULL,
       d_phy        = d_phy,
+      d_B_slope    = d_B_slope,
       d_spde_lv    = d_spde_lv,
       mesh         = mesh,
       ## Phylogenetic inputs are stored on the fit so post-fit refits

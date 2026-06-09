@@ -18,7 +18,12 @@ integrates them, and how identifiability is managed.
 **Status discipline**: 4-state vocabulary (`covered / claimed /
 reserved / planned`). Most current rows are `claimed`; Phase 0B
 verifies via per-keyword simulation-recovery tests. Random
-**slopes** inside the 4 × 5 keywords are `reserved` (M1 work).
+**slopes** have mixed status: structured single-slope cells are
+covered where the validation-debt register says so, and the ordinary
+unit-tier Gaussian augmented `latent + unique` decomposition is
+`partial` under RE-12. The row remains partial because non-Gaussian
+augmented `unique()` is still guarded and broader coverage evidence is
+not yet established.
 
 ## Order of implementation
 
@@ -52,13 +57,17 @@ discipline, adapted for the multi-trait stacked grammar):
     effect**. Desugars to `equalto(0 + obs | grp_V, V)`.
     **Status: `claimed`** (Phase 0B verifies via comparator vs
     `glmmTMB::equalto()`).
-11. **Random slopes** `(0 + x | g)` or `(1 + x | g)` inside the
-    4 × 5 keywords. **Status: `reserved`** (M1 Gaussian
-    completeness work; see `docs/design/42-random-slopes-grammar.md`
-    forthcoming).
-12. **Phylogenetic / spatial random slopes** (`phylo_slope`,
-    `spatial_slope`). **Status: `planned`** (post-M1, after
-    Gaussian random slopes prove out).
+11. **Ordinary augmented Gaussian random regression**
+    `latent(1 + x | unit, d = K) + unique(1 + x | unit)` /
+    long-form equivalent. **Status: `partial`** under RE-12:
+    the Gaussian shared latent component, augmented unique diagonal,
+    and `extract_Sigma(level = "unit_slope", part = ...)` read-out
+    are implemented and covered by focused recovery tests. The
+    non-Gaussian augmented `unique()` path remains guarded.
+12. **Phylogenetic / spatial random slopes** through `phylo_*()` /
+    `spatial_*()` augmented keywords. **Status: mixed**: the covered
+    `s = 1` cells and Gaussian `phylo_dep(..., s = 2)` live in the
+    validation-debt register; non-Gaussian `s >= 2` remains partial.
 
 ## Vocabulary
 
@@ -74,7 +83,7 @@ adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-rel
 | 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal |
 | 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
 | 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
-| Random slope | `phylo_slope(x \| g) / animal_slope(x \| g)` | Per-group random regression slope on covariate `x`; slopes correlated by A |
+| Random slope | `latent(1 + x \| unit, d = K) + unique(1 + x \| unit)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian `latent + unique` path is partial under RE-12, structured paths follow their validation rows |
 | `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
 
 ## Reduced-rank reparameterisation (`latent(...)`)
@@ -339,15 +348,19 @@ symmetric block-diagonal `V` construction.
 adds the multiplicative weighted-regression mode per Nakagawa
 2022 EcoLetters. See vision doc "Planned extensions".
 
-## Random slopes — design plan (M1 work; ONE random slope only)
+## Random slopes — current contract (ONE ordinary slope only)
 
-`gllvmTMB` does NOT currently support random slopes inside the
-4 × 5 keywords. The M1 Gaussian completeness milestone (per
-ROADMAP, post-Phase-0C) adds **a single random slope** to the
-`latent + unique` paired keywords. This section is the design
-contract; the M1.1 slice doc
-`docs/design/42-random-slopes-grammar.md` (forthcoming) covers
-parser + TMB-template details.
+The ordinary behavioural random-regression surface is now partial
+under RE-12. For Gaussian responses,
+`latent(1 + x | unit, d = K) + unique(1 + x | unit)` and the
+long-form equivalent fit the augmented `(intercept, slope) x trait`
+coefficient vector. The shared component is
+`Lambda_aug Lambda_aug^T`; the paired augmented `unique()` term adds
+the diagonal `Psi_B,aug`; and `extract_Sigma(level = "unit_slope",
+part = "shared" / "unique" / "total")` returns the pieces or their
+sum. The row remains partial because non-Gaussian augmented
+`unique()` is still guarded and broad coverage evidence is not yet
+established.
 
 ### Why we cap at 1 slope for the foreseeable future
 
@@ -369,7 +382,7 @@ only**. Reasoning:
   $s = 1$ across families is already substantial; doing it at
   $s = 2$ and $s = 3$ doubles and triples the validation surface.
 - **Easier to expand than to retreat.** If 1-slope fits work
-  cleanly through M1 and post-M1 user feedback shows real
+  cleanly through RE-12 and later user feedback shows real
   demand for 2 slopes, we can add 2 slopes in a focused
   follow-up. Releasing 3-slope support that turns out to be
   unreliable would be worse than waiting.
@@ -382,14 +395,14 @@ vector has length $T(1+s)$:
 | Slopes | Latent vector per level | Unstructured $\Sigma$ entries | Reduced-rank ($K$) |
 |--------|-------------------------|-------------------------------|---------------------|
 | 0 (intercept only) | $T$ | $T(T+1)/2$ | $TK$ loadings + $T$ diag |
-| **1 slope (M1 scope)** | $2T$ | $T(2T+1)$ | $2TK$ + $2T$ diag |
-| 2 slopes (planned, post-M1) | $3T$ | $\frac{3T(3T+1)}{2}$ | $3TK$ + $3T$ diag |
+| **1 slope (RE-12 ordinary scope)** | $2T$ | $T(2T+1)$ | $2TK$ + $2T$ diag |
+| 2 slopes (planned, post-RE-12) | $3T$ | $\frac{3T(3T+1)}{2}$ | $3TK$ + $3T$ diag |
 | 3 slopes (planned, post-2-slopes) | $4T$ | $2T(4T+1)$ | $4TK$ + $4T$ diag |
 | 4+ slopes | $5T+$ | huge | rejected at parse time |
 
 For $T = 10$: 0 → 55 cov entries; 1 → 210; 2 → 465; 3 → 820.
 
-### Allowed long-format syntax (M1 scope)
+### Allowed long-format syntax (RE-12 scope)
 
 ```r
 # 0 random slopes (current; intercept only). Status: covered.
@@ -401,21 +414,23 @@ gllvmTMB(
   unit = "site"
 )
 
-# 1 random slope (M1.1). Status: claimed (M1.1 verifies).
+# 1 random slope (RE-12). Status: partial: Gaussian latent + unique live;
+# non-Gaussian augmented unique() guarded.
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):env +
     latent(0 + trait + (0 + trait):env | site, d = 2) +
     unique(0 + trait + (0 + trait):env | site),
   data = df,
+  trait = "trait",
   unit = "site"
 )
 
-# 2+ random slopes: REJECTED at parse time in M1.
-# (Will be planned for a post-M1 slice if user feedback shows
-# real demand AND M1.1 stabilises.)
+# 2+ random slopes: not implemented in RE-12.
+# Treat as a future slice only after the single-slope path
+# has broader recovery evidence.
 ```
 
-### Allowed wide-format syntax (M1 scope)
+### Allowed wide-format syntax (RE-12 scope)
 
 ```r
 # 1 random slope via traits() LHS shorthand:
@@ -433,27 +448,38 @@ Same engine.
 
 ### Slope cap (parser-enforced)
 
-| Slopes inside `latent + unique` | Status | Parser behaviour |
+| Slopes inside ordinary augmented `latent()` / `unique()` | Status | Parser behaviour |
 |---------------------------------|--------|------------------|
 | 0 | `covered` | accepted (current path) |
-| 1 | `claimed` (M1.1) | accepted; per-trait intercept + 1 slope |
-| 2 | `planned (post-M1)` | **rejected at parse time in M1** with `class = "gllvmTMB_too_many_slopes"`; revisited as a focused post-M1 slice if user demand surfaces AND M1.1 stabilises |
+| 1 | `partial` (RE-12) | accepted for ordinary Gaussian `latent + unique`; non-Gaussian augmented `unique()` guarded |
+| 2 | `planned (post-RE-12)` | unsupported; revisit only after the single-slope Gaussian path and user-facing article are stable |
 | 3 | `planned (post-2-slopes)` | rejected; conditional on the 2-slope slice landing first |
 | 4+ | `rejected (long-term)` | always rejected; this combinatorial regime is not in scope |
 
-Error message for the rejected cases:
+Unsupported augmented forms should fail loud rather than silently
+dropping slope columns. The acceptance path is the single-covariate
+ordinary Gaussian `latent + unique` form above.
 
-> *"Random slopes inside `latent + unique` are capped at 1 in
-> the 0.2.0 release (the maintainer 2026-05-16 design decision;
-> see `docs/design/04-random-effects.md` 'Random slopes — design
-> plan' section). 2-slope and 3-slope support are planned for
-> post-M1 releases conditional on validation evidence. For now,
-> reduce to a single random slope OR use a reduced-rank
-> covariance structure (`indep` / `dep`) to absorb the
-> across-predictor variation, OR fit the additional predictors
-> as fixed-effect `(0 + trait):x` interactions."*
+### What happens internally for the RE-12 Gaussian slope
 
-### What happens internally for $s$ slopes
+For `latent(0 + trait + (0 + trait):x | unit, d = K) +
+unique(0 + trait + (0 + trait):x | unit)`, the per-unit coefficient
+vector has length $2T$, indexed as `intercept.t1`, `slope.x.t1`,
+`intercept.t2`, `slope.x.t2`, and so on. The engine builds `Z_B_lat`
+and `Z_B_diag`, row-level design matrices that contribute 1 to the
+relevant trait intercept row and the observed covariate value to the
+relevant trait slope row.
+
+The TMB template estimates `Lambda_B_slope` and unit scores
+`z_B_slope` for the shared component, reports
+`Sigma_B_slope = Lambda_B_slope Lambda_B_slope^T`, and estimates
+`sd_B_slope` / `s_B_slope` for the augmented diagonal
+`Psi_B,aug`. `extract_Sigma(level = "unit_slope", part = "shared")`
+returns the shared block, `part = "unique"` returns the diagonal
+vector, and `part = "total"` returns
+`Lambda_aug Lambda_aug^T + Psi_B,aug`.
+
+### Planned extension for $s$ slopes
 
 For `latent(0 + trait + (0 + trait):x_1 + ... + (0 + trait):x_s | g, d = K)`:
 
@@ -487,24 +513,19 @@ modest (1, 2, or 3) regardless of how many slopes.
 - Roughly linear in $T \cdot s$ for the loadings dimension; not
   combinatorial in $T$.
 
-### Phylogenetic / spatial random slopes — `planned (post-M1)`
+### Phylogenetic / spatial random slopes
 
-`phylo_slope(species, d = K, tree = tree, slope = ~ env)` and
-`spatial_slope(0 + trait | sites, mesh = mesh, slope = ~ env)`
-are **NOT** in the M1 scope. After M1 lands and stabilises
-Gaussian random slopes on the non-phylo, non-spatial keywords,
-the phylo / spatial extensions get their own design + slice.
-
-The combinatorial cap also applies: max 3 slopes inside
-`phylo_latent + phylo_unique` and `spatial_latent + spatial_unique`
-respectively. Parser enforcement extends to the phylo/spatial
-keywords when they ship.
+Structured phylogenetic and spatial slope cells are tracked separately
+from the ordinary RE-12 path. One random slope (`s = 1`) is covered for
+the admitted structured grid where the validation-debt register marks
+PHY-11..PHY-18 and SPA-08..SPA-10 as covered. Gaussian
+`phylo_dep(..., s = 2)` is covered under RE-03. Non-Gaussian
+`phylo_dep(..., s >= 2)` remains partial and guarded.
 
 ### Identifiability diagnostic
 
-`check_identifiability(fit)` extends to flag rank-deficiency in
-the $T(1+s) \times K$ Lambda when slopes are present. Test
-fixture (M1.5):
+`check_identifiability(fit)` should extend to flag rank-deficiency in
+the $T(1+s) \times K$ Lambda when slopes are present. Future fixture:
 
 1. Simulate from $d = K$ truth with $s$ random slopes per
    $T$ traits.
@@ -512,12 +533,16 @@ fixture (M1.5):
 3. Verify `check_identifiability()` flags the spurious column
    via Procrustes-aligned near-zero residual magnitude.
 
-### Coverage study scope
+### Recovery and coverage study scope
 
-M1.5 `coverage_study()` runs on the M1 slope-count cases:
-$s \in \{0, 1\}$, $T = 10$ traits, $n_g = 50$ to $100$ sites,
-$K \in \{1, 2, 3\}$, $R = 200$ replicates per cell. Target
-$\ge 94 \%$ empirical coverage on:
+The RE-12 focused tests prove parser routing, Gaussian fitting, labelled
+extraction, failure guards, unique-only diagonal extraction, and one
+deterministic Gaussian recovery case for the intercept-intercept,
+slope-slope, and intercept-slope blocks. They do not yet prove a broad
+coverage claim. A future `coverage_study()` / recovery grid should run on
+the slope-count cases $s \in \{0, 1\}$, $T = 10$ traits, $n_g = 50$ to
+$100$ sites, $K \in \{1, 2, 3\}$, $R = 200$ replicates per cell, with
+target $\ge 94 \%$ empirical coverage on:
 
 - per-trait random-intercept variances $\psi_t^2$
 - per-trait random-slope variance (at $s = 1$)
@@ -526,32 +551,31 @@ $\ge 94 \%$ empirical coverage on:
   cases)
 
 Slope-slope correlation coverage (which would test the 2-slope
-or 3-slope regime) is deferred to the post-M1 slice that adds
+or 3-slope regime) is deferred to the post-RE-12 slice that adds
 2 random slopes, IF that slice ships.
 
-### Slope-only random effects (planned, post-M1)
+### Slope-only random effects (planned, post-RE-12)
 
 The current design assumes random slopes accompany a random
 intercept (the `(0 + trait + (0 + trait):x | g)` pattern). Pure
 slope-only random effects (`(0 + (0 + trait):x | g)`, no
-intercept) are **`planned (post-M1)`**. The use case (slope
+intercept) are **`planned (post-RE-12)`**. The use case (slope
 varies across levels, but no per-level intercept offset) is
-rare; comes back as a follow-up slice after M1 closes.
+rare; comes back as a follow-up slice after RE-12 closes.
 
 ### Other 4 × 5 cells
 
 Other 4 × 5 cells (`indep`, `dep`, and the phylo / spatial
-analogues) get random-slope support **one at a time after M1
-closes**. The order is:
+analogues) move by validation-debt row, not by this ordinary RE-12
+slice. Current public status is:
 
-1. M1.1-M1.3: `latent + unique` paired keyword with 1, 2, 3
-   slopes (Gaussian).
-2. M2: same machinery extended to binomial (`family =
-   binomial()`).
-3. Post-M2: `phylo_latent + phylo_unique` slopes.
-4. Post-M2: `spatial_latent + spatial_unique` slopes.
-5. Post-CRAN: `indep` / `dep` slopes (less common; lower
-   priority).
+1. Ordinary Gaussian `latent(1 + x | unit, d = K) + unique(1 + x | unit)`:
+   partial under RE-12.
+2. Ordinary non-Gaussian augmented `unique(1 + x | unit)`: guarded.
+3. Structured `phylo_*()` / `spatial_*()` single-slope cells:
+   covered where PHY-11..PHY-18 and SPA-08..SPA-10 say covered.
+4. Gaussian `phylo_dep(..., s = 2)`: covered under RE-03.
+5. Non-Gaussian `phylo_dep(..., s >= 2)`: partial and guarded.
 
 ## Crossed-vs-nested encoding
 
@@ -660,14 +684,12 @@ The remaining three are Phase 0B verification targets.
 - `docs/design/03-phylogenetic-gllvm.md` — phylogenetic GLLVM
   contract; the paired vs three-piece decomposition; PIC
   retirement context.
-- `docs/design/05-testing-strategy.md` (forthcoming, Phase 0A
-  step 5) — per-keyword required edge cases.
-- `docs/design/06-extractors-contract.md` (forthcoming) — what
+- `docs/design/05-testing-strategy.md` — per-keyword required edge cases.
+- `docs/design/06-extractors-contract.md` — what
   every `extract_*()` returns for each random-effect type.
-- `docs/design/35-validation-debt-register.md` (forthcoming,
-  Phase 0A step 7) — evidence ledger.
-- `docs/design/42-random-slopes-grammar.md` (forthcoming, M1.1
-  slice) — random-slopes design + parser + TMB extension.
+- `docs/design/35-validation-debt-register.md` — evidence ledger.
+- `docs/design/42-random-slopes-grammar.md` (if revived) —
+  random-slopes design + parser + TMB extension history.
 - `R/fit-multi.R` — main fit-multi() entry; calls the parser
   + dispatches to TMB.
 - `src/gllvmTMB.cpp` — the TMB template.
@@ -688,7 +710,7 @@ The remaining three are Phase 0B verification targets.
   and the boundary-case test suite (variance near zero, rank
   deficiency, spurious factor).
 - **Gauss** owns the TMB-template extensions for each new
-  random-effect keyword (when M1 adds random slopes, Gauss
+  random-effect keyword (when slope support expands, Gauss
   drafts the C++ before merge).
 - **Noether** audits the math-vs-implementation alignment
   for the reduced-rank reparameterisation (triangular-with-
@@ -709,8 +731,8 @@ The remaining three are Phase 0B verification targets.
 
 The order-of-implementation table will fill in with evidence
 (test file paths, comparator alignment notes, boundary-case
-findings) as Phase 0B verifies each keyword and as M1 / M2 land
-random-slope support. By the time `meta_V`'s proportional mode,
+findings) as Phase 0B verifies each keyword and as random-slope
+support moves by validation row. By the time `meta_V`'s proportional mode,
 `phylo_slope`, `spatial_slope`, and the cluster × unit nesting
 parser become reality (post-CRAN), this doc will be
 substantially longer — matching drmTMB's trajectory.

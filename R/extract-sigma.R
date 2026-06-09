@@ -516,6 +516,15 @@ link_residual_per_trait <- function(fit) {
 #'   `link_residual` arguments do not apply to this single unstructured
 #'   block and are ignored. (The unit / unit_obs tiers return `NULL` for a
 #'   dep-only fit, as it carries no between/within-unit covariance term.)
+#'
+#'   For an ordinary individual-level random-regression fit with
+#'   `latent(1 + x | unit, d = K)`, `unique(1 + x | unit)`, or their long-form
+#'   equivalents, call with `level = "unit_slope"`: the result is the augmented
+#'   `2T x 2T` covariance over trait-specific intercept and slope coefficients,
+#'   with row names `intercept.<trait>` and `slope.<x>.<trait>`. As for
+#'   `level = "unit"`, `part = "shared"` returns `Lambda_aug Lambda_aug^T`,
+#'   `part = "unique"` returns the augmented diagonal, and `part = "total"`
+#'   returns their sum.
 #' @references
 #' Nakagawa, S. & Schielzeth, H. (2010). Repeatability for Gaussian and
 #'   non-Gaussian data: a practical guide for biologists. *Biological
@@ -549,6 +558,7 @@ extract_Sigma <- function(
   fit,
   level = c(
     "unit",
+    "unit_slope",
     "unit_obs",
     "phy",
     "phy_slope",
@@ -558,6 +568,7 @@ extract_Sigma <- function(
     "cluster2",
     ## legacy aliases (deprecated soft):
     "B",
+    "B_slope",
     "W",
     "spde"
   ),
@@ -587,6 +598,105 @@ extract_Sigma <- function(
 
   trait_names <- levels(fit$data[[fit$trait_col]])
   T <- length(trait_names)
+
+  ## ---- Ordinary B-tier augmented reaction-norm block -------------------
+  ## latent(1 + x | unit, d = K) supplies Lambda_aug Lambda_aug^T over the
+  ## 2T augmented coefficient vector; unique(1 + x | unit) supplies the paired
+  ## diagonal Psi_B,aug. Rows are interleaved by trait:
+  ## (intercept.t1, slope.x.t1, intercept.t2, slope.x.t2, ...).
+  if (identical(level, "B_slope")) {
+    has_shared <- isTRUE(fit$use$rr_B_slope)
+    has_unique <- isTRUE(fit$use$diag_B_slope)
+    if (!has_shared && !has_unique) {
+      cli::cli_abort(c(
+        "Fit has no augmented ordinary random-regression term -- nothing to extract at level {.val unit_slope}.",
+        "i" = "Use {.code level = \"unit\"} for an intercept-only {.fn latent} / {.fn unique} fit."
+      ))
+    }
+    if (identical(part, "shared") && !has_shared) {
+      cli::cli_abort(c(
+        "Fit has no augmented ordinary {.fn latent} random-regression term for {.code part = \"shared\"}.",
+        ">" = "Use {.code latent(1 + x | unit, d = K)} to estimate {.code Lambda_aug Lambda_aug^T}, or request {.code part = \"unique\"} for an augmented {.fn unique}-only fit."
+      ))
+    }
+    if (identical(part, "unique") && !has_unique) {
+      cli::cli_abort(c(
+        "Fit has no augmented ordinary {.fn unique} random-regression term for {.code part = \"unique\"}.",
+        ">" = "Use {.code unique(1 + x | unit)} to estimate {.code Psi_B,aug}, or request {.code part = \"shared\"} for a latent-only fit."
+      ))
+    }
+    slope_col <- fit$use$rr_B_slope_col %||%
+      fit$use$diag_B_slope_col %||% "x"
+    aug_names <- as.vector(rbind(
+      paste0("intercept.", trait_names),
+      paste0("slope.", slope_col, ".", trait_names)
+    ))
+    n_aug <- length(aug_names)
+    Sigma_shared <- matrix(0.0, n_aug, n_aug, dimnames = list(aug_names, aug_names))
+    if (has_shared) {
+      Sigma_shared <- fit$report$Sigma_B_slope
+      if (is.null(Sigma_shared)) {
+        cli::cli_abort(
+          "Augmented ordinary latent random-regression fit has no reported {.code Sigma_B_slope}."
+        )
+      }
+      Sigma_shared <- as.matrix(Sigma_shared)
+      rownames(Sigma_shared) <- colnames(Sigma_shared) <- aug_names
+    }
+    S_unique <- rep(0.0, n_aug)
+    names(S_unique) <- aug_names
+    if (has_unique) {
+      sd_unique <- fit$report$sd_B_slope
+      if (is.null(sd_unique)) {
+        cli::cli_abort(
+          "Augmented ordinary unique random-regression fit has no reported {.code sd_B_slope}."
+        )
+      }
+      S_unique <- as.numeric(sd_unique)^2
+      names(S_unique) <- aug_names
+    }
+    notes <- c(
+      paste0(
+        "unit_slope extracts the augmented 2T x 2T reaction-norm covariance ",
+        "over trait-specific intercept and slope coefficients."
+      )
+    )
+    if (has_shared && !has_unique && identical(part, "total")) {
+      notes <- c(
+        notes,
+        "No augmented unique() term is present, so total equals the shared low-rank component."
+      )
+    }
+    if (has_unique && !has_shared && identical(part, "total")) {
+      notes <- c(
+        notes,
+        "No augmented latent() term is present, so total equals the unique diagonal component."
+      )
+    }
+    if (identical(part, "unique")) {
+      return(list(
+        s = S_unique,
+        level = "unit_slope",
+        part = part,
+        note = notes
+      ))
+    }
+    Sigma <- if (identical(part, "shared")) {
+      Sigma_shared
+    } else {
+      Sigma_shared + diag(S_unique, nrow = n_aug)
+    }
+    D <- sqrt(diag(Sigma))
+    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    rownames(R) <- colnames(R) <- aug_names
+    return(list(
+      Sigma = Sigma,
+      R = R,
+      level = "unit_slope",
+      part = part,
+      note = notes
+    ))
+  }
 
   ## ---- phylo_dep augmented-slope block (Design 56 Sec. 9.5c + RE-03) ---
   ## phylo_dep(1 + x1 + ... + xs | species) fits a single FULL UNSTRUCTURED

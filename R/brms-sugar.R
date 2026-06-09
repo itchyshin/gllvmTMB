@@ -2503,12 +2503,38 @@ rewrite_canonical_aliases <- function(formula) {
       }
       ## latent / unique / phylo_latent / spatial_unique: just rename the head
       if (fn %in% c("latent", "phylo_latent", "spatial_unique", "spatial")) {
-        ## Stage 2.5 (May 2026): fail-loud against augmented LHS for the
-        ## BARE `latent()` keyword. `spatial_unique` / `spatial` already
-        ## fail loud via normalise_spatial_orientation (line ~2062), which
-        ## rejects any bar LHS other than `0 + trait` before reaching this
-        ## rename. `latent` is gated here.
-        if (identical(fn, "latent")) {
+        ## Ordinary individual-level random regression:
+        ## latent(1 + x | unit, d = K) and the long form
+        ## latent(0 + trait + (0 + trait):x | unit, d = K) route to a marked
+        ## rr() term. fit-multi.R drives that marker through the augmented
+        ## B-tier latent engine whose loading matrix has (intercept, slope) x
+        ## trait rows, so intercept-slope covariance is estimable. Unsupported
+        ## augmented forms still hit the old guard below.
+        if (
+          identical(fn, "latent") &&
+            length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            d_arg <- e[["d"]]
+            if (is.null(d_arg)) d_arg <- 1L
+            return(as.call(c(
+              list(as.name("rr"), bar),
+              list(
+                d = d_arg,
+                .latent_augmented = TRUE,
+                lhs_form = lhs_form$lhs_form,
+                slope_col = lhs_form$slope_col
+              )
+            )))
+          }
           .assert_no_augmented_lhs(fn, e)
         }
         ## Design 56 Sec. 9.5a: augmented phylo_latent random regression.
@@ -2605,7 +2631,33 @@ rewrite_canonical_aliases <- function(formula) {
       }
       ## `unique(form, common = bool)` -> `diag(form, common = bool)`
       if (fn == "unique") {
-        ## Stage 2.5: fail-loud against augmented LHS.
+        ## Ordinary individual-level augmented unique random regression:
+        ## unique(1 + x | unit) and the long form
+        ## unique(0 + trait + (0 + trait):x | unit) route to a marked diag()
+        ## term. fit-multi.R drives that marker through the B-tier augmented
+        ## diagonal engine over the same (intercept, slope) x trait ordering
+        ## used by latent(1 + x | unit, d = K).
+        if (
+          length(e) >= 2L &&
+            is.call(e[[2L]]) &&
+            identical(e[[2L]][[1L]], as.name("|")) &&
+            length(e[[2L]]) == 3L
+        ) {
+          bar <- e[[2L]]
+          lhs_form <- .gllvmTMB_lhs_form(bar[[2L]])
+          if (
+            lhs_form$lhs_form %in%
+              c("wide_intercept_slope", "long_intercept_slope")
+          ) {
+            new_call <- e
+            new_call[[1L]] <- as.name("diag")
+            new_call[[".unique_augmented"]] <- TRUE
+            new_call[["lhs_form"]] <- lhs_form$lhs_form
+            new_call[["slope_col"]] <- lhs_form$slope_col
+            return(new_call)
+          }
+        }
+        ## Remaining augmented LHS forms are still unsupported.
         .assert_no_augmented_lhs(fn, e)
         new_call <- e
         new_call[[1L]] <- as.name("diag")

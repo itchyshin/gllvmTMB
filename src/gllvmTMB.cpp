@@ -101,6 +101,13 @@ Type objective_function<Type>::operator()()
   DATA_INTEGER(use_diag_B);        // 1/0
   DATA_INTEGER(use_rr_W);          // 1/0
   DATA_INTEGER(use_diag_W);        // 1/0
+  DATA_INTEGER(use_rr_B_slope);     // 1/0 augmented B-tier random regression
+  DATA_INTEGER(use_diag_B_slope);   // 1/0 augmented B-tier unique random regression
+  DATA_INTEGER(d_B_slope);          // rank of augmented B-tier random regression
+  DATA_INTEGER(n_lhs_cols_B_lat);   // C = 2*n_traits for single-slope augmented B path
+  DATA_MATRIX(Z_B_lat);             // n_obs x C selector/design matrix
+  DATA_INTEGER(n_lhs_cols_B_diag);  // C = 2*n_traits for augmented B unique path
+  DATA_MATRIX(Z_B_diag);            // n_obs x C selector/design matrix
 
   // Stage-3 phylogenetic random effect (propto): one length-n_species draw
   // per trait, prior MVN(0, exp(loglambda_phy) * C_phy). The species factor
@@ -431,10 +438,20 @@ Type objective_function<Type>::operator()()
   // length = d_B + (n_traits - d_B) * d_B = n_traits*d_B - d_B*(d_B-1)/2
   PARAMETER_VECTOR(theta_rr_B);
   PARAMETER_MATRIX(z_B);                         // d_B x n_sites spherical N(0, I)
+  // Augmented between-site random regression:
+  // Lambda_B_slope is C x d_B_slope where C = 2*n_traits for the single
+  // intercept+slope path. Rows are interleaved by trait:
+  // intercept.t1, slope.t1, intercept.t2, slope.t2, ...
+  PARAMETER_VECTOR(theta_rr_B_slope);
+  PARAMETER_MATRIX(z_B_slope);                   // d_B_slope x n_sites spherical N(0, I)
 
   // Between-site diag: log-SDs per trait
   PARAMETER_VECTOR(theta_diag_B);                // length n_traits
   PARAMETER_MATRIX(s_B);                         // n_traits x n_sites
+  // Augmented between-site diag: log-SDs for the 2T coefficient vector
+  // intercept.t1, slope.t1, intercept.t2, slope.t2, ...
+  PARAMETER_VECTOR(theta_diag_B_slope);          // length n_lhs_cols_B_diag
+  PARAMETER_MATRIX(s_B_slope);                   // n_lhs_cols_B_diag x n_sites
 
   // Within-site rr: Lambda_W (n_traits x d_W)
   PARAMETER_VECTOR(theta_rr_W);
@@ -721,6 +738,47 @@ Type objective_function<Type>::operator()()
     REPORT(Sigma_B);
   }
 
+  // -------- Construct augmented Lambda_B_slope (C x d_B_slope) ----------
+  // Ordinary random-regression latent covariance over the augmented
+  // coefficient vector (intercept, slope) x trait. This is deliberately
+  // separate from the legacy intercept-only Lambda_B path so old fits remain
+  // byte-stable and so the new path can have C = 2*n_traits rows.
+  matrix<Type> Lambda_B_slope(n_lhs_cols_B_lat, std::max(d_B_slope, 1));
+  Lambda_B_slope.setZero();
+  if (use_rr_B_slope == 1) {
+    if (n_lhs_cols_B_lat < 1)
+      error("gllvmTMB_multi: n_lhs_cols_B_lat must be >= 1");
+    if (Z_B_lat.rows() != y.size() || Z_B_lat.cols() != n_lhs_cols_B_lat)
+      error("gllvmTMB_multi: Z_B_lat must be n_obs x n_lhs_cols_B_lat");
+    int p = n_lhs_cols_B_lat;
+    int rank = d_B_slope;
+    int nt = theta_rr_B_slope.size();
+    int expected_nt = p * rank - rank * (rank - 1) / 2;
+    if (nt != expected_nt)
+      error("gllvmTMB_multi: theta_rr_B_slope has wrong length");
+    if (z_B_slope.rows() != d_B_slope || z_B_slope.cols() != n_sites)
+      error("gllvmTMB_multi: z_B_slope must be d_B_slope x n_sites");
+    vector<Type> lam_diag = theta_rr_B_slope.head(rank);
+    vector<Type> lam_lower = theta_rr_B_slope.tail(nt - rank);
+    for (int j = 0; j < rank; j++) {
+      for (int i = 0; i < p; i++) {
+        if (j > i)
+          Lambda_B_slope(i, j) = 0;
+        else if (i == j)
+          Lambda_B_slope(i, j) = lam_diag(j);
+        else
+          Lambda_B_slope(i, j) = lam_lower(j * p - (j + 1) * j / 2 + i - 1 - j);
+      }
+    }
+    for (int s = 0; s < n_sites; s++) {
+      vector<Type> col_s = z_B_slope.col(s);
+      nll -= dnorm(col_s, Type(0), Type(1), true).sum();
+    }
+    REPORT(Lambda_B_slope);
+    matrix<Type> Sigma_B_slope = Lambda_B_slope * Lambda_B_slope.transpose();
+    REPORT(Sigma_B_slope);
+  }
+
   // -------- diag_B contribution ----------------------------------------
   if (use_diag_B == 1) {
     if (theta_diag_B.size() != n_traits)
@@ -730,6 +788,31 @@ Type objective_function<Type>::operator()()
     for (int s = 0; s < n_sites; s++) {
       for (int t = 0; t < n_traits; t++) {
         nll -= dnorm(s_B(t, s), Type(0), sd_B(t), true);
+      }
+    }
+  }
+
+  // -------- augmented diag_B slope contribution ------------------------
+  if (use_diag_B_slope == 1) {
+    if (n_lhs_cols_B_diag < 1)
+      error("gllvmTMB_multi: n_lhs_cols_B_diag must be >= 1");
+    if (Z_B_diag.rows() != y.size() || Z_B_diag.cols() != n_lhs_cols_B_diag)
+      error("gllvmTMB_multi: Z_B_diag must be n_obs x n_lhs_cols_B_diag");
+    if (theta_diag_B_slope.size() != n_lhs_cols_B_diag)
+      error("gllvmTMB_multi: theta_diag_B_slope has wrong length");
+    if (s_B_slope.rows() != n_lhs_cols_B_diag || s_B_slope.cols() != n_sites)
+      error("gllvmTMB_multi: s_B_slope must be n_lhs_cols_B_diag x n_sites");
+    vector<Type> sd_B_slope = exp(theta_diag_B_slope);
+    REPORT(sd_B_slope);
+    matrix<Type> Sigma_B_unique_slope(n_lhs_cols_B_diag, n_lhs_cols_B_diag);
+    Sigma_B_unique_slope.setZero();
+    for (int j = 0; j < n_lhs_cols_B_diag; j++) {
+      Sigma_B_unique_slope(j, j) = sd_B_slope(j) * sd_B_slope(j);
+    }
+    REPORT(Sigma_B_unique_slope);
+    for (int s = 0; s < n_sites; s++) {
+      for (int j = 0; j < n_lhs_cols_B_diag; j++) {
+        nll -= dnorm(s_B_slope(j, s), Type(0), sd_B_slope(j), true);
       }
     }
   }
@@ -1513,8 +1596,25 @@ Type objective_function<Type>::operator()()
       for (int k = 0; k < d_B; k++) u_B_st += Lambda_B(t, k) * z_B(k, s);
       eta(o) += u_B_st;
     }
+    if (use_rr_B_slope == 1) {
+      Type u_B_aug = 0;
+      for (int j = 0; j < n_lhs_cols_B_lat; j++) {
+        Type coef_j = 0;
+        for (int k = 0; k < d_B_slope; k++)
+          coef_j += Lambda_B_slope(j, k) * z_B_slope(k, s);
+        u_B_aug += Z_B_lat(o, j) * coef_j;
+      }
+      eta(o) += u_B_aug;
+    }
     if (use_diag_B == 1)
       eta(o) += s_B(t, s);
+    if (use_diag_B_slope == 1) {
+      Type u_B_diag_aug = 0;
+      for (int j = 0; j < n_lhs_cols_B_diag; j++) {
+        u_B_diag_aug += Z_B_diag(o, j) * s_B_slope(j, s);
+      }
+      eta(o) += u_B_diag_aug;
+    }
     if (use_rr_W == 1) {
       Type u_W_sst = 0;
       for (int k = 0; k < d_W; k++) u_W_sst += Lambda_W(t, k) * z_W(k, ss);

@@ -28,8 +28,6 @@ navbar:
         href: articles/morphometrics.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
-      - text: Cross-lineage coevolution kernels
-        href: articles/cross-lineage-coevolution.html
       - text: Concepts
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
@@ -57,7 +55,6 @@ articles:
     contents:
     - articles/morphometrics
     - articles/joint-sdm
-    - articles/cross-lineage-coevolution
 
   - title: Concepts
     contents:
@@ -80,9 +77,10 @@ articles:
     - articles/choose-your-model
     - articles/animal-model
     - articles/phylogenetic-gllvm
-    - articles/behavioural-syndromes
     - articles/random-regression-reaction-norms
     - articles/random-slopes-nongaussian
+    - articles/cross-lineage-coevolution
+    - articles/behavioural-syndromes
     - articles/gllvm-vocabulary
     - articles/mixed-family-extractors
     - articles/ordinal-probit
@@ -120,7 +118,6 @@ reference:
     - animal_indep
     - animal_dep
     - animal_latent
-    - animal_slope
     - pedigree_to_A
     - pedigree_to_Ainv_sparse
     - phylo_scalar
@@ -128,7 +125,6 @@ reference:
     - phylo_indep
     - phylo_dep
     - phylo_latent
-    - phylo_slope
     - spatial_scalar
     - spatial_unique
     - spatial_indep

@@ -28,8 +28,6 @@ navbar:
         href: articles/morphometrics.html
       - text: Choosing latent rank
         href: articles/model-selection-latent-rank.html
-      - text: Joint species distribution model
-        href: articles/joint-sdm.html
       - text: Concepts
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
@@ -42,10 +40,6 @@ navbar:
         href: articles/fit-diagnostics.html
       - text: Convergence and start values
         href: articles/convergence-start-values.html
-      - text: Profile-likelihood confidence intervals
-        href: articles/profile-likelihood-ci.html
-      - text: Troubleshooting profile CIs
-        href: articles/troubleshooting-profile.html
       - text: Common pitfalls
         href: articles/pitfalls.html
       - text: Handling missing data
@@ -59,7 +53,6 @@ articles:
     contents:
     - articles/morphometrics
     - articles/model-selection-latent-rank
-    - articles/joint-sdm
 
   - title: Concepts
     contents:
@@ -71,18 +64,19 @@ articles:
     contents:
     - articles/fit-diagnostics
     - articles/convergence-start-values
-    - articles/profile-likelihood-ci
-    - articles/troubleshooting-profile
     - articles/pitfalls
     - articles/missing-data
 
-  - title: internal
-    desc: Draft, technical, or validation-dependent articles hidden from the public dropdown until their evidence and reader path are ready (kept buildable, just not listed in the public index/navbar)
+  - title: Internal drafts and technical notes
+    desc: Buildable pages kept out of the public dropdown until their evidence and reader path are ready. These are direct-link references for maintainers, not first-stop tutorials.
     contents:
     - articles/data-shape-flowchart
     - articles/choose-your-model
     - articles/animal-model
     - articles/phylogenetic-gllvm
+    - articles/joint-sdm
+    - articles/profile-likelihood-ci
+    - articles/troubleshooting-profile
     - articles/random-regression-reaction-norms
     - articles/random-slopes-nongaussian
     - articles/cross-lineage-coevolution

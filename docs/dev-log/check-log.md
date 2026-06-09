@@ -14730,3 +14730,84 @@ Commands and outcomes after this correction:
   the three advanced internal drafts.
 - `git diff --check`
   -> clean.
+
+## 2026-06-09 -- Fit diagnostics article
+
+Context:
+
+- Branch: `codex/fit-diagnostics-article-2026-06-09`.
+- Scope: add a first-click public methods article for post-fit triage using
+  `check_gllvmTMB()`, `residuals()`, `predictive_check()`, and
+  `diagnostic_table()`.
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --state open --json number,title,headRefName,updatedAt`
+  -> no open PRs.
+- Recent-lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent main commits only; no detected shared-file collision.
+
+Files touched:
+
+- `vignettes/articles/fit-diagnostics.Rmd`
+- `_pkgdown.yml`
+- `README.md`
+- `NEWS.md`
+- `ROADMAP.md`
+- `docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+- `docs/dev-log/after-task/2026-06-09-fit-diagnostics-article.md`
+- `docs/dev-log/check-log.md`
+
+Implemented:
+
+- Added public article `fit-diagnostics` / "Can I trust this fit?".
+- Used a small Poisson behavioural-count example with long and
+  `traits(...)` wide formulas.
+- Demonstrated fit-health rows, no-SE status, randomized-quantile residuals,
+  diagnostic metadata tables, Q-Q plot, and rootogram.
+- Updated README, NEWS, ROADMAP, pkgdown nav, and the article gate matrix so
+  public routing points to the new diagnostic page.
+
+Evidence:
+
+- Article render:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/fit-diagnostics", quiet = FALSE, new_process = FALSE)'`
+  -> initially failed because Pandoc was not on the stripped tool PATH; rerun
+  with `PATH="/opt/homebrew/bin:$PATH"` rendered
+  `pkgdown-site/articles/fit-diagnostics.html`.
+- Article index:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::build_articles_index(pkg = pkgdown::as_pkgdown("."))'`
+  -> wrote `pkgdown-site/articles/index.html`.
+- Focused tests:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-predictive-diagnostics.R")'`
+  -> under default CRAN skip settings: `FAIL 0`, `WARN 0`, `SKIP 5`, `PASS 4`.
+  Rerun with `NOT_CRAN=true`: `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 117`.
+- pkgdown:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Site/nav render:
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::build_site(lazy = TRUE)'`
+  -> rebuilt the homepage and reference pages, then was stopped during a heavy
+  internal-article rebuild after the article-specific render passed. Removed
+  the scratch PNGs it left in `vignettes/`.
+- Rendered HTML / figure scans:
+  `rg -n "Can I trust this fit|fit-diagnostics|Randomized-quantile residual Q-Q|Rootogram|Articles|Methods|Convergence and start values" pkgdown-site/articles/fit-diagnostics.html pkgdown-site/articles/index.html pkgdown-site/index.html`
+  -> new article, article index, homepage nav, and figure references are
+  present.
+  `ls -lh pkgdown-site/articles/fit-diagnostics_files/figure-html && file pkgdown-site/articles/fit-diagnostics_files/figure-html/*.png`
+  -> residual Q-Q and rootogram PNGs are non-empty 1190 x 806 images.
+- Browser preview:
+  In-app Browser refused direct `file://` navigation to the rendered article
+  under its URL policy, so verification used rendered HTML scans and direct PNG
+  inspection.
+- Rose / stale wording scans:
+  `rg -n "posterior predictive|posterior-predictive|posterior draws|Bayesian posterior|formal residual test|interval calibration|latent-rank proof|DIA-08|DIA-10|DIA-11|DIA-12|DIA-13" README.md NEWS.md ROADMAP.md vignettes/articles/fit-diagnostics.Rmd docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> intentional diagnostic-boundary and row-ID hits only.
+  `rg -n "gllvmTMB\\(" vignettes/articles/fit-diagnostics.Rmd README.md NEWS.md ROADMAP.md`
+  -> the new article's long-format calls include `trait = "trait"` and
+  `unit = "individual"`; the wide call uses `traits(...)`.
+  `rg -n "random-slopes-nongaussian|cross-lineage-coevolution|random-regression-reaction-norms" pkgdown-site/articles/index.html pkgdown-site/index.html README.md ROADMAP.md _pkgdown.yml`
+  -> public rendered index/home do not route hidden advanced articles from the
+  article dropdown; `_pkgdown.yml` intentionally keeps hidden slugs internal.
+- Whitespace:
+  `git diff --check`
+  -> clean.

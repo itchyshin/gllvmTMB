@@ -1,0 +1,258 @@
+---
+title: "Can I trust this fit?"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Can I trust this fit?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6.2,
+  fig.height = 4.2,
+  fig.align  = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+Before interpreting a fitted GLLVM, separate two questions. Did the
+optimizer find a numerically healthy point estimate? Does the fitted
+response distribution show an obvious mismatch to the observed stacked
+traits? This article answers those questions for a small count example
+before moving on to covariance, ordination, repeatability, or interval
+claims.
+
+The example is deliberately modest: three behaviours counted on each
+individual, fitted with one shared latent axis. `latent()` estimates a
+low-rank axis of between-individual covariance; this is a diagnostic
+example, not the full `latent() + unique()` covariance-decomposition
+tutorial from [Morphometrics](morphometrics.html).
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+```
+
+## Fit A Small Model
+
+The data have one row per `(individual, trait)` observation. The
+working question is whether the three behaviours show a shared
+between-individual axis and whether the fitted Poisson response model
+looks reasonable enough to inspect.
+
+```{r simulate}
+set.seed(20260609)
+
+n_ind <- 48L
+trait_names <- c("forage", "alarm", "explore")
+n_traits <- length(trait_names)
+
+z <- rnorm(n_ind, sd = 0.45)
+eta <- cbind(
+  forage = 0.25 + 0.75 * z,
+  alarm = -0.15 - 0.45 * z,
+  explore = 0.05 + 0.55 * z
+)
+y <- matrix(
+  rpois(n_ind * n_traits, lambda = exp(as.vector(eta))),
+  nrow = n_ind,
+  ncol = n_traits
+)
+
+df_long <- data.frame(
+  individual = factor(rep(seq_len(n_ind), each = n_traits)),
+  trait = factor(rep(trait_names, n_ind), levels = trait_names),
+  count = as.vector(t(y))
+)
+
+head(df_long, 8)
+```
+
+The long-format call is canonical. It names the response, the trait
+column, and the unit column explicitly.
+
+```{r fit-long}
+fit_long <- gllvmTMB(
+  count ~ 0 + trait +
+    latent(0 + trait | individual, d = 1),
+  data = df_long,
+  trait = "trait",
+  unit = "individual",
+  family = poisson(),
+  control = gllvmTMBcontrol(n_init = 2, init_jitter = 0.03)
+)
+
+fit <- fit_long
+fit
+```
+
+The same model can be fitted from a wide data frame with the
+`traits(...)` left-hand side. The wide call is useful when the data
+start as one row per individual and one column per behaviour.
+
+```{r fit-wide}
+df_wide <- stats::reshape(
+  df_long,
+  idvar = "individual",
+  timevar = "trait",
+  direction = "wide"
+)
+names(df_wide) <- sub("^count\\.", "", names(df_wide))
+
+fit_wide <- gllvmTMB(
+  traits(forage, alarm, explore) ~ 1 +
+    latent(1 | individual, d = 1),
+  data = df_wide,
+  unit = "individual",
+  family = poisson(),
+  control = gllvmTMBcontrol(n_init = 2, init_jitter = 0.03)
+)
+
+signif(
+  abs(as.numeric(logLik(fit_long)) - as.numeric(logLik(fit_wide))),
+  3
+)
+```
+
+That last number should be close to zero: the two calls reach the same
+stacked-trait likelihood.
+
+## Read Fit Health
+
+`check_gllvmTMB()` returns a machine-readable fit-health table. Start
+there before interpreting coefficients, latent axes, or covariance
+summaries.
+
+```{r fit-health}
+health <- check_gllvmTMB(fit)
+key_components <- c(
+  "optimizer_convergence",
+  "max_gradient",
+  "sdreport",
+  "pd_hessian",
+  "weak_axis_unit",
+  "boundary_sigma_eps"
+)
+health[
+  health$component %in% key_components,
+  c("component", "status", "message")
+]
+```
+
+Read the rows literally. Optimizer and gradient rows speak to the
+point estimate. `sdreport` and `pd_hessian` speak to Hessian-based
+standard errors and Wald-style inference. A weak-axis row says a
+latent dimension may be hard to interpret; it does not by itself prove
+that the fitted response distribution is wrong.
+
+The same table records intentionally skipped standard errors. A no-SE
+fit can still be useful for point estimates or refit-based uncertainty,
+but it should not be reported as if Wald standard errors were computed.
+
+```{r no-se-health}
+fit_no_se <- gllvmTMB(
+  count ~ 0 + trait +
+    latent(0 + trait | individual, d = 1),
+  data = df_long,
+  trait = "trait",
+  unit = "individual",
+  family = poisson(),
+  control = gllvmTMBcontrol(se = FALSE)
+)
+
+no_se_health <- check_gllvmTMB(fit_no_se)
+no_se_health[
+  no_se_health$component %in% c("sdreport", "pd_hessian", "max_fixed_se"),
+  c("component", "status", "message")
+]
+```
+
+For hard fits, move from this table to the
+[Convergence and start values](convergence-start-values.html) article
+before making scientific claims.
+
+## Check Response Diagnostics
+
+Numerical convergence is not enough. For Gaussian, Poisson, and NB2
+rows, `residuals(type = "randomized_quantile")` computes exact
+family-CDF residuals. `diagnostic_table()` turns the attached metadata
+into ordinary data frames for reports and articles.
+
+```{r residual-table}
+rq <- residuals(
+  fit,
+  type = "randomized_quantile",
+  seed = 20260609
+)
+
+diagnostic_table(rq, table = "row_status")
+diagnostic_table(rq, table = "fit_health_status")
+
+head(
+  diagnostic_table(rq, table = "data")[
+    , c("trait", "family", "observed", "residual", "status")
+  ],
+  8
+)
+```
+
+The `row_status` table tells you whether every model row produced a
+usable residual. If a row is marked `unsupported_family`,
+`missing_response`, or `nonfinite_observed`, keep that status in the
+report rather than silently dropping the row.
+
+```{r residual-qq, fig.cap = "Randomized-quantile residual Q-Q check for the fitted Poisson GLLVM. This is a fitted-model diagnostic display, not interval calibration, latent-rank proof, or a Bayesian posterior predictive check."}
+predictive_check(
+  fit,
+  type = "rq_qq",
+  seed = 20260609
+)
+```
+
+For count models, a rootogram is often easier to read than a Q-Q plot.
+Bars near zero mean the observed and fitted-model simulated count
+frequencies are similar on the square-root scale.
+
+```{r rootogram, fig.cap = "Rootogram comparing observed behavioural counts with fitted-model simulations. Large systematic departures would point to a response-family, link, covariate, or random-effect mismatch."}
+predictive_check(
+  fit,
+  type = "rootogram",
+  ndraws = 40,
+  seed = 20260609,
+  max_count = 7L
+)
+```
+
+## What To Do Next
+
+Use the diagnostics as routing information, not as a single pass/fail
+stamp.
+
+| What you see | What it means | Next step |
+|---|---|---|
+| Optimizer, gradient, `sdreport`, and `pd_hessian` all pass | The numerical fit is a reasonable starting point | Inspect `Sigma`, correlations, ordination, or fitted effects. |
+| Optimizer or gradient rows warn/fail | The point estimate may be unstable | Try more starts, rescaling, simpler rank, or an alternative optimizer. |
+| `sdreport` or `pd_hessian` warns | Standard errors or Wald intervals are degraded | Keep point estimates visible; route uncertainty to profile/bootstrap where supported. |
+| Residual rows have non-`ok` status | Some rows were not diagnosed | Inspect missing values, non-finite responses, and family support. |
+| Q-Q or rootogram shows systematic structure | The fitted response distribution may be wrong | Revisit family, link, covariates, offsets, or random-effect structure. |
+
+This page covers the public diagnostic path that is currently backed by
+the validation register: fit health and no-SE status (DIA-08, DIA-10),
+fitted-model predictive diagnostics and residuals for the scoped
+Gaussian / Poisson / NB2 rows (DIA-11, DIA-12), and report-ready
+metadata tables (DIA-13). It does not calibrate confidence intervals,
+prove the latent rank, run formal residual tests, or draw from a
+Bayesian posterior. Exact residual support for delta, hurdle,
+truncated, ordinal, and mixture-family rows remains outside this
+article's current claims.

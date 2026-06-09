@@ -36,6 +36,8 @@ navbar:
       - text: Response families
         href: articles/response-families.html
       - text: Methods
+      - text: Can I trust this fit?
+        href: articles/fit-diagnostics.html
       - text: Convergence and start values
         href: articles/convergence-start-values.html
       - text: Profile-likelihood confidence intervals
@@ -64,6 +66,7 @@ articles:
 
   - title: Methods
     contents:
+    - articles/fit-diagnostics
     - articles/convergence-start-values
     - articles/profile-likelihood-ci
     - articles/troubleshooting-profile

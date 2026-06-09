@@ -3,6 +3,21 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Fit diagnostics article (2026-06-09)
+
+* Added the public `fit-diagnostics` article, "Can I trust this fit?", as the
+  first post-fit triage page before users interpret covariance, ordination, or
+  interval summaries. IN: the article demonstrates `check_gllvmTMB()` and
+  `gllvmTMBcontrol(se = FALSE)` status rows (DIA-08 / DIA-10), exact
+  randomized-quantile residuals and fitted-model predictive displays for a
+  scoped Poisson example (DIA-11 / DIA-12), and report-ready metadata through
+  `diagnostic_table()` (DIA-13), with both long and `traits(...)` wide
+  `gllvmTMB()` calls. PARTIAL: the displayed Q-Q plot and rootogram are
+  diagnostic displays, not interval calibration, formal residual tests, latent
+  rank selection, or Bayesian posterior predictive checks. PLANNED: exact
+  residual support for delta, hurdle, truncated, ordinal, and mixture-family
+  rows remains future validation work.
+
 ## Ordinary Gaussian reaction-norm component (#341, 2026-06-08)
 
 * **`latent(1 + x | unit, d = K) + unique(1 + x | unit)`** and the long-form

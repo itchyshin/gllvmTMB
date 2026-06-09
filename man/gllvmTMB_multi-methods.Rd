@@ -42,7 +42,8 @@ and the converged log-likelihood.
 local trait correlation matrices, per-trait ICCs,
 and global / local communalities.
 \item \code{logLik()} returns the converged maximum log-likelihood with
-\code{df = length(opt$par)} and \code{nobs = length(y)}, so \code{AIC()} and
+\code{df = length(opt$par)} and \code{nobs} equal to the number of
+likelihood-contributing observed response cells, so \code{AIC()} and
 \code{BIC()} all work directly.
 }
 

@@ -280,7 +280,8 @@
 #'   local trait correlation matrices, per-trait ICCs,
 #'   and global / local communalities.
 #' * `logLik()` returns the converged maximum log-likelihood with
-#'   `df = length(opt$par)` and `nobs = length(y)`, so `AIC()` and
+#'   `df = length(opt$par)` and `nobs` equal to the number of
+#'   likelihood-contributing observed response cells, so `AIC()` and
 #'   `BIC()` all work directly.
 #'
 #' @param x,object A fit returned by [gllvmTMB()].

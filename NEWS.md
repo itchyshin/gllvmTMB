@@ -3,6 +3,21 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Latent-rank model-selection article (2026-06-09)
+
+* Added the public `model-selection-latent-rank` article, "How many latent
+  dimensions should I fit?", as a worked Gaussian `latent() + unique()` example
+  for comparing candidate latent ranks. IN: the article uses a shipped
+  deterministic teaching fixture with long and `traits(...)` wide formulas,
+  compares a diagonal baseline and `d = 1`, `d = 2`, and `d = 3` candidates
+  with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows, and interprets the
+  selected covariance through rotation-invariant `Sigma` recovery (FG-04,
+  FG-06, DIA-03, DIA-08, DIA-10). PARTIAL: the fixture shows one planted
+  Gaussian rank where both AIC and BIC choose `d = 2`; it is not a simulation
+  study proving AIC/BIC are universally calibrated latent-rank selectors.
+  PLANNED: broader selection-rate grids, non-Gaussian high-rank rank-selection
+  evidence, and calibrated interval claims remain separate validation work.
+
 ## Fit diagnostics article (2026-06-09)
 
 * Added the public `fit-diagnostics` article, "Can I trust this fit?", as the

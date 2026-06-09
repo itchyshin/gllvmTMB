@@ -26,6 +26,7 @@ with the live package.
 | Group | Article | Purpose | Status |
 |---|---|---|---|
 | Model guide | `articles/morphometrics` | First complete Gaussian worked example. | Visible; final rendered figure/prose audit passed. |
+| Model guide | `articles/model-selection-latent-rank` | Choosing candidate latent rank with AIC/BIC beside diagnostics. | Visible after 2026-06-09 model-selection slice; Gaussian `latent() + unique()` teaching fixture only, not universal rank-selection calibration. |
 | Model guide | `articles/joint-sdm` | Binary JSDM worked example. | Visible; binary caveats and diagnostics remain under active audit. |
 | Concepts | `articles/covariance-correlation` | Explain `Sigma`, correlations, `Lambda`, `psi`, communality. | Visible; final rendered figure/prose audit passed. |
 | Concepts | `articles/api-keyword-grid` | Formula keyword syntax map. | Visible; technical reference closeout passed. |
@@ -60,9 +61,10 @@ conditions pass.
 | 13 | Florence-grade plot polish | Florence, Fisher, Darwin, Pat | Partial: helper metadata, colour-safe palettes, confidence-eye displays, matrix correlation layouts, and visual snapshots exist; full rendered article-figure review remains open. |
 | 14 | Visible article closeout sequence | Ada, Pat, Fisher, Florence, Rose | Done for the original reset surface: `morphometrics` and `covariance-correlation` have final rendered figure/prose audits; `pitfalls` has final prose audit; `convergence-start-values` has final wording audit; `response-families` and `api-keyword-grid` have technical reference scope audits. Restored pages need their own status-sync and rendered checks. |
 | 15 | Codex / Claude Code work sharing | Ada, Shannon, Rose | In progress: keep one active PR, record handoffs in repo files, and split work by non-overlapping lanes before opening parallel edits. |
+| 16 | Latent-rank model selection | Ada, Curie, Fisher, Pat, Boole, Rose, Grace | In progress: public article uses a shipped Gaussian rank fixture, shows long and wide calls, compares AIC/BIC beside `check_gllvmTMB()` rows, and records rendered checks without claiming universal rank-selection calibration. |
 
 Launch-audit checkpoint, 2026-05-21: Slices 1-5 and 7-8 passed the
-initial public-site launch gate. The original six visible pages, Get Started,
+initial public-site launch gate. The original launch pages, Get Started,
 article index, and Roadmap rendered locally; no visible page inspected in the
 browser linked to hidden immature articles. Slice 6 passed launch-level HTML review, but
 publication-grade figure interpretation still needs Florence review as each
@@ -133,11 +135,14 @@ Article-order correction checkpoint, 2026-05-26: broad public article
 expansion paused until the binary loading-constraint lane is coherent. The
 exception is evidence-led restoration where the capability grid is already
 covered and the public wording is synchronized. The 2026-06-08 random-slope
-restoration follows that exception: it promotes the covered `s = 1`
-random-regression grid and keeps non-Gaussian `s >= 2` guarded. No public
-promotion of `mixed-family-extractors`, `psychometrics-irt`, or
-`lambda-constraint` until the binary lambda/JSDM article plan lands. Keep
-mixed-family response teaching separate from loading-constraint teaching.
+work stayed internal after reader review: ordinary Gaussian reaction norms and
+structured slope grids remain buildable drafts, not first-click teaching pages.
+The 2026-06-09 model-selection article is a narrow Gaussian `latent() +
+unique()` restoration because it uses a tested fixture, long and wide calls,
+and diagnostics-first AIC/BIC wording. No public promotion of
+`mixed-family-extractors`, `psychometrics-irt`, or `lambda-constraint` until
+the binary lambda/JSDM article plan lands. Keep mixed-family response teaching
+separate from loading-constraint teaching.
 
 After these infrastructure slices, resume article restoration one page at a time.
 
@@ -148,7 +153,7 @@ Keep each item to one branch and one pull request.
 
 | Order | Lane | Good owner | Stop condition |
 |---|---|---|---|
-| 1 | Fit-diagnostics article | Codex + Pat/Rose/Fisher/Florence/Grace | `fit-diagnostics` is public, uses long and wide calls, renders its diagnostic tables and figures, and records the rendered checks. |
+| 1 | Latent-rank model-selection article | Codex + Curie/Fisher/Pat/Boole/Rose/Grace | `model-selection-latent-rank` is public, uses a tested Gaussian fixture, shows long and wide calls, compares AIC/BIC after fit-health checks, renders its figures, and records the rendered checks. |
 | 2 | Binary lambda/JSDM article plan | Codex or Claude Code + Boole/Fisher/Florence/Rose | Rewrite `lambda-constraint` as the first binary loading-constraint teaching article, using a binary species/JSDM-style example rather than mixed psychometrics. Keep the article internal until the plan, example, figure contract, and rendered HTML review are recorded. |
 | 3 | Hidden article restoration, one page at a time | Codex or Claude Code + Pat/Rose/Fisher | Only after the article has an example object, long + wide calls where meaningful, validation rows, diagnostic table, figure review, and rendered HTML review. Do not combine mixed-family responses with loading constraints in one teaching article. |
 
@@ -208,8 +213,8 @@ to reverse-engineer it from long setup chunks.
 | Extraction tables | Report-ready covariance, correlation, communality, repeatability, phylogenetic signal, ordination, diagnostics, and uncertainty tables. | Contract in `docs/design/53-report-ready-extractor-plot-contract.md`; `extract_Sigma_table()`, `compare_Sigma_table()`, rotated-loading tables, `diagnostic_table()`, and bootstrap-backed Sigma/correlation/communality/repeatability rows are covered where the validation register says so. |
 | Plot helpers | Data-first plots that consume extractor tables and expose audit metadata. | `plot.gllvmTMB_multi()` and exported plot helpers attach `gllvmTMB_meta` and `gllvmTMB_data`; confidence-eye, matrix heatmap/ellipse, Sigma comparison, communality, integration, ordination, and rotated-loading displays have object or snapshot tests. Dominant-axis forests, score distributions, diagnostic plots, and rendered Florence review remain pending before publication-grade claims. |
 | Diagnostics | `check_gllvmTMB()` first; `pdHess = FALSE` treated as an uncertainty warning, not automatic model death; fitted-response checks use `predictive_check()` / `residuals()` within DIA-11 / DIA-12 scope and `diagnostic_table()` within DIA-13 scope. | `fit-diagnostics`, public methods pages, and Get Started. |
-| Profile/bootstrap uncertainty | Explicit fallback language and worker-level diagnostics before claims. | Keep `profile-likelihood-ci` hidden until CI-02 / CI-03 / EXT-13 claims are paired with rendered examples and failure-count reporting. |
-| Validation evidence | Every public claim cites a validation-debt row as `covered`, `partial`, or `blocked`. | Six visible articles. |
+| Profile/bootstrap uncertainty | Explicit fallback language and worker-level diagnostics before claims. | `profile-likelihood-ci` is visible as a guarded methods page; keep its prose clear that API coverage and fallback mechanics are not calibrated coverage evidence. |
+| Validation evidence | Every public claim cites a validation-debt row as `covered`, `partial`, or `blocked`. | Current visible article set. |
 
 ## Restoration Queue
 
@@ -217,8 +222,6 @@ to reverse-engineer it from long setup chunks.
 |---|---|
 | `random-regression-reaction-norms` | Buildable internal draft after #466. The article now uses a shipped behavioural-syndrome example object with `individual` as unit and `session_id` as repeated occasion, long and wide formulas, diagnostics, augmented-covariance recovery, and repeatability curves, but it stays hidden until the reader path is plain-language and fully reviewed. |
 | `random-slopes-nongaussian` | Buildable internal structured-slope workflow. Keep hidden until the phylogenetic GLLVM / structured-dependence reader path is ready; do not present it as an interval-calibration article. |
-| `joint-sdm` | Joint SDM example object; runnable long + wide; binary validation caveats; `check_gllvmTMB()` plus fitted-response diagnostic table; Florence figure review; rendered HTML review before navbar return. |
-| `profile-likelihood-ci` | Profile/bootstrap status cleaned; fallback/Wald caveats first; failure-count reporting visible; no M3 coverage overclaim. |
 | `behavioural-syndromes` | Behavioural example object; runnable long + wide where meaningful; between/within covariance; repeatability; truth recovery; diagnostic table before article prose expansion. |
 | `mixed-family-extractors` | Keep internal until the broader mixed-response teaching story covers Gaussian, binomial, Poisson/NB, beta/proportion, and blocked delta/hurdle cases with report-ready extractor tables. This is not the loading-constraint lane. |
 | `animal-model` | Larger pedigree fixture; A/Ainv truth; genetic covariance recovery. |

@@ -26,6 +26,8 @@ navbar:
       - text: Model guide
       - text: Morphometrics
         href: articles/morphometrics.html
+      - text: Choosing latent rank
+        href: articles/model-selection-latent-rank.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
       - text: Concepts
@@ -56,6 +58,7 @@ articles:
   - title: Model guide
     contents:
     - articles/morphometrics
+    - articles/model-selection-latent-rank
     - articles/joint-sdm
 
   - title: Concepts

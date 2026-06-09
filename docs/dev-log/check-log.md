@@ -9238,6 +9238,7 @@ Evidence:
 - Whitespace:
   `git diff --check`
   -> clean.
+
 - Recent CI:
   `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,updatedAt`
   -> latest `main` R-CMD-check and pkgdown for commit `3d327e6` both passed.
@@ -14808,6 +14809,132 @@ Evidence:
   `rg -n "random-slopes-nongaussian|cross-lineage-coevolution|random-regression-reaction-norms" pkgdown-site/articles/index.html pkgdown-site/index.html README.md ROADMAP.md _pkgdown.yml`
   -> public rendered index/home do not route hidden advanced articles from the
   article dropdown; `_pkgdown.yml` intentionally keeps hidden slugs internal.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+## 2026-06-09 -- Latent-rank model-selection article
+
+Context:
+
+- Branch: `codex/model-selection-aic-bic-2026-06-09`.
+- Scope: add a public Tier-1 worked article for choosing Gaussian
+  `latent() + unique()` candidate ranks with `logLik()`, AIC, BIC, and
+  `check_gllvmTMB()` fit-health rows.
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --state open --json number,title,headRefName,updatedAt`
+  -> `[]`.
+- Recent-lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> no output.
+
+Files touched:
+
+- `data-raw/examples/make-model-selection-rank-example.R`
+- `inst/extdata/examples/model-selection-rank-example.rds`
+- `tests/testthat/test-example-model-selection-rank.R`
+- `vignettes/articles/model-selection-latent-rank.Rmd`
+- `_pkgdown.yml`
+- `README.md`
+- `NEWS.md`
+- `ROADMAP.md`
+- `docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+- `R/methods-gllvmTMB.R`
+- `man/gllvmTMB_multi-methods.Rd`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-09-model-selection-latent-rank.md`
+
+Implemented:
+
+- Added a deterministic Gaussian teaching fixture with one row per
+  `(individual, trait)`, a known `d = 2` `Sigma = Lambda Lambda^T + Psi`
+  truth, long and `traits(...)` wide formulas, rank candidates `d = 0:3`,
+  story metadata, and an alignment table.
+- Added focused fixture tests covering object contract, long/wide shape,
+  long/wide `d = 2` log-likelihood equality, finite IC rows, and AIC/BIC
+  selecting the planted `d = 2` in the deterministic fixture.
+- Added public article `model-selection-latent-rank`, "How many latent
+  dimensions should I fit?", with live candidate fits, AIC/BIC table,
+  overfit `d = 3` health rows, AIC/BIC difference plot, and rotation-invariant
+  `Sigma` truth-versus-fit recovery figure.
+- Updated pkgdown nav/index, README, NEWS, ROADMAP, and the article gate matrix.
+- Corrected the `logLik()` roxygen / Rd wording from stale `nobs = length(y)`
+  to likelihood-contributing observed response cells.
+
+Member / review lenses:
+
+- Curie + Fisher: keep this as a small deterministic teaching fixture, not a
+  broad simulation study; report IC rows beside fit health and `Sigma` recovery.
+- Pat + Boole: make the reader question the title and avoid a ledger-style
+  opening; show long and wide formulas.
+- Rose: synchronize public/hidden article status and keep `choose-your-model`
+  internal.
+- Grace: render the live article and avoid a long simulation sweep in pkgdown.
+- Noether: state that AIC/BIC route through `logLik.gllvmTMB_multi()`, with
+  `df` as free fitted parameters and `nobs` as observed response cells.
+
+Evidence:
+
+- Fixture generation:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla data-raw/examples/make-model-selection-rank-example.R`
+  -> saved `inst/extdata/examples/model-selection-rank-example.rds`.
+- Roxygen:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/gllvmTMB_multi-methods.Rd`.
+- Rd spot-check:
+  `tail -n 8 man/gllvmTMB_multi-methods.Rd`
+  -> `nobs()` section says observed-response cells.
+  `grep -c '^\\keyword' man/gllvmTMB_multi-methods.Rd`
+  -> `0`.
+- Focused tests:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-example-model-selection-rank.R")'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 0`, `PASS 32`.
+- Article render:
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/model-selection-latent-rank", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rendered `pkgdown-site/articles/model-selection-latent-rank.html`.
+- Article index:
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::build_articles_index(pkg = pkgdown::as_pkgdown("."))'`
+  -> wrote `pkgdown-site/articles/index.html`.
+- pkgdown:
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Full tests:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::test()'`
+  -> `FAIL 0`, `WARN 0`, `SKIP 704`, `PASS 2684`.
+- Check:
+  `/Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> failed before real check because the stripped PATH could not find Pandoc.
+  Rerun with:
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors`, `1 warning`, `2 notes`; warning on package install, notes for
+  future timestamp and existing `NEWS.md` section titles. A temp-library
+  install reproduced the local install warning as:
+  `Warning in system2("xcrun", "--show-sdk-version", TRUE, TRUE) : running command ''xcrun' --show-sdk-version 2>&1' had status 1`
+  and completed `* DONE (gllvmTMB)`.
+- Rendered HTML / figure scans:
+  `rg -n "How many latent dimensions|Choosing latent rank|model-selection-latent-rank|latent d = 2|delta_BIC|Truth-versus-fit covariance" pkgdown-site/articles/model-selection-latent-rank.html pkgdown-site/articles/index.html`
+  -> article title, navbar/index link, `d = 2` table row, BIC delta, and Sigma
+  figure reference are present.
+  `ls -lh pkgdown-site/articles/model-selection-latent-rank_files/figure-html`
+  and `file pkgdown-site/articles/model-selection-latent-rank_files/figure-html/*.png`
+  -> two non-empty 1228 x 806 PNGs.
+- Browser preview:
+  In-app Browser refused direct `file://` navigation under its URL policy.
+  Served `pkgdown-site` locally instead:
+  `python3 -m http.server 8123 --bind 127.0.0.1`
+  and opened
+  `http://127.0.0.1:8123/articles/model-selection-latent-rank.html`.
+  Browser DOM verification:
+  title `How many latent dimensions should I fit? - gllvmTMB`, H1 present,
+  navbar `Choosing latent rank` present, `figureCount = 2`, `latent d = 2`
+  row present, `delta_BIC` present.
+- Rose / stale wording scans:
+  `rg -n 'public set remains|six visible|Keep profile-likelihood-ci hidden|joint-sdm.*Hidden|profile-likelihood-ci.*Hidden|troubleshooting-profile.*Hidden|random-slope restoration|promotes the covered s = 1' _pkgdown.yml ROADMAP.md README.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> no hits.
+  `rg -n 'same likelihood engine|engine = "julia"|engine = "laplace"|cross-engine' vignettes/articles/model-selection-latent-rank.Rmd README.md NEWS.md ROADMAP.md docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> no hits.
+  `rg -n 'prove.*rank|rank.*proof|selected latent rank|scientifically preferred|correct latent rank|calibrate.*rank|posterior predictive|formal residual tests|interval calibration' README.md ROADMAP.md NEWS.md vignettes/articles/model-selection-latent-rank.Rmd docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> intentional negative-boundary hits only.
 - Whitespace:
   `git diff --check`
   -> clean.

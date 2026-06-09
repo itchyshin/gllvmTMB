@@ -1,0 +1,381 @@
+---
+title: "How many latent dimensions should I fit?"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{How many latent dimensions should I fit?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  fig.width = 6.4,
+  fig.height = 4.2,
+  fig.align  = "center",
+  cache     = FALSE,
+  eval      = TRUE,
+  message   = FALSE,
+  warning   = FALSE
+)
+```
+
+Before interpreting a latent axis, choose the rank you are willing to
+defend. This article asks a practical question: when the same
+multi-trait data can be fitted with one latent dimension, two latent
+dimensions, or a richer rank, how do AIC, BIC, fit health, and
+biological interpretability help decide which model to report?
+
+The example simulates five continuous traits with two planted latent
+dimensions. We fit candidate ranks with `gllvmTMB()`, compare their
+information criteria, check numerical health, and interpret the chosen
+model as a rank-conditional summary rather than proof that nature has
+exactly two hidden axes.
+
+## Setup
+
+```{r setup}
+library(gllvmTMB)
+library(ggplot2)
+```
+
+## Start With One Data Problem
+
+The fixture has one row per `(individual, trait)` observation. The
+traits are continuous measurements with a planted *size* axis and a
+planted *shape* axis. The true between-individual covariance is
+
+$$
+\Sigma = \Lambda \Lambda^\top + \Psi,
+$$
+
+where `Lambda` contains the shared latent loadings and `Psi` is the
+trait-specific diagonal from `unique()`.
+
+```{r example-data, eval = FALSE}
+rank_ex <- readRDS(system.file(
+  "extdata", "examples", "model-selection-rank-example.rds",
+  package = "gllvmTMB"
+))
+df <- rank_ex$data_long
+df_wide <- rank_ex$data_wide
+truth <- rank_ex$truth
+```
+
+```{r example-data-load, include = FALSE}
+rank_path <- system.file(
+  "extdata", "examples", "model-selection-rank-example.rds",
+  package = "gllvmTMB"
+)
+rank_path <- c(
+  rank_path,
+  file.path("inst", "extdata", "examples", "model-selection-rank-example.rds"),
+  file.path("..", "inst", "extdata", "examples", "model-selection-rank-example.rds"),
+  file.path("..", "..", "inst", "extdata", "examples", "model-selection-rank-example.rds")
+)
+rank_path <- rank_path[nzchar(rank_path) & file.exists(rank_path)][1]
+stopifnot(!is.na(rank_path))
+rank_ex <- readRDS(rank_path)
+
+df <- rank_ex$data_long
+df_wide <- rank_ex$data_wide
+truth <- rank_ex$truth
+trait_names <- truth$trait_names
+```
+
+```{r data-preview}
+rank_ex$story$question
+head(df, 8)
+round(truth$Lambda, 2)
+```
+
+The planted `d = 2` truth is only a teaching fixture. In real data, the
+rank is unknown; the candidate set is a set of defensible summaries, not
+a direct view into biological machinery.
+
+The long and wide versions of the selected-rank formula are:
+
+```{r formula-preview}
+rank_ex$formula_long
+rank_ex$formula_wide
+```
+
+## Fit Candidate Ranks
+
+The diagonal baseline has no shared latent axis. The `d >= 1` candidates
+use the same fixed effects and the same `unique()` diagonal, changing
+only the rank of the `latent()` term.
+
+```{r rank-helpers}
+candidate_formula <- function(d) {
+  if (identical(d, 0L)) {
+    return(value ~ 0 + trait + unique(0 + trait | individual))
+  }
+
+  stats::as.formula(paste0(
+    "value ~ 0 + trait + ",
+    "latent(0 + trait | individual, d = ", d, ") + ",
+    "unique(0 + trait | individual)"
+  ))
+}
+
+fit_candidate <- function(d, data, control) {
+  suppressMessages(suppressWarnings(gllvmTMB(
+    candidate_formula(d),
+    data = data,
+    trait = "trait",
+    unit = "individual",
+    family = gaussian(),
+    control = control
+  )))
+}
+
+summarise_candidate <- function(fit, d) {
+  ll <- logLik(fit)
+  health <- check_gllvmTMB(fit)
+  weak_axis <- health[health$component == "weak_axis_unit", , drop = FALSE]
+  health_status <- if (any(health$status == "FAIL")) {
+    "FAIL"
+  } else if (any(health$status == "WARN")) {
+    "WARN"
+  } else {
+    "PASS"
+  }
+
+  data.frame(
+    d = d,
+    model = if (d == 0L) "unique only" else paste0("latent d = ", d),
+    logLik = as.numeric(ll),
+    df = attr(ll, "df"),
+    nobs = attr(ll, "nobs"),
+    AIC = AIC(fit),
+    BIC = BIC(fit),
+    convergence = fit$opt$convergence,
+    pd_hessian = isTRUE(fit$fit_health$pd_hessian),
+    max_gradient = fit$fit_health$max_gradient,
+    weak_axis = if (nrow(weak_axis)) weak_axis$status[1] else "not fitted",
+    health = health_status,
+    stringsAsFactors = FALSE
+  )
+}
+```
+
+```{r fit-candidates}
+candidate_d <- 0:3
+rank_control <- gllvmTMBcontrol(n_init = 2, init_jitter = 0.02)
+
+fits <- setNames(
+  lapply(candidate_d, fit_candidate, data = df, control = rank_control),
+  paste0("d", candidate_d)
+)
+
+rank_table <- do.call(
+  rbind,
+  lapply(candidate_d, function(d) summarise_candidate(fits[[paste0("d", d)]], d))
+)
+rank_table$delta_AIC <- rank_table$AIC - min(rank_table$AIC)
+rank_table$delta_BIC <- rank_table$BIC - min(rank_table$BIC)
+
+rank_table_display <- rank_table[
+  , c(
+    "model", "logLik", "df", "nobs", "AIC", "BIC",
+    "delta_AIC", "delta_BIC", "pd_hessian", "weak_axis", "health"
+  )
+]
+rank_table_display[, c("logLik", "AIC", "BIC", "delta_AIC", "delta_BIC")] <-
+  round(rank_table_display[, c("logLik", "AIC", "BIC", "delta_AIC", "delta_BIC")], 1)
+rank_table_display
+```
+
+Here both criteria support `d = 2`, the planted rank. The `d = 3`
+model gains a tiny amount of log-likelihood, but it pays for extra
+parameters and its fit-health rows warn about a weak latent axis. That
+is the common rank-selection pattern: a richer model can fit slightly
+better while adding an axis that is not stable enough to interpret.
+
+## Check The Wide Formula Too
+
+The same `d = 2` model can be written from a wide data frame with
+`traits(...)` on the left-hand side. This is the compact form for users
+who already have one row per individual and one column per trait.
+
+```{r wide-fit}
+fit_d2_wide <- gllvmTMB(
+  rank_ex$formula_wide,
+  data = df_wide,
+  unit = rank_ex$fit_args$unit,
+  family = rank_ex$fit_args$family,
+  control = rank_control
+)
+
+signif(
+  abs(as.numeric(logLik(fits$d2)) - as.numeric(logLik(fit_d2_wide))),
+  3
+)
+```
+
+That number should be close to zero. The long and wide calls describe
+the same stacked-trait likelihood; only the data shape differs.
+
+## Read AIC And BIC Beside Diagnostics
+
+`AIC()` and `BIC()` work through `logLik.gllvmTMB_multi()`. The
+log-likelihood is the TMB Laplace approximation to the marginal
+likelihood, `df` is the number of free fitted parameters after TMB
+mapping, and `nobs` is the number of observed response cells
+contributing to the likelihood. Compare AIC/BIC only among fits with
+the same response cells, family/link target, weights, and likelihood
+approximation.
+
+```{r ic-plot, fig.cap = "AIC and BIC differences for candidate latent ranks. Both criteria support the planted d = 2 model in this deterministic Gaussian fixture; the overfit d = 3 candidate improves log-likelihood only slightly and is penalised."}
+ic_plot_data <- rbind(
+  data.frame(d = rank_table$d, criterion = "AIC", delta = rank_table$delta_AIC),
+  data.frame(d = rank_table$d, criterion = "BIC", delta = rank_table$delta_BIC)
+)
+ic_plot_data$rank_label <- factor(
+  ifelse(ic_plot_data$d == 0L, "unique", paste0("d=", ic_plot_data$d)),
+  levels = c("unique", "d=1", "d=2", "d=3")
+)
+
+ggplot(ic_plot_data, aes(rank_label, delta, group = criterion,
+                         colour = criterion)) +
+  geom_hline(yintercept = 0, linewidth = 0.4, colour = "grey55") +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2.5) +
+  scale_colour_manual(values = c(AIC = "#0a617d", BIC = "#b0582b")) +
+  labs(
+    x = "Candidate rank",
+    y = "Difference from best value",
+    colour = "Criterion"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
+  )
+```
+
+Use the criteria as routing information after fit health, not instead
+of fit health. A model with the lowest AIC/BIC but failed convergence,
+a non-positive-definite Hessian, or a weak added axis is not ready for
+biological interpretation.
+
+```{r overfit-health}
+health_d3 <- check_gllvmTMB(fits$d3)
+health_cols <- intersect(
+  c("component", "status", "value", "message", "action"),
+  names(health_d3)
+)
+health_d3[
+  health_d3$component %in% c(
+    "optimizer_convergence",
+    "max_gradient",
+    "pd_hessian",
+    "hessian_rank",
+    "weak_axis_unit",
+    "cross_loading_structure_unit"
+  ),
+  health_cols,
+  drop = FALSE
+]
+```
+
+If AIC and BIC disagree, treat the disagreement as a prompt to inspect
+the fitted covariance, weak-axis rows, biological plausibility, and
+prediction/residual diagnostics. Do not promote a higher rank only
+because it shaves a small number of AIC units off a numerically weaker
+fit.
+
+## Interpret The Selected Model
+
+After choosing a rank, interpret invariant summaries first. `Sigma`,
+correlations, and communalities do not depend on how the latent axes
+are rotated. Raw loading columns are useful for exploratory labels, but
+with `d > 1` their signs and rotations need care.
+
+```{r sigma-recovery}
+selected_d <- rank_table$d[which.min(rank_table$BIC)]
+fit_selected <- fits[[paste0("d", selected_d)]]
+
+Sigma_hat <- extract_Sigma(fit_selected, level = "unit", part = "total")$Sigma
+Sigma_true <- truth$Sigma
+
+ij <- which(upper.tri(Sigma_true, diag = TRUE), arr.ind = TRUE)
+sigma_compare <- data.frame(
+  entry = paste(rownames(Sigma_true)[ij[, 1]], colnames(Sigma_true)[ij[, 2]],
+                sep = " - "),
+  type = ifelse(ij[, 1] == ij[, 2], "variance", "covariance"),
+  truth = Sigma_true[ij],
+  estimate = Sigma_hat[ij],
+  stringsAsFactors = FALSE
+)
+
+off <- upper.tri(Sigma_true)
+data.frame(
+  selected_d = selected_d,
+  relative_Frobenius_error =
+    norm(Sigma_hat - Sigma_true, "F") / norm(Sigma_true, "F"),
+  off_diagonal_correlation = stats::cor(Sigma_hat[off], Sigma_true[off])
+)
+```
+
+```{r sigma-scatter, fig.cap = "Truth-versus-fit covariance entries for the selected latent-rank model. This rotation-invariant comparison is safer than comparing raw loading columns before rotation or constraints."}
+lims <- range(c(sigma_compare$truth, sigma_compare$estimate))
+
+ggplot(sigma_compare, aes(truth, estimate, shape = type, colour = type)) +
+  geom_abline(slope = 1, intercept = 0, colour = "grey55", linewidth = 0.5) +
+  geom_point(size = 2.6, alpha = 0.9) +
+  coord_equal(xlim = lims, ylim = lims) +
+  scale_colour_manual(values = c(variance = "#0a617d", covariance = "#8c4d8f")) +
+  labs(
+    x = "True Sigma entry",
+    y = "Fitted Sigma entry",
+    colour = "Entry",
+    shape = "Entry"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
+  )
+```
+
+The selected rank recovers the planted covariance pattern in this
+fixture. That statement is narrower than "AIC/BIC proved the true
+rank." It means the selected fitted model is a useful summary of this
+candidate set and this simulated data-generating mechanism.
+
+## What To Report
+
+Report the candidate set and the checks that constrained it.
+
+| Report item | Why it matters |
+|---|---|
+| Candidate ranks and formulas | AIC/BIC only compare the models you fit. |
+| `logLik`, `df`, `nobs`, AIC, BIC, and deltas | Readers can see the likelihood gain and the penalty. |
+| `check_gllvmTMB()` rows | A low criterion value is not enough when Hessian, gradient, or weak-axis rows warn. |
+| Rotation-invariant summaries | `Sigma`, correlations, and communalities are safer than raw loading labels. |
+| Biological interpretation | A rank is useful only if the resulting summaries answer the study question. |
+
+This article covers a model-selection workflow for Gaussian
+`latent() + unique()` candidate ranks using base `AIC()` / `BIC()`,
+`logLik()`, and `check_gllvmTMB()` (FG-04, FG-06, DIA-03, DIA-08,
+DIA-10).
+It does not validate AIC/BIC as universally correct latent-rank
+selectors, calibrate confidence intervals, compare likelihoods from
+different fitting approximations, or advertise high-rank non-Gaussian
+structured models.
+For deeper Gaussian simulate-refit rank checks, use
+`check_identifiability()`; for fitted response diagnostics, start with
+[Can I trust this fit?](fit-diagnostics.html).
+
+## References
+
+* Akaike, H. (1974). A new look at the statistical model identification.
+  *IEEE Transactions on Automatic Control* **19**, 716-723.
+* Schwarz, G. (1978). Estimating the dimension of a model. *The Annals
+  of Statistics* **6**, 461-464.

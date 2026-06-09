@@ -247,6 +247,12 @@ stamp.
 | Residual rows have non-`ok` status | Some rows were not diagnosed | Inspect missing values, non-finite responses, and family support. |
 | Q-Q or rootogram shows systematic structure | The fitted response distribution may be wrong | Revisit family, link, covariates, offsets, or random-effect structure. |
 
+If the fit-health and response checks are acceptable but the latent rank
+is still a modelling choice, continue to
+[How many latent dimensions should I fit?](model-selection-latent-rank.html).
+That article compares one ML candidate set with AIC/BIC and uses REML
+only after a Gaussian model has been chosen.
+
 This page covers the public diagnostic path that is currently backed by
 the validation register: fit health and no-SE status (DIA-08, DIA-10),
 fitted-model predictive diagnostics and residuals for the scoped

@@ -15109,3 +15109,93 @@ Deliberately not run:
   article chunk through a temp-installed current checkout.
 - `devtools::check()` was not rerun; `pkgdown::build_site()` and
   `pkgdown::check_pkgdown()` are the relevant gates for this public-docs slice.
+
+## 2026-06-09 14:32 MDT — Public diagnostics → model-selection → REML workflow polish
+
+Scope:
+
+- Created branch `codex/public-workflow-polish-2026-06-09` from `main`.
+- Kept the work article-only: no R API, formula grammar, likelihood,
+  generated Rd, `_pkgdown.yml`, README, NEWS, roadmap, or validation-register
+  change.
+- Moved the latent-rank article's Gaussian `REML = TRUE` refit after the
+  selected-rank covariance interpretation, so the reader sees the intended
+  workflow: diagnostics, one ML AIC/BIC candidate table, selected-model
+  interpretation, then Gaussian-only REML covariance refit.
+- Added a short forward link from `fit-diagnostics.Rmd` to the latent-rank
+  model-selection article.
+
+Files touched:
+
+- `vignettes/articles/model-selection-latent-rank.Rmd`
+- `vignettes/articles/fit-diagnostics.Rmd`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-09-public-workflow-polish.md`
+
+Evidence:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --state open --repo itchyshin/gllvmTMB --limit 30`
+  -> no open PRs.
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent branch activity was the already-merged article-nav and REML PRs.
+- Local preview / nav:
+  `curl -sS http://127.0.0.1:8123/articles/cross-lineage-coevolution.html | rg -n "Joint species distribution model|Profile-likelihood confidence intervals|Choosing latent rank|Cross-lineage coevolution|Can I trust this fit"`
+  -> dropdown contains `Choosing latent rank` and `Can I trust this fit?`; no
+  JSDM/profile-CI dropdown hits.
+  Browser DOM check on `http://127.0.0.1:8123/articles/cross-lineage-coevolution.html`
+  -> nav items were Morphometrics, Choosing latent rank, Covariance and
+  correlation, Formula keyword grid, Response families, Can I trust this fit?,
+  Convergence and start values, Common pitfalls, Handling missing data; no
+  horizontal overflow.
+- Power pilot triage:
+  `/opt/homebrew/bin/gh run view 27214714881 --repo itchyshin/gllvmTMB --log-failed | tail -160`
+  -> failed scheduled run shows `runner has received a shutdown signal` /
+  `operation was canceled`, not a model assertion failure.
+  `/opt/homebrew/bin/gh run view 27225948960 --repo itchyshin/gllvmTMB --json status,conclusion,jobs --jq '{status, conclusion, counts: (.jobs | group_by(.status + "|" + (.conclusion // "")) | map({state: (.[0].status + "|" + (.[0].conclusion // "")), n: length, examples: (map(.name) | .[0:8])})), failed: (.jobs | map(select(.conclusion == "failure" or .conclusion == "cancelled")) | map({name,status,conclusion,url})), active: (.jobs | map(select(.status != "completed")) | map({name,status,conclusion,url}))}'`
+  -> latest replacement run had 46 completed-success jobs, 3 in-progress
+  shards, and no failed/cancelled jobs at the last poll.
+- Article render:
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); pkgdown::build_article("articles/model-selection-latent-rank", lazy = FALSE, new_process = FALSE)'`
+  -> wrote `pkgdown-site/articles/model-selection-latent-rank.html`.
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgload::load_all(".", quiet = TRUE); pkgdown::build_article("articles/fit-diagnostics", lazy = FALSE, new_process = FALSE)'`
+  -> wrote `pkgdown-site/articles/fit-diagnostics.html`.
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::build_site(preview = FALSE, lazy = FALSE, install = TRUE, new_process = TRUE)'`
+  -> completed successfully; it temp-installed the current checkout and rendered
+  all articles, including `model-selection-latent-rank.Rmd`.
+  Earlier render attempts documented the environment trap:
+  `Rscript` was not on PATH, `pkgdown::build_articles(lazy = FALSE)` without
+  temp-install failed against the stale installed package/internal article
+  environment, and `pkgdown::build_article("articles/model-selection-latent-rank")`
+  without `load_all()` saw the stale installed `gllvmTMB()` without `REML`.
+- pkgdown check:
+  `PATH="/opt/homebrew/bin:$PATH" /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Rendered-output checks:
+  `rg -n "A safe reporting order|Read AIC And BIC Beside Diagnostics|Interpret The Selected Model|Refit The Selected Gaussian Model With REML|Use one ML candidate table|How many latent dimensions should I fit|only after a Gaussian model has been chosen" pkgdown-site/articles/model-selection-latent-rank.html pkgdown-site/articles/fit-diagnostics.html`
+  -> confirmed the new workflow sentence, section order, REML rule, and
+  diagnostics-to-model-selection link in rendered HTML.
+  Browser DOM check on `http://127.0.0.1:8123/articles/model-selection-latent-rank.html`
+  -> headings appear in order: `Read AIC And BIC Beside Diagnostics`,
+  `Interpret The Selected Model`, `Refit The Selected Gaussian Model With REML`,
+  `What To Report`; no horizontal overflow.
+- Rose / Pat / article checks:
+  `rg -n "gllvmTMB\\(|trait = \"trait\"|REML|AIC|BIC|DIA-08|DIA-10|MIS-33|FG-04|FG-06" vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/fit-diagnostics.Rmd docs/design/35-validation-debt-register.md`
+  -> long-format calls retain `trait = "trait"`; REML and diagnostic claims
+  point to covered rows FG-04, FG-06, DIA-08, DIA-10, and MIS-33.
+  `rg -n "gllvmTMB_wide|meta_known_V|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|REML.*non-Gaussian|non-Gaussian.*REML" vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/fit-diagnostics.Rmd || true`
+  -> only hit was the intentional negative boundary: the article does not
+  advertise REML for non-Gaussian fits.
+- Issue ledger:
+  `/opt/homebrew/bin/gh issue list --repo itchyshin/gllvmTMB --state open --limit 30 --search "model selection OR REML OR diagnostics OR article"`
+  -> relevant open issues are #230 (article surface reset) and #347 (article
+  completion / public learning path); this PR advances but does not close them.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- `devtools::test()` and `devtools::check()` were not rerun; this is a
+  prose/article-order change, and the full pkgdown site build with
+  temp-install plus `pkgdown::check_pkgdown()` are the relevant gates.

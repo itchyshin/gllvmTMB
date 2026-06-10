@@ -28,6 +28,8 @@ navbar:
         href: articles/morphometrics.html
       - text: Choosing latent rank
         href: articles/model-selection-latent-rank.html
+      - text: Joint species distribution model
+        href: articles/joint-sdm.html
       - text: Concepts
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
@@ -53,6 +55,7 @@ articles:
     contents:
     - articles/morphometrics
     - articles/model-selection-latent-rank
+    - articles/joint-sdm
 
   - title: Concepts
     contents:
@@ -74,7 +77,6 @@ articles:
     - articles/choose-your-model
     - articles/animal-model
     - articles/phylogenetic-gllvm
-    - articles/joint-sdm
     - articles/profile-likelihood-ci
     - articles/troubleshooting-profile
     - articles/random-regression-reaction-norms
@@ -233,6 +235,7 @@ reference:
     - plot_rotated_loadings
     - compare_loadings
     - suggest_lambda_constraint
+    - suggest_lambda_constraints
     - confirmatory_lambda
     - loading_ci
     - loading_profile

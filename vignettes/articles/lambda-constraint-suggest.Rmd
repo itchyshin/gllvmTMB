@@ -179,7 +179,7 @@ at the data and propose pins where the exploratory fit shows entries
 are small or unreliable. We walk through two of them below -- the
 textbook simple version (`varimax_threshold`) and the principled
 uncertainty-aware version (`profile_retention`) -- and mention the
-third (`wald_retention`, plus a queued bootstrap variant) at the end
+third (`wald_retention`, plus a future bootstrap variant) at the end
 of the section.
 
 ### Data-driven retention: `convention = "varimax_threshold"` (simple)
@@ -218,7 +218,7 @@ $1 - \texttt{retention\_prob}$, keep the entry free; otherwise pin
 to zero.
 
 `retention_prob` is the unified retention argument across data-driven
-conventions (also used by `wald_retention` and, when v2 ships, by
+conventions (also used by `wald_retention` and by the planned
 `bootstrap_retention`). Higher values are stricter -- they raise the
 bar for retention. **The function default is 0.90** (LRT rejection at
 level 0.10), following the applied-EFA bootstrap convention. The

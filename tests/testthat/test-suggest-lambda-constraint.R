@@ -134,3 +134,54 @@ test_that("wrong object errors name the gllvmTMB constructor", {
     regexp = "fit returned by .*gllvmTMB"
   )
 })
+
+test_that("suggest_lambda_constraints() compares several conventions", {
+  d <- data.frame(
+    trait = factor(rep(paste0("t", 1:4), 4)),
+    site = factor(rep(paste0("s", 1:4), each = 4)),
+    value = rnorm(16)
+  )
+  res <- suggest_lambda_constraints(
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
+    data = d,
+    methods = c("none", "pin_top_one", "lower_triangular")
+  )
+
+  expect_s3_class(res, "gllvmTMB_lambda_constraint_suggestions")
+  expect_named(
+    res,
+    c(
+      "summary",
+      "suggestions",
+      "recommended_method",
+      "recommended"
+    )
+  )
+  expect_equal(
+    res$summary$method,
+    c("none", "pin_top_one", "lower_triangular")
+  )
+  expect_equal(res$summary$n_pins, c(0L, 1L, 1L))
+  expect_equal(res$summary$n_free, c(8L, 7L, 7L))
+  expect_equal(res$recommended_method, "lower_triangular")
+  expect_equal(
+    res$recommended$constraint,
+    res$suggestions$lower_triangular$constraint
+  )
+})
+
+test_that("suggest_lambda_constraints() rejects unsupported methods", {
+  d <- data.frame(
+    trait = factor(rep(paste0("t", 1:3), 4)),
+    site = factor(rep(paste0("s", 1:4), each = 3)),
+    value = rnorm(12)
+  )
+  expect_error(
+    suggest_lambda_constraints(
+      value ~ 0 + trait + latent(0 + trait | site, d = 1),
+      data = d,
+      methods = "banana"
+    ),
+    "unsupported"
+  )
+})

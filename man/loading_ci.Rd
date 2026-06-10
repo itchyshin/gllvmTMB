@@ -28,10 +28,13 @@ on the standardised loading
 Same cost as \code{"wald"} (no refit) but captures the bounded-support
 asymmetry that symmetric Wald on \eqn{\Lambda} ignores. CIs are
 wider toward large \eqn{|\Lambda|} and narrower toward 0 — the
-qualitatively correct shape, matching profile and bootstrap up
-to higher-order log-likelihood-curvature corrections.}
-}
-\code{"profile"} and \code{"bootstrap"} are planned for a follow-on slice.}
+qualitatively correct shape, leaving higher-order
+log-likelihood-curvature corrections to the profile path.}
+\item{\code{"profile"}}{Profile-likelihood inversion through
+\code{\link[=loading_profile]{loading_profile()}}. This refits across a grid for each free
+loading entry and can be used when Wald inference is blocked by a
+non-positive-definite Hessian.}
+}}
 
 \item{conf_level}{Confidence level. Defaults to 0.95.}
 

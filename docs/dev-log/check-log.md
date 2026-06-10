@@ -15199,3 +15199,218 @@ Deliberately not run:
 - `devtools::test()` and `devtools::check()` were not rerun; this is a
   prose/article-order change, and the full pkgdown site build with
   temp-install plus `pkgdown::check_pkgdown()` are the relevant gates.
+
+## 2026-06-09 -- Public binary JSDM / SDM article promotion
+
+Scope:
+
+- Promoted `vignettes/articles/joint-sdm.Rmd` from an internal direct-link
+  page to a public Model guide article.
+- Added it to `_pkgdown.yml` under the public `Articles > Model guide`
+  dropdown and removed it from the internal-drafts group.
+- Rewrote the article opening around the applied SDM question: after `env_1`
+  is in the model, which species retain residual co-occurrence?
+- Kept the first public SDM path narrow: binary occurrence JSDM with
+  `latent(0 + trait | site, d = 2)`, long + `traits(...)` wide calls,
+  latent-liability correlations, ordination, and a constraint-aware loading
+  check.
+- Added the missing loading workflow requested in preview: run
+  `suggest_lambda_constraint()`, refit with `lambda_constraint`, inspect
+  `flag_unreliable_loadings()`, and draw `plot_loadings_confidence_eye()`.
+  The prose states that loadings are secondary to the rotation-invariant
+  correlation / `Sigma_B` interpretation until the orientation is explicit.
+
+Files touched:
+
+- `_pkgdown.yml`
+- `vignettes/articles/joint-sdm.Rmd`
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft`
+  -> no open PRs.
+  `git log --all --oneline --since="6 hours ago"`
+  -> only the already-merged public workflow / model-selection docs work.
+- Focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "example-joint-sdm|joint-sdm-binary-long-wide", stop_on_failure = TRUE)'`
+  -> 58 pass, 0 fail, 0 warn, 0 skip.
+- Article render:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", pkg = ".")'`
+  -> wrote `pkgdown-site/articles/joint-sdm.html` after the public rewrite,
+  then again after adding the loading / Confidence Eye section.
+- Full article render:
+  Initial `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  failed on the internal `cross-lineage-coevolution.Rmd` page because the
+  locally installed package was stale and did not expose `make_cross_kernel()`.
+  `R CMD INSTALL .` first installed to a non-`Rscript` library; the corrected
+  command was
+  `R CMD INSTALL -l /Users/z3437171/Library/R/arm64/4.5/library .`.
+  Verification:
+  `Rscript --vanilla -e 'library(gllvmTMB); cat("make_cross_kernel:", exists("make_cross_kernel"), "\n"); cat("has REML arg:", "REML" %in% names(formals(gllvmTMB)), "\n")'`
+  -> `make_cross_kernel: TRUE`, `has REML arg: TRUE`.
+  After that, `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  completed successfully across the article set.
+- Public nav consistency:
+  `for f in pkgdown-site/articles/{morphometrics,model-selection-latent-rank,joint-sdm,covariance-correlation,api-keyword-grid,response-families,fit-diagnostics,convergence-start-values,pitfalls,missing-data,index}.html; do printf '%s: ' "$f"; rg -q 'Joint species distribution model' "$f" && echo yes || echo no; done`
+  -> all public pages and the article index reported `yes`.
+- Rendered HTML checks:
+  `curl -sS http://localhost:8123/articles/joint-sdm.html | rg -n "Check loadings before naming axes|jsdm-loading-confidence-eye|Confidence Eye plot|Suggesting a Lambda constraint|Confirmatory loadings|Internal direct-link"`
+  -> found the new loading section, Confidence Eye figure, and loading
+  companion links; no internal-note hit.
+  `curl -sS http://localhost:8123/articles/model-selection-latent-rank.html | rg -n "Joint species distribution model|Choosing latent rank|Refit The Selected Gaussian Model With REML"`
+  -> confirmed the model-selection page carries the new public dropdown and
+  kept the REML section.
+- Browser check:
+  In-app browser on `http://localhost:8123/articles/joint-sdm.html` reported
+  title `Joint species distribution models for binary occurrence data`, the
+  loading section present, one `jsdm-loading-confidence-eye` image, and no
+  `Internal direct-link note`.
+- Figure review:
+  Viewed `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-loading-confidence-eye-1.png`.
+  Initial render had an unused `estimated` legend item; the article plot call
+  now overrides the colour scale so the legend shows only `pinned`,
+  `CI overlaps null`, and `CI excludes null`. Figure-quality verdict: PASS for
+  a vignette diagnostic figure.
+- Rose / stale wording checks:
+  `rg -n "Internal direct-link|tier: 3|Joint species distribution model \\(binary GLLVM\\)|gllvmTMB_wide|meta_known_V|diag\\(U\\)|U_phy|U_non|\\\\bf S|\\bS_B\\b|\\bS_W\\b|REML.*non-Gaussian|non-Gaussian.*REML" vignettes/articles/joint-sdm.Rmd _pkgdown.yml pkgdown-site/articles/joint-sdm.html || true`
+  -> no hits.
+  `rg -n "joint-sdm|Joint species distribution|Internal direct-link|tier: 3|Scope boundary|CI-08|CI-10|FG-02|FG-03|FG-04|FAM-02|spatial_\\*|sdmTMB" _pkgdown.yml vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/joint-sdm.html pkgdown-site/articles/index.html README.md docs/design/35-validation-debt-register.md`
+  -> public claims trace to FG-02, FG-03, FG-04, FAM-02; CI caveat traces to
+  CI-08 / CI-10; single-species spatial boundary is consistent with README.
+- pkgdown:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Issue ledger:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --limit 30 --search "JSDM OR SDM OR species distribution OR article" --json number,title,url,labels,updatedAt`
+  -> relevant open trackers are #230 (Article surface reset) and #347
+  (Article completion / public learning path). This slice advances both but
+  does not close them.
+
+Deliberately not run:
+
+- `devtools::test()` full suite and `devtools::check()` were not rerun. This
+  is a public article / navigation slice with no R or TMB source changes; the
+  focused JSDM tests, live article render, full article build, browser check,
+  `pkgdown::check_pkgdown()`, and stale-wording scans are the relevant gates.
+
+## 2026-06-09 -- Lambda suggestion comparison helper for the JSDM article
+
+User spotted that the public JSDM article only used a single
+`suggest_lambda_constraint(convention = "varimax_threshold")` call, so readers
+did not see Wald or profile-retention choices for selecting loading
+constraints. Added `suggest_lambda_constraints()` as a plural convenience
+wrapper around the existing single-method suggester and updated the JSDM
+article to compare `varimax_threshold` and `wald_retention`, with
+`profile_retention` shown as the slower optional LRT confirmation path.
+
+Files touched:
+
+- `R/suggest-lambda-constraint.R`
+- `R/loading-uncertainty-helpers.R`
+- `R/loading-ci.R`
+- `tests/testthat/test-suggest-lambda-constraint.R`
+- `man/suggest_lambda_constraints.Rd`
+- `man/loading_ci.Rd`
+- `NAMESPACE`
+- `_pkgdown.yml`
+- `NEWS.md`
+- `docs/design/35-validation-debt-register.md`
+- `vignettes/articles/joint-sdm.Rmd`
+- `vignettes/articles/lambda-constraint-suggest.Rmd`
+- `pkgdown-site/articles/joint-sdm.html`
+- `pkgdown-site/articles/lambda-constraint-suggest.html`
+- `pkgdown-site/reference/index.html`
+- `pkgdown-site/reference/suggest_lambda_constraints.html`
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft`
+  -> no open PRs.
+  `git log --all --oneline --since="6 hours ago"`
+  -> only the already-merged diagnostics/model-selection docs workflow.
+- Timing probe:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); jsdm <- readRDS("inst/extdata/examples/joint-sdm-example.rds"); fit <- gllvmTMB(value ~ 0 + trait + (0 + trait):env_1 + latent(0 + trait | site, d=2), data=jsdm$data_long, trait="trait", unit="site", family=binomial(), silent=TRUE); print(system.time(suggest_lambda_constraint(fit, convention="wald_retention", threshold=.30, retention_prob=.90, sigma_d2=pi^2/3))); print(system.time(suggest_lambda_constraint(fit, convention="profile_retention", retention_prob=.90)))'`
+  -> Wald path ~0.06 s elapsed; profile-retention path ~25.0 s elapsed on the
+  shipped JSDM fixture, so the article renders Wald by default and leaves
+  profile as an explicit `eval = FALSE` follow-up.
+- Formatting and roxygen:
+  `air format R/suggest-lambda-constraint.R tests/testthat/test-suggest-lambda-constraint.R`
+  -> completed.
+  `air format R/suggest-lambda-constraint.R R/loading-uncertainty-helpers.R`
+  -> completed.
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/suggest_lambda_constraints.Rd` on the first run;
+  second run clean after stale-note cleanup.
+- Focused tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "suggest-lambda-constraint|example-joint-sdm|joint-sdm-binary-long-wide", stop_on_failure = TRUE)'`
+  -> first run caught a `cli` pluralisation bug in the unsupported-method error
+  path; after fixing, rerun passed with 98 pass, 0 fail, 0 warn, 4 heavy skips.
+  `Rscript --vanilla -e 'devtools::test(filter = "loading-ci|suggest-lambda-constraint|example-joint-sdm|joint-sdm-binary-long-wide", stop_on_failure = TRUE)'`
+  -> passed with 98 pass, 0 fail, 0 warn, 36 heavy skips after correcting
+  stale `loading_ci()` profile/bootstrap wording.
+- Local install for pkgdown:
+  `R CMD INSTALL -l /Users/z3437171/Library/R/arm64/4.5/library .`
+  -> completed; warning only from local `xcrun --show-sdk-version` status 1,
+  same local SDK-warning pattern as earlier installs.
+- Article renders:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/joint-sdm", pkg = ".")'`
+  -> first run failed because the installed package did not yet have
+  `suggest_lambda_constraints()`; after local install, rerender passed and
+  wrote `pkgdown-site/articles/joint-sdm.html`.
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/lambda-constraint-suggest", pkg = ".")'`
+  -> wrote `pkgdown-site/articles/lambda-constraint-suggest.html`.
+- Reference render:
+  `Rscript --vanilla -e 'pkgdown::build_reference(pkg = ".")'`
+  -> wrote `pkgdown-site/reference/index.html` and
+  `pkgdown-site/reference/suggest_lambda_constraints.html`; rerun after the
+  `loading_ci()` wording fix wrote `pkgdown-site/reference/loading_ci.html`.
+- Rendered-output checks:
+  `rg -n "suggest_lambda_constraints|wald_retention|profile_retention|varimax_threshold|recommended_method|asymmetric Wald retention|profile LRT retention" pkgdown-site/articles/joint-sdm.html`
+  -> confirmed the article links to the new reference page, prints the
+  threshold and Wald comparison rows, and shows the optional profile code.
+  `Rscript --vanilla -e 'library(gllvmTMB); jsdm <- readRDS("inst/extdata/examples/joint-sdm-example.rds"); fit <- gllvmTMB(value ~ 0 + trait + (0 + trait):env_1 + latent(0 + trait | site, d=2), data=jsdm$data_long, trait="trait", unit="site", family=binomial(), silent=TRUE); cmp <- suggest_lambda_constraints(fit, methods=c("varimax_threshold", "wald_retention"), threshold=.30, retention_prob=.90, sigma_d2=pi^2/3); print(cmp$summary[, c("method", "decision_basis", "cost", "n_pins", "n_free")]); print(cmp$recommended_method)'`
+  -> `varimax_threshold` pins 8 entries, `wald_retention` pins 15 entries,
+  and the recommended method is `wald_retention`.
+  `sed -n '1,160p' man/suggest_lambda_constraints.Rd && rg -n "export\\(suggest_lambda_constraints\\)|suggest_lambda_constraints" NAMESPACE _pkgdown.yml man/suggest_lambda_constraints.Rd`
+  -> new help topic, export, and pkgdown reference entry present.
+- Stale wording and consistency scans:
+  `rg -n "profile.*queued|queued.*profile|profile_retention.*queued|queued.*profile_retention|bootstrap variant|when v2 ships" R vignettes man tests docs/dev-log/check-log.md NEWS.md`
+  -> found stale public wording in `R/suggest-lambda-constraint.R` and
+  `vignettes/articles/lambda-constraint-suggest.Rmd`; updated profile wording
+  so only bootstrap retention remains future.
+  `rg -n "profile retention.*queued|queued.*profile retention|higher-order curvature corrections \\(queued\\)|when v2 ships|suggest_lambda_constraints" R vignettes man pkgdown-site/articles/joint-sdm.html pkgdown-site/articles/lambda-constraint-suggest.html pkgdown-site/reference/suggest_lambda_constraints.html _pkgdown.yml NEWS.md`
+  -> only expected `suggest_lambda_constraints` hits remain; no stale queued
+  profile wording.
+  `rg -n 'profile.*planned|bootstrap.*retention|profile / bootstrap retention|higher-order.*bootstrap|queued.*profile|profile.*queued|suggest_lambda_constraints|profile_retention|method = "profile"' R/loading-ci.R man/loading_ci.Rd pkgdown-site/reference/loading_ci.html R/suggest-lambda-constraint.R vignettes/articles/joint-sdm.Rmd vignettes/articles/lambda-constraint-suggest.Rmd`
+  -> no stale "profile planned" / queued-profile wording remains; remaining
+  `bootstrap_retention` hits are the planned future-method note in
+  `lambda-constraint-suggest.Rmd`.
+- Rose pre-publish checks:
+  `rg -n "methods = c\\(|method = c\\(|varimax_threshold|wald_retention|profile_retention|threshold = 0\\.30|retention_prob = 0\\.90|sigma_d2 = 1|pi\\^2 / 3" R/suggest-lambda-constraint.R vignettes/articles/joint-sdm.Rmd vignettes/articles/lambda-constraint-suggest.Rmd man/suggest_lambda_constraints.Rd NEWS.md`
+  -> method/default claims match source and generated docs.
+  `rg -n "suggest_lambda_constraints|suggest_lambda_constraint" NAMESPACE _pkgdown.yml R/suggest-lambda-constraint.R man/suggest_lambda_constraints.Rd pkgdown-site/reference/index.html pkgdown-site/reference/suggest_lambda_constraints.html`
+  -> export, reference index, source, generated help, and pkgdown reference
+  page agree.
+  `rg -n "LAM-03|LAM-04|CI-08|CI-10|FG-02|FG-03|FG-04|FAM-02" docs/design/35-validation-debt-register.md NEWS.md vignettes/articles/joint-sdm.Rmd vignettes/articles/lambda-constraint-suggest.Rmd`
+  -> claims trace to covered LAM-03 / LAM-04, FG-02 / FG-03 / FG-04,
+  FAM-02, and partial CI-08 / CI-10 rows. Updated LAM-04 to name
+  `suggest_lambda_constraints()` as a comparison wrapper around the same
+  covered suggester surface.
+- pkgdown:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not rerun. This slice
+  adds an R wrapper around existing suggester methods plus public docs; focused
+  suggester/JSDM tests, roxygen, affected article renders, reference render,
+  `pkgdown::check_pkgdown()`, and stale-wording scans are the relevant gates.

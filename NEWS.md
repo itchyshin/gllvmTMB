@@ -3,6 +3,21 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Loading-constraint suggestion comparison (2026-06-09)
+
+* Added `suggest_lambda_constraints()`, a plural companion to
+  `suggest_lambda_constraint()` that compares several Lambda-constraint
+  conventions in one call and returns a summary table plus the full
+  suggestion objects. IN: the helper orchestrates the existing
+  `varimax_threshold`, `wald_retention`, and optional `profile_retention`
+  paths so users can compare point-threshold, Wald-retention, and
+  profile-LRT pinning before refitting a confirmatory loading model
+  (LAM-03, LAM-04). PARTIAL: the helper ranks the highest-evidence
+  requested method as a statistical recommendation, but the biological
+  interpretation of loading axes still requires a confirmatory hypothesis
+  or a clearly stated exploratory orientation. OUT: no new likelihood,
+  covariance, or interval-calibration machinery is added here.
+
 ## Latent-rank model-selection article (2026-06-09)
 
 * Added the public `model-selection-latent-rank` article, "How many latent

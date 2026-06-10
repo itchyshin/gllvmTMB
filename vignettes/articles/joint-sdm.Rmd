@@ -1,12 +1,12 @@
 ---
-title: "Joint species distribution model (binary GLLVM)"
-tier: 3 # internal direct-link page until the binary-JSDM reader path has a light public fixture
+title: "Joint species distribution models for binary occurrence data"
+tier: 1
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Joint species distribution model (binary GLLVM)}
+  %\VignetteIndexEntry{Joint species distribution models for binary occurrence data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,179 +18,33 @@ knitr::opts_chunk$set(
   fig.width = 6, fig.height = 4,
   fig.align = "center",
   cache    = FALSE,
-  eval     = FALSE,
+  eval     = TRUE,
   message  = FALSE,
   warning  = FALSE
 )
 ```
 
-> **Internal direct-link note.** This page records the current binary-JSDM
-> syntax and interpretation path, but it is not part of the public article
-> dropdown while the first-stop ecology example is being simplified. Start with
-> [Morphometrics](morphometrics.html), [Choosing latent rank](model-selection-latent-rank.html),
-> [Response families](response-families.html), and [Can I trust this fit?](fit-diagnostics.html)
-> for the reader-ready public path.
+After an environmental gradient is in the model, which species still
+tend to occur together, and which species avoid each other? That is
+the first joint species distribution model (JSDM) question this page
+answers.
 
-A reduced-rank binary GLLVM compresses a many-column 0/1 occurrence
-matrix into a few latent factors. The classic ecology version is a
-**joint species distribution model**: rows are sites, columns are
-species, the entries are presence / absence, and the latent factors
-capture residual co-occurrence beyond what's explained by
-environmental predictors. The same `gllvmTMB(family = binomial())`
-call also fits any binary `unit × trait` data — IRT-style item
-responses, presence/absence of attributes, etc.
+The data are binary occurrence records: one row per site, one column
+or trait per species, and a 0/1 response for absence/presence. The
+model uses `latent()` to estimate a low-rank residual co-occurrence
+structure across species after `env_1` is accounted for.
 
-## The model
-
-For binary $y_{it} \in \{0, 1\}$ with logit link,
-
-$$
-\mathrm{logit}\bigl(P(y_{it} = 1)\bigr) \;=\; \mathbf x_i^\top
-\boldsymbol\beta_t \;+\; \boldsymbol\lambda_t^{\!\top} \mathbf u_i,
-\qquad \mathbf u_i \sim \mathcal N(\mathbf 0, \mathbf I_d).
-$$
-
-Two distinct covariance objects matter here, and **conflating them is
-the most common notation trap in JSDM writing**.
-
-### 1. Between-unit shared covariance (estimated by the GLLVM)
-
-The covariance among traits / species induced by the latent factors
-$\mathbf u_i$ is
-
-$$
-\boldsymbol\Sigma_B \;=\; \boldsymbol\Lambda \boldsymbol\Lambda^\top.
-$$
-
-That's the part the GLLVM **estimates** from cross-trait
-co-occurrence on the latent scale. With reduced rank $d \ll T$ it is
-identified by the off-diagonal (cross-trait) co-occurrence pattern;
-the diagonal is then constrained by the rank.
-
-### 2. Total latent-liability covariance (used for correlations / ICC)
-
-To convert $\boldsymbol\Sigma_B$ into something on a unified
-**latent-liability** scale (so we can compute latent-scale
-correlations, ICC, communality, $R^2$, …), we use the threshold
-representation:
-
-$$
-y^*_{it} \;=\; \eta_{it} + \varepsilon_{it},
-\qquad \varepsilon_{it} \sim \text{Logistic}(0, 1),
-\qquad \mathrm{Var}(\varepsilon) = \pi^2/3.
-$$
-
-with $y_{it} = \mathbf 1\{y^*_{it} > 0\}$. The total latent-liability
-covariance is then
-
-$$
-\boldsymbol\Sigma_{\text{latent}}
-\;=\;
-\underbrace{\boldsymbol\Sigma_B}_{\text{estimated}}
-\;+\;
-\underbrace{(\pi^2 / 3)\, \mathbf I}_{\text{fixed by link}}.
-$$
-
-The $(\pi^2/3) \mathbf I$ term is **not estimated** — it is the
-distribution-specific variance of the standard logistic
-($\pi^2/3 \approx 3.29$). For probit it's $1$; for cloglog it's
-$\pi^2/6$. It enters whenever you want to put $\boldsymbol\Sigma_B$
-on the conventional latent-liability scale (Niku et al. 2017;
-Nakagawa & Schielzeth 2010).
-
-In `gllvmTMB`:
-
-* `extract_Sigma(fit, level = "unit", part = "shared")` returns
-  $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$.
-* `extract_Sigma(fit, level = "unit", part = "total")` returns
-  $\boldsymbol\Sigma_{\text{latent}} = \boldsymbol\Sigma_B + (\pi^2/3) \mathbf I$.
-
-`extract_correlations()` uses `part = "total"` by default, so the
-correlations come out on the latent-liability scale.
-
-### Why this example omits `unique()`
-
-For Gaussian fits, the canonical decomposition pairs
-`latent + unique`:
-
-$$\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$$
-
-where $\boldsymbol\Psi = \mathrm{diag}(\psi_{tt})$ is the per-trait
-unique variance estimated from residual variation. A single-trial
-Bernoulli response is different: the link already supplies the
-latent-scale residual variance ($\pi^2/3$ for logit, 1 for probit).
-There is no separate observation-level $\psi$ term for the data to
-identify.
-
-That is why the worked example below uses only
-`latent(0 + trait | site, d = 2)`. The `latent + unique` binary path
-is still useful as a diagnostic or development check, but the current
-validation register marks that paired binary regime as RE-09
-`partial`, not `covered`. For a public JSDM example, the honest
-default is therefore:
-
-| Goal | Recommended term |
-|---|---|
-| Model residual species co-occurrence in 0/1 data | `latent(0 + trait | site, d = K)` |
-| Add a per-trait residual variance to Gaussian or other continuous traits | `latent(...) + unique(...)` |
-| Diagnose a boundary or over-parameterised binary fit | try `unique(...)` as a sensitivity check, then report the boundary status |
-
-Bottom line: for **pure single-trial binary** JSDMs, start with
-`latent()` alone and treat `unique()` as a diagnostic path.
-
-### What about `dep()` and `indep()` for binary?
-
-The `dep()` and `indep()` keywords are part of the general covariance
-grammar, but this article does not use them as binary-JSDM teaching
-defaults. The validation-debt register currently marks the `dep()`
-and `indep()` rows for the unit tier as FG-08 and FG-07 `partial`
-because their stronger recovery evidence is Gaussian-only.
-
-For binary species-occurrence data, choose the term by the biological
-question:
-
-| Question | Term to start with |
-|---|---|
-| Which species share residual co-occurrence after the environment is accounted for? | `latent(0 + trait | site, d = K)` |
-| Do species vary independently, with no residual co-occurrence target? | `indep()` can express that model, but it is not the JSDM focus here |
-| Do I need a saturated covariance for a small species set? | `dep()` is a possible sensitivity fit, but it is not the validated public path for this binary example |
-
-So the recommendation here is narrow: use `latent(d = K)` for the
-worked binary JSDM and treat `dep()` / `indep()` comparisons as
-sensitivity checks until the binary-specific validation rows move
-from `partial` to `covered`.
-
-### How `extract_Sigma()` handles non-Gaussian fits
-
-`extract_Sigma(fit, part = "total")` looks up each trait's family /
-link, and adds the **per-trait latent-scale residual** $\sigma^2_d$ to
-the diagonal of $\boldsymbol\Sigma$. The internal helper is
-`gllvmTMB:::link_residual_per_trait(fit)`, which uses these formulas
-from Nakagawa & Schielzeth (2010) + Nakagawa, Johnson & Schielzeth
-(2017):
-
-| Family / link | $\sigma^2_d$ added per trait |
-|---|---|
-| `gaussian` (identity) | $0$ |
-| `binomial(logit)` | $\pi^2/3 \approx 3.290$ |
-| `binomial(probit)` | $1$ |
-| `binomial(cloglog)` | $\pi^2/6 \approx 1.645$ |
-| `poisson(log)` | $\log(1 + 1/\hat\mu_t)$  (lognormal-Poisson) |
-| `nbinom2(log)` | $\psi'(\hat\phi_t)$ (trigamma; Stoklosa et al. 2022) |
-| `tweedie(log)` | $\log(1 + \hat\phi_t \hat\mu_t^{p-2})$ (Tweedie 1984) |
-| `Beta(logit)` | $\psi'(\mu\phi) + \psi'((1-\mu)\phi)$ (Smithson & Verkuilen 2006) |
-| `betabinomial(logit)` | $\psi'(\mu\phi) + \psi'((1-\mu)\phi) + \pi^2/3$ |
-| `delta_lognormal` | $\hat\sigma^2_{\text{logn}} + \pi^2/3$ |
-
-Each trait gets the residual implied by its family; the diagonal of
-$\boldsymbol\Sigma$ is therefore on a unified latent scale. Pass
-`link_residual = "none"` to suppress this addition and recover the
-bare $\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$ form.
-
-The article body below fits a **pure binomial** JSDM. End-to-end
-mixed-family rigour (validated extractors on `family = list(...)`
-fits across the 15-family matrix) is M1 milestone work — see
-[validation-debt register MIX-03..MIX-08](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md#section-7--mixed-family-fits).
+Scope boundary. IN: the long and `traits(...)` wide formula paths
+(FG-02, FG-03), standalone `latent(0 + trait | site, d = K)` (FG-04),
+and binomial-logit response fits (FAM-02), with the package fixture
+checked by `test-example-joint-sdm.R` and
+`test-joint-sdm-binary-long-wide.R`. PARTIAL: calibrated interval
+coverage for covariance-derived quantities remains under CI-08 /
+CI-10, so this article treats Fisher-z intervals as useful diagnostics
+but not final coverage claims. OUT OF SCOPE: single-species spatial
+SDMs belong in `sdmTMB`; multivariate spatial fields via
+`spatial_*()` are a later advanced article, not a prerequisite for
+this JSDM example.
 
 ## Setup
 
@@ -249,11 +103,12 @@ same engine.
 ```{r jsdm-fit}
 # Long format -- one row per (site, species) observation
 fit_jsdm <- gllvmTMB(
-  jsdm$formula_long,
+  value ~ 0 + trait + (0 + trait):env_1 +
+    latent(0 + trait | site, d = 2),
   data   = df,
-  trait  = jsdm$fit_args$trait,
-  unit   = jsdm$fit_args$unit,
-  family = jsdm$fit_args$family
+  trait  = "trait",
+  unit   = "site",
+  family = binomial()
 )
 fit_jsdm
 ```
@@ -264,10 +119,11 @@ fit_jsdm
 # shorthand uses `1 + env_1`, which expands internally to
 # `0 + trait + (0 + trait):env_1`.
 fit_jsdm_wide <- gllvmTMB(
-  jsdm$formula_wide,
+  traits(sp_1, sp_2, sp_3, sp_4, sp_5, sp_6, sp_7, sp_8) ~
+    1 + env_1 + latent(1 | site, d = 2),
   data   = df_wide,
-  unit   = jsdm$fit_args$unit,
-  family = jsdm$fit_args$family
+  unit   = "site",
+  family = binomial()
 )
 all.equal(logLik(fit_jsdm), logLik(fit_jsdm_wide), tolerance = 1e-8)
 ```
@@ -282,6 +138,48 @@ model through the same `gllvmTMB()` entry point. In either shape, true
 absences should be explicit zeros. Missing response cells are not a
 safe shortcut for absences, because missingness can also mean the site
 or species was not surveyed.
+
+## What `latent()` estimates
+
+For binary occurrence data with a logit link, the fitted linear
+predictor is
+
+$$
+\mathrm{logit}\{P(y_{it} = 1)\} =
+\mathbf x_i^\top \boldsymbol\beta_t +
+\boldsymbol\lambda_t^\top \mathbf u_i,
+\qquad
+\mathbf u_i \sim \mathcal N(\mathbf 0, \mathbf I_d).
+$$
+
+The site score $\mathbf u_i$ is the unobserved residual state of site
+$i$, and the species loading $\boldsymbol\lambda_t$ says how species
+$t$ responds to those residual axes. The rotation of
+$\boldsymbol\Lambda$ is arbitrary, so the stable co-occurrence target
+is the species covariance implied by the loadings:
+
+$$
+\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top.
+$$
+
+For a binary logit JSDM, correlations are easier to interpret on the
+latent-liability scale. `extract_correlations(link_residual = "auto")`
+adds the fixed logistic residual variance $\pi^2 / 3$ to the diagonal
+before forming the correlation matrix:
+
+$$
+\boldsymbol\Sigma_{\mathrm{latent}} =
+\boldsymbol\Sigma_B + (\pi^2 / 3)\mathbf I.
+$$
+
+That residual term is fixed by the binomial logit link, not estimated
+from the data. This is why the first binary JSDM model uses
+`latent()` alone. The Gaussian `latent() + unique()` decomposition
+estimates a separate diagonal $\boldsymbol\Psi$, but a single-trial
+Bernoulli response already has its latent-scale residual variance
+set by the link. For the same reason, `dep()` and `indep()` are useful
+sensitivity forms, but they are not the recommended starting point
+for this public binary JSDM path.
 
 ### Where loading constraints fit
 
@@ -324,21 +222,15 @@ interpretable co-occurrence quantity for a JSDM. `fisher-z`,
 **bare** $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top$
 (it ignores `link_residual`), so its point estimate is the
 undiluted latent-factor correlation, not the latent-liability one.
-The worked comparison below makes the difference explicit and shows
-how to line the methods up like-for-like.
+The optional comparison snippets below make the difference explicit
+for readers who want to audit the scale.
 
-**What is and isn't certified.** The point machinery and the three
-CI methods are validated for *behaviour* — they run and return the
-intervals their definitions imply. **Calibrated coverage is a
-separate, still-open question.** Even for Gaussian fits the
-coverage study clears the $\geq 94\%$ target only at $d = 1$ and
-$d = 3$ (most cells of the grid still fall short), and **mixed-family
-fits — `family = list(...)` combinations such as Gaussian + binomial
-— have measured coverage of only 0.55–0.82, well below target.**
-Treat the intervals in this article as point-correct but *not*
-coverage-certified, and do **not** read the mixed-family case as
-ready: that is a known engine deficiency, not a near-complete
-feature. See the
+What is and is not certified: the point estimates and Fisher-z
+intervals are useful diagnostics for this fitted example, but the
+package-wide calibrated-coverage work is still open. Treat intervals
+here as model-based uncertainty summaries, not as a claim that every
+binary or mixed-family covariance interval has reached nominal
+coverage. See the
 [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)
 (CI-08, CI-10) for the live status.
 
@@ -382,11 +274,9 @@ for the rotation-invariant co-occurrence story.
 This section works through the three CI methods on two estimands —
 a pairwise species **correlation** and a per-species **ICC** — to
 show what each method returns and where it currently stops short.
-The bootstrap chunks re-fit the model dozens of times; they are run
-here at a deliberately small `nsim` for speed and are slower than
-the Fisher-z default. Read the caveat box above first: the point
-estimates are trustworthy, the *coverage* of these intervals is
-not yet certified, and the mixed-family case is failing.
+These chunks are optional because the bootstrap and profile paths
+re-fit the model; run them when the interval method itself is the
+question, not for a first pass through the article.
 
 ### Three CI methods for one correlation
 
@@ -395,7 +285,7 @@ correlation three ways. Keeping `link_residual = "auto"` for the
 Fisher-z and bootstrap calls holds them on the latent-liability
 scale, so their point estimates agree and only the interval differs:
 
-```{r jsdm-cor-methods}
+```{r jsdm-cor-methods, eval = FALSE}
 pair_ij <- c("sp_1", "sp_2")
 
 cor_fisher <- extract_correlations(
@@ -419,7 +309,7 @@ because it currently works on the bare $\boldsymbol\Sigma_B$ scale.
 To compare it fairly, request the Fisher-z interval with
 `link_residual = "none"` so both sit on the same (undiluted) scale:
 
-```{r jsdm-cor-profile}
+```{r jsdm-cor-profile, eval = FALSE}
 cor_profile <- extract_correlations(
   fit_jsdm, tier = "unit", pair = pair_ij,
   method = "profile"
@@ -476,7 +366,7 @@ round(icc_point, 3)
 
 A parametric bootstrap puts an interval on each species' ICC:
 
-```{r jsdm-icc-boot}
+```{r jsdm-icc-boot, eval = FALSE}
 icc_boot <- extract_communality(
   fit_jsdm, level = "unit", link_residual = "auto",
   ci = TRUE, method = "bootstrap", nsim = 20, seed = 1
@@ -498,12 +388,11 @@ Two honest limitations on the ICC CI in the current build:
   and the interval returns `NA`. The point estimate is still the
   correct latent-scale ICC; only the profile *interval* is missing.
 
-These gaps are exactly the open-coverage story flagged above: the
-estimands compute, but calibrated interval machinery on the binary
-and mixed-family scales is still in progress (CI-08, CI-10). Do not
-present these intervals as finished, and do not extend them to
-mixed-family `family = list(...)` fits, where the measured coverage
-is failing.
+These gaps are the open-coverage story flagged above: the estimands
+compute, but calibrated interval machinery on the binary and
+mixed-family scales is still in progress (CI-08, CI-10). Report the
+point estimate and the method used; avoid presenting these intervals
+as coverage-certified.
 
 ## Ordination biplot
 
@@ -537,9 +426,142 @@ Species arrows pointing in the same direction co-occur after `env_1`
 is accounted for; arrows pointing in opposite directions tend to
 mutually exclude.
 
+## Check loadings before naming axes
+
+The ordination plot is useful, but it is not enough to name an axis.
+An exploratory loading matrix is identified only up to rotation, so
+per-species loading intervals are not well-defined until the loading
+orientation has been pinned. If you have a biological hypothesis, use
+`confirmatory_lambda()` to encode it. If you do not, use
+`suggest_lambda_constraint()` as a statistical fallback, refit, and
+then inspect uncertainty.
+
+Here the fallback should not be just one hard cutoff. The helper below
+compares two cheap suggestions:
+
+* `varimax_threshold` rotates the exploratory loadings and pins small
+  point estimates.
+* `wald_retention` uses the same salience threshold, but asks whether
+  the loading is retained after accounting for Wald uncertainty on the
+  standardised loading scale.
+
+For a binary logit JSDM, the Wald retention calculation uses the fixed
+logistic residual variance, `sigma_d2 = pi^2 / 3`. This is still a
+statistical fallback rather than a biological hypothesis; it is a
+reproducible orientation for checking which loadings are stable enough
+to discuss.
+
+```{r jsdm-suggest-loadings}
+loading_suggestions <- suggest_lambda_constraints(
+  fit_jsdm,
+  methods = c("varimax_threshold", "wald_retention"),
+  threshold = 0.30,
+  retention_prob = 0.90,
+  sigma_d2 = pi^2 / 3
+)
+
+loading_suggestions$summary[, c(
+  "method", "decision_basis", "cost", "n_pins", "n_free"
+)]
+
+loading_suggestion <- loading_suggestions$recommended
+loading_suggestions$recommended_method
+loading_suggestion$constraint
+loading_suggestion$note
+```
+
+The profile-likelihood version is also available. It is deliberately
+not run in the first-pass article build because it refits once per
+testable loading entry; on this fixture it takes seconds rather than
+milliseconds. Use it when the loading constraint itself is the
+scientific decision being reported.
+
+```{r jsdm-suggest-loadings-profile, eval = FALSE}
+profile_suggestions <- suggest_lambda_constraints(
+  fit_jsdm,
+  methods = c("varimax_threshold", "wald_retention", "profile_retention"),
+  threshold = 0.30,
+  retention_prob = 0.90,
+  sigma_d2 = pi^2 / 3
+)
+
+profile_suggestions$summary[, c(
+  "method", "decision_basis", "cost", "n_pins", "n_free"
+)]
+profile_suggestions$recommended_method
+```
+
+Refit the same binary JSDM with the suggested loading constraint. The
+likelihood may change slightly because the constrained fit is no
+longer just a rotated copy of the exploratory model; it is a
+reporting-oriented sensitivity fit for the loading display.
+
+```{r jsdm-constrained-loadings}
+fit_jsdm_constrained <- gllvmTMB(
+  value ~ 0 + trait + (0 + trait):env_1 +
+    latent(0 + trait | site, d = 2),
+  data   = df,
+  trait  = "trait",
+  unit   = "site",
+  family = binomial(),
+  lambda_constraint = list(unit = loading_suggestion$constraint)
+)
+fit_jsdm_constrained
+```
+
+`loading_ci()` gives Wald intervals for the pinned-or-free loading
+entries. `flag_unreliable_loadings()` adds a practical reliability
+flag: by default here, a loading is unreliable if its interval overlaps
+the small null region `[-0.1, 0.1]`.
+
+```{r jsdm-loading-ci}
+loading_flags <- flag_unreliable_loadings(
+  fit_jsdm_constrained,
+  level = "unit",
+  method = "wald",
+  null_region = c(-0.1, 0.1)
+)
+
+loading_flags[, c(
+  "trait", "axis", "estimate", "lower", "upper", "pinned", "unreliable"
+)]
+```
+
+The Confidence Eye plot puts that table into the same visual grammar as
+the rest of the package: hollow point for the estimate, eye-shaped
+region for the interval, grey for pinned loadings, green when the
+interval excludes the null region, and red when it overlaps it.
+
+```{r jsdm-loading-confidence-eye, fig.width = 8, fig.height = 4.8, fig.cap = "Confidence Eye plot for the constrained binary JSDM loadings. Hollow points are loading estimates, eye-shaped regions are Wald intervals, grey points are entries pinned by the suggested constraint, green intervals exclude the small null region, and red intervals overlap it.", fig.alt = "Two-panel confidence-eye plot of species loadings for LV1 and LV2. Each species has a hollow point and an eye-shaped confidence interval unless the loading was pinned to zero. Colours distinguish pinned loadings, intervals that overlap the small null region, and intervals that exclude it."}
+plot_loadings_confidence_eye(
+  fit_jsdm_constrained,
+  level = "unit",
+  method = "wald",
+  null_region = c(-0.1, 0.1),
+  sort_by = "magnitude"
+) +
+  ggplot2::scale_colour_manual(
+    values = c(
+      "pinned" = "grey50",
+      "CI overlaps null" = "#d6604d",
+      "CI excludes null" = "#1b7837"
+    ),
+    breaks = c("pinned", "CI overlaps null", "CI excludes null"),
+    name = NULL
+  )
+```
+
+Read this plot as a loading-diagnostics check, not as a replacement for
+the residual correlation matrix. Correlations and
+$\boldsymbol\Sigma_B$ are rotation-invariant; loadings become
+reportable only after the orientation choice is explicit.
+
 ## See also
 
-* [`vignette("functional-biogeography")`](functional-biogeography.html) — Gaussian stacked-trait analogue.
+* [Morphometrics](morphometrics.html) — Gaussian stacked-trait analogue with `latent() + unique()`.
+* [Choosing latent rank](model-selection-latent-rank.html) — how to compare candidate values of `d`.
+* [Confirmatory loadings](lambda-constraint.html) — how to encode a biological loading hypothesis.
+* [Suggesting a Lambda constraint](lambda-constraint-suggest.html) — data-driven fallback when no hypothesis is available.
 * [`vignette("response-families")`](response-families.html) — full table of supported families and the per-family $\sigma^2_d$.
 
 ## References

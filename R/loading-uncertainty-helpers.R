@@ -15,8 +15,9 @@
 ##      symmetric Wald on Λ ignores; matches the shape (not the exact
 ##      magnitude) of profile and bootstrap CIs.
 ##
-## See `~/.claude/memory/MEMORY.md` task group "Loading uncertainty"
-## for the queued profile and bootstrap variants.
+## Profile loading intervals now live in loading_profile() /
+## loading_ci(method = "profile"). Bootstrap retention remains a later
+## extension.
 
 #' Compute Λ̂ + cov(vec(Λ̂)) at the MLE via numerical delta method
 #'

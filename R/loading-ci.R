@@ -53,10 +53,13 @@
 #'       Same cost as `"wald"` (no refit) but captures the bounded-support
 #'       asymmetry that symmetric Wald on \eqn{\Lambda} ignores. CIs are
 #'       wider toward large \eqn{|\Lambda|} and narrower toward 0 — the
-#'       qualitatively correct shape, matching profile and bootstrap up
-#'       to higher-order log-likelihood-curvature corrections.}
+#'       qualitatively correct shape, leaving higher-order
+#'       log-likelihood-curvature corrections to the profile path.}
+#'     \item{`"profile"`}{Profile-likelihood inversion through
+#'       [loading_profile()]. This refits across a grid for each free
+#'       loading entry and can be used when Wald inference is blocked by a
+#'       non-positive-definite Hessian.}
 #'   }
-#'   `"profile"` and `"bootstrap"` are planned for a follow-on slice.
 #' @param sigma_d2 link-implicit residual variance on the link scale.
 #'   Only used when `method = "wald_asym"`. Defaults to `1` (binomial
 #'   probit and ordinal_probit; the cleanest non-Gaussian case). For
@@ -197,7 +200,7 @@ loading_ci <- function(fit,
     cli::cli_warn(c(
       "Fit's Hessian is not positive-definite at the optimum.",
       i = "Returning estimates only; {.code se} / {.code lower} / {.code upper} are NA -- Wald inference is unavailable for this fit.",
-      i = "Consider refitting with a less aggressive {.code lambda_constraint} (e.g. fewer pins) or with profile / bootstrap retention."
+      i = "Consider refitting with a less aggressive {.code lambda_constraint} (e.g. fewer pins) or using {.code loading_ci(method = \"profile\")}."
     ))
     return(data.frame(
       trait      = factor(rep(trait_names, times = d), levels = trait_names),

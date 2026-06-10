@@ -89,20 +89,25 @@ suggest_lambda_constraint <- function(
   fit_or_formula,
   data = NULL,
   level = "unit",
-  convention = c("lower_triangular", "pin_top_one", "none",
-                 "varimax_threshold", "wald_retention",
-                 "profile_retention"),
+  convention = c(
+    "lower_triangular",
+    "pin_top_one",
+    "none",
+    "varimax_threshold",
+    "wald_retention",
+    "profile_retention"
+  ),
   trait = "trait",
   unit = "site",
-  threshold      = 0.30,    # Comrey-Lee convention on standardised loading
-  retention_prob = 0.90,    # Unified across `wald_retention` and `profile_retention`:
-                            #   * wald_retention: pin if Pr(|Lambda| > threshold) < retention_prob
-                            #   * profile_retention: pin if LRT fails to reject H0:Lambda = 0
-                            #     at significance level (1 - retention_prob)
-                            # 0.90 follows the applied-EFA bootstrap convention (less
-                            # restrictive than the BSEM 0.95) — at moderate sample sizes
-                            # 0.95 frequently over-prunes and produces non-PD refits.
-  sigma_d2       = 1,       # Link-implicit residual variance for `wald_retention`
+  threshold = 0.30, # Comrey-Lee convention on standardised loading
+  retention_prob = 0.90, # Unified across `wald_retention` and `profile_retention`:
+  #   * wald_retention: pin if Pr(|Lambda| > threshold) < retention_prob
+  #   * profile_retention: pin if LRT fails to reject H0:Lambda = 0
+  #     at significance level (1 - retention_prob)
+  # 0.90 follows the applied-EFA bootstrap convention (less
+  # restrictive than the BSEM 0.95) — at moderate sample sizes
+  # 0.95 frequently over-prunes and produces non-PD refits.
+  sigma_d2 = 1, # Link-implicit residual variance for `wald_retention`
   site = NULL
 ) {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
@@ -229,42 +234,51 @@ suggest_lambda_constraint <- function(
   } else if (convention == "varimax_threshold") {
     ## α: data-driven hard-threshold retention on the varimax-rotated
     ## exploratory Λ̂. No uncertainty involved — Comrey-Lee 1992 convention.
-    if (!inherits(fit_or_formula, "gllvmTMB_multi"))
+    if (!inherits(fit_or_formula, "gllvmTMB_multi")) {
       cli::cli_abort(
         "{.code convention = \"varimax_threshold\"} requires a fitted {.fun gllvmTMB} model; cannot be supplied as a formula."
       )
+    }
     if (K == 1L) {
       note <- paste0(
         "K = 1: no rotational ambiguity exists for a single factor, so ",
         "varimax_threshold returns an all-NA matrix."
       )
     } else {
-      L_rot <- getLoadings(fit, level = .canonical_level_name(level),
-                           rotate = "varimax")
+      L_rot <- getLoadings(
+        fit,
+        level = .canonical_level_name(level),
+        rotate = "varimax"
+      )
       ## Threshold on the standardised-loading scale (Comrey-Lee). For
       ## binomial probit (sigma_d^2 = 1), the raw-Lambda threshold is
       ## numerically close: Lambda_c = threshold * sqrt(sigma_d2) /
       ## sqrt(1 - threshold^2). We apply the threshold directly on the
       ## rotated raw loading for this convention -- the simple textbook
       ## reading. For the uncertainty-aware version use "wald_retention".
-      thr_lambda <- threshold * sqrt(sigma_d2) /
-                    sqrt(pmax(1 - threshold^2, .Machine$double.eps))
+      thr_lambda <- threshold *
+        sqrt(sigma_d2) /
+        sqrt(pmax(1 - threshold^2, .Machine$double.eps))
       mask <- abs(L_rot) < thr_lambda
       M[mask] <- 0
       n_pins <- sum(mask)
       note <- sprintf(
         "varimax_threshold: rotated Lambda to varimax, pinned %d entries with |Lambda_rot| < %.3f (= threshold %.2f on the standardised-loading scale with sigma_d^2 = %.3f). Hard cutoff; no uncertainty. Use 'wald_retention' for the uncertainty-aware version.",
-        n_pins, thr_lambda, threshold, sigma_d2
+        n_pins,
+        thr_lambda,
+        threshold,
+        sigma_d2
       )
     }
   } else if (convention == "wald_retention") {
     ## β: uncertainty-aware retention. Asymmetric Wald via Fisher-z on
     ## the standardised loading; pin entries whose retention probability
     ## P(|Lambda| > threshold_rho) falls below retention_prob.
-    if (!inherits(fit_or_formula, "gllvmTMB_multi"))
+    if (!inherits(fit_or_formula, "gllvmTMB_multi")) {
       cli::cli_abort(
         "{.code convention = \"wald_retention\"} requires a fitted {.fun gllvmTMB} model; cannot be supplied as a formula."
       )
+    }
     if (K == 1L) {
       note <- paste0(
         "K = 1: no rotational ambiguity; wald_retention falls back to ",
@@ -275,8 +289,11 @@ suggest_lambda_constraint <- function(
     se_info <- .lambda_se_at_mle(fit, internal_level = level)
     ## 2. Rotate (varimax) and propagate SE through the rotation Jacobian.
     if (K > 1L) {
-      rot <- rotate_loadings(fit, level = .canonical_level_name(level),
-                             method = "varimax")
+      rot <- rotate_loadings(
+        fit,
+        level = .canonical_level_name(level),
+        method = "varimax"
+      )
       T_rot <- rot$T
       rot_info <- .lambda_se_after_rotation(
         Lambda = se_info$Lambda,
@@ -284,27 +301,29 @@ suggest_lambda_constraint <- function(
         T_mat = T_rot
       )
       Lambda_use <- rot_info$Lambda
-      se_use     <- as.numeric(rot_info$se_lambda)
+      se_use <- as.numeric(rot_info$se_lambda)
     } else {
       Lambda_use <- se_info$Lambda
-      se_use     <- as.numeric(se_info$se_lambda)
+      se_use <- as.numeric(se_info$se_lambda)
     }
     ## 3. Asymmetric retention probability per entry.
     P_salient <- .salience_prob_asym(
       est = as.numeric(Lambda_use),
-      se  = se_use,
+      se = se_use,
       threshold_rho = threshold,
       sigma_d2 = sigma_d2
     )
     ## 4. Pin where retention probability < retention_prob.
-    mask <- matrix(P_salient < retention_prob,
-                   nrow = n_traits, ncol = K)
+    mask <- matrix(P_salient < retention_prob, nrow = n_traits, ncol = K)
     M[mask] <- 0
     n_pins <- sum(mask)
     note <- sprintf(
-      "wald_retention: %s pinned %d entries where Pr(|Lambda| > %.2f standardised) < %.2f under asymmetric Wald (Fisher-z) sampling distribution with sigma_d^2 = %.3f. Captures bounded-support asymmetry; defer to bootstrap or profile retention for higher-order curvature corrections (queued).",
+      "wald_retention: %s pinned %d entries where Pr(|Lambda| > %.2f standardised) < %.2f under asymmetric Wald (Fisher-z) sampling distribution with sigma_d^2 = %.3f. Captures bounded-support asymmetry; use profile_retention when you want likelihood-ratio refits for higher-order curvature checks.",
       if (K > 1L) "varimax-rotated Lambda;" else "Lambda (K=1, no rotation);",
-      n_pins, threshold, retention_prob, sigma_d2
+      n_pins,
+      threshold,
+      retention_prob,
+      sigma_d2
     )
   } else if (convention == "profile_retention") {
     ## Per-entry likelihood-ratio test against zero, in the un-rotated
@@ -323,24 +342,28 @@ suggest_lambda_constraint <- function(
     ## Cost: ~n_free refits per call. Slow (minutes for large fits) but
     ## tractable. Works in lower-triangular coordinates -- the resulting
     ## constraint pattern is in that frame, not varimax-rotated.
-    if (!inherits(fit_or_formula, "gllvmTMB_multi"))
+    if (!inherits(fit_or_formula, "gllvmTMB_multi")) {
       cli::cli_abort(
         "{.code convention = \"profile_retention\"} requires a fitted {.fun gllvmTMB} model; cannot be supplied as a formula."
       )
-    if (!is.null(fit$sd_report) &&
-        isTRUE(fit$sd_report$pdHess == FALSE))
+    }
+    if (
+      !is.null(fit$sd_report) &&
+        isTRUE(fit$sd_report$pdHess == FALSE)
+    ) {
       cli::cli_warn(
         "Baseline exploratory fit has a non-PD Hessian. Profile retention is more robust than Wald here (it doesn't use the baseline Hessian), but consider whether the baseline fit itself should be refit with fewer free parameters."
       )
+    }
 
-    ll_full    <- as.numeric(stats::logLik(fit))
+    ll_full <- as.numeric(stats::logLik(fit))
     ## Critical value: retention_prob = 0.95 means "retain only if the
     ## LRT rejects H0:Lambda = 0 at significance level alpha = 1 - 0.95
     ## = 0.05" -- equivalent to qchisq(0.95, 1) = 3.841. Same semantic
     ## as wald_retention: the higher the retention_prob, the stricter
     ## the bar for retaining an entry.
     chisq_crit <- stats::qchisq(retention_prob, df = 1L)
-    arg_canon  <- if (level == "B") "unit" else "unit_obs"
+    arg_canon <- if (level == "B") "unit" else "unit_obs"
 
     ## Reconstruct the FULL formula (fit$formula stores only the fixed-
     ## effect part after covstructs are extracted into fit$covstructs).
@@ -360,32 +383,36 @@ suggest_lambda_constraint <- function(
     }
 
     ## Sweep: per-entry refit with that one entry pinned to 0.
-    n_tested  <- 0L
+    n_tested <- 0L
     n_skipped <- 0L
     for (i in seq_len(n_traits)) {
       for (j in seq_len(K)) {
-        if (engine_pinned[i, j]) next
+        if (engine_pinned[i, j]) {
+          next
+        }
         M_test <- matrix(NA_real_, n_traits, K)
         M_test[i, j] <- 0
         lc_test <- stats::setNames(list(M_test), arg_canon)
         fit_test <- try(
           gllvmTMB(
             formula = full_formula,
-            data    = fit$data,
-            family  = fit$family_input,
-            trait   = fit$trait_col,
-            unit    = fit$unit_col,
+            data = fit$data,
+            family = fit$family_input,
+            trait = fit$trait_col,
+            unit = fit$unit_col,
             lambda_constraint = lc_test,
-            silent  = TRUE
+            silent = TRUE
           ),
           silent = TRUE
         )
-        if (inherits(fit_test, "try-error") ||
+        if (
+          inherits(fit_test, "try-error") ||
             isTRUE(fit_test$opt$convergence != 0L) ||
             (!is.null(fit_test$sd_report) &&
-             isTRUE(fit_test$sd_report$pdHess == FALSE))) {
+              isTRUE(fit_test$sd_report$pdHess == FALSE))
+        ) {
           n_skipped <- n_skipped + 1L
-          next   # conservative: keep free (NA in M)
+          next # conservative: keep free (NA in M)
         }
         ll_test <- as.numeric(stats::logLik(fit_test))
         LR <- 2 * (ll_full - ll_test)
@@ -401,7 +428,12 @@ suggest_lambda_constraint <- function(
     n_pins <- sum(!is.na(M))
     note <- sprintf(
       "profile_retention: per-entry LRT against H0:Lambda = 0 (retention_prob = %.2f => alpha = %.2f, chi^2_1 critical = %.3f). Tested %d entries; %d skipped (non-converged or non-PD test refit, kept free for safety); pinned %d entries where the data did not reject the null. Lower-triangular parameterisation (not varimax-rotated). Robust to non-PD Hessians in baseline and test refits.",
-      retention_prob, 1 - retention_prob, chisq_crit, n_tested, n_skipped, n_pins
+      retention_prob,
+      1 - retention_prob,
+      chisq_crit,
+      n_tested,
+      n_skipped,
+      n_pins
     )
   } else {
     note <- paste0(
@@ -424,4 +456,180 @@ suggest_lambda_constraint <- function(
     note = note,
     usage_hint = usage_hint
   )
+}
+
+
+#' Compare several `lambda_constraint` suggestions
+#'
+#' Runs [suggest_lambda_constraint()] under several conventions and returns a
+#' compact comparison table. This is the convenience layer for exploratory
+#' loading workflows where the analyst wants to see the cheap point-threshold
+#' suggestion beside uncertainty-aware Wald or profile-retention suggestions
+#' before choosing the matrix to pass to `lambda_constraint`.
+#'
+#' The default compares `varimax_threshold` and `wald_retention`. Add
+#' `"profile_retention"` to `methods` when you want the likelihood-ratio
+#' version; it is slower because it refits once per testable loading entry.
+#'
+#' @inheritParams suggest_lambda_constraint
+#' @param methods Character vector of conventions to run. Accepted values are
+#'   the same as the `convention` argument of [suggest_lambda_constraint()].
+#'
+#' @return A list of class `gllvmTMB_lambda_constraint_suggestions` with:
+#'   \describe{
+#'     \item{`summary`}{A data frame with one row per method and columns for
+#'       decision basis, cost, number of pinned/free entries, and the helper
+#'       note.}
+#'     \item{`suggestions`}{A named list of the full
+#'       [suggest_lambda_constraint()] return objects, one per method.}
+#'     \item{`recommended_method`}{The highest-evidence method among the
+#'       requested methods. By default this is `"wald_retention"`; if
+#'       `"profile_retention"` is requested, it is recommended because it uses
+#'       likelihood-ratio refits rather than the baseline Hessian.}
+#'     \item{`recommended`}{The full suggestion object for
+#'       `recommended_method`.}
+#'   }
+#'
+#' @examples
+#' \dontrun{
+#' cmp <- suggest_lambda_constraints(
+#'   fit,
+#'   methods = c("varimax_threshold", "wald_retention"),
+#'   threshold = 0.30,
+#'   retention_prob = 0.90
+#' )
+#' cmp$summary
+#' fit_con <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
+#'   data = df,
+#'   family = binomial(),
+#'   lambda_constraint = list(unit = cmp$recommended$constraint)
+#' )
+#'
+#' # Expensive: one likelihood-ratio refit per testable loading.
+#' cmp_profile <- suggest_lambda_constraints(
+#'   fit,
+#'   methods = "profile_retention"
+#' )
+#' }
+#' @export
+suggest_lambda_constraints <- function(
+  fit_or_formula,
+  data = NULL,
+  level = "unit",
+  methods = c("varimax_threshold", "wald_retention"),
+  trait = "trait",
+  unit = "site",
+  threshold = 0.30,
+  retention_prob = 0.90,
+  sigma_d2 = 1,
+  site = NULL
+) {
+  allowed <- c(
+    "lower_triangular",
+    "pin_top_one",
+    "none",
+    "varimax_threshold",
+    "wald_retention",
+    "profile_retention"
+  )
+  if (!is.character(methods) || length(methods) == 0L) {
+    cli::cli_abort("{.arg methods} must be a non-empty character vector.")
+  }
+  bad <- setdiff(methods, allowed)
+  if (length(bad) > 0L) {
+    cli::cli_abort(c(
+      "{.arg methods} contains unsupported convention values.",
+      "x" = "Unsupported: {.val {bad}}.",
+      "i" = "Choose from {.val {allowed}}."
+    ))
+  }
+  methods <- unique(methods)
+
+  suggestions <- stats::setNames(vector("list", length(methods)), methods)
+  for (method in methods) {
+    suggestions[[method]] <- suggest_lambda_constraint(
+      fit_or_formula = fit_or_formula,
+      data = data,
+      level = level,
+      convention = method,
+      trait = trait,
+      unit = unit,
+      threshold = threshold,
+      retention_prob = retention_prob,
+      sigma_d2 = sigma_d2,
+      site = site
+    )
+  }
+
+  summary <- do.call(
+    rbind,
+    lapply(methods, function(method) {
+      suggestion <- suggestions[[method]]
+      constraint <- suggestion$constraint
+      n_entries <- length(constraint)
+      n_pins <- sum(!is.na(constraint))
+      data.frame(
+        method = method,
+        decision_basis = .lambda_constraint_decision_basis(method),
+        cost = .lambda_constraint_decision_cost(method),
+        n_entries = n_entries,
+        n_pins = n_pins,
+        n_free = n_entries - n_pins,
+        note = suggestion$note,
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+  rownames(summary) <- NULL
+
+  recommended_method <- .recommend_lambda_constraint_method(methods)
+  structure(
+    list(
+      summary = summary,
+      suggestions = suggestions,
+      recommended_method = recommended_method,
+      recommended = suggestions[[recommended_method]]
+    ),
+    class = "gllvmTMB_lambda_constraint_suggestions"
+  )
+}
+
+
+.lambda_constraint_decision_basis <- function(method) {
+  switch(
+    method,
+    lower_triangular = "rotation convention",
+    pin_top_one = "single anchor",
+    none = "no pins",
+    varimax_threshold = "varimax point threshold",
+    wald_retention = "asymmetric Wald retention",
+    profile_retention = "profile LRT retention"
+  )
+}
+
+
+.lambda_constraint_decision_cost <- function(method) {
+  switch(
+    method,
+    lower_triangular = "no refit",
+    pin_top_one = "no refit",
+    none = "no refit",
+    varimax_threshold = "no refit",
+    wald_retention = "no refit; needs PD Hessian",
+    profile_retention = "one refit per testable loading"
+  )
+}
+
+
+.recommend_lambda_constraint_method <- function(methods) {
+  evidence_rank <- c(
+    none = 0,
+    pin_top_one = 1,
+    lower_triangular = 2,
+    varimax_threshold = 3,
+    wald_retention = 4,
+    profile_retention = 5
+  )
+  methods[which.max(unname(evidence_rank[methods]))]
 }

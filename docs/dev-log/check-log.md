@@ -15610,3 +15610,45 @@ Deliberately not run:
   result because of a local install/toolchain warning. Direct install completed
   successfully; CI remains the publication gate for a clean multi-platform
   result.
+
+## 2026-06-10 -- Lambda-constraint articles navbar discoverability
+
+Promoted the loading-constraint companion articles from the internal article
+bucket into a visible `Articles` dropdown section after live-site review showed
+that `lambda-constraint-suggest.html` was deployed but not discoverable from
+the navigation bar.
+
+Files touched:
+
+- `_pkgdown.yml`
+- `vignettes/articles/lambda-constraint-suggest.Rmd`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-10-lambda-navbar-discoverability.md`
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- _pkgdown.yml docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints`
+  -> only `ba014e7 docs: polish JSDM loading articles`.
+- Local article/index render:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint-suggest", lazy = FALSE, new_process = FALSE); get("build_articles_index", envir = asNamespace("pkgdown"))(pkg = ".")'`
+  -> wrote `pkgdown-site/articles/lambda-constraint-suggest.html` and
+  `pkgdown-site/articles/index.html`.
+- pkgdown:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Rendered navbar scan:
+  `rg -n "Loading constraints|Confirmatory loadings|Suggesting Lambda constraint|lambda-constraint-suggest|lambda-constraint" _pkgdown.yml pkgdown-site/articles/index.html pkgdown-site/articles/lambda-constraint-suggest.html`
+  -> local rendered dropdown and article index contain `Loading constraints`,
+  `Confirmatory loadings`, and `Suggesting Lambda constraint`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- Full `devtools::check()` was not rerun for this navigation-only patch. The
+  local gate was affected article/index render plus `pkgdown::check_pkgdown()`;
+  GitHub Actions remains the deployment gate after push.

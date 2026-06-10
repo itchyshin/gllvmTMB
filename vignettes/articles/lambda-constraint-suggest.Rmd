@@ -1,5 +1,6 @@
 ---
 title: "No hypothesis? Suggesting a Lambda constraint with suggest_lambda_constraint"
+tier: 2 # Technical companion for data-driven loading-constraint selection.
 output:
   rmarkdown::html_vignette:
     toc: true

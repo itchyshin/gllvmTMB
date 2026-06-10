@@ -30,6 +30,11 @@ navbar:
         href: articles/model-selection-latent-rank.html
       - text: Joint species distribution model
         href: articles/joint-sdm.html
+      - text: Loading constraints
+      - text: Confirmatory loadings
+        href: articles/lambda-constraint.html
+      - text: Suggesting Lambda constraint
+        href: articles/lambda-constraint-suggest.html
       - text: Concepts
       - text: Covariance and correlation
         href: articles/covariance-correlation.html
@@ -56,6 +61,11 @@ articles:
     - articles/morphometrics
     - articles/model-selection-latent-rank
     - articles/joint-sdm
+
+  - title: Loading constraints
+    contents:
+    - articles/lambda-constraint
+    - articles/lambda-constraint-suggest
 
   - title: Concepts
     contents:
@@ -89,8 +99,6 @@ articles:
     - articles/stacked-trait-gllvm
     - articles/cross-package-validation
     - articles/functional-biogeography
-    - articles/lambda-constraint
-    - articles/lambda-constraint-suggest
     - articles/psychometrics-irt
     - articles/simulation-recovery-validated
     - articles/simulation-verification

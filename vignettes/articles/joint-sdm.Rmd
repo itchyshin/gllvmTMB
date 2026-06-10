@@ -437,13 +437,16 @@ orientation has been pinned. If you have a biological hypothesis, use
 then inspect uncertainty.
 
 Here the fallback should not be just one hard cutoff. The helper below
-compares two cheap suggestions:
+compares the cheap point-threshold and Wald suggestions with the
+slower profile-retention suggestion:
 
 * `varimax_threshold` rotates the exploratory loadings and pins small
   point estimates.
 * `wald_retention` uses the same salience threshold, but asks whether
   the loading is retained after accounting for Wald uncertainty on the
   standardised loading scale.
+* `profile_retention` refits the model one loading at a time and pins
+  entries whose likelihood-ratio test does not reject zero.
 
 For a binary logit JSDM, the Wald retention calculation uses the fixed
 logistic residual variance, `sigma_d2 = pi^2 / 3`. This is still a
@@ -454,7 +457,7 @@ to discuss.
 ```{r jsdm-suggest-loadings}
 loading_suggestions <- suggest_lambda_constraints(
   fit_jsdm,
-  methods = c("varimax_threshold", "wald_retention"),
+  methods = c("varimax_threshold", "wald_retention", "profile_retention"),
   threshold = 0.30,
   retention_prob = 0.90,
   sigma_d2 = pi^2 / 3
@@ -470,26 +473,13 @@ loading_suggestion$constraint
 loading_suggestion$note
 ```
 
-The profile-likelihood version is also available. It is deliberately
-not run in the first-pass article build because it refits once per
-testable loading entry; on this fixture it takes seconds rather than
-milliseconds. Use it when the loading constraint itself is the
-scientific decision being reported.
-
-```{r jsdm-suggest-loadings-profile, eval = FALSE}
-profile_suggestions <- suggest_lambda_constraints(
-  fit_jsdm,
-  methods = c("varimax_threshold", "wald_retention", "profile_retention"),
-  threshold = 0.30,
-  retention_prob = 0.90,
-  sigma_d2 = pi^2 / 3
-)
-
-profile_suggestions$summary[, c(
-  "method", "decision_basis", "cost", "n_pins", "n_free"
-)]
-profile_suggestions$recommended_method
-```
+The companion article, [Suggesting a Lambda constraint](lambda-constraint-suggest.html),
+walks through why these three suggestions can disagree. The short
+version here is that the profile path costs more, but it gives the
+cleanest loading-diagnostics display for this binary fixture.
+The cheaper Wald suggestion over-prunes this example and the refit has
+a non-positive-definite Hessian, so it is not a good public figure even
+though it remains a useful warning about over-aggressive pinning.
 
 Refit the same binary JSDM with the suggested loading constraint. The
 likelihood may change slightly because the constrained fit is no
@@ -532,7 +522,7 @@ the rest of the package: hollow point for the estimate, eye-shaped
 region for the interval, grey for pinned loadings, green when the
 interval excludes the null region, and red when it overlaps it.
 
-```{r jsdm-loading-confidence-eye, fig.width = 8, fig.height = 4.8, fig.cap = "Confidence Eye plot for the constrained binary JSDM loadings. Hollow points are loading estimates, eye-shaped regions are Wald intervals, grey points are entries pinned by the suggested constraint, green intervals exclude the small null region, and red intervals overlap it.", fig.alt = "Two-panel confidence-eye plot of species loadings for LV1 and LV2. Each species has a hollow point and an eye-shaped confidence interval unless the loading was pinned to zero. Colours distinguish pinned loadings, intervals that overlap the small null region, and intervals that exclude it."}
+```{r jsdm-loading-confidence-eye, fig.width = 8, fig.height = 4.8, fig.cap = "Confidence Eye plot for the profile-retention constrained binary JSDM loadings. Hollow points are loading estimates, eye-shaped regions are Wald intervals on the profile-retention refit, grey points are entries pinned by the suggested constraint, green intervals exclude the small null region, and red intervals overlap it.", fig.alt = "Two-panel confidence-eye plot of species loadings for LV1 and LV2 after the profile-retention constraint. Pinned entries are grey points at zero; free entries have hollow estimates and eye-shaped Wald intervals coloured by whether the interval overlaps the small null region."}
 plot_loadings_confidence_eye(
   fit_jsdm_constrained,
   level = "unit",
@@ -548,6 +538,10 @@ plot_loadings_confidence_eye(
     ),
     breaks = c("pinned", "CI overlaps null", "CI excludes null"),
     name = NULL
+  ) +
+  ggplot2::labs(
+    y = "Loading estimate",
+    subtitle = "Profile-retention constraint; pale lens = 95% Wald CI; grey points are pinned to zero."
   )
 ```
 

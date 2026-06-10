@@ -351,7 +351,10 @@ method follows from that:
 - **`profile_retention`** pins more entries (here `r n_pins_pr`) -- more
   aggressive in count -- but pins entries the LRT actually fails to
   reject, which preserves identifiability. The refit's Hessian is PD,
-  so the default Wald (delta-method) path is fine here.
+  so the default Wald (delta-method) path is available here. A few
+  probit-scale Wald estimates are still extreme in this small binary
+  fixture; the plot marks those entries at the display boundary rather
+  than drawing a full-height eye that would dominate the panel.
 
 The counterintuitive but real lesson: *more pins is not necessarily
 worse*. What matters is **which** entries you pin. Pinning small
@@ -429,9 +432,28 @@ plot_loadings_confidence_eye(
 )
 ```
 
-```{r profile-confidence-eye, echo = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the profile_retention refit. Same encoding as the varimax_threshold plot above, but with the default Wald (delta-method) path: this refit is positive-definite. Profile retention pins more aggressively than varimax_threshold, so more entries are grey (pinned by the suggester to zero, no eye drawn).", fig.alt = "Per-species loadings from the profile_retention refit, displayed as eye-shaped polygons centred at the Wald estimate; pinned entries shown as grey points without an eye."}
+```{r profile-confidence-eye, echo = FALSE, fig.width = 8, fig.height = 4.5, fig.cap = "Confidence Eye plot of the loadings from the profile_retention refit. Same encoding as the varimax_threshold plot above, but with the default Wald (delta-method) path: this refit is positive-definite. Profile retention pins more aggressively than varimax_threshold, so more entries are grey (pinned by the suggester to zero, no eye drawn). Off-scale Wald entries are shown as boundary points with no eye, because drawing their huge intervals would obscure the interpretable loadings.", fig.alt = "Per-species loadings from the profile_retention refit, displayed as eye-shaped polygons centred at the Wald estimate; pinned entries shown as grey points without an eye. A few extreme Wald entries are marked at the display boundary without an eye."}
+ci_pr <- flag_unreliable_loadings(
+  loading_ci(fit_pr, level = "unit", method = "wald"),
+  null_region = c(-0.1, 0.1)
+)
+
+display_ylim <- c(-3, 3)
+off_scale <- !ci_pr$pinned &
+  (ci_pr$estimate < display_ylim[1] |
+   ci_pr$estimate > display_ylim[2] |
+   ci_pr$lower < display_ylim[1] - 3 * diff(display_ylim) |
+   ci_pr$upper > display_ylim[2] + 3 * diff(display_ylim))
+
+ci_pr_display <- ci_pr
+ci_pr_display$estimate[off_scale & ci_pr$estimate < display_ylim[1]] <- display_ylim[1] + 0.08
+ci_pr_display$estimate[off_scale & ci_pr$estimate > display_ylim[2]] <- display_ylim[2] - 0.08
+ci_pr_display$se[off_scale] <- NA_real_
+ci_pr_display$lower[off_scale] <- NA_real_
+ci_pr_display$upper[off_scale] <- NA_real_
+
 plot_loadings_confidence_eye(
-  fit_pr, level = "unit",
+  ci_pr_display,
   null_region = c(-0.1, 0.1),
   ylim        = c(-3, 3)
 )
@@ -448,10 +470,16 @@ A few things to read off:
   refit has a non-PD Hessian at this fixture, so Wald CIs are
   unavailable and the varimax plot uses the profile path (which
   bypasses the pdHess gate). `profile_retention`'s refit is
-  identifiable, so the default Wald path works. This is not a generic
-  property of the methods -- at other fixtures the situation can
-  reverse -- but it is what happens at *this* moderate-signal binary
-  fixture.
+  identifiable, so the default Wald path works. The boundary points in
+  the lower plot are not pins: they are extreme probit-scale Wald
+  entries, most visibly `B_drought_4` on `LV2` (estimate
+  `r round(ci_pr$estimate[ci_pr$trait == "B_drought_4" & ci_pr$axis == "LV2"], 1)`,
+  95 percent CI
+  [`r round(ci_pr$lower[ci_pr$trait == "B_drought_4" & ci_pr$axis == "LV2"], 1)`,
+  `r round(ci_pr$upper[ci_pr$trait == "B_drought_4" & ci_pr$axis == "LV2"], 1)`]).
+  This is not a generic property of the methods -- at other fixtures
+  the situation can reverse -- but it is what happens at *this*
+  moderate-signal binary fixture.
 - gllvmTMB's NA-on-non-PD convention for Wald (matching `glmmTMB`) is
   doing visible work here: it forced the choice of the profile path
   for the varimax plot, rather than silently emitting CIs from a

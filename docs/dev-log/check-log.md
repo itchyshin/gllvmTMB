@@ -15414,3 +15414,199 @@ Deliberately not run:
   adds an R wrapper around existing suggester methods plus public docs; focused
   suggester/JSDM tests, roxygen, affected article renders, reference render,
   `pkgdown::check_pkgdown()`, and stale-wording scans are the relevant gates.
+
+## 2026-06-10 -- Codex to Claude handover after public JSDM deploy
+
+Created a Claude-facing handover checkpoint after PR #472 was merged and the
+pkgdown site deployed successfully. The note records current branch/PR/CI
+state, live-site spot checks, what just landed, known loose ends, and the next
+safe lane.
+
+File touched:
+
+- `docs/dev-log/recovery-checkpoints/2026-06-10-054926-codex-to-claude-jsdm-handover.md`
+
+Evidence:
+
+- `git status --short --branch`
+  -> clean `main` before writing the handover note.
+- `git log --oneline -5`
+  -> latest commit is `2b0c748 docs: publish binary JSDM loading workflow (#472)`.
+- `gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,url --limit 10`
+  -> `[]`.
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url,createdAt`
+  -> recent `full-check`, `Power pilot sweep`, `pkgdown`, and `R-CMD-check`
+  runs are green on `2b0c748`.
+- `curl -L -sS https://itchyshin.github.io/gllvmTMB/articles/joint-sdm.html | rg -n "suggest_lambda_constraints|wald_retention|profile_retention|Joint species distribution"`
+  -> live article contains the new plural suggester, Wald path, optional
+  profile path, and JSDM title.
+- `curl -L -sS https://itchyshin.github.io/gllvmTMB/reference/suggest_lambda_constraints.html | rg -n "suggest_lambda_constraints|profile_retention|wald_retention"`
+  -> live reference page contains the new function and retention methods.
+- Shannon / pre-edit lane check:
+  `gh pr list --state open`
+  -> no open PRs.
+  `git log --all --oneline --since="6 hours ago"`
+  -> no recent commits in the last six hours.
+
+Deliberately not run:
+
+- No R tests or pkgdown rebuilds were run for the handover note itself. This is
+  a dev-log/recovery-checkpoint documentation handoff after the already-green
+  PR #472, post-merge `R-CMD-check`, pkgdown deploy, and later `full-check`.
+
+## 2026-06-10 -- Joint-SDM Confidence Eye figure repair
+
+Repaired the public binary JSDM article's loading Confidence Eye figure after
+visual review showed that the `wald_retention` constrained refit produced an
+all-grey / Hessian-failed plot. The article now compares
+`varimax_threshold`, `wald_retention`, and `profile_retention`, uses the
+profile-retention suggestion for the displayed constrained refit, and keeps the
+method-comparison teaching path in `lambda-constraint-suggest`.
+
+Files touched:
+
+- `vignettes/articles/joint-sdm.Rmd`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-10-joint-sdm-confidence-eye-repair.md`
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- vignettes/articles/joint-sdm.Rmd docs/dev-log/check-log.md docs/dev-log/after-task _pkgdown.yml`
+  -> only `9d0548b Codex worktree snapshot: archive-cleanup`.
+- Diagnostic reproduction:
+  `Rscript --vanilla - <<'RS' ... suggest_lambda_constraint(..., convention = c("varimax_threshold", "wald_retention", "profile_retention")) ... RS`
+  -> `varimax_threshold` pinned 8 / 16 entries and refit `pdHess = FALSE`;
+  `wald_retention` pinned 15 / 16 entries and refit `pdHess = FALSE`;
+  `profile_retention` pinned 9 / 16 entries, left 7 free entries, refit
+  `pdHess = TRUE`, and produced finite Wald intervals for all 7 free rows.
+- Formatting:
+  `air format vignettes/articles/joint-sdm.Rmd`
+  -> clean.
+- Article render:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/joint-sdm", lazy = FALSE, new_process = FALSE)'`
+  -> wrote `pkgdown-site/articles/joint-sdm.html` and refreshed
+  `pkgdown-site/articles/joint-sdm_files/figure-html/jsdm-loading-confidence-eye-1.png`.
+- Rendered-output check:
+  `rg -n "profile-retention constrained|Profile-retention constraint|profile_retention|wald_retention|non-positive-definite Hessian|jsdm-loading-confidence-eye|Loading estimate" pkgdown-site/articles/joint-sdm.html vignettes/articles/joint-sdm.Rmd`
+  -> confirmed the article now recommends `profile_retention`, explains the
+  Wald over-pruning failure, and renders the fixed figure/caption.
+- Rose method/default scan:
+  `rg -n "methods = c\\(|varimax_threshold|wald_retention|profile_retention|threshold = 0\\.30|retention_prob = 0\\.90|pi\\^2 / 3|sigma_d2" R/suggest-lambda-constraint.R vignettes/articles/joint-sdm.Rmd man/suggest_lambda_constraints.Rd pkgdown-site/articles/joint-sdm.html`
+  -> source, generated docs, article, and rendered HTML agree on accepted
+  methods and defaults. The article intentionally passes `sigma_d2 = pi^2 / 3`
+  for the binary-logit JSDM.
+- Stale wording scan:
+  `rg -n "Hessian non-PD; CIs unavailable|all-NA|eval = FALSE|not run in the first-pass|wald_retention.*recommended|recommended_method.*wald_retention|profile.*not run" vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/joint-sdm.html || true`
+  -> no stale non-PD loading-figure text remains; the only `eval = FALSE` hits
+  are the deliberate optional heavy correlation/bootstrap chunks.
+- Long/wide syntax check:
+  `rg -n "gllvmTMB\\(" vignettes/articles/joint-sdm.Rmd`
+  -> long-format calls at lines 105 and 490 include `trait = "trait"`;
+  the wide `traits(...)` call at line 121 correctly omits `trait =`.
+- Stale notation/API scan:
+  `rg -n "\\bS_B\\b|\\bS_W\\b|\\\\bf S|gllvmTMB_wide|meta_known_V|\\bphylo\\(|\\bgr\\(|\\bmeta\\(|block_V\\(|phylo_rr\\(" vignettes/articles/joint-sdm.Rmd pkgdown-site/articles/joint-sdm.html || true`
+  -> no hits.
+- Browser check:
+  opened `http://127.0.0.1:8123/articles/joint-sdm.html?v=20260610-jsdm-profile-eye#check-loadings-before-naming-axes`
+  -> fixed page contains `profile_retention`, no old "Hessian non-PD; CIs
+  unavailable" loading-figure subtitle, and one `jsdm-loading-confidence-eye`
+  image with profile-retention alt text.
+- pkgdown:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Issue ledger:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --limit 30 --search "JSDM OR SDM OR species distribution OR confidence eye OR lambda" --json number,title,url,labels,updatedAt`
+  -> relevant existing trackers are #230 and #347; no new issue or comment.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and
+  `pkgdown::build_site()` were not rerun. This slice changes one article's
+  rendered loading diagnostic path; the affected article render,
+  rendered-output scans, browser check, `pkgdown::check_pkgdown()`, and
+  `git diff --check` are the targeted gates.
+
+## 2026-06-10 -- Lambda-suggestion boundary marker for off-scale Wald eye
+
+Repaired the technical Lambda-suggestion article's lower
+`profile_retention` Confidence Eye plot after visual review showed one
+full-height red stripe in the LV2 panel. The stripe was a real but extreme Wald
+interval for `B_drought_4` on LV2 (estimate about -56.7, 95 percent CI about
+[-151.6, 38.2]) rendered through a clipped `ylim = c(-3, 3)` display. The
+article now marks such off-scale Wald entries as boundary points with no eye and
+names the raw interval in the interpretation text.
+
+Files touched:
+
+- `vignettes/articles/lambda-constraint-suggest.Rmd`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-10-lambda-confidence-eye-boundary-marker.md`
+
+Evidence:
+
+- Pre-edit lane check:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task vignettes/articles/lambda-constraint-suggest.Rmd`
+  -> only `9d0548b Codex worktree snapshot: archive-cleanup`.
+- Diagnostic cache read:
+  `Rscript --vanilla - <<'RS' ... lazyLoad("vignettes/articles/lambda-constraint-suggest_cache/html/fit-data-driven_281dee36944de725bc4cc92e7faed5ad", envir = e); loading_ci(e$fit_pr, level = "unit", method = "wald") ... RS`
+  -> `B_drought_4` / `LV2` has estimate -56.7155, SE 48.4278, lower
+  -151.6323, upper 38.2013, explaining the clipped full-height red stripe.
+- Formatting:
+  `air format vignettes/articles/lambda-constraint-suggest.Rmd`
+  -> clean.
+- Article render:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); pkgdown::build_article("articles/lambda-constraint-suggest", lazy = FALSE, new_process = FALSE)'`
+  -> wrote `pkgdown-site/articles/lambda-constraint-suggest.html`.
+- Rendered wording / stale scan:
+  `rg -n "path is fine here|full-height eye|boundary points|B_drought_4|Off-scale Wald" vignettes/articles/lambda-constraint-suggest.Rmd pkgdown-site/articles/lambda-constraint-suggest.html`
+  -> no stale "path is fine here" wording; boundary-marker explanation and
+  `B_drought_4` raw interval are present in source and rendered HTML.
+- Figure review:
+  opened
+  `pkgdown-site/articles/lambda-constraint-suggest_files/figure-html/profile-confidence-eye-1.png`
+  -> lower LV2 panel no longer has the full-height red stripe; off-scale entries
+  appear as boundary points and ordinary finite intervals remain readable.
+- Browser check:
+  opened
+  `http://localhost:8123/articles/lambda-constraint-suggest.html?v=20260610-boundary-eye#confidence-eye-for-the-two-data-driven-refits`
+  -> rendered article contains the boundary-marker explanation, no stale "path
+  is fine here" text, and the refreshed profile Confidence Eye image is loaded.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Final pkgdown closeout:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Roxygen closeout:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed after loading `gllvmTMB`; no generated Rd / NAMESPACE churn in
+  `git status`.
+- Full local package check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> duration 5m 50.9s; 0 errors, 1 install WARNING, 2 NOTEs. The warning was
+  from the local install/compile step rather than the article code. The two
+  notes were: unable to verify current time, and existing NEWS.md subheading
+  version extraction notes.
+- Direct install reproduction:
+  `R CMD INSTALL --preclean --no-multiarch .`
+  -> `* DONE (gllvmTMB)` after local compiler/toolchain warnings:
+  `xcrun --show-sdk-version` returned status 1 / SDK `NA`, plus upstream
+  Eigen/R clang warnings.
+
+Deliberately not run:
+
+- `pkgdown::build_site()` was not run locally. The affected articles were
+  rendered individually, `pkgdown::check_pkgdown()` was green, and the push to
+  `main` will let GitHub Actions run the deployment workflow.
+- Full local `devtools::check()` was run but did not return a clean green
+  result because of a local install/toolchain warning. Direct install completed
+  successfully; CI remains the publication gate for a clean multi-platform
+  result.

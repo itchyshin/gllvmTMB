@@ -132,8 +132,8 @@ and C (`part = "unique"`) unchanged in Slice 1. Update the grid
 - **Slice 1 (now):** residual `unique()` retires. Parser default fold (between-unit
   Ψ via existing guards) + `residual = FALSE` opt-out + bare-`latent` warning +
   `unique()`/`*_unique` deprecation mapping + grid/register/NEWS/decisions +
-  identifiability & byte-identity tests. Engine: Codex (Boole/Gauss/Noether
-  review). Docs + page cascade: Claude.
+  identifiability & byte-identity tests. Engine: the **parallel Claude thread
+  (run from GLLVM.jl)**, with Boole/Gauss/Noether review. Docs + page cascade: Claude.
 - **Slice 2 (fast-follow):** augmented `*_unique(1 + x | g)` folds into
   `latent(1 + x | g)` (2×2 free-correlation structure; family coverage per current
   augmented-slope support).

@@ -171,21 +171,44 @@ print.gllvmTMB_julia <- function(x, ...) {
          call. = FALSE)
   }
 
-  ## --- fixed effects: only the per-trait intercept (0 + trait) is mapped; the
-  ## bridge fits per-trait intercepts internally. Reject extra covariates. ---
+  ## --- fixed effects: the per-trait intercept (0 + trait) is always mapped to
+  ## the bridge's internal per-trait intercept. Extra fixed-effect covariates
+  ## (e.g. `env`) are mapped for the Gaussian family only, by pivoting the long
+  ## design matrix into a p x n x q array X and passing it to bridge_fit; the
+  ## Julia Gaussian fitter carries the FULL mean structure (intercept dummies +
+  ## covariates) in X. Non-Gaussian X stays a loud reject. ---
+  fam_str <- .gllvm_julia_family(family)
   Xfix <- stats::model.matrix(parsed$fixed, mf)
   trait_dummies <- paste0(trait, traits)
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
-  if (length(extra_cols) > 0 || ncol(Xfix) != p) {
-    stop("engine = 'julia' maps only the per-trait intercept (0 + ", trait,
-         ") mean structure; found fixed term(s): ",
-         paste(c(extra_cols, if (ncol(Xfix) != p) "(non-per-trait-intercept design)"),
-               collapse = ", "),
-         ". Use engine = 'tmb' for fixed-effect covariates.", call. = FALSE)
+  has_only_trait_intercept <- (length(extra_cols) == 0 && ncol(Xfix) == p)
+
+  Xarg <- NULL
+  if (!has_only_trait_intercept) {
+    if (!all(fam_str == "gaussian")) {
+      stop("engine = 'julia' maps fixed-effect covariates for the gaussian family ",
+           "only; found fixed term(s): ",
+           paste(c(extra_cols,
+                   if (ncol(Xfix) != p && length(extra_cols) == 0)
+                     "(non-per-trait-intercept design)"),
+                 collapse = ", "),
+           ". Use engine = 'tmb' for non-Gaussian fixed-effect covariates.",
+           call. = FALSE)
+    }
+    ## Pivot the long (N = p*n row) design matrix into a p x n x q array. For each
+    ## long row i with (trait ft[i], unit fu[i]), Xarg[ft[i], fu[i], k] = Xfix[i, k].
+    ## Column order follows model.matrix() (intercept dummies first, then covariates);
+    ## the marginal loglik is invariant to fixed-effect column order.
+    q <- ncol(Xfix)
+    Xarg <- array(0, dim = c(p, n, q),
+                  dimnames = list(traits, units, colnames(Xfix)))
+    idx3 <- cbind(rep(as.integer(ft), times = q),
+                  rep(as.integer(fu), times = q),
+                  rep(seq_len(q), each = length(yv)))
+    Xarg[idx3] <- as.numeric(Xfix)
   }
 
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
-  fam_str <- .gllvm_julia_family(family)
   Narg <- NULL
   if (any(fam_str == "binomial")) {
     if (!is.null(weights) && is.numeric(weights) && length(weights) == length(yv)) {
@@ -196,7 +219,7 @@ print.gllvmTMB_julia <- function(x, ...) {
     }
   }
 
-  fit <- gllvm_julia_fit(Y, family = family, num.lv = K, N = Narg)
+  fit <- gllvm_julia_fit(Y, family = family, num.lv = K, N = Narg, X = Xarg)
   fit$call         <- call
   fit$trait_levels <- traits
   fit$unit_levels  <- units

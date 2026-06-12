@@ -15652,3 +15652,32 @@ Deliberately not run:
 - Full `devtools::check()` was not rerun for this navigation-only patch. The
   local gate was affected article/index render plus `pkgdown::check_pkgdown()`;
   GitHub Actions remains the deployment gate after push.
+
+## 2026-06-12 -- Dev status badges on pkgdown homepage
+
+Added a `<!-- badges: start -->` block to `README.md` (R-CMD-check, pkgdown,
+lifecycle: experimental) so pkgdown renders the homepage "Dev status" sidebar
+box, matching the symbolizer site. No `_pkgdown.yml` change: the default home
+sidebar already carries the `dev` component, which populates from the README
+badge block.
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only `#473` (engine-julia bridge; touches neither README nor check-log).
+  `git log --all --oneline --since="6 hours ago"`
+  -> only `87db8e0 docs(bridge): document engine arg + declare JuliaCall in Suggests`.
+- pkgdown:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Homepage render + box check:
+  `Rscript --vanilla -e 'pkgdown::build_home(preview = FALSE)'`
+  then `rg -n "Dev status" pkgdown-site/index.html`
+  -> `426:<h2 data-toc-skip>Dev status</h2>`, with the R-CMD-check, pkgdown, and
+  lifecycle-experimental badge SVGs in the sidebar (stripped from the body).
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run:
+
+- Full `devtools::check()` not run for this README-only doc change; no R code,
+  NAMESPACE, or `man/` touched. CI (R-CMD-check on the PR) is the deployment gate.

@@ -113,3 +113,92 @@ print.gllvmTMB_julia <- function(x, ...) {
               x$loglik, x$aic, x$bic, x$converged))
   invisible(x)
 }
+
+# ---------------------------------------------------------------------------
+# engine = "julia" dispatch for the main gllvmTMB() entry point.
+#
+# Called from gllvmTMB() AFTER desugar_brms_sugar() + parse_multi_formula(), so
+# the user grammar (latent/dep/indep/unique -> rr/diag/...) is already interpreted
+# exactly as the TMB engine interprets it. We map the unconstrained-ordination
+# core that GLLVM.jl's bridge_fit currently exposes (a single reduced-rank latent
+# block + per-trait intercepts, every family) and reject anything else loudly with
+# a pointer to engine = "tmb" -- never a silent approximation.
+# ---------------------------------------------------------------------------
+.gllvmTMB_julia_dispatch <- function(parsed, data, trait, unit_internal, family,
+                                     weights = NULL, call = NULL) {
+  cs    <- parsed$covstructs
+  kinds <- if (length(cs)) vapply(cs, function(z) z$kind, character(1)) else character(0)
+
+  ## --- capability guard: only the reduced-rank latent block (rr) is mapped ---
+  unsupported <- setdiff(unique(kinds), "rr")
+  if (length(unsupported) > 0) {
+    stop("engine = 'julia' does not yet support covariance term(s): ",
+         paste(unsupported, collapse = ", "),
+         ". Use engine = 'tmb' for structured / grouped / phylo / spatial terms.",
+         call. = FALSE)
+  }
+  rr_terms <- cs[kinds == "rr"]
+  if (length(rr_terms) > 1L) {
+    stop("engine = 'julia' supports a single reduced-rank latent block; found ",
+         length(rr_terms), ". Use engine = 'tmb'.", call. = FALSE)
+  }
+  K <- if (length(rr_terms) == 1L) {
+    dval <- rr_terms[[1L]]$extra$d
+    as.integer(if (is.null(dval)) 1L else dval)
+  } else 0L
+
+  ## --- response: pivot long (trait, unit) -> a p x n matrix ---
+  mf  <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
+  yraw <- stats::model.response(mf)
+  if (is.matrix(yraw) && ncol(yraw) == 2L) {
+    stop("engine = 'julia' does not yet support cbind(successes, failures) ",
+         "binomial responses; use a 0/1 Bernoulli response or engine = 'tmb'.",
+         call. = FALSE)
+  }
+  yv <- as.numeric(yraw)
+  ft <- factor(data[[trait]])
+  fu <- factor(data[[unit_internal]])
+  if (length(yv) != length(ft) || length(yv) != length(fu)) {
+    stop("engine = 'julia': response / trait / unit length mismatch.", call. = FALSE)
+  }
+  traits <- levels(ft); units <- levels(fu)
+  p <- length(traits); n <- length(units)
+  Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
+  Y[cbind(as.integer(ft), as.integer(fu))] <- yv
+  if (anyNA(Y)) {
+    stop("engine = 'julia' currently requires a complete (balanced) trait x unit ",
+         "table; found ", sum(is.na(Y)), " empty cell(s). Use engine = 'tmb'.",
+         call. = FALSE)
+  }
+
+  ## --- fixed effects: only the per-trait intercept (0 + trait) is mapped; the
+  ## bridge fits per-trait intercepts internally. Reject extra covariates. ---
+  Xfix <- stats::model.matrix(parsed$fixed, mf)
+  trait_dummies <- paste0(trait, traits)
+  extra_cols <- setdiff(colnames(Xfix), trait_dummies)
+  if (length(extra_cols) > 0 || ncol(Xfix) != p) {
+    stop("engine = 'julia' maps only the per-trait intercept (0 + ", trait,
+         ") mean structure; found fixed term(s): ",
+         paste(c(extra_cols, if (ncol(Xfix) != p) "(non-per-trait-intercept design)"),
+               collapse = ", "),
+         ". Use engine = 'tmb' for fixed-effect covariates.", call. = FALSE)
+  }
+
+  ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
+  fam_str <- .gllvm_julia_family(family)
+  Narg <- NULL
+  if (any(fam_str == "binomial")) {
+    if (!is.null(weights) && is.numeric(weights) && length(weights) == length(yv)) {
+      Narg <- matrix(1, p, n)
+      Narg[cbind(as.integer(ft), as.integer(fu))] <- as.numeric(weights)
+    } else {
+      Narg <- 1L
+    }
+  }
+
+  fit <- gllvm_julia_fit(Y, family = family, num.lv = K, N = Narg)
+  fit$call         <- call
+  fit$trait_levels <- traits
+  fit$unit_levels  <- units
+  fit
+}

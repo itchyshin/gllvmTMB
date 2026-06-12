@@ -416,6 +416,7 @@ gllvmTMB <- function(
   missing = miss_control(),
   impute = NULL,
   silent = TRUE,
+  engine = c("tmb", "julia"),
   site = NULL, # deprecated alias for `unit`
   species = NULL
 ) {
@@ -424,6 +425,9 @@ gllvmTMB <- function(
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
   }
+  ## engine = "julia" routes the fit to the fast GLLVM.jl engine via JuliaCall
+  ## (R/julia-bridge.R); "tmb" (default) keeps the native TMB engine below.
+  engine <- match.arg(engine)
 
   ## ---- Normalise lambda_constraint element names (B -> unit, W -> unit_obs).
   ## User-facing names match `level` argument naming; legacy `B`/`W` still
@@ -468,6 +472,7 @@ gllvmTMB <- function(
       missing = missing,
       impute = impute,
       silent = silent,
+      engine = engine,
       site = site,
       species = species
     )
@@ -680,6 +685,22 @@ gllvmTMB <- function(
     response_shape = "long",
     n_obs = nrow(data)
   )
+  ## ---- engine = "julia": route to the GLLVM.jl bridge ---------------------
+  ## `parsed` already reflects the desugared user grammar, so the Julia path
+  ## interprets latent/dep/indep/unique exactly as the TMB engine does. The
+  ## dispatch maps the unconstrained-ordination core and errors loudly on
+  ## anything the bridge does not yet cover (R/julia-bridge.R).
+  if (identical(engine, "julia")) {
+    return(.gllvmTMB_julia_dispatch(
+      parsed         = parsed,
+      data           = data,
+      trait          = trait,
+      unit_internal  = site,
+      family         = family,
+      weights        = weights,
+      call           = match.call()
+    ))
+  }
   gllvmTMB_multi_fit(
     parsed,
     data,

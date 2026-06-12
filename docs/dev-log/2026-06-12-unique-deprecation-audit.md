@@ -1,97 +1,93 @@
-# `unique` → `indep` deprecation — audit & migration tracker
+# `unique` deprecation — audit & context map
 
 **Date:** 2026-06-12 · **Author:** Claude (gllvmTMB thread) · **Status:** read-only
-audit + tracker (no code changed). Cross-repo notice already dropped in
-`GLLVM.jl/docs/dev-log/2026-06-12-inbox-from-gllvmTMB-unique-deprecation.md`.
+map, no code changed. **Direction NOT yet decided — see Correction below.**
 
-## Decision (maintainer, 2026-06-12)
+## ⚠️ Correction (supersedes the first version of this doc, PR #475)
 
-Deprecate the `unique` covstruct keyword family; **merge semantics into `indep`**;
-**soft-deprecation with a working alias** (`lifecycle::deprecate_warn`) — *not*
-hard removal. `unique()` keeps fitting, warns, routes to the `indep` path. Docs
-migrate **gradually** (no AGENTS.md rule-10 lockstep this cycle).
+The first version framed this as **"merge `unique` → `indep`."** **That is wrong**
+and is withdrawn. Evidence:
 
-**Survives the rename (do NOT touch):** `psi`/`Psi`; the canonical decomposition
-`latent + unique` → Σ = ΛΛᵀ + diag(ψ) (concept); and the **"uniqueness" /
-communality** factor-analysis vocabulary (1 − communality) — that is a different
-concept from the keyword and must not be renamed.
+- The engine **forbids `latent + indep`** (and `latent + dep`):
+  `R/fit-multi.R:646` aborts *"over-parameterised … use `latent + unique`
+  (paired) for the decomposition. They cannot coexist."*
+- `latent + unique` is the **canonical decomposition** Σ = ΛΛᵀ + diag(ψ);
+  `unique` is the **dedicated Ψ-residual keyword** (`R/unique-keyword.R`),
+  Boole-locked and actively extended (`decisions.md:733`).
+- `unique` ≡ `indep` **only** in the rare *standalone-alone* case (no `latent`
+  on the same grouping). In its primary (paired) role, `indep` cannot replace it.
 
-## ⚠️ Correlated-slope wrinkle (must resolve in PR1)
+Empirical proof: `latent(1|id, d=1) + unique(1|id)` fits (logLik −258.67);
+swapping to `indep` aborts. So `indep` is not the target.
 
-Standalone `unique`≡`indep`. But the **augmented** forms differ *today*:
-`*_indep(1+x|g)` desugars with `.indep = TRUE` (intercept–slope correlation
-**pinned to 0**); `*_unique(1+x|g)` omits it (correlation **free**;
-`atanh_cor_b` free) — see `R/brms-sugar.R` 2253/2295 vs 2346/2386/2942/3001.
-**Plan:** the alias preserves *old `unique` behavior* (warn + keep the existing
-engine path), so deprecation is cosmetic this cycle; unify markers later.
+## Current grammar — the clean quartet (`R/fit-multi.R:565`)
 
-## Surface 1 — code + contract (engine PR1, the shim)
+| Form | Meaning | Pairing |
+|---|---|---|
+| `latent + unique` | decomposition Σ = ΛΛᵀ + Ψ | **paired** |
+| `indep` | marginal-only | always alone |
+| `dep` | full unstructured | always alone |
+
+`latent + indep` and `latent + dep` are hard-aborted (over-parameterised).
+
+## Leading direction — UNDER DISCUSSION, not decided
+
+Fold Ψ into `latent` by **default** (so `latent(...)` alone = today's
+`latent + unique`), and deprecate the *separate* `unique()` keyword (now
+implicit). Rationale: it matches the GLLVM.jl twin, whose Gaussian marginal
+covariance is intrinsically Σ = Λ_BΛ_Bᵀ + diag(d_total) with the diagonal
+**always present** (`GLLVM.jl/docs/src/model.md:67`). Migration would be
+`latent + unique` → `latent`, **not** `unique` → `indep`.
+
+**Two open design questions gate everything downstream:**
+- **(a)** After the fold, how is the **no-residual / rotation-invariant**
+  `latent`-alone fit requested? (e.g. `latent(..., residual = FALSE)`)
+- **(b)** How are **augmented free-correlation slopes** spelled once `unique()`
+  is gone (bucket B below), and does **`extract_Sigma(part = "unique")`** keep
+  its name (bucket C)?
+
+## Context map — where `unique` lives across the pkgdown pages
+
+Almost every modelling page pairs `latent(` + `unique(` (28 of ~30 articles).
+But `unique` appears in **four distinct contexts**, and only **A** is a
+mechanical fold-into-`latent`:
+
+**A. `latent + unique` decomposition — the dominant case (~28 pages).**
+Every modelling article + README + NEWS. Under fold-into-`latent`:
+`latent(...) + unique(...)` → `latent(...)`.
+
+**B. Augmented `*_unique(1 + x | …)` — free-correlation random slope (~7 pages).**
+`README:256`, `NEWS:53`, `random-regression-reaction-norms` (167/197),
+`random-slopes-nongaussian:39`, `choose-your-model` (292/296/541/543),
+`phylogenetic-gllvm` (476/491), `animal-model` (564/572/625/631).
+**Does not fold into `latent`.** `NEWS:305` confirms `*_indep(1+x)` pins the
+intercept–slope correlation to 0 while `*_unique(1+x)` is the family-general
+**free-correlation** path. This is the genuine `unique`≠`indep` wrinkle.
+
+**C. Extractor `part = "unique"` (~4 pages).**
+`covariance-correlation` (92/289/303/479), `morphometrics` (242/282),
+`phylogenetic-gllvm` (182/198/589), `random-regression-reaction-norms:283`.
+Names the Ψ diagonal regardless of how it was specified — **likely keeps its name.**
+
+**D. "uniqueness" / communality prose — factor-analysis concept (never changes).**
+Heaviest in `lambda-constraint` (17), `behavioural-syndromes` (14),
+`covariance-correlation` (10). Distinct from the keyword; must not be renamed.
+
+## Code + contract surface (touched by any deprecation; direction-independent)
 
 | Item | Location |
 |---|---|
 | 5 keyword defs | `unique` (R/unique-keyword.R), `animal_unique` (R/animal-keyword.R), `phylo_unique`+`spatial_unique` (R/brms-sugar.R 734/794), `kernel_unique` (R/kernel-keywords.R 56) |
 | parser branches | R/brms-sugar.R — `unique` 2633, `phylo_unique` 2807, `animal_unique` 2246, `spatial_unique` 2504/2588, `kernel_unique` 2482 |
-| engine markers | R/fit-multi.R — `.phylo_unique`, `.unique_augmented`, `.spatial_unique_augmented` |
+| engine markers + guard | R/fit-multi.R — `.phylo_unique`, `.unique_augmented`, `.spatial_unique_augmented`; over-param guard 565–650 |
 | exports | NAMESPACE — `animal_unique`, `phylo_unique`, `spatial_unique`, `kernel_unique` |
-| Rd | `man/{unique_keyword,animal_unique,phylo_unique,spatial_unique}.Rd` (+ cross-refs) — regenerate |
+| Rd | `man/{unique_keyword,animal_unique,phylo_unique,spatial_unique}.Rd` |
 | grid | `AGENTS.md`/`CLAUDE.md` 4×5 grid; `docs/design/01-formula-grammar.md` |
 | register | `docs/design/35-validation-debt-register.md` — FG-05/06/07, PHY-02/11/17/18, SPA-02/08, ANI-02/11, RE-09/12, KER-02 |
-| extractor | `extract_Sigma(part = "unique")` — decide separately (names Ψ regardless of keyword; may stay) |
-| tests | ~30 `tests/testthat/test-*unique*.R` (keep running under the alias) |
+| tests | ~30 `tests/testthat/test-*unique*.R` |
 
-**PR1 =** `deprecate_warn("0.2.0", "unique()", "indep()")` on the 5 defs (+ standalone
-parser branch), each routing to its **current** engine path (behavior-preserving)
-+ grid/register/NEWS/decisions updates + one `expect_warning` test that `unique()`
-warns and still fits identically. Engine-sensitive (R/brms-sugar.R, R/fit-multi.R)
-→ Codex's lane per the collaboration rhythm; this doc is the drafted shape.
+## Status
 
-## Surface 2 — pages (gradual migration; verified keyword-only counts)
-
-Counts are raw keyword *signal* (not de-duplicated): **var** = `*_unique`
-variants; **call** = bare `unique(` in chunks; **decomp** = `latent + unique` /
-`part="unique"` prose. The English **"uniqueness"** count is shown only to mark
-where editors must be careful NOT to rename the surviving concept.
-
-### PUBLIC (navbar / homepage — migrate first, one PR each)
-
-| Page | var | call | decomp | "uniqueness" (survives) | note |
-|---|--:|--:|--:|--:|---|
-| `README.md` | 0 | 12 | 3 | — | Tiny example + grid row |
-| `articles/api-keyword-grid.Rmd` | 12 | 18 | 6 | — | **the grid reference — must update** |
-| `articles/covariance-correlation.Rmd` | 1 | 24 | 17 | 10 | heaviest; CAUTION: 10 "uniqueness" stay |
-| `articles/morphometrics.Rmd` | 0 | 8 | 8 | 4 | Tier-1 exemplar |
-| `articles/pitfalls.Rmd` | 3 | 8 | 4 | — | |
-| `articles/model-selection-latent-rank.Rmd` | 0 | 5 | 2 | — | |
-| `articles/joint-sdm.Rmd` | 0 | 4 | 3 | 5 | |
-| `articles/response-families.Rmd` | 0 | 4 | 1 | — | |
-| `articles/convergence-start-values.Rmd` | 0 | 3 | 2 | — | |
-| `articles/fit-diagnostics.Rmd` | 0 | 1 | 1 | — | |
-| `articles/lambda-constraint.Rmd` | 2 | 2 | 0 | 17 | mostly the surviving concept |
-| `vignettes/gllvmTMB.Rmd` (main) | 0 | 4 | 1 | 4 | Get-started |
-
-### INTERNAL drafts (not in navbar — batch later; alias keeps them running)
-
-`choose-your-model` (18/16/8), `phylogenetic-gllvm` (9/16/9),
-`functional-biogeography` (11/14/1), `animal-model` (14/3/0),
-`random-regression-reaction-norms` (0/12/3), `stacked-trait-gllvm` (4/8/2),
-`cross-lineage-coevolution` (7/0/0), `behavioural-syndromes` (0/7/3 — 14 surviving
-"uniqueness"), `profile-likelihood-ci` (1/6/3), plus small hits in
-`mixed-family-extractors`, `cross-package-validation`, `ordinal-probit`,
-`simulation-*`, `random-slopes-nongaussian`, `data-shape-flowchart`,
-`gllvm-vocabulary`, `psychometrics-irt`.
-
-### NEWS.md
-
-16 variant + 9 call + 8 decomp — update the grid table + add the deprecation entry.
-
-## Sequencing
-
-1. **PR1** — engine shim + grid + register + NEWS + `decisions.md` + warn-test (Codex).
-2. **Public pages**, one PR each: `README` → `api-keyword-grid` → `morphometrics`
-   → `covariance-correlation` → `model-selection-latent-rank` / `joint-sdm` / `pitfalls`.
-3. **Internal drafts** — batch sweep later.
-4. **GLLVM.jl twin** — mirror docs (`covariance-correlation.md` "When you need `unique`");
-   notice already delivered to that thread.
-
-Per-line edits happen inside each page's own PR (the alias keeps unmigrated pages
-working, so this is safe to do incrementally).
+Read-only map. **No direction decided; no code, grammar, or page changes** until
+(a) and (b) above are settled. The "merge → indep" sequencing from the first
+version is withdrawn.

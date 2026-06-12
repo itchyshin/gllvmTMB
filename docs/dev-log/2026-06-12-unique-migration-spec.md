@@ -9,6 +9,13 @@ when Slice 1 is greenlit. No code/grammar/page changed. Builds on
 it. Until `latent` carries Ψ by default, dropping `+ unique(...)` from a page
 silently strips the residual. **Code (Slice 1) → then pages.**
 
+> **SCOPE UPDATE (maintainer, 2026-06-12):** the scope is the **whole `unique`
+> family** — `unique`, `phylo_unique`, `animal_unique`, `spatial_unique`, **and
+> `kernel_unique`** — all removed. This **supersedes** §B.1's "no-prefix only"
+> default and §B.2's "kernel out" note below: every `*_unique` row marked "pending
+> B.1" and every `kernel_unique` reference is now **IN scope**. The authoritative
+> code-level surface is `2026-06-12-unique-removal-codereview.md`.
+
 ## A. Code change-surface (Slice 1) — line-level
 
 The desugar layer already maps the keywords (`R/brms-sugar.R` ~1841):

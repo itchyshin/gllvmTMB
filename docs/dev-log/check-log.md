@@ -15681,3 +15681,34 @@ Deliberately not run:
 
 - Full `devtools::check()` not run for this README-only doc change; no R code,
   NAMESPACE, or `man/` touched. CI (R-CMD-check on the PR) is the deployment gate.
+
+## 2026-06-12 -- unique-family removal design/audit/review + GLLVM.jl review
+
+Design, audit, and code-review trail for the maintainer decision to remove the
+whole `unique` keyword family (fold Gaussian Ψ into `latent`); plus the Dev-status
+pkgdown badges and a full read-only review of the sister repo GLLVM.jl. **No
+gllvmTMB R code, grammar, `src/`, `NAMESPACE`, or `man/` was changed this session**
+-- all deliverables are dev-log design/audit/spec/review docs + a README badge block.
+
+- Dev-status badges (#474): README `<!-- badges: start -->` block; verified live --
+  `pkgdown::check_pkgdown()` clean, homepage `Dev status` box renders, deploy green.
+- unique-removal trail merged to main: audit (#475) + correction (#476 -- the
+  "merge into indep" framing was wrong: the engine forbids `latent + indep`),
+  design proposal (#477) + refinement (#478), Slice 1 brief + implementer-ref fix
+  (#479), migration spec (#480), removal code-review (#481, 3 deep passes). Scope
+  settled: whole family + `kernel_unique` IN.
+- Empirical evidence captured during the audit:
+  `latent(1 | id, d = 1) + unique(1 | id)` fits (logLik -258.67);
+  swapping to `+ indep(...)` aborts ("over-parameterised") -- the proof that
+  `unique` != `indep` in the decomposition.
+- GLLVM.jl review (handoff notes dropped untracked in that repo's dev-log):
+  full-repo audit + correctness code-review; engine math verified clean
+  (ForwardDiff / brute-force MvNormal / re-run gradient gates); 3 doc-example
+  FAILs; the machine-precision parity claim outruns its tests. Cover message
+  passed to the maintainer.
+
+Deliberately not run:
+
+- No `devtools::check()` / `devtools::test()` -- no gllvmTMB code was touched this
+  session (read-only design/audit/review only). The unique-removal implementation
+  is handed to the other team; its tests + checks land with that work.

@@ -225,6 +225,11 @@
 #'   [impute_model()] object for an explicit predictor family. The default
 #'   `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
+#' @param engine Character; `"tmb"` (default) fits with the native TMB engine,
+#'   `"julia"` routes the fit to the fast GLLVM.jl engine via JuliaCall (see
+#'   `R/julia-bridge.R`). The Julia path currently maps the unconstrained-
+#'   ordination core (a single `latent()` block + per-trait intercepts) and
+#'   errors on structures it does not yet support.
 #'
 #' @return A `gllvmTMB` object. With no covariance-structure terms in
 #'   the formula the result has class `"gllvmTMB"` (single-response

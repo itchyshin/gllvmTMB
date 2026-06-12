@@ -59,6 +59,7 @@ Suggests:
     galamm,
     glmmTMB,
     gllvm,
+    JuliaCall,
     knitr,
     lme4,
     MASS,

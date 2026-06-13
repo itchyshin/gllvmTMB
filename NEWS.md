@@ -3,6 +3,23 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## R-side `engine = "julia"` bridge to GLLVM.jl (2026-06-13)
+
+* Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
+  default `"tmb"`). With `engine = "julia"` the fit is routed through the fast
+  GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
+  IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
+  with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
+  nbinom1, beta, gamma, ordinal, and lognormal families (plus a per-trait family
+  list for mixed responses) and Gaussian-only fixed-effect covariates. PARTIAL:
+  the supported surface is deliberately narrow — the bridge loudly rejects
+  non-`rr` covariance terms, more than one latent block, `cbind()` binomial,
+  unbalanced trait × unit tables, and non-Gaussian covariates, erroring clearly
+  rather than silently re-interpreting the model. OUT: JuliaCall is a `Suggests`
+  dependency only; every `engine = "julia"` path errors cleanly when JuliaCall or
+  the GLLVM.jl project is unavailable, so the default TMB engine and `R CMD check`
+  are unaffected on machines without Julia.
+
 ## Loading-constraint suggestion comparison (2026-06-09)
 
 * Added `suggest_lambda_constraints()`, a plural companion to

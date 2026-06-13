@@ -39,7 +39,7 @@ See Details.}
 effective sample size used in Fisher's
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
 formula. Only consulted for \code{method \%in\% c("fisher-z",
-  "wald")}. The default heuristic uses \code{fit$n_sites} for tier
+"wald")}. The default heuristic uses \code{fit$n_sites} for tier
 \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
 \code{"phy"}, and \code{fit$n_sites} elsewhere — adequate for
@@ -135,7 +135,7 @@ cross-trait correlations to report.
 \itemize{
 \item For tiers with \code{latent()} only and small ranks, the
 profile path can be unstable due to rotation indeterminacy of the
-factor model (the implied Σ is identifiable but the split into
+factor model (the implied Sigma is identifiable but the split into
 \code{Lambda Lambda^T} and \code{S} is not). Fall back to
 \code{method = "bootstrap"} when the profile fails.
 \item Bootstrap uses \code{\link{bootstrap_Sigma}} refits and is the

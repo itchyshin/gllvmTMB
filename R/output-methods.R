@@ -16,7 +16,7 @@
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @param rotate Optional `"varimax"` or `"promax"` rotation after fitting.
-#'   Default `"none"` returns the engine's native lower-triangular Λ.
+#'   Default `"none"` returns the engine's native lower-triangular Lambda.
 #' @return An `n_traits × d` numeric matrix.
 #' @seealso [extract_ordination()] for the row-and-column interface that
 #'   returns scores and loadings together.

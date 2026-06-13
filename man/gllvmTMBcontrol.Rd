@@ -42,7 +42,7 @@ latter together with \code{optArgs} for finicky two-level rr fits.}
 \item{optArgs}{A list of arguments passed to the optimiser. For
 \code{optim} the most useful is \code{list(method = "BFGS")}.}
 
-\item{init_jitter}{Standard deviation of N(0, σ) jitter applied to
+\item{init_jitter}{Standard deviation of N(0, sigma) jitter applied to
 the starting parameter vector across the \code{n_init} restarts.
 Default 0.3.}
 

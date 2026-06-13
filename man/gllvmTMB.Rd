@@ -24,6 +24,7 @@ gllvmTMB(
   missing = miss_control(),
   impute = NULL,
   silent = TRUE,
+  engine = c("tmb", "julia"),
   site = NULL,
   species = NULL
 )
@@ -229,6 +230,12 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \code{NULL} is appropriate when no \code{mi()} term is present.}
 
 \item{silent}{Logical; suppress TMB and gllvmTMB chatter. Default \code{TRUE}.}
+
+\item{engine}{Character; \code{"tmb"} (default) fits with the native TMB engine,
+\code{"julia"} routes the fit to the fast GLLVM.jl engine via JuliaCall (see
+\code{R/julia-bridge.R}). The Julia path currently maps the unconstrained-
+ordination core (a single \code{latent()} block + per-trait intercepts) and
+errors on structures it does not yet support.}
 
 \item{site}{(deprecated) alias for \code{unit}. Kept for backward
 compatibility. Use \code{unit = ...} in new code.}

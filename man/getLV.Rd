@@ -13,7 +13,7 @@ getLV(fit, level = "unit", rotate = c("none", "varimax", "promax"))
 Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
 \item{rotate}{Optional \code{"varimax"} or \code{"promax"} rotation after fitting.
-Default \code{"none"} returns the engine's native lower-triangular Λ.}
+Default \code{"none"} returns the engine's native lower-triangular Lambda.}
 }
 \value{
 A matrix with one row per unit (\code{level = "unit"}) or one row per

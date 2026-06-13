@@ -864,7 +864,7 @@ drop_missing_response_rows <- function(fixed_formula, data, weights = NULL,
 #'   latter together with `optArgs` for finicky two-level rr fits.
 #' @param optArgs A list of arguments passed to the optimiser. For
 #'   `optim` the most useful is `list(method = "BFGS")`.
-#' @param init_jitter Standard deviation of N(0, σ) jitter applied to
+#' @param init_jitter Standard deviation of N(0, sigma) jitter applied to
 #'   the starting parameter vector across the `n_init` restarts.
 #'   Default 0.3.
 #' @param init_strategy One of `"default"` (current behaviour) or

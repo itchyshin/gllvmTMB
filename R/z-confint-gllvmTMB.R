@@ -1125,7 +1125,7 @@
 #'     returns a tidy \code{data.frame} with columns \code{parameter},
 #'     \code{estimate}, \code{lower}, \code{upper}, \code{method}. Profile is
 #'     computed element-wise via [TMB::tmbprofile()] for the diagonal entries;
-#'     off-diagonals fall back to bootstrap (full Σ sampling) since they mix
+#'     off-diagonals fall back to bootstrap (full Sigma sampling) since they mix
 #'     two parameters in a non-linear way.
 #'   \item \strong{Fixed effects / variance components} -- when \code{parm}
 #'     is missing, an integer index, or a character vector of fixed-effect

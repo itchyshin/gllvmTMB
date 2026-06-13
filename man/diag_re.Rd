@@ -130,7 +130,7 @@ non-phylogenetic species-level covariance). Their sum is
 \subsection{Per-row \code{unique()} and \code{sigma_eps}: auto-suppression}{
 
 For Gaussian / lognormal / Gamma fits, the engine also estimates a
-single observation-scale residual \code{sigma_eps} (the σ_ε of the response).
+single observation-scale residual \code{sigma_eps} (the sigma_eps of the response).
 If you place \code{unique(0 + trait | g)} at a grouping \code{g} that has \strong{one
 row per (trait, g) cell} (i.e. the unique random effects are at the
 per-row / per-observation level), the unique-variance parameters and
@@ -171,7 +171,7 @@ Across families the unifying rule is: \code{unique(0 + trait | g)} is the
 family determining what counts as observation-layer vs latent-scale
 residual. See the \code{link_residual} argument of \code{\link[=extract_Sigma]{extract_Sigma()}} for
 how the family-specific implicit residual is added to the diagonal of
-the reported Σ.
+the reported Sigma.
 }
 
 \subsection{Note on the function name}{

@@ -119,7 +119,7 @@
 #' ## Per-row `unique()` and `sigma_eps`: auto-suppression
 #'
 #' For Gaussian / lognormal / Gamma fits, the engine also estimates a
-#' single observation-scale residual `sigma_eps` (the σ_ε of the response).
+#' single observation-scale residual `sigma_eps` (the sigma_eps of the response).
 #' If you place `unique(0 + trait | g)` at a grouping `g` that has **one
 #' row per (trait, g) cell** (i.e. the unique random effects are at the
 #' per-row / per-observation level), the unique-variance parameters and
@@ -160,7 +160,7 @@
 #' family determining what counts as observation-layer vs latent-scale
 #' residual. See the `link_residual` argument of [extract_Sigma()] for
 #' how the family-specific implicit residual is added to the diagonal of
-#' the reported Σ.
+#' the reported Sigma.
 #'
 #' ## Note on the function name
 #'

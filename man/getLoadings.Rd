@@ -13,7 +13,7 @@ getLoadings(fit, level = "unit", rotate = c("none", "varimax", "promax"))
 Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
 \item{rotate}{Optional \code{"varimax"} or \code{"promax"} rotation after fitting.
-Default \code{"none"} returns the engine's native lower-triangular Λ.}
+Default \code{"none"} returns the engine's native lower-triangular Lambda.}
 }
 \value{
 An \verb{n_traits × d} numeric matrix.

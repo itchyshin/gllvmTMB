@@ -160,7 +160,7 @@ between Gaussian fields and Gaussian Markov random fields: the
 stochastic partial differential equation approach.
 \emph{Journal of the Royal Statistical Society: Series B (Statistical
 Methodology)} \strong{73}(4): 423–498.
-\url{https://doi.org/10.1111/j.1467-9868.2011.00777.x}
+\doi{10.1111/j.1467-9868.2011.00777.x}
 }
 \seealso{
 \code{\link[=make_mesh]{make_mesh()}}, \code{\link[=add_utm_columns]{add_utm_columns()}}, \code{vignette("spde-vs-glmmTMB")}

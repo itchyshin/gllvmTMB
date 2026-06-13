@@ -208,11 +208,11 @@ ISBN 978-0-470-97192-5.
 \item \strong{McGillycuddy, Popovic, Bolker & Warton} (2025) Parsimoniously
 Fitting Large Multivariate Random Effects in glmmTMB.
 \emph{J. Stat. Softw.} 112(1).
-\url{https://doi.org/10.18637/jss.v112.i01}
+\doi{10.18637/jss.v112.i01}
 \item \strong{Westneat, Wright & Dingemanse} (2015) The biology hidden inside
 residual within-individual phenotypic variation.
 \emph{Biological Reviews} \strong{90}: 729--743.
-\url{https://doi.org/10.1111/brv.12131}
+\doi{10.1111/brv.12131}
 }
 }
 \seealso{

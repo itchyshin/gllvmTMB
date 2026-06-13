@@ -136,7 +136,7 @@
 #'   stochastic partial differential equation approach.
 #'   *Journal of the Royal Statistical Society: Series B (Statistical
 #'   Methodology)* **73**(4): 423–498.
-#'   <https://doi.org/10.1111/j.1467-9868.2011.00777.x>
+#'   \doi{10.1111/j.1467-9868.2011.00777.x}
 #' @examples
 #' \dontrun{
 #' set.seed(2025)

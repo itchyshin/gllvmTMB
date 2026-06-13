@@ -436,7 +436,7 @@
 #' Warton, D. I., & Nakagawa, S. (2025). Fast phylogenetic generalised
 #' linear mixed-effects modelling using the glmmTMB R package.
 #' \emph{bioRxiv} 2025.12.20.695312.
-#' \doi{10.1101/2025.12.20.695312}
+#' \doi{10.64898/2025.12.20.695312}
 #'
 #' Hadfield, J. D. & Nakagawa, S. (2010). General quantitative genetic
 #' methods for comparative biology: phylogenies, taxonomies and multi-
@@ -449,8 +449,9 @@
 #' \emph{Genetics} 180, 1153-1166. \doi{10.1534/genetics.108.090159}
 #'
 #' Felsenstein, J. (2005). Using the quantitative genetic threshold
-#' model for inferences between and within populations.
-#' \emph{Genetics} 169, 925-942. \doi{10.1534/genetics.104.025262}
+#' model for inferences between and within species.
+#' \emph{Philosophical Transactions of the Royal Society B} 360,
+#' 1427-1434. \doi{10.1098/rstb.2005.1669}
 #'
 #' Felsenstein, J. (2012). A comparative method for both discrete and
 #' continuous characters using the threshold model.
@@ -586,7 +587,7 @@ compare_dep_vs_two_psi <- function(
 #' Warton, D. I., & Nakagawa, S. (2025). Fast phylogenetic generalised
 #' linear mixed-effects modelling using the glmmTMB R package.
 #' \emph{bioRxiv} 2025.12.20.695312.
-#' \doi{10.1101/2025.12.20.695312}
+#' \doi{10.64898/2025.12.20.695312}
 #'
 #' @seealso [compare_dep_vs_two_psi()] (canonical, full Sigma);
 #'   [extract_Sigma()].

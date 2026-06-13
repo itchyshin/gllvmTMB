@@ -74,7 +74,7 @@ Williams, M. J., McGillycuddy, M., Drobniak, S. M., Bolker, B. M.,
 Warton, D. I., & Nakagawa, S. (2025). Fast phylogenetic generalised
 linear mixed-effects modelling using the glmmTMB R package.
 \emph{bioRxiv} 2025.12.20.695312.
-\doi{10.1101/2025.12.20.695312}
+\doi{10.64898/2025.12.20.695312}
 }
 \seealso{
 \code{\link[=compare_dep_vs_two_psi]{compare_dep_vs_two_psi()}} (canonical, full Sigma);

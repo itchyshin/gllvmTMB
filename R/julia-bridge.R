@@ -42,6 +42,15 @@ gllvm_julia_setup <- function(jl_path = getOption("gllvmTMB.GLLVM.jl.path", Sys.
   invisible(TRUE)
 }
 
+# Bridge family strings (the `.gllvm_julia_family` output) for which GLLVM.jl's
+# `bridge_fit` wires fixed-effect covariates X. Mirrors the engine's
+# `_BRIDGE_X_FAMILIES` (gaussian via fit_gaussian_gllvm; poisson/binomial/
+# negbinomial/beta/gamma via fit_gllvm_cov). Ordinal and nb1 have no covariate
+# kernel in the engine, so X stays a loud reject for them; keep this set in lockstep
+# with bridge_fit (gllvmTMB#488: don't let the R gate drift behind the engine).
+.GLLVM_JULIA_X_FAMILIES <- c("gaussian", "poisson", "binomial", "nbinom2",
+                             "beta", "gamma")
+
 # Map an R family (a `family` object, a string, or a list of them for mixed) to the
 # GLLVM.jl bridge family string(s).
 .gllvm_julia_family <- function(family) {
@@ -276,10 +285,14 @@ confint.gllvmTMB_julia <- function(object, parm = NULL, level = 0.95,
 
   ## --- fixed effects: the per-trait intercept (0 + trait) is always mapped to
   ## the bridge's internal per-trait intercept. Extra fixed-effect covariates
-  ## (e.g. `env`) are mapped for the Gaussian family only, by pivoting the long
-  ## design matrix into a p x n x q array X and passing it to bridge_fit; the
-  ## Julia Gaussian fitter carries the FULL mean structure (intercept dummies +
-  ## covariates) in X. Non-Gaussian X stays a loud reject. ---
+  ## (e.g. `env`) are mapped by pivoting the long design matrix into a p x n x q
+  ## array X and passing it to bridge_fit. bridge_fit wires X for the Gaussian
+  ## family AND the one-part non-Gaussian families fit_gllvm_cov fits
+  ## (.GLLVM_JULIA_X_FAMILIES: poisson/binomial/nbinom2/beta/gamma); the fitter
+  ## carries the FULL mean structure (intercept dummies + covariates) in X.
+  ## Families with no covariate kernel in the engine (ordinal/nb1) and the
+  ## mixed-family path stay a loud reject (gllvmTMB#488: relax the gate only to
+  ## cells bridge_fit can serve). ---
   fam_str <- .gllvm_julia_family(family)
   Xfix <- stats::model.matrix(parsed$fixed, mf)
   trait_dummies <- paste0(trait, traits)
@@ -288,14 +301,27 @@ confint.gllvmTMB_julia <- function(object, parm = NULL, level = 0.95,
 
   Xarg <- NULL
   if (!has_only_trait_intercept) {
-    if (!all(fam_str == "gaussian")) {
-      stop("engine = 'julia' maps fixed-effect covariates for the gaussian family ",
-           "only; found fixed term(s): ",
+    ## Mixed-family (a per-trait family vector) has no covariate kernel in
+    ## bridge_fit yet: reject X loudly rather than route a cell the engine drops.
+    if (length(fam_str) > 1L) {
+      stop("engine = 'julia' does not yet map fixed-effect covariates for the ",
+           "mixed-family path (per-trait family vector); a documented follow-up. ",
+           "Use engine = 'tmb' for mixed-family fixed-effect covariates.",
+           call. = FALSE)
+    }
+    if (!all(fam_str %in% .GLLVM_JULIA_X_FAMILIES)) {
+      bad <- setdiff(unique(fam_str), .GLLVM_JULIA_X_FAMILIES)
+      stop("engine = 'julia' maps fixed-effect covariates for family/families in {",
+           paste(.GLLVM_JULIA_X_FAMILIES, collapse = ", "), "}; ",
+           "found fixed term(s) ",
            paste(c(extra_cols,
                    if (ncol(Xfix) != p && length(extra_cols) == 0)
                      "(non-per-trait-intercept design)"),
                  collapse = ", "),
-           ". Use engine = 'tmb' for non-Gaussian fixed-effect covariates.",
+           " for family/families without a covariate fitter: ",
+           paste(bad, collapse = ", "),
+           " (ordinal/nb1 and the mixed-family path are a documented follow-up). ",
+           "Use engine = 'tmb' for those.",
            call. = FALSE)
     }
     ## Pivot the long (N = p*n row) design matrix into a p x n x q array. For each

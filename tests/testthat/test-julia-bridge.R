@@ -16,6 +16,20 @@ make_long <- function(n_unit = 10L, traits = c("t1", "t2", "t3"), seed = 1L) {
   df
 }
 
+# Long-format frame carrying a per-unit covariate `env`, plus integer count and
+# continuous proportion responses, for the non-Gaussian fixed-effect-X gate tests.
+make_long_cov <- function(n_unit = 12L, traits = c("t1", "t2", "t3"), seed = 11L) {
+  set.seed(seed)
+  df <- expand.grid(unit = factor(seq_len(n_unit)), trait = traits,
+                    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+  df$trait <- factor(df$trait)
+  env_per_unit <- stats::rnorm(n_unit)
+  df$env <- env_per_unit[as.integer(df$unit)]
+  df$count <- stats::rpois(nrow(df), lambda = exp(0.4 + 0.3 * df$env))
+  df$prop  <- stats::plogis(0.2 + 0.5 * df$env + stats::rnorm(nrow(df), sd = 0.3))
+  df
+}
+
 skip_if_no_julia <- function() {
   testthat::skip_if_not_installed("JuliaCall")
   jl <- getOption("gllvmTMB.GLLVM.jl.path", Sys.getenv("GLLVM_JL_PATH", ""))
@@ -82,6 +96,54 @@ test_that("engine argument is validated by match.arg", {
   )
 })
 
+# --- fixed-effect covariate (X) gate: relaxed to match bridge_fit -----------
+#
+# bridge_fit wires fixed-effect X for the Gaussian family AND the one-part
+# non-Gaussian families fit_gllvm_cov fits (poisson, binomial, negbinomial,
+# beta, gamma). The R-side dispatch previously gated X to gaussian-only, drifting
+# behind the engine (gllvmTMB#488). These pure-R tests assert the gate now ADMITS
+# the X-capable non-Gaussian families and still REJECTS the ones the engine has no
+# covariate kernel for (ordinal, nb1). They fire before any Julia call, so the
+# "passed the gate" check is: the dispatch does NOT raise the gaussian-only gate
+# error (it may instead hit the JuliaCall-setup error downstream, which is fine).
+
+# TRUE if the engine="julia" dispatch raised the gaussian-only X-gate error.
+hit_gaussian_x_gate <- function(expr) {
+  msg <- tryCatch({ force(expr); NA_character_ },
+                  error = function(e) conditionMessage(e))
+  !is.na(msg) && grepl("gaussian family", msg, fixed = TRUE)
+}
+
+test_that("engine = 'julia' admits fixed-effect X for X-capable non-Gaussian families", {
+  df <- make_long_cov()
+  # poisson + env covariate: previously rejected by the gaussian-only gate.
+  expect_false(hit_gaussian_x_gate(
+    gllvmTMB(count ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+             data = df, trait = "trait", unit = "unit",
+             family = poisson(), engine = "julia")))
+  # beta + env covariate: continuous proportion response.
+  expect_false(hit_gaussian_x_gate(
+    gllvmTMB(prop ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+             data = df, trait = "trait", unit = "unit",
+             family = Beta(), engine = "julia")))
+  # gamma + env covariate (reuse the positive proportion as a positive response).
+  expect_false(hit_gaussian_x_gate(
+    gllvmTMB(prop ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+             data = df, trait = "trait", unit = "unit",
+             family = Gamma(), engine = "julia")))
+})
+
+test_that("engine = 'julia' still rejects fixed-effect X for families with no covariate kernel", {
+  df <- make_long_cov()
+  # ordinal has no covariate kernel in bridge_fit -> must stay a loud reject.
+  expect_error(
+    gllvmTMB(count ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+             data = df, trait = "trait", unit = "unit",
+             family = "ordinal", engine = "julia"),
+    "covariate"
+  )
+})
+
 # --- numerical round-trip (gated behind a live JuliaCall + GLLVM.jl) --------
 
 test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
@@ -93,6 +155,22 @@ test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
   expect_equal(as.numeric(logLik(fit_jl)), as.numeric(logLik(fit_tmb)),
                tolerance = 1e-4)
   expect_s3_class(fit_jl, "gllvmTMB_julia")
+})
+
+test_that("engine = 'julia' fits a non-Gaussian fixed-effect-X model end-to-end", {
+  skip_if_no_julia()
+  df <- make_long_cov(n_unit = 40L, seed = 21L)
+  # Poisson + env covariate: the relaxed gate routes X through bridge_fit's
+  # fit_gllvm_cov path. Confirm the fit actually runs and returns the covariate
+  # coefficient (gamma) the engine emits for a covariate fit (model "*_x_rr").
+  fit <- gllvmTMB(count ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+                  data = df, trait = "trait", unit = "unit",
+                  family = poisson(), engine = "julia")
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_true(is.finite(fit$loglik))
+  expect_match(fit$model, "_x_rr$")
+  expect_false(is.null(fit$gamma))
+  expect_true(all(is.finite(fit$gamma)))
 })
 
 # --- confidence intervals through the bridge (gated behind live JuliaCall) ---

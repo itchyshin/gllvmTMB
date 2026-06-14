@@ -75,12 +75,25 @@ gllvm_julia_setup <- function(jl_path = getOption("gllvmTMB.GLLVM.jl.path", Sys.
 #' @param N Binomial trials (matrix or scalar), or `NULL`.
 #' @param X Gaussian-only fixed-effect design (p x n x q array), or `NULL`.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
+#' @param ci_method Confidence-interval method routed to the Julia engine: one of
+#'   `"none"` (default, no CIs), `"wald"`, `"profile"`, or `"bootstrap"`. When not
+#'   `"none"`, the returned object gains the bridge `ci_*` fields (`ci_method`,
+#'   `ci_level`, `ci_param_names`, `ci_estimate`, `ci_lower`, `ci_upper`,
+#'   `ci_note`), reusing GLLVM.jl's native CI engines (no CI math in R).
+#' @param ci_level Nominal coverage for the CIs (default `0.95`).
+#' @param ci_nboot Parametric-bootstrap replicates when `ci_method = "bootstrap"`
+#'   (default `200L`).
+#' @param ci_seed Bootstrap RNG seed (default `0L`; fixed for reproducibility).
 #' @param ... Passed to [gllvm_julia_setup()] (`jl_path`, `julia_home`).
 #' @return A list of class `gllvmTMB_julia` with the bridge contract fields
 #'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`, `converged`, ...).
+#'   When `ci_method != "none"` the object also carries the bridge `ci_*` fields.
 #' @export
 gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = NULL,
-                            units_are_rows = FALSE, ...) {
+                            units_are_rows = FALSE,
+                            ci_method = c("none", "wald", "profile", "bootstrap"),
+                            ci_level = 0.95, ci_nboot = 200L, ci_seed = 0L, ...) {
+  ci_method <- match.arg(ci_method)
   gllvm_julia_setup(...)
   fam <- .gllvm_julia_family(family)
   y <- as.matrix(y)
@@ -89,8 +102,22 @@ gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = N
   args <- list("GLLVM.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
   if (!is.null(N)) args$N <- N
   if (!is.null(X)) args$X <- X
+  ## CI routing: pass a Julia options Dict only when CIs are requested, so the
+  ## default ci_method = "none" leaves the bridge call byte-identical to before.
+  if (!identical(ci_method, "none")) {
+    args$options <- JuliaCall::julia_call("Dict",
+      JuliaCall::julia_call("=>", "ci_method", ci_method),
+      JuliaCall::julia_call("=>", "ci_level", as.numeric(ci_level)),
+      JuliaCall::julia_call("=>", "ci_nboot", as.integer(ci_nboot)),
+      JuliaCall::julia_call("=>", "ci_seed", as.integer(ci_seed)))
+  }
   res <- do.call(JuliaCall::julia_call, args)
   res$engine <- "julia"
+  ## Stash the marshalled fit inputs so confint() can re-fit on the SAME data with
+  ## a different ci_method without the caller re-supplying y / N / X.
+  res$y <- y
+  res$N <- N
+  res$X <- X
   class(res) <- c("gllvmTMB_julia", "list")
   res
 }
@@ -112,6 +139,82 @@ print.gllvmTMB_julia <- function(x, ...) {
   cat(sprintf("  logLik = %.4f | AIC = %.2f | BIC = %.2f | converged = %s\n",
               x$loglik, x$aic, x$bic, x$converged))
   invisible(x)
+}
+
+#' Confidence intervals for a Julia-engine GLLVM fit
+#'
+#' Surfaces the GLLVM.jl engine's confidence intervals (computed by its native
+#' Wald / profile-likelihood / parametric-bootstrap engines) as a standard R
+#' `confint()` matrix. If `object` does not already carry CI fields for the
+#' requested `method`/`level`, the fit is re-run through the bridge with the
+#' matching `ci_method` (no CI math is implemented in R).
+#'
+#' @param object A `gllvmTMB_julia` object from [gllvm_julia_fit()].
+#' @param parm Parameters to return: a character vector of bridge parameter names
+#'   (e.g. `"sigma_eps"`, `"Lambda_B[1,1]"`) or an integer index. `NULL` (default)
+#'   returns every parameter.
+#' @param level Nominal coverage (default `0.95`). A re-fit is triggered if the
+#'   object's cached CI level differs.
+#' @param method One of `"wald"` (default), `"profile"`, or `"bootstrap"`.
+#' @param ... Forwarded to [gllvm_julia_fit()] on a re-fit (e.g. `ci_nboot`,
+#'   `ci_seed`, `jl_path`, `julia_home`).
+#' @return A numeric matrix with one row per parameter (rownames = bridge
+#'   parameter names) and two columns giving the lower/upper bounds, labelled
+#'   `"<a> %"` / `"<1-a> %"` in the `stats::confint()` convention.
+#' @export
+#' @method confint gllvmTMB_julia
+confint.gllvmTMB_julia <- function(object, parm = NULL, level = 0.95,
+                                   method = c("wald", "profile", "bootstrap"), ...) {
+  method <- match.arg(method)
+
+  ## Decide whether the cached CI payload already matches the request. The bridge
+  ## stamps the actually-run method/level onto ci_method/ci_level, so we re-fit
+  ## only when those differ (or when no CI fields are present at all).
+  has_ci <- !is.null(object$ci_method) && !is.null(object$ci_lower)
+  ci_ok <- has_ci &&
+    identical(as.character(object$ci_method), method) &&
+    isTRUE(all.equal(as.numeric(object$ci_level), as.numeric(level)))
+
+  if (!ci_ok) {
+    ## Re-fit on the SAME data with the requested CI method. The bridge needs the
+    ## raw response (+ trials N when binomial); we reconstruct the call inputs
+    ## from the cached fit. A re-fit requires the original response matrix, kept
+    ## on the object by the dispatcher; if absent, error clearly rather than fake.
+    y <- object$y
+    if (is.null(y)) {
+      stop("confint.gllvmTMB_julia: this object carries no cached CI fields for ",
+           "method = '", method, "' (level ", level, ") and no stored response ",
+           "matrix to re-fit. Re-fit with gllvm_julia_fit(..., ci_method = '",
+           method, "').", call. = FALSE)
+    }
+    refit <- gllvm_julia_fit(
+      y, family = object$family[1], num.lv = object$d, N = object$N, X = object$X,
+      ci_method = method, ci_level = level, ...)
+    object$ci_method      <- refit$ci_method
+    object$ci_level       <- refit$ci_level
+    object$ci_param_names <- refit$ci_param_names
+    object$ci_estimate    <- refit$ci_estimate
+    object$ci_lower       <- refit$ci_lower
+    object$ci_upper       <- refit$ci_upper
+    object$ci_note        <- refit$ci_note
+  }
+
+  nms <- as.character(object$ci_param_names)
+  a <- (1 - level) / 2
+  pct <- paste(format(100 * c(a, 1 - a), trim = TRUE, scientific = FALSE,
+                      digits = 3), "%")
+  ci <- matrix(c(object$ci_lower, object$ci_upper), ncol = 2,
+               dimnames = list(nms, pct))
+
+  if (!is.null(parm)) {
+    sel <- if (is.numeric(parm)) parm else match(parm, nms)
+    if (anyNA(sel)) {
+      stop("confint.gllvmTMB_julia: unknown parm: ",
+           paste(parm[is.na(sel)], collapse = ", "), call. = FALSE)
+    }
+    ci <- ci[sel, , drop = FALSE]
+  }
+  ci
 }
 
 # ---------------------------------------------------------------------------

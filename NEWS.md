@@ -33,7 +33,7 @@
   the paired Julia bridge supports them; Gaussian profile and bootstrap CI
   transport is live-tested, while broader non-Gaussian/structure CI coverage
   remains partial and unsupported cells still report explicit CI-status errors.
-  Post-fit inspection now includes `coef()`, `summary()`, `predict()`,
+  Post-fit inspection now includes `coef()`, `tidy()`, `summary()`, `predict()`,
   `fitted()`, `residuals()`, `nobs()`, and ordination access through
   `extract_ordination()`, `getLoadings()`, `getLV()`, `rotate_loadings()`, and
   `ordiplot()` for `gllvmTMB_julia` objects; `plot(type = "ordination")` is

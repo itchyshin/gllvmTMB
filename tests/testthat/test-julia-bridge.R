@@ -267,6 +267,17 @@ test_that("Julia bridge post-fit methods work without JuliaCall", {
   txt <- utils::capture.output(print(s))
   expect_true(any(grepl("Julia-engine summary", txt)))
   expect_true(any(grepl("gamma\\[env\\]", txt)))
+
+  td <- generics::tidy(fit)
+  expect_equal(names(td), c("term", "estimate", "component"))
+  expect_true("gamma[env]" %in% td$term)
+  expect_true("beta_cov[sp1]" %in% td$term)
+  expect_false(any(grepl("^loadings\\[", td$term)))
+  expect_error(
+    generics::tidy(fit, effects = "ran_pars"),
+    "only effects = 'fixed'"
+  )
+  expect_error(generics::tidy(fit, conf.int = TRUE), "conf.int = TRUE")
 })
 
 test_that("Julia bridge fitted, predict, and residuals methods work without JuliaCall", {

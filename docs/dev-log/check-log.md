@@ -4,6 +4,39 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge tidy method
+
+Scope:
+
+- added `tidy.gllvmTMB_julia()` for fixed-effect bridge coefficient rows using
+  the cached bridge coefficient table;
+- registered the S3 method and regenerated the Julia-bridge methods Rd page;
+- kept `effects = "ran_pars"`, `effects = "cutpoint"`, and
+  `conf.int = TRUE` unsupported with explicit errors;
+- intentionally kept loadings out of `tidy(..., effects = "fixed")`; users
+  should use `coef()` or ordination extractors for loadings.
+
+Evidence:
+
+- Documentation generation:
+  `Rscript -e 'devtools::document()'`
+  -> completed; emitted pre-existing unresolved-link warnings outside this
+  slice.
+- Default no-Julia bridge test:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 97`, `SKIP 14`, `FAIL 0`, `WARN 0` in `1.9s`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 283`, `FAIL 0`, `WARN 0`, `SKIP 0` in `53.0s`.
+
+Deliberately not claimed:
+
+- No covariance, standard-error, or confidence-interval columns are added to
+  `tidy.gllvmTMB_julia()`.
+- No simulation or new Julia computation is added.
+- Loadings remain available through `coef()`, `getLoadings()`, and
+  `extract_ordination()`, not as fixed-effect tidy rows.
+
 ## 2026-06-15 -- R-first bridge and REML status ledger
 
 Scope:

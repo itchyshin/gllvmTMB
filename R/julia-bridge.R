@@ -696,13 +696,20 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @param object,x A `gllvmTMB_julia` object.
 #' @param newdata Optional new data. Currently unsupported for Julia-engine fits;
 #'   only in-sample predictions are returned.
+#' @param effects For `tidy()`, one of `"fixed"`, `"ran_pars"`, or `"cutpoint"`;
+#'   only `"fixed"` is currently wired for Julia-engine fits.
+#' @param conf.int For `tidy()`, whether to add confidence limits. Currently
+#'   unsupported for Julia-engine fits; use [confint()] where routed.
+#' @param conf.level Confidence level requested by `conf.int`.
 #' @param type Prediction scale. `"link"` returns the fitted linear predictor and
 #'   `"response"` returns the inverse-link mean.
 #' @param re_form Random-effect formula controlling whether conditional latent
 #'   scores are included. Use `~ 0` or `NA` for fixed-effects-only predictions.
 #' @param digits Decimal digits to print.
 #' @param ... Currently unused.
-#' @return `coef()` returns a named list of bridge coefficients. `predict()` and
+#' @return `coef()` returns a named list of bridge coefficients. `tidy()` returns
+#'   a coefficient data frame with `term`, `estimate`, and `component` columns for
+#'   the currently routed fixed-effect bridge payload. `predict()` and
 #'   `residuals()` return data frames in the original training-row order when the
 #'   object came from `gllvmTMB(..., engine = "julia")`. `fitted()` returns a
 #'   trait x unit matrix. `nobs()` returns the number of likelihood-contributing
@@ -749,6 +756,41 @@ coef.gllvmTMB_julia <- function(object, ...) {
     out$sigma_eps <- as.numeric(object$sigma_eps)
   }
   out
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+tidy.gllvmTMB_julia <- function(
+  x,
+  effects = c("fixed", "ran_pars", "cutpoint"),
+  conf.int = FALSE,
+  conf.level = 0.95,
+  ...
+) {
+  effects <- match.arg(effects)
+  if (!identical(effects, "fixed")) {
+    stop(
+      "tidy.gllvmTMB_julia: only effects = 'fixed' is routed through the ",
+      "Julia bridge yet. Use coef(), summary(), or engine = 'tmb' for broader ",
+      "tidy output.",
+      call. = FALSE
+    )
+  }
+  if (isTRUE(conf.int)) {
+    stop(
+      "tidy.gllvmTMB_julia: conf.int = TRUE is not routed through the Julia ",
+      "bridge yet. Use confint() for supported interval output.",
+      call. = FALSE
+    )
+  }
+  tab <- .gllvm_julia_coef_table(x)
+  data.frame(
+    term = tab$term,
+    estimate = tab$estimate,
+    component = tab$component,
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
 }
 
 #' @rdname gllvmTMB_julia-methods

@@ -3,6 +3,7 @@
 \name{gllvmTMB_julia-methods}
 \alias{gllvmTMB_julia-methods}
 \alias{coef.gllvmTMB_julia}
+\alias{tidy.gllvmTMB_julia}
 \alias{nobs.gllvmTMB_julia}
 \alias{vcov.gllvmTMB_julia}
 \alias{predict.gllvmTMB_julia}
@@ -13,6 +14,14 @@
 \title{Post-fit methods for Julia-engine GLLVM fits}
 \usage{
 \method{coef}{gllvmTMB_julia}(object, ...)
+
+\method{tidy}{gllvmTMB_julia}(
+  x,
+  effects = c("fixed", "ran_pars", "cutpoint"),
+  conf.int = FALSE,
+  conf.level = 0.95,
+  ...
+)
 
 \method{nobs}{gllvmTMB_julia}(object, ...)
 
@@ -39,6 +48,14 @@
 
 \item{...}{Currently unused.}
 
+\item{effects}{For \code{tidy()}, one of \code{"fixed"}, \code{"ran_pars"}, or \code{"cutpoint"};
+only \code{"fixed"} is currently wired for Julia-engine fits.}
+
+\item{conf.int}{For \code{tidy()}, whether to add confidence limits. Currently
+unsupported for Julia-engine fits; use \code{\link[=confint]{confint()}} where routed.}
+
+\item{conf.level}{Confidence level requested by \code{conf.int}.}
+
 \item{newdata}{Optional new data. Currently unsupported for Julia-engine fits;
 only in-sample predictions are returned.}
 
@@ -51,7 +68,9 @@ scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predicti
 \item{digits}{Decimal digits to print.}
 }
 \value{
-\code{coef()} returns a named list of bridge coefficients. \code{predict()} and
+\code{coef()} returns a named list of bridge coefficients. \code{tidy()} returns
+a coefficient data frame with \code{term}, \code{estimate}, and \code{component} columns for
+the currently routed fixed-effect bridge payload. \code{predict()} and
 \code{residuals()} return data frames in the original training-row order when the
 object came from \code{gllvmTMB(..., engine = "julia")}. \code{fitted()} returns a
 trait x unit matrix. \code{nobs()} returns the number of likelihood-contributing

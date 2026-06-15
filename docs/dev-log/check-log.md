@@ -4,6 +4,44 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge cbind binomial trial transport
+
+Scope:
+
+- admitted public `gllvmTMB(..., engine = "julia")`
+  `cbind(successes, failures)` responses for `family = binomial()` by
+  transporting successes as `Y` and successes + failures as the Julia binomial
+  trial matrix `N`;
+- kept non-binomial `cbind()` responses as an R-side fail-loud boundary before
+  JuliaCall setup;
+- preserved missing-response include semantics by masking any row where either
+  the successes or failures component is missing, using harmless masked
+  sentinels (`Y = 0`, `N = 1`) and passing the observed-cell mask to the paired
+  `GLLVM.bridge_fit`;
+- kept masked CI/profile/bootstrap refits unsupported through the existing
+  `ci_unavailable_masked_response` status boundary.
+
+Evidence:
+
+- Default no-Julia test mode:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 91`, `SKIP 14`, `FAIL 0`, `WARN 0` in `2.1s`.
+- Live focused R bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 277`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 277`, `FAIL 0`, `WARN 0`, `SKIP 0` in `56.3s`.
+
+Deliberately not claimed:
+
+- This is R-side `cbind()` marshalling plus direct Julia-bridge equivalence,
+  not R/TMB-vs-Julia statistical parity.
+- It does not add masked Wald/profile/bootstrap interval endpoints.
+- It does not support non-binomial `cbind()` responses, mixed-family
+  `cbind()` cells, unbalanced trait x unit tables, or fixed-effect
+  missing-response masks.
+
 ## 2026-06-15 -- Julia bridge masked-CI status boundary
 
 Scope:

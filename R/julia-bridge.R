@@ -596,20 +596,24 @@ print.gllvmTMB_julia <- function(x, ...) {
   if (identical(object$model, "gaussian_x_rr") && !is.null(object$mean_coef)) {
     X <- object$X
     mean_coef <- as.numeric(object$mean_coef)
-    if (!is.array(X) || length(dim(X)) != 3L || dim(X)[3] != length(mean_coef)) {
+    if (
+      !is.array(X) || length(dim(X)) != 3L || dim(X)[3] != length(mean_coef)
+    ) {
       stop(
         "predict.gllvmTMB_julia: object carries incompatible X/mean_coef fields.",
         call. = FALSE
       )
     }
     for (k in seq_along(mean_coef)) {
-      eta <- eta + X[, , k] * mean_coef[k]
+      eta <- eta + X[,, k] * mean_coef[k]
     }
     used_full_mean <- TRUE
   }
   if (!used_full_mean && !is.null(object$beta_cov)) {
     eta <- eta + matrix(as.numeric(object$beta_cov), p, n)
-  } else if (!used_full_mean && !is.null(object$alpha) && all(is.finite(object$alpha))) {
+  } else if (
+    !used_full_mean && !is.null(object$alpha) && all(is.finite(object$alpha))
+  ) {
     eta <- eta + matrix(as.numeric(object$alpha), p, n)
   }
   if (!used_full_mean && !is.null(object$X) && !is.null(object$gamma)) {
@@ -622,10 +626,13 @@ print.gllvmTMB_julia <- function(x, ...) {
       )
     }
     for (k in seq_along(gamma)) {
-      eta <- eta + X[, , k] * gamma[k]
+      eta <- eta + X[,, k] * gamma[k]
     }
   }
-  dimnames(eta) <- list(.gllvm_julia_trait_names(object), .gllvm_julia_unit_names(object))
+  dimnames(eta) <- list(
+    .gllvm_julia_trait_names(object),
+    .gllvm_julia_unit_names(object)
+  )
   eta
 }
 
@@ -660,7 +667,10 @@ print.gllvmTMB_julia <- function(x, ...) {
     trait_col <- object$trait_col %||% "trait"
     out[[unit_col]] <- .gllvm_julia_unit_names(object)[object$.unit_index]
     out[[trait_col]] <- .gllvm_julia_trait_names(object)[object$.trait_index]
-    out[[value_name]] <- as.numeric(values[cbind(object$.trait_index, object$.unit_index)])
+    out[[value_name]] <- as.numeric(values[cbind(
+      object$.trait_index,
+      object$.unit_index
+    )])
     return(out)
   }
   grid <- expand.grid(
@@ -1112,16 +1122,60 @@ confint.gllvmTMB_julia <- function(
     na.action = stats::na.pass
   )
   yraw <- stats::model.response(mf)
-  if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    stop(
-      "engine = 'julia' does not yet support cbind(successes, failures) ",
-      "binomial responses; use a 0/1 Bernoulli response or engine = 'tmb'.",
-      call. = FALSE
-    )
-  }
-  yv <- as.numeric(yraw)
   ft <- factor(data[[trait]])
   fu <- factor(data[[unit_internal]])
+  fam_str <- .gllvm_julia_family(family)
+  row_observed <- if (is.null(is_y_observed)) {
+    rep(TRUE, length(ft))
+  } else {
+    if (length(is_y_observed) != length(ft)) {
+      stop(
+        "engine = 'julia': observed-response mask length mismatch.",
+        call. = FALSE
+      )
+    }
+    as.integer(is_y_observed) != 0L
+  }
+
+  cbind_binomial <- is.matrix(yraw) && ncol(yraw) == 2L
+  if (cbind_binomial) {
+    if (!identical(fam_str, "binomial")) {
+      stop(
+        "engine = 'julia': cbind(successes, failures) responses are wired ",
+        "only for family = binomial(). Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    succ <- as.numeric(yraw[, 1L])
+    fail <- as.numeric(yraw[, 2L])
+    obs <- row_observed
+    if (any(!is.finite(succ[obs])) || any(!is.finite(fail[obs]))) {
+      stop(
+        "engine = 'julia': observed cbind(successes, failures) cells must be finite.",
+        call. = FALSE
+      )
+    }
+    if (any(succ[obs] < 0) || any(fail[obs] < 0)) {
+      stop(
+        "engine = 'julia': cbind(successes, failures) columns must be non-negative.",
+        call. = FALSE
+      )
+    }
+    trials_row <- succ + fail
+    if (any(trials_row[obs] <= 0)) {
+      stop(
+        "engine = 'julia': cbind(successes, failures) rows with zero trials ",
+        "are not allowed.",
+        call. = FALSE
+      )
+    }
+    yv <- succ
+    yv[!obs] <- 0
+    trials_row[!obs] <- 1
+  } else {
+    yv <- as.numeric(yraw)
+    trials_row <- NULL
+  }
   if (length(yv) != length(ft) || length(yv) != length(fu)) {
     stop(
       "engine = 'julia': response / trait / unit length mismatch.",
@@ -1132,18 +1186,6 @@ confint.gllvmTMB_julia <- function(
   units <- levels(fu)
   p <- length(traits)
   n <- length(units)
-  fam_str <- .gllvm_julia_family(family)
-  row_observed <- if (is.null(is_y_observed)) {
-    rep(TRUE, length(yv))
-  } else {
-    if (length(is_y_observed) != length(yv)) {
-      stop(
-        "engine = 'julia': observed-response mask length mismatch.",
-        call. = FALSE
-      )
-    }
-    as.integer(is_y_observed) != 0L
-  }
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
   filled <- matrix(FALSE, p, n, dimnames = list(traits, units))
   Mask <- matrix(FALSE, p, n, dimnames = list(traits, units))
@@ -1247,10 +1289,13 @@ confint.gllvmTMB_julia <- function(
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
   Narg <- NULL
   if (any(fam_str == "binomial")) {
-    if (
+    if (!is.null(trials_row)) {
+      Narg <- matrix(1, p, n, dimnames = list(traits, units))
+      Narg[cbind(as.integer(ft), as.integer(fu))] <- trials_row
+    } else if (
       !is.null(weights) && is.numeric(weights) && length(weights) == length(yv)
     ) {
-      Narg <- matrix(1, p, n)
+      Narg <- matrix(1, p, n, dimnames = list(traits, units))
       Narg[cbind(as.integer(ft), as.integer(fu))] <- as.numeric(weights)
     } else {
       Narg <- 1L

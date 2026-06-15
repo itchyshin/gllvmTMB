@@ -18,14 +18,17 @@
   with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
   beta, gamma, and ordinal-probit families, plus fixed-effect covariates for
   complete, balanced one-part gaussian, poisson, binomial, nbinom2, beta, and
-  gamma fits.
+  gamma fits. Binomial `cbind(successes, failures)` responses are also
+  transported as Julia binomial trial matrices for the complete and
+  missing-response no-X reduced-rank bridge rows validated against the paired
+  GLLVM.jl integration checkout.
   PARTIAL:
   the supported surface is deliberately narrow — the bridge loudly rejects
   non-`rr` covariance terms, missing latent blocks, more than one latent block,
   Gaussian missing-response masks, masked fixed-effect covariate fits,
   masked CI refits, mixed-family lists, ordinal covariate fits, nbinom1,
-  lognormal, `cbind()` binomial, and unbalanced trait × unit tables, erroring
-  clearly rather than
+  lognormal, non-binomial `cbind()` responses, and unbalanced trait × unit
+  tables, erroring clearly rather than
   silently re-interpreting the model. CI routing returns Wald intervals where
   the paired Julia bridge supports them; Gaussian profile and bootstrap CI
   transport is live-tested, while broader non-Gaussian/structure CI coverage

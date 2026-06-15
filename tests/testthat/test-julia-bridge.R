@@ -102,6 +102,26 @@ expect_masked_public_julia_fit <- function(
   fit
 }
 
+make_long_cbind <- function(
+  n_unit = 34L,
+  traits = c("t1", "t2", "t3"),
+  size = 6L,
+  seed = 41L
+) {
+  set.seed(seed)
+  df <- expand.grid(
+    unit = factor(seq_len(n_unit)),
+    trait = traits,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  df$trait <- factor(df$trait)
+  prob <- stats::plogis(-0.25 + 0.2 * as.integer(df$trait))
+  df$succ <- stats::rbinom(nrow(df), size = size, prob = prob)
+  df$fail <- size - df$succ
+  df
+}
+
 skip_if_no_julia <- function() {
   testthat::skip_if_not_installed("JuliaCall")
   jl <- getOption("gllvmTMB.GLLVM.jl.path", Sys.getenv("GLLVM_JL_PATH", ""))
@@ -483,6 +503,69 @@ test_that("engine = 'julia' rejects ordinal fixed-effect X before JuliaCall setu
   )
 })
 
+test_that("engine = 'julia' rejects cbind responses outside binomial before JuliaCall setup", {
+  df <- make_long_cbind(n_unit = 6L)
+  expect_error(
+    gllvmTMB(
+      cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
+      engine = "julia"
+    ),
+    "cbind\\(successes, failures\\).*only for family = binomial"
+  )
+})
+
+test_that("engine = 'julia' rejects malformed cbind binomial rows before JuliaCall setup", {
+  base <- make_long_cbind(n_unit = 6L)
+  form <- cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = 1)
+
+  negative <- base
+  negative$succ[1L] <- -1L
+  expect_error(
+    gllvmTMB(
+      form,
+      data = negative,
+      trait = "trait",
+      unit = "unit",
+      family = binomial(),
+      engine = "julia"
+    ),
+    "columns must be non-negative"
+  )
+
+  nonfinite <- base
+  nonfinite$fail[1L] <- Inf
+  expect_error(
+    gllvmTMB(
+      form,
+      data = nonfinite,
+      trait = "trait",
+      unit = "unit",
+      family = binomial(),
+      engine = "julia"
+    ),
+    "cells must be finite"
+  )
+
+  zero_trials <- base
+  zero_trials$succ[1L] <- 0L
+  zero_trials$fail[1L] <- 0L
+  expect_error(
+    gllvmTMB(
+      form,
+      data = zero_trials,
+      trait = "trait",
+      unit = "unit",
+      family = binomial(),
+      engine = "julia"
+    ),
+    "rows with zero trials"
+  )
+})
+
 # --- numerical round-trip (gated behind a live JuliaCall + GLLVM.jl) --------
 
 test_that("engine = 'julia' Gaussian dispatch matches the direct Julia bridge wrapper", {
@@ -730,6 +813,72 @@ test_that("engine = 'julia' fits admitted missing-response families end-to-end",
       expect_error(residuals(fit), "ordinal predictions")
     }
   }
+})
+
+test_that("engine = 'julia' cbind binomial dispatch matches direct N bridge", {
+  skip_if_no_julia()
+  df <- make_long_cbind(n_unit = 34L, size = 6L, seed = 42L)
+  fit <- gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = binomial(),
+    engine = "julia"
+  )
+  direct <- gllvm_julia_fit(
+    fit$y,
+    family = binomial(),
+    num.lv = 1L,
+    N = fit$N
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(fit$model, "binomial_rr")
+  expect_null(fit$observed_mask)
+  expect_equal(unname(fit$N), matrix(6, nrow = 3L, ncol = 34L))
+  expect_equal(
+    as.numeric(logLik(fit)),
+    as.numeric(logLik(direct)),
+    tolerance = 1e-8
+  )
+  expect_true(is.finite(fit$loglik))
+})
+
+test_that("engine = 'julia' cbind binomial masks rows when either component is missing", {
+  skip_if_no_julia()
+  df <- make_long_cbind(n_unit = 34L, size = 6L, seed = 43L)
+  df$succ[1L] <- NA_integer_
+  df$fail[19L] <- NA_integer_
+  fit <- gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = binomial(),
+    engine = "julia",
+    missing = miss_control(response = "include")
+  )
+  direct <- gllvm_julia_fit(
+    fit$y,
+    family = binomial(),
+    num.lv = 1L,
+    N = fit$N,
+    mask = fit$observed_mask
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(stats::nobs(fit), nrow(df) - 2L)
+  expect_equal(sum(!fit$observed_mask), 2L)
+  expect_equal(fit$y[!fit$observed_mask], c(0, 0))
+  expect_equal(fit$N[fit$observed_mask], rep(6, sum(fit$observed_mask)))
+  expect_equal(fit$N[!fit$observed_mask], c(1, 1))
+  expect_equal(fit$ci_status, "ci_unavailable_masked_response")
+  expect_equal(
+    as.numeric(logLik(fit)),
+    as.numeric(logLik(direct)),
+    tolerance = 1e-8
+  )
 })
 
 test_that("direct Julia bridge wrapper fits a supported Poisson X model", {

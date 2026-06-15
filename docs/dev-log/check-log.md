@@ -16621,3 +16621,63 @@ Deliberately not claimed:
   predictive route.
 - Masked-response simulations, `newdata`, mixed-family simulation, and
   simulation-calibration claims remain outside this slice.
+
+## 2026-06-15 -- Native mixed-family R oracle selector hardening
+
+R-first pivot slice: hardened native `gllvmTMB` mixed-family selector handling
+before admitting any mixed-family row through the Julia bridge. Named
+`family = list(...)` entries now resolve by selector-level name instead of
+accidental list position; unnamed lists keep the historical level-order
+behavior. Fitted objects retain a `family_selector` metadata slot recording the
+selector column, levels, family/link ids by level, and row alignment.
+
+Files touched:
+
+- `R/fit-multi.R`
+- `tests/testthat/test-stage37-mixed-family.R`
+- `R/families.R`
+- `man/families.Rd`
+- `vignettes/articles/response-families.Rmd`
+- `NEWS.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-native-mixed-family-oracle.md`
+
+Evidence:
+
+- Focused native gate:
+  `Rscript -e 'devtools::test(filter="stage37-mixed-family")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 33` in `2.9s`.
+- Mixed-family + bridge smoke:
+  `Rscript -e 'devtools::test(filter="stage37-mixed-family|m1-8-bootstrap-mixed-family")'`
+  -> `FAIL 0 | WARN 0 | SKIP 7 | PASS 33` in `3.0s`; skips are the existing
+  heavy recovery gates.
+- No-Julia bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 17 | PASS 175` in `2.3s`.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 3 | SKIP 721 | PASS 2912` in `125.1s`.
+- Live Julia bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 439` in `58.0s`.
+- Docs:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/families.Rd`; unrelated roxygen Rd churn was reverted.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- Mixed-family `engine = "julia"` admission remains planned. The current Julia
+  payload has a per-trait-family label bug and no mixed-family CI route.
+- This slice validates no-X/no-mask native mixed-family row alignment and
+  post-fit behavior; it does not promote missing-response include, fixed-effect
+  X, delta/hurdle mixed-family CIs, or calibrated simulation coverage.
+- `pdHess = FALSE` is not treated as a fit failure here; the oracle gate checks
+  convergence/logLik, row metadata, link-aware prediction, and family-valid
+  simulation draws.

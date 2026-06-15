@@ -113,6 +113,8 @@ the same.
 Mixed-family fits use long data with one row per observation and a
 column that selects the family for that row. Pass a list of family
 objects and set `attr(fam, "family_var")` to the selector column.
+Unnamed lists use selector-level order; named lists are matched by
+selector level name and must name every entry.
 
 ```{r}
 df_long$family <- factor(
@@ -120,7 +122,11 @@ df_long$family <- factor(
   levels = c("continuous", "presence", "count")
 )
 
-fam <- list(gaussian(), binomial(), poisson())
+fam <- list(
+  continuous = gaussian(),
+  presence = binomial(),
+  count = poisson()
+)
 attr(fam, "family_var") <- "family"
 
 fit_mixed <- gllvmTMB(
@@ -132,7 +138,9 @@ fit_mixed <- gllvmTMB(
 )
 ```
 
-The list order must match the factor levels in the selector column.
+For unnamed lists, the list order must match the factor levels in the
+selector column. Named lists are safer for long-running analyses because
+they are resolved by level name.
 If the selector is a character column, the engine sorts the unique
 values before matching them, so an explicit factor is safer.
 

@@ -3,6 +3,13 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+* Mixed-family fits now resolve named `family = list(...)` entries by selector
+  level name instead of accidental list position. Unnamed lists keep the
+  existing level-order behavior; partially or incorrectly named lists now fail
+  with an explicit selector-level error. Fitted mixed-family objects also retain
+  a `family_selector` metadata slot recording the selector column, levels,
+  family/link ids by level, and row alignment used by the native R/TMB oracle.
+
 ## R-side `engine = "julia"` bridge to GLLVM.jl (2026-06-13)
 
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,

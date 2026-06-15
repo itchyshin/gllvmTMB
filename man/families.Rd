@@ -124,9 +124,11 @@ column to \code{data} that chooses which family applies to each row.
 
 By default the selector column is named \code{"family"}. To use a different
 column name, set \code{attr(family, "family_var") <- "colname"}. For
-reproducibility, make the selector a factor whose levels are in the
-same order as the \code{family} list. The length of \code{family} must match the
-number of distinct selector levels.
+reproducibility, make the selector a factor. Unnamed \code{family} lists are
+matched in selector-level order. Named \code{family} lists are matched by name,
+so \code{list(count = poisson(), continuous = gaussian())} is safe even when the
+factor levels use a different order, provided every selector level is named.
+The length of \code{family} must match the number of distinct selector levels.
 }
 
 \subsection{Delta-family defaults}{
@@ -173,7 +175,7 @@ sim$data$family <- factor(
   ifelse(sim$data$trait == levels(sim$data$trait)[1], "gaussian", "binomial"),
   levels = c("gaussian", "binomial")
 )
-fam <- list(gaussian(), binomial())
+fam <- list(gaussian = gaussian(), binomial = binomial())
 fit <- gllvmTMB(
   value ~ 0 + trait + latent(0 + trait | site, d = 1),
   data   = sim$data,

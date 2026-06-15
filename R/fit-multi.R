@@ -154,6 +154,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Per-row family list (length = nrow(data)). Used downstream to read
   ## family-specific extras like Student-t `$df` (fixed vs estimated).
   family_per_row <- vector("list", nrow(data))
+  family_selector <- NULL
   ## Allow string convenience: family = "delta_lognormal" / "delta_gamma"
   ## is rewritten to the constructor result so downstream code (which
   ## consults family$linkinv etc.) sees the full object. Other string
@@ -167,25 +168,67 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     )
   }
   if (is.list(family) && !inherits(family, "family")) {
+    family_input <- family    # Preserve original user input for refits.
     fam_var <- attr(family, "family_var") %||% "family"
     if (!fam_var %in% names(data))
       cli::cli_abort(c(
         "Mixed-family fit needs a {.var {fam_var}} column in {.arg data}.",
-        "i" = "Set {.code attr(family, 'family_var') <- 'colname'} or include a {.var family} column."
+        "i" = paste(
+          "Set {.code attr(family, 'family_var') <- 'colname'} or include",
+          "a {.var family} column."
+        )
       ))
-    fl_pairs <- vapply(family, family_to_id, integer(2))
-    fids     <- fl_pairs[1, ]
-    lids     <- fl_pairs[2, ]
     fam_levels <- if (is.factor(data[[fam_var]])) levels(data[[fam_var]])
                   else sort(unique(as.character(data[[fam_var]])))
     if (length(fam_levels) != length(family))
       cli::cli_abort("length(family) must match the number of distinct levels in {.var {fam_var}}.")
+    family_names <- names(family)
+    has_family_names <- !is.null(family_names) && any(nzchar(family_names))
+    if (has_family_names) {
+      if (any(!nzchar(family_names))) {
+        cli::cli_abort(c(
+          "Named mixed-family lists must name every entry.",
+          "i" = paste(
+            "Names are matched to levels of {.var {fam_var}}; leave all",
+            "entries unnamed to use level order."
+          )
+        ))
+      }
+      if (!setequal(family_names, fam_levels)) {
+        cli::cli_abort(c(
+          "Names of the mixed-family list must match levels of {.var {fam_var}}.",
+          "x" = "Family-list names: {.val {family_names}}.",
+          "x" = "Selector levels: {.val {fam_levels}}.",
+          "i" = paste(
+            "Rename or reorder the family list, or leave it unnamed to use",
+            "selector-level order."
+          )
+        ))
+      }
+      family <- family[match(fam_levels, family_names)]
+    }
+    fl_pairs <- vapply(family, family_to_id, integer(2))
+    fids     <- fl_pairs[1, ]
+    lids     <- fl_pairs[2, ]
     fam_idx       <- match(as.character(data[[fam_var]]), fam_levels)
     family_id_vec <- fids[fam_idx]
     link_id_vec   <- lids[fam_idx]
     for (i in seq_along(family_per_row)) family_per_row[[i]] <- family[[fam_idx[i]]]
     family_id <- 0L
-    family_input <- family    # M1.8: preserve original list (with family_var attr)
+    resolved_names <- names(family)
+    if (is.null(resolved_names) || any(!nzchar(resolved_names))) {
+      resolved_names <- fam_levels
+    }
+    family_selector <- list(
+      family_var = fam_var,
+      levels = fam_levels,
+      list_names_matched = has_family_names,
+      family_names = resolved_names,
+      family_id_by_level = stats::setNames(as.integer(fids), fam_levels),
+      link_id_by_level = stats::setNames(as.integer(lids), fam_levels),
+      row_index = as.integer(fam_idx),
+      row_level = as.character(data[[fam_var]])
+    )
     family    <- family[[1]]   # keep one for downstream linkinv
   } else {
     fl_pair <- family_to_id(family)
@@ -3720,6 +3763,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       ## refit_one — can pass the correct family list back to `gllvmTMB()`.
       ## For single-family fits, `family_input == family`.
       family_input = family_input,
+      family_selector = family_selector,
       data         = data,
       ## Phase 1 missing-data layer (design 59 sec.4b). `missing_data` is the
       ## shared-contract fit slot; `data_original` is the pre-drop / pre-mask

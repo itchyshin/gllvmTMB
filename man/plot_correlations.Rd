@@ -108,6 +108,8 @@ attributes.
 heatmap, or ellipse matrix. Forest and confidence-eye styles keep point
 estimates visible as open points when interval bounds are missing, and draw
 interval information only for rows with finite lower and upper bounds.
+The returned \code{gllvmTMB_data} keeps row-level \code{ci_status} for audit and
+article-table reuse.
 Matrix styles show the same tidy rows without requiring users to reconstruct
 or hand-index a correlation matrix.
 For fitted-object calls, open points can often be investigated by trying

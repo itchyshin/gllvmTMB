@@ -281,6 +281,7 @@ test_that("plot(type = 'integration') returns a ggplot with three indices per tr
   )
   ## Without boot, lower/upper should be all NA
   expect_true(all(is.na(p$data$lower)))
+  expect_true(all(p$data$ci_status == "interval_unavailable"))
 })
 
 test_that("plot(type = 'integration') accepts a bootstrap_Sigma object directly", {
@@ -327,9 +328,75 @@ test_that("plot(type = 'integration') accepts a bootstrap_Sigma object directly"
   expect_equal(meta$interval_status, "provided")
   expect_equal(nrow(p$data), 3L * fit$n_traits)
   expect_true(all(p$data$interval_status == "provided"))
+  expect_true(all(p$data$ci_status == "ok"))
   expect_true(all(is.finite(p$data$lower)))
   expect_true(all(is.finite(p$data$upper)))
   expect_silent(print(p))
+})
+
+test_that("plot(type = 'integration') preserves row-level ci_status", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  traits <- levels(fit$data[[fit$trait_col]])
+  rep <- stats::setNames(c(0.42, 0.51, 0.34, 0.61), traits)
+  c2_B <- stats::setNames(c(0.62, 0.48, 0.35, 0.72), traits)
+  c2_W <- stats::setNames(c(0.24, 0.30, 0.18, 0.41), traits)
+  rep_lower <- pmax(0, rep - 0.07)
+  rep_lower[1L] <- NA_real_
+  c2_B_lower <- pmax(0, c2_B - 0.08)
+  c2_B_upper <- pmin(1, c2_B + 0.09)
+  c2_B_lower[2L] <- NA_real_
+  c2_B_upper[2L] <- NA_real_
+  boot <- list(
+    point_est = list(
+      ICC_site = rep,
+      communality_B = c2_B,
+      communality_W = c2_W
+    ),
+    ci_lower = list(
+      ICC_site = rep_lower,
+      communality_B = c2_B_lower,
+      communality_W = pmax(0, c2_W - 0.06)
+    ),
+    ci_upper = list(
+      ICC_site = pmin(1, rep + 0.08),
+      communality_B = c2_B_upper,
+      communality_W = pmin(1, c2_W + 0.07)
+    ),
+    ci_method = "percentile",
+    link_residual = "auto",
+    conf = 0.95,
+    n_boot = 25L,
+    n_failed = 2L,
+    level = c("B", "W"),
+    what = c("ICC", "communality"),
+    draws = NULL
+  )
+  class(boot) <- c("bootstrap_Sigma", "list")
+
+  p <- suppressMessages(plot(fit, type = "integration", boot = boot))
+  meta <- expect_gtmb_plot_meta(
+    p,
+    "integration",
+    "extract_ICC_site + extract_communality"
+  )
+  expect_equal(meta$interval_status, "partial")
+  expect_setequal(
+    unique(p$data$ci_status),
+    c("ok", "partial_interval", "bootstrap_failed")
+  )
+  expect_equal(
+    p$data$ci_status[
+      p$data$index == "Repeatability" & p$data$trait == traits[[1L]]
+    ],
+    "partial_interval"
+  )
+  expect_equal(
+    p$data$ci_status[
+      p$data$index == "Communality (B)" & p$data$trait == traits[[2L]]
+    ],
+    "bootstrap_failed"
+  )
 })
 
 test_that("plot(type = 'communality') returns stacked shared/unique bars", {
@@ -352,10 +419,13 @@ test_that("plot(type = 'communality') returns stacked shared/unique bars", {
       "upper",
       "has_interval",
       "interval_method",
+      "ci_status",
+      "ci_method",
       "interval_status"
     ) %in%
       names(p$data)
   ))
+  expect_true(all(p$data$ci_status == "interval_unavailable"))
   expect_setequal(
     as.character(unique(p$data$component)),
     c("Shared latent (c^2)", "Trait-specific uniqueness")
@@ -402,9 +472,50 @@ test_that("plot(type = 'communality') can overlay bootstrap_Sigma intervals", {
   expect_equal(meta$interval_status, "provided")
   expect_true(any(p$data$has_interval))
   expect_true(all(p$data$interval_status == "provided"))
+  expect_true(all(p$data$ci_status == "ok"))
   expect_true(all(is.finite(p$data$lower)))
   expect_true(all(is.finite(p$data$upper)))
   expect_silent(print(p))
+})
+
+test_that("plot(type = 'communality') preserves row-level ci_status", {
+  skip_if_no_ggplot2()
+  fit <- make_BW_fit_for_plot()
+  traits <- levels(fit$data[[fit$trait_col]])
+  c2_B <- stats::setNames(c(0.62, 0.48, 0.35, 0.72), traits)
+  c2_W <- stats::setNames(c(0.24, 0.30, 0.18, 0.41), traits)
+  c2_B_lower <- pmax(0, c2_B - 0.08)
+  c2_B_upper <- pmin(1, c2_B + 0.09)
+  c2_B_lower[2L] <- NA_real_
+  c2_B_upper[2L] <- NA_real_
+  boot <- list(
+    point_est = list(communality_B = c2_B, communality_W = c2_W),
+    ci_lower = list(
+      communality_B = c2_B_lower,
+      communality_W = pmax(0, c2_W - 0.06)
+    ),
+    ci_upper = list(
+      communality_B = c2_B_upper,
+      communality_W = pmin(1, c2_W + 0.07)
+    ),
+    ci_method = "percentile",
+    link_residual = "auto",
+    conf = 0.95,
+    n_boot = 25L,
+    n_failed = 1L,
+    level = c("B", "W"),
+    what = "communality",
+    draws = NULL
+  )
+  class(boot) <- c("bootstrap_Sigma", "list")
+
+  p <- suppressMessages(plot(fit, type = "communality", boot = boot))
+  meta <- expect_gtmb_plot_meta(p, "communality", "extract_communality")
+  expect_equal(meta$interval_status, "partial")
+  expect_setequal(unique(p$data$ci_status), c("ok", "bootstrap_failed"))
+  failed <- p$data[p$data$trait == traits[[2L]] & p$data$level == "unit", ]
+  expect_true(all(failed$ci_status == "bootstrap_failed"))
+  expect_true(all(!failed$has_interval))
 })
 
 test_that("plot(type = 'variance') returns a stacked-bar ggplot summing to 1 per trait", {

@@ -61,10 +61,12 @@ collapse the default to \code{"unit"} and drop the \code{unit_obs} panel).}
 \item{boot}{Optional bootstrap object. This can be either a
 \code{bootstrap_Sigma()} result or a list with elements \code{repeatability},
 \code{communality_B}, \code{communality_W}, each a data frame with columns
-\code{trait}, \code{lower}, \code{upper}. A \code{bootstrap_Sigma()} object can add
-correlation intervals to \code{"correlation"} / \code{"correlation_ellipse"},
-whiskers to \code{"integration"}, and \code{c^2} boundary intervals to
-\code{"communality"}. Default \code{NULL} skips interval overlays.}
+\code{trait}, \code{lower}, \code{upper}, and optionally \code{method} / \code{ci_status}.
+A \code{bootstrap_Sigma()} object can add correlation intervals to
+\code{"correlation"} / \code{"correlation_ellipse"}, whiskers to
+\code{"integration"}, and \code{c^2} boundary intervals to \code{"communality"}.
+Default \code{NULL} skips interval overlays. The prepared \code{gllvmTMB_data}
+table keeps \code{ci_status} where intervals are present or requested.}
 
 \item{axes}{Length-2 or length-3 integer vector for \code{"ordination"} when
 \code{d >= 2}. Length 2 draws a single biplot. Length 3 draws a static

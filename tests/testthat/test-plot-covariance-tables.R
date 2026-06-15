@@ -113,6 +113,12 @@ test_that("plot_correlations returns an interval-aware forest plot", {
   plot_data <- attr(p, "gllvmTMB_data")
   expect_s3_class(plot_data, "data.frame")
   expect_equal(nrow(plot_data), nrow(cors))
+  plot_key <- paste(plot_data$tier, plot_data$trait_i, plot_data$trait_j)
+  input_key <- paste(cors$tier, cors$trait_i, cors$trait_j)
+  expect_equal(
+    plot_data$ci_status[match(input_key, plot_key)],
+    c("ok", "ok", "ok", "interval_unavailable", "ok")
+  )
   expect_equal(sum(plot_data$.has_interval), 4L)
   expect_equal(sum(plot_data$.draw_interval), 4L)
   expect_equal(sum(plot_data$.has_uncertainty_display), 4L)
@@ -229,6 +235,12 @@ test_that("plot_correlations marks rows without intervals as point-only", {
   expect_equal(meta$interval_status, "partial")
   plot_data <- attr(p, "gllvmTMB_data")
   expect_equal(sum(plot_data$.has_interval), 2L)
+  plot_key <- paste(plot_data$tier, plot_data$trait_i, plot_data$trait_j)
+  input_key <- paste(cors$tier, cors$trait_i, cors$trait_j)
+  expect_equal(
+    plot_data$ci_status[match(input_key, plot_key)],
+    c("ok", "ok", "interval_unavailable")
+  )
   expect_equal(sum(plot_data$.has_confidence_eye), 2L)
   expect_equal(sum(plot_data$.has_uncertainty_display), 2L)
   expect_equal(sum(gtmb_plot_geom_names(p) == "GeomPoint"), 2L)
@@ -283,6 +295,8 @@ test_that("plot_correlations renders tidy rows as a heatmap matrix", {
   expect_equal(meta$interval_status, "partial")
   plot_data <- attr(p, "gllvmTMB_data")
   expect_equal(nrow(plot_data), 6L)
+  expect_true("ci_status" %in% names(plot_data))
+  expect_true(any(plot_data$ci_status == "interval_unavailable", na.rm = TRUE))
   expect_true(all(plot_data$.triangle %in% c("lower", "diagonal")))
   expect_true(all(plot_data$.row_index >= plot_data$.col_index))
   expect_true(any(grepl("\\[0.12, 0.66\\]", plot_data$.label)))
@@ -537,6 +551,7 @@ test_that("plot_Sigma_table marks rows without intervals as point-only", {
     estimate = c(0.22, -0.08, 0.15),
     lower = c(0.08, -0.18, NA_real_),
     upper = c(0.35, 0.02, NA_real_),
+    ci_status = c("ok", "ok", "bootstrap_failed"),
     matrix = "Sigma",
     component = "total",
     diagonal = FALSE,
@@ -553,6 +568,9 @@ test_that("plot_Sigma_table marks rows without intervals as point-only", {
   )
   expect_equal(meta$interval_status, "partial")
   plot_data <- attr(p, "gllvmTMB_data")
+  plot_key <- paste(plot_data$level, plot_data$trait_i, plot_data$trait_j)
+  input_key <- paste(sigma_rows$level, sigma_rows$trait_i, sigma_rows$trait_j)
+  expect_equal(plot_data$ci_status[match(input_key, plot_key)], sigma_rows$ci_status)
   expect_equal(sum(plot_data$.has_interval), 2L)
   expect_equal(sum(plot_data$.has_confidence_eye), 2L)
   expect_equal(sum(plot_data$.has_uncertainty_display), 2L)

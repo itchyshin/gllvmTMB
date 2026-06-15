@@ -4,6 +4,46 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Plot CI-status propagation
+
+Scope:
+
+- kept row-level `ci_status` in `plot(type = "integration")` and
+  `plot(type = "communality")` `gllvmTMB_data` payloads;
+- taught `plot_correlations()` to add `ci_status` when rows do not already
+  carry it, using the same `.gtmb_ci_status()` classifier as extractor tables;
+- added regression coverage that `plot_Sigma_table()` preserves an existing
+  `ci_status` column from report-ready rows.
+
+Evidence so far:
+
+- Targeted plot gate:
+  `Rscript -e 'devtools::test(filter="plot-gllvmTMB|plot-covariance-tables")'`
+  -> `PASS 493`, `SKIP 0`, `FAIL 0`, `WARN 0` in `15.8s`.
+- Docs:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/plot.gllvmTMB_multi.Rd` and `man/plot_correlations.Rd`.
+  Pre-existing unresolved-link roxygen warnings remain; unrelated generated Rd
+  churn was reverted.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `PASS 2976`, `SKIP 724`, `FAIL 0`, `WARN 3` in `120.7s`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warning and the
+  existing `glmmTMB`/`TMB` version mismatch.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- Plot geometry is unchanged except for data payload fields; this is not a
+  visual redesign or vdiffr snapshot gate.
+- `ci_status = "ok"` still means finite endpoints for the chosen method, not
+  calibrated coverage.
+
 ## 2026-06-15 -- R extractor CI-status columns and phylo-signal H2 routes
 
 Scope:

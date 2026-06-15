@@ -66,10 +66,12 @@
 #' @param boot Optional bootstrap object. This can be either a
 #'   `bootstrap_Sigma()` result or a list with elements `repeatability`,
 #'   `communality_B`, `communality_W`, each a data frame with columns
-#'   `trait`, `lower`, `upper`. A `bootstrap_Sigma()` object can add
-#'   correlation intervals to `"correlation"` / `"correlation_ellipse"`,
-#'   whiskers to `"integration"`, and `c^2` boundary intervals to
-#'   `"communality"`. Default `NULL` skips interval overlays.
+#'   `trait`, `lower`, `upper`, and optionally `method` / `ci_status`.
+#'   A `bootstrap_Sigma()` object can add correlation intervals to
+#'   `"correlation"` / `"correlation_ellipse"`, whiskers to
+#'   `"integration"`, and `c^2` boundary intervals to `"communality"`.
+#'   Default `NULL` skips interval overlays. The prepared `gllvmTMB_data`
+#'   table keeps `ci_status` where intervals are present or requested.
 #' @param axes Length-2 or length-3 integer vector for `"ordination"` when
 #'   `d >= 2`. Length 2 draws a single biplot. Length 3 draws a static
 #'   pair-grid of the three axis pairs. For `d = 3`, the default
@@ -498,6 +500,37 @@ plot.gllvmTMB_julia <- function(
     return("partial")
   }
   paste(status, collapse = ";")
+}
+
+.gtmb_plot_ci_table <- function(
+  traits,
+  lower = rep(NA_real_, length(traits)),
+  upper = rep(NA_real_, length(traits)),
+  method = "(unavailable)",
+  ci_status = NULL,
+  interval_status = NULL
+) {
+  out <- data.frame(
+    trait = traits,
+    lower = as.numeric(lower),
+    upper = as.numeric(upper),
+    method = rep_len(as.character(method), length(traits)),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(ci_status)) {
+    ci_status <- .gtmb_ci_status(out$method, out$lower, out$upper)
+  }
+  out$ci_status <- rep_len(as.character(ci_status), length(traits))
+  if (is.null(interval_status)) {
+    has_interval <- is.finite(out$lower) & is.finite(out$upper)
+    interval_status <- ifelse(
+      has_interval,
+      "provided",
+      ifelse(out$method == "(unavailable)", "none", "missing")
+    )
+  }
+  out$interval_status <- rep_len(as.character(interval_status), length(traits))
+  out
 }
 
 
@@ -999,12 +1032,7 @@ plot.gllvmTMB_julia <- function(
 
   pull_ci <- function(boot, name, traits) {
     if (is.null(boot)) {
-      data.frame(
-        trait = traits,
-        lower = rep(NA_real_, length(traits)),
-        upper = rep(NA_real_, length(traits)),
-        stringsAsFactors = FALSE
-      )
+      .gtmb_plot_ci_table(traits, interval_status = "none")
     } else {
       ci <- NULL
       if (inherits(boot, "bootstrap_Sigma")) {
@@ -1035,14 +1063,22 @@ plot.gllvmTMB_julia <- function(
         ci <- boot[[name]]
       }
       if (is.null(ci)) {
-        return(data.frame(
-          trait = traits,
-          lower = rep(NA_real_, length(traits)),
-          upper = rep(NA_real_, length(traits)),
-          stringsAsFactors = FALSE
+        return(.gtmb_plot_ci_table(
+          traits,
+          method = "bootstrap",
+          interval_status = "missing"
         ))
       }
-      ci[match(traits, ci$trait), c("trait", "lower", "upper"), drop = FALSE]
+      ci <- ci[match(traits, ci$trait), , drop = FALSE]
+      method <- if ("method" %in% names(ci)) ci$method else "bootstrap"
+      ci_status <- if ("ci_status" %in% names(ci)) ci$ci_status else NULL
+      .gtmb_plot_ci_table(
+        traits,
+        lower = ci$lower,
+        upper = ci$upper,
+        method = method,
+        ci_status = ci_status
+      )
     }
   }
 
@@ -1055,6 +1091,9 @@ plot.gllvmTMB_julia <- function(
       estimate = unname(rep[tn]),
       lower = ci$lower,
       upper = ci$upper,
+      ci_status = ci$ci_status,
+      ci_method = ci$method,
+      interval_status = ci$interval_status,
       stringsAsFactors = FALSE
     )
   }
@@ -1066,6 +1105,9 @@ plot.gllvmTMB_julia <- function(
       estimate = unname(com_B[tn]),
       lower = ci$lower,
       upper = ci$upper,
+      ci_status = ci$ci_status,
+      ci_method = ci$method,
+      interval_status = ci$interval_status,
       stringsAsFactors = FALSE
     )
   }
@@ -1077,17 +1119,15 @@ plot.gllvmTMB_julia <- function(
       estimate = unname(com_W[tn]),
       lower = ci$lower,
       upper = ci$upper,
+      ci_status = ci$ci_status,
+      ci_method = ci$method,
+      interval_status = ci$interval_status,
       stringsAsFactors = FALSE
     )
   }
   dat <- do.call(rbind, rows)
   dat$has_interval <- is.finite(dat$lower) & is.finite(dat$upper)
-  dat$interval_method <- ifelse(dat$has_interval, "bootstrap", "none")
-  dat$interval_status <- ifelse(
-    dat$has_interval,
-    "provided",
-    if (is.null(boot)) "none" else "missing"
-  )
+  dat$interval_method <- ifelse(dat$has_interval, dat$ci_method, "none")
 
   ## Order by repeatability descending if available, else by name
   if (!is.null(rep)) {
@@ -1188,12 +1228,11 @@ plot.gllvmTMB_julia <- function(
 
 .communality_ci_from_boot <- function(boot, level, traits) {
   empty <- function(status) {
-    data.frame(
-      trait = traits,
-      lower = rep(NA_real_, length(traits)),
-      upper = rep(NA_real_, length(traits)),
-      interval_status = status,
-      stringsAsFactors = FALSE
+    method <- if (identical(status, "none")) "(unavailable)" else "bootstrap"
+    .gtmb_plot_ci_table(
+      traits,
+      method = method,
+      interval_status = status
     )
   }
   if (is.null(boot)) {
@@ -1226,13 +1265,14 @@ plot.gllvmTMB_julia <- function(
   } else {
     rep(NA_real_, length(traits))
   }
-  has_interval <- is.finite(lower) & is.finite(upper)
-  data.frame(
-    trait = traits,
+  method <- if ("method" %in% names(ci)) ci$method else "bootstrap"
+  ci_status <- if ("ci_status" %in% names(ci)) ci$ci_status else NULL
+  .gtmb_plot_ci_table(
+    traits,
     lower = lower,
     upper = upper,
-    interval_status = ifelse(has_interval, "provided", "missing"),
-    stringsAsFactors = FALSE
+    method = method,
+    ci_status = ci_status
   )
 }
 
@@ -1249,6 +1289,8 @@ plot.gllvmTMB_julia <- function(
         communality = unname(c2[tn]),
         lower = ci$lower,
         upper = ci$upper,
+        ci_status = ci$ci_status,
+        ci_method = ci$method,
         interval_status = ci$interval_status,
         stringsAsFactors = FALSE
       )
@@ -1264,6 +1306,8 @@ plot.gllvmTMB_julia <- function(
         communality = unname(c2[tn]),
         lower = ci$lower,
         upper = ci$upper,
+        ci_status = ci$ci_status,
+        ci_method = ci$method,
         interval_status = ci$interval_status,
         stringsAsFactors = FALSE
       )
@@ -1276,7 +1320,7 @@ plot.gllvmTMB_julia <- function(
   dat <- do.call(rbind, rows)
   dat$uniqueness <- pmax(0, 1 - dat$communality)
   dat$has_interval <- is.finite(dat$lower) & is.finite(dat$upper)
-  dat$interval_method <- ifelse(dat$has_interval, "bootstrap", "none")
+  dat$interval_method <- ifelse(dat$has_interval, dat$ci_method, "none")
   dat$trait <- factor(dat$trait, levels = rev(tn))
   dat$level <- factor(dat$level, levels = c("unit", "unit_obs"))
 
@@ -1290,6 +1334,8 @@ plot.gllvmTMB_julia <- function(
     upper = dat$upper,
     has_interval = dat$has_interval,
     interval_method = dat$interval_method,
+    ci_status = dat$ci_status,
+    ci_method = dat$ci_method,
     interval_status = dat$interval_status,
     stringsAsFactors = FALSE
   )
@@ -1303,6 +1349,8 @@ plot.gllvmTMB_julia <- function(
     upper = ifelse(dat$has_interval, pmin(1, 1 - dat$lower), NA_real_),
     has_interval = dat$has_interval,
     interval_method = dat$interval_method,
+    ci_status = dat$ci_status,
+    ci_method = dat$ci_method,
     interval_status = dat$interval_status,
     stringsAsFactors = FALSE
   )

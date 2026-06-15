@@ -28,6 +28,13 @@
   paths instead of returning placeholder bootstrap bounds. This completes the
   R-side extractor target before Julia bridge parity work follows.
 
+* `plot(type = "integration")`, `plot(type = "communality")`, and
+  `plot_correlations()` now preserve row-level `ci_status` in their
+  `gllvmTMB_data` payloads. `plot_Sigma_table()` also preserves an existing
+  `ci_status` column from report-ready rows. The plot geometry still displays
+  finite interval bounds only; `ci_status` is an audit/reporting field, not a
+  calibrated-coverage claim.
+
 * `engine = "julia"` now partially admits complete, balanced, trait-aligned
   mixed-family list fits when each trait maps to one of the routed component
   families (Gaussian, Poisson, Binomial, NB2, Beta, or Gamma). The route

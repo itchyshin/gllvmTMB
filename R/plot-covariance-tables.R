@@ -386,6 +386,9 @@
   dat$.estimate <- dat$correlation
   dat$.lower <- dat$lower
   dat$.upper <- dat$upper
+  if (!"ci_status" %in% names(dat)) {
+    dat$ci_status <- .gtmb_ci_status(dat$method, dat$.lower, dat$.upper)
+  }
   dat$.has_interval <- is.finite(dat$.lower) & is.finite(dat$.upper)
   dat$.significant <- dat$.has_interval & dat$.lower * dat$.upper > 0
   dat$.facet <- .gtmb_pretty_levels(dat$tier)
@@ -973,6 +976,8 @@
 #' heatmap, or ellipse matrix. Forest and confidence-eye styles keep point
 #' estimates visible as open points when interval bounds are missing, and draw
 #' interval information only for rows with finite lower and upper bounds.
+#' The returned `gllvmTMB_data` keeps row-level `ci_status` for audit and
+#' article-table reuse.
 #' Matrix styles show the same tidy rows without requiring users to reconstruct
 #' or hand-index a correlation matrix.
 #' For fitted-object calls, open points can often be investigated by trying
@@ -1146,6 +1151,9 @@ plot_correlations <- function(
     cli::cli_abort("No correlation rows to plot.")
   }
   plot_notes <- attr(dat, "notes") %||% character(0)
+  if (!"ci_status" %in% names(dat)) {
+    dat$ci_status <- .gtmb_ci_status(dat$method, dat$lower, dat$upper)
+  }
 
   if (isTRUE(matrix_style)) {
     return(.gtmb_plot_correlation_matrix(

@@ -6,6 +6,7 @@
 \alias{tidy.gllvmTMB_julia}
 \alias{nobs.gllvmTMB_julia}
 \alias{vcov.gllvmTMB_julia}
+\alias{augment.gllvmTMB_julia}
 \alias{glance.gllvmTMB_julia}
 \alias{simulate.gllvmTMB_julia}
 \alias{predict.gllvmTMB_julia}
@@ -28,6 +29,15 @@
 \method{nobs}{gllvmTMB_julia}(object, ...)
 
 \method{vcov}{gllvmTMB_julia}(object, ...)
+
+\method{augment}{gllvmTMB_julia}(
+  x,
+  data = NULL,
+  newdata = NULL,
+  type = c("response", "link"),
+  re_form = ~.,
+  ...
+)
 
 \method{glance}{gllvmTMB_julia}(x, ...)
 
@@ -62,18 +72,25 @@ unsupported for Julia-engine fits; use \code{\link[=confint]{confint()}} where r
 
 \item{conf.level}{Confidence level requested by \code{conf.int}.}
 
-\item{nsim}{For \code{simulate()}, number of conditional response draws.}
-
-\item{seed}{Optional RNG seed for \code{simulate()}.}
-
-\item{re_form}{Random-effect formula controlling whether conditional latent
-scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predictions.}
+\item{data}{Optional original training data for \code{augment()}. When supplied,
+it must have the same row count as the in-sample bridge rows.}
 
 \item{newdata}{Optional new data. Currently unsupported for Julia-engine fits;
 only in-sample predictions are returned.}
 
 \item{type}{Prediction scale. \code{"link"} returns the fitted linear predictor and
-\code{"response"} returns the inverse-link mean.}
+\code{"response"} returns the inverse-link mean. For \code{augment()}, only
+\code{"response"} is currently routed; use \code{predict(type = "link")} for
+link-scale fitted values.}
+
+\item{re_form}{Random-effect formula controlling whether conditional latent
+scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predictions.
+For \code{augment()}, only the default conditional \code{~ .} route is currently
+supported so \code{.fitted} and \code{.resid} share one prediction contract.}
+
+\item{nsim}{For \code{simulate()}, number of conditional response draws.}
+
+\item{seed}{Optional RNG seed for \code{simulate()}.}
 
 \item{digits}{Decimal digits to print.}
 }
@@ -81,9 +98,11 @@ only in-sample predictions are returned.}
 \code{coef()} returns a named list of bridge coefficients. \code{tidy()} returns
 a coefficient data frame with \code{term}, \code{estimate}, and \code{component} columns for
 the currently routed fixed-effect bridge payload. \code{glance()} returns one row
-of cached fit statistics. \code{simulate()} returns an \verb{n_obs x nsim} matrix of
-conditional in-sample draws for supported bridge families. \code{predict()} and
-\code{residuals()} return data frames in the original training-row order when the
+of cached fit statistics. \code{augment()} returns in-sample row diagnostics with
+\code{.observed}, \code{.fitted}, \code{.resid}, and \code{.status} columns. \code{simulate()} returns
+an \verb{n_obs x nsim} matrix of conditional in-sample draws for supported bridge
+families. \code{predict()} and \code{residuals()} return data frames in the original
+training-row order when the
 object came from \code{gllvmTMB(..., engine = "julia")}. \code{fitted()} returns a
 trait x unit matrix. \code{nobs()} returns the number of likelihood-contributing
 cells. \code{vcov()} currently errors with an explicit status because covariance

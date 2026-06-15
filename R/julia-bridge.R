@@ -712,6 +712,8 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' payload in ordinary R shapes; they do not perform new Julia computations.
 #'
 #' @param object,x A `gllvmTMB_julia` object.
+#' @param data Optional original training data for `augment()`. When supplied,
+#'   it must have the same row count as the in-sample bridge rows.
 #' @param nsim For `simulate()`, number of conditional response draws.
 #' @param seed Optional RNG seed for `simulate()`.
 #' @param newdata Optional new data. Currently unsupported for Julia-engine fits;
@@ -722,17 +724,23 @@ print.gllvmTMB_julia <- function(x, ...) {
 #'   unsupported for Julia-engine fits; use [confint()] where routed.
 #' @param conf.level Confidence level requested by `conf.int`.
 #' @param type Prediction scale. `"link"` returns the fitted linear predictor and
-#'   `"response"` returns the inverse-link mean.
+#'   `"response"` returns the inverse-link mean. For `augment()`, only
+#'   `"response"` is currently routed; use `predict(type = "link")` for
+#'   link-scale fitted values.
 #' @param re_form Random-effect formula controlling whether conditional latent
 #'   scores are included. Use `~ 0` or `NA` for fixed-effects-only predictions.
+#'   For `augment()`, only the default conditional `~ .` route is currently
+#'   supported so `.fitted` and `.resid` share one prediction contract.
 #' @param digits Decimal digits to print.
 #' @param ... Currently unused.
 #' @return `coef()` returns a named list of bridge coefficients. `tidy()` returns
 #'   a coefficient data frame with `term`, `estimate`, and `component` columns for
 #'   the currently routed fixed-effect bridge payload. `glance()` returns one row
-#'   of cached fit statistics. `simulate()` returns an `n_obs x nsim` matrix of
-#'   conditional in-sample draws for supported bridge families. `predict()` and
-#'   `residuals()` return data frames in the original training-row order when the
+#'   of cached fit statistics. `augment()` returns in-sample row diagnostics with
+#'   `.observed`, `.fitted`, `.resid`, and `.status` columns. `simulate()` returns
+#'   an `n_obs x nsim` matrix of conditional in-sample draws for supported bridge
+#'   families. `predict()` and `residuals()` return data frames in the original
+#'   training-row order when the
 #'   object came from `gllvmTMB(..., engine = "julia")`. `fitted()` returns a
 #'   trait x unit matrix. `nobs()` returns the number of likelihood-contributing
 #'   cells. `vcov()` currently errors with an explicit status because covariance
@@ -830,6 +838,77 @@ vcov.gllvmTMB_julia <- function(object, ...) {
     "for interval output on supported cells.",
     call. = FALSE
   )
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+augment.gllvmTMB_julia <- function(
+  x,
+  data = NULL,
+  newdata = NULL,
+  type = c("response", "link"),
+  re_form = ~.,
+  ...
+) {
+  if (!is.null(newdata)) {
+    stop(
+      "augment.gllvmTMB_julia: newdata augmentation is not wired yet; ",
+      "only in-sample rows are currently supported.",
+      call. = FALSE
+    )
+  }
+  type <- match.arg(type)
+  if (!identical(type, "response")) {
+    stop(
+      "augment.gllvmTMB_julia: only type = 'response' is routed yet; ",
+      "use predict(type = 'link') for link-scale fitted values.",
+      call. = FALSE
+    )
+  }
+  if (!inherits(re_form, "formula") || !identical(deparse(re_form), "~.")) {
+    stop(
+      "augment.gllvmTMB_julia: only re_form = ~ . is routed yet so ",
+      ".fitted and .resid use the same conditional prediction contract; ",
+      "use predict() directly for fixed-effects-only fitted values.",
+      call. = FALSE
+    )
+  }
+
+  rr <- residuals(x, type = "response", ...)
+  pr <- predict(x, type = "response", re_form = ~., ...)
+  if (nrow(rr) != nrow(pr)) {
+    stop(
+      "augment.gllvmTMB_julia: internal row mismatch between residuals() ",
+      "and predict().",
+      call. = FALSE
+    )
+  }
+
+  aug <- data.frame(
+    .observed = rr$observed,
+    .fitted = pr$est,
+    .resid = rr$residual,
+    .status = rr$status,
+    stringsAsFactors = FALSE
+  )
+
+  if (!is.null(data)) {
+    data <- as.data.frame(data)
+    if (nrow(data) != nrow(aug)) {
+      stop(
+        "augment.gllvmTMB_julia: data must have the same number of rows as ",
+        "the in-sample bridge payload.",
+        call. = FALSE
+      )
+    }
+    return(cbind(data, aug))
+  }
+
+  id_cols <- setdiff(
+    names(rr),
+    c("residual", "observed", "fitted", "type", "status")
+  )
+  cbind(rr[id_cols], aug)
 }
 
 #' @rdname gllvmTMB_julia-methods

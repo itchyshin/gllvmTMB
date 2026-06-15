@@ -302,6 +302,29 @@ test_that("Julia bridge post-fit methods work without JuliaCall", {
   expect_equal(gl$engine, "julia")
   expect_equal(gl$model, "poisson_x_rr")
 
+  aug <- generics::augment(fit)
+  expect_equal(
+    names(aug),
+    c("unit", "trait", ".observed", ".fitted", ".resid", ".status")
+  )
+  expect_equal(nrow(aug), 6L)
+  expect_equal(aug$.observed, as.numeric(fit$y))
+  expect_equal(aug$.resid, aug$.observed - aug$.fitted)
+  expect_equal(aug$.status, rep("ok", 6L))
+  expect_error(generics::augment(fit, newdata = data.frame(x = 1)), "newdata")
+  expect_error(generics::augment(fit, type = "link"), "type = 'response'")
+  expect_error(generics::augment(fit, re_form = ~0), "re_form = ~")
+  expect_error(generics::augment(fit, re_form = NA), "re_form = ~")
+
+  base_data <- data.frame(row_id = seq_len(6L))
+  aug_data <- generics::augment(fit, data = base_data)
+  expect_equal(names(aug_data)[1], "row_id")
+  expect_equal(nrow(aug_data), 6L)
+  expect_error(
+    generics::augment(fit, data = data.frame(row_id = 1:2)),
+    "same number of rows"
+  )
+
   sim <- simulate(fit, nsim = 2L, seed = 91L)
   expect_equal(dim(sim), c(6L, 2L))
   expect_equal(sim, simulate(fit, nsim = 2L, seed = 91L))
@@ -344,6 +367,16 @@ test_that("Julia bridge fitted, predict, and residuals methods work without Juli
   expect_true(is.na(rr_masked$observed[rr_masked$status == "masked"]))
   expect_true(is.na(rr_masked$residual[rr_masked$status == "masked"]))
   expect_true(is.finite(rr_masked$fitted[rr_masked$status == "masked"]))
+  aug_masked <- generics::augment(masked)
+  expect_equal(sum(aug_masked$.status == "masked"), 1L)
+  expect_equal(
+    is.na(aug_masked$.observed[aug_masked$.status == "masked"]),
+    TRUE
+  )
+  expect_equal(
+    is.na(aug_masked$.resid[aug_masked$.status == "masked"]),
+    TRUE
+  )
   expect_error(simulate(masked), "masked-response simulations")
 })
 
@@ -428,6 +461,7 @@ test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
   fit_ord <- fit
   fit_ord$family <- "ordinal"
   expect_error(predict(fit_ord), "ordinal predictions")
+  expect_error(generics::augment(fit_ord), "ordinal predictions")
 
   fit_gx <- fit
   fit_gx$family <- "gaussian"
@@ -679,6 +713,13 @@ test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end"
   expect_equal(nrow(gl), 1L)
   expect_equal(gl$model, "poisson_rr")
   expect_equal(gl$nobs, nrow(df))
+  aug <- generics::augment(fit)
+  expect_equal(nrow(aug), nrow(df))
+  expect_named(
+    aug,
+    c(".row", "unit", "trait", ".observed", ".fitted", ".resid", ".status")
+  )
+  expect_equal(aug$.status, rep("ok", nrow(df)))
   pr <- predict(fit, type = "response")
   expect_equal(nrow(pr), nrow(df))
   expect_named(pr, c(".row", "unit", "trait", "est"))
@@ -887,6 +928,7 @@ test_that("engine = 'julia' fits admitted missing-response families end-to-end",
       expect_equal(unique(fit$link), "ProbitLink")
       expect_error(predict(fit, type = "response"), "ordinal predictions")
       expect_error(residuals(fit), "ordinal predictions")
+      expect_error(generics::augment(fit), "ordinal predictions")
     }
   }
 })

@@ -1,8 +1,8 @@
 ## Re-export generics that the gllvmTMB_multi S3 methods register against.
 ##
-## `tidy()` and `glance()` are broom-style generics. The legacy package shipped its own
-## `tidy.gllvmTMB` (single-response) implementation in R/tidy.R; that file
-## was cut along with the single-response engine. The multivariate
+## `tidy()`, `glance()`, and `augment()` are broom-style generics. The legacy
+## package shipped its own `tidy.gllvmTMB` (single-response) implementation in
+## R/tidy.R; that file was cut along with the single-response engine. The multivariate
 ## `tidy.gllvmTMB_multi` lives in R/methods-gllvmTMB.R and dispatches off
 ## the generic re-exported here.
 
@@ -13,3 +13,7 @@ generics::tidy
 #' @importFrom generics glance
 #' @export
 generics::glance
+
+#' @importFrom generics augment
+#' @export
+generics::augment

@@ -4,6 +4,44 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge augment method
+
+Scope:
+
+- added `augment.gllvmTMB_julia()` as a broom-style in-sample row diagnostics
+  table;
+- re-exported `generics::augment` and registered the S3 method for
+  `gllvmTMB_julia` objects;
+- returned row identifiers plus `.observed`, `.fitted`, `.resid`, and
+  `.status`, including masked-response rows with `NA` observed/residual values;
+- kept the contract deliberately narrow: response-scale only, default
+  conditional `re_form = ~ .` only, no `newdata`, and ordinal rows fail until
+  the bridge carries cutpoints/probabilities.
+
+Evidence:
+
+- Documentation generation:
+  `Rscript -e 'devtools::document()'`
+  -> completed; emitted pre-existing unresolved-link warnings outside this
+  slice and generated unrelated Rd link churn that was restored before commit.
+- Diff hygiene:
+  `git diff --check`
+  -> no whitespace errors.
+- Default no-Julia bridge test:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 132`, `SKIP 14`, `FAIL 0`, `WARN 0` in `2.2s`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 331`, `FAIL 0`, `WARN 0`, `SKIP 0` in `55.1s`.
+
+Deliberately not claimed:
+
+- No `newdata` augmentation.
+- No link-scale or fixed-effects-only augmentation.
+- No ordinal fitted probabilities, residuals, or augmentation.
+- No influence diagnostics, hat values, standard errors, covariance payloads, or
+  CI calibration.
+
 ## 2026-06-15 -- Julia bridge glance method
 
 Scope:

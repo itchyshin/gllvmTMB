@@ -24,8 +24,8 @@
   remains partial and unsupported cells still report explicit CI-status errors.
   Post-fit inspection now includes `coef()`, `summary()`, `predict()`,
   `fitted()`, `residuals()`, `nobs()`, and ordination access through
-  `extract_ordination()`, `getLoadings()`, `getLV()`, and `rotate_loadings()`
-  for `gllvmTMB_julia` objects. The prediction/residual methods are
+  `extract_ordination()`, `getLoadings()`, `getLV()`, `rotate_loadings()`, and
+  `ordiplot()` for `gllvmTMB_julia` objects. The prediction/residual methods are
   deliberately in-sample only; `newdata` and ordinal probabilities wait for
   richer bridge payloads and fail with explicit messages; Gaussian covariate
   predictions are supported when the paired GLLVM.jl bridge returns the

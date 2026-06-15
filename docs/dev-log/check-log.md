@@ -4,6 +4,36 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge ordiplot dispatch
+
+Scope:
+
+- registered `ordiplot.gllvmTMB_julia()` so Julia-engine fits dispatch through
+  the existing base-R ordination helper;
+- reused the same matrix path as `gllvmTMB_multi` via cached bridge
+  `scores`/`loadings`;
+- fixed an existing internal level-normalisation wrinkle in `ordiplot()` so
+  `level = "unit"` no longer re-enters public wrappers as deprecated `"B"`;
+- kept richer ggplot `plot(type = "ordination")` out of scope for this slice.
+
+Evidence:
+
+- `Rscript -e 'devtools::document()'`
+  -> registered `ordiplot.gllvmTMB_julia()` and wrote `man/ordiplot.Rd`;
+  emitted pre-existing roxygen link warnings unrelated to this slice.
+- Live focused bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 119`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- Package-level filtered gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `PASS 119`, `FAIL 0`, `WARN 0`, `SKIP 0` in `43.1s`.
+
+Deliberately not claimed:
+
+- This is the simple base-R `ordiplot()` helper only. It does not implement the
+  richer `plot(type = "ordination")` ggplot route for `gllvmTMB_julia` objects.
+- This does not add new Julia engine behavior.
+
 ## 2026-06-15 -- Julia bridge ordination and nobs surface
 
 Scope:

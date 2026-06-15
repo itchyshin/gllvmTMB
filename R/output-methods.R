@@ -158,6 +158,7 @@ getResidualCor <- function(fit, level = "unit") {
 #' @keywords internal
 #' @export
 #' @rawNamespace if (requireNamespace("gllvm", quietly = TRUE)) S3method(gllvm::ordiplot, gllvmTMB_multi)
+#' @rawNamespace if (requireNamespace("gllvm", quietly = TRUE)) S3method(gllvm::ordiplot, gllvmTMB_julia)
 ordiplot <- function(fit, ...) {
   UseMethod("ordiplot")
 }
@@ -180,8 +181,9 @@ ordiplot.gllvmTMB_multi <- function(
     cli::cli_abort("axes must be length 2.")
   }
 
-  scores <- getLV(fit, level, rotate)
-  loadings <- getLoadings(fit, level, rotate)
+  level_label <- .canonical_level_name(level)
+  scores <- getLV(fit, level_label, rotate)
+  loadings <- getLoadings(fit, level_label, rotate)
   if (is.null(scores) || ncol(scores) < max(axes)) {
     cli::cli_abort("Not enough latent axes for the requested {.code axes}.")
   }
@@ -227,6 +229,11 @@ ordiplot.gllvmTMB_multi <- function(
   }
   invisible(list(scores = scores, loadings = loadings))
 }
+
+#' @rdname ordiplot
+#' @keywords internal
+#' @export
+ordiplot.gllvmTMB_julia <- ordiplot.gllvmTMB_multi
 
 
 #' Variance partition by source

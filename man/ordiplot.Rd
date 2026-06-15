@@ -3,11 +3,21 @@
 \name{ordiplot}
 \alias{ordiplot}
 \alias{ordiplot.gllvmTMB_multi}
+\alias{ordiplot.gllvmTMB_julia}
 \title{Draw a two-axis ordination plot for a fitted multivariate model}
 \usage{
 ordiplot(fit, ...)
 
 \method{ordiplot}{gllvmTMB_multi}(
+  fit,
+  level = "unit",
+  axes = c(1, 2),
+  biplot = TRUE,
+  rotate = c("none", "varimax", "promax"),
+  ...
+)
+
+\method{ordiplot}{gllvmTMB_julia}(
   fit,
   level = "unit",
   axes = c(1, 2),

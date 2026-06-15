@@ -227,6 +227,13 @@ test_that("Julia bridge ordination accessors use cached scores and loadings", {
   expect_equal(dim(rot$Lambda), c(2L, 2L))
   expect_equal(dim(rot$scores), c(3L, 2L))
   expect_equal(rot$method, "varimax")
+
+  expect_false(is.null(getS3method("ordiplot", "gllvmTMB_julia", optional = TRUE)))
+  pdf(NULL); on.exit(dev.off(), add = TRUE)
+  out <- ordiplot(fit, level = "unit", biplot = TRUE)
+  expect_named(out, c("scores", "loadings"))
+  expect_equal(dim(out$scores), c(3L, 2L))
+  expect_equal(dim(out$loadings), c(2L, 2L))
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------

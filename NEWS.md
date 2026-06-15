@@ -8,6 +8,12 @@
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
   default `"tmb"`). With `engine = "julia"` the fit is routed through the fast
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
+  IMPORTANT DEVELOPMENT BOUNDARY: these bridge features are only as broad as the
+  paired GLLVM.jl checkout supplied through `GLLVM_JL_PATH`. The local runtime
+  evidence for fixed-effect covariates, `mean_coef` predictions, and Gaussian
+  profile/bootstrap CI transport currently targets the integration checkout used
+  in the check-log commands; stale or dashboard-only GLLVM.jl worktrees can
+  reject those payloads.
   IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
   with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
   beta, gamma, and ordinal families, plus fixed-effect covariates for complete,

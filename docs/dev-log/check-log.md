@@ -4,6 +4,33 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge paired-checkout guard
+
+Rose audit found an important target-checkout drift: the R bridge evidence below
+uses the paired GLLVM.jl integration checkout at
+`/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`, while the dashboard
+worktree at `/Users/z3437171/Dropbox/Github Local/GLLVM.jl` is a board branch
+whose `src/bridge.jl` still rejects fixed-effect covariates. Therefore:
+
+- Treat X-bridge, `mean_coef`, Gaussian profile/bootstrap CI transport, and the
+  post-fit/visual bridge tests below as evidence for the paired integration
+  checkout named in each `GLLVM_JL_PATH` command.
+- Do not claim those routes are proven against the dashboard worktree until the
+  integration branch has been reconciled there or the tests are rerun against it.
+- The R bridge remains fail-loud when a stale GLLVM.jl checkout rejects a newer
+  payload.
+
+Evidence:
+
+- `/Users/z3437171/Dropbox/Github Local/GLLVM.jl/src/bridge.jl` currently
+  contains the error text `bridge_fit: fixed-effect covariates X are not wired
+  on this branch`.
+- `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration/src/bridge.jl`
+  contains the current paired `bridge_fit` with X support.
+
+Rose verdict: PASS WITH NOTES only after this boundary is kept visible in NEWS,
+check-log, board status, and any PR description.
+
 ## 2026-06-15 -- Julia bridge ggplot ordination route
 
 Scope:

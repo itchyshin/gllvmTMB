@@ -1299,6 +1299,94 @@ test_that("engine = 'julia' admits Gaussian and Beta X models", {
   expect_equal(length(fit_b$gamma), 1L)
 })
 
+test_that("engine = 'julia' admits Binomial, NB2, and Gamma X models", {
+  skip_if_no_julia()
+  df <- make_long_cov(n_unit = 35L, seed = 36L)
+
+  fit_bin <- gllvmTMB(
+    bin ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = binomial(),
+    engine = "julia"
+  )
+  direct_bin <- gllvm_julia_fit(
+    fit_bin$y,
+    family = binomial(),
+    num.lv = 1L,
+    N = fit_bin$N,
+    X = fit_bin$X
+  )
+  expect_equal(
+    as.numeric(logLik(fit_bin)),
+    as.numeric(logLik(direct_bin)),
+    tolerance = 1e-8
+  )
+  expect_equal(fit_bin$model, "binomial_x_rr")
+  expect_equal(length(fit_bin$gamma), 1L)
+  pr_bin <- predict(fit_bin, type = "response")
+  expect_equal(nrow(pr_bin), nrow(df))
+  expect_equal(all(is.finite(pr_bin$est)), TRUE)
+  expect_equal(all(pr_bin$est >= 0 & pr_bin$est <= 1), TRUE)
+
+  fit_nb <- gllvmTMB(
+    nb ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = nbinom2(),
+    engine = "julia"
+  )
+  direct_nb <- gllvm_julia_fit(
+    fit_nb$y,
+    family = nbinom2(),
+    num.lv = 1L,
+    X = fit_nb$X
+  )
+  expect_equal(
+    as.numeric(logLik(fit_nb)),
+    as.numeric(logLik(direct_nb)),
+    tolerance = 1e-8
+  )
+  expect_equal(fit_nb$model, "negbinomial_x_rr")
+  expect_equal(length(fit_nb$gamma), 1L)
+  pr_nb <- predict(fit_nb, type = "response")
+  expect_equal(nrow(pr_nb), nrow(df))
+  expect_equal(all(is.finite(pr_nb$est)), TRUE)
+  expect_equal(all(pr_nb$est > 0), TRUE)
+  expect_equal(all(is.finite(fit_nb$dispersion)), TRUE)
+  expect_equal(all(fit_nb$dispersion > 0), TRUE)
+
+  fit_gamma <- gllvmTMB(
+    gam ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = Gamma(link = "log"),
+    engine = "julia"
+  )
+  direct_gamma <- gllvm_julia_fit(
+    fit_gamma$y,
+    family = Gamma(link = "log"),
+    num.lv = 1L,
+    X = fit_gamma$X
+  )
+  expect_equal(
+    as.numeric(logLik(fit_gamma)),
+    as.numeric(logLik(direct_gamma)),
+    tolerance = 1e-8
+  )
+  expect_equal(fit_gamma$model, "gamma_x_rr")
+  expect_equal(length(fit_gamma$gamma), 1L)
+  pr_gamma <- predict(fit_gamma, type = "response")
+  expect_equal(nrow(pr_gamma), nrow(df))
+  expect_equal(all(is.finite(pr_gamma$est)), TRUE)
+  expect_equal(all(pr_gamma$est > 0), TRUE)
+  expect_equal(all(is.finite(fit_gamma$dispersion)), TRUE)
+  expect_equal(all(fit_gamma$dispersion > 0), TRUE)
+})
+
 # --- confidence intervals through the bridge (gated behind live JuliaCall) ---
 
 test_that("confint() Wald on an engine='julia' fit is a well-formed matrix", {

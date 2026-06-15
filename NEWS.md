@@ -17,7 +17,9 @@
   evidence for fixed-effect covariates, `mean_coef` predictions, and Gaussian
   profile/bootstrap CI transport currently targets the integration checkout used
   in the check-log commands; stale or dashboard-only GLLVM.jl worktrees can
-  reject those payloads.
+  reject those payloads. The live bridge test suite now includes public
+  formula-vs-direct dispatch evidence for fixed-effect-X Binomial, NB2, and
+  Gamma rows, in addition to the earlier Gaussian, Poisson, and Beta X rows.
   IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
   with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
   nbinom1, beta, gamma, and ordinal-probit families, plus fixed-effect covariates for

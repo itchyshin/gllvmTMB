@@ -16546,3 +16546,38 @@ Deliberately not claimed:
   outside this slice.
 - `simulate()` is conditional on fitted in-sample means; it is not an
   unconditional posterior/predictive bootstrap route.
+
+## 2026-06-15 -- Julia bridge Binomial/NB2/Gamma X evidence
+
+Added live R-side public dispatch evidence for the fixed-effect-X Binomial, NB2,
+and Gamma rows already admitted by the `engine = "julia"` capability ledger.
+Each row fits through `gllvmTMB(..., engine = "julia")`, then compares logLik
+against the direct `gllvm_julia_fit()` wrapper on the same `Y`, `X`, and family.
+The tests also check model tags, finite covariate coefficients, finite
+response-scale predictions, and positive dispersion where applicable.
+
+Files touched:
+
+- `tests/testthat/test-julia-bridge.R`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-x-evidence.md`
+
+Evidence:
+
+- No-Julia bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 17 | PASS 163` in `2.4s`.
+- Live bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 416` in `58.0s`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- This is formula-vs-direct R bridge evidence, not native TMB-vs-Julia
+  statistical parity.
+- Non-Gaussian X Wald/profile/bootstrap CIs, X+mask fits, newdata prediction,
+  and mixed-family X metadata remain outside this slice.

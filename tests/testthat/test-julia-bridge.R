@@ -335,7 +335,7 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
   expect_equal(nb1$status, "partial")
   expect_equal(nb1$fit_no_x, TRUE)
   expect_equal(nb1$fixed_effect_X, FALSE)
-  expect_equal(nb1$missing_response, FALSE)
+  expect_equal(nb1$missing_response, TRUE)
   mixed <- caps[caps$family == "mixed-family vector", ]
   expect_equal(nrow(mixed), 1L)
   expect_equal(mixed$status, "partial")
@@ -948,23 +948,6 @@ test_that("engine = 'julia' rejects unsupported Gaussian missing-response masks 
   )
 })
 
-test_that("engine = 'julia' rejects unsupported NB1 missing-response masks explicitly", {
-  df <- make_long_cov()
-  df$count[1] <- NA_real_
-  expect_error(
-    gllvmTMB(
-      count ~ 0 + trait + latent(0 + trait | unit, d = 1),
-      data = df,
-      trait = "trait",
-      unit = "unit",
-      family = nbinom1(),
-      engine = "julia",
-      missing = miss_control(response = "include")
-    ),
-    "missing-response masks are wired only"
-  )
-})
-
 test_that("engine argument is validated by match.arg", {
   df <- make_long()
   expect_error(
@@ -1277,6 +1260,7 @@ test_that("direct Julia bridge wrapper masks are sentinel-invariant across admit
   skip_if_no_julia()
   Y_bin <- matrix(rep(c(0, 1, 1, 0, 1, 0), length.out = 3 * 28), nrow = 3L)
   Y_nb <- matrix(stats::rnbinom(3 * 28, size = 5, mu = 2), nrow = 3L)
+  Y_nb1 <- matrix(stats::rnbinom(3 * 28, size = 3, mu = 2), nrow = 3L)
   Y_beta <- matrix(
     stats::plogis(seq(-1.2, 1.2, length.out = 3 * 28)),
     nrow = 3L
@@ -1298,6 +1282,7 @@ test_that("direct Julia bridge wrapper masks are sentinel-invariant across admit
       N = matrix(4L, 3L, 28L)
     ),
     list(Y = Y_nb, family = nbinom2(), garbage = 999, N = NULL),
+    list(Y = Y_nb1, family = nbinom1(), garbage = 999, N = NULL),
     list(Y = Y_beta, family = Beta(), garbage = 0.99, N = NULL),
     list(Y = Y_gamma, family = Gamma(link = "log"), garbage = 999, N = NULL),
     list(Y = Y_ord, family = ordinal_probit(), garbage = 3, N = NULL)
@@ -1353,9 +1338,16 @@ test_that("engine = 'julia' fits admitted missing-response families end-to-end",
     ),
     list(
       response = "nb",
+      family = nbinom1(),
+      model = "nb1_rr",
+      seed = 32L,
+      check_postfit = TRUE
+    ),
+    list(
+      response = "nb",
       family = nbinom2(),
       model = "negbinomial_rr",
-      seed = 32L,
+      seed = 36L,
       check_postfit = TRUE
     ),
     list(

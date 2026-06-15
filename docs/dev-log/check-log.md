@@ -17107,3 +17107,58 @@ Deliberately not claimed:
 - `pdHess = FALSE` is not treated as a fit failure here; the oracle gate checks
   convergence/logLik, row metadata, link-aware prediction, and family-valid
   simulation draws.
+
+## 2026-06-15 -- Julia bridge NB1 missing-response mask admission
+
+R-first bridge slice: admitted NB1 (`nbinom1()`) missing-response masks for
+no-X reduced-rank `engine = "julia"` point fits when the paired `GLLVM.jl`
+checkout exposes the matching NB1 mask route. Masked cells are sanitized before
+JuliaCall, but the observed-cell mask is passed through so likelihood, scores,
+and fitted means ignore sentinel values. Masked CIs and masked simulations
+remain explicit unsupported cells with CI/status messages.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `R/check-identifiability.R`
+- `tests/testthat/test-julia-bridge.R`
+- `NEWS.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-nb1-mask.md`
+
+Evidence:
+
+- Paired Julia focused gates:
+  `~/.juliaup/bin/julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  in `GLLVM.jl-integration` -> `20/20 pass`.
+- Paired Julia mask gate:
+  `~/.juliaup/bin/julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  in `GLLVM.jl-integration` -> `34/34 pass`.
+- No-Julia R bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 18 | PASS 227` in `2.9s`.
+- Live R-Julia bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 571` in `70.7s`.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 3 | SKIP 724 | PASS 2997`. Warnings are pre-existing
+  environment/deprecation diagnostics, including the local `glmmTMB`/`TMB`
+  version mismatch.
+- Focused wording guard after the stale identifiability message cleanup:
+  `Rscript -e 'devtools::test(filter="check-identifiability")'`
+  -> `FAIL 0 | WARN 0 | SKIP 13 | PASS 0`.
+- Stale-wording scan:
+  `rg -n "No engine = \"julia\" mixed-family admission|do not admit family lists|mixed-family.*planned|mixed-family.*queued|NB1 covariate\s*or missing-response|Non-Gaussian / mixed-family support is queued|nbinom2, beta, gamma, and ordinal-probit|17b2154|6056071|f1894bc" README.md NEWS.md R tests docs/dev-log/coordination-board.md -S`
+  -> no matches.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not claimed:
+
+- NB1 fixed-effect-X bridge fits remain rejected.
+- Masked CI/profile/bootstrap refits remain rejected with method-specific
+  CI-status messages.
+- Masked simulations remain rejected.
+- Gaussian response masks and mixed-family masks remain separate slices.

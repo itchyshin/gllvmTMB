@@ -19,6 +19,12 @@
   fits and do not promote masked-response, mixed-family, or non-Gaussian-X
   intervals.
 
+* `engine = "julia"` now admits NB1 missing-response masks for no-X reduced-rank
+  point fits when the paired `GLLVM.jl` checkout exposes the matching mask route.
+  The bridge keeps masked-response CIs and simulations explicitly unavailable;
+  post-fit prediction, fitted values, residuals, and augmentation use the cached
+  fitted means and mark masked rows with status metadata.
+
 * `confint(fit, parm = "rho:<tier>:i,j")` now forwards
   `link_residual = "auto"` / `"none"` to `extract_correlations()` for
   non-profile methods. The native mixed-family oracle now has public
@@ -85,7 +91,7 @@
   non-`rr` covariance terms, missing latent blocks, more than one latent block,
   Gaussian missing-response masks, masked fixed-effect covariate fits,
   masked CI refits, mixed-family X/masks/CIs, ordinal covariate fits, NB1 covariate
-  or missing-response fits,
+  fits,
   lognormal, non-binomial `cbind()` responses, and unbalanced trait × unit
   tables, erroring clearly rather than
   silently re-interpreting the model. CI routing returns Wald intervals where
@@ -99,7 +105,7 @@
   also wired as a narrow ggplot route over cached scores/loadings. The
   first missing-response bridge route is live for one-part no-X non-Gaussian
   fits via an explicit observed-cell mask (`TRUE = observed`), with live
-  end-to-end rows for poisson, Bernoulli binomial, nbinom2, beta, gamma, and
+  end-to-end rows for poisson, Bernoulli binomial, nbinom2, nbinom1, beta, gamma, and
   ordinal-probit fits. Families with response-scale prediction support report
   masked residual rows as `status = "masked"` rather than fake residuals;
   ordinal-probit is fit/nobs/mask/link-tested but still waits for cutpoint

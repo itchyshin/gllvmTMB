@@ -134,7 +134,7 @@ check_identifiability <- function(
       c(
         "{.fn check_identifiability} currently supports Gaussian fits only.",
         "x" = "This fit contains non-Gaussian families.",
-        "i" = "Non-Gaussian / mixed-family support is queued for the Phase 1b validation milestone.",
+        "i" = "Non-Gaussian / mixed-family identifiability checks are not validated for this diagnostic yet.",
         ">" = "For now, use {.fn sanity_multi} + {.fn bootstrap_Sigma} as the inference-uncertainty surface for non-Gaussian fits."
       ),
       class = "gllvmTMB_check_identifiability_nongaussian"

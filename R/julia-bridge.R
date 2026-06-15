@@ -97,6 +97,7 @@ gllvm_julia_setup <- function(
   "poisson",
   "binomial",
   "negbinomial",
+  "nb1",
   "beta",
   "gamma",
   "ordinal",

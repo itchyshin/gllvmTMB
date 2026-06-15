@@ -195,13 +195,15 @@ test_that("R-bridge Wald CIs EQUAL the native Julia confint (parity ~1e-6)", {
   fit <- gllvm_julia_fit(Yg, family = "gaussian", num.lv = 1L, ci_method = "wald")
   ci  <- confint(fit, method = "wald")
 
-  ## Native Julia oracle: fit the same matrix the bridge receives and call
-  ## GLLVM.confint directly.
+  ## Native Julia oracle: mirror the bridge's Gaussian path, which separates
+  ## per-trait means (`alpha`) from the centred latent fit.
   JuliaCall::julia_assign("Yg_par", Yg)
   nat <- JuliaCall::julia_eval(paste0(
     "begin\n",
-    "  gf = GLLVM.fit_gaussian_gllvm(Yg_par; K = 1);\n",
-    "  c = GLLVM.confint(gf; y = Yg_par, level = 0.95);\n",
+    "  alpha = vec(Statistics.mean(Yg_par; dims = 2));\n",
+    "  Yc = Yg_par .- alpha;\n",
+    "  gf = GLLVM.fit_gaussian_gllvm(Yc; K = 1);\n",
+    "  c = GLLVM.confint(gf; y = Yc, level = 0.95);\n",
     "  (term = collect(String, c.term), lower = collect(Float64, c.lower), ",
     "upper = collect(Float64, c.upper))\n",
     "end"))
@@ -213,13 +215,18 @@ test_that("R-bridge Wald CIs EQUAL the native Julia confint (parity ~1e-6)", {
   expect_equal(unname(ci[idx, 2]), as.numeric(nat$upper), tolerance = 1e-6)
 })
 
-test_that("confint() respects unsupported CI status and routes bootstrap CIs", {
+test_that("confint() routes Gaussian profile and bootstrap CIs", {
   skip_if_no_julia()
   set.seed(103)
   Y <- matrix(stats::rnorm(3 * 50), nrow = 3, ncol = 50)
 
   fit_p <- gllvm_julia_fit(Y, family = "gaussian", num.lv = 1L, ci_method = "profile")
-  expect_error(confint(fit_p, method = "profile"), "CI status 'unsupported'")
+  ci_p <- confint(fit_p, method = "profile")
+  expect_true(is.matrix(ci_p))
+  expect_equal(ncol(ci_p), 2L)
+  expect_true(nrow(ci_p) >= 1L)
+  expect_true(all(is.finite(ci_p)))
+  expect_true(all(ci_p[, 1] < ci_p[, 2]))
 
   ## Bootstrap with a fixed seed (reproducible).
   fit_b <- gllvm_julia_fit(Y, family = "gaussian", num.lv = 1L,

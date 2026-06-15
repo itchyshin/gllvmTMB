@@ -4,6 +4,34 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge post-fit inspection methods
+
+Scope:
+
+- added `coef.gllvmTMB_julia()`, `summary.gllvmTMB_julia()`, and
+  `print.summary.gllvmTMB_julia()`;
+- registered the S3 methods in `NAMESPACE`;
+- added pure-R tests using a synthetic bridge object so the method surface is
+  checked even without JuliaCall;
+- added live checks on a real Julia-engine fit.
+
+Evidence:
+
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 77`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `PASS 77`, `FAIL 0`, `WARN 0`, `SKIP 0` in `46.4s`.
+- `Rscript -e 'devtools::document()'`
+  -> registered the S3 methods and wrote `man/gllvmTMB_julia-methods.Rd`;
+  emitted pre-existing roxygen link warnings unrelated to this slice.
+- `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- This does not implement `predict()` or `residuals()` for Julia-engine fits.
+- This does not add new Julia engine behavior.
+
 ## 2026-06-15 -- Julia bridge X admission and missing-mask guard
 
 Scope:

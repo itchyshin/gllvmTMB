@@ -308,6 +308,189 @@ print.gllvmTMB_julia <- function(x, ...) {
   invisible(x)
 }
 
+.gllvm_julia_trait_names <- function(object) {
+  n <- length(object$alpha %||% numeric())
+  object$trait_names %||% paste0("trait", seq_len(n))
+}
+
+.gllvm_julia_coef_table <- function(object) {
+  traits <- .gllvm_julia_trait_names(object)
+  rows <- list()
+  if (!is.null(object$alpha)) {
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = "alpha",
+      term = sprintf("alpha[%s]", traits),
+      estimate = as.numeric(object$alpha),
+      stringsAsFactors = FALSE
+    )
+  }
+  if (!is.null(object$gamma)) {
+    gamma_names <- dimnames(object$X)[[3]]
+    if (is.null(gamma_names)) {
+      gamma_names <- paste0("x", seq_along(object$gamma))
+    }
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = "gamma",
+      term = sprintf("gamma[%s]", gamma_names),
+      estimate = as.numeric(object$gamma),
+      stringsAsFactors = FALSE
+    )
+  }
+  if (!is.null(object$beta_cov)) {
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = "beta_cov",
+      term = sprintf("beta_cov[%s]", traits),
+      estimate = as.numeric(object$beta_cov),
+      stringsAsFactors = FALSE
+    )
+  }
+  if (!is.null(object$dispersion) && any(is.finite(object$dispersion))) {
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = "dispersion",
+      term = sprintf("dispersion[%s]", traits),
+      estimate = as.numeric(object$dispersion),
+      stringsAsFactors = FALSE
+    )
+  }
+  if (
+    !is.null(object$sigma_eps) &&
+      length(object$sigma_eps) == 1L &&
+      is.finite(object$sigma_eps)
+  ) {
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = "sigma_eps",
+      term = "sigma_eps",
+      estimate = as.numeric(object$sigma_eps),
+      stringsAsFactors = FALSE
+    )
+  }
+  if (!length(rows)) {
+    return(data.frame(
+      component = character(),
+      term = character(),
+      estimate = numeric()
+    ))
+  }
+  do.call(rbind, rows)
+}
+
+#' Post-fit methods for Julia-engine GLLVM fits
+#'
+#' Basic inspection methods for objects returned by [gllvm_julia_fit()] or
+#' [gllvmTMB()] with `engine = "julia"`. These methods expose the flat bridge
+#' payload in ordinary R shapes; they do not perform new Julia computations.
+#'
+#' @param object,x A `gllvmTMB_julia` object.
+#' @param digits Decimal digits to print.
+#' @param ... Currently unused.
+#' @return `coef()` returns a named list of bridge coefficients. `summary()`
+#'   returns a list of class `summary.gllvmTMB_julia`. `print()` methods return
+#'   the input invisibly.
+#' @name gllvmTMB_julia-methods
+NULL
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+coef.gllvmTMB_julia <- function(object, ...) {
+  traits <- .gllvm_julia_trait_names(object)
+  out <- list()
+  if (!is.null(object$alpha)) {
+    out$alpha <- stats::setNames(as.numeric(object$alpha), traits)
+  }
+  if (!is.null(object$loadings)) {
+    L <- as.matrix(object$loadings)
+    rownames(L) <- traits
+    colnames(L) <- paste0("LV", seq_len(ncol(L)))
+    out$loadings <- L
+  }
+  if (!is.null(object$gamma)) {
+    gamma_names <- dimnames(object$X)[[3]]
+    if (is.null(gamma_names)) {
+      gamma_names <- paste0("x", seq_along(object$gamma))
+    }
+    out$gamma <- stats::setNames(as.numeric(object$gamma), gamma_names)
+  }
+  if (!is.null(object$beta_cov)) {
+    out$beta_cov <- stats::setNames(as.numeric(object$beta_cov), traits)
+  }
+  if (!is.null(object$dispersion) && any(is.finite(object$dispersion))) {
+    out$dispersion <- stats::setNames(as.numeric(object$dispersion), traits)
+  }
+  if (
+    !is.null(object$sigma_eps) &&
+      length(object$sigma_eps) == 1L &&
+      is.finite(object$sigma_eps)
+  ) {
+    out$sigma_eps <- as.numeric(object$sigma_eps)
+  }
+  out
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+summary.gllvmTMB_julia <- function(object, ...) {
+  out <- list(
+    header = list(
+      family = paste(unique(object$family), collapse = ","),
+      model = object$model %||% NA_character_,
+      d = object$d,
+      n_traits = object$n_traits,
+      n_units = object$n_units,
+      logLik = object$loglik,
+      AIC = object$aic,
+      BIC = object$bic,
+      df = object$df,
+      nobs = object$nobs,
+      converged = object$converged,
+      iterations = object$iterations
+    ),
+    coefficients = .gllvm_julia_coef_table(object),
+    coef = coef(object),
+    note = object$note %||% ""
+  )
+  class(out) <- "summary.gllvmTMB_julia"
+  out
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
+  h <- x$header
+  cat("gllvmTMB Julia-engine summary\n")
+  cat(sprintf(
+    "  family: %s | model: %s | K = %d | %d traits x %d units\n",
+    h$family,
+    h$model,
+    h$d,
+    h$n_traits,
+    h$n_units
+  ))
+  cat(sprintf(
+    "  logLik = %.*f | AIC = %.*f | BIC = %.*f | converged = %s\n",
+    digits,
+    h$logLik,
+    digits,
+    h$AIC,
+    digits,
+    h$BIC,
+    h$converged
+  ))
+  if (nrow(x$coefficients) > 0L) {
+    cat("\nCoefficients:\n")
+    tab <- x$coefficients
+    tab$estimate <- round(tab$estimate, digits)
+    print(tab, row.names = FALSE)
+  }
+  if (!is.null(x$coef$loadings)) {
+    cat("\nLoadings:\n")
+    print(round(x$coef$loadings, digits))
+  }
+  if (!identical(x$note, "")) {
+    cat("\nNote: ", x$note, "\n", sep = "")
+  }
+  invisible(x)
+}
+
 #' Confidence intervals for a Julia-engine GLLVM fit
 #'
 #' Surfaces the GLLVM.jl engine's confidence intervals (computed by its native

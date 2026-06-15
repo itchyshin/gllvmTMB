@@ -22,6 +22,8 @@
   the paired Julia bridge supports them; Gaussian profile and bootstrap CI
   transport is live-tested, while broader non-Gaussian/structure CI coverage
   remains partial and unsupported cells still report explicit CI-status errors.
+  Post-fit inspection now includes `coef()` and `summary()` methods for
+  `gllvmTMB_julia` objects.
   OUT: JuliaCall is a `Suggests` dependency only; every `engine = "julia"` path
   errors cleanly when JuliaCall or the GLLVM.jl project is unavailable, so the
   default TMB engine and `R CMD check` are unaffected on machines without Julia.

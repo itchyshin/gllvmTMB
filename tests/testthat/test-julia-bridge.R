@@ -55,6 +55,40 @@ skip_if_no_julia <- function() {
   }
 }
 
+fake_julia_fit <- function() {
+  structure(
+    list(
+      family = "poisson",
+      model = "poisson_x_rr",
+      d = 1L,
+      n_traits = 2L,
+      n_units = 3L,
+      trait_names = c("sp1", "sp2"),
+      unit_names = c("u1", "u2", "u3"),
+      alpha = c(0.1, -0.2),
+      beta_cov = c(0.1, -0.2),
+      gamma = c(0.35),
+      loadings = matrix(c(0.4, -0.3), nrow = 2L),
+      dispersion = c(NaN, NaN),
+      sigma_eps = NaN,
+      X = array(
+        0,
+        dim = c(2L, 3L, 1L),
+        dimnames = list(NULL, NULL, "env")
+      ),
+      loglik = -12.5,
+      aic = 31,
+      bic = 32,
+      df = 3,
+      nobs = 6,
+      converged = TRUE,
+      iterations = 7,
+      note = "synthetic bridge object"
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+}
+
 # --- family mapping ---------------------------------------------------------
 
 test_that("family mapping covers every bridged family", {
@@ -99,6 +133,25 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
     gllvm_julia_fit(Y, family = list("gaussian", "poisson")),
     "mixed-family"
   )
+})
+
+test_that("Julia bridge post-fit methods work without JuliaCall", {
+  fit <- fake_julia_fit()
+  cf <- coef(fit)
+  expect_named(cf, c("alpha", "loadings", "gamma", "beta_cov"))
+  expect_named(cf$alpha, c("sp1", "sp2"))
+  expect_named(cf$gamma, "env")
+  expect_equal(dim(cf$loadings), c(2L, 1L))
+  expect_equal(as.numeric(logLik(fit)), -12.5)
+  expect_equal(stats::AIC(fit), 31)
+
+  s <- summary(fit)
+  expect_s3_class(s, "summary.gllvmTMB_julia")
+  expect_equal(s$header$model, "poisson_x_rr")
+  expect_true("gamma[env]" %in% s$coefficients$term)
+  txt <- utils::capture.output(print(s))
+  expect_true(any(grepl("Julia-engine summary", txt)))
+  expect_true(any(grepl("gamma\\[env\\]", txt)))
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------
@@ -225,6 +278,8 @@ test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end"
   expect_equal(fit$model, "poisson_rr")
   expect_equal(fit$trait_names, levels(df$trait))
   expect_equal(fit$unit_names, levels(df$unit))
+  expect_named(coef(fit), c("alpha", "loadings"))
+  expect_s3_class(summary(fit), "summary.gllvmTMB_julia")
 })
 
 test_that("direct Julia bridge wrapper fits a supported Poisson X model", {

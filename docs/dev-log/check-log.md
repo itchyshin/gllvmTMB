@@ -4,6 +4,34 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- R-first bridge and REML status ledger
+
+Scope:
+
+- added a public README status row for the partial `engine = "julia"` bridge so
+  users do not need to read NEWS/check-log to discover the bridge boundary;
+- added a README boundary note that Julia bridge speedups and AI-REML-style
+  methods are not public bridge claims;
+- refreshed the ASReml/AI-REML design note after the Gaussian-only REML pilot:
+  AI-REML is a later candidate only for exact Gaussian REML variance-component
+  cells, not a label for non-Gaussian Laplace models.
+
+Evidence:
+
+- Stale-claim scan:
+  `rg -n "full capability|complete bridge|bridge complete|all families supported|non-Gaussian REML|AI-REML|engine = \"julia\"|R-Julia bridge|cbind\\(successes" README.md NEWS.md docs/design/43-asreml-speed-techniques.md docs/design/35-validation-debt-register.md`
+  -> hits are expected boundary/status rows only.
+- Default no-Julia bridge test:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 91`, `SKIP 14`, `FAIL 0`, `WARN 0` in `2.0s`.
+
+Deliberately not claimed:
+
+- This slice changes status wording only; it does not add bridge capability.
+- The Julia bridge remains partial and paired-checkout-gated.
+- REML remains Gaussian-only; non-Gaussian REML and AI-REML-for-Laplace remain
+  unsupported wording.
+
 ## 2026-06-15 -- Julia bridge cbind binomial trial transport
 
 Scope:

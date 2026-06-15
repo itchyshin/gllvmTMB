@@ -217,6 +217,7 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
 | Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics and report-ready diagnostic tables for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12 / DIA-13). These are diagnostic displays, not posterior predictive checks or interval calibration. |
+| R-Julia bridge | `engine = "julia"` is a partial development bridge to a paired `GLLVM.jl` checkout, not a replacement for the default TMB engine. Current local evidence covers one reduced-rank latent block for the mapped one-part families, fixed-effect covariates for complete balanced rows, selected post-fit methods, Gaussian profile/bootstrap CI transport, no-X response masks for the live-tested non-Gaussian family rows, and binomial `cbind(successes, failures)` trial transport. Unsupported cells fail loudly; broader R/TMB-vs-Julia parity, masked interval endpoints, mixed-family lists, Gaussian response masks, X+mask, and newdata prediction remain separate gates. |
 | Advanced examples | Ordinary individual-level Gaussian reaction norms now have a buildable internal behavioural-syndrome draft with long and wide examples, diagnostics, and recovery figures; non-Gaussian augmented `unique()` remains guarded. Structured random slopes, cross-lineage coevolution, animal, phylogenetic, spatial, mixed-family, meta-analysis, and profile-CI pages keep their own validation and diagnostic boundaries and stay out of the first-click public model guide until their reader paths are ready. |
 
 ## Current boundaries
@@ -264,6 +265,12 @@ prose does not overpromise):
 - **SPDE barrier meshes, broader REML estimation, storage controls.**
   A narrow Gaussian-only `REML = TRUE` pilot is implemented; non-Gaussian,
   weighted, and missing-data REML remain later work.
+- **R-Julia bridge breadth.** `engine = "julia"` is intentionally gated by the
+  paired `GLLVM.jl` checkout and by live bridge tests. A Julia route is promoted
+  only when the R payload, labels, objective/logLik, CI or CI-status, and
+  failure messages agree with the status ledger. Speedups and AI-REML-style
+  methods are not public claims for this bridge; AI-REML is only a later design
+  reference for exact Gaussian variance-component cells.
 - **Zero-inflated / hurdle / two-stage delta families with
   latent-scale correlations.** Two-sub-model families have two
   latent scales (the zero-inflation logit + the count log; or

@@ -4,6 +4,54 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge response-mask admission
+
+Scope:
+
+- added an explicit `mask` argument to `gllvm_julia_fit()` (`TRUE = observed`)
+  for the first one-part no-X non-Gaussian missing-response bridge route;
+- wired `gllvmTMB(..., engine = "julia", missing =
+  miss_control(response = "include"))` to preserve the balanced trait-by-unit
+  table, sanitize only masked response cells for transport, and pass the
+  observed-cell mask to `GLLVM.bridge_fit`;
+- kept Gaussian masks, X+mask fits, masked CI refits, mixed-family masks, and
+  unbalanced tables as fail-loud cells;
+- made `residuals.gllvmTMB_julia()` report masked cells with `observed = NA`,
+  `residual = NA`, and `status = "masked"` while retaining fitted values.
+
+Evidence:
+
+- Paired GLLVM.jl bridge-mask hook:
+  `~/.juliaup/bin/julia --project=. test/test_bridge_missing_mask.jl`
+  in `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`
+  -> `PASS 17`, `FAIL 0`, `ERROR 0` in `15.5s`.
+- Adjacent GLLVM.jl bridge regressions:
+  `~/.juliaup/bin/julia --project=. test/test_bridge_x.jl`
+  -> `PASS 52`, `FAIL 0`, `ERROR 0` in `18.9s`;
+  `~/.juliaup/bin/julia --project=. test/test_bridge_ci.jl`
+  -> `PASS 66`, `FAIL 0`, `ERROR 0` in `46.1s`.
+- Live focused R bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 150`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 150`, `FAIL 0`, `WARN 0`, `SKIP 0` in `48.5s`.
+- Default no-Julia test mode:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 79`, `SKIP 10`, `FAIL 0`, `WARN 0` in `3.9s`.
+- `Rscript -e 'devtools::document()'`
+  -> wrote `man/gllvm_julia_fit.Rd`; emitted pre-existing roxygen link
+  warnings unrelated to this slice.
+
+Deliberately not claimed:
+
+- Poisson is the R-live-tested masked route in this slice; broader per-family
+  bridge parity still needs explicit R-side rows.
+- Masked CI/profile/bootstrap refits remain unsupported.
+- Gaussian response masks and fixed-effect `X` with masks remain unsupported.
+- This is not a TMB-vs-Julia statistical parity study; it proves the R->Julia
+  mask transport and sentinel invariance for the new bridge path.
+
 ## 2026-06-15 -- Julia bridge paired-checkout guard
 
 Rose audit found an important target-checkout drift: the R bridge evidence below

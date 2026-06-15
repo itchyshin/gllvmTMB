@@ -133,6 +133,31 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
     gllvm_julia_fit(Y_miss, family = "gaussian", num.lv = 1L),
     "missing-response masks are not wired"
   )
+  mask <- !is.na(Y_miss)
+  expect_error(
+    gllvm_julia_fit(Y_miss, family = "gaussian", num.lv = 1L, mask = mask),
+    "missing-response masks are wired only"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      Y,
+      family = "poisson",
+      num.lv = 1L,
+      mask = mask,
+      X = array(0, dim = c(3, 4, 1))
+    ),
+    "missing-response masks with fixed-effect covariates"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      Y,
+      family = "poisson",
+      num.lv = 1L,
+      mask = mask,
+      ci_method = "wald"
+    ),
+    "confidence intervals for masked response fits"
+  )
   expect_error(
     gllvm_julia_fit(Y, family = "ordinal", X = array(0, dim = c(3, 4, 1))),
     "fixed-effect covariates X are not wired"
@@ -180,9 +205,21 @@ test_that("Julia bridge fitted, predict, and residuals methods work without Juli
   expect_equal(pr_fixed$est, as.numeric(matrix(fit$alpha, 2L, 3L)))
 
   rr <- residuals(fit)
-  expect_equal(names(rr), c("unit", "trait", "residual", "observed", "fitted", "type", "status"))
+  expect_equal(
+    names(rr),
+    c("unit", "trait", "residual", "observed", "fitted", "type", "status")
+  )
   expect_equal(rr$residual, as.numeric(fit$y - exp(eta)))
   expect_equal(rr$status, rep("ok", 6L))
+
+  masked <- fit
+  masked$observed_mask <- matrix(TRUE, nrow = 2L, ncol = 3L)
+  masked$observed_mask[2L, 2L] <- FALSE
+  rr_masked <- residuals(masked)
+  expect_equal(sum(rr_masked$status == "masked"), 1L)
+  expect_true(is.na(rr_masked$observed[rr_masked$status == "masked"]))
+  expect_true(is.na(rr_masked$residual[rr_masked$status == "masked"]))
+  expect_true(is.finite(rr_masked$fitted[rr_masked$status == "masked"]))
 })
 
 test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
@@ -228,8 +265,13 @@ test_that("Julia bridge ordination accessors use cached scores and loadings", {
   expect_equal(dim(rot$scores), c(3L, 2L))
   expect_equal(rot$method, "varimax")
 
-  expect_false(is.null(getS3method("ordiplot", "gllvmTMB_julia", optional = TRUE)))
-  pdf(NULL); on.exit(dev.off(), add = TRUE)
+  expect_false(is.null(getS3method(
+    "ordiplot",
+    "gllvmTMB_julia",
+    optional = TRUE
+  )))
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
   out <- ordiplot(fit, level = "unit", biplot = TRUE)
   expect_named(out, c("scores", "loadings"))
   expect_equal(dim(out$scores), c(3L, 2L))
@@ -282,7 +324,7 @@ test_that("engine = 'julia' requires a balanced trait x unit table", {
   )
 })
 
-test_that("engine = 'julia' rejects missing-response masks explicitly", {
+test_that("engine = 'julia' rejects unsupported Gaussian missing-response masks explicitly", {
   df <- make_long()
   df$value[1] <- NA_real_
   expect_error(
@@ -294,7 +336,7 @@ test_that("engine = 'julia' rejects missing-response masks explicitly", {
       engine = "julia",
       missing = miss_control(response = "include")
     ),
-    "missing-response masks are not wired"
+    "missing-response masks are wired only"
   )
 })
 
@@ -381,6 +423,68 @@ test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end"
   rr <- residuals(fit)
   expect_equal(nrow(rr), nrow(df))
   expect_true(all(is.finite(rr$residual)))
+})
+
+test_that("engine = 'julia' fits a Poisson missing-response mask end-to-end", {
+  skip_if_no_julia()
+  df <- make_long_cov(n_unit = 34L, seed = 25L)
+  df$count[1] <- NA_real_
+  fit <- gllvmTMB(
+    count ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = poisson(),
+    engine = "julia",
+    missing = miss_control(response = "include")
+  )
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(stats::nobs(fit), nrow(df) - 1L)
+  expect_equal(fit$nobs, nrow(df) - 1L)
+  expect_false(is.null(fit$observed_mask))
+  expect_equal(sum(!fit$observed_mask), 1L)
+  expect_true(is.finite(fit$loglik))
+
+  pr <- predict(fit, type = "response")
+  expect_equal(nrow(pr), nrow(df))
+  expect_true(all(is.finite(pr$est)))
+
+  rr <- residuals(fit)
+  expect_equal(nrow(rr), nrow(df))
+  expect_equal(sum(rr$status == "masked"), 1L)
+  expect_true(is.na(rr$observed[rr$status == "masked"]))
+  expect_true(is.na(rr$residual[rr$status == "masked"]))
+  expect_true(is.finite(rr$fitted[rr$status == "masked"]))
+  expect_error(confint(fit, method = "wald"), "confidence intervals for masked")
+})
+
+test_that("direct Julia bridge wrapper masks are sentinel-invariant", {
+  skip_if_no_julia()
+  set.seed(26)
+  Y <- matrix(stats::rpois(3 * 28, lambda = 2), nrow = 3L)
+  mask <- matrix(TRUE, nrow = 3L, ncol = 28L)
+  mask[1L, 2L] <- FALSE
+  mask[3L, 11L] <- FALSE
+  Y_na <- Y
+  Y_na[!mask] <- NA_real_
+  Y_garbage <- Y
+  Y_garbage[!mask] <- 999
+
+  fit_na <- gllvm_julia_fit(Y_na, family = poisson(), num.lv = 1L, mask = mask)
+  fit_garbage <- gllvm_julia_fit(
+    Y_garbage,
+    family = poisson(),
+    num.lv = 1L,
+    mask = mask
+  )
+  expect_equal(stats::nobs(fit_na), sum(mask))
+  expect_equal(
+    as.numeric(logLik(fit_na)),
+    as.numeric(logLik(fit_garbage)),
+    tolerance = 1e-8
+  )
+  expect_equal(fit_na$alpha, fit_garbage$alpha, tolerance = 1e-8)
+  expect_equal(fit_na$loadings, fit_garbage$loadings, tolerance = 1e-8)
 })
 
 test_that("direct Julia bridge wrapper fits a supported Poisson X model", {

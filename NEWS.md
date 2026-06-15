@@ -21,7 +21,8 @@
   PARTIAL:
   the supported surface is deliberately narrow — the bridge loudly rejects
   non-`rr` covariance terms, missing latent blocks, more than one latent block,
-  missing-response masks, mixed-family lists, ordinal covariate fits, nbinom1,
+  Gaussian missing-response masks, masked fixed-effect covariate fits,
+  masked CI refits, mixed-family lists, ordinal covariate fits, nbinom1,
   lognormal, `cbind()` binomial, and unbalanced trait × unit tables, erroring
   clearly rather than
   silently re-interpreting the model. CI routing returns Wald intervals where
@@ -33,14 +34,20 @@
   `extract_ordination()`, `getLoadings()`, `getLV()`, `rotate_loadings()`, and
   `ordiplot()` for `gllvmTMB_julia` objects; `plot(type = "ordination")` is
   also wired as a narrow ggplot route over cached scores/loadings. The
+  first missing-response bridge route is live for one-part no-X non-Gaussian
+  fits via an explicit observed-cell mask (`TRUE = observed`), with Poisson
+  live-tested end-to-end and masked residual rows reported as
+  `status = "masked"` rather than fake residuals. Broader per-family R/TMB
+  parity, Gaussian response masks, X+mask fits, and masked CI/profile/bootstrap
+  refits remain separate validation gates. The
   prediction/residual methods are deliberately in-sample only; `newdata` and
   ordinal probabilities wait for richer bridge payloads and fail with explicit
   messages; Gaussian covariate predictions are supported when the paired
   GLLVM.jl bridge returns the `mean_coef` payload. `vcov()` has an explicit
   status error until covariance matrices are routed through the bridge; use
   `confint()` for supported interval output. Direct `gllvm_julia_fit()` calls
-  with `NA` responses also fail before JuliaCall until the paired Julia bridge
-  accepts an observed-response mask.
+  with `NA` responses still fail before JuliaCall unless the caller supplies a
+  supported explicit `mask`.
   OUT: JuliaCall is a `Suggests` dependency only; every `engine = "julia"` path
   errors cleanly when JuliaCall or the GLLVM.jl project is unavailable, so the
   default TMB engine and `R CMD check` are unaffected on machines without Julia.

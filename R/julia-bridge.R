@@ -154,6 +154,75 @@ gllvm_julia_setup <- function(
   out
 }
 
+.GLLVM_JULIA_MASK_FAMILIES <- c(
+  "poisson",
+  "binomial",
+  "negbinomial",
+  "beta",
+  "gamma",
+  "ordinal"
+)
+
+.gllvm_julia_mask <- function(mask, y) {
+  if (is.null(mask)) {
+    return(NULL)
+  }
+  mask <- as.matrix(mask)
+  if (!identical(dim(mask), dim(y))) {
+    stop(
+      "engine = 'julia': mask must have the same p x n shape as y.",
+      call. = FALSE
+    )
+  }
+  if (anyNA(mask)) {
+    stop("engine = 'julia': mask cannot contain NA.", call. = FALSE)
+  }
+  mask <- matrix(
+    as.logical(mask),
+    nrow = nrow(mask),
+    ncol = ncol(mask),
+    dimnames = dimnames(mask)
+  )
+  if (!any(mask)) {
+    stop(
+      "engine = 'julia': mask has no observed responses.",
+      call. = FALSE
+    )
+  }
+  if (all(mask)) {
+    return(NULL)
+  }
+  mask
+}
+
+.gllvm_julia_mask_sentinel <- function(family) {
+  switch(
+    family,
+    poisson = 0,
+    binomial = 0,
+    negbinomial = 0,
+    beta = 0.5,
+    gamma = 1,
+    ordinal = 1,
+    0
+  )
+}
+
+.gllvm_julia_sanitize_masked_y <- function(y, mask, family) {
+  if (is.null(mask)) {
+    return(y)
+  }
+  if (anyNA(y[mask])) {
+    stop(
+      "engine = 'julia': observed response cells contain NA; only masked ",
+      "response cells may be missing.",
+      call. = FALSE
+    )
+  }
+  y[!mask] <- .gllvm_julia_mask_sentinel(family)
+  y
+}
+
 #' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).
@@ -163,6 +232,9 @@ gllvm_julia_setup <- function(
 #' @param X Optional fixed-effect covariate array with shape p x n x q. Gaussian
 #'   fits expect the full mean design, including per-trait intercept planes;
 #'   supported non-Gaussian fits expect the extra covariate planes only.
+#' @param mask Optional logical p x n observation mask (`TRUE` = observed). Masked
+#'   response cells are ignored by the Julia likelihood; currently supported only
+#'   for one-part non-Gaussian no-X fits and `ci_method = "none"`.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
 #' @param ci_method Confidence-interval method routed to the Julia engine: one of
 #'   `"none"` (default, no CIs), `"wald"`, `"profile"`, or `"bootstrap"`. When not
@@ -184,6 +256,7 @@ gllvm_julia_fit <- function(
   num.lv = 2L,
   N = NULL,
   X = NULL,
+  mask = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -194,10 +267,41 @@ gllvm_julia_fit <- function(
   ci_method <- match.arg(ci_method)
   fam <- .gllvm_julia_family(family)
   y <- as.matrix(y)
+  mask <- .gllvm_julia_mask(mask, y)
   if (isTRUE(units_are_rows)) {
     y <- t(y)
+    if (!is.null(mask)) {
+      mask <- t(mask)
+    }
   }
-  if (anyNA(y)) {
+  if (!is.null(mask)) {
+    if (!(fam %in% .GLLVM_JULIA_MASK_FAMILIES)) {
+      stop(
+        "engine = 'julia': missing-response masks are wired only for ",
+        paste(.GLLVM_JULIA_MASK_FAMILIES, collapse = ", "),
+        " on this bridge branch; use engine = 'tmb' for family '",
+        fam,
+        "'.",
+        call. = FALSE
+      )
+    }
+    if (!is.null(X)) {
+      stop(
+        "engine = 'julia': missing-response masks with fixed-effect ",
+        "covariates X are not wired yet. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (!identical(ci_method, "none")) {
+      stop(
+        "engine = 'julia': confidence intervals for masked response fits are ",
+        "not routed through the Julia bridge yet. Use ci_method = 'none' or ",
+        "engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    y <- .gllvm_julia_sanitize_masked_y(y, mask, fam)
+  } else if (anyNA(y)) {
     stop(
       "engine = 'julia': missing-response masks are not wired yet; ",
       "y must be complete. Use engine = 'tmb' for missing responses.",
@@ -258,6 +362,9 @@ gllvm_julia_fit <- function(
   if (!is.null(X)) {
     args$X <- X
   }
+  if (!is.null(mask)) {
+    args$mask <- mask
+  }
   if (!is.null(trait_names)) {
     args$trait_names <- trait_names
   }
@@ -282,6 +389,7 @@ gllvm_julia_fit <- function(
   res$y <- y
   res$N <- N
   res$X <- X
+  res$observed_mask <- mask
   class(res) <- c("gllvmTMB_julia", "list")
   res
 }
@@ -681,11 +789,30 @@ residuals.gllvmTMB_julia <- function(
     )
   }
   fit <- fitted(object, type = "response")
-  out <- .gllvm_julia_long_values(object, observed - fit, "residual")
-  out$observed <- .gllvm_julia_long_values(object, observed, "observed")$observed
+  mask <- object$observed_mask
+  residual <- observed - fit
+  if (!is.null(mask)) {
+    observed[!mask] <- NA_real_
+    residual[!mask] <- NA_real_
+  }
+  out <- .gllvm_julia_long_values(object, residual, "residual")
+  out$observed <- .gllvm_julia_long_values(
+    object,
+    observed,
+    "observed"
+  )$observed
   out$fitted <- .gllvm_julia_long_values(object, fit, "fitted")$fitted
   out$type <- type
-  out$status <- "ok"
+  if (!is.null(mask)) {
+    if (!is.null(object$.trait_index) && !is.null(object$.unit_index)) {
+      row_mask <- mask[cbind(object$.trait_index, object$.unit_index)]
+    } else {
+      row_mask <- as.vector(mask)
+    }
+    out$status <- ifelse(row_mask, "ok", "masked")
+  } else {
+    out$status <- "ok"
+  }
   out
 }
 
@@ -819,6 +946,7 @@ confint.gllvmTMB_julia <- function(
       num.lv = object$d,
       N = object$N,
       X = object$X,
+      mask = object$observed_mask,
       ci_method = method,
       ci_level = level,
       ...
@@ -939,14 +1067,6 @@ confint.gllvmTMB_julia <- function(
   if (K < 1L) {
     stop("engine = 'julia' requires latent dimension d >= 1.", call. = FALSE)
   }
-  if (!is.null(is_y_observed) && any(as.integer(is_y_observed) == 0L)) {
-    stop(
-      "engine = 'julia': missing-response masks are not wired yet; ",
-      "use engine = 'tmb' for missing = miss_control(response = 'include').",
-      call. = FALSE
-    )
-  }
-
   ## --- response: pivot long (trait, unit) -> a p x n matrix ---
   mf <- stats::model.frame(
     parsed$fixed,
@@ -974,23 +1094,63 @@ confint.gllvmTMB_julia <- function(
   units <- levels(fu)
   p <- length(traits)
   n <- length(units)
+  fam_str <- .gllvm_julia_family(family)
+  row_observed <- if (is.null(is_y_observed)) {
+    rep(TRUE, length(yv))
+  } else {
+    if (length(is_y_observed) != length(yv)) {
+      stop(
+        "engine = 'julia': observed-response mask length mismatch.",
+        call. = FALSE
+      )
+    }
+    as.integer(is_y_observed) != 0L
+  }
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
+  filled <- matrix(FALSE, p, n, dimnames = list(traits, units))
+  Mask <- matrix(FALSE, p, n, dimnames = list(traits, units))
   Y[cbind(as.integer(ft), as.integer(fu))] <- yv
-  if (anyNA(Y)) {
+  filled[cbind(as.integer(ft), as.integer(fu))] <- TRUE
+  Mask[cbind(as.integer(ft), as.integer(fu))] <- row_observed
+  if (any(!filled)) {
     stop(
       "engine = 'julia' currently requires a complete (balanced) trait x unit ",
       "table; found ",
-      sum(is.na(Y)),
+      sum(!filled),
       " empty cell(s). Use engine = 'tmb'.",
       call. = FALSE
     )
+  }
+  has_masked_response <- any(!Mask)
+  if (has_masked_response) {
+    if (!(fam_str %in% .GLLVM_JULIA_MASK_FAMILIES)) {
+      stop(
+        "engine = 'julia': missing-response masks are wired only for ",
+        paste(.GLLVM_JULIA_MASK_FAMILIES, collapse = ", "),
+        " on this bridge branch; use engine = 'tmb' for family '",
+        fam_str,
+        "'.",
+        call. = FALSE
+      )
+    }
+    Y <- .gllvm_julia_sanitize_masked_y(Y, Mask, fam_str)
+  } else {
+    Mask <- NULL
+    if (anyNA(Y)) {
+      stop(
+        "engine = 'julia' currently requires a complete (balanced) trait x unit ",
+        "table; found ",
+        sum(is.na(Y)),
+        " empty cell(s). Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
   }
 
   ## --- fixed effects: the per-trait intercept (0 + trait) is mapped to the
   ## bridge's internal per-trait intercept for non-Gaussian X fits. Gaussian X
   ## fits are different: GLLVM.jl expects the FULL mean design, so we include the
   ## trait-intercept planes plus the extra covariate planes. ---
-  fam_str <- .gllvm_julia_family(family)
   Xfix <- stats::model.matrix(parsed$fixed, mf)
   trait_dummies <- paste0(trait, traits)
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
@@ -1038,6 +1198,13 @@ confint.gllvmTMB_julia <- function(
       n
     )
   }
+  if (!is.null(Mask) && !is.null(Xarg)) {
+    stop(
+      "engine = 'julia': missing-response masks with fixed-effect covariates ",
+      "are not wired yet. Use engine = 'tmb'.",
+      call. = FALSE
+    )
+  }
 
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
   Narg <- NULL
@@ -1052,7 +1219,14 @@ confint.gllvmTMB_julia <- function(
     }
   }
 
-  fit <- gllvm_julia_fit(Y, family = family, num.lv = K, N = Narg, X = Xarg)
+  fit <- gllvm_julia_fit(
+    Y,
+    family = family,
+    num.lv = K,
+    N = Narg,
+    X = Xarg,
+    mask = Mask
+  )
   fit$call <- call
   fit$trait_levels <- traits
   fit$unit_levels <- units

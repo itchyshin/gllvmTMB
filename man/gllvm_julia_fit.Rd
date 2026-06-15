@@ -10,6 +10,7 @@ gllvm_julia_fit(
   num.lv = 2L,
   N = NULL,
   X = NULL,
+  mask = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
   ci_level = 0.95,
@@ -30,6 +31,10 @@ gllvm_julia_fit(
 \item{X}{Optional fixed-effect covariate array with shape p x n x q. Gaussian
 fits expect the full mean design, including per-trait intercept planes;
 supported non-Gaussian fits expect the extra covariate planes only.}
+
+\item{mask}{Optional logical p x n observation mask (\code{TRUE} = observed). Masked
+response cells are ignored by the Julia likelihood; currently supported only
+for one-part non-Gaussian no-X fits and \code{ci_method = "none"}.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 

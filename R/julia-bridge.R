@@ -207,7 +207,39 @@ gllvm_julia_setup <- function(
     beta = 0.5,
     gamma = 1,
     ordinal = 1,
+    ordinal_probit = 1,
     0
+  )
+}
+
+.gllvm_julia_has_masked_response <- function(mask) {
+  !is.null(mask) && any(!as.logical(mask))
+}
+
+.gllvm_julia_masked_ci_status <- function(method = "ci") {
+  method <- as.character(method)[1L]
+  if (is.na(method) || identical(method, "none")) {
+    return("ci_unavailable_masked_response")
+  }
+  paste0(method, "_unavailable_masked_response")
+}
+
+.gllvm_julia_masked_ci_note <- function() {
+  paste(
+    "confidence intervals for masked response fits are not routed through",
+    "the Julia bridge yet. Use ci_method = 'none' for point estimates or",
+    "engine = 'tmb'."
+  )
+}
+
+.gllvm_julia_stop_masked_ci <- function(prefix, method) {
+  stop(
+    prefix,
+    ": ci_status = '",
+    .gllvm_julia_masked_ci_status(method),
+    "'; ",
+    .gllvm_julia_masked_ci_note(),
+    call. = FALSE
   )
 }
 
@@ -296,12 +328,7 @@ gllvm_julia_fit <- function(
       )
     }
     if (!identical(ci_method, "none")) {
-      stop(
-        "engine = 'julia': confidence intervals for masked response fits are ",
-        "not routed through the Julia bridge yet. Use ci_method = 'none' or ",
-        "engine = 'tmb'.",
-        call. = FALSE
-      )
+      .gllvm_julia_stop_masked_ci("engine = 'julia'", ci_method)
     }
     y <- .gllvm_julia_sanitize_masked_y(y, mask, fam)
   } else if (anyNA(y)) {
@@ -393,6 +420,10 @@ gllvm_julia_fit <- function(
   res$N <- N
   res$X <- X
   res$observed_mask <- mask
+  if (.gllvm_julia_has_masked_response(mask)) {
+    res$ci_status <- .gllvm_julia_masked_ci_status("none")
+    res$ci_note <- .gllvm_julia_masked_ci_note()
+  }
   class(res) <- c("gllvmTMB_julia", "list")
   res
 }
@@ -914,6 +945,9 @@ confint.gllvmTMB_julia <- function(
   ...
 ) {
   method <- match.arg(method)
+  if (.gllvm_julia_has_masked_response(object$observed_mask)) {
+    .gllvm_julia_stop_masked_ci("confint.gllvmTMB_julia", method)
+  }
 
   ## Decide whether the cached CI payload already matches the request. The bridge
   ## stamps the actually-run method/level onto ci_method/ci_level, so we re-fit
@@ -960,6 +994,7 @@ confint.gllvmTMB_julia <- function(
     object$ci_estimate <- refit$ci_estimate
     object$ci_lower <- refit$ci_lower
     object$ci_upper <- refit$ci_upper
+    object$ci_status <- refit$ci_status
     object$ci_note <- refit$ci_note
   }
 

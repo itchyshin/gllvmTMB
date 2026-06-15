@@ -43,7 +43,12 @@
   ordinal-probit is fit/nobs/mask/link-tested but still waits for cutpoint
   payloads before prediction/residual methods are exposed. Broader R/TMB
   parity, Gaussian response masks, X+mask fits, and masked CI/profile/bootstrap
-  refits remain separate validation gates. The
+  refits remain separate validation gates. Masked point-fit objects carry
+  `ci_status = "ci_unavailable_masked_response"`, and `confint()` fails before
+  any refit attempt with method-specific statuses such as
+  `wald_unavailable_masked_response`, `profile_unavailable_masked_response`,
+  and `bootstrap_unavailable_masked_response`; this is an explicit unsupported
+  CI-status boundary, not interval support. The
   prediction/residual methods are deliberately in-sample only; `newdata` and
   ordinal probabilities wait for richer bridge payloads and fail with explicit
   messages; Gaussian covariate predictions are supported when the paired

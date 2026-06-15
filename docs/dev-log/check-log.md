@@ -4,6 +4,44 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge masked-CI status boundary
+
+Scope:
+
+- added an R-side masked-response CI status vocabulary for Julia-engine bridge
+  fits: point fits carry `ci_unavailable_masked_response`, while `confint()`
+  fails before any refit attempt with method-specific
+  `wald_unavailable_masked_response`, `profile_unavailable_masked_response`,
+  or `bootstrap_unavailable_masked_response`;
+- kept masked Wald/profile/bootstrap refits unsupported; this is an explicit
+  status/error boundary, not interval support;
+- made cached CI fields unable to bypass the masked-response preflight in
+  `confint.gllvmTMB_julia()`;
+- propagated `ci_status` from successful non-masked Julia CI refits so future
+  bridge payload statuses are not lost;
+- added an explicit ordinal-probit `residuals()` failure assertion to match the
+  existing ordinal prediction boundary.
+
+Evidence:
+
+- Default no-Julia test mode:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 87`, `SKIP 12`, `FAIL 0`, `WARN 0` in `2.4s`.
+- Live focused R bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 259`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 259`, `FAIL 0`, `WARN 0`, `SKIP 0` in `53.7s`.
+
+Deliberately not claimed:
+
+- GLLVM.jl still rejects masked CI requests directly; this slice is R-side
+  preflight/status handling for unsupported masked intervals.
+- No masked Wald/profile/bootstrap interval endpoint is computed.
+- R/TMB-vs-Julia statistical parity remains unproven for the masked family
+  matrix.
+
 ## 2026-06-15 -- Julia bridge masked-family matrix
 
 Scope:

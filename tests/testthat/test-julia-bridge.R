@@ -83,6 +83,8 @@ expect_masked_public_julia_fit <- function(
   expect_equal(fit$nobs, nrow(df) - 1L)
   expect_equal(sum(!fit$observed_mask), 1L)
   expect_equal(is.finite(fit$loglik), TRUE)
+  expect_equal(fit$ci_status, "ci_unavailable_masked_response")
+  expect_match(fit$ci_note, "masked response")
 
   if (check_postfit) {
     pr <- predict(fit, type = "response")
@@ -204,16 +206,18 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
     ),
     "missing-response masks with fixed-effect covariates"
   )
-  expect_error(
-    gllvm_julia_fit(
-      Y,
-      family = "poisson",
-      num.lv = 1L,
-      mask = mask,
-      ci_method = "wald"
-    ),
-    "confidence intervals for masked response fits"
-  )
+  for (method in c("wald", "profile", "bootstrap")) {
+    expect_error(
+      gllvm_julia_fit(
+        Y,
+        family = "poisson",
+        num.lv = 1L,
+        mask = mask,
+        ci_method = method
+      ),
+      paste0(method, "_unavailable_masked_response")
+    )
+  }
   expect_error(
     gllvm_julia_fit(Y, family = "ordinal", X = array(0, dim = c(3, 4, 1))),
     "fixed-effect covariates X are not wired"
@@ -276,6 +280,54 @@ test_that("Julia bridge fitted, predict, and residuals methods work without Juli
   expect_true(is.na(rr_masked$observed[rr_masked$status == "masked"]))
   expect_true(is.na(rr_masked$residual[rr_masked$status == "masked"]))
   expect_true(is.finite(rr_masked$fitted[rr_masked$status == "masked"]))
+})
+
+test_that("confint() on masked Julia objects reports method-specific CI status", {
+  fit <- fake_julia_fit()
+  fit$observed_mask <- matrix(TRUE, nrow = 2L, ncol = 3L)
+  fit$observed_mask[1L, 2L] <- FALSE
+
+  expect_error(
+    confint(fit, method = "wald"),
+    "wald_unavailable_masked_response"
+  )
+  expect_error(
+    confint(fit, method = "profile"),
+    "profile_unavailable_masked_response"
+  )
+  expect_error(
+    confint(fit, method = "bootstrap"),
+    "bootstrap_unavailable_masked_response"
+  )
+
+  cached <- fit
+  cached$ci_method <- "wald"
+  cached$ci_level <- 0.95
+  cached$ci_param_names <- "alpha[sp1]"
+  cached$ci_lower <- -0.1
+  cached$ci_upper <- 0.2
+  cached$ci_status <- "ok"
+  cached$ci_note <- ""
+  expect_error(
+    confint(cached, method = "wald"),
+    "wald_unavailable_masked_response"
+  )
+})
+
+test_that("confint() preserves non-masked bridge CI status failures", {
+  fit <- fake_julia_fit()
+  fit$ci_method <- "wald"
+  fit$ci_level <- 0.95
+  fit$ci_param_names <- "alpha[sp1]"
+  fit$ci_lower <- NA_real_
+  fit$ci_upper <- NA_real_
+  fit$ci_status <- "wald_unavailable_test"
+  fit$ci_note <- "synthetic status note"
+
+  expect_error(
+    confint(fit, method = "wald"),
+    "wald_unavailable_test.*synthetic status note"
+  )
 })
 
 test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
@@ -511,7 +563,20 @@ test_that("engine = 'julia' fits a Poisson missing-response mask end-to-end", {
   expect_true(is.na(rr$observed[rr$status == "masked"]))
   expect_true(is.na(rr$residual[rr$status == "masked"]))
   expect_true(is.finite(rr$fitted[rr$status == "masked"]))
-  expect_error(confint(fit, method = "wald"), "confidence intervals for masked")
+  expect_equal(fit$ci_status, "ci_unavailable_masked_response")
+  expect_match(fit$ci_note, "masked response")
+  expect_error(
+    confint(fit, method = "wald"),
+    "wald_unavailable_masked_response"
+  )
+  expect_error(
+    confint(fit, method = "profile"),
+    "profile_unavailable_masked_response"
+  )
+  expect_error(
+    confint(fit, method = "bootstrap"),
+    "bootstrap_unavailable_masked_response"
+  )
 })
 
 test_that("direct Julia bridge wrapper masks are sentinel-invariant", {
@@ -595,6 +660,7 @@ test_that("direct Julia bridge wrapper masks are sentinel-invariant across admit
     )
 
     expect_equal(stats::nobs(fit_na), sum(mask))
+    expect_equal(fit_na$ci_status, "ci_unavailable_masked_response")
     expect_equal(
       as.numeric(logLik(fit_na)),
       as.numeric(logLik(fit_garbage)),
@@ -661,6 +727,7 @@ test_that("engine = 'julia' fits admitted missing-response families end-to-end",
     if (!case$check_postfit) {
       expect_equal(unique(fit$link), "ProbitLink")
       expect_error(predict(fit, type = "response"), "ordinal predictions")
+      expect_error(residuals(fit), "ordinal predictions")
     }
   }
 })

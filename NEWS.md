@@ -10,15 +10,17 @@
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
   IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
   with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
-  nbinom1, beta, gamma, ordinal, and lognormal families (plus a per-trait family
-  list for mixed responses) and Gaussian-only fixed-effect covariates. PARTIAL:
+  beta, gamma, and ordinal families. PARTIAL:
   the supported surface is deliberately narrow — the bridge loudly rejects
-  non-`rr` covariance terms, more than one latent block, `cbind()` binomial,
-  unbalanced trait × unit tables, and non-Gaussian covariates, erroring clearly
-  rather than silently re-interpreting the model. OUT: JuliaCall is a `Suggests`
-  dependency only; every `engine = "julia"` path errors cleanly when JuliaCall or
-  the GLLVM.jl project is unavailable, so the default TMB engine and `R CMD check`
-  are unaffected on machines without Julia.
+  non-`rr` covariance terms, missing latent blocks, more than one latent block,
+  fixed-effect covariates, mixed-family lists, nbinom1, lognormal, `cbind()`
+  binomial, and unbalanced trait × unit tables, erroring clearly rather than
+  silently re-interpreting the model. CI routing returns Wald intervals where
+  the paired Julia bridge supports them and reports unsupported profile /
+  bootstrap cells through an explicit CI-status error. OUT: JuliaCall is a
+  `Suggests` dependency only; every `engine = "julia"` path errors cleanly when
+  JuliaCall or the GLLVM.jl project is unavailable, so the default TMB engine
+  and `R CMD check` are unaffected on machines without Julia.
 
 ## Loading-constraint suggestion comparison (2026-06-09)
 

@@ -15652,3 +15652,51 @@ Deliberately not run:
 - Full `devtools::check()` was not rerun for this navigation-only patch. The
   local gate was affected article/index render plus `pkgdown::check_pkgdown()`;
   GitHub Actions remains the deployment gate after push.
+
+## 2026-06-14 -- Julia bridge gate narrowed to current GLLVM.bridge_fit contract
+
+Aligned `engine = "julia"` with the paired GLLVM.jl minimal `bridge_fit`
+contract instead of the richer integration-branch surface. The R gate now
+admits only homogeneous no-covariate one-part families currently accepted by
+`GLLVM.bridge_fit` (gaussian, poisson, binomial, nbinom2 as `negbinomial`,
+beta, gamma, ordinal), preserves trait/unit names, rejects `num.lv < 1`, rejects
+fixed-effect `X`, rejects mixed-family lists / nbinom1 / lognormal, and errors
+when `confint()` receives an unsupported Julia CI-status payload.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `man/gllvm_julia_fit.Rd`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-14-julia-bridge-contract-shrink.md`
+
+Evidence:
+
+- Live focused bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl" JULIA_HOME="/Users/z3437171/.juliaup/bin" Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 49`; Julia activated
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl`.
+- Package-level filtered gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl" JULIA_HOME="/Users/z3437171/.juliaup/bin" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", stop_on_failure = TRUE)'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 49` in 22.9 s.
+- Roxygen:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> loaded `gllvmTMB`; wrote `man/gllvm_julia_fit.Rd`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+- Rose stale-wording scan:
+  `rg -n "GLLVM_JULIA_X_FAMILIES|Gaussian-only fixed-effect|non-Gaussian covariates|admits fixed-effect X|_x_rr|nbinom1, beta|lognormal families|mixed responses|or a list for mixed|fixed-effect-X model" R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md man/gllvm_julia_fit.Rd man/confint.gllvmTMB_julia.Rd`
+  -> no matches.
+
+Deliberately not claimed:
+
+- This is not an R/TMB-vs-Julia statistical parity claim. The live Gaussian
+  bridge test now checks that long-format `gllvmTMB(..., engine = "julia")`
+  marshals to the same result as direct `gllvm_julia_fit()`; TMB parity remains
+  a separate issue-led gate.
+- Full `devtools::check()` was not rerun for this bridge-gate correction. The
+  scoped live bridge test and roxygen gate passed; broader package checks remain
+  a pre-PR/release gate.

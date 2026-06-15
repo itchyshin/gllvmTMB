@@ -27,7 +27,8 @@ gllvm_julia_fit(
 
 \item{N}{Binomial trials (matrix or scalar), or \code{NULL}.}
 
-\item{X}{Gaussian-only fixed-effect design (p x n x q array), or \code{NULL}.}
+\item{X}{Reserved for a future bridge branch. The current bridge rejects
+non-\code{NULL} \code{X} before calling Julia.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 

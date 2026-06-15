@@ -25,6 +25,7 @@ make_long_cov <- function(n_unit = 12L, traits = c("t1", "t2", "t3"), seed = 11L
   df$trait <- factor(df$trait)
   env_per_unit <- stats::rnorm(n_unit)
   df$env <- env_per_unit[as.integer(df$unit)]
+  df$value <- stats::rnorm(nrow(df))
   df$count <- stats::rpois(nrow(df), lambda = exp(0.4 + 0.3 * df$env))
   df$prop  <- stats::plogis(0.2 + 0.5 * df$env + stats::rnorm(nrow(df), sd = 0.3))
   df
@@ -47,23 +48,33 @@ test_that("family mapping covers every bridged family", {
   expect_equal(.gllvm_julia_family(poisson()), "poisson")
   expect_equal(.gllvm_julia_family(binomial()), "binomial")
   expect_equal(.gllvm_julia_family("bernoulli"), "binomial")
-  expect_equal(.gllvm_julia_family("negbinomial"), "nbinom2")
-  expect_equal(.gllvm_julia_family("nbinom2"), "nbinom2")
-  expect_equal(.gllvm_julia_family("nbinom1"), "nb1")
+  expect_equal(.gllvm_julia_family("negbinomial"), "negbinomial")
+  expect_equal(.gllvm_julia_family("nbinom2"), "negbinomial")
   expect_equal(.gllvm_julia_family("beta"), "beta")
   expect_equal(.gllvm_julia_family("gamma"), "gamma")
   expect_equal(.gllvm_julia_family("ordinal"), "ordinal")
-  expect_equal(.gllvm_julia_family("lognormal"), "lognormal")
 })
 
-test_that("family mapping is element-wise over a mixed list", {
-  expect_equal(.gllvm_julia_family(list("gaussian", "poisson", "binomial")),
-               c("gaussian", "poisson", "binomial"))
+test_that("family mapping rejects mixed vectors until the Julia bridge supports them", {
+  expect_error(.gllvm_julia_family(list("gaussian", "poisson", "binomial")),
+               "mixed-family")
 })
 
 test_that("family mapping rejects unsupported families loudly", {
+  expect_error(.gllvm_julia_family("nbinom1"), "unsupported family")
+  expect_error(.gllvm_julia_family("lognormal"), "unsupported family")
   expect_error(.gllvm_julia_family("tweedie"), "unsupported family")
   expect_error(.gllvm_julia_family("nonsense"), "unsupported family")
+})
+
+test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCall setup", {
+  Y <- matrix(stats::rnorm(12), nrow = 3)
+  expect_error(gllvm_julia_fit(Y, family = "gaussian", num.lv = 0L),
+               "num.lv >= 1")
+  expect_error(gllvm_julia_fit(Y, family = "gaussian", X = array(0, dim = c(3, 4, 1))),
+               "fixed-effect covariates")
+  expect_error(gllvm_julia_fit(Y, family = list("gaussian", "poisson")),
+               "mixed-family")
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------
@@ -96,46 +107,32 @@ test_that("engine argument is validated by match.arg", {
   )
 })
 
-# --- fixed-effect covariate (X) gate: relaxed to match bridge_fit -----------
+# --- fixed-effect covariate (X) gate: narrow to current GLLVM.bridge_fit ----
 #
-# bridge_fit wires fixed-effect X for the Gaussian family AND the one-part
-# non-Gaussian families fit_gllvm_cov fits (poisson, binomial, negbinomial,
-# beta, gamma). The R-side dispatch previously gated X to gaussian-only, drifting
-# behind the engine (gllvmTMB#488). These pure-R tests assert the gate now ADMITS
-# the X-capable non-Gaussian families and still REJECTS the ones the engine has no
-# covariate kernel for (ordinal, nb1). They fire before any Julia call, so the
-# "passed the gate" check is: the dispatch does NOT raise the gaussian-only gate
-# error (it may instead hit the JuliaCall-setup error downstream, which is fine).
+# The paired GLLVM.jl branch intentionally rejects fixed-effect X until the
+# wider integration bridge is reconciled. These pure-R tests make that boundary
+# visible and prevent the R gate from advertising unvalidated cells.
 
-# TRUE if the engine="julia" dispatch raised the gaussian-only X-gate error.
-hit_gaussian_x_gate <- function(expr) {
-  msg <- tryCatch({ force(expr); NA_character_ },
-                  error = function(e) conditionMessage(e))
-  !is.na(msg) && grepl("gaussian family", msg, fixed = TRUE)
-}
-
-test_that("engine = 'julia' admits fixed-effect X for X-capable non-Gaussian families", {
+test_that("engine = 'julia' rejects fixed-effect X before JuliaCall setup", {
   df <- make_long_cov()
-  # poisson + env covariate: previously rejected by the gaussian-only gate.
-  expect_false(hit_gaussian_x_gate(
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+             data = df, trait = "trait", unit = "unit",
+             family = gaussian(), engine = "julia"),
+    "fixed-effect covariates"
+  )
+  expect_error(
     gllvmTMB(count ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
              data = df, trait = "trait", unit = "unit",
-             family = poisson(), engine = "julia")))
-  # beta + env covariate: continuous proportion response.
-  expect_false(hit_gaussian_x_gate(
+             family = poisson(), engine = "julia"),
+    "fixed-effect covariates"
+  )
+  expect_error(
     gllvmTMB(prop ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
              data = df, trait = "trait", unit = "unit",
-             family = Beta(), engine = "julia")))
-  # gamma + env covariate (reuse the positive proportion as a positive response).
-  expect_false(hit_gaussian_x_gate(
-    gllvmTMB(prop ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
-             data = df, trait = "trait", unit = "unit",
-             family = Gamma(), engine = "julia")))
-})
-
-test_that("engine = 'julia' still rejects fixed-effect X for families with no covariate kernel", {
-  df <- make_long_cov()
-  # ordinal has no covariate kernel in bridge_fit -> must stay a loud reject.
+             family = Beta(), engine = "julia"),
+    "fixed-effect covariates"
+  )
   expect_error(
     gllvmTMB(count ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
              data = df, trait = "trait", unit = "unit",
@@ -146,31 +143,29 @@ test_that("engine = 'julia' still rejects fixed-effect X for families with no co
 
 # --- numerical round-trip (gated behind a live JuliaCall + GLLVM.jl) --------
 
-test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
+test_that("engine = 'julia' Gaussian dispatch matches the direct Julia bridge wrapper", {
   skip_if_no_julia()
   df <- make_long(n_unit = 40L, seed = 7L)
   f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
-  fit_tmb <- gllvmTMB(f, data = df, trait = "trait", unit = "unit", engine = "tmb")
-  fit_jl  <- gllvmTMB(f, data = df, trait = "trait", unit = "unit", engine = "julia")
-  expect_equal(as.numeric(logLik(fit_jl)), as.numeric(logLik(fit_tmb)),
-               tolerance = 1e-4)
+  fit_jl <- gllvmTMB(f, data = df, trait = "trait", unit = "unit", engine = "julia")
+  fit_direct <- gllvm_julia_fit(fit_jl$y, family = "gaussian", num.lv = 1L)
+  expect_equal(as.numeric(logLik(fit_jl)), as.numeric(logLik(fit_direct)),
+               tolerance = 1e-8)
   expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_true(is.finite(as.numeric(logLik(fit_jl))))
 })
 
-test_that("engine = 'julia' fits a non-Gaussian fixed-effect-X model end-to-end", {
+test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end", {
   skip_if_no_julia()
   df <- make_long_cov(n_unit = 40L, seed = 21L)
-  # Poisson + env covariate: the relaxed gate routes X through bridge_fit's
-  # fit_gllvm_cov path. Confirm the fit actually runs and returns the covariate
-  # coefficient (gamma) the engine emits for a covariate fit (model "*_x_rr").
-  fit <- gllvmTMB(count ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+  fit <- gllvmTMB(count ~ 0 + trait + latent(0 + trait | unit, d = 1),
                   data = df, trait = "trait", unit = "unit",
                   family = poisson(), engine = "julia")
   expect_s3_class(fit, "gllvmTMB_julia")
   expect_true(is.finite(fit$loglik))
-  expect_match(fit$model, "_x_rr$")
-  expect_false(is.null(fit$gamma))
-  expect_true(all(is.finite(fit$gamma)))
+  expect_equal(fit$model, "poisson_rr")
+  expect_equal(fit$trait_names, levels(df$trait))
+  expect_equal(fit$unit_names, levels(df$unit))
 })
 
 # --- confidence intervals through the bridge (gated behind live JuliaCall) ---
@@ -200,16 +195,13 @@ test_that("R-bridge Wald CIs EQUAL the native Julia confint (parity ~1e-6)", {
   fit <- gllvm_julia_fit(Yg, family = "gaussian", num.lv = 1L, ci_method = "wald")
   ci  <- confint(fit, method = "wald")
 
-  ## Native Julia oracle: centre Y (the bridge subtracts per-trait means for the
-  ## Gaussian path), fit the same model, call GLLVM.confint directly.
+  ## Native Julia oracle: fit the same matrix the bridge receives and call
+  ## GLLVM.confint directly.
   JuliaCall::julia_assign("Yg_par", Yg)
   nat <- JuliaCall::julia_eval(paste0(
     "begin\n",
-    "  using Statistics\n",
-    "  alpha = vec(Statistics.mean(Yg_par; dims = 2));\n",
-    "  Yc = Yg_par .- alpha;\n",
-    "  gf = GLLVM.fit_gaussian_gllvm(Yc; K = 1);\n",
-    "  c = GLLVM.confint(gf; y = Yc, level = 0.95);\n",
+    "  gf = GLLVM.fit_gaussian_gllvm(Yg_par; K = 1);\n",
+    "  c = GLLVM.confint(gf; y = Yg_par, level = 0.95);\n",
     "  (term = collect(String, c.term), lower = collect(Float64, c.lower), ",
     "upper = collect(Float64, c.upper))\n",
     "end"))
@@ -221,16 +213,13 @@ test_that("R-bridge Wald CIs EQUAL the native Julia confint (parity ~1e-6)", {
   expect_equal(unname(ci[idx, 2]), as.numeric(nat$upper), tolerance = 1e-6)
 })
 
-test_that("confint() profile and bootstrap return well-formed CIs", {
+test_that("confint() respects unsupported CI status and routes bootstrap CIs", {
   skip_if_no_julia()
   set.seed(103)
   Y <- matrix(stats::rnorm(3 * 50), nrow = 3, ncol = 50)
 
   fit_p <- gllvm_julia_fit(Y, family = "gaussian", num.lv = 1L, ci_method = "profile")
-  ci_p  <- confint(fit_p, method = "profile")
-  expect_true(is.matrix(ci_p) && ncol(ci_p) == 2L && nrow(ci_p) >= 1L)
-  expect_true(all(is.finite(ci_p)))
-  expect_true(all(ci_p[, 1] < ci_p[, 2]))
+  expect_error(confint(fit_p, method = "profile"), "CI status 'unsupported'")
 
   ## Bootstrap with a fixed seed (reproducible).
   fit_b <- gllvm_julia_fit(Y, family = "gaussian", num.lv = 1L,

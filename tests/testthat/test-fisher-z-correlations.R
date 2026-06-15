@@ -43,9 +43,19 @@ test_that("extract_correlations accepts method = 'fisher-z'", {
   expect_s3_class(cors, "data.frame")
   expect_named(
     cors,
-    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+    c(
+      "tier",
+      "trait_i",
+      "trait_j",
+      "correlation",
+      "lower",
+      "upper",
+      "method",
+      "ci_status"
+    )
   )
   expect_true(all(cors$method == "fisher-z"))
+  expect_true(all(cors$ci_status == "ok"))
   expect_true(all(cors$correlation >= -1 & cors$correlation <= 1))
   expect_true(all(cors$lower >= -1 & cors$lower <= 1))
   expect_true(all(cors$upper >= -1 & cors$upper <= 1))

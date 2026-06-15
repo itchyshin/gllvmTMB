@@ -749,21 +749,28 @@
   lo <- numeric(n_pairs)
   hi <- numeric(n_pairs)
   rn <- character(n_pairs)
+  ci_status <- character(n_pairs)
 
   if (method == "profile") {
     for (m in seq_len(n_pairs)) {
       i <- pairs[m, 1L]
       j <- pairs[m, 2L]
-      ci <- profile_ci_correlation(
-        fit = object,
-        tier = tier,
-        i = i,
-        j = j,
-        level = level
+      ci <- tryCatch(
+        profile_ci_correlation(
+          fit = object,
+          tier = tier,
+          i = i,
+          j = j,
+          level = level
+        ),
+        error = function(e) {
+          c(estimate = NA_real_, lower = NA_real_, upper = NA_real_)
+        }
       )
       lo[m] <- unname(ci["lower"])
       hi[m] <- unname(ci["upper"])
       rn[m] <- sprintf("rho:%s:%d,%d", tier, i, j)
+      ci_status[m] <- .gtmb_rho_ci_status(method, lo[m], hi[m])
     }
   } else if (method %in% c("fisher-z", "wald", "bootstrap")) {
     ## extract_correlations() returns all pairs at the tier; loop per
@@ -795,6 +802,11 @@
       lo[m] <- as.numeric(df$lower[1L])
       hi[m] <- as.numeric(df$upper[1L])
       rn[m] <- sprintf("rho:%s:%d,%d", tier, i, j)
+      ci_status[m] <- if ("ci_status" %in% names(df)) {
+        as.character(df$ci_status[1L])
+      } else {
+        .gtmb_rho_ci_status(method, lo[m], hi[m])
+      }
     }
   } else {
     cli::cli_abort(c(
@@ -805,6 +817,7 @@
   out <- cbind(lo, hi)
   rownames(out) <- rn
   colnames(out) <- .confint_colnames(level)
+  attr(out, "ci_status") <- stats::setNames(ci_status, rn)
   out
 }
 
@@ -1207,7 +1220,9 @@
 #'   value (e.g. \code{50}) during development or testing.
 #' @param seed Optional integer RNG seed forwarded to [bootstrap_Sigma()]
 #'   (only meaningful when \code{method = "bootstrap"}).
-#' @param ... Additional arguments currently unused.
+#' @param ... Additional arguments. For \code{"rho:..."} non-profile
+#'   paths, \code{link_residual = "auto"} or \code{"none"} is forwarded
+#'   to [extract_correlations()].
 #'
 #' @return
 #' \itemize{
@@ -1229,7 +1244,10 @@
 #'     a numeric matrix with two columns named after the requested
 #'     \code{level} (e.g. \code{"2.5 \%"} / \code{"97.5 \%"}) and
 #'     rownames identifying the entry, e.g. \code{"icc:trait_1"},
-#'     \code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}.
+#'     \code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}. Rho
+#'     matrices carry a \code{ci_status} attribute with one status per
+#'     row; for example \code{"ok"}, \code{"profile_boundary"}, or
+#'     \code{"profile_failed"}.
 #'   \item \strong{Fixed-effects / variance-component path} -- a numeric
 #'     matrix with rownames = parameter names and two columns named
 #'     \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for

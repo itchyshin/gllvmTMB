@@ -106,6 +106,10 @@
 #'   \item{\code{correlation}}{Point estimate.}
 #'   \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 #'   \item{\code{method}}{Method used to compute the CI.}
+#'   \item{\code{ci_status}}{Row-level interval status. \code{"ok"} means
+#'     both bounds are finite. Other values distinguish one-sided profile
+#'     boundaries, failed profiles, failed bootstraps, and unavailable
+#'     Fisher-z/Wald intervals.}
 #' }
 #'
 #' @section Caveats:
@@ -389,6 +393,11 @@ extract_correlations <- function(
             lower = if (!is.null(Rb_lo)) Rb_lo[i, j] else NA_real_,
             upper = if (!is.null(Rb_hi)) Rb_hi[i, j] else NA_real_,
             method = "bootstrap",
+            ci_status = .gtmb_rho_ci_status(
+              "bootstrap",
+              if (!is.null(Rb_lo)) Rb_lo[i, j] else NA_real_,
+              if (!is.null(Rb_hi)) Rb_hi[i, j] else NA_real_
+            ),
             stringsAsFactors = FALSE
           )
         }
@@ -418,6 +427,11 @@ extract_correlations <- function(
           lower = unname(ci["lower"]),
           upper = unname(ci["upper"]),
           method = "profile",
+          ci_status = .gtmb_rho_ci_status(
+            "profile",
+            unname(ci["lower"]),
+            unname(ci["upper"])
+          ),
           stringsAsFactors = FALSE
         )
       }
@@ -458,6 +472,11 @@ extract_correlations <- function(
             lower = NA_real_,
             upper = NA_real_,
             method = out_method_label,
+            ci_status = .gtmb_rho_ci_status(
+              out_method_label,
+              NA_real_,
+              NA_real_
+            ),
             stringsAsFactors = FALSE
           )
           next
@@ -474,6 +493,7 @@ extract_correlations <- function(
           lower = lo,
           upper = hi,
           method = out_method_label,
+          ci_status = .gtmb_rho_ci_status(out_method_label, lo, hi),
           stringsAsFactors = FALSE
         )
       }
@@ -490,9 +510,37 @@ extract_correlations <- function(
       lower = numeric(0),
       upper = numeric(0),
       method = character(0),
+      ci_status = character(0),
       stringsAsFactors = FALSE
     )
   }
   rownames(out) <- NULL
+  out
+}
+
+.gtmb_rho_ci_status <- function(method, lower, upper) {
+  lower <- as.numeric(lower)
+  upper <- as.numeric(upper)
+  finite_lower <- is.finite(lower)
+  finite_upper <- is.finite(upper)
+  both <- finite_lower & finite_upper
+  partial <- xor(finite_lower, finite_upper)
+  neither <- !finite_lower & !finite_upper
+  out <- rep("ok", length(lower))
+  method <- as.character(method)[1L]
+
+  if (identical(method, "profile")) {
+    out[partial] <- "profile_boundary"
+    out[neither] <- "profile_failed"
+  } else if (identical(method, "bootstrap")) {
+    out[partial] <- "partial_interval"
+    out[neither] <- "bootstrap_failed"
+  } else if (identical(method, "wald")) {
+    out[!both] <- "wald_unavailable"
+  } else if (identical(method, "fisher-z")) {
+    out[!both] <- "fisher_z_unavailable"
+  } else {
+    out[!both] <- "interval_unavailable"
+  }
   out
 }

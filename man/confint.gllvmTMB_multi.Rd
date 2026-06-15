@@ -96,7 +96,9 @@ value (e.g. \code{50}) during development or testing.}
 \item{seed}{Optional integer RNG seed forwarded to \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}
 (only meaningful when \code{method = "bootstrap"}).}
 
-\item{...}{Additional arguments currently unused.}
+\item{...}{Additional arguments. For \code{"rho:..."} non-profile
+paths, \code{link_residual = "auto"} or \code{"none"} is forwarded
+to \code{\link[=extract_correlations]{extract_correlations()}}.}
 }
 \value{
 A matrix with rows = parameters and columns = the lower and
@@ -121,7 +123,10 @@ flags the reason).
 a numeric matrix with two columns named after the requested
 \code{level} (e.g. \code{"2.5 \%"} / \code{"97.5 \%"}) and
 rownames identifying the entry, e.g. \code{"icc:trait_1"},
-\code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}.
+\code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}. Rho
+matrices carry a \code{ci_status} attribute with one status per
+row; for example \code{"ok"}, \code{"profile_boundary"}, or
+\code{"profile_failed"}.
 \item \strong{Fixed-effects / variance-component path} -- a numeric
 matrix with rownames = parameter names and two columns named
 \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for

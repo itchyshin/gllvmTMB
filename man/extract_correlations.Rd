@@ -39,7 +39,7 @@ See Details.}
 effective sample size used in Fisher's
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
 formula. Only consulted for \code{method \%in\% c("fisher-z",
-  "wald")}. The default heuristic uses \code{fit$n_sites} for tier
+"wald")}. The default heuristic uses \code{fit$n_sites} for tier
 \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
 \code{"phy"}, and \code{fit$n_sites} elsewhere — adequate for
@@ -91,6 +91,10 @@ names in new calls.}
 \item{\code{correlation}}{Point estimate.}
 \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 \item{\code{method}}{Method used to compute the CI.}
+\item{\code{ci_status}}{Row-level interval status. \code{"ok"} means
+both bounds are finite. Other values distinguish one-sided profile
+boundaries, failed profiles, failed bootstraps, and unavailable
+Fisher-z/Wald intervals.}
 }
 }
 \description{

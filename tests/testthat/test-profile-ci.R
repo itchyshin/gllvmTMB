@@ -106,12 +106,22 @@ test_that("extract_correlations returns tidy frame with required columns", {
   expect_s3_class(cors, "data.frame")
   expect_named(
     cors,
-    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+    c(
+      "tier",
+      "trait_i",
+      "trait_j",
+      "correlation",
+      "lower",
+      "upper",
+      "method",
+      "ci_status"
+    )
   )
   ## 3 traits at B tier -> 3 unique pairs
   expect_equal(nrow(cors), 3L)
   expect_true(all(cors$tier == "B"))
   expect_true(all(cors$method == "wald"))
+  expect_true(all(cors$ci_status == "ok"))
   expect_true(all(cors$correlation >= -1 & cors$correlation <= 1))
   expect_true(all(cors$lower <= cors$correlation + 1e-6))
   expect_true(all(cors$upper >= cors$correlation - 1e-6))

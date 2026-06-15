@@ -22,9 +22,19 @@ expect_valid_correlations_df <- function(df, expected_rows) {
   expect_s3_class(df, "data.frame")
   expect_setequal(
     names(df),
-    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+    c(
+      "tier",
+      "trait_i",
+      "trait_j",
+      "correlation",
+      "lower",
+      "upper",
+      "method",
+      "ci_status"
+    )
   )
   expect_equal(nrow(df), expected_rows)
+  expect_true(all(nzchar(df$ci_status)))
   ## Correlations are in [-1, 1]; CI brackets the point estimate (allowing
   ## for finite-sample boundary effects where one side may equal NA).
   expect_true(
@@ -126,10 +136,22 @@ test_that("extract_correlations() method = 'bootstrap' on 5-family fixture (M1.4
   expect_s3_class(df, "data.frame")
   expect_setequal(
     names(df),
-    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+    c(
+      "tier",
+      "trait_i",
+      "trait_j",
+      "correlation",
+      "lower",
+      "upper",
+      "method",
+      "ci_status"
+    )
   )
   expect_equal(nrow(df), choose(8L, 2L))
   expect_true(all(df$method == "bootstrap"))
+  expect_true(all(
+    df$ci_status %in% c("ok", "partial_interval", "bootstrap_failed")
+  ))
   expect_true(all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8))
   ## Note: full bracket check (lower <= correlation <= upper) is
   ## deferred to M1.8 — the bootstrap path's link_residual handling
@@ -152,6 +174,10 @@ test_that("confint() routes mixed-family rho profile intervals (M1.4)", {
   expect_true(any(finite))
   expect_true(all(ci[finite] >= -1 - 1e-8))
   expect_true(all(ci[finite] <= 1 + 1e-8))
+  expect_equal(
+    unname(attr(ci, "ci_status")),
+    if (all(finite)) "ok" else "profile_boundary"
+  )
 })
 
 test_that("confint() routes mixed-family rho bootstrap intervals (M1.4)", {
@@ -175,6 +201,7 @@ test_that("confint() routes mixed-family rho bootstrap intervals (M1.4)", {
   expect_true(all(ci >= -1 - 1e-8))
   expect_true(all(ci <= 1 + 1e-8))
   expect_true(ci[1L, 1L] <= ci[1L, 2L])
+  expect_equal(unname(attr(ci, "ci_status")), "ok")
 })
 
 # ---- Method-agreement: fisher-z vs wald only ------------------------

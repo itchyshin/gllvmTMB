@@ -4,6 +4,58 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Native rho CI-status semantics
+
+Scope:
+
+- added a `ci_status` column to `extract_correlations()` rows;
+- added a row-named `ci_status` attribute to
+  `confint(fit, parm = "rho:<tier>:i,j")` matrices;
+- classified one-sided profile intervals as `profile_boundary` rather than
+  leaving `NA` endpoints uninterpreted;
+- kept the returned `confint()` object as the existing two-column numeric
+  matrix so base-R caller shape stays stable.
+
+Evidence:
+
+- Manual probe:
+  `Rscript -e 'devtools::load_all(".", quiet=TRUE); fit <- gllvmTMB:::fit_mixed_family_fixture(3L); ci <- suppressWarnings(suppressMessages(confint(fit, parm="rho:unit:1,2", method="profile"))); print(ci); print(attr(ci, "ci_status")); cors <- suppressMessages(extract_correlations(fit, tier="unit", pair=c(1,2), method="profile", link_residual="auto")); print(cors)'`
+  -> observed profile matrix `[NA, 0.999]` with
+  `ci_status = "profile_boundary"` and matching extractor row status.
+- Targeted default gate:
+  `Rscript -e 'devtools::test(filter="fisher-z-correlations|profile-ci|m1-4-extract-correlations-mixed-family")'`
+  -> `PASS 17`, `SKIP 18`, `FAIL 0`, `WARN 0`.
+- Public Stage 37 gate:
+  `Rscript -e 'devtools::test(filter="stage37-mixed-family")'`
+  -> `PASS 40`, `SKIP 0`, `FAIL 0`, `WARN 0`.
+- Heavy mixed-family gate:
+  `GLLVMTMB_HEAVY_TESTS=1 Rscript -e 'devtools::test(filter="m1-4-extract-correlations-mixed-family")'`
+  -> `PASS 64`, `SKIP 0`, `FAIL 0`, `WARN 0` in `29.0s`.
+- Docs:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/extract_correlations.Rd` and
+  `man/confint.gllvmTMB_multi.Rd`; unrelated Rd churn was reverted.
+  Pre-existing unresolved-link roxygen warnings remain.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `PASS 2951`, `SKIP 724`, `FAIL 0`, `WARN 3` in `125.1s`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warning in
+  `animal-keyword` and the existing `glmmTMB`/`TMB` version warning in the
+  cross-package NB1 check.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- This is status semantics for existing rho CI routes, not calibrated coverage.
+- `profile_boundary` means the interval is one-sided/boundary-partial, not
+  fully bracketed.
+- Julia mixed-family CI endpoints remain unsupported.
+
 ## 2026-06-15 -- Native mixed-family confint profile/bootstrap route evidence
 
 Scope:

@@ -33,6 +33,9 @@ parameter names) and two columns giving the lower/upper bounds, labelled
 \code{"<a> \%"} / \code{"<1-a> \%"} in the \code{stats::confint()} convention. Successful
 matrices carry a row-named \code{ci_status} attribute using the same vocabulary
 as native \code{gllvmTMB} interval helpers.
+Mixed-family, masked-response, and non-Gaussian fixed-effect-X Julia bridge
+objects fail before refitting with method-specific unavailable CI-status
+strings.
 }
 \description{
 Surfaces the GLLVM.jl engine's confidence intervals (computed by its native

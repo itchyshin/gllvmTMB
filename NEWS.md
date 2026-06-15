@@ -25,6 +25,13 @@
   post-fit prediction, fitted values, residuals, and augmentation use the cached
   fitted means and mark masked rows with status metadata.
 
+* `engine = "julia"` now reports method-specific CI-status strings for
+  non-Gaussian fixed-effect-X interval requests
+  (`wald_unavailable_non_gaussian_x`, `profile_unavailable_non_gaussian_x`, and
+  `bootstrap_unavailable_non_gaussian_x`) instead of a prose-only unsupported
+  error. This is an unsupported-cell contract; interval endpoints remain
+  unavailable for those rows.
+
 * `confint(fit, parm = "rho:<tier>:i,j")` now forwards
   `link_residual = "auto"` / `"none"` to `extract_correlations()` for
   non-profile methods. The native mixed-family oracle now has public

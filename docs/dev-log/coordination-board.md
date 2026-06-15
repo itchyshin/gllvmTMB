@@ -47,6 +47,7 @@ The finish sequence is **R-first**:
 | `engine = "julia"` is partial, not complete | covered | README and NEWS describe paired-checkout requirements and deliberate unsupported cells. |
 | NB1 complete-data no-X bridge route | partial | Formula-vs-direct Julia logLik equality, Wald `phi` smoke, post-fit `predict()`, `fitted()`, `residuals()`, `augment()`, and conditional `simulate()` tests. |
 | Fixed-effect-X bridge rows | partial | Public formula-vs-direct evidence for Gaussian, Poisson, Binomial, NB2, Beta, and Gamma; NB1 X and ordinal X remain rejected. |
+| Non-Gaussian-X bridge CI-status | covered | Supported non-Gaussian fixed-effect-X point-fit rows now cache `ci_unavailable_non_gaussian_x`; direct `ci_method` and `confint()` requests report method-specific unavailable statuses for Wald/profile/bootstrap. |
 | Missing-response bridge rows | partial | Poisson, Bernoulli Binomial, NB2, NB1, Beta, Gamma, and ordinal-probit no-X point fits are routed with observed-cell masks. Masked CIs and masked simulations remain rejected. |
 | Mixed-family Julia bridge point fits | partial | Complete balanced trait-aligned no-X/no-mask/no-CI point fits are admitted for Gaussian, Poisson, Binomial, NB2, Beta, and Gamma components with family/link labels and explicit unavailable-CI status. |
 | Conditional bridge simulation | partial | Gaussian, Poisson, Binomial, NB2, NB1, Beta, and Gamma in-sample simulation routed for complete-data bridge payloads. Mixed-family and masked simulations remain rejected. |
@@ -55,16 +56,16 @@ The finish sequence is **R-first**:
 
 ## Next Safe Slice
 
-Unsupported-cell contract hardening:
+R-first capability ledger cleanup:
 
-1. Add method-specific CI-status helpers for supported point-fit rows whose
-   intervals remain unavailable, especially non-Gaussian-X bridge fits.
-2. Test direct `gllvm_julia_fit(..., X = ..., ci_method = ...)` failures for
-   `wald`, `profile`, and `bootstrap` with stable status strings.
-3. Expand mixed-family excluded-cell tests for X, masks, cbind/weights, REML,
-   ordinal/NB1 components, and CI requests.
-4. Keep the next positive admissions small: one family or method row at a time,
-   with point estimates, logLik/objective, CI-status, docs, and board evidence.
+1. Reconcile README, NEWS, ROADMAP, issues, and bridge capabilities against the
+   current R user surface.
+2. Split rows into `covered`, `partial`, `experimental`, `planned`, and
+   `unsupported`; do not use blanket "complete" language.
+3. Give every promoted R row point-estimate/logLik evidence plus CI or explicit
+   CI-status evidence before asking Julia to chase it.
+4. Keep the next positive admission small: one family, method row, or
+   unsupported-status row at a time.
 
 ## Blockers / Deliberate Holds
 

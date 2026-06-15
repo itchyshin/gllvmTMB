@@ -5,12 +5,19 @@
 Admit the narrow NB1 (`nbinom1`) no-X reduced-rank route through the R
 `engine = "julia"` bridge.
 
+## Historical Status Note
+
+This report predates `2026-06-15-julia-bridge-nb1-mask.md`. NB1 no-X response
+masks are now admitted for point fits and in-sample post-fit rows. Remaining
+NB1 bridge gaps are fixed-effect X, masked CIs/profile/bootstrap, masked
+simulation, mixed-family NB1, and native TMB-vs-Julia comparator parity.
+
 ## Implemented
 
 The R bridge now maps `nbinom1()` / `"nbinom1"` / `"nb1"` to the paired
 `GLLVM.bridge_fit` `nb1` route. `gllvm_julia_capabilities()` now lists NB1 as
 an admitted no-X row instead of planned debt. The tests keep NB1 fixed-effect-X
-and missing-response-mask cells rejected before JuliaCall and add a live NB1
+and, at this slice, missing-response-mask cells rejected before JuliaCall and add a live NB1
 fit plus Wald CI smoke.
 
 ## Mathematical Contract
@@ -118,8 +125,9 @@ that shape in docs or downstream code.
 
 - Native TMB-vs-Julia NB1 parity is not yet tested in this slice.
 - NB1 profile/bootstrap CIs are not separately validated.
-- NB1 X, masks, mixed-family rows, and broader structures remain unsupported in
-  the R bridge.
+- NB1 fixed-effect covariates, masked CIs/profile/bootstrap, masked
+  simulations, mixed-family rows, and broader structures remain unsupported in
+  the R bridge. NB1 no-X response masks landed in a later slice.
 
 ## Known Limitations
 
@@ -135,5 +143,5 @@ GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscrip
 ## Rose Verdict
 
 Rose verdict: PASS WITH NOTES - NB1 no-X is admitted and live-tested, while
-native TMB parity, profile/bootstrap CIs, masks, X, mixed-family, and broader
-structures remain open gates.
+native TMB parity, profile/bootstrap CIs, X, mixed-family, and broader
+structures remain open gates. NB1 no-X response masks landed in a later slice.

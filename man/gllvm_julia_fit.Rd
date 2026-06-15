@@ -42,7 +42,10 @@ for one-part non-Gaussian no-X fits and \code{ci_method = "none"}.}
 \code{"none"} (default, no CIs), \code{"wald"}, \code{"profile"}, or \code{"bootstrap"}. When not
 \code{"none"}, the returned object gains the bridge \verb{ci_*} fields (\code{ci_method},
 \code{ci_level}, \code{ci_param_names}, \code{ci_estimate}, \code{ci_lower}, \code{ci_upper},
-\code{ci_note}), reusing GLLVM.jl's native CI engines (no CI math in R).}
+\code{ci_note}), reusing GLLVM.jl's native CI engines (no CI math in R).
+Unsupported mixed-family, masked-response, and non-Gaussian fixed-effect-X
+cells deliberately return method-specific unavailable CI-status strings until
+those interval routes are implemented.}
 
 \item{ci_level}{Nominal coverage for the CIs (default \code{0.95}).}
 

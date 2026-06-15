@@ -4,6 +4,60 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge non-Gaussian-X CI-status contract
+
+Scope:
+
+- added method-specific unavailable CI-status helpers for non-Gaussian
+  fixed-effect-X Julia bridge fits:
+  `wald_unavailable_non_gaussian_x`,
+  `profile_unavailable_non_gaussian_x`, and
+  `bootstrap_unavailable_non_gaussian_x`;
+- cached `ci_status = "ci_unavailable_non_gaussian_x"` and `ci_note` on
+  complete non-Gaussian-X point-fit bridge objects;
+- made `confint.gllvmTMB_julia()` fail before refitting unsupported
+  non-Gaussian-X objects, even when a synthetic or stale object carries cached
+  CI-looking fields;
+- broadened mixed-family unsupported-CI checks from Wald only to
+  Wald/profile/bootstrap;
+- clarified the NA-without-mask error now that selected no-X non-Gaussian masks
+  are admitted by explicit `mask`;
+- time-scoped stale NB1 after-task reports so old “masks unsupported” notes do
+  not overrule the later NB1-mask admission.
+
+Evidence:
+
+- Roxygen:
+  `Rscript -e 'devtools::document(roclets = "rd")'`
+  -> regenerated `man/gllvm_julia_fit.Rd` and
+  `man/confint.gllvmTMB_julia.Rd`; pre-existing unresolved-link warnings
+  remain; unrelated generated Rd churn was reverted.
+- No-Julia R bridge gate:
+  `Rscript -e 'devtools::test(filter = "julia-bridge")'`
+  -> first exposed that NB1 fixed-effect-X is still rejected before the CI-status
+  layer, then passed after NB1 was removed from the non-Gaussian-X interval
+  loop: final rerun `FAIL 0 | WARN 0 | SKIP 18 | PASS 248` in `2.6s`.
+- Live R-Julia bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 599` in `63.9s`.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 3 | SKIP 724 | PASS 3018`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warnings and existing
+  `glmmTMB`/`TMB` version mismatch.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- No non-Gaussian fixed-effect-X interval endpoints are implemented.
+- NB1 fixed-effect-X remains rejected before this CI-status layer.
+- Masked-response and mixed-family intervals remain unavailable with their own
+  method-specific status strings.
+- This is R-side bridge contract hardening only; no Julia likelihood or speed
+  code changed.
+
 ## 2026-06-15 -- Julia bridge confint CI-status attribute
 
 Scope:

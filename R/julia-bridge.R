@@ -371,6 +371,33 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
+.gllvm_julia_non_gaussian_x_ci_status <- function(method = "ci") {
+  method <- as.character(method)[1L]
+  if (is.na(method) || identical(method, "none")) {
+    return("ci_unavailable_non_gaussian_x")
+  }
+  paste0(method, "_unavailable_non_gaussian_x")
+}
+
+.gllvm_julia_non_gaussian_x_ci_note <- function() {
+  paste(
+    "confidence intervals for non-Gaussian fixed-effect-X Julia-engine fits",
+    "are not routed through the Julia bridge yet. Use ci_method = 'none' for",
+    "point estimates or engine = 'tmb'."
+  )
+}
+
+.gllvm_julia_stop_non_gaussian_x_ci <- function(prefix, method) {
+  stop(
+    prefix,
+    ": ci_status = '",
+    .gllvm_julia_non_gaussian_x_ci_status(method),
+    "'; ",
+    .gllvm_julia_non_gaussian_x_ci_note(),
+    call. = FALSE
+  )
+}
+
 .gllvm_julia_mixed_selector <- function(family, data, trait, trait_factor) {
   if (!is.list(family) || inherits(family, "family")) {
     return(list(family = .gllvm_julia_family(family), selector = NULL))
@@ -639,6 +666,9 @@ gllvm_julia_capabilities <- function() {
 #'   `"none"`, the returned object gains the bridge `ci_*` fields (`ci_method`,
 #'   `ci_level`, `ci_param_names`, `ci_estimate`, `ci_lower`, `ci_upper`,
 #'   `ci_note`), reusing GLLVM.jl's native CI engines (no CI math in R).
+#'   Unsupported mixed-family, masked-response, and non-Gaussian fixed-effect-X
+#'   cells deliberately return method-specific unavailable CI-status strings
+#'   until those interval routes are implemented.
 #' @param ci_level Nominal coverage for the CIs (default `0.95`).
 #' @param ci_nboot Parametric-bootstrap replicates when `ci_method = "bootstrap"`
 #'   (default `200L`).
@@ -730,8 +760,9 @@ gllvm_julia_fit <- function(
     y <- .gllvm_julia_sanitize_masked_y(y, mask, fam)
   } else if (anyNA(y)) {
     stop(
-      "engine = 'julia': missing-response masks are not wired yet; ",
-      "y must be complete. Use engine = 'tmb' for missing responses.",
+      "engine = 'julia': y contains NA response cells but no observed-cell ",
+      "mask was supplied; pass mask = !is.na(y) for supported no-X ",
+      "non-Gaussian bridge families, or use engine = 'tmb'.",
       call. = FALSE
     )
   }
@@ -768,12 +799,7 @@ gllvm_julia_fit <- function(
       )
     }
     if (!identical(ci_method, "none") && !identical(fam, "gaussian")) {
-      stop(
-        "engine = 'julia': confidence intervals for non-Gaussian covariate ",
-        "fits are not routed through the Julia bridge yet. Re-fit with ",
-        "ci_method = 'none' or use engine = 'tmb'.",
-        call. = FALSE
-      )
+      .gllvm_julia_stop_non_gaussian_x_ci("engine = 'julia'", ci_method)
     }
   }
   trait_names <- rownames(y)
@@ -826,6 +852,9 @@ gllvm_julia_fit <- function(
   } else if (mixed_family) {
     res$ci_status <- .gllvm_julia_mixed_ci_status("none")
     res$ci_note <- .gllvm_julia_mixed_ci_note()
+  } else if (!is.null(X) && !identical(fam, "gaussian")) {
+    res$ci_status <- .gllvm_julia_non_gaussian_x_ci_status("none")
+    res$ci_note <- .gllvm_julia_non_gaussian_x_ci_note()
   }
   class(res) <- c("gllvmTMB_julia", "list")
   res
@@ -1784,6 +1813,9 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 #'   `"<a> %"` / `"<1-a> %"` in the `stats::confint()` convention. Successful
 #'   matrices carry a row-named `ci_status` attribute using the same vocabulary
 #'   as native `gllvmTMB` interval helpers.
+#'   Mixed-family, masked-response, and non-Gaussian fixed-effect-X Julia bridge
+#'   objects fail before refitting with method-specific unavailable CI-status
+#'   strings.
 #' @export
 #' @method confint gllvmTMB_julia
 confint.gllvmTMB_julia <- function(
@@ -1799,6 +1831,9 @@ confint.gllvmTMB_julia <- function(
   }
   if (.gllvm_julia_has_masked_response(object$observed_mask)) {
     .gllvm_julia_stop_masked_ci("confint.gllvmTMB_julia", method)
+  }
+  if (!is.null(object$X) && !identical(object$family[1], "gaussian")) {
+    .gllvm_julia_stop_non_gaussian_x_ci("confint.gllvmTMB_julia", method)
   }
 
   ## Decide whether the cached CI payload already matches the request. The bridge

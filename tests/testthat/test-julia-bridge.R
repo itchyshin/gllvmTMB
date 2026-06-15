@@ -379,7 +379,7 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
   Y_miss[1, 1] <- NA_real_
   expect_error(
     gllvm_julia_fit(Y_miss, family = "gaussian", num.lv = 1L),
-    "missing-response masks are not wired"
+    "no observed-cell mask was supplied"
   )
   mask <- !is.na(Y_miss)
   expect_error(
@@ -412,6 +412,28 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
     gllvm_julia_fit(Y, family = "ordinal", X = array(0, dim = c(3, 4, 1))),
     "fixed-effect covariates X are not wired"
   )
+  x_ci_y <- list(
+    poisson = matrix(stats::rpois(12, lambda = 3), nrow = 3),
+    binomial = matrix(rep(c(0, 1), 6L), nrow = 3),
+    negbinomial = matrix(stats::rpois(12, lambda = 4), nrow = 3),
+    beta = matrix(seq(0.1, 0.9, length.out = 12L), nrow = 3),
+    gamma = matrix(seq(0.5, 2.0, length.out = 12L), nrow = 3)
+  )
+  X <- array(0, dim = c(3L, 4L, 1L))
+  for (fam_x in names(x_ci_y)) {
+    for (method in c("wald", "profile", "bootstrap")) {
+      expect_error(
+        gllvm_julia_fit(
+          x_ci_y[[fam_x]],
+          family = fam_x,
+          num.lv = 1L,
+          X = X,
+          ci_method = method
+        ),
+        paste0(method, "_unavailable_non_gaussian_x")
+      )
+    }
+  }
   expect_error(
     gllvm_julia_fit(Y, family = list("gaussian", "poisson")),
     "mixed-family vector length"
@@ -432,14 +454,16 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
     ),
     "fixed-effect covariates X are not wired for mixed-family"
   )
-  expect_error(
-    gllvm_julia_fit(
-      Y,
-      family = list("gaussian", "poisson", "binomial"),
-      ci_method = "wald"
-    ),
-    "wald_unavailable_mixed_family"
-  )
+  for (method in c("wald", "profile", "bootstrap")) {
+    expect_error(
+      gllvm_julia_fit(
+        Y,
+        family = list("gaussian", "poisson", "binomial"),
+        ci_method = method
+      ),
+      paste0(method, "_unavailable_mixed_family")
+    )
+  }
 })
 
 test_that("engine = 'julia' mixed-family guards unsupported cells before JuliaCall", {
@@ -795,8 +819,35 @@ test_that("confint() on masked Julia objects reports method-specific CI status",
   )
 })
 
+test_that("confint() on non-Gaussian X Julia objects reports method-specific CI status", {
+  fit <- fake_julia_fit()
+  fit$ci_status <- "ci_unavailable_non_gaussian_x"
+  fit$ci_note <- "synthetic non-Gaussian X CI note"
+
+  for (method in c("wald", "profile", "bootstrap")) {
+    expect_error(
+      confint(fit, method = method),
+      paste0(method, "_unavailable_non_gaussian_x")
+    )
+  }
+
+  cached <- fit
+  cached$ci_method <- "wald"
+  cached$ci_level <- 0.95
+  cached$ci_param_names <- "alpha[sp1]"
+  cached$ci_lower <- -0.1
+  cached$ci_upper <- 0.2
+  cached$ci_status <- "ok"
+  cached$ci_note <- ""
+  expect_error(
+    confint(cached, method = "wald"),
+    "wald_unavailable_non_gaussian_x"
+  )
+})
+
 test_that("confint() preserves non-masked bridge CI status failures", {
   fit <- fake_julia_fit()
+  fit$X <- NULL
   fit$ci_method <- "wald"
   fit$ci_level <- 0.95
   fit$ci_param_names <- "alpha[sp1]"
@@ -813,6 +864,7 @@ test_that("confint() preserves non-masked bridge CI status failures", {
 
 test_that("confint() marks successful Julia bridge CI rows as ok", {
   fit <- fake_julia_fit()
+  fit$X <- NULL
   fit$ci_method <- "wald"
   fit$ci_level <- 0.95
   fit$ci_param_names <- c("alpha[sp1]", "Lambda_B[1,1]")
@@ -1552,7 +1604,12 @@ test_that("engine = 'julia' admits trait-aligned mixed-family fits", {
       floor(sim[fit$family_selector$row_level == "p", ])
   ))
   expect_true(all(sim[fit$family_selector$row_level == "b", ] %in% c(0, 1)))
-  expect_error(confint(fit, method = "wald"), "wald_unavailable_mixed_family")
+  for (method in c("wald", "profile", "bootstrap")) {
+    expect_error(
+      confint(fit, method = method),
+      paste0(method, "_unavailable_mixed_family")
+    )
+  }
 })
 
 test_that("direct Julia bridge wrapper fits a supported Poisson X model", {
@@ -1581,6 +1638,14 @@ test_that("direct Julia bridge wrapper fits a supported Poisson X model", {
   expect_equal(fit$model, "poisson_x_rr")
   expect_equal(length(fit$gamma), dim(X)[3])
   expect_true(is.finite(fit$loglik))
+  expect_equal(fit$ci_status, "ci_unavailable_non_gaussian_x")
+  expect_match(fit$ci_note, "non-Gaussian fixed-effect-X")
+  for (method in c("wald", "profile", "bootstrap")) {
+    expect_error(
+      confint(fit, method = method),
+      paste0(method, "_unavailable_non_gaussian_x")
+    )
+  }
 })
 
 test_that("engine = 'julia' Poisson X dispatch matches the direct bridge wrapper", {

@@ -5,6 +5,13 @@
 Complete the post-fit R surface for the already-admitted NB1 no-X
 `engine = "julia"` bridge row.
 
+## Historical Status Note
+
+This report predates `2026-06-15-julia-bridge-nb1-mask.md`. NB1 no-X response
+masks are now admitted for point fits and in-sample post-fit rows. Remaining
+NB1 bridge gaps are fixed-effect X, masked CIs/profile/bootstrap, masked
+simulation, mixed-family NB1, and native TMB-vs-Julia comparator parity.
+
 ## Implemented
 
 NB1 now uses the log-link response-scale prediction route in
@@ -117,7 +124,8 @@ fail-fast boundaries.
 ## Remaining Risks
 
 - NB1 with fixed-effect covariates remains unsupported.
-- NB1 missing-response masks and masked simulations remain unsupported.
+- NB1 masked CIs/profile/bootstrap and masked simulations remain unsupported.
+  NB1 no-X response masks landed in a later slice.
 - NB1 profile/bootstrap CIs are not separately validated here.
 - Native TMB-vs-Julia NB1 parity is still a future comparator gate.
 - `simulate()` is conditional on fitted in-sample means; it is not an
@@ -137,5 +145,6 @@ GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscrip
 ## Rose Verdict
 
 Rose verdict: PASS WITH NOTES - NB1 post-fit methods are routed and live-tested
-for the admitted complete-data no-X row, while NB1 X, masks, profile/bootstrap,
-native-TMB parity, and mixed-family rows remain open gates.
+for the admitted complete-data no-X row, while NB1 X, masked CIs/simulations,
+profile/bootstrap, native-TMB parity, and mixed-family rows remain open gates.
+NB1 no-X response masks landed in a later slice.

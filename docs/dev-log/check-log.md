@@ -4,6 +4,51 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge masked-family matrix
+
+Scope:
+
+- mapped the public `ordinal_probit()` family constructor to the paired
+  GLLVM.jl `ordinal_probit` bridge key rather than the cumulative-logit
+  `ordinal` key;
+- expanded live missing-response bridge evidence from Poisson-only to the
+  admitted no-X one-part non-Gaussian family matrix: Poisson, Bernoulli
+  Binomial, NB2, Beta, Gamma, and Ordinal-probit;
+- added direct-wrapper sentinel-invariance checks for Binomial (with an
+  explicit `N` matrix), NB2, Beta, Gamma, and Ordinal-probit;
+- preserved the unsupported boundary for Gaussian masks, X+mask, masked
+  CI/profile/bootstrap refits, mixed-family masks, `cbind()` binomial, and
+  ordinal prediction/residual methods.
+
+Evidence:
+
+- Paired GLLVM.jl bridge-mask hook:
+  `~/.juliaup/bin/julia --project=. test/test_bridge_missing_mask.jl`
+  in `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`
+  -> `PASS 23`, `FAIL 0`, `ERROR 0` in `16.8s`.
+- Adjacent GLLVM.jl bridge CI regression:
+  `~/.juliaup/bin/julia --project=. test/test_bridge_ci.jl`
+  -> `PASS 66`, `FAIL 0`, `ERROR 0` in `46.2s`.
+- Live focused R bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 232`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 232`, `FAIL 0`, `WARN 0`, `SKIP 0` in `50.9s`.
+- Default no-Julia test mode:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 80`, `SKIP 12`, `FAIL 0`, `WARN 0` in `2.0s`.
+
+Deliberately not claimed:
+
+- This is R->Julia transport and direct-wrapper sentinel-invariance evidence,
+  not R/TMB-vs-Julia statistical parity.
+- Masked CI/profile/bootstrap refits remain unsupported.
+- Gaussian response masks, X+mask fits, `cbind()` binomial, and mixed-family
+  masks remain unsupported.
+- Ordinal-probit fits are fit/nobs/mask/link-tested only; prediction and
+  residual methods wait for cutpoint/probability payloads.
+
 ## 2026-06-15 -- Julia bridge response-mask admission
 
 Scope:

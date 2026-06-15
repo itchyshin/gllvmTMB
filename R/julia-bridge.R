@@ -70,7 +70,8 @@ gllvm_julia_setup <- function(
   "negbinomial",
   "beta",
   "gamma",
-  "ordinal"
+  "ordinal",
+  "ordinal_probit"
 )
 .GLLVM_JULIA_X_FAMILIES <- c(
   "gaussian",
@@ -108,6 +109,7 @@ gllvm_julia_setup <- function(
     beta = "beta",
     gamma = "gamma",
     ordinal = "ordinal",
+    ordinal_probit = "ordinal_probit",
     NA_character_
   )
   if (is.na(out)) {
@@ -115,7 +117,7 @@ gllvm_julia_setup <- function(
       "engine = 'julia': unsupported family '",
       fam,
       "'. Supported: gaussian, poisson, ",
-      "binomial, nbinom2, beta, gamma, ordinal.",
+      "binomial, nbinom2, beta, gamma, ordinal, ordinal_probit.",
       call. = FALSE
     )
   }
@@ -160,7 +162,8 @@ gllvm_julia_setup <- function(
   "negbinomial",
   "beta",
   "gamma",
-  "ordinal"
+  "ordinal",
+  "ordinal_probit"
 )
 
 .gllvm_julia_mask <- function(mask, y) {
@@ -515,7 +518,7 @@ print.gllvmTMB_julia <- function(x, ...) {
 
 .gllvm_julia_eta_matrix <- function(object, include_latent = TRUE) {
   fam <- as.character(object$family[1])
-  if (identical(fam, "ordinal")) {
+  if (fam %in% c("ordinal", "ordinal_probit")) {
     stop(
       "predict.gllvmTMB_julia: ordinal predictions are not wired yet because ",
       "the Julia bridge payload does not carry cutpoints/probabilities.",

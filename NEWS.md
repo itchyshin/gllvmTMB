@@ -16,8 +16,9 @@
   reject those payloads.
   IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
   with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
-  beta, gamma, and ordinal families, plus fixed-effect covariates for complete,
-  balanced one-part gaussian, poisson, binomial, nbinom2, beta, and gamma fits.
+  beta, gamma, and ordinal-probit families, plus fixed-effect covariates for
+  complete, balanced one-part gaussian, poisson, binomial, nbinom2, beta, and
+  gamma fits.
   PARTIAL:
   the supported surface is deliberately narrow — the bridge loudly rejects
   non-`rr` covariance terms, missing latent blocks, more than one latent block,
@@ -35,9 +36,12 @@
   `ordiplot()` for `gllvmTMB_julia` objects; `plot(type = "ordination")` is
   also wired as a narrow ggplot route over cached scores/loadings. The
   first missing-response bridge route is live for one-part no-X non-Gaussian
-  fits via an explicit observed-cell mask (`TRUE = observed`), with Poisson
-  live-tested end-to-end and masked residual rows reported as
-  `status = "masked"` rather than fake residuals. Broader per-family R/TMB
+  fits via an explicit observed-cell mask (`TRUE = observed`), with live
+  end-to-end rows for poisson, Bernoulli binomial, nbinom2, beta, gamma, and
+  ordinal-probit fits. Families with response-scale prediction support report
+  masked residual rows as `status = "masked"` rather than fake residuals;
+  ordinal-probit is fit/nobs/mask/link-tested but still waits for cutpoint
+  payloads before prediction/residual methods are exposed. Broader R/TMB
   parity, Gaussian response masks, X+mask fits, and masked CI/profile/bootstrap
   refits remain separate validation gates. The
   prediction/residual methods are deliberately in-sample only; `newdata` and

@@ -39,10 +39,65 @@ make_long_cov <- function(
   df$env <- env_per_unit[as.integer(df$unit)]
   df$value <- stats::rnorm(nrow(df))
   df$count <- stats::rpois(nrow(df), lambda = exp(0.4 + 0.3 * df$env))
+  df$bin <- stats::rbinom(
+    nrow(df),
+    size = 1L,
+    prob = stats::plogis(0.1 + 0.4 * df$env)
+  )
+  df$nb <- stats::rnbinom(nrow(df), size = 5, mu = exp(0.7 + 0.2 * df$env))
   df$prop <- stats::plogis(
     0.2 + 0.5 * df$env + stats::rnorm(nrow(df), sd = 0.3)
   )
+  df$gam <- stats::rgamma(
+    nrow(df),
+    shape = 4,
+    scale = exp(0.3 + 0.2 * df$env) / 4
+  )
+  df$ord <- ((as.integer(df$unit) + as.integer(df$trait)) %% 3L) + 1L
   df
+}
+
+expect_masked_public_julia_fit <- function(
+  response,
+  family,
+  model,
+  seed,
+  check_postfit = TRUE
+) {
+  df <- make_long_cov(n_unit = 34L, seed = seed)
+  df[[response]][1] <- NA_real_
+  fit <- gllvmTMB(
+    stats::as.formula(
+      paste0(response, " ~ 0 + trait + latent(0 + trait | unit, d = 1)")
+    ),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = family,
+    engine = "julia",
+    missing = miss_control(response = "include")
+  )
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(fit$model, model)
+  expect_equal(stats::nobs(fit), nrow(df) - 1L)
+  expect_equal(fit$nobs, nrow(df) - 1L)
+  expect_equal(sum(!fit$observed_mask), 1L)
+  expect_equal(is.finite(fit$loglik), TRUE)
+
+  if (check_postfit) {
+    pr <- predict(fit, type = "response")
+    expect_equal(nrow(pr), nrow(df))
+    expect_equal(all(is.finite(pr$est)), TRUE)
+
+    rr <- residuals(fit)
+    expect_equal(nrow(rr), nrow(df))
+    expect_equal(sum(rr$status == "masked"), 1L)
+    expect_equal(is.na(rr$observed[rr$status == "masked"]), TRUE)
+    expect_equal(is.na(rr$residual[rr$status == "masked"]), TRUE)
+    expect_equal(is.finite(rr$fitted[rr$status == "masked"]), TRUE)
+  }
+
+  fit
 }
 
 skip_if_no_julia <- function() {
@@ -105,6 +160,7 @@ test_that("family mapping covers every bridged family", {
   expect_equal(.gllvm_julia_family("beta"), "beta")
   expect_equal(.gllvm_julia_family("gamma"), "gamma")
   expect_equal(.gllvm_julia_family("ordinal"), "ordinal")
+  expect_equal(.gllvm_julia_family(ordinal_probit()), "ordinal_probit")
 })
 
 test_that("family mapping rejects mixed vectors until the Julia bridge supports them", {
@@ -485,6 +541,128 @@ test_that("direct Julia bridge wrapper masks are sentinel-invariant", {
   )
   expect_equal(fit_na$alpha, fit_garbage$alpha, tolerance = 1e-8)
   expect_equal(fit_na$loadings, fit_garbage$loadings, tolerance = 1e-8)
+})
+
+test_that("direct Julia bridge wrapper masks are sentinel-invariant across admitted families", {
+  skip_if_no_julia()
+  Y_bin <- matrix(rep(c(0, 1, 1, 0, 1, 0), length.out = 3 * 28), nrow = 3L)
+  Y_nb <- matrix(stats::rnbinom(3 * 28, size = 5, mu = 2), nrow = 3L)
+  Y_beta <- matrix(
+    stats::plogis(seq(-1.2, 1.2, length.out = 3 * 28)),
+    nrow = 3L
+  )
+  Y_gamma <- matrix(stats::rgamma(3 * 28, shape = 4, scale = 0.5), nrow = 3L)
+  Y_ord <- matrix(
+    rep(c(1L, 2L, 3L, 2L, 1L, 3L), length.out = 3 * 28),
+    nrow = 3L
+  )
+  mask <- matrix(TRUE, nrow = 3L, ncol = 28L)
+  mask[1L, 2L] <- FALSE
+  mask[3L, 11L] <- FALSE
+
+  cases <- list(
+    list(
+      Y = Y_bin,
+      family = binomial(),
+      garbage = 999,
+      N = matrix(4L, 3L, 28L)
+    ),
+    list(Y = Y_nb, family = nbinom2(), garbage = 999, N = NULL),
+    list(Y = Y_beta, family = Beta(), garbage = 0.99, N = NULL),
+    list(Y = Y_gamma, family = Gamma(link = "log"), garbage = 999, N = NULL),
+    list(Y = Y_ord, family = ordinal_probit(), garbage = 3, N = NULL)
+  )
+
+  for (case in cases) {
+    Y_na <- case$Y
+    Y_na[!mask] <- NA_real_
+    Y_garbage <- case$Y
+    Y_garbage[!mask] <- case$garbage
+
+    fit_na <- gllvm_julia_fit(
+      Y_na,
+      family = case$family,
+      num.lv = 1L,
+      N = case$N,
+      mask = mask
+    )
+    fit_garbage <- gllvm_julia_fit(
+      Y_garbage,
+      family = case$family,
+      num.lv = 1L,
+      N = case$N,
+      mask = mask
+    )
+
+    expect_equal(stats::nobs(fit_na), sum(mask))
+    expect_equal(
+      as.numeric(logLik(fit_na)),
+      as.numeric(logLik(fit_garbage)),
+      tolerance = 1e-8
+    )
+    expect_equal(fit_na$loadings, fit_garbage$loadings, tolerance = 1e-8)
+    if (!identical(fit_na$family, "ordinal_probit")) {
+      expect_equal(fit_na$alpha, fit_garbage$alpha, tolerance = 1e-8)
+    } else {
+      expect_equal(fit_na$model, "ordinal_probit_rr")
+      expect_equal(unique(fit_na$link), "ProbitLink")
+    }
+  }
+})
+
+test_that("engine = 'julia' fits admitted missing-response families end-to-end", {
+  skip_if_no_julia()
+  cases <- list(
+    list(
+      response = "bin",
+      family = binomial(),
+      model = "binomial_rr",
+      seed = 31L,
+      check_postfit = TRUE
+    ),
+    list(
+      response = "nb",
+      family = nbinom2(),
+      model = "negbinomial_rr",
+      seed = 32L,
+      check_postfit = TRUE
+    ),
+    list(
+      response = "prop",
+      family = Beta(),
+      model = "beta_rr",
+      seed = 33L,
+      check_postfit = TRUE
+    ),
+    list(
+      response = "gam",
+      family = Gamma(link = "log"),
+      model = "gamma_rr",
+      seed = 34L,
+      check_postfit = TRUE
+    ),
+    list(
+      response = "ord",
+      family = ordinal_probit(),
+      model = "ordinal_probit_rr",
+      seed = 35L,
+      check_postfit = FALSE
+    )
+  )
+
+  for (case in cases) {
+    fit <- expect_masked_public_julia_fit(
+      response = case$response,
+      family = case$family,
+      model = case$model,
+      seed = case$seed,
+      check_postfit = case$check_postfit
+    )
+    if (!case$check_postfit) {
+      expect_equal(unique(fit$link), "ProbitLink")
+      expect_error(predict(fit, type = "response"), "ordinal predictions")
+    }
+  }
 })
 
 test_that("direct Julia bridge wrapper fits a supported Poisson X model", {

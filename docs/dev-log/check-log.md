@@ -15793,3 +15793,53 @@ Deliberately not claimed:
 - Full `devtools::check()` was not rerun for this bridge-gate correction. The
   scoped live bridge test and roxygen gate passed; broader package checks remain
   a pre-PR/release gate.
+
+## 2026-06-15 -- Julia bridge in-sample prediction and residual methods
+
+Added the next R-first post-fit methods for `gllvmTMB_julia` objects:
+`predict()`, `fitted()`, and `residuals()`. The methods reconstruct the
+conditional in-sample linear predictor from the flat bridge payload
+(`alpha`/`beta_cov`, `gamma`, `X`, `loadings`, and `scores`), apply the family
+inverse link for gaussian, poisson, binomial, nbinom2, beta, and gamma, and
+return row-ordered data frames for objects produced by
+`gllvmTMB(..., engine = "julia")`.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `NAMESPACE`
+- `man/gllvmTMB_julia-methods.Rd`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-predict-residuals.md`
+
+Evidence:
+
+- Live focused bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 98`; Julia activated
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`.
+- Package-level filtered gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 98` in `41.6s`.
+- Roxygen:
+  `Rscript -e 'devtools::document()'`
+  -> registered `predict`, `fitted`, and `residuals` S3 methods and updated
+  `man/gllvmTMB_julia-methods.Rd`; roxygen emitted existing link warnings
+  unrelated to this slice.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- `predict.gllvmTMB_julia()` is in-sample only. `newdata` predictions are
+  rejected.
+- Ordinal prediction is rejected until the bridge payload carries cutpoints or
+  probabilities.
+- Gaussian covariate prediction is rejected until the paired Julia bridge
+  returns the full mean coefficient vector rather than only the per-trait fitted
+  mean summary.
+- This slice does not add randomized quantile residuals, simulation-rank
+  residuals, prediction intervals, or new Julia engine behavior.

@@ -3,11 +3,26 @@
 \name{gllvmTMB_julia-methods}
 \alias{gllvmTMB_julia-methods}
 \alias{coef.gllvmTMB_julia}
+\alias{predict.gllvmTMB_julia}
+\alias{fitted.gllvmTMB_julia}
+\alias{residuals.gllvmTMB_julia}
 \alias{summary.gllvmTMB_julia}
 \alias{print.summary.gllvmTMB_julia}
 \title{Post-fit methods for Julia-engine GLLVM fits}
 \usage{
 \method{coef}{gllvmTMB_julia}(object, ...)
+
+\method{predict}{gllvmTMB_julia}(
+  object,
+  newdata = NULL,
+  type = c("link", "response"),
+  re_form = ~.,
+  ...
+)
+
+\method{fitted}{gllvmTMB_julia}(object, type = c("response", "link"), re_form = ~., ...)
+
+\method{residuals}{gllvmTMB_julia}(object, type = c("response"), ...)
 
 \method{summary}{gllvmTMB_julia}(object, ...)
 
@@ -18,12 +33,23 @@
 
 \item{...}{Currently unused.}
 
+\item{newdata}{Optional new data. Currently unsupported for Julia-engine fits;
+only in-sample predictions are returned.}
+
+\item{type}{Prediction scale. \code{"link"} returns the fitted linear predictor and
+\code{"response"} returns the inverse-link mean.}
+
+\item{re_form}{Random-effect formula controlling whether conditional latent
+scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predictions.}
+
 \item{digits}{Decimal digits to print.}
 }
 \value{
-\code{coef()} returns a named list of bridge coefficients. \code{summary()}
-returns a list of class \code{summary.gllvmTMB_julia}. \code{print()} methods return
-the input invisibly.
+\code{coef()} returns a named list of bridge coefficients. \code{predict()} and
+\code{residuals()} return data frames in the original training-row order when the
+object came from \code{gllvmTMB(..., engine = "julia")}. \code{fitted()} returns a
+trait x unit matrix. \code{summary()} returns a list of class
+\code{summary.gllvmTMB_julia}. \code{print()} methods return the input invisibly.
 }
 \description{
 Basic inspection methods for objects returned by \code{\link[=gllvm_julia_fit]{gllvm_julia_fit()}} or

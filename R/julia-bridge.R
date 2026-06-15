@@ -308,9 +308,27 @@ print.gllvmTMB_julia <- function(x, ...) {
   invisible(x)
 }
 
+.gllvm_julia_re_zero <- function(re_form) {
+  (is.logical(re_form) && length(re_form) == 1L && is.na(re_form)) ||
+    (inherits(re_form, "formula") && identical(deparse(re_form), "~0"))
+}
+
 .gllvm_julia_trait_names <- function(object) {
   n <- length(object$alpha %||% numeric())
   object$trait_names %||% paste0("trait", seq_len(n))
+}
+
+.gllvm_julia_unit_names <- function(object) {
+  n <- object$n_units %||% ncol(object$y %||% matrix(ncol = 0L))
+  object$unit_names %||% paste0("unit", seq_len(n))
+}
+
+.gllvm_julia_gamma_names <- function(object) {
+  gamma_names <- dimnames(object$X)[[3]]
+  if (is.null(gamma_names)) {
+    gamma_names <- paste0("x", seq_along(object$gamma))
+  }
+  gamma_names
 }
 
 .gllvm_julia_coef_table <- function(object) {
@@ -325,10 +343,7 @@ print.gllvmTMB_julia <- function(x, ...) {
     )
   }
   if (!is.null(object$gamma)) {
-    gamma_names <- dimnames(object$X)[[3]]
-    if (is.null(gamma_names)) {
-      gamma_names <- paste0("x", seq_along(object$gamma))
-    }
+    gamma_names <- .gllvm_julia_gamma_names(object)
     rows[[length(rows) + 1L]] <- data.frame(
       component = "gamma",
       term = sprintf("gamma[%s]", gamma_names),
@@ -374,6 +389,120 @@ print.gllvmTMB_julia <- function(x, ...) {
   do.call(rbind, rows)
 }
 
+.gllvm_julia_eta_matrix <- function(object, include_latent = TRUE) {
+  fam <- as.character(object$family[1])
+  if (identical(fam, "ordinal")) {
+    stop(
+      "predict.gllvmTMB_julia: ordinal predictions are not wired yet because ",
+      "the Julia bridge payload does not carry cutpoints/probabilities.",
+      call. = FALSE
+    )
+  }
+  L <- as.matrix(object$loadings)
+  scores <- as.matrix(object$scores)
+  p <- object$n_traits %||% nrow(L)
+  n <- object$n_units %||% nrow(scores)
+  if (!is.numeric(p) || !is.numeric(n) || p < 1L || n < 1L) {
+    stop(
+      "predict.gllvmTMB_julia: object does not carry valid trait/unit dimensions.",
+      call. = FALSE
+    )
+  }
+  if (include_latent) {
+    if (!length(L) || !length(scores) || ncol(L) != ncol(scores)) {
+      stop(
+        "predict.gllvmTMB_julia: object does not carry compatible loadings and ",
+        "scores for conditional in-sample prediction.",
+        call. = FALSE
+      )
+    }
+    eta <- L %*% t(scores)
+  } else {
+    eta <- matrix(0, p, n)
+  }
+  if (
+    identical(object$model, "gaussian_x_rr") &&
+      !is.null(object$X) &&
+      is.null(object$beta_cov) &&
+      is.null(object$gamma)
+  ) {
+    stop(
+      "predict.gllvmTMB_julia: Gaussian covariate predictions are not wired ",
+      "yet because this bridge payload does not carry the full mean ",
+      "coefficient vector.",
+      call. = FALSE
+    )
+  }
+  if (!is.null(object$beta_cov)) {
+    eta <- eta + matrix(as.numeric(object$beta_cov), p, n)
+  } else if (!is.null(object$alpha) && all(is.finite(object$alpha))) {
+    eta <- eta + matrix(as.numeric(object$alpha), p, n)
+  }
+  if (!is.null(object$X) && !is.null(object$gamma)) {
+    X <- object$X
+    gamma <- as.numeric(object$gamma)
+    if (!is.array(X) || length(dim(X)) != 3L || dim(X)[3] != length(gamma)) {
+      stop(
+        "predict.gllvmTMB_julia: object carries incompatible X/gamma fields.",
+        call. = FALSE
+      )
+    }
+    for (k in seq_along(gamma)) {
+      eta <- eta + X[, , k] * gamma[k]
+    }
+  }
+  dimnames(eta) <- list(.gllvm_julia_trait_names(object), .gllvm_julia_unit_names(object))
+  eta
+}
+
+.gllvm_julia_inverse_link <- function(object, eta) {
+  fam <- as.character(object$family[1])
+  switch(
+    fam,
+    gaussian = eta,
+    poisson = exp(eta),
+    binomial = stats::plogis(eta),
+    negbinomial = exp(eta),
+    beta = stats::plogis(eta),
+    gamma = exp(eta),
+    stop(
+      "predict.gllvmTMB_julia: response-scale predictions are not wired for ",
+      "family '",
+      fam,
+      "'.",
+      call. = FALSE
+    )
+  )
+}
+
+.gllvm_julia_long_values <- function(object, values, value_name) {
+  values <- as.matrix(values)
+  if (!is.null(object$.trait_index) && !is.null(object$.unit_index)) {
+    out <- data.frame(
+      .row = seq_along(object$.trait_index),
+      stringsAsFactors = FALSE
+    )
+    unit_col <- object$unit_col %||% "unit"
+    trait_col <- object$trait_col %||% "trait"
+    out[[unit_col]] <- .gllvm_julia_unit_names(object)[object$.unit_index]
+    out[[trait_col]] <- .gllvm_julia_trait_names(object)[object$.trait_index]
+    out[[value_name]] <- as.numeric(values[cbind(object$.trait_index, object$.unit_index)])
+    return(out)
+  }
+  grid <- expand.grid(
+    trait = .gllvm_julia_trait_names(object),
+    unit = .gllvm_julia_unit_names(object),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  data.frame(
+    unit = grid$unit,
+    trait = grid$trait,
+    setNames(list(as.numeric(values)), value_name),
+    stringsAsFactors = FALSE
+  )
+}
+
 #' Post-fit methods for Julia-engine GLLVM fits
 #'
 #' Basic inspection methods for objects returned by [gllvm_julia_fit()] or
@@ -381,11 +510,19 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' payload in ordinary R shapes; they do not perform new Julia computations.
 #'
 #' @param object,x A `gllvmTMB_julia` object.
+#' @param newdata Optional new data. Currently unsupported for Julia-engine fits;
+#'   only in-sample predictions are returned.
+#' @param type Prediction scale. `"link"` returns the fitted linear predictor and
+#'   `"response"` returns the inverse-link mean.
+#' @param re_form Random-effect formula controlling whether conditional latent
+#'   scores are included. Use `~ 0` or `NA` for fixed-effects-only predictions.
 #' @param digits Decimal digits to print.
 #' @param ... Currently unused.
-#' @return `coef()` returns a named list of bridge coefficients. `summary()`
-#'   returns a list of class `summary.gllvmTMB_julia`. `print()` methods return
-#'   the input invisibly.
+#' @return `coef()` returns a named list of bridge coefficients. `predict()` and
+#'   `residuals()` return data frames in the original training-row order when the
+#'   object came from `gllvmTMB(..., engine = "julia")`. `fitted()` returns a
+#'   trait x unit matrix. `summary()` returns a list of class
+#'   `summary.gllvmTMB_julia`. `print()` methods return the input invisibly.
 #' @name gllvmTMB_julia-methods
 NULL
 
@@ -404,10 +541,7 @@ coef.gllvmTMB_julia <- function(object, ...) {
     out$loadings <- L
   }
   if (!is.null(object$gamma)) {
-    gamma_names <- dimnames(object$X)[[3]]
-    if (is.null(gamma_names)) {
-      gamma_names <- paste0("x", seq_along(object$gamma))
-    }
+    gamma_names <- .gllvm_julia_gamma_names(object)
     out$gamma <- stats::setNames(as.numeric(object$gamma), gamma_names)
   }
   if (!is.null(object$beta_cov)) {
@@ -423,6 +557,79 @@ coef.gllvmTMB_julia <- function(object, ...) {
   ) {
     out$sigma_eps <- as.numeric(object$sigma_eps)
   }
+  out
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+predict.gllvmTMB_julia <- function(
+  object,
+  newdata = NULL,
+  type = c("link", "response"),
+  re_form = ~.,
+  ...
+) {
+  if (!is.null(newdata)) {
+    stop(
+      "predict.gllvmTMB_julia: newdata predictions are not wired yet; ",
+      "only in-sample predictions are currently supported.",
+      call. = FALSE
+    )
+  }
+  type <- match.arg(type)
+  eta <- .gllvm_julia_eta_matrix(
+    object,
+    include_latent = !.gllvm_julia_re_zero(re_form)
+  )
+  values <- if (identical(type, "link")) {
+    eta
+  } else {
+    .gllvm_julia_inverse_link(object, eta)
+  }
+  .gllvm_julia_long_values(object, values, "est")
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+fitted.gllvmTMB_julia <- function(
+  object,
+  type = c("response", "link"),
+  re_form = ~.,
+  ...
+) {
+  type <- match.arg(type)
+  eta <- .gllvm_julia_eta_matrix(
+    object,
+    include_latent = !.gllvm_julia_re_zero(re_form)
+  )
+  if (identical(type, "link")) {
+    eta
+  } else {
+    .gllvm_julia_inverse_link(object, eta)
+  }
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+residuals.gllvmTMB_julia <- function(
+  object,
+  type = c("response"),
+  ...
+) {
+  type <- match.arg(type)
+  observed <- object$y
+  if (is.null(observed)) {
+    stop(
+      "residuals.gllvmTMB_julia: object does not carry the response matrix.",
+      call. = FALSE
+    )
+  }
+  fit <- fitted(object, type = "response")
+  out <- .gllvm_julia_long_values(object, observed - fit, "residual")
+  out$observed <- .gllvm_julia_long_values(object, observed, "observed")$observed
+  out$fitted <- .gllvm_julia_long_values(object, fit, "fitted")$fitted
+  out$type <- type
+  out$status <- "ok"
   out
 }
 
@@ -793,5 +1000,9 @@ confint.gllvmTMB_julia <- function(
   fit$call <- call
   fit$trait_levels <- traits
   fit$unit_levels <- units
+  fit$trait_col <- trait
+  fit$unit_col <- unit_internal
+  fit$.trait_index <- as.integer(ft)
+  fit$.unit_index <- as.integer(fu)
   fit
 }

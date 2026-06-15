@@ -69,6 +69,7 @@ fake_julia_fit <- function() {
       beta_cov = c(0.1, -0.2),
       gamma = c(0.35),
       loadings = matrix(c(0.4, -0.3), nrow = 2L),
+      scores = matrix(c(-0.5, 0.0, 0.5), nrow = 3L),
       dispersion = c(NaN, NaN),
       sigma_eps = NaN,
       X = array(
@@ -76,6 +77,7 @@ fake_julia_fit <- function() {
         dim = c(2L, 3L, 1L),
         dimnames = list(NULL, NULL, "env")
       ),
+      y = matrix(c(1, 2, 3, 4, 5, 6), nrow = 2L),
       loglik = -12.5,
       aic = 31,
       bic = 32,
@@ -152,6 +154,46 @@ test_that("Julia bridge post-fit methods work without JuliaCall", {
   txt <- utils::capture.output(print(s))
   expect_true(any(grepl("Julia-engine summary", txt)))
   expect_true(any(grepl("gamma\\[env\\]", txt)))
+})
+
+test_that("Julia bridge fitted, predict, and residuals methods work without JuliaCall", {
+  fit <- fake_julia_fit()
+  eta <- matrix(fit$alpha, 2L, 3L) + fit$loadings %*% t(fit$scores)
+
+  expect_equal(unname(fitted(fit, type = "link")), unname(eta))
+  expect_equal(unname(fitted(fit, type = "response")), unname(exp(eta)))
+
+  pr <- predict(fit, type = "response")
+  expect_equal(names(pr), c("unit", "trait", "est"))
+  expect_equal(nrow(pr), 6L)
+  expect_equal(pr$est, as.numeric(exp(eta)))
+
+  pr_fixed <- predict(fit, type = "link", re_form = ~0)
+  expect_equal(pr_fixed$est, as.numeric(matrix(fit$alpha, 2L, 3L)))
+
+  rr <- residuals(fit)
+  expect_equal(names(rr), c("unit", "trait", "residual", "observed", "fitted", "type", "status"))
+  expect_equal(rr$residual, as.numeric(fit$y - exp(eta)))
+  expect_equal(rr$status, rep("ok", 6L))
+})
+
+test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
+  fit <- fake_julia_fit()
+  expect_error(
+    predict(fit, newdata = data.frame(unit = "u1", trait = "sp1")),
+    "newdata predictions are not wired"
+  )
+
+  fit_ord <- fit
+  fit_ord$family <- "ordinal"
+  expect_error(predict(fit_ord), "ordinal predictions")
+
+  fit_gx <- fit
+  fit_gx$family <- "gaussian"
+  fit_gx$model <- "gaussian_x_rr"
+  fit_gx$beta_cov <- NULL
+  fit_gx$gamma <- NULL
+  expect_error(predict(fit_gx), "full mean coefficient vector")
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------
@@ -280,6 +322,13 @@ test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end"
   expect_equal(fit$unit_names, levels(df$unit))
   expect_named(coef(fit), c("alpha", "loadings"))
   expect_s3_class(summary(fit), "summary.gllvmTMB_julia")
+  pr <- predict(fit, type = "response")
+  expect_equal(nrow(pr), nrow(df))
+  expect_named(pr, c(".row", "unit", "trait", "est"))
+  expect_true(all(is.finite(pr$est)))
+  rr <- residuals(fit)
+  expect_equal(nrow(rr), nrow(df))
+  expect_true(all(is.finite(rr$residual)))
 })
 
 test_that("direct Julia bridge wrapper fits a supported Poisson X model", {
@@ -336,6 +385,10 @@ test_that("engine = 'julia' Poisson X dispatch matches the direct bridge wrapper
   )
   expect_equal(fit_jl$model, "poisson_x_rr")
   expect_equal(length(fit_jl$gamma), dim(fit_jl$X)[3])
+  pr <- predict(fit_jl, type = "link")
+  expect_equal(nrow(pr), nrow(df))
+  expect_true(all(is.finite(pr$est)))
+  expect_error(predict(fit_jl, newdata = df[1:2, ]), "newdata predictions")
 })
 
 test_that("engine = 'julia' admits Gaussian and Beta X models", {
@@ -363,6 +416,7 @@ test_that("engine = 'julia' admits Gaussian and Beta X models", {
   )
   expect_equal(fit_g$model, "gaussian_x_rr")
   expect_equal(dim(fit_g$X)[3], length(levels(df$trait)) + 1L)
+  expect_error(predict(fit_g), "full mean coefficient vector")
 
   fit_b <- gllvmTMB(
     prop ~ 0 + trait + env + latent(0 + trait | unit, d = 1),

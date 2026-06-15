@@ -27,8 +27,9 @@ gllvm_julia_fit(
 
 \item{N}{Binomial trials (matrix or scalar), or \code{NULL}.}
 
-\item{X}{Reserved for a future bridge branch. The current bridge rejects
-non-\code{NULL} \code{X} before calling Julia.}
+\item{X}{Optional fixed-effect covariate array with shape p x n x q. Gaussian
+fits expect the full mean design, including per-trait intercept planes;
+supported non-Gaussian fits expect the extra covariate planes only.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 

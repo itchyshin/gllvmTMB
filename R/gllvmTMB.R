@@ -703,7 +703,8 @@ gllvmTMB <- function(
       unit_internal  = site,
       family         = family,
       weights        = weights,
-      call           = match.call()
+      call           = match.call(),
+      is_y_observed  = observed_response$is_y_observed
     ))
   }
   gllvmTMB_multi_fit(

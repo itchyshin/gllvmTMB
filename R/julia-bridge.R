@@ -20,57 +20,137 @@
 #'   or env `JULIA_HOME`; if unset, JuliaCall auto-discovers).
 #' @return Invisibly `TRUE` once ready.
 #' @export
-gllvm_julia_setup <- function(jl_path = getOption("gllvmTMB.GLLVM.jl.path", Sys.getenv("GLLVM_JL_PATH", "")),
-                              julia_home = getOption("gllvmTMB.julia_home", Sys.getenv("JULIA_HOME", ""))) {
-  if (isTRUE(.gllvm_jl_env$ready)) return(invisible(TRUE))
+gllvm_julia_setup <- function(
+  jl_path = getOption(
+    "gllvmTMB.GLLVM.jl.path",
+    Sys.getenv("GLLVM_JL_PATH", "")
+  ),
+  julia_home = getOption("gllvmTMB.julia_home", Sys.getenv("JULIA_HOME", ""))
+) {
+  if (isTRUE(.gllvm_jl_env$ready)) {
+    return(invisible(TRUE))
+  }
   if (!requireNamespace("JuliaCall", quietly = TRUE)) {
-    stop("engine = 'julia' requires the 'JuliaCall' package. Install it with install.packages('JuliaCall').",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' requires the 'JuliaCall' package. Install it with install.packages('JuliaCall').",
+      call. = FALSE
+    )
   }
   if (identical(jl_path, "")) {
-    stop("engine = 'julia': set the GLLVM.jl project path via ",
-         "options(gllvmTMB.GLLVM.jl.path = '/path/to/GLLVM.jl') or the GLLVM_JL_PATH env var.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia': set the GLLVM.jl project path via ",
+      "options(gllvmTMB.GLLVM.jl.path = '/path/to/GLLVM.jl') or the GLLVM_JL_PATH env var.",
+      call. = FALSE
+    )
   }
   if (identical(julia_home, "")) {
     JuliaCall::julia_setup(installJulia = FALSE, verbose = FALSE)
   } else {
-    JuliaCall::julia_setup(JULIA_HOME = julia_home, installJulia = FALSE, verbose = FALSE)
+    JuliaCall::julia_setup(
+      JULIA_HOME = julia_home,
+      installJulia = FALSE,
+      verbose = FALSE
+    )
   }
-  JuliaCall::julia_command(sprintf('import Pkg; Pkg.activate("%s"); using GLLVM', jl_path))
+  JuliaCall::julia_command(sprintf(
+    'import Pkg; Pkg.activate("%s"); using GLLVM',
+    jl_path
+  ))
   .gllvm_jl_env$ready <- TRUE
   invisible(TRUE)
 }
 
 # Bridge family strings that the current GLLVM.jl `bridge_fit` accepts. Keep this
-# intentionally narrow until the integration bridge with X, missing-response masks,
-# and mixed-family metadata is merged and parity-tested (gllvmTMB#488).
-.GLLVM_JULIA_BRIDGE_FAMILIES <- c("gaussian", "poisson", "binomial",
-                                  "negbinomial", "beta", "gamma", "ordinal")
+# intentionally narrow until missing-response masks and mixed-family metadata are
+# merged and parity-tested (gllvmTMB#488).
+.GLLVM_JULIA_BRIDGE_FAMILIES <- c(
+  "gaussian",
+  "poisson",
+  "binomial",
+  "negbinomial",
+  "beta",
+  "gamma",
+  "ordinal"
+)
+.GLLVM_JULIA_X_FAMILIES <- c(
+  "gaussian",
+  "poisson",
+  "binomial",
+  "negbinomial",
+  "beta",
+  "gamma"
+)
 
 # Map an R family (a `family` object, a string, or a list of them for mixed) to the
 # GLLVM.jl bridge family string(s).
 .gllvm_julia_family <- function(family) {
   if (is.list(family) && !inherits(family, "family")) {
-    stop("engine = 'julia': mixed-family vectors are not wired on this ",
-         "GLLVM.jl bridge branch yet. Use engine = 'tmb' for mixed-family fits.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia': mixed-family vectors are not wired on this ",
+      "GLLVM.jl bridge branch yet. Use engine = 'tmb' for mixed-family fits.",
+      call. = FALSE
+    )
   }
-  if (inherits(family, "family")) family <- family$family
+  if (inherits(family, "family")) {
+    family <- family$family
+  }
   fam <- tolower(as.character(family))
-  out <- switch(fam,
-    gaussian = "gaussian", normal = "gaussian",
+  out <- switch(
+    fam,
+    gaussian = "gaussian",
+    normal = "gaussian",
     poisson = "poisson",
-    binomial = "binomial", bernoulli = "binomial",
-    negbinomial = "negbinomial", nbinom2 = "negbinomial", nb2 = "negbinomial",
-    beta = "beta", gamma = "gamma",
+    binomial = "binomial",
+    bernoulli = "binomial",
+    negbinomial = "negbinomial",
+    nbinom2 = "negbinomial",
+    nb2 = "negbinomial",
+    beta = "beta",
+    gamma = "gamma",
     ordinal = "ordinal",
-    NA_character_)
+    NA_character_
+  )
   if (is.na(out)) {
-    stop("engine = 'julia': unsupported family '", fam, "'. Supported: gaussian, poisson, ",
-         "binomial, nbinom2, beta, gamma, ordinal.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia': unsupported family '",
+      fam,
+      "'. Supported: gaussian, poisson, ",
+      "binomial, nbinom2, beta, gamma, ordinal.",
+      call. = FALSE
+    )
   }
+  out
+}
+
+# Convert selected long-format fixed-effect design columns into the p x n x q
+# array expected by GLLVM.bridge_fit. Rows are indexed by (trait, unit).
+.gllvm_julia_design_array <- function(
+  Xfix,
+  cols,
+  trait_index,
+  unit_index,
+  p,
+  n
+) {
+  cols <- as.character(cols)
+  Xsel <- Xfix[, cols, drop = FALSE]
+  if (anyNA(Xsel)) {
+    stop(
+      "engine = 'julia': fixed-effect covariate design contains NA; ",
+      "missing predictors are not wired on the Julia bridge yet. ",
+      "Use engine = 'tmb'.",
+      call. = FALSE
+    )
+  }
+  out <- array(
+    0,
+    dim = c(p, n, ncol(Xsel)),
+    dimnames = list(NULL, NULL, colnames(Xsel))
+  )
+  for (k in seq_len(ncol(Xsel))) {
+    out[cbind(trait_index, unit_index, k)] <- as.numeric(Xsel[, k])
+  }
+  storage.mode(out) <- "double"
   out
 }
 
@@ -80,8 +160,9 @@ gllvm_julia_setup <- function(jl_path = getOption("gllvmTMB.GLLVM.jl.path", Sys.
 #' @param family A family object/string, or a list of them (one per trait -> mixed).
 #' @param num.lv Number of latent variables (K).
 #' @param N Binomial trials (matrix or scalar), or `NULL`.
-#' @param X Reserved for a future bridge branch. The current bridge rejects
-#'   non-`NULL` `X` before calling Julia.
+#' @param X Optional fixed-effect covariate array with shape p x n x q. Gaussian
+#'   fits expect the full mean design, including per-trait intercept planes;
+#'   supported non-Gaussian fits expect the extra covariate planes only.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
 #' @param ci_method Confidence-interval method routed to the Julia engine: one of
 #'   `"none"` (default, no CIs), `"wald"`, `"profile"`, or `"bootstrap"`. When not
@@ -97,39 +178,95 @@ gllvm_julia_setup <- function(jl_path = getOption("gllvmTMB.GLLVM.jl.path", Sys.
 #'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`, `converged`, ...).
 #'   When `ci_method != "none"` the object also carries the bridge `ci_*` fields.
 #' @export
-gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = NULL,
-                            units_are_rows = FALSE,
-                            ci_method = c("none", "wald", "profile", "bootstrap"),
-                            ci_level = 0.95, ci_nboot = 200L, ci_seed = 0L, ...) {
+gllvm_julia_fit <- function(
+  y,
+  family = "gaussian",
+  num.lv = 2L,
+  N = NULL,
+  X = NULL,
+  units_are_rows = FALSE,
+  ci_method = c("none", "wald", "profile", "bootstrap"),
+  ci_level = 0.95,
+  ci_nboot = 200L,
+  ci_seed = 0L,
+  ...
+) {
   ci_method <- match.arg(ci_method)
   fam <- .gllvm_julia_family(family)
   y <- as.matrix(y)
-  if (isTRUE(units_are_rows)) y <- t(y)
+  if (isTRUE(units_are_rows)) {
+    y <- t(y)
+  }
   if (as.integer(num.lv) < 1L) {
-    stop("engine = 'julia': this GLLVM.jl bridge branch requires num.lv >= 1.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia': this GLLVM.jl bridge branch requires num.lv >= 1.",
+      call. = FALSE
+    )
   }
   if (!is.null(X)) {
-    stop("engine = 'julia': fixed-effect covariates X are not wired on this ",
-         "GLLVM.jl bridge branch yet. Use engine = 'tmb' for covariate models.",
-         call. = FALSE)
+    if (!is.array(X) || length(dim(X)) != 3L) {
+      stop(
+        "engine = 'julia': X must be a p x n x q numeric array.",
+        call. = FALSE
+      )
+    }
+    if (!(fam %in% .GLLVM_JULIA_X_FAMILIES)) {
+      stop(
+        "engine = 'julia': fixed-effect covariates X are not wired for family '",
+        fam,
+        "' on this bridge branch. Supported X families: ",
+        paste(.GLLVM_JULIA_X_FAMILIES, collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+    storage.mode(X) <- "double"
+    if (anyNA(X)) {
+      stop(
+        "engine = 'julia': fixed-effect covariate array X contains NA; ",
+        "missing predictors are not wired on the Julia bridge yet. ",
+        "Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (!identical(ci_method, "none") && !identical(fam, "gaussian")) {
+      stop(
+        "engine = 'julia': confidence intervals for non-Gaussian covariate ",
+        "fits are not routed through the Julia bridge yet. Re-fit with ",
+        "ci_method = 'none' or use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
   }
   trait_names <- rownames(y)
   unit_names <- colnames(y)
-  if (fam %in% c("poisson", "binomial", "negbinomial", "ordinal")) storage.mode(y) <- "integer"
+  if (fam %in% c("poisson", "binomial", "negbinomial", "ordinal")) {
+    storage.mode(y) <- "integer"
+  }
   gllvm_julia_setup(...)
   args <- list("GLLVM.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
-  if (!is.null(N)) args$N <- N
-  if (!is.null(trait_names)) args$trait_names <- trait_names
-  if (!is.null(unit_names)) args$unit_names <- unit_names
+  if (!is.null(N)) {
+    args$N <- N
+  }
+  if (!is.null(X)) {
+    args$X <- X
+  }
+  if (!is.null(trait_names)) {
+    args$trait_names <- trait_names
+  }
+  if (!is.null(unit_names)) {
+    args$unit_names <- unit_names
+  }
   ## CI routing: pass a Julia options Dict only when CIs are requested, so the
   ## default ci_method = "none" leaves the bridge call byte-identical to before.
   if (!identical(ci_method, "none")) {
-    args$options <- JuliaCall::julia_call("Dict",
+    args$options <- JuliaCall::julia_call(
+      "Dict",
       JuliaCall::julia_call("=>", "ci_method", ci_method),
       JuliaCall::julia_call("=>", "ci_level", as.numeric(ci_level)),
       JuliaCall::julia_call("=>", "ci_nboot", as.integer(ci_nboot)),
-      JuliaCall::julia_call("=>", "ci_seed", as.integer(ci_seed)))
+      JuliaCall::julia_call("=>", "ci_seed", as.integer(ci_seed))
+    )
   }
   res <- do.call(JuliaCall::julia_call, args)
   res$engine <- "julia"
@@ -137,7 +274,7 @@ gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = N
   ## a different ci_method without the caller re-supplying y / N / X.
   res$y <- y
   res$N <- N
-  res$X <- NULL
+  res$X <- X
   class(res) <- c("gllvmTMB_julia", "list")
   res
 }
@@ -154,10 +291,20 @@ logLik.gllvmTMB_julia <- function(object, ...) {
 #' @export
 print.gllvmTMB_julia <- function(x, ...) {
   cat("gllvmTMB fit (engine = 'julia', via GLLVM.jl)\n")
-  cat(sprintf("  family: %s | K = %d | %d traits x %d units\n",
-              paste(unique(x$family), collapse = ","), x$d, x$n_traits, x$n_units))
-  cat(sprintf("  logLik = %.4f | AIC = %.2f | BIC = %.2f | converged = %s\n",
-              x$loglik, x$aic, x$bic, x$converged))
+  cat(sprintf(
+    "  family: %s | K = %d | %d traits x %d units\n",
+    paste(unique(x$family), collapse = ","),
+    x$d,
+    x$n_traits,
+    x$n_units
+  ))
+  cat(sprintf(
+    "  logLik = %.4f | AIC = %.2f | BIC = %.2f | converged = %s\n",
+    x$loglik,
+    x$aic,
+    x$bic,
+    x$converged
+  ))
   invisible(x)
 }
 
@@ -183,8 +330,13 @@ print.gllvmTMB_julia <- function(x, ...) {
 #'   `"<a> %"` / `"<1-a> %"` in the `stats::confint()` convention.
 #' @export
 #' @method confint gllvmTMB_julia
-confint.gllvmTMB_julia <- function(object, parm = NULL, level = 0.95,
-                                   method = c("wald", "profile", "bootstrap"), ...) {
+confint.gllvmTMB_julia <- function(
+  object,
+  parm = NULL,
+  level = 0.95,
+  method = c("wald", "profile", "bootstrap"),
+  ...
+) {
   method <- match.arg(method)
 
   ## Decide whether the cached CI payload already matches the request. The bridge
@@ -202,42 +354,80 @@ confint.gllvmTMB_julia <- function(object, parm = NULL, level = 0.95,
     ## on the object by the dispatcher; if absent, error clearly rather than fake.
     y <- object$y
     if (is.null(y)) {
-      stop("confint.gllvmTMB_julia: this object carries no cached CI fields for ",
-           "method = '", method, "' (level ", level, ") and no stored response ",
-           "matrix to re-fit. Re-fit with gllvm_julia_fit(..., ci_method = '",
-           method, "').", call. = FALSE)
+      stop(
+        "confint.gllvmTMB_julia: this object carries no cached CI fields for ",
+        "method = '",
+        method,
+        "' (level ",
+        level,
+        ") and no stored response ",
+        "matrix to re-fit. Re-fit with gllvm_julia_fit(..., ci_method = '",
+        method,
+        "').",
+        call. = FALSE
+      )
     }
     refit <- gllvm_julia_fit(
-      y, family = object$family[1], num.lv = object$d, N = object$N, X = object$X,
-      ci_method = method, ci_level = level, ...)
-    object$ci_method      <- refit$ci_method
-    object$ci_level       <- refit$ci_level
+      y,
+      family = object$family[1],
+      num.lv = object$d,
+      N = object$N,
+      X = object$X,
+      ci_method = method,
+      ci_level = level,
+      ...
+    )
+    object$ci_method <- refit$ci_method
+    object$ci_level <- refit$ci_level
     object$ci_param_names <- refit$ci_param_names
-    object$ci_estimate    <- refit$ci_estimate
-    object$ci_lower       <- refit$ci_lower
-    object$ci_upper       <- refit$ci_upper
-    object$ci_note        <- refit$ci_note
+    object$ci_estimate <- refit$ci_estimate
+    object$ci_lower <- refit$ci_lower
+    object$ci_upper <- refit$ci_upper
+    object$ci_note <- refit$ci_note
   }
 
-  status <- if (is.null(object$ci_status)) "ok" else as.character(object$ci_status)
+  status <- if (is.null(object$ci_status)) {
+    "ok"
+  } else {
+    as.character(object$ci_status)
+  }
   if (!identical(status, "ok")) {
-    note <- if (is.null(object$ci_note)) "no CI note returned by the Julia bridge" else object$ci_note
-    stop("confint.gllvmTMB_julia: GLLVM.jl bridge returned CI status '",
-         status, "' for method = '", method, "': ", note, call. = FALSE)
+    note <- if (is.null(object$ci_note)) {
+      "no CI note returned by the Julia bridge"
+    } else {
+      object$ci_note
+    }
+    stop(
+      "confint.gllvmTMB_julia: GLLVM.jl bridge returned CI status '",
+      status,
+      "' for method = '",
+      method,
+      "': ",
+      note,
+      call. = FALSE
+    )
   }
 
   nms <- as.character(object$ci_param_names)
   a <- (1 - level) / 2
-  pct <- paste(format(100 * c(a, 1 - a), trim = TRUE, scientific = FALSE,
-                      digits = 3), "%")
-  ci <- matrix(c(object$ci_lower, object$ci_upper), ncol = 2,
-               dimnames = list(nms, pct))
+  pct <- paste(
+    format(100 * c(a, 1 - a), trim = TRUE, scientific = FALSE, digits = 3),
+    "%"
+  )
+  ci <- matrix(
+    c(object$ci_lower, object$ci_upper),
+    ncol = 2,
+    dimnames = list(nms, pct)
+  )
 
   if (!is.null(parm)) {
     sel <- if (is.numeric(parm)) parm else match(parm, nms)
     if (anyNA(sel)) {
-      stop("confint.gllvmTMB_julia: unknown parm: ",
-           paste(parm[is.na(sel)], collapse = ", "), call. = FALSE)
+      stop(
+        "confint.gllvmTMB_julia: unknown parm: ",
+        paste(parm[is.na(sel)], collapse = ", "),
+        call. = FALSE
+      )
     }
     ci <- ci[sel, , drop = FALSE]
   }
@@ -254,64 +444,106 @@ confint.gllvmTMB_julia <- function(object, parm = NULL, level = 0.95,
 # block + per-trait intercepts, every family) and reject anything else loudly with
 # a pointer to engine = "tmb" -- never a silent approximation.
 # ---------------------------------------------------------------------------
-.gllvmTMB_julia_dispatch <- function(parsed, data, trait, unit_internal, family,
-                                     weights = NULL, call = NULL) {
-  cs    <- parsed$covstructs
-  kinds <- if (length(cs)) vapply(cs, function(z) z$kind, character(1)) else character(0)
+.gllvmTMB_julia_dispatch <- function(
+  parsed,
+  data,
+  trait,
+  unit_internal,
+  family,
+  weights = NULL,
+  call = NULL,
+  is_y_observed = NULL
+) {
+  cs <- parsed$covstructs
+  kinds <- if (length(cs)) {
+    vapply(cs, function(z) z$kind, character(1))
+  } else {
+    character(0)
+  }
 
   ## --- capability guard: only the reduced-rank latent block (rr) is mapped ---
   unsupported <- setdiff(unique(kinds), "rr")
   if (length(unsupported) > 0) {
-    stop("engine = 'julia' does not yet support covariance term(s): ",
-         paste(unsupported, collapse = ", "),
-         ". Use engine = 'tmb' for structured / grouped / phylo / spatial terms.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' does not yet support covariance term(s): ",
+      paste(unsupported, collapse = ", "),
+      ". Use engine = 'tmb' for structured / grouped / phylo / spatial terms.",
+      call. = FALSE
+    )
   }
   rr_terms <- cs[kinds == "rr"]
   if (length(rr_terms) > 1L) {
-    stop("engine = 'julia' supports a single reduced-rank latent block; found ",
-         length(rr_terms), ". Use engine = 'tmb'.", call. = FALSE)
+    stop(
+      "engine = 'julia' supports a single reduced-rank latent block; found ",
+      length(rr_terms),
+      ". Use engine = 'tmb'.",
+      call. = FALSE
+    )
   }
   K <- if (length(rr_terms) == 1L) {
     dval <- rr_terms[[1L]]$extra$d
     as.integer(if (is.null(dval)) 1L else dval)
   } else {
-    stop("engine = 'julia' requires exactly one reduced-rank latent block ",
-         "(`latent(..., d = K)`); use engine = 'tmb' for fixed-effect-only fits.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' requires exactly one reduced-rank latent block ",
+      "(`latent(..., d = K)`); use engine = 'tmb' for fixed-effect-only fits.",
+      call. = FALSE
+    )
   }
   if (K < 1L) {
     stop("engine = 'julia' requires latent dimension d >= 1.", call. = FALSE)
   }
+  if (!is.null(is_y_observed) && any(as.integer(is_y_observed) == 0L)) {
+    stop(
+      "engine = 'julia': missing-response masks are not wired yet; ",
+      "use engine = 'tmb' for missing = miss_control(response = 'include').",
+      call. = FALSE
+    )
+  }
 
   ## --- response: pivot long (trait, unit) -> a p x n matrix ---
-  mf  <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
+  mf <- stats::model.frame(
+    parsed$fixed,
+    data = data,
+    na.action = stats::na.pass
+  )
   yraw <- stats::model.response(mf)
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    stop("engine = 'julia' does not yet support cbind(successes, failures) ",
-         "binomial responses; use a 0/1 Bernoulli response or engine = 'tmb'.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' does not yet support cbind(successes, failures) ",
+      "binomial responses; use a 0/1 Bernoulli response or engine = 'tmb'.",
+      call. = FALSE
+    )
   }
   yv <- as.numeric(yraw)
   ft <- factor(data[[trait]])
   fu <- factor(data[[unit_internal]])
   if (length(yv) != length(ft) || length(yv) != length(fu)) {
-    stop("engine = 'julia': response / trait / unit length mismatch.", call. = FALSE)
+    stop(
+      "engine = 'julia': response / trait / unit length mismatch.",
+      call. = FALSE
+    )
   }
-  traits <- levels(ft); units <- levels(fu)
-  p <- length(traits); n <- length(units)
+  traits <- levels(ft)
+  units <- levels(fu)
+  p <- length(traits)
+  n <- length(units)
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
   Y[cbind(as.integer(ft), as.integer(fu))] <- yv
   if (anyNA(Y)) {
-    stop("engine = 'julia' currently requires a complete (balanced) trait x unit ",
-         "table; found ", sum(is.na(Y)), " empty cell(s). Use engine = 'tmb'.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' currently requires a complete (balanced) trait x unit ",
+      "table; found ",
+      sum(is.na(Y)),
+      " empty cell(s). Use engine = 'tmb'.",
+      call. = FALSE
+    )
   }
 
-  ## --- fixed effects: the per-trait intercept (0 + trait) is always mapped to
-  ## the bridge's internal per-trait intercept. Extra fixed-effect covariates
-  ## are rejected until the GLLVM.jl integration bridge with X support is merged
-  ## and parity-tested (gllvmTMB#488). ---
+  ## --- fixed effects: the per-trait intercept (0 + trait) is mapped to the
+  ## bridge's internal per-trait intercept for non-Gaussian X fits. Gaussian X
+  ## fits are different: GLLVM.jl expects the FULL mean design, so we include the
+  ## trait-intercept planes plus the extra covariate planes. ---
   fam_str <- .gllvm_julia_family(family)
   Xfix <- stats::model.matrix(parsed$fixed, mf)
   trait_dummies <- paste0(trait, traits)
@@ -320,20 +552,53 @@ confint.gllvmTMB_julia <- function(object, parm = NULL, level = 0.95,
 
   Xarg <- NULL
   if (!has_only_trait_intercept) {
-    found <- c(extra_cols,
-               if (ncol(Xfix) != p && length(extra_cols) == 0)
-                 "(non-per-trait-intercept design)")
-    stop("engine = 'julia' does not yet support fixed-effect covariates on ",
-         "this GLLVM.jl bridge branch; found fixed term(s): ",
-         paste(found, collapse = ", "),
-         ". Use engine = 'tmb' for covariate models until the X bridge lands.",
-         call. = FALSE)
+    if (!all(trait_dummies %in% colnames(Xfix))) {
+      stop(
+        "engine = 'julia' requires a per-trait intercept design (`0 + ",
+        trait,
+        "`) before adding covariates. Use engine = 'tmb' for this ",
+        "fixed-effect design.",
+        call. = FALSE
+      )
+    }
+    if (length(extra_cols) == 0L) {
+      stop(
+        "engine = 'julia' could not isolate fixed-effect covariate columns ",
+        "from the fixed-effect design. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (!(fam_str %in% .GLLVM_JULIA_X_FAMILIES)) {
+      stop(
+        "engine = 'julia': fixed-effect covariates are not wired for family '",
+        fam_str,
+        "' on this bridge branch. Supported X families: ",
+        paste(.GLLVM_JULIA_X_FAMILIES, collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+    x_cols <- if (identical(fam_str, "gaussian")) {
+      c(trait_dummies, extra_cols)
+    } else {
+      extra_cols
+    }
+    Xarg <- .gllvm_julia_design_array(
+      Xfix,
+      x_cols,
+      as.integer(ft),
+      as.integer(fu),
+      p,
+      n
+    )
   }
 
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
   Narg <- NULL
   if (any(fam_str == "binomial")) {
-    if (!is.null(weights) && is.numeric(weights) && length(weights) == length(yv)) {
+    if (
+      !is.null(weights) && is.numeric(weights) && length(weights) == length(yv)
+    ) {
       Narg <- matrix(1, p, n)
       Narg[cbind(as.integer(ft), as.integer(fu))] <- as.numeric(weights)
     } else {
@@ -342,8 +607,8 @@ confint.gllvmTMB_julia <- function(object, parm = NULL, level = 0.95,
   }
 
   fit <- gllvm_julia_fit(Y, family = family, num.lv = K, N = Narg, X = Xarg)
-  fit$call         <- call
+  fit$call <- call
   fit$trait_levels <- traits
-  fit$unit_levels  <- units
+  fit$unit_levels <- units
   fit
 }

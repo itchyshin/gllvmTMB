@@ -4,6 +4,44 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge X admission and missing-mask guard
+
+Scope:
+
+- admitted fixed-effect covariates through the R `engine = "julia"` bridge for
+  complete, balanced, one-part reduced-rank Gaussian, Poisson, Binomial, NB2,
+  Beta, and Gamma models;
+- kept ordinal covariate fits, mixed-family X, structured terms, and
+  response-missing masks as explicit fail-loud cells;
+- added an early missing-response mask error for
+  `missing = miss_control(response = "include")` so users no longer see the
+  misleading balanced-table error before mask support is wired;
+- refreshed `gllvm_julia_fit()` generated help and NEWS wording to match the
+  narrow admitted surface.
+
+Evidence:
+
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 64`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `PASS 64`, `FAIL 0`, `WARN 0`, `SKIP 0` in `41.0s`.
+- Paired GLLVM.jl engine check:
+  `~/.juliaup/bin/julia --project=. test/test_bridge_x.jl`
+  -> `50/50` passed in `18.0s`.
+- `Rscript -e 'devtools::document()'`
+  -> wrote `man/gllvm_julia_fit.Rd`; emitted pre-existing roxygen link
+  warnings unrelated to this slice.
+- `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- This is not missing-response mask support.
+- This is not mixed-family X support.
+- This is not non-Gaussian covariate CI routing; non-Gaussian X fits currently
+  require `ci_method = "none"` on the bridge.
+- This is not R/TMB-vs-Julia statistical parity beyond the bridge roundtrip.
+
 ## 2026-06-14 -- Julia bridge CI oracle and ledger sync
 
 Scope:

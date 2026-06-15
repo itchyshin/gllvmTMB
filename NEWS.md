@@ -10,11 +10,14 @@
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
   IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
   with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
-  beta, gamma, and ordinal families. PARTIAL:
+  beta, gamma, and ordinal families, plus fixed-effect covariates for complete,
+  balanced one-part gaussian, poisson, binomial, nbinom2, beta, and gamma fits.
+  PARTIAL:
   the supported surface is deliberately narrow — the bridge loudly rejects
   non-`rr` covariance terms, missing latent blocks, more than one latent block,
-  fixed-effect covariates, mixed-family lists, nbinom1, lognormal, `cbind()`
-  binomial, and unbalanced trait × unit tables, erroring clearly rather than
+  missing-response masks, mixed-family lists, ordinal covariate fits, nbinom1,
+  lognormal, `cbind()` binomial, and unbalanced trait × unit tables, erroring
+  clearly rather than
   silently re-interpreting the model. CI routing returns Wald intervals where
   the paired Julia bridge supports them; Gaussian profile and bootstrap CI
   transport is live-tested, while broader non-Gaussian/structure CI coverage

@@ -30,7 +30,9 @@ object's cached CI level differs.}
 \value{
 A numeric matrix with one row per parameter (rownames = bridge
 parameter names) and two columns giving the lower/upper bounds, labelled
-\code{"<a> \%"} / \code{"<1-a> \%"} in the \code{stats::confint()} convention.
+\code{"<a> \%"} / \code{"<1-a> \%"} in the \code{stats::confint()} convention. Successful
+matrices carry a row-named \code{ci_status} attribute using the same vocabulary
+as native \code{gllvmTMB} interval helpers.
 }
 \description{
 Surfaces the GLLVM.jl engine's confidence intervals (computed by its native

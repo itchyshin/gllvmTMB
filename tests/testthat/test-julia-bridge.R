@@ -122,6 +122,13 @@ make_long_cbind <- function(
   df
 }
 
+expect_bridge_ci_status_ok <- function(ci) {
+  expect_true(is.matrix(ci))
+  expect_false(is.null(rownames(ci)))
+  expect_named(attr(ci, "ci_status"), rownames(ci))
+  expect_equal(unname(attr(ci, "ci_status")), rep("ok", nrow(ci)))
+}
+
 skip_if_no_julia <- function() {
   testthat::skip_if_not_installed("JuliaCall")
   jl <- getOption("gllvmTMB.GLLVM.jl.path", Sys.getenv("GLLVM_JL_PATH", ""))
@@ -804,6 +811,24 @@ test_that("confint() preserves non-masked bridge CI status failures", {
   )
 })
 
+test_that("confint() marks successful Julia bridge CI rows as ok", {
+  fit <- fake_julia_fit()
+  fit$ci_method <- "wald"
+  fit$ci_level <- 0.95
+  fit$ci_param_names <- c("alpha[sp1]", "Lambda_B[1,1]")
+  fit$ci_lower <- c(-0.1, -0.2)
+  fit$ci_upper <- c(0.2, 0.3)
+  fit$ci_status <- "ok"
+  fit$ci_note <- ""
+
+  ci <- confint(fit, method = "wald")
+  expect_bridge_ci_status_ok(ci)
+
+  ci_one <- confint(fit, parm = "Lambda_B[1,1]", method = "wald")
+  expect_equal(rownames(ci_one), "Lambda_B[1,1]")
+  expect_bridge_ci_status_ok(ci_one)
+})
+
 test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
   fit <- fake_julia_fit()
   expect_error(
@@ -1150,6 +1175,7 @@ test_that("engine = 'julia' fits NB1 no-X and routes Wald CIs", {
   expect_true(any(grepl("phi", rownames(ci))))
   expect_true(all(is.finite(ci)))
   expect_true(all(ci[, 1] < ci[, 2]))
+  expect_bridge_ci_status_ok(ci)
 
   pr <- predict(fit, type = "response")
   expect_equal(nrow(pr), nrow(df))
@@ -1772,6 +1798,7 @@ test_that("confint() Wald on an engine='julia' fit is a well-formed matrix", {
   expect_true(all(ci[, 1] < ci[, 2])) # lower < upper
   expect_equal(colnames(ci), c("2.5 %", "97.5 %"))
   expect_false(is.null(rownames(ci)))
+  expect_bridge_ci_status_ok(ci)
 })
 
 test_that("R-bridge Wald CIs EQUAL the native Julia confint (parity ~1e-6)", {
@@ -1788,6 +1815,7 @@ test_that("R-bridge Wald CIs EQUAL the native Julia confint (parity ~1e-6)", {
     ci_method = "wald"
   )
   ci <- confint(fit, method = "wald")
+  expect_bridge_ci_status_ok(ci)
 
   ## Native Julia oracle: mirror the bridge's Gaussian path, which separates
   ## per-trait means (`alpha`) from the centred latent fit.
@@ -1827,6 +1855,7 @@ test_that("confint() routes Gaussian profile and bootstrap CIs", {
   expect_true(nrow(ci_p) >= 1L)
   expect_true(all(is.finite(ci_p)))
   expect_true(all(ci_p[, 1] < ci_p[, 2]))
+  expect_bridge_ci_status_ok(ci_p)
 
   ## Bootstrap with a fixed seed (reproducible).
   fit_b <- gllvm_julia_fit(
@@ -1841,6 +1870,7 @@ test_that("confint() routes Gaussian profile and bootstrap CIs", {
   expect_true(is.matrix(ci_b) && ncol(ci_b) == 2L && nrow(ci_b) >= 1L)
   expect_true(all(is.finite(ci_b)))
   expect_true(all(ci_b[, 1] < ci_b[, 2]))
+  expect_bridge_ci_status_ok(ci_b)
 
   ## A fixed seed makes the bootstrap reproducible: an independent fit with the
   ## same seed reproduces the cached bounds (exercises the re-fit path, since this
@@ -1852,5 +1882,11 @@ test_that("confint() routes Gaussian profile and bootstrap CIs", {
     ci_nboot = 40L,
     ci_seed = 7L
   )
-  expect_equal(unname(ci_b[rownames(ci_b2), ]), unname(ci_b2), tolerance = 1e-8)
+  expect_bridge_ci_status_ok(ci_b2)
+  expect_equal(
+    unname(ci_b[rownames(ci_b2), ]),
+    unname(ci_b2),
+    tolerance = 1e-8,
+    ignore_attr = TRUE
+  )
 })

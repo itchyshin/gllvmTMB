@@ -1780,7 +1780,9 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 #'   `ci_seed`, `jl_path`, `julia_home`).
 #' @return A numeric matrix with one row per parameter (rownames = bridge
 #'   parameter names) and two columns giving the lower/upper bounds, labelled
-#'   `"<a> %"` / `"<1-a> %"` in the `stats::confint()` convention.
+#'   `"<a> %"` / `"<1-a> %"` in the `stats::confint()` convention. Successful
+#'   matrices carry a row-named `ci_status` attribute using the same vocabulary
+#'   as native `gllvmTMB` interval helpers.
 #' @export
 #' @method confint gllvmTMB_julia
 confint.gllvmTMB_julia <- function(
@@ -1892,7 +1894,7 @@ confint.gllvmTMB_julia <- function(
     }
     ci <- ci[sel, , drop = FALSE]
   }
-  ci
+  .gtmb_attach_ci_status(ci, method)
 }
 
 # ---------------------------------------------------------------------------

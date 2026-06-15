@@ -27,7 +27,9 @@
   matrices for `icc`, `phylo_signal`, `communality`, `rho`, and `proportion`
   now carry a row-named `ci_status` attribute, and `extract_correlations()`
   returns a `ci_status` column so boundary-partial profile intervals are
-  explicit. Calibrated mixed-family correlation coverage remains a separate
+  explicit. Successful `confint.gllvmTMB_julia()` matrices now carry the same
+  row-named `ci_status` attribute for bridge intervals that return finite
+  bounds. Calibrated mixed-family correlation coverage remains a separate
   validation gate.
 
 * `extract_communality()`, `extract_phylo_signal(ci = TRUE)`, and

@@ -4,6 +4,52 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge confint CI-status attribute
+
+Scope:
+
+- attached row-named `ci_status` attributes to successful
+  `confint.gllvmTMB_julia()` matrices via the shared `.gtmb_attach_ci_status()`
+  helper;
+- added synthetic no-Julia tests for cached bridge CI payloads, including
+  `parm` subsetting;
+- added live bridge assertions that Gaussian Wald/profile/bootstrap and NB1
+  Wald CI matrices carry `ci_status == "ok"` when finite intervals are returned.
+
+Evidence:
+
+- No-Julia R bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 18 | PASS 228` in `2.7s`.
+- Live R-Julia bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> first exposed an attribute-sensitive test comparison, then passed after
+  the numeric bootstrap reproducibility comparison was made attribute-agnostic:
+  final-source rerun `FAIL 0 | WARN 0 | SKIP 0 | PASS 552` in `65.0s`.
+- Roxygen:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/confint.gllvmTMB_julia.Rd`. Pre-existing unresolved-link
+  roxygen warnings remain; unrelated generated Rd churn was reverted.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 3 | SKIP 724 | PASS 2998`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warning and the
+  existing `glmmTMB`/`TMB` version mismatch.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- No interval numerics changed.
+- No masked-response, mixed-family, non-Gaussian-X, newdata, covariance-matrix,
+  REML, or speed support was added.
+- The successful status attribute records the returned finite bridge interval
+  rows only; unsupported cells still fail with method-specific status messages.
+
 ## 2026-06-15 -- Julia bridge method-aware capability ledger
 
 Scope:

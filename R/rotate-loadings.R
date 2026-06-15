@@ -98,7 +98,7 @@ rotate_loadings <- function(
   level <- .normalise_level(level, arg_name = "level")
   method <- match.arg(method)
   sign_anchor <- match.arg(sign_anchor)
-  if (!inherits(fit, "gllvmTMB_multi")) {
+  if (!inherits(fit, c("gllvmTMB_multi", "gllvmTMB_julia"))) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }
 

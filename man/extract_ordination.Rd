@@ -15,6 +15,9 @@ Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 \value{
 A list with \code{scores} (units or within-unit observations in rows,
 latent axes in columns) and \code{loadings} (traits in rows, axes in columns).
+For Julia-engine bridge fits, the current bridge payload exposes only the
+between-unit (\code{level = "unit"}) scores and loadings; \code{level = "unit_obs"}
+returns \code{NULL}.
 }
 \description{
 Extract ordination scores and loadings from a fitted multivariate model

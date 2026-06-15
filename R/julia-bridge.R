@@ -553,8 +553,11 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @return `coef()` returns a named list of bridge coefficients. `predict()` and
 #'   `residuals()` return data frames in the original training-row order when the
 #'   object came from `gllvmTMB(..., engine = "julia")`. `fitted()` returns a
-#'   trait x unit matrix. `summary()` returns a list of class
-#'   `summary.gllvmTMB_julia`. `print()` methods return the input invisibly.
+#'   trait x unit matrix. `nobs()` returns the number of likelihood-contributing
+#'   cells. `vcov()` currently errors with an explicit status because covariance
+#'   matrices are not routed through the Julia bridge yet. `summary()` returns a
+#'   list of class `summary.gllvmTMB_julia`. `print()` methods return the input
+#'   invisibly.
 #' @name gllvmTMB_julia-methods
 NULL
 
@@ -594,6 +597,23 @@ coef.gllvmTMB_julia <- function(object, ...) {
     out$sigma_eps <- as.numeric(object$sigma_eps)
   }
   out
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @exportS3Method stats::nobs
+nobs.gllvmTMB_julia <- function(object, ...) {
+  as.integer(object$nobs %||% length(object$y))
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @exportS3Method stats::vcov
+vcov.gllvmTMB_julia <- function(object, ...) {
+  stop(
+    "vcov.gllvmTMB_julia: covariance matrices are not routed through the ",
+    "Julia bridge yet; use confint(..., method = 'wald'|'profile'|'bootstrap') ",
+    "for interval output on supported cells.",
+    call. = FALSE
+  )
 }
 
 #' @rdname gllvmTMB_julia-methods

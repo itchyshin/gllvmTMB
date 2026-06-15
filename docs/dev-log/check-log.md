@@ -4,6 +4,46 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge ordination and nobs surface
+
+Scope:
+
+- added `nobs.gllvmTMB_julia()` and registered it as a `stats::nobs` method;
+- added an explicit `vcov.gllvmTMB_julia()` status error instead of allowing
+  opaque S3 dispatch failure or faking a covariance matrix;
+- routed `extract_ordination()`, `getLoadings()`, `getLV()`, and
+  `rotate_loadings()` through cached Julia bridge scores/loadings for the
+  supported between-unit latent tier;
+- documented that `level = "unit_obs"` remains unavailable for Julia bridge
+  objects and returns `NULL`.
+
+Evidence:
+
+- Initial focused bridge file before roxygen registration:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 109`, `FAIL 1`, `WARN 0`, `SKIP 0`; failure was expected S3
+  dispatch for `stats::vcov()` before `NAMESPACE` had the new method.
+- `Rscript -e 'devtools::document()'`
+  -> registered `stats::nobs` and `stats::vcov` for `gllvmTMB_julia`, wrote
+  `man/gllvmTMB_julia-methods.Rd`; emitted pre-existing roxygen link warnings
+  unrelated to this slice.
+- Live focused bridge file after roxygen registration:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 115`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- Package-level filtered gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `PASS 115`, `FAIL 0`, `WARN 0`, `SKIP 0` in `45.0s`.
+- `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- `vcov()` is not implemented; it now reports the missing covariance route
+  clearly and points users to `confint()`.
+- Julia bridge ordination is between-unit only; within-unit (`unit_obs`)
+  latent scores/loadings are not present in the current bridge payload.
+- This does not add new Julia engine behavior.
+
 ## 2026-06-15 -- Julia bridge post-fit inspection methods
 
 Scope:

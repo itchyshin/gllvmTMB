@@ -3,6 +3,8 @@
 \name{gllvmTMB_julia-methods}
 \alias{gllvmTMB_julia-methods}
 \alias{coef.gllvmTMB_julia}
+\alias{nobs.gllvmTMB_julia}
+\alias{vcov.gllvmTMB_julia}
 \alias{predict.gllvmTMB_julia}
 \alias{fitted.gllvmTMB_julia}
 \alias{residuals.gllvmTMB_julia}
@@ -11,6 +13,10 @@
 \title{Post-fit methods for Julia-engine GLLVM fits}
 \usage{
 \method{coef}{gllvmTMB_julia}(object, ...)
+
+\method{nobs}{gllvmTMB_julia}(object, ...)
+
+\method{vcov}{gllvmTMB_julia}(object, ...)
 
 \method{predict}{gllvmTMB_julia}(
   object,
@@ -48,8 +54,11 @@ scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predicti
 \code{coef()} returns a named list of bridge coefficients. \code{predict()} and
 \code{residuals()} return data frames in the original training-row order when the
 object came from \code{gllvmTMB(..., engine = "julia")}. \code{fitted()} returns a
-trait x unit matrix. \code{summary()} returns a list of class
-\code{summary.gllvmTMB_julia}. \code{print()} methods return the input invisibly.
+trait x unit matrix. \code{nobs()} returns the number of likelihood-contributing
+cells. \code{vcov()} currently errors with an explicit status because covariance
+matrices are not routed through the Julia bridge yet. \code{summary()} returns a
+list of class \code{summary.gllvmTMB_julia}. \code{print()} methods return the input
+invisibly.
 }
 \description{
 Basic inspection methods for objects returned by \code{\link[=gllvm_julia_fit]{gllvm_julia_fit()}} or

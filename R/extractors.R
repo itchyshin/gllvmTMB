@@ -393,6 +393,9 @@ extract_communality <- function(
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @return A list with `scores` (units or within-unit observations in rows,
 #'   latent axes in columns) and `loadings` (traits in rows, axes in columns).
+#'   For Julia-engine bridge fits, the current bridge payload exposes only the
+#'   between-unit (`level = "unit"`) scores and loadings; `level = "unit_obs"`
+#'   returns `NULL`.
 #'
 #' @examples
 #' \dontrun{
@@ -417,6 +420,26 @@ extract_communality <- function(
 extract_ordination <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
+  if (inherits(fit, "gllvmTMB_julia")) {
+    if (!identical(level, "B")) {
+      return(NULL)
+    }
+    Lambda <- as.matrix(fit$loadings)
+    scores <- as.matrix(fit$scores)
+    if (length(Lambda) == 0L || length(scores) == 0L) {
+      return(NULL)
+    }
+    axis_names <- paste0("LV", seq_len(ncol(Lambda)))
+    rownames(Lambda) <- .gllvm_julia_trait_names(fit)
+    colnames(Lambda) <- axis_names
+    rownames(scores) <- .gllvm_julia_unit_names(fit)
+    colnames(scores) <- axis_names
+    return(list(
+      scores = scores,
+      loadings = Lambda,
+      row_id = rownames(scores)
+    ))
+  }
   obj <- fit$tmb_obj
   par <- obj$env$last.par.best
   trait_names <- levels(fit$data[[fit$trait_col]])

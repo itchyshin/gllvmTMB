@@ -152,6 +152,8 @@ test_that("Julia bridge post-fit methods work without JuliaCall", {
   expect_equal(dim(cf$loadings), c(2L, 1L))
   expect_equal(as.numeric(logLik(fit)), -12.5)
   expect_equal(stats::AIC(fit), 31)
+  expect_equal(stats::nobs(fit), 6L)
+  expect_error(stats::vcov(fit), "covariance matrices are not routed")
 
   s <- summary(fit)
   expect_s3_class(s, "summary.gllvmTMB_julia")
@@ -203,6 +205,28 @@ test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
 
   fit_gx$mean_coef <- c(0.2)
   expect_silent(predict(fit_gx, type = "link"))
+})
+
+test_that("Julia bridge ordination accessors use cached scores and loadings", {
+  fit <- fake_julia_fit()
+  ord <- extract_ordination(fit, level = "unit")
+  expect_equal(dim(ord$loadings), c(2L, 1L))
+  expect_equal(dim(ord$scores), c(3L, 1L))
+  expect_equal(rownames(ord$loadings), c("sp1", "sp2"))
+  expect_equal(rownames(ord$scores), c("u1", "u2", "u3"))
+  expect_equal(ord$row_id, c("u1", "u2", "u3"))
+
+  expect_equal(getLoadings(fit, level = "unit"), ord$loadings)
+  expect_equal(getLV(fit, level = "unit"), ord$scores)
+  expect_null(extract_ordination(fit, level = "unit_obs"))
+
+  fit$d <- 2L
+  fit$loadings <- matrix(c(0.4, -0.3, 0.1, 0.8), nrow = 2L)
+  fit$scores <- matrix(c(-0.5, 0.0, 0.5, 0.2, -0.1, 0.3), nrow = 3L)
+  rot <- rotate_loadings(fit, level = "unit", method = "varimax")
+  expect_equal(dim(rot$Lambda), c(2L, 2L))
+  expect_equal(dim(rot$scores), c(3L, 2L))
+  expect_equal(rot$method, "varimax")
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------

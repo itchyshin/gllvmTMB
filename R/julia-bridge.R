@@ -854,7 +854,8 @@ print.gllvmTMB_julia <- function(x, ...) {
 #'   of cached fit statistics. `augment()` returns in-sample row diagnostics with
 #'   `.observed`, `.fitted`, `.resid`, and `.status` columns. `simulate()` returns
 #'   an `n_obs x nsim` matrix of conditional in-sample draws for routed
-#'   Gaussian, Poisson, Binomial, and NB1 bridge fits. `predict()` and
+#'   Gaussian, Poisson, Binomial, NB2, NB1, Beta, and Gamma bridge fits.
+#'   `predict()` and
 #'   `residuals()` return data frames in the original
 #'   training-row order when the
 #'   object came from `gllvmTMB(..., engine = "julia")`. `fitted()` returns a
@@ -1133,11 +1134,45 @@ simulate.gllvmTMB_julia <- function(
         phi <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
         stats::rnbinom(length(mu_vec), mu = mu_vec, size = mu_vec / phi)
       },
+      negbinomial = {
+        if (any(mu_vec < 0)) {
+          stop(
+            "simulate.gllvmTMB_julia: NB2 fitted means must be non-negative.",
+            call. = FALSE
+          )
+        }
+        size <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
+        stats::rnbinom(length(mu_vec), mu = mu_vec, size = size)
+      },
+      beta = {
+        if (any(mu_vec <= 0 | mu_vec >= 1)) {
+          stop(
+            "simulate.gllvmTMB_julia: Beta fitted means must be inside (0, 1).",
+            call. = FALSE
+          )
+        }
+        phi <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
+        stats::rbeta(
+          length(mu_vec),
+          shape1 = mu_vec * phi,
+          shape2 = (1 - mu_vec) * phi
+        )
+      },
+      gamma = {
+        if (any(mu_vec <= 0)) {
+          stop(
+            "simulate.gllvmTMB_julia: Gamma fitted means must be positive.",
+            call. = FALSE
+          )
+        }
+        alpha <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
+        stats::rgamma(length(mu_vec), shape = alpha, scale = mu_vec / alpha)
+      },
       stop(
         "simulate.gllvmTMB_julia: family '",
         fam,
         "' is not routed through Julia-engine simulation yet. Supported: ",
-        "gaussian, poisson, binomial, nb1.",
+        "gaussian, poisson, binomial, negbinomial, nb1, beta, gamma.",
         call. = FALSE
       )
     )

@@ -406,8 +406,8 @@ test_that("Julia bridge post-fit methods work without JuliaCall", {
   expect_error(simulate(fit, nsim = 0L), "nsim must be a positive integer")
 
   unsupported <- fit
-  unsupported$family <- "gamma"
-  expect_error(simulate(unsupported), "family 'gamma'")
+  unsupported$family <- "student"
+  expect_error(simulate(unsupported), "family 'student'")
 })
 
 test_that("Julia bridge fitted, predict, and residuals methods work without JuliaCall", {
@@ -491,6 +491,32 @@ test_that("Julia bridge simulate supports narrow safe families without JuliaCall
   expect_equal(all(sim_nb1 >= 0), TRUE)
   expect_equal(all(sim_nb1 == floor(sim_nb1)), TRUE)
 
+  nb2 <- fit
+  nb2$family <- "negbinomial"
+  nb2$dispersion <- c(5, 8)
+  sim_nb2 <- simulate(nb2, nsim = 2L, seed = 95L)
+  expect_equal(dim(sim_nb2), c(6L, 2L))
+  expect_equal(sim_nb2, simulate(nb2, nsim = 2L, seed = 95L))
+  expect_equal(all(sim_nb2 >= 0), TRUE)
+  expect_equal(all(sim_nb2 == floor(sim_nb2)), TRUE)
+
+  beta <- fit
+  beta$family <- "beta"
+  beta$dispersion <- c(12, 15)
+  sim_beta <- simulate(beta, nsim = 2L, seed = 96L)
+  expect_equal(dim(sim_beta), c(6L, 2L))
+  expect_equal(sim_beta, simulate(beta, nsim = 2L, seed = 96L))
+  expect_equal(all(sim_beta > 0 & sim_beta < 1), TRUE)
+
+  gamma <- fit
+  gamma$family <- "gamma"
+  gamma$dispersion <- c(4, 6)
+  sim_gamma <- simulate(gamma, nsim = 2L, seed = 97L)
+  expect_equal(dim(sim_gamma), c(6L, 2L))
+  expect_equal(sim_gamma, simulate(gamma, nsim = 2L, seed = 97L))
+  expect_equal(all(is.finite(sim_gamma)), TRUE)
+  expect_equal(all(sim_gamma > 0), TRUE)
+
   bad_gauss <- gauss
   bad_gauss$sigma_eps <- NaN
   expect_error(simulate(bad_gauss), "sigma_eps")
@@ -498,6 +524,10 @@ test_that("Julia bridge simulate supports narrow safe families without JuliaCall
   bad_nb1 <- nb1
   bad_nb1$dispersion <- c(0.7, NA_real_)
   expect_error(simulate(bad_nb1), "finite positive dispersion")
+
+  bad_beta <- beta
+  bad_beta$dispersion <- c(12, 0)
+  expect_error(simulate(bad_beta), "finite positive dispersion")
 })
 
 test_that("confint() on masked Julia objects reports method-specific CI status", {
@@ -1297,6 +1327,10 @@ test_that("engine = 'julia' admits Gaussian and Beta X models", {
   )
   expect_equal(fit_b$model, "beta_x_rr")
   expect_equal(length(fit_b$gamma), 1L)
+  sim_b <- simulate(fit_b, nsim = 2L, seed = 97L)
+  expect_equal(dim(sim_b), c(nrow(df), 2L))
+  expect_equal(sim_b, simulate(fit_b, nsim = 2L, seed = 97L))
+  expect_equal(all(sim_b > 0 & sim_b < 1), TRUE)
 })
 
 test_that("engine = 'julia' admits Binomial, NB2, and Gamma X models", {
@@ -1357,6 +1391,11 @@ test_that("engine = 'julia' admits Binomial, NB2, and Gamma X models", {
   expect_equal(all(pr_nb$est > 0), TRUE)
   expect_equal(all(is.finite(fit_nb$dispersion)), TRUE)
   expect_equal(all(fit_nb$dispersion > 0), TRUE)
+  sim_nb <- simulate(fit_nb, nsim = 2L, seed = 98L)
+  expect_equal(dim(sim_nb), c(nrow(df), 2L))
+  expect_equal(sim_nb, simulate(fit_nb, nsim = 2L, seed = 98L))
+  expect_equal(all(sim_nb >= 0), TRUE)
+  expect_equal(all(sim_nb == floor(sim_nb)), TRUE)
 
   fit_gamma <- gllvmTMB(
     gam ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
@@ -1385,6 +1424,11 @@ test_that("engine = 'julia' admits Binomial, NB2, and Gamma X models", {
   expect_equal(all(pr_gamma$est > 0), TRUE)
   expect_equal(all(is.finite(fit_gamma$dispersion)), TRUE)
   expect_equal(all(fit_gamma$dispersion > 0), TRUE)
+  sim_gamma <- simulate(fit_gamma, nsim = 2L, seed = 99L)
+  expect_equal(dim(sim_gamma), c(nrow(df), 2L))
+  expect_equal(sim_gamma, simulate(fit_gamma, nsim = 2L, seed = 99L))
+  expect_equal(all(is.finite(sim_gamma)), TRUE)
+  expect_equal(all(sim_gamma > 0), TRUE)
 })
 
 # --- confidence intervals through the bridge (gated behind live JuliaCall) ---

@@ -101,7 +101,8 @@ the currently routed fixed-effect bridge payload. \code{glance()} returns one ro
 of cached fit statistics. \code{augment()} returns in-sample row diagnostics with
 \code{.observed}, \code{.fitted}, \code{.resid}, and \code{.status} columns. \code{simulate()} returns
 an \verb{n_obs x nsim} matrix of conditional in-sample draws for routed
-Gaussian, Poisson, Binomial, and NB1 bridge fits. \code{predict()} and
+Gaussian, Poisson, Binomial, NB2, NB1, Beta, and Gamma bridge fits.
+\code{predict()} and
 \code{residuals()} return data frames in the original
 training-row order when the
 object came from \code{gllvmTMB(..., engine = "julia")}. \code{fitted()} returns a

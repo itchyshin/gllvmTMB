@@ -16581,3 +16581,43 @@ Deliberately not claimed:
   statistical parity.
 - Non-Gaussian X Wald/profile/bootstrap CIs, X+mask fits, newdata prediction,
   and mixed-family X metadata remain outside this slice.
+
+## 2026-06-15 -- Julia bridge NB2/Beta/Gamma simulate
+
+Extended conditional in-sample `simulate.gllvmTMB_julia()` to the dispersion
+families already carrying enough bridge payload: NB2, Beta, and Gamma. The draw
+rules use the fitted response means and row-aligned dispersion payloads:
+NB2 uses `rnbinom(mu = mu, size = r)`, Beta uses
+`rbeta(mu * phi, (1 - mu) * phi)`, and Gamma uses
+`rgamma(shape = alpha, scale = mu / alpha)`. Existing masked-response and
+unsupported-family failures remain explicit.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `man/gllvmTMB_julia-methods.Rd`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-dispersion-simulate.md`
+
+Evidence:
+
+- No-Julia bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 17 | PASS 175` in `2.2s`.
+- Live bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 439` in `58.3s`.
+- Roxygen:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/gllvmTMB_julia-methods.Rd`; unrelated pre-existing
+  roxygen unresolved-link warnings remain. Unrelated Rd churn was reverted.
+
+Deliberately not claimed:
+
+- `simulate()` is conditional on fitted in-sample means; it is not an
+  unconditional latent-factor redraw, parametric bootstrap, or posterior
+  predictive route.
+- Masked-response simulations, `newdata`, mixed-family simulation, and
+  simulation-calibration claims remain outside this slice.

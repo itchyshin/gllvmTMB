@@ -65,8 +65,9 @@
   `newdata` and ordinal probabilities wait for richer bridge payloads and fail
   with explicit messages; Gaussian covariate predictions are supported when the paired
   GLLVM.jl bridge returns the `mean_coef` payload. `simulate()` is conditional
-  on the fitted in-sample bridge mean and currently routed only for gaussian,
-  poisson, binomial, and NB1 Julia-engine objects; unsupported families and masked
+  on the fitted in-sample bridge mean and currently routed for gaussian,
+  poisson, binomial, nbinom2, nbinom1, beta, and gamma Julia-engine objects;
+  unsupported families and masked
   response fits fail explicitly rather than falling back silently. `vcov()` has an explicit
   status error until covariance matrices are routed through the bridge; use
   `confint()` for supported interval output. Direct `gllvm_julia_fit()` calls

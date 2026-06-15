@@ -226,11 +226,49 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
     .GLLVM_JULIA_MASK_FAMILIES
   )
   expect_equal(caps$family[caps$cbind_binomial], "binomial")
+  planned <- caps[caps$status == "planned", ]
+  expect_setequal(planned$family, .GLLVM_JULIA_PLANNED_FAMILIES)
+  nb1 <- caps[caps$family == "nb1", ]
+  expect_equal(nrow(nb1), 1L)
+  expect_equal(nb1$status, "planned")
+  expect_equal(nb1$fit_no_x, FALSE)
+  expect_match(nb1$notes, "R bridge still rejects nbinom1")
   mixed <- caps[caps$family == "mixed-family vector", ]
   expect_equal(nrow(mixed), 1L)
   expect_equal(mixed$status, "planned")
   expect_equal(mixed$fit_no_x, FALSE)
   expect_match(mixed$notes, "R bridge still rejects")
+})
+
+test_that("R-side Julia bridge ledger is a subset of the paired Julia surface", {
+  skip_if_no_julia()
+  engine <- .gllvm_julia_engine_capabilities()
+  caps <- gllvm_julia_capabilities()
+
+  for (col in c(
+    "fit_no_x",
+    "fixed_effect_X",
+    "missing_response",
+    "cbind_binomial"
+  )) {
+    r_admitted <- caps$family[caps[[col]]]
+    jl_supported <- engine$family[engine[[col]]]
+    expect_setequal(setdiff(r_admitted, jl_supported), character())
+  }
+
+  julia_only_fit <- setdiff(
+    engine$family[engine$fit_no_x],
+    caps$family[caps$fit_no_x]
+  )
+  expect_setequal(julia_only_fit, .GLLVM_JULIA_PLANNED_FAMILIES)
+
+  planned <- caps[caps$family %in% julia_only_fit, ]
+  expect_equal(planned$status, rep("planned", nrow(planned)))
+  expect_match(planned$notes[planned$family == "nb1"], "rejects nbinom1")
+  expect_match(
+    planned$notes[planned$family == "mixed-family vector"],
+    "rejects family lists"
+  )
 })
 
 test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCall setup", {

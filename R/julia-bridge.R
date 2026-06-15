@@ -60,9 +60,10 @@ gllvm_julia_setup <- function(
   invisible(TRUE)
 }
 
-# Bridge family strings that the current GLLVM.jl `bridge_fit` accepts. Keep this
-# intentionally narrow until missing-response masks and mixed-family metadata are
-# merged and parity-tested (gllvmTMB#488).
+# Bridge family strings that the current R admission gate sends to
+# `GLLVM.bridge_fit`. Keep this intentionally narrower than the paired Julia
+# bridge until metadata, labels, parity, and CI-status rows are validated
+# (gllvmTMB#488).
 .GLLVM_JULIA_BRIDGE_FAMILIES <- c(
   "gaussian",
   "poisson",
@@ -73,6 +74,7 @@ gllvm_julia_setup <- function(
   "ordinal",
   "ordinal_probit"
 )
+.GLLVM_JULIA_PLANNED_FAMILIES <- c("nb1", "mixed-family vector")
 .GLLVM_JULIA_X_FAMILIES <- c(
   "gaussian",
   "poisson",
@@ -100,7 +102,7 @@ gllvm_julia_setup <- function(
 #' `GLLVM_JL_PATH`.
 #'
 #' @return A data frame with one row per bridge family plus the deferred
-#'   mixed-family vector route. Boolean columns mark the currently admitted
+#'   NB1 and mixed-family vector routes. Boolean columns mark the currently admitted
 #'   no-X fit, fixed-effect-X, missing-response mask, and cbind-binomial
 #'   transport cells. `status` is one of `"partial"` or `"planned"`, and
 #'   `notes` records the main boundary.
@@ -121,18 +123,39 @@ gllvm_julia_capabilities <- function() {
     ),
     stringsAsFactors = FALSE
   )
-  rbind(
-    out,
-    data.frame(
-      family = "mixed-family vector",
-      fit_no_x = FALSE,
-      fixed_effect_X = FALSE,
-      missing_response = FALSE,
-      cbind_binomial = FALSE,
-      status = "planned",
-      notes = "GLLVM.jl bridge has a mixed-family route, but the R bridge still rejects family lists until metadata, labels, parity, and CI/status rows are validated",
-      stringsAsFactors = FALSE
-    )
+  planned <- data.frame(
+    family = .GLLVM_JULIA_PLANNED_FAMILIES,
+    fit_no_x = FALSE,
+    fixed_effect_X = FALSE,
+    missing_response = FALSE,
+    cbind_binomial = FALSE,
+    status = "planned",
+    notes = c(
+      "GLLVM.jl bridge has an NB1 one-part route, but the R bridge still rejects nbinom1 until family mapping, dispersion labels, parity, and CI/status rows are validated",
+      "GLLVM.jl bridge has a mixed-family route, but the R bridge still rejects family lists until metadata, labels, parity, and CI/status rows are validated"
+    ),
+    stringsAsFactors = FALSE
+  )
+  rbind(out, planned)
+}
+
+.gllvm_julia_capability_frame <- function(x) {
+  data.frame(
+    family = as.character(unlist(x$family, use.names = FALSE)),
+    fit_no_x = as.logical(unlist(x$fit_no_x, use.names = FALSE)),
+    fixed_effect_X = as.logical(unlist(x$fixed_effect_X, use.names = FALSE)),
+    missing_response = as.logical(unlist(x$missing_response, use.names = FALSE)),
+    cbind_binomial = as.logical(unlist(x$cbind_binomial, use.names = FALSE)),
+    status = as.character(unlist(x$status, use.names = FALSE)),
+    notes = as.character(unlist(x$notes, use.names = FALSE)),
+    stringsAsFactors = FALSE
+  )
+}
+
+.gllvm_julia_engine_capabilities <- function(...) {
+  gllvm_julia_setup(...)
+  .gllvm_julia_capability_frame(
+    JuliaCall::julia_call("GLLVM.bridge_capabilities")
   )
 }
 

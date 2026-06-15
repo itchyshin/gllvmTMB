@@ -10,7 +10,8 @@
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
   `gllvm_julia_capabilities()` reports the current R-side bridge admission
   ledger before JuliaCall setup, including cells that remain planned rather than
-  routed.
+  routed. The ledger also exposes paired-Julia rows that are deliberately still
+  R-planned, currently `nb1`/`nbinom1` and mixed-family vectors.
   IMPORTANT DEVELOPMENT BOUNDARY: these bridge features are only as broad as the
   paired GLLVM.jl checkout supplied through `GLLVM_JL_PATH`. The local runtime
   evidence for fixed-effect covariates, `mean_coef` predictions, and Gaussian

@@ -16405,3 +16405,52 @@ Deliberately not claimed:
   prediction remains unsupported.
 - Ordinal probabilities still need cutpoint/probability payloads.
 - Missing-response masks still need an observed-response mask contract.
+
+## 2026-06-15 -- Julia bridge capability drift guard
+
+Made the R-side `engine = "julia"` capability ledger explicit about paired-Julia
+rows that are not yet admitted through `gllvmTMB`. In particular, NB1 is now a
+visible `planned` row instead of an invisible Julia-only route, and the live
+bridge test enforces the one-way subset contract against
+`GLLVM.bridge_capabilities()`.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `man/gllvm_julia_capabilities.Rd`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-capability-drift-guard.md`
+
+Evidence:
+
+- Paired GLLVM.jl targeted test:
+  `~/.juliaup/bin/julia --project=. test/test_bridge_capabilities.jl`
+  in `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`
+  -> `9/9 pass`.
+- No-Julia bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 15 | PASS 146` in `2.3s`.
+- Live bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 353` in `61.6s`.
+- Roxygen:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/gllvm_julia_capabilities.Rd`; existing unresolved-link
+  warnings in unrelated roxygen topics remain.
+- pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- NB1 is not admitted through the R bridge yet; `.gllvm_julia_family("nbinom1")`
+  still fails before JuliaCall.
+- Mixed-family vectors remain planned on the R side; family-list dispatch is
+  still rejected until metadata, labels, parity, and CI/status rows are routed.
+- This is structural bridge governance, not a new point-estimate, CI, or speed
+  claim.

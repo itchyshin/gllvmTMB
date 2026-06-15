@@ -37,8 +37,8 @@ not yet implemented and falls back to the point estimate.}
 \value{
 A data frame with columns \code{trait}, \code{H2}, \code{C2_non}, \code{Psi},
 \code{V_eta} (the denominator), one row per trait. The three proportions
-sum to 1.0 by construction. When \code{ci = TRUE}, three additional
-columns are added: \code{H2_lower}, \code{H2_upper}, \code{H2_method}.
+sum to 1.0 by construction. When \code{ci = TRUE}, four additional columns
+are added: \code{H2_lower}, \code{H2_upper}, \code{H2_method}, and \code{H2_ci_status}.
 }
 \description{
 For a phylogenetic species-level GLLVM, decomposes each trait's

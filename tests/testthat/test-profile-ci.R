@@ -73,7 +73,7 @@ test_that("extract_repeatability(method='profile') returns sane bounds", {
   )
   ## Shape
   expect_s3_class(rep_ci, "data.frame")
-  expect_named(rep_ci, c("trait", "R", "lower", "upper", "method"))
+  expect_named(rep_ci, c("trait", "R", "lower", "upper", "method", "ci_status"))
   expect_equal(nrow(rep_ci), 3L)
   ## Honest labelling: when method='profile' is requested but the
   ## proper Lagrange-style profile-likelihood path isn't yet
@@ -83,6 +83,10 @@ test_that("extract_repeatability(method='profile') returns sane bounds", {
   ## previous misleading behaviour where the label said "profile"
   ## but the bounds were Wald.
   expect_true(all(rep_ci$method == "wald"))
+  expect_equal(
+    rep_ci$ci_status,
+    gllvmTMB:::.gtmb_ci_status(rep_ci$method, rep_ci$lower, rep_ci$upper)
+  )
   ## R is in [0, 1]
   expect_true(all(rep_ci$R >= 0 & rep_ci$R <= 1))
   ## When upper bound is finite, lower < estimate < upper
@@ -224,7 +228,7 @@ test_that("All extractors accept method argument", {
     ))
   )
   expect_no_error(
-    suppressMessages(gllvmTMB::extract_communality(
+    comm <- suppressMessages(gllvmTMB::extract_communality(
       fit,
       level = "unit",
       ci = TRUE,
@@ -233,6 +237,7 @@ test_that("All extractors accept method argument", {
       seed = 1L
     ))
   )
+  expect_true("ci_status" %in% names(comm))
 })
 
 ## ---- 7. Bootstrap fallback for full-Sigma matrices when profile asked ---

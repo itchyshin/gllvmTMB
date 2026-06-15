@@ -175,6 +175,17 @@ test_that(".phylo_signal_wald_ci returns finite bounds with lower < H2_hat < upp
   ## H^2 is a proportion in [0, 1].
   expect_true(all(ci$lower >= -1e-8))
   expect_true(all(ci$upper <= 1 + 1e-8))
+
+  ext <- suppressMessages(extract_phylo_signal(fit, ci = TRUE, method = "wald"))
+  expect_true(
+    all(c("H2_lower", "H2_upper", "H2_method", "H2_ci_status") %in% names(ext))
+  )
+  expect_equal(
+    ext$H2_ci_status,
+    gllvmTMB:::.gtmb_ci_status(ext$H2_method, ext$H2_lower, ext$H2_upper)
+  )
+  expect_equal(ext$H2_lower, ci$lower)
+  expect_equal(ext$H2_upper, ci$upper)
 })
 
 ## ============================================================================

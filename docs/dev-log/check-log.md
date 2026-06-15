@@ -4,6 +4,58 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- R extractor CI-status columns and phylo-signal H2 routes
+
+Scope:
+
+- added visible `ci_status` columns to `extract_repeatability()` and
+  `extract_communality(ci = TRUE)` interval tables;
+- added visible `H2_ci_status` to `extract_phylo_signal(ci = TRUE)`;
+- vectorized the shared `.gtmb_ci_status()` helper so table rows can carry
+  method-specific statuses, including `wald(approx)` and unavailable intervals;
+- wired `extract_phylo_signal(ci = TRUE, method = "wald")` and
+  `method = "bootstrap"` to the existing native H2 helper implementations
+  instead of returning placeholder bootstrap `NA` bounds.
+
+Evidence so far:
+
+- Manual helper probe:
+  `Rscript -e 'devtools::load_all(".", quiet=TRUE); print(gllvmTMB:::.gtmb_ci_status(c("profile", "bootstrap", "wald(approx)", "(unavailable)"), c(NA, 0.1, NA, 0.2), c(0.9, 0.8, NA, 0.3))); print(gllvmTMB:::.gtmb_ci_status("profile", numeric(0), numeric(0)))'`
+  -> `profile_boundary`, `ok`, `wald_unavailable`,
+  `interval_unavailable`; `character(0)`.
+- Targeted default gate:
+  `Rscript -e 'devtools::test(filter="extract-repeatability-bootstrap|extract-communality-bootstrap|profile-ci|m1-6-extract-repeatability-mixed-family|m2-2b-binary-cis-extractors|phylo-signal-ci")'`
+  -> `PASS 0`, `SKIP 28`, `FAIL 0`, `WARN 0`.
+- Targeted heavy gate:
+  `GLLVMTMB_HEAVY_TESTS=1 Rscript -e 'devtools::test(filter="extract-repeatability-bootstrap|extract-communality-bootstrap|profile-ci|m1-6-extract-repeatability-mixed-family|m2-2b-binary-cis-extractors|phylo-signal-ci")'`
+  -> `PASS 141`, `SKIP 0`, `FAIL 0`, `WARN 1` in `125.8s`.
+  The warning is the known conditional-bootstrap warning from
+  `simulate.gllvmTMB_multi()` on phylogenetic random-effect tiers.
+- Docs:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/extract_communality.Rd`, `man/extract_phylo_signal.Rd`,
+  and `man/extract_repeatability.Rd`; unrelated Rd churn was reverted.
+  Pre-existing unresolved-link roxygen warnings remain.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `PASS 2951`, `SKIP 724`, `FAIL 0`, `WARN 3` in `129.8s`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warning and the
+  existing `glmmTMB`/`TMB` version mismatch.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- `ci_status = "ok"` means endpoints are finite for the chosen method; it is
+  not a calibrated coverage claim.
+- The phylogenetic-signal bootstrap path is still conditional on fitted random
+  effects until unconditional RE simulation is implemented.
+- Julia bridge CI endpoint parity remains a later bridge-target slice.
+
 ## 2026-06-15 -- Derived confint CI-status contract
 
 Scope:

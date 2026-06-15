@@ -21,6 +21,13 @@
   explicit. Calibrated mixed-family correlation coverage remains a separate
   validation gate.
 
+* `extract_communality()`, `extract_phylo_signal(ci = TRUE)`, and
+  `extract_repeatability()` now expose row-level CI status directly in their
+  returned tables. `extract_phylo_signal(ci = TRUE, method = "wald")` and
+  `method = "bootstrap"` now use the existing native H2 Wald/bootstrap helper
+  paths instead of returning placeholder bootstrap bounds. This completes the
+  R-side extractor target before Julia bridge parity work follows.
+
 * `engine = "julia"` now partially admits complete, balanced, trait-aligned
   mixed-family list fits when each trait maps to one of the routed component
   families (Gaussian, Poisson, Binomial, NB2, Beta, or Gamma). The route

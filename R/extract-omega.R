@@ -314,8 +314,8 @@ extract_Omega <- function(
 #' @param seed Optional RNG seed for the bootstrap.
 #' @return A data frame with columns `trait`, `H2`, `C2_non`, `Psi`,
 #'   `V_eta` (the denominator), one row per trait. The three proportions
-#'   sum to 1.0 by construction. When `ci = TRUE`, three additional
-#'   columns are added: `H2_lower`, `H2_upper`, `H2_method`.
+#'   sum to 1.0 by construction. When `ci = TRUE`, four additional columns
+#'   are added: `H2_lower`, `H2_upper`, `H2_method`, and `H2_ci_status`.
 #' @seealso [extract_Sigma()]; [extract_Omega()]; [extract_proportions()];
 #'   [extract_repeatability()]; [extract_communality()];
 #'   [extract_correlations()].
@@ -430,26 +430,41 @@ extract_phylo_signal <- function(
     pe_df$H2_lower <- h2_ci$lower
     pe_df$H2_upper <- h2_ci$upper
     pe_df$H2_method <- h2_ci$method
+    pe_df$H2_ci_status <- .gtmb_ci_status(
+      pe_df$H2_method,
+      pe_df$H2_lower,
+      pe_df$H2_upper
+    )
     return(pe_df)
   }
   if (method == "wald") {
-    cli::cli_inform(
-      "Wald CI for H^2 not implemented; falling back to {.val bootstrap}."
+    h2_ci <- .phylo_signal_wald_ci(fit, level = conf_level)
+    pe_df$H2_lower <- h2_ci$lower
+    pe_df$H2_upper <- h2_ci$upper
+    pe_df$H2_method <- h2_ci$method
+    pe_df$H2_ci_status <- .gtmb_ci_status(
+      pe_df$H2_method,
+      pe_df$H2_lower,
+      pe_df$H2_upper
     )
-    method <- "bootstrap"
+    return(pe_df)
   }
-  ## bootstrap on H^2: re-fit with simulate, recompute extract_phylo_signal
-  ## per replicate. We borrow bootstrap_Sigma's machinery for simulate +
-  ## refit and aggregate H2 manually (extracting H2 per draw needs a
-  ## small wrapper).
-  cli::cli_inform(
-    "Bootstrap CI for H^2: running {.val {nsim}} replicates via {.fn bootstrap_Sigma} machinery."
+  ## bootstrap on H^2: re-fit with simulate, recompute H2 per replicate,
+  ## and aggregate percentile CIs.
+  h2_ci <- .phylo_signal_bootstrap_ci(
+    fit,
+    level = conf_level,
+    nsim = nsim,
+    seed = seed
   )
-  ## Use bootstrap_Sigma with a custom hook: easier to call the core
-  ## refit one replicate at a time via simulate + gllvmTMB.
-  pe_df$H2_lower <- NA_real_
-  pe_df$H2_upper <- NA_real_
-  pe_df$H2_method <- "bootstrap"
+  pe_df$H2_lower <- h2_ci$lower
+  pe_df$H2_upper <- h2_ci$upper
+  pe_df$H2_method <- h2_ci$method
+  pe_df$H2_ci_status <- .gtmb_ci_status(
+    pe_df$H2_method,
+    pe_df$H2_lower,
+    pe_df$H2_upper
+  )
   pe_df
 }
 

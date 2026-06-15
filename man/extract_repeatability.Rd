@@ -30,7 +30,8 @@ point estimates and percentile bounds rather than refitting.}
 }
 \value{
 A data frame with columns \code{trait}, \code{R} (point
-estimate), \code{lower}, \code{upper}, \code{method}.
+estimate), \code{lower}, \code{upper}, \code{method}, and
+\code{ci_status}.
 }
 \description{
 Returns the per-trait repeatability

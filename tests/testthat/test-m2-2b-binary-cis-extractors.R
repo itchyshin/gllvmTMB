@@ -149,8 +149,17 @@ test_that("extract_repeatability() on binomial fit includes pi^2/3 in vW (MIX-06
 
   rep_df <- suppressMessages(gllvmTMB::extract_repeatability(obj$fit))
   expect_s3_class(rep_df, "data.frame")
-  ## extract_repeatability() returns columns: trait, R, lower, upper, method.
-  expect_true(all(c("trait", "R", "lower", "upper", "method") %in% names(rep_df)))
+  ## extract_repeatability() returns interval columns plus row-level status.
+  expect_true(
+    all(
+      c("trait", "R", "lower", "upper", "method", "ci_status") %in%
+        names(rep_df)
+    )
+  )
+  expect_equal(
+    rep_df$ci_status,
+    gllvmTMB:::.gtmb_ci_status(rep_df$method, rep_df$lower, rep_df$upper)
+  )
   ## R (repeatability) bounded in [0, 1].
   expect_true(all(rep_df$R >= 0 - 1e-8 & rep_df$R <= 1 + 1e-8))
   ## Per-trait link residual on the within-tier denominator is the

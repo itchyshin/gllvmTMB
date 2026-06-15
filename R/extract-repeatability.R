@@ -25,7 +25,8 @@
 #'   \code{method = "bootstrap"}. Default 500.
 #' @param seed Optional RNG seed for the bootstrap.
 #' @return A data frame with columns \code{trait}, \code{R} (point
-#'   estimate), \code{lower}, \code{upper}, \code{method}.
+#'   estimate), \code{lower}, \code{upper}, \code{method}, and
+#'   \code{ci_status}.
 #'
 #' @section Method choice:
 #' \itemize{
@@ -186,7 +187,7 @@ extract_repeatability <- function(
     lo <- stats::plogis(log_v_at_mle - z * se)
     hi <- stats::plogis(log_v_at_mle + z * se)
 
-    return(data.frame(
+    return(.gtmb_add_ci_status_column(data.frame(
       trait = trait_names,
       R = unname(R_hat),
       lower = unname(lo),
@@ -194,7 +195,7 @@ extract_repeatability <- function(
       method = "wald",
       stringsAsFactors = FALSE,
       row.names = NULL
-    ))
+    )))
   }
 
   ## bootstrap
@@ -213,14 +214,14 @@ extract_repeatability <- function(
   if (is.null(pe)) {
     cli::cli_abort("ICC bootstrap failed; need both B and W tiers in the fit.")
   }
-  data.frame(
+  .gtmb_add_ci_status_column(data.frame(
     trait = trait_names,
     R = as.numeric(pe),
     lower = as.numeric(lo),
     upper = as.numeric(hi),
     method = "bootstrap",
     stringsAsFactors = FALSE
-  )
+  ))
 }
 
 .repeatability_bootstrap_bound <- function(x, trait_names, field) {
@@ -270,6 +271,7 @@ extract_repeatability <- function(
     method = "bootstrap",
     stringsAsFactors = FALSE
   )
+  tbl <- .gtmb_add_ci_status_column(tbl)
   attr(tbl, "notes") <- sprintf(
     "Bootstrap percentile intervals from bootstrap_Sigma(); n_boot = %s, n_failed = %s, conf = %s.",
     boot$n_boot,

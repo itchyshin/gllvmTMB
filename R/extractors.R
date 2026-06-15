@@ -156,8 +156,8 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' @param seed Optional RNG seed for the bootstrap.
 #' @return When `ci = FALSE`: a numeric vector indexed by trait.
 #'   When `ci = TRUE`: a data frame with columns `trait`, `tier`, `c2`,
-#'   `lower`, `upper`, `method`. For a `bootstrap_Sigma` input, the interval
-#'   columns are copied from the bootstrap object.
+#'   `lower`, `upper`, `method`, and `ci_status`. For a `bootstrap_Sigma`
+#'   input, the interval columns are copied from the bootstrap object.
 #' @seealso [extract_Sigma()]; [extract_ICC_site()];
 #'   [extract_correlations()]; [extract_repeatability()];
 #'   [confint.gllvmTMB_multi()].
@@ -243,7 +243,9 @@ extract_communality <- function(
 
   ## CI path
   if (method == "profile") {
-    return(profile_ci_communality(fit, tier = level, level = conf_level))
+    return(.gtmb_add_ci_status_column(
+      profile_ci_communality(fit, tier = level, level = conf_level)
+    ))
   }
   if (method == "wald") {
     ## Wald CI is approximate via delta method on a non-linear function
@@ -269,7 +271,7 @@ extract_communality <- function(
   lo <- boot$ci_lower[[key]]
   hi <- boot$ci_upper[[key]]
   if (is.null(pe)) {
-    return(data.frame(
+    return(.gtmb_add_ci_status_column(data.frame(
       trait = trait_names,
       tier = level,
       c2 = out_pe,
@@ -277,9 +279,9 @@ extract_communality <- function(
       upper = NA_real_,
       method = "bootstrap",
       stringsAsFactors = FALSE
-    ))
+    )))
   }
-  data.frame(
+  .gtmb_add_ci_status_column(data.frame(
     trait = trait_names,
     tier = level,
     c2 = as.numeric(pe),
@@ -287,7 +289,7 @@ extract_communality <- function(
     upper = as.numeric(hi),
     method = "bootstrap",
     stringsAsFactors = FALSE
-  )
+  ))
 }
 
 .communality_bootstrap_levels <- function(boot) {
@@ -370,6 +372,7 @@ extract_communality <- function(
     method = "bootstrap",
     stringsAsFactors = FALSE
   )
+  tbl <- .gtmb_add_ci_status_column(tbl)
   attr(tbl, "notes") <- sprintf(
     "Bootstrap percentile intervals from bootstrap_Sigma(); n_boot = %s, n_failed = %s, conf = %s.",
     boot$n_boot,

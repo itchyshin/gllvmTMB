@@ -144,9 +144,13 @@ test_that("extract_repeatability output shape + bracket on mixed-family (M1.6)",
     fit, level = 0.95, method = "wald"
   ))
   expect_s3_class(R, "data.frame")
-  expect_named(R, c("trait", "R", "lower", "upper", "method"))
+  expect_named(R, c("trait", "R", "lower", "upper", "method", "ci_status"))
   expect_equal(nrow(R), 3L)
   expect_true(all(R$method == "wald"))
+  expect_equal(
+    R$ci_status,
+    gllvmTMB:::.gtmb_ci_status(R$method, R$lower, R$upper)
+  )
   ## R in [0, 1].
   expect_true(all(R$R >= 0 - 1e-8 & R$R <= 1 + 1e-8))
   ## CI brackets the point estimate (where finite).

@@ -46,8 +46,8 @@ Default 500.}
 \value{
 When \code{ci = FALSE}: a numeric vector indexed by trait.
 When \code{ci = TRUE}: a data frame with columns \code{trait}, \code{tier}, \code{c2},
-\code{lower}, \code{upper}, \code{method}. For a \code{bootstrap_Sigma} input, the interval
-columns are copied from the bootstrap object.
+\code{lower}, \code{upper}, \code{method}, and \code{ci_status}. For a \code{bootstrap_Sigma}
+input, the interval columns are copied from the bootstrap object.
 }
 \description{
 \deqn{c_t^2 \;=\; \frac{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt}}{(\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top})_{tt} + \psi_{tt}}.}

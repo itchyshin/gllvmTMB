@@ -278,6 +278,16 @@ test_that("Julia bridge post-fit methods work without JuliaCall", {
     "only effects = 'fixed'"
   )
   expect_error(generics::tidy(fit, conf.int = TRUE), "conf.int = TRUE")
+
+  sim <- simulate(fit, nsim = 2L, seed = 91L)
+  expect_equal(dim(sim), c(6L, 2L))
+  expect_equal(sim, simulate(fit, nsim = 2L, seed = 91L))
+  expect_equal(all(sim >= 0), TRUE)
+  expect_error(simulate(fit, nsim = 0L), "nsim must be a positive integer")
+
+  unsupported <- fit
+  unsupported$family <- "gamma"
+  expect_error(simulate(unsupported), "family 'gamma'")
 })
 
 test_that("Julia bridge fitted, predict, and residuals methods work without JuliaCall", {
@@ -311,6 +321,30 @@ test_that("Julia bridge fitted, predict, and residuals methods work without Juli
   expect_true(is.na(rr_masked$observed[rr_masked$status == "masked"]))
   expect_true(is.na(rr_masked$residual[rr_masked$status == "masked"]))
   expect_true(is.finite(rr_masked$fitted[rr_masked$status == "masked"]))
+  expect_error(simulate(masked), "masked-response simulations")
+})
+
+test_that("Julia bridge simulate supports narrow safe families without JuliaCall", {
+  fit <- fake_julia_fit()
+
+  gauss <- fit
+  gauss$family <- "gaussian"
+  gauss$sigma_eps <- 0.25
+  sim_g <- simulate(gauss, nsim = 3L, seed = 92L)
+  expect_equal(dim(sim_g), c(6L, 3L))
+  expect_equal(sim_g, simulate(gauss, nsim = 3L, seed = 92L))
+
+  bin <- fit
+  bin$family <- "binomial"
+  bin$N <- matrix(c(1L, 2L, 3L, 4L, 5L, 6L), nrow = 2L)
+  sim_b <- simulate(bin, nsim = 2L, seed = 93L)
+  expect_equal(dim(sim_b), c(6L, 2L))
+  expect_equal(all(sim_b >= 0), TRUE)
+  expect_equal(all(sim_b <= as.numeric(bin$N)), TRUE)
+
+  bad_gauss <- gauss
+  bad_gauss$sigma_eps <- NaN
+  expect_error(simulate(bad_gauss), "sigma_eps")
 })
 
 test_that("confint() on masked Julia objects reports method-specific CI status", {
@@ -625,6 +659,10 @@ test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end"
   rr <- residuals(fit)
   expect_equal(nrow(rr), nrow(df))
   expect_true(all(is.finite(rr$residual)))
+  sim <- simulate(fit, nsim = 2L, seed = 94L)
+  expect_equal(dim(sim), c(nrow(df), 2L))
+  expect_true(all(sim >= 0))
+  expect_true(all(sim == floor(sim)))
 })
 
 test_that("engine = 'julia' fits a Poisson missing-response mask end-to-end", {
@@ -854,6 +892,10 @@ test_that("engine = 'julia' cbind binomial dispatch matches direct N bridge", {
     tolerance = 1e-8
   )
   expect_true(is.finite(fit$loglik))
+  sim <- simulate(fit, nsim = 2L, seed = 95L)
+  expect_equal(dim(sim), c(nrow(df), 2L))
+  expect_true(all(sim >= 0))
+  expect_equal(all(sim <= 6L), TRUE)
 })
 
 test_that("engine = 'julia' cbind binomial masks rows when either component is missing", {

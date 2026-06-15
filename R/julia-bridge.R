@@ -687,6 +687,24 @@ print.gllvmTMB_julia <- function(x, ...) {
   )
 }
 
+.gllvm_julia_matrix_values <- function(object, values) {
+  values <- as.matrix(values)
+  if (!is.null(object$.trait_index) && !is.null(object$.unit_index)) {
+    return(as.numeric(values[cbind(object$.trait_index, object$.unit_index)]))
+  }
+  as.numeric(values)
+}
+
+.gllvm_julia_check_nsim <- function(nsim) {
+  if (length(nsim) != 1L || is.na(nsim) || nsim < 1L) {
+    stop(
+      "simulate.gllvmTMB_julia: nsim must be a positive integer.",
+      call. = FALSE
+    )
+  }
+  as.integer(nsim)
+}
+
 #' Post-fit methods for Julia-engine GLLVM fits
 #'
 #' Basic inspection methods for objects returned by [gllvm_julia_fit()] or
@@ -694,6 +712,8 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' payload in ordinary R shapes; they do not perform new Julia computations.
 #'
 #' @param object,x A `gllvmTMB_julia` object.
+#' @param nsim For `simulate()`, number of conditional response draws.
+#' @param seed Optional RNG seed for `simulate()`.
 #' @param newdata Optional new data. Currently unsupported for Julia-engine fits;
 #'   only in-sample predictions are returned.
 #' @param effects For `tidy()`, one of `"fixed"`, `"ran_pars"`, or `"cutpoint"`;
@@ -709,7 +729,9 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @param ... Currently unused.
 #' @return `coef()` returns a named list of bridge coefficients. `tidy()` returns
 #'   a coefficient data frame with `term`, `estimate`, and `component` columns for
-#'   the currently routed fixed-effect bridge payload. `predict()` and
+#'   the currently routed fixed-effect bridge payload. `simulate()` returns an
+#'   `n_obs x nsim` matrix of conditional in-sample draws for supported bridge
+#'   families. `predict()` and
 #'   `residuals()` return data frames in the original training-row order when the
 #'   object came from `gllvmTMB(..., engine = "julia")`. `fitted()` returns a
 #'   trait x unit matrix. `nobs()` returns the number of likelihood-contributing
@@ -808,6 +830,98 @@ vcov.gllvmTMB_julia <- function(object, ...) {
     "for interval output on supported cells.",
     call. = FALSE
   )
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+simulate.gllvmTMB_julia <- function(
+  object,
+  nsim = 1,
+  seed = NULL,
+  re_form = ~.,
+  ...
+) {
+  nsim <- .gllvm_julia_check_nsim(nsim)
+  if (.gllvm_julia_has_masked_response(object$observed_mask)) {
+    stop(
+      "simulate.gllvmTMB_julia: masked-response simulations are not routed ",
+      "through the Julia bridge yet; use engine = 'tmb' or fit complete data.",
+      call. = FALSE
+    )
+  }
+
+  fam <- as.character(object$family[1])
+  mu <- fitted(object, type = "response", re_form = re_form)
+  mu_vec <- .gllvm_julia_matrix_values(object, mu)
+  if (any(!is.finite(mu_vec))) {
+    stop(
+      "simulate.gllvmTMB_julia: fitted response means are not finite.",
+      call. = FALSE
+    )
+  }
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+
+  out <- matrix(NA_real_, nrow = length(mu_vec), ncol = nsim)
+  for (j in seq_len(nsim)) {
+    out[, j] <- switch(
+      fam,
+      gaussian = {
+        sigma <- as.numeric(object$sigma_eps)[1L]
+        if (!is.finite(sigma) || sigma < 0) {
+          stop(
+            "simulate.gllvmTMB_julia: Gaussian simulations need a finite ",
+            "non-negative sigma_eps payload.",
+            call. = FALSE
+          )
+        }
+        stats::rnorm(length(mu_vec), mean = mu_vec, sd = sigma)
+      },
+      poisson = {
+        if (any(mu_vec < 0)) {
+          stop(
+            "simulate.gllvmTMB_julia: Poisson fitted means must be non-negative.",
+            call. = FALSE
+          )
+        }
+        stats::rpois(length(mu_vec), lambda = mu_vec)
+      },
+      binomial = {
+        if (any(mu_vec < -1e-12 | mu_vec > 1 + 1e-12)) {
+          stop(
+            "simulate.gllvmTMB_julia: Binomial fitted probabilities must be ",
+            "inside [0, 1].",
+            call. = FALSE
+          )
+        }
+        prob <- pmin(pmax(mu_vec, 0), 1)
+        size <- if (is.null(object$N)) {
+          rep(1L, length(prob))
+        } else {
+          .gllvm_julia_matrix_values(object, object$N)
+        }
+        if (any(!is.finite(size)) || any(size < 0)) {
+          stop(
+            "simulate.gllvmTMB_julia: Binomial trial sizes must be finite ",
+            "and non-negative.",
+            call. = FALSE
+          )
+        }
+        stats::rbinom(length(prob), size = as.integer(size), prob = prob)
+      },
+      stop(
+        "simulate.gllvmTMB_julia: family '",
+        fam,
+        "' is not routed through Julia-engine simulation yet. Supported: ",
+        "gaussian, poisson, binomial.",
+        call. = FALSE
+      )
+    )
+  }
+  colnames(out) <- paste0("sim_", seq_len(nsim))
+  attr(out, "seed") <- seed
+  out
 }
 
 #' @rdname gllvmTMB_julia-methods

@@ -6,6 +6,7 @@
 \alias{tidy.gllvmTMB_julia}
 \alias{nobs.gllvmTMB_julia}
 \alias{vcov.gllvmTMB_julia}
+\alias{simulate.gllvmTMB_julia}
 \alias{predict.gllvmTMB_julia}
 \alias{fitted.gllvmTMB_julia}
 \alias{residuals.gllvmTMB_julia}
@@ -26,6 +27,8 @@
 \method{nobs}{gllvmTMB_julia}(object, ...)
 
 \method{vcov}{gllvmTMB_julia}(object, ...)
+
+\method{simulate}{gllvmTMB_julia}(object, nsim = 1, seed = NULL, re_form = ~., ...)
 
 \method{predict}{gllvmTMB_julia}(
   object,
@@ -56,21 +59,27 @@ unsupported for Julia-engine fits; use \code{\link[=confint]{confint()}} where r
 
 \item{conf.level}{Confidence level requested by \code{conf.int}.}
 
+\item{nsim}{For \code{simulate()}, number of conditional response draws.}
+
+\item{seed}{Optional RNG seed for \code{simulate()}.}
+
+\item{re_form}{Random-effect formula controlling whether conditional latent
+scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predictions.}
+
 \item{newdata}{Optional new data. Currently unsupported for Julia-engine fits;
 only in-sample predictions are returned.}
 
 \item{type}{Prediction scale. \code{"link"} returns the fitted linear predictor and
 \code{"response"} returns the inverse-link mean.}
 
-\item{re_form}{Random-effect formula controlling whether conditional latent
-scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predictions.}
-
 \item{digits}{Decimal digits to print.}
 }
 \value{
 \code{coef()} returns a named list of bridge coefficients. \code{tidy()} returns
 a coefficient data frame with \code{term}, \code{estimate}, and \code{component} columns for
-the currently routed fixed-effect bridge payload. \code{predict()} and
+the currently routed fixed-effect bridge payload. \code{simulate()} returns an
+\verb{n_obs x nsim} matrix of conditional in-sample draws for supported bridge
+families. \code{predict()} and
 \code{residuals()} return data frames in the original training-row order when the
 object came from \code{gllvmTMB(..., engine = "julia")}. \code{fitted()} returns a
 trait x unit matrix. \code{nobs()} returns the number of likelihood-contributing

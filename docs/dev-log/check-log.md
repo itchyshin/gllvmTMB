@@ -4,6 +4,38 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge conditional simulate method
+
+Scope:
+
+- added `simulate.gllvmTMB_julia()` as a narrow conditional in-sample simulator;
+- routed only the payload-safe families: gaussian, poisson, and binomial;
+- used cached fitted means plus `sigma_eps` or binomial trial matrix `N` where
+  required;
+- made masked-response fits and unsupported families fail explicitly rather than
+  falling back silently;
+- kept the method out of bootstrap/calibrated-simulation claims.
+
+Evidence:
+
+- Documentation generation:
+  `Rscript -e 'devtools::document()'`
+  -> completed; emitted pre-existing unresolved-link warnings outside this
+  slice and generated unrelated Rd link churn that was restored before commit.
+- Default no-Julia bridge test:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 109`, `SKIP 14`, `FAIL 0`, `WARN 0` in `1.8s`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 301`, `FAIL 0`, `WARN 0`, `SKIP 0` in `52.9s`.
+
+Deliberately not claimed:
+
+- No unconditional latent-factor redraws.
+- No `newdata` simulation.
+- No NB2, Beta, Gamma, or Ordinal simulation route.
+- No masked-response simulation.
+
 ## 2026-06-15 -- Julia bridge tidy method
 
 Scope:

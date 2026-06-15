@@ -75,7 +75,16 @@ gllvm_julia_setup <- function(
   "ordinal",
   "ordinal_probit"
 )
-.GLLVM_JULIA_PLANNED_FAMILIES <- c("mixed-family vector")
+.GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"
+.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES <- c(
+  "gaussian",
+  "poisson",
+  "binomial",
+  "negbinomial",
+  "beta",
+  "gamma"
+)
+.GLLVM_JULIA_PLANNED_FAMILIES <- character()
 .GLLVM_JULIA_X_FAMILIES <- c(
   "gaussian",
   "poisson",
@@ -102,7 +111,7 @@ gllvm_julia_setup <- function(
 #' checkout can run every row; live tests still use the checkout supplied via
 #' `GLLVM_JL_PATH`.
 #'
-#' @return A data frame with one row per bridge family plus the deferred
+#' @return A data frame with one row per bridge family plus the narrow
 #'   mixed-family vector route. Boolean columns mark the currently admitted
 #'   no-X fit, fixed-effect-X, missing-response mask, and cbind-binomial
 #'   transport cells. `status` is one of `"partial"` or `"planned"`, and
@@ -124,17 +133,31 @@ gllvm_julia_capabilities <- function() {
     ),
     stringsAsFactors = FALSE
   )
-  planned <- data.frame(
-    family = .GLLVM_JULIA_PLANNED_FAMILIES,
-    fit_no_x = FALSE,
+  mixed <- data.frame(
+    family = .GLLVM_JULIA_MIXED_FAMILY,
+    fit_no_x = TRUE,
     fixed_effect_X = FALSE,
     missing_response = FALSE,
     cbind_binomial = FALSE,
-    status = "planned",
-    notes = "GLLVM.jl bridge has a mixed-family route, but the R bridge still rejects family lists until metadata, labels, parity, and CI/status rows are validated",
+    status = "partial",
+    notes = paste(
+      "complete balanced trait-aligned no-X/no-mask/no-CI mixed-family",
+      "fits only; component families:",
+      paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", ")
+    ),
     stringsAsFactors = FALSE
   )
-  rbind(out, planned)
+  planned <- data.frame(
+    family = .GLLVM_JULIA_PLANNED_FAMILIES,
+    fit_no_x = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    fixed_effect_X = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    missing_response = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    cbind_binomial = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    status = rep("planned", length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    notes = character(length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    stringsAsFactors = FALSE
+  )
+  rbind(out, mixed, planned)
 }
 
 .gllvm_julia_capability_frame <- function(x) {
@@ -160,20 +183,18 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
-# Map an R family (a `family` object, a string, or a list of them for mixed) to the
-# GLLVM.jl bridge family string(s).
-.gllvm_julia_family <- function(family) {
-  if (is.list(family) && !inherits(family, "family")) {
-    stop(
-      "engine = 'julia': mixed-family vectors are not wired on this ",
-      "GLLVM.jl bridge branch yet. Use engine = 'tmb' for mixed-family fits.",
-      call. = FALSE
-    )
-  }
+# Map one R family (a `family` object or a string) to the GLLVM.jl bridge key.
+.gllvm_julia_family_scalar <- function(family) {
   if (inherits(family, "family")) {
     family <- family$family
   }
   fam <- tolower(as.character(family))
+  if (length(fam) != 1L || is.na(fam)) {
+    stop(
+      "engine = 'julia': family must resolve to a single supported family name.",
+      call. = FALSE
+    )
+  }
   out <- switch(
     fam,
     gaussian = "gaussian",
@@ -202,6 +223,177 @@ gllvm_julia_capabilities <- function() {
     )
   }
   out
+}
+
+# Map an R family (a `family` object, a string, a character vector, or a list of
+# one family per trait) to the GLLVM.jl bridge family string(s).
+.gllvm_julia_family <- function(family) {
+  if (is.list(family) && !inherits(family, "family")) {
+    fam <- vapply(family, .gllvm_julia_family_scalar, character(1))
+    bad <- setdiff(fam, .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES)
+    if (length(bad)) {
+      stop(
+        "engine = 'julia': mixed-family vectors currently support ",
+        paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
+        "; unsupported component(s): ",
+        paste(unique(bad), collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+    return(unname(fam))
+  }
+  if (is.character(family) && length(family) > 1L) {
+    fam <- vapply(family, .gllvm_julia_family_scalar, character(1))
+    bad <- setdiff(fam, .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES)
+    if (length(bad)) {
+      stop(
+        "engine = 'julia': mixed-family vectors currently support ",
+        paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
+        "; unsupported component(s): ",
+        paste(unique(bad), collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+    return(unname(fam))
+  }
+  .gllvm_julia_family_scalar(family)
+}
+
+.gllvm_julia_is_mixed_family <- function(family) {
+  length(family) > 1L
+}
+
+.gllvm_julia_mixed_ci_status <- function(method = "ci") {
+  method <- as.character(method)[1L]
+  if (is.na(method) || identical(method, "none")) {
+    return("ci_unavailable_mixed_family")
+  }
+  paste0(method, "_unavailable_mixed_family")
+}
+
+.gllvm_julia_mixed_ci_note <- function() {
+  paste(
+    "confidence intervals for mixed-family Julia-engine fits are not routed",
+    "yet. Refit with engine = 'tmb' for native mixed-family inference."
+  )
+}
+
+.gllvm_julia_stop_mixed_ci <- function(prefix, method) {
+  stop(
+    prefix,
+    ": ci_status = '",
+    .gllvm_julia_mixed_ci_status(method),
+    "'; ",
+    .gllvm_julia_mixed_ci_note(),
+    call. = FALSE
+  )
+}
+
+.gllvm_julia_mixed_selector <- function(family, data, trait, trait_factor) {
+  if (!is.list(family) || inherits(family, "family")) {
+    return(list(family = .gllvm_julia_family(family), selector = NULL))
+  }
+
+  fam_var <- attr(family, "family_var") %||% "family"
+  if (!fam_var %in% names(data)) {
+    stop(
+      "engine = 'julia': mixed-family list needs a '",
+      fam_var,
+      "' column in data. Set attr(family, 'family_var') or use engine = 'tmb'.",
+      call. = FALSE
+    )
+  }
+  fam_levels <- if (is.factor(data[[fam_var]])) {
+    levels(data[[fam_var]])
+  } else {
+    sort(unique(as.character(data[[fam_var]])))
+  }
+  if (length(fam_levels) != length(family)) {
+    stop(
+      "engine = 'julia': length(family) must match the number of levels in '",
+      fam_var,
+      "'.",
+      call. = FALSE
+    )
+  }
+  family_names <- names(family)
+  has_family_names <- !is.null(family_names) && any(nzchar(family_names))
+  if (has_family_names) {
+    if (any(!nzchar(family_names))) {
+      stop(
+        "engine = 'julia': named mixed-family lists must name every entry.",
+        call. = FALSE
+      )
+    }
+    if (!setequal(family_names, fam_levels)) {
+      stop(
+        "engine = 'julia': names of the mixed-family list must match levels of '",
+        fam_var,
+        "'.",
+        call. = FALSE
+      )
+    }
+    family <- family[match(fam_levels, family_names)]
+  }
+
+  family_by_level <- stats::setNames(
+    vapply(family, .gllvm_julia_family_scalar, character(1)),
+    fam_levels
+  )
+  bad <- setdiff(unname(family_by_level), .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES)
+  if (length(bad)) {
+    stop(
+      "engine = 'julia': mixed-family lists currently support ",
+      paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
+      "; unsupported component(s): ",
+      paste(unique(bad), collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+
+  fam_idx <- match(as.character(data[[fam_var]]), fam_levels)
+  row_family <- unname(family_by_level)[fam_idx]
+  trait_levels <- levels(trait_factor)
+  family_by_trait <- vapply(
+    seq_along(trait_levels),
+    function(i) {
+      vals <- unique(row_family[as.integer(trait_factor) == i])
+      vals <- vals[!is.na(vals)]
+      if (length(vals) != 1L) {
+        stop(
+          "engine = 'julia': mixed-family bridge requires each trait to map ",
+          "to exactly one family; trait '",
+          trait_levels[i],
+          "' maps to ",
+          length(vals),
+          " families. Use engine = 'tmb'.",
+          call. = FALSE
+        )
+      }
+      vals
+    },
+    character(1)
+  )
+  names(family_by_trait) <- trait_levels
+
+  resolved_names <- names(family)
+  if (is.null(resolved_names) || any(!nzchar(resolved_names))) {
+    resolved_names <- fam_levels
+  }
+  selector <- list(
+    family_var = fam_var,
+    levels = fam_levels,
+    list_names_matched = has_family_names,
+    family_names = resolved_names,
+    family_by_level = family_by_level,
+    row_index = as.integer(fam_idx),
+    row_level = as.character(data[[fam_var]]),
+    family_by_trait = family_by_trait
+  )
+  list(family = unname(family_by_trait), selector = selector)
 }
 
 # Convert selected long-format fixed-effect design columns into the p x n x q
@@ -328,6 +520,27 @@ gllvm_julia_capabilities <- function() {
   y
 }
 
+.gllvm_julia_trait_families <- function(object) {
+  fam <- object$families %||% object$family
+  fam <- as.character(fam)
+  p <- as.integer(object$n_traits %||% length(fam))
+  if (length(fam) == 1L) {
+    fam <- rep(fam, p)
+  }
+  if (length(fam) != p) {
+    stop(
+      "gllvmTMB_julia object carries incompatible family metadata.",
+      call. = FALSE
+    )
+  }
+  fam
+}
+
+.gllvm_julia_is_mixed_object <- function(object) {
+  identical(object$model, "mixed_rr") ||
+    length(unique(.gllvm_julia_trait_families(object))) > 1L
+}
+
 #' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).
@@ -377,6 +590,40 @@ gllvm_julia_fit <- function(
     y <- t(y)
     if (!is.null(mask)) {
       mask <- t(mask)
+    }
+  }
+  mixed_family <- .gllvm_julia_is_mixed_family(fam)
+  if (mixed_family) {
+    if (length(fam) != nrow(y)) {
+      stop(
+        "engine = 'julia': mixed-family vector length must equal the number ",
+        "of response traits (rows of y).",
+        call. = FALSE
+      )
+    }
+    if (!is.null(mask)) {
+      stop(
+        "engine = 'julia': missing-response masks are not wired for ",
+        "mixed-family Julia fits yet. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (!is.null(X)) {
+      stop(
+        "engine = 'julia': fixed-effect covariates X are not wired for ",
+        "mixed-family Julia fits yet. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (!identical(ci_method, "none")) {
+      .gllvm_julia_stop_mixed_ci("engine = 'julia'", ci_method)
+    }
+    if (anyNA(y)) {
+      stop(
+        "engine = 'julia': mixed-family Julia fits currently require a ",
+        "complete response matrix. Use engine = 'tmb'.",
+        call. = FALSE
+      )
     }
   }
   if (!is.null(mask)) {
@@ -451,7 +698,10 @@ gllvm_julia_fit <- function(
   }
   trait_names <- rownames(y)
   unit_names <- colnames(y)
-  if (fam %in% c("poisson", "binomial", "negbinomial", "nb1", "ordinal")) {
+  if (
+    !mixed_family &&
+      fam %in% c("poisson", "binomial", "negbinomial", "nb1", "ordinal")
+  ) {
     storage.mode(y) <- "integer"
   }
   gllvm_julia_setup(...)
@@ -493,6 +743,9 @@ gllvm_julia_fit <- function(
   if (.gllvm_julia_has_masked_response(mask)) {
     res$ci_status <- .gllvm_julia_masked_ci_status("none")
     res$ci_note <- .gllvm_julia_masked_ci_note()
+  } else if (mixed_family) {
+    res$ci_status <- .gllvm_julia_mixed_ci_status("none")
+    res$ci_note <- .gllvm_julia_mixed_ci_note()
   }
   class(res) <- c("gllvmTMB_julia", "list")
   res
@@ -618,8 +871,8 @@ print.gllvmTMB_julia <- function(x, ...) {
 }
 
 .gllvm_julia_eta_matrix <- function(object, include_latent = TRUE) {
-  fam <- as.character(object$family[1])
-  if (fam %in% c("ordinal", "ordinal_probit")) {
+  fam <- .gllvm_julia_trait_families(object)
+  if (any(fam %in% c("ordinal", "ordinal_probit"))) {
     stop(
       "predict.gllvmTMB_julia: ordinal predictions are not wired yet because ",
       "the Julia bridge payload does not carry cutpoints/probabilities.",
@@ -706,8 +959,7 @@ print.gllvmTMB_julia <- function(x, ...) {
   eta
 }
 
-.gllvm_julia_inverse_link <- function(object, eta) {
-  fam <- as.character(object$family[1])
+.gllvm_julia_inverse_link_family <- function(fam, eta) {
   switch(
     fam,
     gaussian = eta,
@@ -725,6 +977,25 @@ print.gllvmTMB_julia <- function(x, ...) {
       call. = FALSE
     )
   )
+}
+
+.gllvm_julia_inverse_link <- function(object, eta) {
+  fam <- .gllvm_julia_trait_families(object)
+  if (length(unique(fam)) == 1L) {
+    if (fam[1] %in% c("ordinal", "ordinal_probit")) {
+      stop(
+        "predict.gllvmTMB_julia: ordinal predictions are not wired yet because ",
+        "the Julia bridge payload does not carry cutpoints/probabilities.",
+        call. = FALSE
+      )
+    }
+    return(.gllvm_julia_inverse_link_family(fam[1], eta))
+  }
+  out <- eta
+  for (i in seq_len(nrow(eta))) {
+    out[i, ] <- .gllvm_julia_inverse_link_family(fam[i], eta[i, ])
+  }
+  out
 }
 
 .gllvm_julia_long_values <- function(object, values, value_name) {
@@ -759,6 +1030,14 @@ print.gllvmTMB_julia <- function(x, ...) {
 }
 
 .gllvm_julia_matrix_values <- function(object, values) {
+  if (length(values) == 1L && is.null(dim(values))) {
+    n <- if (!is.null(object$.trait_index)) {
+      length(object$.trait_index)
+    } else {
+      as.integer(object$n_traits %||% 1L) * as.integer(object$n_units %||% 1L)
+    }
+    return(rep(as.numeric(values), n))
+  }
   values <- as.matrix(values)
   if (!is.null(object$.trait_index) && !is.null(object$.unit_index)) {
     return(as.numeric(values[cbind(object$.trait_index, object$.unit_index)]))
@@ -766,7 +1045,25 @@ print.gllvmTMB_julia <- function(x, ...) {
   as.numeric(values)
 }
 
-.gllvm_julia_row_dispersion <- function(object, family, n_rows) {
+.gllvm_julia_row_family <- function(object, n_rows) {
+  fam <- .gllvm_julia_trait_families(object)
+  if (!is.null(object$.trait_index)) {
+    out <- fam[object$.trait_index]
+  } else {
+    p <- as.integer(object$n_traits %||% length(fam))
+    n <- as.integer(object$n_units %||% ceiling(n_rows / max(p, 1L)))
+    out <- rep(fam, times = n)
+  }
+  if (length(out) != n_rows) {
+    stop(
+      "gllvmTMB_julia object carries incompatible row/family metadata.",
+      call. = FALSE
+    )
+  }
+  out
+}
+
+.gllvm_julia_row_dispersion <- function(object, family, n_rows, rows = NULL) {
   dispersion <- as.numeric(object$dispersion)
   if (!length(dispersion) || !any(is.finite(dispersion))) {
     stop(
@@ -798,8 +1095,12 @@ print.gllvmTMB_julia <- function(x, ...) {
     }
   }
 
+  if (!is.null(rows)) {
+    out <- out[rows]
+  }
   out <- as.numeric(out)
-  if (length(out) != n_rows || any(!is.finite(out)) || any(out <= 0)) {
+  expected <- if (is.null(rows)) n_rows else sum(rows)
+  if (length(out) != expected || any(!is.finite(out)) || any(out <= 0)) {
     stop(
       "simulate.gllvmTMB_julia: family '",
       family,
@@ -854,7 +1155,9 @@ print.gllvmTMB_julia <- function(x, ...) {
 #'   of cached fit statistics. `augment()` returns in-sample row diagnostics with
 #'   `.observed`, `.fitted`, `.resid`, and `.status` columns. `simulate()` returns
 #'   an `n_obs x nsim` matrix of conditional in-sample draws for routed
-#'   Gaussian, Poisson, Binomial, NB2, NB1, Beta, and Gamma bridge fits.
+#'   Gaussian, Poisson, Binomial, NB2, NB1, Beta, and Gamma bridge fits,
+#'   including trait-aligned complete mixed-family objects over those routed
+#'   component families.
 #'   `predict()` and
 #'   `residuals()` return data frames in the original
 #'   training-row order when the
@@ -1064,7 +1367,6 @@ simulate.gllvmTMB_julia <- function(
     )
   }
 
-  fam <- as.character(object$family[1])
   mu <- fitted(object, type = "response", re_form = re_form)
   mu_vec <- .gllvm_julia_matrix_values(object, mu)
   if (any(!is.finite(mu_vec))) {
@@ -1078,104 +1380,145 @@ simulate.gllvmTMB_julia <- function(
   }
 
   out <- matrix(NA_real_, nrow = length(mu_vec), ncol = nsim)
+  fam_row <- .gllvm_julia_row_family(object, length(mu_vec))
   for (j in seq_len(nsim)) {
-    out[, j] <- switch(
-      fam,
-      gaussian = {
-        sigma <- as.numeric(object$sigma_eps)[1L]
-        if (!is.finite(sigma) || sigma < 0) {
-          stop(
-            "simulate.gllvmTMB_julia: Gaussian simulations need a finite ",
-            "non-negative sigma_eps payload.",
-            call. = FALSE
-          )
-        }
-        stats::rnorm(length(mu_vec), mean = mu_vec, sd = sigma)
-      },
-      poisson = {
-        if (any(mu_vec < 0)) {
-          stop(
-            "simulate.gllvmTMB_julia: Poisson fitted means must be non-negative.",
-            call. = FALSE
-          )
-        }
-        stats::rpois(length(mu_vec), lambda = mu_vec)
-      },
-      binomial = {
-        if (any(mu_vec < -1e-12 | mu_vec > 1 + 1e-12)) {
-          stop(
-            "simulate.gllvmTMB_julia: Binomial fitted probabilities must be ",
-            "inside [0, 1].",
-            call. = FALSE
-          )
-        }
-        prob <- pmin(pmax(mu_vec, 0), 1)
-        size <- if (is.null(object$N)) {
-          rep(1L, length(prob))
-        } else {
-          .gllvm_julia_matrix_values(object, object$N)
-        }
-        if (any(!is.finite(size)) || any(size < 0)) {
-          stop(
-            "simulate.gllvmTMB_julia: Binomial trial sizes must be finite ",
-            "and non-negative.",
-            call. = FALSE
-          )
-        }
-        stats::rbinom(length(prob), size = as.integer(size), prob = prob)
-      },
-      nb1 = {
-        if (any(mu_vec < 0)) {
-          stop(
-            "simulate.gllvmTMB_julia: NB1 fitted means must be non-negative.",
-            call. = FALSE
-          )
-        }
-        phi <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
-        stats::rnbinom(length(mu_vec), mu = mu_vec, size = mu_vec / phi)
-      },
-      negbinomial = {
-        if (any(mu_vec < 0)) {
-          stop(
-            "simulate.gllvmTMB_julia: NB2 fitted means must be non-negative.",
-            call. = FALSE
-          )
-        }
-        size <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
-        stats::rnbinom(length(mu_vec), mu = mu_vec, size = size)
-      },
-      beta = {
-        if (any(mu_vec <= 0 | mu_vec >= 1)) {
-          stop(
-            "simulate.gllvmTMB_julia: Beta fitted means must be inside (0, 1).",
-            call. = FALSE
-          )
-        }
-        phi <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
-        stats::rbeta(
-          length(mu_vec),
-          shape1 = mu_vec * phi,
-          shape2 = (1 - mu_vec) * phi
-        )
-      },
-      gamma = {
-        if (any(mu_vec <= 0)) {
-          stop(
-            "simulate.gllvmTMB_julia: Gamma fitted means must be positive.",
-            call. = FALSE
-          )
-        }
-        alpha <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
-        stats::rgamma(length(mu_vec), shape = alpha, scale = mu_vec / alpha)
-      },
-      stop(
-        "simulate.gllvmTMB_julia: family '",
+    draw <- numeric(length(mu_vec))
+    for (fam in unique(fam_row)) {
+      rows <- fam_row == fam
+      draw[rows] <- switch(
         fam,
-        "' is not routed through Julia-engine simulation yet. Supported: ",
-        "gaussian, poisson, binomial, negbinomial, nb1, beta, gamma.",
-        call. = FALSE
+        gaussian = {
+          mixed_object <- .gllvm_julia_is_mixed_object(object)
+          sigma <- if (mixed_object) {
+            .gllvm_julia_row_dispersion(
+              object,
+              fam,
+              length(mu_vec),
+              rows = rows
+            )
+          } else {
+            rep(as.numeric(object$sigma_eps)[1L], sum(rows))
+          }
+          if (any(!is.finite(sigma)) || any(sigma < 0)) {
+            msg <- if (mixed_object) {
+              "simulate.gllvmTMB_julia: Gaussian simulations need finite non-negative sigma values."
+            } else {
+              "simulate.gllvmTMB_julia: Gaussian simulations need a finite non-negative sigma_eps payload."
+            }
+            stop(msg, call. = FALSE)
+          }
+          stats::rnorm(sum(rows), mean = mu_vec[rows], sd = sigma)
+        },
+        poisson = {
+          if (any(mu_vec[rows] < 0)) {
+            stop(
+              "simulate.gllvmTMB_julia: Poisson fitted means must be non-negative.",
+              call. = FALSE
+            )
+          }
+          stats::rpois(sum(rows), lambda = mu_vec[rows])
+        },
+        binomial = {
+          if (any(mu_vec[rows] < -1e-12 | mu_vec[rows] > 1 + 1e-12)) {
+            stop(
+              "simulate.gllvmTMB_julia: Binomial fitted probabilities must be ",
+              "inside [0, 1].",
+              call. = FALSE
+            )
+          }
+          prob <- pmin(pmax(mu_vec[rows], 0), 1)
+          size <- if (is.null(object$N)) {
+            rep(1L, sum(rows))
+          } else {
+            .gllvm_julia_matrix_values(object, object$N)[rows]
+          }
+          if (any(!is.finite(size)) || any(size < 0)) {
+            stop(
+              "simulate.gllvmTMB_julia: Binomial trial sizes must be finite ",
+              "and non-negative.",
+              call. = FALSE
+            )
+          }
+          stats::rbinom(sum(rows), size = as.integer(size), prob = prob)
+        },
+        nb1 = {
+          if (any(mu_vec[rows] < 0)) {
+            stop(
+              "simulate.gllvmTMB_julia: NB1 fitted means must be non-negative.",
+              call. = FALSE
+            )
+          }
+          phi <- .gllvm_julia_row_dispersion(
+            object,
+            fam,
+            length(mu_vec),
+            rows = rows
+          )
+          stats::rnbinom(
+            sum(rows),
+            mu = mu_vec[rows],
+            size = mu_vec[rows] / phi
+          )
+        },
+        negbinomial = {
+          if (any(mu_vec[rows] < 0)) {
+            stop(
+              "simulate.gllvmTMB_julia: NB2 fitted means must be non-negative.",
+              call. = FALSE
+            )
+          }
+          size <- .gllvm_julia_row_dispersion(
+            object,
+            fam,
+            length(mu_vec),
+            rows = rows
+          )
+          stats::rnbinom(sum(rows), mu = mu_vec[rows], size = size)
+        },
+        beta = {
+          if (any(mu_vec[rows] <= 0 | mu_vec[rows] >= 1)) {
+            stop(
+              "simulate.gllvmTMB_julia: Beta fitted means must be inside (0, 1).",
+              call. = FALSE
+            )
+          }
+          phi <- .gllvm_julia_row_dispersion(
+            object,
+            fam,
+            length(mu_vec),
+            rows = rows
+          )
+          stats::rbeta(
+            sum(rows),
+            shape1 = mu_vec[rows] * phi,
+            shape2 = (1 - mu_vec[rows]) * phi
+          )
+        },
+        gamma = {
+          if (any(mu_vec[rows] <= 0)) {
+            stop(
+              "simulate.gllvmTMB_julia: Gamma fitted means must be positive.",
+              call. = FALSE
+            )
+          }
+          alpha <- .gllvm_julia_row_dispersion(
+            object,
+            fam,
+            length(mu_vec),
+            rows = rows
+          )
+          stats::rgamma(sum(rows), shape = alpha, scale = mu_vec[rows] / alpha)
+        },
+        stop(
+          "simulate.gllvmTMB_julia: family '",
+          fam,
+          "' is not routed through Julia-engine simulation yet. Supported: ",
+          "gaussian, poisson, binomial, negbinomial, nb1, beta, gamma.",
+          call. = FALSE
+        )
       )
-    )
+    }
+    out[, j] <- draw
   }
   colnames(out) <- paste0("sim_", seq_len(nsim))
   attr(out, "seed") <- seed
@@ -1369,6 +1712,9 @@ confint.gllvmTMB_julia <- function(
   ...
 ) {
   method <- match.arg(method)
+  if (.gllvm_julia_is_mixed_object(object)) {
+    .gllvm_julia_stop_mixed_ci("confint.gllvmTMB_julia", method)
+  }
   if (.gllvm_julia_has_masked_response(object$observed_mask)) {
     .gllvm_julia_stop_masked_ci("confint.gllvmTMB_julia", method)
   }
@@ -1487,6 +1833,7 @@ confint.gllvmTMB_julia <- function(
   unit_internal,
   family,
   weights = NULL,
+  REML = FALSE,
   call = NULL,
   is_y_observed = NULL
 ) {
@@ -1538,7 +1885,16 @@ confint.gllvmTMB_julia <- function(
   yraw <- stats::model.response(mf)
   ft <- factor(data[[trait]])
   fu <- factor(data[[unit_internal]])
-  fam_str <- .gllvm_julia_family(family)
+  family_resolved <- .gllvm_julia_mixed_selector(family, data, trait, ft)
+  fam_str <- family_resolved$family
+  is_mixed_family <- .gllvm_julia_is_mixed_family(fam_str)
+  if (is_mixed_family && isTRUE(REML)) {
+    stop(
+      "engine = 'julia': REML is Gaussian-only; mixed-family Julia fits ",
+      "must use REML = FALSE.",
+      call. = FALSE
+    )
+  }
   row_observed <- if (is.null(is_y_observed)) {
     rep(TRUE, length(ft))
   } else {
@@ -1553,6 +1909,13 @@ confint.gllvmTMB_julia <- function(
 
   cbind_binomial <- is.matrix(yraw) && ncol(yraw) == 2L
   if (cbind_binomial) {
+    if (is_mixed_family) {
+      stop(
+        "engine = 'julia': cbind(successes, failures) mixed-family fits ",
+        "are not wired yet. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
     if (!identical(fam_str, "binomial")) {
       stop(
         "engine = 'julia': cbind(successes, failures) responses are wired ",
@@ -1617,6 +1980,13 @@ confint.gllvmTMB_julia <- function(
   }
   has_masked_response <- any(!Mask)
   if (has_masked_response) {
+    if (is_mixed_family) {
+      stop(
+        "engine = 'julia': missing-response masks are not wired for ",
+        "mixed-family Julia fits yet. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
     if (!(fam_str %in% .GLLVM_JULIA_MASK_FAMILIES)) {
       stop(
         "engine = 'julia': missing-response masks are wired only for ",
@@ -1652,6 +2022,13 @@ confint.gllvmTMB_julia <- function(
 
   Xarg <- NULL
   if (!has_only_trait_intercept) {
+    if (is_mixed_family) {
+      stop(
+        "engine = 'julia': fixed-effect covariates are not wired for ",
+        "mixed-family Julia fits yet. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
     if (!all(trait_dummies %in% colnames(Xfix))) {
       stop(
         "engine = 'julia' requires a per-trait intercept design (`0 + ",
@@ -1702,6 +2079,13 @@ confint.gllvmTMB_julia <- function(
 
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
   Narg <- NULL
+  if (is_mixed_family && !is.null(weights)) {
+    stop(
+      "engine = 'julia': binomial trial weights are not wired for ",
+      "mixed-family Julia fits yet. Use engine = 'tmb'.",
+      call. = FALSE
+    )
+  }
   if (any(fam_str == "binomial")) {
     if (!is.null(trials_row)) {
       Narg <- matrix(1, p, n, dimnames = list(traits, units))
@@ -1718,7 +2102,7 @@ confint.gllvmTMB_julia <- function(
 
   fit <- gllvm_julia_fit(
     Y,
-    family = family,
+    family = fam_str,
     num.lv = K,
     N = Narg,
     X = Xarg,
@@ -1731,5 +2115,10 @@ confint.gllvmTMB_julia <- function(
   fit$unit_col <- unit_internal
   fit$.trait_index <- as.integer(ft)
   fit$.unit_index <- as.integer(fu)
+  if (!is.null(family_resolved$selector)) {
+    fit$family_input <- family
+    fit$family_selector <- family_resolved$selector
+    fit$family_by_trait <- stats::setNames(fam_str, traits)
+  }
   fit
 }

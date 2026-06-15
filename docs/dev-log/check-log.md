@@ -4,6 +4,64 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge trait-aligned mixed-family admission
+
+Scope:
+
+- admitted the narrow public `gllvmTMB(..., engine = "julia")` mixed-family
+  route for complete, balanced, trait-aligned no-X/no-mask/no-CI fits;
+- resolved named `family = list(...)` entries through the same selector-level
+  rules as the native R/TMB oracle, then collapsed only rows where each trait
+  maps to exactly one family;
+- preserved `family_selector`, `family_by_trait`, per-trait `families`, and
+  link metadata on the Julia-engine fit object;
+- made response prediction, residuals, augmentation, and simulation
+  row-family-aware for mixed Julia objects;
+- added method-specific mixed-family CI status errors
+  (`wald_unavailable_mixed_family`, `profile_unavailable_mixed_family`,
+  `bootstrap_unavailable_mixed_family`) so `confint()` never refits a mixed
+  object as its first family;
+- kept mixed X, mixed missing-response masks, cbind/weighted binomial trials,
+  unsupported mixed components, and mixed REML as explicit fail-fast cells.
+
+Evidence:
+
+- No-Julia bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 206`, `SKIP 18`, `FAIL 0`, `WARN 0` in `2.6s`.
+- Live Julia bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 496`, `SKIP 0`, `FAIL 0`, `WARN 0` in `64.0s`.
+- Native R/TMB mixed-family oracle:
+  `Rscript -e 'devtools::test(filter="stage37-mixed-family")'`
+  -> `PASS 33`, `SKIP 0`, `FAIL 0`, `WARN 0` in `3.1s`.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `PASS 2943`, `SKIP 722`, `FAIL 0`, `WARN 3`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warning in
+  `animal-keyword` and the existing `glmmTMB`/`TMB` version warning in the
+  cross-package NB1 check.
+- Docs:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated only the Julia bridge Rd files kept in this slice; unrelated
+  roxygen churn was reverted.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- Formatting/whitespace:
+  `air format R/gllvmTMB.R R/julia-bridge.R tests/testthat/test-julia-bridge.R`;
+  `git diff --check` -> clean.
+
+Deliberately not claimed:
+
+- No mixed-family fixed-effect covariates, response masks, cbind/weighted
+  binomial trials, REML, or CI endpoints on the Julia route. REML remains a
+  Gaussian-only concept.
+- No ordinal, NB1, delta, hurdle, or two-part mixed-family Julia admission.
+- No calibrated mixed-family coverage or broad native-TMB-vs-Julia equivalence;
+  the live gate compares the public R bridge call to the direct Julia bridge
+  wrapper and keeps the native R/TMB selector oracle as the R-side target.
+
 ## 2026-06-15 -- Julia bridge capability ledger
 
 Scope:

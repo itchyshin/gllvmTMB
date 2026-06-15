@@ -10,6 +10,16 @@
   a `family_selector` metadata slot recording the selector column, levels,
   family/link ids by level, and row alignment used by the native R/TMB oracle.
 
+* `engine = "julia"` now partially admits complete, balanced, trait-aligned
+  mixed-family list fits when each trait maps to one of the routed component
+  families (Gaussian, Poisson, Binomial, NB2, Beta, or Gamma). The route
+  preserves selector metadata, compares the public R call to the direct
+  `gllvm_julia_fit()` bridge in live tests, and exposes row-family-aware
+  prediction, residual, augmentation, and simulation methods. Mixed-family
+  fixed-effect covariates, missing-response masks, binomial trial weights /
+  `cbind()` transport, REML, and CI endpoints remain explicit unsupported
+  cells.
+
 ## R-side `engine = "julia"` bridge to GLLVM.jl (2026-06-13)
 
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
@@ -17,8 +27,7 @@
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
   `gllvm_julia_capabilities()` reports the current R-side bridge admission
   ledger before JuliaCall setup, including cells that remain planned rather than
-  routed. The ledger also exposes paired-Julia rows that are deliberately still
-  R-planned, currently mixed-family vectors.
+  routed.
   IMPORTANT DEVELOPMENT BOUNDARY: these bridge features are only as broad as the
   paired GLLVM.jl checkout supplied through `GLLVM_JL_PATH`. The local runtime
   evidence for fixed-effect covariates, `mean_coef` predictions, and Gaussian
@@ -39,7 +48,7 @@
   the supported surface is deliberately narrow — the bridge loudly rejects
   non-`rr` covariance terms, missing latent blocks, more than one latent block,
   Gaussian missing-response masks, masked fixed-effect covariate fits,
-  masked CI refits, mixed-family lists, ordinal covariate fits, NB1 covariate
+  masked CI refits, mixed-family X/masks/CIs, ordinal covariate fits, NB1 covariate
   or missing-response fits,
   lognormal, non-binomial `cbind()` responses, and unbalanced trait × unit
   tables, erroring clearly rather than

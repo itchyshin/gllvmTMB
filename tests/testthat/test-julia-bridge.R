@@ -168,6 +168,59 @@ fake_julia_fit <- function() {
   )
 }
 
+fake_mixed_julia_fit <- function() {
+  structure(
+    list(
+      family = "gaussian+poisson+binomial",
+      families = c("gaussian", "poisson", "binomial"),
+      model = "mixed_rr",
+      d = 1L,
+      n_traits = 3L,
+      n_units = 4L,
+      trait_names = c("g_trait", "p_trait", "b_trait"),
+      unit_names = paste0("u", 1:4),
+      alpha = c(0.1, 0.2, -0.3),
+      loadings = matrix(c(0.15, 0.25, -0.2), nrow = 3L),
+      scores = matrix(c(-0.4, -0.1, 0.2, 0.5), nrow = 4L),
+      dispersion = c(0.35, NaN, NaN),
+      sigma_eps = NaN,
+      y = matrix(
+        c(
+          0.2,
+          1,
+          0,
+          0.4,
+          2,
+          1,
+          -0.1,
+          3,
+          0,
+          -0.2,
+          4,
+          1
+        ),
+        nrow = 3L,
+        dimnames = list(
+          c("g_trait", "p_trait", "b_trait"),
+          paste0("u", 1:4)
+        )
+      ),
+      N = 1L,
+      loglik = -15.25,
+      aic = 42,
+      bic = 45,
+      df = 6,
+      nobs = 12,
+      converged = TRUE,
+      iterations = 9,
+      note = "synthetic mixed bridge object",
+      ci_status = "ci_unavailable_mixed_family",
+      ci_note = "synthetic mixed CI note"
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+}
+
 # --- family mapping ---------------------------------------------------------
 
 test_that("family mapping covers every bridged family", {
@@ -188,10 +241,18 @@ test_that("family mapping covers every bridged family", {
   expect_equal(.gllvm_julia_family(ordinal_probit()), "ordinal_probit")
 })
 
-test_that("family mapping rejects mixed vectors until the Julia bridge supports them", {
+test_that("family mapping admits trait-aligned mixed vectors", {
+  expect_equal(
+    .gllvm_julia_family(list(gaussian(), poisson(), binomial())),
+    c("gaussian", "poisson", "binomial")
+  )
+  expect_equal(
+    .gllvm_julia_family(c("gaussian", "negbinomial", "gamma")),
+    c("gaussian", "negbinomial", "gamma")
+  )
   expect_error(
-    .gllvm_julia_family(list("gaussian", "poisson", "binomial")),
-    "mixed-family"
+    .gllvm_julia_family(list(gaussian(), nbinom1())),
+    "unsupported component"
   )
 })
 
@@ -217,7 +278,7 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
   )
   expect_equal(
     caps$family[caps$fit_no_x],
-    .GLLVM_JULIA_BRIDGE_FAMILIES
+    c(.GLLVM_JULIA_BRIDGE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
   )
   expect_equal(
     caps$family[caps$fixed_effect_X],
@@ -238,9 +299,11 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
   expect_equal(nb1$missing_response, FALSE)
   mixed <- caps[caps$family == "mixed-family vector", ]
   expect_equal(nrow(mixed), 1L)
-  expect_equal(mixed$status, "planned")
-  expect_equal(mixed$fit_no_x, FALSE)
-  expect_match(mixed$notes, "R bridge still rejects")
+  expect_equal(mixed$status, "partial")
+  expect_equal(mixed$fit_no_x, TRUE)
+  expect_equal(mixed$fixed_effect_X, FALSE)
+  expect_equal(mixed$missing_response, FALSE)
+  expect_match(mixed$notes, "no-X/no-mask/no-CI")
 })
 
 test_that("R-side Julia bridge ledger is a subset of the paired Julia surface", {
@@ -267,10 +330,6 @@ test_that("R-side Julia bridge ledger is a subset of the paired Julia surface", 
 
   planned <- caps[caps$family %in% julia_only_fit, ]
   expect_equal(planned$status, rep("planned", nrow(planned)))
-  expect_match(
-    planned$notes[planned$family == "mixed-family vector"],
-    "rejects family lists"
-  )
 })
 
 test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCall setup", {
@@ -318,7 +377,103 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
   )
   expect_error(
     gllvm_julia_fit(Y, family = list("gaussian", "poisson")),
-    "mixed-family"
+    "mixed-family vector length"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      Y,
+      family = list("gaussian", "poisson", "binomial"),
+      mask = replace(matrix(TRUE, nrow = 3L, ncol = 4L), 1L, FALSE)
+    ),
+    "missing-response masks are not wired for mixed-family"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      Y,
+      family = list("gaussian", "poisson", "binomial"),
+      X = array(0, dim = c(3L, 4L, 1L))
+    ),
+    "fixed-effect covariates X are not wired for mixed-family"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      Y,
+      family = list("gaussian", "poisson", "binomial"),
+      ci_method = "wald"
+    ),
+    "wald_unavailable_mixed_family"
+  )
+})
+
+test_that("engine = 'julia' mixed-family guards unsupported cells before JuliaCall", {
+  df <- expand.grid(
+    unit = factor(seq_len(4L)),
+    trait = factor(c("g_trait", "p_trait"), levels = c("g_trait", "p_trait")),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  df$trait <- factor(df$trait, levels = c("g_trait", "p_trait"))
+  df$family <- factor(
+    ifelse(df$trait == "g_trait", "g", "p"),
+    levels = c("g", "p")
+  )
+  df$value <- c(0.1, 1, 0.2, 2, 0.3, 3, 0.4, 4)
+  df$env <- rep(c(-0.5, 0.5), times = 4L)
+  fam <- list(p = poisson(), g = gaussian())
+  attr(fam, "family_var") <- "family"
+
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = fam,
+      engine = "julia"
+    ),
+    "fixed-effect covariates are not wired for mixed-family"
+  )
+
+  df_miss <- df
+  df_miss$value[1L] <- NA_real_
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df_miss,
+      trait = "trait",
+      unit = "unit",
+      family = fam,
+      engine = "julia",
+      missing = miss_control(response = "include")
+    ),
+    "missing-response masks are not wired for mixed-family"
+  )
+
+  df_bad <- df
+  df_bad$family[df_bad$trait == "g_trait" & df_bad$unit == "1"] <- "p"
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df_bad,
+      trait = "trait",
+      unit = "unit",
+      family = fam,
+      engine = "julia"
+    ),
+    "each trait to map to exactly one family"
+  )
+
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = fam,
+      REML = TRUE,
+      engine = "julia"
+    ),
+    "REML is Gaussian-only"
   )
 })
 
@@ -528,6 +683,47 @@ test_that("Julia bridge simulate supports narrow safe families without JuliaCall
   bad_beta <- beta
   bad_beta$dispersion <- c(12, 0)
   expect_error(simulate(bad_beta), "finite positive dispersion")
+})
+
+test_that("Julia bridge mixed-family post-fit methods are row-family aware", {
+  fit <- fake_mixed_julia_fit()
+  eta <- matrix(fit$alpha, 3L, 4L) + fit$loadings %*% t(fit$scores)
+  mu <- fitted(fit, type = "response")
+
+  expect_equal(unname(mu[1, ]), unname(eta[1, ]))
+  expect_equal(unname(mu[2, ]), unname(exp(eta[2, ])))
+  expect_equal(unname(mu[3, ]), unname(stats::plogis(eta[3, ])))
+
+  pr <- predict(fit, type = "response")
+  expect_equal(nrow(pr), 12L)
+  expect_true(all(is.finite(pr$est)))
+  expect_true(all(pr$est[pr$trait == "p_trait"] > 0))
+  expect_true(all(pr$est[pr$trait == "b_trait"] >= 0))
+  expect_true(all(pr$est[pr$trait == "b_trait"] <= 1))
+
+  rr <- residuals(fit)
+  expect_equal(nrow(rr), 12L)
+  expect_true(all(is.finite(rr$residual)))
+  aug <- generics::augment(fit)
+  expect_equal(nrow(aug), 12L)
+  expect_equal(aug$.resid, rr$residual)
+
+  sim <- simulate(fit, nsim = 2L, seed = 101L)
+  expect_equal(dim(sim), c(12L, 2L))
+  expect_equal(sim, simulate(fit, nsim = 2L, seed = 101L))
+  families <- .gllvm_julia_row_family(fit, 12L)
+  expect_true(all(sim[families == "poisson", ] >= 0))
+  expect_true(all(
+    sim[families == "poisson", ] == floor(sim[families == "poisson", ])
+  ))
+  expect_true(all(sim[families == "binomial", ] %in% c(0, 1)))
+
+  for (method in c("wald", "profile", "bootstrap")) {
+    expect_error(
+      confint(fit, method = method),
+      paste0(method, "_unavailable_mixed_family")
+    )
+  }
 })
 
 test_that("confint() on masked Julia objects reports method-specific CI status", {
@@ -1214,6 +1410,101 @@ test_that("engine = 'julia' cbind binomial masks rows when either component is m
     as.numeric(logLik(direct)),
     tolerance = 1e-8
   )
+})
+
+test_that("engine = 'julia' admits trait-aligned mixed-family fits", {
+  skip_if_no_julia()
+  units <- factor(seq_len(18L))
+  traits <- factor(
+    c("g_trait", "p_trait", "b_trait"),
+    levels = c("g_trait", "p_trait", "b_trait")
+  )
+  df <- expand.grid(
+    unit = units,
+    trait = traits,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  df$trait <- factor(df$trait, levels = levels(traits))
+  df$family <- factor(
+    ifelse(
+      df$trait == "g_trait",
+      "g",
+      ifelse(df$trait == "p_trait", "p", "b")
+    ),
+    levels = c("g", "p", "b")
+  )
+  u <- as.integer(df$unit)
+  df$value <- NA_real_
+  df$value[df$family == "g"] <- sin(u[df$family == "g"] / 4)
+  df$value[df$family == "p"] <- (u[df$family == "p"] %% 4L) + 1L
+  df$value[df$family == "b"] <- as.integer(u[df$family == "b"] %% 2L == 0L)
+
+  family_list <- list(p = poisson(), g = gaussian(), b = binomial())
+  attr(family_list, "family_var") <- "family"
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = family_list,
+    engine = "julia"
+  )
+  direct <- gllvm_julia_fit(
+    fit$y,
+    family = fit$families,
+    num.lv = 1L,
+    N = fit$N
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(fit$model, "mixed_rr")
+  expect_equal(fit$families, c("gaussian", "poisson", "binomial"))
+  expect_equal(fit$link, c("IdentityLink", "LogLink", "LogitLink"))
+  expect_equal(
+    fit$family_by_trait,
+    stats::setNames(fit$families, levels(traits))
+  )
+  expect_equal(fit$family_selector$family_var, "family")
+  expect_equal(fit$family_selector$levels, c("g", "p", "b"))
+  expect_true(fit$family_selector$list_names_matched)
+  expect_equal(
+    unname(fit$family_selector$family_by_level),
+    c("gaussian", "poisson", "binomial")
+  )
+  expect_equal(
+    as.numeric(logLik(fit)),
+    as.numeric(logLik(direct)),
+    tolerance = 1e-8
+  )
+  expect_equal(fit$nobs, nrow(df))
+  expect_true(is.finite(fit$loglik))
+  expect_true(isTRUE(fit$converged))
+  expect_equal(fit$ci_status, "ci_unavailable_mixed_family")
+
+  pr <- predict(fit, type = "response")
+  expect_equal(nrow(pr), nrow(df))
+  expect_true(all(is.finite(pr$est)))
+  expect_true(all(pr$est[pr$trait == "p_trait"] > 0))
+  expect_true(all(pr$est[pr$trait == "b_trait"] >= 0))
+  expect_true(all(pr$est[pr$trait == "b_trait"] <= 1))
+
+  rr <- residuals(fit)
+  expect_equal(nrow(rr), nrow(df))
+  expect_true(all(is.finite(rr$residual)))
+  aug <- generics::augment(fit)
+  expect_equal(nrow(aug), nrow(df))
+
+  sim <- simulate(fit, nsim = 2L, seed = 20260615L)
+  expect_equal(dim(sim), c(nrow(df), 2L))
+  expect_true(all(sim[fit$family_selector$row_level == "p", ] >= 0))
+  expect_true(all(
+    sim[fit$family_selector$row_level == "p", ] ==
+      floor(sim[fit$family_selector$row_level == "p", ])
+  ))
+  expect_true(all(sim[fit$family_selector$row_level == "b", ] %in% c(0, 1)))
+  expect_error(confint(fit, method = "wald"), "wald_unavailable_mixed_family")
 })
 
 test_that("direct Julia bridge wrapper fits a supported Poisson X model", {

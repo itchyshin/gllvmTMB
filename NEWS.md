@@ -11,7 +11,7 @@
   `gllvm_julia_capabilities()` reports the current R-side bridge admission
   ledger before JuliaCall setup, including cells that remain planned rather than
   routed. The ledger also exposes paired-Julia rows that are deliberately still
-  R-planned, currently `nb1`/`nbinom1` and mixed-family vectors.
+  R-planned, currently mixed-family vectors.
   IMPORTANT DEVELOPMENT BOUNDARY: these bridge features are only as broad as the
   paired GLLVM.jl checkout supplied through `GLLVM_JL_PATH`. The local runtime
   evidence for fixed-effect covariates, `mean_coef` predictions, and Gaussian
@@ -20,7 +20,7 @@
   reject those payloads.
   IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
   with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
-  beta, gamma, and ordinal-probit families, plus fixed-effect covariates for
+  nbinom1, beta, gamma, and ordinal-probit families, plus fixed-effect covariates for
   complete, balanced one-part gaussian, poisson, binomial, nbinom2, beta, and
   gamma fits. Binomial `cbind(successes, failures)` responses are also
   transported as Julia binomial trial matrices for the complete and
@@ -30,7 +30,8 @@
   the supported surface is deliberately narrow — the bridge loudly rejects
   non-`rr` covariance terms, missing latent blocks, more than one latent block,
   Gaussian missing-response masks, masked fixed-effect covariate fits,
-  masked CI refits, mixed-family lists, ordinal covariate fits, nbinom1,
+  masked CI refits, mixed-family lists, ordinal covariate fits, NB1 covariate
+  or missing-response fits,
   lognormal, non-binomial `cbind()` responses, and unbalanced trait × unit
   tables, erroring clearly rather than
   silently re-interpreting the model. CI routing returns Wald intervals where

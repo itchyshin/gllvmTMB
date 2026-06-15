@@ -16454,3 +16454,52 @@ Deliberately not claimed:
   still rejected until metadata, labels, parity, and CI/status rows are routed.
 - This is structural bridge governance, not a new point-estimate, CI, or speed
   claim.
+
+## 2026-06-15 -- Julia bridge NB1 no-X admission
+
+Admitted the narrow NB1 (`nbinom1`) no-X reduced-rank route through
+`gllvmTMB(..., engine = "julia")`. The R bridge now maps `nbinom1()`/`"nbinom1"`
+to the paired `GLLVM.bridge_fit` `nb1` route, keeps NB1 fixed-effect-X and
+missing-response-mask cells rejected before JuliaCall, and live-tests a Wald CI
+smoke for the NB1 dispersion row.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `man/gllvm_julia_capabilities.Rd`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-nb1-no-x.md`
+
+Evidence:
+
+- No-Julia bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 16 | PASS 151` in `2.1s`.
+- First live bridge attempt:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 3 | WARN 0 | SKIP 0 | PASS 362`; the NB1 fit worked, but the test
+  incorrectly assumed a scalar R-side dispersion rather than a finite positive
+  dispersion vector.
+- Corrected live bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 370` in `53.3s`.
+- Roxygen:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/gllvm_julia_capabilities.Rd`; existing unresolved-link
+  warnings in unrelated roxygen topics remain.
+- pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- NB1 fixed-effect covariates, missing-response masks, masked CIs,
+  profile/bootstrap parity, mixed-family NB1, and native-TMB-vs-Julia numeric
+  parity are still outside this slice.
+- The NB1 route is one-part reduced-rank only and depends on the paired
+  `GLLVM.jl-integration` checkout exposing `family = "nb1"`.

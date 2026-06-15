@@ -8,7 +8,7 @@ gllvm_julia_capabilities()
 }
 \value{
 A data frame with one row per bridge family plus the deferred
-NB1 and mixed-family vector routes. Boolean columns mark the currently admitted
+mixed-family vector route. Boolean columns mark the currently admitted
 no-X fit, fixed-effect-X, missing-response mask, and cbind-binomial
 transport cells. \code{status} is one of \code{"partial"} or \code{"planned"}, and
 \code{notes} records the main boundary.

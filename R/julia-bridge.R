@@ -69,12 +69,13 @@ gllvm_julia_setup <- function(
   "poisson",
   "binomial",
   "negbinomial",
+  "nb1",
   "beta",
   "gamma",
   "ordinal",
   "ordinal_probit"
 )
-.GLLVM_JULIA_PLANNED_FAMILIES <- c("nb1", "mixed-family vector")
+.GLLVM_JULIA_PLANNED_FAMILIES <- c("mixed-family vector")
 .GLLVM_JULIA_X_FAMILIES <- c(
   "gaussian",
   "poisson",
@@ -102,7 +103,7 @@ gllvm_julia_setup <- function(
 #' `GLLVM_JL_PATH`.
 #'
 #' @return A data frame with one row per bridge family plus the deferred
-#'   NB1 and mixed-family vector routes. Boolean columns mark the currently admitted
+#'   mixed-family vector route. Boolean columns mark the currently admitted
 #'   no-X fit, fixed-effect-X, missing-response mask, and cbind-binomial
 #'   transport cells. `status` is one of `"partial"` or `"planned"`, and
 #'   `notes` records the main boundary.
@@ -130,10 +131,7 @@ gllvm_julia_capabilities <- function() {
     missing_response = FALSE,
     cbind_binomial = FALSE,
     status = "planned",
-    notes = c(
-      "GLLVM.jl bridge has an NB1 one-part route, but the R bridge still rejects nbinom1 until family mapping, dispersion labels, parity, and CI/status rows are validated",
-      "GLLVM.jl bridge has a mixed-family route, but the R bridge still rejects family lists until metadata, labels, parity, and CI/status rows are validated"
-    ),
+    notes = "GLLVM.jl bridge has a mixed-family route, but the R bridge still rejects family lists until metadata, labels, parity, and CI/status rows are validated",
     stringsAsFactors = FALSE
   )
   rbind(out, planned)
@@ -183,6 +181,8 @@ gllvm_julia_capabilities <- function() {
     negbinomial = "negbinomial",
     nbinom2 = "negbinomial",
     nb2 = "negbinomial",
+    nbinom1 = "nb1",
+    nb1 = "nb1",
     beta = "beta",
     gamma = "gamma",
     ordinal = "ordinal",
@@ -194,7 +194,7 @@ gllvm_julia_capabilities <- function() {
       "engine = 'julia': unsupported family '",
       fam,
       "'. Supported: gaussian, poisson, ",
-      "binomial, nbinom2, beta, gamma, ordinal, ordinal_probit.",
+      "binomial, nbinom2, nbinom1, beta, gamma, ordinal, ordinal_probit.",
       call. = FALSE
     )
   }
@@ -448,7 +448,7 @@ gllvm_julia_fit <- function(
   }
   trait_names <- rownames(y)
   unit_names <- colnames(y)
-  if (fam %in% c("poisson", "binomial", "negbinomial", "ordinal")) {
+  if (fam %in% c("poisson", "binomial", "negbinomial", "nb1", "ordinal")) {
     storage.mode(y) <- "integer"
   }
   gllvm_julia_setup(...)

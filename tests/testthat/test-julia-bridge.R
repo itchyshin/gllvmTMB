@@ -179,6 +179,9 @@ test_that("family mapping covers every bridged family", {
   expect_equal(.gllvm_julia_family("bernoulli"), "binomial")
   expect_equal(.gllvm_julia_family("negbinomial"), "negbinomial")
   expect_equal(.gllvm_julia_family("nbinom2"), "negbinomial")
+  expect_equal(.gllvm_julia_family("nbinom1"), "nb1")
+  expect_equal(.gllvm_julia_family("nb1"), "nb1")
+  expect_equal(.gllvm_julia_family(nbinom1()), "nb1")
   expect_equal(.gllvm_julia_family("beta"), "beta")
   expect_equal(.gllvm_julia_family("gamma"), "gamma")
   expect_equal(.gllvm_julia_family("ordinal"), "ordinal")
@@ -193,7 +196,6 @@ test_that("family mapping rejects mixed vectors until the Julia bridge supports 
 })
 
 test_that("family mapping rejects unsupported families loudly", {
-  expect_error(.gllvm_julia_family("nbinom1"), "unsupported family")
   expect_error(.gllvm_julia_family("lognormal"), "unsupported family")
   expect_error(.gllvm_julia_family("tweedie"), "unsupported family")
   expect_error(.gllvm_julia_family("nonsense"), "unsupported family")
@@ -230,9 +232,10 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
   expect_setequal(planned$family, .GLLVM_JULIA_PLANNED_FAMILIES)
   nb1 <- caps[caps$family == "nb1", ]
   expect_equal(nrow(nb1), 1L)
-  expect_equal(nb1$status, "planned")
-  expect_equal(nb1$fit_no_x, FALSE)
-  expect_match(nb1$notes, "R bridge still rejects nbinom1")
+  expect_equal(nb1$status, "partial")
+  expect_equal(nb1$fit_no_x, TRUE)
+  expect_equal(nb1$fixed_effect_X, FALSE)
+  expect_equal(nb1$missing_response, FALSE)
   mixed <- caps[caps$family == "mixed-family vector", ]
   expect_equal(nrow(mixed), 1L)
   expect_equal(mixed$status, "planned")
@@ -264,7 +267,6 @@ test_that("R-side Julia bridge ledger is a subset of the paired Julia surface", 
 
   planned <- caps[caps$family %in% julia_only_fit, ]
   expect_equal(planned$status, rep("planned", nrow(planned)))
-  expect_match(planned$notes[planned$family == "nb1"], "rejects nbinom1")
   expect_match(
     planned$notes[planned$family == "mixed-family vector"],
     "rejects family lists"
@@ -642,6 +644,23 @@ test_that("engine = 'julia' rejects unsupported Gaussian missing-response masks 
   )
 })
 
+test_that("engine = 'julia' rejects unsupported NB1 missing-response masks explicitly", {
+  df <- make_long_cov()
+  df$count[1] <- NA_real_
+  expect_error(
+    gllvmTMB(
+      count ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = nbinom1(),
+      engine = "julia",
+      missing = miss_control(response = "include")
+    ),
+    "missing-response masks are wired only"
+  )
+})
+
 test_that("engine argument is validated by match.arg", {
   df <- make_long()
   expect_error(
@@ -674,6 +693,21 @@ test_that("engine = 'julia' rejects ordinal fixed-effect X before JuliaCall setu
       engine = "julia"
     ),
     "covariate"
+  )
+})
+
+test_that("engine = 'julia' rejects NB1 fixed-effect X before JuliaCall setup", {
+  df <- make_long_cov()
+  expect_error(
+    gllvmTMB(
+      count ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = nbinom1(),
+      engine = "julia"
+    ),
+    "fixed-effect covariates are not wired"
   )
 })
 
@@ -803,6 +837,40 @@ test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end"
   expect_equal(dim(sim), c(nrow(df), 2L))
   expect_true(all(sim >= 0))
   expect_true(all(sim == floor(sim)))
+})
+
+test_that("engine = 'julia' fits NB1 no-X and routes Wald CIs", {
+  skip_if_no_julia()
+  df <- make_long_cov(n_unit = 42L, seed = 23L)
+  fit <- gllvmTMB(
+    count ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = nbinom1(),
+    engine = "julia"
+  )
+  direct <- gllvm_julia_fit(fit$y, family = nbinom1(), num.lv = 1L)
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(fit$family, "nb1")
+  expect_equal(fit$model, "nb1_rr")
+  expect_true(is.finite(fit$loglik))
+  expect_equal(
+    as.numeric(logLik(fit)),
+    as.numeric(logLik(direct)),
+    tolerance = 1e-8
+  )
+  expect_true(length(fit$dispersion) >= 1L)
+  expect_true(all(is.finite(fit$dispersion)))
+  expect_true(all(fit$dispersion > 0))
+
+  ci <- confint(fit, method = "wald")
+  expect_true(is.matrix(ci))
+  expect_equal(ncol(ci), 2L)
+  expect_true(any(grepl("phi", rownames(ci))))
+  expect_true(all(is.finite(ci)))
+  expect_true(all(ci[, 1] < ci[, 2]))
 })
 
 test_that("engine = 'julia' fits a Poisson missing-response mask end-to-end", {

@@ -366,6 +366,15 @@ print.gllvmTMB_julia <- function(x, ...) {
       stringsAsFactors = FALSE
     )
   }
+  if (!is.null(object$mean_coef)) {
+    mean_names <- .gllvm_julia_gamma_names(object)
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = "mean_coef",
+      term = sprintf("mean_coef[%s]", mean_names),
+      estimate = as.numeric(object$mean_coef),
+      stringsAsFactors = FALSE
+    )
+  }
   if (!is.null(object$dispersion) && any(is.finite(object$dispersion))) {
     rows[[length(rows) + 1L]] <- data.frame(
       component = "dispersion",
@@ -430,6 +439,7 @@ print.gllvmTMB_julia <- function(x, ...) {
   if (
     identical(object$model, "gaussian_x_rr") &&
       !is.null(object$X) &&
+      is.null(object$mean_coef) &&
       is.null(object$beta_cov) &&
       is.null(object$gamma)
   ) {
@@ -440,12 +450,27 @@ print.gllvmTMB_julia <- function(x, ...) {
       call. = FALSE
     )
   }
-  if (!is.null(object$beta_cov)) {
+  used_full_mean <- FALSE
+  if (identical(object$model, "gaussian_x_rr") && !is.null(object$mean_coef)) {
+    X <- object$X
+    mean_coef <- as.numeric(object$mean_coef)
+    if (!is.array(X) || length(dim(X)) != 3L || dim(X)[3] != length(mean_coef)) {
+      stop(
+        "predict.gllvmTMB_julia: object carries incompatible X/mean_coef fields.",
+        call. = FALSE
+      )
+    }
+    for (k in seq_along(mean_coef)) {
+      eta <- eta + X[, , k] * mean_coef[k]
+    }
+    used_full_mean <- TRUE
+  }
+  if (!used_full_mean && !is.null(object$beta_cov)) {
     eta <- eta + matrix(as.numeric(object$beta_cov), p, n)
-  } else if (!is.null(object$alpha) && all(is.finite(object$alpha))) {
+  } else if (!used_full_mean && !is.null(object$alpha) && all(is.finite(object$alpha))) {
     eta <- eta + matrix(as.numeric(object$alpha), p, n)
   }
-  if (!is.null(object$X) && !is.null(object$gamma)) {
+  if (!used_full_mean && !is.null(object$X) && !is.null(object$gamma)) {
     X <- object$X
     gamma <- as.numeric(object$gamma)
     if (!is.array(X) || length(dim(X)) != 3L || dim(X)[3] != length(gamma)) {
@@ -553,6 +578,10 @@ coef.gllvmTMB_julia <- function(object, ...) {
   }
   if (!is.null(object$beta_cov)) {
     out$beta_cov <- stats::setNames(as.numeric(object$beta_cov), traits)
+  }
+  if (!is.null(object$mean_coef)) {
+    mean_names <- .gllvm_julia_gamma_names(object)
+    out$mean_coef <- stats::setNames(as.numeric(object$mean_coef), mean_names)
   }
   if (!is.null(object$dispersion) && any(is.finite(object$dispersion))) {
     out$dispersion <- stats::setNames(as.numeric(object$dispersion), traits)

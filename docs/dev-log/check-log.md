@@ -15872,3 +15872,39 @@ Deliberately not claimed:
 
 - This does not implement missing-response masks. It only guarantees the direct
   R wrapper fails clearly before JuliaCall when `y` contains `NA`.
+
+## 2026-06-15 -- Julia bridge Gaussian-X prediction payload
+
+Closed the R-side Gaussian-X in-sample prediction gap by consuming the paired
+`GLLVM.bridge_fit` `mean_coef` payload. `predict.gllvmTMB_julia()` and
+`fitted.gllvmTMB_julia()` now reconstruct `X * mean_coef + Lambda * z` for
+Gaussian covariate fits instead of failing on the older per-trait mean summary.
+Objects lacking `mean_coef` still fail loudly.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-gaussian-x-prediction.md`
+
+Evidence:
+
+- Paired GLLVM.jl payload test:
+  `~/.juliaup/bin/julia --project=. test/test_bridge_x.jl`
+  in `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`
+  -> `52/52 pass`.
+- Live focused bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 102`.
+- Package-level filtered gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 102` in `42.6s`.
+
+Deliberately not claimed:
+
+- This is in-sample prediction for the fitted `X` design only. `newdata`
+  prediction remains unsupported.
+- Ordinal probabilities still need cutpoint/probability payloads.
+- Missing-response masks still need an observed-response mask contract.

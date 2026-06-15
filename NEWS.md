@@ -24,9 +24,10 @@
   remains partial and unsupported cells still report explicit CI-status errors.
   Post-fit inspection now includes `coef()`, `summary()`, `predict()`,
   `fitted()`, and `residuals()` methods for `gllvmTMB_julia` objects. The
-  prediction/residual methods are deliberately in-sample only; `newdata`,
-  ordinal probabilities, and Gaussian covariate predictions wait for richer
-  bridge payloads and fail with explicit messages. Direct `gllvm_julia_fit()`
+  prediction/residual methods are deliberately in-sample only; `newdata` and
+  ordinal probabilities wait for richer bridge payloads and fail with
+  explicit messages; Gaussian covariate predictions are supported when the
+  paired GLLVM.jl bridge returns the `mean_coef` payload. Direct `gllvm_julia_fit()`
   calls with `NA` responses also fail before JuliaCall until the paired Julia
   bridge accepts an observed-response mask.
   OUT: JuliaCall is a `Suggests` dependency only; every `engine = "julia"` path

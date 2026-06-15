@@ -200,6 +200,9 @@ test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
   fit_gx$beta_cov <- NULL
   fit_gx$gamma <- NULL
   expect_error(predict(fit_gx), "full mean coefficient vector")
+
+  fit_gx$mean_coef <- c(0.2)
+  expect_silent(predict(fit_gx, type = "link"))
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------
@@ -422,7 +425,10 @@ test_that("engine = 'julia' admits Gaussian and Beta X models", {
   )
   expect_equal(fit_g$model, "gaussian_x_rr")
   expect_equal(dim(fit_g$X)[3], length(levels(df$trait)) + 1L)
-  expect_error(predict(fit_g), "full mean coefficient vector")
+  expect_equal(length(fit_g$mean_coef), dim(fit_g$X)[3])
+  pr_g <- predict(fit_g, type = "link")
+  expect_equal(nrow(pr_g), nrow(df))
+  expect_true(all(is.finite(pr_g$est)))
 
   fit_b <- gllvmTMB(
     prop ~ 0 + trait + env + latent(0 + trait | unit, d = 1),

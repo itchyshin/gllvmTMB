@@ -4,6 +4,37 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Native mixed-family confint profile/bootstrap route evidence
+
+Scope:
+
+- added heavy-gated public-route tests for
+  `confint(fit, parm = "rho:unit:1,2", method = "profile")` on the native
+  three-family mixed oracle;
+- added heavy-gated public-route tests for
+  `confint(fit, parm = "rho:unit:1,2", method = "bootstrap", nsim = 20L)` on
+  the same native mixed oracle;
+- kept profile evidence boundary-aware: a profile endpoint may be `NA` at the
+  boundary, but any finite endpoint must be inside `[-1, 1]`;
+- kept bootstrap evidence bounded and ordered, but did not claim calibrated
+  mixed-family coverage.
+
+Evidence:
+
+- Default gate:
+  `Rscript -e 'devtools::test(filter="m1-4-extract-correlations-mixed-family")'`
+  -> `PASS 0`, `SKIP 8`, `FAIL 0`, `WARN 0`; all skips are expected heavy gates.
+- Heavy gate:
+  `GLLVMTMB_HEAVY_TESTS=1 Rscript -e 'devtools::test(filter="m1-4-extract-correlations-mixed-family")'`
+  -> `PASS 56`, `SKIP 0`, `FAIL 0`, `WARN 0` in `29.2s`.
+
+Deliberately not claimed:
+
+- This is route evidence, not ADEMP/coverage calibration.
+- Profile intervals can still be boundary-partial; this slice does not add a
+  richer matrix-level CI-status payload to `confint()`.
+- Julia mixed-family CI endpoints remain unsupported.
+
 ## 2026-06-15 -- Native mixed-family confint rho evidence
 
 Scope:

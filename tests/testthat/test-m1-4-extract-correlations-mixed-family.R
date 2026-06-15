@@ -20,14 +20,17 @@ skip_on_cran_or_load <- function(n_families) {
 
 expect_valid_correlations_df <- function(df, expected_rows) {
   expect_s3_class(df, "data.frame")
-  expect_setequal(names(df),
-                  c("tier", "trait_i", "trait_j", "correlation",
-                    "lower", "upper", "method"))
+  expect_setequal(
+    names(df),
+    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+  )
   expect_equal(nrow(df), expected_rows)
   ## Correlations are in [-1, 1]; CI brackets the point estimate (allowing
   ## for finite-sample boundary effects where one side may equal NA).
-  expect_true(all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8),
-              info = "point correlations out of [-1, 1]")
+  expect_true(
+    all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8),
+    info = "point correlations out of [-1, 1]"
+  )
   ## Note: lower / upper may be NA for boundary cases (variance near 0);
   ## allow that explicitly.
   finite_rows <- which(is.finite(df$lower) & is.finite(df$upper))
@@ -41,12 +44,14 @@ test_that("extract_correlations() method = 'fisher-z' on both fixtures (M1.4 / M
   skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
-    fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
-    T   <- fx$truth$n_traits
+    fx <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
+    T <- fx$truth$n_traits
     expected_pairs <- choose(T, 2)
 
     df <- suppressMessages(extract_correlations(
-      fit, tier = "unit", method = "fisher-z",
+      fit,
+      tier = "unit",
+      method = "fisher-z",
       link_residual = "auto"
     ))
     expect_valid_correlations_df(df, expected_pairs)
@@ -60,12 +65,14 @@ test_that("extract_correlations() method = 'wald' on both fixtures (M1.4 / MIX-0
   skip_if_not_heavy()
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
-    fx  <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
-    T   <- fx$truth$n_traits
+    fx <- gllvmTMB:::load_mixed_family_fixture(n_families = k)
+    T <- fx$truth$n_traits
     expected_pairs <- choose(T, 2)
 
     df <- suppressMessages(extract_correlations(
-      fit, tier = "unit", method = "wald",
+      fit,
+      tier = "unit",
+      method = "wald",
       link_residual = "auto"
     ))
     expect_valid_correlations_df(df, expected_pairs)
@@ -82,7 +89,9 @@ test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 /
   ## 3-family has T = 3 → 3 pairs; budget ~30-60 s.
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
   df <- suppressMessages(extract_correlations(
-    fit, tier = "unit", method = "profile",
+    fit,
+    tier = "unit",
+    method = "profile",
     link_residual = "auto"
   ))
   expect_valid_correlations_df(df, 3L)
@@ -107,20 +116,65 @@ test_that("extract_correlations() method = 'bootstrap' on 5-family fixture (M1.4
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 5L)
   df <- suppressMessages(extract_correlations(
-    fit, tier = "unit", method = "bootstrap",
-    nsim = 50L, seed = 20260517L,
+    fit,
+    tier = "unit",
+    method = "bootstrap",
+    nsim = 50L,
+    seed = 20260517L,
     link_residual = "auto"
   ))
   expect_s3_class(df, "data.frame")
-  expect_setequal(names(df),
-                  c("tier", "trait_i", "trait_j", "correlation",
-                    "lower", "upper", "method"))
+  expect_setequal(
+    names(df),
+    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+  )
   expect_equal(nrow(df), choose(8L, 2L))
   expect_true(all(df$method == "bootstrap"))
   expect_true(all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8))
   ## Note: full bracket check (lower <= correlation <= upper) is
   ## deferred to M1.8 — the bootstrap path's link_residual handling
   ## has a known propagation gap that produces over-wide CIs.
+})
+
+# ---- confint() public route: profile/bootstrap ----------------------
+
+test_that("confint() routes mixed-family rho profile intervals (M1.4)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
+  ci <- suppressWarnings(suppressMessages(
+    confint(fit, parm = "rho:unit:1,2", method = "profile")
+  ))
+  expect_true(is.matrix(ci))
+  expect_equal(dim(ci), c(1L, 2L))
+  expect_equal(rownames(ci), "rho:unit:1,2")
+  finite <- is.finite(ci)
+  expect_true(any(finite))
+  expect_true(all(ci[finite] >= -1 - 1e-8))
+  expect_true(all(ci[finite] <= 1 + 1e-8))
+})
+
+test_that("confint() routes mixed-family rho bootstrap intervals (M1.4)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
+  ci <- suppressWarnings(suppressMessages(
+    confint(
+      fit,
+      parm = "rho:unit:1,2",
+      method = "bootstrap",
+      nsim = 20L,
+      seed = 20260615L,
+      link_residual = "none"
+    )
+  ))
+  expect_true(is.matrix(ci))
+  expect_equal(dim(ci), c(1L, 2L))
+  expect_equal(rownames(ci), "rho:unit:1,2")
+  expect_true(all(is.finite(ci)))
+  expect_true(all(ci >= -1 - 1e-8))
+  expect_true(all(ci <= 1 + 1e-8))
+  expect_true(ci[1L, 1L] <= ci[1L, 2L])
 })
 
 # ---- Method-agreement: fisher-z vs wald only ------------------------
@@ -139,13 +193,23 @@ test_that("fisher-z and wald agree on the correlation point estimate (M1.4)", {
   skip_on_cran()
   fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
   fz <- suppressMessages(extract_correlations(
-    fit, tier = "unit", method = "fisher-z", link_residual = "auto"
+    fit,
+    tier = "unit",
+    method = "fisher-z",
+    link_residual = "auto"
   ))
   wd <- suppressMessages(extract_correlations(
-    fit, tier = "unit", method = "wald", link_residual = "auto"
+    fit,
+    tier = "unit",
+    method = "wald",
+    link_residual = "auto"
   ))
-  expect_equal(wd$correlation, fz$correlation, tolerance = 1e-8,
-               label = "wald point estimate vs fisher-z")
+  expect_equal(
+    wd$correlation,
+    fz$correlation,
+    tolerance = 1e-8,
+    label = "wald point estimate vs fisher-z"
+  )
 })
 
 # ---- link_residual = "auto" vs "none" diverge on mixed-family ------
@@ -155,21 +219,28 @@ test_that("link_residual = 'auto' shrinks correlations on mixed-family (M1.4)", 
   for (k in c(3L, 5L)) {
     fit <- skip_on_cran_or_load(k)
     auto <- suppressMessages(extract_correlations(
-      fit, tier = "unit", method = "fisher-z",
+      fit,
+      tier = "unit",
+      method = "fisher-z",
       link_residual = "auto"
     ))
     none <- suppressMessages(extract_correlations(
-      fit, tier = "unit", method = "fisher-z",
+      fit,
+      tier = "unit",
+      method = "fisher-z",
       link_residual = "none"
     ))
     ## |auto correlation| <= |none correlation| for every pair (the
     ## link residual inflates the diagonal of Sigma, shrinking the
     ## off-diagonal correlation magnitude).
-    expect_true(all(abs(auto$correlation) <= abs(none$correlation) + 1e-8),
-                info = sprintf(
-                  "%d-family: link_residual = 'auto' should shrink |corr|; got auto = %s, none = %s",
-                  k,
-                  paste(round(auto$correlation, 3), collapse = "/"),
-                  paste(round(none$correlation, 3), collapse = "/")))
+    expect_true(
+      all(abs(auto$correlation) <= abs(none$correlation) + 1e-8),
+      info = sprintf(
+        "%d-family: link_residual = 'auto' should shrink |corr|; got auto = %s, none = %s",
+        k,
+        paste(round(auto$correlation, 3), collapse = "/"),
+        paste(round(none$correlation, 3), collapse = "/")
+      )
+    )
   }
 })

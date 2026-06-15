@@ -81,6 +81,60 @@ gllvm_julia_setup <- function(
   "beta",
   "gamma"
 )
+.GLLVM_JULIA_MASK_FAMILIES <- c(
+  "poisson",
+  "binomial",
+  "negbinomial",
+  "beta",
+  "gamma",
+  "ordinal",
+  "ordinal_probit"
+)
+
+#' Current R-side capability ledger for the Julia bridge
+#'
+#' `gllvm_julia_capabilities()` reports the cells admitted by the R
+#' `engine = "julia"` bridge before any JuliaCall setup. The table is a
+#' conservative R-side ledger, not a promise that every paired `GLLVM.jl`
+#' checkout can run every row; live tests still use the checkout supplied via
+#' `GLLVM_JL_PATH`.
+#'
+#' @return A data frame with one row per bridge family plus the deferred
+#'   mixed-family vector route. Boolean columns mark the currently admitted
+#'   no-X fit, fixed-effect-X, missing-response mask, and cbind-binomial
+#'   transport cells. `status` is one of `"partial"` or `"planned"`, and
+#'   `notes` records the main boundary.
+#' @export
+gllvm_julia_capabilities <- function() {
+  families <- .GLLVM_JULIA_BRIDGE_FAMILIES
+  out <- data.frame(
+    family = families,
+    fit_no_x = TRUE,
+    fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
+    missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
+    cbind_binomial = families == "binomial",
+    status = "partial",
+    notes = ifelse(
+      families == "ordinal" | families == "ordinal_probit",
+      "fit/nobs/mask route only; prediction and residual payloads need cutpoints/probabilities",
+      "single reduced-rank latent block; broader structures and parity remain gated"
+    ),
+    stringsAsFactors = FALSE
+  )
+  rbind(
+    out,
+    data.frame(
+      family = "mixed-family vector",
+      fit_no_x = FALSE,
+      fixed_effect_X = FALSE,
+      missing_response = FALSE,
+      cbind_binomial = FALSE,
+      status = "planned",
+      notes = "GLLVM.jl bridge has a mixed-family route, but the R bridge still rejects family lists until metadata, labels, parity, and CI/status rows are validated",
+      stringsAsFactors = FALSE
+    )
+  )
+}
 
 # Map an R family (a `family` object, a string, or a list of them for mixed) to the
 # GLLVM.jl bridge family string(s).
@@ -155,16 +209,6 @@ gllvm_julia_setup <- function(
   storage.mode(out) <- "double"
   out
 }
-
-.GLLVM_JULIA_MASK_FAMILIES <- c(
-  "poisson",
-  "binomial",
-  "negbinomial",
-  "beta",
-  "gamma",
-  "ordinal",
-  "ordinal_probit"
-)
 
 .gllvm_julia_mask <- function(mask, y) {
   if (is.null(mask)) {

@@ -199,6 +199,40 @@ test_that("family mapping rejects unsupported families loudly", {
   expect_error(.gllvm_julia_family("nonsense"), "unsupported family")
 })
 
+test_that("Julia bridge capability table documents admitted R-side rows", {
+  caps <- gllvm_julia_capabilities()
+  expect_named(
+    caps,
+    c(
+      "family",
+      "fit_no_x",
+      "fixed_effect_X",
+      "missing_response",
+      "cbind_binomial",
+      "status",
+      "notes"
+    )
+  )
+  expect_equal(
+    caps$family[caps$fit_no_x],
+    .GLLVM_JULIA_BRIDGE_FAMILIES
+  )
+  expect_equal(
+    caps$family[caps$fixed_effect_X],
+    .GLLVM_JULIA_X_FAMILIES
+  )
+  expect_equal(
+    caps$family[caps$missing_response],
+    .GLLVM_JULIA_MASK_FAMILIES
+  )
+  expect_equal(caps$family[caps$cbind_binomial], "binomial")
+  mixed <- caps[caps$family == "mixed-family vector", ]
+  expect_equal(nrow(mixed), 1L)
+  expect_equal(mixed$status, "planned")
+  expect_equal(mixed$fit_no_x, FALSE)
+  expect_match(mixed$notes, "R bridge still rejects")
+})
+
 test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCall setup", {
   Y <- matrix(stats::rnorm(12), nrow = 3)
   expect_error(

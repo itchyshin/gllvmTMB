@@ -4,6 +4,42 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge capability ledger
+
+Scope:
+
+- added `gllvm_julia_capabilities()` as a public R-side admission ledger for
+  the Julia bridge;
+- tied the table to the current R bridge guard constants for no-X fits,
+  fixed-effect-X rows, missing-response masks, and cbind-binomial transport;
+- made the mixed-family vector route visible as `planned`, because the paired
+  GLLVM.jl checkout has a bridge route but the R-side metadata, labels, parity,
+  and CI/status rows are not validated yet;
+- added a dedicated pkgdown reference section for Julia bridge topics.
+
+Evidence:
+
+- Documentation generation:
+  `Rscript -e 'devtools::document()'`
+  -> completed; emitted pre-existing unresolved-link warnings outside this
+  slice and generated unrelated Rd link churn that was restored before commit.
+- Default no-Julia bridge test:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 141`, `SKIP 14`, `FAIL 0`, `WARN 0` in `2.1s`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 340`, `FAIL 0`, `WARN 0`, `SKIP 0` in `53.7s`.
+- Reference-index check:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> first exposed four pre-existing missing Julia-bridge topics; after adding a
+  Julia bridge reference section, rerun returned `No problems found`.
+
+Deliberately not claimed:
+
+- No new model cell is admitted.
+- Mixed-family bridge remains planned on the R surface.
+- This is a visibility and drift-guard slice, not parity evidence for new cells.
+
 ## 2026-06-15 -- Julia bridge augment method
 
 Scope:

@@ -51,7 +51,7 @@ The finish sequence is **R-first**:
 | Missing-response bridge rows | partial | Poisson, Bernoulli Binomial, NB2, NB1, Beta, Gamma, and ordinal-probit no-X point fits are routed with observed-cell masks. Masked CIs and masked simulations remain rejected. |
 | Mixed-family Julia bridge point fits | partial | Complete balanced trait-aligned no-X/no-mask/no-CI point fits are admitted for Gaussian, Poisson, Binomial, NB2, Beta, and Gamma components with family/link labels and explicit unavailable-CI status. |
 | Conditional bridge simulation | partial | Gaussian, Poisson, Binomial, NB2, NB1, Beta, and Gamma in-sample simulation routed for complete-data bridge payloads. Mixed-family and masked simulations remain rejected. |
-| REML | partial | Gaussian-only pilot. Non-Gaussian and mixed-family REML remain rejected/deferred. |
+| REML | partial | Gaussian no-X `engine = "julia"` fits now route through the paired `GLLVM.jl` REML bridge with public formula-vs-direct logLik equality. Non-Gaussian, mixed-family, fixed-effect-X, and masked-response REML cells fail loudly; REML CIs report `*_unavailable_reml`. |
 | AI-REML | planned | Exact-Gaussian acceleration idea only; no non-Gaussian Laplace claim. |
 
 ## Next Safe Slice

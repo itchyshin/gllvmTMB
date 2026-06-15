@@ -32,6 +32,12 @@
   error. This is an unsupported-cell contract; interval endpoints remain
   unavailable for those rows.
 
+* `engine = "julia"` now routes complete Gaussian no-X `REML = TRUE` fits
+  through the paired `GLLVM.jl` REML bridge instead of silently fitting the ML
+  route. Non-Gaussian, mixed-family, fixed-effect-X, and masked-response REML
+  cells fail loudly, and Gaussian REML interval requests report
+  `*_unavailable_reml` CI-status strings until REML CIs are routed.
+
 * `confint(fit, parm = "rho:<tier>:i,j")` now forwards
   `link_residual = "auto"` / `"none"` to `extract_correlations()` for
   non-profile methods. The native mixed-family oracle now has public

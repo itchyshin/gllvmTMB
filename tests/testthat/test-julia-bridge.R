@@ -412,6 +412,30 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
     gllvm_julia_fit(Y, family = "ordinal", X = array(0, dim = c(3, 4, 1))),
     "fixed-effect covariates X are not wired"
   )
+  expect_error(
+    gllvm_julia_fit(Y, family = "poisson", num.lv = 1L, reml = TRUE),
+    "REML is Gaussian-only"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      Y,
+      family = "gaussian",
+      num.lv = 1L,
+      reml = TRUE,
+      ci_method = "wald"
+    ),
+    "wald_unavailable_reml"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      Y,
+      family = "gaussian",
+      num.lv = 1L,
+      X = array(0, dim = c(3L, 4L, 1L)),
+      reml = TRUE
+    ),
+    "Gaussian REML with fixed-effect covariates X"
+  )
   x_ci_y <- list(
     poisson = matrix(stats::rpois(12, lambda = 3), nrow = 3),
     binomial = matrix(rep(c(0, 1), 6L), nrow = 3),
@@ -464,6 +488,14 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
       paste0(method, "_unavailable_mixed_family")
     )
   }
+  expect_error(
+    gllvm_julia_fit(
+      Y,
+      family = list("gaussian", "poisson", "binomial"),
+      reml = TRUE
+    ),
+    "REML is Gaussian-only"
+  )
 })
 
 test_that("engine = 'julia' mixed-family guards unsupported cells before JuliaCall", {
@@ -531,6 +563,32 @@ test_that("engine = 'julia' mixed-family guards unsupported cells before JuliaCa
       trait = "trait",
       unit = "unit",
       family = fam,
+      REML = TRUE,
+      engine = "julia"
+    ),
+    "REML is Gaussian-only"
+  )
+
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + env + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = gaussian(),
+      REML = TRUE,
+      engine = "julia"
+    ),
+    "Gaussian REML with fixed-effect covariates"
+  )
+
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
       REML = TRUE,
       engine = "julia"
     ),
@@ -1134,6 +1192,37 @@ test_that("engine = 'julia' Gaussian dispatch matches the direct Julia bridge wr
   )
   expect_s3_class(fit_jl, "gllvmTMB_julia")
   expect_true(is.finite(as.numeric(logLik(fit_jl))))
+})
+
+test_that("engine = 'julia' routes Gaussian REML explicitly", {
+  skip_if_no_julia()
+  df <- make_long(n_unit = 38L, seed = 8L)
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    engine = "julia",
+    REML = TRUE
+  )
+  fit_direct <- gllvm_julia_fit(
+    fit_jl$y,
+    family = "gaussian",
+    num.lv = 1L,
+    reml = TRUE
+  )
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "gaussian_reml_rr")
+  expect_equal(fit_jl$reml, TRUE)
+  expect_match(fit_jl$note, "REML")
+  expect_true(is.finite(as.numeric(logLik(fit_jl))))
+  expect_equal(
+    as.numeric(logLik(fit_jl)),
+    as.numeric(logLik(fit_direct)),
+    tolerance = 1e-8
+  )
+  expect_error(confint(fit_jl, method = "wald"), "wald_unavailable_reml")
 })
 
 test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end", {

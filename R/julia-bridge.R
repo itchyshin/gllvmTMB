@@ -398,6 +398,33 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
+.gllvm_julia_reml_ci_status <- function(method = "ci") {
+  method <- as.character(method)[1L]
+  if (is.na(method) || identical(method, "none")) {
+    return("ci_unavailable_reml")
+  }
+  paste0(method, "_unavailable_reml")
+}
+
+.gllvm_julia_reml_ci_note <- function() {
+  paste(
+    "confidence intervals for Gaussian REML Julia-engine fits are not routed",
+    "through the Julia bridge yet. Use REML = FALSE for ML intervals or",
+    "engine = 'tmb'."
+  )
+}
+
+.gllvm_julia_stop_reml_ci <- function(prefix, method) {
+  stop(
+    prefix,
+    ": ci_status = '",
+    .gllvm_julia_reml_ci_status(method),
+    "'; ",
+    .gllvm_julia_reml_ci_note(),
+    call. = FALSE
+  )
+}
+
 .gllvm_julia_mixed_selector <- function(family, data, trait, trait_factor) {
   if (!is.list(family) || inherits(family, "family")) {
     return(list(family = .gllvm_julia_family(family), selector = NULL))
@@ -669,6 +696,10 @@ gllvm_julia_capabilities <- function() {
 #'   Unsupported mixed-family, masked-response, and non-Gaussian fixed-effect-X
 #'   cells deliberately return method-specific unavailable CI-status strings
 #'   until those interval routes are implemented.
+#' @param reml Logical; route Gaussian no-X fits through GLLVM.jl's restricted
+#'   maximum-likelihood path. REML is Gaussian-only and is not routed for
+#'   fixed-effect covariates, response masks, mixed-family rows, or non-Gaussian
+#'   families.
 #' @param ci_level Nominal coverage for the CIs (default `0.95`).
 #' @param ci_nboot Parametric-bootstrap replicates when `ci_method = "bootstrap"`
 #'   (default `200L`).
@@ -687,6 +718,7 @@ gllvm_julia_fit <- function(
   mask = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
+  reml = FALSE,
   ci_level = 0.95,
   ci_nboot = 200L,
   ci_seed = 0L,
@@ -772,6 +804,32 @@ gllvm_julia_fit <- function(
       call. = FALSE
     )
   }
+  if (isTRUE(reml)) {
+    if (mixed_family || !identical(fam, "gaussian")) {
+      stop(
+        "engine = 'julia': REML is Gaussian-only on the Julia bridge; ",
+        "use REML = FALSE or engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (!is.null(mask)) {
+      stop(
+        "engine = 'julia': Gaussian REML with response masks is not routed ",
+        "through the Julia bridge yet. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (!is.null(X)) {
+      stop(
+        "engine = 'julia': Gaussian REML with fixed-effect covariates X is ",
+        "not routed through the Julia bridge yet. Use engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (!identical(ci_method, "none")) {
+      .gllvm_julia_stop_reml_ci("gllvm_julia_fit", ci_method)
+    }
+  }
   if (!is.null(X)) {
     if (!is.array(X) || length(dim(X)) != 3L) {
       stop(
@@ -827,19 +885,35 @@ gllvm_julia_fit <- function(
   if (!is.null(unit_names)) {
     args$unit_names <- unit_names
   }
-  ## CI routing: pass a Julia options Dict only when CIs are requested, so the
-  ## default ci_method = "none" leaves the bridge call byte-identical to before.
+  ## Pass a Julia options Dict only when a non-default bridge option is
+  ## requested, so ordinary ML fits keep the bridge call byte-identical to before.
+  option_pairs <- list()
   if (!identical(ci_method, "none")) {
-    args$options <- JuliaCall::julia_call(
-      "Dict",
-      JuliaCall::julia_call("=>", "ci_method", ci_method),
-      JuliaCall::julia_call("=>", "ci_level", as.numeric(ci_level)),
-      JuliaCall::julia_call("=>", "ci_nboot", as.integer(ci_nboot)),
-      JuliaCall::julia_call("=>", "ci_seed", as.integer(ci_seed))
+    option_pairs <- c(
+      option_pairs,
+      list(
+        JuliaCall::julia_call("=>", "ci_method", ci_method),
+        JuliaCall::julia_call("=>", "ci_level", as.numeric(ci_level)),
+        JuliaCall::julia_call("=>", "ci_nboot", as.integer(ci_nboot)),
+        JuliaCall::julia_call("=>", "ci_seed", as.integer(ci_seed))
+      )
+    )
+  }
+  if (isTRUE(reml)) {
+    option_pairs <- c(
+      option_pairs,
+      list(JuliaCall::julia_call("=>", "reml", TRUE))
+    )
+  }
+  if (length(option_pairs) > 0L) {
+    args$options <- do.call(
+      JuliaCall::julia_call,
+      c(list("Dict"), option_pairs)
     )
   }
   res <- do.call(JuliaCall::julia_call, args)
   res$engine <- "julia"
+  res$reml <- isTRUE(reml)
   ## Stash the marshalled fit inputs so confint() can re-fit on the SAME data with
   ## a different ci_method without the caller re-supplying y / N / X.
   res$y <- y
@@ -1813,9 +1887,9 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 #'   `"<a> %"` / `"<1-a> %"` in the `stats::confint()` convention. Successful
 #'   matrices carry a row-named `ci_status` attribute using the same vocabulary
 #'   as native `gllvmTMB` interval helpers.
-#'   Mixed-family, masked-response, and non-Gaussian fixed-effect-X Julia bridge
-#'   objects fail before refitting with method-specific unavailable CI-status
-#'   strings.
+#'   Mixed-family, masked-response, non-Gaussian fixed-effect-X, and Gaussian
+#'   REML Julia bridge objects fail before refitting with method-specific
+#'   unavailable CI-status strings.
 #' @export
 #' @method confint gllvmTMB_julia
 confint.gllvmTMB_julia <- function(
@@ -1834,6 +1908,9 @@ confint.gllvmTMB_julia <- function(
   }
   if (!is.null(object$X) && !identical(object$family[1], "gaussian")) {
     .gllvm_julia_stop_non_gaussian_x_ci("confint.gllvmTMB_julia", method)
+  }
+  if (isTRUE(object$reml)) {
+    .gllvm_julia_stop_reml_ci("confint.gllvmTMB_julia", method)
   }
 
   ## Decide whether the cached CI payload already matches the request. The bridge
@@ -1872,6 +1949,7 @@ confint.gllvmTMB_julia <- function(
       X = object$X,
       mask = object$observed_mask,
       ci_method = method,
+      reml = isTRUE(object$reml),
       ci_level = level,
       ...
     )
@@ -2009,6 +2087,13 @@ confint.gllvmTMB_julia <- function(
     stop(
       "engine = 'julia': REML is Gaussian-only; mixed-family Julia fits ",
       "must use REML = FALSE.",
+      call. = FALSE
+    )
+  }
+  if (!is_mixed_family && isTRUE(REML) && !identical(fam_str, "gaussian")) {
+    stop(
+      "engine = 'julia': REML is Gaussian-only on the Julia bridge; ",
+      "use REML = FALSE or engine = 'tmb'.",
       call. = FALSE
     )
   }
@@ -2193,6 +2278,13 @@ confint.gllvmTMB_julia <- function(
       call. = FALSE
     )
   }
+  if (isTRUE(REML) && !is.null(Xarg)) {
+    stop(
+      "engine = 'julia': Gaussian REML with fixed-effect covariates is not ",
+      "routed through the Julia bridge yet. Use engine = 'tmb'.",
+      call. = FALSE
+    )
+  }
 
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
   Narg <- NULL
@@ -2223,7 +2315,8 @@ confint.gllvmTMB_julia <- function(
     num.lv = K,
     N = Narg,
     X = Xarg,
-    mask = Mask
+    mask = Mask,
+    reml = isTRUE(REML)
   )
   fit$call <- call
   fit$trait_levels <- traits

@@ -1,8 +1,55 @@
 # Check log
 
-Append-only record of `R CMD check`, `devtools::test()`, and
+Append-only, newest-first record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
+
+## 2026-06-15 -- Julia bridge Gaussian REML route and CI-status guard
+
+Scope:
+
+- routed complete Gaussian no-X `REML = TRUE` public bridge fits through the
+  paired `GLLVM.jl` REML bridge by passing `options["reml"] = true`;
+- cached `fit$reml = TRUE` on bridge objects and preserved REML when
+  `confint.gllvmTMB_julia()` considers a refit;
+- rejected non-Gaussian, mixed-family, fixed-effect-X, and masked-response REML
+  cells before JuliaCall setup;
+- added method-specific REML CI-status failures:
+  `wald_unavailable_reml`, `profile_unavailable_reml`, and
+  `bootstrap_unavailable_reml`.
+
+Evidence:
+
+- Roxygen:
+  `Rscript -e 'devtools::document(roclets = "rd")'`
+  -> regenerated `man/gllvm_julia_fit.Rd` and
+  `man/confint.gllvmTMB_julia.Rd`; pre-existing unresolved-link warnings
+  remain; unrelated generated Rd churn was reverted.
+- No-Julia R bridge gate:
+  `Rscript -e 'devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 19 | PASS 254` in `3.1s`.
+- Live R-Julia bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> first exposed that REML `confint()` returned a status-marked matrix instead
+  of failing, then passed after the R-side REML CI preflight:
+  `FAIL 0 | WARN 0 | SKIP 0 | PASS 612` in `71.0s`.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 3 | SKIP 725 | PASS 3023`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warnings and existing
+  `glmmTMB`/`TMB` version mismatch.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- REML remains Gaussian-only.
+- Gaussian REML CIs are unavailable on the Julia bridge and fail with
+  method-specific `*_unavailable_reml` statuses.
+- Gaussian REML with fixed-effect covariates or response masks is not routed
+  through the Julia bridge yet.
+- No Julia likelihood, optimizer, or speed code changed in this slice.
 
 ## 2026-06-15 -- Julia bridge non-Gaussian-X CI-status contract
 

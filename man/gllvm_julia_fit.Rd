@@ -13,6 +13,7 @@ gllvm_julia_fit(
   mask = NULL,
   units_are_rows = FALSE,
   ci_method = c("none", "wald", "profile", "bootstrap"),
+  reml = FALSE,
   ci_level = 0.95,
   ci_nboot = 200L,
   ci_seed = 0L,
@@ -44,8 +45,13 @@ for one-part non-Gaussian no-X fits and \code{ci_method = "none"}.}
 \code{ci_level}, \code{ci_param_names}, \code{ci_estimate}, \code{ci_lower}, \code{ci_upper},
 \code{ci_note}), reusing GLLVM.jl's native CI engines (no CI math in R).
 Unsupported mixed-family, masked-response, and non-Gaussian fixed-effect-X
-cells deliberately return method-specific unavailable CI-status strings until
-those interval routes are implemented.}
+cells deliberately return method-specific unavailable CI-status strings
+until those interval routes are implemented.}
+
+\item{reml}{Logical; route Gaussian no-X fits through GLLVM.jl's restricted
+maximum-likelihood path. REML is Gaussian-only and is not routed for
+fixed-effect covariates, response masks, mixed-family rows, or non-Gaussian
+families.}
 
 \item{ci_level}{Nominal coverage for the CIs (default \code{0.95}).}
 

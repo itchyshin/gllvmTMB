@@ -62,7 +62,9 @@ Profile-only.
 \code{"spatial"} (legacy \code{"B"} / \code{"W"} / \code{"spde"}).
 Routes to \code{\link[=profile_ci_correlation]{profile_ci_correlation()}} (profile) or
 \code{\link[=extract_correlations]{extract_correlations()}} (\code{"fisher-z"} / \code{"wald"} /
-\code{"bootstrap"}).
+\code{"bootstrap"}). For the non-profile methods, pass
+\code{link_residual = "auto"} or \code{"none"} through \code{...}
+to control the mixed-family correlation scale.
 \item \code{"proportion"} (all components, all traits),
 \code{"proportion:<component>"} (one component, all traits),
 \code{"proportion:<component>:<trait>"} (one (component, trait)),

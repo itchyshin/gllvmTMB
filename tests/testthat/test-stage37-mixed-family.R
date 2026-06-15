@@ -6,19 +6,27 @@
 test_that("Stage 37: family = list(...) locks row-aligned mixed-family oracle", {
   set.seed(2025)
   sim <- simulate_site_trait(
-    n_sites = 40, n_species = 10, n_traits = 3,
+    n_sites = 40,
+    n_species = 10,
+    n_traits = 3,
     mean_species_per_site = 4,
     Lambda_B = matrix(c(1, 0.7, -0.3, 0.3, -0.5, 0.8), nrow = 3, ncol = 2),
     psi_B = c(0.3, 0.3, 0.3),
     seed = 2025
   )
   df <- sim$data
-  df$family <- factor(with(df, ifelse(trait == "trait_1", "g",
-                                ifelse(trait == "trait_2", "b", "p"))),
-                       levels = c("g", "b", "p"))
+  df$family <- factor(
+    with(
+      df,
+      ifelse(trait == "trait_1", "g", ifelse(trait == "trait_2", "b", "p"))
+    ),
+    levels = c("g", "b", "p")
+  )
   df$value[df$family == "b"] <- as.integer(df$value[df$family == "b"] > 0)
-  df$value[df$family == "p"] <- pmax(0L,
-                                     as.integer(round(df$value[df$family == "p"] + 1)))
+  df$value[df$family == "p"] <- pmax(
+    0L,
+    as.integer(round(df$value[df$family == "p"] + 1))
+  )
 
   ## Named lists are deliberately out of order: the fit should resolve by
   ## selector level, not by accidental list position.
@@ -82,14 +90,44 @@ test_that("Stage 37: family = list(...) locks row-aligned mixed-family oracle", 
   expect_true(all(is.finite(sim_y)))
   expect_true(all(sim_y[selector$row_level == "b", ] %in% c(0, 1)))
   expect_true(all(sim_y[selector$row_level == "p", ] >= 0))
-  expect_true(all(sim_y[selector$row_level == "p", ] == floor(sim_y[selector$row_level == "p", ])))
+  expect_true(all(
+    sim_y[selector$row_level == "p", ] ==
+      floor(sim_y[selector$row_level == "p", ])
+  ))
+
+  ci_f <- suppressWarnings(suppressMessages(
+    confint(
+      fit,
+      parm = "rho:unit:1,2",
+      method = "fisher-z",
+      link_residual = "none"
+    )
+  ))
+  ci_w <- suppressWarnings(suppressMessages(
+    confint(
+      fit,
+      parm = "rho:unit:1,2",
+      method = "wald",
+      link_residual = "none"
+    )
+  ))
+  expect_true(is.matrix(ci_f))
+  expect_equal(dim(ci_f), c(1L, 2L))
+  expect_equal(rownames(ci_f), "rho:unit:1,2")
+  expect_true(all(is.finite(ci_f)))
+  expect_true(all(ci_f >= -1 - 1e-8))
+  expect_true(all(ci_f <= 1 + 1e-8))
+  expect_equal(ci_w, ci_f, tolerance = 1e-8)
 })
 
 test_that("Stage 37: named mixed-family list must match selector levels", {
   df <- data.frame(
     site = factor(rep(seq_len(4L), each = 3L)),
     trait = factor(rep(c("trait_1", "trait_2", "trait_3"), times = 4L)),
-    family = factor(rep(c("g", "b", "p"), times = 4L), levels = c("g", "b", "p")),
+    family = factor(
+      rep(c("g", "b", "p"), times = 4L),
+      levels = c("g", "b", "p")
+    ),
     value = c(0.1, 1, 2, 0.2, 0, 1, 0.3, 1, 3, 0.4, 0, 2)
   )
   bad <- list(g = gaussian(), b = binomial(), count = poisson())
@@ -110,8 +148,11 @@ test_that("Stage 37: named mixed-family list must match selector levels", {
 test_that("Stage 37: scalar family still works (backward compatible)", {
   set.seed(7)
   sim <- simulate_site_trait(
-    n_sites = 30, n_species = 8, n_traits = 3,
-    mean_species_per_site = 4, seed = 7
+    n_sites = 30,
+    n_species = 8,
+    n_traits = 3,
+    mean_species_per_site = 4,
+    seed = 7
   )
   fit <- gllvmTMB(
     value ~ 0 + trait + latent(0 + trait | site, d = 1),

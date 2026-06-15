@@ -10,6 +10,13 @@
   a `family_selector` metadata slot recording the selector column, levels,
   family/link ids by level, and row alignment used by the native R/TMB oracle.
 
+* `confint(fit, parm = "rho:<tier>:i,j")` now forwards
+  `link_residual = "auto"` / `"none"` to `extract_correlations()` for
+  non-profile methods. The native mixed-family oracle now has public
+  `confint()` evidence for Fisher-z/Wald latent-correlation intervals while
+  calibrated coverage, profile, and bootstrap mixed-family correlation claims
+  remain separate validation gates.
+
 * `engine = "julia"` now partially admits complete, balanced, trait-aligned
   mixed-family list fits when each trait maps to one of the routed component
   families (Gaussian, Poisson, Binomial, NB2, Beta, or Gamma). The route

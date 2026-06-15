@@ -4,6 +4,56 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Native mixed-family confint rho evidence
+
+Scope:
+
+- kept the R-first sequencing: native `gllvmTMB` remains the functional oracle
+  before broadening Julia targets;
+- forwarded `link_residual = "auto"` / `"none"` from
+  `confint(fit, parm = "rho:<tier>:i,j")` to `extract_correlations()` for
+  non-profile rho intervals;
+- added direct public-route evidence that the Stage 37 mixed-family oracle
+  returns finite bounded Fisher-z/Wald latent-correlation intervals through
+  `confint()`;
+- kept the claim boundary narrow: no calibrated coverage claim, no mixed-family
+  profile/bootstrap correlation promotion, and no Julia mixed-family CI endpoint
+  admission.
+
+Evidence:
+
+- Focused native mixed-family gate:
+  `Rscript -e 'devtools::test(filter="stage37-mixed-family")'`
+  -> `PASS 40`, `SKIP 0`, `FAIL 0`, `WARN 0` in `3.1s`.
+- Targeted confint/correlation gate:
+  `Rscript -e 'devtools::test(filter="stage37-mixed-family|confint-derived|m1-4-extract-correlations-mixed-family")'`
+  -> `PASS 40`, `SKIP 39`, `FAIL 0`, `WARN 0` in `3.6s`.
+  Skips are the existing heavy recovery/profile/bootstrap gates.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `PASS 2950`, `SKIP 722`, `FAIL 0`, `WARN 3` in `132.6s`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warning in
+  `animal-keyword` and the existing `glmmTMB`/`TMB` version warning in the
+  cross-package NB1 check.
+- Docs:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/confint.gllvmTMB_multi.Rd`; unrelated roxygen Rd churn was
+  reverted. Pre-existing unresolved-link roxygen warnings remain.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- `confint()` profile/bootstrap mixed-family rho endpoints are not promoted by
+  this slice; existing heavy extractor tests remain the deeper inference gate.
+- This is native R/TMB evidence, not new Julia mixed-family CI support.
+- REML remains Gaussian-only; no REML language applies to the mixed
+  non-Gaussian rows.
+
 ## 2026-06-15 -- Julia bridge trait-aligned mixed-family admission
 
 Scope:

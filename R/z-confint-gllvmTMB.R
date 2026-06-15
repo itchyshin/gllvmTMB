@@ -742,6 +742,8 @@
   parsed <- .parse_rho_parm(parm, trait_names)
   tier <- parsed$tier
   pairs <- parsed$pairs
+  dots <- list(...)
+  correlation_args <- dots[intersect(names(dots), "link_residual")]
 
   n_pairs <- nrow(pairs)
   lo <- numeric(n_pairs)
@@ -769,14 +771,20 @@
     for (m in seq_len(n_pairs)) {
       i <- pairs[m, 1L]
       j <- pairs[m, 2L]
-      df <- suppressMessages(extract_correlations(
-        fit = object,
-        tier = tier,
-        pair = c(i, j),
-        level = level,
-        method = method,
-        nsim = nsim,
-        seed = seed
+      df <- suppressMessages(do.call(
+        extract_correlations,
+        c(
+          list(
+            fit = object,
+            tier = tier,
+            pair = c(i, j),
+            level = level,
+            method = method,
+            nsim = nsim,
+            seed = seed
+          ),
+          correlation_args
+        )
       ))
       if (nrow(df) != 1L) {
         cli::cli_abort(c(
@@ -1170,7 +1178,9 @@
 #'       \code{"spatial"} (legacy \code{"B"} / \code{"W"} / \code{"spde"}).
 #'       Routes to [profile_ci_correlation()] (profile) or
 #'       [extract_correlations()] (\code{"fisher-z"} / \code{"wald"} /
-#'       \code{"bootstrap"}).
+#'       \code{"bootstrap"}). For the non-profile methods, pass
+#'       \code{link_residual = "auto"} or \code{"none"} through \code{...}
+#'       to control the mixed-family correlation scale.
 #'     \item \code{"proportion"} (all components, all traits),
 #'       \code{"proportion:<component>"} (one component, all traits),
 #'       \code{"proportion:<component>:<trait>"} (one (component, trait)),

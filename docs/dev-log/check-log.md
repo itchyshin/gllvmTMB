@@ -4,6 +4,59 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge method-aware capability ledger
+
+Scope:
+
+- expanded `gllvm_julia_capabilities()` from a coarse fit/X/mask ledger into a
+  method-aware R bridge contract;
+- added explicit no-X CI columns for Wald, profile, and bootstrap routes;
+- added in-sample post-fit method columns for coefficient extraction, cached fit
+  statistics, summary, prediction, residuals, simulation, and ordination;
+- updated the live bridge drift guard so every admitted R-side logical
+  capability is checked against the paired `GLLVM.bridge_capabilities()` surface;
+- updated the paired Julia metadata surface in
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` without changing
+  fitters, likelihoods, REML, CIs, or optimizer behavior.
+
+Evidence:
+
+- Julia metadata smoke:
+  `~/.juliaup/bin/julia --project=. -e 'using GLLVM; caps=GLLVM.bridge_capabilities(); @assert :ci_no_x_wald in propertynames(caps); @assert :postfit_predict in propertynames(caps); println(length(caps.family), " capability rows")'`
+  in `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`
+  -> `10 capability rows`.
+- Paired Julia metadata unit:
+  `~/.juliaup/bin/julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  in `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`
+  -> `19/19 pass` in `0.2s`.
+- No-Julia R bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 18 | PASS 219` in `2.6s`.
+- Live R-Julia bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 519` in `68.9s`.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `FAIL 0 | WARN 3 | SKIP 724 | PASS 2989`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warning and the
+  existing `glmmTMB`/`TMB` version mismatch.
+- Roxygen:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/gllvm_julia_capabilities.Rd`; unrelated generated Rd
+  churn was reverted. Pre-existing unresolved-link roxygen warnings remain.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+
+Deliberately not claimed:
+
+- This is an R-first contract and drift-guard slice, not new numerical engine
+  support.
+- `ci_no_x_*` columns apply only to complete one-part no-covariate bridge fits.
+  They do not admit masked-response, mixed-family, or non-Gaussian-X intervals.
+- REML remains Gaussian-only; no non-Gaussian REML or AI-REML claim is made.
+- Speed claims remain gated on measured point-estimate and CI/status evidence.
+
 ## 2026-06-15 -- Plot CI-status propagation
 
 Scope:

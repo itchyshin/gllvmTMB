@@ -8,10 +8,11 @@ gllvm_julia_capabilities()
 }
 \value{
 A data frame with one row per bridge family plus the narrow
-mixed-family vector route. Boolean columns mark the currently admitted
-no-X fit, fixed-effect-X, missing-response mask, and cbind-binomial
-transport cells. \code{status} is one of \code{"partial"} or \code{"planned"}, and
-\code{notes} records the main boundary.
+mixed-family vector route. Boolean columns mark currently admitted fit,
+transport, no-X CI, and in-sample post-fit method cells. CI columns are
+deliberately named \verb{ci_no_x_*}: they do not imply masked, mixed-family, or
+non-Gaussian-X intervals. \code{status} is one of \code{"partial"} or \code{"planned"},
+and \code{notes} records the main boundary.
 }
 \description{
 \code{gllvm_julia_capabilities()} reports the cells admitted by the R

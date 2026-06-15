@@ -272,6 +272,16 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
       "fixed_effect_X",
       "missing_response",
       "cbind_binomial",
+      "ci_no_x_wald",
+      "ci_no_x_profile",
+      "ci_no_x_bootstrap",
+      "postfit_coef",
+      "postfit_fit_stats",
+      "postfit_summary",
+      "postfit_predict",
+      "postfit_residuals",
+      "postfit_simulate",
+      "postfit_ordination",
       "status",
       "notes"
     )
@@ -289,6 +299,28 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
     .GLLVM_JULIA_MASK_FAMILIES
   )
   expect_equal(caps$family[caps$cbind_binomial], "binomial")
+  expect_equal(caps$family[caps$ci_no_x_wald], .GLLVM_JULIA_CI_NO_X_FAMILIES)
+  expect_equal(caps$family[caps$ci_no_x_profile], .GLLVM_JULIA_CI_NO_X_FAMILIES)
+  expect_equal(
+    caps$family[caps$ci_no_x_bootstrap],
+    .GLLVM_JULIA_CI_NO_X_FAMILIES
+  )
+  expect_equal(caps$family[caps$postfit_coef], caps$family[caps$fit_no_x])
+  expect_equal(caps$family[caps$postfit_fit_stats], caps$family[caps$fit_no_x])
+  expect_equal(caps$family[caps$postfit_summary], caps$family[caps$fit_no_x])
+  expect_equal(
+    caps$family[caps$postfit_predict],
+    c(.GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+  )
+  expect_equal(
+    caps$family[caps$postfit_residuals],
+    c(.GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+  )
+  expect_equal(
+    caps$family[caps$postfit_simulate],
+    c(.GLLVM_JULIA_POSTFIT_SIMULATE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+  )
+  expect_equal(caps$family[caps$postfit_ordination], caps$family[caps$fit_no_x])
   planned <- caps[caps$status == "planned", ]
   expect_setequal(planned$family, .GLLVM_JULIA_PLANNED_FAMILIES)
   nb1 <- caps[caps$family == "nb1", ]
@@ -303,6 +335,9 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
   expect_equal(mixed$fit_no_x, TRUE)
   expect_equal(mixed$fixed_effect_X, FALSE)
   expect_equal(mixed$missing_response, FALSE)
+  expect_equal(mixed$ci_no_x_wald, FALSE)
+  expect_equal(mixed$postfit_predict, TRUE)
+  expect_equal(mixed$postfit_simulate, TRUE)
   expect_match(mixed$notes, "no-X/no-mask/no-CI")
 })
 
@@ -311,12 +346,7 @@ test_that("R-side Julia bridge ledger is a subset of the paired Julia surface", 
   engine <- .gllvm_julia_engine_capabilities()
   caps <- gllvm_julia_capabilities()
 
-  for (col in c(
-    "fit_no_x",
-    "fixed_effect_X",
-    "missing_response",
-    "cbind_binomial"
-  )) {
+  for (col in .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS) {
     r_admitted <- caps$family[caps[[col]]]
     jl_supported <- engine$family[engine[[col]]]
     expect_setequal(setdiff(r_admitted, jl_supported), character())

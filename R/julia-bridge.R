@@ -102,6 +102,29 @@ gllvm_julia_setup <- function(
   "ordinal",
   "ordinal_probit"
 )
+.GLLVM_JULIA_CI_NO_X_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
+.GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES <- setdiff(
+  .GLLVM_JULIA_BRIDGE_FAMILIES,
+  c("ordinal", "ordinal_probit")
+)
+.GLLVM_JULIA_POSTFIT_SIMULATE_FAMILIES <- .GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES
+
+.GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
+  "fit_no_x",
+  "fixed_effect_X",
+  "missing_response",
+  "cbind_binomial",
+  "ci_no_x_wald",
+  "ci_no_x_profile",
+  "ci_no_x_bootstrap",
+  "postfit_coef",
+  "postfit_fit_stats",
+  "postfit_summary",
+  "postfit_predict",
+  "postfit_residuals",
+  "postfit_simulate",
+  "postfit_ordination"
+)
 
 #' Current R-side capability ledger for the Julia bridge
 #'
@@ -112,10 +135,11 @@ gllvm_julia_setup <- function(
 #' `GLLVM_JL_PATH`.
 #'
 #' @return A data frame with one row per bridge family plus the narrow
-#'   mixed-family vector route. Boolean columns mark the currently admitted
-#'   no-X fit, fixed-effect-X, missing-response mask, and cbind-binomial
-#'   transport cells. `status` is one of `"partial"` or `"planned"`, and
-#'   `notes` records the main boundary.
+#'   mixed-family vector route. Boolean columns mark currently admitted fit,
+#'   transport, no-X CI, and in-sample post-fit method cells. CI columns are
+#'   deliberately named `ci_no_x_*`: they do not imply masked, mixed-family, or
+#'   non-Gaussian-X intervals. `status` is one of `"partial"` or `"planned"`,
+#'   and `notes` records the main boundary.
 #' @export
 gllvm_julia_capabilities <- function() {
   families <- .GLLVM_JULIA_BRIDGE_FAMILIES
@@ -125,10 +149,23 @@ gllvm_julia_capabilities <- function() {
     fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
     missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
     cbind_binomial = families == "binomial",
+    ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
+    ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
+    ci_no_x_bootstrap = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
+    postfit_coef = TRUE,
+    postfit_fit_stats = TRUE,
+    postfit_summary = TRUE,
+    postfit_predict = families %in% .GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES,
+    postfit_residuals = families %in% .GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES,
+    postfit_simulate = families %in% .GLLVM_JULIA_POSTFIT_SIMULATE_FAMILIES,
+    postfit_ordination = TRUE,
     status = "partial",
     notes = ifelse(
       families == "ordinal" | families == "ordinal_probit",
-      "fit/nobs/mask route only; prediction and residual payloads need cutpoints/probabilities",
+      paste(
+        "fit/nobs/mask/CI/ordination route only; prediction, residual,",
+        "simulation, and augmentation payloads need cutpoints/probabilities"
+      ),
       "single reduced-rank latent block; broader structures and parity remain gated"
     ),
     stringsAsFactors = FALSE
@@ -139,6 +176,16 @@ gllvm_julia_capabilities <- function() {
     fixed_effect_X = FALSE,
     missing_response = FALSE,
     cbind_binomial = FALSE,
+    ci_no_x_wald = FALSE,
+    ci_no_x_profile = FALSE,
+    ci_no_x_bootstrap = FALSE,
+    postfit_coef = TRUE,
+    postfit_fit_stats = TRUE,
+    postfit_summary = TRUE,
+    postfit_predict = TRUE,
+    postfit_residuals = TRUE,
+    postfit_simulate = TRUE,
+    postfit_ordination = TRUE,
     status = "partial",
     notes = paste(
       "complete balanced trait-aligned no-X/no-mask/no-CI mixed-family",
@@ -153,6 +200,16 @@ gllvm_julia_capabilities <- function() {
     fixed_effect_X = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
     missing_response = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
     cbind_binomial = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    ci_no_x_wald = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    ci_no_x_profile = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    ci_no_x_bootstrap = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    postfit_coef = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    postfit_fit_stats = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    postfit_summary = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    postfit_predict = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    postfit_residuals = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    postfit_simulate = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
+    postfit_ordination = rep(FALSE, length(.GLLVM_JULIA_PLANNED_FAMILIES)),
     status = rep("planned", length(.GLLVM_JULIA_PLANNED_FAMILIES)),
     notes = character(length(.GLLVM_JULIA_PLANNED_FAMILIES)),
     stringsAsFactors = FALSE
@@ -160,16 +217,38 @@ gllvm_julia_capabilities <- function() {
   rbind(out, mixed, planned)
 }
 
+.gllvm_julia_capability_logical <- function(x, name, n) {
+  value <- x[[name]]
+  if (is.null(value)) {
+    return(rep(FALSE, n))
+  }
+  value <- as.logical(unlist(value, use.names = FALSE))
+  if (length(value) == 1L && n != 1L) {
+    value <- rep(value, n)
+  }
+  if (length(value) != n) {
+    stop(
+      "GLLVM.bridge_capabilities returned column '",
+      name,
+      "' with length ",
+      length(value),
+      "; expected ",
+      n,
+      ".",
+      call. = FALSE
+    )
+  }
+  value
+}
+
 .gllvm_julia_capability_frame <- function(x) {
+  family <- as.character(unlist(x$family, use.names = FALSE))
+  out <- data.frame(family = family, stringsAsFactors = FALSE)
+  for (col in .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS) {
+    out[[col]] <- .gllvm_julia_capability_logical(x, col, length(family))
+  }
   data.frame(
-    family = as.character(unlist(x$family, use.names = FALSE)),
-    fit_no_x = as.logical(unlist(x$fit_no_x, use.names = FALSE)),
-    fixed_effect_X = as.logical(unlist(x$fixed_effect_X, use.names = FALSE)),
-    missing_response = as.logical(unlist(
-      x$missing_response,
-      use.names = FALSE
-    )),
-    cbind_binomial = as.logical(unlist(x$cbind_binomial, use.names = FALSE)),
+    out,
     status = as.character(unlist(x$status, use.names = FALSE)),
     notes = as.character(unlist(x$notes, use.names = FALSE)),
     stringsAsFactors = FALSE

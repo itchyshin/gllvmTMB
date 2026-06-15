@@ -10,6 +10,15 @@
   a `family_selector` metadata slot recording the selector column, levels,
   family/link ids by level, and row alignment used by the native R/TMB oracle.
 
+* `gllvm_julia_capabilities()` now separates fit admission from no-X CI routes
+  and in-sample post-fit methods (`coef`, fit statistics, summary, prediction,
+  residuals, simulation, and ordination). The paired live bridge test now checks
+  every admitted R-side capability column against `GLLVM.bridge_capabilities()`,
+  so the R bridge cannot silently claim a method row that the paired Julia
+  checkout does not expose. CI columns are scoped to complete one-part no-X
+  fits and do not promote masked-response, mixed-family, or non-Gaussian-X
+  intervals.
+
 * `confint(fit, parm = "rho:<tier>:i,j")` now forwards
   `link_residual = "auto"` / `"none"` to `extract_correlations()` for
   non-profile methods. The native mixed-family oracle now has public
@@ -48,7 +57,7 @@
 ## R-side `engine = "julia"` bridge to GLLVM.jl (2026-06-13)
 
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
-  default `"tmb"`). With `engine = "julia"` the fit is routed through the fast
+  default `"tmb"`). With `engine = "julia"` the fit is routed through the paired
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
   `gllvm_julia_capabilities()` reports the current R-side bridge admission
   ledger before JuliaCall setup, including cells that remain planned rather than

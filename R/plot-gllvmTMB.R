@@ -169,6 +169,62 @@ plot.gllvmTMB_multi <- function(
   )
 }
 
+#' @rdname plot.gllvmTMB_multi
+#' @method plot gllvmTMB_julia
+#' @export
+plot.gllvmTMB_julia <- function(
+  x,
+  type = c(
+    "ordination",
+    "correlation",
+    "correlation_ellipse",
+    "loadings",
+    "integration",
+    "communality",
+    "variance"
+  ),
+  level = "unit",
+  boot = NULL,
+  axes = c(1L, 2L),
+  rotation = c("varimax", "none", "promax"),
+  order_axes = TRUE,
+  sign_anchor = c("auto", "none"),
+  anchor_traits = NULL,
+  standardize_loadings = FALSE,
+  ...
+) {
+  type <- match.arg(type)
+  if (!identical(type, "ordination")) {
+    cli::cli_abort(
+      "plot.gllvmTMB_julia() currently supports only {.code type = \"ordination\"}; use extractors such as {.fn coef}, {.fn summary}, or {.fn confint} for other Julia bridge summaries."
+    )
+  }
+  if (!is.null(boot)) {
+    cli::cli_abort(
+      "plot.gllvmTMB_julia() does not use bootstrap overlays yet; set {.arg boot = NULL}."
+    )
+  }
+  if (isTRUE(standardize_loadings)) {
+    cli::cli_abort(
+      "plot.gllvmTMB_julia() cannot standardize loadings until the Julia bridge carries total-variance payloads; set {.arg standardize_loadings = FALSE}."
+    )
+  }
+  rotation <- match.arg(rotation)
+  sign_anchor <- match.arg(sign_anchor)
+  level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
+  level <- .normalise_level(level, arg_name = "level")
+  .plot_ordination_gtmb(
+    x,
+    level,
+    axes = axes,
+    rotation = rotation,
+    order_axes = order_axes,
+    sign_anchor = sign_anchor,
+    anchor_traits = anchor_traits,
+    standardize_loadings = FALSE
+  )
+}
+
 
 # ---- helpers --------------------------------------------------------------
 

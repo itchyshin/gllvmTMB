@@ -2,6 +2,7 @@
 % Please edit documentation in R/plot-gllvmTMB.R
 \name{plot.gllvmTMB_multi}
 \alias{plot.gllvmTMB_multi}
+\alias{plot.gllvmTMB_julia}
 \title{Plot a fitted multivariate gllvmTMB model}
 \usage{
 \method{plot}{gllvmTMB_multi}(
@@ -9,6 +10,21 @@
   type = c("correlation", "correlation_ellipse", "loadings", "integration",
     "communality", "variance", "ordination"),
   level = c("unit", "unit_obs"),
+  boot = NULL,
+  axes = c(1L, 2L),
+  rotation = c("varimax", "none", "promax"),
+  order_axes = TRUE,
+  sign_anchor = c("auto", "none"),
+  anchor_traits = NULL,
+  standardize_loadings = FALSE,
+  ...
+)
+
+\method{plot}{gllvmTMB_julia}(
+  x,
+  type = c("ordination", "correlation", "correlation_ellipse", "loadings", "integration",
+    "communality", "variance"),
+  level = "unit",
   boot = NULL,
   axes = c(1L, 2L),
   rotation = c("varimax", "none", "promax"),

@@ -234,6 +234,18 @@ test_that("Julia bridge ordination accessors use cached scores and loadings", {
   expect_named(out, c("scores", "loadings"))
   expect_equal(dim(out$scores), c(3L, 2L))
   expect_equal(dim(out$loadings), c(2L, 2L))
+
+  testthat::skip_if_not_installed("ggplot2")
+  p <- plot(fit, type = "ordination", level = "unit", rotation = "none")
+  expect_s3_class(p, "ggplot")
+  expect_equal(attr(p, "gllvmTMB_meta")$type, "ordination")
+  expect_equal(attr(p, "gllvmTMB_meta")$level, "unit")
+  expect_named(attr(p, "gllvmTMB_data"), c("scores", "loadings", "rotation"))
+  expect_error(plot(fit, type = "correlation"), "only")
+  expect_error(
+    plot(fit, type = "ordination", standardize_loadings = TRUE),
+    "cannot standardize"
+  )
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------

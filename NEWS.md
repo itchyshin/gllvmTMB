@@ -25,15 +25,16 @@
   Post-fit inspection now includes `coef()`, `summary()`, `predict()`,
   `fitted()`, `residuals()`, `nobs()`, and ordination access through
   `extract_ordination()`, `getLoadings()`, `getLV()`, `rotate_loadings()`, and
-  `ordiplot()` for `gllvmTMB_julia` objects. The prediction/residual methods are
-  deliberately in-sample only; `newdata` and ordinal probabilities wait for
-  richer bridge payloads and fail with explicit messages; Gaussian covariate
-  predictions are supported when the paired GLLVM.jl bridge returns the
-  `mean_coef` payload. `vcov()` has an explicit status error until covariance
-  matrices are routed through the bridge; use `confint()` for supported
-  interval output. Direct `gllvm_julia_fit()` calls with `NA` responses also
-  fail before JuliaCall until the paired Julia bridge accepts an
-  observed-response mask.
+  `ordiplot()` for `gllvmTMB_julia` objects; `plot(type = "ordination")` is
+  also wired as a narrow ggplot route over cached scores/loadings. The
+  prediction/residual methods are deliberately in-sample only; `newdata` and
+  ordinal probabilities wait for richer bridge payloads and fail with explicit
+  messages; Gaussian covariate predictions are supported when the paired
+  GLLVM.jl bridge returns the `mean_coef` payload. `vcov()` has an explicit
+  status error until covariance matrices are routed through the bridge; use
+  `confint()` for supported interval output. Direct `gllvm_julia_fit()` calls
+  with `NA` responses also fail before JuliaCall until the paired Julia bridge
+  accepts an observed-response mask.
   OUT: JuliaCall is a `Suggests` dependency only; every `engine = "julia"` path
   errors cleanly when JuliaCall or the GLLVM.jl project is unavailable, so the
   default TMB engine and `R CMD check` are unaffected on machines without Julia.

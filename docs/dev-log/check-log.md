@@ -4,6 +4,40 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge ggplot ordination route
+
+Scope:
+
+- registered `plot.gllvmTMB_julia()` for the narrow
+  `type = "ordination"` route;
+- reused `.plot_ordination_gtmb()` so Julia bridge plots carry the same
+  `gllvmTMB_meta` and `gllvmTMB_data` attributes as ordinary ordination plots;
+- kept non-ordination plot types, bootstrap overlays, and standardized loading
+  arrows as explicit errors until the bridge carries the needed covariance,
+  interval, and total-variance payloads.
+
+Evidence:
+
+- `Rscript -e 'devtools::document()'`
+  -> registered `plot.gllvmTMB_julia()` and wrote
+  `man/plot.gllvmTMB_multi.Rd`; emitted pre-existing roxygen link warnings
+  unrelated to this slice.
+- Live focused bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 125`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- Package-level filtered gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `PASS 125`, `FAIL 0`, `WARN 0`, `SKIP 0` in `47.7s`.
+
+Deliberately not claimed:
+
+- Only `plot(type = "ordination")` is wired for Julia bridge objects.
+- Standardized loading arrows are rejected until the bridge carries
+  total-variance payloads.
+- Correlation, loadings heatmap, integration, communality, variance, and
+  interval overlay plot types remain queued for richer bridge payloads.
+- This does not add new Julia engine behavior.
+
 ## 2026-06-15 -- Julia bridge ordiplot dispatch
 
 Scope:

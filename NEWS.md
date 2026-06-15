@@ -26,7 +26,9 @@
   `fitted()`, and `residuals()` methods for `gllvmTMB_julia` objects. The
   prediction/residual methods are deliberately in-sample only; `newdata`,
   ordinal probabilities, and Gaussian covariate predictions wait for richer
-  bridge payloads and fail with explicit messages.
+  bridge payloads and fail with explicit messages. Direct `gllvm_julia_fit()`
+  calls with `NA` responses also fail before JuliaCall until the paired Julia
+  bridge accepts an observed-response mask.
   OUT: JuliaCall is a `Suggests` dependency only; every `engine = "julia"` path
   errors cleanly when JuliaCall or the GLLVM.jl project is unavailable, so the
   default TMB engine and `R CMD check` are unaffected on machines without Julia.

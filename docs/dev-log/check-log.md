@@ -15843,3 +15843,32 @@ Deliberately not claimed:
   mean summary.
 - This slice does not add randomized quantile residuals, simulation-rank
   residuals, prediction intervals, or new Julia engine behavior.
+
+## 2026-06-15 -- Direct Julia bridge missing-response guard
+
+Tightened the direct `gllvm_julia_fit()` wrapper so a response matrix containing
+`NA` fails before JuliaCall. This preserves the R-first contract: missing-response
+masks are not admitted until the paired `GLLVM.bridge_fit` accepts an explicit
+observed-response mask.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-missing-response-guard.md`
+
+Evidence:
+
+- Live focused bridge file:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 99`.
+- Package-level filtered gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 99` in `42.3s`.
+
+Deliberately not claimed:
+
+- This does not implement missing-response masks. It only guarantees the direct
+  R wrapper fails clearly before JuliaCall when `y` contains `NA`.

@@ -127,6 +127,12 @@ test_that("direct Julia bridge wrapper rejects unsupported cells before JuliaCal
     gllvm_julia_fit(Y, family = "gaussian", num.lv = 0L),
     "num.lv >= 1"
   )
+  Y_miss <- Y
+  Y_miss[1, 1] <- NA_real_
+  expect_error(
+    gllvm_julia_fit(Y_miss, family = "gaussian", num.lv = 1L),
+    "missing-response masks are not wired"
+  )
   expect_error(
     gllvm_julia_fit(Y, family = "ordinal", X = array(0, dim = c(3, 4, 1))),
     "fixed-effect covariates X are not wired"

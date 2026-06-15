@@ -197,6 +197,13 @@ gllvm_julia_fit <- function(
   if (isTRUE(units_are_rows)) {
     y <- t(y)
   }
+  if (anyNA(y)) {
+    stop(
+      "engine = 'julia': missing-response masks are not wired yet; ",
+      "y must be complete. Use engine = 'tmb' for missing responses.",
+      call. = FALSE
+    )
+  }
   if (as.integer(num.lv) < 1L) {
     stop(
       "engine = 'julia': this GLLVM.jl bridge branch requires num.lv >= 1.",

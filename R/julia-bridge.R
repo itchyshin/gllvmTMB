@@ -142,7 +142,10 @@ gllvm_julia_capabilities <- function() {
     family = as.character(unlist(x$family, use.names = FALSE)),
     fit_no_x = as.logical(unlist(x$fit_no_x, use.names = FALSE)),
     fixed_effect_X = as.logical(unlist(x$fixed_effect_X, use.names = FALSE)),
-    missing_response = as.logical(unlist(x$missing_response, use.names = FALSE)),
+    missing_response = as.logical(unlist(
+      x$missing_response,
+      use.names = FALSE
+    )),
     cbind_binomial = as.logical(unlist(x$cbind_binomial, use.names = FALSE)),
     status = as.character(unlist(x$status, use.names = FALSE)),
     notes = as.character(unlist(x$notes, use.names = FALSE)),
@@ -711,6 +714,7 @@ print.gllvmTMB_julia <- function(x, ...) {
     poisson = exp(eta),
     binomial = stats::plogis(eta),
     negbinomial = exp(eta),
+    nb1 = exp(eta),
     beta = stats::plogis(eta),
     gamma = exp(eta),
     stop(
@@ -762,6 +766,50 @@ print.gllvmTMB_julia <- function(x, ...) {
   as.numeric(values)
 }
 
+.gllvm_julia_row_dispersion <- function(object, family, n_rows) {
+  dispersion <- as.numeric(object$dispersion)
+  if (!length(dispersion) || !any(is.finite(dispersion))) {
+    stop(
+      "simulate.gllvmTMB_julia: family '",
+      family,
+      "' needs a finite positive dispersion payload.",
+      call. = FALSE
+    )
+  }
+
+  if (!is.null(object$.trait_index)) {
+    out <- dispersion[object$.trait_index]
+  } else {
+    p <- as.integer(object$n_traits %||% length(dispersion))
+    n <- as.integer(object$n_units %||% ceiling(n_rows / max(p, 1L)))
+    if (length(dispersion) == 1L) {
+      out <- rep(dispersion, n_rows)
+    } else if (length(dispersion) == p) {
+      out <- rep(dispersion, times = n)
+    } else if (length(dispersion) == n_rows) {
+      out <- dispersion
+    } else {
+      stop(
+        "simulate.gllvmTMB_julia: family '",
+        family,
+        "' carries an incompatible dispersion payload.",
+        call. = FALSE
+      )
+    }
+  }
+
+  out <- as.numeric(out)
+  if (length(out) != n_rows || any(!is.finite(out)) || any(out <= 0)) {
+    stop(
+      "simulate.gllvmTMB_julia: family '",
+      family,
+      "' needs finite positive dispersion values.",
+      call. = FALSE
+    )
+  }
+  out
+}
+
 .gllvm_julia_check_nsim <- function(nsim) {
   if (length(nsim) != 1L || is.na(nsim) || nsim < 1L) {
     stop(
@@ -805,8 +853,9 @@ print.gllvmTMB_julia <- function(x, ...) {
 #'   the currently routed fixed-effect bridge payload. `glance()` returns one row
 #'   of cached fit statistics. `augment()` returns in-sample row diagnostics with
 #'   `.observed`, `.fitted`, `.resid`, and `.status` columns. `simulate()` returns
-#'   an `n_obs x nsim` matrix of conditional in-sample draws for supported bridge
-#'   families. `predict()` and `residuals()` return data frames in the original
+#'   an `n_obs x nsim` matrix of conditional in-sample draws for routed
+#'   Gaussian, Poisson, Binomial, and NB1 bridge fits. `predict()` and
+#'   `residuals()` return data frames in the original
 #'   training-row order when the
 #'   object came from `gllvmTMB(..., engine = "julia")`. `fitted()` returns a
 #'   trait x unit matrix. `nobs()` returns the number of likelihood-contributing
@@ -1074,11 +1123,21 @@ simulate.gllvmTMB_julia <- function(
         }
         stats::rbinom(length(prob), size = as.integer(size), prob = prob)
       },
+      nb1 = {
+        if (any(mu_vec < 0)) {
+          stop(
+            "simulate.gllvmTMB_julia: NB1 fitted means must be non-negative.",
+            call. = FALSE
+          )
+        }
+        phi <- .gllvm_julia_row_dispersion(object, fam, length(mu_vec))
+        stats::rnbinom(length(mu_vec), mu = mu_vec, size = mu_vec / phi)
+      },
       stop(
         "simulate.gllvmTMB_julia: family '",
         fam,
         "' is not routed through Julia-engine simulation yet. Supported: ",
-        "gaussian, poisson, binomial.",
+        "gaussian, poisson, binomial, nb1.",
         call. = FALSE
       )
     )

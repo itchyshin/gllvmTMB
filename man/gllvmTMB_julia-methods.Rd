@@ -100,8 +100,9 @@ a coefficient data frame with \code{term}, \code{estimate}, and \code{component}
 the currently routed fixed-effect bridge payload. \code{glance()} returns one row
 of cached fit statistics. \code{augment()} returns in-sample row diagnostics with
 \code{.observed}, \code{.fitted}, \code{.resid}, and \code{.status} columns. \code{simulate()} returns
-an \verb{n_obs x nsim} matrix of conditional in-sample draws for supported bridge
-families. \code{predict()} and \code{residuals()} return data frames in the original
+an \verb{n_obs x nsim} matrix of conditional in-sample draws for routed
+Gaussian, Poisson, Binomial, and NB1 bridge fits. \code{predict()} and
+\code{residuals()} return data frames in the original
 training-row order when the
 object came from \code{gllvmTMB(..., engine = "julia")}. \code{fitted()} returns a
 trait x unit matrix. \code{nobs()} returns the number of likelihood-contributing

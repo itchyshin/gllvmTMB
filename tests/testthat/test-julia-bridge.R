@@ -472,9 +472,32 @@ test_that("Julia bridge simulate supports narrow safe families without JuliaCall
   expect_equal(all(sim_b >= 0), TRUE)
   expect_equal(all(sim_b <= as.numeric(bin$N)), TRUE)
 
+  nb1 <- fit
+  nb1$family <- "nb1"
+  nb1$dispersion <- c(0.7, 1.2)
+  pr_nb1 <- predict(nb1, type = "response")
+  expect_equal(nrow(pr_nb1), 6L)
+  expect_equal(all(is.finite(pr_nb1$est)), TRUE)
+  expect_equal(all(pr_nb1$est > 0), TRUE)
+  rr_nb1 <- residuals(nb1)
+  expect_equal(nrow(rr_nb1), 6L)
+  expect_equal(all(is.finite(rr_nb1$residual)), TRUE)
+  aug_nb1 <- generics::augment(nb1)
+  expect_equal(nrow(aug_nb1), 6L)
+  expect_equal(aug_nb1$.resid, rr_nb1$residual)
+  sim_nb1 <- simulate(nb1, nsim = 2L, seed = 94L)
+  expect_equal(dim(sim_nb1), c(6L, 2L))
+  expect_equal(sim_nb1, simulate(nb1, nsim = 2L, seed = 94L))
+  expect_equal(all(sim_nb1 >= 0), TRUE)
+  expect_equal(all(sim_nb1 == floor(sim_nb1)), TRUE)
+
   bad_gauss <- gauss
   bad_gauss$sigma_eps <- NaN
   expect_error(simulate(bad_gauss), "sigma_eps")
+
+  bad_nb1 <- nb1
+  bad_nb1$dispersion <- c(0.7, NA_real_)
+  expect_error(simulate(bad_nb1), "finite positive dispersion")
 })
 
 test_that("confint() on masked Julia objects reports method-specific CI status", {
@@ -871,6 +894,26 @@ test_that("engine = 'julia' fits NB1 no-X and routes Wald CIs", {
   expect_true(any(grepl("phi", rownames(ci))))
   expect_true(all(is.finite(ci)))
   expect_true(all(ci[, 1] < ci[, 2]))
+
+  pr <- predict(fit, type = "response")
+  expect_equal(nrow(pr), nrow(df))
+  expect_equal(all(is.finite(pr$est)), TRUE)
+  expect_equal(all(pr$est > 0), TRUE)
+
+  rr <- residuals(fit)
+  expect_equal(nrow(rr), nrow(df))
+  expect_equal(all(is.finite(rr$residual)), TRUE)
+  expect_equal(rr$status, rep("ok", nrow(df)))
+
+  aug <- generics::augment(fit)
+  expect_equal(nrow(aug), nrow(df))
+  expect_equal(aug$.status, rep("ok", nrow(df)))
+
+  sim <- simulate(fit, nsim = 2L, seed = 96L)
+  expect_equal(dim(sim), c(nrow(df), 2L))
+  expect_equal(sim, simulate(fit, nsim = 2L, seed = 96L))
+  expect_equal(all(sim >= 0), TRUE)
+  expect_equal(all(sim == floor(sim)), TRUE)
 })
 
 test_that("engine = 'julia' fits a Poisson missing-response mask end-to-end", {

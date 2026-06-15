@@ -16503,3 +16503,46 @@ Deliberately not claimed:
   parity are still outside this slice.
 - The NB1 route is one-part reduced-rank only and depends on the paired
   `GLLVM.jl-integration` checkout exposing `family = "nb1"`.
+
+## 2026-06-15 -- Julia bridge NB1 post-fit methods
+
+Completed the post-fit surface for the already-admitted NB1 no-X reduced-rank
+Julia bridge row. NB1 now shares the log-link response-scale prediction route,
+so `predict()`, `fitted()`, `residuals()`, `augment()`, and conditional
+`simulate()` work for complete-data NB1 Julia-engine objects. NB1 simulation
+uses the linear mean-variance law `Var = mu * (1 + phi)` via
+`stats::rnbinom(mu = mu, size = mu / phi)` and fails if the dispersion payload
+is missing, non-finite, or non-positive.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `man/gllvmTMB_julia-methods.Rd`
+- `NEWS.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-15-julia-bridge-nb1-postfit.md`
+
+Evidence:
+
+- No-Julia bridge gate:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 16 | PASS 163` in `2.3s`.
+- Live bridge gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 394` in `57.3s`.
+- Roxygen:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/gllvmTMB_julia-methods.Rd`; unrelated pre-existing
+  roxygen unresolved-link warnings remain. Unrelated Rd churn was reverted.
+- pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+
+Deliberately not claimed:
+
+- NB1 fixed-effect covariates, missing-response masks, masked simulations,
+  profile/bootstrap CIs, native-TMB-vs-Julia parity, and mixed-family NB1 remain
+  outside this slice.
+- `simulate()` is conditional on fitted in-sample means; it is not an
+  unconditional posterior/predictive bootstrap route.

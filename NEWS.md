@@ -16,11 +16,12 @@
   fixed-effect covariates, mixed-family lists, nbinom1, lognormal, `cbind()`
   binomial, and unbalanced trait × unit tables, erroring clearly rather than
   silently re-interpreting the model. CI routing returns Wald intervals where
-  the paired Julia bridge supports them and reports unsupported profile /
-  bootstrap cells through an explicit CI-status error. OUT: JuliaCall is a
-  `Suggests` dependency only; every `engine = "julia"` path errors cleanly when
-  JuliaCall or the GLLVM.jl project is unavailable, so the default TMB engine
-  and `R CMD check` are unaffected on machines without Julia.
+  the paired Julia bridge supports them; Gaussian profile and bootstrap CI
+  transport is live-tested, while broader non-Gaussian/structure CI coverage
+  remains partial and unsupported cells still report explicit CI-status errors.
+  OUT: JuliaCall is a `Suggests` dependency only; every `engine = "julia"` path
+  errors cleanly when JuliaCall or the GLLVM.jl project is unavailable, so the
+  default TMB engine and `R CMD check` are unaffected on machines without Julia.
 
 ## Loading-constraint suggestion comparison (2026-06-09)
 

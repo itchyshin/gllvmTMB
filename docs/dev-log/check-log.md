@@ -4,6 +4,33 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-14 -- Julia bridge CI oracle and ledger sync
+
+Scope:
+
+- aligned the Gaussian Julia bridge CI oracle with the bridge centering
+  convention used by `gllvm_julia_fit()`;
+- updated `tests/testthat/test-julia-bridge.R` so Gaussian profile and bootstrap
+  CI transport are asserted as supported bridge cells rather than stale
+  unsupported-status checks;
+- refreshed NEWS wording so the public claim is narrow: Gaussian
+  profile/bootstrap CI transport is live-tested, while broader non-Gaussian and
+  structured CI coverage remains partial.
+
+Evidence:
+
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::load_all("."); testthat::test_file("tests/testthat/test-julia-bridge.R")'`
+  -> `PASS 53`, `FAIL 0`, `WARN 0`, `SKIP 0`.
+- Diagnostic before the oracle fix: raw Gaussian CI oracle differed from the
+  bridge by about `0.109776` on lower bounds and `0.2580443` on upper bounds;
+  the centered oracle matched exactly on both.
+
+Deliberately not claimed:
+
+- This is not full R/TMB-vs-Julia statistical parity.
+- This is not broad profile/bootstrap CI support for every family or structure.
+- Full `devtools::test()` / `R CMD check` remains a pre-PR/release gate.
+
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 
 Scope:

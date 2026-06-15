@@ -83,8 +83,10 @@ parity, which remains a separate gate.
 - Live Julia tests assert that long-format dispatch matches direct
   `gllvm_julia_fit()` and that native Julia Wald CI payloads match the R
   `confint()` surface to `1e-6`.
-- The profile-CI test now asserts explicit unsupported CI status rather than
-  accepting an empty matrix.
+- At this slice, the profile-CI test asserted explicit unsupported CI status
+  rather than accepting an empty matrix. Follow-up commit `19264a5` updated the
+  oracle and now live-tests Gaussian profile/bootstrap CI transport; see
+  `docs/dev-log/after-task/2026-06-14-julia-bridge-ci-oracle-sync.md`.
 
 ## 6. Consistency Audit
 

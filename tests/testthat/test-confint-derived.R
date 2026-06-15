@@ -63,6 +63,10 @@ test_that("confint(fit, parm = 'icc') returns one row per trait (matrix shape)",
   expect_equal(ncol(ci), 2L)
   expect_match(rownames(ci)[1], "^icc:")
   expect_equal(colnames(ci), c("2.5 %", "97.5 %"))
+  expect_equal(
+    attr(ci, "ci_status"),
+    stats::setNames(rep("ok", fx$T), rownames(ci))
+  )
 })
 
 test_that("confint(fit, parm = 'icc:trait_1') returns exactly one row", {
@@ -142,6 +146,13 @@ test_that("confint(fit, parm = 'icc') with method = 'profile' returns finite bou
   expect_equal(nrow(ci), 1L)
   ## At least one of the two bounds should be finite on a well-identified fit
   expect_true(is.finite(ci[1, 1L]) || is.finite(ci[1, 2L]))
+  expect_equal(
+    attr(ci, "ci_status"),
+    stats::setNames(
+      gllvmTMB:::.gtmb_ci_status("profile", ci[, 1L], ci[, 2L]),
+      rownames(ci)
+    )
+  )
 })
 
 test_that("confint(fit, parm = 'icc') bounds are within [0, 1]", {
@@ -308,6 +319,10 @@ test_that("confint(fit, parm = 'communality:unit', method = 'wald') returns fini
   expect_equal(ncol(res), 2L)
   expect_true(all(is.finite(res)))
   expect_true(all(res >= 0 & res <= 1))
+  expect_equal(
+    attr(res, "ci_status"),
+    stats::setNames(rep("ok", nrow(res)), rownames(res))
+  )
 })
 
 test_that("confint(fit, parm = 'communality:unit', method = 'bootstrap') returns finite bounds", {
@@ -326,6 +341,10 @@ test_that("confint(fit, parm = 'communality:unit', method = 'bootstrap') returns
   expect_equal(ncol(res), 2L)
   expect_true(all(is.finite(res)))
   expect_true(all(res >= 0 & res <= 1))
+  expect_equal(
+    attr(res, "ci_status"),
+    stats::setNames(rep("ok", nrow(res)), rownames(res))
+  )
 })
 
 test_that("confint(fit, parm = 'communality:unit') bounds are within [0, 1]", {
@@ -460,6 +479,9 @@ test_that("All derived-quantity tokens return numeric matrices with 2 columns", 
   expect_true(is.matrix(ci_icc) && is.numeric(ci_icc) && ncol(ci_icc) == 2L)
   expect_true(is.matrix(ci_com) && is.numeric(ci_com) && ncol(ci_com) == 2L)
   expect_true(is.matrix(ci_rho) && is.numeric(ci_rho) && ncol(ci_rho) == 2L)
+  expect_named(attr(ci_icc, "ci_status"), rownames(ci_icc))
+  expect_named(attr(ci_com, "ci_status"), rownames(ci_com))
+  expect_named(attr(ci_rho, "ci_status"), rownames(ci_rho))
 })
 
 test_that("Column names follow '<lo>%' / '<hi>%' convention with custom level", {

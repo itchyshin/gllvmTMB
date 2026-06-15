@@ -119,14 +119,16 @@ Stage 1 convention: when \code{pdHess = FALSE} on a Wald path,
 \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 flags the reason).
 \item \strong{Derived-quantity path} (\code{"icc"} /
-\code{"phylo_signal"} / \code{"communality"} / \code{"rho"}) --
+\code{"phylo_signal"} / \code{"communality"} / \code{"rho"} /
+\code{"proportion"}) --
 a numeric matrix with two columns named after the requested
 \code{level} (e.g. \code{"2.5 \%"} / \code{"97.5 \%"}) and
 rownames identifying the entry, e.g. \code{"icc:trait_1"},
-\code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}. Rho
+\code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}, or
+\code{"proportion:shared_unit:trait_1"}. Derived-quantity
 matrices carry a \code{ci_status} attribute with one status per
-row; for example \code{"ok"}, \code{"profile_boundary"}, or
-\code{"profile_failed"}.
+row; for example \code{"ok"}, \code{"profile_boundary"},
+\code{"profile_failed"}, or \code{"wald_unavailable"}.
 \item \strong{Fixed-effects / variance-component path} -- a numeric
 matrix with rownames = parameter names and two columns named
 \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for

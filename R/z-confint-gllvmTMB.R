@@ -625,7 +625,7 @@
   out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
   rownames(out) <- paste0("icc:", as.character(tbl$trait))
   colnames(out) <- .confint_colnames(level)
-  out
+  .gtmb_attach_ci_status(out, method)
 }
 
 ## Internal helper: dispatch `confint(fit, parm = "phylo_signal[:...]")`.
@@ -657,7 +657,7 @@
   out <- cbind(as.numeric(tbl$lower), as.numeric(tbl$upper))
   rownames(out) <- paste0("phylo_signal:", as.character(tbl$trait))
   colnames(out) <- .confint_colnames(level)
-  out
+  .gtmb_attach_ci_status(out, method)
 }
 
 ## Internal helper: dispatch `confint(fit, parm = "communality:tier[:trait]")`.
@@ -729,7 +729,7 @@
     as.character(tbl$trait)
   )
   colnames(out) <- .confint_colnames(level)
-  out
+  .gtmb_attach_ci_status(out, method)
 }
 
 ## Internal helper: dispatch `confint(fit, parm = "rho:tier:i,j[;k,l]")`.
@@ -949,7 +949,7 @@
     as.character(tbl$trait)
   )
   colnames(out) <- .confint_colnames(level)
-  out
+  .gtmb_attach_ci_status(out, method)
 }
 
 ## Internal helper (P1a 2026-05-15): recognise parm tokens that match
@@ -1240,14 +1240,16 @@
 #'     \code{lower}/\code{upper} are \code{NA} and \code{ci_status}
 #'     flags the reason).
 #'   \item \strong{Derived-quantity path} (\code{"icc"} /
-#'     \code{"phylo_signal"} / \code{"communality"} / \code{"rho"}) --
+#'     \code{"phylo_signal"} / \code{"communality"} / \code{"rho"} /
+#'     \code{"proportion"}) --
 #'     a numeric matrix with two columns named after the requested
 #'     \code{level} (e.g. \code{"2.5 \%"} / \code{"97.5 \%"}) and
 #'     rownames identifying the entry, e.g. \code{"icc:trait_1"},
-#'     \code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}. Rho
+#'     \code{"communality:unit:trait_1"}, \code{"rho:unit:1,2"}, or
+#'     \code{"proportion:shared_unit:trait_1"}. Derived-quantity
 #'     matrices carry a \code{ci_status} attribute with one status per
-#'     row; for example \code{"ok"}, \code{"profile_boundary"}, or
-#'     \code{"profile_failed"}.
+#'     row; for example \code{"ok"}, \code{"profile_boundary"},
+#'     \code{"profile_failed"}, or \code{"wald_unavailable"}.
 #'   \item \strong{Fixed-effects / variance-component path} -- a numeric
 #'     matrix with rownames = parameter names and two columns named
 #'     \code{"2.5 \%"} / \code{"97.5 \%"} (or the analogous quantiles for

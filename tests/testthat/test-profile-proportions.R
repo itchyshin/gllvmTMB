@@ -222,6 +222,13 @@ test_that("confint(fit, parm = 'proportion:shared_unit:trait_1') returns one row
   expect_equal(rownames(ci), "proportion:shared_unit:trait_1")
   expect_equal(ncol(ci), 2L)
   expect_equal(colnames(ci), c("2.5 %", "97.5 %"))
+  expect_equal(
+    attr(ci, "ci_status"),
+    stats::setNames(
+      gllvmTMB:::.gtmb_ci_status("profile", ci[, 1L], ci[, 2L]),
+      rownames(ci)
+    )
+  )
 })
 
 test_that("confint(fit, parm = 'proportion'): bare token is recognised and routes (parse-only check)", {
@@ -300,6 +307,10 @@ test_that("confint(fit, parm = 'proportion:shared_unit', method = 'wald') return
   expect_equal(ncol(res), 2L)
   expect_true(all(is.finite(res)))
   expect_true(all(res >= 0 & res <= 1))
+  expect_equal(
+    attr(res, "ci_status"),
+    stats::setNames(rep("ok", nrow(res)), rownames(res))
+  )
 })
 
 test_that("confint(fit, parm = 'proportion:shared_unit', method = 'bootstrap') returns finite bounds", {
@@ -318,6 +329,10 @@ test_that("confint(fit, parm = 'proportion:shared_unit', method = 'bootstrap') r
   expect_equal(ncol(res), 2L)
   expect_true(all(is.finite(res)))
   expect_true(all(res >= 0 & res <= 1))
+  expect_equal(
+    attr(res, "ci_status"),
+    stats::setNames(rep("ok", nrow(res)), rownames(res))
+  )
 })
 
 ## ============================================================================

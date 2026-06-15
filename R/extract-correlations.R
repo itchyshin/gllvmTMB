@@ -517,30 +517,3 @@ extract_correlations <- function(
   rownames(out) <- NULL
   out
 }
-
-.gtmb_rho_ci_status <- function(method, lower, upper) {
-  lower <- as.numeric(lower)
-  upper <- as.numeric(upper)
-  finite_lower <- is.finite(lower)
-  finite_upper <- is.finite(upper)
-  both <- finite_lower & finite_upper
-  partial <- xor(finite_lower, finite_upper)
-  neither <- !finite_lower & !finite_upper
-  out <- rep("ok", length(lower))
-  method <- as.character(method)[1L]
-
-  if (identical(method, "profile")) {
-    out[partial] <- "profile_boundary"
-    out[neither] <- "profile_failed"
-  } else if (identical(method, "bootstrap")) {
-    out[partial] <- "partial_interval"
-    out[neither] <- "bootstrap_failed"
-  } else if (identical(method, "wald")) {
-    out[!both] <- "wald_unavailable"
-  } else if (identical(method, "fisher-z")) {
-    out[!both] <- "fisher_z_unavailable"
-  } else {
-    out[!both] <- "interval_unavailable"
-  }
-  out
-}

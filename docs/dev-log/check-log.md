@@ -4,6 +4,50 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Derived confint CI-status contract
+
+Scope:
+
+- moved row-level CI-status classification into a shared internal helper;
+- attached row-named `ci_status` attributes to derived `confint()` matrices for
+  `icc`, `phylo_signal`, `communality`, and `proportion`, matching the existing
+  rho matrix contract;
+- kept all returned objects as the existing two-column numeric matrices.
+
+Evidence:
+
+- Manual helper probe:
+  `Rscript -e 'devtools::load_all(".", quiet=TRUE); print(gllvmTMB:::.gtmb_ci_status("profile", c(NA, 0.1, NA), c(0.9, 0.8, NA))); print(gllvmTMB:::.gtmb_ci_status("wald", c(NA, 0.1), c(0.9, 0.8)))'`
+  -> `profile_boundary`, `ok`, `profile_failed`; `wald_unavailable`, `ok`.
+- Heavy derived/profile gate:
+  `GLLVMTMB_HEAVY_TESTS=1 Rscript -e 'devtools::test(filter="confint-derived|profile-proportions")'`
+  -> `PASS 121`, `SKIP 0`, `FAIL 0`, `WARN 0` in `214.1s`.
+- Default targeted gate:
+  `Rscript -e 'devtools::test(filter="confint-derived|profile-proportions")'`
+  -> `PASS 0`, `SKIP 50`, `FAIL 0`, `WARN 0`.
+- Docs:
+  `Rscript -e 'devtools::document()'`
+  -> regenerated `man/confint.gllvmTMB_multi.Rd`; unrelated Rd churn was
+  reverted. Pre-existing unresolved-link roxygen warnings remain.
+- Full R suite:
+  `Rscript -e 'devtools::test()'`
+  -> `PASS 2951`, `SKIP 724`, `FAIL 0`, `WARN 3` in `126.5s`.
+  Warnings were the existing `nadiv::makeAinv()` selfing warning and the
+  existing `glmmTMB`/`TMB` version mismatch.
+- Pkgdown:
+  `Rscript -e 'pkgdown::check_pkgdown()'`
+  -> no problems found.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not claimed:
+
+- This is metadata/status propagation only; interval numerics, profile search,
+  bootstrap calibration, and Julia bridge CI endpoints are unchanged.
+- `ci_status = "ok"` means both endpoints are finite for that method, not that
+  coverage has been calibrated by a simulation study.
+
 ## 2026-06-15 -- Native rho CI-status semantics
 
 Scope:

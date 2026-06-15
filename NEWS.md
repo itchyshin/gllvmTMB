@@ -14,11 +14,12 @@
   `link_residual = "auto"` / `"none"` to `extract_correlations()` for
   non-profile methods. The native mixed-family oracle now has public
   `confint()` evidence for Fisher-z/Wald latent-correlation intervals plus
-  heavy-gated profile/bootstrap route checks. Rho matrices now carry a
-  row-named `ci_status` attribute, and `extract_correlations()` now returns a
-  `ci_status` column so boundary-partial profile intervals are explicit.
-  Calibrated mixed-family correlation coverage remains a separate validation
-  gate.
+  heavy-gated profile/bootstrap route checks. Derived-quantity `confint()`
+  matrices for `icc`, `phylo_signal`, `communality`, `rho`, and `proportion`
+  now carry a row-named `ci_status` attribute, and `extract_correlations()`
+  returns a `ci_status` column so boundary-partial profile intervals are
+  explicit. Calibrated mixed-family correlation coverage remains a separate
+  validation gate.
 
 * `engine = "julia"` now partially admits complete, balanced, trait-aligned
   mixed-family list fits when each trait maps to one of the routed component

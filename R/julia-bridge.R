@@ -729,9 +729,9 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @param ... Currently unused.
 #' @return `coef()` returns a named list of bridge coefficients. `tidy()` returns
 #'   a coefficient data frame with `term`, `estimate`, and `component` columns for
-#'   the currently routed fixed-effect bridge payload. `simulate()` returns an
-#'   `n_obs x nsim` matrix of conditional in-sample draws for supported bridge
-#'   families. `predict()` and
+#'   the currently routed fixed-effect bridge payload. `glance()` returns one row
+#'   of cached fit statistics. `simulate()` returns an `n_obs x nsim` matrix of
+#'   conditional in-sample draws for supported bridge families. `predict()` and
 #'   `residuals()` return data frames in the original training-row order when the
 #'   object came from `gllvmTMB(..., engine = "julia")`. `fitted()` returns a
 #'   trait x unit matrix. `nobs()` returns the number of likelihood-contributing
@@ -829,6 +829,24 @@ vcov.gllvmTMB_julia <- function(object, ...) {
     "Julia bridge yet; use confint(..., method = 'wald'|'profile'|'bootstrap') ",
     "for interval output on supported cells.",
     call. = FALSE
+  )
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+glance.gllvmTMB_julia <- function(x, ...) {
+  data.frame(
+    logLik = as.numeric(x$loglik),
+    AIC = as.numeric(x$aic),
+    BIC = as.numeric(x$bic),
+    df = as.numeric(x$df),
+    nobs = as.integer(x$nobs),
+    converged = isTRUE(x$converged),
+    iterations = as.integer(x$iterations %||% NA_integer_),
+    engine = x$engine %||% "julia",
+    family = paste(unique(x$family), collapse = ","),
+    model = x$model %||% NA_character_,
+    stringsAsFactors = FALSE
   )
 }
 

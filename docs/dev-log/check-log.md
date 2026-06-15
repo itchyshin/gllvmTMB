@@ -4,6 +4,36 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-15 -- Julia bridge glance method
+
+Scope:
+
+- added `glance.gllvmTMB_julia()` as a one-row cached fit-statistics table;
+- re-exported `generics::glance` alongside the existing `generics::tidy`;
+- registered the S3 method and regenerated the Julia-bridge methods and
+  reexports Rd pages;
+- kept `glance()` limited to fit statistics: no covariance, interval, or
+  diagnostic payload is implied.
+
+Evidence:
+
+- Documentation generation:
+  `Rscript -e 'devtools::document()'`
+  -> completed; emitted pre-existing unresolved-link warnings outside this
+  slice and generated unrelated Rd link churn that was restored before commit.
+- Default no-Julia bridge test:
+  `Rscript -e 'devtools::test(filter="julia-bridge")'`
+  -> `PASS 116`, `SKIP 14`, `FAIL 0`, `WARN 0` in `1.9s`.
+- Package-level filtered live gate:
+  `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" Rscript -e 'options(gllvmTMB.julia_home="/Users/z3437171/.juliaup/bin"); devtools::test(filter="julia-bridge")'`
+  -> `PASS 311`, `FAIL 0`, `WARN 0`, `SKIP 0` in `52.0s`.
+
+Deliberately not claimed:
+
+- No covariance matrix or standard-error payload.
+- No interval or profile/bootstrap endpoint summary.
+- No diagnostic residual or simulation calibration summary.
+
 ## 2026-06-15 -- Julia bridge conditional simulate method
 
 Scope:

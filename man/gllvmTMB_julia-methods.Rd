@@ -6,6 +6,7 @@
 \alias{tidy.gllvmTMB_julia}
 \alias{nobs.gllvmTMB_julia}
 \alias{vcov.gllvmTMB_julia}
+\alias{glance.gllvmTMB_julia}
 \alias{simulate.gllvmTMB_julia}
 \alias{predict.gllvmTMB_julia}
 \alias{fitted.gllvmTMB_julia}
@@ -27,6 +28,8 @@
 \method{nobs}{gllvmTMB_julia}(object, ...)
 
 \method{vcov}{gllvmTMB_julia}(object, ...)
+
+\method{glance}{gllvmTMB_julia}(x, ...)
 
 \method{simulate}{gllvmTMB_julia}(object, nsim = 1, seed = NULL, re_form = ~., ...)
 
@@ -77,9 +80,9 @@ only in-sample predictions are returned.}
 \value{
 \code{coef()} returns a named list of bridge coefficients. \code{tidy()} returns
 a coefficient data frame with \code{term}, \code{estimate}, and \code{component} columns for
-the currently routed fixed-effect bridge payload. \code{simulate()} returns an
-\verb{n_obs x nsim} matrix of conditional in-sample draws for supported bridge
-families. \code{predict()} and
+the currently routed fixed-effect bridge payload. \code{glance()} returns one row
+of cached fit statistics. \code{simulate()} returns an \verb{n_obs x nsim} matrix of
+conditional in-sample draws for supported bridge families. \code{predict()} and
 \code{residuals()} return data frames in the original training-row order when the
 object came from \code{gllvmTMB(..., engine = "julia")}. \code{fitted()} returns a
 trait x unit matrix. \code{nobs()} returns the number of likelihood-contributing

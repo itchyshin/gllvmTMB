@@ -279,6 +279,29 @@ test_that("Julia bridge post-fit methods work without JuliaCall", {
   )
   expect_error(generics::tidy(fit, conf.int = TRUE), "conf.int = TRUE")
 
+  gl <- generics::glance(fit)
+  expect_equal(nrow(gl), 1L)
+  expect_equal(
+    names(gl),
+    c(
+      "logLik",
+      "AIC",
+      "BIC",
+      "df",
+      "nobs",
+      "converged",
+      "iterations",
+      "engine",
+      "family",
+      "model"
+    )
+  )
+  expect_equal(gl$logLik, -12.5)
+  expect_equal(gl$AIC, 31)
+  expect_equal(gl$nobs, 6L)
+  expect_equal(gl$engine, "julia")
+  expect_equal(gl$model, "poisson_x_rr")
+
   sim <- simulate(fit, nsim = 2L, seed = 91L)
   expect_equal(dim(sim), c(6L, 2L))
   expect_equal(sim, simulate(fit, nsim = 2L, seed = 91L))
@@ -652,6 +675,10 @@ test_that("engine = 'julia' fits a supported non-Gaussian no-X model end-to-end"
   expect_equal(fit$unit_names, levels(df$unit))
   expect_named(coef(fit), c("alpha", "loadings"))
   expect_s3_class(summary(fit), "summary.gllvmTMB_julia")
+  gl <- generics::glance(fit)
+  expect_equal(nrow(gl), 1L)
+  expect_equal(gl$model, "poisson_rr")
+  expect_equal(gl$nobs, nrow(df))
   pr <- predict(fit, type = "response")
   expect_equal(nrow(pr), nrow(df))
   expect_named(pr, c(".row", "unit", "trait", "est"))

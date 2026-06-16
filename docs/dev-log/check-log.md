@@ -4,6 +4,60 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- NB1 reduced-rank bridge Fisher-boundary fix
+
+Fixed the Julia-side NB1 Fisher-information boundary instability and promoted
+the small complete balanced reduced-rank NB1 bridge fixture to point parity.
+
+Evidence:
+
+- Julia targeted test:
+  `julia --project=. test/test_nb1.jl`
+  in `../GLLVM.jl-integration`
+  -> `34/34 pass`.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with six expected Julia-runtime skips.
+- Julia targeted bridge tests:
+  `julia --project=. test/test_bridge_grouped_dispersion.jl`
+  -> `49/49 pass`.
+  `julia --project=. test/test_grouped_dispersion_tweedie_nb1.jl`
+  -> `15/15 pass`.
+- Reduced-rank NB1 fixture after the fix:
+  native `logLik = -52.4618425767`, Julia `logLik = -52.4619219625`,
+  `df = 6` for both engines, delta `-7.9386e-05`.
+- Fixed-parameter cross-check:
+  Julia at native fitted parameters `-52.4618425607`; native TMB
+  `-52.4618425772`; delta about `1.6e-08`.
+- Stale-claim scans:
+  `rg -n 'reduced-rank NB1 parity remains unpromoted|reduced-rank NB1 remains partial|NB1 still needs reduced-rank|objective-form investigation|0\.07678|1\.034579' docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/2026-06-16-nb1-reduced-rank-fisher-fix.md docs/dev-log/after-task/2026-06-16-nb1-reduced-rank-fisher-fix.md tests/testthat/test-julia-bridge.R README.md NEWS.md vignettes pkgdown-site/index.html`
+  -> expected historical check-log entries only; no active ledger, test,
+  README, NEWS, vignette, or dashboard stale blocker wording.
+  `rg -n 'NB1.*full parity|full native parity|complete bridge|CRAN-ready bridge|Gamma.*native parity|native parity.*Gamma|Gamma.*covered.*Julia|broad NB1|speed claim' docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/2026-06-16-nb1-reduced-rank-fisher-fix.md docs/dev-log/after-task/2026-06-16-nb1-reduced-rank-fisher-fix.md tests/testthat/test-julia-bridge.R README.md NEWS.md vignettes`
+  -> expected guardrail language and historical scan-command strings only; no
+  new broad/full parity claim.
+- Whitespace:
+  `git diff --check` -> clean in both `gllvmTMB` and
+  `../GLLVM.jl-integration`.
+- Files updated:
+  `tests/testthat/test-julia-bridge.R`;
+  `docs/dev-log/2026-06-16-nb1-reduced-rank-fisher-fix.md`;
+  `docs/dev-log/2026-06-16-nb1-reduced-rank-parity-audit.md`;
+  `docs/design/35-validation-debt-register.md`;
+  `docs/dev-log/coordination-board.md`;
+  `docs/dev-log/check-log.md`;
+  `docs/dev-log/after-task/2026-06-16-nb1-reduced-rank-fisher-fix.md`.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `devtools::document()`,
+  `pkgdown::check_pkgdown()`, and article renders. This slice changes one
+  targeted bridge test plus validation/dev-log prose; no roxygen, NAMESPACE,
+  generated Rd, README, NEWS, vignette, or pkgdown navigation file changed.
+
 ## 2026-06-16 -- NB1 reduced-rank Julia bridge parity audit
 
 Audited whether NB1 could move from no-latent fitted-object parity to

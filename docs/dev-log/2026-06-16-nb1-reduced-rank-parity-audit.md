@@ -9,6 +9,13 @@ reduced-rank (`d = 1`) native-vs-Julia fitted-object parity.
 
 Do **not** promote reduced-rank NB1 parity yet.
 
+**Superseded update, 2026-06-16 10:07 MDT:** the paired Julia fix
+`docs/dev-log/after-task/2026-06-16-nb1-fisher-boundary.md` in
+`GLLVM.jl-integration` stabilised NB1 Fisher information near `phi -> 0`.
+After that fix, the same reduced-rank bridge fixture is promoted by
+`test-julia-bridge.R` at the small-fixture point-objective level. This file
+remains the pre-fix audit that identified the boundary failure mode.
+
 The source parameterisation is aligned and the no-latent fitted object matches
 native `gllvmTMB`, but reduced-rank fits still show objective and nuisance/
 loading allocation drift. The drift is not solved by simply tightening the Julia

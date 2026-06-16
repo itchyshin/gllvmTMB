@@ -118,7 +118,7 @@ julia_grouped_dispersion_cases <- function() {
     nb1 = list(
       Y = y_count, family = nbinom1(), engine_family = "nb1",
       parameter = "phi", public = identity, phi = NULL,
-      native_report = "phi_nbinom1", native_loglik_tolerance = NULL
+      native_report = "phi_nbinom1", native_loglik_tolerance = 1e-3
     ),
     beta = list(
       Y = y_beta, family = Beta(), engine_family = "beta",
@@ -421,6 +421,23 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
           as.numeric(logLik(fit_jl)),
           as.numeric(logLik(fit_tmb)),
           tolerance = case$native_loglik_tolerance
+        )
+      }
+      if (identical(case$engine_family, "nb1")) {
+        expect_equal(
+          unname(fit_jl$alpha),
+          unname(fit_tmb$opt$par[names(fit_tmb$opt$par) == "b_fix"]),
+          tolerance = 1e-3
+        )
+        expect_equal(
+          unname(as.numeric(fit_jl$loadings)),
+          unname(as.numeric(fit_tmb$report$Lambda_B)),
+          tolerance = 1e-3
+        )
+        expect_equal(
+          unname(fit_jl$dispersion),
+          unname(fit_tmb$report[[case$native_report]]),
+          tolerance = 1e-3
         )
       }
     }

@@ -349,7 +349,7 @@ test_that("family mapping rejects unsupported families loudly", {
   expect_error(.gllvm_julia_family("nonsense"), "unsupported family")
 })
 
-test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unavailable", {
+test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   caps <- gllvm_julia_capabilities()
   expect_named(
     caps,
@@ -373,11 +373,12 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
     caps$family[caps$ci_no_x_bootstrap],
     .GLLVM_JULIA_CI_NO_X_FAMILIES
   )
-  nuisance <- c(
-    .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES,
-    .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
-  )
-  expect_false(any(caps$ci_no_x_wald[caps$family %in% nuisance]))
+  expect_true(all(caps$ci_no_x_wald[
+    caps$family %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES
+  ]))
+  expect_false(any(caps$ci_no_x_wald[
+    caps$family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
+  ]))
   expect_true(any(grepl("shared Gamma grouped dispersion", caps$notes)))
   expect_true(any(grepl("per-trait ordinal cutpoints", caps$notes)))
   expect_true(all(caps$status == "partial"))
@@ -1007,10 +1008,6 @@ test_that("confint recomputes from retained Julia bridge input", {
 test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup", {
   y <- matrix(c(1, 2, 3, 4, 2, 3, 4, 5), nrow = 2L)
   expect_error(
-    gllvm_julia_fit(y, family = nbinom1(), ci_method = "wald"),
-    "grouped-dispersion"
-  )
-  expect_error(
     gllvm_julia_fit(y, family = ordinal_probit(), ci_method = "wald"),
     "per-trait ordinal"
   )
@@ -1137,11 +1134,11 @@ test_that("gllvmTMB fit-time CI controls keep unsupported rows explicit", {
       data = df,
       trait = "trait",
       unit = "unit",
-      family = nbinom1(),
+      family = ordinal_probit(),
       engine = "julia",
       ci_method = "wald"
     ),
-    "grouped-dispersion"
+    "per-trait ordinal"
   )
 })
 
@@ -1286,6 +1283,26 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
       unname(case$public(fit$dispersion)),
       tolerance = 1e-12
     )
+    fit_ci <- gllvm_julia_fit(
+      case$Y,
+      family = case$family,
+      num.lv = 1L,
+      ci_method = "wald"
+    )
+    expect_equal(fit_ci$ci_method, "wald")
+    expect_equal(fit_ci$ci_status, "available")
+    expect_gt(length(fit_ci$ci_param_names), 0L)
+    expect_true(any(startsWith(
+      fit_ci$ci_param_names,
+      paste0(case$parameter, "[")
+    )))
+    ci <- confint(fit_ci)
+    expect_equal(attr(ci, "ci_method"), "wald")
+    expect_equal(attr(ci, "ci_status"), "available")
+    expect_true(any(startsWith(
+      rownames(ci),
+      paste0(case$parameter, "[")
+    )))
     if (!is.null(case$phi)) {
       expect_equal(
         unname(fit$dispersion_gllvm_phi),
@@ -1533,6 +1550,30 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
       unname(case$public(fit_jl$dispersion)),
       tolerance = 1e-12
     )
+    ci <- confint(fit_jl, method = "wald")
+    expect_equal(attr(ci, "ci_method"), "wald")
+    expect_equal(attr(ci, "ci_status"), "available")
+    expect_true(any(startsWith(
+      rownames(ci),
+      paste0(case$parameter, "[")
+    )))
+    fit_ci <- gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = case$family,
+      engine = "julia",
+      ci_method = "wald"
+    )
+    expect_equal(fit_ci$ci_method, "wald")
+    expect_equal(fit_ci$ci_status, "available")
+    stored_ci <- confint(fit_ci, method = "stored")
+    expect_equal(attr(stored_ci, "ci_method"), "wald")
+    expect_true(any(startsWith(
+      rownames(stored_ci),
+      paste0(case$parameter, "[")
+    )))
 
     if (!is.null(case$native_report)) {
       fit_tmb <- gllvmTMB(

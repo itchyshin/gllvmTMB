@@ -24,8 +24,9 @@
   Gaussian or mixed-family response masks, response masks with fixed-effect
   covariates, masked CIs, NB1-X, ordinal-X, mixed-family-X, and unsupported
   fixed-effect designs. Direct `gllvm_julia_fit()` calls can request stored
-  Wald/profile/bootstrap CI payloads for no-X gaussian, poisson, and Bernoulli
-  binomial rows, and ordinary `gllvmTMB(..., engine = "julia",
+  Wald/profile/bootstrap CI payloads for no-X gaussian, poisson, Bernoulli
+  binomial, nbinom2, nbinom1, beta, and gamma rows, and ordinary `gllvmTMB(...,
+  engine = "julia",
   ci_method = "wald" / "profile" / "bootstrap")` fits can request the same
   admitted no-X CI payloads at fit time. Ordinary Julia bridge fits also retain
   their bridge input so `confint(fit, method = "wald" / "profile" /
@@ -44,8 +45,8 @@
   unconditional random-effect redraws, ordinal residuals, ordinal simulation,
   mixed-family residuals/simulation, richer extractor parity, confidence
   intervals for
-  grouped-dispersion or per-trait ordinal rows, masked CIs, mixed-family CIs,
-  and CIs for X rows remain planned follow-up rows, as do mixed-family
+  per-trait ordinal rows, masked CIs, mixed-family CIs, and CIs for X rows
+  remain planned follow-up rows, as do mixed-family
   promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall
   is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
   when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB

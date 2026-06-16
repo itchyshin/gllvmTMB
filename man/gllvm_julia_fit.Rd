@@ -37,11 +37,11 @@ ignored. Currently routed for one-part no-X non-Gaussian point fits only.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 
-\item{ci_method}{Confidence-interval route for no-X Gaussian, Poisson, and
-Bernoulli binomial bridge rows. One of \code{"none"} (default), \code{"wald"},
-\code{"profile"}, or \code{"bootstrap"}. Grouped-dispersion rows, per-trait ordinal
-rows, response masks, mixed-family vectors, and fixed-effect-X rows remain
-loud gates.}
+\item{ci_method}{Confidence-interval route for admitted no-X bridge rows:
+Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
+Beta, and Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}, or
+\code{"bootstrap"}. Per-trait ordinal rows, response masks, mixed-family vectors,
+and fixed-effect-X rows remain loud gates.}
 
 \item{ci_level}{Nominal confidence level when \code{ci_method != "none"}.}
 

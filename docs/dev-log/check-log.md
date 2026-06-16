@@ -4,6 +4,63 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge grouped-dispersion CI admission
+
+Admitted no-X grouped-dispersion Wald/profile/bootstrap CI payloads for the
+Julia bridge rows that already route grouped nuisance parameters: NB2, NB1,
+Beta, and shared-Gamma. The paired runtime is `GLLVM.jl-integration` commit
+`b2ab8a5`, which added grouped adapters to the native non-Gaussian CI layer and
+green `test_bridge_grouped_dispersion.jl` / `test_bridge_capabilities.jl` /
+`test_bridge_ci.jl` before this R-side admission. The R bridge now removes the
+grouped-dispersion pre-Julia CI gate, marks grouped rows as `ci_no_x_* = TRUE`,
+normalises grouped CI payloads through `confint()`, and keeps per-trait ordinal,
+masked, mixed-family, and X-row CIs gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt`
+  -> `[]`.
+  `git status --short --branch` -> clean on
+  `codex/r-bridge-grouped-dispersion`.
+- Paired Julia checks before R admission:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  in `../GLLVM.jl-integration` -> `121/121` pass.
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> rerun `34/34` pass after updating the expected CI ledger.
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `64/64` pass.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  and later `air format R/julia-bridge.R` -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvm_julia_fit.Rd`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `12` expected Julia-runtime skips and `0`
+  failures after the final capability-note wording fix.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. Live tests now request grouped
+  direct-wrapper Wald CIs and grouped main-dispatch post-fit/stored Wald CIs
+  for NB2, NB1, Beta, and Gamma.
+- Capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(identical(caps$family[caps$ci_no_x_wald], gllvmTMB:::.GLLVM_JULIA_CI_NO_X_FAMILIES)); stopifnot(all(c("negbinomial", "nb1", "beta", "gamma") %in% caps$family[caps$ci_no_x_wald])); stopifnot(!any(caps$ci_no_x_wald[caps$family %in% gllvmTMB:::.GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES])); grouped_notes <- caps$notes[caps$family %in% c("negbinomial", "nb1", "beta", "gamma")]; stopifnot(all(grepl("no-X confint() are routed", grouped_notes, fixed = TRUE))); stopifnot(!any(grepl("richer extractor parity remains gated; CI and native parity promotion", grouped_notes, fixed = TRUE))); stopifnot(any(grepl("X-row CI and native parity promotion", grouped_notes, fixed = TRUE))); print(caps[, c("family", "ci_no_x_wald", "ci_no_x_profile", "ci_no_x_bootstrap", "status")], row.names = FALSE)'`
+  -> Gaussian, Poisson, Binomial, NB2, NB1, Beta, and Gamma are `TRUE` for
+  all `ci_no_x_*`; ordinal, ordinal-probit, and mixed-family remain `FALSE`.
+- Stale wording / boundary scan:
+  `rg -n "grouped-dispersion CIs|Grouped-dispersion CI endpoints|confidence intervals for grouped-dispersion|grouped-dispersion.*not routed|CI and native parity promotion are follow-ups|ci_no_x.*negbinomial|ci_no_x.*nb1|ci_no_x.*beta|ci_no_x.*gamma|no-X gaussian, poisson, and Bernoulli" R tests/testthat NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md man/gllvm_julia_fit.Rd`
+  -> expected hit only for `X-row CI and native parity promotion are follow-ups`.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes only the Julia
+  bridge CI admission gate, tests, generated Rd, and ledgers; it does not touch
+  formula grammar, TMB likelihood code, public article code, or pkgdown
+  navigation.
+
 ## 2026-06-16 -- R bridge fit-time no-X CI admission
 
 Admitted ordinary `gllvmTMB(..., engine = "julia", ci_method = ...)` fit-time

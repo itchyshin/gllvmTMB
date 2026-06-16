@@ -82,10 +82,7 @@
 )
 .GLLVM_JULIA_CI_NO_X_FAMILIES <- setdiff(
   .GLLVM_JULIA_BRIDGE_FAMILIES,
-  c(
-    .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES,
-    .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
-  )
+  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
 .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
   "fit_no_x",
@@ -232,8 +229,16 @@ gllvm_julia_capabilities <- function() {
   } else {
     "fixed-effect X remains gated; "
   }
-  ci_x_followup <- if (family %in% .GLLVM_JULIA_X_FAMILIES) {
-    "CI and native parity promotion are follow-ups"
+  ci_x_followup <- if (
+    family %in%
+      .GLLVM_JULIA_CI_NO_X_FAMILIES &&
+      family %in% .GLLVM_JULIA_X_FAMILIES
+  ) {
+    "X-row CI and native parity promotion are follow-ups"
+  } else if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
+    "X, X-row CI, and native parity promotion are follow-ups"
+  } else if (family %in% .GLLVM_JULIA_X_FAMILIES) {
+    "no-X CI, X-row CI, and native parity promotion are follow-ups"
   } else {
     "CI, X, and native parity promotion are follow-ups"
   }
@@ -317,7 +322,7 @@ gllvm_julia_capabilities <- function() {
       mask_clause,
       x_clause,
       postfit_clause,
-      "CI and native parity promotion are follow-ups"
+      ci_x_followup
     ))
   }
   if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
@@ -1764,11 +1769,11 @@ gllvm_julia_capabilities <- function() {
 #'   as `y`; `TRUE` cells contribute to the likelihood and `FALSE` cells are
 #'   ignored. Currently routed for one-part no-X non-Gaussian point fits only.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
-#' @param ci_method Confidence-interval route for no-X Gaussian, Poisson, and
-#'   Bernoulli binomial bridge rows. One of `"none"` (default), `"wald"`,
-#'   `"profile"`, or `"bootstrap"`. Grouped-dispersion rows, per-trait ordinal
-#'   rows, response masks, mixed-family vectors, and fixed-effect-X rows remain
-#'   loud gates.
+#' @param ci_method Confidence-interval route for admitted no-X bridge rows:
+#'   Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
+#'   Beta, and Gamma. One of `"none"` (default), `"wald"`, `"profile"`, or
+#'   `"bootstrap"`. Per-trait ordinal rows, response masks, mixed-family vectors,
+#'   and fixed-effect-X rows remain loud gates.
 #' @param ci_level Nominal confidence level when `ci_method != "none"`.
 #' @param ci_nboot Number of parametric bootstrap replicates when
 #'   `ci_method = "bootstrap"`.
@@ -1830,14 +1835,6 @@ gllvm_julia_fit <- function(
       stop(
         "engine = 'julia': confidence intervals for mixed-family vectors ",
         "are not routed yet. Use `ci_method = \"none\"` or engine = 'tmb'.",
-        call. = FALSE
-      )
-    }
-    if (fam %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES) {
-      stop(
-        "engine = 'julia': confidence intervals for grouped-dispersion ",
-        "bridge rows are not routed yet. Use `ci_method = \"none\"` or ",
-        "engine = 'tmb'.",
         call. = FALSE
       )
     }

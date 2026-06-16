@@ -2496,6 +2496,129 @@ test_that("engine = 'julia' admits trait-aligned mixed-family fits", {
   }
 })
 
+test_that("native TMB and engine = 'julia' agree on a no-dispersion MIXED-family reduced-rank fit", {
+  # R-FIRST point-parity evidence for the bridge's headline cross-distribution
+  # feature: a trait-aligned MIXED-family fit (one family per trait) where
+  # trait 1 = gaussian, trait 2 = poisson, trait 3 = binomial. Does native TMB
+  # (engine = "tmb": per-ROW family/link codes -- family_id_vec / link_id_vec --
+  # over a SHARED per-trait-intercept + reduced-rank latent block) reproduce the
+  # SAME fit as engine = "julia" (GLLVM.jl mixed payload: shared Lambda,
+  # per-trait $alpha means, families = c("gaussian","poisson","binomial"))?
+  #
+  # This is admissible ONLY because every component is a NO-DISPERSION family.
+  # The dispersion families (NB2/Beta/Gamma) and ordinal diverge structurally
+  # (native per-trait nuisance vs the engine's single shared scalar; see
+  # docs/dev-log/2026-06-15-dispersion-structure-divergence.md), so the mixed
+  # vector is RESTRICTED to Gaussian + Poisson + Binomial -- the components that
+  # already parity one-at-a-time (the single-family no-X rows above). With no
+  # dispersion parameter on any trait, the two engines maximise the SAME mixed
+  # marginal likelihood; the only difference is the optimiser and warm-start.
+  #
+  # The fixture uses a SHARED per-unit latent score `z` driving all three
+  # families through a common d = 1 factor, so Lambda is genuinely shared across
+  # the gaussian/poisson/binomial traits (a real reduced-rank cross-family
+  # coupling, not three decoupled fits).
+  #
+  # logLik / per-trait-mean / Sigma_B parity is delegated to the SAME shared
+  # expect_native_julia_estimate_parity() helper used by the single-family rows:
+  # (b) native opt$par["b_fix"] = the three per-trait intercepts (X_fix_names =
+  # traitg_trait/traitp_trait/traitb_trait) aligns 1:1 with the Julia $alpha
+  # payload (trait order); (c) Sigma_B = Lambda Lambda^T via
+  # getResidualCov(level = "unit") is shared-Lambda on BOTH sides. Tolerances
+  # follow the Poisson/Binomial single-family rows (Laplace-approximated marginal
+  # on the non-Gaussian traits) and were empirically confirmed across three
+  # seeds/sizes (n_unit 35/40/45, seeds 7/13/21), with generous margin:
+  #   * logLik:   max |diff| ~1.2e-8 observed  -> assert 1e-6 (flat-at-optimum
+  #     invariant; the two mixed Laplace marginals agree to ~8 sig figs).
+  #   * means / Sigma_B: max |diff| ~1.4e-6 / ~1.2e-5 observed -> assert 1e-3
+  #     (same shallow-surface rationale as the Poisson/Binomial rows; both
+  #     engines report convergence + PD Hessian).
+  #
+  # Double-gated skip_if_no_julia() + skip_if_not_heavy() (the native mixed
+  # MakeADFun + Laplace fit is the heavy part); small fixture (n_unit = 35, 3
+  # traits, d = 1) so the native fit is sub-second.
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  set.seed(7L)
+  n_unit <- 35L
+  units <- factor(seq_len(n_unit))
+  traits <- factor(
+    c("g_trait", "p_trait", "b_trait"),
+    levels = c("g_trait", "p_trait", "b_trait")
+  )
+  df <- expand.grid(
+    unit = units,
+    trait = traits,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  df$trait <- factor(df$trait, levels = levels(traits))
+  df$family <- factor(
+    ifelse(
+      df$trait == "g_trait",
+      "g",
+      ifelse(df$trait == "p_trait", "p", "b")
+    ),
+    levels = c("g", "p", "b")
+  )
+  # Shared per-unit latent score so the three families genuinely share Lambda.
+  z <- stats::rnorm(n_unit)
+  uu <- as.integer(df$unit)
+  gi <- df$family == "g"
+  pi <- df$family == "p"
+  bi <- df$family == "b"
+  df$value <- NA_real_
+  df$value[gi] <- 0.2 + 0.8 * z[uu[gi]] + stats::rnorm(sum(gi), sd = 0.5)
+  df$value[pi] <- stats::rpois(
+    sum(pi),
+    lambda = exp(0.6 + 0.5 * z[uu[pi]])
+  )
+  df$value[bi] <- stats::rbinom(
+    sum(bi),
+    size = 1L,
+    prob = stats::plogis(-0.1 + 0.9 * z[uu[bi]])
+  )
+
+  family_list <- list(g = gaussian(), p = poisson(), b = binomial())
+  attr(family_list, "family_var") <- "family"
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+
+  fit_tmb <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = family_list
+  )
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = family_list,
+    engine = "julia"
+  )
+
+  expect_s3_class(fit_tmb, "gllvmTMB_multi")
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "mixed_rr")
+  expect_equal(fit_jl$families, c("gaussian", "poisson", "binomial"))
+  # Sanity: native carries exactly the three per-trait intercepts (no
+  # per-trait dispersion nuisance interleaved), so b_fix aligns 1:1 with $alpha.
+  expect_equal(
+    sum(names(fit_tmb$opt$par) == "b_fix"),
+    length(fit_jl$alpha)
+  )
+
+  expect_native_julia_estimate_parity(
+    fit_tmb,
+    fit_jl,
+    tol_loglik = 1e-6,
+    tol_est = 1e-3
+  )
+})
+
 test_that("direct Julia bridge wrapper fits a supported Poisson X model", {
   skip_if_no_julia()
   df <- make_long_cov(n_unit = 35L, seed = 22L)

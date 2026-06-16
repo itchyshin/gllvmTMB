@@ -1300,6 +1300,41 @@ test_that("Julia bridge getResidualCov/Cor return Lambda Lambda^T at level unit"
   expect_equal(getResidualCor(mixed, level = "unit"), cov2cor(Sigma_Bm))
 })
 
+test_that("extract_Sigma_B() returns Lambda Lambda^T for a Julia bridge fit", {
+  # Gaussian bridge fixture (same loadings as the getResidualCov test).
+  gauss <- fake_julia_fit()
+  gauss$family <- "gaussian"
+  gauss$model <- "gaussian_rr"
+  gauss$loadings <- matrix(c(0.4, -0.3), nrow = 2L)
+  gauss$trait_names <- c("sp1", "sp2")
+
+  Lambda <- gauss$loadings
+  Sigma_B <- Lambda %*% t(Lambda)
+  dimnames(Sigma_B) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
+
+  out <- extract_Sigma_B(gauss)
+  # Historical {Sigma_B, R_B} list shape, carrying the point quantity.
+  expect_named(out, c("Sigma_B", "R_B"))
+  expect_equal(out$Sigma_B, Sigma_B)
+  expect_equal(out$R_B, cov2cor(Sigma_B))
+  # It is exactly the matrix getResidualCov(level = "unit") returns.
+  expect_equal(out$Sigma_B, getResidualCov(gauss, level = "unit"))
+  expect_equal(out$R_B, getResidualCor(gauss, level = "unit"))
+
+  # Regression: NO LONGER aborts with the misleading native-only message
+  # "Provide a fit returned by gllvmTMB" (extract_Sigma's gllvmTMB_multi guard);
+  # extract_Sigma_B(gauss) succeeds, so expect_no_error fully covers this.
+  expect_no_error(extract_Sigma_B(gauss))
+
+  # Sigma_B = Lambda Lambda^T is a point quantity for EVERY family (shared
+  # loading block), so a non-Gaussian (Poisson) bridge fit works too.
+  pois <- fake_julia_fit()
+  Lambda_p <- as.matrix(pois$loadings)
+  Sigma_Bp <- Lambda_p %*% t(Lambda_p)
+  dimnames(Sigma_Bp) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
+  expect_equal(extract_Sigma_B(pois)$Sigma_B, Sigma_Bp)
+})
+
 test_that("Julia bridge extract_communality returns c^2 = 1 for Gaussian, errors otherwise", {
   # Gaussian bridge fixture with known loadings + sigma_eps + trait names.
   gauss <- fake_julia_fit()

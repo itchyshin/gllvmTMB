@@ -26,6 +26,13 @@ Prefer \code{\link[=extract_Sigma]{extract_Sigma()}} for new code; that interfac
 for the rr-only \code{"shared"} component or the diag-only \code{"unique"}
 component, exposes the binomial-link implicit-residual option, and
 will be the entry point for 3+ rr tiers when the engine adds them.
+
+For a \code{gllvmTMB(engine = "julia")} bridge fit the payload carries a single
+shared loading block \eqn{\Lambda}, so this returns the implied between-trait
+covariance \eqn{\Sigma_B = \Lambda \Lambda^\top} (a point quantity, no CI)
+and its correlation — the same matrix as
+\link{getResidualCov}\verb{(fit, level = "unit")}, in the historical
+\code{Sigma_B} / \code{R_B} field names.
 }
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API; pass

@@ -16,6 +16,13 @@
 #' component, exposes the binomial-link implicit-residual option, and
 #' will be the entry point for 3+ rr tiers when the engine adds them.
 #'
+#' For a `gllvmTMB(engine = "julia")` bridge fit the payload carries a single
+#' shared loading block \eqn{\Lambda}, so this returns the implied between-trait
+#' covariance \eqn{\Sigma_B = \Lambda \Lambda^\top} (a point quantity, no CI)
+#' and its correlation — the same matrix as
+#' [getResidualCov]`(fit, level = "unit")`, in the historical
+#' `Sigma_B` / `R_B` field names.
+#'
 #' @param fit A fit returned by [gllvmTMB()].
 #' @return A list with `Sigma_B` (T x T covariance), `R_B` (correlation),
 #'   or `NULL` if no rr/diag term is present at the between-unit tier.
@@ -24,6 +31,13 @@
 #' @keywords internal
 #' @export
 extract_Sigma_B <- function(fit) {
+  if (inherits(fit, "gllvmTMB_julia")) {
+    out <- .gllvm_julia_residual_sigma(fit, "B")
+    if (is.null(out)) {
+      return(NULL)
+    }
+    return(list(Sigma_B = out$Sigma, R_B = out$R))
+  }
   out <- extract_Sigma(
     fit,
     level = "unit",

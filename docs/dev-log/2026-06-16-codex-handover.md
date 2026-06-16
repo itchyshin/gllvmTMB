@@ -5,8 +5,10 @@ be able to act from this alone. Maintainer: Shinichi Nakagawa (itchyshin).
 
 ## 0. Read-first / do-first
 
-- **Both repos are clean. NOTHING is pushed.** Two long-lived feature branches
-  hold completed, verified work that is *not yet on either remote `main`*.
+- **Both repos are clean.** The gllvmTMB `engine-julia` branch **is now pushed
+  to `origin/engine-julia`** (feature branch only — the CRAN-candidate `main` is
+  **untouched**). The GLLVM.jl branch remains local. The completed, verified work
+  is committed + on the remote, but **not yet on either `main`**.
 - **The work itself is done and green.** What remains is **landing it** (merges)
   and **two maintainer decisions** — not new features.
 - **Hard rule: do NOT push or merge to any `main` without the maintainer's
@@ -25,10 +27,10 @@ be able to act from this alone. Maintainer: Shinichi Nakagawa (itchyshin).
 ## 2. Exact repo state (verified 2026-06-16)
 
 ### gllvmTMB  (worktree: …/gllvmTMB)
-- Branch **`engine-julia` @ `9e42631`**, clean. **71 commits ahead of
-  `origin/engine-julia`** (all local, unpushed).
-- **`origin/main` @ `9fc9b7f`** — `engine-julia` is **71 ahead / 18 behind**
-  it. merge-base = `7a7e2096`.
+- Branch **`engine-julia` @ `99aadb1`**, clean, **pushed to and in sync with
+  `origin/engine-julia`** (0 unpushed). This is where to pull the work from.
+- **`origin/main` @ `9fc9b7f`** — `engine-julia` is **73 ahead / 18 behind**
+  it. merge-base = `7a7e2096`. `main` is **untouched** by this handover.
 - `origin/main` is a **CRAN candidate**: `cran-comments.md` carries a real
   `R CMD check --as-cran` tally of **0 errors / 2 warnings / 3 notes**, plus an
   **early `engine="julia"` bridge already merged via PR #473** (`fa2bf71`,

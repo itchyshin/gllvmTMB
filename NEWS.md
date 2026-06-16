@@ -11,6 +11,14 @@
   precision. Ordinal `residuals()`, `simulate()`, `augment()`, and link/response
   prediction remain unsupported.
 
+* `extract_cutpoints()` and `tidy(effects = "cutpoint")` now work on
+  `engine = "julia"` ordinal fits, returning the fitted cutpoints (they
+  previously aborted / refused). The Julia engine fits a **single shared**
+  ordered cutpoint vector across all ordinal traits, so the result is labelled
+  `trait = "(shared)"` and carries the full `C - 1` cutpoints — unlike native
+  gllvmTMB's per-trait `tau_2 .. tau_{K-1}`; standard errors are `NA` (the
+  bridge payload carries no TMB `sdreport`).
+
 * `residuals()` on `engine = "julia"` fits gains `type = "pearson"`
   ((observed − fitted) divided by the per-family response-scale standard
   deviation), with per-row-family scaling for mixed-family objects. Masked rows
@@ -21,9 +29,14 @@
   the implied between-trait covariance ΛΛᵀ; `level = "unit_obs"` returns
   σ²I for Gaussian and errors with a clear message for other families.
 
+* `extract_Sigma_B()` now works on `engine = "julia"` fits (it previously
+  aborted with a native-only message), returning the implied between-trait
+  covariance ΛΛᵀ and its correlation in the historical `{Sigma_B, R_B}` shape —
+  the same point quantity as `getResidualCov(level = "unit")`.
+
 * New `trait_families()` accessor returns the per-trait response family of a
-  multivariate fit; `print()` now shows a per-trait family-and-link table for
-  mixed-family fits.
+  multivariate fit, for both `engine = "tmb"` and `engine = "julia"` fits;
+  `print()` now shows a per-trait family-and-link table for mixed-family fits.
 
 * Native (`engine = "tmb"`) and `engine = "julia"` point estimates are now
   verified equal for the no-dispersion families: Gaussian, Poisson, and Binomial

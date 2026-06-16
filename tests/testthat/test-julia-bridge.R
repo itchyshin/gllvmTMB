@@ -1729,6 +1729,97 @@ test_that("native TMB and engine = 'julia' agree on the Binomial no-X reduced-ra
   )
 })
 
+test_that("native TMB and engine = 'julia' agree on the MASKED-response no-X Poisson/Binomial fits", {
+  # R-FIRST point-parity evidence for the MASKED (NA-response) no-X bridge rows,
+  # restricted to the no-DISPERSION families Poisson + Binomial. The bridge
+  # admits masked POINT fits by DROPPING the masked cells from the likelihood
+  # (mask = !is.na(y), cell-wise). The KEY QUESTION this test pins down: does
+  # native gllvmTMB's NA-response handling drop the SAME cells, so the two
+  # engines maximise the IDENTICAL masked marginal?
+  #
+  # MECHANISM (why they match cell-for-cell): in the long-format API each row is
+  # exactly one (trait, unit) CELL. drop_missing_response_rows(missing =
+  # "include") builds `is_y_observed = as.integer(!is.na(response))` PER ROW =
+  # PER CELL. That same vector feeds BOTH sides:
+  #   * native -- the C++ gate `if (is_y_observed(o)) nll -= obs_loglik(o, ...)`
+  #     skips exactly the masked cell's density (src/gllvmTMB.cpp), leaving the
+  #     partner cells of that unit in the likelihood.
+  #   * engine="julia" -- .gllvmTMB_julia_dispatch() scatters the SAME
+  #     `row_observed` into the p x n cell-mask Mask, which GLLVM.jl applies
+  #     element-wise (ifelse.(mask, ., 0)). So both drop the IDENTICAL cells; it
+  #     is genuine cell-wise masking, NOT whole-row/whole-unit deletion.
+  #
+  # The fixture masks 3 cells in 3 DISTINCT units (rows 1/50/73 -> units 1/16/5,
+  # one trait each), so each masked unit KEEPS 2 of its 3 trait-cells observed:
+  # this is what makes the cell-vs-row distinction observable. The test asserts
+  # both engines agree the observed-cell COUNT is nrow(df) - 3 before delegating
+  # logLik / means / Sigma_B parity to expect_native_julia_estimate_parity().
+  # Masked CIs / masked simulation stay rejected (CI-status), so this is a
+  # POINT-fit-only parity check.
+  #
+  # Double-gated skip_if_no_julia() + skip_if_not_heavy(); small fixture
+  # (n_unit = 34, 3 traits, d = 1) keeps the native fit sub-second. Tolerances
+  # from a 2-seed-per-family masked probe (Poisson seeds 25/21, Binomial seeds
+  # 31/33), mirroring the non-masked Poisson/Binomial rows:
+  #   * logLik:  max |diff| ~4.1e-9 observed -> assert 1e-6 (flat-at-optimum
+  #     invariant on the masked marginal).
+  #   * means / Sigma_B: max |diff| ~2.2e-5 observed -> assert 1e-3 (same
+  #     shallow-surface optimiser-convergence rationale as the non-masked rows).
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  na_rows <- c(1L, 50L, 73L) # 3 cells in 3 distinct units (partners stay in)
+  cases <- list(
+    list(response = "count", family = poisson(), model = "poisson_rr", seed = 25L),
+    list(response = "bin", family = binomial(), model = "binomial_rr", seed = 31L)
+  )
+
+  for (case in cases) {
+    df <- make_long_cov(n_unit = 34L, seed = case$seed)
+    df[[case$response]][na_rows] <- NA_real_
+    f <- stats::as.formula(
+      paste0(case$response, " ~ 0 + trait + latent(0 + trait | unit, d = 1)")
+    )
+
+    fit_tmb <- gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = case$family,
+      missing = miss_control(response = "include")
+    )
+    fit_jl <- gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = case$family,
+      engine = "julia",
+      missing = miss_control(response = "include")
+    )
+
+    expect_s3_class(fit_tmb, "gllvmTMB_multi")
+    expect_s3_class(fit_jl, "gllvmTMB_julia")
+    expect_equal(fit_jl$model, case$model)
+
+    # The KEY assertion: both engines drop the SAME 3 cells (cell-wise mask),
+    # leaving nrow(df) - 3 observed cells contributing to the likelihood.
+    n_observed <- nrow(df) - length(na_rows)
+    expect_equal(sum(fit_tmb$tmb_data$is_y_observed), n_observed)
+    expect_equal(sum(fit_jl$observed_mask), n_observed)
+    expect_equal(stats::nobs(fit_tmb), n_observed)
+    expect_equal(fit_jl$nobs, n_observed)
+
+    expect_native_julia_estimate_parity(
+      fit_tmb,
+      fit_jl,
+      tol_loglik = 1e-6,
+      tol_est = 1e-3
+    )
+  }
+})
+
 test_that("native TMB and engine = 'julia' agree on the Gaussian fixed-effect-X reduced-rank fit", {
   # R-FIRST point-parity evidence for the Gaussian fixed-effect-X bridge row:
   # does native TMB reproduce the SAME fit as engine = "julia" for the

@@ -307,6 +307,48 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
   }
 })
 
+test_that("NB1 grouped likelihood matches the native linear-variance kernel at fixed parameters", {
+  skip_if_no_julia()
+  gllvm_julia_setup()
+
+  Y <- matrix(
+    c(0L, 2L, 4L, 1L,
+      3L, 5L, 6L, 2L),
+    nrow = 2L,
+    byrow = TRUE,
+    dimnames = list(c("sp1", "sp2"), paste0("site", 1:4))
+  )
+  storage.mode(Y) <- "integer"
+  beta <- log(c(2.5, 5.5))
+  lambda <- matrix(0, nrow = 2L, ncol = 1L)
+  phi <- c(0.35, 1.10)
+
+  JuliaCall::julia_assign("nb1_Y", Y)
+  JuliaCall::julia_assign("nb1_Lambda", lambda)
+  JuliaCall::julia_assign("nb1_beta", beta)
+  JuliaCall::julia_assign("nb1_phi", phi)
+  julia_loglik <- JuliaCall::julia_eval(
+    paste0(
+      "GLLVM.nb1_grouped_marginal_loglik_laplace(",
+      "nb1_Y, nb1_Lambda, nb1_beta, nb1_phi;",
+      " link = GLLVM.LogLink())"
+    )
+  )
+
+  expected <- 0
+  for (t in seq_along(beta)) {
+    mu_t <- exp(beta[t])
+    expected <- expected + sum(stats::dnbinom(
+      Y[t, ],
+      mu = mu_t,
+      size = mu_t / phi[t],
+      log = TRUE
+    ))
+  }
+
+  expect_equal(as.numeric(julia_loglik), expected, tolerance = 1e-10)
+})
+
 test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and keeps native parity scoped", {
   skip_if_no_julia()
   f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)

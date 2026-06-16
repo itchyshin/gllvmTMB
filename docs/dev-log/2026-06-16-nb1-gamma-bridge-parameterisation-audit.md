@@ -33,10 +33,14 @@ Julia NB1 family uses the same variance rule and the same public bridge scale:
 The current `JUL-01` limitation for NB1 should therefore stay narrow:
 
 - IN: route/shape evidence through `gllvmTMB(..., engine = "julia")`, trait
-  labels, grouped `phi` payload, and native report-shape check.
+  labels, grouped `phi` payload, native report-shape check, and fixed-parameter
+  kernel evidence. The fixed-parameter check in `test-julia-bridge.R` evaluates
+  Julia `nb1_grouped_marginal_loglik_laplace()` with zero loadings and compares
+  it to the native linear-variance kernel
+  `dnbinom(mu = mu, size = mu / phi)`.
 - PARTIAL: fitted-object log-likelihood parity and broader estimator parity.
-- NEXT: a fixed-parameter likelihood audit, then a more stable native-vs-Julia
-  no-X fixture before the row can move beyond route/shape evidence.
+- NEXT: a stable native-vs-Julia no-X fitted fixture before the row can move
+  beyond route/kernel evidence.
 
 ## Gamma Decision
 
@@ -80,13 +84,10 @@ larger per-trait Gamma design.
 
 ## Next Tests
 
-1. NB1 fixed-parameter likelihood check:
-   compare native and Julia kernels on the same `beta`, `Lambda`, and `phi`
-   target where possible, before blaming the optimizer.
-2. NB1 stable no-X fitted fixture:
+1. NB1 stable no-X fitted fixture:
    require exact `df`, finite status, trait labels, `phi` scale identity, and a
    recorded tolerance for fitted log-likelihood.
-3. Gamma decision test:
+2. Gamma decision test:
    if Option B lands, assert the bridge Gamma row uses one dispersion group and
    exact `df = p + rr_df + 1`; if Option A lands, add native per-trait Gamma
    recovery and update all public scale/report paths.
@@ -100,4 +101,3 @@ larger per-trait Gamma design.
 - Fisher/Curie: design the NB1 fixed-parameter check and Gamma decision test.
 - Rose: block wording that says Gamma native parity while the oracle is scalar.
 - Shannon: require a live issue read before commenting on or closing `#488`.
-

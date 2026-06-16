@@ -4,6 +4,54 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- NB1 fixed-parameter Julia bridge kernel evidence
+
+Added a live Julia bridge test proving the NB1 grouped likelihood uses the same
+fixed-parameter linear-variance kernel as native `gllvmTMB`:
+`Var = mu * (1 + phi)` and `size = mu / phi`. This is kernel evidence only; it
+does not yet promote NB1 fitted-object objective parity.
+
+Evidence:
+
+- Rehydration:
+  `git status --short --branch && git log --oneline -8`
+  -> clean on `codex/r-bridge-grouped-dispersion`, tip `1e7e3c4`.
+  `git -C ../GLLVM.jl-integration status --short --branch && git -C ../GLLVM.jl-integration log --oneline -8`
+  -> clean on `codex/julia-per-trait-dispersion`, tip `2a07745`.
+- Pre-edit lane check:
+  `gh pr list --state open --limit 30 --json number,title,headRefName,updatedAt,isDraft,mergeable,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints docs/dev-log/coordination-board.md R/julia-bridge.R src/gllvmTMB.cpp`
+  -> current Codex programme commits only.
+- Exploratory fixed-parameter check:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla - <<'RS' ...`
+  -> Julia `GLLVM.nb1_grouped_marginal_loglik_laplace()` with zero loadings
+  matched `stats::dnbinom(mu = mu, size = mu / phi, log = TRUE)` at
+  `delta = -7.105427e-15`.
+- Test added:
+  `tests/testthat/test-julia-bridge.R` now includes
+  `NB1 grouped likelihood matches the native linear-variance kernel at fixed parameters`.
+- Targeted live bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 178` in 30.9 s.
+- Targeted no-Julia bridge test:
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 5 | PASS 59` in 5.2 s.
+- Stale-claim scans:
+  `rg -n "NB1.*full parity|full native parity|full parity|complete bridge|CRAN-ready bridge|NB1.*covered.*Julia|NB1.*fitted-object parity|Gamma.*native parity|native parity.*Gamma|Gamma.*covered.*Julia" R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-06-16-nb1-fixed-parameter-bridge-kernel.md`
+  -> expected negative-scope and scan-history hits only.
+  `rg -n "nb1_grouped_marginal_loglik_laplace|dnbinom\\(|mu / phi|phi_nbinom1|sigma_eps|alpha_t|Gamma|NB1" tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-16-nb1-fixed-parameter-bridge-kernel.md | head -180`
+  -> expected NB1 kernel and Gamma boundary hits.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `devtools::document()`,
+  `pkgdown::check_pkgdown()`, and article renders. This slice changes one
+  targeted bridge test and validation/dev-log prose; no roxygen, NAMESPACE,
+  generated Rd, README, NEWS, vignette, or pkgdown navigation file changed.
+
 ## 2026-06-16 -- NB1/Gamma bridge parameterisation audit
 
 Added a docs-only bridge audit to resolve the follow-up from the grouped

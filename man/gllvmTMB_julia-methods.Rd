@@ -125,5 +125,7 @@ retained-payload reconstructions only. Simulation is conditional on retained
 fitted values for admitted scalar-response rows only. Unit-tier covariance and
 raw ordination accessors are routed on the retained engine scale; richer
 extractor parity remains a separate bridge row. Confidence intervals are
-routed only for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows.
+routed only for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows;
+they may be requested at fit time through \code{gllvmTMB(ci_method = ...)}, or
+retrieved and recomputed through \code{confint()}.
 }

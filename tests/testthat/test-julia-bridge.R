@@ -433,7 +433,7 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   expect_true(caps$postfit_ordination[caps$family == "gamma"])
   expect_true(any(grepl("no-X confint\\(\\) are routed", caps$notes)))
   expect_true(any(grepl(
-    "direct gllvm_julia_fit\\(\\) no-X Wald/profile/bootstrap CI payloads",
+    "direct gllvm_julia_fit\\(\\) and gllvmTMB\\(\\.\\.\\., engine = \"julia\"\\)",
     caps$notes
   )))
   expect_true(any(grepl(
@@ -1036,6 +1036,112 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
   expect_error(
     gllvm_julia_fit(y, family = poisson(), mask = mask, ci_method = "wald"),
     "response-mask"
+  )
+})
+
+test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
+  df <- make_long()
+  seen <- new.env(parent = emptyenv())
+
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(
+      y,
+      family,
+      num.lv,
+      N,
+      X,
+      mask,
+      ci_method,
+      ci_level,
+      ci_nboot,
+      ci_seed,
+      ...
+    ) {
+      seen$y_dim <- dim(y)
+      seen$family <- family
+      seen$num.lv <- num.lv
+      seen$N <- N
+      seen$X <- X
+      seen$mask <- mask
+      seen$ci_method <- ci_method
+      seen$ci_level <- ci_level
+      seen$ci_nboot <- ci_nboot
+      seen$ci_seed <- ci_seed
+
+      out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+      out$engine <- "julia"
+      out$ci_method <- ci_method
+      out$ci_level <- ci_level
+      out
+    }
+  )
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = poisson(),
+    engine = "julia",
+    ci_method = "profile",
+    ci_level = 0.8,
+    ci_nboot = 9L,
+    ci_seed = 88L
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(seen$y_dim, c(3L, 10L))
+  expect_s3_class(seen$family, "family")
+  expect_equal(seen$num.lv, 1L)
+  expect_null(seen$N)
+  expect_null(seen$X)
+  expect_null(seen$mask)
+  expect_equal(seen$ci_method, "profile")
+  expect_equal(seen$ci_level, 0.8)
+  expect_equal(seen$ci_nboot, 9L)
+  expect_equal(seen$ci_seed, 88L)
+  expect_equal(fit$ci_method, "profile")
+  expect_equal(fit$ci_level, 0.8)
+})
+
+test_that("gllvmTMB fit-time CI controls keep unsupported rows explicit", {
+  df <- make_long()
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+  expect_error(
+    gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
+      engine = "tmb",
+      ci_method = "wald"
+    ),
+    "fit-time controls only"
+  )
+  expect_error(
+    gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
+      engine = "tmb",
+      ci_level = 0.8
+    ),
+    "fit-time controls only"
+  )
+  expect_error(
+    gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = nbinom1(),
+      engine = "julia",
+      ci_method = "wald"
+    ),
+    "grouped-dispersion"
   )
 })
 
@@ -1697,6 +1803,66 @@ test_that("engine = 'julia' main dispatch supports post-fit no-X CIs", {
     expect_gt(nrow(ci), 0L)
     expect_equal(attr(ci, "ci_method"), "wald")
     expect_equal(attr(ci, "ci_status"), "available")
+  }
+})
+
+test_that("engine = 'julia' main dispatch supports fit-time no-X CIs", {
+  skip_if_no_julia()
+  set.seed(493)
+  cases <- list(
+    gaussian = list(
+      Y = matrix(
+        stats::rnorm(3L * 28L),
+        nrow = 3L,
+        dimnames = list(paste0("sp", 1:3), paste0("site", 1:28))
+      ),
+      family = gaussian()
+    ),
+    poisson = list(
+      Y = matrix(
+        stats::rpois(3L * 28L, lambda = rep(c(2, 3, 5), each = 28L)),
+        nrow = 3L,
+        dimnames = list(paste0("sp", 1:3), paste0("site", 1:28))
+      ),
+      family = poisson()
+    ),
+    binomial = list(
+      Y = matrix(
+        stats::rbinom(
+          3L * 28L,
+          size = 1L,
+          prob = rep(c(0.25, 0.5, 0.75), each = 28L)
+        ),
+        nrow = 3L,
+        dimnames = list(paste0("sp", 1:3), paste0("site", 1:28))
+      ),
+      family = binomial()
+    )
+  )
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+
+  for (case in cases) {
+    df <- julia_bridge_matrix_to_long(case$Y)
+    fit <- gllvmTMB(
+      f,
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = case$family,
+      engine = "julia",
+      ci_method = "wald"
+    )
+    expect_s3_class(fit, "gllvmTMB_julia")
+    expect_equal(fit$ci_method, "wald")
+    expect_equal(fit$ci_level, 0.95)
+    expect_equal(fit$ci_status, "available")
+    ci <- confint(fit, method = "stored")
+    expect_gt(nrow(ci), 0L)
+    expect_equal(attr(ci, "ci_method"), "wald")
+    expect_equal(attr(ci, "ci_status"), "available")
+    s <- summary(fit)
+    expect_equal(s$status$ci_method, "wald")
+    expect_equal(s$status$ci_status, "available")
   }
 })
 

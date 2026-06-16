@@ -239,9 +239,10 @@ gllvm_julia_capabilities <- function() {
   }
   ci_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
     paste0(
-      "direct gllvm_julia_fit() no-X Wald/profile/bootstrap CI payloads ",
-      "are routed; gllvmTMB() fits retain bridge input for post-fit ",
-      "confint() recomputation; "
+      "direct gllvm_julia_fit() and gllvmTMB(..., engine = \"julia\") ",
+      "no-X Wald/profile/bootstrap CI payloads are routed; ",
+      "gllvmTMB() fits retain bridge input for post-fit confint() ",
+      "recomputation; "
     )
   } else {
     ""
@@ -1951,7 +1952,9 @@ gllvm_julia_fit <- function(
 #' fitted values for admitted scalar-response rows only. Unit-tier covariance and
 #' raw ordination accessors are routed on the retained engine scale; richer
 #' extractor parity remains a separate bridge row. Confidence intervals are
-#' routed only for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows.
+#' routed only for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows;
+#' they may be requested at fit time through `gllvmTMB(ci_method = ...)`, or
+#' retrieved and recomputed through `confint()`.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].
@@ -2446,6 +2449,10 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   unit_internal,
   family,
   weights = NULL,
+  ci_method = "none",
+  ci_level = 0.95,
+  ci_nboot = 200L,
+  ci_seed = 0L,
   call = NULL
 ) {
   cs <- parsed$covstructs
@@ -2600,7 +2607,11 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     num.lv = K,
     N = Narg,
     X = Xarg,
-    mask = if (has_missing_response) response_mask else NULL
+    mask = if (has_missing_response) response_mask else NULL,
+    ci_method = ci_method,
+    ci_level = ci_level,
+    ci_nboot = ci_nboot,
+    ci_seed = ci_seed
   )
   fit$call <- call
   fit$trait_levels <- traits

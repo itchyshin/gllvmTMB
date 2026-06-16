@@ -25,6 +25,10 @@ gllvmTMB(
   impute = NULL,
   silent = TRUE,
   engine = c("tmb", "julia"),
+  ci_method = c("none", "wald", "profile", "bootstrap"),
+  ci_level = 0.95,
+  ci_nboot = 200L,
+  ci_seed = 0L,
   site = NULL,
   species = NULL
 )
@@ -236,6 +240,21 @@ predictor-model formula (for Gaussian sugar, e.g. \code{x ~ z}) or an
 \code{R/julia-bridge.R}). The Julia path currently maps the unconstrained-
 ordination core (a single \code{latent()} block + per-trait intercepts) and
 errors on structures it does not yet support.}
+
+\item{ci_method}{Confidence-interval route requested at fit time for
+admitted \code{engine = "julia"} no-X rows. One of \code{"none"} (default),
+\code{"wald"}, \code{"profile"}, or \code{"bootstrap"}. Native \code{engine = "tmb"} fits use
+\code{\link[=confint]{confint()}} after fitting; non-default \verb{ci_*} arguments therefore error
+unless \code{engine = "julia"}. Grouped-dispersion rows, per-trait ordinal rows,
+response masks, mixed-family vectors, and fixed-effect-X rows remain gated.}
+
+\item{ci_level}{Nominal confidence level when \code{ci_method != "none"} on the
+Julia bridge.}
+
+\item{ci_nboot}{Number of parametric bootstrap replicates when
+\code{ci_method = "bootstrap"} on the Julia bridge.}
+
+\item{ci_seed}{Seed passed to the Julia bootstrap CI route.}
 
 \item{site}{(deprecated) alias for \code{unit}. Kept for backward
 compatibility. Use \code{unit = ...} in new code.}

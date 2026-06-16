@@ -4,6 +4,73 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge fit-time no-X CI admission
+
+Admitted ordinary `gllvmTMB(..., engine = "julia", ci_method = ...)` fit-time
+confidence-interval controls for the existing no-X Gaussian, Poisson, and
+Bernoulli binomial CI rows. The public `gllvmTMB()` signature now accepts
+`ci_method`, `ci_level`, `ci_nboot`, and `ci_seed`, forwards them through the
+Julia bridge main dispatch, and rejects non-default `ci_*` arguments for native
+`engine = "tmb"` fits with a post-fit `confint()` message. Grouped-dispersion
+CIs, per-trait ordinal CIs, masked CIs, mixed-family CIs, and X-row CIs remain
+gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt,mergeStateStatus`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- R/gllvmTMB.R R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/dev-log/check-log.md docs/design docs/dev-log/after-task NEWS.md man`
+  -> current local Codex programme commits only.
+- Live issue refresh:
+  `gh issue view 488 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,url,labels`
+  -> open bridge-gate drift audit, updated `2026-06-16T19:21:36Z`.
+  `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,url,labels`
+  -> open capability-matrix board, updated `2026-06-16T19:52:59Z`.
+  `gh issue view 10 --repo itchyshin/GLLVM.jl --json number,title,state,updatedAt,url,labels`
+  -> open R-bridge umbrella, updated `2026-05-30T22:24:34Z`.
+- Cross-twin argument wording scout:
+  `rg -n 'engine_control|ci_method|ci_level|ci_nboot|ci_seed' '/Users/z3437171/Dropbox/Github Local/drmTMB' '/Users/z3437171/Dropbox/Github Local/DRM.jl' '/Users/z3437171/Dropbox/Github Local/gllvmTMB' '/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' -g '!pkgdown-site/**' -g '!docs/dev-log/check-log.md' -g '!docs/dev-log/after-task/**' -g '!*.Rd'`
+  -> expected Julia bridge CI option names and the existing cross-twin
+  `engine_control` reservation only; no conflicting DRM/GLLVM public argument
+  convention was introduced.
+- Formatter:
+  `air format R/gllvmTMB.R R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly; unrelated formatter churn in `R/gllvmTMB.R` was
+  manually reverted before closeout.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB.Rd` and `man/gllvmTMB_julia-methods.Rd`.
+  `tail -5 man/gllvmTMB.Rd; grep -c '^\\keyword' man/gllvmTMB.Rd || true; tail -5 man/gllvmTMB_julia-methods.Rd; grep -c '^\\keyword' man/gllvmTMB_julia-methods.Rd || true`
+  -> both generated help files end cleanly and both have `0` literal
+  `\keyword` entries.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `12` expected Julia-runtime skips and `0`
+  failures.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures; live main-dispatch fit-time Wald CIs
+  now exercise Gaussian, Poisson, and Bernoulli rows through JuliaCall.
+- R capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(identical(caps$family[caps$ci_no_x_wald], gllvmTMB:::.GLLVM_JULIA_CI_NO_X_FAMILIES)); stopifnot(any(grepl("direct gllvm_julia_fit() and gllvmTMB(..., engine = \"julia\")", caps$notes, fixed = TRUE))); stopifnot(any(grepl("post-fit confint() recomputation", caps$notes, fixed = TRUE))); stopifnot(any(grepl("confint() remains gated until CI endpoints are admitted", caps$notes, fixed = TRUE))); print(caps[, c("family", "ci_no_x_wald", "ci_no_x_profile", "ci_no_x_bootstrap", "postfit_predict", "postfit_simulate", "postfit_ordination", "status")], row.names = FALSE)'`
+  -> CI flags remain true only for Gaussian, Poisson, and Bernoulli binomial;
+  the notes mention both direct wrapper and main-dispatch fit-time CI routing.
+- Stale wording / boundary scan:
+  `rg -n 'fit-time|ci_method|ci_level|ci_nboot|ci_seed|engine_control|main-dispatch CI control|There is still no fit-time Julia CI control|post-fit confint|grouped-dispersion CIs|masked CIs|X-row CIs' R tests/testthat NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-16-r-bridge-fit-time-ci-admission.md man`
+  -> expected implemented fit-time CI route, reserved `engine_control` wording,
+  historical check-log/after-task context, and explicit remaining CI gates only.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  R-side fit-time CI control surface, generated help files, ledgers, and the
+  local status widget; it does not touch formula grammar, compiled TMB code,
+  public articles, or pkgdown navigation.
+
 ## 2026-06-16 -- R bridge unit-tier covariance and raw ordination admission
 
 Admitted a narrow Julia bridge extractor row for `gllvmTMB_julia` objects:

@@ -87,12 +87,13 @@ Active lane guidance:
   `confint()` methods for `gllvmTMB_julia` objects. Direct
   `gllvm_julia_fit(..., ci_method = "wald" / "profile" / "bootstrap")` calls
   can request no-X CI payloads for Gaussian, Poisson, and Bernoulli binomial
-  rows. Ordinary `gllvmTMB(..., engine = "julia")` fits retain their bridge
-  input so `confint(fit, method = "wald" / "profile" / "bootstrap")` can
-  recompute the same admitted no-X CI payloads post-fit. There is still no
-  fit-time Julia CI control surface on `gllvmTMB()`; grouped-dispersion CIs,
-  per-trait ordinal CIs, masked CIs, mixed-family CIs, and X-row CIs remain
-  gated. Retained-score `predict()` / `fitted()` / response-Pearson
+  rows. Ordinary `gllvmTMB(..., engine = "julia", ci_method = "wald" /
+  "profile" / "bootstrap")` fits can request the same admitted no-X CI payloads
+  at fit time, and they retain their bridge input so `confint(fit, method =
+  "wald" / "profile" / "bootstrap")` can recompute those payloads post-fit.
+  Grouped-dispersion CIs, per-trait ordinal CIs, masked CIs, mixed-family CIs,
+  and X-row CIs remain gated. Retained-score `predict()` / `fitted()` /
+  response-Pearson
   `residuals()` are now routed for the live-tested no-X Gaussian, Poisson,
   Bernoulli, NB2, NB1, Beta, and Gamma rows. Ordinal and ordinal-probit bridge
   rows now route response-scale category probabilities and modal-class
@@ -143,7 +144,7 @@ Active lane guidance:
   residuals, ordinal-X, per-trait ordinal CIs, and `newdata` prediction remain
   later rows.
 - Next safe implementation lane: grouped-dispersion CI endpoints/status,
-  masked CI/status, main-dispatch CI control, richer extractor parity,
+  masked CI/status, richer extractor parity,
   mixed-family admission, NB1/ordinal fixed-effect-X design, X-row CI/status,
   or the native per-trait Gamma expansion spec, unless the maintainer
   explicitly asks to publish or rebase the bridge PR first.

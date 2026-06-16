@@ -25,7 +25,9 @@
   covariates, masked CIs, NB1-X, ordinal-X, mixed-family-X, and unsupported
   fixed-effect designs. Direct `gllvm_julia_fit()` calls can request stored
   Wald/profile/bootstrap CI payloads for no-X gaussian, poisson, and Bernoulli
-  binomial rows, and ordinary `gllvmTMB(..., engine = "julia")` fits retain
+  binomial rows, and ordinary `gllvmTMB(..., engine = "julia",
+  ci_method = "wald" / "profile" / "bootstrap")` fits can request the same
+  admitted no-X CI payloads at fit time. Ordinary Julia bridge fits also retain
   their bridge input so `confint(fit, method = "wald" / "profile" /
   "bootstrap")` can request the same admitted no-X CI payloads post-fit. The
   admitted post-fit surface is `coef()`, `summary()`, scoped no-X `confint()`,
@@ -38,8 +40,7 @@
   and ordinal-probit rows, and raw unit-tier covariance / ordination
   accessors (`extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`,
   `getResidualCor()`, `extract_ordination()`, `getLoadings()`, `getLV()`) on
-  the retained engine scale. There is still no fit-time Julia CI control
-  surface on `gllvmTMB()`. `newdata` prediction, `newdata` simulation,
+  the retained engine scale. `newdata` prediction, `newdata` simulation,
   unconditional random-effect redraws, ordinal residuals, ordinal simulation,
   mixed-family residuals/simulation, richer extractor parity, confidence
   intervals for

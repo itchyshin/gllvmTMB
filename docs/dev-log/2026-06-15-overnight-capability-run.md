@@ -7,9 +7,9 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 
 - **14 capability commits on `gllvmTMB@engine-julia` + 1 on `GLLVM.jl-integration`
   + 1 docs honesty fix on `GLLVM.jl` — nothing pushed.** All verified: canonical
-  native `test_local` **3136 pass / 0 fail / 0 error** (240 files; +44 vs 3092
-  baseline, no regression); **live heavy+julia bridge 826 pass / 0 fail / 0 skip**
-  (fresh end-to-end run against GLLVM.jl-integration `1dc9e98`); engine
+  native `test_local` **3151 pass / 0 fail / 0 error** (240 files; +59 vs 3092
+  baseline, no regression); **live heavy+julia bridge 841 pass / 0 fail / 0 skip**
+  (end-to-end against GLLVM.jl-integration `1dc9e98`, post-everything); engine
   `Pkg.test()` 3943 pass / 0 fail. (The post-compaction continuation — cutpoints,
   Sigma_B, guard tests, roadmap, plus two gap-audit fixes [`trait_families`
   bridge method, `tidy(cutpoint)`] — is detailed in that section below.)
@@ -91,9 +91,10 @@ surfaced two more genuine fixes. **6 more local commits — nothing pushed.**
   **PASS 3151 / FAIL 0 / ERROR 0** (240 files; +59 vs the 3092 baseline — the
   6 continuation slices, no regression); bridge file fixture
   **PASS 371 / FAIL 0 / ERROR 0**; **live heavy+julia bridge
-  PASS 826 / FAIL 0 / ERROR 0 / SKIP 0** (run after the cutpoints+Sigma_B
-  slices) — every live test ran against the real GLLVM.jl-integration `1dc9e98`
-  engine, no live regression. Both trees clean; nothing pushed.
+  PASS 841 / FAIL 0 / ERROR 0 / SKIP 0** (fresh run AFTER all 6 continuation
+  slices incl. the two gap-audit fixes) — every live test ran against the real
+  GLLVM.jl-integration `1dc9e98` engine, no live regression. Both trees clean;
+  nothing pushed.
 
 ## Standing constraints
 - R-first; the 7 amendments are binding (do **not** fill amendment-held cells:

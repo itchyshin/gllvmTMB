@@ -32,6 +32,22 @@
 #'   If the fit contains no `ordinal_probit()` traits, returns a
 #'   zero-row data frame with the same columns.
 #'
+#' ## Julia-engine bridge fits
+#'
+#' For a `gllvmTMB(engine = "julia")` ordinal bridge fit the function returns
+#' the fitted cutpoints from the bridge payload in the same five-column shape,
+#' but the **contract differs** from the native per-trait shape. The Julia
+#' engine fits a **single shared** ordered cutpoint vector across all ordinal
+#' traits (the bridge payload carries the full `C - 1` ordered cutpoints
+#' \eqn{\tau_1, \ldots, \tau_{C-1}} with no \eqn{\tau_1 = 0} anchor), whereas
+#' native `gllvmTMB` keeps **per-trait** cutpoints and reports the `K - 2` free
+#' values \eqn{\tau_2, \ldots, \tau_{K-1}} for each trait. The bridge therefore
+#' returns one row per shared cutpoint, the `trait` column is `"(shared)"`,
+#' `cutpoint_index` runs `1:(C - 1)`, and `tau_se` is `NA` (the bridge payload
+#' carries no TMB `sdreport`). A non-ordinal bridge fit errors clearly. See
+#' `docs/dev-log/2026-06-15-dispersion-structure-divergence.md` for the
+#' shared-vs-per-trait divergence.
+#'
 #' @references
 #' Hadfield, J. D. (2015). Increasing the efficiency of MCMC for
 #'   hierarchical phylogenetic models of categorical traits using
@@ -64,6 +80,13 @@ extract_cutpoints <- function(fit) {
     tau_se = numeric(0),
     stringsAsFactors = FALSE
   )
+  if (inherits(fit, "gllvmTMB_julia")) {
+    ## Bridge fits expose the POINT cutpoints only. The engine fits a SINGLE
+    ## SHARED cutpoint vector (full C - 1 ordered cutpoints), not the native
+    ## per-trait tau_2 .. tau_{K-1} shape; the helper returns the shared vector
+    ## in the same five-column frame and documents the divergence.
+    return(.gllvm_julia_cutpoints(fit))
+  }
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
   }

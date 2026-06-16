@@ -1093,6 +1093,60 @@ test_that("ordinal predict(type='prob') matches hand-computed F(tau - eta)", {
   }
 })
 
+test_that("extract_cutpoints() returns the shared cutpoints for an ordinal bridge fit", {
+  for (lk in c("LogitLink", "ProbitLink")) {
+    fit <- fake_ordinal_julia_fit(link = lk)
+    cuts <- suppressMessages(extract_cutpoints(fit))
+
+    ## Same five-column native shape.
+    expect_s3_class(cuts, "data.frame")
+    expect_named(
+      cuts,
+      c("trait", "cutpoint_index", "cutpoint_label", "tau_estimate", "tau_se")
+    )
+    ## One row per SHARED cutpoint (C - 1 = 2), labelled "(shared)".
+    expect_equal(nrow(cuts), length(fit$cutpoints))
+    expect_true(all(cuts$trait == "(shared)"))
+    ## Bridge indexes from 1 (full C - 1), not the native tau_2 .. tau_{K-1}.
+    expect_equal(cuts$cutpoint_index, seq_along(fit$cutpoints))
+    expect_equal(cuts$cutpoint_label, sprintf("cutpoint_%d", seq_along(fit$cutpoints)))
+    ## The fitted cutpoints come straight off the payload, in order.
+    expect_equal(cuts$tau_estimate, as.numeric(fit$cutpoints))
+    ## No TMB sdreport on the bridge payload => SEs are NA.
+    expect_true(all(is.na(cuts$tau_se)))
+  }
+
+  ## It emits the shared-vs-per-trait divergence advisory (not silent).
+  expect_message(
+    extract_cutpoints(fake_ordinal_julia_fit()),
+    "SINGLE SHARED"
+  )
+})
+
+test_that("extract_cutpoints() errors clearly on a non-ordinal bridge fit", {
+  fit <- fake_julia_fit() # Poisson bridge object
+  ## A clear ordinal-only message (the misleading native-only abort is checked
+  ## separately in the next block).
+  expect_error(
+    extract_cutpoints(fit),
+    "cutpoints exist only for ordinal fits"
+  )
+})
+
+test_that("extract_cutpoints() no longer emits the misleading native-only abort on a bridge fit", {
+  ## Ordinal bridge fit: succeeds (returns the shared cutpoints) instead of
+  ## aborting with the native-only "Provide a fit returned by gllvmTMB" message.
+  expect_no_error(suppressMessages(extract_cutpoints(fake_ordinal_julia_fit())))
+
+  ## Non-ordinal bridge fit: errors, but with the ordinal-only message, NOT the
+  ## misleading native-only abort.
+  err <- tryCatch(
+    suppressMessages(extract_cutpoints(fake_julia_fit())),
+    error = function(e) conditionMessage(e)
+  )
+  expect_false(any(grepl("Provide a fit returned by", err, fixed = TRUE)))
+})
+
 test_that("ordinal predict honours re_form = ~0 (drops the latent block)", {
   fit <- fake_ordinal_julia_fit()
   pr0 <- predict(fit, type = "prob", re_form = ~0)

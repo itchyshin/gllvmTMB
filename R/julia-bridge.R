@@ -807,6 +807,47 @@ gllvm_julia_capabilities <- function() {
   out
 }
 
+## Fitted ordinal cutpoints from the cached bridge point estimates, returned in
+## the SAME data-frame shape extract_cutpoints() emits for a native fit (columns
+## trait / cutpoint_index / cutpoint_label / tau_estimate / tau_se).
+##
+## Engine-vs-native divergence (docs/dev-log/2026-06-15-dispersion-structure-
+## divergence.md): the native TMB engine keeps PER-TRAIT cutpoints and fixes
+## tau_1 = 0 (Hadfield 2015), reporting the K - 2 FREE cutpoints tau_2 .. tau_{K-1}
+## for each trait. The Julia engine instead fits a SINGLE SHARED ordered cutpoint
+## vector across all ordinal traits, and the bridge payload (`$cutpoints`) carries
+## the FULL C - 1 ordered cutpoints tau_1 .. tau_{C-1} (no tau_1 = 0 anchor). So the
+## bridge return cannot be byte-identical to native: it has C - 1 rows (not K - 2),
+## indexes from 1 (not 2), and the cutpoints are shared (not per trait). We label
+## the shared trait dimension "(shared)" and emit an advisory documenting the
+## divergence so the difference from the native per-trait shape is explicit.
+## tau_se is NA for every row: the bridge payload carries no TMB sdreport.
+.gllvm_julia_cutpoints <- function(object) {
+  if (!.gllvm_julia_is_ordinal_object(object)) {
+    fam <- unique(.gllvm_julia_trait_families(object))
+    cli::cli_abort(c(
+      "extract_cutpoints(): cutpoints exist only for ordinal fits.",
+      "x" = "This engine = {.val julia} bridge fit has non-ordinal family {.val {fam[1]}}.",
+      ">" = "Cutpoints are defined only for {.fn ordinal} / {.fn ordinal_probit} fits."
+    ))
+  }
+  ## Reuse the validated predict() helper: finite, strictly increasing, length C - 1.
+  tau <- .gllvm_julia_ordinal_cutpoints(object)
+  C <- .gllvm_julia_ordinal_C(object, tau)
+  cli::cli_inform(c(
+    "i" = "The engine = {.val julia} bridge fits a SINGLE SHARED ordered cutpoint vector across all ordinal traits, so this returns the {length(tau)} shared cutpoints (labelled trait {.val (shared)}), not the native per-trait {.code tau_2 .. tau_{{K-1}}} shape.",
+    ">" = "Native {.fn gllvmTMB} fixes {.code tau_1 = 0} and reports {.code K - 2} free cutpoints PER trait; the bridge payload carries the full {.code C - 1} shared cutpoints with no {.code tau_1 = 0} anchor. Standard errors are {.code NA} (no TMB {.code sdreport})."
+  ))
+  data.frame(
+    trait = rep("(shared)", length(tau)),
+    cutpoint_index = seq_along(tau),
+    cutpoint_label = sprintf("cutpoint_%d", seq_along(tau)),
+    tau_estimate = tau,
+    tau_se = rep(NA_real_, length(tau)),
+    stringsAsFactors = FALSE
+  )
+}
+
 #' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).

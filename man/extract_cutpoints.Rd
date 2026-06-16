@@ -24,6 +24,22 @@ the report is unavailable.}
 
 If the fit contains no \code{ordinal_probit()} traits, returns a
 zero-row data frame with the same columns.
+\subsection{Julia-engine bridge fits}{
+
+For a \code{gllvmTMB(engine = "julia")} ordinal bridge fit the function returns
+the fitted cutpoints from the bridge payload in the same five-column shape,
+but the \strong{contract differs} from the native per-trait shape. The Julia
+engine fits a \strong{single shared} ordered cutpoint vector across all ordinal
+traits (the bridge payload carries the full \code{C - 1} ordered cutpoints
+\eqn{\tau_1, \ldots, \tau_{C-1}} with no \eqn{\tau_1 = 0} anchor), whereas
+native \code{gllvmTMB} keeps \strong{per-trait} cutpoints and reports the \code{K - 2} free
+values \eqn{\tau_2, \ldots, \tau_{K-1}} for each trait. The bridge therefore
+returns one row per shared cutpoint, the \code{trait} column is \code{"(shared)"},
+\code{cutpoint_index} runs \code{1:(C - 1)}, and \code{tau_se} is \code{NA} (the bridge payload
+carries no TMB \code{sdreport}). A non-ordinal bridge fit errors clearly. See
+\code{docs/dev-log/2026-06-15-dispersion-structure-divergence.md} for the
+shared-vs-per-trait divergence.
+}
 }
 \description{
 For traits fitted with \code{\link[=ordinal_probit]{ordinal_probit()}}, returns a tidy data frame

@@ -5,10 +5,14 @@ resolved** — defines a concrete engine-alignment task for the maintainer.
 
 ## Summary
 
-A **systematic structural divergence** between the twin engines for **every
-dispersion family**. It is the reason native-vs-`engine="julia"` *point*-parity
-holds for the no-dispersion families but not for the dispersion families, and it
-is **not** fixable by a scale transform.
+A **systematic structural divergence** between the twin engines: `GLLVM.jl` shares
+a single trait-level nuisance parameter where `gllvmTMB` estimates one **per
+trait**. Confirmed for **every dispersion family** (NB2/NB1/Beta/Gamma) and for
+**ordinal cutpoints** (native `src/gllvmTMB.cpp` keeps per-trait cutpoints,
+`n_ordinal_cuts_per_trait(t)`; the engine's `OrdinalFit.τ` is shared across
+species). It is the reason native-vs-`engine="julia"` *point*-parity holds for the
+no-dispersion families but not for the dispersion or ordinal families, and it is
+**not** fixable by a scale transform.
 
 ## The divergence (code-confirmed)
 
@@ -44,7 +48,7 @@ shared-dispersion alignment breaks the test loudly and prompts promotion.
 |---|---|---|
 | Gaussian, Poisson, Binomial (no dispersion) | **HOLDS** (logLik ~1e-9; est/Σ_B ~1e-5) | parity evidence recorded (`6c646cc`, `c06c96c`) |
 | NB2, NB1, Beta, Gamma, tweedie, betabinomial (dispersion) | **cannot hold** until dispersion structure aligns | stays `partial` |
-| Ordinal (cutpoints) | not yet investigated | — |
+| Ordinal (per-trait cutpoints) | **cannot hold** — same shared-vs-per-trait pattern (native per-trait cutpoints vs engine shared `τ`) | stays `partial` |
 
 ## Alignment options (maintainer decision; not done tonight)
 

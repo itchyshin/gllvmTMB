@@ -3,6 +3,37 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+* `engine = "julia"` ordinal (and ordinal-probit) fits now support
+  `predict(type = "prob")` (per-category probabilities `P(y = c)`, the default)
+  and `predict(type = "class")` (modal category). The Julia bridge payload now
+  carries the fitted cutpoints, and the per-category probabilities are formed in
+  R under the cumulative link; they match the engine's probabilities to machine
+  precision. Ordinal `residuals()`, `simulate()`, `augment()`, and link/response
+  prediction remain unsupported.
+
+* `residuals()` on `engine = "julia"` fits gains `type = "pearson"`
+  ((observed − fitted) divided by the per-family response-scale standard
+  deviation), with per-row-family scaling for mixed-family objects. Masked rows
+  stay `NA`; ordinal Pearson residuals are not defined.
+
+* `getResidualCov()` / `getResidualCor()` now work on `engine = "julia"` fits
+  (they previously aborted with a native-only message). `level = "unit"` returns
+  the implied between-trait covariance ΛΛᵀ; `level = "unit_obs"` returns
+  σ²I for Gaussian and errors with a clear message for other families.
+
+* New `trait_families()` accessor returns the per-trait response family of a
+  multivariate fit; `print()` now shows a per-trait family-and-link table for
+  mixed-family fits.
+
+* Native (`engine = "tmb"`) and `engine = "julia"` point estimates are now
+  verified equal for the no-dispersion families: Gaussian, Poisson, and Binomial
+  no-X reduced-rank fits agree on log-likelihood, per-trait means, and the
+  implied between-trait covariance (heavy-gated parity tests). Dispersion
+  families differ structurally — native estimates a per-trait dispersion while
+  `GLLVM.jl` uses a single shared scalar — so NB2/NB1/Beta/Gamma do not yet have
+  point parity; this is recorded as an engine-alignment task, not a fitted-model
+  claim.
+
 * Mixed-family fits now resolve named `family = list(...)` entries by selector
   level name instead of accidental list position. Unnamed lists keep the
   existing level-order behavior; partially or incorrectly named lists now fail

@@ -124,6 +124,12 @@
 #'     profile-based intervals are unavailable. Inspect bootstrap warnings,
 #'     failed replicates, and interval width before treating the intervals
 #'     as final.
+#'   \item \strong{Julia-engine bridge fits} are not handled here. The
+#'     point cross-trait correlation for a bridge fit is exactly
+#'     \code{cov2cor(Lambda Lambda^T)} at \code{level = "unit"}, which is
+#'     already returned by \code{\link{getResidualCor}(fit, level = "unit")};
+#'     this extractor would only add the (out-of-scope) CI columns, so use
+#'     \code{getResidualCor()} for bridge correlations.
 #' }
 #'
 #' @seealso \code{\link{extract_Sigma}}, \code{\link{bootstrap_Sigma}},

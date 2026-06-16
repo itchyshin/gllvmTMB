@@ -135,6 +135,21 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
 #' denominator by default; pass `link_residual = "none"` to suppress.
 #'
+#' ## Julia-engine bridge fits
+#'
+#' For a `gllvmTMB(engine = "julia")` bridge fit the payload is always a
+#' single between-unit reduced-rank loading block with no `unique()` term, so
+#' \eqn{\boldsymbol\Psi = \mathbf 0}. Only `level = "unit"` is defined (there is
+#' no within-unit shared block). For a **Gaussian** bridge fit the link residual
+#' is also zero, so `c_t^2 = 1` for every trait (the degenerate latent-only case
+#' above); the point vector is returned with the same advisory. For a
+#' **non-Gaussian** bridge fit the informative communality depends on the
+#' family-specific link-scale residual, which is derived from fitted dispersions
+#' and means that the bridge payload does not carry; the function therefore
+#' errors with a bridge-specific message rather than fabricate a value. CIs
+#' (`ci = TRUE`) are not available for bridge fits (no TMB `sdreport`); use the
+#' native engine for intervals.
+#'
 #' @param fit A fit returned by [gllvmTMB()]. A [bootstrap_Sigma()] result is
 #'   also accepted when it contains `communality` summaries; in that case the
 #'   function reuses the stored point estimates and percentile bounds rather
@@ -200,6 +215,19 @@ extract_communality <- function(
   method <- match.arg(method)
   if (inherits(fit, "bootstrap_Sigma")) {
     return(.communality_from_bootstrap(fit, level = level, ci = isTRUE(ci)))
+  }
+  if (inherits(fit, "gllvmTMB_julia")) {
+    ## Bridge fits expose the POINT communality only; CI routes stay native
+    ## (the bridge payload carries no TMB sdreport / report for delta-method,
+    ## profile, or bootstrap intervals).
+    if (isTRUE(ci)) {
+      cli::cli_abort(c(
+        "extract_communality(ci = TRUE) is not available for an engine = {.val julia} bridge fit.",
+        "i" = "The bridge payload carries no TMB {.code sdreport} / {.code report}, so profile, Wald, and bootstrap intervals cannot be built.",
+        ">" = "Use {.code ci = FALSE} for the point estimate, or refit with the native {.fn gllvmTMB} engine for intervals."
+      ))
+    }
+    return(.gllvm_julia_communality(fit, level))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort(

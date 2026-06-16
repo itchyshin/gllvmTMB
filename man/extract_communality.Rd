@@ -71,6 +71,22 @@ For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
 for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
 denominator by default; pass \code{link_residual = "none"} to suppress.
 }
+
+\subsection{Julia-engine bridge fits}{
+
+For a \code{gllvmTMB(engine = "julia")} bridge fit the payload is always a
+single between-unit reduced-rank loading block with no \code{unique()} term, so
+\eqn{\boldsymbol\Psi = \mathbf 0}. Only \code{level = "unit"} is defined (there is
+no within-unit shared block). For a \strong{Gaussian} bridge fit the link residual
+is also zero, so \code{c_t^2 = 1} for every trait (the degenerate latent-only case
+above); the point vector is returned with the same advisory. For a
+\strong{non-Gaussian} bridge fit the informative communality depends on the
+family-specific link-scale residual, which is derived from fitted dispersions
+and means that the bridge payload does not carry; the function therefore
+errors with a bridge-specific message rather than fabricate a value. CIs
+(\code{ci = TRUE}) are not available for bridge fits (no TMB \code{sdreport}); use the
+native engine for intervals.
+}
 }
 \examples{
 \dontrun{

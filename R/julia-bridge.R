@@ -741,6 +741,72 @@ gllvm_julia_capabilities <- function() {
   list(Sigma = Sigma, R = R)
 }
 
+## Per-trait communality c^2_t from the cached bridge point estimates,
+## mirroring the native extract_communality() return shape (a bare named
+## numeric vector at level = "unit").
+##
+##   c^2_t = (Lambda Lambda^T)_{tt} / [(Lambda Lambda^T)_{tt} + Psi_{tt} + sigma^2_d].
+##
+## The bridge payload is ALWAYS a single shared reduced-rank latent block with
+## NO unique() term, so Psi = 0 for every family. The denominator therefore
+## reduces to (Lambda Lambda^T)_{tt} + sigma^2_d, where sigma^2_d is the
+## family-specific link-scale residual that extract_Sigma() adds under the
+## native default link_residual = "auto".
+##   * Gaussian: sigma^2_d = 0 and Psi = 0, so c^2_t = (LL^T)_{tt} / (LL^T)_{tt}
+##     = 1 for every trait. This is the degenerate latent-only case the native
+##     extract_communality() documents (and returns identically, with an
+##     advisory) for a Gaussian fit that has latent() but no unique(). It is
+##     well-defined, so we return it -- with the same one-shot advisory the
+##     native path emits -- rather than erroring.
+##   * Non-Gaussian: the only term that would make c^2_t informative (< 1) is
+##     the family link residual sigma^2_d, which the native engine derives from
+##     fitted dispersions / mus (fit$tmb_data, fit$report$eta, fit$report$phi_*).
+##     The bridge payload carries none of these, so the informative quantity is
+##     NOT computable from the cache. We error with a clear bridge-specific
+##     message rather than fabricate a uniform 1 (which would silently drop the
+##     link-scale residual the native default applies).
+## Only level = "unit" (B tier) is defined: the bridge has no within-unit
+## reduced-rank block, so level = "unit_obs" communality has no shared block.
+.gllvm_julia_communality <- function(object, level) {
+  traits <- .gllvm_julia_trait_names(object)
+  if (!identical(level, "B")) {
+    cli::cli_abort(c(
+      "extract_communality(): per-trait communality is only defined at {.code level = \"unit\"} for an engine = {.val julia} bridge fit.",
+      "i" = "The bridge payload carries a single between-unit reduced-rank loading block; there is no within-unit shared block at {.code level = \"unit_obs\"}."
+    ))
+  }
+  fam <- .gllvm_julia_trait_families(object)
+  if (!all(fam == "gaussian")) {
+    bad <- unique(fam[fam != "gaussian"])
+    cli::cli_abort(c(
+      paste0(
+        "extract_communality(): communality is not defined for a ",
+        "{.val {bad[1]}} engine = {.val julia} bridge fit."
+      ),
+      "i" = "The bridge has no {.code unique()} term, so the denominator reduces to {.code Lambda Lambda^T} plus the family-specific link-scale residual; that residual is derived from fitted dispersions / means that the bridge payload does not carry.",
+      ">" = "Refit the same data with the native {.fn gllvmTMB} engine (which carries the TMB report) to obtain non-Gaussian communality."
+    ))
+  }
+  Sigma_B <- .gllvm_julia_residual_sigma(object, "B")
+  if (is.null(Sigma_B)) {
+    return(NULL)
+  }
+  shared <- diag(Sigma_B$Sigma)
+  ## Gaussian, no unique(): total = shared, so c^2 = shared / shared = 1.
+  ## Written as the explicit ratio (not a hard-coded 1) so a degenerate
+  ## zero-variance trait yields NaN exactly as the native division would.
+  out <- shared / shared
+  names(out) <- traits
+  ## Mirror the native latent-only advisory: a Gaussian fit with latent()
+  ## but no unique() has Psi = 0, so every communality is 1 and tells you
+  ## nothing about trait integration.
+  cli::cli_inform(c(
+    "i" = "Communality is 1 for every trait because this Gaussian bridge fit has a {.code latent()} block but no {.code unique()} term ($\\Psi = 0$), so all trait variance is shared.",
+    ">" = "This is the degenerate latent-only case; it carries no information about trait integration."
+  ))
+  out
+}
+
 #' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).

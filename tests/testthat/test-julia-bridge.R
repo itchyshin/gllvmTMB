@@ -1246,6 +1246,105 @@ test_that("Julia bridge getResidualCov/Cor return Lambda Lambda^T at level unit"
   expect_equal(getResidualCor(mixed, level = "unit"), cov2cor(Sigma_Bm))
 })
 
+test_that("Julia bridge extract_communality returns c^2 = 1 for Gaussian, errors otherwise", {
+  # Gaussian bridge fixture with known loadings + sigma_eps + trait names.
+  gauss <- fake_julia_fit()
+  gauss$family <- "gaussian"
+  gauss$model <- "gaussian_rr"
+  gauss$loadings <- matrix(c(0.4, -0.3), nrow = 2L)
+  gauss$sigma_eps <- 0.5
+  gauss$trait_names <- c("sp1", "sp2")
+
+  # Gaussian, no unique() => Psi = 0 and sigma^2_d = 0, so c^2_t = 1 for all
+  # traits (the degenerate latent-only case). Hand-computed:
+  #   shared_t = (Lambda Lambda^T)_tt ; total_t = shared_t ; c^2_t = 1.
+  c2_expected <- c(sp1 = 1, sp2 = 1)
+  c2 <- suppressMessages(extract_communality(gauss, level = "unit"))
+  expect_equal(c2, c2_expected)
+  expect_equal(names(c2), c("sp1", "sp2"))
+
+  # The legacy "B" alias routes to the same quantity.
+  expect_equal(
+    suppressMessages(suppressWarnings(extract_communality(gauss, level = "B"))),
+    c2_expected
+  )
+
+  # Regression: it NO LONGER aborts with the misleading native-only message
+  # "Provide a fit returned by gllvmTMB" -- it returns the c^2 vector instead.
+  expect_no_error(suppressMessages(extract_communality(gauss, level = "unit")))
+  gauss_ok <- tryCatch(
+    {
+      suppressMessages(extract_communality(gauss, level = "unit"))
+      NA_character_
+    },
+    error = function(e) conditionMessage(e)
+  )
+  expect_true(is.na(gauss_ok))
+
+  # level = "unit_obs" is not defined for the bridge (no within-unit shared
+  # block); it errors with a clear bridge-specific message, NOT the native one.
+  expect_error(
+    extract_communality(gauss, level = "unit_obs"),
+    "only defined at .*unit.* for an engine"
+  )
+  uo_msg <- conditionMessage(tryCatch(
+    extract_communality(gauss, level = "unit_obs"),
+    error = function(e) e
+  ))
+  expect_false(grepl("Provide a fit returned by", uo_msg, fixed = TRUE))
+
+  # ci = TRUE is not available for bridge fits (no TMB sdreport).
+  expect_error(
+    extract_communality(gauss, level = "unit", ci = TRUE),
+    "not available for an engine"
+  )
+
+  # Non-Gaussian (Poisson) bridge: communality is NOT cleanly definable on the
+  # payload (informative value needs the family link-scale residual, which is
+  # derived from fitted dispersions/means absent from the cache). It errors with
+  # a clear bridge-specific message, NOT the misleading native one.
+  pois <- fake_julia_fit() # family = "poisson"
+  expect_error(
+    extract_communality(pois, level = "unit"),
+    "not defined for a .*poisson"
+  )
+  pois_msg <- conditionMessage(tryCatch(
+    extract_communality(pois, level = "unit"),
+    error = function(e) e
+  ))
+  expect_false(grepl("Provide a fit returned by", pois_msg, fixed = TRUE))
+
+  # Mixed-family bridge object is likewise not Gaussian-only -> errors clearly.
+  mixed <- fake_mixed_julia_fit()
+  expect_error(
+    extract_communality(mixed, level = "unit"),
+    "not defined for a"
+  )
+})
+
+test_that("Julia bridge cross-trait correlations come from getResidualCor (extract_correlations not duplicated)", {
+  # The POINT cross-trait correlation for a bridge fit is exactly
+  # cov2cor(Lambda Lambda^T) at level = "unit", already returned by
+  # getResidualCor(); extract_correlations() is intentionally NOT wired for
+  # bridge fits (it would only add out-of-scope CI columns).
+  gauss <- fake_julia_fit()
+  gauss$family <- "gaussian"
+  gauss$model <- "gaussian_rr"
+  gauss$loadings <- matrix(c(0.4, -0.3), nrow = 2L)
+  gauss$trait_names <- c("sp1", "sp2")
+
+  Lambda <- gauss$loadings
+  R_expected <- cov2cor(Lambda %*% t(Lambda))
+  dimnames(R_expected) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
+  expect_equal(getResidualCor(gauss, level = "unit"), R_expected)
+
+  # extract_correlations() still routes through the native-only guard.
+  expect_error(
+    extract_correlations(gauss, tier = "unit"),
+    "Provide a fit returned by"
+  )
+})
+
 # --- capability guards (pure-R: fire before any Julia dependency) -----------
 
 test_that("engine = 'julia' rejects non reduced-rank covariance terms", {

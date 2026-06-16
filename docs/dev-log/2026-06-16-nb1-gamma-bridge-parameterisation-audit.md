@@ -37,10 +37,14 @@ The current `JUL-01` limitation for NB1 should therefore stay narrow:
   kernel evidence. The fixed-parameter check in `test-julia-bridge.R` evaluates
   Julia `nb1_grouped_marginal_loglik_laplace()` with zero loadings and compares
   it to the native linear-variance kernel
-  `dnbinom(mu = mu, size = mu / phi)`.
-- PARTIAL: fitted-object log-likelihood parity and broader estimator parity.
-- NEXT: a stable native-vs-Julia no-X fitted fixture before the row can move
-  beyond route/kernel evidence.
+  `dnbinom(mu = mu, size = mu / phi)`. The follow-up no-latent fitted-object
+  test fits `value ~ 0 + trait` with `engine = "julia"` and `engine = "tmb"`,
+  confirming exact `df`, trait/unit labels, NB1 `phi` scale, and fitted
+  log-likelihood parity on the small fixture.
+- PARTIAL: reduced-rank (`K > 0`) fitted-object log-likelihood parity and
+  broader estimator parity.
+- NEXT: a stable reduced-rank NB1 fitted fixture before the row can move beyond
+  no-latent plus route/kernel evidence.
 
 ## Gamma Decision
 
@@ -77,16 +81,17 @@ larger per-trait Gamma design.
   saying whether it is engine support, bridge routing, or statistical design.
 - `gllvmTMB#340`: the public capability board should treat Gamma bridge
   grouped-dispersion as `partial` unless one of the decisions above lands.
-- `GLLVM.jl#91/#96`: relevant if NB1 fitted-object parity is blocked by Laplace
-  robustness or optimizer behavior rather than source parameterisation.
+- `GLLVM.jl#91/#96`: relevant if reduced-rank NB1 fitted-object parity is
+  blocked by Laplace robustness or optimizer behavior rather than source
+  parameterisation.
 - `GLLVM.jl#98`: relevant if family dispatch/payload shape changes during the
   bridge cleanup.
 
 ## Next Tests
 
-1. NB1 stable no-X fitted fixture:
+1. NB1 stable reduced-rank fitted fixture:
    require exact `df`, finite status, trait labels, `phi` scale identity, and a
-   recorded tolerance for fitted log-likelihood.
+   recorded tolerance for fitted log-likelihood when `K > 0`.
 2. Gamma decision test:
    if Option B lands, assert the bridge Gamma row uses one dispersion group and
    exact `df = p + rr_df + 1`; if Option A lands, add native per-trait Gamma

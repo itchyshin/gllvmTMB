@@ -349,6 +349,37 @@ test_that("NB1 grouped likelihood matches the native linear-variance kernel at f
   expect_equal(as.numeric(julia_loglik), expected, tolerance = 1e-10)
 })
 
+test_that("engine = 'julia' NB1 no-latent fitted object matches native TMB objective", {
+  skip_if_no_julia()
+  case <- julia_grouped_dispersion_cases()$nb1
+  df <- julia_bridge_matrix_to_long(case$Y)
+  f <- value ~ 0 + trait
+
+  fit_jl <- gllvmTMB(
+    f, data = df, trait = "trait", unit = "unit",
+    family = case$family, engine = "julia"
+  )
+  fit_tmb <- gllvmTMB(
+    f, data = df, trait = "trait", unit = "unit",
+    family = case$family, engine = "tmb"
+  )
+
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$family, "nb1")
+  expect_equal(fit_jl$trait_levels, rownames(case$Y))
+  expect_equal(fit_jl$unit_levels, colnames(case$Y))
+  expect_equal(dim(fit_jl$loadings), c(nrow(case$Y), 0L))
+  expect_equal(unname(fit_jl$dispersion_group_id), seq_len(nrow(case$Y)))
+  expect_named(fit_jl$dispersion, rownames(case$Y))
+  expect_equal(fit_tmb$opt$convergence, 0L)
+  expect_equal(attr(logLik(fit_jl), "df"), attr(logLik(fit_tmb), "df"))
+  expect_equal(as.numeric(logLik(fit_jl)), as.numeric(logLik(fit_tmb)),
+               tolerance = 1e-5)
+  expect_equal(unname(fit_jl$dispersion),
+               unname(fit_tmb$report[[case$native_report]]),
+               tolerance = 1e-3)
+})
+
 test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and keeps native parity scoped", {
   skip_if_no_julia()
   f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)

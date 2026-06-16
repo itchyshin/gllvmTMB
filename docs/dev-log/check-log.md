@@ -4,6 +4,66 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- NB1 no-latent Julia bridge fitted-object parity
+
+Added a live Julia bridge test proving a no-latent NB1 fitted object from
+`gllvmTMB(..., engine = "julia")` matches the native `engine = "tmb"` objective
+on the small grouped-dispersion fixture. This upgrades NB1 from route/kernel
+evidence to no-latent fitted-object evidence only; reduced-rank NB1 remains
+partial.
+
+Evidence:
+
+- Rehydration:
+  `git status --short --branch && git log --oneline -10`
+  -> clean on `codex/r-bridge-grouped-dispersion`, tip `bc705bb`.
+  `git -C ../GLLVM.jl-integration status --short --branch && git -C ../GLLVM.jl-integration log --oneline -5`
+  -> clean on `codex/julia-per-trait-dispersion`, tip `2a07745` before the
+  paired Julia admission edit.
+- Skill/source setup:
+  read `/Users/z3437171/.agents/skills/testing-r-packages/SKILL.md`;
+  read `.agents/skills/after-task-audit/SKILL.md`;
+  read `../GLLVM.jl-integration/AGENTS.md`.
+- Pre-edit lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,updatedAt,isDraft --limit 20`
+  -> `[]` in `gllvmTMB`.
+  `git log --all --oneline --since="6 hours ago" -- tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints | head -120`
+  -> current Codex programme commits only.
+- Julia-side blocker and fix:
+  first no-latent R fixture failed before the paired Julia edit with
+  `ArgumentError: d must be a positive integer`.
+  `../GLLVM.jl-integration/src/bridge.jl` now admits `d = 0`, and
+  `../GLLVM.jl-integration/test/test_bridge_grouped_dispersion.jl` covers
+  grouped NB1 `d = 0` plus `d = -1` rejection.
+- Exploratory R parity fixture after the Julia edit:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla - <<'RS' ...`
+  -> Julia/native no-latent NB1 both reported `logLik = -53.17549`, `df = 4`;
+  `delta = 4.253763e-08`; maximum absolute NB1 `phi` difference
+  `5.42191e-05`.
+- Test added:
+  `tests/testthat/test-julia-bridge.R` now includes
+  `engine = 'julia' NB1 no-latent fitted object matches native TMB objective`.
+- Targeted live bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly (`DONE`) after running the live Julia bridge rows.
+- Targeted no-Julia bridge test:
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with 6 expected Julia-runtime skips, including the new
+  NB1 no-latent fitted-object test.
+- Stale-claim scan:
+  `rg -n "NB1.*full parity|full native parity|full parity|complete bridge|CRAN-ready bridge|NB1.*covered.*Julia|NB1 still needs fitted-object objective parity|NB1 stable no-X fitted-object fixture|Gamma.*native parity|native parity.*Gamma|Gamma.*covered.*Julia" tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-06-16-nb1-no-latent-fitted-parity.md docs/dev-log/after-task/2026-06-16-nb1-fixed-parameter-bridge-kernel.md`
+  -> expected historical scan strings and negative-scope Gamma hits only; no new
+  NB1 full-parity or stale "still needs no-X fitted fixture" claim.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `devtools::document()`,
+  `pkgdown::check_pkgdown()`, and article renders. This slice changes a targeted
+  bridge test plus validation/dev-log prose; no roxygen, NAMESPACE, generated
+  Rd, README, NEWS, vignette, or pkgdown navigation file changed.
+
 ## 2026-06-16 -- NB1 fixed-parameter Julia bridge kernel evidence
 
 Added a live Julia bridge test proving the NB1 grouped likelihood uses the same

@@ -64,10 +64,10 @@ Active lane guidance:
   remains partial until parity evidence, CI/status, and claim wording agree.
   Follow-up audit:
   `docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md`.
-  NB1 is on the same scale as native `phi_nbinom1` and now has fixed-parameter
-  kernel evidence, but still needs fitted-object objective parity evidence;
-  Gamma is not native-parity aligned because current native ordinary Gamma uses
-  shared scalar `sigma_eps`.
+  NB1 is on the same scale as native `phi_nbinom1` and now has both
+  fixed-parameter kernel evidence and a no-latent fitted-object parity fixture;
+  reduced-rank NB1 parity remains unpromoted. Gamma is not native-parity aligned
+  because current native ordinary Gamma uses shared scalar `sigma_eps`.
 - Cross-twin argument and wording contract:
   `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
   Before bridge, engine, or public-docs lanes, scan R/Julia and DRM/GLLVM
@@ -76,7 +76,7 @@ Active lane guidance:
   REML / AI-REML, CI-status columns, and `pdHess`. Share meanings where the
   model concept is the same; keep package-specific names where DRM and GLLVM
   target different estimands.
-- Next safe implementation lane: NB1 stable no-X fitted-object fixture plus a
+- Next safe implementation lane: reduced-rank NB1 fitted-object parity or the
   Gamma decision (shared bridge grouping now versus native per-trait Gamma
   expansion later), unless the maintainer explicitly asks to publish or rebase
   the bridge PR first.

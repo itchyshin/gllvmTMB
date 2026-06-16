@@ -1512,6 +1512,103 @@ test_that("native TMB and engine = 'julia' agree on the Binomial no-X reduced-ra
   )
 })
 
+test_that("native TMB and engine = 'julia' NB2 dispersion is the same scale but a different STRUCTURE (per-trait vs shared scalar)", {
+  # R-FIRST investigation for the Negative Binomial NB2 (nbinom2) bridge row
+  # (recon rank 13) -- the first DISPERSION family. The honest result is a
+  # NEGATIVE one for full point-parity, so this test documents the structural
+  # difference instead of asserting a parity that does not hold.
+  #
+  # DISPERSION MAPPING (empirically + code-path confirmed). Both engines store
+  # the NB2 dispersion on the SAME natural scale: the NB2 `size` / `r` in
+  # `Var = mu + mu^2 / r` (identity transform, NOT log, NOT inverse):
+  #   * native: `fit_tmb$report$phi_nbinom2` -- exp(log_phi_nbinom2) from the
+  #     TMB template, used as `Var(y) = mu + mu^2 / phi` (src/gllvmTMB.cpp).
+  #   * julia : `fit_jl$dispersion` -- `fit.r` from GLLVM.jl, used as
+  #     `Var = mu + mu^2 / size` in the bridge predictors (R/julia-bridge.R).
+  # So the SCALE corresponds cleanly. The STRUCTURE does NOT:
+  #   * native NB2 estimates ONE dispersion PER TRAIT -- log_phi_nbinom2 is a
+  #     PARAMETER_VECTOR of length n_traits (src/gllvmTMB.cpp), so
+  #     `fit_tmb$report$phi_nbinom2` has length n_traits.
+  #   * GLLVM.jl NB2 estimates a SINGLE SHARED scalar `r`, replicated across
+  #     traits (`dispersion = fill(fit.r, p)`), so `fit_jl$dispersion` carries
+  #     exactly one distinct value.
+  # These are therefore DIFFERENT models with different free-parameter counts
+  # (native df = julia df + (n_traits - 1)); they cannot maximise the same
+  # marginal NB2 likelihood. Empirically (2-seed probe, seeds 23/25, n_unit
+  # 35-40, AND an ideal large-n strong-uniform-overdispersion check) the
+  # logLik/means/Sigma_B gaps are large and do NOT shrink with n:
+  #   * logLik |diff|  ~2e-1 to ~1.1e0  (vs the 1e-6 flat-at-optimum bar)
+  #   * means  |diff|  ~9e-3 to ~1e-1   (vs the 1e-3 bar)
+  #   * Sigma_B |diff| ~6e-2 to ~2e-1   (vs the 1e-3 bar)
+  # plus the per-trait native phi is frequently unidentified (drifts to ~1e7+
+  # on a flat ridge, pdHess = FALSE) on small fixtures. Full point-parity via
+  # expect_native_julia_estimate_parity() is thus NOT admissible for NB2 -- the
+  # one admissible parity claim is the dispersion SCALE, which is asserted here.
+  # Promoting the NB2 bridge row to `covered` needs the engines to agree on the
+  # dispersion STRUCTURE first (shared-scalar option native-side, or per-trait
+  # dispersion julia-side); until then this row stays uncovered for point
+  # parity, with the scale correspondence recorded.
+  #
+  # Double-gated skip_if_no_julia() + skip_if_not_heavy() (the native NB2
+  # MakeADFun + Laplace fit is the heavy part); small fixture (n_unit = 40, 3
+  # traits, d = 1) so the native fit is sub-second.
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  df <- make_long_cov(n_unit = 40L, seed = 25L)
+  f <- nb ~ 0 + trait + latent(0 + trait | unit, d = 1)
+
+  fit_tmb <- gllvmTMB(f, data = df, trait = "trait", unit = "unit", family = nbinom2())
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = nbinom2(),
+    engine = "julia"
+  )
+
+  expect_s3_class(fit_tmb, "gllvmTMB_multi")
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "negbinomial_rr")
+
+  n_traits <- length(levels(df$trait))
+
+  # --- dispersion STRUCTURE: per-trait vector vs single shared scalar -------
+  phi_native <- as.numeric(fit_tmb$report$phi_nbinom2)
+  r_julia <- as.numeric(fit_jl$dispersion)
+  expect_equal(length(phi_native), n_traits) # native: one phi per trait
+  expect_equal(length(unique(r_julia)), 1L) # julia: a single shared r
+
+  # free-parameter count gap is exactly the extra (n_traits - 1) native
+  # dispersions -- the deterministic fingerprint of the structural difference.
+  expect_equal(
+    attr(logLik(fit_tmb), "df") - attr(logLik(fit_jl), "df"),
+    n_traits - 1L
+  )
+
+  # --- dispersion SCALE: both are the natural NB2 size / r (identity map) ----
+  # The admissible parity claim. Both are finite and strictly positive on the
+  # SAME scale (no log/inverse transform between them); GLLVM.jl's shared r and
+  # the native per-trait phi inhabit the same units, so the (identified) native
+  # phi and the julia r are mutually comparable as NB2 sizes.
+  expect_true(all(is.finite(r_julia)) && all(r_julia > 0))
+  expect_true(all(phi_native > 0))
+  # On the same scale the smallest (best-identified) native phi and the shared
+  # julia r are both O(1)-O(10) NB2 sizes for this fixture; assert they sit in a
+  # common plausible band rather than asserting equality (which the structural
+  # difference forbids). Wide margins: this is a scale check, not point parity.
+  expect_true(min(phi_native) > 1 && min(phi_native) < 1e3)
+  expect_true(r_julia[1] > 1 && r_julia[1] < 1e3)
+
+  # --- NOT point-parity: record that the shared helper would FAIL here -------
+  # Guard the negative finding so a future shared-dispersion alignment that
+  # makes the engines coincide breaks this assertion loudly (prompting promotion
+  # of this row). With distinct df the two NB2 marginals genuinely differ.
+  ll_gap <- abs(as.numeric(logLik(fit_tmb)) - as.numeric(logLik(fit_jl)))
+  expect_true(ll_gap > 1e-3) # far above the 1e-6 point-parity bar; not parity
+})
+
 test_that("engine = 'julia' routes Gaussian REML explicitly", {
   skip_if_no_julia()
   df <- make_long(n_unit = 38L, seed = 8L)

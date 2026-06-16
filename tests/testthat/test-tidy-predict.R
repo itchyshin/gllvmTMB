@@ -81,7 +81,7 @@ test_that("print(fit) annotates per-trait link in mixed-family fits", {
     family = fams
   )))
   out <- capture.output(print(fit))
-  expect_true(any(grepl("Per-trait link", out)))
+  expect_true(any(grepl("Per-trait family and link", out)))
   expect_true(any(grepl("logit",   out)))
   expect_true(any(grepl("log",     out)))
   expect_true(any(grepl("identity", out)))

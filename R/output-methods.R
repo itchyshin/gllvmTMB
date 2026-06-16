@@ -315,3 +315,53 @@ VP <- function(fit) {
   rownames(M) <- levels(fit$data[[fit$trait_col]])
   M / rowSums(M)
 }
+
+#' Per-trait response families of a fitted multivariate model
+#'
+#' Returns the response family of every trait in a fit returned by
+#' [gllvmTMB()]. For a mixed-family fit (built by passing a named or
+#' selector-driven `family` list) the returned vector reports the family
+#' assigned to each trait; for a single-family fit every trait shares the
+#' one family. This complements [stats::family()] (singular), which returns
+#' the one `family` object retained on the fit.
+#'
+#' This is a pure accessor: it reads fields already stored on the fit
+#' (`family_selector` / the per-row family ids) and does not refit. The
+#' name `trait_families` is used rather than `families` because the latter
+#' help topic is already taken by the family constructors (see
+#' [Families][gllvmTMB::Families]).
+#'
+#' @param object A fitted multivariate model returned by [gllvmTMB()].
+#' @param ... Currently unused; present for S3 generic compatibility.
+#' @return A named character vector of length `n_traits`, one canonical
+#'   family name per trait, named by the trait levels in trait-factor order.
+#' @seealso [stats::family()] for the single retained family object;
+#'   the per-trait family is also shown by `print()` for mixed-family fits.
+#' @export
+#' @examples
+#' \dontrun{
+#' # Mixed-family fit (one trait gaussian, one poisson, ...):
+#' trait_families(fit)
+#' #>      trait_1      trait_2      trait_3
+#' #>   "gaussian"   "binomial"    "poisson"
+#' }
+trait_families <- function(object, ...) {
+  UseMethod("trait_families")
+}
+
+#' @rdname trait_families
+#' @export
+trait_families.gllvmTMB_multi <- function(object, ...) {
+  n_traits <- as.integer(object$n_traits %||% 0L)
+  trait_names <- levels(object$data[[object$trait_col]])
+  ## Primary path: a stored family_selector marks a mixed-family fit, so
+  ## report the per-trait family resolved from the stored per-row ids.
+  if (!is.null(object$family_selector)) {
+    return(.per_trait_family(object))
+  }
+  ## Fallback: single / uniform family — every trait shares object$family.
+  fam <- object$family$family %||% NA_character_
+  out <- rep(as.character(fam)[1L], n_traits)
+  names(out) <- trait_names
+  out
+}

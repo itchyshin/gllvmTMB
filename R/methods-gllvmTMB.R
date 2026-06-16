@@ -81,6 +81,68 @@
   out
 }
 
+## Build a per-trait family-name label vector for a fitted multi
+## object. Used by print.gllvmTMB_multi() (mixed-family annotation)
+## and the exported families() accessor.
+##
+## Returns a length-T character vector, one canonical family name per
+## trait, in the level order of the trait factor. When a trait has rows
+## from multiple families (rare; row-level mixing), the modal one is
+## used; when a trait has no rows it is reported as `"(no rows)"`.
+##
+## Reads stored fields only (tmb_data$family_id_vec + trait_id); no
+## refitting. The runtime family-id -> name map matches the ids assigned
+## in family_to_id() (see R/fit-multi.R) and the canonical $family
+## strings from the constructors in R/families.R.
+.per_trait_family <- function(fit) {
+  trait_names <- levels(fit$data[[fit$trait_col]])
+  Tn <- length(trait_names)
+  fids <- fit$tmb_data$family_id_vec
+  tids_obs <- fit$tmb_data$trait_id + 1L
+  ## Runtime family-id -> canonical family name (family_to_id() ids).
+  family_name <- function(fid) {
+    switch(
+      as.character(fid),
+      "0" = "gaussian",
+      "1" = "binomial",
+      "2" = "poisson",
+      "3" = "lognormal",
+      "4" = "Gamma",
+      "5" = "nbinom2",
+      "6" = "tweedie",
+      "7" = "Beta",
+      "8" = "betabinomial",
+      "9" = "student",
+      "10" = "truncated_poisson",
+      "11" = "truncated_nbinom2",
+      "12" = "delta_lognormal",
+      "13" = "delta_gamma",
+      "14" = "ordinal_probit",
+      "15" = "nbinom1",
+      NA_character_
+    )
+  }
+  out <- character(Tn)
+  for (t in seq_len(Tn)) {
+    rows_t <- which(tids_obs == t)
+    if (length(rows_t) == 0L) {
+      out[t] <- "(no rows)"
+      next
+    }
+    fid_t <- fids[rows_t]
+    fid_uniq <- unique(fid_t)
+    if (length(fid_uniq) > 1L) {
+      tab <- tabulate(match(fid_t, fid_uniq))
+      fid_use <- fid_uniq[which.max(tab)]
+    } else {
+      fid_use <- fid_uniq
+    }
+    out[t] <- family_name(fid_use)
+  }
+  names(out) <- trait_names
+  out
+}
+
 ## Build a per-fixed-effect link vector aligned with X_fix_names. Each
 ## fixed-effect column carries the trait factor in its column name as a
 ## prefix `<trait_col><level>` (e.g. `traittrait_1`, `traittrait_1:env_1`)
@@ -396,9 +458,11 @@ print.gllvmTMB_multi <- function(x, ...) {
   cat(sprintf("  Fixed effects (b_fix): %d\n", length(x$X_fix_names)))
   if (multi_family) {
     per_trait_link <- .per_trait_link(x)
-    cat("  Per-trait link (mixed-family fit):\n")
+    per_trait_family <- .per_trait_family(x)
+    cat("  Per-trait family and link (mixed-family fit):\n")
     link_show <- data.frame(
       trait = names(per_trait_link),
+      family = unname(per_trait_family[names(per_trait_link)]),
       link = unname(per_trait_link),
       stringsAsFactors = FALSE
     )

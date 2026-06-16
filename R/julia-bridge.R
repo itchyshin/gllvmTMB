@@ -226,15 +226,17 @@ gllvm_julia_capabilities <- function() {
     postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
     postfit_summary = TRUE,
-    postfit_predict = FALSE,
-    postfit_residuals = FALSE,
-    postfit_simulate = FALSE,
-    postfit_ordination = FALSE,
+    postfit_predict = TRUE,
+    postfit_residuals = TRUE,
+    postfit_simulate = TRUE,
+    postfit_ordination = TRUE,
     status = "partial",
     notes = paste(
-      "complete balanced no-X/no-mask/no-CI mixed-family point route;",
-      "coef() and summary() are routed;",
-      "predict/fitted/residuals/simulate/extractor parity remain gated;",
+      "complete balanced no-X/no-mask/no-CI mixed-family route;",
+      "coef(), summary(), in-sample predict()/fitted(),",
+      "response/Pearson residuals, conditional simulate(), and raw unit-tier",
+      "covariance/ordination accessors are routed from retained payloads;",
+      "CI, masks, fixed-effect X, newdata, and richer extractor parity remain gated;",
       "component families:",
       paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", ")
     ),
@@ -1039,15 +1041,6 @@ gllvm_julia_capabilities <- function() {
 
 .gllvm_julia_extractor_family_check <- function(object, p, what) {
   families <- .gllvm_julia_family_vector(object, p)
-  if (length(unique(families)) > 1L) {
-    stop(
-      "engine = 'julia': mixed-family ",
-      what,
-      " extractors are not routed yet; use engine = 'tmb' or inspect the ",
-      "flat bridge payload directly.",
-      call. = FALSE
-    )
-  }
   invisible(families)
 }
 
@@ -1605,9 +1598,12 @@ gllvm_julia_capabilities <- function() {
       gaussian = {
         sigma <- as.numeric(object$sigma_eps %||% NA_real_)[1L]
         if (!is.finite(sigma) || sigma <= 0) {
+          sigma <- dispersion[[i]]
+        }
+        if (!is.finite(sigma) || sigma <= 0) {
           stop(
             "engine = 'julia': Gaussian Pearson residuals need a positive ",
-            "`sigma_eps` payload.",
+            "`sigma_eps` or per-trait mixed-family dispersion payload.",
             call. = FALSE
           )
         }
@@ -1710,9 +1706,12 @@ gllvm_julia_capabilities <- function() {
       gaussian = {
         sigma <- as.numeric(object$sigma_eps %||% NA_real_)[1L]
         if (!is.finite(sigma) || sigma <= 0) {
+          sigma <- dispersion[[i]]
+        }
+        if (!is.finite(sigma) || sigma <= 0) {
           stop(
             "engine = 'julia': Gaussian simulate() needs a positive ",
-            "`sigma_eps` payload.",
+            "`sigma_eps` or per-trait mixed-family dispersion payload.",
             call. = FALSE
           )
         }
@@ -1996,9 +1995,10 @@ gllvm_julia_fit <- function(
 #' already passed the R admission gates. They are point-estimate summaries:
 #' prediction and ordinary response/Pearson residuals are in-sample
 #' retained-payload reconstructions only. Simulation is conditional on retained
-#' fitted values for admitted scalar-response rows only. Unit-tier covariance and
-#' raw ordination accessors are routed on the retained engine scale; richer
-#' extractor parity remains a separate bridge row. Confidence intervals are
+#' fitted values for admitted one-family rows and complete balanced mixed-family
+#' rows. Unit-tier covariance and raw ordination accessors are routed on the
+#' retained engine scale; richer extractor parity remains a separate bridge row.
+#' Confidence intervals are
 #' routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
 #' Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian
 #' rows when `X = NULL`; complete-response fixed-effect-X CIs are routed for
@@ -2018,8 +2018,8 @@ gllvm_julia_fit <- function(
 #'   so `FALSE` stops with a not-yet-routed message.
 #' @param type Prediction or residual scale. For `predict()` and `fitted()`,
 #'   `"link"` returns the fitted linear predictor and `"response"` applies the
-#'   inverse link for supported scalar-response families. For per-trait ordinal
-#'   bridge fits, `"response"` and `"prob"` return fitted category
+#'   inverse link for supported non-ordinal bridge families. For per-trait
+#'   ordinal bridge fits, `"response"` and `"prob"` return fitted category
 #'   probabilities and `"class"` returns the modal category. For `residuals()`,
 #'   `"response"` returns observed-minus-fitted residuals on the response scale
 #'   and `"pearson"` divides by the family-specific standard deviation.
@@ -2043,14 +2043,14 @@ gllvm_julia_fit <- function(
 #' @return `logLik()` returns a `"logLik"` object. `coef()` returns a named list
 #'   of available point-estimate components. `confint()` returns a conventional
 #'   confidence-interval matrix for stored or recomputed Julia CI payloads.
-#'   `predict()` returns an in-sample data frame. Scalar-response rows use
+#'   `predict()` returns an in-sample data frame. Non-ordinal rows use
 #'   `trait`, `unit`, and `est` columns; ordinal probability rows use `trait`,
 #'   `unit`, `category`, and `prob`; ordinal class rows use `trait`, `unit`,
 #'   and `est`. `fitted()` returns the in-sample fitted matrix with traits in
-#'   rows and units in columns for scalar-response rows, and an array of
+#'   rows and units in columns for non-ordinal rows, and an array of
 #'   category probabilities or a modal-class matrix for ordinal rows.
 #'   `residuals()` returns an in-sample residual matrix with the same shape as
-#'   `fitted()` for scalar-response rows and keeps masked response cells as
+#'   `fitted()` for non-ordinal rows and keeps masked response cells as
 #'   `NA`. `simulate()` returns an `n_obs x nsim` matrix in the same trait-major
 #'   cell order as `predict()` and keeps masked response cells as `NA`.
 #'   `summary()` returns a list with header, coefficients, covariance, and
@@ -2174,13 +2174,6 @@ residuals.gllvmTMB_julia <- function(
   p <- nrow(y)
   n <- ncol(y)
   families <- .gllvm_julia_family_vector(object, p)
-  if (length(unique(families)) > 1L) {
-    stop(
-      "engine = 'julia': mixed-family residuals are not routed yet; ",
-      "use engine = 'tmb' or inspect fitted values directly.",
-      call. = FALSE
-    )
-  }
   unsupported <- setdiff(unique(families), .GLLVM_JULIA_RESIDUAL_FAMILIES)
   if (length(unsupported)) {
     stop(
@@ -2258,19 +2251,12 @@ simulate.gllvmTMB_julia <- function(
   p <- nrow(y)
   n <- ncol(y)
   families <- .gllvm_julia_family_vector(object, p)
-  if (length(unique(families)) > 1L) {
-    stop(
-      "engine = 'julia': mixed-family simulation is not routed yet; ",
-      "use engine = 'tmb' or simulate scalar-response bridge rows separately.",
-      call. = FALSE
-    )
-  }
   unsupported <- setdiff(unique(families), .GLLVM_JULIA_SIMULATE_FAMILIES)
   if (length(unsupported)) {
     stop(
       "engine = 'julia': conditional simulate() is not routed for family '",
       paste(unsupported, collapse = ", "),
-      "'. Current Julia bridge simulation covers scalar-response families only.",
+      "'. Current Julia bridge simulation covers admitted non-ordinal rows only.",
       call. = FALSE
     )
   }

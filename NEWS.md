@@ -42,18 +42,19 @@
   live R tests currently admit in-sample `predict()` / `fitted()` plus
   response/Pearson `residuals()` and conditional in-sample `simulate()` for
   no-X gaussian, poisson, Bernoulli binomial, nbinom2, nbinom1, beta, and gamma
-  rows, and response-scale ordinal probability/class prediction for ordinal
-  and ordinal-probit rows, and raw unit-tier covariance / ordination
-  accessors (`extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`,
+  rows and complete balanced no-X/no-mask/no-CI mixed-family vector rows,
+  response-scale ordinal probability/class prediction for ordinal and
+  ordinal-probit rows, and raw unit-tier covariance / ordination accessors
+  (`extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`,
   `getResidualCor()`, `extract_ordination()`, `getLoadings()`, `getLV()`) on
-  the retained engine scale. `newdata` prediction, `newdata` simulation,
-  unconditional random-effect redraws, ordinal residuals, ordinal simulation,
-  mixed-family residuals/simulation, richer extractor parity, confidence
-  intervals for
+  the retained engine scale, including complete balanced mixed-family rows.
+  `newdata` prediction, `newdata` simulation, unconditional random-effect
+  redraws, ordinal residuals, ordinal simulation, richer extractor parity, and
+  confidence intervals for
   per-trait ordinal rows, NB1-X rows, ordinal-X rows, mixed-family CIs, and
   response masks combined with fixed-effect X remain planned follow-up rows, as
-  do mixed-family
-  promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall
+  do mixed-family masks, mixed-family fixed-effect X, native parity promotion,
+  and structured covariance terms. OUT: JuliaCall
   is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
   when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB
   engine and `R CMD check` are unaffected on machines without Julia.

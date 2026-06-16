@@ -4,6 +4,61 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge mixed-family postfit admission
+
+Admitted the complete balanced no-X/no-mask/no-CI mixed-family Julia bridge row
+for retained-payload postfit methods: in-sample `predict()` / `fitted()`,
+response/Pearson `residuals()`, conditional in-sample `simulate()`, and raw
+unit-tier covariance / ordination accessors. Mixed-family CIs, masks,
+fixed-effect X, `newdata`, unconditional redraws, and richer extractor parity
+remain gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt,isDraft`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/after-task man/gllvmTMB_julia-methods.Rd R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> current local Codex bridge stack only.
+- Paired Julia checks in `../GLLVM.jl-integration`:
+  `julia --project=. --startup-file=no test/test_bridge_mixed.jl`
+  -> `18/18` pass.
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `40/40` pass.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB_julia-methods.Rd`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `13` expected Julia-runtime skips and `0`
+  failures.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. Live tests now cover a complete
+  balanced Gaussian + Poisson + Bernoulli mixed-family main-dispatch fit and
+  exercise `predict()`, `fitted()`, response/Pearson `residuals()`,
+  conditional `simulate()`, `extract_Sigma()`, and `extract_ordination()`.
+- Capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); fam <- gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY; stopifnot(caps$postfit_predict[caps$family == fam]); stopifnot(caps$postfit_residuals[caps$family == fam]); stopifnot(caps$postfit_simulate[caps$family == fam]); stopifnot(caps$postfit_ordination[caps$family == fam]); stopifnot(!caps$ci_no_x_wald[caps$family == fam]); cat("mixed-family postfit capability guard OK\\n")'`
+  -> mixed-family postfit booleans true and mixed-family no-X CI booleans false.
+- Stale wording / boundary scan:
+  `rg -n "mixed-family residuals remain gated|mixed-family residuals are not routed|mixed-family simulation is not routed|mixed-family residuals/simulation|mixed-family extractors remain gated|mixed-family extractors|predict/fitted/residuals/simulate/extractor parity remain gated|scalar-response rows only|scalar-response families only" R tests/testthat NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md man`
+  -> only the generic validation-register status example row remains on the
+  current public/code surfaces. The same scan over `docs/dev-log/check-log.md`
+  and `docs/dev-log/after-task/` finds historical entries from earlier
+  same-day and 2026-05 slices that explicitly predate this admission.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  mixed-family postfit admission surface, tests, generated Rd, and ledgers
+  only; it does not touch formula grammar, TMB likelihood code, public article
+  code, or pkgdown navigation.
+
 ## 2026-06-16 -- R bridge fixed-effect-X CI admission
 
 Admitted complete-response fixed-effect-X Wald/profile/bootstrap CI payloads

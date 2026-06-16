@@ -408,33 +408,24 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_equal(caps$family[caps$postfit_summary], caps$family)
   expect_equal(
     caps$family[caps$postfit_predict],
-    .GLLVM_JULIA_PREDICT_FAMILIES
+    c(.GLLVM_JULIA_PREDICT_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
   )
   expect_equal(
     caps$family[caps$postfit_residuals],
-    .GLLVM_JULIA_RESIDUAL_FAMILIES
+    c(.GLLVM_JULIA_RESIDUAL_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
   )
   expect_false(caps$postfit_residuals[caps$family == "ordinal"])
   expect_false(caps$postfit_residuals[caps$family == "ordinal_probit"])
-  expect_false(caps$postfit_residuals[
-    caps$family == .GLLVM_JULIA_MIXED_FAMILY
-  ])
   expect_equal(
     caps$family[caps$postfit_simulate],
-    .GLLVM_JULIA_SIMULATE_FAMILIES
+    c(.GLLVM_JULIA_SIMULATE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
   )
   expect_equal(
     caps$family[caps$postfit_ordination],
-    .GLLVM_JULIA_ORDINATION_FAMILIES
+    c(.GLLVM_JULIA_ORDINATION_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
   )
   expect_false(caps$postfit_simulate[caps$family == "ordinal"])
   expect_false(caps$postfit_simulate[caps$family == "ordinal_probit"])
-  expect_false(caps$postfit_simulate[
-    caps$family == .GLLVM_JULIA_MIXED_FAMILY
-  ])
-  expect_false(caps$postfit_ordination[
-    caps$family == .GLLVM_JULIA_MIXED_FAMILY
-  ])
   expect_true(any(grepl("in-sample predict\\(\\)/fitted\\(\\)", caps$notes)))
   expect_true(any(grepl("response/Pearson residuals", caps$notes)))
   expect_true(any(grepl("conditional simulate\\(\\)", caps$notes)))
@@ -587,11 +578,15 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   mixed <- fit
   mixed$family <- c("poisson", "binomial")
   mixed$families <- mixed$family
-  expect_error(extract_ordination(mixed), "mixed-family ordination")
-  expect_error(
-    extract_Sigma(mixed, level = "unit", link_residual = "none"),
-    "mixed-family covariance"
-  )
+  mixed_ord <- extract_ordination(mixed)
+  expect_equal(mixed_ord$loadings, mixed$loadings)
+  expect_equal(mixed_ord$scores, mixed$scores)
+  mixed_sigma <- suppressMessages(extract_Sigma(
+    mixed,
+    level = "unit",
+    link_residual = "none"
+  ))
+  expect_equal(mixed_sigma$Sigma, mixed$Sigma)
 })
 
 test_that("Julia bridge CI payloads are normalised and read by confint", {
@@ -918,24 +913,26 @@ test_that("Julia bridge ordinal response-scale prediction returns probabilities"
   expect_error(simulate(fit), "conditional simulate.*ordinal")
 })
 
-test_that("Julia bridge mixed-family residuals remain gated", {
+test_that("Julia bridge mixed-family postfit reconstructs retained payloads", {
   fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
   fit$engine <- "julia"
   fit$family <- "gaussian+poisson"
   fit$families <- c("gaussian", "poisson")
-  fit$sigma_eps <- 1
+  fit$link <- c("IdentityLink", "LogLink")
+  fit$sigma_eps <- NaN
+  fit$dispersion <- c(sp1 = 1.2, sp2 = NaN)
   fit$scores <- matrix(
     seq(-0.2, 0.2, length.out = fit$n_units),
     ncol = 1L,
     dimnames = list(fit$unit_names, "LV1")
   )
+  y <- rbind(
+    seq(-0.4, 0.6, length.out = fit$n_units),
+    c(0, 1, 2, 3, 1, 2, 4, 3)
+  )
+  dimnames(y) <- list(fit$trait_names, fit$unit_names)
   fit$bridge_input <- list(
-    y = matrix(
-      0,
-      nrow = fit$n_traits,
-      ncol = fit$n_units,
-      dimnames = list(fit$trait_names, fit$unit_names)
-    ),
+    y = y,
     family = fit$families,
     num.lv = 1L,
     N = NULL,
@@ -945,8 +942,34 @@ test_that("Julia bridge mixed-family residuals remain gated", {
     setup_args = list()
   )
 
-  expect_error(residuals(fit), "mixed-family residuals")
-  expect_error(simulate(fit), "mixed-family simulation")
+  eta <- matrix(fit$alpha, nrow = fit$n_traits, ncol = fit$n_units) +
+    fit$loadings %*% t(fit$scores)
+  dimnames(eta) <- dimnames(y)
+  mu <- eta
+  mu[2L, ] <- exp(eta[2L, ])
+
+  expect_equal(fitted(fit, type = "link"), eta)
+  expect_equal(fitted(fit), mu)
+  expect_equal(predict(fit, type = "response")$est, as.vector(mu))
+
+  res <- y - mu
+  expect_equal(residuals(fit, type = "response"), res)
+  var <- mu
+  var[1L, ] <- fit$dispersion[[1L]]^2
+  expect_equal(residuals(fit, type = "pearson"), res / sqrt(var))
+
+  sim <- simulate(fit, nsim = 2L, seed = 84L)
+  expect_equal(dim(sim), c(length(y), 2L))
+  expect_true(all(is.finite(sim)))
+
+  sigma_unit <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    link_residual = "none"
+  ))
+  expect_equal(dim(sigma_unit$Sigma), c(2L, 2L))
+  ord <- extract_ordination(fit)
+  expect_equal(dim(ord$loadings), c(2L, 1L))
 })
 
 test_that("confint recomputes from retained Julia bridge input", {
@@ -1846,6 +1869,88 @@ test_that("engine = 'julia' main dispatch routes one-part response masks", {
       )
     }
   }
+})
+
+test_that("engine = 'julia' main dispatch routes mixed-family postfit", {
+  skip_if_no_julia()
+
+  Y <- matrix(
+    c(
+      0.2,
+      0.4,
+      -0.1,
+      0.3,
+      0.5,
+      -0.2,
+      0.1,
+      0.6,
+      1,
+      3,
+      2,
+      4,
+      1,
+      2,
+      5,
+      3,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
+      1
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(
+      c("gaussian_trait", "poisson_trait", "binomial_trait"),
+      paste0("unit", 1:8)
+    )
+  )
+  df <- julia_bridge_matrix_to_long(Y)
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = list(gaussian(), poisson(), binomial()),
+    engine = "julia"
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(fit$model, "mixed_rr")
+  expect_equal(fit$families, c("gaussian", "poisson", "binomial"))
+  expect_equal(fit$trait_levels, rownames(Y))
+  expect_equal(fit$unit_levels, colnames(Y))
+
+  pred_link <- predict(fit, type = "link")
+  pred_resp <- predict(fit, type = "response")
+  expect_equal(nrow(pred_link), length(Y))
+  expect_equal(nrow(pred_resp), length(Y))
+  expect_equal(dim(fitted(fit, type = "link")), dim(Y))
+  expect_equal(dim(fitted(fit)), dim(Y))
+
+  res_response <- residuals(fit, type = "response")
+  res_pearson <- residuals(fit, type = "pearson")
+  expect_equal(dim(res_response), dim(Y))
+  expect_equal(dim(res_pearson), dim(Y))
+  expect_true(all(is.finite(res_pearson)))
+
+  sim <- simulate(fit, nsim = 2L, seed = 493L)
+  expect_equal(dim(sim), c(length(Y), 2L))
+  expect_true(all(is.finite(sim)))
+
+  sigma_unit <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    link_residual = "none"
+  ))
+  expect_equal(dim(sigma_unit$Sigma), c(nrow(Y), nrow(Y)))
+  ord <- extract_ordination(fit)
+  expect_equal(dim(ord$loadings), c(nrow(Y), 1L))
+  expect_equal(rownames(ord$scores), colnames(Y))
 })
 
 test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLLVM.jl", {

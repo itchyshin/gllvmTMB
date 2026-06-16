@@ -98,22 +98,20 @@ Active lane guidance:
   routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows.
   Per-trait ordinal CIs, NB1-X CIs, ordinal-X CIs, mixed-family CIs, and
   response masks combined with fixed-effect X remain gated.
-  Retained-score `predict()` / `fitted()` /
-  response-Pearson
-  `residuals()` are now routed for the live-tested no-X Gaussian, Poisson,
-  Bernoulli, NB2, NB1, Beta, and Gamma rows. Ordinal and ordinal-probit bridge
-  rows now route response-scale category probabilities and modal-class
-  predictions from the retained score/cutpoint payload. Scalar-response
-  conditional in-sample `simulate()` is now routed for Gaussian, Poisson,
-  Bernoulli binomial, NB2, NB1, Beta, and Gamma rows and keeps masked response
-  cells as `NA`. Unit-tier covariance and raw ordination accessors are now
-  routed on the retained engine scale through `extract_Sigma()`,
-  `extract_Sigma_B()`, `getResidualCov()`, `getResidualCor()`,
-  `extract_ordination()`, `getLoadings()`, and `getLV()`. `newdata`
-  prediction/simulation, unconditional random-effect redraws, ordinal
-  residuals/simulation, mixed-family residuals/simulation, link-residual
-  augmentation, rotations, structured-tier extractors, and richer extractor
-  parity remain gated.
+  Retained-score `predict()` / `fitted()` / response-Pearson
+  `residuals()` and conditional in-sample `simulate()` are now routed for the
+  live-tested no-X Gaussian, Poisson, Bernoulli, NB2, NB1, Beta, and Gamma
+  rows and for complete balanced no-X/no-mask/no-CI mixed-family vector rows.
+  Ordinal and ordinal-probit bridge rows now route response-scale category
+  probabilities and modal-class predictions from the retained score/cutpoint
+  payload. Unit-tier covariance and raw ordination accessors are now routed on
+  the retained engine scale through `extract_Sigma()`, `extract_Sigma_B()`,
+  `getResidualCov()`, `getResidualCor()`, `extract_ordination()`,
+  `getLoadings()`, and `getLV()`, including complete balanced mixed-family
+  rows. `newdata` prediction/simulation, unconditional random-effect redraws,
+  ordinal residuals/simulation, mixed-family CIs, mixed-family masks,
+  mixed-family fixed-effect X, link-residual augmentation, rotations,
+  structured-tier extractors, and richer extractor parity remain gated.
   The R bridge also routes complete-response fixed-effect-X point fits for
   Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`

@@ -65,8 +65,8 @@ simulation methods return in-sample values from the retained bridge payload.}
 
 \item{type}{Prediction or residual scale. For \code{predict()} and \code{fitted()},
 \code{"link"} returns the fitted linear predictor and \code{"response"} applies the
-inverse link for supported scalar-response families. For per-trait ordinal
-bridge fits, \code{"response"} and \code{"prob"} return fitted category
+inverse link for supported non-ordinal bridge families. For per-trait
+ordinal bridge fits, \code{"response"} and \code{"prob"} return fitted category
 probabilities and \code{"class"} returns the modal category. For \code{residuals()},
 \code{"response"} returns observed-minus-fitted residuals on the response scale
 and \code{"pearson"} divides by the family-specific standard deviation.
@@ -106,14 +106,14 @@ uses \code{"wald"} for current fits that retain their bridge input.}
 \code{logLik()} returns a \code{"logLik"} object. \code{coef()} returns a named list
 of available point-estimate components. \code{confint()} returns a conventional
 confidence-interval matrix for stored or recomputed Julia CI payloads.
-\code{predict()} returns an in-sample data frame. Scalar-response rows use
+\code{predict()} returns an in-sample data frame. Non-ordinal rows use
 \code{trait}, \code{unit}, and \code{est} columns; ordinal probability rows use \code{trait},
 \code{unit}, \code{category}, and \code{prob}; ordinal class rows use \code{trait}, \code{unit},
 and \code{est}. \code{fitted()} returns the in-sample fitted matrix with traits in
-rows and units in columns for scalar-response rows, and an array of
+rows and units in columns for non-ordinal rows, and an array of
 category probabilities or a modal-class matrix for ordinal rows.
 \code{residuals()} returns an in-sample residual matrix with the same shape as
-\code{fitted()} for scalar-response rows and keeps masked response cells as
+\code{fitted()} for non-ordinal rows and keeps masked response cells as
 \code{NA}. \code{simulate()} returns an \verb{n_obs x nsim} matrix in the same trait-major
 cell order as \code{predict()} and keeps masked response cells as \code{NA}.
 \code{summary()} returns a list with header, coefficients, covariance, and
@@ -125,9 +125,10 @@ Small S3 surface for fits returned by \code{gllvmTMB(..., engine = "julia")} or
 already passed the R admission gates. They are point-estimate summaries:
 prediction and ordinary response/Pearson residuals are in-sample
 retained-payload reconstructions only. Simulation is conditional on retained
-fitted values for admitted scalar-response rows only. Unit-tier covariance and
-raw ordination accessors are routed on the retained engine scale; richer
-extractor parity remains a separate bridge row. Confidence intervals are
+fitted values for admitted one-family rows and complete balanced mixed-family
+rows. Unit-tier covariance and raw ordination accessors are routed on the
+retained engine scale; richer extractor parity remains a separate bridge row.
+Confidence intervals are
 routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
 Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian
 rows when \code{X = NULL}; complete-response fixed-effect-X CIs are routed for

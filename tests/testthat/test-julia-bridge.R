@@ -1453,6 +1453,47 @@ test_that("engine = 'julia' rejects non reduced-rank covariance terms", {
   )
 })
 
+test_that("engine = 'julia' rejects a phylogenetic / structured covariance term", {
+  # The bridge maps ONLY the reduced-rank latent block. A phylo (structured-
+  # dependence) term is rejected at dispatch, before any JuliaCall -- this is
+  # why the phylo-signal CI is not exposable through the bridge: the bridge
+  # cannot fit a phylo model in the first place (issue #92 is fit-level blocked,
+  # gated behind the structured-dependence bridge track, not a quick exposure).
+  df <- make_long()
+  err <- tryCatch(
+    suppressWarnings(gllvmTMB(
+      value ~ 0 + trait + latent(0 + trait | unit, d = 1) + phylo_scalar(unit),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      engine = "julia"
+    )),
+    error = function(e) conditionMessage(e)
+  )
+  expect_true(is.character(err))
+  expect_match(err, "does not yet support covariance term")
+  # The remediation clause names the structured / phylo route to engine = 'tmb'.
+  expect_match(err, "phylo")
+})
+
+test_that("engine = 'julia' rejects more than one reduced-rank latent block", {
+  # A second latent() block hits the single-rr guard (a distinct branch from the
+  # non-rr-term guard above), routing the user to engine = 'tmb'.
+  df <- make_long()
+  expect_error(
+    gllvmTMB(
+      value ~ 0 + trait +
+        latent(0 + trait | unit, d = 1) +
+        latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      engine = "julia"
+    ),
+    "single reduced-rank latent block"
+  )
+})
+
 test_that("engine = 'julia' requires a balanced trait x unit table", {
   df <- make_long()
   df <- df[-1L, , drop = FALSE] # drop one (trait, unit) cell -> unbalanced

@@ -67,12 +67,15 @@ Active lane guidance:
   NB1 is on the same scale as native `phi_nbinom1` and now has
   fixed-parameter kernel evidence, no-latent fitted-object parity, and selected
   reduced-rank (`d = 1`) fitted-object point parity on the small complete
-  balanced bridge fixture. The earlier reduced-rank audit
+  balanced bridge fixture. Gamma now uses shared grouped-Gamma routing in the
+  bridge to match the current native scalar-`sigma_eps` Gamma oracle on the
+  small complete balanced reduced-rank fixture (`df = 5`, native-vs-Julia
+  `logLik` delta about `2.8e-07`); native per-trait Gamma remains a later
+  expansion, not a current claim. The earlier reduced-rank audit
   `docs/dev-log/2026-06-16-nb1-reduced-rank-parity-audit.md` is superseded by
   `docs/dev-log/2026-06-16-nb1-reduced-rank-fisher-fix.md`; the paired Julia
   fix stabilised tiny-`phi` NB1 Fisher information near the Poisson boundary.
-  Gamma is not native-parity aligned because current native ordinary Gamma uses
-  shared scalar `sigma_eps`.
+  Gamma no longer uses per-trait bridge grouping for current-oracle parity.
 - Cross-twin argument and wording contract:
   `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
   Before bridge, engine, or public-docs lanes, scan R/Julia and DRM/GLLVM
@@ -81,10 +84,9 @@ Active lane guidance:
   REML / AI-REML, CI-status columns, and `pdHess`. Share meanings where the
   model concept is the same; keep package-specific names where DRM and GLLVM
   target different estimands.
-- Next safe implementation lane: Gamma decision (shared bridge grouping now
-  versus native per-trait Gamma expansion later) or the next bridge admission
-  row (CI/status, masks, or post-fit), unless the maintainer explicitly asks to
-  publish or rebase the bridge PR first.
+- Next safe implementation lane: grouped-dispersion CI/status, masks, post-fit,
+  or the native per-trait Gamma expansion spec, unless the maintainer explicitly
+  asks to publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

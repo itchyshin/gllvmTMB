@@ -44,7 +44,7 @@ docs, or close issues.
 | --- | --- | --- |
 | Native `gllvmTMB` | NB2, NB1, and Beta carry per-trait nuisance parameters; ordinary Gamma uses shared scalar `sigma_eps` as the coefficient of variation; ordinal cutpoints are per ordinal trait. | This is the oracle. Gamma is the exception that needs a decision before per-trait bridge parity wording. |
 | `GLLVM.jl-integration` grouped dispersion | `fit_nb_gllvm_grouped`, `fit_nb1_gllvm_grouped`, `fit_beta_gllvm_grouped`, and `fit_gamma_gllvm_grouped` exist. Tests check that constant per-trait vectors reduce to shared scalar likelihoods, and smoke tests exercise per-species/grouped fits. | The engine is not starting from zero for dispersion. The remaining R-twin gap is bridge routing, scale mapping, and admission tests. |
-| `GLLVM.jl-integration` bridge one-part route | `bridge_fit` now calls grouped-dispersion fitters for NB2, NB1, Beta, and Gamma and labels grouped payload fields. NB2 and Beta have selected small-fixture native objective parity; NB1 has scale alignment but still needs objective evidence; Gamma is per-trait/grouped in Julia while native ordinary Gamma remains shared-CV. | The grouped bridge is useful but `JUL-01` remains partial. Gamma cannot be promoted as native parity without a decision. |
+| `GLLVM.jl-integration` bridge one-part route | `bridge_fit` now calls grouped-dispersion fitters for NB2, NB1, Beta, and Gamma and labels grouped payload fields. NB2 and Beta have selected small-fixture native objective parity; NB1 now has fixed-parameter, no-latent, and selected reduced-rank fitted-object point evidence; Gamma uses one shared grouped-Gamma shape in the bridge to match current native ordinary Gamma's scalar CV. | The grouped bridge is useful but `JUL-01` remains partial. Per-trait Gamma remains a native R/TMB expansion, not a current bridge parity claim. |
 | `GLLVM.jl-integration` ordinal route | `OrdinalFit` has one ordered cutpoint vector `tau` shared across traits and reports `df = rr_df + C - 1`. | Per-trait ordinal cutpoints still need engine work before bridge parity. |
 | Main `gllvmTMB` branch | Current `origin/main` has the lean Julia bridge surface. The fuller `origin/engine-julia` branch remains a draft/next-release bridge lane with conflicts against current main. | Land this spec as planning evidence; do not merge or advertise bridge parity from it. |
 
@@ -94,7 +94,7 @@ for the bridge, not a substitute for Gauss/Noether source review.
 | NB2 / `nbinom2` | `r_t` size | `Var = mu + mu^2 / r_t` | For gllvm-style dispersion, `phi_t = 1 / r_t`. For the `gllvmTMB` variability-oriented `sigma`, `sigma_t = 1 / sqrt(r_t)` under the current design note. |
 | NB1 / `nbinom1` | `phi_t` | `Var = mu * (1 + phi_t)` | Identity on the model overdispersion scale; the public `sigma` wording in `docs/design/03-likelihoods.md` must be checked before extractor mapping. |
 | Beta | `phi_t` precision | `Var = mu * (1 - mu) / (1 + phi_t)` | `sigma_t = 1 / sqrt(phi_t)` for the variability-oriented public scale. |
-| Gamma | `alpha_t` shape in Julia grouped fits | `Var = mu^2 / alpha_t` | Julia public map is `sigma_t = 1 / sqrt(alpha_t)`. Current native ordinary Gamma instead uses shared scalar `sigma_eps`; per-trait Gamma requires a native R/TMB expansion or a clearly labelled non-oracle bridge row. |
+| Gamma | `alpha_g` shape in Julia grouped fits | `Var = mu^2 / alpha_g` | Current bridge parity uses one shared group, so `sigma = 1 / sqrt(alpha)` matches native scalar `sigma_eps`. Per-trait Gamma (`group = 1:p`) remains engine-supported but needs native R/TMB expansion before R-twin parity wording. |
 
 `Tweedie` has grouped dispersion support on the Julia side, but it is outside
 the immediate R bridge parity slice unless the family is separately admitted in
@@ -115,7 +115,10 @@ df    = p + rr_df + G
 
 For native per-trait rows, `G = p`. For intentional shared dispersion, `G = 1`.
 Current ordinary Gamma parity uses `G = 1` unless native `gllvmTMB` is expanded
-to per-trait Gamma CV/shape. `df` must be exact. `logLik` must be reported on
+to per-trait Gamma CV/shape. This route now has a small complete balanced bridge
+fixture with `df = 5`, native-vs-Julia `logLik` delta about `2.8e-07`, and
+public `sigma` matching native `sigma_eps`. Broader Gamma parity still requires
+additional fixtures. `df` must be exact. `logLik` must be reported on
 the same likelihood criterion and approximation route used by the fit. Do not
 compare ML and REML; non-Gaussian REML remains unsupported.
 
@@ -168,8 +171,8 @@ labelled partial/shared-cutpoint, not native parity.
      through per-trait grouped fitters by default.
    - Add tests that `df` changes from `+1` to `+p` under default per-trait
      grouping for native per-trait rows.
-   - For Gamma, first choose whether bridge parity means shared grouping against
-     the current native oracle or a broader native R/TMB per-trait Gamma change.
+   - For Gamma, keep shared grouping against the current native oracle until a
+     broader native R/TMB per-trait Gamma change is opened.
    - Add trait-label tests for `dispersion`, `dispersion_group`, and
      `dispersion_group_id`.
 2. R bridge routing second.
@@ -202,7 +205,7 @@ labelled partial/shared-cutpoint, not native parity.
 | NB2 no-X complete | Point parity | grouped route, `df = p + rr_df + p`, `r <-> sigma/phi` map, native-vs-Julia `logLik`, trait labels |
 | NB1 no-X complete | Point parity | grouped route, identity overdispersion map, `df`, native-vs-Julia `logLik`, trait labels |
 | Beta no-X complete | Point parity | grouped precision route, `sigma = 1 / sqrt(phi)`, `df`, native-vs-Julia `logLik`, trait labels |
-| Gamma no-X complete | Point parity after decision | shared grouping against current native `sigma_eps` oracle, or per-trait `alpha_t` after native R/TMB expansion; exact `df`, native-vs-Julia `logLik`, trait labels |
+| Gamma no-X complete | Point parity, small fixture | shared grouping against current native `sigma_eps` oracle; exact `df`, native-vs-Julia `logLik`, trait labels, and public `sigma` equality. Per-trait `alpha_t` waits for native R/TMB expansion. |
 | Ordinal no-X complete | Point parity plus prediction payload | per-trait cutpoint engine, `df = rr_df + sum(C_t - 1)`, probability prediction, class prediction, `extract_cutpoints()` parity |
 | Masked dispersion rows | Planned after no-mask | grouped route with mask, observed-cell `nobs`, native-vs-Julia point parity, explicit CI-status |
 | X dispersion rows | Planned after no-X | grouped-dispersion X fitter or explicit shared-only gate; no silent scalar fallback |

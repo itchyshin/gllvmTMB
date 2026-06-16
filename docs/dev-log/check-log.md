@@ -4,6 +4,67 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Gamma shared bridge parity route
+
+Implemented the Gamma bridge decision from the NB1/Gamma parameterisation audit:
+use one shared grouped-Gamma dispersion group in the Julia bridge when claiming
+parity against current native `gllvmTMB`, because native ordinary Gamma still
+uses one scalar `sigma_eps` coefficient of variation.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- AGENTS.md CLAUDE.md ROADMAP.md CONTRIBUTING.md docs/dev-log/decisions.md docs/dev-log/check-log.md docs/design docs/dev-log/after-task inst/COPYRIGHTS DESCRIPTION | sed -n '1,160p'`
+  -> current local Codex programme commits only.
+- Julia bridge grouped-dispersion test:
+  `julia --project=. test/test_bridge_grouped_dispersion.jl`
+  in `../GLLVM.jl-integration` -> `49/49 pass`.
+- Julia bridge capability test:
+  `julia --project=. test/test_bridge_capabilities.jl`
+  in `../GLLVM.jl-integration` -> `34/34 pass`.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with six expected Julia-runtime skips.
+- Capability wording guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(grepl("shared Gamma grouped dispersion", caps$notes[caps$family == "gamma"])); stopifnot(!any(grepl("per-trait grouped dispersion", caps$notes[caps$family == "gamma"]))); print(caps[caps$family %in% c("negbinomial", "nb1", "beta", "gamma"), c("family", "ci_no_x_wald", "status", "notes")], row.names = FALSE)'`
+  -> NB2/NB1/Beta notes stay per-trait grouped; Gamma note says shared Gamma
+  grouped dispersion; all four CI rows remain `FALSE` and `partial`.
+- Gamma small-fixture evidence:
+  Julia `logLik = 17.595906505513`, native TMB `logLik = 17.595906784863`,
+  delta `-2.7935e-07`; `df = 5` in both engines; Julia
+  `dispersion_group_id = c(1, 1)`; Julia public `sigma =
+  c(0.0077397024, 0.0077397024)`, matching native `sigma_eps =
+  0.0077397018`.
+- Stale-claim scan after dashboard refresh:
+  `rg -n 'Gamma.*route/shape evidence only|choose shared bridge grouping|Gamma decision / next bridge admission row|Gamma native oracle still uses shared.*per-trait alpha|Gamma.*native parity.*decision lands|Gamma.*covered.*Julia|full native parity|complete bridge|CRAN-ready bridge|speed claim' docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md docs/dev-log/after-task/2026-06-16-gamma-shared-bridge-parity.md tests/testthat/test-julia-bridge.R R/julia-bridge.R README.md NEWS.md vignettes pkgdown-site/index.html`
+  -> expected NEWS guardrail, audit Option C historical row, and dashboard
+  known-gap guardrail only; no stale dashboard "Gamma decision pending" wording
+  and no new broad/full parity claim.
+- Whitespace:
+  `git diff --check` -> clean in both `gllvmTMB` and
+  `../GLLVM.jl-integration`.
+- Files updated:
+  `R/julia-bridge.R`;
+  `tests/testthat/test-julia-bridge.R`;
+  `docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md`;
+  `docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md`;
+  `docs/design/35-validation-debt-register.md`;
+  `docs/dev-log/coordination-board.md`;
+  `docs/dev-log/after-task/2026-06-16-gamma-shared-bridge-parity.md`;
+  local dashboard `pkgdown-site/index.html`.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `devtools::document()`,
+  `pkgdown::check_pkgdown()`, and article renders. This slice changes bridge
+  routing/tests plus validation/dev-log wording; no roxygen-generated Rd,
+  NAMESPACE, README, NEWS, vignette, or pkgdown navigation source changed.
+
 ## 2026-06-16 -- NB1 reduced-rank bridge Fisher-boundary fix
 
 Fixed the Julia-side NB1 Fisher-information boundary instability and promoted

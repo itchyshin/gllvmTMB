@@ -129,7 +129,10 @@ julia_grouped_dispersion_cases <- function() {
     gamma = list(
       Y = y_gamma, family = Gamma(link = "log"), engine_family = "gamma",
       parameter = "alpha", public = function(x) 1 / sqrt(x),
-      phi = NULL, native_report = NULL, native_loglik_tolerance = NULL
+      phi = NULL, native_report = "sigma_eps",
+      native_loglik_tolerance = 1e-3,
+      native_report_length = 1L,
+      expected_group_id = c(1L, 1L)
     )
   )
 }
@@ -193,6 +196,7 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   nuisance <- c(.GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES,
                 .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)
   expect_false(any(caps$ci_no_x_wald[caps$family %in% nuisance]))
+  expect_true(any(grepl("shared Gamma grouped dispersion", caps$notes)))
   expect_true(any(grepl("per-trait ordinal cutpoints", caps$notes)))
   expect_true(all(caps$status == "partial"))
   expect_true(all(!caps$missing_response))
@@ -285,11 +289,19 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
     expect_s3_class(fit, "gllvmTMB_julia")
     expect_equal(fit$family, case$engine_family)
     expect_equal(fit$dispersion_parameter, case$parameter)
-    expect_equal(unname(fit$dispersion_group_id), c(1L, 2L))
+    expected_group_id <- case$expected_group_id %||% seq_len(nrow(case$Y))
+    expected_group_names <- if (identical(expected_group_id, seq_len(nrow(case$Y)))) {
+      rownames(case$Y)
+    } else {
+      paste0("group", seq_along(unique(expected_group_id)))
+    }
+    expected_df <- nrow(case$Y) + nrow(case$Y) + length(unique(expected_group_id))
+    expect_equal(unname(fit$dispersion_group_id), expected_group_id)
+    expect_length(fit$dispersion_group, length(unique(expected_group_id)))
     expect_named(fit$dispersion, rownames(case$Y))
-    expect_named(fit$dispersion_group, rownames(case$Y))
+    expect_named(fit$dispersion_group, expected_group_names)
     expect_named(fit$dispersion_public, rownames(case$Y))
-    expect_equal(fit$df, 6L)
+    expect_equal(fit$df, expected_df)
     expect_true(all(is.finite(fit$dispersion)))
     expect_true(all(fit$dispersion > 0))
     expect_equal(
@@ -394,10 +406,13 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     expect_equal(fit_jl$dispersion_parameter, case$parameter)
     expect_equal(fit_jl$trait_levels, rownames(case$Y))
     expect_equal(fit_jl$unit_levels, colnames(case$Y))
-    expect_equal(unname(fit_jl$dispersion_group_id), c(1L, 2L))
+    expected_group_id <- case$expected_group_id %||% seq_len(nrow(case$Y))
+    expected_df <- nrow(case$Y) + nrow(case$Y) + length(unique(expected_group_id))
+    expect_equal(unname(fit_jl$dispersion_group_id), expected_group_id)
+    expect_length(fit_jl$dispersion_group, length(unique(expected_group_id)))
     expect_named(fit_jl$dispersion, rownames(case$Y))
     expect_named(fit_jl$dispersion_public, rownames(case$Y))
-    expect_equal(attr(logLik(fit_jl), "df"), 6L)
+    expect_equal(attr(logLik(fit_jl), "df"), expected_df)
     expect_true(all(is.finite(fit_jl$dispersion)))
     expect_true(all(fit_jl$dispersion > 0))
     expect_equal(
@@ -412,7 +427,8 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
         family = case$family, engine = "tmb"
       )
       expect_equal(fit_tmb$opt$convergence, 0L)
-      expect_length(fit_tmb$report[[case$native_report]], nrow(case$Y))
+      expect_length(fit_tmb$report[[case$native_report]],
+                    case$native_report_length %||% nrow(case$Y))
       expect_true(all(is.finite(as.numeric(fit_tmb$report[[case$native_report]]))))
 
       if (!is.null(case$native_loglik_tolerance)) {
@@ -437,6 +453,12 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
         expect_equal(
           unname(fit_jl$dispersion),
           unname(fit_tmb$report[[case$native_report]]),
+          tolerance = 1e-3
+        )
+      } else if (identical(case$engine_family, "gamma")) {
+        expect_equal(
+          unname(fit_jl$dispersion_public),
+          rep(as.numeric(fit_tmb$report[[case$native_report]]), nrow(case$Y)),
           tolerance = 1e-3
         )
       }

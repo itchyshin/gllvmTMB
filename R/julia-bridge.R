@@ -32,6 +32,11 @@
   "beta",
   "gamma"
 )
+.GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES <- c(
+  "negbinomial",
+  "nb1",
+  "beta"
+)
 .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES <- c(
   "ordinal",
   "ordinal_probit"
@@ -131,22 +136,31 @@ gllvm_julia_capabilities <- function() {
     postfit_ordination = FALSE,
     status = "partial",
     notes = ifelse(
-      families %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES,
+      families %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES,
       paste(
         "single reduced-rank no-X point route; default Julia payload uses",
         "per-trait grouped dispersion; CI, masks, X, and native parity",
         "promotion are follow-ups"
       ),
       ifelse(
-        families %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES,
+        families == "gamma",
         paste(
           "single reduced-rank no-X point route; default Julia payload uses",
-          "per-trait ordinal cutpoints; CI, masks, X, and native parity",
-          "promotion are follow-ups"
+          "shared Gamma grouped dispersion to match current native scalar-CV",
+          "Gamma; per-trait Gamma is a native-expansion follow-up; CI,",
+          "masks, X, and native parity promotion are follow-ups"
         ),
-        paste(
-          "single reduced-rank no-X point route; broader structures, masks,",
-          "post-fit methods, and native parity promotion remain gated"
+        ifelse(
+          families %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES,
+          paste(
+            "single reduced-rank no-X point route; default Julia payload uses",
+            "per-trait ordinal cutpoints; CI, masks, X, and native parity",
+            "promotion are follow-ups"
+          ),
+          paste(
+            "single reduced-rank no-X point route; broader structures, masks,",
+            "post-fit methods, and native parity promotion remain gated"
+          )
         )
       )
     ),

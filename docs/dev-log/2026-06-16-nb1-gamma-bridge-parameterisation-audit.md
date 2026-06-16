@@ -48,7 +48,8 @@ The current `JUL-01` limitation for NB1 should therefore stay narrow:
 
 ## Gamma Decision
 
-Gamma is not aligned at the oracle level yet.
+Gamma is now aligned with the current native oracle for the bridge parity path,
+using shared grouping.
 
 Ordinary native Gamma in `gllvmTMB` uses scalar `sigma_eps` as the coefficient of
 variation. The likelihood is
@@ -57,11 +58,12 @@ Gamma CV in the current native route. The simulation path in
 `R/methods-gllvmTMB.R` uses the same scalar `sigma_eps`.
 
 Julia grouped Gamma estimates `alpha_g` and supports per-trait grouping
-(`group = 1:p`), with `Var = mu^2 / alpha_t`. The R bridge correctly maps that
-engine scale to a public `sigma_t = 1 / sqrt(alpha_t)`, but a per-trait
-`sigma_t` vector is not the current native R/TMB Gamma oracle.
+(`group = 1:p`), with `Var = mu^2 / alpha_t`. The bridge now routes ordinary
+Gamma with one shared group (`group = rep(1, p)`) so the public
+`sigma = 1 / sqrt(alpha)` vector expands the same scalar coefficient of
+variation native `gllvmTMB` reports as `sigma_eps`.
 
-Gamma therefore needs an explicit maintainer decision before promotion:
+The decision table remains useful for the later per-trait Gamma expansion:
 
 | Option | What changes | Upside | Cost |
 | --- | --- | --- | --- |
@@ -69,10 +71,20 @@ Gamma therefore needs an explicit maintainer decision before promotion:
 | B. Use shared Gamma grouping in the Julia bridge when claiming oracle parity | Route bridge Gamma with `G = 1` until native per-trait Gamma exists; keep Julia grouped Gamma as engine-internal/experimental. | Fastest path to honest `df`/`logLik` parity against the current native oracle. | Defers the per-trait Gamma ambition and must be labelled clearly. |
 | C. Keep current per-trait Gamma bridge route but do not promote parity | Leave the route as useful route/shape evidence only. | No behavior churn. | The public row remains partial and cannot support native parity claims. |
 
-Recommended default for the next bridge PR is **B unless Ada explicitly chooses
-A before bridge landing**. It preserves the native-oracle rule and avoids a
-false Gamma parity claim while leaving Julia grouped Gamma available for the
-larger per-trait Gamma design.
+Decision implemented in the paired bridge runtime: **Option B**. It preserves
+the native-oracle rule and avoids a false per-trait Gamma parity claim while
+leaving Julia grouped Gamma available for the larger native per-trait Gamma
+design.
+
+Small-fixture evidence after the route change:
+
+- Julia Gamma `logLik = 17.595906505513`.
+- Native TMB Gamma `logLik = 17.595906784863`.
+- Delta `-2.7935e-07`.
+- `df = 5` for both engines.
+- Julia `dispersion_group_id = c(1, 1)`.
+- Julia public `sigma = c(0.0077397024, 0.0077397024)`, matching native
+  `sigma_eps = 0.0077397018`.
 
 ## Issue And Capability Impact
 
@@ -92,15 +104,18 @@ larger per-trait Gamma design.
 1. NB1 stable reduced-rank fitted fixture:
    require exact `df`, finite status, trait labels, `phi` scale identity, and a
    recorded tolerance for fitted log-likelihood when `K > 0`.
-2. Gamma decision test:
-   if Option B lands, assert the bridge Gamma row uses one dispersion group and
-   exact `df = p + rr_df + 1`; if Option A lands, add native per-trait Gamma
-   recovery and update all public scale/report paths.
+2. Gamma shared-oracle bridge test:
+   now covered in `tests/testthat/test-julia-bridge.R` and
+   `GLLVM.jl-integration/test/test_bridge_grouped_dispersion.jl`: Gamma uses
+   one dispersion group, exact `df = p + rr_df + 1`, native-vs-Julia `logLik`
+   parity on the small complete balanced fixture, and public `sigma` equality
+   to native `sigma_eps`.
 
 ## Team Dispatch
 
-- Ada: choose Gamma Option A, B, or C before any Gamma parity wording.
-- Hopper: implement bridge grouping/gate changes after the decision.
+- Ada: keep Option B as the bridge default until a native per-trait Gamma
+  expansion is explicitly opened.
+- Hopper: keep shared Gamma bridge grouping tested and labelled.
 - Karpinski: keep Julia grouped Gamma available and labelled by engine scale.
 - Gauss/Noether: review Gamma CV/shape equations before any native TMB change.
 - Fisher/Curie: design the NB1 fixed-parameter check and Gamma decision test.

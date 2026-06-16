@@ -4,6 +4,29 @@ Append-only, newest-first record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Handover to Codex (gllvmTMB folder)
+
+Claude -> Codex handover of the gllvmTMB folder. Full pickup brief:
+`docs/dev-log/2026-06-16-codex-handover.md`; compact checkpoint:
+`docs/dev-log/recovery-checkpoints/2026-06-16-045812-claude-to-codex-handover-checkpoint.md`.
+
+State: branch `engine-julia` clean, **72 commits ahead of
+`origin/engine-julia`, nothing pushed**. Verified green: `test_local()`
+3151/0/0 (240 files); live heavy+julia bridge 841/0/0/0-skip vs engine
+`1dc9e98`; engine `Pkg.test()` 3943/0.
+
+Open for the maintainer (do NOT decide / push): (A) does the full
+`engine="julia"` continuation go into the in-flight CRAN submission
+(`origin/main` @ 9fc9b7f, `--as-cran` 0E/2W/3N, already carries the #473
+bridge) or the next; (B) dispersion / ordinal-cutpoint engine alignment (the
+shared-scalar vs per-trait gap, `2026-06-15-dispersion-structure-divergence.md`).
+Merge target is `origin/main` (~13 conflicts incl. R code); re-run `--as-cran`
+after any merge.
+
+Deliberately not run / not done: no merge, no push. (A wrong-base merge against
+a stale local `main` was made then reset; `engine-julia` is at its clean
+verified tip 3151/0/0.)
+
 ## 2026-06-15 -- Julia bridge Gaussian REML route and CI-status guard
 
 Scope:

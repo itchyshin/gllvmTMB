@@ -47,6 +47,12 @@ Active lane guidance:
 - Do not close `#483`, `#485`, `#486`, or `#488` from chat memory.
 - Before a draft bridge PR is opened, use the body and conflict plan in
   `docs/dev-log/2026-06-16-engine-julia-draft-landing.md`.
+- New planned lane from the GLLVM team note:
+  `codex/xcoef-structural-zero-spec`. Scope is a structural-zero mask for
+  selected entries of the species/trait-specific fixed-effect coefficient
+  matrix. Keep it separate from observation-by-response covariates
+  (`z[i, j, k]`) and from response-mask / missing-data lanes. See
+  `docs/dev-log/2026-06-16-xcoef-structural-zero-plan-addendum.md`.
 - Next safe implementation lane after this readout: Julia per-trait
   dispersion/cutpoint spec, unless the maintainer explicitly asks to
   publish or rebase the bridge PR first.

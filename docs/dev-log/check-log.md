@@ -68,6 +68,46 @@ Deliberately not run:
   is not conflict-free against current `origin/main`, and the bridge-vs-CRAN
   timing decision remains open.
 
+## 2026-06-16 -- Xcoef structural-zero plan addendum
+
+Added a plan addendum for the maintainer-supplied GLLVM team note on
+fixing selected species/trait-specific fixed-effect coefficients exactly
+to zero. This is a planned design lane only; no R code, Julia code,
+formula grammar, generated documentation, or public user-facing claim was
+changed.
+
+Evidence:
+
+- Duplicate-topic scan in `gllvmTMB`:
+  `rg -n "Xcoef_mask|Xcoef_fixed|fixed-effect.*zero|structural zero|coefficient mask|fixed coefficients|mask.*Xcoef|species-specific fixed|trait-specific fixed|observation-by-column|observation.*response.*covariate" ROADMAP.md docs README.md NEWS.md R tests vignettes || true`
+  -> existing hits were latent loading constraints, covariance structural
+  zeros, simulation coefficient names, or article phrasing; no
+  fixed-effect coefficient-mask lane found.
+- Duplicate-topic scan in `GLLVM.jl` and `GLLVM.jl-integration`:
+  `rg -n "Xcoef_mask|Xcoef_fixed|fixed-effect.*zero|structural zero|coefficient mask|fixed coefficients|species-specific fixed|observation-by-column|observation.*response.*covariate" "/Users/z3437171/Dropbox/Github Local/GLLVM.jl" "/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" 2>/dev/null || true`
+  -> hits were zero-inflated-family structural-zero language; no
+  fixed-effect coefficient-mask lane found.
+- Whitespace and stale-claim scan:
+  `git diff --check`
+  -> clean.
+  `rg -n "implemented|supported|covered|complete|done|CRAN-ready|full parity|Xcoef_mask|Xcoef_fixed|observation-by-response|z\\[i, j, k\\]|structural-zero" docs/dev-log/2026-06-16-xcoef-structural-zero-plan-addendum.md docs/dev-log/after-task/2026-06-16-xcoef-structural-zero-plan-addendum.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md`
+  -> new hits are planned-lane, non-scope, or negative claim-boundary
+  language; old check-log / coordination-board hits are historical context.
+
+Files touched:
+
+- `docs/dev-log/2026-06-16-xcoef-structural-zero-plan-addendum.md`
+- `docs/dev-log/after-task/2026-06-16-xcoef-structural-zero-plan-addendum.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/coordination-board.md`
+
+Deliberately not run:
+
+- No `devtools::document()`, `devtools::test()`, `devtools::check()`, or
+  `pkgdown::check_pkgdown()` because this was a plan-only addendum.
+- No GitHub issue was opened; the lane should be filed after Ada chooses
+  whether it belongs in the R-first queue, Julia engine queue, or both.
+
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 
 Scope:

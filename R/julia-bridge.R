@@ -137,9 +137,9 @@ gllvm_julia_capabilities <- function() {
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_bootstrap = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
-    postfit_coef = FALSE,
+    postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
-    postfit_summary = FALSE,
+    postfit_summary = TRUE,
     postfit_predict = FALSE,
     postfit_residuals = FALSE,
     postfit_simulate = FALSE,
@@ -157,9 +157,9 @@ gllvm_julia_capabilities <- function() {
     ci_no_x_wald = FALSE,
     ci_no_x_profile = FALSE,
     ci_no_x_bootstrap = FALSE,
-    postfit_coef = FALSE,
+    postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
-    postfit_summary = FALSE,
+    postfit_summary = TRUE,
     postfit_predict = FALSE,
     postfit_residuals = FALSE,
     postfit_simulate = FALSE,
@@ -167,6 +167,8 @@ gllvm_julia_capabilities <- function() {
     status = "partial",
     notes = paste(
       "complete balanced no-X/no-mask/no-CI mixed-family point route;",
+      "coef() and summary() are routed; predict/residuals/simulate/extractor",
+      "parity remain gated;",
       "component families:",
       paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", ")
     ),
@@ -181,10 +183,11 @@ gllvm_julia_capabilities <- function() {
   } else {
     "response masks remain gated; "
   }
+  postfit_clause <- "coef() and summary() are routed; predict/residuals/simulate/extractor parity remain gated; "
   if (family %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES) {
     return(paste0(
       "single reduced-rank no-X point route; default Julia payload uses ",
-      "per-trait grouped dispersion; ", mask_clause,
+      "per-trait grouped dispersion; ", mask_clause, postfit_clause,
       "CI, X, and native parity promotion are follow-ups"
     ))
   }
@@ -193,19 +196,19 @@ gllvm_julia_capabilities <- function() {
       "single reduced-rank no-X point route; default Julia payload uses ",
       "shared Gamma grouped dispersion to match current native scalar-CV ",
       "Gamma; per-trait Gamma is a native-expansion follow-up; ",
-      mask_clause, "CI, X, and native parity promotion are follow-ups"
+      mask_clause, postfit_clause, "CI, X, and native parity promotion are follow-ups"
     ))
   }
   if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
     return(paste0(
       "single reduced-rank no-X point route; default Julia payload uses ",
-      "per-trait ordinal cutpoints; ", mask_clause,
+      "per-trait ordinal cutpoints; ", mask_clause, postfit_clause,
       "CI, X, and native parity promotion are follow-ups"
     ))
   }
   paste0(
-    "single reduced-rank no-X point route; ", mask_clause,
-    "broader structures, post-fit methods, and native parity promotion remain gated"
+    "single reduced-rank no-X point route; ", mask_clause, postfit_clause,
+    "broader structures and native parity promotion remain gated"
   )
 }
 
@@ -313,6 +316,14 @@ gllvm_julia_capabilities <- function() {
   if (p > 0L) {
     traits <- .gllvm_julia_trait_names(res, p)
     res$trait_names <- traits
+    if (!is.null(res$alpha) && length(res$alpha) == p) {
+      res$alpha <- .gllvm_julia_as_vector(res$alpha, "numeric")
+      names(res$alpha) <- traits
+    }
+    if (!is.null(res$communality) && length(res$communality) == p) {
+      res$communality <- .gllvm_julia_as_vector(res$communality, "numeric")
+      names(res$communality) <- traits
+    }
     if (!is.null(res$loadings) && nrow(as.matrix(res$loadings)) == p) {
       res$loadings <- as.matrix(res$loadings)
       rownames(res$loadings) <- traits
@@ -504,6 +515,44 @@ gllvm_julia_capabilities <- function() {
   out
 }
 
+.gllvm_julia_coef_payload <- function(object) {
+  out <- list()
+  if (!is.null(object$alpha)) {
+    out$alpha <- object$alpha
+  }
+  if (!is.null(object$mean_coef)) {
+    out$mean_coef <- .gllvm_julia_as_vector(object$mean_coef, "numeric")
+  }
+  if (!is.null(object$beta_cov)) {
+    out$beta_cov <- .gllvm_julia_as_vector(object$beta_cov, "numeric")
+  }
+  if (!is.null(object$gamma)) {
+    out$gamma <- .gllvm_julia_as_vector(object$gamma, "numeric")
+  }
+  if (!is.null(object$loadings)) {
+    out$loadings <- as.matrix(object$loadings)
+  }
+  if (!is.null(object$dispersion) && any(is.finite(object$dispersion))) {
+    out$dispersion <- object$dispersion
+  }
+  if (!is.null(object$dispersion_public)) {
+    out$dispersion_public <- object$dispersion_public
+  }
+  if (!is.null(object$dispersion_group)) {
+    out$dispersion_group <- object$dispersion_group
+  }
+  if (!is.null(object$cutpoints)) {
+    out$cutpoints <- as.matrix(object$cutpoints)
+  }
+  out
+}
+
+.gllvm_julia_print_matrix <- function(x, digits = 3) {
+  if (is.null(x) || length(x) == 0L) return(invisible(NULL))
+  print(round(x, digits))
+  invisible(x)
+}
+
 #' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).
@@ -552,6 +601,22 @@ gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = N
   res
 }
 
+#' Methods for Julia bridge fits
+#'
+#' Small S3 surface for fits returned by `gllvmTMB(..., engine = "julia")` or
+#' [gllvm_julia_fit()]. These methods expose the flat bridge payload that has
+#' already passed the R admission gates. They are point-estimate summaries only:
+#' prediction, residuals, simulation, extractor parity, and confidence intervals
+#' are separate bridge rows.
+#'
+#' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
+#'   [gllvm_julia_fit()].
+#' @param digits Number of digits printed by summary methods.
+#' @param ... Unused.
+#' @return `logLik()` returns a `"logLik"` object. `coef()` returns a named list
+#'   of available point-estimate components. `summary()` returns a list with
+#'   header, coefficients, covariance, and status fields.
+#' @name gllvmTMB_julia-methods
 #' @export
 logLik.gllvmTMB_julia <- function(object, ...) {
   val <- object$loglik
@@ -561,6 +626,7 @@ logLik.gllvmTMB_julia <- function(object, ...) {
   val
 }
 
+#' @rdname gllvmTMB_julia-methods
 #' @export
 print.gllvmTMB_julia <- function(x, ...) {
   cat("gllvmTMB fit (engine = 'julia', via GLLVM.jl)\n")
@@ -568,6 +634,109 @@ print.gllvmTMB_julia <- function(x, ...) {
               paste(unique(x$family), collapse = ","), x$d, x$n_traits, x$n_units))
   cat(sprintf("  logLik = %.4f | AIC = %.2f | BIC = %.2f | converged = %s\n",
               x$loglik, x$aic, x$bic, x$converged))
+  invisible(x)
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+coef.gllvmTMB_julia <- function(object, ...) {
+  .gllvm_julia_coef_payload(object)
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+summary.gllvmTMB_julia <- function(object, ...) {
+  out <- list(
+    header = list(
+      engine = object$engine %||% "julia",
+      family = object$family %||% NA_character_,
+      families = object$families %||% object$family %||% NA_character_,
+      model = object$model %||% NA_character_,
+      d = object$d %||% NA_integer_,
+      n_traits = object$n_traits %||% NA_integer_,
+      n_units = object$n_units %||% NA_integer_,
+      nobs = object$nobs %||% NA_integer_,
+      df = object$df %||% NA_integer_,
+      logLik = object$loglik %||% NA_real_,
+      AIC = object$aic %||% NA_real_,
+      BIC = object$bic %||% NA_real_,
+      converged = object$converged %||% NA,
+      message = object$message %||% NA_character_,
+      missing_response = isTRUE(object$missing_response)
+    ),
+    coefficients = coef(object),
+    covariance = list(
+      Sigma = object$Sigma,
+      correlation = object$correlation,
+      communality = object$communality
+    ),
+    status = list(
+      partial = TRUE,
+      note = object$note %||% "",
+      ci_status = object$ci_status %||% NULL
+    )
+  )
+  class(out) <- "summary.gllvmTMB_julia"
+  out
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
+  h <- x$header
+  cat("gllvmTMB Julia bridge summary\n")
+  cat(sprintf(
+    "  family: %s | model: %s | K = %d | %d traits x %d units\n",
+    paste(unique(h$families), collapse = ","),
+    h$model,
+    h$d,
+    h$n_traits,
+    h$n_units
+  ))
+  cat(sprintf(
+    "  logLik = %.4f | df = %d | nobs = %d | AIC = %.2f | BIC = %.2f\n",
+    h$logLik,
+    h$df,
+    h$nobs,
+    h$AIC,
+    h$BIC
+  ))
+  cat(sprintf("  converged = %s | missing response mask = %s\n",
+              h$converged, h$missing_response))
+
+  co <- x$coefficients
+  if (!is.null(co$alpha)) {
+    cat("\nTrait intercept / mean parameter:\n")
+    alpha <- data.frame(
+      trait = names(co$alpha) %||% paste0("trait", seq_along(co$alpha)),
+      alpha = as.numeric(co$alpha),
+      row.names = NULL
+    )
+    alpha$alpha <- round(alpha$alpha, digits)
+    print(alpha, row.names = FALSE)
+  }
+  if (!is.null(co$loadings) && length(co$loadings) > 0L) {
+    cat("\nLoadings:\n")
+    .gllvm_julia_print_matrix(co$loadings, digits)
+  }
+  if (!is.null(co$dispersion)) {
+    cat("\nDispersion (engine scale):\n")
+    .gllvm_julia_print_matrix(as.matrix(co$dispersion), digits)
+  }
+  if (!is.null(co$dispersion_public)) {
+    cat("\nDispersion (public scale):\n")
+    .gllvm_julia_print_matrix(as.matrix(co$dispersion_public), digits)
+    note <- x$status$note
+    if (!is.null(note) && nzchar(note)) cat("  Note:", note, "\n")
+  }
+  if (!is.null(co$cutpoints)) {
+    cat("\nOrdinal cutpoints:\n")
+    .gllvm_julia_print_matrix(co$cutpoints, digits)
+  }
+  if (!is.null(x$covariance$correlation)) {
+    cat("\nTrait correlation:\n")
+    .gllvm_julia_print_matrix(x$covariance$correlation, digits)
+  }
   invisible(x)
 }
 

@@ -21,10 +21,12 @@
   rows, but still loudly rejects non-`rr` covariance terms, more than one
   latent block, `cbind()` binomial, Gaussian or mixed-family response masks,
   response masks with fixed-effect covariates, masked CIs, and non-Gaussian
-  covariates through the main `gllvmTMB()` dispatch. Confidence intervals for
-  grouped-dispersion and per-trait ordinal rows, rich post-fit methods,
-  mixed-family promotion, native parity promotion, and structured covariance
-  terms remain planned follow-up rows. OUT: JuliaCall
+  covariates through the main `gllvmTMB()` dispatch. The admitted post-fit
+  surface is point-estimate `coef()` and `summary()` only; prediction,
+  residuals, simulation, extractor parity, and confidence intervals for
+  grouped-dispersion or per-trait ordinal rows remain planned follow-up rows,
+  as do mixed-family promotion, native parity promotion, and structured
+  covariance terms. OUT: JuliaCall
   is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
   when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB
   engine and `R CMD check` are unaffected on machines without Julia.

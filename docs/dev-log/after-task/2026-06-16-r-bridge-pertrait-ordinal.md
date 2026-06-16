@@ -104,7 +104,8 @@ source docs from ignored generated Julia `docs/build` files in the paired repo.
 
 - No per-trait ordinal Wald/profile/bootstrap CI route yet.
 - No native `gllvmTMB` vs Julia ordinal parity promotion yet for logLik,
-  cutpoints, predictions, residuals, or post-fit extractors.
+  cutpoints, predictions, residuals, or post-fit extractors beyond the later
+  point-estimate `coef()` and `summary()` bridge-method slice.
 - Response masks, non-Gaussian X through the main dispatch, mixed-family
-  ordinal rows, structured covariance terms, and rich post-fit methods remain
-  planned/gated.
+  ordinal rows, structured covariance terms, prediction, residuals, simulation,
+  extractor parity, and CIs remain planned/gated.

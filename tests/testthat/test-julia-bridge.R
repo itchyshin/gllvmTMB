@@ -36,10 +36,12 @@ fake_grouped_dispersion_julia_fit <- function(family = "negbinomial",
       n_units = 4L,
       trait_names = c("sp1", "sp2"),
       unit_names = paste0("site", 1:4),
+      alpha = c(1.2, 1.8),
       loadings = matrix(c(0.6, 0.2), nrow = 2L,
                         dimnames = list(c("sp1", "sp2"), "LV1")),
       Sigma = matrix(c(0.36, 0.12, 0.12, 0.04), nrow = 2L),
       correlation = matrix(c(1, 1, 1, 1), nrow = 2L),
+      communality = c(1, 1),
       dispersion_group = values,
       dispersion_group_id = c(1L, 2L),
       dispersion = values,
@@ -47,9 +49,12 @@ fake_grouped_dispersion_julia_fit <- function(family = "negbinomial",
       dispersion_engine_scale = "synthetic engine scale",
       dispersion_public_scale = "synthetic public scale",
       loglik = -12,
+      aic = 36,
+      bic = 38,
       df = 6L,
       nobs = 8L,
-      converged = TRUE
+      converged = TRUE,
+      message = "converged"
     ),
     class = c("gllvmTMB_julia", "list")
   )
@@ -65,9 +70,11 @@ fake_ordinal_julia_fit <- function(family = "ordinal_probit") {
       n_units = 8L,
       trait_names = c("sp1", "sp2"),
       unit_names = paste0("site", 1:8),
+      alpha = c(NaN, NaN),
       loadings = matrix(c(0.5, -0.3), nrow = 2L),
       Sigma = matrix(c(0.25, -0.15, -0.15, 0.09), nrow = 2L),
       correlation = matrix(c(1, -1, -1, 1), nrow = 2L),
+      communality = c(1, 1),
       cutpoints = matrix(c(-0.8, 0.4, NaN, -1.1, -0.1, 1.2),
                          nrow = 2L, byrow = TRUE),
       n_categories = c(3L, 4L),
@@ -75,9 +82,12 @@ fake_ordinal_julia_fit <- function(family = "ordinal_probit") {
       cutpoint_link = "ProbitLink",
       dispersion = c(NaN, NaN),
       loglik = -18,
+      aic = 50,
+      bic = 55,
       df = 7L,
       nobs = 16L,
-      converged = TRUE
+      converged = TRUE,
+      message = "converged"
     ),
     class = c("gllvmTMB_julia", "list")
   )
@@ -251,6 +261,12 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   expect_true(all(caps$status == "partial"))
   expect_equal(caps$family[caps$missing_response], .GLLVM_JULIA_MASK_FAMILIES)
   expect_true(any(grepl("response masks are routed for no-X point fits", caps$notes)))
+  expect_equal(caps$family[caps$postfit_coef], caps$family)
+  expect_equal(caps$family[caps$postfit_summary], caps$family)
+  expect_true(all(!caps$postfit_predict))
+  expect_true(all(!caps$postfit_residuals))
+  expect_true(all(!caps$postfit_simulate))
+  expect_true(any(grepl("coef\\(\\) and summary\\(\\) are routed", caps$notes)))
   expect_true(all(!caps$cbind_binomial))
 })
 
@@ -297,6 +313,33 @@ test_that("ordinal bridge payload is trait-labelled and CI-gated", {
   expect_equal(unname(fit$cutpoints["sp1", 1:2]), c(-0.8, 0.4))
   expect_true(is.nan(fit$cutpoints["sp1", "cutpoint3"]))
   expect_equal(unname(fit$cutpoints["sp2", ]), c(-1.1, -0.1, 1.2))
+})
+
+test_that("Julia bridge coef and summary expose admitted point payloads", {
+  fit <- .gllvm_julia_normalise_result(
+    fake_grouped_dispersion_julia_fit("nb1", c(0.7, 1.1), "phi")
+  )
+  fit$engine <- "julia"
+  co <- coef(fit)
+  expect_named(co$alpha, c("sp1", "sp2"))
+  expect_named(co$dispersion, c("sp1", "sp2"))
+  expect_named(co$dispersion_public, c("sp1", "sp2"))
+  expect_equal(rownames(co$loadings), c("sp1", "sp2"))
+
+  s <- summary(fit)
+  expect_s3_class(s, "summary.gllvmTMB_julia")
+  expect_equal(s$header$family, "nb1")
+  expect_equal(s$header$nobs, 8L)
+  expect_true(s$status$partial)
+  expect_named(s$coefficients$dispersion, c("sp1", "sp2"))
+  expect_no_error(capture.output(print(s)))
+
+  ord <- .gllvm_julia_normalise_result(fake_ordinal_julia_fit())
+  ord$engine <- "julia"
+  co_ord <- coef(ord)
+  expect_true("cutpoints" %in% names(co_ord))
+  expect_equal(rownames(co_ord$cutpoints), c("sp1", "sp2"))
+  expect_no_error(capture.output(print(summary(ord))))
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------
@@ -494,6 +537,16 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     expect_named(fit_jl$dispersion, rownames(case$Y))
     expect_named(fit_jl$dispersion_public, rownames(case$Y))
     expect_equal(attr(logLik(fit_jl), "df"), expected_df)
+    co <- coef(fit_jl)
+    expect_named(co$alpha, rownames(case$Y))
+    expect_equal(rownames(co$loadings), rownames(case$Y))
+    expect_named(co$dispersion, rownames(case$Y))
+    s <- summary(fit_jl)
+    expect_s3_class(s, "summary.gllvmTMB_julia")
+    expect_equal(s$header$family, case$engine_family)
+    expect_equal(s$header$nobs, nrow(case$Y) * ncol(case$Y))
+    expect_true(s$status$partial)
+    expect_no_error(capture.output(print(s)))
     expect_true(all(is.finite(fit_jl$dispersion)))
     expect_true(all(fit_jl$dispersion > 0))
     expect_equal(
@@ -589,6 +642,13 @@ test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLL
   expect_equal(rownames(fit$cutpoints), rownames(y_ord))
   expect_true(is.nan(fit$cutpoints["sp1", "cutpoint3"]))
   expect_equal(fit$df, 7L)
+  co <- coef(fit)
+  expect_true("cutpoints" %in% names(co))
+  expect_equal(rownames(co$cutpoints), rownames(y_ord))
+  s <- summary(fit)
+  expect_s3_class(s, "summary.gllvmTMB_julia")
+  expect_equal(s$header$family, "ordinal_probit")
+  expect_no_error(capture.output(print(s)))
 })
 
 test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {

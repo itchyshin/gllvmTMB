@@ -84,4 +84,7 @@ No issue was commented on or closed. `gllvmTMB#488` remains the relevant bridge 
 - No native `gllvmTMB` vs Julia parity promotion yet for NB2, NB1, Beta, or Gamma logLik/estimates.
 - No grouped-dispersion Wald/profile/bootstrap CI route yet.
 - Ordinal still needs per-trait cutpoints on the Julia side before a native parity claim.
-- Response masks, non-Gaussian X through the main dispatch, mixed-family dispersion rows, structured covariance terms, and rich post-fit methods remain planned/gated.
+- Response masks, non-Gaussian X through the main dispatch, mixed-family dispersion rows,
+  structured covariance terms, prediction, residuals, simulation, extractor parity,
+  and CIs remain planned/gated. Point-estimate `coef()` and `summary()` were
+  admitted later in the 2026-06-16 bridge-method slice.

@@ -30,8 +30,8 @@ Current Codex state:
   addendum.
 - `codex/r-bridge-grouped-dispersion` is the current implementation/evidence
   branch. It has local grouped-dispersion, per-trait ordinal, Gamma shared-route,
-  and one-part no-X response-mask bridge evidence through the current Codex
-  slice.
+  one-part no-X response-mask, and `coef()` / `summary()` bridge evidence
+  through the current Codex slice.
 - No GitHub PR is open for this programme yet.
 
 Current bridge landing state:
@@ -81,6 +81,9 @@ Active lane guidance:
   contract for one-part no-X point fits in Poisson, Bernoulli binomial, NB2,
   NB1, Beta, Gamma, ordinal, and ordinal-probit rows. Gaussian masks,
   mixed-family masks, X+mask, and masked CIs remain loud gates.
+  The R bridge now also registers point-estimate `coef()` and `summary()`
+  methods for `gllvmTMB_julia` objects; prediction, residuals, simulation, and
+  extractor parity remain gated.
 - Cross-twin argument and wording contract:
   `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
   Before bridge, engine, or public-docs lanes, scan R/Julia and DRM/GLLVM
@@ -90,9 +93,9 @@ Active lane guidance:
   model concept is the same; keep package-specific names where DRM and GLLVM
   target different estimands.
 - Next safe implementation lane: grouped-dispersion CI/status, masked
-  CI/status, post-fit extractor parity, mixed-family admission, or the native
-  per-trait Gamma expansion spec, unless the maintainer explicitly asks to
-  publish or rebase the bridge PR first.
+  CI/status, prediction/residual/simulation/extractor parity, mixed-family
+  admission, or the native per-trait Gamma expansion spec, unless the
+  maintainer explicitly asks to publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

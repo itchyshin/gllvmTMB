@@ -53,7 +53,7 @@
 
 \method{fitted}{gllvmTMB_julia}(object, type = c("response", "link"), re_form = ~., ...)
 
-\method{residuals}{gllvmTMB_julia}(object, type = c("response"), ...)
+\method{residuals}{gllvmTMB_julia}(object, type = c("response", "pearson"), ...)
 
 \method{summary}{gllvmTMB_julia}(object, ...)
 
@@ -81,7 +81,10 @@ only in-sample predictions are returned.}
 \item{type}{Prediction scale. \code{"link"} returns the fitted linear predictor and
 \code{"response"} returns the inverse-link mean. For \code{augment()}, only
 \code{"response"} is currently routed; use \code{predict(type = "link")} for
-link-scale fitted values.}
+link-scale fitted values. For \code{residuals()}, \code{"response"} returns
+observed minus fitted and \code{"pearson"} divides that by the per-family
+response-scale standard deviation; Pearson residuals are not defined for
+ordinal bridge fits.}
 
 \item{re_form}{Random-effect formula controlling whether conditional latent
 scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predictions.

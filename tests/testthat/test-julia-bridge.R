@@ -707,6 +707,27 @@ test_that("Julia bridge fitted, predict, and residuals methods work without Juli
   expect_equal(rr$residual, as.numeric(fit$y - exp(eta)))
   expect_equal(rr$status, rep("ok", 6L))
 
+  # Pearson: Poisson variance = mu = exp(eta)
+  rr_pearson <- residuals(fit, type = "pearson")
+  expect_equal(
+    rr_pearson$residual,
+    as.numeric(fit$y - exp(eta)) / sqrt(as.numeric(exp(eta)))
+  )
+  expect_equal(rr_pearson$fitted, as.numeric(exp(eta)))
+  expect_equal(rr_pearson$type, rep("pearson", 6L))
+  expect_equal(rr_pearson$status, rep("ok", 6L))
+
+  # Pearson: Gaussian variance = sigma_eps^2 (identity link)
+  gauss <- fit
+  gauss$family <- "gaussian"
+  gauss$model <- "gaussian_rr"
+  gauss$sigma_eps <- 0.5
+  rr_gauss <- residuals(gauss, type = "pearson")
+  expect_equal(
+    rr_gauss$residual,
+    as.numeric(gauss$y - eta) / 0.5
+  )
+
   masked <- fit
   masked$observed_mask <- matrix(TRUE, nrow = 2L, ncol = 3L)
   masked$observed_mask[2L, 2L] <- FALSE
@@ -715,6 +736,14 @@ test_that("Julia bridge fitted, predict, and residuals methods work without Juli
   expect_true(is.na(rr_masked$observed[rr_masked$status == "masked"]))
   expect_true(is.na(rr_masked$residual[rr_masked$status == "masked"]))
   expect_true(is.finite(rr_masked$fitted[rr_masked$status == "masked"]))
+  rr_masked_pearson <- residuals(masked, type = "pearson")
+  expect_equal(sum(rr_masked_pearson$status == "masked"), 1L)
+  expect_true(
+    is.na(rr_masked_pearson$residual[rr_masked_pearson$status == "masked"])
+  )
+  expect_true(all(
+    is.finite(rr_masked_pearson$residual[rr_masked_pearson$status == "ok"])
+  ))
   aug_masked <- generics::augment(masked)
   expect_equal(sum(aug_masked$.status == "masked"), 1L)
   expect_equal(
@@ -826,6 +855,18 @@ test_that("Julia bridge mixed-family post-fit methods are row-family aware", {
   aug <- generics::augment(fit)
   expect_equal(nrow(aug), 12L)
   expect_equal(aug$.resid, rr$residual)
+
+  # Pearson scaling is per-row-family: gaussian sigma^2 (dispersion[1]),
+  # poisson mu, binomial N * p * (1 - p) with N = 1.
+  rr_pearson <- residuals(fit, type = "pearson")
+  var_mat <- matrix(NA_real_, nrow = 3L, ncol = 4L)
+  var_mat[1, ] <- fit$dispersion[1]^2
+  var_mat[2, ] <- exp(eta[2, ])
+  var_mat[3, ] <- stats::plogis(eta[3, ]) * (1 - stats::plogis(eta[3, ]))
+  expect_equal(
+    rr_pearson$residual,
+    rr$residual / as.numeric(sqrt(var_mat))
+  )
 
   sim <- simulate(fit, nsim = 2L, seed = 101L)
   expect_equal(dim(sim), c(12L, 2L))
@@ -950,6 +991,10 @@ test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
   fit_ord$family <- "ordinal"
   expect_error(predict(fit_ord), "ordinal predictions")
   expect_error(generics::augment(fit_ord), "ordinal predictions")
+  expect_error(
+    residuals(fit_ord, type = "pearson"),
+    "ordinal predictions"
+  )
 
   fit_gx <- fit
   fit_gx$family <- "gaussian"

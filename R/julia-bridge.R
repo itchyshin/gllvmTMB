@@ -1181,6 +1181,89 @@ print.gllvmTMB_julia <- function(x, ...) {
   out
 }
 
+.gllvm_julia_pearson_variance <- function(object, fit) {
+  fam <- .gllvm_julia_trait_families(object)
+  if (any(fam %in% c("ordinal", "ordinal_probit"))) {
+    stop(
+      "residuals.gllvmTMB_julia: Pearson residuals are not defined for ",
+      "ordinal families because the Julia bridge payload does not carry ",
+      "response-scale means and variances.",
+      call. = FALSE
+    )
+  }
+  mu_vec <- .gllvm_julia_matrix_values(object, fit)
+  n_rows <- length(mu_vec)
+  # mu_vec, fam_row, and the returned variance share the long-row order
+  # produced by .gllvm_julia_long_values(), so residuals() can scale the
+  # already-flattened residual column directly.
+  fam_row <- .gllvm_julia_row_family(object, n_rows)
+  variance <- numeric(n_rows)
+  for (f in unique(fam_row)) {
+    rows <- fam_row == f
+    variance[rows] <- switch(
+      f,
+      gaussian = {
+        mixed_object <- .gllvm_julia_is_mixed_object(object)
+        sigma <- if (mixed_object) {
+          .gllvm_julia_row_dispersion(object, f, n_rows, rows = rows)
+        } else {
+          rep(as.numeric(object$sigma_eps)[1L], sum(rows))
+        }
+        if (any(!is.finite(sigma)) || any(sigma < 0)) {
+          msg <- if (mixed_object) {
+            "residuals.gllvmTMB_julia: Gaussian Pearson residuals need finite non-negative sigma values."
+          } else {
+            "residuals.gllvmTMB_julia: Gaussian Pearson residuals need a finite non-negative sigma_eps payload."
+          }
+          stop(msg, call. = FALSE)
+        }
+        sigma^2
+      },
+      poisson = mu_vec[rows],
+      binomial = {
+        prob <- mu_vec[rows]
+        size <- if (is.null(object$N)) {
+          rep(1L, sum(rows))
+        } else {
+          .gllvm_julia_matrix_values(object, object$N)[rows]
+        }
+        if (any(!is.finite(size)) || any(size < 0)) {
+          stop(
+            "residuals.gllvmTMB_julia: Binomial trial sizes must be finite ",
+            "and non-negative.",
+            call. = FALSE
+          )
+        }
+        as.numeric(size) * prob * (1 - prob)
+      },
+      nb1 = {
+        phi <- .gllvm_julia_row_dispersion(object, f, n_rows, rows = rows)
+        mu_vec[rows] * (1 + phi)
+      },
+      negbinomial = {
+        size <- .gllvm_julia_row_dispersion(object, f, n_rows, rows = rows)
+        mu_vec[rows] + mu_vec[rows]^2 / size
+      },
+      beta = {
+        phi <- .gllvm_julia_row_dispersion(object, f, n_rows, rows = rows)
+        mu_vec[rows] * (1 - mu_vec[rows]) / (phi + 1)
+      },
+      gamma = {
+        alpha <- .gllvm_julia_row_dispersion(object, f, n_rows, rows = rows)
+        mu_vec[rows]^2 / alpha
+      },
+      stop(
+        "residuals.gllvmTMB_julia: Pearson residuals are not wired for ",
+        "family '",
+        f,
+        "'.",
+        call. = FALSE
+      )
+    )
+  }
+  variance
+}
+
 .gllvm_julia_long_values <- function(object, values, value_name) {
   values <- as.matrix(values)
   if (!is.null(object$.trait_index) && !is.null(object$.unit_index)) {
@@ -1325,7 +1408,10 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @param type Prediction scale. `"link"` returns the fitted linear predictor and
 #'   `"response"` returns the inverse-link mean. For `augment()`, only
 #'   `"response"` is currently routed; use `predict(type = "link")` for
-#'   link-scale fitted values.
+#'   link-scale fitted values. For `residuals()`, `"response"` returns
+#'   observed minus fitted and `"pearson"` divides that by the per-family
+#'   response-scale standard deviation; Pearson residuals are not defined for
+#'   ordinal bridge fits.
 #' @param re_form Random-effect formula controlling whether conditional latent
 #'   scores are included. Use `~ 0` or `NA` for fixed-effects-only predictions.
 #'   For `augment()`, only the default conditional `~ .` route is currently
@@ -1761,7 +1847,7 @@ fitted.gllvmTMB_julia <- function(
 #' @export
 residuals.gllvmTMB_julia <- function(
   object,
-  type = c("response"),
+  type = c("response", "pearson"),
   ...
 ) {
   type <- match.arg(type)
@@ -1780,6 +1866,10 @@ residuals.gllvmTMB_julia <- function(
     residual[!mask] <- NA_real_
   }
   out <- .gllvm_julia_long_values(object, residual, "residual")
+  if (identical(type, "pearson")) {
+    variance <- .gllvm_julia_pearson_variance(object, fit)
+    out$residual <- out$residual / sqrt(variance)
+  }
   out$observed <- .gllvm_julia_long_values(
     object,
     observed,

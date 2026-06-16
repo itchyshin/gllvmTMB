@@ -21,9 +21,11 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
   nuisance parameter (dispersion; ordinal cutpoints) where `gllvmTMB` estimates one
   **per trait**. Not transform-fixable — needs an engine-alignment decision
   (see `2026-06-15-dispersion-structure-divergence.md`).
-- **New capabilities:** ordinal `predict(type="prob"/"class")` (cross-repo); Pearson
-  residuals; `getResidualCov()/getResidualCor()` bridge fix (was a real, user-visible
-  bug); `trait_families()` accessor + per-trait family in `print()`.
+- **New capabilities (run + continuation, all `engine="julia"`, point-only):** ordinal
+  `predict(type="prob"/"class")` (cross-repo); Pearson residuals;
+  `getResidualCov()/getResidualCor()` bridge fix (was a real, user-visible bug);
+  `extract_cutpoints()`, `extract_Sigma_B()`, `trait_families()` method, and
+  `tidy(effects="cutpoint")` now wired for bridge fits; per-trait family in `print()`.
 - **Deliberately NOT done** (out of scope / your call): the dispersion/cutpoint engine
   alignment; non-Gaussian-X / REML / masked CIs (amendment-held); low-value test-coverage
   items; articles (to do together). **Nothing pushed; no CRAN/tag.**

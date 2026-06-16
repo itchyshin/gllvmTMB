@@ -104,11 +104,17 @@ gllvm_julia_setup <- function(
   "ordinal_probit"
 )
 .GLLVM_JULIA_CI_NO_X_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
+## Scalar-mean post-fit (residuals = response - mu, parametric simulate) is the
+## Gaussian/GLM in-sample contract; ordinal has no scalar response mean on the
+## bridge payload, so it is excluded here.
 .GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES <- setdiff(
   .GLLVM_JULIA_BRIDGE_FAMILIES,
   c("ordinal", "ordinal_probit")
 )
 .GLLVM_JULIA_POSTFIT_SIMULATE_FAMILIES <- .GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES
+## predict() IS wired for ordinal: type = "prob" (per-category probabilities) and
+## type = "class" (modal category) ride the cutpoints/n_categories bridge payload.
+.GLLVM_JULIA_POSTFIT_PREDICT_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
 
 .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
   "fit_no_x",
@@ -156,7 +162,7 @@ gllvm_julia_capabilities <- function() {
     postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
     postfit_summary = TRUE,
-    postfit_predict = families %in% .GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES,
+    postfit_predict = families %in% .GLLVM_JULIA_POSTFIT_PREDICT_FAMILIES,
     postfit_residuals = families %in% .GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES,
     postfit_simulate = families %in% .GLLVM_JULIA_POSTFIT_SIMULATE_FAMILIES,
     postfit_ordination = TRUE,
@@ -164,8 +170,9 @@ gllvm_julia_capabilities <- function() {
     notes = ifelse(
       families == "ordinal" | families == "ordinal_probit",
       paste(
-        "fit/nobs/mask/CI/ordination route only; prediction, residual,",
-        "simulation, and augmentation payloads need cutpoints/probabilities"
+        "fit/nobs/mask/CI/ordination/predict route; predict(type='prob'|'class')",
+        "uses the cutpoints payload; residual/simulate/augment still need a",
+        "response-scale mean"
       ),
       "single reduced-rank latent block; broader structures and parity remain gated"
     ),
@@ -1112,12 +1119,162 @@ print.gllvmTMB_julia <- function(x, ...) {
   do.call(rbind, rows)
 }
 
+## ---- ordinal (cumulative-link) in-sample prediction ----------------------
+##
+## The ordinal bridge fit carries the C-1 ordered cutpoints (`cutpoints`) and the
+## category count (`n_categories`) so the per-category probabilities can be formed
+## in R from the cached point estimates:
+##   eta = Lambda %*% t(scores)               (no intercept: the cutpoints carry
+##                                             the category levels)
+##   P(y = c) = F(tau_c - eta) - F(tau_{c-1} - eta),   tau_0 = -Inf, tau_C = +Inf,
+## with F the cumulative link CDF (logistic for "ordinal", standard Normal for
+## "ordinal_probit"). The rotated loadings/scores product equals the engine's
+## unrotated Lambda %*% Z' (rotation is orthogonal), so these probabilities match
+## the engine's predict(type = :prob) to machine precision.
+
+.gllvm_julia_is_ordinal_object <- function(object) {
+  fam <- .gllvm_julia_trait_families(object)
+  all(fam %in% c("ordinal", "ordinal_probit"))
+}
+
+.gllvm_julia_ordinal_cutpoints <- function(object) {
+  tau <- object$cutpoints
+  if (is.null(tau)) {
+    stop(
+      "predict.gllvmTMB_julia: this ordinal bridge object does not carry the ",
+      "`cutpoints` payload; re-fit with the current engine = 'julia' bridge.",
+      call. = FALSE
+    )
+  }
+  tau <- as.numeric(tau)
+  if (!length(tau) || any(!is.finite(tau)) || is.unsorted(tau, strictly = TRUE)) {
+    stop(
+      "predict.gllvmTMB_julia: ordinal `cutpoints` must be a finite, strictly ",
+      "increasing vector of length C - 1.",
+      call. = FALSE
+    )
+  }
+  tau
+}
+
+## Category count C: prefer the explicit payload, fall back to length(cutpoints)+1.
+.gllvm_julia_ordinal_C <- function(object, tau) {
+  C <- object$n_categories %||% (length(tau) + 1L)
+  C <- as.integer(C)
+  if (length(C) != 1L || is.na(C) || C < 2L || C != length(tau) + 1L) {
+    stop(
+      "predict.gllvmTMB_julia: ordinal `n_categories` (", C, ") is inconsistent ",
+      "with length(cutpoints) + 1 (", length(tau) + 1L, ").",
+      call. = FALSE
+    )
+  }
+  C
+}
+
+## Cumulative-link CDF F for the ordinal fit (logit -> logistic, probit -> Phi).
+## The authoritative selector is the `link` payload ("LogitLink"/"ProbitLink");
+## the family string ("ordinal_probit") is the fallback when `link` is absent.
+.gllvm_julia_ordinal_cdf <- function(object) {
+  link <- object$link
+  if (!is.null(link)) {
+    link <- as.character(link)
+    if (any(link == "ProbitLink")) return(stats::pnorm)
+    if (any(link == "LogitLink")) return(stats::plogis)
+  }
+  fam <- .gllvm_julia_trait_families(object)
+  if (any(fam == "ordinal_probit")) stats::pnorm else stats::plogis
+}
+
+## In-sample link-scale eta (p x n) for an ordinal fit: the conditional latent
+## reconstruction Lambda %*% t(scores). re_form = ~0 drops the latent block (eta=0).
+.gllvm_julia_ordinal_eta <- function(object, include_latent = TRUE) {
+  L <- as.matrix(object$loadings)
+  scores <- as.matrix(object$scores)
+  p <- object$n_traits %||% nrow(L)
+  n <- object$n_units %||% nrow(scores)
+  if (!is.numeric(p) || !is.numeric(n) || p < 1L || n < 1L) {
+    stop(
+      "predict.gllvmTMB_julia: object does not carry valid trait/unit dimensions.",
+      call. = FALSE
+    )
+  }
+  if (include_latent) {
+    if (!length(L) || !length(scores) || ncol(L) != ncol(scores)) {
+      stop(
+        "predict.gllvmTMB_julia: object does not carry compatible loadings and ",
+        "scores for conditional in-sample ordinal prediction.",
+        call. = FALSE
+      )
+    }
+    eta <- L %*% t(scores)
+  } else {
+    eta <- matrix(0, p, n)
+  }
+  dimnames(eta) <- list(
+    .gllvm_julia_trait_names(object),
+    .gllvm_julia_unit_names(object)
+  )
+  eta
+}
+
+## Per-category probability array P[t, u, c] (p x n x C) under the cumulative link.
+.gllvm_julia_ordinal_prob_array <- function(object, include_latent = TRUE) {
+  tau <- .gllvm_julia_ordinal_cutpoints(object)
+  C <- .gllvm_julia_ordinal_C(object, tau)
+  Fcdf <- .gllvm_julia_ordinal_cdf(object)
+  eta <- .gllvm_julia_ordinal_eta(object, include_latent = include_latent)
+  p <- nrow(eta)
+  n <- ncol(eta)
+  P <- array(0, dim = c(p, n, C))
+  for (c in seq_len(C)) {
+    Fhi <- if (c == C) 1 else Fcdf(tau[c] - eta)
+    Flo <- if (c == 1L) 0 else Fcdf(tau[c - 1L] - eta)
+    P[, , c] <- Fhi - Flo
+  }
+  dimnames(P) <- list(
+    .gllvm_julia_trait_names(object),
+    .gllvm_julia_unit_names(object),
+    paste0("cat", seq_len(C))
+  )
+  P
+}
+
+## Modal category M[t, u] in {1, ..., C} = which.max over the probability axis.
+## Flatten the (p, n) cells to rows and the C categories to columns, then take the
+## per-row argmax (first category wins ties, matching the engine's predict :class).
+.gllvm_julia_ordinal_class <- function(object, include_latent = TRUE) {
+  P <- .gllvm_julia_ordinal_prob_array(object, include_latent = include_latent)
+  d <- dim(P)
+  flat <- matrix(P, nrow = d[1] * d[2], ncol = d[3]) # cells x categories
+  M <- matrix(max.col(flat, ties.method = "first"), nrow = d[1], ncol = d[2])
+  dimnames(M) <- dimnames(P)[c(1L, 2L)]
+  M
+}
+
+## Long (one row per trait x unit) data frame of ordinal per-category
+## probabilities: id columns + one column `P(y=c)` per category.
+.gllvm_julia_ordinal_long_prob <- function(object, include_latent = TRUE) {
+  P <- .gllvm_julia_ordinal_prob_array(object, include_latent = include_latent)
+  C <- dim(P)[3]
+  cat_labels <- seq_len(C)
+  out <- NULL
+  for (c in seq_len(C)) {
+    col <- .gllvm_julia_long_values(object, P[, , c], "prob")
+    if (is.null(out)) {
+      out <- col[setdiff(names(col), "prob")]
+    }
+    out[[paste0("P(y=", cat_labels[c], ")")]] <- col$prob
+  }
+  out
+}
+
 .gllvm_julia_eta_matrix <- function(object, include_latent = TRUE) {
   fam <- .gllvm_julia_trait_families(object)
   if (any(fam %in% c("ordinal", "ordinal_probit"))) {
     stop(
-      "predict.gllvmTMB_julia: ordinal predictions are not wired yet because ",
-      "the Julia bridge payload does not carry cutpoints/probabilities.",
+      "predict.gllvmTMB_julia: ordinal link/response-scale predictions are not ",
+      "wired; use type = \"prob\" for per-category probabilities or type = ",
+      "\"class\" for the modal category.",
       call. = FALSE
     )
   }
@@ -1464,13 +1621,17 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @param conf.int For `tidy()`, whether to add confidence limits. Currently
 #'   unsupported for Julia-engine fits; use [confint()] where routed.
 #' @param conf.level Confidence level requested by `conf.int`.
-#' @param type Prediction scale. `"link"` returns the fitted linear predictor and
-#'   `"response"` returns the inverse-link mean. For `augment()`, only
-#'   `"response"` is currently routed; use `predict(type = "link")` for
-#'   link-scale fitted values. For `residuals()`, `"response"` returns
-#'   observed minus fitted and `"pearson"` divides that by the per-family
-#'   response-scale standard deviation; Pearson residuals are not defined for
-#'   ordinal bridge fits.
+#' @param type Prediction scale. For families with a scalar response mean,
+#'   `"link"` returns the fitted linear predictor and `"response"` returns the
+#'   inverse-link mean. For ordinal (cumulative-link) fits `predict()` instead
+#'   takes `"prob"` (per-category probabilities `P(y = c)`, one column per
+#'   category, default) or `"class"` (the modal category in `1:C`); `"link"` and
+#'   `"response"` are rejected because an ordinal fit has no scalar mean. For
+#'   `augment()`, only `"response"` is currently routed; use
+#'   `predict(type = "link")` for link-scale fitted values. For `residuals()`,
+#'   `"response"` returns observed minus fitted and `"pearson"` divides that by
+#'   the per-family response-scale standard deviation; residuals are not routed
+#'   for ordinal bridge fits.
 #' @param re_form Random-effect formula controlling whether conditional latent
 #'   scores are included. Use `~ 0` or `NA` for fixed-effects-only predictions.
 #'   For `augment()`, only the default conditional `~ .` route is currently
@@ -1858,7 +2019,7 @@ simulate.gllvmTMB_julia <- function(
 predict.gllvmTMB_julia <- function(
   object,
   newdata = NULL,
-  type = c("link", "response"),
+  type = NULL,
   re_form = ~.,
   ...
 ) {
@@ -1869,11 +2030,37 @@ predict.gllvmTMB_julia <- function(
       call. = FALSE
     )
   }
-  type <- match.arg(type)
-  eta <- .gllvm_julia_eta_matrix(
-    object,
-    include_latent = !.gllvm_julia_re_zero(re_form)
-  )
+  include_latent <- !.gllvm_julia_re_zero(re_form)
+
+  ## Ordinal (cumulative-link) fits have no scalar response mean, so they take a
+  ## distinct prediction vocabulary: type = "prob" (per-category probabilities) or
+  ## type = "class" (modal category). The cutpoints/probabilities ride the bridge
+  ## payload; eta is the cached conditional reconstruction Lambda %*% t(scores).
+  ## "link"/"response" are accepted only to emit a directed error pointing at the
+  ## ordinal vocabulary, mirroring the families that do carry a scalar mean.
+  if (.gllvm_julia_is_ordinal_object(object)) {
+    type <- if (is.null(type)) {
+      "prob"
+    } else {
+      match.arg(type, c("prob", "class", "link", "response"))
+    }
+    if (type %in% c("link", "response")) {
+      stop(
+        "predict.gllvmTMB_julia: ordinal link/response-scale predictions are ",
+        "not wired; use type = \"prob\" for per-category probabilities or ",
+        "type = \"class\" for the modal category.",
+        call. = FALSE
+      )
+    }
+    if (identical(type, "prob")) {
+      return(.gllvm_julia_ordinal_long_prob(object, include_latent = include_latent))
+    }
+    cls <- .gllvm_julia_ordinal_class(object, include_latent = include_latent)
+    return(.gllvm_julia_long_values(object, cls, "class"))
+  }
+
+  type <- if (is.null(type)) "link" else match.arg(type, c("link", "response"))
+  eta <- .gllvm_julia_eta_matrix(object, include_latent = include_latent)
   values <- if (identical(type, "link")) {
     eta
   } else {

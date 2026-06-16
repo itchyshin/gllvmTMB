@@ -228,6 +228,43 @@ fake_mixed_julia_fit <- function() {
   )
 }
 
+# A synthetic ordinal bridge object carrying the cutpoints / n_categories payload
+# (the new ordinal-only flat fields). 2 traits x 3 units, C = 3 categories, K = 1.
+# `link` selects the cumulative-link CDF: "LogitLink" (default) or "ProbitLink".
+fake_ordinal_julia_fit <- function(link = "LogitLink") {
+  fam <- if (identical(link, "ProbitLink")) "ordinal_probit" else "ordinal"
+  model <- if (identical(link, "ProbitLink")) "ordinal_probit_rr" else "ordinal_rr"
+  structure(
+    list(
+      family = fam,
+      model = model,
+      d = 1L,
+      n_traits = 2L,
+      n_units = 3L,
+      trait_names = c("sp1", "sp2"),
+      unit_names = c("u1", "u2", "u3"),
+      alpha = c(NaN, NaN),
+      loadings = matrix(c(0.6, -0.4), nrow = 2L),
+      scores = matrix(c(-0.5, 0.2, 0.7), nrow = 3L),
+      cutpoints = c(-0.8, 0.5),
+      n_categories = 3L,
+      dispersion = c(NaN, NaN),
+      sigma_eps = NaN,
+      link = rep(link, 2L),
+      y = matrix(c(1L, 2L, 3L, 2L, 1L, 3L), nrow = 2L),
+      loglik = -10.5,
+      aic = 25,
+      bic = 27,
+      df = 4,
+      nobs = 6,
+      converged = TRUE,
+      iterations = 8,
+      note = "synthetic ordinal bridge object"
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+}
+
 # --- family mapping ---------------------------------------------------------
 
 test_that("family mapping covers every bridged family", {
@@ -317,7 +354,7 @@ test_that("Julia bridge capability table documents admitted R-side rows", {
   expect_equal(caps$family[caps$postfit_summary], caps$family[caps$fit_no_x])
   expect_equal(
     caps$family[caps$postfit_predict],
-    c(.GLLVM_JULIA_POSTFIT_IN_SAMPLE_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
+    c(.GLLVM_JULIA_POSTFIT_PREDICT_FAMILIES, .GLLVM_JULIA_MIXED_FAMILY)
   )
   expect_equal(
     caps$family[caps$postfit_residuals],
@@ -987,13 +1024,16 @@ test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
     "newdata predictions are not wired"
   )
 
+  # An ordinal fit with NO cutpoints payload (e.g. an older bridge object) must
+  # fail loudly for predict(); residuals/augment stay unsupported (no response-
+  # scale mean) regardless of the cutpoints payload.
   fit_ord <- fit
   fit_ord$family <- "ordinal"
-  expect_error(predict(fit_ord), "ordinal predictions")
-  expect_error(generics::augment(fit_ord), "ordinal predictions")
+  expect_error(predict(fit_ord), "does not carry the .*cutpoints.* payload")
+  expect_error(generics::augment(fit_ord), "link/response-scale predictions")
   expect_error(
     residuals(fit_ord, type = "pearson"),
-    "ordinal predictions"
+    "link/response-scale predictions"
   )
 
   fit_gx <- fit
@@ -1005,6 +1045,89 @@ test_that("Julia bridge prediction gaps fail loudly without JuliaCall", {
 
   fit_gx$mean_coef <- c(0.2)
   expect_silent(predict(fit_gx, type = "link"))
+})
+
+test_that("ordinal predict(type='prob') matches hand-computed F(tau - eta)", {
+  for (lk in c("LogitLink", "ProbitLink")) {
+    fit <- fake_ordinal_julia_fit(link = lk)
+    Fcdf <- if (lk == "ProbitLink") stats::pnorm else stats::plogis
+
+    pr <- predict(fit, type = "prob")
+    # one row per trait x unit, columns: unit, trait, P(y=1), P(y=2), P(y=3)
+    expect_equal(nrow(pr), 6L)
+    prob_cols <- c("P(y=1)", "P(y=2)", "P(y=3)")
+    expect_true(all(prob_cols %in% names(pr)))
+
+    P <- as.matrix(pr[prob_cols])
+    expect_true(all(P >= 0 & P <= 1))
+    expect_true(all(abs(rowSums(P) - 1) < 1e-12))
+
+    # Hand recompute eta = Lambda %*% t(scores) and F(tau - eta) per category.
+    L <- as.matrix(fit$loadings)
+    scores <- as.matrix(fit$scores)
+    eta <- L %*% t(scores) # p x n
+    tau <- fit$cutpoints
+    # Long order is column-major over (trait, unit) from expand.grid(trait, unit).
+    grid <- expand.grid(
+      trait = fit$trait_names,
+      unit = fit$unit_names,
+      stringsAsFactors = FALSE
+    )
+    eta_long <- eta[cbind(
+      match(grid$trait, fit$trait_names),
+      match(grid$unit, fit$unit_names)
+    )]
+    p1 <- Fcdf(tau[1] - eta_long)
+    p2 <- Fcdf(tau[2] - eta_long) - Fcdf(tau[1] - eta_long)
+    p3 <- 1 - Fcdf(tau[2] - eta_long)
+    expect_equal(pr[["P(y=1)"]], p1, tolerance = 1e-12)
+    expect_equal(pr[["P(y=2)"]], p2, tolerance = 1e-12)
+    expect_equal(pr[["P(y=3)"]], p3, tolerance = 1e-12)
+
+    # type = "class" returns the modal (argmax) category in 1:C.
+    cls <- predict(fit, type = "class")
+    expect_equal(nrow(cls), 6L)
+    expect_true(all(cls$class %in% seq_len(fit$n_categories)))
+    expected_class <- max.col(P, ties.method = "first")
+    expect_equal(cls$class, expected_class)
+  }
+})
+
+test_that("ordinal predict honours re_form = ~0 (drops the latent block)", {
+  fit <- fake_ordinal_julia_fit()
+  pr0 <- predict(fit, type = "prob", re_form = ~0)
+  # eta = 0 for every cell => identical category probabilities across all rows.
+  P0 <- as.matrix(pr0[c("P(y=1)", "P(y=2)", "P(y=3)")])
+  expect_true(all(abs(rowSums(P0) - 1) < 1e-12))
+  for (j in seq_len(ncol(P0))) {
+    expect_true(all(abs(P0[, j] - P0[1, j]) < 1e-12))
+  }
+  tau <- fit$cutpoints
+  expect_equal(unname(P0[1, 1]), stats::plogis(tau[1]), tolerance = 1e-12)
+  expect_equal(unname(P0[1, 3]), 1 - stats::plogis(tau[2]), tolerance = 1e-12)
+})
+
+test_that("ordinal predict rejects link/response and missing-cutpoints payloads", {
+  fit <- fake_ordinal_julia_fit()
+  expect_error(predict(fit, type = "link"), "link/response-scale predictions")
+  expect_error(predict(fit, type = "response"), "link/response-scale predictions")
+
+  fit_no_tau <- fit
+  fit_no_tau$cutpoints <- NULL
+  expect_error(predict(fit_no_tau), "does not carry the .*cutpoints.* payload")
+
+  fit_bad_C <- fit
+  fit_bad_C$n_categories <- 5L
+  expect_error(predict(fit_bad_C), "inconsistent")
+})
+
+test_that("ordinal capability row reports predict wired, residuals not", {
+  cap <- gllvm_julia_capabilities()
+  ord <- cap[cap$family %in% c("ordinal", "ordinal_probit"), ]
+  expect_true(all(ord$postfit_predict))
+  expect_true(all(!ord$postfit_residuals))
+  expect_true(all(!ord$postfit_simulate))
+  expect_match(ord$notes[1], "predict\\(type='prob'\\|'class'\\)")
 })
 
 test_that("Julia bridge ordination accessors use cached scores and loadings", {
@@ -1939,9 +2062,23 @@ test_that("engine = 'julia' fits admitted missing-response families end-to-end",
     )
     if (!case$check_postfit) {
       expect_equal(unique(fit$link), "ProbitLink")
-      expect_error(predict(fit, type = "response"), "ordinal predictions")
-      expect_error(residuals(fit), "ordinal predictions")
-      expect_error(generics::augment(fit), "ordinal predictions")
+      # Ordinal predict IS wired (prob/class) via the cutpoints payload; the
+      # scalar response/link path and residual/augment stay unsupported.
+      expect_error(predict(fit, type = "response"), "link/response-scale predictions")
+      expect_error(residuals(fit), "link/response-scale predictions")
+      expect_error(generics::augment(fit), "link/response-scale predictions")
+
+      probs <- predict(fit, type = "prob")
+      prob_cols <- grep("^P\\(y=", names(probs), value = TRUE)
+      expect_gte(length(prob_cols), 2L)
+      row_sums <- rowSums(as.matrix(probs[prob_cols]))
+      expect_true(all(abs(row_sums - 1) < 1e-8))
+      expect_true(all(as.matrix(probs[prob_cols]) >= 0 & as.matrix(probs[prob_cols]) <= 1))
+
+      cls <- predict(fit, type = "class")
+      C_ord <- fit$n_categories
+      expect_false(is.null(C_ord))
+      expect_true(all(cls$class %in% seq_len(C_ord)))
     }
   }
 })

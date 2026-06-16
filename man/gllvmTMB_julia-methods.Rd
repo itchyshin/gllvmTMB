@@ -43,13 +43,7 @@
 
 \method{simulate}{gllvmTMB_julia}(object, nsim = 1, seed = NULL, re_form = ~., ...)
 
-\method{predict}{gllvmTMB_julia}(
-  object,
-  newdata = NULL,
-  type = c("link", "response"),
-  re_form = ~.,
-  ...
-)
+\method{predict}{gllvmTMB_julia}(object, newdata = NULL, type = NULL, re_form = ~., ...)
 
 \method{fitted}{gllvmTMB_julia}(object, type = c("response", "link"), re_form = ~., ...)
 
@@ -78,13 +72,17 @@ it must have the same row count as the in-sample bridge rows.}
 \item{newdata}{Optional new data. Currently unsupported for Julia-engine fits;
 only in-sample predictions are returned.}
 
-\item{type}{Prediction scale. \code{"link"} returns the fitted linear predictor and
-\code{"response"} returns the inverse-link mean. For \code{augment()}, only
-\code{"response"} is currently routed; use \code{predict(type = "link")} for
-link-scale fitted values. For \code{residuals()}, \code{"response"} returns
-observed minus fitted and \code{"pearson"} divides that by the per-family
-response-scale standard deviation; Pearson residuals are not defined for
-ordinal bridge fits.}
+\item{type}{Prediction scale. For families with a scalar response mean,
+\code{"link"} returns the fitted linear predictor and \code{"response"} returns the
+inverse-link mean. For ordinal (cumulative-link) fits \code{predict()} instead
+takes \code{"prob"} (per-category probabilities \code{P(y = c)}, one column per
+category, default) or \code{"class"} (the modal category in \code{1:C}); \code{"link"} and
+\code{"response"} are rejected because an ordinal fit has no scalar mean. For
+\code{augment()}, only \code{"response"} is currently routed; use
+\code{predict(type = "link")} for link-scale fitted values. For \code{residuals()},
+\code{"response"} returns observed minus fitted and \code{"pearson"} divides that by
+the per-family response-scale standard deviation; residuals are not routed
+for ordinal bridge fits.}
 
 \item{re_form}{Random-effect formula controlling whether conditional latent
 scores are included. Use \code{~ 0} or \code{NA} for fixed-effects-only predictions.

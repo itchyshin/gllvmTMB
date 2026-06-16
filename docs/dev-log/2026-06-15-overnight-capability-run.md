@@ -62,6 +62,7 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 | 8 | **Fixed-effect-X parity** (Gaussian/Poisson/Binomial native-vs-julia; full β incl. x-coef; two-payload-shape aligner) | gllvmTMB | a58bc71 | heavy+julia 745 pass (+31, indep.) |
 | 9 | **Mixed-family parity** (no-dispersion components; shared-Λ cross-family fit) | gllvmTMB | 769cef3 | heavy+julia 756 pass (+11, indep.) |
 | 10 | **Masked-response parity** (Poisson/Binomial no-X; cell-wise mask = native NA handling, identical observed cells) | gllvmTMB | 8d114dc | heavy+julia 782 pass (+26, indep.) |
+| 11 | **extract_communality()** bridge fix (removes misleading abort; Gaussian degenerate c²=1, clear non-Gaussian errors) — modest: communality is degenerate on the bridge (no unique tier) | gllvmTMB | 1ec78e8 | no-Julia 325 pass |
 
 ## Verification (close-out checkpoint, ~20:15)
 - Native fast full suite (`devtools::test()`): **FAIL 0 | WARN 3 (pre-existing) | SKIP 730 | PASS 3092**

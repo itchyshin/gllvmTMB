@@ -123,6 +123,33 @@ Draft PR language must not say:
 - calibrated CI coverage for bridge rows whose evidence is only point
   parity or CI-status plumbing.
 
+## Cross-Twin Consistency Gate
+
+Before the draft PR is opened, rebased, or made ready for review, apply
+`docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
+
+The bridge wording must keep these names and meanings stable:
+
+- R front ends use `engine = "julia"` for the bridge selector; Julia packages
+  expose bridge primitives such as `GLLVM.bridge_fit()` or `DRM.drm_bridge()`.
+- Future Julia algorithm controls are reserved for `engine_control`; do not
+  imply that `gllvmTMBcontrol()`, `drm_control()`, or `control` exposes Julia
+  optimizer, sparse-kernel, REML, or CI choices.
+- Response masks / observed-cell masks, missing-predictor models, future
+  `Xcoef_mask` / `Xcoef_fixed`, and observation-by-response covariates are four
+  different concepts.
+- GLLVM per-trait grouped dispersion is not the same as DRM per-observation
+  `sigma` regression.
+- GLLVM per-trait ordinal cutpoints are not the same claim as DRM's current
+  one-response cumulative-logit cutpoints.
+- `REML` and `AI-REML` remain Gaussian-only, row-specific wording unless a
+  future derivation and validation row proves more.
+- `pdHess = FALSE` blocks Wald promotion but is not automatic point-fit failure.
+
+Any mismatch found by the cross-twin scan should be resolved before public
+bridge prose is promoted, or recorded as a deliberate package-specific
+vocabulary difference.
+
 ## Issue Map For Draft Landing
 
 | Issue | Current state | Landing implication |

@@ -62,6 +62,14 @@ Active lane guidance:
   fitters for NB2/NB1/Beta/Gamma, while `bridge_fit` still routes the
   no-X bridge default through shared scalar nuisance parameters. Ordinal
   still needs per-trait cutpoints before native parity.
+- Cross-twin argument and wording contract:
+  `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
+  Before bridge, engine, or public-docs lanes, scan R/Julia and DRM/GLLVM
+  wording for `engine = "julia"`, future `engine_control`, response masks,
+  `Xcoef_mask` / `Xcoef_fixed`, per-trait dispersion, ordinal cutpoints,
+  REML / AI-REML, CI-status columns, and `pdHess`. Share meanings where the
+  model concept is the same; keep package-specific names where DRM and GLLVM
+  target different estimands.
 - Next safe implementation lane after this spec: `codex/julia-per-trait-dispersion`
   for no-X complete NB2/NB1/Beta/Gamma grouped-bridge routing, unless the
   maintainer explicitly asks to publish or rebase the bridge PR first.

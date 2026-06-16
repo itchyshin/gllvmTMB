@@ -4,6 +4,55 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Cross-twin argument and wording contract
+
+Added a docs-only consistency contract for `gllvmTMB` / `GLLVM.jl` and
+`drmTMB` / `DRM.jl` wording. The contract reserves exact shared meanings for
+`engine = "julia"`, future `engine_control`, response masks, candidate
+`Xcoef_mask` / `Xcoef_fixed`, per-trait dispersion, ordinal cutpoints,
+REML / AI-REML, CI-status fields, and `pdHess` interpretation.
+
+Evidence:
+
+- Coordination and branch state:
+  `git status --short --branch`
+  -> clean on `codex/r-bridge-grouped-dispersion` before edits.
+  `gh pr list --state open --limit 20`
+  -> no open PRs.
+  `git log --all --oneline --since="6 hours ago"`
+  -> current Codex programme commits only.
+- Cross-repo source scans:
+  `rg -n "engine\\s*=\\s*[\\\"']julia|engine_control|gllvmTMBcontrol|gllvm_julia_|GLLVM\\.bridge|bridge_capabilities|pdHess|REML|AI-REML|per-trait|grouped dispersion|cutpoints|Xcoef|response mask|missing_response|mixed.family|mixed-family|fixed_effect_X|fixed-effect-X" .`
+  in `gllvmTMB`;
+  `rg -n "engine\\s*=\\s*[\\\"']julia|engine_control|drmTMBcontrol|drm_julia_|DRM\\.bridge|bridge_capabilities|pdHess|REML|AI-REML|per-trait|grouped dispersion|cutpoints|Xcoef|response mask|missing_response|fixed_effect_X" .`
+  in `drmTMB`;
+  `rg -n "bridge_fit|bridge_capabilities|engine_control|REML|AI-REML|pdHess|per.trait|per-trait|dispersion|cutpoints|missing_response|fixed_effect_X|Xcoef|mask" .`
+  in `GLLVM.jl-integration`;
+  `rg -n "bridge_fit|bridge_capabilities|engine_control|REML|AI-REML|pdHess|dispersion|cutpoints|missing_response|fixed_effect_X|Xcoef|mask|engine\\s*=\\s*[\\\"']julia|drm_julia" .`
+  in `DRM.jl`.
+- Focused source reads:
+  `sed -n '360,740p' R/gllvmTMB.R`;
+  `sed -n '1,180p' ../drmTMB/R/drmTMB.R`;
+  `sed -n '1,180p' ../GLLVM.jl-integration/src/bridge.jl`;
+  `sed -n '1,120p' ../DRM.jl/src/bridge.jl`;
+  `sed -n '1,260p' docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md`;
+  `sed -n '1,260p' docs/dev-log/2026-06-16-xcoef-structural-zero-plan-addendum.md`;
+  `git show 33287b1:docs/dev-log/2026-06-16-twin-truth-and-issue-map.md`.
+- Files updated:
+  `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`,
+  `docs/dev-log/2026-06-16-engine-julia-draft-landing.md`,
+  `docs/dev-log/coordination-board.md`,
+  `docs/dev-log/check-log.md`, and
+  `docs/dev-log/after-task/2026-06-16-cross-twin-argument-wording-contract.md`.
+
+Deliberately not run:
+
+- No R or Julia tests were run for this docs-only contract. The check was a
+  source and wording audit only; implementation rows still require the usual
+  bridge tests, roxygen/pkgdown, and package checks.
+- No GitHub issue was commented on or closed. Any issue update still requires
+  live issue reads plus Shannon/Rose signoff.
+
 ## 2026-06-16 -- R bridge per-trait ordinal payload decoding
 
 Updated the lean `engine = "julia"` R bridge to consume the paired

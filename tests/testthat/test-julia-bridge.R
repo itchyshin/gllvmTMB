@@ -1466,6 +1466,100 @@ expect_native_julia_estimate_parity <- function(
   invisible(NULL)
 }
 
+# --- native-TMB vs engine = "julia" parity WITH a fixed-effect covariate X --
+#
+# X-aware sibling of expect_native_julia_estimate_parity() for the no-DISPERSION
+# families (Gaussian, Poisson, Binomial), where adding one continuous covariate
+# `env` to the per-trait intercept still leaves the two engines maximising the
+# SAME marginal likelihood (the dispersion families do NOT parity -- native fits
+# per-trait dispersion vs the engine's shared scalar; see
+# docs/dev-log/2026-06-15-dispersion-structure-divergence.md). It compares the
+# FULL fixed-effect vector (per-trait intercepts + the x-coefficient), not just
+# the intercepts.
+#
+# NATIVE storage (identical for all three families): the full fixed-effect
+# vector is opt$par[names == "b_fix"], aligned 1:1 with fit$X_fix_names =
+# colnames(X_fix) = c(<trait dummies>, <covariate columns>) -- e.g.
+# c("traitt1","traitt2","traitt3","env") for `0 + trait + env`.
+#
+# JULIA payload (TWO shapes, family-dependent, both empirically confirmed):
+#   * Gaussian (model "gaussian_x_rr"): GLLVM.jl receives the FULL mean design
+#     (intercept planes + covariate planes), so it returns the whole vector in
+#     $mean_coef. $mean_coef is UNNAMED but ordered exactly as dimnames(X)[[3]]
+#     = c(<trait dummies>, <covariate columns>), which is identical to
+#     X_fix_names. ($alpha additionally holds the intercept slice.)
+#   * Poisson/Binomial (model "<fam>_x_rr"): GLLVM.jl receives the covariate
+#     planes ONLY and handles the per-trait intercept internally, so the full
+#     vector is reconstructed as c($alpha, $gamma): $alpha = per-trait
+#     intercepts (trait order), $gamma = the x-coefficient(s) (named by
+#     dimnames(X)[[3]]). ($beta_cov duplicates $alpha here.)
+# Both shapes are reordered to native X_fix_names before comparison.
+#
+# Asserts: (a) logLik parity; (b) FULL fixed-effect vector parity (intercepts +
+# x-coefficient); (c) Sigma_B = Lambda Lambda^T parity. Skips if the native fit
+# did not converge or its Hessian is not PD.
+.native_julia_full_fixed_effect <- function(fit_jl, x_fix_names) {
+  trait_terms <- grep("^trait", x_fix_names, value = TRUE)
+  cov_terms <- setdiff(x_fix_names, trait_terms)
+  if (identical(fit_jl$model, "gaussian_x_rr")) {
+    # Full mean design lives in $mean_coef, ordered as dimnames(X)[[3]].
+    full <- as.numeric(fit_jl$mean_coef)
+    names(full) <- dimnames(fit_jl$X)[[3]]
+  } else {
+    # Covariate-only design: per-trait $alpha intercepts + $gamma x-coefficients.
+    full <- c(
+      stats::setNames(as.numeric(fit_jl$alpha), trait_terms),
+      stats::setNames(as.numeric(fit_jl$gamma), cov_terms)
+    )
+  }
+  full[x_fix_names] # reorder to the native X_fix_names alignment
+}
+
+expect_native_julia_X_parity <- function(
+  fit_tmb,
+  fit_jl,
+  tol_loglik,
+  tol_est
+) {
+  testthat::skip_if(
+    !identical(fit_tmb$opt$convergence, 0L),
+    "native TMB fit did not converge -- no reference optimum for parity"
+  )
+  testthat::skip_if(
+    !isTRUE(fit_tmb$sd_report$pdHess),
+    "native TMB Hessian is not positive-definite -- optimum unreliable"
+  )
+
+  # (a) logLik parity -- the headline flat-at-optimum invariant.
+  ll_tmb <- as.numeric(logLik(fit_tmb))
+  ll_jl <- as.numeric(logLik(fit_jl))
+  expect_true(is.finite(ll_tmb) && is.finite(ll_jl))
+  expect_equal(ll_tmb, ll_jl, tolerance = tol_loglik)
+
+  # (b) FULL fixed-effect vector: per-trait intercepts + the x-coefficient.
+  x_fix_names <- fit_tmb$X_fix_names
+  fe_tmb <- stats::setNames(
+    unname(fit_tmb$opt$par[names(fit_tmb$opt$par) == "b_fix"]),
+    x_fix_names
+  )
+  fe_jl <- .native_julia_full_fixed_effect(fit_jl, x_fix_names)
+  expect_equal(length(fe_tmb), length(fe_jl))
+  expect_false(anyNA(fe_jl)) # alignment must be complete (no name mismatch)
+  expect_equal(unname(fe_tmb), unname(fe_jl[x_fix_names]), tolerance = tol_est)
+
+  # (c) rotation-INVARIANT loading parity via Sigma_B = Lambda Lambda^T.
+  sigma_b_tmb <- getResidualCov(fit_tmb, level = "unit")
+  sigma_b_jl <- getResidualCov(fit_jl, level = "unit")
+  expect_equal(dim(sigma_b_tmb), dim(sigma_b_jl))
+  expect_equal(
+    unname(sigma_b_tmb),
+    unname(sigma_b_jl),
+    tolerance = tol_est
+  )
+
+  invisible(NULL)
+}
+
 # --- numerical round-trip (gated behind a live JuliaCall + GLLVM.jl) --------
 
 test_that("engine = 'julia' Gaussian dispatch matches the direct Julia bridge wrapper", {
@@ -1628,6 +1722,155 @@ test_that("native TMB and engine = 'julia' agree on the Binomial no-X reduced-ra
   expect_equal(fit_jl$model, "binomial_rr")
 
   expect_native_julia_estimate_parity(
+    fit_tmb,
+    fit_jl,
+    tol_loglik = 1e-6,
+    tol_est = 1e-3
+  )
+})
+
+test_that("native TMB and engine = 'julia' agree on the Gaussian fixed-effect-X reduced-rank fit", {
+  # R-FIRST point-parity evidence for the Gaussian fixed-effect-X bridge row:
+  # does native TMB reproduce the SAME fit as engine = "julia" for the
+  # one-covariate reduced-rank Gaussian GLLVM
+  # `value ~ 0 + trait + env + latent(0 + trait | unit, d = 1)`, with a per-unit
+  # continuous covariate `env`? Unlike the no-X row this also checks the
+  # x-coefficient (the beta beyond the per-trait intercepts), via the FULL
+  # fixed-effect vector in expect_native_julia_X_parity().
+  #
+  # Gaussian X routes the FULL mean design (intercept + covariate planes) into
+  # GLLVM.jl, which returns the whole coefficient vector in $mean_coef (ordered
+  # as dimnames(X)[[3]] = X_fix_names). Closed-form Gaussian marginal on both
+  # sides. Double-gated skip_if_no_julia() + skip_if_not_heavy(); small fixture
+  # (n_unit = 35, 3 traits, d = 1) keeps the native fit sub-second.
+  #
+  # Tolerances from a 2-seed x 2-size empirical probe (seeds 7/9, n_unit 35/42),
+  # all converged + PD Hessian:
+  #   * logLik:  max |diff| ~3.7e-9 observed -> assert 1e-6 (flat-at-optimum
+  #     invariant; the two closed-form marginals agree to ~9 sig figs).
+  #   * fixed effects / Sigma_B: max |diff| ~8.3e-6 observed -> assert 1e-4
+  #     (same shallow-surface optimiser gap as the no-X Gaussian row).
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  df <- make_long_cov(n_unit = 35L, seed = 7L)
+  f <- value ~ 0 + trait + env + latent(0 + trait | unit, d = 1)
+
+  fit_tmb <- gllvmTMB(f, data = df, trait = "trait", unit = "unit")
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    engine = "julia"
+  )
+
+  expect_s3_class(fit_tmb, "gllvmTMB_multi")
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "gaussian_x_rr")
+
+  expect_native_julia_X_parity(
+    fit_tmb,
+    fit_jl,
+    tol_loglik = 1e-6,
+    tol_est = 1e-4
+  )
+
+  # Gaussian-only: residual SD (sigma_eps), the scalar shared noise scale.
+  # 2-seed probe max |diff| ~1.4e-6 -> assert 1e-4.
+  sigma_tmb <- as.numeric(fit_tmb$report$sigma_eps)
+  sigma_jl <- as.numeric(fit_jl$sigma_eps)
+  expect_equal(sigma_tmb, sigma_jl, tolerance = 1e-4)
+})
+
+test_that("native TMB and engine = 'julia' agree on the Poisson fixed-effect-X reduced-rank fit", {
+  # R-FIRST point-parity evidence for the Poisson fixed-effect-X bridge row:
+  # does native TMB reproduce the SAME fit as engine = "julia" for the
+  # one-covariate reduced-rank Poisson-log GLLVM
+  # `count ~ 0 + trait + env + latent(0 + trait | unit, d = 1)`? The FULL
+  # fixed-effect vector (per-trait intercepts + the env x-coefficient) is
+  # compared, not just the intercepts.
+  #
+  # Non-Gaussian X routes the covariate planes ONLY into GLLVM.jl (the per-trait
+  # intercept is handled internally), so the full vector is reconstructed
+  # c($alpha, $gamma): $alpha = per-trait intercepts, $gamma = the env
+  # coefficient. Laplace-APPROXIMATED marginal on both sides. Double-gated
+  # skip_if_no_julia() + skip_if_not_heavy(); small fixture (n_unit = 35).
+  #
+  # Tolerances from a 2-seed x 2-size empirical probe (seeds 21/23, n_unit
+  # 35/40), all converged + PD Hessian:
+  #   * logLik:  max |diff| ~4.2e-9 observed -> assert 1e-6 (flat-at-optimum
+  #     invariant; the two Laplace marginals agree to ~9 sig figs).
+  #   * fixed effects / Sigma_B: max |diff| ~8.8e-6 observed -> assert 1e-3
+  #     (same shallow Laplace-surface rationale as the no-X Poisson row).
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  df <- make_long_cov(n_unit = 35L, seed = 21L)
+  f <- count ~ 0 + trait + env + latent(0 + trait | unit, d = 1)
+
+  fit_tmb <- gllvmTMB(f, data = df, trait = "trait", unit = "unit", family = poisson())
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = poisson(),
+    engine = "julia"
+  )
+
+  expect_s3_class(fit_tmb, "gllvmTMB_multi")
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "poisson_x_rr")
+
+  expect_native_julia_X_parity(
+    fit_tmb,
+    fit_jl,
+    tol_loglik = 1e-6,
+    tol_est = 1e-3
+  )
+})
+
+test_that("native TMB and engine = 'julia' agree on the Binomial fixed-effect-X reduced-rank fit", {
+  # R-FIRST point-parity evidence for the Binomial fixed-effect-X bridge row:
+  # does native TMB reproduce the SAME fit as engine = "julia" for the
+  # one-covariate reduced-rank Bernoulli-logit GLLVM
+  # `bin ~ 0 + trait + env + latent(0 + trait | unit, d = 1)`, with Bernoulli
+  # (0/1) responses? The FULL fixed-effect vector (per-trait intercepts + the
+  # env x-coefficient) is compared.
+  #
+  # As with Poisson, GLLVM.jl receives the covariate planes ONLY; the full
+  # vector is c($alpha, $gamma). Laplace-APPROXIMATED marginal on both sides.
+  # Double-gated skip_if_no_julia() + skip_if_not_heavy(); small fixture
+  # (n_unit = 35).
+  #
+  # Tolerances from a 2-seed x 2-size empirical probe (seeds 31/33, n_unit
+  # 35/40), all converged + PD Hessian:
+  #   * logLik:  max |diff| ~2.7e-9 observed -> assert 1e-6 (flat-at-optimum
+  #     invariant).
+  #   * fixed effects / Sigma_B: max |diff| ~4.9e-5 observed -> assert 1e-3
+  #     (same shallow Laplace-surface rationale as the no-X Binomial row).
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  df <- make_long_cov(n_unit = 35L, seed = 31L)
+  f <- bin ~ 0 + trait + env + latent(0 + trait | unit, d = 1)
+
+  fit_tmb <- gllvmTMB(f, data = df, trait = "trait", unit = "unit", family = binomial())
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = binomial(),
+    engine = "julia"
+  )
+
+  expect_s3_class(fit_tmb, "gllvmTMB_multi")
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "binomial_x_rr")
+
+  expect_native_julia_X_parity(
     fit_tmb,
     fit_jl,
     tol_loglik = 1e-6,

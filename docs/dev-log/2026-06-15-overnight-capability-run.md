@@ -5,10 +5,14 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 
 ## TL;DR (morning read)
 
-- **9 capability commits on `gllvmTMB@engine-julia` + 1 on `GLLVM.jl-integration` —
-  nothing pushed.** All verified: native fast suite 3092 pass / 0 fail (no regression);
-  heavy+julia bridge 745 pass / 0 fail; engine `Pkg.test()` 3943 pass / 0 fail
-  (after fixing 3 stale bridge_capabilities assertions it caught).
+- **12 capability commits on `gllvmTMB@engine-julia` + 1 on `GLLVM.jl-integration`
+  + 1 docs honesty fix on `GLLVM.jl` — nothing pushed.** All verified: canonical
+  native `test_local` **3136 pass / 0 fail / 0 error** (240 files; +44 vs 3092
+  baseline, no regression); **live heavy+julia bridge 826 pass / 0 fail / 0 skip**
+  (fresh end-to-end run against GLLVM.jl-integration `1dc9e98`); engine
+  `Pkg.test()` 3943 pass / 0 fail. (The last 4 commits — cutpoints, Sigma_B,
+  guard tests, roadmap — landed in the post-compaction continuation; see that
+  section below.)
 - **Native ↔ `engine="julia"` point-parity is now characterized** (matrix below): it
   HOLDS for Gaussian / Poisson / Binomial (both no-X and fixed-effect-X); it does NOT
   hold for the dispersion families (NB2/NB1/Beta/Gamma) or ordinal.
@@ -23,6 +27,57 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 - **Deliberately NOT done** (out of scope / your call): the dispersion/cutpoint engine
   alignment; non-Gaussian-X / REML / masked CIs (amendment-held); low-value test-coverage
   items; articles (to do together). **Nothing pushed; no CRAN/tag.**
+
+## Continuation (post-compaction, ~22:15–22:40 MDT)
+
+Picked up the uncommitted `extract_cutpoints` slice and finished the safe,
+in-scope vein. **4 more local commits — nothing pushed.**
+
+| commit | repo | slice | gating |
+|---|---|---|---|
+| `78d887b` | gllvmTMB | `extract_cutpoints()` for engine="julia" ordinal fits — returns the fitted **shared** cutpoints from the bridge payload in the native 5-column shape, `trait="(shared)"`, with an honest shared-vs-per-trait advisory; errors clearly on non-ordinal fits | bridge +20 |
+| `899b90a` | gllvmTMB | `extract_Sigma_B()` for engine="julia" — point Σ_B=ΛΛᵀ and R_B (historical `{Sigma_B,R_B}` shape) via the validated `.gllvm_julia_residual_sigma()` helper; same quantity as `getResidualCov(level="unit")`; removes the misleading native-only abort | bridge +7 |
+| `e1dacae` | gllvmTMB | regression tests locking two capability-guard branches: **phylo/structured-term refusal** and **multi-rr refusal** | bridge +4 |
+| `1b42e35` | GLLVM.jl | softened the v1.0 roadmap row (`Full digital twin`→`Digital-twin milestone`; `complete R bridge coverage`→`expanded …`) — the one LOW finding from the claim audit | docs |
+
+- **`extract_Sigma_W()` / `extract_correlations()` deliberately stay unwired**
+  (documented): `Sigma_W` on the bridge is only the trivial Gaussian σ_eps²I
+  diagonal already reachable via `getResidualCov(level="unit_obs")`; the point
+  cross-trait correlation is `getResidualCor()`, and wiring `extract_correlations`
+  would only add out-of-scope CI columns. The accessor vein is now **exhausted** —
+  every remaining accessor (ICC, repeatability, Ω/phylo, proportions, Gamma) is
+  degenerate on the bridge.
+
+- **Claim-surface honesty audit (read-only, both repos):** 1 finding,
+  **0 HIGH / 0 MED / 1 LOW** (the roadmap row, now fixed). REML correctly
+  Gaussian-only; non-Gaussian-X & masked CIs correctly CI-status-strings-only;
+  mixed-family correctly capped at no-X/no-mask/no-CI `partial`; the
+  dispersion/ordinal divergence correctly disclosed as cannot-point-parity.
+  **The public claim surface is honest.**
+
+- **#92 (phylo-signal CI bridge exposure) is BLOCKED at the fit level** — a
+  maintainer-relevant boundary, now confirmed + locked in a test (`e1dacae`):
+  the bridge maps ONLY the single reduced-rank latent block and rejects
+  phylo/spatial/structured terms at dispatch (`R/julia-bridge.R:2485`). The
+  engine's phylo-signal CI machinery runs on **native GLLVM.jl** phylo fits,
+  which `gllvmTMB(engine="julia")` cannot produce. So #92's R-bridge exposure is
+  gated behind the structured-dependence bridge track (out-of-scope engine work),
+  **not** a quick exposure.
+
+- **Process note (verification fix):** earlier per-slice summaries summed only
+  the testthat `failed` column, which HID a test-only error (a
+  `conditionMessage()` on a non-condition list) in the first `extract_Sigma_B`
+  test draft. The canonical `devtools::test()` caught it; fixed + amended into
+  `899b90a`; verification now counts `failed + error`. The accessor **functions**
+  were always correct — only the test draft had the bug.
+
+- **Verification (continuation):** canonical native `test_local`
+  **PASS 3136 / FAIL 0 / ERROR 0** (240 files); bridge file fixture
+  **PASS 356 / FAIL 0 / ERROR 0**; **live heavy+julia bridge
+  PASS 826 / FAIL 0 / ERROR 0 / SKIP 0** — every live test ran against the real
+  GLLVM.jl-integration `1dc9e98` engine (end-to-end confirmation that the new
+  accessors work on live bridge fits, no live regression). Both trees clean;
+  nothing pushed.
 
 ## Standing constraints
 - R-first; the 7 amendments are binding (do **not** fill amendment-held cells:

@@ -382,6 +382,9 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$family[caps$ci_mask_bootstrap],
     .GLLVM_JULIA_MASK_CI_FAMILIES
   )
+  expect_equal(caps$family[caps$ci_x_wald], .GLLVM_JULIA_X_CI_FAMILIES)
+  expect_equal(caps$family[caps$ci_x_profile], .GLLVM_JULIA_X_CI_FAMILIES)
+  expect_equal(caps$family[caps$ci_x_bootstrap], .GLLVM_JULIA_X_CI_FAMILIES)
   expect_true(all(caps$ci_no_x_wald[
     caps$family %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES
   ]))
@@ -397,6 +400,10 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$notes
   )))
   expect_true(any(grepl("fixed-effect X point fits are routed", caps$notes)))
+  expect_true(any(grepl(
+    "complete-response fixed-effect-X Wald/profile/bootstrap CI payloads",
+    caps$notes
+  )))
   expect_equal(caps$family[caps$postfit_coef], caps$family)
   expect_equal(caps$family[caps$postfit_summary], caps$family)
   expect_equal(
@@ -1031,11 +1038,21 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
   expect_error(
     gllvm_julia_fit(
       y,
-      family = poisson(),
+      family = nbinom1(),
       X = array(1, dim = c(2L, 4L, 1L)),
       ci_method = "wald"
     ),
     "fixed-effect-X"
+  )
+  expect_error(
+    gllvm_julia_fit(
+      y,
+      family = poisson(),
+      X = array(1, dim = c(2L, 4L, 1L)),
+      mask = matrix(TRUE, nrow = 2L, ncol = 4L),
+      ci_method = "wald"
+    ),
+    "response masks"
   )
 })
 
@@ -1154,6 +1171,61 @@ test_that("gllvmTMB fit-time Julia CI controls preserve response masks", {
   expect_true(is.matrix(seen$mask))
   expect_true(any(!seen$mask))
   expect_true(isTRUE(fit$missing_response))
+})
+
+test_that("gllvmTMB fit-time Julia CI controls preserve fixed-effect X", {
+  df <- make_long()
+  df$x <- rep(seq(-0.7, 0.7, length.out = 10L), each = 3L)
+  seen <- new.env(parent = emptyenv())
+
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(
+      y,
+      family,
+      num.lv,
+      N,
+      X,
+      mask,
+      ci_method,
+      ci_level,
+      ci_nboot,
+      ci_seed,
+      ...
+    ) {
+      seen$X <- X
+      seen$mask <- mask
+      seen$ci_method <- ci_method
+      seen$ci_level <- ci_level
+
+      out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+      out$engine <- "julia"
+      out$model <- "poisson_x_rr"
+      out$gamma <- c(x = 0.15)
+      out$beta_cov <- out$alpha
+      out$ci_method <- ci_method
+      out$ci_level <- ci_level
+      out
+    }
+  )
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + x + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = poisson(),
+    engine = "julia",
+    ci_method = "wald",
+    ci_level = 0.9
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(seen$ci_method, "wald")
+  expect_equal(seen$ci_level, 0.9)
+  expect_equal(dim(seen$X), c(3L, 10L, 1L))
+  expect_equal(dimnames(seen$X)[[3L]], "x")
+  expect_null(seen$mask)
+  expect_named(fit$gamma, "x")
 })
 
 test_that("gllvmTMB fit-time CI controls keep unsupported rows explicit", {
@@ -1450,6 +1522,38 @@ test_that("engine = 'julia' main dispatch routes complete non-Gaussian fixed-eff
     expect_named(co$gamma, "x")
     expect_named(co$beta_cov, rownames(case$Y))
     expect_no_error(capture.output(print(summary(routed))))
+
+    direct_ci <- gllvm_julia_fit(
+      case$Y,
+      family = case$family,
+      num.lv = 1L,
+      X = X,
+      ci_method = "wald"
+    )
+    expect_equal(direct_ci$ci_method, "wald")
+    expect_equal(direct_ci$ci_status, "available")
+    expect_true(any(startsWith(direct_ci$ci_param_names, "gamma[")))
+
+    ci <- confint(routed, method = "wald")
+    expect_equal(attr(ci, "ci_method"), "wald")
+    expect_equal(attr(ci, "ci_status"), "available")
+    expect_true(any(startsWith(rownames(ci), "gamma[")))
+
+    if (identical(case$engine_family, "poisson")) {
+      routed_ci <- gllvmTMB(
+        f,
+        data = df,
+        trait = "trait",
+        unit = "unit",
+        family = case$family,
+        engine = "julia",
+        ci_method = "wald"
+      )
+      expect_equal(routed_ci$ci_method, "wald")
+      expect_equal(routed_ci$ci_status, "available")
+      stored_ci <- confint(routed_ci, method = "stored")
+      expect_true(any(startsWith(rownames(stored_ci), "gamma[")))
+    }
   }
 })
 

@@ -29,10 +29,13 @@
   no-X response-mask fits in poisson, Bernoulli binomial, nbinom2, nbinom1,
   beta, and gamma rows. Ordinary `gllvmTMB(..., engine = "julia",
   ci_method = "wald" / "profile" / "bootstrap")` fits can request the same
-  admitted no-X CI payloads at fit time. Ordinary Julia bridge fits also retain
+  admitted no-X CI payloads at fit time, plus complete-response fixed-effect-X
+  CI payloads for gaussian, poisson, Bernoulli binomial, nbinom2, beta, and
+  gamma rows. Ordinary Julia bridge fits also retain
   their bridge input so `confint(fit, method = "wald" / "profile" /
   "bootstrap")` can request the same admitted no-X CI payloads post-fit,
-  including the admitted masked non-Gaussian rows. The
+  including the admitted masked non-Gaussian rows and admitted
+  complete-response fixed-effect-X rows. The
   admitted post-fit surface is `coef()`, `summary()`, scoped no-X `confint()`,
   and retained-payload `predict()` / `fitted()` / `residuals()` / `simulate()`
   only where the Julia payload carries the needed score and nuisance fields;
@@ -47,8 +50,9 @@
   unconditional random-effect redraws, ordinal residuals, ordinal simulation,
   mixed-family residuals/simulation, richer extractor parity, confidence
   intervals for
-  per-trait ordinal rows, mixed-family CIs, and CIs for X rows remain planned
-  follow-up rows, as do mixed-family
+  per-trait ordinal rows, NB1-X rows, ordinal-X rows, mixed-family CIs, and
+  response masks combined with fixed-effect X remain planned follow-up rows, as
+  do mixed-family
   promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall
   is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
   when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB

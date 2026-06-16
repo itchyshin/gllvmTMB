@@ -94,7 +94,10 @@ Active lane guidance:
   "profile" / "bootstrap")` fits can request the same admitted no-X CI payloads
   at fit time, and they retain their bridge input so `confint(fit, method =
   "wald" / "profile" / "bootstrap")` can recompute those payloads post-fit.
-  Per-trait ordinal CIs, mixed-family CIs, and X-row CIs remain gated.
+  Complete-response fixed-effect-X Wald/profile/bootstrap CI payloads are now
+  routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows.
+  Per-trait ordinal CIs, NB1-X CIs, ordinal-X CIs, mixed-family CIs, and
+  response masks combined with fixed-effect X remain gated.
   Retained-score `predict()` / `fitted()` /
   response-Pearson
   `residuals()` are now routed for the live-tested no-X Gaussian, Poisson,
@@ -116,7 +119,9 @@ Active lane guidance:
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`
   fixed-effect design and sends only the extra fixed-effect columns to
   `GLLVM.bridge_fit(X = ...)`, matching the paired Julia `fit_gllvm_cov`
-  contract. NB1-X, ordinal-X, mixed-family-X, masks+X, CIs for X rows, and
+  contract. The X-row CI/status slice uses the same retained `X` payload for
+  fit-time and post-fit Wald/profile/bootstrap intervals where the paired Julia
+  engine routes them. NB1-X, ordinal-X, mixed-family-X, masks+X, and
   non-canonical fixed-effect designs remain gated.
 - Cross-twin argument and wording contract:
   `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
@@ -148,9 +153,9 @@ Active lane guidance:
   residuals, ordinal-X, per-trait ordinal CIs, and `newdata` prediction remain
   later rows.
 - Next safe implementation lane: richer extractor parity, mixed-family
-  admission, NB1/ordinal fixed-effect-X design, X-row CI/status, ordinal CI
-  endpoints, or the native per-trait Gamma expansion spec, unless the maintainer
-  explicitly asks to publish or rebase the bridge PR first.
+  admission, NB1/ordinal fixed-effect-X design, ordinal CI endpoints, or the
+  native per-trait Gamma expansion spec, unless the maintainer explicitly asks
+  to publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

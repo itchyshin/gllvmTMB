@@ -88,6 +88,7 @@
   .GLLVM_JULIA_MASK_FAMILIES,
   .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
+.GLLVM_JULIA_X_CI_FAMILIES <- .GLLVM_JULIA_X_FAMILIES
 .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
   "fit_no_x",
   "fixed_effect_X",
@@ -99,6 +100,9 @@
   "ci_mask_wald",
   "ci_mask_profile",
   "ci_mask_bootstrap",
+  "ci_x_wald",
+  "ci_x_profile",
+  "ci_x_bootstrap",
   "postfit_coef",
   "postfit_fit_stats",
   "postfit_summary",
@@ -166,11 +170,12 @@ gllvm_julia_setup <- function(
 #'
 #' @return A data frame with one row per admitted bridge family plus the narrow
 #'   mixed-family vector route. Boolean columns mark the current R-side fit,
-#'   transport, no-X CI, masked no-X CI, and post-fit cells. CI columns are
-#'   deliberately scoped: `ci_no_x_*` does not imply masked, mixed-family, or
-#'   non-Gaussian-X intervals, and `ci_mask_*` covers only no-X response-mask
-#'   rows. `status` is `"partial"` for every current row, with the boundary
-#'   recorded in `notes`.
+#'   transport, no-X CI, masked no-X CI, complete-response fixed-effect-X CI,
+#'   and post-fit cells. CI columns are deliberately scoped: `ci_no_x_*` does
+#'   not imply masked, mixed-family, or fixed-effect-X intervals; `ci_mask_*`
+#'   covers only no-X response-mask rows; and `ci_x_*` covers only
+#'   complete-response fixed-effect-X rows. `status` is `"partial"` for every
+#'   current row, with the boundary recorded in `notes`.
 #' @examples
 #' head(gllvm_julia_capabilities())
 #' @export
@@ -189,6 +194,9 @@ gllvm_julia_capabilities <- function() {
     ci_mask_wald = families %in% .GLLVM_JULIA_MASK_CI_FAMILIES,
     ci_mask_profile = families %in% .GLLVM_JULIA_MASK_CI_FAMILIES,
     ci_mask_bootstrap = families %in% .GLLVM_JULIA_MASK_CI_FAMILIES,
+    ci_x_wald = families %in% .GLLVM_JULIA_X_CI_FAMILIES,
+    ci_x_profile = families %in% .GLLVM_JULIA_X_CI_FAMILIES,
+    ci_x_bootstrap = families %in% .GLLVM_JULIA_X_CI_FAMILIES,
     postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
     postfit_summary = TRUE,
@@ -212,6 +220,9 @@ gllvm_julia_capabilities <- function() {
     ci_mask_wald = FALSE,
     ci_mask_profile = FALSE,
     ci_mask_bootstrap = FALSE,
+    ci_x_wald = FALSE,
+    ci_x_profile = FALSE,
+    ci_x_bootstrap = FALSE,
     postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
     postfit_summary = TRUE,
@@ -248,12 +259,16 @@ gllvm_julia_capabilities <- function() {
   } else {
     "fixed-effect X remains gated; "
   }
-  ci_x_followup <- if (
-    family %in%
-      .GLLVM_JULIA_CI_NO_X_FAMILIES &&
-      family %in% .GLLVM_JULIA_X_FAMILIES
-  ) {
-    "X-row CI and native parity promotion are follow-ups"
+  x_ci_clause <- if (family %in% .GLLVM_JULIA_X_CI_FAMILIES) {
+    paste0(
+      "complete-response fixed-effect-X Wald/profile/bootstrap CI payloads ",
+      "are routed; "
+    )
+  } else {
+    ""
+  }
+  ci_x_followup <- if (family %in% .GLLVM_JULIA_X_CI_FAMILIES) {
+    "native parity promotion remains a follow-up"
   } else if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
     "X, X-row CI, and native parity promotion are follow-ups"
   } else if (family %in% .GLLVM_JULIA_X_FAMILIES) {
@@ -329,6 +344,7 @@ gllvm_julia_capabilities <- function() {
       "per-trait grouped dispersion; ",
       mask_clause,
       x_clause,
+      x_ci_clause,
       postfit_clause,
       ci_x_followup
     ))
@@ -340,6 +356,7 @@ gllvm_julia_capabilities <- function() {
       "Gamma; per-trait Gamma is a native-expansion follow-up; ",
       mask_clause,
       x_clause,
+      x_ci_clause,
       postfit_clause,
       ci_x_followup
     ))
@@ -358,6 +375,7 @@ gllvm_julia_capabilities <- function() {
     "single reduced-rank point route; ",
     mask_clause,
     x_clause,
+    x_ci_clause,
     ci_clause,
     postfit_clause,
     "broader structures and native parity promotion remain gated"
@@ -1794,8 +1812,10 @@ gllvm_julia_capabilities <- function() {
 #'   Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
 #'   Beta, and Gamma. One of `"none"` (default), `"wald"`, `"profile"`, or
 #'   `"bootstrap"`. Response-mask CIs are routed for the same non-ordinal
-#'   non-Gaussian rows when `X = NULL`. Per-trait ordinal rows, mixed-family
-#'   vectors, and fixed-effect-X rows remain loud gates.
+#'   non-Gaussian rows when `X = NULL`; complete-response fixed-effect-X CIs
+#'   are routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and
+#'   Gamma. Per-trait ordinal rows, NB1-X rows, mixed-family vectors, and
+#'   response masks combined with fixed-effect X remain loud gates.
 #' @param ci_level Nominal confidence level when `ci_method != "none"`.
 #' @param ci_nboot Number of parametric bootstrap replicates when
 #'   `ci_method = "bootstrap"`.
@@ -1887,10 +1907,25 @@ gllvm_julia_fit <- function(
     }
     storage.mode(mask) <- "logical"
   }
-  if (ci_method != "none" && !is.null(X)) {
+  if (ci_method != "none" && !is.null(X) && !is.null(mask)) {
     stop(
       "engine = 'julia': confidence intervals for fixed-effect-X bridge ",
-      "fits are not routed yet. Use `ci_method = \"none\"` or engine = 'tmb'.",
+      "fits with response masks are not routed yet. Use `ci_method = ",
+      "\"none\"`, drop `X`, or engine = 'tmb'.",
+      call. = FALSE
+    )
+  }
+  if (
+    ci_method != "none" &&
+      !is.null(X) &&
+      !(length(fam) == 1L && fam %in% .GLLVM_JULIA_X_CI_FAMILIES)
+  ) {
+    stop(
+      "engine = 'julia': confidence intervals for fixed-effect-X bridge ",
+      "rows are routed only for Gaussian, Poisson, Bernoulli binomial, ",
+      "NB2, Beta, and Gamma complete-response fits. NB1-X, ordinal-X, ",
+      "mixed-family-X, and masks+X remain gated. Use `ci_method = \"none\"` ",
+      "or engine = 'tmb'.",
       call. = FALSE
     )
   }
@@ -1966,7 +2001,9 @@ gllvm_julia_fit <- function(
 #' extractor parity remains a separate bridge row. Confidence intervals are
 #' routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
 #' Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian
-#' rows when `X = NULL`. They may be requested at fit time through
+#' rows when `X = NULL`; complete-response fixed-effect-X CIs are routed for
+#' Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. They may
+#' be requested at fit time through
 #' `gllvmTMB(ci_method = ...)`, or retrieved and recomputed through `confint()`.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
@@ -1994,6 +2031,8 @@ gllvm_julia_fit <- function(
 #'   `"wald"`, `"profile"`, and `"bootstrap"` recompute from retained bridge
 #'   input for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
 #'   Beta, and Gamma rows, including masked non-Gaussian rows when `X = NULL`.
+#'   Complete-response fixed-effect-X recomputation is routed for Gaussian,
+#'   Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows.
 #'   If omitted, `confint()` reads a stored payload when present and otherwise
 #'   uses `"wald"` for current fits that retain their bridge input.
 #' @param ci_nboot Number of parametric bootstrap replicates when
@@ -2302,7 +2341,8 @@ confint.gllvmTMB_julia <- function(
       "method = \"wald\")`, `\"profile\"`, or `\"bootstrap\"` on a current ",
       "`gllvmTMB(..., engine = \"julia\")` fit, or refit with ",
       "`gllvm_julia_fit(..., ci_method = \"wald\")` for admitted no-X ",
-      "Gaussian, Poisson, Bernoulli binomial, NB2, NB1, Beta, or Gamma rows.",
+      "Gaussian, Poisson, Bernoulli binomial, NB2, NB1, Beta, or Gamma rows ",
+      "or admitted complete-response fixed-effect-X rows.",
       call. = FALSE
     )
   }

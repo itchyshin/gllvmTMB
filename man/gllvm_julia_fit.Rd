@@ -43,8 +43,10 @@ and Gamma.}
 Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
 Beta, and Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}, or
 \code{"bootstrap"}. Response-mask CIs are routed for the same non-ordinal
-non-Gaussian rows when \code{X = NULL}. Per-trait ordinal rows, mixed-family
-vectors, and fixed-effect-X rows remain loud gates.}
+non-Gaussian rows when \code{X = NULL}; complete-response fixed-effect-X CIs
+are routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and
+Gamma. Per-trait ordinal rows, NB1-X rows, mixed-family vectors, and
+response masks combined with fixed-effect X remain loud gates.}
 
 \item{ci_level}{Nominal confidence level when \code{ci_method != "none"}.}
 

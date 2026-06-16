@@ -90,6 +90,8 @@ the admitted Julia CI payload at the requested level.}
 \code{"wald"}, \code{"profile"}, and \code{"bootstrap"} recompute from retained bridge
 input for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
 Beta, and Gamma rows, including masked non-Gaussian rows when \code{X = NULL}.
+Complete-response fixed-effect-X recomputation is routed for Gaussian,
+Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows.
 If omitted, \code{confint()} reads a stored payload when present and otherwise
 uses \code{"wald"} for current fits that retain their bridge input.}
 
@@ -128,6 +130,8 @@ raw ordination accessors are routed on the retained engine scale; richer
 extractor parity remains a separate bridge row. Confidence intervals are
 routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
 Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian
-rows when \code{X = NULL}. They may be requested at fit time through
+rows when \code{X = NULL}; complete-response fixed-effect-X CIs are routed for
+Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. They may
+be requested at fit time through
 \code{gllvmTMB(ci_method = ...)}, or retrieved and recomputed through \code{confint()}.
 }

@@ -4,6 +4,71 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge fixed-effect-X CI admission
+
+Admitted complete-response fixed-effect-X Wald/profile/bootstrap CI payloads
+for the Julia bridge rows whose paired engine routes native `X` confidence
+intervals: Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma. NB1-X,
+ordinal-X, mixed-family-X, and masks combined with fixed-effect X remain loud
+gates. This supersedes the earlier same-day masked-CI entry's historical note
+that all X-row CIs were still gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/after-task man`
+  -> current local Codex bridge stack only.
+  Paired Julia check:
+  `gh pr list --repo itchyshin/GLLVM.jl --state open --json number,title,headRefName,updatedAt`
+  -> PR `#95` integration and PR `#94` salvage unchanged.
+  `git log --all --oneline --since="6 hours ago" -- src/bridge.jl test/test_bridge_x.jl test/test_bridge_ci.jl test/test_bridge_capabilities.jl docs/dev-log/check-log.md docs/dev-log/after-task`
+  -> current local Codex bridge stack only.
+- Paired Julia checks in `../GLLVM.jl-integration`:
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `40/40` pass.
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `64/64` pass.
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `169/169` pass, including fixed-effect-X Wald parity against native
+  `confint()` for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma,
+  plus Poisson-X profile parity and bootstrap smoke.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvm_julia_capabilities.Rd`,
+  `man/gllvm_julia_fit.Rd`, and `man/gllvmTMB_julia-methods.Rd`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `12` expected Julia-runtime skips and `0`
+  failures.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. Live tests now request direct-wrapper
+  fixed-effect-X Wald CIs for every `ci_x_*` family, main-dispatch post-fit
+  fixed-effect-X CI recomputation for every fixed-X case, and one fit-time
+  Poisson-X stored CI payload through `gllvmTMB(..., ci_method = "wald")`.
+- Capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(identical(caps$family[caps$ci_x_wald], gllvmTMB:::.GLLVM_JULIA_X_CI_FAMILIES)); stopifnot(identical(caps$family[caps$ci_x_profile], gllvmTMB:::.GLLVM_JULIA_X_CI_FAMILIES)); stopifnot(identical(caps$family[caps$ci_x_bootstrap], gllvmTMB:::.GLLVM_JULIA_X_CI_FAMILIES)); stopifnot(!caps$ci_x_wald[caps$family == "nb1"]); stopifnot(!any(caps$ci_x_wald[caps$family %in% gllvmTMB:::.GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES])); stopifnot(!caps$ci_x_wald[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY]); stopifnot(any(grepl("complete-response fixed-effect-X Wald/profile/bootstrap CI payloads", caps$notes, fixed = TRUE))); print(caps[, c("family", "fixed_effect_X", "ci_no_x_wald", "ci_mask_wald", "ci_x_wald", "status")], row.names = FALSE)'`
+  -> `ci_x_wald/profile/bootstrap` true only for Gaussian, Poisson, Binomial,
+  NB2, Beta, and Gamma.
+- Stale wording / boundary scan:
+  `rg -n "X-row CIs remain gated|CIs for X rows|fixed-effect-X rows remain loud gates|fixed-effect-X bridge fits are not routed yet|non-Gaussian-X intervals|ci_x_|complete-response fixed-effect-X|NB1-X CIs|ordinal-X CIs|masks\\+X CIs|response masks combined with fixed-effect X" R tests/testthat NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/after-task man`
+  -> expected current hits for the new `ci_x_*` columns, scoped Rd/NEWS/register
+  text, and historical check-log / after-task entries from earlier same-day
+  slices that explicitly predate this admission.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  X-CI admission surface, tests, generated Rd, and ledgers only; it does not
+  touch formula grammar, TMB likelihood code, public article code, or pkgdown
+  navigation.
+
 ## 2026-06-16 -- R bridge masked-CI admission
 
 Admitted masked no-X Wald/profile/bootstrap CI payloads for the Julia bridge

@@ -4,6 +4,71 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge response-mask admission
+
+Admitted the paired Julia response-mask contract through the R bridge for
+one-part no-X point fits. `gllvm_julia_fit()` now accepts `mask`, and the main
+`gllvmTMB(..., engine = "julia")` dispatch builds a trait-by-unit observed-cell
+mask when a non-Gaussian long-format response omits one or more `(trait, unit)`
+cells. Gaussian masks, mixed-family masks, X+mask, and masked CIs remain loud
+gates.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,updatedAt,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- AGENTS.md CLAUDE.md ROADMAP.md CONTRIBUTING.md docs/dev-log/decisions.md docs/dev-log/check-log.md docs/design docs/dev-log/after-task inst/COPYRIGHTS DESCRIPTION`
+  -> current local Codex programme commits only.
+  NEWS-specific overlap check before editing `NEWS.md`:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,updatedAt,url`
+  -> `[]`;
+  `git log --all --oneline --since="6 hours ago" -- NEWS.md`
+  -> previous local bridge NEWS commits only.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with eight expected Julia-runtime skips.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly.
+- Julia engine mask anchor:
+  `julia --project=. test/test_bridge_missing_mask.jl`
+  in `../GLLVM.jl-integration` -> `37/37 pass`.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvm_julia_fit.Rd`.
+- Capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); print(caps[, c("family", "missing_response", "ci_no_x_wald", "postfit_predict", "status", "notes")], row.names = FALSE); stopifnot(identical(caps$family[caps$missing_response], gllvmTMB:::.GLLVM_JULIA_MASK_FAMILIES)); stopifnot(!caps$missing_response[caps$family == "gaussian"]); stopifnot(!caps$missing_response[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY])'`
+  -> mask-capable rows are Poisson, binomial, NB2, NB1, Beta, Gamma, ordinal,
+  and ordinal-probit; Gaussian and mixed-family remain `FALSE`.
+- Rose pre-publish checks for the touched public prose/signature:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); print(names(formals(gllvm_julia_fit))); stopifnot("mask" %in% names(formals(gllvm_julia_fit))); stopifnot(any(grepl("mask", capture.output(tools::Rd2txt(tools::parse_Rd("man/gllvm_julia_fit.Rd"))))))'`
+  -> source formals and generated Rd agree.
+  `rg -n "gllvm_julia_fit" _pkgdown.yml R NAMESPACE man/gllvm_julia_fit.Rd | head -80`
+  -> export remains in `NAMESPACE` and `_pkgdown.yml`.
+- Stale-claim scan:
+  `rg -n 'requires a complete \(balanced\)|requires a balanced trait|CI, masks|masks, X|response masks,|broader structures, masks|no-X/no-mask|no-mask/no-CI|masks remain gated|mask.*follow-up|response masks.*planned|response masks.*gated' R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-06-16-r-bridge-response-mask-admission.md README.md NEWS.md vignettes man/gllvm_julia_fit.Rd pkgdown-site/index.html`
+  -> expected guardrails only after the NEWS wording was narrowed.
+- Whitespace:
+  `git diff --check` -> clean in `gllvmTMB`.
+  `git diff --check` -> clean in `../GLLVM.jl-integration`.
+- Files updated:
+  `R/julia-bridge.R`;
+  `tests/testthat/test-julia-bridge.R`;
+  `man/gllvm_julia_fit.Rd`;
+  `NEWS.md`;
+  `docs/design/35-validation-debt-register.md`;
+  `docs/dev-log/coordination-board.md`;
+  `docs/dev-log/after-task/2026-06-16-r-bridge-response-mask-admission.md`;
+  local dashboard `pkgdown-site/index.html`.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  route, bridge tests, one exported helper Rd topic, NEWS wording, and
+  validation/dev-log ledgers; no broad package or article pass was attempted.
+
 ## 2026-06-16 -- Gamma shared bridge parity route
 
 Implemented the Gamma bridge decision from the NB1/Gamma parameterisation audit:

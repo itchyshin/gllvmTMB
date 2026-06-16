@@ -41,6 +41,15 @@
   "ordinal",
   "ordinal_probit"
 )
+.GLLVM_JULIA_MASK_FAMILIES <- c(
+  "poisson",
+  "binomial",
+  "negbinomial",
+  "nb1",
+  "beta",
+  "gamma",
+  .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
+)
 .GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"
 .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES <- c(
   "gaussian",
@@ -118,11 +127,12 @@ gllvm_julia_setup <- function(jl_path = getOption("gllvmTMB.GLLVM.jl.path", Sys.
 #' @export
 gllvm_julia_capabilities <- function() {
   families <- .GLLVM_JULIA_BRIDGE_FAMILIES
+  notes <- vapply(families, .gllvm_julia_capability_note, character(1))
   out <- data.frame(
     family = families,
     fit_no_x = TRUE,
     fixed_effect_X = families == "gaussian",
-    missing_response = FALSE,
+    missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
     cbind_binomial = FALSE,
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
@@ -135,35 +145,7 @@ gllvm_julia_capabilities <- function() {
     postfit_simulate = FALSE,
     postfit_ordination = FALSE,
     status = "partial",
-    notes = ifelse(
-      families %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES,
-      paste(
-        "single reduced-rank no-X point route; default Julia payload uses",
-        "per-trait grouped dispersion; CI, masks, X, and native parity",
-        "promotion are follow-ups"
-      ),
-      ifelse(
-        families == "gamma",
-        paste(
-          "single reduced-rank no-X point route; default Julia payload uses",
-          "shared Gamma grouped dispersion to match current native scalar-CV",
-          "Gamma; per-trait Gamma is a native-expansion follow-up; CI,",
-          "masks, X, and native parity promotion are follow-ups"
-        ),
-        ifelse(
-          families %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES,
-          paste(
-            "single reduced-rank no-X point route; default Julia payload uses",
-            "per-trait ordinal cutpoints; CI, masks, X, and native parity",
-            "promotion are follow-ups"
-          ),
-          paste(
-            "single reduced-rank no-X point route; broader structures, masks,",
-            "post-fit methods, and native parity promotion remain gated"
-          )
-        )
-      )
-    ),
+    notes = notes,
     stringsAsFactors = FALSE
   )
   mixed <- data.frame(
@@ -191,6 +173,40 @@ gllvm_julia_capabilities <- function() {
     stringsAsFactors = FALSE
   )
   rbind(out, mixed)
+}
+
+.gllvm_julia_capability_note <- function(family) {
+  mask_clause <- if (family %in% .GLLVM_JULIA_MASK_FAMILIES) {
+    "response masks are routed for no-X point fits; "
+  } else {
+    "response masks remain gated; "
+  }
+  if (family %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES) {
+    return(paste0(
+      "single reduced-rank no-X point route; default Julia payload uses ",
+      "per-trait grouped dispersion; ", mask_clause,
+      "CI, X, and native parity promotion are follow-ups"
+    ))
+  }
+  if (identical(family, "gamma")) {
+    return(paste0(
+      "single reduced-rank no-X point route; default Julia payload uses ",
+      "shared Gamma grouped dispersion to match current native scalar-CV ",
+      "Gamma; per-trait Gamma is a native-expansion follow-up; ",
+      mask_clause, "CI, X, and native parity promotion are follow-ups"
+    ))
+  }
+  if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
+    return(paste0(
+      "single reduced-rank no-X point route; default Julia payload uses ",
+      "per-trait ordinal cutpoints; ", mask_clause,
+      "CI, X, and native parity promotion are follow-ups"
+    ))
+  }
+  paste0(
+    "single reduced-rank no-X point route; ", mask_clause,
+    "broader structures, post-fit methods, and native parity promotion remain gated"
+  )
 }
 
 # Map one R family (a `family` object or a string) to the GLLVM.jl bridge key.
@@ -456,6 +472,38 @@ gllvm_julia_capabilities <- function() {
   res
 }
 
+.gllvm_julia_mask_placeholder <- function(family) {
+  switch(family,
+    poisson = 0,
+    binomial = 0,
+    negbinomial = 0,
+    nb1 = 0,
+    beta = 0.5,
+    gamma = 1,
+    ordinal = 1,
+    ordinal_probit = 1,
+    stop("engine = 'julia': response masks are not routed for family '",
+         family, "'.", call. = FALSE)
+  )
+}
+
+.gllvm_julia_fill_masked_response <- function(Y, family, mask) {
+  if (!any(!mask)) return(Y)
+  if (length(family) != 1L) {
+    stop("engine = 'julia' does not yet route response masks for mixed-family ",
+         "vectors. Use engine = 'tmb'.", call. = FALSE)
+  }
+  if (!(family %in% .GLLVM_JULIA_MASK_FAMILIES)) {
+    stop("engine = 'julia' response masks are currently routed for ",
+         paste(.GLLVM_JULIA_MASK_FAMILIES, collapse = ", "),
+         "; family '", family, "' remains gated. Use engine = 'tmb'.",
+         call. = FALSE)
+  }
+  out <- Y
+  out[!mask] <- .gllvm_julia_mask_placeholder(family)
+  out
+}
+
 #' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).
@@ -463,26 +511,43 @@ gllvm_julia_capabilities <- function() {
 #' @param num.lv Number of latent variables (K).
 #' @param N Binomial trials (matrix or scalar), or `NULL`.
 #' @param X Gaussian-only fixed-effect design (p x n x q array), or `NULL`.
+#' @param mask Optional logical response-observation mask with the same orientation
+#'   as `y`; `TRUE` cells contribute to the likelihood and `FALSE` cells are
+#'   ignored. Currently routed for one-part no-X non-Gaussian point fits only.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
 #' @param ... Passed to [gllvm_julia_setup()] (`jl_path`, `julia_home`).
 #' @return A list of class `gllvmTMB_julia` with the bridge contract fields
 #'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`, `converged`, ...).
 #' @export
 gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = NULL,
-                            units_are_rows = FALSE, ...) {
+                            mask = NULL, units_are_rows = FALSE, ...) {
   gllvm_julia_setup(...)
   fam <- .gllvm_julia_family(family)
   y <- as.matrix(y)
-  if (isTRUE(units_are_rows)) y <- t(y)
+  if (isTRUE(units_are_rows)) {
+    y <- t(y)
+  }
+  if (!is.null(mask)) {
+    mask <- as.matrix(mask)
+    if (isTRUE(units_are_rows)) mask <- t(mask)
+    if (!identical(dim(mask), dim(y))) {
+      stop("engine = 'julia': `mask` must have the same dimensions as `y` ",
+           "after applying `units_are_rows`.", call. = FALSE)
+    }
+    storage.mode(mask) <- "logical"
+  }
   if (any(fam %in% c("poisson", "binomial", "negbinomial", "nb1"))) storage.mode(y) <- "integer"
   args <- list("GLLVM.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
   if (!is.null(rownames(y))) args$trait_names <- rownames(y)
   if (!is.null(colnames(y))) args$unit_names <- colnames(y)
   if (!is.null(N)) args$N <- N
   if (!is.null(X)) args$X <- X
+  if (!is.null(mask)) args$mask <- mask
   res <- do.call(JuliaCall::julia_call, args)
   res <- .gllvm_julia_normalise_result(res)
   res$engine <- "julia"
+  res$missing_response <- !is.null(mask) && any(!mask)
+  if (!is.null(mask)) res$response_mask <- mask
   class(res) <- c("gllvmTMB_julia", "list")
   res
 }
@@ -555,13 +620,11 @@ print.gllvmTMB_julia <- function(x, ...) {
   }
   traits <- levels(ft); units <- levels(fu)
   p <- length(traits); n <- length(units)
+  fam_str <- .gllvm_julia_family(family)
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
   Y[cbind(as.integer(ft), as.integer(fu))] <- yv
-  if (anyNA(Y)) {
-    stop("engine = 'julia' currently requires a complete (balanced) trait x unit ",
-         "table; found ", sum(is.na(Y)), " empty cell(s). Use engine = 'tmb'.",
-         call. = FALSE)
-  }
+  response_mask <- !is.na(Y)
+  has_missing_response <- any(!response_mask)
 
   ## --- fixed effects: the per-trait intercept (0 + trait) is always mapped to
   ## the bridge's internal per-trait intercept. Extra fixed-effect covariates
@@ -569,11 +632,18 @@ print.gllvmTMB_julia <- function(x, ...) {
   ## design matrix into a p x n x q array X and passing it to bridge_fit; the
   ## Julia Gaussian fitter carries the FULL mean structure (intercept dummies +
   ## covariates) in X. Non-Gaussian X stays a loud reject. ---
-  fam_str <- .gllvm_julia_family(family)
   Xfix <- stats::model.matrix(parsed$fixed, mf)
   trait_dummies <- paste0(trait, traits)
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
   has_only_trait_intercept <- (length(extra_cols) == 0 && ncol(Xfix) == p)
+  if (has_missing_response && !has_only_trait_intercept) {
+    stop("engine = 'julia' does not yet route response masks with fixed-effect ",
+         "covariates. Use a complete response table or engine = 'tmb'.",
+         call. = FALSE)
+  }
+  if (has_missing_response) {
+    Y <- .gllvm_julia_fill_masked_response(Y, fam_str, response_mask)
+  }
 
   Xarg <- NULL
   if (!has_only_trait_intercept) {
@@ -611,9 +681,14 @@ print.gllvmTMB_julia <- function(x, ...) {
     }
   }
 
-  fit <- gllvm_julia_fit(Y, family = family, num.lv = K, N = Narg, X = Xarg)
+  fit <- gllvm_julia_fit(
+    Y, family = family, num.lv = K, N = Narg, X = Xarg,
+    mask = if (has_missing_response) response_mask else NULL
+  )
   fit$call         <- call
   fit$trait_levels <- traits
   fit$unit_levels  <- units
+  fit$missing_response <- has_missing_response
+  if (has_missing_response) fit$response_mask <- response_mask
   fit
 }

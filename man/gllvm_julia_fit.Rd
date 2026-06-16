@@ -10,6 +10,7 @@ gllvm_julia_fit(
   num.lv = 2L,
   N = NULL,
   X = NULL,
+  mask = NULL,
   units_are_rows = FALSE,
   ...
 )
@@ -24,6 +25,10 @@ gllvm_julia_fit(
 \item{N}{Binomial trials (matrix or scalar), or \code{NULL}.}
 
 \item{X}{Gaussian-only fixed-effect design (p x n x q array), or \code{NULL}.}
+
+\item{mask}{Optional logical response-observation mask with the same orientation
+as \code{y}; \code{TRUE} cells contribute to the likelihood and \code{FALSE} cells are
+ignored. Currently routed for one-part no-X non-Gaussian point fits only.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 

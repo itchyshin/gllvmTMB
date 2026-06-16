@@ -29,8 +29,9 @@ Current Codex state:
   and carries the draft-landing readout plus the Xcoef structural-zero
   addendum.
 - `codex/r-bridge-grouped-dispersion` is the current implementation/evidence
-  branch. It has local grouped-dispersion and per-trait ordinal bridge evidence
-  through `b1ebce7`.
+  branch. It has local grouped-dispersion, per-trait ordinal, Gamma shared-route,
+  and one-part no-X response-mask bridge evidence through the current Codex
+  slice.
 - No GitHub PR is open for this programme yet.
 
 Current bridge landing state:
@@ -40,7 +41,7 @@ Current bridge landing state:
 - Synthetic merge conflict scan reports conflicts in `NAMESPACE`,
   `NEWS.md`, `cran-comments.md`, `docs/dev-log/check-log.md`, and
   `man/gllvm_julia_fit.Rd`.
-- The paired bridge runtime is `GLLVM.jl-integration` at `2a07745`;
+- The paired bridge runtime is `GLLVM.jl-integration` at `b7b4c60`;
   the main `GLLVM.jl` checkout on `codex/non-gaussian-fitter-gradients`
   is salvage-only for this lane.
 
@@ -76,6 +77,10 @@ Active lane guidance:
   `docs/dev-log/2026-06-16-nb1-reduced-rank-fisher-fix.md`; the paired Julia
   fix stabilised tiny-`phi` NB1 Fisher information near the Poisson boundary.
   Gamma no longer uses per-trait bridge grouping for current-oracle parity.
+  The R bridge now passes response masks through to the paired Julia mask
+  contract for one-part no-X point fits in Poisson, Bernoulli binomial, NB2,
+  NB1, Beta, Gamma, ordinal, and ordinal-probit rows. Gaussian masks,
+  mixed-family masks, X+mask, and masked CIs remain loud gates.
 - Cross-twin argument and wording contract:
   `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
   Before bridge, engine, or public-docs lanes, scan R/Julia and DRM/GLLVM
@@ -84,9 +89,10 @@ Active lane guidance:
   REML / AI-REML, CI-status columns, and `pdHess`. Share meanings where the
   model concept is the same; keep package-specific names where DRM and GLLVM
   target different estimands.
-- Next safe implementation lane: grouped-dispersion CI/status, masks, post-fit,
-  or the native per-trait Gamma expansion spec, unless the maintainer explicitly
-  asks to publish or rebase the bridge PR first.
+- Next safe implementation lane: grouped-dispersion CI/status, masked
+  CI/status, post-fit extractor parity, mixed-family admission, or the native
+  per-trait Gamma expansion spec, unless the maintainer explicitly asks to
+  publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

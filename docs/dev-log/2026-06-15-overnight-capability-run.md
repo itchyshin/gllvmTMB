@@ -60,6 +60,8 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 | 6 | **NB2 honest non-parity** — documents shared-scalar vs per-trait dispersion mismatch + guard (NOT promoted) | gllvmTMB | fa7b997 | heavy+julia 675 pass (indep. re-run) |
 | 7 | **Ordinal predict(prob/class)** — engine emits cutpoints+n_categories; R computes P(y=c)=F(τ−η); machine-precision match | gllvmTMB `804c2a5` + integration `1dc9e98` | heavy+julia 714; engine Pkg.test 3943/0 |
 | 8 | **Fixed-effect-X parity** (Gaussian/Poisson/Binomial native-vs-julia; full β incl. x-coef; two-payload-shape aligner) | gllvmTMB | a58bc71 | heavy+julia 745 pass (+31, indep.) |
+| 9 | **Mixed-family parity** (no-dispersion components; shared-Λ cross-family fit) | gllvmTMB | 769cef3 | heavy+julia 756 pass (+11, indep.) |
+| 10 | **Masked-response parity** (Poisson/Binomial no-X; cell-wise mask = native NA handling, identical observed cells) | gllvmTMB | 8d114dc | heavy+julia 782 pass (+26, indep.) |
 
 ## Verification (close-out checkpoint, ~20:15)
 - Native fast full suite (`devtools::test()`): **FAIL 0 | WARN 3 (pre-existing) | SKIP 730 | PASS 3092**
@@ -76,8 +78,13 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 | Gaussian | ✓ HOLDS (~1e-9 / 1e-4) | ✓ HOLDS | closed-form marginal |
 | Poisson | ✓ HOLDS (~1e-9 / 1e-3) | ✓ HOLDS | shared Laplace marginal |
 | Binomial | ✓ HOLDS (~1e-9 / 1e-3) | ✓ HOLDS | shared Laplace marginal |
+| Mixed (G+P+B, no-disp) | ✓ HOLDS | (n/a) | shared-Λ cross-family fit |
 | NB2 / NB1 / Beta / Gamma | ✗ structural | (n/a) | shared-scalar vs per-trait **dispersion** |
 | Ordinal | ✗ structural | (n/a) | shared vs per-trait **cutpoints** |
+
+_Also verified to parity:_ **mixed-family** (G+P+B, shared-Λ) and **masked-response**
+(Poisson/Binomial no-X — the bridge's cell-wise mask matches native NA handling
+*exactly*, identical observed cells). So every achievable no-dispersion case parities.
 - `NEWS.md` reconciled with honest entries; dispersion/ordinal divergence documented + guarded.
 - Ordinal native-vs-julia parity NOT run: the finding (per-trait vs shared cutpoints) shows it cannot
   point-parity — same structural reason as the dispersion families.

@@ -7,7 +7,8 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 
 - **9 capability commits on `gllvmTMB@engine-julia` + 1 on `GLLVM.jl-integration` —
   nothing pushed.** All verified: native fast suite 3092 pass / 0 fail (no regression);
-  heavy+julia bridge 745 pass / 0 fail; engine `Pkg.test()` running.
+  heavy+julia bridge 745 pass / 0 fail; engine `Pkg.test()` 3943 pass / 0 fail
+  (after fixing 3 stale bridge_capabilities assertions it caught).
 - **Native ↔ `engine="julia"` point-parity is now characterized** (matrix below): it
   HOLDS for Gaussian / Poisson / Binomial (both no-X and fixed-effect-X); it does NOT
   hold for the dispersion families (NB2/NB1/Beta/Gamma) or ordinal.
@@ -57,15 +58,17 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 | 4 | **trait_families()** accessor + per-trait family in print (multi); family-id map verified vs family_to_id() | gllvmTMB | 14df97d | trait-families heavy 15; mock 38 pass |
 | 5 | **Poisson + Binomial parity** (native-vs-julia; shared Σ_B helper; Gaussian refactored onto it) | gllvmTMB | c06c96c | heavy+julia 664 pass (indep. re-run) |
 | 6 | **NB2 honest non-parity** — documents shared-scalar vs per-trait dispersion mismatch + guard (NOT promoted) | gllvmTMB | fa7b997 | heavy+julia 675 pass (indep. re-run) |
-| 7 | **Ordinal predict(prob/class)** — engine emits cutpoints+n_categories; R computes P(y=c)=F(τ−η); machine-precision match | gllvmTMB `804c2a5` + integration `de9cda8` | heavy+julia 714 pass (+39, indep.) |
+| 7 | **Ordinal predict(prob/class)** — engine emits cutpoints+n_categories; R computes P(y=c)=F(τ−η); machine-precision match | gllvmTMB `804c2a5` + integration `1dc9e98` | heavy+julia 714; engine Pkg.test 3943/0 |
 | 8 | **Fixed-effect-X parity** (Gaussian/Poisson/Binomial native-vs-julia; full β incl. x-coef; two-payload-shape aligner) | gllvmTMB | a58bc71 | heavy+julia 745 pass (+31, indep.) |
 
 ## Verification (close-out checkpoint, ~20:15)
 - Native fast full suite (`devtools::test()`): **FAIL 0 | WARN 3 (pre-existing) | SKIP 730 | PASS 3092**
   (+69 vs inherited 3023; **no regression** from the 8 slices).
 - Heavy+julia bridge suite: **745 pass / 0 fail** (independent re-run; includes the X-parity tests).
-- Engine (GLLVM.jl-integration `de9cda8`) ordinal payload change verified end-to-end via the R
-  bridge suite; engine `Pkg.test()` running for the final engine-side confirmation.
+- Engine (GLLVM.jl-integration `1dc9e98`) ordinal payload change: engine `Pkg.test()` initially
+  flagged 3 STALE `bridge_capabilities` assertions (ordinal predict is now `true`) — fixed +
+  re-verified (20/20); engine suite **3943 pass / 0 fail / 1 pre-existing broken**. (The engine
+  Pkg.test caught a regression the R bridge suite missed — worth running.)
 
 ## Parity matrix (native engine="tmb" vs engine="julia" point estimates)
 | Family | no-X | fixed-effect-X | note |

@@ -4,6 +4,69 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- NB1 reduced-rank Julia bridge parity audit
+
+Audited whether NB1 could move from no-latent fitted-object parity to
+reduced-rank (`d = 1`) fitted-object parity. Verdict: do not promote reduced-rank
+NB1 parity yet. The probes found boundary-dominated near misses and non-boundary
+objective/parameter-allocation drift.
+
+Evidence:
+
+- Rehydration:
+  `git status --short --branch && git log --oneline -8`
+  -> clean on `codex/r-bridge-grouped-dispersion`, tip `a2ba3e8`.
+  `git -C ../GLLVM.jl-integration status --short --branch && git -C ../GLLVM.jl-integration log --oneline -5`
+  -> clean on `codex/julia-per-trait-dispersion`, tip `903b5b9`.
+- Pre-edit lane check:
+  `gh pr list --state open --json number,title,headRefName,baseRefName,updatedAt,isDraft --limit 20`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints | head -120`
+  -> current Codex programme commits only.
+- Initial reduced-rank probe:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla - <<'RS' ...`
+  -> existing 2x12 fixture had native convergence `0`, `df = 6` for both
+  engines, but logLik delta `1.035`; deterministic rounded fixtures had smaller
+  deltas (`~3e-4` to `~3e-3`) but were dominated by `phi -> 0` boundary behavior
+  and/or native convergence code `1`.
+- Native control probe:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla - <<'RS' ...`
+  -> BFGS sometimes returned convergence `0` on deterministic fixtures, but
+  still near the NB1 boundary (`phi_tmb` around `1e-07` to `1e-04`) and not
+  suitable for a clean parity row.
+- Julia optimiser tolerance probe:
+  `julia --project='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' - <<'JL' ...`
+  -> direct `GLLVM.fit_nb1_gllvm_grouped(..., K = 1)` fits did not move when
+  `g_tol` was tightened from `1e-5` to `1e-11`; Julia was already at its current
+  local optimum.
+- Non-boundary seed search:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla - <<'RS' ...`
+  -> across `n in {30, 60, 120}` and seeds `1:8`, the best converged
+  non-boundary candidate had `n = 30`, `seed = 8`, `min(phi_tmb) = 1.339`,
+  `df = 6` for both engines, but logLik delta `-0.07678`, max `phi` delta
+  `1.73`, and different loading/nuisance allocation.
+- Stale-claim scans:
+  `rg -n "NB1.*full parity|full native parity|full parity|complete bridge|CRAN-ready bridge|NB1.*covered.*Julia|Grouped NB1 reduced-rank fits match|reduced-rank NB1.*covered|reduced-rank NB1 parity remains unpromoted|0\.07678|Gamma.*native parity|native parity.*Gamma|Gamma.*covered.*Julia" docs/dev-log/2026-06-16-nb1-reduced-rank-parity-audit.md docs/dev-log/after-task/2026-06-16-nb1-reduced-rank-parity-audit.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md`
+  -> expected audit, ledger, coordination-board, and historical scan-command
+  hits only; no new NB1 full-parity or Gamma native-parity claim.
+  `rg -n "NB1 stable no-X fitted-object fixture|NB1 still needs fitted-object objective parity|reduced-rank NB1 fitted-object parity is now covered|reduced-rank NB1.*matches native" docs tests R README.md NEWS.md vignettes | head -120`
+  -> historical scan-command strings only; no current stale status wording.
+- Whitespace:
+  `git diff --check` -> clean.
+- Files updated:
+  `docs/dev-log/2026-06-16-nb1-reduced-rank-parity-audit.md`;
+  `docs/design/35-validation-debt-register.md`;
+  `docs/dev-log/coordination-board.md`;
+  `docs/dev-log/check-log.md`;
+  `docs/dev-log/after-task/2026-06-16-nb1-reduced-rank-parity-audit.md`.
+
+Deliberately not run:
+
+- `devtools::test()`, `devtools::check()`, `devtools::document()`,
+  `pkgdown::check_pkgdown()`, and article renders. This is a docs/evidence
+  audit only; no R code, tests, roxygen, generated Rd, README, NEWS, vignette,
+  or pkgdown navigation file changed.
+
 ## 2026-06-16 -- NB1 no-latent Julia bridge fitted-object parity
 
 Added a live Julia bridge test proving a no-latent NB1 fitted object from

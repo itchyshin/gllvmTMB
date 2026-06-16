@@ -4,6 +4,88 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge grouped-dispersion payload decoding
+
+Updated the lean `engine = "julia"` R bridge to match the paired
+`GLLVM.jl-integration` grouped-dispersion payload for NB2, NB1, Beta, and
+Gamma no-X reduced-rank fits. This is a bridge-contract and documentation slice,
+not a native parity promotion.
+
+Evidence:
+
+- Coordination and branch state:
+  `git status --short --branch`
+  -> clean on `codex/r-bridge-grouped-dispersion` before edits.
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt,url`
+  -> `[]`.
+  `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,workflowName,headBranch,status,conclusion,createdAt,url`
+  -> `main` had a `Power pilot sweep` in progress; latest `full-check`
+  was successful.
+  `git log --all --oneline --since="6 hours ago"`
+  -> current Codex programme commits only, including `2025bd7`, `6701ae5`,
+  `8f1ae83`, `2324646`, and `33287b1`.
+- Source inspection:
+  `sed -n '1,260p' R/julia-bridge.R`;
+  `sed -n '1,260p' tests/testthat/test-julia-bridge.R`;
+  `sed -n '1,180p' NEWS.md`;
+  `rg -n "^\\|.*(Julia|julia|bridge|engine =|JULIA|BRIDGE)" docs/design/35-validation-debt-register.md docs/design/61-capability-status.md`
+  -> current R bridge mapped NB2 to `nbinom2`, still listed `lognormal`,
+  lacked `gllvm_julia_capabilities()`, and had no Julia bridge validation row.
+  `rg -n "bridge_capabilities|fit_no_x|ci_no_x" src/bridge.jl test/test_bridge_capabilities.jl`
+  in `GLLVM.jl-integration`
+  -> paired Julia grouped-dispersion rows mark no-X CIs unavailable.
+- Documentation:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> loaded `gllvmTMB`; wrote `NAMESPACE`, `extract_correlations.Rd`, and
+  new `gllvm_julia_capabilities.Rd`.
+- Targeted tests:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 95` in 26.8 s.
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 2 | PASS 48`; both skips were the live
+  Julia path not configured.
+- pkgdown:
+  First `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> failed because `gllvm_julia_capabilities`, `gllvm_julia_fit`, and
+  `gllvm_julia_setup` were exported but missing from `_pkgdown.yml`.
+  After adding the Julia bridge reference subsection:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Capability smoke:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(!"lognormal" %in% caps$family); stopifnot(!any(caps$ci_no_x_wald[caps$family %in% c("negbinomial", "nb1", "beta", "gamma")])); print(caps[, c("family", "fit_no_x", "fixed_effect_X", "ci_no_x_wald", "status")], row.names = FALSE)'`
+  -> printed gaussian/poisson/binomial/ordinal/ordinal_probit CI rows as
+  `TRUE`, grouped-dispersion rows and mixed-family vector as `FALSE`, with
+  every row `partial`.
+- Whitespace and stale-claim scan:
+  `git diff --check`
+  -> clean.
+  `rg -n "lognormal|full native parity|full parity|complete bridge|CRAN-ready bridge|covered.*Julia|ci_no_x.*negbinomial|ci_no_x.*nb1|ci_no_x.*beta|ci_no_x.*gamma" R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md docs/design/35-validation-debt-register.md man/gllvm_julia_capabilities.Rd _pkgdown.yml`
+  -> expected hits only: explicit lognormal rejection tests, non-bridge
+  historical lognormal rows, and the negative NEWS guard "not a full native
+  parity claim"; no grouped-dispersion CI overclaim.
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `NAMESPACE`
+- `man/gllvm_julia_capabilities.Rd`
+- `man/extract_correlations.Rd`
+- `NEWS.md`
+- `_pkgdown.yml`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-grouped-dispersion.md`
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not run for this narrow
+  bridge slice. The live and no-Julia `test-julia-bridge` paths, roxygen,
+  pkgdown, capability smoke, and stale-wording scans were run locally.
+- No GitHub issue was commented on or closed. `gllvmTMB#488` remains the
+  umbrella for bridge gate-vs-engine drift and needs live issue evidence before
+  any issue action.
+
 ## 2026-06-16 -- Engine Julia draft landing readout
 
 Prepared a docs-only landing-readiness note for the existing

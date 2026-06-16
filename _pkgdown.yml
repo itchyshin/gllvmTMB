@@ -116,6 +116,13 @@ reference:
     - simulate_site_trait
     - simulate_unit_trait
 
+  - title: Julia bridge
+    desc: Experimental acceleration path through GLLVM.jl; use the capability ledger before relying on a row
+    contents:
+    - gllvm_julia_capabilities
+    - gllvm_julia_fit
+    - gllvm_julia_setup
+
   - title: Core covariance keywords
     desc: First-line formula keywords for the 4 x 5 grid (correlation source x mode)
     contents:

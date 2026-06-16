@@ -488,6 +488,15 @@ kernel C3 row (COE-03) lands via **PR #439**. The counts
 above reflect the register state on `main` at tag-prep; those
 PRs will append / settle their own rows on merge.
 
+### Section 13 — Julia bridge
+
+Row-owner: **Hopper + Karpinski + Rose** (R-Julia bridge
+admission, paired engine capability, and claim wording).
+
+| ID | Capability | Status | Test evidence | Notes |
+|----|------------|--------|---------------|-------|
+| JUL-01 | Lean `engine = "julia"` reduced-rank bridge through `GLLVM.bridge_fit` | `partial` | `test-julia-bridge.R` | Main-dispatch route admits one `latent(..., d = K)` block on complete balanced trait x unit data, with Gaussian fixed-effect covariates only and no structured covariance terms. The 2026-06-16 grouped-dispersion slice maps R `nbinom2()` / `nbinom1()` / `Beta()` / `Gamma()` to the paired Julia grouped-dispersion payload, labels `dispersion`, `dispersion_group`, and `dispersion_group_id` by trait, and adds public-scale fields for NB2 (`sigma = 1/sqrt(r)`, `phi = 1/r`), NB1 (`phi` identity), Beta (`sigma = 1/sqrt(phi)`), and Gamma (`sigma = 1/sqrt(alpha)`). Still partial: native-vs-Julia parity rows, grouped-dispersion CI endpoints, response masks, non-Gaussian X through the main dispatch, mixed-family promotion, ordinal per-trait cutpoints, structured terms, and post-fit extractor parity remain planned/gated. |
+
 ## What this register does NOT do
 
 - **It does not replace the test files.** Every `covered`

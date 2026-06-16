@@ -8,17 +8,22 @@
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
   default `"tmb"`). With `engine = "julia"` the fit is routed through the fast
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
-  IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
-  with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
-  nbinom1, beta, gamma, ordinal, and lognormal families (plus a per-trait family
-  list for mixed responses) and Gaussian-only fixed-effect covariates. PARTIAL:
-  the supported surface is deliberately narrow — the bridge loudly rejects
-  non-`rr` covariance terms, more than one latent block, `cbind()` binomial,
-  unbalanced trait × unit tables, and non-Gaussian covariates, erroring clearly
-  rather than silently re-interpreting the model. OUT: JuliaCall is a `Suggests`
-  dependency only; every `engine = "julia"` path errors cleanly when JuliaCall or
-  the GLLVM.jl project is unavailable, so the default TMB engine and `R CMD check`
-  are unaffected on machines without Julia.
+  IN (JUL-01): the bridge maps a single reduced-rank latent block
+  (`latent(...)` -> `rr`) with per-trait intercepts for gaussian, poisson,
+  binomial, nbinom2, nbinom1, beta, gamma, ordinal, and ordinal-probit rows.
+  The current paired Julia checkout returns trait-labelled grouped-dispersion
+  payloads for nbinom2, nbinom1, beta, and gamma; the R bridge preserves the
+  engine-native nuisance values and adds explicit public-scale fields for
+  parity checks. PARTIAL (JUL-01): this is a narrow point-route bridge, not a
+  full native parity claim. The bridge still loudly rejects non-`rr` covariance
+  terms, more than one latent block, `cbind()` binomial, unbalanced trait x unit
+  tables, and non-Gaussian covariates through the main `gllvmTMB()` dispatch.
+  Confidence intervals for grouped-dispersion rows, response masks, rich
+  post-fit methods, ordinal per-trait cutpoint parity, mixed-family promotion,
+  and structured covariance terms remain planned follow-up rows. OUT: JuliaCall
+  is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
+  when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB
+  engine and `R CMD check` are unaffected on machines without Julia.
 
 ## Loading-constraint suggestion comparison (2026-06-09)
 

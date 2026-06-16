@@ -16,7 +16,15 @@
 
 \method{coef}{gllvmTMB_julia}(object, ...)
 
-\method{confint}{gllvmTMB_julia}(object, parm, level = 0.95, ...)
+\method{confint}{gllvmTMB_julia}(
+  object,
+  parm,
+  level = 0.95,
+  method = c("stored", "wald", "profile", "bootstrap"),
+  ci_nboot = 200L,
+  ci_seed = 0L,
+  ...
+)
 
 \method{summary}{gllvmTMB_julia}(object, ...)
 
@@ -30,8 +38,20 @@
 
 \item{parm}{Optional integer or character vector of CI terms for \code{confint()}.}
 
-\item{level}{Confidence level requested by \code{confint()}. Julia bridge CIs are
-computed at fit time; \code{confint()} only reads a matching stored payload.}
+\item{level}{Confidence level requested by \code{confint()}. Stored Julia bridge
+payloads can only be read at their stored level; post-fit requests recompute
+the admitted Julia CI payload at the requested level.}
+
+\item{method}{CI route for \code{confint()}. \code{"stored"} reads an existing payload.
+\code{"wald"}, \code{"profile"}, and \code{"bootstrap"} recompute from retained bridge
+input for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows. If
+omitted, \code{confint()} reads a stored payload when present and otherwise uses
+\code{"wald"} for current fits that retain their bridge input.}
+
+\item{ci_nboot}{Number of parametric bootstrap replicates when
+\code{method = "bootstrap"}.}
+
+\item{ci_seed}{Seed passed to the Julia bootstrap CI route.}
 
 \item{digits}{Number of digits printed by summary methods.}
 }
@@ -45,6 +65,7 @@ a list with header, coefficients, covariance, and status fields.
 Small S3 surface for fits returned by \code{gllvmTMB(..., engine = "julia")} or
 \code{\link[=gllvm_julia_fit]{gllvm_julia_fit()}}. These methods expose the flat bridge payload that has
 already passed the R admission gates. They are point-estimate summaries only:
-prediction, residuals, simulation, extractor parity, and confidence intervals
-are separate bridge rows.
+prediction, residuals, simulation, and extractor parity are separate bridge
+rows. Confidence intervals are routed only for admitted no-X Gaussian,
+Poisson, and Bernoulli binomial rows.
 }

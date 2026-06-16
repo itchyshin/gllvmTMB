@@ -25,13 +25,15 @@
   covariates, masked CIs, NB1-X, ordinal-X, mixed-family-X, and unsupported
   fixed-effect designs. Direct `gllvm_julia_fit()` calls can request stored
   Wald/profile/bootstrap CI payloads for no-X gaussian, poisson, and Bernoulli
-  binomial rows, and `confint()` reads those stored payloads. The main
-  `gllvmTMB(..., engine = "julia")` route does not yet expose a CI control
-  surface. The admitted post-fit surface is `coef()`, `summary()`, and
-  stored-payload `confint()` only; prediction, residuals, simulation, extractor
-  parity, confidence intervals for grouped-dispersion or per-trait ordinal
-  rows, and CIs for X rows remain planned follow-up rows, as do mixed-family
-  promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall
+  binomial rows, and ordinary `gllvmTMB(..., engine = "julia")` fits retain
+  their bridge input so `confint(fit, method = "wald" / "profile" /
+  "bootstrap")` can request the same admitted no-X CI payloads post-fit. The
+  admitted post-fit surface is `coef()`, `summary()`, and scoped no-X
+  `confint()` only; there is still no fit-time Julia CI control surface on
+  `gllvmTMB()`. Prediction, residuals, simulation, extractor parity,
+  confidence intervals for grouped-dispersion or per-trait ordinal rows, masked
+  CIs, mixed-family CIs, and CIs for X rows remain planned follow-up rows, as do
+  mixed-family promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall
   is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
   when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB
   engine and `R CMD check` are unaffected on machines without Julia.

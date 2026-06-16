@@ -4,6 +4,66 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge main-dispatch `confint()` admission
+
+Admitted post-fit `confint()` recomputation for ordinary
+`gllvmTMB(..., engine = "julia")` fits in the same no-X Gaussian, Poisson, and
+Bernoulli binomial rows already admitted by the direct Julia CI payload route.
+Fits now retain their bridge input, and `confint(fit, method = "wald" /
+"profile" / "bootstrap")` refits through `gllvm_julia_fit(ci_method = ...)` to
+request a fresh Julia CI payload. There is still no fit-time Julia CI control
+surface on `gllvmTMB()`; grouped-dispersion CIs, per-trait ordinal CIs, masked
+CIs, mixed-family CIs, and X-row CIs remain loud gates.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt,isDraft --limit 20`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- NEWS.md NAMESPACE R/julia-bridge.R R/gllvmTMB.R R/control.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task man/gllvmTMB.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd`
+  -> current local Codex programme commits only.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB_julia-methods.Rd`.
+- Rendered-Rd spot-check:
+  `tail -5 man/gllvmTMB_julia-methods.Rd && grep -c '^\\keyword' man/gllvmTMB_julia-methods.Rd`
+  -> tail ends in the expected methods description; keyword count `0`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `11` expected Julia-runtime skips and `0` failures.
+- Live R bridge test:
+  `Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = "/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration"); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. The new live row fits ordinary
+  `gllvmTMB(..., engine = "julia")` models for Gaussian, Poisson, and Bernoulli
+  binomial data and calls `confint(fit, method = "wald")` post-fit.
+- Julia CI contract anchor:
+  `julia --project=. test/test_bridge_ci.jl`
+  in `../GLLVM.jl-integration` -> `64/64 pass`.
+- Julia capability ledger anchor:
+  `julia --project=. test/test_bridge_capabilities.jl`
+  in `../GLLVM.jl-integration` -> `34/34 pass`.
+- R capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(identical(caps$family[caps$ci_no_x_wald], gllvmTMB:::.GLLVM_JULIA_CI_NO_X_FAMILIES)); stopifnot(any(grepl("gllvmTMB() fits retain bridge input for post-fit confint()", caps$notes, fixed = TRUE))); stopifnot(any(grepl("confint() remains gated until CI endpoints are admitted", caps$notes, fixed = TRUE))); print(caps[, c("family", "ci_no_x_wald", "ci_no_x_profile", "ci_no_x_bootstrap", "postfit_summary", "postfit_predict", "status")], row.names = FALSE)'`
+  -> CI flags remain true only for Gaussian, Poisson, and Bernoulli binomial;
+  post-fit summary is true for all current bridge rows; prediction remains
+  false for all current bridge rows.
+- Stale wording scan:
+  `rg -n "main gllvmTMB\\(\\) CI control|stored-payload confint|computed at fit time|CI controls|direct-wrapper no-X CI/status|gllvm_julia_fit\\(\\.\\.\\., ci_method" R NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md pkgdown-site/index.html man/gllvmTMB_julia-methods.Rd tests/testthat/test-julia-bridge.R`
+  -> prior hits were updated where current; remaining historical hits are in
+  older check-log commands / after-task evidence.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice touches the Julia bridge
+  wrapper, one bridge test file, generated method docs, ledgers, and the local
+  status widget; it does not touch formula parsing or public articles.
+
 ## 2026-06-16 -- R bridge direct CI/status admission
 
 Admitted direct-wrapper no-X CI payload routing through

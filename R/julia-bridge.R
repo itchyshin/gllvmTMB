@@ -224,13 +224,14 @@ gllvm_julia_capabilities <- function() {
   ci_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
     paste0(
       "direct gllvm_julia_fit() no-X Wald/profile/bootstrap CI payloads ",
-      "are routed; main gllvmTMB() CI control remains planned; "
+      "are routed; gllvmTMB() fits retain bridge input for post-fit ",
+      "confint() recomputation; "
     )
   } else {
     ""
   }
   postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
-    "coef(), summary(), and stored-payload confint() are routed; predict/residuals/simulate/extractor parity remain gated; "
+    "coef(), summary(), and no-X confint() are routed; predict/residuals/simulate/extractor parity remain gated; "
   } else {
     "coef() and summary() are routed; confint() remains gated until CI endpoints are admitted; predict/residuals/simulate/extractor parity remain gated; "
   }
@@ -795,6 +796,32 @@ gllvm_julia_capabilities <- function() {
   )
 }
 
+.gllvm_julia_refit_ci <- function(object, method, level, ci_nboot, ci_seed) {
+  bridge_input <- object$bridge_input
+  if (is.null(bridge_input)) {
+    stop(
+      "This Julia bridge fit does not retain the bridge input needed to ",
+      "compute confidence intervals post-fit. Refit with the current ",
+      "`gllvmTMB(..., engine = \"julia\")` or call `gllvm_julia_fit(..., ",
+      "ci_method = \"",
+      method,
+      "\")` directly.",
+      call. = FALSE
+    )
+  }
+  setup_args <- bridge_input$setup_args %||% list()
+  bridge_input$setup_args <- NULL
+  args <- bridge_input
+  args$ci_method <- method
+  args$ci_level <- level
+  args$ci_nboot <- ci_nboot
+  args$ci_seed <- ci_seed
+  for (nm in names(setup_args)) {
+    args[[nm]] <- setup_args[[nm]]
+  }
+  do.call(gllvm_julia_fit, args)
+}
+
 .gllvm_julia_print_matrix <- function(x, digits = 3) {
   if (is.null(x) || length(x) == 0L) {
     return(invisible(NULL))
@@ -845,6 +872,7 @@ gllvm_julia_fit <- function(
   ...
 ) {
   ci_method <- match.arg(ci_method)
+  setup_args <- list(...)
   if (
     !is.numeric(ci_level) ||
       length(ci_level) != 1L ||
@@ -959,7 +987,7 @@ gllvm_julia_fit <- function(
       ci_seed = as.integer(ci_seed)
     )
   }
-  gllvm_julia_setup(...)
+  do.call(gllvm_julia_setup, setup_args)
   res <- do.call(JuliaCall::julia_call, args)
   res <- .gllvm_julia_normalise_result(res)
   if (!is.null(X)) {
@@ -975,6 +1003,16 @@ gllvm_julia_fit <- function(
   }
   res$engine <- "julia"
   res$missing_response <- !is.null(mask) && any(!mask)
+  res$bridge_input <- list(
+    y = y,
+    family = fam,
+    num.lv = as.integer(num.lv),
+    N = N,
+    X = X,
+    mask = mask,
+    units_are_rows = FALSE,
+    setup_args = setup_args
+  )
   if (!is.null(mask)) {
     res$response_mask <- mask
   }
@@ -987,14 +1025,24 @@ gllvm_julia_fit <- function(
 #' Small S3 surface for fits returned by `gllvmTMB(..., engine = "julia")` or
 #' [gllvm_julia_fit()]. These methods expose the flat bridge payload that has
 #' already passed the R admission gates. They are point-estimate summaries only:
-#' prediction, residuals, simulation, extractor parity, and confidence intervals
-#' are separate bridge rows.
+#' prediction, residuals, simulation, and extractor parity are separate bridge
+#' rows. Confidence intervals are routed only for admitted no-X Gaussian,
+#' Poisson, and Bernoulli binomial rows.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].
 #' @param parm Optional integer or character vector of CI terms for `confint()`.
-#' @param level Confidence level requested by `confint()`. Julia bridge CIs are
-#'   computed at fit time; `confint()` only reads a matching stored payload.
+#' @param level Confidence level requested by `confint()`. Stored Julia bridge
+#'   payloads can only be read at their stored level; post-fit requests recompute
+#'   the admitted Julia CI payload at the requested level.
+#' @param method CI route for `confint()`. `"stored"` reads an existing payload.
+#'   `"wald"`, `"profile"`, and `"bootstrap"` recompute from retained bridge
+#'   input for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows. If
+#'   omitted, `confint()` reads a stored payload when present and otherwise uses
+#'   `"wald"` for current fits that retain their bridge input.
+#' @param ci_nboot Number of parametric bootstrap replicates when
+#'   `method = "bootstrap"`.
+#' @param ci_seed Seed passed to the Julia bootstrap CI route.
 #' @param digits Number of digits printed by summary methods.
 #' @param ... Unused.
 #' @return `logLik()` returns a `"logLik"` object. `coef()` returns a named list
@@ -1040,14 +1088,42 @@ coef.gllvmTMB_julia <- function(object, ...) {
 
 #' @rdname gllvmTMB_julia-methods
 #' @export
-confint.gllvmTMB_julia <- function(object, parm, level = 0.95, ...) {
+confint.gllvmTMB_julia <- function(
+  object,
+  parm,
+  level = 0.95,
+  method = c("stored", "wald", "profile", "bootstrap"),
+  ci_nboot = 200L,
+  ci_seed = 0L,
+  ...
+) {
   payload <- .gllvm_julia_ci_payload(object)
+  if (missing(method)) {
+    method <- if (is.null(payload) && !is.null(object$bridge_input)) {
+      "wald"
+    } else {
+      "stored"
+    }
+  } else {
+    method <- match.arg(method)
+  }
+  if (method != "stored") {
+    object <- .gllvm_julia_refit_ci(
+      object,
+      method = method,
+      level = level,
+      ci_nboot = ci_nboot,
+      ci_seed = ci_seed
+    )
+    payload <- .gllvm_julia_ci_payload(object)
+  }
   if (is.null(payload)) {
     stop(
-      "No Julia bridge CI payload is present; refit with ",
-      "`gllvm_julia_fit(..., ci_method = \"wald\")`, `\"profile\"`, or ",
-      "`\"bootstrap\"` for admitted no-X Gaussian, Poisson, or Bernoulli ",
-      "binomial rows.",
+      "No Julia bridge CI payload is present; call `confint(..., ",
+      "method = \"wald\")`, `\"profile\"`, or `\"bootstrap\"` on a current ",
+      "`gllvmTMB(..., engine = \"julia\")` fit, or refit with ",
+      "`gllvm_julia_fit(..., ci_method = \"wald\")` for admitted no-X ",
+      "Gaussian, Poisson, or Bernoulli binomial rows.",
       call. = FALSE
     )
   }

@@ -5,14 +5,14 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 
 ## TL;DR (morning read)
 
-- **12 capability commits on `gllvmTMB@engine-julia` + 1 on `GLLVM.jl-integration`
+- **14 capability commits on `gllvmTMB@engine-julia` + 1 on `GLLVM.jl-integration`
   + 1 docs honesty fix on `GLLVM.jl` — nothing pushed.** All verified: canonical
   native `test_local` **3136 pass / 0 fail / 0 error** (240 files; +44 vs 3092
   baseline, no regression); **live heavy+julia bridge 826 pass / 0 fail / 0 skip**
   (fresh end-to-end run against GLLVM.jl-integration `1dc9e98`); engine
-  `Pkg.test()` 3943 pass / 0 fail. (The last 4 commits — cutpoints, Sigma_B,
-  guard tests, roadmap — landed in the post-compaction continuation; see that
-  section below.)
+  `Pkg.test()` 3943 pass / 0 fail. (The post-compaction continuation — cutpoints,
+  Sigma_B, guard tests, roadmap, plus two gap-audit fixes [`trait_families`
+  bridge method, `tidy(cutpoint)`] — is detailed in that section below.)
 - **Native ↔ `engine="julia"` point-parity is now characterized** (matrix below): it
   HOLDS for Gaussian / Poisson / Binomial (both no-X and fixed-effect-X); it does NOT
   hold for the dispersion families (NB2/NB1/Beta/Gamma) or ordinal.
@@ -31,7 +31,8 @@ using the team + ultracode, through ~5am. Articles deferred (done together later
 ## Continuation (post-compaction, ~22:15–22:40 MDT)
 
 Picked up the uncommitted `extract_cutpoints` slice and finished the safe,
-in-scope vein. **4 more local commits — nothing pushed.**
+in-scope vein, then ran an independent completeness-critic gap-audit which
+surfaced two more genuine fixes. **6 more local commits — nothing pushed.**
 
 | commit | repo | slice | gating |
 |---|---|---|---|
@@ -39,6 +40,8 @@ in-scope vein. **4 more local commits — nothing pushed.**
 | `899b90a` | gllvmTMB | `extract_Sigma_B()` for engine="julia" — point Σ_B=ΛΛᵀ and R_B (historical `{Sigma_B,R_B}` shape) via the validated `.gllvm_julia_residual_sigma()` helper; same quantity as `getResidualCov(level="unit")`; removes the misleading native-only abort | bridge +7 |
 | `e1dacae` | gllvmTMB | regression tests locking two capability-guard branches: **phylo/structured-term refusal** and **multi-rr refusal** | bridge +4 |
 | `1b42e35` | GLLVM.jl | softened the v1.0 roadmap row (`Full digital twin`→`Digital-twin milestone`; `complete R bridge coverage`→`expanded …`) — the one LOW finding from the claim audit | docs |
+| `7d46924` | gllvmTMB | **`trait_families.gllvmTMB_julia`** S3 method (gap-audit #1) — was generic + `gllvmTMB_multi` only, so it errored "no applicable method" on bridge fits. **Corrects a false "done" belief**: `14df97d` shipped `trait_families()` multi-only; now wired for the bridge (canonical per-trait accessor for mixed-family fits) | bridge +6 |
+| `a00d4d2` | gllvmTMB | **`tidy(effects="cutpoint")`** for engine="julia" ordinal fits (gap-audit #2) — routes to the now-wired `extract_cutpoints()`, mirroring native term+estimate shape; `ran_pars`/`conf.int=TRUE` stay refused | bridge +9 |
 
 - **`extract_Sigma_W()` / `extract_correlations()` deliberately stay unwired**
   (documented): `Sigma_W` on the bridge is only the trivial Gaussian σ_eps²I
@@ -64,6 +67,19 @@ in-scope vein. **4 more local commits — nothing pushed.**
   gated behind the structured-dependence bridge track (out-of-scope engine work),
   **not** a quick exposure.
 
+- **Independent completeness-critic gap-audit (read-only, both surfaces):**
+  verdict **MINOR-GAPS** → both now fixed (`7d46924`, `a00d4d2`) → surface now
+  **EXHAUSTED**. The audit independently **verified** every "degenerate / unwired"
+  conclusion (`extract_Sigma_W`, `extract_correlations`, ICC, repeatability,
+  `extract_Omega`, `extract_proportions`, `extract_Gamma`, `vcov`, `diagnose`,
+  `extract_Sigma_table`) with a code reason each, and found **no bridge_capabilities
+  advertise-vs-wired contract mismatches**. One borderline item (exposing the
+  link-residual-adjusted Σ_B carried as `$Sigma`) was **correctly skipped**: its
+  "silent parity-trap" rationale is actually wrong — native `getResidualCov` also
+  calls `extract_Sigma_B` with `link_residual="none"`, so native and bridge both
+  return ΛΛᵀ; the `"auto"` variant is only reachable via the CI-bearing
+  `extract_Sigma`, which is gated.
+
 - **Process note (verification fix):** earlier per-slice summaries summed only
   the testthat `failed` column, which HID a test-only error (a
   `conditionMessage()` on a non-condition list) in the first `extract_Sigma_B`
@@ -72,12 +88,12 @@ in-scope vein. **4 more local commits — nothing pushed.**
   were always correct — only the test draft had the bug.
 
 - **Verification (continuation):** canonical native `test_local`
-  **PASS 3136 / FAIL 0 / ERROR 0** (240 files); bridge file fixture
-  **PASS 356 / FAIL 0 / ERROR 0**; **live heavy+julia bridge
-  PASS 826 / FAIL 0 / ERROR 0 / SKIP 0** — every live test ran against the real
-  GLLVM.jl-integration `1dc9e98` engine (end-to-end confirmation that the new
-  accessors work on live bridge fits, no live regression). Both trees clean;
-  nothing pushed.
+  **PASS 3151 / FAIL 0 / ERROR 0** (240 files; +59 vs the 3092 baseline — the
+  6 continuation slices, no regression); bridge file fixture
+  **PASS 371 / FAIL 0 / ERROR 0**; **live heavy+julia bridge
+  PASS 826 / FAIL 0 / ERROR 0 / SKIP 0** (run after the cutpoints+Sigma_B
+  slices) — every live test ran against the real GLLVM.jl-integration `1dc9e98`
+  engine, no live regression. Both trees clean; nothing pushed.
 
 ## Standing constraints
 - R-first; the 7 amendments are binding (do **not** fill amendment-held cells:

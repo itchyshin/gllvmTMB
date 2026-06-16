@@ -33,8 +33,14 @@ Current Codex state:
   one-part no-X response-mask, complete-response fixed-effect-X,
   `coef()` / `summary()`, direct-wrapper CI/status, grouped post-fit, and
   ordinal probability/class prediction bridge evidence, plus no-X
-  grouped-dispersion CI admission through the current Codex slice.
-- No GitHub PR is open for this programme yet.
+  grouped-dispersion CI admission, fixed-X CI admission, mixed-family post-fit
+  admission, and the MultiTraits visualization scout through the current Codex
+  slice.
+- GitHub draft PR #489 is open for this programme:
+  <https://github.com/itchyshin/gllvmTMB/pull/489>. After the docs-only
+  MultiTraits scout push at `49b5474`, coevolution recovery and R-CMD-check
+  both passed. The follow-up live gap-map refresh may start a fresh check cycle
+  when pushed.
 
 Current bridge landing state:
 
@@ -138,6 +144,10 @@ Active lane guidance:
   residuals, diagnostics, and uncertainty/status rather than raw trait
   correlations. Check GPL-3/provenance before reusing data or code; prefer an
   independent example implementation.
+- Live gap-map refresh:
+  `docs/dev-log/audits/2026-06-16-live-gap-map-refresh.md` records the current
+  PR/CI/issue state after `49b5474`. It records that the docs-only
+  MultiTraits run passed before the gap-map follow-up was pushed.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

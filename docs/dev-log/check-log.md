@@ -4,6 +4,71 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Live gap map refresh after MultiTraits scout
+
+Refreshed the live programme map after commit `49b5474` so the widget,
+coordination board, PR state, issue state, and next-lane list agree.
+
+Evidence:
+
+- Current branch:
+  `git status --short --branch`
+  -> clean `codex/r-bridge-grouped-dispersion` tracking origin before tracked
+  edits.
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,updatedAt,url`
+  -> one open draft PR, `#489`, head
+  `codex/r-bridge-grouped-dispersion`, base `main`, initially merge state
+  `UNSTABLE` while R-CMD-check was still in progress.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/audits docs/dev-log/coordination-board.md`
+  -> current Codex bridge stack only.
+- Shannon / overlap:
+  Read `.agents/skills/shannon-coordination-audit/SKILL.md`.
+  `gh pr view 489 --repo itchyshin/gllvmTMB --json files,headRefName,title,url,mergeStateStatus,isDraft,statusCheckRollup`
+  -> PR #489 already owns the touched dev-log/check-log lane; coevolution
+  recovery passed on `49b5474`; `R-CMD-check / ubuntu-latest (release)` is
+  still in progress. Shannon verdict: `WARN`, not `FAIL`; local docs may be
+  prepared, but no follow-up push should happen until the active run finishes.
+  Re-run after waiting:
+  `gh pr view 489 --repo itchyshin/gllvmTMB --json statusCheckRollup,mergeStateStatus,isDraft,url,headRefName`
+  -> merge state `CLEAN`; both coevolution recovery and R-CMD-check passed on
+  `49b5474`.
+- Paired Julia PR:
+  `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,statusCheckRollup,url,updatedAt`
+  -> draft PR #101 is clean against `integration`; Documenter and
+  `documenter/deploy` are green.
+- Issue census:
+  `gh issue list --repo itchyshin/gllvmTMB --state open --limit 80 --json number,title,updatedAt,labels,assignees,url`
+  -> open priority issues mapped in
+  `docs/dev-log/audits/2026-06-16-live-gap-map-refresh.md`.
+  `gh issue list --repo itchyshin/GLLVM.jl --state open --limit 80 --json number,title,updatedAt,labels,assignees,url`
+  -> open Julia priority issues mapped in the same audit card.
+- Widget correction:
+  `python3 -m json.tool pkgdown-site/status.json`
+  -> ignored local widget JSON is valid after changing PR #489 from stale green
+  to pending while the `49b5474` run was active.
+  `osascript ...`
+  -> refreshed 2 existing Chrome widget tabs to
+  `http://127.0.0.1:8770/?v=ci-pending-49b5474-20260616-1703`; no new tab or
+  browser window opened.
+- Post-edit boundary scans:
+  `rg -n "full bridge|complete parity|CRAN ready|speed claim|engine_control|REML|AI-REML|pdHess|MultiTraits|not a likelihood comparator|R-CMD-check" docs/dev-log/audits/2026-06-16-live-gap-map-refresh.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-16-live-gap-map-refresh.md`
+  -> expected boundary and CI-pending hits only.
+  `rg -n "No GitHub PR is open for this programme yet|PR #489 is now open and green|both R-CMD-check ubuntu-latest plus coevolution recovery checks passed" docs/dev-log/coordination-board.md docs/dev-log/audits/2026-06-16-live-gap-map-refresh.md docs/dev-log/after-task/2026-06-16-live-gap-map-refresh.md pkgdown-site/status.json`
+  -> no stale "no PR" / "both checks passed" wording remains in refreshed
+  local status surfaces.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- `devtools::document()`, `devtools::test()`, `devtools::check()`,
+  `pkgdown::check_pkgdown()`, and article renders. This is a dev-log audit,
+  coordination-board correction, and ignored-widget status update only; no R
+  code, NAMESPACE, generated Rd, vignette, pkgdown navigation, TMB likelihood,
+  formula grammar, or validation-register row changed.
+
 ## 2026-06-16 -- Jason MultiTraits visualization scout card
 
 Added a durable Jason scout card for `biodiversity-monitoring/MultiTraits` so

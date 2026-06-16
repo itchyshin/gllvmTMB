@@ -3,11 +3,14 @@
 \name{trait_families}
 \alias{trait_families}
 \alias{trait_families.gllvmTMB_multi}
+\alias{trait_families.gllvmTMB_julia}
 \title{Per-trait response families of a fitted multivariate model}
 \usage{
 trait_families(object, ...)
 
 \method{trait_families}{gllvmTMB_multi}(object, ...)
+
+\method{trait_families}{gllvmTMB_julia}(object, ...)
 }
 \arguments{
 \item{object}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}

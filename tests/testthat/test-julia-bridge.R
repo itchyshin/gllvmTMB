@@ -1335,6 +1335,26 @@ test_that("extract_Sigma_B() returns Lambda Lambda^T for a Julia bridge fit", {
   expect_equal(extract_Sigma_B(pois)$Sigma_B, Sigma_Bp)
 })
 
+test_that("trait_families() reports per-trait families for a Julia bridge fit", {
+  # Mixed-family bridge fixture (gaussian / poisson / binomial).
+  mixed <- fake_mixed_julia_fit()
+  tf <- trait_families(mixed)
+  expect_type(tf, "character")
+  expect_equal(unname(tf), c("gaussian", "poisson", "binomial"))
+  # Named by trait names, matching the native gllvmTMB_multi shape.
+  expect_named(tf, mixed$trait_names)
+
+  # Single-family bridge fit: every trait shares the one family.
+  pois <- fake_julia_fit() # poisson, 2 traits
+  tfp <- trait_families(pois)
+  expect_equal(unname(tfp), c("poisson", "poisson"))
+  expect_named(tfp, pois$trait_names)
+
+  # Regression: a bridge fit NO LONGER errors with the generic dispatch failure
+  # "no applicable method for 'trait_families'" (was multi-only before).
+  expect_no_error(trait_families(fake_mixed_julia_fit()))
+})
+
 test_that("Julia bridge extract_communality returns c^2 = 1 for Gaussian, errors otherwise", {
   # Gaussian bridge fixture with known loadings + sigma_eps + trait names.
   gauss <- fake_julia_fit()

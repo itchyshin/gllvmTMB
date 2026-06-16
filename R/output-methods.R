@@ -365,3 +365,14 @@ trait_families.gllvmTMB_multi <- function(object, ...) {
   names(out) <- trait_names
   out
 }
+
+#' @rdname trait_families
+#' @export
+trait_families.gllvmTMB_julia <- function(object, ...) {
+  ## Bridge fits carry the per-trait family vector directly on the payload
+  ## (`$families`, length n_traits; a single shared name is recycled). This is
+  ## the canonical accessor for a mixed-family bridge fit; return it named by
+  ## the trait names to match the native gllvmTMB_multi shape.
+  fams <- .gllvm_julia_trait_families(object)
+  stats::setNames(fams, .gllvm_julia_trait_names(object))
+}

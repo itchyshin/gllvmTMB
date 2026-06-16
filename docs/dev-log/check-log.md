@@ -4,6 +4,72 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge raw extractor payload matrix
+
+Added `EXT-JL-RAW` evidence for the Julia bridge raw unit-tier covariance and
+ordination accessors. This is a test-only slice: no R behavior, roxygen/Rd,
+NEWS, vignette, pkgdown, TMB likelihood, formula grammar, or Julia engine code
+changed.
+
+Evidence:
+
+- Current branch / PR state:
+  `git status --short --branch`
+  -> clean `codex/r-bridge-grouped-dispersion` tracking origin before edits.
+  `gh pr view 489 --repo itchyshin/gllvmTMB --json number,title,headRefName,isDraft,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> PR #489 open as a draft; after `c04592e`, coevolution recovery later
+  passed and R-CMD-check remained in progress while this local test slice was
+  prepared.
+- Memory / rule refresh:
+  `rg -n "extractor|ordination|rotation|Sigma|link_residual|Julia bridge|engine = \"julia\"" /Users/z3437171/.codex/memories/MEMORY.md | head -80`
+  -> reminded this lane to keep `engine = "julia"` as the default GLLVM.jl
+  fitting path, treat rotations as non-unique interpretive orientations, and
+  keep `Sigma = Lambda Lambda^T` wording stable.
+  Read `/Users/z3437171/.agents/skills/testing-r-packages/SKILL.md`.
+  Read `.agents/skills/shannon-coordination-audit/SKILL.md`.
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,updatedAt,url`
+  -> one open draft PR, #489, on the current branch.
+  `git log --all --oneline --since="6 hours ago" -- R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/audits docs/dev-log/coordination-board.md docs/design/35-validation-debt-register.md`
+  -> current Codex bridge stack only. Shannon verdict: `WARN`, not `FAIL`,
+  because PR #489 had an active R-CMD-check; local work could proceed, but no
+  follow-up push should happen until that run finishes.
+- Extractor implementation scout:
+  `rg -n "fake_.*julia|fake_ci_julia_fit|fake_grouped_dispersion|fake_ordinal|extract_Sigma|extract_ordination|postfit_ordination|grouped-dispersion|mixed-family postfit|julia_grouped_dispersion_cases|julia_fixed_x_cases|julia_response_mask_cases" tests/testthat/test-julia-bridge.R`
+  -> located existing fake payloads and live bridge rows.
+  `rg -n "gllvm_julia_normalise_result|extract_sigma|extract_ordination|getLoadings.gllvmTMB_julia|getLV.gllvmTMB_julia|postfit_ordination|GLLVM_JULIA_ORDINATION" R/julia-bridge.R R/output-methods.R R/extract-sigma.R R/extractors.R`
+  -> inspected normalisation, extraction, score-orientation, and wrapper
+  contracts before writing tests.
+- Formatter:
+  `air format tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `13` expected live-Julia skips.
+- Live R-to-Julia bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures.
+- Files updated:
+  `tests/testthat/test-julia-bridge.R`,
+  `docs/design/35-validation-debt-register.md`,
+  `docs/dev-log/check-log.md`,
+  `docs/dev-log/coordination-board.md`, and
+  `docs/dev-log/after-task/2026-06-16-r-bridge-raw-extractor-payload-matrix.md`.
+- Post-edit boundary scan:
+  `rg -n "EXT-JL-RAW|raw extractor payload|link_residual|rotation|structured tiers|unit_obs|interval-bearing|native parity|engine = \"julia\"|complete parity|full bridge|CRAN ready|speed claim" tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-06-16-r-bridge-raw-extractor-payload-matrix.md`
+  -> expected raw-payload evidence and explicit remaining gates only.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::document()`, `devtools::check()`,
+  `pkgdown::check_pkgdown()`, article renders, and `Pkg.test()`. This slice
+  changes one R test file and developer ledgers only; no user-facing docs,
+  generated Rd, NAMESPACE, vignette, pkgdown navigation, TMB likelihood,
+  formula grammar, or Julia code changed.
+
 ## 2026-06-16 -- Richer extractor parity spec
 
 Added a developer-facing spec for the next Julia bridge extractor lane. The

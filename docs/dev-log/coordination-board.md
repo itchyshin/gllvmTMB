@@ -154,6 +154,12 @@ Active lane guidance:
   `link_residual = "auto"`, rotation, structured-tier, interval-bearing, and
   mixed-family rows. No code or public capability claim is promoted by that
   spec; `JUL-01A` and `JUL-01` remain partial.
+- Raw extractor payload matrix:
+  `tests/testthat/test-julia-bridge.R` now carries the first `EXT-JL-RAW`
+  evidence row: pure-R fallback/label/gate tests plus live JuliaCall retained
+  Sigma/correlation/loadings/scores assertions for grouped-dispersion,
+  ordinal-probit, and mixed-family rows. No native-parity, `link_residual =
+  "auto"`, rotation, structured-tier, or interval claim was promoted.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

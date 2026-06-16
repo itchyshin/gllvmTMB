@@ -141,6 +141,64 @@ fake_ci_julia_fit <- function() {
   )
 }
 
+fake_raw_extractor_julia_fit <- function(
+  family = "poisson",
+  include_sigma = FALSE,
+  include_correlation = FALSE,
+  transpose_scores = TRUE
+) {
+  traits <- c("oak", "maple", "pine")
+  units <- paste0("plot", 1:4)
+  loadings <- matrix(
+    c(
+      0.70,
+      -0.20,
+      0.10,
+      0.50,
+      -0.40,
+      0.30
+    ),
+    nrow = length(traits),
+    byrow = TRUE
+  )
+  scores <- matrix(
+    seq(-0.45, 0.50, length.out = length(units) * ncol(loadings)),
+    nrow = length(units),
+    ncol = ncol(loadings),
+    dimnames = list(units, paste0("LV", seq_len(ncol(loadings))))
+  )
+  sigma <- loadings %*% t(loadings)
+
+  out <- list(
+    family = family,
+    families = if (length(family) > 1L) family else NULL,
+    model = if (length(family) > 1L) "mixed_rr" else paste0(family, "_rr"),
+    d = ncol(loadings),
+    n_traits = length(traits),
+    n_units = length(units),
+    trait_names = traits,
+    unit_names = units,
+    alpha = seq(0.1, 0.3, length.out = length(traits)),
+    loadings = loadings,
+    scores = if (transpose_scores) t(scores) else scores,
+    loglik = -22,
+    aic = 60,
+    bic = 66,
+    df = 9L,
+    nobs = length(traits) * length(units),
+    converged = TRUE,
+    message = "converged"
+  )
+  if (include_sigma) {
+    out$Sigma <- sigma
+  }
+  if (include_correlation) {
+    out$correlation <- stats::cov2cor(sigma)
+  }
+
+  structure(out, class = c("gllvmTMB_julia", "list"))
+}
+
 julia_bridge_matrix_to_long <- function(Y) {
   df <- as.data.frame(as.table(Y), stringsAsFactors = FALSE)
   names(df) <- c("trait", "unit", "value")
@@ -587,6 +645,146 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
     link_residual = "none"
   ))
   expect_equal(mixed_sigma$Sigma, mixed$Sigma)
+})
+
+test_that("Julia bridge raw extractor payloads preserve labels and fallback calculations", {
+  cases <- list(
+    reconstructed = fake_raw_extractor_julia_fit(
+      include_sigma = FALSE,
+      include_correlation = FALSE,
+      transpose_scores = TRUE
+    ),
+    explicit = fake_raw_extractor_julia_fit(
+      family = c("gaussian", "poisson", "binomial"),
+      include_sigma = TRUE,
+      include_correlation = TRUE,
+      transpose_scores = FALSE
+    )
+  )
+
+  for (case in cases) {
+    fit <- .gllvm_julia_normalise_result(case)
+    fit$engine <- "julia"
+    traits <- fit$trait_names
+    units <- fit$unit_names
+    expected_sigma <- fit$loadings %*% t(fit$loadings)
+    dimnames(expected_sigma) <- list(traits, traits)
+    expected_loadings <- fit$loadings
+    dimnames(expected_loadings) <- list(
+      traits,
+      paste0(
+        "LV",
+        seq_len(ncol(expected_loadings))
+      )
+    )
+    expected_scores <- fit$scores
+    if (
+      nrow(expected_scores) != fit$n_units &&
+        ncol(expected_scores) == fit$n_units
+    ) {
+      expected_scores <- t(expected_scores)
+    }
+    dimnames(expected_scores) <- list(
+      units,
+      paste0(
+        "LV",
+        seq_len(ncol(expected_scores))
+      )
+    )
+
+    total <- suppressMessages(extract_Sigma(fit, link_residual = "none"))
+    expect_equal(total$level, "unit")
+    expect_equal(total$part, "total")
+    expect_equal(total$Sigma, expected_sigma, tolerance = 1e-12)
+    expect_equal(total$R, stats::cov2cor(expected_sigma), tolerance = 1e-12)
+    expect_equal(dimnames(total$Sigma), list(traits, traits))
+    expect_equal(dimnames(total$R), list(traits, traits))
+    expect_true(isSymmetric(unname(total$Sigma)))
+    expect_equal(unname(diag(total$R)), rep(1, length(traits)))
+
+    shared <- suppressMessages(extract_Sigma(
+      fit,
+      part = "shared",
+      link_residual = "none"
+    ))
+    expect_equal(shared$Sigma, expected_sigma, tolerance = 1e-12)
+    unique <- suppressMessages(extract_Sigma(
+      fit,
+      part = "unique",
+      link_residual = "none"
+    ))
+    expect_equal(unique$s, setNames(rep(0, length(traits)), traits))
+
+    ord <- extract_ordination(fit)
+    expect_equal(ord$loadings, expected_loadings)
+    expect_equal(ord$scores, expected_scores)
+    expect_equal(rownames(ord$loadings), traits)
+    expect_equal(rownames(ord$scores), units)
+    expect_equal(
+      colnames(ord$loadings),
+      paste0(
+        "LV",
+        seq_len(ncol(fit$loadings))
+      )
+    )
+    expect_equal(colnames(ord$scores), colnames(ord$loadings))
+    expect_equal(getLoadings(fit), ord$loadings)
+    expect_equal(getLV(fit), ord$scores)
+  }
+
+  bad_sigma <- .gllvm_julia_normalise_result(fake_raw_extractor_julia_fit(
+    include_sigma = TRUE
+  ))
+  bad_sigma$engine <- "julia"
+  bad_sigma$Sigma <- matrix(1, nrow = 2L, ncol = 2L)
+  expect_error(
+    suppressMessages(extract_Sigma(bad_sigma, link_residual = "none")),
+    "Sigma payload dimensions"
+  )
+
+  bad_correlation <- .gllvm_julia_normalise_result(fake_raw_extractor_julia_fit(
+    include_sigma = TRUE,
+    include_correlation = TRUE
+  ))
+  bad_correlation$engine <- "julia"
+  bad_correlation$correlation <- matrix(1, nrow = 2L, ncol = 2L)
+  expect_error(
+    suppressMessages(extract_Sigma(bad_correlation, link_residual = "none")),
+    "correlation payload dimensions"
+  )
+
+  bad_loading <- .gllvm_julia_normalise_result(fake_raw_extractor_julia_fit())
+  bad_loading$engine <- "julia"
+  bad_loading$loadings <- matrix(1, nrow = 2L, ncol = 2L)
+  expect_error(
+    suppressMessages(extract_Sigma(bad_loading, link_residual = "none")),
+    "loading payload row count"
+  )
+
+  missing_scores <- .gllvm_julia_normalise_result(fake_raw_extractor_julia_fit())
+  missing_scores$engine <- "julia"
+  missing_scores$scores <- NULL
+  expect_error(
+    extract_ordination(missing_scores),
+    "needs a retained score payload"
+  )
+
+  bad_score_shape <- .gllvm_julia_normalise_result(fake_raw_extractor_julia_fit())
+  bad_score_shape$engine <- "julia"
+  bad_score_shape$scores <- matrix(1, nrow = 3L, ncol = 2L)
+  expect_error(
+    extract_ordination(bad_score_shape),
+    "score payload row count"
+  )
+
+  bad_family <- .gllvm_julia_normalise_result(fake_raw_extractor_julia_fit(
+    family = c("poisson", "binomial")
+  ))
+  bad_family$engine <- "julia"
+  expect_error(
+    suppressMessages(extract_Sigma(bad_family, link_residual = "none")),
+    "family payload length"
+  )
 })
 
 test_that("Julia bridge CI payloads are normalised and read by confint", {
@@ -1724,13 +1922,31 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
       link_residual = "none"
     ))
     expect_equal(dim(sigma_unit$Sigma), c(nrow(case$Y), nrow(case$Y)))
+    expect_equal(
+      dimnames(sigma_unit$Sigma),
+      list(rownames(case$Y), rownames(case$Y))
+    )
+    expect_equal(
+      dimnames(sigma_unit$R),
+      list(rownames(case$Y), rownames(case$Y))
+    )
     expect_equal(rownames(sigma_unit$Sigma), rownames(case$Y))
+    expect_equal(sigma_unit$Sigma, fit_jl$Sigma, tolerance = 1e-8)
+    expect_equal(sigma_unit$R, fit_jl$correlation, tolerance = 1e-8)
+    expect_true(isSymmetric(unname(sigma_unit$Sigma)))
+    expect_true(all(is.finite(sigma_unit$Sigma)))
+    expect_true(all(is.finite(sigma_unit$R)))
+    expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(case$Y)))
     expect_equal(suppressMessages(getResidualCov(fit_jl)), sigma_unit$Sigma)
     expect_equal(suppressMessages(getResidualCor(fit_jl)), sigma_unit$R)
     ord <- extract_ordination(fit_jl, level = "unit")
     expect_equal(dim(ord$loadings), c(nrow(case$Y), 1L))
     expect_equal(rownames(ord$loadings), rownames(case$Y))
     expect_equal(rownames(ord$scores), colnames(case$Y))
+    expect_equal(colnames(ord$loadings), "LV1")
+    expect_equal(colnames(ord$scores), colnames(ord$loadings))
+    expect_true(all(is.finite(ord$loadings)))
+    expect_true(all(is.finite(ord$scores)))
     expect_equal(getLoadings(fit_jl), ord$loadings)
     expect_equal(getLV(fit_jl), ord$scores)
     if (identical(case$engine_family, "beta")) {
@@ -1948,9 +2164,19 @@ test_that("engine = 'julia' main dispatch routes mixed-family postfit", {
     link_residual = "none"
   ))
   expect_equal(dim(sigma_unit$Sigma), c(nrow(Y), nrow(Y)))
+  expect_equal(dimnames(sigma_unit$Sigma), list(rownames(Y), rownames(Y)))
+  expect_equal(sigma_unit$Sigma, fit$Sigma, tolerance = 1e-8)
+  expect_equal(sigma_unit$R, fit$correlation, tolerance = 1e-8)
+  expect_true(isSymmetric(unname(sigma_unit$Sigma)))
+  expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(Y)))
   ord <- extract_ordination(fit)
   expect_equal(dim(ord$loadings), c(nrow(Y), 1L))
   expect_equal(rownames(ord$scores), colnames(Y))
+  expect_equal(rownames(ord$loadings), rownames(Y))
+  expect_equal(colnames(ord$loadings), "LV1")
+  expect_equal(colnames(ord$scores), colnames(ord$loadings))
+  expect_true(all(is.finite(ord$loadings)))
+  expect_true(all(is.finite(ord$scores)))
 })
 
 test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLLVM.jl", {
@@ -1981,10 +2207,22 @@ test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLL
     link_residual = "none"
   ))
   expect_equal(dim(sigma_unit$Sigma), c(nrow(y_ord), nrow(y_ord)))
+  expect_equal(
+    dimnames(sigma_unit$Sigma),
+    list(rownames(y_ord), rownames(y_ord))
+  )
+  expect_equal(sigma_unit$Sigma, fit$Sigma, tolerance = 1e-8)
+  expect_equal(sigma_unit$R, fit$correlation, tolerance = 1e-8)
+  expect_true(isSymmetric(unname(sigma_unit$Sigma)))
+  expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(y_ord)))
   ord <- extract_ordination(fit)
   expect_equal(dim(ord$loadings), c(nrow(y_ord), 1L))
   expect_equal(rownames(ord$loadings), rownames(y_ord))
   expect_equal(rownames(ord$scores), colnames(y_ord))
+  expect_equal(colnames(ord$loadings), "LV1")
+  expect_equal(colnames(ord$scores), colnames(ord$loadings))
+  expect_true(all(is.finite(ord$loadings)))
+  expect_true(all(is.finite(ord$scores)))
   s <- summary(fit)
   expect_s3_class(s, "summary.gllvmTMB_julia")
   expect_equal(s$header$family, "ordinal_probit")

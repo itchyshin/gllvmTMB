@@ -1355,6 +1355,36 @@ test_that("trait_families() reports per-trait families for a Julia bridge fit", 
   expect_no_error(trait_families(fake_mixed_julia_fit()))
 })
 
+test_that("tidy(effects='cutpoint') routes to extract_cutpoints for an ordinal bridge fit", {
+  fit <- fake_ordinal_julia_fit()
+  td <- suppressMessages(generics::tidy(fit, effects = "cutpoint"))
+  # Same term + estimate shape as native tidy(effects = "cutpoint").
+  expect_s3_class(td, "data.frame")
+  expect_named(td, c("term", "estimate"))
+  expect_equal(nrow(td), length(fit$cutpoints))
+  # Shared cutpoints are self-documenting via the "(shared)" term label.
+  expect_true(all(grepl("^ordinal_cutpoint\\[\\(shared\\), ", td$term)))
+  expect_equal(td$estimate, as.numeric(fit$cutpoints))
+
+  # Non-ordinal bridge fit: effects='cutpoint' returns an EMPTY frame (matching
+  # native tidy, which guards before extract_cutpoints), not an error.
+  td0 <- generics::tidy(fake_julia_fit(), effects = "cutpoint")
+  expect_equal(nrow(td0), 0L)
+  expect_named(td0, c("term", "estimate"))
+
+  # conf.int = TRUE stays refused for cutpoints (no SEs on the bridge payload).
+  expect_error(
+    generics::tidy(fit, effects = "cutpoint", conf.int = TRUE),
+    "conf.int = TRUE"
+  )
+  # ran_pars stays refused (variance components undefined on the bridge); the
+  # message still names effects = 'fixed' (locked contract).
+  expect_error(
+    generics::tidy(fit, effects = "ran_pars"),
+    "only effects = 'fixed'"
+  )
+})
+
 test_that("Julia bridge extract_communality returns c^2 = 1 for Gaussian, errors otherwise", {
   # Gaussian bridge fixture with known loadings + sigma_eps + trait names.
   gauss <- fake_julia_fit()

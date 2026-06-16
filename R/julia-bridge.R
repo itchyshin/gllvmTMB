@@ -1814,11 +1814,44 @@ tidy.gllvmTMB_julia <- function(
   ...
 ) {
   effects <- match.arg(effects)
+  ## Ordinal cutpoints: route to the wired extract_cutpoints() bridge accessor,
+  ## mirroring native tidy(effects = "cutpoint") (term + estimate). The shared
+  ## cutpoints are labelled trait = "(shared)" in the term, so the shared-vs-
+  ## per-trait nature is self-documenting; a non-ordinal fit returns an empty
+  ## frame (matching native, which guards before extract_cutpoints()).
+  if (identical(effects, "cutpoint")) {
+    if (isTRUE(conf.int)) {
+      stop(
+        "tidy.gllvmTMB_julia: conf.int = TRUE is not routed through the Julia ",
+        "bridge yet. Use confint() for supported interval output.",
+        call. = FALSE
+      )
+    }
+    if (!.gllvm_julia_is_ordinal_object(x)) {
+      return(data.frame(
+        term = character(0),
+        estimate = numeric(0),
+        stringsAsFactors = FALSE
+      ))
+    }
+    cuts <- suppressMessages(extract_cutpoints(x))
+    return(data.frame(
+      term = sprintf(
+        "ordinal_cutpoint[%s, %s]",
+        cuts$trait,
+        cuts$cutpoint_label
+      ),
+      estimate = cuts$tau_estimate,
+      stringsAsFactors = FALSE,
+      row.names = NULL
+    ))
+  }
   if (!identical(effects, "fixed")) {
     stop(
-      "tidy.gllvmTMB_julia: only effects = 'fixed' is routed through the ",
-      "Julia bridge yet. Use coef(), summary(), or engine = 'tmb' for broader ",
-      "tidy output.",
+      "tidy.gllvmTMB_julia: only effects = 'fixed' and 'cutpoint' are routed ",
+      "through the Julia bridge; effects = 'ran_pars' (variance components) is ",
+      "not defined for a bridge fit (single shared reduced-rank block). Use ",
+      "coef(), summary(), or engine = 'tmb' for broader tidy output.",
       call. = FALSE
     )
   }

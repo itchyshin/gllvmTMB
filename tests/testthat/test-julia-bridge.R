@@ -1194,6 +1194,75 @@ test_that("engine = 'julia' Gaussian dispatch matches the direct Julia bridge wr
   expect_true(is.finite(as.numeric(logLik(fit_jl))))
 })
 
+test_that("native TMB and engine = 'julia' agree on the Gaussian no-X reduced-rank fit", {
+  # R-FIRST statistical-parity evidence for the Gaussian bridge row: does the
+  # native TMB engine (engine = "tmb", default) reproduce the SAME fit as
+  # engine = "julia" (GLLVM.jl) for the flagship no-X reduced-rank Gaussian
+  # GLLVM `value ~ 0 + trait + latent(0 + trait | unit, d = 1)`?
+  #
+  # The native TMB fit is the heavy part, so this is double-gated:
+  # skip_if_no_julia() (needs a live JuliaCall + GLLVM.jl) AND
+  # skip_if_not_heavy() (a native MakeADFun + Laplace fit). Fixture is kept
+  # small (n_unit = 35, 3 traits, d = 1) so the native fit is sub-second.
+  #
+  # Both engines maximise the SAME marginal Gaussian likelihood; the only
+  # difference is the optimiser (TMB's LBFGS vs GLLVM.jl's Optim LBFGS) and
+  # warm-start. Tolerances below reflect what was empirically observed across
+  # several seeds/sizes, with generous margin:
+  #   * logLik:  |diff| <= ~2e-9 observed  -> assert 1e-6 (a flat-at-optimum
+  #     invariant, so this is the tightest and most meaningful check).
+  #   * means / loadings / sigma_eps: |diff| <= ~5e-6 observed -> assert 1e-4.
+  #     These are looser because the likelihood surface is shallow near the
+  #     optimum; the gap is optimiser convergence, NOT a parameterisation
+  #     difference. Loadings are identified up to sign at d = 1, so the Julia
+  #     loading vector is sign-aligned to the native one before comparison.
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  df <- make_long(n_unit = 35L, traits = c("t1", "t2", "t3"), seed = 7L)
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+
+  fit_tmb <- gllvmTMB(f, data = df, trait = "trait", unit = "unit")
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    engine = "julia"
+  )
+
+  expect_s3_class(fit_tmb, "gllvmTMB_multi")
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "gaussian_rr")
+
+  # (1) logLik parity -- the headline invariant.
+  ll_tmb <- as.numeric(logLik(fit_tmb))
+  ll_jl <- as.numeric(logLik(fit_jl))
+  expect_true(is.finite(ll_tmb) && is.finite(ll_jl))
+  expect_equal(ll_tmb, ll_jl, tolerance = 1e-6)
+
+  # (2) per-trait means. Native fixed effects live in opt$par named "b_fix",
+  # aligned with X_fix_names = traitt1/traitt2/traitt3, which matches the
+  # element order of the Julia $alpha payload.
+  means_tmb <- unname(fit_tmb$opt$par[names(fit_tmb$opt$par) == "b_fix"])
+  means_jl <- as.numeric(fit_jl$alpha)
+  expect_equal(length(means_tmb), length(means_jl))
+  expect_equal(means_tmb, means_jl, tolerance = 1e-4)
+
+  # (3) loadings (identified up to sign at d = 1).
+  load_tmb <- as.numeric(suppressMessages(getLoadings(fit_tmb)))
+  load_jl <- as.numeric(fit_jl$loadings)
+  expect_equal(length(load_tmb), length(load_jl))
+  sign_align <- sign(sum(load_tmb * load_jl))
+  if (sign_align == 0) sign_align <- 1
+  expect_equal(load_tmb, sign_align * load_jl, tolerance = 1e-4)
+
+  # (4) residual SD (sigma_eps): scalar shared Gaussian noise scale.
+  sigma_tmb <- as.numeric(fit_tmb$report$sigma_eps)
+  sigma_jl <- as.numeric(fit_jl$sigma_eps)
+  expect_equal(sigma_tmb, sigma_jl, tolerance = 1e-4)
+})
+
 test_that("engine = 'julia' routes Gaussian REML explicitly", {
   skip_if_no_julia()
   df <- make_long(n_unit = 38L, seed = 8L)

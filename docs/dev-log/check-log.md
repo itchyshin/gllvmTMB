@@ -4,6 +4,78 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge grouped-dispersion main-dispatch smoke
+
+Added live bridge evidence that `gllvmTMB(..., engine = "julia")` itself routes
+NB2, NB1, Beta, and Gamma no-X reduced-rank fits to the paired Julia
+grouped-dispersion payload. NB2 and Beta now have selected small-fixture native
+`engine = "tmb"` objective parity checks; NB1 and Gamma remain route/shape-only
+because NB1 still needs parameterisation follow-up and ordinary native Gamma
+uses shared `sigma_eps` rather than a per-trait `alpha` report slot.
+
+Evidence:
+
+- Compaction recovery:
+  `git status --short --branch` -> clean on
+  `codex/r-bridge-grouped-dispersion`.
+  `git diff --stat` -> no output before the checkpoint.
+  `find docs/dev-log/recovery-checkpoints -type f -name '*.md' -print | sort | tail -n 1`
+  -> only `docs/dev-log/recovery-checkpoints/README.md` before this slice.
+  `tail -n 120 docs/dev-log/check-log.md` -> newest visible historical entries
+  loaded.
+- Pre-edit lane check:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints`
+  -> current Codex programme commits only, ending at
+  `b4baed4 docs: add cross-twin wording contract`.
+- Paired Julia checkout:
+  `git status --short --branch && git log -1 --oneline` in
+  `../GLLVM.jl-integration`
+  -> `## codex/julia-per-trait-dispersion`;
+  `2a07745 feat(bridge): add per-trait ordinal cutpoints`.
+- Source inspection:
+  `rg -n "phi_gamma|gamma|Gamma|phi_beta|phi_nbinom" R src tests/testthat`
+  -> native ordinary Gamma uses `sigma_eps`; NB2/NB1/Beta have per-trait
+  report slots.
+  `sed -n '1,260p' tests/testthat/test-julia-bridge.R`;
+  `sed -n '260,560p' tests/testthat/test-julia-bridge.R`;
+  `sed -n '457,630p' R/julia-bridge.R`;
+  `sed -n '1,130p' tests/testthat/test-matrix-gamma-unit.R`;
+  `sed -n '160,210p' tests/testthat/test-crosspkg-nbinom2-glmmTMB.R`;
+  `sed -n '250,390p' R/julia-bridge.R`;
+  `sed -n '990,1025p' R/methods-gllvmTMB.R`;
+  `sed -n '488,506p' docs/design/35-validation-debt-register.md`.
+- Exploratory parity probe:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla - <<'RS' ...`
+  -> NB2 and Beta had close native-vs-Julia log-likelihoods on the small no-X
+  fixture; NB1 returned finite fits but objective drifted; Gamma returned
+  finite fits but native `df = 5` because ordinary Gamma uses shared
+  `sigma_eps` while Julia grouped Gamma has two `alpha` values.
+- Whitespace:
+  `git diff --check` -> clean.
+- Targeted live bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 177` in 30.8 s.
+- Targeted no-Julia bridge test:
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 4 | PASS 59` in 2.0 s.
+- Stale-claim scans:
+  `rg -n "full native parity|full parity|complete bridge|covered.*Julia|ci_no_x.*negbinomial|ci_no_x.*nb1|ci_no_x.*beta|ci_no_x.*gamma|native-vs-Julia parity" R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-16-r-bridge-grouped-dispersion.md`
+  -> expected historical and negative-scope hits only; no new full-parity or CI
+  overclaim.
+  `rg -n "Gamma.*per-trait|per-trait.*Gamma|sigma_eps|alpha|phi_gamma|phi_nbinom1|NB1|nb1" R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-16-r-bridge-grouped-dispersion.md`
+  -> expected hits documenting NB1/Gamma grouped-dispersion scope and the native
+  Gamma `sigma_eps` boundary.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `devtools::document()`,
+  `pkgdown::check_pkgdown()`, and article renders were not run. This slice
+  changed a targeted bridge test plus dev-log/validation prose; no roxygen,
+  NAMESPACE, Rd, vignette, README, NEWS, or pkgdown navigation file changed.
+- No GitHub issue was commented on or closed.
+
 ## 2026-06-16 -- Cross-twin argument and wording contract
 
 Added a docs-only consistency contract for `gllvmTMB` / `GLLVM.jl` and

@@ -83,6 +83,57 @@ fake_ordinal_julia_fit <- function(family = "ordinal_probit") {
   )
 }
 
+julia_bridge_matrix_to_long <- function(Y) {
+  df <- as.data.frame(as.table(Y), stringsAsFactors = FALSE)
+  names(df) <- c("trait", "unit", "value")
+  df$trait <- factor(df$trait, levels = rownames(Y))
+  df$unit <- factor(df$unit, levels = colnames(Y))
+  df
+}
+
+julia_grouped_dispersion_cases <- function() {
+  y_count <- matrix(
+    c(1, 3, 2, 4, 5, 2, 3, 6, 4, 7, 5, 8,
+      2, 1, 4, 3, 5, 6, 7, 4, 8, 6, 9, 7),
+    nrow = 2L,
+    dimnames = list(c("sp1", "sp2"), paste0("site", 1:12))
+  )
+  y_beta <- matrix(
+    seq(0.12, 0.88, length.out = 24L),
+    nrow = 2L,
+    dimnames = dimnames(y_count)
+  )
+  y_gamma <- matrix(
+    seq(0.5, 3.0, length.out = 24L),
+    nrow = 2L,
+    dimnames = dimnames(y_count)
+  )
+  list(
+    nb2 = list(
+      Y = y_count, family = nbinom2(), engine_family = "negbinomial",
+      parameter = "r", public = function(x) 1 / sqrt(x),
+      phi = function(x) 1 / x, native_report = "phi_nbinom2",
+      native_loglik_tolerance = 1e-3
+    ),
+    nb1 = list(
+      Y = y_count, family = nbinom1(), engine_family = "nb1",
+      parameter = "phi", public = identity, phi = NULL,
+      native_report = "phi_nbinom1", native_loglik_tolerance = NULL
+    ),
+    beta = list(
+      Y = y_beta, family = Beta(), engine_family = "beta",
+      parameter = "phi", public = function(x) 1 / sqrt(x),
+      phi = NULL, native_report = "phi_beta",
+      native_loglik_tolerance = 5e-3
+    ),
+    gamma = list(
+      Y = y_gamma, family = Gamma(link = "log"), engine_family = "gamma",
+      parameter = "alpha", public = function(x) 1 / sqrt(x),
+      phi = NULL, native_report = NULL, native_loglik_tolerance = NULL
+    )
+  )
+}
+
 # --- family mapping ---------------------------------------------------------
 
 test_that("family mapping covers every bridged family", {
@@ -227,36 +278,7 @@ test_that("engine argument is validated by match.arg", {
 
 test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", {
   skip_if_no_julia()
-  y_count <- matrix(
-    c(1, 3, 2, 4, 5, 2, 3, 6, 4, 7, 5, 8,
-      2, 1, 4, 3, 5, 6, 7, 4, 8, 6, 9, 7),
-    nrow = 2L,
-    dimnames = list(c("sp1", "sp2"), paste0("site", 1:12))
-  )
-  y_beta <- matrix(
-    seq(0.12, 0.88, length.out = 24L),
-    nrow = 2L,
-    dimnames = dimnames(y_count)
-  )
-  y_gamma <- matrix(
-    seq(0.5, 3.0, length.out = 24L),
-    nrow = 2L,
-    dimnames = dimnames(y_count)
-  )
-  cases <- list(
-    list(Y = y_count, family = nbinom2(), engine_family = "negbinomial",
-         parameter = "r", public = function(x) 1 / sqrt(x),
-         phi = function(x) 1 / x),
-    list(Y = y_count, family = nbinom1(), engine_family = "nb1",
-         parameter = "phi", public = identity,
-         phi = NULL),
-    list(Y = y_beta, family = Beta(), engine_family = "beta",
-         parameter = "phi", public = function(x) 1 / sqrt(x),
-         phi = NULL),
-    list(Y = y_gamma, family = Gamma(link = "log"), engine_family = "gamma",
-         parameter = "alpha", public = function(x) 1 / sqrt(x),
-         phi = NULL)
-  )
+  cases <- julia_grouped_dispersion_cases()
 
   for (case in cases) {
     fit <- gllvm_julia_fit(case$Y, family = case$family, num.lv = 1L)
@@ -281,6 +303,53 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
         unname(case$phi(fit$dispersion)),
         tolerance = 1e-12
       )
+    }
+  }
+})
+
+test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and keeps native parity scoped", {
+  skip_if_no_julia()
+  f <- value ~ 0 + trait + latent(0 + trait | unit, d = 1)
+  for (case in julia_grouped_dispersion_cases()) {
+    df <- julia_bridge_matrix_to_long(case$Y)
+    fit_jl <- gllvmTMB(
+      f, data = df, trait = "trait", unit = "unit",
+      family = case$family, engine = "julia"
+    )
+    expect_s3_class(fit_jl, "gllvmTMB_julia")
+    expect_equal(fit_jl$family, case$engine_family)
+    expect_equal(fit_jl$dispersion_parameter, case$parameter)
+    expect_equal(fit_jl$trait_levels, rownames(case$Y))
+    expect_equal(fit_jl$unit_levels, colnames(case$Y))
+    expect_equal(unname(fit_jl$dispersion_group_id), c(1L, 2L))
+    expect_named(fit_jl$dispersion, rownames(case$Y))
+    expect_named(fit_jl$dispersion_public, rownames(case$Y))
+    expect_equal(attr(logLik(fit_jl), "df"), 6L)
+    expect_true(all(is.finite(fit_jl$dispersion)))
+    expect_true(all(fit_jl$dispersion > 0))
+    expect_equal(
+      unname(fit_jl$dispersion_public),
+      unname(case$public(fit_jl$dispersion)),
+      tolerance = 1e-12
+    )
+
+    if (!is.null(case$native_report)) {
+      fit_tmb <- gllvmTMB(
+        f, data = df, trait = "trait", unit = "unit",
+        family = case$family, engine = "tmb"
+      )
+      expect_equal(fit_tmb$opt$convergence, 0L)
+      expect_length(fit_tmb$report[[case$native_report]], nrow(case$Y))
+      expect_true(all(is.finite(as.numeric(fit_tmb$report[[case$native_report]]))))
+
+      if (!is.null(case$native_loglik_tolerance)) {
+        expect_equal(attr(logLik(fit_jl), "df"), attr(logLik(fit_tmb), "df"))
+        expect_equal(
+          as.numeric(logLik(fit_jl)),
+          as.numeric(logLik(fit_tmb)),
+          tolerance = case$native_loglik_tolerance
+        )
+      }
     }
   }
 })

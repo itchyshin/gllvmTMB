@@ -56,6 +56,7 @@
 )
 .GLLVM_JULIA_RESIDUAL_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
 .GLLVM_JULIA_SIMULATE_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
+.GLLVM_JULIA_ORDINATION_FAMILIES <- .GLLVM_JULIA_BRIDGE_FAMILIES
 .GLLVM_JULIA_MASK_FAMILIES <- c(
   "poisson",
   "binomial",
@@ -186,7 +187,7 @@ gllvm_julia_capabilities <- function() {
     postfit_predict = families %in% .GLLVM_JULIA_PREDICT_FAMILIES,
     postfit_residuals = families %in% .GLLVM_JULIA_RESIDUAL_FAMILIES,
     postfit_simulate = families %in% .GLLVM_JULIA_SIMULATE_FAMILIES,
-    postfit_ordination = FALSE,
+    postfit_ordination = families %in% .GLLVM_JULIA_ORDINATION_FAMILIES,
     status = "partial",
     notes = notes,
     stringsAsFactors = FALSE
@@ -267,19 +268,25 @@ gllvm_julia_capabilities <- function() {
     "response/Pearson residuals remain gated; "
   }
   simulate_clause <- if (family %in% .GLLVM_JULIA_SIMULATE_FAMILIES) {
+    "in-sample conditional simulate() is routed from fitted values; "
+  } else {
+    "simulate() remains gated; "
+  }
+  extractor_clause <- if (family %in% .GLLVM_JULIA_ORDINATION_FAMILIES) {
     paste0(
-      "in-sample conditional simulate() is routed from fitted values; ",
-      "extractor parity remains gated; "
+      "unit-tier covariance and raw ordination accessors are routed on the ",
+      "retained engine scale; richer extractor parity remains gated; "
     )
   } else {
-    "simulate/extractor parity remain gated; "
+    "extractor parity remains gated; "
   }
   postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
     paste0(
       "coef(), summary(), and no-X confint() are routed; ",
       predict_clause,
       residual_clause,
-      simulate_clause
+      simulate_clause,
+      extractor_clause
     )
   } else {
     paste0(
@@ -287,7 +294,8 @@ gllvm_julia_capabilities <- function() {
       predict_clause,
       "confint() remains gated until CI endpoints are admitted; ",
       residual_clause,
-      simulate_clause
+      simulate_clause,
+      extractor_clause
     )
   }
   if (family %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES) {
@@ -962,6 +970,208 @@ gllvm_julia_capabilities <- function() {
     )
   }
   loadings %*% t(scores)
+}
+
+.gllvm_julia_unit_names <- function(object, n) {
+  unit_names <- object$unit_names %||% character()
+  unit_names <- .gllvm_julia_as_vector(unit_names, "character")
+  if (length(unit_names) == n) {
+    return(unit_names)
+  }
+  paste0("unit", seq_len(n))
+}
+
+.gllvm_julia_unit_count <- function(object) {
+  if (!is.null(object$n_units)) {
+    return(as.integer(object$n_units)[1L])
+  }
+  if (!is.null(object$unit_names)) {
+    return(length(.gllvm_julia_as_vector(object$unit_names, "character")))
+  }
+  if (!is.null(object$scores)) {
+    return(nrow(as.matrix(object$scores)))
+  }
+  0L
+}
+
+.gllvm_julia_extractor_family_check <- function(object, p, what) {
+  families <- .gllvm_julia_family_vector(object, p)
+  if (length(unique(families)) > 1L) {
+    stop(
+      "engine = 'julia': mixed-family ",
+      what,
+      " extractors are not routed yet; use engine = 'tmb' or inspect the ",
+      "flat bridge payload directly.",
+      call. = FALSE
+    )
+  }
+  invisible(families)
+}
+
+.gllvm_julia_extract_sigma <- function(
+  fit,
+  level,
+  part,
+  link_residual,
+  .skip_warn = FALSE
+) {
+  if (length(level) > 1L) {
+    level <- match.arg(
+      level,
+      c(
+        "unit",
+        "unit_slope",
+        "unit_obs",
+        "phy",
+        "phy_slope",
+        "spatial",
+        "spde_slope",
+        "cluster",
+        "cluster2",
+        "B",
+        "B_slope",
+        "W",
+        "spde"
+      )
+    )
+  }
+  level <- .normalise_level(level, arg_name = "level", .skip_warn = .skip_warn)
+  part <- match.arg(part, c("total", "shared", "unique"))
+  link_residual <- match.arg(link_residual, c("auto", "none"))
+
+  if (level == "W") {
+    return(NULL)
+  }
+  if (level != "B") {
+    cli::cli_abort(c(
+      "engine = 'julia': {.fn extract_Sigma} currently routes only the ordinary {.val unit} tier.",
+      "i" = "Structured tiers, augmented slopes, and cluster tiers remain on the TMB engine path."
+    ))
+  }
+
+  p <- .gllvm_julia_n_traits(fit)
+  .gllvm_julia_extractor_family_check(fit, p, "covariance")
+  traits <- .gllvm_julia_trait_names(fit, p)
+
+  Sigma <- fit$Sigma %||% NULL
+  if (is.null(Sigma)) {
+    loadings <- fit$loadings %||% matrix(numeric(), nrow = p, ncol = 0L)
+    loadings <- as.matrix(loadings)
+    if (nrow(loadings) != p) {
+      cli::cli_abort(
+        "engine = 'julia': loading payload row count does not match traits."
+      )
+    }
+    Sigma <- loadings %*% t(loadings)
+  }
+  Sigma <- as.matrix(Sigma)
+  storage.mode(Sigma) <- "numeric"
+  if (!identical(dim(Sigma), c(p, p))) {
+    cli::cli_abort(
+      "engine = 'julia': Sigma payload dimensions do not match traits."
+    )
+  }
+  dimnames(Sigma) <- list(traits, traits)
+
+  R <- fit$correlation %||% NULL
+  if (is.null(R)) {
+    R <- stats::cov2cor(Sigma)
+  } else {
+    R <- as.matrix(R)
+    storage.mode(R) <- "numeric"
+    if (!identical(dim(R), c(p, p))) {
+      cli::cli_abort(
+        "engine = 'julia': correlation payload dimensions do not match traits."
+      )
+    }
+  }
+  dimnames(R) <- list(traits, traits)
+
+  note <- c(
+    "engine = 'julia': extract_Sigma() reports the retained unit-tier latent covariance from GLLVM.jl; unique(), unit_obs, and structured tiers are not present in this bridge row."
+  )
+  if (link_residual == "auto") {
+    note <- c(
+      note,
+      "engine = 'julia': link_residual = 'auto' is not applied for Julia bridge covariance extractors yet; values are on the retained engine scale. Use link_residual = 'none' to request this scale explicitly."
+    )
+  }
+  for (msg in note) {
+    cli::cli_inform(msg)
+  }
+
+  if (part == "unique") {
+    s <- setNames(rep(0, p), traits)
+    return(list(s = s, level = "unit", part = "unique", note = note))
+  }
+  if (part == "shared") {
+    return(list(Sigma = Sigma, level = "unit", part = "shared", note = note))
+  }
+  list(Sigma = Sigma, R = R, level = "unit", part = "total", note = note)
+}
+
+.gllvm_julia_extract_ordination <- function(fit, level) {
+  if (length(level) > 1L) {
+    level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
+  }
+  level <- .normalise_level(level, arg_name = "level", .skip_warn = TRUE)
+  if (level == "W") {
+    return(NULL)
+  }
+  if (level != "B") {
+    cli::cli_abort(c(
+      "engine = 'julia': {.fn extract_ordination} currently routes only the ordinary {.val unit} tier.",
+      "i" = "Within-unit, structured-tier, and augmented-slope ordinations remain on the TMB engine path."
+    ))
+  }
+
+  p <- .gllvm_julia_n_traits(fit)
+  .gllvm_julia_extractor_family_check(fit, p, "ordination")
+  n <- .gllvm_julia_unit_count(fit)
+  traits <- .gllvm_julia_trait_names(fit, p)
+  units <- .gllvm_julia_unit_names(fit, n)
+
+  loadings <- fit$loadings %||% matrix(numeric(), nrow = p, ncol = 0L)
+  loadings <- as.matrix(loadings)
+  storage.mode(loadings) <- "numeric"
+  if (nrow(loadings) != p) {
+    cli::cli_abort(
+      "engine = 'julia': loading payload row count does not match traits."
+    )
+  }
+  if (ncol(loadings) == 0L) {
+    return(NULL)
+  }
+  rownames(loadings) <- traits
+  colnames(loadings) <- paste0("LV", seq_len(ncol(loadings)))
+
+  scores <- fit$scores %||% NULL
+  if (is.null(scores)) {
+    cli::cli_abort(
+      "engine = 'julia': raw ordination extraction needs a retained score payload."
+    )
+  }
+  scores <- as.matrix(scores)
+  storage.mode(scores) <- "numeric"
+  if (
+    nrow(scores) != n && ncol(scores) == n && nrow(scores) == ncol(loadings)
+  ) {
+    scores <- t(scores)
+  }
+  if (nrow(scores) != n) {
+    cli::cli_abort(
+      "engine = 'julia': score payload row count does not match units."
+    )
+  }
+  if (ncol(scores) != ncol(loadings)) {
+    cli::cli_abort(
+      "engine = 'julia': loading and score payload dimensions do not match."
+    )
+  }
+  rownames(scores) <- units
+  colnames(scores) <- colnames(loadings)
+
+  list(scores = scores, loadings = loadings, row_id = units)
 }
 
 .gllvm_julia_x_eta <- function(object, p, n) {
@@ -1738,9 +1948,10 @@ gllvm_julia_fit <- function(
 #' already passed the R admission gates. They are point-estimate summaries:
 #' prediction and ordinary response/Pearson residuals are in-sample
 #' retained-payload reconstructions only. Simulation is conditional on retained
-#' fitted values for admitted scalar-response rows only; extractor parity remains
-#' a separate bridge row. Confidence intervals are routed only for admitted no-X
-#' Gaussian, Poisson, and Bernoulli binomial rows.
+#' fitted values for admitted scalar-response rows only. Unit-tier covariance and
+#' raw ordination accessors are routed on the retained engine scale; richer
+#' extractor parity remains a separate bridge row. Confidence intervals are
+#' routed only for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].

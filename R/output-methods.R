@@ -12,11 +12,14 @@
 #' is a small compatibility wrapper around [extract_ordination()] for readers
 #' familiar with `gllvm::getLoadings()`.
 #'
-#' @param fit A fitted multivariate model returned by [gllvmTMB()].
+#' @param fit A fitted multivariate model returned by [gllvmTMB()]. Admitted
+#'   `engine = "julia"` bridge fits expose raw unit-tier loadings and scores;
+#'   rotated ordinations remain gated for Julia bridge fits.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @param rotate Optional `"varimax"` or `"promax"` rotation after fitting.
 #'   Default `"none"` returns the engine's native lower-triangular Lambda.
+#'   For Julia bridge fits only `"none"` is currently routed.
 #' @return An `n_traits × d` numeric matrix.
 #' @seealso [extract_ordination()] for the row-and-column interface that
 #'   returns scores and loadings together.
@@ -34,6 +37,11 @@ getLoadings <- function(
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   rotate <- match.arg(rotate)
+  if (inherits(fit, "gllvmTMB_julia") && rotate != "none") {
+    cli::cli_abort(
+      "engine = 'julia': rotated loadings are not routed yet; use {.code rotate = \"none\"} or engine = 'tmb'."
+    )
+  }
   ## Surface a one-shot rotation hint when the user accesses RAW Lambda
   ## (rotate = "none") on an unconstrained rr() fit with rank > 1. Sigma_B is
   ## still identifiable; Lambda alone is not.
@@ -84,6 +92,11 @@ getLV <- function(
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
   rotate <- match.arg(rotate)
+  if (inherits(fit, "gllvmTMB_julia") && rotate != "none") {
+    cli::cli_abort(
+      "engine = 'julia': rotated latent scores are not routed yet; use {.code rotate = \"none\"} or engine = 'tmb'."
+    )
+  }
   ord <- extract_ordination(fit, level = .canonical_level_name(level))
   if (is.null(ord)) {
     return(NULL)

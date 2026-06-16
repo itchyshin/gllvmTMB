@@ -406,21 +406,31 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
     caps$family[caps$postfit_simulate],
     .GLLVM_JULIA_SIMULATE_FAMILIES
   )
+  expect_equal(
+    caps$family[caps$postfit_ordination],
+    .GLLVM_JULIA_ORDINATION_FAMILIES
+  )
   expect_false(caps$postfit_simulate[caps$family == "ordinal"])
   expect_false(caps$postfit_simulate[caps$family == "ordinal_probit"])
   expect_false(caps$postfit_simulate[
     caps$family == .GLLVM_JULIA_MIXED_FAMILY
   ])
+  expect_false(caps$postfit_ordination[
+    caps$family == .GLLVM_JULIA_MIXED_FAMILY
+  ])
   expect_true(any(grepl("in-sample predict\\(\\)/fitted\\(\\)", caps$notes)))
   expect_true(any(grepl("response/Pearson residuals", caps$notes)))
   expect_true(any(grepl("conditional simulate\\(\\)", caps$notes)))
+  expect_true(any(grepl("unit-tier covariance and raw ordination", caps$notes)))
   expect_true(any(grepl("ordinal link, probability", caps$notes)))
   expect_true(caps$postfit_predict[caps$family == "nb1"])
   expect_true(caps$postfit_residuals[caps$family == "nb1"])
   expect_true(caps$postfit_simulate[caps$family == "nb1"])
+  expect_true(caps$postfit_ordination[caps$family == "nb1"])
   expect_true(caps$postfit_predict[caps$family == "gamma"])
   expect_true(caps$postfit_residuals[caps$family == "gamma"])
   expect_true(caps$postfit_simulate[caps$family == "gamma"])
+  expect_true(caps$postfit_ordination[caps$family == "gamma"])
   expect_true(any(grepl("no-X confint\\(\\) are routed", caps$notes)))
   expect_true(any(grepl(
     "direct gllvm_julia_fit\\(\\) no-X Wald/profile/bootstrap CI payloads",
@@ -503,6 +513,68 @@ test_that("Julia bridge coef and summary expose admitted point payloads", {
   expect_true("cutpoints" %in% names(co_ord))
   expect_equal(rownames(co_ord$cutpoints), c("sp1", "sp2"))
   expect_no_error(capture.output(print(summary(ord))))
+})
+
+test_that("Julia bridge covariance and raw ordination accessors are routed narrowly", {
+  fit <- .gllvm_julia_normalise_result(
+    fake_grouped_dispersion_julia_fit("nb1", c(0.7, 1.1), "phi")
+  )
+  fit$engine <- "julia"
+  fit$scores <- matrix(
+    seq(-0.4, 0.4, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+
+  total <- suppressMessages(extract_Sigma(fit, level = "unit"))
+  expect_equal(total$Sigma, fit$Sigma)
+  expect_equal(total$R, fit$correlation)
+  expect_true(any(grepl("retained engine scale", total$note)))
+
+  shared <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    part = "shared",
+    link_residual = "none"
+  ))
+  expect_equal(shared$Sigma, fit$Sigma)
+  unique <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    part = "unique",
+    link_residual = "none"
+  ))
+  expect_equal(unique$s, setNames(c(0, 0), fit$trait_names))
+
+  sigma_b <- suppressMessages(extract_Sigma_B(fit))
+  expect_equal(sigma_b$Sigma_B, fit$Sigma)
+  expect_equal(sigma_b$R_B, fit$correlation)
+  expect_null(extract_Sigma_W(fit))
+  expect_equal(suppressMessages(getResidualCov(fit)), fit$Sigma)
+  expect_equal(suppressMessages(getResidualCor(fit)), fit$correlation)
+
+  ord <- extract_ordination(fit)
+  expect_equal(ord$loadings, fit$loadings)
+  expect_equal(ord$scores, fit$scores)
+  expect_equal(getLoadings(fit), fit$loadings)
+  expect_equal(getLV(fit), fit$scores)
+
+  expect_null(extract_ordination(fit, level = "unit_obs"))
+  expect_error(
+    extract_Sigma(fit, level = "phy"),
+    "currently routes only the ordinary"
+  )
+  expect_error(getLoadings(fit, rotate = "varimax"), "rotated loadings")
+  expect_error(getLV(fit, rotate = "promax"), "rotated latent scores")
+
+  mixed <- fit
+  mixed$family <- c("poisson", "binomial")
+  mixed$families <- mixed$family
+  expect_error(extract_ordination(mixed), "mixed-family ordination")
+  expect_error(
+    extract_Sigma(mixed, level = "unit", link_residual = "none"),
+    "mixed-family covariance"
+  )
 })
 
 test_that("Julia bridge CI payloads are normalised and read by confint", {
@@ -1327,6 +1399,21 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     sim <- simulate(fit_jl, nsim = 2L, seed = 490L)
     expect_equal(dim(sim), c(length(case$Y), 2L))
     expect_true(all(is.finite(sim)))
+    sigma_unit <- suppressMessages(extract_Sigma(
+      fit_jl,
+      level = "unit",
+      link_residual = "none"
+    ))
+    expect_equal(dim(sigma_unit$Sigma), c(nrow(case$Y), nrow(case$Y)))
+    expect_equal(rownames(sigma_unit$Sigma), rownames(case$Y))
+    expect_equal(suppressMessages(getResidualCov(fit_jl)), sigma_unit$Sigma)
+    expect_equal(suppressMessages(getResidualCor(fit_jl)), sigma_unit$R)
+    ord <- extract_ordination(fit_jl, level = "unit")
+    expect_equal(dim(ord$loadings), c(nrow(case$Y), 1L))
+    expect_equal(rownames(ord$loadings), rownames(case$Y))
+    expect_equal(rownames(ord$scores), colnames(case$Y))
+    expect_equal(getLoadings(fit_jl), ord$loadings)
+    expect_equal(getLV(fit_jl), ord$scores)
     if (identical(case$engine_family, "beta")) {
       expect_true(all(sim > 0 & sim < 1))
     } else if (identical(case$engine_family, "gamma")) {
@@ -1458,6 +1545,16 @@ test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLL
   co <- coef(fit)
   expect_true("cutpoints" %in% names(co))
   expect_equal(rownames(co$cutpoints), rownames(y_ord))
+  sigma_unit <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    link_residual = "none"
+  ))
+  expect_equal(dim(sigma_unit$Sigma), c(nrow(y_ord), nrow(y_ord)))
+  ord <- extract_ordination(fit)
+  expect_equal(dim(ord$loadings), c(nrow(y_ord), 1L))
+  expect_equal(rownames(ord$loadings), rownames(y_ord))
+  expect_equal(rownames(ord$scores), colnames(y_ord))
   s <- summary(fit)
   expect_s3_class(s, "summary.gllvmTMB_julia")
   expect_equal(s$header$family, "ordinal_probit")

@@ -122,7 +122,8 @@ Small S3 surface for fits returned by \code{gllvmTMB(..., engine = "julia")} or
 already passed the R admission gates. They are point-estimate summaries:
 prediction and ordinary response/Pearson residuals are in-sample
 retained-payload reconstructions only. Simulation is conditional on retained
-fitted values for admitted scalar-response rows only; extractor parity remains
-a separate bridge row. Confidence intervals are routed only for admitted no-X
-Gaussian, Poisson, and Bernoulli binomial rows.
+fitted values for admitted scalar-response rows only. Unit-tier covariance and
+raw ordination accessors are routed on the retained engine scale; richer
+extractor parity remains a separate bridge row. Confidence intervals are
+routed only for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows.
 }

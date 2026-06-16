@@ -35,11 +35,14 @@
   response/Pearson `residuals()` and conditional in-sample `simulate()` for
   no-X gaussian, poisson, Bernoulli binomial, nbinom2, nbinom1, beta, and gamma
   rows, and response-scale ordinal probability/class prediction for ordinal
-  and ordinal-probit rows. There is still no
-  fit-time Julia CI control surface on `gllvmTMB()`. `newdata` prediction,
-  `newdata` simulation, unconditional random-effect redraws, ordinal residuals,
-  ordinal simulation, mixed-family residuals/simulation, extractor parity,
-  confidence intervals for
+  and ordinal-probit rows, and raw unit-tier covariance / ordination
+  accessors (`extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`,
+  `getResidualCor()`, `extract_ordination()`, `getLoadings()`, `getLV()`) on
+  the retained engine scale. There is still no fit-time Julia CI control
+  surface on `gllvmTMB()`. `newdata` prediction, `newdata` simulation,
+  unconditional random-effect redraws, ordinal residuals, ordinal simulation,
+  mixed-family residuals/simulation, richer extractor parity, confidence
+  intervals for
   grouped-dispersion or per-trait ordinal rows, masked CIs, mixed-family CIs,
   and CIs for X rows remain planned follow-up rows, as do mixed-family
   promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall

@@ -477,7 +477,10 @@ link_residual_per_trait <- function(fit) {
 #' corresponding tier without API change. For now, custom strings error
 #' with a clear roadmap message.
 #'
-#' @param fit A fit returned by [gllvmTMB()].
+#' @param fit A fit returned by [gllvmTMB()]. Admitted `engine = "julia"`
+#'   bridge fits expose the retained unit-tier covariance on the engine scale;
+#'   `unit_obs`, structured tiers, and link-residual augmentation remain gated
+#'   for Julia bridge extractors.
 #' @param level One of `"unit"` (between-unit), `"unit_obs"` (within-unit),
 #'   `"phy"` (phylogenetic), `"spatial"`, or `"cluster"`. Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
@@ -576,6 +579,20 @@ extract_Sigma <- function(
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
 ) {
+  if (inherits(fit, "gllvmTMB_julia")) {
+    if (length(level) > 1L) {
+      level <- match.arg(level)
+    }
+    part <- match.arg(part)
+    link_residual <- match.arg(link_residual)
+    return(.gllvm_julia_extract_sigma(
+      fit = fit,
+      level = level,
+      part = part,
+      link_residual = link_residual,
+      .skip_warn = .skip_warn
+    ))
+  }
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }

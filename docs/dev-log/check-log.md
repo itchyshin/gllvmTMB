@@ -4,6 +4,66 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge unit-tier covariance and raw ordination admission
+
+Admitted a narrow Julia bridge extractor row for `gllvmTMB_julia` objects:
+`extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`, and
+`getResidualCor()` now expose the retained ordinary unit-tier covariance /
+correlation on the GLLVM.jl engine scale, while `extract_ordination()`,
+`getLoadings()`, and `getLV()` expose raw unit-tier loadings and scores.
+`unit_obs`, structured tiers, mixed-family extractors, link-residual
+augmentation, rotations, interval extractors, and broad/native extractor parity
+remain gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt,mergeStateStatus`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- R/julia-bridge.R R/extract-sigma.R R/extractors.R R/output-methods.R tests/testthat/test-julia-bridge.R docs/dev-log/check-log.md docs/design docs/dev-log/after-task NEWS.md man`
+  -> current local Codex programme commits only.
+- Live issue refresh:
+  `gh issue view 488 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,url,labels`
+  -> open bridge-gate drift audit.
+  `gh issue view 340 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,url,labels`
+  -> open capability-matrix board.
+  `gh issue view 10 --repo itchyshin/GLLVM.jl --json number,title,state,updatedAt,url,labels`
+  -> open R-bridge umbrella.
+- Formatter:
+  `air format R/julia-bridge.R R/extract-sigma.R R/extractors.R R/output-methods.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_Sigma.Rd`, `man/extract_ordination.Rd`,
+  `man/gllvmTMB_julia-methods.Rd`, `man/getLoadings.Rd`, `man/getLV.Rd`, and
+  `man/getResidualCov.Rd`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `11` expected Julia-runtime skips and `0`
+  failures.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures; live grouped-dispersion and ordinal
+  rows now exercise `extract_Sigma()` / raw ordination accessors through the
+  paired Julia runtime.
+- R capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); expected <- gllvmTMB:::.GLLVM_JULIA_ORDINATION_FAMILIES; stopifnot(identical(caps$family[caps$postfit_ordination], expected)); stopifnot(!caps$postfit_ordination[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY]); stopifnot(any(grepl("unit-tier covariance and raw ordination accessors", caps$notes, fixed = TRUE))); stopifnot(any(grepl("richer extractor parity remains gated", caps$notes, fixed = TRUE))); print(caps[, c("family", "postfit_predict", "postfit_residuals", "postfit_simulate", "postfit_ordination", "status")], row.names = FALSE)'`
+  -> scalar and ordinal bridge families advertise `postfit_ordination = TRUE`;
+  mixed-family remains false.
+- Stale wording / boundary scan:
+  `rg -n 'extractor parity|richer extractor parity|raw ordination|unit-tier covariance|postfit_ordination|link_residual = .auto.|rotated loadings|mixed-family .*extractors' R tests/testthat NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-16-r-bridge-extractor-admission.md man`
+  -> expected implementation, tests, docs, and explicit richer-parity gates only.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  R-side post-fit extractor surface, generated help files, ledgers, and the
+  local status widget; it does not touch formula parsing, compiled TMB code,
+  public articles, or pkgdown navigation.
+
 ## 2026-06-16 -- R bridge scalar conditional simulate admission
 
 Admitted conditional in-sample `simulate()` for scalar-response Julia bridge

@@ -14,7 +14,10 @@ extract_Sigma(
 )
 }
 \arguments{
-\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. Admitted \code{engine = "julia"}
+bridge fits expose the retained unit-tier covariance on the engine scale;
+\code{unit_obs}, structured tiers, and link-residual augmentation remain gated
+for Julia bridge extractors.}
 
 \item{level}{One of \code{"unit"} (between-unit), \code{"unit_obs"} (within-unit),
 \code{"phy"} (phylogenetic), \code{"spatial"}, or \code{"cluster"}. Legacy aliases

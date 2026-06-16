@@ -23,8 +23,12 @@
   non-`rr` covariance terms, more than one latent block, `cbind()` binomial,
   Gaussian or mixed-family response masks, response masks with fixed-effect
   covariates, masked CIs, NB1-X, ordinal-X, mixed-family-X, and unsupported
-  fixed-effect designs. The admitted post-fit surface is point-estimate
-  `coef()` and `summary()` only; prediction, residuals, simulation, extractor
+  fixed-effect designs. Direct `gllvm_julia_fit()` calls can request stored
+  Wald/profile/bootstrap CI payloads for no-X gaussian, poisson, and Bernoulli
+  binomial rows, and `confint()` reads those stored payloads. The main
+  `gllvmTMB(..., engine = "julia")` route does not yet expose a CI control
+  surface. The admitted post-fit surface is `coef()`, `summary()`, and
+  stored-payload `confint()` only; prediction, residuals, simulation, extractor
   parity, confidence intervals for grouped-dispersion or per-trait ordinal
   rows, and CIs for X rows remain planned follow-up rows, as do mixed-family
   promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall

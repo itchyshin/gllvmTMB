@@ -12,6 +12,10 @@ gllvm_julia_fit(
   X = NULL,
   mask = NULL,
   units_are_rows = FALSE,
+  ci_method = c("none", "wald", "profile", "bootstrap"),
+  ci_level = 0.95,
+  ci_nboot = 200L,
+  ci_seed = 0L,
   ...
 )
 }
@@ -33,11 +37,26 @@ ignored. Currently routed for one-part no-X non-Gaussian point fits only.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 
+\item{ci_method}{Confidence-interval route for no-X Gaussian, Poisson, and
+Bernoulli binomial bridge rows. One of \code{"none"} (default), \code{"wald"},
+\code{"profile"}, or \code{"bootstrap"}. Grouped-dispersion rows, per-trait ordinal
+rows, response masks, mixed-family vectors, and fixed-effect-X rows remain
+loud gates.}
+
+\item{ci_level}{Nominal confidence level when \code{ci_method != "none"}.}
+
+\item{ci_nboot}{Number of parametric bootstrap replicates when
+\code{ci_method = "bootstrap"}.}
+
+\item{ci_seed}{Seed passed to the Julia bootstrap CI route.}
+
 \item{...}{Passed to \code{\link[=gllvm_julia_setup]{gllvm_julia_setup()}} (\code{jl_path}, \code{julia_home}).}
 }
 \value{
 A list of class \code{gllvmTMB_julia} with the bridge contract fields
-(\code{loadings}, \code{Sigma}, \code{correlation}, \code{loglik}, \code{aic}, \code{bic}, \code{converged}, ...).
+(\code{loadings}, \code{Sigma}, \code{correlation}, \code{loglik}, \code{aic}, \code{bic},
+\code{converged}, ...). If \code{ci_method != "none"} and the row is admitted, the
+list also carries flat CI fields consumed by \code{confint()}.
 }
 \description{
 Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).

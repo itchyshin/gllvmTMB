@@ -5,6 +5,7 @@
 \alias{logLik.gllvmTMB_julia}
 \alias{print.gllvmTMB_julia}
 \alias{coef.gllvmTMB_julia}
+\alias{confint.gllvmTMB_julia}
 \alias{summary.gllvmTMB_julia}
 \alias{print.summary.gllvmTMB_julia}
 \title{Methods for Julia bridge fits}
@@ -14,6 +15,8 @@
 \method{print}{gllvmTMB_julia}(x, ...)
 
 \method{coef}{gllvmTMB_julia}(object, ...)
+
+\method{confint}{gllvmTMB_julia}(object, parm, level = 0.95, ...)
 
 \method{summary}{gllvmTMB_julia}(object, ...)
 
@@ -25,12 +28,18 @@
 
 \item{...}{Unused.}
 
+\item{parm}{Optional integer or character vector of CI terms for \code{confint()}.}
+
+\item{level}{Confidence level requested by \code{confint()}. Julia bridge CIs are
+computed at fit time; \code{confint()} only reads a matching stored payload.}
+
 \item{digits}{Number of digits printed by summary methods.}
 }
 \value{
 \code{logLik()} returns a \code{"logLik"} object. \code{coef()} returns a named list
-of available point-estimate components. \code{summary()} returns a list with
-header, coefficients, covariance, and status fields.
+of available point-estimate components. \code{confint()} returns a conventional
+confidence-interval matrix for stored Julia CI payloads. \code{summary()} returns
+a list with header, coefficients, covariance, and status fields.
 }
 \description{
 Small S3 surface for fits returned by \code{gllvmTMB(..., engine = "julia")} or

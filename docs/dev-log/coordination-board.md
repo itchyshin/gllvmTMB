@@ -30,8 +30,9 @@ Current Codex state:
   addendum.
 - `codex/r-bridge-grouped-dispersion` is the current implementation/evidence
   branch. It has local grouped-dispersion, per-trait ordinal, Gamma shared-route,
-  one-part no-X response-mask, complete-response fixed-effect-X, and `coef()` /
-  `summary()` bridge evidence through the current Codex slice.
+  one-part no-X response-mask, complete-response fixed-effect-X,
+  `coef()` / `summary()`, and direct-wrapper CI/status bridge evidence through
+  the current Codex slice.
 - No GitHub PR is open for this programme yet.
 
 Current bridge landing state:
@@ -81,9 +82,13 @@ Active lane guidance:
   contract for one-part no-X point fits in Poisson, Bernoulli binomial, NB2,
   NB1, Beta, Gamma, ordinal, and ordinal-probit rows. Gaussian masks,
   mixed-family masks, X+mask, and masked CIs remain loud gates.
-  The R bridge now also registers point-estimate `coef()` and `summary()`
-  methods for `gllvmTMB_julia` objects; prediction, residuals, simulation, and
-  extractor parity remain gated.
+  The R bridge now also registers `coef()`, `summary()`, and stored-payload
+  `confint()` methods for `gllvmTMB_julia` objects. Direct
+  `gllvm_julia_fit(..., ci_method = "wald" / "profile" / "bootstrap")` calls
+  can request no-X CI payloads for Gaussian, Poisson, and Bernoulli binomial
+  rows; main-dispatch CI controls, grouped-dispersion CIs, per-trait ordinal
+  CIs, masked CIs, mixed-family CIs, and X-row CIs remain gated. Prediction,
+  residuals, simulation, and extractor parity remain gated.
   The R bridge also routes complete-response fixed-effect-X point fits for
   Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`
@@ -99,11 +104,11 @@ Active lane guidance:
   REML / AI-REML, CI-status columns, and `pdHess`. Share meanings where the
   model concept is the same; keep package-specific names where DRM and GLLVM
   target different estimands.
-- Next safe implementation lane: grouped-dispersion CI/status, masked
-  CI/status, prediction/residual/simulation/extractor parity, mixed-family
-  admission, NB1/ordinal fixed-effect-X design, X-row CI/status, or the native
-  per-trait Gamma expansion spec, unless the maintainer explicitly asks to
-  publish or rebase the bridge PR first.
+- Next safe implementation lane: grouped-dispersion CI endpoints/status,
+  masked CI/status, main-dispatch CI control, prediction/residual/simulation/
+  extractor parity, mixed-family admission, NB1/ordinal fixed-effect-X design,
+  X-row CI/status, or the native per-trait Gamma expansion spec, unless the
+  maintainer explicitly asks to publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

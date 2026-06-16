@@ -4,6 +4,66 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge direct CI/status admission
+
+Admitted direct-wrapper no-X CI payload routing through
+`gllvm_julia_fit(ci_method = ...)` for Gaussian, Poisson, and Bernoulli binomial
+bridge rows. `confint.gllvmTMB_julia()` now reads stored Julia CI payloads.
+Main `gllvmTMB(..., engine = "julia")` CI controls, grouped-dispersion CIs,
+per-trait ordinal CIs, masked CIs, mixed-family CIs, and X-row CIs remain loud
+gates.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- NEWS.md NAMESPACE R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd`
+  -> current local Codex programme commits only.
+- R-to-Julia options transport probe:
+  `Rscript --vanilla -e 'devtools::load_all(quiet=TRUE); options(gllvmTMB.GLLVM.jl.path="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration"); gllvm_julia_setup(); JuliaCall::julia_command("bridge_options_type(x) = (string(typeof(x)), x isa AbstractDict ? string(collect(keys(x))) : \"notdict\")"); print(JuliaCall::julia_call("bridge_options_type", list(ci_method="wald", ci_level=0.9)))'`
+  -> R named lists arrive in Julia as `OrderedDict{Symbol, Any}`, which the
+  existing `_bridge_get()` option reader accepts.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `NAMESPACE`, `man/gllvm_julia_fit.Rd`, and
+  `man/gllvmTMB_julia-methods.Rd`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge")'`
+  -> `101` pass, `10` expected Julia-runtime skips, `0` fail.
+- Live R bridge test:
+  `Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = "/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration"); devtools::test(filter = "julia-bridge")'`
+  -> `479` pass, `0` skip, `0` fail.
+- Julia CI contract anchor:
+  `julia --project=/Users/z3437171/Dropbox/Github\ Local/GLLVM.jl-integration /Users/z3437171/Dropbox/Github\ Local/GLLVM.jl-integration/test/test_bridge_ci.jl`
+  -> `64/64 pass`.
+- Capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); print(caps[, c("family", "ci_no_x_wald", "ci_no_x_profile", "ci_no_x_bootstrap", "postfit_coef", "postfit_summary", "postfit_predict", "status", "notes")], row.names = FALSE); stopifnot(identical(caps$family[caps$ci_no_x_wald], gllvmTMB:::.GLLVM_JULIA_CI_NO_X_FAMILIES)); stopifnot(identical(caps$family[caps$ci_no_x_profile], gllvmTMB:::.GLLVM_JULIA_CI_NO_X_FAMILIES)); stopifnot(identical(caps$family[caps$ci_no_x_bootstrap], gllvmTMB:::.GLLVM_JULIA_CI_NO_X_FAMILIES)); stopifnot(any(grepl("direct gllvm_julia_fit() no-X Wald/profile/bootstrap CI payloads", caps$notes, fixed = TRUE))); stopifnot(any(grepl("confint() remains gated until CI endpoints are admitted", caps$notes, fixed = TRUE)))'`
+  -> scalar no-X CI flags are true only for Gaussian, Poisson, and Bernoulli
+  binomial; grouped-dispersion and ordinal notes keep `confint()` gated.
+- Stale wording scan:
+  `rg -n 'CI/status, masked CI/status|NB1 still needs CI/status|confidence intervals.*gated|confidence intervals.*planned|point-estimate .*coef.*summary.* only|coef\(\) and summary\(\) are routed|main .*CI control|direct gllvm_julia_fit\(\).*CI|stored-payload confint\(\)|grouped-dispersion CIs|per-trait ordinal CIs|X-row CIs' R NEWS.md tests/testthat docs/design docs/dev-log man/gllvm_julia_fit.Rd man/gllvmTMB_julia-methods.Rd`
+  -> remaining hits are current scoped gates or historical after-task/check-log
+  commands.
+- S3/Rd registration scan:
+  `rg -n "S3method\\(confint,gllvmTMB_julia\\)|confint.gllvmTMB_julia|ci_method = c\\(\"none\", \"wald\", \"profile\", \"bootstrap\"\\)|ci_no_x_wald|ci_no_x_profile|ci_no_x_bootstrap" NAMESPACE R/julia-bridge.R man/gllvm_julia_fit.Rd man/gllvmTMB_julia-methods.Rd tests/testthat/test-julia-bridge.R`
+  -> `confint.gllvmTMB_julia` is registered/documented and CI method arguments
+  are present in source, tests, and Rd.
+- Dashboard smoke:
+  `curl -fsS 'http://127.0.0.1:8770/?v=ci-status-pending' | rg -n 'Updated: 2026-06-16 11:28 MDT|direct no-X CI/status|Source commit pending|Julia CI contract|64/64|main-dispatch CI controls|Local source commit pending'`
+  -> local widget reflects the pending direct CI/status slice.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice touches the Julia bridge
+  wrapper, one bridge test file, generated method docs, and ledgers.
+
 ## 2026-06-16 -- R bridge fixed-effect X admission
 
 Admitted complete-response fixed-effect-X point fits through the R

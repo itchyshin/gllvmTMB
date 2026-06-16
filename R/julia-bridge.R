@@ -66,8 +66,10 @@
 )
 .GLLVM_JULIA_CI_NO_X_FAMILIES <- setdiff(
   .GLLVM_JULIA_BRIDGE_FAMILIES,
-  c(.GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES,
-    .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)
+  c(
+    .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES,
+    .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
+  )
 )
 .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
   "fit_no_x",
@@ -94,24 +96,42 @@
 #'   or env `JULIA_HOME`; if unset, JuliaCall auto-discovers).
 #' @return Invisibly `TRUE` once ready.
 #' @export
-gllvm_julia_setup <- function(jl_path = getOption("gllvmTMB.GLLVM.jl.path", Sys.getenv("GLLVM_JL_PATH", "")),
-                              julia_home = getOption("gllvmTMB.julia_home", Sys.getenv("JULIA_HOME", ""))) {
-  if (isTRUE(.gllvm_jl_env$ready)) return(invisible(TRUE))
+gllvm_julia_setup <- function(
+  jl_path = getOption(
+    "gllvmTMB.GLLVM.jl.path",
+    Sys.getenv("GLLVM_JL_PATH", "")
+  ),
+  julia_home = getOption("gllvmTMB.julia_home", Sys.getenv("JULIA_HOME", ""))
+) {
+  if (isTRUE(.gllvm_jl_env$ready)) {
+    return(invisible(TRUE))
+  }
   if (!requireNamespace("JuliaCall", quietly = TRUE)) {
-    stop("engine = 'julia' requires the 'JuliaCall' package. Install it with install.packages('JuliaCall').",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' requires the 'JuliaCall' package. Install it with install.packages('JuliaCall').",
+      call. = FALSE
+    )
   }
   if (identical(jl_path, "")) {
-    stop("engine = 'julia': set the GLLVM.jl project path via ",
-         "options(gllvmTMB.GLLVM.jl.path = '/path/to/GLLVM.jl') or the GLLVM_JL_PATH env var.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia': set the GLLVM.jl project path via ",
+      "options(gllvmTMB.GLLVM.jl.path = '/path/to/GLLVM.jl') or the GLLVM_JL_PATH env var.",
+      call. = FALSE
+    )
   }
   if (identical(julia_home, "")) {
     JuliaCall::julia_setup(installJulia = FALSE, verbose = FALSE)
   } else {
-    JuliaCall::julia_setup(JULIA_HOME = julia_home, installJulia = FALSE, verbose = FALSE)
+    JuliaCall::julia_setup(
+      JULIA_HOME = julia_home,
+      installJulia = FALSE,
+      verbose = FALSE
+    )
   }
-  JuliaCall::julia_command(sprintf('import Pkg; Pkg.activate("%s"); using GLLVM', jl_path))
+  JuliaCall::julia_command(sprintf(
+    'import Pkg; Pkg.activate("%s"); using GLLVM',
+    jl_path
+  ))
   .gllvm_jl_env$ready <- TRUE
   invisible(TRUE)
 }
@@ -201,11 +221,26 @@ gllvm_julia_capabilities <- function() {
   } else {
     "CI, X, and native parity promotion are follow-ups"
   }
-  postfit_clause <- "coef() and summary() are routed; predict/residuals/simulate/extractor parity remain gated; "
+  ci_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
+    paste0(
+      "direct gllvm_julia_fit() no-X Wald/profile/bootstrap CI payloads ",
+      "are routed; main gllvmTMB() CI control remains planned; "
+    )
+  } else {
+    ""
+  }
+  postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
+    "coef(), summary(), and stored-payload confint() are routed; predict/residuals/simulate/extractor parity remain gated; "
+  } else {
+    "coef() and summary() are routed; confint() remains gated until CI endpoints are admitted; predict/residuals/simulate/extractor parity remain gated; "
+  }
   if (family %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES) {
     return(paste0(
       "single reduced-rank point route; default no-X Julia payload uses ",
-      "per-trait grouped dispersion; ", mask_clause, x_clause, postfit_clause,
+      "per-trait grouped dispersion; ",
+      mask_clause,
+      x_clause,
+      postfit_clause,
       ci_x_followup
     ))
   }
@@ -214,45 +249,71 @@ gllvm_julia_capabilities <- function() {
       "single reduced-rank point route; default no-X Julia payload uses ",
       "shared Gamma grouped dispersion to match current native scalar-CV ",
       "Gamma; per-trait Gamma is a native-expansion follow-up; ",
-      mask_clause, x_clause, postfit_clause,
+      mask_clause,
+      x_clause,
+      postfit_clause,
       "CI and native parity promotion are follow-ups"
     ))
   }
   if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
     return(paste0(
       "single reduced-rank point route; default no-X Julia payload uses ",
-      "per-trait ordinal cutpoints; ", mask_clause, x_clause, postfit_clause,
+      "per-trait ordinal cutpoints; ",
+      mask_clause,
+      x_clause,
+      postfit_clause,
       "CI, X, and native parity promotion are follow-ups"
     ))
   }
   paste0(
-    "single reduced-rank point route; ", mask_clause, x_clause, postfit_clause,
+    "single reduced-rank point route; ",
+    mask_clause,
+    x_clause,
+    ci_clause,
+    postfit_clause,
     "broader structures and native parity promotion remain gated"
   )
 }
 
 # Map one R family (a `family` object or a string) to the GLLVM.jl bridge key.
 .gllvm_julia_family_scalar <- function(family) {
-  if (inherits(family, "family")) family <- family$family
+  if (inherits(family, "family")) {
+    family <- family$family
+  }
   fam <- tolower(as.character(family))
   if (length(fam) != 1L || is.na(fam)) {
-    stop("engine = 'julia': family must resolve to one supported family name.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia': family must resolve to one supported family name.",
+      call. = FALSE
+    )
   }
-  switch(fam,
-    gaussian = "gaussian", normal = "gaussian",
+  switch(
+    fam,
+    gaussian = "gaussian",
+    normal = "gaussian",
     poisson = "poisson",
-    binomial = "binomial", bernoulli = "binomial",
-    negbinomial = "negbinomial", nbinom2 = "negbinomial", nb2 = "negbinomial",
-    nbinom1 = "nb1", nb1 = "nb1",
-    beta = "beta", gamma = "gamma",
-    ordinal = "ordinal", ordinal_probit = "ordinal_probit",
+    binomial = "binomial",
+    bernoulli = "binomial",
+    negbinomial = "negbinomial",
+    nbinom2 = "negbinomial",
+    nb2 = "negbinomial",
+    nbinom1 = "nb1",
+    nb1 = "nb1",
+    beta = "beta",
+    gamma = "gamma",
+    ordinal = "ordinal",
+    ordinal_probit = "ordinal_probit",
     {
-      stop("engine = 'julia': unsupported family '", fam, "'. Supported: gaussian, poisson, ",
-           "binomial, nbinom2, nbinom1, beta, gamma, ordinal, ordinal_probit ",
-           "(or a narrow list for mixed gaussian/poisson/binomial responses).",
-           call. = FALSE)
-    })
+      stop(
+        "engine = 'julia': unsupported family '",
+        fam,
+        "'. Supported: gaussian, poisson, ",
+        "binomial, nbinom2, nbinom1, beta, gamma, ordinal, ordinal_probit ",
+        "(or a narrow list for mixed gaussian/poisson/binomial responses).",
+        call. = FALSE
+      )
+    }
+  )
 }
 
 # Map an R family (a `family` object, a string, a character vector, or a list of
@@ -262,11 +323,14 @@ gllvm_julia_capabilities <- function() {
     fam <- vapply(family, .gllvm_julia_family_scalar, character(1))
     bad <- setdiff(fam, .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES)
     if (length(bad)) {
-      stop("engine = 'julia': mixed-family vectors currently support ",
-           paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
-           "; unsupported component(s): ",
-           paste(unique(bad), collapse = ", "), ".",
-           call. = FALSE)
+      stop(
+        "engine = 'julia': mixed-family vectors currently support ",
+        paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
+        "; unsupported component(s): ",
+        paste(unique(bad), collapse = ", "),
+        ".",
+        call. = FALSE
+      )
     }
     return(unname(fam))
   }
@@ -274,32 +338,50 @@ gllvm_julia_capabilities <- function() {
     fam <- vapply(family, .gllvm_julia_family_scalar, character(1))
     bad <- setdiff(fam, .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES)
     if (length(bad)) {
-      stop("engine = 'julia': mixed-family vectors currently support ",
-           paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
-           "; unsupported component(s): ",
-           paste(unique(bad), collapse = ", "), ".",
-           call. = FALSE)
+      stop(
+        "engine = 'julia': mixed-family vectors currently support ",
+        paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", "),
+        "; unsupported component(s): ",
+        paste(unique(bad), collapse = ", "),
+        ".",
+        call. = FALSE
+      )
     }
     return(unname(fam))
   }
   .gllvm_julia_family_scalar(family)
 }
 
-.gllvm_julia_as_vector <- function(x, mode = c("numeric", "integer", "character")) {
+.gllvm_julia_as_vector <- function(
+  x,
+  mode = c("numeric", "integer", "character")
+) {
   mode <- match.arg(mode)
   out <- unlist(x, use.names = FALSE)
-  switch(mode,
+  switch(
+    mode,
     numeric = as.numeric(out),
     integer = as.integer(out),
-    character = as.character(out))
+    character = as.character(out)
+  )
 }
 
 .gllvm_julia_n_traits <- function(res) {
-  if (!is.null(res$n_traits)) return(as.integer(res$n_traits)[1L])
-  if (!is.null(res$trait_names)) return(length(.gllvm_julia_as_vector(res$trait_names, "character")))
-  if (!is.null(res$loadings)) return(nrow(as.matrix(res$loadings)))
-  if (!is.null(res$Sigma)) return(nrow(as.matrix(res$Sigma)))
-  if (!is.null(res$dispersion)) return(length(.gllvm_julia_as_vector(res$dispersion, "numeric")))
+  if (!is.null(res$n_traits)) {
+    return(as.integer(res$n_traits)[1L])
+  }
+  if (!is.null(res$trait_names)) {
+    return(length(.gllvm_julia_as_vector(res$trait_names, "character")))
+  }
+  if (!is.null(res$loadings)) {
+    return(nrow(as.matrix(res$loadings)))
+  }
+  if (!is.null(res$Sigma)) {
+    return(nrow(as.matrix(res$Sigma)))
+  }
+  if (!is.null(res$dispersion)) {
+    return(length(.gllvm_julia_as_vector(res$dispersion, "numeric")))
+  }
   0L
 }
 
@@ -315,19 +397,27 @@ gllvm_julia_capabilities <- function() {
 }
 
 .gllvm_julia_public_dispersion <- function(family, values) {
-  if (family == "negbinomial") return(1 / sqrt(values))
-  if (family == "nb1") return(values)
-  if (family %in% c("beta", "gamma")) return(1 / sqrt(values))
+  if (family == "negbinomial") {
+    return(1 / sqrt(values))
+  }
+  if (family == "nb1") {
+    return(values)
+  }
+  if (family %in% c("beta", "gamma")) {
+    return(1 / sqrt(values))
+  }
   values
 }
 
 .gllvm_julia_public_dispersion_parameter <- function(family) {
-  switch(family,
+  switch(
+    family,
     negbinomial = "sigma",
     nb1 = "phi",
     beta = "sigma",
     gamma = "sigma",
-    "dispersion")
+    "dispersion"
+  )
 }
 
 .gllvm_julia_normalise_result <- function(res) {
@@ -367,16 +457,27 @@ gllvm_julia_capabilities <- function() {
     res$unit_names <- .gllvm_julia_as_vector(res$unit_names, "character")
   }
 
-  fam <- if (!is.null(res$family)) .gllvm_julia_as_vector(res$family, "character")[1L] else NA_character_
-  if (!is.na(fam) && fam %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES &&
-      (!is.null(res$dispersion_group) || !is.null(res$dispersion))) {
+  fam <- if (!is.null(res$family)) {
+    .gllvm_julia_as_vector(res$family, "character")[1L]
+  } else {
+    NA_character_
+  }
+  if (
+    !is.na(fam) &&
+      fam %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES &&
+      (!is.null(res$dispersion_group) || !is.null(res$dispersion))
+  ) {
     dispersion <- if (!is.null(res$dispersion)) {
       .gllvm_julia_as_vector(res$dispersion, "numeric")
     } else {
       numeric()
     }
-    if (length(dispersion) == 1L && p > 1L) dispersion <- rep(dispersion, p)
-    if (p > 0L && length(dispersion) == p) names(dispersion) <- traits
+    if (length(dispersion) == 1L && p > 1L) {
+      dispersion <- rep(dispersion, p)
+    }
+    if (p > 0L && length(dispersion) == p) {
+      names(dispersion) <- traits
+    }
 
     if (!is.null(res$dispersion_group)) {
       group <- .gllvm_julia_as_vector(res$dispersion_group, "numeric")
@@ -389,23 +490,39 @@ gllvm_julia_capabilities <- function() {
       group_id <- seq_along(dispersion)
     }
     if (p > 0L && length(group_id) != p) {
-      stop("engine = 'julia': grouped-dispersion payload has ",
-           length(group_id), " group ids for ", p, " traits.",
-           call. = FALSE)
+      stop(
+        "engine = 'julia': grouped-dispersion payload has ",
+        length(group_id),
+        " group ids for ",
+        p,
+        " traits.",
+        call. = FALSE
+      )
     }
     if (length(group) && any(!is.finite(group) | group <= 0)) {
-      stop("engine = 'julia': grouped-dispersion payload must be finite and positive.",
-           call. = FALSE)
+      stop(
+        "engine = 'julia': grouped-dispersion payload must be finite and positive.",
+        call. = FALSE
+      )
     }
-    if (length(group_id) && (min(group_id) < 1L || max(group_id) > length(group))) {
-      stop("engine = 'julia': grouped-dispersion ids are out of range.",
-           call. = FALSE)
+    if (
+      length(group_id) && (min(group_id) < 1L || max(group_id) > length(group))
+    ) {
+      stop(
+        "engine = 'julia': grouped-dispersion ids are out of range.",
+        call. = FALSE
+      )
     }
 
     group_names <- names(res$dispersion_group)
-    if (is.null(group_names) || length(group_names) != length(group) ||
-        any(!nzchar(group_names))) {
-      group_names <- if (length(group) == p && identical(group_id, seq_len(p))) {
+    if (
+      is.null(group_names) ||
+        length(group_names) != length(group) ||
+        any(!nzchar(group_names))
+    ) {
+      group_names <- if (
+        length(group) == p && identical(group_id, seq_len(p))
+      ) {
         traits
       } else {
         paste0("group", seq_along(group))
@@ -430,30 +547,42 @@ gllvm_julia_capabilities <- function() {
     res$dispersion_group_engine <- group
     res$dispersion_public <- public
     res$dispersion_group_public <- public_group
-    res$dispersion_public_parameter <- .gllvm_julia_public_dispersion_parameter(fam)
+    res$dispersion_public_parameter <- .gllvm_julia_public_dispersion_parameter(
+      fam
+    )
     if (fam == "negbinomial") {
       res$dispersion_gllvm_phi <- 1 / dispersion
       res$dispersion_group_gllvm_phi <- 1 / group
     }
   } else if (!is.null(res$dispersion) && p > 0L) {
     dispersion <- .gllvm_julia_as_vector(res$dispersion, "numeric")
-    if (length(dispersion) == 1L && p > 1L) dispersion <- rep(dispersion, p)
+    if (length(dispersion) == 1L && p > 1L) {
+      dispersion <- rep(dispersion, p)
+    }
     if (length(dispersion) == p) {
       names(dispersion) <- traits
       res$dispersion <- dispersion
     }
   }
-  if (!is.na(fam) && fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES &&
-      !is.null(res$cutpoints)) {
+  if (
+    !is.na(fam) &&
+      fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES &&
+      !is.null(res$cutpoints)
+  ) {
     cutpoints <- as.matrix(res$cutpoints)
     storage.mode(cutpoints) <- "numeric"
     if (p > 0L && nrow(cutpoints) != p && ncol(cutpoints) == p) {
       cutpoints <- t(cutpoints)
     }
     if (p > 0L && nrow(cutpoints) != p) {
-      stop("engine = 'julia': ordinal cutpoint payload has ",
-           nrow(cutpoints), " trait row(s) for ", p, " traits.",
-           call. = FALSE)
+      stop(
+        "engine = 'julia': ordinal cutpoint payload has ",
+        nrow(cutpoints),
+        " trait row(s) for ",
+        p,
+        " traits.",
+        call. = FALSE
+      )
     }
     if (!is.null(res$n_categories)) {
       n_categories <- .gllvm_julia_as_vector(res$n_categories, "integer")
@@ -461,28 +590,41 @@ gllvm_julia_capabilities <- function() {
       n_categories <- rowSums(!is.na(cutpoints)) + 1L
     }
     if (p > 0L && length(n_categories) != p) {
-      stop("engine = 'julia': ordinal category-count payload has ",
-           length(n_categories), " value(s) for ", p, " traits.",
-           call. = FALSE)
+      stop(
+        "engine = 'julia': ordinal category-count payload has ",
+        length(n_categories),
+        " value(s) for ",
+        p,
+        " traits.",
+        call. = FALSE
+      )
     }
     if (any(is.na(n_categories) | n_categories < 2L)) {
-      stop("engine = 'julia': ordinal category counts must be integers >= 2.",
-           call. = FALSE)
+      stop(
+        "engine = 'julia': ordinal category counts must be integers >= 2.",
+        call. = FALSE
+      )
     }
     if (ncol(cutpoints) < max(n_categories - 1L)) {
-      stop("engine = 'julia': ordinal cutpoint matrix has too few threshold columns.",
-           call. = FALSE)
+      stop(
+        "engine = 'julia': ordinal cutpoint matrix has too few threshold columns.",
+        call. = FALSE
+      )
     }
     for (i in seq_along(n_categories)) {
       active <- seq_len(n_categories[[i]] - 1L)
       vals <- cutpoints[i, active]
       if (any(!is.finite(vals))) {
-        stop("engine = 'julia': active ordinal cutpoints must be finite.",
-             call. = FALSE)
+        stop(
+          "engine = 'julia': active ordinal cutpoints must be finite.",
+          call. = FALSE
+        )
       }
       if (length(vals) > 1L && any(diff(vals) <= 0)) {
-        stop("engine = 'julia': ordinal cutpoints must be strictly increasing by trait.",
-             call. = FALSE)
+        stop(
+          "engine = 'julia': ordinal cutpoints must be strictly increasing by trait.",
+          call. = FALSE
+        )
       }
       inactive <- setdiff(seq_len(ncol(cutpoints)), active)
       if (length(inactive)) cutpoints[i, inactive] <- NaN
@@ -500,14 +642,67 @@ gllvm_julia_capabilities <- function() {
       "per_trait"
     }
     if (!is.null(res$cutpoint_link)) {
-      res$cutpoint_link <- .gllvm_julia_as_vector(res$cutpoint_link, "character")[1L]
+      res$cutpoint_link <- .gllvm_julia_as_vector(
+        res$cutpoint_link,
+        "character"
+      )[1L]
     }
+  }
+  res <- .gllvm_julia_normalise_ci(res)
+  res
+}
+
+.gllvm_julia_normalise_ci <- function(res) {
+  if (is.null(res$ci_method)) {
+    return(res)
+  }
+
+  res$ci_method <- .gllvm_julia_as_vector(res$ci_method, "character")[1L]
+  res$ci_level <- as.numeric(.gllvm_julia_as_vector(
+    res$ci_level %||% NA_real_,
+    "numeric"
+  )[1L])
+  res$ci_param_names <- .gllvm_julia_as_vector(
+    res$ci_param_names %||% character(),
+    "character"
+  )
+  res$ci_estimate <- .gllvm_julia_as_vector(
+    res$ci_estimate %||% numeric(),
+    "numeric"
+  )
+  res$ci_lower <- .gllvm_julia_as_vector(res$ci_lower %||% numeric(), "numeric")
+  res$ci_upper <- .gllvm_julia_as_vector(res$ci_upper %||% numeric(), "numeric")
+  res$ci_note <- .gllvm_julia_as_vector(res$ci_note %||% "", "character")[1L]
+
+  n <- length(res$ci_param_names)
+  if (
+    !identical(length(res$ci_estimate), n) ||
+      !identical(length(res$ci_lower), n) ||
+      !identical(length(res$ci_upper), n)
+  ) {
+    stop(
+      "engine = 'julia': CI payload vectors must have matching lengths.",
+      call. = FALSE
+    )
+  }
+  if (n > 0L) {
+    names(res$ci_estimate) <- res$ci_param_names
+    names(res$ci_lower) <- res$ci_param_names
+    names(res$ci_upper) <- res$ci_param_names
+  }
+  res$ci_status <- if (n > 0L) {
+    "available"
+  } else if (nzchar(res$ci_note)) {
+    "unavailable"
+  } else {
+    "empty"
   }
   res
 }
 
 .gllvm_julia_mask_placeholder <- function(family) {
-  switch(family,
+  switch(
+    family,
     poisson = 0,
     binomial = 0,
     negbinomial = 0,
@@ -516,22 +711,35 @@ gllvm_julia_capabilities <- function() {
     gamma = 1,
     ordinal = 1,
     ordinal_probit = 1,
-    stop("engine = 'julia': response masks are not routed for family '",
-         family, "'.", call. = FALSE)
+    stop(
+      "engine = 'julia': response masks are not routed for family '",
+      family,
+      "'.",
+      call. = FALSE
+    )
   )
 }
 
 .gllvm_julia_fill_masked_response <- function(Y, family, mask) {
-  if (!any(!mask)) return(Y)
+  if (!any(!mask)) {
+    return(Y)
+  }
   if (length(family) != 1L) {
-    stop("engine = 'julia' does not yet route response masks for mixed-family ",
-         "vectors. Use engine = 'tmb'.", call. = FALSE)
+    stop(
+      "engine = 'julia' does not yet route response masks for mixed-family ",
+      "vectors. Use engine = 'tmb'.",
+      call. = FALSE
+    )
   }
   if (!(family %in% .GLLVM_JULIA_MASK_FAMILIES)) {
-    stop("engine = 'julia' response masks are currently routed for ",
-         paste(.GLLVM_JULIA_MASK_FAMILIES, collapse = ", "),
-         "; family '", family, "' remains gated. Use engine = 'tmb'.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' response masks are currently routed for ",
+      paste(.GLLVM_JULIA_MASK_FAMILIES, collapse = ", "),
+      "; family '",
+      family,
+      "' remains gated. Use engine = 'tmb'.",
+      call. = FALSE
+    )
   }
   out <- Y
   out[!mask] <- .gllvm_julia_mask_placeholder(family)
@@ -570,8 +778,27 @@ gllvm_julia_capabilities <- function() {
   out
 }
 
+.gllvm_julia_ci_payload <- function(object) {
+  if (is.null(object$ci_method)) {
+    return(NULL)
+  }
+  data.frame(
+    term = object$ci_param_names %||% character(),
+    estimate = object$ci_estimate %||% numeric(),
+    conf.low = object$ci_lower %||% numeric(),
+    conf.high = object$ci_upper %||% numeric(),
+    method = object$ci_method %||% NA_character_,
+    level = object$ci_level %||% NA_real_,
+    status = object$ci_status %||% NA_character_,
+    note = object$ci_note %||% "",
+    stringsAsFactors = FALSE
+  )
+}
+
 .gllvm_julia_print_matrix <- function(x, digits = 3) {
-  if (is.null(x) || length(x) == 0L) return(invisible(NULL))
+  if (is.null(x) || length(x) == 0L) {
+    return(invisible(NULL))
+  }
   print(round(x, digits))
   invisible(x)
 }
@@ -588,34 +815,151 @@ gllvm_julia_capabilities <- function() {
 #'   as `y`; `TRUE` cells contribute to the likelihood and `FALSE` cells are
 #'   ignored. Currently routed for one-part no-X non-Gaussian point fits only.
 #' @param units_are_rows If `TRUE`, `y` is n x p and is transposed to p x n.
+#' @param ci_method Confidence-interval route for no-X Gaussian, Poisson, and
+#'   Bernoulli binomial bridge rows. One of `"none"` (default), `"wald"`,
+#'   `"profile"`, or `"bootstrap"`. Grouped-dispersion rows, per-trait ordinal
+#'   rows, response masks, mixed-family vectors, and fixed-effect-X rows remain
+#'   loud gates.
+#' @param ci_level Nominal confidence level when `ci_method != "none"`.
+#' @param ci_nboot Number of parametric bootstrap replicates when
+#'   `ci_method = "bootstrap"`.
+#' @param ci_seed Seed passed to the Julia bootstrap CI route.
 #' @param ... Passed to [gllvm_julia_setup()] (`jl_path`, `julia_home`).
 #' @return A list of class `gllvmTMB_julia` with the bridge contract fields
-#'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`, `converged`, ...).
+#'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`,
+#'   `converged`, ...). If `ci_method != "none"` and the row is admitted, the
+#'   list also carries flat CI fields consumed by `confint()`.
 #' @export
-gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = NULL,
-                            mask = NULL, units_are_rows = FALSE, ...) {
-  gllvm_julia_setup(...)
+gllvm_julia_fit <- function(
+  y,
+  family = "gaussian",
+  num.lv = 2L,
+  N = NULL,
+  X = NULL,
+  mask = NULL,
+  units_are_rows = FALSE,
+  ci_method = c("none", "wald", "profile", "bootstrap"),
+  ci_level = 0.95,
+  ci_nboot = 200L,
+  ci_seed = 0L,
+  ...
+) {
+  ci_method <- match.arg(ci_method)
+  if (
+    !is.numeric(ci_level) ||
+      length(ci_level) != 1L ||
+      !is.finite(ci_level) ||
+      ci_level <= 0 ||
+      ci_level >= 1
+  ) {
+    stop(
+      "engine = 'julia': `ci_level` must be a finite number between 0 and 1.",
+      call. = FALSE
+    )
+  }
+  if (
+    !is.numeric(ci_nboot) ||
+      length(ci_nboot) != 1L ||
+      !is.finite(ci_nboot) ||
+      ci_nboot < 1
+  ) {
+    stop(
+      "engine = 'julia': `ci_nboot` must be a positive integer.",
+      call. = FALSE
+    )
+  }
+  if (!is.numeric(ci_seed) || length(ci_seed) != 1L || !is.finite(ci_seed)) {
+    stop(
+      "engine = 'julia': `ci_seed` must be one finite numeric seed.",
+      call. = FALSE
+    )
+  }
   fam <- .gllvm_julia_family(family)
+  if (ci_method != "none") {
+    if (length(fam) != 1L) {
+      stop(
+        "engine = 'julia': confidence intervals for mixed-family vectors ",
+        "are not routed yet. Use `ci_method = \"none\"` or engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (fam %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES) {
+      stop(
+        "engine = 'julia': confidence intervals for grouped-dispersion ",
+        "bridge rows are not routed yet. Use `ci_method = \"none\"` or ",
+        "engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+    if (fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
+      stop(
+        "engine = 'julia': confidence intervals for per-trait ordinal ",
+        "bridge rows are not routed yet. Use `ci_method = \"none\"` or ",
+        "engine = 'tmb'.",
+        call. = FALSE
+      )
+    }
+  }
   y <- as.matrix(y)
   if (isTRUE(units_are_rows)) {
     y <- t(y)
   }
   if (!is.null(mask)) {
     mask <- as.matrix(mask)
-    if (isTRUE(units_are_rows)) mask <- t(mask)
+    if (isTRUE(units_are_rows)) {
+      mask <- t(mask)
+    }
     if (!identical(dim(mask), dim(y))) {
-      stop("engine = 'julia': `mask` must have the same dimensions as `y` ",
-           "after applying `units_are_rows`.", call. = FALSE)
+      stop(
+        "engine = 'julia': `mask` must have the same dimensions as `y` ",
+        "after applying `units_are_rows`.",
+        call. = FALSE
+      )
     }
     storage.mode(mask) <- "logical"
   }
-  if (any(fam %in% c("poisson", "binomial", "negbinomial", "nb1"))) storage.mode(y) <- "integer"
+  if (ci_method != "none" && !is.null(mask)) {
+    stop(
+      "engine = 'julia': confidence intervals for response-mask bridge ",
+      "fits are not routed yet. Use `ci_method = \"none\"` or engine = 'tmb'.",
+      call. = FALSE
+    )
+  }
+  if (ci_method != "none" && !is.null(X)) {
+    stop(
+      "engine = 'julia': confidence intervals for fixed-effect-X bridge ",
+      "fits are not routed yet. Use `ci_method = \"none\"` or engine = 'tmb'.",
+      call. = FALSE
+    )
+  }
+  if (any(fam %in% c("poisson", "binomial", "negbinomial", "nb1"))) {
+    storage.mode(y) <- "integer"
+  }
   args <- list("GLLVM.bridge_fit", y = y, family = fam, d = as.integer(num.lv))
-  if (!is.null(rownames(y))) args$trait_names <- rownames(y)
-  if (!is.null(colnames(y))) args$unit_names <- colnames(y)
-  if (!is.null(N)) args$N <- N
-  if (!is.null(X)) args$X <- X
-  if (!is.null(mask)) args$mask <- mask
+  if (!is.null(rownames(y))) {
+    args$trait_names <- rownames(y)
+  }
+  if (!is.null(colnames(y))) {
+    args$unit_names <- colnames(y)
+  }
+  if (!is.null(N)) {
+    args$N <- N
+  }
+  if (!is.null(X)) {
+    args$X <- X
+  }
+  if (!is.null(mask)) {
+    args$mask <- mask
+  }
+  if (ci_method != "none") {
+    args$options <- list(
+      ci_method = ci_method,
+      ci_level = as.numeric(ci_level),
+      ci_nboot = as.integer(ci_nboot),
+      ci_seed = as.integer(ci_seed)
+    )
+  }
+  gllvm_julia_setup(...)
   res <- do.call(JuliaCall::julia_call, args)
   res <- .gllvm_julia_normalise_result(res)
   if (!is.null(X)) {
@@ -631,7 +975,9 @@ gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = N
   }
   res$engine <- "julia"
   res$missing_response <- !is.null(mask) && any(!mask)
-  if (!is.null(mask)) res$response_mask <- mask
+  if (!is.null(mask)) {
+    res$response_mask <- mask
+  }
   class(res) <- c("gllvmTMB_julia", "list")
   res
 }
@@ -646,11 +992,15 @@ gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = N
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].
+#' @param parm Optional integer or character vector of CI terms for `confint()`.
+#' @param level Confidence level requested by `confint()`. Julia bridge CIs are
+#'   computed at fit time; `confint()` only reads a matching stored payload.
 #' @param digits Number of digits printed by summary methods.
 #' @param ... Unused.
 #' @return `logLik()` returns a `"logLik"` object. `coef()` returns a named list
-#'   of available point-estimate components. `summary()` returns a list with
-#'   header, coefficients, covariance, and status fields.
+#'   of available point-estimate components. `confint()` returns a conventional
+#'   confidence-interval matrix for stored Julia CI payloads. `summary()` returns
+#'   a list with header, coefficients, covariance, and status fields.
 #' @name gllvmTMB_julia-methods
 #' @export
 logLik.gllvmTMB_julia <- function(object, ...) {
@@ -665,10 +1015,20 @@ logLik.gllvmTMB_julia <- function(object, ...) {
 #' @export
 print.gllvmTMB_julia <- function(x, ...) {
   cat("gllvmTMB fit (engine = 'julia', via GLLVM.jl)\n")
-  cat(sprintf("  family: %s | K = %d | %d traits x %d units\n",
-              paste(unique(x$family), collapse = ","), x$d, x$n_traits, x$n_units))
-  cat(sprintf("  logLik = %.4f | AIC = %.2f | BIC = %.2f | converged = %s\n",
-              x$loglik, x$aic, x$bic, x$converged))
+  cat(sprintf(
+    "  family: %s | K = %d | %d traits x %d units\n",
+    paste(unique(x$family), collapse = ","),
+    x$d,
+    x$n_traits,
+    x$n_units
+  ))
+  cat(sprintf(
+    "  logLik = %.4f | AIC = %.2f | BIC = %.2f | converged = %s\n",
+    x$loglik,
+    x$aic,
+    x$bic,
+    x$converged
+  ))
   invisible(x)
 }
 
@@ -676,6 +1036,56 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @export
 coef.gllvmTMB_julia <- function(object, ...) {
   .gllvm_julia_coef_payload(object)
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+confint.gllvmTMB_julia <- function(object, parm, level = 0.95, ...) {
+  payload <- .gllvm_julia_ci_payload(object)
+  if (is.null(payload)) {
+    stop(
+      "No Julia bridge CI payload is present; refit with ",
+      "`gllvm_julia_fit(..., ci_method = \"wald\")`, `\"profile\"`, or ",
+      "`\"bootstrap\"` for admitted no-X Gaussian, Poisson, or Bernoulli ",
+      "binomial rows.",
+      call. = FALSE
+    )
+  }
+  stored_level <- unique(payload$level)
+  if (
+    length(stored_level) == 1L &&
+      is.finite(stored_level) &&
+      !isTRUE(all.equal(level, stored_level))
+  ) {
+    stop(
+      "Julia bridge CI payload was computed at level = ",
+      stored_level,
+      "; `confint()` cannot recompute a different level from the stored fit.",
+      call. = FALSE
+    )
+  }
+  if (!nrow(payload)) {
+    note <- object$ci_note %||% "no CI endpoints were returned"
+    stop("Julia bridge CI payload has no endpoints: ", note, call. = FALSE)
+  }
+  if (!missing(parm)) {
+    if (is.numeric(parm)) {
+      payload <- payload[parm, , drop = FALSE]
+    } else {
+      idx <- match(parm, payload$term)
+      payload <- payload[idx, , drop = FALSE]
+    }
+  }
+  out <- as.matrix(payload[, c("conf.low", "conf.high"), drop = FALSE])
+  rownames(out) <- payload$term
+  colnames(out) <- c(
+    sprintf("%.1f %%", 100 * (1 - level) / 2),
+    sprintf("%.1f %%", 100 * (1 + level) / 2)
+  )
+  attr(out, "ci_method") <- unique(payload$method)
+  attr(out, "ci_status") <- unique(payload$status)
+  attr(out, "ci_note") <- unique(payload$note)
+  out
 }
 
 #' @rdname gllvmTMB_julia-methods
@@ -708,7 +1118,10 @@ summary.gllvmTMB_julia <- function(object, ...) {
     status = list(
       partial = TRUE,
       note = object$note %||% "",
-      ci_status = object$ci_status %||% NULL
+      ci_status = object$ci_status %||% NULL,
+      ci_method = object$ci_method %||% NULL,
+      ci_level = object$ci_level %||% NULL,
+      ci_note = object$ci_note %||% NULL
     )
   )
   class(out) <- "summary.gllvmTMB_julia"
@@ -736,8 +1149,11 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     h$AIC,
     h$BIC
   ))
-  cat(sprintf("  converged = %s | missing response mask = %s\n",
-              h$converged, h$missing_response))
+  cat(sprintf(
+    "  converged = %s | missing response mask = %s\n",
+    h$converged,
+    h$missing_response
+  ))
 
   co <- x$coefficients
   if (!is.null(co$alpha)) {
@@ -785,45 +1201,75 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 # block + per-trait intercepts, every family) and reject anything else loudly with
 # a pointer to engine = "tmb" -- never a silent approximation.
 # ---------------------------------------------------------------------------
-.gllvmTMB_julia_dispatch <- function(parsed, data, trait, unit_internal, family,
-                                     weights = NULL, call = NULL) {
-  cs    <- parsed$covstructs
-  kinds <- if (length(cs)) vapply(cs, function(z) z$kind, character(1)) else character(0)
+.gllvmTMB_julia_dispatch <- function(
+  parsed,
+  data,
+  trait,
+  unit_internal,
+  family,
+  weights = NULL,
+  call = NULL
+) {
+  cs <- parsed$covstructs
+  kinds <- if (length(cs)) {
+    vapply(cs, function(z) z$kind, character(1))
+  } else {
+    character(0)
+  }
 
   ## --- capability guard: only the reduced-rank latent block (rr) is mapped ---
   unsupported <- setdiff(unique(kinds), "rr")
   if (length(unsupported) > 0) {
-    stop("engine = 'julia' does not yet support covariance term(s): ",
-         paste(unsupported, collapse = ", "),
-         ". Use engine = 'tmb' for structured / grouped / phylo / spatial terms.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' does not yet support covariance term(s): ",
+      paste(unsupported, collapse = ", "),
+      ". Use engine = 'tmb' for structured / grouped / phylo / spatial terms.",
+      call. = FALSE
+    )
   }
   rr_terms <- cs[kinds == "rr"]
   if (length(rr_terms) > 1L) {
-    stop("engine = 'julia' supports a single reduced-rank latent block; found ",
-         length(rr_terms), ". Use engine = 'tmb'.", call. = FALSE)
+    stop(
+      "engine = 'julia' supports a single reduced-rank latent block; found ",
+      length(rr_terms),
+      ". Use engine = 'tmb'.",
+      call. = FALSE
+    )
   }
   K <- if (length(rr_terms) == 1L) {
     dval <- rr_terms[[1L]]$extra$d
     as.integer(if (is.null(dval)) 1L else dval)
-  } else 0L
+  } else {
+    0L
+  }
 
   ## --- response: pivot long (trait, unit) -> a p x n matrix ---
-  mf  <- stats::model.frame(parsed$fixed, data = data, na.action = stats::na.pass)
+  mf <- stats::model.frame(
+    parsed$fixed,
+    data = data,
+    na.action = stats::na.pass
+  )
   yraw <- stats::model.response(mf)
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    stop("engine = 'julia' does not yet support cbind(successes, failures) ",
-         "binomial responses; use a 0/1 Bernoulli response or engine = 'tmb'.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' does not yet support cbind(successes, failures) ",
+      "binomial responses; use a 0/1 Bernoulli response or engine = 'tmb'.",
+      call. = FALSE
+    )
   }
   yv <- as.numeric(yraw)
   ft <- factor(data[[trait]])
   fu <- factor(data[[unit_internal]])
   if (length(yv) != length(ft) || length(yv) != length(fu)) {
-    stop("engine = 'julia': response / trait / unit length mismatch.", call. = FALSE)
+    stop(
+      "engine = 'julia': response / trait / unit length mismatch.",
+      call. = FALSE
+    )
   }
-  traits <- levels(ft); units <- levels(fu)
-  p <- length(traits); n <- length(units)
+  traits <- levels(ft)
+  units <- levels(fu)
+  p <- length(traits)
+  n <- length(units)
   fam_str <- .gllvm_julia_family(family)
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
   Y[cbind(as.integer(ft), as.integer(fu))] <- yv
@@ -842,9 +1288,11 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
   has_only_trait_intercept <- (length(extra_cols) == 0 && ncol(Xfix) == p)
   if (has_missing_response && !has_only_trait_intercept) {
-    stop("engine = 'julia' does not yet route response masks with fixed-effect ",
-         "covariates. Use a complete response table or engine = 'tmb'.",
-         call. = FALSE)
+    stop(
+      "engine = 'julia' does not yet route response masks with fixed-effect ",
+      "covariates. Use a complete response table or engine = 'tmb'.",
+      call. = FALSE
+    )
   }
   if (has_missing_response) {
     Y <- .gllvm_julia_fill_masked_response(Y, fam_str, response_mask)
@@ -853,22 +1301,31 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   Xarg <- NULL
   if (!has_only_trait_intercept) {
     if (length(fam_str) != 1L || !(fam_str %in% .GLLVM_JULIA_X_FAMILIES)) {
-      stop("engine = 'julia' maps fixed-effect covariates for ",
-           paste(.GLLVM_JULIA_X_FAMILIES, collapse = ", "),
-           " complete one-part rows only; found fixed term(s): ",
-           paste(c(extra_cols,
-                   if (ncol(Xfix) != p && length(extra_cols) == 0)
-                     "(non-per-trait-intercept design)"),
-                 collapse = ", "),
-           ". Use engine = 'tmb' for this fixed-effect design.",
-           call. = FALSE)
+      stop(
+        "engine = 'julia' maps fixed-effect covariates for ",
+        paste(.GLLVM_JULIA_X_FAMILIES, collapse = ", "),
+        " complete one-part rows only; found fixed term(s): ",
+        paste(
+          c(
+            extra_cols,
+            if (ncol(Xfix) != p && length(extra_cols) == 0) {
+              "(non-per-trait-intercept design)"
+            }
+          ),
+          collapse = ", "
+        ),
+        ". Use engine = 'tmb' for this fixed-effect design.",
+        call. = FALSE
+      )
     }
     if (fam_str != "gaussian" && !all(trait_dummies %in% colnames(Xfix))) {
-      stop("engine = 'julia' fixed-effect covariates for non-Gaussian rows ",
-           "currently require the canonical `0 + trait + ...` design so the ",
-           "Julia bridge can use its internal per-trait intercepts. Use ",
-           "`0 + trait` or engine = 'tmb'.",
-           call. = FALSE)
+      stop(
+        "engine = 'julia' fixed-effect covariates for non-Gaussian rows ",
+        "currently require the canonical `0 + trait + ...` design so the ",
+        "Julia bridge can use its internal per-trait intercepts. Use ",
+        "`0 + trait` or engine = 'tmb'.",
+        call. = FALSE
+      )
     }
     ## Pivot the long (N = p*n row) design matrix into a p x n x q array. For each
     ## long row i with (trait ft[i], unit fu[i]), Xarg[ft[i], fu[i], k] = Xfix[i, k].
@@ -876,19 +1333,22 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     ## dummy columns because GLLVM.jl's covariate fitter estimates those as beta_cov.
     x_cols <- if (fam_str == "gaussian") colnames(Xfix) else extra_cols
     q <- length(x_cols)
-    Xarg <- array(0, dim = c(p, n, q),
-                  dimnames = list(traits, units, x_cols))
+    Xarg <- array(0, dim = c(p, n, q), dimnames = list(traits, units, x_cols))
     Xbridge <- Xfix[, x_cols, drop = FALSE]
-    idx3 <- cbind(rep(as.integer(ft), times = q),
-                  rep(as.integer(fu), times = q),
-                  rep(seq_len(q), each = length(yv)))
+    idx3 <- cbind(
+      rep(as.integer(ft), times = q),
+      rep(as.integer(fu), times = q),
+      rep(seq_len(q), each = length(yv))
+    )
     Xarg[idx3] <- as.numeric(Xbridge)
   }
 
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
   Narg <- NULL
   if (any(fam_str == "binomial")) {
-    if (!is.null(weights) && is.numeric(weights) && length(weights) == length(yv)) {
+    if (
+      !is.null(weights) && is.numeric(weights) && length(weights) == length(yv)
+    ) {
       Narg <- matrix(1, p, n)
       Narg[cbind(as.integer(ft), as.integer(fu))] <- as.numeric(weights)
     } else {
@@ -897,13 +1357,19 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   }
 
   fit <- gllvm_julia_fit(
-    Y, family = family, num.lv = K, N = Narg, X = Xarg,
+    Y,
+    family = family,
+    num.lv = K,
+    N = Narg,
+    X = Xarg,
     mask = if (has_missing_response) response_mask else NULL
   )
-  fit$call         <- call
+  fit$call <- call
   fit$trait_levels <- traits
-  fit$unit_levels  <- units
+  fit$unit_levels <- units
   fit$missing_response <- has_missing_response
-  if (has_missing_response) fit$response_mask <- response_mask
+  if (has_missing_response) {
+    fit$response_mask <- response_mask
+  }
   fit
 }

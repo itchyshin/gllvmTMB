@@ -50,6 +50,14 @@
   "gamma",
   .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
+.GLLVM_JULIA_X_FAMILIES <- c(
+  "gaussian",
+  "poisson",
+  "binomial",
+  "negbinomial",
+  "beta",
+  "gamma"
+)
 .GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"
 .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES <- c(
   "gaussian",
@@ -131,7 +139,7 @@ gllvm_julia_capabilities <- function() {
   out <- data.frame(
     family = families,
     fit_no_x = TRUE,
-    fixed_effect_X = families == "gaussian",
+    fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
     missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
     cbind_binomial = FALSE,
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
@@ -183,31 +191,42 @@ gllvm_julia_capabilities <- function() {
   } else {
     "response masks remain gated; "
   }
+  x_clause <- if (family %in% .GLLVM_JULIA_X_FAMILIES) {
+    "fixed-effect X point fits are routed for complete responses; "
+  } else {
+    "fixed-effect X remains gated; "
+  }
+  ci_x_followup <- if (family %in% .GLLVM_JULIA_X_FAMILIES) {
+    "CI and native parity promotion are follow-ups"
+  } else {
+    "CI, X, and native parity promotion are follow-ups"
+  }
   postfit_clause <- "coef() and summary() are routed; predict/residuals/simulate/extractor parity remain gated; "
   if (family %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES) {
     return(paste0(
-      "single reduced-rank no-X point route; default Julia payload uses ",
-      "per-trait grouped dispersion; ", mask_clause, postfit_clause,
-      "CI, X, and native parity promotion are follow-ups"
+      "single reduced-rank point route; default no-X Julia payload uses ",
+      "per-trait grouped dispersion; ", mask_clause, x_clause, postfit_clause,
+      ci_x_followup
     ))
   }
   if (identical(family, "gamma")) {
     return(paste0(
-      "single reduced-rank no-X point route; default Julia payload uses ",
+      "single reduced-rank point route; default no-X Julia payload uses ",
       "shared Gamma grouped dispersion to match current native scalar-CV ",
       "Gamma; per-trait Gamma is a native-expansion follow-up; ",
-      mask_clause, postfit_clause, "CI, X, and native parity promotion are follow-ups"
+      mask_clause, x_clause, postfit_clause,
+      "CI and native parity promotion are follow-ups"
     ))
   }
   if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
     return(paste0(
-      "single reduced-rank no-X point route; default Julia payload uses ",
-      "per-trait ordinal cutpoints; ", mask_clause, postfit_clause,
+      "single reduced-rank point route; default no-X Julia payload uses ",
+      "per-trait ordinal cutpoints; ", mask_clause, x_clause, postfit_clause,
       "CI, X, and native parity promotion are follow-ups"
     ))
   }
   paste0(
-    "single reduced-rank no-X point route; ", mask_clause, postfit_clause,
+    "single reduced-rank point route; ", mask_clause, x_clause, postfit_clause,
     "broader structures and native parity promotion remain gated"
   )
 }
@@ -323,6 +342,10 @@ gllvm_julia_capabilities <- function() {
     if (!is.null(res$communality) && length(res$communality) == p) {
       res$communality <- .gllvm_julia_as_vector(res$communality, "numeric")
       names(res$communality) <- traits
+    }
+    if (!is.null(res$beta_cov) && length(res$beta_cov) == p) {
+      res$beta_cov <- .gllvm_julia_as_vector(res$beta_cov, "numeric")
+      names(res$beta_cov) <- traits
     }
     if (!is.null(res$loadings) && nrow(as.matrix(res$loadings)) == p) {
       res$loadings <- as.matrix(res$loadings)
@@ -521,13 +544,13 @@ gllvm_julia_capabilities <- function() {
     out$alpha <- object$alpha
   }
   if (!is.null(object$mean_coef)) {
-    out$mean_coef <- .gllvm_julia_as_vector(object$mean_coef, "numeric")
+    out$mean_coef <- object$mean_coef
   }
   if (!is.null(object$beta_cov)) {
-    out$beta_cov <- .gllvm_julia_as_vector(object$beta_cov, "numeric")
+    out$beta_cov <- object$beta_cov
   }
   if (!is.null(object$gamma)) {
-    out$gamma <- .gllvm_julia_as_vector(object$gamma, "numeric")
+    out$gamma <- object$gamma
   }
   if (!is.null(object$loadings)) {
     out$loadings <- as.matrix(object$loadings)
@@ -559,7 +582,8 @@ gllvm_julia_capabilities <- function() {
 #' @param family A family object/string, or a list of them (one per trait -> mixed).
 #' @param num.lv Number of latent variables (K).
 #' @param N Binomial trials (matrix or scalar), or `NULL`.
-#' @param X Gaussian-only fixed-effect design (p x n x q array), or `NULL`.
+#' @param X Fixed-effect design (p x n x q array), or `NULL`. Routed for
+#'   Gaussian and selected one-part non-Gaussian bridge families.
 #' @param mask Optional logical response-observation mask with the same orientation
 #'   as `y`; `TRUE` cells contribute to the likelihood and `FALSE` cells are
 #'   ignored. Currently routed for one-part no-X non-Gaussian point fits only.
@@ -594,6 +618,17 @@ gllvm_julia_fit <- function(y, family = "gaussian", num.lv = 2L, N = NULL, X = N
   if (!is.null(mask)) args$mask <- mask
   res <- do.call(JuliaCall::julia_call, args)
   res <- .gllvm_julia_normalise_result(res)
+  if (!is.null(X)) {
+    x_names <- dimnames(X)[[3L]]
+    if (!is.null(res$gamma) && length(res$gamma) == length(x_names)) {
+      res$gamma <- .gllvm_julia_as_vector(res$gamma, "numeric")
+      names(res$gamma) <- x_names
+    }
+    if (!is.null(res$mean_coef) && length(res$mean_coef) == length(x_names)) {
+      res$mean_coef <- .gllvm_julia_as_vector(res$mean_coef, "numeric")
+      names(res$mean_coef) <- x_names
+    }
+  }
   res$engine <- "julia"
   res$missing_response <- !is.null(mask) && any(!mask)
   if (!is.null(mask)) res$response_mask <- mask
@@ -797,10 +832,11 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 
   ## --- fixed effects: the per-trait intercept (0 + trait) is always mapped to
   ## the bridge's internal per-trait intercept. Extra fixed-effect covariates
-  ## (e.g. `env`) are mapped for the Gaussian family only, by pivoting the long
-  ## design matrix into a p x n x q array X and passing it to bridge_fit; the
-  ## Julia Gaussian fitter carries the FULL mean structure (intercept dummies +
-  ## covariates) in X. Non-Gaussian X stays a loud reject. ---
+  ## (e.g. `env`) are mapped for admitted X families by pivoting the long
+  ## design matrix into a p x n x q array X and passing it to bridge_fit. The
+  ## Julia Gaussian fitter carries the full mean structure. The non-Gaussian
+  ## covariate fitter already has per-trait intercepts, so R sends only the
+  ## fixed-effect columns beyond the canonical `0 + trait` intercept block. ---
   Xfix <- stats::model.matrix(parsed$fixed, mf)
   trait_dummies <- paste0(trait, traits)
   extra_cols <- setdiff(colnames(Xfix), trait_dummies)
@@ -816,27 +852,37 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
 
   Xarg <- NULL
   if (!has_only_trait_intercept) {
-    if (!all(fam_str == "gaussian")) {
-      stop("engine = 'julia' maps fixed-effect covariates for the gaussian family ",
-           "only; found fixed term(s): ",
+    if (length(fam_str) != 1L || !(fam_str %in% .GLLVM_JULIA_X_FAMILIES)) {
+      stop("engine = 'julia' maps fixed-effect covariates for ",
+           paste(.GLLVM_JULIA_X_FAMILIES, collapse = ", "),
+           " complete one-part rows only; found fixed term(s): ",
            paste(c(extra_cols,
                    if (ncol(Xfix) != p && length(extra_cols) == 0)
                      "(non-per-trait-intercept design)"),
                  collapse = ", "),
-           ". Use engine = 'tmb' for non-Gaussian fixed-effect covariates.",
+           ". Use engine = 'tmb' for this fixed-effect design.",
+           call. = FALSE)
+    }
+    if (fam_str != "gaussian" && !all(trait_dummies %in% colnames(Xfix))) {
+      stop("engine = 'julia' fixed-effect covariates for non-Gaussian rows ",
+           "currently require the canonical `0 + trait + ...` design so the ",
+           "Julia bridge can use its internal per-trait intercepts. Use ",
+           "`0 + trait` or engine = 'tmb'.",
            call. = FALSE)
     }
     ## Pivot the long (N = p*n row) design matrix into a p x n x q array. For each
     ## long row i with (trait ft[i], unit fu[i]), Xarg[ft[i], fu[i], k] = Xfix[i, k].
-    ## Column order follows model.matrix() (intercept dummies first, then covariates);
-    ## the marginal loglik is invariant to fixed-effect column order.
-    q <- ncol(Xfix)
+    ## Gaussian keeps the full model matrix. Non-Gaussian rows drop the trait
+    ## dummy columns because GLLVM.jl's covariate fitter estimates those as beta_cov.
+    x_cols <- if (fam_str == "gaussian") colnames(Xfix) else extra_cols
+    q <- length(x_cols)
     Xarg <- array(0, dim = c(p, n, q),
-                  dimnames = list(traits, units, colnames(Xfix)))
+                  dimnames = list(traits, units, x_cols))
+    Xbridge <- Xfix[, x_cols, drop = FALSE]
     idx3 <- cbind(rep(as.integer(ft), times = q),
                   rep(as.integer(fu), times = q),
                   rep(seq_len(q), each = length(yv)))
-    Xarg[idx3] <- as.numeric(Xfix)
+    Xarg[idx3] <- as.numeric(Xbridge)
   }
 
   ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---

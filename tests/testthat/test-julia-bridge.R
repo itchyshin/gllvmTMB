@@ -197,6 +197,20 @@ julia_response_mask_cases <- function() {
   )
 }
 
+julia_fixed_x_cases <- function() {
+  cases <- julia_response_mask_cases()[c("poisson", "binomial", "negbinomial", "beta", "gamma")]
+  cases$negbinomial$family <- nbinom2()
+  cases$negbinomial$engine_family <- "negbinomial"
+  cases
+}
+
+julia_bridge_x_array <- function(Y, x) {
+  out <- array(rep(as.numeric(x), each = nrow(Y)),
+               dim = c(nrow(Y), ncol(Y), 1L),
+               dimnames = list(rownames(Y), colnames(Y), "x"))
+  out
+}
+
 # --- family mapping ---------------------------------------------------------
 
 test_that("family mapping covers every bridged family", {
@@ -249,7 +263,7 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   )
   expect_false("lognormal" %in% caps$family)
   expect_equal(caps$family[caps$fit_no_x], caps$family)
-  expect_equal(caps$family[caps$fixed_effect_X], "gaussian")
+  expect_equal(caps$family[caps$fixed_effect_X], .GLLVM_JULIA_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_wald], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_profile], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_bootstrap], .GLLVM_JULIA_CI_NO_X_FAMILIES)
@@ -261,6 +275,7 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   expect_true(all(caps$status == "partial"))
   expect_equal(caps$family[caps$missing_response], .GLLVM_JULIA_MASK_FAMILIES)
   expect_true(any(grepl("response masks are routed for no-X point fits", caps$notes)))
+  expect_true(any(grepl("fixed-effect X point fits are routed", caps$notes)))
   expect_equal(caps$family[caps$postfit_coef], caps$family)
   expect_equal(caps$family[caps$postfit_summary], caps$family)
   expect_true(all(!caps$postfit_predict))
@@ -372,6 +387,30 @@ test_that("engine = 'julia' keeps unsupported response-mask rows explicit", {
   )
 })
 
+test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
+  df <- make_long()
+  df$x <- stats::rnorm(nrow(df))
+
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + x + latent(0 + trait | unit, d = 1),
+             data = df, trait = "trait", unit = "unit",
+             family = nbinom1(), engine = "julia"),
+    "fixed-effect covariates.*complete one-part rows"
+  )
+  expect_error(
+    gllvmTMB(value ~ 0 + trait + x + latent(0 + trait | unit, d = 1),
+             data = df, trait = "trait", unit = "unit",
+             family = ordinal_probit(), engine = "julia"),
+    "fixed-effect covariates.*complete one-part rows"
+  )
+  expect_error(
+    gllvmTMB(value ~ trait + x + latent(0 + trait | unit, d = 1),
+             data = df, trait = "trait", unit = "unit",
+             family = poisson(), engine = "julia"),
+    "canonical `0 \\+ trait \\+ \\.\\.\\.` design"
+  )
+})
+
 test_that("engine argument is validated by match.arg", {
   df <- make_long()
   expect_error(
@@ -440,6 +479,45 @@ test_that("gllvm_julia_fit passes response masks through to GLLVM.jl", {
     expect_true(isTRUE(fit$missing_response))
     expect_equal(fit$response_mask, mask)
     expect_true(is.finite(as.numeric(logLik(fit))))
+  }
+})
+
+test_that("engine = 'julia' main dispatch routes complete non-Gaussian fixed-effect X rows", {
+  skip_if_no_julia()
+  f <- value ~ 0 + trait + x + latent(0 + trait | unit, d = 1)
+
+  for (case in julia_fixed_x_cases()) {
+    x <- seq(-0.9, 0.9, length.out = ncol(case$Y))
+    df <- julia_bridge_matrix_to_long(case$Y)
+    df$x <- x[match(as.character(df$unit), colnames(case$Y))]
+    X <- julia_bridge_x_array(case$Y, x)
+
+    direct <- gllvm_julia_fit(case$Y, family = case$family, num.lv = 1L, X = X)
+    routed <- gllvmTMB(
+      f, data = df, trait = "trait", unit = "unit",
+      family = case$family, engine = "julia"
+    )
+
+    expect_s3_class(routed, "gllvmTMB_julia")
+    expect_equal(routed$family, case$engine_family)
+    expect_equal(routed$model, paste0(case$engine_family, "_x_rr"))
+    expect_equal(routed$trait_levels, rownames(case$Y))
+    expect_equal(routed$unit_levels, colnames(case$Y))
+    expect_false(isTRUE(routed$missing_response))
+    expect_named(routed$gamma, "x")
+    expect_named(routed$beta_cov, rownames(case$Y))
+    expect_named(routed$alpha, rownames(case$Y))
+    expect_equal(routed$gamma, direct$gamma, tolerance = 1e-8)
+    expect_equal(routed$beta_cov, direct$beta_cov, tolerance = 1e-8)
+    expect_equal(routed$alpha, direct$alpha, tolerance = 1e-8)
+    expect_equal(routed$loadings, direct$loadings, tolerance = 1e-8)
+    expect_equal(as.numeric(logLik(routed)), as.numeric(logLik(direct)),
+                 tolerance = 1e-8)
+    expect_true(grepl("fixed-effect covariate fit", routed$note))
+    co <- coef(routed)
+    expect_named(co$gamma, "x")
+    expect_named(co$beta_cov, rownames(case$Y))
+    expect_no_error(capture.output(print(summary(routed))))
   }
 })
 

@@ -75,6 +75,6 @@ Allowed wording:
 Still blocked:
 
 - NB1 bridge confidence intervals.
-- NB1 bridge masks and non-Gaussian fixed-effect covariates.
+- NB1 bridge confidence intervals, NB1 fixed-effect-X, and masks+X.
 - Broad NB1 simulation recovery or speed claims.
 - Structured terms and mixed-family NB1 rows.

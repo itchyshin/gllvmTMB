@@ -4,6 +4,51 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge fixed-effect X admission
+
+Admitted complete-response fixed-effect-X point fits through the R
+`engine = "julia"` main dispatch for Gaussian, Poisson, Bernoulli binomial, NB2,
+Beta, and Gamma rows. NB1-X, ordinal-X, mixed-family-X, masks+X, X-row CIs, and
+non-canonical fixed-effect designs remain gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- NEWS.md NAMESPACE R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd`
+  -> current local Codex programme commits only.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with nine expected Julia-runtime skips.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly.
+- Julia X-contract anchor:
+  `julia --project=. test/test_bridge_x.jl`
+  in `../GLLVM.jl-integration` -> `52/52 pass`.
+- Julia capability ledger anchor:
+  `julia --project=. test/test_bridge_capabilities.jl`
+  in `../GLLVM.jl-integration` -> `34/34 pass`.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvm_julia_fit.Rd`.
+- Capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); print(caps[, c("family", "fixed_effect_X", "missing_response", "postfit_coef", "postfit_summary", "postfit_predict", "ci_no_x_wald", "status", "notes")], row.names = FALSE); stopifnot(identical(caps$family[caps$fixed_effect_X], gllvmTMB:::.GLLVM_JULIA_X_FAMILIES)); stopifnot(!caps$fixed_effect_X[caps$family == "nb1"]); stopifnot(!caps$fixed_effect_X[caps$family == "ordinal"]); stopifnot(!caps$fixed_effect_X[caps$family == "ordinal_probit"]); stopifnot(!caps$fixed_effect_X[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY]); stopifnot(any(grepl("fixed-effect X point fits are routed", caps$notes, fixed = TRUE)))'`
+  -> `fixed_effect_X` is true only for Gaussian, Poisson, Bernoulli binomial,
+  NB2, Beta, and Gamma rows.
+- Stale wording scan:
+  `rg -n "Gaussian-only fixed-effect|Gaussian fixed-effect covariates only|non-Gaussian X through the main dispatch|non-Gaussian fixed-effect covariates|fixed-effect covariates for the gaussian family|fixed_effect_X\\], \\"gaussian\\"|fixed-effect X point fits|NB1-X|ordinal-X|masks\\+X|mixed-family-X" R NEWS.md tests/testthat docs/design docs/dev-log man/gllvm_julia_fit.Rd`
+  -> only current scoped X wording remains.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice touches the bridge code,
+  one generated Rd topic, one bridge test file, and ledgers.
+
 ## 2026-06-16 -- R bridge coef/summary post-fit admission
 
 Admitted the first R-side post-fit methods for `gllvmTMB_julia` objects:

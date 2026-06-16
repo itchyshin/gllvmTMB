@@ -30,8 +30,8 @@ Current Codex state:
   addendum.
 - `codex/r-bridge-grouped-dispersion` is the current implementation/evidence
   branch. It has local grouped-dispersion, per-trait ordinal, Gamma shared-route,
-  one-part no-X response-mask, and `coef()` / `summary()` bridge evidence
-  through the current Codex slice.
+  one-part no-X response-mask, complete-response fixed-effect-X, and `coef()` /
+  `summary()` bridge evidence through the current Codex slice.
 - No GitHub PR is open for this programme yet.
 
 Current bridge landing state:
@@ -84,6 +84,13 @@ Active lane guidance:
   The R bridge now also registers point-estimate `coef()` and `summary()`
   methods for `gllvmTMB_julia` objects; prediction, residuals, simulation, and
   extractor parity remain gated.
+  The R bridge also routes complete-response fixed-effect-X point fits for
+  Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
+  non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`
+  fixed-effect design and sends only the extra fixed-effect columns to
+  `GLLVM.bridge_fit(X = ...)`, matching the paired Julia `fit_gllvm_cov`
+  contract. NB1-X, ordinal-X, mixed-family-X, masks+X, CIs for X rows, and
+  non-canonical fixed-effect designs remain gated.
 - Cross-twin argument and wording contract:
   `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
   Before bridge, engine, or public-docs lanes, scan R/Julia and DRM/GLLVM
@@ -94,8 +101,9 @@ Active lane guidance:
   target different estimands.
 - Next safe implementation lane: grouped-dispersion CI/status, masked
   CI/status, prediction/residual/simulation/extractor parity, mixed-family
-  admission, or the native per-trait Gamma expansion spec, unless the
-  maintainer explicitly asks to publish or rebase the bridge PR first.
+  admission, NB1/ordinal fixed-effect-X design, X-row CI/status, or the native
+  per-trait Gamma expansion spec, unless the maintainer explicitly asks to
+  publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

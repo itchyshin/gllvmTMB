@@ -106,6 +106,8 @@ source docs from ignored generated Julia `docs/build` files in the paired repo.
 - No native `gllvmTMB` vs Julia ordinal parity promotion yet for logLik,
   cutpoints, predictions, residuals, or post-fit extractors beyond the later
   point-estimate `coef()` and `summary()` bridge-method slice.
-- Response masks, non-Gaussian X through the main dispatch, mixed-family
-  ordinal rows, structured covariance terms, prediction, residuals, simulation,
-  extractor parity, and CIs remain planned/gated.
+- Mixed-family ordinal rows, ordinal-X, masks+X, structured covariance terms,
+  prediction, residuals, simulation, extractor parity, and CIs remain
+  planned/gated. Complete-response fixed-effect-X rows for selected
+  non-ordinal families were admitted later in the 2026-06-16 fixed-X bridge
+  slice.

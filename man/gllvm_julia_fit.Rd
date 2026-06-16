@@ -24,7 +24,8 @@ gllvm_julia_fit(
 
 \item{N}{Binomial trials (matrix or scalar), or \code{NULL}.}
 
-\item{X}{Gaussian-only fixed-effect design (p x n x q array), or \code{NULL}.}
+\item{X}{Fixed-effect design (p x n x q array), or \code{NULL}. Routed for
+Gaussian and selected one-part non-Gaussian bridge families.}
 
 \item{mask}{Optional logical response-observation mask with the same orientation
 as \code{y}; \code{TRUE} cells contribute to the likelihood and \code{FALSE} cells are

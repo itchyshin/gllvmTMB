@@ -18,15 +18,16 @@
   per-trait cutpoint matrices plus per-trait category counts. PARTIAL (JUL-01):
   this is a narrow point-route bridge, not a full native parity claim. The
   bridge now routes one-part no-X response masks for supported non-Gaussian
-  rows, but still loudly rejects non-`rr` covariance terms, more than one
-  latent block, `cbind()` binomial, Gaussian or mixed-family response masks,
-  response masks with fixed-effect covariates, masked CIs, and non-Gaussian
-  covariates through the main `gllvmTMB()` dispatch. The admitted post-fit
-  surface is point-estimate `coef()` and `summary()` only; prediction,
-  residuals, simulation, extractor parity, and confidence intervals for
-  grouped-dispersion or per-trait ordinal rows remain planned follow-up rows,
-  as do mixed-family promotion, native parity promotion, and structured
-  covariance terms. OUT: JuliaCall
+  rows, and complete-response fixed-effect X point fits for gaussian, poisson,
+  Bernoulli binomial, nbinom2, beta, and gamma rows. It still loudly rejects
+  non-`rr` covariance terms, more than one latent block, `cbind()` binomial,
+  Gaussian or mixed-family response masks, response masks with fixed-effect
+  covariates, masked CIs, NB1-X, ordinal-X, mixed-family-X, and unsupported
+  fixed-effect designs. The admitted post-fit surface is point-estimate
+  `coef()` and `summary()` only; prediction, residuals, simulation, extractor
+  parity, confidence intervals for grouped-dispersion or per-trait ordinal
+  rows, and CIs for X rows remain planned follow-up rows, as do mixed-family
+  promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall
   is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
   when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB
   engine and `R CMD check` are unaffected on machines without Julia.

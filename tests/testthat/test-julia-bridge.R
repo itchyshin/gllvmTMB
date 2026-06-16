@@ -55,6 +55,34 @@ fake_grouped_dispersion_julia_fit <- function(family = "negbinomial",
   )
 }
 
+fake_ordinal_julia_fit <- function(family = "ordinal_probit") {
+  structure(
+    list(
+      family = family,
+      model = paste0(family, "_rr"),
+      d = 1L,
+      n_traits = 2L,
+      n_units = 8L,
+      trait_names = c("sp1", "sp2"),
+      unit_names = paste0("site", 1:8),
+      loadings = matrix(c(0.5, -0.3), nrow = 2L),
+      Sigma = matrix(c(0.25, -0.15, -0.15, 0.09), nrow = 2L),
+      correlation = matrix(c(1, -1, -1, 1), nrow = 2L),
+      cutpoints = matrix(c(-0.8, 0.4, NaN, -1.1, -0.1, 1.2),
+                         nrow = 2L, byrow = TRUE),
+      n_categories = c(3L, 4L),
+      cutpoint_mode = "per_trait",
+      cutpoint_link = "ProbitLink",
+      dispersion = c(NaN, NaN),
+      loglik = -18,
+      df = 7L,
+      nobs = 16L,
+      converged = TRUE
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+}
+
 # --- family mapping ---------------------------------------------------------
 
 test_that("family mapping covers every bridged family", {
@@ -90,7 +118,7 @@ test_that("family mapping rejects unsupported families loudly", {
   expect_error(.gllvm_julia_family("nonsense"), "unsupported family")
 })
 
-test_that("Julia bridge capability ledger marks grouped-dispersion CI rows unavailable", {
+test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unavailable", {
   caps <- gllvm_julia_capabilities()
   expect_named(
     caps,
@@ -111,7 +139,10 @@ test_that("Julia bridge capability ledger marks grouped-dispersion CI rows unava
   expect_equal(caps$family[caps$ci_no_x_wald], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_profile], .GLLVM_JULIA_CI_NO_X_FAMILIES)
   expect_equal(caps$family[caps$ci_no_x_bootstrap], .GLLVM_JULIA_CI_NO_X_FAMILIES)
-  expect_false(any(caps$ci_no_x_wald[caps$family %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES]))
+  nuisance <- c(.GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES,
+                .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)
+  expect_false(any(caps$ci_no_x_wald[caps$family %in% nuisance]))
+  expect_true(any(grepl("per-trait ordinal cutpoints", caps$notes)))
   expect_true(all(caps$status == "partial"))
   expect_true(all(!caps$missing_response))
   expect_true(all(!caps$cbind_binomial))
@@ -146,6 +177,20 @@ test_that("grouped-dispersion bridge payload is trait-labelled and public-scale 
   )
   expect_equal(unname(gamma$dispersion_public), c(1 / 4, 1 / 5))
   expect_equal(gamma$dispersion_public_parameter, "sigma")
+})
+
+test_that("ordinal bridge payload is trait-labelled and CI-gated", {
+  fit <- .gllvm_julia_normalise_result(fake_ordinal_julia_fit())
+  expect_equal(fit$cutpoint_mode, "per_trait")
+  expect_equal(fit$cutpoint_link, "ProbitLink")
+  expect_equal(dim(fit$cutpoints), c(2L, 3L))
+  expect_equal(rownames(fit$cutpoints), c("sp1", "sp2"))
+  expect_equal(colnames(fit$cutpoints), paste0("cutpoint", 1:3))
+  expect_equal(unname(fit$n_categories), c(3L, 4L))
+  expect_named(fit$n_categories, c("sp1", "sp2"))
+  expect_equal(unname(fit$cutpoints["sp1", 1:2]), c(-0.8, 0.4))
+  expect_true(is.nan(fit$cutpoints["sp1", "cutpoint3"]))
+  expect_equal(unname(fit$cutpoints["sp2", ]), c(-1.1, -0.1, 1.2))
 })
 
 # --- capability guards (pure-R: fire before any Julia dependency) -----------
@@ -238,6 +283,28 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
       )
     }
   }
+})
+
+test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLLVM.jl", {
+  skip_if_no_julia()
+  y_ord <- matrix(
+    c(1, 2, 3, 1, 2, 3, 1, 2,
+      1, 2, 3, 4, 1, 2, 3, 4),
+    nrow = 2L,
+    byrow = TRUE,
+    dimnames = list(c("sp1", "sp2"), paste0("site", 1:8))
+  )
+  fit <- gllvm_julia_fit(y_ord, family = ordinal_probit(), num.lv = 1L)
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(fit$family, "ordinal_probit")
+  expect_equal(fit$cutpoint_mode, "per_trait")
+  expect_equal(fit$cutpoint_link, "ProbitLink")
+  expect_equal(unname(fit$n_categories), c(3L, 4L))
+  expect_named(fit$n_categories, rownames(y_ord))
+  expect_equal(nrow(fit$cutpoints), 2L)
+  expect_equal(rownames(fit$cutpoints), rownames(y_ord))
+  expect_true(is.nan(fit$cutpoints["sp1", "cutpoint3"]))
+  expect_equal(fit$df, 7L)
 })
 
 test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {

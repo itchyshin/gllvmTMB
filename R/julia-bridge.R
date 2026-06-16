@@ -32,6 +32,10 @@
   "beta",
   "gamma"
 )
+.GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES <- c(
+  "ordinal",
+  "ordinal_probit"
+)
 .GLLVM_JULIA_MIXED_FAMILY <- "mixed-family vector"
 .GLLVM_JULIA_MIXED_COMPONENT_FAMILIES <- c(
   "gaussian",
@@ -40,7 +44,8 @@
 )
 .GLLVM_JULIA_CI_NO_X_FAMILIES <- setdiff(
   .GLLVM_JULIA_BRIDGE_FAMILIES,
-  .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES
+  c(.GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES,
+    .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)
 )
 .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS <- c(
   "fit_no_x",
@@ -132,9 +137,17 @@ gllvm_julia_capabilities <- function() {
         "per-trait grouped dispersion; CI, masks, X, and native parity",
         "promotion are follow-ups"
       ),
-      paste(
-        "single reduced-rank no-X point route; broader structures, masks,",
-        "post-fit methods, and native parity promotion remain gated"
+      ifelse(
+        families %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES,
+        paste(
+          "single reduced-rank no-X point route; default Julia payload uses",
+          "per-trait ordinal cutpoints; CI, masks, X, and native parity",
+          "promotion are follow-ups"
+        ),
+        paste(
+          "single reduced-rank no-X point route; broader structures, masks,",
+          "post-fit methods, and native parity promotion remain gated"
+        )
       )
     ),
     stringsAsFactors = FALSE
@@ -364,6 +377,66 @@ gllvm_julia_capabilities <- function() {
     if (length(dispersion) == p) {
       names(dispersion) <- traits
       res$dispersion <- dispersion
+    }
+  }
+  if (!is.na(fam) && fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES &&
+      !is.null(res$cutpoints)) {
+    cutpoints <- as.matrix(res$cutpoints)
+    storage.mode(cutpoints) <- "numeric"
+    if (p > 0L && nrow(cutpoints) != p && ncol(cutpoints) == p) {
+      cutpoints <- t(cutpoints)
+    }
+    if (p > 0L && nrow(cutpoints) != p) {
+      stop("engine = 'julia': ordinal cutpoint payload has ",
+           nrow(cutpoints), " trait row(s) for ", p, " traits.",
+           call. = FALSE)
+    }
+    if (!is.null(res$n_categories)) {
+      n_categories <- .gllvm_julia_as_vector(res$n_categories, "integer")
+    } else {
+      n_categories <- rowSums(!is.na(cutpoints)) + 1L
+    }
+    if (p > 0L && length(n_categories) != p) {
+      stop("engine = 'julia': ordinal category-count payload has ",
+           length(n_categories), " value(s) for ", p, " traits.",
+           call. = FALSE)
+    }
+    if (any(is.na(n_categories) | n_categories < 2L)) {
+      stop("engine = 'julia': ordinal category counts must be integers >= 2.",
+           call. = FALSE)
+    }
+    if (ncol(cutpoints) < max(n_categories - 1L)) {
+      stop("engine = 'julia': ordinal cutpoint matrix has too few threshold columns.",
+           call. = FALSE)
+    }
+    for (i in seq_along(n_categories)) {
+      active <- seq_len(n_categories[[i]] - 1L)
+      vals <- cutpoints[i, active]
+      if (any(!is.finite(vals))) {
+        stop("engine = 'julia': active ordinal cutpoints must be finite.",
+             call. = FALSE)
+      }
+      if (length(vals) > 1L && any(diff(vals) <= 0)) {
+        stop("engine = 'julia': ordinal cutpoints must be strictly increasing by trait.",
+             call. = FALSE)
+      }
+      inactive <- setdiff(seq_len(ncol(cutpoints)), active)
+      if (length(inactive)) cutpoints[i, inactive] <- NaN
+    }
+    if (p > 0L) {
+      rownames(cutpoints) <- traits
+      names(n_categories) <- traits
+    }
+    colnames(cutpoints) <- paste0("cutpoint", seq_len(ncol(cutpoints)))
+    res$cutpoints <- cutpoints
+    res$n_categories <- n_categories
+    res$cutpoint_mode <- if (!is.null(res$cutpoint_mode)) {
+      .gllvm_julia_as_vector(res$cutpoint_mode, "character")[1L]
+    } else {
+      "per_trait"
+    }
+    if (!is.null(res$cutpoint_link)) {
+      res$cutpoint_link <- .gllvm_julia_as_vector(res$cutpoint_link, "character")[1L]
     }
   }
   res

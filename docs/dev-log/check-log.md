@@ -4,6 +4,77 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge per-trait ordinal payload decoding
+
+Updated the lean `engine = "julia"` R bridge to consume the paired
+`GLLVM.jl-integration` per-trait ordinal payload for ordinal and ordinal-probit
+no-X reduced-rank fits. This is a point-payload bridge-contract slice, not a
+native parity promotion or a CI promotion.
+
+Evidence:
+
+- Coordination and branch state:
+  `git status --short --branch`
+  -> clean on `codex/r-bridge-grouped-dispersion` before edits.
+  `gh pr list --state open --limit 20`
+  -> no open PRs.
+  `git log --all --oneline --since="6 hours ago"`
+  -> current Codex programme commits only, including `d46f0a5`, `2025bd7`,
+  `6701ae5`, `8f1ae83`, `2324646`, and `33287b1`.
+- Source inspection:
+  `sed -n '1,320p' R/julia-bridge.R`;
+  `sed -n '1,320p' tests/testthat/test-julia-bridge.R`;
+  `sed -n '1,55p' NEWS.md`;
+  `sed -n '486,506p' docs/design/35-validation-debt-register.md`;
+  `rg -n "ordinal|cutpoint|n_categories|ci_no_x|GLLVM_JULIA|gllvm_julia_capabilities|dispersion_group|lognormal" R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md docs/design/35-validation-debt-register.md man/gllvm_julia_capabilities.Rd _pkgdown.yml`
+  -> R capability rows still treated ordinal CI as available and lacked
+  per-trait cutpoint payload normalization.
+- Capability smoke after edits:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); print(caps[, c("family", "ci_no_x_wald", "notes")], row.names = FALSE)'`
+  -> gaussian/poisson/binomial CI rows `TRUE`; NB2/NB1/Beta/Gamma and
+  ordinal/ordinal-probit CI rows `FALSE`; ordinal notes mention per-trait
+  ordinal cutpoints.
+- Targeted tests:
+  `GLLVM_JL_PATH='' JULIA_HOME='' Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL, gllvmTMB.julia_home = NULL); devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 3 | PASS 59` in 1.3 s; all skips were live
+  Julia round trips.
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' JULIA_HOME='/Users/z3437171/.juliaup/bin' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 116` in 31.2 s.
+- Documentation:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> loaded `gllvmTMB`; no generated file changes remained.
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Capability assertion:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(identical(caps$family[caps$ci_no_x_wald], c("gaussian", "poisson", "binomial"))); stopifnot(!any(caps$ci_no_x_wald[caps$family %in% c("negbinomial", "nb1", "beta", "gamma", "ordinal", "ordinal_probit")])); print(caps[, c("family", "fit_no_x", "ci_no_x_wald", "status")], row.names = FALSE)'`
+  -> printed all admitted rows as `partial`, with CI `TRUE` only for
+  gaussian/poisson/binomial.
+- Whitespace and stale-claim scans:
+  `git diff --check`
+  -> clean.
+  `rg -n "ordinal per-trait cutpoint parity|ordinal.*ci_no_x.*TRUE|ci_no_x.*ordinal|complete bridge|CRAN-ready bridge|covered.*Julia|grouped-dispersion rows.*CI.*TRUE|per-trait ordinal.*CI.*TRUE" R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md docs/design/35-validation-debt-register.md man/gllvm_julia_capabilities.Rd _pkgdown.yml`
+  -> no hits.
+  `rg -n "full native parity|full parity" NEWS.md docs/design/35-validation-debt-register.md R/julia-bridge.R tests/testthat/test-julia-bridge.R man/gllvm_julia_capabilities.Rd _pkgdown.yml`
+  -> expected NEWS guard only: "not a full native parity claim".
+
+Files touched:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `NEWS.md`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-pertrait-ordinal.md`
+
+Deliberately not run:
+
+- Full `devtools::test()` and `devtools::check()` were not run for this narrow
+  bridge slice. The live and no-Julia `test-julia-bridge` paths, roxygen,
+  pkgdown, capability assertions, and stale-wording scans were run locally.
+- No GitHub issue was commented on or closed. `gllvmTMB#488` remains the
+  umbrella for bridge gate-vs-engine drift and needs live issue evidence before
+  any issue action.
+
 ## 2026-06-16 -- R bridge grouped-dispersion payload decoding
 
 Updated the lean `engine = "julia"` R bridge to match the paired

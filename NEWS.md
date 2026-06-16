@@ -14,13 +14,15 @@
   The current paired Julia checkout returns trait-labelled grouped-dispersion
   payloads for nbinom2, nbinom1, beta, and gamma; the R bridge preserves the
   engine-native nuisance values and adds explicit public-scale fields for
-  parity checks. PARTIAL (JUL-01): this is a narrow point-route bridge, not a
-  full native parity claim. The bridge still loudly rejects non-`rr` covariance
-  terms, more than one latent block, `cbind()` binomial, unbalanced trait x unit
-  tables, and non-Gaussian covariates through the main `gllvmTMB()` dispatch.
-  Confidence intervals for grouped-dispersion rows, response masks, rich
-  post-fit methods, ordinal per-trait cutpoint parity, mixed-family promotion,
-  and structured covariance terms remain planned follow-up rows. OUT: JuliaCall
+  parity checks. Ordinal and ordinal-probit payloads now carry trait-labelled
+  per-trait cutpoint matrices plus per-trait category counts. PARTIAL (JUL-01):
+  this is a narrow point-route bridge, not a full native parity claim. The
+  bridge still loudly rejects non-`rr` covariance terms, more than one latent
+  block, `cbind()` binomial, unbalanced trait x unit tables, and non-Gaussian
+  covariates through the main `gllvmTMB()` dispatch. Confidence intervals for
+  grouped-dispersion and per-trait ordinal rows, response masks, rich post-fit
+  methods, mixed-family promotion, native parity promotion, and structured
+  covariance terms remain planned follow-up rows. OUT: JuliaCall
   is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
   when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB
   engine and `R CMD check` are unaffected on machines without Julia.

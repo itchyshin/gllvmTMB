@@ -4,6 +4,62 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Jason MultiTraits visualization scout card
+
+Added a durable Jason scout card for `biodiversity-monitoring/MultiTraits` so
+the public-learning-path lane can borrow useful visualization grammar without
+turning a raw-trait package into a false GLLVM likelihood comparator.
+
+Evidence:
+
+- Pre-edit coordination:
+  `git status --short --branch`
+  -> clean `codex/r-bridge-grouped-dispersion` tracking origin.
+  `gh pr list --state open --limit 20 --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,updatedAt,url`
+  -> one open draft PR, `#489`, head `codex/r-bridge-grouped-dispersion`,
+  base `main`, merge-clean.
+  `git log --all --oneline --since="6 hours ago"`
+  -> current local Codex bridge stack only.
+- Shannon / overlap:
+  `gh pr view 489 --repo itchyshin/gllvmTMB --json files,headRefName,title,url`
+  -> PR #489 already owns the same bridge dev-log/check-log lane; this scout is
+  a small additive audit card on the same branch, not a parallel PR.
+  `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url`
+  -> PR #489 R-CMD-check and coevolution recovery runs succeeded; current main
+  power-pilot sweep is in progress.
+- MultiTraits source scout:
+  `gh repo view biodiversity-monitoring/MultiTraits --json nameWithOwner,description,defaultBranchRef,homepageUrl,stargazerCount,forkCount,updatedAt,url`
+  -> default branch `main`, updated `2026-04-11`, description
+  "MultiTraits: Analyzing and Visualizing Multidimensional Plant Traits".
+  `git -C /tmp/codex-multitraits-scout log -1 --oneline --decorate --date=short --format='%h %ad %s'`
+  -> `920adcd 2026-03-22 v1.0.0`.
+  `sed -n '1,80p' /tmp/codex-multitraits-scout/DESCRIPTION`
+  -> `Version: 1.0.0`, `Date: 2026-3-22`, `License: GPL-3`,
+  `NeedsCompilation: no`.
+  Web scout: CRAN package page and CRAN vignette confirm the public
+  CSR/LHS/NPT/PTN/PTMN teaching surface.
+- File/content scout:
+  `rg -n "^## |CSR|LHS|NPT|PTN|PTMN|phylo|network|multilayer" /tmp/codex-multitraits-scout/README.md /tmp/codex-multitraits-scout/NEWS.md /tmp/codex-multitraits-scout/vignettes/MultiTraits_tutorial.Rmd /tmp/codex-multitraits-scout/R/PTMN.R /tmp/codex-multitraits-scout/R/PTMN_plot.R /tmp/codex-multitraits-scout/R/PTN_corr.R /tmp/codex-multitraits-scout/R/NPT_continuous_plot.R`
+  -> expected module, tutorial, network, phylogeny, and plot-helper hits.
+- Added durable artifacts:
+  `docs/dev-log/audits/2026-06-16-jason-multitraits-visualization-scout.md`
+  and
+  `docs/dev-log/after-task/2026-06-16-jason-multitraits-visualization-scout.md`.
+- Post-edit boundary scan:
+  `rg -n "MultiTraits|no faithful|LHS|engine = \"julia\"|GPL-3|inst/COPYRIGHTS|not a numerical comparator|not a parity" docs/dev-log/audits/2026-06-16-jason-multitraits-visualization-scout.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/after-task/2026-06-16-jason-multitraits-visualization-scout.md`
+  -> expected hits confirming the visualization-only boundary, LHS ambiguity,
+  provenance guard, and Julia-engine wording rule.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- `devtools::document()`, `devtools::test()`, `devtools::check()`,
+  `pkgdown::check_pkgdown()`, and article renders. This is a dev-log audit card
+  and coordination-board pointer only; no R code, NAMESPACE, man page,
+  vignette, pkgdown navigation, TMB likelihood, or formula grammar changed.
+
 ## 2026-06-16 -- R bridge mixed-family postfit admission
 
 Admitted the complete balanced no-X/no-mask/no-CI mixed-family Julia bridge row

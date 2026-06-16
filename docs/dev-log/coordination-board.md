@@ -130,12 +130,14 @@ Active lane guidance:
   model concept is the same; keep package-specific names where DRM and GLLVM
   target different estimands.
 - MultiTraits visual-scout note for the later public-learning-path lane:
-  borrow the applied teaching pattern from `biodiversity-monitoring/MultiTraits`
-  (named ecological modules, fast example data, trait-strategy spaces, and
-  trait-network/multilayer-network displays), but compute gllvmTMB visuals from
-  model-estimated `Sigma`, fitted values, diagnostics, and uncertainty/status
-  rather than raw trait correlations. Check GPL-3/provenance before reusing data
-  or code; prefer an independent example implementation.
+  `docs/dev-log/audits/2026-06-16-jason-multitraits-visualization-scout.md`
+  is the durable Jason card. Borrow the applied teaching pattern from
+  `biodiversity-monitoring/MultiTraits` (named ecological modules, fast example
+  data, trait-strategy spaces, and trait-network/multilayer-network displays),
+  but compute gllvmTMB visuals from model-estimated `Sigma`, fitted values,
+  residuals, diagnostics, and uncertainty/status rather than raw trait
+  correlations. Check GPL-3/provenance before reusing data or code; prefer an
+  independent example implementation.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

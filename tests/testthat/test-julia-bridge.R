@@ -1286,6 +1286,63 @@ test_that("engine = 'julia' rejects malformed cbind binomial rows before JuliaCa
   )
 })
 
+# --- native-TMB vs engine = "julia" statistical parity ----------------------
+#
+# Shared assertion for the R-first "do the two engines maximise the SAME
+# marginal likelihood?" parity tests. Both engines fit the flagship no-X
+# reduced-rank GLLVM `y ~ 0 + trait + latent(0 + trait | unit, d = 1)`; the
+# native side uses TMB's Laplace marginal (closed-form for Gaussian), the Julia
+# side uses GLLVM.jl. The point estimates are non-identified up to a rotation of
+# the latent block, so loadings are compared ONLY through the rotation-invariant
+# implied between-trait covariance Sigma_B = Lambda Lambda^T, read with
+# getResidualCov(level = "unit") (which returns Lambda Lambda^T for BOTH native
+# and bridge fits). Asserts: (a) logLik parity; (b) per-trait means parity
+# (native fixed effects opt$par[names == "b_fix"] vs julia $alpha); (c) Sigma_B
+# parity. Skips if the native fit did not converge or its Hessian is not PD --
+# without a clean native optimum there is no reference to compare against.
+expect_native_julia_estimate_parity <- function(
+  fit_tmb,
+  fit_jl,
+  tol_loglik,
+  tol_est
+) {
+  testthat::skip_if(
+    !identical(fit_tmb$opt$convergence, 0L),
+    "native TMB fit did not converge -- no reference optimum for parity"
+  )
+  testthat::skip_if(
+    !isTRUE(fit_tmb$sd_report$pdHess),
+    "native TMB Hessian is not positive-definite -- optimum unreliable"
+  )
+
+  # (a) logLik parity -- the headline flat-at-optimum invariant.
+  ll_tmb <- as.numeric(logLik(fit_tmb))
+  ll_jl <- as.numeric(logLik(fit_jl))
+  expect_true(is.finite(ll_tmb) && is.finite(ll_jl))
+  expect_equal(ll_tmb, ll_jl, tolerance = tol_loglik)
+
+  # (b) per-trait means: native fixed effects live in opt$par named "b_fix",
+  # aligned with X_fix_names = traitt1/.../traittK, matching the element order
+  # of the Julia $alpha payload.
+  means_tmb <- unname(fit_tmb$opt$par[names(fit_tmb$opt$par) == "b_fix"])
+  means_jl <- as.numeric(fit_jl$alpha)
+  expect_equal(length(means_tmb), length(means_jl))
+  expect_equal(means_tmb, means_jl, tolerance = tol_est)
+
+  # (c) rotation-INVARIANT loading parity via Sigma_B = Lambda Lambda^T, which
+  # sidesteps loading sign/rotation non-identifiability at d = 1.
+  sigma_b_tmb <- getResidualCov(fit_tmb, level = "unit")
+  sigma_b_jl <- getResidualCov(fit_jl, level = "unit")
+  expect_equal(dim(sigma_b_tmb), dim(sigma_b_jl))
+  expect_equal(
+    unname(sigma_b_tmb),
+    unname(sigma_b_jl),
+    tolerance = tol_est
+  )
+
+  invisible(NULL)
+}
+
 # --- numerical round-trip (gated behind a live JuliaCall + GLLVM.jl) --------
 
 test_that("engine = 'julia' Gaussian dispatch matches the direct Julia bridge wrapper", {
@@ -1322,15 +1379,14 @@ test_that("native TMB and engine = 'julia' agree on the Gaussian no-X reduced-ra
   #
   # Both engines maximise the SAME marginal Gaussian likelihood; the only
   # difference is the optimiser (TMB's LBFGS vs GLLVM.jl's Optim LBFGS) and
-  # warm-start. Tolerances below reflect what was empirically observed across
-  # several seeds/sizes, with generous margin:
+  # warm-start. logLik / means / Sigma_B parity is delegated to the shared
+  # expect_native_julia_estimate_parity() helper; tolerances reflect what was
+  # empirically observed across several seeds/sizes, with generous margin:
   #   * logLik:  |diff| <= ~2e-9 observed  -> assert 1e-6 (a flat-at-optimum
   #     invariant, so this is the tightest and most meaningful check).
-  #   * means / loadings / sigma_eps: |diff| <= ~5e-6 observed -> assert 1e-4.
-  #     These are looser because the likelihood surface is shallow near the
-  #     optimum; the gap is optimiser convergence, NOT a parameterisation
-  #     difference. Loadings are identified up to sign at d = 1, so the Julia
-  #     loading vector is sign-aligned to the native one before comparison.
+  #   * means / Sigma_B: |diff| <= ~5e-6 observed -> assert 1e-4. These are
+  #     looser because the likelihood surface is shallow near the optimum; the
+  #     gap is optimiser convergence, NOT a parameterisation difference.
   skip_if_no_julia()
   skip_if_not_heavy()
 
@@ -1350,32 +1406,110 @@ test_that("native TMB and engine = 'julia' agree on the Gaussian no-X reduced-ra
   expect_s3_class(fit_jl, "gllvmTMB_julia")
   expect_equal(fit_jl$model, "gaussian_rr")
 
-  # (1) logLik parity -- the headline invariant.
-  ll_tmb <- as.numeric(logLik(fit_tmb))
-  ll_jl <- as.numeric(logLik(fit_jl))
-  expect_true(is.finite(ll_tmb) && is.finite(ll_jl))
-  expect_equal(ll_tmb, ll_jl, tolerance = 1e-6)
+  expect_native_julia_estimate_parity(
+    fit_tmb,
+    fit_jl,
+    tol_loglik = 1e-6,
+    tol_est = 1e-4
+  )
 
-  # (2) per-trait means. Native fixed effects live in opt$par named "b_fix",
-  # aligned with X_fix_names = traitt1/traitt2/traitt3, which matches the
-  # element order of the Julia $alpha payload.
-  means_tmb <- unname(fit_tmb$opt$par[names(fit_tmb$opt$par) == "b_fix"])
-  means_jl <- as.numeric(fit_jl$alpha)
-  expect_equal(length(means_tmb), length(means_jl))
-  expect_equal(means_tmb, means_jl, tolerance = 1e-4)
-
-  # (3) loadings (identified up to sign at d = 1).
-  load_tmb <- as.numeric(suppressMessages(getLoadings(fit_tmb)))
-  load_jl <- as.numeric(fit_jl$loadings)
-  expect_equal(length(load_tmb), length(load_jl))
-  sign_align <- sign(sum(load_tmb * load_jl))
-  if (sign_align == 0) sign_align <- 1
-  expect_equal(load_tmb, sign_align * load_jl, tolerance = 1e-4)
-
-  # (4) residual SD (sigma_eps): scalar shared Gaussian noise scale.
+  # Gaussian-only: residual SD (sigma_eps), the scalar shared noise scale.
   sigma_tmb <- as.numeric(fit_tmb$report$sigma_eps)
   sigma_jl <- as.numeric(fit_jl$sigma_eps)
   expect_equal(sigma_tmb, sigma_jl, tolerance = 1e-4)
+})
+
+test_that("native TMB and engine = 'julia' agree on the Poisson no-X reduced-rank fit", {
+  # R-FIRST statistical-parity evidence for the Poisson bridge row (recon rank
+  # 8): does native TMB (engine = "tmb") reproduce the SAME fit as engine =
+  # "julia" (GLLVM.jl) for the no-X reduced-rank Poisson-log GLLVM
+  # `count ~ 0 + trait + latent(0 + trait | unit, d = 1)`?
+  #
+  # Unlike Gaussian (closed-form marginal), Poisson uses a Laplace-APPROXIMATED
+  # marginal on BOTH sides; the test confirms the two engines integrate out the
+  # latent block to the same approximate marginal AND maximise it to the same
+  # point. Double-gated skip_if_no_julia() + skip_if_not_heavy(); small fixture
+  # (n_unit = 35, 3 traits, d = 1) keeps the native fit sub-second.
+  #
+  # Tolerances are set from a 2-seed empirical probe (seeds 21/23, n_unit
+  # 35/40), NOT assumed from the Gaussian case:
+  #   * logLik:  max |diff| ~5.6e-9 observed -> assert 1e-6 (flat-at-optimum
+  #     invariant; the two Laplace marginals agree to ~9 sig figs).
+  #   * means / Sigma_B: max |diff| ~1.3e-5 observed -> assert 1e-3. Looser than
+  #     the Gaussian 1e-4 because the Laplace-approximated marginal surface is
+  #     shallower near the optimum; the residual gap is optimiser convergence,
+  #     not a parameterisation difference (both report convergence + PD Hessian).
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  df <- make_long_cov(n_unit = 35L, seed = 21L)
+  f <- count ~ 0 + trait + latent(0 + trait | unit, d = 1)
+
+  fit_tmb <- gllvmTMB(f, data = df, trait = "trait", unit = "unit", family = poisson())
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = poisson(),
+    engine = "julia"
+  )
+
+  expect_s3_class(fit_tmb, "gllvmTMB_multi")
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "poisson_rr")
+
+  expect_native_julia_estimate_parity(
+    fit_tmb,
+    fit_jl,
+    tol_loglik = 1e-6,
+    tol_est = 1e-3
+  )
+})
+
+test_that("native TMB and engine = 'julia' agree on the Binomial no-X reduced-rank fit", {
+  # R-FIRST statistical-parity evidence for the Binomial bridge row (recon rank
+  # 9): does native TMB (engine = "tmb") reproduce the SAME fit as engine =
+  # "julia" (GLLVM.jl) for the no-X reduced-rank Bernoulli-logit GLLVM
+  # `bin ~ 0 + trait + latent(0 + trait | unit, d = 1)`, with Bernoulli (0/1)
+  # responses from make_long_cov()?
+  #
+  # As with Poisson, both sides use a Laplace-APPROXIMATED marginal (no closed
+  # form). Double-gated skip_if_no_julia() + skip_if_not_heavy(); small fixture
+  # (n_unit = 35, 3 traits, d = 1).
+  #
+  # Tolerances from a 2-seed empirical probe (seeds 31/33, n_unit 35/40):
+  #   * logLik:  max |diff| ~2.5e-9 observed -> assert 1e-6 (flat-at-optimum
+  #     invariant).
+  #   * means / Sigma_B: max |diff| ~1.2e-5 observed -> assert 1e-3 (same
+  #     shallow-surface rationale as Poisson; both engines report convergence +
+  #     PD Hessian).
+  skip_if_no_julia()
+  skip_if_not_heavy()
+
+  df <- make_long_cov(n_unit = 35L, seed = 31L)
+  f <- bin ~ 0 + trait + latent(0 + trait | unit, d = 1)
+
+  fit_tmb <- gllvmTMB(f, data = df, trait = "trait", unit = "unit", family = binomial())
+  fit_jl <- gllvmTMB(
+    f,
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = binomial(),
+    engine = "julia"
+  )
+
+  expect_s3_class(fit_tmb, "gllvmTMB_multi")
+  expect_s3_class(fit_jl, "gllvmTMB_julia")
+  expect_equal(fit_jl$model, "binomial_rr")
+
+  expect_native_julia_estimate_parity(
+    fit_tmb,
+    fit_jl,
+    tol_loglik = 1e-6,
+    tol_est = 1e-3
+  )
 })
 
 test_that("engine = 'julia' routes Gaussian REML explicitly", {

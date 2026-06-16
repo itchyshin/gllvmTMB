@@ -4,6 +4,70 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Engine Julia draft landing readout
+
+Prepared a docs-only landing-readiness note for the existing
+`origin/engine-julia` bridge branch. No R code, Julia code, generated
+documentation, examples, or pkgdown files were changed.
+
+Evidence:
+
+- Remote/state refresh:
+  `git fetch --prune origin`
+  -> completed.
+  `gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,mergeStateStatus,updatedAt,url --repo itchyshin/gllvmTMB`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago"`
+  -> Codex truth-map `33287b1`, Codex bridge-gate registry `2324646`,
+  and `engine-julia` handover commits `9aed585`, `99aadb1`, `7c5bcde`.
+- Branch comparison:
+  `git rev-parse --short=12 origin/main` -> `9fc9b7f094e6`.
+  `git rev-parse --short=12 origin/engine-julia` -> `9aed58566b09`.
+  `git rev-list --left-right --count origin/main...origin/engine-julia`
+  -> `18 74`.
+  `git diff --stat origin/main...origin/engine-julia`
+  -> 106 files, 14,367 insertions, 1,086 deletions.
+- Conflict scan:
+  `git merge-tree --write-tree origin/main origin/engine-julia`
+  -> conflicts in `NAMESPACE`, `NEWS.md`, `cran-comments.md`,
+  `docs/dev-log/check-log.md`, and `man/gllvm_julia_fit.Rd`.
+- CI scan:
+  `gh run list --repo itchyshin/gllvmTMB --branch engine-julia --limit 10 ...`
+  -> latest visible branch runs were successful pull-request
+  R-CMD-check runs on 2026-06-12 at older heads.
+  `gh run list --repo itchyshin/gllvmTMB --branch main --limit 10 ...`
+  -> scheduled `full-check` and `Power pilot sweep` in progress at readout
+  time, with earlier scheduled runs green.
+- Issue scan:
+  `gh issue view 483`, `485`, `486`, and `488` -> all open.
+- Paired Julia state:
+  `GLLVM.jl-integration` clean at `1dc9e98`; main `GLLVM.jl` checkout on
+  `codex/non-gaussian-fitter-gradients` at `1b42e35`, ahead of remote by
+  50 commits, and treated as salvage-only.
+- Whitespace and stale-claim scan:
+  `git diff --check`
+  -> clean.
+  `rg -n "full bridge parity|CRAN-ready bridge|complete bridge|done|finished|release-ready|AI-REML|non-Gaussian REML|gllvmTMBcontrol\\(\\)|per-trait NB|per-trait ordinal|full parity" docs/dev-log/2026-06-16-engine-julia-draft-landing.md docs/dev-log/shannon-audits/2026-06-16-engine-julia-draft-landing.md docs/dev-log/after-task/2026-06-16-engine-julia-draft-landing.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md`
+  -> expected guardrail hits in the landing note ("must not claim" list)
+  plus historical check-log / coordination-board uses.
+
+Files touched:
+
+- `docs/dev-log/2026-06-16-engine-julia-draft-landing.md`
+- `docs/dev-log/shannon-audits/2026-06-16-engine-julia-draft-landing.md`
+- `docs/dev-log/after-task/2026-06-16-engine-julia-draft-landing.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/coordination-board.md`
+
+Deliberately not run:
+
+- No `devtools::document()`, `devtools::test()`, `devtools::check()`, or
+  `pkgdown::check_pkgdown()` because this was a dev-log/coordination-only
+  readout.
+- No draft PR was opened and no branch was pushed; `origin/engine-julia`
+  is not conflict-free against current `origin/main`, and the bridge-vs-CRAN
+  timing decision remains open.
+
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 
 Scope:

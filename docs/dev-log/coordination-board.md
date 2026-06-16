@@ -19,6 +19,38 @@ questions" should be edited as state changes. The "Recently
 resolved" section is a 24-48 hour rolling window; older items
 move to per-PR after-task reports or the check-log.
 
+## 2026-06-16 Twin Finish Programme Reset
+
+Current Codex state:
+
+- `codex/twin-truth-and-issue-map` is committed locally at `33287b1`.
+- `codex/bridge-gate-registry` is committed locally at `2324646`.
+- `codex/engine-julia-draft-landing` is the current docs-only readout
+  branch, based on `origin/main` at `9fc9b7f`.
+- No GitHub PR is open for this programme yet.
+
+Current bridge landing state:
+
+- `origin/engine-julia` is at `9aed585` and differs from `origin/main`
+  by `18 74` commits.
+- Synthetic merge conflict scan reports conflicts in `NAMESPACE`,
+  `NEWS.md`, `cran-comments.md`, `docs/dev-log/check-log.md`, and
+  `man/gllvm_julia_fit.Rd`.
+- The paired bridge runtime remains `GLLVM.jl-integration` at `1dc9e98`;
+  the main `GLLVM.jl` checkout on `codex/non-gaussian-fitter-gradients`
+  is salvage-only for this lane.
+
+Active lane guidance:
+
+- Keep CRAN-main and bridge landing separate until Ada chooses release
+  timing.
+- Do not close `#483`, `#485`, `#486`, or `#488` from chat memory.
+- Before a draft bridge PR is opened, use the body and conflict plan in
+  `docs/dev-log/2026-06-16-engine-julia-draft-landing.md`.
+- Next safe implementation lane after this readout: Julia per-trait
+  dispersion/cutpoint spec, unless the maintainer explicitly asks to
+  publish or rebase the bridge PR first.
+
 Both agents commit edits to this file with a short message like:
 
 ```

@@ -25,8 +25,11 @@ Current Codex state:
 
 - `codex/twin-truth-and-issue-map` is committed locally at `33287b1`.
 - `codex/bridge-gate-registry` is committed locally at `2324646`.
-- `codex/engine-julia-draft-landing` is the current docs-only readout
-  branch, based on `origin/main` at `9fc9b7f`.
+- `codex/engine-julia-draft-landing` is committed locally through `6701ae5`
+  and carries the draft-landing readout plus the Xcoef structural-zero
+  addendum.
+- `codex/julia-per-trait-dispersion-spec` is the current docs-only spec
+  branch, based on the draft-landing readout branch.
 - No GitHub PR is open for this programme yet.
 
 Current bridge landing state:
@@ -53,9 +56,15 @@ Active lane guidance:
   matrix. Keep it separate from observation-by-response covariates
   (`z[i, j, k]`) and from response-mask / missing-data lanes. See
   `docs/dev-log/2026-06-16-xcoef-structural-zero-plan-addendum.md`.
-- Next safe implementation lane after this readout: Julia per-trait
-  dispersion/cutpoint spec, unless the maintainer explicitly asks to
-  publish or rebase the bridge PR first.
+- Current per-trait nuisance-parameter contract:
+  `docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md`.
+  It records that `GLLVM.jl-integration` already has grouped dispersion
+  fitters for NB2/NB1/Beta/Gamma, while `bridge_fit` still routes the
+  no-X bridge default through shared scalar nuisance parameters. Ordinal
+  still needs per-trait cutpoints before native parity.
+- Next safe implementation lane after this spec: `codex/julia-per-trait-dispersion`
+  for no-X complete NB2/NB1/Beta/Gamma grouped-bridge routing, unless the
+  maintainer explicitly asks to publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

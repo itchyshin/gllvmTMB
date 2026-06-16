@@ -108,6 +108,79 @@ Deliberately not run:
 - No GitHub issue was opened; the lane should be filed after Ada chooses
   whether it belongs in the R-first queue, Julia engine queue, or both.
 
+## 2026-06-16 -- Julia per-trait dispersion and cutpoint spec
+
+Wrote the docs-only implementation contract for aligning Julia bridge nuisance
+parameters with native `gllvmTMB`: per-trait NB2/NB1/Beta/Gamma dispersion via
+grouped fitters, and per-trait ordinal cutpoints rather than the current shared
+cutpoint vector. No R code, Julia code, generated documentation, examples,
+pkgdown files, or public capability claims were changed.
+
+Evidence:
+
+- Recovery and coordination:
+  `git status --short --branch`
+  -> clean on `codex/julia-per-trait-dispersion-spec`.
+  `git diff --stat` and `git diff`
+  -> empty before edits.
+  `tail -n 100 docs/dev-log/check-log.md` and
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-06-10-102134-codex-lambda-boundary-claude-note.md`
+  -> read before editing after context compaction.
+  `gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt,url --repo itchyshin/gllvmTMB`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task docs/dev-log/shannon-audits`
+  -> only current Codex programme / handover commits.
+- gllvmTMB source inspection:
+  `sed -n '1,240p' R/julia-bridge.R`
+  -> current main-based bridge is the lean Julia bridge surface.
+  `rg -n "per-trait|dispersion|cutpoint|ordinal|nbinom|Gamma|Beta|nbinom1|nbinom2" docs/design/03-likelihoods.md R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  and `sed -n '1,160p' docs/design/03-likelihoods.md`;
+  `sed -n '360,490p' docs/design/03-likelihoods.md`
+  -> native design docs record variability-oriented public scales and ordinal
+  cutpoint semantics.
+- GLLVM.jl-integration source inspection:
+  `sed -n '1,260p' src/bridge.jl`;
+  `sed -n '480,780p' src/bridge.jl`;
+  `rg -n "fit_nb_gllvm\\(|fit_nb_gllvm_grouped|fit_nb1_gllvm\\(|fit_beta_gllvm\\(|fit_gamma_gllvm\\(|dispersion = fill|df = p \\+ _bridge_rr_df|cutpoints|ordinal|n_categories" src/bridge.jl`
+  -> `bridge_fit` still routes NB2/NB1/Beta/Gamma through shared scalar
+  fitters, fills `dispersion` from one scalar, and reports `df` with `+1`;
+  ordinal returns one `cutpoints` vector and one `n_categories` integer.
+  `sed -n '1,320p' src/families/grouped_dispersion.jl`;
+  `sed -n '320,760p' src/families/grouped_dispersion.jl`;
+  `rg -n "grouped|dispersion|cutpoint|ordinal|df|nparams|shared" test/test_grouped_dispersion*.jl test/test_ordinal*.jl`
+  -> grouped NB2/NB1/Beta/Gamma fitters and tests already exist, including
+  exact-reduction checks from constant per-trait nuisance vectors to the shared
+  scalar likelihood.
+  `sed -n '1,260p' src/families/ordinal.jl`
+  -> ordinal still uses shared cutpoints.
+  `sed -n '1,240p' docs/src/gllvmtmb-parity.md`;
+  `sed -n '1,260p' docs/src/response-families.md`
+  -> Julia docs already distinguish engine-side grouped dispersion from the
+  narrower current R bridge admission surface.
+- Whitespace and stale-claim scan:
+  `git diff --check`
+  -> clean.
+  `rg -n "full bridge parity|CRAN-ready bridge|complete bridge|done|finished|release-ready|AI-REML|non-Gaussian REML|implemented|covered|per-trait dispersion parity|per-trait ordinal cutpoint parity" docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md docs/dev-log/after-task/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md docs/dev-log/shannon-audits/2026-06-16-julia-per-trait-dispersion-spec.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md`
+  -> expected hits are negative claim-boundary language, future implementation
+  requirements, or historical check-log entries.
+
+Files touched:
+
+- `docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md`
+- `docs/dev-log/after-task/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md`
+- `docs/dev-log/shannon-audits/2026-06-16-julia-per-trait-dispersion-spec.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/coordination-board.md`
+
+Deliberately not run:
+
+- No `devtools::document()`, `devtools::test()`, `devtools::check()`,
+  `pkgdown::check_pkgdown()`, or `Pkg.test()` because this was a dev-log
+  specification slice with no code, generated docs, examples, or pkgdown
+  changes.
+- No issue was updated or closed from this spec. Issue action requires live
+  issue reads and implementation evidence.
+
 ## 2026-05-10 -- drmTMB-parity match exposes unstated tidyselect
 
 Scope:

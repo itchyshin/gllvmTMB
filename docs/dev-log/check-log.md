@@ -4,6 +4,59 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Richer extractor parity spec
+
+Added a developer-facing spec for the next Julia bridge extractor lane. The
+spec splits "richer extractor parity" into raw payload, native point parity,
+`link_residual = "auto"`, rotation, structured-tier, interval-bearing, and
+mixed-family rows before any broader implementation claim.
+
+Evidence:
+
+- Current branch / widget:
+  `git status --short --branch`
+  -> clean `codex/r-bridge-grouped-dispersion` tracking origin before edits.
+  `git log --oneline -5`
+  -> latest pushed commit was `6120bdb docs: refresh live twin gap map`.
+  `curl -I --max-time 3 http://127.0.0.1:8770/`
+  -> HTTP 200; the local widget server was reachable.
+- PR state:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,isDraft,mergeStateStatus,statusCheckRollup,updatedAt`
+  -> one open draft PR, `#489`, head `codex/r-bridge-grouped-dispersion`,
+  merge state `CLEAN`; both R-CMD-check and coevolution recovery checks passed
+  on `6120bdb`.
+- Extractor scout:
+  `rg -n "extract_Sigma|extract_correlations|extract_ordination|getLoadings|getLV|getResidualCov|getResidualCor|julia|bridge|gllvmTMB_julia" R tests/testthat docs/design/06-extractors-contract.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md`
+  -> current R extractor code, Julia bridge tests, register rows, and status
+  board inspected.
+  `rg -n "extract_|getLV|getLoadings|getResidual|ordination|Sigma|correlation" ../GLLVM.jl-integration/src ../GLLVM.jl-integration/test`
+  -> paired Julia post-fit and bridge-payload tests inspected.
+  `rg -n "extractor parity|richer extractor|structured-tier extractors|link-residual augmentation|rotations|getLoadings|getLV" docs/dev-log docs/design NEWS.md`
+  -> current gates, historical after-task reports, and public boundary wording
+  inspected.
+  `sed -n '1,220p' docs/dev-log/after-task/2026-06-16-r-bridge-extractor-admission.md`
+  -> prior raw unit-tier admission scope inspected.
+  `sed -n '480,510p' docs/design/35-validation-debt-register.md`
+  -> `JUL-01A` and `JUL-01` confirmed `partial`; no validation status changed.
+- Added durable artifacts:
+  `docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md`
+  and
+  `docs/dev-log/after-task/2026-06-16-richer-extractor-parity-spec.md`.
+- Post-edit boundary scan:
+  `rg -n "richer extractor parity|link_residual|rotation|structured tiers|unit_obs|interval-bearing|native parity|engine = \"julia\"|MultiTraits|not a likelihood comparator|complete parity|full bridge|CRAN ready|speed claim" docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md docs/dev-log/after-task/2026-06-16-richer-extractor-parity-spec.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md`
+  -> expected spec and boundary hits only.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- `devtools::document()`, `devtools::test()`, `devtools::check()`,
+  `pkgdown::check_pkgdown()`, article renders, and `Pkg.test()`. This is a
+  developer-facing spec/audit and coordination-board pointer only; no R code,
+  NAMESPACE, generated Rd, vignette, pkgdown navigation, TMB likelihood,
+  formula grammar, Julia code, or validation-register status changed.
+
 ## 2026-06-16 -- Live gap map refresh after MultiTraits scout
 
 Refreshed the live programme map after commit `49b5474` so the widget,

@@ -34,13 +34,13 @@ Current Codex state:
   `coef()` / `summary()`, direct-wrapper CI/status, grouped post-fit, and
   ordinal probability/class prediction bridge evidence, plus no-X
   grouped-dispersion CI admission, fixed-X CI admission, mixed-family post-fit
-  admission, and the MultiTraits visualization scout through the current Codex
-  slice.
+  admission, the MultiTraits visualization scout, the live gap-map refresh, and
+  the richer extractor parity spec through the current Codex slice.
 - GitHub draft PR #489 is open for this programme:
   <https://github.com/itchyshin/gllvmTMB/pull/489>. After the docs-only
-  MultiTraits scout push at `49b5474`, coevolution recovery and R-CMD-check
-  both passed. The follow-up live gap-map refresh may start a fresh check cycle
-  when pushed.
+  live gap-map refresh push at `6120bdb`, coevolution recovery and R-CMD-check
+  both passed. The follow-up richer-extractor spec may start a fresh check
+  cycle when pushed.
 
 Current bridge landing state:
 
@@ -148,6 +148,12 @@ Active lane guidance:
   `docs/dev-log/audits/2026-06-16-live-gap-map-refresh.md` records the current
   PR/CI/issue state after `49b5474`. It records that the docs-only
   MultiTraits run passed before the gap-map follow-up was pushed.
+- Richer extractor parity spec:
+  `docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md` splits the
+  next extractor lane into raw payload, native point parity,
+  `link_residual = "auto"`, rotation, structured-tier, interval-bearing, and
+  mixed-family rows. No code or public capability claim is promoted by that
+  spec; `JUL-01A` and `JUL-01` remain partial.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

@@ -28,9 +28,10 @@
   binomial rows, and ordinary `gllvmTMB(..., engine = "julia")` fits retain
   their bridge input so `confint(fit, method = "wald" / "profile" /
   "bootstrap")` can request the same admitted no-X CI payloads post-fit. The
-  admitted post-fit surface is `coef()`, `summary()`, and scoped no-X
-  `confint()` only; there is still no fit-time Julia CI control surface on
-  `gllvmTMB()`. Prediction, residuals, simulation, extractor parity,
+  admitted post-fit surface is `coef()`, `summary()`, scoped no-X `confint()`,
+  and in-sample `predict()` / `fitted()` only; there is still no fit-time Julia
+  CI control surface on `gllvmTMB()`. `newdata` prediction, response-scale
+  ordinal probabilities/classes, residuals, simulation, extractor parity,
   confidence intervals for grouped-dispersion or per-trait ordinal rows, masked
   CIs, mixed-family CIs, and CIs for X rows remain planned follow-up rows, as do
   mixed-family promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall

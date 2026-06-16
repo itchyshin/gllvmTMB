@@ -4,6 +4,66 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge in-sample `predict()` / `fitted()` admission
+
+Admitted in-sample prediction methods for `gllvmTMB_julia` objects returned by
+`gllvm_julia_fit()` and ordinary `gllvmTMB(..., engine = "julia")` fits.
+`predict(type = "link" / "response")` now returns an in-sample data frame with
+`trait`, `unit`, and `est`; `fitted(type = "response" / "link")` returns the
+trait x unit fitted matrix. This is a retained-payload reconstruction row only:
+`newdata` prediction, response-scale ordinal probabilities/classes, residuals,
+simulation, and extractor parity remain gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt,isDraft --limit 20`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- NEWS.md NAMESPACE R/julia-bridge.R R/gllvmTMB.R R/control.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task man/gllvmTMB.Rd man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd`
+  -> current local Codex programme commits only.
+- Payload scout:
+  live `gllvm_julia_fit()` probes against `../GLLVM.jl-integration` confirmed the
+  bridge returns `scores`, `alpha`, `loadings`, `mean_coef` for Gaussian-X, and
+  `beta_cov`/`gamma` for non-Gaussian-X. The paired Julia `src/bridge.jl`
+  contract records `eta = beta + X*gamma + Lambda*z` for non-Gaussian X and
+  full-mean `X * mean_coef + Lambda*z` for Gaussian X.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `NAMESPACE` and `man/gllvmTMB_julia-methods.Rd`.
+- Rendered-Rd spot-check:
+  `tail -5 man/gllvmTMB_julia-methods.Rd; grep -c '^\\keyword' man/gllvmTMB_julia-methods.Rd || true`
+  -> tail ends in the expected methods description; keyword count `0`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `11` expected Julia-runtime skips and `0` failures.
+- Live R bridge test:
+  `Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = "/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration"); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. The live path now checks
+  main-dispatch `predict(type = "link")` and `fitted()` for Gaussian, Poisson,
+  and Bernoulli binomial Julia bridge fits.
+- Julia capability ledger anchor:
+  `julia --project=. test/test_bridge_capabilities.jl`
+  in `../GLLVM.jl-integration` -> `34/34 pass`.
+- R capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(identical(caps$family[caps$postfit_predict], caps$family)); stopifnot(all(!caps$postfit_residuals)); stopifnot(any(grepl("in-sample predict()/fitted()", caps$notes, fixed = TRUE))); stopifnot(any(grepl("ordinal response probabilities/classes remain gated", caps$notes, fixed = TRUE))); print(caps[, c("family", "postfit_predict", "postfit_residuals", "postfit_simulate", "status")], row.names = FALSE)'`
+  -> `postfit_predict` is true for every current R bridge row; residuals and
+  simulation remain false for every current row.
+- Registration scan:
+  `rg -n "S3method\\((predict|fitted),gllvmTMB_julia\\)|predict\\.gllvmTMB_julia|fitted\\.gllvmTMB_julia|postfit_predict|predict\\(\\)/fitted|ordinal response probabilities/classes" NAMESPACE R/julia-bridge.R man/gllvmTMB_julia-methods.Rd tests/testthat/test-julia-bridge.R`
+  -> S3 methods are registered, documented, and covered by tests.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice touches the Julia bridge
+  S3 surface, one bridge test file, generated method docs, ledgers, and the
+  local status widget; it does not touch formula parsing or public articles.
+
 ## 2026-06-16 -- R bridge main-dispatch `confint()` admission
 
 Admitted post-fit `confint()` recomputation for ordinary

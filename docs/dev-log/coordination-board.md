@@ -91,7 +91,10 @@ Active lane guidance:
   recompute the same admitted no-X CI payloads post-fit. There is still no
   fit-time Julia CI control surface on `gllvmTMB()`; grouped-dispersion CIs,
   per-trait ordinal CIs, masked CIs, mixed-family CIs, and X-row CIs remain
-  gated. Prediction, residuals, simulation, and extractor parity remain gated.
+  gated. In-sample `predict()` / `fitted()` are now routed from retained bridge
+  payloads for Julia bridge objects; `newdata` prediction, response-scale
+  ordinal probabilities/classes, residuals, simulation, and extractor parity
+  remain gated.
   The R bridge also routes complete-response fixed-effect-X point fits for
   Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`

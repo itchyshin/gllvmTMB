@@ -5,6 +5,8 @@
 \alias{logLik.gllvmTMB_julia}
 \alias{print.gllvmTMB_julia}
 \alias{coef.gllvmTMB_julia}
+\alias{predict.gllvmTMB_julia}
+\alias{fitted.gllvmTMB_julia}
 \alias{confint.gllvmTMB_julia}
 \alias{summary.gllvmTMB_julia}
 \alias{print.summary.gllvmTMB_julia}
@@ -15,6 +17,10 @@
 \method{print}{gllvmTMB_julia}(x, ...)
 
 \method{coef}{gllvmTMB_julia}(object, ...)
+
+\method{predict}{gllvmTMB_julia}(object, newdata = NULL, type = c("link", "response"), ...)
+
+\method{fitted}{gllvmTMB_julia}(object, type = c("response", "link"), ...)
 
 \method{confint}{gllvmTMB_julia}(
   object,
@@ -35,6 +41,14 @@
 \code{\link[=gllvm_julia_fit]{gllvm_julia_fit()}}.}
 
 \item{...}{Unused.}
+
+\item{newdata}{Unsupported for Julia bridge fits; current prediction methods
+return in-sample fitted values from the retained bridge payload.}
+
+\item{type}{Prediction scale. \code{"link"} returns the fitted linear predictor.
+\code{"response"} applies the inverse link for supported scalar-response
+families. Per-trait ordinal response probabilities/classes remain gated, so
+ordinal bridge fits currently require \code{type = "link"}.}
 
 \item{parm}{Optional integer or character vector of CI terms for \code{confint()}.}
 
@@ -58,8 +72,11 @@ omitted, \code{confint()} reads a stored payload when present and otherwise uses
 \value{
 \code{logLik()} returns a \code{"logLik"} object. \code{coef()} returns a named list
 of available point-estimate components. \code{confint()} returns a conventional
-confidence-interval matrix for stored Julia CI payloads. \code{summary()} returns
-a list with header, coefficients, covariance, and status fields.
+confidence-interval matrix for stored or recomputed Julia CI payloads.
+\code{predict()} returns an in-sample data frame with \code{trait}, \code{unit}, and \code{est}
+columns. \code{fitted()} returns the in-sample fitted matrix with traits in rows
+and units in columns. \code{summary()} returns a list with header, coefficients,
+covariance, and status fields.
 }
 \description{
 Small S3 surface for fits returned by \code{gllvmTMB(..., engine = "julia")} or

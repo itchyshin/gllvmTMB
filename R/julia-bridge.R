@@ -168,7 +168,7 @@ gllvm_julia_capabilities <- function() {
     postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
     postfit_summary = TRUE,
-    postfit_predict = FALSE,
+    postfit_predict = TRUE,
     postfit_residuals = FALSE,
     postfit_simulate = FALSE,
     postfit_ordination = FALSE,
@@ -188,15 +188,15 @@ gllvm_julia_capabilities <- function() {
     postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
     postfit_summary = TRUE,
-    postfit_predict = FALSE,
+    postfit_predict = TRUE,
     postfit_residuals = FALSE,
     postfit_simulate = FALSE,
     postfit_ordination = FALSE,
     status = "partial",
     notes = paste(
       "complete balanced no-X/no-mask/no-CI mixed-family point route;",
-      "coef() and summary() are routed; predict/residuals/simulate/extractor",
-      "parity remain gated;",
+      "coef(), summary(), and in-sample predict()/fitted() are routed;",
+      "residuals/simulate/extractor parity remain gated;",
       "component families:",
       paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", ")
     ),
@@ -230,10 +230,24 @@ gllvm_julia_capabilities <- function() {
   } else {
     ""
   }
-  postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
-    "coef(), summary(), and no-X confint() are routed; predict/residuals/simulate/extractor parity remain gated; "
+  predict_clause <- if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
+    "in-sample link-scale predict()/fitted(type = \"link\") are routed; ordinal response probabilities/classes remain gated; "
   } else {
-    "coef() and summary() are routed; confint() remains gated until CI endpoints are admitted; predict/residuals/simulate/extractor parity remain gated; "
+    "in-sample predict()/fitted() are routed; "
+  }
+  postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
+    paste0(
+      "coef(), summary(), and no-X confint() are routed; ",
+      predict_clause,
+      "residuals/simulate/extractor parity remain gated; "
+    )
+  } else {
+    paste0(
+      "coef() and summary() are routed; ",
+      predict_clause,
+      "confint() remains gated until CI endpoints are admitted; ",
+      "residuals/simulate/extractor parity remain gated; "
+    )
   }
   if (family %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES) {
     return(paste0(
@@ -822,6 +836,232 @@ gllvm_julia_capabilities <- function() {
   do.call(gllvm_julia_fit, args)
 }
 
+.gllvm_julia_training_y <- function(object) {
+  y <- object$bridge_input$y %||% NULL
+  if (!is.null(y)) {
+    y <- as.matrix(y)
+    storage.mode(y) <- "numeric"
+    return(y)
+  }
+  p <- .gllvm_julia_n_traits(object)
+  n <- if (!is.null(object$n_units)) {
+    as.integer(object$n_units)[1L]
+  } else if (!is.null(object$scores)) {
+    nrow(as.matrix(object$scores))
+  } else {
+    0L
+  }
+  matrix(
+    NA_real_,
+    nrow = p,
+    ncol = n,
+    dimnames = list(
+      .gllvm_julia_trait_names(object, p),
+      object$unit_names %||% paste0("unit", seq_len(n))
+    )
+  )
+}
+
+.gllvm_julia_alpha <- function(object, p) {
+  alpha <- object$alpha %||% rep(0, p)
+  alpha <- as.numeric(alpha)
+  if (length(alpha) == 1L && p > 1L) {
+    alpha <- rep(alpha, p)
+  }
+  if (length(alpha) != p) {
+    stop(
+      "engine = 'julia': alpha payload length does not match the trait count.",
+      call. = FALSE
+    )
+  }
+  fam <- object$families %||% object$family %||% character()
+  if (all(fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES)) {
+    alpha[!is.finite(alpha)] <- 0
+  }
+  if (any(!is.finite(alpha))) {
+    stop(
+      "engine = 'julia': alpha payload must be finite for prediction.",
+      call. = FALSE
+    )
+  }
+  alpha
+}
+
+.gllvm_julia_latent_eta <- function(object, p, n) {
+  loadings <- object$loadings %||% matrix(numeric(), nrow = p, ncol = 0L)
+  scores <- object$scores %||% matrix(numeric(), nrow = n, ncol = 0L)
+  loadings <- as.matrix(loadings)
+  scores <- as.matrix(scores)
+  storage.mode(loadings) <- "numeric"
+  storage.mode(scores) <- "numeric"
+  if (nrow(loadings) != p) {
+    stop(
+      "engine = 'julia': loading payload row count does not match traits.",
+      call. = FALSE
+    )
+  }
+  if (nrow(scores) != n) {
+    stop(
+      "engine = 'julia': score payload row count does not match units.",
+      call. = FALSE
+    )
+  }
+  if (ncol(loadings) != ncol(scores)) {
+    stop(
+      "engine = 'julia': loading and score payload dimensions do not match.",
+      call. = FALSE
+    )
+  }
+  if (ncol(loadings) == 0L) {
+    return(matrix(0, nrow = p, ncol = n))
+  }
+  loadings %*% t(scores)
+}
+
+.gllvm_julia_x_eta <- function(object, p, n) {
+  X <- object$bridge_input$X %||% NULL
+  if (is.null(X)) {
+    return(NULL)
+  }
+  X <- as.array(X)
+  if (length(dim(X)) != 3L || dim(X)[1L] != p || dim(X)[2L] != n) {
+    stop(
+      "engine = 'julia': retained X payload dimensions do not match the fit.",
+      call. = FALSE
+    )
+  }
+  q <- dim(X)[3L]
+  if (!is.null(object$mean_coef)) {
+    beta <- as.numeric(object$mean_coef)
+    label <- "mean_coef"
+  } else if (!is.null(object$gamma)) {
+    beta <- as.numeric(object$gamma)
+    label <- "gamma"
+  } else {
+    return(NULL)
+  }
+  if (length(beta) != q) {
+    stop(
+      "engine = 'julia': ",
+      label,
+      " payload length does not match retained X.",
+      call. = FALSE
+    )
+  }
+  eta <- matrix(0, nrow = p, ncol = n)
+  for (k in seq_len(q)) {
+    eta <- eta + X[,, k, drop = TRUE] * beta[[k]]
+  }
+  eta
+}
+
+.gllvm_julia_link_predictor <- function(object) {
+  y <- .gllvm_julia_training_y(object)
+  p <- nrow(y)
+  n <- ncol(y)
+  traits <- .gllvm_julia_trait_names(object, p)
+  units <- object$unit_names %||% colnames(y) %||% paste0("unit", seq_len(n))
+  eta <- .gllvm_julia_latent_eta(object, p, n)
+  x_eta <- .gllvm_julia_x_eta(object, p, n)
+  if (!is.null(x_eta) && !is.null(object$mean_coef)) {
+    eta <- eta + x_eta
+  } else {
+    alpha <- if (!is.null(object$beta_cov)) {
+      as.numeric(object$beta_cov)
+    } else {
+      .gllvm_julia_alpha(object, p)
+    }
+    if (length(alpha) == 1L && p > 1L) {
+      alpha <- rep(alpha, p)
+    }
+    if (length(alpha) != p || any(!is.finite(alpha))) {
+      stop(
+        "engine = 'julia': intercept payload is invalid for prediction.",
+        call. = FALSE
+      )
+    }
+    eta <- eta + matrix(alpha, nrow = p, ncol = n)
+    if (!is.null(x_eta)) {
+      eta <- eta + x_eta
+    }
+  }
+  dimnames(eta) <- list(traits, units)
+  eta
+}
+
+.gllvm_julia_response_predictor <- function(object, eta) {
+  families <- object$families %||% object$family %||% character()
+  if (length(families) == 1L && nrow(eta) > 1L) {
+    families <- rep(families, nrow(eta))
+  }
+  links <- object$link %||% rep(NA_character_, nrow(eta))
+  if (length(links) == 1L && nrow(eta) > 1L) {
+    links <- rep(links, nrow(eta))
+  }
+  if (length(families) != nrow(eta) || length(links) != nrow(eta)) {
+    stop(
+      "engine = 'julia': family/link payload length does not match traits.",
+      call. = FALSE
+    )
+  }
+  missing_link <- is.na(links) | !nzchar(links)
+  if (any(missing_link)) {
+    links[missing_link] <- vapply(
+      families[missing_link],
+      .gllvm_julia_default_link,
+      character(1)
+    )
+  }
+  out <- eta
+  for (i in seq_len(nrow(eta))) {
+    fam <- families[[i]]
+    link <- links[[i]]
+    if (fam %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
+      stop(
+        "engine = 'julia': response-scale ordinal predictions are not routed ",
+        "yet; use `type = \"link\"`.",
+        call. = FALSE
+      )
+    }
+    out[i, ] <- switch(
+      link,
+      IdentityLink = eta[i, ],
+      LogLink = exp(eta[i, ]),
+      LogitLink = stats::plogis(eta[i, ]),
+      ProbitLink = stats::pnorm(eta[i, ]),
+      stop(
+        "engine = 'julia': unsupported prediction link '",
+        link,
+        "'.",
+        call. = FALSE
+      )
+    )
+  }
+  out
+}
+
+.gllvm_julia_default_link <- function(family) {
+  switch(
+    family,
+    gaussian = "IdentityLink",
+    poisson = "LogLink",
+    binomial = "LogitLink",
+    negbinomial = "LogLink",
+    nb1 = "LogLink",
+    beta = "LogitLink",
+    gamma = "LogLink",
+    ordinal = "ProbitLink",
+    ordinal_probit = "ProbitLink",
+    NA_character_
+  )
+}
+
+.gllvm_julia_prediction_frame <- function(mat) {
+  out <- as.data.frame(as.table(mat), stringsAsFactors = FALSE)
+  names(out) <- c("trait", "unit", "est")
+  out
+}
+
 .gllvm_julia_print_matrix <- function(x, digits = 3) {
   if (is.null(x) || length(x) == 0L) {
     return(invisible(NULL))
@@ -1032,6 +1272,12 @@ gllvm_julia_fit <- function(
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].
 #' @param parm Optional integer or character vector of CI terms for `confint()`.
+#' @param newdata Unsupported for Julia bridge fits; current prediction methods
+#'   return in-sample fitted values from the retained bridge payload.
+#' @param type Prediction scale. `"link"` returns the fitted linear predictor.
+#'   `"response"` applies the inverse link for supported scalar-response
+#'   families. Per-trait ordinal response probabilities/classes remain gated, so
+#'   ordinal bridge fits currently require `type = "link"`.
 #' @param level Confidence level requested by `confint()`. Stored Julia bridge
 #'   payloads can only be read at their stored level; post-fit requests recompute
 #'   the admitted Julia CI payload at the requested level.
@@ -1047,8 +1293,11 @@ gllvm_julia_fit <- function(
 #' @param ... Unused.
 #' @return `logLik()` returns a `"logLik"` object. `coef()` returns a named list
 #'   of available point-estimate components. `confint()` returns a conventional
-#'   confidence-interval matrix for stored Julia CI payloads. `summary()` returns
-#'   a list with header, coefficients, covariance, and status fields.
+#'   confidence-interval matrix for stored or recomputed Julia CI payloads.
+#'   `predict()` returns an in-sample data frame with `trait`, `unit`, and `est`
+#'   columns. `fitted()` returns the in-sample fitted matrix with traits in rows
+#'   and units in columns. `summary()` returns a list with header, coefficients,
+#'   covariance, and status fields.
 #' @name gllvmTMB_julia-methods
 #' @export
 logLik.gllvmTMB_julia <- function(object, ...) {
@@ -1084,6 +1333,46 @@ print.gllvmTMB_julia <- function(x, ...) {
 #' @export
 coef.gllvmTMB_julia <- function(object, ...) {
   .gllvm_julia_coef_payload(object)
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+predict.gllvmTMB_julia <- function(
+  object,
+  newdata = NULL,
+  type = c("link", "response"),
+  ...
+) {
+  type <- match.arg(type)
+  if (!is.null(newdata)) {
+    stop(
+      "engine = 'julia': `newdata` prediction is not routed yet; current ",
+      "`predict.gllvmTMB_julia()` returns in-sample fitted values only.",
+      call. = FALSE
+    )
+  }
+  eta <- .gllvm_julia_link_predictor(object)
+  pred <- if (type == "link") {
+    eta
+  } else {
+    .gllvm_julia_response_predictor(object, eta)
+  }
+  .gllvm_julia_prediction_frame(pred)
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+fitted.gllvmTMB_julia <- function(
+  object,
+  type = c("response", "link"),
+  ...
+) {
+  type <- match.arg(type)
+  eta <- .gllvm_julia_link_predictor(object)
+  if (type == "link") {
+    return(eta)
+  }
+  .gllvm_julia_response_predictor(object, eta)
 }
 
 #' @rdname gllvmTMB_julia-methods

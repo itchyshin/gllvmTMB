@@ -389,9 +389,14 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   expect_true(any(grepl("fixed-effect X point fits are routed", caps$notes)))
   expect_equal(caps$family[caps$postfit_coef], caps$family)
   expect_equal(caps$family[caps$postfit_summary], caps$family)
-  expect_true(all(!caps$postfit_predict))
+  expect_equal(caps$family[caps$postfit_predict], caps$family)
   expect_true(all(!caps$postfit_residuals))
   expect_true(all(!caps$postfit_simulate))
+  expect_true(any(grepl("in-sample predict\\(\\)/fitted\\(\\)", caps$notes)))
+  expect_true(any(grepl(
+    "ordinal response probabilities/classes remain gated",
+    caps$notes
+  )))
   expect_true(any(grepl("no-X confint\\(\\) are routed", caps$notes)))
   expect_true(any(grepl(
     "direct gllvm_julia_fit\\(\\) no-X Wald/profile/bootstrap CI payloads",
@@ -501,6 +506,110 @@ test_that("Julia bridge CI payloads are normalised and read by confint", {
   expect_error(confint(no_ci), "No Julia bridge CI payload")
   expect_error(confint(no_ci, method = "stored"), "No Julia bridge CI payload")
   expect_error(confint(no_ci, method = "wald"), "does not retain")
+})
+
+test_that("Julia bridge predict and fitted reconstruct in-sample means", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  fit$scores <- matrix(
+    seq(-0.35, 0.35, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+  fit$bridge_input <- list(
+    y = matrix(
+      0,
+      nrow = fit$n_traits,
+      ncol = fit$n_units,
+      dimnames = list(fit$trait_names, fit$unit_names)
+    ),
+    family = "poisson",
+    num.lv = 1L,
+    N = NULL,
+    X = NULL,
+    mask = NULL,
+    units_are_rows = FALSE,
+    setup_args = list()
+  )
+
+  eta <- matrix(fit$alpha, nrow = fit$n_traits, ncol = fit$n_units) +
+    fit$loadings %*% t(fit$scores)
+  dimnames(eta) <- list(fit$trait_names, fit$unit_names)
+  expect_equal(fitted(fit, type = "link"), eta)
+  expect_equal(fitted(fit), exp(eta))
+
+  pred <- predict(fit, type = "response")
+  expect_equal(nrow(pred), fit$n_traits * fit$n_units)
+  expect_named(pred, c("trait", "unit", "est"))
+  expect_equal(pred$est, as.vector(exp(eta)))
+  expect_error(predict(fit, newdata = data.frame(x = 1)), "newdata")
+})
+
+test_that("Julia bridge predict includes retained fixed-effect X payloads", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  fit$beta_cov <- c(sp1 = 0.1, sp2 = -0.2)
+  fit$gamma <- c(x = 0.4)
+  fit$scores <- matrix(
+    seq(-0.2, 0.2, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+  X <- array(
+    seq(-1, 1, length.out = fit$n_traits * fit$n_units),
+    dim = c(fit$n_traits, fit$n_units, 1L),
+    dimnames = list(fit$trait_names, fit$unit_names, "x")
+  )
+  fit$bridge_input <- list(
+    y = matrix(
+      0,
+      nrow = fit$n_traits,
+      ncol = fit$n_units,
+      dimnames = list(fit$trait_names, fit$unit_names)
+    ),
+    family = "poisson",
+    num.lv = 1L,
+    N = NULL,
+    X = X,
+    mask = NULL,
+    units_are_rows = FALSE,
+    setup_args = list()
+  )
+
+  eta <- matrix(fit$beta_cov, nrow = fit$n_traits, ncol = fit$n_units) +
+    X[,, 1L] * fit$gamma[["x"]] +
+    fit$loadings %*% t(fit$scores)
+  dimnames(eta) <- list(fit$trait_names, fit$unit_names)
+  expect_equal(fitted(fit, type = "link"), eta)
+  expect_equal(predict(fit, type = "link")$est, as.vector(eta))
+})
+
+test_that("Julia bridge ordinal response-scale prediction remains gated", {
+  fit <- .gllvm_julia_normalise_result(fake_ordinal_julia_fit())
+  fit$engine <- "julia"
+  fit$scores <- matrix(
+    seq(-0.2, 0.2, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+  fit$bridge_input <- list(
+    y = matrix(
+      1,
+      nrow = fit$n_traits,
+      ncol = fit$n_units,
+      dimnames = list(fit$trait_names, fit$unit_names)
+    ),
+    family = "ordinal_probit",
+    num.lv = 1L,
+    N = NULL,
+    X = NULL,
+    mask = NULL,
+    units_are_rows = FALSE,
+    setup_args = list()
+  )
+
+  expect_s3_class(predict(fit, type = "link"), "data.frame")
+  expect_error(fitted(fit), "ordinal predictions")
 })
 
 test_that("confint recomputes from retained Julia bridge input", {
@@ -1174,6 +1283,13 @@ test_that("engine = 'julia' main dispatch supports post-fit no-X CIs", {
     expect_s3_class(fit, "gllvmTMB_julia")
     expect_null(fit$ci_method)
     expect_type(fit$bridge_input, "list")
+    pred_link <- predict(fit, type = "link")
+    fit_response <- fitted(fit)
+    expect_equal(nrow(pred_link), length(case$Y))
+    expect_named(pred_link, c("trait", "unit", "est"))
+    expect_equal(dim(fit_response), dim(case$Y))
+    expect_equal(dimnames(fit_response), dimnames(case$Y))
+    expect_true(all(is.finite(fit_response)))
     ci <- confint(fit, method = "wald")
     expect_gt(nrow(ci), 0L)
     expect_equal(attr(ci, "ci_method"), "wald")

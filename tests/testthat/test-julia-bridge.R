@@ -389,14 +389,27 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   expect_true(any(grepl("fixed-effect X point fits are routed", caps$notes)))
   expect_equal(caps$family[caps$postfit_coef], caps$family)
   expect_equal(caps$family[caps$postfit_summary], caps$family)
-  expect_equal(caps$family[caps$postfit_predict], caps$family)
-  expect_true(all(!caps$postfit_residuals))
+  expect_equal(
+    caps$family[caps$postfit_predict],
+    .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
+  )
+  expect_equal(
+    caps$family[caps$postfit_residuals],
+    .GLLVM_JULIA_RESIDUAL_FAMILIES
+  )
+  expect_false(caps$postfit_residuals[caps$family == "ordinal"])
+  expect_false(caps$postfit_residuals[caps$family == "ordinal_probit"])
+  expect_false(caps$postfit_residuals[
+    caps$family == .GLLVM_JULIA_MIXED_FAMILY
+  ])
   expect_true(all(!caps$postfit_simulate))
   expect_true(any(grepl("in-sample predict\\(\\)/fitted\\(\\)", caps$notes)))
+  expect_true(any(grepl("response/Pearson residuals", caps$notes)))
   expect_true(any(grepl(
-    "ordinal response probabilities/classes remain gated",
+    "ordinal score/probability payloads",
     caps$notes
   )))
+  expect_true(any(grepl("without retained score payloads", caps$notes)))
   expect_true(any(grepl("no-X confint\\(\\) are routed", caps$notes)))
   expect_true(any(grepl(
     "direct gllvm_julia_fit\\(\\) no-X Wald/profile/bootstrap CI payloads",
@@ -538,6 +551,10 @@ test_that("Julia bridge predict and fitted reconstruct in-sample means", {
   expect_equal(fitted(fit, type = "link"), eta)
   expect_equal(fitted(fit), exp(eta))
 
+  fit_transposed_scores <- fit
+  fit_transposed_scores$scores <- t(fit$scores)
+  expect_equal(fitted(fit_transposed_scores, type = "link"), eta)
+
   pred <- predict(fit, type = "response")
   expect_equal(nrow(pred), fit$n_traits * fit$n_units)
   expect_named(pred, c("trait", "unit", "est"))
@@ -584,6 +601,59 @@ test_that("Julia bridge predict includes retained fixed-effect X payloads", {
   expect_equal(predict(fit, type = "link")$est, as.vector(eta))
 })
 
+test_that("Julia bridge residuals reconstruct scalar-response residuals", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  fit$scores <- matrix(
+    seq(-0.35, 0.35, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+  y <- matrix(
+    c(1, 3, 2, 4, 5, 2, 3, 6, 4, 7, 5, 8, 2, 1, 4, 3),
+    nrow = fit$n_traits,
+    dimnames = list(fit$trait_names, fit$unit_names)
+  )
+  mask <- matrix(TRUE, nrow = fit$n_traits, ncol = fit$n_units)
+  mask[1L, 2L] <- FALSE
+  fit$bridge_input <- list(
+    y = y,
+    family = "poisson",
+    num.lv = 1L,
+    N = NULL,
+    X = NULL,
+    mask = mask,
+    units_are_rows = FALSE,
+    setup_args = list()
+  )
+  fit$response_mask <- mask
+
+  mu <- fitted(fit)
+  expected <- y - mu
+  expected[!mask] <- NA_real_
+  expect_equal(residuals(fit, type = "response"), expected)
+  expect_equal(residuals(fit, type = "pearson"), expected / sqrt(mu))
+
+  fit_bin <- fit
+  fit_bin$family <- "binomial"
+  fit_bin$link <- rep("LogitLink", fit_bin$n_traits)
+  fit_bin$bridge_input$family <- "binomial"
+  fit_bin$bridge_input$N <- matrix(2, nrow = fit$n_traits, ncol = fit$n_units)
+  fit_bin$bridge_input$y <- matrix(
+    c(0, 1, 2, 1, 1, 0, 2, 2, 1, 1, 0, 2, 2, 0, 1, 1),
+    nrow = fit$n_traits,
+    dimnames = list(fit$trait_names, fit$unit_names)
+  )
+  p_hat <- fitted(fit_bin)
+  expected_bin <- fit_bin$bridge_input$y / fit_bin$bridge_input$N - p_hat
+  expected_bin[!mask] <- NA_real_
+  expect_equal(residuals(fit_bin), expected_bin)
+  expect_equal(
+    residuals(fit_bin, type = "pearson"),
+    expected_bin / sqrt(p_hat * (1 - p_hat) / fit_bin$bridge_input$N)
+  )
+})
+
 test_that("Julia bridge ordinal response-scale prediction remains gated", {
   fit <- .gllvm_julia_normalise_result(fake_ordinal_julia_fit())
   fit$engine <- "julia"
@@ -610,6 +680,37 @@ test_that("Julia bridge ordinal response-scale prediction remains gated", {
 
   expect_s3_class(predict(fit, type = "link"), "data.frame")
   expect_error(fitted(fit), "ordinal predictions")
+  expect_error(residuals(fit), "residuals.*ordinal")
+})
+
+test_that("Julia bridge mixed-family residuals remain gated", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  fit$family <- "gaussian+poisson"
+  fit$families <- c("gaussian", "poisson")
+  fit$sigma_eps <- 1
+  fit$scores <- matrix(
+    seq(-0.2, 0.2, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+  fit$bridge_input <- list(
+    y = matrix(
+      0,
+      nrow = fit$n_traits,
+      ncol = fit$n_units,
+      dimnames = list(fit$trait_names, fit$unit_names)
+    ),
+    family = fit$families,
+    num.lv = 1L,
+    N = NULL,
+    X = NULL,
+    mask = NULL,
+    units_are_rows = FALSE,
+    setup_args = list()
+  )
+
+  expect_error(residuals(fit), "mixed-family residuals")
 })
 
 test_that("confint recomputes from retained Julia bridge input", {
@@ -1061,6 +1162,7 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     expect_no_error(capture.output(print(s)))
     expect_true(all(is.finite(fit_jl$dispersion)))
     expect_true(all(fit_jl$dispersion > 0))
+    expect_error(residuals(fit_jl), "not routed")
     expect_equal(
       unname(fit_jl$dispersion_public),
       unname(case$public(fit_jl$dispersion)),
@@ -1148,6 +1250,11 @@ test_that("engine = 'julia' main dispatch routes one-part response masks", {
     expect_equal(fit$nobs, nrow(df))
     expect_equal(sum(fit$response_mask), nrow(df))
     expect_true(is.finite(as.numeric(logLik(fit))))
+    if (case$engine_family %in% .GLLVM_JULIA_RESIDUAL_FAMILIES) {
+      res <- residuals(fit)
+      expect_equal(dim(res), dim(case$Y))
+      expect_equal(which(is.na(res)), which(!fit$response_mask))
+    }
   }
 })
 
@@ -1290,6 +1397,12 @@ test_that("engine = 'julia' main dispatch supports post-fit no-X CIs", {
     expect_equal(dim(fit_response), dim(case$Y))
     expect_equal(dimnames(fit_response), dimnames(case$Y))
     expect_true(all(is.finite(fit_response)))
+    res_response <- residuals(fit, type = "response")
+    res_pearson <- residuals(fit, type = "pearson")
+    expect_equal(dim(res_response), dim(case$Y))
+    expect_equal(dimnames(res_response), dimnames(case$Y))
+    expect_true(all(is.finite(res_response)))
+    expect_true(all(is.finite(res_pearson)))
     ci <- confint(fit, method = "wald")
     expect_gt(nrow(ci), 0L)
     expect_equal(attr(ci, "ci_method"), "wald")

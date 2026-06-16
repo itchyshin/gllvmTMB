@@ -7,6 +7,7 @@
 \alias{coef.gllvmTMB_julia}
 \alias{predict.gllvmTMB_julia}
 \alias{fitted.gllvmTMB_julia}
+\alias{residuals.gllvmTMB_julia}
 \alias{confint.gllvmTMB_julia}
 \alias{summary.gllvmTMB_julia}
 \alias{print.summary.gllvmTMB_julia}
@@ -21,6 +22,8 @@
 \method{predict}{gllvmTMB_julia}(object, newdata = NULL, type = c("link", "response"), ...)
 
 \method{fitted}{gllvmTMB_julia}(object, type = c("response", "link"), ...)
+
+\method{residuals}{gllvmTMB_julia}(object, type = c("response", "pearson"), ...)
 
 \method{confint}{gllvmTMB_julia}(
   object,
@@ -45,10 +48,15 @@
 \item{newdata}{Unsupported for Julia bridge fits; current prediction methods
 return in-sample fitted values from the retained bridge payload.}
 
-\item{type}{Prediction scale. \code{"link"} returns the fitted linear predictor.
-\code{"response"} applies the inverse link for supported scalar-response
-families. Per-trait ordinal response probabilities/classes remain gated, so
-ordinal bridge fits currently require \code{type = "link"}.}
+\item{type}{Prediction or residual scale. For \code{predict()} and \code{fitted()},
+\code{"link"} returns the fitted linear predictor and \code{"response"} applies the
+inverse link for supported scalar-response families. Per-trait ordinal
+response probabilities/classes remain gated; ordinal prediction also needs
+a retained score payload and is currently link-scale only. For
+\code{residuals()}, \code{"response"} returns observed-minus-fitted residuals on the
+response scale and \code{"pearson"} divides by the family-specific standard
+deviation. Binomial rows use the observed proportion, \code{y / N}, on the
+response scale.}
 
 \item{parm}{Optional integer or character vector of CI terms for \code{confint()}.}
 
@@ -75,14 +83,17 @@ of available point-estimate components. \code{confint()} returns a conventional
 confidence-interval matrix for stored or recomputed Julia CI payloads.
 \code{predict()} returns an in-sample data frame with \code{trait}, \code{unit}, and \code{est}
 columns. \code{fitted()} returns the in-sample fitted matrix with traits in rows
-and units in columns. \code{summary()} returns a list with header, coefficients,
-covariance, and status fields.
+and units in columns. \code{residuals()} returns an in-sample residual matrix
+with the same shape as \code{fitted()} for scalar-response rows and keeps masked
+response cells as \code{NA}. \code{summary()} returns a list with header,
+coefficients, covariance, and status fields.
 }
 \description{
 Small S3 surface for fits returned by \code{gllvmTMB(..., engine = "julia")} or
 \code{\link[=gllvm_julia_fit]{gllvm_julia_fit()}}. These methods expose the flat bridge payload that has
-already passed the R admission gates. They are point-estimate summaries only:
-prediction, residuals, simulation, and extractor parity are separate bridge
-rows. Confidence intervals are routed only for admitted no-X Gaussian,
-Poisson, and Bernoulli binomial rows.
+already passed the R admission gates. They are point-estimate summaries:
+prediction and ordinary response/Pearson residuals are in-sample
+retained-payload reconstructions only, while simulation and extractor parity
+remain separate bridge rows. Confidence intervals are routed only for
+admitted no-X Gaussian, Poisson, and Bernoulli binomial rows.
 }

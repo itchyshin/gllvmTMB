@@ -91,10 +91,12 @@ Active lane guidance:
   recompute the same admitted no-X CI payloads post-fit. There is still no
   fit-time Julia CI control surface on `gllvmTMB()`; grouped-dispersion CIs,
   per-trait ordinal CIs, masked CIs, mixed-family CIs, and X-row CIs remain
-  gated. In-sample `predict()` / `fitted()` are now routed from retained bridge
-  payloads for Julia bridge objects; `newdata` prediction, response-scale
-  ordinal probabilities/classes, residuals, simulation, and extractor parity
-  remain gated.
+  gated. Retained-score `predict()` / `fitted()` / response-Pearson
+  `residuals()` are now routed for the live-tested no-X Gaussian, Poisson, and
+  Bernoulli rows. Grouped-dispersion residuals remain gated because the current
+  grouped latent payload does not retain score fields. `newdata` prediction,
+  response-scale ordinal probabilities/classes, ordinal residuals,
+  mixed-family residuals, simulation, and extractor parity remain gated.
   The R bridge also routes complete-response fixed-effect-X point fits for
   Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`
@@ -110,6 +112,13 @@ Active lane guidance:
   REML / AI-REML, CI-status columns, and `pdHess`. Share meanings where the
   model concept is the same; keep package-specific names where DRM and GLLVM
   target different estimands.
+- MultiTraits visual-scout note for the later public-learning-path lane:
+  borrow the applied teaching pattern from `biodiversity-monitoring/MultiTraits`
+  (named ecological modules, fast example data, trait-strategy spaces, and
+  trait-network/multilayer-network displays), but compute gllvmTMB visuals from
+  model-estimated `Sigma`, fitted values, diagnostics, and uncertainty/status
+  rather than raw trait correlations. Check GPL-3/provenance before reusing data
+  or code; prefer an independent example implementation.
 - Next safe implementation lane: grouped-dispersion CI endpoints/status,
   masked CI/status, main-dispatch CI control, prediction/residual/simulation/
   extractor parity, mixed-family admission, NB1/ordinal fixed-effect-X design,

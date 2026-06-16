@@ -41,6 +41,12 @@
   "ordinal",
   "ordinal_probit"
 )
+.GLLVM_JULIA_SCORE_POSTFIT_FAMILIES <- c(
+  "gaussian",
+  "poisson",
+  "binomial"
+)
+.GLLVM_JULIA_RESIDUAL_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
 .GLLVM_JULIA_MASK_FAMILIES <- c(
   "poisson",
   "binomial",
@@ -168,8 +174,8 @@ gllvm_julia_capabilities <- function() {
     postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
     postfit_summary = TRUE,
-    postfit_predict = TRUE,
-    postfit_residuals = FALSE,
+    postfit_predict = families %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES,
+    postfit_residuals = families %in% .GLLVM_JULIA_RESIDUAL_FAMILIES,
     postfit_simulate = FALSE,
     postfit_ordination = FALSE,
     status = "partial",
@@ -188,15 +194,15 @@ gllvm_julia_capabilities <- function() {
     postfit_coef = TRUE,
     postfit_fit_stats = TRUE,
     postfit_summary = TRUE,
-    postfit_predict = TRUE,
+    postfit_predict = FALSE,
     postfit_residuals = FALSE,
     postfit_simulate = FALSE,
     postfit_ordination = FALSE,
     status = "partial",
     notes = paste(
       "complete balanced no-X/no-mask/no-CI mixed-family point route;",
-      "coef(), summary(), and in-sample predict()/fitted() are routed;",
-      "residuals/simulate/extractor parity remain gated;",
+      "coef() and summary() are routed;",
+      "predict/fitted/residuals/simulate/extractor parity remain gated;",
       "component families:",
       paste(.GLLVM_JULIA_MIXED_COMPONENT_FAMILIES, collapse = ", ")
     ),
@@ -230,23 +236,42 @@ gllvm_julia_capabilities <- function() {
   } else {
     ""
   }
-  predict_clause <- if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
-    "in-sample link-scale predict()/fitted(type = \"link\") are routed; ordinal response probabilities/classes remain gated; "
+  predict_clause <- if (family %in% .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES) {
+    "in-sample predict()/fitted() are routed from retained score payloads; "
+  } else if (family %in% .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES) {
+    paste0(
+      "prediction remains gated until ordinal score/probability payloads ",
+      "are admitted; "
+    )
   } else {
-    "in-sample predict()/fitted() are routed; "
+    paste0(
+      "predict()/fitted() remain gated for current grouped-dispersion ",
+      "rows without retained score payloads; "
+    )
+  }
+  residual_clause <- if (family %in% .GLLVM_JULIA_RESIDUAL_FAMILIES) {
+    paste0(
+      "in-sample response/Pearson residuals are routed from retained ",
+      "fitted values; simulate/extractor parity remain gated; "
+    )
+  } else {
+    paste0(
+      "response/Pearson residuals remain gated; ",
+      "simulate/extractor parity remain gated; "
+    )
   }
   postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
     paste0(
       "coef(), summary(), and no-X confint() are routed; ",
       predict_clause,
-      "residuals/simulate/extractor parity remain gated; "
+      residual_clause
     )
   } else {
     paste0(
       "coef() and summary() are routed; ",
       predict_clause,
       "confint() remains gated until CI endpoints are admitted; ",
-      "residuals/simulate/extractor parity remain gated; "
+      residual_clause
     )
   }
   if (family %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES) {
@@ -900,6 +925,14 @@ gllvm_julia_capabilities <- function() {
       call. = FALSE
     )
   }
+  if (ncol(loadings) == 0L) {
+    return(matrix(0, nrow = p, ncol = n))
+  }
+  if (
+    nrow(scores) != n && ncol(scores) == n && nrow(scores) == ncol(loadings)
+  ) {
+    scores <- t(scores)
+  }
   if (nrow(scores) != n) {
     stop(
       "engine = 'julia': score payload row count does not match units.",
@@ -911,9 +944,6 @@ gllvm_julia_capabilities <- function() {
       "engine = 'julia': loading and score payload dimensions do not match.",
       call. = FALSE
     )
-  }
-  if (ncol(loadings) == 0L) {
-    return(matrix(0, nrow = p, ncol = n))
   }
   loadings %*% t(scores)
 }
@@ -1059,6 +1089,181 @@ gllvm_julia_capabilities <- function() {
 .gllvm_julia_prediction_frame <- function(mat) {
   out <- as.data.frame(as.table(mat), stringsAsFactors = FALSE)
   names(out) <- c("trait", "unit", "est")
+  out
+}
+
+.gllvm_julia_family_vector <- function(object, p) {
+  families <- object$families %||%
+    object$bridge_input$family %||%
+    object$family %||%
+    character()
+  families <- .gllvm_julia_as_vector(families, "character")
+  if (length(families) == 1L && p > 1L) {
+    families <- rep(families, p)
+  }
+  if (length(families) != p) {
+    stop(
+      "engine = 'julia': family payload length does not match traits.",
+      call. = FALSE
+    )
+  }
+  families
+}
+
+.gllvm_julia_response_mask <- function(object, p, n) {
+  mask <- object$response_mask %||% object$bridge_input$mask %||% NULL
+  if (is.null(mask)) {
+    return(matrix(TRUE, nrow = p, ncol = n))
+  }
+  mask <- as.matrix(mask)
+  if (!identical(dim(mask), c(p, n))) {
+    stop(
+      "engine = 'julia': response-mask payload dimensions do not match the fit.",
+      call. = FALSE
+    )
+  }
+  storage.mode(mask) <- "logical"
+  mask
+}
+
+.gllvm_julia_trials_matrix <- function(object, p, n) {
+  trials <- object$bridge_input$N %||% NULL
+  if (is.null(trials)) {
+    return(matrix(1, nrow = p, ncol = n))
+  }
+  if (length(trials) == 1L) {
+    out <- matrix(as.numeric(trials), nrow = p, ncol = n)
+  } else {
+    out <- as.matrix(trials)
+    if (identical(dim(out), c(n, p))) {
+      out <- t(out)
+    }
+  }
+  if (!identical(dim(out), c(p, n))) {
+    stop(
+      "engine = 'julia': binomial trial-count payload dimensions do not ",
+      "match the fit.",
+      call. = FALSE
+    )
+  }
+  storage.mode(out) <- "numeric"
+  if (any(!is.finite(out) | out <= 0)) {
+    stop(
+      "engine = 'julia': binomial trial counts must be positive and finite.",
+      call. = FALSE
+    )
+  }
+  out
+}
+
+.gllvm_julia_dispersion_vector <- function(object, p) {
+  dispersion <- object$dispersion_engine %||% object$dispersion %||% NA_real_
+  dispersion <- as.numeric(dispersion)
+  if (length(dispersion) == 1L && p > 1L) {
+    dispersion <- rep(dispersion, p)
+  }
+  if (length(dispersion) != p) {
+    dispersion <- rep(NA_real_, p)
+  }
+  dispersion
+}
+
+.gllvm_julia_residual_variance <- function(object, families, mu) {
+  p <- nrow(mu)
+  n <- ncol(mu)
+  dispersion <- .gllvm_julia_dispersion_vector(object, p)
+  var <- matrix(NA_real_, nrow = p, ncol = n, dimnames = dimnames(mu))
+  for (i in seq_len(p)) {
+    fam <- families[[i]]
+    var[i, ] <- switch(
+      fam,
+      gaussian = {
+        sigma <- as.numeric(object$sigma_eps %||% NA_real_)[1L]
+        if (!is.finite(sigma) || sigma <= 0) {
+          stop(
+            "engine = 'julia': Gaussian Pearson residuals need a positive ",
+            "`sigma_eps` payload.",
+            call. = FALSE
+          )
+        }
+        rep(sigma^2, n)
+      },
+      poisson = mu[i, ],
+      binomial = {
+        trials <- .gllvm_julia_trials_matrix(object, p, n)
+        mu[i, ] * (1 - mu[i, ]) / trials[i, ]
+      },
+      negbinomial = {
+        size <- dispersion[[i]]
+        if (!is.finite(size) || size <= 0) {
+          stop(
+            "engine = 'julia': NB2 Pearson residuals need positive ",
+            "per-trait `r` dispersion.",
+            call. = FALSE
+          )
+        }
+        mu[i, ] + mu[i, ]^2 / size
+      },
+      nb1 = {
+        phi <- dispersion[[i]]
+        if (!is.finite(phi) || phi <= 0) {
+          stop(
+            "engine = 'julia': NB1 Pearson residuals need positive ",
+            "per-trait `phi` dispersion.",
+            call. = FALSE
+          )
+        }
+        mu[i, ] * (1 + phi)
+      },
+      beta = {
+        phi <- dispersion[[i]]
+        if (!is.finite(phi) || phi <= 0) {
+          stop(
+            "engine = 'julia': Beta Pearson residuals need positive ",
+            "per-trait `phi` dispersion.",
+            call. = FALSE
+          )
+        }
+        mu[i, ] * (1 - mu[i, ]) / (phi + 1)
+      },
+      gamma = {
+        alpha <- dispersion[[i]]
+        if (!is.finite(alpha) || alpha <= 0) {
+          stop(
+            "engine = 'julia': Gamma Pearson residuals need positive ",
+            "shape dispersion.",
+            call. = FALSE
+          )
+        }
+        mu[i, ]^2 / alpha
+      },
+      stop(
+        "engine = 'julia': response/Pearson residuals are not routed for ",
+        "family '",
+        fam,
+        "'.",
+        call. = FALSE
+      )
+    )
+  }
+  if (any(!is.finite(var) | var <= 0, na.rm = TRUE)) {
+    stop(
+      "engine = 'julia': residual variance contains non-positive or ",
+      "non-finite entries.",
+      call. = FALSE
+    )
+  }
+  var
+}
+
+.gllvm_julia_observed_response <- function(object, families, y) {
+  out <- y
+  binomial_rows <- families == "binomial"
+  if (any(binomial_rows)) {
+    trials <- .gllvm_julia_trials_matrix(object, nrow(y), ncol(y))
+    out[binomial_rows, ] <- y[binomial_rows, , drop = FALSE] /
+      trials[binomial_rows, , drop = FALSE]
+  }
   out
 }
 
@@ -1264,20 +1469,26 @@ gllvm_julia_fit <- function(
 #'
 #' Small S3 surface for fits returned by `gllvmTMB(..., engine = "julia")` or
 #' [gllvm_julia_fit()]. These methods expose the flat bridge payload that has
-#' already passed the R admission gates. They are point-estimate summaries only:
-#' prediction, residuals, simulation, and extractor parity are separate bridge
-#' rows. Confidence intervals are routed only for admitted no-X Gaussian,
-#' Poisson, and Bernoulli binomial rows.
+#' already passed the R admission gates. They are point-estimate summaries:
+#' prediction and ordinary response/Pearson residuals are in-sample
+#' retained-payload reconstructions only, while simulation and extractor parity
+#' remain separate bridge rows. Confidence intervals are routed only for
+#' admitted no-X Gaussian, Poisson, and Bernoulli binomial rows.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].
 #' @param parm Optional integer or character vector of CI terms for `confint()`.
 #' @param newdata Unsupported for Julia bridge fits; current prediction methods
 #'   return in-sample fitted values from the retained bridge payload.
-#' @param type Prediction scale. `"link"` returns the fitted linear predictor.
-#'   `"response"` applies the inverse link for supported scalar-response
-#'   families. Per-trait ordinal response probabilities/classes remain gated, so
-#'   ordinal bridge fits currently require `type = "link"`.
+#' @param type Prediction or residual scale. For `predict()` and `fitted()`,
+#'   `"link"` returns the fitted linear predictor and `"response"` applies the
+#'   inverse link for supported scalar-response families. Per-trait ordinal
+#'   response probabilities/classes remain gated; ordinal prediction also needs
+#'   a retained score payload and is currently link-scale only. For
+#'   `residuals()`, `"response"` returns observed-minus-fitted residuals on the
+#'   response scale and `"pearson"` divides by the family-specific standard
+#'   deviation. Binomial rows use the observed proportion, `y / N`, on the
+#'   response scale.
 #' @param level Confidence level requested by `confint()`. Stored Julia bridge
 #'   payloads can only be read at their stored level; post-fit requests recompute
 #'   the admitted Julia CI payload at the requested level.
@@ -1296,8 +1507,10 @@ gllvm_julia_fit <- function(
 #'   confidence-interval matrix for stored or recomputed Julia CI payloads.
 #'   `predict()` returns an in-sample data frame with `trait`, `unit`, and `est`
 #'   columns. `fitted()` returns the in-sample fitted matrix with traits in rows
-#'   and units in columns. `summary()` returns a list with header, coefficients,
-#'   covariance, and status fields.
+#'   and units in columns. `residuals()` returns an in-sample residual matrix
+#'   with the same shape as `fitted()` for scalar-response rows and keeps masked
+#'   response cells as `NA`. `summary()` returns a list with header,
+#'   coefficients, covariance, and status fields.
 #' @name gllvmTMB_julia-methods
 #' @export
 logLik.gllvmTMB_julia <- function(object, ...) {
@@ -1373,6 +1586,57 @@ fitted.gllvmTMB_julia <- function(
     return(eta)
   }
   .gllvm_julia_response_predictor(object, eta)
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+residuals.gllvmTMB_julia <- function(
+  object,
+  type = c("response", "pearson"),
+  ...
+) {
+  type <- match.arg(type)
+  y <- .gllvm_julia_training_y(object)
+  p <- nrow(y)
+  n <- ncol(y)
+  families <- .gllvm_julia_family_vector(object, p)
+  if (length(unique(families)) > 1L) {
+    stop(
+      "engine = 'julia': mixed-family residuals are not routed yet; ",
+      "use engine = 'tmb' or inspect fitted values directly.",
+      call. = FALSE
+    )
+  }
+  unsupported <- setdiff(unique(families), .GLLVM_JULIA_RESIDUAL_FAMILIES)
+  if (length(unsupported)) {
+    stop(
+      "engine = 'julia': response/Pearson residuals are not routed for ",
+      "family '",
+      paste(unsupported, collapse = ", "),
+      "'. Ordinal bridge fits currently expose link-scale fitted values only.",
+      call. = FALSE
+    )
+  }
+  mu <- fitted(object, type = "response")
+  if (!identical(dim(mu), c(p, n))) {
+    stop(
+      "engine = 'julia': fitted-value dimensions do not match the retained ",
+      "response payload.",
+      call. = FALSE
+    )
+  }
+  observed <- .gllvm_julia_observed_response(object, families, y)
+  out <- observed - mu
+  dimnames(out) <- dimnames(mu)
+  mask <- .gllvm_julia_response_mask(object, p, n)
+  out[!mask] <- NA_real_
+  if (type == "response") {
+    return(out)
+  }
+  var <- .gllvm_julia_residual_variance(object, families, mu)
+  out <- out / sqrt(var)
+  out[!mask] <- NA_real_
+  out
 }
 
 #' @rdname gllvmTMB_julia-methods

@@ -4,6 +4,79 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge response/Pearson `residuals()` admission
+
+Admitted in-sample `residuals.gllvmTMB_julia(type = "response" / "pearson")`
+only for score-bearing Gaussian, Poisson, and Bernoulli binomial Julia bridge
+rows. This slice also tightens the immediately previous `predict()` /
+`fitted()` capability flag: grouped-dispersion, ordinal, and mixed-family rows
+no longer advertise post-fit prediction/residual coverage unless the retained
+payload contains the score fields needed to reconstruct fitted values. Grouped,
+ordinal, and mixed-family residuals remain loud gates rather than silent
+approximation rows.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt,isDraft --limit 20`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- R/julia-bridge.R tests/testthat/test-julia-bridge.R NAMESPACE man/gllvmTMB_julia-methods.Rd NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task`
+  -> current local Codex programme commits only.
+- Payload scout:
+  live grouped-dispersion residual probes initially failed with
+  `score payload row count does not match units`. Inspection showed current
+  grouped-dispersion bridge fits do not retain usable score payloads, so
+  `postfit_predict` and `postfit_residuals` are now restricted to Gaussian,
+  Poisson, and Bernoulli rows with retained scores.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `NAMESPACE` and `man/gllvmTMB_julia-methods.Rd`.
+- Rendered-Rd spot-check:
+  `tail -5 man/gllvmTMB_julia-methods.Rd; grep -c '^\\keyword' man/gllvmTMB_julia-methods.Rd || true`
+  -> tail ends in the expected methods description; keyword count `0`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `11` expected Julia-runtime skips and `0`
+  failures.
+- Live R bridge test:
+  `Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = "/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration"); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. Live rows now check finite
+  response/Pearson residuals for no-X Gaussian, Poisson, and Bernoulli
+  main-dispatch fits, mask-to-`NA` behavior for admitted masked rows, and loud
+  grouped-dispersion residual gates.
+- Julia capability ledger anchor:
+  `julia --project=. test/test_bridge_capabilities.jl`
+  in `../GLLVM.jl-integration` -> `34/34 pass`.
+- R capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(identical(caps$family[caps$postfit_predict], gllvmTMB:::.GLLVM_JULIA_SCORE_POSTFIT_FAMILIES)); stopifnot(identical(caps$family[caps$postfit_residuals], gllvmTMB:::.GLLVM_JULIA_RESIDUAL_FAMILIES)); stopifnot(!caps$postfit_predict[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY]); stopifnot(!caps$postfit_residuals[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY]); stopifnot(any(grepl("without retained score payloads", caps$notes, fixed = TRUE))); stopifnot(any(grepl("response/Pearson residuals are routed", caps$notes, fixed = TRUE))); print(caps[, c("family", "postfit_predict", "postfit_residuals", "postfit_simulate", "status")], row.names = FALSE)'`
+  -> only Gaussian, Poisson, and Bernoulli rows advertise
+  `postfit_predict` / `postfit_residuals`; mixed-family remains false.
+- S3/Rd registration scan:
+  `rg -n "S3method\\(residuals,gllvmTMB_julia\\)|residuals\\.gllvmTMB_julia|postfit_residuals|response/Pearson|without retained score payloads" NAMESPACE R/julia-bridge.R man/gllvmTMB_julia-methods.Rd tests/testthat/test-julia-bridge.R NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md`
+  -> expected S3 registration, docs, tests, NEWS/register/coordination-board
+  scope hits only.
+- Stale wording scans:
+  `rg -n "residuals/simulate/extractor parity remain gated|in-sample predict\\(\\)/fitted\\(\\) are routed|all\\(!caps\\$postfit_residuals\\)|identical\\(caps\\$family\\[caps\\$postfit_predict\\], caps\\$family\\)|ordinal response probabilities/classes remain gated" NEWS.md R/julia-bridge.R tests/testthat/test-julia-bridge.R man/gllvmTMB_julia-methods.Rd docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md`
+  -> remaining hits are intentional current mixed-family gates, historical
+  check-log text, or score-payload notes.
+  `rg -n "postfit_predict|postfit_residuals|score payload|response/Pearson|grouped-dispersion residuals|mixed-family residuals" NEWS.md R/julia-bridge.R tests/testthat/test-julia-bridge.R man/gllvmTMB_julia-methods.Rd docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md`
+  -> expected current hits only.
+  `rg -n "MultiTraits|CSR|LHS|trait-network|multilayer" docs/dev-log/coordination-board.md NEWS.md docs/design/35-validation-debt-register.md`
+  -> expected MultiTraits scout note in the coordination board; unrelated
+  `LHS` hits are formula-LHS wording, not MultiTraits claims.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  S3 surface, one bridge test file, generated method docs, ledgers, and the
+  local status widget; it does not touch formula parsing or public articles.
+
 ## 2026-06-16 -- R bridge in-sample `predict()` / `fitted()` admission
 
 Admitted in-sample prediction methods for `gllvmTMB_julia` objects returned by

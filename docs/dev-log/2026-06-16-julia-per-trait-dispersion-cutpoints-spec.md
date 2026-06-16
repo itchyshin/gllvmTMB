@@ -6,10 +6,11 @@ Branch: `codex/julia-per-trait-dispersion-spec`
 
 ## Purpose
 
-Align the Julia bridge with native `gllvmTMB` for nuisance parameters that are
-trait-specific in the R/TMB oracle. The decision is to move the Julia route
-toward the native `gllvmTMB` contract, not to weaken the native oracle to a
-shared-scalar convenience model.
+Align the Julia bridge with native `gllvmTMB` for nuisance parameters on the
+same scale as the R/TMB oracle. The decision is to move the Julia route toward
+the native `gllvmTMB` contract, not to weaken the native oracle to a
+shared-scalar convenience model or to claim per-trait parity where the native
+oracle is still scalar.
 
 This is a specification only. It does not admit new bridge rows, change public
 docs, or close issues.
@@ -19,11 +20,14 @@ docs, or close issues.
 1. Native `gllvmTMB` remains the oracle for `df`, `logLik`, per-trait
    dispersion, ordinal cutpoints, prediction, residuals, covariance extractors,
    fitted object shape, and post-fit accessors.
-2. The R-twin default for dispersion families must be per trait. In Julia this
-   means grouped-dispersion fits with `group = 1:p` for the R bridge default.
-   Shared scalar dispersion may remain an explicit internal/debug option, or an
-   intentional comparator for an R-side shared-dispersion model, but it is not
-   the default bridge parity claim.
+2. The R-twin default for dispersion families must match the native oracle.
+   NB2, NB1, and Beta currently have native per-trait nuisance routes, so Julia
+   bridge parity for those rows means grouped-dispersion fits with `group = 1:p`.
+   Ordinary native Gamma currently uses scalar `sigma_eps` as a shared
+   coefficient of variation; per-trait Julia Gamma is therefore an engine
+   capability or future native-feature target, not a current native-parity row.
+   Shared scalar dispersion may remain an explicit comparator where the R-side
+   model is shared-scalar.
 3. Ordinal parity requires trait-specific cutpoints in Julia. The current shared
    cutpoint vector is useful engine functionality but cannot be used for a full
    native-`gllvmTMB` ordinal parity claim.
@@ -38,9 +42,9 @@ docs, or close issues.
 
 | Surface | Current state | Implication |
 | --- | --- | --- |
-| Native `gllvmTMB` | Dispersion-family nuisance parameters are per trait where the family carries them; ordinal cutpoints are per ordinal trait. | This is the oracle. |
+| Native `gllvmTMB` | NB2, NB1, and Beta carry per-trait nuisance parameters; ordinary Gamma uses shared scalar `sigma_eps` as the coefficient of variation; ordinal cutpoints are per ordinal trait. | This is the oracle. Gamma is the exception that needs a decision before per-trait bridge parity wording. |
 | `GLLVM.jl-integration` grouped dispersion | `fit_nb_gllvm_grouped`, `fit_nb1_gllvm_grouped`, `fit_beta_gllvm_grouped`, and `fit_gamma_gllvm_grouped` exist. Tests check that constant per-trait vectors reduce to shared scalar likelihoods, and smoke tests exercise per-species/grouped fits. | The engine is not starting from zero for dispersion. The remaining R-twin gap is bridge routing, scale mapping, and admission tests. |
-| `GLLVM.jl-integration` bridge one-part route | `bridge_fit` currently calls the shared scalar one-part fitters for NB2, NB1, Beta, and Gamma, fills `dispersion = fill(fit.<scalar>, p)`, and counts `+1` nuisance parameter in `df`. | This is not native `gllvmTMB` parity for the default R bridge. |
+| `GLLVM.jl-integration` bridge one-part route | `bridge_fit` now calls grouped-dispersion fitters for NB2, NB1, Beta, and Gamma and labels grouped payload fields. NB2 and Beta have selected small-fixture native objective parity; NB1 has scale alignment but still needs objective evidence; Gamma is per-trait/grouped in Julia while native ordinary Gamma remains shared-CV. | The grouped bridge is useful but `JUL-01` remains partial. Gamma cannot be promoted as native parity without a decision. |
 | `GLLVM.jl-integration` ordinal route | `OrdinalFit` has one ordered cutpoint vector `tau` shared across traits and reports `df = rr_df + C - 1`. | Per-trait ordinal cutpoints still need engine work before bridge parity. |
 | Main `gllvmTMB` branch | Current `origin/main` has the lean Julia bridge surface. The fuller `origin/engine-julia` branch remains a draft/next-release bridge lane with conflicts against current main. | Land this spec as planning evidence; do not merge or advertise bridge parity from it. |
 
@@ -90,7 +94,7 @@ for the bridge, not a substitute for Gauss/Noether source review.
 | NB2 / `nbinom2` | `r_t` size | `Var = mu + mu^2 / r_t` | For gllvm-style dispersion, `phi_t = 1 / r_t`. For the `gllvmTMB` variability-oriented `sigma`, `sigma_t = 1 / sqrt(r_t)` under the current design note. |
 | NB1 / `nbinom1` | `phi_t` | `Var = mu * (1 + phi_t)` | Identity on the model overdispersion scale; the public `sigma` wording in `docs/design/03-likelihoods.md` must be checked before extractor mapping. |
 | Beta | `phi_t` precision | `Var = mu * (1 - mu) / (1 + phi_t)` | `sigma_t = 1 / sqrt(phi_t)` for the variability-oriented public scale. |
-| Gamma | `alpha_t` shape | `Var = mu^2 / alpha_t` | `sigma_t = 1 / sqrt(alpha_t)` for the coefficient-of-variation public scale. |
+| Gamma | `alpha_t` shape in Julia grouped fits | `Var = mu^2 / alpha_t` | Julia public map is `sigma_t = 1 / sqrt(alpha_t)`. Current native ordinary Gamma instead uses shared scalar `sigma_eps`; per-trait Gamma requires a native R/TMB expansion or a clearly labelled non-oracle bridge row. |
 
 `Tweedie` has grouped dispersion support on the Julia side, but it is outside
 the immediate R bridge parity slice unless the family is separately admitted in
@@ -109,10 +113,11 @@ rr_df = p * K - K * (K - 1) / 2
 df    = p + rr_df + G
 ```
 
-For the R-twin default, `G = p`. For intentional shared dispersion, `G = 1`.
-`df` must be exact. `logLik` must be reported on the same likelihood criterion
-and approximation route used by the fit. Do not compare ML and REML; non-Gaussian
-REML remains unsupported.
+For native per-trait rows, `G = p`. For intentional shared dispersion, `G = 1`.
+Current ordinary Gamma parity uses `G = 1` unless native `gllvmTMB` is expanded
+to per-trait Gamma CV/shape. `df` must be exact. `logLik` must be reported on
+the same likelihood criterion and approximation route used by the fit. Do not
+compare ML and REML; non-Gaussian REML remains unsupported.
 
 No-X point rows should promote before X rows. For X rows, the implementation
 must decide whether a grouped-dispersion covariate fitter exists for that family;
@@ -159,10 +164,12 @@ labelled partial/shared-cutpoint, not native parity.
 
 1. Julia direct tests first.
    - Keep existing grouped-dispersion exact-reduction tests.
-   - Add tests that `bridge_fit` routes NB2, NB1, Beta, and Gamma no-X complete
-     rows through the grouped fitters by default.
+   - Add tests that `bridge_fit` routes NB2, NB1, and Beta no-X complete rows
+     through per-trait grouped fitters by default.
    - Add tests that `df` changes from `+1` to `+p` under default per-trait
-     grouping.
+     grouping for native per-trait rows.
+   - For Gamma, first choose whether bridge parity means shared grouping against
+     the current native oracle or a broader native R/TMB per-trait Gamma change.
    - Add trait-label tests for `dispersion`, `dispersion_group`, and
      `dispersion_group_id`.
 2. R bridge routing second.
@@ -173,7 +180,8 @@ labelled partial/shared-cutpoint, not native parity.
      lockstep.
 3. Native parity tests third.
    - Fit small native `gllvmTMB` oracle fixtures and Julia bridge fixtures for
-     NB2, NB1, Beta, and Gamma no-X point rows.
+     NB2, NB1, and Beta no-X point rows; add Gamma only after the shared-vs-
+     per-trait oracle decision is explicit.
    - Require exact `df`, matching trait labels, finite convergence/status, and
      same-scale nuisance estimates.
    - Use fixed-parameter likelihood kernel checks at machine precision where
@@ -194,7 +202,7 @@ labelled partial/shared-cutpoint, not native parity.
 | NB2 no-X complete | Point parity | grouped route, `df = p + rr_df + p`, `r <-> sigma/phi` map, native-vs-Julia `logLik`, trait labels |
 | NB1 no-X complete | Point parity | grouped route, identity overdispersion map, `df`, native-vs-Julia `logLik`, trait labels |
 | Beta no-X complete | Point parity | grouped precision route, `sigma = 1 / sqrt(phi)`, `df`, native-vs-Julia `logLik`, trait labels |
-| Gamma no-X complete | Point parity | grouped shape route, `sigma = 1 / sqrt(alpha)`, `df`, native-vs-Julia `logLik`, trait labels |
+| Gamma no-X complete | Point parity after decision | shared grouping against current native `sigma_eps` oracle, or per-trait `alpha_t` after native R/TMB expansion; exact `df`, native-vs-Julia `logLik`, trait labels |
 | Ordinal no-X complete | Point parity plus prediction payload | per-trait cutpoint engine, `df = rr_df + sum(C_t - 1)`, probability prediction, class prediction, `extract_cutpoints()` parity |
 | Masked dispersion rows | Planned after no-mask | grouped route with mask, observed-cell `nobs`, native-vs-Julia point parity, explicit CI-status |
 | X dispersion rows | Planned after no-X | grouped-dispersion X fitter or explicit shared-only gate; no silent scalar fallback |
@@ -217,6 +225,11 @@ nuisance scale conversion: exact formula check plus estimate tolerance recorded
 Implementation should update `gllvmTMB#488` because this is a gate-vs-engine drift
 case: engine pieces exist for grouped dispersion, but the bridge default still
 routes scalar one-part fits.
+
+Follow-up audit: `docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md`
+narrows the NB1 and Gamma decisions. NB1 is parameterisation-aligned; Gamma is
+not native-parity aligned until the maintainer chooses shared bridge grouping or
+native per-trait Gamma expansion.
 
 Potential Julia issue links to refresh when implementation begins:
 

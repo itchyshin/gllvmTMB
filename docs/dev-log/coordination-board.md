@@ -28,8 +28,9 @@ Current Codex state:
 - `codex/engine-julia-draft-landing` is committed locally through `6701ae5`
   and carries the draft-landing readout plus the Xcoef structural-zero
   addendum.
-- `codex/julia-per-trait-dispersion-spec` is the current docs-only spec
-  branch, based on the draft-landing readout branch.
+- `codex/r-bridge-grouped-dispersion` is the current implementation/evidence
+  branch. It has local grouped-dispersion and per-trait ordinal bridge evidence
+  through `b1ebce7`.
 - No GitHub PR is open for this programme yet.
 
 Current bridge landing state:
@@ -39,7 +40,7 @@ Current bridge landing state:
 - Synthetic merge conflict scan reports conflicts in `NAMESPACE`,
   `NEWS.md`, `cran-comments.md`, `docs/dev-log/check-log.md`, and
   `man/gllvm_julia_fit.Rd`.
-- The paired bridge runtime remains `GLLVM.jl-integration` at `1dc9e98`;
+- The paired bridge runtime is `GLLVM.jl-integration` at `2a07745`;
   the main `GLLVM.jl` checkout on `codex/non-gaussian-fitter-gradients`
   is salvage-only for this lane.
 
@@ -58,10 +59,14 @@ Active lane guidance:
   `docs/dev-log/2026-06-16-xcoef-structural-zero-plan-addendum.md`.
 - Current per-trait nuisance-parameter contract:
   `docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md`.
-  It records that `GLLVM.jl-integration` already has grouped dispersion
-  fitters for NB2/NB1/Beta/Gamma, while `bridge_fit` still routes the
-  no-X bridge default through shared scalar nuisance parameters. Ordinal
-  still needs per-trait cutpoints before native parity.
+  It records that `GLLVM.jl-integration` has grouped dispersion fitters for
+  NB2/NB1/Beta/Gamma and per-trait ordinal cutpoints, while the R bridge row
+  remains partial until parity evidence, CI/status, and claim wording agree.
+  Follow-up audit:
+  `docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md`.
+  NB1 is on the same scale as native `phi_nbinom1` but still needs objective
+  parity evidence; Gamma is not native-parity aligned because current native
+  ordinary Gamma uses shared scalar `sigma_eps`.
 - Cross-twin argument and wording contract:
   `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`.
   Before bridge, engine, or public-docs lanes, scan R/Julia and DRM/GLLVM
@@ -70,9 +75,10 @@ Active lane guidance:
   REML / AI-REML, CI-status columns, and `pdHess`. Share meanings where the
   model concept is the same; keep package-specific names where DRM and GLLVM
   target different estimands.
-- Next safe implementation lane after this spec: `codex/julia-per-trait-dispersion`
-  for no-X complete NB2/NB1/Beta/Gamma grouped-bridge routing, unless the
-  maintainer explicitly asks to publish or rebase the bridge PR first.
+- Next safe implementation lane: NB1 fixed-parameter likelihood audit plus a
+  Gamma decision (shared bridge grouping now versus native per-trait Gamma
+  expansion later), unless the maintainer explicitly asks to publish or rebase
+  the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

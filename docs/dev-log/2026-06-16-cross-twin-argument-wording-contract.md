@@ -78,11 +78,13 @@ structural-zero coefficient lane.
 
 ### Per-trait versus per-observation dispersion
 
-In `gllvmTMB`, dispersion-family bridge parity means per-trait nuisance
-parameters for NB2, NB1, Beta, and Gamma unless a row explicitly says
-shared-scalar. In `GLLVM.jl`, the implementation may use grouped-dispersion
-fitters, but R-facing prose should say per-trait grouped dispersion for the
-native `gllvmTMB` parity target.
+In `gllvmTMB`, dispersion-family bridge parity means matching the native R/TMB
+oracle on the same scale. NB2, NB1, and Beta currently have native per-trait
+nuisance routes, so R-facing prose may say per-trait grouped dispersion only
+for those covered rows. Ordinary native Gamma currently uses shared scalar
+`sigma_eps` as the coefficient of variation; per-trait Julia Gamma must be
+labelled planned, experimental, or non-oracle-matching until native Gamma grows
+per-trait CV/shape support or the bridge routes Gamma through shared grouping.
 
 In `drmTMB` / `DRM.jl`, `sigma ~ x` and related scale formulas are
 per-observation or model-axis dispersion regressions, not GLLVM per-trait
@@ -197,5 +199,6 @@ Add this as a standing gate to the Twin Finish Programme:
    or issue action.
 
 This gate applies to `engine_control`, response masks, `Xcoef_mask` /
-`Xcoef_fixed`, per-trait dispersion, ordinal cutpoints, REML/AI-REML wording,
-CI-status columns, and `pdHess` interpretation.
+`Xcoef_fixed`, per-trait dispersion, Gamma shared-CV versus per-trait-shape
+wording, ordinal cutpoints, REML/AI-REML wording, CI-status columns, and
+`pdHess` interpretation.

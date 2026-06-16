@@ -4,6 +4,78 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- NB1/Gamma bridge parameterisation audit
+
+Added a docs-only bridge audit to resolve the follow-up from the grouped
+dispersion main-dispatch smoke. NB1 is now recorded as parameterisation-aligned
+with native `phi_nbinom1` (`Var = mu * (1 + phi)`), with objective parity still
+pending. Gamma is recorded as a decision point: Julia grouped Gamma estimates
+per-trait/grouped `alpha`, but current native ordinary Gamma uses shared scalar
+`sigma_eps` as the coefficient of variation.
+
+Evidence:
+
+- Rehydration:
+  `git status --short --branch && git log --oneline -5`
+  -> clean on `codex/r-bridge-grouped-dispersion`, tip `b1ebce7`.
+  `git -C ../GLLVM.jl-integration status --short --branch && git -C ../GLLVM.jl-integration log --oneline -5`
+  -> clean on `codex/julia-per-trait-dispersion`, tip `2a07745`.
+- Skill/source setup:
+  read `.agents/skills/after-task-audit/SKILL.md`;
+  read `.agents/skills/prose-style-review/SKILL.md`;
+  read `/Users/z3437171/.agents/skills/testing-r-packages/SKILL.md`.
+- Pre-edit lane check:
+  `gh pr list --state open --limit 30 --json number,title,headRefName,updatedAt,isDraft,mergeable,url`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- ROADMAP.md NEWS.md NAMESPACE docs/design docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> current Codex programme commits only.
+- Live issue reads:
+  `gh issue view 488 --json number,title,state,updatedAt,labels,assignees,url,body`
+  -> `#488` open; bridge gate-vs-engine drift audit.
+  `gh issue view 340 --json number,title,state,updatedAt,labels,assignees,url,body`
+  -> `#340` open; capability matrix refreshed 2026-06-16.
+- Source inspection:
+  `rg -n "NB1Grouped|nb1_grouped|GammaGrouped|gamma_grouped|fit_nb1_gllvm_grouped|fit_gamma_gllvm_grouped|_nparams\\(fit::NB1Grouped|_nparams\\(fit::GammaGrouped" src/families/grouped_dispersion.jl`
+  in `../GLLVM.jl-integration`;
+  `sed -n '300,760p' src/families/grouped_dispersion.jl`
+  in `../GLLVM.jl-integration`;
+  `rg -n "fit_nb1_gllvm_grouped|fit_gamma_gllvm_grouped|dispersion_parameter|dispersion_public_scale|nb1|gamma|df =|_nparams|dispersion_group" src/bridge.jl`
+  in `../GLLVM.jl-integration`;
+  `sed -n '360,410p' src/bridge.jl && sed -n '620,690p' src/bridge.jl`
+  in `../GLLVM.jl-integration`;
+  `nl -ba R/julia-bridge.R | sed -n '240,390p'`;
+  `nl -ba tests/testthat/test-julia-bridge.R | sed -n '80,150p;190,240p;270,340p;660,760p'`;
+  `rg -n "sigma_eps|phi_nbinom1|phi_gamma|family_id_vec|fid == 4|fid == 15|Gamma, log link|negative binomial type 1" src/gllvmTMB.cpp R tests/testthat | head -200`;
+  `nl -ba src/gllvmTMB.cpp | sed -n '1748,1770p;1906,1922p;2240,2258p'`;
+  `nl -ba R/methods-gllvmTMB.R | sed -n '1000,1088p'`;
+  `nl -ba ../GLLVM.jl-integration/src/families/negbin1.jl | sed -n '1,80p'`;
+  `nl -ba ../GLLVM.jl-integration/src/families/gamma.jl | sed -n '1,70p'`.
+- Files updated:
+  `docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md`;
+  `docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md`;
+  `docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md`;
+  `docs/dev-log/coordination-board.md`;
+  `docs/design/35-validation-debt-register.md`;
+  `docs/dev-log/recovery-checkpoints/2026-06-16-090801-codex-checkpoint.md`.
+- Stale-claim scans:
+  `rg -n "full native parity|full parity|complete bridge|CRAN-ready bridge|Gamma.*native parity|native parity.*Gamma|Gamma.*covered.*Julia|per-trait nuisance parameters for NB2, NB1, Beta, and Gamma" R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md docs/dev-log/coordination-board.md`
+  -> expected wording-guard and negative-scope hits only; no new Gamma/native
+  parity overclaim.
+  `rg -n "Gamma|gamma|sigma_eps|alpha_t|alpha|phi_nbinom1|NB1|nb1" R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/2026-06-16-julia-per-trait-dispersion-cutpoints-spec.md docs/dev-log/2026-06-16-cross-twin-argument-wording-contract.md docs/dev-log/2026-06-16-nb1-gamma-bridge-parameterisation-audit.md docs/dev-log/coordination-board.md | head -160`
+  -> expected hits documenting NB1 scale alignment and Gamma shared-CV boundary.
+  `rg -n "engine = \"julia\"|engine_control|gllvmTMBcontrol|drm_control|control =|REML|AI-REML|pdHess|full parity|complete bridge|CRAN-ready bridge" README.md NEWS.md ROADMAP.md R docs vignettes tests/testthat | head -200`
+  -> broad historical/guard hits only; no touched public-page overclaim.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run:
+
+- `devtools::test()`, `devtools::check()`, `devtools::document()`,
+  `pkgdown::check_pkgdown()`, and article renders were not run. This slice is a
+  source-audit/governance update only; it changes no R code, generated Rd,
+  NAMESPACE, README, NEWS, vignette, or pkgdown navigation file.
+- No GitHub issue was commented on or closed.
+
 ## 2026-06-16 -- R bridge grouped-dispersion main-dispatch smoke
 
 Added live bridge evidence that `gllvmTMB(..., engine = "julia")` itself routes

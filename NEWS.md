@@ -32,13 +32,14 @@
   and retained-payload `predict()` / `fitted()` / `residuals()` only where the
   Julia payload carries the needed score fields; live R tests currently admit
   in-sample `predict()` / `fitted()` plus response/Pearson `residuals()` for
-  no-X gaussian, poisson, and Bernoulli binomial rows. There is still no
+  no-X gaussian, poisson, Bernoulli binomial, nbinom2, nbinom1, beta, and gamma
+  rows. There is still no
   fit-time Julia CI control surface on `gllvmTMB()`. `newdata` prediction,
-  response-scale ordinal probabilities/classes, grouped-dispersion residuals,
-  ordinal residuals, mixed-family residuals, simulation, extractor parity,
-  confidence intervals for grouped-dispersion or per-trait ordinal rows, masked
-  CIs, mixed-family CIs, and CIs for X rows remain planned follow-up rows, as do
-  mixed-family promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall
+  response-scale ordinal probabilities/classes, ordinal residuals, mixed-family
+  residuals, simulation, extractor parity, confidence intervals for
+  grouped-dispersion or per-trait ordinal rows, masked CIs, mixed-family CIs,
+  and CIs for X rows remain planned follow-up rows, as do mixed-family
+  promotion, native parity promotion, and structured covariance terms. OUT: JuliaCall
   is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
   when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB
   engine and `R CMD check` are unaffected on machines without Julia.

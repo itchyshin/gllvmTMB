@@ -4,6 +4,75 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge grouped post-fit admission
+
+Admitted retained-payload `predict()` / `fitted()` and
+`residuals(type = "response" / "pearson")` for grouped-dispersion Julia bridge
+rows after the paired `GLLVM.jl-integration` checkout added grouped
+`getLV()` methods and started returning finite `n x K` score payloads for NB2,
+NB1, Beta, and shared-Gamma bridge fits. Grouped-dispersion CIs, simulation,
+extractor parity, `newdata` prediction, broad native parity, and structured
+terms remain gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt,isDraft --limit 20`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- R/julia-bridge.R tests/testthat/test-julia-bridge.R NAMESPACE man/gllvmTMB_julia-methods.Rd NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task`
+  -> current local Codex programme commits only.
+  Paired Julia `gh pr list --repo itchyshin/GLLVM.jl --state open --json number,title,headRefName,updatedAt,isDraft --limit 20`
+  -> older draft PRs `#95` and `#94`, no active branch collision for this
+  local slice.
+- Failure-before-fix probe:
+  direct grouped `getLV()` calls in `../GLLVM.jl-integration` failed with
+  `MethodError: no method matching getLV(::NBGroupedFit, ...)` and analogous
+  errors for NB1, Beta, and Gamma; `bridge_fit()` returned `size(scores) =
+  (0, 0)` for grouped rows with `d = 1`.
+- Paired Julia grouped score tests:
+  `julia --project=. test/test_bridge_grouped_dispersion.jl`
+  in `../GLLVM.jl-integration` -> `81/81 pass`.
+- Paired Julia capability ledger:
+  `julia --project=. test/test_bridge_capabilities.jl`
+  in `../GLLVM.jl-integration` -> `34/34 pass`.
+- Paired Julia NB1 bridge-score probe:
+  `julia --project=. -e 'using GLLVM; Y=[1 3 2 4 5 2 3 6 4 7; 2 1 4 3 5 6 7 4 8 6]; br=bridge_fit(; y=Float64.(Y), family="nb1", d=1); println(size(br.scores)); println(all(isfinite, br.scores)); println(size(br.loadings));'`
+  -> `(10, 1)`, `true`, `(2, 1)`.
+- Paired Julia mask regression:
+  `julia --project=. test/test_bridge_missing_mask.jl`
+  in `../GLLVM.jl-integration` -> `37/37 pass`.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `11` expected Julia-runtime skips and `0`
+  failures.
+- Live R bridge test:
+  `Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = "/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration"); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. The grouped main-dispatch loop now
+  checks finite `fitted()`, response residuals, and Pearson residuals for NB2,
+  NB1, Beta, and shared Gamma rows.
+- R capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); expected <- c("gaussian", "poisson", "binomial", "negbinomial", "nb1", "beta", "gamma"); stopifnot(identical(gllvmTMB:::.GLLVM_JULIA_SCORE_POSTFIT_FAMILIES, expected)); stopifnot(identical(caps$family[caps$postfit_predict], expected)); stopifnot(identical(caps$family[caps$postfit_residuals], expected)); stopifnot(!caps$postfit_residuals[caps$family == "ordinal"]); stopifnot(!caps$postfit_residuals[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY]); stopifnot(!any(grepl("without retained score payloads", caps$notes, fixed = TRUE))); print(caps[, c("family", "postfit_predict", "postfit_residuals", "postfit_simulate", "status")], row.names = FALSE)'`
+  -> grouped NB2/NB1/Beta/Gamma rows now advertise prediction and residuals;
+  ordinal and mixed-family rows remain false.
+- Stale wording scans:
+  `rg -n "without retained score payloads|grouped-dispersion residuals|score-bearing gaussian, poisson, and Bernoulli|no-X gaussian, poisson, and Bernoulli|postfit_predict|postfit_residuals|response/Pearson" NEWS.md R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task`
+  -> expected current scoped claims and historical after-task/check-log hits
+  only; no current NEWS/register/coordination claim leaves grouped residuals
+  gated.
+- Whitespace:
+  `git diff --check` in both worktrees -> clean.
+
+Deliberately not run yet:
+
+- Full `Pkg.test()`, full `devtools::test()`, `devtools::check()`,
+  `pkgdown::check_pkgdown()`, CRAN-style checks, and article renders. This
+  slice changes the Julia grouped score payload, R bridge capability flags,
+  one bridge test file, ledgers, and the local status widget; it does not touch
+  formula parsing or public articles.
+
 ## 2026-06-16 -- R bridge response/Pearson `residuals()` admission
 
 Admitted in-sample `residuals.gllvmTMB_julia(type = "response" / "pearson")`

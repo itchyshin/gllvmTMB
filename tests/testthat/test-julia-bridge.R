@@ -409,7 +409,10 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
     "ordinal score/probability payloads",
     caps$notes
   )))
-  expect_true(any(grepl("without retained score payloads", caps$notes)))
+  expect_true(caps$postfit_predict[caps$family == "nb1"])
+  expect_true(caps$postfit_residuals[caps$family == "nb1"])
+  expect_true(caps$postfit_predict[caps$family == "gamma"])
+  expect_true(caps$postfit_residuals[caps$family == "gamma"])
   expect_true(any(grepl("no-X confint\\(\\) are routed", caps$notes)))
   expect_true(any(grepl(
     "direct gllvm_julia_fit\\(\\) no-X Wald/profile/bootstrap CI payloads",
@@ -951,6 +954,11 @@ test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", 
     expect_equal(fit$df, expected_df)
     expect_true(all(is.finite(fit$dispersion)))
     expect_true(all(fit$dispersion > 0))
+    expect_equal(dim(fit$scores), c(ncol(case$Y), 1L))
+    expect_true(all(is.finite(fit$scores)))
+    expect_equal(dim(fitted(fit)), dim(case$Y))
+    expect_equal(dim(residuals(fit)), dim(case$Y))
+    expect_true(all(is.finite(residuals(fit, type = "pearson"))))
     expect_equal(
       unname(fit$dispersion_public),
       unname(case$public(fit$dispersion)),
@@ -1162,7 +1170,16 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     expect_no_error(capture.output(print(s)))
     expect_true(all(is.finite(fit_jl$dispersion)))
     expect_true(all(fit_jl$dispersion > 0))
-    expect_error(residuals(fit_jl), "not routed")
+    fit_response <- fitted(fit_jl)
+    res_response <- residuals(fit_jl, type = "response")
+    res_pearson <- residuals(fit_jl, type = "pearson")
+    expect_equal(dim(fit_response), dim(case$Y))
+    expect_equal(dimnames(fit_response), dimnames(case$Y))
+    expect_equal(dim(res_response), dim(case$Y))
+    expect_equal(dim(res_pearson), dim(case$Y))
+    expect_true(all(is.finite(fit_response)))
+    expect_true(all(is.finite(res_response)))
+    expect_true(all(is.finite(res_pearson)))
     expect_equal(
       unname(fit_jl$dispersion_public),
       unname(case$public(fit_jl$dispersion)),

@@ -44,7 +44,11 @@
 .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES <- c(
   "gaussian",
   "poisson",
-  "binomial"
+  "binomial",
+  "negbinomial",
+  "nb1",
+  "beta",
+  "gamma"
 )
 .GLLVM_JULIA_RESIDUAL_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
 .GLLVM_JULIA_MASK_FAMILIES <- c(
@@ -245,8 +249,8 @@ gllvm_julia_capabilities <- function() {
     )
   } else {
     paste0(
-      "predict()/fitted() remain gated for current grouped-dispersion ",
-      "rows without retained score payloads; "
+      "predict()/fitted() remain gated until retained score payloads ",
+      "are admitted; "
     )
   }
   residual_clause <- if (family %in% .GLLVM_JULIA_RESIDUAL_FAMILIES) {

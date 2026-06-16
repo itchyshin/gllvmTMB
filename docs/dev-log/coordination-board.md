@@ -119,11 +119,18 @@ Active lane guidance:
   model-estimated `Sigma`, fitted values, diagnostics, and uncertainty/status
   rather than raw trait correlations. Check GPL-3/provenance before reusing data
   or code; prefer an independent example implementation.
+- Grouped post-fit score payload lane:
+  paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
+  NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge
+  admits retained-payload `predict()` / `fitted()` / response-Pearson
+  `residuals()` for those grouped rows. Grouped-dispersion CIs, simulation,
+  extractor parity, and broad parity remain later rows.
 - Next safe implementation lane: grouped-dispersion CI endpoints/status,
-  masked CI/status, main-dispatch CI control, prediction/residual/simulation/
-  extractor parity, mixed-family admission, NB1/ordinal fixed-effect-X design,
-  X-row CI/status, or the native per-trait Gamma expansion spec, unless the
-  maintainer explicitly asks to publish or rebase the bridge PR first.
+  masked CI/status, main-dispatch CI control, response-scale ordinal
+  probabilities/classes, simulation/extractor parity, mixed-family admission,
+  NB1/ordinal fixed-effect-X design, X-row CI/status, or the native per-trait
+  Gamma expansion spec, unless the maintainer explicitly asks to publish or
+  rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

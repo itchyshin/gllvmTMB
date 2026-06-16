@@ -4,6 +4,68 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge ordinal probability/class prediction admission
+
+Admitted response-scale category probabilities and modal-class prediction for
+per-trait ordinal and ordinal-probit Julia bridge rows. This is a retained
+payload reconstruction row: it uses the Julia bridge's `scores`, `loadings`,
+per-trait `cutpoints`, per-trait `n_categories`, and link metadata to compute
+the cumulative-link category probabilities in R. Ordinal residuals, ordinal-X,
+ordinal CIs, `newdata` prediction, simulation, extractor parity, and broad
+native parity remain gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url --limit 20`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task`
+  -> current local Codex programme commits only.
+  Paired Julia `gh pr list --repo itchyshin/GLLVM.jl --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url --limit 20`
+  -> known older draft PRs `#95` and `#94`; no new collision for this R-only
+  admission slice.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvmTMB_julia-methods.Rd`.
+- Rendered-Rd spot-check:
+  `tail -5 man/gllvmTMB_julia-methods.Rd; grep -c '^\\keyword' man/gllvmTMB_julia-methods.Rd || true`
+  -> tail ends in the expected methods description; keyword count `0`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `11` expected Julia-runtime skips and `0`
+  failures. Re-run after the final fallback-message tweak also completed
+  cleanly with the same expected skips.
+- Live R bridge test:
+  `Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = "/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration"); devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. The live ordinal-probit row now checks
+  `fitted(type = "prob")`, probability sums, `predict(type = "response")`,
+  and `fitted(type = "class")` through JuliaCall.
+- R capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); expected_predict <- c("gaussian", "poisson", "binomial", "negbinomial", "nb1", "beta", "gamma", "ordinal", "ordinal_probit"); expected_resid <- c("gaussian", "poisson", "binomial", "negbinomial", "nb1", "beta", "gamma"); stopifnot(identical(gllvmTMB:::.GLLVM_JULIA_PREDICT_FAMILIES, expected_predict)); stopifnot(identical(caps$family[caps$postfit_predict], expected_predict)); stopifnot(identical(caps$family[caps$postfit_residuals], expected_resid)); stopifnot(caps$postfit_predict[caps$family == "ordinal"]); stopifnot(caps$postfit_predict[caps$family == "ordinal_probit"]); stopifnot(!caps$postfit_residuals[caps$family == "ordinal"]); stopifnot(!caps$postfit_residuals[caps$family == "ordinal_probit"]); stopifnot(any(grepl("ordinal link, probability", caps$notes, fixed = TRUE))); print(caps[, c("family", "postfit_predict", "postfit_residuals", "postfit_simulate", "status")], row.names = FALSE)'`
+  -> ordinal and ordinal-probit now advertise `postfit_predict = TRUE`;
+  residuals remain false.
+- Paired Julia capability ledger:
+  `julia --project=. test/test_bridge_capabilities.jl`
+  in `../GLLVM.jl-integration` -> `34/34 pass`.
+- Stale wording scan:
+  `rg -n 'response-scale ordinal probabilities/classes|ordinal score/probability payloads|ordinal predictions are not routed|prediction remains gated until ordinal|ordinal probability/class|modal-class|postfit_predict|postfit_residuals' NEWS.md R/julia-bridge.R tests/testthat/test-julia-bridge.R man/gllvmTMB_julia-methods.Rd docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task`
+  -> expected current NEWS/register/board/method/test hits plus historical
+  append-only check-log and older after-task hits; no current user-facing
+  source leaves ordinal probabilities/classes gated.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  R-side S3 prediction surface, one bridge test file, generated method docs,
+  ledgers, and the local status widget; it does not touch formula parsing or
+  public articles.
+
 ## 2026-06-16 -- R bridge grouped post-fit admission
 
 Admitted retained-payload `predict()` / `fitted()` and

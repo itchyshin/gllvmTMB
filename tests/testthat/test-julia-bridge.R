@@ -391,7 +391,7 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   expect_equal(caps$family[caps$postfit_summary], caps$family)
   expect_equal(
     caps$family[caps$postfit_predict],
-    .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
+    .GLLVM_JULIA_PREDICT_FAMILIES
   )
   expect_equal(
     caps$family[caps$postfit_residuals],
@@ -405,10 +405,7 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   expect_true(all(!caps$postfit_simulate))
   expect_true(any(grepl("in-sample predict\\(\\)/fitted\\(\\)", caps$notes)))
   expect_true(any(grepl("response/Pearson residuals", caps$notes)))
-  expect_true(any(grepl(
-    "ordinal score/probability payloads",
-    caps$notes
-  )))
+  expect_true(any(grepl("ordinal link, probability", caps$notes)))
   expect_true(caps$postfit_predict[caps$family == "nb1"])
   expect_true(caps$postfit_residuals[caps$family == "nb1"])
   expect_true(caps$postfit_predict[caps$family == "gamma"])
@@ -657,7 +654,7 @@ test_that("Julia bridge residuals reconstruct scalar-response residuals", {
   )
 })
 
-test_that("Julia bridge ordinal response-scale prediction remains gated", {
+test_that("Julia bridge ordinal response-scale prediction returns probabilities", {
   fit <- .gllvm_julia_normalise_result(fake_ordinal_julia_fit())
   fit$engine <- "julia"
   fit$scores <- matrix(
@@ -682,7 +679,40 @@ test_that("Julia bridge ordinal response-scale prediction remains gated", {
   )
 
   expect_s3_class(predict(fit, type = "link"), "data.frame")
-  expect_error(fitted(fit), "ordinal predictions")
+  prob <- fitted(fit, type = "prob")
+  expect_equal(dim(prob), c(fit$n_traits, fit$n_units, 4L))
+  expect_equal(dimnames(prob)[[1L]], fit$trait_names)
+  expect_equal(dimnames(prob)[[2L]], fit$unit_names)
+  expect_true(all(is.na(prob["sp1", , "4"])))
+  expect_equal(
+    as.numeric(apply(
+      prob["sp1", , c("1", "2", "3"), drop = FALSE],
+      c(1, 2),
+      sum
+    )),
+    rep(1, fit$n_units)
+  )
+  expect_equal(
+    as.numeric(apply(
+      prob["sp2", , c("1", "2", "3", "4"), drop = FALSE],
+      c(1, 2),
+      sum
+    )),
+    rep(1, fit$n_units)
+  )
+  prob_frame <- predict(fit, type = "response")
+  expect_named(prob_frame, c("trait", "unit", "category", "prob"))
+  expect_equal(nrow(prob_frame), sum(fit$n_categories) * fit$n_units)
+  expect_equal(
+    aggregate(prob ~ trait + unit, prob_frame, sum)$prob,
+    rep(1, fit$n_traits * fit$n_units)
+  )
+  class_mat <- fitted(fit, type = "class")
+  expect_equal(dim(class_mat), c(fit$n_traits, fit$n_units))
+  expect_true(all(class_mat["sp1", ] %in% seq_len(fit$n_categories[["sp1"]])))
+  class_frame <- predict(fit, type = "class")
+  expect_named(class_frame, c("trait", "unit", "est"))
+  expect_equal(class_frame$est, as.vector(class_mat))
   expect_error(residuals(fit), "residuals.*ordinal")
 })
 
@@ -1301,6 +1331,18 @@ test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLL
   expect_s3_class(s, "summary.gllvmTMB_julia")
   expect_equal(s$header$family, "ordinal_probit")
   expect_no_error(capture.output(print(s)))
+  prob <- fitted(fit, type = "prob")
+  expect_equal(dim(prob)[1:2], dim(y_ord))
+  expect_equal(dim(prob)[3L], max(fit$n_categories))
+  expect_true(all(is.finite(prob[,, "1"])))
+  expect_true(all(abs(apply(prob, c(1, 2), sum, na.rm = TRUE) - 1) < 1e-8))
+  pred <- predict(fit, type = "response")
+  expect_named(pred, c("trait", "unit", "category", "prob"))
+  expect_equal(nrow(pred), sum(fit$n_categories) * ncol(y_ord))
+  cls <- fitted(fit, type = "class")
+  expect_equal(dim(cls), dim(y_ord))
+  expect_true(all(cls["sp1", ] %in% seq_len(fit$n_categories[["sp1"]])))
+  expect_true(all(cls["sp2", ] %in% seq_len(fit$n_categories[["sp2"]])))
 })
 
 test_that("gllvm_julia_fit routes no-X CI payloads from GLLVM.jl", {

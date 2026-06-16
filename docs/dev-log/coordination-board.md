@@ -31,8 +31,9 @@ Current Codex state:
 - `codex/r-bridge-grouped-dispersion` is the current implementation/evidence
   branch. It has local grouped-dispersion, per-trait ordinal, Gamma shared-route,
   one-part no-X response-mask, complete-response fixed-effect-X,
-  `coef()` / `summary()`, and direct-wrapper CI/status bridge evidence through
-  the current Codex slice.
+  `coef()` / `summary()`, direct-wrapper CI/status, grouped post-fit, and
+  ordinal probability/class prediction bridge evidence through the current
+  Codex slice.
 - No GitHub PR is open for this programme yet.
 
 Current bridge landing state:
@@ -42,7 +43,7 @@ Current bridge landing state:
 - Synthetic merge conflict scan reports conflicts in `NAMESPACE`,
   `NEWS.md`, `cran-comments.md`, `docs/dev-log/check-log.md`, and
   `man/gllvm_julia_fit.Rd`.
-- The paired bridge runtime is `GLLVM.jl-integration` at `b7b4c60`;
+- The paired bridge runtime is `GLLVM.jl-integration` at `ab8c4e4`;
   the main `GLLVM.jl` checkout on `codex/non-gaussian-fitter-gradients`
   is salvage-only for this lane.
 
@@ -92,11 +93,12 @@ Active lane guidance:
   fit-time Julia CI control surface on `gllvmTMB()`; grouped-dispersion CIs,
   per-trait ordinal CIs, masked CIs, mixed-family CIs, and X-row CIs remain
   gated. Retained-score `predict()` / `fitted()` / response-Pearson
-  `residuals()` are now routed for the live-tested no-X Gaussian, Poisson, and
-  Bernoulli rows. Grouped-dispersion residuals remain gated because the current
-  grouped latent payload does not retain score fields. `newdata` prediction,
-  response-scale ordinal probabilities/classes, ordinal residuals,
-  mixed-family residuals, simulation, and extractor parity remain gated.
+  `residuals()` are now routed for the live-tested no-X Gaussian, Poisson,
+  Bernoulli, NB2, NB1, Beta, and Gamma rows. Ordinal and ordinal-probit bridge
+  rows now route response-scale category probabilities and modal-class
+  predictions from the retained score/cutpoint payload. `newdata` prediction,
+  ordinal residuals, mixed-family residuals, simulation, and extractor parity
+  remain gated.
   The R bridge also routes complete-response fixed-effect-X point fits for
   Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`
@@ -125,12 +127,16 @@ Active lane guidance:
   admits retained-payload `predict()` / `fitted()` / response-Pearson
   `residuals()` for those grouped rows. Grouped-dispersion CIs, simulation,
   extractor parity, and broad parity remain later rows.
+- Ordinal probability/class prediction lane:
+  R now converts retained ordinal and ordinal-probit score/cutpoint payloads to
+  response-scale category probabilities and modal-class predictions. Ordinal
+  residuals, ordinal-X, per-trait ordinal CIs, and `newdata` prediction remain
+  later rows.
 - Next safe implementation lane: grouped-dispersion CI endpoints/status,
-  masked CI/status, main-dispatch CI control, response-scale ordinal
-  probabilities/classes, simulation/extractor parity, mixed-family admission,
-  NB1/ordinal fixed-effect-X design, X-row CI/status, or the native per-trait
-  Gamma expansion spec, unless the maintainer explicitly asks to publish or
-  rebase the bridge PR first.
+  masked CI/status, main-dispatch CI control, simulation/extractor parity,
+  mixed-family admission, NB1/ordinal fixed-effect-X design, X-row CI/status,
+  or the native per-trait Gamma expansion spec, unless the maintainer
+  explicitly asks to publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:
 

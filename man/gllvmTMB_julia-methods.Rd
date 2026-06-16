@@ -19,9 +19,14 @@
 
 \method{coef}{gllvmTMB_julia}(object, ...)
 
-\method{predict}{gllvmTMB_julia}(object, newdata = NULL, type = c("link", "response"), ...)
+\method{predict}{gllvmTMB_julia}(
+  object,
+  newdata = NULL,
+  type = c("link", "response", "prob", "class"),
+  ...
+)
 
-\method{fitted}{gllvmTMB_julia}(object, type = c("response", "link"), ...)
+\method{fitted}{gllvmTMB_julia}(object, type = c("response", "link", "prob", "class"), ...)
 
 \method{residuals}{gllvmTMB_julia}(object, type = c("response", "pearson"), ...)
 
@@ -50,13 +55,12 @@ return in-sample fitted values from the retained bridge payload.}
 
 \item{type}{Prediction or residual scale. For \code{predict()} and \code{fitted()},
 \code{"link"} returns the fitted linear predictor and \code{"response"} applies the
-inverse link for supported scalar-response families. Per-trait ordinal
-response probabilities/classes remain gated; ordinal prediction also needs
-a retained score payload and is currently link-scale only. For
-\code{residuals()}, \code{"response"} returns observed-minus-fitted residuals on the
-response scale and \code{"pearson"} divides by the family-specific standard
-deviation. Binomial rows use the observed proportion, \code{y / N}, on the
-response scale.}
+inverse link for supported scalar-response families. For per-trait ordinal
+bridge fits, \code{"response"} and \code{"prob"} return fitted category
+probabilities and \code{"class"} returns the modal category. For \code{residuals()},
+\code{"response"} returns observed-minus-fitted residuals on the response scale
+and \code{"pearson"} divides by the family-specific standard deviation.
+Binomial rows use the observed proportion, \code{y / N}, on the response scale.}
 
 \item{parm}{Optional integer or character vector of CI terms for \code{confint()}.}
 
@@ -81,12 +85,16 @@ omitted, \code{confint()} reads a stored payload when present and otherwise uses
 \code{logLik()} returns a \code{"logLik"} object. \code{coef()} returns a named list
 of available point-estimate components. \code{confint()} returns a conventional
 confidence-interval matrix for stored or recomputed Julia CI payloads.
-\code{predict()} returns an in-sample data frame with \code{trait}, \code{unit}, and \code{est}
-columns. \code{fitted()} returns the in-sample fitted matrix with traits in rows
-and units in columns. \code{residuals()} returns an in-sample residual matrix
-with the same shape as \code{fitted()} for scalar-response rows and keeps masked
-response cells as \code{NA}. \code{summary()} returns a list with header,
-coefficients, covariance, and status fields.
+\code{predict()} returns an in-sample data frame. Scalar-response rows use
+\code{trait}, \code{unit}, and \code{est} columns; ordinal probability rows use \code{trait},
+\code{unit}, \code{category}, and \code{prob}; ordinal class rows use \code{trait}, \code{unit},
+and \code{est}. \code{fitted()} returns the in-sample fitted matrix with traits in
+rows and units in columns for scalar-response rows, and an array of
+category probabilities or a modal-class matrix for ordinal rows.
+\code{residuals()} returns an in-sample residual matrix with the same shape as
+\code{fitted()} for scalar-response rows and keeps masked response cells as
+\code{NA}. \code{summary()} returns a list with header, coefficients, covariance,
+and status fields.
 }
 \description{
 Small S3 surface for fits returned by \code{gllvmTMB(..., engine = "julia")} or

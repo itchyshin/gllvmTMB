@@ -402,14 +402,25 @@ test_that("Julia bridge capability ledger marks nuisance-parameter CI rows unava
   expect_false(caps$postfit_residuals[
     caps$family == .GLLVM_JULIA_MIXED_FAMILY
   ])
-  expect_true(all(!caps$postfit_simulate))
+  expect_equal(
+    caps$family[caps$postfit_simulate],
+    .GLLVM_JULIA_SIMULATE_FAMILIES
+  )
+  expect_false(caps$postfit_simulate[caps$family == "ordinal"])
+  expect_false(caps$postfit_simulate[caps$family == "ordinal_probit"])
+  expect_false(caps$postfit_simulate[
+    caps$family == .GLLVM_JULIA_MIXED_FAMILY
+  ])
   expect_true(any(grepl("in-sample predict\\(\\)/fitted\\(\\)", caps$notes)))
   expect_true(any(grepl("response/Pearson residuals", caps$notes)))
+  expect_true(any(grepl("conditional simulate\\(\\)", caps$notes)))
   expect_true(any(grepl("ordinal link, probability", caps$notes)))
   expect_true(caps$postfit_predict[caps$family == "nb1"])
   expect_true(caps$postfit_residuals[caps$family == "nb1"])
+  expect_true(caps$postfit_simulate[caps$family == "nb1"])
   expect_true(caps$postfit_predict[caps$family == "gamma"])
   expect_true(caps$postfit_residuals[caps$family == "gamma"])
+  expect_true(caps$postfit_simulate[caps$family == "gamma"])
   expect_true(any(grepl("no-X confint\\(\\) are routed", caps$notes)))
   expect_true(any(grepl(
     "direct gllvm_julia_fit\\(\\) no-X Wald/profile/bootstrap CI payloads",
@@ -654,6 +665,107 @@ test_that("Julia bridge residuals reconstruct scalar-response residuals", {
   )
 })
 
+test_that("Julia bridge simulate draws scalar-response in-sample values", {
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  fit$scores <- matrix(
+    seq(-0.35, 0.35, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+  y <- matrix(
+    c(1, 3, 2, 4, 5, 2, 3, 6, 4, 7, 5, 8, 2, 1, 4, 3),
+    nrow = fit$n_traits,
+    dimnames = list(fit$trait_names, fit$unit_names)
+  )
+  mask <- matrix(TRUE, nrow = fit$n_traits, ncol = fit$n_units)
+  mask[1L, 2L] <- FALSE
+  fit$bridge_input <- list(
+    y = y,
+    family = "poisson",
+    num.lv = 1L,
+    N = NULL,
+    X = NULL,
+    mask = mask,
+    units_are_rows = FALSE,
+    setup_args = list()
+  )
+  fit$response_mask <- mask
+
+  sim <- simulate(fit, nsim = 3L, seed = 77L)
+  expect_equal(dim(sim), c(length(y), 3L))
+  expect_equal(
+    rownames(sim),
+    as.vector(outer(fit$trait_names, fit$unit_names, paste, sep = ":"))
+  )
+  expect_equal(colnames(sim), paste0("sim_", 1:3))
+  expect_equal(sim, simulate(fit, nsim = 3L, seed = 77L))
+  expect_equal(unname(which(is.na(sim[, 1L]))), which(!as.vector(mask)))
+  observed <- as.vector(mask)
+  expect_true(all(sim[observed, ] >= 0))
+  expect_true(all(sim[observed, ] == floor(sim[observed, ])))
+  expect_error(simulate(fit, nsim = 0L), "positive integer")
+  expect_error(simulate(fit, newdata = data.frame(x = 1)), "newdata")
+  expect_error(simulate(fit, condition_on_RE = FALSE), "unconditional")
+
+  fit_bin <- fit
+  fit_bin$family <- "binomial"
+  fit_bin$link <- rep("LogitLink", fit_bin$n_traits)
+  fit_bin$bridge_input$family <- "binomial"
+  fit_bin$bridge_input$N <- matrix(2L, nrow = fit$n_traits, ncol = fit$n_units)
+  fit_bin$bridge_input$y <- matrix(
+    c(0, 1, 2, 1, 1, 0, 2, 2, 1, 1, 0, 2, 2, 0, 1, 1),
+    nrow = fit$n_traits,
+    dimnames = list(fit$trait_names, fit$unit_names)
+  )
+  sim_bin <- simulate(fit_bin, nsim = 2L, seed = 78L)
+  expect_true(all(sim_bin[observed, ] >= 0))
+  expect_true(all(sim_bin[observed, ] <= 2))
+  expect_true(all(sim_bin[observed, ] == floor(sim_bin[observed, ])))
+
+  for (family in c("nb1", "beta", "gamma")) {
+    grouped <- .gllvm_julia_normalise_result(
+      fake_grouped_dispersion_julia_fit(
+        family,
+        values = if (family == "nb1") c(0.4, 0.8) else c(16, 25),
+        parameter = if (family == "gamma") "alpha" else "phi"
+      )
+    )
+    grouped$engine <- "julia"
+    grouped$scores <- matrix(
+      seq(-0.2, 0.2, length.out = grouped$n_units),
+      ncol = 1L,
+      dimnames = list(grouped$unit_names, "LV1")
+    )
+    grouped$bridge_input <- list(
+      y = matrix(
+        if (family == "beta") 0.5 else 1,
+        nrow = grouped$n_traits,
+        ncol = grouped$n_units,
+        dimnames = list(grouped$trait_names, grouped$unit_names)
+      ),
+      family = family,
+      num.lv = 1L,
+      N = NULL,
+      X = NULL,
+      mask = NULL,
+      units_are_rows = FALSE,
+      setup_args = list()
+    )
+    sim_grouped <- simulate(grouped, nsim = 2L, seed = 79L)
+    expect_equal(dim(sim_grouped), c(grouped$n_traits * grouped$n_units, 2L))
+    expect_true(all(is.finite(sim_grouped)))
+    if (family == "beta") {
+      expect_true(all(sim_grouped > 0 & sim_grouped < 1))
+    } else if (family == "gamma") {
+      expect_true(all(sim_grouped > 0))
+    } else {
+      expect_true(all(sim_grouped >= 0))
+      expect_true(all(sim_grouped == floor(sim_grouped)))
+    }
+  }
+})
+
 test_that("Julia bridge ordinal response-scale prediction returns probabilities", {
   fit <- .gllvm_julia_normalise_result(fake_ordinal_julia_fit())
   fit$engine <- "julia"
@@ -714,6 +826,7 @@ test_that("Julia bridge ordinal response-scale prediction returns probabilities"
   expect_named(class_frame, c("trait", "unit", "est"))
   expect_equal(class_frame$est, as.vector(class_mat))
   expect_error(residuals(fit), "residuals.*ordinal")
+  expect_error(simulate(fit), "conditional simulate.*ordinal")
 })
 
 test_that("Julia bridge mixed-family residuals remain gated", {
@@ -744,6 +857,7 @@ test_that("Julia bridge mixed-family residuals remain gated", {
   )
 
   expect_error(residuals(fit), "mixed-family residuals")
+  expect_error(simulate(fit), "mixed-family simulation")
 })
 
 test_that("confint recomputes from retained Julia bridge input", {
@@ -1210,6 +1324,17 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     expect_true(all(is.finite(fit_response)))
     expect_true(all(is.finite(res_response)))
     expect_true(all(is.finite(res_pearson)))
+    sim <- simulate(fit_jl, nsim = 2L, seed = 490L)
+    expect_equal(dim(sim), c(length(case$Y), 2L))
+    expect_true(all(is.finite(sim)))
+    if (identical(case$engine_family, "beta")) {
+      expect_true(all(sim > 0 & sim < 1))
+    } else if (identical(case$engine_family, "gamma")) {
+      expect_true(all(sim > 0))
+    } else {
+      expect_true(all(sim >= 0))
+      expect_true(all(sim == floor(sim)))
+    }
     expect_equal(
       unname(fit_jl$dispersion_public),
       unname(case$public(fit_jl$dispersion)),
@@ -1301,6 +1426,12 @@ test_that("engine = 'julia' main dispatch routes one-part response masks", {
       res <- residuals(fit)
       expect_equal(dim(res), dim(case$Y))
       expect_equal(which(is.na(res)), which(!fit$response_mask))
+      sim <- simulate(fit, nsim = 2L, seed = 491L)
+      expect_equal(dim(sim), c(length(case$Y), 2L))
+      expect_equal(
+        unname(which(is.na(sim[, 1L]))),
+        which(!as.vector(fit$response_mask))
+      )
     }
   }
 })
@@ -1462,6 +1593,9 @@ test_that("engine = 'julia' main dispatch supports post-fit no-X CIs", {
     expect_equal(dimnames(res_response), dimnames(case$Y))
     expect_true(all(is.finite(res_response)))
     expect_true(all(is.finite(res_pearson)))
+    sim <- simulate(fit, nsim = 2L, seed = 492L)
+    expect_equal(dim(sim), c(length(case$Y), 2L))
+    expect_true(all(is.finite(sim)))
     ci <- confint(fit, method = "wald")
     expect_gt(nrow(ci), 0L)
     expect_equal(attr(ci, "ci_method"), "wald")

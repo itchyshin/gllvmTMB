@@ -55,6 +55,7 @@
   .GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES
 )
 .GLLVM_JULIA_RESIDUAL_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
+.GLLVM_JULIA_SIMULATE_FAMILIES <- .GLLVM_JULIA_SCORE_POSTFIT_FAMILIES
 .GLLVM_JULIA_MASK_FAMILIES <- c(
   "poisson",
   "binomial",
@@ -184,7 +185,7 @@ gllvm_julia_capabilities <- function() {
     postfit_summary = TRUE,
     postfit_predict = families %in% .GLLVM_JULIA_PREDICT_FAMILIES,
     postfit_residuals = families %in% .GLLVM_JULIA_RESIDUAL_FAMILIES,
-    postfit_simulate = FALSE,
+    postfit_simulate = families %in% .GLLVM_JULIA_SIMULATE_FAMILIES,
     postfit_ordination = FALSE,
     status = "partial",
     notes = notes,
@@ -260,26 +261,33 @@ gllvm_julia_capabilities <- function() {
   residual_clause <- if (family %in% .GLLVM_JULIA_RESIDUAL_FAMILIES) {
     paste0(
       "in-sample response/Pearson residuals are routed from retained ",
-      "fitted values; simulate/extractor parity remain gated; "
+      "fitted values; "
     )
   } else {
+    "response/Pearson residuals remain gated; "
+  }
+  simulate_clause <- if (family %in% .GLLVM_JULIA_SIMULATE_FAMILIES) {
     paste0(
-      "response/Pearson residuals remain gated; ",
-      "simulate/extractor parity remain gated; "
+      "in-sample conditional simulate() is routed from fitted values; ",
+      "extractor parity remains gated; "
     )
+  } else {
+    "simulate/extractor parity remain gated; "
   }
   postfit_clause <- if (family %in% .GLLVM_JULIA_CI_NO_X_FAMILIES) {
     paste0(
       "coef(), summary(), and no-X confint() are routed; ",
       predict_clause,
-      residual_clause
+      residual_clause,
+      simulate_clause
     )
   } else {
     paste0(
       "coef() and summary() are routed; ",
       predict_clause,
       "confint() remains gated until CI endpoints are admitted; ",
-      residual_clause
+      residual_clause,
+      simulate_clause
     )
   }
   if (family %in% .GLLVM_JULIA_PERTRAIT_GROUPED_DISPERSION_FAMILIES) {
@@ -1431,6 +1439,100 @@ gllvm_julia_capabilities <- function() {
   out
 }
 
+.gllvm_julia_simulation_draw <- function(object, families, mu) {
+  p <- nrow(mu)
+  n <- ncol(mu)
+  dispersion <- .gllvm_julia_dispersion_vector(object, p)
+  trials <- if (any(families == "binomial")) {
+    .gllvm_julia_trials_matrix(object, p, n)
+  } else {
+    NULL
+  }
+  out <- matrix(NA_real_, nrow = p, ncol = n, dimnames = dimnames(mu))
+  for (i in seq_len(p)) {
+    fam <- families[[i]]
+    m <- mu[i, ]
+    out[i, ] <- switch(
+      fam,
+      gaussian = {
+        sigma <- as.numeric(object$sigma_eps %||% NA_real_)[1L]
+        if (!is.finite(sigma) || sigma <= 0) {
+          stop(
+            "engine = 'julia': Gaussian simulate() needs a positive ",
+            "`sigma_eps` payload.",
+            call. = FALSE
+          )
+        }
+        stats::rnorm(n, mean = m, sd = sigma)
+      },
+      poisson = stats::rpois(n, lambda = m),
+      binomial = {
+        size <- trials[i, ]
+        if (any(abs(size - round(size)) > sqrt(.Machine$double.eps))) {
+          stop(
+            "engine = 'julia': binomial simulate() needs integer trial counts.",
+            call. = FALSE
+          )
+        }
+        stats::rbinom(n, size = as.integer(round(size)), prob = m)
+      },
+      negbinomial = {
+        size <- dispersion[[i]]
+        if (!is.finite(size) || size <= 0) {
+          stop(
+            "engine = 'julia': NB2 simulate() needs positive per-trait ",
+            "`r` dispersion.",
+            call. = FALSE
+          )
+        }
+        stats::rnbinom(n, mu = m, size = size)
+      },
+      nb1 = {
+        phi <- dispersion[[i]]
+        if (!is.finite(phi) || phi <= 0) {
+          stop(
+            "engine = 'julia': NB1 simulate() needs positive per-trait ",
+            "`phi` dispersion.",
+            call. = FALSE
+          )
+        }
+        stats::rnbinom(n, mu = m, size = m / phi)
+      },
+      beta = {
+        phi <- dispersion[[i]]
+        if (!is.finite(phi) || phi <= 0) {
+          stop(
+            "engine = 'julia': Beta simulate() needs positive per-trait ",
+            "`phi` dispersion.",
+            call. = FALSE
+          )
+        }
+        eps <- sqrt(.Machine$double.eps)
+        m <- pmin(pmax(m, eps), 1 - eps)
+        stats::rbeta(n, shape1 = m * phi, shape2 = (1 - m) * phi)
+      },
+      gamma = {
+        shape <- dispersion[[i]]
+        if (!is.finite(shape) || shape <= 0) {
+          stop(
+            "engine = 'julia': Gamma simulate() needs positive shape ",
+            "dispersion.",
+            call. = FALSE
+          )
+        }
+        stats::rgamma(n, shape = shape, scale = m / shape)
+      },
+      stop(
+        "engine = 'julia': simulate() is not routed for family '",
+        fam,
+        "'.",
+        call. = FALSE
+      )
+    )
+  }
+  out
+}
+
 .gllvm_julia_print_matrix <- function(x, digits = 3) {
   if (is.null(x) || length(x) == 0L) {
     return(invisible(NULL))
@@ -1635,15 +1737,21 @@ gllvm_julia_fit <- function(
 #' [gllvm_julia_fit()]. These methods expose the flat bridge payload that has
 #' already passed the R admission gates. They are point-estimate summaries:
 #' prediction and ordinary response/Pearson residuals are in-sample
-#' retained-payload reconstructions only, while simulation and extractor parity
-#' remain separate bridge rows. Confidence intervals are routed only for
-#' admitted no-X Gaussian, Poisson, and Bernoulli binomial rows.
+#' retained-payload reconstructions only. Simulation is conditional on retained
+#' fitted values for admitted scalar-response rows only; extractor parity remains
+#' a separate bridge row. Confidence intervals are routed only for admitted no-X
+#' Gaussian, Poisson, and Bernoulli binomial rows.
 #'
 #' @param object,x A fit returned by `gllvmTMB(..., engine = "julia")` or
 #'   [gllvm_julia_fit()].
 #' @param parm Optional integer or character vector of CI terms for `confint()`.
-#' @param newdata Unsupported for Julia bridge fits; current prediction methods
-#'   return in-sample fitted values from the retained bridge payload.
+#' @param nsim Number of replicate response vectors to draw for `simulate()`.
+#' @param seed Optional RNG seed for `simulate()`.
+#' @param newdata Unsupported for Julia bridge fits; current prediction and
+#'   simulation methods return in-sample values from the retained bridge payload.
+#' @param condition_on_RE Logical for `simulate()`. The Julia bridge currently
+#'   routes only conditional, in-sample simulation from retained fitted values,
+#'   so `FALSE` stops with a not-yet-routed message.
 #' @param type Prediction or residual scale. For `predict()` and `fitted()`,
 #'   `"link"` returns the fitted linear predictor and `"response"` applies the
 #'   inverse link for supported scalar-response families. For per-trait ordinal
@@ -1676,8 +1784,10 @@ gllvm_julia_fit <- function(
 #'   category probabilities or a modal-class matrix for ordinal rows.
 #'   `residuals()` returns an in-sample residual matrix with the same shape as
 #'   `fitted()` for scalar-response rows and keeps masked response cells as
-#'   `NA`. `summary()` returns a list with header, coefficients, covariance,
-#'   and status fields.
+#'   `NA`. `simulate()` returns an `n_obs x nsim` matrix in the same trait-major
+#'   cell order as `predict()` and keeps masked response cells as `NA`.
+#'   `summary()` returns a list with header, coefficients, covariance, and
+#'   status fields.
 #' @name gllvmTMB_julia-methods
 #' @export
 logLik.gllvmTMB_julia <- function(object, ...) {
@@ -1833,6 +1943,97 @@ residuals.gllvmTMB_julia <- function(
   var <- .gllvm_julia_residual_variance(object, families, mu)
   out <- out / sqrt(var)
   out[!mask] <- NA_real_
+  out
+}
+
+#' @rdname gllvmTMB_julia-methods
+#' @export
+simulate.gllvmTMB_julia <- function(
+  object,
+  nsim = 1,
+  seed = NULL,
+  newdata = NULL,
+  condition_on_RE = TRUE,
+  ...
+) {
+  nsim_value <- suppressWarnings(as.numeric(nsim))
+  if (
+    length(nsim) != 1L ||
+      length(nsim_value) != 1L ||
+      is.na(nsim_value) ||
+      !is.finite(nsim_value) ||
+      nsim_value < 1L ||
+      nsim_value != floor(nsim_value)
+  ) {
+    stop("`nsim` must be a positive integer.", call. = FALSE)
+  }
+  nsim <- as.integer(nsim_value)
+  if (!is.null(newdata)) {
+    stop(
+      "engine = 'julia': `newdata` simulation is not routed yet; current ",
+      "`simulate.gllvmTMB_julia()` draws in-sample values only.",
+      call. = FALSE
+    )
+  }
+  if (!isTRUE(condition_on_RE)) {
+    stop(
+      "engine = 'julia': unconditional random-effect redraws are not routed ",
+      "yet; current `simulate.gllvmTMB_julia()` is conditional on retained ",
+      "score/fitted-value payloads.",
+      call. = FALSE
+    )
+  }
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+
+  y <- .gllvm_julia_training_y(object)
+  p <- nrow(y)
+  n <- ncol(y)
+  families <- .gllvm_julia_family_vector(object, p)
+  if (length(unique(families)) > 1L) {
+    stop(
+      "engine = 'julia': mixed-family simulation is not routed yet; ",
+      "use engine = 'tmb' or simulate scalar-response bridge rows separately.",
+      call. = FALSE
+    )
+  }
+  unsupported <- setdiff(unique(families), .GLLVM_JULIA_SIMULATE_FAMILIES)
+  if (length(unsupported)) {
+    stop(
+      "engine = 'julia': conditional simulate() is not routed for family '",
+      paste(unsupported, collapse = ", "),
+      "'. Current Julia bridge simulation covers scalar-response families only.",
+      call. = FALSE
+    )
+  }
+
+  mu <- fitted(object, type = "response")
+  if (!identical(dim(mu), c(p, n))) {
+    stop(
+      "engine = 'julia': fitted-value dimensions do not match the retained ",
+      "response payload.",
+      call. = FALSE
+    )
+  }
+  mask <- .gllvm_julia_response_mask(object, p, n)
+  obs_names <- as.vector(outer(
+    rownames(mu) %||% paste0("trait", seq_len(p)),
+    colnames(mu) %||% paste0("unit", seq_len(n)),
+    paste,
+    sep = ":"
+  ))
+  out <- matrix(
+    NA_real_,
+    nrow = p * n,
+    ncol = nsim,
+    dimnames = list(obs_names, paste0("sim_", seq_len(nsim)))
+  )
+  for (j in seq_len(nsim)) {
+    draw <- .gllvm_julia_simulation_draw(object, families, mu)
+    draw[!mask] <- NA_real_
+    out[, j] <- as.vector(draw)
+  }
   out
 }
 

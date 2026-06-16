@@ -29,14 +29,16 @@
   their bridge input so `confint(fit, method = "wald" / "profile" /
   "bootstrap")` can request the same admitted no-X CI payloads post-fit. The
   admitted post-fit surface is `coef()`, `summary()`, scoped no-X `confint()`,
-  and retained-payload `predict()` / `fitted()` / `residuals()` only where the
-  Julia payload carries the needed score fields; live R tests currently admit
-  in-sample `predict()` / `fitted()` plus response/Pearson `residuals()` for
+  and retained-payload `predict()` / `fitted()` / `residuals()` / `simulate()`
+  only where the Julia payload carries the needed score and nuisance fields;
+  live R tests currently admit in-sample `predict()` / `fitted()` plus
+  response/Pearson `residuals()` and conditional in-sample `simulate()` for
   no-X gaussian, poisson, Bernoulli binomial, nbinom2, nbinom1, beta, and gamma
   rows, and response-scale ordinal probability/class prediction for ordinal
   and ordinal-probit rows. There is still no
   fit-time Julia CI control surface on `gllvmTMB()`. `newdata` prediction,
-  ordinal residuals, mixed-family residuals, simulation, extractor parity,
+  `newdata` simulation, unconditional random-effect redraws, ordinal residuals,
+  ordinal simulation, mixed-family residuals/simulation, extractor parity,
   confidence intervals for
   grouped-dispersion or per-trait ordinal rows, masked CIs, mixed-family CIs,
   and CIs for X rows remain planned follow-up rows, as do mixed-family

@@ -4,6 +4,63 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge scalar conditional simulate admission
+
+Admitted conditional in-sample `simulate()` for scalar-response Julia bridge
+rows whose retained payloads already support fitted values and family nuisance
+parameters: Gaussian, Poisson, Bernoulli binomial, NB2, NB1, Beta, and Gamma.
+The route draws around retained fitted means, returns an `n_obs x nsim` matrix
+in trait-major cell order, and keeps masked response cells as `NA`. `newdata`
+simulation, unconditional random-effect redraws, ordinal simulation,
+mixed-family simulation, extractor parity, and broad native parity remain
+gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,updatedAt`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- R/julia-bridge.R tests/testthat/test-julia-bridge.R NAMESPACE man/gllvmTMB_julia-methods.Rd NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task`
+  -> current local Codex programme commits only.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `NAMESPACE` and `man/gllvmTMB_julia-methods.Rd`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `11` expected Julia-runtime skips and `0`
+  failures.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures after fixing named-index-only mask
+  assertions. The live rows now exercise scalar conditional `simulate()` through
+  main-dispatch Gaussian, Poisson, Bernoulli, NB2, NB1, Beta, Gamma, and masked
+  scalar bridge fits.
+- R capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); expected <- c("gaussian", "poisson", "binomial", "negbinomial", "nb1", "beta", "gamma"); stopifnot(identical(gllvmTMB:::.GLLVM_JULIA_SIMULATE_FAMILIES, expected)); stopifnot(identical(caps$family[caps$postfit_simulate], expected)); stopifnot(!caps$postfit_simulate[caps$family == "ordinal"]); stopifnot(!caps$postfit_simulate[caps$family == "ordinal_probit"]); stopifnot(!caps$postfit_simulate[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY]); stopifnot(any(grepl("conditional simulate()", caps$notes, fixed = TRUE))); print(caps[, c("family", "postfit_predict", "postfit_residuals", "postfit_simulate", "status")], row.names = FALSE)'`
+  -> scalar rows advertise `postfit_simulate = TRUE`; ordinal and mixed-family
+  rows remain false.
+- Rendered-Rd spot-check:
+  `tail -5 man/gllvmTMB_julia-methods.Rd; grep -c '^\\keyword' man/gllvmTMB_julia-methods.Rd || true`
+  -> tail ends in the expected methods description; keyword count `0`.
+- Stale wording / registration scan:
+  `rg -n 'S3method\\(simulate,gllvmTMB_julia\\)|simulate\\.gllvmTMB_julia|postfit_simulate|conditional simulate|unconditional random-effect|newdata simulation|ordinal simulation|mixed-family simulation|simulation remains gated|simulate/extractor parity remain gated|residuals/simulate/extractor parity remain gated' NAMESPACE R/julia-bridge.R man/gllvmTMB_julia-methods.Rd tests/testthat/test-julia-bridge.R NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md`
+  -> expected S3 registration, method/test/docs hits, and intentional ordinal /
+  mixed / extractor gate notes only; no current source leaves scalar-response
+  simulation generically gated.
+- Whitespace:
+  `git diff --check` -> clean.
+
+Deliberately not run yet:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  R-side S3 simulation surface, one bridge test file, generated method docs,
+  ledgers, and the local status widget; it does not touch formula parsing or
+  public articles.
+
 ## 2026-06-16 -- R bridge ordinal probability/class prediction admission
 
 Admitted response-scale category probabilities and modal-class prediction for

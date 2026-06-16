@@ -96,9 +96,12 @@ Active lane guidance:
   `residuals()` are now routed for the live-tested no-X Gaussian, Poisson,
   Bernoulli, NB2, NB1, Beta, and Gamma rows. Ordinal and ordinal-probit bridge
   rows now route response-scale category probabilities and modal-class
-  predictions from the retained score/cutpoint payload. `newdata` prediction,
-  ordinal residuals, mixed-family residuals, simulation, and extractor parity
-  remain gated.
+  predictions from the retained score/cutpoint payload. Scalar-response
+  conditional in-sample `simulate()` is now routed for Gaussian, Poisson,
+  Bernoulli binomial, NB2, NB1, Beta, and Gamma rows and keeps masked response
+  cells as `NA`. `newdata` prediction/simulation, unconditional random-effect
+  redraws, ordinal residuals/simulation, mixed-family residuals/simulation, and
+  extractor parity remain gated.
   The R bridge also routes complete-response fixed-effect-X point fits for
   Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`
@@ -125,15 +128,16 @@ Active lane guidance:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge
   admits retained-payload `predict()` / `fitted()` / response-Pearson
-  `residuals()` for those grouped rows. Grouped-dispersion CIs, simulation,
-  extractor parity, and broad parity remain later rows.
+  `residuals()` plus conditional in-sample `simulate()` for those grouped rows.
+  Grouped-dispersion CIs, extractor parity, unconditional simulation, and broad
+  parity remain later rows.
 - Ordinal probability/class prediction lane:
   R now converts retained ordinal and ordinal-probit score/cutpoint payloads to
   response-scale category probabilities and modal-class predictions. Ordinal
   residuals, ordinal-X, per-trait ordinal CIs, and `newdata` prediction remain
   later rows.
 - Next safe implementation lane: grouped-dispersion CI endpoints/status,
-  masked CI/status, main-dispatch CI control, simulation/extractor parity,
+  masked CI/status, main-dispatch CI control, extractor parity,
   mixed-family admission, NB1/ordinal fixed-effect-X design, X-row CI/status,
   or the native per-trait Gamma expansion spec, unless the maintainer
   explicitly asks to publish or rebase the bridge PR first.

@@ -8,6 +8,7 @@
 \alias{predict.gllvmTMB_julia}
 \alias{fitted.gllvmTMB_julia}
 \alias{residuals.gllvmTMB_julia}
+\alias{simulate.gllvmTMB_julia}
 \alias{confint.gllvmTMB_julia}
 \alias{summary.gllvmTMB_julia}
 \alias{print.summary.gllvmTMB_julia}
@@ -30,6 +31,15 @@
 
 \method{residuals}{gllvmTMB_julia}(object, type = c("response", "pearson"), ...)
 
+\method{simulate}{gllvmTMB_julia}(
+  object,
+  nsim = 1,
+  seed = NULL,
+  newdata = NULL,
+  condition_on_RE = TRUE,
+  ...
+)
+
 \method{confint}{gllvmTMB_julia}(
   object,
   parm,
@@ -50,8 +60,8 @@
 
 \item{...}{Unused.}
 
-\item{newdata}{Unsupported for Julia bridge fits; current prediction methods
-return in-sample fitted values from the retained bridge payload.}
+\item{newdata}{Unsupported for Julia bridge fits; current prediction and
+simulation methods return in-sample values from the retained bridge payload.}
 
 \item{type}{Prediction or residual scale. For \code{predict()} and \code{fitted()},
 \code{"link"} returns the fitted linear predictor and \code{"response"} applies the
@@ -61,6 +71,14 @@ probabilities and \code{"class"} returns the modal category. For \code{residuals
 \code{"response"} returns observed-minus-fitted residuals on the response scale
 and \code{"pearson"} divides by the family-specific standard deviation.
 Binomial rows use the observed proportion, \code{y / N}, on the response scale.}
+
+\item{nsim}{Number of replicate response vectors to draw for \code{simulate()}.}
+
+\item{seed}{Optional RNG seed for \code{simulate()}.}
+
+\item{condition_on_RE}{Logical for \code{simulate()}. The Julia bridge currently
+routes only conditional, in-sample simulation from retained fitted values,
+so \code{FALSE} stops with a not-yet-routed message.}
 
 \item{parm}{Optional integer or character vector of CI terms for \code{confint()}.}
 
@@ -93,15 +111,18 @@ rows and units in columns for scalar-response rows, and an array of
 category probabilities or a modal-class matrix for ordinal rows.
 \code{residuals()} returns an in-sample residual matrix with the same shape as
 \code{fitted()} for scalar-response rows and keeps masked response cells as
-\code{NA}. \code{summary()} returns a list with header, coefficients, covariance,
-and status fields.
+\code{NA}. \code{simulate()} returns an \verb{n_obs x nsim} matrix in the same trait-major
+cell order as \code{predict()} and keeps masked response cells as \code{NA}.
+\code{summary()} returns a list with header, coefficients, covariance, and
+status fields.
 }
 \description{
 Small S3 surface for fits returned by \code{gllvmTMB(..., engine = "julia")} or
 \code{\link[=gllvm_julia_fit]{gllvm_julia_fit()}}. These methods expose the flat bridge payload that has
 already passed the R admission gates. They are point-estimate summaries:
 prediction and ordinary response/Pearson residuals are in-sample
-retained-payload reconstructions only, while simulation and extractor parity
-remain separate bridge rows. Confidence intervals are routed only for
-admitted no-X Gaussian, Poisson, and Bernoulli binomial rows.
+retained-payload reconstructions only. Simulation is conditional on retained
+fitted values for admitted scalar-response rows only; extractor parity remains
+a separate bridge row. Confidence intervals are routed only for admitted no-X
+Gaussian, Poisson, and Bernoulli binomial rows.
 }

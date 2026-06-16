@@ -675,6 +675,65 @@ gllvm_julia_capabilities <- function() {
     length(unique(.gllvm_julia_trait_families(object))) > 1L
 }
 
+## Implied between-/within-trait residual covariance from the cached bridge
+## point estimates, mirroring the native extract_Sigma_B() / extract_Sigma_W()
+## return shape (a list with `Sigma` and `R`). The bridge payload carries a
+## SINGLE shared loading block Lambda (p x K) and a scalar Gaussian residual SD
+## sigma_eps, so:
+##   * level "B" (level = "unit"): Sigma_B = Lambda Lambda^T for ALL admitted
+##     one-part families -- a deterministic function of the cached point-estimate
+##     loadings. For a mixed-family object Lambda is shared across the latent
+##     block, so Sigma_B is still well-defined. R_B = cov2cor(Sigma_B).
+##   * level "W" (level = "unit_obs"): only Gaussian has a residual scale on the
+##     bridge payload (sigma_eps^2 * I). Non-Gaussian families have no within-unit
+##     residual covariance defined on the payload, so we error with a clear
+##     bridge-specific message rather than fabricate one.
+## `$trait_names` supplies the dimnames.
+.gllvm_julia_residual_sigma <- function(object, level) {
+  traits <- .gllvm_julia_trait_names(object)
+  p <- length(traits)
+  if (identical(level, "B")) {
+    Lambda <- as.matrix(object$loadings)
+    if (length(Lambda) == 0L) {
+      return(NULL)
+    }
+    Sigma <- Lambda %*% t(Lambda)
+    Sigma <- as.matrix(Sigma)
+    rownames(Sigma) <- colnames(Sigma) <- traits
+    D <- sqrt(diag(Sigma))
+    R <- if (all(is.finite(D)) && all(D > 0)) Sigma / outer(D, D) else NA * Sigma
+    rownames(R) <- colnames(R) <- traits
+    return(list(Sigma = Sigma, R = R))
+  }
+  ## level == "W": within-unit residual covariance.
+  fam <- .gllvm_julia_trait_families(object)
+  if (!all(fam == "gaussian")) {
+    bad <- unique(fam[fam != "gaussian"])
+    cli::cli_abort(c(
+      paste0(
+        "getResidualCov(): within-unit residual covariance is not defined ",
+        "for a {.val {bad[1]}} engine = {.val julia} bridge fit."
+      ),
+      "i" = "Only Gaussian bridge fits carry a residual scale (sigma_eps^2 I) at {.code level = \"unit_obs\"}.",
+      ">" = "Use {.code level = \"unit\"} for the between-trait covariance {.code Lambda Lambda^T}."
+    ))
+  }
+  sigma_eps <- as.numeric(object$sigma_eps)
+  if (
+    length(sigma_eps) != 1L || !is.finite(sigma_eps)
+  ) {
+    cli::cli_abort(c(
+      "getResidualCov(): Gaussian bridge fit carries no finite {.code sigma_eps} for {.code level = \"unit_obs\"}.",
+      ">" = "Use {.code level = \"unit\"} for the between-trait covariance {.code Lambda Lambda^T}."
+    ))
+  }
+  Sigma <- diag(sigma_eps^2, nrow = p)
+  rownames(Sigma) <- colnames(Sigma) <- traits
+  R <- diag(1, nrow = p)
+  rownames(R) <- colnames(R) <- traits
+  list(Sigma = Sigma, R = R)
+}
+
 #' Fit a GLLVM with the Julia engine (GLLVM.jl `bridge_fit`).
 #'
 #' @param y Response matrix, p x n (traits x units), or n x p (set `units_are_rows`).

@@ -1053,6 +1053,76 @@ test_that("Julia bridge ordination accessors use cached scores and loadings", {
   )
 })
 
+test_that("Julia bridge getResidualCov/Cor return Lambda Lambda^T at level unit", {
+  # Gaussian bridge fixture with known loadings, sigma_eps, and trait names.
+  gauss <- fake_julia_fit()
+  gauss$family <- "gaussian"
+  gauss$model <- "gaussian_rr"
+  gauss$loadings <- matrix(c(0.4, -0.3), nrow = 2L)
+  gauss$sigma_eps <- 0.5
+  gauss$trait_names <- c("sp1", "sp2")
+
+  Lambda <- gauss$loadings
+  Sigma_B <- Lambda %*% t(Lambda)
+  dimnames(Sigma_B) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
+
+  cov_unit <- getResidualCov(gauss, level = "unit")
+  expect_equal(cov_unit, Sigma_B)
+  expect_equal(dimnames(cov_unit), list(c("sp1", "sp2"), c("sp1", "sp2")))
+  expect_equal(getResidualCor(gauss, level = "unit"), cov2cor(Sigma_B))
+
+  # The legacy "B" alias routes to the same between-trait covariance.
+  expect_equal(
+    suppressWarnings(getResidualCov(gauss, level = "B")),
+    Sigma_B
+  )
+
+  # Regression: it NO LONGER aborts with the misleading native-only message
+  # "Provide a fit returned by gllvmTMB" -- it returns a matrix instead.
+  expect_no_error(getResidualCov(gauss, level = "unit"))
+
+  # Gaussian within-unit residual covariance is sigma_eps^2 * I.
+  Sigma_W <- diag(0.25, 2L)
+  dimnames(Sigma_W) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
+  R_W <- diag(1, 2L)
+  dimnames(R_W) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
+  expect_equal(getResidualCov(gauss, level = "unit_obs"), Sigma_W)
+  expect_equal(getResidualCor(gauss, level = "unit_obs"), R_W)
+
+  # Non-Gaussian (Poisson): level "unit" Sigma_B works ...
+  pois <- fake_julia_fit() # family = "poisson"
+  Lambda_p <- as.matrix(pois$loadings)
+  Sigma_Bp <- Lambda_p %*% t(Lambda_p)
+  dimnames(Sigma_Bp) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
+  expect_equal(getResidualCov(pois, level = "unit"), Sigma_Bp)
+  expect_equal(getResidualCor(pois, level = "unit"), cov2cor(Sigma_Bp))
+
+  # ... but level "unit_obs" errors with the clear bridge-specific message,
+  # NOT the misleading "Provide a fit returned by gllvmTMB".
+  expect_error(
+    getResidualCov(pois, level = "unit_obs"),
+    "not defined for a .*poisson"
+  )
+  expect_error(
+    getResidualCor(pois, level = "unit_obs"),
+    "not defined for a .*poisson"
+  )
+  pois_msg <- conditionMessage(tryCatch(
+    getResidualCov(pois, level = "unit_obs"),
+    error = function(e) e
+  ))
+  expect_false(grepl("Provide a fit returned by", pois_msg, fixed = TRUE))
+
+  # Mixed-family bridge object: Lambda is shared, so Sigma_B is still defined.
+  mixed <- fake_mixed_julia_fit()
+  Lambda_m <- as.matrix(mixed$loadings)
+  Sigma_Bm <- Lambda_m %*% t(Lambda_m)
+  tn <- mixed$trait_names
+  dimnames(Sigma_Bm) <- list(tn, tn)
+  expect_equal(getResidualCov(mixed, level = "unit"), Sigma_Bm)
+  expect_equal(getResidualCor(mixed, level = "unit"), cov2cor(Sigma_Bm))
+})
+
 # --- capability guards (pure-R: fire before any Julia dependency) -----------
 
 test_that("engine = 'julia' rejects non reduced-rank covariance terms", {

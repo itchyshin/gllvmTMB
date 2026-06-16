@@ -101,6 +101,13 @@ getLV <- function(
 #' \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \Psi_X}. `getResidualCor()`
 #' returns the corresponding correlation matrix.
 #'
+#' For Julia-engine bridge fits the payload carries a single shared loading
+#' block \eqn{\Lambda}, so `level = "unit"` returns the implied between-trait
+#' covariance \eqn{\Sigma_B = \Lambda \Lambda^\top} (a point quantity). At
+#' `level = "unit_obs"` only Gaussian bridge fits carry a residual scale
+#' (\eqn{\sigma_\epsilon^2 I}); other families error because the within-unit
+#' residual covariance is not defined on the bridge payload.
+#'
 #' @inheritParams getLoadings
 #' @return An `n_traits × n_traits` matrix.
 #' @seealso [extract_Sigma()] — the canonical unified API for
@@ -110,6 +117,13 @@ getLV <- function(
 getResidualCov <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
+  if (inherits(fit, "gllvmTMB_julia")) {
+    out <- .gllvm_julia_residual_sigma(fit, level)
+    if (is.null(out)) {
+      return(NULL)
+    }
+    return(out$Sigma)
+  }
   out <- if (level == "B") extract_Sigma_B(fit) else extract_Sigma_W(fit)
   if (is.null(out)) {
     return(NULL)
@@ -123,6 +137,13 @@ getResidualCov <- function(fit, level = "unit") {
 getResidualCor <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
+  if (inherits(fit, "gllvmTMB_julia")) {
+    out <- .gllvm_julia_residual_sigma(fit, level)
+    if (is.null(out)) {
+      return(NULL)
+    }
+    return(out$R)
+  }
   out <- if (level == "B") extract_Sigma_B(fit) else extract_Sigma_W(fit)
   if (is.null(out)) {
     return(NULL)

@@ -24,6 +24,14 @@ Returns the implied trait covariance at \code{level = "unit"} or
 \eqn{\Sigma_X = \Lambda_X \Lambda_X^\top + \Psi_X}. \code{getResidualCor()}
 returns the corresponding correlation matrix.
 }
+\details{
+For Julia-engine bridge fits the payload carries a single shared loading
+block \eqn{\Lambda}, so \code{level = "unit"} returns the implied between-trait
+covariance \eqn{\Sigma_B = \Lambda \Lambda^\top} (a point quantity). At
+\code{level = "unit_obs"} only Gaussian bridge fits carry a residual scale
+(\eqn{\sigma_\epsilon^2 I}); other families error because the within-unit
+residual covariance is not defined on the bridge payload.
+}
 \seealso{
 \code{\link[=extract_Sigma]{extract_Sigma()}} — the canonical unified API for
 between-/within-/phylogenetic Sigma at any tier.

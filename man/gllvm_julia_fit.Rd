@@ -33,15 +33,18 @@ Gaussian and selected one-part non-Gaussian bridge families.}
 
 \item{mask}{Optional logical response-observation mask with the same orientation
 as \code{y}; \code{TRUE} cells contribute to the likelihood and \code{FALSE} cells are
-ignored. Currently routed for one-part no-X non-Gaussian point fits only.}
+ignored. Currently routed for one-part no-X non-Gaussian point fits, with
+masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
+and Gamma.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
 
 \item{ci_method}{Confidence-interval route for admitted no-X bridge rows:
 Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
 Beta, and Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}, or
-\code{"bootstrap"}. Per-trait ordinal rows, response masks, mixed-family vectors,
-and fixed-effect-X rows remain loud gates.}
+\code{"bootstrap"}. Response-mask CIs are routed for the same non-ordinal
+non-Gaussian rows when \code{X = NULL}. Per-trait ordinal rows, mixed-family
+vectors, and fixed-effect-X rows remain loud gates.}
 
 \item{ci_level}{Nominal confidence level when \code{ci_method != "none"}.}
 

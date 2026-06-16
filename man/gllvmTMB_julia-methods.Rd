@@ -88,9 +88,10 @@ the admitted Julia CI payload at the requested level.}
 
 \item{method}{CI route for \code{confint()}. \code{"stored"} reads an existing payload.
 \code{"wald"}, \code{"profile"}, and \code{"bootstrap"} recompute from retained bridge
-input for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows. If
-omitted, \code{confint()} reads a stored payload when present and otherwise uses
-\code{"wald"} for current fits that retain their bridge input.}
+input for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
+Beta, and Gamma rows, including masked non-Gaussian rows when \code{X = NULL}.
+If omitted, \code{confint()} reads a stored payload when present and otherwise
+uses \code{"wald"} for current fits that retain their bridge input.}
 
 \item{ci_nboot}{Number of parametric bootstrap replicates when
 \code{method = "bootstrap"}.}
@@ -125,7 +126,8 @@ retained-payload reconstructions only. Simulation is conditional on retained
 fitted values for admitted scalar-response rows only. Unit-tier covariance and
 raw ordination accessors are routed on the retained engine scale; richer
 extractor parity remains a separate bridge row. Confidence intervals are
-routed only for admitted no-X Gaussian, Poisson, and Bernoulli binomial rows;
-they may be requested at fit time through \code{gllvmTMB(ci_method = ...)}, or
-retrieved and recomputed through \code{confint()}.
+routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
+Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian
+rows when \code{X = NULL}. They may be requested at fit time through
+\code{gllvmTMB(ci_method = ...)}, or retrieved and recomputed through \code{confint()}.
 }

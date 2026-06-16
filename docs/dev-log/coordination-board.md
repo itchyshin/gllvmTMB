@@ -82,7 +82,9 @@ Active lane guidance:
   The R bridge now passes response masks through to the paired Julia mask
   contract for one-part no-X point fits in Poisson, Bernoulli binomial, NB2,
   NB1, Beta, Gamma, ordinal, and ordinal-probit rows. Gaussian masks,
-  mixed-family masks, X+mask, and masked CIs remain loud gates.
+  mixed-family masks, and X+mask remain loud gates. Masked no-X
+  Wald/profile/bootstrap CI payloads are routed for Poisson, Bernoulli
+  binomial, NB2, NB1, Beta, and Gamma rows.
   The R bridge now also registers `coef()`, `summary()`, and scoped no-X
   `confint()` methods for `gllvmTMB_julia` objects. Direct
   `gllvm_julia_fit(..., ci_method = "wald" / "profile" / "bootstrap")` calls
@@ -92,8 +94,8 @@ Active lane guidance:
   "profile" / "bootstrap")` fits can request the same admitted no-X CI payloads
   at fit time, and they retain their bridge input so `confint(fit, method =
   "wald" / "profile" / "bootstrap")` can recompute those payloads post-fit.
-  Per-trait ordinal CIs, masked CIs, mixed-family CIs, and X-row CIs remain
-  gated. Retained-score `predict()` / `fitted()` /
+  Per-trait ordinal CIs, mixed-family CIs, and X-row CIs remain gated.
+  Retained-score `predict()` / `fitted()` /
   response-Pearson
   `residuals()` are now routed for the live-tested no-X Gaussian, Poisson,
   Bernoulli, NB2, NB1, Beta, and Gamma rows. Ordinal and ordinal-probit bridge
@@ -145,9 +147,9 @@ Active lane guidance:
   response-scale category probabilities and modal-class predictions. Ordinal
   residuals, ordinal-X, per-trait ordinal CIs, and `newdata` prediction remain
   later rows.
-- Next safe implementation lane: masked CI/status, richer extractor parity,
-  mixed-family admission, NB1/ordinal fixed-effect-X design, X-row CI/status,
-  or the native per-trait Gamma expansion spec, unless the maintainer
+- Next safe implementation lane: richer extractor parity, mixed-family
+  admission, NB1/ordinal fixed-effect-X design, X-row CI/status, ordinal CI
+  endpoints, or the native per-trait Gamma expansion spec, unless the maintainer
   explicitly asks to publish or rebase the bridge PR first.
 
 Both agents commit edits to this file with a short message like:

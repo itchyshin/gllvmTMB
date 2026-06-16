@@ -373,6 +373,15 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     caps$family[caps$ci_no_x_bootstrap],
     .GLLVM_JULIA_CI_NO_X_FAMILIES
   )
+  expect_equal(caps$family[caps$ci_mask_wald], .GLLVM_JULIA_MASK_CI_FAMILIES)
+  expect_equal(
+    caps$family[caps$ci_mask_profile],
+    .GLLVM_JULIA_MASK_CI_FAMILIES
+  )
+  expect_equal(
+    caps$family[caps$ci_mask_bootstrap],
+    .GLLVM_JULIA_MASK_CI_FAMILIES
+  )
   expect_true(all(caps$ci_no_x_wald[
     caps$family %in% .GLLVM_JULIA_GROUPED_DISPERSION_FAMILIES
   ]))
@@ -384,7 +393,7 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_true(all(caps$status == "partial"))
   expect_equal(caps$family[caps$missing_response], .GLLVM_JULIA_MASK_FAMILIES)
   expect_true(any(grepl(
-    "response masks are routed for no-X point fits",
+    "response masks and masked no-X Wald/profile/bootstrap CI payloads",
     caps$notes
   )))
   expect_true(any(grepl("fixed-effect X point fits are routed", caps$notes)))
@@ -1028,12 +1037,6 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
     ),
     "fixed-effect-X"
   )
-  mask <- matrix(TRUE, nrow = 2L, ncol = 4L)
-  mask[1L, 1L] <- FALSE
-  expect_error(
-    gllvm_julia_fit(y, family = poisson(), mask = mask, ci_method = "wald"),
-    "response-mask"
-  )
 })
 
 test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
@@ -1099,6 +1102,58 @@ test_that("gllvmTMB fit-time Julia CI controls route through the bridge", {
   expect_equal(seen$ci_seed, 88L)
   expect_equal(fit$ci_method, "profile")
   expect_equal(fit$ci_level, 0.8)
+})
+
+test_that("gllvmTMB fit-time Julia CI controls preserve response masks", {
+  df <- make_long()
+  df <- df[-1L, , drop = FALSE]
+  seen <- new.env(parent = emptyenv())
+
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(
+      y,
+      family,
+      num.lv,
+      N,
+      X,
+      mask,
+      ci_method,
+      ci_level,
+      ci_nboot,
+      ci_seed,
+      ...
+    ) {
+      seen$mask <- mask
+      seen$ci_method <- ci_method
+      seen$ci_level <- ci_level
+
+      out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+      out$engine <- "julia"
+      out$ci_method <- ci_method
+      out$ci_level <- ci_level
+      out$missing_response <- TRUE
+      out$response_mask <- mask
+      out
+    }
+  )
+
+  fit <- gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = poisson(),
+    engine = "julia",
+    ci_method = "wald",
+    ci_level = 0.9
+  )
+
+  expect_s3_class(fit, "gllvmTMB_julia")
+  expect_equal(seen$ci_method, "wald")
+  expect_equal(seen$ci_level, 0.9)
+  expect_true(is.matrix(seen$mask))
+  expect_true(any(!seen$mask))
+  expect_true(isTRUE(fit$missing_response))
 })
 
 test_that("gllvmTMB fit-time CI controls keep unsupported rows explicit", {
@@ -1335,6 +1390,20 @@ test_that("gllvm_julia_fit passes response masks through to GLLVM.jl", {
     expect_true(isTRUE(fit$missing_response))
     expect_equal(fit$response_mask, mask)
     expect_true(is.finite(as.numeric(logLik(fit))))
+    if (case$engine_family %in% .GLLVM_JULIA_MASK_CI_FAMILIES) {
+      fit_ci <- gllvm_julia_fit(
+        y,
+        family = case$family,
+        num.lv = 1L,
+        mask = mask,
+        ci_method = "wald"
+      )
+      expect_s3_class(fit_ci, "gllvmTMB_julia")
+      expect_equal(fit_ci$ci_method, "wald")
+      ci <- confint(fit_ci, method = "stored")
+      expect_equal(attr(ci, "ci_method"), "wald")
+      expect_equal(attr(ci, "ci_status"), "available")
+    }
   }
 })
 
@@ -1656,6 +1725,11 @@ test_that("engine = 'julia' main dispatch routes one-part response masks", {
     expect_equal(fit$nobs, nrow(df))
     expect_equal(sum(fit$response_mask), nrow(df))
     expect_true(is.finite(as.numeric(logLik(fit))))
+    if (case$engine_family %in% .GLLVM_JULIA_MASK_CI_FAMILIES) {
+      ci <- confint(fit, method = "wald")
+      expect_equal(attr(ci, "ci_method"), "wald")
+      expect_equal(attr(ci, "ci_status"), "available")
+    }
     if (case$engine_family %in% .GLLVM_JULIA_RESIDUAL_FAMILIES) {
       res <- residuals(fit)
       expect_equal(dim(res), dim(case$Y))

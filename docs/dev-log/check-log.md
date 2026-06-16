@@ -4,6 +4,66 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge masked-CI admission
+
+Admitted masked no-X Wald/profile/bootstrap CI payloads for the Julia bridge
+rows whose point fits and native Julia CI engines already route observed-cell
+masks: Poisson, Bernoulli binomial, NB2, NB1, Beta, and Gamma. The capability
+ledger now separates `missing_response` point support from `ci_mask_*`
+inference support. Per-trait ordinal CI endpoints, Gaussian masks,
+mixed-family masks, masks with fixed-effect covariates, mixed-family CIs, and
+X-row CIs remain gated.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,updatedAt`
+  -> `[]`.
+  `git log --all --oneline --since="6 hours ago" -- NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/check-log.md docs/dev-log/after-task R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> current local Codex programme commits only.
+- Paired Julia checks:
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  in `../GLLVM.jl-integration` -> `83/83` pass.
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `37/37` pass.
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `64/64` pass.
+- Formatter:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/gllvm_julia_capabilities.Rd`,
+  `man/gllvm_julia_fit.Rd`, and `man/gllvmTMB_julia-methods.Rd`.
+- No-Julia R bridge test:
+  `Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `12` expected Julia-runtime skips and `0`
+  failures.
+- Live R bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed cleanly with `0` failures. Live tests now request direct-wrapper
+  masked Wald CIs for every `ci_mask_*` family and main-dispatch masked
+  post-fit Wald recomputation for Poisson, NB1, and Gamma.
+- Capability ledger guard:
+  `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); stopifnot(identical(caps$family[caps$ci_mask_wald], gllvmTMB:::.GLLVM_JULIA_MASK_CI_FAMILIES)); stopifnot(identical(caps$family[caps$ci_mask_profile], gllvmTMB:::.GLLVM_JULIA_MASK_CI_FAMILIES)); stopifnot(identical(caps$family[caps$ci_mask_bootstrap], gllvmTMB:::.GLLVM_JULIA_MASK_CI_FAMILIES)); stopifnot(!any(caps$ci_mask_wald[caps$family %in% gllvmTMB:::.GLLVM_JULIA_PERTRAIT_ORDINAL_FAMILIES])); stopifnot(!caps$ci_mask_wald[caps$family == "gaussian"]); stopifnot(!caps$ci_mask_wald[caps$family == gllvmTMB:::.GLLVM_JULIA_MIXED_FAMILY]); stopifnot(any(grepl("masked no-X Wald/profile/bootstrap CI payloads", caps$notes, fixed = TRUE))); print(caps[, c("family", "missing_response", "ci_no_x_wald", "ci_mask_wald", "status")], row.names = FALSE)'`
+  -> `ci_mask_wald/profile/bootstrap` true only for Poisson, Binomial, NB2,
+  NB1, Beta, and Gamma.
+- Stale wording / boundary scan:
+  `rg -n "masked CIs|masked intervals|response-mask bridge fits are not routed|confidence intervals for response-mask|Gaussian, Poisson, or Bernoulli binomial|admitted no-X Gaussian, Poisson, and Bernoulli|masked CI/status|masked no-X|ci_mask_|response masks.*CI|Per-trait ordinal CIs, masked" R tests/testthat NEWS.md docs/design/35-validation-debt-register.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-06-16-r-bridge-masked-ci-admission.md man`
+  -> expected hits only for the admitted `ci_mask_*` columns, generated Rd,
+  JUL-01 current-status text, and ordinal-specific masked-CI gate wording.
+- Whitespace:
+  `git diff --check` -> clean in both `gllvmTMB` and
+  `../GLLVM.jl-integration`.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  CRAN-style checks, and article renders. This slice changes the Julia bridge
+  CI admission surface, tests, generated Rd, and ledgers only; it does not
+  touch formula grammar, TMB likelihood code, public article code, or pkgdown
+  navigation.
+
 ## 2026-06-16 -- R bridge grouped-dispersion CI admission
 
 Admitted no-X grouped-dispersion Wald/profile/bootstrap CI payloads for the

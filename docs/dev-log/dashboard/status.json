@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 05:53 MDT",
+  "updated": "2026-06-17 06:45 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -18,42 +18,42 @@
   "truth_cards": [
     {
       "label": "Local workspace",
-      "value": "dirty",
-      "status": "warn",
-      "note": "Dashboard source is added in this working tree; 05:00 handover checkpoint remains untracked."
+      "value": "ahead",
+      "status": "active",
+      "note": "Dashboard slice is committed locally; 05:00 handover checkpoint remains untracked."
     },
     {
       "label": "Draft PR",
       "value": "#489",
       "status": "draft",
-      "note": "Merge-clean and green at e79ed27, but scoped bridge admission only."
+      "note": "Remote PR is still merge-clean and green at e79ed27; local b2ae781 is not pushed."
     },
     {
       "label": "Main full-check",
-      "value": "running",
-      "status": "running",
-      "note": "Live main run 27683754473 is not a release gate result yet."
+      "value": "green",
+      "status": "success",
+      "note": "Main run 27683754473 completed successfully at 2026-06-17T12:34:23Z."
     },
     {
       "label": "Power pilot",
       "value": "mid-flight",
       "status": "active",
-      "note": "Job-level progress is active; run-level state can still say queued."
+      "note": "Run 27683989889 has 43 successful jobs, 6 running shards, 0 queued, 0 failed."
     },
     {
       "label": "Next decision",
-      "value": "Ada gate",
+      "value": "push gate",
       "status": "guard",
-      "note": "Choose #489 landing path and paired GLLVM.jl ordering before widening claims."
+      "note": "Wait for active power-pilot or explicitly choose to push dashboard docs now."
     }
   ],
   "repos": [
     {
       "name": "gllvmTMB",
       "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "e79ed27",
-      "state": "dirty",
-      "note": "Current dashboard implementation plus untracked 05:00 recovery checkpoint; PR #489 remains draft.",
+      "head": "local dashboard commits",
+      "state": "warn",
+      "note": "Dashboard source committed locally; remote PR #489 remains at e79ed27 and draft.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489"
     },
@@ -92,15 +92,15 @@
         },
         {
           "name": "Keep #489 draft/partial rather than widening bridge claims",
-          "status": "active"
+          "status": "covered"
         },
         {
           "name": "Replace ignored widget with tracked dashboard source",
-          "status": "active"
+          "status": "covered"
         },
         {
           "name": "After-task closeout and dashboard validation",
-          "status": "queued"
+          "status": "covered"
         }
       ]
     },
@@ -170,11 +170,11 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 337500 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 339000 / 480000 reps and 0/48 cells at cap",
           "status": "active"
         },
         {
-          "name": "Scheduled power-pilot run 27683989889 is active by job count",
+          "name": "Scheduled power-pilot run 27683989889 is active: shards 25, 26, 27, 31, 32, and 33 still running",
           "status": "active"
         },
         {
@@ -221,12 +221,12 @@
     {
       "when": "now",
       "who": "Ada",
-      "text": "Implementing tracked mission-control dashboard source and live launcher while keeping #489 draft/partial."
+      "text": "Dashboard source is committed locally; #489 remains remote-draft/partial at e79ed27."
     },
     {
       "when": "now",
       "who": "Grace",
-      "text": "Watching full-check and power-pilot as volatile evidence surfaces, not release or scientific closure."
+      "text": "Main full-check is green; power-pilot remains active and separate from scientific closure."
     },
     {
       "when": "now",
@@ -305,7 +305,7 @@
       "name": "Ada",
       "role": "orchestrator and integrator",
       "status": "active",
-      "task": "Order #489, GLLVM.jl, CI, and dashboard closeout.",
+      "task": "Order #489 push/hold decision, GLLVM.jl landing order, and power-pilot closeout.",
       "blocked_by": "Maintainer landing decision",
       "parallel_with": "Rose, Grace, Shannon",
       "join_gate": "#489 ready/split/hold choice"
@@ -333,7 +333,7 @@
       "role": "CI, pkgdown, CRAN, reproducibility",
       "status": "active",
       "task": "Track full-check, power-pilot, local LaunchAgent, and launcher health.",
-      "blocked_by": "Active main workflows",
+      "blocked_by": "Active power-pilot workflow",
       "parallel_with": "Shannon and Curie",
       "join_gate": "Completed runs or explicit snapshot"
     },
@@ -476,7 +476,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent 337500 / 480000 reps, 0/48 cells at cap.",
+      "evidence": "LaunchAgent 339000 / 480000 reps, 0/48 cells at cap.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -486,7 +486,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27683989889 active by job count.",
+      "evidence": "Run 27683989889: 43 success, shards 25/26/27/31/32/33 in progress, 0 queued, 0 bad at 06:45 MDT.",
       "next_gate": "Summarize only after completion or explicit snapshot."
     },
     {
@@ -579,16 +579,16 @@
       "text": "Recovery checkpoint records #489 draft/green/merge-clean and power-pilot boundaries."
     },
     {
-      "when": "2026-06-17 05:53 MDT",
+      "when": "2026-06-17 06:45 MDT",
       "who": "GitHub CLI",
       "text": "PR #489 is draft, CLEAN, and green at e79ed27.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489"
     },
     {
-      "when": "2026-06-17 05:53 MDT",
+      "when": "2026-06-17 06:45 MDT",
       "who": "LaunchAgent",
-      "text": "Local loop is running; latest log shows iter 100, 337500 / 480000 reps, 0/48 cells at cap, and 0 errored cells."
+      "text": "Local loop is running; latest log shows iter 101, 339000 / 480000 reps, 0/48 cells at cap, and 0 errored cells."
     }
   ]
 }

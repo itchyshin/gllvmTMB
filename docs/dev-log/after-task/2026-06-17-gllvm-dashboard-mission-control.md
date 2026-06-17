@@ -85,6 +85,16 @@ Confidence: high.
 - `rg -n "[ \t]$" docs/dev-log/dashboard docs/dev-log/after-task/2026-06-17-gllvm-dashboard-mission-control.md tools/start-mission-control.sh docs/dev-log/check-log.md`
   -> no trailing whitespace in the new dashboard files, after-task
   report, launcher, or updated check-log entry.
+- Post-commit evidence refresh:
+  - `gh run view 27683989889 --json status,conclusion,updatedAt,url,jobs | jq ...`
+    -> power-pilot run still `in_progress`: 49 jobs total, 43
+    completed successfully, 6 in progress, 0 queued, 0 bad.
+  - `gh run view 27683989889 --json jobs | jq -r '.jobs[] | select(.status != "completed") | [.name, .status, .startedAt, .url] | @tsv'`
+    -> remaining shards: 25/48, 26/48, 27/48, 31/48, 32/48, and
+    33/48.
+  - `git log --oneline --max-count=4`
+    -> local dashboard commits are visible ahead of `e79ed27`; remote
+    PR #489 remains at `e79ed27` until a push decision.
 
 ## 6. Tests of the Tests
 
@@ -157,5 +167,8 @@ separate future lanes; this dashboard does not change grammar or APIs.
   polling.
 - PR #489 remains draft and partial.
 - Active main workflows should be summarized again after completion.
+- The current power-pilot run remains active on six shards; pushing the
+  dashboard commit before it completes is a maintainer/CI-pacing
+  decision, not a dashboard implementation gap.
 - A future slice can add a small updater script for GitHub run counts,
   but that should stay separate from the static renderer.

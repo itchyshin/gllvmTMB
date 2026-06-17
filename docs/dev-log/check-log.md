@@ -18488,6 +18488,26 @@ Stale-wording scans for this local dashboard slice:
 - `rg -n "engine_control|selectable Julia|default GLLVM.jl fitting path" docs/dev-log/dashboard docs/dev-log/after-task/2026-06-17-gllvm-dashboard-mission-control.md`
   -> only intentional guardrail wording; no selectable-Julia-algorithm claim.
 
+Post-commit evidence refresh:
+
+- `git commit -m "docs: add GLLVM mission-control dashboard"`
+  -> local commit `b2ae781`.
+- `gh run list --workflow full-check.yaml --limit 5 --json databaseId,name,displayTitle,headBranch,headSha,status,conclusion,createdAt,updatedAt,url`
+  -> main full-check run `27683754473` completed successfully at
+  `2026-06-17T12:34:23Z`.
+- `gh run view 27683989889 --json status,conclusion,updatedAt,url,jobs | jq '{status, conclusion, updatedAt, total:(.jobs|length), completed_success:([.jobs[]|select(.status=="completed" and .conclusion=="success")]|length), completed_bad:([.jobs[]|select(.status=="completed" and .conclusion!="success")]|length), in_progress:([.jobs[]|select(.status=="in_progress")]|length), queued:([.jobs[]|select(.status=="queued")]|length)}'`
+  -> `status: in_progress`, `total: 49`, `completed_success: 43`,
+  `completed_bad: 0`, `in_progress: 6`, `queued: 0`.
+- `gh run view 27683989889 --json jobs | jq -r '.jobs[] | select(.status != "completed") | [.name, .status, .startedAt, .url] | @tsv'`
+  -> remaining in-progress jobs are shards `25/48`, `26/48`, `27/48`,
+  `31/48`, `32/48`, and `33/48`.
+- `tail -n 30 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> latest local loop at 2026-06-17T06:12:23, iteration 101,
+  339000 / 480000 reps, 0/48 cells at cap, 0 errored cells.
+- `git log --oneline --max-count=4`
+  -> local dashboard commits are visible ahead of `e79ed27`; remote PR
+  #489 remains at `e79ed27` until a push decision.
+
 Deliberately not run:
 
 - `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()` were

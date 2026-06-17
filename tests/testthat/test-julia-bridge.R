@@ -145,7 +145,8 @@ fake_raw_extractor_julia_fit <- function(
   family = "poisson",
   include_sigma = FALSE,
   include_correlation = FALSE,
-  transpose_scores = TRUE
+  transpose_scores = TRUE,
+  sigma_diag = 0
 ) {
   traits <- c("oak", "maple", "pine")
   units <- paste0("plot", 1:4)
@@ -190,6 +191,7 @@ fake_raw_extractor_julia_fit <- function(
     message = "converged"
   )
   if (include_sigma) {
+    sigma <- sigma + diag(rep_len(sigma_diag, length(traits)), length(traits))
     out$Sigma <- sigma
   }
   if (include_correlation) {
@@ -487,7 +489,7 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_true(any(grepl("in-sample predict\\(\\)/fitted\\(\\)", caps$notes)))
   expect_true(any(grepl("response/Pearson residuals", caps$notes)))
   expect_true(any(grepl("conditional simulate\\(\\)", caps$notes)))
-  expect_true(any(grepl("unit-tier covariance and raw ordination", caps$notes)))
+  expect_true(any(grepl("native link_residual scale semantics", caps$notes)))
   expect_true(any(grepl("ordinal link, probability", caps$notes)))
   expect_true(caps$postfit_predict[caps$family == "nb1"])
   expect_true(caps$postfit_residuals[caps$family == "nb1"])
@@ -595,7 +597,10 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   total <- suppressMessages(extract_Sigma(fit, level = "unit"))
   expect_equal(total$Sigma, fit$Sigma)
   expect_equal(total$R, fit$correlation)
-  expect_true(any(grepl("retained engine scale", total$note)))
+  expect_true(any(grepl(
+    "retained GLLVM.jl Sigma/correlation payload",
+    total$note
+  )))
 
   shared <- suppressMessages(extract_Sigma(
     fit,
@@ -658,7 +663,8 @@ test_that("Julia bridge raw extractor payloads preserve labels and fallback calc
       family = c("gaussian", "poisson", "binomial"),
       include_sigma = TRUE,
       include_correlation = TRUE,
-      transpose_scores = FALSE
+      transpose_scores = FALSE,
+      sigma_diag = c(0.4, 0.2, 0.1)
     )
   )
 
@@ -690,6 +696,27 @@ test_that("Julia bridge raw extractor payloads preserve labels and fallback calc
         "LV",
         seq_len(ncol(expected_scores))
       )
+    )
+
+    total_auto <- suppressMessages(extract_Sigma(fit))
+    families <- fit$families
+    if (is.null(families)) {
+      families <- rep(fit$family, length(traits))
+    }
+    expected_auto_sigma <- if (!is.null(fit$Sigma)) {
+      fit$Sigma
+    } else {
+      expected_sigma
+    }
+    gaussian_noop <- families %in% c("gaussian", "lognormal")
+    diag(expected_auto_sigma)[gaussian_noop] <- diag(expected_sigma)[
+      gaussian_noop
+    ]
+    expect_equal(total_auto$Sigma, expected_auto_sigma, tolerance = 1e-12)
+    expect_equal(
+      total_auto$R,
+      stats::cov2cor(expected_auto_sigma),
+      tolerance = 1e-12
     )
 
     total <- suppressMessages(extract_Sigma(fit, link_residual = "none"))
@@ -1921,6 +1948,8 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
       level = "unit",
       link_residual = "none"
     ))
+    expected_sigma <- fit_jl$loadings %*% t(fit_jl$loadings)
+    dimnames(expected_sigma) <- list(rownames(case$Y), rownames(case$Y))
     expect_equal(dim(sigma_unit$Sigma), c(nrow(case$Y), nrow(case$Y)))
     expect_equal(
       dimnames(sigma_unit$Sigma),
@@ -1931,8 +1960,11 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
       list(rownames(case$Y), rownames(case$Y))
     )
     expect_equal(rownames(sigma_unit$Sigma), rownames(case$Y))
-    expect_equal(sigma_unit$Sigma, fit_jl$Sigma, tolerance = 1e-8)
-    expect_equal(sigma_unit$R, fit_jl$correlation, tolerance = 1e-8)
+    expect_equal(sigma_unit$Sigma, expected_sigma, tolerance = 1e-8)
+    expect_equal(sigma_unit$R, stats::cov2cor(expected_sigma), tolerance = 1e-8)
+    sigma_auto <- suppressMessages(extract_Sigma(fit_jl))
+    expect_equal(sigma_auto$Sigma, fit_jl$Sigma, tolerance = 1e-8)
+    expect_equal(sigma_auto$R, fit_jl$correlation, tolerance = 1e-8)
     expect_true(isSymmetric(unname(sigma_unit$Sigma)))
     expect_true(all(is.finite(sigma_unit$Sigma)))
     expect_true(all(is.finite(sigma_unit$R)))
@@ -2163,10 +2195,22 @@ test_that("engine = 'julia' main dispatch routes mixed-family postfit", {
     level = "unit",
     link_residual = "none"
   ))
+  expected_sigma <- fit$loadings %*% t(fit$loadings)
+  dimnames(expected_sigma) <- list(rownames(Y), rownames(Y))
   expect_equal(dim(sigma_unit$Sigma), c(nrow(Y), nrow(Y)))
   expect_equal(dimnames(sigma_unit$Sigma), list(rownames(Y), rownames(Y)))
-  expect_equal(sigma_unit$Sigma, fit$Sigma, tolerance = 1e-8)
-  expect_equal(sigma_unit$R, fit$correlation, tolerance = 1e-8)
+  expect_equal(sigma_unit$Sigma, expected_sigma, tolerance = 1e-8)
+  expect_equal(sigma_unit$R, stats::cov2cor(expected_sigma), tolerance = 1e-8)
+  sigma_auto <- suppressMessages(extract_Sigma(fit))
+  expected_auto_sigma <- fit$Sigma
+  diag(expected_auto_sigma)[fit$families %in% c("gaussian", "lognormal")] <-
+    diag(expected_sigma)[fit$families %in% c("gaussian", "lognormal")]
+  expect_equal(sigma_auto$Sigma, expected_auto_sigma, tolerance = 1e-8)
+  expect_equal(
+    sigma_auto$R,
+    stats::cov2cor(expected_auto_sigma),
+    tolerance = 1e-8
+  )
   expect_true(isSymmetric(unname(sigma_unit$Sigma)))
   expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(Y)))
   ord <- extract_ordination(fit)
@@ -2206,13 +2250,18 @@ test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLL
     level = "unit",
     link_residual = "none"
   ))
+  expected_sigma <- fit$loadings %*% t(fit$loadings)
+  dimnames(expected_sigma) <- list(rownames(y_ord), rownames(y_ord))
   expect_equal(dim(sigma_unit$Sigma), c(nrow(y_ord), nrow(y_ord)))
   expect_equal(
     dimnames(sigma_unit$Sigma),
     list(rownames(y_ord), rownames(y_ord))
   )
-  expect_equal(sigma_unit$Sigma, fit$Sigma, tolerance = 1e-8)
-  expect_equal(sigma_unit$R, fit$correlation, tolerance = 1e-8)
+  expect_equal(sigma_unit$Sigma, expected_sigma, tolerance = 1e-8)
+  expect_equal(sigma_unit$R, stats::cov2cor(expected_sigma), tolerance = 1e-8)
+  sigma_auto <- suppressMessages(extract_Sigma(fit))
+  expect_equal(sigma_auto$Sigma, fit$Sigma, tolerance = 1e-8)
+  expect_equal(sigma_auto$R, fit$correlation, tolerance = 1e-8)
   expect_true(isSymmetric(unname(sigma_unit$Sigma)))
   expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(y_ord)))
   ord <- extract_ordination(fit)
@@ -2451,5 +2500,20 @@ test_that("engine = 'julia' Gaussian logLik matches engine = 'tmb'", {
     as.numeric(logLik(fit_tmb)),
     tolerance = 1e-4
   )
+  sigma_tmb <- suppressMessages(extract_Sigma(
+    fit_tmb,
+    level = "unit",
+    link_residual = "none"
+  ))
+  sigma_jl <- suppressMessages(extract_Sigma(
+    fit_jl,
+    level = "unit",
+    link_residual = "none"
+  ))
+  expect_equal(sigma_jl$Sigma, sigma_tmb$Sigma, tolerance = 1e-5)
+  expect_equal(sigma_jl$R, sigma_tmb$R, tolerance = 1e-5)
+  sigma_jl_auto <- suppressMessages(extract_Sigma(fit_jl))
+  expect_equal(sigma_jl_auto$Sigma, sigma_jl$Sigma, tolerance = 1e-10)
+  expect_equal(sigma_jl_auto$R, sigma_jl$R, tolerance = 1e-10)
   expect_s3_class(fit_jl, "gllvmTMB_julia")
 })

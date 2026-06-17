@@ -316,8 +316,9 @@ gllvm_julia_capabilities <- function() {
   }
   extractor_clause <- if (family %in% .GLLVM_JULIA_ORDINATION_FAMILIES) {
     paste0(
-      "unit-tier covariance and raw ordination accessors are routed on the ",
-      "retained engine scale; richer extractor parity remains gated; "
+      "unit-tier covariance honors native link_residual scale semantics and ",
+      "raw ordination accessors are routed; richer extractor parity remains ",
+      "gated; "
     )
   } else {
     "extractor parity remains gated; "
@@ -1044,6 +1045,17 @@ gllvm_julia_capabilities <- function() {
   invisible(families)
 }
 
+.gllvm_julia_cov2cor <- function(Sigma, traits) {
+  D <- sqrt(diag(Sigma))
+  R <- if (all(is.finite(D)) && all(D > 0)) {
+    Sigma / outer(D, D)
+  } else {
+    NA_real_ * Sigma
+  }
+  dimnames(R) <- list(traits, traits)
+  R
+}
+
 .gllvm_julia_extract_sigma <- function(
   fit,
   level,
@@ -1086,50 +1098,80 @@ gllvm_julia_capabilities <- function() {
   }
 
   p <- .gllvm_julia_n_traits(fit)
-  .gllvm_julia_extractor_family_check(fit, p, "covariance")
+  families <- .gllvm_julia_family_vector(fit, p)
   traits <- .gllvm_julia_trait_names(fit, p)
 
-  Sigma <- fit$Sigma %||% NULL
-  if (is.null(Sigma)) {
-    loadings <- fit$loadings %||% matrix(numeric(), nrow = p, ncol = 0L)
-    loadings <- as.matrix(loadings)
-    if (nrow(loadings) != p) {
-      cli::cli_abort(
-        "engine = 'julia': loading payload row count does not match traits."
-      )
-    }
-    Sigma <- loadings %*% t(loadings)
-  }
-  Sigma <- as.matrix(Sigma)
-  storage.mode(Sigma) <- "numeric"
-  if (!identical(dim(Sigma), c(p, p))) {
+  loadings <- fit$loadings %||% matrix(numeric(), nrow = p, ncol = 0L)
+  loadings <- as.matrix(loadings)
+  storage.mode(loadings) <- "numeric"
+  if (nrow(loadings) != p) {
     cli::cli_abort(
-      "engine = 'julia': Sigma payload dimensions do not match traits."
+      "engine = 'julia': loading payload row count does not match traits."
     )
   }
-  dimnames(Sigma) <- list(traits, traits)
+  shared <- loadings %*% t(loadings)
+  shared <- (shared + t(shared)) / 2
+  dimnames(shared) <- list(traits, traits)
 
-  R <- fit$correlation %||% NULL
-  if (is.null(R)) {
-    R <- stats::cov2cor(Sigma)
+  retained_sigma <- fit$Sigma %||% NULL
+  has_retained_sigma <- !is.null(retained_sigma)
+  if (is.null(retained_sigma)) {
+    retained_sigma <- shared
   } else {
-    R <- as.matrix(R)
-    storage.mode(R) <- "numeric"
-    if (!identical(dim(R), c(p, p))) {
+    retained_sigma <- as.matrix(retained_sigma)
+    storage.mode(retained_sigma) <- "numeric"
+    if (!identical(dim(retained_sigma), c(p, p))) {
+      cli::cli_abort(
+        "engine = 'julia': Sigma payload dimensions do not match traits."
+      )
+    }
+    retained_sigma <- (retained_sigma + t(retained_sigma)) / 2
+    dimnames(retained_sigma) <- list(traits, traits)
+  }
+
+  retained_R <- fit$correlation %||% NULL
+  if (is.null(retained_R)) {
+    retained_R <- .gllvm_julia_cov2cor(retained_sigma, traits)
+  } else {
+    retained_R <- as.matrix(retained_R)
+    storage.mode(retained_R) <- "numeric"
+    if (!identical(dim(retained_R), c(p, p))) {
       cli::cli_abort(
         "engine = 'julia': correlation payload dimensions do not match traits."
       )
     }
+    dimnames(retained_R) <- list(traits, traits)
   }
-  dimnames(R) <- list(traits, traits)
+  auto_sigma <- retained_sigma
+  auto_R <- retained_R
+  gaussian_noop <- families %in% c("gaussian", "lognormal")
+  if (any(gaussian_noop)) {
+    diag(auto_sigma)[gaussian_noop] <- diag(shared)[gaussian_noop]
+    auto_R <- .gllvm_julia_cov2cor(auto_sigma, traits)
+  }
 
   note <- c(
-    "engine = 'julia': extract_Sigma() reports the retained unit-tier latent covariance from GLLVM.jl; unique(), unit_obs, and structured tiers are not present in this bridge row."
+    "engine = 'julia': extract_Sigma() reports the ordinary unit tier only; unique(), unit_obs, and structured tiers are not present in this bridge row."
   )
   if (link_residual == "auto") {
     note <- c(
       note,
-      "engine = 'julia': link_residual = 'auto' is not applied for Julia bridge covariance extractors yet; values are on the retained engine scale. Use link_residual = 'none' to request this scale explicitly."
+      if (has_retained_sigma) {
+        "engine = 'julia': link_residual = 'auto' uses the retained GLLVM.jl Sigma/correlation payload on the engine-provided latent or link-residual scale."
+      } else {
+        "engine = 'julia': link_residual = 'auto' has no retained Sigma payload for this row, so the shared Lambda Lambda^T block is returned."
+      }
+    )
+    if (any(gaussian_noop)) {
+      note <- c(
+        note,
+        "engine = 'julia': Gaussian/lognormal rows follow gllvmTMB's native link-residual no-op, so retained response-scale residual diagonals are not added for those traits."
+      )
+    }
+  } else {
+    note <- c(
+      note,
+      "engine = 'julia': link_residual = 'none' returns Lambda Lambda^T from the retained loadings; any retained link-residual or response-scale diagonal in the raw Julia Sigma payload is not added."
     )
   }
   for (msg in note) {
@@ -1141,9 +1183,25 @@ gllvm_julia_capabilities <- function() {
     return(list(s = s, level = "unit", part = "unique", note = note))
   }
   if (part == "shared") {
-    return(list(Sigma = Sigma, level = "unit", part = "shared", note = note))
+    return(list(Sigma = shared, level = "unit", part = "shared", note = note))
   }
-  list(Sigma = Sigma, R = R, level = "unit", part = "total", note = note)
+  if (link_residual == "none") {
+    R <- .gllvm_julia_cov2cor(shared, traits)
+    return(list(
+      Sigma = shared,
+      R = R,
+      level = "unit",
+      part = "total",
+      note = note
+    ))
+  }
+  list(
+    Sigma = auto_sigma,
+    R = auto_R,
+    level = "unit",
+    part = "total",
+    note = note
+  )
 }
 
 .gllvm_julia_extract_ordination <- function(fit, level) {
@@ -1996,8 +2054,9 @@ gllvm_julia_fit <- function(
 #' prediction and ordinary response/Pearson residuals are in-sample
 #' retained-payload reconstructions only. Simulation is conditional on retained
 #' fitted values for admitted one-family rows and complete balanced mixed-family
-#' rows. Unit-tier covariance and raw ordination accessors are routed on the
-#' retained engine scale; richer extractor parity remains a separate bridge row.
+#' rows. Unit-tier covariance honors native `link_residual` scale semantics,
+#' and raw ordination accessors are routed; richer extractor parity remains a
+#' separate bridge row.
 #' Confidence intervals are
 #' routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
 #' Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian

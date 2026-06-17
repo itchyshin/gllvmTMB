@@ -70,6 +70,79 @@ Deliberately not run:
   generated Rd, NAMESPACE, vignette, pkgdown navigation, TMB likelihood,
   formula grammar, or Julia code changed.
 
+## 2026-06-16 -- R bridge extractor scale semantics
+
+Corrected the Julia bridge public covariance extractor scale split. Raw
+GLLVM.jl `Sigma` / `correlation` payloads remain retained on the fitted object
+and summary, but `extract_Sigma(..., link_residual = "none")` now reconstructs
+the native no-link-residual `Lambda Lambda^T` block from retained loadings.
+Default `link_residual = "auto"` uses retained residual-augmented payloads where
+available while applying native gllvmTMB's Gaussian/lognormal residual no-op.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --state open --json number,title,headRefName,isDraft,updatedAt,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent commits were the current Codex bridge stack only.
+- PR/CI pacing:
+  `gh pr view 489 --json headRefOid,mergeStateStatus,statusCheckRollup`
+  -> `5420620` reached `mergeStateStatus = CLEAN`; R-CMD-check ubuntu-latest
+  and coevolution recovery both passed before this follow-up was pushed.
+- Scale drift scout:
+  `rg -n "sigma_y_site|correlation\\(|Sigma =|link-residual|latent-scale trait covariance|bridge payload" ../GLLVM.jl-integration/src/bridge.jl R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> found GLLVM.jl Gaussian and mixed routes filling bridge `Sigma` from
+  `sigma_y_site()`, while the R bridge note treated the payload as ordinary
+  unit-tier covariance.
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla - <<'RS' ... RS`
+  -> confirmed Gaussian bridge payload equals `Lambda Lambda^T + sigma_eps^2 I`,
+  whereas native `extract_Sigma(..., link_residual = "none")` targets
+  `Lambda Lambda^T`.
+- Documentation generation:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `extract_Sigma.Rd`; after the Julia method wording cleanup, wrote
+  `gllvmTMB_julia-methods.Rd`.
+- Formatting:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `13` expected live-Julia skips.
+- Live R-to-Julia bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures.
+- Stale wording scan:
+  `rg -n "retained engine scale|link-residual augmentation remain gated|auto' is not applied|auto\" is not applied|retained unit-tier covariance on the engine scale" R man docs/design docs/dev-log/audits docs/dev-log/coordination-board.md tests || true`
+  -> no hits in current R, Rd, validation register, coordination board,
+  extractor spec, or tests.
+- Scope / ledger scan:
+  `rg -n "JUL-01A|EXT-JL-LINK-RESIDUAL|EXT-JL-NATIVE-POINT|Lambda Lambda\\^T|Gaussian/lognormal" docs/design/35-validation-debt-register.md docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md docs/dev-log/coordination-board.md R/julia-bridge.R R/extract-sigma.R man/extract_Sigma.Rd tests/testthat/test-julia-bridge.R`
+  -> expected updated row/status wording and remaining partial/gated boundaries.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Files updated:
+
+- `R/julia-bridge.R`
+- `R/extract-sigma.R`
+- `tests/testthat/test-julia-bridge.R`
+- `man/extract_Sigma.Rd`
+- `man/gllvmTMB_julia-methods.Rd`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-extractor-scale-semantics.md`
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  article renders, and `Pkg.test()`. This slice changes the R bridge extractor
+  helper, focused tests, roxygen/Rd wording, and ledgers only; no TMB
+  likelihood, formula grammar, NAMESPACE, vignettes, pkgdown navigation, or
+  Julia engine code changed.
+
 ## 2026-06-16 -- Richer extractor parity spec
 
 Added a developer-facing spec for the next Julia bridge extractor lane. The

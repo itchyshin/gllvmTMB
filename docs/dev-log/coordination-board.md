@@ -110,14 +110,18 @@ Active lane guidance:
   rows and for complete balanced no-X/no-mask/no-CI mixed-family vector rows.
   Ordinal and ordinal-probit bridge rows now route response-scale category
   probabilities and modal-class predictions from the retained score/cutpoint
-  payload. Unit-tier covariance and raw ordination accessors are now routed on
-  the retained engine scale through `extract_Sigma()`, `extract_Sigma_B()`,
-  `getResidualCov()`, `getResidualCor()`, `extract_ordination()`,
-  `getLoadings()`, and `getLV()`, including complete balanced mixed-family
-  rows. `newdata` prediction/simulation, unconditional random-effect redraws,
-  ordinal residuals/simulation, mixed-family CIs, mixed-family masks,
-  mixed-family fixed-effect X, link-residual augmentation, rotations,
-  structured-tier extractors, and richer extractor parity remain gated.
+  payload. Unit-tier covariance and raw ordination accessors are now routed
+  through `extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`,
+  `getResidualCor()`, `extract_ordination()`, `getLoadings()`, and `getLV()`,
+  including complete balanced mixed-family rows. Public covariance accessors
+  distinguish the native no-link-residual view from the raw retained Julia
+  payload: `link_residual = "none"` returns `Lambda Lambda^T`; default
+  `link_residual = "auto"` uses retained residual-augmented payloads where
+  available but keeps Gaussian/lognormal rows on the native no-op residual
+  convention. `newdata` prediction/simulation, unconditional random-effect
+  redraws, ordinal residuals/simulation, mixed-family CIs, mixed-family masks,
+  mixed-family fixed-effect X, residual-split reporting, rotations,
+  structured-tier extractors, and broad richer extractor parity remain gated.
   The R bridge also routes complete-response fixed-effect-X point fits for
   Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`
@@ -160,6 +164,13 @@ Active lane guidance:
   Sigma/correlation/loadings/scores assertions for grouped-dispersion,
   ordinal-probit, and mixed-family rows. No native-parity, `link_residual =
   "auto"`, rotation, structured-tier, or interval claim was promoted.
+- Extractor scale semantics:
+  The follow-up scale fix separates public `extract_Sigma()` semantics from the
+  raw retained Julia payload. Pure-R tests now use a synthetic residual diagonal
+  to prove that `link_residual = "none"` returns `Lambda Lambda^T`, while
+  default `auto` uses the retained payload after applying the native
+  Gaussian/lognormal no-op rule. The live Gaussian Julia bridge test now checks
+  native TMB covariance/correlation parity under `link_residual = "none"`.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

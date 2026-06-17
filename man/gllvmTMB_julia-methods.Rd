@@ -126,8 +126,9 @@ already passed the R admission gates. They are point-estimate summaries:
 prediction and ordinary response/Pearson residuals are in-sample
 retained-payload reconstructions only. Simulation is conditional on retained
 fitted values for admitted one-family rows and complete balanced mixed-family
-rows. Unit-tier covariance and raw ordination accessors are routed on the
-retained engine scale; richer extractor parity remains a separate bridge row.
+rows. Unit-tier covariance honors native \code{link_residual} scale semantics,
+and raw ordination accessors are routed; richer extractor parity remains a
+separate bridge row.
 Confidence intervals are
 routed for admitted no-X Gaussian, Poisson, Bernoulli binomial, NB2, NB1,
 Beta, and Gamma rows; response-mask CIs are routed for the same non-Gaussian

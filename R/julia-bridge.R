@@ -2378,6 +2378,7 @@ gllvm_julia_fit <- function(
 #'   cell order as `predict()` and keeps masked response cells as `NA`.
 #'   `summary()` returns a list with header, coefficients, covariance, and
 #'   status fields.
+#' @importFrom stats coef fitted setNames
 #' @name gllvmTMB_julia-methods
 #' @export
 logLik.gllvmTMB_julia <- function(object, ...) {

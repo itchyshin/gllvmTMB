@@ -4,6 +4,59 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Julia bridge namespace-note cleanup
+
+Removed the R CMD check namespace note introduced by the Julia bridge S3
+methods. `coef()`, `fitted()`, and `setNames()` are now declared through the
+roxygen block for `gllvmTMB_julia-methods`, and `devtools::document()` generated
+the matching `NAMESPACE` imports.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,isDraft,updatedAt,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" -- R/julia-bridge.R NAMESPACE docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints man/gllvmTMB_julia-methods.Rd man/gllvm_julia_fit.Rd man/gllvm_julia_capabilities.Rd man/gllvm_julia_gate_registry.Rd`
+  -> recent overlapping edits were from the current Codex bridge stack only.
+- Baseline no-Julia check:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never")'`
+  -> `0` errors, `1` local install warning, `2` notes. The new note was
+  `checking R code for possible problems` with unqualified `coef`, `fitted`, and
+  `setNames`.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE`.
+- Formatting:
+  `air format R/julia-bridge.R`
+  -> completed.
+- Targeted no-Julia bridge test:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> passed with `14` expected live-Julia skips.
+- Post-fix no-Julia check:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never")'`
+  -> `0` errors, `1` local install warning, `1` note. The R-code namespace note
+  is gone; the remaining warning is the local macOS SDK/compiler warning and the
+  remaining note is the pre-existing NEWS heading parse note.
+- Pkgdown:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Files updated:
+
+- `R/julia-bridge.R`
+- `NAMESPACE`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-namespace-note-cleanup.md`
+
+Deliberately not run:
+
+- Live Julia bridge tests and `Pkg.test()` were not rerun for this import-only R
+  namespace cleanup. The targeted no-Julia bridge test and the full no-Julia
+  `devtools::check()` exercised the affected R surface.
+
 ## 2026-06-16 -- Public Julia bridge gate registry
 
 Exported `gllvm_julia_gate_registry()` as a read-only audit table for

@@ -1156,6 +1156,13 @@ test_that("Julia bridge mixed-family postfit reconstructs retained payloads", {
     c(0, 1, 2, 3, 1, 2, 4, 3)
   )
   dimnames(y) <- list(fit$trait_names, fit$unit_names)
+  shared_sigma <- fit$loadings %*% t(fit$loadings)
+  dimnames(shared_sigma) <- list(fit$trait_names, fit$trait_names)
+  retained_sigma <- shared_sigma
+  diag(retained_sigma) <- diag(retained_sigma) + c(1.1, 0.35)
+  dimnames(retained_sigma) <- dimnames(shared_sigma)
+  fit$Sigma <- retained_sigma
+  fit$correlation <- stats::cov2cor(retained_sigma)
   fit$bridge_input <- list(
     y = y,
     family = fit$families,
@@ -1193,6 +1200,19 @@ test_that("Julia bridge mixed-family postfit reconstructs retained payloads", {
     link_residual = "none"
   ))
   expect_equal(dim(sigma_unit$Sigma), c(2L, 2L))
+  expect_equal(sigma_unit$Sigma, shared_sigma, tolerance = 1e-8)
+  sigma_auto <- suppressMessages(extract_Sigma(fit))
+  expected_auto_sigma <- retained_sigma
+  diag(expected_auto_sigma)[fit$families %in% c("gaussian", "lognormal")] <-
+    diag(shared_sigma)[fit$families %in% c("gaussian", "lognormal")]
+  auto_delta <- sigma_auto$Sigma - sigma_unit$Sigma
+  expect_equal(sigma_auto$Sigma, expected_auto_sigma, tolerance = 1e-8)
+  expect_equal(
+    auto_delta[row(auto_delta) != col(auto_delta)],
+    rep(0, 2L),
+    tolerance = 1e-8
+  )
+  expect_equal(unname(diag(auto_delta)), c(0, 0.35), tolerance = 1e-8)
   ord <- extract_ordination(fit)
   expect_equal(dim(ord$loadings), c(2L, 1L))
 })
@@ -1965,6 +1985,17 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     sigma_auto <- suppressMessages(extract_Sigma(fit_jl))
     expect_equal(sigma_auto$Sigma, fit_jl$Sigma, tolerance = 1e-8)
     expect_equal(sigma_auto$R, fit_jl$correlation, tolerance = 1e-8)
+    auto_delta <- sigma_auto$Sigma - sigma_unit$Sigma
+    expect_equal(
+      auto_delta[row(auto_delta) != col(auto_delta)],
+      rep(0, nrow(case$Y) * (nrow(case$Y) - 1L)),
+      tolerance = 1e-8
+    )
+    expect_equal(
+      unname(diag(auto_delta)),
+      rep(0, nrow(case$Y)),
+      tolerance = 1e-8
+    )
     expect_true(isSymmetric(unname(sigma_unit$Sigma)))
     expect_true(all(is.finite(sigma_unit$Sigma)))
     expect_true(all(is.finite(sigma_unit$R)))
@@ -2211,6 +2242,27 @@ test_that("engine = 'julia' main dispatch routes mixed-family postfit", {
     stats::cov2cor(expected_auto_sigma),
     tolerance = 1e-8
   )
+  auto_delta <- sigma_auto$Sigma - sigma_unit$Sigma
+  expect_equal(
+    auto_delta[row(auto_delta) != col(auto_delta)],
+    rep(0, nrow(Y) * (nrow(Y) - 1L)),
+    tolerance = 1e-8
+  )
+  expect_equal(
+    unname(diag(auto_delta)[fit$families %in% c("gaussian", "lognormal")]),
+    0,
+    tolerance = 1e-8
+  )
+  expect_true(all(
+    unname(diag(auto_delta)[
+      fit$families %in%
+        c(
+          "poisson",
+          "binomial"
+        )
+    ]) >
+      0
+  ))
   expect_true(isSymmetric(unname(sigma_unit$Sigma)))
   expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(Y)))
   ord <- extract_ordination(fit)
@@ -2262,6 +2314,17 @@ test_that("gllvm_julia_fit consumes per-trait ordinal cutpoint payloads from GLL
   sigma_auto <- suppressMessages(extract_Sigma(fit))
   expect_equal(sigma_auto$Sigma, fit$Sigma, tolerance = 1e-8)
   expect_equal(sigma_auto$R, fit$correlation, tolerance = 1e-8)
+  auto_delta <- sigma_auto$Sigma - sigma_unit$Sigma
+  expect_equal(
+    auto_delta[row(auto_delta) != col(auto_delta)],
+    rep(0, nrow(y_ord) * (nrow(y_ord) - 1L)),
+    tolerance = 1e-8
+  )
+  expect_equal(
+    unname(diag(auto_delta)),
+    rep(1, nrow(y_ord)),
+    tolerance = 1e-8
+  )
   expect_true(isSymmetric(unname(sigma_unit$Sigma)))
   expect_equal(unname(diag(sigma_unit$R)), rep(1, nrow(y_ord)))
   ord <- extract_ordination(fit)

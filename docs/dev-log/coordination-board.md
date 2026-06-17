@@ -118,7 +118,11 @@ Active lane guidance:
   payload: `link_residual = "none"` returns `Lambda Lambda^T`; default
   `link_residual = "auto"` uses retained residual-augmented payloads where
   available but keeps Gaussian/lognormal rows on the native no-op residual
-  convention. `newdata` prediction/simulation, unconditional random-effect
+  convention. The follow-up delta guards make the boundary explicit: grouped
+  NB2/NB1/Beta/Gamma rows currently have `auto == none`, mixed-family rows keep
+  Gaussian residuals at zero while retaining positive Poisson/Bernoulli
+  residual diagonals, and ordinal-probit rows add the probit residual diagonal
+  of one. `newdata` prediction/simulation, unconditional random-effect
   redraws, ordinal residuals/simulation, mixed-family CIs, mixed-family masks,
   mixed-family fixed-effect X, residual-split reporting, rotations,
   structured-tier extractors, and broad richer extractor parity remain gated.

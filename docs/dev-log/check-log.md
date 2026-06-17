@@ -4,6 +4,41 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- cran-comments current branch evidence
+
+Updated `cran-comments.md` so the release cover note reflects observed current
+branch evidence rather than the earlier post-fix expectation. The file now says
+PR #489 head `b0fe50a` has local no-Julia check evidence of `0 errors | 1
+warning | 1 note`, that GitHub R-CMD-check passes at `b0fe50a`, and that final
+submission still needs a release-branch `--as-cran` rerun plus a NEWS-note
+decision.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,isDraft,updatedAt,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" -- cran-comments.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints NEWS.md`
+  -> recent overlapping edits were from the current Codex bridge stack only.
+- Prose/readiness scan:
+  `rg -n "Draft \\(2026-06-16\\)|0 errors \\| 1 warning \\| 1 note|R code namespace note|final release-branch|checking R code" cran-comments.md`
+  -> expected current branch evidence and release-boundary lines present.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Files updated:
+
+- `cran-comments.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-cran-comments-current-evidence.md`
+
+Deliberately not run:
+
+- No R tests or package checks were rerun. This prose-only update records the
+  `b0fe50a` check evidence already run in the namespace-note cleanup slice, and
+  `cran-comments.md` is excluded from the built package by `.Rbuildignore`.
+
 ## 2026-06-16 -- Julia bridge namespace-note cleanup
 
 Removed the R CMD check namespace note introduced by the Julia bridge S3

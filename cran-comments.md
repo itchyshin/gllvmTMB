@@ -1,11 +1,11 @@
 # cran-comments
 
-> **Draft (2026-06-13).** First CRAN submission of `gllvmTMB`. The two gating
-> items from the earlier `--as-cran` run — the PDF-manual Unicode warning and the
-> DOI notes — have both been **fixed on this branch** (see "R CMD check results"
-> below); a final `--as-cran` re-run is recommended to confirm the clean tally
-> before submission. `cran-comments.md` is listed in `.Rbuildignore`, so it is not
-> part of the built package.
+> **Draft (2026-06-16).** First CRAN submission of `gllvmTMB`. The PDF-manual
+> Unicode warning, DOI notes, and Julia bridge namespace note exposed by earlier
+> checks have been **fixed on this branch** (see "R CMD check results" below).
+> A final release-branch `--as-cran` rerun is still required before submission.
+> `cran-comments.md` is listed in `.Rbuildignore`, so it is not part of the built
+> package.
 
 ## Submission
 
@@ -13,16 +13,22 @@ This is a **new submission** — `gllvmTMB` is not yet on CRAN.
 
 ## Test environments
 
-* local: macOS (Apple), R 4.5.2 — `rcmdcheck::rcmdcheck(args = "--as-cran")`
+* local: macOS (Apple), R 4.5.2 — `devtools::check(args = "--no-manual")`
 * GitHub Actions (recommended before submit): ubuntu-latest / macos-latest /
   windows-latest, R release + devel
 
 ## R CMD check results
 
 The earlier `--as-cran` run (NAMESPACE/man regenerated so the `engine = "julia"`
-bridge exports register) reported **0 errors | 2 warnings | 3 notes**. The two
-gating items have since been fixed on this branch; the post-fix expectation is
-**0 errors | 1 (environmental) warning | 1–2 notes**.
+bridge exports register) reported **0 errors | 2 warnings | 3 notes**. The
+current draft branch check at PR #489 head `b0fe50a` reports
+**0 errors | 1 warning | 1 note**:
+
+```r
+GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = FALSE, error_on = "never")'
+```
+
+GitHub Actions R-CMD-check on `ubuntu-latest` also passes at `b0fe50a`.
 
 **Warnings**
 
@@ -31,7 +37,7 @@ gating items have since been fixed on this branch; the post-fix expectation is
    defect and not expected on CRAN's runners.
 2. *PDF manual* — **FIXED.** The LaTeX-breaking Greek letters were ASCII-ised in
    the `.Rd` sources (commit `93640b7`). Verified: `R CMD Rd2pdf` builds the full
-   145-page reference manual with no `inputenc`/Unicode/LaTeX errors.
+   reference manual with no `inputenc`/Unicode/LaTeX errors.
 
 **Notes**
 
@@ -45,13 +51,18 @@ gating items have since been fixed on this branch; the post-fix expectation is
    `\url{https://doi.org/...}` to `\doi{}`. All five DOIs were confirmed to
    resolve via `doi.org`.
 2. *NEWS.md* — R cannot extract version info from the topic-style `##` section
-   titles. Pre-existing; reorganise under version headers or accept the NOTE.
+   titles. Pre-existing; reorganise under version headers or explicitly accept
+   the NOTE in the final submission.
 3. *Non-standard file* `gllvmTMB-manual.tex` — was a leftover artifact of the
    earlier failed PDF build; resolved now that the PDF manual builds.
+4. *R code namespace note* — **FIXED.** The Julia bridge S3 methods now import
+   `stats::coef`, `stats::fitted`, and `stats::setNames`; the current check has
+   `checking R code for possible problems ... OK`.
 
-**Submission readiness:** 0 errors; the Unicode warning and the DOI notes are
-fixed. Remaining before submit: a final `--as-cran` re-run to confirm the clean
-tally, and a decision on the pre-existing NEWS.md NOTE (reorganise vs accept).
+**Submission readiness:** branch evidence is now 0 errors with only the known
+local compiler warning and the NEWS heading NOTE. Remaining before submit: a
+final release-branch `--as-cran` rerun, including CRAN incoming checks, and a
+maintainer decision on the pre-existing NEWS.md NOTE (reorganise vs accept).
 
 ## Downstream dependencies
 

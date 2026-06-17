@@ -104,6 +104,10 @@ Confidence: high.
   - `gh run view --job 81878845373 --log`, `gh run view --job 81878846301 --log`, and `gh run view --job 81878845335 --log`
     -> GitHub CLI reports logs are unavailable while these jobs remain
     in progress.
+  - `gh run view 27683989889 --json jobs | jq '[.jobs[] | select(.status=="completed" and (.name|startswith("shard")) and .conclusion=="success") | {name, seconds: ((.completedAt|fromdateiso8601) - (.startedAt|fromdateiso8601))}] | sort_by(.seconds) | {count:length, min:.[0], median:.[(length/2|floor)], max:.[-1]}'`
+    -> 42 successful shard jobs; previous maximum successful shard runtime
+    was 3759 seconds (`shard 19/48`), while the six remaining shards are
+    still accumulating beyond that bound.
 
 ## 6. Tests of the Tests
 
@@ -179,5 +183,9 @@ separate future lanes; this dashboard does not change grammar or APIs.
 - The current power-pilot run remains active on six long-tail shards.
   Pushing the dashboard commits before it completes is a
   maintainer/CI-pacing decision, not a dashboard implementation gap.
+- Those six shards now exceed the maximum observed runtime among
+  successful shards in this run. The next action requires either waiting
+  for external completion or maintainer approval to push docs / rerun or
+  cancel the stuck workflow.
 - A future slice can add a small updater script for GitHub run counts,
   but that should stay separate from the static renderer.

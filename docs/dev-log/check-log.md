@@ -18520,6 +18520,10 @@ Post-commit evidence refresh:
   and `gh run view --job 81878845335 --log`
   -> GitHub CLI reports logs are unavailable while those jobs remain in
   progress.
+- `gh run view 27683989889 --json jobs | jq '[.jobs[] | select(.status=="completed" and (.name|startswith("shard")) and .conclusion=="success") | {name, seconds: ((.completedAt|fromdateiso8601) - (.startedAt|fromdateiso8601))}] | sort_by(.seconds) | {count:length, min:.[0], median:.[(length/2|floor)], max:.[-1]}'`
+  -> 42 successful shard jobs; previous maximum successful shard runtime
+  was 3759 seconds (`shard 19/48`), while the six remaining shards are
+  still accumulating beyond that bound.
 
 Deliberately not run:
 

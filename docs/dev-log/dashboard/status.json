@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 06:58 MDT",
+  "updated": "2026-06-17 07:01 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -38,7 +38,7 @@
       "label": "Power pilot",
       "value": "mid-flight",
       "status": "active",
-      "note": "Run 27683989889 has 43 successful jobs; shards 25, 26, 27, 31, 32, and 33 are long-tail accumulate jobs."
+      "note": "Run 27683989889 has 43 successful jobs; six accumulate shards exceed the previous successful-shard max runtime."
     },
     {
       "label": "Next decision",
@@ -174,7 +174,7 @@
           "status": "active"
         },
         {
-          "name": "Scheduled power-pilot run 27683989889 is active: shards 25, 26, 27, 31, 32, and 33 are long-tail accumulate jobs",
+          "name": "Scheduled power-pilot run 27683989889 is active: six accumulate shards exceed the previous successful-shard max runtime",
           "status": "active"
         },
         {
@@ -486,7 +486,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27683989889: 43 success; shards 25/26/27/31/32/33 remain in Accumulate this shard's cells; logs unavailable until completion.",
+      "evidence": "Run 27683989889: 43 success; shards 25/26/27/31/32/33 remain in Accumulate this shard's cells past the prior successful-shard max runtime; logs unavailable until completion.",
       "next_gate": "Summarize only after completion or explicit snapshot."
     },
     {
@@ -564,12 +564,12 @@
     {
       "status": "blocked",
       "kind": "Power evidence",
-      "item": "0/48 pilot cells at cap; six scheduled workflow shards are still accumulating; process health is not coverage proof."
+      "item": "0/48 pilot cells at cap; six scheduled workflow shards are still accumulating beyond prior successful-shard max runtime; process health is not coverage proof."
     },
     {
       "status": "guard",
       "kind": "Power pilot long tail",
-      "item": "GitHub Actions logs for shards 25/26/27/31/32/33 are unavailable until those jobs complete."
+      "item": "GitHub Actions logs for shards 25/26/27/31/32/33 are unavailable until those jobs complete; completed shard max runtime was 3759 s."
     },
     {
       "status": "guard",
@@ -591,9 +591,9 @@
       "link_label": "PR #489"
     },
     {
-      "when": "2026-06-17 06:58 MDT",
+      "when": "2026-06-17 07:01 MDT",
       "who": "GitHub Actions",
-      "text": "Power-pilot run 27683989889 stayed at 43 successful jobs and 6 running jobs over a five-sample watch; all six are in Accumulate this shard's cells."
+      "text": "Power-pilot run 27683989889 stayed at 43 successful jobs and 6 running jobs over a five-sample watch; all six are in Accumulate this shard's cells and exceed the previous successful-shard max runtime of 3759 seconds."
     },
     {
       "when": "2026-06-17 06:45 MDT",

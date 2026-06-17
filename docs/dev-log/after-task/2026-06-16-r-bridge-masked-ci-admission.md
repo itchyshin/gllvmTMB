@@ -47,7 +47,7 @@ julia --project=. --startup-file=no test/test_bridge_ci.jl
 ```
 
 Result in `../GLLVM.jl-integration`: masked bridge `83/83` pass; capability
-ledger `37/37` pass; complete bridge CI routing `64/64` pass.
+ledger `37/37` pass; complete-response bridge CI routing `64/64` pass.
 
 ```sh
 air format R/julia-bridge.R tests/testthat/test-julia-bridge.R

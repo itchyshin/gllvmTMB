@@ -4,6 +4,40 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Masked-CI report stale wording cleanup
+
+Tightened one after-task phrase found by a Rose stale-wording scan so it now
+reads `complete-response bridge CI routing`. This avoids implying that the
+whole Julia bridge is complete while preserving the original test result for
+the complete-response CI route.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --limit 20 --json number,title,headRefName,baseRefName,isDraft,updatedAt,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/after-task/2026-06-16-r-bridge-masked-ci-admission.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits were from the current Codex bridge stack only.
+- Stale-wording context:
+  `rg -n "complete bridge CI routing|complete bridge" docs/dev-log/after-task/2026-06-16-r-bridge-masked-ci-admission.md docs/dev-log/check-log.md NEWS.md docs/design/35-validation-debt-register.md`
+  -> one ambiguous after-task phrase plus historical scan patterns; the after-task
+  phrase was narrowed.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Files updated:
+
+- `docs/dev-log/after-task/2026-06-16-r-bridge-masked-ci-admission.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-masked-ci-wording-cleanup.md`
+
+Deliberately not run:
+
+- No R tests or package checks were rerun. This is a stale-wording cleanup in an
+  after-task report only; no package code, docs generated into the package,
+  examples, likelihood, or validation status changed.
+
 ## 2026-06-16 -- cran-comments current branch evidence
 
 Updated `cran-comments.md` so the release cover note reflects observed current

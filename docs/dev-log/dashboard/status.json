@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 07:01 MDT",
+  "updated": "2026-06-17 07:20 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -26,7 +26,7 @@
       "label": "Draft PR",
       "value": "#489",
       "status": "draft",
-      "note": "Remote PR is still merge-clean and green at e79ed27; local b2ae781 is not pushed."
+      "note": "Remote PR is still merge-clean and green at e79ed27; local 2af1485 evidence commit is not pushed."
     },
     {
       "label": "Main full-check",
@@ -38,7 +38,7 @@
       "label": "Power pilot",
       "value": "mid-flight",
       "status": "active",
-      "note": "Run 27683989889 has 43 successful jobs; six accumulate shards exceed the previous successful-shard max runtime."
+      "note": "Run 27683989889 has 45 successful jobs; four accumulate shards remain in progress with no failures."
     },
     {
       "label": "Next decision",
@@ -53,7 +53,7 @@
       "branch": "codex/r-bridge-grouped-dispersion",
       "head": "local dashboard commits",
       "state": "warn",
-      "note": "Dashboard source committed locally; remote PR #489 remains at e79ed27 and draft.",
+      "note": "Dashboard source and evidence refreshes are committed locally; remote PR #489 remains at e79ed27 and draft.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489"
     },
@@ -174,7 +174,7 @@
           "status": "active"
         },
         {
-          "name": "Scheduled power-pilot run 27683989889 is active: six accumulate shards exceed the previous successful-shard max runtime",
+          "name": "Scheduled power-pilot run 27683989889 is active: 45/49 jobs have succeeded; shards 25/31/32/33 are still accumulating",
           "status": "active"
         },
         {
@@ -226,7 +226,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "Main full-check is green; power-pilot remains active with six long-tail accumulate shards and no accessible logs until completion."
+      "text": "Main full-check is green; power-pilot remains active with four long-tail accumulate shards and no accessible logs until completion."
     },
     {
       "when": "now",
@@ -486,7 +486,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27683989889: 43 success; shards 25/26/27/31/32/33 remain in Accumulate this shard's cells past the prior successful-shard max runtime; logs unavailable until completion.",
+      "evidence": "Run 27683989889: 45 success, 0 bad, 4 in progress; shards 25/31/32/33 remain in Accumulate this shard's cells; logs unavailable until completion.",
       "next_gate": "Summarize only after completion or explicit snapshot."
     },
     {
@@ -564,12 +564,12 @@
     {
       "status": "blocked",
       "kind": "Power evidence",
-      "item": "0/48 pilot cells at cap; six scheduled workflow shards are still accumulating beyond prior successful-shard max runtime; process health is not coverage proof."
+      "item": "0/48 pilot cells at cap; four scheduled workflow shards are still accumulating; process health is not coverage proof."
     },
     {
       "status": "guard",
       "kind": "Power pilot long tail",
-      "item": "GitHub Actions logs for shards 25/26/27/31/32/33 are unavailable until those jobs complete; completed shard max runtime was 3759 s."
+      "item": "GitHub Actions logs for shards 25/31/32/33 are unavailable until those jobs complete."
     },
     {
       "status": "guard",
@@ -594,6 +594,13 @@
       "when": "2026-06-17 07:01 MDT",
       "who": "GitHub Actions",
       "text": "Power-pilot run 27683989889 stayed at 43 successful jobs and 6 running jobs over a five-sample watch; all six are in Accumulate this shard's cells and exceed the previous successful-shard max runtime of 3759 seconds."
+    },
+    {
+      "when": "2026-06-17 07:20 MDT",
+      "who": "GitHub Actions",
+      "text": "Power-pilot run 27683989889 advanced to 45 successful jobs, 0 bad jobs, 4 in-progress jobs, and 0 queued jobs; remaining shards are 25/48, 31/48, 32/48, and 33/48 in Accumulate this shard's cells.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
+      "link_label": "run 27683989889"
     },
     {
       "when": "2026-06-17 06:45 MDT",

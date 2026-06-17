@@ -187,5 +187,10 @@ separate future lanes; this dashboard does not change grammar or APIs.
   successful shards in this run. The next action requires either waiting
   for external completion or maintainer approval to push docs / rerun or
   cancel the stuck workflow.
+- 2026-06-17 07:20 MDT refresh: the scheduled run moved to 45 successful
+  jobs, 0 bad jobs, 4 in-progress jobs, and 0 queued jobs. The remaining
+  shards are `25/48`, `31/48`, `32/48`, and `33/48`, all still in
+  `Accumulate this shard's cells`. This is progress, but it is still not
+  coverage proof or release evidence.
 - A future slice can add a small updater script for GitHub run counts,
   but that should stay separate from the static renderer.

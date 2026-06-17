@@ -18531,3 +18531,31 @@ Deliberately not run:
   not run. This change adds a local static mission-control dashboard only; it
   does not touch R code, `NAMESPACE`, generated Rd files, vignettes, README,
   NEWS, or `_pkgdown.yml`.
+
+## 2026-06-17 07:20 MDT -- mission-control power-pilot refresh
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 is open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits are the local dashboard/evidence commits on
+  `codex/r-bridge-grouped-dispersion`.
+
+Evidence refresh:
+
+- `gh pr view 489 --json isDraft,headRefOid,mergeStateStatus,statusCheckRollup,url,updatedAt | jq ...`
+  -> #489 remains draft, `CLEAN`, and green remotely at `e79ed27`.
+- `gh run view 27683989889 --json status,conclusion,updatedAt,url,jobs | jq ...`
+  -> `status: in_progress`, `total: 49`, `completed_success: 45`,
+  `completed_bad: 0`, `in_progress: 4`, `queued: 0`.
+- `gh run view 27683989889 --json jobs | jq -r '.jobs[] | select(.status=="in_progress") | [.name, .databaseId, .startedAt, (.steps[]? | select(.status=="in_progress") | .name)] | @tsv'`
+  -> remaining in-progress jobs are shards `25/48`, `31/48`, `32/48`,
+  and `33/48`; all are in `Accumulate this shard's cells`.
+
+Dashboard update:
+
+- Refreshed `docs/dev-log/dashboard/status.json`,
+  `docs/dev-log/dashboard/sweep.json`, and
+  `docs/dev-log/dashboard/version.txt` from the stale 43-success / 6-running
+  snapshot to the current 45-success / 4-running snapshot.

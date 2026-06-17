@@ -18599,3 +18599,18 @@ Dashboard update:
   `docs/dev-log/dashboard/status.json`, `sweep.json`, and `version.txt`
   from 339000 to 340500 accumulated reps. This remains process-health
   evidence only, not coverage proof.
+
+GLLVM.jl ordering gate refresh:
+
+- `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,url,updatedAt | jq ...`
+  -> #101 remains draft, `CLEAN`, head `f7be594`, base `integration`,
+  with Documenter successful.
+- `gh pr view 95 --repo itchyshin/GLLVM.jl --json number,title,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,url,updatedAt | jq ...`
+  -> #95 remains draft, `CLEAN`, head `65a1f106`, base `main`, with
+  older Julia 1 / 1.10 Ubuntu, macOS, Windows, and Documenter checks
+  successful.
+- `gh pr view 94 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,url,updatedAt | jq ...`
+  -> #94 remains open draft, `DIRTY`, and has no current checks.
+- Ordering interpretation: #101 into `integration` remains the first
+  Julia-side landing gate, #95 remains the later integration-to-main
+  gate, and #94 stays out of the current R-bridge widening path.

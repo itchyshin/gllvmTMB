@@ -229,11 +229,24 @@ jobs:
             --n-boot=${{ env.N_BOOT }} \
             --dry-run=${{ needs.guard.outputs.dry_run }}
 
+      - name: Prepare this shard's store slice
+        shell: bash
+        run: |
+          SLICE_DIR="_power-pilot-slice-${{ matrix.shard }}"
+          Rscript dev/power-pilot-run.R \
+            --mode=slice \
+            --shard=${{ matrix.shard }} \
+            --n-shards=${{ env.N_SHARDS }} \
+            --results-dir="$RESULTS_DIR" \
+            --slice-dir="$SLICE_DIR" \
+            --dry-run=${{ needs.guard.outputs.dry_run }}
+          find "$SLICE_DIR" -maxdepth 2 -type f -print | sort
+
       - name: Upload this shard's store slice
         uses: actions/upload-artifact@v4
         with:
           name: power-pilot-store-shard-${{ matrix.shard }}
-          path: ${{ env.RESULTS_DIR }}/
+          path: _power-pilot-slice-${{ matrix.shard }}/
           include-hidden-files: true
           retention-days: 7
           if-no-files-found: ignore
@@ -279,11 +292,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$RESULTS_DIR/_runstats"
-          # Each shard seeded from the SAME base store and accumulated only
-          # ITS one cell. The per-cell <cell-id>.rds files are disjoint
-          # across shards, so copying every slice in yields their union
-          # (each shard's fresh cell overwrites the stale base copy; no
-          # two shards touch the same cell -> no conflict).
+          # Each uploaded shard artifact contains ONLY that shard's touched
+          # per-cell <cell-id>.rds files plus its _runstats entry. The seed
+          # store is intentionally NOT uploaded with the slice: otherwise
+          # later stale copies from other shards can overwrite earlier fresh
+          # cells and make the persist step see "no store changes".
           #
           # IMPORTANT: pilot-index.rds is a SHARED file each shard rewrote
           # with only its own cell, so no single shard's copy is complete.
@@ -292,9 +305,16 @@ jobs:
           # rebuild-from-disk). The per-cell .rds files are the source of
           # truth; the index is a derived cache.
           shopt -s nullglob
+          n_shards="${N_SHARDS:-48}"
+          max_files=$(( (48 + n_shards - 1) / n_shards ))
           for d in _shards/power-pilot-store-shard-*; do
             [ -d "$d" ] || continue
-            # cell results + per-shard runstats; skip the partial index.
+            n_files=$(find "$d" -maxdepth 1 -type f -name '*.rds' ! -name 'pilot-index.rds' | wc -l | tr -d ' ')
+            if [ "$n_files" -gt "$max_files" ]; then
+              echo "::error title=Power pilot::shard slice $d has $n_files cell files; expected <= $max_files. Refusing to merge a full seeded store."
+              exit 1
+            fi
+            # Cell results + per-shard runstats; skip any partial index.
             for f in "$d"/*.rds; do
               [ "$(basename "$f")" = "pilot-index.rds" ] && continue
               cp -a "$f" "$RESULTS_DIR"/ 2>/dev/null || true

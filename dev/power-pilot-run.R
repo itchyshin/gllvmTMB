@@ -14,6 +14,8 @@
 ## Modes (one --mode=... per invocation):
 ##   shard   -- run one shard's cells: accumulate +n_sim_step reps toward
 ##              the cap for every cell in this shard that is below cap.
+##   slice   -- copy only this shard's touched per-cell files + runstats
+##              into a clean artifact directory for the persist job.
 ##   status  -- print pilot_accum_status() over the store and write a
 ##              compact status payload (used by the guard + summary jobs).
 ##
@@ -158,6 +160,53 @@ if (identical(mode, "shard")) {
     sprintf("%d %d", res$n_attempted, res$n_errored),
     file.path(rs_dir, sprintf("shard-%s.txt", shard))
   )
+  quit(save = "no", status = 0L)
+}
+
+if (identical(mode, "slice")) {
+  shard <- as.integer(arg_value("--shard", "1"))
+  n_shards <- as.integer(arg_value("--n-shards", "8"))
+  slice_dir <- arg_value("--slice-dir", NULL)
+  if (is.null(slice_dir) || !nzchar(slice_dir)) {
+    stop("--slice-dir is required for --mode=slice.")
+  }
+
+  cells <- shard_cell_ids(shard, n_shards)
+  if (dry_run) {
+    cells <- utils::head(cells, 1L)
+  }
+
+  if (dir.exists(slice_dir)) {
+    unlink(slice_dir, recursive = TRUE, force = TRUE)
+  }
+  dir.create(slice_dir, recursive = TRUE, showWarnings = FALSE)
+
+  copied <- 0L
+  for (cid in cells) {
+    src <- file.path(results_dir, paste0(cid, ".rds"))
+    if (!file.exists(src)) {
+      next
+    }
+    if (file.copy(src, file.path(slice_dir, basename(src)), overwrite = TRUE)) {
+      copied <- copied + 1L
+    }
+  }
+
+  rs_src <- file.path(results_dir, "_runstats", sprintf("shard-%s.txt", shard))
+  if (file.exists(rs_src)) {
+    rs_dir <- file.path(slice_dir, "_runstats")
+    dir.create(rs_dir, recursive = TRUE, showWarnings = FALSE)
+    file.copy(rs_src, file.path(rs_dir, basename(rs_src)), overwrite = TRUE)
+  }
+
+  cat(sprintf(
+    "[power-pilot] shard %d/%d slice: copied %d/%d cell file(s) to %s\n",
+    shard,
+    n_shards,
+    copied,
+    length(cells),
+    slice_dir
+  ))
   quit(save = "no", status = 0L)
 }
 

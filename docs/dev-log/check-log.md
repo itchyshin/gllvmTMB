@@ -15712,3 +15712,60 @@ Deliberately not run:
 - No `devtools::check()` / `devtools::test()` -- no gllvmTMB code was touched this
   session (read-only design/audit/review only). The unique-removal implementation
   is handed to the other team; its tests + checks land with that work.
+
+## 2026-06-17 -- Power-pilot shard artifact persistence repair
+
+Fixed the scheduled power-pilot workflow bug where each shard uploaded the full
+seeded result store. The persist job then copied every `.rds` from every shard
+artifact, so later stale seed copies could overwrite earlier fresh shard cells.
+Live evidence from run 105 showed the symptom: shard 31 advanced
+`nbinom2-d2-n150-sig0p0` from 4 to 204 reps and shard 33 advanced
+`nbinom2-d2-n150-sig0p5` from 4 to 204 reps, but the persist job still reported
+`no store changes to commit`.
+
+Changed `.github/workflows/power-pilot-sweep.yaml` and
+`dev/power-pilot-run.R` only:
+
+- added `--mode=slice` to `dev/power-pilot-run.R`, copying only this shard's
+  touched per-cell `.rds` file(s) plus `_runstats`;
+- changed the workflow to upload `_power-pilot-slice-<shard>/` instead of the
+  full seeded `dev/m3-pilot-results/` directory;
+- added a persist-step guard that refuses to merge an unexpectedly large shard
+  artifact, catching any future full-store upload regression before it can
+  silently overwrite fresh cells.
+
+Checks:
+
+- Pre-edit lane check:
+  `gh pr list --state open`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent work was the #489 doc/dashboard evidence commits.
+- `git diff --check`
+  -> clean.
+- Empty-store slice smoke:
+  `tmp=$(mktemp -d /tmp/gllvmtmb-slice-mode.XXXXXX); Rscript --vanilla dev/power-pilot-run.R --mode=slice --shard=31 --n-shards=48 --results-dir="$tmp/store" --slice-dir="$tmp/slice"; find "$tmp/slice" -maxdepth 2 -type f -print | sort`
+  -> copied `0/1` files without error.
+- Positive slice-copy smoke:
+  `cell=$(Rscript --vanilla -e 'suppressWarnings(suppressMessages({library(gllvmTMB); source("dev/m3-grid.R"); source("dev/m3-pilot-launch.R")})); grid <- pilot_grid(); ord <- order(grid$cell_id); cells <- grid$cell_id[ord][((seq_along(ord)-1L) %% 48L) + 1L == 31L]; cat(cells[[1]])'); tmp=$(mktemp -d /tmp/gllvmtmb-slice-mode-copy.XXXXXX); mkdir -p "$tmp/store"; printf fake > "$tmp/store/$cell.rds"; Rscript --vanilla dev/power-pilot-run.R --mode=slice --shard=31 --n-shards=48 --results-dir="$tmp/store" --slice-dir="$tmp/slice"; find "$tmp/slice" -maxdepth 2 -type f -print | sort | xargs -n1 basename`
+  -> copied only `nbinom2-d2-n150-sig0p0.rds`.
+- Merge simulation:
+  two fake shard slices containing only `a.rds` and `b.rds` merged to
+  `fresh-a fresh-b` with two runstat files; no stale seed overwrite.
+- Guard simulation:
+  a fake shard slice containing 2 cell files with `N_SHARDS=48` triggered
+  `guard triggered: 2 > 1` and exited with code 42.
+- Exact audit scan:
+  `rg -n "power-pilot-store-shard-|power-pilot-store-seed|pilot-index\\.rds|no store changes|mode=slice|slice-dir" .github/workflows/power-pilot-sweep.yaml dev/power-pilot-run.R dev/m3-pilot-launch.R`
+  -> confirmed the seed artifact remains a seed-only input, shard artifacts now
+  use `mode=slice`, the merge guard is present, and `pilot-index.rds` remains a
+  derived cache rebuilt after merging per-cell files.
+
+Deliberately not run:
+
+- Full `devtools::test()` / `devtools::check()` not run. This patch changes the
+  GitHub Actions artifact packaging path and a dev-only CLI wrapper, with no
+  package API, likelihood, formula grammar, roxygen, examples, vignettes,
+  generated Rd, or pkgdown navigation changes. The live proof gate is a
+  follow-up dry-run/manual dispatch or the next scheduled power-pilot run after
+  the workflow patch lands on `main`.

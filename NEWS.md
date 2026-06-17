@@ -232,7 +232,7 @@ section further down.
   generic `(unit, observation, trait)` sibling without the phylogenetic
   / spatial machinery (#306).
 
-## User-facing API
+### User-facing API
 
 * One `gllvmTMB()` entry point fits one stacked-trait model:
   * `gllvmTMB(value ~ ..., data = df_long, trait = "trait",
@@ -295,7 +295,7 @@ section further down.
   the response-family surface, and the ordinal-probit threshold scale
   and cutpoint convention.
 
-## Inference
+### Inference
 
 * `gllvmTMB(REML = TRUE)` adds a narrow Gaussian-only restricted maximum-likelihood pilot. IN: ordinary Gaussian random-intercept fits and Gaussian `latent() + unique()` covariance fits match `glmmTMB(..., REML = TRUE)` log-likelihoods and AIC degrees of freedom in `test-gaussian-reml.R` (MIS-33). PARTIAL: fixed-effect profile CIs are not available for REML fits; use Wald CIs or refit with `REML = FALSE` for ML profiling. PLANNED: non-Gaussian REML, observation weights, `miss_control(response = "include")`, and `mi()` predictor models remain guarded / deferred (MIS-32, MIS-33).
 * Maximum-likelihood point estimates via TMB's Laplace approximation remain the default estimator.
@@ -305,7 +305,7 @@ section further down.
 * `extract_correlations()` exposes Fisher-z (default), Wald, and
   bootstrap intervals via the `method` argument.
 
-## Phylogenetic and spatial paths
+### Phylogenetic and spatial paths
 
 * Phylogenetic covariance via the sparse `A^-1` representation of
   Hadfield & Nakagawa (2010), with `tree` (an `ape::phylo`) or
@@ -316,7 +316,7 @@ section further down.
   `sdmTMB` under GPL-3; provenance is recorded in `inst/COPYRIGHTS`
   and at the top of each inherited R file.
 
-## Inherited code and citation
+### Inherited code and citation
 
 * `Authors@R` names Shinichi Nakagawa as the sole author of
   `gllvmTMB`. Upstream copyright holders for inherited code
@@ -334,7 +334,7 @@ section further down.
   entries cite Kristensen et al. (2016) for TMB and Anderson
   et al. (2025) for `sdmTMB` when the spatial path is used.
 
-## Source-tree notes
+### Source-tree notes
 
 * The TMB engine is compiled at install time from
   `src/gllvmTMB.cpp`. The DLL is registered via
@@ -343,7 +343,7 @@ section further down.
   `sdmTMB::sdmTMBcontrol()`. Extra `...` arguments emit a
   warning.
 
-## Relationship to a pre-0.2.0 development line
+### Relationship to a pre-0.2.0 development line
 
 The pre-0.2.0 development line of `gllvmTMB` re-exported a large
 surface from `sdmTMB` and exposed single-response paths; the

@@ -18741,3 +18741,41 @@ Dashboard update:
   snapshot to terminal workflow success. This remains process-health
   evidence only; Fisher/Curie scoring remains the gate before any
   coverage or power promotion.
+
+## 2026-06-17 11:14 MDT -- NEWS heading repair for CRAN version-note
+
+Scope:
+
+- Release-hygiene repair for the #486 CRAN punch-list lane.
+- Changed only six `NEWS.md` subsection headings under
+  `gllvmTMB 0.2.0 (first CRAN release)` from `##` to `###` so R's
+  NEWS parser no longer treats topic headings as version headings.
+- No capability wording, package API, examples, generated Rd,
+  NAMESPACE, bridge code, validation-register rows, likelihood code,
+  or formula grammar changed.
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 is open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits are the local dashboard/evidence commits on
+  `codex/r-bridge-grouped-dispersion`.
+
+Checks:
+
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::check(args = "--as-cran", quiet = FALSE, error_on = "never")'`
+  -> `0 errors | 1 warning | 1 note` in 5m37.2s.
+  The earlier NEWS.md "Cannot extract version info" note is gone.
+  Remaining warning is the known local macOS compiler warning
+  (`-Wfixed-enum-extension`, SDK `NA`); remaining note is
+  `unable to verify current time`.
+
+Rose pre-publish gate:
+
+- PASS for this narrow NEWS change. The diff changes heading depth
+  only; method lists, defaults, function names, keyword grid,
+  argument-name claims, family lists, scope-boundary wording, and
+  validation row references are unchanged.

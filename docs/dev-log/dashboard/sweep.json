@@ -1,70 +1,91 @@
 {
-  "updated": "2026-06-17 09:07 MDT",
+  "updated": "2026-06-17 16:19 MDT",
   "active_work": [
     {
       "when": "live",
-      "who": "full-check",
-      "text": "Run 27683754473 on main completed successfully at 2026-06-17T12:34:23Z."
+      "who": "#489",
+      "text": "Draft PR #489 is clean and green at 3c5d111; it remains partial and not release-ready."
+    },
+    {
+      "when": "live",
+      "who": "main CI",
+      "text": "Main R-CMD-check 27720099917 and pkgdown 27720668325 completed successfully at 0567cd7."
     },
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27683989889 completed successfully: 51/51 jobs succeeded, 0 failed. Fisher/Curie scoring is still required before coverage or power promotion."
+      "text": "Run 27717007830 completed successfully and pushed 2709930 to power-pilot-results. Fisher/Curie scoring is still required before coverage or power promotion."
     },
     {
       "when": "live",
       "who": "GLLVM.jl",
-      "text": "#101 is draft/clean with Documenter green; #95 is draft/clean with older 3-OS CI green; #94 remains dirty salvage."
+      "text": "#95 is clean/green/non-draft; #101 is draft/clean with Documenter green; #94 remains dirty salvage."
     }
   ],
   "evidence": [
     {
-      "when": "2026-06-17 06:45 MDT",
+      "when": "2026-06-17 16:17 MDT",
       "who": "GitHub Actions",
-      "text": "full-check run 27683754473 completed successfully on main.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683754473",
-      "link_label": "run 27683754473"
+      "text": "#489 recovery run 27721260397 and R-CMD-check run 27721260400 both succeeded at 3c5d111.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
+      "link_label": "PR #489"
     },
     {
-      "when": "2026-06-17 09:07 MDT",
+      "when": "2026-06-17 15:51 MDT",
       "who": "GitHub Actions",
-      "text": "Power pilot run 27683989889 completed successfully at 2026-06-17T14:33:24Z: 51/51 jobs succeeded and 0 failed.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
-      "link_label": "run 27683989889"
+      "text": "Power pilot run 27717007830 completed successfully; persist pushed ed7a88d..2709930 (run 107).",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27717007830",
+      "link_label": "run 27717007830"
     }
   ],
   "ci_runs": [
     {
       "workflow": "R-CMD-check",
       "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "e79ed27",
+      "head": "3c5d111",
       "status": "completed",
       "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27669597822"
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27721260400"
     },
     {
       "workflow": "coevolution-two-kernel-recovery",
       "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "e79ed27",
+      "head": "3c5d111",
       "status": "completed",
       "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27669597786"
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27721260397"
     },
     {
-      "workflow": "full-check",
+      "workflow": "R-CMD-check",
       "branch": "main",
-      "head": "9fc9b7f",
+      "head": "0567cd7",
       "status": "completed",
       "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683754473"
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27720099917"
+    },
+    {
+      "workflow": "pkgdown",
+      "branch": "main",
+      "head": "0567cd7",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27720668325"
     },
     {
       "workflow": "Power pilot sweep",
       "branch": "main",
-      "head": "9fc9b7f",
-      "status": "active_by_job_count",
+      "head": "6f13a6d",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27717007830"
+    },
+    {
+      "workflow": "Power pilot sweep",
+      "branch": "main",
+      "head": "0567cd7",
+      "status": "queued",
       "conclusion": "",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889"
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237"
     }
   ],
   "priority_issues": [

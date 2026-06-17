@@ -18886,3 +18886,47 @@ Deliberately not run:
 - Full `devtools::test()`, `devtools::check()`, and article rendering not run
   for this merge-only resolution. No package code, likelihood, formula grammar,
   examples, or generated Rd changed in this merge.
+
+## 2026-06-17 -- mission-control evidence refresh after run 107
+
+Refreshed the tracked local mission-control data under
+`docs/dev-log/dashboard/` after the post-#490 dry-run and #491 pkgdown repair
+settled. This is a local operating dashboard update only; it does not change
+package code, public pkgdown navigation, formula grammar, likelihoods, or
+advertised bridge support.
+
+Evidence recorded:
+
+- #489 is draft, clean, and green at `3c5d111`; coevolution recovery run
+  `27721260397` and R-CMD-check run `27721260400` both succeeded.
+- Main R-CMD-check run `27720099917` and main pkgdown run `27720668325` are
+  green at `0567cd7`.
+- Power-pilot run `27717007830` completed successfully and pushed
+  `ed7a88d..2709930` to `power-pilot-results`; the persisted store summary is
+  48 cells, 10,376 reps, 0/48 cells at cap, signal mean coverage 0.733,
+  pass94 3/32, pass95 3/32, and null mean coverage 0.412.
+- GLLVM.jl ordering is explicit: #95 clean/green/non-draft; #101 draft/clean
+  on `integration`; #94 dirty salvage.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits were this branch and the already-merged #490/#491
+  repairs.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json`
+  -> valid JSON.
+- `python3 -m json.tool docs/dev-log/dashboard/sweep.json`
+  -> valid JSON.
+- `rg "e79ed27|27683989889|27683754473|340500|09:07" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/dashboard/version.txt`
+  -> no stale old dashboard evidence remained.
+- `git diff --check -- docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/dashboard/version.txt`
+  -> clean.
+
+Deliberately not run:
+
+- No local package tests, local R CMD check, pkgdown build, or dashboard
+  server/browser restart. This is a data-only mission-control refresh; the
+  remote #489 R-CMD-check evidence is run `27721260400`.

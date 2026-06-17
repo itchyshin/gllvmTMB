@@ -1,16 +1,16 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 09:07 MDT",
+  "updated": "2026-06-17 16:19 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
     "text": "PR green != bridge complete != release ready != scientific coverage passed. The Julia bridge is draft and partial unless a matrix row names covered evidence."
   },
   "metrics": {
-    "covered": 0,
+    "covered": 1,
     "partial": 6,
-    "active": 2,
+    "active": 1,
     "blocked": 1,
     "queued": 1,
     "total": 10
@@ -18,42 +18,42 @@
   "truth_cards": [
     {
       "label": "Local workspace",
-      "value": "ahead",
-      "status": "active",
-      "note": "Dashboard slice is committed locally; 05:00 handover checkpoint remains untracked."
+      "value": "branch",
+      "status": "success",
+      "note": "Dashboard evidence refresh is tracked on the #489 branch; recovery checkpoints remain untracked local handoff notes."
     },
     {
       "label": "Draft PR",
       "value": "#489",
-      "status": "draft",
-      "note": "Remote PR is still merge-clean and green at e79ed27; local 2af1485 evidence commit is not pushed."
+      "status": "success",
+      "note": "Draft PR #489 is clean and both checks are green at 3c5d111; it remains partial and not release-ready."
     },
     {
       "label": "Main full-check",
       "value": "green",
       "status": "success",
-      "note": "Main run 27683754473 completed successfully at 2026-06-17T12:34:23Z."
+      "note": "Main R-CMD-check 27720099917 and pkgdown 27720668325 are green at 0567cd7."
     },
     {
       "label": "Power pilot",
-      "value": "green",
+      "value": "persisted",
       "status": "success",
-      "note": "Run 27683989889 completed successfully: 51/51 jobs succeeded, 0 failed."
+      "note": "Run 27717007830 succeeded and pushed 2709930 to power-pilot-results; this proves persistence mechanics, not coverage."
     },
     {
       "label": "Next decision",
-      "value": "push gate",
+      "value": "#95 gate",
       "status": "guard",
-      "note": "Wait for active power-pilot or explicitly choose to push dashboard docs now."
+      "note": "Keep GLLVM.jl #95 as the next engine serial gate; #489 stays draft/partial until the paired Julia path is settled."
     }
   ],
   "repos": [
     {
       "name": "gllvmTMB",
       "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "local dashboard commits",
-      "state": "warn",
-      "note": "Dashboard source and evidence refreshes are committed locally; remote PR #489 remains at e79ed27 and draft.",
+      "head": "3c5d111",
+      "state": "success",
+      "note": "Draft PR #489 is pushed, clean, and green at 3c5d111; bridge and release claims remain gated.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489"
     },
@@ -61,17 +61,17 @@
       "name": "GLLVM.jl",
       "branch": "codex/julia-per-trait-dispersion",
       "head": "f7be594",
-      "state": "warn",
-      "note": "PR #101 is draft and clean with Documenter green; #95/#94 remain ordering inputs.",
+      "state": "guard",
+      "note": "#95 is clean/green/non-draft; #101 is draft/clean on integration; #94 remains dirty salvage.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
       "link_label": "PR #101"
     },
     {
       "name": "public pkgdown",
       "branch": "main/pages",
-      "head": "not checked by this widget",
-      "state": "local",
-      "note": "This dashboard is local mission control, not the public site or a release announcement."
+      "head": "0567cd7",
+      "state": "success",
+      "note": "Main pkgdown run 27720668325 passed after the Julia bridge reference-index repair; dashboard remains local mission control."
     }
   ],
   "phases": [
@@ -112,7 +112,7 @@
       "counts": "2/5",
       "slices": [
         {
-          "name": "PR #489 is green and merge-clean at e79ed27",
+          "name": "PR #489 is clean and green at 3c5d111",
           "status": "covered",
           "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
           "issue": "PR #489"
@@ -149,15 +149,15 @@
           "issue": "GLLVM.jl #101"
         },
         {
-          "name": "GLLVM.jl #95 integration-to-main ordering decision",
-          "status": "queued"
+          "name": "GLLVM.jl #95 is clean/green/non-draft; landing decision remains serial",
+          "status": "guard"
         },
         {
           "name": "GLLVM.jl #94 salvage stays separate from #101/#95 landing order",
           "status": "guard"
         },
         {
-          "name": "Pin paired Julia SHA before widening R bridge support",
+          "name": "Pin paired Julia SHA after #95 lands and #101 is refreshed",
           "status": "queued"
         }
       ]
@@ -170,11 +170,11 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 340500 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 347510 / 480000 reps and 0/48 cells at cap",
           "status": "active"
         },
         {
-          "name": "Scheduled power-pilot run 27683989889 completed successfully: 51/51 jobs succeeded, 0 failed",
+          "name": "Power-pilot run 27717007830 completed successfully and pushed 2709930 to results",
           "status": "covered"
         },
         {
@@ -195,11 +195,15 @@
       "id": "Phase 4",
       "name": "Public docs, pkgdown, and release gate",
       "owner": "Pat + Darwin + Florence + Grace",
-      "status": "queued",
-      "counts": "1/4",
+      "status": "active",
+      "counts": "2/5",
       "slices": [
         {
-          "name": "Dashboard remains local; no pkgdown navigation change",
+          "name": "Dashboard remains local; no public pkgdown dashboard navigation change",
+          "status": "covered"
+        },
+        {
+          "name": "Main pkgdown run 27720668325 passed at 0567cd7",
           "status": "covered"
         },
         {
@@ -221,12 +225,12 @@
     {
       "when": "now",
       "who": "Ada",
-      "text": "Dashboard source is committed locally; #489 remains remote-draft/partial at e79ed27."
+      "text": "#489 is clean and green at 3c5d111; keep it draft/partial until the engine and claim gates close."
     },
     {
       "when": "now",
       "who": "Grace",
-      "text": "Main full-check is green; scheduled power-pilot run 27683989889 is terminal green."
+      "text": "Main R-CMD/pkgdown, #489 R-CMD/recovery, and power run 107 persistence are green."
     },
     {
       "when": "now",
@@ -238,12 +242,12 @@
     {
       "status": "guard",
       "kind": "Ada",
-      "item": "Choose #489 landing path: keep draft, split, or move toward review."
+      "item": "Choose #489 landing path: keep draft, split, or move toward review; do not call it release-ready."
     },
     {
       "status": "guard",
       "kind": "GLLVM.jl",
-      "item": "Pin #101/#95/#94 ordering before R bridge claims widen."
+      "item": "#95 must land or be explicitly deferred before #101 refresh and any R bridge claim widening."
     },
     {
       "status": "guard",
@@ -305,8 +309,8 @@
       "name": "Ada",
       "role": "orchestrator and integrator",
       "status": "active",
-      "task": "Order #489 push/hold decision, GLLVM.jl landing order, and power-pilot closeout.",
-      "blocked_by": "Maintainer landing decision",
+      "task": "Keep #95 -> #101 -> #489 ordering explicit and avoid widening #489 claims.",
+      "blocked_by": "Maintainer-level #95 landing decision",
       "parallel_with": "Rose, Grace, Shannon",
       "join_gate": "#489 ready/split/hold choice"
     },
@@ -332,8 +336,8 @@
       "name": "Grace",
       "role": "CI, pkgdown, CRAN, reproducibility",
       "status": "active",
-      "task": "Track full-check, power-pilot, local LaunchAgent, and launcher health.",
-      "blocked_by": "Active power-pilot workflow",
+      "task": "Track main pkgdown, #489 checks, power-pilot persistence, and local LaunchAgent health.",
+      "blocked_by": "Queued main power-pilot follow-up run",
       "parallel_with": "Shannon and Curie",
       "join_gate": "Completed runs or explicit snapshot"
     },
@@ -341,8 +345,8 @@
       "name": "Hopper",
       "role": "R-Julia bridge",
       "status": "queued",
-      "task": "Refresh no-Julia and live JuliaCall bridge gates when Ada chooses.",
-      "blocked_by": "GLLVM.jl ordering",
+      "task": "Refresh no-Julia and live JuliaCall bridge gates after the paired Julia base is settled.",
+      "blocked_by": "#95 landing and #101 refresh",
       "parallel_with": "Karpinski and Gauss",
       "join_gate": "Paired Julia SHA"
     },
@@ -350,8 +354,8 @@
       "name": "Karpinski",
       "role": "Julia engine and sparse/AD path",
       "status": "queued",
-      "task": "Confirm native GLLVM.jl capability surface and performance boundaries.",
-      "blocked_by": "PR #101/#95/#94 order",
+      "task": "Confirm #95 landing/base state, then refresh #101 bridge-runtime tests.",
+      "blocked_by": "#95 integration-to-main decision",
       "parallel_with": "Hopper and Gauss",
       "join_gate": "GLLVM.jl integration decision"
     },
@@ -377,7 +381,7 @@
       "name": "Fisher",
       "role": "statistical inference reviewer",
       "status": "active",
-      "task": "Separate process-health, power, coverage, and CI-status evidence.",
+      "task": "Separate run-107 persistence proof from coverage, power, and CI-status evidence.",
       "blocked_by": "Pilot scoring not complete",
       "parallel_with": "Curie and Grace",
       "join_gate": "Estimand-specific scoring gate"
@@ -386,8 +390,8 @@
       "name": "Curie",
       "role": "simulation and testing specialist",
       "status": "active",
-      "task": "Keep simulation rows row-ID first and evidence-backed.",
-      "blocked_by": "0/48 pilot cells at cap",
+      "task": "Score accumulated remote and local pilot stores row by row.",
+      "blocked_by": "0/48 pilot cells at cap; run success is not estimand success",
       "parallel_with": "Fisher and Grace",
       "join_gate": "Pilot store merge/scoring"
     },
@@ -454,10 +458,10 @@
       "engine": "active",
       "bridge": "partial",
       "inference": "partial",
-      "evidence": "PR #489 green at e79ed27; live Julia widening still gated.",
+      "evidence": "PR #489 at 3c5d111: R-CMD-check 27721260400 and coevolution recovery 27721260397 are green; live Julia widening still gated.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489",
-      "next_gate": "Ada landing decision plus paired GLLVM.jl SHA."
+      "next_gate": "Paired GLLVM.jl #95/#101 decision plus live JuliaCall refresh before widening claims."
     },
     {
       "id": "JUL-01A",
@@ -476,7 +480,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent 340500 / 480000 reps, 0/48 cells at cap.",
+      "evidence": "LaunchAgent latest logged summary: 347510 / 480000 reps, 0/48 cells at cap.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -486,8 +490,8 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27683989889 completed successfully at 2026-06-17T14:33:24Z: 51/51 jobs succeeded, 0 failed.",
-      "next_gate": "Fisher/Curie scoring before any coverage/power promotion."
+      "evidence": "Run 27717007830 completed successfully and pushed 2709930 (run 107) to power-pilot-results; 48 cells, 10376 reps, 0/48 cells at cap.",
+      "next_gate": "Fisher/Curie scoring before any coverage/power promotion; queued run 27722546237 is process follow-up only."
     },
     {
       "id": "RE-03",
@@ -564,12 +568,12 @@
     {
       "status": "blocked",
       "kind": "Power evidence",
-      "item": "0/48 pilot cells at cap; terminal workflow success is process evidence, not coverage proof."
+      "item": "0/48 remote pilot cells at cap after run 107; persistence success is process evidence, not coverage proof."
     },
     {
       "status": "guard",
-      "kind": "Power pilot long tail",
-      "item": "Scheduled workflow is green; Fisher/Curie still need to score estimands before promotion."
+      "kind": "Power pilot follow-up",
+      "item": "Run 107 persisted fresh results; queued run 27722546237 is not a new claim until it completes and is scored."
     },
     {
       "status": "guard",
@@ -579,61 +583,63 @@
   ],
   "evidence": [
     {
-      "when": "2026-06-17 05:00 MDT",
-      "who": "handover",
-      "text": "Recovery checkpoint records #489 draft/green/merge-clean and power-pilot boundaries."
-    },
-    {
-      "when": "2026-06-17 06:45 MDT",
+      "when": "2026-06-17 15:34 MDT",
       "who": "GitHub CLI",
-      "text": "PR #489 is draft, CLEAN, and green at e79ed27.",
+      "text": "PR #489 pushed at 3c5d111 after absorbing main 0567cd7; it remains draft and partial.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489"
     },
     {
-      "when": "2026-06-17 07:01 MDT",
+      "when": "2026-06-17 15:40 MDT",
       "who": "GitHub Actions",
-      "text": "Power-pilot run 27683989889 stayed at 43 successful jobs and 6 running jobs over a five-sample watch; all six are in Accumulate this shard's cells and exceed the previous successful-shard max runtime of 3759 seconds."
+      "text": "#489 coevolution recovery run 27721260397 succeeded at 3c5d111.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27721260397",
+      "link_label": "run 27721260397"
     },
     {
-      "when": "2026-06-17 07:20 MDT",
+      "when": "2026-06-17 16:17 MDT",
       "who": "GitHub Actions",
-      "text": "Power-pilot run 27683989889 advanced to 45 successful jobs, 0 bad jobs, 4 in-progress jobs, and 0 queued jobs; remaining shards are 25/48, 31/48, 32/48, and 33/48 in Accumulate this shard's cells.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
-      "link_label": "run 27683989889"
+      "text": "#489 R-CMD-check run 27721260400 succeeded at 3c5d111.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27721260400",
+      "link_label": "run 27721260400"
     },
     {
-      "when": "2026-06-17 07:35 MDT",
+      "when": "2026-06-17 15:23 MDT",
       "who": "GitHub Actions",
-      "text": "Power-pilot run 27683989889 advanced to 46 successful jobs, 0 bad jobs, 3 in-progress jobs, and 0 queued jobs; remaining shards are 31/48, 32/48, and 33/48 in Accumulate this shard's cells.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
-      "link_label": "run 27683989889"
+      "text": "Main R-CMD-check run 27720099917 succeeded at 0567cd7 after the Julia bridge pkgdown-index repair.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27720099917",
+      "link_label": "run 27720099917"
     },
     {
-      "when": "2026-06-17 07:42 MDT",
+      "when": "2026-06-17 15:49 MDT",
       "who": "GitHub Actions",
-      "text": "Power-pilot run 27683989889 advanced to 47 successful jobs, 0 bad jobs, 2 in-progress jobs, and 0 queued jobs; remaining shards are 31/48 and 33/48 in Accumulate this shard's cells.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
-      "link_label": "run 27683989889"
+      "text": "Main pkgdown run 27720668325 succeeded at 0567cd7.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27720668325",
+      "link_label": "run 27720668325"
     },
     {
-      "when": "2026-06-17 07:48 MDT",
+      "when": "2026-06-17 15:51 MDT",
       "who": "GitHub Actions",
-      "text": "Power-pilot run 27683989889 advanced to 48 successful jobs, 0 bad jobs, 1 in-progress job, and 0 queued jobs; remaining shard is 33/48 in Accumulate this shard's cells.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
-      "link_label": "run 27683989889"
+      "text": "Power-pilot run 27717007830 succeeded; persist rebuilt a 48-row index and pushed results branch ed7a88d..2709930.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27717007830",
+      "link_label": "run 27717007830"
     },
     {
-      "when": "2026-06-17 09:07 MDT",
-      "who": "GitHub Actions",
-      "text": "Power-pilot run 27683989889 completed successfully at 2026-06-17T14:33:24Z: 51/51 jobs succeeded, 0 failed, 0 queued, and 0 in progress.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
-      "link_label": "run 27683989889"
+      "when": "2026-06-17 15:55 MDT",
+      "who": "power-pilot-results",
+      "text": "Remote store at 2709930 has 48 cells, 10376 reps, 0/48 cells at cap, signal mean coverage 0.733, pass94 3/32, pass95 3/32, null mean coverage 0.412."
     },
     {
-      "when": "2026-06-17 07:30 MDT",
+      "when": "2026-06-17 16:05 MDT",
+      "who": "GLLVM.jl",
+      "text": "#95 is clean/green/non-draft, #101 is draft/clean on integration, and #94 remains dirty salvage; do not use #94 to widen R bridge claims.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/95",
+      "link_label": "GLLVM.jl #95"
+    },
+    {
+      "when": "2026-06-17 15:20 MDT",
       "who": "LaunchAgent",
-      "text": "Local loop is running; latest log shows iter 102, 340500 / 480000 reps, 0/48 cells at cap, and 0 errored cells."
+      "text": "Local loop restarted with 10 cores; latest logged summary shows 347510 / 480000 reps, 0/48 cells at cap, signal mean coverage 0.753, pass94 3/24, pass95 2/24."
     }
   ]
 }

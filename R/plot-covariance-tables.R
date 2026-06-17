@@ -1675,15 +1675,17 @@ plot_Sigma_comparison <- function(
 #'
 #' Scope boundary: IN, the helper plots point-estimate rows from
 #' [extract_Sigma_table()] or extracts those rows from a fit returned by
-#' [gllvmTMB()] (EXT-19; built on EXT-18). PARTIAL, interval columns are
-#' displayed when present and finite, but this helper does not compute Sigma
-#' intervals. PLANNED, uncertainty propagation for arbitrary Sigma entries
-#' belongs in bootstrap/profile infrastructure.
+#' [gllvmTMB()] or an admitted `engine = "julia"` bridge fit (EXT-19; built on
+#' EXT-18 / JUL-01A). PARTIAL, interval columns are displayed when present and
+#' finite, but this helper does not compute Sigma intervals. PLANNED,
+#' uncertainty propagation for arbitrary Sigma entries belongs in
+#' bootstrap/profile infrastructure.
 #'
-#' @param x A fit returned by [gllvmTMB()], a `bootstrap_Sigma` object, or a data
-#'   frame returned by [extract_Sigma_table()]. Data frames must contain `level`,
-#'   `trait_i`, `trait_j`, `estimate`, `lower`, `upper`, `matrix`,
-#'   `component`, `diagonal`, and `triangle`.
+#' @param x A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
+#'   bridge fit, a `bootstrap_Sigma` object, or a data frame returned by
+#'   [extract_Sigma_table()]. Data frames must contain `level`, `trait_i`,
+#'   `trait_j`, `estimate`, `lower`, `upper`, `matrix`, `component`,
+#'   `diagonal`, and `triangle`.
 #' @param level,part,measure,entries,link_residual Passed to
 #'   [extract_Sigma_table()] when `x` is a fitted model. The plotting default
 #'   `entries = "upper"` shows each pairwise covariance/correlation once; pass
@@ -1760,7 +1762,11 @@ plot_Sigma_table <- function(
   eye_level <- .gtmb_resolve_eye_level(eye_level, raindrop_level)
   draw_interval_line <- .gtmb_resolve_interval_line(show_intervals, style)
 
-  if (inherits(x, "gllvmTMB_multi") || inherits(x, "bootstrap_Sigma")) {
+  if (
+    inherits(x, "gllvmTMB_multi") ||
+      inherits(x, "gllvmTMB_julia") ||
+      inherits(x, "bootstrap_Sigma")
+  ) {
     dat <- extract_Sigma_table(
       x,
       level = level,
@@ -1773,7 +1779,7 @@ plot_Sigma_table <- function(
     dat <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a fit returned by {.fun gllvmTMB}, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
+      "{.arg x} must be a fit returned by {.fun gllvmTMB}, an admitted {.cls gllvmTMB_julia} bridge fit, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
     )
   }
 
@@ -2008,17 +2014,19 @@ plot_Sigma_table <- function(
 #'
 #' Scope boundary: IN, the helper plots point-estimate heatmaps from
 #' [extract_Sigma_table()] rows or extracts those rows from a fit returned by
-#' [gllvmTMB()] or from a `bootstrap_Sigma` object (EXT-27; built on EXT-18 /
-#' EXT-20). PARTIAL, it does not display interval bounds or compare fitted
-#' values to known truth. Use [plot_Sigma_table()] for interval forests or
-#' confidence eyes, and [plot_Sigma_comparison()] for estimate-vs-truth displays.
-#' PLANNED, vdiffr snapshots and richer multi-model layout helpers remain
-#' future figure work.
+#' [gllvmTMB()], an admitted `engine = "julia"` bridge fit, or from a
+#' `bootstrap_Sigma` object (EXT-27; built on EXT-18 / EXT-20 / JUL-01A).
+#' PARTIAL, it does not display interval bounds or compare fitted values to
+#' known truth. Use [plot_Sigma_table()] for interval forests or confidence
+#' eyes, and [plot_Sigma_comparison()] for estimate-vs-truth displays. PLANNED,
+#' vdiffr snapshots and richer multi-model layout helpers remain future figure
+#' work.
 #'
-#' @param x A fit returned by [gllvmTMB()], a `bootstrap_Sigma` object, or a data
-#'   frame returned by [extract_Sigma_table()]. Data frames must contain `level`,
-#'   `trait_i`, `trait_j`, `estimate`, `matrix`, `component`, `diagonal`, and
-#'   `triangle`; `i` and `j` columns are used for trait ordering when present.
+#' @param x A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
+#'   bridge fit, a `bootstrap_Sigma` object, or a data frame returned by
+#'   [extract_Sigma_table()]. Data frames must contain `level`, `trait_i`,
+#'   `trait_j`, `estimate`, `matrix`, `component`, `diagonal`, and `triangle`;
+#'   `i` and `j` columns are used for trait ordering when present.
 #' @param level,part,measure,entries,link_residual Passed to
 #'   [extract_Sigma_table()] when `x` is a fitted model. The plotting default
 #'   `entries = "all"` shows the full matrix.
@@ -2106,7 +2114,11 @@ plot_Sigma_heatmap <- function(
   .gtmb_validate_optional_text(subtitle, "subtitle")
   .gtmb_validate_optional_text(caption, "caption")
 
-  if (inherits(x, "gllvmTMB_multi") || inherits(x, "bootstrap_Sigma")) {
+  if (
+    inherits(x, "gllvmTMB_multi") ||
+      inherits(x, "gllvmTMB_julia") ||
+      inherits(x, "bootstrap_Sigma")
+  ) {
     dat <- extract_Sigma_table(
       x,
       level = level,
@@ -2119,7 +2131,7 @@ plot_Sigma_heatmap <- function(
     dat <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a fit returned by {.fun gllvmTMB}, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
+      "{.arg x} must be a fit returned by {.fun gllvmTMB}, an admitted {.cls gllvmTMB_julia} bridge fit, a {.cls bootstrap_Sigma} object, or a data frame from {.fun extract_Sigma_table}."
     )
   }
 

@@ -183,6 +183,12 @@ Active lane guidance:
   rows. Both helpers keep `validation_row = "JUL-01A"` and
   `interval_status = "none"`; they do not promote interval-bearing
   extractor tables, `extract_correlations()` CIs, or calibration claims.
+- Sigma plot point views:
+  `plot_Sigma_table()` and `plot_Sigma_heatmap()` now accept admitted
+  `gllvmTMB_julia` fits by delegating to the same point-only
+  `extract_Sigma_table()` route. The forest helper keeps open point estimates
+  when intervals are absent; the heatmap displays point estimates only. Neither
+  helper computes uncertainty or promotes correlation CI support.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

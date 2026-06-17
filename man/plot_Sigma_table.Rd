@@ -21,10 +21,11 @@ plot_Sigma_table(
 )
 }
 \arguments{
-\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, a \code{bootstrap_Sigma} object, or a data
-frame returned by \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}. Data frames must contain \code{level},
-\code{trait_i}, \code{trait_j}, \code{estimate}, \code{lower}, \code{upper}, \code{matrix},
-\code{component}, \code{diagonal}, and \code{triangle}.}
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, an admitted \code{engine = "julia"}
+bridge fit, a \code{bootstrap_Sigma} object, or a data frame returned by
+\code{\link[=extract_Sigma_table]{extract_Sigma_table()}}. Data frames must contain \code{level}, \code{trait_i},
+\code{trait_j}, \code{estimate}, \code{lower}, \code{upper}, \code{matrix}, \code{component},
+\code{diagonal}, and \code{triangle}.}
 
 \item{level, part, measure, entries, link_residual}{Passed to
 \code{\link[=extract_Sigma_table]{extract_Sigma_table()}} when \code{x} is a fitted model. The plotting default
@@ -76,10 +77,11 @@ leaves interval columns as placeholders.
 \details{
 Scope boundary: IN, the helper plots point-estimate rows from
 \code{\link[=extract_Sigma_table]{extract_Sigma_table()}} or extracts those rows from a fit returned by
-\code{\link[=gllvmTMB]{gllvmTMB()}} (EXT-19; built on EXT-18). PARTIAL, interval columns are
-displayed when present and finite, but this helper does not compute Sigma
-intervals. PLANNED, uncertainty propagation for arbitrary Sigma entries
-belongs in bootstrap/profile infrastructure.
+\code{\link[=gllvmTMB]{gllvmTMB()}} or an admitted \code{engine = "julia"} bridge fit (EXT-19; built on
+EXT-18 / JUL-01A). PARTIAL, interval columns are displayed when present and
+finite, but this helper does not compute Sigma intervals. PLANNED,
+uncertainty propagation for arbitrary Sigma entries belongs in
+bootstrap/profile infrastructure.
 }
 \examples{
 if (requireNamespace("ggplot2", quietly = TRUE)) {

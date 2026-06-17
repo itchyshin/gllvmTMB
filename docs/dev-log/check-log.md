@@ -4,6 +4,72 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge Sigma plot point view
+
+Routed `plot_Sigma_table()` and `plot_Sigma_heatmap()` for admitted
+`gllvmTMB_julia` objects by delegating to the existing point-only
+`extract_Sigma_table()` path. This is a point-display slice only: the forest
+view keeps open point estimates when interval bounds are absent, and the heatmap
+shows point estimates only. It does not compute intervals, promote
+`extract_correlations()`, or make a calibration claim.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --state open --json number,title,headRefName,isDraft,updatedAt,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent commits were the current Codex bridge stack only.
+  `gh pr view 489 --json headRefOid,mergeStateStatus,statusCheckRollup,updatedAt`
+  -> pushed head `a687fe8`; coevolution recovery later passed while
+  R-CMD-check ubuntu-latest remained in progress.
+- Plot-helper contract:
+  read `.agents/skills/r-plot-helper-package-engineer/SKILL.md` and
+  `references/r-package-plot-helper-contract.md`; the slice keeps absent
+  intervals visible as estimates and uses the existing `ggplot2::` qualified
+  calls.
+- Documentation generation:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `plot_Sigma_table.Rd` and `plot_Sigma_heatmap.Rd`.
+- Formatting:
+  `air format R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> completed quietly.
+- Targeted plot tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", reporter = "summary")'`
+  -> completed with `0` failures.
+- Targeted table tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table", reporter = "summary")'`
+  -> completed with `0` failures.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `13` expected live-Julia skips.
+- Optional broader local check:
+  `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> started after the local commit, entered the full package test phase, and
+  was interrupted deliberately because it exceeded the narrow plot-slice budget.
+  No pass/fail evidence is counted from this attempt.
+
+Files updated:
+
+- `R/plot-covariance-tables.R`
+- `man/plot_Sigma_table.Rd`
+- `man/plot_Sigma_heatmap.Rd`
+- `tests/testthat/test-plot-covariance-tables.R`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-sigma-plot-point-view.md`
+
+Deliberately not run:
+
+- Full `devtools::test()`, completed `devtools::check()`,
+  `pkgdown::check_pkgdown()`, article renders, live Julia bridge tests, and
+  `Pkg.test()`. This slice changes two plotting helper gates, generated Rd
+  wording, one R plot test file, and developer ledgers. The relevant local
+  gates are `devtools::document()`, the existing plot/table tests, and the
+  no-Julia bridge suite.
+
 ## 2026-06-16 -- R bridge Sigma comparison point view
 
 Routed `compare_Sigma_table()` for `gllvmTMB_julia` objects by letting it reuse

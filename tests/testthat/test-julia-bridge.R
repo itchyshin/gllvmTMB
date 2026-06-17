@@ -624,6 +624,39 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
   expect_equal(suppressMessages(getResidualCov(fit)), fit$Sigma)
   expect_equal(suppressMessages(getResidualCor(fit)), fit$correlation)
 
+  tbl <- suppressMessages(extract_Sigma_table(
+    fit,
+    level = "unit",
+    link_residual = "none"
+  ))
+  expect_s3_class(tbl, "data.frame")
+  expect_equal(nrow(tbl), fit$n_traits * (fit$n_traits + 1L) / 2L)
+  expect_equal(unique(tbl$level), "unit")
+  expect_equal(unique(tbl$component), "total")
+  expect_equal(unique(tbl$matrix), "Sigma")
+  expect_equal(unique(tbl$interval_status), "none")
+  expect_equal(unique(tbl$validation_row), "JUL-01A")
+  expect_equal(tbl$estimate, fit$Sigma[cbind(tbl$i, tbl$j)])
+  expect_true(all(is.na(tbl$lower)))
+  expect_true(all(is.na(tbl$upper)))
+
+  tbl_r <- suppressMessages(extract_Sigma_table(
+    fit,
+    level = "all",
+    measure = "correlation",
+    entries = "all"
+  ))
+  expect_equal(nrow(tbl_r), fit$n_traits^2)
+  expect_equal(unique(tbl_r$level), "unit")
+  expect_equal(unique(tbl_r$matrix), "R")
+  expect_equal(unique(tbl_r$scale), "correlation")
+  expect_equal(unique(tbl_r$validation_row), "JUL-01A")
+  expect_equal(tbl_r$estimate, fit$correlation[cbind(tbl_r$i, tbl_r$j)])
+  expect_error(
+    extract_Sigma_table(fit, level = "unit_obs"),
+    "Available:.*unit"
+  )
+
   ord <- extract_ordination(fit)
   expect_equal(ord$loadings, fit$loadings)
   expect_equal(ord$scores, fit$scores)
@@ -1982,6 +2015,19 @@ test_that("engine = 'julia' main dispatch routes grouped-dispersion rows and kee
     expect_equal(rownames(sigma_unit$Sigma), rownames(case$Y))
     expect_equal(sigma_unit$Sigma, expected_sigma, tolerance = 1e-8)
     expect_equal(sigma_unit$R, stats::cov2cor(expected_sigma), tolerance = 1e-8)
+    sigma_table <- suppressMessages(extract_Sigma_table(
+      fit_jl,
+      level = "unit",
+      link_residual = "none"
+    ))
+    expect_equal(unique(sigma_table$level), "unit")
+    expect_equal(unique(sigma_table$validation_row), "JUL-01A")
+    expect_equal(unique(sigma_table$interval_status), "none")
+    expect_equal(
+      sigma_table$estimate,
+      sigma_unit$Sigma[cbind(sigma_table$i, sigma_table$j)],
+      tolerance = 1e-8
+    )
     sigma_auto <- suppressMessages(extract_Sigma(fit_jl))
     expect_equal(sigma_auto$Sigma, fit_jl$Sigma, tolerance = 1e-8)
     expect_equal(sigma_auto$R, fit_jl$correlation, tolerance = 1e-8)

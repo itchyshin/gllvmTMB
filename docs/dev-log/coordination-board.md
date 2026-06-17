@@ -112,8 +112,9 @@ Active lane guidance:
   probabilities and modal-class predictions from the retained score/cutpoint
   payload. Unit-tier covariance and raw ordination accessors are now routed
   through `extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`,
-  `getResidualCor()`, `extract_ordination()`, `getLoadings()`, and `getLV()`,
-  including complete balanced mixed-family rows. Public covariance accessors
+  `getResidualCor()`, point-only `extract_Sigma_table()`,
+  `extract_ordination()`, `getLoadings()`, and `getLV()`, including complete
+  balanced mixed-family rows. Public covariance accessors
   distinguish the native no-link-residual view from the raw retained Julia
   payload: `link_residual = "none"` returns `Lambda Lambda^T`; default
   `link_residual = "auto"` uses retained residual-augmented payloads where
@@ -124,8 +125,9 @@ Active lane guidance:
   residual diagonals, and ordinal-probit rows add the probit residual diagonal
   of one. `newdata` prediction/simulation, unconditional random-effect
   redraws, ordinal residuals/simulation, mixed-family CIs, mixed-family masks,
-  mixed-family fixed-effect X, residual-split reporting, rotations,
-  structured-tier extractors, and broad richer extractor parity remain gated.
+  mixed-family fixed-effect X, interval-bearing extractor tables,
+  residual-split reporting, rotations, structured-tier extractors, and broad
+  richer extractor parity remain gated.
   The R bridge also routes complete-response fixed-effect-X point fits for
   Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and Gamma rows. For
   non-Gaussian rows the main dispatch requires the canonical `0 + trait + ...`

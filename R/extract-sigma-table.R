@@ -3,6 +3,9 @@
 ## matrix extractor so articles and plots do not index fitted-object internals.
 
 .sigma_available_levels <- function(fit) {
+  if (inherits(fit, "gllvmTMB_julia")) {
+    return("B")
+  }
   available <- character(0)
   if (isTRUE(fit$use$rr_B) || isTRUE(fit$use$diag_B)) {
     available <- c(available, "B")
@@ -239,11 +242,13 @@
 #'
 #' Scope boundary: IN, the helper is a report-ready point-estimate table for
 #' the same covariance and correlation matrices returned by [extract_Sigma()]
-#' (EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor), and a
-#' bootstrap interval table when `fit` is a [bootstrap_Sigma()] result
-#' (EXT-20). PARTIAL, bootstrap intervals cover the summaries already present
-#' in the bootstrap object and do not add profile or Wald intervals. PLANNED,
-#' richer interval joins remain future plotting infrastructure.
+#' (EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor; JUL-01A
+#' for admitted `engine = "julia"` unit-tier bridge rows), and a bootstrap
+#' interval table when `fit` is a [bootstrap_Sigma()] result (EXT-20). PARTIAL,
+#' `gllvmTMB_julia` objects currently expose only the ordinary unit tier and no
+#' interval-bearing table rows. Bootstrap intervals cover the summaries already
+#' present in the bootstrap object and do not add profile or Wald intervals.
+#' PLANNED, richer interval joins remain future plotting infrastructure.
 #'
 #' The table is a point-estimate view over [extract_Sigma()]. It does not
 #' compute confidence intervals from a fitted model directly. Use
@@ -251,12 +256,13 @@
 #' [bootstrap_Sigma()] followed by `extract_Sigma_table()` when you need
 #' bootstrap intervals for Sigma or correlation matrix entries.
 #'
-#' @param fit A fit returned by [gllvmTMB()] or a [bootstrap_Sigma()]
-#'   result.
+#' @param fit A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
+#'   bridge fit, or a [bootstrap_Sigma()] result.
 #' @param level Character vector of covariance levels, or `"all"` for every
 #'   level present in the fit. Canonical levels are `"unit"`, `"unit_obs"`,
 #'   `"cluster"`, `"phy"`, and `"spatial"`; legacy aliases `"B"`, `"W"`,
-#'   and `"spde"` are accepted.
+#'   and `"spde"` are accepted. For `gllvmTMB_julia` objects, only `"unit"` is
+#'   currently routed; `"all"` maps to that tier.
 #' @param part One of `"total"` (default), `"shared"`, or `"unique"`, passed
 #'   to [extract_Sigma()].
 #' @param measure One of `"covariance"` (default) or `"correlation"`.
@@ -326,9 +332,9 @@ extract_Sigma_table <- function(
     ))
   }
 
-  if (!inherits(fit, "gllvmTMB_multi")) {
+  if (!inherits(fit, "gllvmTMB_multi") && !inherits(fit, "gllvmTMB_julia")) {
     cli::cli_abort(
-      "Provide a fit returned by {.fun gllvmTMB} or a {.cls bootstrap_Sigma} object."
+      "Provide a fit returned by {.fun gllvmTMB}, an admitted {.cls gllvmTMB_julia} bridge fit, or a {.cls bootstrap_Sigma} object."
     )
   }
 
@@ -403,6 +409,11 @@ extract_Sigma_table <- function(
       matrix_label <- "Sigma"
       scale <- "latent"
     }
+    validation_row <- if (inherits(fit, "gllvmTMB_julia")) {
+      "JUL-01A"
+    } else {
+      "EXT-18"
+    }
     pieces[[k]] <- .sigma_table_from_matrix(
       mat = mat,
       level = level_label,
@@ -410,7 +421,7 @@ extract_Sigma_table <- function(
       matrix_label = matrix_label,
       entries = entries,
       scale = scale,
-      validation_row = "EXT-18"
+      validation_row = validation_row
     )
   }
 

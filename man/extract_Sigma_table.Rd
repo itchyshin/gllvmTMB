@@ -14,13 +14,14 @@ extract_Sigma_table(
 )
 }
 \arguments{
-\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} or a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}}
-result.}
+\item{fit}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, an admitted \code{engine = "julia"}
+bridge fit, or a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} result.}
 
 \item{level}{Character vector of covariance levels, or \code{"all"} for every
 level present in the fit. Canonical levels are \code{"unit"}, \code{"unit_obs"},
 \code{"cluster"}, \code{"phy"}, and \code{"spatial"}; legacy aliases \code{"B"}, \code{"W"},
-and \code{"spde"} are accepted.}
+and \code{"spde"} are accepted. For \code{gllvmTMB_julia} objects, only \code{"unit"} is
+currently routed; \code{"all"} maps to that tier.}
 
 \item{part}{One of \code{"total"} (default), \code{"shared"}, or \code{"unique"}, passed
 to \code{\link[=extract_Sigma]{extract_Sigma()}}.}
@@ -58,11 +59,13 @@ columns filled in.
 \details{
 Scope boundary: IN, the helper is a report-ready point-estimate table for
 the same covariance and correlation matrices returned by \code{\link[=extract_Sigma]{extract_Sigma()}}
-(EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor), and a
-bootstrap interval table when \code{fit} is a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} result
-(EXT-20). PARTIAL, bootstrap intervals cover the summaries already present
-in the bootstrap object and do not add profile or Wald intervals. PLANNED,
-richer interval joins remain future plotting infrastructure.
+(EXT-18; backed by EXT-01 and MIX-03 for the underlying extractor; JUL-01A
+for admitted \code{engine = "julia"} unit-tier bridge rows), and a bootstrap
+interval table when \code{fit} is a \code{\link[=bootstrap_Sigma]{bootstrap_Sigma()}} result (EXT-20). PARTIAL,
+\code{gllvmTMB_julia} objects currently expose only the ordinary unit tier and no
+interval-bearing table rows. Bootstrap intervals cover the summaries already
+present in the bootstrap object and do not add profile or Wald intervals.
+PLANNED, richer interval joins remain future plotting infrastructure.
 
 The table is a point-estimate view over \code{\link[=extract_Sigma]{extract_Sigma()}}. It does not
 compute confidence intervals from a fitted model directly. Use

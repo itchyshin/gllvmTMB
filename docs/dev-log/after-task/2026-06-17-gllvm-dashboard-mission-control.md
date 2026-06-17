@@ -183,7 +183,7 @@ separate future lanes; this dashboard does not change grammar or APIs.
   polling.
 - PR #489 remains draft and partial.
 - Active main workflows should be summarized again after completion.
-- The current power-pilot run remains active on two long-tail shards.
+- The current power-pilot run remains active on one long-tail shard.
   Pushing the dashboard commits before it completes is a
   maintainer/CI-pacing decision, not a dashboard implementation gap.
 - Earlier 07:01 MDT evidence captured six still-running shards beyond the
@@ -207,5 +207,10 @@ separate future lanes; this dashboard does not change grammar or APIs.
   jobs, 0 bad jobs, 2 in-progress jobs, and 0 queued jobs. The remaining
   shards are `31/48` and `33/48`, both still in `Accumulate this
   shard's cells`.
+- 2026-06-17 07:48 MDT refresh: the scheduled run moved to 48 successful
+  jobs, 0 bad jobs, 1 in-progress job, and 0 queued jobs. The remaining
+  shard is `33/48`, still in `Accumulate this shard's cells`. The local
+  `http.server` on port 8770 was stopped at maintainer request; dashboard
+  source remains tracked, but the widget is intentionally off.
 - A future slice can add a small updater script for GitHub run counts,
   but that should stay separate from the static renderer.

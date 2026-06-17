@@ -18570,3 +18570,32 @@ Rose audit fix:
 - Updated the after-task role line to distinguish active/read-only audits
   from represented dashboard perspectives, and changed the current
   power-pilot limitation from six to four long-tail shards.
+
+## 2026-06-17 07:30 MDT -- mission-control LaunchAgent refresh
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 is open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits are the local dashboard/evidence commits on
+  `codex/r-bridge-grouped-dispersion`.
+
+Evidence refresh:
+
+- `gh run view 27683989889 --json status,conclusion,updatedAt,url,jobs | jq ...`
+  -> scheduled power-pilot run still `in_progress`: 49 jobs total,
+  45 successful, 0 bad, 4 in progress, 0 queued; active jobs are shards
+  `25/48`, `31/48`, `32/48`, and `33/48`.
+- `tail -n 60 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> local LaunchAgent loop advanced to iter 102, 340500 / 480000 reps,
+  0/48 cells at cap, and 0 errored cells.
+- `launchctl print gui/$(id -u)/com.gllvmtmb.power-pilot-local | sed -n '1,120p'`
+  -> LaunchAgent remains `running`; prior segfault restart remains recorded.
+
+Dashboard update:
+
+- Refreshed the Phase 3 local LaunchAgent evidence in
+  `docs/dev-log/dashboard/status.json`, `sweep.json`, and `version.txt`
+  from 339000 to 340500 accumulated reps. This remains process-health
+  evidence only, not coverage proof.

@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 07:27 MDT",
+  "updated": "2026-06-17 07:30 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -170,7 +170,7 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 339000 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 340500 / 480000 reps and 0/48 cells at cap",
           "status": "active"
         },
         {
@@ -476,7 +476,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent 339000 / 480000 reps, 0/48 cells at cap.",
+      "evidence": "LaunchAgent 340500 / 480000 reps, 0/48 cells at cap.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -603,9 +603,9 @@
       "link_label": "run 27683989889"
     },
     {
-      "when": "2026-06-17 06:45 MDT",
+      "when": "2026-06-17 07:30 MDT",
       "who": "LaunchAgent",
-      "text": "Local loop is running; latest log shows iter 101, 339000 / 480000 reps, 0/48 cells at cap, and 0 errored cells."
+      "text": "Local loop is running; latest log shows iter 102, 340500 / 480000 reps, 0/48 cells at cap, and 0 errored cells."
     }
   ]
 }

@@ -1,0 +1,97 @@
+{
+  "updated": "2026-06-17 05:53 MDT",
+  "active_work": [
+    {
+      "when": "live",
+      "who": "full-check",
+      "text": "Run 27683754473 on main is in progress: 1/3 jobs completed successfully, 2 in progress, 0 failed."
+    },
+    {
+      "when": "live",
+      "who": "power-pilot",
+      "text": "Run 27683989889 reports queued at run level, but job truth is 21 success, 20 in progress, 8 queued, 0 failed."
+    },
+    {
+      "when": "live",
+      "who": "GLLVM.jl",
+      "text": "#101 is draft/clean with Documenter green; #95 is draft/clean with older 3-OS CI green; #94 remains dirty salvage."
+    }
+  ],
+  "evidence": [
+    {
+      "when": "2026-06-17 05:53 MDT",
+      "who": "GitHub Actions",
+      "text": "full-check run 27683754473: macOS success; Ubuntu and Windows still in progress.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683754473",
+      "link_label": "run 27683754473"
+    },
+    {
+      "when": "2026-06-17 05:53 MDT",
+      "who": "GitHub Actions",
+      "text": "Power pilot run 27683989889: 49 jobs total, 21 completed successfully, 20 in progress, 8 queued, 0 bad.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
+      "link_label": "run 27683989889"
+    }
+  ],
+  "ci_runs": [
+    {
+      "workflow": "R-CMD-check",
+      "branch": "codex/r-bridge-grouped-dispersion",
+      "head": "e79ed27",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27669597822"
+    },
+    {
+      "workflow": "coevolution-two-kernel-recovery",
+      "branch": "codex/r-bridge-grouped-dispersion",
+      "head": "e79ed27",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27669597786"
+    },
+    {
+      "workflow": "full-check",
+      "branch": "main",
+      "head": "9fc9b7f",
+      "status": "in_progress",
+      "conclusion": "",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683754473"
+    },
+    {
+      "workflow": "Power pilot sweep",
+      "branch": "main",
+      "head": "9fc9b7f",
+      "status": "active_by_job_count",
+      "conclusion": "",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889"
+    }
+  ],
+  "priority_issues": [
+    {
+      "number": 488,
+      "title": "Bridge-gate drift: R wrapper may reject engine=\"julia\" features GLLVM.jl already supports (audit)",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/488"
+    },
+    {
+      "number": 340,
+      "title": "Capability matrix - live status board",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/340"
+    },
+    {
+      "number": 346,
+      "title": "Power and coverage pilot status",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346"
+    },
+    {
+      "number": 349,
+      "title": "Design 66 power-pilot status",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/349"
+    },
+    {
+      "number": 486,
+      "title": "[release] First --as-cran run: punch list before CRAN submit",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/486"
+    }
+  ]
+}

@@ -18406,3 +18406,91 @@ Deliberately not run:
 - No `devtools::check()` / `devtools::test()` -- no gllvmTMB code was touched this
   session (read-only design/audit/review only). The unique-removal implementation
   is handed to the other team; its tests + checks land with that work.
+
+## 2026-06-17 -- Local GLLVM mission-control dashboard
+
+Added a tracked DRM-style local dashboard for the `gllvmTMB` + `GLLVM.jl`
+twin-finish programme. The durable source now lives under
+`docs/dev-log/dashboard/`; the primary live copy is synced to
+`/tmp/gllvm-dashboard` via `tools/start-mission-control.sh`. When port 8770 is
+already held by an older local `http.server --directory pkgdown-site`, the
+launcher mirrors the tracked files into that ignored directory as disposable
+live output.
+
+Files touched:
+
+- `docs/dev-log/dashboard/index.html`
+- `docs/dev-log/dashboard/status.json`
+- `docs/dev-log/dashboard/sweep.json`
+- `docs/dev-log/dashboard/version.txt`
+- `docs/dev-log/dashboard/README.md`
+- `tools/start-mission-control.sh`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-17-gllvm-dashboard-mission-control.md`
+
+Pre-edit lane check:
+
+- `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft,url,author`
+  -> one open draft PR, #489 `codex/r-bridge-grouped-dispersion`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only `e79ed27 docs: add overnight recovery checkpoint`.
+
+Evidence refresh before writing dashboard JSON:
+
+- `gh pr view 489 --json number,title,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,url,updatedAt`
+  -> #489 is draft, `CLEAN`, and green at `e79ed27`.
+- `gh run view 27683754473 --json jobs | jq '{total:(.jobs|length), completed_success:([.jobs[]|select(.status=="completed" and .conclusion=="success")]|length), completed_bad:([.jobs[]|select(.status=="completed" and .conclusion!="success")]|length), in_progress:([.jobs[]|select(.status=="in_progress")]|length), queued:([.jobs[]|select(.status=="queued")]|length)}'`
+  -> `total: 3`, `completed_success: 1`, `completed_bad: 0`, `in_progress: 2`, `queued: 0`.
+- `gh run view 27683989889 --json jobs | jq '{total:(.jobs|length), completed_success:([.jobs[]|select(.status=="completed" and .conclusion=="success")]|length), completed_bad:([.jobs[]|select(.status=="completed" and .conclusion!="success")]|length), in_progress:([.jobs[]|select(.status=="in_progress")]|length), queued:([.jobs[]|select(.status=="queued")]|length), waiting:([.jobs[]|select(.status=="waiting")]|length), pending:([.jobs[]|select(.status=="pending")]|length)}'`
+  -> `total: 49`, `completed_success: 21`, `completed_bad: 0`, `in_progress: 20`, `queued: 8`, `waiting: 0`, `pending: 0`.
+- `tail -n 40 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> latest local loop at 2026-06-17T05:46:15, iteration 100, 337500 / 480000 reps, 0/48 cells at cap, 0 errored cells.
+- `launchctl print gui/$(id -u)/com.gllvmtmb.power-pilot-local | sed -n '1,90p'`
+  -> LaunchAgent state `running`, with one recorded previous segfault restart.
+
+Validation:
+
+- `python3 -m json.tool docs/dev-log/dashboard/status.json`
+  -> valid JSON.
+- `python3 -m json.tool docs/dev-log/dashboard/sweep.json`
+  -> valid JSON.
+- `sh tools/start-mission-control.sh --background`
+  -> synced source to `/tmp/gllvm-dashboard` and made
+  `http://127.0.0.1:8770/` serve the new dashboard. The existing local
+  `http.server --directory pkgdown-site` was mirrored as disposable output
+  because it was restarted outside this launcher.
+- `GLLVM_DASHBOARD_DIR=/tmp/gllvm-dashboard-env-test GLLVM_DASHBOARD_PORT=8771 GLLVM_DASHBOARD_HOST=127.0.0.1 GLLVM_DASHBOARD_LOG=/tmp/gllvm-dashboard-env-test.log GLLVM_DASHBOARD_PIDFILE=/tmp/gllvm-dashboard-env-test.pid sh tools/start-mission-control.sh --background && curl -fsS http://127.0.0.1:8771/version.txt && curl -fsS http://127.0.0.1:8771/status.json | jq -r .title && kill $(cat /tmp/gllvm-dashboard-env-test.pid)`
+  -> env override path served `r1` / `GLLVM mission control`; temporary
+  port 8771 server stopped.
+- `curl -fsS http://127.0.0.1:8770/status.json | jq .updated`
+  -> `"2026-06-17 05:53 MDT"`.
+- `curl -fsS http://127.0.0.1:8770/sweep.json | jq .updated`
+  -> `"2026-06-17 05:53 MDT"`.
+- `curl -fsS http://127.0.0.1:8770/ | rg "Repo Truth|Roadmap|Active work|Team|Master capability matrix|Evidence bank"`
+  -> all dashboard section headings found.
+- Browser verification at `http://127.0.0.1:8770/`
+  -> first viewport shows claim boundary, current truth cards, and local
+  mission-control title; Team section contains operational task/blocked-by/
+  parallel/join fields rather than role descriptions only.
+- `git diff --check`
+  -> clean for tracked modifications.
+- `git diff --cached --check`
+  -> clean after staging the dashboard slice.
+- `rg -n "[ \t]$" docs/dev-log/dashboard docs/dev-log/after-task/2026-06-17-gllvm-dashboard-mission-control.md tools/start-mission-control.sh docs/dev-log/check-log.md`
+  -> no trailing whitespace in the new dashboard files, after-task report,
+  launcher, or updated check-log entry.
+
+Stale-wording scans for this local dashboard slice:
+
+- `rg -n "release-ready|complete bridge|coverage passed|scientific coverage passed|PR green" docs/dev-log/dashboard docs/dev-log/after-task/2026-06-17-gllvm-dashboard-mission-control.md`
+  -> only intentional claim-boundary language; no positive release or
+  complete-bridge claim.
+- `rg -n "engine_control|selectable Julia|default GLLVM.jl fitting path" docs/dev-log/dashboard docs/dev-log/after-task/2026-06-17-gllvm-dashboard-mission-control.md`
+  -> only intentional guardrail wording; no selectable-Julia-algorithm claim.
+
+Deliberately not run:
+
+- `devtools::test()`, `devtools::check()`, and `pkgdown::check_pkgdown()` were
+  not run. This change adds a local static mission-control dashboard only; it
+  does not touch R code, `NAMESPACE`, generated Rd files, vignettes, README,
+  NEWS, or `_pkgdown.yml`.

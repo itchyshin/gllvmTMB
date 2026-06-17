@@ -1,0 +1,594 @@
+{
+  "title": "GLLVM mission control",
+  "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
+  "updated": "2026-06-17 05:53 MDT",
+  "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
+  "claim_guard": {
+    "title": "Claim boundary",
+    "text": "PR green != bridge complete != release ready != scientific coverage passed. The Julia bridge is draft and partial unless a matrix row names covered evidence."
+  },
+  "metrics": {
+    "covered": 2,
+    "partial": 7,
+    "active": 5,
+    "blocked": 2,
+    "queued": 4,
+    "total": 20
+  },
+  "truth_cards": [
+    {
+      "label": "Local workspace",
+      "value": "dirty",
+      "status": "warn",
+      "note": "Dashboard source is added in this working tree; 05:00 handover checkpoint remains untracked."
+    },
+    {
+      "label": "Draft PR",
+      "value": "#489",
+      "status": "draft",
+      "note": "Merge-clean and green at e79ed27, but scoped bridge admission only."
+    },
+    {
+      "label": "Main full-check",
+      "value": "running",
+      "status": "running",
+      "note": "Live main run 27683754473 is not a release gate result yet."
+    },
+    {
+      "label": "Power pilot",
+      "value": "mid-flight",
+      "status": "active",
+      "note": "Job-level progress is active; run-level state can still say queued."
+    },
+    {
+      "label": "Next decision",
+      "value": "Ada gate",
+      "status": "guard",
+      "note": "Choose #489 landing path and paired GLLVM.jl ordering before widening claims."
+    }
+  ],
+  "repos": [
+    {
+      "name": "gllvmTMB",
+      "branch": "codex/r-bridge-grouped-dispersion",
+      "head": "e79ed27",
+      "state": "dirty",
+      "note": "Current dashboard implementation plus untracked 05:00 recovery checkpoint; PR #489 remains draft.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
+      "link_label": "PR #489"
+    },
+    {
+      "name": "GLLVM.jl",
+      "branch": "codex/julia-per-trait-dispersion",
+      "head": "f7be594",
+      "state": "warn",
+      "note": "PR #101 is draft and clean with Documenter green; #95/#94 remain ordering inputs.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "PR #101"
+    },
+    {
+      "name": "public pkgdown",
+      "branch": "main/pages",
+      "head": "not checked by this widget",
+      "state": "local",
+      "note": "This dashboard is local mission control, not the public site or a release announcement."
+    }
+  ],
+  "phases": [
+    {
+      "id": "Phase 0",
+      "name": "Mission truth freeze",
+      "owner": "Ada + Shannon + Rose",
+      "status": "active",
+      "counts": "3/5",
+      "slices": [
+        {
+          "name": "Read 05:00 handover checkpoint and repo truth before edits",
+          "status": "covered"
+        },
+        {
+          "name": "Run pre-edit lane check for open PRs and recent commits",
+          "status": "covered"
+        },
+        {
+          "name": "Keep #489 draft/partial rather than widening bridge claims",
+          "status": "active"
+        },
+        {
+          "name": "Replace ignored widget with tracked dashboard source",
+          "status": "active"
+        },
+        {
+          "name": "After-task closeout and dashboard validation",
+          "status": "queued"
+        }
+      ]
+    },
+    {
+      "id": "Phase 1",
+      "name": "R bridge grouped-dispersion lane",
+      "owner": "Hopper + Emmy + Grace",
+      "status": "partial",
+      "counts": "2/5",
+      "slices": [
+        {
+          "name": "PR #489 is green and merge-clean at e79ed27",
+          "status": "covered",
+          "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
+          "issue": "PR #489"
+        },
+        {
+          "name": "Bridge admission rows stay point-only/partial where intervals are gated",
+          "status": "partial"
+        },
+        {
+          "name": "Live JuliaCall bridge evidence must be refreshed before ready-for-review",
+          "status": "queued"
+        },
+        {
+          "name": "No issue closure from chat memory",
+          "status": "guard"
+        },
+        {
+          "name": "Release hygiene waits for chosen bridge/release path",
+          "status": "queued"
+        }
+      ]
+    },
+    {
+      "id": "Phase 2",
+      "name": "Paired GLLVM.jl engine gate",
+      "owner": "Karpinski + Gauss + Hopper",
+      "status": "active",
+      "counts": "1/4",
+      "slices": [
+        {
+          "name": "GLLVM.jl #101 draft/clean with Documenter green",
+          "status": "active",
+          "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+          "issue": "GLLVM.jl #101"
+        },
+        {
+          "name": "GLLVM.jl #95 integration-to-main ordering decision",
+          "status": "queued"
+        },
+        {
+          "name": "GLLVM.jl #94 salvage stays separate from #101/#95 landing order",
+          "status": "guard"
+        },
+        {
+          "name": "Pin paired Julia SHA before widening R bridge support",
+          "status": "queued"
+        }
+      ]
+    },
+    {
+      "id": "Phase 3",
+      "name": "Simulation and power evidence",
+      "owner": "Curie + Fisher + Grace",
+      "status": "active",
+      "counts": "1/5",
+      "slices": [
+        {
+          "name": "Local LaunchAgent running with 337500 / 480000 reps and 0/48 cells at cap",
+          "status": "active"
+        },
+        {
+          "name": "Scheduled power-pilot run 27683989889 is active by job count",
+          "status": "active"
+        },
+        {
+          "name": "Do not convert process health into coverage or power claims",
+          "status": "guard"
+        },
+        {
+          "name": "Fisher/Curie scoring gate for estimand-specific promotion",
+          "status": "queued"
+        },
+        {
+          "name": "Merge/scoring of pilot stores is a join point, not a parallel edit",
+          "status": "queued"
+        }
+      ]
+    },
+    {
+      "id": "Phase 4",
+      "name": "Public docs, pkgdown, and release gate",
+      "owner": "Pat + Darwin + Florence + Grace",
+      "status": "queued",
+      "counts": "0/4",
+      "slices": [
+        {
+          "name": "Dashboard remains local; no pkgdown navigation change",
+          "status": "covered"
+        },
+        {
+          "name": "Reader-facing docs audit after bridge landing decision",
+          "status": "queued"
+        },
+        {
+          "name": "Final release-branch --as-cran evidence for #486",
+          "status": "blocked"
+        },
+        {
+          "name": "Rose pre-publish audit before public claim changes",
+          "status": "queued"
+        }
+      ]
+    }
+  ],
+  "active_work": [
+    {
+      "when": "now",
+      "who": "Ada",
+      "text": "Implementing tracked mission-control dashboard source and live launcher while keeping #489 draft/partial."
+    },
+    {
+      "when": "now",
+      "who": "Grace",
+      "text": "Watching full-check and power-pilot as volatile evidence surfaces, not release or scientific closure."
+    },
+    {
+      "when": "now",
+      "who": "Rose",
+      "text": "Keeping all bridge, interval, release, and power wording bounded by row-level evidence."
+    }
+  ],
+  "serial_gates": [
+    {
+      "status": "guard",
+      "kind": "Ada",
+      "item": "Choose #489 landing path: keep draft, split, or move toward review."
+    },
+    {
+      "status": "guard",
+      "kind": "GLLVM.jl",
+      "item": "Pin #101/#95/#94 ordering before R bridge claims widen."
+    },
+    {
+      "status": "guard",
+      "kind": "Curie/Fisher",
+      "item": "Score power-pilot estimands before any coverage/power promotion."
+    },
+    {
+      "status": "guard",
+      "kind": "Rose/Grace",
+      "item": "Close claim, pkgdown, validation-register, and CI pacing gates before release wording."
+    }
+  ],
+  "parallel_lanes": [
+    {
+      "lane": "CI and run watch",
+      "owners": "Grace + Shannon",
+      "status": "active",
+      "parallel_with": "dashboard JSON refresh and public-reader audit",
+      "join_gate": "Only summarize runs after completion or explicit snapshot time."
+    },
+    {
+      "lane": "Dashboard claim grammar",
+      "owners": "Rose + Ada",
+      "status": "active",
+      "parallel_with": "CI watch and simulation scoring",
+      "join_gate": "Rose signoff before using dashboard language in public docs."
+    },
+    {
+      "lane": "Bridge and engine parity",
+      "owners": "Hopper + Karpinski + Gauss",
+      "status": "queued",
+      "parallel_with": "simulation/power and docs-read path",
+      "join_gate": "Paired Julia SHA plus live JuliaCall evidence."
+    },
+    {
+      "lane": "Simulation and power scoring",
+      "owners": "Fisher + Curie",
+      "status": "active",
+      "parallel_with": "CI watch and dashboard updates",
+      "join_gate": "Merge/scoring of stores; no zero-exclusion shortcut."
+    },
+    {
+      "lane": "Public learning path",
+      "owners": "Pat + Darwin + Florence",
+      "status": "queued",
+      "parallel_with": "bridge parity once examples are stable",
+      "join_gate": "Only after bridge syntax and claim boundaries settle."
+    },
+    {
+      "lane": "Kernel and coevolution scout",
+      "owners": "Jason + Boole + Fisher",
+      "status": "queued",
+      "parallel_with": "public-reader audit",
+      "join_gate": "Separate C4/C5 issue split from bridge PR #489."
+    }
+  ],
+  "agents": [
+    {
+      "name": "Ada",
+      "role": "orchestrator and integrator",
+      "status": "active",
+      "task": "Order #489, GLLVM.jl, CI, and dashboard closeout.",
+      "blocked_by": "Maintainer landing decision",
+      "parallel_with": "Rose, Grace, Shannon",
+      "join_gate": "#489 ready/split/hold choice"
+    },
+    {
+      "name": "Shannon",
+      "role": "coordination auditor",
+      "status": "active",
+      "task": "Watch branch, PR, handoff, and hot-file consistency.",
+      "blocked_by": "None",
+      "parallel_with": "Grace CI watch",
+      "join_gate": "End-of-session handoff"
+    },
+    {
+      "name": "Rose",
+      "role": "systems and claim auditor",
+      "status": "active",
+      "task": "Keep partial/covered/blocked wording matched to evidence.",
+      "blocked_by": "Evidence row gaps",
+      "parallel_with": "Ada dashboard grammar",
+      "join_gate": "Pre-publish or PR closeout audit"
+    },
+    {
+      "name": "Grace",
+      "role": "CI, pkgdown, CRAN, reproducibility",
+      "status": "active",
+      "task": "Track full-check, power-pilot, local LaunchAgent, and launcher health.",
+      "blocked_by": "Active main workflows",
+      "parallel_with": "Shannon and Curie",
+      "join_gate": "Completed runs or explicit snapshot"
+    },
+    {
+      "name": "Hopper",
+      "role": "R-Julia bridge",
+      "status": "queued",
+      "task": "Refresh no-Julia and live JuliaCall bridge gates when Ada chooses.",
+      "blocked_by": "GLLVM.jl ordering",
+      "parallel_with": "Karpinski and Gauss",
+      "join_gate": "Paired Julia SHA"
+    },
+    {
+      "name": "Karpinski",
+      "role": "Julia engine and sparse/AD path",
+      "status": "queued",
+      "task": "Confirm native GLLVM.jl capability surface and performance boundaries.",
+      "blocked_by": "PR #101/#95/#94 order",
+      "parallel_with": "Hopper and Gauss",
+      "join_gate": "GLLVM.jl integration decision"
+    },
+    {
+      "name": "Gauss",
+      "role": "likelihood and numerical reviewer",
+      "status": "queued",
+      "task": "Guard scale, Hessian, CI, and bridge likelihood wording.",
+      "blocked_by": "No likelihood edit in this dashboard slice",
+      "parallel_with": "Hopper and Fisher",
+      "join_gate": "Any future TMB or likelihood touch"
+    },
+    {
+      "name": "Noether",
+      "role": "mathematical consistency reviewer",
+      "status": "queued",
+      "task": "Check equation, df/logLik, and parameter-map alignment when math changes.",
+      "blocked_by": "No math change in this slice",
+      "parallel_with": "Gauss",
+      "join_gate": "Future model or extractor contract change"
+    },
+    {
+      "name": "Fisher",
+      "role": "statistical inference reviewer",
+      "status": "active",
+      "task": "Separate process-health, power, coverage, and CI-status evidence.",
+      "blocked_by": "Pilot scoring not complete",
+      "parallel_with": "Curie and Grace",
+      "join_gate": "Estimand-specific scoring gate"
+    },
+    {
+      "name": "Curie",
+      "role": "simulation and testing specialist",
+      "status": "active",
+      "task": "Keep simulation rows row-ID first and evidence-backed.",
+      "blocked_by": "0/48 pilot cells at cap",
+      "parallel_with": "Fisher and Grace",
+      "join_gate": "Pilot store merge/scoring"
+    },
+    {
+      "name": "Pat",
+      "role": "applied-user reader",
+      "status": "queued",
+      "task": "Check whether public examples remain teachable after bridge decisions.",
+      "blocked_by": "Bridge syntax not final",
+      "parallel_with": "Darwin and Florence",
+      "join_gate": "Public docs pass"
+    },
+    {
+      "name": "Darwin",
+      "role": "ecology/evolution audience reviewer",
+      "status": "queued",
+      "task": "Keep examples biologically interpretable and honest.",
+      "blocked_by": "Public docs not changing in this slice",
+      "parallel_with": "Pat and Florence",
+      "join_gate": "Article or README change"
+    },
+    {
+      "name": "Florence",
+      "role": "scientific figure editor",
+      "status": "queued",
+      "task": "Review visual honesty if dashboard informs public figures later.",
+      "blocked_by": "No plot change in this slice",
+      "parallel_with": "Pat and Darwin",
+      "join_gate": "Figure or plot helper change"
+    },
+    {
+      "name": "Jason",
+      "role": "landscape and source-map scout",
+      "status": "queued",
+      "task": "Scout kernel, coevolution, and MultiTraits learning path without comparator overclaim.",
+      "blocked_by": "Not on critical path for launcher",
+      "parallel_with": "Boole and Fisher",
+      "join_gate": "C4/C5 issue split"
+    },
+    {
+      "name": "Boole",
+      "role": "R API and formula reviewer",
+      "status": "queued",
+      "task": "Review syntax only if dashboard work turns into formula or gate API changes.",
+      "blocked_by": "No formula change in this slice",
+      "parallel_with": "Jason and Emmy",
+      "join_gate": "Formula grammar touch"
+    },
+    {
+      "name": "Emmy",
+      "role": "R package architecture reviewer",
+      "status": "queued",
+      "task": "Review S3/helper coherence when bridge object APIs change.",
+      "blocked_by": "No R API edit in this slice",
+      "parallel_with": "Hopper",
+      "join_gate": "Future bridge API touch"
+    }
+  ],
+  "matrix": [
+    {
+      "id": "JUL-01",
+      "capability": "Julia bridge ordinary complete-response admission",
+      "status": "partial",
+      "engine": "active",
+      "bridge": "partial",
+      "inference": "partial",
+      "evidence": "PR #489 green at e79ed27; live Julia widening still gated.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
+      "link_label": "PR #489",
+      "next_gate": "Ada landing decision plus paired GLLVM.jl SHA."
+    },
+    {
+      "id": "JUL-01A",
+      "capability": "Julia bridge Sigma-table point routes",
+      "status": "partial",
+      "engine": "active",
+      "bridge": "partial",
+      "inference": "blocked",
+      "evidence": "Point rows allowed; correlation intervals and richer extractors remain gated.",
+      "next_gate": "Live JuliaCall parity before interval wording."
+    },
+    {
+      "id": "CI-08",
+      "capability": "Design 66 power-pilot coverage diagnostics",
+      "status": "active",
+      "engine": "local",
+      "bridge": "not_applicable",
+      "inference": "partial",
+      "evidence": "LaunchAgent 337500 / 480000 reps, 0/48 cells at cap.",
+      "next_gate": "Fisher/Curie scoring and cap completion."
+    },
+    {
+      "id": "CI-10",
+      "capability": "Power-pilot scheduled workflow",
+      "status": "active",
+      "engine": "github",
+      "bridge": "not_applicable",
+      "inference": "partial",
+      "evidence": "Run 27683989889 active by job count.",
+      "next_gate": "Summarize only after completion or explicit snapshot."
+    },
+    {
+      "id": "RE-03",
+      "capability": "Random-slope s >= 2 evidence",
+      "status": "partial",
+      "engine": "covered",
+      "bridge": "planned",
+      "inference": "partial",
+      "evidence": "Gaussian lane covered; non-Gaussian guard remains reserved.",
+      "next_gate": "Family-specific recovery evidence before guard relaxation."
+    },
+    {
+      "id": "FG-07/08/09",
+      "capability": "Known-V, proportional, and scalar hard-inference lanes",
+      "status": "queued",
+      "engine": "planned",
+      "bridge": "planned",
+      "inference": "planned",
+      "evidence": "Listed as follow-up matrix rows, not current dashboard proof.",
+      "next_gate": "Define row-specific estimands and tests."
+    },
+    {
+      "id": "FAM-15/16/18/19",
+      "capability": "Truncated, censored, mixture, and gengamma family depth",
+      "status": "partial",
+      "engine": "partial",
+      "bridge": "planned",
+      "inference": "partial",
+      "evidence": "Some family surfaces exist; depth remains row-specific.",
+      "next_gate": "Simulation recovery rows before advertising depth."
+    },
+    {
+      "id": "SPA-*",
+      "capability": "Spatial capability reconciliation",
+      "status": "partial",
+      "engine": "partial",
+      "bridge": "planned",
+      "inference": "partial",
+      "evidence": "Subrows stronger than parent rows; register reconciliation needed.",
+      "next_gate": "Rose/Fisher register audit."
+    },
+    {
+      "id": "COE-03",
+      "capability": "Generic kernel and coevolution tier",
+      "status": "partial",
+      "engine": "covered",
+      "bridge": "planned",
+      "inference": "partial",
+      "evidence": "Single named kernel tier works; two independent named tiers reserved.",
+      "next_gate": "C4/C5 issue split and second engine-slot decision."
+    },
+    {
+      "id": "MIS-32",
+      "capability": "Missing-data closure beyond covered local rows",
+      "status": "blocked",
+      "engine": "partial",
+      "bridge": "planned",
+      "inference": "blocked",
+      "evidence": "MIS-23..MIS-31 covered locally; MIS-32 remains blocked/deferred.",
+      "next_gate": "Rose/Fisher closure audit, not chat-based issue closure."
+    }
+  ],
+  "blockers": [
+    {
+      "status": "guard",
+      "kind": "Release",
+      "item": "#489 being green does not close #483/#485/#486 or make the bridge release-ready."
+    },
+    {
+      "status": "guard",
+      "kind": "Julia bridge",
+      "item": "Use default GLLVM.jl fitting-path wording only; do not imply selectable Julia-side algorithms."
+    },
+    {
+      "status": "blocked",
+      "kind": "Power evidence",
+      "item": "0/48 pilot cells at cap; process health is not coverage proof."
+    },
+    {
+      "status": "guard",
+      "kind": "Issues",
+      "item": "No issue is closed from dashboard text or chat memory."
+    }
+  ],
+  "evidence": [
+    {
+      "when": "2026-06-17 05:00 MDT",
+      "who": "handover",
+      "text": "Recovery checkpoint records #489 draft/green/merge-clean and power-pilot boundaries."
+    },
+    {
+      "when": "2026-06-17 05:53 MDT",
+      "who": "GitHub CLI",
+      "text": "PR #489 is draft, CLEAN, and green at e79ed27.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
+      "link_label": "PR #489"
+    },
+    {
+      "when": "2026-06-17 05:53 MDT",
+      "who": "LaunchAgent",
+      "text": "Local loop is running; latest log shows iter 100, 337500 / 480000 reps, 0/48 cells at cap, and 0 errored cells."
+    }
+  ]
+}

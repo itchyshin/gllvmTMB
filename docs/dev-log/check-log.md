@@ -18644,3 +18644,33 @@ Dashboard update:
   `docs/dev-log/dashboard/version.txt` from the 45-success / 4-running
   snapshot to the 46-success / 3-running snapshot. This remains
   process-health evidence only, not coverage proof.
+
+## 2026-06-17 07:42 MDT -- mission-control scheduled power-pilot refresh
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 is open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits are the local dashboard/evidence commits on
+  `codex/r-bridge-grouped-dispersion`.
+
+Evidence refresh:
+
+- `gh run view 27683989889 --json status,conclusion,updatedAt,url,jobs | jq ...`
+  -> scheduled power-pilot run still `in_progress`: 49 jobs total,
+  47 successful, 0 bad, 2 in progress, 0 queued; active jobs are shards
+  `31/48` and `33/48`.
+- `tail -n 80 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> local LaunchAgent remains at iter 102, 340500 / 480000 reps,
+  0/48 cells at cap, and 0 errored cells.
+- `launchctl print gui/$(id -u)/com.gllvmtmb.power-pilot-local | sed -n '1,90p'`
+  -> LaunchAgent remains `running`; prior segfault restart remains recorded.
+
+Dashboard update:
+
+- Refreshed `docs/dev-log/dashboard/status.json`,
+  `docs/dev-log/dashboard/sweep.json`, and
+  `docs/dev-log/dashboard/version.txt` from the 46-success / 3-running
+  snapshot to the 47-success / 2-running snapshot. This remains
+  process-health evidence only, not coverage proof.

@@ -446,6 +446,7 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
       "GJL-GATE-UNCONDITIONAL-SIMULATE",
       "GJL-GATE-ORDINAL-SIMULATE",
       "GJL-GATE-NO-CI-PAYLOAD",
+      "GJL-GATE-CORRELATION-INTERVALS",
       "GJL-GATE-STRUCTURED-TERMS",
       "GJL-GATE-MULTI-RR",
       "GJL-GATE-CBIND-BINOMIAL",
@@ -724,6 +725,16 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
     )]
   )
   expect_equal(cmp$error, cmp$estimate - cmp$truth)
+  expect_error(
+    extract_correlations(fit, tier = "unit"),
+    "GJL-GATE-CORRELATION-INTERVALS"
+  )
+  if (requireNamespace("ggplot2", quietly = TRUE)) {
+    expect_error(
+      plot_correlations(fit),
+      "GJL-GATE-CORRELATION-INTERVALS"
+    )
+  }
 
   ord <- extract_ordination(fit)
   expect_equal(ord$loadings, fit$loadings)

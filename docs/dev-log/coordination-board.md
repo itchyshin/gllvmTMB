@@ -204,6 +204,13 @@ Active lane guidance:
   mask-plus-X, fixed-effect-X family, and non-canonical X-design gates. Internal
   payload-validation errors are intentionally not promoted to capability gates
   in this slice.
+- R bridge correlation interval gate:
+  local follow-up slice adds `GJL-GATE-CORRELATION-INTERVALS` for
+  `extract_correlations()` and `plot_correlations()` on `gllvmTMB_julia` fits.
+  The point-only route remains `extract_Sigma_table(..., measure =
+  "correlation")` plus Sigma table/heatmap helpers; interval-bearing
+  correlation rows remain gated until CI/status semantics exist. This local
+  slice should wait for the active PR #489 checks before push.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

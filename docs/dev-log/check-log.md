@@ -4,6 +4,59 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge correlation interval gate
+
+Added an explicit `GJL-GATE-CORRELATION-INTERVALS` refusal for Julia bridge fits
+passed to `extract_correlations()` or `plot_correlations()`. The current Julia
+bridge extractor surface has point-only ordinary unit-tier correlation rows via
+`extract_Sigma_table(..., measure = "correlation")`; interval-bearing
+correlation helpers remain gated until endpoint/status semantics exist.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt,isDraft,mergeStateStatus,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" --name-only -- R/extract-correlations.R R/plot-covariance-tables.R R/julia-bridge.R tests/testthat/test-julia-bridge.R tests/testthat/test-plot-covariance-tables.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/coordination-board.md`
+  -> recent overlapping edits were from the current Codex bridge stack only.
+- Formatting and whitespace:
+  `air format R/julia-bridge.R R/extract-correlations.R R/plot-covariance-tables.R tests/testthat/test-julia-bridge.R`
+  and `git diff --check`
+  -> clean.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `13` expected live-Julia skips.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_correlations.Rd` and
+  `man/plot_correlations.Rd`.
+- Plot-helper tests:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", reporter = "summary")'`
+  -> completed with `0` failures.
+- Live R-to-Julia bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures.
+
+Files updated:
+
+- `R/julia-bridge.R`
+- `R/extract-correlations.R`
+- `R/plot-covariance-tables.R`
+- `man/extract_correlations.Rd`
+- `man/plot_correlations.Rd`
+- `tests/testthat/test-julia-bridge.R`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-correlation-interval-gate.md`
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  article renders, and `Pkg.test()`. This slice adds an explicit gate and
+  documentation for correlation interval helpers; it does not add new Julia
+  engine code or a new interval algorithm.
+
 ## 2026-06-16 -- R bridge gate-ID registry
 
 Added a first `GJL-GATE-*` registry for primary R-side Julia bridge admission

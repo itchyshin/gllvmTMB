@@ -505,6 +505,13 @@ linkage to `gllvmTMB#488`, and validation-row linkage to `JUL-01`. See
 addendum covers user-facing admission gates, not lower-level malformed-payload
 validation errors.
 
+JUL-01A correlation-interval gate addendum (2026-06-16): Julia bridge fits now
+fail explicitly with `GJL-GATE-CORRELATION-INTERVALS` in
+`extract_correlations()` and `plot_correlations()`. Point-only ordinary
+unit-tier correlation rows remain available through `extract_Sigma_table(...,
+measure = "correlation")`; interval-bearing correlation rows remain gated. See
+`docs/dev-log/after-task/2026-06-16-r-bridge-correlation-interval-gate.md`.
+
 ## What this register does NOT do
 
 - **It does not replace the test files.** Every `covered`

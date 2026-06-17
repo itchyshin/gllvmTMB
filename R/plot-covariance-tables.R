@@ -979,6 +979,11 @@
 #' `method = "bootstrap"` or another interval method supported by
 #' [extract_correlations()].
 #'
+#' Julia bridge (`engine = "julia"`) fits currently fail with an explicit gate
+#' because this helper depends on interval-bearing [extract_correlations()]
+#' rows. Use [plot_Sigma_table()] or [plot_Sigma_heatmap()] for point-only
+#' Julia bridge correlation displays.
+#'
 #' Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
 #' [extract_correlations()], extracts those rows from a fit returned by
 #' [gllvmTMB()] (EXT-19; built on EXT-04/EXT-18 extractor contracts), or
@@ -1130,6 +1135,15 @@ plot_correlations <- function(
   } else if (inherits(x, "bootstrap_Sigma")) {
     dat <- .gtmb_correlations_from_bootstrap(x, tier = tier, pair = pair)
     source_label <- "extract_Sigma_table"
+  } else if (inherits(x, "gllvmTMB_julia")) {
+    cli::cli_abort(.gllvm_julia_gate_message(
+      "GJL-GATE-CORRELATION-INTERVALS",
+      "engine = 'julia': plot_correlations() depends on interval-bearing ",
+      "extract_correlations() rows, which are not routed yet. Use ",
+      "plot_Sigma_table(x, measure = \"correlation\") or ",
+      "plot_Sigma_heatmap(x, measure = \"correlation\") for point-only ",
+      "Julia bridge displays."
+    ))
   } else if (is.data.frame(x)) {
     dat <- x
   } else {

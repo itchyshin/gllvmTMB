@@ -17,7 +17,11 @@ extract_correlations(
 )
 }
 \arguments{
-\item{fit}{A fit returned by \code{\link{gllvmTMB}}.}
+\item{fit}{A fit returned by \code{\link{gllvmTMB}}. Julia bridge
+(\code{engine = "julia"}) fits currently fail with an explicit gate because
+correlation intervals need CI/status semantics; use
+\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} with \code{measure = "correlation"} for point-only
+Julia bridge correlation rows.}
 
 \item{tier}{Character vector. Use \code{"all"} (the default) to request
 every level present in the fit. Canonical inputs are \code{"unit"},

@@ -41,7 +41,11 @@
 #' A fit with T = 6 and four covariance levels present has up to 60
 #' cross-trait correlations to report.
 #'
-#' @param fit A fit returned by \code{\link{gllvmTMB}}.
+#' @param fit A fit returned by \code{\link{gllvmTMB}}. Julia bridge
+#'   (`engine = "julia"`) fits currently fail with an explicit gate because
+#'   correlation intervals need CI/status semantics; use
+#'   [extract_Sigma_table()] with `measure = "correlation"` for point-only
+#'   Julia bridge correlation rows.
 #' @param tier Character vector. Use \code{"all"} (the default) to request
 #'   every level present in the fit. Canonical inputs are \code{"unit"},
 #'   \code{"unit_obs"}, \code{"phy"}, and \code{"spatial"}; legacy aliases
@@ -177,6 +181,15 @@ extract_correlations <- function(
   ## legacy/internal slot name.
   if (is.character(tier) && !(length(tier) == 1L && identical(tier, "all"))) {
     tier <- vapply(tier, .normalise_level, character(1L), arg_name = "tier")
+  }
+  if (inherits(fit, "gllvmTMB_julia")) {
+    cli::cli_abort(.gllvm_julia_gate_message(
+      "GJL-GATE-CORRELATION-INTERVALS",
+      "engine = 'julia': extract_correlations() interval rows are not routed ",
+      "yet. Use extract_Sigma_table(fit, measure = \"correlation\") for ",
+      "point-only unit-tier correlation rows, or engine = 'tmb' when you need ",
+      "correlation confidence intervals."
+    ))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")

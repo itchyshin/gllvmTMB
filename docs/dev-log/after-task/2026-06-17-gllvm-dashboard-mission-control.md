@@ -2,7 +2,10 @@
 
 **Branch**: `codex/r-bridge-grouped-dispersion`
 **Date**: `2026-06-17`
-**Roles (engaged)**: `Ada / Shannon / Rose / Grace / Hopper / Karpinski / Gauss / Noether / Fisher / Curie / Pat / Darwin / Florence / Jason / Boole / Emmy`
+**Roles**: active integrator `Ada`; read-only audits `Grace / Rose`;
+dashboard perspectives represented for Shannon, Hopper, Karpinski,
+Gauss, Noether, Fisher, Curie, Pat, Darwin, Florence, Jason, Boole,
+and Emmy.
 
 ## 1. Goal
 
@@ -180,13 +183,14 @@ separate future lanes; this dashboard does not change grammar or APIs.
   polling.
 - PR #489 remains draft and partial.
 - Active main workflows should be summarized again after completion.
-- The current power-pilot run remains active on six long-tail shards.
+- The current power-pilot run remains active on four long-tail shards.
   Pushing the dashboard commits before it completes is a
   maintainer/CI-pacing decision, not a dashboard implementation gap.
-- Those six shards now exceed the maximum observed runtime among
-  successful shards in this run. The next action requires either waiting
-  for external completion or maintainer approval to push docs / rerun or
-  cancel the stuck workflow.
+- Earlier 07:01 MDT evidence captured six still-running shards beyond the
+  then-observed successful-shard maximum; the 07:20 MDT refresh shows
+  four shards remain. The next action requires either waiting for
+  external completion or maintainer approval to push docs / rerun or
+  cancel the still-running workflow.
 - 2026-06-17 07:20 MDT refresh: the scheduled run moved to 45 successful
   jobs, 0 bad jobs, 4 in-progress jobs, and 0 queued jobs. The remaining
   shards are `25/48`, `31/48`, `32/48`, and `33/48`, all still in

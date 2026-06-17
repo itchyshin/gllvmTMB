@@ -1,19 +1,19 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 07:20 MDT",
+  "updated": "2026-06-17 07:27 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
     "text": "PR green != bridge complete != release ready != scientific coverage passed. The Julia bridge is draft and partial unless a matrix row names covered evidence."
   },
   "metrics": {
-    "covered": 2,
-    "partial": 7,
-    "active": 5,
-    "blocked": 2,
-    "queued": 4,
-    "total": 20
+    "covered": 0,
+    "partial": 6,
+    "active": 2,
+    "blocked": 1,
+    "queued": 1,
+    "total": 10
   },
   "truth_cards": [
     {
@@ -80,7 +80,7 @@
       "name": "Mission truth freeze",
       "owner": "Ada + Shannon + Rose",
       "status": "active",
-      "counts": "3/5",
+      "counts": "5/5",
       "slices": [
         {
           "name": "Read 05:00 handover checkpoint and repo truth before edits",
@@ -196,7 +196,7 @@
       "name": "Public docs, pkgdown, and release gate",
       "owner": "Pat + Darwin + Florence + Grace",
       "status": "queued",
-      "counts": "0/4",
+      "counts": "1/4",
       "slices": [
         {
           "name": "Dashboard remains local; no pkgdown navigation change",

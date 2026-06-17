@@ -18559,3 +18559,14 @@ Dashboard update:
   `docs/dev-log/dashboard/sweep.json`, and
   `docs/dev-log/dashboard/version.txt` from the stale 43-success / 6-running
   snapshot to the current 45-success / 4-running snapshot.
+
+Rose audit fix:
+
+- Read-only Rose audit found that the capability-board metric totals,
+  Phase 0 / Phase 4 counts, and after-task role wording were stale or
+  over-broad.
+- Updated `status.json` metrics to the actual 10-row capability matrix:
+  0 covered, 6 partial, 2 active, 1 blocked, and 1 queued.
+- Updated the after-task role line to distinguish active/read-only audits
+  from represented dashboard perspectives, and changed the current
+  power-pilot limitation from six to four long-tail shards.

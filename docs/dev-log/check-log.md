@@ -18836,3 +18836,53 @@ Deliberately not run:
   generated Rd, or pkgdown navigation changes. The live proof gate is a
   follow-up dry-run/manual dispatch or the next scheduled power-pilot run after
   the workflow patch lands on `main`.
+
+## 2026-06-17 -- pkgdown Julia reference-index repair on main
+
+Fixed the post-#490 `main` pkgdown failure from run 27716894410. The CI log
+reported:
+
+- `In _pkgdown.yml, 2 topics missing from index: "gllvm_julia_fit" and "gllvm_julia_setup".`
+
+Changed `_pkgdown.yml` only for the reference index, adding a narrow
+`Julia bridge` section with those two existing manual topics. This does not
+promote the bridge beyond the existing experimental setup/direct-fit helpers.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> clean locally.
+- `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, article rendering, and
+  `pkgdown::build_site()` not run locally. The failure class was the pkgdown
+  reference index, and `pkgdown::check_pkgdown()` is the direct local gate.
+
+## 2026-06-17 -- PR #489 absorbs main pkgdown index repair
+
+Merged `origin/main` at `0567cd7` into `codex/r-bridge-grouped-dispersion`
+locally so draft PR #489 carries the post-#491 pkgdown repair. The only
+conflict was the `Julia bridge` reference section in `_pkgdown.yml`; the
+resolution keeps #489's broader experimental bridge index, which already
+contains `gllvm_julia_fit` and `gllvm_julia_setup`.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the #490/#491 main repairs and current #489 work.
+- `git diff --check --cached`
+  -> clean.
+- `PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin /Library/Frameworks/R.framework/Resources/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, and article rendering not run
+  for this merge-only resolution. No package code, likelihood, formula grammar,
+  examples, or generated Rd changed in this merge.

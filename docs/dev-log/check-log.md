@@ -4,6 +4,60 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- Public Julia bridge gate registry
+
+Exported `gllvm_julia_gate_registry()` as a read-only audit table for
+`GJL-GATE-*` errors. The slice also fixed the registry validation-row mapping
+so `GJL-GATE-CORRELATION-INTERVALS` maps to `JUL-01A` and
+`GJL-GATE-MASK-X-CI` maps to `JUL-01`.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt,isDraft,mergeStateStatus,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`, merge
+  state `CLEAN`.
+  `git log --all --oneline --since='6 hours ago' --name-only -- R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md _pkgdown.yml NAMESPACE man/gllvm_julia_gate_registry.Rd man/gllvm_julia_capabilities.Rd docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/coordination-board.md`
+  -> recent overlapping edits were from the current Codex bridge stack only.
+- Roxygen/Rd:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/gllvm_julia_gate_registry.Rd`.
+- Formatting and no-Julia bridge tests:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R NEWS.md _pkgdown.yml docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/design/35-validation-debt-register.md && GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `14` expected live-Julia skips.
+- First pkgdown check:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> failed because the pre-existing generated topic `gllvmTMB_julia-methods`
+  was missing from `_pkgdown.yml`.
+- Reference-index fix:
+  added `gllvmTMB_julia-methods` to the Julia bridge reference section.
+- Pkgdown rerun:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- Live R-to-Julia bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures.
+
+Files updated:
+
+- `R/julia-bridge.R`
+- `NEWS.md`
+- `_pkgdown.yml`
+- `NAMESPACE`
+- `man/gllvm_julia_gate_registry.Rd`
+- `tests/testthat/test-julia-bridge.R`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-public-gate-registry.md`
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, article renders, and
+  `Pkg.test()`. This slice adds a read-only R reference topic and registry row
+  correction, with targeted R bridge tests, live Julia bridge tests, and
+  pkgdown reference validation.
+
 ## 2026-06-16 -- R/Julia bridge capability drift guard
 
 Added an internal drift guard that compares the R-side

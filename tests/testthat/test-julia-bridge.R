@@ -410,7 +410,8 @@ test_that("family mapping rejects unsupported families loudly", {
 })
 
 test_that("Julia bridge gate registry names every primary R admission stop", {
-  gates <- .gllvm_julia_gate_registry()
+  gates <- gllvm_julia_gate_registry()
+  expect_equal(gates, .gllvm_julia_gate_registry())
   expect_named(
     gates,
     c(
@@ -428,6 +429,14 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
   expect_true(all(gates$status == "gated"))
   expect_true(all(gates$issue == "gllvmTMB#488"))
   expect_true(all(gates$validation_row %in% c("JUL-01", "JUL-01A")))
+  expect_equal(
+    gates$validation_row[gates$gate_id == "GJL-GATE-CORRELATION-INTERVALS"],
+    "JUL-01A"
+  )
+  expect_equal(
+    gates$validation_row[gates$gate_id == "GJL-GATE-MASK-X-CI"],
+    "JUL-01"
+  )
   expect_true(all(
     gates$representative_test == "tests/testthat/test-julia-bridge.R"
   ))

@@ -500,8 +500,11 @@ admission, paired engine capability, and claim wording).
 
 JUL-01 gate-registry addendum (2026-06-16): primary R-side bridge admission
 refusals now carry stable `GJL-GATE-*` ids, schema/exact-set tests, issue
-linkage to `gllvmTMB#488`, and validation-row linkage to `JUL-01`. See
-`docs/dev-log/after-task/2026-06-16-r-bridge-gate-id-registry.md`. This
+linkage to `gllvmTMB#488`, and validation-row linkage to `JUL-01`. The
+read-only `gllvm_julia_gate_registry()` export makes this table inspectable
+without loading Julia. See
+`docs/dev-log/after-task/2026-06-16-r-bridge-gate-id-registry.md` and
+`docs/dev-log/after-task/2026-06-16-r-bridge-public-gate-registry.md`. This
 addendum covers user-facing admission gates, not lower-level malformed-payload
 validation errors.
 
@@ -511,6 +514,7 @@ fail explicitly with `GJL-GATE-CORRELATION-INTERVALS` in
 unit-tier correlation rows remain available through `extract_Sigma_table(...,
 measure = "correlation")`; interval-bearing correlation rows remain gated. See
 `docs/dev-log/after-task/2026-06-16-r-bridge-correlation-interval-gate.md`.
+The public gate-registry slice pins this row to `JUL-01A`.
 
 JUL-01 drift-guard addendum (2026-06-16): R now has an internal
 cross-surface drift guard that compares `gllvm_julia_capabilities()` against a

@@ -48,6 +48,9 @@
   (`extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`,
   `getResidualCor()`, `extract_ordination()`, `getLoadings()`, `getLV()`) on
   the retained engine scale, including complete balanced mixed-family rows.
+  The read-only `gllvm_julia_gate_registry()` table maps `GJL-GATE-*` refusals
+  to status, issue, and validation-row evidence so users can distinguish
+  bridge gates from engine limits.
   `newdata` prediction, `newdata` simulation, unconditional random-effect
   redraws, ordinal residuals, ordinal simulation, richer extractor parity, and
   confidence intervals for

@@ -184,16 +184,16 @@
       "JUL-01",
       "JUL-01",
       "JUL-01",
+      "JUL-01",
+      "JUL-01",
+      "JUL-01",
+      "JUL-01",
+      "JUL-01",
+      "JUL-01",
+      "JUL-01",
+      "JUL-01",
+      "JUL-01",
       "JUL-01A",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
-      "JUL-01",
       "JUL-01",
       "JUL-01",
       "JUL-01",
@@ -203,6 +203,25 @@
     ),
     stringsAsFactors = FALSE
   )
+}
+
+#' Current R-side gate registry for the Julia bridge
+#'
+#' `gllvm_julia_gate_registry()` reports the deliberate `engine = "julia"`
+#' refusals that are part of the R bridge contract. It is a read-only audit
+#' table for interpreting `GJL-GATE-*` error IDs; it does not widen the bridge
+#' or load Julia.
+#'
+#' @return A data frame with gate id, status, source, reason, representative
+#'   test file, GitHub issue, and validation-row linkage. Rows with
+#'   `validation_row = "JUL-01"` belong to the lean bridge admission surface;
+#'   rows with `validation_row = "JUL-01A"` belong to raw unit-tier
+#'   covariance/extractor boundaries.
+#' @examples
+#' head(gllvm_julia_gate_registry())
+#' @export
+gllvm_julia_gate_registry <- function() {
+  .gllvm_julia_gate_registry()
 }
 
 .gllvm_julia_gate_message <- function(gate_id, ...) {

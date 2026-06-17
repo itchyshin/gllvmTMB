@@ -120,8 +120,10 @@ reference:
     desc: Experimental acceleration path through GLLVM.jl; use the capability ledger before relying on a row
     contents:
     - gllvm_julia_capabilities
+    - gllvm_julia_gate_registry
     - gllvm_julia_fit
     - gllvm_julia_setup
+    - gllvmTMB_julia-methods
 
   - title: Core covariance keywords
     desc: First-line formula keywords for the 4 x 5 grid (correlation source x mode)

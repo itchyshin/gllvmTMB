@@ -217,6 +217,11 @@ Active lane guidance:
   currently intentional cross-surface difference is `binomial` /
   `cbind_binomial`, linked to `GJL-GATE-CBIND-BINOMIAL`; future unregistered
   R-broader or Julia-broader rows now fail the targeted bridge test.
+- Public Julia bridge gate registry:
+  local follow-up slice exports `gllvm_julia_gate_registry()` as a read-only
+  audit table, adds it to the pkgdown Julia bridge section, and fixes the
+  validation-row mapping so `GJL-GATE-CORRELATION-INTERVALS` is the `JUL-01A`
+  gate while mask-plus-X CI remains under `JUL-01`.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

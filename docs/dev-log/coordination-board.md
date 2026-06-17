@@ -195,6 +195,15 @@ Active lane guidance:
   `validation_row = "JUL-01A"` / `interval_status = "none"` in the plotted
   data; plot metadata remains `interval_status = "not_applicable"` because the
   segments are estimate-minus-truth errors, not confidence intervals.
+- R bridge gate-id registry:
+  primary R-side Julia bridge admission refusals now carry stable
+  `GJL-GATE-*` ids with a small registry in `R/julia-bridge.R`, schema/exact-set
+  tests in `tests/testthat/test-julia-bridge.R`, issue linkage to
+  `gllvmTMB#488`, and validation-row linkage to `JUL-01`. This names current
+  unsupported-family, CI, post-fit, structured-term, multi-RR, cbind-binomial,
+  mask-plus-X, fixed-effect-X family, and non-canonical X-design gates. Internal
+  payload-validation errors are intentionally not promoted to capability gates
+  in this slice.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

@@ -404,9 +404,56 @@ test_that("family mapping is element-wise over a mixed list", {
 })
 
 test_that("family mapping rejects unsupported families loudly", {
-  expect_error(.gllvm_julia_family("lognormal"), "unsupported family")
-  expect_error(.gllvm_julia_family("tweedie"), "unsupported family")
-  expect_error(.gllvm_julia_family("nonsense"), "unsupported family")
+  expect_error(.gllvm_julia_family("lognormal"), "GJL-GATE-FAMILY")
+  expect_error(.gllvm_julia_family("tweedie"), "GJL-GATE-FAMILY")
+  expect_error(.gllvm_julia_family("nonsense"), "GJL-GATE-FAMILY")
+})
+
+test_that("Julia bridge gate registry names every primary R admission stop", {
+  gates <- .gllvm_julia_gate_registry()
+  expect_named(
+    gates,
+    c(
+      "gate_id",
+      "status",
+      "source",
+      "reason",
+      "representative_test",
+      "issue",
+      "validation_row"
+    )
+  )
+  expect_true(all(grepl("^GJL-GATE-[A-Z0-9-]+$", gates$gate_id)))
+  expect_equal(anyDuplicated(gates$gate_id), 0L)
+  expect_true(all(gates$status == "gated"))
+  expect_true(all(gates$issue == "gllvmTMB#488"))
+  expect_true(all(gates$validation_row %in% c("JUL-01", "JUL-01A")))
+  expect_true(all(
+    gates$representative_test == "tests/testthat/test-julia-bridge.R"
+  ))
+  expect_setequal(
+    gates$gate_id,
+    c(
+      "GJL-GATE-FAMILY",
+      "GJL-GATE-MIXED-CI",
+      "GJL-GATE-ORDINAL-CI",
+      "GJL-GATE-MASK-X-CI",
+      "GJL-GATE-X-CI",
+      "GJL-GATE-NEWDATA-PREDICT",
+      "GJL-GATE-PROB-CLASS-NONORDINAL",
+      "GJL-GATE-ORDINAL-RESIDUAL",
+      "GJL-GATE-NEWDATA-SIMULATE",
+      "GJL-GATE-UNCONDITIONAL-SIMULATE",
+      "GJL-GATE-ORDINAL-SIMULATE",
+      "GJL-GATE-NO-CI-PAYLOAD",
+      "GJL-GATE-STRUCTURED-TERMS",
+      "GJL-GATE-MULTI-RR",
+      "GJL-GATE-CBIND-BINOMIAL",
+      "GJL-GATE-MASK-X",
+      "GJL-GATE-X-FAMILY",
+      "GJL-GATE-X-DESIGN"
+    )
+  )
 })
 
 test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
@@ -890,8 +937,8 @@ test_that("Julia bridge CI payloads are normalised and read by confint", {
     "nb1"
   ))
   no_ci$engine <- "julia"
-  expect_error(confint(no_ci), "No Julia bridge CI payload")
-  expect_error(confint(no_ci, method = "stored"), "No Julia bridge CI payload")
+  expect_error(confint(no_ci), "GJL-GATE-NO-CI-PAYLOAD")
+  expect_error(confint(no_ci, method = "stored"), "GJL-GATE-NO-CI-PAYLOAD")
   expect_error(confint(no_ci, method = "wald"), "does not retain")
 })
 
@@ -933,7 +980,15 @@ test_that("Julia bridge predict and fitted reconstruct in-sample means", {
   expect_equal(nrow(pred), fit$n_traits * fit$n_units)
   expect_named(pred, c("trait", "unit", "est"))
   expect_equal(pred$est, as.vector(exp(eta)))
-  expect_error(predict(fit, newdata = data.frame(x = 1)), "newdata")
+  expect_error(fitted(fit, type = "prob"), "GJL-GATE-PROB-CLASS-NONORDINAL")
+  expect_error(
+    predict(fit, type = "class"),
+    "GJL-GATE-PROB-CLASS-NONORDINAL"
+  )
+  expect_error(
+    predict(fit, newdata = data.frame(x = 1)),
+    "GJL-GATE-NEWDATA-PREDICT"
+  )
 })
 
 test_that("Julia bridge predict includes retained fixed-effect X payloads", {
@@ -1068,8 +1123,14 @@ test_that("Julia bridge simulate draws scalar-response in-sample values", {
   expect_true(all(sim[observed, ] >= 0))
   expect_true(all(sim[observed, ] == floor(sim[observed, ])))
   expect_error(simulate(fit, nsim = 0L), "positive integer")
-  expect_error(simulate(fit, newdata = data.frame(x = 1)), "newdata")
-  expect_error(simulate(fit, condition_on_RE = FALSE), "unconditional")
+  expect_error(
+    simulate(fit, newdata = data.frame(x = 1)),
+    "GJL-GATE-NEWDATA-SIMULATE"
+  )
+  expect_error(
+    simulate(fit, condition_on_RE = FALSE),
+    "GJL-GATE-UNCONDITIONAL-SIMULATE"
+  )
 
   fit_bin <- fit
   fit_bin$family <- "binomial"
@@ -1188,8 +1249,8 @@ test_that("Julia bridge ordinal response-scale prediction returns probabilities"
   class_frame <- predict(fit, type = "class")
   expect_named(class_frame, c("trait", "unit", "est"))
   expect_equal(class_frame$est, as.vector(class_mat))
-  expect_error(residuals(fit), "residuals.*ordinal")
-  expect_error(simulate(fit), "conditional simulate.*ordinal")
+  expect_error(residuals(fit), "GJL-GATE-ORDINAL-RESIDUAL")
+  expect_error(simulate(fit), "GJL-GATE-ORDINAL-SIMULATE")
 })
 
 test_that("Julia bridge mixed-family postfit reconstructs retained payloads", {
@@ -1347,7 +1408,7 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
   y <- matrix(c(1, 2, 3, 4, 2, 3, 4, 5), nrow = 2L)
   expect_error(
     gllvm_julia_fit(y, family = ordinal_probit(), ci_method = "wald"),
-    "per-trait ordinal"
+    "GJL-GATE-ORDINAL-CI"
   )
   expect_error(
     gllvm_julia_fit(
@@ -1355,7 +1416,7 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
       family = list("gaussian", "poisson"),
       ci_method = "wald"
     ),
-    "mixed-family"
+    "GJL-GATE-MIXED-CI"
   )
   expect_error(
     gllvm_julia_fit(
@@ -1364,7 +1425,7 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
       X = array(1, dim = c(2L, 4L, 1L)),
       ci_method = "wald"
     ),
-    "fixed-effect-X"
+    "GJL-GATE-X-CI"
   )
   expect_error(
     gllvm_julia_fit(
@@ -1374,7 +1435,7 @@ test_that("gllvm_julia_fit keeps unsupported CI rows explicit before Julia setup
       mask = matrix(TRUE, nrow = 2L, ncol = 4L),
       ci_method = "wald"
     ),
-    "response masks"
+    "GJL-GATE-MASK-X-CI"
   )
 })
 
@@ -1606,7 +1667,32 @@ test_that("engine = 'julia' rejects non reduced-rank covariance terms", {
       unit = "unit",
       engine = "julia"
     ),
-    "does not yet support covariance term"
+    "GJL-GATE-STRUCTURED-TERMS"
+  )
+  expect_error(
+    gllvmTMB(
+      value ~ 0 +
+        trait +
+        latent(0 + trait | unit, d = 1) +
+        latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      engine = "julia"
+    ),
+    "GJL-GATE-MULTI-RR"
+  )
+  df$failures <- abs(round(df$value)) + 1L
+  expect_error(
+    gllvmTMB(
+      cbind(value, failures) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = binomial(),
+      engine = "julia"
+    ),
+    "GJL-GATE-CBIND-BINOMIAL"
   )
 })
 
@@ -1635,7 +1721,7 @@ test_that("engine = 'julia' keeps unsupported response-mask rows explicit", {
       family = poisson(),
       engine = "julia"
     ),
-    "response masks with fixed-effect covariates"
+    "GJL-GATE-MASK-X"
   )
 })
 
@@ -1652,7 +1738,7 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
       family = nbinom1(),
       engine = "julia"
     ),
-    "fixed-effect covariates.*complete one-part rows"
+    "GJL-GATE-X-FAMILY"
   )
   expect_error(
     gllvmTMB(
@@ -1663,7 +1749,7 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
       family = ordinal_probit(),
       engine = "julia"
     ),
-    "fixed-effect covariates.*complete one-part rows"
+    "GJL-GATE-X-FAMILY"
   )
   expect_error(
     gllvmTMB(
@@ -1674,7 +1760,7 @@ test_that("engine = 'julia' keeps unsupported fixed-effect X rows explicit", {
       family = poisson(),
       engine = "julia"
     ),
-    "canonical `0 \\+ trait \\+ \\.\\.\\.` design"
+    "GJL-GATE-X-DESIGN"
   )
 })
 

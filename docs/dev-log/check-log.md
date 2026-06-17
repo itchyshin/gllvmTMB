@@ -4,6 +4,50 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge gate-ID registry
+
+Added a first `GJL-GATE-*` registry for primary R-side Julia bridge admission
+refusals. This gives unsupported families, CI gates, post-fit `newdata` /
+probability / ordinal / simulation refusals, missing CI payloads, structured
+terms, multi-RR, cbind-binomial, mask-plus-X, fixed-effect-X family, and
+non-canonical X-design stops stable ids linked to `gllvmTMB#488` and `JUL-01`.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --state open --json number,title,headRefName,author,updatedAt`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" --name-only -- R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/coordination-board.md`
+  -> recent edits were from the current Codex bridge stack only.
+- Formatting:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/dev-log/check-log.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-06-16-r-bridge-gate-id-registry.md docs/design/35-validation-debt-register.md`
+  -> completed quietly.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `13` expected live-Julia skips.
+- Live R-to-Julia bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Files updated:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-gate-id-registry.md`
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  article renders, and `Pkg.test()`. This slice changes the bridge admission
+  error surface and targeted bridge tests; it does not change public docs,
+  generated Rd, TMB likelihoods, or Julia engine code.
+
 ## 2026-06-16 -- R bridge Sigma comparison plot point view
 
 Added a direct `plot_Sigma_comparison()` guard for admitted `gllvmTMB_julia`

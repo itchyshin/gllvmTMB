@@ -15769,3 +15769,27 @@ Deliberately not run:
   generated Rd, or pkgdown navigation changes. The live proof gate is a
   follow-up dry-run/manual dispatch or the next scheduled power-pilot run after
   the workflow patch lands on `main`.
+
+## 2026-06-17 -- pkgdown Julia reference-index repair on main
+
+Fixed the post-#490 `main` pkgdown failure from run 27716894410. The CI log
+reported:
+
+- `In _pkgdown.yml, 2 topics missing from index: "gllvm_julia_fit" and "gllvm_julia_setup".`
+
+Changed `_pkgdown.yml` only for the reference index, adding a narrow
+`Julia bridge` section with those two existing manual topics. This does not
+promote the bridge beyond the existing experimental setup/direct-fit helpers.
+
+Checks:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> clean locally.
+- `git diff --check`
+  -> clean.
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, article rendering, and
+  `pkgdown::build_site()` not run locally. The failure class was the pkgdown
+  reference index, and `pkgdown::check_pkgdown()` is the direct local gate.

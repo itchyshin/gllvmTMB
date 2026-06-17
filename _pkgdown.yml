@@ -116,6 +116,12 @@ reference:
     - simulate_site_trait
     - simulate_unit_trait
 
+  - title: Julia bridge
+    desc: Experimental setup and direct low-level fit helpers for the GLLVM.jl bridge
+    contents:
+    - gllvm_julia_fit
+    - gllvm_julia_setup
+
   - title: Core covariance keywords
     desc: First-line formula keywords for the 4 x 5 grid (correlation source x mode)
     contents:

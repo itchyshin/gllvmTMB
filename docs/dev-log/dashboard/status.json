@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 07:30 MDT",
+  "updated": "2026-06-17 07:35 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -38,7 +38,7 @@
       "label": "Power pilot",
       "value": "mid-flight",
       "status": "active",
-      "note": "Run 27683989889 has 45 successful jobs; four accumulate shards remain in progress with no failures."
+      "note": "Run 27683989889 has 46 successful jobs; three accumulate shards remain in progress with no failures."
     },
     {
       "label": "Next decision",
@@ -174,7 +174,7 @@
           "status": "active"
         },
         {
-          "name": "Scheduled power-pilot run 27683989889 is active: 45/49 jobs have succeeded; shards 25/31/32/33 are still accumulating",
+          "name": "Scheduled power-pilot run 27683989889 is active: 46/49 jobs have succeeded; shards 31/32/33 are still accumulating",
           "status": "active"
         },
         {
@@ -226,7 +226,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "Main full-check is green; power-pilot remains active with four long-tail accumulate shards and no accessible logs until completion."
+      "text": "Main full-check is green; power-pilot remains active with three long-tail accumulate shards and no accessible logs until completion."
     },
     {
       "when": "now",
@@ -486,7 +486,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27683989889: 45 success, 0 bad, 4 in progress; shards 25/31/32/33 remain in Accumulate this shard's cells; logs unavailable until completion.",
+      "evidence": "Run 27683989889: 46 success, 0 bad, 3 in progress; shards 31/32/33 remain in Accumulate this shard's cells; logs unavailable until completion.",
       "next_gate": "Summarize only after completion or explicit snapshot."
     },
     {
@@ -564,12 +564,12 @@
     {
       "status": "blocked",
       "kind": "Power evidence",
-      "item": "0/48 pilot cells at cap; four scheduled workflow shards are still accumulating; process health is not coverage proof."
+      "item": "0/48 pilot cells at cap; three scheduled workflow shards are still accumulating; process health is not coverage proof."
     },
     {
       "status": "guard",
       "kind": "Power pilot long tail",
-      "item": "GitHub Actions logs for shards 25/31/32/33 are unavailable until those jobs complete."
+      "item": "GitHub Actions logs for shards 31/32/33 are unavailable until those jobs complete."
     },
     {
       "status": "guard",
@@ -599,6 +599,13 @@
       "when": "2026-06-17 07:20 MDT",
       "who": "GitHub Actions",
       "text": "Power-pilot run 27683989889 advanced to 45 successful jobs, 0 bad jobs, 4 in-progress jobs, and 0 queued jobs; remaining shards are 25/48, 31/48, 32/48, and 33/48 in Accumulate this shard's cells.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
+      "link_label": "run 27683989889"
+    },
+    {
+      "when": "2026-06-17 07:35 MDT",
+      "who": "GitHub Actions",
+      "text": "Power-pilot run 27683989889 advanced to 46 successful jobs, 0 bad jobs, 3 in-progress jobs, and 0 queued jobs; remaining shards are 31/48, 32/48, and 33/48 in Accumulate this shard's cells.",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
       "link_label": "run 27683989889"
     },

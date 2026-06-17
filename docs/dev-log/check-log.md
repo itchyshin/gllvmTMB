@@ -18507,6 +18507,19 @@ Post-commit evidence refresh:
 - `git log --oneline --max-count=4`
   -> local dashboard commits are visible ahead of `e79ed27`; remote PR
   #489 remains at `e79ed27` until a push decision.
+- Five-sample watch of:
+  `gh run view 27683989889 --json status,conclusion,updatedAt,url,jobs | jq '{status, conclusion, updatedAt, total:(.jobs|length), completed_success:([.jobs[]|select(.status=="completed" and .conclusion=="success")]|length), completed_bad:([.jobs[]|select(.status=="completed" and .conclusion!="success")]|length), in_progress:([.jobs[]|select(.status=="in_progress")]|length), queued:([.jobs[]|select(.status=="queued")]|length)}'`
+  -> unchanged across samples at `status: in_progress`, `total: 49`,
+  `completed_success: 43`, `completed_bad: 0`, `in_progress: 6`,
+  `queued: 0`.
+- `gh run view 27683989889 --json jobs | jq -r '.jobs[] | select(.status != "completed") | {name, databaseId, status, startedAt, url, current_steps:[.steps[]? | select(.status != "completed") | {name,status,startedAt}]} | @json'`
+  -> shards `25/48`, `26/48`, `27/48`, `31/48`, `32/48`, and `33/48`
+  are all in `Accumulate this shard's cells`; upload steps have not
+  started.
+- `gh run view --job 81878845373 --log`, `gh run view --job 81878846301 --log`,
+  and `gh run view --job 81878845335 --log`
+  -> GitHub CLI reports logs are unavailable while those jobs remain in
+  progress.
 
 Deliberately not run:
 

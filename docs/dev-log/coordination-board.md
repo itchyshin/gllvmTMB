@@ -177,6 +177,12 @@ Active lane guidance:
   default `auto` uses the retained payload after applying the native
   Gaussian/lognormal no-op rule. The live Gaussian Julia bridge test now checks
   native TMB covariance/correlation parity under `link_residual = "none"`.
+- Sigma table and comparison point views:
+  The ordinary Julia unit tier now routes through point-only
+  `extract_Sigma_table()` rows and `compare_Sigma_table()` estimate-vs-truth
+  rows. Both helpers keep `validation_row = "JUL-01A"` and
+  `interval_status = "none"`; they do not promote interval-bearing
+  extractor tables, `extract_correlations()` CIs, or calibration claims.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

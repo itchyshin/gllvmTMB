@@ -4,6 +4,62 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge Sigma comparison point view
+
+Routed `compare_Sigma_table()` for `gllvmTMB_julia` objects by letting it reuse
+the already-admitted point-only `extract_Sigma_table()` path. This is an
+estimate-vs-truth table slice only: it joins ordinary unit-tier Julia Sigma/R
+rows to one supplied truth matrix and reports `error = estimate - truth`. It
+does not compute intervals, promote `extract_correlations()`, or make a
+simulation-calibration claim.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --state open --json number,title,headRefName,isDraft,updatedAt,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" --decorate`
+  -> recent commits were the current Codex bridge stack only.
+  `gh pr view 489 --json headRefOid,mergeStateStatus,statusCheckRollup,updatedAt`
+  -> pushed head `6a33865` had R-CMD-check ubuntu-latest and coevolution
+  recovery in progress while this local follow-up was prepared.
+- Documentation generation:
+  `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `compare_Sigma_table.Rd` and `plot_Sigma_comparison.Rd`.
+- Formatting:
+  `air format R/extract-sigma-table.R R/plot-covariance-tables.R tests/testthat/test-julia-bridge.R`
+  -> completed quietly.
+- Targeted table test:
+  `Rscript --vanilla -e 'devtools::test(filter = "extract-sigma-table", reporter = "summary")'`
+  -> completed with `0` failures.
+- No-Julia R bridge test:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `13` expected live-Julia skips.
+- Live R-to-Julia bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures.
+
+Files updated:
+
+- `R/extract-sigma-table.R`
+- `R/plot-covariance-tables.R`
+- `man/compare_Sigma_table.Rd`
+- `man/plot_Sigma_comparison.Rd`
+- `tests/testthat/test-julia-bridge.R`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-sigma-compare-point-view.md`
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  article renders, and `Pkg.test()`. This slice changes one small exported
+  table helper route, generated Rd wording, one R test file, and developer
+  ledgers. The relevant local gates are `devtools::document()`, the existing
+  table tests, and the no-Julia plus live Julia bridge suites.
+
 ## 2026-06-16 -- R bridge point-only Sigma table view
 
 Routed `extract_Sigma_table()` for `gllvmTMB_julia` objects on the ordinary

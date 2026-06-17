@@ -657,6 +657,27 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
     "Available:.*unit"
   )
 
+  cmp <- suppressMessages(compare_Sigma_table(
+    fit,
+    truth = fit$Sigma,
+    measure = "correlation",
+    entries = "upper",
+    link_residual = "none"
+  ))
+  expect_s3_class(cmp, "data.frame")
+  expect_equal(nrow(cmp), choose(fit$n_traits, 2L))
+  expect_equal(unique(cmp$validation_row), "JUL-01A")
+  expect_equal(unique(cmp$comparison_status), "compared")
+  expect_equal(unique(cmp$interval_status), "none")
+  expect_equal(
+    cmp$truth,
+    stats::cov2cor(fit$Sigma)[cbind(
+      match(cmp$trait_i, fit$trait_names),
+      match(cmp$trait_j, fit$trait_names)
+    )]
+  )
+  expect_equal(cmp$error, cmp$estimate - cmp$truth)
+
   ord <- extract_ordination(fit)
   expect_equal(ord$loadings, fit$loadings)
   expect_equal(ord$scores, fit$scores)

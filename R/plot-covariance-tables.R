@@ -1350,9 +1350,9 @@ plot_correlations <- function(
 #' PLANNED, article-specific simulation summaries and richer calibration plots
 #' remain future work.
 #'
-#' @param x A fit returned by [gllvmTMB()], a data frame returned by
-#'   [extract_Sigma_table()], or a data frame already returned by
-#'   [compare_Sigma_table()].
+#' @param x A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
+#'   bridge fit, a data frame returned by [extract_Sigma_table()], or a data
+#'   frame already returned by [compare_Sigma_table()].
 #' @param truth Square numeric covariance or correlation matrix passed to
 #'   [compare_Sigma_table()]. May be omitted only when `x` already contains
 #'   `truth`, `error`, `abs_error`, and `comparison_status` columns.

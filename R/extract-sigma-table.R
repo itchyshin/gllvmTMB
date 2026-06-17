@@ -448,8 +448,8 @@ extract_Sigma_table <- function(
 #' layer, use [plot_Sigma_comparison()]; richer article-specific calibration
 #' summaries remain future visualization work.
 #'
-#' @param x A fit returned by [gllvmTMB()] or a data frame returned by
-#'   [extract_Sigma_table()].
+#' @param x A fit returned by [gllvmTMB()], an admitted `engine = "julia"`
+#'   bridge fit, or a data frame returned by [extract_Sigma_table()].
 #' @param truth Square numeric covariance or correlation matrix. Row and column
 #'   names should match the trait names in `x`; unnamed matrices are accepted
 #'   only when their dimension matches the traits in `x`.
@@ -499,7 +499,7 @@ compare_Sigma_table <- function(
   entries <- match.arg(entries)
   link_residual <- match.arg(link_residual)
 
-  if (inherits(x, "gllvmTMB_multi")) {
+  if (inherits(x, "gllvmTMB_multi") || inherits(x, "gllvmTMB_julia")) {
     rows <- extract_Sigma_table(
       x,
       level = level,
@@ -512,7 +512,7 @@ compare_Sigma_table <- function(
     rows <- x
   } else {
     cli::cli_abort(
-      "{.arg x} must be a fit returned by {.fun gllvmTMB} or a data frame from {.fun extract_Sigma_table}."
+      "{.arg x} must be a fit returned by {.fun gllvmTMB}, an admitted {.cls gllvmTMB_julia} bridge fit, or a data frame from {.fun extract_Sigma_table}."
     )
   }
 

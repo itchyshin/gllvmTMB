@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 07:48 MDT",
+  "updated": "2026-06-17 09:07 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -36,9 +36,9 @@
     },
     {
       "label": "Power pilot",
-      "value": "mid-flight",
-      "status": "active",
-      "note": "Run 27683989889 has 48 successful jobs; one accumulate shard remains in progress with no failures."
+      "value": "green",
+      "status": "success",
+      "note": "Run 27683989889 completed successfully: 51/51 jobs succeeded, 0 failed."
     },
     {
       "label": "Next decision",
@@ -174,8 +174,8 @@
           "status": "active"
         },
         {
-          "name": "Scheduled power-pilot run 27683989889 is active: 48/49 jobs have succeeded; shard 33 is still accumulating",
-          "status": "active"
+          "name": "Scheduled power-pilot run 27683989889 completed successfully: 51/51 jobs succeeded, 0 failed",
+          "status": "covered"
         },
         {
           "name": "Do not convert process health into coverage or power claims",
@@ -226,7 +226,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "Main full-check is green; power-pilot remains active with one long-tail accumulate shard and no accessible logs until completion."
+      "text": "Main full-check is green; scheduled power-pilot run 27683989889 is terminal green."
     },
     {
       "when": "now",
@@ -482,12 +482,12 @@
     {
       "id": "CI-10",
       "capability": "Power-pilot scheduled workflow",
-      "status": "active",
+      "status": "covered",
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27683989889: 48 success, 0 bad, 1 in progress; shard 33 remains in Accumulate this shard's cells; logs unavailable until completion.",
-      "next_gate": "Summarize only after completion or explicit snapshot."
+      "evidence": "Run 27683989889 completed successfully at 2026-06-17T14:33:24Z: 51/51 jobs succeeded, 0 failed.",
+      "next_gate": "Fisher/Curie scoring before any coverage/power promotion."
     },
     {
       "id": "RE-03",
@@ -564,12 +564,12 @@
     {
       "status": "blocked",
       "kind": "Power evidence",
-      "item": "0/48 pilot cells at cap; one scheduled workflow shard is still accumulating; process health is not coverage proof."
+      "item": "0/48 pilot cells at cap; terminal workflow success is process evidence, not coverage proof."
     },
     {
       "status": "guard",
       "kind": "Power pilot long tail",
-      "item": "GitHub Actions logs for shard 33 are unavailable until that job completes."
+      "item": "Scheduled workflow is green; Fisher/Curie still need to score estimands before promotion."
     },
     {
       "status": "guard",
@@ -620,6 +620,13 @@
       "when": "2026-06-17 07:48 MDT",
       "who": "GitHub Actions",
       "text": "Power-pilot run 27683989889 advanced to 48 successful jobs, 0 bad jobs, 1 in-progress job, and 0 queued jobs; remaining shard is 33/48 in Accumulate this shard's cells.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
+      "link_label": "run 27683989889"
+    },
+    {
+      "when": "2026-06-17 09:07 MDT",
+      "who": "GitHub Actions",
+      "text": "Power-pilot run 27683989889 completed successfully at 2026-06-17T14:33:24Z: 51/51 jobs succeeded, 0 failed, 0 queued, and 0 in progress.",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27683989889",
       "link_label": "run 27683989889"
     },

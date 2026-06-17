@@ -18713,3 +18713,31 @@ Dashboard update:
   process-health evidence only, not coverage proof.
 - Did not restart the local widget/server after updating the tracked
   source files.
+
+## 2026-06-17 09:07 MDT -- scheduled power-pilot terminal success
+
+Pre-edit lane check:
+
+- `gh pr list --state open`
+  -> only draft PR #489 is open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits are the local dashboard/evidence commits on
+  `codex/r-bridge-grouped-dispersion`.
+
+Evidence refresh:
+
+- `gh run view 27683989889 --json status,conclusion,updatedAt,url,jobs | jq ...`
+  -> scheduled power-pilot run completed successfully; `updatedAt:
+  2026-06-17T14:33:24Z`, 51 jobs total, 51 successful, 0 bad, 0
+  in progress, 0 queued.
+- `lsof -nP -iTCP:8770 -sTCP:LISTEN || true`
+  -> no listener on port 8770; widget remains off as requested.
+
+Dashboard update:
+
+- Refreshed tracked `docs/dev-log/dashboard/status.json`,
+  `docs/dev-log/dashboard/sweep.json`, and
+  `docs/dev-log/dashboard/version.txt` from the 48-success / 1-running
+  snapshot to terminal workflow success. This remains process-health
+  evidence only; Fisher/Curie scoring remains the gate before any
+  coverage or power promotion.

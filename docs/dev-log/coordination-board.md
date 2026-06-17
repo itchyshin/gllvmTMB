@@ -209,8 +209,14 @@ Active lane guidance:
   `extract_correlations()` and `plot_correlations()` on `gllvmTMB_julia` fits.
   The point-only route remains `extract_Sigma_table(..., measure =
   "correlation")` plus Sigma table/heatmap helpers; interval-bearing
-  correlation rows remain gated until CI/status semantics exist. This local
-  slice should wait for the active PR #489 checks before push.
+  correlation rows remain gated until CI/status semantics exist. This slice is
+  pushed as `ad54c71` and PR #489 checks are green/merge-clean.
+- R/Julia bridge capability drift guard:
+  local follow-up slice adds a pure-R and live-Julia guard comparing
+  `gllvm_julia_capabilities()` against `GLLVM.bridge_capabilities()`. The only
+  currently intentional cross-surface difference is `binomial` /
+  `cbind_binomial`, linked to `GJL-GATE-CBIND-BINOMIAL`; future unregistered
+  R-broader or Julia-broader rows now fail the targeted bridge test.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

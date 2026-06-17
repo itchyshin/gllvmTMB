@@ -4,6 +4,60 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R/Julia bridge capability drift guard
+
+Added an internal drift guard that compares the R-side
+`gllvm_julia_capabilities()` surface with a Julia `bridge_capabilities()`
+surface. The guard flags any capability where R is broader than Julia as
+unregistered, and any Julia-broader row must be explicitly listed as an
+intentional gate. The current intentional cross-surface difference is
+`binomial` / `cbind_binomial`, linked to `GJL-GATE-CBIND-BINOMIAL`.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,author,updatedAt,isDraft,mergeStateStatus,url`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`, merge
+  state `CLEAN`.
+  `git log --all --oneline --since='6 hours ago' --name-only -- R/julia-bridge.R tests/testthat/test-julia-bridge.R docs/design/35-validation-debt-register.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/coordination-board.md man/gllvm_julia_capabilities.Rd`
+  -> recent overlapping edits were from the current Codex bridge stack only.
+- Julia surface scout:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); gllvm_julia_setup(); caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()"); str(caps); JuliaCall::julia_command("GC.gc()")'`
+  -> `JuliaCall` returns a `JuliaNamedTuple` list with the same 23 columns as
+  the R ledger.
+- First no-Julia R bridge test:
+  `GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `14` expected live-Julia skips.
+- First live R-to-Julia bridge test:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> failed in the new live drift guard because `as.data.frame()` does not
+  coerce class `JuliaNamedTuple` directly.
+- Conversion fix:
+  `.gllvm_julia_capabilities_df()` now unclasses list-like capability surfaces
+  before data-frame coercion.
+- Formatting and no-Julia rerun:
+  `air format R/julia-bridge.R tests/testthat/test-julia-bridge.R && GLLVM_JL_PATH='' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures and `14` expected live-Julia skips.
+- Live R-to-Julia bridge rerun:
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> completed with `0` failures.
+
+Files updated:
+
+- `R/julia-bridge.R`
+- `tests/testthat/test-julia-bridge.R`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-capability-drift-guard.md`
+
+Deliberately not run:
+
+- Full `devtools::test()`, `devtools::check()`, `pkgdown::check_pkgdown()`,
+  article renders, and `Pkg.test()`. This slice adds a bridge governance guard
+  and tests it with the targeted no-runtime and live R bridge suites; it does
+  not change Julia engine code or promote a new model capability.
+
 ## 2026-06-16 -- R bridge correlation interval gate
 
 Added an explicit `GJL-GATE-CORRELATION-INTERVALS` refusal for Julia bridge fits

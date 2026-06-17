@@ -346,6 +346,135 @@ gllvm_julia_capabilities <- function() {
   rbind(out, mixed)
 }
 
+.gllvm_julia_capabilities_df <- function(caps, source = "capability surface") {
+  out <- if (is.data.frame(caps)) {
+    caps
+  } else if (is.list(caps)) {
+    as.data.frame(unclass(caps), stringsAsFactors = FALSE)
+  } else {
+    as.data.frame(caps, stringsAsFactors = FALSE)
+  }
+  required <- c(
+    "family",
+    .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS,
+    "status",
+    "notes"
+  )
+  missing <- setdiff(required, names(out))
+  if (length(missing)) {
+    cli::cli_abort(c(
+      "{.arg {source}} is missing required bridge capability columns.",
+      "x" = "Missing: {paste(missing, collapse = ', ')}"
+    ))
+  }
+  out <- out[, required]
+  out$family <- as.character(out$family)
+  out$status <- as.character(out$status)
+  out$notes <- as.character(out$notes)
+  for (col in .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS) {
+    out[[col]] <- as.logical(out[[col]])
+  }
+  out
+}
+
+.gllvm_julia_expected_capability_drifts <- function() {
+  data.frame(
+    family = "binomial",
+    capability = "cbind_binomial",
+    direction = "julia_broader_than_r",
+    gate_id = "GJL-GATE-CBIND-BINOMIAL",
+    issue = "gllvmTMB#488",
+    validation_row = "JUL-01",
+    reason = paste(
+      "GLLVM.jl exposes a binomial count-matrix bridge flag, but the R bridge",
+      "still requires one-row-per-unit-trait Bernoulli/binomial values until",
+      "the cbind marshaling contract is routed and parity-tested."
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+.gllvm_julia_capability_drift <- function(
+  r_caps = gllvm_julia_capabilities(),
+  julia_caps
+) {
+  r_caps <- .gllvm_julia_capabilities_df(r_caps, source = "r_caps")
+  julia_caps <- .gllvm_julia_capabilities_df(julia_caps, source = "julia_caps")
+  rows <- list()
+  families <- union(r_caps$family, julia_caps$family)
+  for (family in families) {
+    r_i <- match(family, r_caps$family)
+    j_i <- match(family, julia_caps$family)
+    if (is.na(r_i) || is.na(j_i)) {
+      rows[[length(rows) + 1L]] <- data.frame(
+        family = family,
+        capability = "family",
+        direction = if (is.na(r_i)) {
+          "julia_broader_than_r"
+        } else {
+          "r_broader_than_julia"
+        },
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+    for (capability in .GLLVM_JULIA_CAPABILITY_LOGICAL_COLUMNS) {
+      r_value <- isTRUE(r_caps[[capability]][[r_i]])
+      j_value <- isTRUE(julia_caps[[capability]][[j_i]])
+      if (identical(r_value, j_value)) {
+        next
+      }
+      rows[[length(rows) + 1L]] <- data.frame(
+        family = family,
+        capability = capability,
+        direction = if (j_value) {
+          "julia_broader_than_r"
+        } else {
+          "r_broader_than_julia"
+        },
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (!length(rows)) {
+    return(data.frame(
+      family = character(0),
+      capability = character(0),
+      direction = character(0),
+      status = character(0),
+      gate_id = character(0),
+      issue = character(0),
+      validation_row = character(0),
+      reason = character(0)
+    ))
+  }
+  drift <- do.call(rbind, rows)
+  allowed <- .gllvm_julia_expected_capability_drifts()
+  drift_key <- paste(
+    drift$family,
+    drift$capability,
+    drift$direction,
+    sep = "\r"
+  )
+  allowed_key <- paste(
+    allowed$family,
+    allowed$capability,
+    allowed$direction,
+    sep = "\r"
+  )
+  m <- match(drift_key, allowed_key)
+  drift$status <- ifelse(is.na(m), "unregistered", "gated")
+  drift$gate_id <- ifelse(is.na(m), NA_character_, allowed$gate_id[m])
+  drift$issue <- ifelse(is.na(m), NA_character_, allowed$issue[m])
+  drift$validation_row <- ifelse(
+    is.na(m),
+    NA_character_,
+    allowed$validation_row[m]
+  )
+  drift$reason <- ifelse(is.na(m), NA_character_, allowed$reason[m])
+  drift
+}
+
 .gllvm_julia_capability_note <- function(family) {
   mask_clause <- if (family %in% .GLLVM_JULIA_MASK_CI_FAMILIES) {
     paste0(

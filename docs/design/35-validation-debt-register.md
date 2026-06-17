@@ -512,6 +512,15 @@ unit-tier correlation rows remain available through `extract_Sigma_table(...,
 measure = "correlation")`; interval-bearing correlation rows remain gated. See
 `docs/dev-log/after-task/2026-06-16-r-bridge-correlation-interval-gate.md`.
 
+JUL-01 drift-guard addendum (2026-06-16): R now has an internal
+cross-surface drift guard that compares `gllvm_julia_capabilities()` against a
+Julia `GLLVM.bridge_capabilities()` surface. Any R-broader row fails as
+unregistered; any Julia-broader row must be listed as an intentional gate. The
+current intentional drift is `binomial` / `cbind_binomial`, linked to
+`GJL-GATE-CBIND-BINOMIAL`, `gllvmTMB#488`, and this partial `JUL-01` bridge
+row. See
+`docs/dev-log/after-task/2026-06-16-r-bridge-capability-drift-guard.md`.
+
 ## What this register does NOT do
 
 - **It does not replace the test files.** Every `covered`

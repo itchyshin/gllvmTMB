@@ -559,6 +559,56 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
   expect_true(all(!caps$cbind_binomial))
 })
 
+test_that("Julia bridge capability drift is explicit and gate-labelled", {
+  julia_caps <- gllvm_julia_capabilities()
+  julia_caps$cbind_binomial[julia_caps$family == "binomial"] <- TRUE
+  drift <- .gllvm_julia_capability_drift(julia_caps = julia_caps)
+  expect_named(
+    drift,
+    c(
+      "family",
+      "capability",
+      "direction",
+      "status",
+      "gate_id",
+      "issue",
+      "validation_row",
+      "reason"
+    )
+  )
+  expect_equal(nrow(drift), 1L)
+  expect_equal(drift$family, "binomial")
+  expect_equal(drift$capability, "cbind_binomial")
+  expect_equal(drift$direction, "julia_broader_than_r")
+  expect_equal(drift$status, "gated")
+  expect_equal(drift$gate_id, "GJL-GATE-CBIND-BINOMIAL")
+  expect_equal(drift$issue, "gllvmTMB#488")
+  expect_equal(drift$validation_row, "JUL-01")
+  expect_match(drift$reason, "cbind marshaling contract")
+
+  future_julia <- julia_caps
+  future_julia$fixed_effect_X[future_julia$family == "nb1"] <- TRUE
+  future_drift <- .gllvm_julia_capability_drift(julia_caps = future_julia)
+  expect_true(any(
+    future_drift$family == "nb1" &
+      future_drift$capability == "fixed_effect_X" &
+      future_drift$status == "unregistered"
+  ))
+
+  overclaim_r <- gllvm_julia_capabilities()
+  overclaim_r$ci_x_wald[overclaim_r$family == "ordinal"] <- TRUE
+  overclaim <- .gllvm_julia_capability_drift(
+    r_caps = overclaim_r,
+    julia_caps = julia_caps
+  )
+  expect_true(any(
+    overclaim$family == "ordinal" &
+      overclaim$capability == "ci_x_wald" &
+      overclaim$direction == "r_broader_than_julia" &
+      overclaim$status == "unregistered"
+  ))
+})
+
 test_that("grouped-dispersion bridge payload is trait-labelled and public-scale mapped", {
   nb2 <- .gllvm_julia_normalise_result(
     fake_grouped_dispersion_julia_fit("negbinomial", c(4, 9), "r")
@@ -1790,6 +1840,17 @@ test_that("engine argument is validated by match.arg", {
 })
 
 # --- numerical round-trip (gated behind a live JuliaCall + GLLVM.jl) --------
+
+test_that("live GLLVM.jl bridge capabilities drift only through registered gates", {
+  skip_if_no_julia()
+  gllvm_julia_setup()
+  engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()")
+  drift <- .gllvm_julia_capability_drift(julia_caps = engine_caps)
+  expect_equal(drift$status, "gated")
+  expect_equal(drift$family, "binomial")
+  expect_equal(drift$capability, "cbind_binomial")
+  expect_equal(drift$gate_id, "GJL-GATE-CBIND-BINOMIAL")
+})
 
 test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", {
   skip_if_no_julia()

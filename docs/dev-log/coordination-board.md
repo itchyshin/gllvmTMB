@@ -189,6 +189,12 @@ Active lane guidance:
   `extract_Sigma_table()` route. The forest helper keeps open point estimates
   when intervals are absent; the heatmap displays point estimates only. Neither
   helper computes uncertainty or promotes correlation CI support.
+- Sigma comparison plot point view:
+  `plot_Sigma_comparison()` now has a direct fitted-object test for admitted
+  `gllvmTMB_julia` fits. It delegates through `compare_Sigma_table()` and keeps
+  `validation_row = "JUL-01A"` / `interval_status = "none"` in the plotted
+  data; plot metadata remains `interval_status = "not_applicable"` because the
+  segments are estimate-minus-truth errors, not confidence intervals.
 - Grouped post-fit score payload lane:
   paired `GLLVM.jl-integration` now returns finite `n x K` scores for grouped
   NB2, NB1, Beta, and shared-Gamma bridge rows through `getLV()`; the R bridge

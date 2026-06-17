@@ -4,6 +4,48 @@ Append-only record of `R CMD check`, `devtools::test()`, and
 `pkgdown` runs that produced meaningful evidence. Keep entries
 date-stamped.
 
+## 2026-06-16 -- R bridge Sigma comparison plot point view
+
+Added a direct `plot_Sigma_comparison()` guard for admitted `gllvmTMB_julia`
+objects. The helper already routed through `compare_Sigma_table()` when a truth
+matrix was supplied; this slice proves the fitted-object plot path preserves
+`JUL-01A`, keeps row-level `interval_status = "none"`, and reports
+`estimate - truth` without creating CI or calibration claims.
+
+Evidence:
+
+- Pre-edit coordination:
+  `gh pr list --state open --json number,title,headRefName,author,updatedAt`
+  -> one open draft PR, #489, on `codex/r-bridge-grouped-dispersion`.
+  `git log --all --oneline --since="6 hours ago" --name-only -- docs/dev-log/check-log.md docs/design docs/dev-log/after-task R/plot-covariance-tables.R tests/testthat/test-plot-covariance-tables.R`
+  -> recent commits were the current Codex bridge stack only.
+- Targeted plot test:
+  `Rscript --vanilla -e 'devtools::test(filter = "plot-covariance-tables", reporter = "summary")'`
+  -> completed with `0` failures.
+- Formatting:
+  `air format tests/testthat/test-plot-covariance-tables.R docs/dev-log/check-log.md docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md docs/dev-log/coordination-board.md docs/dev-log/after-task/2026-06-16-r-bridge-sigma-comparison-plot-point-view.md docs/design/35-validation-debt-register.md`
+  -> completed quietly.
+- GitHub PR state while preparing this local guard:
+  `gh pr view 489 --json headRefOid,mergeStateStatus,statusCheckRollup,updatedAt`
+  -> pushed head `8a8334e`; coevolution recovery passed and R-CMD-check
+  ubuntu-latest remained in progress.
+
+Files updated:
+
+- `tests/testthat/test-plot-covariance-tables.R`
+- `docs/design/35-validation-debt-register.md`
+- `docs/dev-log/audits/2026-06-16-richer-extractor-parity-spec.md`
+- `docs/dev-log/coordination-board.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-16-r-bridge-sigma-comparison-plot-point-view.md`
+
+Deliberately not run:
+
+- Full `devtools::test()`, completed `devtools::check()`,
+  `pkgdown::check_pkgdown()`, article renders, live Julia bridge tests, and
+  `Pkg.test()`. This slice is a direct test/ledger guard over an already
+  routed plotting path.
+
 ## 2026-06-16 -- R bridge Sigma plot point view
 
 Routed `plot_Sigma_table()` and `plot_Sigma_heatmap()` for admitted

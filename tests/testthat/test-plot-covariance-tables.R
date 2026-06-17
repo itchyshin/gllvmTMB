@@ -753,6 +753,40 @@ test_that("Sigma plot helpers accept Julia bridge point rows", {
   expect_silent(ggplot2::ggplot_build(p_heatmap))
 })
 
+test_that("plot_Sigma_comparison accepts Julia bridge point rows", {
+  skip_if_no_ggplot2()
+  fit <- make_plot_julia_sigma_fit()
+  truth <- stats::cov2cor(fit$Sigma)
+  dimnames(truth) <- list(fit$trait_names, fit$trait_names)
+  truth["length", "mass"] <- truth["mass", "length"] <-
+    truth["length", "mass"] - 0.02
+
+  p <- plot_Sigma_comparison(
+    fit,
+    truth = truth,
+    measure = "correlation",
+    entries = "upper",
+    link_residual = "none"
+  )
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "sigma_comparison_difference",
+    "compare_Sigma_table"
+  )
+  expect_equal(meta$interval_status, "not_applicable")
+  expect_equal(meta$comparison_status, "compared")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(nrow(plot_data), choose(fit$n_traits, 2L))
+  expect_equal(unique(plot_data$validation_row), "JUL-01A")
+  expect_equal(unique(plot_data$interval_status), "none")
+  expect_equal(plot_data$.error, plot_data$estimate - plot_data$truth)
+  expect_true(all(plot_data$.can_compare))
+  expect_true("GeomSegment" %in% gtmb_plot_geom_names(p))
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
 test_that("plot_Sigma_heatmap renders Sigma-table rows as matrix cells", {
   skip_if_no_ggplot2()
   corr_rows <- data.frame(

@@ -610,7 +610,24 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
     row_traits = fx$host_traits,
     col_traits = fx$partner_traits
   )
+  Gamma_phy_effect <- gllvmTMB::extract_Gamma(
+    fit_full,
+    level = "phy",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits,
+    scale = "effect"
+  )
+  Gamma_non_effect <- gllvmTMB::extract_Gamma(
+    fit_full,
+    level = "non",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits,
+    scale = "effect"
+  )
 
+  expect_equal(fit_full$kernel_levels$rho, c(0.55, 0.55), tolerance = 1e-12)
+  expect_equal(as.numeric(Gamma_phy_effect), as.numeric(0.55 * Gamma_phy))
+  expect_equal(as.numeric(Gamma_non_effect), as.numeric(0.55 * Gamma_non))
   expect_gt(.c3_gamma_corr(Gamma_phy, fx$Gamma_phy), 0.95)
   expect_gt(.c3_gamma_corr(Gamma_non, fx$Gamma_non), 0.95)
   expect_lt(.c3_gamma_corr(Gamma_phy, fx$Gamma_non), 0.25)

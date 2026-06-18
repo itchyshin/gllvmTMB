@@ -21695,6 +21695,83 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 13:43 MDT -- fixed-rho Gamma effect extraction
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add fixed-`rho` `Gamma_effect` extraction for cross-lineage kernels while
+  keeping `Gamma_shape` as the default estimand.
+- Keep `COE-02` covered and `COE-03` / `COE-04` partial: this is fixed-kernel
+  shape/effect plumbing, not in-engine `rho` estimation, intervals,
+  non-Gaussian/cross-family coverage, or public Paper 2 promotion.
+- Preserve the post-arc direction that `kernel_unique()` / `*_unique()` remain
+  compatibility syntax now and should move to lifecycle/deprecation redesign
+  after this arc.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- `make_cross_kernel()` now attaches `gllvmTMB_cross_kernel` metadata with
+  fixed `rho`, host levels, partner levels, and `spectral_norm_W`.
+- Added internal `.cross_kernel_metadata()` / `.cross_kernel_rho()` helpers.
+- Fitted single-kernel and fixed multi-kernel tiers now record fixed `rho` in
+  `fit$kernel_levels`.
+- `extract_Gamma()` now accepts `scale = c("shape", "effect")`.
+  - `scale = "shape"` remains default and returns
+    `Gamma_shape = Lambda_H %*% t(Lambda_P)`.
+  - `scale = "effect"` returns `rho * Gamma_shape` only when the fitted tier
+    carries cross-kernel metadata from `make_cross_kernel()`.
+  - Generic kernels fail loudly for `scale = "effect"`.
+- Regenerated `man/extract_Gamma.Rd` and `man/make_cross_kernel.Rd`.
+- Regenerated `inst/extdata/examples/coevolution-kernel-example.rds` so
+  `ex$K_star` carries the same fixed-`rho` metadata.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-fixed-rho-gamma-effect.md`.
+
+Checks:
+
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-prototype|coevolution-recovery|coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 186`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `man/extract_Gamma.Rd` and `man/make_cross_kernel.Rd`.
+- First aggregate non-heavy run:
+  `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> failed only because `test-example-coevolution-kernel.R` compared a new
+  metadata-bearing `make_cross_kernel()` result against the older fixture
+  `ex$K_star` without metadata.
+- `/usr/local/bin/Rscript --vanilla data-raw/examples/make-coevolution-kernel-example.R`
+  -> regenerated `inst/extdata/examples/coevolution-kernel-example.rds`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 10 | PASS 142`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 257`.
+
+Still not claimed:
+
+- No in-engine `rho` estimation or `rho` profile helper.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `kernel_unique()` / `*_unique()` deprecation implementation yet.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 11:41 MDT -- COE-04 symmetric absence and block-null smoke
 
 Branch: `codex/r-bridge-grouped-dispersion`

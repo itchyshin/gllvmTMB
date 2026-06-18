@@ -144,7 +144,7 @@
   abs(stats::cor(as.vector(x), as.vector(y)))
 }
 
-.c2_fake_gamma_fit <- function(Lambda, level = "cross") {
+.c2_fake_gamma_fit <- function(Lambda, level = "cross", rho = NA_real_) {
   trait_names <- rownames(Lambda)
   structure(
     list(
@@ -159,7 +159,11 @@
         Lambda_phy = Lambda,
         sd_phy_diag = rep(0.1, length(trait_names))
       ),
-      kernel_levels = list(name = level, internal_level = "phy")
+      kernel_levels = list(
+        name = level,
+        internal_level = "phy",
+        rho = rho
+      )
     ),
     class = "gllvmTMB_multi"
   )
@@ -194,6 +198,46 @@ test_that("extract_Gamma slices the shared kernel Sigma block by trait names", {
       col_traits = "p_size"
     ),
     regexp = "not found"
+  )
+})
+
+test_that("extract_Gamma can return fixed-rho Gamma_effect when rho is recorded", {
+  Lambda <- matrix(c(
+    1.00, 0.00,
+    0.45, 0.85,
+    0.75, 0.25,
+    -0.25, 0.90
+  ), 4, 2, byrow = TRUE)
+  rownames(Lambda) <- c("h_size", "h_defence", "p_size", "p_attack")
+  fit <- .c2_fake_gamma_fit(Lambda, rho = 0.4)
+
+  Gamma_shape <- gllvmTMB::extract_Gamma(
+    fit,
+    level = "cross",
+    row_traits = rownames(Lambda)[1:2],
+    col_traits = rownames(Lambda)[3:4]
+  )
+  Gamma_effect <- gllvmTMB::extract_Gamma(
+    fit,
+    level = "cross",
+    row_traits = rownames(Lambda)[1:2],
+    col_traits = rownames(Lambda)[3:4],
+    scale = "effect"
+  )
+
+  expect_equal(as.numeric(Gamma_effect), as.numeric(0.4 * Gamma_shape))
+  expect_equal(dim(Gamma_effect), dim(Gamma_shape))
+  expect_equal(rownames(Gamma_effect), rownames(Gamma_shape))
+  expect_equal(colnames(Gamma_effect), colnames(Gamma_shape))
+  expect_error(
+    gllvmTMB::extract_Gamma(
+      .c2_fake_gamma_fit(Lambda),
+      level = "cross",
+      row_traits = rownames(Lambda)[1:2],
+      col_traits = rownames(Lambda)[3:4],
+      scale = "effect"
+    ),
+    regexp = "requires a fixed cross-lineage"
   )
 })
 
@@ -239,6 +283,7 @@ test_that("C2 kernel path recovers Gamma and beats the zero-Gamma null", {
   expect_equal(fit_null$opt$convergence, 0L)
   expect_true(isTRUE(fit_cross$use$kernel))
   expect_equal(fit_cross$kernel_levels$name, "cross")
+  expect_equal(fit_cross$kernel_levels$rho, 0.65, tolerance = 1e-12)
 
   Gamma_hat <- gllvmTMB::extract_Gamma(
     fit_cross,
@@ -252,8 +297,16 @@ test_that("C2 kernel path recovers Gamma and beats the zero-Gamma null", {
     row_traits = fx$host_traits,
     col_traits = fx$partner_traits
   )
+  Gamma_effect <- gllvmTMB::extract_Gamma(
+    fit_cross,
+    level = "cross",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits,
+    scale = "effect"
+  )
 
   expect_gt(.c2_gamma_corr(Gamma_hat, fx$Gamma_true), 0.9)
+  expect_equal(as.numeric(Gamma_effect), as.numeric(0.65 * Gamma_hat))
   expect_lt(max(abs(Gamma_null)), 1e-8)
   expect_gt(
     as.numeric(stats::logLik(fit_cross)) -

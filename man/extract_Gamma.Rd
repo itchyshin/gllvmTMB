@@ -4,7 +4,7 @@
 \alias{extract_Gamma}
 \title{Extract a cross-lineage Gamma block}
 \usage{
-extract_Gamma(fit, level, row_traits, col_traits)
+extract_Gamma(fit, level, row_traits, col_traits, scale = c("shape", "effect"))
 }
 \arguments{
 \item{fit}{A fitted \code{gllvmTMB_multi} object.}
@@ -14,6 +14,11 @@ extract_Gamma(fit, level, row_traits, col_traits)
 
 \item{row_traits, col_traits}{Character vectors of trait names defining
 the rows and columns of the returned block.}
+
+\item{scale}{Character scalar. \code{"shape"} (default) returns
+\verb{Gamma_shape = Lambda_row Lambda_col^T}. \code{"effect"} returns
+\code{rho * Gamma_shape} for fixed cross-lineage kernels built by
+\code{\link[=make_cross_kernel]{make_cross_kernel()}}. The current engine does not estimate \code{rho}.}
 }
 \value{
 A numeric matrix with rows \code{row_traits} and columns \code{col_traits}.
@@ -21,12 +26,15 @@ A numeric matrix with rows \code{row_traits} and columns \code{col_traits}.
 \description{
 \code{extract_Gamma()} slices the shared covariance matrix returned by
 \code{\link[=extract_Sigma]{extract_Sigma()}} to give the row-lineage by column-lineage block
-\verb{Gamma = Lambda_row Lambda_col^T}. In the Design 65 coevolution path,
-\code{level} is the named \verb{kernel_*()} tier, \code{row_traits} are the host
+\verb{Gamma_shape = Lambda_row Lambda_col^T}. In the Design 65 coevolution
+path, \code{level} is the named \verb{kernel_*()} tier, \code{row_traits} are the host
 traits, and \code{col_traits} are the partner traits. IN (\code{COE-02}): this
 is a point-estimate extractor for the shared covariance block of a
-fitted dense-kernel model. PARTIAL: uncertainty for \code{Gamma} is not yet
-reported by this helper; use bootstrap workflows when interval
+fitted dense-kernel model. IN (\code{COE-03} / \code{COE-04}, fixed-rho scale):
+when the fitted kernel tier was built from \code{\link[=make_cross_kernel]{make_cross_kernel()}},
+\code{scale = "effect"} returns \code{Gamma_effect = rho * Gamma_shape} using the
+fixed \code{rho} recorded on that kernel. PARTIAL: uncertainty for \code{Gamma} is
+not yet reported by this helper; use bootstrap workflows when interval
 estimates are required. PLANNED: richer \code{rho} profiling and association
 richness guidance live in the C2/C3 coevolution examples rather than in
 this low-level extractor.
@@ -34,11 +42,12 @@ this low-level extractor.
 \details{
 \code{rho} is part of the supplied \code{K} matrix, not a fitted parameter in the
 current engine. To profile it, rebuild \code{K_star} over a small \code{rho} grid,
-refit the same formula, and compare \code{logLik()} values. Treat \code{Gamma} from
-a single association matrix \code{W} as data-condition sensitive: the C2
-recovery test includes a sparse-versus-dense \code{W} check, and sparse or
-poorly replicated host-partner links should be reported as weaker
-evidence rather than as a precise coevolution estimate.
+refit the same formula, and compare \code{logLik()} values. \code{scale = "effect"}
+is therefore a fixed-kernel transformation, not an estimate of \code{rho}.
+Treat \code{Gamma} from a single association matrix \code{W} as data-condition
+sensitive: the C2 recovery test includes a sparse-versus-dense \code{W} check,
+and sparse or poorly replicated host-partner links should be reported as
+weaker evidence rather than as a precise coevolution estimate.
 
 For fixed multi-kernel fits, \code{extract_Gamma()} also inspects the fitted
 kernel-similarity diagnostics. If the requested component participates in a

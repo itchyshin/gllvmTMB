@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 13:24 MDT",
+  "updated": "2026-06-18 13:43 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -50,7 +50,7 @@
       "label": "Paper 2 kernels",
       "value": "COE-04 partial",
       "status": "guard",
-      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, conservative moderate-edge recovery, high-overlap collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a small null/signal grid, and high-overlap fit/extract_Gamma warning language. Broader moderate-overlap calibration, broader high-overlap recovery/failure calibration beyond the collapse and warning gates, broader null-threshold calibration, rho, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
+      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, conservative moderate-edge recovery, high-overlap collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a small null/signal grid, fixed-rho Gamma_effect extraction, and high-overlap fit/extract_Gamma warning language. Broader moderate-overlap calibration, broader high-overlap recovery/failure calibration beyond the collapse and warning gates, broader null-threshold calibration, rho profiling/estimation, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
     },
     {
       "label": "Next decision",
@@ -259,7 +259,7 @@
     {
       "when": "now",
       "who": "Boole",
-      "text": "kernel_*() remains the general API; relmat remains compatibility sugar. Fixed named multi-kernel tiers now have a local TMB engine slice and a small COE-04 null/signal grid, while unique()/*_unique() stays compatibility syntax for this arc; the post-arc cleanup should deprecate or supersede *_unique() teaching, with standalone diagonal teaching already pointing to indep()."
+      "text": "kernel_*() remains the general API; relmat remains compatibility sugar. Fixed named multi-kernel tiers now have a local TMB engine slice, fixed-rho Gamma_effect extraction, and a small COE-04 null/signal grid, while unique()/*_unique() stays compatibility syntax for this arc; the post-arc cleanup should deprecate or supersede *_unique() teaching, with standalone diagonal teaching already pointing to indep()."
     }
   ],
   "serial_gates": [
@@ -581,7 +581,7 @@
       "engine": "covered",
       "bridge": "planned",
       "inference": "partial",
-      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. COE-04 near-orthogonal heavy recovery, conservative moderate-edge recovery, high-overlap collapse-equivalence, two-sided selective-absence, block-null smoke plus a small null/signal grid, and high-overlap fit/extract_Gamma warning fixtures now pass, but this remains partial and does not prove explicit Psi support, broad moderate-overlap calibration, broad high-overlap recovery/failure calibration, broader null-threshold calibration, rho profiling/estimation, or intervals.",
+      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma_shape blocks by name. For tiers built from make_cross_kernel(), extract_Gamma(scale = \"effect\") returns fixed-rho Gamma_effect = rho_r * Gamma_shape_r. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. COE-04 near-orthogonal heavy recovery, conservative moderate-edge recovery, high-overlap collapse-equivalence, two-sided selective-absence, block-null smoke plus a small null/signal grid, fixed-rho effect-scale extraction, and high-overlap fit/extract_Gamma warning fixtures now pass, but this remains partial and does not prove explicit Psi support, broad moderate-overlap calibration, broad high-overlap recovery/failure calibration, broader null-threshold calibration, rho profiling/estimation, or intervals.",
       "next_gate": "Broader COE-04 recovery/separation grid before scientific coverage or public Paper 2 promotion."
     },
     {
@@ -591,7 +591,7 @@
       "engine": "covered",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs; high-overlap fitted tier pairs warn that component-specific Gamma_shape separation is weak evidence while still fitting; and extract_Gamma(level = ...) repeats that warning when the requested component participates in a high-overlap pair while still returning the point block. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, and component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component. A conservative moderate-edge heavy gate blends the non association pattern 30% toward the phy pattern, lands just above the near-orthogonal threshold, and recovers both component Gamma_shape matrices with cross-component matches below 0.25. A high-overlap collapse-equivalence gate sets the two named kernels equal, verifies the separated two-tier fit is not materially better than one collapsed rank-2 kernel tier, and keeps separated Gamma extraction warned while collapsed extraction is quiet and finite. Two-sided selective-absence gates collapse whichever component has true zero loadings below 1e-3 while recovering the present component. A block-null smoke gate sets both loading blocks to zero, collapses both extracted Gamma_shape norms below 1e-3, and keeps the full model within 3 log-likelihood units of an intercept-only fit; the small null/signal grid repeats null collapse across three seeds and contrasts it with two medium-signal fixtures that recover both component Gamma_shape blocks. Focused tests pass 47 non-heavy / 134 heavy; aggregate kernel|coevolution tests pass 133 non-heavy / 243 heavy. Broader moderate-overlap calibration, broader high-overlap recovery/failure calibration beyond the collapse and warning gates, broader null-threshold calibration, and interval/rho calibration remain blocked.",
+      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs; high-overlap fitted tier pairs warn that component-specific Gamma_shape separation is weak evidence while still fitting; and extract_Gamma(level = ...) repeats that warning when the requested component participates in a high-overlap pair while still returning the point block. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component, and extract_Gamma(scale = \"effect\") returns fixed-rho Gamma_effect = rho_r * Gamma_shape_r for each recorded cross-kernel tier. A conservative moderate-edge heavy gate blends the non association pattern 30% toward the phy pattern, lands just above the near-orthogonal threshold, and recovers both component Gamma_shape matrices with cross-component matches below 0.25. A high-overlap collapse-equivalence gate sets the two named kernels equal, verifies the separated two-tier fit is not materially better than one collapsed rank-2 kernel tier, and keeps separated Gamma extraction warned while collapsed extraction is quiet and finite. Two-sided selective-absence gates collapse whichever component has true zero loadings below 1e-3 while recovering the present component. A block-null smoke gate sets both loading blocks to zero, collapses both extracted Gamma_shape norms below 1e-3, and keeps the full model within 3 log-likelihood units of an intercept-only fit; the small null/signal grid repeats null collapse across three seeds and contrasts it with two medium-signal fixtures that recover both component Gamma_shape blocks. Focused tests pass 47 non-heavy / 137 heavy; aggregate kernel|coevolution tests pass 142 non-heavy / 257 heavy. Broader moderate-overlap calibration, broader high-overlap recovery/failure calibration beyond the collapse and warning gates, broader null-threshold calibration, and interval/rho calibration remain blocked.",
       "next_gate": "Extend the Paper 2 recovery grid to broader moderate-overlap calibration, calibrated high-overlap failure/recovery behavior, broader null-threshold calibration, and rho/interval calibration before any full scientific-coverage language moves."
     },
     {
@@ -658,6 +658,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 13:43 MDT",
+      "who": "Paper 2 Gamma effect",
+      "text": "Added fixed-rho Gamma_effect extraction without widening the scientific claim: make_cross_kernel() now records supplied rho metadata on K_star, fitted single- and multi-kernel tiers preserve rho in fit$kernel_levels, and extract_Gamma(scale = \"effect\") returns rho * Gamma_shape only for tiers built from make_cross_kernel(); generic kernels fail loudly and should use scale = \"shape\". The coevolution teaching fixture was regenerated so ex$K_star carries the same metadata. Checks: devtools::document(quiet = TRUE) regenerated extract_Gamma.Rd and make_cross_kernel.Rd; devtools::test(filter = \"kernel|coevolution\") -> PASS 142 with 10 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 257. This is fixed-kernel shape/effect plumbing only, not rho estimation, interval coverage, non-Gaussian/cross-family coverage, bridge completion, release readiness, or scientific coverage. kernel_unique()/*_unique() remains compatibility syntax now and post-arc deprecation/redesign work remains open. PR green != bridge complete != release ready != scientific coverage passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/R/extract-sigma.R",
+      "link_label": "extract_Gamma"
+    },
     {
       "when": "2026-06-18 12:22 MDT",
       "who": "Paper 2 COE-04",

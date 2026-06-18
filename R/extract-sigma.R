@@ -1360,12 +1360,15 @@ extract_Sigma <- function(
 #' @description
 #' `extract_Gamma()` slices the shared covariance matrix returned by
 #' [extract_Sigma()] to give the row-lineage by column-lineage block
-#' `Gamma = Lambda_row Lambda_col^T`. In the Design 65 coevolution path,
-#' `level` is the named `kernel_*()` tier, `row_traits` are the host
+#' `Gamma_shape = Lambda_row Lambda_col^T`. In the Design 65 coevolution
+#' path, `level` is the named `kernel_*()` tier, `row_traits` are the host
 #' traits, and `col_traits` are the partner traits. IN (`COE-02`): this
 #' is a point-estimate extractor for the shared covariance block of a
-#' fitted dense-kernel model. PARTIAL: uncertainty for `Gamma` is not yet
-#' reported by this helper; use bootstrap workflows when interval
+#' fitted dense-kernel model. IN (`COE-03` / `COE-04`, fixed-rho scale):
+#' when the fitted kernel tier was built from [make_cross_kernel()],
+#' `scale = "effect"` returns `Gamma_effect = rho * Gamma_shape` using the
+#' fixed `rho` recorded on that kernel. PARTIAL: uncertainty for `Gamma` is
+#' not yet reported by this helper; use bootstrap workflows when interval
 #' estimates are required. PLANNED: richer `rho` profiling and association
 #' richness guidance live in the C2/C3 coevolution examples rather than in
 #' this low-level extractor.
@@ -1373,11 +1376,12 @@ extract_Sigma <- function(
 #' @details
 #' `rho` is part of the supplied `K` matrix, not a fitted parameter in the
 #' current engine. To profile it, rebuild `K_star` over a small `rho` grid,
-#' refit the same formula, and compare `logLik()` values. Treat `Gamma` from
-#' a single association matrix `W` as data-condition sensitive: the C2
-#' recovery test includes a sparse-versus-dense `W` check, and sparse or
-#' poorly replicated host-partner links should be reported as weaker
-#' evidence rather than as a precise coevolution estimate.
+#' refit the same formula, and compare `logLik()` values. `scale = "effect"`
+#' is therefore a fixed-kernel transformation, not an estimate of `rho`.
+#' Treat `Gamma` from a single association matrix `W` as data-condition
+#' sensitive: the C2 recovery test includes a sparse-versus-dense `W` check,
+#' and sparse or poorly replicated host-partner links should be reported as
+#' weaker evidence rather than as a precise coevolution estimate.
 #'
 #' For fixed multi-kernel fits, `extract_Gamma()` also inspects the fitted
 #' kernel-similarity diagnostics. If the requested component participates in a
@@ -1390,6 +1394,10 @@ extract_Sigma <- function(
 #'   `kernel_*()` fits this is the `name` argument supplied in the formula.
 #' @param row_traits,col_traits Character vectors of trait names defining
 #'   the rows and columns of the returned block.
+#' @param scale Character scalar. `"shape"` (default) returns
+#'   `Gamma_shape = Lambda_row Lambda_col^T`. `"effect"` returns
+#'   `rho * Gamma_shape` for fixed cross-lineage kernels built by
+#'   [make_cross_kernel()]. The current engine does not estimate `rho`.
 #'
 #' @return A numeric matrix with rows `row_traits` and columns `col_traits`.
 #'
@@ -1404,10 +1412,12 @@ extract_Sigma <- function(
 #' }
 #'
 #' @export
-extract_Gamma <- function(fit, level, row_traits, col_traits) {
+extract_Gamma <- function(fit, level, row_traits, col_traits,
+                          scale = c("shape", "effect")) {
   if (!inherits(fit, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
   }
+  scale <- match.arg(scale)
   if (missing(level) ||
         !is.character(level) ||
         length(level) != 1L ||
@@ -1459,7 +1469,28 @@ extract_Gamma <- function(fit, level, row_traits, col_traits) {
 
   .warn_high_overlap_gamma(fit, level)
 
-  Sigma[row_traits, col_traits, drop = FALSE]
+  Gamma <- Sigma[row_traits, col_traits, drop = FALSE]
+  if (identical(scale, "effect")) {
+    rho <- .gamma_level_rho(fit, level)
+    Gamma <- rho * Gamma
+  }
+  Gamma
+}
+
+.gamma_level_rho <- function(fit, level) {
+  alias <- .kernel_level_alias(fit, level)
+  rho <- alias$rho
+  if (is.null(alias) ||
+      is.null(rho) ||
+      length(rho) != 1L ||
+      !is.finite(rho)) {
+    cli::cli_abort(c(
+      "{.arg scale = \"effect\"} requires a fixed cross-lineage {.arg rho}.",
+      "i" = "Build the kernel with {.fn make_cross_kernel} so the fitted tier records the supplied {.arg rho}.",
+      ">" = "Use {.arg scale = \"shape\"} for generic kernels or source-specific covariance tiers."
+    ))
+  }
+  as.numeric(rho)
 }
 
 .warn_high_overlap_gamma <- function(fit, level) {
@@ -1542,7 +1573,8 @@ extract_Gamma <- function(fit, level, row_traits, col_traits) {
     index = get_field("index", NA_integer_),
     rank = get_field("rank", NA_integer_),
     has_latent = isTRUE(get_field("has_latent", TRUE)),
-    has_psi = isTRUE(get_field("has_psi", FALSE))
+    has_psi = isTRUE(get_field("has_psi", FALSE)),
+    rho = get_field("rho", NA_real_)
   )
 }
 

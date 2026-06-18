@@ -754,6 +754,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }, character(1L))
   has_kernel_term <- any(!is.na(phy_kernel_name))
   kernel_name <- NULL
+  kernel_single_rho <- NA_real_
   unique_kernel_names <- character(0L)
   use_kernel_multi <- FALSE
   phy_is_kernel_multi <- rep(FALSE, length(phy_idx_main))
@@ -2108,6 +2109,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ## detects sparse input and uses it directly as Ainv_phy_rr.
         if (is.null(phylo_vcv)) {
           phylo_vcv <- vcv_inkey
+          if (has_kernel_term && !use_kernel_multi) {
+            kernel_single_rho <- .cross_kernel_rho(vcv_inkey)
+          }
         } else if (!identical(dim(phylo_vcv), dim(vcv_inkey))) {
           cli::cli_warn(c(
             "{.code vcv =} inside a phylo keyword disagrees with the global {.arg phylo_vcv}.",
@@ -2120,6 +2124,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       mesh_inkey <- cs$extra$mesh
       if (!is.null(mesh_inkey) && is.null(mesh)) mesh <- mesh_inkey
     }
+  }
+  if (has_kernel_term &&
+      !use_kernel_multi &&
+      is.na(kernel_single_rho) &&
+      !is.null(phylo_vcv)) {
+    kernel_single_rho <- .cross_kernel_rho(phylo_vcv)
   }
 
   ## ---- cluster2 grouping id (0-indexed for C++) ------------------------
@@ -2232,6 +2242,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         )
       }
       K <- cs_lat$extra$vcv
+      kernel_rho <- .cross_kernel_rho(K)
       if (!is.matrix(K) || !is.numeric(K) || nrow(K) != ncol(K)) {
         cli::cli_abort(
           "{.arg K} for {.fn kernel_latent} tier {.val {nm}} must be a numeric square matrix."
@@ -2290,6 +2301,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         rank = rank_r,
         has_latent = TRUE,
         has_psi = FALSE,
+        rho = kernel_rho,
         stringsAsFactors = FALSE
       )
     }
@@ -4134,7 +4146,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                         if (use_kernel_multi) {
                           kernel_multi_registry
                         } else {
-                          list(name = kernel_name, internal_level = "phy")
+                          list(
+                            name = kernel_name,
+                            internal_level = "phy",
+                            rho = kernel_single_rho
+                          )
                         }
                       } else NULL,
       kernel_diagnostics = kernel_diagnostics,

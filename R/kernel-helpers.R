@@ -25,7 +25,9 @@
 #'   roots and scaling an all-zero or near-zero `W`.
 #'
 #' @return A numeric correlation matrix with the host block first and the
-#'   partner block second.
+#'   partner block second. The matrix carries lightweight metadata for
+#'   downstream extractors, including the fixed `rho` used to build the
+#'   host-partner bridge.
 #'
 #' @examples
 #' A_H <- matrix(c(
@@ -105,7 +107,32 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
     ))
   }
 
+  attr(K, "gllvmTMB_cross_kernel") <- list(
+    rho = rho,
+    host_levels = h_names,
+    partner_levels = p_names,
+    spectral_norm_W = spectral_norm
+  )
   K
+}
+
+.cross_kernel_metadata <- function(K) {
+  meta <- attr(K, "gllvmTMB_cross_kernel", exact = TRUE)
+  if (!is.list(meta)) {
+    return(NULL)
+  }
+  meta
+}
+
+.cross_kernel_rho <- function(K) {
+  meta <- .cross_kernel_metadata(K)
+  if (is.null(meta) ||
+      is.null(meta$rho) ||
+      length(meta$rho) != 1L ||
+      !is.finite(meta$rho)) {
+    return(NA_real_)
+  }
+  as.numeric(meta$rho)
 }
 
 .cross_kernel_as_matrix <- function(x, arg, square = TRUE) {

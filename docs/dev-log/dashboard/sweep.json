@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 07:47 MDT",
+  "updated": "2026-06-18 08:11 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,7 +14,7 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot reached 383510 / 480000 reps at iter 24. Scheduled run 27735802023 completed cancelled after shard success because persist and summary hit the 20-minute job limit. New scheduled run 27752884846 is live with 48 completed-success jobs and shard 31/48 in progress, but power-pilot-results still remains at 5969f6f. Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results; run 27735802023 cancelled without branch movement. Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Local pilot reached 383510 / 480000 reps at iter 24. Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
@@ -23,6 +23,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 08:11 MDT",
+      "who": "Power-pilot scoring",
+      "text": "Completed power-pilot run 27752884846 succeeded at main 0567cd7 and moved power-pilot-results 5969f6f -> 1a2aac6 (1a2aac654e877a34b3e590f0269d10cca05a43e7). The scored remote run-110 store has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. The scoring audit, run against the remote run-110 store plus the local store, blocks promotion: gaussian-d1-n150-sig0p0 coverage 0.390 with one-sided misses, nbinom2-d2-n50-sig0p0 coverage 0.899 with 76% non-PD, and binomial_probit-d1-n50-sig0p2 coverage 0.959 but 34% non-PD and extremely wide intervals. CI-excludes-zero remains diagnostic only for Sigma_unit_diag, not valid Type-I error.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
+      "link_label": "run 27752884846"
+    },
     {
       "when": "2026-06-18 07:47 MDT",
       "who": "GLLVM.jl #101",
@@ -338,8 +345,8 @@
       "workflow": "Power pilot sweep",
       "branch": "main",
       "head": "0567cd7",
-      "status": "in_progress",
-      "conclusion": "",
+      "status": "completed",
+      "conclusion": "success",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846"
     },
     {

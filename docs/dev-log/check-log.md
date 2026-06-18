@@ -20872,3 +20872,83 @@ Deliberately not run:
   `--as-cran`, remote power-pilot scoring, or GLLVM.jl mutation. This slice
   changes article navigation and reader routing only. It does not make #489
   ready, the bridge complete, the release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Score completed power-pilot run 27752884846
+
+Polled the live mission-control lane after the power-pilot results branch moved.
+Run `27752884846` completed successfully and pushed a fresh persisted store, but
+Fisher/Curie scoring still blocks coverage or power promotion. Guard preserved:
+PR green != bridge complete != release ready != scientific coverage passed.
+
+Evidence:
+
+- gllvmTMB #489:
+  GitHub app `_get_pr_info(repository_full_name = "itchyshin/gllvmTMB",
+  pr_number = 489)` -> open draft PR, mergeable, head `03fdda1`, updated
+  `2026-06-18T00:07:11Z`.
+- GLLVM.jl #101:
+  GitHub app `_get_pr_info(repository_full_name = "itchyshin/GLLVM.jl",
+  pr_number = 101)` -> open draft PR, mergeable, head
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`.
+  `PATH="/opt/homebrew/bin:$PATH" gh run list --repo itchyshin/GLLVM.jl --branch codex/julia-per-trait-dispersion --limit 8 --json databaseId,workflowName,status,conclusion,headSha,createdAt,updatedAt,url`
+  -> CI run `27763712855` remains `in_progress`; Documenter run
+  `27763712914` completed `success`. No GLLVM.jl mutation.
+- Release issue #486:
+  GitHub app `_fetch_issue(repository_full_name = "itchyshin/gllvmTMB",
+  issue_number = 486)` -> open release punch-list issue; no release gate closed.
+- Full-check run:
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27752749643 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), failingJobs: [.jobs[] | select(.conclusion != "success") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> `status=completed`, `conclusion=success`, 3/3 jobs success at main
+  `0567cd7`; this is main CI health only.
+- Power-pilot run:
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27752884846 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), activeJobs: [.jobs[] | select(.status != "completed") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> `status=completed`, `conclusion=success`, 51/51 jobs success, updated
+  `2026-06-18T14:07:44Z`.
+  `git ls-remote origin refs/heads/power-pilot-results` / fetch showed
+  `power-pilot-results` moved from `5969f6f280fd084f60b6dcf18ca1c5739d531025`
+  to `1a2aac654e877a34b3e590f0269d10cca05a43e7`.
+  `git log --oneline --max-count=5 origin/power-pilot-results`
+  -> `1a2aac6 power-pilot: accumulate reps (run 110)`,
+  `5969f6f power-pilot: accumulate reps (run 108)`.
+
+Scoring and summaries:
+
+- Archived the moved remote store:
+  `git archive --format=tar --output=/tmp/gllvmtmb-power-27752884846.aVXDcu/power-results.tar origin/power-pilot-results dev/m3-pilot-results`
+  -> success.
+  `tar -xf /tmp/gllvmtmb-power-27752884846.aVXDcu/power-results.tar -C /tmp/gllvmtmb-power-27752884846.aVXDcu`
+  -> success.
+- Ran the scoring audit:
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla dev/m3-pilot-report.R --scoring-audit --results-dir=/tmp/gllvmtmb-power-27752884846.aVXDcu/dev/m3-pilot-results,/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local --audit-out=/tmp/gllvmtmb-power-27752884846.aVXDcu/power-scoring-audit.md --audit-rds=/tmp/gllvmtmb-power-27752884846.aVXDcu/power-scoring-audit.rds`
+  -> wrote both audit files.
+- Scoring audit top-line:
+  `gaussian-d1-n150-sig0p0`: n_sim 7758, coverage 0.390, zero-reject 1.000,
+  median est/truth 1.308, miss-below 61%, diagnosis says the signal-zero cell
+  has positive variance target and CI-excludes-zero is not Type-I error.
+  `nbinom2-d2-n50-sig0p0`: n_sim 7908, coverage 0.899, nonPD 76%, below 94%
+  gate.
+  `binomial_probit-d1-n50-sig0p2`: n_sim 7158, coverage 0.959, nonPD 34%, CI
+  width/truth 5308.443; apparent coverage does not promote the lane.
+- Remote run-110 store summary from `pilot_collect()`:
+  48 cells, 29176 reps, 1/48 cells at cap, pass94 3/24, pass95 2/24, 28 flagged
+  cells, 28 coverage anomalies, signal mean coverage 0.748, null mean coverage
+  0.426.
+- Combined remote+local de-duplicated summary from `pilot_collect()`:
+  48 cells, 374536 reps, 1/48 cells at cap, pass94 3/24, pass95 2/24, 28 flagged
+  cells, 28 coverage anomalies, signal mean coverage 0.753, null mean coverage
+  0.425.
+
+Files updated:
+
+- `docs/dev-log/dashboard/status.json`
+- `docs/dev-log/dashboard/sweep.json`
+- `docs/dev-log/check-log.md`
+
+Deliberately not run:
+
+- No push, no `git add -A`, no GLLVM.jl mutation, no issue mutation, no
+  `Pkg.test()`, no `devtools::document()`, no `devtools::test()`, no R CMD
+  check, no pkgdown build, no release `--as-cran` audit, and no article/nav
+  edit in this evidence refresh. The completed power run is process evidence
+  and persisted-store evidence only; it does not make #489 ready, the bridge
+  complete, the release ready, or scientific coverage passed.

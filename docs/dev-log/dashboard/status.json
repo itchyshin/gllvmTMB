@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 07:47 MDT",
+  "updated": "2026-06-18 08:11 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -36,9 +36,9 @@
     },
     {
       "label": "Power pilot",
-      "value": "in flight",
+      "value": "run 110 scored",
       "status": "guard",
-      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Run 27735802023 completed cancelled with no branch movement. New scheduled run 27752884846 is live: run-level status in_progress, with 48 completed-success jobs and shard 31/48 still running; power-pilot-results remains at 5969f6f. Local iter 24 reached 383510 / 480000 reps."
+      "note": "Run 27722546237 succeeded and pushed 5969f6f; run 27735802023 cancelled without branch movement; Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Fisher/Curie scoring still blocks coverage or power promotion. Local iter 24 remains process evidence only."
     },
     {
       "label": "Next decision",
@@ -167,7 +167,7 @@
       "name": "Simulation and power evidence",
       "owner": "Curie + Fisher + Grace",
       "status": "active",
-      "counts": "1/5",
+      "counts": "2/5",
       "slices": [
         {
           "name": "Local LaunchAgent running with 383510 / 480000 reps and 0/48 cells at cap",
@@ -182,12 +182,14 @@
           "status": "guard"
         },
         {
-          "name": "Fisher/Curie scoring gate for estimand-specific promotion",
-          "status": "queued"
+          "name": "Fisher/Curie scoring gate completed for run-110 snapshot; audit blocks coverage/power promotion",
+          "status": "guard"
         },
         {
-          "name": "Power-pilot run 27752884846 is live process evidence only: 48 completed-success jobs, shard 31/48 in progress, 0 queued",
-          "status": "active"
+          "name": "Power-pilot run 27752884846 completed success, pushed 1a2aac6, and scored as no-promotion evidence",
+          "status": "covered",
+          "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
+          "issue": "run 27752884846"
         }
       ]
     },
@@ -230,7 +232,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, local bridge suites, and main scheduled full-check 27752749643 are green. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at f7be594; Documenter succeeded and CI remains in progress. Full-check 27752749643 completed successfully on windows-latest, ubuntu-latest, and macos-latest at 0567cd7. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; run 27735802023 cancelled with no branch movement; run 27752884846 is live with 48 completed-success jobs and shard 31/48 in progress. Local iter 24 reached 383510 / 480000 reps."
+      "text": "gllvmTMB #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, local bridge suites, and main scheduled full-check 27752749643 are green. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at f7be594; Documenter succeeded and CI remains in progress. Full-check 27752749643 completed successfully on windows-latest, ubuntu-latest, and macos-latest at 0567cd7. Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Fisher/Curie scoring still blocks coverage or power promotion. Local iter 24 reached 383510 / 480000 reps as process evidence."
     },
     {
       "when": "now",
@@ -252,7 +254,7 @@
     {
       "status": "guard",
       "kind": "Curie/Fisher",
-      "item": "Score power-pilot estimands before any coverage/power promotion."
+      "item": "Run-110 scoring audit blocks coverage/power promotion; use persisted-store success only as process evidence."
     },
     {
       "status": "guard",
@@ -337,7 +339,7 @@
       "role": "CI, pkgdown, CRAN, reproducibility",
       "status": "active",
       "task": "Track main pkgdown, #489 checks, power-pilot persistence, and local LaunchAgent health.",
-      "blocked_by": "Power-pilot run 27752884846 is still live with shard 31/48 in progress and power-pilot-results remains at 5969f6f; Fisher/Curie scoring blocks promotion of existing and local pilot evidence",
+      "blocked_by": "Power-pilot run 27752884846 completed success and pushed run 110, but Fisher/Curie scoring blocks coverage/power promotion.",
       "parallel_with": "Shannon and Curie",
       "join_gate": "Completed runs or explicit snapshot"
     },
@@ -381,8 +383,8 @@
       "name": "Fisher",
       "role": "statistical inference reviewer",
       "status": "active",
-      "task": "Separate run-107 persistence proof from coverage, power, and CI-status evidence.",
-      "blocked_by": "Pilot scoring not complete",
+      "task": "Separate run-110 persistence proof from coverage, power, Type-I error, and CI-status evidence.",
+      "blocked_by": "Run-110 scoring audit finds undercoverage, high non-PD cells, and diagnostic-only zero-reject rates.",
       "parallel_with": "Curie and Grace",
       "join_gate": "Estimand-specific scoring gate"
     },
@@ -391,7 +393,7 @@
       "role": "simulation and testing specialist",
       "status": "active",
       "task": "Score accumulated remote and local pilot stores row by row.",
-      "blocked_by": "0/48 pilot cells at cap; run success is not estimand success",
+      "blocked_by": "Run-110 remote store remains 1/48 cells at cap, and scoring audit blocks promotion.",
       "parallel_with": "Fisher and Grace",
       "join_gate": "Pilot store merge/scoring"
     },
@@ -490,7 +492,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies. Scheduled run 27735802023 completed cancelled at 0567cd7: 49 shard/setup jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results remained at 5969f6f. New scheduled run 27752884846 is live at 0567cd7: run-level status in_progress, job rollup 48 completed-success jobs and shard 31/48 in progress; power-pilot-results still remains at 5969f6f. No new persisted-store or scoring evidence exists for run 27752884846.",
+      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; scoring blocked promotion. Scheduled run 27735802023 completed cancelled at 0567cd7 with no branch movement. Completed power-pilot run 27752884846 succeeded at main 0567cd7 and moved power-pilot-results 5969f6f -> 1a2aac6 (1a2aac654e877a34b3e590f0269d10cca05a43e7). The scored remote run-110 store has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. The scoring audit, run against the remote run-110 store plus the local store, blocks promotion: gaussian-d1-n150-sig0p0 coverage 0.390 with one-sided misses, nbinom2-d2-n50-sig0p0 coverage 0.899 with 76% non-PD, and binomial_probit-d1-n50-sig0p2 coverage 0.959 but 34% non-PD and extremely wide intervals. CI-excludes-zero remains diagnostic only for Sigma_unit_diag, not valid Type-I error.",
       "next_gate": "Fisher/Curie scoring blocks promotion; workflow success and persistence are process evidence only."
     },
     {
@@ -568,12 +570,12 @@
     {
       "status": "blocked",
       "kind": "Power evidence",
-      "item": "0/48 remote pilot cells at cap after run 107; persistence success is process evidence, not coverage proof."
+      "item": "Run-110 remote store still has only 1/48 cells at cap; persistence success is process evidence, not coverage proof."
     },
     {
       "status": "guard",
       "kind": "Power pilot follow-up",
-      "item": "Run 108 persisted fresh results at 5969f6f, but scoring shows 1/48 cells at cap, pass95 0/24, 28 flagged cells, and 27 coverage anomalies; no coverage/power promotion."
+      "item": "Run 108 persisted fresh results at 5969f6f, but scoring showed pass95 0/24, 28 flagged cells, and 27 coverage anomalies; no coverage/power promotion."
     },
     {
       "status": "guard",
@@ -582,11 +584,23 @@
     },
     {
       "status": "guard",
+      "kind": "Power pilot run 110",
+      "item": "Run 27752884846 completed success and pushed 1a2aac6, but scoring audit shows undercoverage/high non-PD/diagnostic-only zero-reject issues; no coverage or power promotion."
+    },
+    {
+      "status": "guard",
       "kind": "Issues",
       "item": "No issue is closed from dashboard text or chat memory."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 08:11 MDT",
+      "who": "Power-pilot scoring",
+      "text": "Completed power-pilot run 27752884846 succeeded at main 0567cd7 and moved power-pilot-results 5969f6f -> 1a2aac6 (1a2aac654e877a34b3e590f0269d10cca05a43e7). The scored remote run-110 store has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. The scoring audit, run against the remote run-110 store plus the local store, blocks promotion: gaussian-d1-n150-sig0p0 coverage 0.390 with one-sided misses, nbinom2-d2-n50-sig0p0 coverage 0.899 with 76% non-PD, and binomial_probit-d1-n50-sig0p2 coverage 0.959 but 34% non-PD and extremely wide intervals. CI-excludes-zero remains diagnostic only for Sigma_unit_diag, not valid Type-I error.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
+      "link_label": "run 27752884846"
+    },
     {
       "when": "2026-06-18 07:47 MDT",
       "who": "GLLVM.jl #101",

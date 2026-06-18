@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-17 18:20 MDT",
+  "updated": "2026-06-17 18:32 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,15 +14,29 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27717007830 completed successfully and pushed 2709930 to power-pilot-results. Follow-up run 27722546237 is still in progress with 46 completed-success jobs and 3 running shards; Fisher/Curie scoring is still required before coverage or power promotion."
+      "text": "Run 27717007830 completed successfully and pushed 2709930 to power-pilot-results. Follow-up run 27722546237 is still in progress with 46 completed-success jobs and 3 running shards. Local pilot is at 355010 / 480000 reps; Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
       "who": "GLLVM.jl",
-      "text": "#95 is merged and main CI is green; #101 is draft/clean on main and local merge-ref bridge slice passed 641/641, but PR checks are still stale after retarget; #94 remains dirty salvage."
+      "text": "#95 is merged and main CI is green; #101 is draft/clean on main, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed, but PR checks are still stale after retarget; #94 remains dirty salvage."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 18:29 MDT",
+      "who": "R bridge local tests",
+      "text": "No-Julia bridge suite passed with expected live skips; live JuliaCall bridge suite passed locally against GLLVM.jl f7be594 after adding $HOME/.juliaup/bin to PATH. This is local partial evidence, not fresh #101 PR CI.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
+    },
+    {
+      "when": "2026-06-17 18:29 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent remains running at 355010 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
     {
       "when": "2026-06-17 18:20 MDT",
       "who": "GitHub Actions",

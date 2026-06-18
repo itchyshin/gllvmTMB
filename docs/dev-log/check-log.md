@@ -19083,3 +19083,80 @@ Deliberately not run:
   GLLVM.jl push, live JuliaCall bridge refresh, power-pilot scoring, or
   release-gate audit. The next gate remains the #101 PR CI trigger decision:
   PR green != bridge complete != release ready != scientific coverage passed.
+
+## 2026-06-17 -- Phase B/C/D non-mutating bridge and power evidence
+
+The maintainer said they are away until 05:00 tomorrow and asked for a stop
+report at that time. Created a Codex heartbeat named `gllvm-stop-report`, then
+updated it to wake hourly from 2026-06-17 19:00 through 2026-06-18 05:00
+America/Edmonton; the 05:00 wake is the stop-and-report checkpoint. Because
+this is not explicit approval to mutate GLLVM.jl, chose the non-mutating #101
+path for now: no empty commit push, no close/reopen, and no claim that #101 has
+fresh PR CI.
+
+Evidence recorded:
+
+- #101 remains draft/open, clean, base `main`, head `f7be594`, with stale
+  displayed PR checks only. The previous local merge-ref slice and the new
+  live JuliaCall bridge suite are local partial evidence, not PR CI.
+- No-Julia R bridge suite passed with expected live rows skipped.
+- First live JuliaCall bridge attempt failed because this shell did not have
+  `julia` on `PATH`; `JuliaCall::julia_setup()` reported `Julia is not found`.
+  Rerunning with `$HOME/.juliaup/bin` prepended to `PATH` activated
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` and the live
+  JuliaCall bridge suite passed locally against GLLVM.jl `f7be594`.
+- Local power-pilot LaunchAgent remains running at PID 1386 with
+  `LOCAL_CORES=10`, `LOCAL_N_SIM_STEP=150`, and `LOCAL_N_SIM_CAP=10000`.
+  Latest log summary at the readout showed 355,010 / 480,000 reps, 0/48 cells
+  at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95
+  2/24, and null mean coverage-under-null 0.425.
+- Local scoring audit
+  `/tmp/gllvmtmb-local-pilot-scoring-audit-2026-06-17-1828.md` still blocks
+  coverage/power promotion: `gaussian-d1-n150-sig0p0` coverage 0.389 with
+  one-sided misses; `nbinom2-d2-n50-sig0p0` coverage 0.899 with high non-PD;
+  `binomial_probit-d1-n50-sig0p2` coverage 0.959 with high non-PD. The audit
+  also reiterates that `zero-reject` is diagnostic only for `Sigma_unit_diag`
+  and not a valid Type-I error calculation when `signal = 0` but the variance
+  target is positive.
+- Scheduled GitHub power run `27722546237` still has 46 completed-success jobs,
+  0 failed jobs, and 3 in-progress shards. This remains process evidence only.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Current GitHub state:
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json number,isDraft,state,mergeStateStatus,headRefOid,statusCheckRollup,updatedAt,url`
+  -> #489 draft/open, clean, head `03fdda1`, R-CMD-check and recovery success.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,isDraft,state,baseRefName,headRefName,headRefOid,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> #101 draft/open, clean, base `main`, head `f7be594`, stale displayed
+  2026-06-16 Documenter preview checks only.
+  `/opt/homebrew/bin/gh run view 27722546237 --repo itchyshin/gllvmTMB --json status,conclusion,headSha,updatedAt,jobs,url --jq ...`
+  -> `status: in_progress`, 46 completed-success jobs, 0 failures,
+  3 in-progress shards.
+- Power-pilot readouts:
+  `launchctl print gui/$(id -u)/com.gllvmtmb.power-pilot-local | head -n 80`
+  -> LaunchAgent state `running`, PID 1386.
+  `tail -n 120 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> latest local summary 355,010 / 480,000 reps, 0/48 cells at cap, 0 errored
+  cells.
+  `/usr/local/bin/Rscript --vanilla dev/m3-pilot-report.R --scoring-audit --results-dir=/Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local --audit-out=/tmp/gllvmtmb-local-pilot-scoring-audit-2026-06-17-1828.md --audit-rds=/tmp/gllvmtmb-local-pilot-scoring-audit-2026-06-17-1828.rds`
+  -> wrote the scoring audit files listed above.
+- R bridge evidence:
+  `GLLVM_JL_PATH='' /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> passed; live rows skipped because no GLLVM.jl path was configured.
+  `GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> failed because `julia` was not on `PATH`.
+  `PATH="$HOME/.juliaup/bin:$PATH" GLLVM_JL_PATH='/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration' /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> passed; Julia exited cleanly.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, and no public docs changes. The non-mutating bridge path gives useful
+  local evidence only; it does not make #101 green, #489 ready, the bridge
+  complete, the release ready, or scientific coverage passed.

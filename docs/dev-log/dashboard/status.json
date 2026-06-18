@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 18:20 MDT",
+  "updated": "2026-06-17 18:32 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -44,7 +44,7 @@
       "label": "Next decision",
       "value": "#101 gate",
       "status": "guard",
-      "note": "GLLVM.jl #95 has landed and main CI is green; #101 merge-ref bridge slice passed locally, but fresh PR CI/live JuliaCall evidence are still required before #489 widens."
+      "note": "GLLVM.jl #95 has landed and main CI is green; #101 merge-ref and local live JuliaCall bridge suites passed, but fresh PR CI is still required before #489 widens."
     }
   ],
   "repos": [
@@ -62,7 +62,7 @@
       "branch": "codex/julia-per-trait-dispersion",
       "head": "f7be594",
       "state": "guard",
-      "note": "#95 merged to main; main CI 27724193515 is green at 70a5c83. #101 is draft/clean on main; local merge-ref 2cd8563 focused bridge slice passed 641/641, but PR CI is still stale.",
+      "note": "#95 merged to main; main CI 27724193515 is green at 70a5c83. #101 is draft/clean on main; local merge-ref 2cd8563 and live R bridge suites passed locally, but PR CI is still stale.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
       "link_label": "PR #101"
     },
@@ -122,8 +122,8 @@
           "status": "partial"
         },
         {
-          "name": "Live JuliaCall bridge evidence must be refreshed before ready-for-review",
-          "status": "queued"
+          "name": "Local no-Julia and live JuliaCall bridge suites passed against GLLVM.jl f7be594",
+          "status": "partial"
         },
         {
           "name": "No issue closure from chat memory",
@@ -157,7 +157,7 @@
           "status": "guard"
         },
         {
-          "name": "Pin paired Julia SHA after #101 has fresh PR checks and live JuliaCall evidence",
+          "name": "Pin paired Julia SHA after #101 has fresh PR checks; local live JuliaCall passed",
           "status": "queued"
         }
       ]
@@ -170,7 +170,7 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 347510 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 355010 / 480000 reps and 0/48 cells at cap",
           "status": "active"
         },
         {
@@ -225,12 +225,12 @@
     {
       "when": "now",
       "who": "Ada",
-      "text": "#489 is clean and green at 03fdda1; keep it draft/partial until #101 PR CI/live evidence and claim gates close."
+      "text": "#489 is clean and green at 03fdda1; local R bridge suites now pass, but keep it draft/partial until #101 PR CI and claim gates close."
     },
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and power run 107 persistence are green; follow-up power run 27722546237 is still running."
+      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; follow-up power run 27722546237 is still running."
     },
     {
       "when": "now",
@@ -247,7 +247,7 @@
     {
       "status": "guard",
       "kind": "GLLVM.jl",
-      "item": "#95 has landed; #101 has local merge-ref bridge evidence but still needs fresh PR checks/live Julia evidence before R bridge claim widening."
+      "item": "#95 has landed; #101 has local merge-ref and live JuliaCall bridge evidence but still needs fresh PR checks before R bridge claim widening."
     },
     {
       "status": "guard",
@@ -280,7 +280,7 @@
       "owners": "Hopper + Karpinski + Gauss",
       "status": "active",
       "parallel_with": "simulation/power and docs-read path",
-      "join_gate": "Fresh #101 PR checks plus live JuliaCall evidence."
+      "join_gate": "Fresh #101 PR checks; local live JuliaCall evidence is partial until CI agrees."
     },
     {
       "lane": "Simulation and power scoring",
@@ -345,7 +345,7 @@
       "name": "Hopper",
       "role": "R-Julia bridge",
       "status": "active",
-      "task": "Use the passed local #101 merge-ref slice as partial evidence, then refresh live JuliaCall bridge gates after #101 has current PR CI.",
+      "task": "Local no-Julia and live JuliaCall bridge suites passed against GLLVM.jl f7be594; keep evidence partial until #101 has current PR CI.",
       "blocked_by": "#101 retarget did not start fresh PR checks",
       "parallel_with": "Karpinski and Gauss",
       "join_gate": "Paired Julia SHA"
@@ -458,10 +458,10 @@
       "engine": "active",
       "bridge": "partial",
       "inference": "partial",
-      "evidence": "PR #489 is clean and green at 03fdda1: coevolution recovery 27727834498 and R-CMD-check 27727834488 both succeeded. GLLVM.jl #101 merge-ref 2cd8563 focused bridge slice passed 641/641 locally with Julia 1.10.",
+      "evidence": "PR #489 is clean and green at 03fdda1: coevolution recovery 27727834498 and R-CMD-check 27727834488 both succeeded. GLLVM.jl #101 merge-ref 2cd8563 focused bridge slice passed 641/641 locally with Julia 1.10. gllvmTMB no-Julia bridge suite passed; live JuliaCall bridge suite passed locally against GLLVM.jl f7be594 with juliaup on PATH.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489",
-      "next_gate": "Fresh GLLVM.jl #101 PR CI plus live JuliaCall refresh before widening claims."
+      "next_gate": "Fresh GLLVM.jl #101 PR CI before widening claims."
     },
     {
       "id": "JUL-01A",
@@ -471,7 +471,7 @@
       "bridge": "partial",
       "inference": "blocked",
       "evidence": "Point rows allowed; correlation intervals and richer extractors remain gated.",
-      "next_gate": "Live JuliaCall parity before interval wording."
+      "next_gate": "Local live JuliaCall suite passed; interval wording remains blocked until #101 PR CI and interval semantics are covered."
     },
     {
       "id": "CI-08",
@@ -480,7 +480,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent latest logged summary: 347510 / 480000 reps, 0/48 cells at cap.",
+      "evidence": "LaunchAgent latest logged summary: 355010 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -573,7 +573,7 @@
     {
       "status": "guard",
       "kind": "Power pilot follow-up",
-      "item": "Run 107 persisted fresh results; in-progress run 27722546237 had 46 completed-success jobs and 3 running shards at 18:20 MDT, but is not a new claim until it completes and is scored."
+      "item": "Run 107 persisted fresh results; in-progress run 27722546237 had 46 completed-success jobs and 3 running shards at 18:29 MDT, but is not a new claim until it completes and is scored."
     },
     {
       "status": "guard",
@@ -582,6 +582,20 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 18:29 MDT",
+      "who": "R bridge local tests",
+      "text": "No-Julia bridge suite passed with expected live rows skipped; live JuliaCall bridge suite then passed locally against GLLVM.jl f7be594 after adding $HOME/.juliaup/bin to PATH. This is local partial evidence, not fresh #101 PR CI.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
+    },
+    {
+      "when": "2026-06-17 18:29 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent remains running at 355010 / 480000 reps, 0/48 cells at cap, 0 errored cells. Scoring audit shows gaussian-d1-n150-sig0p0 coverage 0.389, nbinom2-d2-n50-sig0p0 coverage 0.899 with high non-PD, and binomial_probit-d1-n50-sig0p2 coverage 0.959 with high non-PD; no coverage or power promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
     {
       "when": "2026-06-17 18:20 MDT",
       "who": "GitHub CLI",
@@ -660,7 +674,7 @@
     {
       "when": "2026-06-17 15:20 MDT",
       "who": "LaunchAgent",
-      "text": "Local loop restarted with 10 cores; latest logged summary shows 347510 / 480000 reps, 0/48 cells at cap, signal mean coverage 0.753, pass94 3/24, pass95 2/24."
+      "text": "Local loop restarted with 10 cores; earlier logged summary showed 347510 / 480000 reps, 0/48 cells at cap, signal mean coverage 0.753, pass94 3/24, pass95 2/24."
     }
   ]
 }

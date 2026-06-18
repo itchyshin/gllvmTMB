@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 08:11 MDT",
+  "updated": "2026-06-18 08:26 MDT",
   "active_work": [
     {
       "when": "live",
@@ -20,9 +20,21 @@
       "when": "live",
       "who": "GLLVM.jl",
       "text": "#95 is merged and main CI is green; #101 is draft/open at f7be594, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed. Maintainer-approved close/reopen triggered fresh PR CI run 27763712855 and Documenter run 27763712914; Documenter succeeded and CI remains in progress. #94 remains dirty salvage."
+    },
+    {
+      "when": "live",
+      "who": "articles",
+      "text": "Article council slice 3 completed: profile-likelihood-ci and troubleshooting-profile moved out of the internal bucket into the public Technical reference group, profile-likelihood-ci now has Tier 2 YAML and explicit CI-01..CI-10/EXT-13 scope wording, pkgdown::check_pkgdown() passed, and pkgdown::build_articles(lazy = FALSE) rendered both pages. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 08:26 MDT",
+      "who": "Article council",
+      "text": "Article council slice 3 completed: profile-likelihood-ci and troubleshooting-profile moved out of the internal bucket into the public Technical reference group, profile-likelihood-ci now has Tier 2 YAML and explicit CI-01..CI-10/EXT-13 scope wording, pkgdown::check_pkgdown() passed, and pkgdown::build_articles(lazy = FALSE) rendered both pages. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
+      "link_label": "article council ledger"
+    },
     {
       "when": "2026-06-18 08:11 MDT",
       "who": "Power-pilot scoring",

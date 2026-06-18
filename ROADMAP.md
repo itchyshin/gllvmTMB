@@ -33,8 +33,8 @@ with the live package.
 | Concepts | `articles/response-families` | Supported families and validation status. | Visible; technical reference closeout passed. |
 | Methods | `articles/fit-diagnostics` | First post-fit triage before interpreting fitted models. | Visible after 2026-06-09 diagnostics-article slice; diagnostic-only claims tied to DIA-08 / DIA-10 / DIA-11 / DIA-12 / DIA-13. |
 | Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit passed. |
-| Methods | `articles/profile-likelihood-ci` | Profile / bootstrap / Wald interval mechanics and caveats. | Visible; must continue to distinguish API coverage from calibrated coverage. |
-| Methods | `articles/troubleshooting-profile` | Profile-interval failure modes and remedies. | Visible companion method page. |
+| Technical reference | `articles/profile-likelihood-ci` | Profile / bootstrap / Wald interval mechanics and caveats. | Visible Tier 2 reference after the 2026-06-18 methods-reference placement slice; must continue to distinguish API coverage from calibrated coverage. |
+| Technical reference | `articles/troubleshooting-profile` | Profile-interval failure modes and remedies. | Visible Tier 2 companion reference after the 2026-06-18 methods-reference placement slice. |
 | Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible; final prose audit passed. |
 | Methods | `articles/missing-data` | Missing response and scoped missing-predictor workflows. | Visible; engine naming and predictor scope stay bounded by MIS rows. |
 

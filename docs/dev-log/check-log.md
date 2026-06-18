@@ -20952,3 +20952,105 @@ Deliberately not run:
   edit in this evidence refresh. The completed power run is process evidence
   and persisted-store evidence only; it does not make #489 ready, the bridge
   complete, the release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Public Tier 2 placement for profile/troubleshooting methods pages
+
+Completed article-council step 3. `profile-likelihood-ci` and
+`troubleshooting-profile` are now visible as Tier 2 Technical reference pages,
+not internal drafts. This is article routing and scope cleanup only; it does not
+move CI-08 / CI-10, bridge, release, or power evidence.
+
+Evidence and edits:
+
+- `_pkgdown.yml` now exposes a `Technical reference` article-menu group with
+  `articles/profile-likelihood-ci.html` and
+  `articles/troubleshooting-profile.html`.
+- `_pkgdown.yml` now lists both pages under the article-index `Technical
+  reference` section and removes them from `Internal drafts and technical
+  notes`.
+- `vignettes/articles/profile-likelihood-ci.Rmd` now has
+  `tier: 2 # technical reference for profile, Wald, and bootstrap interval APIs`
+  and an explicit scope boundary: IN = CI-01..CI-07 plus EXT-13 Gaussian,
+  PARTIAL = CI-08 / CI-10, PLANNED = no new interval method, row movement, or
+  broad release/scientific coverage claim.
+- `vignettes/articles/troubleshooting-profile.Rmd` already had Tier 2 YAML and
+  scope wording; it moved without content rewrite.
+- `ROADMAP.md`, `docs/dev-log/audits/2026-06-18-article-council-ledger.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json` record the decision.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-methods-tier2-placement.md`.
+
+Checks:
+
+- Skill reads:
+  `sed -n '1,260p' .agents/skills/article-tier-audit/SKILL.md`
+  -> article-tier instructions read before changing article placement.
+  `sed -n '1,260p' .agents/skills/rose-pre-publish-audit/SKILL.md`
+  -> Rose pre-publish gate read before touching `_pkgdown.yml` / articles.
+  `sed -n '1,260p' .agents/skills/after-task-audit/SKILL.md`
+  and `sed -n '261,620p' .agents/skills/after-task-audit/SKILL.md`
+  -> after-task checklist read before closeout.
+- Live evidence no-op poll before article work:
+  GitHub app `_get_pr_info(repository_full_name = "itchyshin/gllvmTMB",
+  pr_number = 489)` -> #489 open draft at `03fdda1`.
+  GitHub app `_get_pr_info(repository_full_name = "itchyshin/GLLVM.jl",
+  pr_number = 101)` -> #101 open draft at `f7be594`.
+  GitHub app `_fetch_issue(repository_full_name = "itchyshin/gllvmTMB",
+  issue_number = 486)` -> release issue #486 open.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27752749643 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), failingJobs: [.jobs[] | select(.conclusion != "success") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> full-check run still completed `success`.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27752884846 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), activeJobs: [.jobs[] | select(.status != "completed") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> power run still completed `success`.
+  `git ls-remote origin refs/heads/power-pilot-results`
+  -> still `1a2aac654e877a34b3e590f0269d10cca05a43e7`.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27763712855 --repo itchyshin/GLLVM.jl --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), failingOrActiveJobs: [.jobs[] | select(.status != "completed" or .conclusion != "success") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> #101 CI run remains `in_progress` with four active jobs.
+- Pre-edit lane check:
+  `PATH="/opt/homebrew/bin:$PATH" gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 is open.
+  `git log --all --oneline --since="6 hours ago" -- _pkgdown.yml vignettes/articles/profile-likelihood-ci.Rmd vignettes/articles/troubleshooting-profile.Rmd docs/dev-log/audits/2026-06-18-article-council-ledger.md docs/dev-log/check-log.md docs/dev-log/after-task ROADMAP.md docs/design`
+  -> recent overlapping edits are the current mission-control/article-council
+  lane.
+- Routing / tier audit:
+  `python3 - <<'PY'
+import yaml, pathlib
+cfg=yaml.safe_load(pathlib.Path('_pkgdown.yml').read_text())
+sections=[]
+for sec in cfg.get('articles',[]):
+    title=sec.get('title')
+    contents=sec.get('contents',[])
+    for item in contents:
+        if item in ('articles/profile-likelihood-ci','articles/troubleshooting-profile'):
+            sections.append((item,title))
+print(sections)
+PY`
+  -> both pages appear exactly once under `Technical reference`.
+  `rg -n "articles/profile-likelihood-ci\\.html|articles/troubleshooting-profile\\.html|profile-likelihood-ci\\.html|troubleshooting-profile\\.html|Profile-likelihood CIs|Troubleshooting profile CIs|Technical reference" _pkgdown.yml vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd README.md ROADMAP.md docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  -> public nav links present; remaining article links are direct references.
+- Stale wording / claim scan:
+  `rg -n "publication-grade|release-ready|bridge complete|scientific coverage passed|coverage passed|fast GLLVM|AI-REML|REML|full parity|complete bridge|profile-likelihood default|genuine bootstrap|meta_known_V|gllvmTMB_wide|trio|\\\\bf S|\\bS_B\\b|\\bS_W\\b" _pkgdown.yml ROADMAP.md vignettes/articles/profile-likelihood-ci.Rmd vignettes/articles/troubleshooting-profile.Rmd docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  -> expected guarded `publication-grade` and guard-text hits in ROADMAP /
+  ledger only; the profile article overclaim was removed.
+- Pkgdown:
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> completed successfully; rendered both touched articles and the full
+  article set.
+  `rg -n "Technical reference|Profile-likelihood CIs|Troubleshooting profile CIs|profile-likelihood-ci\\.html|troubleshooting-profile\\.html" pkgdown-site/articles/index.html pkgdown-site/articles/profile-likelihood-ci.html pkgdown-site/articles/troubleshooting-profile.html pkgdown-site/index.html`
+  -> rendered dropdown and article index show the Technical reference links.
+  `rg -n "Internal drafts and technical notes|profile-likelihood-ci|troubleshooting-profile" pkgdown-site/articles/index.html`
+  -> the two pages appear under Technical reference and not under Internal
+  drafts.
+- Build cleanup:
+  Removed generated untracked render artefacts:
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`.
+
+Deliberately not run:
+
+- No `devtools::document()`, `devtools::test()`, R CMD check, release
+  `--as-cran`, GLLVM.jl mutation, issue mutation, or push. This slice changes
+  article placement and bounded wording only. It does not make #489 ready, the
+  bridge complete, the release ready, or scientific coverage passed.

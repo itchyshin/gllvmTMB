@@ -46,6 +46,11 @@ navbar:
         href: articles/pitfalls.html
       - text: Handling missing data
         href: articles/missing-data.html
+      - text: Technical reference
+      - text: Profile-likelihood CIs
+        href: articles/profile-likelihood-ci.html
+      - text: Troubleshooting profile CIs
+        href: articles/troubleshooting-profile.html
     roadmap:
       text: Roadmap
       href: articles/roadmap.html
@@ -70,6 +75,11 @@ articles:
     - articles/pitfalls
     - articles/missing-data
 
+  - title: Technical reference
+    contents:
+    - articles/profile-likelihood-ci
+    - articles/troubleshooting-profile
+
   - title: Internal drafts and technical notes
     desc: Buildable pages kept out of the public dropdown until their evidence and reader path are ready. These are direct-link references for maintainers, not first-stop tutorials.
     contents:
@@ -77,8 +87,6 @@ articles:
     - articles/choose-your-model
     - articles/animal-model
     - articles/phylogenetic-gllvm
-    - articles/profile-likelihood-ci
-    - articles/troubleshooting-profile
     - articles/random-regression-reaction-norms
     - articles/random-slopes-nongaussian
     - articles/cross-lineage-coevolution

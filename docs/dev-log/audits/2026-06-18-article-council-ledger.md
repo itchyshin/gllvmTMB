@@ -73,8 +73,8 @@ For each article, run this workflow before changing navbar status:
 | `convergence-start-values` | Articles / Methods | Tier 1 methods/troubleshooting | Keep public | DIA-01..DIA-10, CI-02/03, EXT-13/18 | Re-audit if `pdHess`, profile, bootstrap, or starts change | Fisher, Grace, Rose, Pat | No content move now | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
 | `pitfalls` | Articles / Methods | Tier 1 applied safety article | Keep public | FG, EXT, LAM, MET, MIS rows used by examples | Must not recommend hidden immature pages | Ada, Pat, Boole, Rose, Grace | Audit outgoing links after hidden/public reshuffle | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
 | `missing-data` | Articles / Methods | Tier 1 scoped methods article | Keep public only within MIS scope | MIS-01..MIS-31 as covered/partial, MIS-32 blocked | Must not imply multiple `mi()`, MI pooling, or broad missingness engines | Fisher, Rose, Grace, Pat, Boole | Keep chunk policy and scope boundary; re-audit if MIS rows move | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
-| `profile-likelihood-ci` | Internal section but methods page intent | Tier 2 methods reference | Confirm public placement and scope | CI-01..CI-10, EXT-13 | Keep API mechanics separate from calibrated coverage | Fisher, Gauss, Noether, Grace, Rose | Decide whether to move to public Methods with `troubleshooting-profile` in one navbar slice | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
-| `troubleshooting-profile` | Internal section but Tier 2 YAML | Tier 2 troubleshooting reference | Confirm public placement and scope | CI rows, EXT-13 | Must remain troubleshooting, not guaranteed profile success | Fisher, Grace, Rose | Decide public Methods placement with `profile-likelihood-ci` | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
+| `profile-likelihood-ci` | Articles / Technical reference | Tier 2 methods reference | Keep public as technical reference | CI-01..CI-10, EXT-13 | Keep API mechanics separate from calibrated coverage; no broad release/scientific coverage claim | Fisher, Gauss, Noether, Grace, Rose | 2026-06-18 slice moved it out of the internal bucket, added Tier 2 YAML, and tightened scope wording | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
+| `troubleshooting-profile` | Articles / Technical reference | Tier 2 troubleshooting reference | Keep public as technical reference | CI-01..CI-10, EXT-13, DIA-01/DIA-03/DIA-05 | Must remain troubleshooting, not guaranteed profile success | Fisher, Grace, Rose | 2026-06-18 slice moved it out of the internal bucket with `profile-likelihood-ci`; no content rewrite | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
 | `roadmap` | Top nav and internal section | Contributor status page | Keep top-nav only | Not applicable | Should not appear as a recommended user article | Ada, Grace, Rose | Keep as top-nav status; avoid article-dropdown routing except internal build listing | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
 
 ## Hidden / Internal Estate
@@ -104,7 +104,9 @@ For each article, run this workflow before changing navbar status:
 1. Stabilise the current public set and remove hidden-page routing.
 2. Resolve the `lambda-constraint` lane because it affects binary/JSDM teaching.
 3. Decide `profile-likelihood-ci` and `troubleshooting-profile` public Tier 2
-   placement.
+   placement. **Done 2026-06-18:** both are visible as Technical reference
+   pages, with `profile-likelihood-ci` carrying explicit Tier 2 and scope
+   wording.
 4. Decide whether `data-shape-flowchart`, `stacked-trait-gllvm`, and
    `gllvm-vocabulary` merge into Get Started or return as compact guides.
 5. Triage biological worked examples: `behavioural-syndromes`,

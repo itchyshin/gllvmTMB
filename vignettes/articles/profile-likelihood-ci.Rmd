@@ -1,5 +1,6 @@
 ---
 title: "Profile-likelihood confidence intervals"
+tier: 2 # technical reference for profile, Wald, and bootstrap interval APIs
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -30,6 +31,15 @@ knitr::opts_chunk$set(
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md)).
 > Extension to non-Gaussian and mixed-family fits is **M3**
 > milestone work.
+
+> **Scope boundary.** This page is a Tier 2 technical reference for
+> interval APIs on already-fitted models. IN: Wald, profile, and
+> bootstrap CI routes with covered Gaussian evidence are represented
+> by CI-01..CI-07 and EXT-13 (Gaussian) in the validation-debt
+> register. PARTIAL: empirical coverage and mixed-family interval
+> calibration remain CI-08 and CI-10 work. PLANNED: this page does
+> not add a new interval method, move validation rows, or claim broad
+> release/scientific coverage.
 
 `gllvmTMB` uses **profile-likelihood confidence intervals** as the
 default for the ratio-quantity extractors (`extract_repeatability()`,
@@ -218,17 +228,18 @@ rep_b <- extract_repeatability(fit, level = 0.95, method = "bootstrap",
                                nsim = 30, seed = 1)
 rep_p   # method column reads "wald" when profile path falls back
 rep_w   # explicit Wald (identical to rep_p above on full-Sigma fits)
-rep_b   # genuine bootstrap distribution
+rep_b   # empirical bootstrap distribution
 ```
 
 For this fit, `rep_p` and `rep_w` are typically **identical** because
 the profile path falls back to Wald (see callout). `rep_b` shows the
-genuine sampling distribution and is what you would cite for
-publication-grade CIs today. The Wald CI is symmetric on the natural
-scale (which is why it can occasionally violate $R \in [0, 1]$ near
-the boundary); a proper profile CI would be symmetric on the
-contrast scale (keeping $R$ inside the natural support). Use
-`bootstrap` until the contrast-scale profile lands.
+empirical bootstrap distribution and is the more defensible interval
+when the profile route reports a fallback. The Wald CI is symmetric
+on the natural scale (which is why it can occasionally violate
+$R \in [0, 1]$ near the boundary); a proper profile CI would be
+symmetric on the contrast scale (keeping $R$ inside the natural
+support). Use `bootstrap` when you need an empirical interval until
+the contrast-scale profile lands.
 
 ### Cross-trait correlations: `extract_correlations()`
 

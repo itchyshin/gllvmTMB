@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 11:58 MDT",
+  "updated": "2026-06-18 12:09 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -50,7 +50,7 @@
       "label": "Paper 2 kernels",
       "value": "COE-04 partial",
       "status": "guard",
-      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, conservative moderate-edge recovery, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke, and high-overlap warning language. Broader moderate-overlap calibration, high-overlap recovery/failure calibration, calibrated block-null thresholds, rho, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
+      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, conservative moderate-edge recovery, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke, and high-overlap fit/extract_Gamma warning language. Broader moderate-overlap calibration, high-overlap recovery/failure calibration beyond warning language, calibrated block-null thresholds, rho, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
     },
     {
       "label": "Next decision",
@@ -581,7 +581,7 @@
       "engine": "covered",
       "bridge": "planned",
       "inference": "partial",
-      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. COE-04 near-orthogonal heavy recovery, conservative moderate-edge recovery, two-sided selective-absence, block-null smoke, and high-overlap warning fixtures now pass, but this remains partial and does not prove explicit Psi support, broad moderate-overlap calibration, high-overlap recovery/failure calibration, calibrated block-null thresholds, rho profiling/estimation, or intervals.",
+      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. COE-04 near-orthogonal heavy recovery, conservative moderate-edge recovery, two-sided selective-absence, block-null smoke, and high-overlap fit/extract_Gamma warning fixtures now pass, but this remains partial and does not prove explicit Psi support, broad moderate-overlap calibration, high-overlap recovery/failure calibration, calibrated block-null thresholds, rho profiling/estimation, or intervals.",
       "next_gate": "Broader COE-04 recovery/separation grid before scientific coverage or public Paper 2 promotion."
     },
     {
@@ -591,7 +591,7 @@
       "engine": "covered",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs, and high-overlap fitted tier pairs warn that component-specific Gamma_shape separation is weak evidence while still fitting. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, and component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component. A conservative moderate-edge heavy gate blends the non association pattern 30% toward the phy pattern, lands just above the near-orthogonal threshold, and recovers both component Gamma_shape matrices with cross-component matches below 0.25. Two-sided selective-absence gates collapse whichever component has true zero loadings below 1e-3 while recovering the present component. A block-null smoke gate sets both loading blocks to zero, collapses both extracted Gamma_shape norms below 1e-3, and keeps the full model within 3 log-likelihood units of an intercept-only fit. Focused tests pass 40 non-heavy / 92 heavy; aggregate kernel|coevolution tests pass 126 non-heavy / 201 heavy. Broader moderate-overlap calibration, high-overlap recovery/failure calibration beyond the warning, calibrated block-null thresholds, and interval/rho calibration remain blocked.",
+      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs; high-overlap fitted tier pairs warn that component-specific Gamma_shape separation is weak evidence while still fitting; and extract_Gamma(level = ...) repeats that warning when the requested component participates in a high-overlap pair while still returning the point block. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, and component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component. A conservative moderate-edge heavy gate blends the non association pattern 30% toward the phy pattern, lands just above the near-orthogonal threshold, and recovers both component Gamma_shape matrices with cross-component matches below 0.25. Two-sided selective-absence gates collapse whichever component has true zero loadings below 1e-3 while recovering the present component. A block-null smoke gate sets both loading blocks to zero, collapses both extracted Gamma_shape norms below 1e-3, and keeps the full model within 3 log-likelihood units of an intercept-only fit. Focused tests pass 47 non-heavy / 99 heavy; aggregate kernel|coevolution tests pass 133 non-heavy / 208 heavy. Broader moderate-overlap calibration, high-overlap recovery/failure calibration beyond the fit/extraction warning, calibrated block-null thresholds, and interval/rho calibration remain blocked.",
       "next_gate": "Extend the Paper 2 recovery grid to broader moderate-overlap calibration, calibrated high-overlap failure/recovery behavior, calibrated block-null thresholds, and rho/interval calibration before any full scientific-coverage language moves."
     },
     {
@@ -658,6 +658,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 12:09 MDT",
+      "who": "Paper 2 COE-04",
+      "text": "Added extractor-level high-overlap guard: extract_Gamma(level = ...) now warns when the requested fixed kernel component participates in a high-overlap pair, while still returning the point Gamma_shape block for inspection. Moderate two-kernel extraction remains quiet. Checks: devtools::test(filter = \"coevolution-two-kernel\") -> PASS 47 with 5 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"coevolution-two-kernel\") -> PASS 99; devtools::test(filter = \"kernel|coevolution\") -> PASS 133 with 8 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 208. This closes warning/claim-boundary evidence only; high-overlap recovery/failure calibration remains open. PR green != bridge complete != release ready != scientific coverage passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/R/extract-sigma.R",
+      "link_label": "extract_Gamma"
+    },
     {
       "when": "2026-06-18 09:55 MDT",
       "who": "Psi cleanup",

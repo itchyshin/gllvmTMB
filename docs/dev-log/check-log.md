@@ -21978,3 +21978,72 @@ Still not claimed:
 - No explicit Psi support in the Paper 2 multi-kernel path.
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 12:09 MDT -- COE-04 high-overlap Gamma extraction guard
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the remaining silent extraction-side high-overlap failure-language gap
+  for fixed named multi-kernel fits.
+- Keep `COE-04` partial: this warns when component-specific `Gamma_shape`
+  extraction is weak evidence, but it does not calibrate high-overlap recovery
+  or failure behavior across a simulation grid.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/article/kernel commits on
+  this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- `extract_Gamma()` now inspects `fit$kernel_diagnostics$pairs` and emits a
+  `cli_warn()` when the requested `level` participates in a high-overlap fixed
+  kernel pair.
+- The warning names the affected pair and tells the user to treat
+  `extract_Gamma(level = ...)` as descriptive unless lower-overlap kernels,
+  null/sensitivity checks, or collapsed tiers support a separation claim.
+- The point `Gamma_shape` block is still returned for inspection.
+- The moderate C3.1 acceptance fixture now asserts quiet extraction.
+- The high-overlap fixture now asserts both `phy` and `non`
+  `extract_Gamma()` calls warn while still returning a 1 x 1 point block.
+- Regenerated `man/extract_Gamma.Rd` from roxygen.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 5 | PASS 47`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `extract_Gamma.Rd`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 99`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 8 | PASS 133`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 208`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No broad moderate-overlap calibration.
+- No high-overlap recovery/failure calibration beyond fit/extraction warning
+  language.
+- No calibrated block-null threshold across seeds/effect sizes.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.

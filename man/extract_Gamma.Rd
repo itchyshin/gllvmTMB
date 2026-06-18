@@ -39,6 +39,12 @@ a single association matrix \code{W} as data-condition sensitive: the C2
 recovery test includes a sparse-versus-dense \code{W} check, and sparse or
 poorly replicated host-partner links should be reported as weaker
 evidence rather than as a precise coevolution estimate.
+
+For fixed multi-kernel fits, \code{extract_Gamma()} also inspects the fitted
+kernel-similarity diagnostics. If the requested component participates in a
+high-overlap kernel pair, the returned block is still available, but a
+warning reminds the caller that component-specific separation is weak
+evidence.
 }
 \examples{
 \dontrun{

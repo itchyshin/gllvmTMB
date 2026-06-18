@@ -326,6 +326,7 @@ test_that("two distinct named kernel tiers fit and extract by component", {
     fit$kernel_diagnostics$pairs$overlap_class %in%
       c("near_orthogonal", "moderate", "high")
   )
+  expect_equal(fit$kernel_diagnostics$pairs$overlap_class, "moderate")
 
   S_phy <- suppressMessages(
     gllvmTMB::extract_Sigma(fit, level = "phy", part = "shared")
@@ -345,17 +346,21 @@ test_that("two distinct named kernel tiers fit and extract by component", {
     regexp = "no explicit"
   )
 
-  Gamma_phy <- gllvmTMB::extract_Gamma(
-    fit,
-    level = "phy",
-    row_traits = "y1",
-    col_traits = "y2"
+  expect_no_warning(
+    Gamma_phy <- gllvmTMB::extract_Gamma(
+      fit,
+      level = "phy",
+      row_traits = "y1",
+      col_traits = "y2"
+    )
   )
-  Gamma_non <- gllvmTMB::extract_Gamma(
-    fit,
-    level = "non",
-    row_traits = "y1",
-    col_traits = "y2"
+  expect_no_warning(
+    Gamma_non <- gllvmTMB::extract_Gamma(
+      fit,
+      level = "non",
+      row_traits = "y1",
+      col_traits = "y2"
+    )
   )
   expect_equal(dim(Gamma_phy), c(1L, 1L))
   expect_equal(dim(Gamma_non), c(1L, 1L))
@@ -464,6 +469,31 @@ test_that("high-overlap kernel tiers warn while still fitting", {
   expect_equal(fit$opt$convergence, 0L)
   expect_equal(fit$kernel_diagnostics$pairs$similarity, 1)
   expect_equal(fit$kernel_diagnostics$pairs$overlap_class, "high")
+
+  ## COE-04 high-overlap extraction guard. The fit is allowed and the point
+  ## Gamma block remains inspectable, but extraction itself repeats the claim
+  ## boundary because identical kernels cannot support component-specific
+  ## separation evidence.
+  expect_warning(
+    Gamma_phy <- gllvmTMB::extract_Gamma(
+      fit,
+      level = "phy",
+      row_traits = "y1",
+      col_traits = "y2"
+    ),
+    regexp = "high-overlap fixed kernel tier"
+  )
+  expect_warning(
+    Gamma_non <- gllvmTMB::extract_Gamma(
+      fit,
+      level = "non",
+      row_traits = "y1",
+      col_traits = "y2"
+    ),
+    regexp = "high-overlap fixed kernel tier"
+  )
+  expect_equal(dim(Gamma_phy), c(1L, 1L))
+  expect_equal(dim(Gamma_non), c(1L, 1L))
 })
 
 test_that("near-orthogonal two-component kernels recover component Gamma shapes", {

@@ -1379,6 +1379,12 @@ extract_Sigma <- function(
 #' poorly replicated host-partner links should be reported as weaker
 #' evidence rather than as a precise coevolution estimate.
 #'
+#' For fixed multi-kernel fits, `extract_Gamma()` also inspects the fitted
+#' kernel-similarity diagnostics. If the requested component participates in a
+#' high-overlap kernel pair, the returned block is still available, but a
+#' warning reminds the caller that component-specific separation is weak
+#' evidence.
+#'
 #' @param fit A fitted `gllvmTMB_multi` object.
 #' @param level Character scalar naming the covariance tier. For
 #'   `kernel_*()` fits this is the `name` argument supplied in the formula.
@@ -1451,7 +1457,44 @@ extract_Gamma <- function(fit, level, row_traits, col_traits) {
     cli::cli_abort(bullets)
   }
 
+  .warn_high_overlap_gamma(fit, level)
+
   Sigma[row_traits, col_traits, drop = FALSE]
+}
+
+.warn_high_overlap_gamma <- function(fit, level) {
+  diagnostics <- fit$kernel_diagnostics
+  if (is.null(diagnostics) || is.null(diagnostics$pairs)) {
+    return(invisible(FALSE))
+  }
+  pairs <- diagnostics$pairs
+  if (!NROW(pairs) || !"overlap_class" %in% names(pairs)) {
+    return(invisible(FALSE))
+  }
+  high <- pairs[
+    pairs$overlap_class == "high" &
+      (pairs$level_1 == level | pairs$level_2 == level),
+    ,
+    drop = FALSE
+  ]
+  if (!NROW(high)) {
+    return(invisible(FALSE))
+  }
+  other <- ifelse(high$level_1 == level, high$level_2, high$level_1)
+  pair_text <- paste0(
+    level,
+    " / ",
+    other,
+    " (similarity ",
+    formatC(high$similarity, digits = 3, format = "fg"),
+    ")"
+  )
+  cli::cli_warn(c(
+    "Extracted {.field Gamma_shape} from a high-overlap fixed kernel tier.",
+    "i" = "High-overlap pair{?s}: {.val {pair_text}}.",
+    ">" = "Treat {.fn extract_Gamma}(level = ...) as descriptive for this component; use lower-overlap kernels, null/sensitivity checks, or collapse the tiers before making separation claims."
+  ))
+  invisible(TRUE)
 }
 
 .gamma_trait_arg <- function(x, arg) {

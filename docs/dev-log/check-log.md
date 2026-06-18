@@ -21432,3 +21432,101 @@ Deliberately not run:
   promotion, parser change, TMB change, or `relmat` deprecation. This slice
   implements the first public-claim cleanup and ledger, not the multi-kernel
   engine.
+
+## 2026-06-18 10:42 MDT -- Paper 2 fixed named multi-kernel engine slice
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Implemented:
+
+- Added the first fixed named multi-kernel engine slice for Design 65 C3.1:
+  two or more dense `kernel_latent(..., name = r)` tiers over the same grouping
+  levels now get independent `K_r`, `Lambda_r`, and latent fields. The Paper 2
+  first wave is latent-only; explicit `kernel_unique()` / `*_unique()` Psi is
+  deferred to post-arc compatibility/deprecation planning.
+- Kept the one-name `kernel_*()` path on the existing phylo-equivalent engine
+  so KER-02 equivalence is still tested separately.
+- Updated `extract_Sigma()` and `extract_Gamma()` so named multi-kernel tiers
+  resolve component-specific shared/unique/total covariance by `level = name`.
+- Updated `docs/design/35-validation-debt-register.md`:
+  - `KER-03` added as `covered` for fixed named multi-kernel engine evidence.
+  - `COE-03` remains `partial`: component-specific `Gamma_shape` extraction
+    is available, but recovery/separation/null/rho/interval gates are not.
+  - `COE-04` added as `blocked` for the two-component recovery and
+    kernel-separation diagnostics grid.
+- Updated Design 65, NEWS, roxygen/Rd, dashboard JSON, and the master ledger
+  so old "two named tiers require a second engine slot" wording is no longer
+  live guidance.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/article-lane commits on this
+  branch.
+- `git diff --check`
+  -> clean before shared-file edits.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'parse("R/fit-multi.R"); parse("R/extract-sigma.R")'`
+  -> R files parsed.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 1 | PASS 26` (heavy legacy replicated-Psi cell skipped
+  unless `GLLVMTMB_HEAVY_TESTS=1`).
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel-equivalence")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 38`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `man/kernel_latent.Rd`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 4 | PASS 112`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 138`.
+- `/usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> failed before checking because Pandoc was not on this shell PATH.
+- `PATH="/opt/homebrew/Cellar/pandoc/3.9.0.2/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+- `PATH="/opt/homebrew/Cellar/pandoc/3.9.0.2/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> 0 errors, 1 install warning, 1 future-timestamp note; devtools exited
+  nonzero because warnings are failures.
+- `PATH="/opt/homebrew/Cellar/pandoc/3.9.0.2/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "never", check_dir = "check"); print(res)'`
+  -> stopped with 1 error because optional suggests `mirt` and `nadiv` are not
+  installed and `_R_CHECK_FORCE_SUGGESTS_` was true.
+- `PATH="/opt/homebrew/Cellar/pandoc/3.9.0.2/bin:$PATH" _R_CHECK_FORCE_SUGGESTS_=false /usr/local/bin/Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "never", check_dir = "check"); print(res); if (length(res$warnings)) cat(paste(res$warnings, collapse = "\n"))'`
+  -> 0 errors, 1 warning, 0 notes. The warning is the Apple clang/R header
+  warning:
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored [-Wunknown-warning-option]`.
+- `rg -n "Wfixed-enum-extension|Boolean.h|warning:" check/gllvmTMB.Rcheck/00install.out check/gllvmTMB.Rcheck/00check.log`
+  -> confirmed the warning path above. Removed generated `check/` scratch dir.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null`
+  -> valid JSON.
+- `python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> valid JSON.
+- `rg -n "two independent named tiers remain reserved|REJECTS two distinct|second engine slot|SECOND TMB data|STOPPED / reserved|pending a second engine slot|must use one .*name" R tests docs/design docs/dev-log/audits NEWS.md man`
+  -> no live stale hits after updating the current test comment and master
+  ledger. Historical after-task reports were deliberately excluded.
+- Final post-pivot stale scan:
+  `rg -n "optional paired|paired Psi component|two independent named tiers remain reserved|REJECTS two distinct|second engine slot|SECOND TMB data|STOPPED / reserved|pending a second engine slot|must use one .*name" R tests docs/design docs/dev-log/audits NEWS.md man`
+  -> initially caught one `R/fit-multi.R` error hint that still recommended
+  optional paired `kernel_unique()` for multi-kernel fits. Patched the hint to
+  recommend named `kernel_latent()` tiers only for the first wave; rerun scan
+  returned no live hits.
+- `/usr/local/bin/Rscript --vanilla -e 'parse("R/fit-multi.R"); parse("R/extract-sigma.R")'`
+  -> parsed after the final error-hint patch.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 1 | PASS 26` after the final error-hint patch.
+- `git diff --check`
+  -> clean after edits.
+
+Deliberately not run:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No full `pkgdown::build_articles(lazy = FALSE)` because no article source
+  was edited in this engine slice; `pkgdown::check_pkgdown()` covered the
+  regenerated reference/NEWS navigation surface.
+- No release `--as-cran`, no issue mutation, and no claim that `COE-03` is
+  scientific coverage. `COE-04` is still blocked.

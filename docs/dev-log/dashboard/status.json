@@ -1,19 +1,19 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 09:55 MDT",
+  "updated": "2026-06-18 10:42 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
     "text": "PR green != bridge complete != release ready != scientific coverage passed. The Julia bridge is draft and partial unless a matrix row names covered evidence."
   },
   "metrics": {
-    "covered": 1,
+    "covered": 2,
     "partial": 6,
     "active": 1,
-    "blocked": 1,
+    "blocked": 2,
     "queued": 1,
-    "total": 10
+    "total": 12
   },
   "truth_cards": [
     {
@@ -45,6 +45,12 @@
       "value": "anchor sweep",
       "status": "active",
       "note": "First implementation slice reframed api-keyword-grid, covariance-correlation, model-selection-latent-rank, and cross-lineage-coevolution around explicit Psi versus standalone indep(). pkgdown::build_articles(lazy = FALSE) rendered the touched pages, pkgdown::check_pkgdown() passed, and stale scans only hit intentional guard/ledger text. Broader article estate remains one-decision-at-a-time."
+    },
+    {
+      "label": "Paper 2 kernels",
+      "value": "C3.1 local",
+      "status": "guard",
+      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by focused and heavy kernel/coevolution tests, COE-03 remains partial, and COE-04 two-component recovery/separation diagnostics remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
     },
     {
       "label": "Next decision",
@@ -253,7 +259,7 @@
     {
       "when": "now",
       "who": "Boole",
-      "text": "Formula-language cleanup touched articles only. unique() is not deprecated; kernel_*() remains the general API; relmat remains compatibility sugar; no parser or TMB code changed."
+      "text": "kernel_*() remains the general API; relmat remains compatibility sugar. Fixed named multi-kernel tiers now have a local TMB engine slice, while unique() is still not deprecated and standalone diagonal teaching still points to indep()."
     }
   ],
   "serial_gates": [
@@ -317,9 +323,9 @@
     {
       "lane": "Kernel and coevolution scout",
       "owners": "Jason + Boole + Fisher",
-      "status": "queued",
+      "status": "active",
       "parallel_with": "public-reader audit",
-      "join_gate": "Separate C4/C5 issue split from bridge PR #489."
+      "join_gate": "C3.1 engine is local; next gate is COE-04 recovery/separation diagnostics, not release wording."
     },
     {
       "lane": "Psi article cleanup",
@@ -459,11 +465,11 @@
     {
       "name": "Boole",
       "role": "R API and formula reviewer",
-      "status": "queued",
-      "task": "Review syntax only if dashboard work turns into formula or gate API changes.",
-      "blocked_by": "No formula change in this slice",
+      "status": "active",
+      "task": "Keep kernel_*() grammar bounded after the latent-only fixed named multi-kernel TMB slice; no relmat expansion, and plan *_unique() as post-arc compatibility/deprecation work.",
+      "blocked_by": "COE-04 recovery/separation diagnostics and future grammar-design questions for rho/Psi replacement",
       "parallel_with": "Jason and Emmy",
-      "join_gate": "Formula grammar touch"
+      "join_gate": "Any future formula grammar touch"
     },
     {
       "name": "Emmy",
@@ -559,14 +565,34 @@
       "next_gate": "Rose/Fisher register audit."
     },
     {
+      "id": "KER-03",
+      "capability": "Fixed named multi-kernel engine",
+      "status": "covered",
+      "engine": "covered",
+      "bridge": "not_applicable",
+      "inference": "guard",
+      "evidence": "Local engine slice adds two or more named dense kernel_latent() tiers over the same grouping levels, with per-tier K_r, Lambda_r, and latent field. The Paper 2 path is latent-only; explicit kernel_unique()/Psi is deferred because it is a poor default for non-Gaussian and cross-family coevolution. Evidence: non-heavy devtools::test(filter = \"kernel|coevolution\") passed 112, heavy GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") passed 138, and pkgdown::check_pkgdown() passed with Pandoc on PATH. The one-name KER-02 equivalence path remains green.",
+      "next_gate": "Sparse/generic kernel unification, crossed/different groups, kernel_dep multi-tier, and source-specific phylo/animal/spatial re-pointing remain future rows."
+    },
+    {
       "id": "COE-03",
       "capability": "Generic kernel and coevolution tier",
       "status": "partial",
       "engine": "covered",
       "bridge": "planned",
       "inference": "partial",
-      "evidence": "One-kernel Design 65 path is currently green: C0 helper/prototype, C1 single named dense kernel equivalence, C2 point-estimate extract_Gamma known-Gamma recovery, C2 article fixture, and C3 guardrail tests passed with GLLVMTMB_HEAVY_TESTS=1 (`FAIL 0 | WARN 0 | SKIP 0 | PASS 125`). Two independent named tiers remain reserved pending a second engine slot; Paper 2 Option B is not finished.",
-      "next_gate": "Paper 2 Option A/B decision, C4/C5 issue split, and second engine-slot design."
+      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. This supports Paper 2 Gamma_shape_r inspection only. It does not prove explicit Psi support, two-component recovery, kernel separation, null/selective absence, rho profiling/estimation, or intervals.",
+      "next_gate": "COE-04 recovery/separation diagnostics before scientific coverage or public Paper 2 promotion."
+    },
+    {
+      "id": "COE-04",
+      "capability": "Two-component recovery and kernel-separation diagnostics",
+      "status": "blocked",
+      "engine": "covered",
+      "bridge": "not_applicable",
+      "inference": "blocked",
+      "evidence": "No ADEMP grid has yet passed for near-orthogonal, moderately overlapping, and highly overlapping K_phy/K_non pairs; no component-specific Gamma_shape recovery thresholds, selective-absence nulls, or interval/rho calibration have been accepted.",
+      "next_gate": "Design and run the Paper 2 recovery grid with Fisher/Curie signoff before any scientific-coverage language moves."
     },
     {
       "id": "PSI-SWEEP",

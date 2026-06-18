@@ -960,10 +960,17 @@ extract_Sigma <- function(
   if (!is.null(kernel_level)) {
     notes <- c(
       notes,
-      sprintf(
-        "Kernel tier '%s' uses the dense phylo-equivalent engine path (Design 65 C1).",
-        kernel_level$name
-      )
+      if (identical(kernel_level$internal_level, "kernel")) {
+        sprintf(
+          "Kernel tier '%s' uses the fixed dense multi-kernel engine path (Design 65 C3.1).",
+          kernel_level$name
+        )
+      } else {
+        sprintf(
+          "Kernel tier '%s' uses the dense phylo-equivalent engine path (Design 65 C1).",
+          kernel_level$name
+        )
+      }
     )
   }
 
@@ -983,6 +990,48 @@ extract_Sigma <- function(
       S <- as.numeric(fit$report$sd_W)^2
     }
     if (is.null(L) && is.null(S)) return(NULL)
+  } else if (identical(level, "kernel")) {
+    idx <- kernel_level$index
+    if (is.null(idx) || length(idx) != 1L || is.na(idx)) {
+      cli::cli_abort("Internal error: named kernel tier has no registry index.")
+    }
+    has_shared <- isTRUE(kernel_level$has_latent)
+    has_unique <- isTRUE(kernel_level$has_psi)
+    if (identical(part, "shared") && !has_shared) {
+      cli::cli_abort(c(
+        "Kernel tier {.val {kernel_level$name}} has no shared latent component.",
+        ">" = "Refit with {.fn kernel_latent} for this tier before requesting {.code part = \"shared\"}."
+      ))
+    }
+    if (identical(part, "unique") && !has_unique) {
+      cli::cli_abort(c(
+        "Kernel tier {.val {kernel_level$name}} has no explicit {.field Psi} component.",
+        ">" = "Refit with paired {.fn kernel_unique} for this tier before requesting {.code part = \"unique\"}."
+      ))
+    }
+    if (has_shared) {
+      Lambda_arr <- fit$report$Lambda_kernel
+      if (is.null(Lambda_arr)) {
+        cli::cli_abort(
+          "Named multi-kernel fit has no reported {.code Lambda_kernel}."
+        )
+      }
+      rank <- as.integer(kernel_level$rank)
+      L <- matrix(
+        Lambda_arr[, seq_len(rank), idx, drop = FALSE],
+        nrow = T,
+        ncol = rank
+      )
+    }
+    if (has_unique) {
+      sd_mat <- fit$report$sd_kernel_diag
+      if (is.null(sd_mat)) {
+        cli::cli_abort(
+          "Named multi-kernel fit has no reported {.code sd_kernel_diag}."
+        )
+      }
+      S <- as.numeric(sd_mat[, idx])^2
+    }
   } else if (identical(level, "phy")) {
     has_phy_rr <- isTRUE(fit$use$phylo_rr)
     has_phy_diag <- isTRUE(fit$use$phylo_diag)
@@ -1430,10 +1479,28 @@ extract_Gamma <- function(fit, level, row_traits, col_traits) {
     return(NULL)
   }
   name <- kernel_levels$name
-  if (!is.character(name) || length(name) != 1L || !identical(level, name)) {
+  if (!is.character(name) || !length(name)) {
     return(NULL)
   }
-  list(name = name, internal_level = kernel_levels$internal_level %||% "phy")
+  idx <- match(level, name)
+  if (is.na(idx)) {
+    return(NULL)
+  }
+  get_field <- function(field, default = NULL) {
+    val <- kernel_levels[[field]]
+    if (is.null(val)) {
+      return(default)
+    }
+    val[[idx]]
+  }
+  list(
+    name = name[[idx]],
+    internal_level = get_field("internal_level", "phy"),
+    index = get_field("index", NA_integer_),
+    rank = get_field("rank", NA_integer_),
+    has_latent = isTRUE(get_field("has_latent", TRUE)),
+    has_psi = isTRUE(get_field("has_psi", FALSE))
+  )
 }
 
 #' Print an augmented latent-slope Sigma extraction

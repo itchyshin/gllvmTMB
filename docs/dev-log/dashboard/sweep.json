@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 09:55 MDT",
+  "updated": "2026-06-18 10:42 MDT",
   "active_work": [
     {
       "when": "live",
@@ -25,9 +25,21 @@
       "when": "live",
       "who": "articles",
       "text": "Article council slice 5A started the biological worked-example triage, and the first Psi cleanup anchor sweep now renders. api-keyword-grid, covariance-correlation, model-selection-latent-rank, and cross-lineage-coevolution separate standalone indep() from explicit Psi/unique() language. This is article-claim cleanup only, not bridge, release, or scientific-coverage completion."
+    },
+    {
+      "when": "live",
+      "who": "Paper 2 kernels",
+      "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial for component-specific Gamma_shape extraction only; COE-04 recovery/separation diagnostics remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. PR green != bridge complete != release ready != scientific coverage passed."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 10:42 MDT",
+      "who": "Paper 2 kernels",
+      "text": "Implemented fixed named multi-kernel TMB path for two or more dense kernel_latent() tiers over the same grouping levels, with per-tier K_r, Lambda_r, and latent field. The Paper 2 path is latent-only; paired kernel_unique()/Psi is deferred because it is a poor default for non-Gaussian and cross-family coevolution, and *_unique() should move to post-arc compatibility/deprecation planning. Updated extract_Sigma()/extract_Gamma() to resolve named components, kept the one-name KER-02 phylo-equivalent path intact, added KER-03 / COE-03 / COE-04 register rows, and regenerated kernel_latent.Rd. Checks: devtools::test(filter = \"kernel|coevolution\") -> PASS 112 with 4 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 138; pkgdown::check_pkgdown() -> No problems found with Pandoc on PATH; rcmdcheck --no-manual with _R_CHECK_FORCE_SUGGESTS_=false -> 0 errors, 1 Apple clang/R header install warning, 0 notes. This is engine/extractor evidence only, not bridge completion, release readiness, or scientific coverage.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/65-cross-lineage-coevolution-kernel.md",
+      "link_label": "Design 65"
+    },
     {
       "when": "2026-06-18 09:55 MDT",
       "who": "Psi cleanup",

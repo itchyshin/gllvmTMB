@@ -1,19 +1,21 @@
 ## Phase C3 cross-lineage coevolution two-kernel model (Design 65 sec. C3).
 ##
-## C3.1 -- fit two kernel tiers. SCOPE FINDING (engine-lane, 2026-06-03):
-## the C0-C2 kernel core reuses the SINGLE dense-relatedness phylo slot
-## (one `Ainv_phy_rr` / `d_phy` / `Lambda_phy` / `g_phy_diag` in
-## src/gllvmTMB.cpp; one `phylo_rr_idx` + one `phylo_diag_idx` in
-## R/fit-multi.R). Two GENUINELY independent named kernel tiers -- a phylo
-## cross-kernel `K_phy` AND a tip-level non-phylo `K_non = scale(W)`, each
-## with its own `K`, `Lambda`, and augmented random field -- would need a
-## SECOND TMB data/parameter slot and a second NLL block. That is a LARGE
-## C++/engine change, so per the C3 brief we STOP and document the current
-## honest behaviour rather than balloon scope: the existing engine REJECTS
-## two distinct named kernel tiers fail-loud. The two-COMPONENT
-## (latent + unique) decomposition on ONE named tier -- the model the
-## engine does support -- is covered by the C1/C2 gates and re-asserted
-## here for the by-name `Sigma` / `Gamma` extraction contract.
+## C3.1 -- fit two named kernel tiers. First-wave scope:
+##   symbolic model          eta_t(u) += Lambda_phy[t,] g_phy[u,] +
+##                                      Lambda_non[t,] g_non[u,]
+##   implementation objects  kernel_latent(..., name = "phy"|"non"),
+##                           Ainv_kernel[r,,], theta_rr_kernel, g_kernel
+##   extractor target        extract_Sigma(level = r, part = "shared") and
+##                           extract_Gamma(level = r)
+##   validation target       separate named component shapes, no rho/interval
+##                           calibration claim yet
+##   guard                   PR green != bridge complete != release ready !=
+##                           scientific coverage passed
+##
+## The old C0-C2 core still routes one named kernel tier through the
+## phylo-equivalent slot for KER-02 equivalence. Two distinct names now activate
+## the fixed dense multi-kernel block: each tier has its own K_r, Lambda_r, and
+## latent field. Explicit Psi_r is deferred out of the Paper 2 first wave.
 ##
 ## C3.2 -- identifiability guardrail. Two `kernel_unique` tiers are not
 ## separable without within-species replication; the engine defaults to a
@@ -23,14 +25,14 @@
 ## `n_traits` rows, so a raw-row count would mistake trait-stacking for
 ## replication and skip the collapse (then abort at the single-`name` guard).
 ##
-## NOTE on the heavy "two Psi WITH replication" cell below: the genuinely
-## two-independent-named-tier recovery (a phylo `Psi_phy` AND a separate
-## tip-level `Psi_non`, each its own TMB slot) is the C3.1 capability left
-## RESERVED -- it needs a second engine slot (see header + Design 65 sec C3.1).
-## What the current engine supports, and what the cell asserts, is the single
-## identifiable phylo uniqueness tier recovered as a positive diagonal under
-## within-species replication; the non-phylo residual is absorbed by the
-## replicate error term.
+## NOTE on the heavy "two Psi WITH replication" cell below: the new C3.1 engine
+## can host fixed named latent tiers, but Paper 2 multi-kernel fits are
+## deliberately latent-only in this first wave. The heavy recovery/calibration
+## side of explicit Psi remains a later grammar/design cell, likely after the
+## post-arc `*_unique()` deprecation plan. The existing heavy test asserts the
+## older single identifiable phylo uniqueness tier recovered as a positive
+## diagonal under within-species replication; the non-phylo residual is absorbed
+## by the replicate error term.
 
 .c3_tree_corr <- function(n, prefix) {
   tree <- ape::rcoal(n)
@@ -59,32 +61,112 @@
   list(data = df, A = A, species = species)
 }
 
-test_that("two distinct named kernel tiers are rejected by the C1 engine slot", {
-  ## C3.1 honest-behaviour gate: the single shared dense-relatedness slot
-  ## cannot host two independent named tiers. Two `kernel_latent` terms hit
-  ## the "only one phylo_latent term" guard; two distinct `name`s hit the
-  ## "must use one name" guard. This pins the STOP boundary so a future
-  ## two-slot engine change is a deliberate, gated extension.
+test_that("two distinct named kernel tiers fit and extract by component", {
+  ## C3.1 first-wave acceptance: two named fixed kernels get separate latent
+  ## fields and separate loading matrices. This is not an interval/rho gate.
   testthat::skip_if_not_installed("TMB")
 
-  fx <- .c3_make_unreplicated()
-  A_non <- diag(nrow(fx$A))
-  dimnames(A_non) <- dimnames(fx$A)
+  set.seed(74)
+  n_unit <- 8L
+  n_rep <- 3L
+  unit_levels <- paste0("u", seq_len(n_unit))
+  A_phy <- matrix(0.25, n_unit, n_unit)
+  diag(A_phy) <- 1
+  rownames(A_phy) <- colnames(A_phy) <- unit_levels
+  A_non <- diag(n_unit)
+  A_non[row(A_non) == col(A_non) + 1L | row(A_non) + 1L == col(A_non)] <- 0.35
+  A_non <- as.matrix(Matrix::nearPD(A_non, corr = TRUE)$mat)
+  rownames(A_non) <- colnames(A_non) <- unit_levels
+
+  rows <- expand.grid(
+    unit_id = unit_levels,
+    rep_id = seq_len(n_rep),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  rows$row_id <- factor(seq_len(nrow(rows)))
+  rows$unit_id <- factor(rows$unit_id, levels = unit_levels)
+  L_phy <- t(chol(A_phy + diag(1e-8, n_unit)))
+  L_non <- t(chol(A_non + diag(1e-8, n_unit)))
+  g_phy <- as.numeric(L_phy %*% stats::rnorm(n_unit))
+  g_non <- as.numeric(L_non %*% stats::rnorm(n_unit))
+  Lambda_phy <- c(0.7, 0.25)
+  Lambda_non <- c(-0.15, 0.55)
+  eta <- cbind(
+    y1 = Lambda_phy[[1L]] * g_phy[as.integer(rows$unit_id)] +
+      Lambda_non[[1L]] * g_non[as.integer(rows$unit_id)],
+    y2 = Lambda_phy[[2L]] * g_phy[as.integer(rows$unit_id)] +
+      Lambda_non[[2L]] * g_non[as.integer(rows$unit_id)]
+  )
+  rows$y1 <- eta[, 1L] + stats::rnorm(nrow(rows), sd = 0.25)
+  rows$y2 <- eta[, 2L] + stats::rnorm(nrow(rows), sd = 0.25)
 
   ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(y1, y2) ~
+      1 +
+      kernel_latent(unit_id, K = A_phy, d = 1, name = "phy") +
+      kernel_latent(unit_id, K = A_non, d = 1, name = "non"),
+    data = rows,
+    unit = "row_id",
+    cluster = "unit_id",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(isTRUE(fit$use$kernel))
+  expect_equal(fit$kernel_levels$name, c("phy", "non"))
+  expect_equal(fit$kernel_levels$rank, c(1L, 1L))
+  expect_equal(fit$kernel_levels$has_psi, c(FALSE, FALSE))
+
+  S_phy <- suppressMessages(
+    gllvmTMB::extract_Sigma(fit, level = "phy", part = "shared")
+  )
+  S_non <- suppressMessages(
+    gllvmTMB::extract_Sigma(fit, level = "non", part = "shared")
+  )
+  expect_equal(S_phy$level, "phy")
+  expect_equal(S_non$level, "non")
+  expect_equal(dim(S_phy$Sigma), c(2L, 2L))
+  expect_equal(dim(S_non$Sigma), c(2L, 2L))
+  expect_false(isTRUE(all.equal(S_phy$Sigma, S_non$Sigma)))
+  expect_error(
+    suppressMessages(
+      gllvmTMB::extract_Sigma(fit, level = "phy", part = "unique")
+    ),
+    regexp = "no explicit"
+  )
+
+  Gamma_phy <- gllvmTMB::extract_Gamma(
+    fit,
+    level = "phy",
+    row_traits = "y1",
+    col_traits = "y2"
+  )
+  Gamma_non <- gllvmTMB::extract_Gamma(
+    fit,
+    level = "non",
+    row_traits = "y1",
+    col_traits = "y2"
+  )
+  expect_equal(dim(Gamma_phy), c(1L, 1L))
+  expect_equal(dim(Gamma_non), c(1L, 1L))
+
   expect_error(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       traits(y1, y2) ~
         1 +
-        kernel_latent(species, K = fx$A, d = 1, name = "phy") +
-        kernel_latent(species, K = A_non, d = 1, name = "non"),
-      data = fx$data,
+        kernel_latent(unit_id, K = A_phy, d = 1, name = "phy") +
+        kernel_unique(unit_id, K = A_phy, name = "phy") +
+        kernel_latent(unit_id, K = A_non, d = 1, name = "non"),
+      data = rows,
       unit = "row_id",
-      cluster = "species",
+      cluster = "unit_id",
       family = stats::gaussian(),
       control = ctl
     ))),
-    regexp = "one .*phylo_latent|one .*name|kernel"
+    regexp = "latent-only|Psi is deferred|kernel_unique"
   )
 })
 

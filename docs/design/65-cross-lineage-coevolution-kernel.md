@@ -99,9 +99,10 @@ kernel_indep(unit, K, name = "kernel"); kernel_dep(unit, K, name = "kernel")  # 
 
 ## Phase C3 -- two-kernel model (`K*_phy` + `K*_non`) + identifiability discipline
 
-**Files:** `tests/testthat/test-coevolution-two-kernel.R`.
+**Files:** `R/fit-multi.R`, `R/extract-sigma.R`,
+`src/gllvmTMB.cpp`, `tests/testthat/test-coevolution-two-kernel.R`.
 
-- [~] **C3.1 -- fit two kernel tiers** (`name="phy"` with `K*_phy`, `name="non"` with `K*_non = scale(W)` tip-level); confirm both tiers' `Sigma` + `Gamma` extract by `name`. **STOPPED / reserved (2026-06-03):** the C0-C2 kernel core reuses the SINGLE dense-relatedness phylo slot (one `Ainv_phy_rr` / `d_phy` / `Lambda_phy` / `g_phy_diag` in the TMB template; one `phylo_rr_idx` + one `phylo_diag_idx` in `R/fit-multi.R`). Two genuinely independent named tiers each with their own `K` / `Lambda` / augmented field need a SECOND TMB data+parameter slot and NLL block -- a LARGE C++/engine change outside the C3 "test file only" scope. `test-coevolution-two-kernel.R` pins the honest boundary (the engine rejects two distinct named tiers fail-loud) and re-asserts the supported single-named-tier `Sigma` + `Gamma` by-name extraction. The two-slot engine is a deliberate future extension.
+- [x] **C3.1 -- fit two kernel tiers** (`name="phy"` with `K*_phy`, `name="non"` with `K*_non = scale(W)` tip-level); confirm both tiers' `Sigma` + `Gamma` extract by `name`. **First fixed multi-kernel wave landed (2026-06-18):** two or more named dense `kernel_latent()` tiers now activate a generic TMB block with per-tier `K_r`, `Lambda_r`, and latent field. The one-name `kernel_*()` path remains on the C1 phylo-equivalent engine, preserving the `<1e-6` KER-02 equivalence gate. `test-coevolution-two-kernel.R` fits two named latent tiers and extracts component-specific shared `Sigma` and `Gamma`. This Paper 2 path is deliberately latent-only in the first wave: explicit kernel-level Psi via `kernel_unique()` is deferred because it is a poor default for non-Gaussian and cross-family coevolution models, and the broader `*_unique()` surface should become compatibility/deprecation work after this arc. This is an engine and extractor gate, not scientific promotion: `COE-03` remains partial until component recovery, kernel-separation diagnostics, null/selective-absence tests, `rho` profiling/estimation, interval calibration, and Psi grammar decisions pass.
 - [x] **C3.2 -- identifiability guardrail:** the two-Psi split (`Psi_phy` + `Psi_non`) is NOT separable from one obs/species/trait. Default to ONE uniqueness tier; require replication (repeated communities / species means+SE) before enabling both. **Done (2026-06-03):** `R/fit-multi.R` detects two `kernel_unique` tiers WITHOUT within-species replication, drops the extra uniqueness covstruct (defaulting to a single tier), and emits a `cli::cli_warn` (warn, not abort -- the model still fits). `test-coevolution-two-kernel.R`: the warning fires (non-replicated, two distinct names so the guardrail precedes the single-`name` validation); a single uniqueness tier does NOT warn; a heavy replicated DGP recovers a positive phylo uniqueness diagonal.
 
 ## Phase C4 -- incremental unification + `relmat` soft-deprecation (cross-package contract)
@@ -124,7 +125,7 @@ Interaction-strength-as-response model (`W_ij` as the response, both phylogenies
 - **C0:** prototype recovers a planted host->partner association; `make_cross_kernel` PSD-checks.
 - **C1:** the equivalence gate (`kernel ≡ phylo` to `<1e-6`) -- non-negotiable before C2.
 - **C2:** known-`Gamma` recovery (Procrustes corr > 0.9); null-vs-cross logLik separation; PSD enforced.
-- **C3:** two-Psi separable only under replication; single-Psi default documented.
+- **C3:** fixed two-kernel fit + two-Psi guardrail; STOP if two uniqueness tiers are requested without replication. Scientific promotion still waits for recovery/separation/null/interval evidence (`COE-03` partial, `COE-04` blocked).
 - **C4:** each re-pointed keyword passes its existing suite UNCHANGED; `relmat` emits deprecation + still fits.
 - Each slice: local `devtools::test(filter=...)`, `devtools::document()`, register row updated, after-task note. `R CMD check` clean before the engine PRs merge.
 

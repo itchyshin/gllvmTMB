@@ -94,7 +94,10 @@ Dashboard cards must keep these as separate states:
 
 - `COE-02 covered`: one fixed dense kernel, fixed `rho` in `K_star`, point
   `Gamma`.
-- `COE-03 partial`: true two-kernel support waits for a second engine slot.
+- `KER-03 covered locally`: fixed named multi-kernel engine slice exists.
+- `COE-03 partial`: component-specific two-kernel `Gamma_shape` extraction is
+  available, but recovery, separation diagnostics, `rho`, and intervals remain
+  gated.
 - `Psi cleanup`: article anchor sweep in progress until public anchors render
   and stale scans are clean.
 - `Article council`: ledger in progress, one article decision at a time.

@@ -18930,3 +18930,51 @@ Deliberately not run:
 - No local package tests, local R CMD check, pkgdown build, or dashboard
   server/browser restart. This is a data-only mission-control refresh; the
   remote #489 R-CMD-check evidence is run `27721260400`.
+
+## 2026-06-17 -- mission-control evidence refresh after #95 landing
+
+Refreshed the tracked local mission-control data after the paired Julia base
+gate changed. This is a local operating-dashboard update only; it does not
+change package code, formula grammar, likelihoods, public pkgdown navigation,
+or advertised bridge support.
+
+Evidence recorded:
+
+- #489 is draft, clean, and green at `7c16433`; coevolution recovery run
+  `27723504285` and R-CMD-check run `27723504298` both succeeded.
+- GLLVM.jl #95 merged to main at merge commit `70a5c83`; post-merge CI run
+  `27724193515` succeeded on Ubuntu 1.10, macOS, Ubuntu current, and Windows,
+  and Documenter run `27724193513` succeeded.
+- GLLVM.jl #101 was retargeted from `integration` to `main` and is draft,
+  clean, and still at `f7be594`; GitHub did not start fresh PR checks from the
+  base edit, so #101 remains an evidence gap rather than a green landing gate.
+- #94 remains dirty salvage and is not used to widen R bridge claims.
+- Scheduled power-pilot run `27722546237` is in progress on main `0567cd7`;
+  compact job count was 43 completed-success jobs and 6 in-progress shard jobs
+  at the snapshot time. This remains process evidence only, not coverage proof.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the current #489 branch, the power-pilot results
+  commit, and the already-known main/pkgdown repairs.
+- Live GitHub evidence:
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json ...`
+  -> #489 draft/open, clean, head `7c16433`, R-CMD-check and recovery success.
+  `/opt/homebrew/bin/gh run watch 27724193515 --repo itchyshin/GLLVM.jl --exit-status --interval 30`
+  -> completed successfully after the Windows job finished.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json ...`
+  -> #101 draft/open, clean, base `main`, head `f7be594`, with only older
+  Documenter preview checks displayed.
+  `/opt/homebrew/bin/gh run view 27722546237 --repo itchyshin/gllvmTMB --json status,conclusion,jobs --jq ...`
+  -> `status: in_progress`, 43 completed-success jobs, 6 in-progress shards.
+
+Deliberately not run:
+
+- No local package tests, local R CMD check, pkgdown build, dashboard server,
+  browser restart, #101 rerun, or live JuliaCall bridge refresh. This refresh
+  records the new remote evidence and explicitly leaves #101/fresh bridge
+  evidence as the next gate.

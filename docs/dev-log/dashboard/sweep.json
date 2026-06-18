@@ -1,10 +1,10 @@
 {
-  "updated": "2026-06-17 16:19 MDT",
+  "updated": "2026-06-17 18:00 MDT",
   "active_work": [
     {
       "when": "live",
       "who": "#489",
-      "text": "Draft PR #489 is clean and green at 3c5d111; it remains partial and not release-ready."
+      "text": "Draft PR #489 is clean and green at 7c16433; it remains partial and not release-ready."
     },
     {
       "when": "live",
@@ -19,16 +19,23 @@
     {
       "when": "live",
       "who": "GLLVM.jl",
-      "text": "#95 is clean/green/non-draft; #101 is draft/clean with Documenter green; #94 remains dirty salvage."
+      "text": "#95 is merged and main CI is green; #101 is draft/clean on main but still lacks fresh PR checks after retarget; #94 remains dirty salvage."
     }
   ],
   "evidence": [
     {
-      "when": "2026-06-17 16:17 MDT",
+      "when": "2026-06-17 16:32 MDT",
       "who": "GitHub Actions",
-      "text": "#489 recovery run 27721260397 and R-CMD-check run 27721260400 both succeeded at 3c5d111.",
+      "text": "#489 recovery run 27723504285 and R-CMD-check run 27723504298 both succeeded at 7c16433.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489"
+    },
+    {
+      "when": "2026-06-17 17:59 MDT",
+      "who": "GitHub Actions",
+      "text": "GLLVM.jl main CI run 27724193515 succeeded at merge commit 70a5c83 after #95 landed.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27724193515",
+      "link_label": "GLLVM.jl CI 27724193515"
     },
     {
       "when": "2026-06-17 15:51 MDT",
@@ -42,18 +49,34 @@
     {
       "workflow": "R-CMD-check",
       "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "3c5d111",
+      "head": "7c16433",
       "status": "completed",
       "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27721260400"
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27723504298"
     },
     {
       "workflow": "coevolution-two-kernel-recovery",
       "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "3c5d111",
+      "head": "7c16433",
       "status": "completed",
       "conclusion": "success",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27721260397"
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27723504285"
+    },
+    {
+      "workflow": "GLLVM.jl CI",
+      "branch": "main",
+      "head": "70a5c83",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27724193515"
+    },
+    {
+      "workflow": "GLLVM.jl Documenter",
+      "branch": "main",
+      "head": "70a5c83",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27724193513"
     },
     {
       "workflow": "R-CMD-check",
@@ -83,7 +106,7 @@
       "workflow": "Power pilot sweep",
       "branch": "main",
       "head": "0567cd7",
-      "status": "queued",
+      "status": "in_progress",
       "conclusion": "",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237"
     }

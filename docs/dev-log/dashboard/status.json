@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 16:19 MDT",
+  "updated": "2026-06-17 18:00 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -26,7 +26,7 @@
       "label": "Draft PR",
       "value": "#489",
       "status": "success",
-      "note": "Draft PR #489 is clean and both checks are green at 3c5d111; it remains partial and not release-ready."
+      "note": "Draft PR #489 is clean and both checks are green at 7c16433; it remains partial and not release-ready."
     },
     {
       "label": "Main full-check",
@@ -42,18 +42,18 @@
     },
     {
       "label": "Next decision",
-      "value": "#95 gate",
+      "value": "#101 gate",
       "status": "guard",
-      "note": "Keep GLLVM.jl #95 as the next engine serial gate; #489 stays draft/partial until the paired Julia path is settled."
+      "note": "GLLVM.jl #95 has landed and main CI is green; #101 is retargeted to main but still needs fresh PR evidence before #489 widens."
     }
   ],
   "repos": [
     {
       "name": "gllvmTMB",
       "branch": "codex/r-bridge-grouped-dispersion",
-      "head": "3c5d111",
+      "head": "7c16433",
       "state": "success",
-      "note": "Draft PR #489 is pushed, clean, and green at 3c5d111; bridge and release claims remain gated.",
+      "note": "Draft PR #489 is pushed, clean, and green at 7c16433; bridge and release claims remain gated.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489"
     },
@@ -62,7 +62,7 @@
       "branch": "codex/julia-per-trait-dispersion",
       "head": "f7be594",
       "state": "guard",
-      "note": "#95 is clean/green/non-draft; #101 is draft/clean on integration; #94 remains dirty salvage.",
+      "note": "#95 merged to main; main CI 27724193515 is green at 70a5c83. #101 is draft/clean on main with stale displayed PR checks; #94 remains dirty salvage.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
       "link_label": "PR #101"
     },
@@ -112,7 +112,7 @@
       "counts": "2/5",
       "slices": [
         {
-          "name": "PR #489 is clean and green at 3c5d111",
+          "name": "PR #489 is clean and green at 7c16433",
           "status": "covered",
           "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
           "issue": "PR #489"
@@ -143,21 +143,21 @@
       "counts": "1/4",
       "slices": [
         {
-          "name": "GLLVM.jl #101 draft/clean with Documenter green",
+          "name": "GLLVM.jl #101 draft/clean on main with older Documenter preview",
           "status": "active",
           "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
           "issue": "GLLVM.jl #101"
         },
         {
-          "name": "GLLVM.jl #95 is clean/green/non-draft; landing decision remains serial",
-          "status": "guard"
+          "name": "GLLVM.jl #95 merged to main; main CI 27724193515 is green",
+          "status": "covered"
         },
         {
           "name": "GLLVM.jl #94 salvage stays separate from #101/#95 landing order",
           "status": "guard"
         },
         {
-          "name": "Pin paired Julia SHA after #95 lands and #101 is refreshed",
+          "name": "Pin paired Julia SHA after #101 has fresh PR checks and live JuliaCall evidence",
           "status": "queued"
         }
       ]
@@ -225,12 +225,12 @@
     {
       "when": "now",
       "who": "Ada",
-      "text": "#489 is clean and green at 3c5d111; keep it draft/partial until the engine and claim gates close."
+      "text": "#489 is clean and green at 7c16433; keep it draft/partial until #101 has fresh evidence and the claim gates close."
     },
     {
       "when": "now",
       "who": "Grace",
-      "text": "Main R-CMD/pkgdown, #489 R-CMD/recovery, and power run 107 persistence are green."
+      "text": "gllvmTMB main R-CMD/pkgdown, #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and power run 107 persistence are green."
     },
     {
       "when": "now",
@@ -247,7 +247,7 @@
     {
       "status": "guard",
       "kind": "GLLVM.jl",
-      "item": "#95 must land or be explicitly deferred before #101 refresh and any R bridge claim widening."
+      "item": "#95 has landed; #101 is retargeted to main but needs fresh PR checks/live Julia evidence before R bridge claim widening."
     },
     {
       "status": "guard",
@@ -278,9 +278,9 @@
     {
       "lane": "Bridge and engine parity",
       "owners": "Hopper + Karpinski + Gauss",
-      "status": "queued",
+      "status": "active",
       "parallel_with": "simulation/power and docs-read path",
-      "join_gate": "Paired Julia SHA plus live JuliaCall evidence."
+      "join_gate": "Fresh #101 PR checks plus live JuliaCall evidence."
     },
     {
       "lane": "Simulation and power scoring",
@@ -309,8 +309,8 @@
       "name": "Ada",
       "role": "orchestrator and integrator",
       "status": "active",
-      "task": "Keep #95 -> #101 -> #489 ordering explicit and avoid widening #489 claims.",
-      "blocked_by": "Maintainer-level #95 landing decision",
+      "task": "Keep #101 -> #489 ordering explicit after #95 landed and avoid widening #489 claims.",
+      "blocked_by": "#101 fresh check/live Julia evidence gap",
       "parallel_with": "Rose, Grace, Shannon",
       "join_gate": "#489 ready/split/hold choice"
     },
@@ -344,20 +344,20 @@
     {
       "name": "Hopper",
       "role": "R-Julia bridge",
-      "status": "queued",
-      "task": "Refresh no-Julia and live JuliaCall bridge gates after the paired Julia base is settled.",
-      "blocked_by": "#95 landing and #101 refresh",
+      "status": "active",
+      "task": "Refresh no-Julia and live JuliaCall bridge gates after #101 has current PR evidence.",
+      "blocked_by": "#101 retarget did not start fresh PR checks",
       "parallel_with": "Karpinski and Gauss",
       "join_gate": "Paired Julia SHA"
     },
     {
       "name": "Karpinski",
       "role": "Julia engine and sparse/AD path",
-      "status": "queued",
-      "task": "Confirm #95 landing/base state, then refresh #101 bridge-runtime tests.",
-      "blocked_by": "#95 integration-to-main decision",
+      "status": "active",
+      "task": "Confirm the safest way to trigger or collect fresh #101 checks after retargeting to main.",
+      "blocked_by": "No fresh PR CI after #101 base edit",
       "parallel_with": "Hopper and Gauss",
-      "join_gate": "GLLVM.jl integration decision"
+      "join_gate": "GLLVM.jl #101 check evidence"
     },
     {
       "name": "Gauss",
@@ -458,10 +458,10 @@
       "engine": "active",
       "bridge": "partial",
       "inference": "partial",
-      "evidence": "PR #489 at 3c5d111: R-CMD-check 27721260400 and coevolution recovery 27721260397 are green; live Julia widening still gated.",
+      "evidence": "PR #489 at 7c16433: R-CMD-check 27723504298 and coevolution recovery 27723504285 are green; live Julia widening still gated.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489",
-      "next_gate": "Paired GLLVM.jl #95/#101 decision plus live JuliaCall refresh before widening claims."
+      "next_gate": "Fresh GLLVM.jl #101 evidence plus live JuliaCall refresh before widening claims."
     },
     {
       "id": "JUL-01A",
@@ -491,7 +491,7 @@
       "bridge": "not_applicable",
       "inference": "partial",
       "evidence": "Run 27717007830 completed successfully and pushed 2709930 (run 107) to power-pilot-results; 48 cells, 10376 reps, 0/48 cells at cap.",
-      "next_gate": "Fisher/Curie scoring before any coverage/power promotion; queued run 27722546237 is process follow-up only."
+      "next_gate": "Fisher/Curie scoring before any coverage/power promotion; in-progress run 27722546237 is process follow-up only."
     },
     {
       "id": "RE-03",
@@ -573,7 +573,7 @@
     {
       "status": "guard",
       "kind": "Power pilot follow-up",
-      "item": "Run 107 persisted fresh results; queued run 27722546237 is not a new claim until it completes and is scored."
+      "item": "Run 107 persisted fresh results; in-progress run 27722546237 had 43 successful jobs and 6 running shards at 18:00 MDT, but is not a new claim until it completes and is scored."
     },
     {
       "status": "guard",
@@ -585,23 +585,23 @@
     {
       "when": "2026-06-17 15:34 MDT",
       "who": "GitHub CLI",
-      "text": "PR #489 pushed at 3c5d111 after absorbing main 0567cd7; it remains draft and partial.",
+      "text": "PR #489 is green at 7c16433 after the mission-control evidence refresh; it remains draft and partial.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489"
     },
     {
-      "when": "2026-06-17 15:40 MDT",
+      "when": "2026-06-17 16:28 MDT",
       "who": "GitHub Actions",
-      "text": "#489 coevolution recovery run 27721260397 succeeded at 3c5d111.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27721260397",
-      "link_label": "run 27721260397"
+      "text": "#489 coevolution recovery run 27723504285 succeeded at 7c16433.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27723504285",
+      "link_label": "run 27723504285"
     },
     {
-      "when": "2026-06-17 16:17 MDT",
+      "when": "2026-06-17 16:32 MDT",
       "who": "GitHub Actions",
-      "text": "#489 R-CMD-check run 27721260400 succeeded at 3c5d111.",
-      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27721260400",
-      "link_label": "run 27721260400"
+      "text": "#489 R-CMD-check run 27723504298 succeeded at 7c16433.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27723504298",
+      "link_label": "run 27723504298"
     },
     {
       "when": "2026-06-17 15:23 MDT",
@@ -630,11 +630,18 @@
       "text": "Remote store at 2709930 has 48 cells, 10376 reps, 0/48 cells at cap, signal mean coverage 0.733, pass94 3/32, pass95 3/32, null mean coverage 0.412."
     },
     {
-      "when": "2026-06-17 16:05 MDT",
+      "when": "2026-06-17 17:59 MDT",
       "who": "GLLVM.jl",
-      "text": "#95 is clean/green/non-draft, #101 is draft/clean on integration, and #94 remains dirty salvage; do not use #94 to widen R bridge claims.",
+      "text": "#95 merged to main at 70a5c83 and main CI run 27724193515 succeeded on Ubuntu 1.10, macOS, Ubuntu current, and Windows.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/95",
       "link_label": "GLLVM.jl #95"
+    },
+    {
+      "when": "2026-06-17 17:07 MDT",
+      "who": "GLLVM.jl",
+      "text": "#101 was retargeted from integration to main and remains draft/clean at f7be594; displayed PR checks are still the older Documenter preview, so fresh #101 evidence is still required.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
     },
     {
       "when": "2026-06-17 15:20 MDT",

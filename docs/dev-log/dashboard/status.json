@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 00:08 MDT",
+  "updated": "2026-06-18 01:03 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -38,7 +38,7 @@
       "label": "Power pilot",
       "value": "in flight",
       "status": "guard",
-      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Local iter 14 reached 368510 / 480000 reps. The next scheduled run 27735802023 is in progress at 0567cd7; it has no persisted-store or scoring evidence yet."
+      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Local iter 16 reached 371510 / 480000 reps. The next scheduled run 27735802023 is in progress at 0567cd7; it has no persisted-store or scoring evidence yet."
     },
     {
       "label": "Next decision",
@@ -170,7 +170,7 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 368510 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 371510 / 480000 reps and 0/48 cells at cap",
           "status": "active"
         },
         {
@@ -230,7 +230,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; local iter 14 reached 368510 / 480000 reps. Scheduled run 27735802023 is in progress with 43 completed-success jobs and 6 in-progress jobs at the 00:08 MDT snapshot."
+      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; local iter 16 reached 371510 / 480000 reps. Scheduled run 27735802023 is in progress with 48 completed-success jobs and 1 in-progress job at the 01:03 MDT snapshot."
     },
     {
       "when": "now",
@@ -480,7 +480,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent latest logged summary: 368510 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
+      "evidence": "LaunchAgent latest logged summary: 371510 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -490,7 +490,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies. Scheduled run 27735802023 is in progress at 0567cd7 with 43 completed-success jobs and 6 in-progress jobs at the 00:08 MDT snapshot; no new persisted-store or scoring evidence yet.",
+      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies. Scheduled run 27735802023 is in progress at 0567cd7 with 48 completed-success jobs and 1 in-progress job at the 01:03 MDT snapshot; no new persisted-store or scoring evidence yet.",
       "next_gate": "Fisher/Curie scoring blocks promotion; workflow success and persistence are process evidence only."
     },
     {
@@ -578,7 +578,7 @@
     {
       "status": "guard",
       "kind": "Power pilot run 109",
-      "item": "Scheduled run 27735802023 is in progress at 0567cd7: 43 completed-success jobs and 6 in-progress jobs at the 00:08 MDT snapshot; no persisted store or scoring evidence yet."
+      "item": "Scheduled run 27735802023 is in progress at 0567cd7: 48 completed-success jobs and 1 in-progress job at the 01:03 MDT snapshot; no persisted store or scoring evidence yet."
     },
     {
       "status": "guard",
@@ -587,6 +587,20 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 01:03 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent iter 16 completed at 2026-06-18 01:03 MDT: 371510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. The index briefly appeared absent during the merge, then stabilized at 01:03:26 MDT; parent R process and all ten RSOCK workers remained alive, with all ten workers active in the post-helper snapshot. No coverage or power promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
+    {
+      "when": "2026-06-18 01:03 MDT",
+      "who": "GitHub Actions",
+      "text": "Scheduled power-pilot run 27735802023 is in progress on main 0567cd7 with 49 jobs: 48 completed-success and 1 in progress. This is process evidence only; no persisted-store or scoring evidence exists yet.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
+      "link_label": "run 27735802023"
+    },
     {
       "when": "2026-06-18 00:08 MDT",
       "who": "Local power pilot",

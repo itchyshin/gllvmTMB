@@ -19925,3 +19925,69 @@ Deliberately not run:
   run `27735802023` because it is still in progress. The local replicate count
   and active scheduled run do not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Local power-pilot iter 16 heartbeat
+
+Refreshed the mission-control evidence after the local LaunchAgent completed
+two more accumulation iterations. This is an evidence/dashboard update only; it
+does not change package code, formula grammar, likelihoods, public docs, or
+workflow files.
+
+Evidence recorded:
+
+- Local power-pilot LaunchAgent iter 15 completed at 2026-06-18 00:45 MDT with
+  370,010 / 480,000 reps, 0/48 cells at cap, and 0 errored cells.
+- Local power-pilot LaunchAgent iter 16 completed at 2026-06-18 01:03 MDT with
+  371,510 / 480,000 reps, 0/48 cells at cap, 0 errored cells, signal mean
+  coverage 0.753, pass94 3/24, pass95 2/24, and null mean
+  coverage-under-null 0.425.
+- The first 01:02 MDT stat check saw `pilot-index.rds` absent while the local
+  loop was active; after a 30-second recheck the index stabilized at
+  2026-06-18 01:03:26 MDT. The stable status snapshot was written to
+  `/tmp/gllvmtmb-local-iter16-status.md` and records the iter-16 total above.
+  This remains local process evidence only.
+- Scheduled power-pilot run `27735802023` is still in progress on main
+  `0567cd7`. At the 2026-06-18 01:03 MDT snapshot it had 49 jobs total: 48
+  completed-success and 1 in progress. This is process evidence only; no
+  persisted store, merged result, or scoring evidence exists yet.
+- GitHub bridge/release state remained unchanged: #489 is still draft/open and
+  local #101 evidence remains partial without fresh PR CI.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Local power-pilot readout:
+  `stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S %Z' /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> initially `pilot-index.rds` was absent while the loop was active, then
+  after 30 seconds `pilot-index.rds` was at 2026-06-18 01:03:26 MDT and the
+  local log at 2026-06-18 01:03:31 MDT.
+  `tail -n 80 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> iter 15 and iter 16 summaries above.
+  `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=dev/m3-pilot-results-local --status-out=/tmp/gllvmtmb-local-iter16-status.md`
+  from `/Users/z3437171/gllvmTMB-power-pilot`
+  -> status table above; `all_complete=false`, `reps_total=371510`,
+  `reps_target=480000`, `cells_complete=0`, `cells_total=48`.
+  `find /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local -maxdepth 1 -type f -newer /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds -print`
+  -> no files newer than `pilot-index.rds`.
+  `ps ax -o pid,ppid,etime,cputime,pcpu,pmem,state,command | rg '/Library/Frameworks/R.framework/Resources/bin/exec/R|/usr/local/bin/Rscript|/usr/bin/Rscript|Rscript'`
+  -> local parent process and all ten RSOCK workers remained alive after iter
+  16; all ten workers were active in the post-helper snapshot.
+  `test -e /Users/z3437171/gllvmTMB-power-pilot/dev/STOP-LOCAL-PILOT`
+  -> STOP flag absent.
+- Current GitHub state:
+  `/opt/homebrew/bin/gh run view 27735802023 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,createdAt,updatedAt,event,workflowName,url,jobs --jq ...`
+  -> `status: in_progress`, no conclusion, event `schedule`, head `0567cd7`,
+  49 jobs total, 48 completed-success and 1 in progress.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, no public docs changes, and no remote power-pilot result scoring for
+  run `27735802023` because it is still in progress. The local replicate count
+  and active scheduled run do not make #489 ready, the bridge complete, the
+  release ready, or scientific coverage passed.

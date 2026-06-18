@@ -19331,3 +19331,48 @@ Deliberately not run:
   audit, no public docs changes, and no power-pilot scoring rerun. The new
   GitHub power-run count does not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-17 -- Local power-pilot iter 6 heartbeat
+
+Refreshed the mission-control evidence after the local LaunchAgent completed
+another accumulation iteration. This is an evidence/dashboard update only; it
+does not change package code, formula grammar, likelihoods, public docs, or
+workflow files.
+
+Evidence recorded:
+
+- Local power-pilot LaunchAgent iter 6 completed at 19:20 MDT: 356,510 /
+  480,000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753,
+  pass94 3/24, pass95 2/24, and null mean coverage-under-null 0.425.
+- The 19:26 MDT worker snapshot showed the parent R process still alive and one
+  RSOCK worker active. The local run is still mid-batch and not complete.
+- Scheduled GitHub power run `27722546237` remains in progress on main
+  `0567cd747b9e81fa694e846a6d155bf60e35e0b8`, still with 48
+  completed-success jobs, 0 failures, and 1 active shard (`shard 33/48`). This
+  is process evidence only, not coverage or power proof.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Current GitHub state:
+  `/opt/homebrew/bin/gh run view 27722546237 --repo itchyshin/gllvmTMB --json status,conclusion,headSha,updatedAt,jobs,url --jq ...`
+  -> `status: in_progress`, 48 completed-success jobs, 0 failures,
+  1 in-progress shard.
+- Local power-pilot readout:
+  `tail -n 120 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  and
+  `ps -p 1386,1783,1784,1785,1787,1788,1789,1790,1791,1792,1793 -o pid,ppid,etime,cputime,pcpu,pmem,state,command`
+  -> iter 6 summary above; parent R process remains alive and worker 1792 was
+  active.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, no public docs changes, and no power-pilot scoring rerun. The new
+  local replicate count does not make #489 ready, the bridge complete, the
+  release ready, or scientific coverage passed.

@@ -1,5 +1,6 @@
 ---
 title: "Confirmatory loadings for binary species distributions: pinning Lambda with lambda_constraint"
+tier: 3 # Hidden while the binary loading-constraint reader path is under article-council review.
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -22,6 +23,12 @@ knitr::opts_chunk$set(
   warning   = FALSE
 )
 ```
+
+> **Internal article gate:** This page is kept buildable for
+> maintainers while the binary loading-constraint teaching path is under
+> article-council review. The current public binary worked example is
+> [`vignette("joint-sdm")`](joint-sdm.html); do not treat this page as a
+> first-stop tutorial until its rendered article review is recorded.
 
 ## Why this article exists
 

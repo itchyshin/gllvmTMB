@@ -144,6 +144,13 @@ and diagnostics-first AIC/BIC wording. No public promotion of
 the binary lambda/JSDM article plan lands. Keep mixed-family response teaching
 separate from loading-constraint teaching.
 
+Lambda surface cleanup checkpoint, 2026-06-18: `lambda-constraint` and
+`lambda-constraint-suggest` remain buildable but moved out of the public
+Articles dropdown and into the internal article bucket. The public
+`joint-sdm` article no longer routes readers to those hidden pages as
+recommended next steps. The next lambda action remains the binary JSDM
+article plan and rendered review, not a capability promotion.
+
 After these infrastructure slices, resume article restoration one page at a time.
 
 ## Next Shared Work Queue

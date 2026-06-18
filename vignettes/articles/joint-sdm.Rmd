@@ -473,13 +473,12 @@ loading_suggestion$constraint
 loading_suggestion$note
 ```
 
-The companion article, [Suggesting a Lambda constraint](lambda-constraint-suggest.html),
-walks through why these three suggestions can disagree. The short
-version here is that the profile path costs more, but it gives the
-cleanest loading-diagnostics display for this binary fixture.
-The cheaper Wald suggestion over-prunes this example and the refit has
-a non-positive-definite Hessian, so it is not a good public figure even
-though it remains a useful warning about over-aggressive pinning.
+These three suggestions can disagree. The profile path costs more, but
+it gives the cleanest loading-diagnostics display for this binary
+fixture. The cheaper Wald suggestion over-prunes this example and the
+refit has a non-positive-definite Hessian, so it is not a good public
+figure even though it remains a useful warning about over-aggressive
+pinning.
 
 Refit the same binary JSDM with the suggested loading constraint. The
 likelihood may change slightly because the constrained fit is no
@@ -554,8 +553,7 @@ reportable only after the orientation choice is explicit.
 
 * [Morphometrics](morphometrics.html) — Gaussian stacked-trait analogue with `latent() + unique()`.
 * [Choosing latent rank](model-selection-latent-rank.html) — how to compare candidate values of `d`.
-* [Confirmatory loadings](lambda-constraint.html) — how to encode a biological loading hypothesis.
-* [Suggesting a Lambda constraint](lambda-constraint-suggest.html) — data-driven fallback when no hypothesis is available.
+* Loading-constraint helpers — `?confirmatory_lambda` and `?suggest_lambda_constraint` are available for scoped loading-diagnostics work; the full public loading-constraint teaching path is still under article-council review.
 * [`vignette("response-families")`](response-families.html) — full table of supported families and the per-family $\sigma^2_d$.
 
 ## References

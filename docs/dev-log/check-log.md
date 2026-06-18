@@ -20780,3 +20780,95 @@ Deliberately not run:
   `--as-cran` audit, and no public docs/navbar change. The #101 checks are now
   running, not passed; this does not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Hide lambda articles from public dropdown until council review
+
+Implemented the first article-council surface cleanup: the loading-constraint
+pages remain buildable, but no longer appear in the public Articles dropdown or
+as recommended next steps from the public `joint-sdm` article. This is a
+navigation/reader-path safety change only; it does not demote the underlying
+LAM validation rows, change code, or promote any bridge/release/power claim.
+
+Evidence recorded:
+
+- `_pkgdown.yml` no longer has the public `Loading constraints` dropdown group.
+  `lambda-constraint` and `lambda-constraint-suggest` moved into the internal
+  article bucket.
+- `vignettes/articles/lambda-constraint.Rmd` is marked `tier: 3` with an
+  internal article-gate note while the binary loading-constraint teaching path
+  is under review.
+- `vignettes/articles/lambda-constraint-suggest.Rmd` is marked `tier: 3` with
+  a companion-gate note until the main loading-constraint article is public.
+- `vignettes/articles/joint-sdm.Rmd` keeps its scoped loading-suggestion
+  example, but no longer links to the hidden lambda pages in the narrative or
+  See also section.
+- `ROADMAP.md` and
+  `docs/dev-log/audits/2026-06-18-article-council-ledger.md` now record the
+  2026-06-18 lambda surface cleanup.
+
+Checks:
+
+- Skill reads:
+  `sed -n '1,260p' .agents/skills/article-tier-audit/SKILL.md`
+  -> article-tier instructions read before changing article visibility.
+  `sed -n '1,260p' .agents/skills/rose-pre-publish-audit/SKILL.md`
+  -> Rose pre-publish gate read before touching `_pkgdown.yml` / vignettes.
+  `sed -n '1,260p' .agents/skills/after-task-audit/SKILL.md`
+  -> after-task checklist read before closeout.
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- _pkgdown.yml vignettes docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/audits ROADMAP.md docs/design`
+  -> recent overlapping edits are the current #489/dashboard/article-council
+  lane, with no separate hot-file owner detected.
+- Routing audit:
+  `rg -n "lambda-constraint|lambda-constraint-suggest|Confirmatory loadings|Suggesting Lambda constraint|Loading constraints|psychometrics-irt|mixed-family-extractors|random-slopes-nongaussian|articles/.+\\.html" _pkgdown.yml README.md ROADMAP.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/joint-sdm.Rmd vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd vignettes/articles/fit-diagnostics.Rmd vignettes/articles/convergence-start-values.Rmd vignettes/articles/pitfalls.Rmd vignettes/articles/missing-data.Rmd`
+  -> before the edit, `_pkgdown.yml` exposed the lambda pages and
+  `joint-sdm` linked to them; after the edit, the visible-source rerun below
+  returned no hits.
+  `rg -n "articles/lambda-constraint\\.html|lambda-constraint\\.html|lambda-constraint-suggest\\.html|Confirmatory loadings|Suggesting Lambda constraint|Loading constraints" README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/joint-sdm.Rmd vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd vignettes/articles/fit-diagnostics.Rmd vignettes/articles/convergence-start-values.Rmd vignettes/articles/pitfalls.Rmd vignettes/articles/missing-data.Rmd _pkgdown.yml`
+  -> no hits after the edit, meaning the public dropdown and visible articles
+  no longer route readers to hidden lambda pages.
+  `rg -n "lambda-constraint|lambda-constraint-suggest" vignettes/articles/*.Rmd`
+  -> remaining hits are in internal articles or the hidden lambda pages
+  themselves.
+- Pkgdown checks:
+  `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> failed before reading the config because this shell did not have Pandoc on
+  PATH (`Pandoc not available`).
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> completed successfully; rendered `joint-sdm`, both lambda pages, and the
+  full article set.
+  `rg -n "Loading constraints|Confirmatory loadings|Suggesting Lambda constraint|lambda-constraint\\.html|lambda-constraint-suggest\\.html" pkgdown-site/articles/joint-sdm.html pkgdown-site/articles/index.html`
+  -> no `joint-sdm` hits; lambda pages remain visible only in the generated
+  article index's internal article listing.
+  `rg -n "Internal article gate|first-stop tutorial|first-stop technical reference" pkgdown-site/articles/lambda-constraint.html pkgdown-site/articles/lambda-constraint-suggest.html`
+  -> rendered gate notes are present.
+- Stale wording / claim scans:
+  `rg -n "release-ready|bridge complete|scientific coverage passed|coverage passed|publication-grade|fast GLLVM|AI-REML|REML|full parity|complete bridge" ROADMAP.md _pkgdown.yml vignettes/articles/joint-sdm.Rmd vignettes/articles/lambda-constraint.Rmd vignettes/articles/lambda-constraint-suggest.Rmd docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  -> expected guard / existing publication-grade-boundary hits only; no bridge,
+  release, REML, AI-REML, or coverage promotion was introduced.
+  `rg -n "gllvmTMB_wide|meta_known_V|\\bS_B\\b|\\bS_W\\b|\\\\bf S|profile-likelihood default|trio" ROADMAP.md _pkgdown.yml vignettes/articles/joint-sdm.Rmd vignettes/articles/lambda-constraint.Rmd vignettes/articles/lambda-constraint-suggest.Rmd docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  -> no hits.
+  `git diff --check`
+  -> clean.
+
+Files updated:
+
+- `_pkgdown.yml`
+- `vignettes/articles/joint-sdm.Rmd`
+- `vignettes/articles/lambda-constraint.Rmd`
+- `vignettes/articles/lambda-constraint-suggest.Rmd`
+- `ROADMAP.md`
+- `docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-18-lambda-navbar-hide.md`
+
+Deliberately not run:
+
+- No `devtools::document()`, `devtools::test()`, R CMD check, release
+  `--as-cran`, remote power-pilot scoring, or GLLVM.jl mutation. This slice
+  changes article navigation and reader routing only. It does not make #489
+  ready, the bridge complete, the release ready, or scientific coverage passed.

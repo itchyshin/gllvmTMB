@@ -1,6 +1,6 @@
 ---
 title: "No hypothesis? Suggesting a Lambda constraint with suggest_lambda_constraint"
-tier: 2 # Technical companion for data-driven loading-constraint selection.
+tier: 3 # Hidden companion until the main loading-constraint article passes public review.
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,6 +23,12 @@ knitr::opts_chunk$set(
   warning   = FALSE
 )
 ```
+
+> **Internal article gate:** This companion page is kept buildable for
+> maintainers while the main loading-constraint article is under
+> article-council review. The current public binary worked example is
+> [`vignette("joint-sdm")`](joint-sdm.html); do not treat this page as a
+> first-stop technical reference until the main teaching path is public.
 
 ## Why this article exists
 

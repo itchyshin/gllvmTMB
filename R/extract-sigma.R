@@ -1369,15 +1369,15 @@ extract_Sigma <- function(
 #' `scale = "effect"` returns `Gamma_effect = rho * Gamma_shape` using the
 #' fixed `rho` recorded on that kernel. PARTIAL: uncertainty for `Gamma` is
 #' not yet reported by this helper; use bootstrap workflows when interval
-#' estimates are required. PLANNED: richer `rho` profiling and association
-#' richness guidance live in the C2/C3 coevolution examples rather than in
-#' this low-level extractor.
+#' estimates are required. Use [profile_cross_rho()] to compare a fixed `rho`
+#' grid; in-engine `rho` estimation and profile intervals remain planned work.
 #'
 #' @details
 #' `rho` is part of the supplied `K` matrix, not a fitted parameter in the
-#' current engine. To profile it, rebuild `K_star` over a small `rho` grid,
-#' refit the same formula, and compare `logLik()` values. `scale = "effect"`
-#' is therefore a fixed-kernel transformation, not an estimate of `rho`.
+#' current engine. To profile it, use [profile_cross_rho()] to rebuild
+#' `K_star` over a small `rho` grid, refit the same formula, and compare
+#' `logLik()` values. `scale = "effect"` is therefore a fixed-kernel
+#' transformation, not an estimate of `rho`.
 #' Treat `Gamma` from a single association matrix `W` as data-condition
 #' sensitive: the C2 recovery test includes a sparse-versus-dense `W` check,
 #' and sparse or poorly replicated host-partner links should be reported as

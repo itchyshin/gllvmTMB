@@ -35,15 +35,15 @@ when the fitted kernel tier was built from \code{\link[=make_cross_kernel]{make_
 \code{scale = "effect"} returns \code{Gamma_effect = rho * Gamma_shape} using the
 fixed \code{rho} recorded on that kernel. PARTIAL: uncertainty for \code{Gamma} is
 not yet reported by this helper; use bootstrap workflows when interval
-estimates are required. PLANNED: richer \code{rho} profiling and association
-richness guidance live in the C2/C3 coevolution examples rather than in
-this low-level extractor.
+estimates are required. Use \code{\link[=profile_cross_rho]{profile_cross_rho()}} to compare a fixed \code{rho}
+grid; in-engine \code{rho} estimation and profile intervals remain planned work.
 }
 \details{
 \code{rho} is part of the supplied \code{K} matrix, not a fitted parameter in the
-current engine. To profile it, rebuild \code{K_star} over a small \code{rho} grid,
-refit the same formula, and compare \code{logLik()} values. \code{scale = "effect"}
-is therefore a fixed-kernel transformation, not an estimate of \code{rho}.
+current engine. To profile it, use \code{\link[=profile_cross_rho]{profile_cross_rho()}} to rebuild
+\code{K_star} over a small \code{rho} grid, refit the same formula, and compare
+\code{logLik()} values. \code{scale = "effect"} is therefore a fixed-kernel
+transformation, not an estimate of \code{rho}.
 Treat \code{Gamma} from a single association matrix \code{W} as data-condition
 sensitive: the C2 recovery test includes a sparse-versus-dense \code{W} check,
 and sparse or poorly replicated host-partner links should be reported as

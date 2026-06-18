@@ -21695,6 +21695,120 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 15:26 MDT -- Paper 2 fixed-rho profile helper
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Promote the existing fixed-`rho` sensitivity-grid pattern from an internal
+  test helper to an exported fixed-kernel profile helper.
+- Keep the claim boundary explicit: this is fixed-grid profile/sensitivity
+  support, not in-engine `rho` estimation, `rho` profile intervals, interval
+  calibration, bridge completion, release readiness, or scientific coverage.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch, newest `6793af4 feat(coevolution): add pair-specific covariance
+  extractor`.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Added `profile_cross_rho(A_H, A_P, W, rho, refit, metrics = NULL, ...)`.
+  The helper rebuilds `K_star` with `make_cross_kernel()` for each fixed
+  `rho`, calls `refit(K = K_rho, rho = rho_i, ...)`, and returns
+  `logLik`, `relative_logLik`, `delta_deviance`, best-grid flags,
+  convergence, Hessian status, status/error fields, and optional metric
+  columns.
+- Replaced the internal `.c3_profile_phy_rho()` test helper with
+  `profile_cross_rho()` in the heavy COE-04 fixed-rho gate.
+- Added a fast contract test using an `lm()` refit callback and metric
+  callback, plus fail-loud checks for invalid `rho` and `refit`.
+- Updated `extract_Gamma()` prose to point to `profile_cross_rho()` for fixed
+  grids.
+- Updated the internal coevolution article's `rho` section to use
+  `profile_cross_rho()` in the `eval = FALSE` example.
+- Added `profile_cross_rho()` to `_pkgdown.yml`.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-paper2-fixed-rho-profile-helper.md`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'invisible(parse(file = "R/kernel-helpers.R")); invisible(parse(file = "tests/testthat/test-coevolution-two-kernel.R")); cat("parse ok\n")'`
+  -> pass.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> first attempt failed because `profile_cross_rho()` was not yet exported;
+  resolved by `devtools::document(quiet = TRUE)`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> wrote `NAMESPACE` and `man/profile_cross_rho.Rd`; later rerun wrote
+  `man/extract_Gamma.Rd`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> second attempt failed because `best_rho` was assigned before data-frame
+  column reordering and got dropped; fixed by assigning attributes after the
+  final column order.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 9 | PASS 67`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel-helpers|coevolution-prototype|coevolution-recovery")'`
+  -> `FAIL 0 | WARN 0 | SKIP 3 | PASS 33`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 225`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 12 | PASS 171`.
+- `/usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `/usr/local/bin/Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> exit 0; rendered `articles/cross-lineage-coevolution.html` and the full
+  article set. Four untracked build-side-effect PNGs under `vignettes/` were
+  removed because they were generated artifacts, not source changes.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 354`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> pass.
+- `git diff --check`
+  -> clean.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/ && curl -sS http://127.0.0.1:8770/status.json | rg -n "profile_cross_rho|Laplace/VA|VA gap|PR green|unique\(\)/\*_unique\(\)" | head -40`
+  -> dashboard synced to the local widget server; spot-check confirms the
+  served JSON includes the new fixed-`rho` helper evidence, the Laplace/VA
+  capability note, the post-arc `*_unique()` deprecation/supersession note,
+  and the guard.
+
+Stale/evidence scans:
+
+- `rg -n 'profile_cross_rho|fixed-kernel sensitivity grid|fixed-grid profile|in-engine rho|formal rho profile|profile/estimation|rho profile intervals|PR green' pkgdown-site/articles/cross-lineage-coevolution.html docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json NEWS.md docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md R/kernel-helpers.R R/extract-sigma.R vignettes/articles/cross-lineage-coevolution.Rmd man/profile_cross_rho.Rd man/extract_Gamma.Rd`
+  -> confirms the helper appears in source, generated Rd, rendered
+  coevolution article, validation rows, dashboard, and NEWS; remaining
+  `rho`/interval wording is claim-boundary language.
+- An earlier scan used a double-quoted pattern containing backticks, which
+  made zsh try command substitution (`zsh:1: command not found: rho`). The
+  scan was rerun safely with single quotes and was not used as evidence.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No in-engine `rho` estimation.
+- No `rho` profile intervals or interval coverage.
+- No formal null-threshold / Type-I calibration beyond the diagnostic grid.
+- No broader/harder moderate-overlap grid.
+- No broad high-overlap truth-recovery/failure calibration beyond the current
+  collapse-equivalence and warning gates.
+- No non-Gaussian recovery or mixed-family Paper 2 coverage; the Poisson gate
+  remains construction-only.
+- No explicit Paper 2 multi-kernel Psi support.
+- No `*_unique()` lifecycle/deprecation implementation yet.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 15:03 MDT -- Paper 2 pair-specific covariance extractor
 
 Branch: `codex/r-bridge-grouped-dispersion`

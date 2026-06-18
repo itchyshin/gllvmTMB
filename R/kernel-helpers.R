@@ -116,6 +116,151 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
   K
 }
 
+#' Profile fixed cross-lineage rho values
+#'
+#' @description
+#' `profile_cross_rho()` formalises the fixed-kernel sensitivity workflow for
+#' Design 65 cross-lineage kernels. It rebuilds `K_star` with
+#' [make_cross_kernel()] over a user-supplied `rho` grid, calls a caller-supplied
+#' `refit(K, rho, ...)` function for each grid value, and returns a tidy
+#' likelihood table.
+#'
+#' IN (`COE-03` / `COE-04`): this is a fixed-kernel profile workflow for
+#' comparing defended `rho` values. PARTIAL: `rho` is still not a TMB parameter,
+#' this helper does not estimate `rho`, and it does not produce confidence
+#' intervals or null calibration.
+#'
+#' @param A_H,A_P,W Inputs passed to [make_cross_kernel()].
+#' @param rho Numeric vector of fixed `rho` values to evaluate.
+#' @param refit Function called as `refit(K = K_rho, rho = rho_i, ...)`. It
+#'   should return a fitted object with a `logLik()` method.
+#' @param metrics Optional function called as
+#'   `metrics(fit = fit_i, K = K_rho, rho = rho_i)`. It may return a named
+#'   list or one-row data frame of additional scalar summaries, such as a
+#'   `Gamma` correlation or a component norm.
+#' @param eps Positive numerical floor passed to [make_cross_kernel()].
+#' @param keep_fits Logical; if `TRUE`, fitted objects are attached as a
+#'   `"fits"` attribute. Default `FALSE` keeps the returned object light.
+#' @param ... Additional arguments passed to `refit`.
+#'
+#' @return A data frame of class `gllvmTMB_cross_rho_profile` with columns
+#'   `rho`, `logLik`, `relative_logLik`, `delta_deviance`, `is_best`,
+#'   `convergence`, `pd_hessian`, `status`, and `error`, plus any metric
+#'   columns returned by `metrics`.
+#'
+#' @examples
+#' A_H <- diag(2)
+#' A_P <- diag(2)
+#' rownames(A_H) <- colnames(A_H) <- c("H1", "H2")
+#' rownames(A_P) <- colnames(A_P) <- c("P1", "P2")
+#' W <- matrix(c(1, 0.2, 0.2, 1), 2, 2)
+#' dimnames(W) <- list(rownames(A_H), rownames(A_P))
+#' dat <- data.frame(y = c(1, 2, 3, 4), x = c(0, 1, 0, 1))
+#' profile_cross_rho(
+#'   A_H, A_P, W,
+#'   rho = c(0, 0.25),
+#'   refit = function(K, rho) stats::lm(y ~ x, data = dat)
+#' )
+#'
+#' @export
+profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
+                              eps = 1e-8, keep_fits = FALSE, ...) {
+  if (!is.numeric(rho) || length(rho) == 0L || anyNA(rho) ||
+      any(!is.finite(rho))) {
+    cli::cli_abort("{.arg rho} must be a non-empty finite numeric vector.")
+  }
+  if (any(abs(rho) > 1)) {
+    cli::cli_abort("{.arg rho} values must lie in [-1, 1].")
+  }
+  if (!is.function(refit)) {
+    cli::cli_abort("{.arg refit} must be a function.")
+  }
+  if (!is.null(metrics) && !is.function(metrics)) {
+    cli::cli_abort("{.arg metrics} must be {.code NULL} or a function.")
+  }
+  if (!is.logical(keep_fits) || length(keep_fits) != 1L || is.na(keep_fits)) {
+    cli::cli_abort("{.arg keep_fits} must be {.code TRUE} or {.code FALSE}.")
+  }
+
+  rows <- vector("list", length(rho))
+  fits <- vector("list", length(rho))
+  for (i in seq_along(rho)) {
+    rho_i <- as.numeric(rho[[i]])
+    K_i <- make_cross_kernel(A_H, A_P, W, rho = rho_i, eps = eps)
+    fit_i <- tryCatch(
+      refit(K = K_i, rho = rho_i, ...),
+      error = function(e) e
+    )
+    fits[[i]] <- fit_i
+    if (inherits(fit_i, "error")) {
+      rows[[i]] <- data.frame(
+        rho = rho_i,
+        logLik = NA_real_,
+        convergence = NA_integer_,
+        pd_hessian = NA,
+        status = "error",
+        error = conditionMessage(fit_i),
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+
+    logLik_i <- .cross_rho_logLik(fit_i)
+    status_i <- if (is.finite(logLik_i)) "ok" else "logLik_error"
+    row_i <- data.frame(
+      rho = rho_i,
+      logLik = logLik_i,
+      convergence = .cross_rho_convergence(fit_i),
+      pd_hessian = .cross_rho_pd_hessian(fit_i),
+      status = status_i,
+      error = NA_character_,
+      stringsAsFactors = FALSE
+    )
+    if (!is.null(metrics)) {
+      metric_i <- metrics(fit = fit_i, K = K_i, rho = rho_i)
+      row_i <- cbind(
+        row_i,
+        .cross_rho_metric_row(metric_i, names(row_i))
+      )
+    }
+    rows[[i]] <- row_i
+  }
+
+  out <- .cross_rho_bind_rows(rows)
+  out$relative_logLik <- NA_real_
+  out$delta_deviance <- NA_real_
+  out$is_best <- FALSE
+  ok <- is.finite(out$logLik)
+  best_rho <- NA_real_
+  if (any(ok)) {
+    max_ll <- max(out$logLik[ok])
+    out$relative_logLik[ok] <- out$logLik[ok] - max_ll
+    out$delta_deviance[ok] <- 2 * (max_ll - out$logLik[ok])
+    best <- which(ok & out$logLik == max_ll)
+    out$is_best[best] <- TRUE
+    best_rho <- out$rho[best]
+  }
+
+  leading <- c(
+    "rho",
+    "logLik",
+    "relative_logLik",
+    "delta_deviance",
+    "is_best",
+    "convergence",
+    "pd_hessian",
+    "status",
+    "error"
+  )
+  out <- out[, c(leading, setdiff(names(out), leading)), drop = FALSE]
+  attr(out, "best_rho") <- best_rho
+  if (isTRUE(keep_fits)) {
+    attr(out, "fits") <- fits
+  }
+  class(out) <- c("gllvmTMB_cross_rho_profile", "data.frame")
+  out
+}
+
 .cross_kernel_metadata <- function(K) {
   meta <- attr(K, "gllvmTMB_cross_kernel", exact = TRUE)
   if (!is.list(meta)) {
@@ -205,4 +350,71 @@ make_cross_kernel <- function(A_H, A_P, W, rho = 0.5, eps = 1e-8) {
     W <- W[, p_names, drop = FALSE]
   }
   W
+}
+
+.cross_rho_logLik <- function(fit) {
+  value <- tryCatch(
+    as.numeric(stats::logLik(fit)),
+    error = function(e) NA_real_
+  )
+  if (!length(value) || !is.finite(value[[1L]])) {
+    return(NA_real_)
+  }
+  value[[1L]]
+}
+
+.cross_rho_convergence <- function(fit) {
+  conv <- fit$opt$convergence
+  if (is.null(conv) || !length(conv) || is.na(conv[[1L]])) {
+    return(NA_integer_)
+  }
+  as.integer(conv[[1L]])
+}
+
+.cross_rho_pd_hessian <- function(fit) {
+  pd <- fit$fit_health$pd_hessian
+  if (is.null(pd) || !length(pd) || is.na(pd[[1L]])) {
+    return(NA)
+  }
+  isTRUE(pd[[1L]])
+}
+
+.cross_rho_metric_row <- function(x, reserved) {
+  if (is.null(x)) {
+    return(data.frame())
+  }
+  if (is.data.frame(x)) {
+    if (nrow(x) != 1L) {
+      cli::cli_abort("{.arg metrics} must return a one-row data frame.")
+    }
+    out <- x
+  } else if (is.list(x) && !is.null(names(x))) {
+    out <- as.data.frame(x, stringsAsFactors = FALSE, optional = TRUE)
+    if (nrow(out) != 1L) {
+      cli::cli_abort("{.arg metrics} list values must be scalar.")
+    }
+  } else {
+    cli::cli_abort(
+      "{.arg metrics} must return {.code NULL}, a named list, or a one-row data frame."
+    )
+  }
+  overlap <- intersect(names(out), reserved)
+  if (length(overlap)) {
+    cli::cli_abort(
+      "{.arg metrics} returned reserved column name{?s}: {.val {overlap}}."
+    )
+  }
+  out
+}
+
+.cross_rho_bind_rows <- function(rows) {
+  all_names <- unique(unlist(lapply(rows, names), use.names = FALSE))
+  filled <- lapply(rows, function(x) {
+    missing <- setdiff(all_names, names(x))
+    for (nm in missing) {
+      x[[nm]] <- NA
+    }
+    x[, all_names, drop = FALSE]
+  })
+  do.call(rbind, filled)
 }

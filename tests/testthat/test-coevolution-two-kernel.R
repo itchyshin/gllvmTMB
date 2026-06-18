@@ -201,35 +201,6 @@
   )
 }
 
-.c3_profile_phy_rho <- function(fx, rho_grid) {
-  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  profile <- lapply(rho_grid, function(rho) {
-    K_phy <- gllvmTMB::make_cross_kernel(
-      fx$A_H,
-      fx$A_P,
-      fx$W_phy,
-      rho = rho
-    )
-    fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-      traits(h_size, h_defence, p_size, p_attack) ~
-        1 +
-        kernel_latent(species, K = K_phy, d = 1, name = "phy") +
-        kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
-      data = fx$data,
-      unit = "row_id",
-      cluster = "species",
-      family = stats::gaussian(),
-      control = ctl
-    )))
-    data.frame(
-      rho = rho,
-      convergence = fit$opt$convergence,
-      logLik = as.numeric(stats::logLik(fit))
-    )
-  })
-  do.call(rbind, profile)
-}
-
 .c3_make_poisson_two_kernel_fixture <- function(seed = 2701L,
                                                n_H = 16L,
                                                n_P = 16L,
@@ -535,6 +506,56 @@ test_that("kernel-similarity diagnostic separates low and high overlap cases", {
   )
   expect_equal(diag_dx$pairs$similarity, 1)
   expect_equal(diag_dx$pairs$overlap_class, "high")
+})
+
+test_that("profile_cross_rho records a fixed-kernel profile grid", {
+  A_H <- diag(2L)
+  A_P <- diag(2L)
+  rownames(A_H) <- colnames(A_H) <- c("H1", "H2")
+  rownames(A_P) <- colnames(A_P) <- c("P1", "P2")
+  W <- matrix(c(1, 0.2, 0.2, 1), 2L, 2L)
+  dimnames(W) <- list(rownames(A_H), rownames(A_P))
+  dat <- data.frame(
+    y = c(0.05, 0.28, 0.03, 0.23),
+    x = c(0, 1, 0, 1)
+  )
+
+  rho_grid <- c(0, 0.25, 0.5)
+  prof <- gllvmTMB::profile_cross_rho(
+    A_H,
+    A_P,
+    W,
+    rho = rho_grid,
+    refit = function(K, rho) {
+      stats::lm(y ~ 1 + offset(rho * x), data = dat)
+    },
+    metrics = function(fit, K, rho) {
+      list(
+        kernel_rho = attr(K, "gllvmTMB_cross_kernel")$rho,
+        coef_intercept = unname(stats::coef(fit)[[1L]])
+      )
+    }
+  )
+
+  expect_s3_class(prof, "gllvmTMB_cross_rho_profile")
+  expect_equal(prof$rho, rho_grid)
+  expect_equal(prof$kernel_rho, rho_grid)
+  expect_true(all(is.finite(prof$logLik)))
+  expect_equal(prof$relative_logLik, prof$logLik - max(prof$logLik))
+  expect_equal(prof$delta_deviance, 2 * (max(prof$logLik) - prof$logLik))
+  expect_equal(prof$is_best, prof$logLik == max(prof$logLik))
+  expect_equal(attr(prof, "best_rho"), prof$rho[which.max(prof$logLik)])
+  expect_true(all(is.na(prof$convergence)))
+  expect_true(all(is.na(prof$pd_hessian)))
+
+  expect_error(
+    gllvmTMB::profile_cross_rho(A_H, A_P, W, rho = 1.2, refit = function(...) NULL),
+    regexp = "\\[-1, 1\\]"
+  )
+  expect_error(
+    gllvmTMB::profile_cross_rho(A_H, A_P, W, rho = 0, refit = NULL),
+    regexp = "refit"
+  )
 })
 
 test_that("high-overlap kernel tiers warn while still fitting", {
@@ -1045,7 +1066,26 @@ test_that("fixed-rho sensitivity grid separates cross signal from block-null but
   expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
 
   rho_grid <- c(0, 0.25, 0.55, 0.85)
-  prof <- .c3_profile_phy_rho(fx, rho_grid)
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  prof <- gllvmTMB::profile_cross_rho(
+    fx$A_H,
+    fx$A_P,
+    fx$W_phy,
+    rho = rho_grid,
+    refit = function(K, rho) {
+      suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+        traits(h_size, h_defence, p_size, p_attack) ~
+          1 +
+          kernel_latent(species, K = K, d = 1, name = "phy") +
+          kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+        data = fx$data,
+        unit = "row_id",
+        cluster = "species",
+        family = stats::gaussian(),
+        control = ctl
+      )))
+    }
+  )
   expect_equal(prof$rho, rho_grid)
   expect_true(all(prof$convergence == 0L))
   expect_true(all(is.finite(prof$logLik)))

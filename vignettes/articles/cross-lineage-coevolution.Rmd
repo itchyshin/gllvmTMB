@@ -441,37 +441,40 @@ ggplot(gamma_plot_data,
 
 `rho` lives inside `K*`, not in the TMB parameter vector, so it is **not**
 estimated by the fit. The honest workflow is a fixed-kernel sensitivity grid:
-rebuild `K*` over plausible `rho` values, refit the same model at each, and
-read the likelihood and `Gamma` as a function of `rho`.
+use `profile_cross_rho()` to rebuild `K*` over plausible `rho` values, refit
+the same model at each grid point, and read the likelihood and `Gamma` as a
+function of `rho`.
 
 ```{r rho-grid, eval = FALSE}
 rho_grid <- seq(0, 0.8, by = 0.2)
 
-rho_results <- lapply(rho_grid, function(rho) {
-  K_rho <- make_cross_kernel(coev$A_H, coev$A_P, coev$W, rho = rho)
-  fit_rho <- gllvmTMB(
-    traits(h_size, h_defence, p_size, p_attack) ~ 1 +
-      kernel_latent(species, K = K_rho, d = 2, name = "cross") +
-      kernel_unique(species, K = K_rho, name = "cross"),
-    data = coev$data_wide,
-    unit = "row_id",
-    cluster = "species",
-    family = gaussian(),
-    control = gllvmTMBcontrol(se = FALSE)
-  )
-  data.frame(
-    rho       = rho,
-    logLik    = as.numeric(logLik(fit_rho)),
-    pd_hess   = isTRUE(fit_rho$fit_health$pd_hessian),
-    gamma_cor = abs(cor(
-      as.vector(extract_Gamma(fit_rho, level = "cross",
-                             row_traits = coev$truth$host_traits,
-                             col_traits = coev$truth$partner_traits)),
-      as.vector(coev$truth$Gamma)
-    ))
-  )
-})
-do.call(rbind, rho_results)
+rho_results <- profile_cross_rho(
+  coev$A_H, coev$A_P, coev$W,
+  rho = rho_grid,
+  refit = function(K, rho) {
+    gllvmTMB(
+      traits(h_size, h_defence, p_size, p_attack) ~ 1 +
+        kernel_latent(species, K = K, d = 2, name = "cross") +
+        kernel_unique(species, K = K, name = "cross"),
+      data = coev$data_wide,
+      unit = "row_id",
+      cluster = "species",
+      family = gaussian(),
+      control = gllvmTMBcontrol(se = FALSE)
+    )
+  },
+  metrics = function(fit, K, rho) {
+    list(
+      gamma_cor = abs(cor(
+        as.vector(extract_Gamma(fit, level = "cross",
+                                row_traits = coev$truth$host_traits,
+                                col_traits = coev$truth$partner_traits)),
+        as.vector(coev$truth$Gamma)
+      ))
+    )
+  }
+)
+rho_results
 ```
 
 A representative profile from data generated at `rho = 0.65` looks like the

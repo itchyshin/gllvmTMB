@@ -41,7 +41,12 @@
   `rho = c(0, 0.25, 0.55, 0.85)` while holding the non component fixed; the
   positive-`rho` grid strongly beats the block-null `rho = 0` fit, but the gate
   deliberately treats the best grid point as sensitivity evidence only because
-  fixed kernel strength and loading magnitudes can trade off. High-overlap
+  fixed kernel strength and loading magnitudes can trade off.
+  `profile_cross_rho()` now makes that fixed-kernel workflow a reusable helper:
+  it rebuilds `K*` over a defended `rho` grid, calls a user-supplied refit
+  function, and returns log-likelihood / relative-likelihood profile rows.
+  This is still not in-engine `rho` estimation or interval calibration.
+  High-overlap
   `predict_cross_covariance()` combines the shape-scale `Gamma_shape_r` block
   with fitted `K_r[i, j]` entries to return pair-specific point cross-lineage
   covariance, avoiding the false impression that there is one universal total
@@ -63,7 +68,7 @@
   broader high-overlap truth-recovery/failure calibration beyond the
   collapse-equivalence and warning gates, formal null-threshold calibration
   beyond this diagnostic grid, explicit Psi
-  redesign/deprecation, formal `rho` profile/estimation support, interval
+  redesign/deprecation, in-engine `rho` estimation, `rho` profile intervals,
   calibration, and broader non-Gaussian/mixed-family recovery remain gated. The
   one-name `kernel_*()` path still uses the
   phylo-equivalent KER-02 engine and the `<1e-6` equivalence gate remains

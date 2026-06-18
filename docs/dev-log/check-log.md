@@ -21695,6 +21695,88 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 14:03 MDT -- COE-04 fixed-rho sensitivity grid
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add a bounded fixed-`rho` sensitivity gate for the Paper 2 two-kernel path.
+- Keep the claim honest: this detects cross signal relative to `rho = 0`, but
+  it is not in-engine `rho` estimation, a calibrated profile, or interval
+  evidence.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch plus the remote power-pilot result commit.
+- `git diff --check`
+  -> clean before edits.
+
+Exploratory result:
+
+- A small `rho` grid probe on the near-orthogonal two-component fixture showed
+  that positive `rho` values strongly beat `rho = 0`, but the best grid point
+  can sit at the high edge (`rho = 0.85`) rather than the planted value
+  (`rho = 0.55`). Fisher interpretation: fixed kernel strength and loading
+  magnitudes trade off, so the grid is sensitivity/cross-signal evidence only.
+
+Implemented:
+
+- Extended `.c3_make_two_component_fixture()` to retain `A_H`, `A_P`, `I_H`,
+  `I_P`, `W_phy`, and `W_non` for refit-grid tests.
+- Added `.c3_profile_phy_rho()` helper in
+  `tests/testthat/test-coevolution-two-kernel.R`.
+- Added heavy test
+  `fixed-rho sensitivity grid separates cross signal from block-null but does not estimate rho`:
+  - rebuilds the phy component with `rho = c(0, 0.25, 0.55, 0.85)`;
+  - holds the non component fixed;
+  - verifies all grid fits converge and have finite log-likelihood;
+  - checks the planted `rho = 0.55` and the best positive-`rho` fit strongly
+    beat the block-null `rho = 0` fit;
+  - records that a high-edge maximum is not a fitted `rho` estimate.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coe04-fixed-rho-sensitivity.md`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 8 | PASS 47`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 145`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 11 | PASS 142`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 265`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json`
+  -> valid JSON.
+- `python3 -m json.tool docs/dev-log/dashboard/sweep.json`
+  -> valid JSON.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No in-engine or fitted `rho`.
+- No calibrated `rho` profile or profile interval.
+- No interval coverage.
+- No broader moderate-overlap calibration.
+- No broader high-overlap recovery/failure calibration beyond the collapse and
+  warning gates.
+- No broader null-threshold calibration.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 13:52 MDT -- Laplace / VA capability map for dashboard
 
 Branch: `codex/r-bridge-grouped-dispersion`

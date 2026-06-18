@@ -29,7 +29,12 @@
   blocks are zero, and a small near-orthogonal null/signal grid now keeps three
   null seeds below the predeclared `Gamma_shape` norm and likelihood-gain
   bounds while recovering both `Gamma_shape` components in two medium-signal
-  fixtures. High-overlap kernel tiers now warn during fitting and again
+  fixtures. A fixed-`rho` sensitivity grid now refits the phy component over
+  `rho = c(0, 0.25, 0.55, 0.85)` while holding the non component fixed; the
+  positive-`rho` grid strongly beats the block-null `rho = 0` fit, but the gate
+  deliberately treats the best grid point as sensitivity evidence only because
+  fixed kernel strength and loading magnitudes can trade off. High-overlap
+  kernel tiers now warn during fitting and again
   when `extract_Gamma(level = ...)` is called for an affected component, while
   still returning the diagnostic table and point block for inspection. A first
   high-overlap collapse gate also fits two identical named rank-1 kernel tiers
@@ -39,8 +44,8 @@
   matches low. PARTIAL (`COE-04`): broader moderate-overlap calibration,
   broader high-overlap recovery/failure calibration beyond the collapse and
   warning gates, broader null-threshold calibration, explicit Psi
-  redesign/deprecation, `rho` profiling or estimation, and interval calibration
-  remain gated. The
+  redesign/deprecation, formal `rho` profile/estimation support, and interval
+  calibration remain gated. The
   one-name `kernel_*()` path still uses the
   phylo-equivalent KER-02 engine and the `<1e-6` equivalence gate remains
   unchanged. Guard: PR green != bridge complete != release ready != scientific

@@ -183,6 +183,12 @@
 
   list(
     data = df,
+    A_H = A_H,
+    A_P = A_P,
+    I_H = I_H,
+    I_P = I_P,
+    W_phy = W_phy,
+    W_non = W_non,
     K_phy = K_phy,
     K_non = K_non,
     Gamma_phy = Lambda_phy[host_traits, , drop = FALSE] %*%
@@ -193,6 +199,35 @@
     partner_traits = partner_traits,
     similarity = .c3_kernel_similarity(K_phy, K_non)
   )
+}
+
+.c3_profile_phy_rho <- function(fx, rho_grid) {
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  profile <- lapply(rho_grid, function(rho) {
+    K_phy <- gllvmTMB::make_cross_kernel(
+      fx$A_H,
+      fx$A_P,
+      fx$W_phy,
+      rho = rho
+    )
+    fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      traits(h_size, h_defence, p_size, p_attack) ~
+        1 +
+        kernel_latent(species, K = K_phy, d = 1, name = "phy") +
+        kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      data = fx$data,
+      unit = "row_id",
+      cluster = "species",
+      family = stats::gaussian(),
+      control = ctl
+    )))
+    data.frame(
+      rho = rho,
+      convergence = fit$opt$convergence,
+      logLik = as.numeric(stats::logLik(fit))
+    )
+  })
+  do.call(rbind, profile)
 }
 
 .c3_fit_two_kernel_set <- function(fx, include_intercept = FALSE) {
@@ -911,6 +946,50 @@ test_that("near-orthogonal null and medium-signal grid separates claim scopes", 
     )
     expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.90)
     expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.90)
+  }
+})
+
+test_that("fixed-rho sensitivity grid separates cross signal from block-null but does not estimate rho", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 fixed-rho sensitivity alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | rho_phy | fixed inside K_phy(rho) | make_cross_kernel(..., rho = 0.55) | refit grid + logLik | sensitivity only |
+  ## | K_non | kernel_latent(..., name = "non") | fixed true non component | held fixed in grid | nuisance component |
+  ## | Gamma_phy/effect | kernel_latent(..., name = "phy") | Lambda_H,phy Lambda_P,phy^T | extract_Gamma(scale = "effect") | fixed-rho transform |
+  ##
+  ## The gate is deliberately not a rho-recovery or interval claim. In finite
+  ## samples the fixed kernel strength and loading magnitudes can trade off,
+  ## so the grid is admissible evidence only for sensitivity and cross-signal
+  ## detection relative to a block-null rho = 0 fit.
+  fx <- .c3_make_two_component_fixture(
+    seed = 2003L,
+    n_H = 24L,
+    n_P = 24L,
+    n_rep = 5L
+  )
+  expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
+
+  rho_grid <- c(0, 0.25, 0.55, 0.85)
+  prof <- .c3_profile_phy_rho(fx, rho_grid)
+  expect_equal(prof$rho, rho_grid)
+  expect_true(all(prof$convergence == 0L))
+  expect_true(all(is.finite(prof$logLik)))
+
+  best <- prof[which.max(prof$logLik), , drop = FALSE]
+  null_ll <- prof$logLik[prof$rho == 0]
+  planted_ll <- prof$logLik[prof$rho == 0.55]
+  expect_gt(max(prof$logLik[prof$rho > 0]) - null_ll, 100)
+  expect_gt(planted_ll - null_ll, 100)
+  expect_true(best$rho %in% rho_grid[rho_grid > 0])
+
+  if (identical(best$rho, max(rho_grid))) {
+    expect_gt(best$logLik - planted_ll, 0)
   }
 })
 

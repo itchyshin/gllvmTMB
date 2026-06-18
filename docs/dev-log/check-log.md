@@ -18978,3 +18978,108 @@ Deliberately not run:
   browser restart, #101 rerun, or live JuliaCall bridge refresh. This refresh
   records the new remote evidence and explicitly leaves #101/fresh bridge
   evidence as the next gate.
+
+## 2026-06-17 -- new-session handover after #101 local merge-ref slice
+
+Prepared a new-session handover after the maintainer asked whether to continue
+in a fresh Codex session. This is an evidence and coordination update only; it
+does not change package code, formula grammar, likelihoods, public pkgdown
+navigation, or advertised bridge support.
+
+Evidence recorded:
+
+- Pushed dashboard/check-log evidence commit `03fdda1` to draft PR #489. The
+  push restarted #489 checks. At the handover snapshot, coevolution recovery
+  run `27727834498` had succeeded and R-CMD-check run `27727834488` was still
+  in progress, so #489 was not green at the current head.
+- Fetched `refs/pull/101/merge` for GLLVM.jl #101 into
+  `/tmp/gllvm-jl-pr101-merge`; synthetic merge commit `2cd8563` merges
+  `f7be594` into main merge commit `70a5c83`.
+- Ran a focused local #101 bridge/grouped-dispersion slice with
+  `$HOME/.juliaup/bin/julia --project=.` on Julia 1.10. Outcome: 641/641 tests
+  passed in 1m56s. This is partial local evidence only; #101 still lacks fresh
+  GitHub PR CI after retargeting to `main`.
+- GLLVM.jl #101 remains draft/open, base `main`, clean, head `f7be594`, with
+  only older PR preview checks displayed.
+- Scheduled gllvmTMB power-pilot run `27722546237` remains in progress on main
+  `0567cd7`; compact job count at the handover snapshot was 45
+  completed-success jobs and 4 in-progress shard jobs. This is process
+  evidence only, not coverage proof.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the #489 evidence commits, power-pilot results, and
+  already-known main/pkgdown repairs.
+- #101 local command:
+  `$HOME/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.instantiate(); using Test, GLLVM; @testset "PR101 bridge focused merge-ref" begin include("test/test_bridge_capabilities.jl"); include("test/test_bridge_grouped_dispersion.jl"); include("test/test_bridge_ci.jl"); include("test/test_bridge_x.jl"); include("test/test_bridge_missing_mask.jl"); include("test/test_grouped_dispersion.jl"); include("test/test_grouped_dispersion_beta_gamma.jl"); include("test/test_grouped_dispersion_tweedie_nb1.jl"); include("test/test_ordinal_pertrait.jl") end'`
+  -> `PR101 bridge focused merge-ref | 641 641 1m56.1s`.
+
+Deliberately not run:
+
+- No local R package tests, local R CMD check, pkgdown build, dashboard server,
+  browser restart, GLLVM.jl full `Pkg.test()`, GLLVM.jl PR CI trigger, GLLVM.jl
+  push, or live JuliaCall bridge refresh. The next session should decide the
+  #101 PR CI trigger path with the maintainer because GLLVM.jl's `AGENTS.md`
+  says not to push without explicit instruction.
+
+## 2026-06-17 -- Phase A dashboard stabilization after #489 checks completed
+
+Rehydrated from `AGENTS.md`, the 18:15 handover checkpoint, the dirty local
+diff, and the newest check-log entry, then refreshed current GitHub state before
+advancing the mission-control plan. This is still evidence/dashboard work only;
+it does not change package code, formula grammar, likelihoods, public pkgdown
+navigation, or advertised bridge support.
+
+Evidence recorded:
+
+- Draft PR #489 is open, clean, and green at
+  `03fdda1cedd325188448ffe58b42f09acbf69e61`. R-CMD-check run
+  `27727834488` and coevolution recovery run `27727834498` both succeeded.
+- GLLVM.jl #101 remains draft/open, base `main`, clean, head
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`; the displayed PR checks are
+  still the older 2026-06-16 Documenter preview plus `documenter/deploy`.
+  The local merge-ref bridge slice from the handover remains useful partial
+  evidence, not fresh PR CI.
+- Scheduled gllvmTMB power-pilot run `27722546237` remains in progress on main
+  `0567cd7` with 46 completed-success jobs, 0 failures, and 3 running shards
+  (`shard 31/48`, `shard 32/48`, `shard 33/48`) at the 18:20 MDT snapshot.
+  This remains process evidence only, not coverage or power proof.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were the #489 evidence commits, power-pilot results, and
+  already-known main/pkgdown repairs.
+- Live GitHub evidence:
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json number,isDraft,state,mergeStateStatus,headRefOid,statusCheckRollup,updatedAt,url`
+  -> #489 draft/open, clean, head `03fdda1`, R-CMD-check and recovery success.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,isDraft,state,baseRefName,headRefName,headRefOid,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> #101 draft/open, clean, base `main`, head `f7be594`, stale displayed
+  2026-06-16 PR preview checks only.
+  `/opt/homebrew/bin/gh run view 27722546237 --repo itchyshin/gllvmTMB --json status,conclusion,headSha,updatedAt,jobs,url --jq ...`
+  -> `status: in_progress`, `total_jobs: 49`, `completed_success: 46`,
+  `completed_failure: 0`, `in_progress: 3`.
+- Dashboard validation:
+  `python3 -m json.tool docs/dev-log/dashboard/status.json`
+  -> valid JSON.
+  `python3 -m json.tool docs/dev-log/dashboard/sweep.json`
+  -> valid JSON.
+  `git diff --check`
+  -> clean.
+  `rg -n "R-CMD-check is still in progress|R-CMD still running|current #489 R-CMD is running|current running checks|45 successful jobs and 4 running|18:13 MDT.*27727834488|not yet green|R-CMD-check run 27727834488 is in progress" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json`
+  -> no stale current-dashboard wording remained.
+
+Deliberately not run:
+
+- No local R package tests, local R CMD check, pkgdown build, dashboard server,
+  browser restart, GLLVM.jl full `Pkg.test()`, GLLVM.jl PR CI trigger,
+  GLLVM.jl push, live JuliaCall bridge refresh, power-pilot scoring, or
+  release-gate audit. The next gate remains the #101 PR CI trigger decision:
+  PR green != bridge complete != release ready != scientific coverage passed.

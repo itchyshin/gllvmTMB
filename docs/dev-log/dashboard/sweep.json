@@ -1,10 +1,10 @@
 {
-  "updated": "2026-06-17 18:00 MDT",
+  "updated": "2026-06-17 18:20 MDT",
   "active_work": [
     {
       "when": "live",
       "who": "#489",
-      "text": "Draft PR #489 is clean and green at 7c16433; it remains partial and not release-ready."
+      "text": "Draft PR #489 is clean and green at 03fdda1; it remains partial and not release-ready."
     },
     {
       "when": "live",
@@ -14,15 +14,36 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27717007830 completed successfully and pushed 2709930 to power-pilot-results. Fisher/Curie scoring is still required before coverage or power promotion."
+      "text": "Run 27717007830 completed successfully and pushed 2709930 to power-pilot-results. Follow-up run 27722546237 is still in progress with 46 completed-success jobs and 3 running shards; Fisher/Curie scoring is still required before coverage or power promotion."
     },
     {
       "when": "live",
       "who": "GLLVM.jl",
-      "text": "#95 is merged and main CI is green; #101 is draft/clean on main but still lacks fresh PR checks after retarget; #94 remains dirty salvage."
+      "text": "#95 is merged and main CI is green; #101 is draft/clean on main and local merge-ref bridge slice passed 641/641, but PR checks are still stale after retarget; #94 remains dirty salvage."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 18:20 MDT",
+      "who": "GitHub Actions",
+      "text": "#489 at 03fdda1 is clean and green: recovery run 27727834498 and R-CMD-check run 27727834488 both succeeded.",
+      "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
+      "link_label": "PR #489"
+    },
+    {
+      "when": "2026-06-17 18:20 MDT",
+      "who": "GitHub Actions",
+      "text": "Scheduled power-pilot run 27722546237 remains in progress on main 0567cd7 with 46 completed-success jobs, 0 failures, and 3 running shards.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
+      "link_label": "run 27722546237"
+    },
+    {
+      "when": "2026-06-17 18:13 MDT",
+      "who": "GLLVM.jl local merge-ref",
+      "text": "refs/pull/101/merge at 2cd8563 passed the focused bridge/grouped-dispersion slice with Julia 1.10: 641/641 tests in 1m56s. This is local partial evidence, not fresh PR CI.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
+    },
     {
       "when": "2026-06-17 16:32 MDT",
       "who": "GitHub Actions",
@@ -46,6 +67,22 @@
     }
   ],
   "ci_runs": [
+    {
+      "workflow": "R-CMD-check",
+      "branch": "codex/r-bridge-grouped-dispersion",
+      "head": "03fdda1",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27727834488"
+    },
+    {
+      "workflow": "coevolution-two-kernel-recovery",
+      "branch": "codex/r-bridge-grouped-dispersion",
+      "head": "03fdda1",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27727834498"
+    },
     {
       "workflow": "R-CMD-check",
       "branch": "codex/r-bridge-grouped-dispersion",

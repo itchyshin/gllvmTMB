@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 09:05 MDT",
+  "updated": "2026-06-18 09:55 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -39,6 +39,12 @@
       "value": "run 110 scored",
       "status": "guard",
       "note": "Run 27722546237 succeeded and pushed 5969f6f; run 27735802023 cancelled without branch movement; Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Fisher/Curie scoring still blocks coverage or power promotion. Local iter 24 remains process evidence only."
+    },
+    {
+      "label": "Psi cleanup",
+      "value": "anchor sweep",
+      "status": "active",
+      "note": "First implementation slice reframed api-keyword-grid, covariance-correlation, model-selection-latent-rank, and cross-lineage-coevolution around explicit Psi versus standalone indep(). pkgdown::build_articles(lazy = FALSE) rendered the touched pages, pkgdown::check_pkgdown() passed, and stale scans only hit intentional guard/ledger text. Broader article estate remains one-decision-at-a-time."
     },
     {
       "label": "Next decision",
@@ -209,7 +215,7 @@
           "status": "covered"
         },
         {
-          "name": "Article council slices 1-5A: public surface stabilized, lambda hidden, methods and glossary Tier 2 placement recorded, entry-path helpers placed, and behavioural-syndromes gated as an internal biological candidate; broader reader-facing docs audit still waits bridge landing decision",
+          "name": "Article council slices 1-5A plus Psi cleanup anchor sweep: public surface stabilized, lambda hidden, methods and glossary Tier 2 placement recorded, entry-path helpers placed, behavioural-syndromes gated as an internal biological candidate, and api-keyword-grid / covariance-correlation / model-selection-latent-rank / cross-lineage-coevolution reframed around explicit Psi versus standalone indep(). Broader article estate still waits one-decision-at-a-time council work.",
           "status": "partial"
         },
         {
@@ -242,7 +248,12 @@
     {
       "when": "now",
       "who": "Pat",
-      "text": "Article council slices 1-5A are now reflected in source: public set stabilized, lambda pages hidden, methods/glossary visible only as Tier 2 references, entry-path drafts kept internal, and behavioural-syndromes gated as a Tier 3 candidate Tier 1 biological article."
+      "text": "Article council slices 1-5A are reflected in source, and the first Psi cleanup anchor sweep now renders: standalone diagonal teaching moves to indep(), while unique() is framed as explicit Psi in decomposed models."
+    },
+    {
+      "when": "now",
+      "who": "Boole",
+      "text": "Formula-language cleanup touched articles only. unique() is not deprecated; kernel_*() remains the general API; relmat remains compatibility sugar; no parser or TMB code changed."
     }
   ],
   "serial_gates": [
@@ -309,6 +320,13 @@
       "status": "queued",
       "parallel_with": "public-reader audit",
       "join_gate": "Separate C4/C5 issue split from bridge PR #489."
+    },
+    {
+      "lane": "Psi article cleanup",
+      "owners": "Boole + Rose + Pat + Grace",
+      "status": "active",
+      "parallel_with": "article council and coevolution Option B planning",
+      "join_gate": "One article decision at a time with rendered HTML and check-log evidence."
     }
   ],
   "agents": [
@@ -551,6 +569,16 @@
       "next_gate": "Paper 2 Option A/B decision, C4/C5 issue split, and second engine-slot design."
     },
     {
+      "id": "PSI-SWEEP",
+      "capability": "unique/Psi public article cleanup",
+      "status": "active",
+      "engine": "documentation",
+      "bridge": "not_applicable",
+      "inference": "guard",
+      "evidence": "First implementation slice edited api-keyword-grid.Rmd, covariance-correlation.Rmd, model-selection-latent-rank.Rmd, and cross-lineage-coevolution.Rmd. The rendered pages now teach indep() for standalone marginal-only diagonal models, reserve unique() for explicit Psi in latent()+unique() decompositions, and treat kernel_unique() in the coevolution fixture as optional Psi rather than the source of Gamma or proof of Paper 2 Option B. pkgdown::build_articles(lazy = FALSE) and pkgdown::check_pkgdown() passed.",
+      "next_gate": "Continue the article sweep through response-families, binary/JSDM, phylogenetic, animal, and advanced-method pages one decision at a time."
+    },
+    {
       "id": "MIS-32",
       "capability": "Missing-data closure beyond covered local rows",
       "status": "blocked",
@@ -596,9 +624,21 @@
       "status": "guard",
       "kind": "Issues",
       "item": "No issue is closed from dashboard text or chat memory."
+    },
+    {
+      "status": "guard",
+      "kind": "Psi cleanup",
+      "item": "unique() and *_unique() are not deprecated. Public teaching now prefers indep() for standalone diagonal models and reserves unique() for explicit Psi when evidence supports it."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 09:55 MDT",
+      "who": "Psi cleanup",
+      "text": "First anchor sweep implemented: api-keyword-grid now recommends indep() for standalone diagonal models and unique() for explicit Psi; covariance-correlation is reframed around explicit Psi; model-selection-latent-rank uses indep() for the d = 0 diagonal baseline; cross-lineage-coevolution centers kernel_latent()/extract_Gamma() and describes kernel_unique() as fixture Psi. pkgdown::build_articles(lazy = FALSE), pkgdown::check_pkgdown(), HTML rg checks, JSON validation, and git diff --check passed. This is article-claim cleanup only, not bridge, release, or scientific-coverage completion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-master-finish-plan-psi-coevolution-ledger.md",
+      "link_label": "Psi/coev ledger"
+    },
     {
       "when": "2026-06-18 09:05 MDT",
       "who": "Coevolution audit",

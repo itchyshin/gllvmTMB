@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 09:05 MDT",
+  "updated": "2026-06-18 09:55 MDT",
   "active_work": [
     {
       "when": "live",
@@ -24,10 +24,17 @@
     {
       "when": "live",
       "who": "articles",
-      "text": "Article council slice 5A started the biological worked-example triage: behavioural-syndromes stays internal as a Tier 3 candidate Tier 1 draft, now with explicit YAML and a gate note. Public promotion waits for a runnable wide-format fit, diagnostic_table() evidence, clearer reader path, Florence figure review, and rendered HTML review. This is article-readiness progress only, not bridge, release, or scientific-coverage completion."
+      "text": "Article council slice 5A started the biological worked-example triage, and the first Psi cleanup anchor sweep now renders. api-keyword-grid, covariance-correlation, model-selection-latent-rank, and cross-lineage-coevolution separate standalone indep() from explicit Psi/unique() language. This is article-claim cleanup only, not bridge, release, or scientific-coverage completion."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 09:55 MDT",
+      "who": "Psi cleanup",
+      "text": "First anchor sweep implemented: api-keyword-grid now recommends indep() for standalone diagonal models and unique() for explicit Psi; covariance-correlation is reframed around explicit Psi; model-selection-latent-rank uses indep() for the d = 0 diagonal baseline; cross-lineage-coevolution centers kernel_latent()/extract_Gamma() and describes kernel_unique() as fixture Psi. pkgdown::build_articles(lazy = FALSE), pkgdown::check_pkgdown(), HTML rg checks, JSON validation, and git diff --check passed. This is article-claim cleanup only, not bridge, release, or scientific-coverage completion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-master-finish-plan-psi-coevolution-ledger.md",
+      "link_label": "Psi/coev ledger"
+    },
     {
       "when": "2026-06-18 09:05 MDT",
       "who": "Coevolution audit",

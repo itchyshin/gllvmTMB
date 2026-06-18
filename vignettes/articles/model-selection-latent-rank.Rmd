@@ -112,14 +112,16 @@ rank_ex$formula_wide
 
 ## Fit Candidate Ranks
 
-The diagonal baseline has no shared latent axis. The `d >= 1` candidates
-use the same fixed effects and the same `unique()` diagonal, changing
-only the rank of the `latent()` term.
+The diagonal baseline has no shared latent axis, so it uses `indep()`
+to make the standalone marginal-only intent explicit. The `d >= 1`
+candidates use the same fixed effects and the same explicit `Psi`
+component through `unique()`, changing only the rank of the `latent()`
+term.
 
 ```{r rank-helpers}
 candidate_formula <- function(d) {
   if (identical(d, 0L)) {
-    return(value ~ 0 + trait + unique(0 + trait | individual))
+    return(value ~ 0 + trait + indep(0 + trait | individual))
   }
 
   stats::as.formula(paste0(
@@ -154,7 +156,7 @@ summarise_candidate <- function(fit, d) {
 
   data.frame(
     d = d,
-    model = if (d == 0L) "unique only" else paste0("latent d = ", d),
+    model = if (d == 0L) "diagonal indep" else paste0("latent d = ", d),
     logLik = as.numeric(ll),
     df = attr(ll, "df"),
     nobs = attr(ll, "nobs"),
@@ -246,8 +248,8 @@ ic_plot_data <- rbind(
   data.frame(d = rank_table$d, criterion = "BIC", delta = rank_table$delta_BIC)
 )
 ic_plot_data$rank_label <- factor(
-  ifelse(ic_plot_data$d == 0L, "unique", paste0("d=", ic_plot_data$d)),
-  levels = c("unique", "d=1", "d=2", "d=3")
+  ifelse(ic_plot_data$d == 0L, "diagonal", paste0("d=", ic_plot_data$d)),
+  levels = c("diagonal", "d=1", "d=2", "d=3")
 )
 
 ggplot(ic_plot_data, aes(rank_label, delta, group = criterion,

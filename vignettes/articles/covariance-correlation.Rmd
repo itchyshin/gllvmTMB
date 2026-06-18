@@ -1,11 +1,11 @@
 ---
-title: "Covariance and correlation: when you need `unique()`"
+title: "Covariance and correlation: when you need explicit Psi"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Covariance and correlation: when you need `unique()`}
+  %\VignetteIndexEntry{Covariance and correlation: when you need explicit Psi}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -29,6 +29,12 @@ boldness, exploration, activity, aggression, and sociability. If you fit only
 no trait-specific variance term. Pair `latent()` with `unique()` when
 trait-specific variance should stay in the denominator of the correlation
 matrix.
+
+This article is about explicit `Psi` in a decomposed
+`latent() + unique()` model. It is not a recommendation to use
+standalone `unique()` as the first diagonal model. When the goal is a
+standalone marginal-only diagonal covariance, new examples should use
+`indep()` so the intent is visible in the formula.
 
 ```{r early-fit-pattern, eval = FALSE}
 fit_latent_only <- gllvmTMB(

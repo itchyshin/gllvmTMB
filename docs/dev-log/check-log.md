@@ -21333,3 +21333,102 @@ Deliberately not run:
 - No `devtools::document()`, full `devtools::test()`, R CMD check,
   pkgdown render, issue mutation, GLLVM.jl mutation, push, article promotion,
   or source-code change. This audit documents current evidence and gaps only.
+
+## 2026-06-18 -- Psi cleanup anchor sweep and master finish ledger
+
+Implemented the first slice of the maintainer's master finish plan: public
+article language now separates standalone diagonal teaching from explicit
+`Psi`/`unique()` teaching, and the coevolution article no longer makes
+`kernel_unique()` sound like the source of `Gamma` or proof of the full Paper 2
+Option B engine. The guard remains: PR green != bridge complete != release
+ready != scientific coverage passed.
+
+Evidence and edits:
+
+- Added
+  `docs/dev-log/audits/2026-06-18-master-finish-plan-psi-coevolution-ledger.md`
+  with the team roles, Psi article sweep ledger, coevolution Option B roadmap,
+  `kernel_*()` / `relmat` API decision, dashboard cards, and release gates.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-psi-cleanup-anchor-sweep.md`.
+- Updated `vignettes/articles/api-keyword-grid.Rmd`:
+  - `indep()` is now the recommended standalone diagonal teaching syntax.
+  - `unique()` is framed as the explicit `Psi` component in
+    `latent() + unique()`, or as source-specific Psi when row evidence supports
+    it.
+- Updated `vignettes/articles/covariance-correlation.Rmd`:
+  - title and vignette index now say "when you need explicit Psi";
+  - opening boundary says standalone diagonal examples should use `indep()`.
+- Updated `vignettes/articles/model-selection-latent-rank.Rmd`:
+  - `d = 0` candidate formula now uses `indep(0 + trait | individual)`;
+  - model/plot labels now say `diagonal indep` / `diagonal`;
+  - `d >= 1` candidates still use `unique()` as the explicit Psi component.
+- Updated `vignettes/articles/cross-lineage-coevolution.Rmd`:
+  - `kernel_latent()` and `extract_Gamma()` are central to the current
+    one-kernel point-estimate workflow;
+  - `kernel_unique()` is described as optional Gaussian-fixture Psi;
+  - true Paper 2 Option B remains planned and needs two independent named
+    kernel tiers plus component-specific targets.
+- Updated `docs/dev-log/dashboard/status.json` and
+  `docs/dev-log/dashboard/sweep.json` with a separate Psi cleanup card and
+  evidence entry. This is article-claim cleanup only, not bridge, release, or
+  scientific-coverage completion.
+
+Checks:
+
+- Pre-edit lane check:
+  `PATH="/opt/homebrew/bin:$PATH" gh pr list --state open --json number,title,headRefName,isDraft,updatedAt,url`
+  -> only draft PR #489 open.
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent overlaps were current mission-control/article-lane commits.
+  `git diff --check` -> clean before edits.
+- Memory grounding:
+  `rg -n "gllvmTMB|coevolution|unique|kernel" /Users/z3437171/.codex/memories/MEMORY.md`
+  -> found prior guardrails: coevolution is one-kernel/fixed-rho/point-Gamma
+  unless future evidence extends it, and public capability claims must remain
+  row-led.
+- Source and dashboard reads:
+  `sed -n '1,180p' vignettes/articles/api-keyword-grid.Rmd`
+  `sed -n '1,140p' vignettes/articles/covariance-correlation.Rmd`
+  `sed -n '380,450p' vignettes/articles/covariance-correlation.Rmd`
+  `sed -n '1,110p' vignettes/articles/cross-lineage-coevolution.Rmd`
+  `sed -n '110,260p' vignettes/articles/cross-lineage-coevolution.Rmd`
+  `sed -n '260,520p' vignettes/articles/cross-lineage-coevolution.Rmd`
+  `sed -n '1,240p' docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  `sed -n '1,220p' docs/dev-log/audits/2026-06-18-coevolution-work-inventory.md`
+  `sed -n '1,120p' vignettes/articles/gllvm-vocabulary.Rmd`
+  `sed -n '1,120p' vignettes/gllvmTMB.Rmd`
+  `sed -n '1,260p' vignettes/articles/model-selection-latent-rank.Rmd`
+  `sed -n '1,220p' docs/dev-log/dashboard/status.json`
+  -> identified the four anchor edits and confirmed no parser/TMB edit was
+  needed for this slice.
+- Stale scan:
+  `rg -n 'standalone \`unique\\(\\)\`|standalone unique|unique\\(\\).*preferred diagonal|when you need \`unique\\(\\)\`|model = .*unique only|rank_label.*unique|kernel_unique\\(\\).*source of \`Gamma\`|kernel_unique\\(\\).*central' vignettes vignettes/articles docs/dev-log/audits`
+  -> hits were only the new intentional guard/ledger text and the new
+  covariance article boundary explaining that standalone `unique()` is not the
+  first diagonal model.
+- Render/check:
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> completed successfully and rendered all touched articles.
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+  `rg -n 'explicit Psi|standalone marginal-only|diagonal indep|True Paper 2 Option B|kernel_unique\\(\\).*explicit \`Psi\`|Gamma_shape' pkgdown-site/articles/api-keyword-grid.html pkgdown-site/articles/covariance-correlation.html pkgdown-site/articles/model-selection-latent-rank.html pkgdown-site/articles/cross-lineage-coevolution.html`
+  -> rendered HTML contains the intended wording.
+- Build cleanup:
+  Removed generated untracked render artefacts:
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`.
+- JSON and whitespace:
+  `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null`
+  -> valid JSON.
+  `python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> valid JSON.
+  `git diff --check` -> clean after final edits.
+
+Deliberately not run:
+
+- No `devtools::document()`, full `devtools::test()`, R CMD check,
+  release `--as-cran`, issue mutation, GLLVM.jl mutation, push, validation-row
+  promotion, parser change, TMB change, or `relmat` deprecation. This slice
+  implements the first public-claim cleanup and ledger, not the multi-kernel
+  engine.

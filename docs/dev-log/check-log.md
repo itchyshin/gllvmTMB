@@ -20634,3 +20634,73 @@ Deliberately not run:
   article render was run. This slice records the article-council control
   ledger only; article rendering belongs to the next bounded navbar/content
   slice for each moved page.
+
+## 2026-06-18 -- Dashboard r37 full-check success and power heartbeat
+
+Refreshed the local mission-control dashboard because the live full-check
+concluded and the power-pilot workflow advanced. The guard remains active:
+PR green != bridge complete != release ready != scientific coverage passed.
+
+Evidence recorded:
+
+- gllvmTMB #489 remains draft/open/clean at
+  `03fdda1cedd325188448ffe58b42f09acbf69e61`; the visible R-CMD-check and
+  coevolution recovery checks are green, but #489 remains partial and not
+  release-ready.
+- GLLVM.jl #101 remains draft/open/clean at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`; visible checks are still the
+  2026-06-16 Documenter/deploy evidence, with no fresh PR CI.
+- Release issue #486 remains open and last updated
+  2026-06-17T17:29:02Z.
+- Scheduled full-check run `27752749643` completed successfully on main
+  `0567cd747b9e81fa694e846a6d155bf60e35e0b8`: windows-latest, ubuntu-latest,
+  and macos-latest release jobs all concluded success, with run updated
+  2026-06-18T11:59:22Z.
+- Scheduled power-pilot run `27752884846` is still live at the same head:
+  GitHub run-level status is `in_progress`, with 43 completed-success jobs and
+  6 in-progress shards (`25/48`, `26/48`, `27/48`, `31/48`, `32/48`,
+  `33/48`). `power-pilot-results` still points at
+  `5969f6f280fd084f60b6dcf18ca1c5739d531025`, so there is no new persisted
+  store or scoring evidence.
+- Dashboard widget build/version advanced to `r37`; `index.html` and
+  `version.txt` now agree so the browser does not keep loading an older build
+  stamp.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints ROADMAP.md docs/dev-log/audits docs/dev-log/after-task`
+  -> recent overlapping edits are this same #489 evidence/dashboard lane.
+- Live polls:
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json number,title,state,isDraft,mergeStateStatus,headRefOid,updatedAt,statusCheckRollup,url`
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefOid,updatedAt,statusCheckRollup,url`
+  `/opt/homebrew/bin/gh issue view 486 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,comments`
+  `/opt/homebrew/bin/gh api repos/itchyshin/gllvmTMB/actions/runs/27752749643`
+  `/opt/homebrew/bin/gh api repos/itchyshin/gllvmTMB/actions/runs/27752749643/jobs --paginate`
+  `/opt/homebrew/bin/gh api repos/itchyshin/gllvmTMB/actions/runs/27752884846`
+  `/opt/homebrew/bin/gh api repos/itchyshin/gllvmTMB/actions/runs/27752884846/jobs --paginate`
+  `git ls-remote origin refs/heads/power-pilot-results`
+- JSON and whitespace checks:
+  `python3 -m json.tool docs/dev-log/dashboard/status.json`
+  `python3 -m json.tool docs/dev-log/dashboard/sweep.json`
+  `git diff --check`
+
+Files updated:
+
+- `docs/dev-log/dashboard/index.html`
+- `docs/dev-log/dashboard/version.txt`
+- `docs/dev-log/dashboard/status.json`
+- `docs/dev-log/dashboard/sweep.json`
+- `docs/dev-log/check-log.md`
+
+Deliberately not run:
+
+- No remote power-pilot fetch/archive/scoring because run `27752884846` is
+  still live and `power-pilot-results` has not moved. No GLLVM.jl #101
+  mutation, no push, no issue mutation, no `Pkg.test()`, no R CMD check, no
+  pkgdown build, no article render, no release `--as-cran` audit, and no public
+  docs/navbar change. Full-check green is main CI health evidence only; it does
+  not make #489 ready, the bridge complete, the release ready, or scientific
+  coverage passed.

@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 05:34 MDT",
+  "updated": "2026-06-18 06:34 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -30,15 +30,15 @@
     },
     {
       "label": "Main full-check",
-      "value": "in flight",
-      "status": "active",
-      "note": "Main R-CMD-check 27720099917 and pkgdown 27720668325 are green at 0567cd7, but newer scheduled full-check 27752749643 is still in progress: macOS and Ubuntu succeeded; Windows is still running."
+      "value": "green",
+      "status": "success",
+      "note": "Main R-CMD-check 27720099917 and pkgdown 27720668325 are green at 0567cd7. Newer scheduled full-check 27752749643 also completed successfully on windows-latest, ubuntu-latest, and macos-latest at the same head. This confirms main CI health only; it does not close the bridge, release, or scientific-coverage gates."
     },
     {
       "label": "Power pilot",
       "value": "in flight",
       "status": "guard",
-      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Run 27735802023 completed cancelled with no branch movement. New scheduled run 27752884846 is live: run-level status in_progress, with 32 completed-success jobs and 17 in progress; power-pilot-results remains at 5969f6f. Local iter 24 reached 383510 / 480000 reps."
+      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Run 27735802023 completed cancelled with no branch movement. New scheduled run 27752884846 is live: run-level status in_progress, with 43 completed-success jobs and 6 shards still running; power-pilot-results remains at 5969f6f. Local iter 24 reached 383510 / 480000 reps."
     },
     {
       "label": "Next decision",
@@ -186,7 +186,7 @@
           "status": "queued"
         },
         {
-          "name": "Power-pilot run 27752884846 is live process evidence only: 32 success, 17 in progress, 0 queued",
+          "name": "Power-pilot run 27752884846 is live process evidence only: 43 completed-success jobs, 6 shards in progress, 0 queued",
           "status": "active"
         }
       ]
@@ -230,7 +230,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Main R-CMD/pkgdown completed green at 0567cd7, but scheduled full-check 27752749643 is still in progress with macOS and Ubuntu succeeded and Windows still running. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; run 27735802023 cancelled with no branch movement; run 27752884846 is live with 32 success and 17 in-progress jobs. Local iter 24 reached 383510 / 480000 reps."
+      "text": "gllvmTMB #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, local bridge suites, and main scheduled full-check 27752749643 are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Full-check 27752749643 completed successfully on windows-latest, ubuntu-latest, and macos-latest at 0567cd7. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; run 27735802023 cancelled with no branch movement; run 27752884846 is live with 43 completed-success jobs and 6 in-progress shards. Local iter 24 reached 383510 / 480000 reps."
     },
     {
       "when": "now",
@@ -337,7 +337,7 @@
       "role": "CI, pkgdown, CRAN, reproducibility",
       "status": "active",
       "task": "Track main pkgdown, #489 checks, power-pilot persistence, and local LaunchAgent health.",
-      "blocked_by": "Scheduled full-check 27752749643 and power-pilot run 27752884846 are still live; Fisher/Curie scoring blocks promotion of existing and local pilot evidence",
+      "blocked_by": "Power-pilot run 27752884846 is still live and power-pilot-results remains at 5969f6f; Fisher/Curie scoring blocks promotion of existing and local pilot evidence",
       "parallel_with": "Shannon and Curie",
       "join_gate": "Completed runs or explicit snapshot"
     },
@@ -490,7 +490,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies. Scheduled run 27735802023 completed cancelled at 0567cd7: 49 shard/setup jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results remained at 5969f6f. New scheduled run 27752884846 is live at 0567cd7: run-level status in_progress, job rollup 32 completed-success and 17 in progress; power-pilot-results still remains at 5969f6f. No new persisted-store or scoring evidence exists for run 27752884846.",
+      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies. Scheduled run 27735802023 completed cancelled at 0567cd7: 49 shard/setup jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results remained at 5969f6f. New scheduled run 27752884846 is live at 0567cd7: run-level status in_progress, job rollup 43 completed-success jobs and 6 in-progress shards (25/48, 26/48, 27/48, 31/48, 32/48, and 33/48); power-pilot-results still remains at 5969f6f. No new persisted-store or scoring evidence exists for run 27752884846.",
       "next_gate": "Fisher/Curie scoring blocks promotion; workflow success and persistence are process evidence only."
     },
     {
@@ -588,16 +588,16 @@
   ],
   "evidence": [
     {
-      "when": "2026-06-18 05:34 MDT",
+      "when": "2026-06-18 06:34 MDT",
       "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status in_progress, while the job rollup shows 49 jobs total: 32 completed-success and 17 in progress. The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
+      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status in_progress, while the job rollup shows 49 jobs total: 43 completed-success and 6 in progress (shards 25/48, 26/48, 27/48, 31/48, 32/48, and 33/48). The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
       "link_label": "run 27752884846"
     },
     {
-      "when": "2026-06-18 05:34 MDT",
+      "when": "2026-06-18 06:34 MDT",
       "who": "GitHub Actions",
-      "text": "Scheduled full-check run 27752749643 is still in progress on main 0567cd7: macOS and Ubuntu completed successfully, while Windows remains in progress. This is process evidence only; no run conclusion exists yet.",
+      "text": "Scheduled full-check run 27752749643 completed successfully on main 0567cd7. The windows-latest, ubuntu-latest, and macos-latest release jobs all completed with conclusion success. This confirms main full-check health only; it does not close #489, #101, release #486, or scientific coverage gates.",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752749643",
       "link_label": "run 27752749643"
     },

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-17 21:42 MDT",
+  "updated": "2026-06-17 22:10 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,7 +14,7 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 362510 / 480000 reps; Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 362510 / 480000 reps; scheduled run 27735802023 is in flight with 2 completed-success jobs, 20 in-progress jobs, and 27 queued jobs at the 22:10 MDT snapshot. Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
@@ -23,6 +23,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 22:10 MDT",
+      "who": "GitHub Actions",
+      "text": "Scheduled power-pilot run 27735802023 is in flight on main 0567cd7 with 49 jobs: 2 completed-success, 20 in progress, and 27 queued. This is process evidence only; no persisted-store or scoring evidence exists yet.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
+      "link_label": "run 27735802023"
+    },
     {
       "when": "2026-06-17 21:42 MDT",
       "who": "Local power pilot",
@@ -130,6 +137,14 @@
     }
   ],
   "ci_runs": [
+    {
+      "workflow": "Power pilot sweep",
+      "branch": "main",
+      "head": "0567cd7",
+      "status": "queued",
+      "conclusion": "",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023"
+    },
     {
       "workflow": "R-CMD-check",
       "branch": "codex/r-bridge-grouped-dispersion",

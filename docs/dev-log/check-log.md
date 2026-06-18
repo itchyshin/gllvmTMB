@@ -19616,3 +19616,62 @@ Deliberately not run:
   audit, no public docs changes, and no new remote power-pilot scoring. The
   local replicate count does not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-17 -- Scheduled power-pilot run 109 heartbeat
+
+Refreshed the mission-control evidence after the next scheduled GitHub power
+sweep started. This is an evidence/dashboard update only; it does not change
+package code, formula grammar, likelihoods, public docs, or workflow files.
+
+Evidence recorded:
+
+- Scheduled power-pilot run `27735802023` is in flight on main `0567cd7`.
+  At the 22:10 MDT snapshot it had 49 jobs total: 2 completed-success, 20
+  in progress, and 27 queued. This is process evidence only; no persisted
+  store, merged result, or scoring evidence exists yet.
+- Local LaunchAgent evidence had not advanced beyond iter 10: `pilot-index.rds`
+  was still at 21:33:49 MDT with 362,510 / 480,000 reps, 0/48 cells at cap,
+  and no STOP flag. The parent R process and ten RSOCK workers remained alive;
+  two workers were active in the process snapshot.
+- GitHub bridge/release state remained unchanged: #489 is draft/clean/green at
+  `03fdda1cedd325188448ffe58b42f09acbf69e61`; GLLVM.jl #101 is draft/clean at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9` with only older Documenter PR
+  evidence; #486 is still open.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Current GitHub state:
+  `/opt/homebrew/bin/gh run view 27735802023 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,createdAt,updatedAt,event,workflowName,url,jobs --jq ...`
+  -> `status: queued`, no conclusion, event `schedule`, head `0567cd7`, 49
+  jobs total, 2 completed-success, 20 in progress, 27 queued.
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json number,title,isDraft,state,baseRefName,headRefName,headRefOid,mergeStateStatus,updatedAt,url,statusCheckRollup --jq ...`
+  -> draft/open, clean, current checks green at `03fdda1`.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,isDraft,state,baseRefName,headRefName,headRefOid,mergeStateStatus,updatedAt,url,statusCheckRollup --jq ...`
+  -> draft/open, clean, still only older Documenter PR evidence at
+  `f7be594`.
+  `/opt/homebrew/bin/gh issue view 486 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,url --jq ...`
+  -> open.
+- Local power-pilot readout:
+  `stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S %Z' /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> `pilot-index.rds` at 21:33:49 MDT and local log at 21:33:54 MDT.
+  `tail -n 140 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> latest completed local merge remained iter 10.
+  `ps ax -o pid,ppid,etime,cputime,pcpu,pmem,state,command | rg '/Library/Frameworks/R.framework/Resources/bin/exec/R|/usr/local/bin/Rscript|/usr/bin/Rscript|Rscript'`
+  -> parent R process and all ten RSOCK workers remained alive, with workers
+  1789 and 1790 active.
+  `test -e /Users/z3437171/gllvmTMB-power-pilot/dev/STOP-LOCAL-PILOT`
+  -> STOP flag absent.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, no public docs changes, and no remote power-pilot result scoring for
+  run `27735802023` because it is still in flight. The active scheduled run
+  does not make #489 ready, the bridge complete, the release ready, or
+  scientific coverage passed.

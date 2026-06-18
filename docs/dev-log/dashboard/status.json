@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 21:42 MDT",
+  "updated": "2026-06-17 22:10 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -36,9 +36,9 @@
     },
     {
       "label": "Power pilot",
-      "value": "persisted",
-      "status": "success",
-      "note": "Run 27722546237 succeeded and pushed 5969f6f to power-pilot-results; scoring still blocks coverage or power promotion."
+      "value": "in flight",
+      "status": "guard",
+      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. The next scheduled run 27735802023 is in flight at 0567cd7; it has no persisted-store or scoring evidence yet."
     },
     {
       "label": "Next decision",
@@ -230,7 +230,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion."
+      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; scheduled run 27735802023 is in flight with 2 completed-success jobs, 20 in-progress jobs, and 27 queued jobs at the 22:10 MDT snapshot."
     },
     {
       "when": "now",
@@ -337,7 +337,7 @@
       "role": "CI, pkgdown, CRAN, reproducibility",
       "status": "active",
       "task": "Track main pkgdown, #489 checks, power-pilot persistence, and local LaunchAgent health.",
-      "blocked_by": "Run 27722546237 completed, but Fisher/Curie scoring blocks promotion",
+      "blocked_by": "Run 27735802023 is in flight; run 27722546237 completed, but Fisher/Curie scoring blocks promotion",
       "parallel_with": "Shannon and Curie",
       "join_gate": "Completed runs or explicit snapshot"
     },
@@ -490,7 +490,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies.",
+      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies. Scheduled run 27735802023 is in flight at 0567cd7 with 2 completed-success jobs, 20 in-progress jobs, and 27 queued jobs at the 22:10 MDT snapshot; no new persisted-store or scoring evidence yet.",
       "next_gate": "Fisher/Curie scoring blocks promotion; workflow success and persistence are process evidence only."
     },
     {
@@ -577,11 +577,23 @@
     },
     {
       "status": "guard",
+      "kind": "Power pilot run 109",
+      "item": "Scheduled run 27735802023 is in flight at 0567cd7: 2 completed-success jobs, 20 in-progress jobs, and 27 queued jobs at the 22:10 MDT snapshot; no persisted store or scoring evidence yet."
+    },
+    {
+      "status": "guard",
       "kind": "Issues",
       "item": "No issue is closed from dashboard text or chat memory."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 22:10 MDT",
+      "who": "GitHub Actions",
+      "text": "Scheduled power-pilot run 27735802023 is in flight on main 0567cd7 with 49 jobs: 2 completed-success, 20 in progress, and 27 queued. This is process evidence only; no persisted-store or scoring evidence exists yet.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
+      "link_label": "run 27735802023"
+    },
     {
       "when": "2026-06-17 21:42 MDT",
       "who": "Local power pilot",

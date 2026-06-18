@@ -21529,4 +21529,87 @@ Deliberately not run:
   was edited in this engine slice; `pkgdown::check_pkgdown()` covered the
   regenerated reference/NEWS navigation surface.
 - No release `--as-cran`, no issue mutation, and no claim that `COE-03` is
-  scientific coverage. `COE-04` is still blocked.
+  scientific coverage. At this 10:42 checkpoint `COE-04` still had no
+  recovery/separation evidence; the 11:06 entry below supersedes that state
+  with a near-orthogonal partial recovery gate.
+
+## 2026-06-18 11:06 MDT -- COE-04 near-orthogonal two-component recovery slice
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Move the coevolution model forward after the latent-only fixed named
+  multi-kernel engine slice by adding the first real `COE-04`
+  recovery/separation evidence.
+- Keep the scope narrow: near-orthogonal Gaussian latent-only component
+  recovery and a kernel-similarity diagnostic. Do not claim Paper 2 scientific
+  coverage, interval calibration, `rho` inference, explicit Psi support, or
+  release readiness.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/article/kernel commits on
+  this branch.
+- `git status --short --branch`
+  -> branch ahead of origin with only old untracked recovery-checkpoint files
+  before this slice.
+
+Implemented:
+
+- Added `test-coevolution-two-kernel.R` helpers for:
+  - deterministic axis kernels;
+  - opposed/aligned cross-lineage association patterns;
+  - off-diagonal Frobenius-style kernel similarity;
+  - low/moderate/high overlap classification;
+  - a rank-1 + rank-1 near-orthogonal two-component Gaussian latent-only DGP.
+- Added the COE-04 alignment table in the test comments:
+  `K_phy`, `K_non`, `g_phy`, `g_non`, `Gamma_phy`, and `Gamma_non` each map to
+  a formula term, DGP draw, extractor target, and truth.
+- Added fast diagnostic evidence that low-overlap and high-overlap kernel
+  pairs classify correctly.
+- Added heavy recovery evidence:
+  - `kernel_latent(..., name = "phy") + kernel_latent(..., name = "non")`
+    fits the near-orthogonal fixture;
+  - the full two-component fit beats either one-component fit by more than
+    50 log-likelihood units;
+  - `extract_Gamma(level = "phy")` and `extract_Gamma(level = "non")` recover
+    their own `Gamma_shape` truths with correlation >0.95;
+  - each extracted component does not match the other component's truth.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json` so `COE-04` is `partial`, not
+  `blocked` or `covered`.
+
+Checks:
+
+- Exploratory checkout-loaded R run over seeds 2001..2005:
+  -> all converged with kernel similarity about 0.159; component-specific
+  `Gamma_shape` correlations were >0.97 for `phy` and >0.99 for `non`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 2 | PASS 28`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 41`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 5 | PASS 114`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 150`.
+
+Still not claimed:
+
+- No moderate-overlap recovery grid.
+- No high-overlap failure-language gate.
+- No block-null or selective-absence calibration.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation yet; that remains a
+  post-arc plan.
+- No bridge completion, release readiness, or scientific coverage completion.

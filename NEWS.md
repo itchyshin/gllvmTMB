@@ -14,10 +14,15 @@
   first wave is intentionally latent-only: paired `kernel_unique()` Psi is
   deferred because explicit residual/Psi structure is a poor default for
   non-Gaussian and cross-family coevolution models. PARTIAL (`COE-03`): this
-  opens the fixed two-component Paper 2 shape for `Gamma_shape_r` inspection,
-  but it is not scientific coverage. Explicit Psi redesign/deprecation,
-  kernel-separation recovery, null/selective-absence tests, `rho` profiling or
-  estimation, and interval calibration remain gated (`COE-04` blocked). The
+  opens the fixed two-component Paper 2 shape for `Gamma_shape_r` inspection.
+  A first heavy `COE-04` recovery gate now passes for a near-orthogonal
+  Gaussian latent-only fixture: a predeclared Frobenius-style kernel-similarity
+  diagnostic classifies the two kernels as separable, the full two-component
+  fit beats either one-component fit, and each extracted component-specific
+  `Gamma_shape_r` recovers its own truth while not matching the other
+  component. PARTIAL (`COE-04`): moderate/high-overlap kernels,
+  selective-absence/null calibration, explicit Psi redesign/deprecation, `rho`
+  profiling or estimation, and interval calibration remain gated. The
   one-name `kernel_*()` path still uses the
   phylo-equivalent KER-02 engine and the `<1e-6` equivalence gate remains
   unchanged. Guard: PR green != bridge complete != release ready != scientific

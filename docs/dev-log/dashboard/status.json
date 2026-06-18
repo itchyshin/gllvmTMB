@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 10:42 MDT",
+  "updated": "2026-06-18 11:06 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -9,9 +9,9 @@
   },
   "metrics": {
     "covered": 2,
-    "partial": 6,
+    "partial": 7,
     "active": 1,
-    "blocked": 2,
+    "blocked": 1,
     "queued": 1,
     "total": 12
   },
@@ -48,9 +48,9 @@
     },
     {
       "label": "Paper 2 kernels",
-      "value": "C3.1 local",
+      "value": "COE-04 partial",
       "status": "guard",
-      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by focused and heavy kernel/coevolution tests, COE-03 remains partial, and COE-04 two-component recovery/separation diagnostics remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
+      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery plus kernel-similarity diagnostics. Broader separation/null/rho/interval gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
     },
     {
       "label": "Next decision",
@@ -581,18 +581,18 @@
       "engine": "covered",
       "bridge": "planned",
       "inference": "partial",
-      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. This supports Paper 2 Gamma_shape_r inspection only. It does not prove explicit Psi support, two-component recovery, kernel separation, null/selective absence, rho profiling/estimation, or intervals.",
-      "next_gate": "COE-04 recovery/separation diagnostics before scientific coverage or public Paper 2 promotion."
+      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. A first COE-04 near-orthogonal heavy recovery fixture now passes, but this remains partial and does not prove explicit Psi support, moderate/high-overlap separation, null/selective absence, rho profiling/estimation, or intervals.",
+      "next_gate": "Broader COE-04 recovery/separation grid before scientific coverage or public Paper 2 promotion."
     },
     {
       "id": "COE-04",
       "capability": "Two-component recovery and kernel-separation diagnostics",
-      "status": "blocked",
+      "status": "partial",
       "engine": "covered",
       "bridge": "not_applicable",
-      "inference": "blocked",
-      "evidence": "No ADEMP grid has yet passed for near-orthogonal, moderately overlapping, and highly overlapping K_phy/K_non pairs; no component-specific Gamma_shape recovery thresholds, selective-absence nulls, or interval/rho calibration have been accepted.",
-      "next_gate": "Design and run the Paper 2 recovery grid with Fisher/Curie signoff before any scientific-coverage language moves."
+      "inference": "partial",
+      "evidence": "Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, and component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component. Focused tests pass 28 non-heavy / 41 heavy; aggregate kernel|coevolution tests pass 114 non-heavy / 150 heavy. Moderate/high-overlap recovery/failure language, selective-absence nulls, and interval/rho calibration remain blocked.",
+      "next_gate": "Extend the Paper 2 recovery grid to moderate/high overlap, selective absence, and rho/interval calibration before any full scientific-coverage language moves."
     },
     {
       "id": "PSI-SWEEP",

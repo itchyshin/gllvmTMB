@@ -32,7 +32,7 @@ publishable headline model remains future work unless simulations prove it.
 | C1 generic dense `kernel_*()` surface | Covered for one named dense tier | `R/kernel-keywords.R`; parser rewrite in `R/brms-sugar.R`; single-tier aliasing in `R/fit-multi.R`; equivalence tests in `test-kernel-equivalence.R`; validation row `KER-02`. |
 | C2 `extract_Gamma()` | Covered for point estimates | `R/extract-sigma.R`; fast extractor tests and heavy known-`Gamma` recovery in `test-coevolution-recovery.R`; validation row `COE-02`. |
 | C2 article workflow | Internal/buildable, not first-line public claim | `vignettes/articles/cross-lineage-coevolution.Rmd`; fixture test `test-example-coevolution-kernel.R`; article records fixed-`rho`, point-estimate, no calibrated-interval scope. |
-| C3 two-kernel finding | Partial / reserved | `test-coevolution-two-kernel.R`; validation row `COE-03`; Design 65 records that two independent named tiers need a second TMB data/parameter slot and NLL block. |
+| C3 two-kernel finding | Superseded by later 2026-06-18 commits | At this audit checkpoint, `test-coevolution-two-kernel.R`, validation row `COE-03`, and Design 65 still recorded that two independent named tiers needed a second TMB data/parameter slot and NLL block. This was superseded later the same day by `89b4edc` (latent-only named multi-kernel tiers) and the follow-on COE-04 near-orthogonal recovery slice. |
 | C3 two-Psi guardrail | Covered | `R/fit-multi.R` warns and collapses two non-replicated `kernel_unique()` tiers to one identifiable tier; C3 tests cover warning, negative control, and replicated single-tier recovery. |
 
 ## Tests Re-run In This Audit

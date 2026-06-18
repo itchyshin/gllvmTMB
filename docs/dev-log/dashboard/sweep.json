@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-17 19:26 MDT",
+  "updated": "2026-06-17 19:47 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,7 +14,7 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27717007830 completed successfully and pushed 2709930 to power-pilot-results. Follow-up run 27722546237 is still in progress with 48 completed-success jobs and 1 running shard. Local pilot is at 356510 / 480000 reps; Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 358010 / 480000 reps; Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
@@ -24,9 +24,16 @@
   ],
   "evidence": [
     {
-      "when": "2026-06-17 19:26 MDT",
+      "when": "2026-06-17 19:47 MDT",
+      "who": "Power-pilot persisted store scoring",
+      "text": "Run 27722546237 completed successfully and pushed results branch 5969f6f. Run 108 has 19776 reps versus run 107's 10376, but pass95 dropped from 3/24 to 0/24 and flagged cells rose from 24 to 28, so no promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
+      "link_label": "run 27722546237"
+    },
+    {
+      "when": "2026-06-17 19:47 MDT",
       "who": "Local power pilot",
-      "text": "LaunchAgent iter 6 completed at 19:20 MDT: 356510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
+      "text": "LaunchAgent iter 7 completed at 19:41 MDT: 358010 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
       "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
       "link_label": "issue #346"
     },
@@ -178,8 +185,8 @@
       "workflow": "Power pilot sweep",
       "branch": "main",
       "head": "0567cd7",
-      "status": "in_progress",
-      "conclusion": "",
+      "status": "completed",
+      "conclusion": "success",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237"
     }
   ],

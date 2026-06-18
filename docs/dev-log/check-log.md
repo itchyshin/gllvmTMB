@@ -19376,3 +19376,73 @@ Deliberately not run:
   audit, no public docs changes, and no power-pilot scoring rerun. The new
   local replicate count does not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-17 -- Power-run 108 persisted-store scoring
+
+Refreshed the mission-control evidence after scheduled GitHub power run
+`27722546237` completed. This is an evidence/dashboard update only; it does not
+change package code, formula grammar, likelihoods, public docs, or workflow
+files.
+
+Evidence recorded:
+
+- Run `27722546237` completed successfully on main
+  `0567cd747b9e81fa694e846a6d155bf60e35e0b8`: 51/51 jobs succeeded, including
+  `persist` and `summary`.
+- The `power-pilot-results` branch now points at
+  `5969f6f280fd084f60b6dcf18ca1c5739d531025` (`power-pilot: accumulate reps
+  (run 108)`). The store was archived to
+  `/tmp/gllvmtmb-power-27722546237.WJFMdv`.
+- Persisted run-108 store status:
+  48 cells, 19,776 / 480,000 reps, 1/48 cells at cap, signal mean coverage
+  0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425.
+- Run-108 issue/scoring outputs:
+  28 flagged cells and 27 coverage anomalies. Narrow scoring audit examples:
+  `gaussian-d1-n150-sig0p0` coverage 0.402 with saturated zero-reject and
+  one-sided misses; `nbinom2-d2-n50-sig0p0` coverage 0.875 with 79% non-PD;
+  `binomial_probit-d1-n50-sig0p2` coverage 0.949 but 35% non-PD and saturated
+  zero-reject.
+- Re-scored run 107 from `2709930` for comparison in
+  `/tmp/gllvmtmb-power-run107.pKUeXH`: 48 cells, 10,376 reps, 1/48 cells at
+  cap, signal mean coverage 0.733, pass94 3/24, pass95 3/24, null mean
+  coverage-under-null 0.412, 24 flagged cells, 1 coverage anomaly.
+- Local LaunchAgent also advanced to iter 7 at 19:41 MDT: 358,010 / 480,000
+  reps, 0/48 cells at cap, 0 errored cells. That remains local process
+  evidence only.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- GitHub state:
+  `/opt/homebrew/bin/gh run view 27722546237 --repo itchyshin/gllvmTMB --json status,conclusion,headSha,updatedAt,jobs,url --jq ...`
+  -> `status: completed`, `conclusion: success`, 51 completed-success jobs,
+  0 failures.
+  `git ls-remote origin power-pilot-results`
+  -> `5969f6f280fd084f60b6dcf18ca1c5739d531025`.
+- Persisted-store extraction and scoring:
+  `git fetch origin power-pilot-results --depth=1`
+  -> fetched `power-pilot-results` at `5969f6f`.
+  `git archive FETCH_HEAD dev/m3-pilot-results | tar -x -C /tmp/gllvmtmb-power-27722546237.WJFMdv`
+  -> archived 48 cell `.rds` files plus `pilot-index.rds`.
+  `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=/tmp/gllvmtmb-power-27722546237.WJFMdv/dev/m3-pilot-results --status-out=/tmp/gllvmtmb-power-27722546237.WJFMdv/status.md`
+  -> wrote the run-108 status table and issue digest above.
+  `/usr/local/bin/Rscript --vanilla dev/m3-pilot-report.R --scoring-audit --results-dir=/tmp/gllvmtmb-power-27722546237.WJFMdv/dev/m3-pilot-results --audit-out=/tmp/gllvmtmb-power-27722546237.WJFMdv/scoring-audit.md --audit-rds=/tmp/gllvmtmb-power-27722546237.WJFMdv/scoring-audit.rds`
+  -> wrote the run-108 scoring audit.
+  `git archive 2709930 dev/m3-pilot-results | tar -x -C /tmp/gllvmtmb-power-run107.pKUeXH`
+  followed by the same `dev/power-pilot-run.R --mode=status` and
+  `dev/m3-pilot-report.R --scoring-audit` commands
+  -> re-scored run 107 for comparison.
+  The comparison CSV is
+  `/tmp/gllvmtmb-power-run107-vs-run108-comparison.csv`.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, and no public docs changes. Workflow success and persisted results do
+  not make #489 ready, the bridge complete, the release ready, or scientific
+  coverage passed.

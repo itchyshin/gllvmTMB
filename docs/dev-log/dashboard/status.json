@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 19:26 MDT",
+  "updated": "2026-06-17 19:47 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -38,7 +38,7 @@
       "label": "Power pilot",
       "value": "persisted",
       "status": "success",
-      "note": "Run 27717007830 succeeded and pushed 2709930 to power-pilot-results; this proves persistence mechanics, not coverage."
+      "note": "Run 27722546237 succeeded and pushed 5969f6f to power-pilot-results; scoring still blocks coverage or power promotion."
     },
     {
       "label": "Next decision",
@@ -170,11 +170,11 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 356510 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 358010 / 480000 reps and 0/48 cells at cap",
           "status": "active"
         },
         {
-          "name": "Power-pilot run 27717007830 completed successfully and pushed 2709930 to results",
+          "name": "Power-pilot run 27722546237 completed successfully and pushed 5969f6f to results; scoring blocks promotion",
           "status": "covered"
         },
         {
@@ -230,7 +230,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Follow-up power run 27722546237 is still running with 48 completed-success jobs and 1 active shard."
+      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion."
     },
     {
       "when": "now",
@@ -337,7 +337,7 @@
       "role": "CI, pkgdown, CRAN, reproducibility",
       "status": "active",
       "task": "Track main pkgdown, #489 checks, power-pilot persistence, and local LaunchAgent health.",
-      "blocked_by": "In-progress scheduled power-pilot run 27722546237",
+      "blocked_by": "Run 27722546237 completed, but Fisher/Curie scoring blocks promotion",
       "parallel_with": "Shannon and Curie",
       "join_gate": "Completed runs or explicit snapshot"
     },
@@ -480,7 +480,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent latest logged summary: 356510 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
+      "evidence": "LaunchAgent latest logged summary: 358010 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -490,8 +490,8 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27717007830 completed successfully and pushed 2709930 (run 107) to power-pilot-results; 48 cells, 10376 reps, 0/48 cells at cap.",
-      "next_gate": "Fisher/Curie scoring before any coverage/power promotion; in-progress run 27722546237 is process follow-up only."
+      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies.",
+      "next_gate": "Fisher/Curie scoring blocks promotion; workflow success and persistence are process evidence only."
     },
     {
       "id": "RE-03",
@@ -573,7 +573,7 @@
     {
       "status": "guard",
       "kind": "Power pilot follow-up",
-      "item": "Run 107 persisted fresh results; in-progress run 27722546237 had 48 completed-success jobs and 1 running shard at 19:00 MDT, but is not a new claim until it completes and is scored."
+      "item": "Run 108 persisted fresh results at 5969f6f, but scoring shows 1/48 cells at cap, pass95 0/24, 28 flagged cells, and 27 coverage anomalies; no coverage/power promotion."
     },
     {
       "status": "guard",
@@ -583,9 +583,16 @@
   ],
   "evidence": [
     {
-      "when": "2026-06-17 19:26 MDT",
+      "when": "2026-06-17 19:47 MDT",
+      "who": "Power-pilot persisted store scoring",
+      "text": "Run 27722546237 completed successfully and pushed power-pilot-results 5969f6f. Scored store: 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, 27 coverage anomalies. Compared with run 107 at 2709930: 10376 reps, 1/48 cells at cap, signal mean coverage 0.733, pass94 3/24, pass95 3/24, 24 flagged cells, 1 coverage anomaly.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
+      "link_label": "run 27722546237"
+    },
+    {
+      "when": "2026-06-17 19:47 MDT",
       "who": "Local power pilot",
-      "text": "LaunchAgent iter 6 completed at 19:20 MDT: 356510 / 480000 reps, 0/48 cells at cap, 0 errored cells. One RSOCK worker was active in the 19:26 MDT snapshot. No coverage or power promotion.",
+      "text": "LaunchAgent iter 7 completed at 19:41 MDT: 358010 / 480000 reps, 0/48 cells at cap, 0 errored cells. All ten RSOCK workers were active in the 19:45 MDT snapshot. No coverage or power promotion.",
       "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
       "link_label": "issue #346"
     },
@@ -676,7 +683,7 @@
     {
       "when": "2026-06-17 15:55 MDT",
       "who": "power-pilot-results",
-      "text": "Remote store at 2709930 has 48 cells, 10376 reps, 0/48 cells at cap, signal mean coverage 0.733, pass94 3/32, pass95 3/32, null mean coverage 0.412."
+      "text": "Remote store at 2709930 has 48 cells, 10376 reps, 1/48 cells at cap, signal mean coverage 0.733, pass94 3/24, pass95 3/24, null mean coverage-under-null 0.412."
     },
     {
       "when": "2026-06-17 17:59 MDT",

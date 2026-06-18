@@ -201,6 +201,17 @@ Each article row records reader, public status, required functions,
 validation-debt rows, long/wide status, truth or comparator, figure gate,
 reviewer signoff, and the exact return condition for the public navbar.
 
+The current article-council ledger is:
+
+`docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+
+This ledger extends the gate matrix to the whole article estate. It records
+each on-disk article's current navigation status, proposed tier, action,
+capability rows, blockers, reviewers, exact next edit, and render/check
+command. The ledger is the required first step before any future navbar move,
+article merge, article split, demotion to technical reference, or retirement
+from navigation. It does not itself promote or hide any page.
+
 ## Infrastructure Gates
 
 Public examples should consume infrastructure rather than forcing readers

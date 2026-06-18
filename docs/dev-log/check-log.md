@@ -20564,3 +20564,73 @@ Deliberately not run:
   no local R CMD check, no pkgdown build, no release `--as-cran` audit, and no
   public docs changes. This r36 process heartbeat does not make #489 ready, the
   bridge complete, the release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Article council ledger for full article estate
+
+Created a repo-visible article council ledger so every current article can be
+triaged before future navbar movement, merging, splitting, demotion, or
+retirement. This is a governance artifact only: it does not change article
+content, pkgdown navigation, formula grammar, likelihoods, validation status, or
+release claims.
+
+Evidence recorded:
+
+- New ledger:
+  `docs/dev-log/audits/2026-06-18-article-council-ledger.md`.
+- `ROADMAP.md` now points to the ledger and states that it is required before
+  any future article movement.
+- The ledger covers Get Started, visible navbar pages, technical references,
+  hidden/internal drafts, validation/capstone pages, proposed tiers, reviewers,
+  blockers, next edits, and render/check commands.
+- The lambda-constraint visibility mismatch is recorded explicitly: the current
+  navbar has `lambda-constraint` / `lambda-constraint-suggest` visible, while
+  the article-gate matrix says the binary loading-constraint teaching lane
+  should be coherent before promotion.
+
+Checks:
+
+- Skill reads:
+  `sed -n '1,260p' .agents/skills/article-tier-audit/SKILL.md`
+  -> article-tier audit instructions read before editing.
+  `sed -n '1,260p' .agents/skills/after-task-audit/SKILL.md`
+  -> after-task audit instructions read before closeout.
+  `sed -n '1,220p' .agents/skills/prose-style-review/SKILL.md`
+  -> prose-style instructions read for the prose-heavy ledger/report.
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- ROADMAP.md _pkgdown.yml vignettes docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/audits docs/design`
+  -> recent overlapping edits are the current #489 evidence/dashboard lane.
+- Article inventory:
+  `find vignettes vignettes/articles -maxdepth 2 -type f \( -name '*.Rmd' -o -name '*.qmd' \) | sort`
+  -> inventoried the on-disk article estate.
+  `sed -n '1,240p' _pkgdown.yml`
+  -> inspected current navbar and article grouping.
+  `sed -n '1,260p' docs/dev-log/audits/2026-05-20-article-gate-matrix.md`
+  -> inspected the existing article gate matrix.
+- Ledger presence scan:
+  `rg -n "2026-06-18-article-council-ledger|Article Council Ledger|article-council ledger|lambda-constraint|profile-likelihood-ci|troubleshooting-profile|random-regression-reaction-norms|functional-biogeography" ROADMAP.md docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  -> roadmap pointer and high-risk article decisions are present.
+- Stale-claim scan:
+  `rg -n "release-ready|bridge complete|scientific coverage passed|coverage passed|publication-grade|fast GLLVM|AI-REML|REML|full parity|complete bridge" ROADMAP.md docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  -> found only the intentional mission guard and existing/explicit
+  publication-grade boundaries; no new bridge, release, REML, AI-REML, or
+  coverage promotion was introduced.
+- Whitespace:
+  `git diff --check`
+  -> clean.
+
+Files updated:
+
+- `docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+- `ROADMAP.md`
+- `docs/dev-log/check-log.md`
+- `docs/dev-log/after-task/2026-06-18-article-estate-council-ledger.md`
+
+Deliberately not run:
+
+- No `pkgdown::build_articles()`, `pkgdown::check_pkgdown()`,
+  `devtools::document()`, `devtools::test()`, R CMD check, `--as-cran`, or
+  article render was run. This slice records the article-council control
+  ledger only; article rendering belongs to the next bounded navbar/content
+  slice for each moved page.

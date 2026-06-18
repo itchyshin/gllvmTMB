@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-17 20:57 MDT",
+  "updated": "2026-06-17 21:42 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,7 +14,7 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 361010 / 480000 reps; Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 362510 / 480000 reps; Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
@@ -23,6 +23,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 21:42 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent iter 10 completed at 21:33 MDT: 362510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
     {
       "when": "2026-06-17 20:57 MDT",
       "who": "Local power pilot",

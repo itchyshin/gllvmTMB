@@ -21613,3 +21613,72 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation yet; that remains a
   post-arc plan.
 - No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 11:17 MDT -- COE-04 fitted kernel-diagnostics slot
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Make the `COE-04` kernel-separation diagnostic inspectable from fitted
+  multi-kernel objects, not only from test-local helper code.
+- Keep the model status partial: this exposes diagnostics and strengthens the
+  near-orthogonal gate, but it does not add moderate/high-overlap recovery,
+  selective absence, `rho`, intervals, mixed/non-Gaussian gates, or Psi support.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/article/kernel commits on
+  this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Added internal helpers in `R/fit-multi.R`:
+  - `.kernel_overlap_class()`;
+  - `.kernel_overlap_diagnostics()`.
+- Multi-kernel fits now carry `fit$kernel_diagnostics`, including:
+  - a named pairwise similarity matrix;
+  - a pair table with `level_1`, `level_2`, `similarity`, and
+    `overlap_class`;
+  - thresholds for `near_orthogonal`, `moderate`, and `high`;
+  - a note warning that high overlap weakens component-specific
+    `Gamma_shape` separation evidence.
+- Updated `test-coevolution-two-kernel.R` so the fast C3.1 fit and the heavy
+  COE-04 recovery gate assert the fitted-object diagnostic, not only the
+  fixture helper.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'parse("R/fit-multi.R")'`
+  -> parsed.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 2 | PASS 36`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 51`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 5 | PASS 122`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 160`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No moderate/high-overlap recovery/failure-language gate.
+- No block-null or selective-absence calibration.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.

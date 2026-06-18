@@ -1,6 +1,57 @@
 ## Stage 2 of gllvmTMB: fit a multivariate stacked-trait model with rr() +
 ## diag() covariance structures using src/gllvmTMB.cpp.
 
+.kernel_overlap_class <- function(similarity) {
+  ifelse(
+    similarity < 0.25, "near_orthogonal",
+    ifelse(similarity < 0.70, "moderate", "high")
+  )
+}
+
+.kernel_overlap_diagnostics <- function(K_array, names) {
+  n_tiers <- dim(K_array)[1L]
+  sim <- diag(1, n_tiers)
+  dimnames(sim) <- list(names, names)
+  rows <- list()
+  k <- 1L
+  for (i in seq_len(n_tiers - 1L)) {
+    for (j in seq.int(i + 1L, n_tiers)) {
+      K_i <- K_array[i, , ]
+      K_j <- K_array[j, , ]
+      off_diag <- row(K_i) != col(K_i)
+      x <- K_i[off_diag]
+      y <- K_j[off_diag]
+      denom <- sqrt(sum(x^2) * sum(y^2))
+      value <- if (is.finite(denom) && denom > 0) {
+        sum(x * y) / denom
+      } else if (all(abs(x) < 1e-12) && all(abs(y) < 1e-12)) {
+        1
+      } else {
+        0
+      }
+      sim[i, j] <- sim[j, i] <- value
+      rows[[k]] <- data.frame(
+        level_1 = names[[i]],
+        level_2 = names[[j]],
+        similarity = value,
+        overlap_class = .kernel_overlap_class(value),
+        stringsAsFactors = FALSE
+      )
+      k <- k + 1L
+    }
+  }
+  list(
+    similarity = sim,
+    pairs = do.call(rbind, rows),
+    thresholds = c(near_orthogonal = 0.25, high = 0.70),
+    note = paste(
+      "Off-diagonal Frobenius-style similarity between fixed kernel tiers.",
+      "near_orthogonal < 0.25; moderate < 0.70; high >= 0.70.",
+      "High overlap means component-specific Gamma_shape separation is weak evidence."
+    )
+  )
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `unique()`
@@ -2113,6 +2164,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   Ainv_kernel <- array(0.0, dim = c(1L, 1L, 1L))
   log_det_A_kernel <- 0.0
   kernel_multi_registry <- NULL
+  kernel_diagnostics <- NULL
   if (use_kernel_multi) {
     levs <- levels(data[[species]])
     n_kernel_tiers <- length(unique_kernel_names)
@@ -2124,6 +2176,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     kernel_logsd_offset <- rep(-1L, n_kernel_tiers)
     kernel_diag_offset <- rep(-1L, n_kernel_tiers)
     Ainv_kernel <- array(
+      0.0,
+      dim = c(n_kernel_tiers, n_kernel_levels, n_kernel_levels)
+    )
+    K_kernel <- array(
       0.0,
       dim = c(n_kernel_tiers, n_kernel_levels, n_kernel_levels)
     )
@@ -2211,6 +2267,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ))
       }
       K_jit <- (K + t(K)) / 2 + diag(1e-8, n_kernel_levels)
+      K_kernel[r, , ] <- (K + t(K)) / 2
       Ainv_kernel[r, , ] <- solve(K_jit)
       log_det_A_kernel[r] <- as.numeric(determinant(K_jit, logarithm = TRUE)$modulus)
 
@@ -2238,6 +2295,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     max_kernel_rank <- max(kernel_rank)
     kernel_multi_registry <- do.call(rbind, kernel_rows)
+    kernel_diagnostics <- .kernel_overlap_diagnostics(
+      K_kernel,
+      unique_kernel_names
+    )
   }
   ## Build the sparse A^-1 machinery whenever any phylogenetic term
   ## (phylo_latent, phylo_unique, phylo_slope, or the augmented latent-slope)
@@ -4060,6 +4121,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           list(name = kernel_name, internal_level = "phy")
                         }
                       } else NULL,
+      kernel_diagnostics = kernel_diagnostics,
       re_int       = if (use_re_int) list(
                        groups   = re_int_groups,
                        n_groups = re_int_n_groups,

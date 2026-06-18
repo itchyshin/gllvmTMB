@@ -243,6 +243,21 @@ test_that("two distinct named kernel tiers fit and extract by component", {
   expect_equal(fit$kernel_levels$name, c("phy", "non"))
   expect_equal(fit$kernel_levels$rank, c(1L, 1L))
   expect_equal(fit$kernel_levels$has_psi, c(FALSE, FALSE))
+  expect_equal(
+    rownames(fit$kernel_diagnostics$similarity),
+    c("phy", "non")
+  )
+  expect_equal(
+    colnames(fit$kernel_diagnostics$similarity),
+    c("phy", "non")
+  )
+  expect_equal(fit$kernel_diagnostics$pairs$level_1, "phy")
+  expect_equal(fit$kernel_diagnostics$pairs$level_2, "non")
+  expect_true(is.finite(fit$kernel_diagnostics$pairs$similarity))
+  expect_true(
+    fit$kernel_diagnostics$pairs$overlap_class %in%
+      c("near_orthogonal", "moderate", "high")
+  )
 
   S_phy <- suppressMessages(
     gllvmTMB::extract_Sigma(fit, level = "phy", part = "shared")
@@ -321,6 +336,16 @@ test_that("kernel-similarity diagnostic separates low and high overlap cases", {
     .c3_kernel_overlap_class(.c3_kernel_similarity(K_phy, K_non_high)),
     "high"
   )
+
+  K_diag <- array(0, dim = c(2L, n_H + n_P, n_H + n_P))
+  K_diag[1L, , ] <- diag(n_H + n_P)
+  K_diag[2L, , ] <- diag(n_H + n_P)
+  diag_dx <- gllvmTMB:::.kernel_overlap_diagnostics(
+    K_diag,
+    c("diag_1", "diag_2")
+  )
+  expect_equal(diag_dx$pairs$similarity, 1)
+  expect_equal(diag_dx$pairs$overlap_class, "high")
 })
 
 test_that("near-orthogonal two-component kernels recover component Gamma shapes", {
@@ -367,6 +392,12 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   expect_equal(fit_full$opt$convergence, 0L)
   expect_equal(fit_phy_only$opt$convergence, 0L)
   expect_equal(fit_non_only$opt$convergence, 0L)
+  expect_equal(fit_full$kernel_diagnostics$pairs$overlap_class, "near_orthogonal")
+  expect_equal(
+    fit_full$kernel_diagnostics$pairs$similarity,
+    fx$similarity,
+    tolerance = 1e-12
+  )
   expect_gt(
     as.numeric(stats::logLik(fit_full)) -
       max(

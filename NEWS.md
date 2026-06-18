@@ -17,8 +17,9 @@
   opens the fixed two-component Paper 2 shape for `Gamma_shape_r` inspection.
   A first heavy `COE-04` recovery gate now passes for a near-orthogonal
   Gaussian latent-only fixture: a predeclared Frobenius-style kernel-similarity
-  diagnostic classifies the two kernels as separable, the full two-component
-  fit beats either one-component fit, and each extracted component-specific
+  diagnostic, now stored on multi-kernel fits as `fit$kernel_diagnostics`,
+  classifies the two kernels as separable, the full two-component fit beats
+  either one-component fit, and each extracted component-specific
   `Gamma_shape_r` recovers its own truth while not matching the other
   component. PARTIAL (`COE-04`): moderate/high-overlap kernels,
   selective-absence/null calibration, explicit Psi redesign/deprecation, `rho`

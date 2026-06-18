@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 03:41 MDT",
+  "updated": "2026-06-18 03:59 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -38,7 +38,7 @@
       "label": "Power pilot",
       "value": "in flight",
       "status": "guard",
-      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Local iter 20 reached 377510 / 480000 reps. Scheduled run 27735802023 completed cancelled: shards succeeded, persist and summary cancelled, and the results branch stayed at 5969f6f."
+      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Local iter 21 reached 379010 / 480000 reps. Scheduled run 27735802023 completed cancelled: shards succeeded, persist and summary cancelled, and the results branch stayed at 5969f6f."
     },
     {
       "label": "Next decision",
@@ -170,7 +170,7 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 377510 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 379010 / 480000 reps and 0/48 cells at cap",
           "status": "active"
         },
         {
@@ -230,7 +230,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; local iter 20 reached 377510 / 480000 reps. Scheduled run 27735802023 completed cancelled: 49 jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results remained at 5969f6f."
+      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; local iter 21 reached 379010 / 480000 reps. Scheduled run 27735802023 completed cancelled: 49 jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results remained at 5969f6f."
     },
     {
       "when": "now",
@@ -480,7 +480,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent latest logged summary: 377510 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
+      "evidence": "LaunchAgent latest logged summary: 379010 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -587,6 +587,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 03:59 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent iter 21 completed at 2026-06-18 03:43 MDT: 379010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. Parent R process and all ten RSOCK workers remained alive in the post-helper snapshot; four workers were active. No coverage or power promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
     {
       "when": "2026-06-18 03:41 MDT",
       "who": "Local power pilot",

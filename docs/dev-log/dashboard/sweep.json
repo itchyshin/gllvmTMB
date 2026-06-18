@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 03:41 MDT",
+  "updated": "2026-06-18 03:59 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,7 +14,7 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 377510 / 480000 reps; scheduled run 27735802023 completed cancelled after shard success because persist and summary hit the 20-minute job limit. Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 379010 / 480000 reps; scheduled run 27735802023 completed cancelled after shard success because persist and summary hit the 20-minute job limit. Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
@@ -23,6 +23,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 03:59 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent iter 21 completed at 2026-06-18 03:43 MDT: 379010 / 480000 reps, 0/48 cells at cap, 0 errored cells. Parent and all ten workers remained alive after the status helper; four workers were active. The scoring audit still blocks coverage/power promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
     {
       "when": "2026-06-18 03:41 MDT",
       "who": "Local power pilot",

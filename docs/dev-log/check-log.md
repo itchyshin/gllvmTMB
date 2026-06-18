@@ -19160,3 +19160,61 @@ Deliberately not run:
   audit, and no public docs changes. The non-mutating bridge path gives useful
   local evidence only; it does not make #101 green, #489 ready, the bridge
   complete, the release ready, or scientific coverage passed.
+
+## 2026-06-17 -- Power-run heartbeat after one shard completed
+
+Refreshed the mission-control evidence during the maintainer-away monitoring
+window. This is an evidence/dashboard update only; it does not change package
+code, formula grammar, likelihoods, public pkgdown navigation, or advertised
+bridge support.
+
+Evidence recorded:
+
+- Draft PR #489 remains open, clean, and green at
+  `03fdda1cedd325188448ffe58b42f09acbf69e61`.
+- GLLVM.jl #101 remains draft/open, clean, base `main`, head
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`. A branch run listing still shows
+  only the older 2026-06-16 Documenter PR run (`27652799083`), so #101 still
+  lacks fresh PR CI after retargeting.
+- Scheduled GitHub power run `27722546237` remains in progress on main
+  `0567cd747b9e81fa694e846a6d155bf60e35e0b8`, now with 47 completed-success
+  jobs, 0 failures, and 2 active shards (`shard 32/48`, `shard 33/48`). This is
+  process evidence only, not coverage or power proof.
+- Local power-pilot LaunchAgent remains mid-batch. The latest completed local
+  summary is still 355,010 / 480,000 reps with 0/48 cells at cap; at the
+  18:48 MDT worker snapshot, three RSOCK workers were still active. No local
+  scoring promotion was made.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Current GitHub state:
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json number,isDraft,state,mergeStateStatus,headRefOid,statusCheckRollup,updatedAt,url`
+  -> #489 draft/open, clean, head `03fdda1`, R-CMD-check and recovery success.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,isDraft,state,baseRefName,headRefName,headRefOid,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> #101 draft/open, clean, base `main`, head `f7be594`, stale displayed
+  2026-06-16 Documenter preview checks only.
+  `/opt/homebrew/bin/gh run list --repo itchyshin/GLLVM.jl --branch codex/julia-per-trait-dispersion --limit 6 --json databaseId,status,conclusion,workflowName,event,headSha,createdAt,updatedAt,url`
+  -> only PR run listed for the head was Documenter `27652799083` from
+  2026-06-16.
+  `/opt/homebrew/bin/gh run view 27722546237 --repo itchyshin/gllvmTMB --json status,conclusion,headSha,updatedAt,jobs,url --jq ...`
+  -> `status: in_progress`, 47 completed-success jobs, 0 failures,
+  2 in-progress shards.
+- Local power-pilot readout:
+  `tail -n 120 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  and
+  `ps -p 1386,1783,1784,1785,1787,1788,1789,1790,1791,1792,1793 -o pid,ppid,etime,cputime,pcpu,pmem,state,command`
+  -> latest completed summary still 355,010 / 480,000 reps; parent R process
+  remains alive while the worker pool finishes the current batch.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, no public docs changes, and no power-pilot scoring rerun. The new
+  GitHub power-run count does not make #489 ready, the bridge complete, the
+  release ready, or scientific coverage passed.

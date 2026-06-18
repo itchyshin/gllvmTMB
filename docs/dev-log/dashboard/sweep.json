@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-17 18:32 MDT",
+  "updated": "2026-06-17 18:48 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,7 +14,7 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27717007830 completed successfully and pushed 2709930 to power-pilot-results. Follow-up run 27722546237 is still in progress with 46 completed-success jobs and 3 running shards. Local pilot is at 355010 / 480000 reps; Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27717007830 completed successfully and pushed 2709930 to power-pilot-results. Follow-up run 27722546237 is still in progress with 47 completed-success jobs and 2 running shards. Local pilot is at 355010 / 480000 reps; Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
@@ -45,9 +45,9 @@
       "link_label": "PR #489"
     },
     {
-      "when": "2026-06-17 18:20 MDT",
+      "when": "2026-06-17 18:48 MDT",
       "who": "GitHub Actions",
-      "text": "Scheduled power-pilot run 27722546237 remains in progress on main 0567cd7 with 46 completed-success jobs, 0 failures, and 3 running shards.",
+      "text": "Scheduled power-pilot run 27722546237 remains in progress on main 0567cd7 with 47 completed-success jobs, 0 failures, and 2 running shards.",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
       "link_label": "run 27722546237"
     },

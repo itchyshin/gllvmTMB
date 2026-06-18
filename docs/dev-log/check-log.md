@@ -22047,3 +22047,74 @@ Still not claimed:
 - No explicit Psi support in the Paper 2 multi-kernel path.
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 12:22 MDT -- COE-04 high-overlap collapse-equivalence gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add the first high-overlap collapse/equivalence calibration gate for fixed
+  named multi-kernel fits.
+- Keep `COE-04` partial: this proves one identical-kernel fixture should be
+  interpreted as a collapsed higher-rank kernel rather than separated
+  component-specific `Gamma_shape` evidence. It does not prove high-overlap
+  truth recovery, intervals, or broad high-overlap behavior.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/article/kernel commits on
+  this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Extended `.c3_make_two_component_fixture()` with `identical_kernels`.
+- Added a heavy high-overlap gate where:
+  - the two named kernels are identical and classified as high-overlap;
+  - the separated `kernel_latent(..., name = "phy", d = 1) +
+    kernel_latent(..., name = "non", d = 1)` fit warns and converges;
+  - the collapsed `kernel_latent(..., name = "cross", d = 2)` fit converges;
+  - the separated two-tier fit is not materially better than the collapsed
+    rank-2 fit (`abs(logLik difference) < 2`);
+  - separated `extract_Gamma(level = "phy" / "non")` warns;
+  - collapsed `extract_Gamma(level = "cross")` is quiet and finite.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+
+Checks:
+
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> first attempt failed because the draft also claimed high-overlap total
+  `Gamma_shape` truth recovery (`corr` about 0.68 and 0.63). The test was
+  narrowed to the supported collapse/equivalence claim.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 111`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 6 | PASS 47`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 9 | PASS 133`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 220`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No broad moderate-overlap calibration.
+- No broad high-overlap recovery/failure calibration beyond the collapse and
+  warning gates.
+- No calibrated block-null threshold across seeds/effect sizes.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 13:43 MDT",
+  "updated": "2026-06-18 13:52 MDT",
   "active_work": [
     {
       "when": "live",
@@ -30,9 +30,21 @@
       "when": "live",
       "who": "Paper 2 kernels",
       "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial; COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, conservative moderate-edge recovery, high-overlap collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a small null/signal grid, fixed-rho Gamma_effect extraction, and high-overlap fit/extract_Gamma warning language. Broader moderate-overlap calibration, broader high-overlap recovery/failure calibration beyond the collapse and warning gates, broader null-threshold calibration, rho profiling/estimation, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. PR green != bridge complete != release ready != scientific coverage passed."
+    },
+    {
+      "when": "live",
+      "who": "Laplace/VA",
+      "text": "Capability audit added to the widget: gllvmTMB has the production TMB Laplace estimator route, but all-family scientific coverage remains row-specific. gllvmTMB VA is parked/prototype-only in Design 72 and no method = \"VA\" API is merged. Current GLLVM.jl has exact Gaussian, Laplace one-part non-Gaussian families, and dedicated two-part Laplace fitters; it has no production VA/ELBO API in the current checkout. Planned gaps now include R VA revival only as a separate validation lane, Julia VA/ELBO design only if explicitly reopened, Delta-Gamma, ZIP/ZINB, Tweedie, Exponential/public dispatch, unified two-part dispatch, structured non-Gaussian dependence, formula parity, CI/post-fit parity, and mixed-family masks/X/CI."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 13:52 MDT",
+      "who": "Laplace/VA capability audit",
+      "text": "Read gllvmTMB Design 72, GLLVM.jl docs/src/response-families.md, current GLLVM.jl source includes, and the live R gllvm_julia_capabilities() table. Added status.json matrix rows EST-R-LAPLACE, EST-R-VA, EST-JL-LAPLACE, and EST-JL-VA. The current truth is: Laplace exists as production/default estimator evidence in both lanes for their implemented surfaces; VA is not production in either current checkout. Bridge family rows remain partial, especially ordinal, mixed-family, two-part, masks, fixed-effect X, CI payloads, residuals, simulation, and richer extractor parity. PR green != bridge complete != release ready != scientific coverage passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/72-variational-approximation-feasibility.md",
+      "link_label": "Design 72"
+    },
     {
       "when": "2026-06-18 13:43 MDT",
       "who": "Paper 2 Gamma effect",

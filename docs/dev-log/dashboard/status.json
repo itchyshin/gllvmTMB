@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 13:43 MDT",
+  "updated": "2026-06-18 13:52 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -9,11 +9,11 @@
   },
   "metrics": {
     "covered": 2,
-    "partial": 7,
-    "active": 1,
+    "partial": 9,
+    "active": 2,
     "blocked": 1,
-    "queued": 1,
-    "total": 12
+    "queued": 3,
+    "total": 17
   },
   "truth_cards": [
     {
@@ -45,6 +45,12 @@
       "value": "anchor sweep",
       "status": "active",
       "note": "First implementation slice reframed api-keyword-grid, covariance-correlation, model-selection-latent-rank, and cross-lineage-coevolution around explicit Psi versus standalone indep(). pkgdown::build_articles(lazy = FALSE) rendered the touched pages, pkgdown::check_pkgdown() passed, and stale scans only hit intentional guard/ledger text. Broader article estate remains one-decision-at-a-time."
+    },
+    {
+      "label": "Laplace / VA",
+      "value": "VA gap",
+      "status": "guard",
+      "note": "gllvmTMB production estimation uses the TMB Laplace path for latent/random effects, with coverage still family-row specific. Current GLLVM.jl has exact Gaussian, Laplace one-part non-Gaussian families, and dedicated two-part Laplace fitters. VA is not production in either current checkout: gllvmTMB Design 72 parks the VA prototype, and current GLLVM.jl exposes no VA/ELBO API. This is a planned/future lane only if reopened with validation rows."
     },
     {
       "label": "Paper 2 kernels",
@@ -260,6 +266,11 @@
       "when": "now",
       "who": "Boole",
       "text": "kernel_*() remains the general API; relmat remains compatibility sugar. Fixed named multi-kernel tiers now have a local TMB engine slice, fixed-rho Gamma_effect extraction, and a small COE-04 null/signal grid, while unique()/*_unique() stays compatibility syntax for this arc; the post-arc cleanup should deprecate or supersede *_unique() teaching, with standalone diagonal teaching already pointing to indep()."
+    },
+    {
+      "when": "now",
+      "who": "Fisher/Grace",
+      "text": "Laplace/VA capability audit added: gllvmTMB has the production TMB Laplace route but row-specific validation gates remain; GLLVM.jl has exact Gaussian, Laplace one-part families, and dedicated two-part Laplace fitters; VA is parked/prototype-only for gllvmTMB and absent as a production GLLVM.jl API. Planned gaps now include R VA revival, Julia VA/ELBO design, two-part bridge parity, and Julia planned families such as Delta-Gamma, ZIP/ZINB, Tweedie, and Exponential/public dispatch."
     }
   ],
   "serial_gates": [
@@ -505,6 +516,46 @@
       "next_gate": "Local live JuliaCall suite passed; interval wording remains blocked until #101 PR CI and interval semantics are covered."
     },
     {
+      "id": "EST-R-LAPLACE",
+      "capability": "gllvmTMB production Laplace estimator surface",
+      "status": "partial",
+      "engine": "covered",
+      "bridge": "not_applicable",
+      "inference": "partial",
+      "evidence": "Current gllvmTMB uses the TMB random-effects/Laplace path as the production estimator for latent and random-effect models. This covers the implemented engine path, but it does not mean every family/distribution has equal simulation, interval, bridge, or public-article coverage. Family depth remains validation-row specific, and delta/hurdle/mixed-family latent-scale interpretation stays guarded.",
+      "next_gate": "Keep Laplace claims tied to docs/design/35-validation-debt-register.md rows and per-family tests; do not advertise all-distribution scientific coverage from the shared estimator alone."
+    },
+    {
+      "id": "EST-R-VA",
+      "capability": "gllvmTMB variational approximation",
+      "status": "queued",
+      "engine": "planned",
+      "bridge": "not_applicable",
+      "inference": "blocked",
+      "evidence": "Design 72 records VA as a parked feasibility/prototype lane: the Phase 1 separate-DLL experiment converged where Laplace failed and matched Laplace when identifiable, but it did not solve under-identification and no method = \"VA\" production API is merged.",
+      "next_gate": "Only revive VA as a separate method-development lane with explicit ELBO design, family coverage, benchmarks, warning semantics, and validation rows."
+    },
+    {
+      "id": "EST-JL-LAPLACE",
+      "capability": "GLLVM.jl exact Gaussian and Laplace family surface",
+      "status": "partial",
+      "engine": "covered",
+      "bridge": "partial",
+      "inference": "partial",
+      "evidence": "Current GLLVM.jl documents exact closed-form Gaussian fits, Laplace one-part non-Gaussian fits for Binomial, Poisson, NegativeBinomial, Beta, Ordinal, and Gamma, plus dedicated two-part Laplace fitters for Delta-lognormal, Hurdle-Poisson, and Hurdle-NB. The gllvmTMB bridge capability table remains partial: fixed-effect X, masks, CI payloads, residuals, simulation, and mixed-family support differ by family, with mixed-family currently a balanced no-X/no-mask/no-CI route.",
+      "next_gate": "Close planned Julia family and bridge gaps one row at a time: Delta-Gamma, ZIP/ZINB, Tweedie, Exponential/public row, unified two-part dispatch, structured non-Gaussian dependence, formula parity, CI/post-fit parity, and mixed-family masks/X/CI."
+    },
+    {
+      "id": "EST-JL-VA",
+      "capability": "GLLVM.jl variational approximation",
+      "status": "queued",
+      "engine": "planned",
+      "bridge": "planned",
+      "inference": "blocked",
+      "evidence": "The current GLLVM.jl checkout includes no production VA/ELBO estimator or public VA method switch. Older handoff notes about VA branches are not current-source evidence.",
+      "next_gate": "If VA is revived, make it a separate Julia design and validation lane before any bridge or public capability claim."
+    },
+    {
       "id": "CI-08",
       "capability": "Design 66 power-pilot coverage diagnostics",
       "status": "active",
@@ -655,9 +706,21 @@
       "status": "guard",
       "kind": "Psi cleanup",
       "item": "unique()/*_unique() stays compatibility syntax during the current arc; after the coevolution/Psi cleanup, *_unique() should move to a deprecation or supersession plan. Public teaching now prefers indep() for standalone diagonal models and reserves explicit Psi only where evidence supports it."
+    },
+    {
+      "status": "guard",
+      "kind": "Estimation methods",
+      "item": "Laplace is production estimator evidence, not all-family scientific coverage. VA is not production in either current checkout; treat it as a planned lane only if reopened with explicit validation rows."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 13:52 MDT",
+      "who": "Laplace/VA capability audit",
+      "text": "Added estimation-method rows to the mission-control matrix. gllvmTMB has the production TMB Laplace estimator path for latent/random-effect models, but family, interval, bridge, and public-article claims remain validation-row specific. gllvmTMB VA remains parked in Design 72: the Phase 1 prototype was a separate DLL/branch experiment and no method = \"VA\" production API is merged. Current GLLVM.jl has exact Gaussian, Laplace one-part non-Gaussian families (Binomial, Poisson, NegativeBinomial, Beta, Ordinal, Gamma), and dedicated two-part Laplace fitters (Delta-lognormal, Hurdle-Poisson, Hurdle-NB). Current GLLVM.jl does not expose production VA/ELBO. Planned/gated gaps include Delta-Gamma, ZIP/ZINB, Tweedie, Exponential/public row, unified two-part dispatch, structured non-Gaussian dependence, formula parity, CI/post-fit parity, mixed-family masks/X/CI, and any future VA lane. PR green != bridge complete != release ready != scientific coverage passed.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/blob/main/docs/src/response-families.md",
+      "link_label": "GLLVM.jl families"
+    },
     {
       "when": "2026-06-18 13:43 MDT",
       "who": "Paper 2 Gamma effect",

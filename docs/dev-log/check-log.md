@@ -21695,6 +21695,82 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 13:52 MDT -- Laplace / VA capability map for dashboard
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Answer whether Laplace and VA are current or planned across `gllvmTMB` and
+  `GLLVM.jl`.
+- Surface the estimation-method gaps in the mission-control widget so Laplace
+  evidence is not mistaken for all-family coverage or VA readiness.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch plus the remote power-pilot result commit.
+- `git diff --check`
+  -> clean before edits.
+
+Evidence read:
+
+- `docs/design/72-variational-approximation-feasibility.md`
+  -> VA is a parked feasibility/prototype lane; Phase 1 used a separate DLL and
+  no production `method = "VA"` API is merged.
+- `/Users/z3437171/Dropbox/Github Local/GLLVM.jl/docs/src/response-families.md`
+  -> current Julia public docs state exact Gaussian, Laplace one-part
+  non-Gaussian families, and dedicated two-part Laplace fitters; Delta-Gamma
+  and zero-inflated Poisson/NB are planned.
+- `/Users/z3437171/Dropbox/Github Local/GLLVM.jl/src/GLLVM.jl`
+  and `/Users/z3437171/Dropbox/Github Local/GLLVM.jl/src/families/fit_gllvm.jl`
+  -> current checkout includes family/laplace/two-part code paths, not a
+  production VA/ELBO API.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); caps <- gllvm_julia_capabilities(); print(names(caps)); print(caps, row.names = FALSE)'`
+  -> bridge capability table remains partial by family; mixed-family is a
+  balanced no-X/no-mask/no-CI route, ordinal CI/residual/simulate remain gated,
+  and richer extractor parity remains gated.
+
+Implemented:
+
+- Added dashboard truth card `Laplace / VA`.
+- Added status matrix rows:
+  - `EST-R-LAPLACE`: gllvmTMB production TMB Laplace estimator surface is real
+    but family/interval/bridge/article coverage remains row-specific.
+  - `EST-R-VA`: gllvmTMB VA is queued/planned only if revived as a separate
+    validation lane.
+  - `EST-JL-LAPLACE`: current GLLVM.jl exact Gaussian + Laplace one-part and
+    dedicated two-part fitters are real, while bridge and planned-family gaps
+    remain explicit.
+  - `EST-JL-VA`: current GLLVM.jl exposes no production VA/ELBO method.
+- Updated `docs/dev-log/dashboard/sweep.json` with matching live evidence.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-laplace-va-widget-capability-map.md`.
+
+Checks:
+
+- `python3 -m json.tool docs/dev-log/dashboard/status.json`
+  -> valid JSON.
+- `python3 -m json.tool docs/dev-log/dashboard/sweep.json`
+  -> valid JSON.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No production VA in `gllvmTMB`.
+- No production VA in current `GLLVM.jl`.
+- No all-family scientific coverage claim from the shared Laplace estimator.
+- No completion claim for two-part bridge parity, mixed-family masks/X/CI,
+  ordinal CI/residual/simulate, structured non-Gaussian dependence, Delta-Gamma,
+  ZIP/ZINB, Tweedie, Exponential/public dispatch, or unified two-part dispatch.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 13:43 MDT -- fixed-rho Gamma effect extraction
 
 Branch: `codex/r-bridge-grouped-dispersion`

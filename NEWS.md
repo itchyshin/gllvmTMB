@@ -26,7 +26,10 @@
   true zero loadings, the two-kernel fit collapses that component's
   `extract_Gamma()` while recovering the present component. A block-null smoke
   gate also collapses both component `Gamma_shape` estimates when both loading
-  blocks are zero. High-overlap kernel tiers now warn during fitting and again
+  blocks are zero, and a small near-orthogonal null/signal grid now keeps three
+  null seeds below the predeclared `Gamma_shape` norm and likelihood-gain
+  bounds while recovering both `Gamma_shape` components in two medium-signal
+  fixtures. High-overlap kernel tiers now warn during fitting and again
   when `extract_Gamma(level = ...)` is called for an affected component, while
   still returning the diagnostic table and point block for inspection. A first
   high-overlap collapse gate also fits two identical named rank-1 kernel tiers
@@ -35,7 +38,7 @@
   recovers both component `Gamma_shape` matrices while keeping cross-component
   matches low. PARTIAL (`COE-04`): broader moderate-overlap calibration,
   broader high-overlap recovery/failure calibration beyond the collapse and
-  warning gates, calibrated block-null thresholds, explicit Psi
+  warning gates, broader null-threshold calibration, explicit Psi
   redesign/deprecation, `rho` profiling or estimation, and interval calibration
   remain gated. The
   one-name `kernel_*()` path still uses the

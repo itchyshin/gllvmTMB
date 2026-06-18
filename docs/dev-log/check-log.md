@@ -22118,3 +22118,79 @@ Still not claimed:
 - No explicit Psi support in the Paper 2 multi-kernel path.
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 13:24 MDT -- COE-04 small null/signal grid
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add a small multi-seed null/signal grid to strengthen the near-orthogonal
+  Gaussian latent-only `COE-04` evidence.
+- Keep `COE-04` partial: this is not broad null calibration, interval
+  coverage, `rho` inference, high-overlap truth recovery, or mixed-family
+  evidence.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Added `.c3_fit_two_kernel_null_set()` to fit the full two-kernel model and
+  intercept-only comparator without also fitting the one-component models.
+- Added a heavy null/signal grid test:
+  - null seeds `2301:2303` set both loading blocks to zero, keep both
+    component `Gamma_shape` norms below `1e-3`, and keep the full
+    two-kernel model less than `3` log-likelihood units above intercept-only;
+  - medium-signal fixtures `(seed = 2602, lambda_phy_scale = 0.50,
+    lambda_non_scale = 0.50)` and `(seed = 2604, lambda_phy_scale = 0.50,
+    lambda_non_scale = 0.30)` recover both component `Gamma_shape` blocks with
+    correlation above `0.90` and beat either one-component fit by more than
+    `100` log-likelihood units.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coe04-null-signal-grid.md`.
+
+Checks:
+
+- Exploratory checkout-loaded R probe:
+  null seeds `2301:2304` and signal settings `(2601, 0.35, 0.35)`,
+  `(2602, 0.50, 0.50)`, `(2603, 0.70, 0.70)`, `(2604, 0.50, 0.30)`.
+  Null `Gamma_shape` norms stayed tiny, but full-versus-intercept likelihood
+  gain varied up to about `2.6`; weak-signal phy recovery was not robust
+  enough for a committed gate, so the committed grid uses medium-signal
+  settings only.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 134`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 7 | PASS 47`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 10 | PASS 133`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 243`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No broad moderate-overlap calibration.
+- No broad high-overlap recovery/failure calibration beyond the collapse and
+  warning gates.
+- No broader null-threshold calibration.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.

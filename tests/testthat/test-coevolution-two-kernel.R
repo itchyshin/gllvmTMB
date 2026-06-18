@@ -257,6 +257,45 @@
   )
 }
 
+.c3_fit_two_kernel_null_set <- function(fx) {
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit_full <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 +
+      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data,
+    unit = "row_id",
+    cluster = "species",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+  fit_intercept <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~ 1,
+    data = fx$data,
+    unit = "row_id",
+    cluster = "species",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+  list(
+    full = fit_full,
+    intercept = fit_intercept,
+    Gamma_phy = gllvmTMB::extract_Gamma(
+      fit_full,
+      level = "phy",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    ),
+    Gamma_non = gllvmTMB::extract_Gamma(
+      fit_full,
+      level = "non",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    )
+  )
+}
+
 test_that("two distinct named kernel tiers fit and extract by component", {
   ## C3.1 first-wave acceptance: two named fixed kernels get separate latent
   ## fields and separate loading matrices. This is not an interval/rho gate.
@@ -790,6 +829,72 @@ test_that("near-orthogonal block-null smoke collapses both component Gammas", {
       as.numeric(stats::logLik(fit$intercept)),
     3
   )
+})
+
+test_that("near-orthogonal null and medium-signal grid separates claim scopes", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 small null/signal calibration alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy/K_non | kernel_latent(..., name = "phy/non") | near-orthogonal fixed kernels | fit$kernel_diagnostics | separable pair |
+  ## | Gamma_phy = 0 | same "phy" tier | Lambda_phy scaled to zero | extract_Gamma(level = "phy") | near-zero null block |
+  ## | Gamma_non = 0 | same "non" tier | Lambda_non scaled to zero | extract_Gamma(level = "non") | near-zero null block |
+  ## | Gamma_phy/Gamma_non > 0 | two medium-signal fixtures | nonzero Lambda_phy/Lambda_non | component Gamma correlations | planted shapes |
+  null_seeds <- 2301:2303
+  null_grid <- lapply(null_seeds, function(seed) {
+    fx <- .c3_make_two_component_fixture(
+      seed = seed,
+      lambda_phy_scale = 0,
+      lambda_non_scale = 0,
+      resid_sd = 0.12
+    )
+    fit <- .c3_fit_two_kernel_null_set(fx)
+    expect_equal(fit$full$opt$convergence, 0L)
+    expect_equal(fit$intercept$opt$convergence, 0L)
+    c(
+      full_minus_intercept = as.numeric(stats::logLik(fit$full)) -
+        as.numeric(stats::logLik(fit$intercept)),
+      norm_phy = sqrt(sum(fit$Gamma_phy^2)),
+      norm_non = sqrt(sum(fit$Gamma_non^2))
+    )
+  })
+  null_grid <- do.call(rbind, null_grid)
+  expect_true(all(null_grid[, "norm_phy"] < 1e-3))
+  expect_true(all(null_grid[, "norm_non"] < 1e-3))
+  expect_true(all(null_grid[, "full_minus_intercept"] < 3))
+
+  signal_grid <- data.frame(
+    seed = c(2602L, 2604L),
+    lambda_phy_scale = c(0.50, 0.50),
+    lambda_non_scale = c(0.50, 0.30)
+  )
+  for (i in seq_len(nrow(signal_grid))) {
+    fx <- .c3_make_two_component_fixture(
+      seed = signal_grid$seed[[i]],
+      lambda_phy_scale = signal_grid$lambda_phy_scale[[i]],
+      lambda_non_scale = signal_grid$lambda_non_scale[[i]]
+    )
+    expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
+    fit <- .c3_fit_two_kernel_set(fx)
+    expect_equal(fit$full$opt$convergence, 0L)
+    expect_equal(fit$phy_only$opt$convergence, 0L)
+    expect_equal(fit$non_only$opt$convergence, 0L)
+    expect_gt(
+      as.numeric(stats::logLik(fit$full)) -
+        max(
+          as.numeric(stats::logLik(fit$phy_only)),
+          as.numeric(stats::logLik(fit$non_only))
+        ),
+      100
+    )
+    expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.90)
+    expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.90)
+  }
 })
 
 test_that("one named kernel tier exposes Sigma and Gamma by its name", {

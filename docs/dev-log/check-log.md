@@ -19741,3 +19741,64 @@ Deliberately not run:
   run `27735802023` because it is still in flight. The local replicate count
   and active scheduled run do not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-17 -- Local power-pilot iter 12 heartbeat
+
+Refreshed the mission-control evidence after the local LaunchAgent completed
+another accumulation iteration. This is an evidence/dashboard update only; it
+does not change package code, formula grammar, likelihoods, public docs, or
+workflow files.
+
+Evidence recorded:
+
+- Local power-pilot LaunchAgent iter 12 completed at 22:47 MDT: 365,510 /
+  480,000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753,
+  pass94 3/24, pass95 2/24, and null mean coverage-under-null 0.425.
+- A stable status snapshot was written to
+  `/tmp/gllvmtmb-local-iter12-status.md`. Immediately after the iter-12 merge,
+  the parent R process and all ten RSOCK workers remained alive; seven workers
+  were active in the next-batch snapshot. This remains local process evidence
+  only.
+- Scheduled power-pilot run `27735802023` remained in flight on main `0567cd7`.
+  At the 22:58 MDT snapshot it had 49 jobs total: 20 completed-success, 20 in
+  progress, and 9 queued. This is process evidence only; no persisted store,
+  merged result, or scoring evidence exists yet.
+- GitHub bridge/release state remained unchanged: #489 is still draft/open and
+  local #101 evidence remains partial without fresh PR CI.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Local power-pilot readout:
+  `stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S %Z' /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> `pilot-index.rds` at 22:47:06 MDT and local log at 22:47:11 MDT.
+  `tail -n 30 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> iter 12 summary above.
+  `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=dev/m3-pilot-results-local --status-out=/tmp/gllvmtmb-local-iter12-status.md`
+  from `/Users/z3437171/gllvmTMB-power-pilot`
+  -> status table above; `all_complete=false`, `reps_total=365510`,
+  `reps_target=480000`, `cells_complete=0`, `cells_total=48`.
+  `find /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local -maxdepth 1 -type f -newer /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds -print`
+  -> no files newer than `pilot-index.rds`.
+  `ps ax -o pid,ppid,etime,cputime,pcpu,pmem,state,command | rg '/Library/Frameworks/R.framework/Resources/bin/exec/R|/usr/local/bin/Rscript|/usr/bin/Rscript|Rscript'`
+  -> local parent process and all ten RSOCK workers remained alive after iter
+  12; seven workers were active in the post-helper snapshot.
+  `test -e /Users/z3437171/gllvmTMB-power-pilot/dev/STOP-LOCAL-PILOT`
+  -> STOP flag absent.
+- Current GitHub state:
+  `/opt/homebrew/bin/gh run view 27735802023 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,createdAt,updatedAt,event,workflowName,url,jobs --jq ...`
+  -> `status: queued`, no conclusion, event `schedule`, head `0567cd7`, 49
+  jobs total, 20 completed-success, 20 in progress, 9 queued.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, no public docs changes, and no remote power-pilot result scoring for
+  run `27735802023` because it is still in flight. The local replicate count
+  and active scheduled run do not make #489 ready, the bridge complete, the
+  release ready, or scientific coverage passed.

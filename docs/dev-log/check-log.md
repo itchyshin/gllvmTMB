@@ -21695,6 +21695,107 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 16:03 MDT -- COE-04 Poisson recovery gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Upgrade the Paper 2 Poisson evidence from construction-only smoke to a
+  narrow known-DGP recovery gate for two deterministic log-link count cells.
+- Keep `COE-04` partial: this is not interval calibration, broader
+  non-Gaussian recovery, mixed-family coverage, bridge completion, release
+  readiness, or scientific coverage.
+- Preserve the current `*_unique()` direction: explicit kernel-level Psi is
+  not part of the Paper 2 multi-kernel path; `kernel_unique()` / `*_unique()`
+  remains compatibility syntax now and belongs to post-arc lifecycle /
+  deprecation or replacement design.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch, newest `2475537 test(coevolution): add moderate edge boundary gate`.
+- `git diff --check`
+  -> clean before edits.
+
+Exploratory probes:
+
+- First Poisson recovery probe scaled the fitted linear predictor and was
+  discarded because it broke direct `Lambda` / `Gamma_shape` truth alignment.
+- The accepted probe used the exact Poisson log-link DGP
+  `eta = intercept + Lambda_phy g_phy + Lambda_non g_non` with
+  `Y ~ poisson(exp(eta))`, `scale = 0.30`, `n_rep = 12`, and
+  `intercept = 1.2`.
+- Two stable deterministic cells were selected:
+  - seed `2801`: full minus best one-component log likelihood about `44.696`,
+    `Gamma_phy` correlation about `0.999`, `Gamma_non` correlation about
+    `0.999`, cross matches below `0.10`;
+  - seed `2804`: full minus best one-component log likelihood about `54.482`,
+    `Gamma_phy` correlation about `0.999`, `Gamma_non` correlation about
+    `0.990`, cross matches below `0.10`.
+
+Implemented:
+
+- Added `.c3_make_poisson_two_kernel_recovery_fixture()` to
+  `tests/testthat/test-coevolution-two-kernel.R`.
+- Added `.c3_fit_poisson_two_kernel_set()` with full, phy-only, and non-only
+  Poisson fits.
+- Added a heavy `COE-04` test, "Poisson two-kernel coevolution recovers
+  component Gamma shapes", covering seeds `2801` and `2804`.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coe04-poisson-recovery.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'invisible(parse(file = "tests/testthat/test-coevolution-two-kernel.R")); cat("parse ok\n")'`
+  -> `parse ok`.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 10 | PASS 67`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 259`.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 13 | PASS 171`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 388`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null && echo json-ok`
+  -> `json-ok`.
+- `git diff --check`
+  -> clean.
+- `rg -n "Poisson recovery|PASS 259|PASS 388|mixed-family|PR green|kernel_unique|\*_unique|seed = 2801|2804" NEWS.md tests/testthat/test-coevolution-two-kernel.R docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md docs/dev-log/check-log.md docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/after-task/2026-06-18-coe04-poisson-recovery.md`
+  -> confirms the new narrow Poisson recovery evidence, updated pass counts,
+  stale-claim boundaries, and current `*_unique()` compatibility/deprecation
+  direction are present in the touched evidence files.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/ && curl -sS http://127.0.0.1:8770/status.json | rg -n 'Poisson recovery|PASS 388|SKIP 13|PR green|2801|2804|narrow Poisson' | head -60`
+  -> dashboard synced to the local widget server; spot-check confirms the
+  served JSON includes the new Poisson recovery evidence, aggregate heavy
+  `PASS 388`, expected non-heavy `SKIP 13`, seeds `2801` / `2804`, and the
+  guard.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No broad moderate-overlap calibration beyond the two promoted cells plus the
+  one boundary cell.
+- No broad high-overlap truth-recovery/failure calibration beyond the current
+  collapse-equivalence and warning gates.
+- No formal null-threshold / Type-I calibration beyond the diagnostic grid.
+- No in-engine `rho` estimation.
+- No `rho` profile intervals or interval coverage.
+- No broader non-Gaussian or mixed-family Paper 2 coverage beyond this narrow
+  Poisson cell pair.
+- No explicit Paper 2 multi-kernel Psi support.
+- No `*_unique()` lifecycle/deprecation implementation yet.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 15:43 MDT -- COE-04 moderate-edge boundary cell
 
 Branch: `codex/r-bridge-grouped-dispersion`

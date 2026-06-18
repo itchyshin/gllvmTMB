@@ -31,12 +31,15 @@
   null `Gamma_shape` norms near zero while quantifying the full-vs-intercept
   overfit tail (median below `2`, at most two seeds above `3`, maximum below
   `8` log-likelihood units). The paired signal side still recovers both
-  `Gamma_shape` components in two medium-signal fixtures. A first
-  non-Gaussian construction smoke now fits the same latent-only two-kernel
-  surface under `poisson()` for two bounded count fixtures, with convergence,
-  finite log likelihood, near-orthogonal diagnostics, and finite
-  component-specific `Gamma` point blocks; this is not a recovery or
-  mixed-family coverage claim. A fixed-`rho` sensitivity grid now refits the
+  `Gamma_shape` components in two medium-signal fixtures. The first
+  non-Gaussian gate now includes two bounded Poisson construction fixtures
+  plus two known-DGP Poisson recovery cells (`seed = 2801` and `2804`): the
+  full latent-only two-kernel fit converges, beats either one-component
+  Poisson comparator by more than `40` log-likelihood units, recovers both
+  planted component-specific `Gamma_shape` blocks with correlations above
+  `0.98`, and keeps cross-component matches below `0.10`. This is still a
+  narrow Poisson log-link recovery gate, not interval calibration or
+  mixed-family coverage. A fixed-`rho` sensitivity grid now refits the
   phy component over
   `rho = c(0, 0.25, 0.55, 0.85)` while holding the non component fixed; the
   positive-`rho` grid strongly beats the block-null `rho = 0` fit, but the gate

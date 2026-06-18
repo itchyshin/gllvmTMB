@@ -230,6 +230,28 @@
   do.call(rbind, profile)
 }
 
+.c3_make_poisson_two_kernel_fixture <- function(seed = 2701L,
+                                               n_H = 16L,
+                                               n_P = 16L,
+                                               n_rep = 4L) {
+  fx <- .c3_make_two_component_fixture(
+    seed = seed,
+    n_H = n_H,
+    n_P = n_P,
+    n_rep = n_rep,
+    lambda_phy_scale = 0.45,
+    lambda_non_scale = 0.45,
+    resid_sd = 0.05
+  )
+  set.seed(seed + 100L)
+  for (nm in c("h_size", "h_defence", "p_size", "p_attack")) {
+    idx <- !is.na(fx$data[[nm]])
+    eta <- 0.7 + 0.20 * as.numeric(base::scale(fx$data[[nm]][idx]))
+    fx$data[[nm]][idx] <- stats::rpois(sum(idx), lambda = exp(eta))
+  }
+  fx
+}
+
 .c3_fit_two_kernel_set <- function(fx, include_intercept = FALSE) {
   ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
   fit_full <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -1021,6 +1043,57 @@ test_that("fixed-rho sensitivity grid separates cross signal from block-null but
 
   if (identical(best$rho, max(rho_grid))) {
     expect_gt(best$logLik - planted_ll, 0)
+  }
+})
+
+test_that("Poisson two-kernel coevolution smoke constructs finite component Gammas", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 non-Gaussian smoke alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy/K_non | kernel_latent(..., name = "phy/non") | fixed kernels reused from Gaussian fixture | fit$kernel_diagnostics | construction smoke |
+  ## | Y | poisson() | Poisson counts from bounded transformed latent predictor | convergence + finite logLik | smoke only |
+  ## | Gamma_phy/Gamma_non | same tiers | no recovery target in this smoke | extract_Gamma(level = ...) | finite point blocks |
+  for (seed in 2701:2702) {
+    fx <- .c3_make_poisson_two_kernel_fixture(seed = seed)
+    expect_true(all(fx$data$h_size[!is.na(fx$data$h_size)] >= 0))
+    expect_true(all(fx$data$p_attack[!is.na(fx$data$p_attack)] >= 0))
+
+    ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+    fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      traits(h_size, h_defence, p_size, p_attack) ~
+        1 +
+        kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+        kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      data = fx$data,
+      unit = "row_id",
+      cluster = "species",
+      family = stats::poisson(),
+      control = ctl
+    )))
+    expect_equal(fit$opt$convergence, 0L)
+    expect_true(is.finite(as.numeric(stats::logLik(fit))))
+    expect_equal(fit$kernel_diagnostics$pairs$overlap_class, "near_orthogonal")
+
+    Gamma_phy <- gllvmTMB::extract_Gamma(
+      fit,
+      level = "phy",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    )
+    Gamma_non <- gllvmTMB::extract_Gamma(
+      fit,
+      level = "non",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    )
+    expect_true(all(is.finite(Gamma_phy)))
+    expect_true(all(is.finite(Gamma_non)))
   }
 })
 

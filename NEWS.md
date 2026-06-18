@@ -30,8 +30,13 @@
   null `Gamma_shape` norms near zero while quantifying the full-vs-intercept
   overfit tail (median below `2`, at most two seeds above `3`, maximum below
   `8` log-likelihood units). The paired signal side still recovers both
-  `Gamma_shape` components in two medium-signal fixtures. A fixed-`rho`
-  sensitivity grid now refits the phy component over
+  `Gamma_shape` components in two medium-signal fixtures. A first
+  non-Gaussian construction smoke now fits the same latent-only two-kernel
+  surface under `poisson()` for two bounded count fixtures, with convergence,
+  finite log likelihood, near-orthogonal diagnostics, and finite
+  component-specific `Gamma` point blocks; this is not a recovery or
+  mixed-family coverage claim. A fixed-`rho` sensitivity grid now refits the
+  phy component over
   `rho = c(0, 0.25, 0.55, 0.85)` while holding the non component fixed; the
   positive-`rho` grid strongly beats the block-null `rho = 0` fit, but the gate
   deliberately treats the best grid point as sensitivity evidence only because
@@ -51,8 +56,8 @@
   broader high-overlap truth-recovery/failure calibration beyond the
   collapse-equivalence and warning gates, formal null-threshold calibration
   beyond this diagnostic grid, explicit Psi
-  redesign/deprecation, formal `rho` profile/estimation support, and interval
-  calibration remain gated. The
+  redesign/deprecation, formal `rho` profile/estimation support, interval
+  calibration, and broader non-Gaussian/mixed-family recovery remain gated. The
   one-name `kernel_*()` path still uses the
   phylo-equivalent KER-02 engine and the `<1e-6` equivalence gate remains
   unchanged. Guard: PR green != bridge complete != release ready != scientific

@@ -21695,6 +21695,79 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 14:46 MDT -- COE-04 Poisson construction smoke
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add the first non-Gaussian construction smoke for the latent-only Paper 2
+  two-kernel path.
+- Keep the claim narrow: this is a Poisson construction/convergence and
+  extractor-smoke gate, not Poisson recovery, mixed-family coverage, interval
+  evidence, bridge completion, release readiness, or scientific coverage.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch.
+- `git diff --check`
+  -> clean before edits.
+
+Exploratory probe:
+
+- Checkout-loaded R probe over seeds `2701:2710` transformed bounded latent
+  predictors into Poisson counts.
+- All ten exploratory Poisson fits converged with finite log likelihoods,
+  one pairwise near-orthogonal diagnostic row, and finite component-specific
+  `extract_Gamma()` point blocks.
+
+Implemented:
+
+- Added `.c3_make_poisson_two_kernel_fixture()` to build a small bounded
+  Poisson count fixture from the existing two-component helper.
+- Added a heavy two-seed smoke test in
+  `tests/testthat/test-coevolution-two-kernel.R`:
+  - fits `kernel_latent(..., name = "phy") +
+    kernel_latent(..., name = "non")` under `poisson()`;
+  - checks convergence, finite log likelihood, near-orthogonal diagnostics,
+    and finite component-specific `Gamma` point blocks.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coe04-poisson-smoke.md`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 9 | PASS 47`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 205`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 12 | PASS 142`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 325`.
+
+Still not claimed:
+
+- No Poisson `Gamma_shape` recovery.
+- No formal non-Gaussian or mixed-family coevolution coverage.
+- No public Paper 2 promotion.
+- No formal null-threshold or Type-I calibration.
+- No high-overlap truth recovery.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 14:36 MDT -- COE-04 null diagnostic grid
 
 Branch: `codex/r-bridge-grouped-dispersion`

@@ -21695,6 +21695,83 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 14:25 MDT -- COE-04 high-overlap near-duplicate gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Extend the `COE-04` high-overlap collapse-equivalence gate beyond exact
+  duplicate kernels.
+- Keep the claim narrow: this is high-overlap failure/collapse discipline, not
+  high-overlap truth recovery, `rho` inference, interval calibration, mixed
+  family evidence, or release readiness.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Updated the heavy high-overlap collapse-equivalence test in
+  `tests/testthat/test-coevolution-two-kernel.R` to loop over two high-overlap
+  cases:
+  - exact duplicate kernels;
+  - a diagonal-shrink near-duplicate case,
+    `K_non = 0.95 * K_phy + 0.05 * I`.
+- Both cases require:
+  - high-overlap classification;
+  - a warning on the separated two-tier fit;
+  - convergence for both separated and collapsed fits;
+  - separated-vs-collapsed log-likelihood difference below `2`;
+  - component-specific `extract_Gamma(level = "phy" / "non")` warnings;
+  - quiet, finite collapsed `extract_Gamma(level = "cross")`.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coe04-high-overlap-near-duplicate.md`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 8 | PASS 47`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 171`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 11 | PASS 142`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 291`.
+- `rg -n "high-overlap recovery/failure|identical named rank-1|sets the two named kernels equal|collapse and warning gates|Focused tests pass 47 non-heavy / 158|aggregate kernel\\|coevolution tests pass 142 non-heavy / 278" ...`
+  -> only older dated evidence entries remained; current status rows,
+  register, NEWS, and Design 65 wording were updated.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json`
+  -> passed.
+- `python3 -m json.tool docs/dev-log/dashboard/sweep.json`
+  -> passed.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No broad/harder moderate-overlap calibration.
+- No high-overlap truth recovery.
+- No broader null-threshold calibration.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 14:13 MDT -- COE-04 two-cell moderate-overlap grid
 
 Branch: `codex/r-bridge-grouped-dispersion`

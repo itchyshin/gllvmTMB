@@ -736,76 +736,97 @@ test_that("high-overlap two-component fits collapse to one higher-rank kernel", 
   ## | g_phy | kernel_latent(..., d = 1, name = "phy") | N(0, K) | extract_Gamma(level = "phy") warns | descriptive only |
   ## | g_non | kernel_latent(..., d = 1, name = "non") | N(0, K) | extract_Gamma(level = "non") warns | descriptive only |
   ## | g_cross | kernel_latent(..., d = 2, name = "cross") | same total covariance | extract_Gamma(level = "cross") | collapsed descriptive block |
-  fx <- .c3_make_two_component_fixture(
+  fx_exact <- .c3_make_two_component_fixture(
     seed = 2501L,
     identical_kernels = TRUE
   )
-  expect_equal(.c3_kernel_overlap_class(fx$similarity), "high")
-  expect_equal(fx$similarity, 1, tolerance = 1e-12)
+  fx_shrink <- .c3_make_two_component_fixture(
+    seed = 2501L,
+    identical_kernels = TRUE
+  )
+  fx_shrink$K_non <- 0.95 * fx_shrink$K_phy +
+    0.05 * diag(nrow(fx_shrink$K_phy))
+  dimnames(fx_shrink$K_non) <- dimnames(fx_shrink$K_phy)
+  fx_shrink$similarity <- .c3_kernel_similarity(
+    fx_shrink$K_phy,
+    fx_shrink$K_non
+  )
+  expect_false(isTRUE(all.equal(fx_shrink$K_phy, fx_shrink$K_non)))
 
-  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  expect_warning(
-    fit_full <- suppressMessages(gllvmTMB::gllvmTMB(
+  high_cases <- list(
+    exact_duplicate = fx_exact,
+    diagonal_shrink = fx_shrink
+  )
+
+  for (case_name in names(high_cases)) {
+    fx <- high_cases[[case_name]]
+    expect_equal(.c3_kernel_overlap_class(fx$similarity), "high")
+    expect_equal(fx$similarity, 1, tolerance = 1e-12)
+
+    ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+    expect_warning(
+      fit_full <- suppressMessages(gllvmTMB::gllvmTMB(
+        traits(h_size, h_defence, p_size, p_attack) ~
+          1 +
+          kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+          kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+        data = fx$data,
+        unit = "row_id",
+        cluster = "species",
+        family = stats::gaussian(),
+        control = ctl
+      )),
+      regexp = "High overlap between fixed kernel tiers"
+    )
+    fit_collapsed <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       traits(h_size, h_defence, p_size, p_attack) ~
-        1 +
-        kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
-        kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+        1 + kernel_latent(species, K = fx$K_phy, d = 2, name = "cross"),
       data = fx$data,
       unit = "row_id",
       cluster = "species",
       family = stats::gaussian(),
       control = ctl
-    )),
-    regexp = "High overlap between fixed kernel tiers"
-  )
-  fit_collapsed <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 2, name = "cross"),
-    data = fx$data,
-    unit = "row_id",
-    cluster = "species",
-    family = stats::gaussian(),
-    control = ctl
-  )))
+    )))
 
-  expect_equal(fit_full$opt$convergence, 0L)
-  expect_equal(fit_collapsed$opt$convergence, 0L)
-  expect_lt(
-    abs(as.numeric(stats::logLik(fit_full)) -
-      as.numeric(stats::logLik(fit_collapsed))),
-    2
-  )
-
-  expect_warning(
-    Gamma_phy <- gllvmTMB::extract_Gamma(
-      fit_full,
-      level = "phy",
-      row_traits = fx$host_traits,
-      col_traits = fx$partner_traits
-    ),
-    regexp = "high-overlap fixed kernel tier"
-  )
-  expect_warning(
-    Gamma_non <- gllvmTMB::extract_Gamma(
-      fit_full,
-      level = "non",
-      row_traits = fx$host_traits,
-      col_traits = fx$partner_traits
-    ),
-    regexp = "high-overlap fixed kernel tier"
-  )
-  expect_no_warning(
-    Gamma_collapsed <- gllvmTMB::extract_Gamma(
-      fit_collapsed,
-      level = "cross",
-      row_traits = fx$host_traits,
-      col_traits = fx$partner_traits
+    expect_equal(fit_full$opt$convergence, 0L)
+    expect_equal(fit_collapsed$opt$convergence, 0L)
+    expect_lt(
+      abs(as.numeric(stats::logLik(fit_full)) -
+        as.numeric(stats::logLik(fit_collapsed))),
+      2
     )
-  )
 
-  expect_equal(dim(Gamma_collapsed), dim(Gamma_phy))
-  expect_true(all(is.finite(Gamma_collapsed)))
-  expect_true(all(is.finite(Gamma_phy + Gamma_non)))
+    expect_warning(
+      Gamma_phy <- gllvmTMB::extract_Gamma(
+        fit_full,
+        level = "phy",
+        row_traits = fx$host_traits,
+        col_traits = fx$partner_traits
+      ),
+      regexp = "high-overlap fixed kernel tier"
+    )
+    expect_warning(
+      Gamma_non <- gllvmTMB::extract_Gamma(
+        fit_full,
+        level = "non",
+        row_traits = fx$host_traits,
+        col_traits = fx$partner_traits
+      ),
+      regexp = "high-overlap fixed kernel tier"
+    )
+    expect_no_warning(
+      Gamma_collapsed <- gllvmTMB::extract_Gamma(
+        fit_collapsed,
+        level = "cross",
+        row_traits = fx$host_traits,
+        col_traits = fx$partner_traits
+      )
+    )
+
+    expect_equal(dim(Gamma_collapsed), dim(Gamma_phy))
+    expect_true(all(is.finite(Gamma_collapsed)))
+    expect_true(all(is.finite(Gamma_phy + Gamma_non)))
+  }
 })
 
 test_that("near-orthogonal selective absence collapses either absent Gamma", {

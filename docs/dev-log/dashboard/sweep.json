@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 14:13 MDT",
+  "updated": "2026-06-18 14:25 MDT",
   "active_work": [
     {
       "when": "live",
@@ -29,7 +29,7 @@
     {
       "when": "live",
       "who": "Paper 2 kernels",
-      "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial; COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, two-cell moderate-overlap recovery, high-overlap collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a small null/signal grid, fixed-rho sensitivity, fixed-rho Gamma_effect extraction, and high-overlap fit/extract_Gamma warning language. The fixed-rho grid refits rho = c(0, 0.25, 0.55, 0.85), detects positive cross signal versus rho = 0, and deliberately stops short of estimating rho because the best grid point can sit at the high edge. The moderate grid now covers 0.30 and 0.35 blends; a 0.40 exploratory blend degraded and remains outside the claim. Broader/harder moderate-overlap calibration, broader high-overlap recovery/failure calibration beyond the collapse and warning gates, broader null-threshold calibration, formal rho profile/estimation support, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. PR green != bridge complete != release ready != scientific coverage passed."
+      "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial; COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, two-cell moderate-overlap recovery, high-overlap exact-duplicate and diagonal-shrink near-duplicate collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a small null/signal grid, fixed-rho sensitivity, fixed-rho Gamma_effect extraction, and high-overlap fit/extract_Gamma warning language. The fixed-rho grid refits rho = c(0, 0.25, 0.55, 0.85), detects positive cross signal versus rho = 0, and deliberately stops short of estimating rho because the best grid point can sit at the high edge. The moderate grid now covers 0.30 and 0.35 blends; a 0.40 exploratory blend degraded and remains outside the claim. Broader/harder moderate-overlap calibration, broader high-overlap truth-recovery/failure calibration beyond the collapse-equivalence and warning gates, broader null-threshold calibration, formal rho profile/estimation support, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc; the Paper 2 multi-kernel path remains latent-only. PR green != bridge complete != release ready != scientific coverage passed."
     },
     {
       "when": "live",
@@ -38,6 +38,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 14:25 MDT",
+      "who": "Paper 2 high-overlap near-duplicate",
+      "text": "Expanded the COE-04 high-overlap collapse-equivalence gate from an exact duplicate kernel pair to exact duplicate plus diagonal-shrink near-duplicate cases. Both cases warn on the separated two-tier fit, converge, stay within 2 log-likelihood units of one collapsed rank-2 kernel tier, warn for component-specific extract_Gamma(level = ...), and keep the collapsed Gamma extraction quiet and finite. This is high-overlap failure/collapse discipline, not high-overlap truth recovery. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 171 heavy; kernel|coevolution PASS 142 non-heavy / PASS 291 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
+      "link_label": "COE-04 test"
+    },
     {
       "when": "2026-06-18 14:13 MDT",
       "who": "Paper 2 moderate-overlap grid",

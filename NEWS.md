@@ -37,15 +37,18 @@
   kernel tiers now warn during fitting and again
   when `extract_Gamma(level = ...)` is called for an affected component, while
   still returning the diagnostic table and point block for inspection. A first
-  high-overlap collapse gate also fits two identical named rank-1 kernel tiers
-  beside one collapsed rank-2 kernel tier and verifies that the two-tier fit is
-  not materially better. A two-cell moderate-overlap grid, with the non
+  high-overlap collapse gate now covers both exact-duplicate and
+  diagonal-shrink near-duplicate kernel pairs; in both cases the separated
+  two-tier fit is not materially better than one collapsed rank-2 kernel tier,
+  and component-specific `Gamma` extraction remains warning-only. A two-cell
+  moderate-overlap grid, with the non
   association pattern blended 30% and 35% toward the phy pattern, now also
   recovers both component `Gamma_shape` matrices while keeping cross-component
   matches low; an exploratory 40% blend degraded, so it remains outside the
   claim. PARTIAL (`COE-04`): broader/harder moderate-overlap calibration,
-  broader high-overlap recovery/failure calibration beyond the collapse and
-  warning gates, broader null-threshold calibration, explicit Psi
+  broader high-overlap truth-recovery/failure calibration beyond the
+  collapse-equivalence and warning gates, broader null-threshold calibration,
+  explicit Psi
   redesign/deprecation, formal `rho` profile/estimation support, and interval
   calibration remain gated. The
   one-name `kernel_*()` path still uses the

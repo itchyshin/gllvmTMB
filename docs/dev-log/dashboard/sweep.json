@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-17 18:48 MDT",
+  "updated": "2026-06-17 18:59 MDT",
   "active_work": [
     {
       "when": "live",
@@ -19,10 +19,17 @@
     {
       "when": "live",
       "who": "GLLVM.jl",
-      "text": "#95 is merged and main CI is green; #101 is draft/clean on main, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed, but PR checks are still stale after retarget; #94 remains dirty salvage."
+      "text": "#95 is merged and main CI is green; #101 is draft/clean on main, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed, but PR checks are still stale after retarget. CI.yml has no workflow_dispatch, so fresh CI needs maintainer-approved branch/PR-event mutation or deferral; #94 remains dirty salvage."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 18:59 MDT",
+      "who": "GLLVM.jl workflow trigger audit",
+      "text": "#101 branch run listing still shows only the older Documenter PR run 27652799083. CI.yml has push-to-main and pull_request-to-main triggers only; no non-mutating CI dispatch path was found.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
+    },
     {
       "when": "2026-06-17 18:29 MDT",
       "who": "R bridge local tests",

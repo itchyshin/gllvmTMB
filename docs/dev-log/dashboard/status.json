@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 18:48 MDT",
+  "updated": "2026-06-17 18:59 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -44,7 +44,7 @@
       "label": "Next decision",
       "value": "#101 gate",
       "status": "guard",
-      "note": "GLLVM.jl #95 has landed and main CI is green; #101 merge-ref and local live JuliaCall bridge suites passed, but fresh PR CI is still required before #489 widens."
+      "note": "GLLVM.jl #95 has landed and main CI is green; #101 merge-ref and local live JuliaCall bridge suites passed, but fresh PR CI is still required before #489 widens. The CI workflow has no non-mutating manual dispatch."
     }
   ],
   "repos": [
@@ -62,7 +62,7 @@
       "branch": "codex/julia-per-trait-dispersion",
       "head": "f7be594",
       "state": "guard",
-      "note": "#95 merged to main; main CI 27724193515 is green at 70a5c83. #101 is draft/clean on main; local merge-ref 2cd8563 and live R bridge suites passed locally, but PR CI is still stale.",
+      "note": "#95 merged to main; main CI 27724193515 is green at 70a5c83. #101 is draft/clean on main; local merge-ref 2cd8563 and live R bridge suites passed locally, but PR CI is still stale. CI.yml has only push-to-main and pull_request triggers.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
       "link_label": "PR #101"
     },
@@ -143,7 +143,7 @@
       "counts": "1/4",
       "slices": [
         {
-          "name": "GLLVM.jl #101 local merge-ref bridge slice passed 641/641 at 2cd8563; PR CI still stale",
+          "name": "GLLVM.jl #101 local merge-ref bridge slice passed 641/641 at 2cd8563; PR CI still stale and CI.yml has no workflow_dispatch",
           "status": "partial",
           "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
           "issue": "GLLVM.jl #101"
@@ -230,7 +230,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; follow-up power run 27722546237 is still running with 47 completed-success jobs and 2 active shards."
+      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Follow-up power run 27722546237 is still running with 47 completed-success jobs and 2 active shards."
     },
     {
       "when": "now",
@@ -247,7 +247,7 @@
     {
       "status": "guard",
       "kind": "GLLVM.jl",
-      "item": "#95 has landed; #101 has local merge-ref and live JuliaCall bridge evidence but still needs fresh PR checks before R bridge claim widening."
+      "item": "#95 has landed; #101 has local merge-ref and live JuliaCall bridge evidence but still needs fresh PR checks before R bridge claim widening; current workflows leave only maintainer-approved branch/PR-event mutation or deferral."
     },
     {
       "status": "guard",
@@ -354,8 +354,8 @@
       "name": "Karpinski",
       "role": "Julia engine and sparse/AD path",
       "status": "active",
-      "task": "Confirm maintainer-approved trigger for #101 PR CI; local merge-ref bridge slice passed.",
-      "blocked_by": "No fresh PR CI after #101 base edit",
+      "task": "Confirm maintainer-approved trigger for #101 PR CI; local merge-ref bridge slice passed and CI.yml has no workflow_dispatch.",
+      "blocked_by": "No fresh PR CI after #101 base edit; no non-mutating CI dispatch path found",
       "parallel_with": "Hopper and Gauss",
       "join_gate": "GLLVM.jl #101 check evidence"
     },
@@ -461,7 +461,7 @@
       "evidence": "PR #489 is clean and green at 03fdda1: coevolution recovery 27727834498 and R-CMD-check 27727834488 both succeeded. GLLVM.jl #101 merge-ref 2cd8563 focused bridge slice passed 641/641 locally with Julia 1.10. gllvmTMB no-Julia bridge suite passed; live JuliaCall bridge suite passed locally against GLLVM.jl f7be594 with juliaup on PATH.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489",
-      "next_gate": "Fresh GLLVM.jl #101 PR CI before widening claims."
+      "next_gate": "Fresh GLLVM.jl #101 PR CI before widening claims; current workflow evidence requires maintainer-approved push/PR-event mutation or explicit deferral."
     },
     {
       "id": "JUL-01A",
@@ -582,6 +582,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 18:59 MDT",
+      "who": "GLLVM.jl workflow trigger audit",
+      "text": "GLLVM.jl #101 remains draft/clean at f7be594 and branch run listing still shows only Documenter run 27652799083 from 2026-06-16. CI.yml triggers only on push to main and pull_request to main; Documenter.yml triggers on push/pull_request; TagBot alone has workflow_dispatch. No non-mutating CI trigger path is available from the current workflow set.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
+    },
     {
       "when": "2026-06-17 18:29 MDT",
       "who": "R bridge local tests",

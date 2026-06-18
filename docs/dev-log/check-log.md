@@ -19218,3 +19218,70 @@ Deliberately not run:
   audit, no public docs changes, and no power-pilot scoring rerun. The new
   GitHub power-run count does not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-17 -- GLLVM.jl #101 non-mutating CI trigger audit
+
+Refined the #101 gate during the maintainer-away monitoring window. This is an
+evidence/dashboard update only; it does not change package code, formula
+grammar, likelihoods, public docs, or workflow files.
+
+Evidence recorded:
+
+- GLLVM.jl #101 remains draft/open, clean, base `main`, head
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`.
+- The #101 branch run listing still shows only the older 2026-06-16 Documenter
+  PR run (`27652799083`) for head `f7be594`; no fresh CI run appeared after the
+  retarget to `main`.
+- GLLVM.jl `.github/workflows/CI.yml` triggers only on `push` to `main` and
+  `pull_request` to `main`. `.github/workflows/Documenter.yml` triggers on
+  `push` and `pull_request`. `.github/workflows/TagBot.yml` has
+  `workflow_dispatch`, but that is not the CI workflow. Therefore there is no
+  non-mutating manual CI trigger path in the current workflow set.
+- Given GLLVM.jl `AGENTS.md` says "No push without an explicit instruction" and
+  no such instruction exists while the maintainer is away, the selected path is
+  to defer the #101 PR-CI trigger and keep local merge-ref/live-bridge evidence
+  partial.
+- Scheduled GitHub power run `27722546237` remained in progress at the same
+  snapshot level as r14: 47 completed-success jobs, 0 failures, and 2 active
+  shards (`shard 32/48`, `shard 33/48`). This is process evidence only.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Current GitHub state:
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json number,isDraft,state,mergeStateStatus,headRefOid,statusCheckRollup,updatedAt,url`
+  -> #489 draft/open, clean, head `03fdda1`, R-CMD-check and recovery success.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,isDraft,state,baseRefName,headRefName,headRefOid,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> #101 draft/open, clean, base `main`, head `f7be594`, stale displayed
+  2026-06-16 Documenter preview checks only.
+  `/opt/homebrew/bin/gh run list --repo itchyshin/GLLVM.jl --branch codex/julia-per-trait-dispersion --limit 6 --json databaseId,status,conclusion,workflowName,event,headSha,createdAt,updatedAt,url`
+  -> only PR run listed for the head was Documenter `27652799083` from
+  2026-06-16.
+  `/opt/homebrew/bin/gh run view 27722546237 --repo itchyshin/gllvmTMB --json status,conclusion,headSha,updatedAt,jobs,url --jq ...`
+  -> `status: in_progress`, 47 completed-success jobs, 0 failures,
+  2 in-progress shards.
+- Workflow trigger audit:
+  `sed -n '1,240p' AGENTS.md` in
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration`
+  -> confirmed the hard boundary: no push without explicit maintainer
+  instruction.
+  `rg --files .github/workflows`
+  -> `CI.yml`, `Documenter.yml`, `TagBot.yml`.
+  `sed -n '1,240p' .github/workflows/CI.yml`,
+  `sed -n '1,240p' .github/workflows/Documenter.yml`, and
+  `sed -n '1,200p' .github/workflows/TagBot.yml`
+  -> CI has no `workflow_dispatch`; TagBot is the only dispatchable workflow.
+  `rg -n "workflow_dispatch|pull_request|push|on:" .github/workflows`
+  -> confirmed trigger inventory above.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, no public docs changes, and no power-pilot scoring rerun. The trigger
+  audit does not make #101 green, #489 ready, the bridge complete, the release
+  ready, or scientific coverage passed.

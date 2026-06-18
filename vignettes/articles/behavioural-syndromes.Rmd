@@ -1,5 +1,6 @@
 ---
 title: "Behavioural syndromes (2-level GLLVM)"
+tier: 3 # internal biological worked-example draft until diagnostics, wide call, and figure review pass
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -22,6 +23,16 @@ knitr::opts_chunk$set(
   warning  = FALSE
 )
 ```
+
+> **Internal article gate.** This is a candidate Tier 1 biological worked
+> example, but it is not ready for the public article dropdown. The page stays
+> internal until it includes a runnable wide-format fit, a diagnostic table,
+> a clearer reader path from the two-level question to the code, and Florence
+> figure review for the covariance, ordination, loading-recovery, and
+> truth-comparison plots. Start with [Get started](../articles/gllvmTMB.html),
+> [Morphometrics](morphometrics.html), or
+> [Covariance and correlation](covariance-correlation.html) for the current
+> public path.
 
 ## The biological question
 

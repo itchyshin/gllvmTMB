@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 08:37 MDT",
+  "updated": "2026-06-18 08:51 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -209,7 +209,7 @@
           "status": "covered"
         },
         {
-          "name": "Article council slices 1-4: public surface stabilized, lambda hidden, methods Tier 2 placement recorded, and entry-path helpers placed; broader reader-facing docs audit still waits bridge landing decision",
+          "name": "Article council slices 1-5A: public surface stabilized, lambda hidden, methods and glossary Tier 2 placement recorded, entry-path helpers placed, and behavioural-syndromes gated as an internal biological candidate; broader reader-facing docs audit still waits bridge landing decision",
           "status": "partial"
         },
         {
@@ -242,7 +242,7 @@
     {
       "when": "now",
       "who": "Pat",
-      "text": "Article council slices 1-4 are now reflected in source: current public set stabilized, lambda pages hidden, methods pages visible only as Tier 2 Technical reference pages, gllvm-vocabulary restored as Tier 2 glossary, and data-shape-flowchart plus stacked-trait-gllvm kept internal Tier 3."
+      "text": "Article council slices 1-5A are now reflected in source: public set stabilized, lambda pages hidden, methods/glossary visible only as Tier 2 references, entry-path drafts kept internal, and behavioural-syndromes gated as a Tier 3 candidate Tier 1 biological article."
     }
   ],
   "serial_gates": [
@@ -406,17 +406,17 @@
       "name": "Pat",
       "role": "applied-user reader",
       "status": "active",
-      "task": "Keep the public article path teachable while entry-path helpers and glossary placement are decided one article at a time.",
-      "blocked_by": "Biological worked-example triage still waits article-council review and bridge/capability gates.",
+      "task": "Keep biological worked examples out of public navigation until each has a runnable reader path, diagnostics, and rendered evidence.",
+      "blocked_by": "behavioural-syndromes still needs wide-form fit, diagnostic table, figure review, and rendered HTML review; phylogenetic-gllvm and animal-model remain untriaged in this biological block.",
       "parallel_with": "Darwin and Florence",
       "join_gate": "Public docs pass"
     },
     {
       "name": "Darwin",
       "role": "ecology/evolution audience reviewer",
-      "status": "queued",
-      "task": "Keep examples biologically interpretable and honest.",
-      "blocked_by": "Public docs not changing in this slice",
+      "status": "active",
+      "task": "Review biological examples one at a time for a real ecology/evolution reader question before public promotion.",
+      "blocked_by": "behavioural-syndromes reader path needs tightening before public placement.",
       "parallel_with": "Pat and Florence",
       "join_gate": "Article or README change"
     },
@@ -424,8 +424,8 @@
       "name": "Florence",
       "role": "scientific figure editor",
       "status": "queued",
-      "task": "Review visual honesty if dashboard informs public figures later.",
-      "blocked_by": "No plot change in this slice",
+      "task": "Review covariance, ordination, loading-recovery, and truth-comparison figures before behavioural-syndromes can become Tier 1.",
+      "blocked_by": "Figure review not started for the behavioural article.",
       "parallel_with": "Pat and Darwin",
       "join_gate": "Figure or plot helper change"
     },
@@ -599,6 +599,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 08:51 MDT",
+      "who": "Article council",
+      "text": "Article council slice 5A started the biological worked-example triage: behavioural-syndromes stays internal as a Tier 3 candidate Tier 1 draft, now with explicit YAML and a gate note. Public promotion waits for a runnable wide-format fit, diagnostic_table() evidence, clearer reader path, Florence figure review, and rendered HTML review. This is article-readiness progress only, not bridge, release, or scientific-coverage completion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
+      "link_label": "article council ledger"
+    },
     {
       "when": "2026-06-18 08:37 MDT",
       "who": "Article council",

@@ -21152,3 +21152,87 @@ Deliberately not run:
   claim change. This slice changes article routing/prose only and preserves
   the guard: PR green != bridge complete != release ready != scientific
   coverage passed.
+
+## 2026-06-18 -- Behavioural syndromes stays internal pending Tier 1 gates
+
+Started article-council step 5A, the biological worked-example triage. The
+`behavioural-syndromes` article is now explicitly Tier 3/internal while it
+remains a candidate Tier 1 biological worked example. This is an article
+publication gate only: PR green != bridge complete != release ready !=
+scientific coverage passed.
+
+Evidence and edits:
+
+- `vignettes/articles/behavioural-syndromes.Rmd` now has
+  `tier: 3 # internal biological worked-example draft until diagnostics, wide call, and figure review pass`
+  and an internal gate note.
+- The gate names the missing public-readiness evidence: runnable wide-format
+  fit, `diagnostic_table()` evidence, clearer reader path, Florence figure
+  review, and rendered HTML review.
+- `docs/dev-log/audits/2026-06-18-article-council-ledger.md` now maps the page
+  to RE-04, RE-09, EXT-05, EXT-06, EXT-18, EXT-25..EXT-27, DIA-08, and DIA-13
+  instead of the older coarse RE-12 row.
+- `ROADMAP.md`, `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json` record article-council slice 5A.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-behavioural-syndromes-tier3-gate.md`.
+
+Checks:
+
+- Skill reads:
+  `sed -n '1,180p' .agents/skills/article-tier-audit/SKILL.md`
+  -> article-tier instructions read.
+  `sed -n '1,260p' .agents/skills/rose-pre-publish-audit/SKILL.md`
+  -> Rose pre-publish gate read.
+  `sed -n '1,360p' .agents/skills/after-task-audit/SKILL.md`
+  -> after-task checklist read.
+- Pre-edit lane check:
+  `PATH="/opt/homebrew/bin:$PATH" gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 is open.
+  `git log --all --oneline --since="6 hours ago" -- _pkgdown.yml ROADMAP.md vignettes/articles/behavioural-syndromes.Rmd docs/dev-log/audits/2026-06-18-article-council-ledger.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/dashboard docs/design`
+  -> recent overlapping edits are current mission-control/article-council
+  commits.
+- Live evidence poll:
+  `PATH="/opt/homebrew/bin:$PATH" gh pr view 489 --repo itchyshin/gllvmTMB --json number,state,isDraft,headRefOid,mergeStateStatus,statusCheckRollup,url,title`
+  -> #489 open draft at `03fdda1`, clean, checks success.
+  `PATH="/opt/homebrew/bin:$PATH" gh pr view 101 --repo itchyshin/GLLVM.jl --json number,state,isDraft,headRefOid,mergeStateStatus,statusCheckRollup,url,title`
+  -> #101 open draft at `f7be594`, fresh CI still in progress; Documenter,
+  macOS, and Julia 1.10 Ubuntu success; current Ubuntu was still active at this
+  `gh pr view` snapshot.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27763712855 --repo itchyshin/GLLVM.jl --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), failingOrActiveJobs: [.jobs[] | select(.status != "completed" or .conclusion != "success") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> #101 CI run still `in_progress`, 3 completed-success jobs and Windows
+  still active.
+  `git ls-remote origin refs/heads/power-pilot-results`
+  -> unchanged at `1a2aac654e877a34b3e590f0269d10cca05a43e7`.
+- Public-route scan:
+  `rg -n "behavioural-syndromes\\.html|\\[.*behavioural.*\\]\\(behavioural-syndromes\\.html\\)" README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/joint-sdm.Rmd vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd vignettes/articles/fit-diagnostics.Rmd vignettes/articles/convergence-start-values.Rmd vignettes/articles/pitfalls.Rmd vignettes/articles/missing-data.Rmd vignettes/articles/profile-likelihood-ci.Rmd vignettes/articles/troubleshooting-profile.Rmd vignettes/articles/gllvm-vocabulary.Rmd _pkgdown.yml`
+  -> no hits.
+- Stale wording / claim scan:
+  `rg -n "publication-grade|release-ready|bridge complete|scientific coverage passed|coverage passed|fast GLLVM|AI-REML|REML|full parity|complete bridge|profile-likelihood default|genuine bootstrap|meta_known_V|gllvmTMB_wide|trio|\\\\bf S|\\bS_B\\b|\\bS_W\\b|Two-U|two-U|under audit|Preview" vignettes/articles/behavioural-syndromes.Rmd ROADMAP.md docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  -> expected guard text in ledger, guarded `publication-grade` caveats in
+  ROADMAP, and an unrelated existing `psychometrics-irt` preview ROADMAP row.
+- JSON and whitespace:
+  `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null` -> valid.
+  `python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null` -> valid.
+  `git diff --check` -> clean before closeout.
+- Pkgdown:
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> completed successfully; rendered the full article set, including
+  `behavioural-syndromes.html`.
+  `rg -n "Internal article gate|candidate Tier 1|diagnostic table|wide-format fit|behavioural-syndromes" pkgdown-site/articles/behavioural-syndromes.html pkgdown-site/articles/index.html`
+  -> rendered gate note present, behavioural page present in article index.
+  `sed -n '100,130p' pkgdown-site/articles/index.html`
+  -> behavioural page appears under `Internal drafts and technical notes`.
+- Build cleanup:
+  Removed generated untracked render artefacts:
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`.
+
+Deliberately not run:
+
+- No `devtools::document()`, `devtools::test()`, R CMD check, release
+  `--as-cran`, issue mutation, GLLVM.jl mutation, push, public nav promotion,
+  or article rewrite. This slice records the gate that prevents premature
+  publication.

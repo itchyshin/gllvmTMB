@@ -82,7 +82,7 @@ For each article, run this workflow before changing navbar status:
 | Article | Current nav | Proposed tier | Action | Capability rows | Blockers | Reviewers | Exact next edit | Render/check command |
 |---|---|---|---|---|---|---|---|---|
 | `animal-model` | Internal drafts | Candidate Tier 1 | Keep internal | ANI rows, FG rows, EXT rows | Needs larger pedigree fixture and A/Ainv truth recovery | Darwin, Noether, Curie, Fisher, Florence, Rose | Design example object and truth table before prose expansion | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
-| `behavioural-syndromes` | Internal drafts | Candidate Tier 1 | Keep internal until evidence path is ready | RE-12, EXT repeatability/communality rows, DIA rows | Needs between/within covariance, repeatability, diagnostics, figures, and rendered review | Pat, Darwin, Fisher, Curie, Florence, Rose, Grace | Build one reader-shaped story from the behavioural example object; do not publish ledger-style prose | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
+| `behavioural-syndromes` | Internal drafts | Tier 3 candidate Tier 1 draft | Keep internal until reader and evidence path is ready | RE-04, RE-09, EXT-05, EXT-06, EXT-18, EXT-25..EXT-27, DIA-08, DIA-13 | Needs runnable wide-format fit, diagnostic table, clearer reader path, Florence review for covariance/ordination/recovery/truth-comparison figures, and rendered HTML review | Pat, Darwin, Fisher, Curie, Florence, Rose, Grace | 2026-06-18 slice added Tier 3 YAML and internal gate; next edit should add wide-form fit plus `diagnostic_table()` before prose expansion | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
 | `choose-your-model` | Internal drafts | Candidate Tier 1 navigation guide | Rewrite later | Depends on stabilized public surface | Current public surface and hidden-link targets are still moving | Pat, Rose, Grace, Boole | Rebuild after the public/hidden article list stabilizes | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
 | `cross-lineage-coevolution` | Internal drafts | Tier 3 until COE gates close | Keep internal | COE-01..COE-03, KER rows | Fixed-rho point-estimate only; no intervals or in-engine `rho` | Jason, Noether, Fisher, Florence, Rose | Split C4/C5 and second engine-slot decision before public rewrite | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
 | `cross-package-validation` | Internal drafts | Tier 3 until comparator evidence exists | Keep internal | Phase 5.5 comparator rows | Comparator evidence not complete | Jason, Fisher, Noether, Rose, Grace | Build comparator ledger before article prose | `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` |
@@ -114,6 +114,9 @@ For each article, run this workflow before changing navbar status:
    Tier 3 drafts until their target examples are safe.
 5. Triage biological worked examples: `behavioural-syndromes`,
    `phylogenetic-gllvm`, and `animal-model`.
+   **Started 2026-06-18:** `behavioural-syndromes` stays internal as a
+   Tier 3 candidate Tier 1 draft until its runnable wide call, diagnostics,
+   figure review, and rendered HTML path are complete.
 6. Triage advanced methods: `random-regression-reaction-norms`,
    `random-slopes-nongaussian`, `mixed-family-extractors`, and
    `ordinal-probit`.

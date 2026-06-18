@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 05:08 MDT",
+  "updated": "2026-06-18 05:19 MDT",
   "active_work": [
     {
       "when": "live",
@@ -9,12 +9,12 @@
     {
       "when": "live",
       "who": "main CI",
-      "text": "Main R-CMD-check 27720099917 and pkgdown 27720668325 completed successfully at 0567cd7. Newer scheduled full-check 27752749643 is in progress on the same head with all three OS jobs still running."
+      "text": "Main R-CMD-check 27720099917 and pkgdown 27720668325 completed successfully at 0567cd7. Newer scheduled full-check 27752749643 is still in progress on the same head: 1 OS job succeeded and 2 OS jobs are running."
     },
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot remains at 382010 / 480000 reps. Scheduled run 27735802023 completed cancelled after shard success because persist and summary hit the 20-minute job limit. New scheduled run 27752884846 is live with 11 success, 20 in-progress, and 18 queued jobs, but power-pilot-results still remains at 5969f6f. Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot reached 383510 / 480000 reps at iter 24. Scheduled run 27735802023 completed cancelled after shard success because persist and summary hit the 20-minute job limit. New scheduled run 27752884846 is live with 19 success, 20 in-progress, and 10 queued jobs, but power-pilot-results still remains at 5969f6f. Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
@@ -23,6 +23,27 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 05:19 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent iter 24 completed at 2026-06-18 05:14 MDT: 383510 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, and null mean coverage-under-null 0.425. Parent loop and all ten workers are alive; nine workers are active; STOP flag is absent.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
+    {
+      "when": "2026-06-18 05:19 MDT",
+      "who": "GitHub Actions",
+      "text": "Scheduled full-check run 27752749643 is still in progress on main 0567cd7: 1 job has completed successfully and 2 OS jobs remain in progress. This is process evidence only; no run conclusion exists yet.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752749643",
+      "link_label": "run 27752749643"
+    },
+    {
+      "when": "2026-06-18 05:19 MDT",
+      "who": "GitHub Actions",
+      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status queued, while the job rollup shows 49 jobs total: 19 completed-success, 20 in progress, and 10 queued. The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
+      "link_label": "run 27752884846"
+    },
     {
       "when": "2026-06-18 05:08 MDT",
       "who": "GitHub Actions",

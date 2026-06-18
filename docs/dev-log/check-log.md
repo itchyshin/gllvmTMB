@@ -20419,3 +20419,77 @@ Deliberately not run:
   check, no pkgdown build, no release `--as-cran` audit, no stale-wording scan,
   and no public docs changes. The new live workflow snapshots do not make #489
   ready, the bridge complete, the release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Local power-pilot iter 24 and live workflow heartbeat
+
+Refreshed mission-control evidence after the local LaunchAgent completed
+another accumulation iteration and after the user asked for the current status
+in the widget. This is an evidence/dashboard update only; it does not change
+package code, formula grammar, likelihoods, public docs, or workflow files.
+
+Evidence recorded:
+
+- Dashboard version advanced to `r35`.
+- Local power-pilot LaunchAgent iter 24 completed at 2026-06-18 05:14 MDT:
+  383,510 / 480,000 reps, 0/48 cells at cap, 0 errored cells, signal mean
+  coverage 0.753, pass94 3/24, pass95 2/24, and null mean
+  coverage-under-null 0.425. Parent loop plus all ten RSOCK workers are alive;
+  nine workers were active in the process snapshot. STOP flag absent.
+- Scheduled main `full-check` run `27752749643` remains in progress on main
+  `0567cd7`: 1 job completed successfully and 2 OS jobs remain in progress.
+  This is process evidence only; no run conclusion exists yet.
+- Scheduled power-pilot run `27752884846` remains live on main `0567cd7`.
+  GitHub reports run-level status `queued`, while the job rollup shows
+  49 jobs total: 19 completed-success, 20 in progress, and 10 queued.
+  `power-pilot-results` remains at `5969f6f`, so no new persisted-store or
+  scoring evidence exists yet.
+- #489/#101/#486 state did not close any gate: #489 is draft/open/clean and
+  green at `03fdda1`; #101 is draft/open/clean but still has no fresh PR CI
+  after retarget; #486 remains open.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Local power-pilot readout:
+  `stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S %Z' /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> `pilot-index.rds` at 2026-06-18 05:14:58 MDT and local log at
+  2026-06-18 05:15:04 MDT.
+  `tail -n 40 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> iter 24 summary above.
+  `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=dev/m3-pilot-results-local --status-out=/tmp/gllvmtmb-local-iter24-status.md`
+  from `/Users/z3437171/gllvmTMB-power-pilot`
+  -> status table above; `all_complete=false`, `reps_total=383510`,
+  `reps_target=480000`, `cells_complete=0`, `cells_total=48`.
+  `ps ax -o pid,ppid,etime,cputime,pcpu,pmem,state,command | rg '/Library/Frameworks/R.framework/Resources/bin/exec/R|/usr/local/bin/Rscript|/usr/bin/Rscript|Rscript'`
+  -> parent loop and all ten RSOCK workers alive; nine workers active.
+  `test -e /Users/z3437171/gllvmTMB-power-pilot/dev/STOP-LOCAL-PILOT`
+  -> STOP flag absent.
+- GitHub readouts:
+  `/opt/homebrew/bin/gh run view 27752749643 --repo itchyshin/gllvmTMB --json databaseId,workflowName,status,conclusion,headSha,createdAt,updatedAt,jobs,url --jq '{databaseId, workflowName, status, conclusion, headSha, createdAt, updatedAt, url, job_status: (.jobs | group_by(.status) | map({status: .[0].status, n: length})), job_conclusion: (.jobs | group_by(.conclusion) | map({conclusion: .[0].conclusion, n: length}))}'`
+  -> status `in_progress`, conclusion empty, head `0567cd7`, job_status
+  `1 completed`, `2 in_progress`; job_conclusion `1 success`, `2 empty`.
+  `/opt/homebrew/bin/gh run view 27752884846 --repo itchyshin/gllvmTMB --json databaseId,workflowName,status,conclusion,headSha,createdAt,updatedAt,jobs,url --jq '{databaseId, workflowName, status, conclusion, headSha, createdAt, updatedAt, url, job_status: (.jobs | group_by(.status) | map({status: .[0].status, n: length})), job_conclusion: (.jobs | group_by(.conclusion) | map({conclusion: .[0].conclusion, n: length}))}'`
+  -> status `queued`, conclusion empty, head `0567cd7`, job_status
+  `19 completed`, `20 in_progress`, `10 queued`; job_conclusion
+  `19 success`, `30 empty`.
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json number,title,isDraft,state,mergeStateStatus,headRefOid,statusCheckRollup,url`
+  -> draft/open/clean at `03fdda1`; visible R-CMD-check and recovery checks
+  succeeded.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,isDraft,state,mergeStateStatus,headRefOid,statusCheckRollup,url`
+  -> draft/open/clean at `f7be594`; displayed checks remain only the older
+  2026-06-16 Documenter/deploy evidence.
+  `git ls-remote origin refs/heads/power-pilot-results`
+  -> `5969f6f280fd084f60b6dcf18ca1c5739d531025`.
+
+Deliberately not run:
+
+- No remote power-pilot fetch/archive/scoring for run `27752884846` because it
+  is still live and `power-pilot-results` has not moved. No #101 push, no
+  #101 close/reopen, no fresh PR CI trigger, no `Pkg.test()`, no local R CMD
+  check, no pkgdown build, no release `--as-cran` audit, and no public docs
+  changes. Iter 24 and the live workflow snapshots do not make #489 ready, the
+  bridge complete, the release ready, or scientific coverage passed.

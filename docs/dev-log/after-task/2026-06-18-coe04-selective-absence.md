@@ -27,6 +27,11 @@ Moderate/high-overlap behavior, block-null calibration, `rho`, intervals,
 mixed/non-Gaussian gates, and the post-arc `*_unique()` lifecycle/deprecation
 plan remain open.
 
+Supersession note: the follow-up
+`2026-06-18-coe04-null-smoke.md` added the symmetric selective-absence gate
+and a block-null smoke gate. This report remains the record for the first
+one-direction absence slice.
+
 ## Files changed
 
 - `tests/testthat/test-coevolution-two-kernel.R`
@@ -82,7 +87,7 @@ Rose: the dashboard, register, NEWS, and check-log all keep `COE-04` as
 
 - Moderate-overlap recovery and high-overlap failure language.
 - Block-null calibration.
-- Symmetric committed selective-absence gate with the phy component absent.
+- Calibrated block-null thresholds across seeds/effect sizes.
 - `rho` profiling or estimation.
 - Interval coverage.
 - Mixed/non-Gaussian coevolution gates.

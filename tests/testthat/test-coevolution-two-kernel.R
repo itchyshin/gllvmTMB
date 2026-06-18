@@ -187,6 +187,68 @@
   )
 }
 
+.c3_fit_two_kernel_set <- function(fx, include_intercept = FALSE) {
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit_full <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 +
+      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data,
+    unit = "row_id",
+    cluster = "species",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+  fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+    data = fx$data,
+    unit = "row_id",
+    cluster = "species",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+  fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data,
+    unit = "row_id",
+    cluster = "species",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+  fit_intercept <- NULL
+  if (isTRUE(include_intercept)) {
+    fit_intercept <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      traits(h_size, h_defence, p_size, p_attack) ~ 1,
+      data = fx$data,
+      unit = "row_id",
+      cluster = "species",
+      family = stats::gaussian(),
+      control = ctl
+    )))
+  }
+  list(
+    full = fit_full,
+    phy_only = fit_phy_only,
+    non_only = fit_non_only,
+    intercept = fit_intercept,
+    Gamma_phy = gllvmTMB::extract_Gamma(
+      fit_full,
+      level = "phy",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    ),
+    Gamma_non = gllvmTMB::extract_Gamma(
+      fit_full,
+      level = "non",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    )
+  )
+}
+
 test_that("two distinct named kernel tiers fit and extract by component", {
   ## C3.1 first-wave acceptance: two named fixed kernels get separate latent
   ## fields and separate loading matrices. This is not an interval/rho gate.
@@ -428,79 +490,85 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   expect_lt(.c3_gamma_corr(Gamma_non, fx$Gamma_phy), 0.25)
 })
 
-test_that("near-orthogonal selective absence collapses absent component Gamma", {
+test_that("near-orthogonal selective absence collapses either absent Gamma", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  absent_non <- .c3_make_two_component_fixture(
+    seed = 2101L,
+    lambda_non_scale = 0
+  )
+  absent_non_fit <- .c3_fit_two_kernel_set(absent_non)
+  expect_equal(
+    absent_non_fit$full$kernel_diagnostics$pairs$overlap_class,
+    "near_orthogonal"
+  )
+  expect_equal(absent_non_fit$full$opt$convergence, 0L)
+  expect_equal(absent_non_fit$phy_only$opt$convergence, 0L)
+  expect_equal(absent_non_fit$non_only$opt$convergence, 0L)
+  expect_gt(.c3_gamma_corr(absent_non_fit$Gamma_phy, absent_non$Gamma_phy), 0.95)
+  expect_lt(sqrt(sum(absent_non_fit$Gamma_non^2)), 1e-3)
+  expect_gt(
+    as.numeric(stats::logLik(absent_non_fit$phy_only)) -
+      as.numeric(stats::logLik(absent_non_fit$non_only)),
+    20
+  )
+  expect_lt(
+    as.numeric(stats::logLik(absent_non_fit$full)) -
+      as.numeric(stats::logLik(absent_non_fit$phy_only)),
+    1
+  )
+
+  absent_phy <- .c3_make_two_component_fixture(
+    seed = 2201L,
+    lambda_phy_scale = 0
+  )
+  absent_phy_fit <- .c3_fit_two_kernel_set(absent_phy)
+  expect_equal(absent_phy_fit$full$opt$convergence, 0L)
+  expect_equal(absent_phy_fit$phy_only$opt$convergence, 0L)
+  expect_equal(absent_phy_fit$non_only$opt$convergence, 0L)
+  expect_lt(sqrt(sum(absent_phy_fit$Gamma_phy^2)), 1e-3)
+  expect_gt(.c3_gamma_corr(absent_phy_fit$Gamma_non, absent_phy$Gamma_non), 0.95)
+  expect_gt(
+    as.numeric(stats::logLik(absent_phy_fit$non_only)) -
+      as.numeric(stats::logLik(absent_phy_fit$phy_only)),
+    20
+  )
+  expect_lt(
+    as.numeric(stats::logLik(absent_phy_fit$full)) -
+      as.numeric(stats::logLik(absent_phy_fit$non_only)),
+    1
+  )
+})
+
+test_that("near-orthogonal block-null smoke collapses both component Gammas", {
   skip_if_not_heavy()
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("TMB")
   testthat::skip_if_not_installed("tidyr")
 
   fx <- .c3_make_two_component_fixture(
-    seed = 2101L,
-    lambda_non_scale = 0
+    seed = 2301L,
+    lambda_phy_scale = 0,
+    lambda_non_scale = 0,
+    resid_sd = 0.12
   )
-  expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
+  expect_equal(sqrt(sum(fx$Gamma_phy^2)), 0)
   expect_equal(sqrt(sum(fx$Gamma_non^2)), 0)
 
-  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
-  fit_full <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    traits(h_size, h_defence, p_size, p_attack) ~
-      1 +
-      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
-      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
-    data = fx$data,
-    unit = "row_id",
-    cluster = "species",
-    family = stats::gaussian(),
-    control = ctl
-  )))
-  fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
-    data = fx$data,
-    unit = "row_id",
-    cluster = "species",
-    family = stats::gaussian(),
-    control = ctl
-  )))
-  fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
-    data = fx$data,
-    unit = "row_id",
-    cluster = "species",
-    family = stats::gaussian(),
-    control = ctl
-  )))
-
-  expect_equal(fit_full$opt$convergence, 0L)
-  expect_equal(fit_phy_only$opt$convergence, 0L)
-  expect_equal(fit_non_only$opt$convergence, 0L)
-  expect_equal(fit_full$kernel_diagnostics$pairs$overlap_class, "near_orthogonal")
-
-  Gamma_phy <- gllvmTMB::extract_Gamma(
-    fit_full,
-    level = "phy",
-    row_traits = fx$host_traits,
-    col_traits = fx$partner_traits
-  )
-  Gamma_non <- gllvmTMB::extract_Gamma(
-    fit_full,
-    level = "non",
-    row_traits = fx$host_traits,
-    col_traits = fx$partner_traits
-  )
-
-  expect_gt(.c3_gamma_corr(Gamma_phy, fx$Gamma_phy), 0.95)
-  expect_lt(sqrt(sum(Gamma_non^2)), 1e-3)
-  expect_gt(
-    as.numeric(stats::logLik(fit_phy_only)) -
-      as.numeric(stats::logLik(fit_non_only)),
-    20
-  )
+  fit <- .c3_fit_two_kernel_set(fx, include_intercept = TRUE)
+  expect_equal(fit$full$opt$convergence, 0L)
+  expect_equal(fit$phy_only$opt$convergence, 0L)
+  expect_equal(fit$non_only$opt$convergence, 0L)
+  expect_equal(fit$intercept$opt$convergence, 0L)
+  expect_lt(sqrt(sum(fit$Gamma_phy^2)), 1e-3)
+  expect_lt(sqrt(sum(fit$Gamma_non^2)), 1e-3)
   expect_lt(
-    as.numeric(stats::logLik(fit_full)) -
-      as.numeric(stats::logLik(fit_phy_only)),
-    1
+    as.numeric(stats::logLik(fit$full)) -
+      as.numeric(stats::logLik(fit$intercept)),
+    3
   )
 })
 

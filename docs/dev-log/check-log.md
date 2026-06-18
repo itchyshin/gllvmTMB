@@ -19285,3 +19285,49 @@ Deliberately not run:
   audit, no public docs changes, and no power-pilot scoring rerun. The trigger
   audit does not make #101 green, #489 ready, the bridge complete, the release
   ready, or scientific coverage passed.
+
+## 2026-06-17 -- Power-run heartbeat with one shard remaining
+
+Refreshed the mission-control evidence after the scheduled GitHub power run
+advanced again. This is an evidence/dashboard update only; it does not change
+package code, formula grammar, likelihoods, public docs, or workflow files.
+
+Evidence recorded:
+
+- Scheduled GitHub power run `27722546237` remains in progress on main
+  `0567cd747b9e81fa694e846a6d155bf60e35e0b8`, now with 48 completed-success
+  jobs, 0 failures, and 1 active shard (`shard 33/48`). This is process
+  evidence only, not coverage or power proof.
+- Local power-pilot LaunchAgent remains mid-batch. The latest completed local
+  summary is still 355,010 / 480,000 reps with 0/48 cells at cap; three RSOCK
+  workers were active in the 19:00 MDT worker snapshot. No local scoring
+  promotion was made.
+- GLLVM.jl #101 trigger status remains unchanged from r15: local merge-ref and
+  live bridge evidence are partial, and fresh PR CI is deferred without
+  maintainer-approved branch/PR-event mutation.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Current GitHub state:
+  `/opt/homebrew/bin/gh run view 27722546237 --repo itchyshin/gllvmTMB --json status,conclusion,headSha,updatedAt,jobs,url --jq ...`
+  -> `status: in_progress`, 48 completed-success jobs, 0 failures,
+  1 in-progress shard.
+- Local power-pilot readout:
+  `tail -n 80 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  and
+  `ps -p 1386,1783,1784,1785,1787,1788,1789,1790,1791,1792,1793 -o pid,ppid,etime,cputime,pcpu,pmem,state,command`
+  -> latest completed summary still 355,010 / 480,000 reps; parent R process
+  remains alive and workers 1784, 1790, and 1793 were active.
+
+Deliberately not run:
+
+- No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, no public docs changes, and no power-pilot scoring rerun. The new
+  GitHub power-run count does not make #489 ready, the bridge complete, the
+  release ready, or scientific coverage passed.

@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 18:59 MDT",
+  "updated": "2026-06-17 19:00 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -230,7 +230,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Follow-up power run 27722546237 is still running with 47 completed-success jobs and 2 active shards."
+      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Follow-up power run 27722546237 is still running with 48 completed-success jobs and 1 active shard."
     },
     {
       "when": "now",
@@ -573,7 +573,7 @@
     {
       "status": "guard",
       "kind": "Power pilot follow-up",
-      "item": "Run 107 persisted fresh results; in-progress run 27722546237 had 47 completed-success jobs and 2 running shards at 18:48 MDT, but is not a new claim until it completes and is scored."
+      "item": "Run 107 persisted fresh results; in-progress run 27722546237 had 48 completed-success jobs and 1 running shard at 19:00 MDT, but is not a new claim until it completes and is scored."
     },
     {
       "status": "guard",
@@ -582,6 +582,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 19:00 MDT",
+      "who": "GitHub CLI",
+      "text": "Scheduled power-pilot run 27722546237 remains in progress on main 0567cd7 with 48 completed-success jobs, 0 failures, and only shard 33/48 still running.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27722546237",
+      "link_label": "run 27722546237"
+    },
     {
       "when": "2026-06-17 18:59 MDT",
       "who": "GLLVM.jl workflow trigger audit",

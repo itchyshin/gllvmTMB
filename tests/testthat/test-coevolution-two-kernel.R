@@ -683,36 +683,43 @@ test_that("moderately overlapping kernels still recover component Gamma shapes",
   ## | K_non | kernel_latent(species, K = K_non, name = "non") | blended non kernel, 30% aligned + 70% opposed | fit$kernel_diagnostics | moderate pair |
   ## | Gamma_phy | same "phy" tier | Lambda_H,phy Lambda_P,phy^T | extract_Gamma(level = "phy") | Gamma_shape_phy |
   ## | Gamma_non | same "non" tier | Lambda_H,non Lambda_P,non^T | extract_Gamma(level = "non") | Gamma_shape_non |
-  fx <- .c3_make_two_component_fixture(
-    seed = 2401L,
-    non_association_blend = 0.3
+  moderate_grid <- data.frame(
+    seed = c(2401L, 2402L),
+    non_association_blend = c(0.30, 0.35)
   )
-  expect_equal(.c3_kernel_overlap_class(fx$similarity), "moderate")
-  expect_gt(fx$similarity, 0.25)
-  expect_lt(fx$similarity, 0.70)
 
-  fit <- .c3_fit_two_kernel_set(fx)
-  expect_equal(fit$full$opt$convergence, 0L)
-  expect_equal(fit$phy_only$opt$convergence, 0L)
-  expect_equal(fit$non_only$opt$convergence, 0L)
-  expect_equal(fit$full$kernel_diagnostics$pairs$overlap_class, "moderate")
-  expect_equal(
-    fit$full$kernel_diagnostics$pairs$similarity,
-    fx$similarity,
-    tolerance = 1e-12
-  )
-  expect_gt(
-    as.numeric(stats::logLik(fit$full)) -
-      max(
-        as.numeric(stats::logLik(fit$phy_only)),
-        as.numeric(stats::logLik(fit$non_only))
-      ),
-    50
-  )
-  expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.95)
-  expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.95)
-  expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.25)
-  expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.25)
+  for (i in seq_len(nrow(moderate_grid))) {
+    fx <- .c3_make_two_component_fixture(
+      seed = moderate_grid$seed[[i]],
+      non_association_blend = moderate_grid$non_association_blend[[i]]
+    )
+    expect_equal(.c3_kernel_overlap_class(fx$similarity), "moderate")
+    expect_gt(fx$similarity, 0.25)
+    expect_lt(fx$similarity, 0.70)
+
+    fit <- .c3_fit_two_kernel_set(fx)
+    expect_equal(fit$full$opt$convergence, 0L)
+    expect_equal(fit$phy_only$opt$convergence, 0L)
+    expect_equal(fit$non_only$opt$convergence, 0L)
+    expect_equal(fit$full$kernel_diagnostics$pairs$overlap_class, "moderate")
+    expect_equal(
+      fit$full$kernel_diagnostics$pairs$similarity,
+      fx$similarity,
+      tolerance = 1e-12
+    )
+    expect_gt(
+      as.numeric(stats::logLik(fit$full)) -
+        max(
+          as.numeric(stats::logLik(fit$phy_only)),
+          as.numeric(stats::logLik(fit$non_only))
+        ),
+      50
+    )
+    expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.95)
+    expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.95)
+    expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.25)
+    expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.25)
+  }
 })
 
 test_that("high-overlap two-component fits collapse to one higher-rank kernel", {

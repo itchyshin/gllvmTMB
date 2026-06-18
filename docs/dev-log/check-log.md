@@ -21695,6 +21695,83 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 14:13 MDT -- COE-04 two-cell moderate-overlap grid
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Broaden the `COE-04` moderate-overlap evidence from one conservative fixture
+  to a small predeclared grid.
+- Keep the boundary clear: this covers two moderate cells, not all moderate or
+  high-overlap regimes.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch plus the remote power-pilot result commit.
+- `git diff --check`
+  -> clean before edits.
+
+Exploratory result:
+
+- Probed moderate-overlap blends `0.30`, `0.35`, and `0.40`.
+- Blends `0.30` and `0.35` landed in the moderate class and recovered both
+  component `Gamma_shape` matrices with correlations above `0.95`.
+- Blend `0.40` degraded: phy `Gamma_shape` correlation was about `0.88` and
+  the cross-match exceeded `0.25`, so it stays outside the current claim.
+
+Implemented:
+
+- Replaced the single moderate-edge fixture in
+  `tests/testthat/test-coevolution-two-kernel.R` with a two-cell grid:
+  - seed `2401`, `non_association_blend = 0.30`;
+  - seed `2402`, `non_association_blend = 0.35`.
+- Each cell checks:
+  - overlap class is `moderate`;
+  - full fit and both one-component fits converge;
+  - full fit beats either one-component fit by more than `50` log-likelihood
+    units;
+  - both component `Gamma_shape` correlations exceed `0.95`;
+  - cross-component matches remain below `0.25`.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coe04-moderate-overlap-grid.md`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 8 | PASS 47`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 158`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 11 | PASS 142`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 278`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No harder moderate-overlap recovery beyond the two passing cells.
+- No high-overlap truth recovery beyond collapse/equivalence and warning
+  evidence.
+- No in-engine or fitted `rho`.
+- No calibrated `rho` profile or profile interval.
+- No interval coverage.
+- No broader null-threshold calibration.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 14:03 MDT -- COE-04 fixed-rho sensitivity grid
 
 Branch: `codex/r-bridge-grouped-dispersion`

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-17 23:16 MDT",
+  "updated": "2026-06-18 00:08 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,7 +14,7 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 367010 / 480000 reps; scheduled run 27735802023 is in progress with 38 completed-success jobs and 11 in-progress jobs at the 23:16 MDT snapshot. Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot is at 368510 / 480000 reps; scheduled run 27735802023 is in progress with 43 completed-success jobs and 6 in-progress jobs at the 00:08 MDT snapshot. Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
@@ -23,6 +23,20 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 00:08 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent iter 14 completed at 2026-06-17 23:54 MDT: 368510 / 480000 reps, 0/48 cells at cap, 0 errored cells. The scoring audit still blocks coverage/power promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
+    {
+      "when": "2026-06-18 00:08 MDT",
+      "who": "GitHub Actions",
+      "text": "Scheduled power-pilot run 27735802023 is in progress on main 0567cd7 with 49 jobs: 43 completed-success and 6 in progress. This is process evidence only; no persisted-store or scoring evidence exists yet.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27735802023",
+      "link_label": "run 27735802023"
+    },
     {
       "when": "2026-06-17 23:16 MDT",
       "who": "Local power pilot",

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 08:26 MDT",
+  "updated": "2026-06-18 08:37 MDT",
   "active_work": [
     {
       "when": "live",
@@ -24,10 +24,17 @@
     {
       "when": "live",
       "who": "articles",
-      "text": "Article council slice 3 completed: profile-likelihood-ci and troubleshooting-profile moved out of the internal bucket into the public Technical reference group, profile-likelihood-ci now has Tier 2 YAML and explicit CI-01..CI-10/EXT-13 scope wording, pkgdown::check_pkgdown() passed, and pkgdown::build_articles(lazy = FALSE) rendered both pages. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion."
+      "text": "Article council slice 4 completed: gllvm-vocabulary returned as a visible Tier 2 Technical reference glossary with scope wording and hidden-page links pruned; data-shape-flowchart and stacked-trait-gllvm are explicitly Tier 3 internal drafts with gate notes. Pitfalls now links to the public glossary instead of saying it is under audit. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 08:37 MDT",
+      "who": "Article council",
+      "text": "Article council slice 4 completed: gllvm-vocabulary returned as a visible Tier 2 Technical reference glossary with scope wording and hidden-page links pruned; data-shape-flowchart and stacked-trait-gllvm are explicitly Tier 3 internal drafts with gate notes. Pitfalls now links to the public glossary instead of saying it is under audit. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
+      "link_label": "article council ledger"
+    },
     {
       "when": "2026-06-18 08:26 MDT",
       "who": "Article council",

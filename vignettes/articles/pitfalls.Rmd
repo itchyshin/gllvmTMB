@@ -379,7 +379,8 @@ fit <- gllvmTMB(value ~ 0 + trait +
 **Rule of thumb.** *Use **A** / **Ainv** for relatedness, use **V**
 for sampling variance. Keep the two separate. See
 [Design 14 §3](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/14-known-relatedness-keywords.md)
-for the full convention. The public vocabulary glossary is under audit.*
+for the full convention, and the [Vocabulary glossary](gllvm-vocabulary.html)
+for plain-language definitions.*
 
 ## See also
 

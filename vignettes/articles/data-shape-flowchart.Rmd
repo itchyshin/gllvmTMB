@@ -1,5 +1,6 @@
 ---
 title: "Data-shape flowchart: which worked example matches your data?"
+tier: 3 # internal routing draft until hidden example targets are reviewed
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -17,6 +18,13 @@ knitr::opts_chunk$set(
   eval     = FALSE
 )
 ```
+
+> **Internal article gate.** This routing draft still points to several
+> worked-example pages that are under article-council review. Start with
+> [Get started](../articles/gllvmTMB.html),
+> [Morphometrics](morphometrics.html), or the
+> [Formula keyword grid](api-keyword-grid.html) until the biological
+> example set is promoted one article at a time.
 
 The `gllvmTMB` worked-example library covers many situations, and
 choosing the right starting article is mostly a question of **what

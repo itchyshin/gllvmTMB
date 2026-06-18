@@ -1,5 +1,6 @@
 ---
 title: "gllvmTMB vocabulary: a plain-English glossary"
+tier: 2 # compact glossary for terminology used across public articles
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -17,6 +18,14 @@ knitr::opts_chunk$set(
   eval     = FALSE
 )
 ```
+
+> **Scope boundary.** This page is a Tier 2 glossary, not a worked
+> validation article. IN: it defines terms used by the current public
+> articles and technical references. PARTIAL: terms attached to hidden
+> phylogenetic, animal-model, loading-constraint, and mixed-family
+> examples are included only to clarify vocabulary. PLANNED: this page
+> does not promote those hidden worked examples or move any validation
+> rows to covered.
 
 GLLVMs draw on three traditions (psychometrics, factor analysis,
 random-effects mixed models) that each carry their own vocabulary
@@ -113,8 +122,9 @@ model either way. Most worked examples show both.
 
 **Family (response distribution, distribution family)** &mdash; The
 likelihood used for one trait (or one row, in mixed-family fits):
-Gaussian, binomial, Poisson, Gamma, Beta, ordinal-probit, etc. 15
-families are supported (see [Mixed-family fits](mixed-family-extractors.html)).
+Gaussian, binomial, Poisson, Gamma, Beta, ordinal-probit, etc. The
+[Response families](response-families.html) reference is the current
+public source for family status.
 
 **Link function** &mdash; The transformation that maps the latent
 linear predictor $\eta$ to the natural scale of the response.
@@ -141,10 +151,10 @@ $\boldsymbol{\Lambda}\boldsymbol{Q}$ (with $\boldsymbol{Q}$
 orthogonal) imply the *same* $\boldsymbol{\Sigma}$, so the
 numerical $\hat{\boldsymbol{\Lambda}}$ is not unique. Reading a
 specific loading entry "trait 3 loads $-0.45$ on factor 2" requires
-a constraint. Workarounds: pin entries via `lambda_constraint`
-([Lambda-constraint](lambda-constraint.html)); use rotation-
-invariant accessors (`extract_Sigma`, `extract_communality`); or
-apply a post-hoc rotation (varimax).
+a constraint. Public articles should usually use rotation-invariant
+accessors (`extract_Sigma`, `extract_communality`) or an explicit
+post-hoc rotation. Confirmatory loading constraints are under
+article-council review before they return as a public worked example.
 
 **Identifiable (well-identified, point-identified)** &mdash; A
 parameter is identifiable when the data + model constrain it to a
@@ -180,8 +190,9 @@ form when the tree is rich.
 **Three-piece fallback** &mdash; The simpler model when the paired
 form is under-identified on small trees: one shared phylo axis +
 one shared non-phylo axis + a single $\boldsymbol{\Psi}$ (not
-tier-specific). See [Phylogenetic-gllvm: three-piece fallback]
-(phylogenetic-gllvm.html#three-piece-fallback-when-the-paired-form-is-under-identified).
+tier-specific). The phylogenetic worked example is under
+article-council review; use the [Formula keyword grid](api-keyword-grid.html)
+for current public syntax.
 
 **SPDE / GMRF / mesh** &mdash; The Stochastic Partial Differential
 Equation approximation to a continuous spatial Gaussian random
@@ -238,10 +249,11 @@ The multi-trait analogue of $V_A$: a $T \times T$ matrix of
 additive-genetic covariances between traits. A factor-analytic
 $\mathbf{G} = \boldsymbol{\Lambda}_g \boldsymbol{\Lambda}_g^\top
 + \boldsymbol{\Psi}$ (Kirkpatrick & Meyer 2004; Meyer 2009;
-Runcie & Mukherjee 2013) is exactly what `animal_latent(individual,
-d = K, pedigree = ped) + animal_unique(individual, pedigree = ped)`
-fits. Worked example: [Animal model: heritability and genetic
-covariance](animal-model.html).
+Runcie & Mukherjee 2013) is the target of
+`animal_latent(individual, d = K, pedigree = ped) +
+animal_unique(individual, pedigree = ped)`. The animal-model worked
+example stays under article-council review until the larger pedigree
+fixture and truth-recovery evidence are ready.
 
 **Reaction norm / random regression** &mdash; A model where
 individuals carry a slope on an environmental gradient and those
@@ -287,8 +299,8 @@ and well-behaved on $[-1, 1]$.
 
 ## See also
 
-- [Choose your model](choose-your-model.html) -- decision tree for
-  which model to fit given your data shape.
+- [Get started](../articles/gllvmTMB.html) -- the current public entry
+  path for the first model.
 - [API keyword grid](api-keyword-grid.html) -- the 4x5 covariance
   keyword reference (animal · phylo · spatial · none × scalar ·
   unique · indep · dep · latent).

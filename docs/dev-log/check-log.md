@@ -21054,3 +21054,101 @@ Deliberately not run:
   `--as-cran`, GLLVM.jl mutation, issue mutation, or push. This slice changes
   article placement and bounded wording only. It does not make #489 ready, the
   bridge complete, the release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Entry-path article decisions: glossary public, flowchart/stacked internal
+
+Completed article-council step 4. `gllvm-vocabulary` is now visible as a Tier 2
+Technical reference glossary; `data-shape-flowchart` and `stacked-trait-gllvm`
+remain internal Tier 3 drafts; `pitfalls` now links to the public glossary
+instead of saying it is under audit. This is reader-path cleanup only: PR green
+!= bridge complete != release ready != scientific coverage passed.
+
+Evidence and edits:
+
+- `_pkgdown.yml` now lists `articles/gllvm-vocabulary` under `Technical
+  reference` and adds `Vocabulary glossary` to the Technical reference dropdown.
+- `vignettes/articles/gllvm-vocabulary.Rmd` now has Tier 2 YAML, a scope
+  boundary, and no links to hidden worked examples.
+- `vignettes/articles/data-shape-flowchart.Rmd` and
+  `vignettes/articles/stacked-trait-gllvm.Rmd` now have Tier 3 YAML and
+  internal gate notes.
+- `vignettes/articles/pitfalls.Rmd` now links to
+  `gllvm-vocabulary.html` for terminology.
+- `ROADMAP.md`, `docs/dev-log/audits/2026-06-18-article-council-ledger.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json` record article-council slice 4.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-entry-path-article-decisions.md`.
+
+Checks:
+
+- Skill reads:
+  `sed -n '1,160p' .agents/skills/article-tier-audit/SKILL.md`
+  -> article-tier instructions read before changing article placement.
+  `sed -n '1,260p' .agents/skills/rose-pre-publish-audit/SKILL.md`
+  -> Rose pre-publish gate read before touching `_pkgdown.yml` / articles.
+  `sed -n '1,180p' .agents/skills/after-task-audit/SKILL.md` and
+  `sed -n '181,360p' .agents/skills/after-task-audit/SKILL.md`
+  -> after-task checklist read before closeout.
+- Pre-edit lane check:
+  `PATH="/opt/homebrew/bin:$PATH" gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 is open.
+  `git log --all --oneline --since="6 hours ago" -- _pkgdown.yml ROADMAP.md vignettes/articles/data-shape-flowchart.Rmd vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/gllvm-vocabulary.Rmd docs/dev-log/audits/2026-06-18-article-council-ledger.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/dashboard docs/design`
+  -> recent overlapping edits are the current mission-control/article-council
+  lane.
+- Live evidence poll:
+  `PATH="/opt/homebrew/bin:$PATH" gh pr view 489 --repo itchyshin/gllvmTMB --json number,state,isDraft,headRefOid,mergeStateStatus,statusCheckRollup,url,title`
+  -> #489 open draft at `03fdda1`, merge state `CLEAN`, two checks success.
+  `PATH="/opt/homebrew/bin:$PATH" gh pr view 101 --repo itchyshin/GLLVM.jl --json number,state,isDraft,headRefOid,mergeStateStatus,statusCheckRollup,url,title`
+  -> #101 open draft at `f7be594`, merge state `UNSTABLE`; fresh CI still in
+  progress and Documenter success.
+  `PATH="/opt/homebrew/bin:$PATH" gh issue view 486 --repo itchyshin/gllvmTMB --json number,state,title,url,updatedAt`
+  -> release issue #486 open.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27752749643 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), failingOrActiveJobs: [.jobs[] | select(.status != "completed" or .conclusion != "success") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> full-check run completed success, 3/3 jobs success.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27752884846 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), failingOrActiveJobs: [.jobs[] | select(.status != "completed" or .conclusion != "success") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> power-pilot run completed success, 51/51 jobs success.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27763712855 --repo itchyshin/GLLVM.jl --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), failingOrActiveJobs: [.jobs[] | select(.status != "completed" or .conclusion != "success") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> GLLVM.jl #101 CI run still in progress: macOS success, Windows and two
+  Ubuntu jobs active.
+  `git ls-remote origin refs/heads/power-pilot-results`
+  -> unchanged at `1a2aac654e877a34b3e590f0269d10cca05a43e7`.
+- Hidden-link scans:
+  `rg -n "lambda-constraint\\.html|phylogenetic-gllvm\\.html|animal-model\\.html|mixed-family-extractors\\.html|choose-your-model\\.html|data-shape-flowchart\\.html|stacked-trait-gllvm\\.html" vignettes/articles/gllvm-vocabulary.Rmd _pkgdown.yml ROADMAP.md docs/dev-log/audits/2026-06-18-article-council-ledger.md vignettes/articles/pitfalls.Rmd`
+  -> no hits.
+  `rg -n "lambda-constraint\\.html|phylogenetic-gllvm\\.html|animal-model\\.html|mixed-family-extractors\\.html|choose-your-model\\.html|data-shape-flowchart\\.html|stacked-trait-gllvm\\.html" README.md vignettes/gllvmTMB.Rmd vignettes/articles/morphometrics.Rmd vignettes/articles/model-selection-latent-rank.Rmd vignettes/articles/joint-sdm.Rmd vignettes/articles/covariance-correlation.Rmd vignettes/articles/api-keyword-grid.Rmd vignettes/articles/response-families.Rmd vignettes/articles/fit-diagnostics.Rmd vignettes/articles/convergence-start-values.Rmd vignettes/articles/pitfalls.Rmd vignettes/articles/missing-data.Rmd vignettes/articles/profile-likelihood-ci.Rmd vignettes/articles/troubleshooting-profile.Rmd vignettes/articles/gllvm-vocabulary.Rmd _pkgdown.yml`
+  -> no hits.
+- Stale wording / claim scan:
+  `rg -n "public vocabulary glossary is under audit|publication-grade|release-ready|bridge complete|scientific coverage passed|coverage passed|fast GLLVM|AI-REML|REML|full parity|complete bridge|profile-likelihood default|genuine bootstrap|meta_known_V|gllvmTMB_wide|trio|\\\\bf S|\\bS_B\\b|\\bS_W\\b" _pkgdown.yml ROADMAP.md vignettes/articles/data-shape-flowchart.Rmd vignettes/articles/stacked-trait-gllvm.Rmd vignettes/articles/gllvm-vocabulary.Rmd vignettes/articles/pitfalls.Rmd docs/dev-log/audits/2026-06-18-article-council-ledger.md`
+  -> expected guarded `publication-grade` caveats in ROADMAP and guard text
+  in the ledger only.
+- JSON and whitespace:
+  `python3 -m json.tool docs/dev-log/dashboard/status.json` -> valid JSON.
+  `python3 -m json.tool docs/dev-log/dashboard/sweep.json` -> valid JSON.
+  `git diff --check` -> clean after closeout edits.
+- Pkgdown:
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found.`
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'`
+  -> completed successfully; rendered the full article set.
+  `rg -n "Vocabulary glossary|gllvm-vocabulary\\.html|Technical reference" pkgdown-site/articles/index.html pkgdown-site/articles/gllvm-vocabulary.html pkgdown-site/index.html`
+  -> glossary appears in Technical reference.
+  `rg -n "data-shape-flowchart|stacked-trait-gllvm|gllvm-vocabulary" pkgdown-site/articles/index.html`
+  -> glossary appears in Technical reference; flowchart and stacked-trait
+  appear only in Internal drafts and technical notes.
+  `rg -n "lambda-constraint\\.html|phylogenetic-gllvm\\.html|animal-model\\.html|mixed-family-extractors\\.html|choose-your-model\\.html|data-shape-flowchart\\.html|stacked-trait-gllvm\\.html" pkgdown-site/articles/gllvm-vocabulary.html`
+  -> no hidden-page links.
+  `rg -n "public vocabulary glossary is under audit|Vocabulary glossary|gllvm-vocabulary\\.html" pkgdown-site/articles/pitfalls.html`
+  -> rendered glossary link present; stale under-audit sentence absent.
+- Build cleanup:
+  Removed generated untracked render artefacts:
+  `vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`.
+
+Deliberately not run:
+
+- No `devtools::document()`, `devtools::test()`, R CMD check, release
+  `--as-cran`, issue mutation, GLLVM.jl mutation, push, or public-release
+  claim change. This slice changes article routing/prose only and preserves
+  the guard: PR green != bridge complete != release ready != scientific
+  coverage passed.

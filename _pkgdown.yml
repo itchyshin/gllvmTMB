@@ -51,6 +51,8 @@ navbar:
         href: articles/profile-likelihood-ci.html
       - text: Troubleshooting profile CIs
         href: articles/troubleshooting-profile.html
+      - text: Vocabulary glossary
+        href: articles/gllvm-vocabulary.html
     roadmap:
       text: Roadmap
       href: articles/roadmap.html
@@ -79,6 +81,7 @@ articles:
     contents:
     - articles/profile-likelihood-ci
     - articles/troubleshooting-profile
+    - articles/gllvm-vocabulary
 
   - title: Internal drafts and technical notes
     desc: Buildable pages kept out of the public dropdown until their evidence and reader path are ready. These are direct-link references for maintainers, not first-stop tutorials.
@@ -91,7 +94,6 @@ articles:
     - articles/random-slopes-nongaussian
     - articles/cross-lineage-coevolution
     - articles/behavioural-syndromes
-    - articles/gllvm-vocabulary
     - articles/lambda-constraint
     - articles/lambda-constraint-suggest
     - articles/mixed-family-extractors

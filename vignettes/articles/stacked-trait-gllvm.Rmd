@@ -1,5 +1,6 @@
 ---
 title: "Stacked-trait GLLVMs with gllvmTMB"
+tier: 3 # superseded by Get Started plus Morphometrics until rewritten
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -28,6 +29,12 @@ knitr::opts_chunk$set(
 library(gllvmTMB)
 library(ape)
 ```
+
+> **Internal article gate.** The public entry path is now
+> [Get started](../articles/gllvmTMB.html) plus the
+> [Morphometrics](morphometrics.html) worked example. This page stays
+> buildable as an internal conceptual draft until it is merged into
+> Get Started or rewritten without routing readers to hidden examples.
 
 This is the **foundational** worked example for the package. It walks
 through the canonical full-decomposition `gllvmTMB()` fit -- a

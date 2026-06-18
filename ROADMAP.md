@@ -35,6 +35,7 @@ with the live package.
 | Methods | `articles/convergence-start-values` | Hard-fit survival guide. | Visible; final wording audit passed. |
 | Technical reference | `articles/profile-likelihood-ci` | Profile / bootstrap / Wald interval mechanics and caveats. | Visible Tier 2 reference after the 2026-06-18 methods-reference placement slice; must continue to distinguish API coverage from calibrated coverage. |
 | Technical reference | `articles/troubleshooting-profile` | Profile-interval failure modes and remedies. | Visible Tier 2 companion reference after the 2026-06-18 methods-reference placement slice. |
+| Technical reference | `articles/gllvm-vocabulary` | Plain-English terminology glossary for public articles. | Visible Tier 2 glossary after the 2026-06-18 entry-path placement slice; hidden worked-example links removed. |
 | Methods | `articles/pitfalls` | Common mistakes and fixes. | Visible; final prose audit passed. |
 | Methods | `articles/missing-data` | Missing response and scoped missing-predictor workflows. | Visible; engine naming and predictor scope stay bounded by MIS rows. |
 

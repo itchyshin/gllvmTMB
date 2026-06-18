@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 08:26 MDT",
+  "updated": "2026-06-18 08:37 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -209,7 +209,7 @@
           "status": "covered"
         },
         {
-          "name": "Article council slices 1-3: public surface stabilized, lambda hidden, and methods Tier 2 placement recorded; broader reader-facing docs audit still waits bridge landing decision",
+          "name": "Article council slices 1-4: public surface stabilized, lambda hidden, methods Tier 2 placement recorded, and entry-path helpers placed; broader reader-facing docs audit still waits bridge landing decision",
           "status": "partial"
         },
         {
@@ -242,7 +242,7 @@
     {
       "when": "now",
       "who": "Pat",
-      "text": "Article council slices 1-3 are now reflected in source: current public set stabilized, lambda pages hidden, and profile/troubleshooting interval pages visible only as Tier 2 Technical reference pages."
+      "text": "Article council slices 1-4 are now reflected in source: current public set stabilized, lambda pages hidden, methods pages visible only as Tier 2 Technical reference pages, gllvm-vocabulary restored as Tier 2 glossary, and data-shape-flowchart plus stacked-trait-gllvm kept internal Tier 3."
     }
   ],
   "serial_gates": [
@@ -406,8 +406,8 @@
       "name": "Pat",
       "role": "applied-user reader",
       "status": "active",
-      "task": "Keep the public article path teachable while methods-reference pages move out of internal drafts.",
-      "blocked_by": "Broader article rewrites still wait for bridge/lambda/capability gates.",
+      "task": "Keep the public article path teachable while entry-path helpers and glossary placement are decided one article at a time.",
+      "blocked_by": "Biological worked-example triage still waits article-council review and bridge/capability gates.",
       "parallel_with": "Darwin and Florence",
       "join_gate": "Public docs pass"
     },
@@ -599,6 +599,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 08:37 MDT",
+      "who": "Article council",
+      "text": "Article council slice 4 completed: gllvm-vocabulary returned as a visible Tier 2 Technical reference glossary with scope wording and hidden-page links pruned; data-shape-flowchart and stacked-trait-gllvm are explicitly Tier 3 internal drafts with gate notes. Pitfalls now links to the public glossary instead of saying it is under audit. This is reader-path cleanup only, not bridge, release, or scientific-coverage completion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-article-council-ledger.md",
+      "link_label": "article council ledger"
+    },
     {
       "when": "2026-06-18 08:26 MDT",
       "who": "Article council",

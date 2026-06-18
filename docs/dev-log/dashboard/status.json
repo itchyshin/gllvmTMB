@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-17 20:06 MDT",
+  "updated": "2026-06-17 20:57 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -170,7 +170,7 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 359510 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 361010 / 480000 reps and 0/48 cells at cap",
           "status": "active"
         },
         {
@@ -480,7 +480,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent latest logged summary: 359510 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
+      "evidence": "LaunchAgent latest logged summary: 361010 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -582,6 +582,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-17 20:57 MDT",
+      "who": "Local power pilot",
+      "text": "LaunchAgent iter 9 completed at 20:46 MDT: 361010 / 480000 reps, 0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.425. All ten RSOCK workers were still alive after the iter-9 merge, with seven active in the next-batch snapshot. No coverage or power promotion.",
+      "url": "https://github.com/itchyshin/gllvmTMB/issues/346",
+      "link_label": "issue #346"
+    },
     {
       "when": "2026-06-17 20:06 MDT",
       "who": "Local power pilot",

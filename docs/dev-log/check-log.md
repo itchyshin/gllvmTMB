@@ -20330,3 +20330,92 @@ Deliberately not run:
   audit, and no public docs changes. The local replicate count and the
   cancelled scheduled run do not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Post-stop live workflow heartbeat
+
+Refreshed mission-control evidence after the requested 05:00 stop report
+because live GitHub state had advanced. This is an evidence/dashboard update
+only; it does not change package code, formula grammar, likelihoods, public
+docs, or workflow files.
+
+Evidence recorded:
+
+- Dashboard version advanced to `r34`.
+- Scheduled main `full-check` run `27752749643` is in progress on main
+  `0567cd7`: 3 jobs total, with windows-latest, ubuntu-latest, and
+  macos-latest all still in progress. This is process evidence only; no new
+  conclusion exists yet.
+- Scheduled power-pilot run `27752884846` is live on main `0567cd7`.
+  GitHub reports run-level status `queued`, while the job rollup shows
+  49 jobs total: 11 completed-success, 20 in progress, and 18 queued.
+  `power-pilot-results` remains at `5969f6f`, so no new persisted-store or
+  scoring evidence exists yet.
+- The local LaunchAgent status remains iter 23: 382,010 / 480,000 reps,
+  0/48 cells at cap, 0 errored cells, signal mean coverage 0.753, pass94
+  3/24, pass95 2/24, and null mean coverage-under-null 0.425. Parent loop
+  plus all ten RSOCK workers are alive; three workers were active in the
+  post-stop process snapshot. STOP flag absent.
+- #489/#101/#486 state did not close any gate: #489 is draft/open/clean and
+  green at `03fdda1`; #101 is draft/open/clean but still has no fresh PR CI
+  after retarget; #486 remains open.
+
+Checks:
+
+- Rehydration:
+  `sed -n '1,260p' AGENTS.md`,
+  `sed -n '261,520p' AGENTS.md`,
+  `sed -n '1,260p' docs/dev-log/recovery-checkpoints/2026-06-17-181500-codex-new-session-handover.md`,
+  `ls -1t docs/dev-log/recovery-checkpoints | head -n 8`,
+  `sed -n '1,220p' docs/dev-log/recovery-checkpoints/2026-06-18-040200-codex-monitor-checkpoint.md`,
+  `git status --short --branch`,
+  `git diff --stat`,
+  `git diff --check`, and
+  `tail -n 260 docs/dev-log/check-log.md`
+  -> branch `codex/r-bridge-grouped-dispersion` is ahead 22 with tracked
+  tree clean before this update; newest checkpoint was stale at r31/iter 21;
+  latest committed check-log entry was r33/iter 23.
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- GitHub run readouts:
+  `/opt/homebrew/bin/gh run view 27752749643 --repo itchyshin/gllvmTMB --json databaseId,workflowName,status,conclusion,headSha,createdAt,updatedAt,jobs,url --jq '{databaseId, workflowName, status, conclusion, headSha, createdAt, updatedAt, url, job_status: (.jobs | group_by(.status) | map({status: .[0].status, n: length})), job_conclusion: (.jobs | group_by(.conclusion) | map({conclusion: .[0].conclusion, n: length}))}'`
+  -> status `in_progress`, conclusion empty, head `0567cd7`, job_status
+  `3 in_progress`, job_conclusion `3 empty`.
+  `/opt/homebrew/bin/gh run view 27752884846 --repo itchyshin/gllvmTMB --json databaseId,workflowName,status,conclusion,headSha,createdAt,updatedAt,jobs,url --jq '{databaseId, workflowName, status, conclusion, headSha, createdAt, updatedAt, url, job_status: (.jobs | group_by(.status) | map({status: .[0].status, n: length})), job_conclusion: (.jobs | group_by(.conclusion) | map({conclusion: .[0].conclusion, n: length}))}'`
+  -> status `queued`, conclusion empty, head `0567cd7`, job_status
+  `11 completed`, `20 in_progress`, `18 queued`; job_conclusion
+  `11 success`, `38 empty`.
+- GitHub PR/issue readouts:
+  `/opt/homebrew/bin/gh pr view 489 --repo itchyshin/gllvmTMB --json number,title,isDraft,state,mergeStateStatus,headRefName,headRefOid,baseRefName,updatedAt,statusCheckRollup,url`
+  -> draft/open/clean at `03fdda1`; visible R-CMD-check and recovery checks
+  succeeded.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,isDraft,state,mergeStateStatus,headRefName,headRefOid,baseRefName,updatedAt,statusCheckRollup,url`
+  -> draft/open/clean at `f7be594`; displayed checks remain only the older
+  2026-06-16 Documenter/deploy evidence.
+  `/opt/homebrew/bin/gh issue view 486 --repo itchyshin/gllvmTMB --json number,title,state,updatedAt,url`
+  -> release gate issue remains open.
+- Power/local readouts:
+  `git ls-remote origin refs/heads/power-pilot-results`
+  -> `5969f6f280fd084f60b6dcf18ca1c5739d531025`.
+  `stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S %Z' /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> `pilot-index.rds` at 2026-06-18 04:33:27 MDT and local log at
+  2026-06-18 04:33:32 MDT.
+  `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=dev/m3-pilot-results-local --status-out=/tmp/gllvmtmb-local-iter23-poststop-status.md`
+  from `/Users/z3437171/gllvmTMB-power-pilot`
+  -> status table above; `all_complete=false`, `reps_total=382010`,
+  `reps_target=480000`, `cells_complete=0`, `cells_total=48`.
+  `ps ax -o pid,ppid,etime,cputime,pcpu,pmem,state,command | rg '/Library/Frameworks/R.framework/Resources/bin/exec/R|/usr/local/bin/Rscript|/usr/bin/Rscript|Rscript'`
+  -> parent loop and all ten RSOCK workers alive; three workers active.
+  `test -e /Users/z3437171/gllvmTMB-power-pilot/dev/STOP-LOCAL-PILOT`
+  -> STOP flag absent.
+
+Deliberately not run:
+
+- No remote power-pilot fetch/archive/scoring for run `27752884846` because it
+  is still live and `power-pilot-results` has not moved. No #101 push, no
+  #101 close/reopen, no fresh PR CI trigger, no `Pkg.test()`, no local R CMD
+  check, no pkgdown build, no release `--as-cran` audit, no stale-wording scan,
+  and no public docs changes. The new live workflow snapshots do not make #489
+  ready, the bridge complete, the release ready, or scientific coverage passed.

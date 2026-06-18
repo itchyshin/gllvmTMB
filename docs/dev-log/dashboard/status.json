@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 04:35 MDT",
+  "updated": "2026-06-18 05:08 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -30,15 +30,15 @@
     },
     {
       "label": "Main full-check",
-      "value": "green",
-      "status": "success",
-      "note": "Main R-CMD-check 27720099917 and pkgdown 27720668325 are green at 0567cd7."
+      "value": "in flight",
+      "status": "active",
+      "note": "Main R-CMD-check 27720099917 and pkgdown 27720668325 are green at 0567cd7, but newer scheduled full-check 27752749643 is in progress with all three OS jobs still running."
     },
     {
       "label": "Power pilot",
       "value": "in flight",
       "status": "guard",
-      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Local iter 23 reached 382010 / 480000 reps. Scheduled run 27735802023 completed cancelled: shards succeeded, persist and summary cancelled, and the results branch stayed at 5969f6f."
+      "note": "Run 27722546237 succeeded and pushed 5969f6f, with scoring blocking coverage or power promotion. Run 27735802023 completed cancelled with no branch movement. New scheduled run 27752884846 is live: run-level status queued, with 11 completed-success jobs, 20 in progress, and 18 queued; power-pilot-results remains at 5969f6f. Local iter 23 remains 382010 / 480000 reps."
     },
     {
       "label": "Next decision",
@@ -170,7 +170,7 @@
       "counts": "1/5",
       "slices": [
         {
-          "name": "Local LaunchAgent running with 382010 / 480000 reps and 0/48 cells at cap",
+          "name": "Local LaunchAgent running with 382010 / 480000 reps and 0/48 cells at cap; post-stop status helper found no newer iteration",
           "status": "active"
         },
         {
@@ -186,8 +186,8 @@
           "status": "queued"
         },
         {
-          "name": "Merge/scoring of pilot stores is a join point, not a parallel edit",
-          "status": "queued"
+          "name": "Power-pilot run 27752884846 is live process evidence only until it completes and persists a store",
+          "status": "active"
         }
       ]
     },
@@ -230,7 +230,7 @@
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB main R-CMD/pkgdown, current #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; local iter 23 reached 382010 / 480000 reps. Scheduled run 27735802023 completed cancelled: 49 jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results remained at 5969f6f."
+      "text": "gllvmTMB #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, and local bridge suites are green; GLLVM.jl #101 still lacks fresh PR CI, and CI.yml exposes no workflow_dispatch trigger. Main R-CMD/pkgdown completed green at 0567cd7, but scheduled full-check 27752749643 is currently in progress with 3/3 OS jobs running. Power run 27722546237 completed successfully and pushed 5969f6f, but scoring blocks coverage/power promotion; run 27735802023 cancelled with no branch movement; run 27752884846 is live with 11 success, 20 in-progress, and 18 queued jobs. Local iter 23 remains 382010 / 480000 reps."
     },
     {
       "when": "now",
@@ -337,7 +337,7 @@
       "role": "CI, pkgdown, CRAN, reproducibility",
       "status": "active",
       "task": "Track main pkgdown, #489 checks, power-pilot persistence, and local LaunchAgent health.",
-      "blocked_by": "Run 27735802023 completed cancelled after shard success; run 27722546237 completed, but Fisher/Curie scoring blocks promotion",
+      "blocked_by": "Scheduled full-check 27752749643 and power-pilot run 27752884846 are still live; Fisher/Curie scoring blocks promotion of existing power evidence",
       "parallel_with": "Shannon and Curie",
       "join_gate": "Completed runs or explicit snapshot"
     },
@@ -480,7 +480,7 @@
       "engine": "local",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "LaunchAgent latest logged summary: 382010 / 480000 reps, 0/48 cells at cap; local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
+      "evidence": "LaunchAgent latest logged summary remains iter 23 at 382010 / 480000 reps, 0/48 cells at cap. Post-stop status helper at 05:08 MDT confirmed the same totals, STOP flag absent, parent loop plus all ten workers alive, and three workers active. Local scoring audit still shows low coverage and invalid zero-reject interpretation for Sigma_unit_diag.",
       "next_gate": "Fisher/Curie scoring and cap completion."
     },
     {
@@ -490,7 +490,7 @@
       "engine": "github",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies. Scheduled run 27735802023 completed cancelled at 0567cd7: 49 shard/setup jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results remained at 5969f6f. No new persisted-store or scoring evidence exists for run 27735802023.",
+      "evidence": "Run 27722546237 completed successfully and pushed 5969f6f (run 108) to power-pilot-results; persisted store has 48 cells, 19776 reps, 1/48 cells at cap, signal mean coverage 0.745, pass94 3/24, pass95 0/24, null mean coverage-under-null 0.425, 28 flagged cells, and 27 coverage anomalies. Scheduled run 27735802023 completed cancelled at 0567cd7: 49 shard/setup jobs succeeded, persist and summary cancelled after the 20-minute job limit, and power-pilot-results remained at 5969f6f. New scheduled run 27752884846 is live at 0567cd7: run-level status queued, job rollup 11 completed-success, 20 in progress, and 18 queued; power-pilot-results still remains at 5969f6f. No new persisted-store or scoring evidence exists for run 27752884846.",
       "next_gate": "Fisher/Curie scoring blocks promotion; workflow success and persistence are process evidence only."
     },
     {

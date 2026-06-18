@@ -19991,3 +19991,72 @@ Deliberately not run:
   run `27735802023` because it is still in progress. The local replicate count
   and active scheduled run do not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Remote power run 109 cancelled and local iter 18 heartbeat
+
+Refreshed the mission-control evidence after scheduled power run
+`27735802023` reached a final cancelled state and the local LaunchAgent
+completed another accumulation iteration. This is an evidence/dashboard update
+only; it does not change package code, formula grammar, likelihoods, public
+docs, or workflow files.
+
+Evidence recorded:
+
+- Scheduled power-pilot run `27735802023` completed with conclusion
+  `cancelled` on main `0567cd7`. All shard jobs succeeded, but `persist` and
+  `summary` were both cancelled after exceeding the 20-minute job limit.
+- `power-pilot-results` stayed at
+  `5969f6f280fd084f60b6dcf18ca1c5739d531025`; therefore run `27735802023`
+  produced no new persisted remote store and no new remote scoring evidence.
+- Local power-pilot LaunchAgent iter 18 completed at 2026-06-18 01:53 MDT:
+  374,510 / 480,000 reps, 0/48 cells at cap, 0 errored cells, signal mean
+  coverage 0.753, pass94 3/24, pass95 2/24, and null mean
+  coverage-under-null 0.425.
+- A stable local status snapshot was written to
+  `/tmp/gllvmtmb-local-iter18-status.md`. The parent R process and all ten
+  RSOCK workers remained alive and active in the post-helper snapshot. This
+  remains local process evidence only.
+- GitHub bridge/release state remained unchanged: #489 is still draft/open and
+  local #101 evidence remains partial without fresh PR CI.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- GitHub Actions readout:
+  `/opt/homebrew/bin/gh run view 27735802023 --repo itchyshin/gllvmTMB --json databaseId,status,conclusion,headSha,createdAt,updatedAt,event,workflowName,url,jobs --jq ...`
+  -> `status: completed`, `conclusion: cancelled`, event `schedule`, head
+  `0567cd7`, 51 jobs total, 49 completed-success, 0 failures, and 2 cancelled.
+  `/opt/homebrew/bin/gh run view 27735802023 --repo itchyshin/gllvmTMB --json jobs --jq '.jobs[] | select(.conclusion != "success") | ...'`
+  -> `persist` and `summary` cancelled after each exceeded the 20-minute job
+  limit.
+  `git ls-remote origin power-pilot-results`
+  -> `5969f6f280fd084f60b6dcf18ca1c5739d531025 refs/heads/power-pilot-results`.
+- Local power-pilot readout:
+  `stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S %Z' /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> `pilot-index.rds` at 2026-06-18 01:53:17 MDT and local log at
+  2026-06-18 01:53:22 MDT.
+  `tail -n 80 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> iter 18 summary above.
+  `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=dev/m3-pilot-results-local --status-out=/tmp/gllvmtmb-local-iter18-status.md`
+  from `/Users/z3437171/gllvmTMB-power-pilot`
+  -> status table above; `all_complete=false`, `reps_total=374510`,
+  `reps_target=480000`, `cells_complete=0`, `cells_total=48`.
+  `ps ax -o pid,ppid,etime,cputime,pcpu,pmem,state,command | rg '/Library/Frameworks/R.framework/Resources/bin/exec/R|/usr/local/bin/Rscript|/usr/bin/Rscript|Rscript'`
+  -> local parent process and all ten RSOCK workers remained alive and active
+  after iter 18.
+  `test -e /Users/z3437171/gllvmTMB-power-pilot/dev/STOP-LOCAL-PILOT`
+  -> STOP flag absent.
+
+Deliberately not run:
+
+- No remote power-pilot result fetch/archive/scoring for run `27735802023`
+  because the persist job was cancelled and the results branch did not move.
+  No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, and no public docs changes. The local replicate count and the
+  cancelled scheduled run do not make #489 ready, the bridge complete, the
+  release ready, or scientific coverage passed.

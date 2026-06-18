@@ -21695,6 +21695,95 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 15:43 MDT -- COE-04 moderate-edge boundary cell
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Turn the prior exploratory 0.40 moderate-overlap caveat into a tested
+  claim-boundary cell.
+- Keep `COE-04` partial: this is boundary evidence for where component
+  separation stops being promotable, not broad moderate-overlap calibration,
+  high-overlap recovery, interval coverage, bridge completion, release
+  readiness, or scientific coverage.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch, newest `c541af4 feat(coevolution): add fixed-rho profile helper`.
+- `git diff --check`
+  -> clean before edits.
+
+Exploratory probe:
+
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla - <<'RS' ...`
+  loaded the test helper definitions and probed
+  `non_association_blend = 0.40` over seeds `2401:2404`.
+- All four probed cells converged and beat the one-component comparators, but
+  seed `2403` crossed the predeclared separation boundary:
+  `Gamma_phy` recovery was about `0.887` and the `Gamma_phy` versus
+  `Gamma_non` cross-match was about `0.289`.
+
+Implemented:
+
+- Added a heavy 0.40 moderate-edge cell to
+  `tests/testthat/test-coevolution-two-kernel.R`.
+- The new cell requires:
+  - overlap class `moderate`;
+  - convergence for full, phy-only, and non-only fits;
+  - full two-kernel fit beating the best one-component comparator by >50
+    log-likelihood units;
+  - `Gamma_non` recovery above 0.95;
+  - `Gamma_phy` recovery below 0.95;
+  - `Gamma_phy` versus `Gamma_non` cross-match above 0.25.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coe04-moderate-edge-boundary.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'invisible(parse(file = "tests/testthat/test-coevolution-two-kernel.R")); cat("parse ok\n")'`
+  -> pass.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 9 | PASS 67`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 233`.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 12 | PASS 171`.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 362`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> pass.
+- `rsync -a docs/dev-log/dashboard/ /tmp/gllvm-dashboard/ && curl -sS http://127.0.0.1:8770/status.json | rg -n 'moderate-edge|0\.40|PASS 362|PR green' | head -40`
+  -> dashboard synced to the local widget server; spot-check confirms the
+  served JSON includes the new 0.40 moderate-edge boundary, aggregate heavy
+  `PASS 362`, and the guard.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No broad moderate-overlap calibration beyond the two promoted cells plus this
+  one boundary cell.
+- No broad high-overlap truth-recovery/failure calibration beyond the current
+  collapse-equivalence and warning gates.
+- No formal null-threshold / Type-I calibration beyond the diagnostic grid.
+- No in-engine `rho` estimation.
+- No `rho` profile intervals or interval coverage.
+- No non-Gaussian recovery or mixed-family Paper 2 coverage; the Poisson gate
+  remains construction-only.
+- No explicit Paper 2 multi-kernel Psi support.
+- No `*_unique()` lifecycle/deprecation implementation yet.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 15:26 MDT -- Paper 2 fixed-rho profile helper
 
 Branch: `codex/r-bridge-grouped-dispersion`

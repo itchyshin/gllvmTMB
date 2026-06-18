@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 15:26 MDT",
+  "updated": "2026-06-18 15:43 MDT",
   "active_work": [
     {
       "when": "live",
@@ -29,7 +29,7 @@
     {
       "when": "live",
       "who": "Paper 2 kernels",
-      "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial; COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, two-cell moderate-overlap recovery, high-overlap exact-duplicate and diagonal-shrink near-duplicate collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a 12-seed null diagnostic and medium-signal grid, Poisson construction smoke, fixed-rho profile/sensitivity via profile_cross_rho(), fixed-rho Gamma_effect extraction, pair-specific point covariance via predict_cross_covariance(), and high-overlap fit/extract_Gamma warning language. The fixed-rho profile helper refits rho = c(0, 0.25, 0.55, 0.85), detects positive cross signal versus rho = 0, and deliberately stops short of estimating rho because the best grid point can sit at the high edge. predict_cross_covariance() uses Gamma_shape_r * K_r[i, j] because make_cross_kernel() already stores fixed rho inside K_r[i, j]; it does not create a universal total Gamma. The null diagnostic quantifies an overfit tail rather than closing Type-I/null calibration, and the Poisson gate is construction-only. The moderate grid now covers 0.30 and 0.35 blends; a 0.40 exploratory blend degraded and remains outside the claim. Broader/harder moderate-overlap calibration, broader high-overlap truth-recovery/failure calibration beyond the collapse-equivalence and warning gates, formal null-threshold calibration beyond this diagnostic grid, in-engine rho estimation, rho profile intervals, interval calibration, and broader non-Gaussian/mixed-family recovery gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc; the Paper 2 multi-kernel path remains latent-only. PR green != bridge complete != release ready != scientific coverage passed."
+      "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial; COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, two-cell moderate-overlap recovery plus one tested moderate-edge boundary, high-overlap exact-duplicate and diagonal-shrink near-duplicate collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a 12-seed null diagnostic and medium-signal grid, Poisson construction smoke, fixed-rho profile/sensitivity via profile_cross_rho(), fixed-rho Gamma_effect extraction, pair-specific point covariance via predict_cross_covariance(), and high-overlap fit/extract_Gamma warning language. The fixed-rho profile helper refits rho = c(0, 0.25, 0.55, 0.85), detects positive cross signal versus rho = 0, and deliberately stops short of estimating rho because the best grid point can sit at the high edge. predict_cross_covariance() uses Gamma_shape_r * K_r[i, j] because make_cross_kernel() already stores fixed rho inside K_r[i, j]; it does not create a universal total Gamma. The null diagnostic quantifies an overfit tail rather than closing Type-I/null calibration, and the Poisson gate is construction-only. The moderate grid now covers promoted 0.30 and 0.35 blends, while a tested 0.40 cell converges but fails component-separation thresholds and remains a boundary. Broader/harder moderate-overlap calibration, broader high-overlap truth-recovery/failure calibration beyond the collapse-equivalence and warning gates, formal null-threshold calibration beyond this diagnostic grid, in-engine rho estimation, rho profile intervals, interval calibration, and broader non-Gaussian/mixed-family recovery gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc; the Paper 2 multi-kernel path remains latent-only. PR green != bridge complete != release ready != scientific coverage passed."
     },
     {
       "when": "live",
@@ -38,6 +38,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 15:43 MDT",
+      "who": "Paper 2 moderate-edge boundary",
+      "text": "Added a tested 0.40 moderate-overlap boundary cell to COE-04. Seed 2403 still converges and the full two-kernel model beats either one-component model by >50 log-likelihood units, but Gamma_phy recovery falls below 0.95 and its cross-component match exceeds 0.25. This is a stop marker for harder moderate overlap, not promoted component-separation evidence. Checks: coevolution-two-kernel PASS 67 non-heavy / PASS 233 heavy; kernel|coevolution PASS 171 non-heavy / PASS 362 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
+      "link_label": "COE-04 test"
+    },
     {
       "when": "2026-06-18 15:26 MDT",
       "who": "Paper 2 fixed-rho profile",
@@ -76,7 +83,7 @@
     {
       "when": "2026-06-18 14:13 MDT",
       "who": "Paper 2 moderate-overlap grid",
-      "text": "Expanded COE-04 moderate-overlap recovery from one fixture to two moderate cells: non_association_blend 0.30 (seed 2401) and 0.35 (seed 2402) both recover the phy and non Gamma_shape blocks with correlations above 0.95 and cross-component matches below 0.25. Exploratory 0.40 degraded, so harder moderate overlap stays open. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 158 heavy; kernel|coevolution PASS 142 non-heavy / PASS 278 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
+      "text": "Expanded COE-04 moderate-overlap recovery from one fixture to two promoted moderate cells: non_association_blend 0.30 (seed 2401) and 0.35 (seed 2402) both recover the phy and non Gamma_shape blocks with correlations above 0.95 and cross-component matches below 0.25. A later tested 0.40 cell degraded, so harder moderate overlap stays open. Checks: coevolution-two-kernel PASS 47 non-heavy / PASS 158 heavy; kernel|coevolution PASS 142 non-heavy / PASS 278 heavy. PR green != bridge complete != release ready != scientific coverage passed.",
       "url": "https://github.com/itchyshin/gllvmTMB/blob/main/tests/testthat/test-coevolution-two-kernel.R",
       "link_label": "COE-04 test"
     },

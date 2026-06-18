@@ -63,8 +63,10 @@
   moderate-overlap grid, with the non
   association pattern blended 30% and 35% toward the phy pattern, now also
   recovers both component `Gamma_shape` matrices while keeping cross-component
-  matches low; an exploratory 40% blend degraded, so it remains outside the
-  claim. PARTIAL (`COE-04`): broader/harder moderate-overlap calibration,
+  matches low. A tested 40% moderate-edge cell still converges and detects
+  signal, but fails the stricter component-separation thresholds, so it is a
+  claim boundary rather than a promotion. PARTIAL (`COE-04`): broader/harder
+  moderate-overlap calibration,
   broader high-overlap truth-recovery/failure calibration beyond the
   collapse-equivalence and warning gates, formal null-threshold calibration
   beyond this diagnostic grid, explicit Psi

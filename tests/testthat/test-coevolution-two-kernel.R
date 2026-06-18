@@ -779,6 +779,29 @@ test_that("moderately overlapping kernels still recover component Gamma shapes",
     expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.25)
     expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.25)
   }
+
+  ## A harder moderate-edge cell is allowed to converge and detect signal but
+  ## is deliberately not promoted as component-separation evidence.
+  hard_edge <- .c3_make_two_component_fixture(
+    seed = 2403L,
+    non_association_blend = 0.40
+  )
+  expect_equal(.c3_kernel_overlap_class(hard_edge$similarity), "moderate")
+  hard_fit <- .c3_fit_two_kernel_set(hard_edge)
+  expect_equal(hard_fit$full$opt$convergence, 0L)
+  expect_equal(hard_fit$phy_only$opt$convergence, 0L)
+  expect_equal(hard_fit$non_only$opt$convergence, 0L)
+  expect_gt(
+    as.numeric(stats::logLik(hard_fit$full)) -
+      max(
+        as.numeric(stats::logLik(hard_fit$phy_only)),
+        as.numeric(stats::logLik(hard_fit$non_only))
+      ),
+    50
+  )
+  expect_lt(.c3_gamma_corr(hard_fit$Gamma_phy, hard_edge$Gamma_phy), 0.95)
+  expect_gt(.c3_gamma_corr(hard_fit$Gamma_non, hard_edge$Gamma_non), 0.95)
+  expect_gt(.c3_gamma_corr(hard_fit$Gamma_phy, hard_edge$Gamma_non), 0.25)
 })
 
 test_that("high-overlap two-component fits collapse to one higher-rank kernel", {

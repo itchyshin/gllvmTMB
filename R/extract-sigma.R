@@ -1477,6 +1477,220 @@ extract_Gamma <- function(fit, level, row_traits, col_traits,
   Gamma
 }
 
+#' Predict pair-specific cross-lineage covariance
+#'
+#' @description
+#' `predict_cross_covariance()` combines a component-specific
+#' `Gamma_shape` block from [extract_Gamma()] with entries of the fitted
+#' dense kernel matrix. For a fixed cross-lineage kernel built with
+#' [make_cross_kernel()], the off-diagonal `K` entries already include the
+#' supplied fixed `rho`, so the pair-specific covariance is
+#' `Gamma_shape * K[row_level, col_level]`. This helper therefore uses the
+#' shape-scale `Gamma` and does not multiply by `extract_Gamma(scale =
+#' "effect")`.
+#'
+#' IN (`COE-03` / `COE-04`): fixed dense `kernel_latent()` tiers store their
+#' aligned `K` matrices on the fit, and this helper returns point estimates for
+#' named species/lineage pairs. PARTIAL: it does not estimate `rho`, produce
+#' intervals, calibrate null thresholds, or combine components into a universal
+#' total `Gamma`.
+#'
+#' @param fit A fitted `gllvmTMB_multi` object.
+#' @param level Character scalar naming the fitted `kernel_*()` tier.
+#' @param row_levels,col_levels Character vectors naming row and column levels
+#'   in the fitted kernel matrix. If both are omitted for a kernel built by
+#'   [make_cross_kernel()], host and partner levels from the kernel metadata are
+#'   used.
+#' @param row_traits,col_traits Character vectors of trait names defining the
+#'   rows and columns of the component-specific `Gamma_shape` block.
+#'
+#' @return A data frame with one row per level-pair and trait-pair. Columns
+#'   include `component`, `row_level`, `col_level`, `row_trait`, `col_trait`,
+#'   `kernel_value`, `gamma_shape`, `covariance`, `rho`, and
+#'   `kernel_includes_rho`.
+#'
+#' @examples
+#' \dontrun{
+#' predict_cross_covariance(
+#'   fit,
+#'   level = "phy",
+#'   row_levels = c("H1", "H2"),
+#'   col_levels = c("P1", "P2"),
+#'   row_traits = c("host_size", "host_defence"),
+#'   col_traits = c("partner_size", "partner_attack")
+#' )
+#' }
+#'
+#' @export
+predict_cross_covariance <- function(fit, level, row_levels = NULL,
+                                     col_levels = NULL, row_traits,
+                                     col_traits) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+  }
+  if (missing(level) ||
+        !is.character(level) ||
+        length(level) != 1L ||
+        !nzchar(level) ||
+        is.na(level)) {
+    cli::cli_abort("{.arg level} must be one non-empty character string.")
+  }
+
+  K <- .kernel_level_matrix(fit, level)
+  meta <- .cross_kernel_metadata(K)
+  if (is.null(row_levels)) {
+    if (is.null(meta) || is.null(meta$host_levels)) {
+      cli::cli_abort(c(
+        "{.arg row_levels} must be supplied for generic kernels.",
+        "i" = "Only kernels built by {.fn make_cross_kernel} carry default host-level metadata."
+      ))
+    }
+    row_levels <- meta$host_levels
+  }
+  if (is.null(col_levels)) {
+    if (is.null(meta) || is.null(meta$partner_levels)) {
+      cli::cli_abort(c(
+        "{.arg col_levels} must be supplied for generic kernels.",
+        "i" = "Only kernels built by {.fn make_cross_kernel} carry default partner-level metadata."
+      ))
+    }
+    col_levels <- meta$partner_levels
+  }
+  row_levels <- .cross_covariance_arg(row_levels, "row_levels")
+  col_levels <- .cross_covariance_arg(col_levels, "col_levels")
+  row_traits <- .gamma_trait_arg(row_traits, "row_traits")
+  col_traits <- .gamma_trait_arg(col_traits, "col_traits")
+
+  K_rows <- rownames(K)
+  K_cols <- colnames(K)
+  missing_rows <- setdiff(row_levels, K_rows)
+  missing_cols <- setdiff(col_levels, K_cols)
+  if (length(missing_rows) || length(missing_cols)) {
+    bullets <- c("Requested level pair is not present in the fitted kernel.")
+    if (length(missing_rows)) {
+      bullets <- c(
+        bullets,
+        "x" = "{.arg row_levels} not found: {.val {missing_rows}}."
+      )
+    }
+    if (length(missing_cols)) {
+      bullets <- c(
+        bullets,
+        "x" = "{.arg col_levels} not found: {.val {missing_cols}}."
+      )
+    }
+    bullets <- c(
+      bullets,
+      "i" = "Available kernel levels are: {.val {K_rows}}."
+    )
+    cli::cli_abort(bullets)
+  }
+
+  Gamma <- extract_Gamma(
+    fit,
+    level = level,
+    row_traits = row_traits,
+    col_traits = col_traits,
+    scale = "shape"
+  )
+  grid <- expand.grid(
+    row_level = row_levels,
+    col_level = col_levels,
+    row_trait = row_traits,
+    col_trait = col_traits,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  grid$component <- level
+  grid$kernel_value <- K[cbind(
+    match(grid$row_level, K_rows),
+    match(grid$col_level, K_cols)
+  )]
+  grid$gamma_shape <- Gamma[cbind(
+    match(grid$row_trait, rownames(Gamma)),
+    match(grid$col_trait, colnames(Gamma))
+  )]
+  grid$covariance <- grid$kernel_value * grid$gamma_shape
+
+  alias <- .kernel_level_alias(fit, level)
+  rho <- alias$rho
+  grid$rho <- if (!is.null(rho) &&
+                    length(rho) == 1L &&
+                    is.finite(rho)) {
+    as.numeric(rho)
+  } else {
+    NA_real_
+  }
+  grid$kernel_includes_rho <- !is.null(meta) && is.finite(.cross_kernel_rho(K))
+
+  grid[, c(
+    "component",
+    "row_level",
+    "col_level",
+    "row_trait",
+    "col_trait",
+    "kernel_value",
+    "gamma_shape",
+    "covariance",
+    "rho",
+    "kernel_includes_rho"
+  )]
+}
+
+.kernel_level_matrix <- function(fit, level) {
+  alias <- .kernel_level_alias(fit, level)
+  if (is.null(alias)) {
+    cli::cli_abort(c(
+      "{.arg level} must name a fitted {.fn kernel_*} tier.",
+      "i" = "Available kernel tiers are: {.val {fit$kernel_levels$name %||% character(0)}}."
+    ))
+  }
+
+  mats <- fit$kernel_matrices
+  K <- NULL
+  if (is.list(mats)) {
+    K <- mats[[level]]
+    if (is.null(K) &&
+          !is.null(alias$index) &&
+          length(alias$index) == 1L &&
+          is.finite(alias$index)) {
+      K <- mats[[as.integer(alias$index)]]
+    }
+  }
+  if (is.null(K) && identical(alias$internal_level, "phy")) {
+    K <- fit$phylo_vcv
+  }
+  if (is.null(K)) {
+    cli::cli_abort(c(
+      "The fitted object does not contain the dense {.arg K} matrix for level {.val {level}}.",
+      "i" = "Refit with the current package version before calling {.fn predict_cross_covariance}."
+    ))
+  }
+  if (!is.matrix(K)) {
+    K <- as.matrix(K)
+  }
+  if (!is.matrix(K) || !is.numeric(K)) {
+    cli::cli_abort("The stored {.arg K} for level {.val {level}} is not a numeric matrix.")
+  }
+  if (is.null(rownames(K)) || is.null(colnames(K))) {
+    cli::cli_abort("The stored {.arg K} for level {.val {level}} must have row and column names.")
+  }
+  K
+}
+
+.cross_covariance_arg <- function(x, arg) {
+  if (is.factor(x)) {
+    x <- as.character(x)
+  }
+  if (!is.character(x) || length(x) == 0L || anyNA(x) || any(!nzchar(x))) {
+    cli::cli_abort("{.arg {arg}} must be a non-empty character vector.")
+  }
+  if (anyDuplicated(x)) {
+    cli::cli_abort("{.arg {arg}} must not contain duplicate names.")
+  }
+  x
+}
+
 .gamma_level_rho <- function(fit, level) {
   alias <- .kernel_level_alias(fit, level)
   rho <- alias$rho

@@ -185,6 +185,7 @@ reference:
     contents:
     - extract_Sigma
     - extract_Gamma
+    - predict_cross_covariance
     - extract_Sigma_table
     - compare_Sigma_table
     - extract_Omega

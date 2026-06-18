@@ -411,6 +411,9 @@ test_that("two distinct named kernel tiers fit and extract by component", {
   expect_equal(fit$kernel_levels$name, c("phy", "non"))
   expect_equal(fit$kernel_levels$rank, c(1L, 1L))
   expect_equal(fit$kernel_levels$has_psi, c(FALSE, FALSE))
+  expect_equal(names(fit$kernel_matrices), c("phy", "non"))
+  expect_equal(fit$kernel_matrices$phy, A_phy, tolerance = 1e-12)
+  expect_equal(fit$kernel_matrices$non, A_non, tolerance = 1e-12)
   expect_equal(
     rownames(fit$kernel_diagnostics$similarity),
     c("phy", "non")
@@ -464,6 +467,19 @@ test_that("two distinct named kernel tiers fit and extract by component", {
   )
   expect_equal(dim(Gamma_phy), c(1L, 1L))
   expect_equal(dim(Gamma_non), c(1L, 1L))
+  pair_cov <- gllvmTMB::predict_cross_covariance(
+    fit,
+    level = "phy",
+    row_levels = "u1",
+    col_levels = "u2",
+    row_traits = "y1",
+    col_traits = "y2"
+  )
+  expect_equal(pair_cov$kernel_value, A_phy["u1", "u2"])
+  expect_equal(pair_cov$gamma_shape, as.numeric(Gamma_phy))
+  expect_equal(pair_cov$covariance, as.numeric(Gamma_phy) * A_phy["u1", "u2"])
+  expect_true(is.na(pair_cov$rho))
+  expect_false(pair_cov$kernel_includes_rho)
 
   expect_error(
     suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

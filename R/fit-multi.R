@@ -2175,6 +2175,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   log_det_A_kernel <- 0.0
   kernel_multi_registry <- NULL
   kernel_diagnostics <- NULL
+  kernel_matrix_list <- NULL
   if (use_kernel_multi) {
     levs <- levels(data[[species]])
     n_kernel_tiers <- length(unique_kernel_names)
@@ -2199,6 +2200,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     logsd_cursor <- 0L
     diag_cursor <- 0L
     kernel_rows <- vector("list", n_kernel_tiers)
+    kernel_matrix_list <- vector("list", n_kernel_tiers)
     for (r in seq_along(unique_kernel_names)) {
       nm <- unique_kernel_names[[r]]
       term_idx <- phy_idx_main[phy_is_kernel_multi & phy_kernel_name == nm]
@@ -2277,8 +2279,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
           "i" = "Minimum eigenvalue: {format(min(evals), digits = 4)}."
         ))
       }
-      K_jit <- (K + t(K)) / 2 + diag(1e-8, n_kernel_levels)
-      K_kernel[r, , ] <- (K + t(K)) / 2
+      K_stored <- K
+      K_stored[,] <- (K + t(K)) / 2
+      K_jit <- K_stored + diag(1e-8, n_kernel_levels)
+      K_kernel[r, , ] <- K_stored
+      kernel_matrix_list[[r]] <- K_stored
       Ainv_kernel[r, , ] <- solve(K_jit)
       log_det_A_kernel[r] <- as.numeric(determinant(K_jit, logarithm = TRUE)$modulus)
 
@@ -2307,6 +2312,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
     max_kernel_rank <- max(kernel_rank)
     kernel_multi_registry <- do.call(rbind, kernel_rows)
+    names(kernel_matrix_list) <- unique_kernel_names
     kernel_diagnostics <- .kernel_overlap_diagnostics(
       K_kernel,
       unique_kernel_names
@@ -4153,6 +4159,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           )
                         }
                       } else NULL,
+      kernel_matrices = if (has_kernel_term) {
+                          if (use_kernel_multi) {
+                            kernel_matrix_list
+                          } else if (!is.null(phylo_vcv)) {
+                            stats::setNames(list(phylo_vcv), kernel_name)
+                          } else NULL
+                        } else NULL,
       kernel_diagnostics = kernel_diagnostics,
       re_int       = if (use_re_int) list(
                        groups   = re_int_groups,

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 14:46 MDT",
+  "updated": "2026-06-18 15:03 MDT",
   "active_work": [
     {
       "when": "live",
@@ -29,7 +29,7 @@
     {
       "when": "live",
       "who": "Paper 2 kernels",
-      "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial; COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, two-cell moderate-overlap recovery, high-overlap exact-duplicate and diagonal-shrink near-duplicate collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a 12-seed null diagnostic and medium-signal grid, Poisson construction smoke, fixed-rho sensitivity, fixed-rho Gamma_effect extraction, and high-overlap fit/extract_Gamma warning language. The fixed-rho grid refits rho = c(0, 0.25, 0.55, 0.85), detects positive cross signal versus rho = 0, and deliberately stops short of estimating rho because the best grid point can sit at the high edge. The null diagnostic quantifies an overfit tail rather than closing Type-I/null calibration, and the Poisson gate is construction-only. The moderate grid now covers 0.30 and 0.35 blends; a 0.40 exploratory blend degraded and remains outside the claim. Broader/harder moderate-overlap calibration, broader high-overlap truth-recovery/failure calibration beyond the collapse-equivalence and warning gates, formal null-threshold calibration beyond this diagnostic grid, formal rho profile/estimation support, interval, and broader non-Gaussian/mixed-family recovery gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc; the Paper 2 multi-kernel path remains latent-only. PR green != bridge complete != release ready != scientific coverage passed."
+      "text": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered by non-heavy and heavy kernel/coevolution tests; COE-03 remains partial; COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, two-cell moderate-overlap recovery, high-overlap exact-duplicate and diagonal-shrink near-duplicate collapse-equivalence, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke plus a 12-seed null diagnostic and medium-signal grid, Poisson construction smoke, fixed-rho sensitivity, fixed-rho Gamma_effect extraction, pair-specific point covariance via predict_cross_covariance(), and high-overlap fit/extract_Gamma warning language. The fixed-rho grid refits rho = c(0, 0.25, 0.55, 0.85), detects positive cross signal versus rho = 0, and deliberately stops short of estimating rho because the best grid point can sit at the high edge. predict_cross_covariance() uses Gamma_shape_r * K_r[i, j] because make_cross_kernel() already stores fixed rho inside K_r[i, j]; it does not create a universal total Gamma. The null diagnostic quantifies an overfit tail rather than closing Type-I/null calibration, and the Poisson gate is construction-only. The moderate grid now covers 0.30 and 0.35 blends; a 0.40 exploratory blend degraded and remains outside the claim. Broader/harder moderate-overlap calibration, broader high-overlap truth-recovery/failure calibration beyond the collapse-equivalence and warning gates, formal null-threshold calibration beyond this diagnostic grid, formal rho profile/estimation support, interval, and broader non-Gaussian/mixed-family recovery gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc; the Paper 2 multi-kernel path remains latent-only. PR green != bridge complete != release ready != scientific coverage passed."
     },
     {
       "when": "live",
@@ -38,6 +38,13 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 15:03 MDT",
+      "who": "Paper 2 pair-specific covariance",
+      "text": "Added predict_cross_covariance() for fixed dense kernel tiers. Multi-kernel fits now store aligned K_r matrices by component name, and the helper returns pair-specific point covariance rows as Gamma_shape_r * K_r[i, j]. For make_cross_kernel() tiers, K_r[i, j] already includes the supplied fixed rho, so the helper deliberately avoids multiplying by Gamma_effect and closes the no-universal-total-Gamma teaching gap. Checks: devtools::document(quiet = TRUE); devtools::test(filter = \"coevolution-recovery|coevolution-two-kernel\") -> PASS 75 with 11 expected heavy skips; devtools::test(filter = \"kernel|coevolution\") -> PASS 159 with 12 expected heavy skips; GLLVMTMB_HEAVY_TESTS=1 devtools::test(filter = \"kernel|coevolution\") -> PASS 342; pkgdown::check_pkgdown() -> No problems found. This is point-extractor evidence only, not rho estimation, intervals, null calibration, bridge completion, release readiness, or scientific coverage. PR green != bridge complete != release ready != scientific coverage passed.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/R/extract-sigma.R",
+      "link_label": "predict_cross_covariance"
+    },
     {
       "when": "2026-06-18 14:46 MDT",
       "who": "Paper 2 Poisson smoke",

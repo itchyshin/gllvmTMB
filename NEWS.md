@@ -7,9 +7,10 @@
 
 * Added the first fixed multi-kernel engine wave for `kernel_latent()`: two or
   more named dense kernel tiers over the same grouping levels now fit with
-  separate `K_r`, loading matrices, and latent fields. `extract_Sigma(fit, level = name)` and
-  `extract_Gamma(fit, level = name, ...)` now resolve each named component
-  separately. IN (`KER-03`): fixed dense PSD kernels, same grouping factor and
+  separate `K_r`, loading matrices, and latent fields. `extract_Sigma(fit, level = name)`,
+  `extract_Gamma(fit, level = name, ...)`, and
+  `predict_cross_covariance(fit, level = name, ...)` now resolve each named
+  component separately. IN (`KER-03`): fixed dense PSD kernels, same grouping factor and
   level set, and component-specific shared covariance extraction. The Paper 2
   first wave is intentionally latent-only: paired `kernel_unique()` Psi is
   deferred because explicit residual/Psi structure is a poor default for
@@ -41,6 +42,12 @@
   positive-`rho` grid strongly beats the block-null `rho = 0` fit, but the gate
   deliberately treats the best grid point as sensitivity evidence only because
   fixed kernel strength and loading magnitudes can trade off. High-overlap
+  `predict_cross_covariance()` combines the shape-scale `Gamma_shape_r` block
+  with fitted `K_r[i, j]` entries to return pair-specific point cross-lineage
+  covariance, avoiding the false impression that there is one universal total
+  `Gamma`. For `make_cross_kernel()` tiers, `K_r[i, j]` already includes the
+  supplied fixed `rho`, so the helper does not multiply by
+  `extract_Gamma(scale = "effect")`. High-overlap
   kernel tiers now warn during fitting and again
   when `extract_Gamma(level = ...)` is called for an affected component, while
   still returning the diagnostic table and point block for inspection. A first

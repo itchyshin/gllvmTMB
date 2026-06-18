@@ -21695,6 +21695,99 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 15:03 MDT -- Paper 2 pair-specific covariance extractor
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the Paper 2 teaching gap that there is no universal total `Gamma` once
+  the model has separate fixed kernel components.
+- Add a point extractor for pair-specific cross-lineage covariance while
+  keeping `COE-03` and `COE-04` partial.
+- Record the user's `*_unique()` direction: explicit kernel-level Psi is not
+  part of the first Paper 2 multi-kernel wave, is a hindrance for
+  non-Gaussian/cross-family coevolution teaching, and should move into
+  post-arc compatibility/deprecation or replacement design rather than remain
+  the default story.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Added fitted-object storage of aligned dense `K_r` matrices as
+  `fit$kernel_matrices`, named by fixed kernel component.
+- Added exported `predict_cross_covariance()` for fixed dense kernel tiers.
+  It returns long rows with component, row level, column level, row trait,
+  column trait, `kernel_value`, `gamma_shape`, `covariance`, `rho`, and
+  `kernel_includes_rho`.
+- For `make_cross_kernel()` tiers, `predict_cross_covariance()` uses
+  `Gamma_shape_r * K_r[i, j]` because the fitted `K_r[i, j]` already includes
+  the supplied fixed `rho`; it deliberately does not multiply by
+  `Gamma_effect_r`.
+- Added a fast fake-fit contract test and a real two-kernel object-contract
+  test for the new extractor.
+- Regenerated roxygen output and exposed the helper in pkgdown.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-paper2-pair-specific-cross-covariance.md`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'invisible(parse(file = "R/extract-sigma.R")); invisible(parse(file = "R/fit-multi.R")); invisible(parse(file = "tests/testthat/test-coevolution-recovery.R")); invisible(parse(file = "tests/testthat/test-coevolution-two-kernel.R"))'`
+  -> pass.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated `NAMESPACE` and `man/predict_cross_covariance.Rd`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-recovery|coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 11 | PASS 75`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 12 | PASS 159`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 342`.
+- `/usr/local/bin/Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null && python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> pass before the final check-log append; rerun after this entry.
+
+Stale/evidence scans used:
+
+- `rg -n "Focused tests pass|COE-04|predict_cross_covariance|Laplace|VA|unique" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/dev-log/check-log.md docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md NEWS.md _pkgdown.yml R tests man`
+- `rg -n "Focused tests pass|PASS 47|PASS 142|predict_cross_covariance|Pair-specific|pair-specific" docs/dev-log/dashboard/status.json docs/dev-log/dashboard/sweep.json docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md`
+
+Friction:
+
+- `air format` was tried after a targeted syntax check and produced broad
+  formatting churn outside the intended slice. The churn was backed out and
+  the narrow extractor edits were preserved. Do not run a broad formatter for
+  this branch unless the maintainer explicitly asks for a separate style pass.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No `rho` estimation or profile intervals.
+- No interval coverage or calibrated Type-I/null threshold.
+- No broader/harder moderate-overlap grid.
+- No broad high-overlap truth-recovery/failure calibration beyond the current
+  collapse-equivalence and warning gates.
+- No non-Gaussian recovery or mixed-family Paper 2 coverage; the Poisson gate
+  remains construction-only.
+- No explicit Paper 2 multi-kernel Psi support.
+- No `*_unique()` lifecycle/deprecation implementation yet.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 14:46 MDT -- COE-04 Poisson construction smoke
 
 Branch: `codex/r-bridge-grouped-dispersion`

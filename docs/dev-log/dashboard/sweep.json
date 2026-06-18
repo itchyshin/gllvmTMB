@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 06:34 MDT",
+  "updated": "2026-06-18 07:47 MDT",
   "active_work": [
     {
       "when": "live",
@@ -14,15 +14,29 @@
     {
       "when": "live",
       "who": "power-pilot",
-      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot reached 383510 / 480000 reps at iter 24. Scheduled run 27735802023 completed cancelled after shard success because persist and summary hit the 20-minute job limit. New scheduled run 27752884846 is live with 43 completed-success jobs and 6 in-progress shards, but power-pilot-results still remains at 5969f6f. Fisher/Curie scoring still blocks coverage or power promotion."
+      "text": "Run 27722546237 completed successfully and pushed 5969f6f to power-pilot-results. Scored remote store is 19776 / 480000 reps with 1/48 cells at cap, pass94 3/24, pass95 0/24, 28 flagged cells, and 27 coverage anomalies. Local pilot reached 383510 / 480000 reps at iter 24. Scheduled run 27735802023 completed cancelled after shard success because persist and summary hit the 20-minute job limit. New scheduled run 27752884846 is live with 48 completed-success jobs and shard 31/48 in progress, but power-pilot-results still remains at 5969f6f. Fisher/Curie scoring still blocks coverage or power promotion."
     },
     {
       "when": "live",
       "who": "GLLVM.jl",
-      "text": "#95 is merged and main CI is green; #101 is draft/clean on main, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed, but PR checks are still stale after retarget. CI.yml has no workflow_dispatch, so fresh CI needs maintainer-approved branch/PR-event mutation or deferral; #94 remains dirty salvage."
+      "text": "#95 is merged and main CI is green; #101 is draft/open at f7be594, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed. Maintainer-approved close/reopen triggered fresh PR CI run 27763712855 and Documenter run 27763712914; Documenter succeeded and CI remains in progress. #94 remains dirty salvage."
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 07:47 MDT",
+      "who": "GLLVM.jl #101",
+      "text": "Maintainer-approved close/reopen triggered fresh PR checks without pushing code: CI run 27763712855 is in progress and Documenter run 27763712914 completed successfully at head f7be594. #101 is open/draft with mergeStateStatus UNSTABLE while CI runs, so this is trigger evidence only, not bridge completion.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
+    },
+    {
+      "when": "2026-06-18 07:47 MDT",
+      "who": "GitHub Actions",
+      "text": "Scheduled power-pilot run 27752884846 is still live on main 0567cd7. GitHub reports run-level status in_progress with 49 jobs total: 48 completed-success jobs and shard 31/48 in progress. The power-pilot-results branch is still 5969f6f, so no new persisted-store or scoring evidence exists yet.",
+      "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846",
+      "link_label": "run 27752884846"
+    },
     {
       "when": "2026-06-18 06:34 MDT",
       "who": "GitHub Actions",
@@ -327,6 +341,22 @@
       "status": "in_progress",
       "conclusion": "",
       "url": "https://github.com/itchyshin/gllvmTMB/actions/runs/27752884846"
+    },
+    {
+      "workflow": "GLLVM.jl CI",
+      "branch": "codex/julia-per-trait-dispersion",
+      "head": "f7be594",
+      "status": "in_progress",
+      "conclusion": "",
+      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27763712855"
+    },
+    {
+      "workflow": "GLLVM.jl Documenter",
+      "branch": "codex/julia-per-trait-dispersion",
+      "head": "f7be594",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/itchyshin/GLLVM.jl/actions/runs/27763712914"
     },
     {
       "workflow": "Power pilot sweep",

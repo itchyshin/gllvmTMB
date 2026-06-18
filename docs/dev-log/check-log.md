@@ -20704,3 +20704,79 @@ Deliberately not run:
   docs/navbar change. Full-check green is main CI health evidence only; it does
   not make #489 ready, the bridge complete, the release ready, or scientific
   coverage passed.
+
+## 2026-06-18 -- GLLVM.jl #101 CI trigger and power heartbeat
+
+Refreshed the local dashboard/check-log after the maintainer approved the
+second unblock item: trigger fresh #101 CI. The trigger used close/reopen on the
+draft PR, not a push. The guard remains active: PR green != bridge complete !=
+release ready != scientific coverage passed.
+
+Evidence recorded:
+
+- GLLVM.jl #101 was closed with an audit comment and reopened without pushing
+  code. It is open/draft at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`, with
+  `mergeStateStatus=UNSTABLE` while fresh checks run.
+- Fresh #101 pull-request checks started at the same head:
+  CI run `27763712855` is `in_progress`, and Documenter run `27763712914`
+  completed with conclusion `success`. The status rollup also shows
+  `documenter/deploy` success for the preview URL, but CI is not concluded yet.
+- Scheduled power-pilot run `27752884846` remains live on main
+  `0567cd747b9e81fa694e846a6d155bf60e35e0b8`: run-level status
+  `in_progress`, with 48 completed-success jobs and shard `31/48` still in
+  progress. `power-pilot-results` still points at
+  `5969f6f280fd084f60b6dcf18ca1c5739d531025`, so there is no new persisted
+  store or scoring evidence.
+
+Checks:
+
+- Rehydration and pre-edit lane check:
+  `git status --short --branch`
+  -> branch `codex/r-bridge-grouped-dispersion`, ahead of origin, tracked tree
+  clean except old untracked recovery checkpoints.
+  `git diff --stat`
+  -> empty before edits.
+  `git diff --check`
+  -> clean before edits.
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints ROADMAP.md docs/dev-log/audits docs/dev-log/after-task`
+  -> recent overlapping edits are this same #489 evidence/dashboard lane.
+- #101 trigger and confirmation:
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefOid,updatedAt,statusCheckRollup,url`
+  -> before trigger, #101 was open/draft at `f7be594`.
+  `/opt/homebrew/bin/gh run list --repo itchyshin/GLLVM.jl --branch codex/julia-per-trait-dispersion --limit 10 --json databaseId,name,workflowName,status,conclusion,createdAt,updatedAt,headSha,event,url`
+  -> before trigger, only the old Documenter run was visible on the branch.
+  `/opt/homebrew/bin/gh pr close 101 --repo itchyshin/GLLVM.jl --comment "Maintainer-approved CI retrigger from the gllvmTMB finish lane: closing and reopening this draft PR to create a fresh pull_request event without pushing a code change. Guard remains: PR green != bridge complete != release ready != scientific coverage passed."`
+  -> closed #101 with the audit comment.
+  `/opt/homebrew/bin/gh pr reopen 101 --repo itchyshin/GLLVM.jl`
+  -> reopened #101.
+  `/opt/homebrew/bin/gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefOid,updatedAt,statusCheckRollup,url`
+  -> #101 open/draft, `mergeStateStatus=UNSTABLE`, CI run `27763712855` and
+  Documenter run `27763712914` started at `f7be594`.
+  `/opt/homebrew/bin/gh run list --repo itchyshin/GLLVM.jl --branch codex/julia-per-trait-dispersion --limit 10 --json databaseId,name,workflowName,status,conclusion,createdAt,updatedAt,headSha,event,url`
+  -> fresh CI run `27763712855` remained `in_progress`; Documenter run
+  `27763712914` completed `success`.
+- Power heartbeat:
+  `/opt/homebrew/bin/gh run view 27752884846 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,jobs --jq '{status: .status, conclusion: .conclusion, updatedAt: .updatedAt, headSha: .headSha, url: .url, statusCounts: ([.jobs[].status] | group_by(.) | map({(.[0]): length}) | add), conclusionCounts: ([.jobs[].conclusion] | group_by(.) | map({(.[0] // "blank"): length}) | add), activeJobs: [.jobs[] | select(.status != "completed") | {name: .name, status: .status, conclusion: .conclusion, url: .url}]}'`
+  -> run `27752884846` still `in_progress`, 48 completed-success jobs and
+  `shard 31/48` in progress.
+  `git ls-remote origin refs/heads/power-pilot-results`
+  -> `5969f6f280fd084f60b6dcf18ca1c5739d531025`.
+
+Files updated:
+
+- `docs/dev-log/dashboard/status.json`
+- `docs/dev-log/dashboard/sweep.json`
+- `docs/dev-log/check-log.md`
+
+Deliberately not run:
+
+- No remote power-pilot fetch/archive/scoring because run `27752884846` is
+  still live and `power-pilot-results` has not moved. No push, no GLLVM.jl code
+  change, no issue mutation beyond the explicit #101 close/reopen trigger, no
+  `Pkg.test()`, no R CMD check, no pkgdown build, no article render, no release
+  `--as-cran` audit, and no public docs/navbar change. The #101 checks are now
+  running, not passed; this does not make #489 ready, the bridge complete, the
+  release ready, or scientific coverage passed.

@@ -64,8 +64,9 @@ Gauss / Noether: no TMB likelihood or parameterisation change was made. The
 diagnostic is computed from fixed input kernels before fitting.
 
 Fisher / Curie: the diagnostic is now an inspectable fitted-object artefact.
-This supports near-orthogonal recovery evidence, but moderate-overlap recovery,
-high-overlap calibration, and null/selective absence still need explicit gates.
+This supports near-orthogonal recovery evidence, but broad moderate-overlap
+calibration, high-overlap calibration, and null/selective absence still need
+explicit gates.
 
 Rose: evidence files say `partial`, not `covered`, and preserve the guard
 against bridge/release/science overclaiming.

@@ -21603,7 +21603,7 @@ Checks:
 
 Still not claimed:
 
-- No moderate-overlap recovery grid.
+- No broad moderate-overlap calibration grid.
 - No high-overlap failure-language gate.
 - No block-null or selective-absence calibration.
 - No estimated/profiled `rho`.
@@ -21626,7 +21626,7 @@ Purpose:
   fixed named multi-kernel model.
 - Keep the model status partial: this covers one near-orthogonal Gaussian
   latent-only case where the non component is truly absent. It does not close
-  moderate-overlap behavior, high-overlap recovery calibration, block-null
+  broad moderate-overlap calibration, high-overlap recovery calibration, block-null
   calibration, `rho`, intervals, mixed/non-Gaussian gates, explicit Psi
   support, or the post-arc
   `*_unique()` lifecycle/deprecation plan.
@@ -21660,6 +21660,10 @@ Implemented:
   `docs/design/65-cross-lineage-coevolution-kernel.md`,
   `docs/dev-log/dashboard/status.json`, and
   `docs/dev-log/dashboard/sweep.json`.
+- Tightened the dashboard `unique()` / `*_unique()` guard language after
+  maintainer review: compatibility syntax remains during this arc, but the
+  post-arc cleanup should deprecate or supersede `*_unique()` teaching rather
+  than expand it as a first-choice Paper 2 or cross-family path.
 
 Checks:
 
@@ -21682,7 +21686,7 @@ Checks:
 Still not claimed:
 
 - No public Paper 2 promotion.
-- No moderate-overlap recovery gate or high-overlap calibration.
+- No broad moderate-overlap calibration or high-overlap calibration.
 - No block-null calibration.
 - No estimated/profiled `rho`.
 - No interval coverage.
@@ -21702,7 +21706,7 @@ Purpose:
 - Extend the `COE-04` absence/null side of the Paper 2 fixed named
   multi-kernel model.
 - Keep the model status partial: these are near-orthogonal Gaussian
-  latent-only gates, not moderate-overlap recovery, high-overlap recovery
+  latent-only gates, not broad moderate-overlap calibration, high-overlap recovery
   calibration, calibrated null thresholds, `rho`, intervals,
   mixed/non-Gaussian gates, explicit Psi support, or the post-arc
   `*_unique()` lifecycle/deprecation plan.
@@ -21755,7 +21759,82 @@ Checks:
 Still not claimed:
 
 - No public Paper 2 promotion.
-- No moderate-overlap recovery gate or high-overlap calibration.
+- No broad moderate-overlap calibration or high-overlap calibration.
+- No calibrated block-null threshold across seeds/effect sizes.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 11:58 MDT -- COE-04 moderate-edge recovery gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add the first `COE-04` moderate-overlap recovery evidence for the Paper 2
+  fixed named multi-kernel model.
+- Keep `COE-04` partial: this covers one conservative moderate-edge Gaussian
+  latent-only case, not a calibrated moderate-overlap grid or high-overlap
+  recovery/failure calibration.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/article/kernel commits on
+  this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Extended `.c3_make_two_component_fixture()` with
+  `non_association_blend`; default `0` preserves the existing near-orthogonal
+  opposed-pattern fixture.
+- Added a heavy moderate-edge recovery gate with
+  `non_association_blend = 0.3`, giving overlap class `moderate` just above
+  the near-orthogonal threshold:
+  - full two-component model converges;
+  - both one-component comparators converge;
+  - full model beats either one-component comparator by >50 log-likelihood
+    units;
+  - both component `Gamma_shape` correlations exceed 0.95;
+  - cross-component `Gamma_shape` matches stay below 0.25.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+
+Checks:
+
+- Exploratory checkout-loaded alpha grid over `non_association_blend` values
+  0.0..1.0
+  -> the pair moves from near-orthogonal into moderate at alpha 0.3.
+- Exploratory checkout-loaded recovery probes over alpha 0.3, 0.5, 0.7, and
+  1.0 across seeds 2401..2403
+  -> all converged; the conservative alpha 0.3 case kept both component
+  `Gamma_shape` correlations above 0.95 and cross-component matches below
+  0.25 across the probed seeds.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 92`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 5 | PASS 40`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 8 | PASS 126`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 201`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No broad moderate-overlap calibration.
+- No high-overlap recovery/failure calibration beyond warning language.
 - No calibrated block-null threshold across seeds/effect sizes.
 - No estimated/profiled `rho`.
 - No interval coverage.
@@ -21820,7 +21899,7 @@ Checks:
 Still not claimed:
 
 - No public Paper 2 promotion.
-- No moderate-overlap recovery gate.
+- No broad moderate-overlap calibration.
 - No high-overlap recovery/failure calibration beyond warning language.
 - No calibrated block-null threshold across seeds/effect sizes.
 - No estimated/profiled `rho`.
@@ -21841,7 +21920,7 @@ Purpose:
 - Make the `COE-04` kernel-separation diagnostic inspectable from fitted
   multi-kernel objects, not only from test-local helper code.
 - Keep the model status partial: this exposes diagnostics and strengthens the
-  near-orthogonal gate, but it does not add moderate-overlap recovery,
+  near-orthogonal gate, but it does not add broad moderate-overlap calibration,
   high-overlap calibration, selective absence, `rho`, intervals,
   mixed/non-Gaussian gates, or Psi support.
 
@@ -21891,7 +21970,7 @@ Checks:
 Still not claimed:
 
 - No public Paper 2 promotion.
-- No moderate-overlap recovery gate or high-overlap calibration.
+- No broad moderate-overlap calibration or high-overlap calibration.
 - No block-null or selective-absence calibration.
 - No estimated/profiled `rho`.
 - No interval coverage.

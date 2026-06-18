@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 11:47 MDT",
+  "updated": "2026-06-18 11:58 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -50,7 +50,7 @@
       "label": "Paper 2 kernels",
       "value": "COE-04 partial",
       "status": "guard",
-      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke, and high-overlap warning language. Moderate-overlap recovery, high-overlap recovery/failure calibration, calibrated block-null thresholds, rho, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
+      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, conservative moderate-edge recovery, fitted-object kernel-similarity diagnostics, two-sided selective absence, block-null smoke, and high-overlap warning language. Broader moderate-overlap calibration, high-overlap recovery/failure calibration, calibrated block-null thresholds, rho, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
     },
     {
       "label": "Next decision",
@@ -259,7 +259,7 @@
     {
       "when": "now",
       "who": "Boole",
-      "text": "kernel_*() remains the general API; relmat remains compatibility sugar. Fixed named multi-kernel tiers now have a local TMB engine slice, while unique() is still not deprecated and standalone diagonal teaching still points to indep()."
+      "text": "kernel_*() remains the general API; relmat remains compatibility sugar. Fixed named multi-kernel tiers now have a local TMB engine slice, while unique()/*_unique() stays compatibility syntax for this arc; the post-arc cleanup should deprecate or supersede *_unique() teaching, with standalone diagonal teaching already pointing to indep()."
     }
   ],
   "serial_gates": [
@@ -581,7 +581,7 @@
       "engine": "covered",
       "bridge": "planned",
       "inference": "partial",
-      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. COE-04 near-orthogonal heavy recovery, two-sided selective-absence, block-null smoke, and high-overlap warning fixtures now pass, but this remains partial and does not prove explicit Psi support, moderate-overlap recovery, high-overlap recovery/failure calibration, calibrated block-null thresholds, rho profiling/estimation, or intervals.",
+      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. COE-04 near-orthogonal heavy recovery, conservative moderate-edge recovery, two-sided selective-absence, block-null smoke, and high-overlap warning fixtures now pass, but this remains partial and does not prove explicit Psi support, broad moderate-overlap calibration, high-overlap recovery/failure calibration, calibrated block-null thresholds, rho profiling/estimation, or intervals.",
       "next_gate": "Broader COE-04 recovery/separation grid before scientific coverage or public Paper 2 promotion."
     },
     {
@@ -591,8 +591,8 @@
       "engine": "covered",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs, and high-overlap fitted tier pairs warn that component-specific Gamma_shape separation is weak evidence while still fitting. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, and component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component. Two-sided selective-absence gates collapse whichever component has true zero loadings below 1e-3 while recovering the present component. A block-null smoke gate sets both loading blocks to zero, collapses both extracted Gamma_shape norms below 1e-3, and keeps the full model within 3 log-likelihood units of an intercept-only fit. Focused tests pass 40 non-heavy / 79 heavy; aggregate kernel|coevolution tests pass 126 non-heavy / 188 heavy. Moderate-overlap recovery, high-overlap recovery/failure calibration beyond the warning, calibrated block-null thresholds, and interval/rho calibration remain blocked.",
-      "next_gate": "Extend the Paper 2 recovery grid to moderate overlap, calibrated high-overlap failure/recovery behavior, calibrated block-null thresholds, and rho/interval calibration before any full scientific-coverage language moves."
+      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs, and high-overlap fitted tier pairs warn that component-specific Gamma_shape separation is weak evidence while still fitting. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, and component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component. A conservative moderate-edge heavy gate blends the non association pattern 30% toward the phy pattern, lands just above the near-orthogonal threshold, and recovers both component Gamma_shape matrices with cross-component matches below 0.25. Two-sided selective-absence gates collapse whichever component has true zero loadings below 1e-3 while recovering the present component. A block-null smoke gate sets both loading blocks to zero, collapses both extracted Gamma_shape norms below 1e-3, and keeps the full model within 3 log-likelihood units of an intercept-only fit. Focused tests pass 40 non-heavy / 92 heavy; aggregate kernel|coevolution tests pass 126 non-heavy / 201 heavy. Broader moderate-overlap calibration, high-overlap recovery/failure calibration beyond the warning, calibrated block-null thresholds, and interval/rho calibration remain blocked.",
+      "next_gate": "Extend the Paper 2 recovery grid to broader moderate-overlap calibration, calibrated high-overlap failure/recovery behavior, calibrated block-null thresholds, and rho/interval calibration before any full scientific-coverage language moves."
     },
     {
       "id": "PSI-SWEEP",
@@ -654,7 +654,7 @@
     {
       "status": "guard",
       "kind": "Psi cleanup",
-      "item": "unique() and *_unique() are not deprecated. Public teaching now prefers indep() for standalone diagonal models and reserves unique() for explicit Psi when evidence supports it."
+      "item": "unique()/*_unique() stays compatibility syntax during the current arc; after the coevolution/Psi cleanup, *_unique() should move to a deprecation or supersession plan. Public teaching now prefers indep() for standalone diagonal models and reserves explicit Psi only where evidence supports it."
     }
   ],
   "evidence": [

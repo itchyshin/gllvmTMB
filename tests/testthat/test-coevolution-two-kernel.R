@@ -106,6 +106,7 @@
                                            n_P = 32L, n_rep = 6L,
                                            rho_phy = 0.55,
                                            rho_non = 0.55,
+                                           non_association_blend = 0,
                                            lambda_phy_scale = 1,
                                            lambda_non_scale = 1,
                                            resid_sd = 0.08) {
@@ -118,7 +119,10 @@
   rownames(I_P) <- colnames(I_P) <- rownames(A_P)
 
   W_phy <- .c3_association_pattern(n_H, n_P, type = "aligned")
-  W_non <- .c3_association_pattern(n_H, n_P, type = "opposed")
+  W_non_opposed <- .c3_association_pattern(n_H, n_P, type = "opposed")
+  W_non_aligned <- .c3_association_pattern(n_H, n_P, type = "aligned")
+  W_non <- non_association_blend * W_non_aligned +
+    (1 - non_association_blend) * W_non_opposed
   dimnames(W_phy) <- dimnames(W_non) <- list(rownames(A_H), rownames(A_P))
   K_phy <- gllvmTMB::make_cross_kernel(A_H, A_P, W_phy, rho = rho_phy)
   K_non <- gllvmTMB::make_cross_kernel(I_H, I_P, W_non, rho = rho_non)
@@ -538,6 +542,52 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   expect_gt(.c3_gamma_corr(Gamma_non, fx$Gamma_non), 0.95)
   expect_lt(.c3_gamma_corr(Gamma_phy, fx$Gamma_non), 0.25)
   expect_lt(.c3_gamma_corr(Gamma_non, fx$Gamma_phy), 0.25)
+})
+
+test_that("moderately overlapping kernels still recover component Gamma shapes", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 moderate-overlap alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy | kernel_latent(species, K = K_phy, name = "phy") | aligned make_cross_kernel(A_H, A_P, W_phy, rho_phy) | fit$kernel_diagnostics | moderate pair |
+  ## | K_non | kernel_latent(species, K = K_non, name = "non") | blended non kernel, 30% aligned + 70% opposed | fit$kernel_diagnostics | moderate pair |
+  ## | Gamma_phy | same "phy" tier | Lambda_H,phy Lambda_P,phy^T | extract_Gamma(level = "phy") | Gamma_shape_phy |
+  ## | Gamma_non | same "non" tier | Lambda_H,non Lambda_P,non^T | extract_Gamma(level = "non") | Gamma_shape_non |
+  fx <- .c3_make_two_component_fixture(
+    seed = 2401L,
+    non_association_blend = 0.3
+  )
+  expect_equal(.c3_kernel_overlap_class(fx$similarity), "moderate")
+  expect_gt(fx$similarity, 0.25)
+  expect_lt(fx$similarity, 0.70)
+
+  fit <- .c3_fit_two_kernel_set(fx)
+  expect_equal(fit$full$opt$convergence, 0L)
+  expect_equal(fit$phy_only$opt$convergence, 0L)
+  expect_equal(fit$non_only$opt$convergence, 0L)
+  expect_equal(fit$full$kernel_diagnostics$pairs$overlap_class, "moderate")
+  expect_equal(
+    fit$full$kernel_diagnostics$pairs$similarity,
+    fx$similarity,
+    tolerance = 1e-12
+  )
+  expect_gt(
+    as.numeric(stats::logLik(fit$full)) -
+      max(
+        as.numeric(stats::logLik(fit$phy_only)),
+        as.numeric(stats::logLik(fit$non_only))
+      ),
+    50
+  )
+  expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.95)
+  expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.95)
+  expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.25)
+  expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.25)
 })
 
 test_that("near-orthogonal selective absence collapses either absent Gamma", {

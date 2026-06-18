@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 08:51 MDT",
+  "updated": "2026-06-18 09:05 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -42,9 +42,9 @@
     },
     {
       "label": "Next decision",
-      "value": "#101 gate",
+      "value": "#101 green",
       "status": "guard",
-      "note": "GLLVM.jl #95 has landed and main CI is green; #101 merge-ref and local live JuliaCall bridge suites passed. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at f7be594; Documenter succeeded and CI is still in progress, so #489 still waits before bridge claims widen."
+      "note": "GLLVM.jl #95 has landed and main CI is green; #101 merge-ref and local live JuliaCall bridge suites passed. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at f7be594; both completed successfully and #101 is clean, but #489 still needs an explicit landing/split decision before bridge claims widen."
     }
   ],
   "repos": [
@@ -61,8 +61,8 @@
       "name": "GLLVM.jl",
       "branch": "codex/julia-per-trait-dispersion",
       "head": "f7be594",
-      "state": "guard",
-      "note": "#95 merged to main; main CI 27724193515 is green at 70a5c83. #101 is draft/open at f7be594; local merge-ref 2cd8563 and live R bridge suites passed locally. Maintainer-approved close/reopen triggered fresh PR CI 27763712855, still in progress, and Documenter 27763712914, completed success.",
+      "state": "success",
+      "note": "#95 merged to main; main CI 27724193515 is green at 70a5c83. #101 is draft/open and clean at f7be594; local merge-ref 2cd8563 and live R bridge suites passed locally. Maintainer-approved close/reopen triggered fresh PR CI 27763712855 and Documenter 27763712914, both completed success.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
       "link_label": "PR #101"
     },
@@ -140,11 +140,11 @@
       "name": "Paired GLLVM.jl engine gate",
       "owner": "Karpinski + Gauss + Hopper",
       "status": "active",
-      "counts": "1/4",
+      "counts": "2/4",
       "slices": [
         {
-          "name": "GLLVM.jl #101 local merge-ref bridge slice passed 641/641 at 2cd8563; fresh PR CI 27763712855 is in progress and Documenter 27763712914 succeeded after maintainer-approved close/reopen",
-          "status": "partial",
+          "name": "GLLVM.jl #101 local merge-ref bridge slice passed 641/641 at 2cd8563; fresh PR CI 27763712855 and Documenter 27763712914 both succeeded at f7be594 after maintainer-approved close/reopen",
+          "status": "covered",
           "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
           "issue": "GLLVM.jl #101"
         },
@@ -227,12 +227,12 @@
     {
       "when": "now",
       "who": "Ada",
-      "text": "#489 is clean and green at 03fdda1; local R bridge suites now pass, but keep it draft/partial until #101 fresh PR CI finishes and claim gates close."
+      "text": "#489 is clean and green at 03fdda1 and #101 fresh PR CI is now green at f7be594, but keep the bridge draft/partial until the landing/split decision and claim gates close."
     },
     {
       "when": "now",
       "who": "Grace",
-      "text": "gllvmTMB #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, local bridge suites, and main scheduled full-check 27752749643 are green. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at f7be594; Documenter succeeded and CI remains in progress. Full-check 27752749643 completed successfully on windows-latest, ubuntu-latest, and macos-latest at 0567cd7. Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Fisher/Curie scoring still blocks coverage or power promotion. Local iter 24 reached 383510 / 480000 reps as process evidence."
+      "text": "gllvmTMB #489 R-CMD/recovery, GLLVM.jl main CI/Documenter, #101 fresh PR CI, local bridge suites, and main scheduled full-check 27752749643 are green. Fresh #101 PR CI run 27763712855 and Documenter run 27763712914 both completed success at f7be594. Full-check 27752749643 completed successfully on windows-latest, ubuntu-latest, and macos-latest at 0567cd7. Run 27752884846 completed success at 2026-06-18T14:07:44Z with 51/51 jobs successful and pushed power-pilot-results 1a2aac6 (run 110). The remote store now has 48 cells, 29176 / 480000 reps, 1/48 cells at cap, signal mean coverage 0.748, pass94 3/24, pass95 2/24, null mean coverage-under-null 0.426, 28 flagged cells, and 28 coverage anomalies. Fisher/Curie scoring still blocks coverage or power promotion. Local iter 24 reached 383510 / 480000 reps as process evidence."
     },
     {
       "when": "now",
@@ -254,7 +254,7 @@
     {
       "status": "guard",
       "kind": "GLLVM.jl",
-      "item": "#95 has landed; #101 has local merge-ref and live JuliaCall bridge evidence; fresh Documenter succeeded and PR CI remains in progress after maintainer-approved close/reopen, so wait for CI before R bridge claim widening."
+      "item": "#95 has landed; #101 has local merge-ref, live JuliaCall bridge evidence, fresh Documenter success, and fresh PR CI success. Use this as gate evidence, not as release readiness."
     },
     {
       "status": "guard",
@@ -287,7 +287,7 @@
       "owners": "Hopper + Karpinski + Gauss",
       "status": "active",
       "parallel_with": "simulation/power and docs-read path",
-      "join_gate": "Fresh #101 PR checks; local live JuliaCall evidence is partial until CI agrees."
+      "join_gate": "Fresh #101 PR checks now agree; next gate is the #489 landing/split decision."
     },
     {
       "lane": "Simulation and power scoring",
@@ -316,8 +316,8 @@
       "name": "Ada",
       "role": "orchestrator and integrator",
       "status": "active",
-      "task": "Keep #101 -> #489 ordering explicit after #95 landed and avoid widening #489 claims.",
-      "blocked_by": "#101 fresh PR CI is in progress; Documenter succeeded",
+      "task": "Keep #101 -> #489 ordering explicit after #101 fresh PR CI turned green and avoid widening #489 claims.",
+      "blocked_by": "#489 landing/split decision and claim gates, not #101 CI",
       "parallel_with": "Rose, Grace, Shannon",
       "join_gate": "#489 ready/split/hold choice"
     },
@@ -352,8 +352,8 @@
       "name": "Hopper",
       "role": "R-Julia bridge",
       "status": "active",
-      "task": "Local no-Julia and live JuliaCall bridge suites passed against GLLVM.jl f7be594; fresh #101 Documenter succeeded and CI is in progress.",
-      "blocked_by": "#101 CI run 27763712855 is not concluded yet",
+      "task": "Local no-Julia and live JuliaCall bridge suites passed against GLLVM.jl f7be594; fresh #101 Documenter and CI both succeeded.",
+      "blocked_by": "#489 landing/split decision and interval/claim gates",
       "parallel_with": "Karpinski and Gauss",
       "join_gate": "Paired Julia SHA"
     },
@@ -361,8 +361,8 @@
       "name": "Karpinski",
       "role": "Julia engine and sparse/AD path",
       "status": "active",
-      "task": "Watch maintainer-approved close/reopen #101 PR CI trigger; local merge-ref bridge slice passed and fresh checks are running.",
-      "blocked_by": "CI run 27763712855 is in progress; Documenter run 27763712914 succeeded",
+      "task": "Record maintainer-approved close/reopen #101 PR CI outcome; local merge-ref bridge slice passed and fresh checks are green.",
+      "blocked_by": "No Julia CI blocker remains; bridge claim still waits on #489 decision",
       "parallel_with": "Hopper and Gauss",
       "join_gate": "GLLVM.jl #101 check evidence"
     },
@@ -465,10 +465,10 @@
       "engine": "active",
       "bridge": "partial",
       "inference": "partial",
-      "evidence": "PR #489 is clean and green at 03fdda1: coevolution recovery 27727834498 and R-CMD-check 27727834488 both succeeded. GLLVM.jl #101 merge-ref 2cd8563 focused bridge slice passed 641/641 locally with Julia 1.10. gllvmTMB no-Julia bridge suite passed; live JuliaCall bridge suite passed locally against GLLVM.jl f7be594 with juliaup on PATH. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at the same f7be594 head; Documenter succeeded and CI is still in progress.",
+      "evidence": "PR #489 is clean and green at 03fdda1: coevolution recovery 27727834498 and R-CMD-check 27727834488 both succeeded. GLLVM.jl #101 merge-ref 2cd8563 focused bridge slice passed 641/641 locally with Julia 1.10. gllvmTMB no-Julia bridge suite passed; live JuliaCall bridge suite passed locally against GLLVM.jl f7be594 with juliaup on PATH. Maintainer-approved close/reopen triggered fresh #101 PR CI run 27763712855 and Documenter run 27763712914 at the same f7be594 head; both completed success and #101 is clean.",
       "url": "https://github.com/itchyshin/gllvmTMB/pull/489",
       "link_label": "PR #489",
-      "next_gate": "Wait for GLLVM.jl #101 CI 27763712855 to conclude before widening claims."
+      "next_gate": "Decide the #489 landing/split path and keep claims partial until bridge, release, and scientific coverage gates close."
     },
     {
       "id": "JUL-01A",
@@ -547,8 +547,8 @@
       "engine": "covered",
       "bridge": "planned",
       "inference": "partial",
-      "evidence": "Single named kernel tier works; two independent named tiers reserved.",
-      "next_gate": "C4/C5 issue split and second engine-slot decision."
+      "evidence": "One-kernel Design 65 path is currently green: C0 helper/prototype, C1 single named dense kernel equivalence, C2 point-estimate extract_Gamma known-Gamma recovery, C2 article fixture, and C3 guardrail tests passed with GLLVMTMB_HEAVY_TESTS=1 (`FAIL 0 | WARN 0 | SKIP 0 | PASS 125`). Two independent named tiers remain reserved pending a second engine slot; Paper 2 Option B is not finished.",
+      "next_gate": "Paper 2 Option A/B decision, C4/C5 issue split, and second engine-slot design."
     },
     {
       "id": "MIS-32",
@@ -600,6 +600,20 @@
   ],
   "evidence": [
     {
+      "when": "2026-06-18 09:05 MDT",
+      "who": "Coevolution audit",
+      "text": "Current checkout confirms the one-kernel Design 65 coevolution workflow is implemented and still green: C0 make_cross_kernel/prototype, C1 single named dense kernel equivalence, C2 point-estimate extract_Gamma known-Gamma recovery, C2 article fixture, and C3 guardrail tests passed with GLLVMTMB_HEAVY_TESTS=1 (`FAIL 0 | WARN 0 | SKIP 0 | PASS 125`). The full Paper 2 Option B model is not finished: two independent named kernels, estimated/profiled rho, Gamma_shape/Gamma_effect, bootstrap intervals, mixed-family recovery, and two-kernel identifiability simulations remain future gates.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-coevolution-work-inventory.md",
+      "link_label": "coevolution audit"
+    },
+    {
+      "when": "2026-06-18 09:05 MDT",
+      "who": "GLLVM.jl #101",
+      "text": "Fresh PR checks from the maintainer-approved close/reopen completed successfully without pushing code: CI run 27763712855 and Documenter run 27763712914 both succeeded at head f7be594. #101 is open/draft and clean. This clears the fresh Julia PR-check gate, but it is not bridge completion, release readiness, or scientific coverage.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
+    },
+    {
       "when": "2026-06-18 08:51 MDT",
       "who": "Article council",
       "text": "Article council slice 5A started the biological worked-example triage: behavioural-syndromes stays internal as a Tier 3 candidate Tier 1 draft, now with explicit YAML and a gate note. Public promotion waits for a runnable wide-format fit, diagnostic_table() evidence, clearer reader path, Florence figure review, and rendered HTML review. This is article-readiness progress only, not bridge, release, or scientific-coverage completion.",
@@ -630,7 +644,7 @@
     {
       "when": "2026-06-18 07:47 MDT",
       "who": "GLLVM.jl #101",
-      "text": "Maintainer-approved close/reopen triggered fresh PR checks without pushing code: CI run 27763712855 is in progress and Documenter run 27763712914 completed successfully at head f7be594. #101 is open/draft with mergeStateStatus UNSTABLE while CI runs, so this is trigger evidence only, not bridge completion.",
+      "text": "Maintainer-approved close/reopen triggered fresh PR checks without pushing code: CI run 27763712855 was in progress and Documenter run 27763712914 completed successfully at head f7be594. #101 was open/draft with mergeStateStatus UNSTABLE while CI ran, so this was trigger evidence only, not bridge completion.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
       "link_label": "GLLVM.jl #101"
     },

@@ -21236,3 +21236,100 @@ Deliberately not run:
   `--as-cran`, issue mutation, GLLVM.jl mutation, push, public nav promotion,
   or article rewrite. This slice records the gate that prevents premature
   publication.
+
+## 2026-06-18 -- Coevolution work inventory and #101 fresh-CI refresh
+
+Audited the cross-lineage coevolution work already completed because the
+maintainer asked why the model still felt unfinished after several rounds of
+work. The result is now explicit: the Design 65 one-kernel, fixed-`rho`,
+point-estimate `Gamma` workflow is implemented and green; the broader Paper 2
+Option B model with two independent named kernels, estimated/profiled `rho`,
+`Gamma_shape` / `Gamma_effect`, bootstrap uncertainty, mixed-family recovery,
+and two-kernel identifiability simulations is not finished. The guard remains:
+PR green != bridge complete != release ready != scientific coverage passed.
+
+Evidence and edits:
+
+- Added `docs/dev-log/audits/2026-06-18-coevolution-work-inventory.md`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coevolution-work-inventory.md`.
+- Updated `docs/dev-log/dashboard/status.json` and
+  `docs/dev-log/dashboard/sweep.json` to record:
+  - one-kernel coevolution audit evidence;
+  - GLLVM.jl #101 fresh PR CI run `27763712855` and Documenter run
+    `27763712914` both completed successfully at `f7be594`;
+  - #101 freshness no longer blocks the #489 decision, but #489 remains draft
+    and partial pending explicit landing/split and claim gates.
+
+Checks:
+
+- Skill read:
+  `sed -n '1,620p' .agents/skills/after-task-audit/SKILL.md`
+  -> after-task audit checklist read.
+- Memory grounding:
+  `rg -n "coevolution|cross-lineage|cross lineage|cross_kernel|make_cross_kernel|extract_Gamma|COE-|KER-|Gamma|rho|multiple-kernel|two-kernel" /Users/z3437171/.codex/memories/MEMORY.md`
+  -> found prior coevolution guidance: one-kernel point-estimate only, `rho`
+  supplied in `K_star`, no interval or in-engine `rho` claims.
+- Repo inventory:
+  `rg --files R src tests/testthat vignettes/articles docs/design docs/dev-log/after-task docs/dev-log/audits | rg -i "cross|coevol|kernel|gamma"`
+  -> found current implementation, tests, article, design, and after-task
+  artefacts.
+  `rg -n "extract_Gamma|kernel_name|known_kernel|phylo_rr_idx|phylo_diag_idx|kernel_unique|kernel_latent|two-Psi|confound|distinct observation" R/extract-sigma.R R/brms-sugar.R R/fit-multi.R src/gllvmTMB.cpp`
+  -> verified the one-slot kernel implementation and C3.2 guardrail surfaces.
+- Source reads:
+  `sed -n '1,260p' R/kernel-helpers.R`
+  `sed -n '1,260p' R/kernel-keywords.R`
+  `sed -n '1310,1395p' R/extract-sigma.R`
+  `sed -n '190,275p' R/fit-multi.R`
+  `sed -n '680,735p' R/fit-multi.R`
+  `sed -n '3838,3860p' R/fit-multi.R`
+  `sed -n '2440,2495p' R/brms-sugar.R`
+  `sed -n '1,240p' docs/design/65-cross-lineage-coevolution-kernel.md`
+  `sed -n '225,250p' docs/design/35-validation-debt-register.md`
+  `sed -n '1,240p' vignettes/articles/cross-lineage-coevolution.Rmd`
+  -> evidence matched the audit verdict.
+- Test-source reads:
+  `sed -n '1,260p' tests/testthat/test-coevolution-prototype.R`
+  `sed -n '1,320p' tests/testthat/test-coevolution-recovery.R`
+  `sed -n '1,320p' tests/testthat/test-kernel-equivalence.R`
+  `sed -n '1,620p' tests/testthat/test-coevolution-two-kernel.R`
+  `sed -n '1,220p' tests/testthat/test-example-coevolution-kernel.R`
+  -> verified C0/C1/C2/C3 test coverage before rerunning.
+- Coevolution tests:
+  `PATH="/opt/homebrew/bin:$PATH" /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution|kernel-equivalence|example-coevolution-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 4 | PASS 99`.
+  `PATH="/opt/homebrew/bin:$PATH" GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution|kernel-equivalence|example-coevolution-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 125`.
+- Live evidence poll:
+  `PATH="/opt/homebrew/bin:$PATH" gh pr view 489 --repo itchyshin/gllvmTMB --json number,state,isDraft,headRefOid,mergeStateStatus,statusCheckRollup,url,title`
+  -> #489 open draft at `03fdda1`, clean, R-CMD-check and
+  `coevolution-two-kernel-recovery` checks success.
+  `PATH="/opt/homebrew/bin:$PATH" gh pr view 101 --repo itchyshin/GLLVM.jl --json number,state,isDraft,headRefOid,mergeStateStatus,statusCheckRollup,url,title`
+  -> #101 open draft at `f7be594`, clean, fresh CI run `27763712855`,
+  fresh Documenter run `27763712914`, and `documenter/deploy` all success.
+  `PATH="/opt/homebrew/bin:$PATH" gh issue view 486 --repo itchyshin/gllvmTMB --json number,state,title,updatedAt,url`
+  -> release issue #486 remains open.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27752749643 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,name`
+  -> scheduled full-check completed success at `0567cd7`.
+  `PATH="/opt/homebrew/bin:$PATH" gh run view 27752884846 --repo itchyshin/gllvmTMB --json status,conclusion,updatedAt,headSha,url,name`
+  -> power-pilot run completed success at `0567cd7`.
+  `git ls-remote origin refs/heads/power-pilot-results`
+  -> unchanged at `1a2aac654e877a34b3e590f0269d10cca05a43e7`.
+- Pre-edit lane check:
+  `PATH="/opt/homebrew/bin:$PATH" gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 is open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/audits docs/dev-log/after-task ROADMAP.md docs/design`
+  -> recent overlaps are the current mission-control/article-council commits
+  on this branch.
+- JSON and whitespace:
+  `python3 -m json.tool docs/dev-log/dashboard/status.json >/dev/null`
+  -> valid JSON.
+  `python3 -m json.tool docs/dev-log/dashboard/sweep.json >/dev/null`
+  -> valid JSON.
+  `git diff --check` -> clean.
+
+Deliberately not run:
+
+- No `devtools::document()`, full `devtools::test()`, R CMD check,
+  pkgdown render, issue mutation, GLLVM.jl mutation, push, article promotion,
+  or source-code change. This audit documents current evidence and gaps only.

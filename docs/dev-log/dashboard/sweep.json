@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-18 08:51 MDT",
+  "updated": "2026-06-18 09:05 MDT",
   "active_work": [
     {
       "when": "live",
@@ -19,7 +19,7 @@
     {
       "when": "live",
       "who": "GLLVM.jl",
-      "text": "#95 is merged and main CI is green; #101 is draft/open at f7be594, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed. Maintainer-approved close/reopen triggered fresh PR CI run 27763712855 and Documenter run 27763712914; Documenter succeeded and CI remains in progress. #94 remains dirty salvage."
+      "text": "#95 is merged and main CI is green; #101 is draft/open and clean at f7be594, local merge-ref bridge slice passed 641/641, and local live JuliaCall bridge suite passed. Maintainer-approved close/reopen triggered fresh PR CI run 27763712855 and Documenter run 27763712914; both completed successfully. #94 remains dirty salvage."
     },
     {
       "when": "live",
@@ -28,6 +28,20 @@
     }
   ],
   "evidence": [
+    {
+      "when": "2026-06-18 09:05 MDT",
+      "who": "Coevolution audit",
+      "text": "Current checkout confirms the one-kernel Design 65 coevolution workflow is implemented and still green: C0 make_cross_kernel/prototype, C1 single named dense kernel equivalence, C2 point-estimate extract_Gamma known-Gamma recovery, C2 article fixture, and C3 guardrail tests passed with GLLVMTMB_HEAVY_TESTS=1 (`FAIL 0 | WARN 0 | SKIP 0 | PASS 125`). The full Paper 2 Option B model is not finished: two independent named kernels, estimated/profiled rho, Gamma_shape/Gamma_effect, bootstrap intervals, mixed-family recovery, and two-kernel identifiability simulations remain future gates.",
+      "url": "https://github.com/itchyshin/gllvmTMB/blob/main/docs/dev-log/audits/2026-06-18-coevolution-work-inventory.md",
+      "link_label": "coevolution audit"
+    },
+    {
+      "when": "2026-06-18 09:05 MDT",
+      "who": "GLLVM.jl #101",
+      "text": "Fresh PR checks from the maintainer-approved close/reopen completed successfully without pushing code: CI run 27763712855 and Documenter run 27763712914 both succeeded at head f7be594. #101 is open/draft and clean. This clears the fresh Julia PR-check gate, but it is not bridge completion, release readiness, or scientific coverage.",
+      "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
+      "link_label": "GLLVM.jl #101"
+    },
     {
       "when": "2026-06-18 08:51 MDT",
       "who": "Article council",
@@ -59,7 +73,7 @@
     {
       "when": "2026-06-18 07:47 MDT",
       "who": "GLLVM.jl #101",
-      "text": "Maintainer-approved close/reopen triggered fresh PR checks without pushing code: CI run 27763712855 is in progress and Documenter run 27763712914 completed successfully at head f7be594. #101 is open/draft with mergeStateStatus UNSTABLE while CI runs, so this is trigger evidence only, not bridge completion.",
+      "text": "Maintainer-approved close/reopen triggered fresh PR checks without pushing code: CI run 27763712855 is in progress and Documenter run 27763712914 completed successfully at head f7be594. #101 was open/draft with mergeStateStatus UNSTABLE while CI ran, so this was trigger evidence only, not bridge completion.",
       "url": "https://github.com/itchyshin/GLLVM.jl/pull/101",
       "link_label": "GLLVM.jl #101"
     },

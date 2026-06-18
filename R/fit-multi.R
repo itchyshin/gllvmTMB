@@ -2299,6 +2299,22 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       K_kernel,
       unique_kernel_names
     )
+    high_kernel_pairs <- kernel_diagnostics$pairs[
+      kernel_diagnostics$pairs$overlap_class == "high",
+      ,
+      drop = FALSE
+    ]
+    if (nrow(high_kernel_pairs) > 0L) {
+      affected_pairs <- paste(
+        paste0(high_kernel_pairs$level_1, "/", high_kernel_pairs$level_2),
+        collapse = ", "
+      )
+      cli::cli_warn(c(
+        "High overlap between fixed kernel tiers weakens component-specific {.field Gamma_shape} separation.",
+        "i" = "Affected tier pairs: {.val {affected_pairs}}.",
+        ">" = "Treat {.fn extract_Gamma}(level = ...) as descriptive for those components; use lower-overlap kernels, null/sensitivity checks, or collapse the tiers before making separation claims."
+      ))
+    }
   }
   ## Build the sparse A^-1 machinery whenever any phylogenetic term
   ## (phylo_latent, phylo_unique, phylo_slope, or the augmented latent-slope)

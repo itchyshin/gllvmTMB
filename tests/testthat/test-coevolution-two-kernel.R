@@ -412,6 +412,56 @@ test_that("kernel-similarity diagnostic separates low and high overlap cases", {
   expect_equal(diag_dx$pairs$overlap_class, "high")
 })
 
+test_that("high-overlap kernel tiers warn while still fitting", {
+  testthat::skip_if_not_installed("TMB")
+
+  set.seed(9001)
+  n_unit <- 8L
+  n_rep <- 3L
+  unit_levels <- paste0("u", seq_len(n_unit))
+  A <- matrix(0.35, n_unit, n_unit)
+  diag(A) <- 1
+  rownames(A) <- colnames(A) <- unit_levels
+
+  rows <- expand.grid(
+    unit_id = unit_levels,
+    rep_id = seq_len(n_rep),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  rows$row_id <- factor(seq_len(nrow(rows)))
+  rows$unit_id <- factor(rows$unit_id, levels = unit_levels)
+
+  L_A <- t(chol(A + diag(1e-8, n_unit)))
+  g_phy <- as.numeric(L_A %*% stats::rnorm(n_unit))
+  g_non <- as.numeric(L_A %*% stats::rnorm(n_unit))
+  rows$y1 <- 0.5 * g_phy[as.integer(rows$unit_id)] +
+    0.5 * g_non[as.integer(rows$unit_id)] +
+    stats::rnorm(nrow(rows), sd = 0.25)
+  rows$y2 <- -0.3 * g_phy[as.integer(rows$unit_id)] +
+    0.4 * g_non[as.integer(rows$unit_id)] +
+    stats::rnorm(nrow(rows), sd = 0.25)
+
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  expect_warning(
+    fit <- suppressMessages(gllvmTMB::gllvmTMB(
+      traits(y1, y2) ~
+        1 +
+        kernel_latent(unit_id, K = A, d = 1, name = "phy") +
+        kernel_latent(unit_id, K = A, d = 1, name = "non"),
+      data = rows,
+      unit = "row_id",
+      cluster = "unit_id",
+      family = stats::gaussian(),
+      control = ctl
+    )),
+    regexp = "High overlap between fixed kernel tiers"
+  )
+  expect_equal(fit$opt$convergence, 0L)
+  expect_equal(fit$kernel_diagnostics$pairs$similarity, 1)
+  expect_equal(fit$kernel_diagnostics$pairs$overlap_class, "high")
+})
+
 test_that("near-orthogonal two-component kernels recover component Gamma shapes", {
   skip_if_not_heavy()
   testthat::skip_on_cran()

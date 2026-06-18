@@ -22,6 +22,11 @@ The fitted object now carries:
 - `fit$kernel_diagnostics$note`: warning that high overlap weakens
   component-specific `Gamma_shape` separation evidence.
 
+Supersession note: the follow-up
+`2026-06-18-coe04-high-overlap-warning.md` adds a fit-time warning for high
+overlap. This report remains the record for first exposing the fitted-object
+diagnostic slot.
+
 ## Files changed
 
 - `R/fit-multi.R`
@@ -59,8 +64,8 @@ Gauss / Noether: no TMB likelihood or parameterisation change was made. The
 diagnostic is computed from fixed input kernels before fitting.
 
 Fisher / Curie: the diagnostic is now an inspectable fitted-object artefact.
-This supports near-orthogonal recovery evidence, but moderate/high-overlap
-failure behavior and null/selective absence still need explicit gates.
+This supports near-orthogonal recovery evidence, but moderate-overlap recovery,
+high-overlap calibration, and null/selective absence still need explicit gates.
 
 Rose: evidence files say `partial`, not `covered`, and preserve the guard
 against bridge/release/science overclaiming.

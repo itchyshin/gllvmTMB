@@ -26,7 +26,10 @@
   true zero loadings, the two-kernel fit collapses that component's
   `extract_Gamma()` while recovering the present component. A block-null smoke
   gate also collapses both component `Gamma_shape` estimates when both loading
-  blocks are zero. PARTIAL (`COE-04`): moderate/high-overlap kernels,
+  blocks are zero. High-overlap kernel tiers now warn during fitting that
+  component-specific `Gamma_shape` separation is weak evidence, while still
+  returning the diagnostic table for inspection. PARTIAL (`COE-04`):
+  moderate-overlap recovery, high-overlap recovery/failure calibration,
   calibrated block-null thresholds, explicit Psi redesign/deprecation, `rho`
   profiling or estimation, and interval calibration remain gated. The
   one-name `kernel_*()` path still uses the

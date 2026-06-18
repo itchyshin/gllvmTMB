@@ -21626,8 +21626,9 @@ Purpose:
   fixed named multi-kernel model.
 - Keep the model status partial: this covers one near-orthogonal Gaussian
   latent-only case where the non component is truly absent. It does not close
-  moderate/high-overlap behavior, block-null calibration, `rho`, intervals,
-  mixed/non-Gaussian gates, explicit Psi support, or the post-arc
+  moderate-overlap behavior, high-overlap recovery calibration, block-null
+  calibration, `rho`, intervals, mixed/non-Gaussian gates, explicit Psi
+  support, or the post-arc
   `*_unique()` lifecycle/deprecation plan.
 
 Pre-edit lane check:
@@ -21681,7 +21682,7 @@ Checks:
 Still not claimed:
 
 - No public Paper 2 promotion.
-- No moderate/high-overlap recovery/failure-language gate.
+- No moderate-overlap recovery gate or high-overlap calibration.
 - No block-null calibration.
 - No estimated/profiled `rho`.
 - No interval coverage.
@@ -21701,9 +21702,10 @@ Purpose:
 - Extend the `COE-04` absence/null side of the Paper 2 fixed named
   multi-kernel model.
 - Keep the model status partial: these are near-orthogonal Gaussian
-  latent-only gates, not moderate/high-overlap evidence, calibrated null
-  thresholds, `rho`, intervals, mixed/non-Gaussian gates, explicit Psi support,
-  or the post-arc `*_unique()` lifecycle/deprecation plan.
+  latent-only gates, not moderate-overlap recovery, high-overlap recovery
+  calibration, calibrated null thresholds, `rho`, intervals,
+  mixed/non-Gaussian gates, explicit Psi support, or the post-arc
+  `*_unique()` lifecycle/deprecation plan.
 
 Pre-edit lane check:
 
@@ -21753,7 +21755,73 @@ Checks:
 Still not claimed:
 
 - No public Paper 2 promotion.
-- No moderate/high-overlap recovery/failure-language gate.
+- No moderate-overlap recovery gate or high-overlap calibration.
+- No calibrated block-null threshold across seeds/effect sizes.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
+## 2026-06-18 11:47 MDT -- COE-04 high-overlap warning
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Close the silent high-overlap failure-language gap for fixed named
+  multi-kernel fits.
+- Keep `COE-04` partial: this warns when component-specific `Gamma_shape`
+  separation is weak evidence, but it does not calibrate high-overlap recovery
+  or failure behavior across a simulation grid.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/article/kernel commits on
+  this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- `R/fit-multi.R` now emits a `cli_warn()` when fitted fixed kernel tiers have
+  `fit$kernel_diagnostics$pairs$overlap_class == "high"`.
+- The warning names affected tier pairs and tells the user to treat
+  `extract_Gamma(level = ...)` as descriptive for those components unless
+  lower-overlap kernels, null/sensitivity checks, or collapsed tiers support a
+  separation claim.
+- Added a fast test where two named tiers use the same dense `K`; the fit
+  warns, still converges, and stores similarity `1` / overlap class `high`.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+
+Checks:
+
+- Exploratory checkout-loaded high-overlap fit before the edit
+  -> converged with `fit$kernel_diagnostics$pairs$similarity == 1` and
+  `overlap_class == "high"`, but emitted no warning.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 4 | PASS 40`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 79`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 7 | PASS 126`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 188`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No moderate-overlap recovery gate.
+- No high-overlap recovery/failure calibration beyond warning language.
 - No calibrated block-null threshold across seeds/effect sizes.
 - No estimated/profiled `rho`.
 - No interval coverage.
@@ -21773,8 +21841,9 @@ Purpose:
 - Make the `COE-04` kernel-separation diagnostic inspectable from fitted
   multi-kernel objects, not only from test-local helper code.
 - Keep the model status partial: this exposes diagnostics and strengthens the
-  near-orthogonal gate, but it does not add moderate/high-overlap recovery,
-  selective absence, `rho`, intervals, mixed/non-Gaussian gates, or Psi support.
+  near-orthogonal gate, but it does not add moderate-overlap recovery,
+  high-overlap calibration, selective absence, `rho`, intervals,
+  mixed/non-Gaussian gates, or Psi support.
 
 Pre-edit lane check:
 
@@ -21822,7 +21891,7 @@ Checks:
 Still not claimed:
 
 - No public Paper 2 promotion.
-- No moderate/high-overlap recovery/failure-language gate.
+- No moderate-overlap recovery gate or high-overlap calibration.
 - No block-null or selective-absence calibration.
 - No estimated/profiled `rho`.
 - No interval coverage.

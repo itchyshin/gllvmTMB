@@ -20060,3 +20060,61 @@ Deliberately not run:
   audit, and no public docs changes. The local replicate count and the
   cancelled scheduled run do not make #489 ready, the bridge complete, the
   release ready, or scientific coverage passed.
+
+## 2026-06-18 -- Local power-pilot iter 19 heartbeat
+
+Refreshed the mission-control evidence after the local LaunchAgent completed
+another accumulation iteration. This is an evidence/dashboard update only; it
+does not change package code, formula grammar, likelihoods, public docs, or
+workflow files.
+
+Evidence recorded:
+
+- Local power-pilot LaunchAgent iter 19 completed at 2026-06-18 02:35 MDT:
+  376,010 / 480,000 reps, 0/48 cells at cap, 0 errored cells, signal mean
+  coverage 0.753, pass94 3/24, pass95 2/24, and null mean
+  coverage-under-null 0.425.
+- The 02:33 MDT poll caught `pilot-index.rds` absent while the parent loop was
+  active and several cell files had just updated. After a short stabilization
+  wait, `pilot-index.rds` returned at 2026-06-18 02:35:09 MDT and the local log
+  at 2026-06-18 02:35:14 MDT.
+- A stable local status snapshot was written to
+  `/tmp/gllvmtmb-local-iter19-status.md`. The parent R process and all ten
+  RSOCK workers remained alive; all ten workers were active in the post-helper
+  snapshot. This remains local process evidence only.
+- GitHub bridge/release state remained unchanged: #489 is still draft/open,
+  #101 still lacks fresh PR CI after retarget, and #486 remains the release gate.
+
+Checks:
+
+- Pre-edit lane check:
+  `/opt/homebrew/bin/gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,isDraft,headRefName,updatedAt,url`
+  -> only draft PR #489 was open.
+  `git log --all --oneline --since="6 hours ago" -- docs/dev-log/check-log.md docs/dev-log/dashboard docs/dev-log/recovery-checkpoints`
+  -> recent overlapping edits are the current #489 evidence/dashboard commits.
+- Local power-pilot readout:
+  `stat -f '%Sm %N' -t '%Y-%m-%d %H:%M:%S %Z' /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-results-local/pilot-index.rds /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> initially `pilot-index.rds` was absent at the 02:33 MDT poll while the
+  loop was active, then after a stabilization wait `pilot-index.rds` was at
+  2026-06-18 02:35:09 MDT and the local log at 2026-06-18 02:35:14 MDT.
+  `tail -n 80 /Users/z3437171/gllvmTMB-power-pilot/dev/m3-pilot-local.log`
+  -> iter 19 summary above.
+  `/usr/local/bin/Rscript --vanilla dev/power-pilot-run.R --mode=status --n-sim-cap=10000 --results-dir=dev/m3-pilot-results-local --status-out=/tmp/gllvmtmb-local-iter19-status.md`
+  from `/Users/z3437171/gllvmTMB-power-pilot`
+  -> status table above; `all_complete=false`, `reps_total=376010`,
+  `reps_target=480000`, `cells_complete=0`, `cells_total=48`.
+  `ps ax -o pid,ppid,etime,cputime,pcpu,pmem,state,command | rg '/Library/Frameworks/R.framework/Resources/bin/exec/R|/usr/local/bin/Rscript|/usr/bin/Rscript|Rscript'`
+  -> local parent process and all ten RSOCK workers remained alive after iter
+  19; all ten workers were active in the post-helper snapshot.
+  `test -e /Users/z3437171/gllvmTMB-power-pilot/dev/STOP-LOCAL-PILOT`
+  -> STOP flag absent.
+
+Deliberately not run:
+
+- No remote power-pilot result fetch/archive/scoring for run `27735802023`
+  because the persist job was cancelled and the results branch did not move.
+  No GLLVM.jl push, no #101 close/reopen, no fresh PR CI trigger, no
+  `Pkg.test()`, no local R CMD check, no pkgdown build, no release `--as-cran`
+  audit, and no public docs changes. The local replicate count and the
+  cancelled scheduled run do not make #489 ready, the bridge complete, the
+  release ready, or scientific coverage passed.

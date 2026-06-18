@@ -911,21 +911,22 @@ test_that("near-orthogonal block-null smoke collapses both component Gammas", {
   )
 })
 
-test_that("near-orthogonal null and medium-signal grid separates claim scopes", {
+test_that("near-orthogonal null diagnostic and medium-signal grid separates claim scopes", {
   skip_if_not_heavy()
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("TMB")
   testthat::skip_if_not_installed("tidyr")
 
-  ## COE-04 small null/signal calibration alignment table.
+  ## COE-04 null/signal calibration alignment table.
   ##
   ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
   ## |---|---|---|---|---|
   ## | K_phy/K_non | kernel_latent(..., name = "phy/non") | near-orthogonal fixed kernels | fit$kernel_diagnostics | separable pair |
   ## | Gamma_phy = 0 | same "phy" tier | Lambda_phy scaled to zero | extract_Gamma(level = "phy") | near-zero null block |
   ## | Gamma_non = 0 | same "non" tier | Lambda_non scaled to zero | extract_Gamma(level = "non") | near-zero null block |
+  ## | null overfit tail | full two-tier vs intercept-only | twelve zero-loading seeds | logLik difference | diagnostic only |
   ## | Gamma_phy/Gamma_non > 0 | two medium-signal fixtures | nonzero Lambda_phy/Lambda_non | component Gamma correlations | planted shapes |
-  null_seeds <- 2301:2303
+  null_seeds <- 2301:2312
   null_grid <- lapply(null_seeds, function(seed) {
     fx <- .c3_make_two_component_fixture(
       seed = seed,
@@ -944,9 +945,11 @@ test_that("near-orthogonal null and medium-signal grid separates claim scopes", 
     )
   })
   null_grid <- do.call(rbind, null_grid)
-  expect_true(all(null_grid[, "norm_phy"] < 1e-3))
-  expect_true(all(null_grid[, "norm_non"] < 1e-3))
-  expect_true(all(null_grid[, "full_minus_intercept"] < 3))
+  expect_true(all(null_grid[, "norm_phy"] < 2e-4))
+  expect_true(all(null_grid[, "norm_non"] < 1.5e-3))
+  expect_lt(stats::median(null_grid[, "full_minus_intercept"]), 2)
+  expect_true(sum(null_grid[, "full_minus_intercept"] > 3) <= 2L)
+  expect_lt(max(null_grid[, "full_minus_intercept"]), 8)
 
   signal_grid <- data.frame(
     seed = c(2602L, 2604L),

@@ -21695,6 +21695,86 @@ Still not claimed:
 - No `*_unique()` lifecycle/deprecation implementation.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 14:36 MDT -- COE-04 null diagnostic grid
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Broaden the near-orthogonal null side of the `COE-04` evidence from three
+  seeds to a 12-seed diagnostic grid.
+- Keep the claim honest: this quantifies a null overfit tail and does not close
+  Type-I/null calibration, `rho` inference, interval coverage, mixed-family
+  coverage, bridge completion, release readiness, or scientific coverage.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/coevolution commits on this
+  branch.
+- `git diff --check`
+  -> clean before edits.
+
+Exploratory probe:
+
+- Checkout-loaded R probe over null seeds `2301:2312` found all full and
+  intercept-only fits converged.
+- Component `Gamma_shape` norms stayed near zero:
+  - max phy norm about `1.86e-4`;
+  - max non norm about `1.23e-3`.
+- Full-vs-intercept likelihood gain had a visible tail:
+  - median below `2`;
+  - seed `2309` reached about `6.24`;
+  - therefore the committed gate records the tail instead of claiming null
+    calibration passed.
+
+Implemented:
+
+- Updated the heavy null/signal grid in
+  `tests/testthat/test-coevolution-two-kernel.R`:
+  - null seeds now span `2301:2312`;
+  - null `Gamma_shape` norms must stay below `2e-4` for phy and `1.5e-3` for
+    non;
+  - full-vs-intercept likelihood gain must have median below `2`, at most two
+    seeds above `3`, and maximum below `8`;
+  - the two medium-signal fixtures remain in the same test and still require
+    component-specific `Gamma_shape` recovery and full-vs-one-component
+    likelihood separation.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+- Added after-task report
+  `docs/dev-log/after-task/2026-06-18-coe04-null-diagnostic-grid.md`.
+
+Checks:
+
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 8 | PASS 47`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 191`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 11 | PASS 142`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 311`.
+
+Still not claimed:
+
+- No formal null-threshold or Type-I calibration.
+- No public Paper 2 promotion.
+- No broad/harder moderate-overlap calibration.
+- No high-overlap truth recovery.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 14:25 MDT -- COE-04 high-overlap near-duplicate gate
 
 Branch: `codex/r-bridge-grouped-dispersion`

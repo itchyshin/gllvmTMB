@@ -26,10 +26,12 @@
   true zero loadings, the two-kernel fit collapses that component's
   `extract_Gamma()` while recovering the present component. A block-null smoke
   gate also collapses both component `Gamma_shape` estimates when both loading
-  blocks are zero, and a small near-orthogonal null/signal grid now keeps three
-  null seeds below the predeclared `Gamma_shape` norm and likelihood-gain
-  bounds while recovering both `Gamma_shape` components in two medium-signal
-  fixtures. A fixed-`rho` sensitivity grid now refits the phy component over
+  blocks are zero, and a 12-seed near-orthogonal null diagnostic now keeps
+  null `Gamma_shape` norms near zero while quantifying the full-vs-intercept
+  overfit tail (median below `2`, at most two seeds above `3`, maximum below
+  `8` log-likelihood units). The paired signal side still recovers both
+  `Gamma_shape` components in two medium-signal fixtures. A fixed-`rho`
+  sensitivity grid now refits the phy component over
   `rho = c(0, 0.25, 0.55, 0.85)` while holding the non component fixed; the
   positive-`rho` grid strongly beats the block-null `rho = 0` fit, but the gate
   deliberately treats the best grid point as sensitivity evidence only because
@@ -47,8 +49,8 @@
   matches low; an exploratory 40% blend degraded, so it remains outside the
   claim. PARTIAL (`COE-04`): broader/harder moderate-overlap calibration,
   broader high-overlap truth-recovery/failure calibration beyond the
-  collapse-equivalence and warning gates, broader null-threshold calibration,
-  explicit Psi
+  collapse-equivalence and warning gates, formal null-threshold calibration
+  beyond this diagnostic grid, explicit Psi
   redesign/deprecation, formal `rho` profile/estimation support, and interval
   calibration remain gated. The
   one-name `kernel_*()` path still uses the

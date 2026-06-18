@@ -21614,6 +21614,82 @@ Still not claimed:
   post-arc plan.
 - No bridge completion, release readiness, or scientific coverage completion.
 
+## 2026-06-18 11:30 MDT -- COE-04 selective-absence gate
+
+Branch: `codex/r-bridge-grouped-dispersion`
+
+Guard: `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Purpose:
+
+- Add the first `COE-04` selective-absence evidence slice for the Paper 2
+  fixed named multi-kernel model.
+- Keep the model status partial: this covers one near-orthogonal Gaussian
+  latent-only case where the non component is truly absent. It does not close
+  moderate/high-overlap behavior, block-null calibration, `rho`, intervals,
+  mixed/non-Gaussian gates, explicit Psi support, or the post-arc
+  `*_unique()` lifecycle/deprecation plan.
+
+Pre-edit lane check:
+
+- `/opt/homebrew/bin/gh pr list --state open`
+  -> only draft PR #489 (`codex/r-bridge-grouped-dispersion`) was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were current mission-control/article/kernel commits on
+  this branch.
+- `git diff --check`
+  -> clean before edits.
+
+Implemented:
+
+- Extended `.c3_make_two_component_fixture()` with `lambda_phy_scale` and
+  `lambda_non_scale` so the same DGP can encode component-present and
+  component-absent cases without duplicating the simulator.
+- Added a heavy `test-coevolution-two-kernel.R` gate where
+  `lambda_non_scale = 0`:
+  - the two-kernel fit converges;
+  - the present phy component recovers its `Gamma_shape` truth with
+    correlation > 0.95;
+  - the absent non component collapses
+    `extract_Gamma(level = "non")` below `1e-3`;
+  - the present-only model beats the absent-only model by more than 20
+    log-likelihood units;
+  - the full model does not materially improve over the present-only model.
+- Updated `NEWS.md`, `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`,
+  `docs/dev-log/dashboard/status.json`, and
+  `docs/dev-log/dashboard/sweep.json`.
+
+Checks:
+
+- Exploratory checkout-loaded R probes over absent-non seeds 2101..2103
+  -> all converged; the fitted non `Gamma_shape` norm stayed near zero while
+  the phy component recovered.
+- Exploratory checkout-loaded R probes over absent-phy seeds 2201..2203
+  -> all converged; the fitted phy `Gamma_shape` norm stayed near zero while
+  the non component recovered. This symmetric case is not yet promoted to a
+  committed test gate.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 61`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel")'`
+  -> `FAIL 0 | WARN 0 | SKIP 3 | PASS 36`.
+- `/usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 6 | PASS 122`.
+- `GLLVMTMB_HEAVY_TESTS=1 /usr/local/bin/Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution")'`
+  -> `FAIL 0 | WARN 0 | SKIP 0 | PASS 170`.
+
+Still not claimed:
+
+- No public Paper 2 promotion.
+- No moderate/high-overlap recovery/failure-language gate.
+- No block-null calibration.
+- No estimated/profiled `rho`.
+- No interval coverage.
+- No mixed-family or non-Gaussian Paper 2 claim.
+- No explicit Psi support in the Paper 2 multi-kernel path.
+- No `*_unique()` lifecycle/deprecation implementation.
+- No bridge completion, release readiness, or scientific coverage completion.
+
 ## 2026-06-18 11:17 MDT -- COE-04 fitted kernel-diagnostics slot
 
 Branch: `codex/r-bridge-grouped-dispersion`

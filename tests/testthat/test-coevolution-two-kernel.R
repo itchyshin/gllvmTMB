@@ -106,6 +106,8 @@
                                            n_P = 32L, n_rep = 6L,
                                            rho_phy = 0.55,
                                            rho_non = 0.55,
+                                           lambda_phy_scale = 1,
+                                           lambda_non_scale = 1,
                                            resid_sd = 0.08) {
   set.seed(seed)
   A_H <- .c3_axis_kernel(n_H, "H", range = 0.45)
@@ -135,8 +137,8 @@
   ## | g_non | kernel_latent(..., d = 1, name = "non") | N(0, K_non) | extract_Sigma(level = "non", part = "shared") | Lambda_non Lambda_non^T |
   ## | Gamma_phy | same "phy" tier | Lambda_H,phy Lambda_P,phy^T | extract_Gamma(level = "phy") | Gamma_shape_phy |
   ## | Gamma_non | same "non" tier | Lambda_H,non Lambda_P,non^T | extract_Gamma(level = "non") | Gamma_shape_non |
-  Lambda_phy <- matrix(c(1.10, 0.70, 0.80, -0.60), 4L, 1L)
-  Lambda_non <- matrix(c(0.60, -0.90, 1.00, 0.65), 4L, 1L)
+  Lambda_phy <- lambda_phy_scale * matrix(c(1.10, 0.70, 0.80, -0.60), 4L, 1L)
+  Lambda_non <- lambda_non_scale * matrix(c(0.60, -0.90, 1.00, 0.65), 4L, 1L)
   rownames(Lambda_phy) <- rownames(Lambda_non) <- trait_names
 
   n_total <- n_H + n_P
@@ -424,6 +426,82 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   expect_gt(.c3_gamma_corr(Gamma_non, fx$Gamma_non), 0.95)
   expect_lt(.c3_gamma_corr(Gamma_phy, fx$Gamma_non), 0.25)
   expect_lt(.c3_gamma_corr(Gamma_non, fx$Gamma_phy), 0.25)
+})
+
+test_that("near-orthogonal selective absence collapses absent component Gamma", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  fx <- .c3_make_two_component_fixture(
+    seed = 2101L,
+    lambda_non_scale = 0
+  )
+  expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
+  expect_equal(sqrt(sum(fx$Gamma_non^2)), 0)
+
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit_full <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 +
+      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data,
+    unit = "row_id",
+    cluster = "species",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+  fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+    data = fx$data,
+    unit = "row_id",
+    cluster = "species",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+  fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data,
+    unit = "row_id",
+    cluster = "species",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+
+  expect_equal(fit_full$opt$convergence, 0L)
+  expect_equal(fit_phy_only$opt$convergence, 0L)
+  expect_equal(fit_non_only$opt$convergence, 0L)
+  expect_equal(fit_full$kernel_diagnostics$pairs$overlap_class, "near_orthogonal")
+
+  Gamma_phy <- gllvmTMB::extract_Gamma(
+    fit_full,
+    level = "phy",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits
+  )
+  Gamma_non <- gllvmTMB::extract_Gamma(
+    fit_full,
+    level = "non",
+    row_traits = fx$host_traits,
+    col_traits = fx$partner_traits
+  )
+
+  expect_gt(.c3_gamma_corr(Gamma_phy, fx$Gamma_phy), 0.95)
+  expect_lt(sqrt(sum(Gamma_non^2)), 1e-3)
+  expect_gt(
+    as.numeric(stats::logLik(fit_phy_only)) -
+      as.numeric(stats::logLik(fit_non_only)),
+    20
+  )
+  expect_lt(
+    as.numeric(stats::logLik(fit_full)) -
+      as.numeric(stats::logLik(fit_phy_only)),
+    1
+  )
 })
 
 test_that("one named kernel tier exposes Sigma and Gamma by its name", {

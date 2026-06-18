@@ -21,9 +21,13 @@
   classifies the two kernels as separable, the full two-component fit beats
   either one-component fit, and each extracted component-specific
   `Gamma_shape_r` recovers its own truth while not matching the other
-  component. PARTIAL (`COE-04`): moderate/high-overlap kernels,
-  selective-absence/null calibration, explicit Psi redesign/deprecation, `rho`
-  profiling or estimation, and interval calibration remain gated. The
+  component. The same near-orthogonal Gaussian fixture now also covers a first
+  selective-absence case: when the non component has true zero loadings, the
+  two-kernel fit collapses `extract_Gamma(level = "non")` to approximately
+  zero while recovering the present phy component. PARTIAL (`COE-04`):
+  moderate/high-overlap kernels, block-null calibration, explicit Psi
+  redesign/deprecation, `rho` profiling or estimation, and interval
+  calibration remain gated. The
   one-name `kernel_*()` path still uses the
   phylo-equivalent KER-02 engine and the `<1e-6` equivalence gate remains
   unchanged. Guard: PR green != bridge complete != release ready != scientific

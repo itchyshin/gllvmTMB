@@ -1,7 +1,7 @@
 {
   "title": "GLLVM mission control",
   "subtitle": "Local finish board for the gllvmTMB + GLLVM.jl twin. It separates branch health, draft PR checks, bridge admission, simulation evidence, public documentation, and release readiness.",
-  "updated": "2026-06-18 11:06 MDT",
+  "updated": "2026-06-18 11:30 MDT",
   "source": "local worktrees, handover checkpoint, GitHub CLI, and local LaunchAgent log",
   "claim_guard": {
     "title": "Claim boundary",
@@ -50,7 +50,7 @@
       "label": "Paper 2 kernels",
       "value": "COE-04 partial",
       "status": "guard",
-      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery plus kernel-similarity diagnostics. Broader separation/null/rho/interval gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
+      "note": "Fixed named multi-kernel engine slice landed locally as latent-only: KER-03 covered, COE-03 remains partial, and COE-04 is now partial for near-orthogonal Gaussian latent-only component recovery, fitted-object kernel-similarity diagnostics, and a first near-orthogonal selective-absence gate. Moderate/high-overlap, block-null, rho, interval, and mixed/non-Gaussian gates remain blocked. kernel_unique()/*_unique() stays compatibility syntax for now and should be redesigned/deprecated after this arc. This is engine/extractor evidence only; it is not bridge completion, release readiness, or scientific coverage."
     },
     {
       "label": "Next decision",
@@ -581,7 +581,7 @@
       "engine": "covered",
       "bridge": "planned",
       "inference": "partial",
-      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. A first COE-04 near-orthogonal heavy recovery fixture now passes, but this remains partial and does not prove explicit Psi support, moderate/high-overlap separation, null/selective absence, rho profiling/estimation, or intervals.",
+      "evidence": "Fixed two-component named-kernel fits now work locally and extract separate component shared Sigma/Gamma blocks by name. C3.1 is latent-only for Paper 2; C3.2 still guards legacy two kernel_unique tiers without replication. COE-04 near-orthogonal heavy recovery and first selective-absence fixtures now pass, but this remains partial and does not prove explicit Psi support, moderate/high-overlap separation, block-null calibration, rho profiling/estimation, or intervals.",
       "next_gate": "Broader COE-04 recovery/separation grid before scientific coverage or public Paper 2 promotion."
     },
     {
@@ -591,8 +591,8 @@
       "engine": "covered",
       "bridge": "not_applicable",
       "inference": "partial",
-      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, and component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component. Focused tests pass 36 non-heavy / 51 heavy; aggregate kernel|coevolution tests pass 122 non-heavy / 160 heavy. Moderate/high-overlap recovery/failure language, selective-absence nulls, and interval/rho calibration remain blocked.",
-      "next_gate": "Extend the Paper 2 recovery grid to moderate/high overlap, selective absence, and rho/interval calibration before any full scientific-coverage language moves."
+      "evidence": "Multi-kernel fits now carry fit$kernel_diagnostics with pairwise off-diagonal Frobenius-style kernel similarity and overlap classes. Fast diagnostic evidence classifies low-overlap versus high-overlap K_phy/K_non pairs. Heavy near-orthogonal Gaussian latent-only evidence passes: full two-component fit beats either one-component fit by >50 log-likelihood units, and component-specific extract_Gamma() recovers each Gamma_shape truth with correlation >0.95 while not matching the other component. A second heavy gate sets the non component to true zero; the two-kernel fit recovers the present phy Gamma_shape and collapses extract_Gamma(level = \"non\") below 1e-3. Focused tests pass 36 non-heavy / 61 heavy; aggregate kernel|coevolution tests pass 122 non-heavy / 170 heavy. Moderate/high-overlap recovery/failure language, block-null calibration, and interval/rho calibration remain blocked.",
+      "next_gate": "Extend the Paper 2 recovery grid to moderate/high overlap, block-null calibration, and rho/interval calibration before any full scientific-coverage language moves."
     },
     {
       "id": "PSI-SWEEP",

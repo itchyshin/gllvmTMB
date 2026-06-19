@@ -8,17 +8,59 @@
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
   default `"tmb"`). With `engine = "julia"` the fit is routed through the fast
   GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
-  IN: the bridge maps a single reduced-rank latent block (`latent(...)` → `rr`)
-  with per-trait intercepts, for the gaussian, poisson, binomial, nbinom2,
-  nbinom1, beta, gamma, ordinal, and lognormal families (plus a per-trait family
-  list for mixed responses) and Gaussian-only fixed-effect covariates. PARTIAL:
-  the supported surface is deliberately narrow — the bridge loudly rejects
+  IN (JUL-01): the bridge maps a single reduced-rank latent block
+  (`latent(...)` -> `rr`) with per-trait intercepts for gaussian, poisson,
+  binomial, nbinom2, nbinom1, beta, gamma, ordinal, and ordinal-probit rows.
+  The current paired Julia checkout returns trait-labelled grouped-dispersion
+  payloads for nbinom2, nbinom1, beta, and gamma; the R bridge preserves the
+  engine-native nuisance values and adds explicit public-scale fields for
+  parity checks. Ordinal and ordinal-probit payloads now carry trait-labelled
+  per-trait cutpoint matrices plus per-trait category counts. PARTIAL (JUL-01):
+  this is a narrow point-route bridge, not a full native parity claim. The
+  bridge now routes one-part no-X response masks for supported non-Gaussian
+  rows, and complete-response fixed-effect X point fits for gaussian, poisson,
+  Bernoulli binomial, nbinom2, beta, and gamma rows. It still loudly rejects
   non-`rr` covariance terms, more than one latent block, `cbind()` binomial,
-  unbalanced trait × unit tables, and non-Gaussian covariates, erroring clearly
-  rather than silently re-interpreting the model. OUT: JuliaCall is a `Suggests`
-  dependency only; every `engine = "julia"` path errors cleanly when JuliaCall or
-  the GLLVM.jl project is unavailable, so the default TMB engine and `R CMD check`
-  are unaffected on machines without Julia.
+  Gaussian or mixed-family response masks, response masks with fixed-effect
+  covariates, NB1-X, ordinal-X, mixed-family-X, and unsupported
+  fixed-effect designs. Direct `gllvm_julia_fit()` calls can request stored
+  Wald/profile/bootstrap CI payloads for complete-response no-X gaussian,
+  poisson, Bernoulli binomial, nbinom2, nbinom1, beta, and gamma rows, and for
+  no-X response-mask fits in poisson, Bernoulli binomial, nbinom2, nbinom1,
+  beta, and gamma rows. Ordinary `gllvmTMB(..., engine = "julia",
+  ci_method = "wald" / "profile" / "bootstrap")` fits can request the same
+  admitted no-X CI payloads at fit time, plus complete-response fixed-effect-X
+  CI payloads for gaussian, poisson, Bernoulli binomial, nbinom2, beta, and
+  gamma rows. Ordinary Julia bridge fits also retain
+  their bridge input so `confint(fit, method = "wald" / "profile" /
+  "bootstrap")` can request the same admitted no-X CI payloads post-fit,
+  including the admitted masked non-Gaussian rows and admitted
+  complete-response fixed-effect-X rows. The
+  admitted post-fit surface is `coef()`, `summary()`, scoped no-X `confint()`,
+  and retained-payload `predict()` / `fitted()` / `residuals()` / `simulate()`
+  only where the Julia payload carries the needed score and nuisance fields;
+  live R tests currently admit in-sample `predict()` / `fitted()` plus
+  response/Pearson `residuals()` and conditional in-sample `simulate()` for
+  no-X gaussian, poisson, Bernoulli binomial, nbinom2, nbinom1, beta, and gamma
+  rows and complete balanced no-X/no-mask/no-CI mixed-family vector rows,
+  response-scale ordinal probability/class prediction for ordinal and
+  ordinal-probit rows, and raw unit-tier covariance / ordination accessors
+  (`extract_Sigma()`, `extract_Sigma_B()`, `getResidualCov()`,
+  `getResidualCor()`, `extract_ordination()`, `getLoadings()`, `getLV()`) on
+  the retained engine scale, including complete balanced mixed-family rows.
+  The read-only `gllvm_julia_gate_registry()` table maps `GJL-GATE-*` refusals
+  to status, issue, and validation-row evidence so users can distinguish
+  bridge gates from engine limits.
+  `newdata` prediction, `newdata` simulation, unconditional random-effect
+  redraws, ordinal residuals, ordinal simulation, richer extractor parity, and
+  confidence intervals for
+  per-trait ordinal rows, NB1-X rows, ordinal-X rows, mixed-family CIs, and
+  response masks combined with fixed-effect X remain planned follow-up rows, as
+  do mixed-family masks, mixed-family fixed-effect X, native parity promotion,
+  and structured covariance terms. OUT: JuliaCall
+  is a `Suggests` dependency only; every `engine = "julia"` path errors cleanly
+  when JuliaCall or the GLLVM.jl project is unavailable, so the default TMB
+  engine and `R CMD check` are unaffected on machines without Julia.
 
 ## Loading-constraint suggestion comparison (2026-06-09)
 
@@ -190,7 +232,7 @@ section further down.
   generic `(unit, observation, trait)` sibling without the phylogenetic
   / spatial machinery (#306).
 
-## User-facing API
+### User-facing API
 
 * One `gllvmTMB()` entry point fits one stacked-trait model:
   * `gllvmTMB(value ~ ..., data = df_long, trait = "trait",
@@ -253,7 +295,7 @@ section further down.
   the response-family surface, and the ordinal-probit threshold scale
   and cutpoint convention.
 
-## Inference
+### Inference
 
 * `gllvmTMB(REML = TRUE)` adds a narrow Gaussian-only restricted maximum-likelihood pilot. IN: ordinary Gaussian random-intercept fits and Gaussian `latent() + unique()` covariance fits match `glmmTMB(..., REML = TRUE)` log-likelihoods and AIC degrees of freedom in `test-gaussian-reml.R` (MIS-33). PARTIAL: fixed-effect profile CIs are not available for REML fits; use Wald CIs or refit with `REML = FALSE` for ML profiling. PLANNED: non-Gaussian REML, observation weights, `miss_control(response = "include")`, and `mi()` predictor models remain guarded / deferred (MIS-32, MIS-33).
 * Maximum-likelihood point estimates via TMB's Laplace approximation remain the default estimator.
@@ -263,7 +305,7 @@ section further down.
 * `extract_correlations()` exposes Fisher-z (default), Wald, and
   bootstrap intervals via the `method` argument.
 
-## Phylogenetic and spatial paths
+### Phylogenetic and spatial paths
 
 * Phylogenetic covariance via the sparse `A^-1` representation of
   Hadfield & Nakagawa (2010), with `tree` (an `ape::phylo`) or
@@ -274,7 +316,7 @@ section further down.
   `sdmTMB` under GPL-3; provenance is recorded in `inst/COPYRIGHTS`
   and at the top of each inherited R file.
 
-## Inherited code and citation
+### Inherited code and citation
 
 * `Authors@R` names Shinichi Nakagawa as the sole author of
   `gllvmTMB`. Upstream copyright holders for inherited code
@@ -292,7 +334,7 @@ section further down.
   entries cite Kristensen et al. (2016) for TMB and Anderson
   et al. (2025) for `sdmTMB` when the spatial path is used.
 
-## Source-tree notes
+### Source-tree notes
 
 * The TMB engine is compiled at install time from
   `src/gllvmTMB.cpp`. The DLL is registered via
@@ -301,7 +343,7 @@ section further down.
   `sdmTMB::sdmTMBcontrol()`. Extra `...` arguments emit a
   warning.
 
-## Relationship to a pre-0.2.0 development line
+### Relationship to a pre-0.2.0 development line
 
 The pre-0.2.0 development line of `gllvmTMB` re-exported a large
 surface from `sdmTMB` and exposed single-response paths; the

@@ -15,8 +15,8 @@ compare_Sigma_table(
 )
 }
 \arguments{
-\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}} or a data frame returned by
-\code{\link[=extract_Sigma_table]{extract_Sigma_table()}}.}
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, an admitted \code{engine = "julia"}
+bridge fit, or a data frame returned by \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}.}
 
 \item{truth}{Square numeric covariance or correlation matrix. Row and column
 names should match the trait names in \code{x}; unnamed matrices are accepted

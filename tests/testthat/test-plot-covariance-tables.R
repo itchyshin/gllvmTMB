@@ -89,6 +89,56 @@ make_bootstrap_correlation_plot_object <- function() {
   boot
 }
 
+make_plot_julia_sigma_fit <- function() {
+  traits <- c("length", "mass", "wing")
+  units <- paste0("site", 1:4)
+  loadings <- matrix(
+    c(
+      0.60,
+      0.20,
+      -0.10,
+      0.45,
+      0.30,
+      -0.25
+    ),
+    nrow = length(traits),
+    byrow = TRUE
+  )
+  sigma <- loadings %*% t(loadings)
+  scores <- matrix(
+    seq(-0.3, 0.4, length.out = length(units) * ncol(loadings)),
+    nrow = length(units),
+    dimnames = list(units, paste0("LV", seq_len(ncol(loadings))))
+  )
+  fit <- structure(
+    list(
+      family = "poisson",
+      model = "poisson_rr",
+      d = ncol(loadings),
+      n_traits = length(traits),
+      n_units = length(units),
+      trait_names = traits,
+      unit_names = units,
+      alpha = seq(0.1, 0.3, length.out = length(traits)),
+      loadings = loadings,
+      scores = scores,
+      Sigma = sigma,
+      correlation = stats::cov2cor(sigma),
+      loglik = -12,
+      aic = 42,
+      bic = 45,
+      df = 8L,
+      nobs = length(traits) * length(units),
+      converged = TRUE,
+      message = "converged"
+    ),
+    class = c("gllvmTMB_julia", "list")
+  )
+  fit <- .gllvm_julia_normalise_result(fit)
+  fit$engine <- "julia"
+  fit
+}
+
 test_that("plot_correlations returns an interval-aware forest plot", {
   skip_if_no_ggplot2()
   cors <- data.frame(
@@ -657,6 +707,83 @@ test_that("plot_Sigma_table accepts bootstrap_Sigma objects", {
   expect_equal(nrow(plot_data), 3L)
   expect_equal(unique(plot_data$interval_method), "bootstrap")
   expect_true(all(plot_data$.draw_interval))
+  expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("Sigma plot helpers accept Julia bridge point rows", {
+  skip_if_no_ggplot2()
+  fit <- make_plot_julia_sigma_fit()
+
+  p_table <- plot_Sigma_table(
+    fit,
+    measure = "correlation",
+    entries = "upper",
+    link_residual = "none"
+  )
+  expect_s3_class(p_table, "ggplot")
+  meta_table <- expect_gtmb_cov_plot_meta(
+    p_table,
+    "sigma_table_forest",
+    "extract_Sigma_table"
+  )
+  expect_equal(meta_table$interval_status, "none")
+  table_data <- attr(p_table, "gllvmTMB_data")
+  expect_equal(nrow(table_data), choose(fit$n_traits, 2L))
+  expect_equal(unique(table_data$validation_row), "JUL-01A")
+  expect_equal(unique(table_data$interval_status), "none")
+  expect_false(any(table_data$.has_uncertainty_display))
+  expect_silent(ggplot2::ggplot_build(p_table))
+
+  p_heatmap <- plot_Sigma_heatmap(
+    fit,
+    measure = "correlation",
+    entries = "all",
+    link_residual = "none"
+  )
+  expect_s3_class(p_heatmap, "ggplot")
+  meta_heatmap <- expect_gtmb_cov_plot_meta(
+    p_heatmap,
+    "sigma_heatmap",
+    "extract_Sigma_table"
+  )
+  expect_equal(meta_heatmap$interval_status, "not_displayed")
+  heatmap_data <- attr(p_heatmap, "gllvmTMB_data")
+  expect_equal(nrow(heatmap_data), fit$n_traits^2)
+  expect_equal(unique(heatmap_data$validation_row), "JUL-01A")
+  expect_silent(ggplot2::ggplot_build(p_heatmap))
+})
+
+test_that("plot_Sigma_comparison accepts Julia bridge point rows", {
+  skip_if_no_ggplot2()
+  fit <- make_plot_julia_sigma_fit()
+  truth <- stats::cov2cor(fit$Sigma)
+  dimnames(truth) <- list(fit$trait_names, fit$trait_names)
+  truth["length", "mass"] <- truth["mass", "length"] <-
+    truth["length", "mass"] - 0.02
+
+  p <- plot_Sigma_comparison(
+    fit,
+    truth = truth,
+    measure = "correlation",
+    entries = "upper",
+    link_residual = "none"
+  )
+
+  expect_s3_class(p, "ggplot")
+  meta <- expect_gtmb_cov_plot_meta(
+    p,
+    "sigma_comparison_difference",
+    "compare_Sigma_table"
+  )
+  expect_equal(meta$interval_status, "not_applicable")
+  expect_equal(meta$comparison_status, "compared")
+  plot_data <- attr(p, "gllvmTMB_data")
+  expect_equal(nrow(plot_data), choose(fit$n_traits, 2L))
+  expect_equal(unique(plot_data$validation_row), "JUL-01A")
+  expect_equal(unique(plot_data$interval_status), "none")
+  expect_equal(plot_data$.error, plot_data$estimate - plot_data$truth)
+  expect_true(all(plot_data$.can_compare))
+  expect_true("GeomSegment" %in% gtmb_plot_geom_names(p))
   expect_silent(ggplot2::ggplot_build(p))
 })
 

@@ -19,9 +19,9 @@ plot_Sigma_comparison(
 )
 }
 \arguments{
-\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, a data frame returned by
-\code{\link[=extract_Sigma_table]{extract_Sigma_table()}}, or a data frame already returned by
-\code{\link[=compare_Sigma_table]{compare_Sigma_table()}}.}
+\item{x}{A fit returned by \code{\link[=gllvmTMB]{gllvmTMB()}}, an admitted \code{engine = "julia"}
+bridge fit, a data frame returned by \code{\link[=extract_Sigma_table]{extract_Sigma_table()}}, or a data
+frame already returned by \code{\link[=compare_Sigma_table]{compare_Sigma_table()}}.}
 
 \item{truth}{Square numeric covariance or correlation matrix passed to
 \code{\link[=compare_Sigma_table]{compare_Sigma_table()}}. May be omitted only when \code{x} already contains

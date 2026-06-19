@@ -7,13 +7,16 @@
 getLV(fit, level = "unit", rotate = c("none", "varimax", "promax"))
 }
 \arguments{
-\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. Admitted
+\code{engine = "julia"} bridge fits expose raw unit-tier loadings and scores;
+rotated ordinations remain gated for Julia bridge fits.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
 Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}
 
 \item{rotate}{Optional \code{"varimax"} or \code{"promax"} rotation after fitting.
-Default \code{"none"} returns the engine's native lower-triangular Lambda.}
+Default \code{"none"} returns the engine's native lower-triangular Lambda.
+For Julia bridge fits only \code{"none"} is currently routed.}
 }
 \value{
 A matrix with one row per unit (\code{level = "unit"}) or one row per

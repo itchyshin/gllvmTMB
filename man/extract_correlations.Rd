@@ -17,7 +17,11 @@ extract_correlations(
 )
 }
 \arguments{
-\item{fit}{A fit returned by \code{\link{gllvmTMB}}.}
+\item{fit}{A fit returned by \code{\link{gllvmTMB}}. Julia bridge
+(\code{engine = "julia"}) fits currently fail with an explicit gate because
+correlation intervals need CI/status semantics; use
+\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} with \code{measure = "correlation"} for point-only
+Julia bridge correlation rows.}
 
 \item{tier}{Character vector. Use \code{"all"} (the default) to request
 every level present in the fit. Canonical inputs are \code{"unit"},
@@ -39,7 +43,7 @@ See Details.}
 effective sample size used in Fisher's
 \eqn{\widehat{\mathrm{SE}}(\hat z) = 1/\sqrt{n_{\text{eff}} - 3}}
 formula. Only consulted for \code{method \%in\% c("fisher-z",
-"wald")}. The default heuristic uses \code{fit$n_sites} for tier
+  "wald")}. The default heuristic uses \code{fit$n_sites} for tier
 \code{"B"} (\code{"unit"}), \code{fit$n_site_species} for
 \code{"W"} (\code{"unit_obs"}), \code{fit$n_species} for
 \code{"phy"}, and \code{fit$n_sites} elsewhere — adequate for

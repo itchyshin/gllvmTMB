@@ -388,7 +388,10 @@ extract_communality <- function(
 
 #' Extract ordination scores and loadings from a fitted multivariate model
 #'
-#' @param fit A fitted multivariate model returned by [gllvmTMB()].
+#' @param fit A fitted multivariate model returned by [gllvmTMB()]. Admitted
+#'   `engine = "julia"` bridge fits expose raw unit-tier loadings and scores;
+#'   within-unit, structured-tier, and rotated ordinations remain gated for
+#'   Julia bridge extractors.
 #' @param level `"unit"` (between-unit) or `"unit_obs"` (within-unit).
 #'   Deprecated aliases `"B"` and `"W"` are still accepted with a warning.
 #' @return A list with `scores` (units or within-unit observations in rows,
@@ -417,6 +420,12 @@ extract_communality <- function(
 extract_ordination <- function(fit, level = "unit") {
   level <- match.arg(level, c("unit", "unit_obs", "B", "W"))
   level <- .normalise_level(level, arg_name = "level")
+  if (inherits(fit, "gllvmTMB_julia")) {
+    return(.gllvm_julia_extract_ordination(
+      fit = fit,
+      level = .canonical_level_name(level)
+    ))
+  }
   obj <- fit$tmb_obj
   par <- obj$env$last.par.best
   trait_names <- levels(fit$data[[fit$trait_col]])

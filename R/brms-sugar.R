@@ -14,8 +14,10 @@
 ##
 ## The "clean quartet" for explicit covstruct intent:
 ##
-##   * `latent(...)`        --- shared cross-trait covariance (Sigma_shared = Lambda Lambda^T)
-##   * `unique(...)`        --- trait-specific residual paired with `latent()` (Sigma_unique = Psi)
+##   * `latent(...)`        --- shared cross-trait covariance plus default Psi
+##                              (Sigma = Lambda Lambda^T + Psi)
+##   * `unique(...)`        --- standalone diagonal compatibility syntax, or
+##                              explicit-Psi compatibility when paired
 ##   * `indep(...)`         --- per-trait marginal variance, no decomposition (Sigma = diag(sigma^2_t))
 ##   * `dep(...)`           --- full unstructured cross-trait covariance (Sigma free, PSD via Cholesky)
 ##
@@ -454,8 +456,9 @@ latent <- function(formula, d = 1, residual = TRUE, common = FALSE) {
 #' Use [indep()] for standalone marginal diagonal tiers, including
 #' `indep(..., common = TRUE)` for the scalar standalone marginal case.
 #' Ordinary `latent()` now carries \eqn{\boldsymbol\Psi} by default, so paired
-#' `latent() + unique()` remains accepted as transition compatibility until the
-#' later removal slice lands. The paired legacy `unique(..., common = TRUE)`
+#' `latent() + unique()` remains accepted compatibility syntax. Removal is a
+#' later API-change decision while the parser and exports remain live. The
+#' paired legacy `unique(..., common = TRUE)`
 #' parsimony knob remains accepted, but new ordinary intercept-only code should
 #' use `latent(..., common = TRUE)`.
 #'
@@ -712,8 +715,8 @@ phylo_scalar <- function(
 #'
 #' `phylo_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [phylo_indep()] for standalone marginal diagonal phylogenetic
-#' tiers. Paired explicit-Psi use remains accepted until the latent-Psi fold
-#' lands.
+#' tiers. Paired explicit-Psi use remains accepted while source-specific
+#' latent-Psi folds remain future slices.
 #'
 #' Canonical name for the **D independent** phylogenetic random
 #' intercepts. Each trait \eqn{t} gets its own variance
@@ -819,8 +822,8 @@ phylo_unique <- function(
 #'
 #' `spatial_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [spatial_indep()] for standalone marginal diagonal spatial
-#' fields. Paired explicit-Psi use remains accepted until the latent-Psi fold
-#' lands.
+#' fields. Paired explicit-Psi use remains accepted while source-specific
+#' latent-Psi folds remain future slices.
 #'
 #' Canonical name for the SPDE / GMRF Matern spatial random field with
 #' **one independent field per trait** (per-trait variance

@@ -74,7 +74,7 @@ Use this alignment while reading the diagnostics:
 | Symbol | R syntax or object | Plain meaning |
 |---|---|---|
 | `Lambda` | `latent(0 + trait | site, d = 1)`; `Lambda_B` in the simulator | The shared loading axis that creates cross-trait covariance. |
-| `Psi` | `unique(0 + trait | site)`; `psi_B` in the simulator | Trait-specific variance that is not shared with the other trait. |
+| `Psi` | ordinary `latent()` default Psi; `psi_B` in the simulator | Trait-specific variance that is not shared with the other trait. |
 | `Sigma` | `extract_Sigma_table(fit, level = "unit", part = "total")` | The full trait covariance, `Lambda Lambda^T + Psi`, used for interpretation. |
 
 ```{r simulate}

@@ -35,8 +35,8 @@ correlation, communality, and ordination summaries a reader normally
 wants first.
 
 The example uses the safest public path: Gaussian stacked-trait data
-with one observational level, a shared low-rank latent structure, and
-trait-specific unique variance. Advanced spatial, phylogenetic,
+with one observational level and an ordinary `latent()` decomposition,
+`Sigma = Lambda Lambda^T + Psi`. Advanced spatial, phylogenetic,
 meta-analytic, mixed-family, and profile-likelihood tutorials remain
 under audit until their example objects, diagnostics, and rendered
 HTML reviews are ready.
@@ -46,9 +46,10 @@ HTML reviews are ready.
 We have `n` individuals, each measured on `T` morphological traits
 across a few sessions. The biological question: do the traits covary
 on a small number of latent axes (e.g. a body-size axis, a shape
-axis)? With one observational level and modest repetition, both the
-shared (`latent()`) and unique (`unique()`) covariance components are
-identifiable. No spatial or phylogenetic structure here.
+axis)? With one observational level and modest repetition, ordinary
+`latent()` estimates both the shared low-rank component and the
+trait-specific diagonal `Psi`. No spatial or phylogenetic structure
+here.
 
 ```{r setup}
 library(gllvmTMB)
@@ -226,9 +227,8 @@ plot(ord$scores[, 1], ord$scores[, 2], pch = 19, col = "steelblue",
 abline(h = 0, v = 0, lty = 2, col = "grey70")
 ```
 
-That's the whole model — `latent()` for shared trait covariance,
-`unique()` for trait-specific residual variance, plus trait-specific
-intercepts.
+That's the whole model — ordinary `latent()` for
+`Lambda Lambda^T + Psi`, plus trait-specific intercepts.
 
 Per-trait communality $c_t^2$ — the proportion of each trait's
 variance shared with the others:

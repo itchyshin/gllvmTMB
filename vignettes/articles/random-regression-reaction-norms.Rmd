@@ -36,8 +36,8 @@ model asks whether individuals differ in both average behaviour and
 temperature responsiveness, and whether those reaction-norm coefficients
 covary across behaviours.
 
-Here `latent()` estimates shared axes of between-individual covariance, and
-`unique()` estimates trait-specific variation left after those shared axes.
+Here `latent()` estimates the between-individual shared axes and their
+diagonal `Psi` companion for trait-specific variation left after those axes.
 The current draft covers the Gaussian version only. It does not yet teach
 non-Gaussian reaction norms, calibrated intervals for slope summaries, or the
 broader model-choice path for deciding when this random-regression model is
@@ -188,11 +188,9 @@ tier:
 ```{r formula-pieces, eval = FALSE}
 # Long format
 latent(0 + trait + (0 + trait):temperature | individual, d = 1)
-unique(0 + trait + (0 + trait):temperature | individual)
 
 # Wide data-frame shorthand
 latent(1 + temperature | individual, d = 1)
-unique(1 + temperature | individual)
 ```
 
 The article uses `se = FALSE` so the vignette renders quickly. That
@@ -303,8 +301,9 @@ The three blocks answer different biological questions:
   to temperature.
 
 The shared and unique pieces compose the total augmented covariance.
-`Sigma_unique$s` is the fitted diagonal contribution from `unique()`,
-ordered to match the rows and columns of `Sigma_total$Sigma`:
+`Sigma_unique$s` is the fitted diagonal `Psi` contribution that ordinary
+`latent()` carries by default, ordered to match the rows and columns of
+`Sigma_total$Sigma`:
 
 ```{r composition}
 max(abs(

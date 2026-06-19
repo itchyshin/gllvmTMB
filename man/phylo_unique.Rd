@@ -29,8 +29,8 @@ A formula marker; never evaluated.
 \details{
 \code{phylo_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
 0.2.0. Use \code{\link[=phylo_indep]{phylo_indep()}} for standalone marginal diagonal phylogenetic
-tiers. Paired explicit-Psi use remains accepted until the latent-Psi fold
-lands.
+tiers. Paired explicit-Psi use remains accepted while source-specific
+latent-Psi folds remain future slices.
 
 Canonical name for the \strong{D independent} phylogenetic random
 intercepts. Each trait \eqn{t} gets its own variance

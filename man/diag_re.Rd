@@ -21,8 +21,9 @@ syntax in gllvmTMB 0.2.0. For standalone marginal diagonal tiers, use
 \code{\link[=indep]{indep()}} instead; for the scalar standalone marginal case, use
 \code{indep(..., common = TRUE)}. Ordinary \code{latent()} now carries the diagonal
 \eqn{\boldsymbol\Psi} companion by default; paired \code{latent() + unique()}
-remains accepted as transition compatibility until the later removal
-slice lands. The legacy paired \code{unique(..., common = TRUE)} parsimony knob is
+remains accepted compatibility syntax. Removal is a later API-change
+decision while the parser and exports remain live. The legacy paired
+\code{unique(..., common = TRUE)} parsimony knob is
 still accepted as compatibility syntax; new ordinary intercept-only code
 should use \code{latent(..., common = TRUE)}.
 
@@ -76,8 +77,9 @@ When \eqn{\boldsymbol\Psi_{\text{phy}}} IS separately
 identifiable (typically crossed site × species with
 \code{n_species} >= 100 and strong phylogenetic signal), pair
 \code{phylo_latent()} with \code{phylo_unique(species)} following the
-same \code{latent() + unique()} pattern used at the non-phylo
-tier. The four-component paired form is canonical when both
+source-specific paired compatibility pattern. The ordinary non-phylo
+tier now gets the same shared-plus-diagonal target from \code{latent()}
+itself. The four-component paired form is canonical when both
 \eqn{\boldsymbol\Psi} diagonals are identifiable; the
 three-piece fallback above is the alternative. See
 \code{vignettes/articles/pitfalls.Rmd} section 5 and

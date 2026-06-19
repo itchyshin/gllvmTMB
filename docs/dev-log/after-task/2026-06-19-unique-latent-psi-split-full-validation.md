@@ -264,3 +264,80 @@ and kernel latent-Psi folds remain future slices unless separately tested.
 Next action: keep the split discipline. Use this Psi/API lane evidence before
 moving on to bridge admission, fixed-rho coevolution engine review, or public
 article placement.
+
+## 11. 2026-06-19 Rose Repair Continuation
+
+After the first split closeout, a second Rose audit was run on the dirty
+worktree. It returned `FAIL`, and the failure was useful: the split still had a
+binary JSDM math contradiction, stale first-line formula-keyword header prose,
+ambiguous source-specific `*_unique()` lifecycle wording, and one planned
+phylo-signal design requirement that still treated explicit
+`unique(species)` as mandatory.
+
+Those blockers were repaired before this report was treated as current:
+
+- `vignettes/articles/joint-sdm.Rmd` now defines
+  `Sigma_B = Lambda Lambda^T + Psi_B`, then adds the fixed logit residual on
+  top for latent-liability correlations and communality.
+- `R/brms-sugar.R` now teaches ordinary `latent()` as
+  `Sigma = Lambda Lambda^T + Psi` by default, and `unique()` as standalone
+  diagonal compatibility or explicit-Psi compatibility syntax.
+- `R/animal-keyword.R`, `R/brms-sugar.R`, and generated
+  `man/animal_unique.Rd`, `man/phylo_unique.Rd`, and
+  `man/spatial_unique.Rd` now say paired explicit-Psi use remains accepted
+  while source-specific latent-Psi folds remain future slices.
+- `data-raw/examples/make-behavioural-reaction-norm-example.R` and the
+  regenerated `inst/extdata/examples/behavioural-reaction-norm-example.rds`
+  now use ordinary augmented `latent()` for the Gaussian reaction-norm
+  formulas. The explicit augmented `unique()` example left in
+  `random-regression-reaction-norms.Rmd` is the intentional non-Gaussian
+  error-boundary chunk.
+- `vignettes/articles/phylogenetic-gllvm.Rmd`,
+  `docs/design/03-phylogenetic-gllvm.md`, and
+  `docs/design/13-phylo-signal-partition.md` now use `two-Psi` /
+  ordinary-`latent()` wording for the non-phylogenetic diagonal, with explicit
+  `unique()` forms labelled compatibility where they remain mentioned.
+
+Rose / Plato then re-audited the same worktree and returned `PASS`. The
+remaining multiline `latent() + unique()` hits are intentionally scoped:
+
+- the compatibility example in `R/brms-sugar.R`;
+- the generated compatibility example in `man/unique_keyword.Rd`;
+- the non-Gaussian augmented-`unique()` error-boundary example in
+  `vignettes/articles/random-regression-reaction-norms.Rmd`.
+
+Additional checks after the Rose repair:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> regenerated the source-specific unique Rd files and the unique/diag help
+  after roxygen wording changes.
+- `Rscript --vanilla data-raw/examples/make-behavioural-reaction-norm-example.R`
+  -> regenerated the behavioural reaction-norm example RDS.
+- `Rscript --vanilla -e 'devtools::test(filter = "example-morphometrics|example-model-selection-rank|example-behavioural-reaction-norm|joint-sdm-binary-long-wide|unique-family-deprecation|canonical-keywords|gllvmTMB-wide|ordinary-latent-random-regression|traits-keyword", reporter = "summary")'`
+  -> `DONE`, exit code 0.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); articles <- c("gllvmTMB", "articles/behavioural-syndromes", "articles/convergence-start-values", "articles/model-selection-latent-rank", "articles/joint-sdm", "articles/random-regression-reaction-norms", "articles/phylogenetic-gllvm"); for (article in articles) pkgdown::build_article(article, pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> all seven touched pages rendered.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); pkgdown::build_article("articles/joint-sdm", pkg = ".", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> rerendered `joint-sdm` after the final math repair.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> `DONE`, exit code 0.
+- `Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-unique-psi-split-repair-20260619", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false")); print(res); quit(status = if (length(res$errors)) 1 else 0)'`
+  -> `0 errors | 1 warning | 0 notes`; warning scan showed only the known
+  Apple clang / R header `R_ext/Boolean.h` warning.
+- `git diff --check`
+  -> clean.
+
+Final exact stale scans used for this continuation:
+
+```sh
+rg -n -U "latent\\([^\\n]*\\)\\s*\\+\\s*(#[^\\n]*)?\\n\\s*(#'\\s*)?unique\\(" R man README.md NEWS.md docs/design vignettes data-raw tests/testthat/test-example-model-selection-rank.R tests/testthat/test-example-behavioural-reaction-norm.R
+rg -n 'does not add.*Psi|does not add.*\\boldsymbol\\Psi|until the latent-Psi fold lands|latent-Psi fold lands|shared-only|trait-specific residual paired|two-U PGLLVM|two-U pattern|two-U formula|both `phylo_unique` and `unique\\(species\\)`|Sigma_latent = .*pi\\^2/3' R man README.md NEWS.md docs/design vignettes data-raw tests/testthat/test-example-model-selection-rank.R tests/testthat/test-example-behavioural-reaction-norm.R
+rg -n '\\bS_B\\b|\\bS_W\\b|\\\\bf S|Lambda Lambda\\^T` and `S`|diag\\(S\\)|diag\\(U\\)' R man README.md NEWS.md docs/design vignettes data-raw tests/testthat/test-example-model-selection-rank.R tests/testthat/test-example-behavioural-reaction-norm.R
+rg -n -C 2 'Paired explicit-Psi use remains accepted|latent-Psi folds' R/animal-keyword.R R/brms-sugar.R R/kernel-keywords.R man/animal_unique.Rd man/phylo_unique.Rd man/spatial_unique.Rd man/kernel_latent.Rd
+```
+
+This continuation still does not claim push, 3-OS CI, bridge completion,
+release readiness, CRAN readiness, keyword removal, source-specific/kernel
+latent-Psi folds, or scientific coverage completion.

@@ -112,20 +112,20 @@ rank_ex$formula_wide
 
 ## Fit Candidate Ranks
 
-The diagonal baseline has no shared latent axis. The `d >= 1` candidates
-use the same fixed effects and the same `unique()` diagonal, changing
-only the rank of the `latent()` term.
+The diagonal baseline has no shared latent axis, so it uses `indep()`.
+The `d >= 1` candidates use the same fixed effects and ordinary
+`latent()` decomposition, changing only the rank of the shared
+`Lambda Lambda^T` term.
 
 ```{r rank-helpers}
 candidate_formula <- function(d) {
   if (identical(d, 0L)) {
-    return(value ~ 0 + trait + unique(0 + trait | individual))
+    return(value ~ 0 + trait + indep(0 + trait | individual))
   }
 
   stats::as.formula(paste0(
     "value ~ 0 + trait + ",
-    "latent(0 + trait | individual, d = ", d, ") + ",
-    "unique(0 + trait | individual)"
+    "latent(0 + trait | individual, d = ", d, ")"
   ))
 }
 

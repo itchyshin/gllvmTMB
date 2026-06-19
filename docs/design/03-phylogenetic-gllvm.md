@@ -83,8 +83,8 @@ Omega = Lambda_phy Lambda_phy^T + Lambda_non Lambda_non^T + Psi
 ```
 
 with a single non-tier-specific diagonal `Psi` (the only
-unique-variance matrix in the fit; comes from the species-level
-`unique()` term).
+unique-variance matrix in the fit; ordinary species-level `latent()`
+now carries this diagonal companion by default).
 
 ## R Syntax Alignment
 
@@ -93,14 +93,15 @@ unique-variance matrix in the fit; comes from the species-level
 | Trait intercepts | `value ~ 0 + trait` | `traits(t1, t2) ~ 1` |
 | Phylogenetic shared covariance | `phylo_latent(species, d = K, tree = tree)` | same |
 | Phylogenetic unique diagonal | `phylo_unique(species, tree = tree)` | same |
-| Non-phylogenetic unique diagonal | `unique(0 + trait \| species)` | `unique(1 \| species)` |
+| Non-phylogenetic shared covariance plus diagonal Psi | `latent(0 + trait \| species, d = K_non)` | `latent(1 \| species, d = K_non)` |
 | Full phylogenetic fallback | `phylo_dep(0 + trait \| species, tree = tree)` | `phylo_dep(1 \| species, tree = tree)` |
 
 Species-axis phylogenetic calls such as `phylo_latent(species, ...)`
 already name their phylogenetic axis, so the `traits(...)` RHS expander
 leaves them unchanged. Bar-style covariance terms such as
-`unique(1 | species)` and `phylo_dep(1 | species)` expand to the
-explicit trait-stacked form.
+the soft-deprecated compatibility spelling `unique(1 | species)` and
+the current `phylo_dep(1 | species)` expand to the explicit
+trait-stacked form.
 
 ## Current Implementation Map
 
@@ -135,7 +136,7 @@ There are three different success levels:
 1. The model converges with finite likelihood.
 2. The total `Sigma_phy` and `Sigma_non` are stable enough to
    interpret.
-3. The split into `Lambda Lambda^T` and `S` is stable across ranks,
+3. The split into `Lambda Lambda^T` and `Psi` is stable across ranks,
    starts, and reasonable comparator fits.
 
 Level 2 is usually the biological target. Level 3 is more fragile,

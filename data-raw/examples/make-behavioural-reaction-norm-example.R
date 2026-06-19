@@ -191,14 +191,12 @@ formula_long <- value ~ 0 +
     0 + trait + (0 + trait):temperature | individual,
     d = 1
   ) +
-  unique(0 + trait + (0 + trait):temperature | individual) +
   latent(0 + trait | session_id, d = 1)
 
 formula_wide <- traits(boldness, exploration, activity) ~
   1 +
   temperature +
   latent(1 + temperature | individual, d = 1) +
-  unique(1 + temperature | individual) +
   latent(1 | session_id, d = 1)
 
 alignment <- data.frame(
@@ -213,8 +211,8 @@ alignment <- data.frame(
   keyword = c(
     "0 + trait + (0 + trait):temperature",
     "latent(1 + temperature | individual, d = 1)",
-    "unique(1 + temperature | individual)",
-    "latent() + unique()",
+    "default Psi from latent(1 + temperature | individual, d = 1)",
+    "latent() default Psi",
     "latent(1 | session_id, d = 1)",
     "extract_Sigma(level = \"unit_slope\")"
   ),

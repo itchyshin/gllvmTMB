@@ -93,8 +93,8 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' `animal_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [animal_indep()] for standalone marginal diagonal animal-model
-#' terms. Paired explicit-Psi use remains accepted until the latent-Psi fold
-#' lands.
+#' terms. Paired explicit-Psi use remains accepted while source-specific
+#' latent-Psi folds remain future slices.
 #'
 #' Canonical name for the **D independent** animal-model random
 #' intercept on a shared relatedness matrix \eqn{\mathbf A}. Each

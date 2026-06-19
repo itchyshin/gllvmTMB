@@ -164,9 +164,8 @@ The two forms dispatch to the same long-format engine. In this model,
 phylogenetic axis, `phylo_unique(species, tree = tree)` estimates the
 trait-specific phylogenetic diagonal, `latent(1 | species, d = 1)` in
 the wide formula (expanding to `latent(0 + trait | species, d = 1)`
-in the long form) estimates the shared non-phylogenetic axis, and
-`unique(1 | species)` (expanding to `unique(0 + trait | species)`)
-estimates the trait-specific non-phylogenetic diagonal.
+in the long form) estimates the shared non-phylogenetic axis and its
+ordinary diagonal `Psi` companion.
 
 ## Recover the phylogenetic covariance
 
@@ -248,15 +247,14 @@ $$
 \boldsymbol{\Psi}.
 $$
 
-To fit it, drop `phylo_unique()` from the formula and let the single
-`unique()` carry all of the trait-specific diagonal variance:
+To fit it, drop `phylo_unique()` from the formula and let ordinary
+`latent()` carry the single trait-specific diagonal `Psi`:
 
 ```r
 fit_3piece <- gllvmTMB(
   value ~ 0 + trait +
     phylo_latent(species, d = 1, tree = tree) +    # Lambda_phy
-    latent(0 + trait | species, d = 1) +           # Lambda_non
-    unique(0 + trait | species),                   # single Psi
+    latent(0 + trait | species, d = 1),            # Lambda_non + single Psi
   data = df,
   trait = "trait", unit = "species"
 )

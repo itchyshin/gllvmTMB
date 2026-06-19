@@ -102,6 +102,10 @@
   abs(stats::cor(as.vector(x), as.vector(y)))
 }
 
+.c3_frobenius <- function(x) {
+  sqrt(sum(x^2))
+}
+
 .c3_make_two_component_fixture <- function(seed = 2003L, n_H = 32L,
                                            n_P = 32L, n_rep = 6L,
                                            rho_phy = 0.55,
@@ -110,6 +114,7 @@
                                            identical_kernels = FALSE,
                                            lambda_phy_scale = 1,
                                            lambda_non_scale = 1,
+                                           center_latent = FALSE,
                                            resid_sd = 0.08) {
   set.seed(seed)
   A_H <- .c3_axis_kernel(n_H, "H", range = 0.45)
@@ -154,8 +159,14 @@
     matrix(stats::rnorm(n_total), n_total, 1L)
   G_non <- t(chol(K_non + diag(1e-8, n_total))) %*%
     matrix(stats::rnorm(n_total), n_total, 1L)
+  if (isTRUE(center_latent)) {
+    G_phy <- scale(G_phy, center = TRUE, scale = FALSE)
+    G_non <- scale(G_non, center = TRUE, scale = FALSE)
+  }
+  alpha <- c(0.10, -0.10, 0.05, -0.05)
+  names(alpha) <- trait_names
   eta <- G_phy %*% t(Lambda_phy) + G_non %*% t(Lambda_non)
-  eta <- sweep(eta, 2L, c(0.10, -0.10, 0.05, -0.05), `+`)
+  eta <- sweep(eta, 2L, alpha, `+`)
   colnames(eta) <- trait_names
 
   species <- rownames(K_phy)
@@ -195,6 +206,9 @@
       t(Lambda_phy[partner_traits, , drop = FALSE]),
     Gamma_non = Lambda_non[host_traits, , drop = FALSE] %*%
       t(Lambda_non[partner_traits, , drop = FALSE]),
+    Sigma_phy = Lambda_phy %*% t(Lambda_phy),
+    Sigma_non = Lambda_non %*% t(Lambda_non),
+    alpha = alpha,
     host_traits = host_traits,
     partner_traits = partner_traits,
     similarity = .c3_kernel_similarity(K_phy, K_non)
@@ -967,6 +981,64 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   expect_gt(.c3_gamma_corr(Gamma_non, fx$Gamma_non), 0.95)
   expect_lt(.c3_gamma_corr(Gamma_phy, fx$Gamma_non), 0.25)
   expect_lt(.c3_gamma_corr(Gamma_non, fx$Gamma_phy), 0.25)
+})
+
+test_that("near-orthogonal Gaussian recovery covers fixed effects and shared Sigma magnitudes", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 fixed-effect and shared-Sigma recovery alignment table.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | alpha_t | fixed 1 in traits(...) ~ 1 + ... | eta_t += alpha_t after centered latent fields | fit$opt$par[names == "b_fix"] | planted trait intercepts |
+  ## | Sigma_phy | kernel_latent(..., K = K_phy, d = 1, name = "phy") | g_phy Lambda_phy^T | extract_Sigma(level = "phy", part = "shared") | Lambda_phy Lambda_phy^T |
+  ## | Sigma_non | kernel_latent(..., K = K_non, d = 1, name = "non") | g_non Lambda_non^T | extract_Sigma(level = "non", part = "shared") | Lambda_non Lambda_non^T |
+  ## | Y | gaussian() | alpha_t + two fixed-kernel latent components + error | convergence + finite logLik | identity-link Gaussian |
+  fx <- .c3_make_two_component_fixture(center_latent = TRUE)
+  expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
+
+  fit <- .c3_fit_two_kernel_set(fx)$full
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(is.finite(as.numeric(stats::logLik(fit))))
+
+  alpha_hat <- unname(fit$opt$par[names(fit$opt$par) == "b_fix"])
+  alpha_hat <- stats::setNames(alpha_hat, sub("^trait", "", fit$X_fix_names))
+  expect_equal(names(alpha_hat), names(fx$alpha))
+  expect_lt(max(abs(alpha_hat - fx$alpha)), 0.20)
+
+  for (level in c("phy", "non")) {
+    Sigma_hat <- suppressMessages(
+      gllvmTMB::extract_Sigma(fit, level = level, part = "shared")$Sigma
+    )
+    Sigma_true <- if (identical(level, "phy")) fx$Sigma_phy else fx$Sigma_non
+    norm_ratio <- .c3_frobenius(Sigma_hat) / .c3_frobenius(Sigma_true)
+    expect_gt(norm_ratio, 0.65)
+    expect_lt(norm_ratio, 1.25)
+    expect_gt(
+      stats::cor(
+        as.vector(Sigma_hat[fx$host_traits, fx$host_traits]),
+        as.vector(Sigma_true[fx$host_traits, fx$host_traits])
+      ),
+      0.90
+    )
+    expect_gt(
+      stats::cor(
+        as.vector(Sigma_hat[fx$partner_traits, fx$partner_traits]),
+        as.vector(Sigma_true[fx$partner_traits, fx$partner_traits])
+      ),
+      0.90
+    )
+    expect_gt(
+      abs(stats::cor(
+        as.vector(Sigma_hat[fx$host_traits, fx$partner_traits]),
+        as.vector(Sigma_true[fx$host_traits, fx$partner_traits])
+      )),
+      0.95
+    )
+  }
 })
 
 test_that("moderately overlapping kernels still recover component Gamma shapes", {

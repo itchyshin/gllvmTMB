@@ -16231,6 +16231,79 @@ Still not claimed:
   interval calibration, mixed-family recovery, module uncertainty/rank
   calibration, or scientific coverage completion.
 
+## 2026-06-19 -- coevolution fixed-effect and shared-Sigma recovery gate
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Add the next narrow COE-04 evidence slice requested by the simulation audit:
+  near-orthogonal Gaussian recovery of planted trait intercepts and
+  component-specific shared-Sigma magnitudes.
+- Keep COE-04 partial. This is not mixed-family recovery, null calibration,
+  interval calibration, in-engine `rho`, module/rank calibration, or broad
+  scientific coverage.
+
+Pre-edit lane check before updating shared design/dev-log files:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it still points at
+  `codex/r-bridge-grouped-dispersion`, is clean, and has visible
+  `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent split/worktree commits were
+  `5c10ed8`, `c061ce2`, `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`,
+  `709eef0`, `4a2449a`, and the two power-pilot accumulation commits
+  `22316dd` / `895cbf9`.
+
+Implemented:
+
+- `tests/testthat/test-coevolution-two-kernel.R`: added optional centered
+  latent fields to the shared two-component fixture and returned planted
+  `alpha`, `Sigma_phy`, and `Sigma_non` truth objects.
+- `tests/testthat/test-coevolution-two-kernel.R`: added the heavy test
+  `near-orthogonal Gaussian recovery covers fixed effects and shared Sigma magnitudes`.
+  It checks fixed-effect recovery within `0.20`, component shared-Sigma
+  Frobenius magnitude ratios between `0.65` and `1.25`, host/partner block
+  correlations above `0.90`, and absolute cross-block shape correlation above
+  `0.95`.
+- `docs/design/35-validation-debt-register.md` and
+  `docs/design/65-cross-lineage-coevolution-kernel.md`: recorded the new
+  fixed-effect/shared-Sigma evidence while leaving COE-04 `partial`.
+- Added
+  `docs/dev-log/after-task/2026-06-19-coevolution-fixed-effect-sigma-recovery.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `rg -n "COE-04.*covered|scientific coverage passed|release ready|bridge complete|in-engine rho|rho estimation|rho interval|mixed-family coverage|formal null|Type-I|interval calibration|fixed effects and shared Sigma" README.md NEWS.md docs vignettes R tests`
+  -> expected guardrail/history/design hits plus the new test name only.
+- `git diff --check`
+  -> clean.
+
+Agent input:
+
+- Hume / Curie-Hypatia read-only review recommended this exact next gate: reuse
+  the near-orthogonal Gaussian fixture, return planted fixed effects and
+  shared-Sigma truth, and keep tolerances broad enough for a small deterministic
+  point-recovery gate.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, Lambda recovery, in-engine `rho`, `rho` intervals, formal
+  Type-I/null calibration, interval calibration, mixed-family recovery, module
+  uncertainty/rank calibration, or scientific coverage completion.
+
 ## 2026-06-19 17:19 MDT -- bridge admission split fresh validation after unique/Psi closeout
 
 Branch: `codex/bridge-admission-split-20260619`

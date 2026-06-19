@@ -16098,3 +16098,84 @@ Still not claimed:
 - No 3-OS CI has run on this local split branch.
 - This is bridge-admission evidence only, not bridge completion, release
   readiness, CRAN readiness, or scientific coverage.
+
+## 2026-06-19 17:19 MDT -- bridge admission split fresh validation after unique/Psi closeout
+
+Branch: `codex/bridge-admission-split-20260619`
+
+Purpose:
+
+- Reconfirm the clean bridge-admission split after the separate
+  `unique()` / ordinary `latent()` Psi split was committed locally as
+  `e2866f7`.
+- Keep the claim bounded: local R, Julia, and Julia-via-R evidence is fresh,
+  but no push, PR replacement, or split-branch 3-OS CI happened.
+
+Pre-edit lane check before updating shared dev-log evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open. It still points at
+  `codex/r-bridge-grouped-dispersion`, is clean at pushed head `03fdda1`, and
+  has visible `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were local split / power-pilot commits, including
+  `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`, `709eef0`, `4a2449a`,
+  `22316dd`, and `895cbf9`; no active PR collision was found for this local
+  bridge split evidence edit.
+
+Current paired Julia state:
+
+- `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefName,headRefOid,baseRefName,statusCheckRollup,updatedAt,url`
+  -> GLLVM.jl #101 remains open draft, clean, at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`; visible CI and Documenter checks
+  are successful.
+
+Checks:
+
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- In `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0 and completed with `DONE`; reported skips were expected
+  heavy/optional dependency skips.
+- `Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false")); print(res); quit(status = if (length(res$errors)) 1 else 0)'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|can be installed|Status" /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Agent input:
+
+- Ohm / Grace-Shannon returned `FAIL` for pushing the current dirty mission
+  tree or treating PR #489 as current evidence. The recommended bridge-only
+  file set matches this local split branch: bridge code, bridge extractor/plot
+  gates, bridge-generated Rd, bridge tests, minimal `_pkgdown.yml`, `NEWS.md`,
+  JUL-01 / JUL-01A register rows, check-log, and one bridge after-task report.
+  The audit excludes coevolution/TMB files, the `unique()` / ordinary
+  `latent()` Psi migration, article estate files, dashboard/process bulk, and
+  unrelated recovery checkpoints.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No replacement or mutation of PR #489.
+- No 3-OS CI has run on this local split branch.
+- This is bridge-admission evidence only, not bridge completion, release
+  readiness, CRAN readiness, or scientific coverage.

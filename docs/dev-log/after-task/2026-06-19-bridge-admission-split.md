@@ -357,3 +357,70 @@ Grace: R, Julia, and Julia-via-R each need separate evidence.
   maintainer accepts this lane shape, then continue Big 2 (`unique()` /
   ordinary `latent()` Psi migration), Big 3 (fixed multi-kernel / COE-04), and
   Big 4 (public article placement) as separate lanes.
+
+## 11. Fresh Validation Refresh, 2026-06-19 17:19 MDT
+
+The split branch was rechecked after the `unique()` / ordinary `latent()` Psi
+split was closed locally in its own worktree as commit `e2866f7`. This refresh
+does not push or mutate PR #489; it only proves the local bridge-admission
+branch remains sound from R, Julia, and Julia-via-R.
+
+Pre-edit lane check before updating this shared after-task report:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open. It still points at
+  `codex/r-bridge-grouped-dispersion`, is clean at pushed head `03fdda1`, and
+  has visible `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent commits were local split / power-pilot commits, including
+  `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`, `709eef0`, `4a2449a`,
+  `22316dd`, and `895cbf9`; no active PR collision was found for this local
+  bridge split evidence edit.
+
+Fresh checks from `/private/tmp/gllvmtmb-bridge-admission-split`:
+
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefName,headRefOid,baseRefName,statusCheckRollup,updatedAt,url`
+  -> GLLVM.jl #101 remains open draft, clean, at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`; visible CI and Documenter checks
+  are successful.
+- In `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0 and completed with `DONE`; reported skips were expected
+  heavy/optional dependency skips.
+- `Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false")); print(res); quit(status = if (length(res$errors)) 1 else 0)'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|can be installed|Status" /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619-turn/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Ohm / Grace-Shannon returned `FAIL` for pushing the current dirty mission tree
+or treating PR #489 as current evidence, but the file-scope recommendation
+matches this split branch: bridge code, bridge extractor/plot gates,
+bridge-generated Rd, bridge tests, minimal `_pkgdown.yml`, `NEWS.md`, JUL-01 /
+JUL-01A register rows, check-log, and one bridge after-task report. The audit
+explicitly excludes coevolution/TMB files, the `unique()` / ordinary
+`latent()` Psi migration, article estate files, dashboard/process bulk, and
+unrelated recovery checkpoints.
+
+Updated next action: this bridge split is locally validated but still not
+pushed and still has no split-branch 3-OS CI. Continue the Big 4 sequence by
+preparing the fixed multi-kernel / COE-04 split next, unless the maintainer
+asks to replace PR #489 with this bridge split first.

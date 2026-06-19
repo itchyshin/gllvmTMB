@@ -33,10 +33,11 @@ the total). Wide format: data frame with one column per component
 plus a \code{total_variance} column; the per-trait proportions sum to 1.
 
 \strong{OLRE interpretation:} for fits with a genuine observation-level
-\code{unique()} term (see \code{\link[=extract_residual_split]{extract_residual_split()}}), the \code{unique_W}
-component in this output corresponds to \eqn{\sigma^2_e} (the estimated
-OLRE variance) and the \code{link_residual} component corresponds to
-\eqn{\sigma^2_d} (the distribution-specific latent residual).
+diagonal term, usually written as per-row \code{indep()} in new code (see
+\code{\link[=extract_residual_split]{extract_residual_split()}}), the historical \code{unique_W} component in this
+output corresponds to \eqn{\sigma^2_e} (the estimated OLRE variance) and
+the \code{link_residual} component corresponds to \eqn{\sigma^2_d} (the
+distribution-specific latent residual).
 }
 \description{
 For each trait, returns the proportion of total latent variance

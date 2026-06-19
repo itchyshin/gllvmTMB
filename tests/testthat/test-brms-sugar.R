@@ -65,13 +65,13 @@ test_that("phylo() works in a combined formula with rr() and diag()", {
   df <- sim$data
   levels(df$species) <- paste0("sp", seq_len(n_sp))
 
-  fit <- gllvmTMB(
+  fit <- suppressWarnings(gllvmTMB(
     value ~ 0 + trait + (0 + trait):env_1 +
             latent(0 + trait | site, d = 2) +
             unique(0 + trait | site) +
             phylo(species, vcv = Cphy),
     data = df, phylo_vcv = Cphy
-  )
+  ))
   expect_equal(fit$opt$convergence, 0L)
   expect_true(fit$use$rr_B)
   expect_true(fit$use$propto)

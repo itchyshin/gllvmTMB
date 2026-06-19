@@ -33,9 +33,14 @@ does NOT do" section), see
   source-specific grid: `kernel_unique()`, `kernel_indep()`,
   `kernel_dep()`, and `kernel_latent()`. C1 must stay
   phylo-equivalent for dense `K` inputs to less than `1e-6`.
-- The decomposition mode is the `latent + unique` pair:
+- Ordinary `latent()` now carries its diagonal Psi companion by default:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi; see `decisions.md` 2026-05-14 notation reversal).
+  Use `latent(..., residual = FALSE)` only for the old no-residual /
+  rotation-invariant subset. `unique()` / source-specific `*_unique()` /
+  `kernel_unique()` remain soft-deprecated compatibility syntax; new
+  standalone diagonal examples use `indep()` / `*_indep()` /
+  `kernel_indep()`.
 - `phylo_latent + phylo_unique` is the canonical phylogenetic
   decomposition; the standalone `phylo_unique` carries
   intra-phylogeny diagonal-only structure.
@@ -44,7 +49,7 @@ does NOT do" section), see
   a deprecated alias. `block_V(study, sampling_var, rho_within)` is
   the helper that builds V.
 - Wide data-frame input uses the simplified `traits(...)` LHS grammar:
-  `traits(t1, t2, ...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`.
+  `traits(t1, t2, ...) ~ 1 + latent(1 | unit, d = K)`.
   The same shorthand covers `indep()`, `dep()`, and `spatial_*()`;
   ordinary `(1 | group)` random intercepts pass through unchanged.
   Long-format `gllvmTMB()` uses the explicit `0 + trait` /

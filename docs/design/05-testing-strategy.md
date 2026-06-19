@@ -125,21 +125,20 @@ keyword:
 - **Failure path**: malformed inputs are rejected before TMB
   evaluation.
 
-RE-12 ordinary Gaussian random regression now has focused
-`latent + unique` evidence, not broad coverage evidence. Its minimum
-focused test contract is: parser classification for long and
-`traits(...)` wide forms; a Gaussian paired fit that reaches the
-dedicated B-tier `Z_B_lat` / `Lambda_B_slope` / `Sigma_B_slope` and
-`Z_B_diag` / `sd_B_slope` / `s_B_slope` blocks; `extract_Sigma(level =
-"unit_slope", part = "shared" / "unique" / "total")` composition;
-deterministic Gaussian recovery for the intercept-intercept,
-slope-slope, and intercept-slope blocks; unique-only diagonal
+RE-12 ordinary Gaussian random regression now has focused default-`latent()`
+evidence, not broad coverage evidence. Its minimum focused test contract is:
+parser classification for long and `traits(...)` wide forms; a Gaussian fit
+that reaches the dedicated B-tier `Z_B_lat` / `Lambda_B_slope` /
+`Sigma_B_slope` and `Z_B_diag` / `sd_B_slope` / `s_B_slope` blocks;
+`extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`
+composition; deterministic Gaussian recovery for the intercept-intercept,
+slope-slope, and intercept-slope blocks; explicit compatibility diagonal
 extraction; at least one non-Gaussian latent-only smoke fit; rank guard;
-rejection of augmented `latent()` / `unique()` at the `unit_obs` tier;
-and the Gaussian-only guard for augmented `unique()` under non-Gaussian
-families. Promotion from `partial` to `covered` requires a broader
-coverage or recovery grid and either validation or a deliberate design
-rejection for non-Gaussian augmented `unique()`.
+rejection of augmented `latent()` / `unique()` at the `unit_obs` tier; and the
+Gaussian-only guard for augmented `unique()` under non-Gaussian families.
+Promotion from `partial` to `covered` requires a broader coverage or recovery
+grid and either validation or a deliberate design rejection for non-Gaussian
+augmented diagonal Psi.
 
 ### Phase 0B per-keyword smoke-test plan
 

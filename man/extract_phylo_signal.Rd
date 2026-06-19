@@ -24,9 +24,9 @@ compatibility.}
 
 \item{method}{One of \code{"profile"} (default), \code{"wald"}, \code{"bootstrap"}.
 Only used when \code{ci = TRUE}. For 2-component decompositions
-(phylo_unique vs species-level unique only) profile uses a linear
+(phylo_unique vs species-level diagonal component only) profile uses a linear
 contrast; for 3-component decompositions (PGLLVM with
-phylo_latent + species-level latent + unique) the profile path is
+phylo_latent plus a species-level latent decomposition with Psi) the profile path is
 not yet implemented and falls back to the point estimate.}
 
 \item{nsim}{Number of bootstrap replicates when
@@ -75,7 +75,7 @@ the species tier is missing, \eqn{\psi_t = 0} for all traits and a
 fit <- gllvmTMB(
   value ~ 0 + trait + phylo_latent(species, d = 2) +
                       latent(0 + trait | species, d = 2) +
-                      unique(0 + trait | species),
+                      indep(0 + trait | species),
   data       = df,
   trait      = "trait",
   unit       = "species",

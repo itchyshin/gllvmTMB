@@ -346,7 +346,7 @@
 
 ## Copy estimated parameters from a simpler gllvmTMB fit into the current
 ## model's starting list. This intentionally copies only same-shaped entries:
-## an independent `unique()` fit can seed b_fix, theta_diag_*, and s_*; a
+## an independent diagonal fit can seed b_fix, theta_diag_*, and s_*; a
 ## one-tier latent fit can also seed the matching theta_rr_* and z_* block.
 .gllvmTMB_apply_start_from <- function(tmb_params, start_from,
                                        verbose = FALSE) {

@@ -136,12 +136,13 @@ A model is defined by:
    meta-analysis (renamed from `meta_known_V()` in 0.2.0; the old
    name is a deprecated alias).
 
-The decomposition mode is the `latent + unique` pair:
+The ordinary decomposition mode is now default `latent()`:
 **Σ = ΛΛᵀ + Ψ**, where `Λ` is a low-rank loading matrix and `Ψ`
 is the diagonal trait-unique-variance matrix (factor-analysis /
-SEM convention; Bollen 1989, Mulaik 2010, lavaan). See the
-`decisions.md` 2026-05-14 notation entry for the historical
-reasoning.
+SEM convention; Bollen 1989, Mulaik 2010, lavaan). The explicit
+`latent() + unique()` spelling remains compatibility syntax for
+older examples and validation fixtures. See the `decisions.md`
+2026-05-14 notation entry for the historical reasoning.
 
 ## Signature Feature
 

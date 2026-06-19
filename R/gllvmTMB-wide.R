@@ -220,8 +220,7 @@ gllvmTMB_wide <- function(
     rhs_text,
     " + latent(0 + trait | site, d = ",
     as.integer(d),
-    ")",
-    " + unique(0 + trait | site)"
+    ")"
   )
   if (!is.null(phylo_vcv)) {
     rhs_text <- paste0(

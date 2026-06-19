@@ -625,6 +625,7 @@ check_identifiability <- function(
 }
 
 #' @export
+#' @keywords internal
 print.gllvmTMB_identifiability <- function(x, ...) {
   cli::cli_h1("gllvmTMB identifiability check")
   cli::cli_bullets(c(

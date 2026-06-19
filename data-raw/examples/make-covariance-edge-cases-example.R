@@ -3,8 +3,9 @@
 ## Regenerate inst/extdata/examples/covariance-edge-cases-example.rds.
 ##
 ## The RDS stores a portable teaching fixture for covariance/correlation
-## edge cases: a Gaussian behavioural-syndrome dataset where latent-only
-## correlations are inflated unless `unique()` is included.
+## edge cases: a Gaussian behavioural-syndrome dataset where the historical
+## no-residual latent subset inflates correlations unless the diagonal Psi
+## component is included.
 ##
 ## Re-run from the repo root:
 ##   Rscript data-raw/examples/make-covariance-edge-cases-example.R
@@ -81,29 +82,27 @@ estimands <- data.frame(
 )
 
 formula_long <- value ~ 0 + trait +
-  latent(0 + trait | individual, d = 2) +
-  unique(0 + trait | individual)
+  latent(0 + trait | individual, d = 2)
 
 formula_wide <- traits(
   boldness, exploration, activity, aggression, sociability
 ) ~ 1 +
-  latent(1 | individual, d = 2) +
-  unique(1 | individual)
+  latent(1 | individual, d = 2)
 
 formula_latent_only_long <- value ~ 0 + trait +
-  latent(0 + trait | individual, d = 2)
+  latent(0 + trait | individual, d = 2, residual = FALSE)
 
 formula_latent_only_wide <- traits(
   boldness, exploration, activity, aggression, sociability
 ) ~ 1 +
-  latent(1 | individual, d = 2)
+  latent(1 | individual, d = 2, residual = FALSE)
 
 alignment <- data.frame(
   symbol = c("Sigma", "Lambda", "Psi / psi", "R", "communality"),
   keyword = c(
-    "latent() + unique()",
+    "latent()",
     "latent(..., d = 2)",
-    "unique()",
+    "default latent() diagonal Psi; unique() compatibility spelling",
     "extract_Sigma(..., part = \"total\")$R",
     "extract_communality()"
   ),
@@ -135,7 +134,7 @@ edge_cases <- list(
     formula_long = formula_latent_only_long,
     formula_wide = formula_latent_only_wide,
     failure_mode = paste(
-      "Without unique(), the diagonal of Sigma contains only",
+      "With residual = FALSE, the diagonal of Sigma contains only",
       "Lambda Lambda^T, so correlations are inflated when the",
       "true data-generating process has trait-specific variance."
     )
@@ -143,7 +142,11 @@ edge_cases <- list(
   recommended = list(
     formula_long = formula_long,
     formula_wide = formula_wide,
-    rule = "Use latent() + unique() when trait-specific variance is part of the estimand."
+    rule = paste(
+      "Use ordinary latent() when trait-specific diagonal Psi is part",
+      "of the estimand; unique() is compatibility syntax for older",
+      "explicit-Psi formulas."
+    )
   )
 )
 

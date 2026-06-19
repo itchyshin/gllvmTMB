@@ -129,8 +129,7 @@
 #' @examples
 #' \dontrun{
 #' fit <- gllvmTMB(value ~ 0 + trait +
-#'                 latent(0 + trait | site, d = 1) +
-#'                 unique(0 + trait | site),
+#'                 latent(0 + trait | site, d = 1),
 #'                 data  = sim$data,
 #'                 trait = "trait",
 #'                 unit  = "site")
@@ -363,6 +362,7 @@ coverage_study <- function(
 }
 
 #' @export
+#' @keywords internal
 print.gllvmTMB_coverage_study <- function(x, ...) {
   cli::cli_h1("gllvmTMB coverage study")
   total_reps <- if (nrow(x$coverage) > 0L) {

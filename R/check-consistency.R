@@ -118,8 +118,7 @@
 #' @examples
 #' \dontrun{
 #' fit <- gllvmTMB(value ~ 0 + trait +
-#'                 latent(0 + trait | site, d = 1) +
-#'                 unique(0 + trait | site),
+#'                 latent(0 + trait | site, d = 1),
 #'                 data  = sim$data,
 #'                 trait = "trait",
 #'                 unit  = "site")
@@ -240,6 +239,7 @@ gllvmTMB_check_consistency <- function(
 }
 
 #' @export
+#' @keywords internal
 print.gllvmTMB_check_consistency <- function(x, ...) {
   cli::cli_h1("gllvmTMB Laplace-consistency check")
   cli::cli_bullets(c(

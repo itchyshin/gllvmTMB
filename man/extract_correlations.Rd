@@ -72,9 +72,10 @@ diagonal before computing correlations. Returned correlations
 are on the latent-liability scale; this is the convention most
 readers expect. Gaussian fits are unaffected (link residual is
 \eqn{0}).}
-\item{\code{"none"}}{Use the latent + unique-implied \eqn{\Sigma}
-directly with no link-residual addition. Correlations come out
-on the model-implied scale without the family adjustment.}
+\item{\code{"none"}}{Use the fitted model-implied \eqn{\Sigma}
+directly with no link-residual addition. For ordinary \code{latent()}
+fits this includes the default diagonal Psi companion; correlations
+come out on the model-implied scale without the family adjustment.}
 }
 
 \strong{Behaviour change in this release}: the previous version

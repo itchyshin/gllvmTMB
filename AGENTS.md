@@ -23,14 +23,27 @@ Model Builder.
   `kernel_latent()` outside the source-specific 4 x 5 grid. In C1 it
   must remain phylo-equivalent for dense `K` inputs to less than
   `1e-6` before any C2 coevolution advertising.
-- The decomposition mode is `latent + unique` paired:
+- As of 2026-06-18, `unique()` / source-specific `*_unique()` /
+  `kernel_unique()` are soft-deprecated compatibility syntax. New
+  standalone diagonal examples use `indep()` / source-specific
+  `*_indep()` / `kernel_indep()`. Ordinary `latent()` now carries its
+  diagonal Psi companion by default; `latent(..., residual = FALSE)`
+  requests the old no-residual subset. Paired explicit-Psi forms and
+  source-specific / kernel `*_unique()` forms remain accepted as
+  compatibility syntax; do not claim removal while the parser and
+  exports remain live.
+- The ordinary decomposition mode is `latent`:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi, lowercase psi for the per-trait scalar entries; see
-  `decisions.md` 2026-05-14 notation reversal). Standalone
-  `latent` is the no-residual / rotation-invariant subset.
-  Standalone `unique` is the marginal / independent mode
-  (Sigma = diag(psi_t^2)) and is equivalent to `indep`.
-  `dep` alone is the full unstructured Sigma.
+  `decisions.md` 2026-05-14 notation reversal). The old
+  no-residual / rotation-invariant subset is
+  `latent(..., residual = FALSE)`. Source-specific decompositions such
+  as `phylo_latent() + phylo_unique()` and `spatial_latent() +
+  spatial_unique()` remain explicit-pair compatibility syntax until
+  their own fold slices land. Standalone `unique` is the marginal /
+  independent mode (Sigma = diag(psi_t^2)) and is equivalent to
+  `indep`; new standalone code should use `indep`. `dep` alone is the
+  full unstructured Sigma.
 - Single-response models (no covstruct keyword) belong in `glmmTMB`.
   Spatial-only single-response models belong in `sdmTMB`.
   Higher-dimensional latent-variable models are `gllvmTMB`'s job.
@@ -236,7 +249,7 @@ package contributors.
   `gllvmTMB()` entry point. The long form
   (`gllvmTMB(value ~ ..., data = df_long)`) is canonical; the wide
   data-frame form uses the simplified `traits(...)` LHS grammar
-  (`traits(...) ~ 1 + latent(1 | unit, d = K) + unique(1 | unit)`).
+  (`traits(...) ~ 1 + latent(1 | unit, d = K)`).
   Readers vary in mental model -- some think in matrices, some in
   long tibbles -- and examples should avoid making wide-data-frame
   readers write `0 + trait` and `(0 + trait):x` by hand. The same

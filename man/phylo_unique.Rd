@@ -24,13 +24,20 @@ argument naming (M2.8b, 2026-05-17).}
 A formula marker; never evaluated.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+}
+\details{
+\code{phylo_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
+0.2.0. Use \code{\link[=phylo_indep]{phylo_indep()}} for standalone marginal diagonal phylogenetic
+tiers. Paired explicit-Psi use remains accepted until the latent-Psi fold
+lands.
+
 Canonical name for the \strong{D independent} phylogenetic random
 intercepts. Each trait \eqn{t} gets its own variance
 \eqn{\sigma^{2}_{\text{phy},t}} on the same phylogenetic correlation
 matrix \eqn{\mathbf{C}_{\text{phy}}}; the per-trait random vectors are
 otherwise independent. Mathematically:
-}
-\details{
+
 \deqn{\mathbf p_t \sim \mathcal{N}(\mathbf{0},\, \sigma^{2}_{\text{phy},t}\,\mathbf{C}_{\text{phy}}),\qquad t = 1,\dots,T,}
 
 giving a phylogenetic counterpart of \code{\link[=unique]{unique()}} -- one independent

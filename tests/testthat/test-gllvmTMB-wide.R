@@ -129,8 +129,7 @@ test_that("gllvmTMB_wide() and gllvmTMB() on equivalent long-format data give th
   fit_l <- gllvmTMB(
     value ~ 0 +
       trait +
-      latent(0 + trait | site, d = 1) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 1),
     data = long_df
   )
   ll_w <- -fit_w$opt$objective

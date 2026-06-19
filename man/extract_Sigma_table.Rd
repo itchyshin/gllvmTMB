@@ -38,7 +38,7 @@ estimand. \code{"all"} returns every cell, useful for heatmaps. \code{"upper"},
 
 \item{link_residual}{Passed to \code{\link[=extract_Sigma]{extract_Sigma()}}. \code{"auto"} (default) adds
 family/link implicit residual variances to non-Gaussian trait diagonals;
-\code{"none"} returns only the fitted latent + unique covariance.}
+\code{"none"} returns only the fitted model-implied covariance.}
 }
 \value{
 A data frame with one row per requested entry and stable columns:

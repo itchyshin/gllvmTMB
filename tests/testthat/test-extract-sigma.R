@@ -37,7 +37,7 @@ make_fit_B_rr_only <- function(seed = 2) {
     beta = matrix(0, Tn, 2), seed = seed
   )
   suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2),
+    value ~ 0 + trait + latent(0 + trait | site, d = 2, residual = FALSE),
     data = s$data
   )))
 }
@@ -75,16 +75,16 @@ test_that("extract_Sigma part='unique' returns named numeric vector of length T"
   expect_true(all(out$s >= 0))
 })
 
-test_that("extract_Sigma without unique emits the missing-unique advisory note", {
+test_that("extract_Sigma with residual=FALSE emits the no-Psi advisory note", {
   fit <- make_fit_B_rr_only()
   expect_message(
     extract_Sigma(fit, level = "unit", part = "total"),
-    regexp = "unique"
+    regexp = "no-Psi|residual = FALSE"
   )
   ## Capture the value separately (expect_message returns the captured
   ## message in some testthat versions, not the call's value)
   out <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
-  expect_true(any(grepl("unique", out$note, ignore.case = TRUE)))
+  expect_true(any(grepl("no-Psi|residual = FALSE", out$note, ignore.case = TRUE)))
   out_unit <- suppressMessages(extract_Sigma(fit, level = "unit", part = "total"))
   note_unit <- paste(out_unit$note, collapse = "\n")
   expect_match(note_unit, "Sigma_unit", fixed = TRUE)

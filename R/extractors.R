@@ -66,10 +66,11 @@ extract_Sigma_W <- function(fit) {
 #' \deqn{\mathrm{ICC}_t \;=\; \frac{(\boldsymbol\Sigma_B)_{tt}}{(\boldsymbol\Sigma_B)_{tt} + (\boldsymbol\Sigma_W)_{tt}}.}
 #'
 #' Calls [extract_Sigma()] internally for both levels with `part = "total"`,
-#' so the diagonal of each \eqn{\boldsymbol\Sigma} includes the unique
-#' component \eqn{\boldsymbol\Psi} when `unique()` is in the formula. If either
-#' level has only `latent()` and no `unique()`, the corresponding advisory
-#' message fires and the ICC is computed against the latent-only diagonal.
+#' so the diagonal of each \eqn{\boldsymbol\Sigma} includes the
+#' \eqn{\boldsymbol\Psi} component carried by ordinary `latent()`. If either
+#' level uses `latent(..., residual = FALSE)`, the corresponding advisory
+#' message fires and the ICC is computed against the no-residual latent
+#' diagonal.
 #'
 #' For binomial fits the implicit link residual is included in the
 #' within-unit variance by default (matching the marginal latent-scale

@@ -58,12 +58,13 @@ discipline, adapted for the multi-trait stacked grammar):
     **Status: `claimed`** (Phase 0B verifies via comparator vs
     `glmmTMB::equalto()`).
 11. **Ordinary augmented Gaussian random regression**
-    `latent(1 + x | unit, d = K) + unique(1 + x | unit)` /
-    long-form equivalent. **Status: `partial`** under RE-12:
-    the Gaussian shared latent component, augmented unique diagonal,
-    and `extract_Sigma(level = "unit_slope", part = ...)` read-out
-    are implemented and covered by focused recovery tests. The
-    non-Gaussian augmented `unique()` path remains guarded.
+    `latent(1 + x | unit, d = K)` / long-form equivalent.
+    **Status: `partial`** under RE-12: the Gaussian shared latent
+    component, default augmented diagonal Psi, and
+    `extract_Sigma(level = "unit_slope", part = ...)` read-out are
+    implemented and covered by focused recovery tests. Explicit
+    augmented `unique()` remains Gaussian-only compatibility syntax;
+    the non-Gaussian augmented diagonal-Psi path remains guarded.
 12. **Phylogenetic / spatial random slopes** through `phylo_*()` /
     `spatial_*()` augmented keywords. **Status: mixed**: the covered
     `s = 1` cells and Gaussian `phylo_dep(..., s = 2)` live in the
@@ -83,7 +84,7 @@ adding the `animal_*` row; per [`14-known-relatedness-keywords.md`](14-known-rel
 | 4 × 5 grid: `indep` | `indep() / animal_indep() / phylo_indep() / spatial_indep()` | Explicit marginal / independent trait covariance; diagonal, no off-diagonal |
 | 4 × 5 grid: `dep` | `dep() / animal_dep() / phylo_dep() / spatial_dep()` | Unstructured trait covariance |
 | 4 × 5 grid: `latent` | `latent() / animal_latent() / phylo_latent() / spatial_latent()` | Reduced-rank $\Lambda$ ($T \times K$) |
-| Random slope | `latent(1 + x \| unit, d = K) + unique(1 + x \| unit)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian `latent + unique` path is partial under RE-12, structured paths follow their validation rows |
+| Random slope | `latent(1 + x \| unit, d = K)` / structured `phylo_*()` and `spatial_*()` slope keywords | Per-group random regression slope on covariate `x`; ordinary Gaussian default `latent()` path is partial under RE-12, structured paths follow their validation rows |
 | `meta_V` | `meta_V(V = V)` | Known **sampling variance** added to residual. **V is reserved** for sampling variance per the A-vs-V boundary rule (Design 14 §3); relatedness covariance uses **A** / **Ainv** / **pedigree**. `meta_known_V()` is a deprecated alias. |
 
 ## Reduced-rank reparameterisation (`latent(...)`)
@@ -352,15 +353,14 @@ adds the multiplicative weighted-regression mode per Nakagawa
 
 The ordinary behavioural random-regression surface is now partial
 under RE-12. For Gaussian responses,
-`latent(1 + x | unit, d = K) + unique(1 + x | unit)` and the
-long-form equivalent fit the augmented `(intercept, slope) x trait`
-coefficient vector. The shared component is
-`Lambda_aug Lambda_aug^T`; the paired augmented `unique()` term adds
-the diagonal `Psi_B,aug`; and `extract_Sigma(level = "unit_slope",
+`latent(1 + x | unit, d = K)` and the long-form equivalent fit the
+augmented `(intercept, slope) x trait` coefficient vector with the
+default diagonal `Psi_B,aug` companion. The shared component is
+`Lambda_aug Lambda_aug^T`; `extract_Sigma(level = "unit_slope",
 part = "shared" / "unique" / "total")` returns the pieces or their
-sum. The row remains partial because non-Gaussian augmented
-`unique()` is still guarded and broad coverage evidence is not yet
-established.
+sum. Explicit augmented `unique()` remains compatibility syntax. The
+row remains partial because non-Gaussian augmented diagonal Psi is still
+guarded and broad coverage evidence is not yet established.
 
 ### Why we cap at 1 slope for the foreseeable future
 
@@ -569,8 +569,7 @@ Other 4 × 5 cells (`indep`, `dep`, and the phylo / spatial
 analogues) move by validation-debt row, not by this ordinary RE-12
 slice. Current public status is:
 
-1. Ordinary Gaussian `latent(1 + x | unit, d = K) + unique(1 + x | unit)`:
-   partial under RE-12.
+1. Ordinary Gaussian `latent(1 + x | unit, d = K)`: partial under RE-12.
 2. Ordinary non-Gaussian augmented `unique(1 + x | unit)`: guarded.
 3. Structured `phylo_*()` / `spatial_*()` single-slope cells:
    covered where PHY-11..PHY-18 and SPA-08..SPA-10 say covered.

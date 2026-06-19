@@ -24,6 +24,14 @@ densified for v0.2.0; sparse engine path is a v0.3.0 follow-up.}
 See \code{\link[=animal_scalar]{animal_scalar()}}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+}
+\details{
+\code{animal_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
+0.2.0. Use \code{\link[=animal_indep]{animal_indep()}} for standalone marginal diagonal animal-model
+terms. Paired explicit-Psi use remains accepted until the latent-Psi fold
+lands.
+
 Canonical name for the \strong{D independent} animal-model random
 intercept on a shared relatedness matrix \eqn{\mathbf A}. Each
 trait gets its own variance \eqn{\sigma^{2}_{\text{a},t}}; traits

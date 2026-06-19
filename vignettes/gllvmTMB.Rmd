@@ -101,11 +101,11 @@ head(df, 6)
 The example has shared low-rank covariance
 $\boldsymbol\Lambda\boldsymbol\Lambda^\top$ plus per-trait unique
 variance $\boldsymbol\Psi$. The fit below recovers the individual-level
-covariance via `latent()` and `unique()`.
+covariance via ordinary `latent()`.
 
-Fit a `d = 2` reduced-rank GLLVM with **`latent() + unique()`** at the
-individual level — the shared low-rank structure plus trait-specific
-unique variance:
+Fit a `d = 2` reduced-rank GLLVM with **ordinary `latent()`** at the
+individual level — the shared low-rank structure plus the default
+trait-specific diagonal Psi:
 
 ```{r fit-call}
 morph$formula_wide

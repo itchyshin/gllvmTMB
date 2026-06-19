@@ -117,7 +117,7 @@ reference:
     - simulate_unit_trait
 
   - title: Julia bridge
-    desc: Experimental acceleration path through GLLVM.jl; use the capability ledger before relying on a row
+    desc: Experimental GLLVM.jl bridge fitting path; use the capability ledger before relying on a row
     contents:
     - gllvm_julia_capabilities
     - gllvm_julia_gate_registry

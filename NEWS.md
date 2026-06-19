@@ -6,8 +6,9 @@
 ## R-side `engine = "julia"` bridge to GLLVM.jl (2026-06-13)
 
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
-  default `"tmb"`). With `engine = "julia"` the fit is routed through the fast
-  GLLVM.jl engine via JuliaCall (`R/julia-bridge.R`, calling `GLLVM.bridge_fit`).
+  default `"tmb"`). With `engine = "julia"` the fit is routed through the
+  experimental GLLVM.jl bridge fitting path via JuliaCall (`R/julia-bridge.R`,
+  calling `GLLVM.bridge_fit`).
   IN (JUL-01): the bridge maps a single reduced-rank latent block
   (`latent(...)` -> `rr`) with per-trait intercepts for gaussian, poisson,
   binomial, nbinom2, nbinom1, beta, gamma, ordinal, and ordinal-probit rows.

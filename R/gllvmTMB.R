@@ -226,10 +226,10 @@
 #'   `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #' @param engine Character; `"tmb"` (default) fits with the native TMB engine,
-#'   `"julia"` routes the fit to the fast GLLVM.jl engine via JuliaCall (see
-#'   `R/julia-bridge.R`). The Julia path currently maps the unconstrained-
-#'   ordination core (a single `latent()` block + per-trait intercepts) and
-#'   errors on structures it does not yet support.
+#'   `"julia"` routes the fit through the experimental GLLVM.jl bridge fitting
+#'   path via JuliaCall (see `R/julia-bridge.R`). The Julia path currently maps
+#'   the unconstrained-ordination core (a single `latent()` block + per-trait
+#'   intercepts) and errors on structures it does not yet support.
 #' @param ci_method Confidence-interval route requested at fit time for
 #'   admitted `engine = "julia"` no-X rows. One of `"none"` (default),
 #'   `"wald"`, `"profile"`, or `"bootstrap"`. Native `engine = "tmb"` fits use
@@ -445,8 +445,8 @@ gllvmTMB <- function(
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
   }
-  ## engine = "julia" routes the fit to the fast GLLVM.jl engine via JuliaCall
-  ## (R/julia-bridge.R); "tmb" (default) keeps the native TMB engine below.
+  ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
+  ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
   ci_method <- match.arg(ci_method)
   ci_defaults <- identical(ci_method, "none") &&

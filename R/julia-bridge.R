@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# R -> Julia bridge: run the fast GLLVM.jl engine from R via JuliaCall.
+# R -> Julia bridge: run the experimental GLLVM.jl bridge fitting path from R.
 #
 # `gllvmTMB(..., engine = "julia")` routes here: we marshal the response matrix +
 # model spec to GLLVM.jl's flat `bridge_fit` contract, run the Julia fitter, and

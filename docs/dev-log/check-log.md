@@ -15928,3 +15928,89 @@ Still not claimed:
 - No 3-OS CI has run on this split branch.
 - Bridge admission evidence is local and row-scoped. It is not bridge
   completion, release readiness, CRAN readiness, or scientific coverage.
+
+## 2026-06-19 10:34 MDT -- bridge admission split wording and current validation
+
+Branch: `codex/bridge-admission-split-20260619`
+
+Purpose:
+
+- Tighten the bridge split wording so the lane describes an experimental
+  GLLVM.jl bridge fitting path, not a benchmarked acceleration path or a menu
+  of selectable Julia-side algorithms.
+- Refresh current branch validation after the wording and generated-Rd update.
+
+Pre-edit lane check before editing shared dev-log evidence:
+
+- `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,url`
+  -> only draft PR #489 was open, still on
+  `codex/r-bridge-grouped-dispersion`.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent local split commits were `d7826f0`, `d5a2295`, and `07181cf`;
+  no separate active PR/agent collision was found for this split worktree.
+
+Changed:
+
+- Replaced `fast GLLVM.jl engine` / `Experimental acceleration path` wording
+  with `experimental GLLVM.jl bridge fitting path` in `NEWS.md`,
+  `R/gllvmTMB.R`, `R/julia-bridge.R`, and `_pkgdown.yml`.
+- Regenerated `man/gllvmTMB.Rd` with `devtools::document(quiet = TRUE)`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> completed; wrote `gllvmTMB.Rd`.
+- `rg -n "fast GLLVM|Experimental acceleration|acceleration path|accelerat" NEWS.md R/gllvmTMB.R R/julia-bridge.R _pkgdown.yml man/gllvmTMB.Rd man/gllvm_julia*.Rd docs/design/35-validation-debt-register.md`
+  -> no matches.
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- Current GLLVM.jl #101 status check:
+  `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefName,headRefOid,baseRefName,baseRefOid,statusCheckRollup,updatedAt,url`
+  -> open draft, clean, head `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`;
+  current CI and Documenter checks were successful.
+- Julia-only checks in
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0; completed with `DONE`; reported skips were expected
+  heavy/optional dependency skips.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never")'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|can be installed|Status" /private/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-20260619-current/gllvmTMB.Rcheck/00check.log /private/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-20260619-current/gllvmTMB.Rcheck/00install.out`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `git diff --check`
+  -> clean after the wording/docs/evidence edits.
+
+Agent input:
+
+- Chandrasekhar / Grace read-only audit found the split clean and bridge-only
+  against `origin/main`, with no dashboard, mission-control, CRAN, recovery,
+  coevolution/TMB, article-estate, or ordinary `latent()` / `unique()` Psi
+  migration leakage. The audit recommended removing acceleration language,
+  which this slice did.
+
+Still not claimed:
+
+- No push, staging, or PR mutation.
+- GLLVM.jl #101 was inspected and tested locally but not mutated.
+- PR #489 green still describes the broader remote draft branch, not this local
+  split branch.
+- No 3-OS CI has run on this local split branch.
+- This is bridge-admission evidence only, not bridge completion, release
+  readiness, CRAN readiness, or scientific coverage.

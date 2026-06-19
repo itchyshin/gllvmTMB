@@ -16168,6 +16168,69 @@ Still not claimed:
   interval calibration, module uncertainty/rank calibration, or scientific
   coverage completion.
 
+## 2026-06-19 -- coevolution fixed-kernel split test strengthening
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Close Descartes' immediate fixed multi-kernel engine review request by adding
+  a mixed-rank two-kernel offset guard and a numeric gradient threshold to the
+  real cross-kernel metadata regression.
+- Record Hypatia's test-coverage warning without promoting COE-04: this is
+  still fixed-kernel / fixed-rho point evidence, not mixed-family recovery,
+  formal null calibration, interval calibration, module/rank calibration, or
+  broad scientific coverage.
+
+Pre-edit lane check before updating shared dev-log evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it still points at
+  `codex/r-bridge-grouped-dispersion`, is clean, and has visible
+  `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent split/worktree commits were
+  `c061ce2`, `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`, `709eef0`,
+  `4a2449a`, and the two power-pilot accumulation commits `22316dd` /
+  `895cbf9`.
+
+Implemented:
+
+- `tests/testthat/test-coevolution-two-kernel.R`: added a fast mixed-rank
+  two-kernel fit where named tier `phy` uses `d = 2` and named tier `non` uses
+  `d = 1`, then checked `fit$kernel_levels$rank`,
+  `dim(fit$report$Lambda_kernel)`, zero padding for the rank-1 tier, and
+  `extract_Sigma(..., part = "shared")` for both named kernels.
+- `tests/testthat/test-coevolution-two-kernel.R`: tightened the real
+  cross-kernel metadata regression to require
+  `fit$fit_health$max_gradient < 1e-3`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `rg -n "COE-04.*covered|scientific coverage passed|release ready|bridge complete|in-engine rho|rho estimation|rho interval|mixed-family coverage|formal null|Type-I|interval calibration" README.md NEWS.md docs vignettes R tests`
+  -> expected guardrail/history/design hits only. Live source hits kept COE-03
+  / COE-04 partial and named fixed-rho, interval, null-calibration, and
+  mixed-family limits.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, in-engine `rho`, `rho` intervals, formal Type-I/null calibration,
+  interval calibration, mixed-family recovery, module uncertainty/rank
+  calibration, or scientific coverage completion.
+
 ## 2026-06-19 17:19 MDT -- bridge admission split fresh validation after unique/Psi closeout
 
 Branch: `codex/bridge-admission-split-20260619`

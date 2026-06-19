@@ -61,6 +61,21 @@ arguments, fixed-rho reporting, and fitted-gradient diagnostics. It specifically
 covers the bug found by Faraday's read-only audit, where fake-fit tests kept the
 attribute manually but the real fit lost it during matrix subsetting.
 
+Second-pass strengthening, after Descartes and Hypatia reviewed the split:
+
+- added a mixed-rank two-kernel fit where one named fixed-kernel tier uses
+  `d = 2` and a second tier uses `d = 1`;
+- checked that `fit$kernel_levels$rank`, `fit$report$Lambda_kernel`, and
+  `extract_Sigma(..., part = "shared")` all respect the per-tier rank offsets;
+- tightened the real cross-kernel metadata regression from finite-gradient
+  evidence to `fit$fit_health$max_gradient < 1e-3`.
+
+This closes Descartes' immediate offset/gradient review request for the fixed
+multi-kernel engine split. It does not close Hypatia's scientific-coverage
+warnings: mixed-family recovery, formal null calibration, interval calibration,
+module/rank calibration, and broad non-Gaussian coverage remain outside this
+slice.
+
 ## 6. Commands run
 
 - `git status --short --branch`
@@ -74,6 +89,18 @@ attribute manually but the real fit lost it during matrix subsetting.
 - `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
   -> exit code 0; expected heavy rows skipped.
 - `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- After the second-pass test strengthening:
+  `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- After the second-pass test strengthening:
+  `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- After the second-pass test strengthening:
+  `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- After the second-pass test strengthening:
+  `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
   -> exit code 0.
 - `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
   -> `No problems found`.
@@ -113,10 +140,16 @@ open.
 ## 9. Review roles
 
 - Faraday (read-only TMB/engine audit) found the real-fit metadata blocker.
+- Descartes (TMB/engine split audit) passed the scoped fixed multi-kernel engine
+  path and requested a mixed-rank two-kernel offset guard plus numeric gradient
+  threshold evidence; both were added in this second-pass test strengthening.
+- Hypatia (simulation/test audit) kept the scientific-coverage verdict at WARN:
+  fixed Poisson-style coverage and metadata recovery are not mixed-family
+  recovery, null calibration, interval calibration, or broad COE-04 completion.
 - Gauss/Noether checklist applied through the project-local
   `tmb-likelihood-review` skill. No TMB indexing blocker was found by the
-  read-only audit; this slice adds fitted-gradient finite evidence but does not
-  add a full gradient-at-truth proof.
+  read-only audit; this slice adds fitted-gradient threshold evidence but does
+  not add a full gradient-at-truth proof.
 - Rose checklist applied through the after-task audit protocol.
 
 ## 10. Not run / not claimed

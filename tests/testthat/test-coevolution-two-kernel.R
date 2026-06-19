@@ -595,6 +595,72 @@ test_that("two distinct named kernel tiers fit and extract by component", {
   )
 })
 
+test_that("two named kernel tiers support mixed latent ranks", {
+  ## C3.1 offset guard: ranks can differ by named fixed-kernel tier, so
+  ## theta_rr_kernel and g_kernel must pack/unpack contiguous tier blocks.
+  testthat::skip_if_not_installed("TMB")
+
+  set.seed(91)
+  n_unit <- 9L
+  n_rep <- 4L
+  unit_levels <- paste0("u", seq_len(n_unit))
+  A_phy <- .c3_axis_kernel(n_unit, "u", range = 0.55)
+  rownames(A_phy) <- colnames(A_phy) <- unit_levels
+  A_non <- diag(n_unit)
+  A_non[row(A_non) == col(A_non) + 1L | row(A_non) + 1L == col(A_non)] <- 0.25
+  A_non <- as.matrix(Matrix::nearPD(A_non, corr = TRUE)$mat)
+  rownames(A_non) <- colnames(A_non) <- unit_levels
+
+  rows <- expand.grid(
+    unit_id = unit_levels,
+    rep_id = seq_len(n_rep),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  rows$row_id <- factor(seq_len(nrow(rows)))
+  rows$unit_id <- factor(rows$unit_id, levels = unit_levels)
+
+  G_phy <- t(chol(A_phy + diag(1e-8, n_unit))) %*%
+    matrix(stats::rnorm(n_unit * 2L), n_unit, 2L)
+  G_non <- t(chol(A_non + diag(1e-8, n_unit))) %*%
+    matrix(stats::rnorm(n_unit), n_unit, 1L)
+  Lambda_phy <- matrix(c(0.7, 0.2, -0.3, 0.55), 2L, 2L)
+  Lambda_non <- matrix(c(0.25, -0.45), 2L, 1L)
+  eta <- G_phy %*% t(Lambda_phy) + G_non %*% t(Lambda_non)
+  eta <- eta[as.integer(rows$unit_id), , drop = FALSE]
+  rows$y1 <- eta[, 1L] + stats::rnorm(nrow(rows), sd = 0.20)
+  rows$y2 <- eta[, 2L] + stats::rnorm(nrow(rows), sd = 0.20)
+
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(y1, y2) ~
+      1 +
+      kernel_latent(unit_id, K = A_phy, d = 2, name = "phy") +
+      kernel_latent(unit_id, K = A_non, d = 1, name = "non"),
+    data = rows,
+    unit = "row_id",
+    cluster = "unit_id",
+    family = stats::gaussian(),
+    control = ctl
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_equal(fit$kernel_levels$name, c("phy", "non"))
+  expect_equal(fit$kernel_levels$rank, c(2L, 1L))
+  expect_equal(dim(fit$report$Lambda_kernel), c(2L, 2L, 2L))
+  expect_equal(fit$report$Lambda_kernel[, 2L, 2L], c(0, 0))
+
+  S_phy <- suppressMessages(
+    gllvmTMB::extract_Sigma(fit, level = "phy", part = "shared")
+  )
+  S_non <- suppressMessages(
+    gllvmTMB::extract_Sigma(fit, level = "non", part = "shared")
+  )
+  expect_equal(dim(S_phy$Sigma), c(2L, 2L))
+  expect_equal(dim(S_non$Sigma), c(2L, 2L))
+  expect_false(isTRUE(all.equal(S_phy$Sigma, S_non$Sigma)))
+})
+
 test_that("real cross-kernel multi-tier fits retain rho metadata for pair prediction", {
   testthat::skip_if_not_installed("TMB")
 
@@ -619,6 +685,7 @@ test_that("real cross-kernel multi-tier fits retain rho metadata for pair predic
   )))
 
   expect_true(is.finite(fit$fit_health$max_gradient))
+  expect_lt(fit$fit_health$max_gradient, 1e-3)
   expect_equal(fit$kernel_levels$rho, c(0.55, 0.55), tolerance = 1e-12)
   meta <- attr(fit$kernel_matrices$phy, "gllvmTMB_cross_kernel", exact = TRUE)
   expect_type(meta, "list")

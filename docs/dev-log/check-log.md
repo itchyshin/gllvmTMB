@@ -15856,3 +15856,75 @@ Still not claimed:
 - This local split does not mutate GLLVM.jl #101.
 - Bridge admission evidence is local to the split branch; it is not bridge
   completion, release readiness, CRAN readiness, or scientific coverage.
+
+## 2026-06-19 -- bridge admission split validation refresh
+
+Branch: `codex/bridge-admission-split-20260619`
+
+Purpose:
+
+- Re-validate the local bridge-admission split as the next Big 4 lane, using
+  R-only, Julia-only, live Julia-via-R, full R tests, pkgdown, and R CMD check.
+- Record the remaining Shannon/Grace warning: the local split is scoped, but
+  PR #489 still points at the broader remote branch and the split branch has no
+  3-OS CI evidence.
+
+Pre-edit lane check before updating shared dev-log evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it still points at
+  `codex/r-bridge-grouped-dispersion`, is clean at pushed head `03fdda1`, and
+  has visible `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> only `07181cf Split Julia bridge admission lane` was reported.
+
+Checks:
+
+- `git status --short --branch`
+  -> split worktree clean before evidence updates.
+- `git diff --check`
+  -> clean before evidence updates.
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- In `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0 and completed with `DONE`; the only reported skips were
+  expected heavy/optional dependency skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-rerun", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|whether package.*can be installed|Status|install" /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-rerun`
+  -> confirmed the warning is the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Agent input:
+
+- Grace/Bacon read-only audit returned `WARN`: local split scope passes, with
+  no observed dashboard, mission-control, article-estate, coevolution/TMB,
+  CRAN-comment, recovery-checkpoint, or ordinary `latent()` / `unique()` Psi
+  migration leakage. Remaining risks are process-state risks: PR #489 is still
+  the broader remote branch, and this split branch has no 3-OS CI evidence.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- PR #489 green still does not describe this local split branch.
+- No 3-OS CI has run on this split branch.
+- Bridge admission evidence is local and row-scoped. It is not bridge
+  completion, release readiness, CRAN readiness, or scientific coverage.

@@ -243,6 +243,59 @@ Current wording and validation refresh, 2026-06-19 10:34 MDT:
 - `git diff --check`
   -> clean after wording/docs/evidence edits.
 
+Final local refresh, 2026-06-19 16:06 MDT:
+
+- Pre-edit lane check:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open, still on
+  `codex/r-bridge-grouped-dispersion`, clean at pushed head `03fdda1`, with
+  visible `ubuntu-latest (release)` and `recovery` checks successful.
+- Pre-edit lane check:
+  `git log --all --oneline --since="6 hours ago"`
+  -> recent local split commits were `9bfe15c`, `af9940d`, `709eef0`,
+  `4a2449a`, and `e2dd41d`; no active PR collision was found for this local
+  bridge split edit.
+- `git status --short --branch`
+  -> clean before evidence edits.
+- `git diff --check`
+  -> clean before evidence edits.
+- `gh pr view 101 --repo itchyshin/GLLVM.jl --json number,title,state,isDraft,mergeStateStatus,headRefName,headRefOid,baseRefName,statusCheckRollup,updatedAt,url`
+  -> GLLVM.jl #101 remains open draft, clean, at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`; visible CI/Documenter checks
+  are successful.
+- `env -u GLLVM_JL_PATH Rscript --vanilla -e 'options(gllvmTMB.GLLVM.jl.path = NULL); devtools::test(filter = "julia-bridge|plot-covariance-tables", reporter = "summary")'`
+  -> exit code 0; expected 14 live-Julia rows skipped.
+- Julia-only checks in
+  `/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration` at
+  `f7be594e72486ef1bb2f2bde1875e1e6e903b5f9`:
+  `julia --project=. --startup-file=no test/test_bridge_grouped_dispersion.jl`
+  -> `Pass 121 | Total 121`;
+  `julia --project=. --startup-file=no test/test_bridge_capabilities.jl`
+  -> `Pass 40 | Total 40`;
+  `julia --project=. --startup-file=no test/test_bridge_ci.jl`
+  -> `Pass 64 | Total 64`;
+  `julia --project=. --startup-file=no test/test_bridge_missing_mask.jl`
+  -> `Pass 83 | Total 83`;
+  `julia --project=. --startup-file=no test/test_bridge_x.jl`
+  -> `Pass 169 | Total 169`.
+- `GLLVM_JL_PATH="/Users/z3437171/Dropbox/Github Local/GLLVM.jl-integration" PATH="$HOME/.juliaup/bin:$PATH" Rscript --vanilla -e 'devtools::test(filter = "julia-bridge", reporter = "summary")'`
+  -> exit code 0; JuliaCall activated the pinned integration project and
+  completed with `Julia exit`.
+- `Rscript --vanilla -e 'devtools::test(reporter = "summary")'`
+  -> exit code 0 and completed with `DONE`; reported skips were expected
+  heavy/optional dependency skips.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|can be installed|Status" /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-bridge-admission-split-current-20260619/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `rg -n "fast GLLVM|Experimental acceleration|acceleration path|accelerat|selectable Julia|bridge complete|bridge completion|release ready|release-ready|release readiness|scientific coverage|coverage passed" NEWS.md R/gllvmTMB.R R/julia-bridge.R _pkgdown.yml man/gllvmTMB.Rd man/gllvm_julia*.Rd docs/design/35-validation-debt-register.md docs/dev-log/after-task/2026-06-19-bridge-admission-split.md docs/dev-log/check-log.md`
+  -> expected guardrail/history hits only in check-log and after-task evidence;
+  no source or generated-reference wording reintroduced acceleration or
+  selectable-algorithm claims.
+
 ## 5. Tests of the Tests
 
 The modified bridge tests combine pure-R payload/gate tests, live Julia-via-R

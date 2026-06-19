@@ -316,7 +316,7 @@ plot_Sigma_table(sigma_rows_B, sort = "magnitude")
 Two trait-level summaries used in behavioural-syndromes and
 phenotypic-integration workflows both depend
 on the *full* $\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
-decomposition. If you compute them from a latent-only fit you get the
+decomposition. If you compute them from a no-residual latent fit you get the
 wrong answer.
 
 ### Communality

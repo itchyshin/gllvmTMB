@@ -199,7 +199,7 @@ fit_exp
 
 The exploratory loadings are rotation-invariant. This preview uses a
 latent-only formula, so the implied unit-level covariance is the
-shared latent surface, not a full `latent + unique` decomposition:
+shared latent surface, not a full ordinary `latent()` decomposition:
 
 ```{r sigma-exp}
 SB_exp_rows <- extract_Sigma_table(

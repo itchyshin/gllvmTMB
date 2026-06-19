@@ -139,10 +139,9 @@ The random-effects block decomposes as:
   + \boldsymbol\lambda_t^\top \mathbf{u}_{g(i)}$ on the link scale.
 
 - **Ordinary augmented Gaussian random regression** from
-  `latent(0 + trait + (0 + trait):x | unit, d = K) +
-  unique(0 + trait + (0 + trait):x | unit)` or the equivalent
-  `traits(...)` shorthand `latent(1 + x | unit, d = K) +
-  unique(1 + x | unit)` (RE-12): the coefficient vector has
+  `latent(0 + trait + (0 + trait):x | unit, d = K)` or the equivalent
+  `traits(...)` shorthand `latent(1 + x | unit, d = K)` (RE-12):
+  the coefficient vector has
   $C = 2T$ rows ordered as `(intercept, slope) x trait`. The
   shared component uses
   $\Lambda_{\text{aug}} \in \mathbb{R}^{C \times K}$ and unit

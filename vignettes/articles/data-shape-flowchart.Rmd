@@ -105,8 +105,8 @@ here even if you eventually need a more complex model.
 row is one species's trait value at one site. The "trait integration"
 question asks whether trait covariance is mostly **between** sites
 (do entire sites have a syndrome) or **within** sites (do co-occurring
-species share a syndrome regardless of site). The paired
-`latent() + unique()` decomposition fits both layers.
+species share a syndrome regardless of site). The ordinary `latent()`
+decomposition fits both layers.
 
 **Site x species with repeated measures**
 ([behavioural-syndromes](behavioural-syndromes.html)) &mdash; Same data

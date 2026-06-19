@@ -65,7 +65,7 @@ Implemented (or planned) comparator smoke tests:
 
 | Test path | Comparator | gllvmTMB feature exercised | Status |
 |-----------|------------|---------------------------|--------|
-| `glmmTMB::rr() + diag()` for Gaussian | `glmmTMB::glmmTMB(..., rr(0 + trait \| g, d = K) + diag(0 + trait \| g))` | `latent + unique` paired decomposition; log-likelihood match to 1e-4 (per `tests/testthat/test-stage2-rr-diag.R`) | covered (verify in Phase 0B) |
+| `glmmTMB::rr() + diag()` for Gaussian | `glmmTMB::glmmTMB(..., rr(0 + trait \| g, d = K) + diag(0 + trait \| g))` | ordinary `latent()` decomposition; log-likelihood match to 1e-4 (per `tests/testthat/test-stage2-rr-diag.R`) | covered (verify in Phase 0B) |
 | `glmmTMB::propto()` for phylogenetic | `glmmTMB::glmmTMB(..., propto(0 + trait \| species, A))` | `phylo_scalar()`; log-likelihood match to 1e-4 (per `tests/testthat/test-stage3-propto-equalto.R`) | covered |
 | `glmmTMB::equalto()` for known-V | `glmmTMB::glmmTMB(..., equalto(0 + obs \| grp_V, V))` | `meta_V(V = V)` (renamed from `meta_known_V`); parser, dimension, wide-format, and smoke-fit coverage exist; direct LL comparator still needed | partial |
 | `gllvm::gllvm()` binary GLLVM | Procrustes-aligned loadings + per-factor $\rho > 0.95$ | binary GLLVM with `latent()`; rotation-aware comparison via `compare_loadings()` | claimed (M2 work) |
@@ -153,8 +153,7 @@ test_that("latent(0 + trait | site, d = K) accepts + fits + extracts", {
                              Lambda_B = ..., psi_B = ...)
   fit <- gllvmTMB(
     value ~ 0 + trait +
-      latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 2),
     data = sim$data, unit = "site"
   )
   expect_equal(fit$opt$convergence, 0L)
@@ -338,7 +337,7 @@ For every new test, verify at least one of:
   saturated mean, weak identifiability).
 - the test **combines the new feature with an existing
   neighbouring feature** (e.g. when adding `meta_V`, test it
-  with a `latent + unique` decomposition too, not just
+  with an ordinary `latent()` decomposition too, not just
   alone).
 
 Generic "the function returned without error" assertions are

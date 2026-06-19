@@ -211,9 +211,7 @@ fit_core <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
-          latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species),
+          latent(0 + trait | site_species, d = 1),
   data    = df,
   trait   = "trait",
   cluster = "species"
@@ -273,9 +271,7 @@ fit_core_d1 <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
           latent(0 + trait | site, d = 1) +
-          unique(0 + trait | site) +
-          latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species),
+          latent(0 + trait | site_species, d = 1),
   data    = df,
   trait   = "trait",
   cluster = "species"
@@ -347,10 +343,8 @@ fit_adj <- gllvmTMB(
           (0 + trait):env_1 + (0 + trait):env_2 +
           spatial_unique(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
-          unique(0 + trait | species) +              # q_it
+          indep(0 + trait | species) +               # q_it
           phylo_unique(species, tree = tree),         # p_it
   data    = df,
   trait   = "trait",
@@ -504,9 +498,7 @@ fit_M3 <- gllvmTMB(
           spatial_latent(0 + trait | coords, d = 2, mesh = mesh) +
           spatial_unique(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
           phylo_unique(species, tree = tree),
   data = df, trait = "trait", cluster = "species"
 )
@@ -536,9 +528,7 @@ fit_M4 <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
           spatial_unique(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
           phylo_latent(species, d = 2, tree = tree) +
           phylo_unique(species, tree = tree),
   data = df,

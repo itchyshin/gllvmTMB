@@ -20,7 +20,7 @@ reserved / planned`). Most current rows are `claimed`; Phase 0B
 verifies via per-keyword simulation-recovery tests. Random
 **slopes** have mixed status: structured single-slope cells are
 covered where the validation-debt register says so, and the ordinary
-unit-tier Gaussian augmented `latent + unique` decomposition is
+unit-tier Gaussian augmented `latent()` decomposition is
 `partial` under RE-12. The row remains partial because non-Gaussian
 augmented `unique()` is still guarded and broader coverage evidence is
 not yet established.
@@ -42,8 +42,8 @@ discipline, adapted for the multi-trait stacked grammar):
 4. **`latent(0 + trait | g, d = K)` reduced-rank** loadings.
    The `glmmTMB::rr()` machinery (McGillycuddy et al. 2025)
    adapted to the trait-stacked grammar. **Status: `claimed`**.
-5. **`latent + unique` paired decomposition** producing
-   $\Sigma = \Lambda\Lambda^\top + \Psi$. **Status: `claimed`**.
+5. **Ordinary `latent()` decomposition** producing
+   $\Sigma = \Lambda\Lambda^\top + \Psi$ by default. **Status: `claimed`**.
 6. **`indep(0 + trait | g)` marginal / independent** trait
    covariance, equivalent to standalone `unique()` and always
    used alone. **Status: `claimed`**.
@@ -182,7 +182,7 @@ pairing rule's full mechanics.
 each trait gets its own variance and cross-trait covariance is
 fixed at zero. It is equivalent to standalone `unique(0 + trait |
 g)` and exists so users can say, unambiguously, "fit the diagonal
-model rather than the `latent + unique` decomposition":
+model rather than the ordinary `latent()` decomposition":
 
 $$
 \boldsymbol\Sigma_\text{indep} =
@@ -209,7 +209,7 @@ diagonal. $T(T+1)/2$ free parameters.
   when the reader should see that the diagonal model is intentional.
 - `dep` → estimate every entry; statistically expensive but
   most flexible.
-- `latent + unique` → reduced-rank shared structure +
+- `latent()` → reduced-rank shared structure +
   trait-specific residuals; the headline decomposition.
 
 ## Phylogenetic random effects (`phylo_*`)
@@ -408,18 +408,17 @@ For $T = 10$: 0 → 55 cov entries; 1 → 210; 2 → 465; 3 → 820.
 # 0 random slopes (current; intercept only). Status: covered.
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):env +
-    latent(0 + trait | site, d = 2) +
-    unique(0 + trait | site),
+    latent(0 + trait | site, d = 2),
   data = df,
   unit = "site"
 )
 
-# 1 random slope (RE-12). Status: partial: Gaussian latent + unique live;
-# non-Gaussian augmented unique() guarded.
+# 1 random slope (RE-12). Status: partial: Gaussian ordinary latent() live;
+# explicit augmented unique() remains compatibility syntax and non-Gaussian
+# augmented unique() is guarded.
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):env +
-    latent(0 + trait + (0 + trait):env | site, d = 2) +
-    unique(0 + trait + (0 + trait):env | site),
+    latent(0 + trait + (0 + trait):env | site, d = 2),
   data = df,
   trait = "trait",
   unit = "site"
@@ -436,8 +435,7 @@ gllvmTMB(
 # 1 random slope via traits() LHS shorthand:
 gllvmTMB(
   traits(t1, t2, t3) ~ 1 + env +
-    latent(1 + env | site, d = 2) +
-    unique(1 + env | site),
+    latent(1 + env | site, d = 2),
   data = df_wide,
   unit = "site"
 )
@@ -448,22 +446,21 @@ Same engine.
 
 ### Slope cap (parser-enforced)
 
-| Slopes inside ordinary augmented `latent()` / `unique()` | Status | Parser behaviour |
+| Slopes inside ordinary augmented `latent()` | Status | Parser behaviour |
 |---------------------------------|--------|------------------|
 | 0 | `covered` | accepted (current path) |
-| 1 | `partial` (RE-12) | accepted for ordinary Gaussian `latent + unique`; non-Gaussian augmented `unique()` guarded |
+| 1 | `partial` (RE-12) | accepted for ordinary Gaussian `latent()`; explicit augmented `unique()` is compatibility syntax and non-Gaussian augmented `unique()` is guarded |
 | 2 | `planned (post-RE-12)` | unsupported; revisit only after the single-slope Gaussian path and user-facing article are stable |
 | 3 | `planned (post-2-slopes)` | rejected; conditional on the 2-slope slice landing first |
 | 4+ | `rejected (long-term)` | always rejected; this combinatorial regime is not in scope |
 
 Unsupported augmented forms should fail loud rather than silently
 dropping slope columns. The acceptance path is the single-covariate
-ordinary Gaussian `latent + unique` form above.
+ordinary Gaussian `latent()` form above.
 
 ### What happens internally for the RE-12 Gaussian slope
 
-For `latent(0 + trait + (0 + trait):x | unit, d = K) +
-unique(0 + trait + (0 + trait):x | unit)`, the per-unit coefficient
+For `latent(0 + trait + (0 + trait):x | unit, d = K)`, the per-unit coefficient
 vector has length $2T$, indexed as `intercept.t1`, `slope.x.t1`,
 `intercept.t2`, `slope.x.t2`, and so on. The engine builds `Z_B_lat`
 and `Z_B_diag`, row-level design matrices that contribute 1 to the
@@ -536,7 +533,7 @@ the $T(1+s) \times K$ Lambda when slopes are present. Future fixture:
 ### Recovery and coverage study scope
 
 The RE-12 focused tests prove parser routing, Gaussian fitting, labelled
-extraction, failure guards, unique-only diagonal extraction, and one
+extraction, failure guards, diagonal-compatibility extraction, and one
 deterministic Gaussian recovery case for the intercept-intercept,
 slope-slope, and intercept-slope blocks. They do not yet prove a broad
 coverage claim. A future `coverage_study()` / recovery grid should run on

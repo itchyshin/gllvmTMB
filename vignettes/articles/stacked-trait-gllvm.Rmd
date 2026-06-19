@@ -42,14 +42,14 @@ needed several separate analyses for:
 
 1. **Between-site functional integration**: do trait values *covary*
    across sites? When site A is high in trait 1, is it also high in
-   trait 2? (`latent + unique` on `site`)
+   trait 2? (ordinary `latent()` on `site`)
 2. **Within-site functional integration**: when site A's species
-   deviate from site A's average, do those deviations covary? (`latent +
-   unique` on `site_species`)
+   deviate from site A's average, do those deviations covary? (ordinary
+   `latent()` on `site_species`)
 3. **Phylogenetic signal**: is some of the species-level variance
    driven by shared ancestry? (`phylo_scalar(species)`)
 4. **Residual species effects**: what's left over after accounting for
-   phylogeny? (`unique(species)`)
+   phylogeny? (`indep(species)`)
 5. **Residual spatial autocorrelation**: do nearby sites' trait values
    look similar after accounting for the predictors and the
    above? (`spatial_unique(coords)`)
@@ -126,10 +126,8 @@ fit <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
           spatial_unique(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
-          unique(0 + trait | species) +
+          indep(0 + trait | species) +
           phylo_scalar(species, vcv = Cphy),
   data = df,
   trait = "trait"
@@ -149,12 +147,12 @@ Each formula term carries a specific role:
 - `latent(0 + trait | site_species, d = 1)` + `unique(0 + trait | site_species)`
   -- local reduced-rank + diagonal covariance giving
   $\boldsymbol{\Sigma}_{\text{unit\_obs}} = \boldsymbol{\Lambda}_W \boldsymbol{\Lambda}_W^\top + \boldsymbol{\Psi}_W$.
-- `unique(0 + trait | species)` -- non-phylogenetic species term
+- `indep(0 + trait | species)` -- non-phylogenetic species term
   $q_{it}$.
 - `phylo_scalar(species, vcv = Cphy)` -- phylogenetic random effect
   $p_{it}$ using an in-keyword `vcv = Cphy` argument.
 
-The `latent + unique` pair is the canonical decomposition mode; see
+Ordinary `latent()` is the canonical decomposition mode; see
 [the GLLVM vocabulary article](gllvm-vocabulary.html) for the term
 glossary and [the API keyword grid](api-keyword-grid.html) for the
 full $3\times 5$ keyword grid that organises the formula language.

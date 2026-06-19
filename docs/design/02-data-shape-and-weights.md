@@ -376,8 +376,7 @@ library(gllvmTMB)
 # Long form (canonical): one row per (individual, trait)
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | individual, d = 2) +
-    unique(0 + trait | individual),
+    latent(0 + trait | individual, d = 2),
   data = df_long,
   unit = "individual"
 )
@@ -385,8 +384,7 @@ fit_long <- gllvmTMB(
 # Wide data-frame form: one row per individual, one column per trait
 fit_wide <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 1 +
-    latent(1 | individual, d = 2) +
-    unique(1 | individual),
+    latent(1 | individual, d = 2),
   data = df_wide,
   unit = "individual"
 )

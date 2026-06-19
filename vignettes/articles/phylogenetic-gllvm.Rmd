@@ -41,7 +41,9 @@ g_{\mathrm{non}} \sim
 \mathrm{MVN}(0, \Sigma_{\mathrm{non}} \otimes I).
 $$
 
-Each covariance can use the same `latent() + unique()` decomposition:
+The phylogenetic tier keeps the explicit paired `phylo_latent() +
+phylo_unique()` compatibility spelling, while the ordinary non-phylogenetic
+tier uses `latent()` for the same shared-plus-diagonal-Psi target:
 
 $$
 \Sigma_{\mathrm{phy}} =
@@ -131,8 +133,7 @@ fit_long <- gllvmTMB(
   value ~ 0 + trait +
     phylo_latent(species, d = 1, tree = tree) +
     phylo_unique(species, tree = tree) +
-    latent(0 + trait | species, d = 1) +
-    unique(0 + trait | species),
+    latent(0 + trait | species, d = 1),
   data = df,
   trait = "trait",
   unit = "species",
@@ -144,8 +145,7 @@ fit_wide <- gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1 +
     phylo_latent(species, d = 1, tree = tree) +
     phylo_unique(species, tree = tree) +
-    latent(1 | species, d = 1) +
-    unique(1 | species),
+    latent(1 | species, d = 1),
   data = df_wide,
   unit = "species",
   cluster = "species"
@@ -497,7 +497,7 @@ reserved (fail-loud) rather than features to reach for now.
 ## Trait covariance across nested tiers
 
 The phylogenetic and non-phylogenetic split above is one example of a
-more general pattern: the same `latent() + unique()` covariance
+more general pattern: the same ordinary `latent()` covariance
 decomposition can be placed at **several nested grouping tiers** at
 once. The three grouping slots are named by the `unit`, `unit_obs`,
 and `cluster` arguments:
@@ -556,8 +556,8 @@ tiers$value <- mu_behav[ti] +
   rnorm(nrow(tiers), sd = sqrt(psi_resid[ti]))
 ```
 
-The formula places a `latent() + unique()` pair at the individual
-tier and a `unique()` diagonal at the population tier. The three
+The formula places ordinary `latent()` at the individual
+tier and an `indep()` diagonal at the population tier. The three
 grouping columns are routed by the `unit` / `unit_obs` / `cluster`
 arguments:
 
@@ -565,8 +565,7 @@ arguments:
 fit_tier <- gllvmTMB(
   value ~ 0 + trait +
     latent(0 + trait | individual, d = 1) +
-    unique(0 + trait | individual) +
-    unique(0 + trait | population),
+    indep(0 + trait | population),
   data     = tiers,
   unit     = "individual",
   unit_obs = "session_id",
@@ -626,7 +625,7 @@ Three nested covariance intents bracket the four-component model:
 - **Independent** (`phylo_indep + indep`): per-trait diagonal only at
   each tier. No shared axis, no cross-trait covariance. The simplest
   model that respects the phylogenetic structure.
-- **Two-U** (`phylo_latent + phylo_unique + latent + unique`): the
+- **Two-Psi** (`phylo_latent + phylo_unique + latent`): the
   four-component decomposition fit in this article. A shared
   low-rank axis plus a trait-specific diagonal at each tier.
 - **Dependent** (`phylo_dep + dep`): a full unstructured covariance
@@ -664,7 +663,7 @@ benchmark for off-diagonal cross-trait structure.
 
 ## When to simplify
 
-The paired `phylo_latent() + phylo_unique() + latent() + unique()`
+The paired `phylo_latent() + phylo_unique()` plus ordinary `latent()`
 model is useful when the question is about phylogenetically conserved
 trait syndromes alongside non-phylogenetic shared-axis structure.
 Simplify when the data do not identify the splits the model asks for:
@@ -697,7 +696,7 @@ diagnostics flag.
   the same dense-relatedness idea to two interacting lineages linked by
   an association matrix `W`.
 - [`morphometrics`](morphometrics.html) is the simplest non-phylogenetic
-  `latent() + unique()` worked example.
+  ordinary `latent()` worked example.
 - **Animal models with individual pedigrees.** If your rows are
   *individuals* with a known pedigree rather than *species* with a
   phylogeny, swap `phylo_*()` for the parallel `animal_*()` family

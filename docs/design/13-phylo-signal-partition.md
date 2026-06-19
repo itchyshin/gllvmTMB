@@ -44,7 +44,7 @@ not the numerator.
 
 ## §2 — The current 3-component partition (what the redesign replaces)
 
-For a fit with `phylo_latent + latent(species) + unique(species)`:
+For a fit with `phylo_latent + latent(species)`:
 
 $$V_\eta[t] = \underbrace{\Sigma_{\text{phy}}[t,t]}_{\text{phylo, lumped}} + \underbrace{\Sigma^{(\text{latent})}_{\text{non}}[t,t]}_{\text{non-phylo factor}} + \underbrace{\psi_{\text{non}}[t]}_{\text{non-phylo unique}}$$
 

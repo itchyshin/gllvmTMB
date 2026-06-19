@@ -174,7 +174,7 @@ $$
 
 That residual term is fixed by the binomial logit link, not estimated
 from the data. This is why the first binary JSDM model uses
-`latent()` alone. The Gaussian `latent() + unique()` decomposition
+`latent()` alone. The Gaussian ordinary `latent()` decomposition
 estimates a separate diagonal $\boldsymbol\Psi$, but a single-trial
 Bernoulli response already has its latent-scale residual variance
 set by the link. For the same reason, `dep()` and `indep()` are useful
@@ -552,7 +552,7 @@ reportable only after the orientation choice is explicit.
 
 ## See also
 
-* [Morphometrics](morphometrics.html) — Gaussian stacked-trait analogue with `latent() + unique()`.
+* [Morphometrics](morphometrics.html) — Gaussian stacked-trait analogue with ordinary `latent()`.
 * [Choosing latent rank](model-selection-latent-rank.html) — how to compare candidate values of `d`.
 * [Confirmatory loadings](lambda-constraint.html) — how to encode a biological loading hypothesis.
 * [Suggesting a Lambda constraint](lambda-constraint-suggest.html) — data-driven fallback when no hypothesis is available.

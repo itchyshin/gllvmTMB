@@ -151,7 +151,6 @@ ctl <- gllvmTMBcontrol(
 fit_long <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):temperature +
     latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
-    unique(0 + trait + (0 + trait):temperature | individual) +
     latent(0 + trait | session_id, d = 1),
   data = df,
   trait = rr$fit_args$trait,
@@ -164,7 +163,6 @@ fit_long <- gllvmTMB(
 fit_wide <- gllvmTMB(
   traits(boldness, exploration, activity) ~ 1 + temperature +
     latent(1 + temperature | individual, d = 1) +
-    unique(1 + temperature | individual) +
     latent(1 | session_id, d = 1),
   data = df_wide,
   unit = rr$fit_args$unit,
@@ -484,7 +482,7 @@ differences at each temperature value?
 
 ## Current non-Gaussian boundary
 
-The paired augmented `latent() + unique()` random-regression path in
+The ordinary augmented `latent()` random-regression path in
 this article is Gaussian. The low-rank augmented `latent()` path can
 currently fit ordinary non-Gaussian random slopes in a smoke-test
 regime, but adding the augmented diagonal `unique()` component is still
@@ -508,7 +506,7 @@ gllvmTMB(
 
 For a non-Gaussian reaction-norm analysis today, either fit the
 augmented `latent()` part without `unique()` and treat it as early
-evidence, or stay with the established non-slope `latent + unique`
+evidence, or stay with the established non-slope ordinary `latent()`
 between/within model. Do not switch to `phylo_*()` or `spatial_*()`
 syntax unless the scientific model genuinely contains phylogenetic or
 spatial dependence.

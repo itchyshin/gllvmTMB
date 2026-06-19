@@ -95,8 +95,7 @@ explicitly.
 ```{r fit-long}
 fit <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | site, d = 1) +
-    unique(0 + trait | site),
+    latent(0 + trait | site, d = 1),
   data = df_long,
   trait = "trait",
   unit = "site",
@@ -117,8 +116,7 @@ names(df_wide) <- sub("^value\\.", "", names(df_wide))
 
 fit_wide <- gllvmTMB(
   traits(trait_1, trait_2) ~ 1 +
-    latent(1 | site, d = 1) +
-    unique(1 | site),
+    latent(1 | site, d = 1),
   data = df_wide,
   unit = "site",
   control = gllvmTMBcontrol(se = FALSE, n_init = 2, init_jitter = 0.05)

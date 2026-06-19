@@ -91,7 +91,7 @@ identifiability and fit time.
 |---|---|
 | 0 | Individual × trait — `latent(... \| unit)` |
 | 1 | Site × species (JSDM) — `+ family = binomial()` |
-| 2 | + phylogeny — `+ phylo_latent + phylo_unique` (paired with `latent + unique`) |
+| 2 | + phylogeny — `+ phylo_latent + phylo_unique` (paired with ordinary `latent()`) |
 | 3 | + spatial — `+ spatial_unique(0 + trait \| coords)` |
 | 4 | + relatedness-structured random slope (reaction norm) — `+ phylo_slope(x \| species)` |
 | 5 | Two-level (between / within) — `+ latent(... \| unit_obs)` |
@@ -191,7 +191,7 @@ example.
 |---|---|
 | Rows are not phylogenetically structured (e.g. individuals from one species, or sites without taxonomic identity). | Nothing. |
 | Phylogenetic structure with one shared phylogenetic variance per trait (simplest phylo model). | `+ phylo_scalar(species, vcv = Cphy)` |
-| **Canonical paired phylogenetic decomposition** (recommended when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree) + phylo_unique(species, tree = tree) + latent(0 + trait \| species, d = K_non) + unique(0 + trait \| species)` |
+| **Canonical paired phylogenetic decomposition** (recommended when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree) + phylo_unique(species, tree = tree) + latent(0 + trait \| species, d = K_non)` |
 | Many species (n > ~200) and you want speed. | (same paired form) with `tree = tree` (sparse $A^{-1}$ trick); much faster than `vcv = Cphy` at this scale. |
 
 The crossover where the sparse $A^{-1}$ path overtakes the dense
@@ -330,9 +330,9 @@ covariance* (every pair gets its own parameter).
 | You want full unstructured between-unit covariance with no rank reduction. | <code>+ unique(0 + trait &#124; site)</code> (specific variance) plus a separate term for off-diagonal structure as needed | Reasonable when T is small (T ≤ 5) and you have many units. |
 | Confirmatory: you know which traits load on which factor and want to pin those entries of $\boldsymbol\Lambda$. | <code>+ latent(0 + trait &#124; site, d = K)</code> plus `lambda_constraint = list(unit = M)` | M is a `T × K` matrix with `NA` for free entries and numeric values for fixed ones. See [Lambda constraint](lambda-constraint.html); `?suggest_lambda_constraint` proposes a sensible matrix from a fitted unconstrained model. |
 
-For two-level models you typically include both `latent()` and `unique()`
+For two-level models you typically include ordinary `latent()`
 at each level, so the full between-unit piece is
-`latent(0 + trait | site, d = K) + unique(0 + trait | site)` and the
+`latent(0 + trait | site, d = K)` and the
 within-unit piece substitutes the within-unit grouping column
 (e.g. `site_species` for site × species data, or the value passed via
 `unit_obs = "..."` for other domains).
@@ -392,8 +392,7 @@ df_b$value <- as.integer(df_b$value > 0)
 
 fit_jsdm <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site),
+          latent(0 + trait | site, d = 2),
   data   = df_b,
   trait  = "trait",
   family = binomial()
@@ -404,7 +403,7 @@ fit_jsdm <- gllvmTMB(
 
 Rung 2: the canonical paired phylogenetic decomposition combines
 `phylo_latent + phylo_unique` (the phy side) with
-`latent + unique` (the non-phy side). With a tree in hand, prefer
+ordinary `latent()` (the non-phy side). With a tree in hand, prefer
 `tree = tree` (in-keyword) for the sparse $A^{-1}$ path. See
 [Phylogenetic GLLVM](phylogenetic-gllvm.html) for the worked
 example with simulation recovery and `extract_phylo_signal()`.
@@ -429,8 +428,7 @@ fit_phy <- gllvmTMB(
   value ~ 0 + trait +
           phylo_latent(species, d = 1, tree = tree) +
           phylo_unique(species, tree = tree) +
-          latent(0 + trait | species, d = 1) +
-          unique(0 + trait | species),
+          latent(0 + trait | species, d = 1),
   data = df_p,
   trait = "trait",
   unit = "species"
@@ -614,9 +612,7 @@ fit_full <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
           spatial_unique(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site) +
           latent(0 + trait | site_species, d = 1) +
-          unique(0 + trait | site_species) +
           phylo_latent(species, d = 1, tree = tree) +
           phylo_unique(species, tree = tree),
   data = df,
@@ -648,8 +644,8 @@ s_ci <- simulate_site_trait(
 )
 fit_ci <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | site, d = 1) + unique(0 + trait | site) +
-    unique(0 + trait | site_species),
+    latent(0 + trait | site, d = 1) +
+    indep(0 + trait | site_species),
   data  = s_ci$data,
   trait = "trait"
 )

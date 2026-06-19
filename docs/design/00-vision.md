@@ -70,8 +70,9 @@ form.
 formula grammar, the following five capabilities:
 
 1. **Multivariate GLMMs by reduced-rank regression** -- the
-   `latent() + unique()` decomposition of trait covariance,
-   exposed via a clean **4 × 5** covariance keyword grid (see
+   ordinary `latent()` decomposition of trait covariance
+   (**Σ = ΛΛᵀ + Ψ** by default), exposed via a clean **4 × 5**
+   covariance keyword grid (see
    `docs/design/01-formula-grammar.md`).
 2. **Phylogenetic + animal-model GLLVMs** via the same sparse
    `A^{-1}` machinery (Hadfield & Nakagawa 2010 trick). Both the
@@ -155,12 +156,10 @@ appropriate column name.
 ```r
 gllvmTMB(
   value ~ 0 + trait
-        + latent(0 + trait | site, d = 2)         # share of unit-tier variance
-        + unique(0 + trait | site)                # unit-tier trait-diagonal
-        + latent(0 + trait | site_species, d = 1) # share of unit_obs variance
-        + unique(0 + trait | site_species)        # unit_obs trait-diagonal
+        + latent(0 + trait | site, d = 2)         # unit-tier shared + diagonal Psi
+        + latent(0 + trait | site_species, d = 1) # unit_obs shared + diagonal Psi
         + phylo_latent(species, d = 1)            # phylogenetic share of unit
-        + phylo_unique(species),                  # phylogenetic trait-diagonal
+        + phylo_unique(species),                  # explicit phylogenetic Psi compatibility
   data     = df,
   family   = gaussian(),
   trait    = "trait",          # long-format column holding trait factor
@@ -177,8 +176,8 @@ passed (or accepted):
 ```r
 gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1
-        + latent(1 | site, d = 2) + unique(1 | site)
-        + latent(1 | site_species, d = 1) + unique(1 | site_species)
+        + latent(1 | site, d = 2)
+        + latent(1 | site_species, d = 1)
         + phylo_latent(species, d = 1) + phylo_unique(species),
   data     = df_wide,
   family   = gaussian(),

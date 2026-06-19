@@ -24,7 +24,7 @@ until their reader paths are ready:
 |---|---|---|
 | `Sigma` | `extract_Sigma_table(fit, level = "unit")` | The total covariance among traits, one report-ready row per entry. |
 | `Lambda Lambda^T` | `latent(..., d = K)` | Shared axes: traits that rise and fall together across units. |
-| `Psi` | `unique(...)` | Trait-specific variance left over after the shared axes. |
+| `Psi` | ordinary `latent(...)` by default | Trait-specific variance left over after the shared axes. Use `indep(...)` for standalone diagonal tiers; `unique(...)` remains compatibility syntax for old formulas. |
 
 So `Sigma = Lambda Lambda^T + Psi` means: total trait covariance =
 shared multivariate structure + response-specific variation.
@@ -97,8 +97,7 @@ df_wide <- data.frame(
 
 fit <- gllvmTMB(
   traits(bill_length, body_mass, wing_length) ~ 1 +
-    latent(1 | individual, d = 1) +
-    unique(1 | individual),
+    latent(1 | individual, d = 1),
   data = df_wide,
   unit = "individual"
 )
@@ -156,14 +155,13 @@ cannot build that row.
 
 ## Tiny example
 
-A one-level Gaussian GLLVM with shared and unique trait covariance
+A one-level Gaussian GLLVM with shared and trait-specific covariance
 is:
 
 ```r
 fit <- gllvmTMB(
   traits(bill_length, body_mass, wing_length) ~ 1 +
-    latent(1 | individual, d = 1) +
-    unique(1 | individual),
+    latent(1 | individual, d = 1),
   data = df_wide,       # wide: one row per observation occasion
   unit = "individual"   # between-unit grouping
 )
@@ -175,8 +173,7 @@ observation -- uses explicit trait indicators:
 ```r
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | individual, d = 1) +
-    unique(0 + trait | individual),
+    latent(0 + trait | individual, d = 1),
   data  = df_long,      # long: one row per (individual, trait)
   trait = "trait",      # column holding the trait factor
   unit  = "individual"

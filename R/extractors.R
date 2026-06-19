@@ -121,16 +121,19 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #' other traits via the latent factors. Bounded between 0 and 1. Calls
 #' [extract_Sigma()] internally for the chosen level, so the diagonal
 #' uses the full \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi}
-#' decomposition when both `latent()` and `unique()` are in the formula.
+#' decomposition for ordinary `latent()` fits and for explicit
+#' compatibility `latent() + unique()` formulas.
 #'
-#' ## Caveat: communality with latent-only fits
+#' ## Caveat: communality with no-Psi latent fits
 #'
-#' If the fit has `latent()` but **no** `unique()` at the requested level (for
-#' Gaussian / lognormal / Gamma responses), then \eqn{\boldsymbol\Psi = \mathbf 0}
-#' and `c_t^2 = 1` for every trait — this is mathematically correct given
-#' the model spec but tells you nothing about trait integration. The
-#' [extract_Sigma()] advisory message will fire to flag this. To get
-#' meaningful communalities, refit with `+ unique(0 + trait | <group>)`.
+#' If the fit explicitly uses `latent(..., residual = FALSE)` at the requested
+#' level (for Gaussian / lognormal / Gamma responses), then
+#' \eqn{\boldsymbol\Psi = \mathbf 0} and `c_t^2 = 1` for every trait. This is
+#' mathematically correct for the old no-residual subset but tells you nothing
+#' about trait integration. The [extract_Sigma()] advisory message will fire to
+#' flag this. To get meaningful communalities, refit with ordinary `latent()`
+#' (the default shared + diagonal-Psi decomposition) or, for old scripts, the
+#' explicit compatibility pair `latent(..., residual = FALSE) + unique(...)`.
 #'
 #' For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
 #' for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the
@@ -144,7 +147,7 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   Legacy aliases `"B"` and `"W"` are accepted with a deprecation warning.
 #' @param link_residual For binomial fits: `"auto"` (default) adds the
 #'   link-specific implicit residual to the denominator; `"none"` returns
-#'   communalities on the latent+unique-implied scale only.
+#'   communalities on the fitted latent covariance scale only.
 #' @param ci Logical. When `TRUE`, returns a tidy data frame with
 #'   confidence-interval columns; when `FALSE` (the default), returns a
 #'   plain named numeric vector for backward compatibility.
@@ -170,8 +173,7 @@ extract_ICC_site <- function(fit, link_residual = c("auto", "none")) {
 #'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             latent(0 + trait | site, d = 2) +
-#'             unique(0 + trait | site),
+#'             latent(0 + trait | site, d = 2),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"
@@ -406,8 +408,7 @@ extract_communality <- function(
 #'   )
 #'   fit <- gllvmTMB(
 #'     value ~ 0 + trait +
-#'             latent(0 + trait | site, d = 2) +
-#'             unique(0 + trait | site),
+#'             latent(0 + trait | site, d = 2),
 #'     data  = sim$data,
 #'     trait = "trait",
 #'     unit  = "site"

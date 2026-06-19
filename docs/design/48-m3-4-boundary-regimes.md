@@ -69,7 +69,7 @@ $(\psi, \phi)$ trade-off axis.
 **User-facing API** (Boole lead):
 
 ```r
-gllvmTMB(value ~ ... + latent(...) + unique(...),
+gllvmTMB(value ~ ... + latent(...),
          data = df,
          family = nbinom2(),
          control = gllvmTMBcontrol(
@@ -107,8 +107,7 @@ paper also recommends repeated fits with jittered latent starts
 **User-facing API** (Boole lead):
 
 ```r
-gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K) +
-           unique(0 + trait | unit),
+gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K),
          data = df,
          family = gaussian(),
          control = gllvmTMBcontrol(
@@ -158,8 +157,7 @@ when `nlminb` struggles.
 **User-facing API** (Boole lead):
 
 ```r
-gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K) +
-           unique(0 + trait | unit),
+gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K),
          data = df,
          family = gaussian(),
          control = gllvmTMBcontrol(
@@ -173,11 +171,10 @@ gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K) +
 or manually:
 
 ```r
-fit_indep <- gllvmTMB(value ~ ... + unique(0 + trait | unit),
+fit_indep <- gllvmTMB(value ~ ... + indep(0 + trait | unit),
                       data = df, family = gaussian())
 
-fit_full <- gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K) +
-                       unique(0 + trait | unit),
+fit_full <- gllvmTMB(value ~ ... + latent(0 + trait | unit, d = K),
                      data = df, family = gaussian(),
                      control = gllvmTMBcontrol(start_from = fit_indep))
 ```

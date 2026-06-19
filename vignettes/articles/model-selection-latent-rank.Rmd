@@ -432,7 +432,7 @@ Report the candidate set and the checks that constrained it.
 | Biological interpretation | A rank is useful only if the resulting summaries answer the study question. |
 
 This article covers a model-selection workflow for Gaussian
-`latent() + unique()` candidate ranks using base `AIC()` / `BIC()`,
+ordinary `latent()` candidate ranks using base `AIC()` / `BIC()`,
 `logLik()`, and `check_gllvmTMB()` (FG-04, FG-06, DIA-03, DIA-08,
 DIA-10), then shows a Gaussian-only `REML = TRUE` refit for the chosen
 rank (MIS-33).

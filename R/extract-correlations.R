@@ -263,8 +263,7 @@
 #'   psi_B = c(0.4, 0.3, 0.5, 0.2)
 #' )
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
-#'           unique(0 + trait | site),
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1),
 #'   data  = s$data,
 #'   trait = "trait",
 #'   unit  = "site"

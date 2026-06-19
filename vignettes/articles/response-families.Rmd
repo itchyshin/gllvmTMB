@@ -79,8 +79,7 @@ rows. Long data remain the canonical form:
 ```{r}
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | individual, d = 2) +
-    unique(0 + trait | individual),
+    latent(0 + trait | individual, d = 2),
   data = df_long,
   trait = "trait",
   unit = "individual",
@@ -96,8 +95,7 @@ have one row per unit and one column per trait:
 fit_wide <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~
     1 +
-    latent(1 | individual, d = 2) +
-    unique(1 | individual),
+    latent(1 | individual, d = 2),
   data = df_wide,
   unit = "individual",
   family = gaussian()
@@ -155,7 +153,7 @@ family determines the residual term that makes the reported
 covariance interpretable on the link scale.
 
 That is why family choice is not cosmetic. A Poisson count model and
-a Gaussian model can share the same `latent() + unique()` formula but
+a Gaussian model can share the same ordinary `latent()` formula but
 will not imply the same residual scale. Use `extract_Omega()` and
 `extract_Sigma()` after fitting, and read the extractor output on the
 scale implied by the family.

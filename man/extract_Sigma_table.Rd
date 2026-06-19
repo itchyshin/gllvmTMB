@@ -77,7 +77,7 @@ bootstrap intervals for Sigma or correlation matrix entries.
 \dontrun{
 fit <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | unit, d = 2) + unique(0 + trait | unit),
+          latent(0 + trait | unit, d = 2),
   data  = df,
   trait = "trait",
   unit  = "unit"

@@ -87,7 +87,7 @@ the `family` column.
 A single `gllvmTMB()` call handles the compact mixed-family case. The
 formula is latent-only: it has a shared rank-1 latent factor and no
 free `unique()` component. The later comprehensive article should use
-`latent() + unique()` if it teaches a full
+ordinary `latent()` if it teaches a full
 `Sigma = shared + unique` decomposition.
 
 ```{r fit, results='hide'}
@@ -213,7 +213,7 @@ observable-scale correlation.
 `extract_communality()` returns the proportion of each trait's
 latent-scale variance attributable to the shared rank-$d$ factor. In
 this latent-only draft, that is a diagnostic summary for the compact
-fixture, not a full `latent + unique` decomposition example:
+fixture, not a full ordinary `latent()` decomposition example:
 
 ```{r communality}
 extract_communality(fit, level = "unit", link_residual = "auto")

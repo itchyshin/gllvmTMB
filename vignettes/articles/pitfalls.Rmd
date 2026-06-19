@@ -272,7 +272,7 @@ tree$tip.label <- paste0("sp", seq_len(15))
 
 **Rule of thumb.** *Start from the scientific target and the design.
 Use the paired four-component decomposition
-(`phylo_latent + phylo_unique + latent + unique`) only when **both
+(`phylo_latent + phylo_unique + latent`) only when **both
 $\boldsymbol{\Psi}$ diagonals are identifiable**, typically with
 crossed replication, enough species, and strong phylogenetic signal.
 Reserve `phylo_scalar()` for the simpler case where a single shared
@@ -300,7 +300,7 @@ of every variance component in whichever model you fit (four
 pieces in the paired form above, three pieces here, more if you
 add `spatial_*` or extra latent tiers). The number of pieces
 follows from the keywords in the formula. `gllvmTMB(... +
-phylo_latent + latent + unique, ...)` is a three-piece fallback for
+phylo_latent + latent, ...)` is a three-piece fallback for
 this case. The validation evidence for this fallback is
 tracked under `PHY-03`; future worked phylogenetic examples should
 present this as one concrete case of the broader identifiability

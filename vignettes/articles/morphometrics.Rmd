@@ -337,9 +337,9 @@ the shipped object and checks that the off-diagonal covariance pattern
 recovers the known truth. Broader coverage and interval-calibration
 claims belong in the simulation-grid articles, which remain under audit.
 
-## Why `latent + unique`? `dep` and `indep` on the same data
+## Why `latent()`? `dep` and `indep` on the same data
 
-The morphometric workflow pairs `latent(d = K)` with `unique()` to
+The morphometric workflow uses ordinary `latent(d = K)` to
 estimate $\boldsymbol\Sigma_B = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol{\Psi}$.
 Two alternative covstruct modes — `dep` (full unstructured $\boldsymbol\Sigma_B$
 with $T(T+1)/2$ free entries) and `indep` (diagonal-only
@@ -403,7 +403,7 @@ truth_off <- off(Sigma_true)
 ll        <- function(f) round(as.numeric(logLik(f)), 2)
 
 data.frame(
-  mode               = c("latent(d=2) + unique", "latent(d=T) only",
+  mode               = c("latent(d=2)", "latent(d=T)",
                          "dep", "indep"),
   logL               = c(ll(fit), ll(fit_full), ll(fit_dep), ll(fit_indep)),
   off_diag_corr_truth = c(round(cor(off(S1), truth_off), 3),
@@ -422,7 +422,7 @@ What this shows:
 - **`dep` is mathematically identical to `latent(d = T)` standalone** —
   same logL, same $\boldsymbol\Sigma_B$ to numerical precision. The two
   keywords are aliases of the saturated unstructured fit.
-- **Reduced-rank `latent(d = 2) + unique` matches the saturated fit
+- **Reduced-rank `latent(d = 2)` matches the saturated fit
   within 0.1 nats of logL.** With $T = 5$ traits and a
   rank-2 truth, the rank constraint loses essentially no information
   and gives the same off-diagonal correlation pattern as the saturated
@@ -433,10 +433,10 @@ What this shows:
   correlation with truth is `NA` because the fitted off-diagonals are
   exactly zero by construction. logL is materially worse.
 
-For this simulated rank-2 Gaussian truth, `latent + unique` and the
+For this simulated rank-2 Gaussian truth, ordinary `latent()` and the
 saturated `dep` fit recover nearly the same covariance pattern, while
 `indep` cannot recover off-diagonal association because it sets those
-entries to zero by construction. Pick `latent + unique` when you have a
+entries to zero by construction. Pick ordinary `latent()` when you have a
 strong rank-$K$ hypothesis (size + shape, here); fall back to `dep` if
 you suspect $K \approx T$ and want the saturated fit; reach for `indep`
 only when you genuinely believe traits are mutually independent.

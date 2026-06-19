@@ -101,8 +101,7 @@ df <- sim$data
 ```{r fit}
 fit <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 1) +
-          unique(0 + trait | site),
+          latent(0 + trait | site, d = 1),
   data = df,
   trait = "trait"
 )

@@ -124,8 +124,7 @@ the response column `value`:
 ```r
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):env +
-    latent(0 + trait | site, d = 2) +
-    unique(0 + trait | site),
+    latent(0 + trait | site, d = 2),
   data = df_long,
   unit = "site"
 )
@@ -145,8 +144,7 @@ then expand the compact RHS shorthand:
 ```r
 gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 1 + env +
-    latent(1 | individual, d = 2) +
-    unique(1 | individual),
+    latent(1 | individual, d = 2),
   data = df_wide,
   unit = "individual"
 )
@@ -159,9 +157,7 @@ The compact RHS shorthand is:
 | `1` | `0 + trait` |
 | `env` | `(0 + trait):env` |
 | `latent(1 \| g, d = K)` | `latent(0 + trait \| g, d = K)` |
-| `unique(1 \| g)` | `unique(0 + trait \| g)` |
 | `latent(1 + env \| g, d = K)` | `latent(0 + trait + (0 + trait):env \| g, d = K)` |
-| `unique(1 + env \| g)` | `unique(0 + trait + (0 + trait):env \| g)` |
 | `indep(1 \| g)` | `indep(0 + trait \| g)` |
 | `dep(1 \| g)` | `dep(0 + trait \| g)` |
 | `phylo_*` and `spatial_*` keywords | Pass through unchanged. |
@@ -346,8 +342,7 @@ column has a different name:
 # Long format with non-default trait column:
 gllvmTMB(
   response ~ 0 + behavior + (0 + behavior):env +
-    latent(0 + behavior | individual, d = 2) +
-    unique(0 + behavior | individual),
+    latent(0 + behavior | individual, d = 2),
   data = df_long,
   trait = "behavior",
   unit  = "individual"
@@ -364,8 +359,7 @@ job:
 # Wide format (no trait = argument; traits() LHS is the spec):
 gllvmTMB(
   traits(boldness, exploration, aggression) ~ 1 + env +
-    latent(1 | individual, d = 2) +
-    unique(1 | individual),
+    latent(1 | individual, d = 2),
   data = df_wide,
   unit = "individual"
 )
@@ -456,9 +450,7 @@ df$session_id <- factor(paste(df$individual, df$session, sep = "_"))
 gllvmTMB(
   value ~ 0 + trait +
     latent(0 + trait | individual, d = 2) +
-    unique(0 + trait | individual) +
-    latent(0 + trait | session_id, d = 1) +
-    unique(0 + trait | session_id),
+    latent(0 + trait | session_id, d = 1),
   data = df,
   unit = "individual",
   unit_obs = "session_id"

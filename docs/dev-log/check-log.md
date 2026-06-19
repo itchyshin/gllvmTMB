@@ -16099,6 +16099,75 @@ Still not claimed:
 - This is bridge-admission evidence only, not bridge completion, release
   readiness, CRAN readiness, or scientific coverage.
 
+## 2026-06-19 15:38 MDT -- coevolution fixed-rho metadata regression
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Fix Faraday's read-only audit finding that real fitted multi-kernel
+  `make_cross_kernel()` tiers could lose host/partner/fixed-`rho` metadata
+  after `R/fit-multi.R` subset and symmetrised `K`.
+- Preserve the fixed-rho point-extractor claim boundary:
+  `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Pre-edit lane check before updating shared dev-log/design evidence:
+
+- `gh pr list --state open`
+  -> only draft PR #489 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent local split commits only:
+  `af9940d`, `709eef0`, `4a2449a`, and `e2dd41d`.
+
+Implemented:
+
+- `R/kernel-helpers.R`: added `.cross_kernel_metadata_for_levels()`.
+- `R/fit-multi.R`: records `.cross_kernel_metadata(K)` before level alignment,
+  restricts host/partner defaults to fitted levels, and reattaches the metadata
+  to each stored `fit$kernel_matrices[[name]]`.
+- `tests/testthat/test-coevolution-two-kernel.R`: added a real fitted
+  `make_cross_kernel()` multi-kernel regression where
+  `predict_cross_covariance()` omits `row_levels` / `col_levels`, returns host
+  and partner defaults, reports fixed `rho = 0.55`, sets
+  `kernel_includes_rho = TRUE`, and keeps `fit$fit_health$max_gradient` finite.
+- `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`, and `NEWS.md`: aligned
+  KER-03 / COE-03 wording with the real-fit metadata repair.
+
+Checks:
+
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|whether package.*can be installed|Status" /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Stale / claim-boundary scan:
+
+- `rg -n "in-engine rho|rho estimation|rho interval|rho intervals|scientific coverage|release ready|release readiness|bridge complete|kernel_includes_rho" R/kernel-helpers.R R/fit-multi.R R/extract-sigma.R tests/testthat/test-coevolution-two-kernel.R docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md NEWS.md`
+  -> expected guardrail and `kernel_includes_rho` hits only.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, in-engine `rho`, `rho` intervals, formal Type-I/null calibration,
+  interval calibration, module uncertainty/rank calibration, or scientific
+  coverage completion.
+
 ## 2026-06-19 17:19 MDT -- bridge admission split fresh validation after unique/Psi closeout
 
 Branch: `codex/bridge-admission-split-20260619`

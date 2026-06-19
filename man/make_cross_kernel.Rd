@@ -23,7 +23,9 @@ roots and scaling an all-zero or near-zero \code{W}.}
 }
 \value{
 A numeric correlation matrix with the host block first and the
-partner block second.
+partner block second. The matrix carries lightweight metadata for
+downstream extractors, including the fixed \code{rho} used to build the
+host-partner bridge.
 }
 \description{
 \code{make_cross_kernel()} builds the block relatedness matrix for the C0

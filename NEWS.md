@@ -3,6 +3,86 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Fixed named multi-kernel tiers (2026-06-18)
+
+* Added the first fixed multi-kernel engine wave for `kernel_latent()`: two or
+  more named dense kernel tiers over the same grouping levels now fit with
+  separate `K_r`, loading matrices, and latent fields. `extract_Sigma(fit, level = name)`,
+  `extract_Gamma(fit, level = name, ...)`, and
+  `predict_cross_covariance(fit, level = name, ...)` now resolve each named
+  component separately. IN (`KER-03`): fixed dense PSD kernels, same grouping factor and
+  level set, and component-specific shared covariance extraction. The Paper 2
+  first wave is intentionally latent-only: paired `kernel_unique()` Psi is
+  deferred because explicit residual/Psi structure is a poor default for
+  non-Gaussian and cross-family coevolution models. PARTIAL (`COE-03`): this
+  opens the fixed two-component Paper 2 shape for `Gamma_shape_r` inspection.
+  A first heavy `COE-04` recovery gate now passes for a near-orthogonal
+  Gaussian latent-only fixture: a predeclared Frobenius-style kernel-similarity
+  diagnostic, now stored on multi-kernel fits as `fit$kernel_diagnostics`,
+  classifies the two kernels as separable, the full two-component fit beats
+  either one-component fit, and each extracted component-specific
+  `Gamma_shape_r` recovers its own truth while not matching the other
+  component. The same near-orthogonal Gaussian fixture now also covers
+  selective absence in both directions: if either the phy or non component has
+  true zero loadings, the two-kernel fit collapses that component's
+  `extract_Gamma()` while recovering the present component. A block-null smoke
+  gate also collapses both component `Gamma_shape` estimates when both loading
+  blocks are zero, and a 12-seed near-orthogonal null diagnostic now keeps
+  null `Gamma_shape` norms near zero while quantifying the full-vs-intercept
+  overfit tail (median below `2`, at most two seeds above `3`, maximum below
+  `8` log-likelihood units). The paired signal side still recovers both
+  `Gamma_shape` components in two medium-signal fixtures. The first
+  non-Gaussian gate now includes two bounded Poisson construction fixtures
+  plus two known-DGP Poisson recovery cells (`seed = 2801` and `2804`): the
+  full latent-only two-kernel fit converges, beats either one-component
+  Poisson comparator by more than `40` log-likelihood units, recovers both
+  planted component-specific `Gamma_shape` blocks with correlations above
+  `0.98`, and keeps cross-component matches below `0.10`. This is still a
+  narrow Poisson log-link recovery gate, not interval calibration or
+  mixed-family coverage. A fixed-`rho` sensitivity grid now refits the
+  phy component over
+  `rho = c(0, 0.25, 0.55, 0.85)` while holding the non component fixed; the
+  positive-`rho` grid strongly beats the block-null `rho = 0` fit, but the gate
+  deliberately treats the best grid point as sensitivity evidence only because
+  fixed kernel strength and loading magnitudes can trade off.
+  `profile_cross_rho()` now makes that fixed-kernel workflow a reusable helper:
+  it rebuilds `K*` over a defended `rho` grid, calls a user-supplied refit
+  function, and returns log-likelihood / relative-likelihood profile rows.
+  This is still not in-engine `rho` estimation or interval calibration.
+  High-overlap
+  `predict_cross_covariance()` combines the shape-scale `Gamma_shape_r` block
+  with fitted `K_r[i, j]` entries to return pair-specific point cross-lineage
+  covariance, avoiding the false impression that there is one universal total
+  `Gamma`. For `make_cross_kernel()` tiers, `K_r[i, j]` already includes the
+  supplied fixed `rho`, so the helper does not multiply by
+  `extract_Gamma(scale = "effect")`. Real fitted multi-kernel
+  `make_cross_kernel()` tiers retain host/partner metadata after level
+  alignment, so omitted `row_levels`/`col_levels` default to the cross-kernel
+  blocks and `kernel_includes_rho` reports `TRUE`. High-overlap
+  kernel tiers now warn during fitting and again
+  when `extract_Gamma(level = ...)` is called for an affected component, while
+  still returning the diagnostic table and point block for inspection. A first
+  high-overlap collapse gate now covers both exact-duplicate and
+  diagonal-shrink near-duplicate kernel pairs; in both cases the separated
+  two-tier fit is not materially better than one collapsed rank-2 kernel tier,
+  and component-specific `Gamma` extraction remains warning-only. A two-cell
+  moderate-overlap grid, with the non
+  association pattern blended 30% and 35% toward the phy pattern, now also
+  recovers both component `Gamma_shape` matrices while keeping cross-component
+  matches low. A tested 40% moderate-edge cell still converges and detects
+  signal, but fails the stricter component-separation thresholds, so it is a
+  claim boundary rather than a promotion. PARTIAL (`COE-04`): broader/harder
+  moderate-overlap calibration,
+  broader high-overlap truth-recovery/failure calibration beyond the
+  collapse-equivalence and warning gates, formal null-threshold calibration
+  beyond this diagnostic grid, explicit Psi
+  redesign/deprecation, in-engine `rho` estimation, `rho` profile intervals,
+  calibration, and broader non-Gaussian/mixed-family recovery remain gated. The
+  one-name `kernel_*()` path still uses the
+  phylo-equivalent KER-02 engine and the `<1e-6` equivalence gate remains
+  unchanged. Guard: PR green != bridge complete != release ready != scientific
+  coverage passed.
+
 ## R-side `engine = "julia"` bridge to GLLVM.jl (2026-06-13)
 
 * Added an `engine` argument to `gllvmTMB()` (`engine = c("tmb", "julia")`,
@@ -405,6 +485,10 @@ every PR reference and validation note remains available.
 ### Cross-lineage coevolution Gamma extraction (#361, 2026-05-31)
 
 * **`extract_Gamma()`** adds the Design 65 C2 extractor for cross-lineage coevolution fits (COE-02). IN: after fitting a named dense-kernel tier such as `kernel_latent(species, K = K_star, d = 2, name = "cross") + kernel_unique(species, K = K_star, name = "cross")`, users can call `extract_Gamma(fit, level = "cross", row_traits = host_traits, col_traits = partner_traits)` to slice the host-trait x partner-trait shared covariance block from `extract_Sigma(part = "shared")`. Heavy-test evidence covers planted known-`Gamma` recovery on block-missing host/partner data, a block-diagonal zero-`Gamma` null with lower log likelihood, loading-orientation checks on the fitted recovery fixture, and a sparse-versus-dense single-`W` sensitivity case (`test-coevolution-recovery.R`). PARTIAL: `rho` is still supplied through `K_star` rather than estimated inside TMB, and `extract_Gamma()` returns point estimates without intervals. The `cross-lineage-coevolution` article shows the fixed-`rho` sensitivity-grid workflow, null comparison, and data-condition warnings as a buildable internal C2 workflow until the phylogenetic GLLVM reader path is public.
+
+### Fixed-rho `Gamma_effect` extraction (#361, 2026-06-18)
+
+* **`make_cross_kernel()` metadata and `extract_Gamma(scale = "effect")`** now make the Paper 2 shape/effect distinction explicit. IN: `make_cross_kernel()` records the fixed supplied `rho` on the returned `K_star`, fitted single-kernel and fixed multi-kernel tiers preserve that metadata in `fit$kernel_levels`, and `extract_Gamma(..., scale = "effect")` returns `Gamma_effect = rho * Gamma_shape` for tiers built from `make_cross_kernel()`. The default remains `scale = "shape"` (`Gamma_shape = Lambda_H %*% t(Lambda_P)`). Evidence covers a fast extractor contract test, the heavy one-kernel COE-02 recovery fixture, the heavy two-kernel COE-04 near-orthogonal fixture, and the regenerated coevolution teaching fixture (`test-coevolution-prototype.R`, `test-coevolution-recovery.R`, `test-coevolution-two-kernel.R`, `test-example-coevolution-kernel.R`). PARTIAL: this is a fixed-kernel transformation, not in-engine `rho` estimation or interval evidence; generic kernels without cross-kernel metadata fail loudly for `scale = "effect"` and should use the default `scale = "shape"`. `kernel_unique()` / `*_unique()` remain compatibility/Psi syntax for the current arc; post-arc lifecycle/deprecation work is separate.
 
 ### Cross-lineage coevolution worked example (#361, 2026-06-01)
 

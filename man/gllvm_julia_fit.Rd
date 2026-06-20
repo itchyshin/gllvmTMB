@@ -66,3 +66,19 @@ list also carries flat CI fields consumed by \code{confint()}.
 \description{
 Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).
 }
+\examples{
+\dontrun{
+# Requires a local GLLVM.jl install (see [gllvm_julia_setup()]).
+# `y` is traits x units (p x n): two Gaussian traits, 40 units, K = 2.
+set.seed(1)
+y <- matrix(rnorm(2 * 40), nrow = 2)
+fit <- gllvm_julia_fit(y, family = "gaussian", num.lv = 2)
+fit$loglik
+fit$Sigma
+
+# Wald confidence intervals for an admitted no-X row:
+fit_ci <- gllvm_julia_fit(
+  y, family = "gaussian", num.lv = 2, ci_method = "wald"
+)
+}
+}

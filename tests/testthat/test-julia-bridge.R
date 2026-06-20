@@ -458,7 +458,6 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
       "GJL-GATE-CORRELATION-INTERVALS",
       "GJL-GATE-STRUCTURED-TERMS",
       "GJL-GATE-MULTI-RR",
-      "GJL-GATE-CBIND-BINOMIAL",
       "GJL-GATE-MASK-X",
       "GJL-GATE-X-FAMILY",
       "GJL-GATE-X-DESIGN"
@@ -565,12 +564,17 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     "gllvmTMB\\(\\) fits retain bridge input for post-fit confint\\(\\)",
     caps$notes
   )))
-  expect_true(all(!caps$cbind_binomial))
+  ## cbind(successes, failures) binomial marshaling is now routed: only the
+  ## binomial row claims it; the mixed-family vector route stays gated.
+  expect_equal(caps$family[caps$cbind_binomial], "binomial")
+  expect_false(caps$cbind_binomial[caps$family == .GLLVM_JULIA_MIXED_FAMILY])
 })
 
 test_that("Julia bridge capability drift is explicit and gate-labelled", {
   julia_caps <- gllvm_julia_capabilities()
-  julia_caps$cbind_binomial[julia_caps$family == "binomial"] <- TRUE
+  ## With the cbind(successes, failures) route now marshalled on both sides,
+  ## an identical R/engine surface yields zero drift. The 0-row frame must keep
+  ## the full audit-column contract.
   drift <- .gllvm_julia_capability_drift(julia_caps = julia_caps)
   expect_named(
     drift,
@@ -585,15 +589,9 @@ test_that("Julia bridge capability drift is explicit and gate-labelled", {
       "reason"
     )
   )
-  expect_equal(nrow(drift), 1L)
-  expect_equal(drift$family, "binomial")
-  expect_equal(drift$capability, "cbind_binomial")
-  expect_equal(drift$direction, "julia_broader_than_r")
-  expect_equal(drift$status, "gated")
-  expect_equal(drift$gate_id, "GJL-GATE-CBIND-BINOMIAL")
-  expect_equal(drift$issue, "gllvmTMB#488")
-  expect_equal(drift$validation_row, "JUL-01")
-  expect_match(drift$reason, "cbind marshaling contract")
+  expect_equal(nrow(drift), 0L)
+  ## The binomial cbind flag now agrees on both sides -> no longer a drift row.
+  expect_false("cbind_binomial" %in% drift$capability)
 
   future_julia <- julia_caps
   future_julia$fixed_effect_X[future_julia$family == "nb1"] <- TRUE
@@ -1752,17 +1750,92 @@ test_that("engine = 'julia' rejects non reduced-rank covariance terms", {
     ),
     "GJL-GATE-MULTI-RR"
   )
-  df$failures <- abs(round(df$value)) + 1L
-  expect_error(
+})
+
+test_that("engine = 'julia' marshals cbind(successes, failures) to Y + N", {
+  ## Deterministic 2-trait x 3-unit design so the pivoted successes (Y) and
+  ## trials (N) matrices are checkable by hand. cbind marshaling is pure-R up
+  ## to the gllvm_julia_fit() call, which we mock to capture its inputs.
+  df <- expand.grid(
+    unit = factor(1:3),
+    trait = factor(c("t1", "t2")),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  df$trait <- factor(df$trait, levels = c("t1", "t2"))
+  df$succ <- c(1, 2, 3, 0, 4, 5) # ordered by (unit, trait): t1 units 1:3, t2 units 1:3
+  df$fail <- c(4, 3, 2, 6, 1, 0)
+  trials <- df$succ + df$fail
+
+  expected_Y <- matrix(
+    NA_real_,
+    2L,
+    3L,
+    dimnames = list(c("t1", "t2"), c("1", "2", "3"))
+  )
+  expected_N <- matrix(
+    1,
+    2L,
+    3L,
+    dimnames = list(c("t1", "t2"), c("1", "2", "3"))
+  )
+  ti <- as.integer(df$trait)
+  ui <- as.integer(df$unit)
+  expected_Y[cbind(ti, ui)] <- df$succ
+  expected_N[cbind(ti, ui)] <- trials
+
+  captured <- new.env(parent = emptyenv())
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(y, family, num.lv, N, X, mask, ...) {
+      captured$y <- y
+      captured$N <- N
+      captured$family <- family
+      out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+      out$engine <- "julia"
+      out
+    }
+  )
+
+  expect_no_error(
     gllvmTMB(
-      cbind(value, failures) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = 1),
       data = df,
       trait = "trait",
       unit = "unit",
       family = binomial(),
       engine = "julia"
+    )
+  )
+
+  ## successes pivot to Y, total trials pivot to N (no per-row weights involved).
+  expect_equal(dim(captured$y), c(2L, 3L))
+  expect_equal(captured$y[cbind(ti, ui)], df$succ)
+  expect_true(is.matrix(captured$N))
+  expect_equal(dim(captured$N), c(2L, 3L))
+  expect_equal(captured$N[cbind(ti, ui)], trials)
+  expect_equal(unname(captured$N), unname(expected_N))
+})
+
+test_that("engine = 'julia' rejects two-column responses for non-binomial families", {
+  df <- expand.grid(
+    unit = factor(1:3),
+    trait = factor(c("t1", "t2")),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  df$trait <- factor(df$trait, levels = c("t1", "t2"))
+  df$a <- c(1, 2, 3, 0, 4, 5)
+  df$b <- c(4, 3, 2, 6, 1, 0)
+  expect_error(
+    gllvmTMB(
+      cbind(a, b) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
+      engine = "julia"
     ),
-    "GJL-GATE-CBIND-BINOMIAL"
+    "GJL-GATE-FAMILY"
   )
 })
 
@@ -1855,10 +1928,88 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
   gllvm_julia_setup()
   engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()")
   drift <- .gllvm_julia_capability_drift(julia_caps = engine_caps)
-  expect_equal(drift$status, "gated")
-  expect_equal(drift$family, "binomial")
-  expect_equal(drift$capability, "cbind_binomial")
-  expect_equal(drift$gate_id, "GJL-GATE-CBIND-BINOMIAL")
+  ## The cbind(successes, failures) binomial route is now marshalled and
+  ## parity-tested on both sides, so the R and engine capability surfaces
+  ## agree: no registered drifts remain, and crucially nothing is unregistered.
+  expect_false(any(drift$status == "unregistered"))
+  expect_equal(nrow(drift), 0L)
+  expect_false("cbind_binomial" %in% drift$capability)
+})
+
+test_that("engine = 'julia' cbind(successes, failures) matches a direct trials-matrix fit", {
+  skip_if_no_julia()
+
+  ## Deterministic 3-trait x 6-unit binomial design. succ = successes,
+  ## trials = total Bernoulli draws; fail = trials - succ. Routing the
+  ## cbind(succ, fail) long formula must reproduce a direct gllvm_julia_fit()
+  ## that receives successes in `y` and trials in `N`.
+  traits <- c("sp1", "sp2", "sp3")
+  units <- paste0("site", 1:6)
+  succ <- matrix(
+    c(
+      2, 5, 3, 6, 1, 4,
+      7, 2, 8, 3, 6, 5,
+      1, 4, 2, 7, 3, 6
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(traits, units)
+  )
+  trials <- matrix(
+    c(
+      8, 9, 7, 10, 6, 9,
+      10, 8, 11, 9, 10, 8,
+      7, 9, 8, 11, 7, 10
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(traits, units)
+  )
+  stopifnot(all(succ <= trials), all(trials >= 1))
+
+  direct <- gllvm_julia_fit(
+    succ,
+    N = trials,
+    family = "binomial",
+    num.lv = 1L
+  )
+
+  df <- julia_bridge_matrix_to_long(succ)
+  names(df)[names(df) == "value"] <- "succ"
+  fail_long <- julia_bridge_matrix_to_long(trials - succ)
+  df$fail <- fail_long$value[match(
+    paste(df$trait, df$unit),
+    paste(fail_long$trait, fail_long$unit)
+  )]
+
+  routed <- gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = binomial(),
+    engine = "julia"
+  )
+
+  expect_s3_class(routed, "gllvmTMB_julia")
+  expect_equal(routed$family, "binomial")
+  expect_equal(routed$trait_levels, traits)
+  expect_equal(routed$unit_levels, units)
+  expect_equal(
+    as.numeric(logLik(routed)),
+    as.numeric(logLik(direct)),
+    tolerance = 1e-6
+  )
+  expect_equal(
+    unname(as.numeric(routed$loadings)),
+    unname(as.numeric(direct$loadings)),
+    tolerance = 1e-6
+  )
+  expect_equal(
+    unname(as.numeric(routed$alpha)),
+    unname(as.numeric(direct$alpha)),
+    tolerance = 1e-6
+  )
 })
 
 test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", {

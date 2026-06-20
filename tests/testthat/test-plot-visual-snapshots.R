@@ -4,10 +4,57 @@
 ## appearance carries interpretation: Confidence Eye correlation plots,
 ## matrix-style correlation plots, Sigma-table Confidence Eye plots, plus
 ## rotated ordination biplots.
+##
+## The block at the end broadens rendered-figure QA across the remaining
+## panels of the plot.gllvmTMB_multi() dispatcher (correlation,
+## correlation_ellipse, loadings, integration, communality, variance).
+## Those panels read model internals through the extractors, so they are
+## driven by a small fitted fixture rather than hand-built data frames. The
+## fixture is deterministic on a fixed seed (verified byte-identical across
+## independent fits), but a TMB optimum can drift across BLAS/OS builds, so
+## the fit-based dispatcher snapshots run as a developer-local visual gate
+## via skip_on_ci(). Object-shape coverage of the same dispatcher lives in
+## test-plot-gllvmTMB.R; these cells add the rendered-figure layer only and
+## change no engine code.
 
 skip_if_no_visual_snapshot <- function() {
   testthat::skip_if_not_installed("ggplot2")
   testthat::skip_if_not_installed("vdiffr")
+}
+
+## Fitted fixture for the dispatcher snapshots. Mirrors
+## make_BW_fit_for_plot() in test-plot-gllvmTMB.R: both rr() and unique()
+## at both tiers (the recommended decomposition) so every dispatcher panel
+## has data to render.
+make_snapshot_dispatcher_fit <- function(seed = 1L) {
+  Tn <- 4L
+  Lambda_B <- matrix(
+    c(1.0, 0.5, -0.4, 0.3, 0.0, 0.8, 0.4, -0.2),
+    Tn,
+    2
+  )
+  Lambda_W <- matrix(c(0.4, 0.2, -0.1, 0.3), Tn, 1)
+  s <- gllvmTMB::simulate_site_trait(
+    n_sites = 30,
+    n_species = 6,
+    n_traits = Tn,
+    mean_species_per_site = 4,
+    Lambda_B = Lambda_B,
+    psi_B = c(0.20, 0.15, 0.10, 0.25),
+    Lambda_W = Lambda_W,
+    psi_W = c(0.10, 0.08, 0.05, 0.12),
+    beta = matrix(0, Tn, 2),
+    seed = seed
+  )
+  suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 +
+      trait +
+      latent(0 + trait | site, d = 2) +
+      unique(0 + trait | site) +
+      latent(0 + trait | site_species, d = 1) +
+      unique(0 + trait | site_species),
+    data = s$data
+  )))
 }
 
 make_snapshot_ordination_fit <- function() {
@@ -208,6 +255,84 @@ test_that("anchored rotated ordination has stable visual output", {
 
   vdiffr::expect_doppelganger(
     "anchored-rotated-ordination-plot",
+    p
+  )
+})
+
+test_that("dispatcher correlation heatmap has stable visual output", {
+  skip_if_no_visual_snapshot()
+  testthat::skip_on_ci()
+  fit <- make_snapshot_dispatcher_fit()
+
+  p <- suppressMessages(plot(fit, type = "correlation"))
+
+  vdiffr::expect_doppelganger(
+    "dispatcher-correlation-heatmap-plot",
+    p
+  )
+})
+
+test_that("dispatcher correlation ellipse matrix has stable visual output", {
+  skip_if_no_visual_snapshot()
+  testthat::skip_on_ci()
+  fit <- make_snapshot_dispatcher_fit()
+
+  p <- suppressMessages(plot(fit, type = "correlation_ellipse"))
+
+  vdiffr::expect_doppelganger(
+    "dispatcher-correlation-ellipse-plot",
+    p
+  )
+})
+
+test_that("dispatcher loadings heatmap has stable visual output", {
+  skip_if_no_visual_snapshot()
+  testthat::skip_on_ci()
+  fit <- make_snapshot_dispatcher_fit()
+
+  p <- suppressMessages(plot(fit, type = "loadings"))
+
+  vdiffr::expect_doppelganger(
+    "dispatcher-loadings-heatmap-plot",
+    p
+  )
+})
+
+test_that("dispatcher integration dot-whisker has stable visual output", {
+  skip_if_no_visual_snapshot()
+  testthat::skip_on_ci()
+  fit <- make_snapshot_dispatcher_fit()
+
+  p <- suppressMessages(plot(fit, type = "integration"))
+
+  vdiffr::expect_doppelganger(
+    "dispatcher-integration-dot-whisker-plot",
+    p
+  )
+})
+
+test_that("dispatcher communality stacked bars have stable visual output", {
+  skip_if_no_visual_snapshot()
+  testthat::skip_on_ci()
+  fit <- make_snapshot_dispatcher_fit()
+
+  p <- suppressMessages(plot(fit, type = "communality"))
+
+  vdiffr::expect_doppelganger(
+    "dispatcher-communality-stacked-bars-plot",
+    p
+  )
+})
+
+test_that("dispatcher variance partition has stable visual output", {
+  skip_if_no_visual_snapshot()
+  testthat::skip_on_ci()
+  fit <- make_snapshot_dispatcher_fit()
+
+  p <- suppressMessages(plot(fit, type = "variance"))
+
+  vdiffr::expect_doppelganger(
+    "dispatcher-variance-partition-plot",
     p
   )
 })

@@ -64,6 +64,91 @@ test_that("truncated_poisson() converges and recovers trait intercepts", {
   expect_lt(max(abs(bfix - mu_true)), 0.20)
 })
 
+test_that("truncated_poisson recovers intercepts under a second seed (4 traits)", {
+  ## Seed/shape-robustness breadth for the wired truncated_poisson cell: a
+  ## different seed, 4 traits, and intercepts that straddle a lower mean
+  ## (exp(0.3) ~ 1.35, where zero-truncation removes a large share of the mass)
+  ## up to exp(1.7) ~ 5.5. Recovery here guards against the previous cell's
+  ## single-seed result being a lucky draw.
+  skip_if_not_heavy()
+  skip_on_cran()
+  set.seed(2024)
+  n_ind <- 280
+  Tn <- 4
+  trait_names <- letters[seq_len(Tn)]
+  mu_true <- c(0.3, 0.8, 1.2, 1.7)   # log-scale
+  y <- matrix(NA_integer_, n_ind, Tn)
+  for (t in seq_len(Tn))
+    y[, t] <- rztpois(n_ind, exp(mu_true[t]))
+
+  df_long <- data.frame(
+    individual = factor(rep(seq_len(n_ind), each = Tn)),
+    trait      = factor(rep(trait_names, n_ind), levels = trait_names),
+    value      = as.vector(t(y))
+  )
+  expect_true(all(df_long$value >= 1L))
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+    data   = df_long,
+    site   = "individual",
+    family = truncated_poisson()
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_equal(fit$tmb_data$family_id_vec[1], 10L)
+
+  fixef <- summary(fit$sd_report, "fixed")
+  bfix  <- fixef[grepl("^b_fix$", rownames(fixef)), "Estimate"]
+  expect_equal(length(bfix), Tn)
+  expect_lt(max(abs(bfix - mu_true)), 0.20)
+})
+
+test_that("truncated_poisson logLik agrees with glmmTMB::truncated_poisson()", {
+  ## Cross-engine likelihood check for the wired truncated_poisson cell, mirroring
+  ## the existing truncated_nbinom2 glmmTMB cross-check below. Two independent
+  ## per-trait glmmTMB fits reproduce the multivariate engine's joint objective
+  ## because the traits share no random effect across the trait dimension here.
+  skip_if_not_heavy()
+  skip_on_cran()
+  skip_if_not_installed("glmmTMB")
+  set.seed(207)
+  n_ind <- 300
+  Tn <- 2
+  mu_true <- c(0.7, 1.3)
+  y <- matrix(NA_integer_, n_ind, Tn)
+  for (t in seq_len(Tn))
+    y[, t] <- rztpois(n_ind, exp(mu_true[t]))
+
+  df_long <- data.frame(
+    individual = factor(rep(seq_len(n_ind), each = Tn)),
+    trait      = factor(rep(c("a", "b"), n_ind), levels = c("a", "b")),
+    value      = as.vector(t(y))
+  )
+
+  fit_g <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+    data = df_long, site = "individual",
+    family = truncated_poisson()
+  )))
+
+  fit_a <- glmmTMB::glmmTMB(
+    value ~ 1 + (1 | individual),
+    data = df_long[df_long$trait == "a", ],
+    family = glmmTMB::truncated_poisson()
+  )
+  fit_b <- glmmTMB::glmmTMB(
+    value ~ 1 + (1 | individual),
+    data = df_long[df_long$trait == "b", ],
+    family = glmmTMB::truncated_poisson()
+  )
+
+  ll_gllvm   <- -fit_g$opt$objective
+  ll_glmmTMB <- as.numeric(stats::logLik(fit_a)) + as.numeric(stats::logLik(fit_b))
+  rel_err    <- abs(ll_gllvm - ll_glmmTMB) / abs(ll_glmmTMB)
+  expect_lt(rel_err, 0.10)
+})
+
 test_that("truncated_poisson rejects rows with y < 1", {
   skip_if_not_heavy()
   set.seed(1)
@@ -111,6 +196,51 @@ test_that("truncated_nbinom2() converges and recovers trait intercepts + phi", {
   ## correction is small and phi is identifiable.
   mu_true  <- c(1.5, 2.0, 2.5)
   phi_true <- 2.0
+  y <- matrix(NA_integer_, n_ind, Tn)
+  for (t in seq_len(Tn))
+    y[, t] <- rztnbinom2(n_ind, exp(mu_true[t]), phi_true)
+
+  df_long <- data.frame(
+    individual = factor(rep(seq_len(n_ind), each = Tn)),
+    trait      = factor(rep(trait_names, n_ind), levels = trait_names),
+    value      = as.vector(t(y))
+  )
+  expect_true(all(df_long$value >= 1L))
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB(
+    value ~ 0 + trait + latent(0 + trait | individual, d = 1),
+    data   = df_long,
+    site   = "individual",
+    family = truncated_nbinom2()
+  )))
+
+  expect_equal(fit$opt$convergence, 0L)
+  expect_equal(fit$tmb_data$family_id_vec[1], 11L)
+
+  fixef <- summary(fit$sd_report, "fixed")
+  bfix  <- fixef[grepl("^b_fix$", rownames(fixef)), "Estimate"]
+  expect_equal(length(bfix), Tn)
+  expect_lt(max(abs(bfix - mu_true)), 0.30)
+
+  phi_hat <- as.numeric(fit$report$phi_truncnb2)
+  expect_equal(length(phi_hat), Tn)
+  expect_true(all(phi_hat > 0.3 * phi_true & phi_hat < 5 * phi_true))
+})
+
+test_that("truncated_nbinom2() recovers intercepts + phi under a second seed", {
+  ## Seed-robustness breadth for the wired truncated_nbinom2 cell at a different
+  ## seed, larger n, and a larger true phi (3.0). The intercepts stay on the
+  ## higher side (exp(1.8)-exp(2.8) = 6.0-16.4) so the zero-truncation correction
+  ## is small and phi remains identifiable -- the same identifiability regime the
+  ## first nbinom2 recovery cell documents in its mu-choice note.
+  skip_if_not_heavy()
+  skip_on_cran()
+  set.seed(314)
+  n_ind <- 320
+  Tn <- 3
+  trait_names <- letters[seq_len(Tn)]
+  mu_true  <- c(1.8, 2.3, 2.8)
+  phi_true <- 3.0
   y <- matrix(NA_integer_, n_ind, Tn)
   for (t in seq_len(Tn))
     y[, t] <- rztnbinom2(n_ind, exp(mu_true[t]), phi_true)

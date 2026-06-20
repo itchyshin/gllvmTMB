@@ -71,3 +71,58 @@ test_that("block_V errors on missing study in named rho_within", {
 ## fit_site_meta() / fit_trait_stage1() were dropped in 0.2.0 (see
 ## R/two-stage.R header). The tests below were retired with them; users
 ## now call gllvmTMB() directly with phylo_*/meta_V() keywords.
+
+## Single-V glmmTMB::equalto() log-likelihood comparator (FG-14 / MET-01
+## evidence). The phylo propto() / known-V equalto() comparators in
+## test-stage3-propto-equalto.R cross-validate the phylogenetic and
+## RE-block paths; they do NOT exercise the single-V meta_V(V = V)
+## additive-sampling-error path. This cell closes the named comparator
+## gap for that path only -- it adds test breadth, not a promotion of
+## any validation-debt row, and is NOT a claim of full Gaussian meta
+## recovery (that remains the maintainer's call).
+##
+## Equivalence: gllvmTMB's meta_V(V = V, type = "exact") adds a fixed
+## per-observation latent draw e_eq ~ MVN(0, V) to the linear predictor
+## while still estimating a residual sigma_eps. glmmTMB's
+## equalto(0 + obs | grp, V) fixes a single-group observation-level RE
+## covariance to the same known V alongside its own residual variance.
+## On identical data the two marginal Gaussian likelihoods coincide, so
+## the maximised log-likelihoods must agree.
+test_that("single-V meta_V(V = V) matches glmmTMB::equalto() logLik (FG-14/MET-01)", {
+  testthat::skip_if_not_installed("glmmTMB")
+
+  set.seed(909)
+  n_eff <- 40
+  n_trait <- 3
+  df <- expand.grid(
+    site  = factor(seq_len(n_eff)),
+    trait = factor(paste0("t", seq_len(n_trait)))
+  )
+  df$value <- rnorm(nrow(df), sd = 0.5)
+  ## Per-row known sampling variance (single-V, no within-study
+  ## correlation): V is diagonal.
+  df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
+  df$obs <- factor(seq_len(nrow(df)))
+  df$grp <- factor(1)
+  V <- diag(df$sampling_var)
+
+  fit_g <- gllvmTMB(
+    value ~ 0 + trait + meta_V(V = V, type = "exact"),
+    data = df, trait = "trait", unit = "site", known_V = V
+  )
+  expect_s3_class(fit_g, "gllvmTMB_multi")
+  expect_equal(fit_g$opt$convergence, 0L)
+  ll_g <- -fit_g$opt$objective
+
+  fit_t <- suppressWarnings(glmmTMB::glmmTMB(
+    value ~ 0 + trait + equalto(0 + obs | grp, V),
+    data = df, REML = FALSE
+  ))
+  ll_t <- as.numeric(stats::logLik(fit_t))
+  testthat::skip_if(is.na(ll_t),
+                    "glmmTMB hit non-PD Hessian on this dataset")
+
+  ## Non-vacuous: both sides actually carry the known-V structure.
+  expect_true(isTRUE(fit_g$use$equalto))
+  expect_equal(ll_g, ll_t, tolerance = 1e-4)
+})

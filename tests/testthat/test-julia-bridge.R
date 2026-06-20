@@ -782,10 +782,54 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
     )]
   )
   expect_equal(cmp$error, cmp$estimate - cmp$truth)
-  expect_error(
-    extract_correlations(fit, tier = "unit"),
-    "GJL-GATE-CORRELATION-INTERVALS"
+
+  ## S2 (GJL-GATE-CORRELATION-INTERVALS, JUL-01A): extract_correlations() no
+  ## longer aborts for a gllvmTMB_julia fit. It returns point-only rows that
+  ## are a superset of the normal-fit schema -- the base columns plus the
+  ## point-only convention columns interval_status / validation_row, mirroring
+  ## extract_Sigma_table(measure = "correlation").
+  cors <- suppressMessages(extract_correlations(fit, tier = "unit"))
+  expect_s3_class(cors, "data.frame")
+  expect_true(all(
+    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+    %in% names(cors)
+  ))
+  ## one row per upper-triangle pair of the unit-tier correlation matrix
+  expect_equal(nrow(cors), choose(fit$n_traits, 2L))
+  ## point estimates match the documented point-only route
+  sig_R <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    part = "total"
+  ))$R
+  expect_equal(
+    cors$correlation,
+    sig_R[cbind(
+      match(cors$trait_i, rownames(sig_R)),
+      match(cors$trait_j, colnames(sig_R))
+    )]
   )
+  ## interval columns are NA; status column == "none"; JUL-01A label
+  expect_true(all(is.na(cors$lower)))
+  expect_true(all(is.na(cors$upper)))
+  expect_equal(unique(cors$method), "none")
+  expect_equal(unique(cors$interval_status), "none")
+  expect_equal(unique(cors$validation_row), "JUL-01A")
+  ## tier = "all" routes the same unit tier (no abort)
+  cors_all <- suppressMessages(extract_correlations(fit, tier = "all"))
+  expect_equal(nrow(cors_all), choose(fit$n_traits, 2L))
+  ## a single pair returns exactly one row
+  cors_pair <- suppressMessages(extract_correlations(
+    fit,
+    tier = "unit",
+    pair = c("sp1", "sp2")
+  ))
+  expect_equal(nrow(cors_pair), 1L)
+  expect_equal(unique(cors_pair$interval_status), "none")
+
+  ## plot_correlations() remains a correct refusal: it depends on
+  ## interval-bearing rows, so the GJL-GATE-CORRELATION-INTERVALS gate still
+  ## fires there (independent of extract_correlations()).
   if (requireNamespace("ggplot2", quietly = TRUE)) {
     expect_error(
       plot_correlations(fit),

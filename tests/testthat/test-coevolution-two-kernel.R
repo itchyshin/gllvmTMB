@@ -1117,6 +1117,87 @@ test_that("moderately overlapping kernels still recover component Gamma shapes",
   expect_gt(.c3_gamma_corr(hard_fit$Gamma_phy, hard_edge$Gamma_non), 0.25)
 })
 
+test_that("moderate-overlap blend grid 0.45-0.55 recovers component Gamma shapes", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 moderate-overlap blend extension (A2). These cells push the
+  ## non-component blend up into the 0.45-0.55 range, just below the harder
+  ## 0.40-style edge below. The overlap class is computed from the kernels,
+  ## NOT widened by hand: the recovery cells must still land in "moderate"
+  ## and still separate own- from cross-component Gamma shapes.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy | kernel_latent(species, K = K_phy, name = "phy") | aligned make_cross_kernel(A_H, A_P, W_phy, rho_phy) | fit$kernel_diagnostics | moderate pair |
+  ## | K_non | kernel_latent(species, K = K_non, name = "non") | blended non kernel, 45-55% aligned | fit$kernel_diagnostics | moderate pair |
+  ## | Gamma_phy | same "phy" tier | Lambda_H,phy Lambda_P,phy^T | extract_Gamma(level = "phy") | Gamma_shape_phy |
+  ## | Gamma_non | same "non" tier | Lambda_H,non Lambda_P,non^T | extract_Gamma(level = "non") | Gamma_shape_non |
+  blend_grid <- data.frame(
+    seed = c(2404L, 2406L, 2407L),
+    non_association_blend = c(0.45, 0.50, 0.55)
+  )
+
+  for (i in seq_len(nrow(blend_grid))) {
+    fx <- .c3_make_two_component_fixture(
+      seed = blend_grid$seed[[i]],
+      non_association_blend = blend_grid$non_association_blend[[i]]
+    )
+    expect_equal(.c3_kernel_overlap_class(fx$similarity), "moderate")
+    expect_gt(fx$similarity, 0.25)
+    expect_lt(fx$similarity, 0.70)
+
+    fit <- .c3_fit_two_kernel_set(fx)
+    expect_equal(fit$full$opt$convergence, 0L)
+    expect_equal(fit$phy_only$opt$convergence, 0L)
+    expect_equal(fit$non_only$opt$convergence, 0L)
+    expect_equal(fit$full$kernel_diagnostics$pairs$overlap_class, "moderate")
+    expect_equal(
+      fit$full$kernel_diagnostics$pairs$similarity,
+      fx$similarity,
+      tolerance = 1e-12
+    )
+    expect_gt(
+      as.numeric(stats::logLik(fit$full)) -
+        max(
+          as.numeric(stats::logLik(fit$phy_only)),
+          as.numeric(stats::logLik(fit$non_only))
+        ),
+      50
+    )
+    expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.95)
+    expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.95)
+    expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.25)
+    expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.25)
+  }
+
+  ## A blend-0.50 boundary cell (seed 2408): the fit converges and detects
+  ## strong signal, but the phy-component Gamma falls below the 0.95 recovery
+  ## bar, so this cell is recorded as a boundary case and is deliberately not
+  ## promoted as component-separation evidence (mirrors the 0.40 edge above).
+  boundary_edge <- .c3_make_two_component_fixture(
+    seed = 2408L,
+    non_association_blend = 0.50
+  )
+  expect_equal(.c3_kernel_overlap_class(boundary_edge$similarity), "moderate")
+  boundary_fit <- .c3_fit_two_kernel_set(boundary_edge)
+  expect_equal(boundary_fit$full$opt$convergence, 0L)
+  expect_equal(boundary_fit$phy_only$opt$convergence, 0L)
+  expect_equal(boundary_fit$non_only$opt$convergence, 0L)
+  expect_gt(
+    as.numeric(stats::logLik(boundary_fit$full)) -
+      max(
+        as.numeric(stats::logLik(boundary_fit$phy_only)),
+        as.numeric(stats::logLik(boundary_fit$non_only))
+      ),
+    50
+  )
+  expect_lt(.c3_gamma_corr(boundary_fit$Gamma_phy, boundary_edge$Gamma_phy), 0.95)
+  expect_gt(.c3_gamma_corr(boundary_fit$Gamma_non, boundary_edge$Gamma_non), 0.95)
+})
+
 test_that("high-overlap two-component fits collapse to one higher-rank kernel", {
   skip_if_not_heavy()
   testthat::skip_on_cran()
@@ -1375,6 +1456,61 @@ test_that("near-orthogonal null diagnostic and medium-signal grid separates clai
   }
 })
 
+test_that("near-orthogonal null diagnostic extends the overfit-tail markers across more seeds", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 null overfit-tail extension (A4). A second block of zero-loading
+  ## seeds (lambda_phy_scale = lambda_non_scale = 0) under the near-orthogonal
+  ## kernels. This records the median, the 95% quantile, and the maximum of
+  ## the full-minus-intercept logLik gain, plus the count of seeds above the
+  ## descriptive overfit threshold of 3. These numbers are diagnostic only /
+  ## NOT a reusable Type-I decision rule: they characterise the overfit tail
+  ## of the two-tier fit on data with no planted component signal, and must
+  ## never be read as a calibrated Type-I error rate or a test threshold.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy/K_non | kernel_latent(..., name = "phy/non") | near-orthogonal fixed kernels | fit$kernel_diagnostics | separable pair |
+  ## | Gamma_phy = 0 | same "phy" tier | Lambda_phy scaled to zero | extract_Gamma(level = "phy") | near-zero null block |
+  ## | Gamma_non = 0 | same "non" tier | Lambda_non scaled to zero | extract_Gamma(level = "non") | near-zero null block |
+  ## | null overfit tail | full two-tier vs intercept-only | twelve more zero-loading seeds | logLik difference | diagnostic only |
+  null_seeds <- 2313:2324
+  null_grid <- lapply(null_seeds, function(seed) {
+    fx <- .c3_make_two_component_fixture(
+      seed = seed,
+      lambda_phy_scale = 0,
+      lambda_non_scale = 0,
+      resid_sd = 0.12
+    )
+    fit <- .c3_fit_two_kernel_null_set(fx)
+    expect_equal(fit$full$opt$convergence, 0L)
+    expect_equal(fit$intercept$opt$convergence, 0L)
+    c(
+      full_minus_intercept = as.numeric(stats::logLik(fit$full)) -
+        as.numeric(stats::logLik(fit$intercept)),
+      norm_phy = sqrt(sum(fit$Gamma_phy^2)),
+      norm_non = sqrt(sum(fit$Gamma_non^2))
+    )
+  })
+  null_grid <- do.call(rbind, null_grid)
+
+  ## Null blocks stay near zero.
+  expect_true(all(null_grid[, "norm_phy"] < 5e-4))
+  expect_true(all(null_grid[, "norm_non"] < 1.5e-3))
+
+  ## Overfit-tail markers (descriptive only).
+  expect_lt(stats::median(null_grid[, "full_minus_intercept"]), 2)
+  expect_lt(
+    stats::quantile(null_grid[, "full_minus_intercept"], 0.95),
+    5
+  )
+  expect_lt(max(null_grid[, "full_minus_intercept"]), 8)
+  expect_true(sum(null_grid[, "full_minus_intercept"] > 3) <= 2L)
+})
+
 test_that("fixed-rho sensitivity grid separates cross signal from block-null but does not estimate rho", {
   skip_if_not_heavy()
   testthat::skip_on_cran()
@@ -1452,6 +1588,62 @@ test_that("Poisson two-kernel coevolution smoke constructs finite component Gamm
   ## | Y | poisson() | Poisson counts from bounded transformed latent predictor | convergence + finite logLik | smoke only |
   ## | Gamma_phy/Gamma_non | same tiers | no recovery target in this smoke | extract_Gamma(level = ...) | finite point blocks |
   for (seed in 2701:2702) {
+    fx <- .c3_make_poisson_two_kernel_fixture(seed = seed)
+    expect_true(all(fx$data$h_size[!is.na(fx$data$h_size)] >= 0))
+    expect_true(all(fx$data$p_attack[!is.na(fx$data$p_attack)] >= 0))
+
+    ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+    fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+      traits(h_size, h_defence, p_size, p_attack) ~
+        1 +
+        kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+        kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      data = fx$data,
+      unit = "row_id",
+      cluster = "species",
+      family = stats::poisson(),
+      control = ctl
+    )))
+    expect_equal(fit$opt$convergence, 0L)
+    expect_true(is.finite(as.numeric(stats::logLik(fit))))
+    expect_equal(fit$kernel_diagnostics$pairs$overlap_class, "near_orthogonal")
+
+    Gamma_phy <- gllvmTMB::extract_Gamma(
+      fit,
+      level = "phy",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    )
+    Gamma_non <- gllvmTMB::extract_Gamma(
+      fit,
+      level = "non",
+      row_traits = fx$host_traits,
+      col_traits = fx$partner_traits
+    )
+    expect_true(all(is.finite(Gamma_phy)))
+    expect_true(all(is.finite(Gamma_non)))
+  }
+})
+
+test_that("Poisson two-kernel coevolution construction smoke holds across more seeds", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+  testthat::skip_if_not_installed("tidyr")
+
+  ## COE-04 non-Gaussian construction smoke extension (A3). These are extra
+  ## seeds for the construction smoke only: they assert convergence, a finite
+  ## logLik, near-orthogonal kernel diagnostics, and finite point Gamma blocks.
+  ## They are NOT recovery cells -- no own/cross Gamma correlation thresholds
+  ## are claimed here. The recovery target stays in the dedicated recovery
+  ## block at its existing own > 0.98 / cross < 0.10 thresholds.
+  ##
+  ## | Symbol | Covstruct keyword | DGP draw | Recovery extractor | Truth |
+  ## |---|---|---|---|---|
+  ## | K_phy/K_non | kernel_latent(..., name = "phy/non") | fixed kernels reused from Gaussian fixture | fit$kernel_diagnostics | construction smoke |
+  ## | Y | poisson() | Poisson counts from bounded transformed latent predictor | convergence + finite logLik | smoke only |
+  ## | Gamma_phy/Gamma_non | same tiers | no recovery target in this smoke | extract_Gamma(level = ...) | finite point blocks |
+  for (seed in 2703:2705) {
     fx <- .c3_make_poisson_two_kernel_fixture(seed = seed)
     expect_true(all(fx$data$h_size[!is.na(fx$data$h_size)] >= 0))
     expect_true(all(fx$data$p_attack[!is.na(fx$data$p_attack)] >= 0))

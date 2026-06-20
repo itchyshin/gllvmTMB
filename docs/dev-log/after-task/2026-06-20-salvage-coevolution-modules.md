@@ -56,20 +56,26 @@ them — plus their helper cluster — onto a clean branch off `main`, where the
 
 - `Rscript -e 'devtools::document()'` → EXIT 0; NAMESPACE gained both exports;
   both `man/*.Rd` generated; package loaded clean.
-- `Rscript -e 'devtools::test(filter="coevolution-modules-salvage")'` → **EXIT 0,
-  12/12 assertions** (diagnose: orthogonal vs high-overlap classes, <2-kernel
-  guard, dim-mismatch guard; extract: non-multi input guard).
+- `Rscript -e 'devtools::test(filter="coevolution-modules-salvage")'` → **EXIT 0**,
+  full suite green: diagnose (orthogonal vs high-overlap classes, <2-kernel guard,
+  dim-mismatch guard); `extract_coevolution_modules` non-multi guard; **and a
+  fit-based recovery test** (below).
+- **Recovery test (added)**: rather than port the heavy `.c3_*` 2-kernel fixture,
+  the recovery test uses the **shipped** `coevolution-kernel-example.rds` and the
+  same on-main fit pattern as `test-example-coevolution-kernel.R`: fit the
+  `kernel_latent(..., name = "cross") + kernel_unique(...)` wide model, then
+  `extract_coevolution_modules(fit, level = "cross", row_traits, col_traits)`.
+  Asserts convergence, `gllvmTMB_coevolution_modules` class, `dim(R) = 2x2` with
+  correct host/partner trait names, finite R, a sensible decomposition (nonneg
+  descending singular values, shares in [0,1]), and **recovery**: `R` aligns with
+  the simulated `truth$Gamma` (`abs(cor) > 0.5`). Verified locally (probe:
+  convergence 0, `dim(R)=2x2`, `n_modules=2`).
 - `git diff --check` → clean.
-- Not run: full `devtools::check()` / full coevolution suite (DLL already built;
-  CI will run the full matrix). The full fit-based recovery test for
-  `extract_coevolution_modules` is **not yet ported** (see Limitations).
+- Not run: full `devtools::check()` (CI will run the full matrix).
 
 ## 5. Known Limitations and Next Actions
 
-- **Before merge**: port the fit-based recovery test for
-  `extract_coevolution_modules` from `test-coevolution-two-kernel.R` (the
-  `fx`/`fit_full` 2-kernel fixture), so the new export has a simulation-recovery
-  gate per the Definition of Done. Currently only its input guard is tested.
+- The recovery test is now present (shipped-example route). DoD recovery gate met.
 - Two new public exports → the return-value contract should be added to
   `docs/design/06-extractors-contract.md` and a validation-debt register row
   created before any "covered" claim. Merge HELD for maintainer.

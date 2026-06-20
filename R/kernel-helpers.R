@@ -432,3 +432,185 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
   })
   do.call(rbind, filled)
 }
+
+#' Diagnose fixed-kernel separability before fitting
+#'
+#' @description
+#' `diagnose_kernel_separability()` compares two or more dense fixed kernels on
+#' the same levels before they are used in a multi-kernel coevolution model. It
+#' is a pre-fit claim-boundary helper for Design 65 / `COE-04`: when candidate
+#' kernels are highly overlapping, component-specific `Gamma` blocks are weak
+#' evidence and should be treated as descriptive unless simulations justify the
+#' split.
+#'
+#' IN (`COE-04` partial): use this helper to screen candidate `K_phy` and
+#' `K_tip` definitions, including raw-network and residualized-network choices,
+#' before fitting `kernel_latent(..., name = ...)` tiers. PARTIAL: this is a
+#' diagnostic, not recovery evidence, interval calibration, or an in-engine
+#' identifiability proof.
+#'
+#' @param ... Two or more named numeric square kernel matrices with the same
+#'   dimensions and level order.
+#' @param thresholds Named numeric vector with entries `near_orthogonal` and
+#'   `high`. Similarity below `near_orthogonal` is labelled
+#'   `"near_orthogonal"`; similarity below `high` is `"moderate"`; similarity
+#'   at or above `high` is `"high"`.
+#'
+#' @return A list of class `gllvmTMB_kernel_separability` with:
+#' \describe{
+#'   \item{similarity}{A symmetric matrix of off-diagonal Frobenius-style
+#'     similarities between kernels.}
+#'   \item{pairs}{A data frame with pair labels, similarity, overlap class, and
+#'     a conservative recommendation.}
+#'   \item{thresholds}{The thresholds used for the classes.}
+#'   \item{note}{A short claim-boundary note.}
+#' }
+#'
+#' @examples
+#' A_H <- diag(2)
+#' A_P <- diag(2)
+#' rownames(A_H) <- colnames(A_H) <- c("H1", "H2")
+#' rownames(A_P) <- colnames(A_P) <- c("P1", "P2")
+#' W_phy <- matrix(c(1, 0.2, 0.2, 1), 2, 2,
+#'   dimnames = list(rownames(A_H), rownames(A_P)))
+#' W_tip <- matrix(c(0.2, 1, 1, 0.2), 2, 2,
+#'   dimnames = list(rownames(A_H), rownames(A_P)))
+#' K_phy <- make_cross_kernel(A_H, A_P, W_phy, rho = 0.5)
+#' K_tip <- make_cross_kernel(A_H, A_P, W_tip, rho = 0.5)
+#' diagnose_kernel_separability(phy = K_phy, tip = K_tip)
+#'
+#' @export
+diagnose_kernel_separability <- function(...,
+                                         thresholds = c(
+                                           near_orthogonal = 0.25,
+                                           high = 0.70
+                                         )) {
+  kernels <- list(...)
+  if (length(kernels) < 2L) {
+    cli::cli_abort("Provide at least two kernel matrices in {.arg ...}.")
+  }
+  names(kernels) <- .kernel_separability_names(kernels)
+  thresholds <- .kernel_separability_thresholds(thresholds)
+  kernels <- stats::setNames(lapply(
+    seq_along(kernels),
+    function(i) .kernel_separability_matrix(kernels[[i]], names(kernels)[[i]])
+  ), names(kernels))
+
+  dims <- lapply(kernels, dim)
+  if (!all(vapply(dims, identical, logical(1), dims[[1L]]))) {
+    cli::cli_abort("All kernels must have the same dimensions.")
+  }
+
+  n_tiers <- length(kernels)
+  sim <- diag(1, n_tiers)
+  dimnames(sim) <- list(names(kernels), names(kernels))
+  rows <- list()
+  k <- 1L
+  for (i in seq_len(n_tiers - 1L)) {
+    for (j in seq.int(i + 1L, n_tiers)) {
+      value <- .kernel_pair_similarity(kernels[[i]], kernels[[j]])
+      overlap_class <- .kernel_separability_class(value, thresholds)
+      sim[i, j] <- sim[j, i] <- value
+      rows[[k]] <- data.frame(
+        level_1 = names(kernels)[[i]],
+        level_2 = names(kernels)[[j]],
+        similarity = value,
+        overlap_class = overlap_class,
+        recommendation = .kernel_separability_recommendation(overlap_class),
+        stringsAsFactors = FALSE
+      )
+      k <- k + 1L
+    }
+  }
+
+  out <- list(
+    similarity = sim,
+    pairs = do.call(rbind, rows),
+    thresholds = thresholds,
+    note = paste(
+      "Off-diagonal Frobenius-style similarity between fixed kernel tiers.",
+      "High overlap means component-specific Gamma_shape separation is weak evidence;",
+      "report one network-conditioned covariance unless simulations justify the split."
+    )
+  )
+  class(out) <- "gllvmTMB_kernel_separability"
+  out
+}
+
+.kernel_separability_names <- function(kernels) {
+  nms <- names(kernels)
+  if (is.null(nms)) {
+    nms <- rep("", length(kernels))
+  }
+  missing <- !nzchar(nms)
+  nms[missing] <- paste0("K", which(missing))
+  if (anyDuplicated(nms)) {
+    cli::cli_abort("Kernel names in {.arg ...} must be unique.")
+  }
+  nms
+}
+
+.kernel_separability_thresholds <- function(thresholds) {
+  if (!is.numeric(thresholds) ||
+      !all(c("near_orthogonal", "high") %in% names(thresholds))) {
+    cli::cli_abort(
+      "{.arg thresholds} must be a named numeric vector with {.val near_orthogonal} and {.val high}."
+    )
+  }
+  thresholds <- thresholds[c("near_orthogonal", "high")]
+  if (anyNA(thresholds) || any(!is.finite(thresholds)) ||
+      thresholds[[1L]] <= 0 || thresholds[[2L]] <= thresholds[[1L]] ||
+      thresholds[[2L]] >= 1) {
+    cli::cli_abort(
+      "{.arg thresholds} must satisfy 0 < near_orthogonal < high < 1."
+    )
+  }
+  thresholds
+}
+
+.kernel_separability_matrix <- function(x, name) {
+  if (inherits(x, "Matrix")) {
+    x <- as.matrix(x)
+  }
+  if (!is.matrix(x) || !is.numeric(x) || nrow(x) != ncol(x)) {
+    cli::cli_abort("Kernel {.val {name}} must be a numeric square matrix.")
+  }
+  if (anyNA(x) || any(!is.finite(x))) {
+    cli::cli_abort("Kernel {.val {name}} must contain only finite values.")
+  }
+  storage.mode(x) <- "double"
+  (x + t(x)) / 2
+}
+
+.kernel_pair_similarity <- function(K_1, K_2) {
+  off_diag <- row(K_1) != col(K_1)
+  x <- K_1[off_diag]
+  y <- K_2[off_diag]
+  denom <- sqrt(sum(x^2) * sum(y^2))
+  if (is.finite(denom) && denom > 0) {
+    return(sum(x * y) / denom)
+  }
+  if (all(abs(x) < 1e-12) && all(abs(y) < 1e-12)) {
+    return(1)
+  }
+  0
+}
+
+.kernel_separability_class <- function(similarity, thresholds) {
+  if (similarity < thresholds[["near_orthogonal"]]) {
+    "near_orthogonal"
+  } else if (similarity < thresholds[["high"]]) {
+    "moderate"
+  } else {
+    "high"
+  }
+}
+
+.kernel_separability_recommendation <- function(overlap_class) {
+  switch(
+    overlap_class,
+    near_orthogonal = "separable_candidate",
+    moderate = "sensitivity_required",
+    high = "collapse_or_single_covariance"
+  )
+}

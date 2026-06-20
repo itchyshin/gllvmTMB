@@ -57,6 +57,31 @@
 #'   [animal_dep()], [animal_slope()], [phylo_scalar()],
 #'   [meta_V()] (sampling variance, distinct from relatedness).
 #'
+#' @examples
+#' \dontrun{
+#' # Pedigree-derived additive-genetic relatedness; single shared
+#' # variance across traits. Grounded in test-animal-keyword.R (ANI-01).
+#' ped <- data.frame(
+#'   id   = paste0("i", 1:12),
+#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#' )
+#' A <- pedigree_to_A(ped)
+#' yvec <- as.numeric(MASS::mvrnorm(
+#'   1, mu = rep(0, 2 * 12),
+#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+#' ))
+#' df <- data.frame(
+#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+#'   value   = yvec
+#' )
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + animal_scalar(species, pedigree = ped),
+#'   data = df, family = gaussian()
+#' )
+#' }
+#'
 #' @export
 animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
@@ -87,6 +112,30 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_indep()], [animal_latent()],
 #'   [animal_dep()], [phylo_unique()].
+#' @examples
+#' \dontrun{
+#' # Per-trait independent additive-genetic variances on a shared A.
+#' # Grounded in test-animal-keyword.R (ANI-02).
+#' ped <- data.frame(
+#'   id   = paste0("i", 1:12),
+#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#' )
+#' A <- pedigree_to_A(ped)
+#' yvec <- as.numeric(MASS::mvrnorm(
+#'   1, mu = rep(0, 2 * 12),
+#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+#' ))
+#' df <- data.frame(
+#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+#'   value   = yvec
+#' )
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + animal_unique(species, pedigree = ped),
+#'   data = df, family = gaussian()
+#' )
+#' }
 #' @export
 animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
@@ -103,6 +152,31 @@ animal_unique <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @param pedigree,A,Ainv See [animal_scalar()].
 #' @return See [animal_scalar()].
 #' @seealso [animal_unique()], [phylo_indep()].
+#' @examples
+#' \dontrun{
+#' # Independent per-trait animal-model intercepts via the bar form,
+#' # passing the dense relatedness matrix A directly.
+#' # Grounded in test-animal-keyword.R (ANI-03).
+#' ped <- data.frame(
+#'   id   = paste0("i", 1:12),
+#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#' )
+#' A <- pedigree_to_A(ped)
+#' yvec <- as.numeric(MASS::mvrnorm(
+#'   1, mu = rep(0, 2 * 12),
+#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+#' ))
+#' df <- data.frame(
+#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+#'   value   = yvec
+#' )
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + animal_indep(0 + trait | species, A = A),
+#'   data = df, family = gaussian()
+#' )
+#' }
 #' @export
 animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
@@ -127,6 +201,30 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @param d Number of latent factors (\eqn{K \le T}). Default 1.
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_unique()], [phylo_latent()].
+#' @examples
+#' \dontrun{
+#' # Reduced-rank factor-analytic G-matrix (d latent factors).
+#' # Grounded in test-animal-keyword.R (ANI-05).
+#' ped <- data.frame(
+#'   id   = paste0("i", 1:12),
+#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#' )
+#' A <- pedigree_to_A(ped)
+#' yvec <- as.numeric(MASS::mvrnorm(
+#'   1, mu = rep(0, 2 * 12),
+#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+#' ))
+#' df <- data.frame(
+#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+#'   value   = yvec
+#' )
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + animal_latent(species, d = 1, pedigree = ped),
+#'   data = df, family = gaussian()
+#' )
+#' }
 #' @export
 animal_latent <- function(id, d = 1, pedigree = NULL, A = NULL,
                           Ainv = NULL) {
@@ -145,6 +243,30 @@ animal_latent <- function(id, d = 1, pedigree = NULL, A = NULL,
 #' @param pedigree,A,Ainv See [animal_scalar()].
 #' @return See [animal_scalar()].
 #' @seealso [animal_latent()], [phylo_dep()].
+#' @examples
+#' \dontrun{
+#' # Full unstructured additive-genetic trait covariance (rank = n_traits).
+#' # Grounded in test-animal-keyword.R (ANI-04).
+#' ped <- data.frame(
+#'   id   = paste0("i", 1:12),
+#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#' )
+#' A <- pedigree_to_A(ped)
+#' yvec <- as.numeric(MASS::mvrnorm(
+#'   1, mu = rep(0, 2 * 12),
+#'   Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+#' ))
+#' df <- data.frame(
+#'   species = factor(rep(ped$id, each = 2), levels = ped$id),
+#'   trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+#'   value   = yvec
+#' )
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + animal_dep(0 + trait | species, A = A),
+#'   data = df, family = gaussian()
+#' )
+#' }
 #' @export
 animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
   invisible(NULL)
@@ -168,6 +290,29 @@ animal_dep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' @param formula An lme4-bar formula of the form `x | id`.
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_latent()], [phylo_slope()].
+#' @examples
+#' \dontrun{
+#' # Additive-genetic random regression: one heritable slope variance on a
+#' # continuous covariate x, slopes correlated by the relatedness matrix A.
+#' # Grounded in test-animal-slope-recovery.R (ANI-06).
+#' ped <- data.frame(
+#'   id   = paste0("i", 1:12),
+#'   sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+#'   dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+#' )
+#' A <- pedigree_to_A(ped)
+#' df <- expand.grid(
+#'   species = factor(rownames(A), levels = rownames(A)),
+#'   trait   = factor(c("t1", "t2", "t3")),
+#'   rep     = 1:5
+#' )
+#' df$x <- rnorm(nrow(df))
+#' df$value <- rnorm(nrow(df))
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + animal_slope(x | species, A = A),
+#'   data = df, unit = "species", cluster = "species"
+#' )
+#' }
 #' @export
 animal_slope <- function(formula) {
   invisible(NULL)

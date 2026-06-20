@@ -118,3 +118,16 @@ model and pass it through \code{start_from = simpler_fit}. This is a GLMM
 warm start rather than a fixed-effect-only GLM residual start.
 }
 }
+\examples{
+# gllvmTMBcontrol() is a pure-R constructor: it builds and validates a
+# control list without fitting anything.
+gllvmTMBcontrol()                                  # historical defaults
+
+# Multi-start to guard against multimodal reduced-rank likelihoods, with
+# jitter on the starting parameter vector across restarts.
+gllvmTMBcontrol(n_init = 3, init_jitter = 0.2)
+
+# Switch the optimiser to optim + BFGS for finicky two-level rr fits.
+gllvmTMBcontrol(optimizer = "optim", optArgs = list(method = "BFGS"))
+
+}

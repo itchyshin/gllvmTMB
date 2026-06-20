@@ -3,6 +3,17 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## Cross-lineage `rho` profile intervals (2026-06-20)
+
+* Added `profile_cross_rho_ci()`: turns a `profile_cross_rho()` grid into a
+  profile-likelihood confidence interval for the fixed cross-lineage correlation
+  `rho` (the `rho` set whose deviance excess stays below `qchisq(level, 1)`,
+  located by interpolating the profiled `delta_deviance` curve). Reports
+  `lower`/`upper`/`estimate` plus `lower_bounded`/`upper_bounded` flags so an
+  open bound on a too-sparse grid is explicit. This is fixed-`rho`
+  profile/sensitivity interval evidence, not in-engine `rho` estimation
+  (`COE-04` remains partial).
+
 ## Fixed named multi-kernel tiers (2026-06-18)
 
 * Added the first fixed multi-kernel engine wave for `kernel_latent()`: two or

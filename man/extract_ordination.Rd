@@ -7,7 +7,10 @@
 extract_ordination(fit, level = "unit")
 }
 \arguments{
-\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}.}
+\item{fit}{A fitted multivariate model returned by \code{\link[=gllvmTMB]{gllvmTMB()}}. Admitted
+\code{engine = "julia"} bridge fits expose raw unit-tier loadings and scores;
+within-unit, structured-tier, and rotated ordinations remain gated for
+Julia bridge extractors.}
 
 \item{level}{\code{"unit"} (between-unit) or \code{"unit_obs"} (within-unit).
 Deprecated aliases \code{"B"} and \code{"W"} are still accepted with a warning.}

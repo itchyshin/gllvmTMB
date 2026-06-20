@@ -226,10 +226,21 @@
 #'   `NULL` is appropriate when no `mi()` term is present.
 #' @param silent Logical; suppress TMB and gllvmTMB chatter. Default `TRUE`.
 #' @param engine Character; `"tmb"` (default) fits with the native TMB engine,
-#'   `"julia"` routes the fit to the fast GLLVM.jl engine via JuliaCall (see
-#'   `R/julia-bridge.R`). The Julia path currently maps the unconstrained-
-#'   ordination core (a single `latent()` block + per-trait intercepts) and
-#'   errors on structures it does not yet support.
+#'   `"julia"` routes the fit through the experimental GLLVM.jl bridge fitting
+#'   path via JuliaCall (see `R/julia-bridge.R`). The Julia path currently maps
+#'   the unconstrained-ordination core (a single `latent()` block + per-trait
+#'   intercepts) and errors on structures it does not yet support.
+#' @param ci_method Confidence-interval route requested at fit time for
+#'   admitted `engine = "julia"` no-X rows. One of `"none"` (default),
+#'   `"wald"`, `"profile"`, or `"bootstrap"`. Native `engine = "tmb"` fits use
+#'   [confint()] after fitting; non-default `ci_*` arguments therefore error
+#'   unless `engine = "julia"`. Grouped-dispersion rows, per-trait ordinal rows,
+#'   response masks, mixed-family vectors, and fixed-effect-X rows remain gated.
+#' @param ci_level Nominal confidence level when `ci_method != "none"` on the
+#'   Julia bridge.
+#' @param ci_nboot Number of parametric bootstrap replicates when
+#'   `ci_method = "bootstrap"` on the Julia bridge.
+#' @param ci_seed Seed passed to the Julia bootstrap CI route.
 #'
 #' @return A `gllvmTMB` object. With no covariance-structure terms in
 #'   the formula the result has class `"gllvmTMB"` (single-response
@@ -422,6 +433,10 @@ gllvmTMB <- function(
   impute = NULL,
   silent = TRUE,
   engine = c("tmb", "julia"),
+  ci_method = c("none", "wald", "profile", "bootstrap"),
+  ci_level = 0.95,
+  ci_nboot = 200L,
+  ci_seed = 0L,
   site = NULL, # deprecated alias for `unit`
   species = NULL
 ) {
@@ -430,9 +445,26 @@ gllvmTMB <- function(
   if (!is.logical(REML) || length(REML) != 1L || is.na(REML)) {
     cli::cli_abort("{.arg REML} must be a single {.code TRUE} or {.code FALSE} value.")
   }
-  ## engine = "julia" routes the fit to the fast GLLVM.jl engine via JuliaCall
-  ## (R/julia-bridge.R); "tmb" (default) keeps the native TMB engine below.
+  ## engine = "julia" routes through the experimental GLLVM.jl bridge fitting
+  ## path via JuliaCall; "tmb" (default) keeps the native TMB engine below.
   engine <- match.arg(engine)
+  ci_method <- match.arg(ci_method)
+  ci_defaults <- identical(ci_method, "none") &&
+    is.numeric(ci_level) &&
+    length(ci_level) == 1L &&
+    isTRUE(all.equal(as.numeric(ci_level), 0.95)) &&
+    is.numeric(ci_nboot) &&
+    length(ci_nboot) == 1L &&
+    isTRUE(all.equal(as.numeric(ci_nboot), 200)) &&
+    is.numeric(ci_seed) &&
+    length(ci_seed) == 1L &&
+    isTRUE(all.equal(as.numeric(ci_seed), 0))
+  if (!identical(engine, "julia") && !ci_defaults) {
+    cli::cli_abort(c(
+      "{.arg ci_method}, {.arg ci_level}, {.arg ci_nboot}, and {.arg ci_seed} are currently fit-time controls only for {.code engine = \"julia\"}.",
+      "i" = "For native {.code engine = \"tmb\"} fits, fit the model first and call {.fn confint} with the desired method."
+    ))
+  }
 
   ## ---- Normalise lambda_constraint element names (B -> unit, W -> unit_obs).
   ## User-facing names match `level` argument naming; legacy `B`/`W` still
@@ -478,6 +510,10 @@ gllvmTMB <- function(
       impute = impute,
       silent = silent,
       engine = engine,
+      ci_method = ci_method,
+      ci_level = ci_level,
+      ci_nboot = ci_nboot,
+      ci_seed = ci_seed,
       site = site,
       species = species
     )
@@ -703,6 +739,10 @@ gllvmTMB <- function(
       unit_internal  = site,
       family         = family,
       weights        = weights,
+      ci_method      = ci_method,
+      ci_level       = ci_level,
+      ci_nboot       = ci_nboot,
+      ci_seed        = ci_seed,
       call           = match.call()
     ))
   }

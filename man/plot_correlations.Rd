@@ -115,6 +115,11 @@ For fitted-object calls, open points can often be investigated by trying
 \code{\link[=extract_correlations]{extract_correlations()}}.
 }
 \details{
+Julia bridge (\code{engine = "julia"}) fits currently fail with an explicit gate
+because this helper depends on interval-bearing \code{\link[=extract_correlations]{extract_correlations()}}
+rows. Use \code{\link[=plot_Sigma_table]{plot_Sigma_table()}} or \code{\link[=plot_Sigma_heatmap]{plot_Sigma_heatmap()}} for point-only
+Julia bridge correlation displays.
+
 Scope boundary: IN, the helper plots tidy cross-trait correlation rows from
 \code{\link[=extract_correlations]{extract_correlations()}}, extracts those rows from a fit returned by
 \code{\link[=gllvmTMB]{gllvmTMB()}} (EXT-19; built on EXT-04/EXT-18 extractor contracts), or

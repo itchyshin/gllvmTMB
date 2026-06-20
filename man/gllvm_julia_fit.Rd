@@ -10,7 +10,12 @@ gllvm_julia_fit(
   num.lv = 2L,
   N = NULL,
   X = NULL,
+  mask = NULL,
   units_are_rows = FALSE,
+  ci_method = c("none", "wald", "profile", "bootstrap"),
+  ci_level = 0.95,
+  ci_nboot = 200L,
+  ci_seed = 0L,
   ...
 )
 }
@@ -23,15 +28,40 @@ gllvm_julia_fit(
 
 \item{N}{Binomial trials (matrix or scalar), or \code{NULL}.}
 
-\item{X}{Gaussian-only fixed-effect design (p x n x q array), or \code{NULL}.}
+\item{X}{Fixed-effect design (p x n x q array), or \code{NULL}. Routed for
+Gaussian and selected one-part non-Gaussian bridge families.}
+
+\item{mask}{Optional logical response-observation mask with the same orientation
+as \code{y}; \code{TRUE} cells contribute to the likelihood and \code{FALSE} cells are
+ignored. Currently routed for one-part no-X non-Gaussian point fits, with
+masked no-X CI payloads for Poisson, Bernoulli binomial, NB2, NB1, Beta,
+and Gamma.}
 
 \item{units_are_rows}{If \code{TRUE}, \code{y} is n x p and is transposed to p x n.}
+
+\item{ci_method}{Confidence-interval route for admitted no-X bridge rows:
+Gaussian, Poisson, Bernoulli binomial, and grouped-dispersion NB2, NB1,
+Beta, and Gamma. One of \code{"none"} (default), \code{"wald"}, \code{"profile"}, or
+\code{"bootstrap"}. Response-mask CIs are routed for the same non-ordinal
+non-Gaussian rows when \code{X = NULL}; complete-response fixed-effect-X CIs
+are routed for Gaussian, Poisson, Bernoulli binomial, NB2, Beta, and
+Gamma. Per-trait ordinal rows, NB1-X rows, mixed-family vectors, and
+response masks combined with fixed-effect X remain loud gates.}
+
+\item{ci_level}{Nominal confidence level when \code{ci_method != "none"}.}
+
+\item{ci_nboot}{Number of parametric bootstrap replicates when
+\code{ci_method = "bootstrap"}.}
+
+\item{ci_seed}{Seed passed to the Julia bootstrap CI route.}
 
 \item{...}{Passed to \code{\link[=gllvm_julia_setup]{gllvm_julia_setup()}} (\code{jl_path}, \code{julia_home}).}
 }
 \value{
 A list of class \code{gllvmTMB_julia} with the bridge contract fields
-(\code{loadings}, \code{Sigma}, \code{correlation}, \code{loglik}, \code{aic}, \code{bic}, \code{converged}, ...).
+(\code{loadings}, \code{Sigma}, \code{correlation}, \code{loglik}, \code{aic}, \code{bic},
+\code{converged}, ...). If \code{ci_method != "none"} and the row is admitted, the
+list also carries flat CI fields consumed by \code{confint()}.
 }
 \description{
 Fit a GLLVM with the Julia engine (GLLVM.jl \code{bridge_fit}).

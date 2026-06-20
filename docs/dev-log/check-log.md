@@ -16432,3 +16432,28 @@ Not claimed:
 - This is in-sample bridge-routing parity evidence only.
 
 After-task: `docs/dev-log/after-task/2026-06-20-bridge-reverify-101.md`.
+
+---
+
+## 2026-06-20 — Claude/Ada — HELD-item reconciliation audit (read-only)
+
+Ran a 4-agent read-only ultracode audit (workflow `wf_d37991cd-a1e`, 100 tool
+calls) of the four maintainer-HELD items: the dirty branch
+`codex/r-bridge-grouped-dispersion`, GLLVM.jl #94, the GLLVM.jl divergent branch +
+J2, and the unique->Psi cascade `codex/unique-latent-psi-split-20260619`. Nothing
+merged/deleted/rebased. Findings + evidence-based recommendations (risk-tiered,
+all confidence high) synthesized in
+`docs/dev-log/2026-06-20-held-item-reconciliation-audit.md`.
+
+Headline: the only genuinely net-new gllvmTMB code in the dirty branch is two
+uncommitted exports (`extract_coevolution_modules` at R/extract-sigma.R:1574,
+`diagnose_kernel_separability` at R/kernel-helpers.R:311 + 5 helpers); the 120
+committed commits are mostly superseded (coev C++ byte-identical to #494; bridge
+subsumed by #492/#493). #94 + the divergent engine are conflict-heavy and largely
+superseded by #95/#99/#100/#101, with a few genuinely-unique pieces (GenPoisson /
+Student-t / truncated families / anova / diagnostics; structured-Schur/Poisson
+speed substrate) recommended as fresh narrow ports, not merges. The unique->Psi
+Psi-grammar lane is a real high-risk grammar change (no removal over-claim;
+soft-deprecation-compliant) needing maintainer grammar sign-off.
+
+Not claimed: no merge/rebase/delete of any HELD branch; no register promotion.

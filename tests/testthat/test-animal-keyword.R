@@ -93,6 +93,23 @@ test_that("pedigree_to_A() detects parents-after-offspring ordering", {
                info = "Forward parent-references should error with topology hint")
 })
 
+test_that("pedigree_to_A() rejects a frame with fewer than 3 columns", {
+  ## T5: two columns trip the data-frame / column-count guard.
+  expect_error(
+    gllvmTMB::pedigree_to_A(data.frame(id = 1:3, sire = NA)),
+    "at least 3 columns", fixed = TRUE
+  )
+})
+
+test_that("pedigree_to_A() rejects duplicate individual IDs", {
+  ## T12
+  ped <- data.frame(id = c("a", "a"), sire = c(NA, NA), dam = c(NA, NA))
+  expect_error(
+    gllvmTMB::pedigree_to_A(ped),
+    "duplicate IDs", fixed = TRUE
+  )
+})
+
 # ---- (2) Byte-equivalence: animal_* (pedigree =) vs phylo_*(vcv = A) -
 
 test_that("animal_scalar(pedigree = ) is byte-equivalent with phylo_scalar(vcv = A) (ANI-01 / M2.8)", {

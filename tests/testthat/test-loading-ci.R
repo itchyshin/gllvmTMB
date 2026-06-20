@@ -231,6 +231,34 @@ test_that("flag_unreliable_loadings() rejects malformed null_region", {
                "null_region\\[1\\] < null_region\\[2\\]|length-2")
 })
 
+## ---- Pure-R input-validation guards (no fit needed) ---------------
+## These exercise the documented abort branches via the data-frame
+## entry point, so they run even when heavy/TMB fits are skipped.
+
+test_that("flag_unreliable_loadings() rejects malformed null_region (pure R)", {
+  ## T2: the null_region guard fires before the data-frame branch, so a
+  ## minimal data frame is enough to reach it without building a fit.
+  df <- data.frame(estimate = 0, lower = 0, upper = 0, pinned = FALSE)
+  expect_error(
+    flag_unreliable_loadings(df, null_region = 0.1),
+    "length-2 numeric vector", fixed = TRUE
+  )
+  expect_error(
+    flag_unreliable_loadings(df, null_region = c(0.2, 0.1)),
+    "length-2 numeric vector", fixed = TRUE
+  )
+})
+
+test_that("flag_unreliable_loadings() rejects a data frame missing columns", {
+  ## T1: a valid null_region passes the first guard; the frame then fails
+  ## the column-presence check (lacks `pinned`).
+  bad <- data.frame(estimate = 0.5, lower = 0, upper = 1)
+  expect_error(
+    flag_unreliable_loadings(bad, null_region = c(-0.1, 0.1)),
+    "Data-frame input must have columns", fixed = TRUE
+  )
+})
+
 ## ---- Confidence Eye plot -----------------------------------------
 
 test_that("plot_loadings_confidence_eye() returns a ggplot", {

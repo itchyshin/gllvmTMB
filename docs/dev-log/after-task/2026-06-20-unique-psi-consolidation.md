@@ -103,11 +103,43 @@ confirmed the parsed marker; the lineage trace confirmed the mismatch was in `d7
 - Recommended before merge: a clean full `devtools::test()` re-run on the fixed tree,
   `R CMD check --as-cran`, `pkgdown::build_articles()`.
 
+## Named-perspective review (Boole / Noether / Rose / Pat / Fisher → Ada)
+
+Ran the standing review panel (maintainer: "be careful, especially roles"). All five
+returned BLOCK at the reviewed HEAD; theory unanimously sound (Ψ = specific +
+distribution, Gaussian byte-identity, correlation formula, design cascade). Live
+findings and resolutions:
+
+1. **Marker mismatch** (unanimous) — fixed `de6f87e` (see above); panel verified the
+   fix (bridge 391/0, D2 ordinal 49==49, paired 170==170). Clean full suite FAIL 1
+   (environmental only).
+2. **`unique()` soft-deprecation never warned in real use** (Boole/Rose/Fisher) —
+   `deprecate_soft` is silent for indirect in-package callers. **Maintainer decision
+   (2026-06-20): loud fire-on-use** (design-doc §7 "key hazard", locked). Fixed
+   `e9f7928`: surfacing env-tracker `cli_warn` for `unique()`/`*_unique()` AND a
+   one-shot bare-`latent()` notice ("now carries per-trait Ψ by default; pass
+   `residual = FALSE` for the old loadings-only fit"). Both gated by
+   `gllvmTMB.quiet_grammar_notes` (default off → users see them; suite sets it on so
+   the one-shot warnings do not trip `expect_silent` fits; deprecation test re-enables
+   and asserts). `test-unique-family-deprecation.R`: 21/21.
+3. **Two D5 articles taught the inverse of the new default** (Pat/Rose) — fixed
+   `02b3af2`: `covariance-correlation.Rmd` A-vs-B now uses explicit inline `form_A`
+   (`residual = FALSE`) / `form_B` (default) so the inflation lesson holds; removed a
+   dangling `+`. `morphometrics.Rmd` callout + decomposition prose reframed to
+   "`latent()` carries Ψ by default; `residual = FALSE` ⇒ Ψ = 0".
+
 ## Follow-up / held items
 
-- Maintainer + named-reviewer sign-offs (Boole grammar / Noether engine / Rose
-  cascade / Pat applied-user read) before merge — highest-risk change.
-- Confirm the broad suite + article builds are green; address any origin/main tests
-  that assumed the old bare-`latent()` no-Ψ default.
+- **🔴 Needs maintainer + named-reviewer re-sign-off** before merge (highest-risk).
+- **Spelling cascade is partial** (honest): standalone `unique()` → `indep()` across
+  other articles (choose-your-model, response-families, pitfalls, functional-biogeography,
+  etc.) is not finished. `unique()` still works and now warns, so these are
+  preferred-spelling polish, **not** correctness bugs (no Ψ stripped/double-counted) —
+  but D0-atomicity of the *spelling* cascade is incomplete. Listed for the next slice.
+- **Hardening:** add a non-heavy D2 gate (all-ordinal_probit / all-delta default
+  `latent()` param-count == `residual = FALSE`) so a future marker rename is caught in
+  routine CI, not only by the heavy byte-identity gates.
+- Before merge: clean `R CMD check --as-cran` + `pkgdown::build_articles()` (article
+  fixes are prose/code-consistency-verified by reading; not yet rendered).
 - Augmented-slope `*_unique(1 + x | g)` fold (Slice 2) and full `unique()` removal
-  remain future slices (this is the soft-deprecation + residual fold).
+  remain future slices.

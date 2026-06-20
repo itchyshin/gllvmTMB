@@ -531,6 +531,43 @@ retain the legacy "two_psi" task label per PR #40 logic;
 math prose uses Ψ notation. These are kept through 0.2.x
 and revisited in Phase 2 export audit.
 
+### 8. Coevolution extractors (Design 65)
+
+Added with the cross-lineage coevolution engine (#494) and the
+salvage of the module/diagnostic layer (gllvmTMB #500). All are
+point-estimate only — no uncertainty, rank-selection, in-engine
+ρ estimation, or null-threshold calibration (stated in the return
+`note`). Status: `partial` (register COE-03/COE-04).
+
+#### `extract_coevolution_modules(fit, level, row_traits, col_traits, scale = c("shape", "effect"), n_modules = NULL, tol)`
+
+Module / community decomposition of the cross-lineage covariance.
+`fit` must be a `gllvmTMB_multi`; `level` is the kernel level
+(e.g. `"cross"` for a `kernel_latent(..., name = "cross")` fit, or
+the named source tier). Reads the shared covariance via
+`extract_Sigma(level, part = "shared")`, takes the
+`row_traits × col_traits` cross-block, and returns an SVD-based
+module decomposition. **Returns** an object of class
+`gllvmTMB_coevolution_modules` (a list): `R` (the
+`row_traits × col_traits` cross-correlation matrix, named),
+`modules` (data frame: `component`, `module`, `singular_value`,
+`squared_share`), `row_axes` / `col_axes` (per-module axis tables),
+`level`, `scale`, `row_traits`, `col_traits`, and `note`. `scale =
+"effect"` rescales by the level ρ. Recovery-tested on the shipped
+`coevolution-kernel-example.rds` (`test-coevolution-modules-salvage.R`).
+
+#### `diagnose_kernel_separability(..., thresholds = c(near_orthogonal = 0.25, high = 0.70))`
+
+Pre-fit diagnostic: Frobenius-style similarity between two or more
+**dense fixed kernel matrices** (same dimensions). **Returns** an
+object of class `gllvmTMB_kernel_separability` (a list): `similarity`
+(symmetric tier × tier matrix, unit diagonal), `pairs` (data frame:
+`level_1`, `level_2`, `similarity`, `overlap_class`,
+`recommendation`), `thresholds`, and `note`. High overlap means
+component-specific Γ_shape separation is weak evidence — report one
+network-conditioned covariance unless simulations justify the split.
+Pure-R; no fit required.
+
 ## Rotation-invariance contract
 
 Per `docs/design/03-likelihoods.md` and the

@@ -31,7 +31,10 @@ them — plus their helper cluster — onto a clean branch off `main`, where the
 - `NAMESPACE` (+2 exports, regenerated).
 - `man/extract_coevolution_modules.Rd`, `man/diagnose_kernel_separability.Rd`
   (new, generated).
-- `tests/testthat/test-coevolution-modules-salvage.R` (new, focused).
+- `tests/testthat/test-coevolution-modules-salvage.R` (new: diagnose + guard +
+  fit-based recovery).
+- `docs/design/06-extractors-contract.md` (new "8. Coevolution extractors"
+  subsection — the return-value contract for both exports, per the DoD).
 
 ## 3a. Decisions and Rejected Alternatives
 
@@ -76,6 +79,14 @@ them — plus their helper cluster — onto a clean branch off `main`, where the
 ## 5. Known Limitations and Next Actions
 
 - The recovery test is now present (shipped-example route). DoD recovery gate met.
+- The return-value contract for both exports is now in
+  `docs/design/06-extractors-contract.md` (section 8). DoD doc requirement met.
+- Validation-debt register: these functions fall under the existing **COE-04**
+  row (two-component recovery + kernel-separation diagnostics, currently
+  `partial`). Adding their test evidence to COE-04 is the row-owner's call — NOT
+  self-edited here (no register promotion).
+- Held only for maintainer **merge sign-off** (two new public exports to shared
+  main; auto-mode correctly gates engine/export merges).
 - Two new public exports → the return-value contract should be added to
   `docs/design/06-extractors-contract.md` and a validation-debt register row
   created before any "covered" claim. Merge HELD for maintainer.

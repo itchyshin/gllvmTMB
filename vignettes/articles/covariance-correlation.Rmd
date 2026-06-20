@@ -151,8 +151,13 @@ head(df, 6)
 The long-format formulas are:
 
 ```{r formulas-long}
-covex$edge_cases$latent_only$formula_long
-covex$formula_long
+# Model A is loadings-only (Psi switched off); Model B is the ordinary default
+# (latent() carries the per-trait Psi). Written explicitly so the contrast is
+# unambiguous under the 0.2.0 grammar where latent() carries Psi by default.
+form_A <- value ~ 0 + trait + latent(0 + trait | individual, d = 2, residual = FALSE)
+form_B <- value ~ 0 + trait + latent(0 + trait | individual, d = 2)
+form_A
+form_B
 ```
 
 The wide data-frame formula expresses the same recommended model through the
@@ -166,7 +171,7 @@ covex$formula_wide
 ctl <- gllvmTMBcontrol(se = FALSE)
 
 fit_A <- gllvmTMB(
-  covex$edge_cases$latent_only$formula_long,
+  form_A,
   data = df,
   trait = covex$fit_args$trait,
   unit = covex$fit_args$unit,
@@ -175,7 +180,7 @@ fit_A <- gllvmTMB(
 )
 
 fit_B <- gllvmTMB(
-  covex$formula_long,
+  form_B,
   data = df,
   trait = covex$fit_args$trait,
   unit = covex$fit_args$unit,
@@ -435,7 +440,7 @@ Johnson & Schielzeth 2017):
 fit_two_level <- gllvmTMB(
   value ~ 0 + trait +
     latent(0 + trait | individual, d = d_B) +
-    latent(0 + trait | obs_id, d = d_W) +
+    latent(0 + trait | obs_id, d = d_W),
   data = df,
   trait = "trait",
   unit = "individual",

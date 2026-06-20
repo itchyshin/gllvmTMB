@@ -199,8 +199,8 @@ $$
 where $\boldsymbol{\lambda}_t \in \mathbb{R}^d$ is the loading vector
 for trait $t$, $\mathbf{u}_i$ is a $d$-dimensional latent factor for
 individual $i$, and $\varepsilon_{it}$ is the trait-specific residual
-with variance $\psi_{tt}$. The `unique()` term collects those residual
-variances on the diagonal of $\boldsymbol\Psi$. The implied
+with variance $\psi_{tt}$. Ordinary `latent()` carries those residual
+variances on the diagonal of $\boldsymbol\Psi$ by default. The implied
 between-individual trait covariance is
 
 $$
@@ -219,19 +219,20 @@ loadings rather than the full $T(T + 1) / 2$ covariance surface. That
 low-rank structure is the point of GLLVMs: shared biological axes
 first, trait-specific variation second.
 
-> **`+ unique(0 + trait | individual)` with cross-sectional data.**
+> **The default $\boldsymbol\Psi$ with cross-sectional data.**
 > With cross-sectional data (one observation per individual per
 > trait), the `(trait, individual)` pair uniquely identifies every
 > row. gllvmTMB detects this automatically: it fixes
 > $\sigma_\varepsilon$ to a negligibly small constant (and prints an
-> `i Auto-suppressing sigma_eps: ...` message), so the `unique()` term
+> `i Auto-suppressing sigma_eps: ...` message), so the default
+> $\boldsymbol\Psi$ term (carried by ordinary `latent()`)
 > absorbs the full observation-level residual and becomes the
 > trait-specific residual variance $\psi_t$. The confounding that would
 > arise if both $\sigma_\varepsilon$ and $\psi_t$ were estimated freely
 > is therefore resolved by construction — you do not need to choose
 > between them. With *longitudinal* data (multiple sessions per
 > individual), both terms are separately identified and can be
-> estimated without any auto-suppression; the `unique()` term then
+> estimated without any auto-suppression; the $\boldsymbol\Psi$ term then
 > captures genuine between-individual trait-specific variance on top of
 > the latent structure. See the
 > [Covariance & correlation article](covariance-correlation.html)
@@ -275,10 +276,12 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 > between-unit covariance
 > $\boldsymbol\Sigma_B = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
 > — the sum of the reduced-rank shared component and the diagonal
-> unique component. If you fit without `+ unique()`, $\boldsymbol\Psi = 0$
-> and you get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$,
-> which understates the diagonal. Adding `+ unique()` (as in the fit
-> above) fills in the diagonal correctly. Use `part = "shared"` /
+> unique (trait-specific) component. Ordinary `latent()` carries
+> $\boldsymbol\Psi$ by default (as in the fit above), so the diagonal
+> is filled in correctly. If instead you fit with
+> `latent(..., residual = FALSE)`, then $\boldsymbol\Psi = 0$ and you
+> get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, which
+> understates the diagonal. Use `part = "shared"` /
 > `part = "unique"` to pull just one component.
 
 ## Pairwise correlations and communality

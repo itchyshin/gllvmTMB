@@ -88,7 +88,7 @@ test_that("ordinary latent auto-emits Psi unless residual is FALSE", {
     vapply(p_fold$covstructs, `[[`, character(1), "kind"),
     c("rr", "diag")
   )
-  expect_true(isTRUE(p_fold$covstructs[[2L]]$extra$.latent_psi))
+  expect_true(isTRUE(p_fold$covstructs[[2L]]$extra$.auto_residual))
 
   f_no_resid <- gllvmTMB:::rewrite_canonical_aliases(
     value ~ 0 + trait + latent(0 + trait | site, d = 2, residual = FALSE)

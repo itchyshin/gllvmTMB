@@ -2814,7 +2814,7 @@ rewrite_canonical_aliases <- function(formula) {
 	          if (isFALSE(residual_arg)) {
 	            return(new_call)
 	          }
-	          psi_extras <- list(.latent_psi = TRUE)
+	          psi_extras <- list(.auto_residual = TRUE)
 	          if (isTRUE(common_arg)) {
 	            psi_extras$common <- TRUE
 	          }

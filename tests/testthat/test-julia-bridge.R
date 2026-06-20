@@ -647,6 +647,87 @@ test_that("grouped-dispersion bridge payload is trait-labelled and public-scale 
   expect_equal(gamma$dispersion_public_parameter, "sigma")
 })
 
+test_that("grouped-dispersion normalisation rejects malformed payloads loudly", {
+  # group-id count must match the trait count (n_traits = 2 in the fixture).
+  bad_count <- fake_grouped_dispersion_julia_fit()
+  bad_count$dispersion_group_id <- c(1L, 2L, 3L)
+  expect_error(
+    .gllvm_julia_normalise_result(bad_count),
+    "group ids for"
+  )
+
+  # group dispersion values must be finite and strictly positive.
+  bad_value <- fake_grouped_dispersion_julia_fit()
+  bad_value$dispersion_group <- c(4, -1)
+  bad_value$dispersion <- c(4, -1)
+  expect_error(
+    .gllvm_julia_normalise_result(bad_value),
+    "finite and positive"
+  )
+
+  # group ids must index within the supplied group vector.
+  bad_range <- fake_grouped_dispersion_julia_fit()
+  bad_range$dispersion_group_id <- c(1L, 3L)
+  expect_error(
+    .gllvm_julia_normalise_result(bad_range),
+    "out of range"
+  )
+})
+
+test_that("CI normalisation enforces matching lengths and gates status", {
+  # Estimate/lower/upper vectors must match the param-name length.
+  mismatch <- fake_ci_julia_fit()
+  mismatch$ci_estimate <- 0.2
+  expect_error(
+    .gllvm_julia_normalise_ci(mismatch),
+    "matching lengths"
+  )
+
+  # Empty payload with an explanatory note is reported as unavailable.
+  unavailable <- fake_ci_julia_fit()
+  unavailable$ci_param_names <- character()
+  unavailable$ci_estimate <- numeric()
+  unavailable$ci_lower <- numeric()
+  unavailable$ci_upper <- numeric()
+  unavailable$ci_note <- "Hessian was not positive definite"
+  expect_equal(
+    .gllvm_julia_normalise_ci(unavailable)$ci_status,
+    "unavailable"
+  )
+
+  # Empty payload with no note is reported as empty.
+  empty <- fake_ci_julia_fit()
+  empty$ci_param_names <- character()
+  empty$ci_estimate <- numeric()
+  empty$ci_lower <- numeric()
+  empty$ci_upper <- numeric()
+  empty$ci_note <- ""
+  expect_equal(
+    .gllvm_julia_normalise_ci(empty)$ci_status,
+    "empty"
+  )
+})
+
+test_that("response-mask placeholder admits routed families and gates the rest", {
+  expect_equal(.gllvm_julia_mask_placeholder("poisson"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("binomial"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("negbinomial"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("nb1"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("beta"), 0.5)
+  expect_equal(.gllvm_julia_mask_placeholder("gamma"), 1)
+  expect_equal(.gllvm_julia_mask_placeholder("ordinal"), 1)
+  expect_equal(.gllvm_julia_mask_placeholder("ordinal_probit"), 1)
+
+  expect_error(
+    .gllvm_julia_mask_placeholder("gaussian"),
+    "are not routed for family"
+  )
+  expect_error(
+    .gllvm_julia_mask_placeholder("lognormal"),
+    "are not routed for family"
+  )
+})
+
 test_that("ordinal bridge payload is trait-labelled and CI-gated", {
   fit <- .gllvm_julia_normalise_result(fake_ordinal_julia_fit())
   expect_equal(fit$cutpoint_mode, "per_trait")

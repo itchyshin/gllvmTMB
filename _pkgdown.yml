@@ -260,10 +260,11 @@ reference:
     - plot_loadings_confidence_eye
     - plot.profile_loadings
 
-## news.releases intentionally omitted pre-CRAN: the v0.2.0 git tag /
-## GitHub release does not exist yet (we are mid Phase 1b on the path
-## to first CRAN submission per ROADMAP.md). Once Phase 5 lands a real
-## release tag, re-add a `releases:` block here pointing at it.
+## news.releases intentionally omitted: the v0.2.0 git tag (416f8e4) and the
+## GitHub release "gllvmTMB 0.2.0 — first public release" now exist, but the
+## `releases:` block stays parked pending the CRAN-submission decision (the
+## release identity is still being settled; DESCRIPTION reads 0.2.0 while NEWS
+## still heads "(development version)"). Re-adding `releases:` is a maintainer call.
 ##
 ## In the meantime, the navbar "News" dropdown will show only the
 ## "Changelog" entry (NEWS.md) — which is the correct pre-release UX.

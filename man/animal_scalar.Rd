@@ -43,6 +43,32 @@ relatedness matrix), or \verb{Ainv =} (sparse precision; densified
 internally for v0.2.0 -- sparse-Ainv direct engine path is a v0.3.0
 follow-up).
 }
+\examples{
+\dontrun{
+# Pedigree-derived additive-genetic relatedness; single shared
+# variance across traits. Grounded in test-animal-keyword.R (ANI-01).
+ped <- data.frame(
+  id   = paste0("i", 1:12),
+  sire = c(rep(NA, 4), rep(c("i1", "i2"), length.out = 8)),
+  dam  = c(rep(NA, 4), rep(c("i3", "i4"), length.out = 8))
+)
+A <- pedigree_to_A(ped)
+yvec <- as.numeric(MASS::mvrnorm(
+  1, mu = rep(0, 2 * 12),
+  Sigma = kronecker(diag(2), A) * 0.5 + diag(2 * 12) * 0.5
+))
+df <- data.frame(
+  species = factor(rep(ped$id, each = 2), levels = ped$id),
+  trait   = factor(rep(c("t1", "t2"), times = 12), levels = c("t1", "t2")),
+  value   = yvec
+)
+fit <- gllvmTMB(
+  value ~ 0 + trait + animal_scalar(species, pedigree = ped),
+  data = df, family = gaussian()
+)
+}
+
+}
 \seealso{
 \code{\link[=animal_unique]{animal_unique()}}, \code{\link[=animal_indep]{animal_indep()}}, \code{\link[=animal_latent]{animal_latent()}},
 \code{\link[=animal_dep]{animal_dep()}}, \code{\link[=animal_slope]{animal_slope()}}, \code{\link[=phylo_scalar]{phylo_scalar()}},

@@ -458,7 +458,6 @@ test_that("Julia bridge gate registry names every primary R admission stop", {
       "GJL-GATE-CORRELATION-INTERVALS",
       "GJL-GATE-STRUCTURED-TERMS",
       "GJL-GATE-MULTI-RR",
-      "GJL-GATE-CBIND-BINOMIAL",
       "GJL-GATE-MASK-X",
       "GJL-GATE-X-FAMILY",
       "GJL-GATE-X-DESIGN"
@@ -565,12 +564,17 @@ test_that("Julia bridge capability ledger marks admitted CI rows explicitly", {
     "gllvmTMB\\(\\) fits retain bridge input for post-fit confint\\(\\)",
     caps$notes
   )))
-  expect_true(all(!caps$cbind_binomial))
+  ## cbind(successes, failures) binomial marshaling is now routed: only the
+  ## binomial row claims it; the mixed-family vector route stays gated.
+  expect_equal(caps$family[caps$cbind_binomial], "binomial")
+  expect_false(caps$cbind_binomial[caps$family == .GLLVM_JULIA_MIXED_FAMILY])
 })
 
 test_that("Julia bridge capability drift is explicit and gate-labelled", {
   julia_caps <- gllvm_julia_capabilities()
-  julia_caps$cbind_binomial[julia_caps$family == "binomial"] <- TRUE
+  ## With the cbind(successes, failures) route now marshalled on both sides,
+  ## an identical R/engine surface yields zero drift. The 0-row frame must keep
+  ## the full audit-column contract.
   drift <- .gllvm_julia_capability_drift(julia_caps = julia_caps)
   expect_named(
     drift,
@@ -585,15 +589,9 @@ test_that("Julia bridge capability drift is explicit and gate-labelled", {
       "reason"
     )
   )
-  expect_equal(nrow(drift), 1L)
-  expect_equal(drift$family, "binomial")
-  expect_equal(drift$capability, "cbind_binomial")
-  expect_equal(drift$direction, "julia_broader_than_r")
-  expect_equal(drift$status, "gated")
-  expect_equal(drift$gate_id, "GJL-GATE-CBIND-BINOMIAL")
-  expect_equal(drift$issue, "gllvmTMB#488")
-  expect_equal(drift$validation_row, "JUL-01")
-  expect_match(drift$reason, "cbind marshaling contract")
+  expect_equal(nrow(drift), 0L)
+  ## The binomial cbind flag now agrees on both sides -> no longer a drift row.
+  expect_false("cbind_binomial" %in% drift$capability)
 
   future_julia <- julia_caps
   future_julia$fixed_effect_X[future_julia$family == "nb1"] <- TRUE
@@ -647,6 +645,87 @@ test_that("grouped-dispersion bridge payload is trait-labelled and public-scale 
   )
   expect_equal(unname(gamma$dispersion_public), c(1 / 4, 1 / 5))
   expect_equal(gamma$dispersion_public_parameter, "sigma")
+})
+
+test_that("grouped-dispersion normalisation rejects malformed payloads loudly", {
+  # group-id count must match the trait count (n_traits = 2 in the fixture).
+  bad_count <- fake_grouped_dispersion_julia_fit()
+  bad_count$dispersion_group_id <- c(1L, 2L, 3L)
+  expect_error(
+    .gllvm_julia_normalise_result(bad_count),
+    "group ids for"
+  )
+
+  # group dispersion values must be finite and strictly positive.
+  bad_value <- fake_grouped_dispersion_julia_fit()
+  bad_value$dispersion_group <- c(4, -1)
+  bad_value$dispersion <- c(4, -1)
+  expect_error(
+    .gllvm_julia_normalise_result(bad_value),
+    "finite and positive"
+  )
+
+  # group ids must index within the supplied group vector.
+  bad_range <- fake_grouped_dispersion_julia_fit()
+  bad_range$dispersion_group_id <- c(1L, 3L)
+  expect_error(
+    .gllvm_julia_normalise_result(bad_range),
+    "out of range"
+  )
+})
+
+test_that("CI normalisation enforces matching lengths and gates status", {
+  # Estimate/lower/upper vectors must match the param-name length.
+  mismatch <- fake_ci_julia_fit()
+  mismatch$ci_estimate <- 0.2
+  expect_error(
+    .gllvm_julia_normalise_ci(mismatch),
+    "matching lengths"
+  )
+
+  # Empty payload with an explanatory note is reported as unavailable.
+  unavailable <- fake_ci_julia_fit()
+  unavailable$ci_param_names <- character()
+  unavailable$ci_estimate <- numeric()
+  unavailable$ci_lower <- numeric()
+  unavailable$ci_upper <- numeric()
+  unavailable$ci_note <- "Hessian was not positive definite"
+  expect_equal(
+    .gllvm_julia_normalise_ci(unavailable)$ci_status,
+    "unavailable"
+  )
+
+  # Empty payload with no note is reported as empty.
+  empty <- fake_ci_julia_fit()
+  empty$ci_param_names <- character()
+  empty$ci_estimate <- numeric()
+  empty$ci_lower <- numeric()
+  empty$ci_upper <- numeric()
+  empty$ci_note <- ""
+  expect_equal(
+    .gllvm_julia_normalise_ci(empty)$ci_status,
+    "empty"
+  )
+})
+
+test_that("response-mask placeholder admits routed families and gates the rest", {
+  expect_equal(.gllvm_julia_mask_placeholder("poisson"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("binomial"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("negbinomial"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("nb1"), 0)
+  expect_equal(.gllvm_julia_mask_placeholder("beta"), 0.5)
+  expect_equal(.gllvm_julia_mask_placeholder("gamma"), 1)
+  expect_equal(.gllvm_julia_mask_placeholder("ordinal"), 1)
+  expect_equal(.gllvm_julia_mask_placeholder("ordinal_probit"), 1)
+
+  expect_error(
+    .gllvm_julia_mask_placeholder("gaussian"),
+    "are not routed for family"
+  )
+  expect_error(
+    .gllvm_julia_mask_placeholder("lognormal"),
+    "are not routed for family"
+  )
 })
 
 test_that("ordinal bridge payload is trait-labelled and CI-gated", {
@@ -784,10 +863,54 @@ test_that("Julia bridge covariance and raw ordination accessors are routed narro
     )]
   )
   expect_equal(cmp$error, cmp$estimate - cmp$truth)
-  expect_error(
-    extract_correlations(fit, tier = "unit"),
-    "GJL-GATE-CORRELATION-INTERVALS"
+
+  ## S2 (GJL-GATE-CORRELATION-INTERVALS, JUL-01A): extract_correlations() no
+  ## longer aborts for a gllvmTMB_julia fit. It returns point-only rows that
+  ## are a superset of the normal-fit schema -- the base columns plus the
+  ## point-only convention columns interval_status / validation_row, mirroring
+  ## extract_Sigma_table(measure = "correlation").
+  cors <- suppressMessages(extract_correlations(fit, tier = "unit"))
+  expect_s3_class(cors, "data.frame")
+  expect_true(all(
+    c("tier", "trait_i", "trait_j", "correlation", "lower", "upper", "method")
+    %in% names(cors)
+  ))
+  ## one row per upper-triangle pair of the unit-tier correlation matrix
+  expect_equal(nrow(cors), choose(fit$n_traits, 2L))
+  ## point estimates match the documented point-only route
+  sig_R <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    part = "total"
+  ))$R
+  expect_equal(
+    cors$correlation,
+    sig_R[cbind(
+      match(cors$trait_i, rownames(sig_R)),
+      match(cors$trait_j, colnames(sig_R))
+    )]
   )
+  ## interval columns are NA; status column == "none"; JUL-01A label
+  expect_true(all(is.na(cors$lower)))
+  expect_true(all(is.na(cors$upper)))
+  expect_equal(unique(cors$method), "none")
+  expect_equal(unique(cors$interval_status), "none")
+  expect_equal(unique(cors$validation_row), "JUL-01A")
+  ## tier = "all" routes the same unit tier (no abort)
+  cors_all <- suppressMessages(extract_correlations(fit, tier = "all"))
+  expect_equal(nrow(cors_all), choose(fit$n_traits, 2L))
+  ## a single pair returns exactly one row
+  cors_pair <- suppressMessages(extract_correlations(
+    fit,
+    tier = "unit",
+    pair = c("sp1", "sp2")
+  ))
+  expect_equal(nrow(cors_pair), 1L)
+  expect_equal(unique(cors_pair$interval_status), "none")
+
+  ## plot_correlations() remains a correct refusal: it depends on
+  ## interval-bearing rows, so the GJL-GATE-CORRELATION-INTERVALS gate still
+  ## fires there (independent of extract_correlations()).
   if (requireNamespace("ggplot2", quietly = TRUE)) {
     expect_error(
       plot_correlations(fit),
@@ -1058,6 +1181,80 @@ test_that("Julia bridge predict and fitted reconstruct in-sample means", {
   expect_error(
     predict(fit, newdata = data.frame(x = 1)),
     "GJL-GATE-NEWDATA-PREDICT"
+  )
+})
+
+test_that("S3: correct refusal gates fire with the bracketed [GJL-GATE-*] id", {
+  ## S3 hardening: the GJL-GATE-PROB-CLASS-NONORDINAL and
+  ## GJL-GATE-NO-CI-PAYLOAD gates are correct refusals. Assert the loud stop
+  ## fires with the FULL bracketed [GJL-GATE-*] id (fixed = TRUE so brackets
+  ## are literal) for every documented trigger entry point. No behaviour
+  ## change; pure-R, no Julia required.
+
+  ## --- GJL-GATE-PROB-CLASS-NONORDINAL ---------------------------------
+  ## Documented trigger: type %in% c("prob", "class") on a NON-ordinal
+  ## (here Poisson) bridge fit, via predict() and fitted().
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  fit$scores <- matrix(
+    seq(-0.35, 0.35, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+  fit$bridge_input <- list(
+    y = matrix(
+      0,
+      nrow = fit$n_traits,
+      ncol = fit$n_units,
+      dimnames = list(fit$trait_names, fit$unit_names)
+    ),
+    family = "poisson",
+    num.lv = 1L,
+    N = NULL,
+    X = NULL,
+    mask = NULL,
+    units_are_rows = FALSE,
+    setup_args = list()
+  )
+
+  expect_error(
+    predict(fit, type = "prob"),
+    "[GJL-GATE-PROB-CLASS-NONORDINAL]",
+    fixed = TRUE
+  )
+  expect_error(
+    predict(fit, type = "class"),
+    "[GJL-GATE-PROB-CLASS-NONORDINAL]",
+    fixed = TRUE
+  )
+  expect_error(
+    fitted(fit, type = "prob"),
+    "[GJL-GATE-PROB-CLASS-NONORDINAL]",
+    fixed = TRUE
+  )
+  expect_error(
+    fitted(fit, type = "class"),
+    "[GJL-GATE-PROB-CLASS-NONORDINAL]",
+    fixed = TRUE
+  )
+
+  ## --- GJL-GATE-NO-CI-PAYLOAD -----------------------------------------
+  ## Documented trigger: confint() on a bridge fit with no stored and no
+  ## recomputable CI payload (an admitted but CI-less nb1 row), via the
+  ## default method and the explicit method = "stored" path.
+  no_ci <- .gllvm_julia_normalise_result(fake_grouped_dispersion_julia_fit(
+    "nb1"
+  ))
+  no_ci$engine <- "julia"
+  expect_error(
+    confint(no_ci),
+    "[GJL-GATE-NO-CI-PAYLOAD]",
+    fixed = TRUE
+  )
+  expect_error(
+    confint(no_ci, method = "stored"),
+    "[GJL-GATE-NO-CI-PAYLOAD]",
+    fixed = TRUE
   )
 })
 
@@ -1752,17 +1949,92 @@ test_that("engine = 'julia' rejects non reduced-rank covariance terms", {
     ),
     "GJL-GATE-MULTI-RR"
   )
-  df$failures <- abs(round(df$value)) + 1L
-  expect_error(
+})
+
+test_that("engine = 'julia' marshals cbind(successes, failures) to Y + N", {
+  ## Deterministic 2-trait x 3-unit design so the pivoted successes (Y) and
+  ## trials (N) matrices are checkable by hand. cbind marshaling is pure-R up
+  ## to the gllvm_julia_fit() call, which we mock to capture its inputs.
+  df <- expand.grid(
+    unit = factor(1:3),
+    trait = factor(c("t1", "t2")),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  df$trait <- factor(df$trait, levels = c("t1", "t2"))
+  df$succ <- c(1, 2, 3, 0, 4, 5) # ordered by (unit, trait): t1 units 1:3, t2 units 1:3
+  df$fail <- c(4, 3, 2, 6, 1, 0)
+  trials <- df$succ + df$fail
+
+  expected_Y <- matrix(
+    NA_real_,
+    2L,
+    3L,
+    dimnames = list(c("t1", "t2"), c("1", "2", "3"))
+  )
+  expected_N <- matrix(
+    1,
+    2L,
+    3L,
+    dimnames = list(c("t1", "t2"), c("1", "2", "3"))
+  )
+  ti <- as.integer(df$trait)
+  ui <- as.integer(df$unit)
+  expected_Y[cbind(ti, ui)] <- df$succ
+  expected_N[cbind(ti, ui)] <- trials
+
+  captured <- new.env(parent = emptyenv())
+  testthat::local_mocked_bindings(
+    gllvm_julia_fit = function(y, family, num.lv, N, X, mask, ...) {
+      captured$y <- y
+      captured$N <- N
+      captured$family <- family
+      out <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+      out$engine <- "julia"
+      out
+    }
+  )
+
+  expect_no_error(
     gllvmTMB(
-      cbind(value, failures) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = 1),
       data = df,
       trait = "trait",
       unit = "unit",
       family = binomial(),
       engine = "julia"
+    )
+  )
+
+  ## successes pivot to Y, total trials pivot to N (no per-row weights involved).
+  expect_equal(dim(captured$y), c(2L, 3L))
+  expect_equal(captured$y[cbind(ti, ui)], df$succ)
+  expect_true(is.matrix(captured$N))
+  expect_equal(dim(captured$N), c(2L, 3L))
+  expect_equal(captured$N[cbind(ti, ui)], trials)
+  expect_equal(unname(captured$N), unname(expected_N))
+})
+
+test_that("engine = 'julia' rejects two-column responses for non-binomial families", {
+  df <- expand.grid(
+    unit = factor(1:3),
+    trait = factor(c("t1", "t2")),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  df$trait <- factor(df$trait, levels = c("t1", "t2"))
+  df$a <- c(1, 2, 3, 0, 4, 5)
+  df$b <- c(4, 3, 2, 6, 1, 0)
+  expect_error(
+    gllvmTMB(
+      cbind(a, b) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+      data = df,
+      trait = "trait",
+      unit = "unit",
+      family = poisson(),
+      engine = "julia"
     ),
-    "GJL-GATE-CBIND-BINOMIAL"
+    "GJL-GATE-FAMILY"
   )
 })
 
@@ -1855,10 +2127,88 @@ test_that("live GLLVM.jl bridge capabilities drift only through registered gates
   gllvm_julia_setup()
   engine_caps <- JuliaCall::julia_eval("GLLVM.bridge_capabilities()")
   drift <- .gllvm_julia_capability_drift(julia_caps = engine_caps)
-  expect_equal(drift$status, "gated")
-  expect_equal(drift$family, "binomial")
-  expect_equal(drift$capability, "cbind_binomial")
-  expect_equal(drift$gate_id, "GJL-GATE-CBIND-BINOMIAL")
+  ## The cbind(successes, failures) binomial route is now marshalled and
+  ## parity-tested on both sides, so the R and engine capability surfaces
+  ## agree: no registered drifts remain, and crucially nothing is unregistered.
+  expect_false(any(drift$status == "unregistered"))
+  expect_equal(nrow(drift), 0L)
+  expect_false("cbind_binomial" %in% drift$capability)
+})
+
+test_that("engine = 'julia' cbind(successes, failures) matches a direct trials-matrix fit", {
+  skip_if_no_julia()
+
+  ## Deterministic 3-trait x 6-unit binomial design. succ = successes,
+  ## trials = total Bernoulli draws; fail = trials - succ. Routing the
+  ## cbind(succ, fail) long formula must reproduce a direct gllvm_julia_fit()
+  ## that receives successes in `y` and trials in `N`.
+  traits <- c("sp1", "sp2", "sp3")
+  units <- paste0("site", 1:6)
+  succ <- matrix(
+    c(
+      2, 5, 3, 6, 1, 4,
+      7, 2, 8, 3, 6, 5,
+      1, 4, 2, 7, 3, 6
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(traits, units)
+  )
+  trials <- matrix(
+    c(
+      8, 9, 7, 10, 6, 9,
+      10, 8, 11, 9, 10, 8,
+      7, 9, 8, 11, 7, 10
+    ),
+    nrow = 3L,
+    byrow = TRUE,
+    dimnames = list(traits, units)
+  )
+  stopifnot(all(succ <= trials), all(trials >= 1))
+
+  direct <- gllvm_julia_fit(
+    succ,
+    N = trials,
+    family = "binomial",
+    num.lv = 1L
+  )
+
+  df <- julia_bridge_matrix_to_long(succ)
+  names(df)[names(df) == "value"] <- "succ"
+  fail_long <- julia_bridge_matrix_to_long(trials - succ)
+  df$fail <- fail_long$value[match(
+    paste(df$trait, df$unit),
+    paste(fail_long$trait, fail_long$unit)
+  )]
+
+  routed <- gllvmTMB(
+    cbind(succ, fail) ~ 0 + trait + latent(0 + trait | unit, d = 1),
+    data = df,
+    trait = "trait",
+    unit = "unit",
+    family = binomial(),
+    engine = "julia"
+  )
+
+  expect_s3_class(routed, "gllvmTMB_julia")
+  expect_equal(routed$family, "binomial")
+  expect_equal(routed$trait_levels, traits)
+  expect_equal(routed$unit_levels, units)
+  expect_equal(
+    as.numeric(logLik(routed)),
+    as.numeric(logLik(direct)),
+    tolerance = 1e-6
+  )
+  expect_equal(
+    unname(as.numeric(routed$loadings)),
+    unname(as.numeric(direct$loadings)),
+    tolerance = 1e-6
+  )
+  expect_equal(
+    unname(as.numeric(routed$alpha)),
+    unname(as.numeric(direct$alpha)),
+    tolerance = 1e-6
+  )
 })
 
 test_that("gllvm_julia_fit consumes grouped-dispersion payloads from GLLVM.jl", {

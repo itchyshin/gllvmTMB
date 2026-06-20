@@ -18,10 +18,12 @@ extract_correlations(
 }
 \arguments{
 \item{fit}{A fit returned by \code{\link{gllvmTMB}}. Julia bridge
-(\code{engine = "julia"}) fits currently fail with an explicit gate because
-correlation intervals need CI/status semantics; use
-\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} with \code{measure = "correlation"} for point-only
-Julia bridge correlation rows.}
+(\code{engine = "julia"}) fits expose the ordinary unit tier only and carry no
+correlation-interval payload, so they return point-only rows: the same
+schema with \code{lower} and \code{upper} set to \code{NA}, \code{method = "none"},
+\code{interval_status = "none"}, and \code{validation_row = "JUL-01A"}, mirroring
+\code{\link[=extract_Sigma_table]{extract_Sigma_table()}} with \code{measure = "correlation"}. Use
+\code{engine = "tmb"} when you need correlation confidence intervals.}
 
 \item{tier}{Character vector. Use \code{"all"} (the default) to request
 every level present in the fit. Canonical inputs are \code{"unit"},
@@ -96,6 +98,12 @@ names in new calls.}
 \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 \item{\code{method}}{Method used to compute the CI.}
 }
+
+For an \code{engine = "julia"} bridge fit the frame additionally carries the
+point-only convention columns \code{interval_status} (\code{"none"}) and
+\code{validation_row} (\code{"JUL-01A"}), with \code{lower}/\code{upper}
+both \code{NA} and \code{method = "none"}; the base columns above are
+unchanged so the frame remains a superset of the normal-fit schema.
 }
 \description{
 Returns the implied cross-trait correlations from a fit returned by

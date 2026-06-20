@@ -92,6 +92,22 @@ per-cell weight matrices, pivot to long format and pass a \code{weights}
 column aligned with \verb{(unit, trait)} rows. The legacy matrix wrapper
 \code{\link[=gllvmTMB_wide]{gllvmTMB_wide()}} still accepts matrix weights for migration code.
 }
+\examples{
+\dontrun{
+# Wide format: one column per trait; traits() stacks them internally.
+# The LHS *is* the trait spec, so no `trait =` argument is needed.
+set.seed(1)
+df_wide <- data.frame(
+  unit = factor(paste0("u", 1:40)),
+  t1 = rnorm(40), t2 = rnorm(40), t3 = rnorm(40)
+)
+fit <- gllvmTMB(
+  traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
+  data = df_wide, unit = "unit"
+)
+extract_Sigma(fit)
+}
+}
 \seealso{
 \code{\link[=gllvmTMB]{gllvmTMB()}} for model fitting. The legacy
 matrix wrapper \code{gllvmTMB_wide(Y, ...)} is soft-deprecated in

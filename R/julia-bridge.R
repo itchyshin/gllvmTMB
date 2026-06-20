@@ -130,7 +130,6 @@
       "GJL-GATE-CORRELATION-INTERVALS",
       "GJL-GATE-STRUCTURED-TERMS",
       "GJL-GATE-MULTI-RR",
-      "GJL-GATE-CBIND-BINOMIAL",
       "GJL-GATE-MASK-X",
       "GJL-GATE-X-FAMILY",
       "GJL-GATE-X-DESIGN"
@@ -154,7 +153,6 @@
       "main dispatch",
       "main dispatch",
       "main dispatch",
-      "main dispatch",
       "main dispatch"
     ),
     reason = c(
@@ -173,7 +171,6 @@
       "Correlation interval helpers need endpoint/status semantics.",
       "Structured covariance terms need Julia structured-fit payloads.",
       "Multiple reduced-rank latent blocks are not routed.",
-      "Two-column binomial responses are not marshalled to Julia yet.",
       "Response masks plus fixed-effect X are not routed.",
       "Fixed-effect X is admitted for complete one-part rows only.",
       "Non-Gaussian X rows require the canonical 0 + trait design."
@@ -194,7 +191,6 @@
       "JUL-01",
       "JUL-01",
       "JUL-01A",
-      "JUL-01",
       "JUL-01",
       "JUL-01",
       "JUL-01",
@@ -307,7 +303,7 @@ gllvm_julia_capabilities <- function() {
     fit_no_x = TRUE,
     fixed_effect_X = families %in% .GLLVM_JULIA_X_FAMILIES,
     missing_response = families %in% .GLLVM_JULIA_MASK_FAMILIES,
-    cbind_binomial = FALSE,
+    cbind_binomial = families == "binomial",
     ci_no_x_wald = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_profile = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
     ci_no_x_bootstrap = families %in% .GLLVM_JULIA_CI_NO_X_FAMILIES,
@@ -397,18 +393,18 @@ gllvm_julia_capabilities <- function() {
 }
 
 .gllvm_julia_expected_capability_drifts <- function() {
+  ## No registered drifts remain: the cbind(successes, failures) binomial route
+  ## is now marshalled and parity-tested, so the R and engine capability
+  ## surfaces agree. Keep returning the canonical 0-row frame so the drift
+  ## matcher's `allowed$<col>[m]` lookups stay well-typed.
   data.frame(
-    family = "binomial",
-    capability = "cbind_binomial",
-    direction = "julia_broader_than_r",
-    gate_id = "GJL-GATE-CBIND-BINOMIAL",
-    issue = "gllvmTMB#488",
-    validation_row = "JUL-01",
-    reason = paste(
-      "GLLVM.jl exposes a binomial count-matrix bridge flag, but the R bridge",
-      "still requires one-row-per-unit-trait Bernoulli/binomial values until",
-      "the cbind marshaling contract is routed and parity-tested."
-    ),
+    family = character(0),
+    capability = character(0),
+    direction = character(0),
+    gate_id = character(0),
+    issue = character(0),
+    validation_row = character(0),
+    reason = character(0),
     stringsAsFactors = FALSE
   )
 }
@@ -2134,6 +2130,21 @@ gllvm_julia_capabilities <- function() {
 #'   (`loadings`, `Sigma`, `correlation`, `loglik`, `aic`, `bic`,
 #'   `converged`, ...). If `ci_method != "none"` and the row is admitted, the
 #'   list also carries flat CI fields consumed by `confint()`.
+#' @examples
+#' \dontrun{
+#' # Requires a local GLLVM.jl install (see [gllvm_julia_setup()]).
+#' # `y` is traits x units (p x n): two Gaussian traits, 40 units, K = 2.
+#' set.seed(1)
+#' y <- matrix(rnorm(2 * 40), nrow = 2)
+#' fit <- gllvm_julia_fit(y, family = "gaussian", num.lv = 2)
+#' fit$loglik
+#' fit$Sigma
+#'
+#' # Wald confidence intervals for an admitted no-X row:
+#' fit_ci <- gllvm_julia_fit(
+#'   y, family = "gaussian", num.lv = 2, ci_method = "wald"
+#' )
+#' }
 #' @export
 gllvm_julia_fit <- function(
   y,
@@ -2889,15 +2900,25 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     na.action = stats::na.pass
   )
   yraw <- stats::model.response(mf)
+  fam_str <- .gllvm_julia_family(family)
+  cbind_trials <- NULL
   if (is.matrix(yraw) && ncol(yraw) == 2L) {
-    stop(
-      .gllvm_julia_gate_message(
-        "GJL-GATE-CBIND-BINOMIAL",
-        "engine = 'julia' does not yet support cbind(successes, failures) ",
-        "binomial responses; use a 0/1 Bernoulli response or engine = 'tmb'."
-      ),
-      call. = FALSE
-    )
+    if (!any(fam_str == "binomial")) {
+      stop(
+        .gllvm_julia_gate_message(
+          "GJL-GATE-FAMILY",
+          "engine = 'julia' only admits two-column cbind(successes, failures) ",
+          "responses with a binomial family; the supplied response has two ",
+          "columns but the family maps to '",
+          paste(fam_str, collapse = ", "),
+          "'. Use a single-column response or engine = 'tmb'."
+        ),
+        call. = FALSE
+      )
+    }
+    ## col 1 = successes, col 2 = failures -> total trials per row = rowSums.
+    cbind_trials <- rowSums(yraw)
+    yraw <- yraw[, 1L]
   }
   yv <- as.numeric(yraw)
   ft <- factor(data[[trait]])
@@ -2912,7 +2933,6 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   units <- levels(fu)
   p <- length(traits)
   n <- length(units)
-  fam_str <- .gllvm_julia_family(family)
   Y <- matrix(NA_real_, p, n, dimnames = list(traits, units))
   Y[cbind(as.integer(ft), as.integer(fu))] <- yv
   response_mask <- !is.na(Y)
@@ -2994,10 +3014,14 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
     Xarg[idx3] <- as.numeric(Xbridge)
   }
 
-  ## --- binomial trials: pivot per-row n_trials (weights API) else Bernoulli ---
+  ## --- binomial trials: cbind(successes, failures) totals take precedence, then
+  ## per-row n_trials (weights API), else Bernoulli (N = 1). ---
   Narg <- NULL
   if (any(fam_str == "binomial")) {
-    if (
+    if (!is.null(cbind_trials)) {
+      Narg <- matrix(1, p, n)
+      Narg[cbind(as.integer(ft), as.integer(fu))] <- as.numeric(cbind_trials)
+    } else if (
       !is.null(weights) && is.numeric(weights) && length(weights) == length(yv)
     ) {
       Narg <- matrix(1, p, n)

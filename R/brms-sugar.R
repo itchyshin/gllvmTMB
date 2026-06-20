@@ -393,6 +393,21 @@ meta <- function(value, sampling_var) {
 #' @param d Integer; number of latent factors.
 #' @return A formula marker; never evaluated.
 #' @seealso [unique()], [phylo_latent()], [diag_re], [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#' # Long-format stacked traits: a 2-factor latent random effect at `site`.
+#' # Ordinary latent() carries its diagonal Psi by default
+#' # (Sigma = Lambda Lambda^T + diag(psi)).
+#' df <- simulate_site_trait(
+#'   n_sites = 30, n_species = 4, n_traits = 4,
+#'   mean_species_per_site = 4, seed = 42
+#' )$data
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
+#'   data = df, unit = "site"
+#' )
+#' extract_Sigma(fit)
+#' }
 #' @export
 latent <- function(formula, d = 1) {
   invisible(NULL)
@@ -1035,6 +1050,25 @@ spatial <- function(formula, mesh = NULL, coords = NULL, mode = NULL, d = 1) {
 #' @seealso [meta_V()] (canonical name; preferred for new code);
 #'   [meta()] (older deprecated short alias); [block_V()];
 #'   [gllvmTMB()].
+#' @examples
+#' \dontrun{
+#' # Deprecated alias of meta_V(); both desugar identically (see
+#' # test-formula-grammar-smoke.R, where meta_V() / meta_known_V() expand
+#' # to the same parsed formula). New code should use meta_V(V = V).
+#' set.seed(131)
+#' df <- expand.grid(
+#'   site  = factor(seq_len(50)),
+#'   trait = factor(paste0("t", 1:3))
+#' )
+#' df$value <- rnorm(nrow(df), sd = 0.5)
+#' df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
+#' V <- diag(df$sampling_var)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+#'     meta_known_V(V = V),
+#'   data = df, trait = "trait", unit = "site", known_V = V
+#' )
+#' }
 #' @export
 #' @keywords internal
 meta_known_V <- function(V, type = "exact") {
@@ -1068,6 +1102,24 @@ meta_known_V <- function(V, type = "exact") {
 #' @seealso [meta_known_V()] (deprecated alias); [block_V()];
 #'   [gllvmTMB()]; vision doc "Planned extensions" for the future
 #'   `meta_V(type = "proportional")` mode (Nakagawa 2022).
+#' @examples
+#' \dontrun{
+#' # Stage-2 meta-regression with a known per-row sampling-variance V.
+#' # Grounded in test-formula-grammar-smoke.R (MET-01).
+#' set.seed(131)
+#' df <- expand.grid(
+#'   site  = factor(seq_len(50)),
+#'   trait = factor(paste0("t", 1:3))
+#' )
+#' df$value <- rnorm(nrow(df), sd = 0.5)
+#' df$sampling_var <- runif(nrow(df), min = 0.02, max = 0.08)
+#' V <- diag(df$sampling_var)
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 1) +
+#'     meta_V(V = V, type = "exact"),
+#'   data = df, trait = "trait", unit = "site", known_V = V
+#' )
+#' }
 #' @export
 meta_V <- function(V, type = "exact") {
   invisible(NULL)

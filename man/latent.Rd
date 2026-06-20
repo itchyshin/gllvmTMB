@@ -35,6 +35,22 @@ add an explicit \code{\link[=unique]{unique()}} term:
                     unique(0 + trait | unit)
 }\if{html}{\out{</div>}}
 }
+\examples{
+\dontrun{
+# Long-format stacked traits: a 2-factor latent random effect at `site`.
+# Ordinary latent() carries its diagonal Psi by default
+# (Sigma = Lambda Lambda^T + diag(psi)).
+df <- simulate_site_trait(
+  n_sites = 30, n_species = 4, n_traits = 4,
+  mean_species_per_site = 4, seed = 42
+)$data
+fit <- gllvmTMB(
+  value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  data = df, unit = "site"
+)
+extract_Sigma(fit)
+}
+}
 \seealso{
 \code{\link[=unique]{unique()}}, \code{\link[=phylo_latent]{phylo_latent()}}, \link{diag_re}, \code{\link[=extract_Sigma]{extract_Sigma()}}.
 }

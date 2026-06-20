@@ -4,6 +4,119 @@
 ## phy / spatial),
 ## with four CI methods: fisher-z / profile / Wald alias / bootstrap.
 
+## Point-only correlation rows for an engine = 'julia' bridge fit.
+##
+## engine = 'julia' bridge fits expose the ordinary unit tier only and carry
+## no correlation-interval payload (the GJL-GATE-CORRELATION-INTERVALS gate
+## still guards the interval-dependent plot_correlations() path). This helper
+## returns the same data-frame schema extract_correlations() returns for a
+## normal fit -- tier / trait_i / trait_j / correlation / lower / upper /
+## method -- with the interval columns set to NA and the point-only convention
+## columns interval_status = "none" and validation_row = "JUL-01A" appended,
+## mirroring extract_Sigma_table(fit, measure = "correlation") exactly. The
+## correlation matrix is read via the documented point-only route
+## extract_Sigma(fit, level = "unit", part = "total")$R.
+.extract_correlations_julia_point <- function(
+  fit,
+  tier = "all",
+  pair = NULL,
+  link_residual = "auto"
+) {
+  ## `tier` arrives already normalised to internal slot names by the caller
+  ## (extract_correlations() runs .normalise_level() at its boundary before
+  ## dispatching here), so we must NOT re-normalise -- doing so would re-fire
+  ## the legacy-alias deprecation on the already-internal "B". The Julia
+  ## bridge routes only the ordinary unit tier (internal "B"); confirm it is
+  ## among the requested tiers, otherwise abort with the available-tier
+  ## message.
+  if (!(length(tier) == 1L && identical(tier, "all"))) {
+    if (!("B" %in% tier)) {
+      cli::cli_abort(c(
+        "None of the requested tiers are present in the fit.",
+        "i" = "engine = 'julia' bridge fits expose the ordinary {.val unit} tier only."
+      ))
+    }
+  }
+
+  sig <- suppressMessages(extract_Sigma(
+    fit,
+    level = "unit",
+    part = "total",
+    link_residual = link_residual,
+    .skip_warn = TRUE
+  ))
+  R <- sig$R
+  trait_names <- rownames(R)
+  if (is.null(trait_names)) {
+    trait_names <- .gllvm_julia_trait_names(fit, nrow(R))
+    rownames(R) <- colnames(R) <- trait_names
+  }
+  T <- nrow(R)
+
+  ## Resolve an optional single pair (character names or integer indices),
+  ## reusing the same validation as the TMB path.
+  pair_idx <- NULL
+  if (!is.null(pair)) {
+    if (length(pair) != 2L) {
+      cli::cli_abort("{.arg pair} must be length 2.")
+    }
+    if (is.character(pair)) {
+      pi <- match(pair[1], trait_names)
+      pj <- match(pair[2], trait_names)
+      if (anyNA(c(pi, pj))) {
+        cli::cli_abort("{.arg pair} entries not found in trait names.")
+      }
+      pair_idx <- sort(c(pi, pj))
+    } else if (is.numeric(pair)) {
+      pair_idx <- sort(as.integer(pair))
+      if (any(pair_idx < 1L) || any(pair_idx > T)) {
+        cli::cli_abort("{.arg pair} indices out of range.")
+      }
+    } else {
+      cli::cli_abort("{.arg pair} must be character or integer.")
+    }
+    if (pair_idx[1] == pair_idx[2]) {
+      cli::cli_abort("{.arg pair} must give two distinct traits.")
+    }
+  }
+
+  if (!is.null(pair_idx)) {
+    pairs <- matrix(pair_idx, nrow = 1)
+  } else {
+    pairs <- which(upper.tri(R), arr.ind = TRUE)
+  }
+
+  if (nrow(pairs) == 0L) {
+    return(data.frame(
+      tier = character(0),
+      trait_i = character(0),
+      trait_j = character(0),
+      correlation = numeric(0),
+      lower = numeric(0),
+      upper = numeric(0),
+      method = character(0),
+      interval_status = character(0),
+      validation_row = character(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  out <- data.frame(
+    tier = "B",
+    trait_i = trait_names[pairs[, 1L]],
+    trait_j = trait_names[pairs[, 2L]],
+    correlation = R[pairs],
+    lower = NA_real_,
+    upper = NA_real_,
+    method = "none",
+    interval_status = "none",
+    validation_row = "JUL-01A",
+    stringsAsFactors = FALSE
+  )
+  rownames(out) <- NULL
+  out
+}
+
 #' Cross-trait correlations with confidence intervals
 #'
 #' Returns the implied cross-trait correlations from a fit returned by
@@ -42,10 +155,12 @@
 #' cross-trait correlations to report.
 #'
 #' @param fit A fit returned by \code{\link{gllvmTMB}}. Julia bridge
-#'   (`engine = "julia"`) fits currently fail with an explicit gate because
-#'   correlation intervals need CI/status semantics; use
-#'   [extract_Sigma_table()] with `measure = "correlation"` for point-only
-#'   Julia bridge correlation rows.
+#'   (`engine = "julia"`) fits expose the ordinary unit tier only and carry no
+#'   correlation-interval payload, so they return point-only rows: the same
+#'   schema with `lower` and `upper` set to `NA`, `method = "none"`,
+#'   `interval_status = "none"`, and `validation_row = "JUL-01A"`, mirroring
+#'   [extract_Sigma_table()] with `measure = "correlation"`. Use
+#'   `engine = "tmb"` when you need correlation confidence intervals.
 #' @param tier Character vector. Use \code{"all"} (the default) to request
 #'   every level present in the fit. Canonical inputs are \code{"unit"},
 #'   \code{"unit_obs"}, \code{"phy"}, and \code{"spatial"}; legacy aliases
@@ -111,6 +226,12 @@
 #'   \item{\code{lower}, \code{upper}}{Confidence-interval bounds.}
 #'   \item{\code{method}}{Method used to compute the CI.}
 #' }
+#'
+#' For an `engine = "julia"` bridge fit the frame additionally carries the
+#' point-only convention columns \code{interval_status} (\code{"none"}) and
+#' \code{validation_row} (\code{"JUL-01A"}), with \code{lower}/\code{upper}
+#' both \code{NA} and \code{method = "none"}; the base columns above are
+#' unchanged so the frame remains a superset of the normal-fit schema.
 #'
 #' @section Caveats:
 #' \itemize{
@@ -183,12 +304,19 @@ extract_correlations <- function(
     tier <- vapply(tier, .normalise_level, character(1L), arg_name = "tier")
   }
   if (inherits(fit, "gllvmTMB_julia")) {
-    cli::cli_abort(.gllvm_julia_gate_message(
-      "GJL-GATE-CORRELATION-INTERVALS",
-      "engine = 'julia': extract_correlations() interval rows are not routed ",
-      "yet. Use extract_Sigma_table(fit, measure = \"correlation\") for ",
-      "point-only unit-tier correlation rows, or engine = 'tmb' when you need ",
-      "correlation confidence intervals."
+    ## engine = 'julia' bridge fits expose the ordinary unit tier only and
+    ## carry no correlation-interval payload. Rather than abort, return the
+    ## same data-frame schema as a normal fit with the interval columns set
+    ## to NA and the point-only convention columns
+    ## (interval_status = "none", validation_row = "JUL-01A") mirrored from
+    ## extract_Sigma_table(fit, measure = "correlation"). The correlation
+    ## matrix is read via the documented point-only route
+    ## extract_Sigma(fit, level = "unit", part = "total")$R.
+    return(.extract_correlations_julia_point(
+      fit = fit,
+      tier = tier,
+      pair = pair,
+      link_residual = link_residual
     ))
   }
   if (!inherits(fit, "gllvmTMB_multi")) {

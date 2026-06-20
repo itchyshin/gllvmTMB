@@ -1103,6 +1103,80 @@ test_that("Julia bridge predict and fitted reconstruct in-sample means", {
   )
 })
 
+test_that("S3: correct refusal gates fire with the bracketed [GJL-GATE-*] id", {
+  ## S3 hardening: the GJL-GATE-PROB-CLASS-NONORDINAL and
+  ## GJL-GATE-NO-CI-PAYLOAD gates are correct refusals. Assert the loud stop
+  ## fires with the FULL bracketed [GJL-GATE-*] id (fixed = TRUE so brackets
+  ## are literal) for every documented trigger entry point. No behaviour
+  ## change; pure-R, no Julia required.
+
+  ## --- GJL-GATE-PROB-CLASS-NONORDINAL ---------------------------------
+  ## Documented trigger: type %in% c("prob", "class") on a NON-ordinal
+  ## (here Poisson) bridge fit, via predict() and fitted().
+  fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
+  fit$engine <- "julia"
+  fit$scores <- matrix(
+    seq(-0.35, 0.35, length.out = fit$n_units),
+    ncol = 1L,
+    dimnames = list(fit$unit_names, "LV1")
+  )
+  fit$bridge_input <- list(
+    y = matrix(
+      0,
+      nrow = fit$n_traits,
+      ncol = fit$n_units,
+      dimnames = list(fit$trait_names, fit$unit_names)
+    ),
+    family = "poisson",
+    num.lv = 1L,
+    N = NULL,
+    X = NULL,
+    mask = NULL,
+    units_are_rows = FALSE,
+    setup_args = list()
+  )
+
+  expect_error(
+    predict(fit, type = "prob"),
+    "[GJL-GATE-PROB-CLASS-NONORDINAL]",
+    fixed = TRUE
+  )
+  expect_error(
+    predict(fit, type = "class"),
+    "[GJL-GATE-PROB-CLASS-NONORDINAL]",
+    fixed = TRUE
+  )
+  expect_error(
+    fitted(fit, type = "prob"),
+    "[GJL-GATE-PROB-CLASS-NONORDINAL]",
+    fixed = TRUE
+  )
+  expect_error(
+    fitted(fit, type = "class"),
+    "[GJL-GATE-PROB-CLASS-NONORDINAL]",
+    fixed = TRUE
+  )
+
+  ## --- GJL-GATE-NO-CI-PAYLOAD -----------------------------------------
+  ## Documented trigger: confint() on a bridge fit with no stored and no
+  ## recomputable CI payload (an admitted but CI-less nb1 row), via the
+  ## default method and the explicit method = "stored" path.
+  no_ci <- .gllvm_julia_normalise_result(fake_grouped_dispersion_julia_fit(
+    "nb1"
+  ))
+  no_ci$engine <- "julia"
+  expect_error(
+    confint(no_ci),
+    "[GJL-GATE-NO-CI-PAYLOAD]",
+    fixed = TRUE
+  )
+  expect_error(
+    confint(no_ci, method = "stored"),
+    "[GJL-GATE-NO-CI-PAYLOAD]",
+    fixed = TRUE
+  )
+})
+
 test_that("Julia bridge predict includes retained fixed-effect X payloads", {
   fit <- .gllvm_julia_normalise_result(fake_ci_julia_fit())
   fit$engine <- "julia"

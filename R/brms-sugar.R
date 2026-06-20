@@ -106,15 +106,40 @@
 }
 
 .gllvmTMB_warn_unique_family_deprecated <- function(fn) {
-  lifecycle::deprecate_soft(
-    when = "0.2.0",
-    what = I(sprintf("The `%s()` formula keyword", fn)),
-    details = c(
-      "i" = "`unique()` / `*_unique()` are compatibility syntax while Psi moves into the latent-family grammar.",
-      ">" = "For standalone diagonal tiers, use `indep()` / `*_indep()`; ordinary `latent()` now carries Psi by default, while source-specific folds and removal remain future slices."
-    ),
-    id = sprintf("gllvmTMB-unique-family-%s", fn)
-  )
+  ## Surfacing soft-deprecation. lifecycle::deprecate_soft() is SILENT for
+  ## indirect (in-package) callers like this rewrite walk, so the user never
+  ## sees it in a real fit. Use the package's own env-based one-shot tracker +
+  ## cli_warn so the warning actually fires on use (maintainer 2026-06-20:
+  ## loud fire-on-use for the unique() / *_unique() soft-deprecation).
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) return(invisible(NULL))
+  key <- sprintf("unique-family-%s", fn)
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    cli::cli_warn(c(
+      "!" = "Formula keyword {.fn {fn}} is soft-deprecated as of gllvmTMB 0.2.0 (compatibility syntax).",
+      "i" = "{.fn unique} / {.fn *_unique} are compatibility syntax while {.field Psi} moves into the latent-family grammar.",
+      ">" = "For standalone diagonal tiers use {.fn indep} / {.fn *_indep}; ordinary {.fn latent} now carries {.field Psi} by default."
+    ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
+  }
+  invisible(NULL)
+}
+
+## One-shot fire-on-use notice for the bare-latent() meaning change: ordinary
+## latent() now carries the per-trait Psi by DEFAULT (was Lambda-only). This is a
+## silent behavior change for existing analyses, flagged as the key hazard in the
+## design doc (2026-06-12-latent-psi-fold-design.md §7); maintainer (2026-06-20)
+## locked the loud fire-on-use option. Fires only when residual= was NOT passed.
+.gllvmTMB_warn_latent_default_psi <- function() {
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) return(invisible(NULL))
+  key <- "latent-default-psi"
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    cli::cli_warn(c(
+      "!" = "Ordinary {.fn latent} now includes a per-trait residual {.field Psi} by default (Sigma = Lambda Lambda^T + Psi).",
+      "i" = "This changed in gllvmTMB 0.2.0; earlier {.fn latent} was loadings-only (Lambda Lambda^T).",
+      ">" = "Pass {.code latent(..., residual = FALSE)} for the old rotation-invariant loadings-only fit."
+    ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
+  }
   invisible(NULL)
 }
 
@@ -2813,6 +2838,11 @@ rewrite_canonical_aliases <- function(formula) {
 	          }
 	          if (isFALSE(residual_arg)) {
 	            return(new_call)
+	          }
+	          ## Bare latent() (no explicit residual=) now carries Psi by default:
+	          ## one-shot fire-on-use notice of the silent behavior change (§7).
+	          if (is.null(e[["residual"]])) {
+	            .gllvmTMB_warn_latent_default_psi()
 	          }
 	          psi_extras <- list(.auto_residual = TRUE)
 	          if (isTRUE(common_arg)) {

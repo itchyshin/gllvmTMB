@@ -17,3 +17,11 @@ skip_if_not_heavy <- function() {
     "Heavy recovery/matrix test -- set GLLVMTMB_HEAVY_TESTS=1 to run"
   )
 }
+
+# The unique()/*_unique() soft-deprecation and the bare-latent() "Psi is now the
+# default" notice are one-shot fire-on-use warnings for real users (maintainer
+# 2026-06-20: loud fire-on-use). Suppress them across the general suite so they do
+# not trip the many expect_silent()/expect_no_warning() fits; the dedicated
+# test-unique-family-deprecation.R re-enables them (local_options FALSE) and asserts
+# they fire. Real users have the option unset -> the warnings surface.
+options(gllvmTMB.quiet_grammar_notes = TRUE)

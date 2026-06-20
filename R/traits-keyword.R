@@ -36,9 +36,11 @@
 #' Because the LHS already names the response traits, the RHS can use a
 #' compact wide shorthand. `1` expands to the trait-specific intercepts
 #' `0 + trait`; ordinary predictors such as `env_temp` expand to
-#' `(0 + trait):env_temp`; and `latent(1 | individual)` /
-#' `unique(1 | individual)` expand to the long covariance syntax
-#' `latent(0 + trait | individual)` / `unique(0 + trait | individual)`.
+#' `(0 + trait):env_temp`; and `latent(1 | individual)` expands to
+#' the long covariance syntax `latent(0 + trait | individual)`.
+#' Ordinary `latent()` includes its \eqn{\boldsymbol\Psi} companion by
+#' default; the soft-deprecated explicit `unique(1 | individual)`
+#' compatibility spelling still expands to `unique(0 + trait | individual)`.
 #' The same `1 | group` shorthand is recognised for `indep()`,
 #' `dep()`, bar-style `phylo_indep()` / `phylo_dep()`, and the
 #' `spatial_*()` keywords. Species-axis phylogenetic keywords such as
@@ -49,8 +51,7 @@
 #' ```r
 #' gllvmTMB(
 #'   traits(sleep, mass, lifespan, brain) ~ 1 + env_temp +
-#'     latent(1 | individual, d = 2) +
-#'     unique(1 | individual),
+#'     latent(1 | individual, d = 2),
 #'   data   = wide_df,
 #'   unit   = "individual",
 #'   family = gaussian()

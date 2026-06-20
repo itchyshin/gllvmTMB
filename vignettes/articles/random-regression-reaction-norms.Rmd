@@ -36,8 +36,8 @@ model asks whether individuals differ in both average behaviour and
 temperature responsiveness, and whether those reaction-norm coefficients
 covary across behaviours.
 
-Here `latent()` estimates shared axes of between-individual covariance, and
-`unique()` estimates trait-specific variation left after those shared axes.
+Here `latent()` estimates the between-individual shared axes and their
+diagonal `Psi` companion for trait-specific variation left after those axes.
 The current draft covers the Gaussian version only. It does not yet teach
 non-Gaussian reaction norms, calibrated intervals for slope summaries, or the
 broader model-choice path for deciding when this random-regression model is
@@ -151,7 +151,6 @@ ctl <- gllvmTMBcontrol(
 fit_long <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):temperature +
     latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
-    unique(0 + trait + (0 + trait):temperature | individual) +
     latent(0 + trait | session_id, d = 1),
   data = df,
   trait = rr$fit_args$trait,
@@ -164,7 +163,6 @@ fit_long <- gllvmTMB(
 fit_wide <- gllvmTMB(
   traits(boldness, exploration, activity) ~ 1 + temperature +
     latent(1 + temperature | individual, d = 1) +
-    unique(1 + temperature | individual) +
     latent(1 | session_id, d = 1),
   data = df_wide,
   unit = rr$fit_args$unit,
@@ -190,11 +188,9 @@ tier:
 ```{r formula-pieces, eval = FALSE}
 # Long format
 latent(0 + trait + (0 + trait):temperature | individual, d = 1)
-unique(0 + trait + (0 + trait):temperature | individual)
 
 # Wide data-frame shorthand
 latent(1 + temperature | individual, d = 1)
-unique(1 + temperature | individual)
 ```
 
 The article uses `se = FALSE` so the vignette renders quickly. That
@@ -305,8 +301,9 @@ The three blocks answer different biological questions:
   to temperature.
 
 The shared and unique pieces compose the total augmented covariance.
-`Sigma_unique$s` is the fitted diagonal contribution from `unique()`,
-ordered to match the rows and columns of `Sigma_total$Sigma`:
+`Sigma_unique$s` is the fitted diagonal `Psi` contribution that ordinary
+`latent()` carries by default, ordered to match the rows and columns of
+`Sigma_total$Sigma`:
 
 ```{r composition}
 max(abs(
@@ -484,7 +481,7 @@ differences at each temperature value?
 
 ## Current non-Gaussian boundary
 
-The paired augmented `latent() + unique()` random-regression path in
+The ordinary augmented `latent()` random-regression path in
 this article is Gaussian. The low-rank augmented `latent()` path can
 currently fit ordinary non-Gaussian random slopes in a smoke-test
 regime, but adding the augmented diagonal `unique()` component is still
@@ -508,7 +505,7 @@ gllvmTMB(
 
 For a non-Gaussian reaction-norm analysis today, either fit the
 augmented `latent()` part without `unique()` and treat it as early
-evidence, or stay with the established non-slope `latent + unique`
+evidence, or stay with the established non-slope ordinary `latent()`
 between/within model. Do not switch to `phylo_*()` or `spatial_*()`
 syntax unless the scientific model genuinely contains phylogenetic or
 spatial dependence.

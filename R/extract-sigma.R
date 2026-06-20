@@ -363,28 +363,29 @@ link_residual_per_trait <- function(fit) {
 #' Extract the implied trait covariance / correlation at one tier
 #'
 #' Implements the decomposition
-#' \deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\boldsymbol\Psi_\text{tier}}_{\text{unique (unique)}},}
-#' where \eqn{\boldsymbol\Lambda} comes from the `latent()` term at that tier
-#' and \eqn{\boldsymbol\Psi} comes from the corresponding `unique()` term. This is the
-#' same decomposition the behavioural-syndromes / phenotypic-integration
-#' literature uses (Bartholomew et al. 2011).
+#' \deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\boldsymbol\Psi_\text{tier}}_{\text{unique}},}
+#' where ordinary `latent()` now carries both \eqn{\boldsymbol\Lambda} and the
+#' diagonal \eqn{\boldsymbol\Psi} companion by default. This is the same
+#' decomposition the behavioural-syndromes / phenotypic-integration literature
+#' uses (Bartholomew et al. 2011).
 #'
-#' ## Why both `latent()` and `unique()` matter
+#' ## When a fit has no Psi component
 #'
-#' If the formula has only `latent(0 + trait | unit, d = K)` and **no**
-#' `unique(0 + trait | unit)`, the engine can only fit the
-#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component -- there is no
-#' slot for trait-specific *unique* variance \eqn{\boldsymbol\Psi}. Calling
-#' `extract_Sigma(fit, level, part = "total")` then returns just
-#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}, which **understates the
-#' diagonal** of the true covariance. Any correlations computed from this
-#' incomplete \eqn{\hat{\boldsymbol\Sigma}} are systematically inflated
-#' (the same numerator with a too-small denominator).
+#' If the formula deliberately uses
+#' `latent(0 + trait | unit, d = K, residual = FALSE)`, the engine fits only the
+#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
+#' `extract_Sigma(fit, level, part = "total")` then returns just the shared
+#' component. This is useful for no-residual / rotation-invariant checks, but it
+#' **understates the diagonal** of the usual covariance decomposition. Any
+#' correlations computed from this incomplete
+#' \eqn{\hat{\boldsymbol\Sigma}} are systematically inflated (the same numerator
+#' with a too-small denominator).
 #'
-#' For Gaussian / lognormal / Gamma fits this function emits a one-shot
-#' message reminding the user to add `+ unique(0 + trait | unit)` (or its
-#' within-unit analogue) when this happens. Add the `unique()` term and the
-#' decomposition is complete.
+#' For Gaussian / lognormal / Gamma fits this function emits an advisory note
+#' when a reduced-rank tier has no Psi component. Use the ordinary
+#' `latent(..., residual = TRUE)` default for
+#' \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}; the
+#' explicit `latent() + unique()` spelling remains compatibility syntax only.
 #'
 #' For non-Gaussian families (binomial, Poisson, Gamma) the latent-scale
 #' residual variance has a closed-form approximation that should be added
@@ -488,7 +489,9 @@ link_residual_per_trait <- function(fit) {
 #'   `"phy"` (phylogenetic), `"spatial"`, or `"cluster"`. Legacy aliases
 #'   `"B"`, `"W"`, and `"spde"` are accepted with a soft-deprecation
 #'   message.
-#' @param part One of `"total"` (default), `"shared"`, `"unique"`.
+#' @param part One of `"total"` (default), `"shared"`, `"unique"`. `"psi"`
+#'   is an alias for `"unique"` (the per-trait residual Psi diagonal, now
+#'   folded into `latent()` by default).
 #' @param link_residual For non-Gaussian fits. `"auto"` (default) adds a
 #'   per-trait link-specific implicit residual variance to the diagonal of
 #'   `Sigma`, giving the marginal latent-scale interpretation; in mixed-
@@ -551,7 +554,7 @@ link_residual_per_trait <- function(fit) {
 #' \dontrun{
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
-#'           latent(0 + trait | unit, d = 2) + unique(0 + trait | unit),
+#'           latent(0 + trait | unit, d = 2),
 #'   data  = df,
 #'   trait = "trait",
 #'   unit  = "unit"
@@ -578,7 +581,7 @@ extract_Sigma <- function(
     "W",
     "spde"
   ),
-  part = c("total", "shared", "unique"),
+  part = c("total", "shared", "unique", "psi"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
 ) {
@@ -614,6 +617,11 @@ extract_Sigma <- function(
     level <- .normalise_level(level, arg_name = "level", .skip_warn = .skip_warn)
   }
   part <- match.arg(part)
+  ## `part = "psi"` is an alias for `part = "unique"`: it names the per-trait
+  ## residual Psi diagonal regardless of how Psi was specified (now folded
+  ## into `latent()` by default). Normalise to the canonical internal value
+  ## so all downstream `part == "unique"` logic is unchanged.
+  if (identical(part, "psi")) part <- "unique"
   link_residual <- match.arg(link_residual)
 
   trait_names <- levels(fit$data[[fit$trait_col]])
@@ -641,8 +649,8 @@ extract_Sigma <- function(
     }
     if (identical(part, "unique") && !has_unique) {
       cli::cli_abort(c(
-        "Fit has no augmented ordinary {.fn unique} random-regression term for {.code part = \"unique\"}.",
-        ">" = "Use {.code unique(1 + x | unit)} to estimate {.code Psi_B,aug}, or request {.code part = \"shared\"} for a latent-only fit."
+        "Fit has no augmented ordinary diagonal Psi term for {.code part = \"unique\"}.",
+        ">" = "Use the default {.code latent(1 + x | unit, d = K)} fit to estimate {.code Psi_B,aug}; only use {.code latent(..., residual = FALSE)} for the no-Psi subset."
       ))
     }
     slope_col <- fit$use$rr_B_slope_col %||%
@@ -1200,7 +1208,11 @@ extract_Sigma <- function(
   rownames(LLt) <- colnames(LLt) <- trait_names
   names(Sd) <- trait_names
 
-  ## ---- The "missing diag()" advisory for continuous families ----------
+  ## ---- The "Lambda-only" advisory for continuous families -------------
+  ## `latent()` now folds in the per-trait residual Psi by default, so a
+  ## Gaussian / lognormal / Gamma fit is latent-only ONLY when the user
+  ## opted out with `latent(..., residual = FALSE)`. The advisory now points
+  ## at that opt-out rather than the retired `+ unique(...)` term.
   if (level %in% c("B", "W")) {
     rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
     diag_used <- if (level == "B") {
@@ -1211,28 +1223,15 @@ extract_Sigma <- function(
     fids <- fit$tmb_data$family_id_vec
     has_continuous <- any(fids %in% c(0L, 3L, 4L)) # gaussian / lognormal / Gamma
     if (rr_used && !diag_used && has_continuous && part == "total") {
-      diag_call <- sprintf(
-        "unique(0 + trait | %s)",
-        if (level == "B") {
-          fit$unit_col
-        } else if (!is.null(fit$unit_obs_col)) {
-          fit$unit_obs_col
-        } else {
-          "site_species"
-        }
-      )
       notes <- c(
         notes,
         paste0(
           "Sigma_",
           level_label,
-          " is currently latent-only (Lambda Lambda^T) because no `",
-          diag_call,
-          "` term is in the formula. Trait-specific unique variance is not modelled, ",
-          "so correlations from this matrix overstate cross-trait coupling. ",
-          "For the correct decomposition Sigma = Lambda Lambda^T + Psi, refit with `+ ",
-          diag_call,
-          "`."
+          " is latent-only (Lambda Lambda^T): this fit used `latent(..., residual = FALSE)`, ",
+          "so trait-specific residual variance Psi is not modelled and correlations from ",
+          "this matrix overstate cross-trait coupling. For the full decomposition ",
+          "Sigma = Lambda Lambda^T + Psi, refit without `residual = FALSE` (the default)."
         )
       )
     }

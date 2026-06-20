@@ -31,7 +31,8 @@ test_that("Stage 2: rr() alone matches glmmTMB log-likelihood exactly", {
   sim <- simulate_rr_diag(Lambda_B = Lambda_B, psi_B = NULL, seed = 2025)
   df <- sim$data
 
-  fit_g <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  fit_g <- gllvmTMB(value ~ 0 + trait +
+                      latent(0 + trait | site, d = 2, residual = FALSE),
                     data = df)
   expect_s3_class(fit_g, "gllvmTMB_multi")
   expect_equal(fit_g$opt$convergence, 0L)
@@ -50,6 +51,7 @@ test_that("Stage 2: rr() alone matches glmmTMB log-likelihood exactly", {
 })
 
 test_that("Stage 2: diag() alone matches glmmTMB log-likelihood exactly", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   skip_if_not_glmmTMB()
   sim <- simulate_rr_diag(Lambda_B = NULL,
                           psi_B = c(0.5, 0.5, 0.5, 0.5),
@@ -72,6 +74,7 @@ test_that("Stage 2: diag() alone matches glmmTMB log-likelihood exactly", {
 })
 
 test_that("Stage 2: rr() + diag() on the same grouping matches glmmTMB", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   skip_if_not_glmmTMB()
   Lambda_B <- matrix(c(0.8, 0.5, -0.2, 0.3,
                        0.2, -0.4, 0.6, 0.1), nrow = 4, ncol = 2)
@@ -109,6 +112,7 @@ test_that("Stage 2: rr() + diag() on the same grouping matches glmmTMB", {
 })
 
 test_that("Stage 2: residual sigma is recovered well", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Lambda_B <- matrix(c(0.8, 0.5, -0.2, 0.3,
                        0.2, -0.4, 0.6, 0.1), nrow = 4, ncol = 2)
   sim <- simulate_rr_diag(n_sites = 100,
@@ -126,6 +130,7 @@ test_that("Stage 2: residual sigma is recovered well", {
 })
 
 test_that("Stage 2: rejects spatial_unique() without mesh (Stage 4)", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   sim <- simulate_rr_diag(n_sites = 30, n_species = 8, n_traits = 3,
                           mean_species_per_site = 4, seed = 1)
   expect_error(

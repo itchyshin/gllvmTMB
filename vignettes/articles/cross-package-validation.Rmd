@@ -95,8 +95,7 @@ Fit with `gllvmTMB`:
 ```{r fit-gllvm}
 fit_g <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | site, d = 2) +
-          unique(0 + trait | site),
+          latent(0 + trait | site, d = 2),
   data = df,
   trait = "trait"
 )
@@ -108,7 +107,7 @@ Fit with `glmmTMB::glmmTMB()` on the same data:
 
 ```{r fit-glmmtmb}
 ## glmmTMB has its own `rr()` / `diag()` keywords; we use those here
-## (NOT gllvmTMB's canonical latent() / unique()) because this is a
+## (NOT gllvmTMB's ordinary latent() syntax) because this is a
 ## cross-package log-likelihood agreement fit.
 fit_t <- suppressWarnings(glmmTMB::glmmTMB(
   value ~ 0 + trait +

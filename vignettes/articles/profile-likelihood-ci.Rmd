@@ -144,8 +144,8 @@ df_wide <- tidyr::pivot_wider(
 # Long format (canonical)
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | site, d = 1) + unique(0 + trait | site) +
-    unique(0 + trait | site_species),
+    latent(0 + trait | site, d = 1) +
+    indep(0 + trait | site_species),
   data = df_long,
   trait = "trait"
 )
@@ -153,8 +153,8 @@ fit_long <- gllvmTMB(
 # Wide data-frame format (same model with compact formula syntax)
 fit_wide <- gllvmTMB(
   traits(trait_1, trait_2, trait_3) ~ 1 +
-    latent(1 | site, d = 1) + unique(1 | site) +
-    unique(1 | site_species),
+    latent(1 | site, d = 1) +
+    indep(1 | site_species),
   data = df_wide
 )
 
@@ -257,7 +257,7 @@ When the fit has both `phylo_unique(species)` and
 (\sigma^2_{\mathrm{phy}} + \sigma^2_{\mathrm{non}})$ is profileable via a
 single linear contrast (analogous to repeatability). For richer
 3-component decompositions (PGLLVM with
-`phylo_latent + latent + unique`), the extractor returns the point
+`phylo_latent + latent`), the extractor returns the point
 estimate with a `method = "wald(approx)"` flag in the output's
 method column. The constrained-refit profile for the 3-component
 case is a known gap; bootstrap is the recommended interim.

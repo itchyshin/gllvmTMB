@@ -28,7 +28,7 @@ across traits. The four correlation rows go from finest-grained
 
 > **Scope boundary.** This page is a technical lookup for the formula
 > grammar, not a worked validation article. IN: the long and wide formula
-> grammar, `traits(...)` expansion, the core `latent() + unique()` path,
+> grammar, `traits(...)` expansion, the core ordinary `latent()` path,
 > the five `animal_*()` keywords, and the main `phylo_*()` sparse A^-1
 > route have covered rows (FG-01--FG-06, FG-12, ANI-01--ANI-05,
 > ANI-07--ANI-08, PHY-01--PHY-03, PHY-09--PHY-10, MIS-02, MIS-11).
@@ -54,7 +54,7 @@ Status labels during the public-surface reset:
 
 | row | Public status | Validation note |
 |---|---|---|
-| none | covered for long/wide grammar and the core Gaussian `latent() + unique()` path; standalone `indep()` and `dep()` are partial outside that core, and the scalar cell has no public no-prefix keyword | FG-01--FG-06 and FAM-01 covered; FG-07--FG-09 partial |
+| none | covered for long/wide grammar and the core Gaussian ordinary `latent()` path; standalone `indep()` and `dep()` are partial outside that core, and the scalar cell has no public no-prefix keyword | FG-01--FG-06 and FAM-01 covered; FG-07--FG-09 partial |
 | animal | covered for the five covariance keywords and A/Ainv helper path; `animal_slope()` and cross-package agreement remain partial | ANI-01--ANI-05, ANI-07, and ANI-08 covered; ANI-06, ANI-09, and ANI-10 partial |
 | phylo | covered for the main paired decomposition and sparse A^-1 route; scalar, marginal-only, saturated, and slope paths are partial at the current validation depth | FG-12 and PHY-01--PHY-03 covered; PHY-04--PHY-06 partial |
 | spatial | covered for mesh construction, mode dispatch, orientation, and legacy-alias deprecation; covariance recovery depth remains partial | SPA-01 and SPA-05--SPA-07 covered; SPA-02--SPA-04 partial |
@@ -62,7 +62,7 @@ Status labels during the public-surface reset:
 
 Use this page as a grammar lookup. For a worked example, start with
 [`morphometrics`](morphometrics.html) for non-phylogenetic
-`latent() + unique()` models. Phylogenetic, spatial, animal, and
+ordinary `latent()` models. Phylogenetic, spatial, animal, and
 meta-analysis worked examples are under audit until their validation
 and rendered HTML gates pass.
 
@@ -74,12 +74,12 @@ level.
 | mode | Meaning | Use when |
 |---|---|---|
 | scalar | one shared variance for all traits | every trait should have the same group-level scale |
-| unique | a diagonal matrix `Psi` of trait-specific variances `psi` | pairing with `latent()` or fitting independent trait variances |
+| unique | a diagonal matrix `Psi` of trait-specific variances `psi` | compatibility spelling for explicit diagonal Psi |
 | indep | the same diagonal covariance as standalone `unique()` | you want to state marginal-only intent explicitly |
 | dep | a full unstructured positive-definite `Sigma` | the number of traits is small enough for a saturated covariance |
-| latent | low-rank shared covariance `Lambda Lambda^T` | a few latent axes should explain cross-trait association |
+| latent | low-rank shared covariance plus default diagonal `Psi` | a few latent axes should explain cross-trait association while retaining trait-specific residual variance |
 
-The most common decomposed model pairs `latent()` and `unique()`:
+The most common decomposed ordinary model is `latent()`:
 
 ```text
 Sigma = Lambda Lambda^T + diag(psi)
@@ -90,12 +90,13 @@ The same alignment appears in the worked articles:
 | Goal | Long syntax | Wide syntax | Mathematical target |
 |---|---|---|---|
 | shared latent axes | `latent(0 + trait | unit, d = K)` | `latent(1 | unit, d = K)` | $\Lambda \Lambda^\top$ |
-| trait-specific diagonal | `unique(0 + trait | unit)` | `unique(1 | unit)` | $\Psi = \mathrm{diag}(\psi)$ |
-| decomposed covariance | `latent(...) + unique(...)` | `latent(...) + unique(...)` | $\Sigma = \Lambda \Lambda^\top + \Psi$ |
+| trait-specific diagonal compatibility | `unique(0 + trait | unit)` | `unique(1 | unit)` | $\Psi = \mathrm{diag}(\psi)$ |
+| decomposed covariance | `latent(...)` | `latent(...)` | $\Sigma = \Lambda \Lambda^\top + \Psi$ |
 | marginal-only diagonal | `indep(0 + trait | unit)` | `indep(1 | unit)` | diagonal $\Sigma$ with no cross-trait covariance |
 | saturated covariance | `dep(0 + trait | unit)` | `dep(1 | unit)` | full unstructured $\Sigma$ |
 
-Standalone `latent()` fits the no-residual reduced-rank subset.
+Ordinary `latent()` fits the shared-plus-diagonal-Psi decomposition;
+use `latent(..., residual = FALSE)` for the old no-residual subset.
 Standalone `unique()` and `indep()` both fit independent per-trait
 variances, but `indep()` tells the next reader that the marginal-only
 interpretation is intentional. `dep()` is the full unstructured
@@ -144,8 +145,7 @@ and pass `trait =`.
 # Long format
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | individual, d = 2) +
-    unique(0 + trait | individual),
+    latent(0 + trait | individual, d = 2),
   data = df_long,
   trait = "trait",
   unit = "individual"
@@ -154,8 +154,7 @@ fit_long <- gllvmTMB(
 # Wide data-frame format
 fit_wide <- gllvmTMB(
   traits(length, mass, wing, tarsus, bill) ~ 1 +
-    latent(1 | individual, d = 2) +
-    unique(1 | individual),
+    latent(1 | individual, d = 2),
   data = df_wide,
   unit = "individual"
 )
@@ -163,7 +162,7 @@ fit_wide <- gllvmTMB(
 
 In the wide form, `1` supplies the trait-specific intercepts and
 `latent(1 | individual)` expands to `latent(0 + trait | individual)`.
-The same shorthand applies to `unique()`, `indep()`, `dep()`,
+The same shorthand applies to `indep()`, `dep()`,
 bar-style `phylo_indep()` / `phylo_dep()`, and `spatial_*()` terms.
 Species-axis phylogenetic calls such as
 `phylo_latent(species, d = K, tree = tree)` and
@@ -172,15 +171,15 @@ axis, so they pass through unchanged.
 
 ## Per-Cell Examples
 
-Use one cell from a row at a time unless you are fitting the
-`latent + unique` decomposition. The examples below show the long-form
+Use one cell from a row at a time unless you are deliberately showing
+explicit-Psi compatibility syntax. The examples below show the long-form
 syntax; the wide-form equivalent replaces `0 + trait` with `1` inside
 bar-style terms.
 
 ### No Correlation
 
 ```{r}
-# Diagonal trait variances, often paired with latent()
+# Explicit diagonal-Psi compatibility syntax
 unique(0 + trait | unit)
 
 # Explicit marginal-only diagonal covariance
@@ -303,7 +302,7 @@ twice at the same level:
 - `spatial_dep()` with `spatial_latent()`, `spatial_unique()`, or
   `spatial_indep()` for the same spatial tier.
 
-When in doubt, start with `latent() + unique()` for a decomposed model,
+When in doubt, start with `latent()` for a decomposed model,
 `indep()` for a diagonal baseline, and `dep()` for a saturated
 baseline. Then use the row prefix only when the grouping units are
 phylogenetically or spatially correlated.

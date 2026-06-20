@@ -33,9 +33,9 @@
 #' @param Lambda_B Optional `n_traits` x `d_B` between-unit loading matrix for
 #'   the reduced-rank between-unit component. Set to `NULL` (default) to omit.
 #' @param Lambda_W Optional `n_traits` x `d_W` within-unit loading matrix for
-#'   the reduced-rank observation-level component (matching a `unique()` or
-#'   `latent()` term on the within-unit grouping). Set to `NULL` (default) to
-#'   omit.
+#'   the reduced-rank observation-level component (matching a default
+#'   `latent()` term, or an explicit compatibility `unique()` term, on the
+#'   within-unit grouping). Set to `NULL` (default) to omit.
 #' @param psi_B Optional length-`n_traits` vector of trait-specific
 #'   between-unit variances. (Lowercase psi matches the factor-analysis
 #'   convention -- `\boldsymbol\Psi_B = diag(psi_B)`; see `decisions.md`
@@ -51,8 +51,8 @@
 #' \describe{
 #'   \item{`data`}{Long-format data frame with one row per (unit,
 #'     observation, trait): columns `unit`, `observation`, `trait`, `value`,
-#'     and `unit_observation` -- the row id matching gllvmTMB's `unique()`
-#'     within-unit grouping contract (one level per unit-observation cell).}
+#'     and `unit_observation` -- the row id used for a per-observation
+#'     diagonal within-unit grouping (one level per unit-observation cell).}
 #'   \item{`truth`}{Named list of true parameter values: `alpha`, `Lambda_B`,
 #'     `Lambda_W`, `psi_B`, `psi_W`, `sigma2_eps`.}
 #' }

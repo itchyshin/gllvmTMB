@@ -174,7 +174,7 @@
   }
   Sigma_phy <- phy_total$Sigma
   ## Non-phylogenetic side. Two-psi layouts in the wild:
-  ##  * cluster tier (legacy):    `unique(0 + trait | species)`
+  ##  * cluster tier:             `indep(0 + trait | species)`
   ##  * unit-tier (functional bio): `unique(0 + trait | site_species)`
   ##  * paired with `latent + unique` at unit level
   ## Prefer cluster tier first if available.
@@ -400,7 +400,7 @@
 #'
 #' @param fit_two_psi A joint two-psi fit returned by [gllvmTMB()], e.g.
 #'   one produced by `gllvmTMB(value ~ 0 + trait + phylo_latent(species, d = K_phy) +
-#'             phylo_unique(species) + unique(0 + trait | species), ...)`.
+#'             phylo_unique(species) + indep(0 + trait | species), ...)`.
 #'   The cross-check refits the same data and family with
 #'   `phylo_dep + dep` and compares.
 #' @param threshold Numeric (default `0.10`): relative-disagreement
@@ -470,7 +470,7 @@
 #' Cphy <- ape::vcv(tree, corr = TRUE)
 #' fit  <- gllvmTMB(
 #'   value ~ 0 + trait + phylo_latent(species, d = 1) +
-#'           phylo_unique(species) + unique(0 + trait | species),
+#'           phylo_unique(species) + indep(0 + trait | species),
 #'   data      = df,
 #'   trait     = "trait",
 #'   unit      = "species",

@@ -4,11 +4,14 @@
 \alias{indep}
 \title{Per-trait marginal variance: \code{indep(0 + trait | g)}}
 \usage{
-indep(formula)
+indep(formula, common = FALSE)
 }
 \arguments{
 \item{formula}{\code{0 + trait | g} style formula (LHS is the trait
 factor, typically \code{0 + trait}; RHS is the grouping factor).}
+
+\item{common}{\code{FALSE} (default) for trait-specific marginal variances;
+\code{TRUE} to tie all traits to one shared variance at this grouping tier.}
 }
 \value{
 A formula marker; never evaluated.
@@ -25,18 +28,23 @@ The package's covstruct API organises around two mutually exclusive
 modes, distinguished by convention:
 
 \describe{
-\item{\strong{Decomposition} (\code{latent + unique})}{Shared cross-trait
-covariance plus trait-specific residual:
+\item{\strong{Decomposition} (\code{latent} by default)}{Shared cross-trait
+covariance plus the default trait-specific Psi companion:
 \eqn{\boldsymbol\Sigma = \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}.}
 \item{\strong{Marginal} (\code{indep} standalone)}{Per-trait total variance
 with no cross-trait decomposition: \eqn{\boldsymbol\Sigma = \mathrm{diag}(\sigma^2_t)}.}
 }
 
 Use \code{indep()} when you want to commit to the marginal-only
-interpretation explicitly. Use \code{unique()} paired with \code{latent()} when
-you want the cross-trait decomposition; \code{unique()} standalone (e.g.
-for observation-level random effects in mixed-response fits) also
-remains legitimate.
+interpretation explicitly. Ordinary \code{latent()} now carries the
+diagonal Psi companion by default when you want the cross-trait
+decomposition; \code{unique()} standalone (e.g. for observation-level random
+effects in mixed-response fits) remains compatibility syntax.
+
+For a scalar marginal-only tier with one variance shared by all traits,
+use \code{common = TRUE}. This is the non-deprecated standalone replacement for
+legacy \code{unique(..., common = TRUE)} when no \code{latent()} term is paired on the
+same grouping.
 \subsection{Mutual exclusion with \code{latent()}}{
 
 Combining \code{indep(0 + trait | g)} with \code{latent(0 + trait | g, d = K)}
@@ -53,8 +61,8 @@ similarly redundant and also errors.
 fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site),
                 data = df, trait = "trait", unit = "site")
 
-# The mathematically-equivalent decomposition form:
-fit <- gllvmTMB(value ~ 0 + trait + unique(0 + trait | site),
+# Scalar marginal-only fit (one shared variance across traits):
+fit <- gllvmTMB(value ~ 0 + trait + indep(0 + trait | site, common = TRUE),
                 data = df, trait = "trait", unit = "site")
 
 # ERROR: indep + latent on the same grouping is over-parameterised.

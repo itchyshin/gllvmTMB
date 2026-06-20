@@ -319,6 +319,61 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     }
   }
 
+  ## ---- latent() auto-residual Psi: per-family default gate --------------
+  ## `latent()` emits a companion `diag` carrying `.auto_residual = TRUE`
+  ## (the folded per-trait residual Psi; see brms-sugar.R and
+  ## docs/dev-log/2026-06-12-latent-psi-fold-design.md). The default Psi is
+  ## the BETWEEN-UNIT residual, identified for the main families given
+  ## replication and separable from the family's own dispersion phi. The two
+  ## families where the design doc marks the default Psi as "off" are
+  ## ordinal_probit (scale-absorbed: the threshold model fixes sigma2_d = 1)
+  ## and the delta / hurdle families (the residual mixes presence and
+  ## abundance noise on the shared linear predictor). For a fit whose
+  ## response is ENTIRELY one of those families, drop the auto-emitted Psi so
+  ## the new default does not silently add a scale-absorbed / OLRE-suspect
+  ## variance the user did not ask for. Mixed-family fits keep it (the other
+  ## traits identify it; the existing per-row OLRE block handles per-trait
+  ## skips). An EXPLICIT residual was retired with `unique()`, so this only
+  ## governs the default. No new identifiability logic beyond the design
+  ## doc's per-family table; mirrors the C3.2 drop-and-rederive pattern above.
+  auto_residual_off_family <- all(family_id_vec %in% c(12L, 13L, 14L))
+  ## Mark the auto-emitted residual Psi covstructs.
+  is_auto_psi <- vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    identical(cs$kind, "diag") && isTRUE(cs$extra$.auto_residual)
+  }, logical(1L))
+  ## Deduplicate: if an EXPLICIT (non-auto, non-indep) `diag` is present at the
+  ## same grouping as an auto-Psi (e.g. a transitional `latent(...) +
+  ## unique(..., common = TRUE)`), the explicit term supersedes the default --
+  ## they target the same engine slot, and the explicit one may carry options
+  ## like `common = TRUE` that the auto-Psi does not. Drop the auto-Psi so the
+  ## fit is byte-identical to the explicit-only spec.
+  drop_psi <- rep(FALSE, length(parsed$covstructs))
+  if (any(is_auto_psi)) {
+    explicit_diag_group <- vapply(seq_along(parsed$covstructs), function(i) {
+      cs <- parsed$covstructs[[i]]
+      if (identical(cs$kind, "diag") && !isTRUE(cs$extra$.auto_residual) &&
+          !isTRUE(cs$extra$.indep)) deparse(cs$group) else NA_character_
+    }, character(1L))
+    explicit_groups <- explicit_diag_group[!is.na(explicit_diag_group)]
+    drop_psi <- is_auto_psi & (groupings %in% explicit_groups)
+  }
+  ## Per-family default gate: for a fit whose response is ENTIRELY
+  ## ordinal_probit / delta (the design doc's Psi-"off" cells), drop the
+  ## auto-emitted Psi entirely.
+  if (auto_residual_off_family) {
+    drop_psi <- drop_psi | is_auto_psi
+  }
+  if (any(drop_psi)) {
+    parsed$covstructs <- parsed$covstructs[!drop_psi]
+    groupings <- vapply(
+      parsed$covstructs, function(cs) deparse(cs$group), character(1)
+    )
+    kinds <- vapply(
+      parsed$covstructs, function(cs) cs$kind, character(1)
+    )
+  }
+
   ## ---- `dep` quartet: resolve `.deferred_n_traits` placeholder to T --------
   ## The parser-side rewrite for `dep` / `phylo_dep` / `spatial_dep` writes a
   ## symbolic `d = .deferred_n_traits` because it doesn't have access to
@@ -364,6 +419,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
   use_rr_B_slope <- length(rr_B_slope_idx) > 0L
   use_diag_B_slope <- length(diag_B_slope_idx) > 0L
+  diag_B_slope_is_default <- use_rr_B_slope &&
+    !use_diag_B_slope &&
+    !any(family_id_vec != 0L)
+  if (diag_B_slope_is_default) {
+    use_diag_B_slope <- TRUE
+  }
   use_rr_B   <- any(kinds == "rr"   & groupings == site & !rr_is_latent_augmented)
   if (use_rr_B_slope && use_rr_B) {
     cli::cli_abort(c(
@@ -407,7 +468,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "Augmented ordinary {.fn unique} random-regression slopes are currently implemented at the {.arg unit} tier only.",
       "i" = "You wrote an augmented {.fn unique} term on {.val {ss_name}}.",
-      ">" = "Use {.code unique(1 + x | {site})} for the individual-level random-regression slope, and keep the {.arg unit_obs} tier intercept-only for now."
+      ">" = "Use default {.code latent(1 + x | {site}, d = K)} for the individual-level reaction-norm slope, or keep explicit augmented {.fn unique} as Gaussian-only compatibility syntax at the {.arg unit} tier."
     ))
   }
   use_rr_W   <- any(kinds == "rr"   & groupings == ss_name & !rr_is_latent_augmented)
@@ -615,7 +676,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else NA_character_
   ## ---- "indep" keyword over-parameterisation guards --------------------
   ## The clean quartet is documented in `R/brms-sugar.R`:
-  ##   * `latent + unique` is the decomposition mode (paired).
+  ##   * `latent` is the ordinary decomposition mode (shared + default Psi).
   ##   * `indep` standalone is the marginal-only mode (always alone).
   ##   * `dep` standalone is the full unstructured mode (always alone).
   ## `indep` and `latent` (or `indep` and `unique`) together on the SAME
@@ -632,6 +693,19 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   diag_is_indep <- vapply(seq_along(parsed$covstructs), function(i) {
     cs <- parsed$covstructs[[i]]
     identical(cs$kind, "diag") && isTRUE(cs$extra$.indep)
+  }, logical(1L))
+  ## The companion residual Psi auto-emitted by `latent()` is a plain `diag`
+  ## carrying `.auto_residual = TRUE`. It is the default latent Psi companion
+  ## (the old explicit `latent + unique` spelling), so it must be EXEMPT from the `dep + unique`
+  ## / `indep + unique` *redundancy* messages below -- otherwise a plain
+  ## `latent()` fit (which always emits this diag) would trip the very guard
+  ## built to forbid manually pairing a residual with `dep`/`indep`. The
+  ## `dep + latent` / `indep + latent` *over-parameterisation* guards key on
+  ## the `rr` term, not on this diag, so they still fire correctly on a
+  ## genuine double-spec (verified: `indep(g) + latent(g)` still aborts).
+  diag_is_auto_residual <- vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    identical(cs$kind, "diag") && isTRUE(cs$extra$.auto_residual)
   }, logical(1L))
   is_indep_B <- any(diag_is_indep & groupings == site)
   is_indep_W <- any(diag_is_indep & groupings == ss_name)
@@ -662,11 +736,14 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn dep} and {.fn latent} on the same grouping are over-parameterised.",
         "i" = "Both {.code dep(0 + trait | {gname})} and {.code latent(0 + trait | {gname}, d = K)} appear in the formula.",
-        ">" = "Use {.fn dep} alone for the full unstructured fit, or use {.code latent + unique} (paired) for the decomposition. They cannot coexist."
+        ">" = "Use {.fn dep} alone for the full unstructured fit, or use ordinary {.fn latent} for the shared-plus-Psi decomposition. They cannot coexist."
       ))
     }
     ## dep + unique (any `diag` without `.indep`) on same grouping: redundant.
+    ## Exempt the auto-emitted residual Psi (a plain `diag`); a `dep + latent`
+    ## double-spec is caught by the over-param guard above (`has_rr_latent`).
     has_plain_diag_dep <- any(kinds == "diag" & groupings == gname &
+                              !diag_is_auto_residual &
                               !vapply(seq_along(parsed$covstructs), function(i)
                                 isTRUE(parsed$covstructs[[i]]$extra$.indep),
                                 logical(1L)))
@@ -696,13 +773,16 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "{.fn indep} and {.fn latent} on the same grouping are over-parameterised.",
         "i" = "Both {.code indep(0 + trait | {gname})} and {.code latent(0 + trait | {gname}, d = K)} appear in the formula.",
-        ">" = "Use {.fn indep} alone for the marginal-only fit, or use {.code latent + unique} (paired) for the decomposition. They cannot coexist."
+        ">" = "Use {.fn indep} alone for the marginal-only fit, or use ordinary {.fn latent} for the shared-plus-Psi decomposition. They cannot coexist."
       ))
     }
     ## indep + unique on the same grouping (redundant; both produce
     ## diag(sigma^2_t), but writing both is a confusion and has two
-    ## conflicting `extra` lists for the same engine slot).
-    has_plain_diag <- any(diag_is_indep == FALSE & kinds == "diag" & groupings == gname)
+    ## conflicting `extra` lists for the same engine slot). The auto-emitted
+    ## residual Psi (a plain `diag`) is exempt: an `indep + latent` double-spec
+    ## is already caught by the over-param guard above (`has_rr`).
+    has_plain_diag <- any(diag_is_indep == FALSE & !diag_is_auto_residual &
+                          kinds == "diag" & groupings == gname)
     if (has_plain_diag) {
       cli::cli_abort(c(
         "{.fn indep} and {.fn unique} on the same grouping are redundant.",
@@ -1226,20 +1306,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   } else 1L
 
   diag_B_slope_cs <- if (use_diag_B_slope) {
-    parsed$covstructs[[diag_B_slope_idx[1L]]]
+    if (diag_B_slope_is_default) {
+      rr_B_slope_cs
+    } else {
+      parsed$covstructs[[diag_B_slope_idx[1L]]]
+    }
   } else NULL
   if (use_diag_B_slope && any(family_id_vec != 0L)) {
     cli::cli_abort(c(
       "Augmented ordinary {.fn unique} random-regression slopes are currently implemented for Gaussian responses only.",
       "i" = "This slice targets Gaussian behavioural reaction-norm models.",
-      ">" = "Use {.code unique(1 + x | unit)} with {.fn gaussian} data, or omit the augmented {.fn unique} term for non-Gaussian fits."
+      ">" = "Use default {.code latent(1 + x | unit, d = K)} for Gaussian reaction-norm fits, or omit the augmented diagonal Psi term for non-Gaussian fits."
     ))
   }
   if (use_diag_B_slope && isTRUE(diag_B_slope_cs$extra$common)) {
     cli::cli_abort(c(
       "{.code common = TRUE} is not implemented for augmented ordinary {.fn unique} random-regression slopes.",
       "i" = "The augmented diagonal has separate intercept and slope entries for each trait.",
-      ">" = "Use {.code unique(1 + x | unit)} without {.code common = TRUE}."
+      ">" = "Use the default {.code latent(1 + x | unit, d = K)} grammar for new reaction-norm fits; explicit augmented {.fn unique} remains compatibility syntax without {.code common = TRUE}."
     ))
   }
   diag_B_slope_lhs_form <- if (use_diag_B_slope) {
@@ -1259,7 +1343,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cli::cli_abort(c(
       "Paired augmented ordinary {.fn latent} and {.fn unique} random-regression terms must use the same slope covariate.",
       "i" = "The {.fn latent} term uses {.val {rr_B_slope_xcol}}; the {.fn unique} term uses {.val {diag_B_slope_xcol}}.",
-      ">" = "Use matching calls such as {.code latent(1 + x | unit, d = K) + unique(1 + x | unit)}."
+      ">" = "For new code, write one default {.code latent(1 + x | unit, d = K)} term. If you keep the explicit compatibility pair, both terms must use the same slope covariate."
     ))
   }
   n_lhs_cols_B_diag <- if (use_diag_B_slope) 2L * .n_traits_for_dep else 1L
@@ -2754,7 +2838,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       cli::cli_abort(c(
         "Unsupported augmented ordinary unique random-regression LHS.",
         "i" = "Got LHS form {.val {diag_B_slope_lhs_form}}.",
-        ">" = "Use {.code unique(1 + x | unit)} or {.code unique(0 + trait + (0 + trait):x | unit)}."
+        ">" = "For new code, use default {.code latent(1 + x | unit, d = K)} or its long-form equivalent. Explicit augmented {.fn unique} remains compatibility syntax for Gaussian diagonal-Psi fits."
       ))
     }
     if (!diag_B_slope_xcol %in% names(data)) {
@@ -3184,7 +3268,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         start_provenance$start_from_source <- "auto_indep"
         start_provenance$auto_indep_fit <- TRUE
         if (isTRUE(control$verbose)) {
-          cat("  start_method='indep': fitted unique-only warm-start model\n")
+          cat("  start_method='indep': fitted independent diagonal warm-start model\n")
         }
       }
     } else if (isTRUE(control$verbose)) {
@@ -4068,6 +4152,8 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           ## Augmented B-tier unique diagonal over the same
                           ## (intercept, slope) x trait coefficient vector.
                           diag_B_slope = isTRUE(use_diag_B_slope),
+                          diag_B_slope_default =
+                            isTRUE(diag_B_slope_is_default),
                           diag_B_slope_col =
                             if (use_diag_B_slope) diag_B_slope_xcol else NULL,
                           phylo_rr = use_phylo_rr,

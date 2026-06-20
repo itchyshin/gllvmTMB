@@ -15,14 +15,14 @@
 #' \deqn{\sigma^2_{d,t} + \sigma^2_{e,t},}
 #' where \eqn{\sigma^2_d} is the **distribution-specific (theoretical)**
 #' component that depends only on the family/link, and \eqn{\sigma^2_e}
-#' is the **estimated OLRE variance** — the per-trait diagonal of the
-#' within-unit unique covariance \eqn{\boldsymbol{\Psi}_W}.
+#' is the **estimated OLRE variance** -- the per-trait diagonal of the
+#' within-unit residual covariance \eqn{\boldsymbol{\Psi}_W}.
 #'
 #' The function detects whether the fit includes a genuine observation-level
-#' random effect: a `unique(0 + trait | <obs-level>)` term where every
-#' (trait, obs) cell is unique (i.e. one row per observation level per
-#' trait). When this cell-uniqueness condition holds, `sigma2_e` is
-#' populated; otherwise it is zero.
+#' random effect: normally a per-row `indep(0 + trait | <obs-level>)` term,
+#' with the legacy `unique()` spelling still accepted as compatibility syntax.
+#' When every (trait, obs) cell has one row per observation level per trait,
+#' `sigma2_e` is populated; otherwise it is zero.
 #'
 #' ## Terminology note
 #'
@@ -58,9 +58,9 @@
 #'     latent residual (computed by the internal `link_residual_per_trait()`
 #'     helper; see the per-family table above; zero for `gaussian` and
 #'     `lognormal`).}
-#'   \item{`sigma2_e`}{Estimated OLRE variance per trait — the per-trait
+#'   \item{`sigma2_e`}{Estimated OLRE variance per trait -- the per-trait
 #'     diagonal of \eqn{\boldsymbol{\Psi}_W} when the fit has a genuine
-#'     observation-level `unique()` term, else 0.}
+#'     observation-level diagonal term, else 0.}
 #'   \item{`sigma2_total`}{`sigma2_d + sigma2_e`.}
 #' }
 #' @references
@@ -84,7 +84,7 @@
 #' ## Add a site_species column (one level per row) as the obs-level grouping.
 #' df$site_species <- factor(seq_len(nrow(df)))
 #' fit <- gllvmTMB(
-#'   value ~ 0 + trait + unique(0 + trait | site_species),
+#'   value ~ 0 + trait + indep(0 + trait | site_species),
 #'   data     = df,
 #'   trait    = "trait",
 #'   unit     = "site",
@@ -101,7 +101,7 @@ extract_residual_split <- function(fit) {
   trait_names <- levels(fit$data[[fit$trait_col]])
   Tn <- length(trait_names)
 
-  ## --- Is there a genuine observation-level unique() term? ---------------
+  ## --- Is there a genuine observation-level diagonal term? ---------------
   ## Mirror the cell-uniqueness logic from fit-multi.R lines 557-560.
   ## trait_id and site_species_id are both 0-based in tmb_data.
   is_olre_W <- FALSE
@@ -166,7 +166,8 @@ extract_residual_split <- function(fit) {
 #'   per-trait link-specific implicit residual to the diagonal of the
 #'   summed `Omega` (once, not per tier — see "Family-aware link residuals"
 #'   in [extract_Sigma()]); mixed-family fits get the residual implied by
-#'   each trait's family/link. `"none"` returns the latent+unique-implied scale.
+#'   each trait's family/link. `"none"` returns the summed fitted covariance
+#'   without link-residual additions.
 #'   Gaussian / lognormal-only fits are unaffected.
 #' @return A list with `Omega` (T × T summed covariance), `R_Omega`
 #'   (correlation), `tiers_used` (which tiers were actually summed),
@@ -305,9 +306,9 @@ extract_Omega <- function(
 #' @param conf_level Confidence level when `ci = TRUE`. Default 0.95.
 #' @param method One of `"profile"` (default), `"wald"`, `"bootstrap"`.
 #'   Only used when `ci = TRUE`. For 2-component decompositions
-#'   (phylo_unique vs species-level unique only) profile uses a linear
+#'   (phylo_unique vs species-level diagonal component only) profile uses a linear
 #'   contrast; for 3-component decompositions (PGLLVM with
-#'   phylo_latent + species-level latent + unique) the profile path is
+#'   phylo_latent plus a species-level latent decomposition with Psi) the profile path is
 #'   not yet implemented and falls back to the point estimate.
 #' @param nsim Number of bootstrap replicates when
 #'   `method = "bootstrap"`. Default 500.
@@ -325,7 +326,7 @@ extract_Omega <- function(
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait + phylo_latent(species, d = 2) +
 #'                       latent(0 + trait | species, d = 2) +
-#'                       unique(0 + trait | species),
+#'                       indep(0 + trait | species),
 #'   data       = df,
 #'   trait      = "trait",
 #'   unit       = "species",
@@ -394,7 +395,7 @@ extract_phylo_signal <- function(
   ## Build advisory if any component is structurally zero
   if (sum(Psi_diag) == 0) {
     cli::cli_inform(
-      "Psi_non = 0 across all traits: no `unique(0 + trait | species)` in the formula. Refit with `+ unique(0 + trait | species)` for the full PGLLVM decomposition."
+      "Psi_non = 0 across all traits. For the ordinary non-phylogenetic species tier, use default `latent(0 + trait | species, d = K)` to include Psi; `latent(..., residual = FALSE)` is the explicit no-Psi subset."
     )
   }
 
@@ -486,10 +487,11 @@ extract_phylo_signal <- function(
 #'   plus a `total_variance` column; the per-trait proportions sum to 1.
 #'
 #'   **OLRE interpretation:** for fits with a genuine observation-level
-#'   `unique()` term (see [extract_residual_split()]), the `unique_W`
-#'   component in this output corresponds to \eqn{\sigma^2_e} (the estimated
-#'   OLRE variance) and the `link_residual` component corresponds to
-#'   \eqn{\sigma^2_d} (the distribution-specific latent residual).
+#'   diagonal term, usually written as per-row `indep()` in new code (see
+#'   [extract_residual_split()]), the historical `unique_W` component in this
+#'   output corresponds to \eqn{\sigma^2_e} (the estimated OLRE variance) and
+#'   the `link_residual` component corresponds to \eqn{\sigma^2_d} (the
+#'   distribution-specific latent residual).
 #' @seealso [extract_phylo_signal()] — the PGLLVM-specific shortcut;
 #'   [extract_communality()]; [extract_ICC_site()];
 #'   [extract_residual_split()] — explicit \eqn{\sigma^2_d / \sigma^2_e}

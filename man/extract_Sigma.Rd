@@ -8,7 +8,7 @@ extract_Sigma(
   fit,
   level = c("unit", "unit_slope", "unit_obs", "phy", "phy_slope", "spatial",
     "spde_slope", "cluster", "cluster2", "B", "B_slope", "W", "spde"),
-  part = c("total", "shared", "unique"),
+  part = c("total", "shared", "unique", "psi"),
   link_residual = c("auto", "none"),
   .skip_warn = FALSE
 )
@@ -27,7 +27,9 @@ remain gated for Julia bridge extractors.}
 \code{"B"}, \code{"W"}, and \code{"spde"} are accepted with a soft-deprecation
 message.}
 
-\item{part}{One of \code{"total"} (default), \code{"shared"}, \code{"unique"}.}
+\item{part}{One of \code{"total"} (default), \code{"shared"}, \code{"unique"}. \code{"psi"}
+is an alias for \code{"unique"} (the per-trait residual Psi diagonal, now
+folded into \code{latent()} by default).}
 
 \item{link_residual}{For non-Gaussian fits. \code{"auto"} (default) adds a
 per-trait link-specific implicit residual variance to the diagonal of
@@ -77,29 +79,30 @@ returns their sum.
 }
 \description{
 Implements the decomposition
-\deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\boldsymbol\Psi_\text{tier}}_{\text{unique (unique)}},}
-where \eqn{\boldsymbol\Lambda} comes from the \code{latent()} term at that tier
-and \eqn{\boldsymbol\Psi} comes from the corresponding \code{unique()} term. This is the
-same decomposition the behavioural-syndromes / phenotypic-integration
-literature uses (Bartholomew et al. 2011).
+\deqn{\boldsymbol\Sigma_\text{tier} \;=\; \underbrace{\boldsymbol\Lambda_\text{tier}\boldsymbol\Lambda_\text{tier}^\top}_{\text{shared (latent)}} \;+\; \underbrace{\boldsymbol\Psi_\text{tier}}_{\text{unique}},}
+where ordinary \code{latent()} now carries both \eqn{\boldsymbol\Lambda} and the
+diagonal \eqn{\boldsymbol\Psi} companion by default. This is the same
+decomposition the behavioural-syndromes / phenotypic-integration literature
+uses (Bartholomew et al. 2011).
 }
 \details{
-\subsection{Why both \code{latent()} and \code{unique()} matter}{
+\subsection{When a fit has no Psi component}{
 
-If the formula has only \code{latent(0 + trait | unit, d = K)} and \strong{no}
-\code{unique(0 + trait | unit)}, the engine can only fit the
-\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component -- there is no
-slot for trait-specific \emph{unique} variance \eqn{\boldsymbol\Psi}. Calling
-\code{extract_Sigma(fit, level, part = "total")} then returns just
-\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}, which \strong{understates the
-diagonal} of the true covariance. Any correlations computed from this
-incomplete \eqn{\hat{\boldsymbol\Sigma}} are systematically inflated
-(the same numerator with a too-small denominator).
+If the formula deliberately uses
+\code{latent(0 + trait | unit, d = K, residual = FALSE)}, the engine fits only the
+\eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
+\code{extract_Sigma(fit, level, part = "total")} then returns just the shared
+component. This is useful for no-residual / rotation-invariant checks, but it
+\strong{understates the diagonal} of the usual covariance decomposition. Any
+correlations computed from this incomplete
+\eqn{\hat{\boldsymbol\Sigma}} are systematically inflated (the same numerator
+with a too-small denominator).
 
-For Gaussian / lognormal / Gamma fits this function emits a one-shot
-message reminding the user to add \code{+ unique(0 + trait | unit)} (or its
-within-unit analogue) when this happens. Add the \code{unique()} term and the
-decomposition is complete.
+For Gaussian / lognormal / Gamma fits this function emits an advisory note
+when a reduced-rank tier has no Psi component. Use the ordinary
+\code{latent(..., residual = TRUE)} default for
+\eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}; the
+explicit \code{latent() + unique()} spelling remains compatibility syntax only.
 
 For non-Gaussian families (binomial, Poisson, Gamma) the latent-scale
 residual variance has a closed-form approximation that should be added
@@ -201,7 +204,7 @@ with a clear roadmap message.
 \dontrun{
 fit <- gllvmTMB(
   value ~ 0 + trait +
-          latent(0 + trait | unit, d = 2) + unique(0 + trait | unit),
+          latent(0 + trait | unit, d = 2),
   data  = df,
   trait = "trait",
   unit  = "unit"

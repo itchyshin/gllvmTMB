@@ -24,7 +24,7 @@ until their reader paths are ready:
 |---|---|---|
 | `Sigma` | `extract_Sigma_table(fit, level = "unit")` | The total covariance among traits, one report-ready row per entry. |
 | `Lambda Lambda^T` | `latent(..., d = K)` | Shared axes: traits that rise and fall together across units. |
-| `Psi` | `unique(...)` | Trait-specific variance left over after the shared axes. |
+| `Psi` | ordinary `latent(...)` by default | Trait-specific variance left over after the shared axes. Use `indep(...)` for standalone diagonal tiers; `unique(...)` remains compatibility syntax for old formulas. |
 
 So `Sigma = Lambda Lambda^T + Psi` means: total trait covariance =
 shared multivariate structure + response-specific variation.
@@ -97,8 +97,7 @@ df_wide <- data.frame(
 
 fit <- gllvmTMB(
   traits(bill_length, body_mass, wing_length) ~ 1 +
-    latent(1 | individual, d = 1) +
-    unique(1 | individual),
+    latent(1 | individual, d = 1),
   data = df_wide,
   unit = "individual"
 )
@@ -156,14 +155,13 @@ cannot build that row.
 
 ## Tiny example
 
-A one-level Gaussian GLLVM with shared and unique trait covariance
+A one-level Gaussian GLLVM with shared and trait-specific covariance
 is:
 
 ```r
 fit <- gllvmTMB(
   traits(bill_length, body_mass, wing_length) ~ 1 +
-    latent(1 | individual, d = 1) +
-    unique(1 | individual),
+    latent(1 | individual, d = 1),
   data = df_wide,       # wide: one row per observation occasion
   unit = "individual"   # between-unit grouping
 )
@@ -175,8 +173,7 @@ observation -- uses explicit trait indicators:
 ```r
 fit_long <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | individual, d = 1) +
-    unique(0 + trait | individual),
+    latent(0 + trait | individual, d = 1),
   data  = df_long,      # long: one row per (individual, trait)
   trait = "trait",      # column holding the trait factor
   unit  = "individual"
@@ -188,11 +185,11 @@ byte-identical fits. See the Get Started vignette for the
 runnable long-to-wide pivot.
 
 In the wide call, `latent(1 | individual, d = 1)` estimates one shared
-latent axis across traits, and `unique(1 | individual)` estimates the
-trait-specific residual variance left over after that shared axis. In
-the long call, the equivalent terms are `latent(0 + trait | individual,
-d = 1)` and `unique(0 + trait | individual)`. The fitted object reports
-ordination scores, loadings, Sigma rows, pairwise correlations, and per-trait
+latent axis across traits and its default diagonal Psi companion. In the
+long call, the equivalent term is `latent(0 + trait | individual, d = 1)`.
+Use `latent(..., residual = FALSE)` only when you deliberately want the
+old no-residual low-rank subset. The fitted object reports ordination
+scores, loadings, Sigma rows, pairwise correlations, and per-trait
 communality.
 
 In notation, the trait covariance the model fits is
@@ -204,7 +201,9 @@ Sigma = Lambda Lambda^T + diag(psi)
 where `Lambda` is the shared-axis loading matrix (set by
 `latent()`) and `psi` (the Greek letter Psi, matching the
 factor-analysis / SEM convention) is the trait-specific
-residual variance (set by `unique()`).
+residual variance carried by ordinary `latent()`. Explicit
+`latent() + unique()` formulas remain compatibility syntax for older
+examples.
 
 ## Current Status
 
@@ -218,8 +217,8 @@ and the [roadmap](https://itchyshin.github.io/gllvmTMB/articles/roadmap.html).
 | Long and wide data | Both are supported through `gllvmTMB()`: long data use `value ~ ...` with `trait = "trait"`; wide data use `traits(...) ~ ...`. |
 | Missing response cells | Covered for long response rows and wide `traits(...)` cells: `NA` responses can be treated as unobserved unit-trait cells, with `predict_missing()` for the masked-response route (MIS-21 / MIS-24). |
 | Missing predictors | Covered for one explicitly modelled `mi()` predictor in the shipped v1 slices: Gaussian fixed, grouped, phylogenetic, binary, ordered, and unordered fixed-effect routes. Multiple `mi()` terms, non-Gaussian bounded/count predictors, and structured discrete predictor models remain planned (MIS-25..MIS-32). |
-| First worked model | Gaussian `latent() + unique()` is the safest public example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
-| Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian `latent() + unique()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
+| First worked model | Gaussian ordinary `latent()` is the safest public decomposition example and is shown in [Morphometrics](https://itchyshin.github.io/gllvmTMB/articles/morphometrics.html). |
+| Latent-rank choice | [How many latent dimensions should I fit?](https://itchyshin.github.io/gllvmTMB/articles/model-selection-latent-rank.html) compares Gaussian ordinary `latent()` candidate ranks with `logLik()`, AIC, BIC, and `check_gllvmTMB()` rows. These criteria help route model choice within a fixed candidate set; they do not prove the biological rank or replace diagnostics. |
 | Formula keywords | The full 4 x 5 keyword grid is documented in [Formula keyword grid](https://itchyshin.github.io/gllvmTMB/articles/api-keyword-grid.html), with covered/partial status labels. |
 | Response families | Families are listed in [Response families](https://itchyshin.github.io/gllvmTMB/articles/response-families.html); do not assume every exported constructor is fully validated for multivariate fits. |
 | Fitted diagnostics | [Can I trust this fit?](https://itchyshin.github.io/gllvmTMB/articles/fit-diagnostics.html) shows the first post-fit triage. `check_gllvmTMB()` reports numerical fit health (DIA-08 / DIA-10). `predictive_check()`, `residuals()`, and `diagnostic_table()` provide fitted-model response diagnostics and report-ready diagnostic tables for the scoped Gaussian, Poisson, and NB2 paths (DIA-11 / DIA-12 / DIA-13). These are diagnostic displays, not posterior predictive checks or interval calibration. |
@@ -253,11 +252,12 @@ prose does not overpromise):
 - **Ordinary random slopes through `(1 + x | g)` syntax.** Plain,
   non-structured bare-bar random slopes remain reserved. The keyworded
   ordinary Gaussian reaction-norm decomposition
-  `latent(1 + x | unit, d = K) + unique(1 + x | unit)` / long-form equivalent
-  is implemented under RE-12 and extracts with
+  `latent(1 + x | unit, d = K)` / long-form equivalent is implemented under
+  RE-12 and extracts with
   `extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`.
-  Non-Gaussian augmented `unique()` remains guarded while the non-Gaussian
-  ordinary latent path has smoke evidence only. One structured random slope
+  Explicit augmented `unique(1 + x | unit)` remains Gaussian-only compatibility
+  syntax, while the non-Gaussian ordinary latent path has smoke evidence only
+  and stays low-rank-only. One structured random slope
   (`s = 1`) is covered
   across the phylogenetic and spatial grid for the core families. Gaussian
   `phylo_dep(1 + x1 + x2 | g)` is covered under RE-03. Non-Gaussian

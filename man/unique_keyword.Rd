@@ -7,25 +7,42 @@
 \arguments{
 \item{formula}{\code{0 + trait | g} style formula.}
 
-\item{common}{\code{FALSE} (default) for trait-specific variances;
-\code{TRUE} for one shared variance across traits at this tier.}
+\item{common}{\code{FALSE} (default) for trait-specific variances; \code{TRUE} for one
+shared variance across traits at this tier. For new standalone marginal
+code, prefer \code{indep(..., common = TRUE)}; for new paired ordinary
+intercept-only decompositions, prefer \code{latent(..., common = TRUE)}.}
 }
 \value{
 A formula marker; never evaluated.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+}
+\details{
+\code{unique()} is soft-deprecated as compatibility syntax in gllvmTMB 0.2.0.
+Use \code{\link[=indep]{indep()}} for standalone marginal diagonal tiers, including
+\code{indep(..., common = TRUE)} for the scalar standalone marginal case.
+Ordinary \code{latent()} now carries \eqn{\boldsymbol\Psi} by default, so paired
+\code{latent() + unique()} remains accepted compatibility syntax. Removal is a
+later API-change decision while the parser and exports remain live. The
+paired legacy \code{unique(..., common = TRUE)}
+parsimony knob remains accepted, but new ordinary intercept-only code should
+use \code{latent(..., common = TRUE)}.
+
 Canonical name for the trait-specific unique-variance covstruct
 inside a \code{gllvmTMB()} formula. Formerly \code{diag(0 + trait | g)} --
 same engine, new name. The new name avoids the clash with
 \code{base::diag()}. The \code{diag()} keyword still works for backward compat
 but emits a one-shot deprecation warning per session.
-}
-\details{
-Used inside a \code{gllvmTMB()} formula:
+
+Compatibility spelling inside a \code{gllvmTMB()} formula:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{value ~ 0 + trait + latent(0 + trait | unit, d = 2) +
                     unique(0 + trait | unit)
 }\if{html}{\out{</div>}}
+
+New code can write the ordinary decomposition as \code{latent()} alone; the
+explicit \code{unique()} companion is retained for compatibility.
 
 This is a \strong{formula keyword} -- it's recognised by the parser inside
 a \code{gllvmTMB()} formula's RHS but is never evaluated as a function
@@ -34,12 +51,14 @@ would shadow \code{base::unique()}); the parser handles the symbol
 directly.
 \subsection{\code{common = TRUE} parsimony mode}{
 
-For non-Gaussian fits or small-sample data where the trait-specific
-\eqn{\sigma_S} estimates are weakly identified, pass \code{common = TRUE}
-to fit a single shared \eqn{\sigma_S} across all traits at this tier
-(one parameter instead of T). Recovers the "compound symmetric"
-parsimony pattern -- one variance, no per-trait flexibility.
-Default \code{common = FALSE} keeps the per-trait estimation.
+For new standalone marginal fits where the trait-specific \eqn{\sigma_S}
+estimates are weakly identified, write \code{indep(..., common = TRUE)} to fit a
+single shared \eqn{\sigma_S} across all traits at this tier (one parameter
+instead of T). Legacy standalone \code{unique(..., common = TRUE)} remains accepted
+and objective-equivalent as compatibility syntax. Paired
+\code{latent() + unique(..., common = TRUE)} also remains compatibility syntax; new
+ordinary intercept-only decompositions can write
+\code{latent(..., common = TRUE)} instead.
 }
 }
 \seealso{

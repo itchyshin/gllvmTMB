@@ -24,6 +24,7 @@ make_phase56_3_phylo_fixture <- function(seed = 563) {
 }
 
 test_that("Phase 56.3 parser classifies phylo_unique augmented LHS forms", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Cphy <- diag(2)
   dimnames(Cphy) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
 
@@ -48,6 +49,7 @@ test_that("Phase 56.3 parser classifies phylo_unique augmented LHS forms", {
 })
 
 test_that("Phase 56.3 keeps phylo_unique(0 + trait | species) on the legacy unique path", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Cphy <- diag(2)
   dimnames(Cphy) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
   formula <- gllvmTMB:::desugar_brms_sugar(
@@ -60,6 +62,7 @@ test_that("Phase 56.3 keeps phylo_unique(0 + trait | species) on the legacy uniq
 })
 
 test_that("Phase 56.3 builds two-column Z_phy_aug for wide augmented phylo_unique", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   testthat::skip_on_cran()
   fx <- make_phase56_3_phylo_fixture()
 
@@ -81,6 +84,7 @@ test_that("Phase 56.3 builds two-column Z_phy_aug for wide augmented phylo_uniqu
 })
 
 test_that("Phase 56.3 builds equivalent Z_phy_aug for long augmented phylo_unique", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   testthat::skip_on_cran()
   fx <- make_phase56_3_phylo_fixture()
 
@@ -102,6 +106,7 @@ test_that("Phase 56.3 builds equivalent Z_phy_aug for long augmented phylo_uniqu
 })
 
 test_that("Phase 56.3 keeps unsupported phylo_unique augmented LHS fail-loud", {
+  withr::local_options(lifecycle_verbosity = "quiet")
   Cphy <- diag(2)
   dimnames(Cphy) <- list(c("sp1", "sp2"), c("sp1", "sp2"))
   expect_error(

@@ -12,13 +12,12 @@ load_model_selection_rank_example <- function() {
 
 model_selection_candidate_formula <- function(d) {
   if (identical(d, 0L)) {
-    return(value ~ 0 + trait + unique(0 + trait | individual))
+    return(value ~ 0 + trait + indep(0 + trait | individual))
   }
 
   stats::as.formula(paste0(
     "value ~ 0 + trait + ",
-    "latent(0 + trait | individual, d = ", d, ") + ",
-    "unique(0 + trait | individual)"
+    "latent(0 + trait | individual, d = ", d, ")"
   ))
 }
 

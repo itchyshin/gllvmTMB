@@ -10,8 +10,10 @@
 #'
 #' Returns the per-trait repeatability
 #' \eqn{R_t = \sigma^2_{B,t} / (\sigma^2_{B,t} + \sigma^2_{W,t})} for a
-#' fit returned by [gllvmTMB()] with both \code{unique(0 + trait | <unit>)}
-#' and \code{unique(0 + trait | <obs>)} terms. Also known as the
+#' fit returned by [gllvmTMB()] with both unit- and observation-level diagonal
+#' variance components. In new ordinary formulas those diagonal components are
+#' usually supplied by default `latent()` terms or explicit `indep()` terms;
+#' older `unique()` formulas remain compatibility syntax. Also known as the
 #' intraclass correlation coefficient (ICC) at the unit level.
 #'
 #' @param fit A fit returned by \code{\link{gllvmTMB}}. A
@@ -52,8 +54,7 @@
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
 #'           latent(0 + trait | site, d = 1) +
-#'           unique(0 + trait | site) +
-#'           unique(0 + trait | site_species),
+#'           latent(0 + trait | site_species, d = 1),
 #'   data     = df,
 #'   trait    = "trait",
 #'   unit     = "site",
@@ -162,7 +163,7 @@ extract_repeatability <- function(
       vW <- diag(Lambda_W %*% t(Lambda_W)) + sd_W^2 + sigma2_d
       if (any(vB <= 0) || any(vW <= 0)) {
         cli::cli_abort(
-          "Wald repeatability needs vB > 0 and vW > 0; refit with both {.code latent + unique} or {.code unique} alone at each tier."
+          "Wald repeatability needs vB > 0 and vW > 0; refit with ordinary {.fn latent} or standalone {.fn indep} at each tier."
         )
       }
       log(vB) - log(vW)

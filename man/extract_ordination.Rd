@@ -30,8 +30,7 @@ Extract ordination scores and loadings from a fitted multivariate model
   )
   fit <- gllvmTMB(
     value ~ 0 + trait +
-            latent(0 + trait | site, d = 2) +
-            unique(0 + trait | site),
+            latent(0 + trait | site, d = 2),
     data  = sim$data,
     trait = "trait",
     unit  = "site"

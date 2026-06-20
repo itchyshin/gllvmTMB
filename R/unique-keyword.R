@@ -6,6 +6,19 @@
 
 #' Trait-specific unique variance term: `unique(0 + trait | group)`
 #'
+#' `r lifecycle::badge("deprecated")`
+#'
+#' The `unique()` formula keyword is soft-deprecated as compatibility
+#' syntax in gllvmTMB 0.2.0. For standalone marginal diagonal tiers, use
+#' [indep()] instead; for the scalar standalone marginal case, use
+#' `indep(..., common = TRUE)`. Ordinary `latent()` now carries the diagonal
+#' \eqn{\boldsymbol\Psi} companion by default; paired `latent() + unique()`
+#' remains accepted compatibility syntax. Removal is a later API-change
+#' decision while the parser and exports remain live. The legacy paired
+#' `unique(..., common = TRUE)` parsimony knob is
+#' still accepted as compatibility syntax; new ordinary intercept-only code
+#' should use `latent(..., common = TRUE)`.
+#'
 #' A formula keyword for adding **trait-specific independent random
 #' effects** to a `gllvmTMB()` fit, complementing the reduced-rank
 #' shared-variance term `latent(0 + trait | group, d = K)`. Using the two
@@ -16,32 +29,24 @@
 #'
 #' where \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} is the
 #' low-rank shared component (from `latent()`) and \eqn{\boldsymbol\Psi} is a
-#' diagonal matrix of trait-specific unique variances (from `unique()`).
+#' diagonal matrix of trait-specific unique variances (now included by
+#' ordinary `latent()` by default, or by legacy explicit `unique()`).
 #' This is the decomposition every published GLLVM treatment uses
 #' (Bartholomew et al. 2011; McGillycuddy et al. 2025).
 #'
-#' ## Why you almost always want `unique()` for Gaussian / lognormal / Gamma fits
+#' ## Why ordinary `latent()` now carries Psi for Gaussian / lognormal / Gamma fits
 #'
-#' If your formula has only `latent(0 + trait | site, d = K)` and no
-#' `unique(0 + trait | site)`, the engine fits only the latent-implied
-#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}. Each trait's
-#' between-site variance is then constrained to come **entirely** from
-#' the K shared latent factors — there is no slot for trait-specific
-#' between-site variance not captured by those factors. Two consequences:
+#' In earlier development builds, `latent(0 + trait | site, d = K)`
+#' without `unique(0 + trait | site)` fit only
+#' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top}. That constrained each
+#' trait's between-site variance to come entirely from the K shared latent
+#' factors and inflated correlations when trait-specific residual variance
+#' was present. Ordinary `latent()` now includes the diagonal
+#' \eqn{\boldsymbol\Psi} companion by default, so the decomposition is the
+#' default instead of a two-keyword spelling.
 #'
-#' 1. **Correlations are inflated.** The reported correlation matrix
-#'    \eqn{R_B = D^{-1/2} \boldsymbol\Lambda \boldsymbol\Lambda^\top D^{-1/2}}
-#'    uses too small a diagonal (it omits the unique component), so
-#'    cross-trait correlations come out larger than the true
-#'    \eqn{R_B = D^{-1/2}(\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi) D^{-1/2}}.
-#' 2. **Communality reaches 1 by construction.** Communality
-#'    \eqn{c_t^2 = (\Lambda \Lambda^\top)_{tt} / \Sigma_{tt}}
-#'    is identically 1 when \eqn{\boldsymbol\Psi = \mathbf 0}; you cannot
-#'    quantify how much of trait \eqn{t}'s variance is shared with the
-#'    others.
-#'
-#' Adding `+ unique(0 + trait | site)` gives the engine a per-trait
-#' variance parameter \eqn{\psi_{g,t}}, restoring the full decomposition.
+#' Set `latent(..., residual = FALSE)` only when you deliberately want the
+#' no-residual subset where communality reaches 1 by construction.
 #'
 #' ## When you do *not* need `unique()`
 #'
@@ -64,8 +69,9 @@
 #'   identifiable (typically crossed site × species with
 #'   `n_species` >= 100 and strong phylogenetic signal), pair
 #'   `phylo_latent()` with `phylo_unique(species)` following the
-#'   same `latent() + unique()` pattern used at the non-phylo
-#'   tier. The four-component paired form is canonical when both
+#'   source-specific paired compatibility pattern. The ordinary non-phylo
+#'   tier now gets the same shared-plus-diagonal target from `latent()`
+#'   itself. The four-component paired form is canonical when both
 #'   \eqn{\boldsymbol\Psi} diagonals are identifiable; the
 #'   three-piece fallback above is the alternative. See
 #'   `vignettes/articles/pitfalls.Rmd` section 5 and
@@ -76,17 +82,27 @@
 #'
 #' ## Two-level (between + within) models
 #'
-#' For repeated-measures / behavioural-syndrome data, the recommended
-#' pattern is **two `latent() + unique()` pairs**:
+#' For repeated-measures / behavioural-syndrome data, ordinary `latent()`
+#' now emits the diagonal \eqn{\boldsymbol\Psi} companion by default, so the
+#' recommended pattern is **two `latent()` terms**:
 #'
 #' ```r
 #' value ~ 0 + trait +
-#'         latent(0 + trait | individual, d = d_B) + unique(0 + trait | individual) +
-#'         latent(0 + trait | obs_id,     d = d_W) + unique(0 + trait | obs_id)
+#'         latent(0 + trait | individual, d = d_B) +
+#'         latent(0 + trait | obs_id,     d = d_W)
 #' ```
 #'
 #' giving \eqn{\boldsymbol\Sigma_B = \boldsymbol\Lambda_B \boldsymbol\Lambda_B^\top + \boldsymbol\Psi_B}
 #' and \eqn{\boldsymbol\Sigma_W = \boldsymbol\Lambda_W \boldsymbol\Lambda_W^\top + \boldsymbol\Psi_W}.
+#'
+#' For ordinary Gaussian random-regression fits, the same default applies to
+#' augmented `latent(1 + x | unit, d = K)` terms. The model estimates
+#' \eqn{\boldsymbol\Lambda_{\text{aug}}\boldsymbol\Lambda_{\text{aug}}^\top + \boldsymbol\Psi_{\text{aug}}}
+#' over the `(intercept, slope) x trait` coefficient vector, and
+#' `extract_Sigma(level = "unit_slope", part = "unique")` reports the fitted
+#' diagonal \eqn{\boldsymbol\Psi_{\text{aug}}}. Explicit augmented
+#' `unique(1 + x | unit)` remains compatibility syntax and is currently
+#' Gaussian-only.
 #'
 #' ## Phylogenetic + non-phylogenetic species-level models
 #'
@@ -107,8 +123,7 @@
 #' ```r
 #' value ~ 0 + trait +
 #'         phylo_latent(species, d = K_phy) +             # Sigma_phy
-#'         latent(0 + trait | species, d = K_non) +       # Lambda_non Lambda_non^T
-#'         unique(0 + trait | species)                    # Psi_non
+#'         latent(0 + trait | species, d = K_non)         # Sigma_non
 #' ```
 #'
 #' [extract_Sigma()] with `level = "phy"` returns \eqn{\Sigma_\mathrm{phy}};
@@ -116,51 +131,52 @@
 #' non-phylogenetic species-level covariance). Their sum is
 #' \eqn{\boldsymbol\Omega}.
 #'
-#' ## Per-row `unique()` and `sigma_eps`: auto-suppression
+#' ## Per-row `indep()` / legacy `unique()` and `sigma_eps`: auto-suppression
 #'
 #' For Gaussian / lognormal / Gamma fits, the engine also estimates a
 #' single observation-scale residual `sigma_eps` (the sigma_eps of the response).
-#' If you place `unique(0 + trait | g)` at a grouping `g` that has **one
-#' row per (trait, g) cell** (i.e. the unique random effects are at the
-#' per-row / per-observation level), the unique-variance parameters and
-#' `sigma_eps` are jointly unidentifiable — only the sum
+#' In new code, write observation-level diagonal residual terms as
+#' `indep(0 + trait | g)`. The legacy `unique(0 + trait | g)` spelling is
+#' still accepted as compatibility syntax. If that grouping `g` has **one row
+#' per (trait, g) cell** (i.e. the diagonal random effects are at the per-row /
+#' per-observation level), the diagonal-variance parameters and `sigma_eps` are
+#' jointly unidentifiable -- only the sum
 #' \eqn{\mathrm{sd}_g[t]^2 + \sigma_\varepsilon^2} is identified.
 #'
 #' In that case the engine **auto-suppresses** `sigma_eps` (fixed at
-#' \eqn{\approx 10^{-3}} of `sd(y)`) so the unique random effects fully
+#' \eqn{\approx 10^{-3}} of `sd(y)`) so the diagonal random effects fully
 #' absorb the row-level residual variance, and emits a one-shot message
 #' announcing the suppression. This matches the user's intent when they
-#' write a per-row `unique()` term: they want the unique variance to
+#' write a per-row `indep()` term: they want the diagonal variance to
 #' represent the row-level residual, not to compete with `sigma_eps`
 #' for it.
 #'
-#' If you have multiple rows per (trait, g) cell (e.g. `unique(0 + trait |
-#' site)` with several species per site), `sigma_eps` is the
-#' *within-cell* residual and the unique random effects are the
-#' *between-cell* per-trait variance — both are separately identified and
-#' both are estimated.
+#' If you have multiple rows per (trait, g) cell (e.g. `indep(0 + trait |
+#' site)` with several species per site), `sigma_eps` is the *within-cell*
+#' residual and the diagonal random effects are the *between-cell* per-trait
+#' variance -- both are separately identified and both are estimated.
 #'
 #' ## Family-aware interpretation
 #'
-#' The same `unique(0 + trait | g)` formula keyword has a slightly
-#' different meaning across families, depending on whether the response
-#' carries an observation-layer residual:
+#' The same standalone diagonal tier has a slightly different meaning across
+#' families, depending on whether the response carries an observation-layer
+#' residual:
 #'
-#' For Gaussian / lognormal / Gamma fits, `unique()` estimates the
-#' trait-specific residual variance on the (log-)response scale. For
-#' binomial fits with probit / logit / cloglog links, the link
-#' function fixes a distribution-specific implicit residual; an
-#' explicit `unique()` is identifiable only when there are repeated
-#' rows per cell. For Poisson and other log-link families,
-#' `unique(0 + trait | unit_obs)` doubles as an observation-level
-#' random effect (OLRE / additive overdispersion).
+#' For Gaussian / lognormal / Gamma fits, standalone `indep()` (or legacy
+#' standalone `unique()`) estimates the trait-specific residual variance on
+#' the (log-)response scale. For binomial fits with probit / logit / cloglog
+#' links, the link function fixes a distribution-specific implicit residual;
+#' an explicit diagonal term is identifiable only when there are repeated rows
+#' per cell. For Poisson and other log-link families,
+#' `indep(0 + trait | unit_obs)` doubles as an observation-level random effect
+#' (OLRE / additive overdispersion).
 #'
-#' Across families the unifying rule is: `unique(0 + trait | g)` is the
-#' "effective per-trait unique-variance parameter at tier `g`", with the
-#' family determining what counts as observation-layer vs latent-scale
-#' residual. See the `link_residual` argument of [extract_Sigma()] for
-#' how the family-specific implicit residual is added to the diagonal of
-#' the reported Sigma.
+#' Across families the unifying rule is: the standalone diagonal tier is the
+#' effective per-trait variance parameter at tier `g`, with the family
+#' determining what counts as observation-layer versus latent-scale residual.
+#' See the `link_residual` argument of [extract_Sigma()] for how the
+#' family-specific implicit residual is added to the diagonal of the reported
+#' Sigma.
 #'
 #' ## Note on the function name
 #'
@@ -199,8 +215,8 @@
 #' # Behavioural-syndrome / two-level pattern:
 #' fit <- gllvmTMB(
 #'   value ~ 0 + trait +
-#'           latent(0 + trait | individual, d = 2) + unique(0 + trait | individual) +
-#'           latent(0 + trait | obs_id,    d = 1) + unique(0 + trait | obs_id),
+#'           latent(0 + trait | individual, d = 2) +
+#'           latent(0 + trait | obs_id,    d = 1),
 #'   data     = df,
 #'   trait    = "trait",
 #'   unit     = "individual",

@@ -2,7 +2,7 @@
 # binomial() and poisson() respond to the family_id branch in the multi
 # template. Gaussian behaviour is unchanged.
 
-test_that("Stage 33: family = binomial() converges with rr + diag", {
+test_that("Stage 33: family = binomial() converges with default latent covariance", {
   set.seed(2025)
   T <- 3
   Lam <- matrix(c(1.0, 0.7, -0.3, 0.3, -0.5, 0.8), nrow = T, ncol = 2)
@@ -16,7 +16,7 @@ test_that("Stage 33: family = binomial() converges with rr + diag", {
   df$value <- as.integer(df$value > 0)
 
   fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2) + unique(0 + trait | site),
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = df, family = binomial()
   )
   expect_s3_class(fit, "gllvmTMB_multi")
@@ -27,7 +27,7 @@ test_that("Stage 33: family = binomial() converges with rr + diag", {
   expect_true(is.finite(-fit$opt$objective))
 })
 
-test_that("Stage 33: family = poisson() converges with rr + diag", {
+test_that("Stage 33: family = poisson() converges with default latent covariance", {
   set.seed(7)
   T <- 3
   sim <- simulate_site_trait(
@@ -42,7 +42,7 @@ test_that("Stage 33: family = poisson() converges with rr + diag", {
   df$value <- stats::rpois(nrow(df), exp(0.5 + as.numeric(scale(df$value)) * 0.4))
 
   fit <- gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2) + unique(0 + trait | site),
+    value ~ 0 + trait + latent(0 + trait | site, d = 2),
     data = df, family = poisson()
   )
   expect_equal(fit$opt$convergence, 0L)

@@ -77,20 +77,18 @@ shared_var <- diag(Lambda %*% t(Lambda))
 communality <- shared_var / diag(Sigma)
 
 formula_long <- value ~ 0 + trait +
-  latent(0 + trait | individual, d = 2) +
-  unique(0 + trait | individual)
+  latent(0 + trait | individual, d = 2)
 
 formula_wide <- traits(length, mass, wing, tarsus, bill) ~ 1 +
-  latent(1 | individual, d = 2) +
-  unique(1 | individual)
+  latent(1 | individual, d = 2)
 
 rank_candidates <- data.frame(
   d = 0:3,
   formula_label = c(
-    "unique(0 + trait | individual)",
-    "latent(..., d = 1) + unique(...)",
-    "latent(..., d = 2) + unique(...)",
-    "latent(..., d = 3) + unique(...)"
+    "indep(0 + trait | individual)",
+    "latent(..., d = 1)",
+    "latent(..., d = 2)",
+    "latent(..., d = 3)"
   )
 )
 

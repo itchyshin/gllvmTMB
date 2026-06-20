@@ -23,12 +23,19 @@ the coordinates via the formula RHS.}
 A formula marker; never evaluated.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+}
+\details{
+\code{spatial_unique()} is soft-deprecated as compatibility syntax in gllvmTMB
+0.2.0. Use \code{\link[=spatial_indep]{spatial_indep()}} for standalone marginal diagonal spatial
+fields. Paired explicit-Psi use remains accepted while source-specific
+latent-Psi folds remain future slices.
+
 Canonical name for the SPDE / GMRF Matern spatial random field with
 \strong{one independent field per trait} (per-trait variance
 \eqn{\tau^{2}_t}, shared range parameter \eqn{\kappa}). This is the
 "unique-rank" cell of the spatial column of the API grid.
-}
-\details{
+
 Formerly \code{spde(0 + trait | coords)} and \code{spatial(0 + trait | coords)}
 -- same engine, new name. See \code{\link[=spde]{spde()}} for the technical details on
 the Matern \eqn{\nu = 1} kernel.

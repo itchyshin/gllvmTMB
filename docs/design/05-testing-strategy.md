@@ -65,7 +65,7 @@ Implemented (or planned) comparator smoke tests:
 
 | Test path | Comparator | gllvmTMB feature exercised | Status |
 |-----------|------------|---------------------------|--------|
-| `glmmTMB::rr() + diag()` for Gaussian | `glmmTMB::glmmTMB(..., rr(0 + trait \| g, d = K) + diag(0 + trait \| g))` | `latent + unique` paired decomposition; log-likelihood match to 1e-4 (per `tests/testthat/test-stage2-rr-diag.R`) | covered (verify in Phase 0B) |
+| `glmmTMB::rr() + diag()` for Gaussian | `glmmTMB::glmmTMB(..., rr(0 + trait \| g, d = K) + diag(0 + trait \| g))` | ordinary `latent()` decomposition; log-likelihood match to 1e-4 (per `tests/testthat/test-stage2-rr-diag.R`) | covered (verify in Phase 0B) |
 | `glmmTMB::propto()` for phylogenetic | `glmmTMB::glmmTMB(..., propto(0 + trait \| species, A))` | `phylo_scalar()`; log-likelihood match to 1e-4 (per `tests/testthat/test-stage3-propto-equalto.R`) | covered |
 | `glmmTMB::equalto()` for known-V | `glmmTMB::glmmTMB(..., equalto(0 + obs \| grp_V, V))` | `meta_V(V = V)` (renamed from `meta_known_V`); parser, dimension, wide-format, and smoke-fit coverage exist; direct LL comparator still needed | partial |
 | `gllvm::gllvm()` binary GLLVM | Procrustes-aligned loadings + per-factor $\rho > 0.95$ | binary GLLVM with `latent()`; rotation-aware comparison via `compare_loadings()` | claimed (M2 work) |
@@ -125,21 +125,20 @@ keyword:
 - **Failure path**: malformed inputs are rejected before TMB
   evaluation.
 
-RE-12 ordinary Gaussian random regression now has focused
-`latent + unique` evidence, not broad coverage evidence. Its minimum
-focused test contract is: parser classification for long and
-`traits(...)` wide forms; a Gaussian paired fit that reaches the
-dedicated B-tier `Z_B_lat` / `Lambda_B_slope` / `Sigma_B_slope` and
-`Z_B_diag` / `sd_B_slope` / `s_B_slope` blocks; `extract_Sigma(level =
-"unit_slope", part = "shared" / "unique" / "total")` composition;
-deterministic Gaussian recovery for the intercept-intercept,
-slope-slope, and intercept-slope blocks; unique-only diagonal
+RE-12 ordinary Gaussian random regression now has focused default-`latent()`
+evidence, not broad coverage evidence. Its minimum focused test contract is:
+parser classification for long and `traits(...)` wide forms; a Gaussian fit
+that reaches the dedicated B-tier `Z_B_lat` / `Lambda_B_slope` /
+`Sigma_B_slope` and `Z_B_diag` / `sd_B_slope` / `s_B_slope` blocks;
+`extract_Sigma(level = "unit_slope", part = "shared" / "unique" / "total")`
+composition; deterministic Gaussian recovery for the intercept-intercept,
+slope-slope, and intercept-slope blocks; explicit compatibility diagonal
 extraction; at least one non-Gaussian latent-only smoke fit; rank guard;
-rejection of augmented `latent()` / `unique()` at the `unit_obs` tier;
-and the Gaussian-only guard for augmented `unique()` under non-Gaussian
-families. Promotion from `partial` to `covered` requires a broader
-coverage or recovery grid and either validation or a deliberate design
-rejection for non-Gaussian augmented `unique()`.
+rejection of augmented `latent()` / `unique()` at the `unit_obs` tier; and the
+Gaussian-only guard for augmented `unique()` under non-Gaussian families.
+Promotion from `partial` to `covered` requires a broader coverage or recovery
+grid and either validation or a deliberate design rejection for non-Gaussian
+augmented diagonal Psi.
 
 ### Phase 0B per-keyword smoke-test plan
 
@@ -154,8 +153,7 @@ test_that("latent(0 + trait | site, d = K) accepts + fits + extracts", {
                              Lambda_B = ..., psi_B = ...)
   fit <- gllvmTMB(
     value ~ 0 + trait +
-      latent(0 + trait | site, d = 2) +
-      unique(0 + trait | site),
+      latent(0 + trait | site, d = 2),
     data = sim$data, unit = "site"
   )
   expect_equal(fit$opt$convergence, 0L)
@@ -339,7 +337,7 @@ For every new test, verify at least one of:
   saturated mean, weak identifiability).
 - the test **combines the new feature with an existing
   neighbouring feature** (e.g. when adding `meta_V`, test it
-  with a `latent + unique` decomposition too, not just
+  with an ordinary `latent()` decomposition too, not just
   alone).
 
 Generic "the function returned without error" assertions are

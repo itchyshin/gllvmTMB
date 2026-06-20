@@ -200,7 +200,7 @@ test_that("phylo_unique appears in extract_Omega() at the phy tier", {
   expect_equal(fit$opt$convergence, 0L)
   ## Omega includes a non-zero phy diagonal (the per-trait phylo
   ## variances) plus the species-level unique() term U.
-  out <- suppressMessages(extract_Omega(fit, tiers = c("phy", "B")))
+  out <- suppressMessages(extract_Omega(fit, tiers = c("phy", "unit")))
   expect_true("phy" %in% out$tiers_used)
   expect_true(all(diag(out$Omega) > 0))
 })

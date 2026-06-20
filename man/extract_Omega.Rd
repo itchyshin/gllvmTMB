@@ -18,7 +18,8 @@ formula, \code{"B"} if any \code{latent()}/\code{unique()} at \code{unit}, \code
 per-trait link-specific implicit residual to the diagonal of the
 summed \code{Omega} (once, not per tier — see "Family-aware link residuals"
 in \code{\link[=extract_Sigma]{extract_Sigma()}}); mixed-family fits get the residual implied by
-each trait's family/link. \code{"none"} returns the latent+unique-implied scale.
+each trait's family/link. \code{"none"} returns the summed fitted covariance
+without link-residual additions.
 Gaussian / lognormal-only fits are unaffected.}
 }
 \value{

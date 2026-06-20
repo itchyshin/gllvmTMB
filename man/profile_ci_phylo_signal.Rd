@@ -18,13 +18,13 @@ A data frame with columns \code{trait}, \code{H2}, \code{lower}, \code{upper},
 \code{method}.
 }
 \description{
-For fits with \code{phylo_unique(species)} and \code{unique(0 + trait | species)}
+For fits with \code{phylo_unique(species)} and \code{indep(0 + trait | species)}
 but no species-level \code{latent()} term, \code{H^2 = sigma2_phy / (sigma2_phy + sigma2_non)} is a 2-component ratio profileable via a single linear
 contrast (\code{log_sd_phy_diag[t] - theta_diag_species[t]}).
 }
 \details{
-For richer 3-component decompositions (PGLLVM with phylo_latent +
-species-level latent + unique), we currently return Wald CIs with a
+For richer 3-component decompositions (PGLLVM with phylo_latent plus
+a species-level latent decomposition with Psi), we currently return Wald CIs with a
 note; full profile would require fix-and-refit on the multi-component
 constraint and is logged as a future enhancement.
 }

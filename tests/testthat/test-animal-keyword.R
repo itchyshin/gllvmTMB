@@ -190,6 +190,124 @@ test_that("animal_latent(id, d = 1, pedigree = ) is byte-equivalent with phylo_l
                tolerance = 1e-6)
 })
 
+# ---- (2b) Multi-matrix composition: animal_* + sibling (1 | id) -------
+#
+# ANI-09 evidence (register row "Multi-matrix animal models"): a multi-
+# matrix quantitative-genetic model is achievable *today* by composing an
+# `animal_*` additive-genetic term with a SIBLING ordinary `(1 | id)`
+# permanent-environment intercept -- no new engine, no kernel/grammar
+# change. The two random effects ride distinct engine vectors:
+#   animal_indep(0 + trait | id, A = A)  -> g_phy  (additive-genetic,
+#                                           variance folded by A)
+#   (1 | id)                             -> u_re_int (iid permanent
+#                                           environment, identity structure)
+# This cell plants both variance components and recovers them with the
+# existing read-outs: the per-trait additive variances on diag(Sigma_phy)
+# and the permanent-environment SD from log_sigma_re_int. It does NOT
+# claim the idiomatic v0.3.0 article example; it pins that the composition
+# fits, stays healthy, and recovers the planted components.
+
+make_animal_pe_fixture <- function(seed = 42L, n_id = 60L,
+                                    n_traits = 4L, n_rep = 6L) {
+  set.seed(seed)
+  ## Half-sib pedigree (4 founders, rest offspring of i1/i2 x i3/i4);
+  ## topologically sorted, yields a NON-identity A.
+  ped <- data.frame(
+    id   = paste0("i", seq_len(n_id)),
+    sire = c(rep(NA, 4L), rep(c("i1", "i2"), length.out = n_id - 4L)),
+    dam  = c(rep(NA, 4L), rep(c("i3", "i4"), length.out = n_id - 4L)),
+    stringsAsFactors = FALSE
+  )
+  A <- gllvmTMB::pedigree_to_A(ped)
+  ids <- rownames(A)
+
+  ## Truth. Additive-genetic intercept per trait: a_{i,t} ~ N(0, s2_A * A),
+  ## one shared additive variance across traits (the animal_indep diagonal).
+  ## Permanent-environment intercept: p_i ~ N(0, s2_PE * I), one per
+  ## individual, shared across that individual's trait rows -- the sibling
+  ## (1 | id) term, identity-structured (NOT folded by A).
+  sigma2_A <- 0.5
+  sigma2_PE <- 0.45
+  sigma2_resid <- 0.3^2
+
+  LA <- t(chol(A + diag(1e-8, n_id)))
+  a_mat <- matrix(NA_real_, n_id, n_traits,
+                  dimnames = list(ids, paste0("t", seq_len(n_traits))))
+  for (k in seq_len(n_traits)) {
+    a_mat[, k] <- as.numeric(LA %*% stats::rnorm(n_id, sd = sqrt(sigma2_A)))
+  }
+  p_eff <- stats::rnorm(n_id, sd = sqrt(sigma2_PE))
+  names(p_eff) <- ids
+
+  df <- expand.grid(
+    species = factor(ids, levels = ids),
+    trait   = factor(paste0("t", seq_len(n_traits)),
+                     levels = paste0("t", seq_len(n_traits))),
+    rep     = seq_len(n_rep)
+  )
+  df$pe_id <- factor(df$species, levels = ids)
+  mu_t <- seq(2, 0.5, length.out = n_traits)[as.integer(df$trait)]
+  a_val <- a_mat[cbind(match(as.character(df$species), ids),
+                       as.integer(df$trait))]
+  df$value <- mu_t + a_val + p_eff[as.character(df$species)] +
+    stats::rnorm(nrow(df), sd = sqrt(sigma2_resid))
+
+  list(data = df, A = A, ped = ped,
+       sigma2_A = sigma2_A, sigma2_PE = sigma2_PE, n_id = n_id)
+}
+
+test_that("animal_indep(0 + trait | id) + sibling (1 | id) PE intercept composes and recovers both variance components (ANI-09)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fx <- make_animal_pe_fixture()
+
+  fit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    value ~ 0 + trait + animal_indep(0 + trait | species, A = fx$A) +
+      (1 | pe_id),
+    data = fx$data, family = gaussian(),
+    unit = "species", cluster = "species"
+  )))
+
+  ## Healthy optimum.
+  expect_equal(fit$opt$convergence, 0L)
+  expect_true(is.finite(fit$opt$objective))
+  expect_true(isTRUE(fit$fit_health$pd_hessian))
+  expect_true(isTRUE(fit$fit_health$sdreport_ok))
+
+  ## The two terms ride DISTINCT engine random vectors: the additive-genetic
+  ## g_phy (folded by A) and the iid permanent-environment u_re_int. This is
+  ## the multi-matrix composition, not a single absorbed effect.
+  rnd <- fit$tmb_obj$env$.random
+  expect_true("g_phy" %in% rnd)
+  expect_true("u_re_int" %in% rnd)
+  expect_true(any(grepl("log_sigma_re_int", names(fit$opt$par))),
+    info = "sibling (1 | id) PE intercept must contribute its own SD param.")
+
+  ## Recover the planted additive-genetic variance: animal_indep(0 + trait)
+  ## reports a diagonal Sigma_phy whose entries are the per-trait additive
+  ## variances (shared truth s2_A); the mean over traits averages out the
+  ## one-realization-per-trait sampling noise.
+  diag_A <- diag(fit$report$Sigma_phy)
+  expect_length(diag_A, 4L)
+  mean_sigma2_A_hat <- mean(diag_A)
+  expect_lte(
+    abs(mean_sigma2_A_hat - fx$sigma2_A) / fx$sigma2_A,
+    0.20,
+    label = "animal_indep additive-genetic variance recovery (mean over traits)"
+  )
+
+  ## Recover the planted permanent-environment SD from the sibling (1 | id)
+  ## term's own parameter (same 20% band the augmented Gaussian cells use).
+  sigma_pe_hat <- exp(
+    fit$opt$par[grepl("log_sigma_re_int", names(fit$opt$par))])
+  expect_length(sigma_pe_hat, 1L)
+  expect_lte(
+    abs(unname(sigma_pe_hat) - sqrt(fx$sigma2_PE)) / sqrt(fx$sigma2_PE),
+    0.20,
+    label = "permanent-environment (1 | id) SD recovery"
+  )
+})
+
 # ---- (3) Three input forms (pedigree, A, Ainv) all agree --------------
 
 test_that("animal_scalar(pedigree =) and animal_scalar(A =) and animal_scalar(Ainv =) all agree", {

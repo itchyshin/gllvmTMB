@@ -1820,3 +1820,233 @@ print.gllvmTMB_Sigma_phy_slope <- function(x, digits = 3, ...) {
   }
   invisible(x)
 }
+
+#' Extract cross-lineage coevolutionary modules
+#'
+#' @description
+#' `extract_coevolution_modules()` standardizes a component-specific
+#' cross-lineage covariance block and decomposes it into coupled trait axes.
+#' For a named coevolution kernel tier, the helper computes
+#' `R = Sigma_row^{-1/2} Gamma Sigma_col^{-1/2}` from the shared covariance
+#' returned by [extract_Sigma()], then applies a singular-value decomposition.
+#'
+#' IN (`COE-04`): this is a point-estimate derived-output helper for fitted
+#' dense-kernel coevolution models whose component-specific `Gamma` blocks are
+#' already extractable with [extract_Gamma()]. PARTIAL: it does not report
+#' uncertainty, choose the biological rank, estimate `rho`, or calibrate null
+#' thresholds. Use simulation, bootstrap, and kernel-separability checks before
+#' treating the returned axes as scientific evidence.
+#'
+#' @param fit A fitted `gllvmTMB_multi` object.
+#' @param level Character scalar naming the fitted covariance tier.
+#' @param row_traits,col_traits Character vectors naming the row-lineage and
+#'   column-lineage traits.
+#' @param scale Character scalar. `"shape"` (default) uses
+#'   `Gamma_shape = Lambda_row Lambda_col^T`; `"effect"` uses the fixed-rho
+#'   `Gamma_effect` available for kernels built by [make_cross_kernel()].
+#' @param n_modules Optional positive integer limiting the number of returned
+#'   singular axes. By default all axes are returned.
+#' @param tol Numerical tolerance for the generalized inverse square roots of
+#'   the within-lineage shared covariance blocks.
+#'
+#' @return A list with `R`, `modules`, `row_axes`, and `col_axes`. `R` is the
+#'   standardized cross-lineage correlation-like block. `modules` has one row
+#'   per singular axis with its singular value and squared-value share.
+#'   `row_axes` and `col_axes` contain trait loadings for each coupled axis.
+#'
+#' @examples
+#' \dontrun{
+#' mods <- extract_coevolution_modules(
+#'   fit,
+#'   level = "phy",
+#'   row_traits = c("host_size", "host_defence"),
+#'   col_traits = c("partner_size", "partner_attack")
+#' )
+#' mods$modules
+#' mods$row_axes
+#' mods$col_axes
+#' }
+#'
+#' @export
+extract_coevolution_modules <- function(
+  fit,
+  level,
+  row_traits,
+  col_traits,
+  scale = c("shape", "effect"),
+  n_modules = NULL,
+  tol = sqrt(.Machine$double.eps)
+) {
+  if (!inherits(fit, "gllvmTMB_multi")) {
+    cli::cli_abort("Provide a fit returned by {.fun gllvmTMB}.")
+  }
+  scale <- match.arg(scale)
+  if (
+    missing(level) ||
+      !is.character(level) ||
+      length(level) != 1L ||
+      !nzchar(level) ||
+      is.na(level)
+  ) {
+    cli::cli_abort("{.arg level} must be one non-empty character string.")
+  }
+  row_traits <- .gamma_trait_arg(row_traits, "row_traits")
+  col_traits <- .gamma_trait_arg(col_traits, "col_traits")
+  if (!is.null(n_modules)) {
+    if (
+      length(n_modules) != 1L ||
+        is.na(n_modules) ||
+        n_modules < 1 ||
+        n_modules != as.integer(n_modules)
+    ) {
+      cli::cli_abort("{.arg n_modules} must be a positive integer.")
+    }
+    n_modules <- as.integer(n_modules)
+  }
+  if (!is.numeric(tol) || length(tol) != 1L || is.na(tol) || tol <= 0) {
+    cli::cli_abort("{.arg tol} must be one positive number.")
+  }
+
+  shared <- suppressMessages(extract_Sigma(
+    fit,
+    level = level,
+    part = "shared",
+    link_residual = "none"
+  ))
+  Sigma <- shared$Sigma
+  if (!is.matrix(Sigma)) {
+    cli::cli_abort(c(
+      "The requested level has no shared covariance matrix.",
+      "i" = "Refit with a {.fn latent}, {.fn phylo_latent}, {.fn spatial_latent}, or {.fn kernel_latent} term before calling {.fn extract_coevolution_modules}."
+    ))
+  }
+
+  sigma_rows <- rownames(Sigma)
+  missing_rows <- setdiff(row_traits, sigma_rows)
+  missing_cols <- setdiff(col_traits, sigma_rows)
+  if (length(missing_rows) || length(missing_cols)) {
+    bullets <- c("Trait block is not present in the shared covariance matrix.")
+    if (length(missing_rows)) {
+      bullets <- c(
+        bullets,
+        "x" = "{.arg row_traits} not found: {.val {missing_rows}}."
+      )
+    }
+    if (length(missing_cols)) {
+      bullets <- c(
+        bullets,
+        "x" = "{.arg col_traits} not found: {.val {missing_cols}}."
+      )
+    }
+    bullets <- c(
+      bullets,
+      "i" = "Available traits are: {.val {sigma_rows}}."
+    )
+    cli::cli_abort(bullets)
+  }
+
+  .warn_high_overlap_gamma(fit, level)
+
+  Sigma_row <- Sigma[row_traits, row_traits, drop = FALSE]
+  Sigma_col <- Sigma[col_traits, col_traits, drop = FALSE]
+  Gamma <- Sigma[row_traits, col_traits, drop = FALSE]
+  if (identical(scale, "effect")) {
+    Gamma <- .gamma_level_rho(fit, level) * Gamma
+  }
+  R <- .matrix_inv_sqrt(Sigma_row, tol = tol, arg = "row_traits") %*%
+    Gamma %*%
+    .matrix_inv_sqrt(Sigma_col, tol = tol, arg = "col_traits")
+  R <- as.matrix(R)
+  rownames(R) <- row_traits
+  colnames(R) <- col_traits
+
+  sv <- svd(R)
+  n_axis <- length(sv$d)
+  if (!is.null(n_modules)) {
+    n_axis <- min(n_axis, n_modules)
+  }
+  idx <- seq_len(n_axis)
+  module <- paste0("module_", idx)
+  singular <- sv$d[idx]
+  sq_sum <- sum(sv$d^2)
+  share <- if (sq_sum > 0) singular^2 / sq_sum else rep(NA_real_, n_axis)
+  modules <- data.frame(
+    component = level,
+    module = module,
+    singular_value = singular,
+    squared_share = share,
+    stringsAsFactors = FALSE
+  )
+  row_axes <- .coevolution_axis_table(
+    sv$u[, idx, drop = FALSE],
+    traits = row_traits,
+    modules = module,
+    component = level,
+    side = "row"
+  )
+  col_axes <- .coevolution_axis_table(
+    sv$v[, idx, drop = FALSE],
+    traits = col_traits,
+    modules = module,
+    component = level,
+    side = "column"
+  )
+
+  out <- list(
+    R = R,
+    modules = modules,
+    row_axes = row_axes,
+    col_axes = col_axes,
+    level = level,
+    scale = scale,
+    row_traits = row_traits,
+    col_traits = col_traits,
+    note = c(
+      "Point-estimate module decomposition only.",
+      "No uncertainty, rank-selection, rho-estimation, or null-threshold calibration is included."
+    )
+  )
+  class(out) <- c("gllvmTMB_coevolution_modules", "list")
+  out
+}
+
+.matrix_inv_sqrt <- function(x, tol, arg) {
+  x <- (x + t(x)) / 2
+  eg <- eigen(x, symmetric = TRUE)
+  scale <- max(abs(eg$values), 1)
+  if (min(eg$values) < -tol * scale) {
+    cli::cli_abort(c(
+      "Cannot standardize the cross-lineage block.",
+      "x" = "The shared covariance block for {.arg {arg}} is not positive semidefinite.",
+      "i" = "Check the fitted component or use a more stable covariance specification."
+    ))
+  }
+  keep <- eg$values > tol * scale
+  if (!any(keep)) {
+    cli::cli_abort(c(
+      "Cannot standardize the cross-lineage block.",
+      "x" = "The shared covariance block for {.arg {arg}} is numerically zero.",
+      "i" = "A coevolutionary module requires nonzero within-lineage shared covariance."
+    ))
+  }
+  values <- ifelse(keep, 1 / sqrt(pmax(eg$values, 0)), 0)
+  out <- eg$vectors %*% diag(values, nrow = length(values)) %*% t(eg$vectors)
+  dimnames(out) <- dimnames(x)
+  out
+}
+
+.coevolution_axis_table <- function(x, traits, modules, component, side) {
+  grid <- expand.grid(
+    trait = traits,
+    module = modules,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+  grid$component <- component
+  grid$side <- side
+  grid$loading <- x[cbind(
+    match(grid$trait, traits),
+    match(grid$module, modules)
+  )]
+  grid[, c("component", "side", "module", "trait", "loading")]
+}

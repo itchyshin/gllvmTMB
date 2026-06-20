@@ -101,6 +101,21 @@
 #'   wide-data examples now use the `traits(...)` LHS through
 #'   [gllvmTMB()]. The source-tree contract is
 #'   `docs/design/01-formula-grammar.md`.
+#' @examples
+#' \dontrun{
+#' # Wide format: one column per trait; traits() stacks them internally.
+#' # The LHS *is* the trait spec, so no `trait =` argument is needed.
+#' set.seed(1)
+#' df_wide <- data.frame(
+#'   unit = factor(paste0("u", 1:40)),
+#'   t1 = rnorm(40), t2 = rnorm(40), t3 = rnorm(40)
+#' )
+#' fit <- gllvmTMB(
+#'   traits(t1, t2, t3) ~ 1 + latent(1 | unit, d = 2),
+#'   data = df_wide, unit = "unit"
+#' )
+#' extract_Sigma(fit)
+#' }
 #' @export
 traits <- function(...) {
   invisible(NULL)

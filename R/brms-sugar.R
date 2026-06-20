@@ -393,6 +393,21 @@ meta <- function(value, sampling_var) {
 #' @param d Integer; number of latent factors.
 #' @return A formula marker; never evaluated.
 #' @seealso [unique()], [phylo_latent()], [diag_re], [extract_Sigma()].
+#' @examples
+#' \dontrun{
+#' # Long-format stacked traits: a 2-factor latent random effect at `site`.
+#' # Ordinary latent() carries its diagonal Psi by default
+#' # (Sigma = Lambda Lambda^T + diag(psi)).
+#' df <- simulate_site_trait(
+#'   n_sites = 30, n_species = 4, n_traits = 4,
+#'   mean_species_per_site = 4, seed = 42
+#' )$data
+#' fit <- gllvmTMB(
+#'   value ~ 0 + trait + latent(0 + trait | site, d = 2),
+#'   data = df, unit = "site"
+#' )
+#' extract_Sigma(fit)
+#' }
 #' @export
 latent <- function(formula, d = 1) {
   invisible(NULL)

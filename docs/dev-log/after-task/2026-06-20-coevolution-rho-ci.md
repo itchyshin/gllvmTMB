@@ -24,19 +24,26 @@ bracketing grid points), with explicit `lower_bounded`/`upper_bounded` flags and
   stale `man/*.Rd` from origin/main roxygen drift were left unstaged to keep the PR
   focused.)
 
-## Remaining coevolution-completion pieces (handover — heavy, queued)
+## Coevolution-completion status (all four approved pieces addressed, 2026-06-20)
 
-Maintainer approved all four (2026-06-20). Done: this one. Remaining:
+1. **rho profile intervals** — DONE: `profile_cross_rho_ci()` (this PR), 19/19.
+2. **Broader non-Gaussian recovery gates** — DONE for **Poisson + NB2 + Gamma**: this PR
+   adds clean two-kernel recovery gates for NB2 (`nbinom2()`, seeds 3102/3103) and Gamma
+   (`Gamma(link="log")`, seeds 4201/4202), each recovering its own component `Gamma_shape`
+   (own cor > 0.95, cross < 0.15) and beating one-component fits (full coevolution heavy
+   suite FAIL 0 / PASS 432). Component labels are seed-sensitive, so the gates use
+   calibrated clean-recovery seeds (as the original Poisson cell does).
+3. **In-engine `rho` estimation** — DESIGN NOTE delivered (held PR for the rho-design
+   branch): recommendation is to **keep fixed-`rho` profiling for this arc** (fragile
+   identifiability, per-eval Cholesky cost, cross-package API change). Maintainer decision.
+4. **GLLVM.jl #96 (Gamma mode-finder)** — found **ALREADY RESOLVED on origin/main**
+   (`da135f1`): the DRM.jl convexity-gated safeguard + Gamma promotion are implemented;
+   verified green (`test_gamma_laplace`, `test_gamma_fit`, `test_laplace_grad` 32/32,
+   `test_grouped_dispersion_beta_gamma` 24/24, …). The issue can be closed; no PR needed.
 
-1. **In-engine `rho` estimation** — the biggest; estimate `rho` inside the fit rather
-   than fixed-`rho` profiling. Needs a brief design note first (how `rho` enters the
-   optimizer / its identifiability with the kernel scale). Engine work.
-2. **Broader non-Gaussian / mixed-family recovery gates** — extend beyond the narrow
-   2-cell Poisson gate (Binomial, Gamma, NB, mixed-family two-kernel recovery cells,
-   mirroring `test-coevolution-two-kernel.R`). Heavy fits (`GLLVMTMB_HEAVY_TESTS`).
-3. **GLLVM.jl #96 — Gamma mode-finder hardening** — borrow the DRM.jl convexity-gated
-   mode-finder safeguard into `_laplace_mode!` to unblock the Gamma caveat. Self-
-   contained Julia engine change; verify with the full Julia suite (~33 min).
+Still queued (lower priority): Beta / nbinom1 / mixed-family recovery gates (same
+seed-calibrated pattern); standalone `unique()`→`indep()` spelling cascade (Codex has
+this in flight on `codex/r-bridge-grouped-dispersion`).
 
 Register/promotion note: do NOT self-promote COE-03/COE-04 register rows — that is a
 maintainer-gated scientific-coverage decision.

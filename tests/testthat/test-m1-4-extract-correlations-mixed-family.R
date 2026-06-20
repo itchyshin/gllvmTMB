@@ -89,6 +89,64 @@ test_that("extract_correlations() method = 'profile' on 3-family fixture (M1.4 /
   expect_true(all(df$method == "profile"))
 })
 
+# ---- Profile: single-pair SHAPE cells (3-family, not calibration) ----
+#
+# Shape, not calibration. These widen the profile half of the EXT-04
+# evidence by exercising the `pair =` argument (character names AND
+# integer indices) across every trait pair of the 3-family fixture,
+# rather than only the all-pairs call above. We assert the returned
+# data-frame schema, the single-row shape, the requested trait labels,
+# and the [-1, 1] / NA-aware bracket invariants from
+# expect_valid_correlations_df(). We do NOT assert interval width or
+# coverage: profile-interval calibration is CI-10 / Design-50 / M3.3b
+# gated, out of scope here.
+#
+# Profile on the 5-family fixture (T = 8, d = 2) costs ~10 min per pair
+# (repeated full-model refits), so the profile half stays on the
+# 3-family fixture, matching the budget note at the top of this file.
+
+test_that("extract_correlations() method = 'profile' single-pair shape, by name, 3-family (M1.4 / MIX-04, shape not calibration)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
+  named_pairs <- list(
+    c("trait_1", "trait_2"),
+    c("trait_1", "trait_3"),
+    c("trait_2", "trait_3")
+  )
+  for (pr in named_pairs) {
+    df <- suppressMessages(extract_correlations(
+      fit, tier = "unit", method = "profile",
+      pair = pr, link_residual = "auto"
+    ))
+    ## Shape, not calibration: schema + single-row + label + range only.
+    expect_valid_correlations_df(df, 1L)
+    expect_true(all(df$method == "profile"))
+    expect_setequal(c(df$trait_i, df$trait_j), pr)
+  }
+})
+
+test_that("extract_correlations() method = 'profile' single-pair shape, by index, 3-family (M1.4 / MIX-04, shape not calibration)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
+  index_pairs <- list(c(1L, 2L), c(1L, 3L), c(2L, 3L))
+  for (pr in index_pairs) {
+    df <- suppressMessages(extract_correlations(
+      fit, tier = "unit", method = "profile",
+      pair = pr, link_residual = "auto"
+    ))
+    ## Shape, not calibration: integer `pair =` dispatch returns the same
+    ## one-row schema as the by-name form; no interval-width claim.
+    expect_valid_correlations_df(df, 1L)
+    expect_true(all(df$method == "profile"))
+    expect_setequal(
+      c(df$trait_i, df$trait_j),
+      paste0("trait_", pr)
+    )
+  }
+})
+
 # ---- Bootstrap: 5-family only (T = 8, d = 2) ------------------------
 #
 # Rank-1 latent (3-family / T = 3 / d = 1) gives Sigma_shared
@@ -121,6 +179,77 @@ test_that("extract_correlations() method = 'bootstrap' on 5-family fixture (M1.4
   ## Note: full bracket check (lower <= correlation <= upper) is
   ## deferred to M1.8 — the bootstrap path's link_residual handling
   ## has a known propagation gap that produces over-wide CIs.
+})
+
+# ---- Bootstrap: SHAPE cells, 3-family + single-pair -----------------
+#
+# Shape, not calibration. These widen the bootstrap half of the EXT-04
+# evidence by adding (a) the 3-family fixture (T = 3, d = 1) as a second
+# family count alongside the 5-family all-pairs cell above, and (b) the
+# single-pair `pair =` dispatch. We assert schema, row count, method
+# label, and the [-1, 1] point-range invariant only.
+#
+# We deliberately do NOT add the full bracket check
+# (lower <= correlation <= upper). The bootstrap path does not fully
+# propagate `link_residual = "auto"` through bootstrap_Sigma — the arg
+# exists (R/bootstrap-sigma.R:166) but propagation is incomplete, so the
+# bootstrap CI can be over-wide / mis-centred. The fix is M1.8 scope
+# (bootstrap_Sigma mixed-family); bracket calibration is CI-10 /
+# Design-50 / M3.3b gated. These cells are shape evidence, not an
+# interval-calibration claim, and must not be read as "fixing" the gap.
+
+test_that("extract_correlations() method = 'bootstrap' all-pairs shape on 3-family fixture (M1.4 / MIX-04, shape not calibration)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
+  df <- suppressMessages(extract_correlations(
+    fit, tier = "unit", method = "bootstrap",
+    nsim = 50L, seed = 20260520L,
+    link_residual = "auto"
+  ))
+  ## Shape, not calibration: schema + row count + label + point range.
+  expect_s3_class(df, "data.frame")
+  expect_setequal(names(df),
+                  c("tier", "trait_i", "trait_j", "correlation",
+                    "lower", "upper", "method"))
+  expect_equal(nrow(df), choose(3L, 2L))
+  expect_true(all(df$method == "bootstrap"))
+  expect_true(all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8))
+  ## Note: full bracket check (lower <= correlation <= upper) is
+  ## deferred — the bootstrap path's link_residual = "auto" handling has
+  ## a known propagation gap (R/bootstrap-sigma.R:166). This is a shape
+  ## cell, not a calibration claim.
+})
+
+test_that("extract_correlations() method = 'bootstrap' single-pair shape on 3-family fixture (M1.4 / MIX-04, shape not calibration)", {
+  skip_if_not_heavy()
+  skip_on_cran()
+  ## 3-family fixture: a single bootstrap run is ~10 s (vs ~100 s on the
+  ## 5-family T = 8 model, which bootstrap_Sigma refits in full regardless
+  ## of `pair =`). The 5-family all-pairs cell above already covers the
+  ## 5-family bootstrap; here we add the cheap `pair =` dispatch shape.
+  fit <- gllvmTMB:::fit_mixed_family_fixture(n_families = 3L)
+  for (pr in list(c("trait_1", "trait_3"), c(2L, 3L))) {
+    df <- suppressMessages(extract_correlations(
+      fit, tier = "unit", method = "bootstrap",
+      pair = pr, nsim = 40L, seed = 20260521L,
+      link_residual = "auto"
+    ))
+    ## Shape, not calibration: `pair =` dispatch returns the one-row
+    ## schema with the requested trait labels and an in-range point
+    ## estimate. No bracket check (link_residual propagation gap).
+    expect_s3_class(df, "data.frame")
+    expect_setequal(names(df),
+                    c("tier", "trait_i", "trait_j", "correlation",
+                      "lower", "upper", "method"))
+    expect_equal(nrow(df), 1L)
+    expect_true(all(df$method == "bootstrap"))
+    expect_true(all(df$correlation >= -1 - 1e-8 & df$correlation <= 1 + 1e-8))
+    expected_labels <- if (is.character(pr)) pr else paste0("trait_", pr)
+    expect_setequal(c(df$trait_i, df$trait_j), expected_labels)
+    ## Note: full bracket check deferred — bootstrap link_residual = "auto"
+    ## propagation gap (R/bootstrap-sigma.R:166). Shape, not calibration.
+  }
 })
 
 # ---- Method-agreement: fisher-z vs wald only ------------------------

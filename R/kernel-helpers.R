@@ -261,6 +261,100 @@ profile_cross_rho <- function(A_H, A_P, W, rho, refit, metrics = NULL,
   out
 }
 
+#' Profile-likelihood interval for the cross-lineage `rho`
+#'
+#' @description
+#' Turns a [profile_cross_rho()] grid into a profile-likelihood confidence
+#' interval for the fixed cross-lineage correlation `rho`. The interval is the
+#' set of `rho` values whose deviance excess `2 * (logLik_max - logLik)` stays
+#' below `qchisq(level, df = 1)`; the bounds are located by linear interpolation
+#' of the profiled `delta_deviance` curve between the two grid points that
+#' bracket each crossing. Use a `rho` grid dense enough to bracket the crossings
+#' (a coarse 3-4 point sensitivity grid is usually too sparse for a calibrated
+#' interval). When the profiled curve does not rise above the threshold on one
+#' side within the supplied grid, that bound is reported as the grid edge and
+#' flagged unbounded (`lower_bounded` / `upper_bounded` `FALSE`) -- widen the grid.
+#'
+#' This is profile/sensitivity interval evidence on a *fixed*-`rho` refit grid,
+#' not in-engine `rho` estimation (Design 65 C3.3; `COE-04` remains partial).
+#'
+#' @param profile A `gllvmTMB_cross_rho_profile` data frame from
+#'   [profile_cross_rho()] (needs the `rho` and `delta_deviance` columns).
+#' @param level Confidence level in `(0, 1)`; default `0.95`.
+#'
+#' @return A list with `estimate` (the grid `rho` with the highest `logLik`),
+#'   `lower`, `upper`, `level`, `lower_bounded`, `upper_bounded`, and the
+#'   deviance `threshold`. Bounds are clamped to the `rho` domain `[-1, 1]`.
+#'
+#' @seealso [profile_cross_rho()], [make_cross_kernel()]
+#' @export
+profile_cross_rho_ci <- function(profile, level = 0.95) {
+  if (!is.data.frame(profile) ||
+      !all(c("rho", "delta_deviance") %in% names(profile))) {
+    cli::cli_abort(c(
+      "{.arg profile} must be a data frame from {.fn profile_cross_rho}.",
+      "i" = "It needs the {.field rho} and {.field delta_deviance} columns."
+    ))
+  }
+  if (!is.numeric(level) || length(level) != 1L || is.na(level) ||
+      level <= 0 || level >= 1) {
+    cli::cli_abort("{.arg level} must be a single number in (0, 1).")
+  }
+  ok <- is.finite(profile$rho) & is.finite(profile$delta_deviance)
+  d <- profile[ok, c("rho", "delta_deviance"), drop = FALSE]
+  d <- d[order(d$rho), , drop = FALSE]
+  if (nrow(d) < 2L) {
+    cli::cli_abort(
+      "Need at least two finite profile points to form an interval; got {nrow(d)}."
+    )
+  }
+  crit <- stats::qchisq(level, df = 1)
+  best_i <- which.min(d$delta_deviance)
+  est <- d$rho[best_i]
+  dd <- d$delta_deviance
+  rr <- d$rho
+
+  interp <- function(r1, d1, r2, d2) {
+    if (!is.finite(d2 - d1) || d2 == d1) return(r1)
+    r1 + (crit - d1) * (r2 - r1) / (d2 - d1)
+  }
+
+  ## Lower bound: nearest threshold crossing below the best grid point.
+  lower <- rr[1]
+  lower_bounded <- FALSE
+  if (best_i > 1L) {
+    for (j in best_i:2L) {
+      if (dd[j - 1L] >= crit && dd[j] <= crit) {
+        lower <- interp(rr[j - 1L], dd[j - 1L], rr[j], dd[j])
+        lower_bounded <- TRUE
+        break
+      }
+    }
+  }
+  ## Upper bound: nearest threshold crossing above the best grid point.
+  upper <- rr[nrow(d)]
+  upper_bounded <- FALSE
+  if (best_i < nrow(d)) {
+    for (j in best_i:(nrow(d) - 1L)) {
+      if (dd[j] <= crit && dd[j + 1L] >= crit) {
+        upper <- interp(rr[j], dd[j], rr[j + 1L], dd[j + 1L])
+        upper_bounded <- TRUE
+        break
+      }
+    }
+  }
+
+  list(
+    estimate = est,
+    lower = max(-1, min(1, lower)),
+    upper = max(-1, min(1, upper)),
+    level = level,
+    lower_bounded = lower_bounded,
+    upper_bounded = upper_bounded,
+    threshold = crit
+  )
+}
+
 .cross_kernel_metadata <- function(K) {
   meta <- attr(K, "gllvmTMB_cross_kernel", exact = TRUE)
   if (!is.list(meta)) {

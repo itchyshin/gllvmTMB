@@ -16384,3 +16384,51 @@ Still not claimed:
 - No 3-OS CI has run on this local split branch.
 - This is bridge-admission evidence only, not bridge completion, release
   readiness, CRAN readiness, or scientific coverage.
+
+---
+
+## 2026-06-20 — Claude/Ada — re-verify GLLVM.jl #101 vs the R bridge (evidence)
+
+Handover DO NEXT #1. Confirm the wide bridge layer (#101) landed clean against
+the gllvmTMB R bridge. Pure config re-verification from clean `origin/main`
+worktrees; the held dirty branch `codex/r-bridge-grouped-dispersion` was NOT
+touched.
+
+Pre-edit lane check:
+- `gh pr list --state open` -> 0 open PRs.
+- `git log --all --oneline --since="6 hours ago"` -> only merged closure
+  batches / power-pilot / this session's worktree commits; no competing agent
+  edit to check-log / dev-log.
+
+Worktrees (clean):
+- GLLVM.jl `origin/main` `186af2d` -> `/private/tmp/gllvmjl-main` (detached).
+- gllvmTMB `origin/main` `b09f510` -> `/private/tmp/gllvmtmb-main` on branch
+  `claude/bridge-reverify-20260620`.
+
+Engine surface check (`/tmp/gllvmjl-instantiate.log`):
+- `julia --project=/private/tmp/gllvmjl-main -e 'using Pkg; Pkg.instantiate();
+  using GLLVM; ...'` -> exit 0; `GLLVM` precompiled (5 s); `bridge_fit defined:
+  true`; `bridge_capabilities defined: true` (the wide surface is on main, not
+  just the old integration tree).
+
+Live bridge suite (`/tmp/gllvmtmb-bridge-reverify.log`):
+- `PATH="$HOME/.juliaup/bin:$PATH" GLLVM_JL_PATH=/private/tmp/gllvmjl-main
+  Rscript --vanilla -e 'devtools::test(filter="julia-bridge",
+  reporter=c("summary"))'` -> exit 0.
+- Counted deterministically from the summary stream (progress region 100% `.`,
+  no `F`/`W`/`S`): **PASS 1228 | FAIL 0 | WARN 0 | SKIP 0**. SKIP 0 = all 14
+  live-Julia rows executed (vs the pure-R-only baseline that skips them). 1228
+  reproduces the post-#493 live count, now against the freshly-landed #101 main.
+
+Consistency:
+- `rg -n "JUL-01" docs/design/35-validation-debt-register.md` -> rows stay
+  `partial`; no promotion in this slice.
+
+Not claimed:
+- No register-row promotion (JUL-01/JUL-01A stay partial; row-owner + Rose +
+  maintainer call).
+- No 3-OS CI (routine PR CI is ubuntu-only by design; 3-OS is a pre-release gate).
+- No mutation of GLLVM.jl / #101; no scientific-parity / coverage / release claim.
+- This is in-sample bridge-routing parity evidence only.
+
+After-task: `docs/dev-log/after-task/2026-06-20-bridge-reverify-101.md`.

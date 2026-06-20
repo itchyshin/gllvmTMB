@@ -167,6 +167,7 @@ reference:
     - pedigree_to_A
     - pedigree_to_Ainv_sparse
     - make_cross_kernel
+    - profile_cross_rho
     - make_mesh
     - add_utm_columns
     - plot_anisotropy
@@ -183,6 +184,7 @@ reference:
     contents:
     - extract_Sigma
     - extract_Gamma
+    - predict_cross_covariance
     - extract_Sigma_table
     - compare_Sigma_table
     - extract_Omega

@@ -31,18 +31,28 @@ path.}
 A formula marker; never evaluated as a regular R function.
 }
 \description{
-\code{kernel_latent()} and \code{kernel_unique()} fit a named random-effect tier
-with a user-supplied between-unit covariance matrix \code{K}. The IN scope
-(\code{KER-02}) for this C1 dense-kernel slice is the phylo-equivalent path:
+\code{kernel_latent()} and \code{kernel_unique()} fit named random-effect tiers
+with user-supplied between-unit covariance matrices \code{K}. The IN scope
+(\code{KER-02}) for one named dense-kernel tier is the phylo-equivalent path:
 \code{kernel_latent(unit, K = A, d = q)} plus \code{kernel_unique(unit, K = A)}
 must match \code{phylo_latent(unit, vcv = A, d = q)} plus
 \code{phylo_unique(unit, vcv = A)} to less than \code{1e-6} for log likelihood
-and extracted \code{Sigma}. The PARTIAL scope (\code{COE-02}) is coevolution:
-users can pass a \code{K_star} from \code{\link[=make_cross_kernel]{make_cross_kernel()}} and extract the
-host-partner shared covariance block with \code{\link[=extract_Gamma]{extract_Gamma()}}. C2 recovery
-evidence covers known-\code{Gamma} recovery, a zero-\code{Gamma} block-diagonal null,
-and a sparse-versus-dense association sensitivity case; uncertainty and
-\code{rho} profiling remain later example / workflow layers.
+and extracted \code{Sigma}. The first multi-kernel scope (\code{KER-03}) accepts
+two or more fixed named \code{kernel_latent()} tiers over the same grouping
+levels, each with its own \code{K}, loading matrix, and latent field. This
+Paper 2 first wave is latent-only: paired \code{kernel_unique()} Psi is deferred
+because explicit residual/Psi structure is a poor default for non-Gaussian
+and cross-family coevolution models. \code{kernel_dep()} remains single-tier
+only in this first wave.
+
+The cross-lineage coevolution scope remains evidence-gated. IN (\code{COE-02}):
+users can pass one \code{K_star} from \code{\link[=make_cross_kernel]{make_cross_kernel()}} and extract the
+host-partner shared covariance block with \code{\link[=extract_Gamma]{extract_Gamma()}}. PARTIAL
+(\code{COE-03}): fixed two-component named-kernel fits are available for
+component-specific \code{Gamma_shape} extraction, but explicit Psi, kernel-
+separation recovery, \code{rho} estimation/profiling, and interval calibration
+remain future gates. The broader \verb{*_unique()} teaching/API surface is kept
+for compatibility now and should be redesigned/deprecated after this arc.
 }
 \examples{
 \dontrun{

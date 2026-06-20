@@ -16099,6 +16099,211 @@ Still not claimed:
 - This is bridge-admission evidence only, not bridge completion, release
   readiness, CRAN readiness, or scientific coverage.
 
+## 2026-06-19 15:38 MDT -- coevolution fixed-rho metadata regression
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Fix Faraday's read-only audit finding that real fitted multi-kernel
+  `make_cross_kernel()` tiers could lose host/partner/fixed-`rho` metadata
+  after `R/fit-multi.R` subset and symmetrised `K`.
+- Preserve the fixed-rho point-extractor claim boundary:
+  `PR green != bridge complete != release ready != scientific coverage passed`.
+
+Pre-edit lane check before updating shared dev-log/design evidence:
+
+- `gh pr list --state open`
+  -> only draft PR #489 was open.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent local split commits only:
+  `af9940d`, `709eef0`, `4a2449a`, and `e2dd41d`.
+
+Implemented:
+
+- `R/kernel-helpers.R`: added `.cross_kernel_metadata_for_levels()`.
+- `R/fit-multi.R`: records `.cross_kernel_metadata(K)` before level alignment,
+  restricts host/partner defaults to fitted levels, and reattaches the metadata
+  to each stored `fit$kernel_matrices[[name]]`.
+- `tests/testthat/test-coevolution-two-kernel.R`: added a real fitted
+  `make_cross_kernel()` multi-kernel regression where
+  `predict_cross_covariance()` omits `row_levels` / `col_levels`, returns host
+  and partner defaults, reports fixed `rho = 0.55`, sets
+  `kernel_includes_rho = TRUE`, and keeps `fit$fit_health$max_gradient` finite.
+- `docs/design/35-validation-debt-register.md`,
+  `docs/design/65-cross-lineage-coevolution-kernel.md`, and `NEWS.md`: aligned
+  KER-03 / COE-03 wording with the real-fit metadata repair.
+
+Checks:
+
+- `git diff --check`
+  -> clean.
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'rcmdcheck::rcmdcheck(path = ".", args = "--no-manual", quiet = TRUE, error_on = "never", check_dir = "/tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619", env = c("_R_CHECK_FORCE_SUGGESTS_" = "false"))'`
+  -> `0 errors | 1 warning | 0 notes`.
+- `rg -n "WARNING|ERROR|NOTE|clang|fixed-enum|R_ext/Boolean|whether package.*can be installed|Status" /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/00check.log /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/00install.out /tmp/gllvmtmb-rcmdcheck-coevolution-metadata-20260619/gllvmTMB.Rcheck/tests/testthat.Rout`
+  -> the only warning was the known Apple Clang / R header warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+
+Stale / claim-boundary scan:
+
+- `rg -n "in-engine rho|rho estimation|rho interval|rho intervals|scientific coverage|release ready|release readiness|bridge complete|kernel_includes_rho" R/kernel-helpers.R R/fit-multi.R R/extract-sigma.R tests/testthat/test-coevolution-two-kernel.R docs/design/35-validation-debt-register.md docs/design/65-cross-lineage-coevolution-kernel.md NEWS.md`
+  -> expected guardrail and `kernel_includes_rho` hits only.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, in-engine `rho`, `rho` intervals, formal Type-I/null calibration,
+  interval calibration, module uncertainty/rank calibration, or scientific
+  coverage completion.
+
+## 2026-06-19 -- coevolution fixed-kernel split test strengthening
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Close Descartes' immediate fixed multi-kernel engine review request by adding
+  a mixed-rank two-kernel offset guard and a numeric gradient threshold to the
+  real cross-kernel metadata regression.
+- Record Hypatia's test-coverage warning without promoting COE-04: this is
+  still fixed-kernel / fixed-rho point evidence, not mixed-family recovery,
+  formal null calibration, interval calibration, module/rank calibration, or
+  broad scientific coverage.
+
+Pre-edit lane check before updating shared dev-log evidence:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it still points at
+  `codex/r-bridge-grouped-dispersion`, is clean, and has visible
+  `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent split/worktree commits were
+  `c061ce2`, `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`, `709eef0`,
+  `4a2449a`, and the two power-pilot accumulation commits `22316dd` /
+  `895cbf9`.
+
+Implemented:
+
+- `tests/testthat/test-coevolution-two-kernel.R`: added a fast mixed-rank
+  two-kernel fit where named tier `phy` uses `d = 2` and named tier `non` uses
+  `d = 1`, then checked `fit$kernel_levels$rank`,
+  `dim(fit$report$Lambda_kernel)`, zero padding for the rank-1 tier, and
+  `extract_Sigma(..., part = "shared")` for both named kernels.
+- `tests/testthat/test-coevolution-two-kernel.R`: tightened the real
+  cross-kernel metadata regression to require
+  `fit$fit_health$max_gradient < 1e-3`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `rg -n "COE-04.*covered|scientific coverage passed|release ready|bridge complete|in-engine rho|rho estimation|rho interval|mixed-family coverage|formal null|Type-I|interval calibration" README.md NEWS.md docs vignettes R tests`
+  -> expected guardrail/history/design hits only. Live source hits kept COE-03
+  / COE-04 partial and named fixed-rho, interval, null-calibration, and
+  mixed-family limits.
+- `git diff --check`
+  -> clean.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, in-engine `rho`, `rho` intervals, formal Type-I/null calibration,
+  interval calibration, mixed-family recovery, module uncertainty/rank
+  calibration, or scientific coverage completion.
+
+## 2026-06-19 -- coevolution fixed-effect and shared-Sigma recovery gate
+
+Branch: `codex/coevolution-engine-split-20260619`
+
+Purpose:
+
+- Add the next narrow COE-04 evidence slice requested by the simulation audit:
+  near-orthogonal Gaussian recovery of planted trait intercepts and
+  component-specific shared-Sigma magnitudes.
+- Keep COE-04 partial. This is not mixed-family recovery, null calibration,
+  interval calibration, in-engine `rho`, module/rank calibration, or broad
+  scientific coverage.
+
+Pre-edit lane check before updating shared design/dev-log files:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> only draft PR #489 was open; it still points at
+  `codex/r-bridge-grouped-dispersion`, is clean, and has visible
+  `ubuntu-latest (release)` and `recovery` checks successful.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent split/worktree commits were
+  `5c10ed8`, `c061ce2`, `e2866f7`, `2da7505`, `9bfe15c`, `af9940d`,
+  `709eef0`, `4a2449a`, and the two power-pilot accumulation commits
+  `22316dd` / `895cbf9`.
+
+Implemented:
+
+- `tests/testthat/test-coevolution-two-kernel.R`: added optional centered
+  latent fields to the shared two-component fixture and returned planted
+  `alpha`, `Sigma_phy`, and `Sigma_non` truth objects.
+- `tests/testthat/test-coevolution-two-kernel.R`: added the heavy test
+  `near-orthogonal Gaussian recovery covers fixed effects and shared Sigma magnitudes`.
+  It checks fixed-effect recovery within `0.20`, component shared-Sigma
+  Frobenius magnitude ratios between `0.65` and `1.25`, host/partner block
+  correlations above `0.90`, and absolute cross-block shape correlation above
+  `0.95`.
+- `docs/design/35-validation-debt-register.md` and
+  `docs/design/65-cross-lineage-coevolution-kernel.md`: recorded the new
+  fixed-effect/shared-Sigma evidence while leaving COE-04 `partial`.
+- Added
+  `docs/dev-log/after-task/2026-06-19-coevolution-fixed-effect-sigma-recovery.md`.
+
+Checks:
+
+- `Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "coevolution-two-kernel", reporter = "summary")'`
+  -> exit code 0.
+- `Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0; expected heavy rows skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::test(filter = "kernel|coevolution", reporter = "summary")'`
+  -> exit code 0.
+- `rg -n "COE-04.*covered|scientific coverage passed|release ready|bridge complete|in-engine rho|rho estimation|rho interval|mixed-family coverage|formal null|Type-I|interval calibration|fixed effects and shared Sigma" README.md NEWS.md docs vignettes R tests`
+  -> expected guardrail/history/design hits plus the new test name only.
+- `git diff --check`
+  -> clean.
+
+Agent input:
+
+- Hume / Curie-Hypatia read-only review recommended this exact next gate: reuse
+  the near-orthogonal Gaussian fixture, return planted fixed effects and
+  shared-Sigma truth, and keep tolerances broad enough for a small deterministic
+  point-recovery gate.
+
+Still not claimed:
+
+- No push.
+- No mutation of GLLVM.jl #101.
+- No bridge completion, release readiness, CRAN readiness, public article
+  placement, Lambda recovery, in-engine `rho`, `rho` intervals, formal
+  Type-I/null calibration, interval calibration, mixed-family recovery, module
+  uncertainty/rank calibration, or scientific coverage completion.
+
 ## 2026-06-19 17:19 MDT -- bridge admission split fresh validation after unique/Psi closeout
 
 Branch: `codex/bridge-admission-split-20260619`

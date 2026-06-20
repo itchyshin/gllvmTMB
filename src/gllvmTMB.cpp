@@ -274,6 +274,22 @@ Type objective_function<Type>::operator()()
   DATA_SCALAR(log_det_A_phy_rr);     // precomputed
   DATA_IVECTOR(species_aug_id);      // n_obs, 0-indexed row in g_phy (== species_id in legacy path)
 
+  // Design 65 C3.1: generic fixed dense multi-kernel tiers. This is active
+  // only for two or more named kernel_* tiers; the one-name path stays in the
+  // phylo-equivalent block above for KER-02 byte-equivalence.
+  DATA_INTEGER(n_kernel_tiers);
+  DATA_INTEGER(n_kernel_levels);
+  DATA_INTEGER(max_kernel_rank);
+  DATA_IVECTOR(kernel_group_id);      // n_obs, 0-indexed row in each K_r
+  DATA_IVECTOR(kernel_rank);          // rank per tier
+  DATA_IVECTOR(kernel_has_latent);    // 1 when Lambda_r / g_r is active
+  DATA_IVECTOR(kernel_has_diag);      // 1 when Psi_r is active
+  DATA_IVECTOR(kernel_g_offset);      // flat offset into g_kernel per tier
+  DATA_IVECTOR(kernel_logsd_offset);  // flat offset into log_sd_kernel_diag
+  DATA_IVECTOR(kernel_diag_offset);   // flat offset into g_kernel_diag
+  DATA_ARRAY(Ainv_kernel);            // n_tier x n_level x n_level
+  DATA_VECTOR(log_det_A_kernel);      // length n_tier
+
   // Two-U PGLLVM: phylo_diag (per-trait phylogenetic random intercept).
   // When phylo_latent(species, d=K) and phylo_unique(species) co-fit, the
   // phy-tier covariance becomes Sigma_phy = Lambda_phy Lambda_phy^T +
@@ -525,6 +541,14 @@ Type objective_function<Type>::operator()()
   // ~ N(0, A) with the same Ainv_phy_rr / log_det_A_phy_rr as phylo_rr.
   PARAMETER_VECTOR(log_sd_phy_diag);             // length n_traits (or 1 if unused)
   PARAMETER_MATRIX(g_phy_diag);                  // n_aug_phy x n_traits (or x 1 if unused)
+  // Generic fixed dense multi-kernel block (Design 65 C3.1). Flat vectors use
+  // tier offsets from DATA so component ranks can differ without unused random
+  // effects. For each tier r, g_kernel rows are ordered level-major, rank-minor:
+  // offset + i * rank_r + k. Optional Psi fields use offset + i * n_traits + t.
+  PARAMETER_VECTOR(theta_rr_kernel);             // packed Lambda_r blocks
+  PARAMETER_VECTOR(g_kernel);                    // flat kernel factor scores
+  PARAMETER_VECTOR(log_sd_kernel_diag);          // optional Psi log-SDs
+  PARAMETER_VECTOR(g_kernel_diag);               // optional Psi fields
   // phylo_slope params (Q6)
   PARAMETER_VECTOR(b_phy_slope);                 // length n_aug_phy; per-species slopes
   PARAMETER(log_sigma_slope);                    // scalar; log slope sd
@@ -972,6 +996,120 @@ Type objective_function<Type>::operator()()
       nll += 0.5 * (Type(n_aug_phy) * log(2.0 * M_PI)
                     + log_det_A_phy_rr + quad);
     }
+  }
+
+  // -------- Generic dense multi-kernel tiers (Design 65 C3.1) --------------
+  array<Type> Lambda_kernel(n_traits, std::max(max_kernel_rank, 1),
+                            std::max(n_kernel_tiers, 1));
+  array<Type> Sigma_kernel(n_traits, n_traits, std::max(n_kernel_tiers, 1));
+  matrix<Type> sd_kernel_diag(n_traits, std::max(n_kernel_tiers, 1));
+  Lambda_kernel.setZero();
+  Sigma_kernel.setZero();
+  sd_kernel_diag.setZero();
+  if (n_kernel_tiers > 0) {
+    if (kernel_group_id.size() != y.size())
+      error("gllvmTMB_multi: kernel_group_id must have length n_obs");
+    if (kernel_rank.size() != n_kernel_tiers ||
+        kernel_has_latent.size() != n_kernel_tiers ||
+        kernel_has_diag.size() != n_kernel_tiers ||
+        kernel_g_offset.size() != n_kernel_tiers ||
+        kernel_logsd_offset.size() != n_kernel_tiers ||
+        kernel_diag_offset.size() != n_kernel_tiers ||
+        log_det_A_kernel.size() != n_kernel_tiers)
+      error("gllvmTMB_multi: kernel tier metadata has wrong length");
+    if (Ainv_kernel.dim.size() != 3)
+      error("gllvmTMB_multi: Ainv_kernel must be a 3D array");
+    if (Ainv_kernel.dim[0] != n_kernel_tiers ||
+        Ainv_kernel.dim[1] != n_kernel_levels ||
+        Ainv_kernel.dim[2] != n_kernel_levels)
+      error("gllvmTMB_multi: Ainv_kernel dimensions do not match kernel metadata");
+
+    int theta_pos = 0;
+    int expected_g = 0;
+    int expected_logsd = 0;
+    int expected_diag = 0;
+    for (int r = 0; r < n_kernel_tiers; r++) {
+      int rank = kernel_rank(r);
+      if (rank < 1 || rank > n_traits)
+        error("gllvmTMB_multi: invalid kernel rank");
+      int len_theta = n_traits * rank - rank * (rank - 1) / 2;
+      if (kernel_has_latent(r) != 1)
+        error("gllvmTMB_multi: multi-kernel first wave requires latent tiers");
+      if (kernel_g_offset(r) != expected_g)
+        error("gllvmTMB_multi: kernel_g_offset mismatch");
+      if (theta_pos + len_theta > theta_rr_kernel.size())
+        error("gllvmTMB_multi: theta_rr_kernel has wrong length");
+
+      vector<Type> theta_r = theta_rr_kernel.segment(theta_pos, len_theta);
+      theta_pos += len_theta;
+      expected_g += n_kernel_levels * rank;
+      vector<Type> lam_diag = theta_r.head(rank);
+      vector<Type> lam_lower = theta_r.tail(len_theta - rank);
+      for (int j = 0; j < rank; j++) {
+        for (int i = 0; i < n_traits; i++) {
+          if (j > i)
+            Lambda_kernel(i, j, r) = Type(0);
+          else if (i == j)
+            Lambda_kernel(i, j, r) = lam_diag(j);
+          else
+            Lambda_kernel(i, j, r) =
+              lam_lower(j * n_traits - (j + 1) * j / 2 + i - 1 - j);
+        }
+      }
+      for (int i = 0; i < n_traits; i++) {
+        for (int j = 0; j < n_traits; j++) {
+          Type s = 0;
+          for (int k = 0; k < rank; k++)
+            s += Lambda_kernel(i, k, r) * Lambda_kernel(j, k, r);
+          Sigma_kernel(i, j, r) = s;
+        }
+      }
+
+      int goff = kernel_g_offset(r);
+      for (int k = 0; k < rank; k++) {
+        Type quad = 0;
+        for (int i = 0; i < n_kernel_levels; i++) {
+          Type gi = g_kernel(goff + i * rank + k);
+          for (int j = 0; j < n_kernel_levels; j++) {
+            Type gj = g_kernel(goff + j * rank + k);
+            quad += gi * Ainv_kernel(r, i, j) * gj;
+          }
+        }
+        nll += Type(0.5) * (Type(n_kernel_levels) * log(2.0 * M_PI)
+                            + log_det_A_kernel(r) + quad);
+      }
+
+      if (kernel_has_diag(r) == 1) {
+        if (kernel_logsd_offset(r) != expected_logsd ||
+            kernel_diag_offset(r) != expected_diag)
+          error("gllvmTMB_multi: kernel Psi offset mismatch");
+        int lsoff = kernel_logsd_offset(r);
+        int doff = kernel_diag_offset(r);
+        for (int t = 0; t < n_traits; t++) {
+          sd_kernel_diag(t, r) = exp(log_sd_kernel_diag(lsoff + t));
+          Type quad = 0;
+          for (int i = 0; i < n_kernel_levels; i++) {
+            Type gi = g_kernel_diag(doff + i * n_traits + t);
+            for (int j = 0; j < n_kernel_levels; j++) {
+              Type gj = g_kernel_diag(doff + j * n_traits + t);
+              quad += gi * Ainv_kernel(r, i, j) * gj;
+            }
+          }
+          nll += Type(0.5) * (Type(n_kernel_levels) * log(2.0 * M_PI)
+                              + log_det_A_kernel(r) + quad);
+        }
+        expected_logsd += n_traits;
+        expected_diag += n_kernel_levels * n_traits;
+      }
+    }
+    if (theta_pos != theta_rr_kernel.size() ||
+        expected_g != g_kernel.size() ||
+        expected_logsd != log_sd_kernel_diag.size() ||
+        expected_diag != g_kernel_diag.size())
+      error("gllvmTMB_multi: flat multi-kernel parameter lengths mismatch");
+    REPORT(Lambda_kernel);
+    REPORT(Sigma_kernel);
+    REPORT(sd_kernel_diag);
   }
 
   // -------- Q6: phylo_slope prior --------------------------------------
@@ -1671,6 +1809,26 @@ Type objective_function<Type>::operator()()
     if (use_phylo_diag == 1) {
       // Per-trait phylogenetic random intercept.
       eta(o) += exp(log_sd_phy_diag(t)) * g_phy_diag(species_aug_id(o), t);
+    }
+    if (n_kernel_tiers > 0) {
+      int kid = kernel_group_id(o);
+      if (kid < 0 || kid >= n_kernel_levels)
+        error("gllvmTMB_multi: kernel_group_id out of range");
+      for (int r = 0; r < n_kernel_tiers; r++) {
+        int rank = kernel_rank(r);
+        int goff = kernel_g_offset(r);
+        Type contrib = 0;
+        for (int k = 0; k < rank; k++)
+          contrib += Lambda_kernel(t, k, r) *
+            g_kernel(goff + kid * rank + k);
+        eta(o) += contrib;
+        if (kernel_has_diag(r) == 1) {
+          int lsoff = kernel_logsd_offset(r);
+          int doff = kernel_diag_offset(r);
+          eta(o) += exp(log_sd_kernel_diag(lsoff + t)) *
+            g_kernel_diag(doff + kid * n_traits + t);
+        }
+      }
     }
     if (use_phylo_slope_correlated == 1) {
       Type contrib_aug = 0;

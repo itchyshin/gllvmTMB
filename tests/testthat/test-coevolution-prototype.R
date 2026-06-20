@@ -24,6 +24,7 @@ test_that("make_cross_kernel returns a PSD block correlation matrix", {
   colnames(W) <- rownames(A_P)
 
   K <- gllvmTMB::make_cross_kernel(A_H, A_P, W, rho = 0.4)
+  meta <- attr(K, "gllvmTMB_cross_kernel")
 
   expect_equal(dim(K), c(5L, 5L))
   expect_equal(rownames(K), c(rownames(A_H), rownames(A_P)))
@@ -32,6 +33,10 @@ test_that("make_cross_kernel returns a PSD block correlation matrix", {
   expect_equal(K[4:5, 4:5], A_P, tolerance = 1e-12)
   expect_equal(unname(diag(K)), rep(1, 5), tolerance = 1e-12)
   expect_gt(min(eigen(K, symmetric = TRUE, only.values = TRUE)$values), -1e-8)
+  expect_equal(meta$rho, 0.4)
+  expect_equal(meta$host_levels, rownames(A_H))
+  expect_equal(meta$partner_levels, rownames(A_P))
+  expect_true(is.finite(meta$spectral_norm_W))
 })
 
 test_that("make_cross_kernel rejects invalid matrix scale and bridge strength", {

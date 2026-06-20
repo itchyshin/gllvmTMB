@@ -1,6 +1,57 @@
 ## Stage 2 of gllvmTMB: fit a multivariate stacked-trait model with rr() +
 ## diag() covariance structures using src/gllvmTMB.cpp.
 
+.kernel_overlap_class <- function(similarity) {
+  ifelse(
+    similarity < 0.25, "near_orthogonal",
+    ifelse(similarity < 0.70, "moderate", "high")
+  )
+}
+
+.kernel_overlap_diagnostics <- function(K_array, names) {
+  n_tiers <- dim(K_array)[1L]
+  sim <- diag(1, n_tiers)
+  dimnames(sim) <- list(names, names)
+  rows <- list()
+  k <- 1L
+  for (i in seq_len(n_tiers - 1L)) {
+    for (j in seq.int(i + 1L, n_tiers)) {
+      K_i <- K_array[i, , ]
+      K_j <- K_array[j, , ]
+      off_diag <- row(K_i) != col(K_i)
+      x <- K_i[off_diag]
+      y <- K_j[off_diag]
+      denom <- sqrt(sum(x^2) * sum(y^2))
+      value <- if (is.finite(denom) && denom > 0) {
+        sum(x * y) / denom
+      } else if (all(abs(x) < 1e-12) && all(abs(y) < 1e-12)) {
+        1
+      } else {
+        0
+      }
+      sim[i, j] <- sim[j, i] <- value
+      rows[[k]] <- data.frame(
+        level_1 = names[[i]],
+        level_2 = names[[j]],
+        similarity = value,
+        overlap_class = .kernel_overlap_class(value),
+        stringsAsFactors = FALSE
+      )
+      k <- k + 1L
+    }
+  }
+  list(
+    similarity = sim,
+    pairs = do.call(rbind, rows),
+    thresholds = c(near_orthogonal = 0.25, high = 0.70),
+    note = paste(
+      "Off-diagonal Frobenius-style similarity between fixed kernel tiers.",
+      "near_orthogonal < 0.25; moderate < 0.70; high >= 0.70.",
+      "High overlap means component-specific Gamma_shape separation is weak evidence."
+    )
+  )
+}
+
 #' Fit a long-format multivariate stacked-trait model (Stage 2 internal)
 #'
 #' Called by [gllvmTMB()] when the formula contains `latent()` or `unique()`
@@ -697,13 +748,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     val <- parsed$covstructs[[i]]$extra$.kernel_name
     if (is.null(val)) NA_character_ else as.character(val)
   }, character(1L))
+  phy_kernel_mode <- vapply(phy_idx_main, function(i) {
+    val <- parsed$covstructs[[i]]$extra$.kernel_mode
+    if (is.null(val)) NA_character_ else as.character(val)
+  }, character(1L))
   has_kernel_term <- any(!is.na(phy_kernel_name))
   kernel_name <- NULL
+  kernel_single_rho <- NA_real_
+  unique_kernel_names <- character(0L)
+  use_kernel_multi <- FALSE
+  phy_is_kernel_multi <- rep(FALSE, length(phy_idx_main))
   if (has_kernel_term) {
     if (any(is.na(phy_kernel_name))) {
       cli::cli_abort(c(
-        "{.fn kernel_*} terms cannot be mixed with {.fn phylo_*} terms in C1.",
-        "i" = "The dense kernel path reuses the phylo-equivalent engine slot; use either all {.fn kernel_*} terms or all {.fn phylo_*} terms for that tier."
+        "{.fn kernel_*} terms cannot be mixed with {.fn phylo_*} terms in the same first-wave kernel block.",
+        "i" = "Use either named {.fn kernel_*} tiers or source-specific {.fn phylo_*} terms for this model slice."
       ))
     }
     if (any(!nzchar(phy_kernel_name))) {
@@ -712,16 +771,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       )
     }
     unique_kernel_names <- unique(phy_kernel_name)
-    if (length(unique_kernel_names) != 1L) {
+    use_kernel_multi <- length(unique_kernel_names) > 1L
+    if (use_kernel_multi && any(phy_kernel_mode %in% "dep")) {
       cli::cli_abort(c(
-        "{.fn kernel_*} terms in the same formula must use one {.arg name}.",
-        "i" = "Got names: {.val {unique_kernel_names}}."
+        "Multi-kernel {.fn kernel_dep} is not in the first engine wave.",
+        "i" = "Use named {.fn kernel_latent} tiers only, or fit one {.fn kernel_dep} tier at a time."
       ))
     }
-    kernel_name <- unique_kernel_names
+    if (use_kernel_multi) {
+      phy_is_kernel_multi <- !is.na(phy_kernel_name)
+    } else {
+      kernel_name <- unique_kernel_names
+    }
   }
-  phylo_rr_idx   <- phy_idx_main[!phy_is_unique]   # phylo_latent + phylo_dep terms
-  phylo_diag_idx <- phy_idx_main[ phy_is_unique]   # phylo_unique terms (incl. phylo_indep)
+  phylo_rr_idx   <- phy_idx_main[!phy_is_unique & !phy_is_kernel_multi]   # phylo_latent + phylo_dep terms
+  phylo_diag_idx <- phy_idx_main[ phy_is_unique & !phy_is_kernel_multi]   # phylo_unique terms (incl. phylo_indep)
   if (length(phylo_latent_slope_idx) > 1L)
     cli::cli_abort("Only one augmented {.fn phylo_latent} (random-slope) term is supported per formula.")
   ## ---- phylo_dep over-parameterisation guards --------------------------
@@ -732,23 +796,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ##   * phylo_dep + phylo_latent: over-parameterised
   ##   * phylo_dep + phylo_unique: redundant (phylo_dep already includes diag)
   ##   * phylo_dep + phylo_indep:  redundant
-  is_phylo_dep <- any(phy_is_dep)
+  is_phylo_dep <- any(phy_is_dep & !phy_is_kernel_multi)
   if (is_phylo_dep) {
-    if (any(!phy_is_dep & !phy_is_unique)) {
+    if (any(!phy_is_dep & !phy_is_unique & !phy_is_kernel_multi)) {
       cli::cli_abort(c(
         "{.fn phylo_dep} and {.fn phylo_latent} are over-parameterised together.",
         "i" = "Both {.code phylo_dep(0 + trait | species)} and {.code phylo_latent(species, d = K)} appear in the formula.",
         ">" = "Use {.fn phylo_dep} alone for the full unstructured cross-trait phylogenetic fit, or use {.code phylo_latent + phylo_unique} (paired) for the paired phylogenetic decomposition. They cannot coexist."
       ))
     }
-    if (any(phy_is_unique & !phy_is_indep)) {
+    if (any(phy_is_unique & !phy_is_indep & !phy_is_kernel_multi)) {
       cli::cli_abort(c(
         "{.fn phylo_dep} and {.fn phylo_unique} are redundant together.",
         "i" = "Both {.code phylo_dep(0 + trait | species)} and {.code phylo_unique(species)} appear in the formula.",
         ">" = "{.fn phylo_dep} standalone already includes the per-trait phylogenetic diagonal -- pick one."
       ))
     }
-    if (any(phy_is_indep)) {
+    if (any(phy_is_indep & !phy_is_kernel_multi)) {
       cli::cli_abort(c(
         "{.fn phylo_dep} and {.fn phylo_indep} are redundant together.",
         "i" = "Both {.code phylo_dep(0 + trait | species)} and {.code phylo_indep(0 + trait | species)} appear in the formula.",
@@ -764,7 +828,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## phylo_indep is the marginal-only canonical for phylogenetic fits;
   ## same engine as phylo_unique-alone, the .indep marker only changes
   ## the printed label and triggers these guards.
-  is_phylo_indep <- any(phy_is_indep)
+  is_phylo_indep <- any(phy_is_indep & !phy_is_kernel_multi)
   if (is_phylo_indep) {
     ## phylo_indep + phylo_latent: over-parameterised (cannot decide
     ## whether trait-level phylogenetic variance lives in the shared
@@ -780,8 +844,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     ## After rewrite, phylo_indep terms ALSO carry .phylo_unique = TRUE, so
     ## "redundant" here means the user wrote phylo_unique() AND phylo_indep()
     ## both — i.e. mixed marker pattern.
-    if (sum(phy_is_unique) > 0L && sum(phy_is_indep) > 0L &&
-        sum(phy_is_unique) > sum(phy_is_indep)) {
+    phy_unique_plain <- phy_is_unique & !phy_is_kernel_multi
+    phy_indep_plain <- phy_is_indep & !phy_is_kernel_multi
+    if (sum(phy_unique_plain) > 0L && sum(phy_indep_plain) > 0L &&
+        sum(phy_unique_plain) > sum(phy_indep_plain)) {
       cli::cli_abort(c(
         "{.fn phylo_indep} and {.fn phylo_unique} are redundant together.",
         "i" = "Both appear in the formula.",
@@ -2017,7 +2083,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Multiple phylo terms must agree on the tree / vcv.
   for (i in seq_along(parsed$covstructs)) {
     cs <- parsed$covstructs[[i]]
-    if (cs$kind %in% c("phylo_rr", "propto", "phylo_slope")) {
+    is_multi_kernel_term <- use_kernel_multi &&
+      identical(cs$kind, "phylo_rr") &&
+      !is.null(cs$extra$.kernel_name)
+    if (!is_multi_kernel_term &&
+        cs$kind %in% c("phylo_rr", "propto", "phylo_slope")) {
       tree_inkey <- cs$extra$tree
       vcv_inkey  <- cs$extra$vcv
       if (!is.null(tree_inkey) && inherits(tree_inkey, "phylo")) {
@@ -2039,6 +2109,9 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         ## detects sparse input and uses it directly as Ainv_phy_rr.
         if (is.null(phylo_vcv)) {
           phylo_vcv <- vcv_inkey
+          if (has_kernel_term && !use_kernel_multi) {
+            kernel_single_rho <- .cross_kernel_rho(vcv_inkey)
+          }
         } else if (!identical(dim(phylo_vcv), dim(vcv_inkey))) {
           cli::cli_warn(c(
             "{.code vcv =} inside a phylo keyword disagrees with the global {.arg phylo_vcv}.",
@@ -2051,6 +2124,12 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       mesh_inkey <- cs$extra$mesh
       if (!is.null(mesh_inkey) && is.null(mesh)) mesh <- mesh_inkey
     }
+  }
+  if (has_kernel_term &&
+      !use_kernel_multi &&
+      is.na(kernel_single_rho) &&
+      !is.null(phylo_vcv)) {
+    kernel_single_rho <- .cross_kernel_rho(phylo_vcv)
   }
 
   ## ---- cluster2 grouping id (0-indexed for C++) ------------------------
@@ -2077,6 +2156,189 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   log_det_A_phy_rr <- 0
   n_aug_phy        <- n_species
   species_aug_id   <- species_id        # default: tip-only path uses species_id directly
+
+  ## ---- Generic dense multi-kernel preparation (Design 65 C3.1) ------------
+  ## The one-name `kernel_*()` path above deliberately remains byte-equivalent
+  ## to the dense phylo-equivalent engine (KER-02). When two or more distinct
+  ## names are present, switch to a separate dense fixed-kernel block so Paper 2
+  ## components can carry independent K_r, Lambda_r, and optional Psi_r.
+  n_kernel_tiers <- 0L
+  n_kernel_levels <- 1L
+  max_kernel_rank <- 1L
+  kernel_rank <- 1L
+  kernel_has_latent <- 0L
+  kernel_has_diag <- 0L
+  kernel_g_offset <- -1L
+  kernel_logsd_offset <- -1L
+  kernel_diag_offset <- -1L
+  Ainv_kernel <- array(0.0, dim = c(1L, 1L, 1L))
+  log_det_A_kernel <- 0.0
+  kernel_multi_registry <- NULL
+  kernel_diagnostics <- NULL
+  kernel_matrix_list <- NULL
+  if (use_kernel_multi) {
+    levs <- levels(data[[species]])
+    n_kernel_tiers <- length(unique_kernel_names)
+    n_kernel_levels <- length(levs)
+    kernel_rank <- integer(n_kernel_tiers)
+    kernel_has_latent <- integer(n_kernel_tiers)
+    kernel_has_diag <- integer(n_kernel_tiers)
+    kernel_g_offset <- integer(n_kernel_tiers)
+    kernel_logsd_offset <- rep(-1L, n_kernel_tiers)
+    kernel_diag_offset <- rep(-1L, n_kernel_tiers)
+    Ainv_kernel <- array(
+      0.0,
+      dim = c(n_kernel_tiers, n_kernel_levels, n_kernel_levels)
+    )
+    K_kernel <- array(
+      0.0,
+      dim = c(n_kernel_tiers, n_kernel_levels, n_kernel_levels)
+    )
+    log_det_A_kernel <- numeric(n_kernel_tiers)
+
+    g_cursor <- 0L
+    logsd_cursor <- 0L
+    diag_cursor <- 0L
+    kernel_rows <- vector("list", n_kernel_tiers)
+    kernel_matrix_list <- vector("list", n_kernel_tiers)
+    for (r in seq_along(unique_kernel_names)) {
+      nm <- unique_kernel_names[[r]]
+      term_idx <- phy_idx_main[phy_is_kernel_multi & phy_kernel_name == nm]
+      modes_r <- vapply(term_idx, function(i) {
+        as.character(parsed$covstructs[[i]]$extra$.kernel_mode)
+      }, character(1L))
+      latent_idx <- term_idx[modes_r == "latent"]
+      diag_idx <- term_idx[modes_r %in% c("unique", "indep")]
+      if (length(latent_idx) != 1L) {
+        cli::cli_abort(c(
+          "Each named multi-kernel tier needs exactly one {.fn kernel_latent} term in the first engine wave.",
+          "i" = "Tier {.val {nm}} has {length(latent_idx)} latent terms.",
+          ">" = "The Paper 2 multi-kernel path is latent-only in this first wave; explicit {.field Psi} is deferred."
+        ))
+      }
+      if (length(diag_idx) > 0L) {
+        cli::cli_abort(c(
+          "The first multi-kernel engine wave is latent-only.",
+          "i" = "Tier {.val {nm}} includes {.fn kernel_unique} / {.fn kernel_indep}, but explicit kernel-level {.field Psi} is deferred for Paper 2.",
+          ">" = "Use separate named {.fn kernel_latent} tiers for component-specific shared structure; handle non-Gaussian and cross-family residual scale outside this kernel-Psi grammar for now."
+        ))
+      }
+
+      cs_lat <- parsed$covstructs[[latent_idx]]
+      lhs_vars <- all.vars(cs_lat$lhs)
+      if (!identical(lhs_vars, species)) {
+        cli::cli_abort(c(
+          "Multi-kernel first wave requires all {.fn kernel_*} tiers to use the {.arg cluster} grouping.",
+          "i" = "Expected grouping {.var {species}}; tier {.val {nm}} uses {.val {lhs_vars}}.",
+          ">" = "Crossed or different kernel groups are reserved for a later engine slice."
+        ))
+      }
+
+      rank_r <- as.integer(cs_lat$extra$d %||% 1L)
+      if (length(rank_r) != 1L || is.na(rank_r) || rank_r < 1L) {
+        cli::cli_abort("{.arg d} for {.fn kernel_latent} tier {.val {nm}} must be a positive integer.")
+      }
+      if (rank_r > n_traits) {
+        cli::cli_abort(
+          "{.fn kernel_latent}(name = {nm}, d = {rank_r}) exceeds the number of traits ({n_traits}); the latent rank must satisfy d <= n_traits."
+        )
+      }
+      K <- cs_lat$extra$vcv
+      kernel_meta <- .cross_kernel_metadata(K)
+      kernel_rho <- .cross_kernel_rho(K)
+      if (!is.matrix(K) || !is.numeric(K) || nrow(K) != ncol(K)) {
+        cli::cli_abort(
+          "{.arg K} for {.fn kernel_latent} tier {.val {nm}} must be a numeric square matrix."
+        )
+      }
+      if (is.null(rownames(K))) {
+        cli::cli_abort(
+          "{.arg K} for {.fn kernel_latent} tier {.val {nm}} must have row names matching levels of {.var {species}}."
+        )
+      }
+      if (!all(levs %in% rownames(K))) {
+        cli::cli_abort(c(
+          "{.arg K} for {.fn kernel_latent} tier {.val {nm}} does not cover all {.var {species}} levels.",
+          "i" = "Missing levels: {.val {setdiff(levs, rownames(K))}}."
+        ))
+      }
+      K <- K[levs, levs, drop = FALSE]
+      if (max(abs(K - t(K)), na.rm = TRUE) > 1e-8) {
+        cli::cli_abort(
+          "{.arg K} for {.fn kernel_latent} tier {.val {nm}} must be symmetric."
+        )
+      }
+      if (any(!is.finite(K))) {
+        cli::cli_abort(
+          "{.arg K} for {.fn kernel_latent} tier {.val {nm}} must contain only finite values."
+        )
+      }
+      evals <- eigen((K + t(K)) / 2, symmetric = TRUE, only.values = TRUE)$values
+      if (min(evals) < -1e-8) {
+        cli::cli_abort(c(
+          "{.arg K} for {.fn kernel_latent} tier {.val {nm}} must be positive semidefinite.",
+          "i" = "Minimum eigenvalue: {format(min(evals), digits = 4)}."
+        ))
+      }
+      K_stored <- K
+      K_stored[,] <- (K + t(K)) / 2
+      kernel_meta <- .cross_kernel_metadata_for_levels(kernel_meta, levs)
+      if (!is.null(kernel_meta)) {
+        attr(K_stored, "gllvmTMB_cross_kernel") <- kernel_meta
+      }
+      K_jit <- K_stored + diag(1e-8, n_kernel_levels)
+      K_kernel[r, , ] <- K_stored
+      kernel_matrix_list[[r]] <- K_stored
+      Ainv_kernel[r, , ] <- solve(K_jit)
+      log_det_A_kernel[r] <- as.numeric(determinant(K_jit, logarithm = TRUE)$modulus)
+
+      kernel_rank[r] <- rank_r
+      kernel_has_latent[r] <- 1L
+      kernel_has_diag[r] <- 0L
+      kernel_g_offset[r] <- g_cursor
+      g_cursor <- g_cursor + n_kernel_levels * rank_r
+      if (kernel_has_diag[r] == 1L) {
+        kernel_logsd_offset[r] <- logsd_cursor
+        kernel_diag_offset[r] <- diag_cursor
+        logsd_cursor <- logsd_cursor + n_traits
+        diag_cursor <- diag_cursor + n_kernel_levels * n_traits
+      }
+      kernel_rows[[r]] <- data.frame(
+        name = nm,
+        internal_level = "kernel",
+        index = r,
+        group = species,
+        rank = rank_r,
+        has_latent = TRUE,
+        has_psi = FALSE,
+        rho = kernel_rho,
+        stringsAsFactors = FALSE
+      )
+    }
+    max_kernel_rank <- max(kernel_rank)
+    kernel_multi_registry <- do.call(rbind, kernel_rows)
+    names(kernel_matrix_list) <- unique_kernel_names
+    kernel_diagnostics <- .kernel_overlap_diagnostics(
+      K_kernel,
+      unique_kernel_names
+    )
+    high_kernel_pairs <- kernel_diagnostics$pairs[
+      kernel_diagnostics$pairs$overlap_class == "high",
+      ,
+      drop = FALSE
+    ]
+    if (nrow(high_kernel_pairs) > 0L) {
+      affected_pairs <- paste(
+        paste0(high_kernel_pairs$level_1, "/", high_kernel_pairs$level_2),
+        collapse = ", "
+      )
+      cli::cli_warn(c(
+        "High overlap between fixed kernel tiers weakens component-specific {.field Gamma_shape} separation.",
+        "i" = "Affected tier pairs: {.val {affected_pairs}}.",
+        ">" = "Treat {.fn extract_Gamma}(level = ...) as descriptive for those components; use lower-overlap kernels, null/sensitivity checks, or collapse the tiers before making separation claims."
+      ))
+    }
+  }
   ## Build the sparse A^-1 machinery whenever any phylogenetic term
   ## (phylo_latent, phylo_unique, phylo_slope, or the augmented latent-slope)
   ## is requested. They share Ainv_phy_rr, n_aug_phy, log_det_A_phy_rr, and
@@ -2582,6 +2844,21 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     Ainv_phy_rr      = Ainv_phy_rr,
     log_det_A_phy_rr = log_det_A_phy_rr,
     species_aug_id   = as.integer(species_aug_id),
+    ## Design 65 C3.1: fixed dense named kernel tiers. This block is active
+    ## only when two or more distinct `kernel_*()` names are supplied; the
+    ## one-name path stays on the phylo-equivalent KER-02 engine above.
+    n_kernel_tiers   = as.integer(n_kernel_tiers),
+    n_kernel_levels  = as.integer(n_kernel_levels),
+    max_kernel_rank  = as.integer(max_kernel_rank),
+    kernel_group_id  = as.integer(species_id),
+    kernel_rank      = as.integer(kernel_rank),
+    kernel_has_latent = as.integer(kernel_has_latent),
+    kernel_has_diag  = as.integer(kernel_has_diag),
+    kernel_g_offset  = as.integer(kernel_g_offset),
+    kernel_logsd_offset = as.integer(kernel_logsd_offset),
+    kernel_diag_offset = as.integer(kernel_diag_offset),
+    Ainv_kernel      = Ainv_kernel,
+    log_det_A_kernel = as.numeric(log_det_A_kernel),
     ## Paired phylogenetic PGLLVM: per-trait phylogenetic random intercepts
     ## (psi_phy diag)
     use_phylo_diag   = as.integer(use_phylo_diag),
@@ -2708,6 +2985,23 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     log_sd_phy_diag = if (use_phylo_diag) rep(0.0, n_traits) else 0.0,
     g_phy_diag      = matrix(0, nrow = n_aug_phy,
                              ncol = if (use_phylo_diag) n_traits else 1L),
+    ## Generic fixed dense multi-kernel block (Design 65 C3.1). Parameters are
+    ## flat vectors with tier offsets in DATA so ranks can differ by component.
+    theta_rr_kernel = if (use_kernel_multi) {
+                        unlist(lapply(kernel_rank, function(rank) {
+                          init_rr_theta(n_traits, rank)
+                        }), use.names = FALSE)
+                      } else numeric(0L),
+    g_kernel        = if (use_kernel_multi) {
+                        rep(0.0, sum(n_kernel_levels * kernel_rank))
+                      } else numeric(0L),
+    log_sd_kernel_diag = if (use_kernel_multi && any(kernel_has_diag == 1L)) {
+                           rep(0.0, sum(kernel_has_diag == 1L) * n_traits)
+                         } else numeric(0L),
+    g_kernel_diag   = if (use_kernel_multi && any(kernel_has_diag == 1L)) {
+                        rep(0.0, sum(kernel_has_diag == 1L) *
+                              n_kernel_levels * n_traits)
+                      } else numeric(0L),
     ## Q6: phylo_slope params
     b_phy_slope     = rep(0.0, n_aug_phy),  # one slope per augmented A row
     log_sigma_slope = 0.0,
@@ -3134,6 +3428,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     tmb_map$log_sd_phy_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_phy_diag)))
     tmb_map$g_phy_diag      <- factor(rep(NA_integer_, length(tmb_params$g_phy_diag)))
   }
+  if (!use_kernel_multi) {
+    tmb_map$theta_rr_kernel <- factor(rep(NA_integer_, length(tmb_params$theta_rr_kernel)))
+    tmb_map$g_kernel        <- factor(rep(NA_integer_, length(tmb_params$g_kernel)))
+    tmb_map$log_sd_kernel_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_kernel_diag)))
+    tmb_map$g_kernel_diag   <- factor(rep(NA_integer_, length(tmb_params$g_kernel_diag)))
+  } else if (!any(kernel_has_diag == 1L)) {
+    tmb_map$log_sd_kernel_diag <- factor(rep(NA_integer_, length(tmb_params$log_sd_kernel_diag)))
+    tmb_map$g_kernel_diag   <- factor(rep(NA_integer_, length(tmb_params$g_kernel_diag)))
+  }
   if (!use_phylo_slope || use_phylo_slope_correlated) {
     tmb_map$b_phy_slope     <- factor(rep(NA_integer_, length(tmb_params$b_phy_slope)))
     tmb_map$log_sigma_slope <- factor(NA_integer_)
@@ -3473,6 +3776,10 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (use_spde_latent_slope)          random <- c(random, "g_spde_slope")
   if (use_phylo_rr) random <- c(random, "g_phy")
   if (use_phylo_diag) random <- c(random, "g_phy_diag")
+  if (use_kernel_multi) random <- c(random, "g_kernel")
+  if (use_kernel_multi && any(kernel_has_diag == 1L)) {
+    random <- c(random, "g_kernel_diag")
+  }
   if (use_phylo_slope_correlated) {
     random <- c(random, "b_phy_aug")
   } else if (use_phylo_slope) {
@@ -3847,8 +4154,24 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
                           spde_latent_slope = isTRUE(use_spde_latent_slope),
                           re_int = use_re_int),
       kernel_levels = if (has_kernel_term) {
-                        list(name = kernel_name, internal_level = "phy")
+                        if (use_kernel_multi) {
+                          kernel_multi_registry
+                        } else {
+                          list(
+                            name = kernel_name,
+                            internal_level = "phy",
+                            rho = kernel_single_rho
+                          )
+                        }
                       } else NULL,
+      kernel_matrices = if (has_kernel_term) {
+                          if (use_kernel_multi) {
+                            kernel_matrix_list
+                          } else if (!is.null(phylo_vcv)) {
+                            stats::setNames(list(phylo_vcv), kernel_name)
+                          } else NULL
+                        } else NULL,
+      kernel_diagnostics = kernel_diagnostics,
       re_int       = if (use_re_int) list(
                        groups   = re_int_groups,
                        n_groups = re_int_n_groups,

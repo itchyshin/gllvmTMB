@@ -249,7 +249,7 @@ fit2 <- gllvmTMB(
   value ~ 0 + trait +
     animal_latent(id, d = 1, pedigree = ped) +
     animal_unique(id, pedigree = ped) +
-    unique(0 + trait | id),
+    indep(0 + trait | id),
   data = df2,
   trait = "trait",
   unit = "id",
@@ -260,7 +260,7 @@ fit2$opt$convergence
 
 The model has a one-factor genetic structure (`animal_latent(d = 1)`)
 plus per-trait genetic diagonal (`animal_unique`), plus a non-genetic
-trait-level residual covariance (`unique(0 + trait | id)`). The
+trait-level residual covariance (`indep(0 + trait | id)`). The
 genetic covariance matrix $\boldsymbol G$ is rotation-invariant and
 recovered by combining the shared and diagonal parts:
 
@@ -351,7 +351,7 @@ fit3 <- gllvmTMB(
   value ~ 0 + trait +
     animal_latent(id, d = 1, pedigree = ped) +
     animal_unique(id, pedigree = ped) +
-    unique(0 + trait | id),
+    indep(0 + trait | id),
   data = df3,
   trait = "trait",
   unit = "id",

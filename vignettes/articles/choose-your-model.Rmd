@@ -95,7 +95,7 @@ identifiability and fit time.
 | 3 | + spatial — `+ spatial_unique(0 + trait \| coords)` |
 | 4 | + relatedness-structured random slope (reaction norm) — `+ phylo_slope(x \| species)` |
 | 5 | Two-level (between / within) — `+ latent(... \| unit_obs)` |
-| 6 | Three-level (cluster > unit > unit_obs) — `+ unique(0 + trait \| cluster)` |
+| 6 | Three-level (cluster > unit > unit_obs) — `+ indep(0 + trait \| cluster)` |
 | 7 | Capstone — phylogeny + space + tiers together |
 
 Below the table, sections 1–6 ask one question per rung and let
@@ -119,8 +119,8 @@ whether your data have **one** observational level or **two**.
 | Your data look like... | Observational levels | Random-effect grouping | Example article |
 |---|---|---|---|
 | One row per individual / site, with several traits as columns. Use the wide path directly, or reshape to long. | One: `unit` | <code>latent(0 + trait &#124; unit)</code> (long) / <code>latent(1 &#124; unit, d = K)</code> (wide via `traits()`) | [Morphometrics](morphometrics.html) (individuals × continuous traits) |
-| Sites that each contain multiple species, with traits measured for each (site, species) combination; or repeated measures per individual; or papers with multiple items each. | Two: `unit` (between) and `unit_obs` (within) | <code>latent(0 + trait &#124; unit)</code> *and* <code>unique(0 + trait &#124; unit_obs)</code> | [Behavioural syndromes](behavioural-syndromes.html) and [Functional biogeography](functional-biogeography.html) |
-| The within-unit rows themselves nest inside a higher grouping — e.g. observations within individuals within populations, or items within papers within research groups. | Three: `cluster` > `unit` > `unit_obs` | add <code>unique(0 + trait &#124; cluster)</code> on top of the two-level pair | §7f (worked example below) |
+| Sites that each contain multiple species, with traits measured for each (site, species) combination; or repeated measures per individual; or papers with multiple items each. | Two: `unit` (between) and `unit_obs` (within) | <code>latent(0 + trait &#124; unit)</code> *and* <code>indep(0 + trait &#124; unit_obs)</code> | [Behavioural syndromes](behavioural-syndromes.html) and [Functional biogeography](functional-biogeography.html) |
+| The within-unit rows themselves nest inside a higher grouping — e.g. observations within individuals within populations, or items within papers within research groups. | Three: `cluster` > `unit` > `unit_obs` | add <code>indep(0 + trait &#124; cluster)</code> on top of the two-level pair | §7f (worked example below) |
 
 If you have a single observational level, the `unit` column can be
 called anything (`individual`, `site`, `study`, `paper`); pass its
@@ -173,7 +173,7 @@ canonical phylogenetic decomposition pairs four components: a
 phylogenetic shared low-rank axis (`phylo_latent`), a
 phylogenetic trait-specific diagonal (`phylo_unique`), a
 non-phylogenetic shared axis (`latent`), and a non-phylogenetic
-trait-specific diagonal (`unique`). The full decomposition reads
+trait-specific diagonal (`indep`). The full decomposition reads
 
 $$
 \Omega = (\Sigma_{\text{phy}} \otimes A) + (\Sigma_{\text{non}} \otimes I), \quad
@@ -327,7 +327,7 @@ covariance* (every pair gets its own parameter).
 | Your situation | Add to formula | Notes |
 |---|---|---|
 | You expect a small number of latent dimensions (size, shape, life-history pace) to explain most of the cross-trait covariance. T traits, K << T factors. | <code>+ latent(0 + trait &#124; site, d = K)</code> | The default GLLVM choice. K = 1–3 is typical. |
-| You want full unstructured between-unit covariance with no rank reduction. | <code>+ unique(0 + trait &#124; site)</code> (specific variance) plus a separate term for off-diagonal structure as needed | Reasonable when T is small (T ≤ 5) and you have many units. |
+| You want full unstructured between-unit covariance with no rank reduction. | <code>+ indep(0 + trait &#124; site)</code> (specific variance) plus a separate term for off-diagonal structure as needed | Reasonable when T is small (T ≤ 5) and you have many units. |
 | Confirmatory: you know which traits load on which factor and want to pin those entries of $\boldsymbol\Lambda$. | <code>+ latent(0 + trait &#124; site, d = K)</code> plus `lambda_constraint = list(unit = M)` | M is a `T × K` matrix with `NA` for free entries and numeric values for fixed ones. See [Lambda constraint](lambda-constraint.html); `?suggest_lambda_constraint` proposes a sensible matrix from a fitted unconstrained model. |
 
 For two-level models you typically include ordinary `latent()`
@@ -336,8 +336,13 @@ at each level, so the full between-unit piece is
 within-unit piece substitutes the within-unit grouping column
 (e.g. `site_species` for site × species data, or the value passed via
 `unit_obs = "..."` for other domains).
-The `latent()` term gives the shared latent factors; the `unique()` term
-gives each trait its own residual variance on top.
+Ordinary `latent()` already carries the per-trait residual diagonal
+$\boldsymbol\Psi$ by default ($\Sigma = \Lambda\Lambda^{\top} +
+\boldsymbol\Psi$), so each level's `latent()` supplies both the shared
+factors and each trait's own residual variance; use
+`latent(..., residual = FALSE)` for the loadings-only subset. A
+standalone `indep(0 + trait | cluster)` adds a further diagonal-only
+tier when the data nest one level deeper.
 
 ## 7. Final formula assembly
 
@@ -549,7 +554,7 @@ extract_Sigma(fit_rr_aug, level = "phy")   # 2x2 (intercept, slope)
 ### 7f. Three-level cluster tier
 
 Rung 6: when the within-unit rows nest inside a higher grouping,
-add a third per-trait diagonal tier `unique(0 + trait | cluster)`
+add a third per-trait diagonal tier `indep(0 + trait | cluster)`
 and pass all three grouping keys. Each tier gets its own per-trait
 variance; the cluster tier's is reported as `fit$report$sd_q`.
 
@@ -578,7 +583,7 @@ eta_c      <- q_cluster[cbind(as.integer(rows$cluster), rows$trait_idx)]
 rows$value <- eta_c + rnorm(nrow(rows), sd = 0.3)
 
 fit_cluster <- gllvmTMB(
-  value ~ 0 + trait + unique(0 + trait | cluster),
+  value ~ 0 + trait + indep(0 + trait | cluster),
   data     = rows,
   unit     = "unit",
   unit_obs = "unit_obs",

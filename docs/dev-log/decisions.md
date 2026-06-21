@@ -1108,3 +1108,32 @@ Next: Phase 0B walks every `claimed` row to evidence; Phase 0C
 cleans up overpromise articles; Phase 1 M1 Gaussian completeness
 adds random slopes (capped at 1) and validates the full
 extractor surface on Gaussian.
+
+## 2026-06-21  Keep fixed-rho for the Design 65 coevolution kernel (no in-engine rho)
+
+Decision: keep the cross-lineage bridge strength `rho` as a
+fixed-at-construction, post-hoc-profiled scalar; do NOT add an
+in-engine (TMB-estimated) `rho` parameter in the current arc. The
+profile machinery -- `profile_cross_rho()` plus the merged
+`profile_cross_rho_ci()` (a 1.92-drop chi-square(1) interval) --
+already delivers the scientifically honest summary an estimated `rho`
+would be reduced to anyway. Rationale, in priority order: (1)
+identifiability is fragile, not absent -- `rho` and the cross-loading
+magnitude trade off along a ridge broken only by the within-lineage
+blocks and by tip/`W` replication, and a single shared association
+matrix `W` is one replicate of the coevolution signal (Design 65
+evidence base; Boettiger et al. 2012), so a free scalar on that signal
+piles onto a near-flat ridge; (2) the profile is the same object
+without the per-evaluation dense Cholesky cost, `tanh`-boundary
+pile-up, sign aliasing, or cross-package (drmTMB) likelihood/API
+divergence an in-engine parameter would introduce; (3) sequencing --
+Design 65 C3.3 lists simpler gaps (moderate/high-overlap recovery,
+reusable null thresholds, interval coverage, module uncertainty) that
+should land before turning `rho` into a parameter. If estimation is
+revisited, the zero-engine first step is the pure-R outer-optimiser
+identifiability simulation in the design note section 4 step 1 --
+promote to C++ only if it shows a usable interior maximum with finite
+curvature in the realistic-design regime. Full analysis:
+`docs/dev-log/2026-06-20-coevolution-in-engine-rho-design.md`
+(design-note-only PR #507). Closes the parked in-engine-`rho`
+decision.

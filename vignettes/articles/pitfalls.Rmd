@@ -261,12 +261,13 @@ set.seed(1)
 tree <- ape::rcoal(15)
 tree$tip.label <- paste0("sp", seq_len(15))
 
-# Fully paired phylogenetic decomposition:
+# Fully paired phylogenetic decomposition (ordinary `latent()` carries its
+# diagonal Psi by default, so the non-phylogenetic tier needs no separate
+# `unique()` / `indep()` term):
 #   value ~ 0 + trait +
 #     phylo_latent(species, d = K_phy, tree = tree) +
 #     phylo_unique(species, tree = tree) +
-#     latent(0 + trait | species, d = K_non) +
-#     unique(0 + trait | species)
+#     latent(0 + trait | species, d = K_non)
 
 # Single-scalar simplification (only when trait correlations are
 # the inferential target and you do not need per-trait variances):

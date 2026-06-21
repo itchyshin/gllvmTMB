@@ -95,6 +95,79 @@ test_that("check_gllvmTMB flags weak axes and near-boundary variance terms", {
   expect_equal(chk$status[chk$component == "boundary_sigma_eps"], "WARN")
 })
 
+test_that("check_gllvmTMB flags near-constant binary traits with dominant loadings", {
+  trait_levels <- paste0("item", 1:4)
+  n_per_trait <- 10L
+  trait_id <- rep(seq_along(trait_levels) - 1L, each = n_per_trait)
+  y <- c(
+    rep(c(0, 1), 5L),
+    rep(c(0, 1), 5L),
+    rep(c(0, 1), 5L),
+    rep(1, 9L),
+    0
+  )
+  eta <- c(rep(0, 30L), rep(3.2, 10L))
+  fit <- list(
+    fit_health = list(
+      convergence = 0L,
+      message = "relative convergence",
+      max_gradient = 0,
+      sdreport_ok = TRUE,
+      sdreport_error = NA_character_,
+      pd_hessian = TRUE,
+      max_fixed_se = 1,
+      boundary_flags = character(0),
+      selected_restart = 1L
+    ),
+    sd_report = list(
+      pdHess = TRUE,
+      cov.fixed = diag(2)
+    ),
+    restart_history = data.frame(
+      restart = 1L,
+      optimizer = "nlminb",
+      objective = 0,
+      convergence = 0L,
+      selected = TRUE
+    ),
+    report = list(
+      Lambda_B = matrix(
+        c(0.25, -0.2, 0.15, 12),
+        nrow = length(trait_levels),
+        dimnames = list(trait_levels, "LV1")
+      ),
+      eta = eta
+    ),
+    tmb_data = list(
+      y = y,
+      n_trials = rep(1, length(y)),
+      is_y_observed = rep(1L, length(y)),
+      family_id_vec = rep(1L, length(y)),
+      link_id_vec = rep(1L, length(y)),
+      trait_id = trait_id
+    ),
+    data = data.frame(
+      trait = factor(trait_levels[trait_id + 1L], levels = trait_levels)
+    ),
+    trait_col = "trait",
+    n_traits = length(trait_levels),
+    use = list(rr_B = TRUE)
+  )
+  class(fit) <- "gllvmTMB_multi"
+
+  chk <- check_gllvmTMB(fit)
+  row <- chk[chk$component == "binomial_prevalence_loading", , drop = FALSE]
+
+  expect_equal(nrow(row), 1L)
+  expect_equal(row$status, "WARN")
+  expect_match(row$value, "item4")
+  expect_match(row$action, "remove or re-code")
+  expect_match(
+    chk$action[chk$component == "weak_axis_unit"],
+    "near-constant binary trait"
+  )
+})
+
 test_that("diagnostics degrade gracefully when sdreport is unavailable", {
   set.seed(2026)
   sim <- simulate_site_trait(

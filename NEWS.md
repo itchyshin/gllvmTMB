@@ -3,6 +3,10 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `check_gllvmTMB()` near-constant binomial diagnostic (2026-06-21)
+
+* `check_gllvmTMB()` now adds a `binomial_prevalence_loading` row when binomial traits are present, surfacing the worst per-trait prevalence, fitted-probability saturation, maximum loading, and loading size relative to the typical fitted loading scale. IN (`DIA-08`): this is a diagnostic screen for near-constant binary traits that can drive runaway loadings and weak latent-axis warnings. PARTIAL (`DIA-10`): it points users to remove or re-code near-constant indicators, but it does not calibrate interval coverage, prove separation formally, or change the fitted likelihood. This closes the package-side mirror of Ayumi-495/urbanisation_map#3 (#523).
+
 ## `phylo_latent()` folds its diagonal Psi by default (2026-06-21)
 
 * `phylo_latent(species, d = K)` now carries its phylo-structured diagonal

@@ -710,6 +710,13 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   is_indep_B <- any(diag_is_indep & groupings == site)
   is_indep_W <- any(diag_is_indep & groupings == ss_name)
   is_indep_cluster <- any(diag_is_indep & groupings == species)
+  ## Does the surviving B-tier diag come from the `latent()` auto-residual Psi
+  ## (vs an explicit `unique()` / `indep()`)? Used by the per-trait B-tier
+  ## auto-Psi family gate below: the DEFAULT between-unit Psi is dropped for
+  ## binary traits where it is unidentified (the probit/logit link variance is
+  ## itself the between-unit residual; 2026-06-12 design doc per-family table),
+  ## but an EXPLICIT diagonal stays as the user asked.
+  auto_psi_B <- any(diag_is_auto_residual & groupings == site)
   ## ---- "dep" keyword over-parameterisation guards (run BEFORE indep) -----
   ## `dep(0+trait|g)` rewrites to `rr(form, d = n_traits, .dep = TRUE)`.
   ## Same engine path as `latent(d = n_traits)` standalone (full-rank packed
@@ -3827,6 +3834,66 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
         "OLRE on hurdle / delta families is applied to the shared linear predictor and may not be biologically interpretable.",
         "i" = "Trait{?s} affected: {.val {warn_labs}}.",
         "*" = "Consider using a non-hurdle family for these traits, or treat the OLRE result as exploratory."
+      ))
+    }
+  }
+
+  ## ---- Per-trait B-tier auto-Psi family gate (binary skip) -------------
+  ## `latent()` adds the default between-unit Psi (a `diag` over the unit
+  ## tier carrying `.auto_residual = TRUE`). For single-trial Bernoulli /
+  ## binomial traits this between-unit Psi is UNIDENTIFIED: each (trait, unit)
+  ## cell is a single 0/1, and the probit/logit link's implicit scale is
+  ## itself the between-unit residual (2026-06-12 design doc per-family table;
+  ## Nakagawa & Schielzeth 2010). The all-or-nothing off-family gate above
+  ## drops the auto-Psi only when EVERY trait is ordinal_probit / delta; it
+  ## does not cover binary, and the W-tier OLRE skip above only fires at the
+  ## per-row tier. So the default Psi reaches the B tier on binary traits and
+  ## makes the fit non-identified (non-convergence / NA CI coverage). Mirror
+  ## the W-tier OLRE skip per trait: map off `theta_diag_B[t]` and the `s_B`
+  ## row for single-trial binary traits, keeping the auto-Psi for the
+  ## identified families (Gaussian/Poisson/NB/Beta/Gamma given replication).
+  ## EXPLICIT `unique()`/`indep()` diagonals are untouched -- this only gates
+  ## the DEFAULT auto-Psi (`auto_psi_B`). A pure-binary fit ends with every
+  ## B-tier trait skipped, which is the per-trait equivalent of dropping the
+  ## auto-Psi entirely.
+  if (use_diag_B && auto_psi_B && !use_diag_B_slope) {
+    skip_psi_b_t <- vapply(seq_len(n_traits), function(t) {
+      rows_t <- which(trait_id == (t - 1L))
+      if (length(rows_t) == 0L) return(FALSE)
+      isTRUE(all(family_id_vec[rows_t] == 1L) &&
+             all(n_trials[rows_t] == 1))
+    }, logical(1))
+    if (any(skip_psi_b_t)) {
+      ## Pin the skipped trait variances near zero and map them (and their
+      ## s_B rows) off. Free traits keep the auto-Psi; honour diag_B_common
+      ## by collapsing the free entries to one shared level.
+      tmb_params$theta_diag_B[skip_psi_b_t] <- log(1e-6)
+      tdb_map <- rep(NA_integer_, n_traits)
+      free_idx <- which(!skip_psi_b_t)
+      if (length(free_idx) > 0L) {
+        if (diag_B_common) {
+          tdb_map[free_idx] <- 1L
+        } else {
+          tdb_map[free_idx] <- seq_along(free_idx)
+        }
+      }
+      tmb_map$theta_diag_B <- factor(tdb_map)
+      ## Zero the skipped rows so a mapped-off (fixed) s_B does not inject a
+      ## nonzero between-unit effect from a warmstart init.
+      tmb_params$s_B[skip_psi_b_t, ] <- 0
+      sB_map <- matrix(seq_len(length(tmb_params$s_B)),
+                       nrow = nrow(tmb_params$s_B),
+                       ncol = ncol(tmb_params$s_B))
+      sB_map[skip_psi_b_t, ] <- NA_integer_
+      keep <- !is.na(sB_map)
+      sB_map[keep] <- seq_len(sum(keep))
+      tmb_map$s_B <- factor(as.integer(sB_map))
+      psi_skipped_labs <- levels(data[[trait]])[skip_psi_b_t]
+      n_psi_skip <- length(psi_skipped_labs)
+      cli::cli_inform(c(
+        "i" = "Skipping the default between-unit {.field Psi} for {n_psi_skip} single-trial binary trait{?s}: it is unidentified when each (trait, unit) cell has one 0/1 observation (the link's implicit scale is the residual).",
+        "i" = "Trait{?s} affected: {.val {psi_skipped_labs}}.",
+        "*" = "Mapped {.code theta_diag_B[t]} and the corresponding {.code s_B} row off. Pass multi-trial data ({.code cbind(successes, failures)} or {.code weights = n_trials}) to recover identifiability, or add an explicit {.fn unique} term."
       ))
     }
   }

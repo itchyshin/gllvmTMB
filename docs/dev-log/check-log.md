@@ -16585,3 +16585,31 @@ Consistency audit (verbatim):
 Deliberately NOT done: docs/design/2026-06-21-source-specific-latent-psi-fold.md
 left on `residual=`/`.auto_residual` (PR B's spec; reconciled there). No
 self-merge. After-task: docs/dev-log/after-task/2026-06-21-latent-unique-rename.md.
+
+## 2026-06-21 (Claude / Ada) — PR B: phylo_latent() unique= fold (supersedes #516)
+
+Branch claude/phylo-unique-fold-20260621 off origin/main c106df4 -> PR #519
+(grammar/default-meaning change; merge HELD for maintainer). Supersedes red #516.
+
+phylo_latent(species, d=K) now folds Psi_phy by default (unique=TRUE):
+Sigma_phy = Lambda Lambda^T (x) A + Psi_phy (x) A; unique=FALSE -> loadings-only.
+brms-sugar phylo fold block + fit-multi is_auto_phylo_psi dedup (.auto_unique);
+auto_unique_off_family gate extended to the phylo companion.
+
+Equivalence cascade fix (the #516 gap): compared phylo_latent set to unique=FALSE in
+test-kernel-equivalence.R:159, test-canonical-keywords.R:458, test-animal-keyword.R:182,
+test-matrix-animal-nongaussian.R:319/407.
+
+Checks:
+- devtools::document() -> man/phylo_latent.Rd regenerated.
+- devtools::check(args="--no-manual", env=NOT_CRAN) -> Status 1 ERROR 1 WARNING 0 NOTES;
+  fast suite [FAIL 1 | WARN 13 | SKIP 745 | PASS 3398]. ERROR = env-only glmmTMB::equalto
+  (same pre-existing item as #518). Ran the FULL check before push (the #516 trap).
+- Heavy GLLVMTMB_HEAVY_TESTS=1: fold 14/0, kernel-equivalence 38/0, canonical-keywords 61/0,
+  animal-keyword 32/0, matrix-animal-nongaussian 50/0 (all equivalence cascades green).
+
+Deferred to Stage B (per handover): bare-phylo_latent fire-on-use warning, AGENTS/CLAUDE
+grid note, validation-debt register row, per-family phylo recovery gates. NEXT SESSION IS
+CODEX: docs/dev-log/codex-handover-2026-06-21-latent-migration.md (spatial->animal->kernel
+folds via the §4 recipe; Codex runs the live fits/full check). After-task:
+docs/dev-log/after-task/2026-06-21-phylo-latent-unique-fold.md.

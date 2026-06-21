@@ -581,6 +581,12 @@ NULL
 #'
 #' @param species Unquoted column name for the species factor.
 #' @param d Integer; number of phylogenetic latent factors.
+#' @param unique Logical; `TRUE` (default) auto-includes the
+#'   phylo-structured diagonal trait-specific \eqn{\boldsymbol\Psi_{phy}}
+#'   companion, folding the paired `phylo_latent() + phylo_unique()` into a
+#'   single term (\eqn{\boldsymbol\Sigma_{phy} = \boldsymbol\Lambda
+#'   \boldsymbol\Lambda^\top \otimes \mathbf{A} + \boldsymbol\Psi_{phy} \otimes
+#'   \mathbf{A}}). Set `FALSE` for the loadings-only / rotation-invariant subset.
 #' @param tree An `ape::phylo` object. **Canonical.** Use this if
 #'   you have a tree.
 #' @param vcv A tip-only phylogenetic correlation matrix
@@ -622,6 +628,7 @@ NULL
 phylo_latent <- function(
   species,
   d = 1,
+  unique = TRUE,
   tree = NULL,
   vcv = NULL,
   A = NULL,
@@ -2886,6 +2893,39 @@ rewrite_canonical_aliases <- function(formula) {
 	            psi_extras$common <- TRUE
 	          }
 	          psi_call <- as.call(c(list(as.name("diag"), e[[2L]]), psi_extras))
+	          return(call("+", new_call, psi_call))
+	        }
+	        ## Phylo latent-Psi fold (Stage A): mirror the ordinary latent() fold for
+	        ## the phylogenetic tier so phylo_latent(d=K) + phylo_unique() collapses to
+	        ## a single phylo_latent(d=K, unique = TRUE). The auto-companion is the
+	        ## phylo-structured diagonal Psi_phy (x) A, i.e. phylo_rr(species,
+	        ## .phylo_unique = TRUE, .auto_unique = TRUE), NOT a plain diag. Augmented
+	        ## phylo_latent(1 + x | sp) is handled+returned earlier (.latent_slope), so
+	        ## this only sees the intercept-only form.
+	        if (identical(fn, "phylo_latent")) {
+	          unique_arg <- e[["unique"]]
+	          if (is.null(unique_arg)) unique_arg <- TRUE
+	          if (!is.logical(unique_arg) || length(unique_arg) != 1L ||
+	              is.na(unique_arg)) {
+	            cli::cli_abort(c(
+	              "{.arg unique} in {.fn phylo_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+	              ">" = "Use {.code phylo_latent(..., unique = FALSE)} for the loadings-only subset."
+	            ))
+	          }
+	          new_call_names <- names(new_call)
+	          if (!is.null(new_call_names)) {
+	            drop_args <- new_call_names %in% "unique"
+	            if (any(drop_args)) new_call <- new_call[!drop_args]
+	          }
+	          if (isFALSE(unique_arg)) {
+	            return(new_call)
+	          }
+	          phy_psi_extras <- .pass_through_extras(e, c("tree", "vcv"))
+	          psi_call <- as.call(c(
+	            list(as.name("phylo_rr"), e[[2L]]),
+	            list(.phylo_unique = TRUE, .auto_unique = TRUE),
+	            phy_psi_extras
+	          ))
 	          return(call("+", new_call, psi_call))
 	        }
 	        return(new_call)

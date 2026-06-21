@@ -156,7 +156,7 @@ test_that("kernel_latent alone is equivalent to dense phylo_latent vcv path", {
   fit_phy <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(y1, y2, y3) ~
       1 +
-      phylo_latent(unit_id, d = 2, vcv = A),
+      phylo_latent(unit_id, d = 2, vcv = A, unique = FALSE),
     data = rows,
     unit = "row_id",
     cluster = "unit_id",

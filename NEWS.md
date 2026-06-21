@@ -3,6 +3,19 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `phylo_latent()` folds its diagonal Psi by default (2026-06-21)
+
+* `phylo_latent(species, d = K)` now carries its phylo-structured diagonal
+  trait-specific `Psi_phy` companion by default (`unique = TRUE`), mirroring
+  ordinary `latent()`: `Sigma_phy = Lambda Lambda^T (x) A + Psi_phy (x) A`. The
+  paired `phylo_latent(..., unique = FALSE) + phylo_unique()` spelling remains
+  accepted -- the auto-companion is deduped against an explicit `phylo_unique()`,
+  byte-identical to the explicit pair. Use `phylo_latent(..., unique = FALSE)`
+  for the loadings-only subset. Augmented `phylo_latent(1 + x | sp)` slopes and
+  the `phylo_indep` / `phylo_dep` mutual-exclusion paths are unchanged. The
+  remaining `spatial_latent` / `animal_latent` / `kernel_latent` still use the
+  explicit paired spelling (their folds are later slices).
+
 ## `latent(unique = ...)` argument rename (2026-06-21)
 
 * The `latent(..., residual = TRUE/FALSE)` argument shipped in 0.2.0 is renamed

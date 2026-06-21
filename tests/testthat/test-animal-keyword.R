@@ -179,7 +179,7 @@ test_that("animal_latent(id, d = 1, pedigree = ) is byte-equivalent with phylo_l
   skip_on_cran()
   fx <- make_animal_fixture()
   fit_p <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + phylo_latent(species, d = 1, vcv = fx$A),
+    value ~ 0 + trait + phylo_latent(species, d = 1, vcv = fx$A, unique = FALSE),
     data = fx$data, family = gaussian()
   )))
   fit_a <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

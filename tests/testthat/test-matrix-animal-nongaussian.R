@@ -316,7 +316,7 @@ test_that("animal_latent(d=1) x Gamma(log): byte-equivalent with phylo_latent(d=
   fx <- make_animal_latent_gamma_fixture()
 
   fit_p <- tryCatch(suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + phylo_latent(species, d = 1, vcv = fx$A),
+    value ~ 0 + trait + phylo_latent(species, d = 1, vcv = fx$A, unique = FALSE),
     data = fx$data, unit = "species", family = stats::Gamma(link = "log")
   ))), error = function(e) e)
   fit_a <- tryCatch(suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
@@ -404,7 +404,7 @@ test_that("animal_latent(d=1) x poisson: byte-equivalent with phylo_latent(d=1, 
   fx <- make_animal_latent_count_fixture()
 
   fit_p <- tryCatch(suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + phylo_latent(species, d = 1, vcv = fx$A),
+    value ~ 0 + trait + phylo_latent(species, d = 1, vcv = fx$A, unique = FALSE),
     data = fx$data, unit = "species", family = stats::poisson(link = "log")
   ))), error = function(e) e)
   fit_a <- tryCatch(suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(

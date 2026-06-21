@@ -342,6 +342,15 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     cs <- parsed$covstructs[[i]]
     identical(cs$kind, "diag") && isTRUE(cs$extra$.auto_unique)
   }, logical(1L))
+  ## Source-specific auto-Psi companion (Stage A): `phylo_latent(unique = TRUE)`
+  ## auto-emits a `phylo_rr(.phylo_unique, .auto_unique)` companion (the
+  ## phylo-structured diagonal Psi_phy (x) A). Tracked separately from the plain
+  ## `diag` auto-Psi because it is a `phylo_rr` covstruct.
+  is_auto_phylo_psi <- vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    identical(cs$kind, "phylo_rr") && isTRUE(cs$extra$.phylo_unique) &&
+      isTRUE(cs$extra$.auto_unique)
+  }, logical(1L))
   ## Deduplicate: if an EXPLICIT (non-auto, non-indep) `diag` is present at the
   ## same grouping as an auto-Psi (e.g. a transitional `latent(...) +
   ## unique(..., common = TRUE)`), the explicit term supersedes the default --
@@ -358,11 +367,25 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     explicit_groups <- explicit_diag_group[!is.na(explicit_diag_group)]
     drop_psi <- is_auto_psi & (groupings %in% explicit_groups)
   }
+  ## Same dedup for the phylo auto-companion: an explicit `phylo_unique()` at the
+  ## same grouping supersedes the `phylo_latent(unique = TRUE)` default, so
+  ## `phylo_latent(unique = TRUE) + phylo_unique()` is byte-identical to the
+  ## explicit pair (and avoids the >1 phylo_unique abort downstream).
+  if (any(is_auto_phylo_psi)) {
+    explicit_phylo_group <- vapply(seq_along(parsed$covstructs), function(i) {
+      cs <- parsed$covstructs[[i]]
+      if (identical(cs$kind, "phylo_rr") && isTRUE(cs$extra$.phylo_unique) &&
+          !isTRUE(cs$extra$.auto_unique)) deparse(cs$group) else NA_character_
+    }, character(1L))
+    explicit_phylo_groups <- explicit_phylo_group[!is.na(explicit_phylo_group)]
+    drop_psi <- drop_psi |
+      (is_auto_phylo_psi & (groupings %in% explicit_phylo_groups))
+  }
   ## Per-family default gate: for a fit whose response is ENTIRELY
   ## ordinal_probit / delta (the design doc's Psi-"off" cells), drop the
   ## auto-emitted Psi entirely.
   if (auto_unique_off_family) {
-    drop_psi <- drop_psi | is_auto_psi
+    drop_psi <- drop_psi | is_auto_psi | is_auto_phylo_psi
   }
   if (any(drop_psi)) {
     parsed$covstructs <- parsed$covstructs[!drop_psi]

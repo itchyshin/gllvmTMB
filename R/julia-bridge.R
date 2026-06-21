@@ -2857,19 +2857,19 @@ print.summary.gllvmTMB_julia <- function(x, digits = 3, ...) {
   cs <- parsed$covstructs
 
   ## engine = 'julia' is reduced-rank only and cannot carry the trait-specific Psi
-  ## that ordinary latent() now adds by default (residual = TRUE). Drop the
+  ## that ordinary latent() now adds by default (unique = TRUE). Drop the
   ## AUTO-emitted residual-Psi companion for the Julia path and fit the reduced-rank
   ## latent block the bridge supports; an EXPLICIT diagonal term (indep()/unique())
   ## is not auto-flagged, so it still trips the structured-terms gate below.
   if (length(cs)) {
     is_auto_psi <- vapply(cs, function(z) {
-      identical(z$kind, "diag") && isTRUE(z$extra$.auto_residual)
+      identical(z$kind, "diag") && isTRUE(z$extra$.auto_unique)
     }, logical(1))
     if (any(is_auto_psi)) {
       cli::cli_warn(
         c(
           "engine = 'julia' does not support the trait-specific {.field Psi} that ordinary {.fn latent} now carries by default.",
-          "i" = "Fitting the reduced-rank latent block only. Use {.code engine = \"tmb\"} for the {.eq Lambda Lambda^T + Psi} decomposition, or pass {.code latent(..., residual = FALSE)} to silence this note."
+          "i" = "Fitting the reduced-rank latent block only. Use {.code engine = \"tmb\"} for the {.eq Lambda Lambda^T + Psi} decomposition, or pass {.code latent(..., unique = FALSE)} to silence this note."
         ),
         .frequency = "once",
         .frequency_id = "gllvmTMB-julia-auto-psi-dropped"

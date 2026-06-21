@@ -340,7 +340,7 @@ Ordinary `latent()` already carries the per-trait residual diagonal
 $\boldsymbol\Psi$ by default ($\Sigma = \Lambda\Lambda^{\top} +
 \boldsymbol\Psi$), so each level's `latent()` supplies both the shared
 factors and each trait's own residual variance; use
-`latent(..., residual = FALSE)` for the loadings-only subset. A
+`latent(..., unique = FALSE)` for the loadings-only subset. A
 standalone `indep(0 + trait | cluster)` adds a further diagonal-only
 tier when the data nest one level deeper.
 

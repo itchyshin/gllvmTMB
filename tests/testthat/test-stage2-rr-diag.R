@@ -32,7 +32,7 @@ test_that("Stage 2: rr() alone matches glmmTMB log-likelihood exactly", {
   df <- sim$data
 
   fit_g <- gllvmTMB(value ~ 0 + trait +
-                      latent(0 + trait | site, d = 2, residual = FALSE),
+                      latent(0 + trait | site, d = 2, unique = FALSE),
                     data = df)
   expect_s3_class(fit_g, "gllvmTMB_multi")
   expect_equal(fit_g$opt$convergence, 0L)

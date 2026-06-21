@@ -96,7 +96,7 @@ The same alignment appears in the worked articles:
 | saturated covariance | `dep(0 + trait | unit)` | `dep(1 | unit)` | full unstructured $\Sigma$ |
 
 Ordinary `latent()` fits the shared-plus-diagonal-Psi decomposition;
-use `latent(..., residual = FALSE)` for the old no-residual subset.
+use `latent(..., unique = FALSE)` for the old no-residual subset.
 Standalone `unique()` and `indep()` both fit independent per-trait
 variances, but `indep()` tells the next reader that the marginal-only
 interpretation is intentional. `dep()` is the full unstructured

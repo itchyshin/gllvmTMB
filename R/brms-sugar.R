@@ -134,9 +134,27 @@
   key <- "latent-default-psi"
   if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
     cli::cli_warn(c(
-      "!" = "Ordinary {.fn latent} now includes a per-trait residual {.field Psi} by default (Sigma = Lambda Lambda^T + Psi).",
+      "!" = "Ordinary {.fn latent} now includes a per-trait {.field Psi} by default (Sigma = Lambda Lambda^T + Psi).",
       "i" = "This changed in gllvmTMB 0.2.0; earlier {.fn latent} was loadings-only (Lambda Lambda^T).",
-      ">" = "Pass {.code latent(..., residual = FALSE)} for the old rotation-invariant loadings-only fit."
+      ">" = "Pass {.code latent(..., unique = FALSE)} for the old rotation-invariant loadings-only fit."
+    ))
+    .gllvmTMB_deprecation_seen[[key]] <- TRUE
+  }
+  invisible(NULL)
+}
+
+## One-shot fire-on-use notice for the `residual` -> `unique` argument rename on
+## ordinary latent(). The `residual =` argument shipped in 0.2.0 (#505) and was
+## renamed to `unique =` (matches extract_Sigma(part = "unique")); `residual`
+## still works as a soft-deprecated alias.
+.gllvmTMB_warn_latent_residual_alias <- function() {
+  if (isTRUE(getOption("gllvmTMB.quiet_grammar_notes", FALSE))) return(invisible(NULL))
+  key <- "latent-residual-alias"
+  if (!isTRUE(.gllvmTMB_deprecation_seen[[key]])) {
+    cli::cli_warn(c(
+      "!" = "The {.arg residual} argument of {.fn latent} was renamed to {.arg unique} in gllvmTMB 0.2.0.",
+      "i" = "{.arg residual} is retained as a soft-deprecated alias and may be removed in a future release.",
+      ">" = "Use {.code latent(..., unique = ...)} instead."
     ))
     .gllvmTMB_deprecation_seen[[key]] <- TRUE
   }
@@ -435,22 +453,24 @@ meta <- function(value, sampling_var) {
 #' ```r
 #' value ~ 0 + trait + latent(0 + trait | unit, d = 2)
 #' ```
-#' Set `residual = FALSE` for the old no-residual subset.
+#' Set `unique = FALSE` for the loadings-only subset.
 #' For a scalar diagonal \eqn{\boldsymbol\Psi} companion shared across traits,
 #' use `common = TRUE`; this replaces the legacy paired
-#' `latent(..., residual = FALSE) + unique(..., common = TRUE)` spelling for
+#' `latent(..., unique = FALSE) + unique(..., common = TRUE)` spelling for
 #' ordinary intercept-only latent terms.
 #'
 #' @param formula `0 + trait | g` style formula (LHS is the response
 #'   factor, typically `0 + trait`; RHS is the grouping factor).
 #' @param d Integer; number of latent factors.
-#' @param residual Logical; `TRUE` (default) auto-includes the diagonal
-#'   trait-unique \eqn{\boldsymbol\Psi} companion. Set `FALSE` for the
-#'   no-residual / rotation-invariant subset.
+#' @param unique Logical; `TRUE` (default) auto-includes the diagonal
+#'   trait-specific \eqn{\boldsymbol\Psi} companion
+#'   (\eqn{\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}).
+#'   Set `FALSE` for the loadings-only / rotation-invariant subset. The former
+#'   argument name `residual` is retained as a soft-deprecated alias.
 #' @param common Logical; `FALSE` (default) estimates one diagonal
 #'   \eqn{\boldsymbol\Psi} variance per trait. `TRUE` ties the default ordinary
 #'   diagonal \eqn{\boldsymbol\Psi} companion to one shared variance across
-#'   traits. Only applies when `residual = TRUE`.
+#'   traits. Only applies when `unique = TRUE`.
 #' @return A formula marker; never evaluated.
 #' @seealso [unique()], [phylo_latent()], [diag_re], [extract_Sigma()].
 #' @examples
@@ -469,7 +489,7 @@ meta <- function(value, sampling_var) {
 #' extract_Sigma(fit)
 #' }
 #' @export
-latent <- function(formula, d = 1, residual = TRUE, common = FALSE) {
+latent <- function(formula, d = 1, unique = TRUE, common = FALSE) {
   invisible(NULL)
 }
 
@@ -2802,13 +2822,30 @@ rewrite_canonical_aliases <- function(formula) {
 	        new_call <- e
 	        new_call[[1L]] <- as.name(target)
 	        if (identical(fn, "latent")) {
-	          residual_arg <- e[["residual"]]
-	          if (is.null(residual_arg)) residual_arg <- TRUE
-	          if (!is.logical(residual_arg) || length(residual_arg) != 1L ||
-	              is.na(residual_arg)) {
+	          ## `unique =` is the canonical argument (matches
+	          ## extract_Sigma(part = "unique")). `residual =` is a soft-deprecated
+	          ## alias for the argument shipped in 0.2.0 (#505); it routes to `unique`.
+	          unique_supplied <- "unique" %in% names(e)
+	          residual_supplied <- "residual" %in% names(e)
+	          if (unique_supplied && residual_supplied) {
 	            cli::cli_abort(c(
-	              "{.arg residual} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
-	              ">" = "Use {.code latent(..., residual = FALSE)} for the no-residual subset."
+	              "Supply only one of {.arg unique} and {.arg residual} to {.fn latent}.",
+	              "i" = "{.arg residual} is a soft-deprecated alias for {.arg unique}.",
+	              ">" = "Use {.code latent(..., unique = ...)}."
+	            ))
+	          }
+	          if (residual_supplied) {
+	            .gllvmTMB_warn_latent_residual_alias()
+	            unique_arg <- e[["residual"]]
+	          } else {
+	            unique_arg <- e[["unique"]]
+	          }
+	          if (is.null(unique_arg)) unique_arg <- TRUE
+	          if (!is.logical(unique_arg) || length(unique_arg) != 1L ||
+	              is.na(unique_arg)) {
+	            cli::cli_abort(c(
+	              "{.arg unique} in {.fn latent} must be a literal {.code TRUE} or {.code FALSE}.",
+	              ">" = "Use {.code latent(..., unique = FALSE)} for the loadings-only subset."
 	            ))
 	          }
 
@@ -2823,28 +2860,28 @@ rewrite_canonical_aliases <- function(formula) {
 	          }
 	          new_call_names <- names(new_call)
 	          if (!is.null(new_call_names)) {
-	            drop_args <- new_call_names %in% c("residual", "common")
+	            drop_args <- new_call_names %in% c("unique", "residual", "common")
 	            if (any(drop_args)) {
 	              new_call <- new_call[!drop_args]
 	            }
 	          }
 
-	          if (isFALSE(residual_arg) && isTRUE(common_arg)) {
+	          if (isFALSE(unique_arg) && isTRUE(common_arg)) {
 	            cli::cli_abort(c(
-	              "{.arg common} in {.fn latent} requires {.code residual = TRUE}.",
-	              "i" = "{.code common = TRUE} ties the default diagonal Psi companion; {.code residual = FALSE} removes that companion.",
-	              ">" = "Use {.code latent(..., common = TRUE)} or {.code latent(..., residual = FALSE)}, not both."
+	              "{.arg common} in {.fn latent} requires {.code unique = TRUE}.",
+	              "i" = "{.code common = TRUE} ties the default diagonal Psi companion; {.code unique = FALSE} removes that companion.",
+	              ">" = "Use {.code latent(..., common = TRUE)} or {.code latent(..., unique = FALSE)}, not both."
 	            ))
 	          }
-	          if (isFALSE(residual_arg)) {
+	          if (isFALSE(unique_arg)) {
 	            return(new_call)
 	          }
-	          ## Bare latent() (no explicit residual=) now carries Psi by default:
-	          ## one-shot fire-on-use notice of the silent behavior change (§7).
-	          if (is.null(e[["residual"]])) {
+	          ## Bare latent() (neither unique= nor residual= given) now carries Psi
+	          ## by default: one-shot fire-on-use notice of the silent behavior change.
+	          if (!unique_supplied && !residual_supplied) {
 	            .gllvmTMB_warn_latent_default_psi()
 	          }
-	          psi_extras <- list(.auto_residual = TRUE)
+	          psi_extras <- list(.auto_unique = TRUE)
 	          if (isTRUE(common_arg)) {
 	            psi_extras$common <- TRUE
 	          }

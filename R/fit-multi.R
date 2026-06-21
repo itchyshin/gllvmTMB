@@ -320,7 +320,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   }
 
   ## ---- latent() auto-residual Psi: per-family default gate --------------
-  ## `latent()` emits a companion `diag` carrying `.auto_residual = TRUE`
+  ## `latent()` emits a companion `diag` carrying `.auto_unique = TRUE`
   ## (the folded per-trait residual Psi; see brms-sugar.R and
   ## docs/dev-log/2026-06-12-latent-psi-fold-design.md). The default Psi is
   ## the BETWEEN-UNIT residual, identified for the main families given
@@ -336,11 +336,11 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## skips). An EXPLICIT residual was retired with `unique()`, so this only
   ## governs the default. No new identifiability logic beyond the design
   ## doc's per-family table; mirrors the C3.2 drop-and-rederive pattern above.
-  auto_residual_off_family <- all(family_id_vec %in% c(12L, 13L, 14L))
+  auto_unique_off_family <- all(family_id_vec %in% c(12L, 13L, 14L))
   ## Mark the auto-emitted residual Psi covstructs.
   is_auto_psi <- vapply(seq_along(parsed$covstructs), function(i) {
     cs <- parsed$covstructs[[i]]
-    identical(cs$kind, "diag") && isTRUE(cs$extra$.auto_residual)
+    identical(cs$kind, "diag") && isTRUE(cs$extra$.auto_unique)
   }, logical(1L))
   ## Deduplicate: if an EXPLICIT (non-auto, non-indep) `diag` is present at the
   ## same grouping as an auto-Psi (e.g. a transitional `latent(...) +
@@ -352,7 +352,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   if (any(is_auto_psi)) {
     explicit_diag_group <- vapply(seq_along(parsed$covstructs), function(i) {
       cs <- parsed$covstructs[[i]]
-      if (identical(cs$kind, "diag") && !isTRUE(cs$extra$.auto_residual) &&
+      if (identical(cs$kind, "diag") && !isTRUE(cs$extra$.auto_unique) &&
           !isTRUE(cs$extra$.indep)) deparse(cs$group) else NA_character_
     }, character(1L))
     explicit_groups <- explicit_diag_group[!is.na(explicit_diag_group)]
@@ -361,7 +361,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## Per-family default gate: for a fit whose response is ENTIRELY
   ## ordinal_probit / delta (the design doc's Psi-"off" cells), drop the
   ## auto-emitted Psi entirely.
-  if (auto_residual_off_family) {
+  if (auto_unique_off_family) {
     drop_psi <- drop_psi | is_auto_psi
   }
   if (any(drop_psi)) {
@@ -695,7 +695,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
     identical(cs$kind, "diag") && isTRUE(cs$extra$.indep)
   }, logical(1L))
   ## The companion residual Psi auto-emitted by `latent()` is a plain `diag`
-  ## carrying `.auto_residual = TRUE`. It is the default latent Psi companion
+  ## carrying `.auto_unique = TRUE`. It is the default latent Psi companion
   ## (the old explicit `latent + unique` spelling), so it must be EXEMPT from the `dep + unique`
   ## / `indep + unique` *redundancy* messages below -- otherwise a plain
   ## `latent()` fit (which always emits this diag) would trip the very guard
@@ -705,7 +705,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
   ## genuine double-spec (verified: `indep(g) + latent(g)` still aborts).
   diag_is_auto_residual <- vapply(seq_along(parsed$covstructs), function(i) {
     cs <- parsed$covstructs[[i]]
-    identical(cs$kind, "diag") && isTRUE(cs$extra$.auto_residual)
+    identical(cs$kind, "diag") && isTRUE(cs$extra$.auto_unique)
   }, logical(1L))
   is_indep_B <- any(diag_is_indep & groupings == site)
   is_indep_W <- any(diag_is_indep & groupings == ss_name)
@@ -3840,7 +3840,7 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
 
   ## ---- Per-trait B-tier auto-Psi family gate (binary skip) -------------
   ## `latent()` adds the default between-unit Psi (a `diag` over the unit
-  ## tier carrying `.auto_residual = TRUE`). For single-trial Bernoulli /
+  ## tier carrying `.auto_unique = TRUE`). For single-trial Bernoulli /
   ## binomial traits this between-unit Psi is UNIDENTIFIED: each (trait, unit)
   ## cell is a single 0/1, and the probit/logit link's implicit scale is
   ## itself the between-unit residual (2026-06-12 design doc per-family table;

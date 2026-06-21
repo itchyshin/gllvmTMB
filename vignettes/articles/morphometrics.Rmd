@@ -279,7 +279,7 @@ plot_Sigma_comparison(corr_compare, measure = "correlation")
 > unique (trait-specific) component. Ordinary `latent()` carries
 > $\boldsymbol\Psi$ by default (as in the fit above), so the diagonal
 > is filled in correctly. If instead you fit with
-> `latent(..., residual = FALSE)`, then $\boldsymbol\Psi = 0$ and you
+> `latent(..., unique = FALSE)`, then $\boldsymbol\Psi = 0$ and you
 > get only $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$, which
 > understates the diagonal. Use `part = "shared"` /
 > `part = "unique"` to pull just one component.

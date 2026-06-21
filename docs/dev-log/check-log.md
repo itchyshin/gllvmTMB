@@ -16760,3 +16760,85 @@ that estimates and adds the per-trait `Psi_spde` companion alongside
 needs Boole/Gauss/Noether/Curie/Grace/Rose review plus updated design
 docs, recovery tests, validation-debt rows, and full `devtools::check()`
 before any push.
+
+## 2026-06-21 (Codex / Ada) -- animal_latent unique= fold
+
+Branch/worktree: `/private/tmp/gllvmtmb-animal-latent-psi-fold` on
+`codex/animal-latent-psi-fold-20260621`, created from `origin/main`
+`90a0762` after #525 merged. Open PR scan before shared dev-log/design edits:
+`gh pr list --repo itchyshin/gllvmTMB --state open` -> no open PRs. Recent-log
+scan: `git log --all --oneline --since='6 hours ago'` showed the already-merged
+#518-#525 sequence and no active collision.
+
+Implemented slice: `animal_latent(id, d = K, pedigree = ped)` now folds the
+additive-genetic diagonal `Psi_animal` companion by default (`unique = TRUE`) via
+the existing `phylo_rr(..., vcv = A)` path plus an automatic
+`.phylo_unique = TRUE, .auto_unique = TRUE` companion. `unique = FALSE` keeps
+the old loadings-only subset; explicit `animal_unique()` companions are deduped.
+No TMB or SPDE engine code changed.
+
+Exact validation commands and outcomes:
+
+- RED-first:
+  `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-animal-latent-unique-fold.R", reporter = "summary")'`
+  failed before implementation because the parser did not emit the automatic
+  companion and invalid `unique` values were not rejected.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed; unrelated
+  generated Rd churn was removed before staging.
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-animal-latent-unique-fold.R", reporter = "summary")'`
+  -> PASS (`.................`).
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-animal-keyword.R", reporter = "summary")'`
+  -> PASS (`...................S..S`); skips were existing heavy ANI-09 and
+  missing Suggests-only `nadiv`.
+- `NOT_CRAN=true GLLVMTMB_HEAVY_TESTS=1 Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-matrix-animal-nongaussian.R", reporter = "summary")'`
+  -> PASS (`..................................................`).
+- `NOT_CRAN=true Rscript --vanilla -e 'devtools::test()'` -> PASS:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3422 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS:
+  `No problems found`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` rendered the
+  touched animal / keyword-grid / vocabulary articles, then failed in existing
+  `vignettes/articles/lambda-constraint-suggest.Rmd` chunk
+  `profile-confidence-eye` because `loading_ci(fit_pr, level = "unit", method =
+  "wald")` correctly rejects a fit with no `lambda_constraint` pins. Detached
+  `origin/main` at `90a0762` reproduced the same failure with
+  `pkgdown::build_article("articles/lambda-constraint-suggest", lazy = FALSE)`;
+  recorded as pre-existing article render debt, not branch regression.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> `0 errors, 1 warning, 0 notes`. Warning was local install/compiler noise:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group
+  '-Wfixed-enum-extension', ignored [-Wunknown-warning-option]`.
+- `git diff --check` -> PASS.
+- Rendered-Rd spot check:
+  `tail -5 man/animal_latent.Rd man/animal_unique.Rd man/diag_re.Rd man/phylo_unique.Rd man/spatial_unique.Rd`
+  and
+  `grep -c '^\\keyword' man/animal_latent.Rd man/animal_unique.Rd man/diag_re.Rd man/phylo_unique.Rd man/spatial_unique.Rd`
+  -> only the expected one `\keyword{internal}` in `man/diag_re.Rd`.
+
+Exact stale-wording scans:
+
+- `rg -n 'animal_latent\([^\n]*\)\s*\+\s*animal_unique|animal_latent\(d = K\) \+ animal_unique' R tests vignettes README.md NEWS.md docs AGENTS.md CLAUDE.md CONTRIBUTING.md`
+  -> intentional compatibility prose in this branch plus historical after-task
+  records; no live animal tutorial still teaches the paired spelling as primary.
+- `rg -n 'remaining `spatial_latent` / `animal_latent`|animal_latent.*future|source-specific latent-Psi folds remain future|source-specific paired compatibility pattern' AGENTS.md CLAUDE.md CONTRIBUTING.md NEWS.md docs vignettes R`
+  -> one historical after-task note only; no current source doc says animal is
+  still a future fold.
+- `rg -n '\.auto_residual|residual = TRUE|residual = FALSE|latent\([^\n]*residual' R tests vignettes README.md NEWS.md docs AGENTS.md CLAUDE.md CONTRIBUTING.md`
+  -> expected soft-deprecated ordinary `residual =` alias coverage and
+  historical notes; also surfaced live follow-up debt in
+  `vignettes/articles/pitfalls.Rmd` where phylo latent wording still says
+  loadings-only.
+- `rg -n '\bS_B\b|\bS_W\b|\\bf S' README.md NEWS.md docs/design vignettes R tests AGENTS.md CLAUDE.md CONTRIBUTING.md`
+  -> only the audit pattern in `docs/design/10-after-task-protocol.md`; no new
+  stale `S_B` / `S_W` notation.
+
+Issue ledger: searched open issues with
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'animal_latent OR animal_unique OR latent unique' --limit 20 --json number,title,url,state`
+and
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'lambda-constraint-suggest OR loading_ci OR profile-confidence-eye' --limit 20 --json number,title,url,state`.
+#526 remains the spatial blocker; #230/#340 are broad article/status trackers
+for the pre-existing article render debt. No issue closed; no new issue opened
+in this scoped animal PR.
+
+After-task report:
+`docs/dev-log/after-task/2026-06-21-animal-latent-unique-fold.md`.

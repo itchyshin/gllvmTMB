@@ -241,8 +241,8 @@ additive-genetic covariances between traits. A factor-analytic
 $\mathbf{G} = \boldsymbol{\Lambda}_g \boldsymbol{\Lambda}_g^\top
 + \boldsymbol{\Psi}$ (Kirkpatrick & Meyer 2004; Meyer 2009;
 Runcie & Mukherjee 2013) is exactly what `animal_latent(individual,
-d = K, pedigree = ped) + animal_unique(individual, pedigree = ped)`
-fits. Worked example: [Animal model: heritability and genetic
+d = K, pedigree = ped)` fits by default. Worked example:
+[Animal model: heritability and genetic
 covariance](animal-model.html).
 
 **Reaction norm / random regression** &mdash; A model where

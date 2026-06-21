@@ -4,12 +4,16 @@
 \alias{animal_latent}
 \title{Reduced-rank animal-model latent factors: \code{animal_latent(id, d = K)}}
 \usage{
-animal_latent(id, d = 1, pedigree = NULL, A = NULL, Ainv = NULL)
+animal_latent(id, d = 1, unique = TRUE, pedigree = NULL, A = NULL, Ainv = NULL)
 }
 \arguments{
 \item{id}{Bare column name of the individual factor.}
 
 \item{d}{Number of latent factors (\eqn{K \le T}). Default 1.}
+
+\item{unique}{Logical; when \code{TRUE} (default), include the per-trait
+diagonal additive-genetic \eqn{\boldsymbol\Psi} companion. Use
+\code{unique = FALSE} for the older loadings-only subset.}
 
 \item{pedigree}{A 3-column data frame with columns \code{id}, \code{sire},
 \code{dam} (unknown parents encoded as \code{NA}). Converted internally
@@ -27,11 +31,14 @@ See \code{\link[=animal_scalar]{animal_scalar()}}.
 }
 \description{
 Reduced-rank decomposition of the additive-genetic covariance
-matrix using \eqn{K} latent factors:
-\eqn{\boldsymbol G \approx \boldsymbol\Lambda \boldsymbol\Lambda^\top}
+matrix using \eqn{K} latent factors plus, by default, a per-trait
+diagonal \eqn{\boldsymbol\Psi} companion:
+\eqn{\boldsymbol G =
+\boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 with \eqn{\boldsymbol\Lambda} a \eqn{T \times K} loadings matrix
 (\eqn{T} = number of traits, \eqn{K \le T}). The latent factors
-themselves carry the \eqn{\mathbf A} structure across individuals.
+and diagonal companion both carry the same \eqn{\mathbf A} structure
+across individuals.
 }
 \details{
 This is the canonical "factor-analytic G-matrix" model from
@@ -42,7 +49,7 @@ phylogenetic VCV.
 }
 \examples{
 \dontrun{
-# Reduced-rank factor-analytic G-matrix (d latent factors).
+# Factor-analytic G-matrix (d latent factors plus diagonal Psi).
 # Grounded in test-animal-keyword.R (ANI-05).
 ped <- data.frame(
   id   = paste0("i", 1:12),

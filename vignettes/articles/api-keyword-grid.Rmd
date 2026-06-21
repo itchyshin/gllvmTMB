@@ -218,9 +218,11 @@ animal_latent(id, d = 2, pedigree = ped)
 The animal row uses the same five covariance modes as the grid, but
 the correlation among individuals comes from a pedigree, a dense
 relatedness matrix `A`, or a sparse inverse `Ainv`. Use
-`animal_latent() + animal_unique()` for a decomposed additive-genetic
-model, `animal_indep()` for a marginal-only diagonal animal model,
-and `animal_dep()` as the saturated small-trait comparator.
+`animal_latent()` for a decomposed additive-genetic model,
+`animal_latent(..., unique = FALSE) + animal_unique()` only for the
+explicit compatibility spelling, `animal_indep()` for a marginal-only
+diagonal animal model, and `animal_dep()` as the saturated small-trait
+comparator.
 
 ### Phylogenetic
 

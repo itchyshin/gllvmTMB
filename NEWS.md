@@ -3,6 +3,10 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `animal_latent()` folds its diagonal Psi by default (2026-06-21)
+
+* `animal_latent(id, d = K, pedigree = ped)` now carries its additive-genetic diagonal trait-specific `Psi_animal` companion by default (`unique = TRUE`), mirroring ordinary `latent()` and `phylo_latent()`: `G = Lambda Lambda^T + Psi_animal`, with both parts scaled by the same relatedness matrix `A`. The paired `animal_latent(..., unique = FALSE) + animal_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `animal_unique()`, byte-identical to the explicit pair. Use `animal_latent(..., unique = FALSE)` for the loadings-only subset. IN (`ANI-05`): parser emission, Gaussian fold equivalence, explicit-companion dedup, and Gaussian/non-Gaussian loadings-only animal-vs-phylo equivalence are covered by `test-animal-latent-unique-fold.R`, `test-animal-keyword.R`, and `test-matrix-animal-nongaussian.R`. PARTIAL: augmented `animal_latent(1 + x | id)` slopes remain on their existing loadings-only slope engine for this Stage-A slice; `spatial_latent()` is blocked on the SPDE diagonal engine and `kernel_latent()` remains the next fold slice.
+
 ## `check_gllvmTMB()` near-constant binomial diagnostic (2026-06-21)
 
 * `check_gllvmTMB()` now adds a `binomial_prevalence_loading` row when binomial traits are present, surfacing the worst per-trait prevalence, fitted-probability saturation, maximum loading, and loading size relative to the typical fitted loading scale. IN (`DIA-08`): this is a diagnostic screen for near-constant binary traits that can drive runaway loadings and weak latent-axis warnings. PARTIAL (`DIA-10`): it points users to remove or re-code near-constant indicators, but it does not calibrate interval coverage, prove separation formally, or change the fitted likelihood. This closes the package-side mirror of Ayumi-495/urbanisation_map#3 (#523).
@@ -17,8 +21,8 @@
   byte-identical to the explicit pair. Use `phylo_latent(..., unique = FALSE)`
   for the loadings-only subset. Augmented `phylo_latent(1 + x | sp)` slopes and
   the `phylo_indep` / `phylo_dep` mutual-exclusion paths are unchanged. The
-  remaining `spatial_latent` / `animal_latent` / `kernel_latent` still use the
-  explicit paired spelling (their folds are later slices).
+  remaining `spatial_latent` / `kernel_latent` still use the explicit paired
+  spelling (their folds are later slices).
 
 ## `latent(unique = ...)` argument rename (2026-06-21)
 
@@ -29,8 +33,8 @@
   companion); `unique = FALSE` fits the loadings-only, rotation-invariant subset.
   `residual =` is kept as a soft-deprecated alias that still works but emits a
   one-shot deprecation warning; prefer `unique =` in new code. Ordinary `latent()`
-  is covered at every grouping level; source-specific `*_latent()` keep their
-  paired `*_unique()` companion for now (Psi-fold slices in progress).
+  is covered at every grouping level; source-specific Psi-fold slices are
+  progressing source by source.
 
 ## Cross-lineage `rho` profile intervals (2026-06-20)
 

@@ -33,18 +33,21 @@ does NOT do" section), see
   source-specific grid: `kernel_unique()`, `kernel_indep()`,
   `kernel_dep()`, and `kernel_latent()`. C1 must stay
   phylo-equivalent for dense `K` inputs to less than `1e-6`.
-- Ordinary `latent()` now carries its diagonal Psi companion by default:
+- Ordinary `latent()`, `phylo_latent()`, and `animal_latent()` now
+  carry their diagonal Psi companions by default:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi; see `decisions.md` 2026-05-14 notation reversal).
-  Use `latent(..., unique = FALSE)` only for the old loadings-only /
-  rotation-invariant subset (`residual =` is a soft-deprecated alias).
+  Use `*_latent(..., unique = FALSE)` only for the old loadings-only /
+  rotation-invariant subset on folded terms (`residual =` is a
+  soft-deprecated alias for ordinary `latent()` only).
   `unique()` / source-specific `*_unique()` /
   `kernel_unique()` remain soft-deprecated compatibility syntax; new
   standalone diagonal examples use `indep()` / `*_indep()` /
   `kernel_indep()`.
-- `phylo_latent + phylo_unique` is the canonical phylogenetic
-  decomposition; the standalone `phylo_unique` carries
-  intra-phylogeny diagonal-only structure.
+- `phylo_latent()` and `animal_latent()` are the canonical folded
+  decompositions; explicit `*_latent(..., unique = FALSE) +
+  *_unique()` remains accepted compatibility syntax. Standalone
+  `phylo_unique` / `animal_unique` carry diagonal-only structure.
 - `meta_V(V = V)` is the canonical meta-analytic
   known-sampling-covariance keyword. `meta_known_V(V = V)` is
   a deprecated alias. `block_V(study, sampling_var, rho_within)` is

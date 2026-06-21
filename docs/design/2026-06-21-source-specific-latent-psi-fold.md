@@ -79,3 +79,41 @@ Each slice = rewriter + dedup + per-family gate, with these **gates**:
 
 Only after all four source folds + G1-G3 are green, flip `*_unique()` soft-deprecation to removal,
 source-by-source, each gated by its byte-identity + recovery evidence.
+
+## Phylo slice — implementation-grade detail (from the deep phylo research)
+
+The phylo feature is heavily developed (validation-debt **PHY-01..18**; ~30 test files; sparse
+`A⁻¹` Hadfield-Nakagawa engine; augmented slopes; `animal_*`/`kernel_*` parallels). The fold must
+preserve all of it. Verified specifics:
+
+**Companion form + routing.** `phylo_unique` paired with `phylo_latent` routes to the engine's
+`phylo_diag` slot (`use_phylo_diag=1`, parameter `log_sd_phy_diag`, sharing `Ainv_phy_rr` /
+`g_phy_diag`), giving `Σ_phy = Λ_phy Λ_phyᵀ ⊗ A + Ψ_phy ⊗ A`. So the fold emits, when
+`phylo_latent(species, d=K, residual=TRUE)`:
+`phylo_rr(species, d=K, [tree/vcv]) + phylo_rr(species, .phylo_unique=TRUE, .auto_residual=TRUE, [tree/vcv])`.
+The companion reuses `.pass_through_extras(e, c("tree","vcv"))` (+ A/Ainv) so the SAME phylo `A` is
+shared. `residual=FALSE` → `phylo_rr(d=K)` alone. Add `residual` (and `common`) args to
+`phylo_latent` mirroring `latent()`'s arg handling (R/brms-sugar.R ~2804-2852).
+
+**Dedup extension (R/fit-multi.R ~340-366 + ~804-960).** `is_auto_psi` currently keys on
+`kind=="diag" && .auto_residual`. Extend it to recognize the phylo auto-companion
+(`kind=="phylo_rr" && .phylo_unique && .auto_residual`) and drop it when an explicit `phylo_unique`
+sits at the same grouping → byte-identity with the explicit pair. The lone-`phylo_unique` legacy
+gate (`is_phylo_unique`, ~951: d=T, diagonal Lambda constraint) must be left UNCHANGED.
+
+**Guards.** (a) Augmented `phylo_latent(1+x|sp)` carries `.latent_slope` (separate engine block) —
+the fold must EXCLUDE it (keep explicit `phylo_unique` for augmented in slice 1). (b) Mutual
+exclusion: if `phylo_indep`/`phylo_dep` is present on the same grouping, do NOT fold. (c) Per-family
+gate: the existing `auto_residual_off_family` (ordinal/delta) + binary-#509 skips apply to the phylo
+companion too.
+
+**Invariants the fold must keep byte-identical (the safety net):**
+`extract_Sigma(level="phy", part="total"/"shared"/"unique")`; `extract_phylo_signal` (`H²+C²_non+ψ²=1`);
+the two-Ψ cross-checks (`compare_dep_vs_two_psi`, `compare_indep_vs_two_psi`); all wide/long
+byte-identity gates; the lone-`phylo_unique` three-piece path; and PHY-01..18.
+
+**New tests (TDD):** `test-phylo-latent-residual-fold.R` — G1 byte-identity
+(`phylo_latent(residual=TRUE)` ≡ `phylo_latent(residual=FALSE) + phylo_unique()`): `logLik`,
+`extract_Sigma(level="phy", part=*)`, `extract_phylo_signal` identical (< 1e-6) across the wired
+families; G2 per-family recovery of `Σ_phy`; G3 `residual=FALSE` = loadings-only; plus a guard test
+that explicit-pair and augmented stay unchanged.

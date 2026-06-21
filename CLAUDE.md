@@ -3,8 +3,8 @@
 This repository is shared by humans, Codex, and Claude Code. Read
 `AGENTS.md` first; it is the source of truth for project rules.
 For the current Claude handoff, also read
-`docs/dev-log/claude-group-handoff-2026-05-11.md` before starting new
-work.
+`docs/dev-log/claude-handover-2026-06-21-latent-unique.md` before
+starting new work.
 
 ## Project Identity
 

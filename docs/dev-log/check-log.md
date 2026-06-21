@@ -16627,3 +16627,57 @@ hardening (per-family recovery gates + deferred docs: bare-*_latent fire-on-use
 warning, AGENTS/CLAUDE grid note, validation-debt register row). Follow the §5 fold
 recipe; run the FULL devtools::check() before every push (the #516 trap). Merged
 worktrees (gllvmtmb-latent-unique, -phylo-unique-fold, -phylofold) safe to prune.
+
+## 2026-06-21 (Codex / Ada) — #523: binomial prevalence/loading diagnostic
+
+Branch `codex/ayumi-binary-diagnostics-20260621` off origin/main 8bba6a4.
+Package-side mirror of Ayumi-495/urbanisation_map#3.
+
+Implemented an additive `check_gllvmTMB()` row, `binomial_prevalence_loading`,
+for binomial fits. It reports the worst per-trait prevalence, fitted-probability
+saturation share, maximum loading, and loading size relative to the fitted
+loading scale. When the near-constant binary + dominant-loading/saturated-fit
+screen WARNs, the action says to remove or re-code the near-constant binary
+indicator; lowering rank alone will not resolve quasi-separation. The
+`weak_axis_unit` action now points to that same root cause when the binomial row
+warns. No likelihood, TMB engine, formula grammar, family, or NAMESPACE change.
+
+Checks so far:
+- `air format R/diagnose.R tests/testthat/test-sanity-multi.R` -> no output.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> completed;
+  retained only `man/check_gllvmTMB.Rd` from generated docs, removed unrelated
+  local roxygen link churn.
+- `Rscript --vanilla -e 'devtools::test(filter = "sanity-multi", stop_on_failure = TRUE)'`
+  -> `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 39 ]`.
+- Synthetic real-fit smoke:
+  `gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
+  family = binomial(link = "probit"), control = gllvmTMBcontrol(se = FALSE,
+  n_init = 2, init_jitter = 0.05))` on a 9-trait binary fixture with one
+  94-percent-prevalent item -> `binomial_prevalence_loading` WARN:
+  `item9 prevalence=0.94; max_loading=13.2; relative_loading=20; saturated_fit=0.94`.
+- `Rscript --vanilla -e 'devtools::test(stop_on_failure = TRUE)'`
+  -> `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3405 ]`, duration 512.9s.
+- `git diff --check` -> clean.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> `No problems found`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE, error_on = "never")'`
+  -> `0 errors | 1 warning | 0 notes`, duration 5m 15.3s. The warning was
+  reported at package-install check stage; the quiet check output did not leave
+  a discoverable `gllvmTMB.Rcheck` directory with the expanded warning text, and
+  this branch touches no compiled code.
+- `tail -5 man/check_gllvmTMB.Rd` -> help topic ends with the intended
+  `check_gllvmTMB(fit)` example close.
+- `grep -c '^\\keyword' man/check_gllvmTMB.Rd` -> `0`.
+- `gh pr list --state open --repo itchyshin/gllvmTMB` -> no open PRs listed.
+
+Consistency scans:
+- `rg -n "binomial_prevalence_loading|binary_prevalence_thresh|binary_saturation_prob_thresh|binary_saturation_share_thresh|loading_relative_thresh" R tests man NEWS.md docs/design/35-validation-debt-register.md`
+  -> implementation/test/Rd/NEWS/DIA-08 only.
+- `rg -n "near-constant binomial|near-constant binary|remove or re-code|lowering rank" R tests man NEWS.md docs/design/35-validation-debt-register.md`
+  -> action text aligned across implementation, test, NEWS, and DIA-08.
+- `rg -n "formal separation|calibrate interval|calibrat.*coverage|change the fitted likelihood|formula grammar|engine" NEWS.md R/diagnose.R docs/design/35-validation-debt-register.md`
+  -> new wording explicitly avoids proof/calibration/likelihood claims.
+- `rg -n "DIA-08|DIA-10|check_gllvmTMB\\(|binomial_prevalence_loading|near-constant" README.md ROADMAP.md NEWS.md docs/design docs/dev-log/known-limitations.md _pkgdown.yml R/diagnose.R man/check_gllvmTMB.Rd tests/testthat/test-sanity-multi.R`
+  -> no README/ROADMAP/pkgdown/known-limitations edit required for the narrow row.
+
+After-task report: `docs/dev-log/after-task/2026-06-21-binomial-prevalence-loading-diagnostic.md`.

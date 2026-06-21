@@ -11,7 +11,11 @@ check_gllvmTMB(
   weak_axis_thresh = 0.05,
   psi_thresh = 1e-04,
   sigma_eps_thresh = 1e-04,
-  cross_loading_thresh = 0.6
+  cross_loading_thresh = 0.6,
+  binary_prevalence_thresh = 0.9,
+  binary_saturation_prob_thresh = 0.99,
+  binary_saturation_share_thresh = 0.5,
+  loading_relative_thresh = 8
 )
 }
 \arguments{
@@ -35,6 +39,19 @@ standard deviation is flagged as near zero. Default 0.0001.}
 \item{cross_loading_thresh}{Minimum median trait dominance on a
 single latent axis before a multi-axis loading matrix is treated as
 block-structured enough for direct interpretation. Default 0.6.}
+
+\item{binary_prevalence_thresh}{Prevalence at or beyond which a
+binomial trait is treated as near-constant. Default 0.9.}
+
+\item{binary_saturation_prob_thresh}{Response-scale fitted probability
+threshold for saturation in binomial traits. Default 0.99.}
+
+\item{binary_saturation_share_thresh}{Minimum share of saturated
+fitted probabilities before a binomial trait is flagged. Default
+0.5.}
+
+\item{loading_relative_thresh}{Threshold for the largest trait loading
+relative to the typical fitted loading size. Default 8.}
 }
 \value{
 A data frame with columns \code{component}, \code{status}, \code{value},
@@ -45,21 +62,22 @@ A data frame with columns \code{component}, \code{status}, \code{value},
 Run \code{check_gllvmTMB()} right after fitting, before interpreting
 confidence intervals or covariance summaries. It returns a stable
 table of optimiser, gradient, Hessian, \code{sdreport()}, restart,
-boundary, and latent-identifiability diagnostics. It is the
-machine-readable companion to
+boundary, latent-identifiability, and binomial prevalence/loading
+diagnostics. It is the machine-readable companion to
 \code{\link[=gllvmTMB_diagnose]{gllvmTMB_diagnose()}}: use this in simulations, tests, and reports
 where parsing printed messages would be brittle.
 }
 \details{
 Scope boundary (DIA-08 / DIA-10): IN, optimisation and
 inference-risk signals for fitted models, including latent-axis
-rotation, weak-axis, near-zero \code{psi}, and residual-scale boundary
-flags plus the intentional \code{gllvmTMBcontrol(se = FALSE)}
-point-estimate path. PARTIAL, the table does not calibrate interval
-coverage or prove the selected latent rank by itself. PLANNED,
-target-explicit M3 simulations and \code{\link[=check_identifiability]{check_identifiability()}} decide
-when broader interval or rank-selection claims move beyond
-diagnostic status.
+rotation, weak-axis, near-zero \code{psi}, residual-scale boundary
+flags, a binomial near-constant/loading/saturation screen, and the
+intentional \code{gllvmTMBcontrol(se = FALSE)} point-estimate path.
+PARTIAL, the table does not calibrate interval coverage, prove
+formal separation, or prove the selected latent rank by itself.
+PLANNED, target-explicit M3 simulations and
+\code{\link[=check_identifiability]{check_identifiability()}} decide when broader interval or
+rank-selection claims move beyond diagnostic status.
 
 A \code{WARN} row, including \code{pdHess = FALSE}, means that Wald standard
 errors or curvature-based inference need more care; it is not by

@@ -216,6 +216,224 @@
   paste(signif(x, digits), collapse = ",")
 }
 
+.gllvmTMB_trait_names <- function(object) {
+  trait_id <- object$tmb_data$trait_id
+  inferred_n_traits <- if (length(trait_id) > 0L && any(is.finite(trait_id))) {
+    max(trait_id + 1L, na.rm = TRUE)
+  } else {
+    0L
+  }
+  n_traits <- object$n_traits %||% inferred_n_traits
+  trait_col <- object$trait_col
+  if (
+    !is.null(trait_col) &&
+      trait_col %in% names(object$data) &&
+      is.factor(object$data[[trait_col]])
+  ) {
+    lv <- levels(object$data[[trait_col]])
+    if (length(lv) >= n_traits) {
+      return(lv[seq_len(n_traits)])
+    }
+  }
+  paste0("trait_", seq_len(n_traits))
+}
+
+.gllvmTMB_max_loading_by_trait <- function(object) {
+  trait_names <- .gllvmTMB_trait_names(object)
+  out <- rep(NA_real_, length(trait_names))
+  names(out) <- trait_names
+
+  for (spec in .gllvmTMB_latent_specs(object)) {
+    L <- abs(spec$matrix)
+    if (nrow(L) == 0L || ncol(L) == 0L) {
+      next
+    }
+    vals <- apply(L, 1L, max, na.rm = TRUE)
+    vals[!is.finite(vals)] <- NA_real_
+    if (!is.null(rownames(L)) && any(rownames(L) %in% trait_names)) {
+      hit <- match(rownames(L), trait_names)
+      keep <- !is.na(hit)
+      old <- out[hit[keep]]
+      new <- vals[keep]
+      replace <- is.finite(new) & (!is.finite(old) | new > old)
+      old[replace] <- new[replace]
+      out[hit[keep]] <- old
+    } else {
+      n <- min(length(out), length(vals))
+      old <- out[seq_len(n)]
+      new <- vals[seq_len(n)]
+      replace <- is.finite(new) & (!is.finite(old) | new > old)
+      old[replace] <- new[replace]
+      out[seq_len(n)] <- old
+    }
+  }
+
+  finite <- out[is.finite(out) & out > 0]
+  typical <- if (length(finite) > 0L) {
+    stats::median(finite, na.rm = TRUE)
+  } else {
+    NA_real_
+  }
+  spread <- if (length(finite) > 1L) {
+    stats::mad(finite, constant = 1, na.rm = TRUE)
+  } else {
+    NA_real_
+  }
+  denom_candidates <- c(typical, spread)
+  denom_candidates <- denom_candidates[
+    is.finite(denom_candidates) & denom_candidates > 0
+  ]
+  denom <- if (length(denom_candidates) > 0L) {
+    max(denom_candidates)
+  } else {
+    NA_real_
+  }
+
+  data.frame(
+    trait_id = seq_along(trait_names),
+    trait = trait_names,
+    max_loading = unname(out),
+    relative_loading = if (is.finite(denom)) unname(out) / denom else NA_real_,
+    stringsAsFactors = FALSE
+  )
+}
+
+.gllvmTMB_binomial_prevalence_loading_row <- function(
+  object,
+  prevalence_thresh = 0.9,
+  saturation_prob_thresh = 0.99,
+  saturation_share_thresh = 0.5,
+  loading_relative_thresh = 8
+) {
+  tmb <- object$tmb_data
+  required <- c("y", "family_id_vec", "link_id_vec", "trait_id")
+  if (is.null(tmb) || !all(required %in% names(tmb))) {
+    return(NULL)
+  }
+
+  y <- as.numeric(tmb$y)
+  n <- length(y)
+  family_id <- as.integer(tmb$family_id_vec)
+  link_id <- as.integer(tmb$link_id_vec)
+  trait_id <- as.integer(tmb$trait_id) + 1L
+  if (
+    length(family_id) != n ||
+      length(link_id) != n ||
+      length(trait_id) != n
+  ) {
+    return(NULL)
+  }
+
+  observed <- tmb$is_y_observed %||% rep(1L, n)
+  observed <- as.integer(observed) == 1L
+  trials <- as.numeric(tmb$n_trials %||% rep(1, n))
+  binomial_rows <- family_id == 1L &
+    observed &
+    is.finite(y) &
+    is.finite(trials) &
+    trials > 0
+  if (!any(binomial_rows)) {
+    return(NULL)
+  }
+
+  eta <- as.numeric(object$report$eta %||% rep(NA_real_, n))
+  fitted_prob <- rep(NA_real_, n)
+  if (length(eta) == n) {
+    fitted_prob <- .apply_linkinv_per_row(eta, family_id, link_id)
+  }
+
+  trait_names <- .gllvmTMB_trait_names(object)
+  ids <- sort(unique(trait_id[binomial_rows]))
+  rows <- vector("list", length(ids))
+  for (i in seq_along(ids)) {
+    id <- ids[[i]]
+    idx <- binomial_rows & trait_id == id
+    prob_i <- fitted_prob[idx]
+    prob_i <- prob_i[is.finite(prob_i)]
+    rows[[i]] <- data.frame(
+      trait_id = id,
+      trait = if (id <= length(trait_names)) {
+        trait_names[[id]]
+      } else {
+        paste0("trait_", id)
+      },
+      n = sum(idx),
+      prevalence = sum(y[idx], na.rm = TRUE) / sum(trials[idx], na.rm = TRUE),
+      saturation_share = if (length(prob_i) > 0L) {
+        mean(
+          prob_i >= saturation_prob_thresh |
+            prob_i <= (1 - saturation_prob_thresh)
+        )
+      } else {
+        NA_real_
+      },
+      stringsAsFactors = FALSE
+    )
+  }
+  tab <- do.call(rbind, rows)
+  loadings <- .gllvmTMB_max_loading_by_trait(object)
+  tab <- merge(tab, loadings, by = c("trait_id", "trait"), all.x = TRUE)
+
+  tab$extreme_prevalence <- is.finite(tab$prevalence) &
+    (tab$prevalence >= prevalence_thresh |
+      tab$prevalence <= (1 - prevalence_thresh))
+  tab$dominant_loading <- is.finite(tab$relative_loading) &
+    tab$relative_loading >= loading_relative_thresh
+  tab$saturated_fit <- is.finite(tab$saturation_share) &
+    tab$saturation_share >= saturation_share_thresh
+  tab$flag <- tab$extreme_prevalence &
+    (tab$dominant_loading | tab$saturated_fit)
+
+  score <- abs(tab$prevalence - 0.5)
+  score[!is.finite(score)] <- -Inf
+  score <- score +
+    ifelse(tab$flag, 10, 0) +
+    ifelse(tab$dominant_loading, 2, 0) +
+    ifelse(tab$saturated_fit, 1, 0)
+  best <- tab[which.max(score), , drop = FALSE]
+  status <- if (any(tab$flag)) "WARN" else "PASS"
+  msg <- if (identical(status, "WARN")) {
+    "near-constant binomial trait with dominant loading or saturated fitted probabilities"
+  } else {
+    "binomial trait prevalence/loading/saturation screen"
+  }
+
+  .gllvmTMB_check_row(
+    "binomial_prevalence_loading",
+    status,
+    paste0(
+      best$trait,
+      " prevalence=",
+      .gllvmTMB_fmt_num(best$prevalence),
+      "; max_loading=",
+      .gllvmTMB_fmt_num(best$max_loading),
+      "; relative_loading=",
+      .gllvmTMB_fmt_num(best$relative_loading),
+      "; saturated_fit=",
+      .gllvmTMB_fmt_num(best$saturation_share)
+    ),
+    paste0(
+      "prevalence >= ",
+      prevalence_thresh,
+      " or <= ",
+      .gllvmTMB_fmt_num(1 - prevalence_thresh),
+      "; fitted p >= ",
+      saturation_prob_thresh,
+      " or <= ",
+      .gllvmTMB_fmt_num(1 - saturation_prob_thresh),
+      "; loading >= ",
+      loading_relative_thresh,
+      "x typical"
+    ),
+    msg,
+    if (identical(status, "WARN")) {
+      "remove or re-code the near-constant binary indicator; lowering rank will not resolve quasi-separation by itself"
+    } else {
+      "none"
+    }
+  )
+}
+
 .gllvmTMB_sigma_eps_mapped_off <- function(object) {
   map <- object$tmb_obj$env$map
   if (is.null(map) || !"log_sigma_eps" %in% names(map)) {
@@ -229,20 +447,21 @@
 #' Run `check_gllvmTMB()` right after fitting, before interpreting
 #' confidence intervals or covariance summaries. It returns a stable
 #' table of optimiser, gradient, Hessian, `sdreport()`, restart,
-#' boundary, and latent-identifiability diagnostics. It is the
-#' machine-readable companion to
+#' boundary, latent-identifiability, and binomial prevalence/loading
+#' diagnostics. It is the machine-readable companion to
 #' [gllvmTMB_diagnose()]: use this in simulations, tests, and reports
 #' where parsing printed messages would be brittle.
 #'
 #' Scope boundary (DIA-08 / DIA-10): IN, optimisation and
 #' inference-risk signals for fitted models, including latent-axis
-#' rotation, weak-axis, near-zero `psi`, and residual-scale boundary
-#' flags plus the intentional `gllvmTMBcontrol(se = FALSE)`
-#' point-estimate path. PARTIAL, the table does not calibrate interval
-#' coverage or prove the selected latent rank by itself. PLANNED,
-#' target-explicit M3 simulations and [check_identifiability()] decide
-#' when broader interval or rank-selection claims move beyond
-#' diagnostic status.
+#' rotation, weak-axis, near-zero `psi`, residual-scale boundary
+#' flags, a binomial near-constant/loading/saturation screen, and the
+#' intentional `gllvmTMBcontrol(se = FALSE)` point-estimate path.
+#' PARTIAL, the table does not calibrate interval coverage, prove
+#' formal separation, or prove the selected latent rank by itself.
+#' PLANNED, target-explicit M3 simulations and
+#' [check_identifiability()] decide when broader interval or
+#' rank-selection claims move beyond diagnostic status.
 #'
 #' A `WARN` row, including `pdHess = FALSE`, means that Wald standard
 #' errors or curvature-based inference need more care; it is not by
@@ -263,6 +482,15 @@
 #' @param cross_loading_thresh Minimum median trait dominance on a
 #'   single latent axis before a multi-axis loading matrix is treated as
 #'   block-structured enough for direct interpretation. Default 0.6.
+#' @param binary_prevalence_thresh Prevalence at or beyond which a
+#'   binomial trait is treated as near-constant. Default 0.9.
+#' @param binary_saturation_prob_thresh Response-scale fitted probability
+#'   threshold for saturation in binomial traits. Default 0.99.
+#' @param binary_saturation_share_thresh Minimum share of saturated
+#'   fitted probabilities before a binomial trait is flagged. Default
+#'   0.5.
+#' @param loading_relative_thresh Threshold for the largest trait loading
+#'   relative to the typical fitted loading size. Default 8.
 #' @return A data frame with columns `component`, `status`, `value`,
 #'   `threshold`, `message`, and `action`. Status values are `"PASS"`,
 #'   `"WARN"`, or `"FAIL"`.
@@ -280,7 +508,11 @@ check_gllvmTMB <- function(
   weak_axis_thresh = 0.05,
   psi_thresh = 1e-4,
   sigma_eps_thresh = 1e-4,
-  cross_loading_thresh = 0.6
+  cross_loading_thresh = 0.6,
+  binary_prevalence_thresh = 0.9,
+  binary_saturation_prob_thresh = 0.99,
+  binary_saturation_share_thresh = 0.5,
+  loading_relative_thresh = 8
 ) {
   if (!inherits(object, "gllvmTMB_multi")) {
     cli::cli_abort("Provide a fit returned by {.fn gllvmTMB}.")
@@ -421,6 +653,15 @@ check_gllvmTMB <- function(
   }
 
   latent_specs <- .gllvmTMB_latent_specs(object)
+  binomial_row <- .gllvmTMB_binomial_prevalence_loading_row(
+    object,
+    prevalence_thresh = binary_prevalence_thresh,
+    saturation_prob_thresh = binary_saturation_prob_thresh,
+    saturation_share_thresh = binary_saturation_share_thresh,
+    loading_relative_thresh = loading_relative_thresh
+  )
+  binomial_warn <- !is.null(binomial_row) &&
+    identical(binomial_row$status[[1L]], "WARN")
   if (length(latent_specs) == 0L) {
     rows <- c(
       rows,
@@ -481,7 +722,11 @@ check_gllvmTMB <- function(
           ),
           weak_axis_thresh,
           paste0(spec$lambda, " column share of shared loading energy"),
-          "compare lower rank, inspect check_identifiability(), and avoid over-interpreting weak axes"
+          if (isTRUE(binomial_warn)) {
+            "if driven by a high-loading near-constant binary trait, remove or re-code that indicator; otherwise compare lower rank and inspect check_identifiability()"
+          } else {
+            "compare lower rank, inspect check_identifiability(), and avoid over-interpreting weak axes"
+          }
         ))
       )
 
@@ -506,6 +751,9 @@ check_gllvmTMB <- function(
         )
       }
     }
+  }
+  if (!is.null(binomial_row)) {
+    rows <- c(rows, list(binomial_row))
   }
 
   psi_specs <- c(

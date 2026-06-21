@@ -16457,3 +16457,33 @@ Psi-grammar lane is a real high-risk grammar change (no removal over-claim;
 soft-deprecation-compliant) needing maintainer grammar sign-off.
 
 Not claimed: no merge/rebase/delete of any HELD branch; no register promotion.
+
+## 2026-06-21 — Claude/Ada — close two open loops (#343 reps + fixed-`rho` decision)
+
+Two maintainer-chosen closures from the 2026-06-21 handover, on a fresh worktree off
+`origin/main` (`60fb621`), branch `claude/close-open-loops-20260621` (Codex's dirty
+`codex/r-bridge-grouped-dispersion` left untouched).
+
+**#343 (test-only).** `tests/testthat/test-multi-trial-binomial.R`: raised the
+recovery gate `R` 30→100 and the threshold `expect_gte(sum(ok), …)` 20→67 (same ~2/3
+proportion — the maintainer's "more reps" lever), and added a guard treating a
+non-finite `est`/`se` rep as a miss (`if (!is.finite(est[r]) || !is.finite(se[r]))
+next`). Raising R surfaced the real defect: a converged fit with a non-PD Hessian
+yields NaN SEs → `hits[r] <- as.integer(NA)` → a single NA poisons `sum(ok)`; this
+NA-leak (not the threshold margin) is the likely true cause of the ubuntu flake.
+Commands (worktree, `NOT_CRAN=true`): `devtools::load_all(compile=TRUE)` then
+`testthat::test_file("test-multi-trial-binomial.R")`. Result: R=100 **without** the
+guard → FAIL (`sum(ok)=NA`); **with** the guard → **0/5 failures**. Instrumented
+margin (seeds 101–200): null=0, nonconv=4, nan_se=2, finite=94, **sum(ok)=93/100**
+(threshold 67), 2-SE coverage among finite fits = 0.989. Not run: 3-OS CI (the
+ubuntu-specific flake cannot be reproduced on mac — PR CI is the real gate); the
+full heavy suite (this file is the only touched test).
+
+**Fixed-`rho` decision (docs).** Recorded the keep-fixed-`rho` / no-in-engine-`rho`
+decision in `docs/dev-log/decisions.md` (2026-06-21 entry) ratifying the #507 design
+note, and added a pointer in Design 65 C3.3 (`docs/design/65-cross-lineage-
+coevolution-kernel.md`). Parked loop closed; #361 left open (other C-items remain).
+
+After-task: `docs/dev-log/after-task/2026-06-21-close-open-loops.md`.
+Not claimed: no engine/grammar/family change; no register-row promotion; no merge of
+the Codex dirty branch; #361 not closed.

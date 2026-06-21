@@ -98,13 +98,17 @@ test_that("Bernoulli (no cbind) is unchanged: n_trials defaults to 1", {
 })
 
 # ----------------------------------------------------------------------
-test_that("Multi-trial binomial slope recovery (50 nests x 8 eggs, 30 reps)", {
+test_that("Multi-trial binomial slope recovery (50 nests x 8 eggs, 100 reps)", {
   skip_on_cran()
   skip_on_covr()
-  ## R = 30 replicate datasets. Within +/- 2 SE coverage should hit ~95%
-  ## of replicates if SEs are well calibrated; we use a relaxed >=20/30
-  ## threshold to keep the test stable across platforms.
-  R <- 30L
+  ## R = 100 replicate datasets. Within +/- 2 SE coverage should hit ~95%
+  ## of replicates if SEs are well calibrated; we keep a relaxed ~2/3
+  ## proportion threshold (>=67/100, the same proportion as the former
+  ## 20/30). Raising R from 30 to 100 shrinks the sampling variance of the
+  ## hit proportion so the gate no longer dips below threshold on
+  ## multi-threaded-BLAS platforms (ubuntu CI), where a few replicates
+  ## occasionally fail to converge and are counted as misses. See #343.
+  R <- 100L
   ## Recover the "early-trait" slope only (true value 0.8). Late-trait
   ## slope is 0.5 in the simulator but we only check one to keep the
   ## test diagnostic.
@@ -133,10 +137,17 @@ test_that("Multi-trial binomial slope recovery (50 nests x 8 eggs, 30 reps)", {
     if (length(b_rows) < col_match) next
     est[r] <- sd_rep[b_rows[col_match], "Estimate"]
     se[r]  <- sd_rep[b_rows[col_match], "Std. Error"]
+    ## A converged fit can still return a non-PD Hessian (NaN SE), e.g. when
+    ## multi-threaded BLAS perturbs the optimiser. Treat such a rep as a miss
+    ## -- like a non-converged rep -- rather than letting a single NA poison
+    ## sum(ok). It still counts against the R-denominator threshold. This NA
+    ## leak, not the proportion margin, is the likely true cause of the #343
+    ## ubuntu flake; raising R from 30 to 100 surfaced it.
+    if (!is.finite(est[r]) || !is.finite(se[r])) next
     hits[r] <- as.integer(abs(est[r] - true_slope_early) <= 2 * se[r])
   }
   ok <- hits == 1L
-  expect_gte(sum(ok), 20L)
+  expect_gte(sum(ok), 67L)
   ## Mean estimate should also be close to truth (no obvious bias).
   expect_lt(abs(mean(est[ok]) - true_slope_early), 0.20)
 })

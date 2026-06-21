@@ -16552,3 +16552,36 @@ Lambda^T; indep()/deprecated-unique() -> Psi; AND that the source-specific `*_la
 require the explicit paired `*_unique()` (folds pending). Not run: no code change (design doc only).
 Not claimed: no engine/grammar/parser change; no `*_unique()` removal; engine Psi-folds (Stage A)
 are Codex's lane and maintainer-gated.
+
+## 2026-06-21 (Claude / Ada) — PR A: latent(residual=) -> latent(unique=) rename
+
+Branch `claude/latent-unique-rename-20260621` off origin/main 024a48b -> PR #518
+(grammar/API change; merge HELD for maintainer, not self-merged).
+
+Maintainer decisions: (a) name = `unique` (matches extract_Sigma part="unique");
+(b) keep `residual=` as a one-shot soft-deprecated alias. Both supplied -> error.
+Internal marker `.auto_residual` -> `.auto_unique` (8 sites, grep-verified).
+
+Checks:
+- `devtools::document(quiet=TRUE)` -> 5 man/*.Rd regenerated, NAMESPACE unchanged.
+- `devtools::check(document=FALSE, args="--no-manual", error_on="never")`
+  -> Status 1 ERROR, 1 WARNING, 0 NOTES; fast suite [FAIL 1 | WARN 13 | SKIP 745 | PASS 3384].
+  ERROR = test-block-V.R:117 env-only `equalto` (proof: `"equalto" %in%
+  getNamespaceExports("glmmTMB")` == FALSE; glmmTMB 1.1.11 vs TMB 1.9.21);
+  WARNING = R_ext/Boolean.h `-Wfixed-enum-extension` clang noise. Both pre-existing
+  on origin/main; diff touches neither path.
+- Targeted heavy `GLLVMTMB_HEAVY_TESTS=1`
+  test_dir(filter="unique-family-deprecation|latent-unique-rename|extract-sigma|keyword-grid")
+  -> all green (extract-sigma incl. m1-3 mixed-family + augmented-unique; keyword-grid;
+  fold<->pair byte-identity).
+
+Consistency audit (verbatim):
+- `rg -c "\.auto_residual" R src man` -> exit 1 (none).
+- `rg -c "\.auto_unique" R` -> fit-multi.R:6, julia-bridge.R:1, brms-sugar.R:1 (8).
+- `rg -n "residual\s*=\s*(TRUE|FALSE)" R vignettes README.md NEWS.md docs/design man`
+  -> only NEWS rename entry (intentional) + Stage-A fold design doc (deferred to PR B).
+- `rg -n "\bS_B\b|\bS_W\b" R` -> exit 1 (none).
+
+Deliberately NOT done: docs/design/2026-06-21-source-specific-latent-psi-fold.md
+left on `residual=`/`.auto_residual` (PR B's spec; reconciled there). No
+self-merge. After-task: docs/dev-log/after-task/2026-06-21-latent-unique-rename.md.

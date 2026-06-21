@@ -274,21 +274,35 @@ $\boldsymbol\Psi$ is the diagonal trait-unique-variance matrix
 (factor-analysis / SEM convention; Bollen 1989, Mulaik 2010,
 lavaan). On the public API:
 
-- `latent(0 + trait | g, d = K)` estimates $\boldsymbol\Lambda$.
-- `unique(0 + trait | g)` estimates $\boldsymbol\Psi$.
+- `latent(0 + trait | g, d = K)` estimates the shared loadings
+  $\boldsymbol\Lambda$ and, by default, its companion diagonal
+  $\boldsymbol\Psi$ (the ordinary latent-Psi fold; see the rule below).
+- `indep(0 + trait | g)` is the standalone diagonal-only
+  $\boldsymbol\Psi$ mode. `unique(0 + trait | g)` is the
+  soft-deprecated spelling of the same diagonal; new standalone code
+  uses `indep()`.
 
-**Pairing rule**: when both keywords reference the same grouping
-factor `g`, the engine combines them into the decomposition above.
-Either keyword alone gives a constrained submodel:
+**Default-fold rule**: ordinary `latent(...)` now carries its diagonal
+$\boldsymbol\Psi$ companion by default, so it alone gives the full
+decomposition. The constrained submodels are:
 
-- `latent(...)` alone → $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top$
-  (rank-deficient; only works when $K < T$ and the diagonal can be
-  zero, e.g. ordinal-probit with structural zeros).
-- `unique(...)` alone → $\boldsymbol\Sigma = \boldsymbol\Psi$
-  (diagonal-only; no shared trait axes).
+- `latent(...)` alone (default `residual = TRUE`) →
+  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi$.
+- `latent(..., residual = FALSE)` alone →
+  $\boldsymbol\Sigma = \boldsymbol\Lambda\boldsymbol\Lambda^\top$
+  (rank-deficient; the old no-residual subset; only works when
+  $K < T$ and the diagonal can be zero, e.g. ordinal-probit with
+  structural zeros).
+- `indep(...)` / soft-deprecated `unique(...)` alone →
+  $\boldsymbol\Sigma = \boldsymbol\Psi$ (diagonal-only; no shared axes).
 
-The same pairing rule applies to `phylo_latent + phylo_unique`
-and `spatial_latent + spatial_unique`.
+The source-specific decompositions `phylo_latent + phylo_unique`,
+`spatial_latent + spatial_unique` (and the `animal_*` / `kernel_*`
+forms) still use the **explicit paired spelling**: their latent-Psi
+folds remain future slices, so `phylo_latent(...)` / `spatial_latent(...)`
+alone do **not** yet carry $\boldsymbol\Psi$ — pair them with the
+matching `*_unique()` (or `*_indep()` for the standalone diagonal)
+until those folds land.
 
 ## Long-format trait-stacked grammar
 

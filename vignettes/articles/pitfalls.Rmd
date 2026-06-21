@@ -161,7 +161,7 @@ include random environmental fixed effects
 ($\beta_{tk} \sim \mathcal{N}(0, 0.5^2)$) and a per-trait diagonal
 $psi_B$. Ordinary `latent()` carries the per-trait $\boldsymbol\Psi$
 by default, so it can absorb the diagonal; but if your fitted model
-has no environmental term -- or uses `latent(..., residual = FALSE)`,
+has no environmental term -- or uses `latent(..., unique = FALSE)`,
 which drops the diagonal -- that variance has nowhere to go and gets
 absorbed into $\hat{\boldsymbol\Lambda}_B$. This is the general
 failure mode: the fitted model can answer a different question from

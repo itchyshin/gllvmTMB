@@ -67,7 +67,7 @@
     )
   if (!diag_used)
     cli::cli_abort(
-      "Communality Wald CI at tier {.val {tier_in}} requires a diagonal Psi component (per-trait residual variance). Use the default {.fn latent} fit; {.code latent(..., residual = FALSE)} is the no-Psi subset."
+      "Communality Wald CI at tier {.val {tier_in}} requires a diagonal Psi component (per-trait residual variance). Use the default {.fn latent} fit; {.code latent(..., unique = FALSE)} is the no-Psi subset."
     )
 
   trait_names <- levels(fit$data[[fit$trait_col]])

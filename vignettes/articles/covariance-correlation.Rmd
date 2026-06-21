@@ -27,13 +27,13 @@ Suppose you want between-individual correlations among behaviours such as
 boldness, exploration, activity, aggression, and sociability. Ordinary
 `latent()` now includes the diagonal Psi term by default, so trait-specific
 variance stays in the denominator of the correlation matrix. Use
-`latent(..., residual = FALSE)` only when you deliberately want the older
+`latent(..., unique = FALSE)` only when you deliberately want the older
 no-residual low-rank subset.
 
 ```{r early-fit-pattern, eval = FALSE}
 fit_no_residual <- gllvmTMB(
   value ~ 0 + trait +
-    latent(0 + trait | individual, d = 2, residual = FALSE),
+    latent(0 + trait | individual, d = 2, unique = FALSE),
   data = df, trait = "trait", unit = "individual"
 )
 
@@ -104,7 +104,7 @@ data-generating block.
 The truth has both a shared low-rank component and a trait-specific unique
 diagonal. Fit the same data two ways:
 
-* `Model A`: `latent(0 + trait | individual, d = 2, residual = FALSE)`
+* `Model A`: `latent(0 + trait | individual, d = 2, unique = FALSE)`
 * `Model B`: `latent(0 + trait | individual, d = 2)`
 
 ```{r setup}
@@ -154,7 +154,7 @@ The long-format formulas are:
 # Model A is loadings-only (Psi switched off); Model B is the ordinary default
 # (latent() carries the per-trait Psi). Written explicitly so the contrast is
 # unambiguous under the 0.2.0 grammar where latent() carries Psi by default.
-form_A <- value ~ 0 + trait + latent(0 + trait | individual, d = 2, residual = FALSE)
+form_A <- value ~ 0 + trait + latent(0 + trait | individual, d = 2, unique = FALSE)
 form_B <- value ~ 0 + trait + latent(0 + trait | individual, d = 2)
 form_A
 form_B
@@ -223,7 +223,7 @@ that the returned $\hat{\boldsymbol\Sigma}$ is the no-residual latent subset
 stored in `ext_A$note`).
 
 ```{r show-note}
-ext_A$note  # advisory: diagonal Psi omitted by residual = FALSE
+ext_A$note  # advisory: diagonal Psi omitted by unique = FALSE
 ```
 
 ## The correlations side by side
@@ -477,7 +477,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 
 | You want… | You need | Notes |
 |---|---|---|
-| Cross-trait correlations on a Gaussian / lognormal / Gamma fit | ordinary `latent()` at every level | `latent(..., residual = FALSE)` omits Psi and can inflate correlations. |
+| Cross-trait correlations on a Gaussian / lognormal / Gamma fit | ordinary `latent()` at every level | `latent(..., unique = FALSE)` omits Psi and can inflate correlations. |
 | Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
 | Phylogenetic decomposition | source-specific explicit-Psi compatibility forms where separately identifiable; ordinary `latent()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `diag(psi)` pieces. |
 | Communality | `extract_communality(fit)` + the right Psi-aware pattern | Communality formula uses Σ; needs full Σ to be meaningful. |

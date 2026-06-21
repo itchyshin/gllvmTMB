@@ -61,14 +61,14 @@ decomposition for ordinary \code{latent()} fits and for explicit
 compatibility \code{latent() + unique()} formulas.
 \subsection{Caveat: communality with no-Psi latent fits}{
 
-If the fit explicitly uses \code{latent(..., residual = FALSE)} at the requested
+If the fit explicitly uses \code{latent(..., unique = FALSE)} at the requested
 level (for Gaussian / lognormal / Gamma responses), then
 \eqn{\boldsymbol\Psi = \mathbf 0} and \code{c_t^2 = 1} for every trait. This is
 mathematically correct for the old no-residual subset but tells you nothing
 about trait integration. The \code{\link[=extract_Sigma]{extract_Sigma()}} advisory message will fire to
 flag this. To get meaningful communalities, refit with ordinary \code{latent()}
 (the default shared + diagonal-Psi decomposition) or, for old scripts, the
-explicit compatibility pair \code{latent(..., residual = FALSE) + unique(...)}.
+explicit compatibility pair \code{latent(..., unique = FALSE) + unique(...)}.
 
 For binomial fits the link-specific implicit residual (\eqn{\pi^2/3}
 for logit, 1 for probit, \eqn{\pi^2/6} for cloglog) is added to the

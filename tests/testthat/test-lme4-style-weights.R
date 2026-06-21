@@ -25,7 +25,7 @@ make_gauss <- function(seed = 1L) {
   ## use the old no-residual low-rank subset explicitly. The default
   ## ordinary `latent()` fit now includes a diagonal Psi companion; this
   ## file is about row-weight semantics, not the Psi decomposition, so
-  ## the test fixture opts out with `residual = FALSE`.
+  ## the test fixture opts out with `unique = FALSE`.
   set.seed(seed)
   sim <- gllvmTMB::simulate_site_trait(
     n_sites = 30, n_species = 1, n_traits = 4,
@@ -42,12 +42,12 @@ make_gauss <- function(seed = 1L) {
 test_that("Gaussian fit with weights = 1 is byte-equiv to weights = NULL", {
   df <- make_gauss(seed = 1L)
   fit_null <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     silent  = TRUE
   )))
   fit_unit <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     weights = rep(1, nrow(df)),
     silent  = TRUE
@@ -67,13 +67,13 @@ test_that("Gaussian fit with weights = 1 is byte-equiv to weights = NULL", {
 test_that("Uniform weight scaling: objective changes; b_fix invariant", {
   df <- make_gauss(seed = 2L)
   fit_w1 <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     weights = rep(1, nrow(df)),
     silent  = TRUE
   )))
   fit_w2 <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     weights = rep(2, nrow(df)),
     silent  = TRUE
@@ -105,13 +105,13 @@ test_that("Uniform weight scaling: objective changes; b_fix invariant", {
 test_that("Doubling weights shrinks b_fix SEs", {
   df <- make_gauss(seed = 3L)
   fit_w1 <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     weights = rep(1, nrow(df)),
     silent  = TRUE
   )))
   fit_w2 <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     weights = rep(2, nrow(df)),
     silent  = TRUE
@@ -161,12 +161,12 @@ test_that("Heteroscedastic Gaussian: weighted fit improves sigma recovery", {
   w_i <- 1 / var_i
 
   fit_unw <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     silent  = TRUE
   )))
   fit_w   <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
-    value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE),
+    value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     weights = w_i,
     silent  = TRUE
@@ -200,14 +200,14 @@ test_that("Binomial: weights = n_trials matches cbind(succ, fail) (no double-app
 
   fit_cbind <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     cbind(succ, fail) ~ 0 + trait + (0 + trait):x +
-      latent(0 + trait | site, d = 1, residual = FALSE),
+      latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     family  = binomial(),
     silent  = TRUE
   )))
   fit_w     <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     succ ~ 0 + trait + (0 + trait):x +
-      latent(0 + trait | site, d = 1, residual = FALSE),
+      latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     family  = binomial(),
     weights = n_trials_vec,
@@ -261,7 +261,7 @@ test_that("Mixed-family fit: per-row weight dispatch works", {
   ## binomial rows — both established semantics.
   fit_mixed <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     value ~ 0 + trait + (0 + trait):x +
-      latent(0 + trait | site, d = 1, residual = FALSE),
+      latent(0 + trait | site, d = 1, unique = FALSE),
     data    = df,
     family  = fams,
     weights = n_trials_vec,

@@ -24,7 +24,7 @@ Sigma_W is unavailable.
 Calls \code{\link[=extract_Sigma]{extract_Sigma()}} internally for both levels with \code{part = "total"},
 so the diagonal of each \eqn{\boldsymbol\Sigma} includes the
 \eqn{\boldsymbol\Psi} component carried by ordinary \code{latent()}. If either
-level uses \code{latent(..., residual = FALSE)}, the corresponding advisory
+level uses \code{latent(..., unique = FALSE)}, the corresponding advisory
 message fires and the ICC is computed against the no-residual latent
 diagonal.
 

@@ -27,8 +27,9 @@ Model Builder.
   `kernel_unique()` are soft-deprecated compatibility syntax. New
   standalone diagonal examples use `indep()` / source-specific
   `*_indep()` / `kernel_indep()`. Ordinary `latent()` now carries its
-  diagonal Psi companion by default; `latent(..., residual = FALSE)`
-  requests the old no-residual subset. Paired explicit-Psi forms and
+  diagonal Psi companion by default; `latent(..., unique = FALSE)`
+  requests the old loadings-only subset (`residual =` is a
+  soft-deprecated alias). Paired explicit-Psi forms and
   source-specific / kernel `*_unique()` forms remain accepted as
   compatibility syntax; do not claim removal while the parser and
   exports remain live.
@@ -36,8 +37,8 @@ Model Builder.
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi, lowercase psi for the per-trait scalar entries; see
   `decisions.md` 2026-05-14 notation reversal). The old
-  no-residual / rotation-invariant subset is
-  `latent(..., residual = FALSE)`. Source-specific decompositions such
+  loadings-only / rotation-invariant subset is
+  `latent(..., unique = FALSE)`. Source-specific decompositions such
   as `phylo_latent() + phylo_unique()` and `spatial_latent() +
   spatial_unique()` remain explicit-pair compatibility syntax until
   their own fold slices land. Standalone `unique` is the marginal /

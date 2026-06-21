@@ -36,8 +36,9 @@ does NOT do" section), see
 - Ordinary `latent()` now carries its diagonal Psi companion by default:
   Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
   Psi; see `decisions.md` 2026-05-14 notation reversal).
-  Use `latent(..., residual = FALSE)` only for the old no-residual /
-  rotation-invariant subset. `unique()` / source-specific `*_unique()` /
+  Use `latent(..., unique = FALSE)` only for the old loadings-only /
+  rotation-invariant subset (`residual =` is a soft-deprecated alias).
+  `unique()` / source-specific `*_unique()` /
   `kernel_unique()` remain soft-deprecated compatibility syntax; new
   standalone diagonal examples use `indep()` / `*_indep()` /
   `kernel_indep()`.

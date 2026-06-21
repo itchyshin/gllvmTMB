@@ -561,7 +561,7 @@ profile_communality <- function(
   if (length(ix_rr) == 0L || length(ix_diag) == 0L) {
     cli::cli_abort(
       "Communality profiling requires a {.code latent()} tier with a {.code Psi} diagonal at tier {.val {tier}}.",
-      "i" = "Ordinary {.code latent()} includes {.code Psi} by default; {.code latent(..., residual = FALSE)} is the explicit no-Psi subset."
+      "i" = "Ordinary {.code latent()} includes {.code Psi} by default; {.code latent(..., unique = FALSE)} is the explicit no-Psi subset."
     )
   }
   d_tier <- if (tier == "B") fit$d_B else fit$d_W

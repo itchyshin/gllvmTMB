@@ -62,7 +62,7 @@ part of the variance that the latent factors don't explain. Each
 trait has its own diagonal entry $\psi_t$; the matrix
 $\boldsymbol{\Psi} = \mathrm{diag}(\psi_1, \ldots, \psi_T)$ is
 diagonal by construction. Ordinary `latent()` carries this
-$\boldsymbol{\Psi}$ by default; `latent(..., residual = FALSE)` drops it
+$\boldsymbol{\Psi}$ by default; `latent(..., unique = FALSE)` drops it
 to give the loadings-only subset, and a separate diagonal-only tier is
 written with `indep()`.
 *Math*: $\boldsymbol{\Sigma} = \boldsymbol{\Lambda}

@@ -3,6 +3,18 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `latent(unique = ...)` argument rename (2026-06-21)
+
+* The `latent(..., residual = TRUE/FALSE)` argument shipped in 0.2.0 is renamed
+  to `latent(..., unique = TRUE/FALSE)`, matching `extract_Sigma(part = "unique")`
+  and the `unique()` keyword grid. Semantics are unchanged: `unique = TRUE`
+  (default) fits `Sigma = Lambda Lambda^T + Psi` (the diagonal trait-specific Psi
+  companion); `unique = FALSE` fits the loadings-only, rotation-invariant subset.
+  `residual =` is kept as a soft-deprecated alias that still works but emits a
+  one-shot deprecation warning; prefer `unique =` in new code. Ordinary `latent()`
+  is covered at every grouping level; source-specific `*_latent()` keep their
+  paired `*_unique()` companion for now (Psi-fold slices in progress).
+
 ## Cross-lineage `rho` profile intervals (2026-06-20)
 
 * Added `profile_cross_rho_ci()`: turns a `profile_cross_rho()` grid into a

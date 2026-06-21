@@ -372,7 +372,7 @@ link_residual_per_trait <- function(fit) {
 #' ## When a fit has no Psi component
 #'
 #' If the formula deliberately uses
-#' `latent(0 + trait | unit, d = K, residual = FALSE)`, the engine fits only the
+#' `latent(0 + trait | unit, d = K, unique = FALSE)`, the engine fits only the
 #' \eqn{\boldsymbol\Lambda \boldsymbol\Lambda^\top} component. Calling
 #' `extract_Sigma(fit, level, part = "total")` then returns just the shared
 #' component. This is useful for no-residual / rotation-invariant checks, but it
@@ -383,7 +383,7 @@ link_residual_per_trait <- function(fit) {
 #'
 #' For Gaussian / lognormal / Gamma fits this function emits an advisory note
 #' when a reduced-rank tier has no Psi component. Use the ordinary
-#' `latent(..., residual = TRUE)` default for
+#' `latent(..., unique = TRUE)` default for
 #' \eqn{\boldsymbol\Lambda\boldsymbol\Lambda^\top + \boldsymbol\Psi}; the
 #' explicit `latent() + unique()` spelling remains compatibility syntax only.
 #'
@@ -650,7 +650,7 @@ extract_Sigma <- function(
     if (identical(part, "unique") && !has_unique) {
       cli::cli_abort(c(
         "Fit has no augmented ordinary diagonal Psi term for {.code part = \"unique\"}.",
-        ">" = "Use the default {.code latent(1 + x | unit, d = K)} fit to estimate {.code Psi_B,aug}; only use {.code latent(..., residual = FALSE)} for the no-Psi subset."
+        ">" = "Use the default {.code latent(1 + x | unit, d = K)} fit to estimate {.code Psi_B,aug}; only use {.code latent(..., unique = FALSE)} for the no-Psi subset."
       ))
     }
     slope_col <- fit$use$rr_B_slope_col %||%
@@ -1211,7 +1211,7 @@ extract_Sigma <- function(
   ## ---- The "Lambda-only" advisory for continuous families -------------
   ## `latent()` now folds in the per-trait residual Psi by default, so a
   ## Gaussian / lognormal / Gamma fit is latent-only ONLY when the user
-  ## opted out with `latent(..., residual = FALSE)`. The advisory now points
+  ## opted out with `latent(..., unique = FALSE)`. The advisory now points
   ## at that opt-out rather than the retired `+ unique(...)` term.
   if (level %in% c("B", "W")) {
     rr_used <- if (level == "B") isTRUE(fit$use$rr_B) else isTRUE(fit$use$rr_W)
@@ -1228,10 +1228,10 @@ extract_Sigma <- function(
         paste0(
           "Sigma_",
           level_label,
-          " is latent-only (Lambda Lambda^T): this fit used `latent(..., residual = FALSE)`, ",
+          " is latent-only (Lambda Lambda^T): this fit used `latent(..., unique = FALSE)`, ",
           "so trait-specific residual variance Psi is not modelled and correlations from ",
           "this matrix overstate cross-trait coupling. For the full decomposition ",
-          "Sigma = Lambda Lambda^T + Psi, refit without `residual = FALSE` (the default)."
+          "Sigma = Lambda Lambda^T + Psi, refit without `unique = FALSE` (the default)."
         )
       )
     }

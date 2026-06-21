@@ -80,13 +80,13 @@ test_that("bare latent() (no explicit residual) fires the Psi-default notice", {
     gllvmTMB:::rewrite_canonical_aliases(
       value ~ 0 + trait + latent(0 + trait | site, d = 1)
     ),
-    regexp = "per-trait residual|residual = FALSE|includes a per-trait"
+    regexp = "per-trait|unique = FALSE|includes a per-trait"
   )
-  # explicit residual = FALSE opts out (no auto-Psi, no notice)
+  # explicit unique = FALSE opts out (no auto-Psi, no notice)
   local_reset_lifecycle_cache()
   expect_no_warning(
     gllvmTMB:::rewrite_canonical_aliases(
-      value ~ 0 + trait + latent(0 + trait | site, d = 1, residual = FALSE)
+      value ~ 0 + trait + latent(0 + trait | site, d = 1, unique = FALSE)
     )
   )
 })
@@ -114,7 +114,7 @@ test_that("unique-family soft deprecation keeps compatibility rewrites", {
   expect_match(f_kernel_txt, ".kernel_mode = \"unique\"", fixed = TRUE)
 })
 
-test_that("ordinary latent auto-emits Psi unless residual is FALSE", {
+test_that("ordinary latent auto-emits Psi unless unique is FALSE", {
   withr::local_options(lifecycle_verbosity = "quiet")
 
   f_fold <- gllvmTMB:::rewrite_canonical_aliases(
@@ -125,17 +125,17 @@ test_that("ordinary latent auto-emits Psi unless residual is FALSE", {
     vapply(p_fold$covstructs, `[[`, character(1), "kind"),
     c("rr", "diag")
   )
-  expect_true(isTRUE(p_fold$covstructs[[2L]]$extra$.auto_residual))
+  expect_true(isTRUE(p_fold$covstructs[[2L]]$extra$.auto_unique))
 
   f_no_resid <- gllvmTMB:::rewrite_canonical_aliases(
-    value ~ 0 + trait + latent(0 + trait | site, d = 2, residual = FALSE)
+    value ~ 0 + trait + latent(0 + trait | site, d = 2, unique = FALSE)
   )
   p_no_resid <- gllvmTMB:::parse_multi_formula(f_no_resid)
   expect_equal(
     vapply(p_no_resid$covstructs, `[[`, character(1), "kind"),
     "rr"
   )
-  expect_false("residual" %in% names(p_no_resid$covstructs[[1L]]$extra))
+  expect_false("unique" %in% names(p_no_resid$covstructs[[1L]]$extra))
 })
 
 test_that("ordinary latent Psi fold matches the explicit compatibility pair", {

@@ -187,7 +187,7 @@ runnable long-to-wide pivot.
 In the wide call, `latent(1 | individual, d = 1)` estimates one shared
 latent axis across traits and its default diagonal Psi companion. In the
 long call, the equivalent term is `latent(0 + trait | individual, d = 1)`.
-Use `latent(..., residual = FALSE)` only when you deliberately want the
+Use `latent(..., unique = FALSE)` only when you deliberately want the
 old no-residual low-rank subset. The fitted object reports ordination
 scores, loadings, Sigma rows, pairwise correlations, and per-trait
 communality.

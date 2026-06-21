@@ -85,10 +85,11 @@ the `family` column.
 ## Fitting
 
 A single `gllvmTMB()` call handles the compact mixed-family case. The
-formula is latent-only: it has a shared rank-1 latent factor and no
-free `unique()` component. The later comprehensive article should use
-ordinary `latent()` if it teaches a full
-`Sigma = shared + unique` decomposition.
+formula has a single shared rank-1 latent factor. Ordinary `latent()`
+carries the per-trait $\boldsymbol\Psi$ residual by default, so the
+implied unit-level covariance is the full ordinary decomposition
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\boldsymbol\Psi)$
+rather than the shared low-rank axis alone.
 
 ```{r fit, results='hide'}
 fit <- gllvmTMB(
@@ -128,10 +129,12 @@ PASS / WARN / FAIL count from `check_gllvmTMB(fit)`.
 ## Sigma on the latent scale
 
 `extract_Sigma()` returns the trait-covariance matrix on the latent
-scale. For this latent-only mixed-family fit, the fitted unit-level
-matrix is the shared latent surface; `link_residual = "auto"` adds the
-per-family **link residual** to the diagonal when a total latent-scale
-correlation is requested. The link residual is the variance of the
+scale. For this mixed-family fit, the fitted unit-level matrix is the
+full ordinary decomposition that ordinary `latent()` carries by
+default ($\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\boldsymbol\Psi)$);
+`link_residual = "auto"` adds the per-family **link residual** to the
+diagonal when a total latent-scale correlation is requested. The link
+residual is the variance of the
 link function's underlying distribution (π²/3 for binomial-logit,
 $\log(1 + 1/\mu)$ for Poisson-log, etc.). This puts all traits on a
 common scale so the off-diagonal correlations are interpretable:
@@ -170,10 +173,12 @@ plot_Sigma_heatmap(
 ```
 
 By default `link_residual = "auto"` adds the per-family residual to
-the diagonal. Passing `link_residual = "none"` returns the bare
-$\Lambda\Lambda^\top$ matrix in this latent-only draft -- useful for
-comparing factor structure across fits but not for interpreting
-correlations between traits of different families.
+the diagonal. Passing `link_residual = "none"` returns the structural
+latent-scale matrix
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\boldsymbol\Psi)$
+that ordinary `latent()` carries -- useful for comparing factor
+structure across fits but not for interpreting correlations between
+traits of different families.
 
 ## Correlations with uncertainty
 
@@ -211,9 +216,9 @@ observable-scale correlation.
 ## Communality: how much variance is explained by the latent factor?
 
 `extract_communality()` returns the proportion of each trait's
-latent-scale variance attributable to the shared rank-$d$ factor. In
-this latent-only draft, that is a diagnostic summary for the compact
-fixture, not a full ordinary `latent()` decomposition example:
+latent-scale variance attributable to the shared rank-$d$ factor --
+the part of the ordinary decomposition not absorbed by the per-trait
+$\boldsymbol\Psi$ residual that `latent()` carries by default:
 
 ```{r communality}
 extract_communality(fit, level = "unit", link_residual = "auto")
@@ -268,7 +273,7 @@ for the full row-by-row evidence.
 
 ## See also
 
-- [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) — the conceptual primer on Σ vs correlation + when `unique()` is needed.
+- [Covariance and correlation](https://itchyshin.github.io/gllvmTMB/articles/covariance-correlation.html) — the conceptual primer on Σ vs correlation + when an `indep()` diagonal is needed.
 - [Profile-likelihood CIs](https://itchyshin.github.io/gllvmTMB/articles/profile-likelihood-ci.html) — inference machinery for derived quantities.
 - [Choose your model](https://itchyshin.github.io/gllvmTMB/articles/choose-your-model.html) — decision tree mapping data shapes to articles.
 

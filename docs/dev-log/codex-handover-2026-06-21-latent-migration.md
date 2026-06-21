@@ -28,8 +28,8 @@ slices today:
 - **PR #518 — MERGED.** Renamed the `latent(residual = …)` argument →
   `latent(unique = …)` (with `residual =` kept as a soft-deprecated alias); renamed
   the internal companion marker `.auto_residual` → `.auto_unique` everywhere.
-- **PR #519 — OPEN, awaiting maintainer merge.** Folds `phylo_latent()`'s diagonal
-  `Psi_phy` by default (`unique = TRUE`). Supersedes the red **#516**.
+- **PR #519 — MERGED** (`origin/main` now `f200b62`). Folds `phylo_latent()`'s
+  diagonal `Psi_phy` by default (`unique = TRUE`); superseded and closed **#516**.
 
 **Your mandate:** carry the migration forward — the remaining Stage-A source folds
 (`spatial_latent` → `animal_latent` → `kernel_latent`, then augmented
@@ -58,16 +58,13 @@ folding `Psi` into the `*_latent()` keywords by default.
 
 ## 2. Current repository state
 
-- **`origin/main` = `c106df4`** (after #518 merged).
-- **Merged today:** #511–#515, #517 (loops/docs/design), then **#518** (latent
-  `unique=` rename).
-- **OPEN — maintainer-merge-gated:** **#519**
-  `feat(grammar): fold phylo_latent() … (unique=)`, branch
-  `claude/phylo-unique-fold-20260621`, worktree
-  `/private/tmp/gllvmtmb-phylo-unique-fold` @ `c7e21a1`. On merge → **close #516**
-  (superseded).
-- **Superseded:** **#516** (the red phylo-fold attempt) — branch
-  `claude/phylo-fold-20260621`, worktree `/private/tmp/gllvmtmb-phylofold`.
+- **`origin/main` = `f200b62`** (after #518 and #519 merged).
+- **Merged today:** #511–#515, #517 (loops/docs/design), **#518** (latent `unique=`
+  rename), then **#519** (phylo_latent `unique=` fold).
+- **#519 — MERGED.** `feat(grammar): fold phylo_latent() … (unique=)` landed on
+  `main`; the **phylo slice of Stage A is complete**.
+- **#516 — CLOSED** (superseded by #519). Old branch `claude/phylo-fold-20260621`,
+  worktree `/private/tmp/gllvmtmb-phylofold` — safe to prune.
 - **DO NOT TOUCH** the dirty `codex/r-bridge-grouped-dispersion` checkout (the main
   working directory). It predates all of today's merges. Always branch new work from
   fresh worktrees off `origin/main`.
@@ -201,7 +198,7 @@ RED-first tests; **the FULL check before push**.
 ## 6. Detailed plan (staged; verification-gated; removal LAST)
 
 ### Stage A — source-specific Ψ-folds (IN PROGRESS)
-1. **phylo** — ✅ #519 (open; close #516 on merge).
+1. **phylo** — ✅ #519 (MERGED; #516 closed).
 2. **spatial_latent** — **next.** SPDE/GMRF companion. **Before coding, confirm** the
    spatial diagonal slot is wired: grep `spde`, `spatial_unique`, `use_spde*`,
    `spatial_diag` in `R/fit-multi.R` and `src/gllvmTMB.cpp`. If the slot does not
@@ -272,8 +269,7 @@ Keep dispatch bounded — launch a role for a specific question, not continuousl
 
 ## 8. Worktrees & resume
 
-- **#519 (open):** `/private/tmp/gllvmtmb-phylo-unique-fold` @ `c7e21a1` — prune after
-  merge.
+- **#519 (merged):** `/private/tmp/gllvmtmb-phylo-unique-fold` — prune.
 - **#518 (merged):** `/private/tmp/gllvmtmb-latent-unique` — prune.
 - **#516 (superseded):** `/private/tmp/gllvmtmb-phylofold` — prune after closing #516.
 - **New work:** `git worktree add /private/tmp/gllvmtmb-<slice> origin/main -b
@@ -286,9 +282,9 @@ the newest `check-log.md` entry, this note, and the plan file.
 
 ## 9. First actions for the Codex team
 
-1. `git fetch`. Confirm `origin/main` (`c106df4`, or later) and `gh pr view 519`.
-2. If #519 is merged: `gh issue close 516` (superseded by #519) and prune the merged
-   worktrees. If not merged: leave it — do not self-merge (grammar-gated).
+1. `git fetch`. Confirm `origin/main` = `f200b62` (or later) and `gh pr list`.
+2. #519 is merged and #516 is already closed — just prune the merged worktrees
+   (`/private/tmp/gllvmtmb-phylo-unique-fold`, `-latent-unique`, `-phylofold`).
 3. Start the **spatial_latent** slice — but FIRST confirm the spatial diagonal engine
    slot exists (§6.A.2). If not wired, raise with the maintainer before coding.
 4. Follow the §5 recipe; RED-first tests; run G1–G4 for real under

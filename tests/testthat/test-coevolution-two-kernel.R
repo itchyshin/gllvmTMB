@@ -2240,3 +2240,305 @@ test_that("two-kernel Gamma (continuous positive) coevolution recovers component
     expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.15)
   }
 })
+
+# ---------------------------------------------------------------------------
+# COE-04: broader non-Gaussian recovery -- nbinom1 (linear-variance overdispersed
+# counts). NB1 has Var = mu(1 + phi) (linear in mu), vs NB2's Var = mu(1 + mu/size).
+# At the same mean NB1 carries less identifying information than NB2, so this cell
+# uses a gentler DGP than the NB2 cell (lower dispersion, higher mean, +2 reps) to
+# keep recovery clean; draw is rnbinom(mu, size = mu / nb1_disp) so the realised
+# variance matches the NB1 form, family = nbinom1().
+# ---------------------------------------------------------------------------
+.c3_make_nb1_two_kernel_recovery_fixture <- function(seed = 5201L,
+                                                     n_H = 24L,
+                                                     n_P = 24L,
+                                                     n_rep = 14L,
+                                                     lambda_phy_scale = 0.30,
+                                                     lambda_non_scale = 0.30,
+                                                     intercept = 1.7,
+                                                     nb1_disp = 0.8) {
+  set.seed(seed)
+  A_H <- .c3_axis_kernel(n_H, "H", range = 0.45)
+  A_P <- .c3_axis_kernel(n_P, "P", range = 0.45)
+  I_H <- diag(n_H)
+  I_P <- diag(n_P)
+  rownames(I_H) <- colnames(I_H) <- rownames(A_H)
+  rownames(I_P) <- colnames(I_P) <- rownames(A_P)
+  W_phy <- .c3_association_pattern(n_H, n_P, type = "aligned")
+  W_non <- .c3_association_pattern(n_H, n_P, type = "opposed")
+  dimnames(W_phy) <- dimnames(W_non) <- list(rownames(A_H), rownames(A_P))
+  K_phy <- gllvmTMB::make_cross_kernel(A_H, A_P, W_phy, rho = 0.55)
+  K_non <- gllvmTMB::make_cross_kernel(I_H, I_P, W_non, rho = 0.55)
+
+  trait_names <- c("h_size", "h_defence", "p_size", "p_attack")
+  host_traits <- trait_names[1:2]
+  partner_traits <- trait_names[3:4]
+  Lambda_phy <- lambda_phy_scale * matrix(c(1.10, 0.70, 0.80, -0.60), 4L, 1L)
+  Lambda_non <- lambda_non_scale * matrix(c(0.60, -0.90, 1.00, 0.65), 4L, 1L)
+  rownames(Lambda_phy) <- rownames(Lambda_non) <- trait_names
+
+  n_total <- n_H + n_P
+  G_phy <- t(chol(K_phy + diag(1e-8, n_total))) %*%
+    matrix(stats::rnorm(n_total), n_total, 1L)
+  G_non <- t(chol(K_non + diag(1e-8, n_total))) %*%
+    matrix(stats::rnorm(n_total), n_total, 1L)
+  eta <- G_phy %*% t(Lambda_phy) + G_non %*% t(Lambda_non)
+  eta <- sweep(eta, 2L, rep(intercept, length(trait_names)), `+`)
+  colnames(eta) <- trait_names
+
+  species <- rownames(K_phy)
+  lineage <- c(rep("host", n_H), rep("partner", n_P))
+  rows <- vector("list", n_total * n_rep)
+  k <- 1L
+  for (i in seq_len(n_total)) {
+    for (r in seq_len(n_rep)) {
+      mu <- exp(eta[i, ])
+      y <- stats::rnbinom(length(trait_names), mu = mu, size = mu / nb1_disp)
+      rows[[k]] <- data.frame(
+        row_id = paste0("obs", k),
+        species = species[i],
+        h_size = if (lineage[i] == "host") y[1L] else NA_real_,
+        h_defence = if (lineage[i] == "host") y[2L] else NA_real_,
+        p_size = if (lineage[i] == "partner") y[3L] else NA_real_,
+        p_attack = if (lineage[i] == "partner") y[4L] else NA_real_,
+        stringsAsFactors = FALSE
+      )
+      k <- k + 1L
+    }
+  }
+  df <- do.call(rbind, rows)
+  df$row_id <- factor(df$row_id)
+  df$species <- factor(df$species, levels = species)
+
+  list(
+    data = df,
+    K_phy = K_phy,
+    K_non = K_non,
+    Gamma_phy = Lambda_phy[host_traits, , drop = FALSE] %*%
+      t(Lambda_phy[partner_traits, , drop = FALSE]),
+    Gamma_non = Lambda_non[host_traits, , drop = FALSE] %*%
+      t(Lambda_non[partner_traits, , drop = FALSE]),
+    host_traits = host_traits,
+    partner_traits = partner_traits,
+    similarity = .c3_kernel_similarity(K_phy, K_non)
+  )
+}
+
+.c3_fit_nb1_two_kernel_set <- function(fx) {
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit_full <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 +
+      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data, unit = "row_id", cluster = "species",
+    family = gllvmTMB::nbinom1(), control = ctl
+  )))
+  fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+    data = fx$data, unit = "row_id", cluster = "species",
+    family = gllvmTMB::nbinom1(), control = ctl
+  )))
+  fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data, unit = "row_id", cluster = "species",
+    family = gllvmTMB::nbinom1(), control = ctl
+  )))
+  list(
+    full = fit_full,
+    phy_only = fit_phy_only,
+    non_only = fit_non_only,
+    Gamma_phy = gllvmTMB::extract_Gamma(
+      fit_full, level = "phy",
+      row_traits = fx$host_traits, col_traits = fx$partner_traits
+    ),
+    Gamma_non = gllvmTMB::extract_Gamma(
+      fit_full, level = "non",
+      row_traits = fx$host_traits, col_traits = fx$partner_traits
+    )
+  )
+}
+
+test_that("two-kernel nbinom1 (linear-variance counts) coevolution recovers component Gamma shapes", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+
+  ## COE-04 non-Gaussian recovery gate for nbinom1 (linear-variance overdispersed
+  ## counts, log link). Same recovery contract as the Poisson/NB2/Gamma cells, over
+  ## calibrated clean-recovery seeds (phy/non component labels are seed-sensitive,
+  ## as in those cells).
+  for (seed in c(5201L, 5202L)) {
+    fx <- .c3_make_nb1_two_kernel_recovery_fixture(seed = seed)
+    expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
+    expect_true(all(fx$data$h_size[!is.na(fx$data$h_size)] >= 0))
+
+    fit <- .c3_fit_nb1_two_kernel_set(fx)
+    expect_equal(fit$full$opt$convergence, 0L)
+    expect_equal(fit$phy_only$opt$convergence, 0L)
+    expect_equal(fit$non_only$opt$convergence, 0L)
+
+    expect_gt(
+      as.numeric(stats::logLik(fit$full)) -
+        max(as.numeric(stats::logLik(fit$phy_only)),
+            as.numeric(stats::logLik(fit$non_only))),
+      15
+    )
+    expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.95)
+    expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.95)
+    expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.15)
+    expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.15)
+  }
+})
+
+# ---------------------------------------------------------------------------
+# COE-04: broader non-Gaussian recovery -- Beta (proportions in (0, 1), logit
+# link). Continuous and informative, so recovery is clean (unlike binary). Draw is
+# rbeta(mu * phi, (1 - mu) * phi) with mu = plogis(eta) and precision phi;
+# family = Beta(). intercept = 0 keeps the baseline mean at 0.5 (most informative).
+# ---------------------------------------------------------------------------
+.c3_make_beta_two_kernel_recovery_fixture <- function(seed = 6103L,
+                                                      n_H = 24L,
+                                                      n_P = 24L,
+                                                      n_rep = 12L,
+                                                      lambda_phy_scale = 0.30,
+                                                      lambda_non_scale = 0.30,
+                                                      intercept = 0,
+                                                      beta_phi = 15) {
+  set.seed(seed)
+  A_H <- .c3_axis_kernel(n_H, "H", range = 0.45)
+  A_P <- .c3_axis_kernel(n_P, "P", range = 0.45)
+  I_H <- diag(n_H)
+  I_P <- diag(n_P)
+  rownames(I_H) <- colnames(I_H) <- rownames(A_H)
+  rownames(I_P) <- colnames(I_P) <- rownames(A_P)
+  W_phy <- .c3_association_pattern(n_H, n_P, type = "aligned")
+  W_non <- .c3_association_pattern(n_H, n_P, type = "opposed")
+  dimnames(W_phy) <- dimnames(W_non) <- list(rownames(A_H), rownames(A_P))
+  K_phy <- gllvmTMB::make_cross_kernel(A_H, A_P, W_phy, rho = 0.55)
+  K_non <- gllvmTMB::make_cross_kernel(I_H, I_P, W_non, rho = 0.55)
+
+  trait_names <- c("h_size", "h_defence", "p_size", "p_attack")
+  host_traits <- trait_names[1:2]
+  partner_traits <- trait_names[3:4]
+  Lambda_phy <- lambda_phy_scale * matrix(c(1.10, 0.70, 0.80, -0.60), 4L, 1L)
+  Lambda_non <- lambda_non_scale * matrix(c(0.60, -0.90, 1.00, 0.65), 4L, 1L)
+  rownames(Lambda_phy) <- rownames(Lambda_non) <- trait_names
+
+  n_total <- n_H + n_P
+  G_phy <- t(chol(K_phy + diag(1e-8, n_total))) %*%
+    matrix(stats::rnorm(n_total), n_total, 1L)
+  G_non <- t(chol(K_non + diag(1e-8, n_total))) %*%
+    matrix(stats::rnorm(n_total), n_total, 1L)
+  eta <- G_phy %*% t(Lambda_phy) + G_non %*% t(Lambda_non)
+  eta <- sweep(eta, 2L, rep(intercept, length(trait_names)), `+`)
+  colnames(eta) <- trait_names
+
+  species <- rownames(K_phy)
+  lineage <- c(rep("host", n_H), rep("partner", n_P))
+  rows <- vector("list", n_total * n_rep)
+  k <- 1L
+  for (i in seq_len(n_total)) {
+    for (r in seq_len(n_rep)) {
+      mu <- stats::plogis(eta[i, ])
+      y <- stats::rbeta(length(trait_names), mu * beta_phi, (1 - mu) * beta_phi)
+      rows[[k]] <- data.frame(
+        row_id = paste0("obs", k),
+        species = species[i],
+        h_size = if (lineage[i] == "host") y[1L] else NA_real_,
+        h_defence = if (lineage[i] == "host") y[2L] else NA_real_,
+        p_size = if (lineage[i] == "partner") y[3L] else NA_real_,
+        p_attack = if (lineage[i] == "partner") y[4L] else NA_real_,
+        stringsAsFactors = FALSE
+      )
+      k <- k + 1L
+    }
+  }
+  df <- do.call(rbind, rows)
+  df$row_id <- factor(df$row_id)
+  df$species <- factor(df$species, levels = species)
+
+  list(
+    data = df,
+    K_phy = K_phy,
+    K_non = K_non,
+    Gamma_phy = Lambda_phy[host_traits, , drop = FALSE] %*%
+      t(Lambda_phy[partner_traits, , drop = FALSE]),
+    Gamma_non = Lambda_non[host_traits, , drop = FALSE] %*%
+      t(Lambda_non[partner_traits, , drop = FALSE]),
+    host_traits = host_traits,
+    partner_traits = partner_traits,
+    similarity = .c3_kernel_similarity(K_phy, K_non)
+  )
+}
+
+.c3_fit_beta_two_kernel_set <- function(fx) {
+  ctl <- gllvmTMB::gllvmTMBcontrol(se = FALSE)
+  fit_full <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 +
+      kernel_latent(species, K = fx$K_phy, d = 1, name = "phy") +
+      kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data, unit = "row_id", cluster = "species",
+    family = gllvmTMB::Beta(), control = ctl
+  )))
+  fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+    data = fx$data, unit = "row_id", cluster = "species",
+    family = gllvmTMB::Beta(), control = ctl
+  )))
+  fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
+    traits(h_size, h_defence, p_size, p_attack) ~
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+    data = fx$data, unit = "row_id", cluster = "species",
+    family = gllvmTMB::Beta(), control = ctl
+  )))
+  list(
+    full = fit_full,
+    phy_only = fit_phy_only,
+    non_only = fit_non_only,
+    Gamma_phy = gllvmTMB::extract_Gamma(
+      fit_full, level = "phy",
+      row_traits = fx$host_traits, col_traits = fx$partner_traits
+    ),
+    Gamma_non = gllvmTMB::extract_Gamma(
+      fit_full, level = "non",
+      row_traits = fx$host_traits, col_traits = fx$partner_traits
+    )
+  )
+}
+
+test_that("two-kernel Beta (proportions) coevolution recovers component Gamma shapes", {
+  skip_if_not_heavy()
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("TMB")
+
+  ## COE-04 non-Gaussian recovery gate for Beta (proportions in (0, 1), logit link).
+  ## Same recovery contract as the Poisson/NB2/Gamma cells, over calibrated
+  ## clean-recovery seeds (phy/non component labels are seed-sensitive).
+  for (seed in c(6103L, 6104L)) {
+    fx <- .c3_make_beta_two_kernel_recovery_fixture(seed = seed)
+    expect_equal(.c3_kernel_overlap_class(fx$similarity), "near_orthogonal")
+    expect_true(all(fx$data$h_size[!is.na(fx$data$h_size)] > 0 &
+                    fx$data$h_size[!is.na(fx$data$h_size)] < 1))
+
+    fit <- .c3_fit_beta_two_kernel_set(fx)
+    expect_equal(fit$full$opt$convergence, 0L)
+    expect_equal(fit$phy_only$opt$convergence, 0L)
+    expect_equal(fit$non_only$opt$convergence, 0L)
+
+    expect_gt(
+      as.numeric(stats::logLik(fit$full)) -
+        max(as.numeric(stats::logLik(fit$phy_only)),
+            as.numeric(stats::logLik(fit$non_only))),
+      15
+    )
+    expect_gt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_phy), 0.95)
+    expect_gt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_non), 0.95)
+    expect_lt(.c3_gamma_corr(fit$Gamma_phy, fx$Gamma_non), 0.15)
+    expect_lt(.c3_gamma_corr(fit$Gamma_non, fx$Gamma_phy), 0.15)
+  }
+})

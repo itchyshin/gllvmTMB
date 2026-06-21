@@ -16613,3 +16613,17 @@ grid note, validation-debt register row, per-family phylo recovery gates. NEXT S
 CODEX: docs/dev-log/codex-handover-2026-06-21-latent-migration.md (spatial->animal->kernel
 folds via the §4 recipe; Codex runs the live fits/full check). After-task:
 docs/dev-log/after-task/2026-06-21-phylo-latent-unique-fold.md.
+
+## 2026-06-21 (Claude / Ada) — session close: #519 merged; Codex handover ready
+
+#518 (latent unique= rename) + #519 (phylo_latent unique= fold) MERGED to main
+(origin/main = f200b62); #516 CLOSED (superseded by #519). Stage A phylo slice done.
+
+NEXT SESSION = CODEX TEAM. Start from
+docs/dev-log/codex-handover-2026-06-21-latent-migration.md (refreshed to post-merge
+state). Next slice = spatial_latent (confirm the spde diagonal engine slot first),
+then animal_latent -> kernel_latent -> augmented phylo_latent(1+x|sp); then Stage B
+hardening (per-family recovery gates + deferred docs: bare-*_latent fire-on-use
+warning, AGENTS/CLAUDE grid note, validation-debt register row). Follow the §5 fold
+recipe; run the FULL devtools::check() before every push (the #516 trap). Merged
+worktrees (gllvmtmb-latent-unique, -phylo-unique-fold, -phylofold) safe to prune.

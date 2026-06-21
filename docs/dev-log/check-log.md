@@ -16503,3 +16503,25 @@ helpers"; `extract_coevolution_modules` under "Report-ready extractors". Verifie
 gate). After-task: `docs/dev-log/after-task/2026-06-21-pkgdown-reference-index-fix.md`.
 Not claimed: no code/NAMESPACE/man change; no article-content or nav-structure change
 (that is the next, separate task).
+
+## 2026-06-21 — Claude/Ada — finish unique() article cleanup (last stale teaching spot)
+
+Scoped what standalone `unique()` cleanup remained in public docs on `main` after
+#505/#508. Read-only scan: `git grep -nE 'unique\([^)]*\|' origin/main --
+vignettes/articles README.md NEWS.md 'R/*.R'` (the `[^)]*\|` form matches the covstruct
+keyword `unique(... | ...)`, not base-R `unique(x)` dedup calls). Finding: the
+unique()->indep()/Psi cleanup is essentially complete. The landing page (README) already
+teaches "Psi = ordinary `latent()` by default" + `indep()` for standalone diagonals; the
+remaining article `unique(|)` mentions are intentional deprecated-keyword reference docs
+(api-keyword-grid grid row + per-cell example, both labeled "compatibility", prose steers
+to `indep()`), and NEWS entries are accurate release notes. Exactly ONE genuinely stale
+TEACHING spot: `pitfalls.Rmd:269`, a commented paired phylogenetic decomposition writing
+`latent(0 + trait | species, d = K_non) + unique(0 + trait | species)` — a Psi
+double-count under the new default (latent() carries Psi) and inconsistent with the
+article's own prose ("phylo_latent + phylo_unique + latent", 3 keywords). Fixed
+(comment-only): dropped the redundant `unique()` line + added a one-line note that
+`latent()` carries Psi by default. Not changed: api-keyword-grid — its `unique()` entries
+are correct deprecated-keyword reference docs; whether to demote `unique()` out of the
+primary grid is an editorial call deferred to the article/nav plan. Not run: render
+(change is comment-only; executable chunk unchanged).
+Not claimed: no grammar/likelihood change; no register promotion.

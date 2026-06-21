@@ -410,7 +410,7 @@ Binary outcomes (`family = binomial()`) are a special case. The
 link function fixes a latent-scale residual variance: $\pi^2/3$
 for `logit`, $1$ for `probit`, $\pi^2/6$ for `cloglog`. This
 implicit residual already plays the role of $\boldsymbol\Psi$ on the
-latent scale, so an explicit `unique()` term on top of a binary
+latent scale, so an explicit `indep()` diagonal term on top of a binary
 fit is typically not identified.
 
 `extract_Sigma()` has a `link_residual = "auto"` option that adds
@@ -467,7 +467,7 @@ $$
 
 The $\sigma_e^2$ on the latent log scale plays the role of $\boldsymbol\Psi$.
 Native OLRE support is available: add an `obs_id` column (one level per
-row), include `unique(0 + trait | obs_id)` in the formula, pass
+row), include `indep(0 + trait | obs_id)` in the formula, pass
 `unit_obs = "obs_id"`, and use `extract_residual_split(fit)` to separate
 $\sigma^2_e$ (the estimated OLRE variance) from $\sigma^2_d$ (the
 distribution-specific latent residual; Nakagawa & Schielzeth 2010;

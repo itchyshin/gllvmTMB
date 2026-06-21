@@ -88,7 +88,7 @@ fit_wide <- gllvmTMB(
 The species-axis phylogenetic keyword already names the grouping axis,
 so it is unchanged between long and wide forms. For non-phylogenetic
 ordinal traits, replace `phylo_unique()` with the ordinary covariance
-keyword you need, such as `latent()` or `unique()`. The family does
+keyword you need, such as `latent()` or `indep()`. The family does
 not change the 4 x 5 covariance keyword grammar.
 
 ## Cutpoints
@@ -153,7 +153,7 @@ Do not mix `ordinal_probit()` with another family within the same
 trait. Cutpoints are trait-level parameters, so all rows for an
 ordinal trait must belong to the ordinal-probit family.
 
-Observation-level `unique()` residuals are structurally unidentifiable
+Observation-level `indep()` residuals are structurally unidentifiable
 for ordinal-probit traits. The threshold model fixes the residual
 scale at 1, and an extra observation-level scale factor can be absorbed
 by the cutpoints. The engine maps that observation-level component off

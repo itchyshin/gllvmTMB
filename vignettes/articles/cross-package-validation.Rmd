@@ -45,7 +45,7 @@ asserts the agreement.
 |---|---|---|---|
 | <code>latent(0 + trait &#124; site, d)</code> | `glmmTMB::glmmTMB(rr())` | ✅ live (this article) | log-likelihood match to 1e-4 |
 | <code>latent(0 + trait &#124; site, d)</code> (binary) | `gllvm::gllvm(num.lv)` | ✅ live (this article) | Procrustes-aligned $\boldsymbol{\Lambda}$, per-factor $\rho > 0.95$ |
-| <code>unique(0 + trait &#124; site)</code> | `glmmTMB::glmmTMB(diag())` | ✅ live (this article) | log-likelihood match to 1e-4 |
+| <code>indep(0 + trait &#124; site)</code> | `glmmTMB::glmmTMB(diag())` | ✅ live (this article) | log-likelihood match to 1e-4 |
 | `phylo_scalar(species)` | `glmmTMB::glmmTMB(propto())` | ✅ tested (`test-stage3-propto-equalto.R`) | log-likelihood match to 1e-4 |
 | `meta_V(V = V)` | `glmmTMB::glmmTMB(equalto())` | ⚠ partial (`test-formula-grammar-smoke.R`, `test-gllvmTMB-args.R`) | parser / dimension / smoke coverage exists; direct equalto LL comparator remains MET-01 validation debt |
 

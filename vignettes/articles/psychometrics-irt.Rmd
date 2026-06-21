@@ -197,9 +197,11 @@ fit_exp <- fit_exp_long
 fit_exp
 ```
 
-The exploratory loadings are rotation-invariant. This preview uses a
-latent-only formula, so the implied unit-level covariance is the
-shared latent surface, not a full ordinary `latent()` decomposition:
+The exploratory loadings are rotation-invariant. Ordinary `latent()`
+carries the per-trait $\boldsymbol\Psi$ residual by default, so the
+implied unit-level covariance is the full ordinary decomposition
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top + \mathrm{diag}(\boldsymbol\Psi)$;
+the rotation-invariant loadings here describe its shared low-rank axis:
 
 ```{r sigma-exp}
 SB_exp_rows <- extract_Sigma_table(

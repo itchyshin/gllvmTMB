@@ -52,7 +52,7 @@ simulation check say otherwise.
 |---|---|---|---|---|
 | continuous, unbounded | `gaussian()` | identity | covered (FAM-01) | Default family. |
 | binary or binomial trials | `binomial()` | logit, probit, cloglog | covered (FAM-02--FAM-04) | Use `cbind(success, failure)` or `weights` for multi-trial binomial data. |
-| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `unique()` term when that is identifiable. |
+| counts | `poisson()` | log | covered (FAM-06) | No dispersion parameter; add an observation-level `indep()` diagonal term when that is identifiable. |
 | positive continuous, right-skewed | `lognormal()` | log | partial (FAM-11) | Use only when the response is strictly positive. |
 | positive continuous, constant CV | `Gamma(link = "log")` | log | partial (FAM-09) | Base R `Gamma()`, with log link in the engine. |
 | overdispersed counts | `nbinom2()` | log | covered (FAM-08) | NB2 variance grows quadratically with the mean. |

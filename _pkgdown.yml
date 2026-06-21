@@ -168,6 +168,8 @@ reference:
     - pedigree_to_Ainv_sparse
     - make_cross_kernel
     - profile_cross_rho
+    - profile_cross_rho_ci
+    - diagnose_kernel_separability
     - make_mesh
     - add_utm_columns
     - plot_anisotropy
@@ -185,6 +187,7 @@ reference:
     - extract_Sigma
     - extract_Gamma
     - predict_cross_covariance
+    - extract_coevolution_modules
     - extract_Sigma_table
     - compare_Sigma_table
     - extract_Omega

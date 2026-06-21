@@ -16487,3 +16487,19 @@ coevolution-kernel.md`). Parked loop closed; #361 left open (other C-items remai
 After-task: `docs/dev-log/after-task/2026-06-21-close-open-loops.md`.
 Not claimed: no engine/grammar/family change; no register-row promotion; no merge of
 the Codex dirty branch; #361 not closed.
+
+## 2026-06-21 — Claude/Ada — fix failing pkgdown CI (reference-index gap)
+
+pkgdown failed 6/6 recent runs on `main` (R-CMD-check green throughout); the docs
+site was not redeploying. Failed build log (run 27904513029): `build_reference_index()`
+errored — `In _pkgdown.yml, 3 topics missing from index: "diagnose_kernel_separability",
+"extract_coevolution_modules", "profile_cross_rho_ci"`. These coevolution exports
+(#500, #506) were documented but never indexed. Fix (docs-only, fresh worktree off
+`origin/main` ca92ad6): added the 3 to `_pkgdown.yml` next to siblings —
+`profile_cross_rho_ci` + `diagnose_kernel_separability` under "Relatedness and spatial
+helpers"; `extract_coevolution_modules` under "Report-ready extractors". Verified:
+`Rscript -e 'pkgdown::check_pkgdown(".")'` → "✔ No problems found". Not run: full
+`build_site()` (slow; the `workflow_run` pkgdown run on the merge commit is the real
+gate). After-task: `docs/dev-log/after-task/2026-06-21-pkgdown-reference-index-fix.md`.
+Not claimed: no code/NAMESPACE/man change; no article-content or nav-structure change
+(that is the next, separate task).

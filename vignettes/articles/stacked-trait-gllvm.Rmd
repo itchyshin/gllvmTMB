@@ -141,11 +141,12 @@ Each formula term carries a specific role:
   the precomputed `mesh`. Replaces the slow dense
   `glmmTMB::glmmTMB(... + exp(coords + 0 | trait))` /
   `... + gau(...)` paths.
-- `latent(0 + trait | site, d = 2)` + `unique(0 + trait | site)` --
-  global reduced-rank + diagonal covariance giving
+- `latent(0 + trait | site, d = 2)` -- global reduced-rank axes plus
+  the per-trait diagonal that ordinary `latent()` carries by default,
+  giving
   $\boldsymbol{\Sigma}_{\text{unit}} = \boldsymbol{\Lambda}_B \boldsymbol{\Lambda}_B^\top + \boldsymbol{\Psi}_B$.
-- `latent(0 + trait | site_species, d = 1)` + `unique(0 + trait | site_species)`
-  -- local reduced-rank + diagonal covariance giving
+- `latent(0 + trait | site_species, d = 1)` -- local reduced-rank axis
+  plus its default per-trait diagonal, giving
   $\boldsymbol{\Sigma}_{\text{unit\_obs}} = \boldsymbol{\Lambda}_W \boldsymbol{\Lambda}_W^\top + \boldsymbol{\Psi}_W$.
 - `indep(0 + trait | species)` -- non-phylogenetic species term
   $q_{it}$.
@@ -199,7 +200,7 @@ stage-2 `meta_V(V = V)` fit.
 
 ## 5. Cross-validation against `glmmTMB`
 
-For the non-spatial covstructs (`latent()`, `unique()`,
+For the non-spatial covstructs (`latent()`, `indep()`,
 `phylo_scalar()`, `meta_V()` -- which map internally to
 `glmmTMB`'s `rr` / `diag` / `propto` / `equalto`),
 `gllvmTMB`'s log-likelihood matches `glmmTMB::glmmTMB()` exactly to

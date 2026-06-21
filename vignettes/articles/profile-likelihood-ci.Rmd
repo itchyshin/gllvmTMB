@@ -202,7 +202,8 @@ in `TMB::tmbprofile()`'s `lincomb` argument, then transforms via
 $\mathrm{plogis}$ to map back to the unit interval.
 
 > **Honest fallback**: when the fit has a full-$\boldsymbol\Sigma$
-> structure (i.e. `latent()` factor model on top of `unique()`),
+> structure (i.e. a `latent()` factor model on top of an `indep()`
+> diagonal tier),
 > proper Lagrange-style profile-likelihood CIs for the ratio quantity
 > require a constrained refit per parameter that is not yet
 > implemented. `extract_repeatability(method = "profile")` currently
@@ -253,7 +254,7 @@ cors_b
 ### Phylogenetic signal $H^2$
 
 When the fit has both `phylo_unique(species)` and
-`unique(0 + trait | species)`, $H^2 = \sigma^2_{\mathrm{phy}} /
+`indep(0 + trait | species)`, $H^2 = \sigma^2_{\mathrm{phy}} /
 (\sigma^2_{\mathrm{phy}} + \sigma^2_{\mathrm{non}})$ is profileable via a
 single linear contrast (analogous to repeatability). For richer
 3-component decompositions (PGLLVM with

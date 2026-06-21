@@ -16525,3 +16525,27 @@ are correct deprecated-keyword reference docs; whether to demote `unique()` out 
 primary grid is an editorial call deferred to the article/nav plan. Not run: render
 (change is comment-only; executable chunk unchanged).
 Not claimed: no grammar/likelihood change; no register promotion.
+
+## 2026-06-21 — Claude/Ada — phylo_latent Psi-fold (Stage A slice 1; engine, TDD)
+
+First source-specific Psi-fold of the approved latent-only migration (PR #515 design). Makes
+`phylo_latent()` auto-carry its diagonal Psi by default (residual=TRUE), mirroring ordinary
+`latent()`, so `phylo_latent + phylo_unique` collapses to `phylo_latent(residual=TRUE)`. R-only,
+no C++. Rewriter (R/brms-sugar.R): emit the phylo-structured companion
+`phylo_rr(.phylo_unique=TRUE, .auto_residual=TRUE, [tree/vcv])` when residual=TRUE; residual=FALSE =
+loadings-only; augmented `phylo_latent(1+x|sp)` returns earlier (guarded). Dedup (R/fit-multi.R):
+`is_auto_phylo_psi` + explicit-phylo_unique supersedes the auto companion (byte-identity; avoids the
+>1 phylo_unique abort); off-family (ordinal/delta) gate extended to the phylo companion.
+
+TDD: wrote `test-phylo-latent-residual-fold.R` RED first (use$phylo_diag FALSE, byte-identity off),
+then GREEN. Commands: `devtools::load_all(compile=TRUE)` + `testthat::test_file(...)` with
+`NOT_CRAN=true`, `GLLVMTMB_HEAVY_TESTS=1`. Results (all 0 fail): fold tests 3/3 (byte-identity,
+loadings-only, dedup); critical cascade 19/19 (stage35 bare phylo_latent, q-decomposition lone
+phylo_unique legacy, mode-dispatch, phylo_indep/dep mutual-exclusion); heavy recovery 27/27
+(matrix-poisson/gamma/ordinal-phylo paired recovery, phylo-latent-slope + phylo-unique-slope
+augmented guard, extract-omega H2+C2+psi2=1). The heavy recovery subset is the part CI omits
+(GLLVMTMB_HEAVY_TESTS-gated). After-task: `docs/dev-log/after-task/2026-06-21-phylo-latent-psi-fold.md`.
+Not claimed: not merged (engine/grammar -> per-item maintainer merge); no fire-on-use notice yet for
+the bare-phylo_latent default change (deferred, maintainer UX decision); spatial/animal/kernel folds
++ the augmented phylo fold (slice 1b) are later slices; full ~30-file phylo suite + cross-OS CI is
+the maintainer's pre-merge gate.

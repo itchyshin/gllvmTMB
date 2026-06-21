@@ -2851,6 +2851,40 @@ rewrite_canonical_aliases <- function(formula) {
 	          psi_call <- as.call(c(list(as.name("diag"), e[[2L]]), psi_extras))
 	          return(call("+", new_call, psi_call))
 	        }
+	        ## Phylo latent-Psi fold (Stage A): mirror the ordinary latent() fold
+	        ## for the phylogenetic tier so `phylo_latent(d=K) + phylo_unique()`
+	        ## collapses to a single `phylo_latent(d=K, residual=TRUE)`. The
+	        ## auto-companion is the phylo-structured diagonal Psi_phy (x) A,
+	        ## i.e. `phylo_rr(species, .phylo_unique=TRUE, .auto_residual=TRUE)`,
+	        ## NOT a plain diag. Augmented `phylo_latent(1+x|sp)` is handled and
+	        ## returned earlier (the .latent_slope block), so this only sees the
+	        ## intercept-only form.
+	        if (identical(fn, "phylo_latent")) {
+	          residual_arg <- e[["residual"]]
+	          if (is.null(residual_arg)) residual_arg <- TRUE
+	          if (!is.logical(residual_arg) || length(residual_arg) != 1L ||
+	              is.na(residual_arg)) {
+	            cli::cli_abort(c(
+	              "{.arg residual} in {.fn phylo_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+	              ">" = "Use {.code phylo_latent(..., residual = FALSE)} for the loadings-only subset."
+	            ))
+	          }
+	          new_call_names <- names(new_call)
+	          if (!is.null(new_call_names)) {
+	            drop_args <- new_call_names %in% "residual"
+	            if (any(drop_args)) new_call <- new_call[!drop_args]
+	          }
+	          if (isFALSE(residual_arg)) {
+	            return(new_call)
+	          }
+	          phy_psi_extras <- .pass_through_extras(e, c("tree", "vcv"))
+	          psi_call <- as.call(c(
+	            list(as.name("phylo_rr"), e[[2L]]),
+	            list(.phylo_unique = TRUE, .auto_residual = TRUE),
+	            phy_psi_extras
+	          ))
+	          return(call("+", new_call, psi_call))
+	        }
 	        return(new_call)
 	      }
       ## `unique(form, common = bool)` -> `diag(form, common = bool)`

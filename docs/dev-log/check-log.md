@@ -16681,3 +16681,82 @@ Consistency scans:
   -> no README/ROADMAP/pkgdown/known-limitations edit required for the narrow row.
 
 After-task report: `docs/dev-log/after-task/2026-06-21-binomial-prevalence-loading-diagnostic.md`.
+
+## 2026-06-21 (Codex / Ada) — spatial_latent unique= fold pre-edit blocker
+
+Branch/worktree: `/private/tmp/gllvmtmb-spatial-latent-psi-fold` on
+`codex/spatial-latent-psi-fold-20260621`, created from `origin/main`
+`a16611b` after `git fetch --all --prune`. Open PR scan before shared
+doc edits: `gh pr list --repo itchyshin/gllvmTMB --state open --json
+number,title,headRefName,baseRefName,author,url` -> `[]`. Recent-log
+scan: `git log --all --oneline --since="6 hours ago"` showed the
+already-merged latent unique / phylo unique / kickoff commits and no
+open PR collision. Clean merged `/private/tmp/gllvmtmb-*` worktrees
+were pruned; dirty mission-control checkout `codex/r-bridge-grouped-dispersion`
+was not touched.
+
+Pre-edit spatial check requested by the handover: confirm that the SPDE
+diagonal companion slot is wired before coding the `spatial_latent()`
+fold. Verdict: blocker. The current SPDE engine exposes alternate
+paths, not an additive `Lambda_spde Lambda_spde^T + Psi_spde` path.
+Evidence:
+
+- `R/fit-multi.R:997-1006` documents `spatial_latent()` as toggling
+  from the per-trait `omega_spde` path used by `spatial_unique()` /
+  `spatial_scalar()` to the low-rank `Lambda_spde x omega_spde_lv`
+  path.
+- `R/fit-multi.R:3495-3497` maps off `log_tau_spde` and `omega_spde`
+  when `use_spde && is_spatial_latent`, so the per-trait diagonal
+  spatial fields are not estimated in the low-rank fit.
+- `R/fit-multi.R:3947-3948` adds either `omega_spde` or
+  `omega_spde_lv` to the random vector, not both.
+- `src/gllvmTMB.cpp:1352-1412` branches on `spde_lv_k == 0` for
+  per-trait SPDE fields versus `spde_lv_k >= 1` for
+  `Lambda_spde * omega_spde_lv`, then reports `Sigma_spde =
+  Lambda_spde Lambda_spde^T` only in the low-rank branch.
+- `src/gllvmTMB.cpp:1669-1780` projects and adds either the per-trait
+  field or the low-rank latent field to `eta`, not their sum.
+- `R/extract-sigma.R:1158-1163` explicitly records that
+  `spatial_latent` has no per-trait unique component: no `S_spde`.
+
+Exact source scans run:
+
+- `rg -n "spde|spatial_unique|spatial_latent|use_spde|spatial_diag|spde_diag|auto_unique|is_auto_.*psi|auto_unique_off_family" R/fit-multi.R R/brms-sugar.R src/gllvmTMB.cpp tests/testthat`
+  -> confirms the split SPDE paths and no spatial auto-Psi machinery.
+- `rg -n "Sigma_spde|Lambda_spde|log_tau_spde|omega_spde|spatial_latent.*unique|spatial_unique.*latent|spde_lv_k" R/extract-sigma.R R/extract-correlations.R R/output-methods.R R/check-consistency.R tests/testthat`
+  -> confirms existing tests cover fit construction / Lambda shape /
+  smoke checks for paired `spatial_latent + spatial_unique`, but the
+  extractor states there is no `S_spde` component and tests do not prove
+  additive diagonal spatial Psi.
+
+Issue scan: `gh issue list --repo itchyshin/gllvmTMB --state open
+--search "spatial_latent OR spatial_unique OR latent unique" --limit 20
+--json number,title,url,state` returned broad status/roadmap issues
+#340, #361, #342, #348, #230, #341, #349, and #347; no dedicated
+spatial-fold blocker issue was found.
+
+Attempted parser probes using `devtools::load_all(".", compile = FALSE,
+quiet = TRUE)` for bare and paired `spatial_latent()` were interrupted
+after more than two minutes with no output; no result from those probes
+was used as evidence. Not run: RED G1-G4 tests, `devtools::test()`,
+`devtools::check()`, `devtools::document()`, or pkgdown, because the
+required engine precondition failed before code edits.
+
+Post-rebase closeout after #524 merged: rebased the blocker branch onto
+`origin/main` `04b7523`; resolved the append-only `docs/dev-log/check-log.md`
+conflict by keeping both the #523 diagnostic entry and this spatial blocker
+entry. `git diff --check` stayed clean. A full
+`Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE,
+error_on = "never")'` attempt was killed by the local process manager with exit
+137 after ~20 seconds and left no discoverable `.Rcheck` directory; no result
+from that killed check is used as validation. The branch is docs/dev-log-only and
+should use PR CI as the remote gate.
+
+Next safest action: maintainer decision. Either pause spatial and move
+to the next source fold with a wired diagonal companion (`animal_latent`
+or `kernel_latent`), or explicitly approve a true SPDE engine change
+that estimates and adds the per-trait `Psi_spde` companion alongside
+`Lambda_spde Lambda_spde^T`. The latter is a grammar/engine change and
+needs Boole/Gauss/Noether/Curie/Grace/Rose review plus updated design
+docs, recovery tests, validation-debt rows, and full `devtools::check()`
+before any push.

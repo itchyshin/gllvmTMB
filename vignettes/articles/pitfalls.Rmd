@@ -114,10 +114,11 @@ trait-specific component.
 **Diagnosis.** First check what the extractor is designed to return.
 In this example, `extract_Sigma(level = "unit")` returns the
 `latent()`-implied between-unit covariance
-$\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$ (plus the optional
-`unique(0 + trait | site)` variance), **not** the marginal
-observational variance
-$\mathrm{Var}(y_{it}) = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \sigma^2_\varepsilon$.
+$\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathrm{diag}(\boldsymbol\psi)$,
+where ordinary `latent()` carries the per-trait $\boldsymbol\psi$ by
+default (here it is near zero because the data-generating process set
+`psi_B = 0`), **not** the marginal observational variance
+$\mathrm{Var}(y_{it}) = \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top} + \mathrm{diag}(\boldsymbol\psi) + \sigma^2_\varepsilon$.
 The "missing" amount is real residual noise, not bias in the
 between-unit covariance.
 
@@ -135,7 +136,7 @@ fit <- gllvmTMB(value ~ 0 + trait + latent(0 + trait | site, d = 2),
 
 S_hat    <- extract_Sigma(fit, level = "unit")$Sigma
 LLt_true <- tcrossprod(sim$truth$Lambda_B)
-# Compare to LL^T (the right target) - not to LL^T + sigma^2 I
+# Compare to LL^T (the right target here, since psi_B = 0) - not to LL^T + sigma^2 I
 round(rbind(diag_LLt_true  = diag(LLt_true),
             diag_Sigma_hat = diag(S_hat)), 2)
 ```
@@ -143,8 +144,8 @@ round(rbind(diag_LLt_true  = diag(LLt_true),
 **Rule of thumb.** *Name the estimand before judging the estimate.
 For this example, compare `extract_Sigma(level = "unit")` to
 $\boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}$. If you want the
-marginal Var(y) including residual noise, add
-`+ unique(0 + trait | site)` to the formula and inspect
+marginal Var(y) including residual noise, add a separate diagonal tier
+with `+ indep(0 + trait | site)` to the formula and inspect
 `extract_Sigma(level = "unit", part = "total")$Sigma` -- the residual
 `sigma_eps` is reported separately in `fit$report$sigma_eps`.*
 
@@ -158,8 +159,10 @@ not contain, the fit has to put that variation somewhere. In this
 example, `simulate_site_trait()` ships with sensible defaults that
 include random environmental fixed effects
 ($\beta_{tk} \sim \mathcal{N}(0, 0.5^2)$) and a per-trait diagonal
-$psi_B$. If your fitted model has no environmental term and no
-`unique(0 + trait | site)`, that variance has nowhere to go and gets
+$psi_B$. Ordinary `latent()` carries the per-trait $\boldsymbol\Psi$
+by default, so it can absorb the diagonal; but if your fitted model
+has no environmental term -- or uses `latent(..., residual = FALSE)`,
+which drops the diagonal -- that variance has nowhere to go and gets
 absorbed into $\hat{\boldsymbol\Lambda}_B$. This is the general
 failure mode: the fitted model can answer a different question from
 the data-generating story even when the optimizer behaved correctly.
@@ -182,8 +185,8 @@ from the data-generating process or include the matching term in the
 formula. For this latent-only example, set
 `beta = matrix(0, n_traits, n_predictors)` and
 `psi_B = rep(0, n_traits)`. If you want those components in the data,
-include them in the formula too: `+ (0 + trait):env_1` and/or
-`+ unique(0 + trait | site)`.*
+include them in the formula too: `+ (0 + trait):env_1` and/or a
+separate diagonal tier `+ indep(0 + trait | site)`.*
 
 ## 4. Interpret identifiable summaries, not arbitrary coordinates
 
@@ -286,8 +289,9 @@ rows, and rendered HTML review pass.*
 not separately identifiable from $\Lambda_{\text{phy}}
 \Lambda_{\text{phy}}^{\!\top}$ -- common in small `n_species`,
 weak phylogenetic signal, or single-replicate-per-tip data --
-drop the `phylo_unique()` term and let the species-level
-`unique()` carry the only $\boldsymbol{\Psi}$ in the fit. The model then has
+drop the `phylo_unique()` term and let the species-level ordinary
+`latent()`, which carries $\boldsymbol{\Psi}$ by default, supply the only
+$\boldsymbol{\Psi}$ in the fit. The model then has
 three pieces:*
 
 $$

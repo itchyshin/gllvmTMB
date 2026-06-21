@@ -16549,3 +16549,30 @@ Not claimed: not merged (engine/grammar -> per-item maintainer merge); no fire-o
 the bare-phylo_latent default change (deferred, maintainer UX decision); spatial/animal/kernel folds
 + the augmented phylo fold (slice 1b) are later slices; full ~30-file phylo suite + cross-OS CI is
 the maintainer's pre-merge gate.
+
+## 2026-06-21 — Claude/Ada — latent-only migration: deep verification + grammar-contract fix (Stage B4)
+
+Maintainer asked to verify, carefully, that ordinary `latent()` delivers Sigma = Lambda Lambda^T
++ Psi correctly per family AND per grouping level before going `latent_*`-only (remove `*_unique()`).
+Ran a 3-perspective read-only sweep of origin/main (Noether+Gauss engine, Emmy+Fisher extractors,
+Curie+Boole tests/migration). Verified: (1) ordinary `latent()` auto-Psi is correct (sole
+`.auto_residual` emission at R/brms-sugar.R:2847, guarded `if (identical(fn,"latent"))`); (2) Sigma
+= Lambda Lambda^T + Psi correct per family (no double-count — between-group Psi and family dispersion
+are different levels; binary/#509, pure-ordinal/delta correctly skipped); (3) Sigma -> correlations
+for all families + mixed is delivered (extract_Sigma/correlations, link_residual="auto", M1.3-M1.8);
+(4) the 4 grouping levels are unit/unit_obs/cluster/cluster2 — non-Gaussian Psi IS estimated at the
+non-residual levels (proof: test-cluster2-families.R recovers Psi for all 7 wired families; RE-11),
+only unit_obs OLRE (non-Gaussian) + binary-#509 + pure-ordinal/delta skip. KEY FINDING: only
+ordinary `latent()` auto-carries Psi; `phylo_/spatial_/animal_/kernel_latent` do NOT yet
+(roxygen "latent-Psi folds remain future slices", R/brms-sugar.R:744,851) — so removing `*_unique()`
+now would break source-specific decompositions. Full program in the approved plan (staged: source
+Psi-folds -> hardening -> deprecation messaging -> articles -> removal LAST).
+
+Stage B4 (this PR, docs-only): fixed the stale pairing-rule narrative in
+`docs/design/01-formula-grammar.md` (the canonical grammar contract) — it said `latent(...)` alone
+-> Sigma = Lambda Lambda^T (no Psi), contradicting the doc's own table + AGENTS/CLAUDE. Now states:
+latent() alone (residual=TRUE default) -> Lambda Lambda^T + Psi; latent(residual=FALSE) -> Lambda
+Lambda^T; indep()/deprecated-unique() -> Psi; AND that the source-specific `*_latent` forms still
+require the explicit paired `*_unique()` (folds pending). Not run: no code change (design doc only).
+Not claimed: no engine/grammar/parser change; no `*_unique()` removal; engine Psi-folds (Stage A)
+are Codex's lane and maintainer-gated.

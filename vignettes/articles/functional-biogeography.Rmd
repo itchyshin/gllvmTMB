@@ -120,7 +120,7 @@ library(ggplot2)
 > wide (one row per `(site, species)`, one column per trait). The
 > formula-wide path keeps that shape readable:
 > `traits(trait_1, ..., trait_T) ~ 1 + latent(1 | site_species, d = 2)
-> + unique(1 | site_species)`. The long form below stays canonical
+> + indep(1 | site_species)`. The long form below stays canonical
 > because it keeps `site`, `species`, and `site_species` visible for the
 > crossed ecological interpretation.
 
@@ -254,7 +254,7 @@ Three things to watch for in any core-model fit, each a separate identifiability
 > per (`site`, `species`, `trait`) triple), only the *sum*
 > $\boldsymbol{\Sigma}_W^{*} = \boldsymbol{\Sigma}_W + \mathrm{diag}(\sigma^2_\delta)$
 > is identified. The engine handles this by auto-suppressing
-> `sigma_eps` to a tiny floor whenever a per-row `unique()` is
+> `sigma_eps` to a tiny floor whenever a per-row `indep()` is
 > present (you'll see a one-shot inform when the core model fits).
 > Replication within cell -- multiple individuals of the same
 > species at the same site, or repeated visits -- is the design
@@ -363,7 +363,7 @@ within $\sim$10% relative error and $\sigma^2_{P,t}$ within $\sim$50%
 signal is weak; the trait-averaged $\bar{\sigma}^2_P$ is more
 stable). At small $n_{\text{species}}$ or weak phylogenetic signal,
 the $p_{it}$ and $q_{it}$ pieces cannot be cleanly separated and one
-should compare the core model (without `unique(0 + trait | species)`) to the adjusted model (with
+should compare the core model (without `indep(0 + trait | species)`) to the adjusted model (with
 it) to confirm both terms contribute on the focal data. The engine
 prints a one-shot informational note pointing at this regime when it
 detects the pairing.

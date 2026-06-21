@@ -296,13 +296,17 @@ decomposition. The constrained submodels are:
 - `indep(...)` / soft-deprecated `unique(...)` alone →
   $\boldsymbol\Sigma = \boldsymbol\Psi$ (diagonal-only; no shared axes).
 
-The source-specific decompositions `phylo_latent + phylo_unique`,
-`spatial_latent + spatial_unique` (and the `animal_*` / `kernel_*`
-forms) still use the **explicit paired spelling**: their latent-Psi
-folds remain future slices, so `phylo_latent(...)` / `spatial_latent(...)`
-alone do **not** yet carry $\boldsymbol\Psi$ — pair them with the
-matching `*_unique()` (or `*_indep()` for the standalone diagonal)
-until those folds land.
+`phylo_latent(...)` now carries its diagonal $\boldsymbol\Psi$ companion
+by default (`residual = TRUE`), like ordinary `latent()`: use
+`phylo_latent(..., residual = FALSE)` for the loadings-only subset, and
+the explicit `phylo_latent + phylo_unique` pair remains accepted (the
+auto-companion is deduped against it). The remaining source-specific
+decompositions `spatial_latent + spatial_unique` and the `animal_*` /
+`kernel_*` forms still use the **explicit paired spelling**: their
+latent-Psi folds remain future slices, so `spatial_latent(...)` alone
+does **not** yet carry $\boldsymbol\Psi$ — pair it with the matching
+`*_unique()` (or `*_indep()` for the standalone diagonal) until those
+folds land.
 
 ## Long-format trait-stacked grammar
 

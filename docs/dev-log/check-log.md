@@ -17699,3 +17699,12 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-22-pre-fit-response-screening.md`.
+
+GitHub closeout:
+
+- Commit `40a876c` pushed to `codex/pre-fit-response-screen-20260622`.
+- Draft PR #533 opened:
+  `https://github.com/itchyshin/gllvmTMB/pull/533`.
+- GitHub Actions R-CMD-check run `27990468804` completed successfully on
+  Ubuntu:
+  `https://github.com/itchyshin/gllvmTMB/actions/runs/27990468804`.

@@ -131,6 +131,11 @@ Shannon coordination: PASS/WARN. No open PRs were present before shared
 dev-log edits. The branch is a focused diagnostic/docs PR and should be safe to
 open as draft after commit/push.
 
+GitHub closeout: PASS. Draft PR #533 was opened at
+`https://github.com/itchyshin/gllvmTMB/pull/533`. The GitHub Ubuntu
+R-CMD-check run completed successfully at
+`https://github.com/itchyshin/gllvmTMB/actions/runs/27990468804`.
+
 ## What Did Not Go Smoothly
 
 `pkgdown::build_article("pre-fit-response-screening", ...)` initially used the
@@ -164,8 +169,11 @@ inspect support and redundancy before fitting, then still run
 
 ## Next Actions
 
-- Commit, push, and open a draft PR.
-- Let CI confirm the local results on GitHub runners.
+- Commit, push, and open a draft PR. Done: commit `40a876c`, PR #533.
+- Let CI confirm the local results on GitHub runners. Done: run `27990468804`
+  passed on Ubuntu.
+- Mark PR #533 ready for maintainer review once the closeout-doc correction is
+  pushed and its lightweight CI rerun is green.
 - In a later PR, consider optional Suggests-only comparator checks and a
   broader simulation grid over sample size, prevalence, and pairwise
   dependence.

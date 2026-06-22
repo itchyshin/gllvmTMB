@@ -17608,3 +17608,94 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-22-covariance-correlation-model-first-accessibility.md`.
+
+## 2026-06-22 -- screen_gllvmTMB pre-fit response screening
+
+Implemented `screen_gllvmTMB()` as a formula-aware pre-fit response screen for
+candidate binary/binomial traits before fitting a stacked-trait GLLVM. This is
+the pre-fit companion to the Ayumi-495/urbanisation_map#3 large-loading
+diagnostic lane; it does not select variables, remove traits, prove
+identifiability, solve separation, choose rank, or guarantee convergence.
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-pre-fit-response-screen-20260622`
+  on `codex/pre-fit-response-screen-20260622`.
+
+Pre-edit coordination checks before shared dev-log edits:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open`
+  -> no open PRs.
+- `git log --all --oneline --since="6 hours ago"`
+  -> recent merged #531/#532 documentation-accessibility sequence only:
+  `a47a870`, `7298451`, `387c35b`, `4fd2ac8`; no competing dev-log/design
+  edit detected.
+
+Implementation:
+
+- Added exported `screen_control()`, `screen_gllvmTMB()`, `screen_table()`,
+  and `print.gllvmTMB_screen`.
+- Reused the existing `traits(...)` wide-to-long path, long `trait =` path,
+  response-missing row drop, weight normalisation, fixed-effect model matrix,
+  parsed covariance terms, and requested latent-rank metadata.
+- Implemented binary/binomial v1 support for Bernoulli, logical binary,
+  `cbind(success, failure)`, and flat successes with `weights = n_trials`.
+- Added trait, pair, unit, design, recommendation, summary, and settings
+  tables.
+- Added duplicate/complement, near-duplicate, high-phi/Jaccard,
+  denominator-aware prevalence/minority-count, fixed-effect-rank,
+  one-level-unit, and `d >= n_traits` checks.
+- Added `vignettes/articles/pre-fit-response-screening.Rmd`.
+- Added design note `docs/design/2026-06-22-pre-fit-response-screening.md`.
+- Added validation-debt row `DIA-14`, NEWS entry, and pkgdown article/reference
+  navigation.
+- Posted the separate maintainer-approved accessible reply to Ayumi at
+  `https://github.com/Ayumi-495/urbanisation_map/issues/1#issuecomment-4773564655`.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'`
+  -> PASS; generated `man/screen_control.Rd`, `man/screen_gllvmTMB.Rd`, and
+  `man/screen_table.Rd`. Unrelated roxygen-version link/format churn in older
+  Rd files was restored before staging.
+- `Rscript --vanilla -e 'devtools::test(filter = "screen")'`
+  -> PASS after final threshold wiring:
+  `[ FAIL 0 | WARN 0 | SKIP 0 | PASS 34 ]`.
+- `Rscript --vanilla -e 'devtools::test()'`
+  -> PASS after final threshold wiring:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3479 ]`. The warnings are existing
+  broad-suite warnings (Julia bridge and multi-trial-binomial `sdreport`
+  `NaNs produced`), not from `test-screen-gllvmTMB.R`.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); rmarkdown::render("vignettes/articles/pre-fit-response-screening.Rmd", output_dir = tempfile("screen-article-"), quiet = FALSE)'`
+  -> PASS; rendered the new article through the development package state.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", document = FALSE, quiet = FALSE, error_on = "never")'`
+  -> PASS after the malformed-support test addition, with known local install
+  warning only:
+  `0 errors, 1 warning, 0 notes`; warning text was
+  `/Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36:
+  warning: unknown warning group '-Wfixed-enum-extension', ignored`.
+- `Rscript --vanilla -e 'pkgload::load_all(quiet = TRUE); df <- data.frame(unit = factor(seq_len(100000)), trait = factor("indicator"), y = c(rep(1,1000), rep(0,99000))); print(system.time(scr <- screen_gllvmTMB(y ~ 1, df, unit = "unit", trait = "trait", family = binomial()))); print(screen_table(scr, "traits")[, c("status", "minority_count", "prevalence")])'`
+  -> PASS; 100000-row smoke ran in about 0.5 seconds and returned `INFO`,
+  `minority_count = 1000`, `prevalence = 0.01`.
+- `rg -n "selects variables|automatic deletion|guarantees convergence|proves identifiability|validated item selection|separation solved|choose variables|choose_variables|bad item|failed trait|depreciat|Lamdba|gllvmTMB_wide" R/screen-gllvmTMB.R tests/testthat/test-screen-gllvmTMB.R vignettes/articles/pre-fit-response-screening.Rmd docs/design/2026-06-22-pre-fit-response-screening.md NEWS.md man/screen_gllvmTMB.Rd man/screen_control.Rd man/screen_table.Rd _pkgdown.yml docs/design/35-validation-debt-register.md`
+  -> PASS for this slice; matches were only existing `gllvmTMB_wide()`
+  soft-deprecation notes in NEWS/register.
+- `rg -n "screen_gllvmTMB|screen_control|screen_table|pre-fit-response-screening|DIA-14" NAMESPACE _pkgdown.yml NEWS.md R/screen-gllvmTMB.R man/screen_gllvmTMB.Rd man/screen_control.Rd man/screen_table.Rd docs/design/35-validation-debt-register.md docs/design/2026-06-22-pre-fit-response-screening.md vignettes/articles/pre-fit-response-screening.Rmd`
+  -> PASS; exports, pkgdown reference entries, article entry, design note, NEWS,
+  and validation row are linked.
+- `for f in man/screen_gllvmTMB.Rd man/screen_control.Rd man/screen_table.Rd; do echo "$f keywords=$(grep -c '^\\\\keyword' "$f")"; tail -5 "$f"; done`
+  -> PASS; no accidental `\keyword{}` spam.
+- `git diff --check`
+  -> PASS.
+
+Not run:
+
+- Heavy tests with `GLLVMTMB_HEAVY_TESTS=1`; this PR adds an R-level
+  diagnostic/documentation slice and the heavy model-recovery matrix is outside
+  the v1 screen scope.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-pre-fit-response-screening.md`.

@@ -2,64 +2,69 @@
 
 **Status:** design / maintainer checkpoint (grammar change — needs per-item merge approval).
 **Author:** Claude (Ada). **Baseline:** `origin/main` 482d569.
+**Progress note 2026-06-21:** the implemented spelling is `unique =` /
+`.auto_unique`, not the earlier draft's `residual =` / `.auto_residual`.
+`phylo_latent()` has landed; `animal_latent()` is this follow-up slice;
+`spatial_latent()` is blocked on the missing SPDE diagonal engine slot, and
+`kernel_latent()` remains next.
 
 ## Goal
 
 Make each `*_latent()` auto-carry its source-specific diagonal Ψ companion by default
-(`residual = TRUE`), so the paired `*_latent + *_unique` collapses to a single
+(`unique = TRUE`), so the paired `*_latent + *_unique` collapses to a single
 `*_latent()` — mirroring the ordinary `latent()` fold already shipped. This is the
 prerequisite for `latent_*`-only and the eventual removal of `*_unique()`
-(verification sweep finding: source-specific latents do **not** yet fold Ψ —
-roxygen "latent-Psi folds remain future slices", R/brms-sugar.R:744,851).
+(verification sweep finding from the original design baseline: source-specific
+latents did **not** yet fold Ψ).
 
 ## Current state (verified)
 
-- **Ordinary `latent(residual=TRUE)`** → `rr(...) + diag(..., .auto_residual=TRUE)`
+- **Ordinary `latent(unique=TRUE)`** → `rr(...) + diag(..., .auto_unique=TRUE)`
   (R/brms-sugar.R, `if (identical(fn,"latent"))` block ~2804-2852). Done + correct.
-- **`*_latent`** (phylo/spatial/animal/kernel) → `phylo_rr`/`spde` with **no companion**.
-  Still require explicit `*_unique()`. `*_unique` companions today:
+- **Remaining pending `*_latent` folds** route through `phylo_rr`/`spde`; the pending
+  forms still require explicit `*_unique()`. `*_unique` companions today:
   - `phylo_unique(0+trait|sp)` → `phylo_rr(sp, .phylo_unique=TRUE, [tree/vcv])` (R/brms-sugar.R:3052)
   - `animal_unique(id)` → `phylo_rr(id, .phylo_unique=TRUE, vcv=A)` (R/brms-sugar.R:2445)
   - `spatial_unique`/`kernel_unique` → analogous (spde / `phylo_rr(.kernel_*)`).
-- **Dedup** (R/fit-multi.R:340-366) keys `is_auto_psi` on `kind=="diag" && .auto_residual`,
+- **Dedup** (R/fit-multi.R:340-366) keys `is_auto_psi` on `kind=="diag" && .auto_unique`,
   and drops the auto-Ψ when an explicit `diag` sits at the same grouping (byte-identity).
   **It does NOT yet recognise source companions** (`kind=="phylo_rr"`/`spde`), so without an
-  extension `phylo_latent(residual=TRUE) + phylo_unique()` would **double-count Ψ**.
+  extension `phylo_latent(unique=TRUE) + phylo_unique()` would **double-count Ψ**.
 
 ## Mechanism (per source)
 
-**1. Rewriter (R/brms-sugar.R).** Add `residual`/`common` args to each `*_latent()` (mirror
-`latent()`'s arg handling + the bare-default fire-on-use notice). When `residual=TRUE`, emit the
+**1. Rewriter (R/brms-sugar.R).** Add `unique` args to each `*_latent()` (mirror
+`latent()`'s arg handling where relevant). When `unique=TRUE`, emit the
 rewritten `*_latent → *_rr/spde` **plus** the source `*_unique` companion carrying
-`.auto_residual=TRUE`:
+`.auto_unique=TRUE`:
 
-| source | `*_latent(residual=TRUE)` desugars to |
+| source | `*_latent(unique=TRUE)` desugars to |
 |---|---|
-| phylo | `phylo_rr(sp, d=K, [tree/vcv]) + phylo_rr(sp, .phylo_unique=TRUE, .auto_residual=TRUE, [tree/vcv])` |
-| animal | `phylo_rr(id, d=K, vcv=A) + phylo_rr(id, .phylo_unique=TRUE, .auto_residual=TRUE, vcv=A)` |
-| spatial | `spde(coords, d=K) + spde(coords, .spatial_unique=TRUE, .auto_residual=TRUE)` (confirm spde-unique marker) |
-| kernel | `phylo_rr(unit, d=q, .kernel_name, .kernel_mode, vcv) + phylo_rr(unit, .phylo_unique=TRUE, .auto_residual=TRUE, .kernel_name, .kernel_mode, vcv)` |
+| phylo | `phylo_rr(sp, d=K, [tree/vcv]) + phylo_rr(sp, .phylo_unique=TRUE, .auto_unique=TRUE, [tree/vcv])` |
+| animal | `phylo_rr(id, d=K, vcv=A) + phylo_rr(id, .phylo_unique=TRUE, .auto_unique=TRUE, vcv=A)` |
+| spatial | `spde(coords, d=K) + spde(coords, .spatial_unique=TRUE, .auto_unique=TRUE)` (confirm spde-unique marker / engine slot first) |
+| kernel | `phylo_rr(unit, d=q, .kernel_name, .kernel_mode, vcv) + phylo_rr(unit, .phylo_unique=TRUE, .auto_unique=TRUE, .kernel_name, .kernel_mode, vcv)` |
 
-`residual=FALSE` → loadings-only (`*_rr`/`spde` alone, no companion). The companion reuses
+`unique=FALSE` → loadings-only (`*_rr`/`spde` alone, no companion). The companion reuses
 `.pass_through_extras(e, c("tree","vcv"))` so the SAME phylo/spatial/kernel structure A is shared.
 
 **2. Dedup extension (R/fit-multi.R).** Generalise `is_auto_psi` + the dedup so the source
-auto-companions are recognised (e.g. `kind=="phylo_rr" && .phylo_unique && .auto_residual`;
-`spde && .auto_residual`) and an explicit `*_unique()` at the same grouping supersedes the
+auto-companions are recognised (e.g. `kind=="phylo_rr" && .phylo_unique && .auto_unique`;
+`spde && .auto_unique`) and an explicit `*_unique()` at the same grouping supersedes the
 auto-companion (drop the auto one) → **byte-identical** to the explicit paired spec.
 
-**3. Per-family gate.** The existing `auto_residual_off_family` (ordinal/delta) gate + the binary
+**3. Per-family gate.** The existing `auto_unique_off_family` (ordinal/delta) gate + the binary
 unit-level skip (#509) must extend to the source companions (a phylo/cluster fit with ordinal
 traits drops the source auto-Ψ just as the plain-diag case does).
 
 ## Per-source slices (one PR each; **phylo → spatial → animal → kernel**)
 
 Each slice = rewriter + dedup + per-family gate, with these **gates**:
-- **G1 byte-identity:** `*_latent(residual=TRUE)` ≡ `*_latent(residual=FALSE) + *_unique()`
+- **G1 byte-identity:** `*_latent(unique=TRUE)` ≡ `*_latent(unique=FALSE) + *_unique()`
   (logLik + `extract_Sigma` Δ < 1e-6) across the wired families.
 - **G2 per-family + per-level recovery:** known-DGP recovery of the source Σ = ΛΛᵀ + Ψ at
   `unit` / `cluster` (+ `cluster2` where applicable) for the wired families.
-- **G3 `residual=FALSE`** returns the loadings-only submodel.
+- **G3 `unique=FALSE`** returns the loadings-only submodel.
 - **G4 deprecation:** an explicit `*_unique()` still fits + warns (compat preserved) until Stage E.
 
 ## Risks / open decisions (maintainer)
@@ -89,22 +94,22 @@ preserve all of it. Verified specifics:
 **Companion form + routing.** `phylo_unique` paired with `phylo_latent` routes to the engine's
 `phylo_diag` slot (`use_phylo_diag=1`, parameter `log_sd_phy_diag`, sharing `Ainv_phy_rr` /
 `g_phy_diag`), giving `Σ_phy = Λ_phy Λ_phyᵀ ⊗ A + Ψ_phy ⊗ A`. So the fold emits, when
-`phylo_latent(species, d=K, residual=TRUE)`:
-`phylo_rr(species, d=K, [tree/vcv]) + phylo_rr(species, .phylo_unique=TRUE, .auto_residual=TRUE, [tree/vcv])`.
+`phylo_latent(species, d=K, unique=TRUE)`:
+`phylo_rr(species, d=K, [tree/vcv]) + phylo_rr(species, .phylo_unique=TRUE, .auto_unique=TRUE, [tree/vcv])`.
 The companion reuses `.pass_through_extras(e, c("tree","vcv"))` (+ A/Ainv) so the SAME phylo `A` is
-shared. `residual=FALSE` → `phylo_rr(d=K)` alone. Add `residual` (and `common`) args to
-`phylo_latent` mirroring `latent()`'s arg handling (R/brms-sugar.R ~2804-2852).
+shared. `unique=FALSE` → `phylo_rr(d=K)` alone. Add `unique` to
+`phylo_latent` mirroring `latent()`'s relevant arg handling (R/brms-sugar.R ~2804-2852).
 
 **Dedup extension (R/fit-multi.R ~340-366 + ~804-960).** `is_auto_psi` currently keys on
-`kind=="diag" && .auto_residual`. Extend it to recognize the phylo auto-companion
-(`kind=="phylo_rr" && .phylo_unique && .auto_residual`) and drop it when an explicit `phylo_unique`
+`kind=="diag" && .auto_unique`. Extend it to recognize the phylo auto-companion
+(`kind=="phylo_rr" && .phylo_unique && .auto_unique`) and drop it when an explicit `phylo_unique`
 sits at the same grouping → byte-identity with the explicit pair. The lone-`phylo_unique` legacy
 gate (`is_phylo_unique`, ~951: d=T, diagonal Lambda constraint) must be left UNCHANGED.
 
 **Guards.** (a) Augmented `phylo_latent(1+x|sp)` carries `.latent_slope` (separate engine block) —
 the fold must EXCLUDE it (keep explicit `phylo_unique` for augmented in slice 1). (b) Mutual
 exclusion: if `phylo_indep`/`phylo_dep` is present on the same grouping, do NOT fold. (c) Per-family
-gate: the existing `auto_residual_off_family` (ordinal/delta) + binary-#509 skips apply to the phylo
+gate: the existing `auto_unique_off_family` (ordinal/delta) + binary-#509 skips apply to the phylo
 companion too.
 
 **Invariants the fold must keep byte-identical (the safety net):**
@@ -112,8 +117,8 @@ companion too.
 the two-Ψ cross-checks (`compare_dep_vs_two_psi`, `compare_indep_vs_two_psi`); all wide/long
 byte-identity gates; the lone-`phylo_unique` three-piece path; and PHY-01..18.
 
-**New tests (TDD):** `test-phylo-latent-residual-fold.R` — G1 byte-identity
-(`phylo_latent(residual=TRUE)` ≡ `phylo_latent(residual=FALSE) + phylo_unique()`): `logLik`,
+**New tests (TDD):** `test-phylo-latent-unique-fold.R` — G1 byte-identity
+(`phylo_latent(unique=TRUE)` ≡ `phylo_latent(unique=FALSE) + phylo_unique()`): `logLik`,
 `extract_Sigma(level="phy", part=*)`, `extract_phylo_signal` identical (< 1e-6) across the wired
-families; G2 per-family recovery of `Σ_phy`; G3 `residual=FALSE` = loadings-only; plus a guard test
+families; G2 per-family recovery of `Σ_phy`; G3 `unique=FALSE` = loadings-only; plus a guard test
 that explicit-pair and augmented stay unchanged.

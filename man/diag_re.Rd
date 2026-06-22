@@ -63,25 +63,14 @@ link function fixes an implicit residual variance on the latent
 scale (1 for probit, \eqn{\pi^2/3} for logit, \eqn{\pi^2/6} for
 cloglog), which acts as the implicit unique component. Adding an
 explicit \code{unique()} term on top is typically not identified.
-\item \strong{Phylogenetic shared term, three-piece fallback}. The
-\code{phylo_latent(species, d = K)} term has no associated
-\code{unique()} because the phylogenetic prior is already
-structured on tip × tip via the tree; trait-specific \emph{unique}
-variance lives separately at the non-phylogenetic species
-tier. This is the canonical fallback when the phylogenetic
-uniqueness \eqn{\boldsymbol\Psi_{\text{phy}}} is not separately
-identifiable (small \code{n_species}, weak phylogenetic signal,
-single-replicate-per-tip).
-\item \strong{Phylogenetic shared term, paired four-component form}.
-When \eqn{\boldsymbol\Psi_{\text{phy}}} IS separately
-identifiable (typically crossed site × species with
-\code{n_species} >= 100 and strong phylogenetic signal), pair
-\code{phylo_latent()} with \code{phylo_unique(species)} following the
-source-specific paired compatibility pattern. The ordinary non-phylo
-tier now gets the same shared-plus-diagonal target from \code{latent()}
-itself. The four-component paired form is canonical when both
-\eqn{\boldsymbol\Psi} diagonals are identifiable; the
-three-piece fallback above is the alternative. See
+\item \strong{Folded source-specific latent terms}. \code{phylo_latent()} and
+\code{animal_latent()} now carry their source-specific diagonal
+\eqn{\boldsymbol\Psi} companions by default, matching ordinary
+\code{latent()}. Use \code{phylo_latent(..., unique = FALSE) + phylo_unique()}
+or \code{animal_latent(..., unique = FALSE) + animal_unique()} only when
+you need the explicit compatibility spelling. \code{spatial_latent()} and
+\code{kernel_latent()} keep their explicit \verb{+ *_unique()} companion until
+their fold slices land. See
 \code{vignettes/articles/pitfalls.Rmd} section 5 and
 \code{docs/dev-log/decisions.md} 2026-05-14 entry.
 \item \strong{Confirmatory factor models}. Sometimes domain knowledge tells

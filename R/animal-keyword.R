@@ -12,7 +12,7 @@
 ##   animal_scalar(id, pedigree, A, Ainv)   parallel to phylo_scalar(species, tree, vcv)
 ##   animal_unique(id, pedigree, A, Ainv)               phylo_unique
 ##   animal_indep(formula, pedigree, A, Ainv)           phylo_indep
-##   animal_latent(id, d, pedigree, A, Ainv)            phylo_latent
+##   animal_latent(id, d, unique, pedigree, A, Ainv)    phylo_latent
 ##   animal_dep(formula, pedigree, A, Ainv)             phylo_dep
 ##   animal_slope(formula)                              phylo_slope
 ##
@@ -93,8 +93,8 @@ animal_scalar <- function(id, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' `animal_unique()` is soft-deprecated as compatibility syntax in gllvmTMB
 #' 0.2.0. Use [animal_indep()] for standalone marginal diagonal animal-model
-#' terms. Paired explicit-Psi use remains accepted while source-specific
-#' latent-Psi folds remain future slices.
+#' terms. Paired explicit-Psi use remains accepted; [animal_latent()] now
+#' carries this diagonal companion by default.
 #'
 #' Canonical name for the **D independent** animal-model random
 #' intercept on a shared relatedness matrix \eqn{\mathbf A}. Each
@@ -192,11 +192,14 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' Reduced-rank animal-model latent factors: `animal_latent(id, d = K)`
 #'
 #' Reduced-rank decomposition of the additive-genetic covariance
-#' matrix using \eqn{K} latent factors:
-#' \eqn{\boldsymbol G \approx \boldsymbol\Lambda \boldsymbol\Lambda^\top}
+#' matrix using \eqn{K} latent factors plus, by default, a per-trait
+#' diagonal \eqn{\boldsymbol\Psi} companion:
+#' \eqn{\boldsymbol G =
+#' \boldsymbol\Lambda \boldsymbol\Lambda^\top + \boldsymbol\Psi}
 #' with \eqn{\boldsymbol\Lambda} a \eqn{T \times K} loadings matrix
 #' (\eqn{T} = number of traits, \eqn{K \le T}). The latent factors
-#' themselves carry the \eqn{\mathbf A} structure across individuals.
+#' and diagonal companion both carry the same \eqn{\mathbf A} structure
+#' across individuals.
 #'
 #' This is the canonical "factor-analytic G-matrix" model from
 #' quantitative genetics (Kirkpatrick & Meyer 2004; Meyer 2009; the
@@ -206,11 +209,14 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #'
 #' @inheritParams animal_scalar
 #' @param d Number of latent factors (\eqn{K \le T}). Default 1.
+#' @param unique Logical; when `TRUE` (default), include the per-trait
+#'   diagonal additive-genetic \eqn{\boldsymbol\Psi} companion. Use
+#'   `unique = FALSE` for the older loadings-only subset.
 #' @return See [animal_scalar()].
 #' @seealso [animal_scalar()], [animal_unique()], [phylo_latent()].
 #' @examples
 #' \dontrun{
-#' # Reduced-rank factor-analytic G-matrix (d latent factors).
+#' # Factor-analytic G-matrix (d latent factors plus diagonal Psi).
 #' # Grounded in test-animal-keyword.R (ANI-05).
 #' ped <- data.frame(
 #'   id   = paste0("i", 1:12),
@@ -233,8 +239,14 @@ animal_indep <- function(formula, pedigree = NULL, A = NULL, Ainv = NULL) {
 #' )
 #' }
 #' @export
-animal_latent <- function(id, d = 1, pedigree = NULL, A = NULL,
-                          Ainv = NULL) {
+animal_latent <- function(
+  id,
+  d = 1,
+  unique = TRUE,
+  pedigree = NULL,
+  A = NULL,
+  Ainv = NULL
+) {
   invisible(NULL)
 }
 
@@ -389,29 +401,32 @@ pedigree_to_A <- function(pedigree) {
     hit <- which(tolower(nm) %in% tolower(syn))
     if (length(hit) >= 1L) return(hit[1L]) else return(NA_integer_)
   }
-  id_col   <- pick(c("id", "animal"))
+  id_col <- pick(c("id", "animal"))
   sire_col <- pick(c("sire", "father"))
-  dam_col  <- pick(c("dam", "mother"))
+  dam_col <- pick(c("dam", "mother"))
   if (anyNA(c(id_col, sire_col, dam_col))) {
     ## Fall back to positional access with a soft note.
     cli::cli_inform(c(
       "i" = "{.fn pedigree_to_A}: column names not recognised; using positional access (col 1 = id, col 2 = sire, col 3 = dam).",
       ">" = "Rename columns to {.field id}/{.field sire}/{.field dam} (MCMCglmm convention) for explicit by-name lookup."
     ))
-    id_col   <- 1L
+    id_col <- 1L
     sire_col <- 2L
-    dam_col  <- 3L
+    dam_col <- 3L
   }
-  ids   <- as.character(pedigree[[id_col]])
+  ids <- as.character(pedigree[[id_col]])
   sires <- as.character(pedigree[[sire_col]])
-  dams  <- as.character(pedigree[[dam_col]])
+  dams <- as.character(pedigree[[dam_col]])
   ## Normalise missing-parent encodings: NA or "0" or "" -> NA.
   sires[sires %in% c("0", "")] <- NA_character_
-  dams[dams %in% c("0", "")]   <- NA_character_
+  dams[dams %in% c("0", "")] <- NA_character_
 
   n <- length(ids)
-  if (anyDuplicated(ids))
-    cli::cli_abort("{.arg pedigree$id} has duplicate IDs; each row must be a unique individual.")
+  if (anyDuplicated(ids)) {
+    cli::cli_abort(
+      "{.arg pedigree$id} has duplicate IDs; each row must be a unique individual."
+    )
+  }
 
   ## Sort pedigree so that every parent appears before its offspring.
   ## A simple topological-ish sort: founders first, then descendants.
@@ -424,22 +439,23 @@ pedigree_to_A <- function(pedigree) {
   ## Detect forward-references (parent appearing AFTER offspring in
   ## the table) and error with a clear remediation message.
   for (i in seq_len(n)) {
-    if (!is.na(s_idx[i]) && s_idx[i] > i)
+    if (!is.na(s_idx[i]) && s_idx[i] > i) {
       cli::cli_abort(c(
         "Pedigree is not in topological order at row {i} (id {.val {ids[i]}}).",
         "i" = "Sire {.val {sires[i]}} appears at row {.val {s_idx[i]}}, after offspring.",
         ">" = "Pre-sort the pedigree (e.g. via {.fn nadiv::prepPed}) so parents always precede offspring."
       ))
-    if (!is.na(d_idx[i]) && d_idx[i] > i)
+    }
+    if (!is.na(d_idx[i]) && d_idx[i] > i) {
       cli::cli_abort(c(
         "Pedigree is not in topological order at row {i} (id {.val {ids[i]}}).",
         "i" = "Dam {.val {dams[i]}} appears at row {.val {d_idx[i]}}, after offspring.",
         ">" = "Pre-sort the pedigree (e.g. via {.fn nadiv::prepPed}) so parents always precede offspring."
       ))
+    }
   }
 
-  A <- matrix(0, nrow = n, ncol = n,
-              dimnames = list(ids, ids))
+  A <- matrix(0, nrow = n, ncol = n, dimnames = list(ids, ids))
 
   for (i in seq_len(n)) {
     si <- s_idx[i]
@@ -543,28 +559,28 @@ pedigree_to_Ainv_sparse <- function(pedigree) {
     hit <- which(tolower(nm) %in% tolower(syn))
     if (length(hit) >= 1L) hit[1L] else NA_integer_
   }
-  id_col   <- pick(c("id", "animal"))
+  id_col <- pick(c("id", "animal"))
   sire_col <- pick(c("sire", "father"))
-  dam_col  <- pick(c("dam", "mother"))
+  dam_col <- pick(c("dam", "mother"))
   if (anyNA(c(id_col, sire_col, dam_col))) {
     cli::cli_inform(c(
       "i" = "{.fn pedigree_to_Ainv_sparse}: column names not recognised; using positional access (col 1 = id, col 2 = sire, col 3 = dam).",
       ">" = "Rename columns to {.field id}/{.field sire}/{.field dam} (MCMCglmm convention) for explicit by-name lookup."
     ))
-    id_col   <- 1L
+    id_col <- 1L
     sire_col <- 2L
-    dam_col  <- 3L
+    dam_col <- 3L
   }
   ## Build standardised data frame in MCMCglmm's (animal, sire, dam) order.
   ped_std <- data.frame(
     animal = as.character(pedigree[[id_col]]),
-    sire   = as.character(pedigree[[sire_col]]),
-    dam    = as.character(pedigree[[dam_col]]),
+    sire = as.character(pedigree[[sire_col]]),
+    dam = as.character(pedigree[[dam_col]]),
     stringsAsFactors = FALSE
   )
   ## Normalise missing-parent encodings.
   ped_std$sire[ped_std$sire %in% c("0", "")] <- NA_character_
-  ped_std$dam[ped_std$dam %in% c("0", "")]   <- NA_character_
+  ped_std$dam[ped_std$dam %in% c("0", "")] <- NA_character_
 
   inv <- MCMCglmm::inverseA(ped_std)
   ## inv$Ainv is dgCMatrix; rownames inherit from the standardised
@@ -572,7 +588,9 @@ pedigree_to_Ainv_sparse <- function(pedigree) {
   ## colnames so character-subset `Ainv[levs, levs, drop = FALSE]` in
   ## the fit-multi.R sparse engine path works.
   Ainv <- inv$Ainv
-  if (is.null(colnames(Ainv))) colnames(Ainv) <- rownames(Ainv)
+  if (is.null(colnames(Ainv))) {
+    colnames(Ainv) <- rownames(Ainv)
+  }
   Ainv
 }
 

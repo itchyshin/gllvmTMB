@@ -80,11 +80,12 @@ support from end-to-end verification:
 | `indep(0 + trait \| g)` | **covered** | Explicit marginal / independent mode; same diagonal covariance as standalone `unique()` and always used alone. Test evidence: `test-canonical-keywords.R` (standalone equivalence with `unique()`), `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (binomial) (validation-debt register FG-07; Phase 0B.2 promotion 2026-05-16). |
 | `dep(0 + trait \| g)` | **covered** | Fully unstructured trait covariance estimated directly. Test evidence: `test-stage3-propto-equalto.R` (Gaussian) + `test-formula-grammar-smoke.R` (Poisson) (validation-debt register FG-08; Phase 0B.2 promotion 2026-05-16). |
 | `(omit)` ↔ scalar covariance | **covered** | Omitting `indep()`/`dep()` chooses the ordinary keyword default. For `latent()`, that default now includes the diagonal Psi companion; use `unique = FALSE` for the old no-residual subset. Test evidence: `test-stage2-rr-diag.R`, `test-canonical-keywords.R`, `test-unique-family-deprecation.R` (Phase 0B.3 promotion 2026-05-16; ordinary latent-Psi fold 2026-06-18). |
-| `phylo_latent(species, d = K, tree = tree)` | **covered** | Reduced-rank phylogenetic loadings using sparse $A^{-1}$. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16). |
+| `phylo_latent(species, d = K, tree = tree)` | **covered / phylo Psi folded** | Reduced-rank phylogenetic loadings plus the default phylo-structured diagonal $\boldsymbol\Psi_\text{phy}$ companion using sparse $A^{-1}$. Use `unique = FALSE` for the loadings-only subset; the explicit `phylo_latent(..., unique = FALSE) + phylo_unique()` pair remains accepted compatibility syntax. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R`, `test-phylo-latent-unique-fold.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16; phylo latent-Psi fold 2026-06-21). |
 | `phylo_unique(species, tree = tree)` | **covered** | Trait-diagonal $\boldsymbol\Psi_\text{phy}$ scaled by phylogenetic covariance. Test evidence: `test-stage35-phylo-rr.R`, `test-phylo-q-decomposition.R` (validation-debt register PHY-02 paired form; Phase 0B promotion 2026-05-16). |
 | `phylo_unique(1 + x \| species)` / `phylo_unique(0 + trait + (0 + trait):x \| species)` | **claimed** | Phase 56.3 parser bridge plus Phase 56.4 Gaussian anchor-cell evidence for augmented-LHS phylogenetic random regression. Parser classification and two-column `Z_phy_aug` construction are exercised by `test-phase56-3-phylo-unique-parser.R`; recovery, wide-long byte-identity, and the forced-`n_lhs_cols` negative test are exercised by `test-phylo-unique-slope-gaussian.R`. This row stays `claimed` until Phase 56.6 walks the validation-debt register / NEWS / article surface. |
 | `phylo_scalar(species, vcv = Cphy)` | **covered** | Single trait-scalar phylogenetic random effect; the simplest phylogenetic mixed-model form. Test evidence: `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (dense-vcv path) (validation-debt register PHY-04; Phase 0B.2 promotion 2026-05-16). |
 | `phylo_indep` / `phylo_dep` | **covered** | Marginal-only phylogenetic trait covariance (`phylo_indep`, equivalent to `phylo_unique`) and full-rank phylogenetic latent covariance (`phylo_dep`, equivalent to `phylo_latent(..., d = n_traits)`). Test evidence: `test-canonical-keywords.R`, `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
+| `animal_latent(id, d = K, pedigree = ped)` | **covered / animal Psi folded** | Reduced-rank additive-genetic loadings plus the default diagonal $\boldsymbol\Psi_\text{animal}$ companion on the same relatedness matrix $A$. Use `unique = FALSE` for the loadings-only subset; the explicit `animal_latent(..., unique = FALSE) + animal_unique()` pair remains accepted compatibility syntax. Test evidence: `test-animal-keyword.R`, `test-matrix-animal-nongaussian.R`, `test-animal-latent-unique-fold.R` (validation-debt register ANI-05; animal latent-Psi fold 2026-06-21). |
 | `spatial_latent(0 + trait \| sites, mesh = mesh)` or `spatial_latent(0 + trait \| sites, coords = c("lon", "lat"))` and siblings | **covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). See "Spatial axis convention" below. Test evidence: `test-spatial-latent-recovery.R` (spatial_latent), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). |
 | `kernel_latent(unit, K = A, d = q) + kernel_unique(unit, K = A, name = "known")` | **covered / compatibility** | Generic dense-kernel decomposition for a user-supplied between-unit matrix `K` using the explicit-Psi compatibility spelling. C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Dense-kernel latent-Psi folding remains a future slice, so new standalone diagonal teaching should use `kernel_indep()` while existing `kernel_unique()` formulas remain accepted compatibility syntax. Test evidence: `test-kernel-equivalence.R` checks log-likelihood and extracted-Sigma equivalence to the dense `phylo_latent(..., vcv = A) + phylo_unique(..., vcv = A)` path to less than `1e-6` (validation-debt register KER-02; Design 65 C1). |
 | `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
@@ -296,17 +297,18 @@ decomposition. The constrained submodels are:
 - `indep(...)` / soft-deprecated `unique(...)` alone →
   $\boldsymbol\Sigma = \boldsymbol\Psi$ (diagonal-only; no shared axes).
 
-`phylo_latent(...)` now carries its phylo-structured diagonal
-$\boldsymbol\Psi_{phy}$ companion by default (`unique = TRUE`), like
-ordinary `latent()`: use `phylo_latent(..., unique = FALSE)` for the
-loadings-only subset, and the explicit `phylo_latent + phylo_unique` pair
-remains accepted (the auto-companion is deduped against it). The remaining
-source-specific decompositions `spatial_latent + spatial_unique` (and the
-`animal_*` / `kernel_*` forms) still use the **explicit paired spelling**:
-their latent-Psi folds remain future slices, so `spatial_latent(...)` alone
-does **not** yet carry $\boldsymbol\Psi$ — pair it with the matching
-`*_unique()` (or `*_indep()` for the standalone diagonal) until those folds
-land.
+`phylo_latent(...)` and `animal_latent(...)` now carry their
+source-structured diagonal $\boldsymbol\Psi$ companions by default
+(`unique = TRUE`), like ordinary `latent()`: use
+`*_latent(..., unique = FALSE)` for the loadings-only subset, and the
+explicit `*_latent(..., unique = FALSE) + *_unique()` pair remains accepted
+(the auto-companion is deduped against it). The remaining source-specific
+decompositions `spatial_latent + spatial_unique` and
+`kernel_latent + kernel_unique` still use the **explicit paired spelling**:
+their latent-Psi folds remain future slices, so `spatial_latent(...)` and
+`kernel_latent(...)` alone do **not** yet carry $\boldsymbol\Psi$ — pair them
+with the matching `*_unique()` (or `*_indep()` for the standalone diagonal)
+until those folds land.
 
 ## Long-format trait-stacked grammar
 

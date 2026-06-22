@@ -65,9 +65,12 @@ The covariance dispatch is the 4 x 5 keyword grid:
 | phylo   | `phylo_scalar()`   | `phylo_unique()`   | `phylo_indep()`   | `phylo_dep()`   | `phylo_latent()`   |
 | spatial | `spatial_scalar()` | `spatial_unique()` | `spatial_indep()` | `spatial_dep()` | `spatial_latent()` |
 
-The decomposition mode is `latent + unique` paired:
+The folded decomposition mode is `latent()`:
 Sigma = Lambda Lambda^T + diag(psi) (the Greek letter
-Psi; see `decisions.md` 2026-05-14 notation reversal).
+Psi; see `decisions.md` 2026-05-14 notation reversal). Ordinary
+`latent()`, `phylo_latent()`, and `animal_latent()` carry the diagonal
+Psi companion by default; use `*_latent(..., unique = FALSE)` only for
+the older loadings-only subset on folded terms.
 
 ## Code Formatting
 

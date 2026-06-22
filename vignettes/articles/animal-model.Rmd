@@ -90,7 +90,8 @@ matrix (`animal_dep()`), per-trait independent diagonal entries
 (`animal_unique()`), or as a reduced-rank factor-analytic
 parameterisation $\boldsymbol G \approx \boldsymbol\Lambda
 \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
-(`animal_latent()` paired with `animal_unique()`).
+(`animal_latent()`; use `unique = FALSE` only for the loadings-only
+subset).
 
 Because the `animal_*()` keywords are pure syntactic sugar over the
 `phylo_*()` engine path (only the relatedness-matrix input differs),
@@ -238,17 +239,16 @@ df2 <- data.frame(
 head(df2)
 ```
 
-The full unstructured $\boldsymbol G$ is fit by pairing
-`animal_latent()` (the shared factor-analytic part) with
-`animal_unique()` (the trait-specific diagonal). At $d = T$, the
-paired form spans the full $T \times T$ space — equivalent to
-`animal_dep()` on a full $\boldsymbol G$.
+The full unstructured $\boldsymbol G$ is fit with `animal_dep()`.
+The factor-analytic alternative is `animal_latent()`, which now carries
+the shared factor-analytic part and the trait-specific diagonal
+$\boldsymbol\Psi$ by default. At $d = T$, the folded latent form spans
+the full $T \times T$ space, equivalent to `animal_dep()`.
 
 ```{r fit2}
 fit2 <- gllvmTMB(
   value ~ 0 + trait +
     animal_latent(id, d = 1, pedigree = ped) +
-    animal_unique(id, pedigree = ped) +
     indep(0 + trait | id),
   data = df2,
   trait = "trait",
@@ -259,7 +259,7 @@ fit2$opt$convergence
 ```
 
 The model has a one-factor genetic structure (`animal_latent(d = 1)`)
-plus per-trait genetic diagonal (`animal_unique`), plus a non-genetic
+with the default per-trait genetic diagonal, plus a non-genetic
 trait-level residual covariance (`indep(0 + trait | id)`). The
 genetic covariance matrix $\boldsymbol G$ is rotation-invariant and
 recovered by combining the shared and diagonal parts:
@@ -303,8 +303,8 @@ Runcie & Mukherjee 2013): approximate
 $\boldsymbol G \approx \boldsymbol\Lambda \boldsymbol\Lambda^{\!\top}
 + \boldsymbol\Psi$ where $\boldsymbol\Lambda$ is a $T \times d$
 loading matrix ($d \ll T$) and $\boldsymbol\Psi$ is diagonal. In
-`gllvmTMB` this is `animal_latent(d = K) + animal_unique()` — the
-same pairing as Tutorial 2, but with $d < T$.
+`gllvmTMB` this is `animal_latent(d = K)` — the same folded
+decomposition as Tutorial 2, but with $d < T$.
 
 The biological justification (Cheverud 1996; Wagner & Altenberg 1996;
 Runcie & Mukherjee 2013) is that organisms develop through a limited
@@ -350,7 +350,6 @@ df3 <- data.frame(
 fit3 <- gllvmTMB(
   value ~ 0 + trait +
     animal_latent(id, d = 1, pedigree = ped) +
-    animal_unique(id, pedigree = ped) +
     indep(0 + trait | id),
   data = df3,
   trait = "trait",

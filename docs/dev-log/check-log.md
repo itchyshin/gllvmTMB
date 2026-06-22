@@ -17357,3 +17357,100 @@ Not run:
   the changes are article prose, article chunk order, and a regenerated
   teaching fixture label. The focused morphometrics fixture test and pkgdown
   checks passed.
+
+## 2026-06-22 -- pkgdown navigation taxonomy
+
+Maintainer requested implementation of the Pat/Rose/Grace navigation plan after
+PR #529. PR #529 was green and mergeable, so it was marked ready and merged
+first. New work continued in
+`/private/tmp/gllvmtmb-pkgdown-nav-taxonomy-20260622` on
+`codex/pkgdown-nav-taxonomy-20260622`, rebased onto merged `origin/main`.
+
+Implementation:
+
+- `_pkgdown.yml` now splits the article navbar into `Model Guides`,
+  `Concepts`, `Diagnostics & Validation`, and `Developer Notes`.
+- Article index groups now mirror the reader-purpose taxonomy and keep
+  under-audit pages in Developer Notes rather than the first-click model path.
+- `ROADMAP.md` now names the four-menu taxonomy and records why Roadmap is
+  top-nav for readers but still listed under Developer validation notes for
+  pkgdown index completeness.
+- `vignettes/articles/covariance-correlation.Rmd` no longer prints the stale
+  stored wide formula with `+ unique(1 | individual)`; it defines the current
+  clean `traits(...) ~ 1 + latent(...)` formula directly.
+- `vignettes/articles/data-shape-flowchart.Rmd` now uses `\mathrm{...}` instead
+  of `\rm`, removing MathML warnings from the rendered page.
+
+Coordination / merge checks:
+
+- `git status --short --branch` in the article-accessibility worktree
+  -> clean on `codex/article-accessibility-unique-cleanup-20260622`.
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url,isDraft`
+  -> only #529, draft, clean, Ubuntu R-CMD-check success.
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url`
+  -> #529 head `b9348e8` R-CMD-check success; unrelated main power-pilot run
+  still in progress.
+- `gh pr ready 529 && gh pr merge 529 --merge --delete-branch`
+  -> PASS; #529 merged as `1e85f09163d5e37d11ca16349535c01b7391cb20`.
+- `git fetch origin` in the nav worktree, then
+  `git stash push -m nav-taxonomy-wip -- _pkgdown.yml && git rebase origin/main && git stash pop`
+  -> PASS; nav worktree rebased onto merged #529 main before final edits.
+- Pre-edit lane check before shared docs:
+  `gh pr list --state open --limit 20 --json number,title,headRefName,updatedAt,isDraft,url,mergeStateStatus,statusCheckRollup`
+  -> `[]`.
+- Pre-edit lane check:
+  `git log --all --oneline --since="6 hours ago" -- _pkgdown.yml ROADMAP.md docs/dev-log/check-log.md docs/dev-log/after-task docs/dev-log/recovery-checkpoints AGENTS.md CLAUDE.md CONTRIBUTING.md docs/design DESCRIPTION inst/COPYRIGHTS`
+  -> recent article/kernel work only; no competing nav edit.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> first run failed because `articles/roadmap` was missing from the index.
+  After adding Roadmap under Developer validation notes, rerun PASS
+  (`No problems found`).
+- `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); h=Hash.new{|hh,k|hh[k]=[]}; (y["articles"]||[]).each{|s| (s["contents"]||[]).each{|c| h[c] << s["title"] }}; dup=h.select{|k,v| v.size>1}; abort("duplicate articles: #{dup.inspect}") unless dup.empty?; files=Dir["vignettes/articles/*.Rmd"].map{|f| File.basename(f,".Rmd")}; listed=h.keys.map{|x| x.sub(%r{^articles/},"")}; missing=(files-listed).sort; extra=(listed-files).sort; abort("missing from article index: #{missing.inspect}") unless missing.empty?; abort("extra in article index: #{extra.inspect}") unless extra.empty?; puts "pkgdown-article-nav-unique-ok"'`
+  -> PASS (`pkgdown-article-nav-unique-ok`).
+- `Rscript --vanilla -e 'pkgdown::build_home(quiet = FALSE); pkgdown::build_article("gllvmTMB", lazy = FALSE, new_process = FALSE, quiet = FALSE); get("build_articles_index", envir = asNamespace("pkgdown"))(pkg = "."); articles <- c("articles/morphometrics", "articles/gllvm-vocabulary", "articles/fit-diagnostics", "articles/data-shape-flowchart", "articles/cross-package-validation"); for (a in articles) { message("BUILD ", a); pkgdown::build_article(a, lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> PASS; rendered home, Get Started, article index, and representative pages
+  from all nav groups. Initial `data-shape-flowchart` render warned on `\rm`;
+  fixed and rerendered with:
+  `Rscript --vanilla -e 'pkgdown::build_article("articles/data-shape-flowchart", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS without MathML warnings.
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/covariance-correlation", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS after replacing stale rendered wide-formula output.
+- `rg -n 'Model Guides|Concepts|Diagnostics &amp; Validation|Developer Notes|Under-audit model drafts|Developer validation notes|First Gaussian morphology model|Plain-English vocabulary|Can I trust this fit\?|Data-shape flowchart|Cross-package validation' pkgdown-site/index.html pkgdown-site/articles/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/morphometrics.html pkgdown-site/articles/gllvm-vocabulary.html pkgdown-site/articles/fit-diagnostics.html pkgdown-site/articles/data-shape-flowchart.html pkgdown-site/articles/cross-package-validation.html pkgdown-site/articles/covariance-correlation.html`
+  -> PASS; rendered HTML contains all four nav groups and Developer Notes
+  section labels.
+- `rg -n 'latent\(\) \+ unique|latent\([^\n]*\) \+ unique|unique_unit|gllvmTMB_wide\(|Lamdba|depreciat|deprecicat|trait-specific unique variance|why `unique\(\)` matters|loadings-only by default|Use `phylo_latent\(\) \+ phylo_unique|Use `animal_latent\(\) \+ animal_unique|Use `spatial_unique|append `spatial_unique|\+ unique\(1 \| individual\)' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd ROADMAP.md _pkgdown.yml pkgdown-site/index.html pkgdown-site/articles/gllvmTMB.html pkgdown-site/articles/covariance-correlation.html`
+  -> PASS with only expected compatibility hits in README and
+  `covariance-correlation`; no `unique_unit`, misspellings, or rendered old
+  `+ unique(1 | individual)` first-copy output remained.
+- `git diff --check`
+  -> PASS.
+
+Generated cleanup:
+
+- Focused renders created transient untracked vignette PNGs
+  (`vignettes/cor-matrix-1.png`, `vignettes/cor-plot-1.png`,
+  `vignettes/ord-1.png`, `vignettes/residual-qq-1.png`); removed after
+  validation.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "pkgdown article navigation" --limit 20 --json number,title,url,state,labels`
+  -> #230 and #347 are relevant and remain open.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "accessibility unique article" --limit 20 --json number,title,url,state,labels`
+  -> #230 relevant.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "roadmap articles" --limit 20 --json number,title,url,state,labels`
+  -> #230 and #347 relevant; #340/#349 broad roadmap issues not directly
+  changed by this PR.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not rerun because this PR
+  changes pkgdown navigation, roadmap prose, and article rendering/prose only;
+  no R code, TMB, parser, roxygen, generated Rd, or tests changed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-pkgdown-nav-taxonomy.md`.

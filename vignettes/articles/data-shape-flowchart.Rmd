@@ -127,12 +127,12 @@ effect. This is the spatial-ecology variant of functional-biogeography.
 ([phylogenetic-gllvm](phylogenetic-gllvm.html)) &mdash; When species
 share a phylogenetic tree, the canonical model is the paired
 phylogenetic + non-phylogenetic decomposition (four pieces:
-$\boldsymbol{\Lambda}_{\rm phy}$, $\boldsymbol{\Psi}_{\rm phy}$,
-$\boldsymbol{\Lambda}_{\rm non}$, $\boldsymbol{\Psi}_{\rm non}$).
+$\boldsymbol{\Lambda}_{\mathrm{phy}}$, $\boldsymbol{\Psi}_{\mathrm{phy}}$,
+$\boldsymbol{\Lambda}_{\mathrm{non}}$, $\boldsymbol{\Psi}_{\mathrm{non}}$).
 For small trees, a [three-piece fallback]
 (phylogenetic-gllvm.html#three-piece-fallback-when-the-paired-form-is-under-identified)
 is sometimes more appropriate. The output of `extract_phylo_signal()`
-reports the partition $H^2 + C^2_{\rm non} + \Psi = 1$.
+reports the partition $H^2 + C^2_{\mathrm{non}} + \Psi = 1$.
 
 **Mixed-family rows in one fit**
 ([mixed-family](mixed-family-extractors.html)) &mdash; Use when one trait is

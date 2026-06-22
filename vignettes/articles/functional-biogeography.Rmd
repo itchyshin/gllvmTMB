@@ -1,5 +1,6 @@
 ---
 title: "Functional biogeography: trait syndromes with optional spatial and phylogenetic controls"
+tier: 3 # under-audit capstone draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,7 +24,15 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — capstone composite fit is M3 milestone work.**
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the capstone
+> functional-biogeography path. It is not a first-stop tutorial. Start
+> with [Get started](gllvmTMB.html),
+> [First Gaussian morphology model](morphometrics.html), and
+> [Covariance and correlation](covariance-correlation.html) before
+> using this page.
+>
+> **Preview -- capstone composite fit is M3 milestone work.**
 >
 > The component keywords shown below have mixed validation status in the
 > [validation-debt register](https://github.com/itchyshin/gllvmTMB/blob/main/docs/design/35-validation-debt-register.md):

@@ -1,5 +1,6 @@
 ---
 title: "Cross-lineage coevolution kernels"
+tier: 3 # under-audit kernel/co-evolution methods draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -33,6 +34,14 @@ knitr::opts_chunk$set(
   warning  = FALSE
 )
 ```
+
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the kernel/co-evolution
+> path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html), [Covariance and correlation](covariance-correlation.html),
+> and [Formula keyword grid](api-keyword-grid.html). Treat the
+> coevolution workflow here as point-estimate methods evidence, not a
+> calibrated uncertainty tutorial.
 
 This article is a worked methods example for a comparative biologist with
 **two interacting lineages** -- hosts and parasites, plants and pollinators,

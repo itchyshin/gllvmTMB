@@ -1,5 +1,6 @@
 ---
 title: "Roadmap"
+tier: 2 # rendered roadmap reference; top-nav page, not a tutorial
 output:
   rmarkdown::html_vignette:
     toc: true

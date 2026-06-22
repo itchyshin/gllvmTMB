@@ -1,5 +1,6 @@
 ---
 title: "How to choose your model: a decision tree"
+tier: 3 # under-audit model-choice draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,8 +24,16 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Status — validated rungs are runnable here; two capabilities are
-> scoped honestly.**
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the model-choice path.
+> It is not yet the package's beginner model guide. If you are new to
+> `gllvmTMB`, start with [Get started](gllvmTMB.html),
+> [First Gaussian morphology model](morphometrics.html), and
+> [Formula keyword grid](api-keyword-grid.html) before using this
+> decision tree.
+>
+> **Current status -- validated rungs are runnable here; two
+> capabilities are scoped honestly.**
 >
 > Every worked example below runs live against the installed package and
 > recovers its simulated truth. Two things on this page are deliberately

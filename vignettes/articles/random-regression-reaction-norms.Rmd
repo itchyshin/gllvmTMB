@@ -25,9 +25,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal draft.** This page is not yet in the public article menu. It is a
-> working behavioural-syndrome example for Gaussian individual-level reaction
-> norms, and still needs a plain-language reader pass before promotion.
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the Gaussian
+> individual-level reaction-norm path. It is not a first-stop tutorial
+> and still needs a plain-language reader pass before promotion to
+> Model Guides.
 
 This draft fits an individual-level random-regression GLLVM for a behavioural
 syndrome question. The unit is the **individual**, the repeated occasion is

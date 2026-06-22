@@ -1,5 +1,6 @@
 ---
 title: "Mixed-family fits: latent-scale covariance and correlations"
+tier: 3 # under-audit mixed-family extractor draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,7 +24,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Internal status — hold for a broader mixed-response expansion.**
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the mixed-family
+> extractor path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html), [Response families](response-families.html),
+> and [Covariance and correlation](covariance-correlation.html) before
+> using this page.
 >
 > This page stays internal until the mixed-family article covers the
 > broader response story: Gaussian, binomial, Poisson/NB,

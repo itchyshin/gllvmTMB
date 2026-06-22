@@ -17454,3 +17454,81 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-22-pkgdown-nav-taxonomy.md`.
+
+## 2026-06-22 -- Developer Notes direct-link accessibility labels
+
+Follow-up after PR #530. The navbar now separates Developer Notes from the
+public learning path; this slice makes direct-linked Developer Notes pages say
+the same thing on the page itself.
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-article-directlink-accessibility-20260622`
+  on `codex/article-directlink-accessibility-20260622`.
+
+Pre-edit coordination checks:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]`; no open PR overlap.
+- `git log --all --oneline --since='6 hours ago'`
+  -> recent merged #527/#528/#529/#530 sequence only, plus power-pilot work;
+  no competing article direct-link branch detected.
+
+Implementation:
+
+- Added `tier: 3` metadata and first-screen "Developer Note -- under audit"
+  callouts to all pages in the `Under-audit model drafts` article-index group.
+- Added `tier: 3` metadata and first-screen "Developer validation note"
+  callouts to the validation-note pages.
+- Added `tier: 2` metadata to the rendered Roadmap article to clarify that it
+  is a top-nav reference page, not a tutorial.
+- Updated stale direct-link wording in `random-regression-reaction-norms.Rmd`
+  from "not yet in the public article menu" to the current Developer Notes
+  status.
+- Replaced prose uses of "unique-tier" / "unique variance" with "diagonal Psi"
+  wording where the text describes model variance rather than the
+  `part = "unique"` extractor keyword or a compatibility syntax note.
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); groups=y["articles"].select{|s| ["Under-audit model drafts", "Developer validation notes"].include?(s["title"])}; groups.each{|s| puts "## #{s["title"]}"; s["contents"].each{|slug| f="vignettes/#{slug}.Rmd"; txt=File.read(f); tier=txt[/^tier:.*$/,0]||"MISSING tier"; label=txt.include?("Developer Note -- under audit") || txt.include?("Developer Note -- retire candidate") || txt.include?("Developer validation note") || txt.include?("tier: 2 # rendered roadmap"); puts "#{slug}: #{tier} | label=#{label}" }}'`
+  -> PASS; every Developer Notes page has tier metadata and a direct-link
+  label.
+- `ruby -e 'require "yaml"; y=YAML.load_file("_pkgdown.yml"); groups=y["articles"].select{|s| ["Under-audit model drafts", "Developer validation notes"].include?(s["title"])}; bad=[]; groups.each{|s| s["contents"].each{|slug| f="vignettes/#{slug}.Rmd"; txt=File.read(f); ok=txt.include?("Developer Note -- under audit") || txt.include?("Developer Note -- retire candidate") || txt.include?("Developer validation note") || txt.include?("tier: 2 # rendered roadmap"); bad << slug unless ok }}; abort("missing direct-link labels: #{bad.join(", ")}") unless bad.empty?; puts "developer-notes-direct-link-labels-ok"'`
+  -> PASS (`developer-notes-direct-link-labels-ok`).
+- `Rscript --vanilla -e 'articles <- c("articles/data-shape-flowchart", "articles/animal-model", "articles/stacked-trait-gllvm", "articles/cross-package-validation", "articles/simulation-verification", "articles/covariance-correlation", "articles/troubleshooting-profile"); for (a in articles) { message("BUILD ", a); pkgdown::build_article(a, lazy = FALSE, new_process = FALSE, quiet = FALSE) }'`
+  -> PASS; rendered representative path-finder, model-draft,
+  retire-candidate, validation-note, concept, and diagnostics pages.
+- `rg -n 'Developer Note|under audit|retire candidate|first-stop tutorial|Developer validation note' pkgdown-site/articles/data-shape-flowchart.html pkgdown-site/articles/animal-model.html pkgdown-site/articles/stacked-trait-gllvm.html pkgdown-site/articles/cross-package-validation.html pkgdown-site/articles/simulation-verification.html`
+  -> PASS; rendered HTML contains the new direct-link labels.
+- `rg -n 'unique-tier|unique variance|unique variances|trait-specific unique|unique-variance|Preview -|Status -|Internal status -|not yet in the public article menu|public article menu|Lamdba|depreciat|deprecicat' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd ROADMAP.md _pkgdown.yml`
+  -> PASS for this slice; no stale "unique variance" / misspelling /
+  public-menu wording remained. Existing profile-CI preview text with a Unicode
+  dash is outside this ASCII scan and was not changed.
+- `rg -n 'latent\(\) \+ unique|latent\([^\n]*\) \+ unique|unique_unit|loadings-only by default|\+ unique\(1 \| individual\)' README.md vignettes/gllvmTMB.Rmd vignettes/articles/*.Rmd ROADMAP.md _pkgdown.yml`
+  -> PASS with only expected explicit compatibility notes in README and
+  `covariance-correlation.Rmd`; no `unique_unit`, first-path old formula, or
+  stale loadings-default claim.
+- `git diff --check`
+  -> PASS.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'article accessibility Developer Notes direct link' --limit 20 --json number,title,url,state,labels`
+  -> no direct-link-specific issue.
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search 'pkgdown article accessibility' --limit 20 --json number,title,url,state,labels`
+  -> #230 is relevant and remains open.
+- `gh issue view 347 --repo itchyshin/gllvmTMB --json number,title,url,state,labels`
+  -> #347 is the broader article-completion tracker and remains open.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not run; this is article
+  metadata/prose only, with no R code, parser, TMB, roxygen, generated Rd, or
+  tests changed.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-developer-notes-direct-link-accessibility.md`.

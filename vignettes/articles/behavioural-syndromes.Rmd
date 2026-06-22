@@ -1,5 +1,6 @@
 ---
 title: "Behavioural syndromes (2-level GLLVM)"
+tier: 3 # under-audit behavioural-syndrome draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -22,6 +23,14 @@ knitr::opts_chunk$set(
   warning  = FALSE
 )
 ```
+
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the two-level
+> behavioural-syndrome path. It is not a first-stop tutorial. Start
+> with [Get started](gllvmTMB.html),
+> [First Gaussian morphology model](morphometrics.html), and
+> [Covariance and correlation](covariance-correlation.html) before
+> using this page.
 
 ## The biological question
 
@@ -101,13 +110,13 @@ The simulation has three layers:
 
 1. **Between-individual personality structure** — a $T \times K_B$
    loading matrix $\boldsymbol{\Lambda}_B$ ($T = 8$ traits,
-   $K_B = 2$ personality axes) plus per-trait unique variances
+   $K_B = 2$ personality axes) plus per-trait diagonal Psi variances
    $\boldsymbol{\Psi}_B$ (diagonal).
 
 2. **Within-individual lability axis** — a $T \times K_W$ loading
    matrix $\boldsymbol{\Lambda}_W$ ($K_W = 1$) capturing a shared
    motivational state that shifts all behaviours similarly on a given
-   day, plus per-trait within-individual unique variances
+   day, plus per-trait within-individual diagonal Psi variances
    $\boldsymbol{\Psi}_W$.
 
 3. **Observation noise** is assumed negligible (Bell et al. 2009);
@@ -162,7 +171,7 @@ Lambda_B_true <- matrix(c(
 ), nrow = T, ncol = 2, byrow = TRUE,
    dimnames = list(trait_names, c("proactive_reactive", "aggression_activity")))
 
-# ---- Per-trait between-individual unique variances (psi_B) ---------------
+# ---- Per-trait between-individual diagonal Psi variances (psi_B) ----------
 # Modest — about 0.06-0.07 on the latent scale. These represent stable
 # between-individual differences not captured by the two shared axes.
 psi_B_true <- c(
@@ -191,7 +200,7 @@ Lambda_W_true <- matrix(c(
 ), nrow = T, ncol = 1, byrow = TRUE,
    dimnames = list(trait_names, "lability"))
 
-# ---- Per-trait within-individual unique variances (psi_W) ----------------
+# ---- Per-trait within-individual diagonal Psi variances (psi_W) -----------
 # Smaller than psi_B: within-individual fluctuations are more constrained
 psi_W_true <- c(
   boldness         = 0.10,

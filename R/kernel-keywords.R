@@ -1,19 +1,22 @@
 #' Generic dense-kernel covariance keywords
 #'
 #' @description
-#' `kernel_latent()` and `kernel_unique()` fit named random-effect tiers
-#' with user-supplied between-unit covariance matrices `K`. The IN scope
-#' (`KER-02`) for one named dense-kernel tier is the phylo-equivalent path:
-#' `kernel_latent(unit, K = A, d = q)` plus `kernel_unique(unit, K = A)`
-#' must match `phylo_latent(unit, vcv = A, d = q)` plus
-#' `phylo_unique(unit, vcv = A)` to less than `1e-6` for log likelihood
-#' and extracted `Sigma`. The first multi-kernel scope (`KER-03`) accepts
-#' two or more fixed named `kernel_latent()` tiers over the same grouping
-#' levels, each with its own `K`, loading matrix, and latent field. This
-#' Paper 2 first wave is latent-only: paired `kernel_unique()` Psi is deferred
-#' because explicit residual/Psi structure is a poor default for non-Gaussian
-#' and cross-family coevolution models. `kernel_dep()` remains single-tier
-#' only in this first wave.
+#' `kernel_latent()` fits named random-effect tiers with user-supplied
+#' between-unit covariance matrices `K`. The IN scope (`KER-02`) for one named
+#' dense-kernel tier is the phylo-equivalent path:
+#' `kernel_latent(unit, K = A, d = q)` now carries its kernel-structured
+#' diagonal \eqn{\boldsymbol\Psi} companion by default and must match
+#' `phylo_latent(unit, vcv = A, d = q)` to less than `1e-6` for log likelihood
+#' and extracted `Sigma`. The compatibility spelling
+#' `kernel_latent(..., unique = FALSE) + kernel_unique(...)` remains accepted.
+#' The first multi-kernel scope (`KER-03`) accepts two or more fixed named
+#' `kernel_latent()` tiers over the same grouping levels, each with its own
+#' `K`, loading matrix, and latent field. This Paper 2 first wave remains
+#' latent-only: auto-generated kernel \eqn{\boldsymbol\Psi} companions are
+#' pruned for multi-kernel fits, and explicit paired `kernel_unique()` Psi is
+#' deferred because explicit residual/Psi structure is a poor default for
+#' non-Gaussian and cross-family coevolution models. `kernel_dep()` remains
+#' single-tier only in this first wave.
 #'
 #' The cross-lineage coevolution scope remains evidence-gated. IN (`COE-02`):
 #' users can pass one `K_star` from [make_cross_kernel()] and extract the
@@ -28,9 +31,12 @@
 #' @param K Numeric dense positive-semidefinite covariance/correlation matrix.
 #'   In C1 this routes through the existing phylo-equivalent dense `vcv`
 #'   path.
-#' @param d Integer latent rank for `kernel_latent()`.
 #' @param name Character scalar used as the extractor level, e.g.
 #'   `extract_Sigma(fit, level = "cross")`.
+#' @param d Integer latent rank for `kernel_latent()`.
+#' @param unique Logical; `TRUE` (default) auto-includes the kernel-structured
+#'   diagonal trait-specific \eqn{\boldsymbol\Psi} companion for a single
+#'   dense-kernel tier. Set `FALSE` for the loadings-only subset.
 #'
 #' @return A formula marker; never evaluated as a regular R function.
 #'
@@ -46,8 +52,7 @@
 #' rownames(A) <- colnames(A) <- levels(dat$unit)
 #' fit <- gllvmTMB(
 #'   traits(y1, y2) ~
-#'     1 + kernel_latent(unit, K = A, d = 1, name = "known") +
-#'     kernel_unique(unit, K = A, name = "known"),
+#'     1 + kernel_latent(unit, K = A, d = 1, name = "known"),
 #'   data = dat,
 #'   unit = "obs",
 #'   cluster = "unit",
@@ -57,7 +62,7 @@
 #' }
 #'
 #' @export
-kernel_latent <- function(unit, K, d = 1, name = "kernel") {
+kernel_latent <- function(unit, K, d = 1, name = "kernel", unique = TRUE) {
   invisible(NULL)
 }
 

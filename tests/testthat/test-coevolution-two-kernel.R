@@ -328,7 +328,7 @@
   )))
   fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy", unique = FALSE),
     data = fx$data,
     unit = "row_id",
     cluster = "species",
@@ -337,7 +337,7 @@
   )))
   fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non", unique = FALSE),
     data = fx$data,
     unit = "row_id",
     cluster = "species",
@@ -429,7 +429,7 @@
   )))
   fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy", unique = FALSE),
     data = fx$data,
     unit = "row_id",
     cluster = "species",
@@ -438,7 +438,7 @@
   )))
   fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non", unique = FALSE),
     data = fx$data,
     unit = "row_id",
     cluster = "species",
@@ -557,7 +557,7 @@ test_that("two distinct named kernel tiers fit and extract by component", {
     suppressMessages(
       gllvmTMB::extract_Sigma(fit, level = "phy", part = "unique")
     ),
-    regexp = "no explicit"
+    regexp = "no .*Psi component"
   )
 
   expect_no_warning(
@@ -912,7 +912,7 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   )))
   fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy", unique = FALSE),
     data = fx$data,
     unit = "row_id",
     cluster = "species",
@@ -921,7 +921,7 @@ test_that("near-orthogonal two-component kernels recover component Gamma shapes"
   )))
   fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non", unique = FALSE),
     data = fx$data,
     unit = "row_id",
     cluster = "species",
@@ -1256,7 +1256,7 @@ test_that("high-overlap two-component fits collapse to one higher-rank kernel", 
     )
     fit_collapsed <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
       traits(h_size, h_defence, p_size, p_attack) ~
-        1 + kernel_latent(species, K = fx$K_phy, d = 2, name = "cross"),
+        1 + kernel_latent(species, K = fx$K_phy, d = 2, name = "cross", unique = FALSE),
       data = fx$data,
       unit = "row_id",
       cluster = "species",
@@ -2028,13 +2028,13 @@ test_that("two kernel_unique tiers WITH replication separate the two Psi", {
   )))
   fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy", unique = FALSE),
     data = fx$data, unit = "row_id", cluster = "species",
     family = gllvmTMB::nbinom2(), control = ctl
   )))
   fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non", unique = FALSE),
     data = fx$data, unit = "row_id", cluster = "species",
     family = gllvmTMB::nbinom2(), control = ctl
   )))
@@ -2185,13 +2185,13 @@ test_that("two-kernel NB2 (overdispersed counts) coevolution recovers component 
   )))
   fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy", unique = FALSE),
     data = fx$data, unit = "row_id", cluster = "species",
     family = stats::Gamma(link = "log"), control = ctl
   )))
   fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non", unique = FALSE),
     data = fx$data, unit = "row_id", cluster = "species",
     family = stats::Gamma(link = "log"), control = ctl
   )))
@@ -2336,13 +2336,13 @@ test_that("two-kernel Gamma (continuous positive) coevolution recovers component
   )))
   fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy", unique = FALSE),
     data = fx$data, unit = "row_id", cluster = "species",
     family = gllvmTMB::nbinom1(), control = ctl
   )))
   fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non", unique = FALSE),
     data = fx$data, unit = "row_id", cluster = "species",
     family = gllvmTMB::nbinom1(), control = ctl
   )))
@@ -2486,13 +2486,13 @@ test_that("two-kernel nbinom1 (linear-variance counts) coevolution recovers comp
   )))
   fit_phy_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy"),
+      1 + kernel_latent(species, K = fx$K_phy, d = 1, name = "phy", unique = FALSE),
     data = fx$data, unit = "row_id", cluster = "species",
     family = gllvmTMB::Beta(), control = ctl
   )))
   fit_non_only <- suppressMessages(suppressWarnings(gllvmTMB::gllvmTMB(
     traits(h_size, h_defence, p_size, p_attack) ~
-      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non"),
+      1 + kernel_latent(species, K = fx$K_non, d = 1, name = "non", unique = FALSE),
     data = fx$data, unit = "row_id", cluster = "species",
     family = gllvmTMB::Beta(), control = ctl
   )))

@@ -279,6 +279,54 @@ gllvmTMB_multi_fit <- function(parsed, data, trait, site, species,
       !is.null(mode) &&
       as.character(mode) %in% c("unique", "indep")
   }, logical(1L))
+  is_auto_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    if (!identical(cs$kind, "phylo_rr")) return(FALSE)
+    mode <- cs$extra[[".kernel_mode"]]
+    isTRUE(cs$extra[[".phylo_unique"]]) &&
+      isTRUE(cs$extra[[".auto_unique"]]) &&
+      !is.null(cs$extra[[".kernel_name"]]) &&
+      !is.null(mode) &&
+      as.character(mode) %in% c("unique", "indep")
+  }, logical(1L))
+  kernel_latent_names_for_fold <- vapply(seq_along(parsed$covstructs), function(i) {
+    cs <- parsed$covstructs[[i]]
+    if (!identical(cs$kind, "phylo_rr")) return(NA_character_)
+    mode <- cs$extra[[".kernel_mode"]]
+    nm <- cs$extra[[".kernel_name"]]
+    if (is.null(mode) ||
+        !identical(as.character(mode), "latent") ||
+        isTRUE(cs$extra[[".phylo_unique"]]) ||
+        is.null(nm)) {
+      return(NA_character_)
+    }
+    as.character(nm)
+  }, character(1L))
+  kernel_latent_names_for_fold <- unique(
+    kernel_latent_names_for_fold[!is.na(kernel_latent_names_for_fold)]
+  )
+  if (length(kernel_latent_names_for_fold) > 1L && any(is_auto_kernel_unique)) {
+    ## Single dense-kernel `kernel_latent()` now folds its Psi companion by
+    ## default. The first multi-kernel engine wave is explicitly latent-only,
+    ## so auto-generated kernel Psi companions are pruned before the C3.2
+    ## explicit-Psi guard. User-written `kernel_unique()` terms remain visible
+    ## to the guard below.
+    parsed$covstructs <- parsed$covstructs[!is_auto_kernel_unique]
+    groupings <- vapply(
+      parsed$covstructs, function(cs) deparse(cs$group), character(1)
+    )
+    kinds <- vapply(
+      parsed$covstructs, function(cs) cs$kind, character(1)
+    )
+    is_kernel_unique <- vapply(seq_along(parsed$covstructs), function(i) {
+      cs <- parsed$covstructs[[i]]
+      if (!identical(cs$kind, "phylo_rr")) return(FALSE)
+      mode <- cs$extra[[".kernel_mode"]]
+      isTRUE(cs$extra[[".phylo_unique"]]) &&
+        !is.null(mode) &&
+        as.character(mode) %in% c("unique", "indep")
+    }, logical(1L))
+  }
   if (sum(is_kernel_unique) >= 2L) {
     ## Replication is measured in DISTINCT observation UNITS per species, NOT
     ## raw long-format rows. By the time the fit runs, a wide `traits(y1, y2)`

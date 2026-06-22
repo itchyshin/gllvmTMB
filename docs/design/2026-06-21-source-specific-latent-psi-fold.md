@@ -4,9 +4,9 @@
 **Author:** Claude (Ada). **Baseline:** `origin/main` 482d569.
 **Progress note 2026-06-21:** the implemented spelling is `unique =` /
 `.auto_unique`, not the earlier draft's `residual =` / `.auto_residual`.
-`phylo_latent()` has landed; `animal_latent()` is this follow-up slice;
-`spatial_latent()` is blocked on the missing SPDE diagonal engine slot, and
-`kernel_latent()` remains next.
+`phylo_latent()` and `animal_latent()` have landed; `kernel_latent()` is this
+follow-up slice; `spatial_latent()` remains blocked on the missing SPDE
+diagonal engine slot.
 
 ## Goal
 
@@ -21,11 +21,13 @@ latents did **not** yet fold Ψ).
 
 - **Ordinary `latent(unique=TRUE)`** → `rr(...) + diag(..., .auto_unique=TRUE)`
   (R/brms-sugar.R, `if (identical(fn,"latent"))` block ~2804-2852). Done + correct.
-- **Remaining pending `*_latent` folds** route through `phylo_rr`/`spde`; the pending
-  forms still require explicit `*_unique()`. `*_unique` companions today:
+- **Source-specific `*_unique` companions** route through `phylo_rr`/`spde`;
+  fold slices reuse those same engine slots. The companion routes are:
   - `phylo_unique(0+trait|sp)` → `phylo_rr(sp, .phylo_unique=TRUE, [tree/vcv])` (R/brms-sugar.R:3052)
   - `animal_unique(id)` → `phylo_rr(id, .phylo_unique=TRUE, vcv=A)` (R/brms-sugar.R:2445)
   - `spatial_unique`/`kernel_unique` → analogous (spde / `phylo_rr(.kernel_*)`).
+  After the kernel slice, only `spatial_latent()` remains pending because its
+  SPDE diagonal companion slot still needs engine confirmation.
 - **Dedup** (R/fit-multi.R:340-366) keys `is_auto_psi` on `kind=="diag" && .auto_unique`,
   and drops the auto-Ψ when an explicit `diag` sits at the same grouping (byte-identity).
   **It does NOT yet recognise source companions** (`kind=="phylo_rr"`/`spde`), so without an
@@ -82,7 +84,7 @@ Each slice = rewriter + dedup + per-family gate, with these **gates**:
 
 ## Removal (Stage E — later)
 
-Only after all four source folds + G1-G3 are green, flip `*_unique()` soft-deprecation to removal,
+Only after all source folds + G1-G3 are green, flip `*_unique()` soft-deprecation to removal,
 source-by-source, each gated by its byte-identity + recovery evidence.
 
 ## Phylo slice — implementation-grade detail (from the deep phylo research)

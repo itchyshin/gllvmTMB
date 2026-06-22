@@ -16842,3 +16842,194 @@ in this scoped animal PR.
 
 After-task report:
 `docs/dev-log/after-task/2026-06-21-animal-latent-unique-fold.md`.
+
+## 2026-06-21 -- kernel_latent default Psi fold
+
+Branch/worktree: `/private/tmp/gllvmtmb-kernel-latent-psi-fold` on
+`codex/kernel-latent-psi-fold-20260621`, stacked on the animal fold head
+`51c91be` while PR #527 is open. Open PR scan before shared dev-log/design
+edits: `gh pr list --state open` -> #527 only, the parent animal fold PR for
+this stacked local work. Recent-log scan:
+`git log --all --oneline --since="6 hours ago"` -> recent #525 merge,
+spatial-blocker record, Ayumi diagnostic merge, and #527 animal fold head; no
+unrelated open PR collision was found.
+
+Implemented slice: `kernel_latent(unit, K = A, d = q, name = "known")` now
+folds the dense-kernel diagonal `Psi_kernel` companion by default for one named
+kernel tier (`unique = TRUE`). `unique = FALSE` keeps the loadings-only route,
+and the explicit compatibility pair
+`kernel_latent(..., unique = FALSE) + kernel_unique()` remains byte-equivalent.
+For two or more named `kernel_latent()` tiers, auto-generated kernel Psi
+companions are pruned before the existing multi-kernel guard so the first
+multi-kernel engine wave remains latent-only. No TMB or SPDE engine code
+changed.
+
+Exact validation commands and outcomes:
+
+- RED-first:
+  `Rscript --vanilla -e 'testthat::test_file("tests/testthat/test-kernel-latent-unique-fold.R", reporter = "summary")'`
+  failed before implementation because the parser did not emit the automatic
+  kernel Psi companion, `unique = FALSE` did not select the loadings-only route,
+  and malformed `unique` values were not rejected.
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` completed;
+  unrelated generated Rd churn was removed before staging.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-latent-unique-fold.R", reporter = "summary")'`
+  -> PASS (`kernel-latent-unique-fold: .......................`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-equivalence.R", reporter = "summary")'`
+  -> PASS (`kernel-equivalence: ......................................`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'`
+  -> PASS under normal env; expected heavy gates skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'`
+  first failed because one-kernel comparators inherited the new default Psi and
+  invalidated legacy latent-only likelihood-gap thresholds. After retargeting
+  those comparators to `unique = FALSE`, the same command passed.
+- `Rscript --vanilla -e 'devtools::test()'` -> PASS:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3445 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS:
+  `No problems found`.
+- `Rscript --vanilla -e 'pkgdown::build_articles(lazy = FALSE)'` failed in the
+  known existing article-render debt:
+  `vignettes/articles/lambda-constraint-suggest.Rmd`, chunk
+  `profile-confidence-eye`, where `loading_ci(fit_pr, level = "unit", method =
+  "wald")` correctly rejects an unconstrained loading fit. This is not a kernel
+  fold regression.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  completed with `0 errors, 1 warning, 0 notes`. Warning was local
+  Apple-clang/R-header install noise:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group
+  '-Wfixed-enum-extension', ignored [-Wunknown-warning-option]`.
+- A plain persistent `rcmdcheck::rcmdcheck(args = "--no-manual")` errored
+  because local Suggests `mirt` and `nadiv` are not installed; the persistent
+  rerun
+  `_R_CHECK_FORCE_SUGGESTS_=false Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "never", check_dir = "check-force-suggests-false"); print(res)'`
+  completed with `0 errors, 1 warning, 0 notes`, the same local clang warning.
+- Rendered-Rd spot check:
+  `tail -5 man/kernel_latent.Rd && grep -c '^\\keyword' man/kernel_latent.Rd || true && tail -5 man/diag_re.Rd && grep -c '^\\keyword' man/diag_re.Rd || true`
+  -> `man/kernel_latent.Rd` had no keyword tag, and `man/diag_re.Rd` retained
+  its expected one `\keyword{internal}`.
+
+Exact stale-wording scans:
+
+- `rg -n 'remaining `spatial_latent` / `kernel_latent`|Dense-kernel latent-Psi folding remains|kernel_latent\(\.\.\.\) alone do|kernel_latent\(unit, K = A, d = q\) \+ kernel_unique|same dense `kernel_latent \+ kernel_unique` grammar|kernel_latent\(\) keep their explicit|kernel_latent\(\) remains next|kernel_latent` remains next' R docs/design NEWS.md tests/testthat man`
+  -> no matches; no current source says kernel is still pending or requires
+  paired syntax as primary.
+- `rg -n 'kernel_latent|kernel_unique|KER-02|KER-03|COE-03|unique = FALSE|spatial_latent' NEWS.md R/kernel-keywords.R R/unique-keyword.R R/extract-sigma.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/design/2026-06-21-source-specific-latent-psi-fold.md tests/testthat/test-kernel-latent-unique-fold.R tests/testthat/test-kernel-equivalence.R tests/testthat/test-coevolution-two-kernel.R`
+  -> expected current kernel fold references, loadings-only comparator
+  retargeting, multi-kernel latent-only limitations, and historical test
+  coverage references.
+- `rg -n '\bS_B\b|\bS_W\b|\\bf S' NEWS.md R/kernel-keywords.R R/unique-keyword.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/design/2026-06-21-source-specific-latent-psi-fold.md`
+  -> no matches.
+- `rg -n 'gllvmTMB\(' R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md`
+  -> expected package/news/design call sites; the new kernel roxygen example is
+  a wide `traits(...)` call and correctly omits `trait =`.
+- `rg -n 'meta_known_V|gllvmTMB_wide|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(' NEWS.md R/kernel-keywords.R R/unique-keyword.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md`
+  -> expected historical/deprecated-alias and internal-route references; no new
+  kernel user-facing primary example uses those aliases.
+- `rg -n 'in prep|in preparation' docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md NEWS.md R/kernel-keywords.R`
+  -> no matches.
+
+Issue ledger: inspected open issues with
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'kernel_latent OR kernel_unique OR KER-02 OR KER-03' --limit 20 --json number,title,url,state`
+-> #361 (generic kernel engine), #340 (capability matrix), and #526 (spatial
+blocker). Inspected
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'spatial_latent SPDE diagonal Psi' --limit 20 --json number,title,url,state`
+-> no direct matches beyond #526 found by the kernel query. Inspected
+`gh issue list --repo itchyshin/gllvmTMB --state open --search 'lambda-constraint-suggest OR loading_ci OR profile-confidence-eye' --limit 20 --json number,title,url,state`
+-> #230 and #340 for the pre-existing article-render debt. No issue closed; no
+new issue opened in this stacked local slice.
+
+After-task report:
+`docs/dev-log/after-task/2026-06-21-kernel-latent-psi-fold.md`.
+
+## 2026-06-22 -- kernel_latent post-#527 rebase validation
+
+Branch/worktree: `/private/tmp/gllvmtmb-kernel-latent-psi-fold` on
+`codex/kernel-latent-psi-fold-20260621`, rebased onto `origin/main`
+`b3fc729` after #527 merged. Maintainer approval arrived in chat as
+"yes"; #527 was merged with `gh pr merge 527 --merge --match-head-commit
+51c91be2a04a6ff498e902407b5b2a328f74ec69`. GitHub merge commit:
+`b3fc729a3cb6d4d2cce9e6a0e7431aeaa0914868`.
+
+Pre-edit / coordination check before the post-rebase dev-log/design edits:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,baseRefName,mergeStateStatus,statusCheckRollup,updatedAt,url`
+  -> `[]` after #527 merged.
+- `git log --all --oneline --since="6 hours ago"` ->
+  `b3fc729 Merge pull request #527 ...` plus unrelated
+  `2e6e225 power-pilot: accumulate reps (run 137)`.
+- `gh run list --repo itchyshin/gllvmTMB --limit 12 --json databaseId,displayTitle,workflowName,status,conclusion,headBranch,headSha,url`
+  -> #527 main `R-CMD-check` was in progress before local validation and later
+  reported success; main `pkgdown` also completed successfully after the site
+  build and Pages deploy finished.
+
+Post-rebase validation commands and outcomes:
+
+- `Rscript --vanilla -e 'devtools::document(quiet = TRUE)'` -> completed.
+  Roxygen regenerated unrelated Rd files under this local toolchain; those
+  mechanical diffs were trimmed back before staging so only `man/diag_re.Rd`
+  and `man/kernel_latent.Rd` remain in scope.
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-latent-unique-fold.R", reporter = "summary")'`
+  -> PASS (`kernel-latent-unique-fold: .......................`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-kernel-equivalence.R", reporter = "summary")'`
+  -> PASS (`kernel-equivalence: ......................................`).
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'`
+  -> PASS under normal env; expected heavy gates skipped.
+- `GLLVMTMB_HEAVY_TESTS=1 NOT_CRAN=true Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); testthat::test_file("tests/testthat/test-coevolution-two-kernel.R", reporter = "summary")'`
+  -> PASS.
+- `Rscript --vanilla -e 'devtools::test()'` -> PASS:
+  `[ FAIL 0 | WARN 10 | SKIP 745 | PASS 3445 ]`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'` -> PASS:
+  `No problems found`.
+- `Rscript --vanilla -e 'devtools::check(args = "--no-manual", quiet = TRUE)'`
+  -> completed with `0 errors, 1 warning, 1 note` but returned nonzero
+  because warnings are treated as errors by this wrapper. The warning was the
+  known local Apple-clang/R-header warning; the note was local time
+  verification (`unable to verify current time`).
+- `Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "never", check_dir = "check-post-rebase"); print(res)'`
+  -> `1 error` because local Suggests `mirt` and `nadiv` are not installed.
+  This reproduces the known local Suggests caveat.
+- `_R_CHECK_FORCE_SUGGESTS_=false Rscript --vanilla -e 'res <- rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "never", check_dir = "check-post-rebase-force-suggests-false"); print(res)'`
+  -> completed with `0 errors, 1 warning, 0 notes`. The warning was the same
+  local Apple-clang/R-header install warning:
+  `R_ext/Boolean.h:62:36: warning: unknown warning group
+  '-Wfixed-enum-extension', ignored [-Wunknown-warning-option]`.
+- `git diff --check` -> PASS.
+
+Generated check directories
+`check-post-rebase/` and `check-post-rebase-force-suggests-false/` were removed
+after recording the outcomes above.
+
+Rose / after-task audit after the rebase:
+
+- `Rscript --vanilla -e 'devtools::load_all(quiet = TRUE); print(args(kernel_latent)); cat("\\nformals unique default:\\n"); print(formals(kernel_latent)$unique)'`
+  -> `kernel_latent(unit, K, d = 1, name = "kernel", unique = TRUE)`;
+  `formals(kernel_latent)$unique` -> `TRUE`.
+- `rg -n 'remaining `spatial_latent` / `kernel_latent`|Dense-kernel latent-Psi folding remains|kernel_latent\(\.\.\.\) alone do|kernel_latent\(unit, K = A, d = q\) \+ kernel_unique|same dense `kernel_latent \+ kernel_unique` grammar|kernel_latent\(\) keep their explicit|kernel_latent\(\) remains next|kernel_latent` remains next' R docs/design NEWS.md tests/testthat man`
+  -> no matches.
+- `rg -n '\bS_B\b|\bS_W\b|\\bf S' NEWS.md R/kernel-keywords.R R/unique-keyword.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md docs/design/2026-06-21-source-specific-latent-psi-fold.md`
+  -> no matches.
+- `rg -n 'gllvmTMB\(' R/kernel-keywords.R man/kernel_latent.Rd NEWS.md docs/design/01-formula-grammar.md`
+  -> expected call sites only; the new kernel example is wide
+  `traits(...)` syntax and does not need `trait =`.
+- `rg -n 'meta_known_V|gllvmTMB_wide|\bphylo\(|\bgr\(|\bmeta\(|block_V\(|phylo_rr\(' NEWS.md R/kernel-keywords.R R/unique-keyword.R man/kernel_latent.Rd man/diag_re.Rd docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md _pkgdown.yml`
+  -> expected historical / deprecated-alias sections only; no new kernel
+  primary syntax uses these aliases.
+- `rg -n "kernel_latent|kernel_unique|kernel_indep|kernel_dep" _pkgdown.yml R/kernel-keywords.R man/kernel_latent.Rd`
+  -> `_pkgdown.yml` includes `kernel_latent`; generated `man/kernel_latent.Rd`
+  lists aliases for `kernel_latent`, `kernel_unique`, `kernel_indep`, and
+  `kernel_dep`.
+- `rg -nH "^#' @export" R/kernel-keywords.R R/unique-keyword.R`
+  -> four existing kernel exports in `R/kernel-keywords.R`; no new export
+  added.
+- `tail -5 man/kernel_latent.Rd && grep -c '^\\keyword' man/kernel_latent.Rd || true && tail -5 man/diag_re.Rd && grep -c '^\\keyword' man/diag_re.Rd || true`
+  -> no keyword tag in `man/kernel_latent.Rd`; expected one
+  `\keyword{internal}` in `man/diag_re.Rd`.
+- `rg -n "in prep|in preparation" docs/design/01-formula-grammar.md docs/design/35-validation-debt-register.md NEWS.md R/kernel-keywords.R`
+  -> no matches.
+
+Verdict: Rose PASS and after-task audit PASS for this PR surface. Remaining
+warnings are documented limitations, not publication inconsistencies:
+multi-kernel `kernel_latent()` remains latent-only in the first engine wave,
+explicit multi-kernel `kernel_unique()` Psi is deferred, `spatial_latent()` is
+blocked by #526, and `lambda-constraint-suggest.Rmd` article rendering remains
+separate pre-existing debt.

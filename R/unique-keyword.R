@@ -58,11 +58,11 @@
 #' * **Folded source-specific latent terms**. `phylo_latent()` and
 #'   `animal_latent()` now carry their source-specific diagonal
 #'   \eqn{\boldsymbol\Psi} companions by default, matching ordinary
-#'   `latent()`. Use `phylo_latent(..., unique = FALSE) + phylo_unique()`
-#'   or `animal_latent(..., unique = FALSE) + animal_unique()` only when
-#'   you need the explicit compatibility spelling. `spatial_latent()` and
-#'   `kernel_latent()` keep their explicit `+ *_unique()` companion until
-#'   their fold slices land. See
+#'   `latent()`. Use `phylo_latent(..., unique = FALSE) + phylo_unique()`,
+#'   `animal_latent(..., unique = FALSE) + animal_unique()`, or
+#'   `kernel_latent(..., unique = FALSE) + kernel_unique()` only when
+#'   you need the explicit compatibility spelling. `spatial_latent()` keeps
+#'   its explicit `+ spatial_unique()` companion until its fold slice lands. See
 #'   `vignettes/articles/pitfalls.Rmd` section 5 and
 #'   `docs/dev-log/decisions.md` 2026-05-14 entry.
 #' * **Confirmatory factor models**. Sometimes domain knowledge tells

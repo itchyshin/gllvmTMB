@@ -2690,11 +2690,37 @@ rewrite_canonical_aliases <- function(formula) {
         )
         if (fn == "kernel_latent") {
           d_val <- if ("d" %in% nm) e[[which(nm == "d")]] else 1L
-          return(as.call(c(
+          unique_arg <- if ("unique" %in% nm) {
+            e[[which(nm == "unique")]]
+          } else {
+            TRUE
+          }
+          if (
+            !is.logical(unique_arg) ||
+              length(unique_arg) != 1L ||
+              is.na(unique_arg)
+          ) {
+            cli::cli_abort(c(
+              "{.arg unique} in {.fn kernel_latent} must be a literal {.code TRUE} or {.code FALSE}.",
+              ">" = "Use {.code kernel_latent(..., unique = FALSE)} for the loadings-only subset."
+            ))
+          }
+          latent_call <- as.call(c(
             list(as.name("phylo_rr"), unit_arg),
             list(d = d_val),
             kernel_meta
-          )))
+          ))
+          if (isFALSE(unique_arg)) {
+            return(latent_call)
+          }
+          psi_kernel_meta <- kernel_meta
+          psi_kernel_meta$.kernel_mode <- "unique"
+          psi_call <- as.call(c(
+            list(as.name("phylo_rr"), unit_arg),
+            list(.phylo_unique = TRUE, .auto_unique = TRUE),
+            psi_kernel_meta
+          ))
+          return(call("+", latent_call, psi_call))
         }
         if (fn == "kernel_unique") {
           .gllvmTMB_warn_unique_family_deprecated(fn)

@@ -87,7 +87,7 @@ support from end-to-end verification:
 | `phylo_indep` / `phylo_dep` | **covered** | Marginal-only phylogenetic trait covariance (`phylo_indep`, equivalent to `phylo_unique`) and full-rank phylogenetic latent covariance (`phylo_dep`, equivalent to `phylo_latent(..., d = n_traits)`). Test evidence: `test-canonical-keywords.R`, `test-stage35-phylo-rr.R` + `test-formula-grammar-smoke.R` (both forms) (validation-debt register PHY-05; Phase 0B.2 promotion 2026-05-16). |
 | `animal_latent(id, d = K, pedigree = ped)` | **covered / animal Psi folded** | Reduced-rank additive-genetic loadings plus the default diagonal $\boldsymbol\Psi_\text{animal}$ companion on the same relatedness matrix $A$. Use `unique = FALSE` for the loadings-only subset; the explicit `animal_latent(..., unique = FALSE) + animal_unique()` pair remains accepted compatibility syntax. Test evidence: `test-animal-keyword.R`, `test-matrix-animal-nongaussian.R`, `test-animal-latent-unique-fold.R` (validation-debt register ANI-05; animal latent-Psi fold 2026-06-21). |
 | `spatial_latent(0 + trait \| sites, mesh = mesh)` or `spatial_latent(0 + trait \| sites, coords = c("lon", "lat"))` and siblings | **covered** | Spatial analogues of the phylo keywords. Grouping factor is `sites`; spatial geometry supplied via either `mesh = make_mesh(...)` or `coords = c("lon", "lat")` (engine builds the mesh internally). See "Spatial axis convention" below. Test evidence: `test-spatial-latent-recovery.R` (spatial_latent), `test-stage4-spde.R` (spatial_unique), `test-formula-grammar-smoke.R` (spatial_indep, spatial_dep, spatial_scalar) (validation-debt register SPA-03, SPA-04; Phase 0B.2 promotion 2026-05-16). |
-| `kernel_latent(unit, K = A, d = q) + kernel_unique(unit, K = A, name = "known")` | **covered / compatibility** | Generic dense-kernel decomposition for a user-supplied between-unit matrix `K` using the explicit-Psi compatibility spelling. C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Dense-kernel latent-Psi folding remains a future slice, so new standalone diagonal teaching should use `kernel_indep()` while existing `kernel_unique()` formulas remain accepted compatibility syntax. Test evidence: `test-kernel-equivalence.R` checks log-likelihood and extracted-Sigma equivalence to the dense `phylo_latent(..., vcv = A) + phylo_unique(..., vcv = A)` path to less than `1e-6` (validation-debt register KER-02; Design 65 C1). |
+| `kernel_latent(unit, K = A, d = q, name = "known")` | **covered / kernel Psi folded** | Generic dense-kernel reduced-rank loadings plus the default kernel-structured diagonal $\boldsymbol\Psi_\text{kernel}$ companion for one named user-supplied matrix `K`. Use `unique = FALSE` for the loadings-only subset; the explicit `kernel_latent(..., unique = FALSE) + kernel_unique()` pair remains accepted compatibility syntax. C1 routes through the phylo-equivalent dense `vcv` path and exposes the tier via `extract_Sigma(level = "known")`. Test evidence: `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R` check parser emission, malformed-`unique` rejection, default-vs-explicit-pair equivalence, and dense `phylo_latent(..., vcv = A)` equivalence to less than `1e-6` (validation-debt register KER-02; Design 65 C1; kernel latent-Psi fold 2026-06-21). |
 | `kernel_indep(unit, K = A)` / `kernel_dep(unit, K = A)` | **covered** | Generic dense-kernel marginal-only and full-rank companion modes. C1 fit equivalence is covered in `test-kernel-equivalence.R` against `phylo_indep(..., vcv = A)` and `phylo_dep(..., vcv = A)`; the engine route is the same phylo-equivalent dense `vcv` slot used by `kernel_latent()` / `kernel_unique()` (validation-debt register KER-02; Design 65 C1). |
 | `meta_V(V = V)` | **partial** | Known sampling covariance, desugars to `equalto(0 + obs \| grp_V, V)`. Pass `known_V = V` to `gllvmTMB()` alongside. Test evidence: `test-formula-grammar-smoke.R` (single-V additive form and V-only parser compatibility), `test-traits-keyword.R` (wide `traits(...)` preservation), and `test-block-V.R` (block-V helper) (validation-debt register MET-01, MET-02). The legacy `meta_known_V(V = V)` is retained as a deprecated alias; both names desugar identically in the parser. Single-V inference validation remains partial under MET-01. |
 | `block_V(study, sampling_var, rho_within)` helper | **covered** | Builds the standard compound-symmetric block-diagonal `V` for within-study correlation. Test evidence: `test-block-V.R` (validation-debt register MET-02; Phase 0B promotion 2026-05-16). |
@@ -213,17 +213,18 @@ the source-specific grid:
 
 | generic kernel mode | Syntax | C1 route |
 |---|---|---|
-| unique | `kernel_unique(unit, K = A, name = "known")` | phylo-equivalent dense `vcv` path |
+| unique | `kernel_unique(unit, K = A, name = "known")` | phylo-equivalent dense `vcv` path; compatibility spelling for the diagonal Psi companion |
 | indep | `kernel_indep(unit, K = A, name = "known")` | same route, marginal-only label |
 | dep | `kernel_dep(unit, K = A, name = "known")` | full-rank latent route (`d = n_traits`) |
 | latent | `kernel_latent(unit, K = A, d = q, name = "known")` | reduced-rank latent route |
 
 There is no C1 `kernel_scalar()` surface. Scalar single-variance
 kernel models remain a later unification/deprecation question. Design
-65 C2 uses the same dense `kernel_latent + kernel_unique` grammar with
-a cross-lineage `K_star = make_cross_kernel(...)` and recovers the
-host-trait x partner-trait block through `extract_Gamma()`; it does not
-add another formula keyword.
+65 C2 uses the same dense `kernel_latent()` grammar, with `kernel_unique()`
+retained as compatibility spelling for explicit single-kernel Psi. It uses
+a cross-lineage `K_star = make_cross_kernel(...)` and recovers the host-trait
+x partner-trait block through `extract_Gamma()`; it does not add another
+formula keyword.
 
 **The A vs V naming boundary** (per Design 14 §3): `animal_*` and
 `phylo_*` keywords accept **A** / **Ainv** for *relatedness*
@@ -297,18 +298,17 @@ decomposition. The constrained submodels are:
 - `indep(...)` / soft-deprecated `unique(...)` alone →
   $\boldsymbol\Sigma = \boldsymbol\Psi$ (diagonal-only; no shared axes).
 
-`phylo_latent(...)` and `animal_latent(...)` now carry their
-source-structured diagonal $\boldsymbol\Psi$ companions by default
+`phylo_latent(...)`, `animal_latent(...)`, and `kernel_latent(...)`
+now carry their source-structured diagonal $\boldsymbol\Psi$ companions by default
 (`unique = TRUE`), like ordinary `latent()`: use
 `*_latent(..., unique = FALSE)` for the loadings-only subset, and the
 explicit `*_latent(..., unique = FALSE) + *_unique()` pair remains accepted
-(the auto-companion is deduped against it). The remaining source-specific
-decompositions `spatial_latent + spatial_unique` and
-`kernel_latent + kernel_unique` still use the **explicit paired spelling**:
-their latent-Psi folds remain future slices, so `spatial_latent(...)` and
-`kernel_latent(...)` alone do **not** yet carry $\boldsymbol\Psi$ — pair them
-with the matching `*_unique()` (or `*_indep()` for the standalone diagonal)
-until those folds land.
+(the auto-companion is deduped against it). Multi-kernel fits with two or more
+named `kernel_latent()` tiers remain the existing latent-only first wave; their
+auto-generated kernel-Psi companions are pruned before the multi-kernel engine
+gate. The remaining source-specific decomposition `spatial_latent +
+spatial_unique` still uses the **explicit paired spelling** because the SPDE
+diagonal companion engine slot is blocked.
 
 ## Long-format trait-stacked grammar
 

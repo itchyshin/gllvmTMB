@@ -66,11 +66,11 @@ explicit \code{unique()} term on top is typically not identified.
 \item \strong{Folded source-specific latent terms}. \code{phylo_latent()} and
 \code{animal_latent()} now carry their source-specific diagonal
 \eqn{\boldsymbol\Psi} companions by default, matching ordinary
-\code{latent()}. Use \code{phylo_latent(..., unique = FALSE) + phylo_unique()}
-or \code{animal_latent(..., unique = FALSE) + animal_unique()} only when
-you need the explicit compatibility spelling. \code{spatial_latent()} and
-\code{kernel_latent()} keep their explicit \verb{+ *_unique()} companion until
-their fold slices land. See
+\code{latent()}. Use \code{phylo_latent(..., unique = FALSE) + phylo_unique()},
+\code{animal_latent(..., unique = FALSE) + animal_unique()}, or
+\code{kernel_latent(..., unique = FALSE) + kernel_unique()} only when
+you need the explicit compatibility spelling. \code{spatial_latent()} keeps
+its explicit \code{+ spatial_unique()} companion until its fold slice lands. See
 \code{vignettes/articles/pitfalls.Rmd} section 5 and
 \code{docs/dev-log/decisions.md} 2026-05-14 entry.
 \item \strong{Confirmatory factor models}. Sometimes domain knowledge tells

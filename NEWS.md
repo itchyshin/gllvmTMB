@@ -3,9 +3,13 @@
 * (Post-0.2.0 development. New user-facing changes are recorded here;
   the first CRAN release notes are under **gllvmTMB 0.2.0** below.)
 
+## `kernel_latent()` folds its diagonal Psi by default (2026-06-21)
+
+* `kernel_latent(unit, K = A, d = q, name = "known")` now carries its dense-kernel diagonal trait-specific `Psi_kernel` companion by default (`unique = TRUE`) for one named kernel tier, mirroring ordinary `latent()`, `phylo_latent()`, and `animal_latent()`: `Sigma_kernel = Lambda Lambda^T (x) A + Psi_kernel (x) A`. The paired `kernel_latent(..., unique = FALSE) + kernel_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `kernel_unique()`, byte-identical to the explicit pair. Use `kernel_latent(..., unique = FALSE)` for the loadings-only subset. IN (`KER-02`): parser emission, malformed-`unique` rejection, Gaussian fold equivalence, explicit-companion dedup, and loadings-only dense-phylo equivalence are covered by `test-kernel-latent-unique-fold.R` and `test-kernel-equivalence.R`. PARTIAL (`KER-03` / `COE-03`): two-or-more named `kernel_latent()` tiers remain the existing latent-only multi-kernel engine; auto-generated kernel Psi companions are pruned for that path and explicit multi-kernel `kernel_unique()` Psi remains deferred. `spatial_latent()` is still blocked on the SPDE diagonal engine slot.
+
 ## `animal_latent()` folds its diagonal Psi by default (2026-06-21)
 
-* `animal_latent(id, d = K, pedigree = ped)` now carries its additive-genetic diagonal trait-specific `Psi_animal` companion by default (`unique = TRUE`), mirroring ordinary `latent()` and `phylo_latent()`: `G = Lambda Lambda^T + Psi_animal`, with both parts scaled by the same relatedness matrix `A`. The paired `animal_latent(..., unique = FALSE) + animal_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `animal_unique()`, byte-identical to the explicit pair. Use `animal_latent(..., unique = FALSE)` for the loadings-only subset. IN (`ANI-05`): parser emission, Gaussian fold equivalence, explicit-companion dedup, and Gaussian/non-Gaussian loadings-only animal-vs-phylo equivalence are covered by `test-animal-latent-unique-fold.R`, `test-animal-keyword.R`, and `test-matrix-animal-nongaussian.R`. PARTIAL: augmented `animal_latent(1 + x | id)` slopes remain on their existing loadings-only slope engine for this Stage-A slice; `spatial_latent()` is blocked on the SPDE diagonal engine and `kernel_latent()` remains the next fold slice.
+* `animal_latent(id, d = K, pedigree = ped)` now carries its additive-genetic diagonal trait-specific `Psi_animal` companion by default (`unique = TRUE`), mirroring ordinary `latent()` and `phylo_latent()`: `G = Lambda Lambda^T + Psi_animal`, with both parts scaled by the same relatedness matrix `A`. The paired `animal_latent(..., unique = FALSE) + animal_unique()` spelling remains accepted -- the auto-companion is deduped against an explicit `animal_unique()`, byte-identical to the explicit pair. Use `animal_latent(..., unique = FALSE)` for the loadings-only subset. IN (`ANI-05`): parser emission, Gaussian fold equivalence, explicit-companion dedup, and Gaussian/non-Gaussian loadings-only animal-vs-phylo equivalence are covered by `test-animal-latent-unique-fold.R`, `test-animal-keyword.R`, and `test-matrix-animal-nongaussian.R`. PARTIAL: augmented `animal_latent(1 + x | id)` slopes remain on their existing loadings-only slope engine for this Stage-A slice; `spatial_latent()` is blocked on the SPDE diagonal engine and `kernel_latent()` is handled by the follow-up kernel fold.
 
 ## `check_gllvmTMB()` near-constant binomial diagnostic (2026-06-21)
 
@@ -21,8 +25,7 @@
   byte-identical to the explicit pair. Use `phylo_latent(..., unique = FALSE)`
   for the loadings-only subset. Augmented `phylo_latent(1 + x | sp)` slopes and
   the `phylo_indep` / `phylo_dep` mutual-exclusion paths are unchanged. The
-  remaining `spatial_latent` / `kernel_latent` still use the explicit paired
-  spelling (their folds are later slices).
+  remaining `spatial_latent` fold is blocked on the SPDE diagonal engine slot.
 
 ## `latent(unique = ...)` argument rename (2026-06-21)
 

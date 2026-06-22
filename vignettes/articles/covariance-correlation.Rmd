@@ -69,7 +69,8 @@ observation-level covariance. $\boldsymbol\Lambda$ is the $T \times K$
 loading matrix (from the `latent()` term) and $\boldsymbol\Psi$ is the
 $T \times T$ diagonal matrix of trait-specific variances that ordinary
 `latent()` now carries by default. Older explicit formulas with
-`latent() + unique()` remain compatibility syntax for the same decomposition.
+`latent() + unique()` remains soft-deprecated compatibility syntax for
+the same decomposition.
 The correlation matrix is then
 
 $$
@@ -479,7 +480,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 |---|---|---|
 | Cross-trait correlations on a Gaussian / lognormal / Gamma fit | ordinary `latent()` at every level | `latent(..., unique = FALSE)` omits Psi and can inflate correlations. |
 | Correlations on a binary fit | `latent()` only; `link_residual = "auto"` for marginal scale | Implicit residual depends on link (π²/3, 1, π²/6). |
-| Phylogenetic decomposition | source-specific explicit-Psi compatibility forms where separately identifiable; ordinary `latent()` for the non-phylogenetic species tier | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `diag(psi)` pieces. |
+| Phylogenetic decomposition | folded `phylo_latent()` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier; explicit `*_unique()` pairs only as compatibility spellings | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
 | Communality | `extract_communality(fit)` + the right Psi-aware pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |
 | `Psi` / `psi` only | `extract_Sigma(fit, part = "unique")` | Trait-specific unique variances as a vector. |
@@ -487,7 +488,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 ## See also
 
 * [Pitfalls](pitfalls.html) — common mistakes including correlation inflation
-* [`?unique`](../reference/unique.html) — compatibility syntax for the explicit diagonal Psi term
+* [`?unique`](../reference/unique.html) — soft-deprecated compatibility syntax for the explicit diagonal Psi term
 * [`?extract_Sigma`](../reference/extract_Sigma.html) — the unified extractor
 * [`?suggest_lambda_constraint`](../reference/suggest_lambda_constraint.html) — a helper for confirmatory loading structures
 * [Formula keyword grid](api-keyword-grid.html) — syntax map for moving from this decomposition to other covariance rows

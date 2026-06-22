@@ -87,7 +87,8 @@ $$
 
 `gllvmTMB` estimates $\boldsymbol G$ either as a full unstructured
 matrix (`animal_dep()`), per-trait independent diagonal entries
-(`animal_unique()`), or as a reduced-rank factor-analytic
+(`animal_indep()`; the older `animal_unique()` spelling remains
+soft-deprecated compatibility syntax), or as a reduced-rank factor-analytic
 parameterisation $\boldsymbol G \approx \boldsymbol\Lambda
 \boldsymbol\Lambda^{\!\top} + \boldsymbol\Psi$
 (`animal_latent()`; use `unique = FALSE` only for the loadings-only
@@ -96,7 +97,7 @@ subset).
 Because the `animal_*()` keywords are pure syntactic sugar over the
 `phylo_*()` engine path (only the relatedness-matrix input differs),
 these intercept structures are **family-general**: the per-trait
-`animal_unique()` / `animal_scalar()` decomposition recovers not only
+`animal_indep()` / `animal_scalar()` decomposition recovers not only
 under the Gaussian model used in the tutorials below, but also under
 the count, proportion, ordinal, and binomial response families the
 engine supports. The worked examples here are Gaussian for clarity;
@@ -560,11 +561,13 @@ max(abs(as.numeric(fit_animal$opt$par) - as.numeric(fit_phylo$opt$par)))
 This single-shared-variance slope is the validated heritable-slope
 form. The richer **augmented** reaction-norm models also fit: the
 parser now routes an augmented `1 + x | id` left-hand side through the
-`animal_*()` keywords, with `animal_unique(1 + x | id)` driving the
-correlated $2 \times 2$ (intercept, slope) genetic engine (the
+`animal_*()` keywords, with the soft-deprecated compatibility spelling
+`animal_unique(1 + x | id)` driving the correlated $2 \times 2$
+(intercept, slope) genetic engine (the
 intercept-slope correlation estimated) and `animal_indep(1 + x | id)`
 the diagonal variant (correlation pinned to 0). Both are
-byte-equivalent to the corresponding `phylo_unique` / `phylo_indep`
+byte-equivalent to the corresponding soft-deprecated compatibility
+`phylo_unique` / first-line `phylo_indep`
 augmented fit with the relatedness matrix supplied as `vcv = A`. What
 is *not* yet surfaced is the **read-out**: `extract_Sigma()` does not
 return the assembled $2 \times 2$ (intercept, slope) genetic covariance
@@ -621,10 +624,12 @@ this:
   supported and validated ([Tutorial 4](#tutorial-4-heritable-reaction-norms-random-regression),
   register row **ANI-06**). The augmented intercept+slope forms also
   now route through the `animal_*()` keywords and **fit**:
+  the soft-deprecated compatibility spelling
   `animal_unique(1 + x | id)` drives the correlated $2 \times 2$
   (intercept, slope) genetic engine and `animal_indep(1 + x | id)` the
   diagonal variant, both byte-equivalent to the corresponding
-  `phylo_unique` / `phylo_indep` augmented fit with `vcv = A`. What is
+  soft-deprecated compatibility `phylo_unique` / first-line
+  `phylo_indep` augmented fit with `vcv = A`. What is
   *not* yet delivered is, first, the **read-out** -- `extract_Sigma()`
   does not surface the assembled $2 \times 2$ genetic covariance for
   the correlated `animal_unique(1 + x | id)` fit -- and, second, the

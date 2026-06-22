@@ -91,8 +91,8 @@ identifiability and fit time.
 |---|---|
 | 0 | Individual × trait — `latent(... \| unit)` |
 | 1 | Site × species (JSDM) — `+ family = binomial()` |
-| 2 | + phylogeny — `+ phylo_latent + phylo_unique` (paired with ordinary `latent()`) |
-| 3 | + spatial — `+ spatial_unique(0 + trait \| coords)` |
+| 2 | + phylogeny — `+ phylo_latent(...)` plus ordinary `latent()` when a non-phylogenetic species tier is needed |
+| 3 | + spatial — `+ spatial_indep(0 + trait \| coords)` |
 | 4 | + relatedness-structured random slope (reaction norm) — `+ phylo_slope(x \| species)` |
 | 5 | Two-level (between / within) — `+ latent(... \| unit_obs)` |
 | 6 | Three-level (cluster > unit > unit_obs) — `+ indep(0 + trait \| cluster)` |
@@ -169,11 +169,10 @@ committing to a list.
 A phylogenetic random effect is appropriate when species (or other
 taxa) appear repeatedly in your data and closely related taxa are
 likely to share trait values for evolutionary reasons. The
-canonical phylogenetic decomposition pairs four components: a
-phylogenetic shared low-rank axis (`phylo_latent`), a
-phylogenetic trait-specific diagonal (`phylo_unique`), a
-non-phylogenetic shared axis (`latent`), and a non-phylogenetic
-trait-specific diagonal (`indep`). The full decomposition reads
+folded phylogenetic decomposition pairs two species-level covariance
+matrices: a phylogenetic shared-plus-diagonal tier (`phylo_latent`)
+and, when needed, a non-phylogenetic shared-plus-diagonal species tier
+(`latent`). The full decomposition reads
 
 $$
 \Omega = (\Sigma_{\text{phy}} \otimes A) + (\Sigma_{\text{non}} \otimes I), \quad
@@ -191,7 +190,7 @@ example.
 |---|---|
 | Rows are not phylogenetically structured (e.g. individuals from one species, or sites without taxonomic identity). | Nothing. |
 | Phylogenetic structure with one shared phylogenetic variance per trait (simplest phylo model). | `+ phylo_scalar(species, vcv = Cphy)` |
-| **Canonical paired phylogenetic decomposition** (recommended when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree) + phylo_unique(species, tree = tree) + latent(0 + trait \| species, d = K_non)` |
+| Folded phylogenetic decomposition (when traits can be both phylogenetically and non-phylogenetically correlated). | `+ phylo_latent(species, d = K_phy, tree = tree) + latent(0 + trait \| species, d = K_non)` |
 | Many species (n > ~200) and you want speed. | (same paired form) with `tree = tree` (sparse $A^{-1}$ trick); much faster than `vcv = Cphy` at this scale. |
 
 The crossover where the sparse $A^{-1}$ path overtakes the dense
@@ -224,8 +223,9 @@ input forms:
 + animal_latent(individual, d = K, Ainv = Ainv_matrix)
 ```
 
-The full 5-keyword grid (`animal_scalar`, `animal_unique`,
-`animal_indep`, `animal_dep`, `animal_latent`) plus the random-
+The full 5-keyword grid (`animal_scalar`, soft-deprecated
+compatibility `animal_unique`, `animal_indep`, `animal_dep`,
+`animal_latent`) plus the random-
 regression `animal_slope(x | individual)` mirror their `phylo_*`
 siblings 1-to-1. Use the animal family for quantitative-genetics
 animal models: variance-component decompositions, factor-analytic
@@ -245,7 +245,7 @@ gets its own field by default.
 | Your situation | Add to formula | Argument to `gllvmTMB()` |
 |---|---|---|
 | Sites have no spatial structure (or you do not have coordinates). | Nothing. | — |
-| Sites have coordinates and each trait should have its own spatial pattern. | <code>+ spatial_unique(0 + trait &#124; coords)</code> | `mesh = make_mesh(df, c("lon", "lat"), cutoff = ...)` |
+| Sites have coordinates and each trait should have its own spatial pattern. | <code>+ spatial_indep(0 + trait &#124; coords)</code> | `mesh = make_mesh(df, c("lon", "lat"), cutoff = ...)` |
 | Sites have coordinates and you want one shared spatial-variance scale across traits (parsimony). | <code>+ spatial_scalar(0 + trait &#124; coords)</code> | `mesh = make_mesh(df, c("lon", "lat"), cutoff = ...)` |
 | You want traits to share a low-rank spatial structure. | <code>+ spatial_latent(0 + trait &#124; coords, d = K)</code> — K shared SPDE fields driven by a T × K loading matrix Λ_spa. | `mesh = make_mesh(df, c("lon", "lat"), cutoff = ...)` (the spatial analogue of `phylo_latent()`). |
 
@@ -276,8 +276,9 @@ slope variance is the quantity you want to estimate (Meyer & Hill
 one phylogenetically-structured slope variance and per-species
 slopes drawn from $\mathcal N(\mathbf 0,\, \sigma^2_{\text{slope}}\,
 \mathbf C_{\text{phy}})$. It composes with the intercept terms from
-§3 — you can have phylogenetic random *intercepts* (`phylo_latent +
-phylo_unique`) and a phylogenetic random *slope* in the same fit. The
+§3 — you can have phylogenetic random *intercepts*
+(`phylo_latent()` with its default diagonal `Psi`) and a phylogenetic
+random *slope* in the same fit. The
 worked recovery is in §7e below. `animal_slope(x | id)` is the
 pedigree parallel (same engine, relatedness matrix $\mathbf A$ from
 the pedigree instead of the tree).
@@ -289,12 +290,13 @@ the pedigree instead of the tree).
 > and validation-debt register:
 >
 > - **Correlated intercept–slope reaction norms.** The richer
->   `phylo_unique(1 + x | species)` form, which estimates a 2×2
+>   soft-deprecated compatibility spelling
+>   `phylo_unique(1 + x | species)`, which estimates a 2×2
 >   intercept/slope covariance (slope variance *and* the
 >   intercept–slope correlation), now routes, fits, and surfaces that
 >   2×2 via `extract_Sigma(fit, level = "phy")` (register `ANI-11`,
->   Gaussian). The pedigree twin `animal_unique(1 + x | id)` is the
->   same engine. (§7e shows it run.)
+>   Gaussian). The pedigree twin compatibility spelling
+>   `animal_unique(1 + x | id)` is the same engine. (§7e shows it run.)
 > - **Structured slope modes** `phylo_indep` / `phylo_dep` /
 >   `phylo_latent` (and their `spatial_*` analogues) all ship with
 >   built engines and Gaussian recovery. The diagonal `phylo_indep`
@@ -407,7 +409,7 @@ fit_jsdm <- gllvmTMB(
 ### 7c. Add phylogeny
 
 Rung 2: the canonical paired phylogenetic decomposition combines
-`phylo_latent + phylo_unique` (the phy side) with
+folded `phylo_latent()` (the phy side) with
 ordinary `latent()` (the non-phy side). With a tree in hand, prefer
 `tree = tree` (in-keyword) for the sparse $A^{-1}$ path. See
 [Phylogenetic GLLVM](phylogenetic-gllvm.html) for the worked
@@ -432,7 +434,6 @@ levels(df_p$species) <- tree$tip.label
 fit_phy <- gllvmTMB(
   value ~ 0 + trait +
           phylo_latent(species, d = 1, tree = tree) +
-          phylo_unique(species, tree = tree) +
           latent(0 + trait | species, d = 1),
   data = df_p,
   trait = "trait",
@@ -442,7 +443,7 @@ fit_phy <- gllvmTMB(
 
 ### 7d. Add space
 
-Rung 3: append `spatial_unique(0 + trait | coords)` and pass a mesh. The
+Rung 3: append `spatial_indep(0 + trait | coords)` and pass a mesh. The
 simulator places sites in `[0,1]^2` automatically when
 `spatial_range` is supplied. The SPDE engine wins on speed when
 the dataset has more than roughly 100 sites; below that the dense
@@ -461,7 +462,7 @@ df_s <- sim_s$data
 mesh <- make_mesh(df_s, c("lon", "lat"), cutoff = 0.1)
 
 fit_spa <- gllvmTMB(
-  value ~ 0 + trait + spatial_unique(0 + trait | coords, mesh = mesh),
+  value ~ 0 + trait + spatial_indep(0 + trait | coords, mesh = mesh),
   data = df_s,
   trait = "trait"
 )
@@ -541,9 +542,10 @@ The richer correlated intercept–slope form fits and surfaces its 2×2
 only to keep this page to a single worked fit:
 
 ```{r ex-slope-aug, eval = FALSE}
-# phylo_unique(1 + x | species) fits a 2x2 (intercept, slope) phylo
-# covariance with a free intercept-slope correlation; read it back via
-# extract_Sigma(level = "phy"). animal_unique(1 + x | id) is the twin.
+# Soft-deprecated compatibility spelling: phylo_unique(1 + x | species)
+# fits a 2x2 (intercept, slope) phylo covariance with a free
+# intercept-slope correlation; read it back via extract_Sigma(level = "phy").
+# animal_unique(1 + x | id) is the pedigree compatibility twin.
 fit_rr_aug <- gllvmTMB(
   value ~ 0 + trait + phylo_unique(0 + trait + (0 + trait):x | species),
   data = df_rr, phylo_tree = tree, unit = "species"
@@ -615,11 +617,10 @@ in this article we just show the formula:
 ```r
 fit_full <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
-          spatial_unique(0 + trait | coords, mesh = mesh) +
+          spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
-          phylo_latent(species, d = 1, tree = tree) +
-          phylo_unique(species, tree = tree),
+          phylo_latent(species, d = 1, tree = tree),
   data = df,
   trait = "trait"
 )

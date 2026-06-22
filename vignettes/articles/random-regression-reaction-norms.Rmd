@@ -136,7 +136,10 @@ within the same repeated measurement.
 The same model can be fitted from long or wide data. The long form is
 canonical because it makes the `(individual, session_id, trait)` rows
 explicit. The wide `traits(...)` form is the compact equivalent for
-readers whose data already have one row per repeated session.
+readers whose data already have one row per repeated session. The
+augmented random-regression diagonal still uses the explicit ordinary
+`unique()` compatibility spelling; this is a guarded slope-specific
+path, not the first-line syntax for ordinary `latent()` examples.
 
 ```{r fit}
 rr$formula_long
@@ -151,6 +154,7 @@ ctl <- gllvmTMBcontrol(
 fit_long <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):temperature +
     latent(0 + trait + (0 + trait):temperature | individual, d = 1) +
+    unique(0 + trait + (0 + trait):temperature | individual) +
     latent(0 + trait | session_id, d = 1),
   data = df,
   trait = rr$fit_args$trait,
@@ -163,6 +167,7 @@ fit_long <- gllvmTMB(
 fit_wide <- gllvmTMB(
   traits(boldness, exploration, activity) ~ 1 + temperature +
     latent(1 + temperature | individual, d = 1) +
+    unique(1 + temperature | individual) +
     latent(1 | session_id, d = 1),
   data = df_wide,
   unit = rr$fit_args$unit,
@@ -301,9 +306,9 @@ The three blocks answer different biological questions:
   to temperature.
 
 The shared and unique pieces compose the total augmented covariance.
-`Sigma_unique$s` is the fitted diagonal `Psi` contribution that ordinary
-`latent()` carries by default, ordered to match the rows and columns of
-`Sigma_total$Sigma`:
+`Sigma_unique$s` is the fitted diagonal `Psi` contribution from the
+explicit ordinary `unique()` compatibility term, ordered to match the
+rows and columns of `Sigma_total$Sigma`:
 
 ```{r composition}
 max(abs(
@@ -485,10 +490,13 @@ The ordinary augmented `latent()` random-regression path in
 this article is Gaussian. The low-rank augmented `latent()` path can
 currently fit ordinary non-Gaussian random slopes in a smoke-test
 regime, but adding the augmented diagonal `unique()` component is still
-guarded for non-Gaussian families.
+guarded for non-Gaussian families. Here `unique()` is the
+soft-deprecated explicit-Psi compatibility spelling used to demonstrate
+the guard; it is not a first-line example.
 
 ```{r nongaussian-boundary, eval = FALSE}
-# This intentionally errors today.
+# This intentionally errors today; unique() is the compatibility spelling
+# being guarded here.
 gllvmTMB(
   value ~ 0 + trait + (0 + trait):temperature +
     latent(0 + trait + (0 + trait):temperature | individual, d = 1) +

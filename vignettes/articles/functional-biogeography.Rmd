@@ -95,14 +95,15 @@ partitioning** distinction for spatial and phylogenetic terms.
 * **Adjustment models** (this article's main focus, §2). Spatial
   and phylogenetic terms are *controls*, so the primary biological
   targets remain $\boldsymbol{\Sigma}_B$ and $\boldsymbol{\Sigma}_W$.
-  Use `spatial_unique()` and `phylo_unique()` -- per-trait variances
+  Use `spatial_indep()` and `phylo_indep()` -- per-trait variances
   on a shared correlation structure ($\mathbf{K}_{\text{space}}$ and
   $\mathbf{C}_{\text{phy}}$).
 * **Partitioning models** (§3 and §4). Spatial and phylogenetic
   signals get their own reduced-rank covariance decomposition
   ($\boldsymbol{\Sigma}_R$, $\boldsymbol{\Sigma}_P$) via
-  `spatial_latent + spatial_unique` and
-  `phylo_latent + phylo_unique`. The question shifts to: are
+  `spatial_latent + spatial_unique` (explicit-Psi compatibility
+  spelling until the spatial fold lands) and folded `phylo_latent()`.
+  The question shifts to: are
   syndromes *spatially structured* or *phylogenetically conserved*?
   These models are more data-demanding; treat them as sensitivity
   analyses.
@@ -341,11 +342,11 @@ t0 <- Sys.time()
 fit_adj <- gllvmTMB(
   value ~ 0 + trait +
           (0 + trait):env_1 + (0 + trait):env_2 +
-          spatial_unique(0 + trait | coords, mesh = mesh) +
+          spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
           indep(0 + trait | species) +               # q_it
-          phylo_unique(species, tree = tree),         # p_it
+          phylo_indep(0 + trait | species, tree = tree), # p_it
   data    = df,
   trait   = "trait",
   cluster = "species"
@@ -486,7 +487,8 @@ and point at the dedicated articles for the worked fits.
 
 # §3 -- Spatial syndrome partitioning
 
-Add a `spatial_latent` term in addition to `spatial_unique` to
+Add a `spatial_latent` term in addition to the explicit-Psi
+compatibility spelling `spatial_unique` to
 estimate $\boldsymbol{\Sigma}_R = \boldsymbol{\Lambda}_R\boldsymbol{\Lambda}_R^{\!\top} + \boldsymbol{\Psi}_R$,
 the spatial trait-covariance decomposition. Loadings on
 $\boldsymbol{\Lambda}_R$ tell you which traits hang together
@@ -499,7 +501,7 @@ fit_M3 <- gllvmTMB(
           spatial_unique(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
-          phylo_unique(species, tree = tree),
+          phylo_indep(0 + trait | species, tree = tree),
   data = df, trait = "trait", cluster = "species"
 )
 ```
@@ -516,8 +518,8 @@ spatial variances. A worked example will appear in the planned
 
 # §4 -- Phylogenetic syndrome partitioning
 
-Symmetric to the spatial-partition model, but on the phylogeny side: pair `phylo_latent`
-with `phylo_unique` to estimate
+Symmetric to the spatial-partition model, but on the phylogeny side:
+use folded `phylo_latent()` to estimate
 $\boldsymbol{\Sigma}_P = \boldsymbol{\Lambda}_P\boldsymbol{\Lambda}_P^{\!\top} + \boldsymbol{\Psi}_P$,
 the phylogenetic two-piece decomposition. Loadings on
 $\boldsymbol{\Lambda}_P$ tell you which traits cluster together
@@ -526,11 +528,10 @@ $\boldsymbol{\Lambda}_P$ tell you which traits cluster together
 ```r
 fit_M4 <- gllvmTMB(
   value ~ 0 + trait + (0 + trait):env_1 + (0 + trait):env_2 +
-          spatial_unique(0 + trait | coords, mesh = mesh) +
+          spatial_indep(0 + trait | coords, mesh = mesh) +
           latent(0 + trait | site, d = 2) +
           latent(0 + trait | site_species, d = 1) +
-          phylo_latent(species, d = 2, tree = tree) +
-          phylo_unique(species, tree = tree),
+          phylo_latent(species, d = 2, tree = tree),
   data = df,
   trait = "trait",
   cluster = "species",

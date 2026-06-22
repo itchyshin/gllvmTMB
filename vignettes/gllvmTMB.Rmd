@@ -34,12 +34,77 @@ checks the equivalent long-data call, and extracts the covariance,
 correlation, communality, and ordination summaries a reader normally
 wants first.
 
-The example uses the safest public path: Gaussian stacked-trait data
-with one observational level and an ordinary `latent()` decomposition,
-`Sigma = Lambda Lambda^T + Psi`. Advanced spatial, phylogenetic,
-meta-analytic, mixed-family, and profile-likelihood tutorials remain
-under audit until their example objects, diagnostics, and rendered
-HTML reviews are ready.
+The fitted Gaussian model starts with observations, not with the
+covariance matrix. For each individual and trait, the teaching model is:
+
+$$
+\begin{aligned}
+y_{it}
+&=
+\alpha_t + \boldsymbol{\lambda}_t^{\mathsf T}\mathbf{u}_i + e_{it},\\
+\mathbf{u}_i
+&\sim \mathcal{N}(\mathbf{0}, \mathbf{I}_d),\\
+e_{it}
+&\sim \mathcal{N}(0, \psi_t).
+\end{aligned}
+$$
+
+Here $y_{it}$ is the observed value for individual $i$ and trait $t$.
+The intercept $\alpha_t$ is the average for trait $t$. The vector
+$\mathbf{u}_i$ is the individual's latent score: where that individual
+sits on the unobserved trait axes. The row vector
+$\boldsymbol{\lambda}_t$ says how strongly trait $t$ responds to those
+axes. The leftover term $e_{it}$ is the part of trait $t$ not shared
+with the other traits.
+
+In generalized models, $\eta_{it}$ is the linear predictor and the link
+function $g()$ connects it to the mean response:
+$g(\mu_{it}) = \eta_{it}$. This first example uses a Gaussian family
+with the identity link, so the linear predictor is the mean itself.
+
+The R formula for that model is compact:
+
+```{r first-model-sketch, eval = FALSE}
+fit <- gllvmTMB(
+  traits(length, mass, wing, tarsus, bill) ~ 1 +
+    latent(1 | individual, d = 2),
+  data = df_wide,
+  unit = "individual",
+  family = gaussian()
+)
+```
+
+After fitting, the covariance among traits is the first report-ready
+summary implied by the latent part of the model:
+
+$$
+\begin{aligned}
+\operatorname{Cov}(\mathbf{y}_i)
+&=
+\boldsymbol{\Sigma},\\
+\boldsymbol{\Sigma}
+&=
+\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf T}
++
+\boldsymbol{\Psi},\\
+\boldsymbol{\Psi}
+&=
+\operatorname{diag}(\psi_1,\ldots,\psi_T).
+\end{aligned}
+$$
+
+In words: total trait covariance = shared multivariate structure +
+response-specific variation. `Lambda` collects the trait loadings: one
+row per trait and one column per latent axis. The product
+`Lambda Lambda^T` is the shared covariance created by those axes. `Psi`
+is the diagonal matrix of trait-specific variance left over after the
+shared axes. Ordinary `latent()` estimates both pieces by default.
+
+For a first fit, read `Sigma`, correlations, and communality before
+reading individual `Lambda` entries. The latent axes can be flipped or
+turned without changing the covariance they imply, so raw loading
+columns need a rotation or confirmatory constraint before they become a
+biological story.
 
 ## First fit: wide individual-by-trait morphology
 
@@ -77,10 +142,10 @@ example_path <- system.file(
   package = "gllvmTMB"
 )
 example_path <- c(
-  example_path,
   file.path("inst", "extdata", "examples", "morphometrics-example.rds"),
   file.path("..", "inst", "extdata", "examples", "morphometrics-example.rds"),
-  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-example.rds")
+  file.path("..", "..", "inst", "extdata", "examples", "morphometrics-example.rds"),
+  example_path
 )
 example_path <- example_path[nzchar(example_path) & file.exists(example_path)][1]
 stopifnot(!is.na(example_path))
@@ -100,13 +165,18 @@ head(df, 6)
 ```
 
 The example has shared low-rank covariance
-$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ plus per-trait unique
+$\boldsymbol\Lambda\boldsymbol\Lambda^\top$ plus per-trait diagonal
 variance $\boldsymbol\Psi$. The fit below recovers the individual-level
 covariance via ordinary `latent()`.
 
-Fit a `d = 2` reduced-rank GLLVM with **ordinary `latent()`** at the
-individual level — the shared low-rank structure plus the default
-trait-specific diagonal Psi:
+In wide data, the formula term is
+`latent(1 | individual, d = 2)`. In long data, the equivalent term is
+`latent(0 + trait | individual, d = 2)`. The `1` in the wide form is
+the compact shorthand for the same trait-specific columns used in the
+long form.
+
+Fit a `d = 2` reduced-rank GLLVM with ordinary `latent()` at the
+individual level:
 
 ```{r fit-call}
 morph$formula_wide
@@ -117,20 +187,10 @@ fit <- gllvmTMB(
   unit = morph$fit_args$unit,
   family = morph$fit_args$family
 )
-fit
-```
 
-Wide trait tables do not need to be perfectly rectangular. IN under
-MIS-21 / MIS-24: if an individual is missing one trait measurement, leave
-that response cell as `NA`; `gllvmTMB()` can treat only the unobserved
-unit-trait cell as missing and keep the other observed traits for that
-individual. The same rule applies to long data with `NA` in the response
-column. Missing predictors default to fail-loud, but one explicitly
-modelled `mi()` predictor is supported through `missing =
-miss_control(predictor = "model")` and `impute = list(...)` for the
-covered v1 slices (MIS-25..MIS-31). Missing unit labels, grouping
-variables, offsets, weights, and ordinary design-matrix values still
-error because the model cannot construct that row.
+# A finite likelihood confirms that the model fitted; diagnostics come next.
+as.numeric(logLik(fit))
+```
 
 ### Same model, long data
 
@@ -154,22 +214,25 @@ fit_long <- gllvmTMB(
 all.equal(as.numeric(logLik(fit)), as.numeric(logLik(fit_long)))
 ```
 
+### What if some response cells are missing?
+
+Wide trait tables do not need to be perfectly rectangular. If an
+individual is missing one trait measurement, leave that response cell as
+`NA`; `gllvmTMB()` can treat only that unit-trait cell as missing and
+keep the other observed traits for the individual. The same rule applies
+to long data with `NA` in the response column. Missing predictors and
+missing grouping variables are a separate problem: by default they fail
+loudly because the model cannot construct that row.
+
 ## Check the fitted response distribution
 
 Before interpreting `Sigma`, separate two questions. First, ask whether
 the numerical fit looks healthy. Then ask whether the fitted response
-distribution is visibly mismatched to the observed stacked traits.
-
-The public diagnostic scope is deliberately narrow. IN under DIA-08 /
-DIA-10: `check_gllvmTMB()` reports optimizer, gradient, Hessian,
-`sdreport()`, restart, boundary, and latent-identifiability status.
-IN under DIA-11 / DIA-12: `predictive_check()` and `residuals()` give
-fitted-model diagnostic displays with exact randomized-quantile
-residuals for Gaussian, Poisson, and NB2 rows. PARTIAL: these checks
-are diagnostic displays; they do not calibrate intervals, prove latent
-rank, run formal uniformity tests, or draw from a Bayesian posterior.
-PLANNED: exact residuals for delta, hurdle, truncated, ordinal, and
-mixture families remain future validation work.
+distribution is visibly mismatched to the observed stacked traits. For
+this Gaussian example, use `check_gllvmTMB()` first; if a row is not
+`PASS`, read its `action` before interpreting covariance. The residual
+and predictive-check plots are diagnostic displays here. They do not
+prove the latent rank or calibrate uncertainty intervals.
 
 ```{r fit-health}
 health <- check_gllvmTMB(fit)
@@ -192,43 +255,22 @@ covariance interpretation:
 predictive_check(fit, type = "rq_qq", seed = 1)
 ```
 
-The recovered loadings (up to column rotation / sign — only
-$\boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top$ is identifiable from
-the data):
+## Read the covariance summaries first
 
-```{r loadings}
-Lambda_hat <- fit$report$Lambda_B
-rownames(Lambda_hat) <- paste0("trait_", seq_len(n_traits))
-colnames(Lambda_hat) <- paste0("LV", seq_len(2))
-round(Lambda_hat, 3)
+Start with the fitted `Sigma` rows. These rows describe the covariance
+surface implied by the model, not a separate model:
+
+```{r sigma-table}
+sigma_rows <- extract_Sigma_table(fit, level = "unit")
+sigma_rows
 ```
 
-The implied trait covariance vs the truth (off-diagonal pattern is
-what should agree — diagonals include unique variance):
-
-```{r cov}
-list(true_LL  = round(Lambda_true %*% t(Lambda_true), 2),
-     fitted_LL = round(Lambda_hat  %*% t(Lambda_hat),  2))
-```
-
-The full covariance target is stored in the example object:
+The full covariance target is stored in the example object, so this
+teaching example can show what the fitted model is trying to recover:
 
 ```{r sigma-truth}
 round(truth$Sigma, 2)
 ```
-
-Ordination of individuals on the two latent axes:
-
-```{r ord, fig.cap = "Individual scores on the two latent trait axes."}
-ord <- extract_ordination(fit, level = "unit")
-plot(ord$scores[, 1], ord$scores[, 2], pch = 19, col = "steelblue",
-     xlab = "LV 1", ylab = "LV 2",
-     main = "Individuals on latent trait axes")
-abline(h = 0, v = 0, lty = 2, col = "grey70")
-```
-
-That's the whole model — ordinary `latent()` for
-`Lambda Lambda^T + Psi`, plus trait-specific intercepts.
 
 Per-trait communality $c_t^2$ — the proportion of each trait's
 variance shared with the others:
@@ -240,8 +282,8 @@ extract_communality(fit, "unit")
 Pairwise trait correlations with 95% Fisher-z Wald confidence
 intervals. `method = "fisher-z"` is the default and keeps bounds in
 `[-1, 1]`; `method = "profile"` and `method = "bootstrap"` are slower
-alternatives, and `method = "wald"` is kept as an alias of
-`"fisher-z"`:
+alternatives for follow-up articles, and `method = "wald"` is kept as
+an alias of `"fisher-z"`:
 
 ```{r cor}
 corr_rows <- extract_correlations(fit, tier = "unit")
@@ -269,6 +311,48 @@ plot_correlations(
   title = "First-model trait correlations"
 )
 ```
+
+## Then inspect loadings and scores
+
+The recovered loadings are useful, but they are not the first
+interpretation target. Only
+$\boldsymbol{\Lambda}\boldsymbol{\Lambda}^{\mathsf T}$ is identified
+directly from the data; raw loading columns can change sign or rotate.
+
+```{r loadings}
+Lambda_hat <- fit$report$Lambda_B
+rownames(Lambda_hat) <- paste0("trait_", seq_len(n_traits))
+colnames(Lambda_hat) <- paste0("LV", seq_len(2))
+round(Lambda_hat, 3)
+```
+
+Do not over-interpret the signs of these unrotated loadings. Use them
+as a quick look at the latent axes, then use `Sigma`, correlations, and
+communality for report-ready interpretation unless you have chosen a
+rotation or confirmatory constraint.
+
+The shared covariance from the loadings can still be compared with the
+known truth in this simulated teaching object. The off-diagonal pattern
+is what should agree; the full `Sigma` diagonal also includes `Psi`.
+
+```{r cov}
+list(true_LL  = round(Lambda_true %*% t(Lambda_true), 2),
+     fitted_LL = round(Lambda_hat  %*% t(Lambda_hat),  2))
+```
+
+Ordination places individuals on the two latent axes:
+
+```{r ord, fig.cap = "Individual scores on the two latent trait axes."}
+ord <- extract_ordination(fit, level = "unit")
+plot(ord$scores[, 1], ord$scores[, 2], pch = 19, col = "steelblue",
+     xlab = "LV 1", ylab = "LV 2",
+     main = "Individuals on latent trait axes")
+abline(h = 0, v = 0, lty = 2, col = "grey70")
+```
+
+That is the whole first model: trait-specific intercepts, individual
+latent scores, loadings from those scores to traits, and the diagonal
+`Psi` carried by ordinary `latent()`.
 
 ## Acknowledgements
 

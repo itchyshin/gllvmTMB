@@ -17532,3 +17532,79 @@ Not run:
 After-task report:
 
 - `docs/dev-log/after-task/2026-06-22-developer-notes-direct-link-accessibility.md`.
+
+## 2026-06-22 -- Covariance/correlation model-first accessibility
+
+Follow-up after PR #531. This slice makes the Concepts article
+`vignettes/articles/covariance-correlation.Rmd` open from the fitted Gaussian
+teaching model before introducing `Sigma`, so readers see that `Sigma` is an
+implied covariance summary rather than the model itself.
+
+Branch/worktree:
+
+- `/private/tmp/gllvmtmb-covariance-correlation-accessibility-20260622`
+  on `codex/covariance-correlation-accessibility-20260622`.
+
+Pre-edit coordination checks:
+
+- `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,statusCheckRollup --limit 20`
+  -> `[]`; no open PR overlap before the slice.
+- `git log --all --oneline --since='6 hours ago' --decorate`
+  -> recent merged #529/#530/#531 sequence only, plus the unrelated
+  `origin/power-pilot-results` branch; no competing covariance/correlation
+  article edit detected.
+- Reran before shared dev-log edits:
+  `gh pr list --repo itchyshin/gllvmTMB --state open --json number,title,headRefName,isDraft,mergeStateStatus,statusCheckRollup --limit 20`
+  -> `[]`.
+
+Implementation:
+
+- Renamed the article to `Covariance and correlation: the model behind Sigma`.
+- Added Tier-2 metadata for the Concepts article.
+- Rewrote the opening around the Gaussian stacked-trait teaching model
+  `y_it = mu_t + lambda_t^T u_i + epsilon_it`, with `u_i ~ N(0, I_d)` and
+  `epsilon_it ~ N(0, psi_tt)`.
+- Made the key teaching point explicit: `Sigma` is the covariance implied by
+  the model, not the model itself.
+- Reframed `Lambda`, `Psi`, `Sigma`, and `R` in a model/syntax/reporting table.
+- Reworded the OLRE section from "unique component" to "diagonal component".
+
+Validation commands and outcomes:
+
+- `Rscript --vanilla -e 'pkgdown::build_article("articles/covariance-correlation", lazy = FALSE, new_process = FALSE, quiet = FALSE)'`
+  -> PASS; rendered `pkgdown-site/articles/covariance-correlation.html`.
+- `rg -n "Latent \+ unique|unique component|unique variance|trait-specific unique|gllvmTMB_wide|Lamdba|depreciat|depriciat|loadings-only by default|latent\(\) now includes|no-residual low-rank" vignettes/articles/covariance-correlation.Rmd`
+  -> PASS; no matches.
+- `rg -n "gllvmTMB_wide|meta_known_V|diag\(U\)|diag\(S\)|\\bf S|\bS_B\b|\bS_W\b|profile-likelihood default|removed in 0\.2\.0|primary new-user API|\bphylo\(|\bgr\(|\bmeta\(|phylo_rr\(" vignettes/articles/covariance-correlation.Rmd`
+  -> PASS; no matches.
+- `rg -n "gllvmTMB\(" vignettes/articles/covariance-correlation.Rmd`
+  -> PASS with manual check; long-data examples include `trait =`, and the
+  wide example uses `traits(...)` through `gllvmTMB()`.
+- `Rscript --vanilla -e 'pkgdown::check_pkgdown()'`
+  -> PASS (`No problems found`).
+- `rg -n "Covariance and correlation: the model behind Sigma|Start from the model|Sigma is not the model itself|Ordinary latent trait correlations" pkgdown-site/articles/covariance-correlation.html`
+  -> PASS for title, opening, and updated plot title. The `Sigma is not...`
+  sentence is line-wrapped in HTML, so this exact alternative did not appear
+  as a single-line match.
+- `git diff --check`
+  -> PASS.
+
+Issue ledger:
+
+- `gh issue list --repo itchyshin/gllvmTMB --state open --search "covariance-correlation OR covariance correlation OR Sigma Lambda Psi OR article accessibility" --json number,title,url,labels,updatedAt --limit 20`
+  -> #230 and #347 are the relevant documentation/article-track issues and
+  remain open.
+- `gh issue view 230 --repo itchyshin/gllvmTMB --json number,title,url,state,labels`
+  -> #230 `Article surface reset and user-first tooling gate`, open.
+- `gh issue view 347 --repo itchyshin/gllvmTMB --json number,title,url,state,labels`
+  -> #347 `[roadmap] Article completion (public learning path)`, open.
+
+Not run:
+
+- `devtools::test()` and `devtools::check()` were not run; this is one
+  article prose/rendering slice with no R code, parser, TMB, roxygen,
+  generated Rd, tests, or pkgdown navigation changes.
+
+After-task report:
+
+- `docs/dev-log/after-task/2026-06-22-covariance-correlation-model-first-accessibility.md`.

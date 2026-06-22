@@ -1,5 +1,6 @@
 ---
 title: "Data-shape flowchart: which worked example matches your data?"
+tier: 3 # under-audit path-finder draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -17,6 +18,13 @@ knitr::opts_chunk$set(
   eval     = FALSE
 )
 ```
+
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the reader path. It is
+> not yet the package's first-stop path-finder. If you are new to
+> `gllvmTMB`, start with [Get started](gllvmTMB.html), then
+> [First Gaussian morphology model](morphometrics.html) and
+> [gllvmTMB vocabulary](gllvm-vocabulary.html).
 
 The `gllvmTMB` worked-example library covers many situations, and
 choosing the right starting article is mostly a question of **what

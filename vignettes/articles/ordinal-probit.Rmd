@@ -1,6 +1,6 @@
 ---
 title: "Ordinal-probit threshold traits"
-tier: 2 # technical reference for the ordinal_probit() family
+tier: 3 # under-audit ordinal family reference; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -19,7 +19,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — `ordinal_probit` family validation is M2 (Binary completeness) milestone work.**
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the ordinal-family
+> reader path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html) and [Response families](response-families.html)
+> before using this page.
+>
+> **Preview -- `ordinal_probit` family validation is M2 (Binary completeness) milestone work.**
 >
 > The `ordinal_probit()` family exists and works in smoke tests
 > (FAM-14 `partial` in the

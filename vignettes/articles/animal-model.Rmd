@@ -1,5 +1,6 @@
 ---
 title: "The animal model: heritability and genetic covariance"
+tier: 3 # under-audit quantitative-genetic draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -22,6 +23,13 @@ knitr::opts_chunk$set(
   warning  = FALSE
 )
 ```
+
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the pedigree reader
+> path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html), [First Gaussian morphology model](morphometrics.html),
+> and [Covariance and correlation](covariance-correlation.html) before
+> using this page for animal-model syntax.
 
 This article is for an evolutionary or ecological reader with
 phenotypes measured on individuals whose genealogy is known

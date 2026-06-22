@@ -102,8 +102,8 @@ is `data-raw/examples/make-covariance-edge-cases-example.R`; the article uses
 the shipped object so the first thing the reader sees is the model, not a long
 data-generating block.
 
-The truth has both a shared low-rank component and a trait-specific unique
-diagonal. Fit the same data two ways:
+The truth has both a shared low-rank component and a trait-specific diagonal
+Psi component. Fit the same data two ways:
 
 * `Model A`: `latent(0 + trait | individual, d = 2, unique = FALSE)`
 * `Model B`: `latent(0 + trait | individual, d = 2)`
@@ -485,7 +485,7 @@ Nakagawa, Johnson & Schielzeth 2017).
 | Phylogenetic decomposition | folded `phylo_latent()` for the phylogenetic tier; ordinary `latent()` for the non-phylogenetic species tier; explicit `*_unique()` pairs only as compatibility spellings | $\Omega = \Sigma_\text{phy} + \Sigma_\text{non}$, with each $\Sigma$ using shared + `Psi` pieces. |
 | Communality | `extract_communality(fit)` + the right Psi-aware pattern | Communality formula uses Σ; needs full Σ to be meaningful. |
 | `Lambda Lambda^T` only | `extract_Sigma(fit, part = "shared")` | Useful for ordination. |
-| `Psi` / `psi` only | `extract_Sigma(fit, part = "unique")` | Trait-specific unique variances as a vector. |
+| `Psi` / `psi` only | `extract_Sigma(fit, part = "unique")` | Trait-specific diagonal variances as a vector. |
 
 ## See also
 

@@ -1,5 +1,6 @@
 ---
 title: "Psychometrics: confirmatory factor analysis with mixed-response items"
+tier: 3 # under-audit psychometrics/IRT draft; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -23,7 +24,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-> **Preview — slated for re-authoring in M2.5 after binary IRT validation.**
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the psychometrics/IRT
+> path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html), [Lambda constraints](lambda-constraint.html),
+> and [Response families](response-families.html) before using this page.
+>
+> **Preview -- slated for re-authoring in M2.5 after binary IRT validation.**
 >
 > The current article uses `lambda_constraint` for binary IRT
 > (LAM-03 `covered` in the

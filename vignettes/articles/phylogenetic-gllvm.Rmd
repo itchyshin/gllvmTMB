@@ -1,5 +1,6 @@
 ---
 title: "Phylogenetic trait covariance"
+tier: 3 # under-audit phylogenetic reader path; visible as a Developer Note
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -22,6 +23,13 @@ knitr::opts_chunk$set(
   warning  = FALSE
 )
 ```
+
+> **Developer Note -- under audit.** This page is buildable and linked
+> from Developer Notes so maintainers can audit the phylogenetic reader
+> path. It is not a first-stop tutorial. Start with
+> [Get started](gllvmTMB.html), [First Gaussian morphology model](morphometrics.html),
+> and [Covariance and correlation](covariance-correlation.html) before
+> using this page for `phylo_*()` syntax.
 
 This article is for a comparative-methods reader with several traits
 measured once per species. The working question is: can we separate
